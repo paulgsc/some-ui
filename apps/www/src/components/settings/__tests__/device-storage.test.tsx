@@ -52,6 +52,8 @@ const UNPAIRED: HomeLinkState = {
   drain: { kind: "idle" },
   pairFailure: null,
   homeBusyUntil: null,
+  away: null,
+  awayReleases: 0,
 }
 
 const UNREADABLE: HomeLinkState = {
@@ -60,6 +62,8 @@ const UNREADABLE: HomeLinkState = {
   drain: { kind: "idle" },
   pairFailure: null,
   homeBusyUntil: null,
+  away: null,
+  awayReleases: 0,
 }
 
 const PAIRED: HomeLinkState = {
@@ -73,6 +77,8 @@ const PAIRED: HomeLinkState = {
   drain: { kind: "idle" },
   pairFailure: null,
   homeBusyUntil: null,
+  away: null,
+  awayReleases: 0,
 }
 
 const home = vi.hoisted(

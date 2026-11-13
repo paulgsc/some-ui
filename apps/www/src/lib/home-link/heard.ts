@@ -54,7 +54,12 @@ export function readHeard(answer: HomeAnswer): HeardAnswer {
 export async function askHeard(id: string): Promise<HeardAnswer> {
   if (!paired()) return { kind: "unreachable" }
   try {
-    const outcome = await homeLink().keep((send) => send("GET", heardPath(id)))
+    const outcome = await homeLink().keep(
+      (send) => send("GET", heardPath(id)),
+      {
+        onItsOwn: true,
+      }
+    )
     return outcome?.kind === "done"
       ? readHeard(outcome.value)
       : { kind: "busy" }

@@ -1,7 +1,8 @@
 /**
  * The live socket's machine over every event it takes (LA21): an event made
  * under an earlier opening changes nothing, whatever the phase; and a 4400
- * is retried at once only when the hello before it told home a `lastSeq`.
+ * is retried at once only when the hello before it told home a `lastSeq`;
+ * and a socket that never opened is the home link's to wait out (AW1).
  */
 import type { FeedChoice, HomeMessage } from "@some-ui/game-week"
 import { describe, expect, it } from "vitest"
@@ -117,9 +118,77 @@ describe("the live socket's machine", () => {
     const opened = step(connecting, { kind: "opened", at: 1 })
     expect(opened.effects.map((e) => e.kind)).toEqual([
       "arm",
+      "reached",
       "hello",
       "ping",
       "arm",
     ])
+  })
+
+  describe("away from home (AW1)", () => {
+    /** A watched socket being made at opening 1. */
+    const connecting: LiveState = {
+      ...open(null),
+      phase: "connecting",
+    }
+    const kinds = (s: { effects: ReadonlyArray<{ kind: string }> }): string =>
+      s.effects.map((e) => e.kind).join(",")
+
+    it("arms no try of its own while the link holds the phone away, whatever ended the socket", () => {
+      for (const state of [connecting, open(null)]) {
+        for (const ending of [
+          { kind: "closed", at: 1, code: 1006 },
+          { kind: "due", at: 1, timer: "quiet" },
+        ] as const) {
+          const after = step({ ...state, held: true }, ending)
+          expect(after.state.link).toBe("away")
+          expect(after.effects.map((e) => e.kind)).not.toContain("arm")
+        }
+      }
+    })
+
+    it("tries again on its own time when the link holds nothing, and starts no stretch itself", () => {
+      for (const state of [connecting, open(null)]) {
+        const after = step(state, { kind: "closed", at: 1, code: 1006 })
+        expect(kinds(after)).not.toContain("reached")
+        expect(after.effects).toContainEqual(
+          expect.objectContaining({ kind: "arm", timer: "retry" })
+        )
+      }
+    })
+
+    it("asks for no socket while held, and asks once when the hold ends", () => {
+      const idle: LiveState = { ...open(null), phase: "idle", opening: 2 }
+      const held = step(idle, { kind: "home", held: true }).state
+      for (const event of [
+        { kind: "watch" },
+        { kind: "visibility", hidden: false },
+        { kind: "relinked", pairingId: "p2" },
+        { kind: "due", at: 2, timer: "retry" },
+        { kind: "home", held: true },
+      ] as const) {
+        expect(kinds(step(held, event))).not.toContain("read-pairing")
+      }
+      const ended = step(held, { kind: "home", held: false })
+      expect(kinds(ended)).toContain("read-pairing")
+      expect(kinds(step(ended.state, { kind: "home", held: false }))).toBe("")
+    })
+
+    it("does not ask on a hold's end while hidden or not watched", () => {
+      const idle: LiveState = { ...open(null), phase: "idle", held: true }
+      for (const state of [
+        { ...idle, hidden: true },
+        { ...idle, watched: false },
+      ]) {
+        expect(kinds(step(state, { kind: "home", held: false }))).toBe("")
+      }
+    })
+
+    it("leaves a socket being made or open alone when a hold begins", () => {
+      for (const state of [connecting, open(null)]) {
+        const after = step(state, { kind: "home", held: true })
+        expect([after.state.phase, kinds(after)]).toEqual([state.phase, ""])
+      }
+    })
   })
 })

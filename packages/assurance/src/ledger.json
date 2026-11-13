@@ -4369,6 +4369,19 @@
       "family": "what-is-kept"
     },
     {
+      "store": "server:interview_week_draft",
+      "class": "cache",
+      "growth": "bounded: one row per (subject, interview week not yet final): the phone's current draft of the week's Send (IW4), <= SENT_CEILING = 16 KiB, replaced by each newer draft before the week's due",
+      "horizon": "deleted in the transaction that writes the week's final to interview_week_final, at the first read after due, or with the account",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:interview_week_final",
+      "class": "record",
+      "growth": "Per interview week a paired phone sent a draft of (IW4): the draft standing at the week's due, as sent (each question's and card's take id and when it was said, and those passed over), <= SENT_CEILING = 16 KiB; one row per (subject, week), written once at the first read after due, never updated; append-only; leaves with the account.",
+      "family": "what-is-kept"
+    },
+    {
       "store": "server:rust_week_paste",
       "class": "record",
       "growth": "Per error pasted in a Rust Rounds week that a paired phone sends (RR14): rustc's output as pasted, <= PASTE_MAX_CHARS = 20,000 characters, and its note's take id; one row per (subject, week, when it was begun), never updated; a few a week; append-only; leaves with the account.",
@@ -4495,6 +4508,12 @@
       "store": "server:voice_note_deletion",
       "class": "record",
       "growth": "Per voice note the owner deletes for good from My data (MD3, #2477; paulgsc/server invariant 23): one small receipt row (the note's id and kind, three times, its size, what went and what stayed in fixed words), append-only and never deleted but with the account, at most one per voice note. Only Studio's recordings (takes and idea answers) are switched on (owner, 2026-11-04), so it grows with what the owner deletes of them.",
+      "family": "voice-heard"
+    },
+    {
+      "store": "server:studio_take_move",
+      "class": "record",
+      "growth": "Per move of a Studio take along the conveyor (CONVEYOR1, some-ui#2873): one small row (the take's id, its seq, the station it left and reached, when the owner moved it, its labels when they changed, a comment of at most 280 characters, the issue a pickup filed it as), one per move the owner makes by hand on the conveyor page (unbounded per take: a take can go back and forth between stations), plus at most one per take for its pickup by the routine; append-only (UPDATE aborts). Rows leave only with their take, when the owner deletes it for good from My data (its receipt says the conveyor history went), and with the account.",
       "family": "voice-heard"
     },
     {

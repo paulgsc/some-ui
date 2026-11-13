@@ -48,6 +48,7 @@ const facts = (over: Partial<LaneFacts> = {}): LaneFacts => ({
   hidden: 0,
   pulled: true,
   serves: null,
+  away: null,
   ...over,
 })
 
@@ -74,6 +75,14 @@ function every(): Array<LaneFacts> {
   for (const serves of ["updating", "not-yet", "too-old"] as const) {
     all.push(facts({ paired: true, waiting: 3, serves }))
   }
+  all.push(
+    facts({
+      paired: true,
+      waiting: 3,
+      run: { ...INITIAL_KEPT, last: { kind: "unreachable", at: 1 } },
+      away: { since: Date.UTC(2026, 10, 12, 20), now: Date.UTC(2026, 10, 13) },
+    })
+  )
   return all
 }
 
@@ -467,5 +476,34 @@ describe("the routine's files in Korean", () => {
     expect(view.line).toBe(
       "This phone isn't paired with home now. Pair it in Settings. 1 event waits on this phone and goes next time."
     )
+  })
+})
+
+describe("away from home (AW1)", () => {
+  const unreachable: KeptState = {
+    ...INITIAL_KEPT,
+    last: { kind: "unreachable", at: 1 },
+  }
+
+  it("says since when, in place of no answer, with what waits", () => {
+    const since = Date.UTC(2026, 10, 13, 19, 57)
+    const view = laneView(
+      WORDS.practice,
+      facts({
+        paired: true,
+        waiting: 2,
+        run: unreachable,
+        away: { since, now: since + 60_000 },
+      })
+    )
+    expect(view.word).toBe("Away")
+    expect(view.line).toMatch(/^Away from home since .+\. /)
+    expect(view.line).toContain("wait on this phone and go next time.")
+  })
+
+  it("says home didn't answer when the phone is not away", () => {
+    expect(
+      laneView(WORDS.practice, facts({ paired: true, run: unreachable })).word
+    ).toBe("No answer")
   })
 })

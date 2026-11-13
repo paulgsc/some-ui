@@ -7,7 +7,6 @@ import {
   DIVE_WORDS_LEAST,
   DIVE_WORDS_MOST,
   finish,
-  ROLE_NOT_YET,
   seedLine,
 } from "@rust-rounds/lib/monday/finish"
 import {
@@ -44,7 +43,6 @@ const samplePrepared = (
     brief: SAMPLE_BRIEF,
     records: SAMPLE_RECORDS,
     transcripts: SAMPLE_TRANSCRIPTS,
-    due: null,
     ...overrides,
   })
 
@@ -81,7 +79,9 @@ describe("the Monday routine, on the sample week", () => {
     const silence = essay.value.tickets[2]?.answer
     expect(silence?.kind === "silence" && silence.opened).toBe(2)
     expect(essay.value.next.week).toBe("2026-w47")
-    expect(essay.value.weeks.role).toEqual(ROLE_NOT_YET)
+    // One week of answers: the role line waits for three (RR19, C269).
+    expect(essay.value.weeks.role.fits).toBe("Not worked out yet")
+    expect(essay.value.template.version).toBe(1)
     expect(essay.value.weeks.concepts.map((c) => c.cells)).toEqual([
       [4],
       [4],
@@ -108,6 +108,102 @@ describe("the Monday routine, on the sample week", () => {
     const take = essay.ok ? essay.value.tickets[0]?.answer : undefined
     expect(take?.kind === "take" && take.transcript).toMatch(
       /^Every field becomes its own String/
+    )
+  })
+})
+
+describe("the next Monday, after the sample run (RR19)", () => {
+  it("takes next week's topics first from what the decay record marks due", () => {
+    const { bundle, history } = samplePrepared()
+    const done = finish({ bundle, history, values: SAMPLE_VALUES, runs: RUNS })
+    if (!done.ok) throw new Error(done.problems.join("\n"))
+    // Week 47 has ended with no record from home yet, so its essay waits.
+    const after = samplePrepared({
+      now: new Date("2026-11-23T12:00:00Z"),
+      brief: [...SAMPLE_BRIEF, ...done.files],
+      records: [],
+    })
+    expect(after.bundle.waiting.map((w) => w.week)).toEqual(["2026-w47"])
+    expect(after.bundle.next?.id).toBe("2026-w48")
+    expect(after.bundle.due.map((d) => [d.id, d.why])).toEqual([
+      // Relational in week 46: box 2, so due again two weeks on.
+      ["allocation-on-the-hot-path", "faded"],
+      ["lifetime-elision", "faded"],
+      // Silent, or below relational: box 1, due the next week it can be.
+      ["static-and-threads", "not-answered"],
+      ["borrows-into-a-reused-buffer", "not-yet-known"],
+    ])
+    const topics = after.bundle.next?.topics ?? []
+    const room = topics.length
+    expect(topics.map((t) => [t.id, t.why])).toEqual(
+      after.bundle.due.slice(0, room).map((d) => [d.id, "due"])
+    )
+  })
+})
+
+describe("a week that ended without an essay", () => {
+  it("keeps what it asked off the due list only while a run can still write it", () => {
+    const { bundle, history } = samplePrepared()
+    const done = finish({ bundle, history, values: SAMPLE_VALUES, runs: RUNS })
+    if (!done.ok) throw new Error(done.problems.join("\n"))
+    // Week 47 asks 'static and threads again, and home never makes it final.
+    const brief = done.files.map((file) => {
+      if (file.name !== "rust-week-2026-w47.json") return file
+      const week = readWeek(file.body)
+      if (!week.ok) throw new Error("week 47 isn't readable")
+      const [first, ...rest] = week.week.tickets
+      if (first === undefined) throw new Error("week 47 has no tickets")
+      const again = { id: "static-and-threads", name: "'static and threads" }
+      return {
+        ...file,
+        body: {
+          ...week.week,
+          tickets: [
+            { ...first, concepts: [...first.concepts, again] },
+            ...rest,
+          ],
+        },
+      }
+    })
+    const dueAt = (
+      now: string,
+      records: ReadonlyArray<unknown> = []
+    ): Array<string> =>
+      samplePrepared({
+        now: new Date(now),
+        brief: [...SAMPLE_BRIEF, ...brief],
+        records,
+      }).bundle.due.map((d) => d.id)
+    expect(dueAt("2026-11-23T12:00:00Z")).not.toContain("static-and-threads")
+    // Still waiting three weeks on, it no longer holds them.
+    expect(dueAt("2026-12-07T12:00:00Z")).toContain("static-and-threads")
+    // Written in this very run, however late, its answers are being read.
+    const w47 = readWeek(brief.find((f) => f.name.includes("w47"))?.body)
+    if (!w47.ok) throw new Error("week 47 isn't readable")
+    const final47 = {
+      ...record(),
+      week: "2026-w47",
+      opens: w47.week.opens,
+      due: w47.week.due,
+      sent: null,
+      tickets: w47.week.tickets.map((t) => ({
+        ticket: t.id,
+        answered: false,
+        take: null,
+        recordedAt: null,
+        opens: 1,
+      })),
+      unanswered: w47.week.tickets.map((t) => t.id),
+      pastes: [],
+    }
+    const late = samplePrepared({
+      now: new Date("2026-12-07T12:00:00Z"),
+      brief: [...SAMPLE_BRIEF, ...brief],
+      records: [final47],
+    })
+    expect(late.bundle.essays.map((e) => e.week)).toEqual(["2026-w47"])
+    expect(dueAt("2026-12-07T12:00:00Z", [final47])).not.toContain(
+      "static-and-threads"
     )
   })
 })

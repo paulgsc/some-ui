@@ -251,7 +251,8 @@ let reads: RoutineReads | null = null
 /** One runtime per page load, over the link; reads only this phone's pairing. */
 export function routineReads(): RoutineReads {
   reads ??= createRoutineReads({
-    keep: (run) => homeLink().keep(run),
+    // Asked as the lesson opens, not by a tap: held away from home (AW1).
+    keep: (run) => homeLink().keep(run, { onItsOwn: true }),
     pairing: () => {
       const { link } = homeLink().getSnapshot()
       return link.kind === "paired" ? link.id : null

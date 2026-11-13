@@ -1,6 +1,7 @@
 import { assertNever } from "@some-ui/core-utils"
 import {
   cellsOf,
+  ESSAY_DECAY_VERSION,
   essayIntro,
   essayScenes,
   isPast,
@@ -56,7 +57,58 @@ export type EssayView =
         readonly name: string
         readonly cells: ReadonlyArray<CellView>
       }>
+      /** The cases the chart's cells can't say alone, decay before fading (`chartNotes`). */
+      readonly notes: ReadonlyArray<ChartNote>
+      /** Whether the chart draws the decay record's recheck (template version 2). */
+      readonly recheck: boolean
     }
+
+/** A case under the chart: a concept that decayed, or may have faded, and the weeks that say so. */
+type ChartNote =
+  | {
+      readonly kind: "decayed"
+      readonly name: string
+      readonly week: string
+      readonly below: string
+    }
+  | { readonly kind: "faded"; readonly name: string; readonly since: string }
+
+/** The most cases said under the chart, so it fits the frame. */
+const CHART_NOTES_MOST = 3
+
+/**
+ * The sentences under the chart: each concept's latest decay, then each
+ * concept's latest run of weeks it may have faded in, at most
+ * `CHART_NOTES_MOST`.
+ */
+function chartNotes(
+  weeks: ReadonlyArray<string>,
+  rows: ReadonlyArray<{
+    readonly name: string
+    readonly cells: ReadonlyArray<CellView>
+  }>
+): Array<ChartNote> {
+  const decayed: Array<ChartNote> = []
+  const faded: Array<ChartNote> = []
+  for (const { name, cells } of rows) {
+    let decay: ChartNote | null = null
+    let fadedFrom = -1
+    for (const [i, cell] of cells.entries()) {
+      if (cell.kind === "level" && cell.decayed !== null)
+        decay = {
+          kind: "decayed",
+          name,
+          week: weeks[i] ?? "",
+          below: cell.decayed,
+        }
+      if (cell.kind === "faded" && cells[i - 1]?.kind !== "faded") fadedFrom = i
+    }
+    if (decay !== null) decayed.push(decay)
+    if (fadedFrom !== -1)
+      faded.push({ kind: "faded", name, since: weeks[fadedFrom] ?? "" })
+  }
+  return [...decayed, ...faded].slice(0, CHART_NOTES_MOST)
+}
 
 export type EssayAt = {
   readonly scenes: ReadonlyArray<EssayScene>
@@ -112,12 +164,19 @@ function viewOf(essay: Essay, scene: EssayScene, voicing: Voicing): EssayView {
       }
     }
     case "weeks": {
+      const rows = essay.weeks.concepts.map((concept) => ({
+        name: concept.name,
+        cells: cellsOf(
+          concept.cells,
+          essay.weeks.weeks,
+          essay.template.version
+        ),
+      }))
       return {
         section: "weeks",
-        rows: essay.weeks.concepts.map((concept) => ({
-          name: concept.name,
-          cells: cellsOf(concept.cells),
-        })),
+        rows,
+        notes: chartNotes(essay.weeks.weeks, rows),
+        recheck: essay.template.version >= ESSAY_DECAY_VERSION,
       }
     }
     default: {
