@@ -284,6 +284,40 @@ describe("JB2: a file home took without a tap", () => {
     const decision = refiled.log.findIndex((e) => e.type === "taken")
     expect(eventJourney(context(refiled), decision)?.id).toBe("with-home")
   })
+
+  it("on a restored phone, reads a refiled event as missed until an exchange files it again (Tolerance, C144)", () => {
+    const missed = run(filed.state, NEXT, [], "2026-10-19T16:00:00Z")
+    const view = deliveryView(
+      missed,
+      "decisions",
+      new Date("2026-10-19T17:00:00Z")
+    )
+    const refiled = fileWithHome(
+      missed,
+      "2026-10-19T17:00:00.000Z",
+      "decisions",
+      view
+    )
+    const read = run(
+      refiled.state,
+      "2026-10-20",
+      [refiled.name],
+      "2026-10-20T16:00:00Z"
+    )
+    const decision = read.log.findIndex((e) => e.type === "taken")
+    expect(eventJourney(context(read), decision)?.id).toBe("read")
+
+    // Home gives the log back, but not the phone's notes of where shares began.
+    const restored: JobsState = { ...read, carried: {} }
+    expect(eventJourney(context(restored), decision)?.id).toBe("missed-run")
+    const at = "2026-10-20T17:00:00.000Z"
+    const again = deliveryView(restored, "decisions", new Date(at))
+    expect(JSON.parse(fileOf(again).json).picks).toMatchObject([
+      { pickId: SW.id },
+    ])
+    const healed = fileWithHome(restored, at, "decisions", again).state
+    expect(eventJourney(context(healed), decision)?.id).toBe("with-home")
+  })
 })
 
 describe("JB2: two shares interleaved", () => {
