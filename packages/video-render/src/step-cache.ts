@@ -20,7 +20,9 @@
  * and renamed into place, so a step killed half way leaves nothing that reads
  * as kept. A kept file is
  * copied out, never linked: ffmpeg's `-y` rewrites a file in place, which
- * would change a linked entry.
+ * would change a linked entry. A step answered from the cache is said
+ * (`hit`), so a resumed render's log shows each step it did not redo
+ * (paulgsc/server#739).
  */
 
 import { createHash } from "node:crypto"
@@ -45,6 +47,12 @@ export type StepCache = {
     from: string,
     what: string
   ) => Promise<boolean>
+  /**
+   * Says that the step named `what` was answered from the cache, by whoever
+   * took it whole: a step half answered (a take whose words were not kept)
+   * ran, so it is not a hit.
+   */
+  readonly hit: (what: string) => void
 }
 
 /** A key for `parts`: the SHA-256 of their JSON. */
@@ -98,7 +106,10 @@ async function heldBytes(dir: string, fs: CacheFs): Promise<Held> {
   return { bytes: total }
 }
 
-/** A step cache in `dir`, held to `policy.cacheBytes`. */
+/**
+ * A step cache in `dir`, held to `policy.cacheBytes`. It says no hit; a
+ * caller that wants them spreads it with its own `hit`.
+ */
 export function stepCache(
   dir: string,
   policy: RenderPolicy,
@@ -107,6 +118,7 @@ export function stepCache(
 ): StepCache {
   const kept = (key: string, ext: string): string => join(dir, `${key}${ext}`)
   return {
+    hit: (): void => undefined,
     get: async (key, ext, to): Promise<boolean> => {
       try {
         await fs.copyFile(kept(key, ext), to)
@@ -160,7 +172,8 @@ export function stepCache(
  * One step kept in `cache` (VR2): the file kept under `key` copied to `out`
  * when there is one, without running; otherwise `run` writes it, and what it
  * wrote is kept when it succeeds: each ffmpeg call and each burn-in
- * recorded, so a retry redoes only the steps whose key changed.
+ * recorded, so a retry redoes only the steps whose key changed. A step
+ * answered from the cache is said as `step.out`.
  */
 export async function keptStep<R extends { readonly ok: boolean }>(
   cache: StepCache,
@@ -170,7 +183,10 @@ export async function keptStep<R extends { readonly ok: boolean }>(
 ): Promise<R> {
   const ext = extname(step.out)
   const path = isAbsolute(step.out) ? step.out : resolve(root, step.out)
-  if (await cache.get(step.key, ext, path)) return step.hit
+  if (await cache.get(step.key, ext, path)) {
+    cache.hit(step.out)
+    return step.hit
+  }
   const ran = await run()
   if (ran.ok) await cache.put(step.key, ext, path, step.out)
   return ran
