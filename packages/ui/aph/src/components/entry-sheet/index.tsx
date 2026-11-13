@@ -7,7 +7,7 @@
  * wrong time, or twice, is removed.
  */
 import type { JSX } from "react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { GoalMeter, STATUS, StatusBadge, whenOf } from "@aph/components/status"
 import { keepsOnePlain, MAX_DIGITS } from "@aph/lib/draft"
 import type { Entry } from "@aph/lib/model"
@@ -18,9 +18,12 @@ import {
   labelsFor,
   reconcile,
 } from "@aph/lib/model"
+import { theirFigureOffer } from "@aph/lib/offers"
 import type { AphStore } from "@aph/lib/store"
 import { useAph } from "@aph/lib/use-aph"
 import { cn, formatDay, formatWeekday } from "@some-ui/core-utils"
+import type { Visit } from "@some-ui/engagement"
+import { useShelf } from "@some-ui/react-hooks"
 import {
   Button,
   Input,
@@ -40,6 +43,8 @@ export type EntrySheetProps = {
   /** Where "Enter their figure" goes: the logger, on the theirs side. */
   onEnterTheirs?: (entryId: string) => void
   store: AphStore
+  /** The screen's visit (ENG9): "Enter their figure" is offered on it while shown. */
+  visit?: Visit
 }
 
 export const EntrySheet = ({
@@ -47,6 +52,7 @@ export const EntrySheet = ({
   onClose,
   onEnterTheirs,
   store,
+  visit,
 }: EntrySheetProps): JSX.Element => {
   const { entries } = useAph(store)
   const entry = entries.find((e) => e.id === entryId) ?? null
@@ -69,6 +75,7 @@ export const EntrySheet = ({
             entry={entry}
             store={store}
             onEnterTheirs={onEnterTheirs}
+            visit={visit}
           />
         )}
       </SheetContent>
@@ -80,13 +87,24 @@ const EntryDetail = ({
   entry,
   store,
   onEnterTheirs,
+  visit,
 }: {
   entry: Entry
   store: AphStore
   onEnterTheirs?: (entryId: string) => void
+  visit: Visit | undefined
 }): JSX.Element => {
   const { settings, entries } = useAph(store)
   const { status, gap } = reconcile(settings, entry)
+  const offersTheirs = status === "awaiting" && onEnterTheirs !== undefined
+  useShelf(
+    visit,
+    "their-figure",
+    useMemo(
+      () => (offersTheirs ? [theirFigureOffer(entry.id)] : null),
+      [offersTheirs, entry.id]
+    )
+  )
   const chips = labelsFor(settings, entry)
   // An edit buffer for the note I'm typing: seeded from the entry it edits,
   // and EntrySheet keys this by `entry.id`, so another entry is a fresh one.
@@ -139,8 +157,13 @@ const EntryDetail = ({
         </div>
       )}
 
-      {status === "awaiting" && onEnterTheirs !== undefined && (
-        <Button onClick={() => onEnterTheirs(entry.id)}>
+      {offersTheirs && (
+        <Button
+          onClick={() => {
+            visit?.take(theirFigureOffer(entry.id))
+            onEnterTheirs(entry.id)
+          }}
+        >
           Enter their figure
         </Button>
       )}

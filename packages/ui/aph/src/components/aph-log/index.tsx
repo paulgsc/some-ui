@@ -40,10 +40,13 @@ import {
   primary,
   reconcile,
 } from "@aph/lib/model"
+import { APH_OFFERS } from "@aph/lib/offers"
 import type { AphStore } from "@aph/lib/store"
 import { aphStore } from "@aph/lib/store"
 import { useAph } from "@aph/lib/use-aph"
 import { cn, dayOf, formatDay, formatWeekday } from "@some-ui/core-utils"
+import type { Visit } from "@some-ui/engagement"
+import { useShelf } from "@some-ui/react-hooks"
 import { Button, Notice } from "@some-ui/shared"
 import {
   Check,
@@ -79,7 +82,15 @@ export type AphLogProps = {
   /** The host's clock (`useMinuteClock` in www), which moves while the screen stays open. */
   now: Date
   store?: AphStore
+  /**
+   * The screen's visit (ENG9): the log of mine is offered on it while the
+   * form is on mine, and taken when a figure of mine is saved.
+   */
+  visit?: Visit
 }
+
+/** The log of mine, as the visit offers it. */
+const LOG = [APH_OFFERS.logMine]
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 
@@ -99,6 +110,7 @@ export const AphLog = ({
   onSaved,
   now,
   store = aphStore,
+  visit,
 }: AphLogProps): JSX.Element => {
   const { settings, entries } = useAph(store)
   const today = dayOf(now)
@@ -123,6 +135,7 @@ export const AphLog = ({
   // The checkpoint follows the clock, and the target the waiting list,
   // until I pick one (`atTime`).
   const draft = atTime(raw, settings, entries, now)
+  useShelf(visit, "log", draft.side === "mine" ? LOG : null)
   const day = draftDay(draft, today)
   const dayIndex = days.indexOf(day)
 
@@ -154,6 +167,7 @@ export const AphLog = ({
       id,
     })
     setRefused(landed === null)
+    if (landed !== null && raw.side === "mine") visit?.take(APH_OFFERS.logMine)
     if (landed !== null) onSaved?.(landed, raw.side)
   }
 
