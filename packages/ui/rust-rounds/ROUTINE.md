@@ -49,7 +49,8 @@ outside the checkout as `<run>`.
      errors the owner pasted, each with what they said about it) and its
      `topics`. It is `null` when the mailbox already holds next week.
    - `due`: the concepts the decay record says are due a recheck next week,
-     and why: `decayed`, `faded` (may have faded) or `not-yet-known`. It is
+     and why: `decayed`, `faded` (may have faded), `not-answered` (last left
+     silent) or `not-yet-known`. It is
      read from the essays already written, so this run's own answers aren't
      in it yet.
 3. **Write `<run>/values.json`** from the bundle alone, as "What you write"

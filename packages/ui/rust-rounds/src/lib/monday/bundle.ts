@@ -13,7 +13,7 @@
  * the two files from the bundle and those values.
  */
 import type { DueConcept, Judged } from "@rust-rounds/lib/decay"
-import { dueAt, recordOf } from "@rust-rounds/lib/decay"
+import { dueAt, recordOf, weeksBetween } from "@rust-rounds/lib/decay"
 import { REFERENCES } from "@rust-rounds/lib/formats/week"
 import type { Reference, Ticket, Week } from "@rust-rounds/lib/formats/week"
 import { heardByNote, readFinalRecord } from "@rust-rounds/lib/monday/record"
@@ -30,6 +30,12 @@ const BUNDLE_SCHEMA = "some-ui.rust-monday/1"
 
 /** The most essays one run writes, so a run after a gap catches up over a few Mondays. */
 export const ESSAYS_MOST = 2
+
+/**
+ * How many weeks before next week an ended week, its essay not yet written,
+ * keeps its concepts off the due list: as long as a run can still write it.
+ */
+const PENDING_WEEKS = 2
 
 /** A file from the mailbox: its name and its body, parsed. */
 export type MailboxFile = { readonly name: string; readonly body: unknown }
@@ -97,25 +103,33 @@ export type History = {
 export type Prepared = { readonly bundle: Bundle; readonly history: History }
 
 /**
- * The weeks the mailbox holds an essay for, as the decay record reads them:
- * each ticket's concepts and its SOLO level, or null for a silence.
+ * A week as the decay record reads it: each ticket's concepts and its SOLO
+ * level in `answers` (an essay's tickets), or null for a silence.
  */
+export function judgedWeek(
+  week: string,
+  tickets: ReadonlyArray<Pick<Ticket, "id" | "concepts">>,
+  answers: ReadonlyArray<Pick<Essay["tickets"][number], "id" | "answer">>
+): Judged {
+  return {
+    week,
+    tickets: tickets.map((ticket) => {
+      const answer = answers.find((t) => t.id === ticket.id)?.answer
+      return {
+        concepts: ticket.concepts,
+        level: answer?.kind === "take" ? answer.solo.level : null,
+      }
+    }),
+  }
+}
+
+/** The weeks the mailbox holds an essay for, as the decay record reads them. */
 export function judgedOf(history: History): Array<Judged> {
   return history.weeks.flatMap((week) => {
     const essay = history.essays.find((e) => e.week.id === week.id)
-    if (essay === undefined) return []
-    return [
-      {
-        week: week.id,
-        tickets: week.tickets.map((ticket) => {
-          const answer = essay.tickets.find((t) => t.id === ticket.id)?.answer
-          return {
-            concepts: ticket.concepts,
-            level: answer?.kind === "take" ? answer.solo.level : null,
-          }
-        }),
-      },
-    ]
+    return essay === undefined
+      ? []
+      : [judgedWeek(week.id, week.tickets, essay.tickets)]
   })
 }
 
@@ -256,12 +270,11 @@ export function prepare({
     weeks,
     essays: [...essays.values()].map(({ essay }) => essay),
   }
-  // A concept a week that ended named, with no essay yet, was just checked:
-  // its answer is still to be read, so it isn't due.
   const pending = new Set(
     weeks
       .filter((week) => Date.parse(week.due) < now.getTime())
       .filter((week) => !essayNames.has(week.id))
+      .filter((week) => weeksBetween(week.id, nextId) <= PENDING_WEEKS)
       .flatMap((week) =>
         week.tickets.flatMap((t) => t.concepts.map((c) => c.id))
       )

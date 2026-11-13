@@ -33,7 +33,7 @@ import type {
   EndedWeek,
   History,
 } from "@rust-rounds/lib/monday/bundle"
-import { judgedOf } from "@rust-rounds/lib/monday/bundle"
+import { judgedOf, judgedWeek } from "@rust-rounds/lib/monday/bundle"
 import { AREAS } from "@rust-rounds/lib/monday/topics"
 import type {
   EssayTicketValues,
@@ -173,16 +173,7 @@ function buildEssay(
   if (problems.length > before || following === undefined) return null
   const judged: Array<Judged> = [
     ...judgedOf(history).filter((j) => j.week < ended.week),
-    {
-      week: ended.week,
-      tickets: ended.tickets.map((ticket) => {
-        const answer = tickets.find((t) => t.id === ticket.id)?.answer
-        return {
-          concepts: ticket.concepts,
-          level: answer?.kind === "take" ? answer.solo.level : null,
-        }
-      }),
-    },
+    judgedWeek(ended.week, ended.tickets, tickets),
   ]
   const record = recordOf(judged)
   const chart = chartOf(

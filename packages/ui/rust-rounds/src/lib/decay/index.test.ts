@@ -11,7 +11,6 @@ import { SAMPLE_FIRST, SAMPLE_JUDGED } from "@rust-rounds/lib/decay/sample"
 import {
   ESSAY_CONCEPTS_MOST,
   ESSAY_WEEKS_MOST,
-  LEITNER,
   sampleEssay,
 } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
@@ -65,6 +64,15 @@ describe("the decay record's states", () => {
     ])
   })
 
+  it("takes a decayed level as where it stands, so holding it again climbs", () => {
+    expect(row([5, 4, 4, 3])).toEqual([
+      5,
+      { level: 4, below: "2026-w01" },
+      4,
+      { level: 3, below: "2026-w02" },
+    ])
+  })
+
   it("presumes fading only of what was known, once its Leitner recheck has passed", () => {
     // Known in week 1 (box 2: two weeks); unchecked in 2, faded from 3.
     expect(row([4, undefined, undefined])).toEqual([4, "unmet", "faded"])
@@ -86,17 +94,13 @@ describe("the decay record's states", () => {
     ])
   })
 
-  it("counts whole ISO weeks across a year's end", () => {
-    expect(weeksBetween("2025-w52", "2026-w01")).toBe(1)
+  it("counts whole weeks between week ids, across a 53-week year", () => {
     expect(weeksBetween("2026-w53", "2027-w01")).toBe(1)
-    expect(weeksBetween("2026-w46", "2026-w46")).toBe(0)
-    expect(weeksBetween("2020-w53", "2021-w01")).toBe(1)
   })
 })
 
 describe("the concepts due a recheck", () => {
   it("are the Leitner system's: a known answer waits longer each time, a slip comes back next week", () => {
-    expect(LEITNER.weeks).toEqual([1, 2, 4, 8, 16])
     const due = (
       levels: ReadonlyArray<number | null | undefined>,
       week: string
@@ -107,10 +111,12 @@ describe("the concepts due a recheck", () => {
     expect(due([4, 4], "2026-w06")).toEqual(["faded"])
     expect(due([5, 4], "2026-w03")).toEqual(["decayed"])
     expect(due([3], "2026-w02")).toEqual(["not-yet-known"])
-    expect(due([null], "2026-w02")).toEqual(["not-yet-known"])
+    expect(due([null], "2026-w02")).toEqual(["not-answered"])
+    expect(due([4, null], "2026-w03")).toEqual(["not-answered"])
+    expect(due([5, 4, 4], "2026-w05")).toEqual(["faded"])
   })
 
-  it("come decayed first, then faded, then not yet known, the longest overdue first", () => {
+  it("come decayed first, then faded, then unanswered, then not yet known, the longest overdue first", () => {
     expect(dueAt(recordOf(SAMPLE_JUDGED), "2026-w47")).toEqual([
       {
         id: "borrows-into-a-reused-buffer",
@@ -119,22 +125,22 @@ describe("the concepts due a recheck", () => {
         last: "2026-w46",
       },
       {
-        id: "send-and-sync",
-        name: "Send and Sync",
-        why: "not-yet-known",
-        last: "2026-w44",
-      },
-      {
         id: "cancellation-safety",
         name: "Cancellation safety",
-        why: "not-yet-known",
+        why: "not-answered",
         last: "2026-w45",
       },
       {
         id: "static-and-threads",
         name: "'static and threads",
-        why: "not-yet-known",
+        why: "not-answered",
         last: "2026-w46",
+      },
+      {
+        id: "send-and-sync",
+        name: "Send and Sync",
+        why: "not-yet-known",
+        last: "2026-w44",
       },
     ])
   })

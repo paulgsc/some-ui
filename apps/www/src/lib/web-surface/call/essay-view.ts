@@ -101,7 +101,6 @@ function chartNotes(
           week: weeks[i] ?? "",
           below: cell.decayed,
         }
-      // The start of the latest run of weeks it may have faded in.
       if (cell.kind === "faded" && cells[i - 1]?.kind !== "faded") fadedFrom = i
     }
     if (decay !== null) decayed.push(decay)
@@ -167,7 +166,11 @@ function viewOf(essay: Essay, scene: EssayScene, voicing: Voicing): EssayView {
     case "weeks": {
       const rows = essay.weeks.concepts.map((concept) => ({
         name: concept.name,
-        cells: cellsOf(concept.cells, essay.weeks.weeks),
+        cells: cellsOf(
+          concept.cells,
+          essay.weeks.weeks,
+          essay.template.version
+        ),
       }))
       return {
         section: "weeks",

@@ -302,7 +302,7 @@ describe("the chart's cells", () => {
   ]
 
   it("mark a plain level below an earlier column's as decay, as a version 1 essay draws it", () => {
-    expect(cellsOf(["unmet", 4, "unmet", 3, "silent", 5], weeks)).toEqual([
+    expect(cellsOf(["unmet", 4, "unmet", 3, "silent", 5], weeks, 1)).toEqual([
       { kind: "unmet", since: false },
       { kind: "level", level: 4, known: true, decayed: null },
       { kind: "unmet", since: true },
@@ -312,14 +312,27 @@ describe("the chart's cells", () => {
     ])
   })
 
+  it("say an empty week after a silence wasn't checked, not that it isn't met", () => {
+    expect(cellsOf(["silent", "unmet"], weeks, 2)).toEqual([
+      { kind: "silent" },
+      { kind: "unmet", since: true },
+    ])
+  })
+
   it("draw the record's decay and fading as it names them (RR19)", () => {
     expect(
-      cellsOf([4, "faded", "faded", { level: 3, below: "2026-w41" }], weeks)
+      cellsOf(
+        [4, "faded", "faded", { level: 3, below: "2026-w41" }, 2],
+        weeks,
+        2
+      )
     ).toEqual([
       { kind: "level", level: 4, known: true, decayed: null },
       { kind: "faded" },
       { kind: "faded" },
       { kind: "level", level: 3, known: false, decayed: "2026-w41" },
+      // In version 2 only the record names decay.
+      { kind: "level", level: 2, known: false, decayed: null },
     ])
   })
 

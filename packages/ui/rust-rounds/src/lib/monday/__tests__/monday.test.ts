@@ -125,27 +125,54 @@ describe("the next Monday, after the sample run (RR19)", () => {
     })
     expect(after.bundle.waiting.map((w) => w.week)).toEqual(["2026-w47"])
     expect(after.bundle.next?.id).toBe("2026-w48")
-    const w47 = done.files.find((f) => f.name === "rust-week-2026-w47.json")
-    const checked = readWeek(w47?.body)
-    if (!checked.ok) throw new Error("week 47 isn't readable")
-    const pending = new Set(
-      checked.week.tickets.flatMap((t) => t.concepts.map((c) => c.id))
-    )
-    // What week 47 asked waits for its own answer, so isn't due.
     expect(after.bundle.due.map((d) => [d.id, d.why])).toEqual([
       // Relational in week 46: box 2, so due again two weeks on.
       ["allocation-on-the-hot-path", "faded"],
       ["lifetime-elision", "faded"],
-      // Below relational, or silent: box 1, due the next week it can be.
+      // Silent, or below relational: box 1, due the next week it can be.
+      ["static-and-threads", "not-answered"],
       ["borrows-into-a-reused-buffer", "not-yet-known"],
-      ["static-and-threads", "not-yet-known"],
     ])
-    expect(after.bundle.due.some((d) => pending.has(d.id))).toBe(false)
     const topics = after.bundle.next?.topics ?? []
     const room = topics.length
     expect(topics.map((t) => [t.id, t.why])).toEqual(
       after.bundle.due.slice(0, room).map((d) => [d.id, "due"])
     )
+  })
+})
+
+describe("a week that ended without an essay", () => {
+  it("keeps what it asked off the due list only while a run can still write it", () => {
+    const { bundle, history } = samplePrepared()
+    const done = finish({ bundle, history, values: SAMPLE_VALUES, runs: RUNS })
+    if (!done.ok) throw new Error(done.problems.join("\n"))
+    // Week 47 asks 'static and threads again, and home never makes it final.
+    const brief = done.files.map((file) => {
+      if (file.name !== "rust-week-2026-w47.json") return file
+      const week = readWeek(file.body)
+      if (!week.ok) throw new Error("week 47 isn't readable")
+      const [first, ...rest] = week.week.tickets
+      if (first === undefined) throw new Error("week 47 has no tickets")
+      const again = { id: "static-and-threads", name: "'static and threads" }
+      return {
+        ...file,
+        body: {
+          ...week.week,
+          tickets: [
+            { ...first, concepts: [...first.concepts, again] },
+            ...rest,
+          ],
+        },
+      }
+    })
+    const dueAt = (now: string): Array<string> =>
+      samplePrepared({
+        now: new Date(now),
+        brief: [...SAMPLE_BRIEF, ...brief],
+        records: [],
+      }).bundle.due.map((d) => d.id)
+    expect(dueAt("2026-11-23T12:00:00Z")).not.toContain("static-and-threads")
+    expect(dueAt("2026-12-07T12:00:00Z")).toContain("static-and-threads")
   })
 })
 

@@ -333,7 +333,7 @@ const soloLevel = z.number().int().min(1).max(SOLO_LEVELS.length)
  * A concept's cell for one week, as the decay record (RR19) reads it: the
  * SOLO level shown; an answer lower than the level shown in week `below`
  * (decay, observed); not met; not answered; or `faded`, not checked since it
- * was shown and past its recheck (presumed). The last two kinds are
+ * was shown and past its recheck (presumed). `below` and `faded` are
  * version 2's (`ESSAY_DECAY_VERSION`).
  */
 const CellSchema = z.union([
@@ -733,29 +733,33 @@ export type CellView =
   | { readonly kind: "faded" }
 
 /**
- * A concept's row as the chart draws it, over `weeks`, its weeks. Decay is
- * observed: version 2 names it in the cell (RR19's record, read over every
- * week); a plain level below one shown in an earlier column is decay too,
- * which is how a version 1 essay draws it. Fading is presumed, and only the
- * record marks it.
+ * A concept's row as the chart draws it, over `weeks`, its weeks, in an
+ * essay of template `version`. From version 2 decay is the record's, named in
+ * the cell; a version 1 essay has none, so a plain level below one shown in
+ * an earlier column is drawn as decay.
  */
 export function cellsOf(
   cells: ReadonlyArray<EssayCell>,
-  weeks: ReadonlyArray<string>
+  weeks: ReadonlyArray<string>,
+  version: number
 ): Array<CellView> {
+  const inWindow = version < ESSAY_DECAY_VERSION
   let best: { level: number; week: string } | null = null
+  let met = false
   return cells.map((cell, i): CellView => {
-    if (cell === "unmet") return { kind: "unmet", since: best !== null }
+    if (cell === "unmet") return { kind: "unmet", since: met }
+    met = true
     if (cell === "silent" || cell === "faded") return { kind: cell }
     const week = weeks[i] ?? ""
     const level = typeof cell === "number" ? cell : cell.level
     const decayed =
       typeof cell === "object"
         ? cell.below
-        : best !== null && level < best.level
+        : inWindow && best !== null && level < best.level
           ? best.week
           : null
-    if (best === null || level > best.level) best = { level, week }
+    if (best === null || decayed !== null || level > best.level)
+      best = { level, week }
     return { kind: "level", level, known: level >= SOLO_KNOWN, decayed }
   })
 }

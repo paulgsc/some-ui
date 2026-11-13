@@ -15,7 +15,8 @@
  *
  * - **shown**, at a SOLO level; below relational it is **met, not yet
  *   known**;
- * - **decayed**: an answer came back lower than an earlier week's. Observed;
+ * - **decayed**: an answer came back lower than the level it stood at, the
+ *   highest shown since it last decayed. Observed;
  * - **may have faded**: known, not checked since, and past its recheck.
  *   Presumed, never observed;
  * - **not answered**: every ticket naming it was left silent;
@@ -31,6 +32,8 @@
  * stated rule over the record (C269; `roleAt`), across at least three weeks
  * of answers, never one.
  */
+import { weekNumber } from "@rust-rounds/lib/formats/week-id"
+import { isoWeekMonday } from "@some-ui/core-utils"
 import { LEITNER, SOLO_KNOWN, SOLO_LEVELS } from "@some-ui/video-render"
 import type { Essay, EssayCell } from "@some-ui/video-render"
 
@@ -52,19 +55,13 @@ type Check = { readonly week: string; readonly level: number | null }
 /** One concept's checks, oldest first. */
 export type ConceptRecord = Concept & { readonly checks: ReadonlyArray<Check> }
 
-/** The ISO week's Monday, as a count of weeks since 1970-01-05 (a Monday). */
-function weekIndex(id: string): number {
-  const [year, week] = id.split("-w").map(Number)
-  if (year === undefined || week === undefined) return Number.NaN
-  const jan4 = Date.UTC(year, 0, 4)
-  const day = (new Date(jan4).getUTCDay() + 6) % 7
-  const monday = jan4 - day * 86_400_000 + (week - 1) * 7 * 86_400_000
-  return Math.round((monday - Date.UTC(1970, 0, 5)) / (7 * 86_400_000))
-}
-
 /** Whole weeks from week `from` to week `to`. */
 export const weeksBetween = (from: string, to: string): number =>
-  weekIndex(to) - weekIndex(from)
+  Math.round(
+    (Date.parse(isoWeekMonday(to.toUpperCase())) -
+      Date.parse(isoWeekMonday(from.toUpperCase()))) /
+      (7 * 86_400_000)
+  )
 
 /** Each concept's checks, from the judged weeks in any order; concepts in first-met order. */
 export function recordOf(
@@ -115,13 +112,18 @@ function standingAt(record: ConceptRecord, upTo: string): Standing | null {
         ? Math.min((standing?.box ?? 1) + 1, LEITNER.weeks.length)
         : 1
     standing = { box, last: check, best, decayed }
-    if (check.level !== null && (best === null || check.level > best.level))
+    // After a decay the lower level is where it stands, so holding it again
+    // isn't decay and climbs the boxes.
+    if (
+      check.level !== null &&
+      (best === null || decayed || check.level > best.level)
+    )
       best = { level: check.level, week: check.week }
   }
   return standing
 }
 
-/** Whether a concept stands past its recheck at `week`. */
+/** Weeks past its recheck at `week`, negative before it is due. */
 const overdue = (standing: Standing, week: string): number =>
   weeksBetween(standing.last.week, week) -
   (LEITNER.weeks[standing.box - 1] ?? Infinity)
@@ -150,7 +152,7 @@ export function cellOf(record: ConceptRecord, week: string): EssayCell {
 }
 
 /** Why a concept is due a recheck, in the order the routine takes them. */
-const DUE_WHY = ["decayed", "faded", "not-yet-known"] as const
+const DUE_WHY = ["decayed", "faded", "not-answered", "not-yet-known"] as const
 type DueWhy = (typeof DUE_WHY)[number]
 
 export type DueConcept = Concept & {
@@ -161,7 +163,8 @@ export type DueConcept = Concept & {
 
 /**
  * The concepts due a recheck in `week` (C268): decayed first, then those
- * that may have faded, then those met and not yet known; within each, the
+ * that may have faded, then those last left unanswered, then those met and
+ * not yet known; within each, the
  * longest overdue first, ties by id. A concept a week named whose essay
  * isn't written yet (`pending`) isn't due: its answer is still to be read.
  */
@@ -181,7 +184,9 @@ export function dueAt(
       ? "decayed"
       : isKnown(standing)
         ? "faded"
-        : "not-yet-known"
+        : standing.last.level === null
+          ? "not-answered"
+          : "not-yet-known"
     due.push({
       id: concept.id,
       name: concept.name,
@@ -290,7 +295,7 @@ export function roleAt(
   return {
     ladder: DREYFUS.ladder,
     source: DREYFUS.source,
-    fits: `${fits}, since week ${String(Number(since.split("-w")[1]))}`,
+    fits: `${fits}, since week ${String(weekNumber(since))}`,
     next: next?.name ?? fits,
     gap,
   }
