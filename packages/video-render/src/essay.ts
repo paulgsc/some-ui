@@ -23,8 +23,9 @@
  *      partly or missing, with the SOLO level and the whole scale;
  *    - `dive`, twice (K = `ESSAY_DIVES`): the biggest gaps, 2 to 5 minutes
  *      each; a point with no gap goes one step past the ticket.
- * 3. `weeks`: over the weeks, each concept's SOLO level per week, and the
- *    role line (#2694), both RR19's derivation.
+ * 3. `weeks`: over the weeks, each concept's SOLO level per week, decay and
+ *    fading, and the role line (#2694), all the decay record's derivation
+ *    (RR19, `@some-ui/rust-rounds`' `lib/decay`).
  * 4. `next`: next week.
  *
  * The look is template A, the call (owner, 2026-11-07): two bubbles, the
@@ -68,7 +69,15 @@ export const ESSAY_SCHEMA = "some-ui.rust-essay/1"
 export const ESSAY_ID = "rust-essay"
 
 /** The newest version `essayFormat` gives, pinned as `v<n>.json` under `templates/`. */
-export const ESSAY_VERSION = 1
+export const ESSAY_VERSION = 2
+
+/**
+ * The first version whose chart draws the decay record's two later cells
+ * (RR19, #2695): a concept that may have faded, and an answer that came back
+ * lower than an earlier week's. An essay with neither stays at version 1, so
+ * a stage built before them still draws it (C270).
+ */
+export const ESSAY_DECAY_VERSION = 2
 
 /** The deep dives per ticket, on its biggest gaps: K (owner, 2026-11-07). */
 export const ESSAY_DIVES = 2
@@ -81,6 +90,14 @@ export const ESSAY_WEEKS_MOST = 12
 
 /** The most concepts the chart shows. */
 export const ESSAY_CONCEPTS_MOST = 12
+
+/**
+ * The most concept rows a routine's chart draws (RR19): what the stage's
+ * frame holds at 1920×1080 on record beside the legend, three notes and the
+ * role line, measured with `data-overflow`. The schema still reads up to
+ * `ESSAY_CONCEPTS_MOST`.
+ */
+export const ESSAY_CHART_ROWS = 6
 
 /**
  * SOLO's five levels, lowest first (Biggs & Collis, 1982): an answer's
@@ -98,6 +115,17 @@ export const SOLO_LEVELS = [
 /** SOLO, as the essay cites it on screen. */
 export const SOLO_SOURCE =
   "SOLO (Biggs & Collis, 1982), as applied to explaining code by Lister et al., ITiCSE 2006"
+
+/**
+ * The spacing scheme the decay record rechecks a concept on (RR19, C268):
+ * the Leitner system (Leitner, 1972), five boxes whose intervals double, in
+ * weeks. The chart cites it as it cites SOLO.
+ */
+export const LEITNER = {
+  name: "The Leitner system",
+  source: "Leitner, 1972",
+  weeks: [1, 2, 4, 8, 16],
+} as const
 
 /** How a speak-to point of the owner's answer stands beside the best fit. */
 export const MARKS = ["covered", "partly", "missing"] as const
@@ -219,7 +247,9 @@ export function essayFormat(version: number = ESSAY_VERSION): Format {
       scene(
         "weeks",
         "Over the weeks",
-        "Each concept across the weeks, never known apart from decayed, and the role it fits",
+        version >= ESSAY_DECAY_VERSION
+          ? "Each concept across the weeks: shown, not met yet, met but not yet known, decayed, may have faded, or not answered; when each is due a recheck; and the role it fits"
+          : "Each concept across the weeks, never known apart from decayed, and the role it fits",
         70_000
       ),
       scene("next", "Next week", "What next week comes back to", 20_000),
@@ -297,11 +327,21 @@ const TicketSchema = z.strictObject({
   dives: z.array(DiveSchema).length(ESSAY_DIVES),
 })
 
-/** A concept's cell for one week: its SOLO level, not met, or not answered. */
+const soloLevel = z.number().int().min(1).max(SOLO_LEVELS.length)
+
+/**
+ * A concept's cell for one week, as the decay record (RR19) reads it: the
+ * SOLO level shown; an answer lower than the level shown in week `below`
+ * (decay, observed); not met; not answered; or `faded`, not checked since it
+ * was shown and past its recheck (presumed). `below` and `faded` are
+ * version 2's (`ESSAY_DECAY_VERSION`).
+ */
 const CellSchema = z.union([
-  z.number().int().min(1).max(SOLO_LEVELS.length),
+  soloLevel,
+  z.strictObject({ level: soloLevel, below: weekId }),
   z.literal("unmet"),
   z.literal("silent"),
+  z.literal("faded"),
 ])
 
 export const EssaySchema = z.strictObject({
@@ -357,6 +397,10 @@ export type EssayTicket = Essay["tickets"][number]
 export type EssayDive = EssayTicket["dives"][number]
 export type EssayCell = Essay["weeks"]["concepts"][number]["cells"][number]
 
+/** Whether `cell` is one only version 2 of the template draws (`ESSAY_DECAY_VERSION`). */
+export const needsDecayVersion = (cell: EssayCell): boolean =>
+  cell === "faded" || typeof cell === "object"
+
 /** How big a point's gap is: missing, partly, covered; every point of a silence is missing. */
 const gapOf = (ticket: EssayTicket, point: number): number => {
   if (ticket.answer.kind === "silence") return 2
@@ -404,11 +448,24 @@ function essayProblems(essay: Essay): Array<string> {
     problems.push(`weeks: the chart doesn't end on ${essay.week.id}`)
   if (weeks.some((week, i) => i > 0 && week <= (weeks[i - 1] ?? "")))
     problems.push("weeks: they aren't oldest first, each once")
-  for (const concept of concepts)
+  for (const concept of concepts) {
     if (concept.cells.length !== weeks.length)
       problems.push(
         `${concept.name}: it has ${concept.cells.length} cells for ${weeks.length} weeks`
       )
+    concept.cells.forEach((cell, i) => {
+      if (!needsDecayVersion(cell)) return
+      if (essay.template.version < ESSAY_DECAY_VERSION)
+        problems.push(
+          `${concept.name}: decay and fading are drawn from version ${ESSAY_DECAY_VERSION} of the template`
+        )
+      const week = weeks[i]
+      if (typeof cell === "object" && week !== undefined && cell.below >= week)
+        problems.push(
+          `${concept.name}: in ${week} it came back lower than ${cell.below}, which isn't earlier`
+        )
+    })
+  }
   if (essay.next.week <= essay.week.id)
     problems.push(
       `next: ${essay.next.week} doesn't come after ${essay.week.id}`
@@ -655,28 +712,55 @@ export function essayScenes(
   return scenes
 }
 
-/** What the chart marks in a cell beside its level: an answer lower than an earlier one is decay. */
+/** SOLO's relational level: an answer here or above shows the concept known. */
+export const SOLO_KNOWN = 4
+
+/**
+ * What the chart marks in a cell. A level is shown; below relational it is
+ * met, not yet known (`known` false). `decayed` names the earlier week the
+ * answer came back lower than, or is null. `unmet` before the concept's first
+ * level is "not met yet", and after it "not checked that week" (`since`).
+ */
 export type CellView =
   | {
       readonly kind: "level"
       readonly level: number
-      readonly decayed: boolean
+      readonly known: boolean
+      readonly decayed: string | null
     }
-  | { readonly kind: "unmet" }
+  | { readonly kind: "unmet"; readonly since: boolean }
   | { readonly kind: "silent" }
+  | { readonly kind: "faded" }
 
 /**
- * A concept's row as the chart draws it. Decay is observed: a level below
- * one shown in an earlier week. What may have faded unseen is RR19's
- * recheck rule, not drawn here.
+ * A concept's row as the chart draws it, over `weeks`, its weeks, in an
+ * essay of template `version`. From version 2 decay is the record's, named in
+ * the cell; a version 1 essay has none, so a plain level below one shown in
+ * an earlier column is drawn as decay.
  */
-export function cellsOf(cells: ReadonlyArray<EssayCell>): Array<CellView> {
-  let best = 0
-  return cells.map((cell) => {
-    if (cell === "unmet" || cell === "silent") return { kind: cell }
-    const decayed = cell < best
-    best = Math.max(best, cell)
-    return { kind: "level", level: cell, decayed }
+export function cellsOf(
+  cells: ReadonlyArray<EssayCell>,
+  weeks: ReadonlyArray<string>,
+  version: number
+): Array<CellView> {
+  const inWindow = version < ESSAY_DECAY_VERSION
+  let best: { level: number; week: string } | null = null
+  let met = false
+  return cells.map((cell, i): CellView => {
+    if (cell === "unmet") return { kind: "unmet", since: met }
+    met = true
+    if (cell === "silent" || cell === "faded") return { kind: cell }
+    const week = weeks[i] ?? ""
+    const level = typeof cell === "number" ? cell : cell.level
+    const decayed =
+      typeof cell === "object"
+        ? cell.below
+        : inWindow && best !== null && level < best.level
+          ? best.week
+          : null
+    if (best === null || decayed !== null || level > best.level)
+      best = { level, week }
+    return { kind: "level", level, known: level >= SOLO_KNOWN, decayed }
   })
 }
 

@@ -2,7 +2,7 @@
   "schema": "some-ui.rust-essay/1",
   "template": {
     "id": "rust-essay",
-    "version": 1
+    "version": 2
   },
   "week": {
     "id": "2026-w46",
@@ -235,7 +235,7 @@
     }
   ],
   "weeks": {
-    "said": "Over the weeks. Borrows into a reused buffer came back lower than in week 41: that's decay, not something new. 'static and threads went unanswered, so it isn't known yet. Allocation on the hot path held at relational. On the Dreyfus ladder, that reads advanced beginner, and the gap to competent is relational answers held across threads and buffers, week after week. This sample's chart and role line are drawn by hand; the rule that derives them comes with the decay record.",
+    "said": "Over the weeks. Borrows into a reused buffer came back lower than in week 41: that's decay, not something new. Allocation on the hot path and lifetime elision went unchecked past their recheck, so they may have faded, and both came back at relational. 'static and threads went unanswered, so it isn't known yet. On the Dreyfus ladder that reads advanced beginner, and the gap to competent is relational answers on half the concepts you've met: two of six are now, and it takes three.",
     "weeks": [
       "2026-w41",
       "2026-w42",
@@ -247,35 +247,45 @@
     "concepts": [
       {
         "name": "Allocation on the hot path",
-        "cells": ["unmet", 4, "unmet", "unmet", "unmet", 4]
+        "cells": ["unmet", 4, "unmet", "faded", "faded", 4]
+      },
+      {
+        "name": "Lifetime elision",
+        "cells": ["unmet", "unmet", 4, "unmet", "faded", 4]
       },
       {
         "name": "Borrows into a reused buffer",
-        "cells": [4, "unmet", "unmet", "unmet", "unmet", 3]
+        "cells": [
+          4,
+          "unmet",
+          "faded",
+          "faded",
+          "faded",
+          {
+            "level": 3,
+            "below": "2026-w41"
+          }
+        ]
       },
       {
         "name": "'static and threads",
         "cells": ["unmet", "unmet", "unmet", "unmet", "unmet", "silent"]
       },
       {
-        "name": "Lifetime elision",
-        "cells": ["unmet", "unmet", 4, "unmet", "unmet", 4]
+        "name": "Cancellation safety",
+        "cells": ["unmet", "unmet", "unmet", "unmet", "silent", "unmet"]
       },
       {
         "name": "Send and Sync",
         "cells": ["unmet", "unmet", "unmet", 2, "unmet", "unmet"]
-      },
-      {
-        "name": "Cancellation safety",
-        "cells": ["unmet", "unmet", "unmet", "unmet", "silent", "unmet"]
       }
     ],
     "role": {
       "ladder": "The Dreyfus model of skill acquisition",
       "source": "Dreyfus & Dreyfus, 1980",
-      "fits": "Advanced beginner",
+      "fits": "Advanced beginner, since week 46",
       "next": "Competent",
-      "gap": "Relational answers held across threads and reused buffers, over several weeks, not one."
+      "gap": "Relational or above on at least half the concepts met: 2 of 6 are now, and it takes 3."
     }
   },
   "next": {

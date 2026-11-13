@@ -231,6 +231,24 @@ describe("the essay's stage", () => {
     expect(essayAt(essay(), "nope").scene.id).toBe("intro")
     expect(essayAt(essay(), undefined).index).toBe(0)
   })
+  it("says under the chart each decay, then each fading, as the record names them (RR19)", () => {
+    const weeks = essayAt(essay(), "weeks").view
+    if (weeks.section !== "weeks") throw new Error("no chart")
+    expect(weeks.recheck).toBe(true)
+    expect(weeks.notes).toEqual([
+      {
+        kind: "decayed",
+        name: "Borrows into a reused buffer",
+        week: "2026-w46",
+        below: "2026-w41",
+      },
+      { kind: "faded", name: "Allocation on the hot path", since: "2026-w44" },
+      { kind: "faded", name: "Lifetime elision", since: "2026-w45" },
+    ])
+    expect(
+      weeks.rows.map((row) => row.cells.map((cell) => cell.kind))
+    ).toContainEqual(["level", "unmet", "faded", "faded", "faded", "level"])
+  })
 })
 
 describe("the essay the stage draws (RR16)", () => {
