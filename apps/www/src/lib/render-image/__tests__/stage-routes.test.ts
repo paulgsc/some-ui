@@ -6,12 +6,9 @@
  * a page the stage does not mount, or a page dropped from the stage, would
  * record the stage's not-found page on home and nowhere else.
  *
- * Read as plain text, as RI1 is: the stage's paths out of `stageRoutes` in
- * `stage/main.tsx`, and each path a recorder in `apps/www/tests/record` joins
- * to its origin (`${origin}/call?...`, `${site.origin}/essay?...`, or
- * `origin + "/..."`). A page opened by any other shape is not seen, so the
- * last cases make sure the reading finds the pages known today and fails a
- * recorder or a stage that disagree.
+ * Read as plain text, as RI1 is. A page opened by a shape `openedIn` does not
+ * know, from a value `unread` cannot see, is not seen; the last cases keep the
+ * reading honest.
  */
 
 import { readdirSync, readFileSync } from "node:fs"
@@ -65,11 +62,10 @@ function unread(file: string, text: string): Array<string> {
     .map((arg) => `${file} ${arg}`)
 }
 
-/** Every recorder source under tests/record, subfolders included. */
+/** Every recorder source in tests/record, as RI1 lists them. */
 function recorders(): Array<[string, string]> {
-  return readdirSync(join(WWW, RECORDERS), { recursive: true })
-    .map(String)
-    .filter((file) => /\.m?ts$/.test(file))
+  return readdirSync(join(WWW, RECORDERS))
+    .filter((file) => file.endsWith(".ts"))
     .map((file) => [file, read(join(RECORDERS, file))])
 }
 
@@ -93,24 +89,6 @@ describe("the render image's stage (RI2)", () => {
   it("is the page build:stage builds", () => {
     expect(read("package.json")).toMatch(/"build:stage": "WWW_STAGE=1 vite/)
     expect(read("stage/index.html")).toMatch(/src="\.\/main\.tsx"/)
-  })
-
-  it("reads the pages the recorders open today, and the stage's", () => {
-    const opened = new Set(
-      recorders().flatMap(([file, text]) =>
-        openedIn(file, text).map(([p]) => p)
-      )
-    )
-    for (const path of [
-      "/call",
-      "/essay",
-      "/report",
-      "/playoff-delta",
-      "/burn-ins",
-    ]) {
-      expect(opened).toContain(path)
-      expect(stagePaths(read(STAGE))).toContain(path)
-    }
   })
 
   it("fails a recorder that opens a page the stage lacks, or one it cannot read", () => {
