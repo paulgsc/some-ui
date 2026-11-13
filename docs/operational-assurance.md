@@ -209,6 +209,22 @@ pr.yml's `guards` job, which CI Gate needs.
   evidence, whether a proof really reaches its requirement, and an objective moved between
   families.
 
+**AL1: a `server:` path enters the ledger only once server `main` has the file.**
+
+- _Claim:_ every `server:` path or proof in `packages/assurance/src/ledger.json` (a family's
+  `paths`, evidence, a store, a process segment's `paths`) names something that is on
+  paulgsc/server's `main` when the some-ui change lands.
+- _Falsified by_ a hunk in `ledger.json` that adds or renames a `server:` path or proof, unless the
+  thing it names is already on server `main` (a person checks that file on server `main`; a path
+  for a server change still in review is held, as #2921 was held for server#832). A hunk that
+  removes such a path never falsifies it.
+- _Scope:_ `packages/assurance/src/ledger.json`.
+- _Why not enforced:_ some-ui's lint, types and tests cannot see the server's tree. The server's
+  `Assurance ledger` job checks it (GC4), but only on server pull requests, so a premature path
+  first shows as every server PR going red after the some-ui merge (server#833 on 2026-11-13,
+  after #2915 placed `report_weeks.rs` ahead of server#821). A some-ui check against a pinned
+  server file list would need that list kept in step, as the route snapshot is.
+
 ## What `pnpm check:branch-rules` holds
 
 `scripts/check-branch-rules.ts`, rules in `packages/assurance/src/branch-rules.ts`: GC1, that `main`

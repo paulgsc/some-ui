@@ -3221,7 +3221,6 @@
       "name": "Home makes each week's engagement report into a video",
       "why": "Each week home reads its own engagement records for the week, last week, a quarter ago and a year ago (paulgsc/server#819), and the render worker records the report code writes from them, with no writer and no model, after the owner's public-safety rule (#2700, ask #2701). The same records give the same video.",
       "paths": [
-        "server:apps/servers/file_host/src/report_weeks.rs",
         "server:crates/db/app_event/src/weeks.rs",
         "server:infra/render",
         "server:infra/compose/call-render.yml",
@@ -5761,7 +5760,7 @@
           "name": "The report_weeks worker writes each ended week's answer for the render worker, once. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": ["server:apps/servers/file_host/src/report_weeks.rs"]
+          "paths": []
         },
         {
           "id": "speaker",
