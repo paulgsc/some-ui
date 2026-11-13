@@ -1704,6 +1704,65 @@
       "refs": ["#2899", "#2872", "#2876"]
     },
     {
+      "id": "C140",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "server:crates/scenario_engine/testdata/replay-401873010.txt",
+        "server:crates/scenario_engine/src/rules.rs"
+      ],
+      "chose": "GWB3's done-when (the owner steps through a replayed game and agrees 7 times in 10) was judged by an agent's reading standing in for the owner's: 68 moments of NE at CHI, the wanted scenario on offer and first in 66. #2077 closed on it.",
+      "options": [
+        "the agent judges the replay, at the owner's word",
+        "wait for the owner to step through it"
+      ],
+      "gray": "The bar names the owner as the judge. The owner, 2026-11-13: \"These aren't blocked on me… for one of them, there is a wait on me. Let's just go with the recommended.\"",
+      "undo": "Reopen #2077 and ask the owner to step through the replay file.",
+      "refs": [
+        "#2077",
+        "#2074"
+      ]
+    },
+    {
+      "id": "C141",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "server:crates/scenario_engine/src/rules.rs"
+      ],
+      "chose": "\"Just happened\" keeps counting scenario entries, not plays: one touchdown may fill Standard's two (the try and the red-zone trip), each a way to file a bite about it.",
+      "options": [
+        "scenario entries (as built)",
+        "one entry per play, its most specific scenario"
+      ],
+      "gray": "Asked on #2077 with no recommendation written; the replay meets the 8-in-10 bar either way. The owner, 2026-11-13: \"These aren't blocked on me… for one of them, there is a wait on me. Let's just go with the recommended.\"",
+      "undo": "In rules::just_happened, keep only the first entry per play_id, and bump ENGINE_VERSION.",
+      "refs": [
+        "#2077"
+      ]
+    },
+    {
+      "id": "C142",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "server:apps/servers/file_host/docs/game-feed.md",
+        "server:deploy/home/file_host.sops.env"
+      ],
+      "chose": "GAME_FEED_ENABLED stays false as the code default; turning the feed on is the owner's one-line sops edit of deploy/home/file_host.sops.env, written in the game-feed doc.",
+      "options": [
+        "the owner's one-line sops step, documented",
+        "flip the clap default to true"
+      ],
+      "gray": "The task offered either; flipping the default would change nothing on home while the deployment file states the value, and no session holds a key to edit it. The owner, 2026-11-13: \"These aren't blocked on me… for one of them, there is a wait on me. Let's just go with the recommended.\"",
+      "undo": "Set default_value_t = true for game_feed_enabled in apps/servers/file_host/src/config.rs and infra/env/file_host.json.",
+      "refs": [
+        "#2074",
+        "server#534",
+        "server#544"
+      ]
+    },
+    {
       "id": "C146",
       "made": "2026-11-13",
       "by": "claude",
@@ -1718,7 +1777,10 @@
       ],
       "gray": "SM2 asks for every cap on a Settings page, but these two already say their count where they are recorded, and reading them from Settings means reaching into Studio's own store.",
       "undo": "Add rows for SOUNDBITE_LIMIT and JOURNAL_TAKES_MAX_BYTES to LIMIT_ROWS with a read of each store, and drop them from NOT_SHOWN.",
-      "refs": ["#2121", "#2107"]
+      "refs": [
+        "#2121",
+        "#2107"
+      ]
     }
   ]
 }
