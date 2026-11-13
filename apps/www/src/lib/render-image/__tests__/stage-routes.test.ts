@@ -44,26 +44,45 @@ function openedIn(file: string, text: string): Array<[string, string]> {
   const shapes = [
     /\$\{[\w.]*origin\}(\/[\w\-/]*)/gi,
     /\borigin\s*\+\s*["'`](\/[\w\-/]*)/gi,
+    /new URL\(\s*["'`](\/[\w\-/]*)["'`]\s*,\s*[\w.]*origin\b/gi,
   ]
   return shapes.flatMap((shape) =>
     [...text.matchAll(shape)].map(([, path]): [string, string] => [path, file])
   )
 }
 
+/**
+ * Each navigation whose literal argument names no page in a shape above
+ * (`page.goto("/x")` against a base URL, `${origin}${path}`): a recorder
+ * that opens a page the reading can't see fails rather than passing unread.
+ * A navigation to a value built elsewhere (`url(...)`, `shot.url`) is read
+ * where that value is built.
+ */
+function unread(file: string, text: string): Array<string> {
+  return [...text.matchAll(/\.goto\(\s*(["'`][^)]*)/g)]
+    .map(([, arg]) => arg)
+    .filter((arg) => openedIn(file, arg).length === 0)
+    .map((arg) => `${file} ${arg}`)
+}
+
+/** Every recorder source under tests/record, subfolders included. */
 function recorders(): Array<[string, string]> {
-  return readdirSync(join(WWW, RECORDERS))
-    .filter((file) => file.endsWith(".ts"))
+  return readdirSync(join(WWW, RECORDERS), { recursive: true })
+    .map(String)
+    .filter((file) => /\.m?ts$/.test(file))
     .map((file) => [file, read(join(RECORDERS, file))])
 }
 
 /** Each page a recorder opens that the stage does not mount, as `file path`. */
 function unserved(files: Array<[string, string]>, main: string): Array<string> {
   const stage = stagePaths(main)
-  return files
-    .flatMap(([file, text]) => openedIn(file, text))
-    .filter(([path]) => !stage.has(path))
-    .map(([path, file]) => `${file} ${path}`)
-    .sort()
+  return [
+    ...files
+      .flatMap(([file, text]) => openedIn(file, text))
+      .filter(([path]) => !stage.has(path))
+      .map(([path, file]) => `${file} ${path}`),
+    ...files.flatMap(([file, text]) => unread(file, text)),
+  ].sort()
 }
 
 describe("the render image's stage (RI2)", () => {
@@ -94,15 +113,19 @@ describe("the render image's stage (RI2)", () => {
     }
   })
 
-  it("fails a recorder that opens a page the stage lacks", () => {
+  it("fails a recorder that opens a page the stage lacks, or one it cannot read", () => {
     const files = [
       ...recorders(),
       ["new.ts", "await page.goto(`${site.origin}/jobs?record=true`)"],
       ["old.ts", 'await page.goto(origin + "/studio")'],
+      ["url.ts", 'await page.goto(new URL("/renders", site.origin).href)'],
+      ["base.ts", 'await page.goto("/settings")'],
     ] satisfies Array<[string, string]>
     expect(unserved(files, read(STAGE))).toEqual([
+      'base.ts "/settings"',
       "new.ts /jobs",
       "old.ts /studio",
+      "url.ts /renders",
     ])
   })
 
