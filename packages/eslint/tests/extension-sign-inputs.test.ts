@@ -21,10 +21,11 @@ const FILE = ".github/workflows/extension-sign-manual.yml"
 const text = readFileSync(join(ROOT, FILE), "utf8")
 
 /**
- * Every expression the file may hold, each with the key it must sit under.
- * Listing lines rather than parsing out `run:` scripts leaves no YAML shape
- * (a quoted scalar over two lines, an anchor, a flow-style step) that can
- * carry one into a script unseen.
+ * Every expression the file may hold, each with the key it must sit under
+ * and no `run:` above it. Listing lines rather than parsing out scripts
+ * leaves no YAML shape (a quoted scalar over two lines, an anchor, a
+ * flow-style step) that can carry one into a script unseen; `ESCAPED` closes
+ * the one spelling that is not `${{` in the raw text.
  */
 const ALLOWED: ReadonlyArray<[line: string, parent: string]> = [
   [
@@ -38,24 +39,32 @@ const ALLOWED: ReadonlyArray<[line: string, parent: string]> = [
   ["matrix: ${{ needs.build-matrix.outputs.matrix }}", "with:"],
 ]
 
-/** The nearest line above `i` indented less than it. */
-function parentOf(lines: ReadonlyArray<string>, i: number): string {
-  const own = indentOf(lines[i] ?? "")
-  for (let j = i - 1; j >= 0; j--) {
+/** A YAML escape for `$` or `{`, which a quoted scalar decodes. */
+const ESCAPED = /\\(?:x24|x7b|u0024|u007b|U00000024|U0000007b)/i
+
+/** The lines above `i` that hold it, nearest first, each indented less. */
+function ancestorsOf(lines: ReadonlyArray<string>, i: number): Array<string> {
+  const found: Array<string> = []
+  let own = indentOf(lines[i] ?? "")
+  for (let j = i - 1; j >= 0 && own > 0; j--) {
     const l = lines[j] ?? ""
-    if (l.trim() !== "" && indentOf(l) < own) return l.trim()
+    if (l.trim() === "" || indentOf(l) >= own) continue
+    found.push(l.trim())
+    own = indentOf(l)
   }
-  return ""
+  return found
 }
 
 /** Each line holding `${{` that is not an allowed expression in its place. */
 function stray(yaml: string): Array<string> {
   const lines = yaml.split("\n")
   return lines.flatMap((l, i) => {
+    if (ESCAPED.test(l)) return [`${String(i + 1)}: ${l.trim()}`]
     if (!l.includes("${{")) return []
-    const ok = ALLOWED.some(
-      ([line, parent]) => l.trim() === line && parentOf(lines, i) === parent
-    )
+    const above = ancestorsOf(lines, i)
+    const ok =
+      !above.some((a) => /^(?:- )?run:/.test(a)) &&
+      ALLOWED.some(([line, parent]) => l.trim() === line && above[0] === parent)
     return ok ? [] : [`${String(i + 1)}: ${l.trim()}`]
   })
 }
@@ -65,7 +74,9 @@ function scriptOf(name: string): string {
   const lines = text.split("\n")
   const start = lines.findIndex((l) => l.trim() === `- name: ${name}`)
   const run = lines.findIndex((l, i) => i > start && l.trim() === "run: |")
-  if (start < 0 || run < 0) return ""
+  const between = lines.slice(start + 1, run)
+  if (start < 0 || run < 0 || between.some((l) => l.trim().startsWith("- ")))
+    return ""
   const after = lines.slice(run + 1)
   const close = after.findIndex(
     (l) => l.trim() !== "" && indentOf(l) <= indentOf(lines[run] ?? "")
@@ -92,6 +103,14 @@ describe("WS1: extension-sign-manual.yml", () => {
     [
       "an env line's copy inside a script",
       `${step}\n          EXTENSION: \${{ inputs.extension }}`,
+    ],
+    [
+      "an env block written inside a script",
+      `${step}\n          env:\n            EXTENSION: \${{ inputs.extension }}`,
+    ],
+    [
+      "an escaped expression",
+      `${step}\n      - run: "echo \\x24{{ inputs.extension }}"`,
     ],
     ["an inline run:", `${step}\n      - run: echo \${{ env.EXTENSION }}`],
     [
