@@ -272,7 +272,7 @@ describe("a kind's list", () => {
     expect(onPlay).toHaveBeenCalledWith("p1")
   })
 
-  it("says what a recording home holds is, plays it from home, and says a miss over the list (MD8, MDL1)", () => {
+  it("says what a recording home holds is, plays it from home, and says a miss in an alert (MD8, MDL1)", () => {
     const onPlay = vi.fn()
     const notes = HOME.kept.notes ?? []
     const heard: HomeReading = {

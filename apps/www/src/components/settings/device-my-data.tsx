@@ -310,7 +310,7 @@ const Item = ({
 }: {
   item: KindItem
   playing: boolean
-  /** Its audio is on its way from home. */
+  /** Its audio is being read, here or from home. */
   fetching?: boolean
   onPlay: (id: string) => void
   onStop: () => void
@@ -416,7 +416,7 @@ export const MyDataKind = ({
 }: {
   view: KindView
   playing: string | null
-  /** `playing`'s audio is on its way from home. */
+  /** `playing`'s audio is being read, here or from home. */
   fetching?: boolean
   /** The recording whose Play didn't get its audio, until the next Play. */
   missed?: MyDataState["missed"]
@@ -465,7 +465,7 @@ export const MyDataKind = ({
       <Status line={unreadLine(unread)} />
       {waits ? <Status line={DELETING.waitsOnStudio} /> : null}
       {missed === null ? null : (
-        <Notice tone="warning" role="alert" dismissible>
+        <Notice key={missed} tone="warning" role="alert" dismissible>
           {MY_DATA.kind.missed}
         </Notice>
       )}

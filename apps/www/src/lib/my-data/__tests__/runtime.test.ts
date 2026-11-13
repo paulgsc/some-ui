@@ -185,6 +185,7 @@ describe("My data's runtime", () => {
     expect(data.getSnapshot().missed).toBeNull()
     data.play("gone")
     await flush()
+    expect(data.getSnapshot().missed).toBe("gone")
     data.open("lens")
     expect(data.getSnapshot().missed).toBeNull()
   })
