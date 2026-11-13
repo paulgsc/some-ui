@@ -37,17 +37,19 @@ const placed = (
 })
 const reading = (
   name: string,
-  action: "opened" | "saved" | "read" | "skipped"
+  action: "opened" | "saved" | "read" | "skipped",
+  file = on.file
 ): SessionEvent => ({
   ...stamp(),
-  file: on.file,
+  file,
   type: "reading",
   reading: name,
   action,
 })
-const ended = (how: "declared" | "left"): SessionEvent => ({
+const ended = (how: "declared" | "left", screen = on.screen): SessionEvent => ({
   ...stamp(),
-  ...on,
+  file: on.file,
+  screen,
   type: "ended",
   how,
 })
@@ -78,7 +80,7 @@ describe("the session log in ENGAGE's words (ENG5)", () => {
       started(),
       placed("r1", "placement"),
       reading("r1", "opened"),
-      ended("left"),
+      ended("left", "r1"),
     ])
     expect(said(told)).toEqual([
       "session-file taken",
@@ -109,15 +111,46 @@ describe("the session log in ENGAGE's words (ENG5)", () => {
     ])
   })
 
-  it("leaves the file in a round once its reading is read", () => {
+  it("takes a reading read without opening its source, once, and passes a saved one over", () => {
     const told = play([
       started(),
       placed("r1", "placement"),
-      reading("r1", "opened"),
       reading("r1", "read"),
+      placed("r2", "pointer"),
+      reading("r2", "saved"),
+      placed("r3", "placement"),
+      reading("r3", "opened"),
+      reading("r3", "read"),
       ended("left"),
     ])
-    expect(said(told).at(-1)).toBe("session-file left in round")
+    expect(said(told)).toEqual([
+      "session-file taken",
+      "reading offered",
+      "reading taken",
+      "pointer offered",
+      "pointer passed over (put-away)",
+      "reading offered",
+      "reading taken",
+      "session-file left in round",
+    ])
+  })
+
+  it("answers the latest placement of a reading in its own file", () => {
+    const told = play([
+      started(),
+      placed("r1", "placement"),
+      reading("r1", "skipped"),
+      placed("r1", "placement"),
+      reading("r1", "read", "another-file.json"),
+      ended("declared"),
+    ])
+    expect(said(told)).toEqual([
+      "session-file taken",
+      "reading offered",
+      "reading passed over (put-away)",
+      "reading offered",
+      "reading passed over (moved-on)",
+    ])
   })
 
   it("says nothing for an event the log already keeps", () => {

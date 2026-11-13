@@ -367,7 +367,10 @@ export class IncidentPlayRuntime {
     }
   }
 
-  /** Appends `event`, and once it is newly kept, tells it in ENGAGE's words. */
+  /**
+   * Appends `event` and tells it in ENGAGE's words once kept; one the log
+   * already kept says nothing (`engagedOf`).
+   */
   private keep(event: Parameters<SessionLogStore["append"]>[0]): void {
     const before = this.ports.log.getSnapshot().log
     if (!this.ports.log.append(event)) return
