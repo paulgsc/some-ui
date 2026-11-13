@@ -7,8 +7,11 @@ import { cn } from "../../lib/utils"
 // Every variant draws a border, transparent unless it shows one, so a button
 // that swaps variant on a tap (a toggle: outline off, default on) keeps its
 // width, and its neighbours their places (HS1).
+//
+// Its corners are `--button-radius` where a surface sets one (the phone's
+// shell makes every button a pill, POLISH PL1), else the theme's `md`.
 const buttonVariants = cva(
-  "inline-flex items-center border border-transparent justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center border border-transparent justify-center whitespace-nowrap rounded-[var(--button-radius,calc(var(--radius)_-_2px))] text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
@@ -24,8 +27,8 @@ const buttonVariants = cva(
       },
       size: {
         default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
+        sm: "h-9 px-3",
+        lg: "h-11 px-8",
         icon: "size-10",
       },
     },

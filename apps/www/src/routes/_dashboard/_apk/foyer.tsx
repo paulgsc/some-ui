@@ -33,7 +33,7 @@ const Foyer = (): JSX.Element => {
             <Link
               key={wing.id}
               to={wing.home}
-              className="bg-card border-border/50 hover:bg-accent flex items-center gap-4 rounded-2xl border p-4 shadow-sm"
+              className="lifted hover:bg-accent flex items-center gap-4 rounded-2xl p-4"
             >
               <span className="bg-brand/30 text-brand-foreground dark:text-brand flex size-12 shrink-0 items-center justify-center rounded-2xl">
                 {Glyph && <Glyph aria-hidden className="size-6" />}

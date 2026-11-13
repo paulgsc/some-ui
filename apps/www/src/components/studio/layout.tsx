@@ -6,23 +6,26 @@
  * `lib/studio-index/words`'.
  */
 import type { JSX, ReactNode } from "react"
-import { Button, Notice } from "@some-ui/shared"
+import { cn } from "@some-ui/core-utils"
+import { Button, buttonVariants, Notice } from "@some-ui/shared"
 import type { QueryKey, UseQueryOptions } from "@tanstack/react-query"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
+import { ChevronLeft, ExternalLink } from "lucide-react"
 
 import { hasAudience } from "@/lib/build-profile"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import type { StudioKind } from "@/lib/studio-index"
-import { kindPath, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
+import { KIND_WORDS, kindPath, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
 
-/** A tile's link: a card the size of its neighbours. */
+/** A tile's link: a card the size of its neighbours, lifted off the page (PL1). */
 export const TILE =
-  "bg-card border-border/60 focus-visible:ring-ring flex h-full flex-col gap-1 rounded-2xl border px-4 py-3 focus-visible:ring-2 focus-visible:outline-none"
+  "lifted focus-visible:ring-ring flex h-full flex-col gap-1 rounded-2xl px-4 py-3 focus-visible:ring-2 focus-visible:outline-none"
 
 /**
- * The quiet way back to a kind's list, or to the index: Studio's pages are
- * the phone's ("apk"), so a build without them draws nothing (A3).
+ * The way back to a kind's list, or to the index, at the top of the page as
+ * an app's header carries it (`‹ Episodes`, PL1): Studio's pages are the
+ * phone's ("apk"), so a build without them draws nothing (A3).
  */
 export const BackLink = ({
   to,
@@ -32,13 +35,17 @@ export const BackLink = ({
   hasAudience("apk") ? (
     <Link
       to={to === "index" ? "/journal" : kindPath(to)}
-      className="text-muted-foreground self-start text-sm underline underline-offset-4"
+      aria-label={
+        to === "index" ? STUDIO_INDEX_WORDS.back : STUDIO_INDEX_WORDS.backTo(to)
+      }
+      className="text-muted-foreground hover:bg-accent hover:text-foreground -mb-2 -ml-2 flex h-9 items-center gap-0.5 self-start rounded-full pr-3 pl-1 text-sm font-semibold"
     >
-      {to === "index" ? STUDIO_INDEX_WORDS.back : STUDIO_INDEX_WORDS.backTo(to)}
+      <ChevronLeft aria-hidden className="size-5" />
+      {to === "index" ? STUDIO_INDEX_WORDS.heading : KIND_WORDS[to].name}
     </Link>
   ) : null
 
-/** A page of Studio's: its heading, what it holds, its body, the way back. */
+/** A page of Studio's: the way back, its heading, what it holds, its body. */
 export const StudioPage = ({
   heading,
   intro,
@@ -52,12 +59,12 @@ export const StudioPage = ({
   children: ReactNode
 }): JSX.Element => (
   <div className="mx-auto flex w-full max-w-md flex-col gap-4">
+    {back !== undefined && <BackLink to={back} />}
     <h1 className="text-2xl font-bold tracking-tight">{heading}</h1>
     {intro !== undefined && (
       <p className="text-muted-foreground text-sm">{intro}</p>
     )}
     {children}
-    {back !== undefined && <BackLink to={back} />}
   </div>
 )
 
@@ -85,7 +92,7 @@ export const Part = ({
   label: string
   children: ReactNode
 }): JSX.Element => (
-  <section className="bg-card border-border/60 flex flex-col gap-2 rounded-2xl border px-4 py-3">
+  <section className="lifted flex flex-col gap-2 rounded-2xl px-4 py-3">
     <h2 className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
       {label}
     </h2>
@@ -145,7 +152,10 @@ export function ReadList<T, K extends QueryKey>({
   })
 }
 
-/** The way out to where an item lives, on GitHub. */
+/**
+ * The way out to where an item lives, on GitHub: a filled button with the
+ * glyph for leaving the app (PL1), since it is the page's one action.
+ */
 export const OutLink = ({
   href,
   children,
@@ -157,8 +167,9 @@ export const OutLink = ({
     href={href}
     target="_blank"
     rel="noreferrer"
-    className="text-brand self-start text-sm font-semibold underline underline-offset-4"
+    className={cn(buttonVariants({ size: "sm" }), "gap-1.5 self-start")}
   >
     {children}
+    <ExternalLink aria-hidden className="size-4" />
   </a>
 )

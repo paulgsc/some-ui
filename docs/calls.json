@@ -2040,6 +2040,70 @@
       "refs": [
         "#2473"
       ]
+    },
+    {
+      "id": "C271",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/some-styles/tailwind.css",
+        "apps/www/src/components/studio/layout.tsx",
+        "apps/www/src/routes/_dashboard/_apk/foyer.tsx",
+        "apps/www/src/routes/_dashboard/_apk/practice/index.tsx",
+        "apps/www/src/components/mobile-shell/index.tsx"
+      ],
+      "chose": "A card on the phone is lifted: the card's tone, no outline, and a soft two-layer shadow mixed from the theme's ink (the `lifted` utility), on Studio's tiles and parts, the foyer's wings and Practice's cards; the bar's current tab is filled with the honey (--brand) instead of a 30% tint of it.",
+      "options": [
+        "Lifted: card tone, no outline, a soft ink-mixed shadow",
+        "Keep the outline and add a shadow",
+        "A darker page ground under unchanged cards"
+      ],
+      "gray": "How a card stands off the page and how loudly the current tab is marked are on every phone screen, and no check or earlier call settles either.",
+      "undo": "Put `bg-card border-border/60 border` back where `lifted` stands, and `bg-brand/30 dark:text-brand` on the bar's TabMark.",
+      "refs": [
+        "#2948"
+      ]
+    },
+    {
+      "id": "C272",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "apps/www/vite.config.ts",
+        "apps/www/src/index.css",
+        "packages/ui/shared/src/components/ui/button.tsx"
+      ],
+      "chose": "In the Android build every button is a pill and every figure is tabular: the build marks its document data-surface=\"phone\", which sets --button-radius to a full round and tabular numerals; the shared Button reads that radius and falls back to the theme's md corners, so the desktop web is unchanged.",
+      "options": [
+        "Pills and tabular figures for the whole phone surface, from one marker",
+        "A pill variant chosen screen by screen",
+        "Leave the theme's corners"
+      ],
+      "gray": "Button shape and figure width are on every phone screen; whether the phone gets them wholesale or per screen is a choice no check settles.",
+      "undo": "Drop phoneSurface from vite.config.ts and the :root[data-surface=\"phone\"] rule from src/index.css.",
+      "refs": [
+        "#2948"
+      ]
+    },
+    {
+      "id": "C273",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/components/studio/layout.tsx",
+        "apps/www/src/routes/_dashboard/_apk/journal/episodes/making.tsx"
+      ],
+      "chose": "Studio's way back is a `‹ Episodes` (the kind's name, or Studio) at the top of the page above its heading, named \"Back to …\" for a screen reader, in place of the underlined \"Back to …\" under the page; the shell's header keeps the wing's mark.",
+      "options": [
+        "At the top of the page, above the heading",
+        "In the shell's header, in place of the wing's mark",
+        "Under the page, as before"
+      ],
+      "gray": "Where the way back sits is on every Studio page; the shell's header was the critique's ask, and moving it there means the shell knowing each page's parent, deeper than this sprint.",
+      "undo": "Render BackLink after children in StudioPage, as an underlined `backTo` line again.",
+      "refs": [
+        "#2948"
+      ]
     }
   ]
 }

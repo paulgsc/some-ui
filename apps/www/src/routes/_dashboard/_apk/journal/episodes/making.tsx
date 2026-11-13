@@ -124,6 +124,9 @@ const Making = (): JSX.Element => {
   const { project }: MakingSearch = Route.useSearch()
   return (
     <>
+      <div className="mx-auto mb-2 flex w-full max-w-md flex-col">
+        <BackLink to="episodes" />
+      </div>
       <StudioHome
         heading={STUDIO_INDEX_WORDS.episodes.making}
         share={studioShare}
@@ -133,9 +136,6 @@ const Making = (): JSX.Element => {
         ideasLink={IdeasLink}
         initialProject={project}
       />
-      <div className="mx-auto mt-4 flex w-full max-w-md flex-col">
-        <BackLink to="episodes" />
-      </div>
     </>
   )
 }

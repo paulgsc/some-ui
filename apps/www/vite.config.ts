@@ -229,6 +229,21 @@ function pagesConnectPolicy(): Plugin {
   }
 }
 
+// The phone's look (POLISH PL1, #2948): the Android app's document says it is
+// the phone's (`data-surface="phone"`), and `src/index.css` gives that surface
+// its own shapes (pill buttons). Written into the HTML at build time, so it
+// holds before any script runs and reaches what a portal mounts on `body`; the
+// desktop and Pages builds carry nothing.
+function phoneSurface(): Plugin {
+  return {
+    name: "phone-surface",
+    transformIndexHtml(html: string): string {
+      if (!isMobileBuild) return html
+      return html.replace(/<html\b/, '<html data-surface="phone"')
+    },
+  }
+}
+
 /**
  * The commit this build is made from, which `/assurance` names as the copy
  * of the ledger it shows; empty where there is no git checkout (a Docker
@@ -356,6 +371,7 @@ export default defineConfig(
         : []),
       omitOffPathPublicFiles(offPathPublicFiles(process.env.SOME_UI_PROFILE)),
       pagesConnectPolicy(),
+      phoneSurface(),
       ...(isStageBuild ? [stagePageAtRoot()] : []),
     ],
     // An http:// page skips the proxy and asks :3000 directly

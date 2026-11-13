@@ -20,6 +20,16 @@
   }
 }
 
+/* The phone's shapes (POLISH PL1, #2948): every button a pill. The Android
+   build marks its document (`phoneSurface`, vite.config.ts); the desktop web
+   keeps the theme's corners. And every figure as wide as the next, so a count
+   or a percentage that changes keeps its place. */
+:root[data-surface="phone"] {
+  --button-radius: 9999px;
+
+  font-variant-numeric: tabular-nums;
+}
+
 /* Studio › Renders' bar when home has no share yet (SFEED13): a sweep, like an
    installer's, which says work goes on without claiming how much. */
 @keyframes renders-sweep {
