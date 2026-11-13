@@ -2252,7 +2252,9 @@ describe("a take ready for pickup, and the routine's answer (CONVEYOR3)", () => 
         [""],
         [" ep04"],
         ["ep04 "],
-        ["\u0085x"],
+        // C1 controls inside a label, past the edge rule (U+0085 is also White_Space).
+        ["x\u0085x"],
+        ["a\u0080"],
         ["\u007f"],
         null,
         // Code points, as home counts them: 33 astral characters.

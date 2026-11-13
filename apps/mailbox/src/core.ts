@@ -374,7 +374,7 @@ function isMoveSeq(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 1
 }
 
-/** Labels as home keeps them: at most 8, each 1 to 32 printable characters, trimmed. */
+/** Labels as home keeps them: at most 8, each 1 to 32 printable characters with no space at either end. */
 function isLabels(value: unknown): boolean {
   if (!Array.isArray(value) || value.length > LABELS_MAX) return false
   return value.every(
