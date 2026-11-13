@@ -59,7 +59,11 @@ describe("stepConveyor", () => {
     const held = stepConveyor(state, { kind: "held", move: "m1" })
     expect(movesOwed(held)).toEqual([b])
     expect(held.moves).toHaveLength(2)
-    const stale = stepConveyor(held, { kind: "stale", move: "m2" })
+    const stale = stepConveyor(held, {
+      kind: "stale",
+      move: "m2",
+      there: null,
+    })
     expect(movesOwed(stale)).toEqual([])
     expect(stale.moves).toHaveLength(2)
   })
@@ -79,14 +83,17 @@ describe("stepConveyor", () => {
 describe("stationOf", () => {
   const home = { station: "cooking" as const, stationAt: "2026-11-13T12:00Z" }
 
-  it("is In the oven for a take nobody moved, and none for a take on no conveyor", () => {
-    expect(stationOf("take-1", {}, INITIAL_CONVEYOR)).toEqual({
+  it("is In the oven for a take nobody moved, and none for a take on no conveyor or from a home before it", () => {
+    expect(
+      stationOf("take-1", { station: "in-the-oven" }, INITIAL_CONVEYOR)
+    ).toEqual({
       station: "in-the-oven",
       at: null,
       going: false,
       missed: null,
     })
     expect(stationOf("take-1", { station: null }, INITIAL_CONVEYOR)).toBeNull()
+    expect(stationOf("take-1", {}, INITIAL_CONVEYOR)).toBeNull()
   })
 
   it("is home's word when the phone made no later move", () => {
@@ -126,7 +133,7 @@ describe("stationOf", () => {
         ),
         move("m1", "ready-for-pickup", "2026-11-13T13:00:00Z")
       ),
-      { kind: "stale", move: "m1" }
+      { kind: "stale", move: "m1", there: null }
     )
     expect(stationOf("take-1", home, state)).toEqual({
       station: "cooking",
@@ -141,6 +148,49 @@ describe("stationOf", () => {
         state
       )?.missed
     ).toBeNull()
+  })
+})
+
+describe("a move home didn't keep (review of #2944)", () => {
+  it("takes the phone's later moves of the same take with it, and says the first", () => {
+    const a = move("m1", "cooking", "2026-11-13T10:00:00Z")
+    const b = move("m2", "canned", "2026-11-13T10:05:00Z", "take-1", "cooking")
+    const other = move("m3", "canned", "2026-11-13T10:06:00Z", "take-2")
+    const state = stepConveyor(
+      moved(moved(moved(INITIAL_CONVEYOR, a), b), other),
+      { kind: "refused", move: "m1" }
+    )
+    expect(movesOwed(state)).toEqual([other])
+    expect(stationOf("take-1", { station: "in-the-oven" }, state)).toEqual({
+      station: "in-the-oven",
+      at: null,
+      going: false,
+      missed: { to: "cooking", why: "refused" },
+    })
+  })
+
+  it("shows where home said a stale move found the take", () => {
+    const state = stepConveyor(
+      moved(
+        INITIAL_CONVEYOR,
+        move("m1", "ready-for-pickup", "2026-11-13T10:00:00Z")
+      ),
+      { kind: "stale", move: "m1", there: "canned" }
+    )
+    expect(stationOf("take-1", { station: "in-the-oven" }, state)).toEqual({
+      station: "canned",
+      at: null,
+      going: false,
+      missed: { to: "ready-for-pickup", why: "stale" },
+    })
+  })
+
+  it("shows the phone's move from a home before the conveyor, which says nothing", () => {
+    const state = moved(
+      INITIAL_CONVEYOR,
+      move("m1", "cooking", "2026-11-13T10:00:00Z")
+    )
+    expect(stationOf("take-1", {}, state)?.station).toBe("cooking")
   })
 })
 
@@ -194,6 +244,13 @@ describe("moveOf", () => {
     })
     const kept = moveOf({ take: "t", from: "cooking", to: "canned" }, "m", at)
     expect(kept.kind === "move" && kept.move.labels).toBeNull()
+    // Blank labels keep the take's, as none typed does.
+    const blank = moveOf(
+      { take: "t", from: "cooking", to: "canned", labels: [" ", ""] },
+      "m",
+      at
+    )
+    expect(blank.kind === "move" && blank.move.labels).toBeNull()
   })
 
   it("refuses where it is, Picked up, a picked-up take, In the oven, and more than home keeps", () => {
@@ -223,6 +280,11 @@ describe("moveOf", () => {
     expect(
       why({ ...base, to: "canned", comment: "x".repeat(COMMENT_CHARS) })
     ).toBeNull()
+    // Home keeps no control character (a line break) in either.
+    expect(why({ ...base, to: "canned", comment: "two\nlines" })).toBe(
+      "comment"
+    )
+    expect(why({ ...base, to: "canned", labels: ["tab\there"] })).toBe("labels")
   })
 })
 

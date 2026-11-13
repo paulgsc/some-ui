@@ -19,6 +19,7 @@ import type {
   MoveRefused,
   StationMove,
   TakeStanding,
+  TakeStation,
 } from "./model"
 import {
   homeStationOf,
@@ -46,14 +47,17 @@ export type TakeConveyorPorts = {
 
 /**
  * How home answered a move for good: kept, refused as it is, or made from a
- * station the take had already left.
+ * station the take had already left, with where home says it is, if known.
  */
-type MoveAnswer = "held" | "refused" | "stale"
+type MoveAnswer =
+  | { readonly kind: "held" }
+  | { readonly kind: "refused" }
+  | { readonly kind: "stale"; readonly there: TakeStation | null }
 
 /** What `lib/home-link/take-stations` reads and answers through. */
 export type StationsPort = {
   readonly due: () => ReadonlyArray<StationMove>
-  readonly answered: (answer: MoveAnswer, move: string) => void
+  readonly answered: (move: string, answer: MoveAnswer) => void
 }
 
 /** How a move the owner asked for went. */
@@ -118,8 +122,12 @@ export function createTakeConveyor(ports: TakeConveyorPorts): TakeConveyor {
     },
     port: {
       due: () => movesOwed(state),
-      answered(answer, move): void {
-        apply({ kind: answer, move })
+      answered(move, answer): void {
+        apply(
+          answer.kind === "stale"
+            ? { kind: "stale", move, there: answer.there }
+            : { kind: answer.kind, move }
+        )
       },
     },
   }

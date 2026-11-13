@@ -10,9 +10,13 @@
  *
  * - `200` carrying the take back at the station moved to, `moved`, or
  *   `unchanged` for a move it already holds (one sent again): held;
- * - `409`, the take no longer stands where the move was made from (moved
- *   on another device, or picked up): dropped as stale, and the take shows
- *   where home says, with the move that wasn't made;
+ * - `409`, the take no longer stands where the move was made from: home is
+ *   asked once for the take's station and history
+ *   (`GET /voice-notes/:id/station`). A move it holds (one kept before,
+ *   whose answer this phone never kept, then moved on from) is held; any
+ *   other is dropped as stale, with where home says the take is (that
+ *   read's, else the `409`'s), and said on the take's row. The phone's
+ *   later moves of the take go with it (`lib/take-conveyor`);
  * - `422`, a move home won't take as it is: refused for good, said to the
  *   native log;
  * - `404`, home holds no such Studio take of this phone's owner, or keeps
@@ -24,7 +28,8 @@
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { isRecord, jsonOf, unexpectedAnswer } from "@some-ui/core-utils"
 
-import type { StationMove } from "@/lib/take-conveyor/model"
+import type { StationMove, TakeStation } from "@/lib/take-conveyor/model"
+import { isTakeStation } from "@/lib/take-conveyor/model"
 import type { StationsPort } from "@/lib/take-conveyor/runtime"
 
 import { untakenTold } from "./keyed-send"
@@ -54,6 +59,58 @@ function carriesBack(body: string, move: StationMove): boolean {
   )
 }
 
+/** The same instant, however each writes it. */
+const sameAt = (a: unknown, b: string): boolean =>
+  typeof a === "string" && new Date(a).getTime() === new Date(b).getTime()
+
+/** What home's read of a take says: where it is, and whether it holds `move`. */
+function readStation(
+  body: string,
+  move: StationMove
+): { readonly there: TakeStation | null; readonly holds: boolean } | null {
+  const answer = jsonOf(body)
+  if (!isRecord(answer) || !Array.isArray(answer.history)) return null
+  const holds = answer.history.some(
+    (row) =>
+      isRecord(row) &&
+      row.from === move.from &&
+      row.to === move.to &&
+      sameAt(row.at, move.at)
+  )
+  return {
+    there: isTakeStation(answer.station) ? answer.station : null,
+    holds,
+  }
+}
+
+/** Where a `409`'s body says the take is (`details.station`), if it does. */
+function conflictStation(body: string): TakeStation | null {
+  const answer = jsonOf(body)
+  if (!isRecord(answer) || !isRecord(answer.error)) return null
+  const { details } = answer.error
+  if (!isRecord(details) || !Array.isArray(details.station)) return null
+  const [there] = details.station
+  return isTakeStation(there) ? there : null
+}
+
+/**
+ * After a `409`: home's word on the take, held when its history holds the
+ * move, else stale with where it is.
+ */
+async function afterConflict(
+  move: StationMove,
+  conflict: string,
+  send: HomeCall
+): Promise<
+  | { readonly kind: "held" }
+  | { readonly kind: "stale"; readonly there: TakeStation | null }
+> {
+  const read = await send("GET", stationPath(move))
+  const station = read.status === 200 ? readStation(read.body, move) : null
+  if (station?.holds === true) return { kind: "held" }
+  return { kind: "stale", there: station?.there ?? conflictStation(conflict) }
+}
+
 /** Home not taking a move, said to the native log. */
 const untaken = untakenTold("Studio takes (where each is, to home)", {
   unkept:
@@ -70,7 +127,7 @@ export async function sendStationMoves(
   for (const move of port.due()) {
     const answer = await send("POST", stationPath(move), stationBody(move))
     if (answer.status === 200 && carriesBack(answer.body, move)) {
-      port.answered("held", move.move)
+      port.answered(move.move, { kind: "held" })
       continue
     }
     if (answer.status === 401) return { kind: "forgotten" }
@@ -79,11 +136,11 @@ export async function sendStationMoves(
       continue
     }
     if (answer.status === 409) {
-      port.answered("stale", move.move)
+      port.answered(move.move, await afterConflict(move, answer.body, send))
       continue
     }
     if (answer.status === 422) {
-      port.answered("refused", move.move)
+      port.answered(move.move, { kind: "refused" })
       untaken(move.move, 422)
       continue
     }

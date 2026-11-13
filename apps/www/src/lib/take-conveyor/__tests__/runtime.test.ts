@@ -29,12 +29,14 @@ const conveyorOn = (storage: KeyedStorage | null): TakeConveyor => {
 describe("createTakeConveyor", () => {
   it("shows a take nobody moved In the oven, and a moved one where it went", () => {
     const conveyor = conveyorOn(inMemoryStorage())
-    expect(conveyor.standing("t1", {})?.station).toBe("in-the-oven")
+    expect(conveyor.standing("t1", { station: "in-the-oven" })?.station).toBe(
+      "in-the-oven"
+    )
     expect(
       conveyor.move({ take: "t1", from: "in-the-oven", to: "ready-for-pickup" })
         .kind
     ).toBe("moved")
-    expect(conveyor.standing("t1", {})).toEqual({
+    expect(conveyor.standing("t1", { station: "in-the-oven" })).toEqual({
       station: "ready-for-pickup",
       at: AT,
       going: true,
@@ -46,7 +48,7 @@ describe("createTakeConveyor", () => {
     const storage = inMemoryStorage()
     const first = conveyorOn(storage)
     first.move({ take: "t1", from: "in-the-oven", to: "cooking" })
-    first.port.answered("held", "m1")
+    first.port.answered("m1", { kind: "held" })
     first.move({ take: "t1", from: "cooking", to: "canned", comment: "meh" })
     const again = conveyorOn(storage)
     expect(again.getSnapshot()).toEqual(first.getSnapshot())
@@ -96,14 +98,14 @@ describe("createTakeConveyor", () => {
       heard: null,
     }
     const words = TAKE_CONVEYOR_WORDS.standing
-    expect(stations.standing(take)).toBe(
+    // A home before the conveyor says nothing, and the phone moved nothing.
+    expect(stations.standing(take)).toBeNull()
+    expect(stations.standing({ ...take, station: "in-the-oven" })).toBe(
       words({ station: "in-the-oven", at: null, going: false, missed: null })
     )
     expect(
       stations.standing({ ...take, station: "a station not known yet" })
-    ).toBe(
-      words({ station: "in-the-oven", at: null, going: false, missed: null })
-    )
+    ).toBeNull()
     // An idea's answer is on no conveyor: its row says nothing of one.
     expect(stations.standing({ ...take, station: null })).toBeNull()
     const before = stations.getSnapshot()

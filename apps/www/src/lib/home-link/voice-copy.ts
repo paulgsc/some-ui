@@ -967,10 +967,10 @@ async function letGoOnHomesWord(send: HomeCall): Promise<void> {
  * each Studio idea sent whole that home doesn't hold (`sendIdeas`, ST26),
  * whose said answers name notes that have just gone, each note left on an
  * episode home doesn't hold (`sendEpisodeNotes`, SFEED6), the set-aside marks due
- * (`markSetAside`, MIC2), each move of a Studio take along the conveyor
- * (`sendStationMoves`, CONVEYOR1), and, once those synced, each Studio video kept for
- * home to make (`sendVideos`, ST33), whose takes name notes too, which ends
- * the run in its exchange's place. A run that sent all it had still fails,
+ * (`markSetAside`, MIC2), and, once those synced, each Studio video kept for
+ * home to make (`sendVideos`, ST33), whose takes name notes too, then each
+ * move of a Studio take along the conveyor (`sendStationMoves`, CONVEYOR1),
+ * which ends the run in its exchange's place. A run that sent all it had still fails,
  * saying why, if that pass left a note it could copy uncopied (`runEnd`,
  * LA14).
  */
@@ -1006,13 +1006,14 @@ export async function sendVoice(
   }
   const marked = await markSetAside(marks, send)
   if (marked.kind !== "synced") return runEnd(pass, marked)
-  const stations = await sendStationMoves(takeConveyor().port, send)
-  if (stations.kind !== "synced") return runEnd(pass, stations)
   // After the marks, so a video home won't take never holds them up.
-  return runEnd(
-    pass,
-    await sendVideos(phoneVideos(localStorageOrNull(), at.pairing), send)
+  const videos = await sendVideos(
+    phoneVideos(localStorageOrNull(), at.pairing),
+    send
   )
+  if (videos.kind !== "synced") return runEnd(pass, videos)
+  // Last, so a move home answers oddly never holds up what came before.
+  return runEnd(pass, await sendStationMoves(takeConveyor().port, send))
 }
 
 /** Home's held notes as a set, made again only when the list changes. */

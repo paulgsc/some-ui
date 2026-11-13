@@ -47,13 +47,25 @@ function conveyorWith(takes: ReadonlyArray<string>): TakeConveyor {
   return conveyor
 }
 
-/** Home, answering each move by its take's id; 200 carries the take back. */
+/**
+ * Home, answering each move by its take's id; 200 carries the take back. A
+ * read of a take's station answers `reads`' body for it, or a 404.
+ */
 function home(
   statuses: Readonly<Record<string, number>>,
-  sent: Sent
+  sent: Sent,
+  reads: Readonly<Record<string, unknown>> = {}
 ): HomeCall {
   return (method, path, body) => {
     sent.push([method, path, body])
+    if (method === "GET") {
+      const read = reads[decodeURIComponent(path.split("/")[2] ?? "")]
+      return Promise.resolve(
+        read === undefined
+          ? { status: 404, body: "" }
+          : { status: 200, body: JSON.stringify(read) }
+      )
+    }
     const take = decodeURIComponent(path.split("/")[2] ?? "")
     const status = statuses[take] ?? 200
     const answer =
@@ -107,7 +119,9 @@ describe("a move of a take, to home (CONVEYOR1)", () => {
       ["POST", "/voice-notes/t2/station"],
     ])
     expect(conveyor.port.due()).toEqual([])
-    expect(conveyor.standing("t1", {})?.going).toBe(false)
+    expect(conveyor.standing("t1", { station: "in-the-oven" })?.going).toBe(
+      false
+    )
   })
 
   it("counts a move home already holds (unchanged) as kept", async () => {
@@ -132,23 +146,79 @@ describe("a move of a take, to home (CONVEYOR1)", () => {
     expect(conveyor.port.due().map(({ take }) => take)).toEqual(["gone"])
   })
 
-  it("drops a move made from where the take no longer stands, and says so on its row", async () => {
+  it("drops a move made from where the take no longer stands, with where home says it is", async () => {
     const conveyor = conveyorWith(["t1"])
-    await sendStationMoves(conveyor.port, home({ t1: 409 }, []))
+    const sent: Sent = []
+    await sendStationMoves(
+      conveyor.port,
+      home({ t1: 409 }, sent, {
+        t1: { id: "t1", station: "canned", labels: [], history: [] },
+      })
+    )
+    expect(sent.map(([method]) => method)).toEqual(["POST", "GET"])
     expect(conveyor.port.due()).toEqual([])
     expect(
-      conveyor.standing("t1", { station: "canned", stationAt: null })
+      conveyor.standing("t1", { station: "in-the-oven", stationAt: null })
     ).toMatchObject({
       station: "canned",
       missed: { to: "cooking", why: "stale" },
     })
   })
 
+  it("falls back on the 409's word on where the take is, when home's read fails", async () => {
+    const conveyor = conveyorWith(["t1"])
+    const conflict: HomeCall = (method) =>
+      Promise.resolve(
+        method === "POST"
+          ? {
+              status: 409,
+              body: JSON.stringify({
+                error: { details: { station: ["ready-for-pickup"] } },
+              }),
+            }
+          : { status: 500, body: "" }
+      )
+    await sendStationMoves(conveyor.port, conflict)
+    expect(conveyor.standing("t1", { station: "in-the-oven" })?.station).toBe(
+      "ready-for-pickup"
+    )
+  })
+
+  it("counts a move home already holds as kept, though the take has moved on since", async () => {
+    const conveyor = conveyorWith(["t1"])
+    await sendStationMoves(
+      conveyor.port,
+      home({ t1: 409 }, [], {
+        t1: {
+          id: "t1",
+          station: "canned",
+          labels: [],
+          history: [
+            {
+              seq: 1,
+              from: "in-the-oven",
+              to: "cooking",
+              at: "2026-11-13T09:15:00Z",
+            },
+            {
+              seq: 2,
+              from: "cooking",
+              to: "canned",
+              at: "2026-11-13T10:00:00Z",
+            },
+          ],
+        },
+      })
+    )
+    expect(conveyor.port.due()).toEqual([])
+    expect(conveyor.standing("t1", { station: "canned" })?.missed).toBeNull()
+  })
+
   it("answers a move home refuses for good, and the take shows where it was", async () => {
     const conveyor = conveyorWith(["t1"])
     await sendStationMoves(conveyor.port, home({ t1: 422 }, []))
     expect(conveyor.port.due()).toEqual([])
-    expect(conveyor.standing("t1", {})).toMatchObject({
+    expect(conveyor.standing("t1", { station: "in-the-oven" })).toMatchObject({
       station: "in-the-oven",
       missed: { to: "cooking", why: "refused" },
     })

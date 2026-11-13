@@ -18,8 +18,10 @@
  *   and final.
  * - **A move names where it was made from.** Home keeps it only while the
  *   take still stands there; a move made from a station the take has left
- *   (on another device, or by the pickup) is dropped, and said
- *   (`stationOf`'s `missed`).
+ *   (on another device, or by the pickup) is dropped, with where home says
+ *   the take is, and said (`stationOf`'s `missed`). A move home didn't keep
+ *   takes the phone's later moves of the same take with it, since each was
+ *   made from where the one before would have put it.
  * - **A move says where the take is until home says later.** The station
  *   shown is the newer of the phone's latest kept-or-owed move and home's
  *   own word on the take, by when each was made (`stationOf`).
@@ -79,7 +81,11 @@ export type StationMove = {
  */
 type MoveHome = "owed" | "held" | "refused" | "stale"
 
-type KeptMove = StationMove & { readonly home: MoveHome }
+type KeptMove = StationMove & {
+  readonly home: MoveHome
+  /** On a stale move: where home said the take was instead, if it said. */
+  readonly there?: TakeStation | undefined
+}
 
 /** Every move made on this phone, oldest first. */
 export type ConveyorState = { readonly moves: ReadonlyArray<KeptMove> }
@@ -92,25 +98,39 @@ export type ConveyorEvent =
   | { readonly kind: "held"; readonly move: string }
   /** Home will never keep the move as it is. */
   | { readonly kind: "refused"; readonly move: string }
-  /** The take had left the station the move was made from. */
-  | { readonly kind: "stale"; readonly move: string }
+  /** The take had left the station the move was made from, for `there`. */
+  | {
+      readonly kind: "stale"
+      readonly move: string
+      readonly there: TakeStation | null
+    }
 
-/** How home answered `move`, from owed; a move never goes back to owed. */
+/**
+ * How home answered `move`, from owed; a move never goes back to owed. A
+ * move home didn't keep makes each later owed move of the same take stale
+ * with it: each was made from where the one before would have put it.
+ */
 function answered(
   state: ConveyorState,
   move: string,
-  home: Exclude<MoveHome, "owed">
+  home: Exclude<MoveHome, "owed">,
+  there: TakeStation | null = null
 ): ConveyorState {
   const at = state.moves.findIndex(
     (kept) => kept.move === move && kept.home === "owed"
   )
   if (at === -1) return state
+  const { take } = state.moves[at]
+  const unkept = home !== "held"
   return {
-    moves: [
-      ...state.moves.slice(0, at),
-      { ...state.moves[at], home },
-      ...state.moves.slice(at + 1),
-    ],
+    moves: state.moves.map((kept, index) => {
+      if (index === at) {
+        return there === null ? { ...kept, home } : { ...kept, home, there }
+      }
+      return unkept && index > at && kept.take === take && kept.home === "owed"
+        ? { ...kept, home: "stale" }
+        : kept
+    }),
   }
 }
 
@@ -126,9 +146,11 @@ export function stepConveyor(
       return { moves: [...state.moves, { ...event.move, home: "owed" }] }
     }
     case "held":
-    case "refused":
-    case "stale": {
+    case "refused": {
       return answered(state, event.move, event.kind)
+    }
+    case "stale": {
+      return answered(state, event.move, "stale", event.there)
     }
     default: {
       return assertNever(event)
@@ -140,7 +162,7 @@ export function stepConveyor(
 export const movesOwed = (state: ConveyorState): ReadonlyArray<StationMove> =>
   state.moves
     .filter((kept) => kept.home === "owed")
-    .map(({ home: _home, ...move }) => move)
+    .map(({ home: _home, there: _there, ...move }) => move)
 
 /** What home says of a take's station, when it says anything. */
 export type HomeStation = {
@@ -192,8 +214,10 @@ const later = (a: string, b: string): boolean =>
 
 /**
  * Where take `id` stands: the newer of the phone's latest kept-or-owed move
- * and home's word, with the phone's latest move if home didn't keep it and
- * nothing since says otherwise. Null for a take on no conveyor.
+ * and home's word, unless a move after it went unkept, which says where it
+ * found the take (a stale move's `there`), and is itself said (`missed`,
+ * the first of those). Null for a take on no conveyor, and for one home
+ * says nothing of (a home before the conveyor) that the phone never moved.
  */
 export function stationOf(
   id: string,
@@ -204,31 +228,39 @@ export function stationOf(
   const homeAt = home.stationAt ?? null
   const newer = (at: string): boolean => homeAt === null || later(at, homeAt)
   const mine = state.moves.filter((kept) => kept.take === id)
-  const last = mine.at(-1)
-  const lastMissed =
-    last !== undefined &&
-    (last.home === "refused" || last.home === "stale") &&
-    newer(last.at)
-      ? { to: last.to, why: last.home }
-      : null
-  const taken = mine
-    .filter((kept) => kept.home === "owed" || kept.home === "held")
-    .at(-1)
-  if (taken === undefined || !newer(taken.at)) {
+  const lastTaken = mine.reduce(
+    (last, kept, index) =>
+      kept.home === "owed" || kept.home === "held" ? index : last,
+    -1
+  )
+  const taken = lastTaken === -1 ? undefined : mine[lastTaken]
+  const unkept = mine.slice(lastTaken + 1).find((kept) => newer(kept.at))
+  const missed: Missed | null =
+    unkept === undefined
+      ? null
+      : { to: unkept.to, why: unkept.home === "stale" ? "stale" : "refused" }
+  if (unkept?.there !== undefined) {
+    return { station: unkept.there, at: null, going: false, missed }
+  }
+  if (taken !== undefined && newer(taken.at)) {
     return {
-      station: home.station ?? FIRST_STATION,
-      at: homeAt,
-      going: false,
-      missed: lastMissed,
+      station: taken.to,
+      at: taken.at,
+      going: taken.home === "owed",
+      missed,
     }
   }
+  if (home.station === undefined && mine.length === 0) return null
   return {
-    station: taken.to,
-    at: taken.at,
-    going: taken.home === "owed",
-    missed: lastMissed,
+    station: home.station ?? FIRST_STATION,
+    at: homeAt,
+    going: false,
+    missed,
   }
 }
+
+/** What home won't keep in a label or a comment: a control character. */
+const CONTROL = /\p{Cc}/u
 
 /** What the owner asks for: a take, where to, and what rides along. */
 export type MoveAsked = {
@@ -252,8 +284,9 @@ export type MoveRefused =
 /**
  * The move the owner asked for, made `move` at `at`, or why it can't be:
  * it is already there, Picked up is the pickup's and final, nothing goes
- * back In the oven, or what rides along is more than home keeps. Labels
- * are trimmed, blanks and repeats dropped, and a blank comment is none.
+ * back In the oven, or what rides along is more than home keeps or holds a
+ * control character (a line break). Labels are trimmed, blanks and repeats
+ * dropped, none left keeps the take's, and a blank comment is none.
  */
 export function moveOf(
   asked: MoveAsked,
@@ -266,19 +299,22 @@ export function moveOf(
   if (asked.to === "picked-up") return { kind: "refused", why: "pickup" }
   if (asked.from === "picked-up") return { kind: "refused", why: "final" }
   if (asked.to === "in-the-oven") return { kind: "refused", why: "oven" }
-  const labels =
-    asked.labels === undefined || asked.labels === null
-      ? null
-      : [...new Set(asked.labels.map((label) => label.trim()).filter(Boolean))]
+  const typed = [
+    ...new Set((asked.labels ?? []).map((label) => label.trim())),
+  ].filter(Boolean)
+  // None typed keeps the take's labels, as home reads an absent list.
+  const labels = typed.length === 0 ? null : typed
   if (
     labels !== null &&
     (labels.length > LABELS_MAX ||
-      labels.some((label) => [...label].length > LABEL_CHARS))
+      labels.some(
+        (label) => [...label].length > LABEL_CHARS || CONTROL.test(label)
+      ))
   ) {
     return { kind: "refused", why: "labels" }
   }
   const comment = asked.comment?.trim() ?? ""
-  if ([...comment].length > COMMENT_CHARS) {
+  if ([...comment].length > COMMENT_CHARS || CONTROL.test(comment)) {
     return { kind: "refused", why: "comment" }
   }
   return {
@@ -310,7 +346,8 @@ function isKeptMove(kept: unknown): kept is KeptMove {
     typeof kept.at === "string" &&
     (kept.labels === null || isStrings(kept.labels)) &&
     (kept.comment === null || typeof kept.comment === "string") &&
-    HOMES.some((home) => home === kept.home)
+    HOMES.some((home) => home === kept.home) &&
+    (kept.there === undefined || isTakeStation(kept.there))
   )
 }
 

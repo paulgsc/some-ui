@@ -23,6 +23,13 @@ export function takeConveyor(): TakeConveyor {
   return conveyor
 }
 
-/** Takes on home's word for where each take stands, over this conveyor. */
-export const libraryStations = (): LibraryStations =>
-  libraryStationsOf(takeConveyor())
+/**
+ * Takes on home's word for where each take stands, over this conveyor,
+ * which it makes only once the screen first asks: a route that hands this
+ * in as it loads reads nothing until then.
+ */
+export const libraryStations = (): LibraryStations => ({
+  subscribe: (listener) => takeConveyor().subscribe(listener),
+  getSnapshot: () => takeConveyor().getSnapshot(),
+  standing: (take) => libraryStationsOf(takeConveyor()).standing(take),
+})
