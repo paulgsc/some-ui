@@ -11,6 +11,8 @@
  *
  * Deleting a record home keeps (MD3, #2477) is `./deleting` and
  * `./deleting-runtime`; the Deleted page's receipts are `./receipts`.
+ * The Korean word sets page (MD7, #2496) is `./word-sets` and
+ * `./word-sets-runtime`, over topik's store on this phone.
  */
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import { audioPlayer } from "@some-ui/voice-capture"
@@ -39,6 +41,8 @@ import type { Receipts } from "./receipts"
 import { createReceipts } from "./receipts"
 import type { MyData } from "./runtime"
 import { createMyData } from "./runtime"
+import type { WordSetsPage } from "./word-sets-runtime"
+import { createWordSetsPage } from "./word-sets-runtime"
 
 export type { KindItem, Of, Overview, Where } from "./model"
 export { isKind, kindOf, overviewOf, WHERE_ORDER } from "./model"
@@ -48,6 +52,8 @@ export type { Deleting } from "./deleting-runtime"
 export type { Receipts, ReceiptsState } from "./receipts"
 export type { MyData } from "./runtime"
 export type { MyDataState } from "./state"
+export type { WordSetsSaid, WordSetsState } from "./word-sets"
+export type { WordSetsPage } from "./word-sets-runtime"
 
 async function askHome(
   of: Of | null,
@@ -190,4 +196,24 @@ export function phoneCallDeleting(): CallDeleting {
     },
   })
   return callDeleting
+}
+
+let wordSets: WordSetsPage | null = null
+
+/**
+ * My data's Korean word sets (MD7), one per page load, over topik's store
+ * of them on this phone, loaded when the page first reads it.
+ */
+export function phoneWordSetsPage(): WordSetsPage {
+  wordSets ??= createWordSetsPage({
+    open: async () => (await import("@some-ui/topik")).phoneWordSets(),
+    now: () => new Date(),
+    failed: (error) => {
+      reportFailure({
+        port: "my data: this phone's word sets",
+        error: toIntentError(error),
+      })
+    },
+  })
+  return wordSets
 }

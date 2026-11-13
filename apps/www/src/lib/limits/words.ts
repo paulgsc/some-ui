@@ -25,6 +25,8 @@ export type LimitWords = {
   readonly standing: (kept: string, limit: string) => string
   /** Where it stands when nothing is kept, for a limit with no count of its own. */
   readonly nothing?: (limit: string) => string
+  /** Those kept out of the count, already formatted (archived word sets). */
+  readonly aside?: (n: string) => string
   readonly atLimit: AtLimit
   /** What happens at the limit, said in full. */
   readonly then: string
@@ -130,10 +132,11 @@ export const PHONE_LIMITS = {
     then: MAKES_ROOM,
   },
   wordSets: {
-    what: "Word sets for reading aloud",
+    what: "Word sets for reading aloud, in use",
     standing: kept,
+    aside: (n) => `${n} archived`,
     atLimit: "refused",
-    then: "Adding another isn't kept until you remove one.",
+    then: "Adding another isn't kept until you archive one in My data. An archived set stays on this phone and doesn't count.",
   },
   practiceDays: {
     what: "Reading-aloud days, day by day",

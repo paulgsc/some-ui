@@ -79,6 +79,7 @@ import {
   receiptsLine,
   unreadLine,
   WHERE_WORDS,
+  WORD_SETS,
 } from "@/lib/my-data/words"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 
@@ -273,6 +274,11 @@ export const MyDataOverview = ({
         to="/settings/data/calls"
         title={CALL_DELETING.row}
         line={CALL_DELETING.rowLine}
+      />
+      <PageRow
+        to="/settings/data/word-sets"
+        title={WORD_SETS.row}
+        line={WORD_SETS.rowLine}
       />
       <PageRow
         to="/settings/data/deleted"
@@ -514,7 +520,10 @@ const PageRow = ({
   title,
   line,
 }: {
-  to: "/settings/data/calls" | "/settings/data/deleted"
+  to:
+    | "/settings/data/calls"
+    | "/settings/data/deleted"
+    | "/settings/data/word-sets"
   title: string
   line: string
 }): JSX.Element | null =>

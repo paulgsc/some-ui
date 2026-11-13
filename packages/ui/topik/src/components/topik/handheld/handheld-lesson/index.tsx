@@ -124,6 +124,7 @@ import {
   readySets,
   resolveSets,
   setLevel,
+  setsInUse,
   wordsLeaving,
 } from "@topik/lib/topik/read-aloud/added-sets"
 import type { SetPractice } from "@topik/lib/topik/read-aloud/content"
@@ -252,6 +253,8 @@ export const HandheldLesson = ({
   const [lensRecord] = useState(createLensRecordStore)
   const [added, setAdded] = useState(() => readAloud.sets())
   const resolved = useMemo(() => resolveSets(added), [added])
+  // The sets not archived (MD7): what Read aloud, the menu and the count read.
+  const inUse = useMemo(() => setsInUse(added), [added])
   const [setNote, setSetNote] = useState<StorageNote | null>(null)
   const keepSets = (next: typeof added): void => {
     readAloud.saveSets(next)
@@ -265,21 +268,22 @@ export const HandheldLesson = ({
   ): typeof added | null => {
     // Judged together first, so a group that doesn't fit says what the phone
     // holds now, not after its first set.
+    // An archived set picked again comes back in use, so it counts as new.
     const fresh = new Set(
       texts.flatMap((text) => {
         const intake = intakeSet(text, added)
-        return intake.ok && !added.some((set) => set.deck.id === intake.deck.id)
+        return intake.ok && !inUse.some((set) => set.deck.id === intake.deck.id)
           ? [intake.deck.id]
           : []
       })
     ).size
     if (
-      added.length < ADDED_SET_LIMIT &&
-      added.length + fresh > ADDED_SET_LIMIT
+      inUse.length < ADDED_SET_LIMIT &&
+      inUse.length + fresh > ADDED_SET_LIMIT
     ) {
       say({
         tone: "problem",
-        text: `This phone keeps ${ADDED_SET_LIMIT} word sets and has ${added.length}, so these ${fresh} weren't added.`,
+        text: `This phone keeps ${ADDED_SET_LIMIT} word sets in use and has ${inUse.length}, so these ${fresh} weren't added. Archive some in My data to make room.`,
       })
       return null
     }
@@ -666,7 +670,7 @@ export const HandheldLesson = ({
     }
     if (menu) {
       const held = holdingsOf({
-        added,
+        added: inUse,
         sets: resolved.sets,
         routine: routine.data ?? [],
         opened: openedKeys,
@@ -750,7 +754,7 @@ export const HandheldLesson = ({
         onReadAloud={
           canRead ? (): void => setReading({ set: null }) : undefined
         }
-        addedSets={added.length}
+        addedSets={inUse.length}
         readySets={readyOnList.flatMap(({ deck }) => {
           const own = resolved.sets.get(deck.id)
           return own
