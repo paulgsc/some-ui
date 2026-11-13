@@ -75,6 +75,7 @@ export function watchKept(
   let releases = link.getSnapshot().awayReleases
   let releasesAtStart = releases
   let running = home.getSnapshot().running
+  let lastEnd = home.getSnapshot().last
   let stopped = false
 
   const onRecord = (): void => {
@@ -85,8 +86,11 @@ export function watchKept(
   }
   const onRun = (): void => {
     const run = home.getSnapshot()
-    const started = run.running && !running
+    // A run starts as the lane begins running, or as one goes on into the
+    // next (a new end while still running).
+    const started = run.running && (!running || run.last !== lastEnd)
     running = run.running
+    lastEnd = run.last
     if (started) releasesAtStart = link.getSnapshot().awayReleases
     if (run.running) return
     owed = turnedAwayBy(run.last)

@@ -494,8 +494,8 @@ describe("away from home over the real link (AW1)", () => {
     ])
   })
 
-  for (const edited of [false, true]) {
-    it(`a release while a lane's run is still ending asks it once more${edited ? ", an edit meanwhile included" : ""}`, async () => {
+  for (const meanwhile of ["nothing", "an edit", "the watch gone"] as const) {
+    it(`a release while a lane's run is still ending asks it once more, or not once its watch is gone (${meanwhile} meanwhile)`, async () => {
       const home = await pairedHome()
       // A lane that finishes work of its own after home's silence, before
       // its run ends, as a run writing what it kept does.
@@ -536,7 +536,12 @@ describe("away from home over the real link (AW1)", () => {
         homeBusy: busyNow,
         now: () => 0,
       })
-      stops.push(watchKept(lane, kept))
+      const unwatch = watchKept(lane, kept)
+      stops.push(unwatch)
+      let ends = 0
+      kept.subscribe(() => {
+        if (!kept.getSnapshot().running) ends += 1
+      })
       const watched = [{ kept, edit: (): void => undefined }]
       await settled(watched)
       slow.on = true
@@ -546,15 +551,19 @@ describe("away from home over the real link (AW1)", () => {
       await vi.waitFor(() => expect(kept.getSnapshot().running).toBe(true))
       await vi.waitFor(() => expect(gate.finish).not.toBeNull())
       home.clock.pass(holdMs(1))
-      if (edited) {
+      if (meanwhile === "an edit") {
         revision += 1
         for (const listener of listeners) listener()
       }
+      if (meanwhile === "the watch gone") unwatch()
       slow.on = false
-      const before = home.sent.length
+      const before = { sent: home.sent.length, ends }
       gate.finish?.()
       await settled(watched)
-      expect(home.sent.length).toBeGreaterThan(before)
+      // The run that was ending, then one more ask, and only one.
+      const asked = meanwhile === "the watch gone" ? 0 : 1
+      expect(ends - before.ends).toBe(1 + asked)
+      expect(home.sent.length - before.sent).toBe(asked)
     })
   }
 })
