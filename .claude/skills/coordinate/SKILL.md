@@ -76,8 +76,9 @@ The bottleneck is GitHub's shared runner pool, not the number of open PRs. A PR 
 jobs has already freed n−k runners, so admitting one PR per repo is the worst case, not a safe
 default (owner, #2814 Nov 10; measurements on #2833).
 
-- Admit work that isn't ready yet to CI only when no job is queued in either repo.
-- Admit a PR that is ready (built, verified and reviewed) at once, however long the queue.
+- Admit a worker's `ready` branch to CI only when no job is queued in either repo.
+- A PR that is ready (green and reviewed), or reviewed and docs-only (the coordinator's call,
+  Nov 13), skips that check: update it and arm auto-merge at once, however long the queue.
   Under sustained load the queue never clears (#2814, Nov 13: #2916 waited 30 minutes behind
   7–13 queued runs).
 - A PR that is waiting on review, on a dependency or on the owner holds no slot.
