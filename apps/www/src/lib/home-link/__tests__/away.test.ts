@@ -107,34 +107,41 @@ describe("stepAway over every ordering (AW1)", () => {
     }
   }
 
-  it("is away only after a silence no answer followed, since its first, each hold holdMs long", () => {
-    for (const order of orderings(6)) {
-      let away: Away | null = null
-      let now = 0
-      // What the stretch should say: since its first silence, none once answered.
-      let since: number | null = null
-      for (const index of order) {
-        const move = MOVES[index](now)
-        if (move.type === "pass") {
-          now += move.ms
-          continue
+  // Every ordering of six moves (6^6 = 46,656) is the proof, so it keeps the
+  // whole family and gets a timeout of its own: about 1 s alone, it passed 5 s
+  // when a lockfile change ran every package's tests at once (#2956).
+  it(
+    "is away only after a silence no answer followed, since its first, each hold holdMs long",
+    { timeout: 60_000 },
+    () => {
+      for (const order of orderings(6)) {
+        let away: Away | null = null
+        let now = 0
+        // What the stretch should say: since its first silence, none once answered.
+        let since: number | null = null
+        for (const index of order) {
+          const move = MOVES[index](now)
+          if (move.type === "pass") {
+            now += move.ms
+            continue
+          }
+          const before = away
+          away = stepAway(away, move)
+          if (move.type === "answered") since = null
+          if (move.type === "unanswered") {
+            since ??= now
+            // A silence while held is from a request sent before the hold.
+            if (held(before, now)) expect(away).toBe(before)
+            else expect(away?.heldUntil).toBe(now + holdMs(before?.tries ?? 0))
+          }
+          if (move.type === "lapsed" || move.type === "lookAgain") {
+            expect(away?.heldUntil ?? null).toBeNull()
+          }
+          expect(away?.since ?? null).toBe(since)
         }
-        const before = away
-        away = stepAway(away, move)
-        if (move.type === "answered") since = null
-        if (move.type === "unanswered") {
-          since ??= now
-          // A silence while held is from a request sent before the hold.
-          if (held(before, now)) expect(away).toBe(before)
-          else expect(away?.heldUntil).toBe(now + holdMs(before?.tries ?? 0))
-        }
-        if (move.type === "lapsed" || move.type === "lookAgain") {
-          expect(away?.heldUntil ?? null).toBeNull()
-        }
-        expect(away?.since ?? null).toBe(since)
       }
     }
-  })
+  )
 
   it("holds 30 s, doubling to ten minutes, and no longer", () => {
     expect([0, 1, 2, 3, 4, 5, 6, 40].map(holdMs)).toEqual([
