@@ -2130,6 +2130,25 @@
       "moves": "C101"
     },
     {
+      "id": "C250",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/home-link/away.ts",
+        "apps/www/src/lib/home-link/runtime.ts",
+        "apps/www/src/lib/home-link/live-machine.ts"
+      ],
+      "chose": "Away from home, the phone tries home once each hold, 30 s doubling to 10 minutes; a network change, a pull or Send now tries at once; what the person asks for (Sync, a send, a screen they opened, Preview, play) still goes, while a screen's read on a timer waits with the drain; and the native log gets one line a stretch, not one a try.",
+      "options": [
+        "hold 30 s doubling to 10 minutes, taps still go, one log line a stretch",
+        "a fixed hold (say 5 minutes) for everything, taps held too",
+        "stop trying until the network changes or the app comes back to the front"
+      ],
+      "gray": "The phone cannot tell off the home network from home being down on it, and Android's WebView does not announce a switch from mobile data to the home Wi-Fi, so how long it waits decides how soon what waits goes once the owner is home. The owner's standing word is to go with the recommended where a choice is open (#2928, 2026-11-13).",
+      "undo": "Change holdMs and FIRST_HOLD_MS/LONGEST_HOLD_MS in apps/www/src/lib/home-link/away.ts, or pass tapped=false for send, sync and keep in runtime.ts to hold what the person asks for too.",
+      "refs": ["#2928"]
+    },
+    {
       "id": "C232",
       "made": "2026-11-13",
       "by": "claude",

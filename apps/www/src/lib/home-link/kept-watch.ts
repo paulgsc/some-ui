@@ -51,9 +51,9 @@ function turnedAwayBy(run: KeptRun | null): "link" | "home" | null {
 /**
  * Asks once now; when the record changes on this phone, the app comes back to
  * the foreground, the network comes back, the phone is paired, or the link
- * opens again after turning a run away (it frees up, or home's busy ends:
- * one ask however many moments came while it waited, AD3); until the
- * returned unsubscribe is called.
+ * opens again after turning a run away (it frees up, home's busy ends, or
+ * the hold away from home ends: one ask however many moments came while it
+ * waited, AD3, AW1); until the returned unsubscribe is called.
  */
 export function watchKept(
   record: KeptRecord,
@@ -70,6 +70,13 @@ export function watchKept(
   // read off its runs as they end, since the link frees (a run's own end)
   // before that run's end reaches the lane.
   let owed: "link" | "home" | null = null
+  // The link's releases of a hold away seen, and as the lane's run started
+  // (AW1): each asks once a lane whose last run found no answer.
+  let releases = link.getSnapshot().awayReleases
+  let releasesAtStart = releases
+  let running = home.getSnapshot().running
+  let lastEnd = home.getSnapshot().last
+  let stopped = false
 
   const onRecord = (): void => {
     const now = record.revision()
@@ -79,26 +86,50 @@ export function watchKept(
   }
   const onRun = (): void => {
     const run = home.getSnapshot()
-    if (!run.running) owed = turnedAwayBy(run.last)
+    // A run starts as the lane begins running, or as one goes on into the
+    // next (a new end while still running).
+    const started = run.running && (!running || run.last !== lastEnd)
+    running = run.running
+    lastEnd = run.last
+    if (started) releasesAtStart = link.getSnapshot().awayReleases
+    if (run.running) return
+    owed = turnedAwayBy(run.last)
+    // Found no answer while a release came: asked once, after this run's
+    // end has settled (asking inside it would start a second loop).
+    if (
+      run.last?.kind === "unreachable" &&
+      link.getSnapshot().awayReleases > releasesAtStart
+    ) {
+      releasesAtStart = link.getSnapshot().awayReleases
+      queueMicrotask(() => {
+        // Gone, or asked meanwhile by the release's own notice.
+        if (!stopped && !home.getSnapshot().running) askKept(home, doc)
+      })
+    }
   }
   const onLink = (): void => {
     const state = link.getSnapshot()
     const nowPaired = pairingOf(state) !== null
     const nowIdle = drainFree(state)
     const nowOpen = linkOpen(state, LINK_CLOCK.now())
+    const run = home.getSnapshot()
+    const released =
+      state.awayReleases > releases &&
+      !run.running &&
+      run.last?.kind === "unreachable"
     // Turned away by another run: asked once that run ends, even while home
     // is busy, when the run only says so (it sends nothing). Turned away by
-    // home: asked once home's busy ends, and not before.
+    // home: asked once home's busy or the hold away ends, and not before.
     const again =
       (owed === "link" && nowIdle && !idle) ||
       (owed !== null && nowOpen && !open)
     if (again) owed = null
-    if ((nowPaired && !wasPaired) || again) {
-      askKept(home, doc)
-    }
+    const ask = (nowPaired && !wasPaired) || again || released
     wasPaired = nowPaired
     idle = nowIdle
     open = nowOpen
+    releases = state.awayReleases
+    if (ask) askKept(home, doc)
   }
   const onBack = (): void => {
     askKept(home, doc)
@@ -111,6 +142,7 @@ export function watchKept(
   win.addEventListener("online", onBack)
   askKept(home, doc)
   return () => {
+    stopped = true
     unsubscribeRecord()
     unsubscribeRun()
     unsubscribeLink()
