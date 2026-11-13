@@ -7,6 +7,8 @@ import { readAs } from "@some-ui/core-utils"
 import type { LibraryPage, LibraryRead } from "@some-ui/soundbites"
 import { z } from "zod"
 
+import { isTakeStation } from "@/lib/take-conveyor/model"
+
 /** One take, as the route serves it; fields home adds are dropped. */
 const TakeSchema = z.object({
   id: z.string().min(1),
@@ -23,6 +25,16 @@ const TakeSchema = z.object({
       heardAt: z.string().min(1),
     })
     .nullable(),
+  // Where it is on the conveyor (CONVEYOR1): null for a take on none (an
+  // idea's answer); a home before it says neither, and a station this phone
+  // doesn't know reads as none said.
+  station: z
+    .unknown()
+    .transform((value) =>
+      value === null ? null : isTakeStation(value) ? value : undefined
+    )
+    .optional(),
+  stationAt: z.string().min(1).nullable().optional().catch(undefined),
 })
 
 const TakesSchema: z.ZodType<LibraryPage> = z.object({

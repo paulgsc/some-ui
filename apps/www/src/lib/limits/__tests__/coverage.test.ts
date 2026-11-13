@@ -37,6 +37,7 @@ const DESK =
 const NOT_SHOWN: Readonly<Record<string, string>> = {
   "apps/www/src/lib/takes-desk/index.ts#max": DESK,
   "apps/www/src/lib/takes-desk/index.ts#maxBytes(options.limits)": DESK,
+  "apps/www/src/lib/take-conveyor/model.ts#LABELS_MAX": ONE_ITEM,
   "packages/ui/soundbites/src/lib/policy.ts#SOUNDBITE_LIMIT":
     "Soundbites: its own screen shows how many of six are kept, beside the recorder, and which one the next replaces.",
   "packages/ui/soundbites/src/lib/policy.ts#SOUNDBITES_MAX_BYTES":

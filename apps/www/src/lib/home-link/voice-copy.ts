@@ -167,6 +167,7 @@ import { reflections } from "@/lib/session-reflection"
 import type { Reflection } from "@/lib/session-reflection/policy"
 import { onSoundbitesKept, soundbiteKeeping } from "@/lib/soundbite-keeping"
 import { onStudioKept, studioKeeping } from "@/lib/studio-keeping"
+import { takeConveyor } from "@/lib/take-conveyor"
 import { phoneVoiceHome } from "@/lib/voice-home"
 import { exchangeVoice } from "@/lib/voice-home/home"
 import type {
@@ -194,6 +195,7 @@ import { notesHeld } from "./notes"
 import { askOnDrive } from "./on-drive"
 import { unanswered } from "./runtime"
 import { markSetAside } from "./set-aside"
+import { sendStationMoves } from "./take-stations"
 import { phoneVideos, sendVideos } from "./videos"
 import { askAudio } from "./voice-audio"
 
@@ -965,7 +967,8 @@ async function letGoOnHomesWord(send: HomeCall): Promise<void> {
  * each Studio idea sent whole that home doesn't hold (`sendIdeas`, ST26),
  * whose said answers name notes that have just gone, each note left on an
  * episode home doesn't hold (`sendEpisodeNotes`, SFEED6), the set-aside marks due
- * (`markSetAside`, MIC2), and, once those synced, each Studio video kept for
+ * (`markSetAside`, MIC2), each move of a Studio take along the conveyor
+ * (`sendStationMoves`, CONVEYOR1), and, once those synced, each Studio video kept for
  * home to make (`sendVideos`, ST33), whose takes name notes too, which ends
  * the run in its exchange's place. A run that sent all it had still fails,
  * saying why, if that pass left a note it could copy uncopied (`runEnd`,
@@ -1003,6 +1006,8 @@ export async function sendVoice(
   }
   const marked = await markSetAside(marks, send)
   if (marked.kind !== "synced") return runEnd(pass, marked)
+  const stations = await sendStationMoves(takeConveyor().port, send)
+  if (stations.kind !== "synced") return runEnd(pass, stations)
   // After the marks, so a video home won't take never holds them up.
   return runEnd(
     pass,
