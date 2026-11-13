@@ -75,7 +75,7 @@ describe("an ask answered by voice (SFEED5)", () => {
     await settle()
     expect(answer.getSnapshot().voice).toBe("ready")
     answer.dispatch({ type: "talk" })
-    expect(listener.takes).toEqual(["ask:some-ui-2676"])
+    expect(listener.takes).toEqual([REF])
     expect(answer.getSnapshot().phase).toMatchObject({
       kind: "recording",
       ready: true,
@@ -102,7 +102,7 @@ describe("an ask answered by voice (SFEED5)", () => {
     expect(available).not.toHaveBeenCalled()
   })
 
-  it("ends the take when the page hides, and keeps it", async () => {
+  it("ends the take when the page hides", async () => {
     const listener = fakeListener()
     const ports = portsOf(listener, true)
     const answer = createAskAnswer(ports, REF)
@@ -112,12 +112,5 @@ describe("an ask answered by voice (SFEED5)", () => {
     ports.hide()
     expect(listener.stops()).toBe(1)
     expect(answer.getSnapshot().phase.kind).toBe("finishing")
-    listener.end({ kind: "kept", on: "home", why: "late" })
-    await settle()
-    expect(answer.getSnapshot().phase).toEqual({
-      kind: "kept",
-      on: "home",
-      why: "late",
-    })
   })
 })

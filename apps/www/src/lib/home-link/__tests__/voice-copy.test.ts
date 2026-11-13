@@ -101,7 +101,7 @@ describe("what each voice note is told home as", () => {
     // the reflections routine's codec reads the same ask back from it.
     const ask = { repo: "some-ui", number: 2676 } as const
     const answer = ideaNote({ ...take, line: answerRef(ask) })
-    expect(answer).toMatchObject({ of: "studio", ref: "ask:some-ui-2676" })
+    expect(answer.of).toBe("studio")
     expect(pendingOfRef(answer.ref)).toEqual({
       kind: "ask",
       repo: "some-ui",
