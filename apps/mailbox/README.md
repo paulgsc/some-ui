@@ -350,6 +350,15 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   is held instead to at most 20,000 characters (home's own cap) with no `data:` URI and no
   Drive link. It carries the pasted errors' text and the takes' note ids, never what was
   said: that is the `transcript` folder's.
+  The interview week's index is
+  `{"schema":"some-ui.routine-index/1","routine":"interview","asOf","weeks":[<record>…]}`
+  (IW4, paulgsc/some-ui#2935): the same keys and the same choice of weeks, each exactly as
+  `GET /interview-weeks/:id/record` gives it (paulgsc/server `routes/interview_weeks.rs`), its
+  final send (or `null`), each question answered or not and each card read or not with its
+  take's note id. The essay routine (IW6) writes from this record, never from a draft. The
+  Worker holds it as it holds the Rust Rounds index, with `questions`, `cards`, `unanswered`
+  and `unread` lists in place of `tickets` and `pastes`. It carries no text the owner typed, so
+  the whole body is scanned for encoded bytes.
 - **A written reflection** is `{"schema":"some-ui.reflection/1","reflection","session","at","text"}`:
   the phone's id for it (which the name carries), the session it is about (the phone's id for
   it, as a reflection transcript's `ref` names it), when it was written, and the typed line.

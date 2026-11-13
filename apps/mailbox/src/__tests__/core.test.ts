@@ -1407,7 +1407,7 @@ describe("home's indexes", () => {
       return json(response)
     }
     expect(await refused({ ...JOBS, routine: "topik" })).toEqual({
-      error: "routine must be jobs or reflections or call or rust",
+      error: "routine must be jobs or reflections or call or rust or interview",
     })
     expect(await refused(JOBS, "index-topik-20261031T144502118Z.json")).toEqual(
       { error: "the name must carry the body's routine" }
@@ -1849,6 +1849,82 @@ const ASKED_FOR = {
     "Write one scene: the fiancée meets his mother.",
   ].join("\n"),
 }
+
+describe("home's interview week index (IW4)", () => {
+  // A final week as home's record gives it (paulgsc/server `GET /interview-weeks/:id/record`).
+  const W47 = {
+    week: "2026-w47",
+    opens: "2026-11-16T00:00:00-08:00",
+    due: "2026-11-22T23:59:00-08:00",
+    closed: true,
+    sent: {
+      at: "2026-11-21T20:31:07.000Z",
+      receivedAt: "2026-11-21T20:31:09.120Z",
+      draft: false,
+    },
+    questions: [
+      {
+        question: "conflict",
+        answered: true,
+        take: "note-401",
+        recordedAt: "2026-11-21T20:12:40.000Z",
+      },
+    ],
+    cards: [
+      { card: "invariant-rs1", read: false, take: null, recordedAt: null },
+    ],
+    unanswered: [],
+    unread: ["invariant-rs1"],
+  }
+  const INDEX = {
+    schema: "some-ui.routine-index/1",
+    routine: "interview",
+    asOf: "2026-11-22T23:59:00.000-08:00",
+    weeks: [W47],
+  }
+  const NAME = "index-interview-20261123T090000000Z.json"
+  const asHome = (body: unknown): Promise<Response> =>
+    put(deps(), "index", NAME, { token: HOME, body: JSON.stringify(body) })
+
+  it("home puts it, before any week is final too", async () => {
+    expect((await asHome(INDEX)).status).toBe(201)
+    expect((await asHome({ ...INDEX, asOf: null, weeks: [] })).status).toBe(201)
+    expect(
+      (await asHome({ ...INDEX, weeks: [{ ...W47, sent: null }] })).status
+    ).toBe(201)
+  })
+
+  it("takes only final weeks with their lists, and only its own keys", async () => {
+    const error = async (body: unknown): Promise<unknown> =>
+      json(await asHome(body))
+    expect(await error({ ...INDEX, tickets: [] })).toEqual({
+      error: "tickets is not part of an interview index",
+    })
+    expect(
+      await error({ ...INDEX, weeks: [{ ...W47, closed: false }] })
+    ).toEqual({ error: "each week must be past its deadline" })
+    expect(
+      await error({ ...INDEX, weeks: [{ ...W47, sent: { draft: true } }] })
+    ).toEqual({ error: "each week's send must be its final, or null" })
+    expect(
+      await error({ ...INDEX, weeks: [{ ...W47, unread: undefined }] })
+    ).toEqual({
+      error:
+        "each week's questions, cards, unanswered and unread must be lists",
+    })
+    expect(await error({ ...INDEX, weeks: [W47, W47] })).toEqual({
+      error: "each week is named once",
+    })
+    expect(
+      (
+        await put(deps(), "index", "index-rust-20261123T090000000Z.json", {
+          token: HOME,
+          body: JSON.stringify(INDEX),
+        })
+      ).status
+    ).toBe(422)
+  })
+})
 
 describe("written reflections", () => {
   const REFLECTION = JSON.stringify(WRITTEN)

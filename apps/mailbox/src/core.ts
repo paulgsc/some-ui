@@ -150,7 +150,7 @@ function shapeRefusal(
   if (extra === undefined) return null
   if (AUDIO_KEY.test(extra)) return noAudio
   if (DRIVE_KEY.test(extra)) return noDrive
-  return `${extra} is not part of a ${what}`
+  return `${extra} is not part of ${/^[aeiou]/.test(what) ? "an" : "a"} ${what}`
 }
 
 /**
@@ -533,8 +533,8 @@ const CALL_INDEX_KEYS: ReadonlySet<string> = new Set([
 ])
 /** The keys of each week the call index lists; any other is refused. */
 const HELD_WEEK_KEYS: ReadonlySet<string> = new Set(["from", "to", "sha256"])
-/** The keys of a `some-ui.routine-index/1` body for the Rust Rounds routine; any other is refused. */
-const RUST_INDEX_KEYS: ReadonlySet<string> = new Set([
+/** The keys of a `some-ui.routine-index/1` body for a weekly routine (Rust Rounds, the interview week); any other is refused. */
+const WEEKLY_INDEX_KEYS: ReadonlySet<string> = new Set([
   "schema",
   "routine",
   "asOf",
@@ -651,17 +651,21 @@ function pastedTexts(body: Readonly<Record<string, unknown>>): Array<string> {
   })
 }
 
+/** `lists` said as a sentence names them: "a and b", "a, b and c". */
+const listed = (lists: ReadonlyArray<string>): string =>
+  lists.length < 2
+    ? lists.join("")
+    : `${lists.slice(0, -1).join(", ")} and ${lists.at(-1) ?? ""}`
+
 /**
- * The Rust Rounds index (RR18, paulgsc/some-ui#2693): every final week among
- * the newest home holds, each as home's record of it
- * (paulgsc/server `GET /rust-weeks/:id/record`), so the Monday routine writes
- * each essay from the final record, never a draft. A pasted error is the
- * owner's own text, and a linker's symbol can run past 256 base64-like
- * characters, so the scan for encoded bytes leaves each paste's text out
- * (`rustScanned`); a paste is still held to no `data:` URI, no Drive link and
- * home's own length.
+ * What a weekly routine's index (Rust Rounds', the interview week's) holds
+ * of each week, as home's record of it: a final week, named once by its id,
+ * whose `lists` are lists. Why not, or `null`.
  */
-const rustShape: IndexShape = (body) => {
+function finalWeeksRefusal(
+  body: Readonly<Record<string, unknown>>,
+  lists: ReadonlyArray<string>
+): string | null {
   const asOf = asOfRefusal(body)
   if (asOf !== null) return asOf
   const list = shapeOf([], ["weeks"], body)
@@ -682,10 +686,36 @@ const rustShape: IndexShape = (body) => {
     ) {
       return "each week's send must be its final, or null"
     }
-    if (!Array.isArray(week.tickets) || !Array.isArray(week.pastes)) {
-      return "each week's tickets and pastes must be lists"
+    if (!lists.every((key) => Array.isArray(week[key]))) {
+      return `each week's ${listed(lists)} must be lists`
     }
   }
+  return null
+}
+
+/**
+ * The interview week's index (IW4, paulgsc/some-ui#2935): every final week
+ * among the newest home holds, each as home's record of it (paulgsc/server
+ * `GET /interview-weeks/:id/record`), so the essay routine (IW6) writes from
+ * the final record, never a draft. It holds no text the owner typed, so the
+ * whole body is scanned for audio and Drive links.
+ */
+const interviewShape: IndexShape = (body) =>
+  finalWeeksRefusal(body, ["questions", "cards", "unanswered", "unread"])
+
+/**
+ * The Rust Rounds index (RR18, paulgsc/some-ui#2693): every final week among
+ * the newest home holds, each as home's record of it
+ * (paulgsc/server `GET /rust-weeks/:id/record`), so the Monday routine writes
+ * each essay from the final record, never a draft. A pasted error is the
+ * owner's own text, and a linker's symbol can run past 256 base64-like
+ * characters, so the scan for encoded bytes leaves each paste's text out
+ * (`rustScanned`); a paste is still held to no `data:` URI, no Drive link and
+ * home's own length.
+ */
+const rustShape: IndexShape = (body) => {
+  const weeks = finalWeeksRefusal(body, ["tickets", "pastes"])
+  if (weeks !== null) return weeks
   for (const text of pastedTexts(body)) {
     // Home counts characters, not UTF-16 units (`chars().count()`).
     if ([...text].length > PASTE_MAX_CHARS) {
@@ -730,7 +760,8 @@ const INDEX_ROUTINES: ReadonlyMap<
   ["jobs", { keys: JOBS_INDEX_KEYS, shape: jobsShape }],
   ["reflections", { keys: REFLECTIONS_INDEX_KEYS, shape: reflectionsShape }],
   ["call", { keys: CALL_INDEX_KEYS, shape: callShape }],
-  ["rust", { keys: RUST_INDEX_KEYS, shape: rustShape, scanned: rustScanned }],
+  ["rust", { keys: WEEKLY_INDEX_KEYS, shape: rustShape, scanned: rustScanned }],
+  ["interview", { keys: WEEKLY_INDEX_KEYS, shape: interviewShape }],
 ])
 
 /**
