@@ -9,12 +9,13 @@ import type {
   Feed,
   FeedChoice,
   FeedPort,
+  Game,
   HomeMessage,
 } from "@some-ui/game-week"
 import { describe, expect, it } from "vitest"
 
 import type { LivePorts, LiveWire } from "@/lib/home-link/live"
-import { liveFeed, PING_MS, QUIET_MS } from "@/lib/home-link/live"
+import { liveFeed, OPEN_MS, PING_MS, QUIET_MS } from "@/lib/home-link/live"
 import type { LiveSocketEvents } from "@/lib/home-link/live-socket"
 
 /**
@@ -67,12 +68,16 @@ const CHOICE: FeedChoice = {
   watching: { "401873010": true },
 }
 
-function offerText(seq: number, following = true): string {
+function offerText(
+  seq: number,
+  following = true,
+  games: ReadonlyArray<Game> = GAMES
+): string {
   const message: HomeMessage = {
     kind: "offer",
     seq,
     following,
-    games: GAMES,
+    games,
     offer: {
       seq,
       gameId: "401873010",
@@ -269,6 +274,15 @@ describe("liveFeed", () => {
     expect(last()).toMatchObject({ link: "away", offer: null })
   })
 
+  it("counts a socket that never opens as home out of reach, and tries again", async () => {
+    const h = harness()
+    const { last } = await watched(h)
+    await h.advance(OPEN_MS)
+    expect([last().link, h.sockets[0].closed]).toEqual(["away", true])
+    await h.advance(1_000)
+    expect(h.sockets).toHaveLength(2)
+  })
+
   it("stops trying when this build can't read home, or the phone isn't paired", async () => {
     const h = harness()
     const { last } = await watched(h)
@@ -322,8 +336,16 @@ describe("liveFeed", () => {
     const h = harness()
     const { last } = await watched(h)
     h.sockets[0].on.opened()
-    h.sockets[0].on.message(offerText(42, false))
+    h.sockets[0].on.message(offerText(41))
+    h.sockets[0].on.message(offerText(42, false, []))
     expect(last()).toMatchObject({ link: "not-following", offer: null })
+    // The week kept on the phone stays for when home is out of reach.
+    const again = liveFeed(h.ports)
+    let kept: Feed | null = null
+    again.watch((feed) => {
+      kept ??= feed
+    })
+    expect(kept!.games).toHaveLength(2)
   })
 
   it("closes in the background and when nobody watches, and keeps the week for next time", async () => {

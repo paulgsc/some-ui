@@ -35,6 +35,12 @@ export const PING_MS = 15_000
 export const QUIET_MS = 40_000
 
 /**
+ * A socket not open this long after asking for it is out of reach: off the
+ * home network a handshake can hang until the system gives up.
+ */
+export const OPEN_MS = 10_000
+
+/**
  * Where the socket is: `idle` with none, `pairing` while the pairing is read,
  * `connecting` once a socket is made, `open` once home accepted it.
  */
@@ -188,6 +194,7 @@ function connect(previous: LiveStep): LiveStep {
   const at = state.opening + 1
   return done({ ...state, phase: "pairing", opening: at }, [
     ...previous.effects,
+    { kind: "arm", timer: "quiet", ms: OPEN_MS, at },
     { kind: "read-pairing", at },
   ])
 }
@@ -241,7 +248,10 @@ function heard(state: LiveState, message: HomeMessage, now: number): LiveStep {
           link: message.following ? "live" : "not-following",
           attempt: 0,
         },
-        [quiet, { kind: "keep-week", games: message.games }]
+        // A home following no games sends none: the week kept stays.
+        message.following
+          ? [quiet, { kind: "keep-week", games: message.games }]
+          : [quiet]
       )
     }
     case "pong": {
@@ -315,7 +325,7 @@ export function step(state: LiveState, event: LiveEvent): LiveStep {
       return closed(state, 1006)
     }
     case "open-refused": {
-      return end(state, "unpaired")
+      return closed(state, 1006)
     }
     case "opened": {
       if (state.phase !== "connecting") return done(state)

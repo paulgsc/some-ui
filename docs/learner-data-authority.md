@@ -1868,12 +1868,13 @@ say is that no other path opens it:
   (`liveUrl` turns it into `wss:`; `openLiveSocket` refuses any other
   scheme); it sends only a `hello` (once home accepts the socket, and on each
   `choose` while open) and a `ping` every `PING_MS`; it drops the offer on
-  every close, on `QUIET_MS` with nothing from home, ignores an offer numbered
-  no later than the last and every event from an earlier opening; it tries
-  again only after a close that leaves it `away`, after `retryDelayMs`, or at
-  once after a `4400` that followed a hello with a `lastSeq` (with the
-  `lastSeq` forgotten), and not at all after `update` or `unpaired` until the
-  pairing changes; `liveFeed` (`live.ts`) opens, sends and arms timers only as
+  every close, on `QUIET_MS` with nothing from home or `OPEN_MS` with no
+  socket open, ignores an offer numbered no later than the last and every
+  event from an earlier opening; it tries again only after a close that
+  leaves it `away`, after `retryDelayMs`, or at once after a `4400` that
+  followed a hello with a `lastSeq` (with the `lastSeq` forgotten), and
+  after `update` or `unpaired` not until the pairing changes, the app comes
+  back to the front or Game day is opened again; `liveFeed` (`live.ts`) opens, sends and arms timers only as
   `step`'s effects say; and the Game day route makes the feed with
   `gameDayFeed` only in the device build's non-development branch.
 - _Falsified by:_ a hunk to `lib/home-link/live-machine.ts` that returns a
@@ -1883,7 +1884,7 @@ say is that no other path opens it:
   `connect`'s guard; that returns a `hello` or `ping` effect from anywhere but
   `hello`, `opened` and the `ping` timer; that keeps `offer` across `end`,
   removes the `seq` check in `heard` or the `stale` check in `step`, or
-  removes or lengthens the quiet timer; that retries after a close
+  removes or lengthens the quiet timer or the opening one (`OPEN_MS`); that retries after a close
   `triesAgain` refuses other than by the 4400 rule, or widens that rule beyond
   a hello with a `lastSeq`; or that changes `linkAfterClose`, `triesAgain` or
   `retryDelayMs` (`live-model.ts`) to retry sooner or after `update` or
@@ -1908,7 +1909,12 @@ say is that no other path opens it:
   `retry` timer and `closed`'s 4400 rule; `hello` effects only from `hello`
   (called by `choose` and `opened`); `ping` effects only from `opened` and the
   `ping` timer; `socket.send` and `ports.open` only in `run`; `gameDayFeed`
-  only in `gameWeekPorts`'s non-`DEV` branch.
+  only in `gameWeekPorts`'s non-`DEV` branch. One limit, stated rather
+  than held: home refuses a revoked session's upgrade with a 401 or 403,
+  which a page sees only as close 1006, so a phone that still holds a
+  pairing home has ended reads it as `away` and keeps trying (at most every
+  30 s, and only while Game day shows) until the pairing changes; `4401`
+  reaches it only on a socket already open.
 
 ## Not covered, on purpose
 

@@ -30,7 +30,7 @@ import { livePairing } from "./live-pairing"
 import type { LiveSocket, LiveSocketEvents } from "./live-socket"
 import { openLiveSocket } from "./live-socket"
 
-export { PING_MS, QUIET_MS } from "./live-machine"
+export { OPEN_MS, PING_MS, QUIET_MS } from "./live-machine"
 
 const WEEK_KEY = "some-ui:game-week.week"
 const WEEK_QUARANTINE = "some-ui:game-week.week.unreadable."

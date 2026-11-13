@@ -98,6 +98,12 @@ describe("biteFields (GW4)", () => {
     expect(
       biteFields({ how: "said-first" }, MOMENT, STARTED)
     ).not.toHaveProperty("offset")
+    // Home refuses an offset past a day either way, and the bite with it.
+    const at = (offsetMs: number): string | undefined =>
+      biteFields({ how: "said-first" }, { ...MOMENT, offsetMs }, STARTED).offset
+    expect([86_400_000, -86_400_000, 86_400_001, -172_800_000].map(at)).toEqual(
+      ["86400000", "-86400000", undefined, undefined]
+    )
   })
 
   it("keeps the strip and context to one line home takes", () => {

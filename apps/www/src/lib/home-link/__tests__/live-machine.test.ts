@@ -97,6 +97,7 @@ describe("the live socket's machine", () => {
     expect(closed.effects.map((e) => e.kind)).toEqual([
       "close",
       "disarm",
+      "arm",
       "read-pairing",
     ])
   })

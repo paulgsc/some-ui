@@ -13,6 +13,13 @@ import { CATALOG_VERSION } from "@some-ui/game-scenarios"
 
 import type { ModeId } from "./modes"
 
+/**
+ * The largest clock offset home keeps with a bite, either way (a day,
+ * paulgsc/server `crates/db/voice` `MAX_OFFSET_MS`): home refuses a bite
+ * carrying a larger one, so a phone whose clock is that far off sends none.
+ */
+const MAX_OFFSET_MS = 86_400_000
+
 /** How the bite was said: what the person tapped to say it. */
 export type BiteHow =
   | "offered"
@@ -98,7 +105,7 @@ export function biteFields(
   fields.strip = line(moment.strip)
   fields.watching = moment.watching ? "1" : "0"
   fields.started = new Date(startedAt).toISOString()
-  if (moment.offsetMs !== null)
+  if (moment.offsetMs !== null && Math.abs(moment.offsetMs) <= MAX_OFFSET_MS)
     fields.offset = String(Math.round(moment.offsetMs))
   fields.mode = moment.mode
   fields.catalog = String(CATALOG_VERSION)
