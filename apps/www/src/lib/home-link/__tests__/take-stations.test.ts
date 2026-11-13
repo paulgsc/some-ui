@@ -142,12 +142,38 @@ describe("a move of a take, to home (CONVEYOR1)", () => {
     expect(conveyor.port.due()).toEqual([])
   })
 
-  it("keeps a move home didn't find owed, and goes on to the next", async () => {
+  it("keeps every move owed, and asks no more, of a home without the route", async () => {
     const conveyor = conveyorWith(["gone", "t2"])
     const sent: Sent = []
-    await sendStationMoves(conveyor.port, home({ gone: 404 }, sent))
-    expect(sent).toHaveLength(2)
-    expect(conveyor.port.due().map(({ take }) => take)).toEqual(["gone"])
+    expect(
+      await sendStationMoves(conveyor.port, home({ gone: 404 }, sent))
+    ).toEqual({ kind: "synced" })
+    expect(sent).toHaveLength(1)
+    expect(conveyor.port.due().map(({ take }) => take)).toEqual(["gone", "t2"])
+  })
+
+  it("keeps a move dated past home's clock owed, with the take's later ones, and goes on to other takes", async () => {
+    const conveyor = conveyorWith(["t1", "t2"])
+    conveyor.move({ take: "t1", from: "cooking", seq: 1, to: "canned" })
+    const sent: Sent = []
+    const ahead: HomeCall = (method, path, body) => {
+      sent.push([method, path, body])
+      if (path.includes("/t1/")) {
+        return Promise.resolve({
+          status: 422,
+          body: JSON.stringify({
+            error: { details: { at: ["more than 5 minutes ahead"] } },
+          }),
+        })
+      }
+      return home({}, [])(method, path, body)
+    }
+    await sendStationMoves(conveyor.port, ahead)
+    expect(sent.map(([, path]) => path)).toEqual([
+      "/voice-notes/t1/station",
+      "/voice-notes/t2/station",
+    ])
+    expect(conveyor.port.due().map(({ move }) => move)).toEqual(["m1", "m3"])
   })
 
   it("drops a move made from where the take no longer stands, with where home says it is", async () => {
@@ -193,7 +219,7 @@ describe("a move of a take, to home (CONVEYOR1)", () => {
     expect(conveyor.port.due()).toHaveLength(1)
   })
 
-  it("sends no later move of a take whose earlier one went stale, or stays owed", async () => {
+  it("sends no later move made along a stale move's chain, or of a take whose move stays owed", async () => {
     const twice = (): TakeConveyor => {
       const conveyor = conveyorWith(["t1"])
       conveyor.move({
@@ -209,23 +235,71 @@ describe("a move of a take, to home (CONVEYOR1)", () => {
     await sendStationMoves(
       stale.port,
       home({ t1: 409 }, sent, {
-        t1: { id: "t1", station: "cooking", seq: 1, labels: [], history: [] },
+        t1: { id: "t1", station: "canned", seq: 3, labels: [], history: [] },
       })
     )
     expect(sent.map(([method]) => method)).toEqual(["POST", "GET"])
     expect(stale.port.due()).toEqual([])
     expect(
-      stale.standing("t1", { station: "cooking", stationSeq: 1 })?.missed
-    ).toEqual({
-      to: "cooking",
-      why: "stale",
-    })
+      stale.standing("t1", { station: "canned", stationSeq: 3 })?.missed
+    ).toEqual({ to: "cooking", why: "stale" })
 
-    const unfound = twice()
+    const ahead = twice()
     const asked: Sent = []
-    await sendStationMoves(unfound.port, home({ t1: 404 }, asked))
+    const late: HomeCall = (method, path, body) => {
+      asked.push([method, path, body])
+      return Promise.resolve({
+        status: 422,
+        body: JSON.stringify({ error: { details: { at: ["ahead"] } } }),
+      })
+    }
+    await sendStationMoves(ahead.port, late)
     expect(asked).toHaveLength(1)
-    expect(unfound.port.due()).toHaveLength(2)
+    expect(ahead.port.due()).toHaveLength(2)
+  })
+
+  it("still sends the chain of a move another device already made, and says nothing missed", async () => {
+    const conveyor = (() => {
+      const made = conveyorWith(["t1"])
+      made.move({ take: "t1", from: "cooking", seq: 1, to: "ready-for-pickup" })
+      return made
+    })()
+    const sent: Sent = []
+    let posts = 0
+    const call: HomeCall = (method, path, body) => {
+      sent.push([method, path, body])
+      if (method === "GET") {
+        // Home is just where the first move would have put the take.
+        return Promise.resolve({
+          status: 200,
+          body: JSON.stringify({
+            id: "t1",
+            station: "cooking",
+            seq: 1,
+            labels: [],
+            history: [],
+          }),
+        })
+      }
+      posts += 1
+      return Promise.resolve(
+        posts === 1
+          ? { status: 409, body: "{}" }
+          : {
+              status: 200,
+              body: JSON.stringify({
+                change: "moved",
+                take: { id: "t1", station: "ready-for-pickup", seq: 2 },
+              }),
+            }
+      )
+    }
+    await sendStationMoves(conveyor.port, call)
+    expect(sent.map(([method]) => method)).toEqual(["POST", "GET", "POST"])
+    expect(conveyor.port.due()).toEqual([])
+    expect(
+      conveyor.standing("t1", { station: "cooking", stationSeq: 1 })
+    ).toMatchObject({ station: "ready-for-pickup", missed: null })
   })
 
   it("counts a move home already holds as kept, though the take has moved on since", async () => {

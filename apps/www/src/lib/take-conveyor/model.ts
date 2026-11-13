@@ -26,7 +26,8 @@
  *   take's newest move number it was made from (`seq`); home keeps it only
  *   while that is still the newest, and the station shown is the phone's
  *   latest move while it is ahead of home's number, else home's word
- *   (`stationOf`). A phone's wrong clock changes only the day it shows.
+ *   (`stationOf`). A phone's clock never orders moves: it dates them, and
+ *   home holds back one dated past its own clock until that catches up.
  */
 import { assertNever, isRecord } from "@some-ui/core-utils"
 
@@ -135,7 +136,13 @@ function answered(
     (kept) => kept.move === move && kept.home === "owed"
   )
   if (at === -1) return state
-  let after = home === "held" ? null : state.moves[at]
+  // Home stands where the move would have put the take (another device made
+  // the same move): what was made from there still fits home.
+  const arrived =
+    there !== null &&
+    there.station === state.moves[at].to &&
+    there.seq === state.moves[at].seq + 1
+  let after = home === "held" || arrived ? null : state.moves[at]
   return {
     moves: state.moves.map((kept, index) => {
       if (index === at) {
@@ -263,7 +270,13 @@ export function stationOf(
   const taken = lastTaken === -1 ? undefined : mine[lastTaken]
   // How far home may be and still be the place an unkept move found.
   const upTo = (kept: KeptMove): number => kept.there?.seq ?? kept.seq
-  const unkept = mine.slice(lastTaken + 1).find((kept) => homeSeq <= upTo(kept))
+  // A stale move whose take home already put where it was going isn't one
+  // the owner missed.
+  const landed = (kept: KeptMove): boolean =>
+    kept.there?.station === kept.to && kept.there.seq === kept.seq + 1
+  const unkept = mine
+    .slice(lastTaken + 1)
+    .find((kept) => !landed(kept) && homeSeq <= upTo(kept))
   const missed: Missed | null =
     unkept === undefined
       ? null
@@ -406,6 +419,7 @@ function isKeptMove(kept: unknown): kept is KeptMove {
     typeof kept.at === "string" &&
     typeof kept.seq === "number" &&
     Number.isInteger(kept.seq) &&
+    kept.seq >= 0 &&
     (kept.labels === null || isStrings(kept.labels)) &&
     (kept.comment === null || typeof kept.comment === "string") &&
     HOMES.some((home) => home === kept.home) &&

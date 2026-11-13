@@ -19,14 +19,20 @@
  *   on the take's row; the phone's later moves of the take go with it
  *   (`lib/take-conveyor`), and are not sent. A read home can't answer
  *   ends the run with the move still owed, and a `401` there as below;
- * - `422`, a move home won't take as it is: refused for good, said to the
- *   native log;
+ * - `422` naming only `at`, a move dated past home's clock (a phone clock
+ *   running ahead): still owed, with the take's later moves, until home's
+ *   clock catches up;
+ * - any other `422`, a move home won't take as it is: refused for good,
+ *   said to the native log;
  * - `404` as home's JSON error: home keeps no such take on the conveyor
  *   (let go, an idea's answer, or none of this phone's owner): dropped as
- *   off the conveyor, with the take's later moves;
- * - `404` in plain words, a home without the conveyor's routes: still
- *   owed, with the take's later moves, asked again on every run, said to
- *   the native log once a launch;
+ *   off the conveyor, with the take's later moves. A move is only ever
+ *   made of a take home lists on the conveyor (the conveyor page offers
+ *   moves only on rows home names a station for), so this never drops a
+ *   move of a take home doesn't hold yet;
+ * - `404` in plain words, a home without the conveyor's routes: every move
+ *   stays owed and the run asks no more of them, said to the native log
+ *   once a launch;
  * - `401`: home no longer knows this phone, and the run ends there;
  * - anything else ends the run, each move still owed.
  */
@@ -79,6 +85,7 @@ function readStation(
   const holds = answer.history.some(
     (row) =>
       isRecord(row) &&
+      row.seq === move.seq + 1 &&
       row.from === move.from &&
       row.to === move.to &&
       sameAt(row.at, move.at)
@@ -86,7 +93,10 @@ function readStation(
   const { station, seq } = answer
   return {
     there:
-      isTakeStation(station) && typeof seq === "number"
+      isTakeStation(station) &&
+      typeof seq === "number" &&
+      Number.isInteger(seq) &&
+      seq >= 0
         ? { station, seq }
         : null,
     holds,
@@ -132,6 +142,18 @@ async function afterConflict(
  */
 const fromHome = (body: string): boolean => body.trimStart().startsWith("{")
 
+/**
+ * Whether a `422` refuses only when the move was made (`details.at`): home
+ * takes no move dated past its own clock, so it is a phone clock running
+ * ahead, which time mends.
+ */
+function onlyWhen(body: string): boolean {
+  const answer = jsonOf(body)
+  if (!isRecord(answer) || !isRecord(answer.error)) return false
+  const { details } = answer.error
+  return isRecord(details) && Object.keys(details).join() === "at"
+}
+
 /** Home not taking a move, said to the native log. */
 const untaken = untakenTold("Studio takes (where each is, to home)", {
   unkept:
@@ -163,14 +185,19 @@ export async function sendStationMoves(
       continue
     }
     if (answer.status === 404) {
-      heldBack.add(move.take)
+      // A home without the route answers every move so: ask nothing more.
       untaken(move.move, 404)
-      continue
+      return { kind: "synced" }
     }
     if (answer.status === 409) {
       const after = await afterConflict(move, send)
       if (after.kind === "ended") return after.exchanged
       port.answered(move.move, after)
+      continue
+    }
+    if (answer.status === 422 && onlyWhen(answer.body)) {
+      // A phone clock ahead of home's: the move goes once home's catches up.
+      heldBack.add(move.take)
       continue
     }
     if (answer.status === 422) {
