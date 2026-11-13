@@ -1967,6 +1967,24 @@
       "refs": [
         "#2700"
       ]
+    },
+    {
+      "id": "C220",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/home-switches/words.ts",
+        "apps/www/src/routes/_dashboard/_lan/home-switches.tsx"
+      ],
+      "chose": "The game feed's switch is a second row on Home's switches, under Rust Rounds recording, labelled \"Following NFL games\" and reading \"Following\" or \"Paused\", each switch with its own runtime and its own words in the one words table.",
+      "options": [
+        "(a) a second row on the same page, labelled for what home does (following NFL games)",
+        "(b) a row labelled for the feature (\"Game feed\"), reading On or Paused",
+        "(c) its own page under the game day surface"
+      ],
+      "gray": "The owner asked for the switch beside Rust Rounds' and said nothing of its words or place on the page; the label and the on/off words are what the owner sees each time they open it.",
+      "undo": "Change GAME_FEED's label and on word in apps/www/src/lib/home-switches/words.ts, or reorder SWITCH_KEYS in model.ts.",
+      "refs": ["#2074", "#2712"]
     }
   ]
 }
