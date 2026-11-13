@@ -1763,6 +1763,52 @@
       ]
     },
     {
+      "id": "C143",
+      "made": "2026-11-13",
+      "by": "claude",
+      "agreed": "2026-11-13",
+      "paths": [
+        "apps/www/src/lib/jobs/journey.ts",
+        "apps/www/src/lib/jobs/model.ts"
+      ],
+      "chose": "JB2's first tolerance call (a share nobody confirmed, that a run read, still asks \"Did they arrive?\") is answered (a) keep, because it is moot: HF2 (#2177) took the Jobs share sheet away, so nothing in Jobs asks \"Did they arrive?\" any more. Every share is filed with home and recorded shared and arrived at one instant. A sheet share from before HF2 that nobody confirmed reads as read once a run named it, otherwise as on the phone, and what it held is filed with home either way.",
+      "options": [
+        "(a) keep it",
+        "(b) once a digest's read names the file, record arrived and say so on the card",
+        "(c) stop asking, but keep the audio until the owner confirms"
+      ],
+      "gray": "#2013 put it to the owner as a choice between keeping the confirmation and recording arrival from a run's read; nothing recorded settled it. Owner, 2026-11-13, on #2013 and two other items: \"These aren't blocked on me… for one of them, there is a wait on me. Let's just go with the recommended.\"",
+      "undo": "Nothing to undo in code: a confirmation would first have to come back with a share sheet, and then (b) or (c) could be built on it.",
+      "refs": [
+        "#2013",
+        "#2006",
+        "#2177"
+      ]
+    },
+    {
+      "id": "C144",
+      "made": "2026-11-13",
+      "by": "claude",
+      "agreed": "2026-11-13",
+      "paths": [
+        "apps/www/src/lib/jobs/journey.ts",
+        "apps/www/src/lib/jobs/model.ts",
+        "apps/www/src/lib/jobs/stored.ts",
+        "apps/www/src/lib/jobs/__tests__/journey.test.ts"
+      ],
+      "chose": "JB2's second tolerance call (a reinstalled phone loses carried, the phone's note of where each share's file began) is answered (a) keep the Tolerance: the note stays on the phone. A restored phone heals on a later exchange without a tap, as JB2's Tolerance says and journey.test.ts shows.",
+      "options": [
+        "(a) keep the Tolerance",
+        "(b) raise it: home's shared event gains a field for where the file began, paulgsc/server first and deployed, then the phone"
+      ],
+      "gray": "#2013 put it to the owner; (b) changes home's event shape and its deploy is the owner's to approve, against a rare state (a reinstall while a reshare made after a missed run is still within the kept digests) that heals itself. Owner, 2026-11-13, on #2013 and two other items: \"These aren't blocked on me… for one of them, there is a wait on me. Let's just go with the recommended.\"",
+      "undo": "Take (b): add the field to paulgsc/server's shared event and deploy it, then have the phone send carried with each shared event and take it back in on restore (model.ts restored), and drop the restored-phone sentence from JB2's Tolerance in journey.ts.",
+      "refs": [
+        "#2013",
+        "#2006"
+      ]
+    },
+    {
       "id": "C146",
       "made": "2026-11-13",
       "by": "claude",
