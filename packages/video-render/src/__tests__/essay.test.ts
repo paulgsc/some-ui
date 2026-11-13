@@ -283,6 +283,7 @@ describe("an essay that contradicts itself", () => {
         "QM-314: a deep dive goes into a point it doesn't have",
         "weeks: the chart doesn't end on 2026-w46",
         "weeks: they aren't oldest first, each once",
+        "Borrows into a reused buffer: in 2026-w40 it came back lower than 2026-w41, which isn't earlier",
         "Short: it has 1 cells for 6 weeks",
         "next: 2026-w45 doesn't come after 2026-w46",
       ],
@@ -291,14 +292,73 @@ describe("an essay that contradicts itself", () => {
 })
 
 describe("the chart's cells", () => {
-  it("mark decay where a level comes back lower than an earlier one", () => {
-    expect(cellsOf([4, "unmet", 3, "silent", 5, 4])).toEqual([
-      { kind: "level", level: 4, decayed: false },
-      { kind: "unmet" },
-      { kind: "level", level: 3, decayed: true },
+  const weeks = [
+    "2026-w41",
+    "2026-w42",
+    "2026-w43",
+    "2026-w44",
+    "2026-w45",
+    "2026-w46",
+  ]
+
+  it("mark a plain level below an earlier column's as decay, as a version 1 essay draws it", () => {
+    expect(cellsOf(["unmet", 4, "unmet", 3, "silent", 5], weeks, 1)).toEqual([
+      { kind: "unmet", since: false },
+      { kind: "level", level: 4, known: true, decayed: null },
+      { kind: "unmet", since: true },
+      { kind: "level", level: 3, known: false, decayed: "2026-w42" },
       { kind: "silent" },
-      { kind: "level", level: 5, decayed: false },
-      { kind: "level", level: 4, decayed: true },
+      { kind: "level", level: 5, known: true, decayed: null },
+    ])
+  })
+
+  it("say an empty week after a silence wasn't checked, not that it isn't met", () => {
+    expect(cellsOf(["silent", "unmet"], weeks, 2)).toEqual([
+      { kind: "silent" },
+      { kind: "unmet", since: true },
+    ])
+  })
+
+  it("draw the record's decay and fading as it names them (RR19)", () => {
+    expect(
+      cellsOf(
+        [4, "faded", "faded", { level: 3, below: "2026-w41" }, 2],
+        weeks,
+        2
+      )
+    ).toEqual([
+      { kind: "level", level: 4, known: true, decayed: null },
+      { kind: "faded" },
+      { kind: "faded" },
+      { kind: "level", level: 3, known: false, decayed: "2026-w41" },
+      // In version 2 only the record names decay.
+      { kind: "level", level: 2, known: false, decayed: null },
+    ])
+  })
+
+  it("are refused where only version 2 draws them, or name a week that isn't earlier", () => {
+    const essay = sample()
+    const concepts = [
+      {
+        name: "Drop order",
+        cells: [
+          4,
+          "faded",
+          "unmet",
+          "unmet",
+          "unmet",
+          { level: 2, below: "2026-w46" },
+        ],
+      },
+    ]
+    const v1 = parseEssay({
+      ...essay,
+      template: { ...essay.template, version: 1 },
+      weeks: { ...essay.weeks, concepts },
+    })
+    expect(v1.ok ? [] : v1.problems).toEqual([
+      "Drop order: decay and fading are drawn from version 2 of the template",
+      "Drop order: in 2026-w46 it came back lower than 2026-w46, which isn't earlier",
     ])
   })
 })

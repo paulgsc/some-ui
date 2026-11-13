@@ -48,6 +48,11 @@ outside the checkout as `<run>`.
    - `next`: next week's id, when it opens and is due, its `seeds` (the
      errors the owner pasted, each with what they said about it) and its
      `topics`. It is `null` when the mailbox already holds next week.
+   - `due`: the concepts the decay record says are due a recheck next week,
+     and why: `decayed`, `faded` (may have faded), `not-answered` (last left
+     silent) or `not-yet-known`. It is
+     read from the essays already written, so this run's own answers aren't
+     in it yet.
 3. **Write `<run>/values.json`** from the bundle alone, as "What you write"
    says.
 4. **Finish:** `pnpm monday finish --from <run>`. It runs every program of
@@ -79,8 +84,11 @@ public record, made to be rewatched: say what each thing is, in plain
 sentences, and assume nothing remembered.
 
 - `open`: the week's company, story and SLA, restated in a few sentences.
-- `weeks`: what the chart shows. Name no role or level beyond SOLO: the role
-  line isn't worked out yet (RR19, #2694), and code says so on screen.
+- `weeks`: what the chart shows. Code draws the chart and the role line from
+  the decay record (RR19, #2695) and writes a sentence under it for each
+  decay and fading, so say what the essays' SOLO levels show over the weeks,
+  and the bundle's `due`, in plain words. Name no role, stage or level beyond
+  SOLO's: the role line is code's, read across weeks by a stated rule.
 - `next`: what next week comes back to, from the bundle's `next`.
 
 Each ticket is
@@ -167,8 +175,10 @@ references and the rubric.
   Leave `seed` out on every other ticket.
 
 **Topics** are code's (`src/lib/monday/topics.ts`). The bundle lists the
-pasted errors first. Next come the concepts the decay record marks decayed
-or due a check (RR19, #2695; until it exists there are none). Last come the
+pasted errors first. Next come the concepts the decay record marks due a
+recheck (RR19, #2695, the bundle's `due`): decayed first, then those that may
+have faded, then those met and not yet known, each past its recheck on the
+Leitner system. Last come the
 areas of the references that no week touched longest ago. Write to the
 topics the bundle gives, and never choose others in their place.
 

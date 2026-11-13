@@ -2040,6 +2040,94 @@
       "refs": [
         "#2473"
       ]
+    },
+    {
+      "id": "C267",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/ui/rust-rounds/src/lib/decay/index.ts",
+        "packages/ui/rust-rounds/src/lib/monday/bundle.ts"
+      ],
+      "chose": "The per-concept history RR19 keeps on home is derived on every Monday run from what home already keeps append-only, each week's tickets and the concepts they name plus each essay's SOLO level or silence per ticket, with no new table, route or file on home.",
+      "options": [
+        "derive it from the weeks and essays home keeps",
+        "a table and route on paulgsc/server holding each concept's checks",
+        "a decay file the routine puts in the mailbox each week"
+      ],
+      "gray": "#2695 asks for 'a per-concept history on home, built from the essays' judgements, append-only' and leaves its shape open; a stored copy could drift from the essays it restates.",
+      "undo": "Add a server table of checks written from each essay, and read it in prepare instead of recordOf(judgedOf(history)).",
+      "refs": [
+        "#2695",
+        "#2231"
+      ]
+    },
+    {
+      "id": "C268",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/ui/rust-rounds/src/lib/decay/index.ts",
+        "packages/video-render/src/essay.ts",
+        "packages/ui/rust-rounds/src/lib/monday/topics.ts"
+      ],
+      "chose": "A concept comes back on the Leitner system (Leitner, 1972): five boxes rechecked after 1, 2, 4, 8 and 16 weeks. An answer at relational or above that didn't come back lower moves it up a box. Anything else, a silence included, sends it to box 1. Decay is an answer below the level it stood at, the highest shown since it last decayed, so a concept that settles lower climbs again. Only a concept last shown known may have faded; one below relational is just due. The due list runs decayed, then faded, then last left unanswered, then not yet known, the longest overdue first, and leaves out a concept asked by a week whose essay isn't written yet when this run writes it, or when that week ended in the last two weeks.",
+      "options": [
+        "the Leitner system, relational as the pass",
+        "SM-2's ease factors over the five SOLO levels",
+        "a fixed recheck every N weeks"
+      ],
+      "gray": "#2695 recommends Leitner but leaves open what passes a box on SOLO, what silence does, whether below-relational answers can fade, and the order of the due list; box 1 every week means anything not yet known comes back each week while topics have room.",
+      "undo": "Change LEITNER in packages/video-render/src/essay.ts and standingAt/dueAt in the decay module.",
+      "refs": [
+        "#2695"
+      ]
+    },
+    {
+      "id": "C269",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/ui/rust-rounds/src/lib/decay/index.ts",
+        "packages/ui/rust-rounds/src/lib/monday/finish.ts"
+      ],
+      "chose": "The role line is the Dreyfus model of skill acquisition (Dreyfus & Dreyfus, 1980), each stage beside a SOLO level (Novice 1, Advanced beginner 3, Competent 4, Proficient 5, Expert none). The fit is the highest stage whose level at least half the concepts met hold by their last answer, with silence and fading holding none. It shows the week the fit has held since and the gap to the next stage as counts of concepts, and says 'not worked out yet' before three weeks of answers.",
+      "options": [
+        "Dreyfus's stages by that rule",
+        "a public engineering career framework",
+        "Dreyfus's stages by the SOLO level of the median concept"
+      ],
+      "gray": "The owner's answer on #2694 asks for a published ladder and a stated rule and named neither; no public career framework grades Rust explanations, and the SOLO-to-stage pairing and 'half the concepts' are this call's.",
+      "undo": "Change DREYFUS and roleAt in the decay module; the sample essay's role follows in the decay test.",
+      "refs": [
+        "#2694",
+        "#2695"
+      ],
+      "moves": "C102"
+    },
+    {
+      "id": "C270",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/essay.ts",
+        "packages/video-render/src/templates/rust-essay/v2.json",
+        "packages/ui/rust-rounds/src/lib/monday/finish.ts",
+        "apps/www/src/lib/web-surface/call/essay-stage.tsx"
+      ],
+      "chose": "The chart comes from the decay record. Its rows are this week's concepts in ticket order, then the others met in the weeks shown, the most recently checked first, at most 6 (ESSAY_CHART_ROWS, what the recorded frame holds beside the notes and role line). Version 2 of the essay's template adds two cells, 'faded' and a decayed level naming the earlier week it fell below. The stage writes a sentence under the chart for each decay and fading, at most three, and cites Leitner. The routine pins version 2 only when the chart draws one of those cells, so an essay without them still renders on a stage built before.",
+      "options": [
+        "version 2 only when needed",
+        "always version 2",
+        "no new cells: the stage presumes fading from the cells it shows"
+      ],
+      "gray": "Home's render image is built from some-ui by hand, so an essay at a newer version waits until the owner rebuilds it; drawing fading from the shown weeks alone would disagree with the due list once the history outgrows the chart's twelve weeks.",
+      "undo": "Write template.version ESSAY_VERSION in finish.ts's buildEssay, or drop the two cells and ESSAY_VERSION back to 1.",
+      "refs": [
+        "#2695",
+        "#2690"
+      ],
+      "moves": "C101"
     }
   ]
 }
