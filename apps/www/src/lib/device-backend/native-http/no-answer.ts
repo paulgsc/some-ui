@@ -11,3 +11,20 @@ import { ForeignCallError } from "@/lib/intent/foreign"
 export class HomeNoAnswerError extends ForeignCallError {
   override name = "HomeNoAnswerError"
 }
+
+/**
+ * What the link answers, sending nothing, while the phone is held away from
+ * home (AW1, `lib/home-link/away`): read as home's silence, as it is.
+ */
+export class HomeAwayError extends HomeNoAnswerError {
+  override name = "HomeAwayError"
+
+  constructor() {
+    super({
+      kind: "unreachable",
+      retryable: true,
+      summary: "Away from home: nothing was sent.",
+      cause: null,
+    })
+  }
+}
