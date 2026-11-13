@@ -12,6 +12,7 @@
  * Phone-only (`build.paths.ts`).
  */
 import { useSyncExternalStore } from "react"
+import { reportFailure } from "@some-ui/intent-kit"
 
 import { after } from "@/lib/clock"
 import { homeRequest } from "@/lib/device-backend/native-http"
@@ -45,6 +46,13 @@ export function homeLink(): HomeLink {
       request: homeRequest,
       onHidden,
       ...LINK_CLOCK,
+      report: reportFailure,
+      onNetwork: (listener) => {
+        window.addEventListener("online", listener)
+        return (): void => {
+          window.removeEventListener("online", listener)
+        }
+      },
     })
     void link.load()
   }

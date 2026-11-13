@@ -3,6 +3,7 @@ import { assertNever } from "@some-ui/core-utils"
 import {
   essayFormat,
   hasCaptions,
+  LEITNER,
   markThemeOf,
   sampleEssay,
   SOLO_LEVELS,
@@ -236,7 +237,7 @@ const Cell = ({ cell }: { cell: CellView }): JSX.Element => {
     case "unmet": {
       return (
         <td
-          title={W.cell.unmet}
+          title={cell.since ? W.cell.unchecked : W.cell.unmet}
           className="border-border border border-dashed"
         />
       )
@@ -251,15 +252,29 @@ const Cell = ({ cell }: { cell: CellView }): JSX.Element => {
         </td>
       )
     }
-    case "level": {
+    case "faded": {
       return (
         <td
-          title={`${SOLO_LEVELS[cell.level - 1] ?? ""}${cell.decayed ? `: ${W.cell.decayed}` : ""}`}
+          title={W.cell.faded}
+          className="border-border text-muted-foreground border border-dotted text-center"
+        >
+          ~
+        </td>
+      )
+    }
+    case "level": {
+      const notes = [
+        ...(cell.known ? [] : [W.cell.notKnown]),
+        ...(cell.decayed === null ? [] : [W.cell.decayed]),
+      ]
+      return (
+        <td
+          title={[SOLO_LEVELS[cell.level - 1] ?? "", ...notes].join(": ")}
           className={`border-border border text-center font-bold ${cell.level >= 3 ? "text-primary-foreground" : "text-foreground"} ${LEVEL_CLASS[cell.level] ?? ""}`}
         >
           {/* A recording has no tooltips: the level is drawn. */}
           {cell.level}
-          {cell.decayed ? " ↓" : ""}
+          {cell.decayed === null ? "" : " ↓"}
         </td>
       )
     }
@@ -507,7 +522,7 @@ const Screen = ({
             </thead>
             <tbody>
               {view.rows.map((row) => (
-                <tr key={row.name} className="h-[1.8em]">
+                <tr key={row.name} className="h-[1.6em]">
                   <th className="pr-[0.6em] text-left font-normal">
                     {row.name}
                   </th>
@@ -519,19 +534,45 @@ const Screen = ({
               ))}
             </tbody>
           </table>
-          <p className="text-muted-foreground flex flex-wrap gap-x-[1.2em] text-[0.6em]">
+          <p className="text-muted-foreground flex flex-wrap gap-x-[1em] text-[0.55em]">
             <span>{W.legendLevel}</span>
+            <span>1–3: {W.cell.notKnown}</span>
             <span>↓ {W.cell.decayed}</span>
+            {view.recheck && <span>~ {W.cell.faded}</span>}
             <span>○ {W.cell.silent}</span>
             <span>┆ {W.cell.unmet}</span>
           </p>
-          <Field label={W.role}>
-            <p className="text-[0.9em] font-semibold">{role.fits}</p>
-            <p className="text-[0.75em]">{W.roleNext(role.next, role.gap)}</p>
-            <p className="text-muted-foreground text-[0.6em]">
-              {W.roleSource(role.ladder, role.source)}
-            </p>
-          </Field>
+          <div className="grid grid-cols-[3fr_2fr] gap-[1.5em]">
+            <div className="space-y-[0.4em]">
+              {view.notes.length > 0 && (
+                <ul className="text-[0.6em]">
+                  {view.notes.map((note) => (
+                    <li key={`${note.kind}-${note.name}`}>
+                      {note.kind === "decayed"
+                        ? W.noteDecayed(note.name, note.week, note.below)
+                        : W.noteFaded(note.name, note.since)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {view.recheck && (
+                <p className="text-muted-foreground text-[0.55em]">
+                  {W.recheckSource(
+                    LEITNER.name,
+                    LEITNER.source,
+                    LEITNER.weeks.join(", ")
+                  )}
+                </p>
+              )}
+            </div>
+            <Field label={W.role}>
+              <p className="text-[0.8em] font-semibold">{role.fits}</p>
+              <p className="text-[0.65em]">{W.roleNext(role.next, role.gap)}</p>
+              <p className="text-muted-foreground text-[0.6em]">
+                {W.roleSource(role.ladder, role.source)}
+              </p>
+            </Field>
+          </div>
         </Call>
       )
     }

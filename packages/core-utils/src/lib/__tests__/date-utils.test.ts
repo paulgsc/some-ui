@@ -223,6 +223,8 @@ describe("ISO weeks", () => {
   it("starts a week on its Monday, and refuses a week that is not one", () => {
     expect(isoWeekMonday("2026-W46")).toBe("2026-11-09")
     expect(isoWeekMonday("2026-W01")).toBe("2025-12-29")
+    expect(isoWeekMonday("2026-W53")).toBe("2026-12-28")
+    expect(isoWeekMonday("2027-W01")).toBe("2027-01-04")
     expect(() => isoWeekMonday("2025-W53")).toThrow(RangeError)
     expect(() => isoWeekMonday("2026-46")).toThrow(RangeError)
     expect(parseIsoWeek("2026-W53")).toEqual({ year: 2026, week: 53 })
