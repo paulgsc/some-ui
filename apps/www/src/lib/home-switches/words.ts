@@ -59,7 +59,7 @@ export const RUST_ROUNDS: SwitchWords = {
 export const GAME_FEED: SwitchWords = {
   label: "Following NFL games",
   about:
-    "Home follows each NFL game this week as it's played, and keeps every play, so Game Day on your phone can show them live and what you said about them is matched to the play. Paused, home asks for no games and the phone says home isn't following games; every game and play already kept stays. Home looks at this switch each time it wakes to follow games, and finishes anything already under way first.",
+    "Home follows each NFL game this week as it's played, and keeps every play, so Game Day on your phone can show them live and what you said about them is matched to the play. Paused, home asks for no games and the phone says home isn't following games; every game and play already kept stays. Home looks at this switch each time it sets out to follow games.",
   on: "Following",
   off: "Paused",
   turnedOn: "turned it on",
