@@ -109,7 +109,7 @@ describe("measureRead", () => {
       ...said("I built this to", { atMs: 0 }),
       // the part above ends at 1500
       ...said("keep the record.", { atMs: 1500 + pause }),
-      // the part above ends at 2700 + pause
+      // the part above ends at 2600 + pause
       ...said("Nothing is lost, ever.", { atMs: 2700 + 2 * pause + 300 }),
     ]
     const faults = measure(words, SCRIPT)
