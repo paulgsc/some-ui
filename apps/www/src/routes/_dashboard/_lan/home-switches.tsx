@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { useEffect, useMemo, useSyncExternalStore } from "react"
+import { useEffect, useState, useSyncExternalStore } from "react"
 import { Button, Label, Switch } from "@some-ui/shared"
 import { createFileRoute } from "@tanstack/react-router"
 import { toast } from "sonner"
@@ -30,8 +30,10 @@ function makeSwitch(key: SwitchKey): HomeSwitches {
 
 /** One switch's row: what it does, how it stands, and the switch itself. */
 const SwitchRow = ({ switchKey }: { switchKey: SwitchKey }): JSX.Element => {
-  // Rows are keyed by their switch, so this is made once per row.
-  const runtime = useMemo(() => makeSwitch(switchKey), [switchKey])
+  // A runtime made once per mount: rows are keyed by their switch, so a row
+  // never sees another key, and a cache React may drop would lose a set.
+  // eslint-disable-next-line owner-guard/no-mount-snapshot -- a runtime made once per mount, keyed by switch
+  const [runtime] = useState(() => makeSwitch(switchKey))
   const state = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
   useEffect(() => {
     runtime.read()
