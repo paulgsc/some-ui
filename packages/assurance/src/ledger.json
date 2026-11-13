@@ -4365,6 +4365,19 @@
       "family": "what-is-kept"
     },
     {
+      "store": "server:interview_week_draft",
+      "class": "cache",
+      "growth": "bounded: one row per (subject, interview week not yet final): the phone's current draft of the week's Send (IW4), <= SENT_CEILING = 16 KiB, replaced by each newer draft before the week's due",
+      "horizon": "deleted in the transaction that writes the week's final to interview_week_final, at the first read after due, or with the account",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:interview_week_final",
+      "class": "record",
+      "growth": "Per interview week a paired phone sent a draft of (IW4): the draft standing at the week's due, as sent (each question's and card's take id and when it was said, and those passed over), <= SENT_CEILING = 16 KiB; one row per (subject, week), written once at the first read after due, never updated; append-only; leaves with the account.",
+      "family": "what-is-kept"
+    },
+    {
       "store": "server:rust_week_paste",
       "class": "record",
       "growth": "Per error pasted in a Rust Rounds week that a paired phone sends (RR14): rustc's output as pasted, <= PASTE_MAX_CHARS = 20,000 characters, and its note's take id; one row per (subject, week, when it was begun), never updated; a few a week; append-only; leaves with the account.",
