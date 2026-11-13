@@ -1788,7 +1788,72 @@
       ],
       "gray": "#2013 put it to the owner; (b) changes home's event shape and its deploy is the owner's to approve, against a rare state (a reinstall while a reshare made after a missed run is still within the kept digests) that heals itself. Owner, 2026-11-13, on #2013 and two other items: \"These aren't blocked on me… for one of them, there is a wait on me. Let's just go with the recommended.\"",
       "undo": "Take (b): add the field to paulgsc/server's shared event and deploy it, then have the phone send carried with each shared event and take it back in on restore (model.ts restored), and drop the restored-phone sentence from JB2's Tolerance in journey.ts.",
-      "refs": ["#2013", "#2006"]
+      "refs": [
+        "#2013",
+        "#2006"
+      ]
+    },
+    {
+      "id": "C146",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/limits/index.ts",
+        "apps/www/src/lib/limits/__tests__/coverage.test.ts"
+      ],
+      "chose": "Settings' limits leave out Soundbites' six and Studio's takes' time budget: each is shown on its own screen beside the recorder, where the next take's fate is decided, and the limits test lists both with that reason.",
+      "options": [
+        "shown on their own screens only",
+        "a row on Settings › This phone as well"
+      ],
+      "gray": "SM2 asks for every cap on a Settings page, but these two already say their count where they are recorded, and reading them from Settings means reaching into Studio's own store.",
+      "undo": "Add rows for SOUNDBITE_LIMIT and JOURNAL_TAKES_MAX_BYTES to LIMIT_ROWS with a read of each store, and drop them from NOT_SHOWN.",
+      "refs": [
+        "#2121",
+        "#2107"
+      ]
+    },
+    {
+      "id": "C175",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/engagement-report.ts"
+      ],
+      "chose": "In the weekly engagement report, a change shows its difference only where both weeks are 5 or more; where one side is under 5 it says only up or down, and where both are under 5 or a week has no record it says nothing of the change.",
+      "options": [
+        "the difference only where both sides are 5 or more",
+        "the difference always, beside a banded count",
+        "no difference at all, only up, down or flat"
+      ],
+      "gray": "The owner's rule (ask #2701) says counts under 5 show as \"fewer than 5\" and changes show with the difference; a difference beside a banded count would give the banded count away. The owner said on 2026-11-13: \"Let's just go with the recommended.\"",
+      "undo": "Change publicChange in packages/video-render/src/engagement-report.ts.",
+      "refs": [
+        "#2700",
+        "#2701",
+        "#2533"
+      ]
+    },
+    {
+      "id": "C176",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/engagement-report.ts"
+      ],
+      "chose": "In the weekly engagement report, each count (offered, taken, passed over, left) is banded on its own: where offered and taken are both 5 or more and passed over is under 5, the report still shows offered and taken, though their difference estimates passed over.",
+      "options": [
+        "band each count on its own, as the owner's rule reads",
+        "band offered and taken too whenever passed over is under 5",
+        "leave passed over out of the report"
+      ],
+      "gray": "The owner's rule (ask #2701) bands counts under 5 and lists passed over among the counts, and the issue's own example (\"Drama: offered 12, taken 0\") shows offered beside a banded taken; the visit runtime makes passed over close to offered less taken, so the bands cannot hide it without hiding counts the rule shows. The owner said on 2026-11-13: \"Let's just go with the recommended.\"",
+      "undo": "In publicLines, band offered and taken for a week whose passed over is under 5, or drop passedOver from COUNT_KINDS.",
+      "refs": [
+        "#2700",
+        "#2701",
+        "#2910"
+      ]
     },
     {
       "id": "C160",
