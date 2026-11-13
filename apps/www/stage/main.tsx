@@ -1,7 +1,8 @@
 /**
- * The recording stage (`pnpm --filter www build:stage`): the four pages the
- * recorders capture (`tests/record`), `/call`, `/essay`, `/playoff-delta` and
- * `/burn-ins`, and nothing else of the app (infra/render/Dockerfile).
+ * The recording stage (`pnpm --filter www build:stage`): the five pages the
+ * recorders capture (`tests/record`), `/call`, `/essay`, `/report`,
+ * `/playoff-delta` and `/burn-ins`, and nothing else of the app
+ * (infra/render/Dockerfile).
  *
  * The routes are www's own route files, under a bare root: the same search
  * validation and the same stages, through the web surface's door (A4,
@@ -18,6 +19,7 @@ import { Route as BurnInsRoute } from "@/routes/burn-ins"
 import { Route as CallRoute } from "@/routes/call"
 import { Route as EssayRoute } from "@/routes/essay"
 import { Route as PlayoffDeltaRoute } from "@/routes/playoff-delta"
+import { Route as ReportRoute } from "@/routes/report"
 import {
   createRootRoute,
   createRouter,
@@ -46,6 +48,7 @@ const rootRoute = createRootRoute({ component: Outlet })
 const stageRoutes = [
   [CallRoute, "/call"],
   [EssayRoute, "/essay"],
+  [ReportRoute, "/report"],
   [PlayoffDeltaRoute, "/playoff-delta"],
   [BurnInsRoute, "/burn-ins"],
 ] as const

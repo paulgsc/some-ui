@@ -46,3 +46,25 @@ export const essaySource = createDataSource<string, unknown>(
     fetchOptions: { ...PUBLIC_READ, responseAs: "json" },
   }
 )
+
+/**
+ * Where the report's stage reads a report named by its week: beside the
+ * stage, as the essay's is. Home's render worker answers it from the report
+ * the recorder writes from home's own records (`record:report
+ * --report-file`); nothing else serves it to a browser.
+ */
+const reportAddress = (week: string): URL =>
+  new URL(
+    `/engagement-reports/${encodeURIComponent(week)}.json`,
+    window.location.origin
+  )
+
+/** A report's file as read, unchecked: the stage parses it (`reportStageOf`). */
+export const reportSource = createDataSource<string, unknown>(
+  { static: reportAddress, server: reportAddress },
+  {
+    mode: DATA_MODE,
+    // No cookie goes with it (LA4): the recorder answers it from the file.
+    fetchOptions: { ...PUBLIC_READ, responseAs: "json" },
+  }
+)

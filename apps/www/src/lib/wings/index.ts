@@ -175,6 +175,7 @@ export const ROOMS: ReadonlyArray<Room> = [
   { id: "burn-ins", wing: "studio", roots: ["/burn-ins", "/captions"] },
   { id: "call", wing: "studio", roots: ["/call"] },
   { id: "essay", wing: "studio", roots: ["/essay"] },
+  { id: "report", wing: "studio", roots: ["/report"] },
   { id: "jobs", wing: "jobs", roots: ["/jobs"] },
   { id: "job-run", wing: "jobs", roots: ["/job-run"], nav: "Morning run" },
   { id: "lessons", wing: "operate", roots: ["/lessons"], nav: "Lessons" },

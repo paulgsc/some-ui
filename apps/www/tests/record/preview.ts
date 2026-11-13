@@ -18,7 +18,8 @@
  * Each template's sample is in code: the weekly call's sample week, Playoff
  * Delta's sample season, its legend or its newest week, said from the
  * sample's fill (`sampleFill` in `@some-ui/playoff-delta`), and the Rust
- * Rounds essay's sample essay (`Voicing`), written as `<out>/essay.json`.
+ * Rounds essay's sample essay (`Voicing`), written as `<out>/essay.json`, and
+ * the engagement report's sample report, written as `<out>/report.json`.
  */
 
 import { parseArgs } from "node:util"
@@ -28,6 +29,7 @@ import { CALL_OPTIONS, recordCall, type CallValues } from "./call-recording"
 import { fail, runCommand } from "./command"
 import { recordEssay } from "./essay-recording"
 import { recordPlayoffDelta } from "./playoff-delta-recording"
+import { recordReport } from "./report-recording"
 
 const { values } = parseArgs({
   options: {
@@ -42,6 +44,7 @@ const PREVIEWS: Readonly<
   Record<TemplateId, (values: CallValues) => Promise<void>>
 > = {
   "conference-call": (v) => recordCall(v, { preview: true }),
+  "engagement-report": (v) => recordReport(v, { preview: true }),
   "playoff-delta-legend": (v) => recordPlayoffDelta(v, { preview: "legend" }),
   "playoff-delta-week": (v) => recordPlayoffDelta(v, { preview: "week" }),
   "rust-essay": (v) => recordEssay(v, { preview: true }),

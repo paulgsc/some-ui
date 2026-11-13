@@ -3097,6 +3097,54 @@
           "amendments": []
         }
       ]
+    },
+    {
+      "id": "engagement-report-rendered",
+      "name": "Home makes each week's engagement report into a video",
+      "why": "Each week home reads its own engagement records for the week, last week, a quarter ago and a year ago (paulgsc/server#819), and the render worker records the report code writes from them, with no writer and no model, after the owner's public-safety rule (#2700, ask #2701). The same records give the same video.",
+      "paths": [
+        "server:apps/servers/file_host/src/report_weeks.rs",
+        "server:crates/db/app_event/src/weeks.rs",
+        "server:infra/render",
+        "server:infra/compose/call-render.yml",
+        "server:infra/kokoro",
+        "some-ui:infra/render/Dockerfile",
+        "some-ui:apps/www/stage",
+        "some-ui:packages/video-render/src/engagement-report.ts",
+        "some-ui:packages/video-render/src/engagement-report-video.ts",
+        "some-ui:apps/www/src/lib/web-surface/call",
+        "some-ui:apps/www/tests/record/report.ts",
+        "some-ui:apps/www/tests/record/report-recording.ts"
+      ],
+      "modules": [],
+      "objectives": [
+        {
+          "id": "RW1",
+          "kind": "OA2",
+          "property": "outcome",
+          "claim": "Every week that has ended becomes one report video, drawn only from home's own records under the public-safety rule, or is refused and said; a week that hasn't is tried again.",
+          "requirement": "Once a week has ended on the owner's clock, home's report_weeks worker writes its answer to GET /app-events/weeks/:week as report-weeks/<YYYY-Www>.json for the render worker, once; the render worker's report job runs record:report on it, which refuses an answer that isn't home's weeks, a week still under way or edges other than the owner's Pacific week before anything is drawn, writes the report with reportWeek and the registry, and keeps report.mp4, cut-list.json and report.json in the week's folder; a failed week keeps its finished steps and is tried again.",
+          "verdict": "unproven",
+          "conclusion": "Structural on the some-ui side: the recorder and stage are tested, and a week was recorded locally from a file in home's answer's shape. The server side (the report_weeks worker and the render job, paulgsc/server#821) is not built yet, so nothing renders on home.",
+          "tracked": "some-ui#2700",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "reportWeeksOf refuses an answer that lacks a week or names one twice, a week still under way, and edges other than the owner's Pacific week; reportWeek applies the public-safety rule and writes every word from numbers; each tested.",
+              "ref": "some-ui:packages/video-render/src/engagement-report-video.ts"
+            },
+            {
+              "class": "measured",
+              "says": "Recorded locally on 2026-11-13 from the template's sample answer with the whole registry: 25 scenes at 1920x1080 with no overflow and a 3:57 report.mp4 with no voices; the template's preview gave the same bytes twice.",
+              "ref": "some-ui#2700"
+            }
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        }
+      ]
     }
   ],
   "synchronous": [
@@ -5347,6 +5395,55 @@
           "ref": "server:infra/prometheus/rules/home.yml"
         }
       ],
+      "checks": []
+    },
+    {
+      "id": "report-weeks",
+      "name": "Making each week's engagement report into a video on home",
+      "why": "Home reads its own engagement records for the week and the three it is compared with; its report_weeks worker hands that answer to the render worker, which writes the report by code, records the stage with home's speaker and keeps the video until the owner lets it go (#2700).",
+      "serves": ["engagement-report-rendered"],
+      "witnesses": ["RW1"],
+      "segments": [
+        {
+          "id": "read",
+          "name": "Home's period read counts the week's engagement events and the three weeks it is compared with. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": ["server:crates/db/app_event/src/weeks.rs"]
+        },
+        {
+          "id": "given",
+          "name": "The report_weeks worker writes each ended week's answer for the render worker, once. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": ["server:apps/servers/file_host/src/report_weeks.rs"]
+        },
+        {
+          "id": "speaker",
+          "name": "Home's Kokoro speaker says the report, the same audio for the same words. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": ["server:infra/kokoro"]
+        },
+        {
+          "id": "render",
+          "name": "The render worker's report job writes the report by code, records the stage, renders the week under home's lane and keeps it. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": [
+            "server:infra/render",
+            "server:infra/compose/call-render.yml",
+            "some-ui:infra/render/Dockerfile",
+            "some-ui:apps/www/stage",
+            "some-ui:apps/www/src/lib/web-surface/call",
+            "some-ui:packages/video-render/src/engagement-report.ts",
+            "some-ui:packages/video-render/src/engagement-report-video.ts",
+            "some-ui:apps/www/tests/record/report.ts",
+            "some-ui:apps/www/tests/record/report-recording.ts"
+          ]
+        }
+      ],
+      "signals": [],
       "checks": []
     },
     {

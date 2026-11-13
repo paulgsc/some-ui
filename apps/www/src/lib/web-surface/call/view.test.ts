@@ -1,14 +1,25 @@
+import { PIPELINES } from "@some-ui/engagement"
 import {
   CALL_INDEX_SCHEMA,
   CALL_VERSION,
   essayIntro,
+  reportPages,
+  reportProblems,
+  reportWeek,
   sampleCallWeek,
   sampleEssay,
+  sampleReport,
 } from "@some-ui/video-render"
-import type { CallIndex, CallWeek, Essay } from "@some-ui/video-render"
+import type {
+  CallIndex,
+  CallWeek,
+  EngagementReport,
+  Essay,
+} from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
 import { essayAt, essayStageOf } from "./essay-view"
+import { reportAt, reportStageOf } from "./report-view"
 import { callAt, stageOf, weekFrom } from "./view"
 
 const week = (): CallWeek => {
@@ -285,5 +296,139 @@ describe("the essay the stage draws (RR16)", () => {
       sample,
     })
     expect(broken.kind === "none" && broken.problems.length).toBeGreaterThan(0)
+  })
+})
+
+const sampleReportOf = (): EngagementReport => {
+  const parsed = sampleReport()
+  if (!parsed.ok) throw new Error(parsed.problems.join("; "))
+  return parsed.value
+}
+
+const NOT_READ: {
+  data: unknown
+  pending: boolean
+  failed: boolean
+} = { data: undefined, pending: false, failed: false }
+
+describe("the report's stage", () => {
+  it("shows the table named, and the first scene for a name it lacks", () => {
+    const at = reportAt(sampleReportOf(), "pipeline-2", false)
+    expect(at.view.section === "pipeline" && at.view.page.pipeline).toBe(
+      "Rust Rounds"
+    )
+    expect(reportAt(sampleReportOf(), "pipeline-99", false).scene.id).toBe(
+      "intro"
+    )
+  })
+
+  it("draws the overview, a wing's chapter and what moved from the report", () => {
+    expect(reportAt(sampleReportOf(), "overview", false).view).toEqual({
+      section: "overview",
+      wings: [
+        { name: "Practice", lines: 6, taken: 3 },
+        { name: "Studio", lines: 2, taken: 2 },
+        { name: "Operate", lines: 1, taken: 0 },
+        { name: "Self and work", lines: 1, taken: 1 },
+      ],
+    })
+    expect(reportAt(sampleReportOf(), "chapter-wing-1", false).view).toEqual({
+      section: "chapter",
+      title: "Practice",
+      pipelines: 2,
+    })
+    const moved = reportAt(sampleReportOf(), "moved", false).view
+    expect(moved.section === "moved" && moved.line?.name).toBe("Next lesson")
+  })
+
+  it("says a sample is one in its locked intro", () => {
+    const intro = reportAt(sampleReportOf(), "intro", true).view
+    expect(intro.section === "intro" && intro.rows[0]?.says).toBe(
+      "Code, from made-up records: this is the template's sample"
+    )
+  })
+})
+
+describe("what the report's stage draws from its read", () => {
+  const read = (data: unknown): typeof NOT_READ => ({
+    data,
+    pending: false,
+    failed: false,
+  })
+
+  it("draws the sample with no week, or for a viewer whatever week is named", () => {
+    for (const [week, viewer] of [
+      [undefined, false],
+      ["sample", false],
+      ["2026-W46", true],
+    ] as const) {
+      const state = reportStageOf({
+        week,
+        viewer,
+        read: read(sampleReportOf()),
+        sample: sampleReport(),
+      })
+      expect(state.kind === "show" && state.sample).toBe(true)
+    }
+  })
+
+  it("draws the week named as read, and never the sample in its place", () => {
+    const shown = reportStageOf({
+      week: "2026-W46",
+      viewer: false,
+      read: read(sampleReportOf()),
+      sample: sampleReport(),
+    })
+    expect(shown.kind === "show" && shown.sample).toBe(false)
+    expect(
+      reportStageOf({
+        week: "2026-W47",
+        viewer: false,
+        read: read(sampleReportOf()),
+        sample: sampleReport(),
+      })
+    ).toEqual({
+      kind: "none",
+      problems: ["The report read is 2026-W46's, not 2026-W47's"],
+    })
+    expect(
+      reportStageOf({
+        week: "2026-W46",
+        viewer: false,
+        read: { ...NOT_READ, failed: true },
+        sample: sampleReport(),
+      })
+    ).toEqual({
+      kind: "none",
+      problems: ["No report of 2026-W46 could be read"],
+    })
+    expect(
+      reportStageOf({
+        week: "2026-W46",
+        viewer: false,
+        read: { ...NOT_READ, pending: true },
+        sample: sampleReport(),
+      })
+    ).toEqual({ kind: "waiting" })
+    const broken = reportStageOf({
+      week: "2026-W46",
+      viewer: false,
+      read: read({ schema: "something else" }),
+      sample: sampleReport(),
+    })
+    expect(broken.kind).toBe("none")
+  })
+})
+
+describe("the registry's report", () => {
+  it("fits the template's tables, each within the frame's lines", () => {
+    // Every line the registry names, on a week with a record: what home's
+    // first reports draw.
+    const report = reportWeek(
+      { week: "2026-W46", now: [], last: [], quarter: null, year: null },
+      PIPELINES
+    )
+    expect(reportProblems(report)).toEqual([])
+    expect(reportPages(report).length).toBeGreaterThan(0)
   })
 })
