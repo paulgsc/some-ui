@@ -281,6 +281,8 @@ export function stationOf(
         : last,
     -1
   )
+  // The latest by when this phone made it, which is also by number: each
+  // move is made from the number the one before it showed.
   const taken = lastTaken === -1 ? undefined : mine[lastTaken]
   // How far home may be and still be the place an unkept move found.
   const upTo = (kept: KeptMove): number => kept.there?.seq ?? kept.seq
@@ -313,7 +315,8 @@ export function stationOf(
   if (taken !== undefined && taken.seq + 1 > homeSeq) {
     return {
       station: taken.to,
-      at: taken.at,
+      // Another device's move: when it was made there is home's to say.
+      at: landed(taken) ? null : taken.at,
       seq: taken.seq + 1,
       going: taken.home === "owed",
       missed,

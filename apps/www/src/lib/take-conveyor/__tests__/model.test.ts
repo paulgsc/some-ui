@@ -233,11 +233,40 @@ describe("stationOf", () => {
     )
     expect(stationOf("take-1", oven, state)).toEqual({
       station: "cooking",
-      at: "2026-11-13T10:00:00.000Z",
+      at: null,
       seq: 1,
       going: false,
       missed: null,
     })
+  })
+
+  it("orders a move another device already made with the moves around it", () => {
+    const landedFirst = stepConveyor(
+      moved(INITIAL_CONVEYOR, move("m1", "in-the-oven", "cooking", 0)),
+      { kind: "stale", move: "m1", there: { station: "cooking", seq: 1 } }
+    )
+    // An owed move made from it is the take's latest.
+    expect(
+      stationOf(
+        "take-1",
+        oven,
+        moved(landedFirst, move("m2", "cooking", "canned", 1))
+      )
+    ).toMatchObject({ station: "canned", seq: 2, going: true, missed: null })
+    // A refused move made from it is said, and it stands.
+    const refused = stepConveyor(
+      moved(landedFirst, move("m2", "cooking", "canned", 1)),
+      { kind: "refused", move: "m2" }
+    )
+    expect(stationOf("take-1", oven, refused)).toMatchObject({
+      station: "cooking",
+      seq: 1,
+      missed: { to: "canned", why: "refused" },
+    })
+    // Home's read ahead of it is home's word, with nothing missed.
+    expect(
+      stationOf("take-1", { station: "canned", stationSeq: 3 }, landedFirst)
+    ).toMatchObject({ station: "canned", seq: 3, missed: null })
   })
 
   it("says a move dropped as off the conveyor", () => {
@@ -378,6 +407,12 @@ describe("parseConveyor", () => {
     ).toBeNull()
     expect(
       parseConveyor({ moves: [{ ...state.moves[0], at: "2026-11-13" }] })
+    ).toBeNull()
+    // A time the phone wouldn't write, though it reads as one.
+    expect(
+      parseConveyor({
+        moves: [{ ...state.moves[0], at: "2026-11-13T10:00:00Z" }],
+      })
     ).toBeNull()
     expect(
       parseConveyor({ moves: [{ ...state.moves[0], seq: "1" }] })
