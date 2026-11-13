@@ -3,9 +3,15 @@
  * grows, read only, as the prototype agreed (boards 2, 3 and 8 of
  * https://claude.ai/artifact/5BvL59CmrjzxQ2JbUj15PN). Three figures, three
  * charts (`./device-my-data-charts`), each kind of recording with how many
- * and since when, a kind's list, newest first, playable where its audio is
- * on this phone, and what is kept for good, with how many home keeps of
+ * and since when, a kind's list, newest first, and what is kept for good, with how many home keeps of
  * each and since when (MD2b, #2519).
+ *
+ * Each row of a kind's list says what it is (MD8): when it was recorded, how
+ * long it is and the first words home heard, once home heard it, and it
+ * plays from this phone's copy, else from home's while this phone reaches
+ * home. Away from home, home's rows aren't listed at all (home's line says
+ * home couldn't be reached), so what is left plays here. A Play whose audio
+ * didn't come is said in a `Notice` over the list (HS1).
  *
  * Deleting (MD3, #2477) is offered on a kind's list only for a recording
  * home marks deletable (`lib/my-data`'s `offersDelete`): "Delete…" on its
@@ -28,6 +34,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  LoaderCircle,
   Lock,
   Pause,
   Play,
@@ -63,9 +70,11 @@ import { RECORD_KINDS } from "@/lib/my-data/record"
 import {
   CALL_DELETING,
   DELETING,
+  heardLine,
   homeLine,
   itemLine,
   itemName,
+  itemWhere,
   KEPT_FOR_GOOD,
   keptLine,
   keptNote,
@@ -78,7 +87,6 @@ import {
   RECEIPTS,
   receiptsLine,
   unreadLine,
-  WHERE_WORDS,
 } from "@/lib/my-data/words"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 
@@ -296,17 +304,25 @@ type RowDelete =
 const Item = ({
   item,
   playing,
+  fetching = false,
   onPlay,
   onStop,
   remove = { kind: "none" },
 }: {
   item: KindItem
   playing: boolean
+  /** Its audio is on its way from home. */
+  fetching?: boolean
   onPlay: (id: string) => void
   onStop: () => void
   remove?: RowDelete
 }): JSX.Element => {
   const name = itemName(item.at)
+  const heard = heardLine(item.heard, item.where)
+  const playLabel = (): string => {
+    if (!playing) return MY_DATA.kind.play(name)
+    return fetching ? MY_DATA.kind.fetching(name) : MY_DATA.kind.stop(name)
+  }
   return (
     <li className="flex min-h-12 items-center gap-3 px-3 py-2">
       {remove.kind === "select" ? (
@@ -321,37 +337,52 @@ const Item = ({
         >
           {remove.selected ? <Check className="size-4" aria-hidden /> : null}
         </Button>
-      ) : item.playable ? (
+      ) : item.plays === "none" ? (
+        <span className="size-11 shrink-0" aria-hidden />
+      ) : (
         <Button
           variant="outline"
           size="icon"
           className="size-11 shrink-0 rounded-full"
-          aria-label={
-            playing ? MY_DATA.kind.stop(name) : MY_DATA.kind.play(name)
-          }
+          aria-label={playLabel()}
           aria-pressed={playing}
+          aria-busy={playing && fetching}
           onClick={() => (playing ? onStop() : onPlay(item.id))}
         >
-          {playing ? (
+          {!playing ? <Play className="size-4" aria-hidden /> : null}
+          {playing && fetching ? (
+            <LoaderCircle className="size-4 animate-spin" aria-hidden />
+          ) : null}
+          {playing && !fetching ? (
             <Pause className="size-4" aria-hidden />
-          ) : (
-            <Play className="size-4" aria-hidden />
-          )}
+          ) : null}
         </Button>
-      ) : (
-        <span className="size-11 shrink-0" aria-hidden />
       )}
       <span className="min-w-0 flex-1">
-        <span className="block text-sm tabular-nums">
-          {itemLine(item.at, item.bytes)}
+        {heard === null ? null : (
+          <span
+            className={`line-clamp-2 text-sm break-words ${item.heard.kind === "words" ? "" : "text-muted-foreground italic"}`}
+          >
+            {heard}
+          </span>
+        )}
+        <span
+          className={`block tabular-nums ${heard === null ? "text-sm" : "text-muted-foreground text-xs"}`}
+        >
+          {itemLine(item.at, item.durationMs)}
         </span>
         <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
           <span
             className={`${WHERE_FILL[item.where]} size-2 shrink-0 rounded-full`}
             aria-hidden
           />
-          {WHERE_WORDS[item.where]}
+          {itemWhere(item.where, item.bytes)}
         </span>
+        {item.plays === "none" && remove.kind !== "select" ? (
+          <span className="text-muted-foreground block text-xs">
+            {MY_DATA.kind.noPlay}
+          </span>
+        ) : null}
       </span>
       {remove.kind === "offer" ? (
         <Button
@@ -371,6 +402,8 @@ const Item = ({
 export const MyDataKind = ({
   view,
   playing,
+  fetching = false,
+  missed = null,
   onPlay,
   onStop,
   unread = [],
@@ -378,6 +411,10 @@ export const MyDataKind = ({
 }: {
   view: KindView
   playing: string | null
+  /** `playing`'s audio is on its way from home. */
+  fetching?: boolean
+  /** The last Play whose audio didn't come, numbered so each is said. */
+  missed?: MyDataState["missed"]
   onPlay: (id: string) => void
   onStop: () => void
   /** This kind's store, when its recordings on this phone aren't counted yet. */
@@ -422,6 +459,11 @@ export const MyDataKind = ({
       <Status line={homeLine(view.home)} />
       <Status line={unreadLine(unread)} />
       {waits ? <Status line={DELETING.waitsOnStudio} /> : null}
+      {missed === null ? null : (
+        <Notice key={missed.count} tone="warning" dismissible>
+          {MY_DATA.kind.missed}
+        </Notice>
+      )}
       <p className="text-muted-foreground text-sm">
         {kindLead(view.notes, view.bytes, view.since)}
       </p>
@@ -463,6 +505,7 @@ export const MyDataKind = ({
               key={item.id}
               item={item}
               playing={playing === item.id}
+              fetching={playing === item.id && fetching}
               onPlay={onPlay}
               onStop={onStop}
               remove={removeOf(item)}
@@ -602,6 +645,8 @@ const KindList = ({
         view={view}
         unread={unread}
         playing={state.playing}
+        fetching={state.fetching}
+        missed={state.missed}
         onPlay={data.play}
         onStop={data.stop}
         onDelete={deleting.ask}

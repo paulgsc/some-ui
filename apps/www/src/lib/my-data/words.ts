@@ -10,7 +10,7 @@ import { FEED_WORDS } from "@/lib/call-videos/words"
 
 import type { DeletableKind, ReceiptsReading } from "./deleting"
 import { isDeletableKind } from "./deleting"
-import type { HomeReading, Of, Where } from "./model"
+import type { Heard, HomeReading, Of, Where } from "./model"
 import { isKind } from "./model"
 import type { RecordHeld, RecordKind, RecordReading } from "./record"
 
@@ -134,6 +134,14 @@ export const MY_DATA = {
     empty: "None of these yet.",
     play: (when: string): string => `Play the recording of ${when}`,
     stop: (when: string): string => `Stop the recording of ${when}`,
+    /** While its audio comes from home (MD8). */
+    fetching: (when: string): string =>
+      `Getting the recording of ${when} from home`,
+    /** A row home holds and gives no audio back for. */
+    noPlay: "Its audio stays on home.",
+    /** Said over the list when a Play's audio didn't come. */
+    missed:
+      "Couldn't play it: this recording is on home, and home didn't send it just now. It plays while this phone can reach home.",
     newest: (shown: number, total: number): string =>
       `Showing the newest ${shown} of ${total}.`,
   },
@@ -189,10 +197,55 @@ export function kindLead(
   return since === null ? kept : `${kept} · since ${onDay(since)}`
 }
 
-/** One recording's line in a kind's list: `1 Nov · 21:12 · 288.0 KB`. */
-export function itemLine(at: string, bytes: number): string {
+/** How long a recording is: `42 s`, `3 min 5 s`. */
+export function lengthOf(ms: number): string {
+  const seconds = Math.max(1, Math.round(ms / 1000))
+  const minutes = Math.floor(seconds / 60)
+  const rest = seconds % 60
+  if (minutes === 0) return `${rest} s`
+  return rest === 0 ? `${minutes} min` : `${minutes} min ${rest} s`
+}
+
+/**
+ * When a recording was made, and how long it is once home heard it, in a
+ * kind's list (MD8): `Recorded 1 Nov at 21:12 · 42 s long`. The time is
+ * when, never how long: a bare `21:12` read as a length (the owner, Nov 13).
+ */
+export function itemLine(at: string, durationMs: number | null): string {
   const when = new Date(at)
-  return `${shortDay.format(when)} · ${clock.format(when)} · ${formatSize(bytes)}`
+  const recorded = `Recorded ${shortDay.format(when)} at ${clock.format(when)}`
+  return durationMs === null
+    ? recorded
+    : `${recorded} · ${lengthOf(durationMs)} long`
+}
+
+/** Where a recording is, and its room: `On home · 288.0 KB`. */
+export function itemWhere(where: Where, bytes: number): string {
+  return `${WHERE_WORDS[where]} · ${formatSize(bytes)}`
+}
+
+/**
+ * What home heard in a recording home holds (MD8): its first words, in
+ * quotes, or that it heard none, or not yet. Null for one only on this
+ * phone, which home hasn't had to hear.
+ */
+export function heardLine(heard: Heard, where: Where): string | null {
+  switch (heard.kind) {
+    case "words": {
+      return `“${heard.text}”`
+    }
+    case "silent": {
+      return "Home heard no words in it."
+    }
+    case "notYet": {
+      return where === "home" || where === "aside"
+        ? "Home hasn't heard it yet."
+        : null
+    }
+    default: {
+      return assertNever(heard)
+    }
+  }
 }
 
 /** One recording's name, for a screen reader: `1 Nov 2026, 21:12`. */

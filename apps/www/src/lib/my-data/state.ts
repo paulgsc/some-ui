@@ -9,6 +9,9 @@
  *   pull doesn't blank the page. Opening another kind keeps home's counts
  *   but not its list, which was of the other kind.
  * - At most one recording plays; one that ends or fails clears only itself.
+ *   Until its audio is in hand (home's copy comes over the link, MD8) it is
+ *   `fetching`; one whose audio didn't come is `missed`, which the page says
+ *   over the screen, numbered so a second miss is said again.
  */
 import { assertNever } from "@some-ui/core-utils"
 
@@ -21,8 +24,12 @@ export type MyDataState = {
   readonly home: HomeReading
   /** This phone's recordings, or null until read. */
   readonly phone: PhoneRead | null
-  /** The recording playing now, by id. */
+  /** The recording playing now, or asked to play, by id. */
   readonly playing: string | null
+  /** `playing`'s audio isn't in hand yet. */
+  readonly fetching: boolean
+  /** The last recording whose audio didn't come, and how many have missed. */
+  readonly missed: { readonly id: string; readonly count: number } | null
 }
 
 export const INITIAL_MY_DATA: MyDataState = {
@@ -31,6 +38,8 @@ export const INITIAL_MY_DATA: MyDataState = {
   home: { kind: "reading" },
   phone: null,
   playing: null,
+  fetching: false,
+  missed: null,
 }
 
 export type MyDataEvent =
@@ -46,6 +55,8 @@ export type MyDataEvent =
       readonly phone: PhoneRead
     }
   | { readonly type: "played"; readonly id: string }
+  | { readonly type: "started"; readonly id: string }
+  | { readonly type: "missed"; readonly id: string }
   | { readonly type: "stopped"; readonly id: string }
 
 export function stepMyData(
@@ -60,6 +71,8 @@ export function stepMyData(
             ...state,
             seq: state.seq + 1,
             of: event.of,
+            // A miss is said on the page it happened on, not on the next.
+            missed: null,
             home:
               state.home.kind === "read"
                 ? { ...state.home, kept: { ...state.home.kept, notes: null } }
@@ -73,10 +86,25 @@ export function stepMyData(
       return event.seq === state.seq ? { ...state, phone: event.phone } : state
     }
     case "played": {
-      return { ...state, playing: event.id }
+      return { ...state, playing: event.id, fetching: true }
+    }
+    case "started": {
+      return state.playing === event.id ? { ...state, fetching: false } : state
+    }
+    case "missed": {
+      return state.playing === event.id
+        ? {
+            ...state,
+            playing: null,
+            fetching: false,
+            missed: { id: event.id, count: (state.missed?.count ?? 0) + 1 },
+          }
+        : state
     }
     case "stopped": {
-      return state.playing === event.id ? { ...state, playing: null } : state
+      return state.playing === event.id
+        ? { ...state, playing: null, fetching: false }
+        : state
     }
     default: {
       return assertNever(event)

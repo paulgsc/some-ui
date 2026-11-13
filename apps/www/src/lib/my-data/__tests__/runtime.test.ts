@@ -170,12 +170,64 @@ describe("My data's runtime", () => {
     expect(data.getSnapshot().playing).toBeNull()
   })
 
-  it("plays nothing for a recording whose audio is gone", async () => {
+  it("plays nothing for a recording whose audio didn't come, and says each miss once (MD8, MDL1)", async () => {
     const { ports: p, played } = ports()
     const data = createMyData(p)
     data.play("gone")
     await flush()
     expect(played).toEqual([])
-    expect(data.getSnapshot().playing).toBeNull()
+    expect(data.getSnapshot()).toMatchObject({
+      playing: null,
+      fetching: false,
+      missed: { id: "gone", count: 1 },
+    })
+    data.play("gone")
+    await flush()
+    expect(data.getSnapshot().missed).toEqual({ id: "gone", count: 2 })
+    data.open("lens")
+    expect(data.getSnapshot().missed).toBeNull()
+  })
+
+  it("is fetching until the audio is in hand, from here or from home (MD8, MDL1)", async () => {
+    const { ports: p, played } = ports()
+    let land: (blob: Blob) => void = () => undefined
+    const data = createMyData({
+      ...p,
+      audioOf: () =>
+        new Promise((resolve) => {
+          land = resolve
+        }),
+    })
+    data.play("far")
+    expect(data.getSnapshot()).toMatchObject({ playing: "far", fetching: true })
+    land(new Blob(["far"]))
+    await flush()
+    expect(played).toHaveLength(1)
+    expect(data.getSnapshot()).toMatchObject({
+      playing: "far",
+      fetching: false,
+      missed: null,
+    })
+  })
+
+  it("forgets a miss once stopped elsewhere: a late miss for a stopped ask says nothing", async () => {
+    const { ports: p } = ports()
+    let land: (blob: Blob | null) => void = () => undefined
+    const data = createMyData({
+      ...p,
+      audioOf: () =>
+        new Promise((resolve) => {
+          land = resolve
+        }),
+    })
+    data.play("far")
+    data.stop()
+    land(null)
+    await flush()
+    expect(data.getSnapshot()).toMatchObject({
+      playing: null,
+      fetching: false,
+      missed: null,
+    })
   })
 })

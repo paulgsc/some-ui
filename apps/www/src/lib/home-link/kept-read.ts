@@ -4,8 +4,9 @@
  * one `GET` each time the page is opened or dragged down, through the
  * link's `keep` (LA8), sending nothing of the phone's but the kind asked
  * about. Home answers each kind's count, room, how many were set aside and
- * since when, what reached it each week, and with `of` that kind's newest:
- * descriptions only, never audio or what was said. On the overview the
+ * since when, what reached it each week, and with `of` that kind's newest,
+ * each with how long it is and the first words home heard in it, once heard
+ * (MD8): never audio, which a Play asks for (`./voice-audio`). On the overview the
  * same run also asks how much home keeps for good of the record
  * (paulgsc/server `GET /subjects/me/kept`, `storage_repo::kept`; MD2b,
  * #2519): per kind, how many and since when, sending nothing. What the page
