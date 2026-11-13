@@ -7,10 +7,12 @@
 
 import { readFileSync } from "node:fs"
 import {
+  AMO_SIGN_FILE,
   changesetsCliMajor,
   checkRetentionTriggers,
   checkRs1,
   describeWorkflowViolation,
+  findAmoViolations,
   findArtifactFamilyViolations,
   findBuildRecordViolations,
   findCacheViolations,
@@ -275,6 +277,108 @@ describe("findRs2Violations", () => {
       { kind: "rs2Named", file: F, line: 2 },
     ])
     expect(findRs2Violations(RS1_FILE, text)).toEqual([])
+  })
+})
+
+// AMO1: every path to addons.mozilla.org waits on the owner's approval. The
+// family is every way a workflow could reach a submission: another file naming
+// the credentials or `web-ext sign`, a dump of every secret, and inside the
+// sign workflow a job that reaches a secret without needing the approval,
+// whether the approval job is missing, aimed at another environment, or not
+// needed at all.
+describe("findAmoViolations", () => {
+  const approve = [
+    "  approve:",
+    "    uses: ./.github/workflows/_environment-approval.yml",
+    "    with:",
+    "      environment: amo-release",
+    "    permissions:",
+    "      actions: read",
+  ]
+  const sign = (needs: string): Array<string> => [
+    "  sign:",
+    ...(needs === "" ? [] : [`    needs: ${needs}`]),
+    "    runs-on: ubuntu-latest",
+    "    steps:",
+    '      - run: web-ext sign --api-key "${{ secrets.AMO_JWT_ISSUER }}"',
+  ]
+  const workflow = (...jobs: Array<Array<string>>): string =>
+    ["on:", "  workflow_call:", "jobs:", ...jobs.flat()].join("\n")
+  const unapproved = (text: string): Array<string> =>
+    findAmoViolations(AMO_SIGN_FILE, text).map((v) =>
+      v.kind === "amoUnapproved" ? v.job : v.kind
+    )
+
+  it("accepts the sign workflow as it is", () => {
+    const text = readFileSync(
+      new URL(`../../../${AMO_SIGN_FILE}`, import.meta.url),
+      "utf8"
+    )
+    expect(findAmoViolations(AMO_SIGN_FILE, text)).toEqual([])
+  })
+
+  it("accepts a sign job that needs the approval, in every needs form", () => {
+    for (const needs of [
+      "approve",
+      "[approve]",
+      "[build, approve]",
+      '"approve"',
+    ]) {
+      expect(unapproved(workflow(approve, sign(needs)))).toEqual([])
+    }
+    const block = workflow(approve, [
+      "  sign:",
+      "    needs:",
+      "      - build",
+      "      - approve",
+      "    steps:",
+      "      - run: echo ${{ secrets.AMO_JWT_SECRET }}",
+    ])
+    expect(unapproved(block)).toEqual([])
+  })
+
+  it("fails a sign job that does not need the approval", () => {
+    expect(unapproved(workflow(approve, sign("")))).toEqual(["sign"])
+    expect(unapproved(workflow(approve, sign("build")))).toEqual(["sign"])
+  })
+
+  it("fails when the approval job is gone or aimed elsewhere", () => {
+    expect(unapproved(workflow(sign("approve")))).toEqual(["sign"])
+    const elsewhere = approve.map((l) =>
+      l.replace("amo-release", "pages-release")
+    )
+    expect(unapproved(workflow(elsewhere, sign("approve")))).toEqual(["sign"])
+    const commented = approve.map((l) =>
+      l.includes("environment:") ? "      # environment: amo-release" : l
+    )
+    expect(unapproved(workflow(commented, sign("approve")))).toEqual(["sign"])
+  })
+
+  it("fails a job that passes every secret on without the approval", () => {
+    const inherit = [
+      "  other:",
+      "    uses: ./.github/workflows/x.yml",
+      "    secrets: inherit",
+    ]
+    expect(unapproved(workflow(approve, sign("approve"), inherit))).toEqual([
+      "other",
+    ])
+  })
+
+  it("fails the credentials, web-ext sign or every secret in any other file", () => {
+    for (const line of [
+      "        run: echo ${{ secrets.AMO_JWT_ISSUER }}",
+      "        AMO_UPLOAD_KEY: x",
+      "        run: npx web-ext sign --channel listed",
+      "        run: web-ext \\",
+      "        run: echo '${{ toJSON(secrets) }}'",
+      "        run: echo '${{ toJson( secrets ) }}'",
+    ]) {
+      expect(findAmoViolations(F, steps(line))).toEqual([
+        { kind: "amoOutsideSign", file: F, line: 4 },
+      ])
+    }
+    expect(findAmoViolations(F, steps("        run: web-ext lint"))).toEqual([])
   })
 })
 
@@ -756,6 +860,8 @@ describe("describeWorkflowViolation", () => {
         { kind: "familyWorkflowUnknown", file: RETENTION_FILE, workflow: "W" },
         "no workflow has that",
       ],
+      [{ kind: "amoOutsideSign", file: F, line: 2 }, "AMO1"],
+      [{ kind: "amoUnapproved", file: F, line: 2, job: "sign" }, "AMO1"],
     ]
     for (const [violation, expected] of cases) {
       expect(describeWorkflowViolation(violation)).toContain(expected)
