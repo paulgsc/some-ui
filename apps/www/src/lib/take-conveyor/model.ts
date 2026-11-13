@@ -240,7 +240,9 @@ export function stationOf(
       ? null
       : { to: unkept.to, why: unkept.home === "stale" ? "stale" : "refused" }
   if (unkept?.there !== undefined) {
-    return { station: unkept.there, at: null, going: false, missed }
+    // When home's word is the same station, it says since when.
+    const at = unkept.there === home.station ? homeAt : null
+    return { station: unkept.there, at, going: false, missed }
   }
   if (taken !== undefined && newer(taken.at)) {
     return {

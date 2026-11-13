@@ -165,23 +165,56 @@ describe("a move of a take, to home (CONVEYOR1)", () => {
     })
   })
 
-  it("falls back on the 409's word on where the take is, when home's read fails", async () => {
+  it("ends the run with the move owed when home can't read the take back after a 409", async () => {
+    for (const [status, kind] of [
+      [500, "failed"],
+      [429, "failed"],
+      [401, "forgotten"],
+    ] as const) {
+      const conveyor = conveyorWith(["t1"])
+      const conflict: HomeCall = (method) =>
+        Promise.resolve({ status: method === "POST" ? 409 : status, body: "" })
+      expect((await sendStationMoves(conveyor.port, conflict)).kind).toBe(kind)
+      expect(conveyor.port.due()).toHaveLength(1)
+    }
+  })
+
+  it("keeps the move owed when the read after a 409 gets no answer", async () => {
     const conveyor = conveyorWith(["t1"])
-    const conflict: HomeCall = (method) =>
-      Promise.resolve(
-        method === "POST"
-          ? {
-              status: 409,
-              body: JSON.stringify({
-                error: { details: { station: ["ready-for-pickup"] } },
-              }),
-            }
-          : { status: 500, body: "" }
-      )
-    await sendStationMoves(conveyor.port, conflict)
-    expect(conveyor.standing("t1", { station: "in-the-oven" })?.station).toBe(
-      "ready-for-pickup"
+    const away: HomeCall = (method) =>
+      method === "POST"
+        ? Promise.resolve({ status: 409, body: "" })
+        : Promise.reject(new Error("no answer"))
+    await expect(sendStationMoves(conveyor.port, away)).rejects.toThrow()
+    expect(conveyor.port.due()).toHaveLength(1)
+  })
+
+  it("sends no later move of a take whose earlier one went stale, or stays owed", async () => {
+    const twice = (): TakeConveyor => {
+      const conveyor = conveyorWith(["t1"])
+      conveyor.move({ take: "t1", from: "cooking", to: "ready-for-pickup" })
+      return conveyor
+    }
+    const stale = twice()
+    const sent: Sent = []
+    await sendStationMoves(
+      stale.port,
+      home({ t1: 409 }, sent, {
+        t1: { id: "t1", station: "cooking", labels: [], history: [] },
+      })
     )
+    expect(sent.map(([method]) => method)).toEqual(["POST", "GET"])
+    expect(stale.port.due()).toEqual([])
+    expect(stale.standing("t1", { station: "cooking" })?.missed).toEqual({
+      to: "cooking",
+      why: "stale",
+    })
+
+    const unfound = twice()
+    const asked: Sent = []
+    await sendStationMoves(unfound.port, home({ t1: 404 }, asked))
+    expect(asked).toHaveLength(1)
+    expect(unfound.port.due()).toHaveLength(2)
   })
 
   it("counts a move home already holds as kept, though the take has moved on since", async () => {

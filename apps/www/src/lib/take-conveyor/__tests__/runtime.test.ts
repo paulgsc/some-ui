@@ -56,6 +56,21 @@ describe("createTakeConveyor", () => {
     expect(again.port.due().map(({ move }) => move)).toEqual(["m2"])
   })
 
+  it("keeps a stale move and where home found the take across a reload", () => {
+    const storage = inMemoryStorage()
+    const first = conveyorOn(storage)
+    first.move({ take: "t1", from: "in-the-oven", to: "cooking" })
+    first.port.answered("m1", { kind: "stale", there: "canned" })
+    const again = conveyorOn(storage)
+    expect(again.getSnapshot()).toEqual(first.getSnapshot())
+    expect(again.standing("t1", { station: "in-the-oven" })).toEqual({
+      station: "canned",
+      at: null,
+      going: false,
+      missed: { to: "cooking", why: "stale" },
+    })
+  })
+
   it("moves nothing storage won't keep, and tells listeners only of a move made", () => {
     const refusing: KeyedStorage = {
       ...inMemoryStorage(),

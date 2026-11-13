@@ -14,14 +14,15 @@
  *   asked once for the take's station and history
  *   (`GET /voice-notes/:id/station`). A move it holds (one kept before,
  *   whose answer this phone never kept, then moved on from) is held; any
- *   other is dropped as stale, with where home says the take is (that
- *   read's, else the `409`'s), and said on the take's row. The phone's
- *   later moves of the take go with it (`lib/take-conveyor`);
+ *   other is dropped as stale, with where home says the take is, and said
+ *   on the take's row; the phone's later moves of the take go with it
+ *   (`lib/take-conveyor`), and are not sent. A read home can't answer
+ *   ends the run with the move still owed, and a `401` there as below;
  * - `422`, a move home won't take as it is: refused for good, said to the
  *   native log;
  * - `404`, home holds no such Studio take of this phone's owner, or keeps
- *   no conveyor yet: still owed, asked again on every run, said to the
- *   native log once a launch;
+ *   no conveyor yet: still owed, with the take's later moves, asked again
+ *   on every run, said to the native log once a launch;
  * - `401`: home no longer knows this phone, and the run ends there;
  * - anything else ends the run, each move still owed.
  */
@@ -83,32 +84,35 @@ function readStation(
   }
 }
 
-/** Where a `409`'s body says the take is (`details.station`), if it does. */
-function conflictStation(body: string): TakeStation | null {
-  const answer = jsonOf(body)
-  if (!isRecord(answer) || !isRecord(answer.error)) return null
-  const { details } = answer.error
-  if (!isRecord(details) || !Array.isArray(details.station)) return null
-  const [there] = details.station
-  return isTakeStation(there) ? there : null
-}
-
 /**
- * After a `409`: home's word on the take, held when its history holds the
- * move, else stale with where it is.
+ * After a `409`: home's word on the take. Held when its history holds the
+ * move; stale, with where the take is, when home reads it back (or holds no
+ * such take now); and otherwise the run ends with the move still owed, so
+ * the next run asks again, since a `409` repeats.
  */
 async function afterConflict(
   move: StationMove,
-  conflict: string,
   send: HomeCall
 ): Promise<
   | { readonly kind: "held" }
   | { readonly kind: "stale"; readonly there: TakeStation | null }
+  | { readonly kind: "ended"; readonly exchanged: HomeExchanged }
 > {
   const read = await send("GET", stationPath(move))
+  if (read.status === 404) return { kind: "stale", there: null }
+  if (read.status === 401) {
+    return { kind: "ended", exchanged: { kind: "forgotten" } }
+  }
   const station = read.status === 200 ? readStation(read.body, move) : null
-  if (station?.holds === true) return { kind: "held" }
-  return { kind: "stale", there: station?.there ?? conflictStation(conflict) }
+  if (station === null) {
+    return {
+      kind: "ended",
+      exchanged: unexpectedAnswer("a read of a Studio take", read.status),
+    }
+  }
+  return station.holds
+    ? { kind: "held" }
+    : { kind: "stale", there: station.there }
 }
 
 /** Home not taking a move, said to the native log. */
@@ -124,7 +128,13 @@ export async function sendStationMoves(
   port: StationsPort,
   send: HomeCall
 ): Promise<HomeExchanged> {
+  // A take whose move stays owed this run sends none of its later ones,
+  // which were made from where that one would have put it.
+  const heldBack = new Set<string>()
   for (const move of port.due()) {
+    // An earlier answer this run may have settled it (`lib/take-conveyor`).
+    const owed = port.due().some((due) => due.move === move.move)
+    if (!owed || heldBack.has(move.take)) continue
     const answer = await send("POST", stationPath(move), stationBody(move))
     if (answer.status === 200 && carriesBack(answer.body, move)) {
       port.answered(move.move, { kind: "held" })
@@ -132,11 +142,14 @@ export async function sendStationMoves(
     }
     if (answer.status === 401) return { kind: "forgotten" }
     if (answer.status === 404) {
+      heldBack.add(move.take)
       untaken(move.move, 404)
       continue
     }
     if (answer.status === 409) {
-      port.answered(move.move, await afterConflict(move, answer.body, send))
+      const after = await afterConflict(move, send)
+      if (after.kind === "ended") return after.exchanged
+      port.answered(move.move, after)
       continue
     }
     if (answer.status === 422) {
