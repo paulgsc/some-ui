@@ -20,9 +20,7 @@
  * and renamed into place, so a step killed half way leaves nothing that reads
  * as kept. A kept file is
  * copied out, never linked: ffmpeg's `-y` rewrites a file in place, which
- * would change a linked entry. A step answered from the cache is said
- * (`hit`), so a resumed render's log shows each step it did not redo
- * (paulgsc/server#739).
+ * would change a linked entry.
  */
 
 import { createHash } from "node:crypto"
@@ -172,8 +170,7 @@ export function stepCache(
  * One step kept in `cache` (VR2): the file kept under `key` copied to `out`
  * when there is one, without running; otherwise `run` writes it, and what it
  * wrote is kept when it succeeds: each ffmpeg call and each burn-in
- * recorded, so a retry redoes only the steps whose key changed. A step
- * answered from the cache is said as `step.out`.
+ * recorded, so a retry redoes only the steps whose key changed.
  */
 export async function keptStep<R extends { readonly ok: boolean }>(
   cache: StepCache,

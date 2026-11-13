@@ -269,8 +269,6 @@ describe("ffmpeg through the step cache", () => {
       "made from edited"
     )
     expect(warned).toEqual([])
-    // Each step answered from the cache, by the file it wrote; never one
-    // that ran.
     expect(hits).toEqual(["s1.mkv", "renamed.mkv"])
   })
 
