@@ -2,6 +2,8 @@ import { AphHistory } from "@aph/components/aph-history"
 import { SEED_ENTRIES, SEED_SETTINGS } from "@aph/lib/seed"
 import type { AphStore } from "@aph/lib/store"
 import { createAphStore } from "@aph/lib/store"
+import type { EngagementEvent } from "@some-ui/engagement"
+import { createVisit } from "@some-ui/engagement"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { fireEvent, render, screen, within } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
@@ -43,6 +45,37 @@ describe("History's missed days", () => {
     expect(onLogDay).toHaveBeenCalledWith("2026-09-30")
     expect(screen.queryByRole("button", { name: /Log Sep 15/ })).toBeNull()
     expect(screen.getByText(/Sep 14 – Sep 15 · 2 days/)).toBeInTheDocument()
+  })
+
+  it("offer each day within reach on the visit, and take the one logged (ENG9)", () => {
+    const sent: Array<EngagementEvent> = []
+    const visit = createVisit(
+      () => noon,
+      (event) => sent.push(event)
+    )
+    render(
+      <AphHistory
+        now={noon}
+        store={createAphStore({
+          settings: SEED_SETTINGS,
+          entries: SEED_ENTRIES,
+        })}
+        onLogDay={vi.fn()}
+        onEnterTheirs={vi.fn()}
+        visit={visit}
+      />
+    )
+    const missed = (kind: string): number =>
+      sent.filter((e) => e.affordance === "missed-day" && e.kind === kind)
+        .length
+    // Four gaps end within reach (Sep 19, 21, 27 and 30); nothing of the
+    // day leaves the phone.
+    expect(missed("offered")).toBe(4)
+    fireEvent.click(screen.getByRole("button", { name: /Log Sep 30/ }))
+    expect(missed("taken")).toBe(1)
+    expect(JSON.stringify(sent)).not.toContain("2026-09-30")
+    visit.end("moved-on")
+    expect(missed("passed-over")).toBe(3)
   })
 })
 

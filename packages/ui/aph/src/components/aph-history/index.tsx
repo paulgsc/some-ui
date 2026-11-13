@@ -13,7 +13,7 @@
  * logged, until they are.
  */
 import type { JSX } from "react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { EntrySheet } from "@aph/components/entry-sheet"
 import {
   CheckpointMark,
@@ -35,10 +35,13 @@ import {
   RECONCILE_ORDER,
   stats,
 } from "@aph/lib/model"
+import { missedDayOffer } from "@aph/lib/offers"
 import type { AphStore } from "@aph/lib/store"
 import { aphStore } from "@aph/lib/store"
 import { useAph } from "@aph/lib/use-aph"
 import { cn, dayOf, formatDay, formatWeekday } from "@some-ui/core-utils"
+import type { Visit } from "@some-ui/engagement"
+import { useShelf } from "@some-ui/react-hooks"
 import { Button, Notice } from "@some-ui/shared"
 import { Send } from "lucide-react"
 
@@ -50,6 +53,11 @@ export type AphHistoryProps = {
   /** The host's clock (`useMinuteClock` in www), which moves while the screen stays open. */
   now: Date
   store?: AphStore
+  /**
+   * The screen's visit (ENG9): each missed day with a way to log it, and
+   * "Enter their figure", are offered on it while shown.
+   */
+  visit?: Visit
 }
 
 export const AphHistory = ({
@@ -57,6 +65,7 @@ export const AphHistory = ({
   onLogDay,
   now,
   store = aphStore,
+  visit,
 }: AphHistoryProps): JSX.Element => {
   const { settings, entries } = useAph(store)
   const [filter, setFilter] = useState<ReconcileStatus | null>(null)
@@ -69,9 +78,14 @@ export const AphHistory = ({
   const rows = history(settings, entries, today).filter(
     (r) => filter === null || (r.kind === "day" && r.entries.some(shows))
   )
-
+  const missed = rows
+    .flatMap((r) =>
+      r.kind === "gap" && reachable.includes(r.to) ? [r.to] : []
+    )
+    .join(" ")
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-2">
+      {onLogDay !== undefined && <MissedDays visit={visit} days={missed} />}
       <Drafts
         settings={settings}
         entries={entries}
@@ -120,7 +134,10 @@ export const AphHistory = ({
             // The gap's latest day, the one most likely still remembered.
             onLog={
               onLogDay !== undefined && reachable.includes(row.to)
-                ? (): void => onLogDay(row.to)
+                ? (): void => {
+                    visit?.take(missedDayOffer(row.to))
+                    onLogDay(row.to)
+                  }
                 : undefined
             }
           />
@@ -217,9 +234,29 @@ export const AphHistory = ({
         onClose={() => setOpen(null)}
         onEnterTheirs={onEnterTheirs}
         store={store}
+        visit={visit}
       />
     </div>
   )
+}
+
+/** Offers each missed day within reach (`days`, space-separated) on the visit. */
+const MissedDays = ({
+  visit,
+  days,
+}: {
+  visit: Visit | undefined
+  days: string
+}): null => {
+  useShelf(
+    visit,
+    "missed-day",
+    useMemo(
+      () => (days === "" ? null : days.split(" ").map(missedDayOffer)),
+      [days]
+    )
+  )
+  return null
 }
 
 /**
