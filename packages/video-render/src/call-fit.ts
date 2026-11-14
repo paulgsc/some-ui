@@ -28,7 +28,8 @@
  * of 2026-11-06 (which overflowed, #2918), every list at its longest, and
  * every free text grown to the most this accepts, on the real stage, and
  * fails where this says a scene is shorter than drawn or an accepted scene
- * overflows; run in a session and in home's render image on 2026-11-14.
+ * overflows. CI runs it in the Playwright image home's render image is
+ * built from (`pr.yml`); a session's Inter was checked by hand, 2026-11-14.
  * `__tests__/call-fit.test.ts` holds what is counted and what refused.
  *
  * Tolerance: a host whose sans face is wider than `SANS` (DejaVu Sans is

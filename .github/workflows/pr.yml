@@ -336,6 +336,9 @@ jobs:
 
             nix develop .#ci --command pnpm --filter www build:fit
             nix develop .#ci --command pnpm --filter www build:fit-phone
+            # Run both, then fail on either: a nix failure must not hide
+            # whether the call's frame held.
+            status=0
             nix develop .#ci-playwright --command \
               pnpm --filter www test:e2e \
                 tests/ui-fit/panel-fit.spec.ts \
@@ -355,7 +358,7 @@ jobs:
                 tests/ui-fit/stays-put-rounds.spec.ts \
                 tests/ui-fit/stays-put-soundbites.spec.ts \
                 tests/ui-fit/stays-put-topik.spec.ts \
-                tests/ui-fit/stays-put-www.spec.ts
+                tests/ui-fit/stays-put-www.spec.ts || status=$?
 
             # The weekly call's frame (CF1) is measured in the face home
             # draws it in: inside the Playwright image home's render image is
@@ -367,7 +370,8 @@ jobs:
               --user "$(id -u):$(id -g)" \
               -v "$PWD:$PWD" -w "$PWD/apps/www" "$image" \
               node_modules/.bin/playwright test --config playwright.config.ts \
-                --trace off tests/ui-fit/call-fit.spec.ts
+                --trace off tests/ui-fit/call-fit.spec.ts || status=$?
+            exit "$status"
           else
             echo "No UI files changed."
           fi
