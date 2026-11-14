@@ -170,7 +170,7 @@ describe("the terminal card", () => {
     )
     expect(p.ok ? [] : p.problems).toEqual([
       "the terminal burn-in (terminal-v1): line 2 doesn't fit the window",
-      `the terminal burn-in (terminal-v1): line 3 has "→", which the terminal's type can't draw`,
+      `the terminal burn-in (terminal-v1): line 3 has "→", which the card's type can't draw`,
     ])
     const crowded = terminal({
       title: "Crowded",

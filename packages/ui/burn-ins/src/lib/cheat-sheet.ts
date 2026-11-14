@@ -20,6 +20,7 @@ import {
   BadgeStateSchema,
   openness,
   openReach,
+  openWidth,
   type BadgeMark,
 } from "./badge"
 import {
@@ -28,13 +29,14 @@ import {
   CARD_INK,
   cardHeading,
   CardHeadSchema,
+  ITEM,
   ItemAtSchema,
   itemTimes,
-  valueProblem,
+  wordsProblem,
 } from "./cards"
 import type { Box, Geometry } from "./geometry"
 import { INK, textBoxes, type TextFrame } from "./journal"
-import { missingChar, monoWidth } from "./mono"
+import { monoWidth } from "./mono"
 import type { Parsed } from "./parsed"
 import { barlow, setText, type TextBlock } from "./text"
 
@@ -181,17 +183,6 @@ function setRow(
   }
 }
 
-/** Why row `n` (from 1) can't be shown as written, or null. */
-function wordsProblem(n: number, r: Row): string | null {
-  const missing = missingChar(r.command)
-  if (missing !== null)
-    return `row ${n}'s command has "${missing}", which the card's type can't draw`
-  const name = valueProblem([r.task, r.command, r.note].join("\n"))
-  return name === null
-    ? null
-    : `row ${n} gives ${name} a value; a card shows a placeholder, never a value`
-}
-
 export function drawCheatSheet(
   p: CheatSheetParams,
   g: Geometry
@@ -209,16 +200,18 @@ export function drawCheatSheet(
   const rows: Array<RowDrawing> = []
   let y = box.y
   for (const [i, r] of p.rows.entries()) {
-    const words = wordsProblem(i + 1, r)
+    const words = wordsProblem(
+      `row ${i + 1}`,
+      r.command,
+      [r.task, r.command, r.note].join("\n")
+    )
     if (words !== null) {
       problems.push(words)
       continue
     }
     const open = opens[i] ?? false
     const reach =
-      open && r.badge !== undefined
-        ? openReach(badgeAt(r.badge, 0, 0, BADGE_PX, 1, 1))
-        : 0
+      open && r.badge !== undefined ? openWidth(r.badge, BADGE_PX) : 0
     const set = setRow(r, y, box, reach)
     if (set === null) {
       problems.push(
@@ -231,7 +224,8 @@ export function drawCheatSheet(
     rows.push({ ...set, opens: open, atMs: times[i] ?? 0 })
     y = set.panel.y + set.panel.height + ROW_GAP
   }
-  if (problems.length === 0 && y - ROW_GAP > box.y + box.height)
+  // The last row rises into place, so the sheet needs room for its rise too.
+  if (y - ROW_GAP + ITEM.risePx > box.y + box.height)
     problems.push(`${p.rows.length} rows don't fit`)
   return problems.length > 0
     ? { ok: false, problems }

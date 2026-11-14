@@ -23,6 +23,7 @@ import {
 import { clamp01 } from "./captions/frame"
 import type { Geometry } from "./geometry"
 import { blocksOf, cardHeadline, kicker, type TextFrame } from "./journal"
+import { missingChar } from "./mono"
 import type { Parsed } from "./parsed"
 
 /** The cards' own colours beside the Build Journal's `INK`. Video colours, so literals. */
@@ -116,16 +117,31 @@ export function cardHeading(
     valueProblem(p.title) ??
     (open ? valueProblem(`${p.kicker}${p.title}`) : null)
   if (name !== null)
-    return {
-      ok: false,
-      problems: [
-        `the heading gives ${name} a value; a card shows a placeholder, never a value`,
-      ],
-    }
+    return { ok: false, problems: [givesValue("the heading", name)] }
   return blocksOf([
     ["kicker", kicker(p.kicker, g)],
     ["title", cardHeadline(p.title, g)],
   ])
+}
+
+const givesValue = (what: string, name: string): string =>
+  `${what} gives ${name} a value; a card shows a placeholder, never a value`
+
+/**
+ * Why an item's words, named `what`, can't be shown: `mono`, its words in the
+ * cards' monospace, has a character that type can't draw, or `text`, all its
+ * words, gives a value. Null when neither.
+ */
+export function wordsProblem(
+  what: string,
+  mono: string,
+  text: string
+): string | null {
+  const missing = missingChar(mono)
+  if (missing !== null)
+    return `${what} has "${missing}", which the card's type can't draw`
+  const name = valueProblem(text)
+  return name === null ? null : givesValue(what, name)
 }
 
 /** A name being given something: `NAME=` at a word's start. */

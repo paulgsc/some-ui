@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react"
 import { clamp01 } from "@burn-ins/lib/captions/frame"
 import type { Box, FrameSize } from "@burn-ins/lib/geometry"
+import { MONO_FAMILY } from "@burn-ins/lib/mono"
 
 /** A frame's pixels as the stage draws them. */
 export type Units = {
@@ -23,6 +24,18 @@ export const unitsOf = (frame: FrameSize): Units => {
     }),
   }
 }
+
+/** The cards' monospace at `sizePx`, a line `lineHeightPx` tall. */
+export const monoType = (
+  { cq }: Units,
+  sizePx: number,
+  lineHeightPx: number
+): CSSProperties => ({
+  fontFamily: MONO_FAMILY,
+  fontWeight: 500,
+  fontSize: cq(sizePx),
+  lineHeight: cq(lineHeightPx),
+})
 
 /** A colour with an opacity, as #rrggbbaa. */
 export const withAlpha = (hex: string, opacity: number): string =>

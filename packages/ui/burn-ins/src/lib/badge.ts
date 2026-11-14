@@ -203,6 +203,10 @@ export const openReach = (m: BadgeMark): number =>
     ? 0
     : m.open.amount * m.glyph.width * (GAP + PAD) + m.open.shownPx
 
+/** How far past its glyph a `state` badge reaches once fully open. */
+export const openWidth = (state: BadgeState, glyphPx: number): number =>
+  openReach(badgeAt(state, 0, 0, glyphPx, 1, 1))
+
 /** The boxes a badge covers. */
 export const badgeBoxes = (m: BadgeMark): ReadonlyArray<Box> =>
   m.open === null ? [m.glyph] : [m.open.pill]
