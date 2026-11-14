@@ -18,5 +18,5 @@
   ],
   "gray": "The guard (RL12) and the deploy (RL10, RL11) did not cover a plain make up, and the owner had decided only that there is one way to deploy. Refusing make up removes a usable restart, which the restore steps rely on. Leaving it keeps a second way onto home that skips the deploy's set check, skip list and gate, against RL1 and RL12.",
   "undo": "Revert R6d's PR (server#876): up and compose read the checkout's deploy/home/release.json again, and RL12 names the gap as not covered.",
-  "refs": ["server#870"]
+  "refs": ["server#870", "server#876"]
 }

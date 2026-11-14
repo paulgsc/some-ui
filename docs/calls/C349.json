@@ -9,7 +9,7 @@
     "server:deploy/home/release.json",
     "server:scripts/check_home_guard.py"
   ],
-  "chose": "dashboard-builder becomes a published image (pgathondu/dashboard-builder, from Dockerfile.grafana.builder, bases pinned by digest and its Go tools by exact version), so home runs it by digest from its release like every other image and builds nothing locally. Compose kept its build: until the first publish (#840), so nothing broke in between; R6b (server#871) then moved it to the release's digest.",
+  "chose": "dashboard-builder becomes a published image (pgathondu/dashboard-builder, from Dockerfile.grafana.builder, bases pinned by digest and its Go tools by exact version), so home runs it by digest from its release like every other image and builds nothing locally. Compose kept its build: until the first publish (server#840), so nothing broke in between; R6b (server#871) then moved it to the release's digest.",
   "options": [
     "Publish dashboard-builder through the detector and run it from the release by digest",
     "Drop the service and build the dashboards with `make tool` before Grafana starts",
@@ -17,5 +17,5 @@
   ],
   "gray": "No check or earlier owner decision said how a build-only helper reaches home. The make-tool route is smaller, but it adds a manual step the deploy would have to run before Grafana on every up. A local build is a second way onto home (RL12) and pulled unpinned bases (alpine:latest, go install @latest). Publishing follows kokoro's existing path and keeps one deploy command.",
   "undo": "Restore the build: in infra/compose/monitoring.yml, drop its release entry and the detector's dashboard-builder ImageSpec, and re-add a named build exemption for it in scripts/check_home_guard.py (R6b removed it).",
-  "refs": ["server#795", "server#868"]
+  "refs": ["server#795", "server#868", "server#871"]
 }
