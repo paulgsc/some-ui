@@ -208,3 +208,23 @@ jobs:
           tags: |
             ${{ env.DOCKERHUB_IMAGE }}:${{ steps.version.outputs.version }}
             ${{ env.DOCKERHUB_IMAGE }}:latest
+      # U1 (paulgsc/server#791): ask server's release-lock.yml to look, so the
+      # image just pushed reaches home's release with no pin edited by hand. It
+      # carries only a reason: the run reads Docker Hub itself (RL2). It uses
+      # SERVER_ROUTES_DISPATCH_TOKEN, the route snapshot's token, which now
+      # serves this call too; this step does not touch that workflow (RS1). A
+      # missing token fails the job, so the owner hears the release was not
+      # asked; the image is already pushed, and a dispatch of release-lock.yml
+      # by hand catches up.
+      - name: Ask server's release to look
+        env:
+          GH_TOKEN: ${{ secrets.SERVER_ROUTES_DISPATCH_TOKEN }}
+          REASON: "pgathondu/www:${{ steps.version.outputs.version }} published by some-ui ${{ github.workflow }}"
+        run: |
+          set -euo pipefail
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error title=Release not asked::SERVER_ROUTES_DISPATCH_TOKEN is not set; dispatch paulgsc/server's release-lock.yml by hand."
+            exit 1
+          fi
+          gh workflow run release-lock.yml --repo paulgsc/server --ref main -f reason="$REASON"
+          echo "Asked paulgsc/server's release-lock.yml to look: $REASON" | tee -a "$GITHUB_STEP_SUMMARY"
