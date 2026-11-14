@@ -4050,6 +4050,13 @@
       "family": "voice-heard"
     },
     {
+      "store": "phone:take-conveyor",
+      "class": "record",
+      "growth": "Per move of a Studio take along the conveyor the owner makes on the phone (CONVEYOR1, #2873): one small entry (the phone's id for the move, the take's id, the station it left and reached, when, up to LABELS_MAX = 8 labels of 32 characters and a comment of 280), kept in `some-ui:take-conveyor` with how home answered it; append-only and never removed, so it grows only with the owner's own moves.",
+      "horizon": "Kept for good on the phone; home keeps each move it takes as its own row too.",
+      "family": "voice-heard"
+    },
+    {
       "store": "server:account",
       "class": "record",
       "growth": "One row, the owner's account (subject id and WebAuthn user handle): sign-up closes once it exists (403 signup_closed); only AUTH_OPEN_SIGNUP admits more, one row per account created, new accounts per day capped in memory.",

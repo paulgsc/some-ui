@@ -98,6 +98,42 @@ describe("Takes on home's reads of home (ST32)", () => {
     expect(meaning.kind === "read" && meaning.page.by).toBe("meaning")
   })
 
+  it("reads where each take is on the conveyor, and none from a home before it (CONVEYOR1)", () => {
+    const [moved, before] = TAKES.takes
+    const read = readTakes(
+      reply(200, {
+        ...TAKES,
+        takes: [
+          {
+            ...moved,
+            station: "ready-for-pickup",
+            stationAt: "2026-11-05T10:00:00Z",
+          },
+          { ...before, station: "somewhere new", stationAt: 3 },
+        ],
+      })
+    )
+    const takes = read.kind === "read" ? read.page.takes : []
+    expect(takes[0]).toMatchObject({
+      station: "ready-for-pickup",
+      stationAt: "2026-11-05T10:00:00Z",
+    })
+    expect(takes[1]?.station).toBeUndefined()
+    expect(takes[1]?.stationAt).toBeUndefined()
+    // An idea's answer is on no conveyor: home says so with null.
+    const idea = readTakes(
+      reply(200, {
+        ...TAKES,
+        takes: [{ ...before, station: null, stationAt: null }],
+      })
+    )
+    expect(idea.kind === "read" && idea.page.takes[0]?.station).toBeNull()
+    const older = readTakes(reply(200, TAKES))
+    expect(older.kind === "read" && older.page.takes[0]?.station).toBe(
+      undefined
+    )
+  })
+
   it("says a home without the route keeps no list yet, and an answer it can't read", () => {
     expect(readTakes(reply(404))).toEqual({ kind: "older" })
     expect(readTakes(reply(422))).toEqual({ kind: "unreadable" })
