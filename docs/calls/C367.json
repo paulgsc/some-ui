@@ -10,6 +10,6 @@
     "file_host computing it"
   ],
   "gray": "docs/home-compute.md invariant 6 (no work starts outside the lane) decided where. Keeping the first answer rather than re-asking was the session's choice.",
-  "undo": "Delete a week's .parts file and its next first job asks again.",
-  "refs": ["#2918", "server#872"]
+  "undo": "Change call_parts in render-calls.sh to ask again rather than read a kept .parts (server#874 tracks this). Do not delete a .parts file by hand: once part 1 has its video nothing asks again, the worker and file_host read the week as one part, and letting part 1 go would let the whole week go.",
+  "refs": ["#2918", "server#872", "server#874"]
 }

@@ -13,6 +13,6 @@
     "the worker reading the database"
   ],
   "gray": "The coordinator set 'the let-go applies per part'; how the worker learns of it was the session's choice.",
-  "undo": "Remove the marks; the export pass writes back any whose receipt stands.",
+  "undo": "Change finish() in feeds/videos.rs and export() in call_weeks/pass.rs to take the week's file out when its first part is let go, instead of marking each part. The receipts in call_part_deletion stay as they are. Removing a mark by hand does not undo this: the export pass writes back every mark whose receipt stands.",
   "refs": ["#2918", "server#872"]
 }
