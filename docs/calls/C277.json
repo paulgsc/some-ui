@@ -1,0 +1,19 @@
+{
+  "id": "C277",
+  "made": "2026-11-13",
+  "by": "claude",
+  "paths": [
+    "packages/ui/interview-week/scripts/monday.ts",
+    "packages/ui/interview-week/ROUTINE.md",
+    "packages/video-render/src/mailbox.ts",
+    "packages/core-utils/src/lib/date-utils.ts"
+  ],
+  "chose": "The interview week is written by a Monday routine of its own (`pnpm --filter @some-ui/interview-week monday`, its own ROUTINE.md), not a second half of Rust Rounds' `pnpm monday`. What both need is shared by moving it: the mailbox client to `@some-ui/video-render/node`, the owner's week (`weekAround`) to core-utils, and the week's epics from `render call-facts`.",
+  "options": [
+    "(a) a routine of its own that shares the mailbox client, the week's dates and call-facts",
+    "(b) a second half of Rust Rounds' `monday`, one bundle and one values file for both"
+  ],
+  "gray": "#2935 leaves it to the worker. A second half would put two unrelated formats in one bundle and one values file, so a problem in either week stops both from being put; a routine of its own needs its own scheduled run or a second line in Monday's prompt.",
+  "undo": "Fold scripts/monday.ts's commands into packages/ui/rust-rounds/scripts/monday.ts and ROUTINE.md into Rust Rounds' ROUTINE.md as a second half; the lib modules stay where they are.",
+  "refs": ["#2931", "#2935"]
+}

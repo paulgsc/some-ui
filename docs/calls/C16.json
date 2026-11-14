@@ -1,0 +1,15 @@
+{
+  "id": "C16",
+  "made": "2026-11-08",
+  "by": "claude",
+  "paths": ["packages/video-render/src/music-bed.ts"],
+  "chose": "The music bed is a slow D-major progression (I, vi, IV, I, I, vi, IV, V) at 72 a minute, a soft pad with a bass and a sparse music-box line, peaking at -6 dBFS.",
+  "options": [
+    "a slow major progression with pad, bass and bells",
+    "a drone with no harmonic motion",
+    "a busier groove"
+  ],
+  "gray": "The owner asked for a bed we make ourselves (#2673) and named no music.",
+  "undo": "Change music-bed.ts; its sum, file name and the series that pin it move together as a new version, or pin a file of the owner's own.",
+  "refs": ["#2673", "#2765"]
+}

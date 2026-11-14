@@ -1,0 +1,19 @@
+{
+  "id": "C118",
+  "made": "2026-11-11",
+  "by": "owner",
+  "paths": [
+    "server:apps/envctl/src/deploy.rs",
+    "server:nix/modules/home-deploy.nix"
+  ],
+  "chose": "The deploy fetches main and applies the release from a worktree of the commit that carries it (/var/lib/home-deploy/releases/<sha>), so compose, the deploy/<role>/ names and the image digests move as one commit; the owner's own checkout is never touched.",
+  "options": [
+    "never update anything on home but images (C82)",
+    "fast-forward the owner's checkout",
+    "run each release from its own worktree of main"
+  ],
+  "gray": "C82 kept main's compose and sops changes off home unreviewed. Every release is now a merged main commit whose CI checked the set, and the owner's checkout is left alone, so C82's reason holds while its rule moves. Home now does a git fetch on a demanded pass.",
+  "undo": "Run compose from the owner's checkout again and read release.json there; an image that needs a newer checkout then fails its preflight as under C82.",
+  "refs": ["server#787", "server#793"],
+  "moves": "C82"
+}

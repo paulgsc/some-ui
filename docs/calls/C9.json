@@ -1,0 +1,12 @@
+{
+  "id": "C9",
+  "made": "2026-11-06",
+  "by": "claude",
+  "agreed": "2026-11-06",
+  "paths": ["packages/ui/shared/src/components/ui/button.tsx"],
+  "chose": "Every Button variant draws a transparent border, so a variant swap keeps its width.",
+  "options": ["fixes at each site", "the primitive"],
+  "gray": "It changes every button's width by 2px across the app.",
+  "undo": "Drop the border from button.tsx's variants.",
+  "refs": ["#2637", "#2623", "#2625", "#2634"]
+}

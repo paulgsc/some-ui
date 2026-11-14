@@ -1,0 +1,17 @@
+{
+  "id": "C62",
+  "made": "2026-11-10",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/mailbox.rs",
+    "server:apps/servers/file_host/src/handlers"
+  ],
+  "chose": "Every route that files something for the mailbox wakes a pass when it adds a file: Jobs files, opened lessons, reflections, prompts, notes on an episode, and a transcriber pass that heard something. A file sent again unchanged wakes nothing.",
+  "options": [
+    "only what server#500 names (Jobs files, opened, transcripts)",
+    "every route that files for the mailbox"
+  ],
+  "gray": "server#500 lists three, but the others go out the same way, and the epic's done-when is about how soon what home puts reaches the mailbox.",
+  "undo": "Drop outbox.filed() from a handler.",
+  "refs": ["server#500", "server#499", "#2142", "#2833"]
+}

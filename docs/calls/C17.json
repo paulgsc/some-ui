@@ -1,0 +1,14 @@
+{
+  "id": "C17",
+  "made": "2026-11-08",
+  "by": "claude",
+  "paths": ["packages/some-styles/src/theme/video-palette.ts"],
+  "chose": "Mochi Night's accents are held to 4.5:1 on the ground only, not on cards; the warning, 4.1:1 on a card to someone with protanopia, always comes with a word or a glyph.",
+  "options": [
+    "on the ground only",
+    "on the ground and on cards, changing the warning's hex"
+  ],
+  "gray": "The research measured on the background, which is what a video frame is, and the owner chose the hexes.",
+  "undo": "Measure on `surface` too in videoPaletteProblems and change the warning's hex.",
+  "refs": ["#2675", "#2774"]
+}

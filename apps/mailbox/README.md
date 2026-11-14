@@ -418,7 +418,7 @@ transcript`, and one that names Drive with `a note names no Drive file`. A name 
   bytes it first put and sends those same bytes on any retry; a transcript heard later does
   not change a pickup already filed. Home puts one for each ready-for-pickup move, so the
   routine files only what the owner marked ready. The move's comment stays home, and so does
-  the audio (owner, 2026-11-13, `C296` in `docs/calls.json`). The Worker holds this shape
+  the audio (owner, 2026-11-13, `docs/calls/C296.json`). The Worker holds this shape
   itself: every key is required, any other key (a `comment` included) is `422`, a name that does
   not carry the body's `note` and `seq` is `422`, and audio or a Drive file is refused by the
   transcript's tests, with `a take carries no audio: home keeps the audio` or `a take names no

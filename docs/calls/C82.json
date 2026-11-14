@@ -1,0 +1,15 @@
+{
+  "id": "C82",
+  "made": "2026-11-10",
+  "by": "claude",
+  "paths": ["server:scripts/deploy.py", "server:README.md"],
+  "chose": "The deploy does not update home's checkout. An image that needs a newer checkout fails its preflight (nothing is replaced) or its start (it is rolled back), and where the preflight or the container's last log lines name a missing or refused variable, it says this image needs a newer checkout on home.",
+  "options": [
+    "never touch the checkout",
+    "git fetch and fast-forward main when it is clean, before each deploy",
+    "deploy from a clone the deploy owns, separate from the owner's checkout"
+  ],
+  "gray": "The owner's correction asked for no polling and nothing beyond pulling the image; the coordinator asked to drop the fast-forward unless the on-demand path truly needs it. Auto-pulling main also runs main's compose and sops changes on home unreviewed by anyone there. No convention covers it.",
+  "undo": "Add a fast-forward step to scripts/deploy.py's deploy() before the pull (an earlier rehearsed version had update_checkout), and drop CHECKOUT_HINT.",
+  "refs": ["server#776", "#2833"]
+}

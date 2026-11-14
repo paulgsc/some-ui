@@ -7,7 +7,7 @@
  *
  * - **Merged pull requests**, each with its change kind (its squash
  *   commit's `Change-Kind:` trailer).
- * - **Calls** that reached the calls record (`docs/calls.json`, ST37 #2637)
+ * - **Calls** that reached the calls record (`docs/calls/`, ST37 #2637)
  *   on `main` in the week, or were agreed to in it, so the call can say what
  *   was decided without the owner, and on whose authority.
  * - **Promises** declared or amended, from commits' `Promise:` and
@@ -16,8 +16,6 @@
  * - **Epics that moved**, with their "Why" and "Where we are" as the epic
  *   says them.
  */
-
-import { z } from "zod"
 
 import type { AskFile } from "./ask"
 import type { Repo } from "./refs"
@@ -70,48 +68,49 @@ export function sectionOf(body: string, heading: string): string | null {
 }
 
 /**
- * A call in the calls record (`docs/calls.json`), as the routine reads it.
- * The record's own check is `@some-ui/eslint`'s `calls.ts`, which runs with
- * no install and so can't be imported here; this reads only what it picks by.
+ * A call in the calls record (`docs/calls/`), as the record's one loader
+ * (`@some-ui/eslint-kit/calls`, which `cli.ts` calls) reads and checks it;
+ * typed here by what the routine picks by, since this module is in the
+ * package's browser-safe index and the loader reads git.
  */
-const CallSchema = z.looseObject({
-  id: z.string(),
-  made: z.iso.date(),
-  by: z.enum(["claude", "owner"]),
-  agreed: z.iso.date().optional(),
-})
+export type RecordedCall = {
+  readonly id: string
+  readonly made: string
+  readonly by: "claude" | "owner"
+  readonly agreed?: string
+  readonly [field: string]: unknown
+}
 
-export type RecordedCall = z.infer<typeof CallSchema>
-
-const CallsFileSchema = z.object({
-  schema: z.literal("some-ui.calls/1"),
-  calls: z.array(CallSchema),
-})
+/**
+ * A call as the routine lists it: `id`, `made`, `by` and `agreed` first, then
+ * the rest in its file's order, as the week's facts have always listed them.
+ */
+function listed(call: RecordedCall): RecordedCall {
+  const { id, made, by, agreed, ...rest } = call
+  return { id, made, by, ...(agreed === undefined ? {} : { agreed }), ...rest }
+}
 
 /**
  * The calls that entered the record over a week, or gained the owner's
  * `agreed` in it: what `after` (the record on `main` as the week ended)
- * holds that `before` (as it began, null where there was none) did not.
- * Read by when it reached `main`, not by `made`, so a call made one week and
- * merged the next is voiced once, in the week it merged.
+ * holds that `before` (as it began, null where there was none) did not, in
+ * `after`'s order. Read by when it reached `main`, not by `made`, so a call
+ * made one week and merged the next is voiced once, in the week it merged.
  */
 export function callsEntered(
-  before: string | null,
-  after: string
+  before: ReadonlyArray<RecordedCall> | null,
+  after: ReadonlyArray<RecordedCall>
 ): Array<RecordedCall> {
-  const was = new Map(
-    (before === null
-      ? []
-      : CallsFileSchema.parse(JSON.parse(before)).calls
-    ).map((c) => [c.id, c])
-  )
-  return CallsFileSchema.parse(JSON.parse(after)).calls.filter((c) => {
-    const earlier = was.get(c.id)
-    return (
-      earlier === undefined ||
-      (earlier.agreed === undefined && c.agreed !== undefined)
-    )
-  })
+  const was = new Map((before ?? []).map((c) => [c.id, c]))
+  return after
+    .filter((c) => {
+      const earlier = was.get(c.id)
+      return (
+        earlier === undefined ||
+        (earlier.agreed === undefined && c.agreed !== undefined)
+      )
+    })
+    .map(listed)
 }
 
 /** A commit message's `Promise:` and `Relates:` trailers, in order. */

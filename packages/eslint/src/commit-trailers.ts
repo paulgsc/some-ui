@@ -8,7 +8,8 @@
 //   Call: <CID>, …
 //
 // A `Call:` line names the gray-area calls the commit makes or moves, by
-// their ids in docs/calls.json (ST37, packages/eslint/src/calls.ts).
+// their ids in the calls record, docs/calls/<ID>.json (ST37,
+// packages/eslint/src/calls.ts).
 //
 // A `Relates:` line belongs to a defect (it relates a failing state to an
 // earlier promise), so it needs `Change-Kind: defect` beside it.
@@ -165,8 +166,8 @@ export function checkCommitTrailers(message: string): Array<TrailerFinding> {
 
 /**
  * The call ids a well-formed message's final paragraph names on `Call:`
- * lines, in order. Whether each is in docs/calls.json at that commit is the
- * script's to check: it can read the file.
+ * lines, in order. Whether each is in the calls record at that commit is the
+ * script's to check: it reads the record there (`calls-record.ts`).
  */
 export function callIdsOf(message: string): Array<string> {
   const paragraphs = message.trim().split(/\n[ \t]*\n/)
@@ -201,7 +202,7 @@ export function describeTrailerFinding(finding: TrailerFinding): string {
       return `\`Relates: ${finding.value}\` does not read \`Relates: <ID> breaks\`, \`Relates: <ID> widens\` or \`Relates: <ID> shares <dimension>\`.`
     }
     case "badCall": {
-      return `\`Call: ${finding.value}\` does not read \`Call: <ID>, …\` (each a call's id in docs/calls.json, such as C12).`
+      return `\`Call: ${finding.value}\` does not read \`Call: <ID>, …\` (each a call's id in docs/calls/, such as C12).`
     }
     case "relatesOnStory": {
       return "Relates: relates a failing state to an earlier promise, so it goes with `Change-Kind: defect`, not story."

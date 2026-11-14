@@ -11,7 +11,7 @@ each one with its options instead of finding it in a session or an epic.
 File an ask when work stops on a decision only the owner can make: a product
 call, a preference, a step on their own devices or accounts. Don't file one
 for something an agent can decide, or for a question a check or a convention
-already answers. Make the call, and record it in `docs/calls.json` (CLAUDE.md, "Two
+already answers. Make the call, and record it as `docs/calls/<ID>.json` (CLAUDE.md, "Two
 kinds of pull request").
 
 One issue per decision. An epic's "Where we are" and the Residual Ledger's

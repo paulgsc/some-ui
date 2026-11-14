@@ -1,0 +1,18 @@
+{
+  "id": "C278",
+  "made": "2026-11-13",
+  "by": "claude",
+  "paths": [
+    "packages/ui/interview-week/src/lib/monday/bundle.ts",
+    "packages/ui/interview-week/src/lib/monday/corpus.ts"
+  ],
+  "chose": "A decision question draws on a recorded call in docs/calls.json, least recently asked first and newest first among those never asked. A merged pull request reaches a question only through the call that records its decision (the call's refs); a merged pull request with no call is not a source.",
+  "options": [
+    "(a) recorded calls only, the pull requests reached through their refs",
+    "(b) calls and merged pull requests alike, a pull request by its title",
+    "(c) pull requests with their bodies fetched for the chosen one"
+  ],
+  "gray": "#2935 names both calls and merged pull requests as sources. A call records what was chosen, the options, why it was gray and how to undo it, which is what a decision question asks about; a pull request's title alone names none of that, and fetching bodies makes prepare read GitHub at a second moment.",
+  "undo": "Add merged pull requests (render call-facts' `pulls`) to `Corpus` and to `questions` in bundle.ts as a second decision source, with a source kind `pull` in the week's format.",
+  "refs": ["#2931", "#2935"]
+}

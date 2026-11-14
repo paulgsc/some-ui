@@ -3,6 +3,12 @@
   "compilerOptions": {
     "declarationDir": "./",
     "rootDir": ".",
+    // scripts/monday.ts reads the calls record through its one loader
+    // (`@some-ui/eslint-kit/calls`), which is read as source and imports its
+    // rules by their real `.ts` name, as Node's type stripping needs
+    // (packages/eslint/tsconfig.json). src never imports it, so the build
+    // (which leaves scripts out) emits nothing from it.
+    "rewriteRelativeImportExtensions": true,
     "paths": {
       "@interview-week/*": ["./src/*"]
     }

@@ -1,0 +1,17 @@
+{
+  "id": "C44",
+  "made": "2026-11-09",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/templates.ts",
+    "packages/video-render/src/templates/rust-essay"
+  ],
+  "chose": "The Rust Rounds essay's format is pinned under templates/rust-essay/ and kept off Studio's Templates list (TEMPLATES_NOT_LISTED) until home can voice, render and preview an essay (RR16).",
+  "options": [
+    "pinned and not listed in Studio until RR16",
+    "listed in Studio now, with no preview home can make"
+  ],
+  "gray": "#2690 asks for the format pinned under src/templates/, and every template there was listed in Studio; a listed template is one Studio offers a preview of, which home can't make for the essay yet.",
+  "undo": "Move rust-essay from TEMPLATES_NOT_LISTED into TEMPLATE_IDS with its storyboard, series and a preview recorder (tests/record/preview.ts), as RR16 will.",
+  "refs": ["#2690", "#2691"]
+}

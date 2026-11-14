@@ -1,0 +1,18 @@
+{
+  "id": "C124",
+  "made": "2026-11-11",
+  "by": "claude",
+  "paths": [
+    "testing:.github/workflows/guard.yml",
+    "testing:.github/workflows/playoff-delta.yml"
+  ],
+  "chose": "The guard runs on every push and pull request, checking every commit in the range. A failure on main opens or comments on one issue. Playoff Delta runs the guard itself before its own commit. No ruleset requires the guard.",
+  "options": [
+    "fail the run and open an issue on main, with no required check",
+    "a ruleset requiring the guard on main",
+    "post to some-ui's Slack webhook"
+  ],
+  "gray": "A required check would block the choir's direct pushes to main and the GITHUB_TOKEN commit, which can't be a ruleset bypass actor. some-ui's Slack step is commented out with no secret behind it. Nothing said which loud channel the owner hears.",
+  "undo": "Delete the tell-the-owner job, or have the owner add a ruleset once every writer uses pull requests.",
+  "refs": ["testing#6"]
+}

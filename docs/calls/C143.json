@@ -1,0 +1,19 @@
+{
+  "id": "C143",
+  "made": "2026-11-13",
+  "by": "claude",
+  "agreed": "2026-11-13",
+  "paths": [
+    "apps/www/src/lib/jobs/journey.ts",
+    "apps/www/src/lib/jobs/model.ts"
+  ],
+  "chose": "JB2's first tolerance call (a share nobody confirmed, that a run read, still asks \"Did they arrive?\") is answered (a) keep, because it is moot: HF2 (#2177) took the Jobs share sheet away, so nothing in Jobs asks \"Did they arrive?\" any more. Every share is filed with home and recorded shared and arrived at one instant. A sheet share from before HF2 that nobody confirmed reads as read once a run named it, otherwise as on the phone, and what it held is filed with home either way.",
+  "options": [
+    "(a) keep it",
+    "(b) once a digest's read names the file, record arrived and say so on the card",
+    "(c) stop asking, but keep the audio until the owner confirms"
+  ],
+  "gray": "#2013 put it to the owner as a choice between keeping the confirmation and recording arrival from a run's read; nothing recorded settled it. Owner, 2026-11-13, on #2013 and two other items: \"These aren't blocked on me… for one of them, there is a wait on me. Let's just go with the recommended.\"",
+  "undo": "Nothing to undo in code: a confirmation would first have to come back with a share sheet, and then (b) or (c) could be built on it.",
+  "refs": ["#2013", "#2006", "#2177"]
+}

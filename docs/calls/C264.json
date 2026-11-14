@@ -1,0 +1,18 @@
+{
+  "id": "C264",
+  "made": "2026-11-13",
+  "by": "claude",
+  "paths": [
+    "packages/ui/interview-week/src/lib/faults/thresholds.ts",
+    "packages/ui/interview-week/src/lib/faults/answer.ts"
+  ],
+  "chose": "A word is mumbled when whisper's probability for it is under 0.5, and the mumbled share is over the words that carry a probability; a word without one is neither mumbled nor counted in the share.",
+  "options": [
+    "(a) p under 0.5, words without p left out of the share",
+    "(b) p under 0.5, words without p counted as heard",
+    "(c) a stricter p under 0.3"
+  ],
+  "gray": "No check or earlier decision says how unsure the transcriber must be before a word reads as mumbled; the value sets the mumbling count the owner sees charted each week.",
+  "undo": "Change MUMBLE_P in packages/ui/interview-week/src/lib/faults/thresholds.ts, or count words without p in measureAnswer's share.",
+  "refs": ["#2934"]
+}

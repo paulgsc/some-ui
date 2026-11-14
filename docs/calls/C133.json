@@ -1,0 +1,15 @@
+{
+  "id": "C133",
+  "made": "2026-11-11",
+  "by": "claude",
+  "paths": ["apps/www/src/components/studio/clips.tsx"],
+  "chose": "On a phone not paired with home, a clip's page lists only the labels and says so, without asking home and without falling back to the six legacy frames testing still holds.",
+  "options": [
+    "labels only, saying why",
+    "show testing's six legacy frames, and labels for the rest",
+    "show nothing until the phone is paired"
+  ],
+  "gray": "The owner decided that away from home the page shows labels only and says so, not whether the legacy frames still in testing should show meanwhile. A fallback would show some clips and not others for a reason the page couldn't state plainly, and those frames leave testing later anyway.",
+  "undo": "In ClipPage in clips.tsx, read a legacy frame from TESTING_DATA when the phone isn't paired.",
+  "refs": ["#2670"]
+}

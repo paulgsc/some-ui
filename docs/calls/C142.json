@@ -1,0 +1,17 @@
+{
+  "id": "C142",
+  "made": "2026-11-13",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/docs/game-feed.md",
+    "server:deploy/home/file_host.sops.env"
+  ],
+  "chose": "GAME_FEED_ENABLED stays false as the code default; turning the feed on is the owner's one-line sops edit of deploy/home/file_host.sops.env, written in the game-feed doc.",
+  "options": [
+    "the owner's one-line sops step, documented",
+    "flip the clap default to true"
+  ],
+  "gray": "The task offered either; flipping the default would change nothing on home while the deployment file states the value, and no session holds a key to edit it. The owner, 2026-11-13: \"These aren't blocked on me… for one of them, there is a wait on me. Let's just go with the recommended.\"",
+  "undo": "Set default_value_t = true for game_feed_enabled in apps/servers/file_host/src/config.rs and infra/env/file_host.json.",
+  "refs": ["#2074", "server#534", "server#544"]
+}

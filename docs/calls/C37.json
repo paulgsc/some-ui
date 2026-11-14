@@ -1,0 +1,14 @@
+{
+  "id": "C37",
+  "made": "2026-11-08",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/home-link/model.ts",
+    "apps/www/src/lib/home-link/kept-runtime.ts"
+  ],
+  "chose": "The phone drains one lane to home at a time; a screen's read or Sync runs beside that run, but lanes never run beside each other.",
+  "options": ["one lane at a time", "lanes draining concurrently"],
+  "gray": "Concurrent lanes would empty a backlog sooner, but the lanes share a read-then-write of what was sent, which would need reworking first.",
+  "undo": "Let the drain side in model.ts admit more than one run, after making the shared `sent` write safe under concurrency.",
+  "refs": ["#2758", "#2740"]
+}

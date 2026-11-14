@@ -1,0 +1,17 @@
+{
+  "id": "C28",
+  "made": "2026-11-08",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/pending.ts",
+    "packages/ui/topik/ROUTINE.md"
+  ],
+  "chose": "A note left on an episode is filed as one pending issue per place its categories send it (the feed's next fill, its template, a slide to fix), each with only the categories that send it there; a slide to fix is labelled kind:defect, the others kind:story.",
+  "options": [
+    "one issue per note, listing every place it goes",
+    "one issue per place it goes"
+  ],
+  "gray": "#2745 says each note is filed as a pending issue that says where it goes; a note can go to more than one place, and an issue that is both a story and a defect has no one kind.",
+  "undo": "Make toFile give one feedback item per note, with every destination, and drop the per-place line in noteFiledLine.",
+  "refs": ["#2745", "#2670"]
+}

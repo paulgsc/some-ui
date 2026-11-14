@@ -3,7 +3,7 @@
 A scheduled cloud session runs this every Monday (IW4, #2935). It writes the
 week of mock interview that opens that day (`some-ui.interview-week/1`): an
 invented company and role, five questions to answer by voice (four while
-`docs/calls.json` holds no call to ask about), and three teleprompter cards
+`docs/calls/` holds no call to ask about), and three teleprompter cards
 to read. The essay on the week that ended comes later
 (IW6, #2937).
 
@@ -13,7 +13,7 @@ The two share the mailbox client, the week's dates and `render call-facts`.
 Code does everything a model needn't decide (LEVERS, #2162). It chooses:
 
 - each question's family and variant, rotated least recently asked first;
-- each decision question's recorded call (`docs/calls.json`);
+- each decision question's recorded call (`docs/calls/<ID>.json`);
 - each card's source (an epic, a doc, an invariant) and situation.
 
 It also fills the ids, dates and targets, checks the week and puts it. You

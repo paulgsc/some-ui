@@ -1,0 +1,19 @@
+{
+  "id": "C135",
+  "made": "2026-11-12",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/components/studio/renders.tsx",
+    "apps/www/src/lib/renders/words.ts",
+    "apps/www/src/lib/renders/subject.ts"
+  ],
+  "chose": "Each row on Renders is a tile: its kind on top (the feed's name, Preview, A clip's walk-through), the thing by name under it (the days or week, \"A preview of <template>\", the clip's side), and the whole tile opens its page: an episode's page, the template's page for a preview, the clip's page for a walk. Now has an \"Open …\" link under its bar.",
+  "options": [
+    "the whole row a tile that opens its page",
+    "a plain line with a separate Open link",
+    "rows as before, with links only on finished ones"
+  ],
+  "gray": "The owner asked to go from Renders to previews and episodes, not how a row should look or whether waiting and failed rows link too. A waiting episode's page exists before it is made, so linking every row was a choice.",
+  "undo": "In renders.tsx, render RowTile's body without ToPage, and drop the open link under Now.",
+  "refs": ["#2899", "#2670"]
+}

@@ -64,7 +64,7 @@ every Residual Ledger `first_step` in those three parts, in that order (#2814, N
     ("Review coverage on every head").
   - Server's steward counts only bot review. On server, that fallback holds only when the
     owner extends it for the run; write that grant in the epic as well (#2814, Nov 13).
-- Hand each worker a call-ID range for `docs/calls.json`, and keep the next free ID on the
+- Hand each worker a call-ID range for `docs/calls/`, and keep the next free ID on the
   record issue (#2814, Nov 9).
 - Be the only writer of the ledger and of every epic body (#2823, #2833).
 - Copy session ids from the roster; never retype them (#2814, Nov 8).
@@ -113,11 +113,7 @@ default (owner, #2814 Nov 10; measurements on #2833).
 - Under strict up-to-date, keep one PR per repo updated and armed, chosen by critical path,
   and update and arm the next only when it lands. Updating every ready PR at once costs about
   N²/2 CI runs, and two armed PRs race, so the loser pays for every run again (#2918, Nov 13;
-  #2945 ran CI three times, #2918, Nov 14). Give the next slot to a PR stuck in a
-  `docs/calls.json` conflict cycle, and hold the other call-adding PRs until it lands.
-- Every PR that records a call appends to `docs/calls.json`, so two in flight always conflict
-  after the first merges. Resolve by taking `main`'s file text exactly and appending the PR's new
-  entries, never by reformatting (#2918, Nov 13).
+  #2945 ran CI three times, #2918, Nov 14).
 - Before merging a server PR that adds a mailbox read or put, check every numeric bound the
   assurance ledger states for the mailbox pass (MI6's requests a day; MI5's 120 seconds and
   its request budget a pass). The server's `Assurance ledger` check reads stores, paths and

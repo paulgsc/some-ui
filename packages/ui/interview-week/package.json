@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@some-ui/core-utils": "workspace:*",
+    "@some-ui/eslint-kit": "workspace:*",
     "@some-ui/video-render": "workspace:*",
     "zod": "catalog:"
   },

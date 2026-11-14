@@ -1,0 +1,19 @@
+{
+  "id": "C134",
+  "made": "2026-11-12",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/components/studio/template-preview.tsx",
+    "apps/www/src/lib/template-preview/words.ts",
+    "apps/www/src/lib/template-preview/model.ts"
+  ],
+  "chose": "Make a preview asks first, in a sheet that names the template, says nothing is posted and that the new preview takes the place of any home has; after a yes, a notice over the page says what home is making, with a button to Renders.",
+  "options": [
+    "a question first, then a notice with the way to Renders",
+    "no question; only the notice after the press",
+    "a clearer button label alone"
+  ],
+  "gray": "The owner asked for an affordance that says what is being made, after making a preview by accident, but not whether a press should ask first. A question costs every deliberate press one more tap; a notice alone tells only after home was already asked.",
+  "undo": "In TemplatePreview (template-preview.tsx), call runtime.make() straight from the button's onClick and drop the confirm words from PREVIEW_WORDS.",
+  "refs": ["#2899", "#2670"]
+}

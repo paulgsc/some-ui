@@ -1,0 +1,12 @@
+{
+  "id": "C2",
+  "made": "2026-11-06",
+  "by": "claude",
+  "agreed": "2026-11-06",
+  "paths": ["scripts/notices.allowlist"],
+  "chose": "Kept in the layout as screen content (HS3 `Content:`): topik's served \"nothing fits\" answer, the delete sheet's ended step, the route loading screen, Settings' kept-on-home row lines.",
+  "options": ["a Notice", "screen content"],
+  "gray": "Each one both answers a tap and is the screen's content.",
+  "undo": "Make it a Notice and drop its allowlist group.",
+  "refs": ["#2637", "#2623", "#2625", "#2634"]
+}

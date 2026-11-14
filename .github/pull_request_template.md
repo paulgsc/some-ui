@@ -14,9 +14,9 @@ something existing code already does, name that code and say why both must exist
 <!--
 Each gray-area call this change made: a choice between options that no check, convention or
 earlier owner decision settles, that the owner would notice on the screen or in how they work.
-Record each one in docs/calls.json (who made it, why it was gray, the options, how to undo
-it), put `Call: <ID>` in the commit that makes it, and list the IDs here with a line each.
-"None" if there were none. The weekly call reads docs/calls.json, not this section
+Record each one as docs/calls/<ID>.json (who made it, why it was gray, the options, how to
+undo it), put `Call: <ID>` in the commit that makes it, and list the IDs here with a line each.
+"None" if there were none. The weekly call reads docs/calls/, not this section
 (CLAUDE.md, "Two kinds of pull request").
 -->
 

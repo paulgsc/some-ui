@@ -1,0 +1,11 @@
+{
+  "id": "C60",
+  "made": "2026-11-10",
+  "by": "claude",
+  "paths": ["server:apps/servers/file_host/src/mailbox/bell.rs"],
+  "chose": "Home counts the bell as dead after 90 seconds with no pong, ring or other frame, sending a ping every 30 seconds.",
+  "options": ["90 seconds of silence", "10 seconds after an unanswered ping"],
+  "gray": "The protocol agreed on #2833 allowed either.",
+  "undo": "Change `silence` in Timings::new in bell.rs.",
+  "refs": ["server#500", "server#499", "#2142", "#2833"]
+}

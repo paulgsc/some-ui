@@ -1,0 +1,14 @@
+{
+  "id": "C241",
+  "made": "2026-11-13",
+  "by": "claude",
+  "paths": ["packages/ui/soundbites/src/components/take-library/index.tsx"],
+  "chose": "Takes on home shows each take's station on its row (\"Cooking since Nov 13\", or that home hears of a move once it's in reach). The moving itself waits for the conveyor page (CONVEYOR2).",
+  "options": [
+    "the station on each row of Takes on home",
+    "the station only on the conveyor page"
+  ],
+  "gray": "The owner asked for a separate page for sorting, and didn't say whether the list of takes shows the stations too.",
+  "undo": "Drop the station line from TakeItem in the take library.",
+  "refs": ["#2873", "#2874"]
+}

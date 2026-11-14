@@ -1,0 +1,18 @@
+{
+  "id": "C12",
+  "made": "2026-11-08",
+  "by": "claude",
+  "paths": [
+    "server:infra/render/render-calls.sh",
+    "server:infra/render/render-calls.test.sh"
+  ],
+  "chose": "The render worker's test sources the script over a temporary ROOT and runs one pass of the call's job; the script loops only when executed.",
+  "options": [
+    "source the script and run a pass",
+    "an environment switch for one pass",
+    "split the script into files"
+  ],
+  "gray": "Any of them gives one pass without the hourly sleep, and L4c (server#708) rewrites that loop next.",
+  "undo": "Replace the sourced guard in render-calls.sh and adapt render-calls.test.sh.",
+  "refs": ["#2659", "server#732", "server#708"]
+}

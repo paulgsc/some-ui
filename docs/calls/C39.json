@@ -1,0 +1,17 @@
+{
+  "id": "C39",
+  "made": "2026-11-08",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/home-link/pace.ts",
+    "apps/www/src/lib/home-link/runtime.ts"
+  ],
+  "chose": "Every request to home, the person's included, takes a turn on one pace (49 at once, then one every 2 s), with the person's turns ahead of any waiting drain turn, so after the burst a tap waits up to 2 s.",
+  "options": [
+    "pace every request, the person's included",
+    "pace only the drains and let the person's requests through unpaced"
+  ],
+  "gray": "Pacing the person costs up to 2 s on a tap after the burst; not pacing them gives up the bound on home's bucket over everything the phone sends.",
+  "undo": "Let the person side's requests in runtime.ts skip the pace in pace.ts, and narrow AD3's bound to drains.",
+  "refs": ["#2758"]
+}

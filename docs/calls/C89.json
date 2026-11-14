@@ -1,0 +1,15 @@
+{
+  "id": "C89",
+  "made": "2026-11-11",
+  "by": "claude",
+  "paths": ["server:deny.toml", "server:docs/storage.md"],
+  "chose": "RUSTSEC-2026-0459 (the SQLite that sqlx 0.8.6 bundles) is cleared by a dated, reasoned ignore in deny.toml, revisited by 2027-02-11 and resting on a written invariant that every SQLite file opened here is one this deployment wrote, not by a sqlx bump.",
+  "options": [
+    "a dated, reasoned ignore in deny.toml, backed by a written invariant",
+    "upgrade sqlx to 0.9",
+    "leave the advisories job red"
+  ],
+  "gray": "No sqlx release reaches the fixed libsqlite3-sys 0.39: every sqlx-sqlite 0.8.x pins ^0.30.1, and 0.9.0 caps below 0.38, so the bump would not clear it. The flaw needs a database and -wal pair a less-trusted party wrote, and nothing here opens one; whether that is enough to ignore an advisory no convention says.",
+  "undo": "Drop the RUSTSEC-2026-0459 entry from deny.toml once a sqlx-sqlite release accepts libsqlite3-sys >= 0.39, then bump sqlx.",
+  "refs": ["server#764", "server#784"]
+}

@@ -5,6 +5,10 @@
     "target": "ES2022",
     "lib": ["ES2022"],
     "noEmit": true,
+    // The calls record's loader (`@some-ui/eslint-kit/calls`) is read as
+    // source, and imports its rules by their real `.ts` name, as Node's
+    // type stripping needs (packages/eslint/tsconfig.json).
+    "rewriteRelativeImportExtensions": true,
     "types": ["node"],
     "rootDir": ".",
     "resolveJsonModule": true,

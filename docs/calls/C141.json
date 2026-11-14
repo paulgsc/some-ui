@@ -1,0 +1,14 @@
+{
+  "id": "C141",
+  "made": "2026-11-13",
+  "by": "claude",
+  "paths": ["server:crates/scenario_engine/src/rules.rs"],
+  "chose": "\"Just happened\" keeps counting scenario entries, not plays: one touchdown may fill Standard's two (the try and the red-zone trip), each a way to file a bite about it.",
+  "options": [
+    "scenario entries (as built)",
+    "one entry per play, its most specific scenario"
+  ],
+  "gray": "Asked on #2077 with no recommendation written; the replay meets the 8-in-10 bar either way. The owner, 2026-11-13: \"These aren't blocked on me… for one of them, there is a wait on me. Let's just go with the recommended.\"",
+  "undo": "In rules::just_happened, keep only the first entry per play_id, and bump ENGINE_VERSION.",
+  "refs": ["#2077"]
+}

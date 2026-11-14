@@ -1,0 +1,14 @@
+{
+  "id": "C68",
+  "made": "2026-11-10",
+  "by": "claude",
+  "paths": ["server:scripts/pr_gate.py", "server:docs/assurance.md"],
+  "chose": "PR gate keeps the 60-minute bound, applied per run: a first attempt counts from its created_at, so time queued counts, and a re-run from its run_started_at; a run longer than that fails the gate.",
+  "options": [
+    "drop the timeout, as server#762 proposed",
+    "keep the bound, per run"
+  ],
+  "gray": "server#762 said to drop the timeout, but dropping it would let a 61-minute run pass that fails the gate today.",
+  "undo": "Delete the `event and seconds(run) > RUN_LIMIT_SECONDS` branch in judge() in scripts/pr_gate.py and its self-tests.",
+  "refs": ["server#762", "server#767", "#2833"]
+}

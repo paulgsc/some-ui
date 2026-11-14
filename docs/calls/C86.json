@@ -1,0 +1,17 @@
+{
+  "id": "C86",
+  "made": "2026-11-11",
+  "by": "claude",
+  "paths": [
+    "server:.github/workflows/gate-verdict.yml",
+    "server:scripts/pr_gate.py"
+  ],
+  "chose": "A dispatched verdict first waits, at most 3 minutes, only for runs whose sole unfinished job is Tell PR gate (or whose status lags that job's finish), then judges as before; nothing holds a runner while other checks are still working.",
+  "options": [
+    "settle briefly on runs whose only unfinished job is Tell PR gate, then judge",
+    "PR gate (open) waits in the job for bot heads until their checks finish, as the C69 fallback does"
+  ],
+  "gray": "The dispatch comes from inside the run it reports on, so the run is not yet complete when the verdict reads it. Waiting in the job for every check brings back the runner hold #762 removed; a short bounded settle on the telling job alone does not, and no convention set the bound.",
+  "undo": "Drop the settle wait from scripts/pr_gate.py and gate-verdict.yml; a dispatched verdict then reads a run still in progress and leaves the gate pending until the sweep.",
+  "refs": ["server#762", "server#772", "server#783"]
+}

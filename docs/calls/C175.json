@@ -1,0 +1,15 @@
+{
+  "id": "C175",
+  "made": "2026-11-13",
+  "by": "claude",
+  "paths": ["packages/video-render/src/engagement-report.ts"],
+  "chose": "In the weekly engagement report, a change shows its difference only where both weeks are 5 or more; where one side is under 5 it says only up or down, and where both are under 5 or a week has no record it says nothing of the change.",
+  "options": [
+    "the difference only where both sides are 5 or more",
+    "the difference always, beside a banded count",
+    "no difference at all, only up, down or flat"
+  ],
+  "gray": "The owner's rule (ask #2701) says counts under 5 show as \"fewer than 5\" and changes show with the difference; a difference beside a banded count would give the banded count away. The owner said on 2026-11-13: \"Let's just go with the recommended.\"",
+  "undo": "Change publicChange in packages/video-render/src/engagement-report.ts.",
+  "refs": ["#2700", "#2701", "#2533"]
+}

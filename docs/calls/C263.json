@@ -1,0 +1,20 @@
+{
+  "id": "C263",
+  "made": "2026-11-13",
+  "by": "claude",
+  "paths": [
+    "packages/ui/interview-week/src/lib/faults/thresholds.ts",
+    "packages/ui/interview-week/src/lib/faults/answer.ts",
+    "packages/ui/interview-week/src/lib/faults/read.ts"
+  ],
+  "chose": "A pause in an interview answer is a gap between words of 2 s or more, and in a teleprompter read of 0.5 s or more; a gap exactly at the threshold counts, and the silence before the first word and after the last is counted apart, never as a pause.",
+  "options": [
+    "(a) 2 s for answers and 0.5 s for reads, inclusive",
+    "(b) one 2 s threshold for both flows",
+    "(c) 1 s for answers and 0.3 s for reads",
+    "(d) the same values, counting only gaps over the threshold"
+  ],
+  "gray": "#2934 suggests 2 s for answers and leaves reads open; the threshold decides which silences the essay charts as the owner's pauses each week, and a phrasing pause at a comma is far shorter than a lost thread.",
+  "undo": "Change ANSWER_PAUSE_MS or READ_PAUSE_MS in packages/ui/interview-week/src/lib/faults/thresholds.ts, or `>=` to `>` where answer.ts and read.ts compare a gap with them.",
+  "refs": ["#2931", "#2934"]
+}

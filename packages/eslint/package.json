@@ -9,7 +9,8 @@
   "exports": {
     ".": {
       "import": "./dist/esm/index.js"
-    }
+    },
+    "./calls": "./src/calls-record.ts"
   },
   "files": [
     "dist"
