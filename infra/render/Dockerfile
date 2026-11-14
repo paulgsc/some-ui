@@ -72,7 +72,6 @@ LABEL org.opencontainers.image.source="https://github.com/paulgsc/some-ui" \
 #   RENDER_FOLDERS_EPOCH in server's apps/servers/file_host/src/contract.rs.
 #   Raise it here in the same change that makes the recorders read a new
 #   layout.
-# It provides nothing.
 LABEL io.paulgsc.provides="" \
       io.paulgsc.requires="render-folders=1"
 
