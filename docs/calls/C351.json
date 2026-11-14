@@ -1,0 +1,19 @@
+{
+  "id": "C351",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "server:apps/envctl/src/deploy.rs",
+    "server:docs/release.md",
+    "server:README.md"
+  ],
+  "chose": "The deploy's gate counts a container as ready by exiting only when its restart policy is `no` and it exited 0, so a one-shot such as dashboard-builder can be in the release; any other exit, or an exited container under another policy, still fails and rolls the release back.",
+  "options": [
+    "Teach the gate one-shots: restart `no` and exit 0 is ready, in the PR that adds dashboard-builder to the release",
+    "Keep dashboard-builder out of the release and building on home until a later story teaches the gate",
+    "Mark one-shots apart in the release and skip them in the gate"
+  ],
+  "gray": "RL11 knew only healthy and running a minute with no restart, written when every released service was long-running; nothing said how a one-shot is judged. Deferring kept a build on home, a second way onto it, and left the one-way deploy waiting on another story. Skipping one-shots would let a failed dashboard build pass unseen and adds a second kind of release entry.",
+  "undo": "Revert the judge change and take dashboard-builder out of the release (restore its build: in infra/compose/monitoring.yml and re-add a named build exemption in scripts/check_home_guard.py).",
+  "refs": ["server#795", "server#871"]
+}
