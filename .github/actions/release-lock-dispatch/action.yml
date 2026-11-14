@@ -1,0 +1,40 @@
+name: "Ask server's release to look"
+description: >-
+  After an image is pushed to Docker Hub, dispatch paulgsc/server's
+  release-lock.yml, which forms home's next release from what is published
+  (U1, paulgsc/server#791).
+
+# It carries only a reason: the run reads Docker Hub itself (server's RL2), so
+# what this says is logged and nothing more. The run follows the some-ui
+# images server's release_lock.py lists in SOURCES; an image not listed there
+# yet (none is, until server#790's set check lets render and www in) leaves the
+# release as it is, and the dispatch is then only a look.
+#
+# The token is SERVER_ROUTES_DISPATCH_TOKEN, the route snapshot's token on the
+# server (Actions write), which now serves this second caller too. A missing
+# token fails the step, so the owner hears the release was not asked; the
+# image is already pushed, and a dispatch of release-lock.yml by hand catches
+# up.
+inputs:
+  token:
+    description: "SERVER_ROUTES_DISPATCH_TOKEN"
+    required: true
+  reason:
+    description: "What was published, e.g. pgathondu/www:1.2.3"
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Dispatch release-lock.yml
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        REASON: ${{ inputs.reason }}
+      run: |
+        set -euo pipefail
+        if [ -z "$GH_TOKEN" ]; then
+          echo "::error title=Release not asked::SERVER_ROUTES_DISPATCH_TOKEN is not set; dispatch paulgsc/server's release-lock.yml by hand."
+          exit 1
+        fi
+        gh workflow run release-lock.yml --repo paulgsc/server --ref main -f reason="$REASON"
+        echo "Asked paulgsc/server's release-lock.yml to look: $REASON" | tee -a "$GITHUB_STEP_SUMMARY"
