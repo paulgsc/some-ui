@@ -2,7 +2,12 @@
 import { frameAt, prepare } from "@burn-ins/lib/burn-in"
 import { ITEM } from "@burn-ins/lib/cards"
 import type { CheatSheetFrame } from "@burn-ins/lib/cheat-sheet"
-import { LANDSCAPE, PORTRAIT, type FrameSize } from "@burn-ins/lib/geometry"
+import {
+  geometryOf,
+  LANDSCAPE,
+  PORTRAIT,
+  type FrameSize,
+} from "@burn-ins/lib/geometry"
 import { describe, expect, it } from "vitest"
 
 const sheet = (
@@ -61,6 +66,13 @@ const BY_HAND = {
 }
 
 const END = 60_000
+
+const ROWS = (n: number): ReadonlyArray<object> =>
+  Array.from({ length: n }, () => ({
+    task: "A task",
+    command: "do it",
+    note: "A note under it.",
+  }))
 
 describe("the cheat-sheet card", () => {
   it("draws the NixOS sheet from its params, a row at a time, task beside command", () => {
@@ -121,18 +133,37 @@ describe("the cheat-sheet card", () => {
     })
     expect(p.ok ? [] : p.problems).toEqual([
       "the cheat-sheet burn-in (sheet-v1): row 1 gives TOKEN a value; a card shows a placeholder, never a value",
-      `the cheat-sheet burn-in (sheet-v1): row 2 has "→", which the card's type can't draw`,
+      `the cheat-sheet burn-in (sheet-v1): row 2's command has "→", which the card's type can't draw`,
     ])
     const crowded = sheet({
       title: "Crowded",
-      rows: Array.from({ length: 8 }, () => ({
-        task: "A task",
-        command: "do it",
-        note: "A note under it.",
-      })),
+      rows: ROWS(8),
     })
     expect(crowded.ok ? [] : crowded.problems).toEqual([
       "the cheat-sheet burn-in (sheet-v1): 8 rows don't fit",
     ])
+    const crowdedAndWrong = sheet({
+      title: "Crowded",
+      rows: [{ task: "Go", command: "a → b" }, ...ROWS(7)],
+    })
+    expect(crowdedAndWrong.ok ? [] : crowdedAndWrong.problems).toEqual([
+      `the cheat-sheet burn-in (sheet-v1): row 1's command has "→", which the card's type can't draw`,
+      "the cheat-sheet burn-in (sheet-v1): the rows don't fit",
+    ])
+  })
+
+  it("keeps every row inside the body while it rises, for every sheet it accepts", () => {
+    for (const frame of [LANDSCAPE, PORTRAIT]) {
+      const body = geometryOf(frame).regions.body
+      for (let n = 1; n <= 8; n++) {
+        const params = { title: "Rows", rows: ROWS(n) }
+        if (!sheet(params, frame).ok) continue
+        for (let t = 0; t <= END; t += 50)
+          for (const r of at(params, t, frame).rows)
+            expect(r.panel.y + r.panel.height).toBeLessThanOrEqual(
+              body.y + body.height
+            )
+      }
+    }
   })
 })

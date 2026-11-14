@@ -128,18 +128,18 @@ const givesValue = (what: string, name: string): string =>
   `${what} gives ${name} a value; a card shows a placeholder, never a value`
 
 /**
- * Why an item's words, named `what`, can't be shown: `mono`, its words in the
- * cards' monospace, has a character that type can't draw, or `text`, all its
- * words, gives a value. Null when neither.
+ * Why an item's words, named `what`, can't be shown: the part set in the
+ * cards' monospace (`mono`, all of `text` unless named) has a character that
+ * type can't draw, or `text` gives a value. Null when neither.
  */
 export function wordsProblem(
   what: string,
-  mono: string,
-  text: string
+  text: string,
+  mono: { readonly what: string; readonly text: string } = { what, text }
 ): string | null {
-  const missing = missingChar(mono)
+  const missing = missingChar(mono.text)
   if (missing !== null)
-    return `${what} has "${missing}", which the card's type can't draw`
+    return `${mono.what} has "${missing}", which the card's type can't draw`
   const name = valueProblem(text)
   return name === null ? null : givesValue(what, name)
 }
