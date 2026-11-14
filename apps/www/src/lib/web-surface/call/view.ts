@@ -2,6 +2,7 @@ import { assertNever } from "@some-ui/core-utils"
 import {
   CALL_CHAPTERS,
   callIntro,
+  callParts,
   callScenes,
   isFirstPage,
   parseCallWeek,
@@ -45,6 +46,8 @@ export type CallAt = {
   readonly index: number
   readonly scene: CallScene
   readonly view: SceneView
+  /** Which video of the week's series it is in (#2918). */
+  readonly part: { readonly n: number; readonly of: number }
 }
 
 const find = <T extends { readonly id: string }>(
@@ -59,7 +62,8 @@ const find = <T extends { readonly id: string }>(
 function viewOf(
   week: CallWeek,
   scene: CallScene,
-  scenes: ReadonlyArray<CallScene>
+  scenes: ReadonlyArray<CallScene>,
+  part: { readonly n: number; readonly of: number }
 ): SceneView {
   switch (scene.section) {
     case "open":
@@ -70,7 +74,7 @@ function viewOf(
       return { section: scene.section }
     }
     case "intro": {
-      return { section: "intro", rows: callIntro(week).rows }
+      return { section: "intro", rows: callIntro(week, part).rows }
     }
     case "chapter": {
       const items = scenes.filter(
@@ -104,15 +108,27 @@ function viewOf(
 }
 
 /** Scene `id` of the call, or its first scene when it has none by that id. */
-export function callAt(week: CallWeek, id: string | undefined): CallAt {
-  const scenes = callScenes(week)
+export function callAt(
+  week: CallWeek,
+  id: string | undefined,
+  part: number = 1
+): CallAt {
+  const parts = callParts(week)
+  const at = Math.min(Math.max(1, part), parts.length)
+  const scenes = callScenes(week, at)
   const index = Math.max(
     0,
     scenes.findIndex((scene) => scene.id === id)
   )
   // `callScenes` always gives the open, the board and the close.
   const scene = scenes[index]
-  return { scenes, index, scene, view: viewOf(week, scene, scenes) }
+  return {
+    scenes,
+    index,
+    scene,
+    view: viewOf(week, scene, scenes, { n: at, of: parts.length }),
+    part: { n: at, of: parts.length },
+  }
 }
 
 /**

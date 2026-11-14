@@ -41,25 +41,25 @@ up to 14 days.
    slides are the template's, filled by code: write none of them.
    - **board:** a row per ledger item not done, its title shortened to fit
      a card, its `status`, and its `tally.waits_on_you`.
-   - **moved:** up to 12 epics that moved, each said from its "Where we
+   - **moved:** every epic that moved, each said from its "Where we
      are": what landed, and what is next. Every PR it says landed is in a
      batch. A session note's `left` says what is next where the epic hasn't
      caught up.
-   - **done:** up to 12 batches of related pull requests, grouped by the
+   - **done:** every merged pull request, in batches of related ones, grouped by the
      story they moved. Leave out bots' PRs and route snapshot syncs. Say
      what each batch changed for the owner, never how.
-   - **gray:** up to 8 promises declared or amended this week, from the
+   - **gray:** every promise declared or amended this week, from the
      trailers, said as what they now hold.
-   - **mine:** up to 8 of the week's `calls`, and of its session notes'
+   - **mine:** the week's `calls`, and of its session notes'
      `calls`, worth the owner hearing: the options, the one taken, why it
      was gray, and how to undo it. A call in both is said once. Say whose
      call it was: Claude's alone, Claude's with the owner agreeing, or the
      owner's; a session note's calls are Claude's alone.
-   - **asks:** up to 12 open asks that parse: first those filed this week,
+   - **asks:** every open ask that parses: first those filed this week,
      newest first, then the rest by how much each unblocks. An ask that
-     doesn't parse is named in the PR body, never guessed. The others go in
-     **later**, with up to 20 more owner items from the ledger's
-     `first_step` "Yours:" lines that have no ask yet.
+     doesn't parse is named in the PR body, never guessed.
+   - **later:** every owner item from the ledger's `first_step` "Yours:"
+     lines that has no ask yet.
    - Each `said` is plain, spoken English, a few sentences, in the owner's
      terms: what changed for them and what it unblocks. No file names,
      routes or internal terms. The close says how many asks are open.
@@ -67,11 +67,14 @@ up to 14 days.
    `pnpm --filter @some-ui/video-render render call-check <paulgsc/testing>/call`
    until it says ready. It checks the index, every week it lists against the
    schema, each named for its own days, and no week file the index forgets.
-   A scene too long for its frame is paged by code, nothing cut (CF1,
-   `src/call-fit.ts`), so don't trim lists or words to fit. It refuses
-   only a single part taller than a whole frame, such as a why-it's-yours
-   of a dozen lines, naming the scene and what to shorten. Shorten that
-   alone, keeping the meaning,
+   Leave nothing out to make the week shorter (#2918): a scene too long for
+   its frame is paged by code (CF1, `src/call-fit.ts`), and a week too long
+   for one video is a series of parts of at most ten minutes, split at its
+   chapters by code (`callParts`; `render call-parts <file>` lists them).
+   Each section takes up to 200 items. call-check refuses only a single
+   part taller than a whole frame, such as a why-it's-yours of a dozen
+   lines, naming the scene and what to shorten. Shorten that alone,
+   keeping the meaning,
    and check again. Keep `said` to a few sentences too, as the schema's
    sample does: it is spoken, not shown, but it sets the video's length.
 6. **Update `call/index.json`:** the new week first. Keep at most `keep`

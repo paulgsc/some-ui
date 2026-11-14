@@ -13,6 +13,7 @@ import {
   callChapterMarks,
   callCutList,
   callFormat,
+  callParts,
   callScenes,
   hasCaptions,
   parseCallWeek,
@@ -97,6 +98,8 @@ export const CALL_OPTIONS = {
 export type CallValues = {
   readonly week?: string
   readonly "week-file"?: string
+  /** Which video of the week's series to record (#2918), from 1. */
+  readonly part?: string
   readonly voices: string
   readonly speaker: string
   readonly out: string
@@ -132,9 +135,11 @@ export async function recordCall(
       deviceScaleFactor: 1,
     })
     if (kept) await page.route(TESTING_CALL, (route) => answer(route, kept))
+    let part = 1
     const url = (scene: string): string =>
       `${site.origin}/call?${new URLSearchParams({
         ...(weekAsked ? { week: weekAsked } : {}),
+        ...(part > 1 ? { part: String(part) } : {}),
         scene,
         record: "true",
       }).toString()}`
@@ -151,11 +156,29 @@ export async function recordCall(
     if (weekAsked && weekAsked !== "sample" && week.week.from !== weekAsked)
       fail([`there is no week of ${weekAsked}`])
 
-    const scenes = callScenes(week)
+    // A week too long for one video is a series (#2918): one part a recording.
+    const of = preview ? 1 : callParts(week).length
+    if (values.part !== undefined) {
+      part = Number(values.part)
+      if (!Number.isInteger(part) || part < 1 || part > of)
+        fail([
+          `--part is a whole number from 1 to ${String(of)}, the parts of this week`,
+        ])
+    } else if (of > 1)
+      fail([
+        `the week of ${week.week.from} is ${String(of)} parts: record each with --part 1 to --part ${String(of)}`,
+      ])
+    const scenes = callScenes(week, part)
     // A preview's length is its cut's, which the renderer checks exactly; the
     // whole sample's words don't bound it.
     if (!preview) refuseLong(scenes, policy)
-    const root = here(preview ? values.out : join(values.out, week.week.from))
+    const root = here(
+      preview
+        ? values.out
+        : of > 1
+          ? join(values.out, week.week.from, `part-${String(part)}`)
+          : join(values.out, week.week.from)
+    )
     const takes = await recordStills({
       page,
       root,
@@ -181,10 +204,10 @@ export async function recordCall(
       join(root, "week.json"),
       `${JSON.stringify(week, null, 1)}\n`
     )
-    await renderCut(root, SERIES, callCutList(week, takes, { bed }), {
+    await renderCut(root, SERIES, callCutList(week, takes, { bed, part }), {
       preview,
       episode: "call.mp4",
-      marks: () => callChapterMarks(week),
+      marks: () => callChapterMarks(week, part),
       policy,
       browser,
       origin: site.origin,

@@ -60,8 +60,14 @@ export const words = z.string().trim().min(1)
 /** A show's id, and its format's: a name the code gives it. */
 export const showId = z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/)
 
+/**
+ * The most items a repeated scene shows: the weekly call's from version 5
+ * (`CALL_SERIES_MOST`), whose long weeks are series (#2918).
+ */
+export const REPEAT_MOST = 200
+
 /** The longest a repeated scene's id is, so `<id>-<n>` is still a cut's id. */
-export const REPEATED_ID_MAX = 40 - 1 - String(PRIMER_V2_CUTS).length
+export const REPEATED_ID_MAX = 40 - 1 - String(REPEAT_MOST).length
 
 /** The id of item `n` (from 1) of a repeated scene: "done-3". */
 export const repeatedId = (scene: string, n: number): string => `${scene}-${n}`
@@ -95,6 +101,10 @@ export function itemOfRepeated(scene: string, id: string): number | undefined {
  *   #2766): the theme the mark is drawn in on the brand intro and outro,
  *   chosen in Studio; absent, the template's. A version from before them
  *   has neither and is drawn in the page's own theme.
+ * - `parts` (#2918): an episode too long for one video is a series of
+ *   parts, each at most `mostMs` long by its words, broken at a chapter
+ *   once a part reaches `aimMs`; every part opens on the locked intro and the
+ *   brand, and says which part it is. Absent, an episode is one video.
  */
 export const ShapeSchema = z.strictObject({
   brand: z.strictObject({
@@ -114,6 +124,15 @@ export const ShapeSchema = z.strictObject({
   chapters: z.array(sceneId),
   subtitles: z.enum(["off", "line", "word"]),
   theme: ThemeIdSchema.optional(),
+  parts: z
+    .strictObject({
+      mostMs: z.number().int().positive(),
+      aimMs: z.number().int().positive(),
+    })
+    .refine((parts) => parts.aimMs <= parts.mostMs, {
+      message: "a part's aim is longer than its most",
+    })
+    .optional(),
 })
 
 export type Shape = z.infer<typeof ShapeSchema>
@@ -160,7 +179,7 @@ const FormatSceneSchema = z.object({
    * scene shows once.
    */
   repeat: z
-    .object({ max: z.number().int().min(1).max(PRIMER_V2_CUTS) })
+    .object({ max: z.number().int().min(1).max(REPEAT_MOST) })
     .optional(),
 })
 

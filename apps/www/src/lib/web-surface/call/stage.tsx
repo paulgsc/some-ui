@@ -48,6 +48,8 @@ import { CALL_WORDS as W } from "./words"
 export type CallStageProps = {
   /** The week shown, by its first day, or "sample". */
   week?: string
+  /** Which video of the week's series (#2918); the first when absent. */
+  part?: number
   /** The scene shown, by its id; the first when absent or unknown. */
   scene?: string
   record?: boolean
@@ -429,6 +431,7 @@ const Screen = ({
 
 export const CallStagePage = ({
   week: from,
+  part,
   scene,
   record = false,
   onScene,
@@ -459,7 +462,7 @@ export const CallStagePage = ({
     sample: SAMPLE,
   })
   const shown = state.kind === "show" ? state : null
-  const at = shown === null ? null : callAt(shown.week, scene)
+  const at = shown === null ? null : callAt(shown.week, scene, part)
   if (state.kind === "waiting" || state.kind === "blank") return null
   if (shown === null || at === null)
     return (
@@ -553,6 +556,7 @@ export const CallSceneFrame = ({
       theme={format.shape?.theme}
       title={W.title}
       where={`${[
+        at.part.of > 1 ? W.part(at.part.n, at.part.of) : "",
         sectionName(at),
         pageLabel(at.scene),
         `${at.index + 1}/${at.scenes.length}`,

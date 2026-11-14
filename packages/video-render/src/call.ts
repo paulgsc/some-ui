@@ -39,6 +39,7 @@ import type { CutList, Parsed } from "./cut-list"
 import {
   FORMAT_SCHEMA,
   inTheme,
+  REPEAT_MOST,
   repeatedId,
   showId,
   versionRefusal,
@@ -84,14 +85,26 @@ export const CALL_ID = "conference-call"
  *   Night's ground and plays our music bed (#2673).
  * 4 (HYPER5, #2728): the brand intro and outro are `brand-v1`, the code's
  *   mark moving in the mark's theme, rather than the stage's slides.
+ * 5 (#2918, C360): a long week is a series of parts (`callParts`), each at
+ *   most ten minutes by its words, and a section lists up to
+ *   `CALL_SERIES_MOST` items, so nothing is left out to fit one video.
  */
-export const CALL_VERSION = 4
+export const CALL_VERSION = 5
 
 /** The first version drawn in Mochi Night, with the music bed. */
 const NIGHT_VERSION = 3
 
 /** The first version whose brand intro and outro move (HYPER5). */
 const MOTION_VERSION = 4
+
+/** The first version a long week is a series of parts (#2918). */
+const SERIES_VERSION = 5
+
+/**
+ * How long a part of the call runs, by its words (owner, 2026-11-14): at
+ * most ten minutes, broken at a chapter once it reaches about eight.
+ */
+const CALL_PARTS = { mostMs: 600_000, aimMs: 480_000 } as const
 
 /** The call's shape from version 2. */
 const CALL_SHAPE: Shape = {
@@ -108,11 +121,14 @@ export const nightInMotion = (shape: Shape): Shape => {
 
 function shapeOf(version: number): Shape {
   if (version < NIGHT_VERSION) return CALL_SHAPE
+  if (version >= SERIES_VERSION)
+    return { ...nightInMotion(CALL_SHAPE), parts: CALL_PARTS }
   return version >= MOTION_VERSION
     ? nightInMotion(CALL_SHAPE)
     : inTheme(CALL_SHAPE, "mochi-night")
 }
 
+/** The most items a section lists, up to version 4. */
 export const CALL_MOST = {
   moved: 12,
   done: 12,
@@ -120,6 +136,16 @@ export const CALL_MOST = {
   mine: 8,
   asks: 12,
 } as const
+
+/**
+ * The most items a section lists from version 5, where a long week is a
+ * series: enough that only a broken file reaches it.
+ */
+export const CALL_SERIES_MOST = REPEAT_MOST
+
+/** The most items `section` lists in `version`. */
+const mostIn = (version: number, section: keyof typeof CALL_MOST): number =>
+  version >= SERIES_VERSION ? CALL_SERIES_MOST : CALL_MOST[section]
 
 export const CALL_BOARD_MOST = 60
 export const CALL_LATER_MOST = 200
@@ -139,10 +165,20 @@ type Section = Repeated | "open" | "board" | "close"
  */
 type Framing = "intro" | "brand-in" | "chapter" | "brand-out"
 
+/** The sections that show once per item. */
+const REPEATED = [
+  "moved",
+  "done",
+  "gray",
+  "mine",
+  "asks",
+] as const satisfies ReadonlyArray<Repeated>
+
 const isRepeated = (section: Section): section is Repeated =>
   section in CALL_MOST
 
 const scene = (
+  version: number,
   id: Section,
   name: string,
   point: string,
@@ -157,7 +193,7 @@ const scene = (
     cssWidth: CALL_STAGE_WIDTH,
   },
   holdMs,
-  ...(isRepeated(id) ? { repeat: { max: CALL_MOST[id] } } : {}),
+  ...(isRepeated(id) ? { repeat: { max: mostIn(version, id) } } : {}),
 })
 
 /** Why `version` of the call's template can't be drawn here, or null (VS1). */
@@ -180,44 +216,56 @@ export function callFormat(version: number = CALL_VERSION): Format {
     series: { id: CALL_ID, version: version >= NIGHT_VERSION ? 2 : 1 },
     look: "calm",
     scenes: [
-      scene("open", "The week", "Which week this is, and what it read", 8_000),
       scene(
+        version,
+        "open",
+        "The week",
+        "Which week this is, and what it read",
+        8_000
+      ),
+      scene(
+        version,
         "board",
         "The board",
         "Everything still open, and how much of it waits on you",
         30_000
       ),
       scene(
+        version,
         "moved",
         "Where we are",
         "Where this epic stands now, and what is next",
         25_000
       ),
       scene(
+        version,
         "done",
         "What landed",
         "What these pull requests changed, together",
         30_000
       ),
       scene(
+        version,
         "gray",
         "A call in a gray area",
         "A technical call no check could make, and what it holds",
         30_000
       ),
       scene(
+        version,
         "mine",
         "A call made without you",
         "What an agent chose without your word, why, and how to undo it",
         40_000
       ),
       scene(
+        version,
         "asks",
         "Waiting on you",
         "What is yours to decide, why, the options and what each unblocks",
         45_000
       ),
-      scene("close", "Close", "What the week comes to", 10_000),
+      scene(version, "close", "Close", "What the week comes to", 10_000),
     ],
     ...(version >= 2 ? { shape: shapeOf(version) } : {}),
   }
@@ -325,11 +373,11 @@ export const CallWeekSchema = z.strictObject({
     said: words,
     rows: z.array(BoardRowSchema).min(1).max(CALL_BOARD_MOST),
   }),
-  moved: z.array(MovedSchema).max(CALL_MOST.moved),
-  done: z.array(BatchSchema).max(CALL_MOST.done),
-  gray: z.array(GraySchema).max(CALL_MOST.gray),
-  mine: z.array(MineSchema).max(CALL_MOST.mine),
-  asks: z.array(AskSchema).max(CALL_MOST.asks),
+  moved: z.array(MovedSchema).max(CALL_SERIES_MOST),
+  done: z.array(BatchSchema).max(CALL_SERIES_MOST),
+  gray: z.array(GraySchema).max(CALL_SERIES_MOST),
+  mine: z.array(MineSchema).max(CALL_SERIES_MOST),
+  asks: z.array(AskSchema).max(CALL_SERIES_MOST),
   /** The asks waiting on the owner that aren't voiced this week. */
   later: z.array(LaterSchema).max(CALL_LATER_MOST),
   close: SaidSchema,
@@ -458,6 +506,12 @@ function weekProblems(week: CallWeek): Array<string> {
     if (ask.recommended !== undefined && ask.recommended >= ask.options.length)
       problems.push(`${ask.id}: it recommends an option it doesn't list`)
   })
+  // Up to version 4, a section lists as many items as the version drew.
+  for (const section of REPEATED)
+    if (week[section].length > mostIn(week.template.version, section))
+      problems.push(
+        `${section}: it lists more than ${mostIn(week.template.version, section)}, the most version ${week.template.version} draws`
+      )
   // CF1
   if (captioned(week)) problems.push(...callFit(week).problems)
   return once(problems)
@@ -562,7 +616,14 @@ export type LockedIntro = {
   readonly said: string
 }
 
-export function callIntro(week: CallWeek): LockedIntro {
+/** Which part of a series a video is, and of how many. */
+export type CallPartOf = { readonly n: number; readonly of: number }
+
+export function callIntro(
+  week: CallWeek,
+  part: CallPartOf = { n: 1, of: 1 }
+): LockedIntro {
+  const series = part.of > 1
   const counted: ReadonlyArray<readonly [number, string, string]> = [
     [week.asks.length, "question waits on you", "questions wait on you"],
     [
@@ -595,9 +656,12 @@ export function callIntro(week: CallWeek): LockedIntro {
         says: "Kokoro, a synthetic speaker. No voice here is a person's",
       },
       { label: "Calls inside", says: calls.join(" · ") || "None this week" },
+      ...(series ? [{ label: "Part", says: `${part.n} of ${part.of}` }] : []),
     ],
     said: [
-      `This is the weekly call for ${days}.`,
+      series
+        ? `This is part ${part.n} of ${part.of} of the weekly call for ${days}.`
+        : `This is the weekly call for ${days}.`,
       "Claude wrote the words, from the two repositories and the ledger.",
       "Code drew every frame, and every voice you hear is synthetic.",
       calls.length === 0
@@ -612,8 +676,11 @@ export function callIntro(week: CallWeek): LockedIntro {
  * on its own, titled by its question, so it can be heard again before it is
  * answered.
  */
-export function callChapterMarks(week: CallWeek): Array<ChapterMark> {
-  const scenes = callScenes(week)
+export function callChapterMarks(
+  week: CallWeek,
+  part: number = 1
+): Array<ChapterMark> {
+  const scenes = callScenes(week, part)
   const asks = scenes.flatMap((scene) => {
     if (scene.section !== "asks" || !("item" in scene)) return []
     if (!isFirstPage(scene)) return []
@@ -626,25 +693,26 @@ export function callChapterMarks(week: CallWeek): Array<ChapterMark> {
   ]
 }
 
+/** A section's scene, as the body of a call lays it out. */
+type BodyScene = CallScene & { readonly section: Section }
+
 /**
- * The call's scenes in the order said: one per section that shows once, and
- * one per item of a repeated section, none where it has no items. In a week
- * written for a version with a shape, the locked intro opens it, then the
- * brand intro; a chapter slide comes before the first scene of each section
- * the shape marks; and the brand outro closes it.
+ * The call's body in the order said: one scene per section that shows once,
+ * and one per item of a repeated section, none where it has no items; in a
+ * captioned frame, each in its pages (CF1).
  */
-export function callScenes(week: CallWeek): ReadonlyArray<CallScene> {
+function bodyOf(week: CallWeek): ReadonlyArray<BodyScene> {
   const items = (
     section: Repeated,
     list: ReadonlyArray<{ readonly id: string; readonly said: string }>
-  ): Array<CallScene & { readonly section: Section }> =>
+  ): Array<BodyScene> =>
     list.map((item, i) => ({
       section,
       id: repeatedId(section, i + 1),
       item: item.id,
       said: item.said,
     }))
-  const whole: ReadonlyArray<CallScene & { readonly section: Section }> = [
+  const whole: ReadonlyArray<BodyScene> = [
     { section: "open", id: "open", said: week.open.said },
     { section: "board", id: "board", said: week.board.said },
     ...items("moved", week.moved),
@@ -654,11 +722,29 @@ export function callScenes(week: CallWeek): ReadonlyArray<CallScene> {
     ...items("asks", week.asks),
     { section: "close", id: "close", said: week.close.said },
   ]
-  const body = captioned(week) ? pagedScenes(week, whole) : whole
-  const shape = callFormat(week.template.version).shape
-  if (shape === undefined) return body
+  return captioned(week) ? pagedScenes(week, whole) : whole
+}
+
+/** One video of a week's call: its place in the series, and its scenes. */
+export type CallPart = CallPartOf & {
+  readonly scenes: ReadonlyArray<CallScene>
+}
+
+/**
+ * `body`, a part's run of the week's body, as the video says it: the locked
+ * intro, then the brand intro; a chapter slide before the first scene of
+ * each section the shape marks, "continued" where an earlier part began it;
+ * and the brand outro last.
+ */
+function framed(
+  week: CallWeek,
+  shape: Shape,
+  body: ReadonlyArray<BodyScene>,
+  part: CallPartOf,
+  begun: ReadonlySet<Section>
+): ReadonlyArray<CallScene> {
   const scenes: Array<CallScene> = [
-    { section: "intro", id: "intro", said: callIntro(week).said },
+    { section: "intro", id: "intro", said: callIntro(week, part).said },
   ]
   if (shape.brand.intro)
     scenes.push({ section: "brand-in", id: "brand-in", said: "" })
@@ -669,13 +755,111 @@ export function callScenes(week: CallWeek): ReadonlyArray<CallScene> {
         section: "chapter",
         id: `chapter-${scene.section}`,
         of: scene.section,
-        said: `${CALL_CHAPTERS[scene.section]}.`,
+        said: begun.has(scene.section)
+          ? `${CALL_CHAPTERS[scene.section]}, continued.`
+          : `${CALL_CHAPTERS[scene.section]}.`,
       })
     scenes.push(scene)
   }
   if (shape.brand.outro)
     scenes.push({ section: "brand-out", id: "brand-out", said: "" })
   return scenes
+}
+
+/** The units a part may break between: an item with its pages, or a section said once. */
+function unitsOf(body: ReadonlyArray<BodyScene>): Array<Array<BodyScene>> {
+  const units: Array<Array<BodyScene>> = []
+  for (const scene of body) {
+    const last = units.at(-1)
+    if (last !== undefined && !isFirstPage(scene)) last.push(scene)
+    else units.push([scene])
+  }
+  return units
+}
+
+/**
+ * `body` broken into the parts of a series (#2918): whole sections while a
+ * part stays under `aimMs` by its words, framing included; a section that
+ * would carry a part past it starts the next part, unless the part so far
+ * is short; and a section longer than a part can hold is broken between its
+ * items, each part filled to the aim. A part runs past `mostMs` only for a
+ * single item that does.
+ */
+function brokenIntoParts(
+  week: CallWeek,
+  shape: Shape,
+  body: ReadonlyArray<BodyScene>,
+  { mostMs, aimMs }: { readonly mostMs: number; readonly aimMs: number }
+): Array<ReadonlyArray<BodyScene>> {
+  const ms = (scenes: ReadonlyArray<BodyScene>): number =>
+    estimatedMs(framed(week, shape, scenes, { n: 1, of: 2 }, new Set()))
+  const sections: Array<Array<BodyScene>> = []
+  for (const scene of body) {
+    const last = sections.at(-1)
+    if (last?.[0]?.section === scene.section) last.push(scene)
+    else sections.push([scene])
+  }
+  const parts: Array<ReadonlyArray<BodyScene>> = []
+  let part: Array<BodyScene> = []
+  const close = (): void => {
+    if (part.length > 0) parts.push(part)
+    part = []
+  }
+  const byItem = (section: ReadonlyArray<BodyScene>): void => {
+    for (const unit of unitsOf(section)) {
+      if (part.length > 0 && ms([...part, ...unit]) > aimMs) close()
+      part.push(...unit)
+    }
+  }
+  for (const section of sections) {
+    if (part.length > 0) {
+      const joined = ms([...part, ...section])
+      if (joined <= aimMs || (joined <= mostMs && ms(part) < aimMs / 2)) {
+        part.push(...section)
+        continue
+      }
+      close()
+    }
+    if (ms(section) <= mostMs) part.push(...section)
+    else byItem(section)
+  }
+  close()
+  return parts
+}
+
+/**
+ * The week's call as videos (#2918): one, or, where the week's shape names
+ * `parts` and its body runs past a part's aim, a series, each part opening
+ * on the locked intro, which says which part it is, and the brand.
+ */
+export function callParts(week: CallWeek): ReadonlyArray<CallPart> {
+  const body = bodyOf(week)
+  const shape = callFormat(week.template.version).shape
+  if (shape === undefined) return [{ n: 1, of: 1, scenes: body }]
+  const runs =
+    shape.parts === undefined
+      ? [body]
+      : brokenIntoParts(week, shape, body, shape.parts)
+  const begun = new Set<Section>()
+  return runs.map((run, i) => {
+    const part = { n: i + 1, of: runs.length }
+    const scenes = framed(week, shape, run, part, begun)
+    for (const scene of run) begun.add(scene.section)
+    return { ...part, scenes }
+  })
+}
+
+/**
+ * The scenes of part `part` of the week's call (`callParts`), the first by
+ * default: a week that is one video has only it.
+ */
+export function callScenes(
+  week: CallWeek,
+  part: number = 1
+): ReadonlyArray<CallScene> {
+  const parts = callParts(week)
+  const at = Math.min(Math.max(1, Math.trunc(part)), parts.length)
+  return parts[at - 1]?.scenes ?? []
 }
 
 /**
@@ -686,8 +870,8 @@ export function callScenes(week: CallWeek): ReadonlyArray<CallScene> {
  */
 function pagedScenes(
   week: CallWeek,
-  scenes: ReadonlyArray<CallScene & { readonly section: Section }>
-): ReadonlyArray<CallScene & { readonly section: Section }> {
+  scenes: ReadonlyArray<BodyScene>
+): ReadonlyArray<BodyScene> {
   const { pages } = callFit(week)
   return scenes.flatMap((scene) => {
     const its = pages[scene.id]
@@ -734,8 +918,8 @@ export const CALL_VOICES: Readonly<Record<Section | Framing, string>> = {
  * the policy's length on this, before it spends an hour on the speaker; the
  * renderer checks the placed length exactly.
  */
-export const estimatedCallMs = (week: CallWeek): number =>
-  estimatedMs(callScenes(week))
+export const estimatedCallMs = (week: CallWeek, part: number = 1): number =>
+  estimatedMs(callScenes(week, part))
 
 /**
  * The call as a cut list the renderer draws (`stillsCutList`, which holds
@@ -747,19 +931,23 @@ export const estimatedCallMs = (week: CallWeek): number =>
 export function callCutList(
   week: CallWeek,
   takes: ReadonlyArray<StillTake | null>,
-  { bed = false }: { readonly bed?: boolean } = {}
+  {
+    bed = false,
+    part = 1,
+  }: { readonly bed?: boolean; readonly part?: number } = {}
 ): CutList {
   const format = callFormat(week.template.version)
+  const of = callParts(week).length
   return stillsCutList(
     {
-      title: `The weekly call, ${week.week.from} to ${week.week.to}`,
+      title: `The weekly call, ${week.week.from} to ${week.week.to}${of > 1 ? `, part ${part} of ${of}` : ""}`,
       series: format.series,
       look: "calm",
       captions: hasCaptions(format),
       bed,
       ...(format.shape ? { shape: format.shape } : {}),
     },
-    callScenes(week).map((scene, i) => ({
+    callScenes(week, part).map((scene, i) => ({
       id: scene.id,
       file: stillFile(i, scene.id),
       said: scene.said,
