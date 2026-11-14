@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1.7
 
-# The LAN résumé render service (scripts/serve.mjs). Built on the box by
-# infra/compose/resume.yml from this directory alone; nothing publishes it.
+# The LAN résumé render service (scripts/serve.mjs), built from this directory
+# alone and published as pgathondu/resume-render by
+# .github/workflows/resume-docker-release.yml.
 #
 # It needs only this package's Typst source and its scripts, which use Node
 # built-ins and nothing from npm, so there is no install step. The pinned

@@ -18,10 +18,10 @@ import {
 } from "./file-host.dev.ts"
 import styleContext from "./style.context.ts"
 
-// The dev/preview counterpart of apps/www/nginx.resume-proxy.conf, for the
-// LAN /resume-build page. The container publishes no port, so in dev run the
-// service on the host instead: `node packages/ui/resume/scripts/serve.mjs`
-// (port 3100, or PORT).
+// The dev/preview counterpart of the /api/resume/ location in
+// apps/www/nginx.https.conf, for the LAN /resume-build page. The container
+// publishes no port, so in dev run the service on the host instead:
+// `node packages/ui/resume/scripts/serve.mjs` (port 3100, or PORT).
 const RESUME_PROXY_PATH = "/api/resume"
 const resumeProxyTarget =
   process.env.RESUME_PROXY_TARGET || "http://127.0.0.1:3100"
