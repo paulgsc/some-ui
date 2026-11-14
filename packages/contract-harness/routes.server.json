@@ -2,7 +2,7 @@
   "schema_version": 1,
   "api_base_path": "/api/v1",
   "server_version": "0.0.0",
-  "contract_epoch": 7,
+  "contract_epoch": 8,
   "oldest_supported": 1,
   "routes": [
     {
