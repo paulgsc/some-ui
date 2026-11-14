@@ -20,7 +20,8 @@ import type { BurnIn, CutList } from "./cut-list"
 const BADGES_SEEN = "badgesSeen"
 
 /**
- * How long a scene lasts that a badge finishes spelling itself out in: a
+ * How long a scene's burn-ins must show, until the next scene starts, for a
+ * badge to finish spelling itself out: a
  * status badge's lead and its reveal (`@some-ui/burn-ins`'
  * `STATUS_BADGE_LEAD_MS` and `REVEAL`, 0.7 s and 2.6 s).
  */
@@ -38,21 +39,23 @@ function badgesIn(value: unknown): ReadonlyArray<string> {
 /**
  * Each scene's burn-ins, with `badgesSeen` added to each that shows a
  * badge: the states the scenes before it showed long enough to spell out.
+ * `shownMs` is how long each scene's burn-ins show: until the next scene
+ * starts, so less than its length when the next one comes in over it.
  */
 export function withBadgesSeen(
-  shots: CutList["shots"]
+  shots: CutList["shots"],
+  shownMs: ReadonlyArray<number>
 ): ReadonlyArray<ReadonlyArray<BurnIn>> {
   const seen = new Set<string>()
-  return shots.map((s) => {
+  return shots.map((s, i) => {
     const before = [...seen]
-    const burnIns = s.burnIns.map((b) => {
+    const long = (shownMs[i] ?? 0) >= REVEAL_SCENE_MS
+    return s.burnIns.map((b) => {
       const shown = badgesIn(b.params)
       if (shown.length === 0) return b
-      if (s.durationMs >= REVEAL_SCENE_MS)
-        for (const state of shown) seen.add(state)
+      if (long) for (const state of shown) seen.add(state)
       return { ...b, params: { ...b.params, [BADGES_SEEN]: before } }
     })
-    return burnIns
   })
 }
 

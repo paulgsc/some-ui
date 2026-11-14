@@ -548,7 +548,12 @@ function burnInRequests(
           },
         ]
   )
-  const badged = withBadgesSeen(cutList.shots)
+  const badged = withBadgesSeen(
+    cutList.shots,
+    cutList.shots.map(
+      (_, i) => (framesUntilNext(placement, i) * 1000) / series.frame.fps
+    )
+  )
   const perShot = cutList.shots.flatMap((s, i) => {
     const at = placement.shots[i]
     if (!at) throw new Error(`${s.id} was not placed`)

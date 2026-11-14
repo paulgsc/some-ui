@@ -35,9 +35,10 @@ describe("the badges a video showed before each scene", () => {
       ])
     )
     expect(
-      withBadgesSeen(cut.shots).map((bs) =>
-        bs.map((b) => b.params["badgesSeen"] ?? null)
-      )
+      withBadgesSeen(
+        cut.shots,
+        cut.shots.map((s) => s.durationMs)
+      ).map((bs) => bs.map((b) => b.params["badgesSeen"] ?? null))
     ).toEqual([
       [[]],
       [null],
@@ -47,16 +48,19 @@ describe("the badges a video showed before each scene", () => {
     ])
   })
 
-  it("leave out a state whose scene was too short for its badge to finish spelling itself out", () => {
+  it("leave out a state whose scene showed too short for its badge to finish spelling itself out", () => {
     const cut = parsed(
       cutList([
-        shot("S1", { durationMs: 3299, burnIns: [badge("gap")] }),
+        long("S1", [badge("gap")]),
         long("S2", [badge("gap")]),
         long("S3", [badge("gap")]),
       ])
     )
+    // S1 lasts 3.3 s, but the next scene comes in over its last 0.5 s.
     expect(
-      withBadgesSeen(cut.shots).map((bs) => bs[0]?.params["badgesSeen"])
+      withBadgesSeen(cut.shots, [2800, 3300, 3300]).map(
+        (bs) => bs[0]?.params["badgesSeen"]
+      )
     ).toEqual([[], [], ["gap"]])
   })
 
