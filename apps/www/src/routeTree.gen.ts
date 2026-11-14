@@ -65,6 +65,7 @@ import { Route as DashboardApkSettingsPhoneRouteImport } from './routes/_dashboa
 import { Route as DashboardApkSettingsStatusRouteImport } from './routes/_dashboard/_apk/settings/status'
 import { Route as DashboardApkJournalAsksIndexRouteImport } from './routes/_dashboard/_apk/journal/asks/index'
 import { Route as DashboardApkJournalAsksAskRouteImport } from './routes/_dashboard/_apk/journal/asks/$ask'
+import { Route as DashboardApkJournalCardsKeyRouteImport } from './routes/_dashboard/_apk/journal/cards/$key'
 import { Route as DashboardApkJournalClipsIndexRouteImport } from './routes/_dashboard/_apk/journal/clips/index'
 import { Route as DashboardApkJournalClipsClipRouteImport } from './routes/_dashboard/_apk/journal/clips/$clip'
 import { Route as DashboardApkJournalEpisodesIndexRouteImport } from './routes/_dashboard/_apk/journal/episodes/index'
@@ -379,6 +380,12 @@ const DashboardApkJournalAsksAskRoute =
     path: '/asks/$ask',
     getParentRoute: () => DashboardApkJournalRoute,
   } as any)
+const DashboardApkJournalCardsKeyRoute =
+  DashboardApkJournalCardsKeyRouteImport.update({
+    id: '/cards/$key',
+    path: '/cards/$key',
+    getParentRoute: () => DashboardApkJournalRoute,
+  } as any)
 const DashboardApkJournalClipsIndexRoute =
   DashboardApkJournalClipsIndexRouteImport.update({
     id: '/clips/',
@@ -547,6 +554,7 @@ export interface FileRoutesByFullPath {
   '/journal/': typeof DashboardApkJournalIndexRoute
   '/practice/': typeof DashboardApkPracticeIndexRoute
   '/journal/asks/$ask': typeof DashboardApkJournalAsksAskRoute
+  '/journal/cards/$key': typeof DashboardApkJournalCardsKeyRoute
   '/journal/clips/$clip': typeof DashboardApkJournalClipsClipRoute
   '/journal/episodes/making': typeof DashboardApkJournalEpisodesMakingRoute
   '/journal/feeds/$feed': typeof DashboardApkJournalFeedsFeedRoute
@@ -618,6 +626,7 @@ export interface FileRoutesByTo {
   '/journal': typeof DashboardApkJournalIndexRoute
   '/practice': typeof DashboardApkPracticeIndexRoute
   '/journal/asks/$ask': typeof DashboardApkJournalAsksAskRoute
+  '/journal/cards/$key': typeof DashboardApkJournalCardsKeyRoute
   '/journal/clips/$clip': typeof DashboardApkJournalClipsClipRoute
   '/journal/episodes/making': typeof DashboardApkJournalEpisodesMakingRoute
   '/journal/feeds/$feed': typeof DashboardApkJournalFeedsFeedRoute
@@ -696,6 +705,7 @@ export interface FileRoutesById {
   '/_dashboard/_apk/journal/': typeof DashboardApkJournalIndexRoute
   '/_dashboard/_apk/practice/': typeof DashboardApkPracticeIndexRoute
   '/_dashboard/_apk/journal/asks/$ask': typeof DashboardApkJournalAsksAskRoute
+  '/_dashboard/_apk/journal/cards/$key': typeof DashboardApkJournalCardsKeyRoute
   '/_dashboard/_apk/journal/clips/$clip': typeof DashboardApkJournalClipsClipRoute
   '/_dashboard/_apk/journal/episodes/making': typeof DashboardApkJournalEpisodesMakingRoute
   '/_dashboard/_apk/journal/feeds/$feed': typeof DashboardApkJournalFeedsFeedRoute
@@ -772,6 +782,7 @@ export interface FileRouteTypes {
     | '/journal/'
     | '/practice/'
     | '/journal/asks/$ask'
+    | '/journal/cards/$key'
     | '/journal/clips/$clip'
     | '/journal/episodes/making'
     | '/journal/feeds/$feed'
@@ -843,6 +854,7 @@ export interface FileRouteTypes {
     | '/journal'
     | '/practice'
     | '/journal/asks/$ask'
+    | '/journal/cards/$key'
     | '/journal/clips/$clip'
     | '/journal/episodes/making'
     | '/journal/feeds/$feed'
@@ -920,6 +932,7 @@ export interface FileRouteTypes {
     | '/_dashboard/_apk/journal/'
     | '/_dashboard/_apk/practice/'
     | '/_dashboard/_apk/journal/asks/$ask'
+    | '/_dashboard/_apk/journal/cards/$key'
     | '/_dashboard/_apk/journal/clips/$clip'
     | '/_dashboard/_apk/journal/episodes/making'
     | '/_dashboard/_apk/journal/feeds/$feed'
@@ -1352,6 +1365,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardApkJournalAsksAskRouteImport
       parentRoute: typeof DashboardApkJournalRoute
     }
+    '/_dashboard/_apk/journal/cards/$key': {
+      id: '/_dashboard/_apk/journal/cards/$key'
+      path: '/cards/$key'
+      fullPath: '/journal/cards/$key'
+      preLoaderRoute: typeof DashboardApkJournalCardsKeyRouteImport
+      parentRoute: typeof DashboardApkJournalRoute
+    }
     '/_dashboard/_apk/journal/clips/': {
       id: '/_dashboard/_apk/journal/clips/'
       path: '/clips'
@@ -1531,6 +1551,7 @@ interface DashboardApkJournalRouteChildren {
   DashboardApkJournalRendersRoute: typeof DashboardApkJournalRendersRoute
   DashboardApkJournalIndexRoute: typeof DashboardApkJournalIndexRoute
   DashboardApkJournalAsksAskRoute: typeof DashboardApkJournalAsksAskRoute
+  DashboardApkJournalCardsKeyRoute: typeof DashboardApkJournalCardsKeyRoute
   DashboardApkJournalClipsClipRoute: typeof DashboardApkJournalClipsClipRoute
   DashboardApkJournalEpisodesMakingRoute: typeof DashboardApkJournalEpisodesMakingRoute
   DashboardApkJournalFeedsFeedRoute: typeof DashboardApkJournalFeedsFeedRoute
@@ -1555,6 +1576,7 @@ const DashboardApkJournalRouteChildren: DashboardApkJournalRouteChildren = {
   DashboardApkJournalRendersRoute: DashboardApkJournalRendersRoute,
   DashboardApkJournalIndexRoute: DashboardApkJournalIndexRoute,
   DashboardApkJournalAsksAskRoute: DashboardApkJournalAsksAskRoute,
+  DashboardApkJournalCardsKeyRoute: DashboardApkJournalCardsKeyRoute,
   DashboardApkJournalClipsClipRoute: DashboardApkJournalClipsClipRoute,
   DashboardApkJournalEpisodesMakingRoute:
     DashboardApkJournalEpisodesMakingRoute,

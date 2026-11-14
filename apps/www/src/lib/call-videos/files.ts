@@ -55,8 +55,11 @@ const PORT: ForeignPort = {
   report: reportFailure,
 }
 
-/** Whose videos a folder of files holds: a feed's, or the templates' previews (SFEED12). */
-export type VideoOwner = Feed | "preview"
+/**
+ * Whose videos a folder of files holds: a feed's, the templates' previews
+ * (SFEED12), or the cards essays (CARDS7).
+ */
+export type VideoOwner = Feed | "preview" | "cards-essay"
 
 /** What each owner's file names start with, so no two owners' keys meet. */
 const PREFIX: Record<VideoOwner, string> = {
@@ -64,6 +67,7 @@ const PREFIX: Record<VideoOwner, string> = {
   "playoff-delta": "playoff-delta-",
   "rust-essay": "rust-essay-",
   preview: "preview-",
+  "cards-essay": "cards-essay-",
 }
 
 /**

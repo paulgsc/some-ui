@@ -100,6 +100,7 @@ const ROWS = [
   { feed: "preview", key: "conference-call-20261112T024837Z" },
   { feed: "preview", key: "a-template-from-later-20261112T024837Z" },
   { feed: "clip-walk", key: "tray-fix-after" },
+  { feed: "cards-essay", key: "rust-scratchpad-2026-11-14" },
   { feed: "a-kind-from-later", key: "x" },
 ] as const
 
@@ -275,6 +276,16 @@ describe("RENDERS_WORDS and what it says of each render", () => {
     expect(subjectOf({ feed: "clip-walk", key: "-after" })).toEqual({
       kind: "other",
     })
+    expect(
+      subjectOf({ feed: "cards-essay", key: "rust-scratchpad-2026-11-14" })
+    ).toEqual({ kind: "essay", key: "rust-scratchpad-2026-11-14" })
+    // A key that isn't an essay's names no page.
+    expect(subjectOf({ feed: "cards-essay", key: "x" })).toEqual({
+      kind: "other",
+    })
+    expect(
+      thingName({ kind: "essay", key: "rust-scratchpad-2026-11-14" })
+    ).toBe("Rust scratchpad, as of Saturday, November 14")
     expect(openWords({ kind: "other" })).toBeNull()
     expect(openWords({ kind: "preview", template: null })).toBeNull()
     expect(
