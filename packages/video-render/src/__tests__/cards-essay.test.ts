@@ -20,6 +20,9 @@ async function showcase(video: string): Promise<CutList> {
   return parsed.value
 }
 
+/** The versions of each series home's image holds: cheat-sheet's first. */
+const V1 = (): ReadonlySet<number> => new Set([1])
+
 const NIXOS = "nixos-upgrade-2026-11-14"
 const RUST = "rust-scratchpad-2026-11-14"
 
@@ -36,7 +39,7 @@ async function folder(): Promise<Map<string, unknown>> {
 
 describe("a cards essay", () => {
   it("is each showcase, keyed by its slug and its stamp's day", async () => {
-    expect(cardsFolderProblems(await folder())).toEqual([])
+    expect(cardsFolderProblems(await folder(), V1)).toEqual([])
   })
 
   it("is refused for a key that isn't its stamp's day, or isn't a key", async () => {
@@ -48,25 +51,40 @@ describe("a cards essay", () => {
     expect(parseCardsEssay("NixOS 2026-11-14", cut).ok).toBe(false)
   })
 
-  it("is refused for what home can't draw: another series, a picture that isn't a card, a take", async () => {
+  it("is refused for what home can't draw: another series, a picture that isn't a card, a take, a cue, an image, captions", async () => {
     const cut = await showcase("nixos-upgrade")
-    const [first, ...rest] = cut.shots
+    const [first, second, third, fourth, ...rest] = cut.shots
     const changed = {
       ...cut,
       series: { id: "conference-call", version: 1 },
+      burnIns: [{ kind: "captions", params: {} }],
       shots: [
         { ...first, picture: { kind: "still", source: "a.png" } },
+        { ...second, take: { file: "voice/a.wav", inMs: 0, outMs: 1000 } },
+        { ...third, overrides: { cues: [{ sound: "whoosh", atMs: 0 }] } },
         {
-          ...rest[0],
-          take: { file: "voice/a.wav", inMs: 0, outMs: 1000 },
+          ...fourth,
+          overrides: {
+            background: {
+              kind: "image",
+              image: { file: "a.png", sha256: "0".repeat(64) },
+            },
+          },
         },
-        ...rest.slice(1),
+        ...rest,
       ],
     }
     const parsed = parseCardsEssay(NIXOS, changed)
     expect(parsed.ok).toBe(false)
     const problems = parsed.ok ? [] : parsed.problems.join("\n")
-    for (const reason of ["conference-call", "not a card", "plays a take"])
+    for (const reason of [
+      "conference-call",
+      "not a card",
+      "plays a take",
+      "plays cues",
+      "background is an image",
+      "captions",
+    ])
       expect(problems).toContain(reason)
   })
 
@@ -82,9 +100,18 @@ describe("the cards folder", () => {
     const files = await folder()
     files.delete(`${RUST}.json`)
     files.set("stray-2026-11-01.json", await showcase("rust-scratchpad"))
-    expect(cardsFolderProblems(files)).toEqual([
+    expect(cardsFolderProblems(files, V1)).toEqual([
       `${RUST}.json: the index lists it, and there is no such file`,
       "stray-2026-11-01.json: the index doesn't list it",
+    ])
+  })
+
+  it("names an essay pinning a version of its series home doesn't hold", async () => {
+    const files = await folder()
+    const cut = await showcase("rust-scratchpad")
+    files.set(`${RUST}.json`, { ...cut, series: { ...cut.series, version: 2 } })
+    expect(cardsFolderProblems(files, V1)).toEqual([
+      `${RUST}.json: cheat-sheet has no version 2`,
     ])
   })
 
@@ -95,7 +122,7 @@ describe("the cards folder", () => {
       [{ key: NIXOS }, { key: NIXOS }],
     ]) {
       files.set("index.json", { schema: CARDS_INDEX_SCHEMA, essays })
-      expect(cardsFolderProblems(files).join("\n")).toContain(
+      expect(cardsFolderProblems(files, V1).join("\n")).toContain(
         "newest first, each once"
       )
     }

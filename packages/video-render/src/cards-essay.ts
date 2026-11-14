@@ -16,7 +16,7 @@
 import { z } from "zod"
 
 import type { CutList, Parsed } from "./cut-list"
-import { parseCutList, problemsOf } from "./cut-list"
+import { isCaptions, parseCutList, problemsOf } from "./cut-list"
 
 export const CARDS_INDEX_SCHEMA = "some-ui.cards-index/1"
 
@@ -58,8 +58,10 @@ export function parseCardsIndex(raw: unknown): Parsed<CardsIndex> {
 /**
  * The cut list `raw` as the essay `key`, or every reason home can't render
  * it: what any cut list is refused for (`parseCutList`), a key that isn't
- * its stamp's day, a series that isn't a cards series, and a scene that
- * isn't a card or plays a take.
+ * its stamp's day, a series that isn't a cards series, a scene that isn't
+ * a card, plays a take or a cue or stands on an image, and captions. What
+ * only drawing finds (a line that doesn't fit, a character the font lacks)
+ * is refused when it is recorded (`record:cards`).
  */
 export function parseCardsEssay(key: string, raw: unknown): Parsed<CutList> {
   if (!CARDS_KEY.test(key))
@@ -82,6 +84,17 @@ export function parseCardsEssay(key: string, raw: unknown): Parsed<CutList> {
       .filter((s) => s.take !== undefined)
       .map((s) => `${s.id}: it plays a take, and nothing is said over cards`),
     ...shots
+      .filter((s) => s.overrides.background?.kind === "image")
+      .map(
+        (s) => `${s.id}: its background is an image, which home doesn't have`
+      ),
+    ...shots
+      .filter((s) => (s.overrides.cues ?? []).length > 0)
+      .map((s) => `${s.id}: it plays cues, and a cards essay is silent`),
+    ...(cut.value.burnIns.some(isCaptions)
+      ? ["it asks for captions, and nothing is said to caption"]
+      : []),
+    ...shots
       .filter((s) => s.picture.kind !== "card")
       .map((s) => `${s.id}: its picture is a ${s.picture.kind}, not a card`),
   ]
@@ -90,12 +103,14 @@ export function parseCardsEssay(key: string, raw: unknown): Parsed<CutList> {
 
 /**
  * Every reason a `cards/` folder can't be published: its index unread, an
- * essay it lists missing or unable to render, and an essay file the index
+ * essay it lists missing, refused (`parseCardsEssay`) or pinning a version
+ * of its series that `versionsOf` doesn't hold, and an essay file the index
  * forgets. `files` is the folder's JSON files by name, `index.json` among
  * them.
  */
 export function cardsFolderProblems(
-  files: ReadonlyMap<string, unknown>
+  files: ReadonlyMap<string, unknown>,
+  versionsOf: (series: string) => ReadonlySet<number>
 ): Array<string> {
   const index = parseCardsIndex(files.get("index.json"))
   if (!index.ok) return index.problems.map((p) => `index.json: ${p}`)
@@ -106,7 +121,11 @@ export function cardsFolderProblems(
       if (!files.has(name))
         return [`${name}: the index lists it, and there is no such file`]
       const essay = parseCardsEssay(key, files.get(name))
-      return essay.ok ? [] : essay.problems.map((p) => `${name}: ${p}`)
+      if (!essay.ok) return essay.problems.map((p) => `${name}: ${p}`)
+      const { id, version } = essay.value.series
+      return versionsOf(id).has(version)
+        ? []
+        : [`${name}: ${id} has no version ${version}`]
     }),
     ...[...files.keys()]
       .filter((name) => name !== "index.json" && !listed.has(name))

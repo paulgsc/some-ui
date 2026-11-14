@@ -18,9 +18,11 @@ daily routine takes this up when it answers an ask for an essay (EXPLAIN4,
   each says. It checks every claim against the repositories at a commit,
   sets each claim's badge and names the stamp. That judgement can't be
   written as code.
-- **Code** refuses what can't be drawn: a line that doesn't fit, a
-  character the font lacks, a card without a stamp, a malformed cut list
-  (`@some-ui/burn-ins`' `prepare`, `parseCardsEssay`, `cards-check`).
+- **Code** refuses what can't be drawn. `cards-check` refuses a malformed
+  cut list, a card without a stamp, and anything home has no file for
+  (`parseCardsEssay`). Drawing refuses a line that doesn't fit or a
+  character the font lacks (`@some-ui/burn-ins`' `prepare`, in
+  `record:cards`).
 - **Home** reads `paulgsc/testing`'s `cards/` index hourly and keeps each
   essay it lacks, as first served. Its render worker records the stage's
   burn-ins page and renders the video (`apps/www/tests/record/cards.ts`).
@@ -56,9 +58,9 @@ daily routine takes this up when it answers an ask for an essay (EXPLAIN4,
    `cards.mp4`. Keep the video in the scratchpad: it is for you alone, and
    home makes the owner's copy.
 6. **Add it to `paulgsc/testing`:** the file as `cards/<key>.json`, and its
-   key first in `cards/index.json`
-   (`{"schema": "some-ui.cards-index/1", "essays": [{"key": …}, …]}`, newest
-   first). Never edit or remove an essay already there, since home keeps
+   key in `cards/index.json`
+   (`{"schema": "some-ui.cards-index/1", "essays": [{"key": …}, …]}`), in
+   order of the stamps' days, newest first. Never edit or remove an essay already there, since home keeps
    each as first served.
 7. **Check the folder:**
    `pnpm --filter @some-ui/video-render render cards-check <paulgsc/testing>/cards`
@@ -67,13 +69,13 @@ daily routine takes this up when it answers an ask for an essay (EXPLAIN4,
    `python3 scripts/guard.py --staged` there until it says ready. Title it
    `data(cards): <the essay's title>`. Its body names the key, the stamp's
    sources, and every claim marked `pr`, `next` or `gap`. Merge it once
-   `cards-check` says the folder is ready: the repository has no CI, so that
-   check is its gate.
+   step 5 rendered it and `cards-check` says the folder is ready: the
+   repository has no CI, so those two are its gate.
 9. **Say where it plays and end:** home renders it within the hour after the
    merge, and the owner watches it in Studio › Renders. End with a summary:
    the key, what the essay covers, the commits it was checked against, and
    anything you left out because it couldn't be checked. Note the run in the
-   ledger's `log`.
+   Residual Ledger's `log`.
 
 ## What it never does
 

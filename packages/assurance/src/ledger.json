@@ -3327,14 +3327,14 @@
           "kind": "OA2",
           "property": "outcome",
           "claim": "Every essay paulgsc/testing's cards index lists becomes one video on home, drawn from its cut list alone, or is refused and said; one that failed is tried again.",
-          "requirement": "Home reads paulgsc/testing's cards/index.json hourly and keeps each essay it lacks, as first served, then writes it as <key>.json for the render worker; the render worker's cards-essay job runs record:cards on it, which refuses a file that isn't a cards essay (parseCardsEssay: its key not its stamp's day, another series, a scene that isn't a card or plays a take) before anything is drawn, and keeps cards.mp4, cut-list.json and shot-times.json in the essay's folder; a failed essay keeps its finished steps and is tried again.",
+          "requirement": "Home reads paulgsc/testing's cards/index.json hourly and keeps each essay it lacks, as first served, then writes it as <key>.json for the render worker; the render worker's cards-essay job runs record:cards on it, which refuses a file that isn't a cards essay (parseCardsEssay: its key not its stamp's day, another series, a scene that isn't a card, plays a take or a cue or stands on an image, and captions) before anything is drawn, and keeps cards.mp4, cut-list.json and shot-times.json in the essay's folder; a failed essay keeps its finished steps and is tried again.",
           "verdict": "unproven",
           "conclusion": "Structural on the some-ui side: cards-check and the recorder are tested, and both showcase essays were recorded locally from the stage build, the same bytes twice. Home's side (the keeper that reads the index and the render worker's cards-essay job) is not built yet, so nothing renders on home.",
           "tracked": "some-ui#2979",
           "evidence": [
             {
               "class": "structural",
-              "says": "parseCardsEssay refuses a key that isn't its stamp's day, a series that isn't a cards series, and a scene that isn't a card or plays a take; cardsFolderProblems refuses an index out of order, an essay it lists that is missing and one it forgets; each tested.",
+              "says": "parseCardsEssay refuses a key that isn't its stamp's day, a series that isn't a cards series, a scene that isn't a card, plays a take or a cue or stands on an image, and captions; cardsFolderProblems refuses an index out of order, an essay it lists that is missing or pins a version of its series the checkout lacks, and one it forgets; each tested.",
               "ref": "some-ui:packages/video-render/src/cards-essay.ts"
             },
             {

@@ -28,7 +28,8 @@
  *
  * checks paulgsc/testing's `cards/` folder before it is published
  * (`cardsFolderProblems`, CARDS7): its index, every essay it lists as a
- * cut list home can render, and no essay file it forgets.
+ * cards essay in a version of its series this checkout holds, and no essay
+ * file it forgets. What only drawing finds is `record:cards`' to refuse.
  *
  *   pnpm --filter @some-ui/video-render render clip-check <clips folder>
  *
@@ -85,7 +86,7 @@ import {
   whyOf,
 } from "./call-facts"
 import type { CallFacts } from "./call-facts"
-import { cardsFolderProblems } from "./cards-essay"
+import { CARDS_SERIES, cardsFolderProblems } from "./cards-essay"
 import { clipFolderProblems, parseClipIndex } from "./clip"
 import { CUES, cueWav } from "./cues"
 import { problemsOf } from "./cut-list"
@@ -103,6 +104,7 @@ import {
 } from "./node"
 import { FiledSchema, toFile } from "./pending"
 import { WORK_REPOS } from "./refs"
+import { versionOfFile } from "./series"
 import { sessionFolderProblems } from "./session-note"
 import { fromTimelineV1 } from "./timeline-v1"
 import { SOUNDS } from "./vocabulary"
@@ -218,7 +220,21 @@ async function main(): Promise<void> {
   if (first === "cards-check") {
     if (!second) fail(["usage: render cards-check <cards folder>"])
     const files = await readJsonFolder(here(second))
-    const problems = cardsFolderProblems(files)
+    // The versions home's image holds: this checkout's samples of each series.
+    const versions = new Map<string, ReadonlySet<number>>()
+    for (const id of CARDS_SERIES)
+      versions.set(
+        id,
+        new Set(
+          (await readdir(join(import.meta.dirname, "sample/series", id)))
+            .map(versionOfFile)
+            .filter((v) => v !== null)
+        )
+      )
+    const problems = cardsFolderProblems(
+      files,
+      (id) => versions.get(id) ?? new Set()
+    )
     if (problems.length > 0)
       fail([`${second} can't be published:`, ...problems])
     const essays = files.size - 1
