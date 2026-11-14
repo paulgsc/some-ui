@@ -82,8 +82,11 @@ export const TAKE_CONVEYOR_WORDS = {
     labelsHint: "A word or two, with commas between. Blank keeps them.",
     note: "A note",
     noteHint: "Do you like it? What's it for?",
-    /** Said once a move is made, with where it went. */
+    /**
+     * Said once a move is made, with where it went, in the row's own words
+     * for a move home hasn't taken (`standing`'s `going`).
+     */
     moved: (station: TakeStation): string =>
-      `Moved to ${STATIONS[station]}. Home hears of it once it's in reach.`,
+      `Moved to ${STATIONS[station]}. Home hasn't taken this move yet.`,
   },
 } as const

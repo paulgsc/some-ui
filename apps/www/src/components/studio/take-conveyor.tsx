@@ -48,7 +48,9 @@ export const TakeSorting = ({
   const [said, setSaid] = useState<Said | null>(null)
   const standing = conveyor.standing(take.id, homeStationOf(take))
 
-  // An idea's answer is on no conveyor.
+  // Moves are offered only where home names a station: an idea's answer is
+  // on no conveyor, and home answers a take it doesn't hold yet as off the
+  // conveyor, which would drop a move made on it for good (#2874).
   if (standing === null) return null
   const canned = standing.station === "canned"
   const moves =

@@ -90,6 +90,12 @@ describe("TAKE_CONVEYOR_WORDS", () => {
         missed: null,
       })
     ).toBe("Ready for pickup. Home hasn't taken this move yet.")
+    // The page's notice for a move says it as the row does until home takes it.
+    for (const station of TAKE_STATIONS) {
+      expect(TAKE_CONVEYOR_WORDS.page.moved(station)).toBe(
+        `Moved to ${standing({ station, at: AT, seq: 0, going: true, missed: null })}`
+      )
+    }
     expect(
       standing({
         station: "in-the-oven",
