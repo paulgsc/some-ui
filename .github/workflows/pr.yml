@@ -315,6 +315,7 @@ jobs:
             'packages/some-content-registry/**' \
             'packages/some-styles/**' \
             'packages/video-render/src/call*.ts' \
+            'infra/render/Dockerfile' \
             'apps/www/src/**' \
             'apps/www/tests/ui-fit/**' \
             'apps/www/vite.config.ts' \
@@ -343,7 +344,6 @@ jobs:
                 tests/ui-fit/incident-fit.spec.ts \
                 tests/ui-fit/jobs-status-fit.spec.ts \
                 tests/ui-fit/code-card-fit.spec.ts \
-                tests/ui-fit/call-fit.spec.ts \
                 tests/ui-fit/studio-fit.spec.ts \
                 tests/ui-fit/pull-fit.spec.ts \
                 tests/ui-fit/settings-bar-fit.spec.ts \
@@ -356,6 +356,18 @@ jobs:
                 tests/ui-fit/stays-put-soundbites.spec.ts \
                 tests/ui-fit/stays-put-topik.spec.ts \
                 tests/ui-fit/stays-put-www.spec.ts
+
+            # The weekly call's frame (CF1) is measured in the face home
+            # draws it in: inside the Playwright image home's render image is
+            # built FROM (infra/render/Dockerfile, read here so the two never
+            # differ), whose sans is WenQuanYi Zen Hei. Under nix the frame
+            # draws another, wider face the model isn't calibrated on.
+            image=$(sed -n 's/^FROM \(mcr\.microsoft\.com\/playwright[^ ]*\).*/\1/p' infra/render/Dockerfile)
+            docker run --rm -e CI=true -e HOME=/tmp \
+              --user "$(id -u):$(id -g)" \
+              -v "$PWD:$PWD" -w "$PWD/apps/www" "$image" \
+              node_modules/.bin/playwright test --config playwright.config.ts \
+                --trace off tests/ui-fit/call-fit.spec.ts
           else
             echo "No UI files changed."
           fi
