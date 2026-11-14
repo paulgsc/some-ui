@@ -7,6 +7,12 @@
       "@interview-week/*": ["./src/*"]
     }
   },
-  "include": ["src", "src/**/*.json", "vite.config.ts", "vitest.config.ts"],
+  "include": [
+    "src",
+    "src/**/*.json",
+    "scripts",
+    "vite.config.ts",
+    "vitest.config.ts"
+  ],
   "exclude": ["node_modules", "build", "dist"]
 }
