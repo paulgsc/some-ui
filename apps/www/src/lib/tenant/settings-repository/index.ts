@@ -1,7 +1,5 @@
 import type { KeyedStorage, Salvaged } from "@some-ui/core-utils"
 import { openKept, writeKept } from "@some-ui/core-utils"
-import type { HostedVoiceChoice } from "@some-ui/speech"
-import { isTTSProvider, parseHostedVoiceChoice } from "@some-ui/speech"
 
 import {
   DEFAULT_AUDIO_PREFERENCES,
@@ -20,19 +18,24 @@ import type { UserSettings } from "@/lib/tenant/types"
 const STORAGE_KEY = "some-ui.tenant.settings.v1"
 
 export const DEFAULT_SETTINGS: UserSettings = {
-  ttsVoice: { provider: "openai", voiceId: null },
   deviceVoiceId: "",
   audio: DEFAULT_AUDIO_PREFERENCES,
   notifications: DEFAULT_NUDGE_PREFERENCES,
 }
 
-/** The two strings `ttsVoice` replaced, still in blobs saved before it. */
-type LegacyVoiceFields = {
-  ttsProvider?: string
-  ttsVoiceId?: string
-}
+/**
+ * The hosted voice's fields, retired with the voice service (#2977): the
+ * choice as a typed pair (`ttsVoice`) and the two strings it replaced. A
+ * blob saved before then still holds them. Nothing reads them, and `save`
+ * writes them back as they were stored, so the voice a person once chose is
+ * never dropped from what this browser keeps.
+ */
+const RETIRED_FIELDS = ["ttsVoice", "ttsProvider", "ttsVoiceId"] as const
 
-type StoredSettings = Partial<UserSettings> & LegacyVoiceFields
+type RetiredField = (typeof RETIRED_FIELDS)[number]
+
+type StoredSettings = Partial<UserSettings> &
+  Partial<Record<RetiredField, unknown>>
 
 /**
  * Stored settings are a JSON object, read field by field in `get`; anything
@@ -40,20 +43,6 @@ type StoredSettings = Partial<UserSettings> & LegacyVoiceFields
  */
 const readSettings: (raw: string) => Salvaged<StoredSettings> | null =
   readJsonObject
-
-/**
- * The stored voice, as a choice. Storage holds strings whatever the type
- * says, so this is where they are checked: an unknown provider reads as the
- * default one, and a voice that is not that provider's (removed from the
- * catalogue, or never valid) reads as nothing chosen, which Settings then
- * shows as the default rather than as a voice that will not speak.
- */
-function readVoice(provider: unknown, voiceId: unknown): HostedVoiceChoice {
-  return parseHostedVoiceChoice(
-    isTTSProvider(provider) ? provider : DEFAULT_SETTINGS.ttsVoice.provider,
-    typeof voiceId === "string" ? voiceId : null
-  )
-}
 
 export class SettingsRepository {
   constructor(
@@ -63,12 +52,12 @@ export class SettingsRepository {
 
   async get(): Promise<UserSettings> {
     await delay(this.latencyMs)
-    const { ttsProvider, ttsVoiceId, ttsVoice, ...stored } = openKept(
-      this.storage,
-      STORAGE_KEY,
-      readSettings,
-      DEFAULT_SETTINGS
-    ).value
+    const {
+      ttsVoice: _ttsVoice,
+      ttsProvider: _ttsProvider,
+      ttsVoiceId: _ttsVoiceId,
+      ...stored
+    } = this.stored()
     // Settings persist as one blob under a single key, so a browser holding
     // a version of it written before a field existed hands that field back
     // as `undefined`. Filling the gap on read is cheaper than a migration
@@ -76,10 +65,6 @@ export class SettingsRepository {
     return {
       ...DEFAULT_SETTINGS,
       ...stored,
-      ttsVoice: readVoice(
-        ttsVoice?.provider ?? ttsProvider,
-        ttsVoice?.voiceId ?? ttsVoiceId
-      ),
       audio: withAudioDefaults(stored.audio),
       notifications: withNudgeDefaults(stored.notifications),
     }
@@ -88,10 +73,32 @@ export class SettingsRepository {
   /** Throws `NotKeptError` rather than write over what it could not read. */
   async save(settings: UserSettings): Promise<UserSettings> {
     await delay(this.latencyMs)
-    if (!writeKept(this.storage, STORAGE_KEY, settings, readSettings)) {
+    const stored = this.stored()
+    const retired = Object.fromEntries(
+      RETIRED_FIELDS.filter((field) => stored[field] !== undefined).map(
+        (field) => [field, stored[field]]
+      )
+    )
+    if (
+      !writeKept(
+        this.storage,
+        STORAGE_KEY,
+        { ...retired, ...settings },
+        readSettings
+      )
+    ) {
       throw new NotKeptError()
     }
     return settings
+  }
+
+  private stored(): StoredSettings {
+    return openKept<StoredSettings>(
+      this.storage,
+      STORAGE_KEY,
+      readSettings,
+      DEFAULT_SETTINGS
+    ).value
   }
 }
 

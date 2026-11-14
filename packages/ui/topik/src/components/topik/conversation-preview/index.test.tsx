@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
+import type { SpeechAdapter } from "@some-ui/speech"
 import { SpeechProvider } from "@some-ui/speech"
-import { httpSpeech } from "@some-ui/speech/http"
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { ConversationPreview } from "@topik/components/topik/conversation-preview"
 import { FIXTURE_BATCHES } from "@topik/components/topik/handheld/handheld-lesson/fixture"
@@ -63,46 +63,48 @@ describe("ConversationPreview", () => {
 
 /**
  * The page's speech session decides who speaks and in what voice; a line
- * read from this preview only says what language it is in. A session set
- * to InJoon (the setting a person picks) must be heard as InJoon, and a
- * muted session must stay silent.
+ * read from this preview only says what language it is in. A line is
+ * handed to the session in Korean, and a muted session stays silent.
  */
 describe("ConversationPreview - speaking through the page's session", () => {
-  function hostedSession(
-    sent: Array<string>,
+  /** A device voice that records each line it is handed, and settles it. */
+  function recordingAdapter(
+    heard: Array<{ text: string; language: string | undefined }>
+  ): SpeechAdapter {
+    return {
+      id: "web-speech",
+      supported: true,
+      pending: 0,
+      describe: () => ({
+        platform: "browser",
+        voice: null,
+        availability: "available",
+      }),
+      subscribe: () => () => undefined,
+      speak: (text, options = {}): Promise<void> => {
+        heard.push({ text, language: options.language })
+        return Promise.resolve()
+      },
+      stop: () => undefined,
+      pause: () => undefined,
+      resume: () => undefined,
+      setVolume: () => undefined,
+      setPlaybackRate: () => undefined,
+      dispose: () => undefined,
+    }
+  }
+
+  function session(
+    heard: Array<{ text: string; language: string | undefined }>,
     muted = false
   ): (props: { children: ReactNode }) => ReactNode {
-    const fetchImpl = (
-      _url: unknown,
-      init?: { body?: unknown }
-    ): Promise<Response> => {
-      const body: unknown = JSON.parse(String(init?.body))
-      if (typeof body === "object" && body !== null && "voice" in body) {
-        sent.push(String(body.voice))
-      }
-      return Promise.reject(new Error("no TTS server in tests"))
-    }
-    const HostedSession = ({
-      children,
-    }: {
-      children: ReactNode
-    }): ReactNode => (
-      <SpeechProvider
-        config={{
-          mode: "server",
-          hosted: { provider: "openai", voiceId: "ko-KR-InJoonNeural" },
-          fetchImpl,
-          // jsdom has no Web Audio; without this the hosted voice would
-          // fall back to the device's.
-          fallbackWhenUnsupported: false,
-          adapters: { server: httpSpeech },
-        }}
-        muted={muted}
-      >
+    const adapter = recordingAdapter(heard)
+    const Session = ({ children }: { children: ReactNode }): ReactNode => (
+      <SpeechProvider config={{ backend: () => adapter }} muted={muted}>
         {children}
       </SpeechProvider>
     )
-    return HostedSession
+    return Session
   }
 
   function speakFirstLine(): void {
@@ -112,21 +114,23 @@ describe("ConversationPreview - speaking through the page's session", () => {
     fireEvent.click(speak)
   }
 
-  it("speaks in the voice the session was set to", async () => {
-    const sent: Array<string> = []
+  it("hands the line to the session in Korean", async () => {
+    const heard: Array<{ text: string; language: string | undefined }> = []
     render(<ConversationPreview batches={FIXTURE_BATCHES} />, {
-      wrapper: hostedSession(sent),
+      wrapper: session(heard),
     })
 
     speakFirstLine()
 
-    await waitFor(() => expect(sent).toEqual(["ko-KR-InJoonNeural"]))
+    await waitFor(() =>
+      expect(heard).toEqual([{ text: first[0]?.content, language: "korean" }])
+    )
   })
 
   it("says nothing while the session is muted", async () => {
-    const sent: Array<string> = []
+    const heard: Array<{ text: string; language: string | undefined }> = []
     render(<ConversationPreview batches={FIXTURE_BATCHES} />, {
-      wrapper: hostedSession(sent, true),
+      wrapper: session(heard, true),
     })
 
     speakFirstLine()
@@ -134,6 +138,6 @@ describe("ConversationPreview - speaking through the page's session", () => {
       await new Promise((resolve) => setTimeout(resolve, 0))
     })
 
-    expect(sent).toEqual([])
+    expect(heard).toEqual([])
   })
 })

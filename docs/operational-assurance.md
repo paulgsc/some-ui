@@ -151,7 +151,9 @@ Each process has:
   and home's transcription), and `live` with a `ref` or `planned` with its issue.
 
 `crosscutting` lists the ledger families no process carries because they span every one (the
-checks themselves, home's errors, what is kept, whether home is up), each with why.
+checks themselves, home's errors, what is kept, whether home is up), each with why. A family whose
+every objective has retired needs neither: nothing runs it any more (the hosted voice's, retired
+in #2977).
 
 An objective's `watch.checks` names the live checks that run it (`<process>/<check>`), of a
 process that witnesses it. A planned check watches nothing yet, so it may not be named.
@@ -189,7 +191,8 @@ pr.yml's `guards` job, which CI Gate needs.
   warning, not an error, so a module can be placed in its own PR ahead of the route snapshot that
   brings it, and a stale one is visible.
 - **The registry:** every ledger family is served by a process or is `crosscutting` (one or
-  the other), so a new family cannot land without its process. A process's `serves`, its
+  the other), unless every objective in it has retired, so a new family cannot land without its
+  process. A process's `serves`, its
   `witnesses` (a live objective), each check's `segments` and each watch's `checks` name
   something that exists; a check exercises at least one segment of its own process; a network
   segment, and only one, runs `between`; a segment of ours does not run `outside`; a `live`

@@ -11,11 +11,9 @@
  * - `apps/www/nginx.https.conf`: the compose stack's template, which replaces
  *   that file (one server block, :80).
  * - `apps/www/nginx.security-headers.conf`: the `Referrer-Policy` both include.
- * - `nginx.conf` at the repo root: the TTS front-end, with its own http block
- *   and so its own access log.
  *
  * Not covered: `error_log` (it cannot be made address-free without dropping
- * nginx's own errors), the TTS proxy's forwarding, and the compose `logging:`
+ * nginx's own errors), the résumé proxy's forwarding, and the compose `logging:`
  * bound in infra/compose/www.yml.
  *
  * A tiny block parser (comments, quotes, braces; not general nginx), because
@@ -39,7 +37,6 @@ const DOCKERFILE = "apps/www/Dockerfile"
 const DEFAULT_CONF = "apps/www/nginx.default.conf"
 const HTTPS_CONF = "apps/www/nginx.https.conf"
 const HEADERS_CONF = "apps/www/nginx.security-headers.conf"
-const ROOT_CONF = "nginx.conf"
 const VITE_CONFIG = "apps/www/vite.config.ts"
 
 const HEADERS_INCLUDE = "include /etc/nginx/security-headers.conf"
@@ -357,14 +354,10 @@ const httpsServers = serversOf(httpsConf)
 
 const headersConf = parseNginx(read(HEADERS_CONF), HEADERS_CONF)
 
-const rootConf = parseNginx(read(ROOT_CONF), ROOT_CONF)
-const rootHttp = rootConf.children.filter((block) => block.head === "http")
-
 describe("the configs are read, not assumed", () => {
   it("finds the server blocks the other checks run over", () => {
     expect(dockerServers, `${DEFAULT_CONF}: server blocks`).toHaveLength(1)
     expect(httpsServers, `${HTTPS_CONF}: server blocks`).toHaveLength(1)
-    expect(rootHttp, `${ROOT_CONF}: top-level http blocks`).toHaveLength(1)
     expect(
       headersConf.directives.length,
       `${HEADERS_CONF}: directives`
@@ -391,10 +384,6 @@ describe("access logs stay off", () => {
 
   it("in every server block of nginx.https.conf", () => {
     expect(accessLogProblems(HTTPS_CONF, httpsConf, httpsServers)).toEqual([])
-  })
-
-  it("in the http block of the root nginx.conf", () => {
-    expect(accessLogProblems(ROOT_CONF, rootConf, rootHttp)).toEqual([])
   })
 })
 

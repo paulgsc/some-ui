@@ -18,21 +18,6 @@ import {
 } from "./file-host.dev.ts"
 import styleContext from "./style.context.ts"
 
-// The dev/preview counterpart of apps/www/nginx.tts-proxy.conf: the same
-// same-origin /api/tts/ route, pointed at the port infra/compose/tts.yml
-// publishes on the host instead of at the container over the compose
-// network. Without it, `vite dev` opened over HTTPS (through Caddy, as
-// dev.home.maishatu.com) hits the mixed-content block that path exists to
-// avoid, since src/lib/tts-config resolves an HTTPS page to this path.
-//
-// Kept in step by hand with that nginx snippet and with TTS_PROXY_PATH in
-// src/lib/tts-config - importing the constant here would pull an
-// `import.meta.env` reader into the config's Node context for one string.
-// TTS_PROXY_TARGET covers a PORT other than 5050 in .env, or a backend
-// running somewhere other than this machine.
-const TTS_PROXY_PATH = "/api/tts"
-const ttsProxyTarget = process.env.TTS_PROXY_TARGET || "http://127.0.0.1:5050"
-
 // The dev/preview counterpart of apps/www/nginx.resume-proxy.conf, for the
 // LAN /resume-build page. The container publishes no port, so in dev run the
 // service on the host instead: `node packages/ui/resume/scripts/serve.mjs`
@@ -266,31 +251,6 @@ export default defineConfig(
       // `vite preview` inherits this (its own `preview.proxy` defaults to
       // `server.proxy`), so both dev servers speak.
       proxy: {
-        [TTS_PROXY_PATH]: {
-          target: ttsProxyTarget,
-          changeOrigin: true,
-          rewrite: (path): string =>
-            path.replace(new RegExp(`^${TTS_PROXY_PATH}`), ""),
-          // `docker compose up openai-edge-tts` publishes nothing on the
-          // host - that container only `expose`s 5050 to the compose
-          // network, and it is the `nginx` service beside it that maps
-          // ${PORT:-5050} to your machine. Starting one without the other
-          // leaves this proxy connecting to a closed port, and Vite's own
-          // "http proxy error: ECONNREFUSED" says nothing about which
-          // container is missing. Name it once, here.
-          configure: (proxy): void => {
-            proxy.on("error", (error: Error & { code?: string }): void => {
-              if (error.code !== "ECONNREFUSED") return
-              // eslint-disable-next-line no-console
-              console.warn(
-                `\n[www] nothing is listening on ${ttsProxyTarget} - speech will fail while everything else works.\n` +
-                  `  Both TTS containers have to be up, not just the backend:\n` +
-                  `    docker compose up -d openai-edge-tts nginx\n` +
-                  `  (set TTS_PROXY_TARGET if your PORT is not 5050 or the backend is on another host.)\n`
-              )
-            })
-          },
-        },
         [RESUME_PROXY_PATH]: {
           target: resumeProxyTarget,
           changeOrigin: true,
@@ -306,8 +266,7 @@ export default defineConfig(
             isBlockedProxyPath(req.url) ? false : undefined,
           rewrite: (path): string =>
             path.replace(new RegExp(`^${FILE_HOST_PROXY_PATH}`), ""),
-          // Name the backend, the same way the TTS proxy names its
-          // container. Vite's bare "http proxy error: ECONNREFUSED" is the
+          // Name the backend. Vite's bare "http proxy error: ECONNREFUSED" is the
           // exact message that gets read as a CORS problem and sends
           // someone to reconfigure a server that was already correct.
           configure: (proxy): void => {

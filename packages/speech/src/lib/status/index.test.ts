@@ -20,12 +20,10 @@ import {
   deriveSpeechStatus,
   describeStatus,
   INITIAL_ANNOUNCER_STATE,
-  voiceKindOf,
 } from "."
 
 const statusWith = (muted: fc.Arbitrary<boolean>): fc.Arbitrary<SpeechStatus> =>
   fc.record({
-    voice: fc.constantFrom("device" as const, "hosted" as const),
     health: fc.constantFrom(
       "ready" as const,
       "faulted" as const,
@@ -53,17 +51,6 @@ function noticesFor(
 }
 
 describe("deriveSpeechStatus", () => {
-  it("calls the browser's own synthesizer the device voice, and anything else hosted", () => {
-    const browser = {
-      ...createControllableAdapter(),
-      id: "web-speech" as const,
-    }
-    const backend = { ...createControllableAdapter(), id: "http" as const }
-
-    expect(voiceKindOf(browser)).toBe("device")
-    expect(voiceKindOf(backend)).toBe("hosted")
-  })
-
   it("is unavailable when the runtime cannot speak, whatever the queue says", () => {
     const adapter = { ...createControllableAdapter(), supported: false }
 
@@ -86,18 +73,17 @@ describe("deriveSpeechStatus", () => {
 
   it("never carries the underlying error text into what a person sees", () => {
     const announcer = createSpeechAnnouncer()
-    announcer.observe({ voice: "hosted", health: "ready", muted: false })
+    announcer.observe({ health: "ready", muted: false })
     const notice = announcer.observe({
-      voice: "hosted",
       health: "faulted",
       muted: false,
     })
 
-    // The queue's `error` is a backend message - "openai TTS API error: 503
-    // Service Unavailable - upstream is down" and the like. It is useful in
+    // The queue's `error` is a backend message - "synthesis-failed" and the
+    // like. It is useful in
     // the queue state a developer reads, and it is not a disclosure.
-    expect(notice?.title).not.toMatch(/error|http|openai|5050/i)
-    expect(notice?.description).not.toMatch(/error|http|openai|5050/i)
+    expect(notice?.title).not.toMatch(/error|synthesis/i)
+    expect(notice?.description).not.toMatch(/error|synthesis/i)
   })
 })
 
@@ -120,22 +106,17 @@ describe("announcer - the four rules", () => {
 
   it("rule 2: an episode of N failures is one notice", () => {
     fc.assert(
-      fc.property(
-        fc.constantFrom("device" as const, "hosted" as const),
-        fc.integer({ min: 1, max: 40 }),
-        (voice, failures) => {
-          const notices = noticesFor([
-            { voice, health: "ready", muted: false },
-            ...Array.from({ length: failures }, () => ({
-              voice,
-              health: "faulted" as const,
-              muted: false,
-            })),
-          ])
+      fc.property(fc.integer({ min: 1, max: 40 }), (failures) => {
+        const notices = noticesFor([
+          { health: "ready", muted: false },
+          ...Array.from({ length: failures }, () => ({
+            health: "faulted" as const,
+            muted: false,
+          })),
+        ])
 
-          expect(notices.map((n) => n.kind)).toEqual(["activated", "faulted"])
-        }
-      ),
+        expect(notices.map((n) => n.kind)).toEqual(["activated", "faulted"])
+      }),
       { numRuns: 100 }
     )
   })
@@ -159,12 +140,6 @@ describe("announcer - the four rules", () => {
   })
 
   it("rule 4: no two consecutive notices are ever identical", () => {
-    // Stated over the whole notice rather than its kind, because one
-    // same-kind repeat is deliberate: a voice change re-discloses, since
-    // text that stayed on the device may now be leaving it. That notice
-    // reads differently, which is the whole reason it is worth showing. A
-    // property test caught the version of this rule that said "same kind"
-    // and the two places where the machine violated it by accident.
     fc.assert(
       fc.property(
         fc.array(statusArbitrary, { minLength: 1, maxLength: 60 }),
@@ -180,7 +155,7 @@ describe("announcer - the four rules", () => {
     )
   })
 
-  it("rule 4a: the only same-kind repeat is a re-disclosure across voices", () => {
+  it("rule 4a: no two consecutive notices are even of the same kind", () => {
     fc.assert(
       fc.property(
         fc.array(statusArbitrary, { minLength: 1, maxLength: 60 }),
@@ -188,9 +163,7 @@ describe("announcer - the four rules", () => {
           const notices = noticesFor(statuses)
           notices.forEach((notice, index) => {
             if (index === 0) return
-            if (notice.kind !== notices[index - 1]?.kind) return
-            expect(notice.kind).toBe("activated")
-            expect(notice.description).not.toBe(notices[index - 1]?.description)
+            expect(notice.kind).not.toBe(notices[index - 1]?.kind)
           })
         }
       ),
@@ -205,11 +178,7 @@ describe("announcer - the four rules", () => {
         (statuses) => {
           const transitions = statuses.filter((status, index) => {
             const previous = statuses[index - 1]
-            return (
-              index === 0 ||
-              previous?.health !== status.health ||
-              previous.voice !== status.voice
-            )
+            return index === 0 || previous?.health !== status.health
           })
 
           expect(noticesFor(statuses).length).toBeLessThanOrEqual(
@@ -223,29 +192,22 @@ describe("announcer - the four rules", () => {
 })
 
 describe("announcer - the happy path a person actually sees", () => {
-  it("discloses once on activation, and says which voice is speaking", () => {
-    const device = noticesFor([
-      { voice: "device", health: "ready", muted: false },
-    ])
-    const hosted = noticesFor([
-      { voice: "hosted", health: "ready", muted: false },
-    ])
+  it("discloses once on activation, and says whose voice is speaking", () => {
+    const notices = noticesFor([{ health: "ready", muted: false }])
 
-    expect(device[0]?.kind).toBe("activated")
-    expect(device[0]?.description).toMatch(/nothing you hear is sent anywhere/i)
-    // The one distinction worth disclosing: whether text leaves the machine.
-    expect(hosted[0]?.description).toMatch(/sent to this site's voice service/i)
+    expect(notices[0]?.kind).toBe("activated")
+    expect(notices[0]?.description).toMatch(/your browser or phone provides/i)
   })
 
   it("walks activation, fault and recovery once each across a whole session", () => {
     const notices = noticesFor([
-      { voice: "hosted", health: "ready", muted: false },
-      { voice: "hosted", health: "ready", muted: false },
-      { voice: "hosted", health: "faulted", muted: false },
-      { voice: "hosted", health: "faulted", muted: false },
-      { voice: "hosted", health: "faulted", muted: false },
-      { voice: "hosted", health: "ready", muted: false },
-      { voice: "hosted", health: "ready", muted: false },
+      { health: "ready", muted: false },
+      { health: "ready", muted: false },
+      { health: "faulted", muted: false },
+      { health: "faulted", muted: false },
+      { health: "faulted", muted: false },
+      { health: "ready", muted: false },
+      { health: "ready", muted: false },
     ])
 
     expect(notices.map((notice) => notice.kind)).toEqual([
@@ -262,8 +224,8 @@ describe("announcer - the happy path a person actually sees", () => {
 
   it("says nothing about recovery when speech was never announced broken", () => {
     const notices = noticesFor([
-      { voice: "device", health: "ready", muted: false },
-      { voice: "device", health: "ready", muted: false },
+      { health: "ready", muted: false },
+      { health: "ready", muted: false },
     ])
 
     expect(notices.map((notice) => notice.kind)).toEqual(["activated"])
@@ -272,28 +234,12 @@ describe("announcer - the happy path a person actually sees", () => {
   it("announces an unusable runtime once, rather than on every attempt", () => {
     const notices = noticesFor(
       Array.from({ length: 10 }, () => ({
-        voice: "device" as const,
         health: "unavailable" as const,
         muted: false,
       }))
     )
 
     expect(notices.map((notice) => notice.kind)).toEqual(["unavailable"])
-  })
-
-  it("re-discloses when the voice itself changes", () => {
-    // A different voice means different data handling - text that stayed on
-    // the device may now be leaving it. That is a new disclosure, not noise.
-    const notices = noticesFor([
-      { voice: "device", health: "ready", muted: false },
-      { voice: "hosted", health: "ready", muted: false },
-    ])
-
-    expect(notices.map((notice) => notice.kind)).toEqual([
-      "activated",
-      "activated",
-    ])
-    expect(notices[1]?.description).toMatch(/voice service/i)
   })
 })
 
@@ -330,9 +276,9 @@ describe("announcer - muting is a choice, not an event", () => {
 
   it("freezes rather than forgets - unmuting discloses what mute deferred", () => {
     const notices = noticesFor([
-      { voice: "hosted", health: "ready", muted: true },
-      { voice: "hosted", health: "ready", muted: true },
-      { voice: "hosted", health: "ready", muted: false },
+      { health: "ready", muted: true },
+      { health: "ready", muted: true },
+      { health: "ready", muted: false },
     ])
 
     expect(notices.map((notice) => notice.kind)).toEqual(["activated"])
@@ -341,8 +287,8 @@ describe("announcer - muting is a choice, not an event", () => {
   it("does not re-disclose on every mute/unmute cycle", () => {
     const cycles: Array<SpeechStatus> = []
     for (let i = 0; i < 6; i++) {
-      cycles.push({ voice: "device", health: "ready", muted: false })
-      cycles.push({ voice: "device", health: "ready", muted: true })
+      cycles.push({ health: "ready", muted: false })
+      cycles.push({ health: "ready", muted: true })
     }
 
     expect(noticesFor(cycles).map((notice) => notice.kind)).toEqual([
@@ -352,7 +298,6 @@ describe("announcer - muting is a choice, not an event", () => {
 
   it("describes muting as a choice, never as a broken browser", () => {
     const text = describeStatus({
-      voice: "device",
       health: "ready",
       muted: true,
     })

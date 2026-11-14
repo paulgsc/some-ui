@@ -428,10 +428,7 @@
       "id": "hosted-speech",
       "name": "A line you ask to hear is fetched once",
       "why": "On the home-network web build, a line's audio comes from the hosted voice service over the network; a replay tapped again before the answer arrives must not send the line again.",
-      "paths": [
-        "some-ui:packages/speech/src/lib/engine",
-        "some-ui:packages/speech/src/lib/adapters/http"
-      ],
+      "paths": [],
       "modules": [],
       "objectives": [
         {
@@ -460,7 +457,18 @@
           "watch": {
             "by": "none"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-14",
+              "change": "Retired: no build fetches a line's audio any more. The hosted voice service (openai-edge-tts on home) is gone, and every web build speaks with the browser's own voice.",
+              "why": "The owner chose to retire the voice service rather than move it into home's release: \"yes, retire tts\" (2026-11-14). The fetching engine and its test went with it.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/2977"
+            }
+          ],
+          "retired": {
+            "on": "2026-11-14",
+            "why": "The hosted voice service it covered is retired (some-ui#2977): no build fetches a line's audio."
+          }
         }
       ]
     },
@@ -4816,75 +4824,6 @@
         }
       ],
       "checks": []
-    },
-    {
-      "id": "hosted-speech",
-      "name": "The web build speaks",
-      "why": "On the home-network web build, a line's audio comes from the hosted voice service on home, which asks an online voice for it.",
-      "serves": ["hosted-speech"],
-      "witnesses": ["SP1"],
-      "segments": [
-        {
-          "id": "engine",
-          "name": "The speech engine fetches a line's audio once and plays it. Ours, in the browser.",
-          "owner": "ours",
-          "on": "browser",
-          "paths": [
-            "some-ui:packages/speech/src/lib/engine",
-            "some-ui:packages/speech/src/lib/adapters/http"
-          ]
-        },
-        {
-          "id": "home-network",
-          "name": "The browser reaches home over the home network.",
-          "owner": "network",
-          "on": "between",
-          "paths": []
-        },
-        {
-          "id": "proxy",
-          "name": "The web image's proxy hands the request to the voice container. Ours, on home.",
-          "owner": "ours",
-          "on": "home",
-          "paths": ["some-ui:apps/www/nginx.tts-proxy.conf"]
-        },
-        {
-          "id": "voice-service",
-          "name": "openai-edge-tts, a container on home that someone else wrote.",
-          "owner": "foreign",
-          "on": "home",
-          "paths": ["some-ui:infra/compose/tts.yml"]
-        },
-        {
-          "id": "online-voice",
-          "name": "The online voice openai-edge-tts asks over the internet. Someone else's, outside home.",
-          "owner": "foreign",
-          "on": "outside",
-          "paths": []
-        }
-      ],
-      "signals": [
-        {
-          "says": "Every spoken line records how it ended and the screen it came from (CK2).",
-          "status": "planned",
-          "tracked": "some-ui#2381"
-        }
-      ],
-      "checks": [
-        {
-          "id": "speech-probe",
-          "kind": "probe",
-          "name": "A known line through the real hosted-speech route, daily and from the page: audio back within a bound, of a plausible length",
-          "runs": "home",
-          "segments": [
-            "hosted-speech/proxy",
-            "hosted-speech/voice-service",
-            "hosted-speech/online-voice"
-          ],
-          "status": "planned",
-          "tracked": "some-ui#2383"
-        }
-      ]
     },
     {
       "id": "voice-going-home",

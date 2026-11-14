@@ -386,9 +386,8 @@ export const PANEL_FIXTURES = {
   topik: (): JSX.Element => (
     <SpeechProvider
       config={{
-        mode: "static",
         language: "korean",
-        adapters: { static: webSpeech },
+        backend: webSpeech,
       }}
     >
       <Topik />

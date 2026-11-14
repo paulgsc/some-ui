@@ -34,7 +34,6 @@ function reachedFrom(entry: string): ReadonlySet<string> {
 
 /** What belongs to one backend, and to no other entry. */
 const BACKEND_MODULES = {
-  http: ["lib/adapters/http/", "lib/engine/"],
   "web-speech": ["lib/adapters/web-speech/"],
   native: ["lib/adapters/native/"],
 } as const

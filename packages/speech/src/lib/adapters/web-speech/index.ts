@@ -1,10 +1,8 @@
 /**
  * @module adapters/web-speech
  *
- * Speech via the browser's own `speechSynthesis`. No backend, no network -
- * which is exactly why it is the GitHub Pages fallback: that build ships no
- * companion services at all, so an HTTP adapter there would fail on every
- * utterance.
+ * Speech via the browser's own `speechSynthesis`: the voice every web build
+ * speaks with, since no build ships a speech service of its own.
  *
  * The browser's voices are the browser's: which ones exist depends on the
  * device, and they are not ours to list or let a person choose among. A line
@@ -14,8 +12,7 @@
  * (`voiceForLanguage`) rather than left to the browser's guess from the tag
  * alone, so the voice `describe` reports is the voice that speaks. A browser
  * with no voice for the language reads the line in its default voice,
- * another language's, and `describe` says so. None of these ever becomes a
- * `VoiceConfig`, which describes the hosted catalogue only (`lib/voices`).
+ * another language's, and `describe` says so.
  *
  * Settlement, pinned by `adapter-contract.test.ts`:
  *

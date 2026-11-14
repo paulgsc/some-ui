@@ -19,9 +19,7 @@
  *   is the unit, not the error).
  * - Recovery emits exactly one `"recovered"`, and only if a fault was
  *   actually announced.
- * - No two consecutive notices are ever identical. (The one same-kind
- *   repeat allowed is a re-disclosure when the voice itself changes, since
- *   what is sent where has just changed with it.)
+ * - No two consecutive notices are ever identical.
  *
  * Those four sentences are the property tests in `index.test.ts`, checked
  * against arbitrary status sequences rather than hand-picked ones - the
@@ -36,7 +34,6 @@ import type {
   SpeechNotice,
   SpeechNoticeKind,
   SpeechStatus,
-  SpeechVoiceKind,
 } from "./types"
 
 export type {
@@ -46,18 +43,7 @@ export type {
   SpeechNoticeTone,
   SpeechNotifier,
   SpeechStatus,
-  SpeechVoiceKind,
 } from "./types"
-
-/**
- * The device's own synthesizers, the browser's and the operating system's,
- * are the only backends that never send text anywhere; everything else this
- * package can resolve to is, from a person's point of view, "a service
- * somewhere else".
- */
-export function voiceKindOf(adapter: SpeechAdapter): SpeechVoiceKind {
-  return adapter.id === "http" ? "hosted" : "device"
-}
 
 export function healthOf(
   adapter: SpeechAdapter,
@@ -78,7 +64,6 @@ export function deriveSpeechStatus(
   options: { muted?: boolean } = {}
 ): SpeechStatus {
   return {
-    voice: voiceKindOf(adapter),
     health: healthOf(adapter, queue),
     muted: options.muted ?? false,
   }
@@ -89,24 +74,17 @@ export function deriveSpeechStatus(
 // Plain prose, no identifiers. A person reading these should learn what is
 // happening to them and what it costs them, and nothing about how it works.
 
-const ACTIVATION_DESCRIPTION: Readonly<Record<SpeechVoiceKind, string>> = {
-  device:
-    "This page can read text aloud. It uses the voice built into your device, so nothing you hear is sent anywhere.",
-  hosted:
-    "This page can read text aloud. Text to be spoken is sent to this site's voice service.",
-}
+const ACTIVATION_DESCRIPTION =
+  "This page can read text aloud, in the voice your browser or phone provides. Some of those voices are online ones, run by whoever made the browser or phone."
 
-function noticeFor(
-  kind: SpeechNoticeKind,
-  voice: SpeechVoiceKind
-): SpeechNotice {
+function noticeFor(kind: SpeechNoticeKind): SpeechNotice {
   switch (kind) {
     case "activated": {
       return {
         kind,
         tone: "info",
         title: "Voice output is on",
-        description: ACTIVATION_DESCRIPTION[voice],
+        description: ACTIVATION_DESCRIPTION,
       }
     }
     case "faulted": {
@@ -157,8 +135,7 @@ export function describeStatus(status: SpeechStatus): string {
       ? "activated"
       : status.health === "faulted"
         ? "faulted"
-        : "unavailable",
-    status.voice
+        : "unavailable"
   )
   return `${notice.title}. ${notice.description}`
 }
@@ -172,12 +149,10 @@ export function describeStatus(status: SpeechStatus): string {
  */
 export type AnnouncerState = {
   readonly announced: SpeechNoticeKind | null
-  readonly voice: SpeechVoiceKind | null
 }
 
 export const INITIAL_ANNOUNCER_STATE: AnnouncerState = {
   announced: null,
-  voice: null,
 }
 
 export type AnnouncerStep = {
@@ -198,25 +173,10 @@ export function announce(
   status: SpeechStatus
 ): AnnouncerStep {
   const emit = (kind: SpeechNoticeKind): AnnouncerStep => ({
-    state: { announced: kind, voice: status.voice },
-    notice: noticeFor(kind, status.voice),
+    state: { announced: kind },
+    notice: noticeFor(kind),
   })
-  const silent = (): AnnouncerStep => ({
-    state: { ...state, voice: status.voice },
-    notice: null,
-  })
-
-  /**
-   * A changed voice is a changed data-handling story - text that stayed on
-   * the device may now be leaving it - so it earns a fresh disclosure. It
-   * only does so from the `ready` arm, though: "speech is broken" and
-   * "speech is unavailable" are the same fact to a person whichever backend
-   * was going to have spoken, and re-announcing them on a voice change is
-   * the noise this machine exists to prevent. (A property test found that
-   * one: `unavailable` for one voice followed by `unavailable` for another
-   * produced two identical warnings in a row.)
-   */
-  const voiceChanged = state.voice !== null && state.voice !== status.voice
+  const silent = (): AnnouncerStep => ({ state, notice: null })
 
   /*
    * Muting is something a person did, not something that happened to them.
@@ -242,9 +202,6 @@ export function announce(
       // Only a fault that was actually announced earns a recovery notice -
       // otherwise "it's working again" arrives with no "it broke" before it.
       if (state.announced === "faulted") return emit("recovered")
-      // A voice change means a new session with a different backend, which
-      // is a fresh disclosure: what is sent where has just changed.
-      if (voiceChanged) return emit("activated")
       return silent()
     }
     default: {

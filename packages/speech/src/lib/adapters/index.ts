@@ -10,7 +10,6 @@ export type {
 export type {
   NativeSpeechBackend,
   SpeechAdapterFactory,
-  SpeechAdapterRegistry,
   SpeechConfig,
 } from "./registry"
 export { createSpeechAdapter } from "./registry"

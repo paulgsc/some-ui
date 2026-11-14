@@ -25,9 +25,9 @@ export function resolveEntryPath(
 
 /** One file a library build emits and its package.json exports. */
 export type LibraryEntry = {
-  /** The export subpath: "." for the main entry, "./http" for `entries.http`. */
+  /** The export subpath: "." for the main entry, "./native" for `entries.http`. */
   subpath: string
-  /** The output path under dist/ without format or extension: "@some-ui/speech/http". */
+  /** The output path under dist/ without format or extension: "@some-ui/speech/native". */
   outputName: string
   /** The entry's source, relative to the package root. */
   source: string

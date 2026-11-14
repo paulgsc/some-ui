@@ -221,7 +221,7 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
         "apps/www/src/components/settings/data-home-section.tsx",
       ],
       profiles: ["lan", "pages"],
-      why: "web-only code: the Android app has no account to move sessions to or sign out of, and no hosted voice (it speaks with the phone's engine)",
+      why: "web-only code: the Android app has no account to move sessions to or sign out of",
     },
     {
       modules: [
@@ -278,15 +278,6 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       modules: ["apps/www/src/lib/demo/**"],
       profiles: ["pages"],
       why: "a viewer's sample drafts (CLAUDE.md, two mandates): only the Pages build is a viewer's, and the owner's builds keep to their own records",
-    },
-    {
-      modules: [
-        `${SPEECH_ENTRY}/http.es.js`,
-        "apps/www/src/lib/tts-config/**",
-        "apps/www/src/components/settings/hosted-voice-fields.tsx",
-      ],
-      profiles: ["lan"],
-      why: "the hosted voice, which needs the TTS service only the home server runs: Pages has none, and the Android app speaks with the phone's engine (src/providers/tts.tsx)",
     },
     {
       modules: ["apps/www/src/lib/web-surface/playoff-delta/**"],
@@ -385,11 +376,8 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
     // by matching nothing, should the speech dist layout or lib/ move.
     {
       profile: "lan",
-      modules: [
-        `${SPEECH_ENTRY}/http.es.js`,
-        `${SPEECH_ENTRY}/web-speech.es.js`,
-      ],
-      why: "the home server speaks through these (src/providers/tts.tsx); a build without them is silent",
+      modules: [`${SPEECH_ENTRY}/web-speech.es.js`],
+      why: "the home server speaks through this (src/providers/tts.tsx); a build without it is silent",
     },
     {
       profile: "lan",
