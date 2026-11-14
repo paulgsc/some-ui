@@ -105,7 +105,12 @@ export function cardHeading(
   p: { readonly kicker: string; readonly title: string },
   g: Geometry
 ): Parsed<TextFrame> {
-  const name = valueProblem(p.kicker) ?? valueProblem(p.title)
+  // Each alone, and joined as the eye reads them across the break, so a
+  // value can't open in the kicker and close in the title.
+  const name =
+    valueProblem(p.kicker) ??
+    valueProblem(p.title) ??
+    valueProblem(`${p.kicker}${p.title}`)
   if (name !== null)
     return {
       ok: false,

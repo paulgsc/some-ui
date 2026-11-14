@@ -109,6 +109,18 @@ describe("the terminal card", () => {
     expect(p.ok).toBe(false)
   })
 
+  it.each([
+    ['export KEY="', 'sk-live-abc"'],
+    ["export KEY='", "sk-live-abc'"],
+    ["export KEY=", "sk-live-abc"],
+  ])(
+    "refuses a value that opens in the kicker and closes in the title: %s",
+    (k, title) => {
+      const p = terminal({ kicker: k, title, lines: [{ text: "x" }] })
+      expect(p.ok).toBe(false)
+    }
+  )
+
   it("refuses a heading that gives a value", () => {
     const p = terminal({
       title: "Set API_KEY=sk-live-abc",
