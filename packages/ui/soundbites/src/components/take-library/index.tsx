@@ -39,6 +39,11 @@ export type TakeLibraryProps = {
   ports: LibraryPorts
   /** The app's way to pairing, shown while this phone isn't paired (ST34). */
   pair: ReactNode
+  /**
+   * What a page adds under each take of home's (Studio's conveyor page, its
+   * station strip and moves, CONVEYOR2); none on the plain list.
+   */
+  row?: ((take: LibraryTake) => ReactNode) | undefined
 }
 
 /** What home heard in `take`, or why there is nothing to show. */
@@ -54,11 +59,13 @@ const TakeItem = ({
   take,
   state,
   stations,
+  row,
   dispatch,
 }: {
   take: LibraryTake
   state: LibraryState
   stations: LibraryStations | undefined
+  row: TakeLibraryProps["row"]
   dispatch: Dispatch
 }): JSX.Element => {
   const { playback } = state
@@ -107,6 +114,7 @@ const TakeItem = ({
           )}
         </div>
       </div>
+      {row?.(take)}
       {here && playback.kind === "loading" && <Notice>{WORDS.loading}</Notice>}
       {state.unplayable === take.id && (
         <Notice
@@ -124,11 +132,13 @@ const Listed = ({
   page,
   state,
   stations,
+  row,
   dispatch,
 }: {
   page: LibraryPage
   state: LibraryState
   stations: LibraryStations | undefined
+  row: TakeLibraryProps["row"]
   dispatch: Dispatch
 }): JSX.Element => {
   if (page.total === 0) {
@@ -154,6 +164,7 @@ const Listed = ({
               take={take}
               state={state}
               stations={stations}
+              row={row}
               dispatch={dispatch}
             />
           ))}
@@ -166,11 +177,13 @@ const Listed = ({
 const Read = ({
   state,
   stations,
+  row,
   dispatch,
   pair,
 }: {
   state: LibraryState
   stations: LibraryStations | undefined
+  row: TakeLibraryProps["row"]
   dispatch: Dispatch
   pair: ReactNode
 }): JSX.Element => {
@@ -185,6 +198,7 @@ const Read = ({
           page={read.page}
           state={state}
           stations={stations}
+          row={row}
           dispatch={dispatch}
         />
       )
@@ -253,7 +267,11 @@ const PhoneTakes = ({ phone }: { phone: LibraryPhone }): JSX.Element => {
 const unsubscribed = (): (() => void) => () => undefined
 const nothing = (): null => null
 
-export const TakeLibrary = ({ ports, pair }: TakeLibraryProps): JSX.Element => {
+export const TakeLibrary = ({
+  ports,
+  pair,
+  row,
+}: TakeLibraryProps): JSX.Element => {
   /* eslint-disable-next-line owner-guard/no-mount-snapshot -- the runtime is made once per mount, as Studio's screens' are */
   const [library] = useState(() => createTakeLibrary(ports))
   useEffect(() => library.attach(), [library])
@@ -310,7 +328,13 @@ export const TakeLibrary = ({ ports, pair }: TakeLibraryProps): JSX.Element => {
           )}
         </form>
       )}
-      <Read state={state} stations={stations} dispatch={dispatch} pair={pair} />
+      <Read
+        state={state}
+        stations={stations}
+        row={row}
+        dispatch={dispatch}
+        pair={pair}
+      />
     </div>
   )
 }

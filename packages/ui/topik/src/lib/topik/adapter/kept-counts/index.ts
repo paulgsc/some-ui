@@ -16,14 +16,20 @@ import {
   lensRecordKept,
 } from "@topik/lib/topik/adapter/lens-record-store"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
-import { ADDED_SET_LIMIT } from "@topik/lib/topik/read-aloud/added-sets"
+import {
+  ADDED_SET_LIMIT,
+  setsInUse,
+} from "@topik/lib/topik/read-aloud/added-sets"
 import { RECORD_DAYS } from "@topik/lib/topik/read-aloud/records"
 
 type Bounded = { readonly kept: number; readonly limit: number }
 
 export type TopikKeptCounts = {
-  /** Word sets added, against the most kept: one past it is refused. */
-  readonly wordSets: Bounded
+  /**
+   * Word sets in use, against the most kept in use: one past it is refused.
+   * `archived` counts those archived, kept and out of the count (MD7).
+   */
+  readonly wordSets: Bounded & { readonly archived: number }
   /** Days of the practice record kept day by day; the totals keep every day. */
   readonly practiceDays: Bounded
   /**
@@ -46,9 +52,15 @@ export function topikKeptCounts(
   now: () => number = Date.now
 ): TopikKeptCounts {
   const readAloud = createReadAloudStore(storage)
+  const sets = readAloud.sets()
+  const inUse = setsInUse(sets).length
   const last = createLastDramaStore(storage, now).get()
   return {
-    wordSets: { kept: readAloud.sets().length, limit: ADDED_SET_LIMIT },
+    wordSets: {
+      kept: inUse,
+      limit: ADDED_SET_LIMIT,
+      archived: sets.length - inUse,
+    },
     practiceDays: {
       kept: readAloud.record().days.length,
       limit: RECORD_DAYS,

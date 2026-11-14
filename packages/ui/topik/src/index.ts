@@ -69,9 +69,17 @@ export type {
   ReadAloudWord,
   WordOccurrence,
 } from "./lib/topik/read-aloud/content"
-export type { KoreanEntry } from "./lib/topik/adapter/read-aloud-store"
+export type {
+  KoreanEntry,
+  PhoneWordSets,
+} from "./lib/topik/adapter/read-aloud-store"
+export type {
+  WordSetRow,
+  WordSetsList,
+} from "./lib/topik/read-aloud/added-sets"
 export {
   onReadAloudWritten,
+  phoneWordSets,
   readAloudFeedbackForExport,
   readAloudForHome,
   readAloudPracticeRecord,

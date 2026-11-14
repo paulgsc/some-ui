@@ -2386,6 +2386,119 @@
       "refs": ["#2931", "#2935"]
     },
     {
+      "id": "C232",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/ui/topik/src/lib/topik/read-aloud/added-sets/index.ts",
+        "apps/www/src/lib/my-data/words.ts"
+      ],
+      "chose": "A Korean word set is archived only by the owner, from My data; a set first opened 30 or more days ago is marked as not opened in a while, as a hint. Archived sets leave Read aloud and Ready for you and free their place under the 50, and keep their decks so every record on them still reads.",
+      "options": [
+        "the owner archives, with a hint",
+        "archive automatically after a set goes unused",
+        "archive automatically when the 50 fills"
+      ],
+      "gray": "The phone records only a set's first open, not its last use, so an automatic rule could pull lines the owner is still drilling out of Read aloud. The owner's standing word on Nov 13 was \"Go with the recommended where a choice is open.\"",
+      "undo": "Add a rule that sets archivedAt in added-sets, and drop the page's Archive control.",
+      "refs": [
+        "#2496",
+        "#2473"
+      ]
+    },
+    {
+      "id": "C242",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/components/studio/take-conveyor.tsx",
+        "apps/www/src/routes/_dashboard/_apk/journal/takes/conveyor.tsx"
+      ],
+      "chose": "The conveyor is its own page under Studio › Takes (\"Sort your takes\"), on Takes on home's list so each take plays and the search works there too. Under each take: a Labels and a Note field that ride along with the next move, one button per station it may be moved to, each in a fixed place with the one it is at disabled, and below them the station strip and where it stands, so nothing above the buttons moves when a move lands. A move is one tap with no confirm, Ready for pickup included, and moving it again undoes it until the pickup has run.",
+      "options": [
+        "one tap per move, undone by moving again",
+        "ask to confirm Ready for pickup",
+        "a menu of stations per take instead of buttons"
+      ],
+      "gray": "The owner asked for a dedicated page where takes are sorted and only there made ready for pickup, and didn't say whether making one ready should ask first. Until the pickup (CONVEYOR3) runs, a move to Ready for pickup files nothing, so a wrong tap is moved back with nothing lost.",
+      "undo": "Ask before a move to Ready for pickup in TakeSorting, or swap the buttons for a menu.",
+      "refs": ["#2874", "#2872"]
+    },
+    {
+      "id": "C306",
+      "made": "2026-11-14",
+      "by": "claude",
+      "paths": [
+        "packages/ui/burn-ins/src/lib/badge.ts",
+        "packages/ui/burn-ins/src/lib/burn-in.ts"
+      ],
+      "chose": "The status badge is also a burn-in kind of its own, `status-badge` (design `badge-v1`): one badge at the top left of a scene's body, saying the state of what the scene shows, so it shows at /burn-ins and records through record:short before any card kind exists.",
+      "options": [
+        "A `status-badge` kind of its own, which the card kinds' badges reuse",
+        "Only a module, first seen on screen inside CARDS2's terminal card"
+      ],
+      "gray": "CARDS1's done-when needs the badge in /burn-ins and in record:short, and only a kind reaches either; a lone badge over a recorded scene is a new thing on screen the epic did not list.",
+      "undo": "Remove `status-badge` from KINDS in burn-ins' burn-in.ts with its case, sample, words and stage layer; badge.ts's drawing stays for the cards.",
+      "refs": [
+        "#2466",
+        "#2465"
+      ]
+    },
+    {
+      "id": "C307",
+      "made": "2026-11-14",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/badges.ts"
+      ],
+      "chose": "A badge spells itself out at its first appearance in the whole video only; the \"per part\" setting a series could ask for is not built, since the one multi-part video planned (EP04's vlog 0, CARDS6) was closed.",
+      "options": [
+        "Per video only, until a video in parts is planned",
+        "A series setting for per part now"
+      ],
+      "gray": "CARDS1 lists \"per part when a series says so\", but no video has parts and the cut list has no notion of one, so building it now means inventing what a part is.",
+      "undo": "Give a series version a reveal setting and a scene a part start, and reset `seen` in withBadgesSeen at each part.",
+      "refs": [
+        "#2466",
+        "#2471"
+      ]
+    },
+    {
+      "id": "C297",
+      "made": "2026-11-14",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/pending.ts",
+        "packages/ui/topik/ROUTINE.md"
+      ],
+      "chose": "A Studio take ready for pickup is filed as a pending issue in paulgsc/some-ui, from its newest ready move only, with the owner's labels said as words in the body, never added as GitHub labels. A take an issue already carries (an answer to an ask, say) gets no second issue: the routine answers its pickup with that issue.",
+      "options": [
+        "file in paulgsc/some-ui, labels as words in the body",
+        "file where the take's ref points, labels as GitHub labels",
+        "file a second issue for a take already filed as an answer"
+      ],
+      "gray": "The issue said to file each take with pending and from-studio, plus its labels as context, and named no repository; a take's ref names a Studio project and shot, not a repository, and GitHub labels made from free text would add a label per word the owner types.",
+      "undo": "Change the pickup branch of toFile in packages/video-render/src/pending.ts (its repo and takeLabels) and part E's pickup bullet in packages/ui/topik/ROUTINE.md.",
+      "refs": ["#2875", "#2872"]
+    },
+    {
+      "id": "C298",
+      "made": "2026-11-14",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/pending.ts",
+        "packages/ui/topik/ROUTINE.md"
+      ],
+      "chose": "The routine side of the pickup lands with a known limit stated: a take moved on from ready for pickup before the daily run is still filed, home leaves the take where the owner put it, and the stray issue waits for the owner to close. Home withdrawing a pickup is its own story (#2973).",
+      "options": [
+        "(c) land with the limit stated; the owner closes a stray issue",
+        "(a) first have home put a withdrawal the routine reads, then land"
+      ],
+      "gray": "Home never takes a pickup back and the routine can't see where a take is now, so for up to a day after a take leaves ready for pickup a run can still file it; whether that window is acceptable for now is a product choice no check settles. Taken under the owner's standing \"go with the recommended\".",
+      "undo": "Build #2973: home puts a withdrawal when a take leaves ready for pickup, and toFile files a pickup only while its seq is the take's newest.",
+      "refs": ["#2973", "#2971", "#2875"]
+    },
+    {
       "id": "C301",
       "made": "2026-11-14",
       "by": "claude",

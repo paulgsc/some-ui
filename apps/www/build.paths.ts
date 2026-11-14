@@ -156,6 +156,7 @@ const DEVICE_MODULES = [
   "apps/www/src/components/studio/ask-answer.tsx",
   "apps/www/src/components/studio/clip-frames.tsx",
   "apps/www/src/components/studio/renders.tsx",
+  "apps/www/src/components/studio/take-conveyor.tsx",
   "apps/www/src/components/studio/episode-feedback.tsx",
   "apps/www/src/components/studio/template-preview.tsx",
   "apps/www/src/components/copy-button.tsx",
@@ -238,13 +239,14 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
     },
     {
       modules: [
+        "packages/video-render/src/badges.ts",
         "packages/video-render/src/dna.ts",
         "packages/video-render/src/episode.ts",
         "packages/video-render/src/review.ts",
         "packages/video-render/src/timing.ts",
       ],
       profiles: [MOBILE_PROFILE],
-      why: "a cut list's timing, which fits a scene to its take as Record keeps it, an episode file, which Studio opens as an episode, a review render's review.json, which Watch reads, and a video's DNA, which Finish keeps for home to make (@some-ui/soundbites, lib/project and lib/studio): the web builds render no video and keep no project. The cut list's and a format's schemas are on every path: the phone's Studio checks a project and a primer against them, and the web's call stage draws a call's format",
+      why: "a cut list's timing, which fits a scene to its take as Record keeps it, an episode file, which Studio opens as an episode, a review render's review.json, which Watch reads, a video's DNA, which Finish keeps for home to make, and the status badges a cut list's scenes show, which its check refuses written by hand (@some-ui/soundbites, lib/project and lib/studio): the web builds render no video and keep no project. The cut list's and a format's schemas are on every path: the phone's Studio checks a project and a primer against them, and the web's call stage draws a call's format",
     },
     {
       modules: ["packages/video-render/src/pending.ts"],

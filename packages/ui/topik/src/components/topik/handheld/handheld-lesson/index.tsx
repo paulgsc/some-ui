@@ -119,11 +119,13 @@ import { intakeTree } from "@topik/lib/topik/generation/tree-intake"
 import {
   ADDED_SET_LIMIT,
   addSet,
+  bringBack,
   intakeSet,
   openSet,
   readySets,
   resolveSets,
   setLevel,
+  setsInUse,
   wordsLeaving,
 } from "@topik/lib/topik/read-aloud/added-sets"
 import type { SetPractice } from "@topik/lib/topik/read-aloud/content"
@@ -252,6 +254,8 @@ export const HandheldLesson = ({
   const [lensRecord] = useState(createLensRecordStore)
   const [added, setAdded] = useState(() => readAloud.sets())
   const resolved = useMemo(() => resolveSets(added), [added])
+  // The sets not archived (MD7): what Read aloud, the menu and the count read.
+  const inUse = useMemo(() => setsInUse(added), [added])
   const [setNote, setSetNote] = useState<StorageNote | null>(null)
   const keepSets = (next: typeof added): void => {
     readAloud.saveSets(next)
@@ -268,18 +272,18 @@ export const HandheldLesson = ({
     const fresh = new Set(
       texts.flatMap((text) => {
         const intake = intakeSet(text, added)
-        return intake.ok && !added.some((set) => set.deck.id === intake.deck.id)
+        return intake.ok && !inUse.some((set) => set.deck.id === intake.deck.id)
           ? [intake.deck.id]
           : []
       })
     ).size
     if (
-      added.length < ADDED_SET_LIMIT &&
-      added.length + fresh > ADDED_SET_LIMIT
+      inUse.length < ADDED_SET_LIMIT &&
+      inUse.length + fresh > ADDED_SET_LIMIT
     ) {
       say({
         tone: "problem",
-        text: `This phone keeps ${ADDED_SET_LIMIT} word sets and has ${added.length}, so these ${fresh} weren't added.`,
+        text: `This phone keeps ${ADDED_SET_LIMIT} word sets in use and has ${inUse.length}, so these ${fresh} weren't added. Archiving some makes room.`,
       })
       return null
     }
@@ -365,12 +369,28 @@ export const HandheldLesson = ({
     const missing = texts.filter(
       (_, at) => !added.some((set) => set.deck.id === ids[at])
     )
+    // Opening its scene again is reading it again: an archived set of the
+    // pair comes back in use, record and all, when there is room for it.
+    const archived = added.filter(
+      (set) => set.archivedAt !== null && ids.includes(set.deck.id)
+    )
+    if (
+      archived.length > 0 &&
+      inUse.length + archived.length + missing.length > ADDED_SET_LIMIT
+    ) {
+      setRoutineNote({
+        tone: "problem",
+        text: `This phone keeps ${ADDED_SET_LIMIT} word sets in use and has ${inUse.length}, so this scene's sets weren't brought back. Archiving some makes room.`,
+      })
+      return false
+    }
     let held = added
     if (missing.length > 0) {
       const next = addSetTexts(missing, setRoutineNote)
       if (next === null) return false
       held = next
     }
+    held = archived.reduce((sets, set) => bringBack(sets, set.deck.id), held)
     const chosen = session?.id ?? ids[0]
     if (chosen == null) return false
     keepSets(openSet(held, chosen, now().toISOString()))
@@ -666,7 +686,7 @@ export const HandheldLesson = ({
     }
     if (menu) {
       const held = holdingsOf({
-        added,
+        added: inUse,
         sets: resolved.sets,
         routine: routine.data ?? [],
         opened: openedKeys,
@@ -750,7 +770,7 @@ export const HandheldLesson = ({
         onReadAloud={
           canRead ? (): void => setReading({ set: null }) : undefined
         }
-        addedSets={added.length}
+        addedSets={inUse.length}
         readySets={readyOnList.flatMap(({ deck }) => {
           const own = resolved.sets.get(deck.id)
           return own
