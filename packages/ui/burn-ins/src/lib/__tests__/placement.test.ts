@@ -112,7 +112,7 @@ describe("the frames burn-ins are drawn for", () => {
 })
 
 describe("the regions each kind draws in", () => {
-  it("shares a region only between a scene's headline and its card, one or the other, the authorship mark's bare cards, a game card or a status badge in the body, and a full card (terminal) in both", () => {
+  it("shares a region only between a scene's headline and its card, one or the other, the authorship mark's bare cards, a game card or a status badge in the body, and a full card (terminal, cheat sheet) in both", () => {
     const sharing = KINDS.flatMap((a, i) =>
       KINDS.slice(i + 1).flatMap((b) =>
         shared(a, b).length > 0 ? [[a, b]] : []
@@ -122,16 +122,22 @@ describe("the regions each kind draws in", () => {
       ["headline", "card"],
       ["headline", "authorship"],
       ["headline", "terminal"],
+      ["headline", "cheat-sheet"],
       ["card", "authorship"],
       ["card", "game-card"],
       ["card", "status-badge"],
       ["card", "terminal"],
+      ["card", "cheat-sheet"],
       ["authorship", "game-card"],
       ["authorship", "status-badge"],
       ["authorship", "terminal"],
+      ["authorship", "cheat-sheet"],
       ["game-card", "status-badge"],
       ["game-card", "terminal"],
+      ["game-card", "cheat-sheet"],
       ["status-badge", "terminal"],
+      ["status-badge", "cheat-sheet"],
+      ["terminal", "cheat-sheet"],
     ])
   })
 })
