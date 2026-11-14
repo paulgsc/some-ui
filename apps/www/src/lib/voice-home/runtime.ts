@@ -12,6 +12,10 @@
  * hands the ones due to `lib/home-link/set-aside` (`marks`). A mark storage
  * would not keep is owed nowhere, and `owe` says so: Let go then sets
  * nothing aside (`lib/voice-marks`, LA13).
+ *
+ * The record follows the pairing the phone holds (HP1, `./model`) once
+ * the home link hands it in (`follow`): each change it says is stepped in,
+ * so what home holds is read under that pairing alone.
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { openRecord, writeRecord } from "@some-ui/core-utils"
@@ -37,6 +41,15 @@ import {
 
 const STORAGE_KEY = "some-ui:voice-home"
 const QUARANTINE_PREFIX = "some-ui:voice-home.unreadable."
+
+/**
+ * The pairing this phone holds (HP1): its id, null for none, undefined
+ * while it is still being read; and a way to hear it change.
+ */
+export type PairingPort = {
+  readonly current: () => string | null | undefined
+  readonly subscribe: (listener: () => void) => () => void
+}
 
 export type VoiceHomePorts = {
   storage: KeyedStorage | null
@@ -86,6 +99,11 @@ export type VoiceHome = {
   marks: AsidePort
   /** Clears copies the record names neither waiting nor refused. Best effort. */
   sweep: () => void
+  /**
+   * Follows the pairing `pairing` says, from now on (HP1): the home link's
+   * (`lib/home-link/voice-copy`).
+   */
+  follow: (pairing: PairingPort) => void
 }
 
 /** `record` owes `id`'s mark, has it answered, or needs none (refused). */
@@ -140,6 +158,8 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
 
   const copying = new Set<string>()
 
+  let followed: { port: PairingPort; stop: () => void } | null = null
+
   return {
     getSnapshot: () => state,
     subscribe(listener): () => void {
@@ -177,7 +197,8 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
             ? { ...answer, at: new Date(ports.now()).toISOString() }
             : answer
         )
-        if (answer.kind === "held") {
+        // Only once this pairing's home holds it (HP1).
+        if (answer.kind === "held" && state.held.includes(answer.id)) {
           // Ignored: a copy home holds is named by no record once this step
           // is kept, so the next `sweep` clears one that fails to go.
           shelf.remove([answer.id]).catch(() => undefined)
@@ -203,6 +224,16 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
       answered(kind, id): void {
         apply({ kind, id })
       },
+    },
+    follow(port): void {
+      if (followed?.port === port) return
+      followed?.stop()
+      const step = (): void => {
+        const pairing = port.current()
+        if (pairing !== undefined) apply({ kind: "paired", pairing })
+      }
+      step()
+      followed = { port, stop: port.subscribe(step) }
     },
     sweep(): void {
       shelf
