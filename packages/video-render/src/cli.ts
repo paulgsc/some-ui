@@ -481,7 +481,10 @@ const IssueHit = z.object({
  * holds: null when there was none yet. The weekly run starts from some-ui's
  * `main` (`CALL-ROUTINE.md`, step 1), with history back to the week's start.
  */
-async function recordAt(day: string): Promise<ReadonlyArray<Call> | null> {
+async function recordAt(day: string): Promise<{
+  readonly calls: ReadonlyArray<Call>
+  readonly folder: boolean
+} | null> {
   const root = (
     await run("git", ["rev-parse", "--show-toplevel"])
   ).stdout.trim()
@@ -506,7 +509,7 @@ async function recordAt(day: string): Promise<ReadonlyArray<Call> | null> {
     return fail([
       `the calls record at ${commit} could not be read (pnpm check:calls says why)`,
     ])
-  return record.calls
+  return { calls: record.calls, folder: record.layout === "folder" }
 }
 
 /** The day after `day`. */
@@ -527,7 +530,11 @@ async function callFacts(from: string, to: string): Promise<CallFacts> {
   }
   const after = await recordAt(dayAfter(to))
   if (after !== null)
-    facts.calls.push(...callsEntered(await recordAt(from), after))
+    facts.calls.push(
+      ...callsEntered((await recordAt(from))?.calls ?? null, after.calls, {
+        byDay: after.folder,
+      })
+    )
   for (const repo of WORK_REPOS) {
     const changes = new Map<number, "story" | "defect">()
     const commits = await search(

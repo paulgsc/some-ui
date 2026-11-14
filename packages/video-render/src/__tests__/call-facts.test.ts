@@ -75,7 +75,16 @@ describe("the calls record", () => {
     ])
   })
 
-  it("keeps the record's order", () => {
+  it("orders the folder's calls by when each was made, then by id", () => {
+    const later = { ...c1, id: "C10", made: "2026-11-05" }
+    expect(
+      callsEntered(null, record([later, c2, c1]), { byDay: true }).map(
+        (c) => c.id
+      )
+    ).toEqual(["C1", "C10", "C2"])
+  })
+
+  it("keeps the one-array record's order", () => {
     expect(callsEntered(null, record([c2, c1])).map((c) => c.id)).toEqual([
       "C2",
       "C1",

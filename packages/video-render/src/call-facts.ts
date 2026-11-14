@@ -93,16 +93,20 @@ function listed(call: RecordedCall): RecordedCall {
 /**
  * The calls that entered the record over a week, or gained the owner's
  * `agreed` in it: what `after` (the record on `main` as the week ended)
- * holds that `before` (as it began, null where there was none) did not, in
- * `after`'s order. Read by when it reached `main`, not by `made`, so a call
- * made one week and merged the next is voiced once, in the week it merged.
+ * holds that `before` (as it began, null where there was none) did not.
+ * Read by when it reached `main`, not by `made`, so a call made one week and
+ * merged the next is voiced once, in the week it merged. With `byDay` they
+ * come by when each was made, then by id, as the interview week's questions
+ * order them: the one-file-per-call record (#2976) keeps no merge order. A
+ * week read from the one-array record before it keeps that array's order.
  */
 export function callsEntered(
   before: ReadonlyArray<RecordedCall> | null,
-  after: ReadonlyArray<RecordedCall>
+  after: ReadonlyArray<RecordedCall>,
+  { byDay }: { readonly byDay: boolean } = { byDay: false }
 ): Array<RecordedCall> {
   const was = new Map((before ?? []).map((c) => [c.id, c]))
-  return after
+  const entered = after
     .filter((c) => {
       const earlier = was.get(c.id)
       return (
@@ -111,6 +115,13 @@ export function callsEntered(
       )
     })
     .map(listed)
+  return byDay
+    ? entered.sort(
+        (a, b) =>
+          a.made.localeCompare(b.made) ||
+          Number(a.id.slice(1)) - Number(b.id.slice(1))
+      )
+    : entered
 }
 
 /** A commit message's `Promise:` and `Relates:` trailers, in order. */
