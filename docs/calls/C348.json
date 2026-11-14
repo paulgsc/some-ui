@@ -1,0 +1,18 @@
+{
+  "id": "C348",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/feeds/renders.rs",
+    "server:apps/servers/file_host/src/contract.rs",
+    "server:infra/docker/Dockerfile.server"
+  ],
+  "chose": "The renders read's new optional `bytes` raises the server contract epoch from 7 to 8, with OLDEST_SUPPORTED left at 1. A phone build that reads `bytes` carries 8, so its first /compat brings home up to a build that sends it, instead of the phone silently going without until someone deploys by hand.",
+  "options": [
+    "Raise the epoch to 8 for the additive field, oldest supported unchanged",
+    "Keep the epoch at 7: the field is optional and the phone copes without it"
+  ],
+  "gray": "contract.rs raises the epoch by hand for a payload change a client needs, and the phone's reader treats `bytes` as optional, so either reading holds. Raising it is what makes home's on-demand deploy carry the field to a phone that wants it; keeping it leaves the size missing until a manual make home-deploy. Nothing older breaks either way, since no client below 8 reads the field.",
+  "undo": "Set CONTRACT_EPOCH back to 7 in contract.rs and the provides label in Dockerfile.server back to contract=7, in a change that lands before any client build carries epoch 8.",
+  "refs": ["server#787"]
+}
