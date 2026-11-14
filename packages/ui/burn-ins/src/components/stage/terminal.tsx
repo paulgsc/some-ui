@@ -2,9 +2,8 @@ import type { CSSProperties, JSX } from "react"
 import { Badge } from "@burn-ins/components/stage/badge"
 import { Stamp } from "@burn-ins/components/stage/card"
 import { TextLayer } from "@burn-ins/components/stage/text"
-import type { Units } from "@burn-ins/components/stage/units"
+import { monoType, type Units } from "@burn-ins/components/stage/units"
 import { INK } from "@burn-ins/lib/journal"
-import { MONO_FAMILY } from "@burn-ins/lib/mono"
 import { TERMINAL_TYPE, type TerminalFrame } from "@burn-ins/lib/terminal"
 
 /**
@@ -20,12 +19,8 @@ export const TerminalLayer = ({
   units: Units
 }): JSX.Element => {
   const { cq } = units
-  const mono = (sizePx: number): CSSProperties => ({
-    fontFamily: MONO_FAMILY,
-    fontWeight: 500,
-    fontSize: cq(sizePx),
-    lineHeight: cq(sizePx * TERMINAL_TYPE.lineHeight),
-  })
+  const mono = (sizePx: number): CSSProperties =>
+    monoType(units, sizePx, sizePx * TERMINAL_TYPE.lineHeight)
   return (
     <>
       <TextLayer frame={frame.card} units={units} />

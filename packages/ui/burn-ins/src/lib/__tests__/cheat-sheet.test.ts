@@ -130,7 +130,7 @@ describe("the cheat-sheet card", () => {
     })
     expect(p.ok ? [] : p.problems).toEqual([
       "the cheat-sheet burn-in (sheet-v1): row 1 gives TOKEN a value; a card shows a placeholder, never a value",
-      `the cheat-sheet burn-in (sheet-v1): row 2's command has "→", which the card's type can't draw`,
+      `the cheat-sheet burn-in (sheet-v1): row 2 has "→", which the card's type can't draw`,
     ])
     const crowded = sheet({
       title: "Crowded",

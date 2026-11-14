@@ -20,6 +20,7 @@ import {
   BadgeStateSchema,
   openness,
   openReach,
+  openWidth,
   type BadgeMark,
   type BadgeState,
 } from "./badge"
@@ -33,7 +34,7 @@ import {
   drawStamp,
   ItemAtSchema,
   itemTimes,
-  valueProblem,
+  wordsProblem,
   type StampLine,
 } from "./cards"
 import type { Box, Geometry } from "./geometry"
@@ -44,7 +45,7 @@ import {
   type Panel,
   type TextFrame,
 } from "./journal"
-import { missingChar, monoWidth } from "./mono"
+import { monoWidth } from "./mono"
 import type { Parsed } from "./parsed"
 
 export const TERMINAL_DESIGNS = ["terminal-v1"] as const
@@ -154,12 +155,8 @@ function textProblem(
   width: number,
   reach = 0
 ): string | null {
-  const missing = missingChar(text)
-  if (missing !== null)
-    return `${name} has "${missing}", which the terminal's type can't draw`
-  const given = valueProblem(text)
-  if (given !== null)
-    return `${name} gives ${given} a value; a card shows a placeholder, never a value`
+  const words = wordsProblem(name, text, text)
+  if (words !== null) return words
   if (monoWidth(text, sizePx) + reach > width)
     return reach > 0
       ? `${name} doesn't fit the window while its badge spells itself out`
@@ -198,7 +195,7 @@ export function drawTerminal(
   const problems = p.lines.flatMap((l, i) => {
     const reach =
       opens[i] === true && l.badge !== undefined
-        ? openReach(badgeAt(l.badge, 0, 0, BADGE_PX, 1, 1))
+        ? openWidth(l.badge, BADGE_PX)
         : 0
     const why = textProblem(`line ${i + 1}`, lineText(l), SIZE_PX, width, reach)
     return why === null ? [] : [why]

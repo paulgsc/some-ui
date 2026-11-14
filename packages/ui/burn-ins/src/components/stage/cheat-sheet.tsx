@@ -2,10 +2,13 @@ import type { JSX } from "react"
 import { Badge } from "@burn-ins/components/stage/badge"
 import { Stamp } from "@burn-ins/components/stage/card"
 import { TextLayer } from "@burn-ins/components/stage/text"
-import { withAlpha, type Units } from "@burn-ins/components/stage/units"
+import {
+  monoType,
+  withAlpha,
+  type Units,
+} from "@burn-ins/components/stage/units"
 import { COMMAND_TYPE, type CheatSheetFrame } from "@burn-ins/lib/cheat-sheet"
 import { INK } from "@burn-ins/lib/journal"
-import { MONO_FAMILY } from "@burn-ins/lib/mono"
 import type { TextBlock } from "@burn-ins/lib/text"
 
 /** The cheat sheet: its heading, then each row that has appeared. */
@@ -16,16 +19,13 @@ export const CheatSheetLayer = ({
   frame: CheatSheetFrame
   units: Units
 }): JSX.Element => {
-  const { cq, placed } = units
+  const { cq } = units
   return (
     <>
       <TextLayer frame={frame.heading} units={units} />
       <Stamp stamp={frame.stamp} units={units} />
       {frame.rows.map((r) => {
-        // A row fades in by its own colours, never by the opacity of a layer
-        // around its bordered, rounded panel: a panel composited through a
-        // layer below full opacity drew a corner pixel differently from one
-        // recording to the next (C312).
+        // Faded by its own colours, never a layer's opacity (C312).
         const faded = (colour: string): string => withAlpha(colour, r.opacity)
         const fade = (b: TextBlock): TextBlock => ({
           ...b,
@@ -33,18 +33,17 @@ export const CheatSheetLayer = ({
         })
         return (
           <div key={r.row} style={{ display: "contents" }}>
-            <div
-              className="bi-panel"
-              style={{
-                ...placed(r.panel),
-                background: faded(INK.panel),
-                border: `${cq(2)} solid ${faded(INK.edge)}`,
-                borderRadius: cq(10),
-              }}
-            />
             <TextLayer
               frame={{
-                panels: [],
+                panels: [
+                  {
+                    box: r.panel,
+                    fill: faded(INK.panel),
+                    edge: faded(INK.edge),
+                    edgePx: 2,
+                    radiusPx: 10,
+                  },
+                ],
                 blocks: (r.note === null ? [r.task] : [r.task, r.note]).map(
                   fade
                 ),
@@ -57,10 +56,11 @@ export const CheatSheetLayer = ({
                 left: cq(r.command.x),
                 top: cq(r.command.y),
                 color: faded(COMMAND_TYPE.colour),
-                fontFamily: MONO_FAMILY,
-                fontWeight: 500,
-                fontSize: cq(COMMAND_TYPE.sizePx),
-                lineHeight: cq(COMMAND_TYPE.lineHeightPx),
+                ...monoType(
+                  units,
+                  COMMAND_TYPE.sizePx,
+                  COMMAND_TYPE.lineHeightPx
+                ),
               }}
             >
               {r.command.text}
