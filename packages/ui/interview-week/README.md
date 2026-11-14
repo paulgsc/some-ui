@@ -6,6 +6,22 @@ faults and charts them over the weeks; nothing here grades.
 
 ## What it holds
 
+`src/lib/week` (#2935): the week's format, `some-ui.interview-week/1`, and
+`readWeek`, the one door a week comes in by. A week sets an invented company
+and role, 4 to 6 questions from a closed list of families
+(`FAMILIES`: about yourself, a time you…, why this role, strengths and
+weaknesses, a decision), and 2 to 4 teleprompter cards, each presenting an
+epic, a doc or a declared invariant of this repo. Ids follow IW1's refs: a
+week is `YYYY-wNN`, a question or card a kebab slug of at most 64
+characters, and no question is named `read`.
+
+`src/lib/monday` and `scripts/monday.ts` (#2935): the Monday routine that
+writes each week, run as `ROUTINE.md` says. Code chooses every question's
+family and variant, each decision question's recorded call, and each card's
+source and situation, each rotated least recently asked first; the model
+writes only the words, and `finish` checks their lengths, the schema, and
+that no real employer is named (C277–C280).
+
 `src/lib/faults` (#2934): the faults of one take, from the words home heard
 (`some-ui.voice-transcript/1`'s `words`, each with its timing and `p`).
 
@@ -37,5 +53,7 @@ The thresholds are in `thresholds.ts` (C263–C266); the filler list is
 
 ## What reaches it
 
-The interview week's routine (#2935, IW4) and essay (#2937, IW6) call these
-measures; until they land, nothing does.
+The interview week's essay (#2937, IW6) will call these measures; until it
+lands, nothing does. The week's routine runs from this workspace's own
+`monday` script, which no deployable imports, so `report:vestiges` may still
+list the workspace as unreached until the phone plays a week (IW5).

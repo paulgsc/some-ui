@@ -70,7 +70,13 @@ import { z } from "zod"
 
 import { ASK_LABEL, readAskIssue } from "./ask"
 import { callFolderProblems } from "./call"
-import { callsEntered, changeOf, trailersOf, whereWeAreOf } from "./call-facts"
+import {
+  callsEntered,
+  changeOf,
+  trailersOf,
+  whereWeAreOf,
+  whyOf,
+} from "./call-facts"
 import type { CallFacts } from "./call-facts"
 import { clipFolderProblems, parseClipIndex } from "./clip"
 import { CUES, cueWav } from "./cues"
@@ -547,6 +553,7 @@ async function callFacts(from: string, to: string): Promise<CallFacts> {
         repo,
         number: e.number,
         title: e.title,
+        why: whyOf(e.body),
         whereWeAre: whereWeAreOf(e.body),
       })
   }

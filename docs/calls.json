@@ -2312,6 +2312,80 @@
       ]
     },
     {
+      "id": "C277",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/ui/interview-week/scripts/monday.ts",
+        "packages/ui/interview-week/ROUTINE.md",
+        "packages/video-render/src/mailbox.ts",
+        "packages/core-utils/src/lib/date-utils.ts"
+      ],
+      "chose": "The interview week is written by a Monday routine of its own (`pnpm --filter @some-ui/interview-week monday`, its own ROUTINE.md), not a second half of Rust Rounds' `pnpm monday`. What both need is shared by moving it: the mailbox client to `@some-ui/video-render/node`, the owner's week (`weekAround`) to core-utils, and the week's epics from `render call-facts`.",
+      "options": [
+        "(a) a routine of its own that shares the mailbox client, the week's dates and call-facts",
+        "(b) a second half of Rust Rounds' `monday`, one bundle and one values file for both"
+      ],
+      "gray": "#2935 leaves it to the worker. A second half would put two unrelated formats in one bundle and one values file, so a problem in either week stops both from being put; a routine of its own needs its own scheduled run or a second line in Monday's prompt.",
+      "undo": "Fold scripts/monday.ts's commands into packages/ui/rust-rounds/scripts/monday.ts and ROUTINE.md into Rust Rounds' ROUTINE.md as a second half; the lib modules stay where they are.",
+      "refs": ["#2931", "#2935"]
+    },
+    {
+      "id": "C278",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/ui/interview-week/src/lib/monday/bundle.ts",
+        "packages/ui/interview-week/src/lib/monday/corpus.ts"
+      ],
+      "chose": "A decision question draws on a recorded call in docs/calls.json, least recently asked first and newest first among those never asked. A merged pull request reaches a question only through the call that records its decision (the call's refs); a merged pull request with no call is not a source.",
+      "options": [
+        "(a) recorded calls only, the pull requests reached through their refs",
+        "(b) calls and merged pull requests alike, a pull request by its title",
+        "(c) pull requests with their bodies fetched for the chosen one"
+      ],
+      "gray": "#2935 names both calls and merged pull requests as sources. A call records what was chosen, the options, why it was gray and how to undo it, which is what a decision question asks about; a pull request's title alone names none of that, and fetching bodies makes prepare read GitHub at a second moment.",
+      "undo": "Add merged pull requests (render call-facts' `pulls`) to `Corpus` and to `questions` in bundle.ts as a second decision source, with a source kind `pull` in the week's format.",
+      "refs": ["#2931", "#2935"]
+    },
+    {
+      "id": "C279",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/ui/interview-week/src/lib/monday/employers.ts",
+        "packages/ui/interview-week/src/lib/monday/finish.ts"
+      ],
+      "chose": "`finish` refuses a week whose text names a real employer it knows: the owner's own, read from the résumé's generated data (every `org` but this repo's own project), and a closed list of large employers, matched as written (so 'Meta' and not 'metadata'). The companies whose products this repo runs on (Google, GitHub, Cloudflare, Mozilla, YouTube, Anthropic, Alphabet) are refused in the company, the role and the questions, and allowed in a card's script, which presents this repo's own work.",
+      "options": [
+        "(a) the résumé's employers and a closed list, with this repo's platforms allowed in scripts only",
+        "(b) refuse every listed name in every text, scripts included",
+        "(c) no check: the instructions alone, as Rust Rounds' weeks have it"
+      ],
+      "gray": "The owner asked for code to check that no real employer is named, and no check can know every real name. Refusing the platforms everywhere would stop a card from saying what this repo runs on.",
+      "undo": "Edit EMPLOYERS or PLATFORMS in packages/ui/interview-week/src/lib/monday/employers.ts, or which texts checkWords in finish.ts holds to each.",
+      "refs": ["#2931", "#2935"]
+    },
+    {
+      "id": "C280",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/ui/interview-week/src/lib/week/index.ts",
+        "packages/ui/interview-week/src/lib/monday/bundle.ts",
+        "packages/ui/interview-week/src/lib/monday/finish.ts"
+      ],
+      "chose": "A week asks five questions, one from each family, each family's variants rotated least recently asked first (targets: about yourself 90 s, a time you… 120 s, why this role 60 s, strengths and weaknesses 90 s, a decision 120 s), with four while the calls record holds no call, and carries three cards, one each from an epic with a Why, a doc under docs/ and a declared invariant, topped up from any kind when one has none. Each card gets its own situation from a closed list of four, rotated the same way. A card's target is its script's words at 150 a minute, held to 150 to 300 words and at most 30 words a line.",
+      "options": [
+        "(a) one question per family and one card per kind, every week",
+        "(b) a varying subset of families each week",
+        "(c) two decision questions a week"
+      ],
+      "gray": "#2935 sets 4 to 6 questions and a mix of epics, docs and invariants, and leaves how many of each, the targets and the situations open; each decides what the owner practises every week.",
+      "undo": "Change FAMILIES or TARGET_SECONDS in packages/ui/interview-week/src/lib/week/index.ts, CARDS, SITUATIONS, SCRIPT_WORDS or READ_WORDS_PER_MINUTE in src/lib/monday/bundle.ts, or WORDS in src/lib/monday/finish.ts.",
+      "refs": ["#2931", "#2935"]
+    },
+    {
       "id": "C306",
       "made": "2026-11-14",
       "by": "claude",
