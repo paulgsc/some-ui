@@ -1018,7 +1018,7 @@
           "claim": "A game feed that has stopped reads as stopped, not as a quiet week.",
           "requirement": "Every wake stamps game_feed_last_attempt_timestamp_seconds, whether or not anything is due, so a dashboard tells 'nothing to fetch' (a recent stamp) from 'not running' (an old one), and game_feed_enabled, the owner's switch as the last wake read it (1 following, 0 paused), tells 'switched off' from both; an alert tells the owner when the stamp goes stale.",
           "verdict": "holds",
-          "conclusion": "The dashboard tells a quiet week from a stopped feed, and Slack tells you within about three minutes of its last wake once it stops, or through the server-down alert if home's server stops; a feed that is on but has never woken has no alert, and Grafana itself is not yet watched.",
+          "conclusion": "The dashboard tells a quiet week from a stopped feed, and Slack tells you within about three minutes of its last wake once it stops, or through the server-down alert if home's server stops; a feed worker that has never woken since home started has no stamp and so no alert, and Grafana itself is not yet watched.",
           "evidence": [
             {
               "class": "structural",
@@ -1027,7 +1027,7 @@
             },
             {
               "class": "structural",
-              "says": "GameFeedStale fires when the feed is on and its stamp is more than 120 s old; promtool tests it in CI.",
+              "says": "GameFeedStale fires when the stamp is more than 120 s old, whether or not the feed is paused, since the worker always runs and stamps every wake; promtool tests it in CI.",
               "ref": "server:infra/prometheus/rules/home.yml"
             },
             {
