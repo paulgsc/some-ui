@@ -30,11 +30,13 @@ const LINE = (
   ["in-the-oven", "cooking", "ready-for-pickup", "picked-up"] as const
 ).map((id) => ({ id, name: WORDS.stations[id] }))
 
-/** What the last move said: where it went, or why it didn't. */
-type Said = {
-  readonly tone: "neutral" | "warning"
-  readonly text: string
-}
+/**
+ * What the last move said: where it went (`moved`, said only while home
+ * hasn't taken it, so it never outlives its words), or why it didn't.
+ */
+type Said =
+  | { readonly kind: "moved"; readonly to: TakeStation }
+  | { readonly kind: "warning"; readonly text: string }
 
 export const TakeSorting = ({
   take,
@@ -46,17 +48,19 @@ export const TakeSorting = ({
   const [labels, setLabels] = useState("")
   const [note, setNote] = useState("")
   const [said, setSaid] = useState<Said | null>(null)
-  const standing = conveyor.standing(take.id, homeStationOf(take))
+  const home = homeStationOf(take)
+  const standing = conveyor.standing(take.id, home)
 
   // Moves are offered only where home names a station: an idea's answer is
   // on no conveyor, and home answers a take it doesn't hold yet as off the
-  // conveyor, which would drop a move made on it for good (#2874).
-  if (standing === null) return null
+  // conveyor, which would drop a move made on it for good (#2874). A home
+  // that names none (`undefined`) is held to the same, whatever this phone
+  // moved before.
+  if (standing === null || home.station === null || home.station === undefined)
+    return null
   const canned = standing.station === "canned"
-  const moves =
-    standing.station === "picked-up"
-      ? []
-      : MOVABLE_STATIONS.filter((station) => station !== standing.station)
+  // Picked up is the pickup's, and final: nothing is offered to move it.
+  const movable = standing.station !== "picked-up"
 
   const move = (to: TakeStation): void => {
     const made = conveyor.move({
@@ -71,15 +75,15 @@ export const TakeSorting = ({
       case "moved": {
         setLabels("")
         setNote("")
-        setSaid({ tone: "neutral", text: WORDS.page.moved(to) })
+        setSaid({ kind: "moved", to })
         return
       }
       case "refused": {
-        setSaid({ tone: "warning", text: WORDS.refused[made.why] })
+        setSaid({ kind: "warning", text: WORDS.refused[made.why] })
         return
       }
       case "unkept": {
-        setSaid({ tone: "warning", text: WORDS.unkept })
+        setSaid({ kind: "warning", text: WORDS.unkept })
         return
       }
       default: {
@@ -88,6 +92,13 @@ export const TakeSorting = ({
     }
   }
 
+  // Once home takes the move, the row says where it went; the notice goes.
+  const shown =
+    said === null || (said.kind === "moved" && !standing.going)
+      ? null
+      : said.kind === "moved"
+        ? { tone: "neutral" as const, text: WORDS.page.moved(said.to) }
+        : { tone: "warning" as const, text: said.text }
   const labelsId = `take-labels-${take.id}`
   const noteId = `take-note-${take.id}`
   return (
@@ -102,43 +113,49 @@ export const TakeSorting = ({
             : null
         }
       />
-      <p className="text-muted-foreground text-xs">
-        {WORDS.standing(standing)}
-      </p>
-      <div className="flex flex-col gap-1">
-        <Label htmlFor={labelsId}>{WORDS.page.labels}</Label>
-        <Input
-          id={labelsId}
-          placeholder={WORDS.page.labelsHint}
-          value={labels}
-          onChange={(event) => setLabels(event.target.value)}
-        />
-      </div>
-      <div className="flex flex-col gap-1">
-        <Label htmlFor={noteId}>{WORDS.page.note}</Label>
-        <Input
-          id={noteId}
-          placeholder={WORDS.page.noteHint}
-          value={note}
-          onChange={(event) => setNote(event.target.value)}
-        />
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {moves.map((station) => (
-          <Button
-            key={station}
-            type="button"
-            size="sm"
-            variant={station === "ready-for-pickup" ? "default" : "outline"}
-            onClick={() => move(station)}
-          >
-            {station === "canned" ? WORDS.page.can : WORDS.page.moveTo(station)}
-          </Button>
-        ))}
-      </div>
-      {said !== null && (
-        <Notice tone={said.tone} onDismiss={() => setSaid(null)}>
-          {said.text}
+      {movable && (
+        <>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor={labelsId}>{WORDS.page.labels}</Label>
+            <Input
+              id={labelsId}
+              placeholder={WORDS.page.labelsHint}
+              value={labels}
+              onChange={(event) => setLabels(event.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor={noteId}>{WORDS.page.note}</Label>
+            <Input
+              id={noteId}
+              placeholder={WORDS.page.noteHint}
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+            />
+          </div>
+          {/* Every station keeps its place, the current one disabled, so a
+          second tap never lands on a button that slid under it. */}
+          <div className="flex flex-wrap gap-2">
+            {MOVABLE_STATIONS.map((station) => (
+              <Button
+                key={station}
+                type="button"
+                size="sm"
+                variant={station === "ready-for-pickup" ? "default" : "outline"}
+                disabled={station === standing.station}
+                onClick={() => move(station)}
+              >
+                {station === "canned"
+                  ? WORDS.page.can
+                  : WORDS.page.moveTo(station)}
+              </Button>
+            ))}
+          </div>
+        </>
+      )}
+      {shown !== null && (
+        <Notice tone={shown.tone} onDismiss={() => setSaid(null)}>
+          {shown.text}
         </Notice>
       )}
     </div>

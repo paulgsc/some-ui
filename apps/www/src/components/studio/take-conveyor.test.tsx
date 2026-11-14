@@ -38,12 +38,15 @@ const TAKE: LibraryTake = {
   stationSeq: 0,
 }
 
-const conveyor = (): TakeConveyor =>
-  createTakeConveyor({
+/** A conveyor whose moves are numbered m1, m2, … */
+const conveyor = (): TakeConveyor => {
+  let made = 0
+  return createTakeConveyor({
     storage: inMemoryStorage(),
-    newId: () => "m1",
+    newId: () => `m${String((made += 1))}`,
     now: () => AT,
   })
+}
 
 const current = (): string | null =>
   within(screen.getByRole("list", { name: W.label }))
@@ -53,19 +56,34 @@ const current = (): string | null =>
 
 afterEach(cleanup)
 
+/** Each station's button, in its fixed place, and whether it may be tapped. */
+const buttons = (): ReadonlyArray<readonly [string | null, boolean]> =>
+  screen
+    .getAllByRole("button")
+    .filter((b) => b.closest('[role="status"]') === null)
+    .map((b) => [b.textContent, !b.hasAttribute("disabled")] as const)
+
+/** A storage that keeps nothing: every write throws. */
+const full = {
+  getItem: (): null => null,
+  setItem: (): void => {
+    throw new Error("full")
+  },
+  removeItem: (): void => undefined,
+}
+
 describe("a take on the conveyor (CONVEYOR2)", () => {
   it("stands In the oven, and offers every station but where it is and Picked up", () => {
     render(<TakeSorting take={TAKE} conveyor={conveyor()} />)
     expect(current()).toBe(W.stations["in-the-oven"])
-    const offered = screen.getAllByRole("button").map((b) => b.textContent)
-    expect(offered).toEqual([
-      W.page.moveTo("cooking"),
-      W.page.moveTo("ready-for-pickup"),
-      W.page.can,
+    expect(buttons()).toEqual([
+      [W.page.moveTo("cooking"), true],
+      [W.page.moveTo("ready-for-pickup"), true],
+      [W.page.can, true],
     ])
   })
 
-  it("moves it to Ready for pickup with its labels and note, and says so", () => {
+  it("moves it to Ready for pickup with its labels and note, says so until home takes it, and moves on from there", () => {
     const line = conveyor()
     const { rerender } = render(<TakeSorting take={TAKE} conveyor={line} />)
     fireEvent.change(screen.getByLabelText(W.page.labels), {
@@ -92,14 +110,37 @@ describe("a take on the conveyor (CONVEYOR2)", () => {
     expect(screen.getByRole("status").textContent).toContain(
       W.page.moved("ready-for-pickup")
     )
-    rerender(<TakeSorting take={TAKE} conveyor={line} />)
     expect(current()).toBe(W.stations["ready-for-pickup"])
+    // The buttons hold their places; the one it's at can't be tapped.
+    expect(buttons()).toEqual([
+      [W.page.moveTo("cooking"), true],
+      [W.page.moveTo("ready-for-pickup"), false],
+      [W.page.can, true],
+    ])
     expect(screen.getByLabelText<HTMLInputElement>(W.page.labels).value).toBe(
       ""
     )
+    expect(screen.getByLabelText<HTMLInputElement>(W.page.note).value).toBe("")
+
+    // Home takes it: the row says where it is, and the notice goes.
+    line.port.answered("m1", { kind: "held" })
+    rerender(<TakeSorting take={TAKE} conveyor={line} />)
+    expect(screen.queryByRole("status")).toBeNull()
+
+    // The next move is made from where it is now, by its number.
+    fireEvent.click(
+      screen.getByRole("button", { name: W.page.moveTo("cooking") })
+    )
+    expect(line.port.due()).toEqual([
+      expect.objectContaining({
+        from: "ready-for-pickup",
+        to: "cooking",
+        seq: 1,
+      }),
+    ])
   })
 
-  it("sets a canned take beside the line, kept", () => {
+  it("sets a canned take beside the line, kept, and offers it back", () => {
     render(
       <TakeSorting
         take={{ ...TAKE, station: "canned", stationAt: AT, stationSeq: 2 }}
@@ -108,7 +149,11 @@ describe("a take on the conveyor (CONVEYOR2)", () => {
     )
     expect(current()).toBeNull()
     expect(screen.getByText(W.means.canned)).toBeTruthy()
-    expect(screen.queryByRole("button", { name: W.page.can })).toBeNull()
+    expect(buttons()).toEqual([
+      [W.page.moveTo("cooking"), true],
+      [W.page.moveTo("ready-for-pickup"), true],
+      [W.page.can, false],
+    ])
   })
 
   it("says why a move wasn't made, and moves nothing", () => {
@@ -122,8 +167,20 @@ describe("a take on the conveyor (CONVEYOR2)", () => {
     expect(line.port.due()).toEqual([])
   })
 
-  it("offers no move of a take that's been picked up, and nothing for an idea's answer", () => {
-    const { container, rerender } = render(
+  it("says so when this phone can't keep a move, and the take stays where it was", () => {
+    const line = createTakeConveyor({
+      storage: full,
+      newId: () => "m1",
+      now: () => AT,
+    })
+    render(<TakeSorting take={TAKE} conveyor={line} />)
+    fireEvent.click(screen.getByRole("button", { name: W.page.can }))
+    expect(screen.getByRole("status").textContent).toContain(W.unkept)
+    expect(current()).toBe(W.stations["in-the-oven"])
+  })
+
+  it("offers nothing to move or type for a take that's been picked up", () => {
+    render(
       <TakeSorting
         take={{ ...TAKE, station: "picked-up", stationAt: AT, stationSeq: 3 }}
         conveyor={conveyor()}
@@ -131,9 +188,20 @@ describe("a take on the conveyor (CONVEYOR2)", () => {
     )
     expect(current()).toBe(W.stations["picked-up"])
     expect(screen.queryAllByRole("button")).toEqual([])
-    rerender(
-      <TakeSorting take={{ ...TAKE, station: null }} conveyor={conveyor()} />
+    expect(screen.queryAllByRole("textbox")).toEqual([])
+  })
+
+  it("offers no move where home names no station, even one this phone moved before", () => {
+    const line = conveyor()
+    const { container, rerender } = render(
+      <TakeSorting take={{ ...TAKE, station: null }} conveyor={line} />
     )
+    expect(container.textContent).toBe("")
+    // Moved on this phone while home named a station, then a home that names none.
+    rerender(<TakeSorting take={TAKE} conveyor={line} />)
+    fireEvent.click(screen.getByRole("button", { name: W.page.can }))
+    const { station: _gone, ...unnamed } = TAKE
+    rerender(<TakeSorting take={unnamed} conveyor={line} />)
     expect(container.textContent).toBe("")
   })
 })

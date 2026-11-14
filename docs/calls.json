@@ -2280,7 +2280,7 @@
         "apps/www/src/components/studio/take-conveyor.tsx",
         "apps/www/src/routes/_dashboard/_apk/journal/takes/conveyor.tsx"
       ],
-      "chose": "The conveyor is its own page under Studio › Takes (\"Sort your takes\"), on Takes on home's list so each take plays and the search works there too. Under each take: the station strip, a Labels and a Note field that ride along with the next move, and one button per station it can go to. A move is one tap with no confirm, Ready for pickup included, and moving it again undoes it until the pickup has run.",
+      "chose": "The conveyor is its own page under Studio › Takes (\"Sort your takes\"), on Takes on home's list so each take plays and the search works there too. Under each take: the station strip, a Labels and a Note field that ride along with the next move, and one button per station it may be moved to, each in a fixed place with the one it is at disabled. A move is one tap with no confirm, Ready for pickup included, and moving it again undoes it until the pickup has run.",
       "options": [
         "one tap per move, undone by moving again",
         "ask to confirm Ready for pickup",

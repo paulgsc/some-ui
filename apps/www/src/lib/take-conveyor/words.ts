@@ -79,7 +79,8 @@ export const TAKE_CONVEYOR_WORDS = {
     moveTo: (station: TakeStation): string => `Move to ${STATIONS[station]}`,
     can: "Can it",
     labels: "Labels",
-    labelsHint: "A word or two, with commas between. Blank keeps them.",
+    labelsHint:
+      "A word or two, with commas between. What you type replaces its labels; blank keeps them.",
     note: "A note",
     noteHint: "Do you like it? What's it for?",
     /**
