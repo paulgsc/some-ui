@@ -3318,9 +3318,12 @@
         "some-ui:packages/video-render/src/cards-essay.ts",
         "some-ui:packages/video-render/CARDS-ROUTINE.md",
         "some-ui:apps/www/tests/record/cards.ts",
-        "some-ui:apps/www/tests/record/burn-ins.ts"
+        "some-ui:apps/www/tests/record/burn-ins.ts",
+        "server:apps/servers/file_host/src/cards_essays",
+        "server:apps/servers/file_host/src/routes/cards_essays.rs",
+        "server:apps/servers/file_host/src/handlers/cards_essays.rs"
       ],
-      "modules": [],
+      "modules": ["cards_essays"],
       "objectives": [
         {
           "id": "CE1",
@@ -3329,7 +3332,7 @@
           "claim": "Every essay paulgsc/testing's cards index lists becomes one video on home, drawn from its cut list alone, or is refused and said; one that failed is tried again.",
           "requirement": "Home reads paulgsc/testing's cards/index.json hourly and keeps each essay it lacks, as first served, then writes it as <key>.json for the render worker; the render worker's cards-essay job runs record:cards on it, which refuses a file that isn't a cards essay (parseCardsEssay: its key not its stamp's day, another series, a scene that isn't a card, plays a take or a cue or stands on an image, and captions) before anything is drawn, and keeps cards.mp4, cut-list.json and shot-times.json in the essay's folder; a failed essay keeps its finished steps and is tried again.",
           "verdict": "unproven",
-          "conclusion": "Structural on the some-ui side: cards-check and the recorder are tested, and both showcase essays were recorded locally from the stage build, the same bytes twice. Home's side (the keeper that reads the index and the render worker's cards-essay job) is not built yet, so nothing renders on home.",
+          "conclusion": "Structural on the some-ui side: cards-check and the recorder are tested, and both showcase essays were recorded locally from the stage build, the same bytes twice. Home's side (the keeper that reads the index and the render worker's cards-essay job) comes with server#854, and nothing has rendered on home yet.",
           "tracked": "some-ui#2979",
           "evidence": [
             {
@@ -3341,6 +3344,27 @@
               "class": "measured",
               "says": "Recorded locally on 2026-11-14 with record:cards from the stage build: both showcase essays rendered to the same bytes as record:short gives them, and the NixOS one twice from fresh folders to the same bytes.",
               "ref": "some-ui#2979"
+            }
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "CE2",
+          "kind": "RE9",
+          "property": "work",
+          "claim": "What home keeps for cards essays grows by one row per essay home takes and one folder per essay it renders or tries; no essay's video or folder is let go until its YouTube link is confirmed, and its row never is.",
+          "requirement": "server:cards_essay gains one append-only row per essay home takes (its key, the cut list as served, at most 1 MiB, with its SHA-256, and when), and the render worker's renders folder one folder per essay (cards.mp4, cut-list.json, shot-times.json); a failed essay keeps only its finished steps until it renders. Nothing deletes either today (C338): an essay's video and folder are kept until it can be let go after a confirmed YouTube link, as other episodes are, which comes with some-ui#2999 (the owner, on some-ui#2996); its row and the routine's repository keep every essay regardless (CARDS-ROUTINE: never deleted).",
+          "verdict": "unproven",
+          "conclusion": "Structural on home's table: the row's bound (MAX_BODY) and its append-only triggers come with server#854; how large an essay's video is, and so the growth per essay, is unknown until essays render on home.",
+          "tracked": "some-ui#2979",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "server:cards_essay is append-only (triggers abort UPDATE and DELETE), and a cut list home takes is at most MAX_BODY, 1 MiB.",
+              "ref": "server:apps/servers/file_host/src/cards_essays"
             }
           ],
           "watch": {
@@ -4640,6 +4664,12 @@
       "class": "record",
       "growth": "Per step of an essay week let go (the video, then the rest), one receipt row (subject, week, step, cause let-go or take-deleted, YouTube id when there was one, bytes, when): at most two per week; append-only, subject-scoped, it leaves with the account.",
       "family": "rust-essay-rendered"
+    },
+    {
+      "store": "server:cards_essay",
+      "class": "record",
+      "growth": "One row per cards essay home takes from paulgsc/testing's cards/: its key (<slug>-<YYYY-MM-DD>), the cut list as served (a few KB, at most 1 MiB) with its SHA-256, and when taken; append-only, triggers abort UPDATE and DELETE. No subject: a session's claims about public repositories, nobody's record, so deleting an account removes none. The repository keeps every essay too (CARDS-ROUTINE), and home's copy of each, its video included (renders/cards-essay/<key>/), is kept until it can be let go after a confirmed YouTube link, as other episodes are, which comes with #2999 (the owner, on #2996).",
+      "family": "cards-essay-rendered"
     }
   ],
   "processes": [
@@ -5853,7 +5883,7 @@
     {
       "id": "cards-essays",
       "name": "Making each cards essay into a video on home",
-      "why": "A session writes a cards essay to paulgsc/testing's cards folder, checked by cards-check before it merges; home reads the folder's index hourly and keeps each essay it lacks; the render worker records the stage's burn-ins page and keeps the video until the owner lets it go (#2979, C327).",
+      "why": "A session writes a cards essay to paulgsc/testing's cards folder, checked by cards-check before it merges; home reads the folder's index hourly and keeps each essay it lacks; the render worker records the stage's burn-ins page and keeps the video until it can be let go after a confirmed YouTube link, as other episodes are (#2979, C327, C338; the let-go comes with #2999).",
       "serves": ["cards-essay-rendered"],
       "witnesses": ["CE1"],
       "segments": [
@@ -5883,10 +5913,10 @@
         },
         {
           "id": "keeper",
-          "name": "A keeper on home reads the cards index hourly and keeps each essay home lacks, as first served. Ours, on home; not built yet.",
+          "name": "A keeper on home reads the cards index hourly and keeps each essay home lacks, as first served. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": []
+          "paths": ["server:apps/servers/file_host/src/cards_essays"]
         },
         {
           "id": "render",
@@ -5904,10 +5934,14 @@
         },
         {
           "id": "renders",
-          "name": "Studio's Renders shows the essay's video with the owner's other renders, and My data lets home's copy go. Ours, on home and the phone.",
+          "name": "Studio's Renders shows the essay's video with the owner's other renders, played on the phone from file_host's cards_essays route. Home keeps each essay until it can be let go after a confirmed YouTube link, as other episodes are; until some-ui#2999 builds that, there is no let-go (C338). Ours, on home and the phone.",
           "owner": "ours",
           "on": "home",
-          "paths": ["server:apps/servers/file_host/src/feeds"]
+          "paths": [
+            "server:apps/servers/file_host/src/feeds",
+            "server:apps/servers/file_host/src/routes/cards_essays.rs",
+            "server:apps/servers/file_host/src/handlers/cards_essays.rs"
+          ]
         }
       ],
       "signals": [

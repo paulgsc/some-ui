@@ -63,6 +63,18 @@ ARG SOME_UI_COMMIT=
 LABEL org.opencontainers.image.source="https://github.com/paulgsc/some-ui" \
       org.opencontainers.image.revision="${SOME_UI_COMMIT}"
 
+# What this image needs from the release it runs in (RELEASE R3,
+# paulgsc/server#790; U2, #792). paulgsc/server's check_release.py reads these
+# from the published digest and refuses a release whose file_host does not
+# provide what render requires.
+# - render-folders: the layout of the folders file_host writes and this image
+#   reads (call-weeks, playoff-delta-episodes, preview-requests, rust-essays),
+#   RENDER_FOLDERS_EPOCH in server's apps/servers/file_host/src/contract.rs.
+#   Raise it here in the same change that makes the recorders read a new
+#   layout.
+LABEL io.paulgsc.provides="" \
+      io.paulgsc.requires="render-folders=1"
+
 # The root is read-only at run time (call-render.yml); tsx and the renderer
 # write only under /tmp.
 ENV HOME=/tmp \
