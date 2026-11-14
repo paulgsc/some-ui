@@ -79,13 +79,13 @@ default (owner, #2814 Nov 10; measurements on #2833).
 - Admit a worker's `ready` branch to CI only when no job is queued in either repo.
 - A PR that is ready (green and reviewed), or reviewed and docs-only (the coordinator's call,
   Nov 13), skips that check: it takes its repo's next merge slot (below, "While running"),
-  however long the runner queue.
-  Under sustained load the queue never clears (#2814, Nov 13: #2916 waited 30 minutes behind
-  7–13 queued runs).
+  however long the runner queue. Under sustained load the queue never clears (#2814, Nov 13:
+  #2916 waited 30 minutes behind 7–13 queued runs).
 - A PR that is waiting on review, on a dependency or on the owner holds no slot.
-- Both repos require branches to be up to date. Update a PR once, at ready time (green and
-  reviewed), never on every merge: `update_pull_request_branch`, then `enable_pr_auto_merge`.
-- Merge first whichever PR is first green and reviewed. Up to date makes server merges serial
+- Both repos require branches to be up to date. Update a PR once, when it takes its repo's slot
+  (green and reviewed), never on every merge: `update_pull_request_branch`, then
+  `enable_pr_auto_merge`.
+- Merge first whichever PR is first green and reviewed, unless the critical path says otherwise. Up to date makes server merges serial
   in practice, so set their order explicitly (#2885, Nov 11).
 - Treat real dependencies as edges, not as a global queue. Examples: the ledger step, the
   route snapshot, a bookkeeping PR after its server PR.
@@ -118,10 +118,11 @@ default (owner, #2814 Nov 10; measurements on #2833).
   after the first merges. Resolve by taking `main`'s file text exactly and appending the PR's new
   entries, never by reformatting (#2918, Nov 13).
 - Before merging a server PR that adds a mailbox read or put, check every numeric bound the
-  assurance ledger states for the mailbox pass (MI6's requests a day; MI5's 120 seconds and its request budget a pass).
-  The server's `Assurance ledger` check reads stores, paths and tasks, not counts written in
-  prose, so a broken bound lands green. Raising one is the owner's decision, so ask before the
-  server PR merges (CLAUDE.md "Operational assurance"; server#851, #2972, #2918, Nov 14).
+  assurance ledger states for the mailbox pass (MI6's requests a day; MI5's 120 seconds and
+  its request budget a pass). The server's `Assurance ledger` check reads stores, paths and
+  tasks, not counts written in prose, so a broken bound lands green. Raising one is the
+  owner's decision, so ask before the server PR merges (CLAUDE.md "Operational assurance";
+  server#851, #2972, #2918, Nov 14).
 - Before merging a some-ui PR that adds a `server:` path to the assurance ledger, check that the
   file is on server `main` (AL1, #2924). Otherwise every server PR goes red (#2918, Nov 13).
 - After a some-ui merge that touches `apps/www/tests/record` or `infra/render`, check that
