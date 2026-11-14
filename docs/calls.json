@@ -2499,6 +2499,45 @@
       "refs": [
         "#2467"
       ]
+    },
+    {
+      "id": "C310",
+      "made": "2026-11-14",
+      "by": "claude",
+      "paths": [
+        "packages/ui/burn-ins/src/lib/cards.ts",
+        "packages/video-render/src/stamp.ts"
+      ],
+      "chose": "A card's stamp sits right-aligned at the foot of its body, in the monospace, on a strip the card's items give up; the cut list writes it once, the renderer gives it to every card, and a card with no stamp is refused.",
+      "options": [
+        "At the body's foot, every card refuses to draw without one",
+        "In the frame's bottom corner, as the prototype drew it",
+        "Optional, drawn only when the cut list has one"
+      ],
+      "gray": "The prototype put the stamp in the frame's bottom corner, where YouTube's controls and the captions' band are; the body's foot keeps it inside the card's own regions, but costs every card 32 px of its body.",
+      "undo": "In burn-ins' cards.ts make CardHeadSchema's stamp optional and cardBody the whole body; in video-render's stamp.ts drop the no-stamp problem.",
+      "refs": [
+        "#2469"
+      ]
+    },
+    {
+      "id": "C311",
+      "made": "2026-11-14",
+      "by": "claude",
+      "paths": [
+        "packages/ui/burn-ins/src/lib/rule.ts"
+      ],
+      "chose": "The rule card keeps the prototype's algebra and draws ∩ and ⇒, which the cards' fonts lack, as shapes beside the monospace words, as the badges' glyphs are drawn; its type steps down from 34 to 22 px until every line fits.",
+      "options": [
+        "Draw the signs as shapes",
+        "Reword the rule in plain words (\"and\", \"so\")"
+      ],
+      "gray": "The owner asked for visual algebra for vlog 0; plain words read without a key but lose the algebra the owner asked for.",
+      "undo": "In rule.ts's linesOf, replace sign(\"and\") and sign(\"implies\") with words(\"and\") and words(\"so\"), and drop SIGNS.",
+      "refs": [
+        "#2469",
+        "#2465"
+      ]
     }
   ]
 }

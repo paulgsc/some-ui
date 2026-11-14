@@ -9,13 +9,19 @@
  * every env var is a secret (paulgsc/server #613), so `valueProblem` refuses
  * text shaped like `NAME=something` unless the right side is empty, `…`, a
  * `<placeholder>` or `ENC[…]`.
+ *
+ * **The stamp** (CARDS4, #2469): `as of <repo>@<commit> · <date>`, in the
+ * monospace at the foot of every card's body, right-aligned. A card's
+ * params carry it, but the cut list writes it once and the renderer gives it
+ * to every card (`@some-ui/video-render`'s `stamp.ts`).
  */
 
 import { z } from "zod"
 
 import { APPEAR_MS, BadgeStateSchema, opening, type BadgeState } from "./badge"
-import type { Geometry } from "./geometry"
-import { blocksOf, cardHeadline, kicker, type TextFrame } from "./journal"
+import type { Box, Geometry } from "./geometry"
+import { blocksOf, cardHeadline, INK, kicker, type TextFrame } from "./journal"
+import { monoWidth } from "./mono"
 import type { Parsed } from "./parsed"
 
 /** The cards' own colours beside the Build Journal's `INK`. Video colours, so literals. */
@@ -68,13 +74,70 @@ export function badgesOpening(
   return badges.map((b) => (b === undefined ? false : (opens[k++] ?? false)))
 }
 
+/** The commits a card was checked against, `owner/repo@sha`, and the day. */
+export const StampSchema = z.strictObject({
+  sources: z
+    .array(z.string().regex(/^[\w.-]+\/[\w.-]+@[0-9a-f]{7,40}$/))
+    .min(1)
+    .max(3),
+  date: z.iso.date(),
+})
+
 /** What every card's params carry beside its items. */
 export const CardHeadSchema = z.object({
   kicker: z.string().default(""),
   title: z.string().min(1),
   /** The states shown before this card in the video: the renderer's. */
   badgesSeen: z.array(BadgeStateSchema).default([]),
+  /** The cut list's stamp: the renderer's. */
+  stamp: StampSchema,
 })
+
+/** The stamp's type, in the frame's pixels. */
+export const STAMP_TYPE = { sizePx: 18, lineHeightPx: 24 } as const
+
+/** The strip at the foot of a card's body the stamp sits in. */
+const STAMP_ROW = STAMP_TYPE.lineHeightPx + 8
+
+/** The stamp as drawn: its words, and the box they take. */
+export type StampLine = { readonly text: string; readonly box: Box }
+
+/** Where a card's items go: its body, above the stamp. */
+export const cardBody = (g: Geometry): Box => ({
+  ...g.regions.body,
+  height: g.regions.body.height - STAMP_ROW,
+})
+
+/** The stamp's words: `as of paulgsc/dotfiles@91cb11b · 2026-11-13`. */
+export const stampText = (s: z.infer<typeof StampSchema>): string =>
+  `as of ${[...s.sources, s.date].join(" · ")}`
+
+/** The stamp, right-aligned at the foot of the body. */
+export function drawStamp(
+  s: z.infer<typeof StampSchema>,
+  g: Geometry
+): Parsed<StampLine> {
+  const body = g.regions.body
+  const text = stampText(s)
+  const width = monoWidth(text, STAMP_TYPE.sizePx)
+  if (width > body.width)
+    return { ok: false, problems: ["the stamp doesn't fit"] }
+  return {
+    ok: true,
+    value: {
+      text,
+      box: {
+        x: body.x + body.width - width,
+        y: body.y + body.height - STAMP_TYPE.lineHeightPx,
+        width,
+        height: STAMP_TYPE.lineHeightPx,
+      },
+    },
+  }
+}
+
+/** The stamp's colour: muted, as a comment is. */
+export const STAMP_COLOUR = INK.muted
 
 /** The time an item may name for itself, in ms into its card. */
 export const ItemAtSchema = z.number().nonnegative().optional()

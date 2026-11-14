@@ -27,11 +27,14 @@ import {
   appearing,
   badgesOpening,
   CARD_INK,
+  cardBody,
   cardHeading,
   CardHeadSchema,
+  drawStamp,
   ItemAtSchema,
   itemTimes,
   valueProblem,
+  type StampLine,
 } from "./cards"
 import type { Box, Geometry } from "./geometry"
 import { INK, textBoxes, type Panel, type TextFrame } from "./journal"
@@ -94,6 +97,7 @@ type LineDrawing = {
 /** The window drawn once, for `frameAt` to time. */
 export type TerminalDrawing = {
   readonly heading: TextFrame
+  readonly stamp: StampLine
   readonly window: Panel
   /** The title bar's foot. */
   readonly rule: Box
@@ -169,7 +173,9 @@ export function drawTerminal(
 ): Parsed<TerminalDrawing> {
   const heading = cardHeading(p, g)
   if (!heading.ok) return heading
-  const box = g.regions.body
+  const stamp = drawStamp(p.stamp, g)
+  if (!stamp.ok) return stamp
+  const box = cardBody(g)
   const window: Panel = {
     box,
     fill: CARD_INK.window,
@@ -208,6 +214,7 @@ export function drawTerminal(
     ok: true,
     value: {
       heading: heading.value,
+      stamp: stamp.value,
       window,
       rule: { x: box.x, y: areaY - 2, width: box.width, height: 2 },
       dots: [0, 1, 2].map((i) => ({
@@ -268,8 +275,9 @@ export function terminalAt(d: TerminalDrawing, t: number): TerminalFrame {
   return { ...still, rows }
 }
 
-/** The boxes the card covers: its heading and its window. */
+/** The boxes the card covers: its heading, its window and its stamp. */
 export const terminalBoxes = (f: TerminalFrame): ReadonlyArray<Box> => [
   ...textBoxes(f.heading),
   f.window.box,
+  f.stamp.box,
 ]

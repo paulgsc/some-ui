@@ -1,5 +1,6 @@
 import type { CSSProperties, JSX } from "react"
 import { Badge } from "@burn-ins/components/stage/badge"
+import { Stamp } from "@burn-ins/components/stage/card"
 import { TextLayer } from "@burn-ins/components/stage/text"
 import type { Units } from "@burn-ins/components/stage/units"
 import { INK } from "@burn-ins/lib/journal"
@@ -31,6 +32,7 @@ export const TerminalLayer = ({
   return (
     <>
       <TextLayer frame={frame.heading} units={units} />
+      <Stamp stamp={frame.stamp} units={units} />
       <div
         className="bi-panel"
         style={{

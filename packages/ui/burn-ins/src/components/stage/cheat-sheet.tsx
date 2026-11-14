@@ -1,5 +1,6 @@
 import type { JSX } from "react"
 import { Badge } from "@burn-ins/components/stage/badge"
+import { Stamp } from "@burn-ins/components/stage/card"
 import { TextLayer } from "@burn-ins/components/stage/text"
 import type { Units } from "@burn-ins/components/stage/units"
 import { COMMAND_TYPE, type CheatSheetFrame } from "@burn-ins/lib/cheat-sheet"
@@ -18,6 +19,7 @@ export const CheatSheetLayer = ({
   return (
     <>
       <TextLayer frame={frame.heading} units={units} />
+      <Stamp stamp={frame.stamp} units={units} />
       {frame.rows.map((r) => (
         <div key={r.row} className="bi-badge" style={{ opacity: r.opacity }}>
           <div

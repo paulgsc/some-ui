@@ -5,14 +5,23 @@ import type { CheatSheetFrame } from "@burn-ins/lib/cheat-sheet"
 import { LANDSCAPE, PORTRAIT, type FrameSize } from "@burn-ins/lib/geometry"
 import { describe, expect, it } from "vitest"
 
+/** A card's params with the stamp the renderer gives every card. */
+const stamped = (params: object): object => ({
+  stamp: { sources: ["paulgsc/dotfiles@91cb11b"], date: "2026-11-13" },
+  ...params,
+})
+
 const sheet = (
-  params: unknown,
+  params: object,
   frame: FrameSize = LANDSCAPE
 ): ReturnType<typeof prepare> =>
-  prepare({ kind: "cheat-sheet", design: "sheet-v1", params }, frame)
+  prepare(
+    { kind: "cheat-sheet", design: "sheet-v1", params: stamped(params) },
+    frame
+  )
 
 const at = (
-  params: unknown,
+  params: object,
   t: number,
   frame: FrameSize = LANDSCAPE
 ): CheatSheetFrame => {

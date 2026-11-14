@@ -79,12 +79,30 @@ import {
   textBoxes,
   type TextFrame,
 } from "./journal"
+import {
+  drawLegend,
+  LEGEND_DESIGNS,
+  legendAt,
+  legendBoxes,
+  LegendParamsSchema,
+  type LegendDrawing,
+  type LegendFrame,
+} from "./legend"
 import { isOneOf, type Parsed } from "./parsed"
 import {
   drawPreviewMark,
   PREVIEW_MARK_DESIGNS,
   PreviewMarkParamsSchema,
 } from "./preview-mark"
+import {
+  drawRule,
+  RULE_DESIGNS,
+  ruleAt,
+  ruleBoxes,
+  RuleParamsSchema,
+  type RuleDrawing,
+  type RuleFrame,
+} from "./rule"
 import {
   drawTerminal,
   TERMINAL_DESIGNS,
@@ -105,6 +123,8 @@ export const KINDS = [
   "status-badge",
   "terminal",
   "cheat-sheet",
+  "legend",
+  "rule",
 ] as const
 export type Kind = (typeof KINDS)[number]
 
@@ -121,6 +141,8 @@ export const DESIGNS = {
   "status-badge": STATUS_BADGE_DESIGNS,
   terminal: TERMINAL_DESIGNS,
   "cheat-sheet": CHEAT_SHEET_DESIGNS,
+  legend: LEGEND_DESIGNS,
+  rule: RULE_DESIGNS,
 } as const satisfies Record<Kind, ReadonlyArray<string>>
 
 /** Where each kind draws. */
@@ -140,6 +162,8 @@ export const REGIONS_OF = {
   // A card over a bare scene: its title in the header, its window in the body.
   terminal: ["header", "body"],
   "cheat-sheet": ["header", "body"],
+  legend: ["header", "body"],
+  rule: ["header", "body"],
 } as const satisfies Record<Kind, ReadonlyArray<Region>>
 
 const TimedWordSchema = z
@@ -209,6 +233,16 @@ export type Prepared =
       readonly design: (typeof CHEAT_SHEET_DESIGNS)[number]
       readonly drawing: CheatSheetDrawing
     }
+  | {
+      readonly kind: "legend"
+      readonly design: (typeof LEGEND_DESIGNS)[number]
+      readonly drawing: LegendDrawing
+    }
+  | {
+      readonly kind: "rule"
+      readonly design: (typeof RULE_DESIGNS)[number]
+      readonly drawing: RuleDrawing
+    }
 
 /** What is on screen at a moment. */
 export type BurnInFrame =
@@ -253,6 +287,16 @@ export type BurnInFrame =
       readonly kind: "cheat-sheet"
       readonly design: (typeof CHEAT_SHEET_DESIGNS)[number]
       readonly frame: CheatSheetFrame
+    }
+  | {
+      readonly kind: "legend"
+      readonly design: (typeof LEGEND_DESIGNS)[number]
+      readonly frame: LegendFrame
+    }
+  | {
+      readonly kind: "rule"
+      readonly design: (typeof RULE_DESIGNS)[number]
+      readonly frame: RuleFrame
     }
 
 const issues = (name: string, error: z.ZodError): ReadonlyArray<string> =>
@@ -436,6 +480,31 @@ export function prepare(b: BurnInData, frame: FrameSize): Parsed<Prepared> {
           }
         : c
     }
+    case "legend": {
+      const c = checked(
+        name,
+        LEGEND_DESIGNS,
+        b,
+        LegendParamsSchema,
+        drawLegend,
+        g
+      )
+      return c.ok
+        ? {
+            ok: true,
+            value: { kind, design: c.value.design, drawing: c.value.value },
+          }
+        : c
+    }
+    case "rule": {
+      const c = checked(name, RULE_DESIGNS, b, RuleParamsSchema, drawRule, g)
+      return c.ok
+        ? {
+            ok: true,
+            value: { kind, design: c.value.design, drawing: c.value.value },
+          }
+        : c
+    }
     default: {
       return assertNever(kind)
     }
@@ -487,6 +556,12 @@ export function frameAt(p: Prepared, t: number): BurnInFrame {
         frame: cheatSheetAt(p.drawing, t),
       }
     }
+    case "legend": {
+      return { kind: p.kind, design: p.design, frame: legendAt(p.drawing, t) }
+    }
+    case "rule": {
+      return { kind: p.kind, design: p.design, frame: ruleAt(p.drawing, t) }
+    }
     default: {
       return assertNever(p)
     }
@@ -523,6 +598,12 @@ export function boxesOf(f: BurnInFrame): ReadonlyArray<Box> {
     }
     case "cheat-sheet": {
       return cheatSheetBoxes(f.frame)
+    }
+    case "legend": {
+      return legendBoxes(f.frame)
+    }
+    case "rule": {
+      return ruleBoxes(f.frame)
     }
     default: {
       return assertNever(f)

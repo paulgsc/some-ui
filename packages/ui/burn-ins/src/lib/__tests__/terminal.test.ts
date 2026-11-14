@@ -5,13 +5,22 @@ import { LANDSCAPE, PORTRAIT, type FrameSize } from "@burn-ins/lib/geometry"
 import type { TerminalFrame } from "@burn-ins/lib/terminal"
 import { describe, expect, it } from "vitest"
 
+/** A card's params with the stamp the renderer gives every card. */
+const stamped = (params: object): object => ({
+  stamp: { sources: ["paulgsc/dotfiles@91cb11b"], date: "2026-11-13" },
+  ...params,
+})
+
 const terminal = (
-  params: unknown,
+  params: object,
   frame: FrameSize = LANDSCAPE
 ): ReturnType<typeof prepare> =>
-  prepare({ kind: "terminal", design: "terminal-v1", params }, frame)
+  prepare(
+    { kind: "terminal", design: "terminal-v1", params: stamped(params) },
+    frame
+  )
 
-const at = (params: unknown, t: number): TerminalFrame => {
+const at = (params: object, t: number): TerminalFrame => {
   const p = terminal(params)
   if (!p.ok) throw new Error(p.problems.join("; "))
   const f = frameAt(p.value, t)

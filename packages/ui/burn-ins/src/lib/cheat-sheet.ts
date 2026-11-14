@@ -26,11 +26,14 @@ import {
   appearing,
   badgesOpening,
   CARD_INK,
+  cardBody,
   cardHeading,
   CardHeadSchema,
+  drawStamp,
   ItemAtSchema,
   itemTimes,
   valueProblem,
+  type StampLine,
 } from "./cards"
 import type { Box, Geometry } from "./geometry"
 import { INK, textBoxes, type TextFrame } from "./journal"
@@ -91,6 +94,7 @@ type RowDrawing = {
 /** The sheet drawn once, for `frameAt` to time. */
 export type CheatSheetDrawing = {
   readonly heading: TextFrame
+  readonly stamp: StampLine
   readonly rows: ReadonlyArray<RowDrawing>
 }
 
@@ -106,6 +110,7 @@ type SheetRow = {
 
 export type CheatSheetFrame = {
   readonly heading: TextFrame
+  readonly stamp: StampLine
   readonly rows: ReadonlyArray<SheetRow>
 }
 
@@ -171,7 +176,14 @@ function setRow(
     note === null ? noteY : note.box.y + note.box.height
   )
   return {
-    panel: { x: box.x, y, width: box.width, height: bottom + PAD - y },
+    // Whole pixels: a bordered, rounded panel at a fractional edge draws its
+    // corner's edge pixel differently from one recording to the next.
+    panel: {
+      x: box.x,
+      y,
+      width: box.width,
+      height: Math.ceil(bottom + PAD - y),
+    },
     badgeX: box.x + PAD,
     badgeY: top + (TASK.sizePx * TASK.lineHeight - BADGE_PX) / 2,
     badge: r.badge,
@@ -198,7 +210,9 @@ export function drawCheatSheet(
 ): Parsed<CheatSheetDrawing> {
   const heading = cardHeading(p, g)
   if (!heading.ok) return heading
-  const box = g.regions.body
+  const stamp = drawStamp(p.stamp, g)
+  if (!stamp.ok) return stamp
+  const box = cardBody(g)
   const opens = badgesOpening(
     p.rows.map((r) => r.badge),
     p.badgesSeen
@@ -234,14 +248,16 @@ export function drawCheatSheet(
     problems.push(`${p.rows.length} rows don't fit`)
   return problems.length > 0
     ? { ok: false, problems }
-    : { ok: true, value: { heading: heading.value, rows } }
+    : { ok: true, value: { heading: heading.value, stamp: stamp.value, rows } }
 }
 
 /** The sheet `t` ms into its scene: the rows that have appeared so far. */
 export function cheatSheetAt(d: CheatSheetDrawing, t: number): CheatSheetFrame {
   const rows = d.rows.flatMap((r, row) => {
     if (t < r.atMs) return []
-    const { opacity, risePx } = appearing(t, r.atMs)
+    const { opacity } = appearing(t, r.atMs)
+    // Whole pixels, as the panel's box is.
+    const risePx = Math.round(appearing(t, r.atMs).risePx)
     const badge =
       r.badge === undefined
         ? null
@@ -266,11 +282,12 @@ export function cheatSheetAt(d: CheatSheetDrawing, t: number): CheatSheetFrame {
       },
     ]
   })
-  return { heading: d.heading, rows }
+  return { heading: d.heading, stamp: d.stamp, rows }
 }
 
-/** The boxes the card covers: its heading and its rows' panels. */
+/** The boxes the card covers: its heading, its rows' panels and its stamp. */
 export const cheatSheetBoxes = (f: CheatSheetFrame): ReadonlyArray<Box> => [
   ...textBoxes(f.heading),
   ...f.rows.map((r) => r.panel),
+  f.stamp.box,
 ]

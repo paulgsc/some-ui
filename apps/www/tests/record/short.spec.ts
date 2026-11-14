@@ -1,7 +1,7 @@
 /**
  * The burn-in recorder in CI (STUDIO ST15, #2273): a short with a scene's
- * captions, a headline, a status badge, a terminal card, a cheat-sheet card and the authorship mark,
- * rendered twice through
+ * captions, a headline, a status badge, a terminal card, a cheat-sheet card, a legend card and a
+ * rule card (each card stamped from the cut list) and the authorship mark, rendered twice through
  * `record:short`'s
  * path (the built app's `/burn-ins?record` page filling the renderer's
  * `recordBurnIn`), gives the same MP4 and the same burn-in recordings both
@@ -117,12 +117,41 @@ const CUT_LIST = cutList(
         },
       ],
     }),
+    // CARDS4: the legend and the rule, stamped as every card is.
+    shot("S5", {
+      picture: { kind: "card" },
+      durationMs: 2000,
+      burnIns: [
+        {
+          kind: "legend",
+          design: "legend-v1",
+          params: { title: "Reading the badges" },
+        },
+      ],
+    }),
+    shot("S6", {
+      picture: { kind: "card" },
+      durationMs: 2000,
+      burnIns: [
+        {
+          kind: "rule",
+          design: "rule-v1",
+          params: {
+            title: "How stale is this card?",
+            sources: ["make help", "the README"],
+            wins: "the README",
+          },
+        },
+      ],
+    }),
     card("outro"),
   ],
   {
     title: "Recorder check",
     series: { id: "build-journal-short", version: 1 },
     look: "plain",
+    // CARDS4: every card's stamp, written once.
+    stamp: { sources: ["paulgsc/some-ui@5f3dd29"], date: "2026-11-14" },
     burnIns: [
       { kind: "captions", design: "gridiron", params: {} },
       { kind: "authorship", design: "cells-v1", params: {} },
@@ -192,9 +221,10 @@ test.describe("the burn-in recorder", () => {
       }
       const first = await renderOnce(1)
       const second = await renderOnce(2)
-      // Captions, the mark, the headline, the badge, the terminal and the
-      // cheat sheet, so the comparison is not of nothing.
-      expect(first.burnIns.size).toBe(6)
+      // Captions, the mark, the headline, the badge, the terminal, the
+      // cheat sheet, the legend and the rule, so the comparison is not of
+      // nothing.
+      expect(first.burnIns.size).toBe(8)
       expect(second.burnIns).toEqual(first.burnIns)
       expect(second.video).toBe(first.video)
     } finally {
