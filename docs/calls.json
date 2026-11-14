@@ -2386,6 +2386,27 @@
       "refs": ["#2931", "#2935"]
     },
     {
+      "id": "C232",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/ui/topik/src/lib/topik/read-aloud/added-sets/index.ts",
+        "apps/www/src/lib/my-data/words.ts"
+      ],
+      "chose": "A Korean word set is archived only by the owner, from My data; a set first opened 30 or more days ago is marked as not opened in a while, as a hint. Archived sets leave Read aloud and Ready for you and free their place under the 50, and keep their decks so every record on them still reads.",
+      "options": [
+        "the owner archives, with a hint",
+        "archive automatically after a set goes unused",
+        "archive automatically when the 50 fills"
+      ],
+      "gray": "The phone records only a set's first open, not its last use, so an automatic rule could pull lines the owner is still drilling out of Read aloud. The owner's standing word on Nov 13 was \"Go with the recommended where a choice is open.\"",
+      "undo": "Add a rule that sets archivedAt in added-sets, and drop the page's Archive control.",
+      "refs": [
+        "#2496",
+        "#2473"
+      ]
+    },
+    {
       "id": "C306",
       "made": "2026-11-14",
       "by": "claude",

@@ -31,6 +31,7 @@ import {
   receiptsLine,
   unreadLine,
   WHERE_WORDS,
+  WORD_SETS,
 } from "@/lib/my-data/words"
 
 /** Every string in `value`, however deep. */
@@ -52,6 +53,19 @@ describe("My data's words", () => {
   it("never name the machinery", () => {
     const said = [
       ...strings(MY_DATA),
+      ...strings(WORD_SETS),
+      WORD_SETS.inUse(3, 50),
+      WORD_SETS.added(AT),
+      WORD_SETS.opened(AT),
+      WORD_SETS.opened(null),
+      WORD_SETS.archivedOn(AT),
+      WORD_SETS.sentences(1),
+      WORD_SETS.archiveName("Cafe"),
+      WORD_SETS.bringBackName("Cafe"),
+      WORD_SETS.full(50),
+      WORD_SETS.said.archived("Cafe"),
+      WORD_SETS.said.broughtBack("Cafe"),
+      WORD_SETS.said.noRoom(50),
       ...strings(KIND_NAMES),
       ...strings(WHERE_WORDS),
       ...Object.values(KEPT_FOR_GOOD),
