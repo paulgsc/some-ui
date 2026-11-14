@@ -1,7 +1,7 @@
 import type { JSX } from "react"
 import { createFileRoute, notFound } from "@tanstack/react-router"
 
-import { isEssayKey } from "@/lib/renders/subject"
+import { isEssayKey } from "@/lib/cards-essay-key"
 import { CardsEssayPage } from "@/components/studio/cards-essay"
 
 /**

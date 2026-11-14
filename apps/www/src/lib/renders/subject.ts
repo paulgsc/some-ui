@@ -5,8 +5,9 @@
  * is `./words`.
  */
 import type { TemplateId } from "@some-ui/video-render"
-import { CARDS_KEY, isTemplateId, TEMPLATE_IDS } from "@some-ui/video-render"
+import { isTemplateId, TEMPLATE_IDS } from "@some-ui/video-render"
 
+import { isEssayKey } from "@/lib/cards-essay-key"
 import type { Feed } from "@/lib/feeds"
 import { isFeed } from "@/lib/feeds"
 
@@ -42,20 +43,6 @@ function templateOfKey(key: string): TemplateId | null {
       longest === null || id.length > longest.length ? id : longest,
     null
   )
-}
-
-/** The longest key home keeps an essay under (paulgsc/server `cards_essays::pass::MAX_KEY`). */
-const MAX_ESSAY_KEY = 128
-
-/**
- * Whether `key` is a cards essay's, as home checks one: `<slug>-<YYYY-MM-DD>`
- * (`CARDS_KEY`), a day the calendar has, at most `MAX_ESSAY_KEY` long.
- */
-export function isEssayKey(key: string): boolean {
-  if (key.length > MAX_ESSAY_KEY || !CARDS_KEY.test(key)) return false
-  const day = key.slice(-10)
-  const parsed = new Date(`${day}T00:00:00Z`)
-  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(day)
 }
 
 const SIDES = ["before", "after"] as const satisfies ReadonlyArray<ClipSide>
