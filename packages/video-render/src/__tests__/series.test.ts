@@ -7,10 +7,18 @@
  * real ffmpeg on `PATH`, at a small frame.
  */
 
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import {
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { authorshipOf } from "@video-render/authorship"
+import { parseCutList } from "@video-render/cut-list"
 import type { Shot } from "@video-render/cut-list"
 import { nodePorts, readSeries, renderFolder } from "@video-render/node"
 import type { BurnInRequest } from "@video-render/render"
@@ -185,9 +193,27 @@ describe("the sample series", () => {
       "build-journal-short",
       "playoff-delta-week",
       "long-episode",
+      "cheat-sheet",
     ]) {
       const s = await readSeries(join(__dirname, "../sample/series", id), 1)
       expect(s.ok ? s.value.id : s.problems).toBe(id)
+    }
+  })
+
+  it("carry the showcase cut lists, each on cheat-sheet v1", async () => {
+    const videos = await readdir(join(__dirname, "../sample/videos"))
+    expect(videos.length).toBeGreaterThan(0)
+    for (const video of videos) {
+      const raw: unknown = JSON.parse(
+        await readFile(
+          join(__dirname, "../sample/videos", video, "cut-list.json"),
+          "utf8"
+        )
+      )
+      const parsed = parseCutList(raw)
+      expect(parsed.ok ? [] : parsed.problems).toEqual([])
+      if (!parsed.ok) continue
+      expect(parsed.value.series).toEqual({ id: "cheat-sheet", version: 1 })
     }
   })
 
