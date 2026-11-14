@@ -8,6 +8,7 @@ import { listed, ordinal } from "@some-ui/core-utils"
 
 import type { Actor } from "./authorship"
 import type { SceneRecord } from "./authorship-link"
+import type { BadgeState } from "./badge"
 import type { Kind } from "./burn-in"
 import type { ThemeId } from "./captions/theme"
 import type { GameCardTemplate, Quarter } from "./game-card"
@@ -69,6 +70,11 @@ export const WORDS = {
       about:
         "On a template's preview: a plate under the picture saying the video is a preview of sample data.",
     },
+    "status-badge": {
+      name: "Status badge",
+      about:
+        "How fresh a claim on screen is: on main, an open PR, planned, a known gap, or a step only I do. The first time each one appears in a video it spells out what it means, then it shrinks to its sign.",
+    },
   } satisfies Record<Kind, { name: string; about: string }>,
   lookHeading: "Look",
   looks: {
@@ -105,8 +111,13 @@ export const WORDS = {
       name: "Plate",
       about: "Amber capitals on a dark plate with an amber edge.",
     },
+    "badge-v1": {
+      name: "Badge",
+      about:
+        "A small sign in its own colour; the first time, a tinted pill opens from it with the words.",
+    },
   } satisfies Record<
-    ThemeId | "v1" | "cells-v1" | "gridiron-v1" | "plate-v1",
+    ThemeId | "v1" | "cells-v1" | "gridiron-v1" | "plate-v1" | "badge-v1",
     { name: string; about: string }
   >,
   templateHeading: "Which card",
@@ -194,6 +205,14 @@ export const WORDS = {
     seed: (seed: number): string => `as high as the ${ordinal(seed)} seed`,
     noWayIn: "No way in is left",
   },
+  /** What each status badge means, as it spells itself out. */
+  badges: {
+    main: "on main",
+    pr: "open PR · may change",
+    next: "planned, not built",
+    gap: "known gap",
+    you: "a step only I do",
+  } satisfies Record<BadgeState, string>,
   /** What the preview mark says inside a template's preview. */
   previewMark: "Preview, sample data",
   /** The page the end card links to. */
