@@ -52,6 +52,7 @@ jobs:
           trap 'docker logs resume-proof; docker rm -f resume-proof >/dev/null' EXIT
           docker exec -i resume-proof node --input-type=module -e '
             import { readFileSync } from "node:fs"
+            import { piiTemplates, variants } from "./scripts/typst.mjs"
             const pii = JSON.parse(readFileSync("scripts/fixtures/faux-pii.json", "utf8"))
             const url = "http://127.0.0.1:3100"
             for (let i = 0; ; i++) {
@@ -62,7 +63,7 @@ jobs:
             const response = await fetch(`${url}/render`, {
               method: "POST",
               headers: { "content-type": "application/json" },
-              body: JSON.stringify({ variant: "backend", template: "classic", pii }),
+              body: JSON.stringify({ variant: variants[0], template: piiTemplates[0], pii }),
             })
             const pdf = Buffer.from(await response.arrayBuffer())
             if (!response.ok) throw new Error(`render answered ${response.status}`)

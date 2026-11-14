@@ -9,10 +9,12 @@
 # (apps/www/nginx.https.conf, RESUME_UPSTREAM), and the only page that calls it is the
 # LAN build's /resume-build.
 #
-# The image is published from main by .github/workflows/resume-docker-release.yml
-# (`pgathondu/resume-render:<commit>` and `:latest`), so nothing is built here
-# (RELEASE R8, paulgsc/server#853). Home runs it from paulgsc/server's compose,
-# pinned by digest; this file is for development.
+# The image is published by .github/workflows/resume-docker-release.yml; home
+# runs it from paulgsc/server's compose, by digest. This file is for
+# development. To try a local change before it merges:
+#
+#   docker build -t pgathondu/resume-render:local packages/ui/resume
+#   RESUME_TAG=local docker compose up -d resume-render
 services:
   resume-render:
     image: pgathondu/resume-render:${RESUME_TAG:-latest}

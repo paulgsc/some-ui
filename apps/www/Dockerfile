@@ -158,17 +158,20 @@ COPY apps/www/nginx.security-headers.conf /etc/nginx/security-headers.conf
 # The server block, `access_log off;` and why included, lives in its own file
 # so what the image serves is the file the repo keeps (WI1, #2652): a RUN
 # heredoc redirected with `>` wrote the redirect's empty output, not the block.
-# It is a template: the base image's entrypoint renders it to
-# conf.d/default.conf at start, filling in the per-host values below, so a
-# deployment needs no file of this repo (RELEASE R8, paulgsc/server#853).
+# It is a template the base entrypoint renders at start (see its header).
 #
+# The stock server block is removed so the image fails closed: where conf.d is
+# not writable the entrypoint skips rendering with only a warning, and nginx
+# would otherwise serve the stock block, access log on and no headers. With it
+# gone, nginx serves nothing and the healthcheck fails.
+#
+RUN rm /etc/nginx/conf.d/default.conf
 COPY apps/www/nginx.https.conf /etc/nginx/templates/default.conf.template
 
 #
-# The per-host values the template reads, with the defaults home's compose
-# uses: the service names paulgsc/server's file_host and the résumé render
-# service run under. The filter keeps envsubst off every other variable, so
-# nginx's own `$host` and the like are never touched.
+# The per-host values the template reads, defaulted to the service names
+# paulgsc/server's compose runs file_host and the résumé service under. The
+# filter keeps envsubst off every other name, nginx's own `$host` included.
 #
 ENV FILE_HOST_UPSTREAM=file-host-server:3000
 ENV RESUME_UPSTREAM=resume-render:3100

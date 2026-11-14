@@ -66,10 +66,7 @@ services:
     # its port; joining monitoring-network (see base.yml) is what reaches it.
     # Here it defaults to the Docker host gateway instead, for file_host run
     # directly on the host (`cargo run -p file_host`) - the long-documented
-    # default. RESUME_UPSTREAM keeps the image's default, resume-render:3100,
-    # the service infra/compose/resume.yml runs. Nothing of this checkout is
-    # mounted into nginx: the image carries its own config (RELEASE R8,
-    # paulgsc/server#853). Docker Desktop resolves host.docker.internal on
+    # default. Docker Desktop resolves host.docker.internal on
     # its own; Linux does not, and without the extra_hosts entry below the
     # study nudge's requests come back as 502s that look exactly like the
     # backend being down. Harmless where the name already resolves.

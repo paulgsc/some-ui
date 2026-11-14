@@ -4,11 +4,9 @@
  * or a forwarded `$remote_addr` fails nothing at runtime, so this reads the
  * files that decide it and fails with the line to fix:
  *
- * - `apps/www/nginx.https.conf`: the image's one server block (:80), which
- *   `apps/www/Dockerfile` copies to nginx's templates directory and nothing
- *   else writes conf.d or templates (WI1: the file the image ships is the file
- *   read here). The image's entrypoint renders it to conf.d/default.conf at
- *   start, filling in only the `${NAME}`s the Dockerfile declares.
+ * - `apps/www/nginx.https.conf`: the image's one server block (:80), the
+ *   template `apps/www/Dockerfile` copies in, and nothing else writes conf.d
+ *   or templates (WI1: the file the image ships is the file read here).
  * - `apps/www/nginx.security-headers.conf`: the `Referrer-Policy` it includes.
  *
  * Not covered: `error_log` (it cannot be made address-free without dropping
@@ -230,25 +228,50 @@ function fileHostProblems(file: string, servers: Array<Block>): Array<string> {
       }
     }
 
-    const headers = proxyHeaders(server.children[proxyAt])
-    for (const [key, name] of CLIENT_ADDRESS_HEADERS) {
-      const value = headers.get(key)
-      if (value !== '""') {
-        problems.push(
-          `${file}: in ${where}, \`${FILE_HOST_LOCATION}\` must have \`proxy_set_header ${name} "";\` ` +
-            `(an empty value makes nginx drop the header, a client-supplied one included); found ${
-              value ?? "none"
-            }.`
-        )
-      }
+    problems.push(
+      ...addressProblems(
+        file,
+        where,
+        FILE_HOST_LOCATION,
+        server.children[proxyAt],
+        "file_host"
+      )
+    )
+  }
+  return problems
+}
+
+/**
+ * What a proxied location must not tell its upstream: X-Real-IP and
+ * X-Forwarded-For set to "" (an empty value makes nginx drop the header, a
+ * client-supplied one included), and no header carrying a client address.
+ */
+function addressProblems(
+  file: string,
+  where: string,
+  head: string,
+  location: Block,
+  upstream: string
+): Array<string> {
+  const problems: Array<string> = []
+  const headers = proxyHeaders(location)
+  for (const [key, name] of CLIENT_ADDRESS_HEADERS) {
+    const value = headers.get(key)
+    if (value !== '""') {
+      problems.push(
+        `${file}: in ${where}, \`${head}\` must have \`proxy_set_header ${name} "";\` ` +
+          `(an empty value makes nginx drop the header, a client-supplied one included); found ${
+            value ?? "none"
+          }.`
+      )
     }
-    for (const [name, value] of headers) {
-      if (CLIENT_ADDRESS_VARIABLE.test(value)) {
-        problems.push(
-          `${file}: in ${where}, \`proxy_set_header ${name} ${value};\` forwards the client address to file_host. ` +
-            "Remove it or set it to an empty string."
-        )
-      }
+  }
+  for (const [name, value] of headers) {
+    if (CLIENT_ADDRESS_VARIABLE.test(value)) {
+      problems.push(
+        `${file}: in ${where}, \`proxy_set_header ${name} ${value};\` forwards the client address to ${upstream}. ` +
+          "Remove it or set it to an empty string."
+      )
     }
   }
   return problems
@@ -256,36 +279,24 @@ function fileHostProblems(file: string, servers: Array<Block>): Array<string> {
 
 /** The résumé proxy carries the PII's request and must forward no address. */
 function resumeProblems(file: string, servers: Array<Block>): Array<string> {
-  const problems: Array<string> = []
-  for (const server of servers) {
+  return servers.flatMap((server) => {
     const where = describeBlock(server)
     const location = server.children.find(
       (child) => child.head === RESUME_LOCATION
     )
-    if (!location) {
-      problems.push(
-        `${file}: ${where} has no \`${RESUME_LOCATION} {\`. ` +
-          "If the proxy moved, update this test to follow it; do not delete the check."
-      )
-      continue
-    }
-    const headers = proxyHeaders(location)
-    for (const [key, name] of CLIENT_ADDRESS_HEADERS) {
-      if (headers.get(key) !== '""') {
-        problems.push(
-          `${file}: in ${where}, \`${RESUME_LOCATION}\` must have \`proxy_set_header ${name} "";\`.`
+    return location
+      ? addressProblems(
+          file,
+          where,
+          RESUME_LOCATION,
+          location,
+          "the résumé service"
         )
-      }
-    }
-    for (const [name, value] of headers) {
-      if (CLIENT_ADDRESS_VARIABLE.test(value)) {
-        problems.push(
-          `${file}: in ${where}, \`proxy_set_header ${name} ${value};\` forwards the client address to the résumé service.`
-        )
-      }
-    }
-  }
-  return problems
+      : [
+          `${file}: ${where} has no \`${RESUME_LOCATION} {\`. ` +
+            "If the proxy moved, update this test to follow it; do not delete the check.",
+        ]
+  })
 }
 
 /** `Referrer-Policy` is `no-referrer`, set once, and reaches every server. */
@@ -328,6 +339,13 @@ function read(path: string): string {
 }
 
 /**
+ * Removes nginx:alpine's stock server block, so that where the template cannot
+ * be rendered (a read-only conf.d) nginx serves nothing rather than that block,
+ * with its access log on and none of the headers.
+ */
+const REMOVE_STOCK = "RUN rm /etc/nginx/conf.d/default.conf"
+
+/**
  * WI1: the image's server block is `nginx.https.conf` as the repo keeps it. The
  * Dockerfile copies that file to the templates directory on one line, and no
  * other line names conf.d or templates, so no heredoc, `RUN` or second `COPY`
@@ -337,17 +355,23 @@ function read(path: string): string {
 function defaultConfProblems(file: string, dockerfile: string): Array<string> {
   const copy = `COPY ${HTTPS_CONF} ${TEMPLATE_TARGET}`
   const lines = dockerfile.split(/\r?\n/)
-  const copies = lines.filter((line) => line.trim() === copy).length
+  const count = (wanted: string): number =>
+    lines.filter((line) => line.trim() === wanted).length
   const others = lines.filter(
     (line) =>
       /\/etc\/nginx\/(?:conf\.d|templates)\b/.test(line) &&
       line.trim() !== copy &&
+      line.trim() !== REMOVE_STOCK &&
       !line.trimStart().startsWith("#")
   )
   return [
-    ...(copies === 1
-      ? []
-      : [`${file}: \`${copy}\` appears ${String(copies)} times, not once.`]),
+    ...[copy, REMOVE_STOCK].flatMap((wanted) =>
+      count(wanted) === 1
+        ? []
+        : [
+            `${file}: \`${wanted}\` appears ${String(count(wanted))} times, not once.`,
+          ]
+    ),
     ...others.map(
       (line) =>
         `${file}: \`${line.trim()}\` also writes nginx's config, beside ${HTTPS_CONF}.`
@@ -393,9 +417,11 @@ function templateEnvProblems(
       problems.push(`NGINX_ENVSUBST_FILTER does not let \${${name}} through`)
     }
   }
-  for (const nginxVariable of ["host", "uri", "scheme", "PATH", "HOME"]) {
-    if (passes.test(nginxVariable)) {
-      problems.push(`NGINX_ENVSUBST_FILTER lets \${${nginxVariable}} through`)
+  // nginx's own variables, and env vars every container has: a filter that
+  // passes any of them would substitute it into the block.
+  for (const other of ["host", "uri", "scheme", "PATH", "HOME"]) {
+    if (passes.test(other)) {
+      problems.push(`NGINX_ENVSUBST_FILTER lets \${${other}} through`)
     }
   }
   return problems
@@ -538,14 +564,20 @@ describe("the checks can fail", () => {
   })
 
   it("flags a conf.d written any way but the one COPY, as #2652's heredoc was", () => {
-    const copy = `COPY ${HTTPS_CONF} ${TEMPLATE_TARGET}`
+    const copy = `COPY ${HTTPS_CONF} ${TEMPLATE_TARGET}\n${REMOVE_STOCK}`
     expect(defaultConfProblems("f", `FROM nginx\n${copy}\n`)).toEqual([])
+    expect(
+      defaultConfProblems(
+        "f",
+        `FROM nginx\nCOPY ${HTTPS_CONF} ${TEMPLATE_TARGET}\n`
+      )
+    ).toHaveLength(1)
     expect(
       defaultConfProblems(
         "f",
         "FROM nginx\nRUN <<'EOF' > /etc/nginx/conf.d/default.conf\nserver {}\nEOF\n"
       )
-    ).toHaveLength(2)
+    ).toHaveLength(3)
     expect(
       defaultConfProblems(
         "f",
@@ -554,7 +586,7 @@ describe("the checks can fail", () => {
     ).toHaveLength(1)
     expect(
       defaultConfProblems("f", `FROM nginx\n${copy}\n${copy}\n`)
-    ).toHaveLength(1)
+    ).toHaveLength(2)
     expect(
       defaultConfProblems(
         "f",
@@ -588,16 +620,6 @@ describe("the checks can fail", () => {
     expect(templateEnvProblems(template, "ENV A_UPSTREAM=a:1\n")).toHaveLength(
       1
     )
-  })
-
-  it("flags a résumé proxy that forwards the client address", () => {
-    const root = bad(`server {
-      location ^~ /api/resume/ {
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-      }
-    }`)
-    expect(resumeProblems("f", serversOf(root))).toHaveLength(3)
-    expect(resumeProblems("f", serversOf(bad("server { }")))).toHaveLength(1)
   })
 
   it("flags a Vite proxy entry with no bypass, or with none that asks the predicate", () => {
@@ -636,6 +658,14 @@ describe("the checks can fail", () => {
     expect(
       problems.filter((p) => p.includes("forwards the client address"))
     ).toHaveLength(2)
+
+    const resume = bad(`server {
+      location ^~ /api/resume/ {
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      }
+    }`)
+    expect(resumeProblems("f", serversOf(resume))).toHaveLength(3)
+    expect(resumeProblems("f", serversOf(bad("server { }")))).toHaveLength(1)
 
     const policy = bad(
       'add_header Referrer-Policy "no-referrer-when-downgrade" always;'
