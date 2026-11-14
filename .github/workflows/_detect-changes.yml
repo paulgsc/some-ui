@@ -17,6 +17,9 @@ on:
       ci:
         description: "True if CI config itself changed (force re-run all)"
         value: ${{ jobs.detect.outputs.ci }}
+      render:
+        description: "True if anything the render image builds may have changed"
+        value: ${{ jobs.detect.outputs.render }}
 jobs:
   detect:
     name: Detect Changed Paths
@@ -30,6 +33,7 @@ jobs:
       extensions: ${{ steps.filter.outputs.extensions }}
       wasm: ${{ steps.filter.outputs.wasm }}
       ci: ${{ steps.filter.outputs.ci }}
+      render: ${{ steps.filter.outputs.render }}
     steps:
       - uses: actions/checkout@v7
       - name: Filter paths
@@ -78,6 +82,19 @@ jobs:
             wasm:
               - 'crates/**'
               - 'Cargo.lock'
+            # What render-docker-release.yml publishes the image on (its
+            # `on.push.paths`: keep the two in step), so a pull request builds
+            # the image's stage whenever merging it would rebuild the image.
+            render:
+              - 'apps/www/**'
+              - 'packages/**'
+              - 'extensions/**'
+              - 'infra/render/**'
+              - 'pnpm-lock.yaml'
+              - 'package.json'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - '.github/workflows/render-docker-release.yml'
             ci:
               - '.github/workflows/**'
               - '.github/actions/**'

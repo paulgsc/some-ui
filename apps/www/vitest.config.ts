@@ -23,6 +23,10 @@ export default defineConfig({
       "@/build.paths": resolve(import.meta.dirname, "./build.paths.ts"),
       "@/build.minify": resolve(import.meta.dirname, "./build.minify.ts"),
       "@/file-host.dev": resolve(import.meta.dirname, "./file-host.dev.ts"),
+      "@/stage-packages": resolve(
+        import.meta.dirname,
+        "./scripts/stage-packages.ts"
+      ),
       // tsconfig's `@tests/*`: a unit test holds a fit page's copy to its
       // original (`lib/scene-ask/index.test.ts`).
       "@tests": resolve(import.meta.dirname, "./tests"),

@@ -1,6 +1,7 @@
 /**
  * The render image builds every workspace package its recorders load built
- * (RI1). `infra/render/Dockerfile` builds only what its turbo filters name,
+ * (RI1). `infra/render/Dockerfile` builds only what `infra/render/build.sh`'s
+ * turbo filters name,
  * never the whole app, and tsx resolves a workspace package through its
  * `package.json`: one whose entry points at `dist/` loads only once built. A
  * recorder in `apps/www/tests/record` that imports one the filters miss passes
@@ -8,18 +9,21 @@
  * `main`, after merge (#2915's `record:report` and `@some-ui/engagement`,
  * fixed with this test).
  *
- * Read as plain text: the filters out of the Dockerfile, each package's
+ * Read as plain text: the recorders' filters out of build.sh, beside the
+ * stage's (RI3, read from its imports by `@/stage-packages`), each package's
  * workspace dependencies out of its `package.json`. A package whose entry is
  * source loads its own `dependencies` when it runs, so those are followed too
  * (`@some-ui/video-render` loads `@some-ui/core-utils` from dist/). Not covered: what the
- * stage (`build:stage`) itself bundles, which vite resolves at build time.
- * The last cases feed a Dockerfile with a filter dropped, so a check that
+ * stage (`build:stage`) itself bundles, which RI3 holds
+ * (`stage-packages.test.ts` beside this, and pr.yml's render-stage job).
+ * The last cases feed a build.sh with a filter dropped, so a check that
  * stopped looking cannot stay green.
  */
 
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { specifiersOf, stagePackages } from "@/stage-packages"
 import { describe, expect, it } from "vitest"
 
 /** apps/www/src/lib/render-image/__tests__ -> the repository root. */
@@ -27,7 +31,7 @@ const REPO_ROOT = resolve(
   dirname(fileURLToPath(import.meta.url)),
   "../../../../../.."
 )
-const DOCKERFILE = "infra/render/Dockerfile"
+const BUILD = "infra/render/build.sh"
 const RECORDERS = "apps/www/tests/record"
 
 type Pkg = {
@@ -122,21 +126,24 @@ function workspace(): Map<string, Pkg> {
   return found
 }
 
-/** The packages the Dockerfile's `turbo run build` builds, closures included. */
-function builtBy(dockerfile: string, pkgs: Map<string, Pkg>): Set<string> {
-  const run = /turbo run build([\s\S]*?)&& pnpm/.exec(dockerfile)
-  expect(run, "the Dockerfile's turbo build step").not.toBeNull()
+/** The packages build.sh's `turbo run build` builds, closures included. */
+function builtBy(build: string, pkgs: Map<string, Pkg>): Set<string> {
+  const listed = /^filters\(\) \{([\s\S]*?)^\}/m.exec(build)
+  expect(listed, "build.sh's filters").not.toBeNull()
   const built = new Set<string>()
   const close = (name: string): void => {
     if (built.has(name)) return
     built.add(name)
     for (const dep of pkgs.get(name)?.deps ?? []) close(dep)
   }
-  for (const [, name, caret] of (run?.[1] ?? "").matchAll(
-    /--filter="(@some-ui\/[\w-]+)(\^?)\.\.\."/g
+  for (const [, name, caret] of (listed?.[1] ?? "").matchAll(
+    /'--filter=(@some-ui\/[\w-]+)(\^?)\.\.\.'/g
   )) {
     if (caret === "^") for (const dep of pkgs.get(name)?.deps ?? []) close(dep)
     else close(name)
+  }
+  if (listed?.[1].includes("stage-packages.ts --filters") === true) {
+    for (const name of stagePackages()) close(name)
   }
   return built
 }
@@ -149,11 +156,9 @@ function recorderImports(): Set<string> {
   const names = new Set<string>()
   for (const file of readdirSync(join(REPO_ROOT, RECORDERS))) {
     if (!file.endsWith(".ts")) continue
-    const text = read(join(RECORDERS, file))
-    for (const [whole, name] of text.matchAll(
-      /^(?:import|export)\s+(?:type\s+)?(?:[^"';]*?\s+from\s+)?"(@some-ui\/[\w-]+)/gm
-    )) {
-      if (!/^(?:import|export)\s+type\s/.test(whole)) names.add(name)
+    for (const spec of specifiersOf(read(join(RECORDERS, file)), ".ts")) {
+      const name = /^@some-ui\/[\w.-]+/.exec(spec)?.[0]
+      if (name !== undefined) names.add(name)
     }
   }
   return names
@@ -179,15 +184,25 @@ function loadedFromDist(pkgs: Map<string, Pkg>): Set<string> {
   return needed
 }
 
-function unbuilt(dockerfile: string): Array<string> {
+/** build.sh with the stage's own filters taken out, the recorders' left. */
+function withoutStage(build: string): string {
+  const out = build.replace(
+    /^\s*pnpm exec tsx [^\n]*stage-packages[^\n]*\n/m,
+    ""
+  )
+  expect(out).not.toBe(build)
+  return out
+}
+
+function unbuilt(build: string): Array<string> {
   const pkgs = workspace()
-  const built = builtBy(dockerfile, pkgs)
+  const built = builtBy(build, pkgs)
   return [...loadedFromDist(pkgs)].filter((name) => !built.has(name)).sort()
 }
 
 describe("the render image (RI1)", () => {
   it("builds every workspace package a recorder loads from dist/", () => {
-    expect(unbuilt(read(DOCKERFILE))).toEqual([])
+    expect(unbuilt(read(BUILD))).toEqual([])
   })
 
   it("reads real imports, direct and through source packages", () => {
@@ -196,20 +211,25 @@ describe("the render image (RI1)", () => {
     expect(loaded).toContain("@some-ui/core-utils")
   })
 
-  it("fails a Dockerfile whose filter for such a package is dropped", () => {
-    const dropped = read(DOCKERFILE).replace(
-      /\s*--filter="@some-ui\/engagement\.\.\." \\/,
+  it("fails a build.sh whose filter for such a package is dropped", () => {
+    // The stage's filters dropped too: today they reach engagement through
+    // a devDependency, which is no promise the recorders can lean on.
+    const build = withoutStage(read(BUILD))
+    const dropped = build.replace(
+      /\s*'--filter=@some-ui\/engagement\.\.\.' \\/,
       ""
     )
+    expect(dropped).not.toBe(build)
     expect(unbuilt(dropped)).toContain("@some-ui/engagement")
   })
 
-  it("fails a Dockerfile that builds only what the recorders import directly", () => {
-    // Every filter but engagement's dropped: core-utils, which the recorders
-    // load only through @some-ui/video-render's source, is then unbuilt.
-    const direct = read(DOCKERFILE).replace(
-      /turbo run build[\s\S]*?&& pnpm/,
-      'turbo run build --filter="@some-ui/engagement..." && pnpm'
+  it("fails a build.sh that builds only what the recorders import directly", () => {
+    // Every filter but engagement's dropped, the stage's too: core-utils,
+    // which the recorders load only through @some-ui/video-render's source,
+    // is then unbuilt.
+    const direct = read(BUILD).replace(
+      /^filters\(\) \{[\s\S]*?^\}/m,
+      "filters() {\n\tprintf '%s\\n' '--filter=@some-ui/engagement...'\n}"
     )
     expect(unbuilt(direct)).toContain("@some-ui/core-utils")
   })
