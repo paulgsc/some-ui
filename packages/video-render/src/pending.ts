@@ -19,7 +19,9 @@
  * `filedLine(note)`, and the routine puts back `some-ui.take-picked/1` with
  * the issue so home records the take as picked up. Only a take the owner
  * marked ready reaches that folder: recording one, or leaving it cooking,
- * files nothing.
+ * files nothing. Known limit (#2973): home doesn't take a pickup back, so a
+ * take moved on from ready before the run is still filed; its answer is
+ * stale, and home leaves the take where it is.
  */
 
 import { z } from "zod"

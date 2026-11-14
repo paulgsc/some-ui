@@ -311,6 +311,9 @@ describe("toFile, takes ready for pickup (CONVEYOR3)", () => {
         html_url: "https://github.com/paulgsc/some-ui/pull/9",
       })
     ).toEqual({ body: "b", issue: null })
+    expect(
+      parse({ repo: `paulgsc/${"a".repeat(101)}`, number: 1, body: "b" })
+    ).toEqual({ body: "b", issue: null })
     expect(parse({ repo: "some-ui", number: 3001, body: "b" })).toEqual({
       body: "b",
       issue: null,

@@ -626,7 +626,10 @@ an ask, said on the ask's page, a note left on an episode, with the
 categories the owner picked and maybe a spoken note (#2745), and a Studio take
 the owner moved to **ready for pickup** on the conveyor (CONVEYOR3, #2875).
 Only a take marked ready is filed: recording one, or leaving it cooking, files
-nothing. Which these are,
+nothing. Known limit (#2973): a take moved on from ready for pickup before this
+run is still filed, because home doesn't take a pickup back and this run can't
+see where a take is now; home then leaves the take where the owner put it, and
+the issue waits for the owner to close. Which these are,
 where a note goes, and which were filed already, is `@some-ui/video-render`'s
 `pending.ts`, never this run's reading.
 
@@ -666,7 +669,8 @@ pnpm --filter @some-ui/video-render render pending <transcripts file> <filed fil
 ```
 
 It prints `items`, what is left to file, oldest first; `passed`, each
-transcript or note (`in: "feedback"`) that didn't read, by its place in its
+transcript, note (`in: "feedback"`) or take ready for pickup (`in: "pickup"`)
+that didn't read, by its place in its
 list, and why; and `waiting`, the notes held back because home hasn't heard
 their spoken note yet (each waits two days at most, then is filed saying so);
 `answers`, the answers to put back for takes ready for pickup that an issue
@@ -849,7 +853,8 @@ and is not retried.
     record's put and its
     status code; part E's pending issues filed (repo, number, title, the item's
     `note`, a `feedback` item's `goes`, and a `pickup` item's `seq` and whether
-    its answer was put), the items left for the next run, the `unanswered`
+    its answer was put), each of `answers` put (its name and issue), the items
+    left for the next run, the `unanswered`
     takes,
     the notes `waiting` for their spoken note to be heard, and each `passed`
     transcript or note, never what home heard in a Studio take; for each other voice note, its
