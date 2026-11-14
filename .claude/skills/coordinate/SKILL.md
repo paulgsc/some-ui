@@ -85,8 +85,9 @@ default (owner, #2814 Nov 10; measurements on #2833).
 - Both repos require branches to be up to date. Update a PR once, when it takes its repo's slot
   (green and reviewed), never on every merge: `update_pull_request_branch`, then
   `enable_pr_auto_merge`.
-- Merge first whichever PR is first green and reviewed, unless the critical path says otherwise. Up to date makes server merges serial
-  in practice, so set their order explicitly (#2885, Nov 11).
+- Merge first whichever PR is first green and reviewed, unless the critical path says
+  otherwise. Up to date makes server merges serial in practice, so set their order explicitly
+  (#2885, Nov 11).
 - Treat real dependencies as edges, not as a global queue. Examples: the ledger step, the
   route snapshot, a bookkeeping PR after its server PR.
 - Merge the image or release bot PR last, so one publish carries every content PR (#2833,
