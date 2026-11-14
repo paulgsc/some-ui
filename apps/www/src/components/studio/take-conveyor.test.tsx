@@ -9,6 +9,7 @@
 import { inMemoryStorage } from "@some-ui/core-utils"
 import type { LibraryTake } from "@some-ui/soundbites"
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -85,7 +86,7 @@ describe("a take on the conveyor (CONVEYOR2)", () => {
 
   it("moves it to Ready for pickup with its labels and note, says so until home takes it, and moves on from there", () => {
     const line = conveyor()
-    const { rerender } = render(<TakeSorting take={TAKE} conveyor={line} />)
+    render(<TakeSorting take={TAKE} conveyor={line} />)
     fireEvent.change(screen.getByLabelText(W.page.labels), {
       target: { value: "keeper, brand" },
     })
@@ -123,8 +124,10 @@ describe("a take on the conveyor (CONVEYOR2)", () => {
     expect(screen.getByLabelText<HTMLInputElement>(W.page.note).value).toBe("")
 
     // Home takes it: the row says where it is, and the notice goes.
-    line.port.answered("m1", { kind: "held" })
-    rerender(<TakeSorting take={TAKE} conveyor={line} />)
+    // No rerender: the row follows the conveyor by itself.
+    act(() => {
+      line.port.answered("m1", { kind: "held" })
+    })
     expect(screen.queryByRole("status")).toBeNull()
 
     // The next move is made from where it is now, by its number.
