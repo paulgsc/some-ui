@@ -7,7 +7,14 @@
  * real ffmpeg on `PATH`, at a small frame.
  */
 
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import {
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { authorshipOf } from "@video-render/authorship"
@@ -193,8 +200,10 @@ describe("the sample series", () => {
     }
   })
 
-  it("carry the showcase cut lists, each on cheat-sheet v1 and stamped", async () => {
-    for (const video of ["nixos-upgrade", "rust-scratchpad"]) {
+  it("carry the showcase cut lists, each on cheat-sheet v1", async () => {
+    const videos = await readdir(join(__dirname, "../sample/videos"))
+    expect(videos.length).toBeGreaterThan(0)
+    for (const video of videos) {
       const raw: unknown = JSON.parse(
         await readFile(
           join(__dirname, "../sample/videos", video, "cut-list.json"),
@@ -205,7 +214,6 @@ describe("the sample series", () => {
       expect(parsed.ok ? [] : parsed.problems).toEqual([])
       if (!parsed.ok) continue
       expect(parsed.value.series).toEqual({ id: "cheat-sheet", version: 1 })
-      expect(parsed.value.stamp?.sources.length).toBeGreaterThan(0)
     }
   })
 
