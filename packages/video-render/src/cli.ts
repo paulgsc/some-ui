@@ -233,7 +233,11 @@ async function main(): Promise<void> {
         const series = await readSeries(join(SAMPLE_SERIES, id), version)
         // A sample that is here but unreadable is this checkout's fault,
         // not the essay's: say so, rather than "has no version".
-        if (!series.ok) fail([`${id} v${version}:`, ...series.problems])
+        if (!series.ok)
+          fail([
+            `the sample series ${id} v${version} in this checkout doesn't read:`,
+            ...series.problems,
+          ])
         held.set(`${id}@${version}`, series.value)
       }
     const problems = cardsFolderProblems(
