@@ -80,6 +80,11 @@ export const WORDS = {
       about:
         "A card of commands as a terminal window shows them, a line at a time, each with a badge saying how fresh it is. It shows placeholders, never a value.",
     },
+    "cheat-sheet": {
+      name: "Cheat sheet",
+      about:
+        "A card that closes a part: a row per task, each with its command, a note and a badge saying how fresh it is, a row at a time.",
+    },
   } satisfies Record<Kind, { name: string; about: string }>,
   lookHeading: "Look",
   looks: {
@@ -121,6 +126,11 @@ export const WORDS = {
       about:
         "A dark window with a title bar; commands in blue, comments muted, in a monospace.",
     },
+    "sheet-v1": {
+      name: "Rows",
+      about:
+        "A dark panel per row: the task in plain type, its command in blue monospace, a muted note under it.",
+    },
     "badge-v1": {
       name: "Badge",
       about:
@@ -133,7 +143,8 @@ export const WORDS = {
     | "gridiron-v1"
     | "plate-v1"
     | "badge-v1"
-    | "terminal-v1",
+    | "terminal-v1"
+    | "sheet-v1",
     { name: string; about: string }
   >,
   templateHeading: "Which card",

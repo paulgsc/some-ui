@@ -2,6 +2,7 @@ import type { CSSProperties, JSX } from "react"
 import { AuthorshipLayer } from "@burn-ins/components/stage/authorship"
 import { StatusBadgeLayer } from "@burn-ins/components/stage/badge"
 import { Caption } from "@burn-ins/components/stage/captions"
+import { CheatSheetLayer } from "@burn-ins/components/stage/cheat-sheet"
 import { GameCardLayer } from "@burn-ins/components/stage/game-card"
 import { TerminalLayer } from "@burn-ins/components/stage/terminal"
 import { TextLayer } from "@burn-ins/components/stage/text"
@@ -41,6 +42,9 @@ const Layer = ({
     }
     case "terminal": {
       return <TerminalLayer frame={frame.frame} units={units} />
+    }
+    case "cheat-sheet": {
+      return <CheatSheetLayer frame={frame.frame} units={units} />
     }
     default: {
       return assertNever(frame)
