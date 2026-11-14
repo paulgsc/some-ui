@@ -1,0 +1,160 @@
+{
+  "schema": "some-ui.cut-list/2",
+  "title": "Rust scratchpad",
+  "series": { "id": "cheat-sheet", "version": 1 },
+  "look": "plain",
+  "voice": "read",
+  "shots": [
+    {
+      "id": "C1",
+      "picture": { "kind": "card" },
+      "durationMs": 11300,
+      "burnIns": [
+        {
+          "kind": "flow",
+          "params": {
+            "kicker": "FLOW · OPEN AND CLOSE",
+            "title": "prefix S, write, quit, gone",
+            "steps": [
+              {
+                "badge": "main",
+                "label": "prefix S",
+                "note": "A tmux window named scratch."
+              },
+              {
+                "badge": "main",
+                "label": "A dir in tmpfs",
+                "note": "main.rs and a rust-project.json, so rust-analyzer works with no Cargo.toml."
+              },
+              {
+                "badge": "main",
+                "label": "Vim + a watch pane",
+                "note": "The right pane compiles, lints and runs on every save."
+              },
+              {
+                "badge": "main",
+                "label": "Quit vim",
+                "note": "The directory and the pane go. Nothing is kept: copy out first."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "C2",
+      "picture": { "kind": "card" },
+      "durationMs": 13600,
+      "burnIns": [
+        {
+          "kind": "terminal",
+          "params": {
+            "kicker": "TERMINAL · THE SHELL",
+            "title": "What the binding runs, and the commands inside",
+            "bar": "nix develop · scratchpad",
+            "lines": [
+              {
+                "prompt": "$",
+                "keyword": "nix develop github:paulgsc/scratch#scratchpad -c scratch"
+              },
+              {
+                "comment": "# the toolchain lives only in this dev shell, never in NixOS or home;"
+              },
+              {
+                "comment": "# the first run downloads it, later runs reuse it until a GC",
+                "badge": "main"
+              },
+              {
+                "prompt": "$",
+                "keyword": "scratch run foo.rs",
+                "comment": "     # rustc + clippy, then run it if it compiles"
+              },
+              {
+                "prompt": "$",
+                "keyword": "scratch watch foo.rs",
+                "comment": "   # the same on every save"
+              },
+              {
+                "prompt": "$",
+                "keyword": "scratch check -",
+                "comment": "        # lint only: rustc's JSON diagnostics"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "C3",
+      "picture": { "kind": "card" },
+      "durationMs": 12450,
+      "burnIns": [
+        {
+          "kind": "cheat-sheet",
+          "params": {
+            "kicker": "CHEAT SHEET · IN VIM",
+            "title": "Inside the editor",
+            "rows": [
+              {
+                "badge": "main",
+                "task": "Compile and run",
+                "command": "\\r   or   :make",
+                "note": "Errors go to the quickfix list, output below them."
+              },
+              {
+                "badge": "main",
+                "task": "Lints as you type",
+                "command": "rust-analyzer + scratch check -"
+              },
+              {
+                "badge": "main",
+                "task": "Another file",
+                "command": ":e other.rs",
+                "note": "Its own crate on first save; the pane runs the file saved last."
+              },
+              { "badge": "gap", "task": "Crates", "command": "std only" },
+              {
+                "badge": "main",
+                "task": "Outside tmux",
+                "command": "vim alone",
+                "note": "No watch pane; \\r still runs it."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "C4",
+      "picture": { "kind": "card" },
+      "durationMs": 12450,
+      "burnIns": [
+        {
+          "kind": "legend",
+          "params": { "kicker": "LEGEND", "title": "Reading the badges" }
+        }
+      ]
+    },
+    {
+      "id": "C5",
+      "picture": { "kind": "card" },
+      "durationMs": 10150,
+      "burnIns": [
+        {
+          "kind": "rule",
+          "params": {
+            "kicker": "FRESHNESS",
+            "title": "How stale is this card?",
+            "sources": ["the scratch README", "the code"],
+            "wins": "the README"
+          }
+        }
+      ]
+    }
+  ],
+  "burnIns": [],
+  "stamp": {
+    "sources": ["paulgsc/scratch@8468230", "paulgsc/dotfiles@91cb11b"],
+    "date": "2026-11-14"
+  }
+}

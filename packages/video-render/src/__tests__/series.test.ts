@@ -11,6 +11,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { authorshipOf } from "@video-render/authorship"
+import { parseCutList } from "@video-render/cut-list"
 import type { Shot } from "@video-render/cut-list"
 import { nodePorts, readSeries, renderFolder } from "@video-render/node"
 import type { BurnInRequest } from "@video-render/render"
@@ -189,6 +190,22 @@ describe("the sample series", () => {
     ]) {
       const s = await readSeries(join(__dirname, "../sample/series", id), 1)
       expect(s.ok ? s.value.id : s.problems).toBe(id)
+    }
+  })
+
+  it("carry the showcase cut lists, each on cheat-sheet v1 and stamped", async () => {
+    for (const video of ["nixos-upgrade", "rust-scratchpad"]) {
+      const raw: unknown = JSON.parse(
+        await readFile(
+          join(__dirname, "../sample/videos", video, "cut-list.json"),
+          "utf8"
+        )
+      )
+      const parsed = parseCutList(raw)
+      expect(parsed.ok ? [] : parsed.problems).toEqual([])
+      if (!parsed.ok) continue
+      expect(parsed.value.series).toEqual({ id: "cheat-sheet", version: 1 })
+      expect(parsed.value.stamp?.sources.length).toBeGreaterThan(0)
     }
   })
 
