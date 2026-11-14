@@ -2384,6 +2384,24 @@
       "gray": "#2935 sets 4 to 6 questions and a mix of epics, docs and invariants, and leaves how many of each, the targets and the situations open; each decides what the owner practises every week.",
       "undo": "Change FAMILIES or TARGET_SECONDS in packages/ui/interview-week/src/lib/week/index.ts, CARDS, SITUATIONS, SCRIPT_WORDS or READ_WORDS_PER_MINUTE in src/lib/monday/bundle.ts, or WORDS in src/lib/monday/finish.ts.",
       "refs": ["#2931", "#2935"]
+    },
+    {
+      "id": "C297",
+      "made": "2026-11-14",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/pending.ts",
+        "packages/ui/topik/ROUTINE.md"
+      ],
+      "chose": "A Studio take ready for pickup is filed as a pending issue in paulgsc/some-ui, from its newest ready move only, with the owner's labels said as words in the body, never added as GitHub labels. A take an issue already carries (an answer to an ask, say) gets no second issue: the routine answers its pickup with that issue.",
+      "options": [
+        "file in paulgsc/some-ui, labels as words in the body",
+        "file where the take's ref points, labels as GitHub labels",
+        "file a second issue for a take already filed as an answer"
+      ],
+      "gray": "The issue said to file each take with pending and from-studio, plus its labels as context, and named no repository; a take's ref names a Studio project and shot, not a repository, and GitHub labels made from free text would add a label per word the owner types.",
+      "undo": "Change the pickup branch of toFile in packages/video-render/src/pending.ts (its repo and takeLabels) and part E's pickup bullet in packages/ui/topik/ROUTINE.md.",
+      "refs": ["#2875", "#2872"]
     }
   ]
 }

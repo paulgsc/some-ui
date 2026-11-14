@@ -3,6 +3,7 @@ import {
   answerRef,
   HEARD_WITHIN_MS,
   pendingOfRef,
+  pickedAnswer,
   toFile,
 } from "@video-render/pending"
 import { describe, expect, it } from "vitest"
@@ -166,5 +167,131 @@ describe("toFile, notes on episodes (SFEED6)", () => {
         in: "feedback",
       },
     ])
+  })
+})
+
+const ready = (over: Record<string, unknown>): unknown => ({
+  schema: "some-ui.take-pickup/1",
+  note: "t1",
+  ref: "build-journal:ep04:2",
+  heard: "open on the conveyor page",
+  labels: ["ep04"],
+  readyAt: "2026-11-14T01:00:00.000Z",
+  seq: 3,
+  ...over,
+})
+
+/** `toFile` with only pickups, as `render pending` passes them. */
+const pickupsOnly = (
+  pickups: ReadonlyArray<unknown>,
+  filed: Parameters<typeof toFile>[1] = [],
+  picked: ReadonlyArray<string> = []
+): ReturnType<typeof toFile> =>
+  toFile([], filed, [], Date.parse("2026-11-14T02:00:00Z"), pickups, picked)
+
+describe("toFile, takes ready for pickup (CONVEYOR3)", () => {
+  it("files each take once, from its newest move, with its labels as context and where its answer goes", () => {
+    const { items, answers } = pickupsOnly([
+      ready({ seq: 3 }),
+      ready({ seq: 5, labels: ["ep04", "opening"] }),
+      ready({ note: "t0", readyAt: "2026-11-13T09:00:00Z", labels: [] }),
+    ])
+    expect(items).toEqual([
+      expect.objectContaining({ kind: "pickup", note: "t0", seq: 3 }),
+      {
+        kind: "pickup",
+        repo: "some-ui",
+        note: "t1",
+        seq: 5,
+        ref: "build-journal:ep04:2",
+        at: "2026-11-14T01:00:00.000Z",
+        heard: "open on the conveyor page",
+        takeLabels: ["ep04", "opening"],
+        labels: ["pending", "from-studio"],
+        line: "Kept on home as the take `t1`.",
+        picked: "picked-t1-5.json",
+      },
+    ])
+    expect(answers).toEqual([])
+  })
+
+  it("files no second issue for a take filed already, and answers with that one", () => {
+    const body = "Said in Studio.\n\nKept on home as the take `t1`."
+    const { items, answers, unanswered } = pickupsOnly(
+      [ready({}), ready({ note: "t2" })],
+      [
+        { body, issue: "paulgsc/some-ui#3001" },
+        "An older one.\n\nKept on home as the take `t2`.",
+      ]
+    )
+    expect(items).toEqual([])
+    expect(answers).toEqual([pickedAnswer("t1", 3, "paulgsc/some-ui#3001")])
+    expect(answers[0]).toEqual({
+      name: "picked-t1-3.json",
+      body: {
+        schema: "some-ui.take-picked/1",
+        note: "t1",
+        seq: 3,
+        issue: "paulgsc/some-ui#3001",
+      },
+    })
+    // Filed, but the list didn't say where: said, never filed again.
+    expect(unanswered).toEqual(["t2"])
+  })
+
+  it("answers a take filed this run as an answer to an ask on the next run, never with a second issue", () => {
+    const ask = heard({ note: "t1" })
+    const { items, unanswered } = toFile(
+      [ask],
+      [],
+      [],
+      Date.parse("2026-11-14T02:00:00Z"),
+      [ready({})]
+    )
+    expect(items.map((item) => item.kind)).toEqual(["ask"])
+    expect(unanswered).toEqual(["t1"])
+  })
+
+  it("puts no answer the picked folder holds already", () => {
+    const body = "Kept on home as the take `t1`."
+    expect(
+      pickupsOnly(
+        [ready({})],
+        [{ body, issue: "paulgsc/some-ui#3001" }],
+        ["picked-t1-3.json"]
+      ).answers
+    ).toEqual([])
+    // An answer to an older move is no answer to the newest.
+    expect(
+      pickupsOnly(
+        [ready({ seq: 5 })],
+        [{ body, issue: "paulgsc/some-ui#3001" }],
+        ["picked-t1-3.json"]
+      ).answers
+    ).toEqual([pickedAnswer("t1", 5, "paulgsc/some-ui#3001")])
+    // A take not filed whose answer is there is left alone.
+    expect(pickupsOnly([ready({})], [], ["picked-t1-3.json"]).items).toEqual([])
+  })
+
+  it("passes a pickup that doesn't read, by its place in the pickup list", () => {
+    const { items, passed } = pickupsOnly([
+      ready({}),
+      ready({ heard: " " }),
+      ready({ seq: 0 }),
+      { schema: "some-ui.take-picked/1" },
+    ])
+    expect(items).toHaveLength(1)
+    expect(passed).toEqual(
+      [1, 2, 3].map((place) => ({
+        place,
+        why: "it doesn't read as a take ready for pickup",
+        in: "pickup",
+      }))
+    )
+  })
+
+  it("files nothing from a transcript alone: a take is filed only once marked ready", () => {
+    const take = heard({ ref: "build-journal:ep04:2", note: "t1" })
+    expect(toFile([take], []).items).toEqual([])
   })
 })

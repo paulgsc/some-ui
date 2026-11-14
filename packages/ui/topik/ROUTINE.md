@@ -622,8 +622,11 @@ Home keeps what the owner says in Studio about something to be done (the take
 and its transcript) and never files an issue itself; this run files each one
 as a **pending** issue, which waits until the owner starts a session for it
 (paulgsc/some-ui#2670, decisions 6 and 11; #2746). Today that is an answer to
-an ask, said on the ask's page, and a note left on an episode, with the
-categories the owner picked and maybe a spoken note (#2745). Which these are,
+an ask, said on the ask's page, a note left on an episode, with the
+categories the owner picked and maybe a spoken note (#2745), and a Studio take
+the owner moved to **ready for pickup** on the conveyor (CONVEYOR3, #2875).
+Only a take marked ready is filed: recording one, or leaving it cooking, files
+nothing. Which these are,
 where a note goes, and which were filed already, is `@some-ui/video-render`'s
 `pending.ts`, never this run's reading.
 
@@ -637,11 +640,18 @@ their bodies as one JSON list in a scratch file outside the checkout (the
 transcripts file). Then list the issues already filed with the label `from-studio`, open and closed,
 whether or not they still carry `pending`, in `paulgsc/some-ui` and
 `paulgsc/server` (`list_issues`, every page), and save them, with their
-bodies, as one JSON list in a second scratch file (the filed file). Last,
+bodies and their `html_url`, as one JSON list in a second scratch file (the
+filed file): a take ready for pickup that an issue already carries is answered
+with that issue, found by its `html_url`. Last,
 list the `feedback` folder's live items the same way, fetch each
 `feedback-<note>.json` once, and save their bodies as one JSON list in a
 third (the feedback file); if that listing is refused, save `[]` and say in
-the summary that the notes on episodes wait for the next run. If a repository's list is refused, file nothing in that
+the summary that the notes on episodes wait for the next run. Then list the
+`pickup` folder's live items, fetch each `pickup-<note>-<seq>.json` once, and
+save their bodies as one JSON list in a fourth (the pickups file); and list the
+`picked` folder's live items and save just their names as one JSON list in a
+fifth (the picked file). If either listing is refused, save `[]` for both and
+say in the summary that the takes ready for pickup wait for the next run. If a repository's list is refused, file nothing in that
 repository this run and say so in the summary: a take whose issue the list
 didn't show would be filed twice. A take whose transcript, or a note whose
 file, home archived before any run filed it (the mailbox archives after 30
@@ -651,13 +661,16 @@ well before then.
 E2. From the repo root, run
 
 ```sh
-pnpm --filter @some-ui/video-render render pending <transcripts file> <filed file> <feedback file>
+pnpm --filter @some-ui/video-render render pending <transcripts file> <filed file> <feedback file> <pickups file> <picked file>
 ```
 
 It prints `items`, what is left to file, oldest first; `passed`, each
 transcript or note (`in: "feedback"`) that didn't read, by its place in its
 list, and why; and `waiting`, the notes held back because home hasn't heard
-their spoken note yet (each waits two days at most, then is filed saying so). Each item names its `kind`, the `repo` it concerns, its `note`
+their spoken note yet (each waits two days at most, then is filed saying so);
+`answers`, the answers to put back for takes ready for pickup that an issue
+already carries (E5); and `unanswered`, such takes whose issue the filed list
+didn't say where to find, which wait for the next run. Each item names its `kind`, the `repo` it concerns, its `note`
 id and when it was said or written (`at`), what home `heard` (`null` for a
 note with nothing said), the `labels` to file it with, and the `line` its
 issue ends with. An `ask` item names the issue it is `about`. A `feedback`
@@ -665,7 +678,9 @@ item is one place a note goes, `goes`: `nextFill`, `template` or `defect`,
 with the note's `feed`, `episode`, its moment `atMs`, the `categories`
 that send it there, its spoken note's `take` (or `null`), and `filed`, the
 places this note already has an issue for; a note that goes to two places is
-two items. Never file
+two items. A `pickup` item is a take the owner moved to ready for pickup: its
+`seq` (that move's number), the `ref` it belongs to (`<project>:<shot>:<take>`),
+the owner's `takeLabels`, and `picked`, the name its answer goes under. Never file
 an item the script didn't print, and never change its `line`: that line is
 how the next run knows it was filed.
 
@@ -704,6 +719,12 @@ What the issue says depends on its `kind`:
   earlier this run), the new issue links that one; the earlier one is left as
   it is (C5, E4).
 
+- **`pickup`, a take ready for pickup.** Title: what the owner wants done, in
+  a few words of your own. Body: what they said should happen, in your own
+  words; the shot it belongs to (`ref`); and their labels (`takeLabels`), as
+  context, said as words in the body and never added as GitHub labels. A take
+  with no labels says nothing of them.
+
 Every issue, of any kind:
 
 - states the change in your own words, C2's rule (decision 11): never quote
@@ -725,7 +746,19 @@ E4. As C5 and C6, and don't comment on, label, close or edit the ask or any
 other issue: the pending issue waits for the owner, and the ask stays open
 until a session acts on it. If a call is refused, put each item left in the
 summary in your own words: an `ask` by its repo, `about` and `note`, a
-`feedback` item by its `note` and `goes`.
+`feedback` item by its `note` and `goes`, a `pickup` item by its `note` and
+`seq`.
+
+E5. For each `pickup` item filed this run, put its answer in the mailbox's
+`picked` folder under the item's `picked` name, with a `PUT` as step 6 shows
+(`/v1/picked/items/<name>`, the body built with `node` or `jq`, not by hand):
+the body
+`{"schema":"some-ui.take-picked/1","note":<note>,"seq":<seq>,"issue":"paulgsc/some-ui#<n>"}`,
+`<n>` the issue just filed. Then put each of `answers` as it is, under its
+`name`, with its `body`. Home records the take as picked up with that issue,
+and the conveyor page shows where it went. A put answered `200` was already
+there; one answered `409` or refused goes in the summary by its name, and the
+next run, which finds the take filed by its line, answers it again.
 
 ## The run record
 
@@ -810,7 +843,9 @@ and is not retried.
     and each stock scene written (title, genre, premise, level); the run
     record's put and its
     status code; part E's pending issues filed (repo, number, title, the item's
-    `note`, and a `feedback` item's `goes`), the items left for the next run,
+    `note`, a `feedback` item's `goes`, and a `pickup` item's `seq` and whether
+    its answer was put), the items left for the next run, the `unanswered`
+    takes,
     the notes `waiting` for their spoken note to be heard, and each `passed`
     transcript or note, never what home heard in a Studio take; for each other voice note, its
     transcript's name and `text`, or that

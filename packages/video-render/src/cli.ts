@@ -49,13 +49,14 @@
  * writes the sound kit's six cues (`cues.ts`, HYPER4) into the folder, home's
  * `${STORAGE}/brand/sounds`, refusing all of them if one's pin doesn't name it.
  *
- *   pnpm --filter @some-ui/video-render render pending <transcripts.json> <filed.json> [feedback.json]
+ *   pnpm --filter @some-ui/video-render render pending <transcripts.json> <filed.json> [feedback.json] [pickups.json picked.json]
  *
  * prints the Studio takes and the notes on episodes left to file as pending
  * issues (`pending.ts`): from the mailbox's transcripts (a list of their
  * bodies), the issues already filed (a list of their bodies, or of issues
- * each with its `body`) and, when given, the mailbox's `feedback` folder (a
- * list of its bodies).
+ * each with its `body` and `html_url`) and, when given, the mailbox's
+ * `feedback` folder (a list of its bodies), its `pickup` folder (a list of
+ * its bodies) and the names in its `picked` folder (a list of names).
  *
  * `pnpm --filter` runs this from the package; INIT_CWD is where it was typed.
  */
@@ -118,7 +119,7 @@ async function main(): Promise<void> {
       to: { type: "string" },
     },
   })
-  const [first, second, third, fourth] = positionals
+  const [first, second, third, fourth, fifth, sixth] = positionals
   if (first === "music-bed") {
     if (!values.out.endsWith(".wav"))
       fail(["usage: render music-bed --out <file>.wav"])
@@ -171,17 +172,19 @@ async function main(): Promise<void> {
     return
   }
   if (first === "pending") {
-    if (!second || !third)
+    if (!second || !third || (fifth !== undefined) !== (sixth !== undefined))
       fail([
-        "usage: render pending <transcripts.json> <filed.json> [feedback.json]",
+        "usage: render pending <transcripts.json> <filed.json> [feedback.json] [pickups.json picked.json]",
       ])
     const transcripts = await readAs(z.array(z.unknown()), here(second))
     const filed = await readAs(FiledSchema, here(third))
     const feedback = fourth
       ? await readAs(z.array(z.unknown()), here(fourth))
       : []
+    const pickups = fifth ? await readAs(z.array(z.unknown()), here(fifth)) : []
+    const picked = sixth ? await readAs(z.array(z.string()), here(sixth)) : []
     process.stdout.write(
-      `${JSON.stringify(toFile(transcripts, filed, feedback), null, 1)}\n`
+      `${JSON.stringify(toFile(transcripts, filed, feedback, Date.now(), pickups, picked), null, 1)}\n`
     )
     return
   }
@@ -293,13 +296,32 @@ const HeardSchema = z.union([
   z.object({ words: WordsSchema }).transform(({ words }) => words),
 ])
 
-/** The bodies of the issues already filed: as text, or as GitHub lists them. */
+/** `https://github.com/<owner>/<repo>/issues/<n>`, as `<owner>/<repo>#<n>`. */
+const ISSUE_URL =
+  /^https:\/\/github\.com\/([\w.-]+)\/([\w.-]+)\/issues\/([1-9]\d*)$/
+
+/**
+ * The issues already filed: as text, or as GitHub lists them, with where
+ * each is when its `html_url` says (a pickup already filed is answered with it).
+ */
 const FiledSchema = z.array(
   z.union([
     z.string(),
     z
-      .object({ body: z.string().nullable() })
-      .transform(({ body }) => body ?? ""),
+      .object({
+        body: z.string().nullable(),
+        html_url: z.string().optional(),
+      })
+      .transform(({ body, html_url: url }) => {
+        const [, owner, repo, number] = ISSUE_URL.exec(url ?? "") ?? []
+        return {
+          body: body ?? "",
+          issue:
+            owner === undefined || repo === undefined || number === undefined
+              ? null
+              : `${owner}/${repo}#${number}`,
+        }
+      }),
   ])
 )
 
