@@ -121,6 +121,17 @@ const ToPage = ({
         </Link>
       )
     }
+    case "essay": {
+      return (
+        <Link
+          to="/journal/cards/$key"
+          params={{ key: subject.key }}
+          className={className}
+        >
+          {children}
+        </Link>
+      )
+    }
     case "other": {
       return null
     }

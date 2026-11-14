@@ -38,6 +38,8 @@ const NOT_SHOWN: Readonly<Record<string, string>> = {
   "apps/www/src/lib/takes-desk/index.ts#max": DESK,
   "apps/www/src/lib/takes-desk/index.ts#maxBytes(options.limits)": DESK,
   "apps/www/src/lib/take-conveyor/model.ts#LABELS_MAX": ONE_ITEM,
+  "apps/www/src/lib/cards-essay-key.ts#MAX_ESSAY_KEY":
+    "Not a bound on anything the person makes: home names each cards essay, and a key past home's own longest opens no page, as home would serve none.",
   "packages/ui/soundbites/src/lib/policy.ts#SOUNDBITE_LIMIT":
     "Soundbites: its own screen shows how many of six are kept, beside the recorder, and which one the next replaces.",
   "packages/ui/soundbites/src/lib/policy.ts#SOUNDBITES_MAX_BYTES":

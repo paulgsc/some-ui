@@ -64,6 +64,8 @@ const EpisodeSchema = z.object({
   at: z.number().int(),
   template: TEMPLATE,
   expiresAt: z.number().int().nonnegative().optional(),
+  /** The video's size, where home said it: what the phone brings to watch it. */
+  bytes: z.number().int().nonnegative().optional(),
 })
 
 const FailedSchema = EpisodeSchema.extend({

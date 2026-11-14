@@ -33,6 +33,9 @@ export function kindName(subject: Subject): string {
     case "walk": {
       return "A clip's walk-through"
     }
+    case "essay": {
+      return "Cards essay"
+    }
     case "other": {
       return "Something else"
     }
@@ -55,6 +58,9 @@ export function thingName(subject: Subject): string {
     }
     case "walk": {
       return `The ${subject.side} side of a clip`
+    }
+    case "essay": {
+      return essayName(subject.key)
     }
     case "other": {
       return "A video"
@@ -87,6 +93,9 @@ export function openWords(subject: Subject): string | null {
     }
     case "walk": {
       return "Open the clip"
+    }
+    case "essay": {
+      return "Open the essay"
     }
     case "other": {
       return null
@@ -131,6 +140,18 @@ export function roughly(seconds: number): string {
 }
 
 /** A day home expects something, as a person reads it. */
+/**
+ * A cards essay by its key (`<slug>-<YYYY-MM-DD>`, CARDS7): its subject in
+ * words and the day it was checked, "Rust scratchpad, as of Saturday,
+ * November 14".
+ */
+export function essayName(key: string): string {
+  const day = key.slice(-10)
+  const words = key.slice(0, -11).split("-").join(" ")
+  const subject = words.charAt(0).toUpperCase() + words.slice(1)
+  return `${subject}, as of ${dayOf(day)}`
+}
+
 export function dayOf(on: string): string {
   const [year = 0, month = 1, day = 1] = on.split("-").map(Number)
   const date = new Date(Date.UTC(year, month - 1, day))

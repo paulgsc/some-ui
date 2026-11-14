@@ -168,6 +168,9 @@ const HOME_LINK_CALLERS = new Set([
   // LA8 (SFEED12): a template's preview, which asks home to make one, reads
   // the newest, and asks for its video a part at a time on Watch.
   "lib/template-preview/index.ts",
+  // LA8 (CARDS7): a cards essay's page, which asks for its video a part at a
+  // time on Watch. It sends nothing of its own.
+  "lib/cards-essay-video/index.ts",
   // LA8 (SFEED6): Studio's Feedback page, which asks home for the notes it
   // keeps on each feed's episodes. It sends nothing of its own: the notes go
   // home on the voice lane's run (`lib/home-link/episode-notes`).
@@ -211,6 +214,7 @@ const KEEPERS = new Set([
   "lib/home-link/call-videos.ts",
   "lib/home-link/renders.ts",
   "lib/home-link/previews.ts",
+  "lib/home-link/cards-essays.ts",
   "lib/home-link/clips.ts",
   "lib/home-link/episode-notes-read.ts",
 ])
@@ -293,6 +297,12 @@ const PREVIEWS_SENDS = [
     "undefined",
     "{ start, end }",
   ],
+]
+
+/** LA8, CARDS7: a cards essay's video, and the one request it may send. */
+const ESSAYS_READ = "lib/home-link/cards-essays.ts"
+const ESSAYS_SENDS = [
+  ['"GET"', "videoPath(key)", "undefined", "{ start, end }"],
 ]
 
 /** LA8, server#801: a clip's frame, and the one request it may send. */
@@ -931,6 +941,22 @@ describe("LA8: the phone reaches home through one module", () => {
         /from "\.\/previews"|from "@\/lib\/home-link\/previews"/.test(read(f))
       )
     expect(readers).toEqual(["lib/template-preview/index.ts"])
+  })
+
+  it("sends nothing from a cards essay but its video's parts, and only the essay's page asks them (CARDS7)", () => {
+    expect(sendCalls(ESSAYS_READ, read(ESSAYS_READ))).toEqual(ESSAYS_SENDS)
+    expect(read(ESSAYS_READ)).toContain(
+      "`/cards-essays/${encodeURIComponent(key)}/video`"
+    )
+    expect(read(ESSAYS_READ)).toContain("homeLink().keep(")
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/cards-essays"|from "@\/lib\/home-link\/cards-essays"/.test(
+          read(f)
+        )
+      )
+    expect(readers).toEqual(["lib/cards-essay-video/index.ts"])
   })
 
   it("sends nothing from Ideas on home but its four requests, and only it asks them (ST26 c)", () => {

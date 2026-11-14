@@ -127,6 +127,86 @@
     {
       "id": "C4",
       "picture": { "kind": "card" },
+      "durationMs": 11300,
+      "burnIns": [
+        {
+          "kind": "cheat-sheet",
+          "params": {
+            "kicker": "CHEAT SHEET · WHEN IT ISN'T WHAT YOU EXPECT",
+            "title": "nano, a stale copy, a lost binding",
+            "rows": [
+              {
+                "badge": "main",
+                "task": "nano opens",
+                "command": "vim, always",
+                "note": "NixOS makes nano the default EDITOR; scratch#2 stopped reading it."
+              },
+              {
+                "badge": "main",
+                "task": "Another editor",
+                "command": "SCRATCH_EDITOR=…",
+                "note": "Only on purpose: \\r and lints as you type are vim's; the pane still runs."
+              },
+              {
+                "badge": "you",
+                "task": "nano still opens",
+                "command": "--refresh (next card)",
+                "note": "Nix is still running a copy from before scratch#2."
+              },
+              {
+                "badge": "gap",
+                "task": "prefix r after an upgrade",
+                "command": "tmux source-file",
+                "note": "prefix r reads ~/.tmux.conf; home-manager writes ~/.config/tmux/tmux.conf (dotfiles#66)."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "C5",
+      "picture": { "kind": "card" },
+      "durationMs": 13600,
+      "burnIns": [
+        {
+          "kind": "terminal",
+          "params": {
+            "kicker": "TERMINAL · PAST NIX'S CACHE",
+            "title": "Take a new main, and reload tmux",
+            "bar": "your shell",
+            "lines": [
+              {
+                "prompt": "$",
+                "keyword": "nix develop --refresh github:paulgsc/scratch#scratchpad -c true"
+              },
+              {
+                "comment": "# Nix reuses its last fetch for an hour (tarball-ttl): this looks now",
+                "badge": "main"
+              },
+              {
+                "comment": "# the toolchain moves only with flake.lock, never on a refresh"
+              },
+              {
+                "comment": "# without --refresh, it fetches the toolchain ahead of prefix S",
+                "badge": "you"
+              },
+              {
+                "prompt": "$",
+                "keyword": "tmux source-file ~/.config/tmux/tmux.conf"
+              },
+              {
+                "comment": "# after an upgrade, so prefix S is bound: not prefix r",
+                "badge": "you"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "C6",
+      "picture": { "kind": "card" },
       "durationMs": 12450,
       "burnIns": [
         {
@@ -136,7 +216,7 @@
       ]
     },
     {
-      "id": "C5",
+      "id": "C7",
       "picture": { "kind": "card" },
       "durationMs": 10150,
       "burnIns": [
@@ -154,7 +234,7 @@
   ],
   "burnIns": [],
   "stamp": {
-    "sources": ["paulgsc/scratch@8468230", "paulgsc/dotfiles@91cb11b"],
+    "sources": ["paulgsc/scratch@35ae1e0", "paulgsc/dotfiles@91cb11b"],
     "date": "2026-11-14"
   }
 }

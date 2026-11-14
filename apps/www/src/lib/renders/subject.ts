@@ -1,12 +1,13 @@
 /**
  * What a row on home's board is (#2899): an episode of a feed, a template's
- * preview, a clip's walk, or a kind the phone doesn't know yet. Pure, so the
+ * preview, a clip's walk, a cards essay, or a kind the phone doesn't know yet. Pure, so the
  * page can name each in the person's terms and open its page; what it says
  * is `./words`.
  */
 import type { TemplateId } from "@some-ui/video-render"
 import { isTemplateId, TEMPLATE_IDS } from "@some-ui/video-render"
 
+import { isEssayKey } from "@/lib/cards-essay-key"
 import type { Feed } from "@/lib/feeds"
 import { isFeed } from "@/lib/feeds"
 
@@ -19,6 +20,8 @@ export type Subject =
   | { readonly kind: "preview"; readonly template: TemplateId | null }
   /** Opens the clip's page. */
   | { readonly kind: "walk"; readonly clip: string; readonly side: ClipSide }
+  /** Opens the essay's page, where its video plays (CARDS7, #2979). */
+  | { readonly kind: "essay"; readonly key: string }
   | { readonly kind: "other" }
 
 /** A row as home's board gives it. */
@@ -55,6 +58,8 @@ export function subjectOf(row: Row): Subject {
       }
     return { kind: "preview", template: templateOfKey(row.key) }
   }
+  if (row.feed === "cards-essay" && isEssayKey(row.key))
+    return { kind: "essay", key: row.key }
   if (row.feed === "clip-walk") {
     for (const side of SIDES) {
       const clip = row.key.endsWith(`-${side}`)
