@@ -1,5 +1,6 @@
 export * from "./ask"
 export * from "./authorship"
+export { BADGE_TIMING, revealEnds } from "./badges"
 export * from "./call"
 export * from "./call-facts"
 export * from "./cards-essay"
