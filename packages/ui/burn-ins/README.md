@@ -47,8 +47,8 @@ it is; each module's header does the same for its part:
   header, items that appear one at a time, each with its badge, and the
   values rule, which refuses text that gives a name a value.
 - `src/lib/terminal.ts`: the terminal card (CARDS2, #2467), design
-  `terminal-v1`: a window of lines in the cards' monospace, JetBrains Mono
-  (`src/lib/mono.ts`; SIL OFL 1.1), which the host page loads in weight 500.
+  `terminal-v1`: a window of lines in the cards' monospace
+  (`src/lib/mono.ts`).
 - `src/lib/cheat-sheet.ts`: the cheat-sheet card (CARDS3, #2468), design
   `sheet-v1`: a row per task with its badge, command and note; the task
   above the command where the two don't fit side by side.

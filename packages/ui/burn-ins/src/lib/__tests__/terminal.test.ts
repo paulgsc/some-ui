@@ -19,7 +19,7 @@ const at = (params: unknown, t: number): TerminalFrame => {
   return f.frame
 }
 
-/** Vlog 0's "where values live" card, as the prototype drew it. */
+/** Vlog 0's "where values live" card. */
 const WHERE_VALUES_LIVE = {
   kicker: "TERMINAL · WHERE VALUES LIVE",
   title: "Each value has one home, and the card shows none",
@@ -70,11 +70,72 @@ describe("the terminal card", () => {
     ["  GITHUB_TOKEN=ghp_abc123", "GITHUB_TOKEN"],
     ["export db_pass=hunter2", "db_pass"],
     ['env "KEY=value" run', "KEY"],
+    ['export API_KEY="sk-live-abc"', "API_KEY"],
+    ["export API_KEY='sk-live-abc'", "API_KEY"],
+    ["export TOKEN=`cat f`", "TOKEN"],
+    ["TOKEN=<x>sk-live-abc", "TOKEN"],
+    ["TOKEN=ENC[x]plain", "TOKEN"],
+    ["A=<x>,B=secret", "A"],
+    ['KEY=""sk-live-abc', "KEY"],
+    ["KEY=''sk-live-abc", "KEY"],
+    ['KEY="<x>"sk-live', "KEY"],
+    ['KEY="…"hunter2', "KEY"],
   ])("refuses a line that gives a value: %s", (text, name) => {
-    expect(valueProblem(text)).toBe(name)
     const p = terminal({ title: "Values", lines: [{ text }] })
     expect(p.ok ? [] : p.problems).toEqual([
       `the terminal burn-in (terminal-v1): line 1 gives ${name} a value; a card shows a placeholder, never a value`,
+    ])
+  })
+
+  it("spells out the badge of the line that appears first, whatever the order they're listed in", () => {
+    const lines = [
+      { text: "later", badge: "pr", atMs: 3000 },
+      { text: "first", badge: "pr", atMs: 0 },
+    ]
+    const f = at({ title: "Order", lines }, 3500)
+    expect(f.rows.map((r) => r.badge?.open === null)).toEqual([true, true])
+    expect(
+      at({ title: "Order", lines }, 500).rows[1]?.badge?.open
+    ).not.toBeNull()
+  })
+
+  it("never reads a placeholder across two lines", () => {
+    expect(valueProblem("KEY=<x\nB=sk-live-abc>")).toBe("KEY")
+    const p = terminal({
+      kicker: "KEY=<x",
+      title: "B=sk-live-abc>",
+      lines: [{ text: "x" }],
+    })
+    expect(p.ok).toBe(false)
+  })
+
+  it.each([
+    ['export KEY="', 'sk-live-abc"'],
+    ["export KEY='", "sk-live-abc'"],
+    ["export KEY=", "sk-live-abc"],
+  ])(
+    "refuses a value that opens in the kicker and closes in the title: %s",
+    (k, title) => {
+      const p = terminal({ kicker: k, title, lines: [{ text: "x" }] })
+      expect(p.ok).toBe(false)
+    }
+  )
+
+  it.each([
+    ["SET KEY=<token>", "Rotate it weekly"],
+    ["SET KEY=ENC[x]", "then deploy"],
+    ["SET KEY=", "<token>"],
+  ])("lets a placeholder in the kicker sit over any title: %s", (k, title) => {
+    expect(terminal({ kicker: k, title, lines: [{ text: "x" }] }).ok).toBe(true)
+  })
+
+  it("refuses a heading that gives a value", () => {
+    const p = terminal({
+      title: "Set API_KEY=sk-live-abc",
+      lines: [{ text: "x" }],
+    })
+    expect(p.ok ? [] : p.problems).toEqual([
+      "the terminal burn-in (terminal-v1): the heading gives API_KEY a value; a card shows a placeholder, never a value",
     ])
   })
 
@@ -82,6 +143,10 @@ describe("the terminal card", () => {
     "KEY=",
     "KEY=…",
     "KEY=<placeholder>",
+    'KEY=""',
+    'KEY="<placeholder>"',
+    "KEY=<a> && OTHER=…",
+    "KEY=<from the vault, path=prod>",
     "KEY=ENC[AES256_GCM,data:…]",
     "--retries=3",
     "a == b",

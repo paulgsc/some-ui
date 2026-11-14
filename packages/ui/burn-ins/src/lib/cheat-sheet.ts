@@ -199,11 +199,12 @@ export function drawCheatSheet(
   const heading = cardHeading(p, g)
   if (!heading.ok) return heading
   const box = g.regions.body
+  const times = itemTimes(p.rows.map((r) => r.atMs))
   const opens = badgesOpening(
     p.rows.map((r) => r.badge),
+    times,
     p.badgesSeen
   )
-  const times = itemTimes(p.rows.map((r) => r.atMs))
   const problems: Array<string> = []
   const rows: Array<RowDrawing> = []
   let y = box.y

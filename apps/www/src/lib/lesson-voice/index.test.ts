@@ -55,16 +55,6 @@ describe("summarizeLessonVoice", () => {
     expect(summary.detail).toContain("offers no voice for Korean")
   })
 
-  it("warns when the voice service has no Korean voice", () => {
-    const summary = summarizeLessonVoice({
-      platform: "hosted",
-      voice: null,
-      availability: "missing",
-    })
-    expect(summary.warning).toBe(true)
-    expect(summary.fix).toBe("Pick a provider with a Korean voice in Settings.")
-  })
-
   it("does not warn while a platform has not said yet, or could not say", () => {
     for (const availability of ["checking", "unverifiable"] as const) {
       const summary = summarizeLessonVoice({

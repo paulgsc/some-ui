@@ -1014,8 +1014,8 @@ offline, in any language whose voice data is installed (#1625):
 - **Settings → Voice** lists the phone's Korean voices, offline ones first,
   with a sample to play. The sample is a line through the speech session
   (`useVoicePreview`), so it honors mute and the lesson it interrupts is
-  said again after it. The web builds' provider and voice fields, which
-  choose a hosted voice, are hidden on the phone (#1628).
+  said again after it. The web builds speak with the browser's own voice and
+  offer no voice to choose.
 - **Manifest:** the plugin adds one `<queries>` entry for
   `android.intent.action.TTS_SERVICE`, so the app can see the installed
   engines. It adds no permission and no exported component, and the review

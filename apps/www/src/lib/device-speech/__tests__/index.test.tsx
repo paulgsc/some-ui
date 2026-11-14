@@ -119,10 +119,9 @@ function renderSession(voiceId: string, lines: ReadonlyArray<string>): void {
   render(
     <SpeechProvider
       config={{
-        mode: "static",
         language: "korean",
         native: deviceSpeechBackend(voiceId),
-        adapters: { static: nativeSpeech },
+        backend: nativeSpeech,
       }}
     >
       <Lines lines={lines} />
@@ -190,10 +189,9 @@ describe("the phone's voice on return to the app", () => {
     render(
       <SpeechProvider
         config={{
-          mode: "static",
           language: "korean",
           native: deviceSpeechBackend(""),
-          adapters: { static: nativeSpeech },
+          backend: nativeSpeech,
         }}
       >
         <Report />
@@ -254,10 +252,9 @@ describe("a voice sample in Settings", () => {
     render(
       <SpeechProvider
         config={{
-          mode: "static",
           language: "korean",
           native: deviceSpeechBackend(""),
-          adapters: { static: nativeSpeech },
+          backend: nativeSpeech,
         }}
       >
         <Sample />
