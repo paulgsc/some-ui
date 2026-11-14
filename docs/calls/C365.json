@@ -1,0 +1,19 @@
+{
+  "id": "C365",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "server:crates/db/call_week/src/video.rs",
+    "server:apps/servers/file_host/src/feeds/videos.rs",
+    "server:infra/render/render-calls.sh"
+  ],
+  "chose": "A part of a week of the call is named by a key: part 1 by the week's day, as a week of one video always was, and part k by <day>-p<k>. Every table, folder, log, job and route takes that key, so the existing feed routes serve each part with no new route, and a week of one video is exactly what it was.",
+  "options": [
+    "part keys <day> and <day>-p<k> on the existing routes",
+    "new routes /feeds/:feed/videos/:key/parts/:part/…",
+    "one episode per week with a nested parts array"
+  ],
+  "gray": "The coordinator asked for (week, part) uniqueness with part 1 of 1 equal to today's row, and for /calls to list a week with its parts. Flat rows sharing week/part/of, rather than nesting, were the session's choice.",
+  "undo": "Keep the key scheme and add nested routes beside it; the tables are keyed (week, part) either way.",
+  "refs": ["#2918", "server#872"]
+}

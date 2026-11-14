@@ -1,0 +1,18 @@
+{
+  "id": "C368",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/feeds/videos.rs",
+    "server:apps/servers/file_host/src/call_weeks/pass.rs"
+  ],
+  "chose": "A part is let go on its own, with its own link first. While another part of its week still has its video, file_host marks it <key>.let-go beside the week's file, so the worker renders the rest and never that part again. The week's file and marks go with the last part's video. Each receipt records how many parts the week was, so 'let go whole' is the database's to say.",
+  "options": [
+    "a mark per part let go, the week's file with the last",
+    "remove the week's file with the first part let go",
+    "the worker reading the database"
+  ],
+  "gray": "The coordinator set 'the let-go applies per part'; how the worker learns of it was the session's choice.",
+  "undo": "Remove the marks; the export pass writes back any whose receipt stands.",
+  "refs": ["#2918", "server#872"]
+}

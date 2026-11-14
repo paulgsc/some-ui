@@ -1,0 +1,15 @@
+{
+  "id": "C367",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": ["server:infra/render/render-calls.sh"],
+  "chose": "How many parts a week is gets asked of the render image's `render call-parts` inside the week's first job, after the lane admits it, and is kept in renders/call/<from>.parts, where file_host reads it too. A week is asked once; its first answer stands.",
+  "options": [
+    "inside the first part's admitted job, kept",
+    "at each pass's listing, outside the lane",
+    "file_host computing it"
+  ],
+  "gray": "docs/home-compute.md invariant 6 (no work starts outside the lane) decided where. Keeping the first answer rather than re-asking was the session's choice.",
+  "undo": "Delete a week's .parts file and its next first job asks again.",
+  "refs": ["#2918", "server#872"]
+}
