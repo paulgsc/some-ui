@@ -14,6 +14,7 @@ import { contracts as activityContracts } from "../contracts/activities.contract
 import { contracts as adminSettingContracts } from "../contracts/admin-settings.contract"
 import { contracts as aphContracts } from "../contracts/aph.contract"
 import { contracts as authContracts } from "../contracts/auth.contract"
+import { contracts as cardsEssayContracts } from "../contracts/cards-essays.contract"
 import { contracts as clipContracts } from "../contracts/clips.contract"
 import { contracts as compatContracts } from "../contracts/compat.contract"
 import { contracts as curriculumOperatorContracts } from "../contracts/curriculum-operator.contract"
@@ -46,6 +47,7 @@ export const allContracts: ReadonlyArray<Contract> = [
   ...adminSettingContracts,
   ...aphContracts,
   ...authContracts,
+  ...cardsEssayContracts,
   ...clipContracts,
   ...compatContracts,
   ...curriculumContracts,

@@ -1,26 +1,14 @@
-import { readFile } from "node:fs/promises"
 import { join } from "node:path"
 import {
   CARDS_INDEX_SCHEMA,
   cardsFolderProblems,
   parseCardsEssay,
 } from "@video-render/cards-essay"
-import { parseCutList } from "@video-render/cut-list"
-import type { CutList } from "@video-render/cut-list"
 import { readSeries } from "@video-render/node"
 import type { Series } from "@video-render/series"
 import { describe, expect, it } from "vitest"
 
-const VIDEOS = join(import.meta.dirname, "../sample/videos")
-
-async function showcase(video: string): Promise<CutList> {
-  const raw: unknown = JSON.parse(
-    await readFile(join(VIDEOS, video, "cut-list.json"), "utf8")
-  )
-  const parsed = parseCutList(raw)
-  if (!parsed.ok) throw new Error(parsed.problems.join("\n"))
-  return parsed.value
-}
+import { showcase } from "./showcase"
 
 /** The series home's image holds: cheat-sheet's first version. */
 const CHEAT_SHEET = await readSeries(
