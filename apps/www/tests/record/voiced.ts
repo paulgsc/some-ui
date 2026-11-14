@@ -147,6 +147,16 @@ const warn = (line: string): void => {
 }
 
 /**
+ * A step answered from the step cache, by the file it wrote: a resumed
+ * render's log shows each step it did not redo (paulgsc/server#739). Home's
+ * render worker keeps it in the log and counts only `scenes`, `recorded` and
+ * `assembling`, so it moves no progress.
+ */
+const hit = (what: string): void => {
+  console.log(`cache hit: ${what}`)
+}
+
+/**
  * Scene `file`'s take in `root`: `<file>.wav`, and with `timed`
  * `<file>.words.json`, asked of the speaker unless `cache` holds them for
  * these words, this voice and this model.
@@ -179,7 +189,9 @@ async function takeOf({
   const cached =
     (await cache.get(key, ".wav", wav)) &&
     (!timed || (await cache.get(wordsKey, ".json", kept)))
-  if (!cached) {
+  if (cached) {
+    cache.hit(`${file}.wav`)
+  } else {
     const take = await said(speaker, text, voice, timed)
     await writeFile(wav, take.wav)
     await cache.put(key, ".wav", wav, `${file}.wav`)
@@ -353,7 +365,7 @@ export async function recordStills({
 }): Promise<ReadonlyArray<StillTake | null>> {
   await mkdir(root, { recursive: true })
   const ports = nodePorts(root)
-  const cache = stepCache(join(root, STEPS), policy, warn)
+  const cache = { ...stepCache(join(root, STEPS), policy, warn), hit }
   const model = speaker === null ? null : await speakerModel(speaker)
   const takes: Array<StillTake | null> = []
   const overflowing: Array<string> = []
@@ -488,6 +500,7 @@ async function renderStills(
       policy,
       stepCacheDir: STEPS,
       warn,
+      hit,
       ...(compositions?.ok ? { compositions: compositions.port } : {}),
     })
     if (!done.ok) fail(["Nothing was rendered:", ...done.problems])

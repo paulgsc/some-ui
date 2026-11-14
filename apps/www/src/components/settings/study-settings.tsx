@@ -10,28 +10,22 @@ import {
 } from "@some-ui/shared"
 import { toast } from "sonner"
 
-import { DATA_MODE } from "@/lib/data-mode"
 import { useIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton, IntentFailure } from "@/lib/intent/render"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import type { UserSettings } from "@/lib/tenant"
 import { useSettings, useUpdateSettings } from "@/lib/tenant"
 import { DeviceVoiceField } from "@/components/settings/device-voice-field"
-import { HostedVoiceFields } from "@/components/settings/hosted-voice-fields"
 import { StudyNudgeSection } from "@/components/settings/study-nudge-section"
 
 /**
  * The fields this form edits; the rest of the record is the header's audio
  * menu's (`lib/audio-preferences`).
  */
-type StudyFields = Pick<
-  UserSettings,
-  "ttsVoice" | "deviceVoiceId" | "notifications"
->
+type StudyFields = Pick<UserSettings, "deviceVoiceId" | "notifications">
 
 function studyFields(settings: UserSettings): StudyFields {
   return {
-    ttsVoice: settings.ttsVoice,
     deviceVoiceId: settings.deviceVoiceId,
     notifications: settings.notifications,
   }
@@ -70,23 +64,17 @@ const StudySettingsForm = ({
       <CardHeader>
         <CardTitle>Settings</CardTitle>
         <CardDescription>
-          The voice lessons speak in, and when to be reminded.
+          {import.meta.env.VITE_DEVICE_BACKEND === "true"
+            ? "The voice lessons speak in, and when to be reminded."
+            : "When to be reminded. Lessons are read aloud in your browser's own voice."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* The phone speaks with its own engine, so a hosted provider and
-            voice mean nothing there (#1628): it gets its own voices. Pages
-            has no voice service at all, only the browser's voice
-            (providers/tts.tsx), so it has nothing to choose. */}
-        {import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
+        {/* Only the phone's engine has voices to pick from (#1628). */}
+        {import.meta.env.VITE_DEVICE_BACKEND === "true" && (
           <DeviceVoiceField
             value={draft.deviceVoiceId}
             onChange={(deviceVoiceId) => setDraft({ ...draft, deviceVoiceId })}
-          />
-        ) : DATA_MODE === "static" ? null : (
-          <HostedVoiceFields
-            value={draft.ttsVoice}
-            onChange={(ttsVoice) => setDraft({ ...draft, ttsVoice })}
           />
         )}
 

@@ -206,11 +206,12 @@ export function drawCheatSheet(
   const stamp = drawStamp(p.stamp, g)
   if (!stamp.ok) return stamp
   const box = cardBody(g)
+  const times = itemTimes(p.rows.map((r) => r.atMs))
   const opens = badgesOpening(
     p.rows.map((r) => r.badge),
+    times,
     p.badgesSeen
   )
-  const times = itemTimes(p.rows.map((r) => r.atMs))
   const problems: Array<string> = []
   const rows: Array<RowDrawing> = []
   let y = box.y

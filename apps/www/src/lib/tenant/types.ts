@@ -1,5 +1,4 @@
 import type { SessionActivity, TopikLevel } from "@some-ui/activity-catalog"
-import type { HostedVoiceChoice } from "@some-ui/speech"
 import type { SceneConfig, SlotId } from "@some-ui/types"
 import type { LayoutNode } from "wireframes"
 
@@ -21,17 +20,11 @@ export type UserProfile = {
 
 export type UserSettings = {
   /**
-   * The hosted voice: a provider and its chosen voice, or `null` for the
-   * provider's default. Typed so another provider's voice cannot be held.
-   */
-  ttsVoice: HostedVoiceChoice
-  /**
    * The Android app's voice, as the phone's engine names it
-   * (`ko-kr-x-ism-local`): a different catalogue from `ttsVoiceId`. Empty
-   * means the phone's default Korean voice.
+   * (`ko-kr-x-ism-local`). Empty means the phone's default Korean voice.
    */
   deviceVoiceId: string
-  /** What this app may play, per channel; round-trips with the voice. */
+  /** What this app may play, per channel. */
   audio: AudioPreferences
   /** When this app may interrupt to say a session is waiting. */
   notifications: NudgePreferences
