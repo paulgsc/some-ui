@@ -1,9 +1,5 @@
 import type { JSX } from "react"
-import {
-  callScenes,
-  CallWeekSchema,
-  parseCallWeek,
-} from "@some-ui/video-render"
+import { callParts, CallWeekSchema, parseCallWeek } from "@some-ui/video-render"
 import type { CallWeek } from "@some-ui/video-render"
 
 import { CallSceneFrame } from "@/lib/web-surface/call/stage"
@@ -12,7 +8,7 @@ import { callAt } from "@/lib/web-surface/call/view"
 import { atTheLimit, longest, sample } from "./call-weeks"
 
 /**
- * Every scene of one week of the weekly call, each in the stage's frame as
+ * Every scene of every part of one week of the weekly call, each in the stage's frame as
  * the recorder draws it (`record`), one under another, for
  * `../call-fit.spec.ts` (CF1). `?week=` names it: `sample`, `longest`,
  * `limit-<n>` (`./call-weeks`), or `given`, the one the spec hands the page
@@ -38,14 +34,20 @@ export const CallStageFixture = (): JSX.Element => {
     return <p data-call-fit-limits={atTheLimit().length}>no such week</p>
   return (
     <div data-call-fit={parseCallWeek(week).ok ? "accepted" : "refused"}>
-      {callScenes(week).map((scene) => (
-        <div
-          key={scene.id}
-          data-model={"page" in scene ? scene.page?.h : undefined}
-        >
-          <CallSceneFrame week={week} at={callAt(week, scene.id)} record />
-        </div>
-      ))}
+      {callParts(week).flatMap((part) =>
+        part.scenes.map((scene) => (
+          <div
+            key={`${part.n}/${scene.id}`}
+            data-model={"page" in scene ? scene.page?.h : undefined}
+          >
+            <CallSceneFrame
+              week={week}
+              at={callAt(week, scene.id, part.n)}
+              record
+            />
+          </div>
+        ))
+      )}
     </div>
   )
 }

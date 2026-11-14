@@ -10,23 +10,31 @@ import { ViewerStrip } from "@/components/provenance-strip"
  * The weekly call's stage (STUDIO ST29): one scene of the week at a time.
  * Standalone (the `mission.tsx` archetype), so no shell sits in the frame;
  * `?week` names the week by its first day ("sample" for the template's),
- * `?scene` the scene, and `?record` leaves out everything but the frame.
+ * `?part` which video of its series (the first by default), `?scene` the
+ * scene, and `?record` leaves out everything but the frame.
  * A viewer of the Pages build gets the viewer strip above it. Web only: the
  * stage comes through the web surface's door.
  */
 
 const Call = (): JSX.Element => {
-  const { week, scene, record } = Route.useSearch()
+  const { week, part, scene, record } = Route.useSearch()
   const navigate = useNavigate({ from: "/call" })
   return (
     <>
       {VIEWER_BUILD && !record && <ViewerStrip />}
       <CallStage
         week={week}
+        part={part}
         scene={scene}
         record={record}
         onScene={(next) => {
-          void navigate({ search: { ...(week ? { week } : {}), scene: next } })
+          void navigate({
+            search: {
+              ...(week ? { week } : {}),
+              ...(part ? { part } : {}),
+              scene: next,
+            },
+          })
         }}
       />
     </>

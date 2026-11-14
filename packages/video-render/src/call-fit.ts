@@ -268,6 +268,11 @@ type Group = {
     /** What it shows, read for how long a silent page holds. */
     readonly words: string
   }>
+  /**
+   * A paragraph's words, where the group is one: its entries are the words,
+   * and a page break may fall between any two of them.
+   */
+  readonly paragraph?: ReadonlyArray<string>
 }
 
 /** The boxes a scene's picture is drawn in, below its title. */
@@ -300,6 +305,30 @@ const one = (
 ): Group => ({ key, head, em, within: 0, units: [{ h, count: 1, words }] })
 
 const FIELD_HEAD = lineOf(0.7) + 0.2 * px(0.7)
+
+/** A paragraph's words, as the model and the stage both break it. */
+export const paragraphWords = (said: string): ReadonlyArray<string> =>
+  said.split(/\s+/).filter((word) => word.length > 0)
+
+/** A paragraph's height, 1em prose across the body. */
+const paragraphH = (words: ReadonlyArray<string>): number =>
+  text(words.join(" "), "prose", 1)
+
+/**
+ * A labelled paragraph (why, why it's yours, how to undo it): its entries
+ * its words, so a paragraph too long for one page carries on onto the next.
+ */
+function paragraph(key: CallGroup, said: string): Group {
+  const words = paragraphWords(said)
+  return {
+    key,
+    head: FIELD_HEAD,
+    em: 1,
+    within: 0,
+    units: [{ h: paragraphH(words), count: words.length, words: said }],
+    paragraph: words,
+  }
+}
 
 const refWords = (
   list: ReadonlyArray<{ readonly repo: string; readonly number: number }>
@@ -488,8 +517,8 @@ function mineLayout(c: CallWeek["mine"][number]): Layout {
         c.options.map((says) => ({ says })),
         c.chose
       ),
-      one("why", text(c.why, "prose", 1), c.why, { head: FIELD_HEAD }),
-      one("undo", text(c.undo, "prose", 1), c.undo, { head: FIELD_HEAD }),
+      paragraph("why", c.why),
+      paragraph("undo", c.undo),
       one("refs", refs(c.refs, 0.8), refWords(c.refs), { em: 0.8 }),
     ],
   }
@@ -500,9 +529,7 @@ function askLayout(a: CallWeek["asks"][number]): Layout {
     title: title(a.question),
     titled: a.question,
     groups: [
-      one("why", text(a.whyYours, "prose", 1), a.whyYours, {
-        head: FIELD_HEAD,
-      }),
+      paragraph("why", a.whyYours),
       options(a.options, a.recommended),
       one("refs", refs(a.refs, 0.8), refWords(a.refs), { em: 0.8 }),
     ],
@@ -564,7 +591,10 @@ function pageOf(layout: Layout, placed: ReadonlyArray<Placed>): CallPage {
  * `layout` paged into the body: as many units on a page as fit, in order,
  * the title on each; a unit too tall for a page of its own is `tooTall`.
  */
-function paged(layout: Layout): {
+function paged(
+  layout: Layout,
+  words: boolean
+): {
   readonly pages: ReadonlyArray<CallPage>
   readonly tooTall: number
 } {
@@ -585,14 +615,49 @@ function paged(layout: Layout): {
   const pages: Array<CallPage> = []
   let tooTall = 0
   let page: Array<Placed> = []
-  for (const unit of units) {
-    const next = [...page, unit]
-    if (page.length > 0 && heightOf(layout, next) > CALL_BODY.height) {
+  const fits = (placed: ReadonlyArray<Placed>): boolean =>
+    heightOf(layout, placed) <= CALL_BODY.height
+  /** Words `[from, to)` of a paragraph unit, as a unit of their own. */
+  const piece = (unit: Placed, from: number, to: number): Placed => {
+    const words = unit.group.paragraph?.slice(from, to) ?? []
+    return { ...unit, h: paragraphH(words), from, to, words: words.join(" ") }
+  }
+  const queue = [...units]
+  for (let unit = queue.shift(); unit !== undefined; unit = queue.shift()) {
+    if (fits([...page, unit])) {
+      page.push(unit)
+      continue
+    }
+    if (
+      words &&
+      unit.group.paragraph !== undefined &&
+      unit.to - unit.from > 1
+    ) {
+      // As many of its words as this page holds; the rest on the next.
+      let k = 0
+      while (
+        unit.from + k + 1 < unit.to &&
+        fits([...page, piece(unit, unit.from, unit.from + k + 1)])
+      )
+        k += 1
+      if (k > 0) {
+        page.push(piece(unit, unit.from, unit.from + k))
+        pages.push(pageOf(layout, page))
+        page = []
+        queue.unshift(piece(unit, unit.from + k, unit.to))
+        continue
+      }
+    }
+    if (page.length > 0) {
       pages.push(pageOf(layout, page))
-      page = [unit]
-    } else page = next
-    if (page.length === 1)
-      tooTall = Math.max(tooTall, heightOf(layout, page) - CALL_BODY.height)
+      page = []
+      queue.unshift(unit)
+      continue
+    }
+    // Alone on a page and still too tall: a single word, or a part that
+    // can't be broken (a title, an option, a pull request).
+    tooTall = Math.max(tooTall, heightOf(layout, [unit]) - CALL_BODY.height)
+    page.push(unit)
   }
   pages.push(pageOf(layout, page))
   return { pages, tooTall }
@@ -607,7 +672,19 @@ const linesOver = (over: number): number => Math.ceil(over / lineOf(1))
  * on one of them, none left out. And every scene with one part too tall for
  * a page of its own, said so the routine can shorten it.
  */
-export function callFit(week: CallWeek): {
+export function callFit(
+  week: CallWeek,
+  {
+    words = true,
+  }: {
+    /**
+     * Whether a paragraph too long for its page carries on, word by word
+     * (from version 5); otherwise it moves to the next page whole, and one
+     * taller than a page is refused.
+     */
+    readonly words?: boolean
+  } = {}
+): {
   readonly pages: Readonly<Record<string, ReadonlyArray<CallPage>>>
   readonly problems: ReadonlyArray<string>
 } {
@@ -639,13 +716,17 @@ export function callFit(week: CallWeek): {
     ...week.mine.map((c, i) => ({
       id: `mine-${i + 1}`,
       item: c.id,
-      fix: "its title, why, or how to undo it",
+      fix: words
+        ? "its title or its longest option"
+        : "its title, why, or how to undo it",
       layout: mineLayout(c),
     })),
     ...week.asks.map((a, i) => ({
       id: `asks-${i + 1}`,
       item: a.id,
-      fix: "its question or why it's yours",
+      fix: words
+        ? "its question or its longest option"
+        : "its question or why it's yours",
       layout: askLayout(a),
     })),
     { id: "close", fix: "the longest later ask", layout: closeLayout(week) },
@@ -653,7 +734,7 @@ export function callFit(week: CallWeek): {
   const pages: Record<string, ReadonlyArray<CallPage>> = {}
   const problems: Array<string> = []
   for (const scene of scenes) {
-    const { pages: each, tooTall } = paged(scene.layout)
+    const { pages: each, tooTall } = paged(scene.layout, words)
     pages[scene.id] = each
     if (tooTall > 0) {
       const lines = linesOver(tooTall)

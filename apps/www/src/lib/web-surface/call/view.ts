@@ -2,12 +2,13 @@ import { assertNever } from "@some-ui/core-utils"
 import {
   CALL_CHAPTERS,
   callIntro,
-  callScenes,
+  callParts,
   isFirstPage,
   parseCallWeek,
 } from "@some-ui/video-render"
 import type {
   CallIndex,
+  CallPartOf,
   CallScene,
   CallWeek,
   Parsed,
@@ -31,6 +32,8 @@ export type SceneView =
   | {
       readonly section: "chapter"
       readonly title: string
+      /** An earlier part of the series began the section. */
+      readonly continued: boolean
       /** How many scenes the section has: its items, or none for one scene. */
       readonly items: number
     }
@@ -45,6 +48,8 @@ export type CallAt = {
   readonly index: number
   readonly scene: CallScene
   readonly view: SceneView
+  /** Which video of the week's series it is in (#2918). */
+  readonly part: CallPartOf
 }
 
 const find = <T extends { readonly id: string }>(
@@ -59,7 +64,8 @@ const find = <T extends { readonly id: string }>(
 function viewOf(
   week: CallWeek,
   scene: CallScene,
-  scenes: ReadonlyArray<CallScene>
+  scenes: ReadonlyArray<CallScene>,
+  part: CallPartOf
 ): SceneView {
   switch (scene.section) {
     case "open":
@@ -70,7 +76,7 @@ function viewOf(
       return { section: scene.section }
     }
     case "intro": {
-      return { section: "intro", rows: callIntro(week).rows }
+      return { section: "intro", rows: callIntro(week, part).rows }
     }
     case "chapter": {
       const items = scenes.filter(
@@ -80,7 +86,12 @@ function viewOf(
           s.item !== undefined &&
           isFirstPage(s)
       ).length
-      return { section: "chapter", title: CALL_CHAPTERS[scene.of], items }
+      return {
+        section: "chapter",
+        title: CALL_CHAPTERS[scene.of],
+        continued: scene.continued === true,
+        items,
+      }
     }
     case "moved": {
       return { section: "moved", item: find(week.moved, scene.item) }
@@ -104,15 +115,29 @@ function viewOf(
 }
 
 /** Scene `id` of the call, or its first scene when it has none by that id. */
-export function callAt(week: CallWeek, id: string | undefined): CallAt {
-  const scenes = callScenes(week)
+export function callAt(
+  week: CallWeek,
+  id: string | undefined,
+  part: number = 1
+): CallAt {
+  const parts = callParts(week)
+  // `callParts` always gives a part, with the open, the board or the close.
+  const shown = parts[Math.min(Math.max(1, part), parts.length) - 1] ?? parts[0]
+  const scenes = shown.scenes
+  const of: CallPartOf = { n: shown.n, of: shown.of }
   const index = Math.max(
     0,
     scenes.findIndex((scene) => scene.id === id)
   )
   // `callScenes` always gives the open, the board and the close.
   const scene = scenes[index]
-  return { scenes, index, scene, view: viewOf(week, scene, scenes) }
+  return {
+    scenes,
+    index,
+    scene,
+    view: viewOf(week, scene, scenes, of),
+    part: of,
+  }
 }
 
 /**

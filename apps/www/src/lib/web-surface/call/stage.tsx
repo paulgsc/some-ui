@@ -6,8 +6,8 @@ import {
   callFormat,
   CallIndexSchema,
   hasCaptions,
-  isFirstPage,
   markThemeOf,
+  paragraphWords,
   refUrl,
   sampleCallWeek,
 } from "@some-ui/video-render"
@@ -48,6 +48,8 @@ import { CALL_WORDS as W } from "./words"
 export type CallStageProps = {
   /** The week shown, by its first day, or "sample". */
   week?: string
+  /** Which video of the week's series (#2918); the first when absent. */
+  part?: number
   /** The scene shown, by its id; the first when absent or unknown. */
   scene?: string
   record?: boolean
@@ -69,7 +71,8 @@ const sectionName = (at: { scene: CallScene; view: SceneView }): string => {
       return ""
     }
     case "chapter": {
-      return at.view.section === "chapter" ? at.view.title : ""
+      if (at.view.section !== "chapter") return ""
+      return at.view.continued ? W.continued(at.view.title) : at.view.title
     }
     case "open":
     case "board":
@@ -88,10 +91,7 @@ const sectionName = (at: { scene: CallScene; view: SceneView }): string => {
 }
 
 /** What a scene is called: its section's name, and its place among its items. */
-const labelOf = (
-  scene: CallScene,
-  scenes: ReadonlyArray<CallScene>
-): string => {
+const labelOf = (scene: CallScene): string => {
   switch (scene.section) {
     case "intro": {
       return SW.whoMadeThis
@@ -103,7 +103,8 @@ const labelOf = (
       return SW.brandOut
     }
     case "chapter": {
-      return W.chapter(CALL_CHAPTERS[scene.of])
+      const title = CALL_CHAPTERS[scene.of]
+      return W.chapter(scene.continued === true ? W.continued(title) : title)
     }
     case "open":
     case "board":
@@ -116,12 +117,11 @@ const labelOf = (
       const name = NAMES[scene.section] ?? ""
       if (scene.item === undefined)
         return [name, pageLabel(scene)].filter(Boolean).join(", ")
-      // Numbered by item; a page after an item's first says which it is.
-      const n = scenes
-        .filter((s) => s.section === scene.section && isFirstPage(s))
-        .findIndex((s) => "item" in s && s.item === scene.item)
+      // Numbered by its place in the week, in whichever part it falls; a
+      // page after an item's first says which it is.
+      const n = /^[a-z]+-([0-9]+)/.exec(scene.id)?.[1] ?? ""
       const page = pageLabel(scene)
-      return [`${name} ${n + 1}`, page].filter(Boolean).join(", ")
+      return [`${name} ${n}`, page].filter(Boolean).join(", ")
     }
     default: {
       return assertNever(scene)
@@ -229,6 +229,13 @@ const Screen = ({
   /** The page of its scene it is (CF1); absent in a version 1 week. */
   page: CallScenePage | undefined
 }): JSX.Element => {
+  /** The words of a paragraph this page shows (CF1): all of it unpaged. */
+  const part = (group: CallGroup, said: string): string => {
+    if (page === undefined) return said
+    const words = paragraphWords(said)
+    const [from, to] = rangeOf(page, group, words.length)
+    return words.slice(from, to).join(" ")
+  }
   const on = (group: CallGroup): boolean => {
     const [from, to] = rangeOf(page, group, 1)
     return to > from
@@ -254,7 +261,7 @@ const Screen = ({
     case "chapter": {
       return (
         <ChapterSlide
-          title={view.title}
+          title={view.continued ? W.continued(view.title) : view.title}
           holds={view.items > 0 ? W.items(view.items) : undefined}
         />
       )
@@ -374,8 +381,12 @@ const Screen = ({
               mark={W.chose}
             />
           )}
-          {on("why") && <Field label={W.why}>{view.item.why}</Field>}
-          {on("undo") && <Field label={W.undo}>{view.item.undo}</Field>}
+          {on("why") && (
+            <Field label={W.why}>{part("why", view.item.why)}</Field>
+          )}
+          {on("undo") && (
+            <Field label={W.undo}>{part("undo", view.item.undo)}</Field>
+          )}
           {on("refs") && <Refs refs={view.item.refs} />}
         </div>
       )
@@ -385,7 +396,9 @@ const Screen = ({
       return (
         <div className="space-y-[0.6em]">
           <p className="text-[1.6em] font-bold">{view.item.question}</p>
-          {on("why") && <Field label={W.whyYours}>{view.item.whyYours}</Field>}
+          {on("why") && (
+            <Field label={W.whyYours}>{part("why", view.item.whyYours)}</Field>
+          )}
           {to > from && (
             <Options
               options={view.item.options.slice(from, to)}
@@ -429,6 +442,7 @@ const Screen = ({
 
 export const CallStagePage = ({
   week: from,
+  part,
   scene,
   record = false,
   onScene,
@@ -459,7 +473,7 @@ export const CallStagePage = ({
     sample: SAMPLE,
   })
   const shown = state.kind === "show" ? state : null
-  const at = shown === null ? null : callAt(shown.week, scene)
+  const at = shown === null ? null : callAt(shown.week, scene, part)
   if (state.kind === "waiting" || state.kind === "blank") return null
   if (shown === null || at === null)
     return (
@@ -515,7 +529,7 @@ export const CallStagePage = ({
           : {
               scenes: at.scenes.map((s) => ({
                 id: s.id,
-                label: labelOf(s, at.scenes),
+                label: labelOf(s),
               })),
               onScene,
             }
@@ -553,6 +567,7 @@ export const CallSceneFrame = ({
       theme={format.shape?.theme}
       title={W.title}
       where={`${[
+        at.part.of > 1 ? W.part(at.part.n, at.part.of) : "",
         sectionName(at),
         pageLabel(at.scene),
         `${at.index + 1}/${at.scenes.length}`,
