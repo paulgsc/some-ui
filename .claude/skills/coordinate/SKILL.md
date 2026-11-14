@@ -78,7 +78,8 @@ default (owner, #2814 Nov 10; measurements on #2833).
 
 - Admit a worker's `ready` branch to CI only when no job is queued in either repo.
 - A PR that is ready (green and reviewed), or reviewed and docs-only (the coordinator's call,
-  Nov 13), skips that check: update it and arm auto-merge at once, however long the queue.
+  Nov 13), skips that check: it takes its repo's next merge slot (below, "While running"),
+  however long the runner queue.
   Under sustained load the queue never clears (#2814, Nov 13: #2916 waited 30 minutes behind
   7–13 queued runs).
 - A PR that is waiting on review, on a dependency or on the owner holds no slot.
@@ -95,8 +96,9 @@ default (owner, #2814 Nov 10; measurements on #2833).
 
 - While any PR is in CI, set a `send_later` timer about every 20 minutes and check every open
   PR yourself. Never wait on events alone (#2823).
-- Re-check a "clean" PR directly. When a re-run turns a PR green, re-arm auto-merge or merge
-  it, because a refused auto-merge does not re-arm itself (#2814, Nov 9).
+- Re-check a "clean" PR directly. When a re-run turns a PR green, merge it by hand with
+  `expectedHeadSha`: auto-merge doesn't fire again, and a refused one does not re-arm itself
+  (#2814, Nov 9; #2967, #2918, Nov 14).
 - You are the merger, so never stand down from babysitting a PR you are to merge (babysit's
   stand-down waits on a human merger).
 - Before merging, check the head and every check run yourself. Merge with `expectedHeadSha`
@@ -107,23 +109,19 @@ default (owner, #2814 Nov 10; measurements on #2833).
 - A message reaches a session mid-turn only when its turn ends, sometimes batched with
   others. Restate whatever it supersedes (#2814, Nov 10).
 - Never pipe a command whose exit code matters (#2814, Nov 10; server `CLAUDE.md`).
-- Under strict up-to-date, keep one updated PR in CI per repo, chosen by critical path, and
-  update the next only when it lands. Updating every ready PR at once costs about N²/2 CI runs,
-  because each merge stales all the others (#2918, Nov 13).
+- Under strict up-to-date, keep one PR per repo updated and armed, chosen by critical path,
+  and update and arm the next only when it lands. Updating every ready PR at once costs about
+  N²/2 CI runs, and two armed PRs race, so the loser pays for every run again (#2918, Nov 13;
+  #2945 ran CI three times, #2918, Nov 14). Give the next slot to a PR stuck in a
+  `docs/calls.json` conflict cycle, and hold the other call-adding PRs until it lands.
 - Every PR that records a call appends to `docs/calls.json`, so two in flight always conflict
   after the first merges. Resolve by taking `main`'s file text exactly and appending the PR's new
   entries, never by reformatting (#2918, Nov 13).
-- Arm auto-merge on one PR per repo at a time, never two. Two armed PRs race: whichever lands
-  first leaves the other behind with a fresh CI run, and a PR that keeps losing pays for every
-  run again (#2945 ran CI three times, #2918, Nov 14). Promise the next slot to a PR stuck in a
-  `docs/calls.json` conflict cycle, and hold the other call-adding PRs until it lands.
-- Auto-merge doesn't fire again after a failed check is re-run green. Re-check the PR and merge
-  it by hand with `expectedHeadSha` (#2967, #2918, Nov 14).
 - Before merging a server PR that adds a mailbox read or put, check every numeric bound the
-  assurance ledger states for the mailbox pass (MI6's requests a day, MI5's calls a pass).
+  assurance ledger states for the mailbox pass (MI6's requests a day; MI5's 120 seconds and its request budget a pass).
   The server's `Assurance ledger` check reads stores, paths and tasks, not counts written in
   prose, so a broken bound lands green. Raising one is the owner's decision, so ask before the
-  server PR merges (server#851, #2972, #2918, Nov 14).
+  server PR merges (CLAUDE.md "Operational assurance"; server#851, #2972, #2918, Nov 14).
 - Before merging a some-ui PR that adds a `server:` path to the assurance ledger, check that the
   file is on server `main` (AL1, #2924). Otherwise every server PR goes red (#2918, Nov 13).
 - After a some-ui merge that touches `apps/www/tests/record` or `infra/render`, check that
@@ -170,9 +168,11 @@ default (owner, #2814 Nov 10; measurements on #2833).
   (SFEED9; #2885, Nov 12). The guard checks size and media only. Also run
   `pnpm --filter @some-ui/video-render render session-check <testing>/sessions`, which checks
   each note against the schema: workers' notes often give `ended` as a timestamp, `epics` as
-  issue refs, `pulls` as strings or an issue, or `did` as an array (9 of Nov 13's failed it,
-  reshaped in testing 4356f3e; #2918, Nov 14). A note is per session per day, so a resumed
-  session merges into its own note, never overwrites it.
+  issue refs, `pulls` as strings or an issue, or `did` as an array (testing 4356f3e; #2918,
+  Nov 14). A note's file is `<ended>-<session>.json`, one per session per day: a session
+  resumed the same day merges into that day's note, never overwrites it, and one resumed on a
+  later day writes a new note covering what it did since (CLAUDE.md "Multi-session relay
+  work").
 - Write the closing record on the run's `[ORCH]` issue. List the merged PRs in both repos,
   what waits on the owner, the follow-ups filed, and the lessons. Lessons become rules here,
   through a PR.
