@@ -3332,7 +3332,7 @@
           "claim": "Every essay paulgsc/testing's cards index lists becomes one video on home, drawn from its cut list alone, or is refused and said; one that failed is tried again.",
           "requirement": "Home reads paulgsc/testing's cards/index.json hourly and keeps each essay it lacks, as first served, then writes it as <key>.json for the render worker; the render worker's cards-essay job runs record:cards on it, which refuses a file that isn't a cards essay (parseCardsEssay: its key not its stamp's day, another series, a scene that isn't a card, plays a take or a cue or stands on an image, and captions) before anything is drawn, and keeps cards.mp4, cut-list.json and shot-times.json in the essay's folder; a failed essay keeps its finished steps and is tried again.",
           "verdict": "unproven",
-          "conclusion": "Structural on the some-ui side: cards-check and the recorder are tested, and both showcase essays were recorded locally from the stage build, the same bytes twice. Home's side (the keeper that reads the index and the render worker's cards-essay job) is not built yet, so nothing renders on home.",
+          "conclusion": "Structural on the some-ui side: cards-check and the recorder are tested, and both showcase essays were recorded locally from the stage build, the same bytes twice. Home's side (the keeper that reads the index and the render worker's cards-essay job) comes with server#854, and nothing has rendered on home yet.",
           "tracked": "some-ui#2979",
           "evidence": [
             {
@@ -3355,10 +3355,10 @@
           "id": "CE2",
           "kind": "RE9",
           "property": "work",
-          "claim": "What home keeps for cards essays grows by one row and one folder per essay the routine writes, and none is let go.",
+          "claim": "What home keeps for cards essays grows by one row per essay home takes and one folder per essay it renders, and none is let go.",
           "requirement": "server:cards_essay gains one append-only row per essay home takes (its key, the cut list as served, at most 1 MiB, with its SHA-256, and when), and the render worker's renders folder one folder per essay (cards.mp4, cut-list.json, shot-times.json); a failed essay keeps only its finished steps until it renders. Nothing deletes either: there is no let-go for a cards essay (C338; whether there should be waits on the owner, some-ui#2996), and the routine's repository keeps every essay too (CARDS-ROUTINE: never deleted).",
           "verdict": "unproven",
-          "conclusion": "The row's bound (MAX_BODY) and the table's append-only triggers come with server#854; how large an essay's video is, and so the growth per essay, is unknown until essays render on home.",
+          "conclusion": "Structural on home's table: the row's bound (MAX_BODY) and its append-only triggers come with server#854; how large an essay's video is, and so the growth per essay, is unknown until essays render on home.",
           "tracked": "some-ui#2979",
           "evidence": [
             {
