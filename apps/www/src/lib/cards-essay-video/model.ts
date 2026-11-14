@@ -11,13 +11,21 @@ import type { Board } from "@/lib/renders/model"
 /** The board's shelf for cards essays (paulgsc/server `feeds::renders`). */
 export const SHELF = "cards-essay"
 
-/** An essay home finished: its video's size, where home said it. */
-export type Essay = { readonly bytes: number | null }
+/** Where essay `key` stands on home's board. */
+export type Essay =
+  /** Made: its video's size, where home said it. */
+  | { readonly kind: "done"; readonly bytes: number | null }
+  /** Home couldn't make it; Renders says why. */
+  | { readonly kind: "failed" }
+  /** Being made, waiting its turn, or not listed yet. */
+  | { readonly kind: "notYet" }
 
-/** The essay `key` home has finished, or `null` while it hasn't (or lists none). */
-export function essayOf(board: Board, key: string): Essay | null {
-  const done = board.done.find((row) => row.feed === SHELF && row.key === key)
-  return done === undefined ? null : { bytes: done.bytes ?? null }
+export function essayOf(board: Board, key: string): Essay {
+  const is = (row: { feed: string; key: string }): boolean =>
+    row.feed === SHELF && row.key === key
+  const done = board.done.find(is)
+  if (done !== undefined) return { kind: "done", bytes: done.bytes ?? null }
+  return board.failed.some(is) ? { kind: "failed" } : { kind: "notYet" }
 }
 
 export type EssayVideoState = {

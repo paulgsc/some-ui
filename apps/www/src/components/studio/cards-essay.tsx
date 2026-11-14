@@ -67,12 +67,12 @@ const Standing = ({
   essay,
 }: {
   essayKey: string
-  essay: Essay | null
+  essay: Essay
 }): JSX.Element => {
-  if (essay === null) {
+  if (essay.kind !== "done") {
     return (
       <div className="flex flex-col gap-2">
-        <Muted>{WORDS.notDone}</Muted>
+        <Muted>{essay.kind === "failed" ? WORDS.failed : WORDS.notDone}</Muted>
         {/* Renders is the phone's ("apk"), as this page is (A3). */}
         {hasAudience("apk") && (
           <Link to="/journal/renders" className={LINK}>

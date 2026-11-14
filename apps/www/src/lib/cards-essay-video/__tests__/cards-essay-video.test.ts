@@ -67,12 +67,30 @@ describe("which essay the board lists", () => {
     const at = 1
     expect(
       essayOf(board([{ feed: "cards-essay", key: KEY, at, bytes: 10 }]), KEY)
-    ).toEqual({ bytes: 10 })
+    ).toEqual({ kind: "done", bytes: 10 })
     expect(
       essayOf(board([{ feed: "cards-essay", key: KEY, at }]), KEY)
-    ).toEqual({ bytes: null })
-    expect(essayOf(board([{ feed: "call", key: KEY, at }]), KEY)).toBeNull()
-    expect(essayOf(board([]), KEY)).toBeNull()
+    ).toEqual({ kind: "done", bytes: null })
+    expect(essayOf(board([{ feed: "call", key: KEY, at }]), KEY)).toEqual({
+      kind: "notYet",
+    })
+    expect(essayOf(board([]), KEY)).toEqual({ kind: "notYet" })
+  })
+
+  it("says an essay home couldn't make failed, not that it isn't finished", () => {
+    const failed: Board = {
+      ...board([]),
+      failed: [
+        {
+          feed: "cards-essay",
+          key: KEY,
+          at: 1,
+          by: "recorder",
+          exit: 1,
+        },
+      ],
+    }
+    expect(essayOf(failed, KEY)).toEqual({ kind: "failed" })
   })
 
   it("forgets only a copy that was ready", () => {

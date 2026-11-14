@@ -1,7 +1,7 @@
 import type { JSX } from "react"
-import { CARDS_KEY } from "@some-ui/video-render"
 import { createFileRoute, notFound } from "@tanstack/react-router"
 
+import { isEssayKey } from "@/lib/renders/subject"
 import { CardsEssayPage } from "@/components/studio/cards-essay"
 
 /**
@@ -19,7 +19,7 @@ const Page = (): JSX.Element | null => {
 export const Route = createFileRoute("/_dashboard/_apk/journal/cards/$key")({
   params: {
     parse: ({ key }): { key: string } => {
-      if (!CARDS_KEY.test(key)) throw notFound()
+      if (!isEssayKey(key)) throw notFound()
       return { key }
     },
     stringify: ({ key }: { key: string }): { key: string } => ({ key }),

@@ -44,6 +44,20 @@ function templateOfKey(key: string): TemplateId | null {
   )
 }
 
+/** The longest key home keeps an essay under (paulgsc/server `cards_essays::pass::MAX_KEY`). */
+const MAX_ESSAY_KEY = 128
+
+/**
+ * Whether `key` is a cards essay's, as home checks one: `<slug>-<YYYY-MM-DD>`
+ * (`CARDS_KEY`), a day the calendar has, at most `MAX_ESSAY_KEY` long.
+ */
+export function isEssayKey(key: string): boolean {
+  if (key.length > MAX_ESSAY_KEY || !CARDS_KEY.test(key)) return false
+  const day = key.slice(-10)
+  const parsed = new Date(`${day}T00:00:00Z`)
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(day)
+}
+
 const SIDES = ["before", "after"] as const satisfies ReadonlyArray<ClipSide>
 
 /** What `row` is. */
@@ -57,7 +71,7 @@ export function subjectOf(row: Row): Subject {
       }
     return { kind: "preview", template: templateOfKey(row.key) }
   }
-  if (row.feed === "cards-essay" && CARDS_KEY.test(row.key))
+  if (row.feed === "cards-essay" && isEssayKey(row.key))
     return { kind: "essay", key: row.key }
   if (row.feed === "clip-walk") {
     for (const side of SIDES) {

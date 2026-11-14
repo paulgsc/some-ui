@@ -9,6 +9,7 @@ export const ESSAY_WORDS = {
     "Home made this video from the essay's cards. Home keeps it, and nothing here lets it go.",
   notDone:
     "Home hasn't finished this essay yet. Studio › Renders says how far it has got.",
+  failed: "Home couldn't make this essay's video. Studio › Renders says why.",
   noSize:
     "Home hasn't said how big this video is, so the phone can't bring it yet. Update home, then come back.",
   seeRenders: "Open Studio › Renders",
