@@ -9,17 +9,13 @@
 # (apps/www/nginx.https.conf, RESUME_UPSTREAM), and the only page that calls it is the
 # LAN build's /resume-build.
 #
-# Built here from the package; nothing publishes an image. Rebuild it after
-# changing the résumé's content or templates:
-#
-#   docker compose up -d --build resume-render
-#
-# REPO_ROOT must be exported first, for the reason infra/compose/www.yml gives.
+# The image is published from main by .github/workflows/resume-docker-release.yml
+# (`pgathondu/resume-render:<commit>` and `:latest`), so nothing is built here
+# (RELEASE R8, paulgsc/server#853). Home runs it from paulgsc/server's compose,
+# pinned by digest; this file is for development.
 services:
   resume-render:
-    build:
-      context: ${REPO_ROOT:-.}/packages/ui/resume
-    image: some-ui/resume-render:local
+    image: pgathondu/resume-render:${RESUME_TAG:-latest}
     container_name: resume-render
     expose:
       - "3100"

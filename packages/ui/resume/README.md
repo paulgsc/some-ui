@@ -149,8 +149,10 @@ returning it. Nothing it logs or returns carries a value: the checks in
 `pii.typ` name a field and its limit, not what was sent. Its container has no
 writable path at all.
 
-It is reachable from the home network only. `infra/compose/resume.yml` builds
-this directory's `Dockerfile` on the box and publishes no port; `apps/www`'s
+It is reachable from the home network only. CI publishes this directory's
+`Dockerfile` as `pgathondu/resume-render` (`resume-docker-release.yml`, after
+one render with no network and a read-only root), home runs that image by
+digest, and it publishes no port; `apps/www`'s
 nginx proxies `/api/resume/` to it, and the LAN build's résumé builder page
 (`apps/www/src/routes/_dashboard/_lan/`) is the form that calls it, through
 `renderResume` (`src/pii/render-client.ts`). In `vite dev`, run `pnpm serve` on

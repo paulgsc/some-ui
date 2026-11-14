@@ -1,0 +1,19 @@
+{
+  "id": "C352",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "some-ui:.github/workflows/resume-docker-release.yml",
+    "some-ui:packages/ui/resume/Dockerfile",
+    "some-ui:infra/compose/resume.yml"
+  ],
+  "chose": "The résumé render image (pgathondu/resume-render) publishes straight from main on every push that touches packages/ui/resume, as :<sha> and :latest, once the very image to be pushed has rendered a résumé with faux PII offline, read-only and with no capabilities; there is no release PR to merge first, and nothing builds it on home any more.",
+  "options": [
+    "publish from main, gated by one offline render",
+    "a standing release PR as www's image has, merged by hand before each publish",
+    "retire the service from home instead of publishing it"
+  ],
+  "gray": "paulgsc/server#853 offers publishing or retiring; retiring is the owner's call, and whether a publish waits on a merged release PR is the owner's judgment either way. The same shape render's image has (C109) was taken.",
+  "undo": "Drop the push trigger from resume-docker-release.yml, leaving workflow_dispatch, or put a release PR in front of the job as www-docker-release.yml does; to build on home again, restore the build: block in infra/compose/resume.yml.",
+  "refs": ["server#853", "server#787"]
+}
