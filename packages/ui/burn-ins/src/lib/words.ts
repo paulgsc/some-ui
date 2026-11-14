@@ -75,6 +75,11 @@ export const WORDS = {
       about:
         "How fresh a claim on screen is: on main, an open PR, planned, a known gap, or a step only I do. The first time each one appears in a video it spells out what it means, then it shrinks to its sign.",
     },
+    terminal: {
+      name: "Terminal",
+      about:
+        "A card of commands as a terminal window shows them, a line at a time, each with a badge saying how fresh it is. It shows placeholders, never a value.",
+    },
   } satisfies Record<Kind, { name: string; about: string }>,
   lookHeading: "Look",
   looks: {
@@ -111,13 +116,24 @@ export const WORDS = {
       name: "Plate",
       about: "Amber capitals on a dark plate with an amber edge.",
     },
+    "terminal-v1": {
+      name: "Window",
+      about:
+        "A dark window with a title bar; commands in blue, comments muted, in a monospace.",
+    },
     "badge-v1": {
       name: "Badge",
       about:
         "A small sign in its own colour; the first time, a tinted pill opens from it with the words.",
     },
   } satisfies Record<
-    ThemeId | "v1" | "cells-v1" | "gridiron-v1" | "plate-v1" | "badge-v1",
+    | ThemeId
+    | "v1"
+    | "cells-v1"
+    | "gridiron-v1"
+    | "plate-v1"
+    | "badge-v1"
+    | "terminal-v1",
     { name: string; about: string }
   >,
   templateHeading: "Which card",

@@ -35,7 +35,7 @@ import { WORDS } from "./words"
 export const BADGE_STATES = ["main", "pr", "next", "gap", "you"] as const
 export type BadgeState = (typeof BADGE_STATES)[number]
 
-const BadgeStateSchema = z.enum(BADGE_STATES)
+export const BadgeStateSchema = z.enum(BADGE_STATES)
 
 /** Each state's colour. Video colours, not the app's, so literals. */
 export const BADGE_COLOUR: Readonly<Record<BadgeState, string>> = {
@@ -83,7 +83,7 @@ export const GLYPH_STROKE = 1.6
 export const REVEAL = { inMs: 450, totalMs: 2600, outMs: 450 } as const
 
 /** How long a badge takes to fade in where it appears. */
-const APPEAR_MS = 400
+export const APPEAR_MS = 400
 
 const smooth = (x: number): number => x * x * (3 - 2 * x)
 
@@ -145,7 +145,7 @@ const GAP = 0.35
  * A badge with its glyph's square at (`x`, `y`), `glyphPx` across, faded in
  * `opacity` and open `amount` (0 shut, 1 open).
  */
-function badgeAt(
+export function badgeAt(
   state: BadgeState,
   x: number,
   y: number,
@@ -192,6 +192,15 @@ function badgeAt(
     },
   }
 }
+
+/**
+ * How far past its glyph an open badge reaches, growing from 0 as it opens:
+ * what text beside it moves aside by.
+ */
+export const openReach = (m: BadgeMark): number =>
+  m.open === null
+    ? 0
+    : m.open.amount * m.glyph.width * (GAP + PAD) + m.open.shownPx
 
 /** The boxes a badge covers. */
 export const badgeBoxes = (m: BadgeMark): ReadonlyArray<Box> =>

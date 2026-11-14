@@ -1,6 +1,6 @@
 /**
  * The burn-in recorder in CI (STUDIO ST15, #2273): a short with a scene's
- * captions, a headline, a status badge and the authorship mark, rendered twice through
+ * captions, a headline, a status badge, a terminal card and the authorship mark, rendered twice through
  * `record:short`'s
  * path (the built app's `/burn-ins?record` page filling the renderer's
  * `recordBurnIn`), gives the same MP4 and the same burn-in recordings both
@@ -73,6 +73,25 @@ const CUT_LIST = cutList(
       // CARDS1: its first appearance in the video, so it spells itself out.
       burnIns: [
         { kind: "status-badge", design: "badge-v1", params: { badge: "pr" } },
+      ],
+    }),
+    // CARDS2: a terminal card over a bare scene, in the cards' monospace.
+    shot("S3", {
+      picture: { kind: "card" },
+      durationMs: 2000,
+      burnIns: [
+        {
+          kind: "terminal",
+          design: "terminal-v1",
+          params: {
+            title: "The recorder draws a terminal too",
+            bar: "check",
+            lines: [
+              { prompt: "$", keyword: "record:short", badge: "main" },
+              { comment: "# the same bytes twice" },
+            ],
+          },
+        },
       ],
     }),
     card("outro"),
@@ -150,9 +169,9 @@ test.describe("the burn-in recorder", () => {
       }
       const first = await renderOnce(1)
       const second = await renderOnce(2)
-      // Captions, the mark, the headline and the badge, so the comparison is
-      // not of nothing.
-      expect(first.burnIns.size).toBe(4)
+      // Captions, the mark, the headline, the badge and the terminal, so the
+      // comparison is not of nothing.
+      expect(first.burnIns.size).toBe(5)
       expect(second.burnIns).toEqual(first.burnIns)
       expect(second.video).toBe(first.video)
     } finally {

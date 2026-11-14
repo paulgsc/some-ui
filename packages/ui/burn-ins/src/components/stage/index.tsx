@@ -3,6 +3,7 @@ import { AuthorshipLayer } from "@burn-ins/components/stage/authorship"
 import { StatusBadgeLayer } from "@burn-ins/components/stage/badge"
 import { Caption } from "@burn-ins/components/stage/captions"
 import { GameCardLayer } from "@burn-ins/components/stage/game-card"
+import { TerminalLayer } from "@burn-ins/components/stage/terminal"
 import { TextLayer } from "@burn-ins/components/stage/text"
 import { unitsOf, type Units } from "@burn-ins/components/stage/units"
 import type { BurnInFrame } from "@burn-ins/lib/burn-in"
@@ -37,6 +38,9 @@ const Layer = ({
     }
     case "status-badge": {
       return <StatusBadgeLayer frame={frame.frame} units={units} />
+    }
+    case "terminal": {
+      return <TerminalLayer frame={frame.frame} units={units} />
     }
     default: {
       return assertNever(frame)

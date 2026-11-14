@@ -108,6 +108,28 @@ export const SAMPLES: Readonly<
   "preview-mark": {},
   // An open PR, shown first in its video, so it spells itself out.
   "status-badge": { badge: "pr" },
+  terminal: {
+    kicker: "TERMINAL · THE SCRATCHPAD",
+    title: "What the binding runs",
+    bar: "scratchpad",
+    lines: [
+      { comment: "# a sample: the commands are made up", badge: "next" },
+      {
+        prompt: "$",
+        keyword: "scratch run foo.rs",
+        comment: "  # compile, lint, run",
+        badge: "main",
+      },
+      {
+        prompt: "$",
+        keyword: "scratch watch foo.rs",
+        comment: "  # on every save",
+        badge: "pr",
+      },
+      { prompt: "$", text: "export API_KEY=<from the vault>", badge: "you" },
+      { comment: "# std only: no crates", badge: "gap" },
+    ],
+  },
 }
 
 export const samplesOf = (kind: Kind): ReadonlyArray<BurnInData["params"]> =>

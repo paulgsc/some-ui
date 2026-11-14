@@ -11,7 +11,7 @@ address) through the web surface's door.
 ## What it is
 
 A burn-in is a kind (`captions`, `headline`, `card`, `authorship`,
-`game-card`, `preview-mark`, `status-badge`), a named design and one video's params, which the cut list
+`game-card`, `preview-mark`, `status-badge`, `terminal`), a named design and one video's params, which the cut list
 carries. `src/lib/burn-in.ts` holds the contract and says why it is the way
 it is; each module's header does the same for its part:
 
@@ -43,6 +43,12 @@ it is; each module's header does the same for its part:
   five states of a claim on screen, each a glyph drawn from paths, which spells out its
   definition at its first appearance in a video. The first card kinds (epic
   CARDS, #2465) draw it beside their lines.
+- `src/lib/cards.ts`: what the cards share: a kicker and title in the
+  header, items that appear one at a time, each with its badge, and the
+  values rule, which refuses text that gives a name a value.
+- `src/lib/terminal.ts`: the terminal card (CARDS2, #2467), design
+  `terminal-v1`: a window of lines in the cards' monospace, JetBrains Mono
+  (`src/lib/mono.ts`; SIL OFL 1.1), which the host page loads in weight 500.
 - `src/runtime/record.ts`, `src/components/record`: the recording protocol.
 - `src/components/preview`, `src/components/stage`: the preview page.
 
@@ -60,7 +66,8 @@ pnpm --filter www record:short <video folder> --series <series folder>
 ```
 
 The font is Barlow Condensed (SIL Open Font License 1.1), free to embed in
-video, which the host page loads in the weights 600 and 800.
+video, which the host page loads in the weights 600 and 800, and the cards'
+monospace is JetBrains Mono (the same licence) in weight 500.
 
 ## Word timings
 

@@ -76,6 +76,15 @@ import {
   PREVIEW_MARK_DESIGNS,
   PreviewMarkParamsSchema,
 } from "./preview-mark"
+import {
+  drawTerminal,
+  TERMINAL_DESIGNS,
+  terminalAt,
+  terminalBoxes,
+  TerminalParamsSchema,
+  type TerminalDrawing,
+  type TerminalFrame,
+} from "./terminal"
 
 export const KINDS = [
   "captions",
@@ -85,6 +94,7 @@ export const KINDS = [
   "game-card",
   "preview-mark",
   "status-badge",
+  "terminal",
 ] as const
 export type Kind = (typeof KINDS)[number]
 
@@ -99,6 +109,7 @@ export const DESIGNS = {
   "game-card": GAME_CARD_DESIGNS,
   "preview-mark": PREVIEW_MARK_DESIGNS,
   "status-badge": STATUS_BADGE_DESIGNS,
+  terminal: TERMINAL_DESIGNS,
 } as const satisfies Record<Kind, ReadonlyArray<string>>
 
 /** Where each kind draws. */
@@ -115,6 +126,8 @@ export const REGIONS_OF = {
   "preview-mark": ["foot"],
   // At the body's top left, over the scene's picture or a bare card.
   "status-badge": ["body"],
+  // A card over a bare scene: its title in the header, its window in the body.
+  terminal: ["header", "body"],
 } as const satisfies Record<Kind, ReadonlyArray<Region>>
 
 const TimedWordSchema = z
@@ -174,6 +187,11 @@ export type Prepared =
       readonly design: (typeof STATUS_BADGE_DESIGNS)[number]
       readonly drawing: StatusBadgeDrawing
     }
+  | {
+      readonly kind: "terminal"
+      readonly design: (typeof TERMINAL_DESIGNS)[number]
+      readonly drawing: TerminalDrawing
+    }
 
 /** What is on screen at a moment. */
 export type BurnInFrame =
@@ -208,6 +226,11 @@ export type BurnInFrame =
       readonly kind: "status-badge"
       readonly design: (typeof STATUS_BADGE_DESIGNS)[number]
       readonly frame: StatusBadgeFrame
+    }
+  | {
+      readonly kind: "terminal"
+      readonly design: (typeof TERMINAL_DESIGNS)[number]
+      readonly frame: TerminalFrame
     }
 
 const issues = (name: string, error: z.ZodError): ReadonlyArray<string> =>
@@ -359,6 +382,22 @@ export function prepare(b: BurnInData, frame: FrameSize): Parsed<Prepared> {
           }
         : c
     }
+    case "terminal": {
+      const c = checked(
+        name,
+        TERMINAL_DESIGNS,
+        b,
+        TerminalParamsSchema,
+        drawTerminal,
+        g
+      )
+      return c.ok
+        ? {
+            ok: true,
+            value: { kind, design: c.value.design, drawing: c.value.value },
+          }
+        : c
+    }
     default: {
       return assertNever(kind)
     }
@@ -396,6 +435,13 @@ export function frameAt(p: Prepared, t: number): BurnInFrame {
         frame: statusBadgeAt(p.drawing, t),
       }
     }
+    case "terminal": {
+      return {
+        kind: p.kind,
+        design: p.design,
+        frame: terminalAt(p.drawing, t),
+      }
+    }
     default: {
       return assertNever(p)
     }
@@ -426,6 +472,9 @@ export function boxesOf(f: BurnInFrame): ReadonlyArray<Box> {
     }
     case "status-badge": {
       return f.frame.marks.flatMap(badgeBoxes)
+    }
+    case "terminal": {
+      return terminalBoxes(f.frame)
     }
     default: {
       return assertNever(f)

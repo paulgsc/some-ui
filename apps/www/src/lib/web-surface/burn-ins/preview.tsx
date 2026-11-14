@@ -5,6 +5,8 @@ import { BurnInsPreview } from "@some-ui/burn-ins"
 // only in this chunk.
 import "@fontsource/barlow-condensed/latin-600.css"
 import "@fontsource/barlow-condensed/latin-800.css"
+// The cards' monospace (burn-ins' src/lib/mono.ts).
+import "@fontsource/jetbrains-mono/latin-500.css"
 
 export type BurnInsPreviewProps = {
   /** The kind to open on; an unknown one opens on subtitles. */
