@@ -25,7 +25,10 @@ function openStates(value: unknown): ReadonlyArray<string> {
 
 const STAMP = { sources: ["paulgsc/dotfiles@91cb11b"], date: "2026-11-13" }
 
-/** A terminal whose lines give their own times, out of the default order. */
+/**
+ * A terminal whose lines give their own times, out of the default order,
+ * with a state repeated: the later-listed `pr` comes first.
+ */
 const TIMED = {
   title: "Timed",
   stamp: STAMP,
@@ -33,6 +36,7 @@ const TIMED = {
     { text: "a", badge: "pr", atMs: 2000 },
     { text: "b", badge: "you" },
     { text: "c", badge: "main", atMs: 400 },
+    { text: "d", badge: "pr", atMs: 100 },
   ],
 }
 

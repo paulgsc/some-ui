@@ -9,8 +9,9 @@
  * in order, and gives each scene's burn-in that shows any the states shown
  * before it, as `badgesSeen`, so which appearance opens is a pure function
  * of the cut list. A state counts as seen only once its first appearance in
- * the scene has spelled itself out before the next scene starts: a status
- * badge's after its lead, a card item's at the item's own time. Otherwise
+ * the scene has spelled itself out before the next scene starts: a reveal
+ * starts after a status badge's lead, or at a card item's own time, and
+ * runs `REVEAL.totalMs`. Otherwise
  * the next appearance spells it out again; a preview, which shortens scenes,
  * is never refused for it. Nothing is written for it by hand
  * (`badgeProblems`).
@@ -30,7 +31,8 @@ const BADGES_SEEN = "badgesSeen"
 
 /**
  * The timing `@some-ui/burn-ins` draws badges with, which this package does
- * not import: a status badge appears after `STATUS_BADGE_LEAD_MS`; a card's
+ * not import (burn-ins is a React package, and its contract may carry no
+ * code, so `itemTimes` cannot cross): a status badge appears after `STATUS_BADGE_LEAD_MS`; a card's
  * items after `ITEM.leadMs`, then one `ITEM.gapMs` after the one before
  * unless an item gives its own `atMs` (`itemTimes`); a badge spells itself
  * out over `REVEAL.totalMs`. Held equal by burn-ins' `badge-timing.test.ts`.
