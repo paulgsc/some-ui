@@ -1,8 +1,8 @@
 /**
  * The terminal card (CARDS2, #2467), design `terminal-v1`: a card's kicker
  * and title in the header, and in the body a terminal window, its title bar
- * and its lines, each line appearing at its time (fading up as it rises
- * 14 px), with its prompt, keyword, text and comment in their colours and
+ * and its lines, each line appearing at its time (`./cards`' `appearing`),
+ * with its prompt, keyword, text and comment in their colours and
  * an optional status badge (`./badge`) beside it. The lines sit centred
  * down the window.
  *
@@ -34,7 +34,13 @@ import {
   valueProblem,
 } from "./cards"
 import type { Box, Geometry } from "./geometry"
-import { INK, textBoxes, type Panel, type TextFrame } from "./journal"
+import {
+  cardSpace,
+  INK,
+  textBoxes,
+  type Panel,
+  type TextFrame,
+} from "./journal"
 import { missingChar, monoWidth } from "./mono"
 import type { Parsed } from "./parsed"
 
@@ -93,11 +99,8 @@ type LineDrawing = {
 
 /** The window drawn once, for `frameAt` to time. */
 export type TerminalDrawing = {
-  readonly heading: TextFrame
-  readonly window: Panel
-  /** The title bar's foot. */
-  readonly rule: Box
-  readonly dots: ReadonlyArray<Box>
+  /** The heading, and the window, its title bar's foot and dots as panels. */
+  readonly card: TextFrame
   readonly bar: {
     readonly x: number
     readonly y: number
@@ -124,7 +127,7 @@ export type TerminalFrame = Omit<TerminalDrawing, "lines"> & {
 /** The type the window's lines and title bar are set in. */
 export const TERMINAL_TYPE = {
   sizePx: SIZE_PX,
-  lineHeightPx: SIZE_PX * LINE_HEIGHT,
+  lineHeight: LINE_HEIGHT,
   barSizePx: BAR_SIZE_PX,
 } as const
 
@@ -136,32 +139,34 @@ const spansOf = (l: Line): ReadonlyArray<Span> =>
     { text: l.comment, colour: INK.muted },
   ].filter((s) => s.text !== "")
 
-/** Why line `n` (from 1) can't be drawn `width` wide, or null when it can. */
-function lineProblem(
-  n: number,
-  l: Line,
-  opens: boolean,
-  width: number
+/**
+ * Why `text`, named `name`, can't be drawn `width` wide at `sizePx` with
+ * `reach` more beside it, or null when it can.
+ */
+function textProblem(
+  name: string,
+  text: string,
+  sizePx: number,
+  width: number,
+  reach = 0
 ): string | null {
-  const whole = spansOf(l)
-    .map((s) => s.text)
-    .join("")
-  const missing = missingChar(whole)
+  const missing = missingChar(text)
   if (missing !== null)
-    return `line ${n} has "${missing}", which the terminal's type can't draw`
-  const name = valueProblem(whole)
-  if (name !== null)
-    return `line ${n} gives ${name} a value; a card shows a placeholder, never a value`
-  const open =
-    opens && l.badge !== undefined
-      ? openReach(badgeAt(l.badge, 0, 0, BADGE_PX, 1, 1))
-      : 0
-  if (monoWidth(whole, SIZE_PX) + open > width)
-    return opens
-      ? `line ${n} doesn't fit the window while its badge spells itself out`
-      : `line ${n} doesn't fit the window`
+    return `${name} has "${missing}", which the terminal's type can't draw`
+  const given = valueProblem(text)
+  if (given !== null)
+    return `${name} gives ${given} a value; a card shows a placeholder, never a value`
+  if (monoWidth(text, sizePx) + reach > width)
+    return reach > 0
+      ? `${name} doesn't fit the window while its badge spells itself out`
+      : `${name} doesn't fit the window`
   return null
 }
+
+const lineText = (l: Line): string =>
+  spansOf(l)
+    .map((s) => s.text)
+    .join("")
 
 export function drawTerminal(
   p: TerminalParams,
@@ -169,31 +174,38 @@ export function drawTerminal(
 ): Parsed<TerminalDrawing> {
   const heading = cardHeading(p, g)
   if (!heading.ok) return heading
-  const box = g.regions.body
   const window: Panel = {
-    box,
+    ...cardSpace(g).panel,
     fill: CARD_INK.window,
-    edge: INK.edge,
-    edgePx: 2,
     radiusPx: 16,
   }
+  const box = window.box
+  const times = itemTimes(p.lines.map((l) => l.atMs))
   const opens = badgesOpening(
     p.lines.map((l) => l.badge),
+    times,
     p.badgesSeen
   )
   const textX = box.x + PAD_X + BADGE_COLUMN
   const width = box.x + box.width - PAD_X - textX
   const problems = p.lines.flatMap((l, i) => {
-    const why = lineProblem(i + 1, l, opens[i] ?? false, width)
+    const reach =
+      opens[i] === true && l.badge !== undefined
+        ? openReach(badgeAt(l.badge, 0, 0, BADGE_PX, 1, 1))
+        : 0
+    const why = textProblem(`line ${i + 1}`, lineText(l), SIZE_PX, width, reach)
     return why === null ? [] : [why]
   })
   const barText = p.bar === "" ? null : p.bar
   const barX = box.x + PAD_X + 3 * DOT_STEP
   if (barText !== null) {
-    if (missingChar(barText) !== null || valueProblem(barText) !== null)
-      problems.push("the title bar can't be drawn as written")
-    else if (barX + monoWidth(barText, BAR_SIZE_PX) > box.x + box.width - PAD_X)
-      problems.push("the title bar doesn't fit the window")
+    const why = textProblem(
+      "the title bar",
+      barText,
+      BAR_SIZE_PX,
+      box.x + box.width - PAD_X - barX
+    )
+    if (why !== null) problems.push(why)
   }
   const pitch = SIZE_PX * LINE_HEIGHT + ROW_GAP
   const areaY = box.y + BAR_PX
@@ -203,19 +215,34 @@ export function drawTerminal(
     problems.push(`${p.lines.length} lines don't fit the window`)
   if (problems.length > 0) return { ok: false, problems }
   const top = areaY + (areaHeight - linesHeight) / 2
-  const times = itemTimes(p.lines.map((l) => l.atMs))
+  const flat = (b: Box, radiusPx = 0): Panel => ({
+    box: b,
+    fill: window.edge,
+    edge: window.edge,
+    edgePx: 0,
+    radiusPx,
+  })
   return {
     ok: true,
     value: {
-      heading: heading.value,
-      window,
-      rule: { x: box.x, y: areaY - 2, width: box.width, height: 2 },
-      dots: [0, 1, 2].map((i) => ({
-        x: box.x + PAD_X + i * DOT_STEP,
-        y: box.y + (BAR_PX - DOT_PX) / 2,
-        width: DOT_PX,
-        height: DOT_PX,
-      })),
+      card: {
+        ...heading.value,
+        panels: [
+          window,
+          flat({ x: box.x, y: areaY - 2, width: box.width, height: 2 }),
+          ...[0, 1, 2].map((i) =>
+            flat(
+              {
+                x: box.x + PAD_X + i * DOT_STEP,
+                y: box.y + (BAR_PX - DOT_PX) / 2,
+                width: DOT_PX,
+                height: DOT_PX,
+              },
+              DOT_PX / 2
+            )
+          ),
+        ],
+      },
       bar:
         barText === null
           ? null
@@ -249,7 +276,7 @@ export function terminalAt(d: TerminalDrawing, t: number): TerminalFrame {
         : badgeAt(
             l.badge,
             l.x - BADGE_COLUMN,
-            y + (TERMINAL_TYPE.lineHeightPx - BADGE_PX) / 2,
+            y + (SIZE_PX * LINE_HEIGHT - BADGE_PX) / 2,
             BADGE_PX,
             opacity,
             l.opens ? openness(t - l.atMs) : 0
@@ -269,7 +296,5 @@ export function terminalAt(d: TerminalDrawing, t: number): TerminalFrame {
 }
 
 /** The boxes the card covers: its heading and its window. */
-export const terminalBoxes = (f: TerminalFrame): ReadonlyArray<Box> => [
-  ...textBoxes(f.heading),
-  f.window.box,
-]
+export const terminalBoxes = (f: TerminalFrame): ReadonlyArray<Box> =>
+  textBoxes(f.card)

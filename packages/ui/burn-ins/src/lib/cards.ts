@@ -13,7 +13,14 @@
 
 import { z } from "zod"
 
-import { APPEAR_MS, BadgeStateSchema, opening, type BadgeState } from "./badge"
+import {
+  APPEAR_MS,
+  BadgesSeenSchema,
+  opening,
+  STATUS_BADGE_LEAD_MS,
+  type BadgeState,
+} from "./badge"
+import { clamp01 } from "./captions/frame"
 import type { Geometry } from "./geometry"
 import { blocksOf, cardHeadline, kicker, type TextFrame } from "./journal"
 import type { Parsed } from "./parsed"
@@ -28,8 +35,8 @@ export const CARD_INK = {
 
 /** When the items appear, unless an item says. */
 export const ITEM = {
-  /** The first, after the scene's way in. */
-  leadMs: 700,
+  /** The first, after the scene's way in, as a status badge's. */
+  leadMs: STATUS_BADGE_LEAD_MS,
   /** Between one and the next. */
   gapMs: 1150,
   /** How far an item rises as it fades in. */
@@ -53,53 +60,101 @@ export function appearing(
   t: number,
   atMs: number
 ): { readonly opacity: number; readonly risePx: number } {
-  const x = Math.min(1, Math.max(0, (t - atMs) / APPEAR_MS))
+  const x = clamp01((t - atMs) / APPEAR_MS)
   return { opacity: x, risePx: (1 - x) * ITEM.risePx }
 }
 
-/** Each item's badge, and which of them spells itself out (`./badge`). */
+/**
+ * Which items' badges spell themselves out: the first of each state to
+ * appear, by the items' times (`itemTimes`), ties in the order listed.
+ */
 export function badgesOpening(
   badges: ReadonlyArray<BadgeState | undefined>,
+  times: ReadonlyArray<number>,
   seen: ReadonlyArray<BadgeState>
 ): ReadonlyArray<boolean> {
-  const shown = badges.flatMap((b) => (b === undefined ? [] : [b]))
-  const opens = opening(shown, seen)
-  let k = 0
-  return badges.map((b) => (b === undefined ? false : (opens[k++] ?? false)))
+  const order = badges
+    .map((_, i) => i)
+    .sort((a, b) => (times[a] ?? 0) - (times[b] ?? 0) || a - b)
+  const opens = opening(
+    order.map((i) => badges[i]),
+    seen
+  )
+  const byItem = badges.map(() => false)
+  order.forEach((i, k) => {
+    byItem[i] = opens[k] ?? false
+  })
+  return byItem
 }
 
 /** What every card's params carry beside its items. */
 export const CardHeadSchema = z.object({
   kicker: z.string().default(""),
   title: z.string().min(1),
-  /** The states shown before this card in the video: the renderer's. */
-  badgesSeen: z.array(BadgeStateSchema).default([]),
+  badgesSeen: BadgesSeenSchema,
 })
 
 /** The time an item may name for itself, in ms into its card. */
 export const ItemAtSchema = z.number().nonnegative().optional()
 
-/** A card's kicker and title, set in the header as a Build Journal card's. */
-export const cardHeading = (
+/**
+ * A card's kicker and title, set in the header as a Build Journal card's;
+ * refused, as every card's text is, when either gives a value.
+ */
+export function cardHeading(
   p: { readonly kicker: string; readonly title: string },
   g: Geometry
-): Parsed<TextFrame> =>
-  blocksOf([
+): Parsed<TextFrame> {
+  const name = valueProblem(`${p.kicker}\n${p.title}`)
+  if (name !== null)
+    return {
+      ok: false,
+      problems: [
+        `the heading gives ${name} a value; a card shows a placeholder, never a value`,
+      ],
+    }
+  return blocksOf([
     ["kicker", kicker(p.kicker, g)],
     ["title", cardHeadline(p.title, g)],
   ])
+}
 
-const VALUE =
-  /(?:^|[\s;'"`(])([A-Za-z_][A-Za-z0-9_]*)=(<[^<>]*>|ENC\[[^\]]*\]|[^\s'"`;)]*)/g
+/** A name being given something: `NAME=` at a word's start. */
+const ASSIGNED = /(?:^|[\s;'"`(])([A-Za-z_][A-Za-z0-9_]*)=/g
+
+const QUOTES = new Set(["'", '"', "`"])
+
+/**
+ * What follows an `=` at `from`: a quoted value whole (its quotes dropped,
+ * a backtick's command included), else everything up to whitespace, `;`,
+ * `)` or the end (a `<placeholder>` or `ENC[…]` read whole first), so
+ * nothing can follow a placeholder unseen.
+ */
+function valueAt(text: string, from: number): string {
+  const quote = text[from]
+  if (quote !== undefined && QUOTES.has(quote)) {
+    const end = text.indexOf(quote, from + 1)
+    const inner = text.slice(from + 1, end === -1 ? undefined : end)
+    return quote === "`" ? `\`${inner}\`` : inner
+  }
+  // A placeholder may hold spaces: read it whole, then whatever follows it.
+  const rest = text.slice(from)
+  const held = /^(?:<[^<>]*>|ENC\[[^\]]*\])/.exec(rest)?.[0] ?? ""
+  return held + (/^[^\s;)]*/.exec(rest.slice(held.length))?.[0] ?? "")
+}
 
 const PLACEHOLDER = (v: string): boolean =>
   v === "" || v === "…" || /^<[^<>]*>$/.test(v) || /^ENC\[[^\]]*\]$/.test(v)
 
 /** The name a line gives a value, when it gives one; null when it doesn't. */
 export function valueProblem(text: string): string | null {
-  for (const m of text.matchAll(VALUE)) {
-    const [, name, value] = m
-    if (name !== undefined && !PLACEHOLDER(value ?? "")) return name
+  for (const m of text.matchAll(ASSIGNED)) {
+    const name = m[1]
+    if (
+      name !== undefined &&
+      !PLACEHOLDER(valueAt(text, m.index + m[0].length))
+    )
+      return name
   }
   return null
 }

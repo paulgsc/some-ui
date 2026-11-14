@@ -100,15 +100,16 @@ export function openness(sinceMs: number): number {
 
 /**
  * Which of a burn-in's badges, in the order they appear, open into their
- * definition: the first of each state not shown before it (`seen`).
+ * definition: the first of each state not shown before it (`seen`). An
+ * item without a badge (`undefined`) never opens.
  */
 export function opening(
-  shown: ReadonlyArray<BadgeState>,
+  shown: ReadonlyArray<BadgeState | undefined>,
   seen: ReadonlyArray<BadgeState>
 ): ReadonlyArray<boolean> {
   const met = new Set(seen)
   return shown.map((s) => {
-    if (met.has(s)) return false
+    if (s === undefined || met.has(s)) return false
     met.add(s)
     return true
   })
@@ -208,10 +209,12 @@ export const badgeBoxes = (m: BadgeMark): ReadonlyArray<Box> =>
 
 export const STATUS_BADGE_DESIGNS = ["badge-v1"] as const
 
+/** The states shown before this scene in the video: the renderer's. */
+export const BadgesSeenSchema = z.array(BadgeStateSchema).default([])
+
 export const StatusBadgeParamsSchema = z.strictObject({
   badge: BadgeStateSchema,
-  /** The states shown before this scene in the video: the renderer's. */
-  badgesSeen: z.array(BadgeStateSchema).default([]),
+  badgesSeen: BadgesSeenSchema,
 })
 
 export type StatusBadgeParams = z.infer<typeof StatusBadgeParamsSchema>

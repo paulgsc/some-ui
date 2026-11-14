@@ -75,7 +75,6 @@ const CUT_LIST = cutList(
         { kind: "status-badge", design: "badge-v1", params: { badge: "pr" } },
       ],
     }),
-    // CARDS2: a terminal card over a bare scene, in the cards' monospace.
     shot("S3", {
       picture: { kind: "card" },
       durationMs: 2000,
