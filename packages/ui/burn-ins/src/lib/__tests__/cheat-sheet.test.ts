@@ -1,6 +1,6 @@
 /** @vitest-environment node */
 import { frameAt, prepare } from "@burn-ins/lib/burn-in"
-import { ITEM } from "@burn-ins/lib/cards"
+import { cardBody, ITEM } from "@burn-ins/lib/cards"
 import type { CheatSheetFrame } from "@burn-ins/lib/cheat-sheet"
 import {
   geometryOf,
@@ -161,18 +161,21 @@ describe("the cheat-sheet card", () => {
     ])
   })
 
-  it("keeps every row inside the body while it rises, for every sheet it accepts", () => {
+  it("keeps every row above the stamp while it rises, for every sheet it accepts", () => {
     for (const frame of [LANDSCAPE, PORTRAIT]) {
-      const body = geometryOf(frame).regions.body
+      const body = cardBody(geometryOf(frame))
+      let accepted = 0
       for (let n = 1; n <= 8; n++) {
         const params = { title: "Rows", rows: ROWS(n) }
         if (!sheet(params, frame).ok) continue
+        accepted += 1
         for (let t = 0; t <= END; t += 50)
           for (const r of at(params, t, frame).rows)
             expect(r.panel.y + r.panel.height).toBeLessThanOrEqual(
               body.y + body.height
             )
       }
+      expect(accepted).toBeGreaterThan(0)
     }
   })
 })
