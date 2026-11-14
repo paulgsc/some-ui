@@ -711,6 +711,12 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
         run: nix develop .#ci --command node scripts/check-stays-put.ts --base "origin/$BASE_REF"
+      # WS1 (docs/ci-architecture.md, "Inputs reach the shell as data"): the
+      # manual sign workflow runs its extension input only as data. Here, not
+      # only in node-test, whose affected-package filter skips a change to the
+      # workflow alone.
+      - name: Check the manual sign workflow's input
+        run: nix develop .#ci --command pnpm --filter @some-ui/eslint-kit exec vitest run tests/extension-sign-inputs.test.ts
 
   # ── CI Gate ────────────────────────────────────────────────────────────
   # A job whose `needs` fails is skipped, not failed, so the gate judges each
