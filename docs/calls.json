@@ -2714,6 +2714,27 @@
         "#2465",
         "#2979"
       ]
+    },
+    {
+      "id": "C326",
+      "made": "2026-11-14",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/sample/videos/nixos-upgrade/cut-list.json",
+        "packages/ui/burn-ins/src/lib/words.ts"
+      ],
+      "chose": "On the NixOS showcase, the weekly flake-update step carries the main badge, its note drops \"#64 is open now.\", and the you badge spells out \"a step only you do\" in every video.",
+      "options": [
+        "Keep the copy as #2986 landed it (pr badge, the #64 line, \"a step only I do\")",
+        "main badge, no #64 line, \"a step only you do\"",
+        "Change only the NixOS cut list and leave the badge's words as they are"
+      ],
+      "gray": "The badge set and the card copy are the owner's to read; nothing settles whether a scheduled step that opens a PR is itself on main, whether a card dated by its stamp may say \"now\", or whose voice the you badge speaks in. Raised for the owner in #2986's review (https://github.com/paulgsc/some-ui/issues/2986#issuecomment-6874200230); the coordinator recommended these answers and the owner raised no objection.",
+      "undo": "Set step 1's badge back to pr, put \" #64 is open now.\" back at the end of its note, and set badges.you in burn-ins' words.ts back to \"a step only I do\".",
+      "refs": [
+        "#2465",
+        "#2986"
+      ]
     }
   ]
 }
