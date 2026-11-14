@@ -121,6 +121,14 @@ describe("the terminal card", () => {
     }
   )
 
+  it.each([
+    ["SET KEY=<token>", "Rotate it weekly"],
+    ["SET KEY=ENC[x]", "then deploy"],
+    ["SET KEY=", "<token>"],
+  ])("lets a placeholder in the kicker sit over any title: %s", (k, title) => {
+    expect(terminal({ kicker: k, title, lines: [{ text: "x" }] }).ok).toBe(true)
+  })
+
   it("refuses a heading that gives a value", () => {
     const p = terminal({
       title: "Set API_KEY=sk-live-abc",

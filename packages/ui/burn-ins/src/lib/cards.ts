@@ -105,12 +105,16 @@ export function cardHeading(
   p: { readonly kicker: string; readonly title: string },
   g: Geometry
 ): Parsed<TextFrame> {
-  // Each alone, and joined as the eye reads them across the break, so a
-  // value can't open in the kicker and close in the title.
+  // Each alone, and joined as the eye reads them across the break when the
+  // kicker leaves a value open (`KEY=`, an unclosed quote), so a value can't
+  // open in the kicker and close in the title.
+  const open =
+    /=\s*$/.test(p.kicker) ||
+    [`"`, `'`, "`"].some((q) => p.kicker.split(q).length % 2 === 0)
   const name =
     valueProblem(p.kicker) ??
     valueProblem(p.title) ??
-    valueProblem(`${p.kicker}${p.title}`)
+    (open ? valueProblem(`${p.kicker}${p.title}`) : null)
   if (name !== null)
     return {
       ok: false,
