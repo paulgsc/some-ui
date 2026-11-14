@@ -120,7 +120,8 @@ export function legendAt(d: LegendDrawing, t: number): LegendFrame {
           r.glyph.x,
           r.glyph.y + risePx,
           GLYPH_PX,
-          opacity,
+          // The row's layer fades it, with the words beside it.
+          1,
           0
         ),
         meaning: {

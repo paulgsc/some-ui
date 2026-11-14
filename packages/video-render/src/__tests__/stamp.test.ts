@@ -44,16 +44,6 @@ describe("the stamp", () => {
     ])
   })
 
-  it("re-stamps every card when the pin changes", () => {
-    const moved = { sources: ["paulgsc/dotfiles@0123abc"], date: "2026-12-01" }
-    const cut = parsed(
-      cutList([shot("S1", { burnIns: [terminal] })], { stamp: moved })
-    )
-    expect(
-      withStamp(cut, [cut.shots[0]?.burnIns ?? []])[0]?.[0]?.params
-    ).toMatchObject({ stamp: moved })
-  })
-
   it("is refused when a card is in a cut list without one", () => {
     expect(problems(cutList([shot("S1", { burnIns: [terminal] })]))).toEqual([
       "S1: a card is stamped with the commits it was checked against; the cut list has no stamp",

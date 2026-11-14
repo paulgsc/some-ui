@@ -139,7 +139,12 @@ export function drawStamp(
   const text = stampText(s)
   const width = monoWidth(text, STAMP_TYPE.sizePx)
   if (width > body.width)
-    return { ok: false, problems: ["the stamp doesn't fit"] }
+    return {
+      ok: false,
+      problems: [
+        `the stamp "${text}" doesn't fit the card's width; name fewer sources, or shorter ones`,
+      ],
+    }
   return {
     ok: true,
     value: {

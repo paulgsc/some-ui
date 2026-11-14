@@ -247,7 +247,7 @@ export function ruleAt(d: RuleDrawing, t: number): RuleFrame {
         pieces,
         badges: pieces.flatMap((p) =>
           p.kind === "badge"
-            ? [badgeAt(p.state, p.box.x, p.box.y, p.box.width, opacity, 0)]
+            ? [badgeAt(p.state, p.box.x, p.box.y, p.box.width, 1, 0)]
             : []
         ),
         box: {

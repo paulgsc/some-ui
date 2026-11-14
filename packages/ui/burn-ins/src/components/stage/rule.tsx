@@ -1,8 +1,8 @@
 import type { JSX } from "react"
 import { Badge } from "@burn-ins/components/stage/badge"
-import { monoStyle, Stamp } from "@burn-ins/components/stage/card"
+import { Stamp } from "@burn-ins/components/stage/card"
 import { TextLayer } from "@burn-ins/components/stage/text"
-import type { Units } from "@burn-ins/components/stage/units"
+import { monoType, type Units } from "@burn-ins/components/stage/units"
 import { GLYPH_STROKE } from "@burn-ins/lib/badge"
 import { INK } from "@burn-ins/lib/journal"
 import { ruleLineHeight, SIGNS, type RuleFrame } from "@burn-ins/lib/rule"
@@ -19,7 +19,7 @@ export const RuleLayer = ({
   units: Units
 }): JSX.Element => {
   const { cq, placed } = units
-  const type = monoStyle(units, frame.sizePx, ruleLineHeight(frame.sizePx))
+  const type = monoType(units, frame.sizePx, ruleLineHeight(frame.sizePx))
   return (
     <>
       <TextLayer frame={frame.heading} units={units} />
