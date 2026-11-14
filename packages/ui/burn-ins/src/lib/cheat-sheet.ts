@@ -209,8 +209,8 @@ export function drawCheatSheet(
   for (const [i, r] of p.rows.entries()) {
     const words = wordsProblem(
       `row ${i + 1}`,
-      r.command,
-      [r.task, r.command, r.note].join("\n")
+      [r.task, r.command, r.note].join("\n"),
+      { what: `row ${i + 1}'s command`, text: r.command }
     )
     if (words !== null) {
       problems.push(words)
@@ -233,7 +233,11 @@ export function drawCheatSheet(
   }
   // The last row rises into place, so the sheet needs room for its rise too.
   if (y - ROW_GAP + ITEM.risePx > box.y + box.height)
-    problems.push(`${p.rows.length} rows don't fit`)
+    problems.push(
+      rows.length === p.rows.length
+        ? `${p.rows.length} rows don't fit`
+        : "the rows don't fit"
+    )
   return problems.length > 0
     ? { ok: false, problems }
     : { ok: true, value: { heading: heading.value, stamp: stamp.value, rows } }

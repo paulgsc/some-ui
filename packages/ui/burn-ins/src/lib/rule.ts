@@ -186,8 +186,8 @@ export function drawRule(p: RuleParams, g: Geometry): Parsed<RuleDrawing> {
   const stamp = drawStamp(p.stamp, g)
   if (!stamp.ok) return stamp
   const problems = [
-    ...p.sources.map((s, i) => wordsProblem(`source ${i + 1}`, s, s)),
-    wordsProblem("the one that wins", p.wins, p.wins),
+    ...p.sources.map((s, i) => wordsProblem(`source ${i + 1}`, s)),
+    wordsProblem("the one that wins", p.wins),
   ].flatMap((why) => (why === null ? [] : [why]))
   if (problems.length > 0) return { ok: false, problems }
   const box = cardBody(g)

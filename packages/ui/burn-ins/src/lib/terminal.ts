@@ -155,7 +155,7 @@ function textProblem(
   width: number,
   reach = 0
 ): string | null {
-  const words = wordsProblem(name, text, text)
+  const words = wordsProblem(name, text)
   if (words !== null) return words
   if (monoWidth(text, sizePx) + reach > width)
     return reach > 0
