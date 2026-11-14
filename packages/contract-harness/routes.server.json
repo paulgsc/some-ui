@@ -2,7 +2,7 @@
   "schema_version": 1,
   "api_base_path": "/api/v1",
   "server_version": "0.0.0",
-  "contract_epoch": 4,
+  "contract_epoch": 6,
   "oldest_supported": 1,
   "routes": [
     {
@@ -361,6 +361,34 @@
       "full_path": "/api/v1/ideas/:id/set-aside",
       "versioned": true,
       "module": "ideas"
+    },
+    {
+      "method": "GET",
+      "path": "/interview-weeks",
+      "full_path": "/api/v1/interview-weeks",
+      "versioned": true,
+      "module": "interview_weeks"
+    },
+    {
+      "method": "GET",
+      "path": "/interview-weeks/:id",
+      "full_path": "/api/v1/interview-weeks/:id",
+      "versioned": true,
+      "module": "interview_weeks"
+    },
+    {
+      "method": "GET",
+      "path": "/interview-weeks/:id/record",
+      "full_path": "/api/v1/interview-weeks/:id/record",
+      "versioned": true,
+      "module": "interview_weeks"
+    },
+    {
+      "method": "PUT",
+      "path": "/interview-weeks/:id/sent",
+      "full_path": "/api/v1/interview-weeks/:id/sent",
+      "versioned": true,
+      "module": "interview_weeks"
     },
     {
       "method": "GET",
@@ -1010,6 +1038,27 @@
       "method": "PUT",
       "path": "/voice-notes/:id/set-aside",
       "full_path": "/api/v1/voice-notes/:id/set-aside",
+      "versioned": true,
+      "module": "voice"
+    },
+    {
+      "method": "GET",
+      "path": "/voice-notes/:id/station",
+      "full_path": "/api/v1/voice-notes/:id/station",
+      "versioned": true,
+      "module": "voice"
+    },
+    {
+      "method": "POST",
+      "path": "/voice-notes/:id/station",
+      "full_path": "/api/v1/voice-notes/:id/station",
+      "versioned": true,
+      "module": "voice"
+    },
+    {
+      "method": "GET",
+      "path": "/voice-notes/conveyor",
+      "full_path": "/api/v1/voice-notes/conveyor",
       "versioned": true,
       "module": "voice"
     },

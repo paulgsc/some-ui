@@ -1365,6 +1365,22 @@ importers:
         specifier: workspace:*
         version: link:../../some-vite-config
 
+  packages/ui/interview-week:
+    dependencies:
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.6
+    devDependencies:
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../../tsconfig
+      '@some-ui/vite-config':
+        specifier: workspace:*
+        version: link:../../some-vite-config
+      fast-check:
+        specifier: ^4.10.2
+        version: 4.10.2
+
   packages/ui/leetype:
     dependencies:
       '@some-ui/core-utils':
