@@ -3319,7 +3319,9 @@
         "some-ui:packages/video-render/CARDS-ROUTINE.md",
         "some-ui:apps/www/tests/record/cards.ts",
         "some-ui:apps/www/tests/record/burn-ins.ts",
-        "server:apps/servers/file_host/src/cards_essays"
+        "server:apps/servers/file_host/src/cards_essays",
+        "server:apps/servers/file_host/src/routes/cards_essays.rs",
+        "server:apps/servers/file_host/src/handlers/cards_essays.rs"
       ],
       "modules": ["cards_essays"],
       "objectives": [
@@ -3354,7 +3356,7 @@
           "kind": "RE9",
           "property": "work",
           "claim": "What home keeps for cards essays grows by one row and one folder per essay the routine writes, and none is let go.",
-          "requirement": "server:cards_essay gains one append-only row per essay home takes (its key, the cut list as served, at most 1 MiB, with its SHA-256, and when), and the render worker's renders folder one folder per essay (cards.mp4, cut-list.json, shot-times.json); a failed essay keeps only its finished steps until it renders. Nothing deletes either: there is no let-go for a cards essay (C338), and the routine's repository keeps every essay too (CARDS-ROUTINE: never deleted).",
+          "requirement": "server:cards_essay gains one append-only row per essay home takes (its key, the cut list as served, at most 1 MiB, with its SHA-256, and when), and the render worker's renders folder one folder per essay (cards.mp4, cut-list.json, shot-times.json); a failed essay keeps only its finished steps until it renders. Nothing deletes either: there is no let-go for a cards essay (C338; whether there should be waits on the owner, some-ui#2996), and the routine's repository keeps every essay too (CARDS-ROUTINE: never deleted).",
           "verdict": "unproven",
           "conclusion": "The row's bound (MAX_BODY) and the table's append-only triggers come with server#854; how large an essay's video is, and so the growth per essay, is unknown until essays render on home.",
           "tracked": "some-ui#2979",
@@ -5932,12 +5934,13 @@
         },
         {
           "id": "renders",
-          "name": "Studio's Renders shows the essay's video with the owner's other renders, played on the phone from file_host's cards_essays route. Home keeps each essay for good: there is no let-go for a cards essay (C338), and whether there should be waits on an owner ask. Ours, on home and the phone.",
+          "name": "Studio's Renders shows the essay's video with the owner's other renders, played on the phone from file_host's cards_essays route. Home keeps each essay for good: there is no let-go for a cards essay (C338), and whether there should be waits on the owner (some-ui#2996). Ours, on home and the phone.",
           "owner": "ours",
           "on": "home",
           "paths": [
             "server:apps/servers/file_host/src/feeds",
-            "server:apps/servers/file_host/src/cards_essays"
+            "server:apps/servers/file_host/src/routes/cards_essays.rs",
+            "server:apps/servers/file_host/src/handlers/cards_essays.rs"
           ]
         }
       ],
