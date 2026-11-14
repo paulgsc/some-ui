@@ -4,7 +4,7 @@ import { STUDIO_WORDS, TakeLibrary } from "@some-ui/soundbites"
 import { audioPlayer } from "@some-ui/voice-capture"
 import { createFileRoute } from "@tanstack/react-router"
 
-import { libraryStations, takeConveyor } from "@/lib/take-conveyor"
+import { takeConveyor } from "@/lib/take-conveyor"
 import { TAKE_CONVEYOR_WORDS } from "@/lib/take-conveyor/words"
 import { takesHome } from "@/lib/take-library"
 import { PairHomeLink } from "@/components/pair-home-link"
@@ -13,7 +13,10 @@ import { TakeSorting } from "@/components/studio/take-conveyor"
 
 const WORDS = TAKE_CONVEYOR_WORDS.page
 
-/** Home, a player and the phone's moves, made on first use. */
+/**
+ * Home and a player, made on first use. No stations: each row's
+ * `TakeSorting` says where its take stands, below its buttons.
+ */
 let ports: ComponentProps<typeof TakeLibrary>["ports"] | null = null
 
 /** Each take's place on the conveyor, under its row. */
@@ -31,7 +34,6 @@ const ConveyorPage = (): JSX.Element => {
   ports ??= {
     home: takesHome,
     player: audioPlayer,
-    stations: libraryStations(),
   }
   return (
     <StudioPage heading={WORDS.heading} back="takes">

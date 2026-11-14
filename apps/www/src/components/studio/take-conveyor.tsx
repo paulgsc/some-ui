@@ -9,7 +9,7 @@
  * exists only in the Android app (`build.paths.ts`).
  */
 import type { JSX } from "react"
-import { useState } from "react"
+import { useState, useSyncExternalStore } from "react"
 import { assertNever } from "@some-ui/core-utils"
 import { Button, Input, Label, Notice, StationStrip } from "@some-ui/shared"
 import type { LibraryTake } from "@some-ui/soundbites"
@@ -48,6 +48,9 @@ export const TakeSorting = ({
   const [labels, setLabels] = useState("")
   const [note, setNote] = useState("")
   const [said, setSaid] = useState<Said | null>(null)
+  // The row follows the phone's moves itself: the page hands the list no
+  // stations, so this row is the one place the take's standing is said.
+  useSyncExternalStore(conveyor.subscribe, conveyor.getSnapshot)
   const home = homeStationOf(take)
   const standing = conveyor.standing(take.id, home)
 
@@ -103,16 +106,6 @@ export const TakeSorting = ({
   const noteId = `take-note-${take.id}`
   return (
     <div className="flex flex-col gap-3 border-t pt-3">
-      <StationStrip
-        label={WORDS.label}
-        stations={LINE}
-        at={standing.station}
-        aside={
-          canned
-            ? { name: WORDS.stations.canned, line: WORDS.means.canned }
-            : null
-        }
-      />
       {movable && (
         <>
           <div className="flex flex-col gap-1">
@@ -153,6 +146,22 @@ export const TakeSorting = ({
           </div>
         </>
       )}
+      {/* What a move changes sits below the buttons, so nothing above them
+          grows or shrinks under a second tap (the canned aside, a wrapped
+          line). */}
+      <StationStrip
+        label={WORDS.label}
+        stations={LINE}
+        at={standing.station}
+        aside={
+          canned
+            ? { name: WORDS.stations.canned, line: WORDS.means.canned }
+            : null
+        }
+      />
+      <p className="text-muted-foreground text-xs">
+        {WORDS.standing(standing)}
+      </p>
       {shown !== null && (
         <Notice tone={shown.tone} onDismiss={() => setSaid(null)}>
           {shown.text}

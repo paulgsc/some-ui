@@ -140,6 +140,27 @@ describe("a take on the conveyor (CONVEYOR2)", () => {
     ])
   })
 
+  it("says where it stands once, below its buttons", () => {
+    const { container } = render(
+      <TakeSorting
+        take={{ ...TAKE, station: "canned", stationAt: AT, stationSeq: 2 }}
+        conveyor={conveyor()}
+      />
+    )
+    const line = W.standing({
+      station: "canned",
+      at: AT,
+      seq: 2,
+      going: false,
+      missed: null,
+    })
+    expect(screen.getAllByText(line)).toHaveLength(1)
+    // Everything a move changes comes after the last button.
+    const text = container.textContent
+    expect(text.indexOf(W.page.can)).toBeLessThan(text.indexOf(line))
+    expect(text.indexOf(W.page.can)).toBeLessThan(text.indexOf(W.means.canned))
+  })
+
   it("sets a canned take beside the line, kept, and offers it back", () => {
     render(
       <TakeSorting
