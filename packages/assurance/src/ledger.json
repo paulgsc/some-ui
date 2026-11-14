@@ -427,7 +427,7 @@
     {
       "id": "hosted-speech",
       "name": "A line you ask to hear is fetched once",
-      "why": "On the home-network web build, a line's audio comes from the hosted voice service over the network; a replay tapped again before the answer arrives must not send the line again.",
+      "why": "On the home-network web build, a line's audio came from the hosted voice service over the network, and a replay tapped again before the answer arrived was not to send the line again. Retired with the service (some-ui#2977): every web build now speaks with the browser's own voice.",
       "paths": [],
       "modules": [],
       "objectives": [

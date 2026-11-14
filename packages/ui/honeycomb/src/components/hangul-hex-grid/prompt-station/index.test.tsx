@@ -126,13 +126,7 @@ describe("PromptStation - a hint and a tap", () => {
         tier="icon-tts"
         progress={null}
       />,
-      {
-        wrapper: ({ children }: { children: ReactNode }) => (
-          <SpeechProvider config={{ backend: () => adapter }}>
-            {children}
-          </SpeechProvider>
-        ),
-      }
+      { wrapper: session(adapter) }
     )
     await waitFor(() => expect(adapter.said).toEqual([word.ttsText]))
 

@@ -139,23 +139,7 @@ describe("announcer - the four rules", () => {
     )
   })
 
-  it("rule 4: no two consecutive notices are ever identical", () => {
-    fc.assert(
-      fc.property(
-        fc.array(statusArbitrary, { minLength: 1, maxLength: 60 }),
-        (statuses) => {
-          const notices = noticesFor(statuses)
-          notices.forEach((notice, index) => {
-            if (index === 0) return
-            expect(notice).not.toEqual(notices[index - 1])
-          })
-        }
-      ),
-      { numRuns: 300 }
-    )
-  })
-
-  it("rule 4a: no two consecutive notices are even of the same kind", () => {
+  it("rule 4: no two consecutive notices are of the same kind", () => {
     fc.assert(
       fc.property(
         fc.array(statusArbitrary, { minLength: 1, maxLength: 60 }),

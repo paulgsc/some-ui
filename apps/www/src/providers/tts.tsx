@@ -62,16 +62,11 @@ export const TTSProvider = ({
       config={
         import.meta.env.VITE_DEVICE_BACKEND === "true"
           ? {
-              // The phone's own engine, in the voice picked in Settings.
               language: LESSON_LANGUAGE,
               native: deviceSpeechBackend(settings?.deviceVoiceId),
               backend: nativeSpeech,
             }
-          : {
-              // The browser's voice: where `speechSynthesis` is missing it
-              // is silent, and says so.
-              backend: webSpeech,
-            }
+          : { backend: webSpeech }
       }
       fallback={<InitializingSpeech />}
       // Muting stops what is speaking and drops the queue without ending the

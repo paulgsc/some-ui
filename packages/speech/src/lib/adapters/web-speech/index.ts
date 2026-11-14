@@ -1,8 +1,7 @@
 /**
  * @module adapters/web-speech
  *
- * Speech via the browser's own `speechSynthesis`: the voice every web build
- * speaks with, since no build ships a speech service of its own.
+ * Speech via the browser's own `speechSynthesis`.
  *
  * The browser's voices are the browser's: which ones exist depends on the
  * device, and they are not ours to list or let a person choose among. A line

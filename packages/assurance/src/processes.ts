@@ -139,7 +139,7 @@ export function findProcessViolations(
     spanning.add(entry.family)
   }
   // A family whose every promise has retired is history: nothing runs it, so
-  // no process serves it (the hosted voice, #2977).
+  // no process serves it.
   const retired = new Set(
     ledger.families
       .filter(

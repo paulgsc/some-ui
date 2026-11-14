@@ -52,12 +52,8 @@ export class SettingsRepository {
 
   async get(): Promise<UserSettings> {
     await delay(this.latencyMs)
-    const {
-      ttsVoice: _ttsVoice,
-      ttsProvider: _ttsProvider,
-      ttsVoiceId: _ttsVoiceId,
-      ...stored
-    } = this.stored()
+    const stored: StoredSettings = { ...this.stored() }
+    for (const field of RETIRED_FIELDS) delete stored[field]
     // Settings persist as one blob under a single key, so a browser holding
     // a version of it written before a field existed hands that field back
     // as `undefined`. Filling the gap on read is cheaper than a migration

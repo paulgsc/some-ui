@@ -19,7 +19,7 @@
  *   is the unit, not the error).
  * - Recovery emits exactly one `"recovered"`, and only if a fault was
  *   actually announced.
- * - No two consecutive notices are ever identical.
+ * - No two consecutive notices are of the same kind.
  *
  * Those four sentences are the property tests in `index.test.ts`, checked
  * against arbitrary status sequences rather than hand-picked ones - the

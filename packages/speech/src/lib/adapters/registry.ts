@@ -1,16 +1,10 @@
 /**
  * @module adapters/registry
  *
- * Which backend speaks: the one the app passes.
- *
- * Every voice this package has runs on the device: the browser's
- * `speechSynthesis` (`webSpeech`) on the web, and the phone's text-to-speech
- * (`nativeSpeech`) in the Android app. Each is its own package entry
- * (`@some-ui/speech/web-speech`, `/native`), and the app passes the one it
- * runs as `backend`, so a build carries no backend it never uses
- * (`./backend`). There is no default and no fallback: a runtime where the
- * backend cannot speak gets an adapter whose `supported` is false and whose
- * `speak()` rejects, and the session says so.
+ * Builds the one backend the app passes (`./backend`). There is no default
+ * and no fallback: a runtime where the backend cannot speak gets an adapter
+ * whose `supported` is false and whose `speak()` rejects, and the session
+ * says so.
  */
 
 import type { SpokenLanguage } from "@speech/lib/language"

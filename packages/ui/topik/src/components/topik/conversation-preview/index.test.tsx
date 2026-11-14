@@ -61,6 +61,8 @@ describe("ConversationPreview", () => {
   })
 })
 
+type Heard = { text: string; language: string | undefined }
+
 /**
  * The page's speech session decides who speaks and in what voice; a line
  * read from this preview only says what language it is in. A line is
@@ -68,9 +70,7 @@ describe("ConversationPreview", () => {
  */
 describe("ConversationPreview - speaking through the page's session", () => {
   /** A device voice that records each line it is handed, and settles it. */
-  function recordingAdapter(
-    heard: Array<{ text: string; language: string | undefined }>
-  ): SpeechAdapter {
+  function recordingAdapter(heard: Array<Heard>): SpeechAdapter {
     return {
       id: "web-speech",
       supported: true,
@@ -95,7 +95,7 @@ describe("ConversationPreview - speaking through the page's session", () => {
   }
 
   function session(
-    heard: Array<{ text: string; language: string | undefined }>,
+    heard: Array<Heard>,
     muted = false
   ): (props: { children: ReactNode }) => ReactNode {
     const adapter = recordingAdapter(heard)
@@ -115,7 +115,7 @@ describe("ConversationPreview - speaking through the page's session", () => {
   }
 
   it("hands the line to the session in Korean", async () => {
-    const heard: Array<{ text: string; language: string | undefined }> = []
+    const heard: Array<Heard> = []
     render(<ConversationPreview batches={FIXTURE_BATCHES} />, {
       wrapper: session(heard),
     })
@@ -128,7 +128,7 @@ describe("ConversationPreview - speaking through the page's session", () => {
   })
 
   it("says nothing while the session is muted", async () => {
-    const heard: Array<{ text: string; language: string | undefined }> = []
+    const heard: Array<Heard> = []
     render(<ConversationPreview batches={FIXTURE_BATCHES} />, {
       wrapper: session(heard, true),
     })

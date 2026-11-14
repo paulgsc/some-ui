@@ -70,10 +70,7 @@ const StudySettingsForm = ({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* The phone speaks with its own engine, in a voice picked from its
-            own list (#1628). The web builds speak with the browser's voice
-            (providers/tts.tsx), which the browser picks, so there is
-            nothing to choose there. */}
+        {/* Only the phone's engine has voices to pick from (#1628). */}
         {import.meta.env.VITE_DEVICE_BACKEND === "true" && (
           <DeviceVoiceField
             value={draft.deviceVoiceId}

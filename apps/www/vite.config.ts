@@ -183,9 +183,9 @@ function omitOffPathPublicFiles(offPath: ReadonlyArray<RegExp>): Plugin {
 // and widening this to `default-src` would take on the font, image and
 // service-worker questions this change does not need to answer. The lan and
 // Docker builds are not covered, on purpose: they reach `file_host` on another
-// port of the same host (`lib/file-host-config`), a speech provider the person
-// chose and a music-overlay socket, none of which `connect-src` can name
-// without also blocking a learner's own choices. Those are checked by
+// port of the same host (`lib/file-host-config`) and a music-overlay socket,
+// neither of which `connect-src` can name without also blocking a learner's
+// own choices. Those are checked by
 // tests/local-mode/no-egress.spec.ts instead.
 //
 // LA5 (docs/learner-data-authority.md): this tag is the invariant; widening the
