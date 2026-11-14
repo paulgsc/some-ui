@@ -1,15 +1,22 @@
 import type { JSX } from "react"
 import { assertNever } from "@some-ui/core-utils"
 import {
+  boardLook,
   CALL_CHAPTERS,
   callFormat,
   CallIndexSchema,
+  callShown,
   hasCaptions,
   markThemeOf,
   refUrl,
   sampleCallWeek,
 } from "@some-ui/video-render"
-import type { CallRef, CallScene, CallWeek } from "@some-ui/video-render"
+import type {
+  CallRef,
+  CallScene,
+  CallShown,
+  CallWeek,
+} from "@some-ui/video-render"
 
 import { FETCHES_CONTENT } from "@/lib/data-mode"
 
@@ -23,8 +30,9 @@ import {
   StageFrame,
   StageRefused,
 } from "./frame"
+import type { StageFrameProps } from "./frame"
 import { STAGE_WORDS as SW } from "./frame-words"
-import type { SceneView } from "./view"
+import type { CallAt, SceneView } from "./view"
 import { callAt, stageOf, weekFrom } from "./view"
 import { CALL_WORDS as W } from "./words"
 
@@ -77,12 +85,6 @@ const sectionName = (at: { scene: CallScene; view: SceneView }): string => {
     }
   }
 }
-
-/** The most asks the close lists by name; the rest it counts. */
-const LATER_SHOWN = 6
-
-/** The most pull requests a batch lists by name; the rest it counts. */
-const PULLS_SHOWN = 10
 
 /** What a scene is called: its section's name, and its place among its items. */
 const labelOf = (
@@ -177,12 +179,21 @@ const Options = ({
   </ol>
 )
 
+/** A count of what a list doesn't show, under it. */
+const More = ({ n }: { n: number }): JSX.Element | null =>
+  n > 0 ? (
+    <p className="text-muted-foreground text-[0.85em]">{W.more(n)}</p>
+  ) : null
+
 const Screen = ({
   week,
   view,
+  shown,
 }: {
   week: CallWeek
   view: SceneView
+  /** How much of each list fits the frame (CF1); the rest is counted. */
+  shown: CallShown
 }): JSX.Element => {
   switch (view.section) {
     case "intro": {
@@ -224,28 +235,32 @@ const Screen = ({
       )
     }
     case "board": {
+      const look = boardLook(week.board.rows.length)
       return (
-        <ul
-          className={
-            week.board.rows.length > 24
-              ? "grid grid-cols-4 gap-[0.3em] text-[0.55em]"
-              : "grid grid-cols-3 gap-[0.4em] text-[0.7em]"
-          }
-        >
-          {week.board.rows.map((row) => (
-            <li
-              key={row.ledger}
-              className="border-border rounded-[0.3em] border px-[0.6em] py-[0.4em]"
-            >
-              <p className="font-semibold">{row.title}</p>
-              <p className="text-muted-foreground text-[0.85em]">
-                {row.waitsOnYou > 0
-                  ? W.waiting(row.waitsOnYou)
-                  : W.status[row.status]}
-              </p>
-            </li>
-          ))}
-        </ul>
+        <div className="space-y-[0.6em]">
+          <ul
+            className={
+              look.columns === 4
+                ? "grid grid-cols-4 gap-[0.3em] text-[0.55em]"
+                : "grid grid-cols-3 gap-[0.4em] text-[0.7em]"
+            }
+          >
+            {week.board.rows.slice(0, shown.board).map((row) => (
+              <li
+                key={row.ledger}
+                className="border-border rounded-[0.3em] border px-[0.6em] py-[0.4em]"
+              >
+                <p className="font-semibold">{row.title}</p>
+                <p className="text-muted-foreground text-[0.85em]">
+                  {row.waitsOnYou > 0
+                    ? W.waiting(row.waitsOnYou)
+                    : W.status[row.status]}
+                </p>
+              </li>
+            ))}
+          </ul>
+          <More n={week.board.rows.length - shown.board} />
+        </div>
       )
     }
     case "moved": {
@@ -274,11 +289,12 @@ const Screen = ({
       )
     }
     case "done": {
+      const pullsShown = shown.pulls[view.item.id] ?? 0
       return (
         <div className="space-y-[0.6em]">
           <p className="text-[1.6em] font-bold">{view.item.title}</p>
           <ul className="space-y-[0.3em] text-[0.85em]">
-            {view.item.pulls.slice(0, PULLS_SHOWN).map((pull) => (
+            {view.item.pulls.slice(0, pullsShown).map((pull) => (
               <li key={`${pull.repo}-${pull.number}`}>
                 <Ref of={pull} /> {pull.title}
                 {pull.change !== undefined && (
@@ -289,11 +305,7 @@ const Screen = ({
               </li>
             ))}
           </ul>
-          {view.item.pulls.length > PULLS_SHOWN && (
-            <p className="text-muted-foreground text-[0.85em]">
-              {W.more(view.item.pulls.length - PULLS_SHOWN)}
-            </p>
-          )}
+          <More n={view.item.pulls.length - pullsShown} />
         </div>
       )
     }
@@ -346,17 +358,13 @@ const Screen = ({
           {week.later.length > 0 && (
             <Field label={W.later}>
               <ul className="space-y-[0.3em] text-[0.85em]">
-                {week.later.slice(0, LATER_SHOWN).map((ask) => (
+                {week.later.slice(0, shown.later).map((ask) => (
                   <li key={ask.id}>
                     {ask.question} <Refs refs={ask.refs} />
                   </li>
                 ))}
               </ul>
-              {week.later.length > LATER_SHOWN && (
-                <p className="text-muted-foreground text-[0.85em]">
-                  {W.more(week.later.length - LATER_SHOWN)}
-                </p>
-              )}
+              <More n={week.later.length - shown.later} />
             </Field>
           )}
         </div>
@@ -416,21 +424,12 @@ export const CallStagePage = ({
         problems={state.kind === "none" ? state.problems : []}
       />
     )
-  const week = shown.week
-  const format = callFormat(week.template.version)
   return (
-    <StageFrame
+    <CallSceneFrame
+      week={shown.week}
+      at={at}
       record={record}
-      scene={at.scene.id}
-      measureKey={`${week.week.from}/${at.scene.id}`}
-      data={{ "data-week": record ? JSON.stringify(week) : undefined }}
-      theme={format.shape?.theme}
-      title={W.title}
-      where={`${[sectionName(at), `${at.index + 1}/${at.scenes.length}`]
-        .filter(Boolean)
-        .join(" · ")}${shown.sample ? ` · ${W.sample}` : ""}`}
-      captioned={record && hasCaptions(format)}
-      said={at.scene.said}
+      sample={shown.sample}
       notes={
         <>
           {shown.unread && (
@@ -470,8 +469,47 @@ export const CallStagePage = ({
               onScene,
             }
       }
+    />
+  )
+}
+
+/**
+ * One scene of `week` in the stage's frame, as recorded with `record`: the
+ * stage's, and the ui-fit sweep's (`tests/ui-fit/call-fit.spec.ts`, CF1).
+ */
+export const CallSceneFrame = ({
+  week,
+  at,
+  record,
+  sample = false,
+  notes,
+  nav,
+}: {
+  week: CallWeek
+  at: CallAt
+  record: boolean
+  sample?: boolean
+  notes?: StageFrameProps["notes"]
+  nav?: StageFrameProps["nav"]
+}): JSX.Element => {
+  const format = callFormat(week.template.version)
+  return (
+    <StageFrame
+      record={record}
+      scene={at.scene.id}
+      measureKey={`${week.week.from}/${at.scene.id}`}
+      data={{ "data-week": record ? JSON.stringify(week) : undefined }}
+      theme={format.shape?.theme}
+      title={W.title}
+      where={`${[sectionName(at), `${at.index + 1}/${at.scenes.length}`]
+        .filter(Boolean)
+        .join(" · ")}${sample ? ` · ${W.sample}` : ""}`}
+      captioned={record && hasCaptions(format)}
+      said={at.scene.said}
+      notes={notes}
+      nav={nav}
     >
-      <Screen week={week} view={at.view} />
+      <Screen week={week} view={at.view} shown={callShown(week)} />
     </StageFrame>
   )
 }

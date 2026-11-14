@@ -30,6 +30,8 @@
 
 import { z } from "zod"
 
+import { CALL_LATER_SHOWN_MOST, CALL_PULLS_MOST, callFit } from "./call-fit"
+import type { CallShown } from "./call-fit"
 import type { ChapterMark } from "./chapters"
 import { chapterSlides } from "./chapters"
 import { once, problemsOf } from "./cut-list"
@@ -458,7 +460,32 @@ function weekProblems(week: CallWeek): Array<string> {
     if (ask.recommended !== undefined && ask.recommended >= ask.options.length)
       problems.push(`${ask.id}: it recommends an option it doesn't list`)
   })
+  // CF1: in a captioned frame, every scene's words fit (`./call-fit`).
+  if (captioned(week)) problems.push(...callFit(week).problems)
   return once(problems)
+}
+
+/** Whether the week's frame keeps its foot for captions: version 2 on. */
+const captioned = (week: CallWeek): boolean =>
+  hasCaptions(callFormat(week.template.version))
+
+/**
+ * How many of each list the stage shows of `week` (CF1, `./call-fit`): what
+ * its captioned frame holds; a version 1 week, with no caption band, as many
+ * as it always showed. The rest are counted on screen.
+ */
+export function callShown(week: CallWeek): CallShown {
+  if (captioned(week)) return callFit(week).shown
+  return {
+    board: week.board.rows.length,
+    later: Math.min(week.later.length, CALL_LATER_SHOWN_MOST),
+    pulls: Object.fromEntries(
+      week.done.map((batch) => [
+        batch.id,
+        Math.min(batch.pulls.length, CALL_PULLS_MOST),
+      ])
+    ),
+  }
 }
 
 /** The week's data, or every reason it can't make a call. */

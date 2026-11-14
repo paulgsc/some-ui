@@ -1,0 +1,20 @@
+{
+  "id": "C357",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/call-fit.ts",
+    "packages/video-render/src/call.ts",
+    "apps/www/src/lib/web-surface/call/stage.tsx"
+  ],
+  "chose": "A week of the weekly call is held to its captioned frame by one model of the stage's layout (call-fit.ts): the stage shows as many board rows, pull requests per batch and later asks as the frame holds and counts the rest (\"and 16 more\"), and call-check refuses words no count can shorten (an ask's question, a call's why), naming the scene and what to shorten. The template's look is unchanged, and the scenes are the same.",
+  "options": [
+    "show what fits of each list and count the rest; refuse words that can't fit",
+    "split a long list across more scenes",
+    "refuse any week whose lists run past the frame, and let the routine trim them",
+    "shrink the type until it fits"
+  ],
+  "gray": "The owner hasn't said whether a long batch should be cut short on screen or spread over more scenes. Splitting changes the scenes, their timing and the chapter marks; refusing every long list puts the trimming on the routine every week; shrinking the type changes the template's look, which is the owner's. Counting was already how a batch past ten and the later asks past six were shown, so it extends what the call already does.",
+  "undo": "Have callShown return every list in full (or split the scenes in callScenes), drop the callFit problems from weekProblems in call.ts, and remove the More lines from stage.tsx.",
+  "refs": ["#2918"]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "C359",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": ["paulgsc/testing:call/2026-11-06.json"],
+  "chose": "The week of 2026-11-06 is published again with two asks' words on screen shortened, so it fits: ask-2860's question becomes \"Should Korean practice share one drama world, each scene standing alone?\", and ask-2627's question \"How should the Show level filter treat a level TOPIK keeps?\" with its why-it's-yours cut to its last two sentences. What is said aloud, the options and the refs are unchanged.",
+  "options": [
+    "shorten the two asks' words on screen",
+    "leave the week unrendered until the routine's next week",
+    "drop the two asks to later"
+  ],
+  "gray": "The questions are the routine's wording of the owner's asks; shortening changes what the owner reads on screen and the chapter titles, though not what is asked. Leaving the week unrendered loses its video; moving the asks to later drops them from the voiced call.",
+  "undo": "Restore the three strings in call/2026-11-06.json from paulgsc/testing at 85b89d8, after shortening them another way that call-check accepts.",
+  "refs": ["#2918"]
+}

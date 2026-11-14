@@ -1,0 +1,18 @@
+{
+  "id": "C358",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/call-fit.ts",
+    "apps/www/tests/ui-fit/call-fit.spec.ts"
+  ],
+  "chose": "The model's glyph widths are the widest of the faces the two recording hosts actually draw: Inter in a cloud session and WenQuanYi Zen Hei in home's render image (the frame names no face of its own, so each host draws its system sans). Wider faces it wasn't measured on, such as DejaVu Sans, are outside it: the ui-fit spec fails on a host that draws a scene taller than the model says, and the recorder's own overflow refusal still guards any host.",
+  "options": [
+    "the widest of the faces the recording hosts draw (Inter, WenQuanYi Zen Hei)",
+    "also cover DejaVu Sans, about 15% wider, in case a host draws it",
+    "one flat average width per character"
+  ],
+  "gray": "Covering DejaVu Sans would refuse weeks that fit on home today, such as the 2026-11-06 week's mine-3 and mine-4, while a flat average either refuses most long sentences or misses short lines in capitals. Which host faces count is a judgment about where the call is recorded.",
+  "undo": "Widen SANS and SANS_BOLD in call-fit.ts to the widest of the faces wanted, measured the way their comment says, and re-run the ui-fit spec on each host.",
+  "refs": ["#2918"]
+}
