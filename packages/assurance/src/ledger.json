@@ -5940,7 +5940,9 @@
           "paths": [
             "server:apps/servers/file_host/src/feeds",
             "server:apps/servers/file_host/src/routes/cards_essays.rs",
-            "server:apps/servers/file_host/src/handlers/cards_essays.rs"
+            "server:apps/servers/file_host/src/handlers/cards_essays.rs",
+            "some-ui:apps/www/src/lib/cards-essay-video",
+            "some-ui:apps/www/src/components/studio/cards-essay.tsx"
           ]
         }
       ],
