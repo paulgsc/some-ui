@@ -8,6 +8,7 @@ import {
   hasCaptions,
   isFirstPage,
   markThemeOf,
+  paragraphWords,
   refUrl,
   sampleCallWeek,
 } from "@some-ui/video-render"
@@ -231,6 +232,13 @@ const Screen = ({
   /** The page of its scene it is (CF1); absent in a version 1 week. */
   page: CallScenePage | undefined
 }): JSX.Element => {
+  /** The words of a paragraph this page shows (CF1): all of it unpaged. */
+  const part = (group: CallGroup, said: string): string => {
+    if (page === undefined) return said
+    const words = paragraphWords(said)
+    const [from, to] = rangeOf(page, group, words.length)
+    return words.slice(from, to).join(" ")
+  }
   const on = (group: CallGroup): boolean => {
     const [from, to] = rangeOf(page, group, 1)
     return to > from
@@ -376,8 +384,12 @@ const Screen = ({
               mark={W.chose}
             />
           )}
-          {on("why") && <Field label={W.why}>{view.item.why}</Field>}
-          {on("undo") && <Field label={W.undo}>{view.item.undo}</Field>}
+          {on("why") && (
+            <Field label={W.why}>{part("why", view.item.why)}</Field>
+          )}
+          {on("undo") && (
+            <Field label={W.undo}>{part("undo", view.item.undo)}</Field>
+          )}
           {on("refs") && <Refs refs={view.item.refs} />}
         </div>
       )
@@ -387,7 +399,9 @@ const Screen = ({
       return (
         <div className="space-y-[0.6em]">
           <p className="text-[1.6em] font-bold">{view.item.question}</p>
-          {on("why") && <Field label={W.whyYours}>{view.item.whyYours}</Field>}
+          {on("why") && (
+            <Field label={W.whyYours}>{part("why", view.item.whyYours)}</Field>
+          )}
           {to > from && (
             <Options
               options={view.item.options.slice(from, to)}
