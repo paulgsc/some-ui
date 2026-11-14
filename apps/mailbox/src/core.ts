@@ -333,6 +333,141 @@ function feedbackRefusal(
 }
 
 /**
+ * The keys of a `some-ui.take-pickup/1` body: a Studio take the owner moved
+ * to ready for pickup, as home files it for the routine (CONVEYOR3,
+ * paulgsc/some-ui#2875). Its labels go; the move's comment stays home
+ * (owner, 2026-11-13). Any other key is refused.
+ */
+const PICKUP_KEYS: ReadonlySet<string> = new Set([
+  "schema",
+  "note",
+  "ref",
+  "heard",
+  "labels",
+  "readyAt",
+  "seq",
+])
+/** The keys of a `some-ui.take-picked/1` body: the routine's answer to one pickup. */
+const PICKED_KEYS: ReadonlySet<string> = new Set([
+  "schema",
+  "note",
+  "seq",
+  "issue",
+])
+/** Home's bounds on a take's labels (`conveyor::MAX_LABELS`, `MAX_LABEL_CHARS` in paulgsc/server). */
+const LABELS_MAX = 8
+const LABEL_CHARS_MAX = 32
+// eslint-disable-next-line no-control-regex -- the point is to find control characters
+const CONTROL = /[\u0000-\u001f\u007f-\u009f]/
+/**
+ * Space at either end, as Rust's `str::trim` takes it (Unicode White_Space,
+ * which leaves out U+FEFF, unlike JavaScript's `trim`): home trims a label so.
+ */
+const EDGE_SPACE = /^\p{White_Space}|\p{White_Space}$/u
+/** `<owner>/<repo>#<n>`, as home's `conveyor::is_issue` reads it. */
+const ISSUE = /^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}#[1-9]\d{0,8}$/
+const NO_AUDIO_TAKE = "a take carries no audio: home keeps the audio"
+const NO_DRIVE_TAKE = "a take names no Drive file: home keeps the audio"
+
+/** A move's number on home: a whole number from 1. */
+function isMoveSeq(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 1
+}
+
+/** Labels as home keeps them: at most 8, each 1 to 32 printable characters with no space at either end. */
+function isLabels(value: unknown): boolean {
+  if (!Array.isArray(value) || value.length > LABELS_MAX) return false
+  return value.every(
+    (label) =>
+      typeof label === "string" &&
+      label !== "" &&
+      !EDGE_SPACE.test(label) &&
+      [...label].length <= LABEL_CHARS_MAX &&
+      !CONTROL.test(label)
+  )
+}
+
+/** The note and move a pickup or its answer is named for: `<folder>-<note>-<seq>.json`. */
+function moveNameRefusal(
+  body: Readonly<Record<string, unknown>>,
+  name: string,
+  folder: string
+): string | null {
+  if (typeof body.note !== "string" || !NOTE_ID.test(body.note)) {
+    return "note must be the take's id"
+  }
+  if (!isMoveSeq(body.seq)) {
+    return "seq must be the ready-for-pickup move's number"
+  }
+  if (name !== `${folder}-${body.note}-${String(body.seq)}.json`) {
+    return "the name must carry the take's id and the move's number"
+  }
+  return null
+}
+
+/**
+ * README, "What a put must satisfy": a take ready for pickup is its id, what
+ * it belongs to, what home heard, its labels, when it was moved and that
+ * move's number, and nothing else: no audio, and no comment.
+ */
+function pickupRefusal(
+  body: Readonly<Record<string, unknown>>,
+  text: string,
+  name: string
+): string | null {
+  const shape = shapeRefusal(
+    body,
+    text,
+    PICKUP_KEYS,
+    NO_AUDIO_TAKE,
+    NO_DRIVE_TAKE,
+    "take ready for pickup"
+  )
+  if (shape !== null) return shape
+  const named = moveNameRefusal(body, name, "pickup")
+  if (named !== null) return named
+  if (typeof body.ref !== "string" || !NOTE_REF.test(body.ref)) {
+    return "ref must name the shot the take belongs to"
+  }
+  if (typeof body.heard !== "string" || body.heard.trim() === "") {
+    return "heard must be what home heard in the take"
+  }
+  if (!isLabels(body.labels)) {
+    return "labels must be the take's, at most 8, each 1 to 32 printable characters with no space at either end"
+  }
+  if (!isInstant(body.readyAt)) {
+    return "readyAt must be when the take was moved to ready for pickup"
+  }
+  return null
+}
+
+/**
+ * README, "What a put must satisfy": the routine's answer to a pickup is the
+ * take, the move it answers and the issue it filed, and nothing else.
+ */
+function pickedRefusal(
+  body: Readonly<Record<string, unknown>>,
+  text: string,
+  name: string
+): string | null {
+  const shape = shapeRefusal(
+    body,
+    text,
+    PICKED_KEYS,
+    NO_AUDIO_TAKE,
+    NO_DRIVE_TAKE,
+    "take picked up"
+  )
+  if (shape !== null) return shape
+  const named = moveNameRefusal(body, name, "picked")
+  if (named !== null) return named
+  if (typeof body.issue !== "string" || !ISSUE.test(body.issue)) {
+    return "issue must be the issue it was filed as, <owner>/<repo>#<n>"
+  }
+  return null
+}
+
+/**
  * The keys of a `some-ui.reflection/1` body: only what the reflections
  * routine reads of a written reflection (paulgsc/some-ui#2174, D2). Any
  * other is refused.
@@ -1110,6 +1245,22 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
     schema: "some-ui.episode-note/1",
     refuses: feedbackRefusal,
   },
+  {
+    // A Studio take the owner moved to ready for pickup, as home files it,
+    // named for the take's id and that move's number (CONVEYOR3).
+    folder: "pickup",
+    name: /^pickup-[A-Za-z0-9_.:-]{1,64}-[1-9]\d{0,18}\.json$/,
+    schema: "some-ui.take-pickup/1",
+    refuses: pickupRefusal,
+  },
+  {
+    // The routine's answer to a pickup: the issue it filed the take as,
+    // named as the pickup it answers is (CONVEYOR3).
+    folder: "picked",
+    name: /^picked-[A-Za-z0-9_.:-]{1,64}-[1-9]\d{0,18}\.json$/,
+    schema: "some-ui.take-picked/1",
+    refuses: pickedRefusal,
+  },
 ]
 
 /** The Worker secrets. An unset or empty one never authenticates anyone. */
@@ -1154,18 +1305,25 @@ const RECORDS: ReadonlyArray<Folder> = [
   "reflection",
   "prompt",
   "feedback",
+  "pickup",
+  "picked",
 ]
 
 const ALL: ReadonlyArray<Folder> = [...RECORDS, "index"]
 
-/** Every record but `reflection`, `prompt` and `feedback`, which the routine never asks back (README, "Who may do what"; MI6). */
+/** Every record but `reflection`, `prompt`, `feedback` and `pickup`, which the routine never asks back (README, "Who may do what"; MI6). */
 const ASKED: ReadonlyArray<Folder> = RECORDS.filter(
   (folder) =>
-    folder !== "reflection" && folder !== "prompt" && folder !== "feedback"
+    folder !== "reflection" &&
+    folder !== "prompt" &&
+    folder !== "feedback" &&
+    folder !== "pickup"
 )
 
 /**
- * What home reads: the folders paulgsc/server's `mailbox::pass::READS` lists.
+ * What home reads: the folders paulgsc/server's `mailbox::pass::READS` lists,
+ * and `picked`, which home's half of CONVEYOR3 adds there once this is
+ * deployed (paulgsc/some-ui#2875).
  * A file added to one rings the bell (`RINGS`).
  */
 const HOME_READS: ReadonlyArray<Folder> = [
@@ -1174,6 +1332,7 @@ const HOME_READS: ReadonlyArray<Folder> = [
   "drama",
   "run",
   "leetype",
+  "picked",
 ]
 
 /** MB2. Another role (the phone's, say) is the owner's call, not a code change. */
@@ -1182,7 +1341,7 @@ const ROLES: ReadonlyArray<Grant> = [
     role: "routine",
     token: (tokens) => tokens.routine,
     get: ALL,
-    put: ["brief", "scene", "drama", "run", "leetype"],
+    put: ["brief", "scene", "drama", "run", "leetype", "picked"],
     ask: ASKED,
     move: [],
     listen: false,
@@ -1201,6 +1360,7 @@ const ROLES: ReadonlyArray<Grant> = [
       "reflection",
       "prompt",
       "feedback",
+      "pickup",
     ],
     ask: [],
     move: [],
