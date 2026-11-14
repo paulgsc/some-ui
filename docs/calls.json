@@ -2499,6 +2499,25 @@
       "refs": [
         "#2467"
       ]
+    },
+    {
+      "id": "C312",
+      "made": "2026-11-14",
+      "by": "claude",
+      "paths": [
+        "packages/ui/burn-ins/src/components/stage/cheat-sheet.tsx"
+      ],
+      "chose": "A cheat sheet's row fades in by its own colours (panel, border and words at the fade's alpha), with no layer around it below full opacity, so its recording is the same bytes every time; the same-bytes check stays as strict as it was.",
+      "options": [
+        "Fade the row's own colours",
+        "Let the check tolerate a pixel's difference, or leave the cheat sheet out of it",
+        "Show each row without a fade"
+      ],
+      "gray": "Fading the row as one layer, as the terminal's lines fade, drew one corner pixel of its bordered, rounded panel differently from one recording to the next; the owner's promise is the same bytes twice, and a row with no fade would read more abruptly.",
+      "undo": "In stage/cheat-sheet.tsx wrap each row in a div with opacity r.opacity and draw its colours unfaded; short.spec.ts then differs on the cheat sheet's recording.",
+      "refs": [
+        "#2468"
+      ]
     }
   ]
 }
