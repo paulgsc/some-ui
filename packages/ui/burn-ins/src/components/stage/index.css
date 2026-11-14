@@ -34,8 +34,10 @@
     position: absolute;
   }
 
+  /* A whole-stage layer, so its opacity fades everything in it. */
   .bi-badge {
-    display: contents;
+    inset: 0;
+    position: absolute;
   }
 
   .bi-cell {

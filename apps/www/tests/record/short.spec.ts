@@ -64,7 +64,8 @@ const CUT_LIST = cutList(
     }),
     shot("S2", {
       picture: capture(1500),
-      durationMs: 1500,
+      // Long enough for its badge to spell itself out.
+      durationMs: 3300,
       idea: {
         origin: "source",
         from: { title: "The burn-ins README", ref: "packages/ui/burn-ins" },
@@ -97,7 +98,7 @@ test.describe("the burn-in recorder", () => {
     for (const dir of ["captures", "voice"]) await ports.mkdir(dir)
     const sources = [
       [
-        ...["-f", "lavfi", "-i", "testsrc2=s=206x458:r=30:d=4"],
+        ...["-f", "lavfi", "-i", "testsrc2=s=206x458:r=30:d=6"],
         ...["-c:v", "libx264", "-pix_fmt", "yuv420p", "captures/walk.mp4"],
       ],
       [

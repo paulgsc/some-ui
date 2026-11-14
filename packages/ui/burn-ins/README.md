@@ -40,8 +40,7 @@ it is; each module's header does the same for its part:
   captions are drawn in, where a stage draws nothing. Only a preview's cut
   carries it (`@some-ui/video-render`'s `previewOf`), never an episode's.
 - `src/lib/badge.ts`: the status badge (CARDS1, #2466), design `badge-v1`:
-  five states of a claim on screen (on main, an open PR, planned, a known gap,
-  a step only I do), each a glyph drawn from paths, which spells out its
+  five states of a claim on screen, each a glyph drawn from paths, which spells out its
   definition at its first appearance in a video. The first card kinds (epic
   CARDS, #2465) draw it beside their lines.
 - `src/runtime/record.ts`, `src/components/record`: the recording protocol.

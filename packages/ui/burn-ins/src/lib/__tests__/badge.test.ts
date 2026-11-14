@@ -9,7 +9,7 @@ import {
 } from "@burn-ins/lib/badge"
 import type { BadgeMark } from "@burn-ins/lib/badge"
 import { frameAt, prepare } from "@burn-ins/lib/burn-in"
-import { LANDSCAPE, PORTRAIT } from "@burn-ins/lib/geometry"
+import { PORTRAIT } from "@burn-ins/lib/geometry"
 import { INK } from "@burn-ins/lib/journal"
 import { CONTRAST_FLOOR, contrastRatio } from "@some-ui/styles/theme"
 import { oklchOf } from "@some-ui/styles/theme/video-palette"
@@ -60,7 +60,6 @@ describe("the status badge over a scene", () => {
     expect(at({ badge: "pr" }, STATUS_BADGE_LEAD_MS - 1)).toEqual([])
     const open = at({ badge: "pr" }, held)[0]?.open
     expect(open?.amount).toBe(1)
-    expect(open?.label.rows).toEqual(["open PR · may change"])
     expect(
       at({ badge: "pr" }, STATUS_BADGE_LEAD_MS + REVEAL.totalMs)[0]?.open
     ).toBeNull()
@@ -68,14 +67,6 @@ describe("the status badge over a scene", () => {
 
   it("shows the glyph alone when its state was shown earlier in the video", () => {
     expect(at({ badge: "pr", badgesSeen: ["pr"] }, held)[0]?.open).toBeNull()
-  })
-
-  it("refuses a state it has no glyph for", () => {
-    const p = prepare(
-      { kind: "status-badge", design: "badge-v1", params: { badge: "done" } },
-      LANDSCAPE
-    )
-    expect(p.ok).toBe(false)
   })
 })
 

@@ -2,22 +2,12 @@
  * The status badge (CARDS1, #2466): one glyph per state of a claim a card
  * makes, so a video that goes stale says how fresh each claim was. Five
  * states, each a glyph drawn by code (SVG paths in a 16-unit square, so no
- * font decides how it looks) in a video colour:
- *
- * | state  | glyph | means                         |
- * | ------ | ----- | ----------------------------- |
- * | `main` | ■     | on main                       |
- * | `pr`   | ◧     | an open PR, which may change  |
- * | `next` | □     | planned, not built            |
- * | `gap`  | △     | a known gap                   |
- * | `you`  | ✋    | a step only the owner does    |
- *
- * The definitions are the words table's (`WORDS.badges`), the one place
+ * font decides how it looks) in a video colour: `main` ■, `pr` ◧, `next` □,
+ * `gap` △ and `you` ✋. The definitions are the words table's (`WORDS.badges`), the one place
  * they live.
  *
  * **A badge announces itself.** At a state's first appearance in a video
- * its badge opens into its definition (`REVEAL`: 0.45 s in, held, 0.45 s
- * out, 2.6 s in all), then closes to the glyph; later appearances show the
+ * its badge opens into its definition for `REVEAL`, then closes to the glyph; later appearances show the
  * glyph alone. Which appearance opens is pure: a burn-in that shows badges
  * is given the states shown before it in the video (`badgesSeen`, which
  * `@some-ui/video-render` writes from the cut list's scenes in order), and
@@ -66,7 +56,7 @@ export type GlyphPath = {
 const SQUARE =
   "M4 2.5H12A1.5 1.5 0 0 1 13.5 4V12A1.5 1.5 0 0 1 12 13.5H4A1.5 1.5 0 0 1 2.5 12V4A1.5 1.5 0 0 1 4 2.5Z"
 
-/** Each state's glyph, as the prototype drew it (#2465, 2026-11-13). */
+/** Each state's glyph. */
 export const GLYPHS: Readonly<Record<BadgeState, ReadonlyArray<GlyphPath>>> = {
   main: [{ d: SQUARE, paint: "fill" }],
   pr: [
@@ -99,7 +89,7 @@ const smooth = (x: number): number => x * x * (3 - 2 * x)
 
 /**
  * How far open a revealing badge is, 0 to 1, `sinceMs` after it appears:
- * eased in, held open, eased out, and shut outside its 2.6 s.
+ * eased in, held open, eased out, and shut outside `REVEAL`.
  */
 export function openness(sinceMs: number): number {
   if (sinceMs < 0 || sinceMs >= REVEAL.totalMs) return 0
@@ -143,21 +133,13 @@ export type BadgeMark = {
   } | null
 }
 
-/** A badge's sizes, from its glyph's, in the frame's pixels. */
+/** The definition's type, sized from the glyph. */
 const labelStyle = (state: BadgeState, glyphPx: number): TextStyle =>
   barlow(600, Math.round(glyphPx * 0.72), BADGE_COLOUR[state], 1.2)
 
 /** The pill's padding around the glyph and label, as a share of the glyph. */
 const PAD = 0.3
 const GAP = 0.35
-
-/** How wide a badge reaches at its widest, open: for layout and fit checks. */
-function badgeWidth(state: BadgeState, glyphPx: number): number {
-  const style = labelStyle(state, glyphPx)
-  return Math.ceil(
-    glyphPx * (1 + 2 * PAD + GAP) + widthOf(WORDS.badges[state], style)
-  )
-}
 
 /**
  * A badge with its glyph's square at (`x`, `y`), `glyphPx` across, faded in
@@ -249,7 +231,8 @@ export function drawStatusBadge(
   const body = g.regions.body
   const glyphPx = Math.round(STATUS_BADGE_PX * g.typeScale)
   const inset = glyphPx
-  if (badgeWidth(p.badge, glyphPx) + 2 * inset > body.width)
+  const open = badgeAt(p.badge, 0, 0, glyphPx, 1, 1).open
+  if (open === null || open.pill.width + 2 * inset > body.width)
     return { ok: false, problems: ["the badge doesn't fit the body"] }
   return {
     ok: true,
