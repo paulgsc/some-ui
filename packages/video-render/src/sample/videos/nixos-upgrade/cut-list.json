@@ -17,10 +17,10 @@
             "title": "Merging one PR is the whole upgrade",
             "steps": [
               {
-                "badge": "pr",
+                "badge": "main",
                 "label": "Monday 06:00 UTC",
                 "command": "nix flake update",
-                "note": "CI builds both closures and opens one lockfile PR with the nvd diff. #64 is open now."
+                "note": "CI builds both closures and opens one lockfile PR with the nvd diff."
               },
               {
                 "badge": "you",

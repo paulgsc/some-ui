@@ -73,7 +73,7 @@ export const WORDS = {
     "status-badge": {
       name: "Status badge",
       about:
-        "How fresh a claim on screen is: on main, an open PR, planned, a known gap, or a step only I do. The first time each one appears in a video it spells out what it means, then it shrinks to its sign.",
+        "How fresh a claim on screen is: on main, an open PR, planned, a known gap, or a step only you do. The first time each one appears in a video it spells out what it means, then it shrinks to its sign.",
     },
     terminal: {
       name: "Terminal",
@@ -271,7 +271,7 @@ export const WORDS = {
     pr: "open PR · may change",
     next: "planned, not built",
     gap: "known gap",
-    you: "a step only I do",
+    you: "a step only you do",
   } satisfies Record<BadgeState, string>,
   /** The rule card's fixed words, around its sources (`./rule`). */
   rule: {
