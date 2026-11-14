@@ -1145,9 +1145,6 @@ importers:
       '@some-ui/core-utils':
         specifier: workspace:*
         version: link:../core-utils
-      '@some-ui/fetch-kit':
-        specifier: workspace:*
-        version: link:../fetch-kit
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*

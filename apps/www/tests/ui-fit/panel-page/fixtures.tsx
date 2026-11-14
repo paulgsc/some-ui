@@ -380,15 +380,13 @@ const Topik = PANELS.topik.Component
 export const PANEL_FIXTURES = {
   hangul: (): JSX.Element => <Hangul mode="endless" />,
   leetype: (): JSX.Element => <Leetype />,
-  // A session has no companion services here, so speech is `static`: the
-  // browser's own voice. The applet runs without a provider too, but its
+  // Speech is the browser's own voice, as in every web build. The applet runs without a provider too, but its
   // controls are the ones a learner with speech sees.
   topik: (): JSX.Element => (
     <SpeechProvider
       config={{
-        mode: "static",
         language: "korean",
-        adapters: { static: webSpeech },
+        backend: webSpeech,
       }}
     >
       <Topik />
