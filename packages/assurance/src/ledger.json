@@ -3355,8 +3355,8 @@
           "id": "CE2",
           "kind": "RE9",
           "property": "work",
-          "claim": "What home keeps for cards essays grows by one row per essay home takes and one folder per essay it renders or tries, and none is let go.",
-          "requirement": "server:cards_essay gains one append-only row per essay home takes (its key, the cut list as served, at most 1 MiB, with its SHA-256, and when), and the render worker's renders folder one folder per essay (cards.mp4, cut-list.json, shot-times.json); a failed essay keeps only its finished steps until it renders. Nothing deletes either: there is no let-go for a cards essay (C338; whether there should be waits on the owner, some-ui#2996), and the routine's repository keeps every essay too (CARDS-ROUTINE: never deleted).",
+          "claim": "What home keeps for cards essays grows by one row per essay home takes and one folder per essay it renders or tries, and none is let go until its YouTube link is confirmed.",
+          "requirement": "server:cards_essay gains one append-only row per essay home takes (its key, the cut list as served, at most 1 MiB, with its SHA-256, and when), and the render worker's renders folder one folder per essay (cards.mp4, cut-list.json, shot-times.json); a failed essay keeps only its finished steps until it renders. Nothing deletes either today (C338): an essay's video and folder are kept until it can be let go after a confirmed YouTube link, as other episodes are, which comes with some-ui#2999 (the owner, on some-ui#2996); its row and the routine's repository keep every essay regardless (CARDS-ROUTINE: never deleted).",
           "verdict": "unproven",
           "conclusion": "Structural on home's table: the row's bound (MAX_BODY) and its append-only triggers come with server#854; how large an essay's video is, and so the growth per essay, is unknown until essays render on home.",
           "tracked": "some-ui#2979",
@@ -4668,7 +4668,7 @@
     {
       "store": "server:cards_essay",
       "class": "record",
-      "growth": "One row per cards essay home takes from paulgsc/testing's cards/: its key (<slug>-<YYYY-MM-DD>), the cut list as served (a few KB, at most 1 MiB) with its SHA-256, and when taken; append-only, triggers abort UPDATE and DELETE. No subject: a session's claims about public repositories, nobody's record, so deleting an account removes none. The repository keeps every essay too (CARDS-ROUTINE), and home's copy of each, its video included (renders/cards-essay/<key>/), is kept for good until the owner rules whether a never-uploaded video is let go (#2996).",
+      "growth": "One row per cards essay home takes from paulgsc/testing's cards/: its key (<slug>-<YYYY-MM-DD>), the cut list as served (a few KB, at most 1 MiB) with its SHA-256, and when taken; append-only, triggers abort UPDATE and DELETE. No subject: a session's claims about public repositories, nobody's record, so deleting an account removes none. The repository keeps every essay too (CARDS-ROUTINE), and home's copy of each, its video included (renders/cards-essay/<key>/), is kept until it can be let go after a confirmed YouTube link, as other episodes are, which comes with #2999 (the owner, on #2996).",
       "family": "cards-essay-rendered"
     }
   ],
@@ -5883,7 +5883,7 @@
     {
       "id": "cards-essays",
       "name": "Making each cards essay into a video on home",
-      "why": "A session writes a cards essay to paulgsc/testing's cards folder, checked by cards-check before it merges; home reads the folder's index hourly and keeps each essay it lacks; the render worker records the stage's burn-ins page and keeps the video for good (#2979, C327, C338).",
+      "why": "A session writes a cards essay to paulgsc/testing's cards folder, checked by cards-check before it merges; home reads the folder's index hourly and keeps each essay it lacks; the render worker records the stage's burn-ins page and keeps the video until it can be let go after a confirmed YouTube link, as other episodes are (#2979, C327, C338; the let-go comes with #2999).",
       "serves": ["cards-essay-rendered"],
       "witnesses": ["CE1"],
       "segments": [
@@ -5934,7 +5934,7 @@
         },
         {
           "id": "renders",
-          "name": "Studio's Renders shows the essay's video with the owner's other renders, played on the phone from file_host's cards_essays route. Home keeps each essay for good: there is no let-go for a cards essay (C338), and whether there should be waits on the owner (some-ui#2996). Ours, on home and the phone.",
+          "name": "Studio's Renders shows the essay's video with the owner's other renders, played on the phone from file_host's cards_essays route. Home keeps each essay until it can be let go after a confirmed YouTube link, as other episodes are; until some-ui#2999 builds that, there is no let-go (C338). Ours, on home and the phone.",
           "owner": "ours",
           "on": "home",
           "paths": [
