@@ -13,7 +13,8 @@
     "A second, concurrent third-party PR on its own branch, opened by a monthly run",
     "One PR carrying app and third-party moves together"
   ],
-  "gray": "The second PR was built first and an independent review rejected it. Both PRs formed on one main took serial N+1 and merged without a git conflict, so two different sets could ship as one serial. A monthly refresh carried by its trigger was lost when the single pending slot cancelled it, against RL2's order-free runs. One PR carrying both breaks #796's 'a third-party move is its own release'. The cost of the choice: a third-party move waits behind any pending app release, which is fine for a monthly cadence. Raised to the coordinator session as drift before patching, which agreed on 2026-11-14 (server#860).",
+  "gray": "The second PR was built first and an independent review rejected it. Both PRs formed on one main took serial N+1 and merged without a git conflict, so two different sets could ship as one serial. A monthly refresh carried by its trigger was lost when the single pending slot cancelled it, against RL2's order-free runs. One PR carrying both breaks server#796's 'a third-party move is its own release'. The cost of the choice: a third-party move waits behind any pending app release, which is fine for a monthly cadence. Raised to the coordinator session as drift before patching, which agreed on 2026-11-14 (server#860). This moves C120 (claude, 2026-11-11), which gave third-party refreshes their own monthly release PR.",
   "undo": "Give the third-party refresh its own branch again in release-lock.yml, and in release_lock.py derive its serial from the open app release's so the two can't collide; drop --third-party-due and the daily schedule for a monthly one.",
-  "refs": ["server#796", "server#860", "server#787"]
+  "refs": ["server#796", "server#860", "server#787"],
+  "moves": "C120"
 }
