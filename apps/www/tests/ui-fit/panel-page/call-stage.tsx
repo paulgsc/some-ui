@@ -37,11 +37,16 @@ export const CallStageFixture = (): JSX.Element => {
   const week = weekNamed(name)
   if (week === null)
     return <p data-call-fit-limits={atTheLimit().length}>no such week</p>
-  const fit = callFit(week)
+  // Each page's height as the model says, by the id its scene has.
+  const model = new Map<string, number>()
+  for (const [id, pages] of Object.entries(callFit(week).pages))
+    pages.forEach((page, i) => {
+      model.set(i === 0 ? id : `${id}-${i + 1}`, page.h)
+    })
   return (
     <div data-call-fit={parseCallWeek(week).ok ? "accepted" : "refused"}>
       {callScenes(week).map((scene) => (
-        <div key={scene.id} data-model={fit.heights[scene.id]}>
+        <div key={scene.id} data-model={model.get(scene.id)}>
           <CallSceneFrame week={week} at={callAt(week, scene.id)} record />
         </div>
       ))}

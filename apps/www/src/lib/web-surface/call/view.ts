@@ -72,9 +72,14 @@ function viewOf(
       return { section: "intro", rows: callIntro(week).rows }
     }
     case "chapter": {
-      const items = scenes.filter(
-        (s) => s.section === scene.of && "item" in s && s.item !== undefined
-      ).length
+      // Its items, each once however many pages it has (CF1).
+      const items = new Set(
+        scenes.flatMap((s) =>
+          s.section === scene.of && "item" in s && s.item !== undefined
+            ? [s.item]
+            : []
+        )
+      ).size
       return { section: "chapter", title: CALL_CHAPTERS[scene.of], items }
     }
     case "moved": {

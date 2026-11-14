@@ -7,14 +7,14 @@
     "packages/video-render/src/call.ts",
     "apps/www/src/lib/web-surface/call/stage.tsx"
   ],
-  "chose": "A week of the weekly call is held to its captioned frame by one model of the stage's layout (call-fit.ts): the stage shows as many board rows, pull requests per batch and later asks as the frame holds and counts the rest (\"and 16 more\"), and call-check refuses words no count can shorten (an ask's question, a call's why), naming the scene and what to shorten. The template's look is unchanged, and the scenes are the same.",
+  "chose": "A scene of the weekly call too long for its captioned frame is paged by code: its title on every page, its lists (board rows, pull requests, options, later asks, next steps) and parts carried on in order, each page its own scene (done-3, done-3-2, ...), said over on its first page and held silently for its words' reading time after. Nothing is cut, counted away or sent back to be shortened; call-check refuses only a single part taller than a whole frame. The template's look is unchanged. One model (call-fit.ts) decides the pages for the stage, the cut list and call-check alike.",
   "options": [
-    "show what fits of each list and count the rest; refuse words that can't fit",
-    "split a long list across more scenes",
-    "refuse any week whose lists run past the frame, and let the routine trim them",
+    "page a long scene into several scenes, nothing cut",
+    "show what fits and count the rest (\"and 16 more\")",
+    "refuse any week whose scenes run past the frame, and have the routine trim it",
     "shrink the type until it fits"
   ],
-  "gray": "The owner hasn't said whether a long batch should be cut short on screen or spread over more scenes. Splitting changes the scenes, their timing and the chapter marks; refusing every long list puts the trimming on the routine every week; shrinking the type changes the template's look, which is the owner's. Counting was already how a batch past ten and the later asks past six were shown, so it extends what the call already does.",
-  "undo": "Have callShown return every list in full (or split the scenes in callScenes), drop the callFit problems from weekProblems in call.ts, and remove the More lines from stage.tsx.",
+  "gray": "How a long batch or ask is shown is the owner's to see on screen. Counting the rest was this PR's first shape, and the owner turned it down on 2026-11-14 (relayed by the coordinator of #2918): no editorial cuts, the call has a lot to catch up. Splitting at the page rather than shrinking keeps the template's look, which is the owner's.",
+  "undo": "Make callScenes return the scenes whole (drop pagedScenes in call.ts) and have the stage draw each list in full; that brings back the overflow this fixes, so pair it with another bound.",
   "refs": ["#2918"]
 }

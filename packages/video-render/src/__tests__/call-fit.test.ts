@@ -1,9 +1,11 @@
 /**
  * CF1 (promise, #2918): a week a captioned template draws that
  * `parseCallWeek` accepts has no scene the stage's frame overflows. These
- * hold the model's own rules (`call-fit.ts`); that the model never says a
- * scene is shorter than the stage draws it is held where the stage is drawn,
- * `apps/www/tests/ui-fit/call-fit.spec.ts`.
+ * hold the model's own rules (`call-fit.ts`): a scene too long for one
+ * frame is paged, every entry of every list on exactly one page, and only a
+ * single part taller than a whole frame is refused. That the model never
+ * says a page is shorter than the stage draws it is held where the stage is
+ * drawn, `apps/www/tests/ui-fit/call-fit.spec.ts`.
  *
  * The week of 2026-11-06, which home refused to render every hour, is read
  * from `paulgsc/testing` at the commit that added it, since data lives there
@@ -11,15 +13,16 @@
  */
 
 import { sampleWeek } from "@video-render/__tests__/sample-week"
-import { callShown, CallWeekSchema, parseCallWeek } from "@video-render/call"
-import type { CallWeek } from "@video-render/call"
 import {
-  CALL_BODY,
-  CALL_LATER_SHOWN_MOST,
-  CALL_PULLS_MOST,
-  callFit,
-  linesOf,
-} from "@video-render/call-fit"
+  callChapterMarks,
+  callCutList,
+  callScenes,
+  CallWeekSchema,
+  parseCallWeek,
+} from "@video-render/call"
+import type { CallWeek } from "@video-render/call"
+import { CALL_BODY, callFit, linesOf } from "@video-render/call-fit"
+import type { CallPage } from "@video-render/call-fit"
 import { beforeAll, describe, expect, it } from "vitest"
 
 const NOV_6 =
@@ -53,58 +56,97 @@ const pull = (i: number): CallWeek["done"][number]["pulls"][number] => ({
   change: "story",
 })
 
+/**
+ * Every group's entries across `pages`, in order: each page's `[from, to)`
+ * must start where the last page of that group stopped.
+ */
+function covered(pages: ReadonlyArray<CallPage>): Record<string, number> {
+  const upTo: Record<string, number> = {}
+  for (const page of pages)
+    for (const [group, range] of Object.entries(page.shows)) {
+      const [from, to] = range
+      expect(from, group).toBe(upTo[group] ?? 0)
+      upTo[group] = to
+    }
+  return upTo
+}
+
 describe("the week of 2026-11-06 (#2918)", () => {
-  it("is refused for the two asks that can't fit, and says what to shorten", (context) => {
+  it("is accepted as written: nothing in it is cut or refused", (context) => {
     if (nov6 === null) return context.skip()
-    const parsed = parseCallWeek(nov6)
-    expect(parsed.ok).toBe(false)
-    const problems = parsed.ok ? [] : parsed.problems
-    expect(problems).toHaveLength(2)
-    expect(problems[0]).toMatch(/^asks-2 \(ask-2860\): .*shorten its question/)
-    expect(problems[1]).toMatch(/^asks-4 \(ask-2627\): .*shorten its question/)
+    expect(parseCallWeek(nov6)).toMatchObject({ ok: true })
   })
 
-  it("counts down the lists that overflowed: the board, the batches and the close", (context) => {
+  it("pages every list, each entry on exactly one page, each page within the frame", (context) => {
     if (nov6 === null) return context.skip()
     const week = nov6
-    const { shown, heights } = callFit(week)
-    expect(shown.board).toBeLessThan(week.board.rows.length)
-    expect(shown.later).toBeLessThan(CALL_LATER_SHOWN_MOST)
-    for (const batch of week.done.slice(0, 7))
-      expect(shown.pulls[batch.id]).toBeLessThan(CALL_PULLS_MOST)
-    for (const id of [
-      "board",
-      "close",
-      ...week.done.map((_, i) => `done-${i + 1}`),
-    ])
-      expect(heights[id], id).toBeLessThanOrEqual(CALL_BODY.height)
+    const { pages } = callFit(week)
+    for (const each of Object.values(pages))
+      for (const page of each)
+        expect(page.h).toBeLessThanOrEqual(CALL_BODY.height)
+    expect(covered(pages["board"] ?? []).rows).toBe(week.board.rows.length)
+    expect(covered(pages["close"] ?? []).later).toBe(week.later.length)
+    for (const [i, batch] of week.done.entries())
+      expect(covered(pages[`done-${i + 1}`] ?? []).pulls).toBe(
+        batch.pulls.length
+      )
+    for (const [i, ask] of week.asks.entries())
+      expect(covered(pages[`asks-${i + 1}`] ?? []).options).toBe(
+        ask.options.length
+      )
+    // The scenes that overflowed on home now take more than one page.
+    for (const id of ["board", "done-1", "done-3", "asks-2", "close"])
+      expect((pages[id] ?? []).length, id).toBeGreaterThan(1)
   })
 
-  it("renders once those two asks are shortened", (context) => {
+  it("says each scene once, over its first page; the pages after hold silently", (context) => {
     if (nov6 === null) return context.skip()
-    const week = edited(nov6, (w) => {
-      const [, second, , fourth] = w.asks
-      if (second === undefined || fourth === undefined) throw new Error("asks")
-      second.question =
-        "Should Korean practice share one drama world, each scene standing alone?"
-      fourth.question =
-        "How should the Show level filter treat a level TOPIK keeps?"
-      fourth.whyYours =
-        "One tap to look would hold that level for good. Whether a look counts as a choice is your call."
-    })
-    expect(parseCallWeek(week)).toMatchObject({ ok: true })
+    const scenes = callScenes(nov6)
+    const done3 = scenes.filter((scene) => scene.id.startsWith("done-3"))
+    expect(done3.map((scene) => scene.id)).toEqual([
+      "done-3",
+      "done-3-2",
+      "done-3-3",
+    ])
+    const [first, ...rest] = done3
+    expect(first?.said).toBe(nov6.done[2]?.said)
+    for (const scene of rest) {
+      expect(scene.said).toBe("")
+      expect("holdMs" in scene ? scene.holdMs : 0).toBeGreaterThan(3_000)
+    }
+    const cut = callCutList(
+      nov6,
+      scenes.map(() => null)
+    )
+    const shot = cut.shots.find((each) => each.id === "done-3-2")
+    const second = rest[0]
+    const hold =
+      second !== undefined && "holdMs" in second ? second.holdMs : undefined
+    expect(hold).toBeDefined()
+    expect(shot?.durationMs).toBe(hold)
+    // An ask's chapter mark is at its first page alone.
+    const marks = callChapterMarks(nov6).filter((mark) =>
+      mark.scene.startsWith("asks-")
+    )
+    expect(marks.map((mark) => mark.scene)).toEqual([
+      "asks-1",
+      "asks-2",
+      "asks-3",
+      "asks-4",
+    ])
   })
 })
 
 describe("the captioned frame (version 2 on)", () => {
-  it("holds every scene of the sample week", () => {
-    const { problems, heights } = callFit(sampleWeek())
+  it("holds the sample week on one page a scene", () => {
+    const week = sampleWeek()
+    const { pages, problems } = callFit(week)
     expect(problems).toEqual([])
-    for (const [id, h] of Object.entries(heights))
-      expect(h, id).toBeLessThanOrEqual(CALL_BODY.height)
+    for (const [id, each] of Object.entries(pages))
+      expect(each.length, id).toBe(1)
   })
 
-  it("shows as much of a long list as fits, and counts the rest", () => {
+  it("pages a long list, leaving nothing out", () => {
     const week = edited(sampleWeek(), (w) => {
       w.board.rows = Array.from({ length: 60 }, (_, i) => ({
         ledger: `row-${i}`,
@@ -127,28 +169,26 @@ describe("the captioned frame (version 2 on)", () => {
       }))
     })
     expect(parseCallWeek(week)).toMatchObject({ ok: true })
-    const { shown, heights } = callFit(week)
-    expect(shown.board).toBeGreaterThan(0)
-    expect(shown.board).toBeLessThan(60)
-    expect(shown.pulls[week.done[0]?.id ?? ""]).toBeLessThanOrEqual(
-      CALL_PULLS_MOST
+    const { pages } = callFit(week)
+    expect(covered(pages["board"] ?? []).rows).toBe(60)
+    expect(covered(pages["done-1"] ?? []).pulls).toBe(
+      week.done[0]?.pulls.length
     )
-    expect(shown.later).toBeGreaterThan(0)
-    for (const id of ["board", "done-1", "close"])
-      expect(heights[id], id).toBeLessThanOrEqual(CALL_BODY.height)
+    expect(covered(pages["close"] ?? []).later).toBe(40)
+    expect((pages["done-1"] ?? []).length).toBeGreaterThan(1)
   })
 
-  it("refuses words no count can shorten, naming the scene and the item", () => {
+  it("refuses only a part taller than a whole frame, naming the scene and the item", () => {
     const week = edited(sampleWeek(), (w) => {
       const [ask] = w.asks
       if (ask === undefined) throw new Error("asks")
-      ask.whyYours = "Only you can say which of these matters more. ".repeat(12)
+      ask.whyYours = "Only you can say which of these matters more. ".repeat(40)
     })
     const parsed = parseCallWeek(week)
     expect(parsed.ok).toBe(false)
     expect(parsed.ok ? [] : parsed.problems).toEqual([
       expect.stringMatching(
-        /^asks-1 \(.+\): its words run past the frame by about \d+ lines; shorten its question, why it's yours/
+        /^asks-1 \(.+\): one part of it runs past a whole frame by about \d+ lines; shorten its question or why it's yours$/
       ),
     ])
   })
@@ -166,15 +206,15 @@ describe("a version 1 week, with no caption band", () => {
       ]
       const [ask] = w.asks
       if (ask === undefined) throw new Error("asks")
-      ask.whyYours = "Only you can say which of these matters more. ".repeat(12)
+      ask.whyYours = "Only you can say which of these matters more. ".repeat(40)
     })
 
-  it("is drawn as it always was: ten pulls a batch, six later asks, every row", () => {
-    const week = v1()
-    const shown = callShown(week)
-    expect(shown.pulls[week.done[0]?.id ?? ""]).toBe(CALL_PULLS_MOST)
-    expect(shown.board).toBe(week.board.rows.length)
-    expect(shown.later).toBe(Math.min(week.later.length, CALL_LATER_SHOWN_MOST))
+  it("is drawn as it always was: a scene each, unpaged", () => {
+    const scenes = callScenes(v1())
+    expect(scenes.some((scene) => "page" in scene && scene.page)).toBe(false)
+    expect(scenes.filter((scene) => scene.section === "done")).toHaveLength(
+      v1().done.length
+    )
   })
 
   it("is not held to the captioned frame", () => {

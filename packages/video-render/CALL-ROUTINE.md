@@ -67,11 +67,11 @@ up to 14 days.
    `pnpm --filter @some-ui/video-render render call-check <paulgsc/testing>/call`
    until it says ready. It checks the index, every week it lists against the
    schema, each named for its own days, and no week file the index forgets.
-   It also holds each scene's picture to the frame (CF1, `src/call-fit.ts`):
-   a list too long for it (the board, a batch's pull requests, the asks
-   left for later) is shown as far as it fits and the rest counted, but
-   words no count can shorten are refused, naming the scene, the item
-   and what to shorten. Shorten what it names, keeping the meaning,
+   A scene too long for its frame is paged by code, nothing cut (CF1,
+   `src/call-fit.ts`), so don't trim lists or words to fit. It refuses
+   only a single part taller than a whole frame, such as a why-it's-yours
+   of a dozen lines, naming the scene and what to shorten. Shorten that
+   alone, keeping the meaning,
    and check again. Keep `said` to a few sentences too, as the schema's
    sample does: it is spoken, not shown, but it sets the video's length.
 6. **Update `call/index.json`:** the new week first. Keep at most `keep`

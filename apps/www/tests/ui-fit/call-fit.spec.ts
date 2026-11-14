@@ -9,9 +9,9 @@
  * real frame (the `call-stage` fixture, `./panel-page/call-stage.tsx`) at the
  * recorder's 1920×1080, and checks two things on the host it runs on:
  *
- * - the model never says a scene is shorter than the frame draws it, for
- *   every scene of every week here, the refused ones too; and
- * - no scene of a week the model accepts overflows (`data-overflow`).
+ * - the model never says a page is shorter than the frame draws it, for
+ *   every page of every week here; and
+ * - no page of a week the model accepts overflows (`data-overflow`).
  *
  * The weeks: the template's sample, the week of 2026-11-06 (which overflowed
  * on home, #2918) read from `paulgsc/testing` at the commit that added it,
@@ -131,9 +131,8 @@ test.describe("CF1: the call's model holds the frame the stage draws", () => {
       if (process.env["CI"]) throw error
       test.skip(true, "paulgsc/testing can't be read here")
     }
-    // It asks too much of two scenes (asks-2 and asks-4), so it is refused,
-    // and the model still holds every scene it drew.
-    expect(await expectHeld(page, "2026-11-06", { given })).toBe(false)
+    // It runs long, so it is paged, and every page fits.
+    expect(await expectHeld(page, "2026-11-06", { given })).toBe(true)
   })
 
   test("every list at its longest", async ({ page }) => {
