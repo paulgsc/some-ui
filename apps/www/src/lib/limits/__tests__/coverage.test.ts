@@ -37,12 +37,15 @@ const DESK =
 const NOT_SHOWN: Readonly<Record<string, string>> = {
   "apps/www/src/lib/takes-desk/index.ts#max": DESK,
   "apps/www/src/lib/takes-desk/index.ts#maxBytes(options.limits)": DESK,
+  "apps/www/src/lib/take-conveyor/model.ts#LABELS_MAX": ONE_ITEM,
   "packages/ui/soundbites/src/lib/policy.ts#SOUNDBITE_LIMIT":
     "Soundbites: its own screen shows how many of six are kept, beside the recorder, and which one the next replaces.",
   "packages/ui/soundbites/src/lib/policy.ts#SOUNDBITES_MAX_BYTES":
     "Soundbites' room for audio: six full minutes, which its count of six shows on its own screen.",
   "packages/ui/soundbites/src/lib/policy.ts#JOURNAL_TAKES_MAX_BYTES":
     "Studio's takes: its own screen shows the time used against its budget.",
+  "packages/ui/topik/src/lib/topik/read-aloud/added-sets/index.ts#NOT_OPENED_IN_A_WHILE_DAYS":
+    "Not a bound: the age past which My data's Korean word sets page hints that a set could be archived. Nothing is refused or dropped at it (C232).",
   "apps/www/src/lib/voice-home/model.ts#ASIDE_ANSWERED_MAX":
     "Which set-aside notes home has answered: forgetting one costs one more ask of home, never a mark.",
   "apps/www/src/lib/voice-home/model.ts#ASIDE_OWED_MAX":
@@ -58,6 +61,11 @@ const NOT_SHOWN: Readonly<Record<string, string>> = {
   "packages/ui/aph/src/lib/draft.ts#MAX_DIGITS": ONE_ITEM,
   "packages/ui/auth/src/lib/schemas.ts#MAX_PASSWORD_LENGTH": ONE_ITEM,
   "packages/ui/burn-ins/src/lib/captions/timing.ts#MAX_ROWS": ONE_ITEM,
+  "packages/ui/interview-week/src/lib/faults/read.ts#READ_WORDS_MAX": ONE_ITEM,
+  "packages/ui/interview-week/src/lib/faults/words.ts#WORDS_MAX": ONE_ITEM,
+  "packages/ui/interview-week/src/lib/week/index.ts#SLUG_MAX": ONE_ITEM,
+  "packages/ui/interview-week/src/lib/week/index.ts#QUESTIONS_MAX": ONE_ITEM,
+  "packages/ui/interview-week/src/lib/week/index.ts#CARDS_MAX": ONE_ITEM,
   "packages/ui/game-week/src/lib/bite.ts#MAX_LINE_CHARS": ONE_ITEM,
   "packages/ui/leetype/src/lib/leetype/exercises/totality.ts#MAX_OBLIGATIONS_PER_ROUTE":
     ONE_ITEM,

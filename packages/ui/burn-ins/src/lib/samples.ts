@@ -106,6 +106,8 @@ export const SAMPLES: Readonly<
     endMs: STILL_SAMPLE_MS,
   },
   "preview-mark": {},
+  // An open PR, shown first in its video, so it spells itself out.
+  "status-badge": { badge: "pr" },
 }
 
 export const samplesOf = (kind: Kind): ReadonlyArray<BurnInData["params"]> =>

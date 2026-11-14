@@ -1,6 +1,6 @@
 /**
  * The burn-in recorder in CI (STUDIO ST15, #2273): a short with a scene's
- * captions, a headline and the authorship mark, rendered twice through
+ * captions, a headline, a status badge and the authorship mark, rendered twice through
  * `record:short`'s
  * path (the built app's `/burn-ins?record` page filling the renderer's
  * `recordBurnIn`), gives the same MP4 and the same burn-in recordings both
@@ -64,11 +64,16 @@ const CUT_LIST = cutList(
     }),
     shot("S2", {
       picture: capture(1500),
-      durationMs: 1500,
+      // Long enough for its badge to spell itself out.
+      durationMs: 3300,
       idea: {
         origin: "source",
         from: { title: "The burn-ins README", ref: "packages/ui/burn-ins" },
       },
+      // CARDS1: its first appearance in the video, so it spells itself out.
+      burnIns: [
+        { kind: "status-badge", design: "badge-v1", params: { badge: "pr" } },
+      ],
     }),
     card("outro"),
   ],
@@ -93,7 +98,7 @@ test.describe("the burn-in recorder", () => {
     for (const dir of ["captures", "voice"]) await ports.mkdir(dir)
     const sources = [
       [
-        ...["-f", "lavfi", "-i", "testsrc2=s=206x458:r=30:d=4"],
+        ...["-f", "lavfi", "-i", "testsrc2=s=206x458:r=30:d=6"],
         ...["-c:v", "libx264", "-pix_fmt", "yuv420p", "captures/walk.mp4"],
       ],
       [
@@ -145,8 +150,9 @@ test.describe("the burn-in recorder", () => {
       }
       const first = await renderOnce(1)
       const second = await renderOnce(2)
-      // Captions, the mark and the headline, so the comparison is not of nothing.
-      expect(first.burnIns.size).toBe(3)
+      // Captions, the mark, the headline and the badge, so the comparison is
+      // not of nothing.
+      expect(first.burnIns.size).toBe(4)
       expect(second.burnIns).toEqual(first.burnIns)
       expect(second.video).toBe(first.video)
     } finally {

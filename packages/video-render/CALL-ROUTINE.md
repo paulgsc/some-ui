@@ -24,8 +24,8 @@ up to 14 days.
    in the scratchpad. It holds the week's merged pull requests (with each
    one's change kind), the calls that reached `docs/calls.json` on `main`
    in the week or were agreed to in it (each with who made it), promise
-   trailers, open asks, and the epics that moved, with their "Where we
-   are". It reads the record from the checkout's history, so the clone must
+   trailers, open asks, and the epics that moved, with their "Why" and
+   "Where we are". It reads the record from the checkout's history, so the clone must
    reach back to the week's start (`git fetch --shallow-since=<from>` on a
    shallow one). Then read the week's session notes: the files in
    `paulgsc/testing`'s `sessions/` whose `ended` falls in the week

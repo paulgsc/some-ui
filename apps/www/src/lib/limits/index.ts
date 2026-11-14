@@ -30,6 +30,8 @@ type Unit = "count" | "bytes" | "days"
 export type LimitCount = {
   readonly kept: number | null
   readonly limit: number
+  /** How many are kept out of the count (archived word sets), when any are. */
+  readonly aside?: number
 }
 
 export type LimitRow = {
@@ -283,7 +285,10 @@ export const LIMIT_ROWS: ReadonlyArray<LimitRow> = [
     words: PHONE_LIMITS.wordSets,
     unit: "count",
     sources: [`${TOPIK}/read-aloud/added-sets/index.ts#ADDED_SET_LIMIT`],
-    read: async () => (await topik()).wordSets,
+    read: async (): Promise<LimitCount> => {
+      const { kept, limit, archived } = (await topik()).wordSets
+      return { kept, limit, aside: archived }
+    },
   },
   {
     id: "practiceDays",
@@ -440,7 +445,12 @@ export function standingOf(
   if (count.kept === null) {
     return row.words.nothing?.(limit) ?? row.words.standing("0", limit)
   }
-  return row.words.standing(amount(row.unit, count.kept), limit)
+  const standing = row.words.standing(amount(row.unit, count.kept), limit)
+  const aside =
+    count.aside !== undefined && count.aside > 0
+      ? row.words.aside?.(String(count.aside))
+      : undefined
+  return aside === undefined ? standing : `${standing} · ${aside}`
 }
 
 export type LimitReading =

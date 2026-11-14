@@ -11,6 +11,7 @@ import {
   sectionOf,
   trailersOf,
   whereWeAreOf,
+  whyOf,
 } from "@video-render/call-facts"
 import { describe, expect, it } from "vitest"
 
@@ -71,6 +72,12 @@ describe("an epic's body", () => {
     expect(whereWeAreOf(`## Where we are\n\n${"x".repeat(10)}`, 4)).toBe(
       "xxxx…"
     )
+  })
+
+  it("gives its Why, and not a heading that only starts with it", () => {
+    const epic = "**Search words:** x\n\n## Why\n\nBecause.\n\n## What\n\ny"
+    expect(whyOf(epic)).toBe("Because.")
+    expect(whyOf("## Whys\n\ny")).toBeNull()
   })
 })
 
