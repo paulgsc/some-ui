@@ -4,17 +4,15 @@
  * or a forwarded `$remote_addr` fails nothing at runtime, so this reads the
  * files that decide it and fails with the line to fix:
  *
- * - `apps/www/nginx.default.conf`: the server block the image serves (the
- *   one `docker run` and the published image serve), which
- *   `apps/www/Dockerfile` copies to conf.d/default.conf and nothing else
- *   writes there (WI1: the file the image ships is the file read here).
- * - `apps/www/nginx.https.conf`: the compose stack's template, which replaces
- *   that file (one server block, :80).
- * - `apps/www/nginx.security-headers.conf`: the `Referrer-Policy` both include.
+ * - `apps/www/nginx.https.conf`: the image's one server block (:80), which
+ *   `apps/www/Dockerfile` copies to nginx's templates directory and nothing
+ *   else writes conf.d or templates (WI1: the file the image ships is the file
+ *   read here). The image's entrypoint renders it to conf.d/default.conf at
+ *   start, filling in only the `${NAME}`s the Dockerfile declares.
+ * - `apps/www/nginx.security-headers.conf`: the `Referrer-Policy` it includes.
  *
  * Not covered: `error_log` (it cannot be made address-free without dropping
- * nginx's own errors), the résumé proxy's forwarding, and the compose `logging:`
- * bound in infra/compose/www.yml.
+ * nginx's own errors), and the deployment's `logging:` bound.
  *
  * A tiny block parser (comments, quotes, braces; not general nginx), because
  * a substring match cannot tell `access_log off;` in a comment or the wrong
@@ -34,7 +32,6 @@ const REPO_ROOT = resolve(
 )
 
 const DOCKERFILE = "apps/www/Dockerfile"
-const DEFAULT_CONF = "apps/www/nginx.default.conf"
 const HTTPS_CONF = "apps/www/nginx.https.conf"
 const HEADERS_CONF = "apps/www/nginx.security-headers.conf"
 const VITE_CONFIG = "apps/www/vite.config.ts"
@@ -42,6 +39,9 @@ const VITE_CONFIG = "apps/www/vite.config.ts"
 const HEADERS_INCLUDE = "include /etc/nginx/security-headers.conf"
 const FILE_HOST_LOCATION = "location ^~ /api/file-host/"
 const TABS_LOCATION = "location ^~ /api/file-host/api/v1/tabs"
+const RESUME_LOCATION = "location ^~ /api/resume/"
+/** Where the base image's entrypoint looks for the server block's template. */
+const TEMPLATE_TARGET = "/etc/nginx/templates/default.conf.template"
 
 /** The headers file_host must not be sent, by lower-cased name. */
 const CLIENT_ADDRESS_HEADERS = [
@@ -254,6 +254,40 @@ function fileHostProblems(file: string, servers: Array<Block>): Array<string> {
   return problems
 }
 
+/** The résumé proxy carries the PII's request and must forward no address. */
+function resumeProblems(file: string, servers: Array<Block>): Array<string> {
+  const problems: Array<string> = []
+  for (const server of servers) {
+    const where = describeBlock(server)
+    const location = server.children.find(
+      (child) => child.head === RESUME_LOCATION
+    )
+    if (!location) {
+      problems.push(
+        `${file}: ${where} has no \`${RESUME_LOCATION} {\`. ` +
+          "If the proxy moved, update this test to follow it; do not delete the check."
+      )
+      continue
+    }
+    const headers = proxyHeaders(location)
+    for (const [key, name] of CLIENT_ADDRESS_HEADERS) {
+      if (headers.get(key) !== '""') {
+        problems.push(
+          `${file}: in ${where}, \`${RESUME_LOCATION}\` must have \`proxy_set_header ${name} "";\`.`
+        )
+      }
+    }
+    for (const [name, value] of headers) {
+      if (CLIENT_ADDRESS_VARIABLE.test(value)) {
+        problems.push(
+          `${file}: in ${where}, \`proxy_set_header ${name} ${value};\` forwards the client address to the résumé service.`
+        )
+      }
+    }
+  }
+  return problems
+}
+
 /** `Referrer-Policy` is `no-referrer`, set once, and reaches every server. */
 function referrerProblems(
   headersConf: Block,
@@ -294,18 +328,19 @@ function read(path: string): string {
 }
 
 /**
- * WI1: the image's conf.d is `nginx.default.conf` as the repo keeps it. The
- * Dockerfile copies that file to conf.d/default.conf on one line, and no other
- * line names conf.d, so no heredoc, `RUN` or second `COPY` can write over it
- * (#2652: a `RUN <<'EOF' > default.conf` shipped an empty file).
+ * WI1: the image's server block is `nginx.https.conf` as the repo keeps it. The
+ * Dockerfile copies that file to the templates directory on one line, and no
+ * other line names conf.d or templates, so no heredoc, `RUN` or second `COPY`
+ * can write over it or beside it (#2652: a `RUN <<'EOF' > default.conf`
+ * shipped an empty file).
  */
 function defaultConfProblems(file: string, dockerfile: string): Array<string> {
-  const copy = `COPY ${DEFAULT_CONF} /etc/nginx/conf.d/default.conf`
+  const copy = `COPY ${HTTPS_CONF} ${TEMPLATE_TARGET}`
   const lines = dockerfile.split(/\r?\n/)
   const copies = lines.filter((line) => line.trim() === copy).length
   const others = lines.filter(
     (line) =>
-      line.includes("/etc/nginx/conf.d") &&
+      /\/etc\/nginx\/(?:conf\.d|templates)\b/.test(line) &&
       line.trim() !== copy &&
       !line.trimStart().startsWith("#")
   )
@@ -315,9 +350,55 @@ function defaultConfProblems(file: string, dockerfile: string): Array<string> {
       : [`${file}: \`${copy}\` appears ${String(copies)} times, not once.`]),
     ...others.map(
       (line) =>
-        `${file}: \`${line.trim()}\` also writes conf.d, over ${DEFAULT_CONF}.`
+        `${file}: \`${line.trim()}\` also writes nginx's config, beside ${HTTPS_CONF}.`
     ),
   ]
+}
+
+/**
+ * Every `${NAME}` the template reads is one the Dockerfile gives a default
+ * with `ENV` and lets through `NGINX_ENVSUBST_FILTER`. The entrypoint leaves a
+ * name it does not substitute as written, and nginx then refuses to start on
+ * the unknown variable, so a bare `docker run` would serve nothing. The filter
+ * also has to let nothing else through: an env var named like one of nginx's
+ * own variables would otherwise be substituted into the block.
+ */
+function templateEnvProblems(
+  template: string,
+  dockerfile: string
+): Array<string> {
+  const names = new Set(
+    [...template.replace(/^\s*#.*$/gm, "").matchAll(/\$\{(\w+)\}/g)].map(
+      (match) => match[1]
+    )
+  )
+  const env = new Map(
+    [...dockerfile.matchAll(/^ENV (\w+)=(.*)$/gm)].map((match) => [
+      match[1],
+      match[2].replace(/^"(.*)"$/, "$1"),
+    ])
+  )
+  const filter = env.get("NGINX_ENVSUBST_FILTER")
+  if (filter === undefined) {
+    return ["the Dockerfile sets no NGINX_ENVSUBST_FILTER"]
+  }
+  const passes = new RegExp(filter)
+  const problems: Array<string> = []
+  if (names.size === 0) problems.push("the template reads no ${NAME} at all")
+  for (const name of names) {
+    if (!env.has(name)) {
+      problems.push(`the template reads \${${name}}, which no ENV declares`)
+    }
+    if (!passes.test(name)) {
+      problems.push(`NGINX_ENVSUBST_FILTER does not let \${${name}} through`)
+    }
+  }
+  for (const nginxVariable of ["host", "uri", "scheme", "PATH", "HOME"]) {
+    if (passes.test(nginxVariable)) {
+      problems.push(`NGINX_ENVSUBST_FILTER lets \${${nginxVariable}} through`)
+    }
+  }
+  return problems
 }
 
 function serversOf(root: Block): Array<Block> {
@@ -346,17 +427,15 @@ function viteProxyProblems(file: string, text: string): Array<string> {
 }
 
 const dockerfile = read(DOCKERFILE)
-const dockerConf = parseNginx(read(DEFAULT_CONF), DEFAULT_CONF)
-const dockerServers = serversOf(dockerConf)
 
-const httpsConf = parseNginx(read(HTTPS_CONF), HTTPS_CONF)
+const httpsText = read(HTTPS_CONF)
+const httpsConf = parseNginx(httpsText, HTTPS_CONF)
 const httpsServers = serversOf(httpsConf)
 
 const headersConf = parseNginx(read(HEADERS_CONF), HEADERS_CONF)
 
 describe("the configs are read, not assumed", () => {
   it("finds the server blocks the other checks run over", () => {
-    expect(dockerServers, `${DEFAULT_CONF}: server blocks`).toHaveLength(1)
     expect(httpsServers, `${HTTPS_CONF}: server blocks`).toHaveLength(1)
     expect(
       headersConf.directives.length,
@@ -364,8 +443,12 @@ describe("the configs are read, not assumed", () => {
     ).toBeGreaterThan(0)
   })
 
-  it("copies its server block, and nothing else, into the image's conf.d (WI1)", () => {
+  it("copies its server block, and nothing else, into the image's config (WI1)", () => {
     expect(defaultConfProblems(DOCKERFILE, dockerfile)).toEqual([])
+  })
+
+  it("declares a default for every per-host value the server block reads", () => {
+    expect(templateEnvProblems(httpsText, dockerfile)).toEqual([])
   })
 
   it("copies the security headers into the image the Dockerfile serves", () => {
@@ -377,12 +460,6 @@ describe("the configs are read, not assumed", () => {
 
 describe("access logs stay off", () => {
   it("in the image's server block", () => {
-    expect(accessLogProblems(DEFAULT_CONF, dockerConf, dockerServers)).toEqual(
-      []
-    )
-  })
-
-  it("in every server block of nginx.https.conf", () => {
     expect(accessLogProblems(HTTPS_CONF, httpsConf, httpsServers)).toEqual([])
   })
 })
@@ -390,6 +467,10 @@ describe("access logs stay off", () => {
 describe("the file_host proxy", () => {
   it("forwards no client address, and 404s the unauthenticated tabs routes", () => {
     expect(fileHostProblems(HTTPS_CONF, httpsServers)).toEqual([])
+  })
+
+  it("and the résumé proxy forward no client address", () => {
+    expect(resumeProblems(HTTPS_CONF, httpsServers)).toEqual([])
   })
 
   it("is refused the tabs routes by the Vite proxy as well", () => {
@@ -415,7 +496,6 @@ describe("Referrer-Policy", () => {
   it("is no-referrer, and every server block includes it", () => {
     expect(
       referrerProblems(headersConf, [
-        ...dockerServers.map((block) => ({ file: DEFAULT_CONF, block })),
         ...httpsServers.map((block) => ({ file: HTTPS_CONF, block })),
       ])
     ).toEqual([])
@@ -458,7 +538,7 @@ describe("the checks can fail", () => {
   })
 
   it("flags a conf.d written any way but the one COPY, as #2652's heredoc was", () => {
-    const copy = `COPY ${DEFAULT_CONF} /etc/nginx/conf.d/default.conf`
+    const copy = `COPY ${HTTPS_CONF} ${TEMPLATE_TARGET}`
     expect(defaultConfProblems("f", `FROM nginx\n${copy}\n`)).toEqual([])
     expect(
       defaultConfProblems(
@@ -475,6 +555,49 @@ describe("the checks can fail", () => {
     expect(
       defaultConfProblems("f", `FROM nginx\n${copy}\n${copy}\n`)
     ).toHaveLength(1)
+    expect(
+      defaultConfProblems(
+        "f",
+        `FROM nginx\n${copy}\nCOPY x.conf /etc/nginx/templates/x.conf.template\n`
+      )
+    ).toHaveLength(1)
+  })
+
+  it("flags a template name with no default, one the filter drops, and a filter too wide", () => {
+    const template = 'set $a "${A_UPSTREAM}";\n# ${IN_A_COMMENT}\n'
+    const ok = 'ENV A_UPSTREAM=a:1\nENV NGINX_ENVSUBST_FILTER="^A_UPSTREAM$"\n'
+    expect(templateEnvProblems(template, ok)).toEqual([])
+    expect(
+      templateEnvProblems(
+        template,
+        'ENV NGINX_ENVSUBST_FILTER="^A_UPSTREAM$"\n'
+      )
+    ).toHaveLength(1)
+    expect(
+      templateEnvProblems(
+        template,
+        'ENV A_UPSTREAM=a:1\nENV NGINX_ENVSUBST_FILTER="^B$"\n'
+      )
+    ).toHaveLength(1)
+    expect(
+      templateEnvProblems(
+        template,
+        'ENV A_UPSTREAM=a:1\nENV NGINX_ENVSUBST_FILTER=".*"\n'
+      )
+    ).toHaveLength(5)
+    expect(templateEnvProblems(template, "ENV A_UPSTREAM=a:1\n")).toHaveLength(
+      1
+    )
+  })
+
+  it("flags a résumé proxy that forwards the client address", () => {
+    const root = bad(`server {
+      location ^~ /api/resume/ {
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      }
+    }`)
+    expect(resumeProblems("f", serversOf(root))).toHaveLength(3)
+    expect(resumeProblems("f", serversOf(bad("server { }")))).toHaveLength(1)
   })
 
   it("flags a Vite proxy entry with no bypass, or with none that asks the predicate", () => {

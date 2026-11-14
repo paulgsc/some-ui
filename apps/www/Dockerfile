@@ -158,8 +158,21 @@ COPY apps/www/nginx.security-headers.conf /etc/nginx/security-headers.conf
 # The server block, `access_log off;` and why included, lives in its own file
 # so what the image serves is the file the repo keeps (WI1, #2652): a RUN
 # heredoc redirected with `>` wrote the redirect's empty output, not the block.
+# It is a template: the base image's entrypoint renders it to
+# conf.d/default.conf at start, filling in the per-host values below, so a
+# deployment needs no file of this repo (RELEASE R8, paulgsc/server#853).
 #
-COPY apps/www/nginx.default.conf /etc/nginx/conf.d/default.conf
+COPY apps/www/nginx.https.conf /etc/nginx/templates/default.conf.template
+
+#
+# The per-host values the template reads, with the defaults home's compose
+# uses: the service names paulgsc/server's file_host and the résumé render
+# service run under. The filter keeps envsubst off every other variable, so
+# nginx's own `$host` and the like are never touched.
+#
+ENV FILE_HOST_UPSTREAM=file-host-server:3000
+ENV RESUME_UPSTREAM=resume-render:3100
+ENV NGINX_ENVSUBST_FILTER="^(FILE_HOST|RESUME)_UPSTREAM$"
 
 COPY --from=builder /app/apps/www/dist /usr/share/nginx/html
 

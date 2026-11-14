@@ -6,7 +6,7 @@
 # Reachable from the home network only, and only through the www container:
 # no port is published, not even on 127.0.0.1. apps/www's nginx proxies the
 # same-origin /api/resume/ path to it over some-ui-network
-# (apps/www/nginx.resume-proxy.conf), and the only page that calls it is the
+# (apps/www/nginx.https.conf, RESUME_UPSTREAM), and the only page that calls it is the
 # LAN build's /resume-build.
 #
 # Built here from the package; nothing publishes an image. Rebuild it after
