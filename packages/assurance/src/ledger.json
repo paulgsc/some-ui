@@ -3307,6 +3307,50 @@
       ]
     },
     {
+      "id": "cards-essay-rendered",
+      "name": "Home makes each cards essay into a video",
+      "why": "A session writes a cards essay's cut list from the repositories it explains, every claim badged and every card stamped with the commits it was checked against, and puts it in paulgsc/testing's cards folder (C327); home renders it as it renders the call, with no speaker and no model, and the owner watches it there (#2979). The same essay on the same image gives the same video.",
+      "paths": [
+        "server:infra/render",
+        "server:infra/compose/call-render.yml",
+        "some-ui:infra/render/Dockerfile",
+        "some-ui:apps/www/stage",
+        "some-ui:packages/video-render/src/cards-essay.ts",
+        "some-ui:packages/video-render/CARDS-ROUTINE.md",
+        "some-ui:apps/www/tests/record/cards.ts",
+        "some-ui:apps/www/tests/record/burn-ins.ts"
+      ],
+      "modules": [],
+      "objectives": [
+        {
+          "id": "CE1",
+          "kind": "OA2",
+          "property": "outcome",
+          "claim": "Every essay paulgsc/testing's cards index lists becomes one video on home, drawn from its cut list alone, or is refused and said; one that failed is tried again.",
+          "requirement": "Home reads paulgsc/testing's cards/index.json hourly and keeps each essay it lacks, as first served, then writes it as <key>.json for the render worker; the render worker's cards-essay job runs record:cards on it, which refuses a file that isn't a cards essay (parseCardsEssay: its key not its stamp's day, another series, a scene that isn't a card, plays a take or a cue or stands on an image, and captions) before anything is drawn, and keeps cards.mp4, cut-list.json and shot-times.json in the essay's folder; a failed essay keeps its finished steps and is tried again.",
+          "verdict": "unproven",
+          "conclusion": "Structural on the some-ui side: cards-check and the recorder are tested, and both showcase essays were recorded locally from the stage build, the same bytes twice. Home's side (the keeper that reads the index and the render worker's cards-essay job) is not built yet, so nothing renders on home.",
+          "tracked": "some-ui#2979",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "parseCardsEssay refuses a key that isn't its stamp's day, a series that isn't a cards series, a scene that isn't a card, plays a take or a cue or stands on an image, and captions; cardsFolderProblems refuses an index out of order, an essay it lists that is missing, pins a version of its series the checkout lacks or asks that series for what it lacks (resolve), and one it forgets; each tested.",
+              "ref": "some-ui:packages/video-render/src/cards-essay.ts"
+            },
+            {
+              "class": "measured",
+              "says": "Recorded locally on 2026-11-14 with record:cards from the stage build: both showcase essays rendered to the same bytes as record:short gives them, and the NixOS one twice from fresh folders to the same bytes.",
+              "ref": "some-ui#2979"
+            }
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        }
+      ]
+    },
+    {
       "id": "home-compute",
       "name": "Home's one machine is shared, and what it costs is heard",
       "why": "Home is one machine with no swap. Several services share it, and each has its own clock, cap and retries. Renders are the lowest class, run only when there is room and give way when anything else needs it (the owner, 2026-11-07: no clock, no window), and every kill the kernel makes for memory reaches the owner.",
@@ -5802,6 +5846,75 @@
           "says": "Slack is told when a week's report render fails or an ended week waits unrendered, as the essay's worker's alerts do; it comes with the server's report job.",
           "status": "planned",
           "tracked": "server#821"
+        }
+      ],
+      "checks": []
+    },
+    {
+      "id": "cards-essays",
+      "name": "Making each cards essay into a video on home",
+      "why": "A session writes a cards essay to paulgsc/testing's cards folder, checked by cards-check before it merges; home reads the folder's index hourly and keeps each essay it lacks; the render worker records the stage's burn-ins page and keeps the video until the owner lets it go (#2979, C327).",
+      "serves": ["cards-essay-rendered"],
+      "witnesses": ["CE1"],
+      "segments": [
+        {
+          "id": "routine",
+          "name": "A session, at Anthropic, writes the essay's cut list, checks the folder with cards-check and merges it into paulgsc/testing. Someone else's.",
+          "owner": "foreign",
+          "on": "outside",
+          "paths": [
+            "some-ui:packages/video-render/CARDS-ROUTINE.md",
+            "some-ui:packages/video-render/src/cards-essay.ts"
+          ]
+        },
+        {
+          "id": "github",
+          "name": "GitHub serves paulgsc/testing's cards folder. Someone else's.",
+          "owner": "foreign",
+          "on": "outside",
+          "paths": []
+        },
+        {
+          "id": "internet",
+          "name": "Home reaches GitHub over the internet.",
+          "owner": "network",
+          "on": "between",
+          "paths": []
+        },
+        {
+          "id": "keeper",
+          "name": "A keeper on home reads the cards index hourly and keeps each essay home lacks, as first served. Ours, on home; not built yet.",
+          "owner": "ours",
+          "on": "home",
+          "paths": []
+        },
+        {
+          "id": "render",
+          "name": "The render worker's cards-essay job records the stage's burn-ins page, renders each essay without a video under home's lane, and keeps it. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": [
+            "server:infra/render",
+            "server:infra/compose/call-render.yml",
+            "some-ui:infra/render/Dockerfile",
+            "some-ui:apps/www/stage",
+            "some-ui:apps/www/tests/record/cards.ts",
+            "some-ui:apps/www/tests/record/burn-ins.ts"
+          ]
+        },
+        {
+          "id": "renders",
+          "name": "Studio's Renders shows the essay's video with the owner's other renders, and My data lets home's copy go. Ours, on home and the phone.",
+          "owner": "ours",
+          "on": "home",
+          "paths": ["server:apps/servers/file_host/src/feeds"]
+        }
+      ],
+      "signals": [
+        {
+          "says": "Slack is told when an essay's render fails or an essay waits unrendered, as the essay worker's alerts do; it comes with home's cards-essay job.",
+          "status": "planned",
+          "tracked": "some-ui#2979"
         }
       ],
       "checks": []

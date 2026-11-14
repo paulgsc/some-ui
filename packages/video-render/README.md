@@ -103,6 +103,10 @@ Each module's header says why it is the way it is.
 - `src/stamp.ts`: the cut list's `stamp` (CARDS4, #2469), the commits its
   cards were checked against and the day, given to every card, so no card
   carries its own.
+- `src/cards-essay.ts`: a cards essay (CARDS7, #2979), a cut list of cards
+  alone that home renders as it renders the call: its key, its index in
+  `paulgsc/testing`'s `cards/`, and `render cards-check`. A session writes
+  the cut list (`CARDS-ROUTINE.md`), and code and home do the rest.
 - `src/timeline-v1.ts`: the build-journal skill's `timeline.json` shorts as
   cut list v2.
 - `src/cli.ts`: the command, and its usage:

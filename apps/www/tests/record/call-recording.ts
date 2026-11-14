@@ -83,7 +83,7 @@ async function answer(route: Route, kept: Kept): Promise<void> {
   return route.fulfill({ status: 404, body: "" })
 }
 
-/** The flags `record:call` and `record:preview` share. */
+/** The flags `record:call`, `record:preview` and `record:cards` share. */
 export const CALL_OPTIONS = {
   voices: { type: "string", default: "none" },
   speaker: { type: "string", default: "http://127.0.0.1:8880" },

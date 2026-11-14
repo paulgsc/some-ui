@@ -307,6 +307,12 @@ export function refuseLong(
 const STEPS = "cache/steps"
 
 /**
+ * How a recorder keeps a video's steps: in its folder's `cache/steps`,
+ * saying each step not kept and each answered from the cache.
+ */
+export const STEP_CACHE = { stepCacheDir: STEPS, warn, hit } as const
+
+/**
  * A scene to record: its stage address, and what is said over it, in which
  * voice, or by the owner (`own`), whose take plays instead.
  */
@@ -498,9 +504,7 @@ async function renderStills(
       workDir: "cache",
       out,
       policy,
-      stepCacheDir: STEPS,
-      warn,
-      hit,
+      ...STEP_CACHE,
       ...(compositions?.ok ? { compositions: compositions.port } : {}),
     })
     if (!done.ok) fail(["Nothing was rendered:", ...done.problems])

@@ -24,6 +24,13 @@
  * its index, every week it lists against the call's schema, and no week
  * file it forgets; it prints every reason it can't be published.
  *
+ *   pnpm --filter @some-ui/video-render render cards-check <cards folder>
+ *
+ * checks paulgsc/testing's `cards/` folder before it is published
+ * (`cardsFolderProblems`, CARDS7): its index, every essay it lists as a
+ * cards essay in a version of its series this checkout holds, and no essay
+ * file it forgets. What only drawing finds is `record:cards`' to refuse.
+ *
  *   pnpm --filter @some-ui/video-render render clip-check <clips folder>
  *
  * checks paulgsc/testing's `clips/` folder before it is pushed
@@ -79,6 +86,7 @@ import {
   whyOf,
 } from "./call-facts"
 import type { CallFacts } from "./call-facts"
+import { CARDS_SERIES, cardsFolderProblems } from "./cards-essay"
 import { clipFolderProblems, parseClipIndex } from "./clip"
 import { CUES, cueWav } from "./cues"
 import { problemsOf } from "./cut-list"
@@ -96,9 +104,14 @@ import {
 } from "./node"
 import { FiledSchema, toFile } from "./pending"
 import { WORK_REPOS } from "./refs"
+import type { Series } from "./series"
+import { versionOfFile } from "./series"
 import { sessionFolderProblems } from "./session-note"
 import { fromTimelineV1 } from "./timeline-v1"
 import { SOUNDS } from "./vocabulary"
+
+/** The series this checkout holds, as home's image does. */
+const SAMPLE_SERIES = join(import.meta.dirname, "sample/series")
 
 /** The JSON files directly in `dir`, by name. */
 async function readJsonFolder(dir: string): Promise<Map<string, unknown>> {
@@ -205,6 +218,37 @@ async function main(): Promise<void> {
     process.stdout.write(
       `${second}: ${weeks} ${weeks === 1 ? "week" : "weeks"}, ready
 `
+    )
+    return
+  }
+  if (first === "cards-check") {
+    if (!second) fail(["usage: render cards-check <cards folder>"])
+    const files = await readJsonFolder(here(second))
+    // The series home's image holds: this checkout's samples of each.
+    const held = new Map<string, Series>()
+    for (const id of CARDS_SERIES)
+      for (const file of await readdir(join(SAMPLE_SERIES, id))) {
+        const version = versionOfFile(file)
+        if (version === null) continue
+        const series = await readSeries(join(SAMPLE_SERIES, id), version)
+        // A sample that is here but unreadable is this checkout's fault,
+        // not the essay's: say so, rather than "has no version".
+        if (!series.ok)
+          fail([
+            `the sample series ${id} v${version} in this checkout doesn't read:`,
+            ...series.problems,
+          ])
+        held.set(`${id}@${version}`, series.value)
+      }
+    const problems = cardsFolderProblems(
+      files,
+      (id, version) => held.get(`${id}@${version}`) ?? null
+    )
+    if (problems.length > 0)
+      fail([`${second} can't be published:`, ...problems])
+    const essays = files.size - 1
+    process.stdout.write(
+      `${second}: ${essays} ${essays === 1 ? "essay" : "essays"}, ready\n`
     )
     return
   }
