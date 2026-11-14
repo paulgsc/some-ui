@@ -28,7 +28,7 @@ import { createVoiceHome } from "@/lib/voice-home/runtime"
 import { setAsideOwing, voiceMarks } from "@/lib/voice-marks"
 
 /** The pairing a run goes under. */
-const AT_PAIRING = { pairing: "p1" }
+const AT_PAIRING = { pairing: "pairing-1" }
 
 /** A note's audio, and a takes desk over `takes`, as the voice lane reads them. */
 const { AUDIO, desk } = vi.hoisted(() => {
@@ -82,6 +82,13 @@ const fakes = vi.hoisted(
     bitesHanded: true,
   })
 )
+
+// The conveyor's moves (CONVEYOR1) are `../take-stations`' to test: none owed here.
+vi.mock("@/lib/take-conveyor", () => ({
+  takeConveyor: (): object => ({
+    port: { due: (): ReadonlyArray<never> => [], answered: vi.fn() },
+  }),
+}))
 
 vi.mock("@/lib/session-reflection", () => ({
   reflections: {
@@ -169,7 +176,11 @@ vi.mock("@/lib/voice-home", () => ({
   phoneVoiceHome: (): VoiceHome | null => fakes.home,
 }))
 vi.mock("@/lib/home-link", () => ({
-  homeLink: (): unknown => ({ subscribe: () => (): void => undefined }),
+  // Read as paired: the voice record follows its pairing (HP1).
+  homeLink: (): unknown => ({
+    subscribe: () => (): void => undefined,
+    getSnapshot: () => ({ link: { kind: "paired" } }),
+  }),
   paired: (): boolean => fakes.paired,
   pairingOf: (): string => "pairing-1",
 }))
@@ -673,7 +684,12 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
     const storage = memoryStorage()
     storage.setItem(
       "some-ui:voice-home",
-      JSON.stringify({ ...INITIAL_VOICE_HOME, held: ["s1", "s2"] })
+      // Under the pairing the run goes under, so following it steps nothing.
+      JSON.stringify({
+        ...INITIAL_VOICE_HOME,
+        pairing: AT_PAIRING.pairing,
+        held: ["s1", "s2"],
+      })
     )
     const refusing = {
       ...storage,

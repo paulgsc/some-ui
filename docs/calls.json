@@ -2147,6 +2147,169 @@
       "gray": "The phone cannot tell off the home network from home being down on it, and Android's WebView does not announce a switch from mobile data to the home Wi-Fi, so how long it waits decides how soon what waits goes once the owner is home. The owner's standing word is to go with the recommended where a choice is open (#2928, 2026-11-13).",
       "undo": "Change holdMs and FIRST_HOLD_MS/LONGEST_HOLD_MS in apps/www/src/lib/home-link/away.ts, or pass tapped=false for send, sync and keep in runtime.ts to hold what the person asks for too.",
       "refs": ["#2928"]
+    },
+    {
+      "id": "C263",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/ui/interview-week/src/lib/faults/thresholds.ts",
+        "packages/ui/interview-week/src/lib/faults/answer.ts",
+        "packages/ui/interview-week/src/lib/faults/read.ts"
+      ],
+      "chose": "A pause in an interview answer is a gap between words of 2 s or more, and in a teleprompter read of 0.5 s or more; a gap exactly at the threshold counts, and the silence before the first word and after the last is counted apart, never as a pause.",
+      "options": [
+        "(a) 2 s for answers and 0.5 s for reads, inclusive",
+        "(b) one 2 s threshold for both flows",
+        "(c) 1 s for answers and 0.3 s for reads",
+        "(d) the same values, counting only gaps over the threshold"
+      ],
+      "gray": "#2934 suggests 2 s for answers and leaves reads open; the threshold decides which silences the essay charts as the owner's pauses each week, and a phrasing pause at a comma is far shorter than a lost thread.",
+      "undo": "Change ANSWER_PAUSE_MS or READ_PAUSE_MS in packages/ui/interview-week/src/lib/faults/thresholds.ts, or `>=` to `>` where answer.ts and read.ts compare a gap with them.",
+      "refs": ["#2931", "#2934"]
+    },
+    {
+      "id": "C264",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/ui/interview-week/src/lib/faults/thresholds.ts",
+        "packages/ui/interview-week/src/lib/faults/answer.ts"
+      ],
+      "chose": "A word is mumbled when whisper's probability for it is under 0.5, and the mumbled share is over the words that carry a probability; a word without one is neither mumbled nor counted in the share.",
+      "options": [
+        "(a) p under 0.5, words without p left out of the share",
+        "(b) p under 0.5, words without p counted as heard",
+        "(c) a stricter p under 0.3"
+      ],
+      "gray": "No check or earlier decision says how unsure the transcriber must be before a word reads as mumbled; the value sets the mumbling count the owner sees charted each week.",
+      "undo": "Change MUMBLE_P in packages/ui/interview-week/src/lib/faults/thresholds.ts, or count words without p in measureAnswer's share.",
+      "refs": ["#2934"]
+    },
+    {
+      "id": "C265",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/ui/interview-week/src/lib/faults/fillers.json",
+        "packages/ui/interview-week/src/lib/faults/words.ts"
+      ],
+      "chose": "The closed filler list holds only vocalised hesitations (um, umm, uh, uhh, uhm, er, err, erm, ah, ahh, hm, hmm, mm, mhm), each matched as one whole word after lowercasing and keeping letters and digits, a heard word counting at most one filler (Mm-hmm is one); lexical fillers (like, you know, so, basically, I mean) are left out. The list lives in fillers.json, the canonical copy home's transcriber cites.",
+      "options": [
+        "(a) vocalised hesitations only",
+        "(b) vocalised hesitations plus lexical fillers (like, you know, so, basically)",
+        "(c) a short list: um, uh, er, ah"
+      ],
+      "gray": "The owner asked to count 'ums' and the epic leaves the list to IW2 and IW3; counting \"like\" or \"so\" by code would count their ordinary use too, which only judging can tell apart (LEVERS, #2162).",
+      "undo": "Edit the fillers in packages/ui/interview-week/src/lib/faults/fillers.json and the copy home's transcriber cites (#2933).",
+      "refs": ["#2931", "#2933", "#2934"]
+    },
+    {
+      "id": "C266",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/ui/interview-week/src/lib/faults/thresholds.ts",
+        "packages/ui/interview-week/src/lib/faults/read.ts"
+      ],
+      "chose": "A read is aligned to its script word by word (Levenshtein over composed, lowercased words without punctuation or apostrophes; a filler reads only the same filler in the script and is otherwise an inserted word, and a filler on either side never substitutes for another word); an added word is repeated when the same word was spoken within 3 words of it, by a word that reads the script or an earlier added one; a pause is at a break when the script has punctuation, a spaced dash or a line end (but not a lone full stop, comma or colon between two all-digit words, as in 10:30) anywhere from the last word read before it to the next word read after it, or when nothing has been read yet; pace variation is the standard deviation over the mean of the words a minute of each phrase between breaks with at least 3 words, timed first word to last.",
+      "options": [
+        "(a) word alignment, a repeat within 3 words, variation as the coefficient of variation over phrases of 3 or more words",
+        "(b) a repeat only when it follows the same word directly",
+        "(c) variation over fixed windows of time rather than the script's phrases"
+      ],
+      "gray": "#2934 names the measures (misreads, pauses at breaks against mid-phrase, pace variation) and leaves their rules open; each rule decides what the owner sees counted as a stumble or a stiff read.",
+      "undo": "Change REPEAT_WINDOW or MIN_PHRASE_WORDS in packages/ui/interview-week/src/lib/faults/thresholds.ts, or readCost, isRepeat, breaksAfter, phrasePaces and variation in read.ts.",
+      "refs": ["#2931", "#2934"]
+    },
+    {
+      "id": "C240",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/take-conveyor/model.ts",
+        "apps/www/src/lib/take-conveyor/runtime.ts",
+        "apps/www/src/lib/home-link/take-stations.ts"
+      ],
+      "chose": "A take is In the oven until someone moves it: nothing is written when it is recorded, and home reads a take with no moves as In the oven. Each move is the phone's own record (kept until home answers, never removed), sent last on the voice lane, naming where it was made from and the take's newest move number it saw (moves are ordered by number, never by a clock); a move home answers stale (the take had moved on) or off the conveyor is dropped, with the later moves made along its chain, and said on the take's row, not made again from where the take is now.",
+      "options": [
+        "no row at recording; In the oven is what no move means",
+        "home writes an In the oven row as each take arrives",
+        "the phone sends an In the oven move with each take"
+      ],
+      "gray": "The owner asked that capture stay one tap and that every change be kept with when it happened. A row at recording would put the first station in the history too, but it adds a write to every take, including the takes of the years before the conveyor existed.",
+      "undo": "Have home write a first row as each Studio take arrives, and read stationAt as that row's time.",
+      "refs": [
+        "#2873",
+        "#2872"
+      ]
+    },
+    {
+      "id": "C241",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/ui/soundbites/src/components/take-library/index.tsx"
+      ],
+      "chose": "Takes on home shows each take's station on its row (\"Cooking since Nov 13\", or that home hears of a move once it's in reach). The moving itself waits for the conveyor page (CONVEYOR2).",
+      "options": [
+        "the station on each row of Takes on home",
+        "the station only on the conveyor page"
+      ],
+      "gray": "The owner asked for a separate page for sorting, and didn't say whether the list of takes shows the stations too.",
+      "undo": "Drop the station line from TakeItem in the take library.",
+      "refs": [
+        "#2873",
+        "#2874"
+      ]
+    },
+    {
+      "id": "C296",
+      "made": "2026-11-13",
+      "by": "owner",
+      "paths": ["apps/mailbox/src/core.ts", "apps/mailbox/README.md"],
+      "chose": "A Studio take moved to ready for pickup goes to the mailbox (the routine's side) with its labels and what home heard in it; the move's comment, and the audio, stay on home.",
+      "undo": "Add comment to PICKUP_KEYS and pickupRefusal in apps/mailbox/src/core.ts (and the README's shape), and have home put the move's comment in some-ui.take-pickup/1.",
+      "refs": ["#2875", "#2872"]
+    },
+    {
+      "id": "C288",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/voice-home/model.ts",
+        "apps/www/src/lib/voice-home/runtime.ts"
+      ],
+      "chose": "A voice-home record an earlier build wrote names no pairing: what it says home holds is taken as the word of the first pairing the phone is seen under after the update, so takes home holds keep saying \"On home\"; if the phone is first seen unpaired, it is kept as no pairing's word and read as held by none.",
+      "options": [
+        "Take it as the first pairing's word",
+        "Read it as held by no home, sending again whatever is still on the phone"
+      ],
+      "gray": "Reading it as no home's word would put every take whose audio already left under \"Kept on this phone\" for good, and name them as unsendable in Settings; taking it risks the old home's word only on a phone re-paired before the update, as before.",
+      "undo": "In repaired (voice-home/model.ts), stash a record with no pairing under UNKNOWN_PAIRING on any pairing, not only when first seen unpaired.",
+      "refs": [
+        "#2437"
+      ]
+    },
+    {
+      "id": "C289",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/voice-home/model.ts",
+        "apps/www/src/lib/voice-home/runtime.ts",
+        "apps/www/src/lib/home-link/voice-copy.ts"
+      ],
+      "chose": "While the phone is unpaired, no voice note reads as held by home: each take's row says it is kept on this phone, and no store lets audio go on home's word, until the phone is paired again; the word is kept and read again under the same pairing.",
+      "options": [
+        "Read nothing as held while unpaired",
+        "Keep reading the last pairing's word while unpaired"
+      ],
+      "gray": "Home still holds those notes, so \"On home\" stays true while the phone is unpaired; but the phone can no longer check it, and LG1 and the other lanes read nothing held while unpaired.",
+      "undo": "In repaired (voice-home/model.ts), leave the record as it is when the pairing becomes null.",
+      "refs": [
+        "#2437"
+      ]
     }
   ]
 }
