@@ -1,0 +1,20 @@
+{
+  "id": "C360",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/call.ts",
+    "packages/video-render/src/templates/conference-call/v5.json",
+    "apps/www/tests/record/call-recording.ts",
+    "packages/video-render/CALL-ROUTINE.md"
+  ],
+  "chose": "From template version 5 a week of the weekly call too long for one video is a series of parts, derived by code from the same week file with no schema change: each part at most ten minutes by its words, broken at a chapter once it reaches about eight, a section longer than a part broken between its items (an item's pages never split), each part opening on the locked intro, which says \"part k of n\", and the brand, and a chapter begun in an earlier part said again as \"continued\". Each section takes up to 200 items, so the routine stops trimming. The recorder renders one part a run (--part k), and render call-parts lists them for home.",
+  "options": [
+    "parts derived by code from one week file (version 5)",
+    "a schema change, the routine writing each part as its own file",
+    "one video of any length, with home's length cap raised"
+  ],
+  "gray": "The owner set the direction (several videos, no editorial cuts, at most 8 to 10 minutes each) and left where a part breaks, how a continued chapter is said, and whether parts are derived or written, to the session (owner, 2026-11-14, relayed by the #2918 coordinator, who approved this plan).",
+  "undo": "Drop `parts` from the version 5 shape in call.ts (callParts then returns one part) and pin a version 6; or render a week at version 4 again.",
+  "refs": ["#2918", "#3009"]
+}

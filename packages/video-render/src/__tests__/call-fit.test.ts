@@ -9,7 +9,7 @@ import {
   parseCallWeek,
 } from "@video-render/call"
 import type { CallWeek } from "@video-render/call"
-import { callFit } from "@video-render/call-fit"
+import { callFit, paragraphWords } from "@video-render/call-fit"
 import type { CallPage } from "@video-render/call-fit"
 import { readPinned } from "@video-render/node"
 import { NOV_6_WEEK } from "@video-render/testing"
@@ -154,17 +154,50 @@ describe("the captioned frame (version 2 on)", () => {
     expect((pages["done-1"] ?? []).length).toBeGreaterThan(1)
   })
 
-  it("refuses only a part taller than a whole frame, naming the scene and the item", () => {
+  it("carries a paragraph too long for a page onto the next, word by word", () => {
+    const why = "Only you can say which of these matters more. ".repeat(40)
     const week = edited(sampleWeek(), (w) => {
       const [ask] = w.asks
       if (ask === undefined) throw new Error("asks")
-      ask.whyYours = "Only you can say which of these matters more. ".repeat(40)
+      ask.whyYours = why
+    })
+    expect(parseCallWeek(week)).toMatchObject({ ok: true })
+    const pages = callFit(week).pages["asks-1"] ?? []
+    expect(pages.length).toBeGreaterThan(2)
+    expect(covered(pages).why).toBe(paragraphWords(why).length)
+  })
+
+  it("moves a paragraph whole to the next page in a week before version 5, as it always did", () => {
+    const why = "Only you can say which of these matters more. ".repeat(18)
+    const week = (version: number): CallWeek =>
+      edited(sampleWeek(), (w) => {
+        w.template.version = version
+        const [call] = w.mine
+        if (call === undefined) throw new Error("mine")
+        call.why = why
+      })
+    const whole = paragraphWords(why).length
+    const shows = (version: number): ReadonlyArray<unknown> =>
+      (callFit(week(version), { words: version >= 5 }).pages["mine-1"] ?? [])
+        .map((page) => page.shows.why)
+        .filter((range) => range !== undefined)
+    expect(shows(4)).toEqual([[0, whole]])
+    expect(shows(5).length).toBeGreaterThan(1)
+  })
+
+  it("refuses only a part no page break can split, naming the scene and the item", () => {
+    const week = edited(sampleWeek(), (w) => {
+      const [ask] = w.asks
+      if (ask === undefined) throw new Error("asks")
+      const [option] = ask.options
+      if (option === undefined) throw new Error("options")
+      option.says = "One option that runs on and on. ".repeat(60)
     })
     const parsed = parseCallWeek(week)
     expect(parsed.ok).toBe(false)
     expect(parsed.ok ? [] : parsed.problems).toEqual([
       expect.stringMatching(
-        /^asks-1 \(.+\): one part of it runs past a whole frame by about \d+ lines; shorten its question or why it's yours$/
+        /^asks-1 \(.+\): one part of it runs past a whole frame by about \d+ lines; shorten its question or its longest option$/
       ),
     ])
   })

@@ -6,7 +6,7 @@
  *
  *   pnpm --filter www build
  *   pnpm --filter www record:call [--week 2026-10-30] [--voices kokoro|none] [--speaker http://127.0.0.1:8880] [--out out/call]
- *   pnpm --filter www record:call --app http://call-stage --week-file week.json [--voices kokoro] [--brand /brand] [--out out/call]
+ *   pnpm --filter www record:call --app http://call-stage --week-file week.json [--part 2] [--voices kokoro] [--brand /brand] [--out out/call]
  *
  * `--week` names the week by its first day (the newest `paulgsc/testing`
  * keeps by default, `sample` for the template's); the build must be one that
@@ -16,6 +16,11 @@
  * same audio for the same words (ST36, #2635); `none` leaves the call
  * silent, each scene held for its words' reading time, which the frame shows
  * anyway.
+ *
+ * A week too long for one video is a series of parts (template version 5,
+ * #2918; `render call-parts <file>` says how many): `--part <k>` records
+ * part k into `<out>/<week>/part-<k>/call.mp4`, and a series refuses to
+ * record without it. A week of one part records into `<out>/<week>/`.
  *
  * `--week-file` records a week from a file, as home keeps it (ST36): the
  * stage's reads of `paulgsc/testing`'s `call/` are answered from that file
@@ -52,6 +57,7 @@ const { values } = parseArgs({
     week: { type: "string" },
     out: { type: "string", default: "out/call" },
     "week-file": { type: "string" },
+    part: { type: "string" },
     ...CALL_OPTIONS,
   },
 })

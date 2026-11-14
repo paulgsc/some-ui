@@ -24,6 +24,13 @@
  * its index, every week it lists against the call's schema, and no week
  * file it forgets; it prints every reason it can't be published.
  *
+ *   pnpm --filter @some-ui/video-render render call-parts <week file>
+ *
+ * prints, as JSON, the videos a week of the call is (`callParts`, #2918):
+ * how many, and each part's scenes and length by its words, so home renders
+ * one job a part (`record:call --part <k>`). It refuses a week that can't
+ * make a call, as call-check does.
+ *
  *   pnpm --filter @some-ui/video-render render cards-check <cards folder>
  *
  * checks paulgsc/testing's `cards/` folder before it is published
@@ -79,7 +86,7 @@ import type { Call } from "@some-ui/eslint-kit/calls"
 import { z } from "zod"
 
 import { ASK_LABEL, readAskIssue } from "./ask"
-import { callFolderProblems } from "./call"
+import { callFolderProblems, callParts, parseCallWeek } from "./call"
 import {
   callsEntered,
   changeOf,
@@ -109,6 +116,7 @@ import { WORK_REPOS } from "./refs"
 import type { Series } from "./series"
 import { versionOfFile } from "./series"
 import { sessionFolderProblems } from "./session-note"
+import { estimatedMs } from "./stills"
 import { fromTimelineV1 } from "./timeline-v1"
 import { SOUNDS } from "./vocabulary"
 
@@ -220,6 +228,28 @@ async function main(): Promise<void> {
     process.stdout.write(
       `${second}: ${weeks} ${weeks === 1 ? "week" : "weeks"}, ready
 `
+    )
+    return
+  }
+  if (first === "call-parts") {
+    if (!second) fail(["usage: render call-parts <week file>"])
+    const week = parseCallWeek(await readJson(here(second)))
+    if (!week.ok) fail([`${second} can't make a call:`, ...week.problems])
+    const parts = callParts(week.value)
+    process.stdout.write(
+      `${JSON.stringify(
+        {
+          week: week.value.week,
+          parts: parts.map((part) => ({
+            part: part.n,
+            of: part.of,
+            scenes: part.scenes.length,
+            estimatedMs: estimatedMs(part.scenes),
+          })),
+        },
+        null,
+        1
+      )}\n`
     )
     return
   }

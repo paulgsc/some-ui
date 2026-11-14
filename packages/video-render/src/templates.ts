@@ -23,7 +23,7 @@ import { parseSeries } from "./series"
 import { parseStoryboard } from "./storyboard"
 import type { Storyboard } from "./storyboard"
 import callBoard from "./templates/conference-call/storyboard.json"
-import callV4 from "./templates/conference-call/v4.json"
+import callV5 from "./templates/conference-call/v5.json"
 import reportBoard from "./templates/engagement-report/storyboard.json"
 import reportV1 from "./templates/engagement-report/v1.json"
 import legendBoard from "./templates/playoff-delta-legend/storyboard.json"
@@ -45,7 +45,7 @@ export const TEMPLATE_IDS = [
 export type TemplateId = (typeof TEMPLATE_IDS)[number]
 
 const NEWEST: Readonly<Record<TemplateId, unknown>> = {
-  "conference-call": callV4,
+  "conference-call": callV5,
   "engagement-report": reportV1,
   "playoff-delta-legend": legendV4,
   "playoff-delta-week": weekV4,
