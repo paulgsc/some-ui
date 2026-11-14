@@ -83,6 +83,13 @@ const fakes = vi.hoisted(
   })
 )
 
+// The conveyor's moves (CONVEYOR1) are `../take-stations`' to test: none owed here.
+vi.mock("@/lib/take-conveyor", () => ({
+  takeConveyor: (): object => ({
+    port: { due: (): ReadonlyArray<never> => [], answered: vi.fn() },
+  }),
+}))
+
 vi.mock("@/lib/session-reflection", () => ({
   reflections: {
     getSnapshot: (): unknown => ({ kept: fakes.reflections }),

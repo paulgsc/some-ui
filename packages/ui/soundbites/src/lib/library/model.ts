@@ -53,6 +53,16 @@ export type LibraryTake = {
   readonly setAsideAt: string | null
   /** Null until home has heard it. */
   readonly heard: LibraryHeard | null
+  /**
+   * Where it is on Studio's conveyor (CONVEYOR1), as home names the station:
+   * null for a take on no conveyor (an idea's answer), absent from a home
+   * before it. What it means is the build's (`LibraryStations`).
+   */
+  readonly station?: string | null | undefined
+  /** When it was moved there; null for a take never moved. */
+  readonly stationAt?: string | null | undefined
+  /** Its newest move number on the conveyor: 0 for none, null on none. */
+  readonly stationSeq?: number | null | undefined
 }
 
 /** How home picked the takes it lists. */

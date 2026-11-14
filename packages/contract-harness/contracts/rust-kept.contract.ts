@@ -32,7 +32,7 @@
 
 import { z } from "zod"
 
-import { defineContract } from "../src/contract"
+import { defineContract, pairedPhoneOnly } from "../src/contract"
 
 /** A week no routine writes, in the id's own form. */
 const ABSENT_WEEK = "1999-w01"
@@ -111,40 +111,6 @@ const LogListSchema = z.object({
   ),
 })
 
-/** The three answers every route gives a caller that isn't a paired phone, and nothing is kept. */
-function strangers(
-  id: string,
-  method: "GET" | "PUT",
-  path: string,
-  what: string,
-  request: { path?: Record<string, string>; body?: unknown }
-): Array<ReturnType<typeof defineContract>> {
-  const mutates = method === "PUT"
-  return [
-    defineContract({
-      id: `${id}_signed_out`,
-      module: "rust_rounds",
-      method,
-      path,
-      summary: `${what} is a paired phone's: without a session it is a 401`,
-      ...(mutates ? { mutates } : {}),
-      request,
-      expect: { status: 401 },
-    }),
-    defineContract({
-      id: `${id}_browser`,
-      module: "rust_rounds",
-      session: true,
-      method,
-      path,
-      summary: `${what} is a paired phone's: a browser's cookie session is a 403`,
-      ...(mutates ? { mutates } : {}),
-      request,
-      expect: { status: 403 },
-    }),
-  ]
-}
-
 export const contracts = [
   defineContract({
     id: "rust-weeks.sent_absent",
@@ -158,7 +124,8 @@ export const contracts = [
     request: { path: { id: ABSENT_WEEK }, body: SENT },
     expect: { status: 404 },
   }),
-  ...strangers(
+  ...pairedPhoneOnly(
+    "rust_rounds",
     "rust-weeks.sent",
     "PUT",
     "/rust-weeks/:id/sent",
@@ -181,7 +148,8 @@ export const contracts = [
     request: { path: { id: ABSENT_WEEK, at: PASTE_AT }, body: PASTE },
     expect: { status: 404 },
   }),
-  ...strangers(
+  ...pairedPhoneOnly(
+    "rust_rounds",
     "rust-weeks.paste",
     "PUT",
     "/rust-weeks/:id/pastes/:at",
@@ -210,7 +178,8 @@ export const contracts = [
     request: { path: { id: ABSENT_WEEK } },
     expect: { status: 404 },
   }),
-  ...strangers(
+  ...pairedPhoneOnly(
+    "rust_rounds",
     "rust-weeks.record",
     "GET",
     "/rust-weeks/:id/record",
@@ -230,7 +199,8 @@ export const contracts = [
       "this subject's sittings of the card-era log home keeps: each by id, when it started, its latest revision, the SHA-256 of that revision as sent and when it was written",
     expect: { status: 200, schema: LogListSchema },
   }),
-  ...strangers(
+  ...pairedPhoneOnly(
+    "rust_rounds",
     "rust-round-log.list",
     "GET",
     "/rust-round-log/sessions",
@@ -260,7 +230,8 @@ export const contracts = [
     request: { path: { id: ABSENT_SITTING }, body: MISPLACED_SITTING },
     expect: { status: 422 },
   }),
-  ...strangers(
+  ...pairedPhoneOnly(
+    "rust_rounds",
     "rust-round-log.put",
     "PUT",
     "/rust-round-log/sessions/:id",
