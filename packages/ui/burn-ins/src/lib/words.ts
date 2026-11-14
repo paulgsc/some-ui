@@ -90,6 +90,11 @@ export const WORDS = {
       about:
         "A card of the five status badges, each beside what it means, a row at a time.",
     },
+    flow: {
+      name: "Flow",
+      about:
+        "A card of two to five steps joined by arrows, a step at a time: side by side in the wide video, one above the next in the short.",
+    },
     rule: {
       name: "Rule",
       about:
@@ -146,6 +151,11 @@ export const WORDS = {
       about:
         "Each badge's sign in its colour, its meaning beside it in plain type.",
     },
+    "flow-v1": {
+      name: "Steps",
+      about:
+        "A dark panel per step: its label in plain type, a command in blue monospace, a muted note; drawn arrows between.",
+    },
     "rule-v1": {
       name: "Algebra",
       about:
@@ -166,7 +176,8 @@ export const WORDS = {
     | "terminal-v1"
     | "sheet-v1"
     | "legend-v1"
-    | "rule-v1",
+    | "rule-v1"
+    | "flow-v1",
     { name: string; about: string }
   >,
   templateHeading: "Which card",

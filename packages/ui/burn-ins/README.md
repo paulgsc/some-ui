@@ -11,7 +11,7 @@ address) through the web surface's door.
 ## What it is
 
 A burn-in is a kind (`captions`, `headline`, `card`, `authorship`,
-`game-card`, `preview-mark`, `status-badge`, `terminal`, `cheat-sheet`, `legend`, `rule`), a named design and one video's params, which the cut list
+`game-card`, `preview-mark`, `status-badge`, `terminal`, `cheat-sheet`, `legend`, `rule`, `flow`), a named design and one video's params, which the cut list
 carries. `src/lib/burn-in.ts` holds the contract and says why it is the way
 it is; each module's header does the same for its part:
 
@@ -58,6 +58,9 @@ it is; each module's header does the same for its part:
   the five badges beside what they mean, and the rule card (`rule-v1`),
   how far to trust a card as it ages, as three lines of algebra whose ∩
   and ⇒, which the monospace lacks, are drawn as shapes (CARDS4, #2469).
+- `src/lib/flow.ts`: the flow card (CARDS5, #2470), design `flow-v1`: two
+  to five steps joined by drawn arrows, side by side in the 16:9 video and
+  stacked in the short.
 - `src/runtime/record.ts`, `src/components/record`: the recording protocol.
 - `src/components/preview`, `src/components/stage`: the preview page.
 

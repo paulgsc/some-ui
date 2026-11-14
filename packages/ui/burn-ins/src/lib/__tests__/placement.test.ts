@@ -112,7 +112,7 @@ describe("the frames burn-ins are drawn for", () => {
 })
 
 describe("the regions each kind draws in", () => {
-  it("shares a region only between a scene's headline and its card, one or the other, the authorship mark's bare cards, a game card or a status badge in the body, and a full card (terminal, cheat sheet, legend, rule) in both", () => {
+  it("shares a region only between a scene's headline and its card, one or the other, the authorship mark's bare cards, a game card or a status badge in the body, and a full card (terminal, cheat sheet, legend, rule, flow) in both", () => {
     const sharing = KINDS.flatMap((a, i) =>
       KINDS.slice(i + 1).flatMap((b) =>
         shared(a, b).length > 0 ? [[a, b]] : []
@@ -125,6 +125,7 @@ describe("the regions each kind draws in", () => {
       ["headline", "cheat-sheet"],
       ["headline", "legend"],
       ["headline", "rule"],
+      ["headline", "flow"],
       ["card", "authorship"],
       ["card", "game-card"],
       ["card", "status-badge"],
@@ -132,27 +133,35 @@ describe("the regions each kind draws in", () => {
       ["card", "cheat-sheet"],
       ["card", "legend"],
       ["card", "rule"],
+      ["card", "flow"],
       ["authorship", "game-card"],
       ["authorship", "status-badge"],
       ["authorship", "terminal"],
       ["authorship", "cheat-sheet"],
       ["authorship", "legend"],
       ["authorship", "rule"],
+      ["authorship", "flow"],
       ["game-card", "status-badge"],
       ["game-card", "terminal"],
       ["game-card", "cheat-sheet"],
       ["game-card", "legend"],
       ["game-card", "rule"],
+      ["game-card", "flow"],
       ["status-badge", "terminal"],
       ["status-badge", "cheat-sheet"],
       ["status-badge", "legend"],
       ["status-badge", "rule"],
+      ["status-badge", "flow"],
       ["terminal", "cheat-sheet"],
       ["terminal", "legend"],
       ["terminal", "rule"],
+      ["terminal", "flow"],
       ["cheat-sheet", "legend"],
       ["cheat-sheet", "rule"],
+      ["cheat-sheet", "flow"],
       ["legend", "rule"],
+      ["legend", "flow"],
+      ["rule", "flow"],
     ])
   })
 })

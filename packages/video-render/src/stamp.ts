@@ -3,7 +3,7 @@
  * card's foot, so a video that goes stale says how stale it is. It is
  * written once, as the cut list's `stamp` (the commits its cards were
  * checked against, and the day), and the renderer gives it to each card
- * (`@some-ui/burn-ins`' terminal, cheat sheet, legend and rule cards) as
+ * (`@some-ui/burn-ins`' terminal, cheat sheet, legend, rule and flow cards) as
  * its `stamp` param. Changing the pin re-stamps every card; nothing is
  * typed per card (`stampProblems`).
  */
@@ -19,6 +19,7 @@ const CARD_KINDS: ReadonlySet<string> = new Set([
   "cheat-sheet",
   "legend",
   "rule",
+  "flow",
 ])
 
 const isCard = (b: BurnIn): boolean => CARD_KINDS.has(b.kind)
