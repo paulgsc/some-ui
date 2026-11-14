@@ -7,7 +7,8 @@
     "server:apps/envctl/src/main.rs",
     "server:apps/envctl/src/compose.rs",
     "server:docs/release.md",
-    "server:README.md"
+    "server:README.md",
+    "server:Makefile"
   ],
   "chose": "On home, `make up` and `make compose` run the release last applied (applied.json in the deploy's state directory), from its own worktree and under the stack's compose project, holding the deploy's lock for anything that changes containers. With none applied they refuse and name `make home-deploy`. `make preflight` and `make env` still read the checkout, so a deploy/home/ change is checked before its push.",
   "options": [
@@ -16,6 +17,6 @@
     "Leave make up reading the checkout's release, documented"
   ],
   "gray": "The guard (RL12) and the deploy (RL10, RL11) did not cover a plain make up, and the owner had decided only that there is one way to deploy. Refusing make up removes a usable restart, which the restore steps rely on. Leaving it keeps a second way onto home that skips the deploy's set check, skip list and gate, against RL1 and RL12.",
-  "undo": "Revert R6d's PR: up and compose read the checkout's deploy/home/release.json again, and RL12 names the gap as not covered.",
+  "undo": "Revert R6d's PR (server#876): up and compose read the checkout's deploy/home/release.json again, and RL12 names the gap as not covered.",
   "refs": ["server#870"]
 }

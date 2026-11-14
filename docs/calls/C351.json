@@ -14,6 +14,6 @@
     "Mark one-shots apart in the release and skip them in the gate"
   ],
   "gray": "RL11 knew only healthy and running a minute with no restart, written when every released service was long-running; nothing said how a one-shot is judged. Deferring kept a build on home, a second way onto it, and left the one-way deploy waiting on another story. Skipping one-shots would let a failed dashboard build pass unseen and adds a second kind of release entry.",
-  "undo": "Revert the judge change and take dashboard-builder out of the release (restore its build: and the guard's named exemption).",
+  "undo": "Revert the judge change and take dashboard-builder out of the release (restore its build: in infra/compose/monitoring.yml and re-add a named build exemption in scripts/check_home_guard.py).",
   "refs": ["server#795", "server#871"]
 }
