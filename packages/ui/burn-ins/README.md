@@ -11,7 +11,7 @@ address) through the web surface's door.
 ## What it is
 
 A burn-in is a kind (`captions`, `headline`, `card`, `authorship`,
-`game-card`, `preview-mark`, `status-badge`, `terminal`, `cheat-sheet`), a named design and one video's params, which the cut list
+`game-card`, `preview-mark`, `status-badge`, `terminal`, `cheat-sheet`, `legend`, `rule`), a named design and one video's params, which the cut list
 carries. `src/lib/burn-in.ts` holds the contract and says why it is the way
 it is; each module's header does the same for its part:
 
@@ -44,14 +44,20 @@ it is; each module's header does the same for its part:
   definition at its first appearance in a video. The first card kinds (epic
   CARDS, #2465) draw it beside their lines.
 - `src/lib/cards.ts`: what the cards share: a kicker and title in the
-  header, items that appear one at a time, each with its badge, and the
-  values rule, which refuses text that gives a name a value.
+  header, items that appear one at a time, each with its badge, the
+  values rule, which refuses text that gives a name a value, and the stamp
+  (CARDS4, #2469), `as of <repo>@<commit> · <date>` at the foot of every
+  card's body, which the cut list writes once for every card.
 - `src/lib/terminal.ts`: the terminal card (CARDS2, #2467), design
   `terminal-v1`: a window of lines in the cards' monospace
   (`src/lib/mono.ts`).
 - `src/lib/cheat-sheet.ts`: the cheat-sheet card (CARDS3, #2468), design
   `sheet-v1`: a row per task with its badge, command and note; the task
   above the command where the two don't fit side by side.
+- `src/lib/legend.ts`, `src/lib/rule.ts`: the legend card (`legend-v1`),
+  the five badges beside what they mean, and the rule card (`rule-v1`),
+  how far to trust a card as it ages, as three lines of algebra whose ∩
+  and ⇒, which the monospace lacks, are drawn as shapes (CARDS4, #2469).
 - `src/runtime/record.ts`, `src/components/record`: the recording protocol.
 - `src/components/preview`, `src/components/stage`: the preview page.
 

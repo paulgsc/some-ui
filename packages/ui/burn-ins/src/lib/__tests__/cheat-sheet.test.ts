@@ -1,6 +1,6 @@
 /** @vitest-environment node */
 import { frameAt, prepare } from "@burn-ins/lib/burn-in"
-import { ITEM } from "@burn-ins/lib/cards"
+import { cardBody, ITEM } from "@burn-ins/lib/cards"
 import type { CheatSheetFrame } from "@burn-ins/lib/cheat-sheet"
 import {
   geometryOf,
@@ -10,14 +10,23 @@ import {
 } from "@burn-ins/lib/geometry"
 import { describe, expect, it } from "vitest"
 
+/** A card's params with the stamp the renderer gives every card. */
+const stamped = (params: object): object => ({
+  stamp: { sources: ["paulgsc/dotfiles@91cb11b"], date: "2026-11-13" },
+  ...params,
+})
+
 const sheet = (
-  params: unknown,
+  params: object,
   frame: FrameSize = LANDSCAPE
 ): ReturnType<typeof prepare> =>
-  prepare({ kind: "cheat-sheet", design: "sheet-v1", params }, frame)
+  prepare(
+    { kind: "cheat-sheet", design: "sheet-v1", params: stamped(params) },
+    frame
+  )
 
 const at = (
-  params: unknown,
+  params: object,
   t: number,
   frame: FrameSize = LANDSCAPE
 ): CheatSheetFrame => {
@@ -152,18 +161,21 @@ describe("the cheat-sheet card", () => {
     ])
   })
 
-  it("keeps every row inside the body while it rises, for every sheet it accepts", () => {
+  it("keeps every row above the stamp while it rises, for every sheet it accepts", () => {
     for (const frame of [LANDSCAPE, PORTRAIT]) {
-      const body = geometryOf(frame).regions.body
+      const body = cardBody(geometryOf(frame))
+      let accepted = 0
       for (let n = 1; n <= 8; n++) {
         const params = { title: "Rows", rows: ROWS(n) }
         if (!sheet(params, frame).ok) continue
+        accepted += 1
         for (let t = 0; t <= END; t += 50)
           for (const r of at(params, t, frame).rows)
             expect(r.panel.y + r.panel.height).toBeLessThanOrEqual(
               body.y + body.height
             )
       }
+      expect(accepted).toBeGreaterThan(0)
     }
   })
 })

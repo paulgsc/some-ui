@@ -1,5 +1,6 @@
 import type { JSX } from "react"
 import { Badge } from "@burn-ins/components/stage/badge"
+import { Stamp } from "@burn-ins/components/stage/card"
 import { TextLayer } from "@burn-ins/components/stage/text"
 import {
   monoType,
@@ -22,6 +23,7 @@ export const CheatSheetLayer = ({
   return (
     <>
       <TextLayer frame={frame.heading} units={units} />
+      <Stamp stamp={frame.stamp} units={units} />
       {frame.rows.map((r) => {
         // Faded by its own colours, never a layer's opacity (C312).
         const faded = (colour: string): string => withAlpha(colour, r.opacity)

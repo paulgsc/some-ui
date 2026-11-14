@@ -67,6 +67,12 @@ const CARD = {
 /** The sample card without its note, which the 16:9 video's shorter body has no room for. */
 export const CARD_WITHOUT_NOTE = { ...CARD, note: "" }
 
+/** What the sample cards are stamped with: the commit CARDS1 landed in. */
+const SAMPLE_STAMP = {
+  sources: ["paulgsc/some-ui@5f3dd29"],
+  date: "2026-11-14",
+}
+
 /** One sample for each kind but a game card, which has one per template. */
 export const SAMPLES: Readonly<
   Record<Exclude<Kind, "game-card">, BurnInData["params"]>
@@ -111,6 +117,7 @@ export const SAMPLES: Readonly<
   terminal: {
     kicker: "TERMINAL · THE SCRATCHPAD",
     title: "What the binding runs",
+    stamp: SAMPLE_STAMP,
     bar: "scratchpad",
     lines: [
       { comment: "# a sample: the commands are made up", badge: "next" },
@@ -133,6 +140,7 @@ export const SAMPLES: Readonly<
   "cheat-sheet": {
     kicker: "CHEAT SHEET · A SAMPLE",
     title: "When you want it now",
+    stamp: SAMPLE_STAMP,
     rows: [
       {
         badge: "you",
@@ -149,6 +157,18 @@ export const SAMPLES: Readonly<
         note: "The made-up binding reads the old path.",
       },
     ],
+  },
+  legend: {
+    kicker: "LEGEND · A SAMPLE",
+    title: "Reading the badges",
+    stamp: SAMPLE_STAMP,
+  },
+  rule: {
+    kicker: "RULE · A SAMPLE",
+    title: "How stale is this card?",
+    stamp: SAMPLE_STAMP,
+    sources: ["make help", "the README"],
+    wins: "the README",
   },
 }
 

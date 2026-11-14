@@ -26,13 +26,17 @@ const parsed = (raw: unknown): CutList => {
 describe("the badges a video showed before each scene", () => {
   it("are the states of every earlier scene's badges, in the order they first appeared", () => {
     const cut = parsed(
-      cutList([
-        long("S1", [badge("pr")]),
-        long("S2", [{ kind: "headline", params: {} }]),
-        long("S3", [lines("main", "you", "pr")]),
-        long("S4", [badge("gap")]),
-        long("S5", [badge("main")]),
-      ])
+      cutList(
+        [
+          long("S1", [badge("pr")]),
+          long("S2", [{ kind: "headline", params: {} }]),
+          long("S3", [lines("main", "you", "pr")]),
+          long("S4", [badge("gap")]),
+          long("S5", [badge("main")]),
+        ],
+        // A terminal card is stamped (`stamp.ts`).
+        { stamp: { sources: ["paulgsc/some-ui@5f3dd29"], date: "2026-11-14" } }
+      )
     )
     expect(
       withBadgesSeen(

@@ -28,11 +28,14 @@ import {
   appearing,
   badgesOpening,
   CARD_INK,
+  cardBody,
   cardHeading,
   CardHeadSchema,
+  drawStamp,
   ItemAtSchema,
   itemTimes,
   wordsProblem,
+  type StampLine,
 } from "./cards"
 import type { Box, Geometry } from "./geometry"
 import {
@@ -102,6 +105,7 @@ type LineDrawing = {
 export type TerminalDrawing = {
   /** The heading, and the window, its title bar's foot and dots as panels. */
   readonly card: TextFrame
+  readonly stamp: StampLine
   readonly bar: {
     readonly x: number
     readonly y: number
@@ -171,8 +175,11 @@ export function drawTerminal(
 ): Parsed<TerminalDrawing> {
   const heading = cardHeading(p, g)
   if (!heading.ok) return heading
+  const stamp = drawStamp(p.stamp, g)
+  if (!stamp.ok) return stamp
   const window: Panel = {
     ...cardSpace(g).panel,
+    box: cardBody(g),
     fill: CARD_INK.window,
     radiusPx: 16,
   }
@@ -222,6 +229,7 @@ export function drawTerminal(
   return {
     ok: true,
     value: {
+      stamp: stamp.value,
       card: {
         ...heading.value,
         panels: [
@@ -292,6 +300,8 @@ export function terminalAt(d: TerminalDrawing, t: number): TerminalFrame {
   return { ...still, rows }
 }
 
-/** The boxes the card covers: its heading and its window. */
-export const terminalBoxes = (f: TerminalFrame): ReadonlyArray<Box> =>
-  textBoxes(f.card)
+/** The boxes the card covers: its heading, its window and its stamp. */
+export const terminalBoxes = (f: TerminalFrame): ReadonlyArray<Box> => [
+  ...textBoxes(f.card),
+  f.stamp.box,
+]

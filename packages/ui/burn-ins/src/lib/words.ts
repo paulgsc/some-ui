@@ -85,6 +85,16 @@ export const WORDS = {
       about:
         "A card that closes a part: a row per task, each with its command, a note and a badge saying how fresh it is, a row at a time.",
     },
+    legend: {
+      name: "Legend",
+      about:
+        "A card of the five status badges, each beside what it means, a row at a time.",
+    },
+    rule: {
+      name: "Rule",
+      about:
+        "A card saying how far to trust a card as it ages, and what wins when it disagrees with the repo, as a small algebra, a line at a time.",
+    },
   } satisfies Record<Kind, { name: string; about: string }>,
   lookHeading: "Look",
   looks: {
@@ -131,6 +141,16 @@ export const WORDS = {
       about:
         "A dark panel per row: the task in plain type, its command in blue monospace, a muted note under it.",
     },
+    "legend-v1": {
+      name: "Key",
+      about:
+        "Each badge's sign in its colour, its meaning beside it in plain type.",
+    },
+    "rule-v1": {
+      name: "Algebra",
+      about:
+        "Three lines in a monospace; the signs for 'and' and 'so' drawn as shapes, the sources in blue.",
+    },
     "badge-v1": {
       name: "Badge",
       about:
@@ -144,7 +164,9 @@ export const WORDS = {
     | "plate-v1"
     | "badge-v1"
     | "terminal-v1"
-    | "sheet-v1",
+    | "sheet-v1"
+    | "legend-v1"
+    | "rule-v1",
     { name: string; about: string }
   >,
   templateHeading: "Which card",
@@ -240,6 +262,16 @@ export const WORDS = {
     gap: "known gap",
     you: "a step only I do",
   } satisfies Record<BadgeState, string>,
+  /** The rule card's fixed words, around its sources (`./rule`). */
+  rule: {
+    today: "what's true today = this card",
+    age: "card age ↑",
+    trust: "trust in",
+    falls: "↓",
+    slowest: "decays slowest",
+    disagree: "if they disagree:",
+    wins: "wins",
+  },
   /** What the preview mark says inside a template's preview. */
   previewMark: "Preview, sample data",
   /** The page the end card links to. */

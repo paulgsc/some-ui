@@ -27,12 +27,15 @@ import {
   appearing,
   badgesOpening,
   CARD_INK,
+  cardBody,
   cardHeading,
   CardHeadSchema,
+  drawStamp,
   ITEM,
   ItemAtSchema,
   itemTimes,
   wordsProblem,
+  type StampLine,
 } from "./cards"
 import type { Box, Geometry } from "./geometry"
 import { INK, textBoxes, type TextFrame } from "./journal"
@@ -93,6 +96,7 @@ type RowDrawing = {
 /** The sheet drawn once, for `frameAt` to time. */
 export type CheatSheetDrawing = {
   readonly heading: TextFrame
+  readonly stamp: StampLine
   readonly rows: ReadonlyArray<RowDrawing>
 }
 
@@ -108,6 +112,7 @@ type SheetRow = {
 
 export type CheatSheetFrame = {
   readonly heading: TextFrame
+  readonly stamp: StampLine
   readonly rows: ReadonlyArray<SheetRow>
 }
 
@@ -189,7 +194,9 @@ export function drawCheatSheet(
 ): Parsed<CheatSheetDrawing> {
   const heading = cardHeading(p, g)
   if (!heading.ok) return heading
-  const box = g.regions.body
+  const stamp = drawStamp(p.stamp, g)
+  if (!stamp.ok) return stamp
+  const box = cardBody(g)
   const times = itemTimes(p.rows.map((r) => r.atMs))
   const opens = badgesOpening(
     p.rows.map((r) => r.badge),
@@ -233,7 +240,7 @@ export function drawCheatSheet(
     )
   return problems.length > 0
     ? { ok: false, problems }
-    : { ok: true, value: { heading: heading.value, rows } }
+    : { ok: true, value: { heading: heading.value, stamp: stamp.value, rows } }
 }
 
 /** The sheet `t` ms into its scene: the rows that have appeared so far. */
@@ -265,11 +272,12 @@ export function cheatSheetAt(d: CheatSheetDrawing, t: number): CheatSheetFrame {
       },
     ]
   })
-  return { heading: d.heading, rows }
+  return { heading: d.heading, stamp: d.stamp, rows }
 }
 
-/** The boxes the card covers: its heading and its rows' panels. */
+/** The boxes the card covers: its heading, its rows' panels and its stamp. */
 export const cheatSheetBoxes = (f: CheatSheetFrame): ReadonlyArray<Box> => [
   ...textBoxes(f.heading),
   ...f.rows.map((r) => r.panel),
+  f.stamp.box,
 ]

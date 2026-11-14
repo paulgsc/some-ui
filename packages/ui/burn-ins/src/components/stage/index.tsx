@@ -4,6 +4,8 @@ import { StatusBadgeLayer } from "@burn-ins/components/stage/badge"
 import { Caption } from "@burn-ins/components/stage/captions"
 import { CheatSheetLayer } from "@burn-ins/components/stage/cheat-sheet"
 import { GameCardLayer } from "@burn-ins/components/stage/game-card"
+import { LegendLayer } from "@burn-ins/components/stage/legend"
+import { RuleLayer } from "@burn-ins/components/stage/rule"
 import { TerminalLayer } from "@burn-ins/components/stage/terminal"
 import { TextLayer } from "@burn-ins/components/stage/text"
 import { unitsOf, type Units } from "@burn-ins/components/stage/units"
@@ -45,6 +47,12 @@ const Layer = ({
     }
     case "cheat-sheet": {
       return <CheatSheetLayer frame={frame.frame} units={units} />
+    }
+    case "legend": {
+      return <LegendLayer frame={frame.frame} units={units} />
+    }
+    case "rule": {
+      return <RuleLayer frame={frame.frame} units={units} />
     }
     default: {
       return assertNever(frame)

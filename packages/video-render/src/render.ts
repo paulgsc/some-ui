@@ -41,6 +41,7 @@ import type { ResolvedShot } from "./resolve"
 import { reviewOf } from "./review"
 import { withSeries } from "./series"
 import type { Series } from "./series"
+import { withStamp } from "./stamp"
 import { place, shotTimes, toMs } from "./timing"
 import type { Placement, ShotTime } from "./timing"
 import type { CheckedFile, MusicMode } from "./vocabulary"
@@ -548,10 +549,13 @@ function burnInRequests(
           },
         ]
   )
-  const badged = withBadgesSeen(
-    cutList.shots,
-    cutList.shots.map(
-      (_, i) => (framesUntilNext(placement, i) * 1000) / series.frame.fps
+  const badged = withStamp(
+    cutList,
+    withBadgesSeen(
+      cutList.shots,
+      cutList.shots.map(
+        (_, i) => (framesUntilNext(placement, i) * 1000) / series.frame.fps
+      )
     )
   )
   const perShot = cutList.shots.flatMap((s, i) => {

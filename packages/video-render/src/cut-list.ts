@@ -12,6 +12,7 @@ import { z } from "zod"
 
 import { badgeProblems } from "./badges"
 import { LOOKS, VOICES } from "./plans"
+import { stampProblems } from "./stamp"
 import {
   BackgroundSchema,
   CueSchema,
@@ -183,6 +184,19 @@ export const CutListSchema = z.object({
   shots: z.array(ShotSchema).min(1),
   /** Burn-ins over the whole video, such as captions. */
   burnIns: z.array(BurnInSchema).default([]),
+  /**
+   * What every card is stamped with (CARDS4, `stamp.ts`): the commits its
+   * cards were checked against, `owner/repo@sha`, and the day.
+   */
+  stamp: z
+    .strictObject({
+      sources: z
+        .array(z.string().regex(/^[\w.-]+\/[\w.-]+@[0-9a-f]{7,40}$/))
+        .min(1)
+        .max(3),
+      date: z.iso.date(),
+    })
+    .optional(),
   revisions: z
     .array(
       z.object({
@@ -248,6 +262,7 @@ export function parseCutList(raw: unknown): Parsed<CutList> {
     ...shotProblems(parsed.data.shots),
     ...authorshipProblems(parsed.data),
     ...badgeProblems(parsed.data),
+    ...stampProblems(parsed.data),
     ...wholeVideoProblems(
       parsed.data,
       isCaptions,
