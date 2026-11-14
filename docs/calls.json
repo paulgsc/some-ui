@@ -2599,6 +2599,43 @@
       "gray": "The voice the owner hears on the signed-in desktop changes, from the service's neural voices to whatever the browser provides.",
       "undo": "Revert the retiring PR: it restores @some-ui/speech's http entry, the provider's server branch, the Settings voice picker and infra/compose/tts.yml, and the stored choice reads back as it was.",
       "refs": ["#2977", "server#853"]
+    },
+    {
+      "id": "C308",
+      "made": "2026-11-14",
+      "by": "claude",
+      "paths": [
+        "packages/ui/burn-ins/src/lib/mono.ts",
+        "packages/ui/burn-ins/src/lib/terminal.ts"
+      ],
+      "chose": "A terminal card refuses, naming it, a character its monospace (JetBrains Mono's latin files) can't draw, such as →, so a line is written with -> instead.",
+      "options": [
+        "Refuse the character by name",
+        "Let the browser draw it in another font"
+      ],
+      "gray": "The prototype's lines used → (\"Grafana → UPGRADES\"); another font would draw it at a width the card can't measure, so a line could overflow the window unseen.",
+      "undo": "Add the arrows' subset of the font to www's burn-ins pages and their characters to MONO_CHARS in burn-ins' mono.ts.",
+      "refs": [
+        "#2467"
+      ]
+    },
+    {
+      "id": "C309",
+      "made": "2026-11-14",
+      "by": "claude",
+      "paths": [
+        "packages/ui/burn-ins/src/lib/terminal.ts"
+      ],
+      "chose": "While a line's badge spells itself out, the line's text moves aside for it and comes back as it closes; a line too long for the window with its badge open is refused.",
+      "options": [
+        "Move the text aside",
+        "Draw the open badge over the text, as the prototype did"
+      ],
+      "gray": "The prototype drew the open badge over the start of its line, hiding it for 2.6 s; moving it aside keeps the line readable but costs some width.",
+      "undo": "In terminalAt (burn-ins' terminal.ts), leave a row's x as its line's, and drop the open reach from lineProblem.",
+      "refs": [
+        "#2467"
+      ]
     }
   ]
 }

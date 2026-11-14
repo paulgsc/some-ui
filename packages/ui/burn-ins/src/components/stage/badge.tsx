@@ -14,7 +14,7 @@ const PILL_TINT = 0.18
  * A status badge: its glyph drawn from paths, and while it announces itself
  * a tinted pill behind it with its definition, shown as far as it is open.
  */
-const Badge = ({
+export const Badge = ({
   mark,
   units: { cq, placed },
 }: {
