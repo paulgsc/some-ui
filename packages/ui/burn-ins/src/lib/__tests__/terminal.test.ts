@@ -76,6 +76,10 @@ describe("the terminal card", () => {
     ["TOKEN=<x>sk-live-abc", "TOKEN"],
     ["TOKEN=ENC[x]plain", "TOKEN"],
     ["A=<x>,B=secret", "A"],
+    ['KEY=""sk-live-abc', "KEY"],
+    ["KEY=''sk-live-abc", "KEY"],
+    ['KEY="<x>"sk-live', "KEY"],
+    ['KEY="…"hunter2', "KEY"],
   ])("refuses a line that gives a value: %s", (text, name) => {
     const p = terminal({ title: "Values", lines: [{ text }] })
     expect(p.ok ? [] : p.problems).toEqual([
@@ -112,6 +116,7 @@ describe("the terminal card", () => {
     'KEY=""',
     'KEY="<placeholder>"',
     "KEY=<a> && OTHER=…",
+    "KEY=<from the vault, path=prod>",
     "KEY=ENC[AES256_GCM,data:…]",
     "--retries=3",
     "a == b",

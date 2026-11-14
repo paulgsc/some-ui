@@ -124,23 +124,37 @@ const ASSIGNED = /(?:^|[\s;'"`(])([A-Za-z_][A-Za-z0-9_]*)=/g
 
 const QUOTES = new Set(["'", '"', "`"])
 
+/** Text up to whitespace, `;`, `)` or the end. */
+const BARE = /^[^\s;)]*/
+
 /**
- * What follows an `=` at `from`: a quoted value whole (its quotes dropped,
- * a backtick's command included), else everything up to whitespace, `;`,
- * `)` or the end (a `<placeholder>` or `ENC[…]` read whole first), so
- * nothing can follow a placeholder unseen.
+ * What follows an `=` at `from`, as the shell joins it: a quoted part read
+ * whole (its quotes dropped, a backtick's command kept), or a
+ * `<placeholder>` or `ENC[…]` read whole, then everything up to
+ * whitespace, `;`, `)` or the end, so nothing rides after either unseen.
+ * `end` is where the value stops.
  */
-function valueAt(text: string, from: number): string {
+function valueAt(
+  text: string,
+  from: number
+): { readonly value: string; readonly end: number } {
   const quote = text[from]
-  if (quote !== undefined && QUOTES.has(quote)) {
-    const end = text.indexOf(quote, from + 1)
-    const inner = text.slice(from + 1, end === -1 ? undefined : end)
-    return quote === "`" ? `\`${inner}\`` : inner
-  }
-  // A placeholder may hold spaces: read it whole, then whatever follows it.
-  const rest = text.slice(from)
-  const held = /^(?:<[^<>]*>|ENC\[[^\]]*\])/.exec(rest)?.[0] ?? ""
-  return held + (/^[^\s;)]*/.exec(rest.slice(held.length))?.[0] ?? "")
+  const quoted = quote !== undefined && QUOTES.has(quote)
+  const close = quoted ? text.indexOf(quote, from + 1) : -1
+  const inner = text.slice(from + 1, close === -1 ? undefined : close)
+  // Unquoted, a placeholder may hold spaces: read it whole.
+  const head = !quoted
+    ? (/^(?:<[^<>]*>|ENC\[[^\]]*\])/.exec(text.slice(from))?.[0] ?? "")
+    : quote === "`"
+      ? `\`${inner}\``
+      : inner
+  const at = !quoted
+    ? from + head.length
+    : close === -1
+      ? text.length
+      : close + 1
+  const tail = BARE.exec(text.slice(at))?.[0] ?? ""
+  return { value: head + tail, end: at + tail.length }
 }
 
 const PLACEHOLDER = (v: string): boolean =>
@@ -148,13 +162,15 @@ const PLACEHOLDER = (v: string): boolean =>
 
 /** The name a line gives a value, when it gives one; null when it doesn't. */
 export function valueProblem(text: string): string | null {
+  // An assignment inside a value already read (`<vault, path=prod>`) is that
+  // value's text, not an assignment of its own.
+  let read = 0
   for (const m of text.matchAll(ASSIGNED)) {
     const name = m[1]
-    if (
-      name !== undefined &&
-      !PLACEHOLDER(valueAt(text, m.index + m[0].length))
-    )
-      return name
+    if (name === undefined || m.index < read) continue
+    const { value, end } = valueAt(text, m.index + m[0].length)
+    if (!PLACEHOLDER(value)) return name
+    read = end
   }
   return null
 }
