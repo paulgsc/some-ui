@@ -1,9 +1,9 @@
 /**
  * The burn-in recorder in CI (STUDIO ST15, #2273): a short with a scene's
- * captions, a headline, a status badge, a terminal card, a cheat-sheet card, a legend card, a
- * rule card and a flow card (each card stamped from the cut list) and the authorship mark, rendered twice through
- * `record:short`'s
- * path (the built app's `/burn-ins?record` page filling the renderer's
+ * captions, a headline, a status badge, a terminal card, a cheat-sheet card,
+ * a legend card, a rule card and a flow card (each card stamped from the cut
+ * list) and the authorship mark, rendered twice through `record:short`'s path
+ * (the built app's `/burn-ins?record` page filling the renderer's
  * `recordBurnIn`), gives the same MP4 and the same burn-in recordings both
  * times. Its sources are made here by ffmpeg, so it needs nothing from Drive.
  *
@@ -76,7 +76,6 @@ const CUT_LIST = cutList(
         { kind: "status-badge", design: "badge-v1", params: { badge: "pr" } },
       ],
     }),
-    // CARDS2: a terminal card over a bare scene, in the cards' monospace.
     shot("S3", {
       picture: { kind: "card" },
       durationMs: 2000,
@@ -95,7 +94,6 @@ const CUT_LIST = cutList(
         },
       ],
     }),
-    // CARDS3: a cheat-sheet card, a row per task with its command.
     shot("S4", {
       picture: { kind: "card" },
       durationMs: 2000,

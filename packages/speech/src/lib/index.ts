@@ -1,8 +1,8 @@
 // Adapter types, for a host that supplies its own backend through
-// `SpeechConfig.adapters` - but no adapter factories. An applet that could
+// `SpeechConfig.backend` - but no adapter factories. An applet that could
 // build an adapter could speak outside the page's session, with its own
 // voice and deaf to mute, which is what Honeycomb did. The real backends are
-// their own entries (`@some-ui/speech/http`, `/web-speech`, `/native`), and
+// their own entries (`@some-ui/speech/web-speech`, `/native`), and
 // export inert tokens only the session can use (`adapters/backend`). Nothing
 // here imports one at runtime: that is what keeps each out of the builds
 // that never run it (`../entries.test.ts`).
@@ -16,7 +16,6 @@ export type {
   SpeechAdapter,
   SpeechAdapterFactory,
   SpeechAdapterId,
-  SpeechAdapterRegistry,
   SpeechBackend,
   SpeechConfig,
   VoiceAvailability,
@@ -31,4 +30,3 @@ export * from "./queue"
 export * from "./speaker"
 export * from "./status"
 export * from "./types"
-export * from "./voices"

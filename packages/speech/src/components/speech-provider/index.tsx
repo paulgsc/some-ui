@@ -4,10 +4,9 @@
  * The session boundary: one adapter, one queue, created when this mounts
  * and destroyed when it unmounts or its configuration changes.
  *
- * The app supplies configuration and the backends it runs (see
+ * The app supplies configuration and the backend it runs (see
  * `adapters/registry`); building the adapter, initializing the queue and
- * tearing both down happen here, once. Which backend answers is this
- * package's business.
+ * tearing both down happen here, once.
  *
  * Changing the configuration ends the old session before the new one
  * starts: the old adapter is disposed, which flushes every promise it still
@@ -48,7 +47,7 @@ export type SpeechProviderProps = {
    *
    * Deliberately not part of the session's configuration key: muting is a
    * preference a person flips, possibly often, and rebuilding the adapter
-   * and queue on each flip would tear down a live audio context to express
+   * and queue on each flip would tear down a live synthesizer to express
    * "be quiet". It is applied to the running session instead.
    */
   muted?: boolean
@@ -69,30 +68,21 @@ export type SpeechProviderProps = {
 
 /**
  * Config identity without the object identity. A caller writing
- * `config={{ mode, endpoint }}` inline creates a new object every render;
+ * `config={{ backend, language }}` inline creates a new object every render;
  * keying the session on the *values* keeps that from tearing the session
  * down and rebuilding it on each one.
  *
- * `adapters`, `fetchImpl` and the native engine are deliberately excluded -
- * they are tokens and function references, they cannot be serialized, and
- * the callers that pass them (the app's build-time backends, tests, the
- * Android app's engine) pass stable ones. Whether there is
- * a native engine, and the phone voice chosen for it, are part of the key.
+ * `backend` and the native engine are deliberately excluded - they are
+ * tokens and function references, they cannot be serialized, and the
+ * callers that pass them (the app's build-time backend, tests, the Android
+ * app's engine) pass stable ones. Whether there is a native engine, and the
+ * phone voice chosen for it, are part of the key.
  */
 function configKeyOf(config: SpeechConfig): string {
   return JSON.stringify([
-    config.mode ?? null,
-    config.endpoint ?? null,
-    config.apiKey ?? null,
-    config.hosted?.provider ?? null,
-    config.hosted?.voiceId ?? null,
-    config.format ?? null,
-    config.timeoutMs ?? null,
     config.language ?? null,
     config.native ? "native" : null,
     config.native?.voiceId ?? null,
-    config.fallbackWhenUnsupported ?? null,
-    config.serverHostnames ?? null,
   ])
 }
 
@@ -118,7 +108,7 @@ export const SpeechProvider = ({
     /*
      * The session *is* the external system this effect synchronizes with,
      * and its handle has to reach the tree. Creating it during render
-     * instead would build a real adapter (audio context, network client) on
+     * instead would build a real adapter (a synthesizer, a native bridge) on
      * every discarded render pass, with no cleanup to dispose it. The one
      * extra commit this costs is what `fallback` renders.
      */

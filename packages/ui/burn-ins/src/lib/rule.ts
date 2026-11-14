@@ -25,12 +25,12 @@ import {
   CardHeadSchema,
   drawStamp,
   itemTimes,
-  valueProblem,
+  wordsProblem,
   type StampLine,
 } from "./cards"
 import type { Box, Geometry } from "./geometry"
 import { INK, textBoxes, type TextFrame } from "./journal"
-import { missingChar, monoWidth } from "./mono"
+import { monoWidth } from "./mono"
 import type { Parsed } from "./parsed"
 import { WORDS } from "./words"
 
@@ -180,25 +180,14 @@ function place(
   })
 }
 
-/** Why a source can't be shown as written, or null. */
-function sourceProblem(name: string, text: string): string | null {
-  const missing = missingChar(text)
-  if (missing !== null)
-    return `${name} has "${missing}", which the card's type can't draw`
-  const given = valueProblem(text)
-  return given === null
-    ? null
-    : `${name} gives ${given} a value; a card shows a placeholder, never a value`
-}
-
 export function drawRule(p: RuleParams, g: Geometry): Parsed<RuleDrawing> {
   const heading = cardHeading(p, g)
   if (!heading.ok) return heading
   const stamp = drawStamp(p.stamp, g)
   if (!stamp.ok) return stamp
   const problems = [
-    ...p.sources.map((s, i) => sourceProblem(`source ${i + 1}`, s)),
-    sourceProblem("the one that wins", p.wins),
+    ...p.sources.map((s, i) => wordsProblem(`source ${i + 1}`, s)),
+    wordsProblem("the one that wins", p.wins),
   ].flatMap((why) => (why === null ? [] : [why]))
   if (problems.length > 0) return { ok: false, problems }
   const box = cardBody(g)

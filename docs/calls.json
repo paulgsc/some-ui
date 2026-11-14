@@ -2464,6 +2464,143 @@
       ]
     },
     {
+      "id": "C297",
+      "made": "2026-11-14",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/pending.ts",
+        "packages/ui/topik/ROUTINE.md"
+      ],
+      "chose": "A Studio take ready for pickup is filed as a pending issue in paulgsc/some-ui, from its newest ready move only, with the owner's labels said as words in the body, never added as GitHub labels. A take an issue already carries (an answer to an ask, say) gets no second issue: the routine answers its pickup with that issue.",
+      "options": [
+        "file in paulgsc/some-ui, labels as words in the body",
+        "file where the take's ref points, labels as GitHub labels",
+        "file a second issue for a take already filed as an answer"
+      ],
+      "gray": "The issue said to file each take with pending and from-studio, plus its labels as context, and named no repository; a take's ref names a Studio project and shot, not a repository, and GitHub labels made from free text would add a label per word the owner types.",
+      "undo": "Change the pickup branch of toFile in packages/video-render/src/pending.ts (its repo and takeLabels) and part E's pickup bullet in packages/ui/topik/ROUTINE.md.",
+      "refs": ["#2875", "#2872"]
+    },
+    {
+      "id": "C298",
+      "made": "2026-11-14",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/pending.ts",
+        "packages/ui/topik/ROUTINE.md"
+      ],
+      "chose": "The routine side of the pickup lands with a known limit stated: a take moved on from ready for pickup before the daily run is still filed, home leaves the take where the owner put it, and the stray issue waits for the owner to close. Home withdrawing a pickup is its own story (#2973).",
+      "options": [
+        "(c) land with the limit stated; the owner closes a stray issue",
+        "(a) first have home put a withdrawal the routine reads, then land"
+      ],
+      "gray": "Home never takes a pickup back and the routine can't see where a take is now, so for up to a day after a take leaves ready for pickup a run can still file it; whether that window is acceptable for now is a product choice no check settles. Taken under the owner's standing \"go with the recommended\".",
+      "undo": "Build #2973: home puts a withdrawal when a take leaves ready for pickup, and toFile files a pickup only while its seq is the take's newest.",
+      "refs": ["#2973", "#2971", "#2875"]
+    },
+    {
+      "id": "C301",
+      "made": "2026-11-14",
+      "by": "claude",
+      "paths": [
+        "server:apps/servers/file_host/src/mailbox/pass.rs",
+        "server:crates/db/voice/src/conveyor.rs",
+        "server:crates/db/mailbox/src/lib.rs"
+      ],
+      "chose": "A pickup's bytes live in the existing mailbox_outgoing, keyed by name, as every other file home hands the mailbox.",
+      "options": [
+        "(a) a new pickup table",
+        "(b) the existing mailbox_outgoing, keyed by name"
+      ],
+      "gray": "mailbox_outgoing is already append-only, holds one body per name, and is handed until answered, which is exactly \"keep the first bytes\", and it adds no new store to the ledger; a table of its own would make pickups easier to query apart.",
+      "undo": "Add a pickup table and backfill it from mailbox_outgoing where folder = 'pickup'.",
+      "refs": ["#2872", "#2875", "server#851"]
+    },
+    {
+      "id": "C302",
+      "made": "2026-11-14",
+      "by": "claude",
+      "paths": [
+        "server:crates/db/voice/src/conveyor.rs",
+        "server:apps/servers/file_host/src/mailbox/pass.rs"
+      ],
+      "chose": "The picked-up move's `at` is home's clock when the answer is kept.",
+      "options": [
+        "(a) home's clock when the answer is kept",
+        "(b) the take's readyAt",
+        "(c) a time the routine sends"
+      ],
+      "gray": "picked has no time field, conveyor invariant 2 never orders moves by `at`, and home's clock is honestly when home learned of the pickup; the owner may read the time as when the take was picked up.",
+      "undo": "One line in voice_repo::conveyor::pick_up.",
+      "refs": ["#2872", "#2875", "server#851"]
+    },
+    {
+      "id": "C303",
+      "made": "2026-11-14",
+      "by": "claude",
+      "paths": ["server:apps/servers/file_host/src/mailbox/pass.rs"],
+      "chose": "The pickup and picked folders stay live, unarchived, for now, with the follow-up filed as an issue.",
+      "options": [
+        "(a) archive both now",
+        "(b) leave them live and file an issue"
+      ],
+      "gray": "It is unknown whether the Worker's archive role covers them, and archiving them would add 2 listings to every idle pass beyond the agreed 26, taking it to 28 requests.",
+      "undo": "Follow up in paulgsc/server#850: add Pickup and Picked to ARCHIVES once the Worker's archive role covers them.",
+      "refs": ["#2872", "#2875", "server#851", "server#850"]
+    },
+    {
+      "id": "C304",
+      "made": "2026-11-14",
+      "by": "claude",
+      "paths": [
+        "server:apps/servers/file_host/src/mailbox/pass.rs",
+        "server:crates/db/voice/src/conveyor.rs"
+      ],
+      "chose": "A picked answer for a ready move the take has since left is kept, and moves nothing.",
+      "options": [
+        "(a) keep it and move nothing",
+        "(b) refuse it",
+        "(c) move the take anyway"
+      ],
+      "gray": "The agreed shape moves a take only while its newest move is the seq the answer names, and keeping the file records that the issue exists; refusing it would lose that record, and moving anyway would undo the owner's later move.",
+      "undo": "Add a refusal kind in keep().",
+      "refs": ["#2872", "#2875", "server#851"]
+    },
+    {
+      "id": "C305",
+      "made": "2026-11-14",
+      "by": "claude",
+      "paths": ["server:apps/servers/file_host/src/mailbox/pass.rs"],
+      "chose": "MI6's idle-pass test is renamed an_idle_pass_makes_twenty_six_requests_and_none_reaches_the_index, with its old name kept in a doc line.",
+      "options": [
+        "(a) keep the stale name",
+        "(b) rename it and keep the old name in a doc line"
+      ],
+      "gray": "The name now says 26, and text containment keeps any ledger proof naming the old test holding through the switch; keeping the old name would leave a test whose name is false.",
+      "undo": "Delete the doc line naming the old test in pass.rs once the ledger names the new test.",
+      "refs": ["#2872", "#2875", "server#851"]
+    },
+    {
+      "id": "C316",
+      "made": "2026-11-14",
+      "by": "owner",
+      "paths": [
+        "apps/www/src/providers/tts.tsx",
+        "apps/www/src/components/settings/study-settings.tsx",
+        "packages/speech",
+        "infra/compose",
+        "packages/assurance/src/ledger.json"
+      ],
+      "chose": "Retire the openai-edge-tts speech service: signed-in desktop web speaks with the browser's own voice, as Pages and signed-out home already did, and Settings on the web offers no voice to choose. The voice a browser chose before stays stored, unread.",
+      "options": [
+        "(a) retire the service",
+        "(b) keep it and move it into home's release"
+      ],
+      "gray": "The voice the owner hears on the signed-in desktop changes, from the service's neural voices to whatever the browser provides.",
+      "undo": "Revert the retiring PR: it restores @some-ui/speech's http entry, the provider's server branch, the Settings voice picker and infra/compose/tts.yml, and the stored choice reads back as it was.",
+      "refs": ["#2977", "server#853"]
+    },
+    {
       "id": "C308",
       "made": "2026-11-14",
       "by": "claude",
@@ -2546,7 +2683,7 @@
       "paths": [
         "packages/ui/burn-ins/src/components/stage/cheat-sheet.tsx"
       ],
-      "chose": "A cheat sheet's row fades in by its own colours (panel, border and words at the fade's alpha), with no layer around it below full opacity, so its recording is the same bytes every time; the same-bytes check stays as strict as it was.",
+      "chose": "A cheat sheet's row fades in by its own colours (panel, border and words at the fade's alpha), with no layer below full opacity around its panel or words (its badge fades as every card's badge does), so its recording is the same bytes every time; the same-bytes check stays as strict as it was.",
       "options": [
         "Fade the row's own colours",
         "Let the check tolerate a pixel's difference, or leave the cheat sheet out of it",

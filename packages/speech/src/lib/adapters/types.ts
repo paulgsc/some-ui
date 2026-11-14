@@ -5,19 +5,17 @@
  * vocabulary a consumer ever sees.
  *
  * Nothing outside this package should branch on *how* a phrase gets spoken.
- * A page in the Docker/dev deployment reaches an `openai-edge-tts` container
- * over HTTP; the same page on GitHub Pages has no backend at all and falls
- * back to the browser's own `speechSynthesis`. Both are `SpeechAdapter`s,
- * both are selected by configuration (see `./registry`), and a caller that
- * wanted to tell them apart would have to go looking for `adapter.id` -
- * which exists for diagnostics, the way `DataSource.mode` does in
- * `@some-ui/fetch-kit`, and not for branching.
+ * A page on the web speaks with the browser's own `speechSynthesis`; the
+ * Android app speaks with the phone's text-to-speech. Both are
+ * `SpeechAdapter`s, the app picks one by configuration (see `./registry`),
+ * and a caller that wanted to tell them apart would have to go looking for
+ * `adapter.id` - which exists for diagnostics, and not for branching.
  */
 
 import type { SpokenLanguage } from "@speech/lib/language"
 import type { VoicePart } from "@speech/lib/part"
 
-export type SpeechAdapterId = "http" | "native" | "web-speech"
+export type SpeechAdapterId = "native" | "web-speech"
 
 /**
  * Whether a platform can speak a language, as far as it has said. The
@@ -26,9 +24,8 @@ export type SpeechAdapterId = "http" | "native" | "web-speech"
  * makes of it, and all anything outside an adapter switches on.
  *
  * - `"available"` - it has a voice for the language.
- * - `"missing"` - it has said it has none: a hosted provider with no voice
- *   for it, a browser whose loaded voices include none, a phone without the
- *   voice data.
+ * - `"missing"` - it has said it has none: a browser whose loaded voices
+ *   include none, a phone without the voice data.
  * - `"checking"` - it has not said yet: a browser's voices still loading, a
  *   phone's probe still out.
  * - `"unverifiable"` - asking failed, so nothing is known; a line is tried
@@ -44,19 +41,17 @@ export type VoiceAvailability =
  * Who would speak a line in a given language, as a person would want to
  * know it: the platform, the voice by name, and whether it has one.
  *
- * - `"hosted"` - this site's voice service; `voice` is the catalogue voice
- *   `hostedVoiceFor` picks for the language.
  * - `"browser"` - the browser's own synthesizer; `voice` is the browser
  *   voice the adapter hands the line to.
  * - `"phone"` - the phone's text-to-speech (the Android app).
  *
- * When `availability` is `"missing"`, a hosted line fails and a browser
- * reads it in `voice` anyway, another language's voice, which is what an
- * un-Korean Korean line sounds like. `voice` is a name to show a person,
+ * When `availability` is `"missing"`, a browser reads a line in `voice`
+ * anyway, another language's voice, which is what an un-Korean Korean line
+ * sounds like. `voice` is a name to show a person,
  * null when there is none to show; nothing branches on it.
  */
 export type VoiceReport = {
-  readonly platform: "hosted" | "browser" | "phone"
+  readonly platform: "browser" | "phone"
   readonly voice: string | null
   readonly availability: VoiceAvailability
 }
@@ -73,8 +68,8 @@ export type DeviceVoiceChoice =
 
 /**
  * What a line asks for: its language, never a voice. Which voice speaks it
- * is the backend's business - the person's hosted choice (`lib/voices`), or
- * whatever the device's synthesizer has for that language - so no caller
+ * is the backend's business - whatever the device's synthesizer has for
+ * that language, or the phone voice the person chose - so no caller
  * can override the person's choice by naming a voice of its own.
  */
 export type SpeakOptions = {
@@ -88,9 +83,8 @@ export type SpeakOptions = {
    */
   voice?: DeviceVoiceChoice
   /**
-   * The part the line is read in (`lib/part`): a voice of that gender where
-   * the backend can name one, else the person's voice at the part's pitch.
-   * Absent, the person's voice as it is.
+   * The part the line is read in (`lib/part`): the person's voice at the
+   * part's pitch. Absent, the person's voice as it is.
    */
   part?: VoicePart
   /** Aborting this rejects the returned promise with an `AbortError`. */
@@ -102,8 +96,7 @@ export type SpeakOptions = {
   onError?: (error: Error) => void
   onProgress?: (currentTime: number, duration: number) => void
   /**
-   * Word-boundary progress. Only the browser adapter can report it; the
-   * HTTP adapter receives opaque audio bytes and never calls it.
+   * Word-boundary progress. Only the browser adapter can report it.
    */
   onBoundary?: (charIndex: number, charLength: number) => void
 }

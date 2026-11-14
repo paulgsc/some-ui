@@ -100,15 +100,16 @@ export function openness(sinceMs: number): number {
 
 /**
  * Which of a burn-in's badges, in the order they appear, open into their
- * definition: the first of each state not shown before it (`seen`).
+ * definition: the first of each state not shown before it (`seen`). An
+ * item without a badge (`undefined`) never opens.
  */
 export function opening(
-  shown: ReadonlyArray<BadgeState>,
+  shown: ReadonlyArray<BadgeState | undefined>,
   seen: ReadonlyArray<BadgeState>
 ): ReadonlyArray<boolean> {
   const met = new Set(seen)
   return shown.map((s) => {
-    if (met.has(s)) return false
+    if (s === undefined || met.has(s)) return false
     met.add(s)
     return true
   })
@@ -202,16 +203,22 @@ export const openReach = (m: BadgeMark): number =>
     ? 0
     : m.open.amount * m.glyph.width * (GAP + PAD) + m.open.shownPx
 
+/** How far past its glyph a `state` badge reaches once fully open. */
+export const openWidth = (state: BadgeState, glyphPx: number): number =>
+  openReach(badgeAt(state, 0, 0, glyphPx, 1, 1))
+
 /** The boxes a badge covers. */
 export const badgeBoxes = (m: BadgeMark): ReadonlyArray<Box> =>
   m.open === null ? [m.glyph] : [m.open.pill]
 
 export const STATUS_BADGE_DESIGNS = ["badge-v1"] as const
 
+/** The states shown before this scene in the video: the renderer's. */
+export const BadgesSeenSchema = z.array(BadgeStateSchema).default([])
+
 export const StatusBadgeParamsSchema = z.strictObject({
   badge: BadgeStateSchema,
-  /** The states shown before this scene in the video: the renderer's. */
-  badgesSeen: z.array(BadgeStateSchema).default([]),
+  badgesSeen: BadgesSeenSchema,
 })
 
 export type StatusBadgeParams = z.infer<typeof StatusBadgeParamsSchema>

@@ -368,6 +368,8 @@ export async function renderFolder(
       readonly stepCacheDir?: string
       /** Where a step not kept, over the cache's budget, is said. */
       readonly warn?: (line: string) => void
+      /** Where a step answered from the cache is said, by the file it wrote. */
+      readonly hit?: (what: string) => void
       /**
        * Home's brand folder: the series' brand files are copied into `root`
        * from it first (`placeBrandFiles`). Without it, they must be there.
@@ -393,6 +395,7 @@ export async function renderFolder(
     compositions,
     stepCacheDir,
     warn,
+    hit,
     brand,
     ...rest
   } = options
@@ -408,14 +411,17 @@ export async function renderFolder(
   }
   let version: Promise<string> | null = null
   const cache = stepCacheDir
-    ? stepCache(
-        resolvePath(root, stepCacheDir),
-        rest.policy ?? DEFAULT_POLICY,
-        warn ??
-          ((line): void => {
-            process.stderr.write(`${line}\n`)
-          })
-      )
+    ? {
+        ...stepCache(
+          resolvePath(root, stepCacheDir),
+          rest.policy ?? DEFAULT_POLICY,
+          warn ??
+            ((line): void => {
+              process.stderr.write(`${line}\n`)
+            })
+        ),
+        ...(hit ? { hit } : {}),
+      }
     : null
   const ports = cache
     ? withCachedCompositions(

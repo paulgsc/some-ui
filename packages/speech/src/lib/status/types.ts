@@ -5,34 +5,18 @@
  * that is allowed to reach a person.
  *
  * Everything else in this package is machinery: adapters, ledgers, abort
- * signals, an `openai-edge-tts` container on port 5050. None of that is a
- * user's problem, and none of it belongs in a toast. But *something* does:
- * a page that starts talking is a surprise, and a page that has silently
- * stopped being able to talk is worse - the applet looks fine and simply
- * never speaks again.
+ * signals, a synthesizer's voice list. None of that is a user's problem,
+ * and none of it belongs in a toast. But *something* does: a page that
+ * starts talking is a surprise, and a page that has silently stopped being
+ * able to talk is worse - the applet looks fine and simply never speaks
+ * again.
  *
- * So this module defines two coarse facts and nothing more:
- *
- * - **which voice** is speaking - the one built into the person's own
- *   device, or one this deployment hosts. That distinction is worth
- *   disclosing (one leaves the machine, the other doesn't) and is the
- *   honest, non-internal shadow of the adapter that resolved.
- * - **whether it is working** - ready, faulted, or unavailable.
- *
- * The cardinality is the point. Two voices times three health states is six
- * states a person can hold in their head, and no amount of noise underneath
- * can produce a seventh.
+ * So this module defines one coarse fact and nothing more: **whether it is
+ * working** - ready, faulted, or unavailable - and whether the person muted
+ * it. Every voice is the device's own (the browser's or the phone's), so
+ * which voice speaks is not a fact worth a notice; `VoiceReport` names it
+ * where a person looks for it.
  */
-
-/**
- * Which voice is speaking, as a user would describe it.
- *
- * - `"device"` - the browser's own built-in synthesizer. Nothing leaves the
- *   machine.
- * - `"hosted"` - a speech service this deployment runs. Text to be spoken
- *   is sent to it.
- */
-export type SpeechVoiceKind = "device" | "hosted"
 
 /**
  * - `"ready"` - speech works.
@@ -43,7 +27,6 @@ export type SpeechVoiceKind = "device" | "hosted"
 export type SpeechHealth = "ready" | "faulted" | "unavailable"
 
 export type SpeechStatus = {
-  readonly voice: SpeechVoiceKind
   readonly health: SpeechHealth
   /**
    * The person has turned voice output off. Distinct from `unavailable` on

@@ -27,12 +27,12 @@ import {
   drawStamp,
   ItemAtSchema,
   itemTimes,
-  valueProblem,
+  wordsProblem,
   type StampLine,
 } from "./cards"
 import type { Box, Geometry } from "./geometry"
 import { INK, textBoxes, type TextFrame } from "./journal"
-import { missingChar, monoWidth } from "./mono"
+import { monoWidth } from "./mono"
 import type { Parsed } from "./parsed"
 import { barlow, setText, type TextBlock } from "./text"
 
@@ -182,17 +182,6 @@ const movedBlock = (b: TextBlock, dx: number, dy: number): TextBlock => ({
   box: { ...b.box, x: b.box.x + dx, y: b.box.y + dy },
 })
 
-/** Why step `n` (from 1) can't be shown as written, or null. */
-function wordsProblem(n: number, s: Step): string | null {
-  const missing = missingChar(s.command)
-  if (missing !== null)
-    return `step ${n}'s command has "${missing}", which the card's type can't draw`
-  const name = valueProblem([s.label, s.command, s.note].join("\n"))
-  return name === null
-    ? null
-    : `step ${n} gives ${name} a value; a card shows a placeholder, never a value`
-}
-
 export function drawFlow(p: FlowParams, g: Geometry): Parsed<FlowDrawing> {
   const heading = cardHeading(p, g)
   if (!heading.ok) return heading
@@ -203,13 +192,19 @@ export function drawFlow(p: FlowParams, g: Geometry): Parsed<FlowDrawing> {
   const down = g.frame.height > g.frame.width
   const n = p.steps.length
   const width = down ? box.width : (box.width - (n - 1) * ARROW) / n
+  const times = itemTimes(p.steps.map((s) => s.atMs))
   const opens = badgesOpening(
     p.steps.map((s) => s.badge),
+    times,
     p.badgesSeen
   )
   const problems: Array<string> = []
   const sets = p.steps.flatMap((s, i) => {
-    const words = wordsProblem(i + 1, s)
+    const words = wordsProblem(
+      `step ${i + 1}`,
+      [s.label, s.command, s.note].join("\n"),
+      { what: `step ${i + 1}'s command`, text: s.command }
+    )
     if (words !== null) {
       problems.push(words)
       return []
@@ -226,7 +221,6 @@ export function drawFlow(p: FlowParams, g: Geometry): Parsed<FlowDrawing> {
   const span = down ? n * height + (n - 1) * ARROW : height
   if (span > box.height)
     return { ok: false, problems: [`${n} steps don't fit`] }
-  const times = itemTimes(p.steps.map((s) => s.atMs))
   // Centred down the body when side by side; from its top when stacked.
   const top = down ? box.y : box.y + (box.height - height) / 2
   const steps = sets.map((set, i): StepDrawing => {
