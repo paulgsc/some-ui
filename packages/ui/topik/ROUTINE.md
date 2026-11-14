@@ -619,19 +619,19 @@ exactly as in steps 4 to 6a, with these differences:
 ## Part E: what the owner said in Studio, filed as pending issues
 
 Home keeps what the owner says in Studio about something to be done (the take
-and its transcript) and never files an issue itself; this run files each one
-as a **pending** issue, which waits until the owner starts a session for it
-(paulgsc/some-ui#2670, decisions 6 and 11; #2746). Today that is an answer to
-an ask, said on the ask's page, a note left on an episode, with the
-categories the owner picked and maybe a spoken note (#2745), and a Studio take
-the owner moved to **ready for pickup** on the conveyor (CONVEYOR3, #2875).
-Only a take marked ready is filed: recording one, or leaving it cooking, files
-nothing. Known limit (#2973): a take moved on from ready for pickup before this
-run is still filed, because home doesn't take a pickup back and this run can't
-see where a take is now; home then leaves the take where the owner put it, and
-the issue waits for the owner to close. Which these are,
-where a note goes, and which were filed already, is `@some-ui/video-render`'s
-`pending.ts`, never this run's reading.
+and its transcript) and never files an issue itself; this run files each one as
+a **pending** issue, which waits until the owner starts a session for it
+(paulgsc/some-ui#2670, decisions 6 and 11; #2746). Today that is an answer to an
+ask, said on the ask's page, a note left on an episode, with the categories the
+owner picked and maybe a spoken note (#2745), and a Studio take the owner moved
+to **ready for pickup** on the conveyor (CONVEYOR3, #2875). Only a take marked
+ready is filed: recording one, or leaving it cooking, files nothing. Which these
+are, where a note goes, and which were filed already, is
+`@some-ui/video-render`'s `pending.ts`, never this run's reading. Known limit
+(#2973): a take moved on from ready for pickup before this run is still filed,
+because home doesn't take a pickup back and this run can't see where a take is
+now; home then leaves the take where the owner put it, and the issue waits for
+the owner to close.
 
 E1. If the mailbox is usable (2a) and the GitHub tools are, list the
 `transcript` folder's live items as 2a says, whether or not home's index
@@ -857,7 +857,7 @@ and is not retried.
     left for the next run, the `unanswered`
     takes,
     the notes `waiting` for their spoken note to be heard, and each `passed`
-    transcript or note, never what home heard in a Studio take; for each other voice note, its
+    transcript, note or take, never what home heard in a Studio take; for each other voice note, its
     transcript's name and `text`, or that
     home hasn't heard it; Drive (whether this session had it, each copy made
     or failed, each reflection, prompt or scene read from it because only

@@ -314,6 +314,9 @@ describe("toFile, takes ready for pickup (CONVEYOR3)", () => {
     expect(
       parse({ repo: `paulgsc/${"a".repeat(101)}`, number: 1, body: "b" })
     ).toEqual({ body: "b", issue: null })
+    expect(
+      parse({ repo: `${"a".repeat(101)}/some-ui`, number: 1, body: "b" })
+    ).toEqual({ body: "b", issue: null })
     expect(parse({ repo: "some-ui", number: 3001, body: "b" })).toEqual({
       body: "b",
       issue: null,
