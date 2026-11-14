@@ -1,18 +1,13 @@
 {
   "schema": "some-ui.cut-list/2",
   "title": "Rust scratchpad",
-  "series": {
-    "id": "cheat-sheet",
-    "version": 1
-  },
+  "series": { "id": "cheat-sheet", "version": 1 },
   "look": "plain",
   "voice": "read",
   "shots": [
     {
       "id": "C1",
-      "picture": {
-        "kind": "card"
-      },
+      "picture": { "kind": "card" },
       "durationMs": 11300,
       "burnIns": [
         {
@@ -48,9 +43,7 @@
     },
     {
       "id": "C2",
-      "picture": {
-        "kind": "card"
-      },
+      "picture": { "kind": "card" },
       "durationMs": 13600,
       "burnIns": [
         {
@@ -93,9 +86,7 @@
     },
     {
       "id": "C3",
-      "picture": {
-        "kind": "card"
-      },
+      "picture": { "kind": "card" },
       "durationMs": 12450,
       "burnIns": [
         {
@@ -121,11 +112,7 @@
                 "command": ":e other.rs",
                 "note": "Its own crate on first save; the pane runs the file saved last."
               },
-              {
-                "badge": "gap",
-                "task": "Crates",
-                "command": "std only"
-              },
+              { "badge": "gap", "task": "Crates", "command": "std only" },
               {
                 "badge": "main",
                 "task": "Outside tmux",
@@ -139,9 +126,7 @@
     },
     {
       "id": "C4",
-      "picture": {
-        "kind": "card"
-      },
+      "picture": { "kind": "card" },
       "durationMs": 11300,
       "burnIns": [
         {
@@ -160,7 +145,7 @@
                 "badge": "main",
                 "task": "Another editor",
                 "command": "SCRATCH_EDITOR=…",
-                "note": "Only on purpose: \\r and the watch pane live in vim."
+                "note": "Only on purpose: \\r and lints as you type are vim's; the pane still runs."
               },
               {
                 "badge": "you",
@@ -181,9 +166,7 @@
     },
     {
       "id": "C5",
-      "picture": {
-        "kind": "card"
-      },
+      "picture": { "kind": "card" },
       "durationMs": 13600,
       "burnIns": [
         {
@@ -223,25 +206,18 @@
     },
     {
       "id": "C6",
-      "picture": {
-        "kind": "card"
-      },
+      "picture": { "kind": "card" },
       "durationMs": 12450,
       "burnIns": [
         {
           "kind": "legend",
-          "params": {
-            "kicker": "LEGEND",
-            "title": "Reading the badges"
-          }
+          "params": { "kicker": "LEGEND", "title": "Reading the badges" }
         }
       ]
     },
     {
       "id": "C7",
-      "picture": {
-        "kind": "card"
-      },
+      "picture": { "kind": "card" },
       "durationMs": 10150,
       "burnIns": [
         {

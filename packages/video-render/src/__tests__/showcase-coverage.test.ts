@@ -2,10 +2,11 @@
  * A showcase covers its source (#2979; the owner, 2026-11-14: "how is this
  * ensured?"). A showcase whose folder has a `covers.json` names the file it
  * explains, at one of the commits its stamp names, and maps every heading
- * and every bold bullet (`- **…**`) of that file to the cards that cover it.
- * The file itself is kept beside it, byte for byte as it was at that commit
- * (its git blob id says so: `git rev-parse <commit>:<file>` gives the same),
- * so this runs offline and gives the same answer every time. Restamping the
+ * and every bold list item (`- **…**`, `* **…**`, `1. **…**`) of that file to
+ * the cards that cover it. A copy of the file is kept beside it with its git
+ * blob id: this checks the copy against that id, and `git rev-parse
+ * <commit>:<file>` gives the same id for the file at that commit, so a
+ * reviewer of the copy checks it once and this runs offline after that. Restamping the
  * cut list to a newer commit fails here until the copy and the map follow it,
  * and a source section the essay leaves out fails here by name.
  *
@@ -16,12 +17,11 @@
 import { createHash } from "node:crypto"
 import { readdir, readFile } from "node:fs/promises"
 import { join } from "node:path"
-import { parseCutList } from "@video-render/cut-list"
 import type { CutList } from "@video-render/cut-list"
 import { describe, expect, it } from "vitest"
 import { z } from "zod"
 
-const VIDEOS = join(import.meta.dirname, "../sample/videos")
+import { showcase, VIDEOS } from "./showcase"
 
 const CoversSchema = z.strictObject({
   /** `owner/repo@sha`, one of the cut list's stamp sources. */
@@ -38,7 +38,7 @@ const CoversSchema = z.strictObject({
 
 type Covers = z.infer<typeof CoversSchema>
 
-/** What git names `text` by: the SHA-1 of its blob. */
+/** What git names `bytes` by: the SHA-1 of its blob. */
 function blobId(bytes: Buffer): string {
   return createHash("sha1")
     .update(`blob ${String(bytes.length)}\0`)
@@ -47,22 +47,45 @@ function blobId(bytes: Buffer): string {
 }
 
 /**
- * Every heading (`#` to `######`, as written) and every bold bullet's bold
- * part (`- **…**`) of a markdown file, in order, outside fenced code.
+ * Every heading and every bold list item's bold part of a markdown file, in
+ * order, outside fenced code. A heading is written as ATX (`#` to `######`,
+ * up to three spaces in) and kept as `#… text`, or setext (a line of `=` or
+ * `-` under its text) and kept as `# text` or `## text`. A list item is
+ * `-`, `*`, `+` or a number with `.` or `)`, starting `**…**`.
  */
 function sourceItems(markdown: string): Array<string> {
   const items: Array<string> = []
-  let fenced = false
+  let fence: string | null = null
+  let previous = ""
   for (const line of markdown.split("\n")) {
-    if (line.trimStart().startsWith("```")) {
-      fenced = !fenced
-      continue
+    const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1]
+    if (fence === null && marker !== undefined) {
+      fence = marker
+    } else if (
+      fence !== null &&
+      marker !== undefined &&
+      marker[0] === fence[0] &&
+      marker.length >= fence.length &&
+      line.trim() === marker
+    ) {
+      fence = null
+    } else if (fence === null) {
+      const atx = /^ {0,3}(#{1,6})[ \t]+(.+?)(?:[ \t]+#+)?[ \t]*$/.exec(line)
+      const setext = /^ {0,3}(=+|-+)[ \t]*$/.exec(line)?.[1]
+      const bold = /^[ \t]*(?:[-*+]|\d+[.)])[ \t]+\*\*(.+?)\*\*/.exec(line)?.[1]
+      const plain = previous.trim()
+      if (atx?.[1] !== undefined && atx[2] !== undefined)
+        items.push(`${atx[1]} ${atx[2]}`)
+      else if (
+        setext !== undefined &&
+        plain !== "" &&
+        !/^(?:[-*+]|\d+[.)])\s/.test(plain) &&
+        !plain.startsWith("#")
+      )
+        items.push(`${setext.startsWith("=") ? "#" : "##"} ${plain}`)
+      else if (bold !== undefined) items.push(bold)
     }
-    if (fenced) continue
-    const heading = /^(#{1,6} .+?)\s*$/.exec(line)
-    if (heading?.[1] !== undefined) items.push(heading[1])
-    const bold = /^\s*- \*\*(.+?)\*\*/.exec(line)
-    if (bold?.[1] !== undefined) items.push(bold[1])
+    previous = fence === null ? line : ""
   }
   return items
 }
@@ -118,14 +141,10 @@ async function read(
   const covers = CoversSchema.parse(
     JSON.parse(await readFile(join(dir, "covers.json"), "utf8"))
   )
-  const cut = parseCutList(
-    JSON.parse(await readFile(join(dir, "cut-list.json"), "utf8"))
-  )
-  if (!cut.ok) throw new Error(cut.problems.join("\n"))
   return {
     covers,
     copy: await readFile(join(dir, covers.copy)),
-    cut: cut.value,
+    cut: await showcase(video),
   }
 }
 
@@ -167,6 +186,38 @@ describe("the coverage check can fail", () => {
 
   it("reads headings and bold bullets, not fenced code or plain bullets", () => {
     expect(sourceItems(source)).toEqual(["# tool", "## Commands", "A footgun."])
+  })
+
+  it("reads every way markdown writes a heading or a bold item, and no fence's body", () => {
+    const written = [
+      " ## Indented",
+      "Setext one",
+      "===",
+      "Setext two",
+      "---",
+      "* **Starred.**",
+      "+ **Plussed.**",
+      "1. **Numbered.**",
+      "2) **Bracketed.**",
+      "~~~",
+      "# in a tilde fence",
+      "~~~",
+      "````",
+      "```",
+      "# in a long fence",
+      "````",
+      "",
+      "---",
+    ].join("\n")
+    expect(sourceItems(written)).toEqual([
+      "## Indented",
+      "# Setext one",
+      "## Setext two",
+      "Starred.",
+      "Plussed.",
+      "Numbered.",
+      "Bracketed.",
+    ])
   })
 
   it("names a section no card covers, as the nano and refresh ones were", async () => {
