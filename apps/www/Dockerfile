@@ -158,12 +158,13 @@ COPY apps/www/nginx.security-headers.conf /etc/nginx/security-headers.conf
 # The server block, `access_log off;` and why included, lives in its own file
 # so what the image serves is the file the repo keeps (WI1, #2652): a RUN
 # heredoc redirected with `>` wrote the redirect's empty output, not the block.
-# It is a template the base entrypoint renders at start (see its header).
+# It is a template the base entrypoint renders at start (see nginx.https.conf's
+# header).
 #
 # The stock server block is removed so the image fails closed: where conf.d is
-# not writable the entrypoint skips rendering with only a warning, and nginx
-# would otherwise serve the stock block, access log on and no headers. With it
-# gone, nginx serves nothing and the healthcheck fails.
+# not writable the entrypoint logs an error, skips rendering and goes on, and
+# nginx would otherwise serve the stock block, access log on and no headers.
+# With it gone, nginx serves nothing and the healthcheck fails.
 #
 RUN rm /etc/nginx/conf.d/default.conf
 COPY apps/www/nginx.https.conf /etc/nginx/templates/default.conf.template

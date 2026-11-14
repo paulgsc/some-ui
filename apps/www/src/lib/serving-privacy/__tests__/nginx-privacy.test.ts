@@ -354,7 +354,13 @@ const REMOVE_STOCK = "RUN rm /etc/nginx/conf.d/default.conf"
  */
 function defaultConfProblems(file: string, dockerfile: string): Array<string> {
   const copy = `COPY ${HTTPS_CONF} ${TEMPLATE_TARGET}`
-  const lines = dockerfile.split(/\r?\n/)
+  // The runtime stage: everything after the last FROM. A line in a build
+  // stage does not reach the image.
+  const lines =
+    dockerfile
+      .split(/^FROM /m)
+      .at(-1)
+      ?.split(/\r?\n/) ?? []
   const count = (wanted: string): number =>
     lines.filter((line) => line.trim() === wanted).length
   const others = lines.filter(
@@ -586,6 +592,9 @@ describe("the checks can fail", () => {
     ).toHaveLength(1)
     expect(
       defaultConfProblems("f", `FROM nginx\n${copy}\n${copy}\n`)
+    ).toHaveLength(2)
+    expect(
+      defaultConfProblems("f", `FROM node AS build\n${copy}\nFROM nginx\n`)
     ).toHaveLength(2)
     expect(
       defaultConfProblems(
