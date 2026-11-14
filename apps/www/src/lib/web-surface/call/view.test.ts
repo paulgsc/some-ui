@@ -49,6 +49,7 @@ describe("the call's stage", () => {
     expect(callAt(week(), "chapter-done").view).toEqual({
       section: "chapter",
       title: "What landed",
+      continued: false,
       items: week().done.length,
     })
     expect(callAt(week(), "brand-out").view).toEqual({ section: "brand-out" })

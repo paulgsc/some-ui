@@ -591,7 +591,10 @@ function pageOf(layout: Layout, placed: ReadonlyArray<Placed>): CallPage {
  * `layout` paged into the body: as many units on a page as fit, in order,
  * the title on each; a unit too tall for a page of its own is `tooTall`.
  */
-function paged(layout: Layout): {
+function paged(
+  layout: Layout,
+  words: boolean
+): {
   readonly pages: ReadonlyArray<CallPage>
   readonly tooTall: number
 } {
@@ -625,7 +628,11 @@ function paged(layout: Layout): {
       page.push(unit)
       continue
     }
-    if (unit.group.paragraph !== undefined && unit.to - unit.from > 1) {
+    if (
+      words &&
+      unit.group.paragraph !== undefined &&
+      unit.to - unit.from > 1
+    ) {
       // As many of its words as this page holds; the rest on the next.
       let k = 0
       while (
@@ -665,7 +672,19 @@ const linesOver = (over: number): number => Math.ceil(over / lineOf(1))
  * on one of them, none left out. And every scene with one part too tall for
  * a page of its own, said so the routine can shorten it.
  */
-export function callFit(week: CallWeek): {
+export function callFit(
+  week: CallWeek,
+  {
+    words = true,
+  }: {
+    /**
+     * Whether a paragraph too long for its page carries on, word by word
+     * (from version 5); otherwise it moves to the next page whole, and one
+     * taller than a page is refused.
+     */
+    readonly words?: boolean
+  } = {}
+): {
   readonly pages: Readonly<Record<string, ReadonlyArray<CallPage>>>
   readonly problems: ReadonlyArray<string>
 } {
@@ -697,13 +716,17 @@ export function callFit(week: CallWeek): {
     ...week.mine.map((c, i) => ({
       id: `mine-${i + 1}`,
       item: c.id,
-      fix: "its title or its longest option",
+      fix: words
+        ? "its title or its longest option"
+        : "its title, why, or how to undo it",
       layout: mineLayout(c),
     })),
     ...week.asks.map((a, i) => ({
       id: `asks-${i + 1}`,
       item: a.id,
-      fix: "its question or its longest option",
+      fix: words
+        ? "its question or its longest option"
+        : "its question or why it's yours",
       layout: askLayout(a),
     })),
     { id: "close", fix: "the longest later ask", layout: closeLayout(week) },
@@ -711,7 +734,7 @@ export function callFit(week: CallWeek): {
   const pages: Record<string, ReadonlyArray<CallPage>> = {}
   const problems: Array<string> = []
   for (const scene of scenes) {
-    const { pages: each, tooTall } = paged(scene.layout)
+    const { pages: each, tooTall } = paged(scene.layout, words)
     pages[scene.id] = each
     if (tooTall > 0) {
       const lines = linesOver(tooTall)

@@ -60,10 +60,7 @@ export const words = z.string().trim().min(1)
 /** A show's id, and its format's: a name the code gives it. */
 export const showId = z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/)
 
-/**
- * The most items a repeated scene shows: the weekly call's from version 5
- * (`CALL_SERIES_MOST`), whose long weeks are series (#2918).
- */
+/** The most items a repeated scene shows. */
 export const REPEAT_MOST = 200
 
 /** The longest a repeated scene's id is, so `<id>-<n>` is still a cut's id. */
@@ -102,9 +99,8 @@ export function itemOfRepeated(scene: string, id: string): number | undefined {
  *   chosen in Studio; absent, the template's. A version from before them
  *   has neither and is drawn in the page's own theme.
  * - `parts` (#2918): an episode too long for one video is a series of
- *   parts, each at most `mostMs` long by its words, broken at a chapter
- *   once a part reaches `aimMs`; every part opens on the locked intro and the
- *   brand, and says which part it is. Absent, an episode is one video.
+ *   parts, each at most `mostMs` by its words, broken once one reaches
+ *   `aimMs`. Absent, it is one video.
  */
 export const ShapeSchema = z.strictObject({
   brand: z.strictObject({

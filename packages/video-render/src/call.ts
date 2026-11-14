@@ -175,7 +175,7 @@ const REPEATED = [
 ] as const satisfies ReadonlyArray<Repeated>
 
 const isRepeated = (section: Section): section is Repeated =>
-  section in CALL_MOST
+  REPEATED.some((each) => each === section)
 
 const scene = (
   version: number,
@@ -506,16 +506,19 @@ function weekProblems(week: CallWeek): Array<string> {
     if (ask.recommended !== undefined && ask.recommended >= ask.options.length)
       problems.push(`${ask.id}: it recommends an option it doesn't list`)
   })
-  // Up to version 4, a section lists as many items as the version drew.
   for (const section of REPEATED)
     if (week[section].length > mostIn(week.template.version, section))
       problems.push(
         `${section}: it lists more than ${mostIn(week.template.version, section)}, the most version ${week.template.version} draws`
       )
   // CF1
-  if (captioned(week)) problems.push(...callFit(week).problems)
+  if (captioned(week)) problems.push(...fitOf(week).problems)
   return once(problems)
 }
+
+/** The week's fit (CF1): a paragraph carries on, word by word, from version 5. */
+const fitOf = (week: CallWeek): ReturnType<typeof callFit> =>
+  callFit(week, { words: week.template.version >= SERIES_VERSION })
 
 /** Whether the week's frame keeps its foot for captions: version 2 on. */
 const captioned = (week: CallWeek): boolean =>
@@ -559,6 +562,8 @@ export type CallScene =
       readonly id: string
       /** The section the chapter slide opens. */
       readonly of: Section
+      /** Whether an earlier part of the series began the section. */
+      readonly continued?: boolean
       readonly said: string
     }
 
@@ -755,6 +760,7 @@ function framed(
         section: "chapter",
         id: `chapter-${scene.section}`,
         of: scene.section,
+        ...(begun.has(scene.section) ? { continued: true } : {}),
         said: begun.has(scene.section)
           ? `${CALL_CHAPTERS[scene.section]}, continued.`
           : `${CALL_CHAPTERS[scene.section]}.`,
@@ -872,7 +878,7 @@ function pagedScenes(
   week: CallWeek,
   scenes: ReadonlyArray<BodyScene>
 ): ReadonlyArray<BodyScene> {
-  const { pages } = callFit(week)
+  const { pages } = fitOf(week)
   return scenes.flatMap((scene) => {
     const its = pages[scene.id]
     if (its === undefined) return [scene]
@@ -938,16 +944,17 @@ export function callCutList(
 ): CutList {
   const format = callFormat(week.template.version)
   const of = callParts(week).length
+  const n = Math.min(Math.max(1, Math.trunc(part)), of)
   return stillsCutList(
     {
-      title: `The weekly call, ${week.week.from} to ${week.week.to}${of > 1 ? `, part ${part} of ${of}` : ""}`,
+      title: `The weekly call, ${week.week.from} to ${week.week.to}${of > 1 ? `, part ${n} of ${of}` : ""}`,
       series: format.series,
       look: "calm",
       captions: hasCaptions(format),
       bed,
       ...(format.shape ? { shape: format.shape } : {}),
     },
-    callScenes(week, part).map((scene, i) => ({
+    callScenes(week, n).map((scene, i) => ({
       id: scene.id,
       file: stillFile(i, scene.id),
       said: scene.said,

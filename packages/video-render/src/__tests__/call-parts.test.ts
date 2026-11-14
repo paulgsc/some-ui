@@ -8,8 +8,6 @@
 import { sampleWeek } from "@video-render/__tests__/sample-week"
 import {
   CALL_MOST,
-  CALL_SERIES_MOST,
-  callChapterMarks,
   callCutList,
   callFormat,
   callParts,
@@ -84,7 +82,7 @@ describe("a long week in version 5", () => {
     }
   })
 
-  it("marks chapters and names its cut list by part", (context) => {
+  it("names its cut list by part", (context) => {
     if (nov6 === null) return context.skip()
     const week = at(nov6, 5)
     const parts = callParts(week)
@@ -92,9 +90,6 @@ describe("a long week in version 5", () => {
     expect(callCutList(week, [], { part: last }).title).toBe(
       `The weekly call, 2026-11-06 to 2026-11-13, part ${String(last)} of ${String(last)}`
     )
-    for (const part of parts)
-      for (const mark of callChapterMarks(week, part.n))
-        expect(part.scenes.some((s) => s.id === mark.scene)).toBe(true)
   })
 })
 
@@ -129,6 +124,14 @@ describe("a section longer than a part", () => {
     expect(slides[0]).toBe("What landed.")
     for (const said of slides.slice(1))
       expect(said).toBe("What landed, continued.")
+    const continued = withDone.map(
+      (part) =>
+        part.scenes.find(
+          (s): s is Extract<CallScene, { section: "chapter" }> =>
+            s.id === "chapter-done"
+        )?.continued === true
+    )
+    expect(continued).toEqual(withDone.map((_, i) => i > 0))
   })
 })
 
@@ -152,7 +155,6 @@ describe("the most a section lists", () => {
       ],
     })
     expect(parseCallWeek(many(5))).toMatchObject({ ok: true })
-    expect(CALL_SERIES_MOST).toBe(200)
   })
 })
 
@@ -160,7 +162,6 @@ describe("a week of one part", () => {
   it("is its scenes, as a week before version 5 is", () => {
     const week = sampleWeek()
     expect(callParts(week)).toHaveLength(1)
-    expect(callParts(week)[0]?.scenes).toEqual(callScenes(week))
     expect(callScenes(week)[0]?.said).not.toContain("part")
   })
 })

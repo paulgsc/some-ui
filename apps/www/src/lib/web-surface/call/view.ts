@@ -3,12 +3,12 @@ import {
   CALL_CHAPTERS,
   callIntro,
   callParts,
-  callScenes,
   isFirstPage,
   parseCallWeek,
 } from "@some-ui/video-render"
 import type {
   CallIndex,
+  CallPartOf,
   CallScene,
   CallWeek,
   Parsed,
@@ -32,6 +32,8 @@ export type SceneView =
   | {
       readonly section: "chapter"
       readonly title: string
+      /** An earlier part of the series began the section. */
+      readonly continued: boolean
       /** How many scenes the section has: its items, or none for one scene. */
       readonly items: number
     }
@@ -47,7 +49,7 @@ export type CallAt = {
   readonly scene: CallScene
   readonly view: SceneView
   /** Which video of the week's series it is in (#2918). */
-  readonly part: { readonly n: number; readonly of: number }
+  readonly part: CallPartOf
 }
 
 const find = <T extends { readonly id: string }>(
@@ -63,7 +65,7 @@ function viewOf(
   week: CallWeek,
   scene: CallScene,
   scenes: ReadonlyArray<CallScene>,
-  part: { readonly n: number; readonly of: number }
+  part: CallPartOf
 ): SceneView {
   switch (scene.section) {
     case "open":
@@ -84,7 +86,12 @@ function viewOf(
           s.item !== undefined &&
           isFirstPage(s)
       ).length
-      return { section: "chapter", title: CALL_CHAPTERS[scene.of], items }
+      return {
+        section: "chapter",
+        title: CALL_CHAPTERS[scene.of],
+        continued: scene.continued === true,
+        items,
+      }
     }
     case "moved": {
       return { section: "moved", item: find(week.moved, scene.item) }
@@ -114,8 +121,10 @@ export function callAt(
   part: number = 1
 ): CallAt {
   const parts = callParts(week)
-  const at = Math.min(Math.max(1, part), parts.length)
-  const scenes = callScenes(week, at)
+  // `callParts` always gives a part, with the open, the board or the close.
+  const shown = parts[Math.min(Math.max(1, part), parts.length) - 1] ?? parts[0]
+  const scenes = shown.scenes
+  const of: CallPartOf = { n: shown.n, of: shown.of }
   const index = Math.max(
     0,
     scenes.findIndex((scene) => scene.id === id)
@@ -126,8 +135,8 @@ export function callAt(
     scenes,
     index,
     scene,
-    view: viewOf(week, scene, scenes, { n: at, of: parts.length }),
-    part: { n: at, of: parts.length },
+    view: viewOf(week, scene, scenes, of),
+    part: of,
   }
 }
 

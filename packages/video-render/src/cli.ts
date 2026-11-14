@@ -78,7 +78,7 @@
 import { execFile } from "node:child_process"
 import { createHash } from "node:crypto"
 import { existsSync, readFileSync } from "node:fs"
-import { access, mkdir, readdir, readFile, writeFile } from "node:fs/promises"
+import { access, mkdir, readdir, writeFile } from "node:fs/promises"
 import { dirname, join, relative } from "node:path"
 import { parseArgs, promisify } from "node:util"
 import { callsAtCommit } from "@some-ui/eslint-kit/calls"
@@ -233,7 +233,7 @@ async function main(): Promise<void> {
   }
   if (first === "call-parts") {
     if (!second) fail(["usage: render call-parts <week file>"])
-    const week = parseCallWeek(JSON.parse(await readFile(here(second), "utf8")))
+    const week = parseCallWeek(await readJson(here(second)))
     if (!week.ok) fail([`${second} can't make a call:`, ...week.problems])
     const parts = callParts(week.value)
     process.stdout.write(

@@ -156,7 +156,6 @@ export async function recordCall(
     if (weekAsked && weekAsked !== "sample" && week.week.from !== weekAsked)
       fail([`there is no week of ${weekAsked}`])
 
-    // A week too long for one video is a series (#2918): one part a recording.
     const of = preview ? 1 : callParts(week).length
     if (values.part !== undefined) {
       part = Number(values.part)

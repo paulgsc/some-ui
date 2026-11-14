@@ -167,6 +167,24 @@ describe("the captioned frame (version 2 on)", () => {
     expect(covered(pages).why).toBe(paragraphWords(why).length)
   })
 
+  it("moves a paragraph whole to the next page in a week before version 5, as it always did", () => {
+    const why = "Only you can say which of these matters more. ".repeat(18)
+    const week = (version: number): CallWeek =>
+      edited(sampleWeek(), (w) => {
+        w.template.version = version
+        const [call] = w.mine
+        if (call === undefined) throw new Error("mine")
+        call.why = why
+      })
+    const whole = paragraphWords(why).length
+    const shows = (version: number): ReadonlyArray<unknown> =>
+      (callFit(week(version), { words: version >= 5 }).pages["mine-1"] ?? [])
+        .map((page) => page.shows.why)
+        .filter((range) => range !== undefined)
+    expect(shows(4)).toEqual([[0, whole]])
+    expect(shows(5).length).toBeGreaterThan(1)
+  })
+
   it("refuses only a part no page break can split, naming the scene and the item", () => {
     const week = edited(sampleWeek(), (w) => {
       const [ask] = w.asks

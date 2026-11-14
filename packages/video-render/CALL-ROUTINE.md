@@ -72,8 +72,7 @@ up to 14 days.
    for one video is a series of parts of at most ten minutes, split at its
    chapters by code (`callParts`; `render call-parts <file>` lists them).
    Each section takes up to 200 items. call-check refuses only a single
-   part taller than a whole frame, such as a why-it's-yours of a dozen
-   lines, naming the scene and what to shorten. Shorten that alone,
+   part taller than a whole frame, such as an option of a dozen lines, naming the scene and what to shorten. Shorten that alone,
    keeping the meaning,
    and check again. Keep `said` to a few sentences too, as the schema's
    sample does: it is spoken, not shown, but it sets the video's length.

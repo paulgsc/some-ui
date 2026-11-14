@@ -6,7 +6,6 @@ import {
   callFormat,
   CallIndexSchema,
   hasCaptions,
-  isFirstPage,
   markThemeOf,
   paragraphWords,
   refUrl,
@@ -72,7 +71,8 @@ const sectionName = (at: { scene: CallScene; view: SceneView }): string => {
       return ""
     }
     case "chapter": {
-      return at.view.section === "chapter" ? at.view.title : ""
+      if (at.view.section !== "chapter") return ""
+      return at.view.continued ? W.continued(at.view.title) : at.view.title
     }
     case "open":
     case "board":
@@ -91,10 +91,7 @@ const sectionName = (at: { scene: CallScene; view: SceneView }): string => {
 }
 
 /** What a scene is called: its section's name, and its place among its items. */
-const labelOf = (
-  scene: CallScene,
-  scenes: ReadonlyArray<CallScene>
-): string => {
+const labelOf = (scene: CallScene): string => {
   switch (scene.section) {
     case "intro": {
       return SW.whoMadeThis
@@ -106,7 +103,8 @@ const labelOf = (
       return SW.brandOut
     }
     case "chapter": {
-      return W.chapter(CALL_CHAPTERS[scene.of])
+      const title = CALL_CHAPTERS[scene.of]
+      return W.chapter(scene.continued === true ? W.continued(title) : title)
     }
     case "open":
     case "board":
@@ -119,12 +117,11 @@ const labelOf = (
       const name = NAMES[scene.section] ?? ""
       if (scene.item === undefined)
         return [name, pageLabel(scene)].filter(Boolean).join(", ")
-      // Numbered by item; a page after an item's first says which it is.
-      const n = scenes
-        .filter((s) => s.section === scene.section && isFirstPage(s))
-        .findIndex((s) => "item" in s && s.item === scene.item)
+      // Numbered by its place in the week, in whichever part it falls; a
+      // page after an item's first says which it is.
+      const n = /^[a-z]+-([0-9]+)/.exec(scene.id)?.[1] ?? ""
       const page = pageLabel(scene)
-      return [`${name} ${n + 1}`, page].filter(Boolean).join(", ")
+      return [`${name} ${n}`, page].filter(Boolean).join(", ")
     }
     default: {
       return assertNever(scene)
@@ -264,7 +261,7 @@ const Screen = ({
     case "chapter": {
       return (
         <ChapterSlide
-          title={view.title}
+          title={view.continued ? W.continued(view.title) : view.title}
           holds={view.items > 0 ? W.items(view.items) : undefined}
         />
       )
@@ -532,7 +529,7 @@ export const CallStagePage = ({
           : {
               scenes: at.scenes.map((s) => ({
                 id: s.id,
-                label: labelOf(s, at.scenes),
+                label: labelOf(s),
               })),
               onScene,
             }
