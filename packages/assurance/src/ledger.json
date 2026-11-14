@@ -2378,7 +2378,7 @@
           "kind": "RE9",
           "property": "work",
           "claim": "What home keeps of the call grows by one week a week, and is kept for good.",
-          "requirement": "call_week gains one row per week of the call, its file as served (about 80 KB for the first week), never updated or deleted; nothing else is kept.",
+          "requirement": "call_week gains one row per week of the call, its file as served (about 80 KB for the first week), never updated or deleted; the call's YouTube links and let-go receipts are kept too, a few small rows a part, append-only (call_part_link, call_part_deletion, and the frozen call_video_link and call_video_deletion); nothing else is kept.",
           "verdict": "holds",
           "conclusion": "One row per week, keyed by its first day, append-only by trigger: about 4 MB a year at the first week's size. Shown in the store's tests.",
           "evidence": [
@@ -2391,6 +2391,11 @@
               "class": "measured",
               "says": "The first week, 2026-10-30, is 81,299 bytes.",
               "ref": "https://github.com/paulgsc/testing/blob/main/call/2026-10-30.json"
+            },
+            {
+              "class": "structural",
+              "says": "call_part_link and call_part_deletion keep each part's links and let-go receipts, keyed (week, part), append-only by trigger; the older call_video_link and call_video_deletion are copied in as part 1 and kept whole, frozen against INSERT.",
+              "ref": "server:crates/db/call_week/src/video.rs"
             }
           ],
           "proof": [
@@ -2401,14 +2406,21 @@
             "by": "dashboard",
             "ref": "server:infra/grafana/dashboards/storage.jsonnet"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-14",
+              "change": "The requirement names what else the call keeps: each part's YouTube links and let-go receipts, and the frozen tables they began from; the claim's growth, one week a week, is unchanged.",
+              "why": "paulgsc/some-ui#2918 (https://github.com/paulgsc/some-ui/issues/2918#issuecomment-6885321310): a long week of the call is a series of parts, each its own video, link and receipts (paulgsc/server#872).",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3017#issuecomment-6885361566"
+            }
+          ]
         },
         {
           "id": "CW5",
           "kind": "OA2",
           "property": "outcome",
           "claim": "Every week of the call home holds becomes a video within the render policy's caps, and a week that hasn't is tried again.",
-          "requirement": "Each week in call_week is written to call-weeks beside home's database, on its drive (STORAGE); once home's lane admits it (room for its peak above the floor, and no interactive work waiting: server:docs/home-compute.md, \"The lane\"), the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it, and moves the finished folder into renders/call/<from>/ on the same drive, whole; a render the lane pauses or stops resumes from its finished steps, and giving way is never itself a failure (an attempt that exits soon after a pause is run again, at most 3 times a job, then is a failure); a week that fails is left without a folder and tried again no sooner than an hour later, once the lane admits it, keeping its finished steps; a week whose video would pass the render policy's length or size (set in the render worker) is refused before it is drawn or once it is made, which fails its attempt with the cap named (a video refused once made is removed then, never moved into place); no video moved into renders/call is deleted but by the owner letting its week go (CW8).",
+          "requirement": "Each week in call_week is written to call-weeks beside home's database, on its drive (STORAGE); once home's lane admits it (room for its peak above the floor, and no interactive work waiting: server:docs/home-compute.md, \"The lane\"), the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it, and moves each finished video's folder into renders/call/<key>/ on the same drive, whole, where a week of one video is keyed <from> and a week of several parts (template version 5) is one job a part, part 1 keyed <from> and part k <from>-p<k>, each failed, retried and resumed on its own; a render the lane pauses or stops resumes from its finished steps, and giving way is never itself a failure (an attempt that exits soon after a pause is run again, at most 3 times a job, then is a failure); a week that fails is left without a folder and tried again no sooner than an hour later, once the lane admits it, keeping its finished steps; a week whose video would pass the render policy's length or size (set in the render worker) is refused before it is drawn or once it is made, which fails its attempt with the cap named (a video refused once made is removed then, never moved into place); no video moved into renders/call is deleted but by the owner letting its week go (CW8).",
           "verdict": "unproven",
           "conclusion": "Home rendered the real week of Oct 30 on Nov 7: all 36 scenes recorded, the video written and its folder moved into renders/call. The worker's own handling of a week is tested in CI, one pass at a time with a fake recorder: a failed week is left without a folder, keeps its work and is tried on the next pass, which reuses it; a finished week is moved in whole and its work removed; a pass over a finished week leaves it untouched; no cap on waiting work removes a video; a render starts only once the lane has seen its job, a pause freezes the recorder and what it started, and a stop kills them and the render resumes from its kept steps with the same bytes. Slack says when a week's attempt fails, naming the file that holds its whole output, when a week has waited 3 hours with no attempt, and when the worker has not passed for 4 hours, each tested by promtool; the CALL dashboard shows each. The test also holds (server#755) that the worker hands the recorder the render policy's caps, the pinned stage and home's speaker, for a week and for a preview; that a video past the size cap fails its week's attempt with the cap named and leaves no folder; that the stage and the speaker's base are pinned by digest and the recorders by a whole commit; and that the worker's own loop tries a failed week again by itself, no sooner than RETRY_AFTER after it failed, on a test clock. Not yet proven: the lane's pauses and stops with the real recorder (the test's is a fake), which only home can show.",
           "tracked": "some-ui#2659",
@@ -2457,6 +2469,11 @@
               "class": "measured",
               "says": "The worker hands the call's and a preview's recorder --max-video-minutes 15, --max-video-mb 500, --cache-mb 2048, the pinned stage and home's Kokoro speaker; a video past the size cap fails its week's attempt with the cap named; the stage and the speaker's base are pinned by digest and the recorders by a whole commit; its own loop tries a failed week again, no sooner than RETRY_AFTER after it failed.",
               "ref": "server:infra/render/render-calls.test.sh"
+            },
+            {
+              "class": "measured",
+              "says": "render-calls.sh asks the render image's render call-parts how many parts a week is once, inside the job the lane admitted; it then renders each part as its own job (part 1 keyed <from>, part k <from>-p<k>), a part that fails failing alone and resuming from its own kept steps, and never renders a part the owner let go; a week of one part records as before. CI runs it on every pull request.",
+              "ref": "server:infra/render/render-calls.test.sh"
             }
           ],
           "watch": {
@@ -2481,6 +2498,12 @@
               "change": "A week renders once home's lane admits it, not within the next hourly pass, and pauses or gives way when the lane says so, resuming from its finished steps; giving way is never itself a failure, and a failed attempt waits at least an hour and then for the lane. \"No finished video is deleted\" is narrowed: a video refused past the size cap is removed before it is moved into place, and one moved into place goes only when the owner lets its week go (CW8).",
               "why": "There is no render window and no clock: a start time can't promise the render finishes, and it starves everything else at that time. Renders are home's lowest class: they start whenever home has room, give way the moment anything else needs it, and resume when room comes back. The render worker obeys the lane since paulgsc/server#734 (L4c).",
               "decision": "https://github.com/paulgsc/server/issues/705"
+            },
+            {
+              "on": "2026-11-14",
+              "change": "A week is one video or, from template version 5, a series of parts: each part is its own job, kept in renders/call/<from> for part 1 and renders/call/<from>-p<k> for part k, and failed, retried and resumed on its own.",
+              "why": "paulgsc/some-ui#2918 (https://github.com/paulgsc/some-ui/issues/2918#issuecomment-6885321310): a long week of the call is a series of parts, each its own video, link and receipts (paulgsc/server#872).",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3017#issuecomment-6885361566"
             }
           ]
         },
@@ -2540,7 +2563,7 @@
           "kind": "OA3",
           "property": "outcome",
           "claim": "A week's video leaves home only once I've recorded its YouTube link, the video first and then the rest, and each delete leaves a receipt.",
-          "requirement": "A paired phone's My data deletes a rendered week in two steps: its call.mp4, only once a YouTube video link is recorded for the week, and then the rest of its folder (takes, stills, cut list), only once the video has gone; each step writes an append-only receipt (the week, the step, the bytes that went, the link recorded, when) kept for good, and a repeated step answers with the same receipt and deletes nothing more; a link is a YouTube video's id, kept append-only, the newest standing; the week's words stay in call_week.",
+          "requirement": "A paired phone's My data deletes a rendered part (a week of one video is its part 1) in two steps: its call.mp4, only once a YouTube video link is recorded for that part, and then the rest of its folder (takes, stills, cut list), only once the video has gone; a week leaves the render worker once every part's video has gone; each step writes an append-only receipt (the week, the part, how many parts the week was, the step, the bytes that went, the link recorded, when) kept for good, and a repeated step answers with the same receipt and deletes nothing more; a link is a YouTube video's id, kept append-only, the newest standing; the week's words stay in call_week.",
           "verdict": "holds",
           "conclusion": "Shown in home's tests on its own SQLite and drive, and in the phone's: a step goes only once a link is recorded, the video first and then the rest, each with a receipt kept for good, a repeated step answering with the same receipt; the phone asks once per confirm in My data's sheet. The owner's run on Nov 7 let the first week go, both steps, from the phone; nothing tells the owner if a step stops working later.",
           "evidence": [
@@ -2563,12 +2586,24 @@
               "class": "measured",
               "says": "The owner's run on 2026-11-07: the week of 2026-10-30 was watched on the phone, shared to YouTube and its link saved; My data let its video go, then the rest, each ending on home's receipt; renders/call was left empty, and call_render_weeks_let_go read 1 from about 11:00.",
               "ref": "some-ui#2661"
+            },
+            {
+              "class": "structural",
+              "says": "Each part of a week that is a series is listed, linked and let go on its own by its key; a part let go while another still has its video is marked for the worker, and the week's file goes with the last part's video; the part count a receipt records is read strictly, so an unreadable count lets nothing go; tested.",
+              "ref": "server:apps/servers/file_host/src/feeds/videos.rs"
             }
           ],
           "watch": {
             "by": "none"
           },
-          "amendments": [],
+          "amendments": [
+            {
+              "on": "2026-11-14",
+              "change": "My data lets a part go, not a week: each part's video goes once that part's link is recorded, its receipt also naming the part and how many the week was, and a week leaves the render worker once every part's video has gone; a week of one video is its part 1, as before.",
+              "why": "paulgsc/some-ui#2918 (https://github.com/paulgsc/some-ui/issues/2918#issuecomment-6885321310): a long week of the call is a series of parts, each its own video, link and receipts (paulgsc/server#872).",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3017#issuecomment-6885361566"
+            }
+          ],
           "proof": [
             "server:crates/db/call_week/src/video.rs#a_link_is_recorded_once_and_the_newest_stands",
             "server:crates/db/call_week/src/video.rs#a_week_goes_video_first_then_the_rest_each_once_with_a_receipt_kept_for_good",
@@ -4198,15 +4233,27 @@
       "family": "call-kept"
     },
     {
+      "store": "server:call_part_deletion",
+      "class": "record",
+      "growth": "Per step of a part of a week of the call the owner lets go from My data (video, then the rest): one small receipt row (the week, the part, how many parts the week was, the step, its YouTube video's id, the bytes that went, when), at most two per part, so bounded by call_week's parts; append-only, triggers abort UPDATE and DELETE, kept for good. Its first rows are call_video_deletion's, copied as part 1 of 1.",
+      "family": "call-kept"
+    },
+    {
+      "store": "server:call_part_link",
+      "class": "record",
+      "growth": "Per YouTube video the owner records for a part of a week of the call: one tiny row (the week, the part, the video's id, when), the newest standing; about one per part a week; append-only, triggers abort UPDATE and DELETE. Its first rows are call_video_link's, copied as part 1.",
+      "family": "call-kept"
+    },
+    {
       "store": "server:call_video_deletion",
       "class": "record",
-      "growth": "Per step of a week of the call the owner lets go from My data (video, then the rest): one small receipt row (the week, the step, its YouTube video's id, the bytes that went, when), at most two per week, so bounded by call_week's rows; append-only, triggers abort UPDATE and DELETE, kept for good.",
+      "growth": "Per step of a week of the call the owner lets go from My data (video, then the rest): one small receipt row (the week, the step, its YouTube video's id, the bytes that went, when), at most two per week, so bounded by call_week's rows; append-only, triggers abort UPDATE and DELETE, kept for good. Frozen since paulgsc/some-ui#2918: a trigger aborts INSERT too; call_part_deletion grows instead.",
       "family": "call-kept"
     },
     {
       "store": "server:call_video_link",
       "class": "record",
-      "growth": "Per YouTube video the owner records for a week of the call: one tiny row (the week, the video's id, when), the newest standing; about one per week; append-only, triggers abort UPDATE and DELETE.",
+      "growth": "Per YouTube video the owner records for a week of the call: one tiny row (the week, the video's id, when), the newest standing; about one per week; append-only, triggers abort UPDATE and DELETE. Frozen since paulgsc/some-ui#2918: a trigger aborts INSERT too; call_part_link grows instead.",
       "family": "call-kept"
     },
     {
