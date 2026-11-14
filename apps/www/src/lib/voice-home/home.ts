@@ -84,10 +84,15 @@ function pathOf(note: VoiceOut): string {
   return `/voice-notes/${encodeURIComponent(note.id)}?${query.toString()}`
 }
 
+/**
+ * Sends each copy waiting over `send`, which reaches the home of `pairing`:
+ * what home says it holds is that pairing's word (HP1, `./model`).
+ */
 export async function exchangeVoice(
   port: VoiceHomePort,
   send: HomeCall,
-  deleted: DeletedPort
+  deleted: DeletedPort,
+  pairing: string
 ): Promise<HomeExchanged> {
   for (const note of port.state().waiting) {
     if (heldBack(deleted, note.id)) continue
@@ -148,7 +153,7 @@ export async function exchangeVoice(
     if (held.sha256 !== sha256) {
       return unexpectedAnswer("a voice note", answer.status)
     }
-    port.answered({ kind: "held", id: note.id })
+    port.answered({ kind: "held", id: note.id, pairing })
   }
   return { kind: "synced" }
 }

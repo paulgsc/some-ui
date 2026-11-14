@@ -12,6 +12,7 @@ import {
   pacificDay,
   pacificMinutes,
   parseIsoWeek,
+  weekAround,
   weekOf,
 } from "@core-utils/lib/date-utils"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -223,8 +224,28 @@ describe("ISO weeks", () => {
   it("starts a week on its Monday, and refuses a week that is not one", () => {
     expect(isoWeekMonday("2026-W46")).toBe("2026-11-09")
     expect(isoWeekMonday("2026-W01")).toBe("2025-12-29")
+    expect(isoWeekMonday("2026-W53")).toBe("2026-12-28")
+    expect(isoWeekMonday("2027-W01")).toBe("2027-01-04")
     expect(() => isoWeekMonday("2025-W53")).toThrow(RangeError)
     expect(() => isoWeekMonday("2026-46")).toThrow(RangeError)
     expect(parseIsoWeek("2026-W53")).toEqual({ year: 2026, week: 53 })
+  })
+})
+
+describe("weekAround", () => {
+  it("opens the owner's week Monday 00:00 and makes it due Sunday 23:59, across a change of offset", () => {
+    expect(weekAround(new Date("2026-11-16T11:41:00Z"))).toEqual({
+      id: "2026-w47",
+      monday: "2026-11-16",
+      sunday: "2026-11-22",
+      opens: "2026-11-16T00:00:00-08:00",
+      due: "2026-11-22T23:59:00-08:00",
+    })
+    // Sunday 1 November 2026 is the day daylight saving ends.
+    expect(weekAround(new Date("2026-10-26T10:41:00Z"))).toMatchObject({
+      id: "2026-w44",
+      opens: "2026-10-26T00:00:00-07:00",
+      due: "2026-11-01T23:59:00-08:00",
+    })
   })
 })

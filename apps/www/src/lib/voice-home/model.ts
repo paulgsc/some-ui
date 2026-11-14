@@ -16,6 +16,46 @@
  * standing is written (`lib/voice-marks`), with when, and kept even after
  * the note leaves this phone, until home takes the mark or never can. Home
  * takes it only for a note it holds (`marksDue`).
+ *
+ * **HP1: home's word that it holds a note counts only under the pairing
+ * that said it.**
+ *
+ * - _Claim:_ in this record, a note reads as held (`held`, `heldAt`,
+ *   `settled`, `keptIn`, `marksDue`, and through them every store that lets
+ *   audio go on what home holds, LG1) only if home said it holds that note
+ *   under the pairing this phone holds now; while the phone is unpaired none
+ *   reads as held, and what an earlier pairing's home said is kept, never
+ *   deleted, and read again only if that pairing comes back. A pairing id
+ *   is made at each pairing, so it comes back only when the phone could not
+ *   read its pairing for a while; Unpair and pair again, even with the same
+ *   home, is a new pairing, which reads nothing held and is sent again what
+ *   is still on the phone.
+ * - _Family:_ every sequence of pairing changes (paired with one home, then
+ *   unpaired, paired with another home or with a reset one, or the first
+ *   pairing's id back) × where each note was when it changed (waiting,
+ *   held, refused, not copied) × an answer from home heard after the
+ *   pairing changed under its run × a record written before this was
+ *   noted, first seen paired or unpaired.
+ * - _Proof:_ `__tests__/model.test.ts` ("HP1": every pairing change from
+ *   every holding, a late answer, and an earlier build's record) and
+ *   `__tests__/runtime.test.ts` ("HP1": the store follows the pairing it is
+ *   handed, steps nothing while it is read, and keeps each home's word
+ *   across a relaunch; a word heard late keeps the copy's audio). The desks
+ *   read where a take is through `keptIn`
+ *   (`lib/takes-desk/__tests__/runtime.test.ts`'s "MIC3" test), so none
+ *   another pairing's home holds makes room at a cap.
+ * - _Tolerance:_ a record written before HP1 noted no pairing: what it says
+ *   home holds is taken as the word of the first pairing this phone is seen
+ *   under after it, or, when it is first seen unpaired, kept as no
+ *   pairing's word (C288); while the link is still read it reads as held. A phone re-paired
+ *   with another home before that build reads the old home's word as the
+ *   new one's. Until the voice lane hands the record the
+ *   home link's pairing (`follow`: at the app shell's mount, or a run), it
+ *   reads under the pairing it last followed, as stored. Home's refusals
+ *   (`refused`) and a game bite's own "on home" stamp are not this
+ *   record's held word and stay across a change of pairing (#2955). A build
+ *   before HP1, installed over this one, reads no `others` and its first
+ *   write drops them.
  */
 import type { HomeExchanged } from "@some-ui/core-utils"
 import { assertNever, isRecord } from "@some-ui/core-utils"
@@ -35,6 +75,7 @@ export const VOICE_OFS = [
   "lens",
   "leetype",
   "rust-round",
+  "interview",
 ] as const
 
 type VoiceOf = (typeof VOICE_OFS)[number]
@@ -50,7 +91,9 @@ export type VoiceOut = {
    * answer's `idea:<idea>:<question>`), how a
    * soundbite came to be recorded (its `context.source`), the grammar-lens
    * line read aloud, LeetType's session file and screen (`<file>:<screen>`),
-   * the Rust Rounds card (`@some-ui/rust-rounds`' `homeRef`).
+   * the Rust Rounds card (`@some-ui/rust-rounds`' `homeRef`), the interview
+   * week's question (`<week>:<question>`) or teleprompter read
+   * (`<week>:read:<card>`).
    */
   readonly ref: string
   /** When it was recorded, ISO 8601. */
@@ -110,10 +153,21 @@ export type AsideState = {
 
 export const NO_ASIDE: AsideState = { owed: [], answered: [] }
 
+/** What one pairing's home holds, as this phone heard it (HP1). */
+type Holding = {
+  readonly held: ReadonlyArray<string>
+  readonly heldAt: Readonly<Record<string, string>>
+}
+
 export type VoiceHomeState = {
   /** Copied for home and not held there yet, oldest first. */
   readonly waiting: ReadonlyArray<VoiceOut>
-  /** What home holds, in the order it said so. */
+  /**
+   * The pairing whose home's word `held` and `heldAt` are (HP1): the one this
+   * phone holds now, or null while it holds none.
+   */
+  readonly pairing: string | null
+  /** What the home of `pairing` holds, in the order it said so. */
   readonly held: ReadonlyArray<string>
   /**
    * When this phone heard home say it holds each note, ISO 8601 (MIC3): what
@@ -121,6 +175,8 @@ export type VoiceHomeState = {
    * none, and nothing here guesses one.
    */
   readonly heldAt: Readonly<Record<string, string>>
+  /** What each other pairing's home holds, by pairing id (HP1). */
+  readonly others: Readonly<Record<string, Holding>>
   /** What home will never hold, with why. */
   readonly refused: ReadonlyArray<VoiceRefusal>
   /**
@@ -134,23 +190,35 @@ export type VoiceHomeState = {
 
 export const INITIAL_VOICE_HOME: VoiceHomeState = {
   waiting: [],
+  pairing: null,
   held: [],
   heldAt: {},
+  others: {},
   refused: [],
   roomless: [],
   aside: NO_ASIDE,
 }
 
-/** What home said of a note: it holds it, or it never will. */
+/** What home said of a note: it holds it, under `pairing` (HP1), or it never will. */
 export type NoteAnswered =
-  | { readonly kind: "held"; readonly id: string }
+  | { readonly kind: "held"; readonly id: string; readonly pairing: string }
   | { readonly kind: "refused"; readonly id: string; readonly why: string }
 
 export type VoiceHomeEvent =
   | { readonly kind: "copied"; readonly note: VoiceOut }
   | { readonly kind: "roomless"; readonly id: string }
-  /** Home holds it, as this phone heard at `at` (ISO 8601). */
-  | { readonly kind: "held"; readonly id: string; readonly at: string }
+  /**
+   * Home holds it, as this phone heard at `at` (ISO 8601), under `pairing`
+   * (HP1).
+   */
+  | {
+      readonly kind: "held"
+      readonly id: string
+      readonly at: string
+      readonly pairing: string
+    }
+  /** The phone holds this pairing now, or none (HP1). */
+  | { readonly kind: "paired"; readonly pairing: string | null }
   | { readonly kind: "refused"; readonly id: string; readonly why: string }
   /** The owner set this note aside at `at`, kept in `from`. */
   | {
@@ -228,6 +296,64 @@ const without = (
   id: string
 ): ReadonlyArray<string> => ids.filter((other) => other !== id)
 
+/** `a` with what `b` holds after it, each note once, its first time kept. */
+function merged(a: Holding, b: Holding): Holding {
+  const seen = new Set(a.held)
+  return {
+    held: [...a.held, ...b.held.filter((id) => !seen.has(id))],
+    heldAt: { ...b.heldAt, ...a.heldAt },
+  }
+}
+
+/**
+ * Where an earlier build's word goes when the first pairing this phone is
+ * seen under is none (C288): a key no pairing id takes (they are UUIDs), so
+ * it is kept and never read as held.
+ */
+export const UNKNOWN_PAIRING = ""
+
+/**
+ * The record under `pairing` (HP1): what the pairing it was under holds goes
+ * to `others`, and what `pairing`'s home was heard to hold comes back (an
+ * earlier build's word: `UNKNOWN_PAIRING`).
+ */
+function repaired(
+  state: VoiceHomeState,
+  pairing: string | null
+): VoiceHomeState {
+  if (pairing === null && state.pairing === null) {
+    if (state.held.length === 0) return state
+    return {
+      ...state,
+      held: [],
+      heldAt: {},
+      others: {
+        ...state.others,
+        [UNKNOWN_PAIRING]: merged(
+          state.others[UNKNOWN_PAIRING] ?? { held: [], heldAt: {} },
+          { held: state.held, heldAt: state.heldAt }
+        ),
+      },
+    }
+  }
+  if (pairing === state.pairing) return state
+  const current: Holding = { held: state.held, heldAt: state.heldAt }
+  const others: Record<string, Holding> = { ...state.others }
+  let next: Holding = { held: [], heldAt: {} }
+  if (state.pairing === null) {
+    next = current
+  } else if (current.held.length > 0) {
+    others[state.pairing] = Object.hasOwn(others, state.pairing)
+      ? merged(others[state.pairing], current)
+      : current
+  }
+  if (pairing !== null && Object.hasOwn(others, pairing)) {
+    next = merged(others[pairing], next)
+    delete others[pairing]
+  }
+  return { ...state, pairing, held: next.held, heldAt: next.heldAt, others }
+}
+
 export function stepVoiceHome(
   state: VoiceHomeState,
   event: VoiceHomeEvent
@@ -247,16 +373,26 @@ export function stepVoiceHome(
       }
       return { ...state, roomless: [...state.roomless, event.id] }
     }
+    case "paired": {
+      return repaired(state, event.pairing)
+    }
     case "held":
     case "refused": {
       if (!state.waiting.some((note) => note.id === event.id)) return state
+      // A word heard after the pairing changed is another home's: the copy
+      // waits, and goes to this one (HP1).
+      if (event.kind === "held" && event.pairing !== state.pairing) {
+        return state
+      }
       const waiting = state.waiting.filter((note) => note.id !== event.id)
       return event.kind === "held"
         ? {
             ...state,
             waiting,
-            held: [...state.held, event.id],
-            heldAt: { ...state.heldAt, [event.id]: event.at },
+            ...merged(
+              { held: state.held, heldAt: state.heldAt },
+              { held: [event.id], heldAt: { [event.id]: event.at } }
+            ),
           }
         : {
             ...state,
@@ -290,7 +426,11 @@ export function stepVoiceHome(
     }
     case "gone": {
       const gone = new Set(event.ids)
-      const held = new Set(state.held)
+      // A mark is owed to whichever home holds its note, this pairing's or not.
+      const held = new Set([
+        ...state.held,
+        ...Object.values(state.others).flatMap((holding) => holding.held),
+      ])
       const waiting = new Set(state.waiting.map((note) => note.id))
       const owed = state.aside.owed.filter(
         (mark) =>
@@ -433,6 +573,32 @@ function heldAtOf(value: unknown): Record<string, string> | null {
   return heldAt
 }
 
+/** One pairing's word as stored, or null for one this build cannot read. */
+function holdingOf(value: unknown): Holding | null {
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.held) ||
+    !value.held.every(isString)
+  ) {
+    return null
+  }
+  const heldAt = heldAtOf(value.heldAt)
+  return heldAt === null ? null : { held: value.held, heldAt }
+}
+
+/** The record's `others`, or none for one written before HP1. */
+function othersOf(value: unknown): Record<string, Holding> | null {
+  if (value === undefined) return {}
+  if (!isRecord(value)) return null
+  const others: Record<string, Holding> = {}
+  for (const [pairing, stored] of Object.entries(value)) {
+    const holding = holdingOf(stored)
+    if (holding === null) return null
+    others[pairing] = holding
+  }
+  return others
+}
+
 function isRefusal(value: unknown): value is VoiceRefusal {
   return isRecord(value) && isString(value.id) && isString(value.why)
 }
@@ -477,8 +643,6 @@ export function parseVoiceHome(raw: string): VoiceHomeState | null {
     !isRecord(value) ||
     !Array.isArray(value.waiting) ||
     !value.waiting.every(isOut) ||
-    !Array.isArray(value.held) ||
-    !value.held.every(isString) ||
     !Array.isArray(value.refused) ||
     !value.refused.every(isRefusal) ||
     !Array.isArray(value.roomless) ||
@@ -486,13 +650,18 @@ export function parseVoiceHome(raw: string): VoiceHomeState | null {
   ) {
     return null
   }
-  const heldAt = heldAtOf(value.heldAt)
+  const holding = holdingOf(value)
+  const others = othersOf(value.others)
   const aside = asideOf(value.aside)
-  if (heldAt === null || aside === null) return null
+  if (holding === null || others === null || aside === null) return null
+  const pairing = value.pairing ?? null
+  if (pairing !== null && !isString(pairing)) return null
   return {
     waiting: value.waiting,
-    held: value.held,
-    heldAt,
+    pairing,
+    held: holding.held,
+    heldAt: holding.heldAt,
+    others,
     refused: value.refused,
     roomless: value.roomless,
     aside,

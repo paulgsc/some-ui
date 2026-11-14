@@ -34,7 +34,9 @@
  *   per open or drag down, and on the overview one `GET /subjects/me/kept`
  *   of the record kept for good, MD2b), and what home deleted for good
  *   (`lib/home-link/deleted-read`, MD3, whose read sends one
- *   `GET /voice-notes/deleted` per open or drag down of its Deleted page).
+ *   `GET /voice-notes/deleted` per open or drag down of its Deleted page),
+ *   and, per Play of a recording whose audio isn't on this phone, for its
+ *   audio (`lib/home-link/voice-audio`, MD8).
  *   Studio's Takes on home (`lib/take-library`, ST32) asks home for the
  *   takes it keeps (`lib/home-link/takes-read`, whose read sends one
  *   `GET /voice-notes/takes` per open, Try again, search or Show the
@@ -944,7 +946,7 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(callers).toEqual(["lib/idea-home/index.ts"])
   })
 
-  it("sends nothing from the read of a note's audio but one GET of /voice-notes/:id/audio, and only the voice lane and Takes on home read it (RR6, ST32)", () => {
+  it("sends nothing from the read of a note's audio but one GET of /voice-notes/:id/audio, and only the voice lane, Takes on home and My data read it (RR6, ST32, MD8)", () => {
     expect(sendCalls(AUDIO_READ, read(AUDIO_READ))).toEqual(AUDIO_SENDS)
     const readers = sourceFiles()
       .filter((f) => !isTestFile(f))
@@ -955,6 +957,7 @@ describe("LA8: the phone reaches home through one module", () => {
       )
     expect(readers).toEqual([
       "lib/home-link/voice-copy.ts",
+      "lib/my-data/index.ts",
       "lib/take-library/index.ts",
     ])
   })

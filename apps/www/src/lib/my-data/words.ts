@@ -10,7 +10,7 @@ import { FEED_WORDS } from "@/lib/call-videos/words"
 
 import type { DeletableKind, ReceiptsReading } from "./deleting"
 import { isDeletableKind } from "./deleting"
-import type { HomeReading, Of, Where } from "./model"
+import type { Heard, HomeReading, Of, Where } from "./model"
 import { isKind } from "./model"
 import type { RecordHeld, RecordKind, RecordReading } from "./record"
 
@@ -25,6 +25,7 @@ export const KIND_NAMES: Readonly<Record<Of, string>> = {
   soundbite: "Soundbites",
   jobs: "Jobs notes",
   "rust-round": "Rust Rounds notes",
+  interview: "Interview takes",
 }
 
 /** Where a recording is kept. */
@@ -134,6 +135,12 @@ export const MY_DATA = {
     empty: "None of these yet.",
     play: (when: string): string => `Play the recording of ${when}`,
     stop: (when: string): string => `Stop the recording of ${when}`,
+    /** While its audio is read, here or from home (MD8). */
+    fetching: (when: string): string => `Getting the recording of ${when}`,
+    /** A row home holds and gives no audio back for. */
+    noPlay: "Its audio stays on home.",
+    /** Said over the list when a Play's audio didn't come. */
+    missed: "Couldn't play that recording just now. Try again in a moment.",
     newest: (shown: number, total: number): string =>
       `Showing the newest ${shown} of ${total}.`,
   },
@@ -189,10 +196,57 @@ export function kindLead(
   return since === null ? kept : `${kept} · since ${onDay(since)}`
 }
 
-/** One recording's line in a kind's list: `1 Nov · 21:12 · 288.0 KB`. */
-export function itemLine(at: string, bytes: number): string {
+/** How long a recording is: `42 s`, `3 min 5 s`. */
+export function lengthOf(ms: number): string {
+  const seconds = Math.max(1, Math.round(ms / 1000))
+  const minutes = Math.floor(seconds / 60)
+  const rest = seconds % 60
+  if (minutes === 0) return `${rest} s`
+  return rest === 0 ? `${minutes} min` : `${minutes} min ${rest} s`
+}
+
+/**
+ * When a recording was made, and how long it is once home heard it, in a
+ * kind's list (MD8): `Recorded 1 Nov at 21:12 · 42 s long` (C230).
+ */
+export function itemLine(at: string, durationMs: number | null): string {
   const when = new Date(at)
-  return `${shortDay.format(when)} · ${clock.format(when)} · ${formatSize(bytes)}`
+  const recorded = `Recorded ${shortDay.format(when)} at ${clock.format(when)}`
+  return durationMs === null
+    ? recorded
+    : `${recorded} · ${lengthOf(durationMs)} long`
+}
+
+/** Where a recording is, and its room: `On home · 288.0 KB`. */
+export function itemWhere(where: Where, bytes: number): string {
+  return `${WHERE_WORDS[where]} · ${formatSize(bytes)}`
+}
+
+/**
+ * What home heard in a recording home holds (MD8): its first words, in
+ * quotes, or that it heard none, or not yet. Null for one only on this
+ * phone, which home hasn't had to hear.
+ */
+export function heardLine(heard: Heard, where: Where): string | null {
+  switch (heard.kind) {
+    case "words": {
+      return heard.cut ? `“${heard.text}…”` : `“${heard.text}”`
+    }
+    case "silent": {
+      return "Home heard no words in it."
+    }
+    case "notYet": {
+      return where === "home" || where === "aside"
+        ? "Home hasn't heard it yet."
+        : null
+    }
+    case "unsaid": {
+      return null
+    }
+    default: {
+      return assertNever(heard)
+    }
+  }
 }
 
 /** One recording's name, for a screen reader: `1 Nov 2026, 21:12`. */
@@ -260,6 +314,8 @@ const RECEIPT_PARTS: Readonly<Record<string, string>> = {
   "mailbox copy": "a copy of its words in the Jobs mailbox",
   "drive copy": "its copy in Drive",
   idea: "the idea it answered",
+  // Its moves along Studio's conveyor (CONVEYOR1, paulgsc/server#839).
+  "conveyor history": "each move it made along the conveyor",
 }
 
 /** A receipt's list of what went or stayed, as a sentence: `the recording and home's words for it`. */
@@ -438,4 +494,51 @@ export const CALL_DELETING = {
   notHeld: "Home doesn't hold this one.",
   forgotten: "This phone isn't paired with home now, so nothing was deleted.",
   unanswered: "Home didn't answer, so nothing was deleted.",
+} as const
+
+/**
+ * My data's Korean word sets page (MD7, #2496): each read-aloud word set
+ * kept on this phone, from a routine scene or a picked file, and Archive or
+ * Bring back. An
+ * archived set is kept whole; only the owner archives one (C232).
+ */
+export const WORD_SETS = {
+  /** The overview's way in. */
+  row: "Korean word sets",
+  rowLine: "Archive the sets you're done reading aloud",
+  title: "Korean word sets",
+  lead: "Each word set on this phone for reading aloud, from the routine's scenes or a file you picked. Archiving one takes it out of Read aloud and Ready for you and frees its place. It stays on this phone, and so do your counts on its sentences and each word's pace. Bring it back any time.",
+  /** What a drag down reads again. */
+  pullWhat: "this phone's word sets",
+  reading: "Reading this phone's word sets…",
+  unread:
+    "This phone's word sets couldn't be read just now. Drag down to try again.",
+  none: "No word sets on this phone yet. Opening a scene from the routine, or picking a word set file, adds one.",
+  inUse: (n: number, limit: number): string =>
+    `In use · ${String(n)} of ${String(limit)}`,
+  noneInUse: "None in use. Bring one back to read it aloud again.",
+  archivedTitle: "Archived",
+  added: (at: string): string => `Added ${onDay(at)}`,
+  opened: (at: string | null): string =>
+    at === null ? "Not opened yet" : `First opened ${onDay(at)}`,
+  archivedOn: (at: string): string => `Archived ${onDay(at)}`,
+  sentences: (n: number): string => counted(n, "sentence"),
+  /** The hint on a set first opened 30 or more days ago; the phone keeps only the first open. */
+  longAgo:
+    "First opened a month or more ago. Archive it if you're done with it.",
+  archive: "Archive",
+  archiveName: (title: string): string => `Archive ${title}`,
+  bringBack: "Bring back",
+  bringBackName: (title: string): string => `Bring back ${title}`,
+  /** Under "Archived" when every place in use is taken. */
+  full: (limit: number): string =>
+    `All ${String(limit)} places are in use. Archive a set to bring one back.`,
+  said: {
+    archived: (title: string): string =>
+      `Archived "${title}". It's kept on this phone, out of Read aloud.`,
+    broughtBack: (title: string): string => `"${title}" is back in Read aloud.`,
+    notKept: "This phone couldn't keep that just now, so nothing changed.",
+    noRoom: (limit: number): string =>
+      `All ${String(limit)} places are in use, so it stays archived. Archive another set first.`,
+  },
 } as const

@@ -12,15 +12,18 @@ import {
   CALL_DELETING,
   DELETABLE_NAMES,
   DELETING,
+  heardLine,
   homeLine,
   itemLine,
   itemName,
+  itemWhere,
   KEPT_FOR_GOOD,
   keptLine,
   keptNote,
   KIND_NAMES,
   kindLead,
   kindLine,
+  lengthOf,
   MY_DATA,
   receiptKind,
   receiptParts,
@@ -28,6 +31,7 @@ import {
   receiptsLine,
   unreadLine,
   WHERE_WORDS,
+  WORD_SETS,
 } from "@/lib/my-data/words"
 
 /** Every string in `value`, however deep. */
@@ -49,6 +53,19 @@ describe("My data's words", () => {
   it("never name the machinery", () => {
     const said = [
       ...strings(MY_DATA),
+      ...strings(WORD_SETS),
+      WORD_SETS.inUse(3, 50),
+      WORD_SETS.added(AT),
+      WORD_SETS.opened(AT),
+      WORD_SETS.opened(null),
+      WORD_SETS.archivedOn(AT),
+      WORD_SETS.sentences(1),
+      WORD_SETS.archiveName("Cafe"),
+      WORD_SETS.bringBackName("Cafe"),
+      WORD_SETS.full(50),
+      WORD_SETS.said.archived("Cafe"),
+      WORD_SETS.said.broughtBack("Cafe"),
+      WORD_SETS.said.noRoom(50),
       ...strings(KIND_NAMES),
       ...strings(WHERE_WORDS),
       ...Object.values(KEPT_FOR_GOOD),
@@ -62,15 +79,53 @@ describe("My data's words", () => {
         .filter((line): line is string => line !== null),
       MY_DATA.kind.play(itemName(AT)),
       MY_DATA.kind.stop(itemName(AT)),
+      MY_DATA.kind.fetching(itemName(AT)),
       MY_DATA.kind.newest(5, 8),
       ...[unreadLine(["studio"]), unreadLine(["studio", "soundbite"])].filter(
         (line): line is string => line !== null
       ),
       kindLine(4, AT, true),
       kindLead(4, 2_048, AT),
-      itemLine(AT, 2_048),
+      itemLine(AT, null),
+      itemLine(AT, 42_000),
+      itemWhere("home", 2_048),
+      ...(["home", "phone"] as const).flatMap((where) =>
+        (
+          [
+            { kind: "silent" },
+            { kind: "notYet" },
+            { kind: "words", text: "a word", cut: false },
+          ] as const
+        ).map((heard) => heardLine(heard, where) ?? "")
+      ),
     ]
     expect(said.filter((text) => MACHINERY.test(text))).toEqual([])
+  })
+
+  it("say when a recording was made apart from how long it is (MD8, MDL1)", () => {
+    expect(lengthOf(0)).toBe("1 s")
+    expect(lengthOf(42_400)).toBe("42 s")
+    expect(lengthOf(60_000)).toBe("1 min")
+    expect(lengthOf(185_000)).toBe("3 min 5 s")
+    expect(itemLine(AT, null)).toMatch(/^Recorded 20 Oct at \d\d:\d\d$/)
+    expect(itemLine(AT, 42_000)).toMatch(
+      /^Recorded 20 Oct at \d\d:\d\d · 42 s long$/
+    )
+  })
+
+  it("say what home heard only of a recording home holds (MD8, MDL1)", () => {
+    expect(
+      heardLine({ kind: "words", text: "hello there", cut: false }, "home")
+    ).toBe("“hello there”")
+    expect(
+      heardLine({ kind: "words", text: "hello there", cut: true }, "home")
+    ).toBe("“hello there…”")
+    expect(heardLine({ kind: "notYet" }, "aside")).toBe(
+      "Home hasn't heard it yet."
+    )
+    expect(heardLine({ kind: "notYet" }, "phone")).toBeNull()
+    expect(heardLine({ kind: "notYet" }, "going")).toBeNull()
+    expect(heardLine({ kind: "unsaid" }, "home")).toBeNull()
   })
 
   it("never name the machinery when deleting, nor on a receipt (MD3)", () => {
@@ -97,6 +152,7 @@ describe("My data's words", () => {
         .map(receiptsLine)
         .filter((line): line is string => line !== null),
       receiptParts(["recording", "words", "set-aside mark"]),
+      receiptParts(["recording", "conveyor history"]),
       receiptParts(["mailbox copy", "drive copy", "a newer part"]),
       receiptParts([]),
       receiptKind("studio"),
@@ -108,7 +164,9 @@ describe("My data's words", () => {
     expect(said.filter((text) => MACHINERY.test(text))).toEqual([])
     // Home's fixed words never reach the screen as they are.
     expect(
-      said.filter((text) => /set-aside mark|mailbox copy|drive copy/.test(text))
+      said.filter((text) =>
+        /set-aside mark|mailbox copy|drive copy|conveyor history/.test(text)
+      )
     ).toEqual([])
   })
 
@@ -134,6 +192,15 @@ describe("My data's words", () => {
   it("say what went and stayed as a sentence", () => {
     expect(receiptParts(["recording", "words"])).toBe(
       "The recording and home's words for it"
+    )
+    expect(receiptParts(["recording", "conveyor history"])).toBe(
+      "The recording and each move it made along the conveyor"
+    )
+    // The whole receipt home sends for a take heard, let go and moved.
+    expect(
+      receiptParts(["recording", "words", "set-aside mark", "conveyor history"])
+    ).toBe(
+      "The recording, home's words for it, its Let go mark and each move it made along the conveyor"
     )
     expect(receiptParts([])).toBe("Nothing else")
   })

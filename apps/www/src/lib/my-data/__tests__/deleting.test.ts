@@ -42,7 +42,9 @@ const ITEM: KindItem = {
   at: "2026-11-01T10:00:00.000Z",
   bytes: 120,
   where: "home",
-  playable: true,
+  plays: "here",
+  durationMs: null,
+  heard: { kind: "notYet" },
   deletable: true,
 }
 

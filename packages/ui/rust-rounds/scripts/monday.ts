@@ -4,29 +4,15 @@
  * the values file between `prepare` and `finish`.
  */
 import { spawnSync } from "node:child_process"
-import {
-  mkdir,
-  mkdtemp,
-  readdir,
-  readFile,
-  rm,
-  writeFile,
-} from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { parseArgs } from "node:util"
 import type { RustcRun } from "@rust-rounds/lib/formats"
-import type { MailboxFile, Prepared } from "@rust-rounds/lib/monday/bundle"
+import type { Prepared } from "@rust-rounds/lib/monday/bundle"
 import { prepare } from "@rust-rounds/lib/monday/bundle"
 import { finish } from "@rust-rounds/lib/monday/finish"
-import type { Mailbox } from "@rust-rounds/lib/monday/mailbox"
-import {
-  get,
-  list,
-  noteOfTranscript,
-  notesNamed,
-  put,
-} from "@rust-rounds/lib/monday/mailbox"
+import { noteOfTranscript, notesNamed } from "@rust-rounds/lib/monday/mailbox"
 import { indexWeeks, WeekRecordSchema } from "@rust-rounds/lib/monday/record"
 import type { Ran } from "@rust-rounds/lib/monday/rustc"
 import {
@@ -35,11 +21,16 @@ import {
   RUSTC_FLAGS,
   toolchainOf,
 } from "@rust-rounds/lib/monday/rustc"
-import type { DueConcept } from "@rust-rounds/lib/monday/topics"
 import { ValuesSchema } from "@rust-rounds/lib/monday/values"
 import {
   fail,
+  get,
   here,
+  jsonFilesIn,
+  jsonText,
+  list,
+  mailboxFromEnv,
+  put,
   readJson,
   Refused,
   runCommand,
@@ -48,31 +39,10 @@ import { z } from "zod"
 
 const USAGE = [
   "usage: monday pull --to <dir>",
-  "       monday prepare --from <dir> [--now <instant>] [--due <file>]",
+  "       monday prepare --from <dir> [--now <instant>]",
   "       monday finish --from <dir>",
   "       monday put --from <dir>",
 ]
-
-const json = (value: unknown): string => `${JSON.stringify(value, null, 2)}\n`
-
-function mailboxFromEnv(): Mailbox {
-  const url = process.env["JOBS_MAILBOX_URL"]
-  const token = process.env["JOBS_MAILBOX_TOKEN"]
-  if (url === undefined || url === "" || token === undefined || token === "") {
-    return fail(["JOBS_MAILBOX_URL and JOBS_MAILBOX_TOKEN must be set"])
-  }
-  return { url: url.replace(/\/+$/, ""), token, fetch }
-}
-
-async function filesIn(dir: string): Promise<Array<MailboxFile>> {
-  const names = await readdir(dir).catch(() => [])
-  return Promise.all(
-    names
-      .filter((name) => name.endsWith(".json"))
-      .sort()
-      .map(async (name) => ({ name, body: await readJson(join(dir, name)) }))
-  )
-}
 
 /** The newest of home's Rust Rounds indexes: the greatest name, as the README says. */
 const RUST_INDEX = /^index-rust-\d{8}T\d{9}Z\.json$/
@@ -94,18 +64,18 @@ async function pull(dir: string): Promise<void> {
   const weeks =
     index === undefined ? [] : indexWeeks(await get(mailbox, "index", index))
   for (const week of weeks) {
-    await writeFile(join(dir, "records", `${week.week}.json`), json(week))
+    await writeFile(join(dir, "records", `${week.week}.json`), jsonText(week))
   }
   let briefCount = 0
   for (const item of await list(mailbox, "brief")) {
     if (!/^rust-(week|essay)-/.test(item.name)) continue
     await writeFile(
       join(dir, "brief", item.name),
-      json(await get(mailbox, "brief", item))
+      jsonText(await get(mailbox, "brief", item))
     )
     briefCount += 1
   }
-  const records = (await filesIn(join(dir, "records"))).flatMap((file) => {
+  const records = (await jsonFilesIn(join(dir, "records"))).flatMap((file) => {
     const parsed = WeekRecordSchema.safeParse(file.body)
     return parsed.success ? [parsed.data] : []
   })
@@ -116,7 +86,7 @@ async function pull(dir: string): Promise<void> {
     if (note === null || !wanted.has(note)) continue
     await writeFile(
       join(dir, "transcript", item.name),
-      json(await get(mailbox, "transcript", item))
+      jsonText(await get(mailbox, "transcript", item))
     )
     heard += 1
   }
@@ -125,41 +95,25 @@ async function pull(dir: string): Promise<void> {
   )
 }
 
-const DueSchema = z.array(z.strictObject({ id: z.string(), name: z.string() }))
-
 /** What `prepare` makes of the run's folder at `now`. */
-async function preparedIn(
-  dir: string,
-  now: Date,
-  due: ReadonlyArray<DueConcept> | null
-): Promise<Prepared> {
+async function preparedIn(dir: string, now: Date): Promise<Prepared> {
   return prepare({
     now,
-    brief: await filesIn(join(dir, "brief")),
-    records: (await filesIn(join(dir, "records"))).map((file) => file.body),
-    transcripts: await filesIn(join(dir, "transcript")),
-    due,
+    brief: await jsonFilesIn(join(dir, "brief")),
+    records: (await jsonFilesIn(join(dir, "records"))).map((file) => file.body),
+    transcripts: await jsonFilesIn(join(dir, "transcript")),
   })
 }
 
-async function prepareIn(
-  dir: string,
-  now: Date,
-  dueFile: string | undefined
-): Promise<void> {
-  let due: ReadonlyArray<DueConcept> | null = null
-  if (dueFile !== undefined) {
-    const read = DueSchema.safeParse(await readJson(here(dueFile)))
-    if (!read.success) fail([`${dueFile} isn't a list of concepts due`])
-    due = read.data
-  }
-  const { bundle } = await preparedIn(dir, now, due)
-  await writeFile(join(dir, "bundle.json"), json(bundle))
+async function prepareIn(dir: string, now: Date): Promise<void> {
+  const { bundle } = await preparedIn(dir, now)
+  await writeFile(join(dir, "bundle.json"), jsonText(bundle))
   console.log(
     [
       `essays to write: ${bundle.essays.map((e) => e.week).join(", ") || "none"}`,
       ...bundle.waiting.map((w) => `waiting: ${w.week}, ${w.why}`),
       `next week: ${bundle.next?.id ?? "already in the mailbox"}`,
+      `due a recheck: ${bundle.due.map((d) => `${d.id} (${d.why})`).join(", ") || "none"}`,
       ...bundle.unread.map((u) => `unread: ${u.name}, ${u.why}`),
     ].join("\n")
   )
@@ -221,27 +175,23 @@ async function runPrograms(values: unknown): Promise<Record<string, RustcRun>> {
  */
 async function finishIn(dir: string): Promise<void> {
   const held = z
-    .object({ now: z.iso.datetime(), due: DueSchema.nullable() })
+    .object({ now: z.iso.datetime() })
     .safeParse(await readJson(join(dir, "bundle.json")))
   if (!held.success) fail(["bundle.json isn't prepare's: run prepare again"])
-  const { bundle, history } = await preparedIn(
-    dir,
-    new Date(held.data.now),
-    held.data.due
-  )
-  if (json(bundle) !== (await readFile(join(dir, "bundle.json"), "utf8"))) {
+  const { bundle, history } = await preparedIn(dir, new Date(held.data.now))
+  if (jsonText(bundle) !== (await readFile(join(dir, "bundle.json"), "utf8"))) {
     fail(["bundle.json changed since prepare wrote it: run prepare again"])
   }
   const values = await readJson(join(dir, "values.json"))
   const runs = await runPrograms(values)
-  await writeFile(join(dir, "runs.json"), json(runs))
+  await writeFile(join(dir, "runs.json"), jsonText(runs))
   const finished = finish({ bundle, history, values, runs })
   if (!finished.ok)
     fail(["not ready:", ...finished.problems.map((p) => `- ${p}`)])
   await rm(join(dir, "out"), { recursive: true, force: true })
   await mkdir(join(dir, "out"))
   for (const file of finished.files) {
-    await writeFile(join(dir, "out", file.name), json(file.body))
+    await writeFile(join(dir, "out", file.name), jsonText(file.body))
   }
   console.log(
     ["ready:", ...finished.files.map((f) => `- ${f.name}`)].join("\n")
@@ -251,7 +201,7 @@ async function finishIn(dir: string): Promise<void> {
 /** Puts every file `finish` wrote into `brief`, the week first. */
 async function putFrom(dir: string): Promise<void> {
   const mailbox = mailboxFromEnv()
-  const files = await filesIn(join(dir, "out"))
+  const files = await jsonFilesIn(join(dir, "out"))
   files.sort(
     (a, b) =>
       Number(b.name.startsWith("rust-week-")) -
@@ -276,7 +226,6 @@ await runCommand(async () => {
       to: { type: "string" },
       from: { type: "string" },
       now: { type: "string" },
-      due: { type: "string" },
     },
   })
   const [command] = positionals
@@ -290,7 +239,7 @@ await runCommand(async () => {
       const now = values.now === undefined ? new Date() : new Date(values.now)
       if (Number.isNaN(now.getTime()))
         fail([`--now ${values.now ?? ""} isn't an instant`])
-      return prepareIn(here(values.from), now, values.due)
+      return prepareIn(here(values.from), now)
     }
     case "finish": {
       if (values.from === undefined) fail(USAGE)

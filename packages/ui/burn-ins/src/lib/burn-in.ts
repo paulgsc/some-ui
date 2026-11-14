@@ -27,6 +27,15 @@ import {
   type AuthorshipDrawing,
   type AuthorshipFrame,
 } from "./authorship"
+import {
+  badgeBoxes,
+  drawStatusBadge,
+  STATUS_BADGE_DESIGNS,
+  statusBadgeAt,
+  StatusBadgeParamsSchema,
+  type StatusBadgeDrawing,
+  type StatusBadgeFrame,
+} from "./badge"
 import { frameAt as captionFrameAt, type CaptionFrame } from "./captions/frame"
 import {
   isThemeId,
@@ -75,6 +84,7 @@ export const KINDS = [
   "authorship",
   "game-card",
   "preview-mark",
+  "status-badge",
 ] as const
 export type Kind = (typeof KINDS)[number]
 
@@ -88,6 +98,7 @@ export const DESIGNS = {
   authorship: AUTHORSHIP_DESIGNS,
   "game-card": GAME_CARD_DESIGNS,
   "preview-mark": PREVIEW_MARK_DESIGNS,
+  "status-badge": STATUS_BADGE_DESIGNS,
 } as const satisfies Record<Kind, ReadonlyArray<string>>
 
 /** Where each kind draws. */
@@ -102,6 +113,8 @@ export const REGIONS_OF = {
   "game-card": ["body"],
   // Under the safe area, where only what is never uploaded sits.
   "preview-mark": ["foot"],
+  // At the body's top left, over the scene's picture or a bare card.
+  "status-badge": ["body"],
 } as const satisfies Record<Kind, ReadonlyArray<Region>>
 
 const TimedWordSchema = z
@@ -156,6 +169,11 @@ export type Prepared =
       readonly design: (typeof PREVIEW_MARK_DESIGNS)[number]
       readonly frame: TextFrame
     }
+  | {
+      readonly kind: "status-badge"
+      readonly design: (typeof STATUS_BADGE_DESIGNS)[number]
+      readonly drawing: StatusBadgeDrawing
+    }
 
 /** What is on screen at a moment. */
 export type BurnInFrame =
@@ -185,6 +203,11 @@ export type BurnInFrame =
       readonly kind: "preview-mark"
       readonly design: (typeof PREVIEW_MARK_DESIGNS)[number]
       readonly frame: TextFrame
+    }
+  | {
+      readonly kind: "status-badge"
+      readonly design: (typeof STATUS_BADGE_DESIGNS)[number]
+      readonly frame: StatusBadgeFrame
     }
 
 const issues = (name: string, error: z.ZodError): ReadonlyArray<string> =>
@@ -320,6 +343,22 @@ export function prepare(b: BurnInData, frame: FrameSize): Parsed<Prepared> {
           }
         : c
     }
+    case "status-badge": {
+      const c = checked(
+        name,
+        STATUS_BADGE_DESIGNS,
+        b,
+        StatusBadgeParamsSchema,
+        drawStatusBadge,
+        g
+      )
+      return c.ok
+        ? {
+            ok: true,
+            value: { kind, design: c.value.design, drawing: c.value.value },
+          }
+        : c
+    }
     default: {
       return assertNever(kind)
     }
@@ -350,6 +389,13 @@ export function frameAt(p: Prepared, t: number): BurnInFrame {
         frame: authorshipAt(p.drawing, t),
       }
     }
+    case "status-badge": {
+      return {
+        kind: p.kind,
+        design: p.design,
+        frame: statusBadgeAt(p.drawing, t),
+      }
+    }
     default: {
       return assertNever(p)
     }
@@ -377,6 +423,9 @@ export function boxesOf(f: BurnInFrame): ReadonlyArray<Box> {
     }
     case "game-card": {
       return gameCardBoxes(f.frame)
+    }
+    case "status-badge": {
+      return f.frame.marks.flatMap(badgeBoxes)
     }
     default: {
       return assertNever(f)

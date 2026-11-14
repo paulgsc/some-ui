@@ -2,7 +2,7 @@
   "schema": "some-ui.storyboard/1",
   "template": {
     "id": "rust-essay",
-    "version": 1
+    "version": 2
   },
   "sample": "the sample essay, 2026-w46",
   "frames": [
@@ -254,7 +254,7 @@
       "name": "Over the weeks",
       "by": "fill",
       "said": "",
-      "ms": 34000
+      "ms": 35200
     },
     {
       "id": "next",

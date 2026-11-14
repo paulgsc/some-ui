@@ -15,15 +15,30 @@ export type RendersOutcome =
   | { readonly kind: "older" }
   | { readonly kind: "unpaired" }
 
+/** Home gave no answer to a read of its render jobs (AW1: away from home, say). */
+export class RendersUnanswered extends Error {
+  override name = "RendersUnanswered"
+}
+
 /**
  * Reads home's render jobs, asking again while the link is busy. Rejects
- * when home didn't answer or its answer couldn't be read, so a page keeps
- * the board it last read and says so.
+ * when home didn't answer (`RendersUnanswered`), the link stayed busy, or its
+ * answer couldn't be read, so a page keeps the board it last read and says so.
  */
 export async function readRenders(): Promise<RendersOutcome> {
-  const asked = await askWhileBusy(askRenders)
+  // Whether the last ask found home silent, as against the link staying busy.
+  const last = { silent: false }
+  const asked = await askWhileBusy(async () => {
+    const each = await askRenders()
+    last.silent = each.kind === "unreachable"
+    return each
+  })
   if (asked.kind === "unpaired") return asked
-  if (asked.kind === "unreachable") throw new Error("home didn't answer")
+  if (asked.kind === "unreachable") {
+    throw last.silent
+      ? new RendersUnanswered("home didn't answer")
+      : new Error("the link stayed busy")
+  }
   const read = readBoard(asked.answer)
   if (read.kind === "unreadable")
     throw new Error("home's answer was unreadable")

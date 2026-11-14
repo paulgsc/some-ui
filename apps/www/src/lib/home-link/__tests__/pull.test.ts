@@ -64,6 +64,7 @@ const pullOver = (
     watched: () => new Set(lanes),
     doc: { visibilityState: "visible" },
     free: () => Promise.resolve(),
+    lookAgain: () => undefined,
     ...over,
   }).checkAgain()
 
@@ -133,6 +134,7 @@ describe("a pull's ask of home", () => {
       watched: () => new Set([other, shown]),
       doc: { visibilityState: "visible" },
       free: () => Promise.resolve(),
+      lookAgain: () => undefined,
     })
     const heard = home.ended(shown)
     const all = home.checkAgain()
@@ -158,7 +160,18 @@ describe("a pull's ask of home", () => {
     await homeRefresher({
       watched: () => lanes,
       doc: { visibilityState: "visible" },
+      lookAgain: () => undefined,
     }).checkAgain()
     expect([first.runs, gone.runs]).toEqual([1, 0])
+  })
+
+  it("lets the link's hold away from home go before it asks (AW1)", async () => {
+    const order: Array<string> = []
+    const one = lane(() => {
+      order.push("ran")
+      return synced()
+    })
+    await pullOver([one], { lookAgain: () => order.push("look again") })
+    expect(order).toEqual(["look again", "ran"])
   })
 })

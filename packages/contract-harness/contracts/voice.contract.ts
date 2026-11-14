@@ -49,7 +49,27 @@
  * `403`. The contract run's paired phone holds no notes, so its `200` is the
  * empty answer, which the harness probes for its shape; an `of` naming no
  * kind is a `422`. Each note says whether My data may delete it
- * (`deletable`, MD3 some-ui#2477).
+ * (`deletable`, MD3 some-ui#2477), and what it is (MD8): how long, once
+ * home heard it (`durationMs`), the first words home heard (`heard`, `heardCut` when it heard more), and
+ * whether home gives its audio back to the phone (`playsBack`).
+ *
+ * Studio's takes on a conveyor (CONVEYOR1, some-ui#2873; `studio_take_move`):
+ * the phone moves a take with `POST /voice-notes/:id/station`
+ * (`apps/www/src/lib/home-link/take-stations.ts`), which names where the
+ * move was made from and the take's newest move number it saw (`seq`), so
+ * moves are ordered by number, never by a clock; home reads a take's station and history with
+ * `GET /voice-notes/:id/station`, and the takes at a station with
+ * `GET /voice-notes/conveyor?station=`. Each is any session's (a paired
+ * phone's or the owner's browser), so no session is a `401`. No probe may
+ * keep a move, so the write is pinned by refusals: a move home won't take
+ * is a `422` (checked before the take is looked for), one of a take the
+ * caller doesn't hold a `404`. A move from a station the take has left is
+ * a `409`, and a move kept the `200` `{ change, take }`; neither can be
+ * probed without a take, so both are held by the server's own test
+ * (`handlers/voice.rs`). A `404` for a take is home's JSON error, which
+ * the phone reads as the take off the conveyor (let go, or an idea's
+ * answer). `GET /voice-notes/takes` names each take's `station`,
+ * `stationAt` and `stationSeq` too (null for a take off the conveyor).
  *
  * The takes home keeps (`GET /voice-notes/takes`, ST32): Studio's Takes on
  * home asks for the newest as it opens and on Show the newest or a blank
@@ -117,9 +137,44 @@ const KeptSchema = z.object({
         size: z.number().int(),
         setAsideAt: z.string().nullable(),
         deletable: z.boolean(),
+        // Optional until paulgsc/server serves them (MD8).
+        durationMs: z.number().int().nullable().optional(),
+        heard: z.string().nullable().optional(),
+        heardCut: z.boolean().optional(),
+        playsBack: z.boolean().optional(),
       })
     )
     .nullable(),
+})
+
+/** A station on Studio's conveyor, as home names it (CONVEYOR1). */
+const StationSchema = z.enum([
+  "in-the-oven",
+  "cooking",
+  "ready-for-pickup",
+  "picked-up",
+  "canned",
+])
+
+/**
+ * The Studio takes at one station (`GET /voice-notes/conveyor?station=`,
+ * CONVEYOR1 some-ui#2873): the conveyor page's and the pickup's read. The
+ * contract run's subject holds no takes, so its `200` is the empty answer.
+ */
+const ConveyorSchema = z.object({
+  station: StationSchema,
+  takes: z.array(
+    z.object({
+      id: z.string(),
+      ref: z.string(),
+      recordedAt: z.string(),
+      movedAt: z.string().nullable(),
+      seq: z.number().int(),
+      labels: z.array(z.string()),
+      issue: z.string().nullable(),
+    })
+  ),
+  total: z.number().int(),
 })
 
 /**
@@ -145,6 +200,9 @@ const TakesSchema = z.object({
           heardAt: z.string(),
         })
         .nullable(),
+      station: StationSchema.nullable().optional(),
+      stationAt: z.string().nullable().optional(),
+      stationSeq: z.number().int().nullable().optional(),
     })
   ),
   total: z.number().int(),
@@ -375,6 +433,88 @@ export const contracts = [
     path: "/voice-notes/takes",
     summary: "a q over 200 characters is a 422, and nothing is read",
     request: { query: { q: "a".repeat(201) } },
+    expect: { status: 422 },
+  }),
+  defineContract({
+    id: "voice.station_signed_out",
+    module: "voice",
+    method: "GET",
+    path: "/voice-notes/:id/station",
+    summary:
+      "where a take is on the conveyor is a session's to read: without one it is a 401",
+    request: { path: { id: "contract-harness-does-not-exist" } },
+    expect: { status: 401 },
+  }),
+  defineContract({
+    id: "voice.station_unknown",
+    module: "voice",
+    session: true,
+    method: "GET",
+    path: "/voice-notes/:id/station",
+    summary:
+      "the station of a take the caller doesn't hold is a 404, and nothing is read",
+    request: { path: { id: "contract-harness-does-not-exist" } },
+    expect: { status: 404 },
+  }),
+  defineContract({
+    id: "voice.station_move_unknown",
+    module: "voice",
+    session: true,
+    method: "POST",
+    path: "/voice-notes/:id/station",
+    summary:
+      "a move of a take the caller doesn't hold is a 404, which the phone keeps owed for a later run, and nothing is written",
+    mutates: true,
+    request: {
+      path: { id: "contract-harness-does-not-exist" },
+      body: {
+        seq: 0,
+        from: "in-the-oven",
+        to: "cooking",
+        at: "2026-11-13T09:15:00.000Z",
+      },
+    },
+    expect: { status: 404 },
+  }),
+  defineContract({
+    id: "voice.station_move_refused",
+    module: "voice",
+    session: true,
+    method: "POST",
+    path: "/voice-notes/:id/station",
+    summary:
+      "a move back to the oven is a 422, which the phone answers for good, and nothing is written",
+    mutates: true,
+    request: {
+      path: { id: "contract-harness-does-not-exist" },
+      body: {
+        seq: 0,
+        from: "cooking",
+        to: "in-the-oven",
+        at: "2026-11-13T09:15:00.000Z",
+      },
+    },
+    expect: { status: 422 },
+  }),
+  defineContract({
+    id: "voice.conveyor",
+    module: "voice",
+    session: true,
+    method: "GET",
+    path: "/voice-notes/conveyor",
+    summary:
+      "the caller's Studio takes at a station, newest move first, and how many there are",
+    request: { query: { station: "ready-for-pickup" } },
+    expect: { status: 200, schema: ConveyorSchema },
+  }),
+  defineContract({
+    id: "voice.conveyor_bad_station",
+    module: "voice",
+    session: true,
+    method: "GET",
+    path: "/voice-notes/conveyor",
+    summary: "a station home doesn't name is a 422, and nothing is read",
+    request: { query: { station: "oven" } },
     expect: { status: 422 },
   }),
 ]
