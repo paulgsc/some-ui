@@ -1,0 +1,19 @@
+{
+  "id": "C127",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "server:nix/modules/mk-app.nix",
+    "server:nix/modules/file-host.nix",
+    "server:nix/modules/orchestrator.nix",
+    "server:nix/modules/test.nix"
+  ],
+  "chose": "Cover the NixOS modules: each reads its image from deploy/home/release.json, by tag and digest, when the configuration is evaluated, and its image option is read-only. NixOS starts the same image compose does, from the one source.",
+  "options": [
+    "Cover them: each module reads its image from the release",
+    "Retire them: delete the two oci-container modules and their tests, and stop envctl nix generating their options"
+  ],
+  "gray": "Server#795 made covering the default and retiring the owner's call alone, and the coordinator took the default when R6 started (2026-11-14). Covering keeps #408's NixOS path, which nothing uses yet, with no second source of images; retiring would remove the path and its schema-checked options outright.",
+  "undo": "Retire them as the second option says, or put a literal image back in each module and drop readOnly, which would bring back a second source of images.",
+  "refs": ["server#795", "server#787", "server#408"]
+}
