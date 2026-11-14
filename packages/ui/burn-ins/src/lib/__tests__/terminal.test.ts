@@ -99,6 +99,16 @@ describe("the terminal card", () => {
     ).not.toBeNull()
   })
 
+  it("never reads a placeholder across two lines", () => {
+    expect(valueProblem("KEY=<x\nB=sk-live-abc>")).toBe("KEY")
+    const p = terminal({
+      kicker: "KEY=<x",
+      title: "B=sk-live-abc>",
+      lines: [{ text: "x" }],
+    })
+    expect(p.ok).toBe(false)
+  })
+
   it("refuses a heading that gives a value", () => {
     const p = terminal({
       title: "Set API_KEY=sk-live-abc",

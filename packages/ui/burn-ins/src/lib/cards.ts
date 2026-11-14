@@ -105,7 +105,7 @@ export function cardHeading(
   p: { readonly kicker: string; readonly title: string },
   g: Geometry
 ): Parsed<TextFrame> {
-  const name = valueProblem(`${p.kicker}\n${p.title}`)
+  const name = valueProblem(p.kicker) ?? valueProblem(p.title)
   if (name !== null)
     return {
       ok: false,
@@ -144,7 +144,7 @@ function valueAt(
   const inner = text.slice(from + 1, close === -1 ? undefined : close)
   // Unquoted, a placeholder may hold spaces: read it whole.
   const head = !quoted
-    ? (/^(?:<[^<>]*>|ENC\[[^\]]*\])/.exec(text.slice(from))?.[0] ?? "")
+    ? (/^(?:<[^<>\n]*>|ENC\[[^\]\n]*\])/.exec(text.slice(from))?.[0] ?? "")
     : quote === "`"
       ? `\`${inner}\``
       : inner
@@ -158,7 +158,7 @@ function valueAt(
 }
 
 const PLACEHOLDER = (v: string): boolean =>
-  v === "" || v === "…" || /^<[^<>]*>$/.test(v) || /^ENC\[[^\]]*\]$/.test(v)
+  v === "" || v === "…" || /^<[^<>\n]*>$/.test(v) || /^ENC\[[^\]\n]*\]$/.test(v)
 
 /** The name a line gives a value, when it gives one; null when it doesn't. */
 export function valueProblem(text: string): string | null {
