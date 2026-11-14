@@ -21,7 +21,10 @@ keeps, so only the latest of each routine's stays. For the reflections routine: 
 reflection** home keeps (`reflection`), its text only, and each **drama prompt** (`prompt`),
 the next scene's prompt as the phone asked for it, its markdown only, and each **note on an
 episode** (`feedback`), the moment and categories the owner picked (SFEED6), which the routine
-files as a pending issue. For the Build Journal:
+files as a pending issue. For Studio's conveyor: each **take ready for pickup** (`pickup`), its
+id, what home heard, its labels and that move's number, never its audio or the move's comment,
+and the routine's **answer** to each (`picked`), the issue it filed the take as, which home
+records as the take's pickup (CONVEYOR3, #2875). For the Build Journal:
 the build-journal session's **list of the Studio takes Drive holds** (`drive-takes-…` in
 `brief`), SHA-256s only, so home can tell the phone which takes Drive has too. Each side
 reaches it with its own token, so the files move between them without a hand-carried step.
@@ -42,6 +45,8 @@ cloud routine ◀──GET transcript── [ mailbox ] ◀──PUT transcript�
 cloud routine ◀──GET index── [ mailbox ] ◀──PUT index── home (after each pass, when it changed)
 cloud routine ◀──GET reflection── [ mailbox ] ◀──PUT reflection── home ◀── phone (a written reflection)
 cloud routine ◀──GET prompt── [ mailbox ] ◀──PUT prompt── home ◀── phone (Ask for the next scene)
+cloud routine ◀──GET pickup── [ mailbox ] ◀──PUT pickup── home ◀── phone (a take moved to ready for pickup)
+cloud routine ──PUT picked──▶ [ mailbox ] ◀──GET picked── home ──▶ phone (picked up, with its issue)
 build journal ──PUT brief (drive-takes)──▶ [ mailbox ] ◀──GET brief── home ──▶ phone (Drive has it)
                                            [ mailbox ] ──ring──▶ home (a socket home holds open)
 ```
@@ -84,8 +89,8 @@ about it (owner, 2026-10-23):
 Nothing is deleted for good: the bytes are home's before the mailbox lets them go, and the
 `archived` row stays.
 
-A written reflection (`reflection`), a drama prompt (`prompt`) and a note on an episode
-(`feedback`) are archived the same way, except that home lists each folder only once a file it
+A written reflection (`reflection`), a drama prompt (`prompt`), a note on an episode
+(`feedback`) and a take ready for pickup (`pickup`) are archived the same way, except that home lists each folder only once a file it
 put there is old enough, and the routine cannot ask for one back (see "Who may do what"). Home's index is not archived (above, "What it keeps"): home can compute
 the same bytes again from what it keeps.
 
@@ -107,7 +112,7 @@ Every request needs `Authorization: Bearer <token>`. Every answer is JSON, or th
 | anything else                                            | `404`; a method the path does not take is `405` with `Allow`. A missing or wrong token is `401`, a token that may not do this is `403`, and storage failing is `503`.                                                                                                                                                                                   |
 
 The folders are `brief`, `decisions`, `scout`, `scene`, `drama`, `run`, `opened`, `leetype`,
-`leetype-log`, `transcript`, `index`, `reflection`, `prompt` and `feedback`. `brief` also holds the
+`leetype-log`, `transcript`, `index`, `reflection`, `prompt`, `feedback`, `pickup` and `picked`. `brief` also holds the
 build-journal session's lists of the takes Drive holds (`drive-takes-…`) and the Monday
 routine's weeks of Rust Rounds (`rust-week-…`) and the essays that answer them
 (`rust-essay-…`), which home finds in the listing it makes of
@@ -129,7 +134,8 @@ WebSocket open on `GET /v1/bell`, and the mailbox rings it there (MBP1,
 
 - **A ring** is the text `{"ring":"<folder>"}` and nothing else (MB6). It goes out after a put
   that adds a file (`201`, never an `unchanged` repeat) to a folder home reads (`brief`,
-  `scene`, `drama`, `run`, `leetype`, as paulgsc/server's `mailbox::pass::READS`), and after
+  `scene`, `drama`, `run`, `leetype` and `picked`, as paulgsc/server's `mailbox::pass::READS`,
+  which takes `picked` with home's half of CONVEYOR3), and after
   the routine opens an ask for an archived file (`202`), with the ask's folder. A ring does
   not say which of the two it is: any ring starts home's whole pass, which reads the listings
   and answers the asks, as its poll does. Home's own puts and an archive put back
@@ -145,11 +151,11 @@ WebSocket open on `GET /v1/bell`, and the mailbox rings it there (MBP1,
 
 ### Who may do what
 
-| Secret          | Role      | May                                                                                                                                                                                      |
-| --------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ROUTINE_TOKEN` | `routine` | read every folder; put `brief`, `scene`, `drama`, `run` and `leetype`; list what is archived and ask for it back, in every folder but `index`, `reflection`, `prompt` and `feedback`     |
-| `HOME_TOKEN`    | `home`    | read `brief`, `scene`, `drama`, `run` and `leetype`; put `decisions`, `scout`, `opened`, `leetype-log`, `transcript`, `index`, `reflection`, `prompt` and `feedback`; listen on the bell |
-| `ARCHIVE_TOKEN` | `archive` | read every folder; archive a file, put an archived one back and list the open asks, in every folder but `index`                                                                          |
+| Secret          | Role      | May                                                                                                                                                                                                          |
+| --------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ROUTINE_TOKEN` | `routine` | read every folder; put `brief`, `scene`, `drama`, `run`, `leetype` and `picked`; list what is archived and ask for it back, in every folder but `index`, `reflection`, `prompt`, `feedback` and `pickup`     |
+| `HOME_TOKEN`    | `home`    | read `brief`, `scene`, `drama`, `run`, `leetype` and `picked`; put `decisions`, `scout`, `opened`, `leetype-log`, `transcript`, `index`, `reflection`, `prompt`, `feedback` and `pickup`; listen on the bell |
+| `ARCHIVE_TOKEN` | `archive` | read every folder; archive a file, put an archived one back and list the open asks, in every folder but `index`                                                                                              |
 
 The routine role is every scheduled routine's: the Jobs digest, the study reflections and,
 once it is scheduled, the LeetType review each put to their own folders.
@@ -160,7 +166,8 @@ folder only once one is old enough, and never answers an ask for it: a pass with
 then makes no request for `reflection` at all. A reflection archived before the routine
 answered it is no longer offered to the routine; home still keeps it. Home holds every drama
 prompt it puts too (`drama_prompt` in `paulgsc/server`), and every note on an episode
-(`episode_note`), so neither is asked back either.
+(`episode_note`), and every move of a take (`studio_take_move`), so none of those is asked
+back either: a `pickup` is a ready-for-pickup move home keeps.
 
 Home holds two tokens. `archive` is apart from `home` so the token home uses every pass cannot
 drop a byte. A secret that is unset or empty authenticates no one, and one value set for two
@@ -205,7 +212,11 @@ role, and it is the owner's call, so it is not built.
   (the moment it was asked for, in UTC to the millisecond, as home's
   `PUT /api/v1/routine/prompts/:stamp` takes it), so the drama that answers it is the
   `drama` folder's `drama-<stamp>.json`; and `feedback` takes `feedback-<id>.json`, named for
-  the phone's id for the note (1 to 64 letters, digits, `-` or `_`). `brief` also takes `drive-takes-YYYYMMDDTHHMMSSZ.json`
+  the phone's id for the note (1 to 64 letters, digits, `-` or `_`); and `pickup` takes
+  `pickup-<note>-<seq>.json` and `picked` takes `picked-<note>-<seq>.json`, named for the
+  take's id (as a transcript's `<note>`) and the number of its ready-for-pickup move on home
+  (from 1, no leading zero), so a take moved to ready again later goes under a new name and an
+  answer is named as the pickup it answers. `brief` also takes `drive-takes-YYYYMMDDTHHMMSSZ.json`
   (MB2, the owner's route a on paulgsc/some-ui#2401), named for when the build-journal session
   listed Drive's takes folder, in UTC to the second, so each list goes under a new name.
   `brief` also takes `rust-week-YYYY-wNN.json` (MB2, RR12 paulgsc/some-ui#2687), a week of Rust
@@ -218,7 +229,7 @@ role, and it is the owner's call, so it is not built.
   must be UTF-8 JSON with no byte-order mark.
 - **Schema**: the top-level `schema` must be `some-ui.job-digest/1`, `some-ui.job-decisions/1`,
   `some-ui.job-scouts/1`, `some-ui.routine-scene/1`, `some-ui.routine-drama/1`, `some-ui.routine-run/1`,
-  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1`, `some-ui.reflection/1`, `some-ui.drama-prompt/1` or `some-ui.episode-note/1` to match the folder (and `some-ui.drive-takes/1` for a list of Drive's takes in `brief`, `some-ui.rust-week/1` for a week of Rust Rounds, `some-ui.rust-essay/1` for an essay's script). The Worker checks that and nothing deeper, except for a transcript, an index, a reflection, a prompt, a note on an episode, a list of Drive's takes and a week's `id`, which must be the name's (below); the readers validate the full shape.
+  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1`, `some-ui.reflection/1`, `some-ui.drama-prompt/1`, `some-ui.episode-note/1`, `some-ui.take-pickup/1` or `some-ui.take-picked/1` to match the folder (and `some-ui.drive-takes/1` for a list of Drive's takes in `brief`, `some-ui.rust-week/1` for a week of Rust Rounds, `some-ui.rust-essay/1` for an essay's script). The Worker checks that and nothing deeper, except for a transcript, an index, a reflection, a prompt, a note on an episode, a take ready for pickup, an answer to one, a list of Drive's takes and a week's `id`, which must be the name's (below); the readers validate the full shape.
 - **A scene** is `{"schema":"some-ui.routine-scene/1","answers":"<reflection>","title":"<the
 scene folder's name>","decks":[<read-aloud deck>,<lens deck>]}`, each deck exactly as the
   phone's word set check takes it. **A drama** is `{"schema":"some-ui.routine-drama/1",
@@ -382,6 +393,30 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
 transcript`, and one that names Drive with `a note names no Drive file`. A name that does not
   carry the body's `note` is `422`, and so is a body whose text as sent carries a `data:` URI, a
   Drive link or a run of 256 or more base64 characters, by the transcript's tests.
+- **A take ready for pickup** is
+  `{"schema":"some-ui.take-pickup/1","note","ref","heard","labels","readyAt","seq"}`
+  (CONVEYOR3, #2875): the take's id (as its transcript's `note`), the shot it belongs to (as its
+  transcript's `ref`, `<project>:<shot>:<take>`), what home heard in it (its newest transcript's
+  text when home first files the pickup, so home files one only once it has heard the take), its labels as home keeps them
+  from that move on (at most 8, each 1 to 32 printable characters with no space at either end,
+  `[]` when it has none, never `null`), when it was moved to ready for pickup (the move's `at`, an instant) and that
+  move's number on home (`seq`, from 1). A name holds one body for good, so home keeps the
+  bytes it first put and sends those same bytes on any retry; a transcript heard later does
+  not change a pickup already filed. Home puts one for each ready-for-pickup move, so the
+  routine files only what the owner marked ready. The move's comment stays home, and so does
+  the audio (owner, 2026-11-13, `C296` in `docs/calls.json`). The Worker holds this shape
+  itself: every key is required, any other key (a `comment` included) is `422`, a name that does
+  not carry the body's `note` and `seq` is `422`, and audio or a Drive file is refused by the
+  transcript's tests, with `a take carries no audio: home keeps the audio` or `a take names no
+Drive file: home keeps the audio`.
+- **An answer to a pickup** is
+  `{"schema":"some-ui.take-picked/1","note","seq","issue"}`: the take and the move it answers,
+  as the pickup's name carries them, and the issue the routine filed the take as,
+  `<owner>/<repo>#<n>` as home's `POST /voice-notes/:id/station` reads one. Home records the
+  take as picked up with that issue only while the take's newest move is still that `seq` at
+  ready for pickup, and otherwise skips it, as it skips any stale move. The Worker holds it to
+  those keys and no other, a name that carries the body's `note` and `seq`, and an `issue` of
+  that form.
 - **A list of the takes Drive holds** is
   `{"schema":"some-ui.drive-takes/1","at","takes":[{"sha256"}]}`: when the build-journal
   session listed Drive's Build Journal takes folder (an instant, which the name carries to the
@@ -570,9 +605,10 @@ how each was checked when this workspace landed.
   may do, `listen` is `true` for `home` and only `home` (the bell, MBP1,
   [#2142](https://github.com/paulgsc/some-ui/issues/2142): "the bell is `home`'s only"), and
   it holds exactly three roles: `routine` (get every folder, put `brief`, `scene`,
-  `drama`, `run` and `leetype`, ask every folder but `index`, `reflection`, `prompt` and `feedback`), `home`
-  (get `brief`, `scene`, `drama`, `run` and `leetype`, put `decisions`, `scout`, `opened`,
-  `leetype-log`, `transcript`, `index`, `reflection`, `prompt` and `feedback`) and `archive` (get every folder, move
+  `drama`, `run`, `leetype` and `picked`, ask every folder but `index`, `reflection`, `prompt`,
+  `feedback` and `pickup`), `home`
+  (get `brief`, `scene`, `drama`, `run`, `leetype` and `picked`, put `decisions`, `scout`, `opened`,
+  `leetype-log`, `transcript`, `index`, `reflection`, `prompt`, `feedback` and `pickup`) and `archive` (get every folder, move
   every folder but `index`; owner, 2026-10-23, and `scene` and `drama` the same day; `run` and
   `opened` 2026-10-24; `leetype` and `leetype-log` 2026-10-24 too; `transcript` 2026-10-25;
   `index` 2026-10-31, paulgsc/server#509, and kept out of `ask` and `move` the same day, since
@@ -581,7 +617,8 @@ how each was checked when this workspace landed.
   and decision, paulgsc/some-ui#2179, kept out of `ask` for the same reason; `feedback`
   2026-11-07, SFEED decision 6 on paulgsc/some-ui#2670, "home writes down what I say … the
   existing daily reflections routine files each as a pending issue", kept out of `ask` for the
-  same reason). The routine's `brief` also takes its one-time backfill: a Jobs decisions or
+  same reason; `pickup` and `picked` 2026-11-13, CONVEYOR3 #2875, the owner's decision that a take ready for pickup goes to the mailbox with its labels and its comment stays home (`C296`), `pickup` kept out of `ask` for the same reason).
+  The routine's `brief` also takes its one-time backfill: a Jobs decisions or
   scouts file under its Drive name, only as the phone names one (`sharedDay`: a real calendar
   day, a decisions share number from 2 to 99, a scouts stamp at a real time) and only for a
   day from 2026-10-17, when the phone could first share one, through 2026-11-03, the day
@@ -612,7 +649,10 @@ how each was checked when this workspace landed.
   day outside them; or adds a kind to any folder's `also`, loosens the `drive-takes` name or
   `driveTakesRefusal` (a key beyond `schema`, `at` and `takes`, or beyond `sha256` per take),
   loosens the `rust-week` name or `rustWeekRefusal`, loosens the `rust-essay` name or
-  `rustEssayRefusal`,
+  `rustEssayRefusal`, loosens the `pickup` name or `pickupRefusal` (a key beyond `schema`,
+  `note`, `ref`, `heard`, `labels`, `readyAt` and `seq`, a `comment` included, against `C296`),
+  loosens the `picked` name or `pickedRefusal` (a key beyond `schema`, `note`, `seq` and
+  `issue`),
   or removes `kindOf`'s reading of `also`; when the PR description does not name the owner's
   decision to do so.
 - _Scope:_ `apps/mailbox/src/core.ts` and `wrangler.jsonc`.
@@ -698,7 +738,14 @@ how each was checked when this workspace landed.
   and `rustEssayRefusal` (an ISO week in `week.id`, the name's); `core.test.ts` pins that the
   routine puts one, that it rings `brief`, that home reads it in the listing and may not put it,
   that `-r2` and `-r10` are taken and `-r0`, `-r1`, `-r02` and a bare `-r` are not, and that a
-  misnamed essay, a non-week `week.id` and another schema are refused.
+  misnamed essay, a non-week `week.id` and another schema are refused. _Checked at the
+  conveyor amendment (CONVEYOR3, paulgsc/some-ui#2875; the owner's decision of 2026-11-13,
+  recorded as `C296`: a take ready for pickup goes to the mailbox with its labels, and its
+  comment stays home):_ `ROLES` has three entries; `core.test.ts` pins `pickup` as it pins
+  `feedback` (home puts it and may not read it, the routine reads it and may neither put it,
+  list it as archived nor ask it back) and `picked` as the routine's answer (the routine puts
+  it, which rings `picked`, home reads it and may not put it); `HOME_READS`, which is
+  `RINGS`, now holds `picked`, and the archive role reads and moves both.
 
 **MB3: No token reaches the repo or a log.**
 
