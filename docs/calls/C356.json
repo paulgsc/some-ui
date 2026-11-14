@@ -1,0 +1,18 @@
+{
+  "id": "C356",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/renders/words.ts",
+    "some-ui:apps/www/src/lib/cards-essay-video/words.ts"
+  ],
+  "chose": "On Studio › Renders a cards essay's kind reads \"Cards essay\" and its name is its key's subject in words and the day it was checked (\"Rust scratchpad, as of Saturday, November 14\"); the row opens the essay's own page (\"Open the essay\"), headed by that name, where Watch brings the video and plays it, with no control to let it go.",
+  "options": [
+    "these words, and a page of its own",
+    "the essay's title from its cut list, which the board doesn't carry",
+    "play it inline on the Renders row, with no page"
+  ],
+  "gray": "The owner reads these words on the phone, and no check, convention or earlier decision names a cards essay. The cut list's own title would read better but home's board serves only the key.",
+  "undo": "Change essayName and kindName's essay case in lib/renders/words.ts and ESSAY_WORDS; to play inline, render the page's Watching part under the row in components/studio/renders.tsx and drop the route.",
+  "refs": ["#2979"]
+}
