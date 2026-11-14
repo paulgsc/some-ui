@@ -7,6 +7,7 @@
  */
 
 import { authorshipParams } from "./authorship"
+import { withBadgesSeen } from "./badges"
 import { isAuthorship, isCaptions, isComposition } from "./cut-list"
 import type {
   BurnIn,
@@ -547,10 +548,11 @@ function burnInRequests(
           },
         ]
   )
+  const badged = withBadgesSeen(cutList.shots)
   const perShot = cutList.shots.flatMap((s, i) => {
     const at = placement.shots[i]
     if (!at) throw new Error(`${s.id} was not placed`)
-    return s.burnIns.map((b, k) => ({
+    return (badged[i] ?? []).map((b, k) => ({
       ...b,
       design: design(b, series),
       startFrame: at.startFrame,

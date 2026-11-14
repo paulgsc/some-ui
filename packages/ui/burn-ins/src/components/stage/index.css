@@ -34,6 +34,10 @@
     position: absolute;
   }
 
+  .bi-badge {
+    display: contents;
+  }
+
   .bi-cell {
     box-sizing: border-box;
   }

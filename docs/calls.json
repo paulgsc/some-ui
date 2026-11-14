@@ -2310,6 +2310,45 @@
       "refs": [
         "#2437"
       ]
+    },
+    {
+      "id": "C306",
+      "made": "2026-11-14",
+      "by": "claude",
+      "paths": [
+        "packages/ui/burn-ins/src/lib/badge.ts",
+        "packages/ui/burn-ins/src/lib/burn-in.ts"
+      ],
+      "chose": "The status badge is also a burn-in kind of its own, `status-badge` (design `badge-v1`): one badge at the top left of a scene's body, saying the state of what the scene shows, so it shows at /burn-ins and records through record:short before any card kind exists.",
+      "options": [
+        "A `status-badge` kind of its own, which the card kinds' badges reuse",
+        "Only a module, first seen on screen inside CARDS2's terminal card"
+      ],
+      "gray": "CARDS1's done-when needs the badge in /burn-ins and in record:short, and only a kind reaches either; a lone badge over a recorded scene is a new thing on screen the epic did not list.",
+      "undo": "Remove `status-badge` from KINDS in burn-ins' burn-in.ts with its case, sample, words and stage layer; badge.ts's drawing stays for the cards.",
+      "refs": [
+        "#2466",
+        "#2465"
+      ]
+    },
+    {
+      "id": "C307",
+      "made": "2026-11-14",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/badges.ts"
+      ],
+      "chose": "A badge spells itself out at its first appearance in the whole video only; the \"per part\" setting a series could ask for is not built, since the one multi-part video planned (EP04's vlog 0, CARDS6) was closed.",
+      "options": [
+        "Per video only, until a video in parts is planned",
+        "A series setting for per part now"
+      ],
+      "gray": "CARDS1 lists \"per part when a series says so\", but no video has parts and the cut list has no notion of one, so building it now means inventing what a part is.",
+      "undo": "Give a series version a reveal setting and a scene a part start, and reset `seen` in withBadgesSeen at each part.",
+      "refs": [
+        "#2466",
+        "#2471"
+      ]
     }
   ]
 }

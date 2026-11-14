@@ -11,7 +11,7 @@ address) through the web surface's door.
 ## What it is
 
 A burn-in is a kind (`captions`, `headline`, `card`, `authorship`,
-`game-card`, `preview-mark`), a named design and one video's params, which the cut list
+`game-card`, `preview-mark`, `status-badge`), a named design and one video's params, which the cut list
 carries. `src/lib/burn-in.ts` holds the contract and says why it is the way
 it is; each module's header does the same for its part:
 
@@ -39,6 +39,11 @@ it is; each module's header does the same for its part:
   (SFEED12, #2757), design `plate-v1`, in the frame's foot: under the band
   captions are drawn in, where a stage draws nothing. Only a preview's cut
   carries it (`@some-ui/video-render`'s `previewOf`), never an episode's.
+- `src/lib/badge.ts`: the status badge (CARDS1, #2466), design `badge-v1`:
+  five states of a claim on screen (on main, an open PR, planned, a known gap,
+  a step only I do), each a glyph drawn from paths, which spells out its
+  definition at its first appearance in a video. The first card kinds (epic
+  CARDS, #2465) draw it beside their lines.
 - `src/runtime/record.ts`, `src/components/record`: the recording protocol.
 - `src/components/preview`, `src/components/stage`: the preview page.
 
