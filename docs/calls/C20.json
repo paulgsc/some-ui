@@ -1,0 +1,14 @@
+{
+  "id": "C20",
+  "made": "2026-11-08",
+  "by": "claude",
+  "paths": ["packages/video-render/src/plan.ts"],
+  "chose": "The renderer converts to video by BT.709 and tags it so, which changes every video's colours a little from the next render, Build Journal shorts included.",
+  "options": [
+    "BT.709 for every video",
+    "BT.709 only for new template versions"
+  ],
+  "gray": "Old renders aren't touched, but every new render's bytes move, which the owner would notice in a re-render.",
+  "undo": "Revert TO_VIDEO and BT709 in plan.ts.",
+  "refs": ["#2675", "#2774"]
+}

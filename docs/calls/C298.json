@@ -1,0 +1,17 @@
+{
+  "id": "C298",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/pending.ts",
+    "packages/ui/topik/ROUTINE.md"
+  ],
+  "chose": "The routine side of the pickup lands with a known limit stated: a take moved on from ready for pickup before the daily run is still filed, home leaves the take where the owner put it, and the stray issue waits for the owner to close. Home withdrawing a pickup is its own story (#2973).",
+  "options": [
+    "(c) land with the limit stated; the owner closes a stray issue",
+    "(a) first have home put a withdrawal the routine reads, then land"
+  ],
+  "gray": "Home never takes a pickup back and the routine can't see where a take is now, so for up to a day after a take leaves ready for pickup a run can still file it; whether that window is acceptable for now is a product choice no check settles. Taken under the owner's standing \"go with the recommended\".",
+  "undo": "Build #2973: home puts a withdrawal when a take leaves ready for pickup, and toFile files a pickup only while its seq is the take's newest.",
+  "refs": ["#2973", "#2971", "#2875"]
+}

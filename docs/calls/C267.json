@@ -1,0 +1,18 @@
+{
+  "id": "C267",
+  "made": "2026-11-13",
+  "by": "claude",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/decay/index.ts",
+    "packages/ui/rust-rounds/src/lib/monday/bundle.ts"
+  ],
+  "chose": "The per-concept history RR19 keeps on home is derived on every Monday run from what home already keeps append-only, each week's tickets and the concepts they name plus each essay's SOLO level or silence per ticket, with no new table, route or file on home.",
+  "options": [
+    "derive it from the weeks and essays home keeps",
+    "a table and route on paulgsc/server holding each concept's checks",
+    "a decay file the routine puts in the mailbox each week"
+  ],
+  "gray": "#2695 asks for 'a per-concept history on home, built from the essays' judgements, append-only' and leaves its shape open; a stored copy could drift from the essays it restates.",
+  "undo": "Add a server table of checks written from each essay, and read it in prepare instead of recordOf(judgedOf(history)).",
+  "refs": ["#2695", "#2231"]
+}

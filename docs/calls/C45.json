@@ -1,0 +1,15 @@
+{
+  "id": "C45",
+  "made": "2026-11-09",
+  "by": "claude",
+  "paths": ["packages/video-render/src/templates/rust-essay/sample-essay.json"],
+  "chose": "The sample essay's role line is drawn by hand on the Dreyfus model of skill acquisition (Dreyfus & Dreyfus, 1980), fitting Advanced beginner with Competent next, and its chart's levels are hand-written; RR19 names the ladder and the rule that derives both.",
+  "options": [
+    "Dreyfus's stages, hand-drawn for the sample",
+    "a public engineering career framework",
+    "no role line until RR19"
+  ],
+  "gray": "#2694 settled that the essay carries a role line on a published ladder derived by RR19, which isn't built, and named no ladder.",
+  "undo": "Replace weeks.role and the chart's cells in sample-essay.json with RR19's derivation once it lands.",
+  "refs": ["#2694", "#2695"]
+}

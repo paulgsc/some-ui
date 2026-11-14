@@ -1,0 +1,16 @@
+{
+  "id": "C4",
+  "made": "2026-11-06",
+  "by": "claude",
+  "agreed": "2026-11-06",
+  "paths": [
+    "apps/www/src/routes/_dashboard.tsx",
+    "packages/ui/shared/src/components/ui/sheet.tsx",
+    "packages/ui/shared/src/components/ui/dialog.tsx"
+  ],
+  "chose": "The notice plane sits under the www header (top-16) and at a sheet's top; each notice is capped at 60dvh and scrolls inside.",
+  "options": ["top", "bottom, above the bar", "near the control"],
+  "gray": "Where a notice lands; the owner named top and bottom as idiomatic.",
+  "undo": "Move NoticeLayer in _dashboard.tsx, sheet.tsx and dialog.tsx.",
+  "refs": ["#2637", "#2623", "#2625", "#2634"]
+}

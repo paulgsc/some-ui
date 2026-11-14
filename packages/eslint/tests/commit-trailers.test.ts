@@ -105,7 +105,7 @@ describe("checkCommitTrailers", () => {
     ).toEqual([{ kind: "notFinal", key: "Promise" }])
   })
 
-  it("reads a Call line as the ids of calls in docs/calls.json (ST37)", () => {
+  it("reads a Call line as the ids of calls in docs/calls/ (ST37)", () => {
     expect(
       checkCommitTrailers(
         msg("feat(x): y", "Change-Kind: story\nCall: C13, C14")

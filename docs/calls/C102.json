@@ -1,0 +1,15 @@
+{
+  "id": "C102",
+  "made": "2026-11-11",
+  "by": "claude",
+  "paths": ["packages/ui/rust-rounds/src/lib/monday/finish.ts"],
+  "chose": "Until RR19 derives it, every essay the routine writes carries the role line on the Dreyfus ladder the sample cites, saying the fit isn't worked out yet and that the rule comes with the decay record; the model writes no role.",
+  "options": [
+    "a fixed line saying it isn't worked out yet",
+    "a role the model judges each week",
+    "hold every essay until RR19"
+  ],
+  "gray": "The essay's format requires a role line, and the owner's answer on #2694 says the routine doesn't write it and RR19 derives it; RR19 isn't built.",
+  "undo": "Replace ROLE_NOT_YET in finish.ts with RR19's derived line.",
+  "refs": ["#2694", "#2695", "#2693"]
+}

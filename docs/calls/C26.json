@@ -1,0 +1,14 @@
+{
+  "id": "C26",
+  "made": "2026-11-08",
+  "by": "claude",
+  "paths": [
+    "packages/video-motion/src/brand.ts",
+    "packages/video-motion/compositions/_lib/motion.js"
+  ],
+  "chose": "A brand version's pin holds its own files only; `lib/motion.js`, which every composition shares, is not pinned per version, and a change there must keep what `track` draws for the keys a version uses.",
+  "options": ["the version's own files", "its files and lib/motion.js"],
+  "gray": "Pinning the shared library would fail every version on any change to it, and the promo was changing it.",
+  "undo": "Include lib/motion.js in ownDigest's files.",
+  "refs": ["#2728", "#2771"]
+}

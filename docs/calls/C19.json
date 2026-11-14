@@ -1,0 +1,17 @@
+{
+  "id": "C19",
+  "made": "2026-11-08",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/call.ts",
+    "packages/ui/playoff-delta/src/lib/show.ts"
+  ],
+  "chose": "From the call's and Playoff Delta's template v3, the brand slides draw the mark in Mochi Night, the template's own theme.",
+  "options": [
+    "Mochi Night, the template's theme",
+    "the app's theme as the stage finds it"
+  ],
+  "gray": "Ask #2674 made the mark's theme a template setting and chose no theme for it.",
+  "undo": "A new template version whose shape's brand.theme names another theme (Studio's mark-theme control sends one).",
+  "refs": ["#2674", "#2766", "#2774"]
+}

@@ -4,9 +4,8 @@
  * text the routine's script reads from the checkout and from `render
  * call-facts`. Nothing here reads a clock, the network or the disk.
  */
-import { z } from "zod"
 
-/** A recorded call (`docs/calls.json`, ST37), as a decision question reads it. */
+/** A recorded call (`docs/calls/`, ST37), as a decision question reads it. */
 export type Call = {
   readonly id: string
   readonly made: string
@@ -18,32 +17,31 @@ export type Call = {
   readonly refs: ReadonlyArray<string>
 }
 
-const CallsSchema = z.object({
-  schema: z.literal("some-ui.calls/1"),
-  calls: z.array(
-    z.looseObject({
-      id: z.string(),
-      made: z.iso.date(),
-      chose: z.string(),
-      options: z.array(z.string()).optional(),
-      gray: z.string().optional(),
-      undo: z.string(),
-      refs: z.array(z.string()).optional(),
-    })
-  ),
-})
+/**
+ * A call as the record's one loader (`@some-ui/eslint-kit/calls`) gives it,
+ * already checked; only the fields a question reads.
+ */
+export type RecordCall = {
+  readonly id: string
+  readonly made: string
+  readonly chose: string
+  readonly options?: ReadonlyArray<string>
+  readonly gray?: string
+  readonly undo: string
+  readonly refs: ReadonlyArray<string>
+}
 
 /** Every call in the record, newest first (by when it was made, then by id). */
-export function callsOf(text: string): Array<Call> {
-  return CallsSchema.parse(JSON.parse(text))
-    .calls.map((c) => ({
+export function callsOf(record: ReadonlyArray<RecordCall>): Array<Call> {
+  return record
+    .map((c) => ({
       id: c.id,
       made: c.made,
       chose: c.chose,
       options: c.options ?? [],
       gray: c.gray ?? null,
       undo: c.undo,
-      refs: c.refs ?? [],
+      refs: c.refs,
     }))
     .sort(
       (a, b) =>

@@ -1,0 +1,12 @@
+{
+  "id": "C7",
+  "made": "2026-11-06",
+  "by": "claude",
+  "agreed": "2026-11-06",
+  "paths": ["apps/www/src", "packages/ui"],
+  "chose": "A control that can't be used now stays visible and disabled, rather than hidden.",
+  "options": ["disabled", "unmounted"],
+  "gray": "A control that explains its space against less clutter; read from the owner's \"no inexplicable gaps\".",
+  "undo": "Unmount it, per screen.",
+  "refs": ["#2637", "#2623", "#2625", "#2634"]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "C13",
+  "made": "2026-11-08",
+  "by": "claude",
+  "paths": [
+    "docs/calls.json",
+    "packages/eslint/src/calls.ts",
+    ".github/pull_request_template.md"
+  ],
+  "chose": "A gray-area call is an entry in docs/calls.json, append-only and checked, and the commit that makes it carries `Call: <ID>`.",
+  "options": [
+    "a commit trailer alone",
+    "a label and an issue per call, as asks have",
+    "a record file in the repo"
+  ],
+  "gray": "#2637 left where the record lives to the owner or the session that builds it; a trailer alone can't hold the options and the undo in 100-character lines.",
+  "undo": "Move the entries to whichever home the owner picks and drop check:calls.",
+  "refs": ["#2637"]
+}

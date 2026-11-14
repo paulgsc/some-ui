@@ -1,0 +1,18 @@
+{
+  "id": "C40",
+  "made": "2026-11-08",
+  "by": "claude",
+  "agreed": "2026-11-08",
+  "paths": [
+    "apps/www/src/lib/home-link/delete-note.ts",
+    "apps/www/src/lib/my-data/deleting-runtime.ts"
+  ],
+  "chose": "The phone keeps no list of notes it owes home a delete for. A voice note whose delete answer was lost is left to home, which refuses to keep it again; until home's refusal carries its own code and the phone lets its copy go on it, that note's audio stays on the phone.",
+  "options": [
+    "a phone-side owed list of pending deletes",
+    "rely on home's deletion receipt, with a distinct refusal code the phone acts on"
+  ],
+  "gray": "Both close the lost-answer case; the owed list duplicates a guarantee home already gives and kept state that a wipe or reinstall loses.",
+  "undo": "Revert 944c4f10, then fix what the review of 9e0867db found in it: a deleted take's audio stranded behind a false \"on home\", and entries that never settle.",
+  "refs": ["#2758", "server#760"]
+}

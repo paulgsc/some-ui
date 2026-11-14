@@ -1,0 +1,15 @@
+{
+  "id": "C69",
+  "made": "2026-11-10",
+  "by": "claude",
+  "paths": ["server:scripts/pr_gate.py", "server:.github/workflows/gate.yml"],
+  "chose": "When the base branch has no .github/workflows/gate-verdict.yml, `--open` falls back to waiting in the job as before (up to 60 minutes), still writing the API check run PR gate.",
+  "options": [
+    "no fallback, so that pull request's gate stays pending for good",
+    "land it as two pull requests",
+    "fall back to waiting in the job"
+  ],
+  "gray": "It keeps a polling path, which only runs on the pull request that adds the verdict workflow, or if that workflow is ever deleted.",
+  "undo": "Once main has gate-verdict.yml, drop the api.exists(...) branch and wait() from open_gate() in scripts/pr_gate.py in a follow-up.",
+  "refs": ["server#762", "server#767", "#2833"]
+}

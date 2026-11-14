@@ -1,0 +1,9 @@
+{
+  "id": "C10",
+  "made": "2026-11-06",
+  "by": "owner",
+  "paths": ["docs/ui-fit/README.md"],
+  "chose": "HS2 (conditional lines only) was retired for HS3 (every line in the layout): the owner's idiom, Claude's encoding.",
+  "undo": "Restore HS2 and retire HS3 in docs/ui-fit/README.md.",
+  "refs": ["#2637", "#2623", "#2625", "#2634"]
+}

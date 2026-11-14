@@ -1,0 +1,18 @@
+{
+  "id": "C297",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/pending.ts",
+    "packages/ui/topik/ROUTINE.md"
+  ],
+  "chose": "A Studio take ready for pickup is filed as a pending issue in paulgsc/some-ui, from its newest ready move only, with the owner's labels said as words in the body, never added as GitHub labels. A take an issue already carries (an answer to an ask, say) gets no second issue: the routine answers its pickup with that issue.",
+  "options": [
+    "file in paulgsc/some-ui, labels as words in the body",
+    "file where the take's ref points, labels as GitHub labels",
+    "file a second issue for a take already filed as an answer"
+  ],
+  "gray": "The issue said to file each take with pending and from-studio, plus its labels as context, and named no repository; a take's ref names a Studio project and shot, not a repository, and GitHub labels made from free text would add a label per word the owner types.",
+  "undo": "Change the pickup branch of toFile in packages/video-render/src/pending.ts (its repo and takeLabels) and part E's pickup bullet in packages/ui/topik/ROUTINE.md.",
+  "refs": ["#2875", "#2872"]
+}

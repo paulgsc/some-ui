@@ -1,0 +1,15 @@
+{
+  "id": "C83",
+  "made": "2026-11-10",
+  "by": "claude",
+  "paths": ["server:nix/modules/home-deploy.nix", "server:scripts/deploy.py"],
+  "chose": "Home's deploy unit runs as root, and runs make as the checkout's owner through runuser.",
+  "options": [
+    "root, with runuser for make",
+    "the owner's user throughout, with STORAGE's deploy/ group-writable",
+    "root throughout, with sops pointed at the owner's key"
+  ],
+  "gray": "STORAGE belongs to file_host's uid 10000 and the sops age key is the owner's; no convention covers a host unit needing both. The second option widens STORAGE's permissions, and the third has root build envctl in the owner's checkout.",
+  "undo": "For the second option: in nix/modules/home-deploy.nix set User= to the owner, set Environment=XDG_RUNTIME_DIR=/run/home-deploy (the unit's RuntimeDirectory, then owned by that user), and drop --as-user; drop runuser_prefix in scripts/deploy.py; and make ${STORAGE}/deploy group-writable for that user.",
+  "refs": ["server#779", "#2833"]
+}

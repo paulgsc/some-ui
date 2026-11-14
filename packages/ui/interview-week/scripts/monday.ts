@@ -22,6 +22,8 @@ import {
 } from "@interview-week/lib/monday/employers"
 import { finish } from "@interview-week/lib/monday/finish"
 import { addDays, pacificDay } from "@some-ui/core-utils"
+import { callsInTree } from "@some-ui/eslint-kit/calls"
+import type { Call } from "@some-ui/eslint-kit/calls"
 import {
   fail,
   get,
@@ -101,6 +103,18 @@ async function markdown(top: string): Promise<Array<Doc>> {
   )
 }
 
+/** The calls record in the checkout at `top`, through its one loader. */
+function recordIn(top: string): ReadonlyArray<Call> {
+  const record = callsInTree(top)
+  if (record.layout === "none")
+    return fail([`${top} holds no calls record: run from some-ui's main`])
+  if (record.calls === null)
+    return fail([
+      `the calls record in ${top} can't be read: pnpm check:calls says why`,
+    ])
+  return record.calls
+}
+
 /** What `prepare` makes of the run's folder and the checkout at `now`. */
 async function preparedIn(dir: string, now: Date): Promise<Prepared> {
   const facts = FactsSchema.safeParse(
@@ -120,7 +134,7 @@ async function preparedIn(dir: string, now: Date): Promise<Prepared> {
     now,
     brief: await jsonFilesIn(join(dir, "brief")),
     corpus: {
-      calls: callsOf(await readFile(join(top, "docs/calls.json"), "utf8")),
+      calls: callsOf(recordIn(top)),
       epics: epicsOf(facts.data.epics),
       docs: docsOf(docs),
       invariants: invariantsOf(docs),

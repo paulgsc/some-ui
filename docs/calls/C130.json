@@ -1,0 +1,14 @@
+{
+  "id": "C130",
+  "made": "2026-11-11",
+  "by": "claude",
+  "paths": ["server:infra/render/render-calls.sh"],
+  "chose": "The walk job runs the published render image's own motion, beside the recorders.",
+  "options": [
+    "the published render image's own motion, beside the recorders",
+    "a separately pinned motion checkout"
+  ],
+  "gray": "Server#802 replaced the old image, which had a separate checkout, with some-ui's published one, which builds the motion and the recorders at one commit. Nothing said which one a walk should run.",
+  "undo": "Point MOTION_DIR in infra/render/render-calls.sh at another checkout.",
+  "refs": ["server#801", "server#802"]
+}

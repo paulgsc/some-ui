@@ -22,7 +22,7 @@ up to 14 days.
 2. **Read the facts:**
    `pnpm --filter @some-ui/video-render render call-facts --from <from> --to <to> > facts.json`
    in the scratchpad. It holds the week's merged pull requests (with each
-   one's change kind), the calls that reached `docs/calls.json` on `main`
+   one's change kind), the calls that reached `docs/calls/` on `main`
    in the week or were agreed to in it (each with who made it), promise
    trailers, open asks, and the epics that moved, with their "Why" and
    "Where we are". It reads the record from the checkout's history, so the clone must

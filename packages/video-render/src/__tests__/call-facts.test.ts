@@ -5,6 +5,7 @@
  * week's calls from the calls record (ST37); and a squash commit's change
  * kind and promise trailers.
  */
+import type { RecordedCall as Call } from "@video-render/call-facts"
 import {
   callsEntered,
   changeOf,
@@ -15,40 +16,67 @@ import {
 } from "@video-render/call-facts"
 import { describe, expect, it } from "vitest"
 
-const record = (calls: Array<Record<string, unknown>>): string =>
-  JSON.stringify({ schema: "some-ui.calls/1", calls })
-
 describe("the calls record", () => {
-  const c1 = { id: "C1", made: "2026-11-05", by: "claude", chose: "An icon." }
-  const c2 = { id: "C2", made: "2026-11-06", by: "owner", chose: "Top." }
-  const c3 = { id: "C3", made: "2026-10-30", by: "claude" }
+  const base = { paths: ["a"], undo: "Undo.", refs: ["#1"] }
+  const c1: Call = {
+    id: "C1",
+    made: "2026-11-05",
+    by: "claude",
+    ...base,
+    chose: "An icon.",
+  }
+  const c2: Call = {
+    id: "C2",
+    made: "2026-11-06",
+    by: "owner",
+    ...base,
+    chose: "Top.",
+  }
+  const c3: Call = {
+    id: "C3",
+    made: "2026-10-30",
+    by: "claude",
+    ...base,
+    chose: "X.",
+  }
 
   it("gives the calls that entered it over the week, each as recorded", () => {
-    expect(callsEntered(record([c1]), record([c1, c2]))).toEqual([c2])
+    expect(callsEntered([c1], [c1, c2])).toEqual([c2])
   })
 
   it("goes by when a call reached main, not when it was made", () => {
     const late = { ...c1, made: "2026-10-29" }
-    expect(callsEntered(record([]), record([late]))).toEqual([late])
-    expect(callsEntered(record([late]), record([late]))).toEqual([])
+    expect(callsEntered([], [late])).toEqual([late])
+    expect(callsEntered([late], [late])).toEqual([])
   })
 
   it("gives a call the owner agreed to in the week, and every call of a first record", () => {
     const agreed = { ...c3, agreed: "2026-11-07" }
-    expect(callsEntered(record([c1, c3]), record([c1, agreed]))).toEqual([
-      agreed,
-    ])
-    expect(callsEntered(null, record([c1, c2])).map((c) => c.id)).toEqual([
-      "C1",
-      "C2",
+    expect(callsEntered([c1, c3], [c1, agreed])).toEqual([agreed])
+    expect(callsEntered(null, [c1, c2]).map((c) => c.id)).toEqual(["C1", "C2"])
+  })
+
+  it("lists each call's id, day, author and agreement first, the rest as the file has them", () => {
+    const { id, made, by, ...rest } = c3
+    const late = { ...rest, agreed: "2026-11-07", id, made, by }
+    expect(Object.keys(callsEntered(null, [late])[0] ?? {})).toEqual([
+      "id",
+      "made",
+      "by",
+      "agreed",
+      ...Object.keys(rest),
     ])
   })
 
-  it("refuses what is not the record", () => {
-    expect(() => callsEntered(null, "{}")).toThrow()
-    expect(() =>
-      callsEntered(null, record([{ ...c1, made: "Nov 5" }]))
-    ).toThrow()
+  it("orders the folder's calls by when each was made, then by id", () => {
+    const later = { ...c1, id: "C10", made: "2026-11-05" }
+    expect(
+      callsEntered(null, [later, c2, c1], { byDay: true }).map((c) => c.id)
+    ).toEqual(["C1", "C10", "C2"])
+  })
+
+  it("keeps the one-array record's order", () => {
+    expect(callsEntered(null, [c2, c1]).map((c) => c.id)).toEqual(["C2", "C1"])
   })
 })
 

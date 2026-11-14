@@ -1,3 +1,4 @@
+import type { RecordCall } from "@interview-week/lib/monday/corpus"
 import {
   callsOf,
   docsOf,
@@ -11,29 +12,25 @@ import {
 } from "@interview-week/lib/monday/employers"
 import { describe, expect, it } from "vitest"
 
-const call = (id: string, made: string): Record<string, unknown> => ({
+const call = (id: string, made: string): RecordCall => ({
   id,
   made,
-  by: "claude",
-  paths: [],
   chose: `chose ${id}`,
   options: ["(a)", "(b)"],
   gray: "gray",
   undo: "undo",
+  refs: ["#1"],
 })
 
 describe("the corpus", () => {
   it("reads the calls record newest first", () => {
-    const text = JSON.stringify({
-      schema: "some-ui.calls/1",
-      calls: [
-        call("C9", "2026-11-01"),
-        call("C12", "2026-11-13"),
-        call("C11", "2026-11-13"),
-      ],
-    })
-    expect(callsOf(text).map((c) => c.id)).toEqual(["C12", "C11", "C9"])
-    expect(callsOf(text)[0]?.refs).toEqual([])
+    const record = [
+      call("C9", "2026-11-01"),
+      call("C12", "2026-11-13"),
+      call("C11", "2026-11-13"),
+    ]
+    expect(callsOf(record).map((c) => c.id)).toEqual(["C12", "C11", "C9"])
+    expect(callsOf(record)[0]?.refs).toEqual(["#1"])
   })
 
   it("reads each declared invariant's block, in a blockquote or not, and never a retired one", () => {
@@ -98,7 +95,7 @@ describe("the corpus", () => {
       { path: "docs/b.md", text: "intro\n# Bee\n" },
       { path: "README.md", text: "# Root" },
       { path: "docs/a.md", text: "no heading" },
-      { path: "docs/calls.json", text: "{}" },
+      { path: "docs/calls/C1.json", text: "{}" },
     ])
     expect(docs.map((d) => [d.key, d.title])).toEqual([
       ["doc:docs/a.md", "docs/a.md"],

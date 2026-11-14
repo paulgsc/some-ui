@@ -1,0 +1,19 @@
+{
+  "id": "C76",
+  "made": "2026-11-10",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/essay.ts",
+    "apps/www/src/lib/web-surface/call/essay-view.ts",
+    "apps/www/tests/record/essay-recording.ts"
+  ],
+  "chose": "Where the essay plays its sample (the stage with no week named, its storyboard and its preview), a second Kokoro voice (ESSAY_VOICES.you) reads the sample's answers, and the locked intro says the essay is a sample with both voices synthetic. An essay home renders plays the owner's own takes, and its intro says the other voice is theirs.",
+  "options": [
+    "a second synthetic voice reads the sample's answers, and the intro says so",
+    "the sample's answer scenes stay silent, held for their reading time",
+    "the tutor's voice reads the sample's answers too"
+  ],
+  "gray": "#2691 lists the essay's preview, but no owner ever said the sample's answers, and RR15's intro says the other voice is the owner's own, which would be false over a synthetic one. No check or earlier decision says how a sample stands in for the owner's voice.",
+  "undo": "Change ESSAY_VOICES.you or the Voicing branch of essayIntro in essay.ts, re-pin templates/rust-essay/storyboard.json, and record the preview again.",
+  "refs": ["#2691", "#2690"]
+}

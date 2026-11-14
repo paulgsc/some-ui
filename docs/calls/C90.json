@@ -1,0 +1,15 @@
+{
+  "id": "C90",
+  "made": "2026-11-11",
+  "by": "claude",
+  "paths": ["server:docs/storage.md", "server:deny.toml"],
+  "chose": "The invariant the ignore rests on, which SQLite files are opened, lives in docs/storage.md as its own section, which deny.toml's comment names, rather than as a Tolerance in docs/home-compute.md.",
+  "options": [
+    "docs/storage.md, as a new section",
+    "a Tolerance in docs/home-compute.md",
+    "only in deny.toml's comment"
+  ],
+  "gray": "It constrains which SQLite files are opened, not how much of home a service takes, and a comment in deny.toml is not where someone adding an import would look. No convention placed an invariant that a security ignore depends on.",
+  "undo": "Move the section; deny.toml's comment points at it by name.",
+  "refs": ["server#764", "server#784"]
+}

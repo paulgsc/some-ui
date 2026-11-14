@@ -1,0 +1,9 @@
+{
+  "id": "C24",
+  "made": "2026-11-08",
+  "by": "owner",
+  "paths": ["packages/video-render/src/preview.ts"],
+  "chose": "A template's preview is a 15–30 s check that the pipeline works, not an episode, so its cut may shorten or drop the locked intro to fit the window; the locked intro still opens every episode, with no switch.",
+  "undo": "Keep the intro whole in `fitted` in preview.ts, and drop sections from the preview.",
+  "refs": ["#2757", "#2762"]
+}

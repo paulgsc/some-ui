@@ -1,0 +1,11 @@
+{
+  "id": "C22",
+  "made": "2026-11-08",
+  "by": "claude",
+  "paths": ["packages/video-render/src/cues.ts"],
+  "chose": "The six cues are synthesised: a whoosh of banded noise, a 90 ms click, a falling pop, a low thud, a brightening riser and a small bell, each at -6 dBFS.",
+  "options": ["these synthesised sounds", "other synthesised sounds"],
+  "gray": "The owner asked for effects we make ourselves (#2727) and described none of them.",
+  "undo": "Change cues.ts; each cue's sum, file name and the series version that pins it move together.",
+  "refs": ["#2727", "#2790"]
+}

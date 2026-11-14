@@ -1,0 +1,18 @@
+{
+  "id": "C56",
+  "made": "2026-11-10",
+  "by": "owner",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/week-play",
+    "server:apps/servers/file_host/src/handlers/rust_rounds.rs"
+  ],
+  "chose": "A week's sends before its deadline are drafts: home keeps the latest in place of the one before. Only what stands at the deadline is final and kept for good, an unanswered ticket included.",
+  "options": [
+    "keep every send for good",
+    "keep only the first",
+    "drafts until the deadline"
+  ],
+  "gray": "The RR14 record kept the first send for good, and re-sending had to choose what the record is.",
+  "undo": "Keep every revision.",
+  "refs": ["#2832", "#2833"]
+}

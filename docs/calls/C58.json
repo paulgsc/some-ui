@@ -1,0 +1,18 @@
+{
+  "id": "C58",
+  "made": "2026-11-10",
+  "by": "claude",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/week-play/spec.ts",
+    "packages/voice-capture/src/lib/bundle.ts"
+  ],
+  "chose": "Each send holds the whole week: a ticket sent before and not said since goes again with the take sent, since home keeps only the latest send (C56). Send again waits until something changed since the last send.",
+  "options": [
+    "every send holds the whole week, and needs a change",
+    "a send holds only what changed since the last",
+    "any send, changed or not"
+  ],
+  "gray": "With home keeping the latest send only (C56), a send of the changed tickets alone would drop the others from what counts; whether an unchanged send is offered is a choice no check settles.",
+  "undo": "Drop the merge of `last` in weekSpec's record, and the \"unchanged\" need in bundle.ts's missing.",
+  "refs": ["#2832"]
+}

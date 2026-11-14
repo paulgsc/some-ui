@@ -1,0 +1,18 @@
+{
+  "id": "C279",
+  "made": "2026-11-13",
+  "by": "claude",
+  "paths": [
+    "packages/ui/interview-week/src/lib/monday/employers.ts",
+    "packages/ui/interview-week/src/lib/monday/finish.ts"
+  ],
+  "chose": "`finish` refuses a week whose text names a real employer it knows: the owner's own, read from the résumé's generated data (every `org` but this repo's own project), and a closed list of large employers, matched as written (so 'Meta' and not 'metadata'). The companies whose products this repo runs on (Google, GitHub, Cloudflare, Mozilla, YouTube, Anthropic, Alphabet) are refused in the company, the role and the questions, and allowed in a card's script, which presents this repo's own work.",
+  "options": [
+    "(a) the résumé's employers and a closed list, with this repo's platforms allowed in scripts only",
+    "(b) refuse every listed name in every text, scripts included",
+    "(c) no check: the instructions alone, as Rust Rounds' weeks have it"
+  ],
+  "gray": "The owner asked for code to check that no real employer is named, and no check can know every real name. Refusing the platforms everywhere would stop a card from saying what this repo runs on.",
+  "undo": "Edit EMPLOYERS or PLATFORMS in packages/ui/interview-week/src/lib/monday/employers.ts, or which texts checkWords in finish.ts holds to each.",
+  "refs": ["#2931", "#2935"]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "C265",
+  "made": "2026-11-13",
+  "by": "claude",
+  "paths": [
+    "packages/ui/interview-week/src/lib/faults/fillers.json",
+    "packages/ui/interview-week/src/lib/faults/words.ts"
+  ],
+  "chose": "The closed filler list holds only vocalised hesitations (um, umm, uh, uhh, uhm, er, err, erm, ah, ahh, hm, hmm, mm, mhm), each matched as one whole word after lowercasing and keeping letters and digits, a heard word counting at most one filler (Mm-hmm is one); lexical fillers (like, you know, so, basically, I mean) are left out. The list lives in fillers.json, the canonical copy home's transcriber cites.",
+  "options": [
+    "(a) vocalised hesitations only",
+    "(b) vocalised hesitations plus lexical fillers (like, you know, so, basically)",
+    "(c) a short list: um, uh, er, ah"
+  ],
+  "gray": "The owner asked to count 'ums' and the epic leaves the list to IW2 and IW3; counting \"like\" or \"so\" by code would count their ordinary use too, which only judging can tell apart (LEVERS, #2162).",
+  "undo": "Edit the fillers in packages/ui/interview-week/src/lib/faults/fillers.json and the copy home's transcriber cites (#2933).",
+  "refs": ["#2931", "#2933", "#2934"]
+}

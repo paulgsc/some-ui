@@ -571,10 +571,13 @@ Stories mean the product is moving. A run of defects that relate to one another 
 are chasing a promise nobody has stated.
 
 **A gray-area call keeps who made it** (ST37, #2637). When an agent or the owner makes a
-call in a gray area, it is recorded in `docs/calls.json`: what was chosen, the options, why it
-was gray, how to undo it, the paths it governs, and whose authority it rests on (`by: claude`,
-`by: claude` with the day the owner `agreed`, or `by: owner`). The commit that makes it
-carries `Call: <ID>` (`check:commit-trailers` refuses an ID the record lacks at that commit),
+call in a gray area, it is recorded as `docs/calls/<ID>.json`, one file per call: what was
+chosen, the options, why it was gray, how to undo it, the paths it governs, and whose authority
+it rests on (`by: claude`, `by: claude` with the day the owner `agreed`, or `by: owner`). One
+file each, so two PRs that each add a call never conflict (#2976); `check:calls` refuses a file
+not named for its call's ID. The commit that makes it carries `Call: <ID>`
+(`check:commit-trailers` refuses an ID the record lacks at that commit, reading a commit from
+before #2976 in the single array file it held then),
 and the PR's "Calls I made" lists the IDs. Recording one never waits on
 the owner, and agents keep making calls. Until the owner writes their own definition, a gray
 area is a choice between options that no check, convention or earlier owner decision settles,
@@ -586,7 +589,7 @@ that the owner would notice on the screen or in how they work.
   didn't match theirs. The change is a new entry that `moves` the old one, and its PR says
   whose call it moves. Agreeing at the time doesn't change that. A defect stays what it is:
   code failing in a state its story covered.
-- **The record only grows.** An entry is never edited or removed, except that a Claude call
+- **The record only grows.** A call's file is never edited or removed, except that a Claude call
   gains the day the owner agreed to it, and the owner's own call the options and why it was
   gray, which are the owner's to give. The weekly call reads the calls that reached the
   record on `main` in its week, or were agreed to in it, not PR bodies.

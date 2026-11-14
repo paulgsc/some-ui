@@ -3,6 +3,9 @@
   "compilerOptions": {
     "declarationDir": "./",
     "rootDir": ".",
+    // scripts/monday.ts reads `@some-ui/eslint-kit/calls` as source
+    // (packages/eslint/tsconfig.json); src never imports it.
+    "rewriteRelativeImportExtensions": true,
     "paths": {
       "@interview-week/*": ["./src/*"]
     }

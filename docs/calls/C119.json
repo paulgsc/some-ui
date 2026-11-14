@@ -1,0 +1,14 @@
+{
+  "id": "C119",
+  "made": "2026-11-11",
+  "by": "owner",
+  "paths": ["server:.github/workflows/release-lock.yml"],
+  "chose": "A publish (server's image changesets, some-ui's www and render releases) opens a release PR in server that auto-merges on green; each image keeps its one human approval where it has it today, and forming the set adds none.",
+  "options": [
+    "the release PR waits for the owner",
+    "the release PR auto-merges on green"
+  ],
+  "gray": "It adds a writer to main. Its CI is what refuses an inconsistent set (server#790), so a set that merges is one the checks accepted, not one a person read.",
+  "undo": "Remove the auto-merge step from release-lock.yml; release PRs then wait for the owner's merge.",
+  "refs": ["server#787", "server#789", "server#791"]
+}

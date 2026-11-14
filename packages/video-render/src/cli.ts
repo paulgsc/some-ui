@@ -74,6 +74,8 @@ import { existsSync, readFileSync } from "node:fs"
 import { access, mkdir, readdir, writeFile } from "node:fs/promises"
 import { dirname, join, relative } from "node:path"
 import { parseArgs, promisify } from "node:util"
+import { callsAtCommit } from "@some-ui/eslint-kit/calls"
+import type { Call } from "@some-ui/eslint-kit/calls"
 import { z } from "zod"
 
 import { ASK_LABEL, readAskIssue } from "./ask"
@@ -473,15 +475,15 @@ const IssueHit = z.object({
   body: z.string(),
 })
 
-/** The calls record's path in some-ui. */
-const CALLS_RECORD = "docs/calls.json"
-
 /**
  * The calls record on this checkout's history as it stood at `day`'s start
- * (UTC): null when there was none yet. The weekly run starts from some-ui's
+ * (UTC), and whether it was the folder: null when there was none yet. The weekly run starts from some-ui's
  * `main` (`CALL-ROUTINE.md`, step 1), with history back to the week's start.
  */
-async function recordAt(day: string): Promise<string | null> {
+async function recordAt(day: string): Promise<{
+  readonly calls: ReadonlyArray<Call>
+  readonly folder: boolean
+} | null> {
   const root = (
     await run("git", ["rev-parse", "--show-toplevel"])
   ).stdout.trim()
@@ -500,17 +502,13 @@ async function recordAt(day: string): Promise<string | null> {
     fail([
       `no commit before ${day} on this checkout: fetch main's history back to the week's start`,
     ])
-  const at = `${commit}:${CALLS_RECORD}`
-  try {
-    await run("git", ["-C", root, "cat-file", "-e", at])
-  } catch {
-    return null
-  }
-  try {
-    return (await run("git", ["-C", root, "show", at])).stdout
-  } catch {
-    return fail([`${CALLS_RECORD} at ${commit} could not be read`])
-  }
+  const record = callsAtCommit(root, commit)
+  if (record.layout === "none") return null
+  if (record.calls === null)
+    return fail([
+      `the calls record at ${commit} could not be read (pnpm check:calls says why)`,
+    ])
+  return { calls: record.calls, folder: record.layout === "folder" }
 }
 
 /** The day after `day`. */
@@ -531,7 +529,11 @@ async function callFacts(from: string, to: string): Promise<CallFacts> {
   }
   const after = await recordAt(dayAfter(to))
   if (after !== null)
-    facts.calls.push(...callsEntered(await recordAt(from), after))
+    facts.calls.push(
+      ...callsEntered((await recordAt(from))?.calls ?? null, after.calls, {
+        byDay: after.folder,
+      })
+    )
   for (const repo of WORK_REPOS) {
     const changes = new Map<number, "story" | "defect">()
     const commits = await search(

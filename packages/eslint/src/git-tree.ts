@@ -23,6 +23,47 @@ export function gitOrNull(
   }
 }
 
+/** Runs git in `root` with `input` on stdin, as bytes; throws when it fails. */
+export function gitBytes(
+  root: string,
+  args: ReadonlyArray<string>,
+  input?: Buffer
+): Buffer {
+  return execFileSync("git", [...args], {
+    cwd: root,
+    input,
+    stdio: ["pipe", "pipe", "ignore"],
+    maxBuffer: 64 * 1024 * 1024,
+  })
+}
+
+/**
+ * The text of every `<ref>:<path>` in `specs`, in one `git cat-file`, so a
+ * tree of hundreds of files costs one process. Throws for one git cannot read.
+ */
+export function readBlobs(
+  root: string,
+  specs: ReadonlyArray<string>
+): Map<string, string> {
+  const texts = new Map<string, string>()
+  if (specs.length === 0) return texts
+  const out = gitBytes(
+    root,
+    ["cat-file", "--batch"],
+    Buffer.from(`${specs.join("\n")}\n`, "utf8")
+  )
+  let at = 0
+  for (const spec of specs) {
+    const eol = out.indexOf(0x0a, at)
+    const header = out.subarray(at, eol).toString("utf8").split(" ")
+    if (header[1] !== "blob") throw new Error(`could not read ${spec}`)
+    const size = Number(header[2])
+    texts.set(spec, out.subarray(eol + 1, eol + 1 + size).toString("utf8"))
+    at = eol + 1 + size + 1
+  }
+  return texts
+}
+
 export function repoRoot(): string {
   return execFileSync("git", ["rev-parse", "--show-toplevel"], {
     encoding: "utf8",
@@ -93,12 +134,12 @@ export function readFilesAt(
 ): Map<string, string> {
   const listed = gitOrNull(root, ["ls-tree", "-r", "--name-only", "-z", ref])
   if (listed === null) throw new Error(`could not list the files at ${ref}`)
-  const files = new Map<string, string>()
-  for (const path of listed.split("\0")) {
-    if (path === "" || !path.endsWith(suffix)) continue
-    const text = gitOrNull(root, ["show", `${ref}:${path}`])
-    if (text === null) throw new Error(`could not read ${path} at ${ref}`)
-    files.set(path, text)
-  }
-  return files
+  const paths = listed
+    .split("\0")
+    .filter((path) => path !== "" && path.endsWith(suffix))
+  const texts = readBlobs(
+    root,
+    paths.map((path) => `${ref}:${path}`)
+  )
+  return new Map(paths.map((path) => [path, texts.get(`${ref}:${path}`) ?? ""]))
 }

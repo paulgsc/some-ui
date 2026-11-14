@@ -126,7 +126,7 @@ const IdSchema = z
 
 const RepoSchema = z.enum(["some-ui", "server"])
 
-/** The recorded call (`docs/calls.json`, ST37) a decision question draws on. */
+/** The recorded call (`docs/calls/<ID>.json`, ST37) a decision question draws on. */
 const CallSourceSchema = z.strictObject({
   kind: z.literal("call"),
   id: z.string().regex(/^C\d+$/, "a call's id, like C266"),

@@ -1,0 +1,27 @@
+{
+  "id": "C85",
+  "made": "2026-11-11",
+  "by": "claude",
+  "paths": [
+    "server:.github/workflows/gate-verdict.yml",
+    "server:scripts/pr_gate.py",
+    "server:docs/assurance.md",
+    "server:.github/workflows/assurance.yml",
+    "server:.github/workflows/deny.yml",
+    "server:.github/workflows/detect.yml",
+    "server:.github/workflows/lint.yml",
+    "server:.github/workflows/loc.yml",
+    "server:.github/workflows/routes.yml",
+    "server:.github/workflows/rust-runner.yml",
+    "server:.github/workflows/test.yml"
+  ],
+  "chose": "A bot PR's finished runs reach PR gate through a last job in every pull-request workflow, Tell PR gate, which needs every other job, runs only when github-actions[bot] pushed a head of this repository, and workflow_dispatches gate-verdict.yml; pr_gate.py fails a workflow that lacks it, rather than giving the image bot's push a GitHub App token so its runs are ordinary.",
+  "options": [
+    "each pull-request workflow ends with Tell PR gate, which dispatches the verdict",
+    "a GitHub App token for the bot's push, so its runs are ordinary and fire workflow_run",
+    "PR gate (open) waits in the job for bot heads, as the C69 fallback does"
+  ],
+  "gray": "GitHub fires no workflow_run when a run whose actor is github-actions[bot] finishes, so only the throttled 15-minute sweep could decide a bot PR's gate (#781). An App token would remove both the approval step and the need for the job, but it is a new credential, and a credential is the owner's call; no check or earlier decision chose between them.",
+  "undo": "Remove the tell_gate jobs from the eight workflows and the untold check from scripts/pr_gate.py; if the owner adopts an App token for detect.yml's push, they become unneeded.",
+  "refs": ["server#772", "server#781", "server#783"]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "C78",
+  "made": "2026-11-10",
+  "by": "claude",
+  "paths": [
+    "apps/www/tests/record/essay-recording.ts",
+    "apps/www/tests/record/voiced.ts",
+    "packages/video-render/src/stills.ts"
+  ],
+  "chose": "Home hands record:essay one audio file per answered ticket (<TICKET>.<ext>), with the take's word times beside it (<TICKET>.words.json) where home kept them. A take with no times is captioned by spreading the transcript across it, each word's share as long as its letters (spreadWords).",
+  "options": [
+    "word times where home kept them, else the transcript spread by letters",
+    "captions only where home kept word times",
+    "the transcript shown whole for the length of the take"
+  ],
+  "gray": "The call's captions come from Kokoro's own word times, which an owner's take doesn't have. Whether home's transcriber keeps times is RR16-home's to settle, and the spread caption is something the owner sees in every essay.",
+  "undo": "Change spreadWords in stills.ts, or have record:essay refuse a take with no .words.json (essayTakeFiles in essay.ts).",
+  "refs": ["#2691"]
+}

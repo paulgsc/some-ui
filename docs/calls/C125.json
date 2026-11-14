@@ -1,0 +1,20 @@
+{
+  "id": "C125",
+  "made": "2026-11-11",
+  "by": "claude",
+  "agreed": "2026-11-11",
+  "paths": [
+    "apps/www/src/lib/studio-clips/read.ts",
+    "packages/video-render/src/clip.ts",
+    "apps/mailbox/README.md"
+  ],
+  "chose": "Home makes walk clips' frames itself on its render lane, from the index in testing. Session-taken frames ride no mailbox folder, and only their labels are kept.",
+  "options": [
+    "home makes walk frames itself, and session-taken frames are not kept",
+    "amend the mailbox's brief to carry base64 frames",
+    "a new mailbox folder for frames"
+  ],
+  "gray": "The owner chose home for frames, but the mailbox takes only JSON under 1 MiB and refuses encoded bytes by design. MI6 needs the owner's amendment for a new folder, and brief has never carried media.",
+  "undo": "Build the brief-amendment route that the TESTING-GUARD build brief spells out (SOME-UI 4).",
+  "refs": ["testing#6"]
+}

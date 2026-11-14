@@ -1,0 +1,19 @@
+{
+  "id": "C205",
+  "made": "2026-11-13",
+  "by": "claude",
+  "agreed": "2026-11-13",
+  "paths": [
+    "docs/learner-data-authority.md",
+    "apps/www/src/lib/home-link/live-socket.ts",
+    "apps/www/src/lib/home-link/live.ts"
+  ],
+  "chose": "LA8 is widened as built on Oct 31: the paired phone reaches home through native HTTP and, for Game day alone, through one WebSocket (`live-socket.ts`, held by LA21), since native HTTP cannot carry a socket. LA1's exemption list gains that one file.",
+  "options": [
+    "(a) widen LA8 and LA1 for the game day socket, as built",
+    "(b) keep LA8 to native HTTP alone and carry live offers by polling a route instead of a socket"
+  ],
+  "gray": "The owner chose a WebSocket on 2026-10-25, but LA8 said every request to home goes through one module, and the Oct 31 session asked the owner to review the widening. Owner, 2026-11-13, on Game Week Bites: \"Let's just go with the recommended.\"",
+  "undo": "Take (b): replace `lib/home-link/live*.ts` with a feed that polls a home route through native HTTP, drop LA21, and restore LA8's and LA1's earlier claims.",
+  "refs": ["#2078", "#2074"]
+}

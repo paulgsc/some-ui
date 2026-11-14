@@ -1,0 +1,20 @@
+{
+  "id": "C117",
+  "made": "2026-11-11",
+  "by": "owner",
+  "paths": [
+    "server:deploy/home/release.json",
+    "server:apps/envctl/src/deploy.rs",
+    "server:infra/compose/file_host.yml"
+  ],
+  "chose": "Home deploys one release: every compose service's image by digest in server's deploy/home/release.json, pulled, health-gated and rolled back together; rust-runner, orchestrator, render, kokoro and third-party images are no longer moved by hand.",
+  "options": [
+    "file_host only (C80)",
+    "a lockfile in server, bumped by an auto-merging release PR, applied whole",
+    "a manifest published as its own image, pulled by home"
+  ],
+  "gray": "The owner (2026-11-11): \"There's only one way to deploy this. We need all of them to be up\". rust-runner and orchestrator still have no healthcheck until R5 (server#794); until then the deploy gates them on 60 s without a restart.",
+  "undo": "Point envctl deploy back at the single file_host image and drop the IMAGE_* interpolation from infra/compose; release.json then pins nothing.",
+  "refs": ["server#787", "server#788", "server#793"],
+  "moves": "C80"
+}
