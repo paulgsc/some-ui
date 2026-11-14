@@ -3355,7 +3355,7 @@
           "id": "CE2",
           "kind": "RE9",
           "property": "work",
-          "claim": "What home keeps for cards essays grows by one row per essay home takes and one folder per essay it renders or tries, and none is let go until its YouTube link is confirmed.",
+          "claim": "What home keeps for cards essays grows by one row per essay home takes and one folder per essay it renders or tries; no essay's video or folder is let go until its YouTube link is confirmed, and its row never is.",
           "requirement": "server:cards_essay gains one append-only row per essay home takes (its key, the cut list as served, at most 1 MiB, with its SHA-256, and when), and the render worker's renders folder one folder per essay (cards.mp4, cut-list.json, shot-times.json); a failed essay keeps only its finished steps until it renders. Nothing deletes either today (C338): an essay's video and folder are kept until it can be let go after a confirmed YouTube link, as other episodes are, which comes with some-ui#2999 (the owner, on some-ui#2996); its row and the routine's repository keep every essay regardless (CARDS-ROUTINE: never deleted).",
           "verdict": "unproven",
           "conclusion": "Structural on home's table: the row's bound (MAX_BODY) and its append-only triggers come with server#854; how large an essay's video is, and so the growth per essay, is unknown until essays render on home.",
