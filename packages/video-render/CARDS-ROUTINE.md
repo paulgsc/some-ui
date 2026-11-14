@@ -20,7 +20,8 @@ daily routine takes this up when it answers an ask for an essay (EXPLAIN4,
   written as code.
 - **Code** refuses what can't be drawn. `cards-check` refuses a malformed
   cut list, a card without a stamp, and anything home has no file for
-  (`parseCardsEssay`). Drawing refuses a line that doesn't fit or a
+  (`parseCardsEssay`), and anything the series version it pins lacks: a
+  look's cues or music bed, a burn-in with no design (`resolve`). Drawing refuses a line that doesn't fit or a
   character the font lacks (`@some-ui/burn-ins`' `prepare`, in
   `record:cards`).
 - **Home** reads `paulgsc/testing`'s `cards/` index hourly and keeps each

@@ -133,8 +133,12 @@ describe("the cards folder", () => {
       burnIns: [{ kind: "headline", params: {} }],
     })
     const problems = cardsFolderProblems(files, V1)
-    expect(problems.length).toBeGreaterThan(0)
     for (const p of problems) expect(p).toMatch(new RegExp(`^${RUST}\\.json: `))
+    // Only resolving against the series says these, so the essay got there.
+    const said = problems.join("\n")
+    expect(said).toContain("the series has no whoosh sound")
+    expect(said).toContain("the headline burn-in names no design")
+    expect(said).toContain("the series has no music bed")
   })
 
   it("lists its essays newest first, each once", async () => {

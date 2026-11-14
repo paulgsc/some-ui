@@ -231,7 +231,10 @@ async function main(): Promise<void> {
         const version = versionOfFile(file)
         if (version === null) continue
         const series = await readSeries(join(SAMPLE_SERIES, id), version)
-        if (series.ok) held.set(`${id}@${version}`, series.value)
+        // A sample that is here but unreadable is this checkout's fault,
+        // not the essay's: say so, rather than "has no version".
+        if (!series.ok) fail([`${id} v${version}:`, ...series.problems])
+        held.set(`${id}@${version}`, series.value)
       }
     const problems = cardsFolderProblems(
       files,
