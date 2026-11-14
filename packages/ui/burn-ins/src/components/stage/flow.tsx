@@ -1,8 +1,12 @@
 import type { JSX } from "react"
 import { Badge } from "@burn-ins/components/stage/badge"
-import { monoStyle, Stamp } from "@burn-ins/components/stage/card"
+import { Stamp } from "@burn-ins/components/stage/card"
 import { TextLayer } from "@burn-ins/components/stage/text"
-import { withAlpha, type Units } from "@burn-ins/components/stage/units"
+import {
+  monoType,
+  withAlpha,
+  type Units,
+} from "@burn-ins/components/stage/units"
 import { GLYPH_STROKE } from "@burn-ins/lib/badge"
 import {
   ARROW_PATH,
@@ -82,7 +86,7 @@ export const FlowLayer = ({
                   left: cq(s.command.x),
                   top: cq(s.command.y),
                   color: faded(FLOW_COMMAND_TYPE.colour),
-                  ...monoStyle(
+                  ...monoType(
                     units,
                     FLOW_COMMAND_TYPE.sizePx,
                     FLOW_COMMAND_TYPE.lineHeightPx

@@ -84,6 +84,24 @@ describe("the stamp", () => {
     )
     expect(p.ok).toBe(false)
   })
+
+  it("is refused, quoted, when it is wider than the card", () => {
+    const stamp = {
+      sources: [
+        "paulgsc/some-ui@5f3dd29",
+        "paulgsc/dotfiles@91cb11b",
+        "paulgsc/scratch@8468230",
+      ],
+      date: "2026-11-13",
+    }
+    const p = prepare(
+      { kind: "legend", design: "legend-v1", params: { title: "T", stamp } },
+      PORTRAIT
+    )
+    expect(p.ok ? [] : p.problems).toEqual([
+      `the legend burn-in (legend-v1): the stamp "${stampText(stamp)}" doesn't fit the card's width; name fewer sources, or shorter ones`,
+    ])
+  })
 })
 
 describe("the legend card", () => {
