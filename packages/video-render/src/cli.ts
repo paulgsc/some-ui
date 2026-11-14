@@ -477,8 +477,7 @@ const IssueHit = z.object({
 
 /**
  * The calls record on this checkout's history as it stood at `day`'s start
- * (UTC), through the record's one loader, in whichever layout that commit
- * holds: null when there was none yet. The weekly run starts from some-ui's
+ * (UTC), and whether it was the folder: null when there was none yet. The weekly run starts from some-ui's
  * `main` (`CALL-ROUTINE.md`, step 1), with history back to the week's start.
  */
 async function recordAt(day: string): Promise<{

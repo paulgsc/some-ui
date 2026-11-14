@@ -31,6 +31,8 @@ import {
   describeTrailerFinding,
   isBotIdentity,
 } from "../packages/eslint/src/commit-trailers.ts"
+// eslint-disable-next-line no-restricted-imports
+import { repoRoot } from "../packages/eslint/src/git-tree.ts"
 
 // `hash` is null for the message being written, whose record is the tree's.
 type Commit = { label: string; message: string; hash: string | null }
@@ -73,17 +75,15 @@ if (args[0] === "--message-file" && args[1]) {
   commits = commitsIn(args[0] ?? "origin/main..HEAD")
 }
 
+const root = repoRoot()
+
 /**
- * The call ids the record holds at `hash`, or in the tree for null, in
- * whichever layout it has there (a commit from before #2976 holds the
- * one-array file); null when it can't be read there.
+ * The call ids the record holds at `hash`, or in the tree for null; null
+ * when it can't be read there.
  */
 function recordedCalls(hash: string | null): Set<string> | null {
   let record
   try {
-    const root = execFileSync("git", ["rev-parse", "--show-toplevel"], {
-      encoding: "utf8",
-    }).trim()
     record = hash === null ? callsInTree(root) : callsAtCommit(root, hash)
   } catch {
     return null

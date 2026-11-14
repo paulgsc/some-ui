@@ -2,10 +2,9 @@
 // `docs/calls/` goes through it, the record's own checks and the routines that
 // voice it (`render call-facts`, the interview week's Monday). It reads the
 // working tree or any commit, in whichever layout that commit holds: the
-// folder, one file per call, or before #2976 the one-array `docs/calls.json`.
+// folder, or an older commit's `LEGACY_CALLS_FILE`.
 // The rules over the text are `calls.ts`'s. Imports only Node's, so the
 // `scripts/check-*.ts` that use it run with no install.
-import { execFileSync } from "node:child_process"
 import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
@@ -16,6 +15,7 @@ import {
   readCallsArray,
 } from "./calls.ts"
 import type { Call, CallFile, CallsFinding } from "./calls.ts"
+import { gitBytes, gitOrNull, readBlobs } from "./git-tree.ts"
 
 export type { Call } from "./calls.ts"
 
@@ -35,18 +35,6 @@ export type CallsRecord =
       readonly calls: null
       readonly findings: ReadonlyArray<CallsFinding>
     }
-
-const git = (
-  root: string,
-  args: ReadonlyArray<string>,
-  input?: Buffer
-): Buffer =>
-  execFileSync("git", [...args], {
-    cwd: root,
-    input,
-    stdio: ["pipe", "pipe", "ignore"],
-    maxBuffer: 64 * 1024 * 1024,
-  })
 
 /** The record in the working tree under `root`. */
 export function callsInTree(root: string): CallsRecord {
@@ -83,7 +71,7 @@ export function callsInTree(root: string): CallsRecord {
  * that was not there.
  */
 export function callsAtCommit(root: string, commit: string): CallsRecord {
-  const tree = git(root, ["ls-tree", "-z", commit, "--", `${CALLS_DIR}/`])
+  const tree = gitBytes(root, ["ls-tree", "-z", commit, "--", `${CALLS_DIR}/`])
     .toString("utf8")
     .split("\0")
     .filter((line) => line !== "")
@@ -93,7 +81,7 @@ export function callsAtCommit(root: string, commit: string): CallsRecord {
     })
   if (tree.length > 0) {
     const blobs = tree.filter((t) => t.blob)
-    const texts = catFiles(
+    const texts = readBlobs(
       root,
       blobs.map((t) => `${commit}:${t.path}`)
     )
@@ -103,47 +91,7 @@ export function callsAtCommit(root: string, commit: string): CallsRecord {
     }))
     return { layout: "folder", ...readCallFiles(files) }
   }
-  const legacy = git(root, [
-    "ls-tree",
-    "--name-only",
-    commit,
-    "--",
-    LEGACY_CALLS_FILE,
-  ])
-    .toString("utf8")
-    .trim()
-  if (legacy === "") return { layout: "none" }
-  return {
-    layout: "array",
-    ...readCallsArray(
-      git(root, ["show", `${commit}:${LEGACY_CALLS_FILE}`]).toString("utf8")
-    ),
-  }
-}
-
-/**
- * The text of every `<commit>:<path>` in `specs`, in one `git cat-file`, so a
- * record of hundreds of files costs one process, not hundreds.
- */
-function catFiles(
-  root: string,
-  specs: ReadonlyArray<string>
-): ReadonlyMap<string, string> {
-  const texts = new Map<string, string>()
-  if (specs.length === 0) return texts
-  const out = git(
-    root,
-    ["cat-file", "--batch"],
-    Buffer.from(`${specs.join("\n")}\n`, "utf8")
-  )
-  let at = 0
-  for (const spec of specs) {
-    const eol = out.indexOf(0x0a, at)
-    const header = out.subarray(at, eol).toString("utf8").split(" ")
-    if (header[1] === "missing") throw new Error(`git cannot read ${spec}`)
-    const size = Number(header[2])
-    texts.set(spec, out.subarray(eol + 1, eol + 1 + size).toString("utf8"))
-    at = eol + 1 + size + 1
-  }
-  return texts
+  const legacy = gitOrNull(root, ["show", `${commit}:${LEGACY_CALLS_FILE}`])
+  if (legacy === null) return { layout: "none" }
+  return { layout: "array", ...readCallsArray(legacy) }
 }

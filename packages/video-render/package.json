@@ -34,11 +34,11 @@
   },
   "dependencies": {
     "@some-ui/core-utils": "workspace:*",
-    "@some-ui/eslint-kit": "workspace:*",
     "@some-ui/styles": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@some-ui/eslint-kit": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*",
     "tsx": "^4.19.2",

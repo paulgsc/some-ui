@@ -4,8 +4,7 @@
 // to undo it. A later session finds a call by the paths it governs; the weekly
 // call reads the week's new ones (`packages/video-render/src/call-facts.ts`).
 // One file per call, so two pull requests that each add one never touch the
-// same file (#2976). Until #2976 the record was one array, `docs/calls.json`;
-// a commit from before then still holds it, and is read as it was.
+// same file (#2976).
 //
 // What this module holds, as pure functions over the files' text (reading
 // them from the tree or a commit is `calls-record.ts`):
@@ -16,8 +15,8 @@
 //   unique; days are `YYYY-MM-DD`; `by` is `claude` or `owner`; `agreed` is
 //   only on a Claude call, and never before the day it was made; `options`
 //   and `gray` may be left out only of the owner's own call, where they are
-//   the owner's to give, then or later; `moves` names a call listed before it
-//   (in the folder, one with a lower id).
+//   the owner's to give, then or later; `moves` names another call in the
+//   record (in the legacy array, one listed before it).
 // - **Append-only against the base branch.** A call the base holds, in
 //   either layout, is still here with every field unchanged, except that a Claude call may gain the
 //   day the owner agreed to it, and the owner's own call its options and why
@@ -30,7 +29,10 @@
 
 /** The folder that holds the record, one `<ID>.json` per call. */
 export const CALLS_DIR = "docs/calls"
-/** The record's one-array file until #2976: what a commit before it holds. */
+/**
+ * The record's one-array file until #2976: a commit from before then holds
+ * it, and is read as it was.
+ */
 export const LEGACY_CALLS_FILE = "docs/calls.json"
 /** The legacy file's schema. A file in the folder is the bare entry. */
 export const CALLS_SCHEMA = "some-ui.calls/1"
@@ -170,10 +172,20 @@ export type CallsRead =
 /** The calls `entries` hold, in the order given, or why they hold none. */
 function checkEntries(
   entries: ReadonlyArray<unknown>,
-  findings: Array<CallsFinding>
+  findings: Array<CallsFinding>,
+  layout: "array" | "folder"
 ): CallsRead {
   const calls: Array<Call> = []
   const seen = new Set<string>()
+  // In the folder, ids are picked by pull requests in parallel, so a call may
+  // move one with a higher id that merged first: it need only be in the record.
+  const all = new Set(
+    layout === "folder"
+      ? entries.flatMap((e) =>
+          isRecord(e) && typeof e.id === "string" ? [e.id] : []
+        )
+      : []
+  )
   entries.forEach((entry, i) => {
     if (!isCall(entry)) {
       const at =
@@ -184,11 +196,21 @@ function checkEntries(
       return
     }
     const call = entry
-    if (call.moves !== undefined && !seen.has(call.moves))
+    if (layout === "array" && call.moves !== undefined && !seen.has(call.moves))
       findings.push({
         kind: "badEntry",
         at: call.id,
         why: `moves ${call.moves}, which is not listed before it`,
+      })
+    if (
+      layout === "folder" &&
+      call.moves !== undefined &&
+      (call.moves === call.id || !all.has(call.moves))
+    )
+      findings.push({
+        kind: "badEntry",
+        at: call.id,
+        why: `moves ${call.moves}, which is not another call in the record`,
       })
     if (seen.has(call.id)) findings.push({ kind: "duplicateId", id: call.id })
     seen.add(call.id)
@@ -198,10 +220,7 @@ function checkEntries(
   return { calls, findings: [] }
 }
 
-/**
- * The calls the legacy one-array file's `text` holds (a commit from before
- * #2976), in the array's order, or why it holds none.
- */
+/** The calls `LEGACY_CALLS_FILE`'s `text` holds, in its order, or why it holds none. */
 export function readCallsArray(text: string): CallsRead {
   let parsed: unknown
   try {
@@ -226,7 +245,7 @@ export function readCallsArray(text: string): CallsRead {
     }
   }
   const entries: Array<unknown> = parsed.calls
-  return checkEntries(entries, [])
+  return checkEntries(entries, [], "array")
 }
 
 /** A file in the record's folder: its name, and its text (null if not a file). */
@@ -263,13 +282,10 @@ export function readCallFiles(files: ReadonlyArray<CallFile>): CallsRead {
   entries.sort((a, b) => a.n - b.n)
   return checkEntries(
     entries.map(({ entry }) => entry),
-    findings
+    findings,
+    "folder"
   )
 }
-
-/** The text a call's file holds, before prettier formats it. */
-export const callFileText = (entry: unknown): string =>
-  `${JSON.stringify(entry, null, 2)}\n`
 
 /** The path of the file that holds call `id`. */
 export const callPath = (id: string): string => `${CALLS_DIR}/${id}.json`

@@ -16,8 +16,6 @@ import {
 } from "@video-render/call-facts"
 import { describe, expect, it } from "vitest"
 
-const record = (calls: Array<Call>): Array<Call> => calls
-
 describe("the calls record", () => {
   const base = { paths: ["a"], undo: "Undo.", refs: ["#1"] }
   const c1: Call = {
@@ -43,30 +41,25 @@ describe("the calls record", () => {
   }
 
   it("gives the calls that entered it over the week, each as recorded", () => {
-    expect(callsEntered(record([c1]), record([c1, c2]))).toEqual([c2])
+    expect(callsEntered([c1], [c1, c2])).toEqual([c2])
   })
 
   it("goes by when a call reached main, not when it was made", () => {
     const late = { ...c1, made: "2026-10-29" }
-    expect(callsEntered(record([]), record([late]))).toEqual([late])
-    expect(callsEntered(record([late]), record([late]))).toEqual([])
+    expect(callsEntered([], [late])).toEqual([late])
+    expect(callsEntered([late], [late])).toEqual([])
   })
 
   it("gives a call the owner agreed to in the week, and every call of a first record", () => {
     const agreed = { ...c3, agreed: "2026-11-07" }
-    expect(callsEntered(record([c1, c3]), record([c1, agreed]))).toEqual([
-      agreed,
-    ])
-    expect(callsEntered(null, record([c1, c2])).map((c) => c.id)).toEqual([
-      "C1",
-      "C2",
-    ])
+    expect(callsEntered([c1, c3], [c1, agreed])).toEqual([agreed])
+    expect(callsEntered(null, [c1, c2]).map((c) => c.id)).toEqual(["C1", "C2"])
   })
 
   it("lists each call's id, day, author and agreement first, the rest as the file has them", () => {
     const { id, made, by, ...rest } = c3
     const late = { ...rest, agreed: "2026-11-07", id, made, by }
-    expect(Object.keys(callsEntered(null, record([late]))[0] ?? {})).toEqual([
+    expect(Object.keys(callsEntered(null, [late])[0] ?? {})).toEqual([
       "id",
       "made",
       "by",
@@ -78,17 +71,12 @@ describe("the calls record", () => {
   it("orders the folder's calls by when each was made, then by id", () => {
     const later = { ...c1, id: "C10", made: "2026-11-05" }
     expect(
-      callsEntered(null, record([later, c2, c1]), { byDay: true }).map(
-        (c) => c.id
-      )
+      callsEntered(null, [later, c2, c1], { byDay: true }).map((c) => c.id)
     ).toEqual(["C1", "C10", "C2"])
   })
 
   it("keeps the one-array record's order", () => {
-    expect(callsEntered(null, record([c2, c1])).map((c) => c.id)).toEqual([
-      "C2",
-      "C1",
-    ])
+    expect(callsEntered(null, [c2, c1]).map((c) => c.id)).toEqual(["C2", "C1"])
   })
 })
 

@@ -81,10 +81,7 @@ export type RecordedCall = {
   readonly [field: string]: unknown
 }
 
-/**
- * A call as the routine lists it: `id`, `made`, `by` and `agreed` first, then
- * the rest in its file's order, as the week's facts have always listed them.
- */
+/** A call as the routine lists it: `id`, `made`, `by` and `agreed` first, then the rest in its file's order. */
 function listed(call: RecordedCall): RecordedCall {
   const { id, made, by, agreed, ...rest } = call
   return { id, made, by, ...(agreed === undefined ? {} : { agreed }), ...rest }

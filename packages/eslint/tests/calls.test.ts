@@ -10,7 +10,6 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { callsAtCommit, callsInTree } from "@eslint/calls-record.js"
 import {
-  callFileText,
   CALLS_SCHEMA,
   ratchetCalls,
   readCallFiles,
@@ -116,6 +115,9 @@ describe("readCallsArray (the one-array file, before #2976)", () => {
   })
 })
 
+const callFileText = (entry: unknown): string =>
+  `${JSON.stringify(entry, null, 2)}\n`
+
 const named = (
   entry: Record<string, unknown> & { readonly id: string }
 ): { name: string; text: string } => ({
@@ -177,17 +179,28 @@ describe("readCallFiles (one file per call)", () => {
     ])
   })
 
-  it("refuses a move of a call with a higher id", () => {
+  it("lets a call move any other call in the record, a higher id included", () => {
     expect(
       readCallFiles([
         named({ ...call, moves: "C2" }),
         named({ ...call, id: "C2" }),
       ]).findings
+    ).toEqual([])
+    expect(
+      readCallFiles([
+        named({ ...call, moves: "C1" }),
+        named({ ...call, id: "C2", moves: "C9" }),
+      ]).findings
     ).toEqual([
       {
         kind: "badEntry",
         at: "C1",
-        why: "moves C2, which is not listed before it",
+        why: "moves C1, which is not another call in the record",
+      },
+      {
+        kind: "badEntry",
+        at: "C2",
+        why: "moves C9, which is not another call in the record",
       },
     ])
   })
@@ -226,12 +239,6 @@ describe("the loader (calls-record)", () => {
     git(dir, "commit", "-qm", "folder")
     return { dir, array, folder: git(dir, "rev-parse", "HEAD") }
   }
-
-  it("reads the repo's own record, the folder", () => {
-    const own = callsInTree(join(import.meta.dirname, "../../.."))
-    expect(own.layout).toBe("folder")
-    expect(own.layout !== "none" && own.findings).toEqual([])
-  })
 
   it("reads a commit before the split as the array, in its order, and one after as the folder", () => {
     const { dir, array, folder } = splitRepo()
