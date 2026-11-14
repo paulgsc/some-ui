@@ -1,0 +1,15 @@
+{
+  "id": "C366",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": ["server:migrations/20261114000200_create_call_part.up.sql"],
+  "chose": "Each part's link and receipts live in new tables keyed (week, part). The old tables' rows are copied in as part 1 of 1, never reshaped in place. The old tables are kept whole and frozen by BEFORE INSERT triggers, so a rolled-back build fails loudly rather than writing where nothing reads.",
+  "options": [
+    "new tables, copy as part 1, freeze the old",
+    "rebuild the old tables with a part column",
+    "keep the old tables for part 1 and a second table for parts 2..n"
+  ],
+  "gray": "The coordinator set append-only and 'Never lose the record'; copy-and-freeze over rebuild was the session's choice.",
+  "undo": "The down migration drops the copies while they are still only copies, and refuses once a part past the first, or anything recorded since, is in them.",
+  "refs": ["#2918", "server#872"]
+}

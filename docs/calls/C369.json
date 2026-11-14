@@ -1,0 +1,18 @@
+{
+  "id": "C369",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/contract.rs",
+    "server:infra/docker/Dockerfile.server"
+  ],
+  "chose": "The contract epoch rises to 9 for a payload change the phone needs (week, part and of on each call row, and part keys), with no route change. OLDEST_SUPPORTED stays at 1, since an older phone still sees part 1 under the week's key.",
+  "options": [
+    "epoch 9, oldest supported 1",
+    "epoch 9 and oldest supported 9",
+    "no rise: additive fields only"
+  ],
+  "gray": "The coordinator asked for a rise if the phone needs the new shape; not breaking older phones was the session's reading.",
+  "undo": "An epoch never goes down; a later change raises OLDEST_SUPPORTED if older phones must update.",
+  "refs": ["#2918", "server#872"]
+}
