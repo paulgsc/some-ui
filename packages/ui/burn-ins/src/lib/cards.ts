@@ -30,6 +30,7 @@ import type { Box, Geometry } from "./geometry"
 import { blocksOf, cardHeadline, INK, kicker, type TextFrame } from "./journal"
 import { missingChar, monoWidth } from "./mono"
 import type { Parsed } from "./parsed"
+import type { TextBlock } from "./text"
 
 /** The cards' own colours beside the Build Journal's `INK`. Video colours, so literals. */
 export const CARD_INK = {
@@ -60,6 +61,32 @@ export function itemTimes(
   }
   return times
 }
+
+/** A command, set on one row in the monospace. */
+export type Command = {
+  readonly x: number
+  readonly y: number
+  readonly text: string
+}
+
+/** The type a card's commands are set in. */
+export type CommandType = {
+  readonly sizePx: number
+  readonly lineHeightPx: number
+  readonly colour: string
+}
+
+export const moved = <T extends { readonly x: number; readonly y: number }>(
+  at: T,
+  dx: number,
+  dy: number
+): T => ({ ...at, x: at.x + dx, y: at.y + dy })
+
+export const movedBlock = (
+  b: TextBlock,
+  dx: number,
+  dy: number
+): TextBlock => ({ ...b, box: moved(b.box, dx, dy) })
 
 /** An item `t` ms into its card, given when it appears: faded in and risen. */
 export function appearing(

@@ -16,7 +16,13 @@
 
 import { z } from "zod"
 
-import { badgeAt, BadgeStateSchema, openness, type BadgeMark } from "./badge"
+import {
+  badgeAt,
+  BadgeStateSchema,
+  openness,
+  openWidth,
+  type BadgeMark,
+} from "./badge"
 import {
   appearing,
   badgesOpening,
@@ -25,9 +31,14 @@ import {
   cardHeading,
   CardHeadSchema,
   drawStamp,
+  ITEM,
   ItemAtSchema,
   itemTimes,
+  moved,
+  movedBlock,
   wordsProblem,
+  type Command,
+  type CommandType,
   type StampLine,
 } from "./cards"
 import type { Box, Geometry } from "./geometry"
@@ -70,20 +81,13 @@ const NOTE_ROWS = 4
 /** The arrow's strokes, pointing right, in its 16-unit square. */
 export const ARROW_PATH = "M2 8H13.5M9 3.5L13.5 8L9 12.5"
 
-/** A command, set on one row in the monospace. */
-type FlowCommand = {
-  readonly x: number
-  readonly y: number
-  readonly text: string
-}
-
 type StepDrawing = {
   readonly panel: Box
   readonly badge: Step["badge"]
   readonly badgeAt: { readonly x: number; readonly y: number }
   readonly opens: boolean
   readonly label: TextBlock
-  readonly command: FlowCommand | null
+  readonly command: Command | null
   readonly note: TextBlock | null
   /** The arrow into this step, from the one before; null for the first. */
   readonly arrow: Box | null
@@ -105,7 +109,7 @@ type FlowStep = {
   readonly panel: Box
   readonly badge: BadgeMark | null
   readonly label: TextBlock
-  readonly command: FlowCommand | null
+  readonly command: Command | null
   readonly note: TextBlock | null
   readonly arrow: Box | null
 }
@@ -118,11 +122,11 @@ export type FlowFrame = {
 }
 
 /** The type a command is set in. */
-export const FLOW_COMMAND_TYPE = {
+export const FLOW_COMMAND_TYPE: CommandType = {
   sizePx: COMMAND_PX,
   lineHeightPx: COMMAND_LINE,
   colour: CARD_INK.key,
-} as const
+}
 
 /** A step's contents set in a panel `width` wide from (0, 0), or why not. */
 function setStep(
@@ -134,17 +138,17 @@ function setStep(
   let y = PAD
   const badgeY = y
   if (s.badge !== undefined) {
-    const mark = badgeAt(s.badge, PAD, y, BADGE_PX, 1, opens ? 1 : 0)
-    const reach =
-      mark.open === null ? BADGE_PX : mark.open.pill.x + mark.open.pill.width
-    if (reach > width - PAD / 2)
+    if (
+      opens &&
+      PAD + BADGE_PX + openWidth(s.badge, BADGE_PX) > width - PAD / 2
+    )
       return "its badge doesn't fit while it spells itself out"
     y += BADGE_PX + GAP
   }
   const label = setText(s.label, LABEL, { x: PAD, y, width: inner }, 2)
   if (label === null) return "its label doesn't fit"
   y += label.box.height
-  let command: FlowCommand | null = null
+  let command: Command | null = null
   if (s.command !== "") {
     if (monoWidth(s.command, COMMAND_PX) > inner)
       return "its command doesn't fit"
@@ -177,11 +181,6 @@ const bottomOf = (set: Exclude<ReturnType<typeof setStep>, string>): number =>
     set.note === null ? 0 : set.note.box.y + set.note.box.height
   ) + PAD
 
-const movedBlock = (b: TextBlock, dx: number, dy: number): TextBlock => ({
-  ...b,
-  box: { ...b.box, x: b.box.x + dx, y: b.box.y + dy },
-})
-
 export function drawFlow(p: FlowParams, g: Geometry): Parsed<FlowDrawing> {
   const heading = cardHeading(p, g)
   if (!heading.ok) return heading
@@ -199,6 +198,11 @@ export function drawFlow(p: FlowParams, g: Geometry): Parsed<FlowDrawing> {
     p.badgesSeen
   )
   const problems: Array<string> = []
+  // An arrow comes in with its step, so a step may not appear before the one it follows.
+  times.forEach((at, i) => {
+    if (i > 0 && at < (times[i - 1] ?? 0))
+      problems.push(`step ${i + 1} appears before step ${i}`)
+  })
   const sets = p.steps.flatMap((s, i) => {
     const words = wordsProblem(
       `step ${i + 1}`,
@@ -219,9 +223,9 @@ export function drawFlow(p: FlowParams, g: Geometry): Parsed<FlowDrawing> {
   if (problems.length > 0) return { ok: false, problems }
   const height = Math.max(...sets.map(bottomOf))
   const span = down ? n * height + (n - 1) * ARROW : height
-  if (span > box.height)
+  // The last step rises into place, so the flow needs room for its rise too.
+  if (span + ITEM.risePx > box.height)
     return { ok: false, problems: [`${n} steps don't fit`] }
-  // Centred down the body when side by side; from its top when stacked.
   const top = down ? box.y : box.y + (box.height - height) / 2
   const steps = sets.map((set, i): StepDrawing => {
     const x = down ? box.x : box.x + i * (width + ARROW)
@@ -248,10 +252,7 @@ export function drawFlow(p: FlowParams, g: Geometry): Parsed<FlowDrawing> {
       badgeAt: { x: x + set.badgeAt.x, y: y + set.badgeAt.y },
       opens: opens[i] ?? false,
       label: movedBlock(set.label, x, y),
-      command:
-        set.command === null
-          ? null
-          : { ...set.command, x: x + set.command.x, y: y + set.command.y },
+      command: set.command === null ? null : moved(set.command, x, y),
       note: set.note === null ? null : movedBlock(set.note, x, y),
       arrow,
       atMs: times[i] ?? 0,
@@ -268,15 +269,11 @@ export function flowAt(d: FlowDrawing, t: number): FlowFrame {
   const steps = d.steps.flatMap((s, step) => {
     if (t < s.atMs) return []
     const { opacity, risePx } = appearing(t, s.atMs)
-    const rise = <T extends { readonly y: number }>(at: T): T => ({
-      ...at,
-      y: at.y + risePx,
-    })
     return [
       {
         step,
         opacity,
-        panel: rise(s.panel),
+        panel: moved(s.panel, 0, risePx),
         badge:
           s.badge === undefined
             ? null
@@ -289,7 +286,7 @@ export function flowAt(d: FlowDrawing, t: number): FlowFrame {
                 s.opens ? openness(t - s.atMs) : 0
               ),
         label: movedBlock(s.label, 0, risePx),
-        command: s.command === null ? null : rise(s.command),
+        command: s.command === null ? null : moved(s.command, 0, risePx),
         note: s.note === null ? null : movedBlock(s.note, 0, risePx),
         arrow: s.arrow,
       },

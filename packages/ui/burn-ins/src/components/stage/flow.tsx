@@ -1,12 +1,8 @@
 import type { JSX } from "react"
 import { Badge } from "@burn-ins/components/stage/badge"
-import { Stamp } from "@burn-ins/components/stage/card"
+import { MonoCommand, Stamp } from "@burn-ins/components/stage/card"
 import { TextLayer } from "@burn-ins/components/stage/text"
-import {
-  monoType,
-  withAlpha,
-  type Units,
-} from "@burn-ins/components/stage/units"
+import { withAlpha, type Units } from "@burn-ins/components/stage/units"
 import { GLYPH_STROKE } from "@burn-ins/lib/badge"
 import {
   ARROW_PATH,
@@ -28,7 +24,7 @@ export const FlowLayer = ({
   frame: FlowFrame
   units: Units
 }): JSX.Element => {
-  const { cq, placed } = units
+  const { placed } = units
   return (
     <>
       <TextLayer frame={frame.heading} units={units} />
@@ -61,18 +57,17 @@ export const FlowLayer = ({
                 />
               </svg>
             )}
-            <div
-              className="bi-panel"
-              style={{
-                ...placed(s.panel),
-                background: faded(INK.panel),
-                border: `${cq(2)} solid ${faded(INK.edge)}`,
-                borderRadius: cq(12),
-              }}
-            />
             <TextLayer
               frame={{
-                panels: [],
+                panels: [
+                  {
+                    box: s.panel,
+                    fill: faded(INK.panel),
+                    edge: faded(INK.edge),
+                    edgePx: 2,
+                    radiusPx: 10,
+                  },
+                ],
                 blocks: (s.note === null ? [s.label] : [s.label, s.note]).map(
                   fade
                 ),
@@ -80,21 +75,12 @@ export const FlowLayer = ({
               units={units}
             />
             {s.command === null ? null : (
-              <div
-                className="bi-text bi-mono"
-                style={{
-                  left: cq(s.command.x),
-                  top: cq(s.command.y),
-                  color: faded(FLOW_COMMAND_TYPE.colour),
-                  ...monoType(
-                    units,
-                    FLOW_COMMAND_TYPE.sizePx,
-                    FLOW_COMMAND_TYPE.lineHeightPx
-                  ),
-                }}
-              >
-                {s.command.text}
-              </div>
+              <MonoCommand
+                at={s.command}
+                type={FLOW_COMMAND_TYPE}
+                opacity={s.opacity}
+                units={units}
+              />
             )}
             {s.badge === null ? null : <Badge mark={s.badge} units={units} />}
           </div>
