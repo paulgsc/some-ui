@@ -1,6 +1,16 @@
 import type { JSX } from "react"
-import { monoType, type Units } from "@burn-ins/components/stage/units"
-import { STAMP_COLOUR, STAMP_TYPE, type StampLine } from "@burn-ins/lib/cards"
+import {
+  monoType,
+  withAlpha,
+  type Units,
+} from "@burn-ins/components/stage/units"
+import {
+  STAMP_COLOUR,
+  STAMP_TYPE,
+  type Command,
+  type CommandType,
+  type StampLine,
+} from "@burn-ins/lib/cards"
 
 /** A card's stamp, at the foot of its body: `as of <repo>@<commit> · <date>`. */
 export const Stamp = ({
@@ -21,5 +31,30 @@ export const Stamp = ({
     }}
   >
     {stamp.text}
+  </div>
+)
+
+/** A card's command, in the monospace, faded by its own colour (C312). */
+export const MonoCommand = ({
+  at,
+  type,
+  opacity,
+  units,
+}: {
+  at: Command
+  type: CommandType
+  opacity: number
+  units: Units
+}): JSX.Element => (
+  <div
+    className="bi-text bi-mono"
+    style={{
+      left: units.cq(at.x),
+      top: units.cq(at.y),
+      color: withAlpha(type.colour, opacity),
+      ...monoType(units, type.sizePx, type.lineHeightPx),
+    }}
+  >
+    {at.text}
   </div>
 )

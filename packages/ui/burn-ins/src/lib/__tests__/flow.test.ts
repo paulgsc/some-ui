@@ -1,8 +1,13 @@
 /** @vitest-environment node */
 import { frameAt, prepare } from "@burn-ins/lib/burn-in"
-import { ITEM } from "@burn-ins/lib/cards"
+import { cardBody, ITEM } from "@burn-ins/lib/cards"
 import type { FlowFrame } from "@burn-ins/lib/flow"
-import { LANDSCAPE, PORTRAIT, type FrameSize } from "@burn-ins/lib/geometry"
+import {
+  geometryOf,
+  LANDSCAPE,
+  PORTRAIT,
+  type FrameSize,
+} from "@burn-ins/lib/geometry"
 import { describe, expect, it } from "vitest"
 
 const flow = (
@@ -106,7 +111,7 @@ describe("the flow card", () => {
     ])
   })
 
-  it("refuses, naming the step, a value, a character its type lacks, a step that doesn't fit, and fewer than two steps", () => {
+  it("refuses, naming the step, a value, a character its type lacks, and a step that doesn't fit", () => {
     const p = flow({
       steps: [
         { label: "Config", command: "export TOKEN=abc" },
@@ -119,6 +124,44 @@ describe("the flow card", () => {
       "the flow burn-in (flow-v1): step 2's command has \"→\", which the card's type can't draw",
       "the flow burn-in (flow-v1): step 3: its command doesn't fit",
     ])
-    expect(flow({ steps: [{ label: "Alone" }] }).ok).toBe(false)
+  })
+
+  it("refuses a step that appears before the one it follows", () => {
+    const p = flow({ steps: [{ label: "A" }, { label: "B", atMs: 0 }] })
+    expect(p.ok ? [] : p.problems).toEqual([
+      "the flow burn-in (flow-v1): step 2 appears before step 1",
+    ])
+  })
+
+  it("keeps every step above the stamp while it rises, for every flow it accepts", () => {
+    const LONG =
+      "Build both closures and open one lockfile pull request with the whole diff for review today"
+    const step = (k: number): object => ({
+      label: `Build both closures and open one lockfile pull request, step ${k}`,
+      command: "nix flake update",
+      note: "CI builds both closures and opens one lockfile PR.",
+    })
+    for (const frame of [LANDSCAPE, PORTRAIT]) {
+      const body = cardBody(geometryOf(frame))
+      let accepted = 0
+      for (let n = 2; n <= 5; n++)
+        for (const steps of [
+          Array.from({ length: n }, (_, k) => step(k)),
+          // Two rows of label and a command: five stack within a rise of the stamp.
+          Array.from({ length: n }, () => ({ label: LONG, command: "ls" })),
+          Array.from({ length: n }, (_, k) => ({ label: `Step ${k}` })),
+        ]) {
+          const params = { steps }
+          if (!flow(params, frame).ok) continue
+          accepted += 1
+          const end = ITEM.leadMs + (n - 1) * ITEM.gapMs + 1000
+          for (let t = 0; t <= end; t += 50)
+            for (const s of at(params, t, frame).steps)
+              expect(s.panel.y + s.panel.height).toBeLessThanOrEqual(
+                body.y + body.height
+              )
+        }
+      expect(accepted).toBeGreaterThan(0)
+    }
   })
 })

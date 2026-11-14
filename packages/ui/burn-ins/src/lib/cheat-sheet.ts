@@ -34,7 +34,11 @@ import {
   ITEM,
   ItemAtSchema,
   itemTimes,
+  moved,
+  movedBlock,
   wordsProblem,
+  type Command,
+  type CommandType,
   type StampLine,
 } from "./cards"
 import type { Box, Geometry } from "./geometry"
@@ -73,13 +77,6 @@ const BADGE_COLUMN = BADGE_PX + 18
 const TASK_WIDTH = 320
 const COLUMN_GAP = 24
 
-/** A command, set on one row in the monospace. */
-type Command = {
-  readonly x: number
-  readonly y: number
-  readonly text: string
-}
-
 type RowDrawing = {
   readonly panel: Box
   /** Where the badge's glyph sits. */
@@ -117,22 +114,11 @@ export type CheatSheetFrame = {
 }
 
 /** The type a command is set in. */
-export const COMMAND_TYPE = {
+export const COMMAND_TYPE: CommandType = {
   sizePx: COMMAND_PX,
   lineHeightPx: COMMAND_LINE,
   colour: CARD_INK.key,
-} as const
-
-const moved = <T extends { readonly x: number; readonly y: number }>(
-  at: T,
-  dx: number,
-  dy: number
-): T => ({ ...at, x: at.x + dx, y: at.y + dy })
-
-const movedBlock = (b: TextBlock, dx: number, dy: number): TextBlock => ({
-  ...b,
-  box: moved(b.box, dx, dy),
-})
+}
 
 /**
  * A row set from `y`: side by side when its task and command fit there with

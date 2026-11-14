@@ -1,12 +1,8 @@
 import type { JSX } from "react"
 import { Badge } from "@burn-ins/components/stage/badge"
-import { Stamp } from "@burn-ins/components/stage/card"
+import { MonoCommand, Stamp } from "@burn-ins/components/stage/card"
 import { TextLayer } from "@burn-ins/components/stage/text"
-import {
-  monoType,
-  withAlpha,
-  type Units,
-} from "@burn-ins/components/stage/units"
+import { withAlpha, type Units } from "@burn-ins/components/stage/units"
 import { COMMAND_TYPE, type CheatSheetFrame } from "@burn-ins/lib/cheat-sheet"
 import { INK } from "@burn-ins/lib/journal"
 import type { TextBlock } from "@burn-ins/lib/text"
@@ -19,7 +15,6 @@ export const CheatSheetLayer = ({
   frame: CheatSheetFrame
   units: Units
 }): JSX.Element => {
-  const { cq } = units
   return (
     <>
       <TextLayer frame={frame.heading} units={units} />
@@ -50,21 +45,12 @@ export const CheatSheetLayer = ({
               }}
               units={units}
             />
-            <div
-              className="bi-text bi-mono"
-              style={{
-                left: cq(r.command.x),
-                top: cq(r.command.y),
-                color: faded(COMMAND_TYPE.colour),
-                ...monoType(
-                  units,
-                  COMMAND_TYPE.sizePx,
-                  COMMAND_TYPE.lineHeightPx
-                ),
-              }}
-            >
-              {r.command.text}
-            </div>
+            <MonoCommand
+              at={r.command}
+              type={COMMAND_TYPE}
+              opacity={r.opacity}
+              units={units}
+            />
             {r.badge === null ? null : <Badge mark={r.badge} units={units} />}
           </div>
         )
