@@ -7,6 +7,8 @@ import {
 } from "@video-render/cards-essay"
 import { parseCutList } from "@video-render/cut-list"
 import type { CutList } from "@video-render/cut-list"
+import { readSeries } from "@video-render/node"
+import type { Series } from "@video-render/series"
 import { describe, expect, it } from "vitest"
 
 const VIDEOS = join(import.meta.dirname, "../sample/videos")
@@ -20,8 +22,15 @@ async function showcase(video: string): Promise<CutList> {
   return parsed.value
 }
 
-/** The versions of each series home's image holds: cheat-sheet's first. */
-const V1 = (): ReadonlySet<number> => new Set([1])
+/** The series home's image holds: cheat-sheet's first version. */
+const CHEAT_SHEET = await readSeries(
+  join(import.meta.dirname, "../sample/series/cheat-sheet"),
+  1
+)
+const V1 = (id: string, version: number): Series | null =>
+  id === "cheat-sheet" && version === 1 && CHEAT_SHEET.ok
+    ? CHEAT_SHEET.value
+    : null
 
 const NIXOS = "nixos-upgrade-2026-11-14"
 const RUST = "rust-scratchpad-2026-11-14"
@@ -113,6 +122,19 @@ describe("the cards folder", () => {
     expect(cardsFolderProblems(files, V1)).toEqual([
       `${RUST}.json: cheat-sheet has no version 2`,
     ])
+  })
+
+  it("names an essay that asks its series for what it lacks: a look's cues and bed, a burn-in it has no design for", async () => {
+    const files = await folder()
+    const cut = await showcase("rust-scratchpad")
+    files.set(`${RUST}.json`, {
+      ...cut,
+      look: "lively",
+      burnIns: [{ kind: "headline", params: {} }],
+    })
+    const problems = cardsFolderProblems(files, V1)
+    expect(problems.length).toBeGreaterThan(0)
+    for (const p of problems) expect(p).toMatch(new RegExp(`^${RUST}\\.json: `))
   })
 
   it("lists its essays newest first, each once", async () => {

@@ -104,10 +104,14 @@ import {
 } from "./node"
 import { FiledSchema, toFile } from "./pending"
 import { WORK_REPOS } from "./refs"
+import type { Series } from "./series"
 import { versionOfFile } from "./series"
 import { sessionFolderProblems } from "./session-note"
 import { fromTimelineV1 } from "./timeline-v1"
 import { SOUNDS } from "./vocabulary"
+
+/** The series this checkout holds, as home's image does. */
+const SAMPLE_SERIES = join(import.meta.dirname, "sample/series")
 
 /** The JSON files directly in `dir`, by name. */
 async function readJsonFolder(dir: string): Promise<Map<string, unknown>> {
@@ -220,20 +224,18 @@ async function main(): Promise<void> {
   if (first === "cards-check") {
     if (!second) fail(["usage: render cards-check <cards folder>"])
     const files = await readJsonFolder(here(second))
-    // The versions home's image holds: this checkout's samples of each series.
-    const versions = new Map<string, ReadonlySet<number>>()
+    // The series home's image holds: this checkout's samples of each.
+    const held = new Map<string, Series>()
     for (const id of CARDS_SERIES)
-      versions.set(
-        id,
-        new Set(
-          (await readdir(join(import.meta.dirname, "sample/series", id)))
-            .map(versionOfFile)
-            .filter((v) => v !== null)
-        )
-      )
+      for (const file of await readdir(join(SAMPLE_SERIES, id))) {
+        const version = versionOfFile(file)
+        if (version === null) continue
+        const series = await readSeries(join(SAMPLE_SERIES, id), version)
+        if (series.ok) held.set(`${id}@${version}`, series.value)
+      }
     const problems = cardsFolderProblems(
       files,
-      (id) => versions.get(id) ?? new Set()
+      (id, version) => held.get(`${id}@${version}`) ?? null
     )
     if (problems.length > 0)
       fail([`${second} can't be published:`, ...problems])

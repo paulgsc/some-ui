@@ -3334,7 +3334,7 @@
           "evidence": [
             {
               "class": "structural",
-              "says": "parseCardsEssay refuses a key that isn't its stamp's day, a series that isn't a cards series, a scene that isn't a card, plays a take or a cue or stands on an image, and captions; cardsFolderProblems refuses an index out of order, an essay it lists that is missing or pins a version of its series the checkout lacks, and one it forgets; each tested.",
+              "says": "parseCardsEssay refuses a key that isn't its stamp's day, a series that isn't a cards series, a scene that isn't a card, plays a take or a cue or stands on an image, and captions; cardsFolderProblems refuses an index out of order, an essay it lists that is missing, pins a version of its series the checkout lacks or asks that series for what it lacks (resolve), and one it forgets; each tested.",
               "ref": "some-ui:packages/video-render/src/cards-essay.ts"
             },
             {

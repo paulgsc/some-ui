@@ -17,6 +17,9 @@ import { z } from "zod"
 
 import type { CutList, Parsed } from "./cut-list"
 import { isCaptions, parseCutList, problemsOf } from "./cut-list"
+import { resolve } from "./resolve"
+import type { Series } from "./series"
+import { withSeries } from "./series"
 
 export const CARDS_INDEX_SCHEMA = "some-ui.cards-index/1"
 
@@ -103,14 +106,15 @@ export function parseCardsEssay(key: string, raw: unknown): Parsed<CutList> {
 
 /**
  * Every reason a `cards/` folder can't be published: its index unread, an
- * essay it lists missing, refused (`parseCardsEssay`) or pinning a version
- * of its series that `versionsOf` doesn't hold, and an essay file the index
- * forgets. `files` is the folder's JSON files by name, `index.json` among
+ * essay it lists missing, refused (`parseCardsEssay`), pinning a version of
+ * its series `seriesOf` doesn't hold or asking that series for what it
+ * lacks (a look's cues or bed, a burn-in it has no design for: `resolve`),
+ * and an essay file the index forgets. `files` is the folder's JSON files by name, `index.json` among
  * them.
  */
 export function cardsFolderProblems(
   files: ReadonlyMap<string, unknown>,
-  versionsOf: (series: string) => ReadonlySet<number>
+  seriesOf: (id: string, version: number) => Series | null
 ): Array<string> {
   const index = parseCardsIndex(files.get("index.json"))
   if (!index.ok) return index.problems.map((p) => `index.json: ${p}`)
@@ -123,9 +127,11 @@ export function cardsFolderProblems(
       const essay = parseCardsEssay(key, files.get(name))
       if (!essay.ok) return essay.problems.map((p) => `${name}: ${p}`)
       const { id, version } = essay.value.series
-      return versionsOf(id).has(version)
-        ? []
-        : [`${name}: ${id} has no version ${version}`]
+      const series = seriesOf(id, version)
+      if (series === null) return [`${name}: ${id} has no version ${version}`]
+      const framed = withSeries(essay.value, series)
+      const resolved = framed.ok ? resolve(framed.value, series) : framed
+      return resolved.ok ? [] : resolved.problems.map((p) => `${name}: ${p}`)
     }),
     ...[...files.keys()]
       .filter((name) => name !== "index.json" && !listed.has(name))
