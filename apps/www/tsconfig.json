@@ -27,6 +27,7 @@
       "@/build.paths": ["./build.paths"],
       "@/build.minify": ["./build.minify"],
       "@/file-host.dev": ["./file-host.dev"],
+      "@/stage-packages": ["./scripts/stage-packages"],
       "@tests/*": ["./tests/*"],
       "@some-ui/content-registry/*": [
         "../../packages/some-content-registry/src/*"

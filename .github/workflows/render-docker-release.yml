@@ -1,6 +1,8 @@
 name: Render Docker Release
 # Publishes home's render worker, `pgathondu/render` (infra/render/Dockerfile),
-# from main once the image to be pushed has proved its bytes.
+# from main once the image to be pushed has proved its bytes. The paths are
+# _detect-changes.yml's `render` too, on which pr.yml's render-stage job
+# builds the image's stage: keep the two in step.
 on:
   push:
     branches: [main]
@@ -10,6 +12,9 @@ on:
       - "extensions/**"
       - "infra/render/**"
       - "pnpm-lock.yaml"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
       - ".github/workflows/render-docker-release.yml"
   # A publish of main as it is, whatever changed (a failed push, say).
   workflow_dispatch:
@@ -25,9 +30,9 @@ concurrency:
   queue: max
 jobs:
   # ── Detect whether the render graph changed ─────────────────────────────
-  # The graph is what the image builds (infra/render/Dockerfile's turbo
-  # filters; keep the two in step), plus www itself and the closures of what
-  # the stage's bundle carries (fetch-kit, content-registry).
+  # The graph is what the image builds (infra/render/build.sh's turbo
+  # filters, read from it: the stage's own imports and the recorders'
+  # packages), plus www itself.
   detect:
     name: Detect render changes
     runs-on: ubuntu-latest
@@ -54,16 +59,15 @@ jobs:
           fi
           if git diff --quiet "$BASE_SHA" "$HEAD_SHA" -- infra/render .github/workflows/render-docker-release.yml; then
             range="[${BASE_SHA}...${HEAD_SHA}]"
+            # Each build filter, `<pkg>...` or `<pkg>^...`, as `<pkg>...<range>`.
+            built=$(nix develop .#ci --command sh infra/render/build.sh --filters)
+            mapfile -t filters < <(
+              printf '%s\n' "$built" | sed -e 's/\^\.\.\.$/.../' -e "s/\$/${range}/"
+            )
             task_count=$(
               bash .github/actions/www-detect/graph-changed.sh \
                 --filter="www${range}" \
-                --filter="@some-ui/playoff-delta...${range}" \
-                --filter="@some-ui/honeycomb...${range}" \
-                --filter="@some-ui/engagement...${range}" \
-                --filter="@some-ui/video-render...${range}" \
-                --filter="@some-ui/video-motion...${range}" \
-                --filter="@some-ui/fetch-kit...${range}" \
-                --filter="@some-ui/content-registry...${range}"
+                "${filters[@]}"
             )
           else
             task_count=1

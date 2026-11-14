@@ -52,24 +52,10 @@ RUN rm -f /etc/apt/sources.list /etc/apt/sources.list.d/* \
 WORKDIR /opt/some-ui
 COPY . .
 
-# One install and one build for all of it: www's graph (the recorders, the
-# stage and @some-ui/video-motion, a devDependency of www) and the workspace
-# packages the stage and the recorders load built (their `exports` name
-# dist/), never the whole app. `record:playoff-delta` imports
-# @some-ui/playoff-delta's `recording` entry, which exists only once that
-# package is built, and `record:report` imports @some-ui/engagement's
-# registry, which likewise loads only from its dist/. Then the stage, into
-# /opt/stage. The turbo filters are render-docker-release.yml's detect graph
-# too: keep the two in step.
+# One install and one build for all of it (infra/render/build.sh says what it
+# builds, and who else runs it), then the stage into /opt/stage.
 RUN corepack enable \
-    && pnpm install --frozen-lockfile --filter "www..." \
-    && pnpm exec turbo run build \
-       --filter="@some-ui/playoff-delta..." \
-       --filter="@some-ui/honeycomb..." \
-       --filter="@some-ui/engagement..." \
-       --filter="@some-ui/video-render^..." \
-       --filter="@some-ui/video-motion^..." \
-    && pnpm --filter www build:stage \
+    && sh infra/render/build.sh \
     && mv apps/www/out/stage /opt/stage \
     && rm -rf apps/www/out /root/.cache /root/.local/share/pnpm/store
 

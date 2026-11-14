@@ -568,6 +568,38 @@ jobs:
             echo "No files the real recorder's suite runs on changed."
           fi
 
+  # ── The render image's build (RI3) ───────────────────────────────────
+  # infra/render/build.sh, the Dockerfile's whole build, from the Dockerfile's
+  # own base image (its FROM line) and the same `COPY . .` of this checkout,
+  # which has no dist/. The context passes through the image's own
+  # infra/render/Dockerfile.dockerignore, copied beside the generated
+  # Dockerfile, where BuildKit reads it in place of the root .dockerignore.
+  # Only the ffmpeg layer is left out. Runs on the paths that publish the
+  # image. Nothing else builds the stage through the image's filters alone,
+  # so without it a broken image shows first on `main`. Pushes nothing and
+  # stores nothing.
+  render-stage:
+    name: Render image / the stage builds from nothing (RI3)
+    needs: changes
+    if: needs.changes.outputs.render == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the image's packages and its stage
+        run: |
+          set -euo pipefail
+          base=$(sed -n 's/^FROM //p' infra/render/Dockerfile)
+          printf '%s\n' \
+            "FROM $base" \
+            'WORKDIR /opt/some-ui' \
+            'COPY . .' \
+            'RUN corepack enable && sh infra/render/build.sh && test -f apps/www/out/stage/index.html' \
+            > "$RUNNER_TEMP/stage.Dockerfile"
+          cp infra/render/Dockerfile.dockerignore "$RUNNER_TEMP/stage.Dockerfile.dockerignore"
+          docker build --file "$RUNNER_TEMP/stage.Dockerfile" .
+
   # ── Dependency license audit ────────────────────────────────────────────
   deny:
     name: Deny Checks
@@ -731,7 +763,17 @@ jobs:
     name: CI Gate
     runs-on: ubuntu-latest
     needs:
-      [changes, rust, node-checks, node-lint, node-test, node-e2e, deny, guards]
+      [
+        changes,
+        rust,
+        node-checks,
+        node-lint,
+        node-test,
+        node-e2e,
+        render-stage,
+        deny,
+        guards,
+      ]
     if: always()
     permissions: {}
     steps:
@@ -744,4 +786,4 @@ jobs:
       - uses: re-actors/alls-green@v1.3.0
         with:
           jobs: ${{ toJSON(needs) }}
-          allowed-skips: rust, node-checks, node-lint, node-test, node-e2e, deny
+          allowed-skips: rust, node-checks, node-lint, node-test, node-e2e, render-stage, deny
