@@ -1,5 +1,6 @@
 import type { CSSProperties, JSX } from "react"
 import { AuthorshipLayer } from "@burn-ins/components/stage/authorship"
+import { StatusBadgeLayer } from "@burn-ins/components/stage/badge"
 import { Caption } from "@burn-ins/components/stage/captions"
 import { GameCardLayer } from "@burn-ins/components/stage/game-card"
 import { TextLayer } from "@burn-ins/components/stage/text"
@@ -33,6 +34,9 @@ const Layer = ({
     }
     case "game-card": {
       return <GameCardLayer frame={frame.frame} units={units} />
+    }
+    case "status-badge": {
+      return <StatusBadgeLayer frame={frame.frame} units={units} />
     }
     default: {
       return assertNever(frame)
