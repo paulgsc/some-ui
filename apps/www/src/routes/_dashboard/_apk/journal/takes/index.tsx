@@ -5,6 +5,7 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 
 import { libraryTakes } from "@/lib/library-takes"
 import { KIND_WORDS, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
+import { libraryStations } from "@/lib/take-conveyor"
 import { takesHome } from "@/lib/take-library"
 import { PairHomeLink } from "@/components/pair-home-link"
 import { StudioPage, TILE, TileBody } from "@/components/studio/layout"
@@ -18,7 +19,12 @@ const WORDS = STUDIO_INDEX_WORDS.takes
  */
 const TAKE_PORTS =
   import.meta.env.VITE_DEVICE_BACKEND === "true"
-    ? { home: takesHome, player: audioPlayer, phone: libraryTakes() }
+    ? {
+        home: takesHome,
+        player: audioPlayer,
+        phone: libraryTakes(),
+        stations: libraryStations(),
+      }
     : null
 
 /**

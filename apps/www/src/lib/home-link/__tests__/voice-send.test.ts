@@ -35,6 +35,7 @@ import type { JobEvent, JobsState } from "@/lib/jobs/model"
 import { EMPTY } from "@/lib/jobs/model"
 import { keepSoundbites } from "@/lib/soundbite-keeping"
 import { keepStudio } from "@/lib/studio-keeping"
+import type { StationMove } from "@/lib/take-conveyor/model"
 import type { VoiceHome } from "@/lib/voice-home/runtime"
 import { createVoiceHome } from "@/lib/voice-home/runtime"
 
@@ -88,6 +89,30 @@ vi.mock("@/lib/jobs", () => ({
     },
   }),
 }))
+/**
+ * The conveyor's moves (CONVEYOR1): what `../take-stations` answers is its
+ * own test's; here, only where a run sends them. None owed but where a test
+ * says.
+ */
+const conveyor = vi.hoisted(
+  (): {
+    owed: Array<StationMove>
+    answered: Array<string>
+  } => ({ owed: [], answered: [] })
+)
+
+vi.mock("@/lib/take-conveyor", () => ({
+  takeConveyor: (): object => ({
+    port: {
+      due: (): ReadonlyArray<StationMove> => conveyor.owed,
+      answered: (move: string): void => {
+        conveyor.answered.push(move)
+        conveyor.owed = conveyor.owed.filter((owed) => owed.move !== move)
+      },
+    },
+  }),
+}))
+
 vi.mock("@/lib/session-reflection", () => {
   const snapshot = { kept: [] }
   return {
@@ -650,5 +675,43 @@ describe("Studio's ideas, sent whole (ST26 b)", () => {
     sent.length = 0
     await sendVoice(recording, AT_PAIRING)
     expect(sent.filter((line) => line.startsWith("PUT /ideas/"))).toEqual([])
+  })
+})
+
+describe("Studio's takes on the conveyor (CONVEYOR1)", () => {
+  it("go home last in a run, after what the lane carried before them", async () => {
+    setUp(5, { v1: new Blob(["a"]) })
+    conveyor.owed = [
+      {
+        move: "m1",
+        take: "t1",
+        from: "in-the-oven",
+        to: "cooking",
+        at: "2026-11-13T10:00:00.000Z",
+        seq: 0,
+        labels: null,
+        comment: null,
+      },
+    ]
+    conveyor.answered = []
+    const sent: Array<string> = []
+    const recording: HomeCall = (method, path, init) => {
+      sent.push(`${method} ${path}`)
+      return path === "/voice-notes/t1/station"
+        ? Promise.resolve({
+            status: 200,
+            body: JSON.stringify({
+              change: "moved",
+              take: { id: "t1", station: "cooking", seq: 1 },
+            }),
+          })
+        : send(method, path, init)
+    }
+    expect(await sendVoice(recording, AT_PAIRING)).toEqual({ kind: "synced" })
+    expect(sent.at(-1)).toBe("POST /voice-notes/t1/station")
+    expect(
+      sent.slice(0, -1).some((line) => line.includes("/voice-notes/v1"))
+    ).toBe(true)
+    expect(conveyor.answered).toEqual(["m1"])
   })
 })

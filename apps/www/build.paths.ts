@@ -139,6 +139,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/studio-clips/home.ts",
   "apps/www/src/lib/studio-clips/frames-read.ts",
   "apps/www/src/lib/studio-keeping/**",
+  "apps/www/src/lib/take-conveyor/**",
   "apps/www/src/lib/take-library/**",
   "apps/www/src/lib/takes-desk/**",
   "apps/www/src/lib/template-preview/**",
