@@ -185,6 +185,19 @@ describe("findProcessViolations", () => {
     )
   })
 
+  it("needs no process for a family whose every promise has retired", () => {
+    const gone = objective("VH9", {
+      retired: { on: "2026-10-30", why: "Gone." },
+    })
+    const base = ledgerOf([process({ serves: [] })])
+    const families = base.families.map((f) =>
+      f.id === "voice" ? { ...f, objectives: [gone] } : f
+    )
+    expect(errors({ ...base, families, processes: [] })).not.toContain(
+      "voice: no process in the registry serves this family"
+    )
+  })
+
   it("fails a family that is both crosscutting and served, and a crosscutting family that is gone", () => {
     expect(
       errors(ledgerOf([process({ serves: ["voice", "checks"] })]))

@@ -152,7 +152,7 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 | Studio's time log and answers (the phone's)                                            | on the phone, never sent                     | each sitting's time log and its answer to how it went, copied to the paired home by the drain, the log read back before it counts as held; the phone keeps its whole log (LA15)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | the same                                   |
 | Studio's ideas (the phone's)                                                           | on the phone, never sent                     | on a paired phone, each idea sent whole goes to the paired home by the voice lane as one bundle (its title, subject, keywords, format, when it was begun and sent, and each answer as its take's voice note by id or its typed words), once home holds those notes; the phone keeps every idea whole (LA13, LA15)                                                                                                                                                                                                                                                                                                                                                                                   | the same                                   |
 | Studio's asks (GitHub's public issues)                                                 | not read                                     | in the Android app, read from GitHub's public list of open `ask` issues each time Asks opens, without credentials; nothing of the phone's sent (SFEED1)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | the same                                   |
-| Speech                                                                                 | the browser's own voice                      | the server's speech service                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | the same                                   |
+| Speech                                                                                 | the browser's own voice                      | the browser's own voice                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | the same                                   |
 | Reminders                                                                              | the client's own policy, while a tab is open | the client's own policy, while a tab is open                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | the server's push, with the browser closed |
 
 A returning account user whose server cannot be reached at boot (a timeout, a
@@ -172,8 +172,9 @@ request for a lesson is a request. What they do not carry is a cookie, so the
 operator cannot tell a learner who chose the device from an account holder by
 them. This is a statement about application payloads. It is not network
 anonymity, and it says nothing about static-asset requests, the reverse proxy's
-logs or any service the learner themselves invokes (a user-selected speech
-provider, binding the music overlay to a WebSocket).
+logs or any service the learner themselves invokes (binding the music overlay
+to a WebSocket). The browser's own voice is the browser's: where its maker
+runs a voice online, the text it reads goes to that maker.
 
 ## Invariants
 
@@ -209,7 +210,7 @@ declared (checked by reading every call site and by the tests named).
   to `isCorpusRead` in `tests/local-mode/no-egress.spec.ts` a route that carries
   a learner's state.
 - _Scope:_ `apps/www/src`. Not covered: a package under `packages/` that makes
-  its own requests (`speech`, `ws`, `fetch-kit` corpus reads, and `resume`'s
+  its own requests (`ws`, `fetch-kit` corpus reads, and `resume`'s
   `renderResume`, which sends the owner's own contact details to the LAN
   résumé service), which carry no learner state by their own contracts.
   Nor is Studio's Asks page in the Android app (`lib/studio-asks`, SFEED1),
@@ -342,9 +343,9 @@ declared (checked by reading every call site and by the tests named).
   which finds the tag, shows the policy blocks a real request, and loads five
   routes with no violation; `pr.yml` runs it on any change to `apps/www/src` or
   the files above (wiring, not reviewable here). The lan and Docker builds are
-  left out because they reach `file_host` on another port of the same host, a
-  speech provider the learner chose and a music-overlay socket, none of which a
-  `connect-src` can name without also blocking the learner's own choices.
+  left out because they reach `file_host` on another port of the same host and
+  a music-overlay socket, neither of which a `connect-src` can name without
+  also blocking the learner's own choices.
 
 ### LA6: behaviour reaches the account only with the person's opt-in
 
@@ -1939,7 +1940,8 @@ say is that no other path opens it:
   backed up by the OS (the Android manifest allows backup), read by anyone with
   the device, or lost with it. There is no recovery channel, by design.
 - **What a learner chooses to send.** Binding the music overlay opens a WebSocket
-  to `file_host`; a user-selected speech provider receives the text it speaks; a
+  to `file_host`; a browser voice its maker runs online receives the text it
+  speaks; a
   kept shelf item is stored verbatim; the phone's "Share with an agent"
   (`lib/agent-export`) hands Android's share sheet a file of the device's
   sessions, reflections, stops, soundbites, grammar-lens record and
@@ -1955,8 +1957,8 @@ say is that no other path opens it:
   keeps to home on its own, since home is the owner's own store (LA15), and
   Korean reads the routine's files from it. Game day holds a live socket to
   home while it shows (LA21); what it says there (the mode, the game, which
-  games the owner is watching) decides home's offer and is kept nowhere. The share sheet and the speech
-  provider reach beyond home, and the share sheet's "arrived" is the
+  games the owner is watching) decides home's offer and is kept nowhere. The share sheet and an online
+  browser voice reach beyond home, and the share sheet's "arrived" is the
   receiver's copy, not home's (HF1, #2176).
 - **The server's side.** What `file_host` stores and logs is
   `paulgsc/server` `docs/identity.md`.

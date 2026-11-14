@@ -1,7 +1,6 @@
 /**
  * Where this build's `file_host` backend (paulgsc/server) lives: the base URL
- * to prefix `/sessions` and `/push` with. A near-copy of `lib/tts-config`,
- * the same problem on a different port.
+ * to prefix `/sessions` and `/push` with.
  *
  * The study origin is necessarily HTTPS (service workers, `Notification` and
  * `PushManager` need a secure context) and `file_host` serves plain HTTP on
@@ -16,7 +15,7 @@
  * - **HTTP page** -> `http://<hostname>:3000` directly (cert-less `vite dev`,
  *   the container's port-80 listener).
  *
- * `VITE_FILE_HOST_ENDPOINT` overrides both, like `VITE_TTS_ENDPOINT`.
+ * `VITE_FILE_HOST_ENDPOINT` overrides both.
  */
 import type { RouteParams, ServerRoute } from "@some-ui/fetch-kit"
 import { API_V1_PREFIX } from "@some-ui/fetch-kit"

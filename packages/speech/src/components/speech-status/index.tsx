@@ -37,8 +37,8 @@ const selectError = (state: SpeechQueueState): string | null => state.error
 
 /**
  * The coarse, user-facing state of speech. Deliberately the whole of what a
- * consumer can learn: which voice, and whether it works. Anything finer -
- * the adapter, the endpoint, the error text - is this package's business.
+ * consumer can learn: whether it works, and whether it is muted. Anything
+ * finer - the adapter, the error text - is this package's business.
  */
 export function useSpeechStatus(
   options: { muted?: boolean } = {}
@@ -97,7 +97,7 @@ export const SpeechStatusAnnouncer = ({
       // interrupt what a screen reader is already saying.
       aria-live="polite"
       aria-atomic="true"
-      data-speech-status={`${status.voice}:${status.health}`}
+      data-speech-status={status.health}
       style={{
         position: "absolute",
         width: 1,
@@ -124,11 +124,6 @@ const BADGE_LABEL: Readonly<Record<SpeechStatus["health"], string>> = {
   unavailable: "Voice output unavailable",
 }
 
-const BADGE_VOICE_LABEL: Readonly<Record<SpeechStatus["voice"], string>> = {
-  device: "using your device's voice",
-  hosted: "using this site's voice service",
-}
-
 export type SpeechStatusBadgeProps = {
   className?: string
   /** Renders the label as well as the icon. Off by default. */
@@ -146,13 +141,12 @@ export const SpeechStatusBadge = ({
   showLabel = false,
 }: SpeechStatusBadgeProps): JSX.Element => {
   const status = useSpeechStatus()
-  const label = `${BADGE_LABEL[status.health]}, ${BADGE_VOICE_LABEL[status.voice]}`
+  const label = `${BADGE_LABEL[status.health]}, using your device's voice`
 
   return (
     <span
       className={className}
       data-speech-health={status.health}
-      data-speech-voice={status.voice}
       title={label}
       aria-label={label}
       role="status"

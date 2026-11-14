@@ -9,7 +9,7 @@
 
 import type { JSX } from "react"
 import { SpeechProvider } from "@speech/components/speech-provider"
-import type { SpeechAdapterRegistry } from "@speech/lib/adapters"
+import type { SpeechAdapterFactory } from "@speech/lib/adapters"
 import { useSpeechQueue } from "@speech/lib/hooks"
 import { resetSpeechQueue } from "@speech/lib/queue"
 import type { SpeechNotice } from "@speech/lib/status"
@@ -25,7 +25,7 @@ afterEach(() => {
 })
 
 function trackingRegistry(overrides: Partial<ControllableAdapter> = {}): {
-  registry: SpeechAdapterRegistry
+  registry: SpeechAdapterFactory
   adapters: Array<ControllableAdapter>
 } {
   const adapters: Array<ControllableAdapter> = []
@@ -34,7 +34,7 @@ function trackingRegistry(overrides: Partial<ControllableAdapter> = {}): {
     adapters.push(adapter)
     return adapter
   }
-  return { registry: { server: create, static: create }, adapters }
+  return { registry: create, adapters }
 }
 
 const Speaker = (): JSX.Element => {
@@ -48,11 +48,11 @@ const Speaker = (): JSX.Element => {
 
 async function mountSession(
   notices: Array<SpeechNotice>,
-  registry: SpeechAdapterRegistry
+  registry: SpeechAdapterFactory
 ): Promise<void> {
   render(
     <SpeechProvider
-      config={{ mode: "server", adapters: registry }}
+      config={{ backend: registry }}
       notify={(notice) => notices.push(notice)}
     >
       <Speaker />
@@ -105,7 +105,7 @@ describe("SpeechStatusAnnouncer", () => {
       await act(async () => {
         screen.getByRole("button").click()
         await flushAsync()
-        adapters[0]?.fail(new Error(`openai TTS API error: 503 (attempt ${i})`))
+        adapters[0]?.fail(new Error(`synthesis-failed (attempt ${i})`))
         await flushAsync()
       })
     }
@@ -125,14 +125,16 @@ describe("SpeechStatusAnnouncer", () => {
       screen.getByRole("button").click()
       await flushAsync()
       adapters[0]?.fail(
-        new Error("openai TTS API error: 503 - http://localhost:5050 refused")
+        new Error("synthesis-failed: voice ko-KR-x-ism-local refused")
       )
       await flushAsync()
     })
 
     const fault = notices.at(-1)
     expect(fault?.kind).toBe("faulted")
-    expect(JSON.stringify(fault)).not.toMatch(/localhost|5050|503|openai/i)
+    expect(JSON.stringify(fault)).not.toMatch(
+      /synthesis-failed|ko-KR|ism-local/i
+    )
   })
 
   it("announces recovery once when the next utterance succeeds", async () => {
@@ -178,7 +180,7 @@ describe("SpeechStatusAnnouncer", () => {
     const { registry } = trackingRegistry()
 
     render(
-      <SpeechProvider config={{ mode: "server", adapters: registry }}>
+      <SpeechProvider config={{ backend: registry }}>
         <Speaker />
       </SpeechProvider>
     )
@@ -195,14 +197,13 @@ describe("SpeechStatusAnnouncer", () => {
 })
 
 describe("SpeechStatusBadge", () => {
-  it("reports health and voice as data attributes an app can style", async () => {
+  it("reports health as a data attribute an app can style", async () => {
     const notices: Array<SpeechNotice> = []
     const { registry, adapters } = trackingRegistry()
     await mountSession(notices, registry)
 
     const badge = screen.getByRole("status")
     expect(badge.getAttribute("data-speech-health")).toBe("ready")
-    expect(badge.getAttribute("data-speech-voice")).toBe("device")
     expect(badge.getAttribute("aria-label")).toMatch(/voice output on/i)
 
     await act(async () => {

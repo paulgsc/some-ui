@@ -15,14 +15,8 @@ one (`packages/ui/interview`, `packages/ui/honeycomb`).
 **A consumer says what it wants said. It does not know how.**
 
 ```tsx
-// The app: one session, configured by deployment, at the root.
-<SpeechProvider
-  config={{
-    mode: DATA_MODE,
-    endpoint: resolveTTSEndpoint(),
-    adapters: { server: httpSpeech, static: webSpeech },
-  }}
->
+// The app: one session, with the device's own voice, at the root.
+<SpeechProvider config={{ backend: webSpeech }}>
   <App />
 </SpeechProvider>
 ```
@@ -63,11 +57,8 @@ lesson and mute stopped only the line already playing.
 
 What a line may ask for is a **part** (`lib/part`): `"female"` or
 `"male"`, for a page that voices more than one speaker, such as a drama's
-cast. A part keeps the person's choice. The hosted service reads it in their
-voice when that voice is the part's gender, and otherwise in the catalogue's
-voice of that gender for the line's language (`hostedVoiceFor`). A device
-synthesizer cannot say which of its voices is a woman's, so their voice reads
-both parts, each at its own pitch (`DEVICE_PART_PITCH`). A line with no part
+cast. A part keeps the person's choice. A device synthesizer cannot say
+which of its voices is a woman's, so their voice reads both parts, each at its own pitch (`DEVICE_PART_PITCH`). A line with no part
 is read in the chosen voice at its own pitch.
 
 ```tsx
@@ -93,64 +84,52 @@ which answers with one of ours or `null`, and writes one, from
 "the browser has not loaded its voices yet" is not shown as "no Korean
 voice".
 
-Nothing there names a backend, a host, a port, or an API key. The
-`mode` — the same `"static" | "server"` bit `@some-ui/fetch-kit` uses for
-data — selects one of the backends the app passed:
+Nothing there names a backend, a host, a port, or an API key. Every voice
+is the device's own, and the app passes the one it runs as `backend`:
 
-| mode       | where it comes from                | backend                                                             |
-| ---------- | ---------------------------------- | ------------------------------------------------------------------- |
-| `"server"` | `vite dev`, `vite preview`, Docker | `httpSpeech`: `openai-edge-tts` over HTTP (`infra/compose/tts.yml`) |
-| `"static"` | the GitHub Pages build, the APK    | `webSpeech` or `nativeSpeech`: the device's own voice (below)       |
+| build                         | backend                                      |
+| ----------------------------- | -------------------------------------------- |
+| every web build (home, Pages) | `webSpeech`: the browser's `speechSynthesis` |
+| the Android app               | `nativeSpeech`: the phone's text-to-speech   |
 
-Each backend is its own package entry, and the app names the ones it runs:
+Each backend is its own package entry:
 
 ```tsx
-import { httpSpeech } from "@some-ui/speech/http"
 import { webSpeech } from "@some-ui/speech/web-speech"
 
-<SpeechProvider config={{ mode, adapters: { server: httpSpeech, static: webSpeech } }}>
+<SpeechProvider config={{ backend: webSpeech }}>
 ```
 
-There are no defaults, because a default is an import, and an import ships
+There is no default, because a default is an import, and an import ships
 in every build whether it runs there or not: the Android app passes only
-`nativeSpeech`, and its build carries neither the HTTP client nor the
-browser's synthesizer (`apps/www/build.paths.ts` checks it).
-`src/entries.test.ts` fails if the main entry, or one backend's entry,
-reaches another backend's code at runtime, which would move that code into a
-chunk every build loads. The backend each entry exports is an inert token
-only the session can turn into an adapter (`lib/adapters/backend.ts`), so an
-applet holding one still cannot build an adapter. The HTTP entry also carries
-the HTTP engine's own primitives (`createTTSClient`, `createAudioPlayer`),
-which play audio directly; they are there for the HTTP backend, not for
-applets, as they were when the main entry exported them. `config.adapters`
-also takes a factory of the caller's own (a test fake, a future backend),
-`config.mode` pins the choice, and every knob a backend reads — endpoint,
-key, hosted voice, format, timeout — is a config field. If the resolved
-adapter reports `supported === false` (a browser with no Web Audio, say), or
-the app passed nothing for that mode, the other mode's is used instead,
-because that is a fact about the browser rather than about the deployment and
-the caller has no business handling it. With nothing for either mode, the
-session refuses to start.
+`nativeSpeech`, and its build carries no browser synthesizer
+(`apps/www/build.paths.ts` checks it). `src/entries.test.ts` fails if the
+main entry, or one backend's entry, reaches another backend's code at
+runtime, which would move that code into a chunk every build loads. The
+backend each entry exports is an inert token only the session can turn into
+an adapter (`lib/adapters/backend.ts`), so an applet holding one still
+cannot build an adapter. `config.backend` also takes a factory of the
+caller's own (a test fake, a future backend). There is no fallback: if the
+backend reports `supported === false` (a browser with no `speechSynthesis`,
+say), the session says speech is unavailable rather than reaching for
+another.
 
-### Two kinds of voice, never mixed
+### The device's voices are not ours
 
-- **Hosted voices are ours, and closed.** Every one is in `BUILTIN_VOICES`,
-  so `HostedVoiceOf<P>` (`lib/voices`) is a compile-time union and
-  `config.hosted` pairs a provider with one of its own voices or with
-  nothing chosen. `hostedVoiceFor` decides each line: the chosen voice when
-  it speaks the line's language, else that language's declared default
-  (`DEFAULT_HOSTED_VOICE`), else no voice and an honest failure. Nothing
-  falls back to "the first voice in the list". A stored string becomes a
-  choice in one place, `parseHostedVoiceChoice`.
-- **The device's voices are not ours.** The browser's `speechSynthesis`,
-  and the phone's text-to-speech that the Android app passes as
-  `config.native` (its WebView has no working `speechSynthesis`), are
-  someone else's API with someone else's voices, different on every device.
-  They are handed a language and speak it in whatever voice they have, or
-  in the one the person picked from the phone's own list; none of their
-  voices ever becomes a `VoiceConfig`. A phone without voice data for the
-  language refuses the line (`VoiceMissingError`) and the app hears about
-  it through `native.onMissingVoice`, instead of the lesson staying silent.
+The browser's `speechSynthesis`, and the phone's text-to-speech that the
+Android app passes as `config.native` (its WebView has no working
+`speechSynthesis`), are someone else's API with someone else's voices,
+different on every device. They are handed a language and speak it in
+whatever voice they have, or in the one the person picked from the phone's
+own list. A phone without voice data for the language refuses the line
+(`VoiceMissingError`) and the app hears about it through
+`native.onMissingVoice`, instead of the lesson staying silent. Some of those
+voices are online ones, run by whoever made the browser or the phone: this
+package sends nothing anywhere itself, and the browser or phone decides
+where its own voice runs.
+
+The hosted voice service this package once reached over HTTP
+(`openai-edge-tts` on home) was retired in #2977.
 
 ## Telling the person
 
@@ -158,9 +137,8 @@ Everything above is machinery, and none of it is a user's problem. But a page
 that starts talking unprompted is a surprise, and a page that has quietly lost
 the ability to talk is worse — the applet looks fine and simply never speaks
 again. So the session discloses itself, in a vocabulary with no internals in
-it: **which voice** (the one built into your device, or one this deployment
-hosts — the distinction worth disclosing, since one sends text off the machine
-and the other doesn't) and **whether it works** (ready, faulted, unavailable).
+it: **whether it works** (ready, faulted, unavailable), and on activation,
+that the voice is the one the browser or phone provides.
 
 The budget is three notices per session, and it is enforced by a state machine
 rather than by the caller:
@@ -234,34 +212,6 @@ suite against each of them:
 `lib/promise` is where that discipline lives; a new backend that opens its
 promises through a `SpeechLedger` gets most of it for free.
 
-## A line asked for twice is fetched once
-
-The hosted backend fetches each line's audio over the network, and a replay
-button can be tapped again before the first answer arrives. Each tap cancels
-the line before it, so if a cancel ended the request, every tap would send a
-fresh one and none would finish until the taps stopped.
-
-Promise SP1 holds that for one line and voice (provider, voice, the whole
-text, format and quality), `tts-client` has at most one request in flight. A request for a
-line already on its way joins it. The client owns the request, not whoever
-asked first: it ends on its response, its timeout or `clearCache` (which the
-adapter's `dispose` calls). A requester that cancels detaches only its own
-promise, and its playback stops as before. Once answered, the line is cached
-and a later tap sends nothing. Requests in flight are therefore bounded by
-the distinct lines asked for within one timeout.
-
-This deliberately differs from FK1 in `packages/fetch-kit` ("a request stops
-when its caller cancels it"). FK1 is right where one caller owns one request;
-here the audio is shared by key, so one requester cancelling does not mean
-nobody wants it. Counting requesters would not work either: a replay's cancel
-lands synchronously, before the next line reaches the client, so the count
-would touch zero in between.
-
-`lib/engine/__tests__/tts-client.test.ts` ("SP1") holds it against a fetch
-that has not answered: for any run of requests and cancels and one late
-answer, there is one fetch, it is never aborted by a requester, and every
-requester that stayed gets the audio.
-
 ## What this replaced, and why it mattered
 
 The previous implementation could not end a session. `initializeSpeechQueue`
@@ -278,8 +228,7 @@ that would never resume.
 The tests that pin the fix are worth reading as a description of it:
 `lib/queue/__tests__/singleton.test.ts` (a session cannot poison the next one),
 `lib/queue/__tests__/manager.test.ts` (a cancel stops speech now, not when the audio
-happens to end), `lib/engine/audio-player.test.ts` and
-`lib/promise/index.property.test.ts` (for any interleaving of operations,
+happens to end) and `lib/promise/index.property.test.ts` (for any interleaving of operations,
 nothing is left pending).
 
 [issue]: https://github.com/paulgsc/some-ui/issues/533

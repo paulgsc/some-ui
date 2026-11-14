@@ -2579,6 +2579,26 @@
       "gray": "The name now says 26, and text containment keeps any ledger proof naming the old test holding through the switch; keeping the old name would leave a test whose name is false.",
       "undo": "Delete the doc line naming the old test in pass.rs once the ledger names the new test.",
       "refs": ["#2872", "#2875", "server#851"]
+    },
+    {
+      "id": "C316",
+      "made": "2026-11-14",
+      "by": "owner",
+      "paths": [
+        "apps/www/src/providers/tts.tsx",
+        "apps/www/src/components/settings/study-settings.tsx",
+        "packages/speech",
+        "infra/compose",
+        "packages/assurance/src/ledger.json"
+      ],
+      "chose": "Retire the openai-edge-tts speech service: signed-in desktop web speaks with the browser's own voice, as Pages and signed-out home already did, and Settings on the web offers no voice to choose. The voice a browser chose before stays stored, unread.",
+      "options": [
+        "(a) retire the service",
+        "(b) keep it and move it into home's release"
+      ],
+      "gray": "The voice the owner hears on the signed-in desktop changes, from the service's neural voices to whatever the browser provides.",
+      "undo": "Revert the retiring PR: it restores @some-ui/speech's http entry, the provider's server branch, the Settings voice picker and infra/compose/tts.yml, and the stored choice reads back as it was.",
+      "refs": ["#2977", "server#853"]
     }
   ]
 }

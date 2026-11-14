@@ -98,7 +98,7 @@ describe("isBlockedProxyPath: what the dev proxy will not forward", () => {
       "/api/file-host/api/v1/auth/session",
       "/api/file-host/api/v1/curriculum/manifest",
       "/api/file-host/api/v1/shelf/tabs",
-      "/api/tts/v1/audio/speech",
+      "/api/resume/build",
     ]) {
       expect(isBlockedProxyPath(url), url).toBe(false)
     }

@@ -23,14 +23,14 @@ describe("libraryEntries", () => {
     expect(
       libraryEntries({
         packageName: "@some-ui/speech",
-        entries: { http: "src/http.ts", "web-speech": "src/web-speech.ts" },
+        entries: { native: "src/native.ts", "web-speech": "src/web-speech.ts" },
       })
     ).toEqual([
       { subpath: ".", outputName: "@some-ui/speech", source: "src/index.ts" },
       {
-        subpath: "./http",
-        outputName: "@some-ui/speech/http",
-        source: "src/http.ts",
+        subpath: "./native",
+        outputName: "@some-ui/speech/native",
+        source: "src/native.ts",
       },
       {
         subpath: "./web-speech",
@@ -70,16 +70,16 @@ describe("createBuildConfig", () => {
 
   it("names each entry's file by its output name", () => {
     const { lib } = createBuildConfig(
-      { packageName: "@some-ui/speech", entries: { http: "src/http.ts" } },
+      { packageName: "@some-ui/speech", entries: { native: "src/native.ts" } },
       ROOT
     )
 
     expect(lib.entry).toEqual({
       "@some-ui/speech": resolve(ROOT, "src/index.ts"),
-      "@some-ui/speech/http": resolve(ROOT, "src/http.ts"),
+      "@some-ui/speech/native": resolve(ROOT, "src/native.ts"),
     })
-    expect(lib.fileName("es", "@some-ui/speech/http")).toBe(
-      "@some-ui/speech/http.es.js"
+    expect(lib.fileName("es", "@some-ui/speech/native")).toBe(
+      "@some-ui/speech/native.es.js"
     )
   })
 })
