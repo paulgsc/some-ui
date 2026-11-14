@@ -208,7 +208,7 @@ jobs:
           tags: |
             ${{ env.DOCKERHUB_IMAGE }}:${{ steps.version.outputs.version }}
             ${{ env.DOCKERHUB_IMAGE }}:latest
-      # U1: home's release looks at what was just pushed.
+      # U1: asks home's release to look at what was just pushed.
       - name: Ask server's release to look
         uses: ./.github/actions/release-lock-dispatch
         with:

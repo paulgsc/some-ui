@@ -133,7 +133,7 @@ jobs:
           docker push "$DOCKERHUB_IMAGE:latest"
           digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$DOCKERHUB_IMAGE:$GITHUB_SHA")
           echo "Pushed \`$digest\` from $GITHUB_SHA (home pins this digest)." | tee -a "$GITHUB_STEP_SUMMARY"
-      # U1: home's release looks at what was just pushed.
+      # U1: asks home's release to look at what was just pushed.
       - name: Ask server's release to look
         uses: ./.github/actions/release-lock-dispatch
         with:
