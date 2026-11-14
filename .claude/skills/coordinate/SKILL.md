@@ -113,6 +113,17 @@ default (owner, #2814 Nov 10; measurements on #2833).
 - Every PR that records a call appends to `docs/calls.json`, so two in flight always conflict
   after the first merges. Resolve by taking `main`'s file text exactly and appending the PR's new
   entries, never by reformatting (#2918, Nov 13).
+- Arm auto-merge on one PR per repo at a time, never two. Two armed PRs race: whichever lands
+  first leaves the other behind with a fresh CI run, and a PR that keeps losing pays for every
+  run again (#2945 ran CI three times, #2918, Nov 14). Promise the next slot to a PR stuck in a
+  `docs/calls.json` conflict cycle, and hold the other call-adding PRs until it lands.
+- Auto-merge doesn't fire again after a failed check is re-run green. Re-check the PR and merge
+  it by hand with `expectedHeadSha` (#2967, #2918, Nov 14).
+- Before merging a server PR that adds a mailbox read or put, check every numeric bound the
+  assurance ledger states for the mailbox pass (MI6's requests a day, MI5's calls a pass).
+  The server's `Assurance ledger` check reads stores, paths and tasks, not counts written in
+  prose, so a broken bound lands green. Raising one is the owner's decision, so ask before the
+  server PR merges (server#851, #2972, #2918, Nov 14).
 - Before merging a some-ui PR that adds a `server:` path to the assurance ledger, check that the
   file is on server `main` (AL1, #2924). Otherwise every server PR goes red (#2918, Nov 13).
 - After a some-ui merge that touches `apps/www/tests/record` or `infra/render`, check that
@@ -156,7 +167,12 @@ default (owner, #2814 Nov 10; measurements on #2833).
 
 - Push each worker's session note to paulgsc/testing `sessions/`, after running
   `python3 scripts/guard.py --staged` there, and confirm it to the worker before it archives
-  (SFEED9; #2885, Nov 12).
+  (SFEED9; #2885, Nov 12). The guard checks size and media only. Also run
+  `pnpm --filter @some-ui/video-render render session-check <testing>/sessions`, which checks
+  each note against the schema: workers' notes often give `ended` as a timestamp, `epics` as
+  issue refs, `pulls` as strings or an issue, or `did` as an array (9 of Nov 13's failed it,
+  reshaped in testing 4356f3e; #2918, Nov 14). A note is per session per day, so a resumed
+  session merges into its own note, never overwrites it.
 - Write the closing record on the run's `[ORCH]` issue. List the merged PRs in both repos,
   what waits on the owner, the follow-ups filed, and the lessons. Lessons become rules here,
   through a PR.
