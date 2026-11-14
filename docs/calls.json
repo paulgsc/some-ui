@@ -2462,6 +2462,41 @@
         "#2466",
         "#2471"
       ]
+    },
+    {
+      "id": "C297",
+      "made": "2026-11-14",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/pending.ts",
+        "packages/ui/topik/ROUTINE.md"
+      ],
+      "chose": "A Studio take ready for pickup is filed as a pending issue in paulgsc/some-ui, from its newest ready move only, with the owner's labels said as words in the body, never added as GitHub labels. A take an issue already carries (an answer to an ask, say) gets no second issue: the routine answers its pickup with that issue.",
+      "options": [
+        "file in paulgsc/some-ui, labels as words in the body",
+        "file where the take's ref points, labels as GitHub labels",
+        "file a second issue for a take already filed as an answer"
+      ],
+      "gray": "The issue said to file each take with pending and from-studio, plus its labels as context, and named no repository; a take's ref names a Studio project and shot, not a repository, and GitHub labels made from free text would add a label per word the owner types.",
+      "undo": "Change the pickup branch of toFile in packages/video-render/src/pending.ts (its repo and takeLabels) and part E's pickup bullet in packages/ui/topik/ROUTINE.md.",
+      "refs": ["#2875", "#2872"]
+    },
+    {
+      "id": "C298",
+      "made": "2026-11-14",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/pending.ts",
+        "packages/ui/topik/ROUTINE.md"
+      ],
+      "chose": "The routine side of the pickup lands with a known limit stated: a take moved on from ready for pickup before the daily run is still filed, home leaves the take where the owner put it, and the stray issue waits for the owner to close. Home withdrawing a pickup is its own story (#2973).",
+      "options": [
+        "(c) land with the limit stated; the owner closes a stray issue",
+        "(a) first have home put a withdrawal the routine reads, then land"
+      ],
+      "gray": "Home never takes a pickup back and the routine can't see where a take is now, so for up to a day after a take leaves ready for pickup a run can still file it; whether that window is acceptable for now is a product choice no check settles. Taken under the owner's standing \"go with the recommended\".",
+      "undo": "Build #2973: home puts a withdrawal when a take leaves ready for pickup, and toFile files a pickup only while its seq is the take's newest.",
+      "refs": ["#2973", "#2971", "#2875"]
     }
   ]
 }
