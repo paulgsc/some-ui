@@ -130,6 +130,26 @@ export const SAMPLES: Readonly<
       { comment: "# std only: no crates", badge: "gap" },
     ],
   },
+  "cheat-sheet": {
+    kicker: "CHEAT SHEET · A SAMPLE",
+    title: "When you want it now",
+    rows: [
+      {
+        badge: "you",
+        task: "Upgrade now",
+        command: "sudo upgrade --now",
+        note: "The same path the nightly run takes.",
+      },
+      { badge: "main", task: "Watch it", command: "journalctl -fu upgrade" },
+      { badge: "pr", task: "Read the verdict", command: "cat report.md" },
+      {
+        badge: "gap",
+        task: "Reload after a change",
+        command: "reload --config <file>",
+        note: "The made-up binding reads the old path.",
+      },
+    ],
+  },
 }
 
 export const samplesOf = (kind: Kind): ReadonlyArray<BurnInData["params"]> =>

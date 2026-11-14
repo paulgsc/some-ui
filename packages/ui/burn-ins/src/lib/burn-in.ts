@@ -47,6 +47,15 @@ import {
 } from "./captions/theme"
 import { captionsFor, runtimeOf, type Caption } from "./captions/timing"
 import {
+  CHEAT_SHEET_DESIGNS,
+  cheatSheetAt,
+  cheatSheetBoxes,
+  CheatSheetParamsSchema,
+  drawCheatSheet,
+  type CheatSheetDrawing,
+  type CheatSheetFrame,
+} from "./cheat-sheet"
+import {
   drawGameCard,
   GAME_CARD_DESIGNS,
   gameCardBoxes,
@@ -95,6 +104,7 @@ export const KINDS = [
   "preview-mark",
   "status-badge",
   "terminal",
+  "cheat-sheet",
 ] as const
 export type Kind = (typeof KINDS)[number]
 
@@ -110,6 +120,7 @@ export const DESIGNS = {
   "preview-mark": PREVIEW_MARK_DESIGNS,
   "status-badge": STATUS_BADGE_DESIGNS,
   terminal: TERMINAL_DESIGNS,
+  "cheat-sheet": CHEAT_SHEET_DESIGNS,
 } as const satisfies Record<Kind, ReadonlyArray<string>>
 
 /** Where each kind draws. */
@@ -128,6 +139,7 @@ export const REGIONS_OF = {
   "status-badge": ["body"],
   // A card over a bare scene: its title in the header, its window in the body.
   terminal: ["header", "body"],
+  "cheat-sheet": ["header", "body"],
 } as const satisfies Record<Kind, ReadonlyArray<Region>>
 
 const TimedWordSchema = z
@@ -192,6 +204,11 @@ export type Prepared =
       readonly design: (typeof TERMINAL_DESIGNS)[number]
       readonly drawing: TerminalDrawing
     }
+  | {
+      readonly kind: "cheat-sheet"
+      readonly design: (typeof CHEAT_SHEET_DESIGNS)[number]
+      readonly drawing: CheatSheetDrawing
+    }
 
 /** What is on screen at a moment. */
 export type BurnInFrame =
@@ -231,6 +248,11 @@ export type BurnInFrame =
       readonly kind: "terminal"
       readonly design: (typeof TERMINAL_DESIGNS)[number]
       readonly frame: TerminalFrame
+    }
+  | {
+      readonly kind: "cheat-sheet"
+      readonly design: (typeof CHEAT_SHEET_DESIGNS)[number]
+      readonly frame: CheatSheetFrame
     }
 
 const issues = (name: string, error: z.ZodError): ReadonlyArray<string> =>
@@ -398,6 +420,22 @@ export function prepare(b: BurnInData, frame: FrameSize): Parsed<Prepared> {
           }
         : c
     }
+    case "cheat-sheet": {
+      const c = checked(
+        name,
+        CHEAT_SHEET_DESIGNS,
+        b,
+        CheatSheetParamsSchema,
+        drawCheatSheet,
+        g
+      )
+      return c.ok
+        ? {
+            ok: true,
+            value: { kind, design: c.value.design, drawing: c.value.value },
+          }
+        : c
+    }
     default: {
       return assertNever(kind)
     }
@@ -442,6 +480,13 @@ export function frameAt(p: Prepared, t: number): BurnInFrame {
         frame: terminalAt(p.drawing, t),
       }
     }
+    case "cheat-sheet": {
+      return {
+        kind: p.kind,
+        design: p.design,
+        frame: cheatSheetAt(p.drawing, t),
+      }
+    }
     default: {
       return assertNever(p)
     }
@@ -475,6 +520,9 @@ export function boxesOf(f: BurnInFrame): ReadonlyArray<Box> {
     }
     case "terminal": {
       return terminalBoxes(f.frame)
+    }
+    case "cheat-sheet": {
+      return cheatSheetBoxes(f.frame)
     }
     default: {
       return assertNever(f)

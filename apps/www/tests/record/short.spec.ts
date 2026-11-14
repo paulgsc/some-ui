@@ -1,8 +1,8 @@
 /**
  * The burn-in recorder in CI (STUDIO ST15, #2273): a short with a scene's
- * captions, a headline, a status badge, a terminal card and the authorship mark, rendered twice through
- * `record:short`'s
- * path (the built app's `/burn-ins?record` page filling the renderer's
+ * captions, a headline, a status badge, a terminal card, a cheat-sheet card
+ * and the authorship mark, rendered twice through `record:short`'s path
+ * (the built app's `/burn-ins?record` page filling the renderer's
  * `recordBurnIn`), gives the same MP4 and the same burn-in recordings both
  * times. Its sources are made here by ffmpeg, so it needs nothing from Drive.
  *
@@ -93,6 +93,27 @@ const CUT_LIST = cutList(
         },
       ],
     }),
+    shot("S4", {
+      picture: { kind: "card" },
+      durationMs: 2000,
+      burnIns: [
+        {
+          kind: "cheat-sheet",
+          design: "sheet-v1",
+          params: {
+            title: "The recorder draws a cheat sheet too",
+            rows: [
+              {
+                badge: "main",
+                task: "Record a short",
+                command: "pnpm record:short",
+                note: "the same bytes twice",
+              },
+            ],
+          },
+        },
+      ],
+    }),
     card("outro"),
   ],
   {
@@ -168,9 +189,9 @@ test.describe("the burn-in recorder", () => {
       }
       const first = await renderOnce(1)
       const second = await renderOnce(2)
-      // Captions, the mark, the headline, the badge and the terminal, so the
-      // comparison is not of nothing.
-      expect(first.burnIns.size).toBe(5)
+      // Captions, the mark, the headline, the badge, the terminal and the
+      // cheat sheet, so the comparison is not of nothing.
+      expect(first.burnIns.size).toBe(6)
       expect(second.burnIns).toEqual(first.burnIns)
       expect(second.video).toBe(first.video)
     } finally {
