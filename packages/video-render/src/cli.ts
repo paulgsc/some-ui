@@ -24,6 +24,12 @@
  * its index, every week it lists against the call's schema, and no week
  * file it forgets; it prints every reason it can't be published.
  *
+ *   pnpm --filter @some-ui/video-render render cards-check <cards folder>
+ *
+ * checks paulgsc/testing's `cards/` folder before it is published
+ * (`cardsFolderProblems`, CARDS7): its index, every essay it lists as a
+ * cut list home can render, and no essay file it forgets.
+ *
  *   pnpm --filter @some-ui/video-render render clip-check <clips folder>
  *
  * checks paulgsc/testing's `clips/` folder before it is pushed
@@ -79,6 +85,7 @@ import {
   whyOf,
 } from "./call-facts"
 import type { CallFacts } from "./call-facts"
+import { cardsFolderProblems } from "./cards-essay"
 import { clipFolderProblems, parseClipIndex } from "./clip"
 import { CUES, cueWav } from "./cues"
 import { problemsOf } from "./cut-list"
@@ -205,6 +212,18 @@ async function main(): Promise<void> {
     process.stdout.write(
       `${second}: ${weeks} ${weeks === 1 ? "week" : "weeks"}, ready
 `
+    )
+    return
+  }
+  if (first === "cards-check") {
+    if (!second) fail(["usage: render cards-check <cards folder>"])
+    const files = await readJsonFolder(here(second))
+    const problems = cardsFolderProblems(files)
+    if (problems.length > 0)
+      fail([`${second} can't be published:`, ...problems])
+    const essays = files.size - 1
+    process.stdout.write(
+      `${second}: ${essays} ${essays === 1 ? "essay" : "essays"}, ready\n`
     )
     return
   }
