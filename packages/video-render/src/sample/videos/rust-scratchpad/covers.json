@@ -1,0 +1,14 @@
+{
+  "source": "paulgsc/scratch@35ae1e0",
+  "file": "README.md",
+  "blob": "85ac7e6f87d930bd9e66aca854468ec465fdf936",
+  "copy": "sources/paulgsc-scratch-35ae1e0-README.md.txt",
+  "covers": {
+    "# scratch": ["C1", "C2"],
+    "## Commands": ["C2", "C3"],
+    "## The toolchain": ["C2", "C5"],
+    "## When it isn't what you expect": ["C4", "C5"],
+    "nano (or another editor) opens instead of vim.": ["C4"],
+    "A change pushed here hasn't reached you.": ["C5"]
+  }
+}
