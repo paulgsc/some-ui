@@ -2694,6 +2694,26 @@
       "refs": [
         "#2468"
       ]
+    },
+    {
+      "id": "C313",
+      "made": "2026-11-14",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/sample/videos"
+      ],
+      "chose": "The showcase videos' cut lists live in the repo beside their series (sample/videos/<video>/cut-list.json), so anyone can render the same bytes from them; the rendered videos are not kept or uploaded anywhere.",
+      "options": [
+        "Keep each cut list in the repo beside its series",
+        "Keep the cut lists only in the session or issue that wrote them",
+        "Keep the rendered videos instead of their cut lists"
+      ],
+      "gray": "Nothing settles where a video's cut list lives; a cut list kept only in an issue comment can't be rendered or tested from the repo, and a kept video is bytes no one can re-derive or review.",
+      "undo": "Delete packages/video-render/src/sample/videos and the series test case that reads it.",
+      "refs": [
+        "#2465",
+        "#2979"
+      ]
     }
   ]
 }

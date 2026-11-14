@@ -1,0 +1,162 @@
+{
+  "schema": "some-ui.cut-list/2",
+  "title": "NixOS: how this machine upgrades itself",
+  "series": { "id": "cheat-sheet", "version": 1 },
+  "look": "plain",
+  "voice": "read",
+  "shots": [
+    {
+      "id": "C1",
+      "picture": { "kind": "card" },
+      "durationMs": 11300,
+      "burnIns": [
+        {
+          "kind": "flow",
+          "params": {
+            "kicker": "FLOW · THE LOOP",
+            "title": "Merging one PR is the whole upgrade",
+            "steps": [
+              {
+                "badge": "pr",
+                "label": "Monday 06:00 UTC",
+                "command": "nix flake update",
+                "note": "CI builds both closures and opens one lockfile PR with the nvd diff. #64 is open now."
+              },
+              {
+                "badge": "you",
+                "label": "You review and merge",
+                "note": "The only manual step."
+              },
+              {
+                "badge": "main",
+                "label": "Nightly 04:40, ± 20 min",
+                "note": "The box pulls main and switches. A night missed while it was off runs on next boot."
+              },
+              {
+                "badge": "main",
+                "label": "Home follows",
+                "note": "home-manager switches to the commit the system was just built from."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "C2",
+      "picture": { "kind": "card" },
+      "durationMs": 12450,
+      "burnIns": [
+        {
+          "kind": "cheat-sheet",
+          "params": {
+            "kicker": "CHEAT SHEET · BY HAND",
+            "title": "When you want it now",
+            "rows": [
+              {
+                "badge": "you",
+                "task": "Upgrade now",
+                "command": "sudo systemctl start nixos-upgrade",
+                "note": "Same path as the nightly run, report included."
+              },
+              {
+                "badge": "main",
+                "task": "Watch it",
+                "command": "journalctl -fu nixos-upgrade -u home-manager-upgrade -u upgrade-report"
+              },
+              {
+                "badge": "main",
+                "task": "Read the verdict",
+                "command": "cat /var/lib/upgrade-report/latest.md"
+              },
+              {
+                "badge": "you",
+                "task": "New kernel",
+                "command": "reboot when you choose",
+                "note": "Nothing reboots on its own."
+              },
+              {
+                "badge": "gap",
+                "task": "Reload tmux after a change",
+                "command": "tmux source-file ~/.config/tmux/tmux.conf",
+                "note": "prefix r reads ~/.tmux.conf, which home-manager does not write."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "C3",
+      "picture": { "kind": "card" },
+      "durationMs": 13600,
+      "burnIns": [
+        {
+          "kind": "terminal",
+          "params": {
+            "kicker": "TERMINAL · WHERE IT REPORTS",
+            "title": "Each run is judged, then recorded three ways",
+            "bar": "upgrade-report.service",
+            "lines": [
+              {
+                "comment": "# good only if: both units succeeded, system on main's tip,"
+              },
+              {
+                "comment": "# home on that same commit, and the log capture found its canary"
+              },
+              {
+                "keyword": "Grafana -> UPGRADES",
+                "comment": "  # verdict, each check, good nights over 7/30/90 days",
+                "badge": "main"
+              },
+              {
+                "keyword": "GitHub -> Deployments -> nixos",
+                "comment": "  # one status per run",
+                "badge": "main"
+              },
+              {
+                "keyword": "upgrade-log issue",
+                "comment": "  # warnings and errors, scrubbed before they leave",
+                "badge": "main"
+              },
+              {
+                "keyword": "slo issue",
+                "comment": "  # off-box check daily 17:17 UTC; opens after 36 h with no run",
+                "badge": "main"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "C4",
+      "picture": { "kind": "card" },
+      "durationMs": 12450,
+      "burnIns": [
+        {
+          "kind": "legend",
+          "params": { "kicker": "LEGEND", "title": "Reading the badges" }
+        }
+      ]
+    },
+    {
+      "id": "C5",
+      "picture": { "kind": "card" },
+      "durationMs": 10150,
+      "burnIns": [
+        {
+          "kind": "rule",
+          "params": {
+            "kicker": "FRESHNESS",
+            "title": "How stale is this card?",
+            "sources": ["docs/auto-upgrade.md", "the code"],
+            "wins": "the doc"
+          }
+        }
+      ]
+    }
+  ],
+  "burnIns": [],
+  "stamp": { "sources": ["paulgsc/dotfiles@91cb11b"], "date": "2026-11-14" }
+}
