@@ -109,7 +109,7 @@ const widthOfLine = (line: ReadonlyArray<Piece>, sizePx: number): number =>
   line.reduce((sum, piece) => sum + advance(piece, sizePx), 0)
 
 /** A piece placed: words at a point, or a shape in a square. */
-export type Placed =
+type Placed =
   | {
       readonly kind: "words"
       readonly x: number
