@@ -27,8 +27,12 @@ export type {
 } from "./lib/idea/hearing"
 export { homeHearing } from "./lib/idea/hearing"
 export { TakeLibrary } from "./components/take-library"
-export type { LibraryPage, LibraryRead } from "./lib/library/model"
-export type { LibraryPhone, TakesHome } from "./lib/library/runtime"
+export type { LibraryPage, LibraryRead, LibraryTake } from "./lib/library/model"
+export type {
+  LibraryPhone,
+  LibraryStations,
+  TakesHome,
+} from "./lib/library/runtime"
 export { LIBRARY_WORDS } from "./lib/library/words"
 export { Studio } from "./components/studio"
 export { StudioRecords } from "./components/studio-records"

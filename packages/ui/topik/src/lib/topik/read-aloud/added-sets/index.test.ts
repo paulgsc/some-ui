@@ -3,11 +3,18 @@ import {
   ADDED_SET_LIMIT,
   addSet,
   ALL_SETS_ID,
+  archiveSet,
+  bringBack,
   intakeSet,
+  notOpenedInAWhile,
   openSet,
+  readAddedSets,
   readySets,
   resolveSets,
   setLevel,
+  setsInUse,
+  storedSet,
+  wordSetsList,
   wordsLeaving,
 } from "@topik/lib/topik/read-aloud/added-sets"
 import type {
@@ -68,6 +75,7 @@ const added = (
   deck,
   addedAt: "2026-10-14T06:00:00.000Z",
   openedAt,
+  archivedAt: null,
 })
 
 const file = (deck: ReadAloudDeck): string =>
@@ -291,5 +299,146 @@ describe("the kept list", () => {
   it("reads a set at its highest line's level", () => {
     expect(setLevel(PLANS)).toBe(2)
     expect(setLevel(CAFE)).toBe(1)
+  })
+})
+
+describe("archiving a set (MD7, C232)", () => {
+  const lineIds = (deck: ReadAloudDeck): Array<string> =>
+    deck.lines.map((one) => one.id)
+
+  it("takes it out of Read aloud and Ready for you, and keeps its deck and words", () => {
+    const before = [added(CAFE), added(PLANS)]
+    const after = archiveSet(before, "plans-2", "2026-11-13T00:00:00.000Z")
+    const resolved = resolveSets(after)
+    expect(lineIds(resolved.all)).toEqual(["cafe.coffee"])
+    expect(resolved.sets.get("plans-2")?.lines.map((one) => one.id)).toEqual([
+      "plans-2.line-1",
+    ])
+    expect(resolved.all.words.map((word) => word.id)).toContain("yaksok")
+    expect(wordsLeaving(before, after).size).toBe(0)
+    expect(readySets(after).map((set) => set.deck.id)).toEqual(["cafe"])
+    expect(setsInUse(after).map((set) => set.deck.id)).toEqual(["cafe"])
+  })
+
+  it("keeps the day it was first archived", () => {
+    const once = archiveSet([added(PLANS)], "plans-2", "a")
+    expect(archiveSet(once, "plans-2", "b")[0]?.archivedAt).toBe("a")
+  })
+
+  type Step = "archive" | "bring back" | "add again" | "open"
+  const STEPS: ReadonlyArray<Step> = [
+    "archive",
+    "bring back",
+    "add again",
+    "open",
+  ]
+  const orderings = (left: ReadonlyArray<Step>): Array<Array<Step>> =>
+    left.length === 0
+      ? [[]]
+      : left.flatMap((step, at) =>
+          orderings([...left.slice(0, at), ...left.slice(at + 1)]).map(
+            (rest) => [step, ...rest]
+          )
+        )
+
+  it.each(orderings(STEPS).map((order) => [order.join(", "), order] as const))(
+    "holds the record through %s",
+    (_, order) => {
+      let sets = [added(CAFE, "o"), added(PLANS)]
+      let archived = false
+      let opened = false
+      for (const [index, step] of order.entries()) {
+        const at = `t${index}`
+        if (step === "archive") {
+          sets = archiveSet(sets, "plans-2", at)
+          archived = true
+        } else if (step === "bring back") {
+          sets = bringBack(sets, "plans-2")
+          archived = false
+        } else if (step === "add again") {
+          // Back from archive, a set keeps its first open; in use, it reads as new.
+          if (!archived) opened = false
+          sets = addSet(sets, PLANS, at)
+          archived = false
+        } else {
+          sets = openSet(sets, "plans-2", at)
+          opened = true
+        }
+        const plans = sets.find((set) => set.deck.id === "plans-2")
+        const resolved = resolveSets(sets)
+        // Nothing is ever removed, and the deck always resolves.
+        expect(sets.map((set) => set.deck.id)).toEqual(["cafe", "plans-2"])
+        expect(resolved.sets.get("plans-2")?.lines).toHaveLength(1)
+        expect(resolved.all.words.map((word) => word.id)).toContain("yaksok")
+        expect(plans?.archivedAt !== null).toBe(archived)
+        expect(plans?.openedAt !== null).toBe(opened)
+        expect(lineIds(resolved.all).includes("plans-2.line-1")).toBe(!archived)
+        expect(readySets(sets).some((set) => set.deck.id === "plans-2")).toBe(
+          !archived && !opened
+        )
+      }
+    }
+  )
+
+  const full = (n: number): Array<AddedSet> =>
+    Array.from({ length: n }, (_, index) =>
+      added({ ...PLANS, id: `set-${index}` })
+    )
+
+  it("frees its place under the limit, and counts it again when it is added back", () => {
+    const sets = archiveSet(full(ADDED_SET_LIMIT), "set-0", "a")
+    expect(intakeSet(file({ ...PLANS, id: "new" }), sets)).toMatchObject({
+      ok: true,
+    })
+    const refilled = addSet(sets, { ...PLANS, id: "new" }, "b")
+    // Picked again, the archived set would come back over the limit.
+    expect(intakeSet(file({ ...PLANS, id: "set-0" }), refilled)).toMatchObject({
+      ok: false,
+    })
+    // Brought back over the limit, nothing changes.
+    expect(bringBack(refilled, "set-0")).toEqual(refilled)
+    expect(wordSetsList(refilled, new Date()).room).toBe(false)
+    expect(
+      bringBack(archiveSet(refilled, "new", "c"), "set-0").find(
+        (set) => set.deck.id === "set-0"
+      )?.archivedAt
+    ).toBeNull()
+  })
+
+  it("loads a store written before archiving, whole and in use", () => {
+    const old = [
+      { deck: { schemaVersion: 1, ...PLANS }, addedAt: "a", openedAt: null },
+    ]
+    expect(readAddedSets(old)).toEqual({
+      value: [{ deck: PLANS, addedAt: "a", openedAt: null, archivedAt: null }],
+      whole: true,
+    })
+    const kept = archiveSet([added(PLANS)], "plans-2", "z")
+    expect(readAddedSets(kept.map(storedSet))?.value).toEqual(kept)
+  })
+
+  it("hints at a set first opened 30 or more days ago, and at no other", () => {
+    const now = new Date("2026-11-13T00:00:00.000Z")
+    expect(notOpenedInAWhile(added(PLANS), now)).toBe(false)
+    expect(
+      notOpenedInAWhile(added(PLANS, "2026-10-15T00:00:00.000Z"), now)
+    ).toBe(false)
+    expect(
+      notOpenedInAWhile(added(PLANS, "2026-10-14T00:00:00.000Z"), now)
+    ).toBe(true)
+  })
+
+  it("lists sets in use newest first, then archived ones last archived first", () => {
+    let sets = [
+      { ...added(CAFE), addedAt: "1" },
+      { ...added(PLANS), addedAt: "2" },
+      { ...added({ ...PLANS, id: "c" }), addedAt: "3" },
+    ]
+    sets = archiveSet(archiveSet(sets, "cafe", "x"), "plans-2", "y")
+    const list = wordSetsList(sets, new Date())
+    expect(list.inUse.map((row) => row.id)).toEqual(["c"])
+    expect(list.archived.map((row) => row.id)).toEqual(["plans-2", "cafe"])
+    expect(list.archived[0]).toMatchObject({ title: "Plans", lines: 1 })
+    expect(list.room).toBe(true)
   })
 })

@@ -125,6 +125,47 @@ export function defineContract<TResponse>(
   return contract
 }
 
+/**
+ * The two answers a paired phone's route gives anyone else: a `401` without
+ * a session and a `403` for a browser's cookie session, each refused before
+ * the body is read, so nothing is kept. `id` is the pair's stem
+ * (`<id>_signed_out`, `<id>_browser`); `what` names the route in its
+ * summaries.
+ */
+export function pairedPhoneOnly(
+  module: string,
+  id: string,
+  method: "GET" | "PUT",
+  path: string,
+  what: string,
+  request: ContractRequest
+): Array<Contract> {
+  const mutates = method === "PUT"
+  return [
+    defineContract({
+      id: `${id}_signed_out`,
+      module,
+      method,
+      path,
+      summary: `${what} is a paired phone's: without a session it is a 401`,
+      ...(mutates ? { mutates } : {}),
+      request,
+      expect: { status: 401 },
+    }),
+    defineContract({
+      id: `${id}_browser`,
+      module,
+      session: true,
+      method,
+      path,
+      summary: `${what} is a paired phone's: a browser's cookie session is a 403`,
+      ...(mutates ? { mutates } : {}),
+      request,
+      expect: { status: 403 },
+    }),
+  ]
+}
+
 export const API_V1_PREFIX = "/api/v1"
 
 /** The path a client actually requests, prefix resolved. */

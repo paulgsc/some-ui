@@ -10,6 +10,7 @@
 
 import { z } from "zod"
 
+import { badgeProblems } from "./badges"
 import { LOOKS, VOICES } from "./plans"
 import {
   BackgroundSchema,
@@ -246,6 +247,7 @@ export function parseCutList(raw: unknown): Parsed<CutList> {
   const problems = once([
     ...shotProblems(parsed.data.shots),
     ...authorshipProblems(parsed.data),
+    ...badgeProblems(parsed.data),
     ...wholeVideoProblems(
       parsed.data,
       isCaptions,

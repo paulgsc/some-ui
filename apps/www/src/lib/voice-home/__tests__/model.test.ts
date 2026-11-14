@@ -15,6 +15,7 @@ import type {
 import {
   ASIDE_ANSWERED_MAX,
   INITIAL_VOICE_HOME,
+  keptIn,
   marksDue,
   NO_ASIDE,
   NO_PASS,
@@ -24,6 +25,7 @@ import {
   runEnd,
   settled,
   stepVoiceHome,
+  UNKNOWN_PAIRING,
   VOICE_OFS,
 } from "@/lib/voice-home/model"
 
@@ -37,6 +39,11 @@ const NOTE: VoiceOut = {
 const OTHER: VoiceOut = { ...NOTE, id: "n2" }
 /** When this phone heard home say it holds a note. */
 const HEARD = "2026-10-25T03:12:00.000Z"
+/** The pairing the phone holds, and another home's (HP1). */
+const PAIRING = "pairing-1"
+const ANOTHER = "pairing-2"
+/** A record under `PAIRING`, nothing copied yet. */
+const PAIRED: VoiceHomeState = { ...INITIAL_VOICE_HOME, pairing: PAIRING }
 
 const copied = (state: VoiceHomeState, note: VoiceOut): VoiceHomeState =>
   stepVoiceHome(state, { kind: "copied", note })
@@ -61,13 +68,23 @@ describe("the record of voice notes on their way home", () => {
   })
 
   it("moves a waiting note to held or refused, once, and never copies it again", () => {
-    const two = copied(copied(INITIAL_VOICE_HOME, NOTE), OTHER)
-    const held = stepVoiceHome(two, { kind: "held", id: "n1", at: HEARD })
+    const two = copied(copied(PAIRED, NOTE), OTHER)
+    const held = stepVoiceHome(two, {
+      kind: "held",
+      id: "n1",
+      at: HEARD,
+      pairing: PAIRING,
+    })
     expect(held.waiting).toEqual([OTHER])
     expect(held.held).toEqual(["n1"])
     expect(held.heldAt).toEqual({ n1: HEARD })
     expect(
-      stepVoiceHome(held, { kind: "held", id: "n1", at: "2026-12-01T00:00Z" })
+      stepVoiceHome(held, {
+        kind: "held",
+        id: "n1",
+        at: "2026-12-01T00:00Z",
+        pairing: PAIRING,
+      })
     ).toBe(held)
     expect(copied(held, NOTE)).toBe(held)
 
@@ -78,8 +95,10 @@ describe("the record of voice notes on their way home", () => {
     })
     expect(refused).toEqual({
       waiting: [],
+      pairing: PAIRING,
       held: ["n1"],
       heldAt: { n1: HEARD },
+      others: {},
       refused: [
         { id: "n2", why: "home holds another recording under its name" },
       ],
@@ -159,7 +178,9 @@ describe("the record of voice notes on their way home", () => {
     const before = { waiting: [], held: ["n1"], refused: [], roomless: [] }
     expect(parseVoiceHome(JSON.stringify(before))).toEqual({
       ...before,
+      pairing: null,
       heldAt: {},
+      others: {},
       aside: NO_ASIDE,
     })
   })
@@ -171,10 +192,11 @@ describe("the set-aside marks owed to home (MIC2)", () => {
     state: VoiceHomeState,
     ...events: ReadonlyArray<Parameters<typeof stepVoiceHome>[1]>
   ): VoiceHomeState => events.reduce(stepVoiceHome, state)
-  const held = step(copied(copied(INITIAL_VOICE_HOME, NOTE), OTHER), {
+  const held = step(copied(copied(PAIRED, NOTE), OTHER), {
     kind: "held",
     id: "n1",
     at: HEARD,
+    pairing: PAIRING,
   })
 
   it("owes a mark once, the first time standing, and makes it due only for a note home holds", () => {
@@ -197,7 +219,9 @@ describe("the set-aside marks owed to home (MIC2)", () => {
     // n2 waits to go home: its mark waits with it.
     expect(marksDue(owed)).toEqual([{ id: "n1", at: LET_GO }])
     expect(
-      marksDue(step(owed, { kind: "held", id: "n2", at: HEARD }))
+      marksDue(
+        step(owed, { kind: "held", id: "n2", at: HEARD, pairing: PAIRING })
+      )
     ).toHaveLength(2)
   })
 
@@ -318,6 +342,145 @@ describe("how a run ends after a copy pass (LA14)", () => {
           }
         }
       }
+    }
+  })
+})
+
+describe("what home holds, by the pairing that said so (HP1, #2437)", () => {
+  const step = (
+    state: VoiceHomeState,
+    ...events: ReadonlyArray<Parameters<typeof stepVoiceHome>[1]>
+  ): VoiceHomeState => events.reduce(stepVoiceHome, state)
+  const heldBy = (pairing: string, id: string, at = HEARD) =>
+    ({ kind: "held", id, at, pairing }) as const
+  /** n1 held by the first home, n2 waiting, n3 refused. */
+  const first = step(
+    copied(copied(copied(PAIRED, NOTE), OTHER), { ...NOTE, id: "n3" }),
+    heldBy(PAIRING, "n1"),
+    { kind: "refused", id: "n3", why: "x" }
+  )
+
+  it("reads nothing as held under another pairing or none, keeping the first home's word, and reads it again once that pairing is back", () => {
+    for (const pairing of [ANOTHER, null]) {
+      const moved = step(first, { kind: "paired", pairing })
+      expect(moved).toMatchObject({
+        pairing,
+        held: [],
+        heldAt: {},
+        others: { [PAIRING]: { held: ["n1"], heldAt: { n1: HEARD } } },
+        // Waiting and refused stay as they were (refusals: #2955).
+        waiting: [OTHER],
+        refused: [{ id: "n3", why: "x" }],
+      })
+      expect(keptIn(moved)("n1")).toEqual({ place: "phone" })
+      expect(settled(moved, "n1")).toBe(false)
+      const back = step(moved, { kind: "paired", pairing: PAIRING })
+      expect(back).toEqual(first)
+    }
+    expect(step(first, { kind: "paired", pairing: PAIRING })).toBe(first)
+    expect(step(INITIAL_VOICE_HOME, { kind: "paired", pairing: null })).toBe(
+      INITIAL_VOICE_HOME
+    )
+  })
+
+  it("copies a note again for another home, which holds it on its own word, and keeps both homes' word", () => {
+    const moved = step(first, { kind: "paired", pairing: ANOTHER })
+    const going = copied(moved, NOTE)
+    expect(keptIn(going)("n1")).toEqual({ place: "going" })
+    const later = "2026-11-13T08:00:00.000Z"
+    const held = step(going, heldBy(ANOTHER, "n1", later))
+    expect(keptIn(held)("n1")).toEqual({ place: "home", since: later })
+    const back = step(held, { kind: "paired", pairing: PAIRING })
+    expect(back.held).toEqual(["n1"])
+    expect(back.heldAt).toEqual({ n1: HEARD })
+    expect(back.others).toEqual({
+      [ANOTHER]: { held: ["n1"], heldAt: { n1: later } },
+    })
+  })
+
+  it("counts no word heard after the pairing changed under its run: the copy waits for this home", () => {
+    const moved = step(first, { kind: "paired", pairing: ANOTHER })
+    expect(step(moved, heldBy(PAIRING, "n2"))).toBe(moved)
+    expect(keptIn(moved)("n2")).toEqual({ place: "going" })
+    expect(step(moved, heldBy(ANOTHER, "n2")).held).toEqual(["n2"])
+    // Unpaired, no run's word counts.
+    const unpaired = step(first, { kind: "paired", pairing: null })
+    expect(step(unpaired, heldBy(PAIRING, "n2"))).toBe(unpaired)
+  })
+
+  it("owes a mark only to a home that holds its note, and forgets none another home holds", () => {
+    const owed = step(first, { kind: "aside", id: "n1", at: HEARD })
+    expect(marksDue(owed)).toEqual([{ id: "n1", at: HEARD }])
+    const moved = step(owed, { kind: "paired", pairing: ANOTHER })
+    expect(marksDue(moved)).toEqual([])
+    expect(step(moved, { kind: "gone", ids: ["n1"] })).toBe(moved)
+    expect(marksDue(step(moved, { kind: "paired", pairing: PAIRING }))).toEqual(
+      [{ id: "n1", at: HEARD }]
+    )
+  })
+
+  it("takes an earlier build's record as the word of the first pairing it is seen under (C288)", () => {
+    const before = JSON.stringify({
+      waiting: [],
+      held: ["n1"],
+      heldAt: { n1: HEARD },
+      refused: [],
+      roomless: [],
+    })
+    const read = parseVoiceHome(before)
+    expect(read).toMatchObject({ pairing: null, held: ["n1"], others: {} })
+    if (read === null) throw new Error("unread")
+    const claimed = step(read, { kind: "paired", pairing: PAIRING })
+    expect(claimed).toMatchObject({ pairing: PAIRING, held: ["n1"] })
+    expect(step(claimed, { kind: "paired", pairing: ANOTHER })).toMatchObject({
+      held: [],
+      others: { [PAIRING]: { held: ["n1"] } },
+    })
+  })
+
+  it("keeps an earlier build's record seen first unpaired as no pairing's word, read as held by none (C288)", () => {
+    const read = parseVoiceHome(
+      JSON.stringify({ waiting: [], held: ["n1"], refused: [], roomless: [] })
+    )
+    if (read === null) throw new Error("unread")
+    const unpaired = step(read, { kind: "paired", pairing: null })
+    expect(unpaired).toMatchObject({
+      pairing: null,
+      held: [],
+      others: { [UNKNOWN_PAIRING]: { held: ["n1"] } },
+    })
+    expect(step(unpaired, { kind: "paired", pairing: null })).toBe(unpaired)
+    expect(step(unpaired, { kind: "paired", pairing: ANOTHER })).toMatchObject({
+      pairing: ANOTHER,
+      held: [],
+    })
+  })
+
+  it("lists a note once when a pairing back again hears it held again, its first time kept", () => {
+    const moved = copied(
+      step(first, { kind: "paired", pairing: ANOTHER }),
+      NOTE
+    )
+    const back = step(moved, { kind: "paired", pairing: PAIRING })
+    const again = step(back, heldBy(PAIRING, "n1", "2026-12-01T00:00:00.000Z"))
+    expect(again.held).toEqual(["n1"])
+    expect(again.heldAt).toEqual({ n1: HEARD })
+    expect(again.waiting).toEqual([OTHER])
+  })
+
+  it("reads back each pairing's word, and nothing else", () => {
+    const moved = step(first, { kind: "paired", pairing: ANOTHER })
+    expect(parseVoiceHome(JSON.stringify(moved))).toEqual(moved)
+    for (const raw of [
+      JSON.stringify({ ...moved, pairing: 7 }),
+      JSON.stringify({ ...moved, others: [] }),
+      JSON.stringify({ ...moved, others: { [PAIRING]: { held: [1] } } }),
+      JSON.stringify({
+        ...moved,
+        others: { [PAIRING]: { held: [], heldAt: { n1: 1 } } },
+      }),
+    ]) {
+      expect([raw, parseVoiceHome(raw)]).toEqual([raw, null])
     }
   })
 })

@@ -24,6 +24,7 @@ import { notYetHome, takeFor } from "@soundbites/lib/library/model"
 import type {
   LibraryPhone,
   LibraryPorts,
+  LibraryStations,
 } from "@soundbites/lib/library/runtime"
 import { createTakeLibrary } from "@soundbites/lib/library/runtime"
 import { LIBRARY_WORDS } from "@soundbites/lib/library/words"
@@ -38,6 +39,11 @@ export type TakeLibraryProps = {
   ports: LibraryPorts
   /** The app's way to pairing, shown while this phone isn't paired (ST34). */
   pair: ReactNode
+  /**
+   * What a page adds under each take of home's (Studio's conveyor page, its
+   * station strip and moves, CONVEYOR2); none on the plain list.
+   */
+  row?: ((take: LibraryTake) => ReactNode) | undefined
 }
 
 /** What home heard in `take`, or why there is nothing to show. */
@@ -52,15 +58,20 @@ function heardOf(take: LibraryTake): { text: string; said: boolean } {
 const TakeItem = ({
   take,
   state,
+  stations,
+  row,
   dispatch,
 }: {
   take: LibraryTake
   state: LibraryState
+  stations: LibraryStations | undefined
+  row: TakeLibraryProps["row"]
   dispatch: Dispatch
 }): JSX.Element => {
   const { playback } = state
   const here = playback.kind !== "quiet" && playback.id === take.id
   const heard = heardOf(take)
+  const standing = stations?.standing(take) ?? null
   return (
     <li className="bg-card border-border/50 flex flex-col gap-2 rounded-2xl border p-3">
       <div className="flex min-w-0 items-start gap-3">
@@ -93,6 +104,9 @@ const TakeItem = ({
           <p className="text-muted-foreground text-xs">
             {WORDS.line(takeFor(take.ref), take.recordedAt)}
           </p>
+          {standing !== null && (
+            <p className="text-xs font-medium">{standing}</p>
+          )}
           {take.setAsideAt !== null && (
             <p className="text-muted-foreground text-xs">
               {WORDS.setAside(take.setAsideAt)}
@@ -100,6 +114,7 @@ const TakeItem = ({
           )}
         </div>
       </div>
+      {row?.(take)}
       {here && playback.kind === "loading" && <Notice>{WORDS.loading}</Notice>}
       {state.unplayable === take.id && (
         <Notice
@@ -116,10 +131,14 @@ const TakeItem = ({
 const Listed = ({
   page,
   state,
+  stations,
+  row,
   dispatch,
 }: {
   page: LibraryPage
   state: LibraryState
+  stations: LibraryStations | undefined
+  row: TakeLibraryProps["row"]
   dispatch: Dispatch
 }): JSX.Element => {
   if (page.total === 0) {
@@ -144,6 +163,8 @@ const Listed = ({
               key={take.id}
               take={take}
               state={state}
+              stations={stations}
+              row={row}
               dispatch={dispatch}
             />
           ))}
@@ -155,10 +176,14 @@ const Listed = ({
 
 const Read = ({
   state,
+  stations,
+  row,
   dispatch,
   pair,
 }: {
   state: LibraryState
+  stations: LibraryStations | undefined
+  row: TakeLibraryProps["row"]
   dispatch: Dispatch
   pair: ReactNode
 }): JSX.Element => {
@@ -168,7 +193,15 @@ const Read = ({
       return <p className="text-muted-foreground text-sm">{WORDS.reading}</p>
     }
     case "read": {
-      return <Listed page={read.page} state={state} dispatch={dispatch} />
+      return (
+        <Listed
+          page={read.page}
+          state={state}
+          stations={stations}
+          row={row}
+          dispatch={dispatch}
+        />
+      )
     }
     case "unpaired": {
       return <Unpaired line={WORDS.unpaired} pair={pair} />
@@ -230,11 +263,25 @@ const PhoneTakes = ({ phone }: { phone: LibraryPhone }): JSX.Element => {
   )
 }
 
-export const TakeLibrary = ({ ports, pair }: TakeLibraryProps): JSX.Element => {
+/** Nothing to tell of, for a build that hands in no stations. */
+const unsubscribed = (): (() => void) => () => undefined
+const nothing = (): null => null
+
+export const TakeLibrary = ({
+  ports,
+  pair,
+  row,
+}: TakeLibraryProps): JSX.Element => {
   /* eslint-disable-next-line owner-guard/no-mount-snapshot -- the runtime is made once per mount, as Studio's screens' are */
   const [library] = useState(() => createTakeLibrary(ports))
   useEffect(() => library.attach(), [library])
   const state = useSyncExternalStore(library.subscribe, library.getSnapshot)
+  const { stations } = ports
+  // Renders again whenever what a row's station says may have changed.
+  useSyncExternalStore(
+    stations?.subscribe ?? unsubscribed,
+    stations?.getSnapshot ?? nothing
+  )
   const { dispatch } = library
   const searchable = state.read.kind !== "unpaired"
   return (
@@ -281,7 +328,13 @@ export const TakeLibrary = ({ ports, pair }: TakeLibraryProps): JSX.Element => {
           )}
         </form>
       )}
-      <Read state={state} dispatch={dispatch} pair={pair} />
+      <Read
+        state={state}
+        stations={stations}
+        row={row}
+        dispatch={dispatch}
+        pair={pair}
+      />
     </div>
   )
 }

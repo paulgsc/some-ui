@@ -73,6 +73,67 @@ describe("Takes on home (ST32)", () => {
     expect(screen.getByText(W.setAside(UNHEARD.setAsideAt!))).toBeTruthy()
   })
 
+  it("says where each take is on the conveyor, in the build's words, again on each change (CONVEYOR1)", async () => {
+    let moved = 0
+    const listeners = new Set<() => void>()
+    const takes = [
+      { ...TAKE, station: "cooking" },
+      UNHEARD,
+      { ...TAKE, id: "t3", station: null },
+    ]
+    render(
+      <TakeLibrary
+        ports={{
+          home: home({
+            takes: () =>
+              Promise.resolve({
+                kind: "read",
+                page: { ...newest.page, takes },
+              }),
+          }),
+          player: quietPlayer,
+          stations: {
+            subscribe: (listener): (() => void) => {
+              listeners.add(listener)
+              return (): void => {
+                listeners.delete(listener)
+              }
+            },
+            getSnapshot: (): number => moved,
+            standing: (take): string | null =>
+              take.station === null
+                ? null
+                : `${take.id} at ${take.station ?? "none"}, moves ${String(moved)}`,
+          },
+        }}
+        pair={null}
+      />
+    )
+    await settle()
+    expect(screen.getByText("t1 at cooking, moves 0")).toBeTruthy()
+    expect(screen.getByText("t2 at none, moves 0")).toBeTruthy()
+    // A take on no conveyor (an idea's answer) says nothing of one.
+    expect(screen.queryByText(/^t3 at/)).toBeNull()
+    act(() => {
+      moved = 1
+      for (const listener of listeners) listener()
+    })
+    expect(screen.getByText("t1 at cooking, moves 1")).toBeTruthy()
+  })
+
+  it("puts what a page adds under each of home's takes (CONVEYOR2)", async () => {
+    render(
+      <TakeLibrary
+        ports={{ home: home(), player: quietPlayer }}
+        pair={null}
+        row={(take) => <span>{`sorting ${take.id}`}</span>}
+      />
+    )
+    await settle()
+    expect(screen.getByText("sorting t1")).toBeTruthy()
+    expect(screen.getByText("sorting t2")).toBeTruthy()
+  })
+
   it("searches the words, says the search ran on words, and goes back to the newest", async () => {
     const takes = vi.fn(home().takes)
     render(

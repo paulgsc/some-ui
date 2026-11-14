@@ -47,6 +47,13 @@ const encode = (): Promise<{ base64: string; sha256: string }> =>
 const HEARD = "2026-11-01T09:15:00.000Z"
 const now = (): number => Date.parse(HEARD)
 
+/** The pairing this phone holds throughout, unless a test moves it (HP1). */
+const PAIRING = "pairing-1"
+const pairing = {
+  current: (): string => PAIRING,
+  subscribe: () => (): void => undefined,
+}
+
 describe("the voice notes on their way home", () => {
   it("copies a note's audio once, and tells whoever listens", async () => {
     const s = shelf()
@@ -76,6 +83,7 @@ describe("the voice notes on their way home", () => {
       encode,
       now,
     })
+    home.follow(pairing)
     expect(await home.copy(note("n1"), new Blob(["a"]))).toBe("copied")
     expect(await home.copy(note("n2"), new Blob(["b"]))).toBe("roomless")
     expect(home.getSnapshot()).toMatchObject({
@@ -83,7 +91,7 @@ describe("the voice notes on their way home", () => {
       roomless: ["n2"],
     })
     expect(home.settled("n2")).toBe(false)
-    home.keeping.answered({ kind: "held", id: "n1" })
+    home.keeping.answered({ kind: "held", id: "n1", pairing: PAIRING })
     await Promise.resolve()
     await home.copy(note("n2"), new Blob(["b"]))
     expect(home.getSnapshot()).toMatchObject({
@@ -101,9 +109,10 @@ describe("the voice notes on their way home", () => {
       encode,
       now,
     })
+    home.follow(pairing)
     await home.copy(note("n1"), new Blob(["a"]))
     await home.copy(note("n2"), new Blob(["b"]))
-    home.keeping.answered({ kind: "held", id: "n1" })
+    home.keeping.answered({ kind: "held", id: "n1", pairing: PAIRING })
     home.keeping.answered({ kind: "refused", id: "n2", why: "x" })
     await Promise.resolve()
     expect([...s.held.keys()]).toEqual(["n2"])
@@ -182,5 +191,72 @@ describe("the voice notes on their way home", () => {
         "lens"
       )
     ).toBe(false)
+  })
+
+  it("follows the pairing the phone holds, stepping nothing while it is read, and keeps each home's word across a relaunch (HP1)", async () => {
+    const storage = memoryStorage()
+    let current: string | null | undefined = undefined
+    const listeners = new Set<() => void>()
+    const link = {
+      current: (): string | null | undefined => current,
+      subscribe: (listener: () => void) => {
+        listeners.add(listener)
+        return (): void => {
+          listeners.delete(listener)
+        }
+      },
+    }
+    const move = (to: string | null): void => {
+      current = to
+      for (const listener of listeners) listener()
+    }
+    const make = (): ReturnType<typeof createVoiceHome> => {
+      const made = createVoiceHome({ storage, shelf: shelf(), encode, now })
+      made.follow(link)
+      return made
+    }
+    const home = make()
+    expect(home.getSnapshot().pairing).toBeNull()
+    move(PAIRING)
+    await home.copy(note("n1"), new Blob(["a"]))
+    home.keeping.answered({ kind: "held", id: "n1", pairing: PAIRING })
+    expect(home.getSnapshot().held).toEqual(["n1"])
+
+    const heard = vi.fn()
+    home.subscribe(heard)
+    move("pairing-2")
+    expect(heard).toHaveBeenCalled()
+    expect(home.getSnapshot()).toMatchObject({ pairing: "pairing-2", held: [] })
+    expect(home.settled("n1")).toBe(false)
+
+    // A relaunch reads the record as kept, while the link is read.
+    current = undefined
+    const relaunched = make()
+    expect(relaunched.getSnapshot()).toEqual(home.getSnapshot())
+    move(PAIRING)
+    expect(relaunched.getSnapshot()).toMatchObject({
+      pairing: PAIRING,
+      held: ["n1"],
+      heldAt: { n1: HEARD },
+    })
+  })
+
+  it("keeps the copy of a note whose held word came after the pairing moved, so it waits for this home (HP1)", async () => {
+    const s = shelf()
+    const home = createVoiceHome({
+      storage: memoryStorage(),
+      shelf: s,
+      encode,
+      now,
+    })
+    home.follow({
+      current: (): string => "pairing-2",
+      subscribe: () => (): void => undefined,
+    })
+    await home.copy(note("n1"), new Blob(["a"]))
+    home.keeping.answered({ kind: "held", id: "n1", pairing: PAIRING })
+    await Promise.resolve()
+    expect(home.getSnapshot().waiting).toEqual([note("n1")])
+    expect(await home.keeping.audio("n1")).not.toBeNull()
   })
 })

@@ -21,6 +21,7 @@ import type {
   LibraryPhoneSnapshot,
   LibraryRead,
   LibraryState,
+  LibraryTake,
 } from "./model"
 import { INITIAL_LIBRARY, reachedHome, stepLibrary } from "./model"
 
@@ -57,6 +58,21 @@ export type LibraryPorts = {
   readonly player: Player
   /** Absent in a build that records none here. */
   readonly phone?: LibraryPhone | undefined
+  /** The phone's moves along the conveyor (CONVEYOR1); absent, none. */
+  readonly stations?: LibraryStations | undefined
+}
+
+/**
+ * Where each take stands on Studio's conveyor (CONVEYOR1): the build's own
+ * words for it, from home's word and the phone's moves, said again on each
+ * change it tells of.
+ */
+export type LibraryStations = {
+  readonly subscribe: (listener: () => void) => () => void
+  /** Changes whenever what `standing` says may have. */
+  readonly getSnapshot: () => unknown
+  /** What a take's row says of where it stands; null when it's on none. */
+  readonly standing: (take: LibraryTake) => string | null
 }
 
 export type LibraryRuntime = {
