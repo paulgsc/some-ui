@@ -94,6 +94,26 @@ jobs:
             --build-arg SOME_UI_COMMIT="$GITHUB_SHA" \
             --tag render:proof \
             .
+      # The labels R3's release check reads (paulgsc/server#790), in the form
+      # its scripts/check_release.py parses, so a malformed one is refused
+      # here rather than by the release. Only labels: it runs before the proof.
+      - name: Check the release labels
+        run: |
+          set -euo pipefail
+          pair='[a-z0-9][a-z0-9-]*=([0-9]+|[0-9a-f]{40})'
+          for key in io.paulgsc.provides io.paulgsc.requires; do
+            value=$(docker inspect --format "{{ index .Config.Labels \"$key\" }}" render:proof)
+            echo "$key=$value"
+            if [ -n "$value" ] && ! [[ "$value" =~ ^$pair(,$pair)*$ ]]; then
+              echo "::error::$key is malformed: $value"
+              exit 1
+            fi
+          done
+          # $value is io.paulgsc.requires, the loop's last key.
+          if ! [[ ",$value," =~ ,render-folders=[0-9]+, ]]; then
+            echo "::error::io.paulgsc.requires names no render-folders epoch"
+            exit 1
+          fi
       # The same bytes twice, from nothing but the image: the sample
       # composition, then the weekly call's preview, recorded from the stage
       # the image carries and rendered with no voices. The music bed is the
@@ -133,3 +153,9 @@ jobs:
           docker push "$DOCKERHUB_IMAGE:latest"
           digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$DOCKERHUB_IMAGE:$GITHUB_SHA")
           echo "Pushed \`$digest\` from $GITHUB_SHA (home pins this digest)." | tee -a "$GITHUB_STEP_SUMMARY"
+      # U1: asks home's release to look at what was just pushed.
+      - name: Ask server's release to look
+        uses: ./.github/actions/release-lock-dispatch
+        with:
+          token: ${{ secrets.SERVER_ROUTES_DISPATCH_TOKEN }}
+          reason: "pgathondu/render:${{ github.sha }} published by some-ui"
