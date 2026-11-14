@@ -158,6 +158,29 @@ export const SAMPLES: Readonly<
       },
     ],
   },
+  flow: {
+    kicker: "FLOW · A SAMPLE",
+    title: "Merging one PR is the whole upgrade",
+    stamp: SAMPLE_STAMP,
+    steps: [
+      {
+        badge: "pr",
+        label: "Monday morning",
+        command: "nix flake update",
+        note: "CI opens one lockfile PR with the diff.",
+      },
+      {
+        badge: "you",
+        label: "Review and merge",
+        note: "The only step by hand.",
+      },
+      {
+        badge: "main",
+        label: "Nightly",
+        note: "The box pulls main and switches.",
+      },
+    ],
+  },
   legend: {
     kicker: "LEGEND · A SAMPLE",
     title: "Reading the badges",

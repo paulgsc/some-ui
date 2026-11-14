@@ -1,7 +1,7 @@
 /**
  * The burn-in recorder in CI (STUDIO ST15, #2273): a short with a scene's
- * captions, a headline, a status badge, a terminal card, a cheat-sheet card, a legend card and a
- * rule card (each card stamped from the cut list) and the authorship mark, rendered twice through
+ * captions, a headline, a status badge, a terminal card, a cheat-sheet card, a legend card, a
+ * rule card and a flow card (each card stamped from the cut list) and the authorship mark, rendered twice through
  * `record:short`'s
  * path (the built app's `/burn-ins?record` page filling the renderer's
  * `recordBurnIn`), gives the same MP4 and the same burn-in recordings both
@@ -144,6 +144,24 @@ const CUT_LIST = cutList(
         },
       ],
     }),
+    // CARDS5: a flow card, its steps stacked in the short.
+    shot("S7", {
+      picture: { kind: "card" },
+      durationMs: 2000,
+      burnIns: [
+        {
+          kind: "flow",
+          design: "flow-v1",
+          params: {
+            title: "From a cut list to a video",
+            steps: [
+              { badge: "main", label: "Write the cut list" },
+              { label: "Record", command: "pnpm record:short" },
+            ],
+          },
+        },
+      ],
+    }),
     card("outro"),
   ],
   {
@@ -222,9 +240,9 @@ test.describe("the burn-in recorder", () => {
       const first = await renderOnce(1)
       const second = await renderOnce(2)
       // Captions, the mark, the headline, the badge, the terminal, the
-      // cheat sheet, the legend and the rule, so the comparison is not of
-      // nothing.
-      expect(first.burnIns.size).toBe(8)
+      // cheat sheet, the legend, the rule and the flow, so the comparison is
+      // not of nothing.
+      expect(first.burnIns.size).toBe(9)
       expect(second.burnIns).toEqual(first.burnIns)
       expect(second.video).toBe(first.video)
     } finally {
