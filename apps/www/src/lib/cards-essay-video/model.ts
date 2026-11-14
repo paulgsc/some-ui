@@ -9,7 +9,7 @@ import type { Fetch } from "@/lib/call-videos/model"
 import type { Board } from "@/lib/renders/model"
 
 /** The board's shelf for cards essays (paulgsc/server `feeds::renders`). */
-export const SHELF = "cards-essay"
+const SHELF = "cards-essay"
 
 /** Where essay `key` stands on home's board. */
 export type Essay =
