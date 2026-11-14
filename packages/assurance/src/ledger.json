@@ -4200,13 +4200,25 @@
     {
       "store": "server:call_video_deletion",
       "class": "record",
-      "growth": "Per step of a week of the call the owner lets go from My data (video, then the rest): one small receipt row (the week, the step, its YouTube video's id, the bytes that went, when), at most two per week, so bounded by call_week's rows; append-only, triggers abort UPDATE and DELETE, kept for good.",
+      "growth": "Per step of a week of the call the owner lets go from My data (video, then the rest): one small receipt row (the week, the step, its YouTube video's id, the bytes that went, when), at most two per week, so bounded by call_week's rows; append-only, triggers abort UPDATE and DELETE, kept for good. Frozen since server's 20261114000200 (paulgsc/some-ui#2918): a BEFORE INSERT trigger aborts, and it is kept whole as the copy call_part_deletion began from.",
       "family": "call-kept"
     },
     {
       "store": "server:call_video_link",
       "class": "record",
-      "growth": "Per YouTube video the owner records for a week of the call: one tiny row (the week, the video's id, when), the newest standing; about one per week; append-only, triggers abort UPDATE and DELETE.",
+      "growth": "Per YouTube video the owner records for a week of the call: one tiny row (the week, the video's id, when), the newest standing; about one per week; append-only, triggers abort UPDATE and DELETE. Frozen since server's 20261114000200 (paulgsc/some-ui#2918): a BEFORE INSERT trigger aborts, and it is kept whole as the copy call_part_link began from.",
+      "family": "call-kept"
+    },
+    {
+      "store": "server:call_part_deletion",
+      "class": "record",
+      "growth": "Per step of a part of a week of the call the owner lets go from My data (video, then the rest): one small receipt row (the week, the part, how many parts the week was, the step, its YouTube video's id, the bytes that went, when), at most two per part, so at most twice the parts of call_week's rows; append-only, triggers abort UPDATE and DELETE, kept for good. Its first rows are call_video_deletion's, copied as part 1 of 1.",
+      "family": "call-kept"
+    },
+    {
+      "store": "server:call_part_link",
+      "class": "record",
+      "growth": "Per YouTube video the owner records for a part of a week of the call: one tiny row (the week, the part, the video's id, when), the newest standing; about one per part a week; append-only, triggers abort UPDATE and DELETE. Its first rows are call_video_link's, copied as part 1.",
       "family": "call-kept"
     },
     {
