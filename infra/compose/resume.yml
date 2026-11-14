@@ -6,20 +6,18 @@
 # Reachable from the home network only, and only through the www container:
 # no port is published, not even on 127.0.0.1. apps/www's nginx proxies the
 # same-origin /api/resume/ path to it over some-ui-network
-# (apps/www/nginx.resume-proxy.conf), and the only page that calls it is the
+# (apps/www/nginx.https.conf, RESUME_UPSTREAM), and the only page that calls it is the
 # LAN build's /resume-build.
 #
-# Built here from the package; nothing publishes an image. Rebuild it after
-# changing the résumé's content or templates:
+# The image is published by .github/workflows/resume-docker-release.yml; home
+# runs it from paulgsc/server's compose, by digest. This file is for
+# development. To try a local change before it merges:
 #
-#   docker compose up -d --build resume-render
-#
-# REPO_ROOT must be exported first, for the reason infra/compose/www.yml gives.
+#   docker build -t pgathondu/resume-render:local packages/ui/resume
+#   RESUME_TAG=local docker compose up -d resume-render
 services:
   resume-render:
-    build:
-      context: ${REPO_ROOT:-.}/packages/ui/resume
-    image: some-ui/resume-render:local
+    image: pgathondu/resume-render:${RESUME_TAG:-latest}
     container_name: resume-render
     expose:
       - "3100"
