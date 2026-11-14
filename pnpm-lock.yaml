@@ -1278,6 +1278,9 @@ importers:
         specifier: 'catalog:'
         version: 4.6.6
     devDependencies:
+      '@some-ui/styles':
+        specifier: workspace:*
+        version: link:../../some-styles
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
@@ -1367,6 +1370,31 @@ importers:
       '@some-ui/vite-config':
         specifier: workspace:*
         version: link:../../some-vite-config
+
+  packages/ui/interview-week:
+    dependencies:
+      '@some-ui/core-utils':
+        specifier: workspace:*
+        version: link:../../core-utils
+      '@some-ui/video-render':
+        specifier: workspace:*
+        version: link:../../video-render
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.6
+    devDependencies:
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../../tsconfig
+      '@some-ui/vite-config':
+        specifier: workspace:*
+        version: link:../../some-vite-config
+      fast-check:
+        specifier: ^4.10.2
+        version: 4.10.2
+      tsx:
+        specifier: ^4.22.4
+        version: 4.22.4
 
   packages/ui/leetype:
     dependencies:
@@ -14954,8 +14982,8 @@ snapshots:
   solid-js@1.9.13:
     dependencies:
       csstype: 3.2.3
-      seroval: 1.8.0
-      seroval-plugins: 1.6.8(seroval@1.8.0)
+      seroval: 1.8.1
+      seroval-plugins: 1.6.8(seroval@1.8.1)
 
   sonic-boom@4.2.1:
     dependencies:

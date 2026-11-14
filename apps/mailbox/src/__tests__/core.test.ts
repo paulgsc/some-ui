@@ -462,6 +462,71 @@ describe("a week of Rust Rounds rides brief (MB2, RR12)", () => {
   })
 })
 
+describe("a week of mock interview rides brief (MB2, IW4)", () => {
+  const week = (fields: Record<string, unknown> = {}): string =>
+    JSON.stringify({
+      schema: "some-ui.interview-week/1",
+      id: "2026-w47",
+      questions: [{ id: "conflict" }, { id: "decision-c266" }],
+      cards: [{ id: "invariant-rs1" }],
+      ...fields,
+    })
+  const NAME = "interview-week-2026-w47.json"
+
+  it("the routine puts one in brief, and home reads it with the digests", async () => {
+    const d = deps()
+    expect((await put(d, "brief", NAME, { body: week() })).status).toBe(201)
+    const read = await send(d, "GET", `/v1/brief/items/${NAME}`, {
+      token: HOME,
+    })
+    expect(await read.text()).toBe(week())
+  })
+
+  it("refuses a week whose name isn't its id's, or whose ids a take's ref can't name", async () => {
+    const refused = async (body: string, name = NAME): Promise<unknown> =>
+      json(await put(deps(), "brief", name, { body }))
+    expect(await refused(week(), "interview-week-2026-w48.json")).toEqual({
+      error: "the name must carry the week's id",
+    })
+    expect(await refused(week({ id: "2026-W47" }))).toEqual({
+      error: "id must be the week's, like 2026-w47",
+    })
+    expect(await refused(week({ questions: [{ id: "read" }] }))).toEqual({
+      error: "no question may be named read",
+    })
+    // A card may be named read: its ref is <week>:read:<card>.
+    expect(
+      (
+        await put(deps(), "brief", NAME, {
+          body: week({ cards: [{ id: "read" }] }),
+        })
+      ).status
+    ).toBe(201)
+    const slug = {
+      error: "each card's id must be a kebab slug of at most 64 characters",
+    }
+    for (const id of ["Rs1", "a--b", "-a", "x".repeat(65), 7]) {
+      expect(await refused(week({ cards: [{ id }] }))).toEqual(slug)
+    }
+    expect(
+      await refused(week({ questions: [{ id: "a" }, { id: "a" }] }))
+    ).toEqual({ error: "each question's id is used once" })
+    expect(await refused(week({ cards: undefined }))).toEqual({
+      error: "cards must be a list",
+    })
+    expect(await refused(DIGEST)).toEqual({
+      error: "the body's schema must be some-ui.interview-week/1",
+    })
+    expect(
+      (
+        await put(deps(), "brief", "interview-week-2026-47.json", {
+          body: week(),
+        })
+      ).status
+    ).toBe(422)
+  })
+})
+
 describe("a Rust Rounds essay's script rides brief (MB2, RR16)", () => {
   const essay = (week: string): string =>
     JSON.stringify({
@@ -1342,7 +1407,7 @@ describe("home's indexes", () => {
       return json(response)
     }
     expect(await refused({ ...JOBS, routine: "topik" })).toEqual({
-      error: "routine must be jobs or reflections or call or rust",
+      error: "routine must be jobs or reflections or call or rust or interview",
     })
     expect(await refused(JOBS, "index-topik-20261031T144502118Z.json")).toEqual(
       { error: "the name must carry the body's routine" }
@@ -1785,6 +1850,82 @@ const ASKED_FOR = {
   ].join("\n"),
 }
 
+describe("home's interview week index (IW4)", () => {
+  // A final week as home's record gives it (paulgsc/server `GET /interview-weeks/:id/record`).
+  const W47 = {
+    week: "2026-w47",
+    opens: "2026-11-16T00:00:00-08:00",
+    due: "2026-11-22T23:59:00-08:00",
+    closed: true,
+    sent: {
+      at: "2026-11-21T20:31:07.000Z",
+      receivedAt: "2026-11-21T20:31:09.120Z",
+      draft: false,
+    },
+    questions: [
+      {
+        question: "conflict",
+        answered: true,
+        take: "note-401",
+        recordedAt: "2026-11-21T20:12:40.000Z",
+      },
+    ],
+    cards: [
+      { card: "invariant-rs1", read: false, take: null, recordedAt: null },
+    ],
+    unanswered: [],
+    unread: ["invariant-rs1"],
+  }
+  const INDEX = {
+    schema: "some-ui.routine-index/1",
+    routine: "interview",
+    asOf: "2026-11-22T23:59:00.000-08:00",
+    weeks: [W47],
+  }
+  const NAME = "index-interview-20261123T090000000Z.json"
+  const asHome = (body: unknown): Promise<Response> =>
+    put(deps(), "index", NAME, { token: HOME, body: JSON.stringify(body) })
+
+  it("home puts it, before any week is final too", async () => {
+    expect((await asHome(INDEX)).status).toBe(201)
+    expect((await asHome({ ...INDEX, asOf: null, weeks: [] })).status).toBe(201)
+    expect(
+      (await asHome({ ...INDEX, weeks: [{ ...W47, sent: null }] })).status
+    ).toBe(201)
+  })
+
+  it("takes only final weeks with their lists, and only its own keys", async () => {
+    const error = async (body: unknown): Promise<unknown> =>
+      json(await asHome(body))
+    expect(await error({ ...INDEX, tickets: [] })).toEqual({
+      error: "tickets is not part of an interview index",
+    })
+    expect(
+      await error({ ...INDEX, weeks: [{ ...W47, closed: false }] })
+    ).toEqual({ error: "each week must be past its deadline" })
+    expect(
+      await error({ ...INDEX, weeks: [{ ...W47, sent: { draft: true } }] })
+    ).toEqual({ error: "each week's send must be its final, or null" })
+    expect(
+      await error({ ...INDEX, weeks: [{ ...W47, unread: undefined }] })
+    ).toEqual({
+      error:
+        "each week's questions, cards, unanswered and unread must be lists",
+    })
+    expect(await error({ ...INDEX, weeks: [W47, W47] })).toEqual({
+      error: "each week is named once",
+    })
+    expect(
+      (
+        await put(deps(), "index", "index-rust-20261123T090000000Z.json", {
+          token: HOME,
+          body: JSON.stringify(INDEX),
+        })
+      ).status
+    ).toBe(422)
+  })
+})
+
 describe("written reflections", () => {
   const REFLECTION = JSON.stringify(WRITTEN)
   const NAME = `reflection-${WRITTEN.reflection}.json`
@@ -2053,6 +2194,274 @@ describe("notes on an episode", () => {
     }
     for (const name of ["feedback-.json", `feedback-${"a".repeat(65)}.json`]) {
       expect((await asHome(d, name)).status).toBe(422)
+    }
+  })
+})
+
+const READY = {
+  schema: "some-ui.take-pickup/1",
+  note: "take-7f3a91c2",
+  ref: "build-journal:ep04:2",
+  heard: "This shot opens on the conveyor page, then cuts to the phone.",
+  labels: ["ep04", "opening"],
+  readyAt: "2026-11-13T21:40:00.000Z",
+  seq: 3,
+}
+const FILED = {
+  schema: "some-ui.take-picked/1",
+  note: READY.note,
+  seq: READY.seq,
+  issue: "paulgsc/some-ui#2990",
+}
+
+describe("a take ready for pickup, and the routine's answer (CONVEYOR3)", () => {
+  const PICKUP = JSON.stringify(READY)
+  const PICKED = JSON.stringify(FILED)
+  const PICKUP_NAME = `pickup-${READY.note}-${READY.seq}.json`
+  const PICKED_NAME = `picked-${FILED.note}-${FILED.seq}.json`
+  const asHome = (
+    d: Deps,
+    name: string,
+    body: string = PICKUP
+  ): Promise<Response> => put(d, "pickup", name, { token: HOME, body })
+  const asRoutine = (
+    d: Deps,
+    name: string,
+    body: string = PICKED
+  ): Promise<Response> => put(d, "picked", name, { body })
+
+  it("home puts a pickup once, and the routine reads it; neither the other way", async () => {
+    const d = deps()
+    expect((await asHome(d, PICKUP_NAME)).status).toBe(201)
+    expect((await asHome(d, PICKUP_NAME)).status).toBe(200)
+    expect(
+      (
+        await asHome(
+          d,
+          PICKUP_NAME,
+          JSON.stringify({ ...READY, labels: ["ep05"] })
+        )
+      ).status
+    ).toBe(409)
+    const path = `/v1/pickup/items/${PICKUP_NAME}`
+    const read = await send(d, "GET", path)
+    expect(read.status).toBe(200)
+    expect(await read.text()).toBe(PICKUP)
+    expect((await send(d, "GET", path, { token: HOME })).status).toBe(403)
+    expect((await put(d, "pickup", PICKUP_NAME, { body: PICKUP })).status).toBe(
+      403
+    )
+  })
+
+  it("the routine neither lists archived pickups nor asks one back", async () => {
+    const d = deps()
+    expect((await asHome(d, PICKUP_NAME)).status).toBe(201)
+    expect((await send(d, "GET", "/v1/pickup/archived")).status).toBe(403)
+    expect(
+      (await send(d, "PUT", `/v1/pickup/wanted/${PICKUP_NAME}`)).status
+    ).toBe(403)
+  })
+
+  it("the routine puts its answer, which rings home, and home reads it; neither the other way", async () => {
+    const rings: Array<Folder> = []
+    const d = deps(memoryStore(), [], rings)
+    expect((await asRoutine(d, PICKED_NAME)).status).toBe(201)
+    expect(rings).toEqual(["picked"])
+    expect((await asRoutine(d, PICKED_NAME)).status).toBe(200)
+    expect(rings).toEqual(["picked"])
+    const path = `/v1/picked/items/${PICKED_NAME}`
+    const read = await send(d, "GET", path, { token: HOME })
+    expect(read.status).toBe(200)
+    expect(await read.text()).toBe(PICKED)
+    expect(
+      (await send(d, "GET", "/v1/picked/items", { token: HOME })).status
+    ).toBe(200)
+    expect(
+      (await put(d, "picked", PICKED_NAME, { token: HOME, body: PICKED }))
+        .status
+    ).toBe(403)
+  })
+
+  it("takes a take with no labels, and with as many and as long as home keeps", async () => {
+    const d = deps()
+    const labelled = [
+      [],
+      Array.from({ length: 8 }, (_, n) => `l${n}`),
+      ["a".repeat(32)],
+      ["\u{1F600}".repeat(32)],
+      // Home's trim (Rust's) keeps U+FEFF, so the mailbox takes it too.
+      ["\uFEFFep04"],
+    ]
+    for (const [seq, labels] of labelled.entries()) {
+      const body = JSON.stringify({ ...READY, seq: seq + 1, labels })
+      const name = `pickup-${READY.note}-${seq + 1}.json`
+      expect([labels, (await asHome(d, name, body)).status]).toEqual([
+        labels,
+        201,
+      ])
+    }
+  })
+
+  it("names a pickup and its answer only as <folder>-<note>-<seq>.json", async () => {
+    const d = deps()
+    // Each body carries its name, so only the name's own rule refuses it.
+    for (const note of ["a".repeat(65), "a b"]) {
+      for (const [folder, base, token] of [
+        ["pickup", READY, HOME],
+        ["picked", FILED, ROUTINE],
+      ] as const) {
+        const answer = await put(d, folder, `${folder}-${note}-3.json`, {
+          token,
+          body: JSON.stringify({ ...base, note, seq: 3 }),
+        })
+        expect([folder, note, await json(answer)]).toEqual([
+          folder,
+          note,
+          { error: "the name does not fit this folder" },
+        ])
+      }
+    }
+    for (const [folder, base, token] of [
+      ["pickup", READY, HOME],
+      ["picked", FILED, ROUTINE],
+    ] as const) {
+      for (const name of [
+        `${folder}-${base.note}.json`,
+        `${folder}-${base.note}-0.json`,
+        `${folder}-${base.note}-03.json`,
+        `${folder}-${base.note}-3.txt`,
+      ]) {
+        const answer = await put(d, folder, name, {
+          token,
+          body: JSON.stringify(base),
+        })
+        expect([name, await json(answer)]).toEqual([
+          name,
+          { error: "the name does not fit this folder" },
+        ])
+      }
+    }
+  })
+
+  it("takes only a pickup's own shape, and no comment", async () => {
+    const d = deps()
+    const shapes: ReadonlyArray<readonly [unknown, string]> = [
+      [
+        { ...READY, comment: "use the second half" },
+        "comment is not part of a take ready for pickup",
+      ],
+      [
+        { ...READY, audio: "T2dnUwACAAAAAAAA" },
+        "a take carries no audio: home keeps the audio",
+      ],
+      [
+        { ...READY, heard: `data:audio/webm;base64,${"A".repeat(40)}` },
+        "a take carries no audio: home keeps the audio",
+      ],
+      [
+        { ...READY, driveId: "1AbCdEf" },
+        "a take names no Drive file: home keeps the audio",
+      ],
+      [{ ...READY, note: "a/b" }, "note must be the take's id"],
+      [{ ...READY, seq: 0 }, "seq must be the ready-for-pickup move's number"],
+      [
+        { ...READY, seq: 1.5 },
+        "seq must be the ready-for-pickup move's number",
+      ],
+      [
+        { ...READY, seq: "3" },
+        "seq must be the ready-for-pickup move's number",
+      ],
+      [
+        { ...READY, seq: 2 ** 53 },
+        "seq must be the ready-for-pickup move's number",
+      ],
+      [
+        { ...READY, note: "another-take" },
+        "the name must carry the take's id and the move's number",
+      ],
+      [
+        { ...READY, seq: 4 },
+        "the name must carry the take's id and the move's number",
+      ],
+      [{ ...READY, ref: "" }, "ref must name the shot the take belongs to"],
+      [{ ...READY, heard: "  " }, "heard must be what home heard in the take"],
+      [{ ...READY, heard: null }, "heard must be what home heard in the take"],
+      ...[
+        undefined,
+        "ep04",
+        [""],
+        [" ep04"],
+        ["ep04 "],
+        // C1 controls inside a label, past the edge rule (U+0085 is also White_Space).
+        ["x\u0085x"],
+        ["a\u0080"],
+        ["\u007f"],
+        null,
+        // Code points, as home counts them: 33 astral characters.
+        ["\u{1F600}".repeat(33)],
+        ["a".repeat(33)],
+        ["tab\there"],
+        [7],
+        Array.from({ length: 9 }, (_, n) => `l${n}`),
+      ].map(
+        (labels) =>
+          [
+            { ...READY, labels },
+            "labels must be the take's, at most 8, each 1 to 32 printable characters with no space at either end",
+          ] as const
+      ),
+      [
+        { ...READY, readyAt: "Thursday" },
+        "readyAt must be when the take was moved to ready for pickup",
+      ],
+    ]
+    for (const [body, why] of shapes) {
+      const answer = await asHome(d, PICKUP_NAME, JSON.stringify(body))
+      expect([body, answer.status]).toEqual([body, 422])
+      expect(await json(answer)).toEqual({ error: why })
+    }
+  })
+
+  it("takes only an answer's own shape", async () => {
+    const d = deps()
+    const shapes: ReadonlyArray<readonly [unknown, string]> = [
+      [
+        { ...FILED, labels: ["ep04"] },
+        "labels is not part of a take picked up",
+      ],
+      [{ ...FILED, note: "a/b" }, "note must be the take's id"],
+      [{ ...FILED, seq: 0 }, "seq must be the ready-for-pickup move's number"],
+      [
+        { ...FILED, note: "another-take" },
+        "the name must carry the take's id and the move's number",
+      ],
+      [
+        { ...FILED, seq: 4 },
+        "the name must carry the take's id and the move's number",
+      ],
+      ...[
+        "#2990",
+        "paulgsc/some-ui",
+        "paulgsc/some-ui#0",
+        "paulgsc/some-ui#02",
+        "https://github.com/paulgsc/some-ui/issues/2990",
+        "paul gsc/some-ui#1",
+        `${"a".repeat(101)}/some-ui#1`,
+        "paulgsc/some-ui#1234567890",
+        2990,
+      ].map(
+        (issue) =>
+          [
+            { ...FILED, issue },
+            "issue must be the issue it was filed as, <owner>/<repo>#<n>",
+          ] as const
+      ),
+    ]
+    for (const [body, why] of shapes) {
+      const answer = await asRoutine(d, PICKED_NAME, JSON.stringify(body))
+      expect([body, answer.status]).toEqual([body, 422])
+      expect(await json(answer)).toEqual({ error: why })
     }
   })
 })
@@ -2613,8 +3022,17 @@ describe("the bell (MBP1: MB2, MB6)", () => {
     expect(reported).toHaveLength(1)
   })
 
-  it("rings for exactly paulgsc/server's pass::READS, which lives in the other repo", () => {
-    expect(RINGS).toEqual(["brief", "scene", "drama", "run", "leetype"])
+  it("rings for exactly what home reads: paulgsc/server's pass::READS, which lives in the other repo", () => {
+    // `picked` is ahead of pass::READS until home's half of CONVEYOR3 adds it
+    // there (paulgsc/some-ui#2875); until then a `picked` ring runs a plain pass.
+    expect(RINGS).toEqual([
+      "brief",
+      "scene",
+      "drama",
+      "run",
+      "leetype",
+      "picked",
+    ])
   })
 
   it("a ring names its folder and nothing else (MB6)", () => {
@@ -2671,6 +3089,8 @@ describe("archiving", () => {
       "reflection",
       "prompt",
       "feedback",
+      "pickup",
+      "picked",
     ]) {
       expect(
         (await send(d, "GET", `/v1/${folder}/items`, { token: ARCHIVE })).status

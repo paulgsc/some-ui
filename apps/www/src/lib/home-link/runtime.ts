@@ -34,20 +34,29 @@
  *   sync read (`native-http` refuses a credentialed `http:` request): a
  *   send's `send` takes a path, and the base is the one stored with the
  *   token.
+ *
+ * AW1 (`./away`): a stretch away is told to `report` once; while its hold
+ * lasts, a drain, `keep`'s `onItsOwn` and `look` send nothing
+ * (`HomeAwayError`); sync, send, `keep`, pairing and Unpair still go;
+ * `onNetwork` and `lookAgain` end the hold.
  */
 import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
 import { isRecord } from "@some-ui/core-utils"
+import type { ForeignFailure } from "@some-ui/intent-kit"
 
 import { stringFieldOf } from "@/lib/device-backend/common"
 import type { HomeGet } from "@/lib/device-backend/home-sync"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import type { HomeRequest } from "@/lib/device-backend/native-http"
-import { HomeNoAnswerError } from "@/lib/device-backend/native-http/no-answer"
+import {
+  HomeAwayError,
+  HomeNoAnswerError,
+} from "@/lib/device-backend/native-http/no-answer"
 import { isFileHostTimeout } from "@/lib/file-host-config/client"
 
 import type { HomeAddress } from "./address"
 import type { HomeLinkEvent, HomeLinkState, PairFailure } from "./model"
-import { homeBusy, INITIAL, step, working, writing } from "./model"
+import { awayHeld, homeBusy, INITIAL, step, working, writing } from "./model"
 import { createPace } from "./pace"
 
 /** The phone's sealed record (`HomeCredentialPlugin`): read, kept, forgotten. */
@@ -68,6 +77,13 @@ export type HomeLinkPorts = {
   now: () => number
   /** Runs `run` once, `ms` from now; returns the cancel. */
   after: (ms: number, run: () => void) => () => void
+  /** Where a stretch away from home is told, once as it starts (AW1). */
+  report?: (failure: ForeignFailure) => void
+  /**
+   * Calls `listener` when the phone's network comes back or changes;
+   * returns an unsubscribe. Held for the page's life.
+   */
+  onNetwork?: (listener: () => void) => () => void
 }
 
 /** How long home's busy lasts when its `Retry-After` can't be read. */
@@ -190,10 +206,12 @@ export type HomeLink = {
   /**
    * As `send`, for a screen's read (Korean's look at the routine's files,
    * `./routine`; an idea answer's words, `./heard`; My data), which goes
-   * beside a drain run.
+   * beside a drain run. `onItsOwn`: a read the screen makes without the
+   * person asking just then, held away from home as a drain is (AW1).
    */
   keep: <T>(
-    run: (send: HomeCall) => Promise<T>
+    run: (send: HomeCall) => Promise<T>,
+    options?: { readonly onItsOwn?: boolean }
   ) => Promise<SyncOutcome<T> | null>
   /**
    * As `send`, for one lane's run of the drain (`./lanes`, LA15); `null`
@@ -218,6 +236,16 @@ export type HomeLink = {
   onMissing: (listener: () => void) => () => void
   /** Stops the person's sync, send or read. */
   stop: () => void
+  /**
+   * Ends a hold away from home (AW1), so the next ask goes at once: the
+   * person pulled to check again.
+   */
+  lookAgain: () => void
+  /**
+   * Tells the link home answered a way to it other than a request (Game
+   * day's live socket, LA21), ending a stretch away as an answer would.
+   */
+  answered: () => void
 }
 
 /** The person's side of the link, or the drain's (`./model`). */
@@ -250,11 +278,6 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       : working(state.activity) && state.activity.stopping
 
   const pace = createPace(ports)
-  /** `call` sent at its turn on the pace, as the person's (pairing, Unpair). */
-  const personal = async (call: HomeRequest): Promise<HomeAnswer> => {
-    await pace.turn(true)
-    return ports.request(call)
-  }
 
   // Home's busy (AD3): the cancel of the timer that ends it, while it lasts.
   let cancelCooling: (() => void) | null = null
@@ -303,18 +326,94 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     return request
   }
 
+  // Away from home (AW1): the cancel of the timer that ends the hold.
+  let cancelLapse: (() => void) | null = null
+  const lapse = (): void => {
+    cancelLapse?.()
+    cancelLapse = null
+    dispatch({ type: "lapsed" })
+  }
+  /** Whether the hold away lasts; one already over ends here, as `homeBusyNow`'s. */
+  const awayNow = (): boolean => {
+    if (awayHeld(state, ports.now())) return true
+    if (state.away?.heldUntil != null) lapse()
+    return false
+  }
+  /** Whether home answered `answered`, or `cause` found it silent. */
+  const reached = (answered: boolean, cause: unknown = null): void => {
+    if (answered) {
+      if (state.away === null) return
+      cancelLapse?.()
+      cancelLapse = null
+      dispatch({ type: "answered" })
+      return
+    }
+    const before = state.away
+    dispatch({ type: "unanswered", now: ports.now() })
+    const after = state.away
+    if (after === before || after?.heldUntil == null) return
+    if (before === null) {
+      ports.report?.({
+        port: "home server",
+        error: {
+          kind: "unreachable",
+          retryable: true,
+          summary: "Away from home: home didn't answer.",
+          cause,
+        },
+      })
+    }
+    cancelLapse?.()
+    cancelLapse = ports.after(Math.max(after.heldUntil - ports.now(), 0), lapse)
+  }
+  /** `request` as sent, its answer or silence told to the away state. */
+  const heard = (request: Promise<HomeAnswer>): Promise<HomeAnswer> =>
+    request.then(
+      (answer) => {
+        reached(true)
+        return answer
+      },
+      (error: unknown) => {
+        if (unanswered(error)) reached(false, error)
+        throw error
+      }
+    )
+  const lookAgain = (): void => {
+    cancelLapse?.()
+    cancelLapse = null
+    dispatch({ type: "lookAgain" })
+  }
+  ports.onNetwork?.(lookAgain)
+
   /**
    * `call` sent at its turn on the pace and tracked, its `429` starting
    * home's busy; or, while that lasts, answered busy here with nothing sent
-   * and no turn taken.
+   * and no turn taken. Unless `tapped`, held away as busy is (AW1).
    */
-  const ask = async (side: Side, call: HomeRequest): Promise<HomeAnswer> => {
+  const ask = async (
+    side: Side,
+    call: HomeRequest,
+    tapped: boolean
+  ): Promise<HomeAnswer> => {
+    const away = (): boolean => !tapped && awayNow()
+    if (away()) throw new HomeAwayError()
     if (homeBusyNow()) return HOME_BUSY
     const went = await pace.turn(side === "person")
     if (!went || stopped(side)) throw new SyncStoppedError()
+    if (away()) throw new HomeAwayError()
     if (homeBusyNow()) return HOME_BUSY
-    const answer = await track(side, ports.request(call))
+    const answer = await track(side, heard(ports.request(call)))
     if (answer.status === 429) heardBusy(answer)
+    return answer
+  }
+
+  /** `call` sent at its turn on the pace, as the person's (pairing, Unpair). */
+  const personal = async (call: HomeRequest): Promise<HomeAnswer> => {
+    await pace.turn(true)
+    const answer = await ports.request(call)
+    // An answer ends a stretch away; a silence here is a pairing's or an
+    // Unpair's own to say, and starts none (AW1).
+    reached(true)
     return answer
   }
 
@@ -414,6 +513,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
   const credentialed = <T>(
     side: Side,
     pressed: HomeLinkEvent,
+    tapped: boolean,
     run: (send: HomeCall) => Promise<T>
   ): Promise<SyncOutcome<T> | null> =>
     work(side, pressed, async () => {
@@ -424,13 +524,17 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
         if (!path.startsWith("/")) {
           return Promise.reject(new Error(`not a path: ${path}`))
         }
-        return ask(side, {
-          method,
-          url: `${pairing.base}${path}`,
-          token: pairing.token,
-          ...(body === undefined ? {} : { body }),
-          ...(range === undefined ? {} : { range }),
-        }).then((answer) => {
+        return ask(
+          side,
+          {
+            method,
+            url: `${pairing.base}${path}`,
+            token: pairing.token,
+            ...(body === undefined ? {} : { body }),
+            ...(range === undefined ? {} : { range }),
+          },
+          tapped
+        ).then((answer) => {
           // Home answers a route it doesn't have in plain words ("not
           // found"); a record it doesn't hold comes as its JSON error.
           if (
@@ -521,11 +625,15 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     sync<T>(run: (get: HomeGet) => Promise<T>): Promise<SyncOutcome<T> | null> {
       const get: HomeGet = (url, etag) => {
         if (stopped("person")) return Promise.reject(new SyncStoppedError())
-        return ask("person", {
-          method: "GET",
-          url,
-          ...(etag === undefined ? {} : { ifNoneMatch: etag }),
-        })
+        return ask(
+          "person",
+          {
+            method: "GET",
+            url,
+            ...(etag === undefined ? {} : { ifNoneMatch: etag }),
+          },
+          true
+        )
       }
       return work("person", { type: "syncPressed" }, () => run(get))
     },
@@ -533,13 +641,19 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     send<T>(
       run: (send: HomeCall) => Promise<T>
     ): Promise<SyncOutcome<T> | null> {
-      return credentialed("person", { type: "sendPressed" }, run)
+      return credentialed("person", { type: "sendPressed" }, true, run)
     },
 
     keep<T>(
-      run: (send: HomeCall) => Promise<T>
+      run: (send: HomeCall) => Promise<T>,
+      options?: { readonly onItsOwn?: boolean }
     ): Promise<SyncOutcome<T> | null> {
-      return credentialed("person", { type: "keepStarted" }, run)
+      return credentialed(
+        "person",
+        { type: "keepStarted" },
+        options?.onItsOwn !== true,
+        run
+      )
     },
 
     async look(path: string): Promise<SyncOutcome<HomeAnswer> | null> {
@@ -547,14 +661,18 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       if (state.link.kind !== "paired") return null
       const pairing = await readPairing()
       if (pairing === null) return null
+      if (awayNow()) throw new HomeAwayError()
       if (homeBusyNow()) return { kind: "done", value: HOME_BUSY }
       if (!(await pace.turn(false))) return null
       // Home may have asked to be left alone while this waited its turn.
+      if (awayNow()) throw new HomeAwayError()
       if (homeBusyNow()) return { kind: "done", value: HOME_BUSY }
-      const answer = await ports.request({
-        method: "GET",
-        url: `${pairing.base.replace(/\/api\/v1$/, "")}${path}`,
-      })
+      const answer = await heard(
+        ports.request({
+          method: "GET",
+          url: `${pairing.base.replace(/\/api\/v1$/, "")}${path}`,
+        })
+      )
       if (answer.status === 429) heardBusy(answer)
       return { kind: "done", value: answer }
     },
@@ -569,7 +687,12 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     async drain<T>(
       run: (send: HomeCall) => Promise<T>
     ): Promise<SyncOutcome<T> | null> {
-      const outcome = await credentialed("drain", { type: "drainStarted" }, run)
+      const outcome = await credentialed(
+        "drain",
+        { type: "drainStarted" },
+        false,
+        run
+      )
       return preempted ? null : outcome
     },
 
@@ -577,6 +700,12 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       if (!working(state.activity)) return
       dispatch({ type: "stopPressed" })
       pace.leave(true)
+    },
+
+    lookAgain,
+
+    answered(): void {
+      reached(true)
     },
   }
 }

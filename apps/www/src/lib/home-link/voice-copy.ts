@@ -93,7 +93,10 @@
  *   stores the room it makes or not (RM1, `lib/takes-desk/runtime.ts`),
  *   and the audio of each Rust Rounds note home holds (RR6),
  *   × every home state (held; waiting; unpaired; off the LAN, which the
- *   phone sees alike as not held); for Studio takes, × every
+ *   phone sees alike as not held; held only by the home of another
+ *   pairing, a re-paired or reset one, which it sees as not held either:
+ *   HP1, `lib/voice-home/model.ts`, which lets nothing go on that pairing's word; a game
+ *   bite's own stamp still says it is on home, #2955); for Studio takes, × every
  *   choice (none yet, once home has them, until Drive has it too) × the
  *   owner's "Drive has it" on the take (tapped or not), home's word that
  *   Drive has it (said, not said, or not read) and the share sheet's
@@ -167,6 +170,7 @@ import { reflections } from "@/lib/session-reflection"
 import type { Reflection } from "@/lib/session-reflection/policy"
 import { onSoundbitesKept, soundbiteKeeping } from "@/lib/soundbite-keeping"
 import { onStudioKept, studioKeeping } from "@/lib/studio-keeping"
+import { takeConveyor } from "@/lib/take-conveyor"
 import { phoneVoiceHome } from "@/lib/voice-home"
 import { exchangeVoice } from "@/lib/voice-home/home"
 import type {
@@ -184,15 +188,18 @@ import {
   passWith,
   runEnd,
 } from "@/lib/voice-home/model"
+import type { PairingPort } from "@/lib/voice-home/runtime"
 import { wireVoiceMarks } from "@/lib/voice-marks"
 
 import { phoneEpisodeNotes, sendEpisodeNotes } from "./episode-notes"
 import { phoneIdeas, sendIdeas } from "./ideas"
-import { homeLink, paired } from "./index"
+import { homeLink, paired, pairingOf } from "./index"
 import { lensEntriesHeld } from "./lens-record"
 import { notesHeld } from "./notes"
 import { askOnDrive } from "./on-drive"
+import { unanswered } from "./runtime"
 import { markSetAside } from "./set-aside"
+import { sendStationMoves } from "./take-stations"
 import { phoneVideos, sendVideos } from "./videos"
 import { askAudio } from "./voice-audio"
 
@@ -919,6 +926,8 @@ function copySoon(): void {
 
 /** Home's word on Drive could not be read or acted on, to the native log. */
 function unheard(error: unknown): void {
+  // Home's silence is the link's to tell, once a stretch away (AW1).
+  if (unanswered(error)) return
   reportFailure({
     port: "voice notes (which takes Drive has)",
     error: {
@@ -963,8 +972,9 @@ async function letGoOnHomesWord(send: HomeCall): Promise<void> {
  * whose said answers name notes that have just gone, each note left on an
  * episode home doesn't hold (`sendEpisodeNotes`, SFEED6), the set-aside marks due
  * (`markSetAside`, MIC2), and, once those synced, each Studio video kept for
- * home to make (`sendVideos`, ST33), whose takes name notes too, which ends
- * the run in its exchange's place. A run that sent all it had still fails,
+ * home to make (`sendVideos`, ST33), whose takes name notes too, then each
+ * move of a Studio take along the conveyor (`sendStationMoves`, CONVEYOR1),
+ * which ends the run in its exchange's place. A run that sent all it had still fails,
  * saying why, if that pass left a note it could copy uncopied (`runEnd`,
  * LA14).
  */
@@ -972,15 +982,21 @@ export async function sendVoice(
   send: HomeCall,
   at: { readonly pairing: string }
 ): Promise<HomeExchanged> {
+  phoneVoiceHome().follow(linkPairing)
   copySoon()
   const running = copying
   if (running !== null) await running
   const pass = running === null ? NO_PASS : lastPass
   const home = phoneVoiceHome()
-  const exchanged = await exchangeVoice(home.keeping, send, {
-    letGo: studioKeeping() === null ? null : letGoDeleted,
-    heldBack: home.deletedHeldBack,
-  })
+  const exchanged = await exchangeVoice(
+    home.keeping,
+    send,
+    {
+      letGo: studioKeeping() === null ? null : letGoDeleted,
+      heldBack: home.deletedHeldBack,
+    },
+    at.pairing
+  )
   if (exchanged.kind !== "synced") return runEnd(pass, exchanged)
   await letGoOnHomesWord(send)
   const ideas = await sendIdeas(
@@ -1001,10 +1017,13 @@ export async function sendVoice(
   const marked = await markSetAside(marks, send)
   if (marked.kind !== "synced") return runEnd(pass, marked)
   // After the marks, so a video home won't take never holds them up.
-  return runEnd(
-    pass,
-    await sendVideos(phoneVideos(localStorageOrNull(), at.pairing), send)
+  const videos = await sendVideos(
+    phoneVideos(localStorageOrNull(), at.pairing),
+    send
   )
+  if (videos.kind !== "synced") return runEnd(pass, videos)
+  // Last, so a move home answers oddly never holds up what came before.
+  return runEnd(pass, await sendStationMoves(takeConveyor().port, send))
 }
 
 /** Home's held notes as a set, made again only when the list changes. */
@@ -1091,10 +1110,17 @@ export async function letGoDeleted(
   }
 }
 
-/** Retires the voice record's copies of notes home deleted for good. */
+/**
+ * Retires the voice record's copies of notes home deleted for good: the
+ * receipt is the word of the pairing the phone holds (HP1). Unpaired, a
+ * copy waits, and the next run's `deleted_for_good` retires it.
+ */
 function settleDeleted(ids: ReadonlyArray<string>): void {
   const home = phoneVoiceHome()
-  for (const id of ids) home.keeping.answered({ kind: "held", id })
+  const pairing = pairingOf()
+  if (pairing !== null) {
+    for (const id of ids) home.keeping.answered({ kind: "held", id, pairing })
+  }
   home.drop(ids)
 }
 
@@ -1191,7 +1217,21 @@ function holdOffline(): void {
  * that never was builds none of them for this.
  */
 
+/**
+ * The pairing this phone holds, as the voice record follows it (HP1,
+ * `lib/voice-home/model.ts`).
+ */
+const linkPairing: PairingPort = {
+  current: () => {
+    const state = homeLink().getSnapshot()
+    return state.link.kind === "reading" ? undefined : pairingOf(state)
+  },
+  subscribe: (listener) => homeLink().subscribe(listener),
+}
+
 export function watchVoiceNotes(): () => void {
+  // First, so what home holds is read under the pairing alone (HP1).
+  phoneVoiceHome().follow(linkPairing)
   const stores: Array<() => void> = []
   let takes = false
   let saidBites = false

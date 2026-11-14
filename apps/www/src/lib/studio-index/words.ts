@@ -291,6 +291,9 @@ export const STUDIO_INDEX_WORDS = {
     /** Under What Studio keeps (soundbites' `records.open`) on its tile. */
     keptLine:
       "Every take, with what home holds of it, and where to let one go.",
+    /** The tile to the conveyor page (CONVEYOR2), in the Android app. */
+    conveyor: "Sort your takes",
+    conveyorLine: "Move each take along, from In the oven to Ready for pickup.",
   },
 
   templates: {

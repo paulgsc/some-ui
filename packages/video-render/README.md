@@ -97,6 +97,9 @@ Each module's header says why it is the way it is.
   video carries the mark as a video-wide `authorship` burn-in with no
   params, between a bare card first and last; the renderer writes its
   params from the scenes.
+- `src/badges.ts`: which status badges (CARDS1, #2466) the video showed
+  before each scene, written into each scene's burn-in that shows one, so a
+  badge spells itself out at its first appearance in the video only.
 - `src/timeline-v1.ts`: the build-journal skill's `timeline.json` shorts as
   cut list v2.
 - `src/cli.ts`: the command, and its usage:

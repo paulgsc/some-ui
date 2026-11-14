@@ -31,6 +31,7 @@ import {
   receiptsLine,
   unreadLine,
   WHERE_WORDS,
+  WORD_SETS,
 } from "@/lib/my-data/words"
 
 /** Every string in `value`, however deep. */
@@ -52,6 +53,19 @@ describe("My data's words", () => {
   it("never name the machinery", () => {
     const said = [
       ...strings(MY_DATA),
+      ...strings(WORD_SETS),
+      WORD_SETS.inUse(3, 50),
+      WORD_SETS.added(AT),
+      WORD_SETS.opened(AT),
+      WORD_SETS.opened(null),
+      WORD_SETS.archivedOn(AT),
+      WORD_SETS.sentences(1),
+      WORD_SETS.archiveName("Cafe"),
+      WORD_SETS.bringBackName("Cafe"),
+      WORD_SETS.full(50),
+      WORD_SETS.said.archived("Cafe"),
+      WORD_SETS.said.broughtBack("Cafe"),
+      WORD_SETS.said.noRoom(50),
       ...strings(KIND_NAMES),
       ...strings(WHERE_WORDS),
       ...Object.values(KEPT_FOR_GOOD),
@@ -138,6 +152,7 @@ describe("My data's words", () => {
         .map(receiptsLine)
         .filter((line): line is string => line !== null),
       receiptParts(["recording", "words", "set-aside mark"]),
+      receiptParts(["recording", "conveyor history"]),
       receiptParts(["mailbox copy", "drive copy", "a newer part"]),
       receiptParts([]),
       receiptKind("studio"),
@@ -149,7 +164,9 @@ describe("My data's words", () => {
     expect(said.filter((text) => MACHINERY.test(text))).toEqual([])
     // Home's fixed words never reach the screen as they are.
     expect(
-      said.filter((text) => /set-aside mark|mailbox copy|drive copy/.test(text))
+      said.filter((text) =>
+        /set-aside mark|mailbox copy|drive copy|conveyor history/.test(text)
+      )
     ).toEqual([])
   })
 
@@ -175,6 +192,15 @@ describe("My data's words", () => {
   it("say what went and stayed as a sentence", () => {
     expect(receiptParts(["recording", "words"])).toBe(
       "The recording and home's words for it"
+    )
+    expect(receiptParts(["recording", "conveyor history"])).toBe(
+      "The recording and each move it made along the conveyor"
+    )
+    // The whole receipt home sends for a take heard, let go and moved.
+    expect(
+      receiptParts(["recording", "words", "set-aside mark", "conveyor history"])
+    ).toBe(
+      "The recording, home's words for it, its Let go mark and each move it made along the conveyor"
     )
     expect(receiptParts([])).toBe("Nothing else")
   })
