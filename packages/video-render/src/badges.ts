@@ -8,13 +8,12 @@
  * row's, a flow's step's). The renderer reads them scene by scene,
  * in order, and gives each scene's burn-in that shows any the states shown
  * before it, as `badgesSeen`, so which appearance opens is a pure function
- * of the cut list. A state counts as seen only once its first appearance in
- * the scene has spelled itself out before the next scene starts: a reveal
- * starts after a status badge's lead, or at a card item's own time, and
- * runs `REVEAL.totalMs`. Otherwise
- * the next appearance spells it out again; a preview, which shortens scenes,
- * is never refused for it. Nothing is written for it by hand
- * (`badgeProblems`).
+ * of the cut list. A state counts as seen only once its earliest appearance
+ * in the scene has spelled itself out before the next scene starts: a
+ * reveal starts after a status badge's lead, or at a card item's own time,
+ * and runs `BADGE_TIMING.revealMs`. Otherwise the next appearance spells it
+ * out again; a preview, which shortens scenes, is never refused for it.
+ * Nothing is written for it by hand (`badgeProblems`).
  *
  * Promise BS1 (#2982): for every burn-in, every interleaving of its badges'
  * times with the scene's length, a state is in a later scene's `badgesSeen`
@@ -31,8 +30,9 @@ const BADGES_SEEN = "badgesSeen"
 
 /**
  * The timing `@some-ui/burn-ins` draws badges with, which this package does
- * not import (burn-ins is a React package, and its contract may carry no
- * code, so `itemTimes` cannot cross): a status badge appears after `STATUS_BADGE_LEAD_MS`; a card's
+ * not import: burn-ins' contract may carry no implementation (AUDIENCES.md
+ * A2), so `itemTimes` cannot cross, and burn-ins' tests already import this
+ * package. A status badge appears after `STATUS_BADGE_LEAD_MS`; a card's
  * items after `ITEM.leadMs`, then one `ITEM.gapMs` after the one before
  * unless an item gives its own `atMs` (`itemTimes`); a badge spells itself
  * out over `REVEAL.totalMs`. Held equal by burn-ins' `badge-timing.test.ts`.
@@ -44,7 +44,7 @@ export const BADGE_TIMING = {
 } as const
 
 /**
- * When each state's first badge in `params` finishes spelling itself out,
+ * When each state's earliest badge in `params` finishes spelling itself out,
  * in ms into its scene: depth first, a `badge` key appears at its object's
  * time; an array's objects are items, each at its own `atMs` or one gap
  * after the item before.
