@@ -10,7 +10,13 @@
         "server:apps/servers/file_host/src/mailbox",
         "server:crates/mailbox_kit"
       ],
-      "modules": ["jobs", "routine", "leetype_files", "episode_notes"],
+      "modules": [
+        "jobs",
+        "routine",
+        "leetype_files",
+        "episode_notes",
+        "interview_weeks"
+      ],
       "objectives": [
         {
           "id": "MI1",
@@ -3566,7 +3572,7 @@
     {
       "store": "mailbox:item",
       "class": "cache",
-      "growth": "Per file the routine or home puts (folders brief, decisions, scout, scene, drama, run, opened, leetype, leetype-log, transcript, index, reflection, prompt), body <= MAX_BODY_BYTES = 1,048,576; a few KB a day per README (a written reflection is its typed line, its session and when, paulgsc/some-ui#2178; a drama prompt about 40 KB per ask, its text at most 256 KiB, paulgsc/some-ui#2179; a list of the takes Drive holds about 78 B a take, at most 10,000 takes, one per build-journal session that lists Drive's takes folder, in brief, paulgsc/some-ui#2401); bytes leave once archived. Home's index (index) is one per routine (jobs, reflections, call, rust), the latest only: putting a new one drops the one before of its routine in the same write, and it is never archived (owner, paulgsc/server#509). The reflections index grows by about 1 KB a day (the bases answered and the distinct word ids its decks use); the rest of it is bounded by what still waits. The call index grows by about 100 B a week (one week's days and hash). The rust index holds at most the newest 4 final weeks' records, a few KB each plus their pastes (each at most 20,000 characters), under the 1 MiB cap.",
+      "growth": "Per file the routine or home puts (folders brief, decisions, scout, scene, drama, run, opened, leetype, leetype-log, transcript, index, reflection, prompt), body <= MAX_BODY_BYTES = 1,048,576; a few KB a day per README (a written reflection is its typed line, its session and when, paulgsc/some-ui#2178; a drama prompt about 40 KB per ask, its text at most 256 KiB, paulgsc/some-ui#2179; a list of the takes Drive holds about 78 B a take, at most 10,000 takes, one per build-journal session that lists Drive's takes folder, in brief, paulgsc/some-ui#2401); bytes leave once archived. Home's index (index) is one per routine (jobs, reflections, call, rust, interview), the latest only: putting a new one drops the one before of its routine in the same write, and it is never archived (owner, paulgsc/server#509). The reflections index grows by about 1 KB a day (the bases answered and the distinct word ids its decks use); the rest of it is bounded by what still waits. The call index grows by about 100 B a week (one week's days and hash). The rust index holds at most the newest 4 final weeks' records, a few KB each plus their pastes (each at most 20,000 characters), under the 1 MiB cap. The interview index likewise holds at most the newest 4 final interview weeks' records (some-ui#2935, paulgsc/server#847).",
       "horizon": "a file's bytes are deleted once it has been live >= 30 days (ARCHIVE_MIN_AGE_DAYS) and home has archived them (home waits MAILBOX_ARCHIVE_DAYS, >= 30); metadata moves to `archived`. An index's row and bytes go when home puts a newer one of its routine, with no `archived` row",
       "family": "routine-to-home"
     },
@@ -4369,6 +4375,19 @@
       "store": "server:rust_week_final",
       "class": "record",
       "growth": "Per Rust Rounds week a paired phone sent a draft of (RR22): the draft standing at the week's due, as sent (each ticket's take id and when it was said, and the tickets passed over), <= SENT_CEILING = 16 KiB; one row per (subject, week), written once at the first read after due, never updated; append-only; leaves with the account.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:interview_week_draft",
+      "class": "cache",
+      "growth": "bounded: one row per (subject, interview week not yet final): the phone's current draft of the week's Send (IW4), <= SENT_CEILING = 16 KiB, replaced by each newer draft before the week's due",
+      "horizon": "deleted in the transaction that writes the week's final to interview_week_final, at the first read after due, or with the account",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:interview_week_final",
+      "class": "record",
+      "growth": "Per interview week a paired phone sent a draft of (IW4): the draft standing at the week's due, as sent (each question's and card's take id and when it was said, and those passed over), <= SENT_CEILING = 16 KiB; one row per (subject, week), written once at the first read after due, never updated; append-only; leaves with the account.",
       "family": "what-is-kept"
     },
     {
