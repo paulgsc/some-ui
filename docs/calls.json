@@ -2405,6 +2405,24 @@
         "#2496",
         "#2473"
       ]
+    },
+    {
+      "id": "C242",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/components/studio/take-conveyor.tsx",
+        "apps/www/src/routes/_dashboard/_apk/journal/takes/conveyor.tsx"
+      ],
+      "chose": "The conveyor is its own page under Studio › Takes (\"Sort your takes\"), on Takes on home's list so each take plays and the search works there too. Under each take: a Labels and a Note field that ride along with the next move, one button per station it may be moved to, each in a fixed place with the one it is at disabled, and below them the station strip and where it stands, so nothing above the buttons moves when a move lands. A move is one tap with no confirm, Ready for pickup included, and moving it again undoes it until the pickup has run.",
+      "options": [
+        "one tap per move, undone by moving again",
+        "ask to confirm Ready for pickup",
+        "a menu of stations per take instead of buttons"
+      ],
+      "gray": "The owner asked for a dedicated page where takes are sorted and only there made ready for pickup, and didn't say whether making one ready should ask first. Until the pickup (CONVEYOR3) runs, a move to Ready for pickup files nothing, so a wrong tap is moved back with nothing lost.",
+      "undo": "Ask before a move to Ready for pickup in TakeSorting, or swap the buttons for a menu.",
+      "refs": ["#2874", "#2872"]
     }
   ]
 }

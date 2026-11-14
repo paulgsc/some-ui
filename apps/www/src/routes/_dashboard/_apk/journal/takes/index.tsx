@@ -29,8 +29,10 @@ const TAKE_PORTS =
 
 /**
  * Studio's Takes (SFEED1, #2731): every take home keeps and this phone's
- * own (ST32's library), each playing in its row, and the way to What Studio
- * keeps (MD4), where one can be let go in My data.
+ * own (ST32's library), each playing in its row, with where each stands on
+ * the conveyor; the way to the conveyor page (CONVEYOR2), where takes are
+ * moved; and the way to What Studio keeps (MD4), where one can be let go in
+ * My data.
  */
 const Takes = (): JSX.Element => (
   <StudioPage heading={KIND_WORDS.takes.name} back="index">
@@ -40,6 +42,9 @@ const Takes = (): JSX.Element => (
         pair={<PairHomeLink>{STUDIO_WORDS.pair.pair}</PairHomeLink>}
       />
     )}
+    <Link to="/journal/takes/conveyor" className={TILE}>
+      <TileBody title={WORDS.conveyor} line={WORDS.conveyorLine} />
+    </Link>
     <Link to="/journal/takes/kept" className={TILE}>
       <TileBody title={STUDIO_WORDS.records.open} line={WORDS.keptLine} />
     </Link>

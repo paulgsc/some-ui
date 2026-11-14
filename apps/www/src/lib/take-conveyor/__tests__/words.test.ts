@@ -17,9 +17,13 @@ const AT = "2026-11-13T09:00:00.000Z"
 
 /** Every word the table says: each fixed one, and each a maker makes. */
 function everyWord(): Array<string> {
-  const { stations, means, standing, refused, ...fixed } = TAKE_CONVEYOR_WORDS
+  const { stations, means, standing, refused, page, ...fixed } =
+    TAKE_CONVEYOR_WORDS
+  const { moveTo, moved, ...pageFixed } = page
   return [
     ...Object.values(fixed),
+    ...Object.values(pageFixed),
+    ...TAKE_STATIONS.flatMap((station) => [moveTo(station), moved(station)]),
     ...Object.values(stations),
     ...Object.values(means),
     ...Object.values(refused),
@@ -86,6 +90,12 @@ describe("TAKE_CONVEYOR_WORDS", () => {
         missed: null,
       })
     ).toBe("Ready for pickup. Home hasn't taken this move yet.")
+    // The page's notice for a move says it as the row does until home takes it.
+    for (const station of TAKE_STATIONS) {
+      expect(TAKE_CONVEYOR_WORDS.page.moved(station)).toBe(
+        `Moved to ${standing({ station, at: AT, seq: 0, going: true, missed: null })}`
+      )
+    }
     expect(
       standing({
         station: "in-the-oven",
