@@ -1,15 +1,13 @@
 /**
  * The interview week's Monday routine (IW4, paulgsc/some-ui#2935): `pull`,
  * `prepare`, `finish` and `put`. `ROUTINE.md` says when each runs; the model
- * only writes the values file between `prepare` and `finish`. The mailbox
- * client and the command helpers are `@some-ui/video-render/node`'s, which
- * Rust Rounds' routine shares.
+ * only writes the values file between `prepare` and `finish`.
  */
 import { execFileSync } from "node:child_process"
-import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { parseArgs } from "node:util"
-import type { MailboxFile, Prepared } from "@interview-week/lib/monday/bundle"
+import type { Prepared } from "@interview-week/lib/monday/bundle"
 import { prepare, WEEK_FILE } from "@interview-week/lib/monday/bundle"
 import type { Doc } from "@interview-week/lib/monday/corpus"
 import {
@@ -28,6 +26,8 @@ import {
   fail,
   get,
   here,
+  jsonFilesIn,
+  jsonText,
   list,
   mailboxFromEnv,
   put,
@@ -44,22 +44,10 @@ const USAGE = [
   "       monday put --from <dir>",
 ]
 
-const json = (value: unknown): string => `${JSON.stringify(value, null, 2)}\n`
-
 const root = (): string =>
   execFileSync("git", ["rev-parse", "--show-toplevel"], {
     encoding: "utf8",
   }).trim()
-
-async function filesIn(dir: string): Promise<Array<MailboxFile>> {
-  const names = await readdir(dir).catch(() => [])
-  return Promise.all(
-    names
-      .filter((name) => name.endsWith(".json"))
-      .sort()
-      .map(async (name) => ({ name, body: await readJson(join(dir, name)) }))
-  )
-}
 
 /** `brief`'s interview weeks, and the command that reads the last week's epics. */
 async function pull(dir: string): Promise<void> {
@@ -70,7 +58,7 @@ async function pull(dir: string): Promise<void> {
     if (!WEEK_FILE.test(item.name)) continue
     await writeFile(
       join(dir, "brief", item.name),
-      json(await get(mailbox, "brief", item))
+      jsonText(await get(mailbox, "brief", item))
     )
     count += 1
   }
@@ -130,7 +118,7 @@ async function preparedIn(dir: string, now: Date): Promise<Prepared> {
   const docs = await markdown(top)
   return prepare({
     now,
-    brief: await filesIn(join(dir, "brief")),
+    brief: await jsonFilesIn(join(dir, "brief")),
     corpus: {
       calls: callsOf(await readFile(join(top, "docs/calls.json"), "utf8")),
       epics: epicsOf(facts.data.epics),
@@ -142,7 +130,7 @@ async function preparedIn(dir: string, now: Date): Promise<Prepared> {
 
 async function prepareIn(dir: string, now: Date): Promise<void> {
   const { bundle } = await preparedIn(dir, now)
-  await writeFile(join(dir, "bundle.json"), json(bundle))
+  await writeFile(join(dir, "bundle.json"), jsonText(bundle))
   console.log(
     [
       `next week: ${bundle.next?.id ?? "already in the mailbox"}`,
@@ -168,7 +156,7 @@ async function finishIn(dir: string): Promise<void> {
     .safeParse(await readJson(join(dir, "bundle.json")))
   if (!held.success) fail(["bundle.json isn't prepare's: run prepare again"])
   const { bundle } = await preparedIn(dir, new Date(held.data.now))
-  if (json(bundle) !== (await readFile(join(dir, "bundle.json"), "utf8"))) {
+  if (jsonText(bundle) !== (await readFile(join(dir, "bundle.json"), "utf8"))) {
     fail(["bundle.json changed since prepare wrote it: run prepare again"])
   }
   const finished = finish({
@@ -183,7 +171,7 @@ async function finishIn(dir: string): Promise<void> {
   await rm(join(dir, "out"), { recursive: true, force: true })
   await mkdir(join(dir, "out"))
   for (const file of finished.files) {
-    await writeFile(join(dir, "out", file.name), json(file.body))
+    await writeFile(join(dir, "out", file.name), jsonText(file.body))
   }
   console.log(
     finished.files.length === 0
@@ -197,7 +185,7 @@ async function putFrom(dir: string): Promise<void> {
   const mailbox = mailboxFromEnv()
   const lines: Array<string> = []
   let failed = false
-  for (const file of await filesIn(join(dir, "out"))) {
+  for (const file of await jsonFilesIn(join(dir, "out"))) {
     const { status, text } = await put(mailbox, "brief", file.name, file.body)
     const ok = status === 201 || status === 200
     failed ||= !ok

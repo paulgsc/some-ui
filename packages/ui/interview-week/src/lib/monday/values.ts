@@ -5,13 +5,10 @@
  * dates and targets are the bundle's (`bundle.ts`), so the model decides
  * nothing about the week's shape (LEVERS, #2162). Every object is strict.
  */
+import { TextSchema } from "@interview-week/lib/week"
 import { z } from "zod"
 
 export const VALUES_SCHEMA = "some-ui.interview-monday-values/1"
-
-const TextSchema = z
-  .string()
-  .refine((text) => text.trim() !== "", "must not be empty")
 
 const WeekValuesSchema = z.strictObject({
   company: z.strictObject({ name: TextSchema, about: TextSchema }),

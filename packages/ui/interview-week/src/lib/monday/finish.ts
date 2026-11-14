@@ -1,8 +1,6 @@
 /**
  * The interview week's `finish` (IW4, #2935): builds next week from the
- * bundle's choices and the model's words, then checks it. It checks the
- * schema (`readWeek`), every slot filled once, each text's length, and that
- * no real employer is named (`employers.ts`). It answers the file to put, or
+ * bundle's choices and the model's words, and answers the file to put or
  * every problem, so the model fixes exactly those in its values.
  */
 import type { Bundle } from "@interview-week/lib/monday/bundle"
@@ -19,12 +17,7 @@ import {
 import { ValuesSchema } from "@interview-week/lib/monday/values"
 import type { WeekValues } from "@interview-week/lib/monday/values"
 import type { InterviewWeek } from "@interview-week/lib/week"
-import {
-  CARD_MIN_SECONDS,
-  INTERVIEW_WEEK_SCHEMA,
-  readWeek,
-  TAKE_MAX_SECONDS,
-} from "@interview-week/lib/week"
+import { INTERVIEW_WEEK_SCHEMA, readWeek } from "@interview-week/lib/week"
 
 /** Which routine wrote the week. */
 const BY = "claude-routine"
@@ -64,15 +57,9 @@ export type Finished =
   | { ok: true; files: Array<{ name: string; body: InterviewWeek }> }
   | { ok: false; problems: Array<string> }
 
-/** A card's target: its script's words at the read pace, 60 to 120 seconds. */
+/** A card's target: its script's words at the read pace (150 to 300 words is 60 to 120 seconds). */
 const cardSeconds = (script: string): number =>
-  Math.min(
-    TAKE_MAX_SECONDS,
-    Math.max(
-      CARD_MIN_SECONDS,
-      Math.round((wordCount(script) / READ_WORDS_PER_MINUTE) * 60)
-    )
-  )
+  Math.round((wordCount(script) / READ_WORDS_PER_MINUTE) * 60)
 
 function checkWords(
   values: WeekValues,

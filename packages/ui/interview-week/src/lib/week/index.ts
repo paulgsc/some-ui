@@ -110,7 +110,7 @@ const QUESTIONS_MAX = 6
 const CARDS_MIN = 2
 const CARDS_MAX = 4
 
-const TextSchema = z
+export const TextSchema = z
   .string()
   .refine((text) => text.trim() !== "", "must not be empty")
 
@@ -229,7 +229,7 @@ function relations(week: InterviewWeek): Array<string> {
     if (ids.has(question.id)) problems.push(`${at}: its id is used twice`)
     ids.add(question.id)
     const variants: Readonly<Record<string, string>> = FAMILIES[question.family]
-    if (!(question.variant in variants)) {
+    if (!Object.hasOwn(variants, question.variant)) {
       problems.push(
         `${at}: ${question.family}'s variants are ${Object.keys(variants).join(", ")}`
       )

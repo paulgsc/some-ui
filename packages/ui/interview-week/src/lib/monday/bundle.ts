@@ -3,9 +3,7 @@
  * next week's id and dates, and every choice code makes. Code chooses each
  * question's family and variant, each decision question's call, and each
  * card's source and situation. Each choice rotates over the weeks, least
- * recently asked first. The model fills only the words (LEVERS, #2162):
- * the company and role, each question's prompt and guidelines, each card's
- * script.
+ * recently asked first. The words are the model's (`values.ts`).
  */
 import type {
   Call,
@@ -204,7 +202,6 @@ function questions(
     }
     if (family !== "decision") return [{ id: variant, ...base }]
     const call = leastRecent(calls, (c) => `call:${c.id}`, asked)
-    // With no call recorded there is no decision to ask about.
     if (call === undefined) return []
     return [{ id: `decision-${call.id.toLowerCase()}`, ...base, call }]
   })

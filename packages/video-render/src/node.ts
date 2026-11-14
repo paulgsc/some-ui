@@ -467,6 +467,26 @@ export async function runCommand(main: () => Promise<void>): Promise<void> {
 
 export * from "./mailbox"
 
+/** `value` as a routine writes a JSON file: two-space indent, one trailing newline. */
+export const jsonText = (value: unknown): string =>
+  `${JSON.stringify(value, null, 2)}\n`
+
+/** Each `.json` file in `dir`, by name in order, parsed; none when `dir` is missing. */
+export async function jsonFilesIn(
+  dir: string
+): Promise<Array<{ name: string; body: unknown }>> {
+  const names = await readdir(dir).catch((): Array<string> => {
+    // Ignored: a folder `pull` never made holds no files, which is what this answers.
+    return []
+  })
+  return Promise.all(
+    names
+      .filter((name) => name.endsWith(".json"))
+      .sort()
+      .map(async (name) => ({ name, body: await readJson(join(dir, name)) }))
+  )
+}
+
 /**
  * The Jobs mailbox a routine reads and puts to, from `JOBS_MAILBOX_URL` and
  * `JOBS_MAILBOX_TOKEN`; refused when either is unset. The token is never

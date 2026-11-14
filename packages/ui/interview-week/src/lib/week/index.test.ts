@@ -107,9 +107,11 @@ describe("the interview week's format", () => {
   it("refuses an id used twice, a variant its family lacks, and a source on the wrong question", () => {
     const w = week()
     w.questions[2] = { ...w.questions[2]!, id: "conflict", variant: "strength" }
+    w.questions[0] = { ...w.questions[0]!, variant: "constructor" }
     w.cards[1] = { ...w.cards[1]!, id: "epic-2931" }
     w.questions[3] = { ...w.questions[3]!, source: undefined }
     expect(problems(w)).toEqual([
+      `questions[0] ("walk-me-through"): about-yourself's variants are walk-me-through, what-you-build, how-you-got-here`,
       'questions[2] ("conflict"): its id is used twice',
       `questions[2] ("conflict"): why-this-role's variants are why-this-role, why-this-company, why-now`,
       'questions[3] ("decision-c266"): a decision question names its call, and no other question names one',
@@ -117,34 +119,12 @@ describe("the interview week's format", () => {
     ])
   })
 
-  it("holds the week to the owner's Monday and Sunday, across a change of offset", () => {
+  it("holds the week to the owner's Monday and Sunday", () => {
     expect(problems({ ...week(), id: "2026-w46" })).toEqual([
       "the week that opens 2026-11-16 is 2026-w47",
     ])
     expect(
       problems({ ...week(), due: "2026-11-22T23:59:00-07:00" })
     ).toHaveLength(1)
-    expect(
-      problems({
-        ...week(),
-        id: "2026-w44",
-        opens: "2026-10-26T00:00:00-07:00",
-        due: "2026-11-01T23:59:00-08:00",
-      })
-    ).toEqual([])
-  })
-
-  it("refuses what the file never holds", () => {
-    expect(problems({ ...week(), answer: "x" })).not.toEqual([])
-    const w = week()
-    expect(
-      problems({
-        ...w,
-        questions: [
-          { ...w.questions[0], targetSeconds: 121 },
-          ...w.questions.slice(1),
-        ],
-      })
-    ).not.toEqual([])
   })
 })

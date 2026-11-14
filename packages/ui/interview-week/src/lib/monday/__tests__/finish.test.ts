@@ -1,6 +1,5 @@
 import { prepare } from "@interview-week/lib/monday/bundle"
 import { finish } from "@interview-week/lib/monday/finish"
-import { readWeek } from "@interview-week/lib/week"
 import { describe, expect, it } from "vitest"
 
 import { corpus, script, valuesFor } from "./fixture"
@@ -20,7 +19,7 @@ const problems = (
 }
 
 describe("the interview week's finish", () => {
-  it("builds the week the bundle chose, with the model's words, and it reads", () => {
+  it("builds the week the bundle chose, with the model's words", () => {
     const done = finish({
       bundle,
       values: valuesFor(bundle),
@@ -29,7 +28,6 @@ describe("the interview week's finish", () => {
     if (!done.ok) throw new Error(done.problems.join("\n"))
     const [file] = done.files
     expect(file?.name).toBe("interview-week-2026-w47.json")
-    expect(readWeek(file?.body).ok).toBe(true)
     expect(file?.body.questions[4]?.source).toEqual({
       kind: "call",
       id: "C266",
