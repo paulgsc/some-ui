@@ -30,6 +30,8 @@
 
 import { z } from "zod"
 
+import { callFit } from "./call-fit"
+import type { CallPageShows } from "./call-fit"
 import type { ChapterMark } from "./chapters"
 import { chapterSlides } from "./chapters"
 import { once, problemsOf } from "./cut-list"
@@ -50,13 +52,14 @@ import {
   IssueSchema,
   OptionSchema,
   PrSchema,
+  refKey,
   RefSchema,
 } from "./refs"
-import type { CallRef } from "./refs"
 import {
   BRAND_MOTION,
   estimatedMs,
   hasCaptions,
+  readingMs,
   stillFile,
   stillsCutList,
 } from "./stills"
@@ -219,9 +222,6 @@ export function callFormat(version: number = CALL_VERSION): Format {
     ...(version >= 2 ? { shape: shapeOf(version) } : {}),
   }
 }
-
-/** A ref's one name: "server#681". */
-const refKey = (ref: CallRef): string => `${ref.repo}#${ref.number}`
 
 /** A day, as `YYYY-MM-DD`. */
 export const day = z.iso.date()
@@ -458,8 +458,14 @@ function weekProblems(week: CallWeek): Array<string> {
     if (ask.recommended !== undefined && ask.recommended >= ask.options.length)
       problems.push(`${ask.id}: it recommends an option it doesn't list`)
   })
+  // CF1
+  if (captioned(week)) problems.push(...callFit(week).problems)
   return once(problems)
 }
+
+/** Whether the week's frame keeps its foot for captions: version 2 on. */
+const captioned = (week: CallWeek): boolean =>
+  hasCaptions(callFormat(week.template.version))
 
 /** The week's data, or every reason it can't make a call. */
 export function parseCallWeek(raw: unknown): Parsed<CallWeek> {
@@ -485,6 +491,14 @@ export type CallScene =
       readonly item?: string
       /** What is said over it; empty for a brand slide, which says nothing. */
       readonly said: string
+      /**
+       * Which page of its scene it is (CF1, `./call-fit`), and what of each
+       * list it shows; absent in a week with no caption band, which shows
+       * its scene whole.
+       */
+      readonly page?: CallScenePage
+      /** How long it holds, said over by nothing: a page after the first. */
+      readonly holdMs?: number
     }
   | {
       readonly section: "chapter"
@@ -493,6 +507,21 @@ export type CallScene =
       readonly of: Section
       readonly said: string
     }
+
+/**
+ * A scene's page: its place among its scene's pages, what it shows, and how
+ * tall the model says it is, in px.
+ */
+export type CallScenePage = {
+  readonly n: number
+  readonly of: number
+  readonly shows: CallPageShows
+  readonly h: number
+}
+
+/** Whether `scene` is its scene's first page, or a scene with no pages. */
+export const isFirstPage = (scene: CallScene): boolean =>
+  !("page" in scene) || scene.page === undefined || scene.page.n === 1
 
 /** What each chapter slide shows and says: the section it opens. */
 export const CALL_CHAPTERS: Readonly<Record<Section, string>> = {
@@ -587,6 +616,7 @@ export function callChapterMarks(week: CallWeek): Array<ChapterMark> {
   const scenes = callScenes(week)
   const asks = scenes.flatMap((scene) => {
     if (scene.section !== "asks" || !("item" in scene)) return []
+    if (!isFirstPage(scene)) return []
     const ask = week.asks.find((each) => each.id === scene.item)
     return ask === undefined ? [] : [{ scene: scene.id, title: ask.question }]
   })
@@ -614,7 +644,7 @@ export function callScenes(week: CallWeek): ReadonlyArray<CallScene> {
       item: item.id,
       said: item.said,
     }))
-  const body: ReadonlyArray<CallScene & { readonly section: Section }> = [
+  const whole: ReadonlyArray<CallScene & { readonly section: Section }> = [
     { section: "open", id: "open", said: week.open.said },
     { section: "board", id: "board", said: week.board.said },
     ...items("moved", week.moved),
@@ -624,6 +654,7 @@ export function callScenes(week: CallWeek): ReadonlyArray<CallScene> {
     ...items("asks", week.asks),
     { section: "close", id: "close", said: week.close.said },
   ]
+  const body = captioned(week) ? pagedScenes(week, whole) : whole
   const shape = callFormat(week.template.version).shape
   if (shape === undefined) return body
   const scenes: Array<CallScene> = [
@@ -645,6 +676,34 @@ export function callScenes(week: CallWeek): ReadonlyArray<CallScene> {
   if (shape.brand.outro)
     scenes.push({ section: "brand-out", id: "brand-out", said: "" })
   return scenes
+}
+
+/**
+ * `scenes` with each that the captioned frame pages (CF1, `./call-fit`) in
+ * its pages: the first keeps its id and its words, and each after it,
+ * `<id>-<n>`, is said over by nothing and holds for its own words' reading
+ * time. Nothing any page leaves out: every entry is on one of them.
+ */
+function pagedScenes(
+  week: CallWeek,
+  scenes: ReadonlyArray<CallScene & { readonly section: Section }>
+): ReadonlyArray<CallScene & { readonly section: Section }> {
+  const { pages } = callFit(week)
+  return scenes.flatMap((scene) => {
+    const its = pages[scene.id]
+    if (its === undefined) return [scene]
+    return its.map((page, i) => ({
+      ...scene,
+      ...(i === 0
+        ? {}
+        : {
+            id: `${scene.id}-${i + 1}`,
+            said: "",
+            holdMs: readingMs(page.words),
+          }),
+      page: { n: i + 1, of: its.length, shows: page.shows, h: page.h },
+    }))
+  })
 }
 
 /**
@@ -704,6 +763,9 @@ export function callCutList(
       id: scene.id,
       file: stillFile(i, scene.id),
       said: scene.said,
+      ...("holdMs" in scene && scene.holdMs !== undefined
+        ? { holdMs: scene.holdMs }
+        : {}),
     })),
     takes
   )

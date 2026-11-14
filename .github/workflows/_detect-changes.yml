@@ -72,6 +72,9 @@ jobs:
               # The real-microphone suite's clips and page (MIC9), which the
               # globs above miss: a clip changes what the real recorder hears.
               - 'packages/voice-capture/tests/**'
+              # The image the weekly call's frame is measured in (CF1): a
+              # re-pinned base can change the face it draws.
+              - 'infra/render/Dockerfile'
               - '!**/*.md'
             extensions:
               - 'extensions/**'

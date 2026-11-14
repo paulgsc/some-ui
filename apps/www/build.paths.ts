@@ -264,13 +264,14 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
     {
       modules: [
         "packages/video-render/src/call.ts",
+        "packages/video-render/src/call-fit.ts",
         "packages/video-render/src/essay.ts",
         "packages/video-render/src/engagement-report.ts",
         "packages/video-render/src/engagement-report-video.ts",
         "packages/video-render/src/stills.ts",
       ],
       profiles: ["lan", "pages"],
-      why: "the weekly call's template and its sample week, the Rust Rounds essay's and its sample essay, and the engagement report's writer, template and sample report, which only their stages draw (src/lib/web-surface/call), and whether a format's shape draws captions (`hasCaptions`), which only Playoff Delta's stage reads (src/lib/web-surface/playoff-delta): desktop pages the Android app's build leaves out",
+      why: "the weekly call's template and its sample week, the model of its frame that pages a long scene (call-fit), the Rust Rounds essay's and its sample essay, and the engagement report's writer, template and sample report, which only their stages draw (src/lib/web-surface/call), and whether a format's shape draws captions (`hasCaptions`), which only Playoff Delta's stage reads (src/lib/web-surface/playoff-delta): desktop pages the Android app's build leaves out",
     },
     {
       modules: ["apps/www/src/lib/clipboard/**"],

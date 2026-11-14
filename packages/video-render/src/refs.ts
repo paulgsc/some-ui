@@ -39,6 +39,12 @@ export const RefSchema = z.strictObject({
 
 export type CallRef = z.infer<typeof RefSchema>
 
+/** A ref's one name: "server#681". */
+export const refKey = (ref: {
+  readonly repo: string
+  readonly number: number
+}): string => `${ref.repo}#${ref.number}`
+
 export const PrSchema = RefSchema.extend({ kind: z.literal("pr") })
 export const IssueSchema = RefSchema.extend({ kind: z.literal("issue") })
 

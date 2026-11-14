@@ -66,8 +66,14 @@ up to 14 days.
 5. **Check the folder** once step 6 has updated the index:
    `pnpm --filter @some-ui/video-render render call-check <paulgsc/testing>/call`
    until it says ready. It checks the index, every week it lists against the
-   schema, each named for its own days, and no week file the index forgets. A scene's words and lists must fit its frame: keep `said`
-   to a few sentences, as the schema's sample does.
+   schema, each named for its own days, and no week file the index forgets.
+   A scene too long for its frame is paged by code, nothing cut (CF1,
+   `src/call-fit.ts`), so don't trim lists or words to fit. It refuses
+   only a single part taller than a whole frame, such as a why-it's-yours
+   of a dozen lines, naming the scene and what to shorten. Shorten that
+   alone, keeping the meaning,
+   and check again. Keep `said` to a few sentences too, as the schema's
+   sample does: it is spoken, not shown, but it sets the video's length.
 6. **Update `call/index.json`:** the new week first. Keep at most `keep`
    weeks. A week past `keep` leaves the repository only if home holds it.
    Home reads the index hourly and keeps every week it lists, and its `call`

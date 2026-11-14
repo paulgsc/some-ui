@@ -34,10 +34,19 @@ export const readingMs = (said: string): number =>
 export const unsaidMs = (said: string): number =>
   said === "" ? BRAND_MS : readingMs(said)
 
-/** About how long `scenes` run before anything is said: each for `unsaidMs`. */
+/**
+ * How long a scene with no take holds: its own `holdMs` (a page that shows
+ * more than is said over it), else `unsaidMs`.
+ */
+export const heldMs = (scene: {
+  readonly said: string
+  readonly holdMs?: number
+}): number => scene.holdMs ?? unsaidMs(scene.said)
+
+/** About how long `scenes` run before anything is said: each for `heldMs`. */
 export const estimatedMs = (
-  scenes: ReadonlyArray<{ readonly said: string }>
-): number => scenes.reduce((total, scene) => total + unsaidMs(scene.said), 0)
+  scenes: ReadonlyArray<{ readonly said: string; readonly holdMs?: number }>
+): number => scenes.reduce((total, scene) => total + heldMs(scene), 0)
 
 /** Whether a format version's shape draws captions, which need each word's time. */
 export const hasCaptions = (format: Format): boolean =>
@@ -81,6 +90,8 @@ export type StillScene = {
   readonly file: string
   /** Empty for a brand slide, which says nothing. */
   readonly said: string
+  /** How long it holds with nothing said, when not `unsaidMs`. */
+  readonly holdMs?: number
 }
 
 /** The composition that draws the brand intro and outro, from HYPER5 (#2728). */
@@ -147,9 +158,7 @@ export function stillsCutList(
         id: scene.id,
         picture: motion ?? { kind: "still", source: `${scene.file}.png` },
         durationMs:
-          take !== null
-            ? VOICE_IN_MS + take.ms + TAIL_MS
-            : unsaidMs(scene.said),
+          take !== null ? VOICE_IN_MS + take.ms + TAIL_MS : heldMs(scene),
         ...(take === null
           ? {}
           : {

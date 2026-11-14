@@ -1,8 +1,10 @@
 import { PIPELINES } from "@some-ui/engagement"
 import {
   CALL_INDEX_SCHEMA,
+  CALL_STAGE_WORDS,
   CALL_VERSION,
   essayIntro,
+  fitsAllowance,
   reportPages,
   reportProblems,
   reportWeek,
@@ -21,6 +23,7 @@ import { describe, expect, it } from "vitest"
 import { essayAt, essayStageOf } from "./essay-view"
 import { reportAt, reportStageOf } from "./report-view"
 import { callAt, stageOf, weekFrom } from "./view"
+import { CALL_WORDS } from "./words"
 
 const week = (): CallWeek => {
   const parsed = sampleCallWeek()
@@ -448,5 +451,30 @@ describe("the registry's report", () => {
     )
     expect(reportProblems(report)).toEqual([])
     expect(reportPages(report).length).toBeGreaterThan(0)
+  })
+})
+
+describe("the stage's own words, as the call's model sets them (CF1)", () => {
+  it("marks no wider than the model's widest mark", () => {
+    const marks = [
+      CALL_WORDS.recommended,
+      CALL_WORDS.chose,
+      CALL_WORDS.change.story,
+      CALL_WORDS.change.defect,
+    ]
+    for (const mark of marks)
+      expect(fitsAllowance(mark, CALL_STAGE_WORDS.mark, "caps"), mark).toBe(
+        true
+      )
+  })
+
+  it("labels what an option unblocks no wider than the model does", () => {
+    expect(
+      fitsAllowance(
+        `${CALL_WORDS.unblocks}:`,
+        CALL_STAGE_WORDS.unblocks,
+        "prose"
+      )
+    ).toBe(true)
   })
 })

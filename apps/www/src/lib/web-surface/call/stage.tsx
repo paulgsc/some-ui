@@ -1,15 +1,23 @@
 import type { JSX } from "react"
 import { assertNever } from "@some-ui/core-utils"
 import {
+  boardLook,
   CALL_CHAPTERS,
   callFormat,
   CallIndexSchema,
   hasCaptions,
+  isFirstPage,
   markThemeOf,
   refUrl,
   sampleCallWeek,
 } from "@some-ui/video-render"
-import type { CallRef, CallScene, CallWeek } from "@some-ui/video-render"
+import type {
+  CallGroup,
+  CallRef,
+  CallScene,
+  CallScenePage,
+  CallWeek,
+} from "@some-ui/video-render"
 
 import { FETCHES_CONTENT } from "@/lib/data-mode"
 
@@ -23,8 +31,9 @@ import {
   StageFrame,
   StageRefused,
 } from "./frame"
+import type { StageFrameProps } from "./frame"
 import { STAGE_WORDS as SW } from "./frame-words"
-import type { SceneView } from "./view"
+import type { CallAt, SceneView } from "./view"
 import { callAt, stageOf, weekFrom } from "./view"
 import { CALL_WORDS as W } from "./words"
 
@@ -78,12 +87,6 @@ const sectionName = (at: { scene: CallScene; view: SceneView }): string => {
   }
 }
 
-/** The most asks the close lists by name; the rest it counts. */
-const LATER_SHOWN = 6
-
-/** The most pull requests a batch lists by name; the rest it counts. */
-const PULLS_SHOWN = 10
-
 /** What a scene is called: its section's name, and its place among its items. */
 const labelOf = (
   scene: CallScene,
@@ -111,15 +114,26 @@ const labelOf = (
     case "asks":
     case "close": {
       const name = NAMES[scene.section] ?? ""
-      if (scene.item === undefined) return name
-      const n = scenes.filter((s) => s.section === scene.section).indexOf(scene)
-      return `${name} ${n + 1}`
+      if (scene.item === undefined)
+        return [name, pageLabel(scene)].filter(Boolean).join(", ")
+      // Numbered by item; a page after an item's first says which it is.
+      const n = scenes
+        .filter((s) => s.section === scene.section && isFirstPage(s))
+        .findIndex((s) => "item" in s && s.item === scene.item)
+      const page = pageLabel(scene)
+      return [`${name} ${n + 1}`, page].filter(Boolean).join(", ")
     }
     default: {
       return assertNever(scene)
     }
   }
 }
+
+/** "page 2 of 3" for a scene of several pages (CF1), else nothing. */
+const pageLabel = (scene: CallScene): string =>
+  "page" in scene && scene.page !== undefined && scene.page.of > 1
+    ? W.page(scene.page.n, scene.page.of)
+    : ""
 
 const Ref = ({ of: r }: { of: CallRef }): JSX.Element => (
   <a
@@ -177,13 +191,48 @@ const Options = ({
   </ol>
 )
 
+/**
+ * A week with no caption band (version 1) lists at most this many of a
+ * batch's pull requests, and of the asks left for later, and counts the
+ * rest, as it always did. A captioned week pages them instead (CF1).
+ */
+const V1_PULLS = 10
+const V1_LATER = 6
+
+/** A count of what a version 1 list doesn't show, under it. */
+const More = ({ n }: { n: number }): JSX.Element | null =>
+  n > 0 ? (
+    <p className="text-muted-foreground text-[0.85em]">{W.more(n)}</p>
+  ) : null
+
+/**
+ * Which of a group's `length` entries the scene shows: its page's (CF1),
+ * or, in a version 1 week, the first `most`.
+ */
+const rangeOf = (
+  page: CallScenePage | undefined,
+  group: CallGroup,
+  length: number,
+  most: number = length
+): readonly [number, number] =>
+  page === undefined
+    ? [0, Math.min(length, most)]
+    : (page.shows[group] ?? [0, 0])
+
 const Screen = ({
   week,
   view,
+  page,
 }: {
   week: CallWeek
   view: SceneView
+  /** The page of its scene it is (CF1); absent in a version 1 week. */
+  page: CallScenePage | undefined
 }): JSX.Element => {
+  const on = (group: CallGroup): boolean => {
+    const [from, to] = rangeOf(page, group, 1)
+    return to > from
+  }
   switch (view.section) {
     case "intro": {
       return (
@@ -224,15 +273,17 @@ const Screen = ({
       )
     }
     case "board": {
+      const look = boardLook(week.board.rows.length)
+      const [from, to] = rangeOf(page, "rows", week.board.rows.length)
       return (
         <ul
           className={
-            week.board.rows.length > 24
+            look.columns === 4
               ? "grid grid-cols-4 gap-[0.3em] text-[0.55em]"
               : "grid grid-cols-3 gap-[0.4em] text-[0.7em]"
           }
         >
-          {week.board.rows.map((row) => (
+          {week.board.rows.slice(from, to).map((row) => (
             <li
               key={row.ledger}
               className="border-border rounded-[0.3em] border px-[0.6em] py-[0.4em]"
@@ -249,23 +300,24 @@ const Screen = ({
       )
     }
     case "moved": {
+      const [from, to] = rangeOf(page, "next", view.item.next.length)
       return (
         <div className="space-y-[0.6em]">
           <p className="text-[1.6em] font-bold">
             {view.item.tag} <Ref of={view.item.epic} />
           </p>
-          {view.item.landed.length > 0 && (
+          {view.item.landed.length > 0 && on("landed") && (
             <Field label={W.landed}>
               <Refs refs={view.item.landed} />
             </Field>
           )}
-          {view.item.next.length > 0 && (
+          {to > from && (
             <Field label={W.nextUp}>
               <ul className="list-disc pl-[1.2em]">
-                {view.item.next.map((step, i) => (
+                {view.item.next.slice(from, to).map((step, i) => (
                   // A step may repeat; its place is its key.
                   // eslint-disable-next-line react/no-array-index-key
-                  <li key={i}>{step}</li>
+                  <li key={from + i}>{step}</li>
                 ))}
               </ul>
             </Field>
@@ -274,11 +326,13 @@ const Screen = ({
       )
     }
     case "done": {
+      const pulls = view.item.pulls
+      const [from, to] = rangeOf(page, "pulls", pulls.length, V1_PULLS)
       return (
         <div className="space-y-[0.6em]">
           <p className="text-[1.6em] font-bold">{view.item.title}</p>
           <ul className="space-y-[0.3em] text-[0.85em]">
-            {view.item.pulls.slice(0, PULLS_SHOWN).map((pull) => (
+            {pulls.slice(from, to).map((pull) => (
               <li key={`${pull.repo}-${pull.number}`}>
                 <Ref of={pull} /> {pull.title}
                 {pull.change !== undefined && (
@@ -289,11 +343,7 @@ const Screen = ({
               </li>
             ))}
           </ul>
-          {view.item.pulls.length > PULLS_SHOWN && (
-            <p className="text-muted-foreground text-[0.85em]">
-              {W.more(view.item.pulls.length - PULLS_SHOWN)}
-            </p>
-          )}
+          {page === undefined && <More n={pulls.length - to} />}
         </div>
       )
     }
@@ -301,62 +351,71 @@ const Screen = ({
       return (
         <div className="space-y-[0.6em]">
           <p className="text-[1.6em] font-bold">{view.item.title}</p>
-          {view.item.promise !== undefined && (
+          {view.item.promise !== undefined && on("promise") && (
             <Field label={W.promise}>
               <p className="font-mono">{view.item.promise}</p>
             </Field>
           )}
-          <Refs refs={view.item.refs} />
+          {on("refs") && <Refs refs={view.item.refs} />}
         </div>
       )
     }
     case "mine": {
+      const [from, to] = rangeOf(page, "options", view.item.options.length)
       return (
         <div className="space-y-[0.6em]">
           <p className="text-[1.6em] font-bold">{view.item.title}</p>
-          <Options
-            options={view.item.options.map((says) => ({ says }))}
-            marked={view.item.chose}
-            mark={W.chose}
-          />
-          <Field label={W.why}>{view.item.why}</Field>
-          <Field label={W.undo}>{view.item.undo}</Field>
-          <Refs refs={view.item.refs} />
+          {to > from && (
+            <Options
+              options={view.item.options
+                .slice(from, to)
+                .map((says) => ({ says }))}
+              marked={view.item.chose - from}
+              mark={W.chose}
+            />
+          )}
+          {on("why") && <Field label={W.why}>{view.item.why}</Field>}
+          {on("undo") && <Field label={W.undo}>{view.item.undo}</Field>}
+          {on("refs") && <Refs refs={view.item.refs} />}
         </div>
       )
     }
     case "asks": {
+      const [from, to] = rangeOf(page, "options", view.item.options.length)
       return (
         <div className="space-y-[0.6em]">
           <p className="text-[1.6em] font-bold">{view.item.question}</p>
-          <Field label={W.whyYours}>{view.item.whyYours}</Field>
-          <Options
-            options={view.item.options}
-            marked={view.item.recommended}
-            mark={W.recommended}
-          />
-          <Refs refs={view.item.refs} />
+          {on("why") && <Field label={W.whyYours}>{view.item.whyYours}</Field>}
+          {to > from && (
+            <Options
+              options={view.item.options.slice(from, to)}
+              marked={
+                view.item.recommended === undefined
+                  ? undefined
+                  : view.item.recommended - from
+              }
+              mark={W.recommended}
+            />
+          )}
+          {on("refs") && <Refs refs={view.item.refs} />}
         </div>
       )
     }
     case "close": {
+      const [from, to] = rangeOf(page, "later", week.later.length, V1_LATER)
       return (
         <div className="space-y-[0.6em]">
           <p className="text-[1.6em] font-bold">{W.title}</p>
-          {week.later.length > 0 && (
+          {to > from && (
             <Field label={W.later}>
               <ul className="space-y-[0.3em] text-[0.85em]">
-                {week.later.slice(0, LATER_SHOWN).map((ask) => (
+                {week.later.slice(from, to).map((ask) => (
                   <li key={ask.id}>
                     {ask.question} <Refs refs={ask.refs} />
                   </li>
                 ))}
               </ul>
-              {week.later.length > LATER_SHOWN && (
-                <p className="text-muted-foreground text-[0.85em]">
-                  {W.more(week.later.length - LATER_SHOWN)}
-                </p>
-              )}
+              {page === undefined && <More n={week.later.length - to} />}
             </Field>
           )}
         </div>
@@ -416,21 +475,12 @@ export const CallStagePage = ({
         problems={state.kind === "none" ? state.problems : []}
       />
     )
-  const week = shown.week
-  const format = callFormat(week.template.version)
   return (
-    <StageFrame
+    <CallSceneFrame
+      week={shown.week}
+      at={at}
       record={record}
-      scene={at.scene.id}
-      measureKey={`${week.week.from}/${at.scene.id}`}
-      data={{ "data-week": record ? JSON.stringify(week) : undefined }}
-      theme={format.shape?.theme}
-      title={W.title}
-      where={`${[sectionName(at), `${at.index + 1}/${at.scenes.length}`]
-        .filter(Boolean)
-        .join(" · ")}${shown.sample ? ` · ${W.sample}` : ""}`}
-      captioned={record && hasCaptions(format)}
-      said={at.scene.said}
+      sample={shown.sample}
       notes={
         <>
           {shown.unread && (
@@ -470,8 +520,55 @@ export const CallStagePage = ({
               onScene,
             }
       }
+    />
+  )
+}
+
+/**
+ * One scene of `week` in the stage's frame, as recorded with `record`: the
+ * stage's, and the ui-fit sweep's (`tests/ui-fit/call-fit.spec.ts`, CF1).
+ */
+export const CallSceneFrame = ({
+  week,
+  at,
+  record,
+  sample = false,
+  notes,
+  nav,
+}: {
+  week: CallWeek
+  at: CallAt
+  record: boolean
+  sample?: boolean
+  notes?: StageFrameProps["notes"]
+  nav?: StageFrameProps["nav"]
+}): JSX.Element => {
+  const format = callFormat(week.template.version)
+  return (
+    <StageFrame
+      record={record}
+      scene={at.scene.id}
+      measureKey={`${week.week.from}/${at.scene.id}`}
+      data={{ "data-week": record ? JSON.stringify(week) : undefined }}
+      theme={format.shape?.theme}
+      title={W.title}
+      where={`${[
+        sectionName(at),
+        pageLabel(at.scene),
+        `${at.index + 1}/${at.scenes.length}`,
+      ]
+        .filter(Boolean)
+        .join(" · ")}${sample ? ` · ${W.sample}` : ""}`}
+      captioned={record && hasCaptions(format)}
+      said={at.scene.said}
+      notes={notes}
+      nav={nav}
     >
-      <Screen week={week} view={at.view} />
+      <Screen
+        week={week}
+        view={at.view}
+        page={"page" in at.scene ? at.scene.page : undefined}
+      />
     </StageFrame>
   )
 }

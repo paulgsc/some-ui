@@ -3,6 +3,7 @@ import {
   CALL_CHAPTERS,
   callIntro,
   callScenes,
+  isFirstPage,
   parseCallWeek,
 } from "@some-ui/video-render"
 import type {
@@ -73,7 +74,11 @@ function viewOf(
     }
     case "chapter": {
       const items = scenes.filter(
-        (s) => s.section === scene.of && "item" in s && s.item !== undefined
+        (s) =>
+          s.section === scene.of &&
+          "item" in s &&
+          s.item !== undefined &&
+          isFirstPage(s)
       ).length
       return { section: "chapter", title: CALL_CHAPTERS[scene.of], items }
     }
