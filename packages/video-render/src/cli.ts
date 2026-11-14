@@ -54,7 +54,7 @@
  * prints the Studio takes and the notes on episodes left to file as pending
  * issues (`pending.ts`): from the mailbox's transcripts (a list of their
  * bodies), the issues already filed (a list of their bodies, or of issues
- * each with its `body` and `html_url`) and, when given, the mailbox's
+ * each with its `body`, `repo` and `number`) and, when given, the mailbox's
  * `feedback` folder (a list of its bodies), its `pickup` folder (a list of
  * its bodies) and the names in its `picked` folder (a list of names).
  *
@@ -94,7 +94,7 @@ import {
   renderFolder,
   runCommand,
 } from "./node"
-import { toFile } from "./pending"
+import { FiledSchema, toFile } from "./pending"
 import { WORK_REPOS } from "./refs"
 import { sessionFolderProblems } from "./session-note"
 import { fromTimelineV1 } from "./timeline-v1"
@@ -177,7 +177,7 @@ async function main(): Promise<void> {
         "usage: render pending <transcripts.json> <filed.json> [feedback.json] [pickups.json picked.json]",
       ])
     const transcripts = await readAs(z.array(z.unknown()), here(second))
-    const filed = await readAs(FiledSchema, here(third))
+    const filed = await readAs(FiledListSchema, here(third))
     const feedback = fourth
       ? await readAs(z.array(z.unknown()), here(fourth))
       : []
@@ -296,34 +296,8 @@ const HeardSchema = z.union([
   z.object({ words: WordsSchema }).transform(({ words }) => words),
 ])
 
-/** `https://github.com/<owner>/<repo>/issues/<n>`, as `<owner>/<repo>#<n>`. */
-const ISSUE_URL =
-  /^https:\/\/github\.com\/([\w.-]+)\/([\w.-]+)\/issues\/([1-9]\d*)$/
-
-/**
- * The issues already filed: as text, or as GitHub lists them, with where
- * each is when its `html_url` says (a pickup already filed is answered with it).
- */
-const FiledSchema = z.array(
-  z.union([
-    z.string(),
-    z
-      .object({
-        body: z.string().nullable(),
-        html_url: z.string().optional(),
-      })
-      .transform(({ body, html_url: url }) => {
-        const [, owner, repo, number] = ISSUE_URL.exec(url ?? "") ?? []
-        return {
-          body: body ?? "",
-          issue:
-            owner === undefined || repo === undefined || number === undefined
-              ? null
-              : `${owner}/${repo}#${number}`,
-        }
-      }),
-  ])
-)
+/** The issues already filed (`pending.ts`' `FiledSchema`). */
+const FiledListSchema = z.array(FiledSchema)
 
 async function readAs<T>(schema: z.ZodType<T>, file: string): Promise<T> {
   const parsed = schema.safeParse(await readJson(file))

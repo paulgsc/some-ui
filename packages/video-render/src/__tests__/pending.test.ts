@@ -1,6 +1,7 @@
 import { parseAskId } from "@video-render/ask"
 import {
   answerRef,
+  FiledSchema,
   HEARD_WITHIN_MS,
   pendingOfRef,
   pickedAnswer,
@@ -271,6 +272,50 @@ describe("toFile, takes ready for pickup (CONVEYOR3)", () => {
     ).toEqual([pickedAnswer("t1", 5, "paulgsc/some-ui#3001")])
     // A take not filed whose answer is there is left alone.
     expect(pickupsOnly([ready({})], [], ["picked-t1-3.json"]).items).toEqual([])
+  })
+
+  it("counts a take's newest move, in whatever order home put them", () => {
+    const { items } = pickupsOnly([ready({ seq: 5 }), ready({ seq: 3 })])
+    expect(items).toMatchObject([{ note: "t1", seq: 5 }])
+  })
+
+  it("answers with an issue the list says where to find, wherever it is in the list", () => {
+    const body = "Kept on home as the take `t1`."
+    expect(
+      pickupsOnly(
+        [ready({})],
+        [body, { body, issue: "paulgsc/server#77" }, { body, issue: null }]
+      ).answers
+    ).toEqual([pickedAnswer("t1", 3, "paulgsc/server#77")])
+  })
+
+  it("reads where a filed issue is from its repository and number, or its html_url", () => {
+    const parse = (raw: unknown): unknown => FiledSchema.parse(raw)
+    expect(parse({ repo: "paulgsc/some-ui", number: 3001, body: "b" })).toEqual(
+      { body: "b", issue: "paulgsc/some-ui#3001" }
+    )
+    expect(
+      parse({
+        body: null,
+        html_url: "https://github.com/paulgsc/server/issues/77",
+      })
+    ).toEqual({ body: "", issue: "paulgsc/server#77" })
+    // As GitHub's issue list gives it, with no repository: no issue to name.
+    expect(parse({ number: 3001, body: "b" })).toEqual({
+      body: "b",
+      issue: null,
+    })
+    expect(
+      parse({
+        body: "b",
+        html_url: "https://github.com/paulgsc/some-ui/pull/9",
+      })
+    ).toEqual({ body: "b", issue: null })
+    expect(parse({ repo: "some-ui", number: 3001, body: "b" })).toEqual({
+      body: "b",
+      issue: null,
+    })
+    expect(parse("just a body")).toBe("just a body")
   })
 
   it("passes a pickup that doesn't read, by its place in the pickup list", () => {

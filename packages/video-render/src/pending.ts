@@ -219,6 +219,45 @@ export type Filed =
   | string
   | { readonly body: string; readonly issue: string | null }
 
+/** `https://github.com/<owner>/<repo>/issues/<n>`, its parts. */
+const ISSUE_URL =
+  /^https:\/\/github\.com\/([\w.-]+)\/([\w.-]+)\/issues\/([1-9]\d{0,8})$/
+/** `<owner>/<repo>`. */
+const REPO_NAME = /^[\w.-]{1,100}\/[\w.-]{1,100}$/
+
+/**
+ * An issue already filed, as the routine saves it: its body as text, or the
+ * issue with its `body` and where it is, by its `repo` (`<owner>/<repo>`,
+ * the repository the routine listed) and `number`, or by its `html_url`.
+ */
+export const FiledSchema = z.union([
+  z.string(),
+  z
+    .object({
+      body: z.string().nullable(),
+      repo: z.string().optional(),
+      number: z.number().int().positive().optional(),
+      html_url: z.string().optional(),
+    })
+    .transform(({ body, repo, number, html_url: url }): Filed => {
+      if (
+        repo !== undefined &&
+        REPO_NAME.test(repo) &&
+        number !== undefined &&
+        number < 1e9
+      )
+        return { body: body ?? "", issue: `${repo}#${String(number)}` }
+      const [, owner, name, n] = ISSUE_URL.exec(url ?? "") ?? []
+      return {
+        body: body ?? "",
+        issue:
+          owner === undefined || name === undefined || n === undefined
+            ? null
+            : `${owner}/${name}#${n}`,
+      }
+    }),
+])
+
 const bodyOf = (filed: Filed): string =>
   typeof filed === "string" ? filed : filed.body
 
