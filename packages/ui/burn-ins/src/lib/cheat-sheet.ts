@@ -176,14 +176,7 @@ function setRow(
     note === null ? noteY : note.box.y + note.box.height
   )
   return {
-    // Whole pixels: a bordered, rounded panel at a fractional edge draws its
-    // corner's edge pixel differently from one recording to the next.
-    panel: {
-      x: box.x,
-      y,
-      width: box.width,
-      height: Math.ceil(bottom + PAD - y),
-    },
+    panel: { x: box.x, y, width: box.width, height: bottom + PAD - y },
     badgeX: box.x + PAD,
     badgeY: top + (TASK.sizePx * TASK.lineHeight - BADGE_PX) / 2,
     badge: r.badge,
@@ -255,9 +248,7 @@ export function drawCheatSheet(
 export function cheatSheetAt(d: CheatSheetDrawing, t: number): CheatSheetFrame {
   const rows = d.rows.flatMap((r, row) => {
     if (t < r.atMs) return []
-    const { opacity } = appearing(t, r.atMs)
-    // Whole pixels, as the panel's box is.
-    const risePx = Math.round(appearing(t, r.atMs).risePx)
+    const { opacity, risePx } = appearing(t, r.atMs)
     const badge =
       r.badge === undefined
         ? null
