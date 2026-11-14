@@ -80,6 +80,7 @@ import { Route as DashboardApkSettingsDataIndexRouteImport } from './routes/_das
 import { Route as DashboardApkSettingsDataKindRouteImport } from './routes/_dashboard/_apk/settings/data/$kind'
 import { Route as DashboardApkSettingsDataCallsRouteImport } from './routes/_dashboard/_apk/settings/data/calls'
 import { Route as DashboardApkSettingsDataDeletedRouteImport } from './routes/_dashboard/_apk/settings/data/deleted'
+import { Route as DashboardApkSettingsDataWordSetsRouteImport } from './routes/_dashboard/_apk/settings/data/word-sets'
 import { Route as DashboardApkJobsPickDayPickIdRouteImport } from './routes/_dashboard/_apk/jobs/pick/$day/$pickId'
 import { Route as DashboardApkJournalEpisodesFeedKeyRouteImport } from './routes/_dashboard/_apk/journal/episodes/$feed/$key'
 
@@ -467,6 +468,12 @@ const DashboardApkSettingsDataDeletedRoute =
     path: '/settings/data/deleted',
     getParentRoute: () => DashboardApkRoute,
   } as any)
+const DashboardApkSettingsDataWordSetsRoute =
+  DashboardApkSettingsDataWordSetsRouteImport.update({
+    id: '/settings/data/word-sets',
+    path: '/settings/data/word-sets',
+    getParentRoute: () => DashboardApkRoute,
+  } as any)
 const DashboardApkJobsPickDayPickIdRoute =
   DashboardApkJobsPickDayPickIdRouteImport.update({
     id: '/pick/$day/$pickId',
@@ -542,6 +549,7 @@ export interface FileRoutesByFullPath {
   '/settings/data/$kind': typeof DashboardApkSettingsDataKindRoute
   '/settings/data/calls': typeof DashboardApkSettingsDataCallsRoute
   '/settings/data/deleted': typeof DashboardApkSettingsDataDeletedRoute
+  '/settings/data/word-sets': typeof DashboardApkSettingsDataWordSetsRoute
   '/journal/asks/': typeof DashboardApkJournalAsksIndexRoute
   '/journal/clips/': typeof DashboardApkJournalClipsIndexRoute
   '/journal/episodes/': typeof DashboardApkJournalEpisodesIndexRoute
@@ -611,6 +619,7 @@ export interface FileRoutesByTo {
   '/settings/data/$kind': typeof DashboardApkSettingsDataKindRoute
   '/settings/data/calls': typeof DashboardApkSettingsDataCallsRoute
   '/settings/data/deleted': typeof DashboardApkSettingsDataDeletedRoute
+  '/settings/data/word-sets': typeof DashboardApkSettingsDataWordSetsRoute
   '/journal/asks': typeof DashboardApkJournalAsksIndexRoute
   '/journal/clips': typeof DashboardApkJournalClipsIndexRoute
   '/journal/episodes': typeof DashboardApkJournalEpisodesIndexRoute
@@ -687,6 +696,7 @@ export interface FileRoutesById {
   '/_dashboard/_apk/settings/data/$kind': typeof DashboardApkSettingsDataKindRoute
   '/_dashboard/_apk/settings/data/calls': typeof DashboardApkSettingsDataCallsRoute
   '/_dashboard/_apk/settings/data/deleted': typeof DashboardApkSettingsDataDeletedRoute
+  '/_dashboard/_apk/settings/data/word-sets': typeof DashboardApkSettingsDataWordSetsRoute
   '/_dashboard/_apk/journal/asks/': typeof DashboardApkJournalAsksIndexRoute
   '/_dashboard/_apk/journal/clips/': typeof DashboardApkJournalClipsIndexRoute
   '/_dashboard/_apk/journal/episodes/': typeof DashboardApkJournalEpisodesIndexRoute
@@ -761,6 +771,7 @@ export interface FileRouteTypes {
     | '/settings/data/$kind'
     | '/settings/data/calls'
     | '/settings/data/deleted'
+    | '/settings/data/word-sets'
     | '/journal/asks/'
     | '/journal/clips/'
     | '/journal/episodes/'
@@ -830,6 +841,7 @@ export interface FileRouteTypes {
     | '/settings/data/$kind'
     | '/settings/data/calls'
     | '/settings/data/deleted'
+    | '/settings/data/word-sets'
     | '/journal/asks'
     | '/journal/clips'
     | '/journal/episodes'
@@ -905,6 +917,7 @@ export interface FileRouteTypes {
     | '/_dashboard/_apk/settings/data/$kind'
     | '/_dashboard/_apk/settings/data/calls'
     | '/_dashboard/_apk/settings/data/deleted'
+    | '/_dashboard/_apk/settings/data/word-sets'
     | '/_dashboard/_apk/journal/asks/'
     | '/_dashboard/_apk/journal/clips/'
     | '/_dashboard/_apk/journal/episodes/'
@@ -1431,6 +1444,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardApkSettingsDataDeletedRouteImport
       parentRoute: typeof DashboardApkRoute
     }
+    '/_dashboard/_apk/settings/data/word-sets': {
+      id: '/_dashboard/_apk/settings/data/word-sets'
+      path: '/settings/data/word-sets'
+      fullPath: '/settings/data/word-sets'
+      preLoaderRoute: typeof DashboardApkSettingsDataWordSetsRouteImport
+      parentRoute: typeof DashboardApkRoute
+    }
     '/_dashboard/_apk/jobs/pick/$day/$pickId': {
       id: '/_dashboard/_apk/jobs/pick/$day/$pickId'
       path: '/pick/$day/$pickId'
@@ -1552,6 +1572,7 @@ interface DashboardApkRouteChildren {
   DashboardApkSettingsDataKindRoute: typeof DashboardApkSettingsDataKindRoute
   DashboardApkSettingsDataCallsRoute: typeof DashboardApkSettingsDataCallsRoute
   DashboardApkSettingsDataDeletedRoute: typeof DashboardApkSettingsDataDeletedRoute
+  DashboardApkSettingsDataWordSetsRoute: typeof DashboardApkSettingsDataWordSetsRoute
   DashboardApkSettingsDataIndexRoute: typeof DashboardApkSettingsDataIndexRoute
 }
 
@@ -1570,6 +1591,7 @@ const DashboardApkRouteChildren: DashboardApkRouteChildren = {
   DashboardApkSettingsDataKindRoute: DashboardApkSettingsDataKindRoute,
   DashboardApkSettingsDataCallsRoute: DashboardApkSettingsDataCallsRoute,
   DashboardApkSettingsDataDeletedRoute: DashboardApkSettingsDataDeletedRoute,
+  DashboardApkSettingsDataWordSetsRoute: DashboardApkSettingsDataWordSetsRoute,
   DashboardApkSettingsDataIndexRoute: DashboardApkSettingsDataIndexRoute,
 }
 

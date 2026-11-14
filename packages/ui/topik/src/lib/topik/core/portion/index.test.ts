@@ -355,7 +355,14 @@ describe("what the phone holds", () => {
       },
     ],
   }
-  const added = [{ deck, addedAt: "2026-10-01T06:00:00.000Z", openedAt: null }]
+  const added = [
+    {
+      deck,
+      addedAt: "2026-10-01T06:00:00.000Z",
+      openedAt: null,
+      archivedAt: null,
+    },
+  ]
   const tree = workedLesson()
   const routine: Array<RoutineFile> = [
     {
