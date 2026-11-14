@@ -63,6 +63,9 @@ const NOT_SHOWN: Readonly<Record<string, string>> = {
   "packages/ui/burn-ins/src/lib/captions/timing.ts#MAX_ROWS": ONE_ITEM,
   "packages/ui/interview-week/src/lib/faults/read.ts#READ_WORDS_MAX": ONE_ITEM,
   "packages/ui/interview-week/src/lib/faults/words.ts#WORDS_MAX": ONE_ITEM,
+  "packages/ui/interview-week/src/lib/week/index.ts#SLUG_MAX": ONE_ITEM,
+  "packages/ui/interview-week/src/lib/week/index.ts#QUESTIONS_MAX": ONE_ITEM,
+  "packages/ui/interview-week/src/lib/week/index.ts#CARDS_MAX": ONE_ITEM,
   "packages/ui/game-week/src/lib/bite.ts#MAX_LINE_CHARS": ONE_ITEM,
   "packages/ui/leetype/src/lib/leetype/exercises/totality.ts#MAX_OBLIGATIONS_PER_ROUTE":
     ONE_ITEM,

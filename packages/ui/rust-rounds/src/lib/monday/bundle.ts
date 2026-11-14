@@ -20,9 +20,8 @@ import { heardByNote, readFinalRecord } from "@rust-rounds/lib/monday/record"
 import type { WeekRecord } from "@rust-rounds/lib/monday/record"
 import { chooseTopics } from "@rust-rounds/lib/monday/topics"
 import type { Seed, Topic, TopicChoice } from "@rust-rounds/lib/monday/topics"
-import { weekAround } from "@rust-rounds/lib/monday/when"
-import { isoWeekId, readWeek } from "@rust-rounds/lib/week-check"
-import { pacificDay } from "@some-ui/core-utils"
+import { readWeek } from "@rust-rounds/lib/week-check"
+import { pacificDay, weekAround } from "@some-ui/core-utils"
 import type { Essay } from "@some-ui/video-render"
 import { parseEssay } from "@some-ui/video-render"
 
@@ -265,7 +264,7 @@ export function prepare({
   }
 
   const around = weekAround(now)
-  const nextId = isoWeekId(around.monday)
+  const nextId = around.id
   const history: History = {
     weeks,
     essays: [...essays.values()].map(({ essay }) => essay),
