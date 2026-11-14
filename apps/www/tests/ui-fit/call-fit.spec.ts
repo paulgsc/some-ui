@@ -1,41 +1,23 @@
 /**
- * CF1 (promise, #2918): a week a captioned template draws that
- * `parseCallWeek` accepts has no scene the stage's frame overflows. Its
- * model is `@some-ui/video-render`'s `call-fit.ts`, which the stage reads
- * for how much of each list to show and `call-check` reads to refuse words
- * that don't fit.
- *
- * jsdom lays nothing out, so this draws every scene of a week in the stage's
- * real frame (the `call-stage` fixture, `./panel-page/call-stage.tsx`) at the
- * recorder's 1920×1080, and checks two things on the host it runs on:
- *
- * - the model never says a page is shorter than the frame draws it, for
- *   every page of every week here; and
- * - no page of a week the model accepts overflows (`data-overflow`).
- *
- * The weeks: the template's sample, the week of 2026-11-06 (which overflowed
- * on home, #2918) read from `paulgsc/testing` at the commit that added it,
- * a week of every list at its longest, and weeks whose every free text is
- * grown word by word to the longest the model accepts
- * (`./panel-page/call-weeks.ts`). The page computes the model, since it is
- * built with the stage; this reads what it publishes.
- *
- * Run against a built panel page:
+ * CF1 (`@some-ui/video-render`'s `call-fit.ts`): the model never says a page
+ * is shorter than the stage's real frame draws it, and no page of a week it
+ * accepts overflows, for the weeks of `./panel-page/call-weeks.ts` and the
+ * week of 2026-11-06. The page computes the model, being built with the
+ * stage; this reads what it publishes.
  *
  *   pnpm --filter www build:fit
  *   pnpm --filter www test:ui-fit tests/ui-fit/call-fit.spec.ts
  */
 
 import { expect, test, type Page } from "@playwright/test"
+import { readPinned } from "@some-ui/video-render/node"
+import { NOV_6_WEEK } from "@some-ui/video-render/testing"
 
 import { CALL_STAGE_FIXTURE, servePanelPage } from "./harness"
 
 const PAGE = servePanelPage()
 
 test.describe.configure({ timeout: 4 * 60 * 1000 })
-
-const NOV_6 =
-  "https://raw.githubusercontent.com/paulgsc/testing/85b89d83a67eff2ffd04c7198afd06e7b9c6d692/call/2026-11-06.json"
 
 type Drawn = {
   readonly id: string
@@ -121,17 +103,8 @@ test.describe("CF1: the call's model holds the frame the stage draws", () => {
   })
 
   test("the week of 2026-11-06", async ({ page }) => {
-    let given: unknown
-    try {
-      const response = await fetch(NOV_6)
-      if (!response.ok) throw new Error(`${NOV_6}: ${String(response.status)}`)
-      given = await response.json()
-    } catch (error) {
-      // Under CI an unread week is a failure, never a skip that proved nothing.
-      if (process.env["CI"]) throw error
-      test.skip(true, "paulgsc/testing can't be read here")
-    }
-    // It runs long, so it is paged, and every page fits.
+    const given = await readPinned(NOV_6_WEEK)
+    test.skip(given === null, "paulgsc/testing can't be read here")
     expect(await expectHeld(page, "2026-11-06", { given })).toBe(true)
   })
 

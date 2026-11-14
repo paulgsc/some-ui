@@ -39,6 +39,7 @@
  */
 
 import type { CallWeek } from "./call"
+import { refKey } from "./refs"
 
 /** The frame's font size: the stage's `1.5cqw`, at 1920 px wide. */
 const BASE = 28.8
@@ -86,9 +87,6 @@ const OTHER = 1.02
 /** The monospace face's advance, in em: 0.602 in a session, 0.5 at home. */
 const MONO = 0.61
 
-/** Kerning and rounding: what a run's summed advances are padded by. */
-const SLACK = 1
-
 /** The capitals' tracking, `tracking-wide`, in em per glyph. */
 const TRACKING = 0.025
 
@@ -113,7 +111,7 @@ function widthOf(word: string, face: Face, em: number): number {
   const set = face === "caps" ? word.toUpperCase() : word
   let sum = 0
   for (const glyph of set) sum += advance(glyph, face)
-  return sum * SLACK * em * BASE
+  return sum * em * BASE
 }
 
 /** The body of the captioned frame a scene's picture is drawn in, in px. */
@@ -183,7 +181,7 @@ const text = (
   width: number = CALL_BODY.width
 ): number => linesOf([{ text: words, face, em }], width) * lineOf(em)
 
-/** A run of refs, as the stage's `Refs` sets them: mono, 1em apart. */
+/** A run of refs, as the stage's `Refs` sets them. */
 const refs = (
   list: ReadonlyArray<{ readonly repo: string; readonly number: number }>,
   em: number,
@@ -191,7 +189,7 @@ const refs = (
 ): number =>
   linesOf(
     list.map((r, i) => ({
-      text: `${r.repo}#${r.number}`,
+      text: refKey(r),
       face: "mono" as const,
       em,
       ...(i > 0 ? { before: px(em) } : {}),
@@ -199,7 +197,6 @@ const refs = (
     width
   ) * lineOf(em)
 
-/** A scene's title: 1.6em, bold. */
 const title = (words: string): Part => ({
   h: text(words, "bold", 1.6),
   em: 1.6,
@@ -305,7 +302,7 @@ const FIELD_HEAD = lineOf(0.7) + 0.2 * px(0.7)
 
 const refWords = (
   list: ReadonlyArray<{ readonly repo: string; readonly number: number }>
-): string => list.map((r) => `${r.repo}#${r.number}`).join(" ")
+): string => list.map(refKey).join(" ")
 
 /** An option list, as the stage's `Options` draws it. */
 const options = (
@@ -377,7 +374,7 @@ function batchLayout(batch: CallWeek["done"][number]): Layout {
           h:
             linesOf(
               [
-                { text: `${pull.repo}#${pull.number}`, face: "mono", em: 0.85 },
+                { text: refKey(pull), face: "mono", em: 0.85 },
                 { text: pull.title, face: "prose", em: 0.85 },
                 ...(pull.change === undefined
                   ? []
@@ -427,7 +424,7 @@ function closeLayout(week: CallWeek): Layout {
 }
 
 function movedLayout(m: CallWeek["moved"][number]): Layout {
-  const ref = `${m.epic.repo}#${m.epic.number}`
+  const ref = refKey(m.epic)
   return {
     title: {
       h:

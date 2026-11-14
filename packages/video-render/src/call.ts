@@ -52,9 +52,9 @@ import {
   IssueSchema,
   OptionSchema,
   PrSchema,
+  refKey,
   RefSchema,
 } from "./refs"
-import type { CallRef } from "./refs"
 import {
   BRAND_MOTION,
   estimatedMs,
@@ -222,9 +222,6 @@ export function callFormat(version: number = CALL_VERSION): Format {
     ...(version >= 2 ? { shape: shapeOf(version) } : {}),
   }
 }
-
-/** A ref's one name: "server#681". */
-const refKey = (ref: CallRef): string => `${ref.repo}#${ref.number}`
 
 /** A day, as `YYYY-MM-DD`. */
 export const day = z.iso.date()
@@ -461,7 +458,7 @@ function weekProblems(week: CallWeek): Array<string> {
     if (ask.recommended !== undefined && ask.recommended >= ask.options.length)
       problems.push(`${ask.id}: it recommends an option it doesn't list`)
   })
-  // CF1: in a captioned frame, every scene's words fit (`./call-fit`).
+  // CF1
   if (captioned(week)) problems.push(...callFit(week).problems)
   return once(problems)
 }
@@ -511,12 +508,20 @@ export type CallScene =
       readonly said: string
     }
 
-/** A scene's page: its place among its scene's pages, and what it shows. */
+/**
+ * A scene's page: its place among its scene's pages, what it shows, and how
+ * tall the model says it is, in px.
+ */
 export type CallScenePage = {
   readonly n: number
   readonly of: number
   readonly shows: CallPageShows
+  readonly h: number
 }
+
+/** Whether `scene` is its scene's first page, or a scene with no pages. */
+export const isFirstPage = (scene: CallScene): boolean =>
+  !("page" in scene) || scene.page === undefined || scene.page.n === 1
 
 /** What each chapter slide shows and says: the section it opens. */
 export const CALL_CHAPTERS: Readonly<Record<Section, string>> = {
@@ -610,9 +615,8 @@ export function callIntro(week: CallWeek): LockedIntro {
 export function callChapterMarks(week: CallWeek): Array<ChapterMark> {
   const scenes = callScenes(week)
   const asks = scenes.flatMap((scene) => {
-    // An ask's chapter starts at its first page.
     if (scene.section !== "asks" || !("item" in scene)) return []
-    if (scene.page !== undefined && scene.page.n > 1) return []
+    if (!isFirstPage(scene)) return []
     const ask = week.asks.find((each) => each.id === scene.item)
     return ask === undefined ? [] : [{ scene: scene.id, title: ask.question }]
   })
@@ -697,7 +701,7 @@ function pagedScenes(
             said: "",
             holdMs: readingMs(page.words),
           }),
-      page: { n: i + 1, of: its.length, shows: page.shows },
+      page: { n: i + 1, of: its.length, shows: page.shows, h: page.h },
     }))
   })
 }

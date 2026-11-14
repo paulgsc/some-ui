@@ -3,6 +3,7 @@ import {
   CALL_CHAPTERS,
   callIntro,
   callScenes,
+  isFirstPage,
   parseCallWeek,
 } from "@some-ui/video-render"
 import type {
@@ -72,14 +73,13 @@ function viewOf(
       return { section: "intro", rows: callIntro(week).rows }
     }
     case "chapter": {
-      // Its items, each once however many pages it has (CF1).
-      const items = new Set(
-        scenes.flatMap((s) =>
-          s.section === scene.of && "item" in s && s.item !== undefined
-            ? [s.item]
-            : []
-        )
-      ).size
+      const items = scenes.filter(
+        (s) =>
+          s.section === scene.of &&
+          "item" in s &&
+          s.item !== undefined &&
+          isFirstPage(s)
+      ).length
       return { section: "chapter", title: CALL_CHAPTERS[scene.of], items }
     }
     case "moved": {

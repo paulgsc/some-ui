@@ -6,6 +6,7 @@ import {
   callFormat,
   CallIndexSchema,
   hasCaptions,
+  isFirstPage,
   markThemeOf,
   refUrl,
   sampleCallWeek,
@@ -113,7 +114,8 @@ const labelOf = (
     case "asks":
     case "close": {
       const name = NAMES[scene.section] ?? ""
-      if (scene.item === undefined) return name
+      if (scene.item === undefined)
+        return [name, pageLabel(scene)].filter(Boolean).join(", ")
       // Numbered by item; a page after an item's first says which it is.
       const n = scenes
         .filter((s) => s.section === scene.section && isFirstPage(s))
@@ -126,10 +128,6 @@ const labelOf = (
     }
   }
 }
-
-/** Whether a scene is the first (or only) page of its scene (CF1). */
-const isFirstPage = (scene: CallScene): boolean =>
-  !("page" in scene) || scene.page === undefined || scene.page.n === 1
 
 /** "page 2 of 3" for a scene of several pages (CF1), else nothing. */
 const pageLabel = (scene: CallScene): string =>
@@ -231,12 +229,8 @@ const Screen = ({
   /** The page of its scene it is (CF1); absent in a version 1 week. */
   page: CallScenePage | undefined
 }): JSX.Element => {
-  const shows = (
-    group: CallGroup,
-    length: number = 1
-  ): readonly [number, number] => rangeOf(page, group, length)
   const on = (group: CallGroup): boolean => {
-    const [from, to] = shows(group)
+    const [from, to] = rangeOf(page, group, 1)
     return to > from
   }
   switch (view.section) {
@@ -280,7 +274,7 @@ const Screen = ({
     }
     case "board": {
       const look = boardLook(week.board.rows.length)
-      const [from, to] = shows("rows", week.board.rows.length)
+      const [from, to] = rangeOf(page, "rows", week.board.rows.length)
       return (
         <ul
           className={
@@ -306,7 +300,7 @@ const Screen = ({
       )
     }
     case "moved": {
-      const [from, to] = shows("next", view.item.next.length)
+      const [from, to] = rangeOf(page, "next", view.item.next.length)
       return (
         <div className="space-y-[0.6em]">
           <p className="text-[1.6em] font-bold">
@@ -367,7 +361,7 @@ const Screen = ({
       )
     }
     case "mine": {
-      const [from, to] = shows("options", view.item.options.length)
+      const [from, to] = rangeOf(page, "options", view.item.options.length)
       return (
         <div className="space-y-[0.6em]">
           <p className="text-[1.6em] font-bold">{view.item.title}</p>
@@ -387,7 +381,7 @@ const Screen = ({
       )
     }
     case "asks": {
-      const [from, to] = shows("options", view.item.options.length)
+      const [from, to] = rangeOf(page, "options", view.item.options.length)
       return (
         <div className="space-y-[0.6em]">
           <p className="text-[1.6em] font-bold">{view.item.question}</p>

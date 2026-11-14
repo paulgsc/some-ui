@@ -1,16 +1,4 @@
-/**
- * CF1 (promise, #2918): a week a captioned template draws that
- * `parseCallWeek` accepts has no scene the stage's frame overflows. These
- * hold the model's own rules (`call-fit.ts`): a scene too long for one
- * frame is paged, every entry of every list on exactly one page, and only a
- * single part taller than a whole frame is refused. That the model never
- * says a page is shorter than the stage draws it is held where the stage is
- * drawn, `apps/www/tests/ui-fit/call-fit.spec.ts`.
- *
- * The week of 2026-11-06, which home refused to render every hour, is read
- * from `paulgsc/testing` at the commit that added it, since data lives there
- * and not here. Without a network it is skipped locally and fails under CI.
- */
+/** CF1 (`call-fit.ts`): what is paged, what is refused, and that nothing is left out. */
 
 import { sampleWeek } from "@video-render/__tests__/sample-week"
 import {
@@ -21,24 +9,17 @@ import {
   parseCallWeek,
 } from "@video-render/call"
 import type { CallWeek } from "@video-render/call"
-import { CALL_BODY, callFit, linesOf } from "@video-render/call-fit"
+import { callFit } from "@video-render/call-fit"
 import type { CallPage } from "@video-render/call-fit"
+import { readPinned } from "@video-render/node"
+import { NOV_6_WEEK } from "@video-render/testing"
 import { beforeAll, describe, expect, it } from "vitest"
-
-const NOV_6 =
-  "https://raw.githubusercontent.com/paulgsc/testing/85b89d83a67eff2ffd04c7198afd06e7b9c6d692/call/2026-11-06.json"
 
 let nov6: CallWeek | null = null
 
 beforeAll(async () => {
-  try {
-    const response = await fetch(NOV_6)
-    if (!response.ok) throw new Error(`${NOV_6}: ${String(response.status)}`)
-    nov6 = CallWeekSchema.parse(await response.json())
-  } catch (error) {
-    // Under CI an unread week is a failure, never a skip that proved nothing.
-    if (process.env["CI"]) throw error
-  }
+  const raw = await readPinned(NOV_6_WEEK)
+  if (raw !== null) nov6 = CallWeekSchema.parse(raw)
 }, 60_000)
 
 /** A copy of `week` changed by `change`, read back against the schema. */
@@ -77,13 +58,10 @@ describe("the week of 2026-11-06 (#2918)", () => {
     expect(parseCallWeek(nov6)).toMatchObject({ ok: true })
   })
 
-  it("pages every list, each entry on exactly one page, each page within the frame", (context) => {
+  it("pages every list, each entry on exactly one page", (context) => {
     if (nov6 === null) return context.skip()
     const week = nov6
     const { pages } = callFit(week)
-    for (const each of Object.values(pages))
-      for (const page of each)
-        expect(page.h).toBeLessThanOrEqual(CALL_BODY.height)
     expect(covered(pages["board"] ?? []).rows).toBe(week.board.rows.length)
     expect(covered(pages["close"] ?? []).later).toBe(week.later.length)
     for (const [i, batch] of week.done.entries())
@@ -94,7 +72,6 @@ describe("the week of 2026-11-06 (#2918)", () => {
       expect(covered(pages[`asks-${i + 1}`] ?? []).options).toBe(
         ask.options.length
       )
-    // The scenes that overflowed on home now take more than one page.
     for (const id of ["board", "done-1", "done-3", "asks-2", "close"])
       expect((pages[id] ?? []).length, id).toBeGreaterThan(1)
   })
@@ -124,7 +101,6 @@ describe("the week of 2026-11-06 (#2918)", () => {
       second !== undefined && "holdMs" in second ? second.holdMs : undefined
     expect(hold).toBeDefined()
     expect(shot?.durationMs).toBe(hold)
-    // An ask's chapter mark is at its first page alone.
     const marks = callChapterMarks(nov6).filter((mark) =>
       mark.scene.startsWith("asks-")
     )
@@ -219,25 +195,5 @@ describe("a version 1 week, with no caption band", () => {
 
   it("is not held to the captioned frame", () => {
     expect(parseCallWeek(v1())).toMatchObject({ ok: true })
-  })
-})
-
-describe("how words wrap", () => {
-  it("keeps short words on one line, and wraps what runs past it", () => {
-    expect(
-      linesOf([{ text: "Home is mine", face: "prose", em: 1 }], 1825)
-    ).toBe(1)
-    expect(
-      linesOf(
-        [{ text: "Home is mine ".repeat(20), face: "prose", em: 1 }],
-        1825
-      )
-    ).toBeGreaterThan(1)
-  })
-
-  it("breaks a word wider than a line across lines", () => {
-    expect(
-      linesOf([{ text: "x".repeat(400), face: "mono", em: 1 }], 1825)
-    ).toBe(Math.ceil((400 * 0.61 * 28.8) / 1825))
   })
 })

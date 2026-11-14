@@ -107,3 +107,11 @@ export async function make(
   if (!ran.ok) throw new Error(ran.stderr)
 }
 export * from "./episode-file"
+
+/**
+ * The week of 2026-11-06 (#2918), the first captioned week too long for the
+ * call's frame, read from `paulgsc/testing` at the commit that added it,
+ * since data lives there and not here.
+ */
+export const NOV_6_WEEK =
+  "https://raw.githubusercontent.com/paulgsc/testing/85b89d83a67eff2ffd04c7198afd06e7b9c6d692/call/2026-11-06.json"

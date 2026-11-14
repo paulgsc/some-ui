@@ -93,7 +93,7 @@ export function longest(): CallWeek {
 }
 
 /**
- * `week` with the text `at` reaches grown, a word at a time, to the most the
+ * `week` with the text `set` writes grown, a word at a time, to the most the
  * model accepts for its scene.
  */
 function grown(

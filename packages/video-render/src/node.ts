@@ -506,3 +506,19 @@ export function mailboxFromEnv(): Mailbox {
   }
   return { url: url.replace(/\/+$/, ""), token, fetch }
 }
+
+/**
+ * `url`'s JSON, or null where it can't be read; under CI an unread file
+ * throws, never a skip that proved nothing.
+ */
+export async function readPinned(url: string): Promise<unknown> {
+  try {
+    const response = await fetch(url)
+    if (!response.ok) throw new Error(`${url}: ${String(response.status)}`)
+    const json: unknown = await response.json()
+    return json
+  } catch (error) {
+    if (process.env["CI"]) throw error
+    return null
+  }
+}

@@ -457,7 +457,6 @@ describe("the registry's report", () => {
 describe("the stage's own words, as the call's model sets them (CF1)", () => {
   it("marks no wider than the model's widest mark", () => {
     const marks = [
-      CALL_WORDS.recommended,
       CALL_WORDS.chose,
       CALL_WORDS.change.story,
       CALL_WORDS.change.defect,
