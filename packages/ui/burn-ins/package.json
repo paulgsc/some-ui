@@ -28,6 +28,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@some-ui/styles": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*"
   },
