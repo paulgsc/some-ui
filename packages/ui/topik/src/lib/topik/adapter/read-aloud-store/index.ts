@@ -28,10 +28,17 @@ import {
   openKept,
   writeKept,
 } from "@some-ui/core-utils"
-import type { AddedSet } from "@topik/lib/topik/read-aloud/added-sets"
+import type {
+  AddedSet,
+  WordSetsList,
+} from "@topik/lib/topik/read-aloud/added-sets"
 import {
+  archiveSet,
+  bringBack,
+  homeSet,
   readAddedSets,
   storedSet,
+  wordSetsList,
 } from "@topik/lib/topik/read-aloud/added-sets"
 import type { ReadAloudLevel } from "@topik/lib/topik/read-aloud/content"
 import type { ReadAloudFeedback } from "@topik/lib/topik/read-aloud/feedback"
@@ -94,6 +101,18 @@ export type ReadAloudStore = {
   /** The word sets added from storage, oldest first. */
   sets: () => Array<AddedSet>
   saveSets: (sets: ReadonlyArray<AddedSet>) => void
+  /**
+   * Archives the set `id` at `at` (MD7, the owner's own act from My data):
+   * it leaves Read aloud and "Ready for you" and is kept whole. Whether the
+   * phone kept the change.
+   */
+  archive: (id: string, at: string) => boolean
+  /**
+   * Brings the archived set `id` back in use, when there is room under
+   * `ADDED_SET_LIMIT`. Whether the phone kept the change: false when there
+   * was no room.
+   */
+  bringBack: (id: string) => boolean
   /** What the learner said at the end of a sitting, or null if nothing. */
   feedback: () => ReadAloudFeedback | null
   /** Whether the phone kept it: the learner is told when it did not. */
@@ -216,6 +235,21 @@ export function createReadAloudStore(
     read(READ_ALOUD_STORAGE_KEYS.paces, READERS.paces, {})
   const record = (): PracticeRecord =>
     read(READ_ALOUD_STORAGE_KEYS.record, READERS.record, emptyRecord())
+  const sets = (): Array<AddedSet> =>
+    read(READ_ALOUD_STORAGE_KEYS.sets, READERS.sets, [])
+  const saveSets = (next: ReadonlyArray<AddedSet>): boolean =>
+    write(READ_ALOUD_STORAGE_KEYS.sets, READERS.sets, next.map(storedSet))
+  /**
+   * Keeps what `edit` makes of the sets when it changed one: false when
+   * nothing changed (an unknown id, no room) or the phone didn't keep it.
+   */
+  const change = (
+    edit: (before: Array<AddedSet>) => Array<AddedSet>
+  ): boolean => {
+    const before = sets()
+    const next = edit(before)
+    return next.some((set, at) => set !== before[at]) && saveSets(next)
+  }
 
   return {
     paces,
@@ -260,11 +294,13 @@ export function createReadAloudStore(
           : null
       )
     },
-    sets: (): Array<AddedSet> =>
-      read(READ_ALOUD_STORAGE_KEYS.sets, READERS.sets, []),
-    saveSets: (sets): void => {
-      write(READ_ALOUD_STORAGE_KEYS.sets, READERS.sets, sets.map(storedSet))
+    sets,
+    saveSets: (next): void => {
+      saveSets(next)
     },
+    archive: (id, at): boolean =>
+      change((before) => archiveSet(before, id, at)),
+    bringBack: (id): boolean => change((before) => bringBack(before, id)),
     feedback: (): ReadAloudFeedback | null =>
       read(READ_ALOUD_STORAGE_KEYS.feedback, READERS.feedback, null),
     saveFeedback: (feedback): boolean =>
@@ -277,6 +313,28 @@ export function createReadAloudStore(
       read(READ_ALOUD_STORAGE_KEYS.tally, READERS.tally, emptyTally()),
     saveTally: (tally): boolean =>
       write(READ_ALOUD_STORAGE_KEYS.tally, READERS.tally, storedTally(tally)),
+  }
+}
+
+/** The word sets on this phone, as My data reads and archives them (MD7). */
+export type PhoneWordSets = {
+  /** Every set kept, judged at `now`. */
+  readonly list: (now: Date) => WordSetsList
+  /** Whether the phone kept the archive. */
+  readonly archive: (id: string, at: string) => boolean
+  /** Whether the phone kept it; false too when there is no room. */
+  readonly bringBack: (id: string) => boolean
+}
+
+/** This phone's word sets, through the read-aloud store. */
+export function phoneWordSets(
+  storage: KeyedStorage | null = localStorageOrNull()
+): PhoneWordSets {
+  const store = createReadAloudStore(storage)
+  return {
+    list: (now) => wordSetsList(store.sets(), now),
+    archive: (id, at) => store.archive(id, at),
+    bringBack: (id) => store.bringBack(id),
   }
 }
 
@@ -377,7 +435,7 @@ export function readAloudForHome(
       (set): KoreanEntry => ({
         kind: "set",
         key: plainKey(set.deck.id),
-        body: storedSet(set),
+        body: homeSet(set),
       })
     ),
     ...Object.entries(store.paces()).map(
