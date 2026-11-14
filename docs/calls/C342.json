@@ -1,0 +1,21 @@
+{
+  "id": "C342",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "server:infra/docker/Dockerfile.server",
+    "server:infra/docker/Dockerfile.orchestrator",
+    "server:infra/docker/Dockerfile.rust-runner",
+    "server:infra/docker/Dockerfile.kokoro",
+    "server:apps/servers/file_host/src/contract.rs"
+  ],
+  "chose": "Each image's io.paulgsc.provides/requires values are literal LABEL lines at the end of its Dockerfile. A unit test in the crate that owns each edge (file_host contract.rs, orchestrator lib.rs, rust_runner lib.rs) fails unless the label equals its Rust const (CONTRACT_EPOCH, RENDER_FOLDERS_EPOCH, rust_rounds_wire::protocol::EPOCH, ws_events NATS_SUBJECTS_EPOCH).",
+  "options": [
+    "Literal labels held to the consts by tests (chosen)",
+    "Build-args computed in CI from the consts at build time",
+    "A build.rs or generator that writes the Dockerfile labels"
+  ],
+  "gray": "Build-args would make the label true by construction. But it would move the source of truth into a workflow step that CI alone runs, and a local docker build would carry wrong or no labels. Literals keep the Dockerfile readable. The cost is a second place to edit when an epoch rises, and the failing test names it.",
+  "undo": "Replace the LABEL literals with ARGs fed by docker-build/docker-push and delete the four the_image_labels_are_these_epochs tests.",
+  "refs": ["server#790", "server#858", "server#787"]
+}

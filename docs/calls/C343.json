@@ -1,0 +1,19 @@
+{
+  "id": "C343",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "server:scripts/check_release.py",
+    "server:apps/envctl/src/release/constraints.rs",
+    "server:docs/release.md"
+  ],
+  "chose": "Edge directions: file_host provides contract and render-folders; render requires render-folders; rust-runner provides rust-runner-protocol and file_host requires it; orchestrator provides nats-subjects and file_host requires it; kokoro states nothing. An image never meets its own requirement. Images with no labels, :latest references and images off Docker Hub require nothing. A malformed label fails the check rather than being skipped.",
+  "options": [
+    "One provider and one requirer per edge, no self-satisfaction (chosen)",
+    "nats-subjects provided and required by both orchestrator and file_host",
+    "Let an image meet its own requirement"
+  ],
+  "gray": "A symmetric nats-subjects edge (both provide, both require) would only work if an image could not meet its own requirement, and even then it adds nothing over one direction, because detect.yml rebuilds both from one commit when ws-events changes. Under >= epochs, a provider newer than its requirer passes, so dropping an old layout is unchecked. #859 proposes ranges, and that is the owner's call.",
+  "undo": "Change the label values in the four Dockerfiles and the matching consts' tests; drop the other != service filter in both unmet() implementations.",
+  "refs": ["server#790", "server#858", "server#859"]
+}

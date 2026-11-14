@@ -1,0 +1,20 @@
+{
+  "id": "C338",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/routes/cards_essays.rs",
+    "server:apps/servers/file_host/src/handlers/cards_essays.rs",
+    "server:apps/servers/file_host/src/feeds/renders.rs",
+    "server:apps/servers/file_host/src/cards_essays.rs"
+  ],
+  "chose": "A cards essay is on Studio's Renders board as the cards-essay shelf, not a feed, and a done one plays on a paired phone from GET /cards-essays/:key/video, streamed from the drive as a preview's video is. Nothing lets home's copy go: home keeps every essay and its video for good.",
+  "options": [
+    "A shelf, with a plain video route and no let go",
+    "A shelf alone, watching and letting go left to a later story",
+    "A feed (/feeds/cards-essay/videos), with its link and receipt tables and the feeds' let go"
+  ],
+  "gray": "The owner consumes the video (\"I am actually the one consuming the video\"), so an essay the owner can't watch delivers nothing, which rules out a shelf alone. A feed's let go needs the episode's YouTube link first (feeds::videos), and an essay is never uploaded, so a feed would carry two more tables for a let go that can never run. Home already serves a preview's video without a feed, so the same route shape costs nothing new. Whether a never-uploaded video may be let go without a link is the owner's, asked on #2996; until then never-lose-the-record makes kept for good the default. Decided by the coordinator session on 2026-11-14 (#854).",
+  "undo": "Drop routes::cards_essays and handlers::cards_essays and the epoch they raised; the board's cards-essay shelf stays.",
+  "refs": ["server#854", "#2979", "#2996"]
+}

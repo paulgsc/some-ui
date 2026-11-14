@@ -1,0 +1,21 @@
+{
+  "id": "C344",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "server:infra/compose/file_host.yml",
+    "server:infra/compose/monitoring.yml",
+    "server:apps/envctl/src/mounts.rs",
+    "server:apps/envctl/src/main.rs",
+    "server:docs/release.md"
+  ],
+  "chose": "Split compose's root in two. REPO_ROOT is the tree the release's tracked files are read from: home's deploy makes it a worktree at the release's commit. A new STATE_ROOT, which envctl sets to the owner's checkout (for make up and the deploy alike), serves the four mounts of state git does not hold: file_host's data (rw), logs (rw) and config (the gitignored FCM key), and Grafana's built dashboards. envctl check refuses any ${REPO_ROOT} bind mount that is writable or names an untracked path (RL9).",
+  "options": [
+    "Split the root: REPO_ROOT for the release's tree, STATE_ROOT for untracked state (chosen)",
+    "Move that state under ${STORAGE} with a one-time move on home",
+    "No worktree: compose from the owner's checkout with only IMAGE_* from origin/main's release"
+  ],
+  "gray": "Decided by the coordinator, not the owner. The owner's standing 'go with the recommended where a choice is open' was not restated today, so this rests on the coordinator's reading of it. Why it was the coordinator's to make: it changes nothing on home and nothing the owner does, since make up is unchanged and no state moves; it is reversible; and it keeps #787's decided release worktree. Moving the state under STORAGE is cleaner long-term but needs the owner to move files on the box. Dropping the worktree would undo a decision #787 recorded. Either would have gone to the owner.",
+  "undo": "Point the four STATE_ROOT lines in file_host.yml and monitoring.yml back at REPO_ROOT, drop --state-root and STATE_ROOT from FROM_MAKE, delete mounts.rs, and have the deploy run compose from the owner's checkout.",
+  "refs": ["server#793", "server#787", "server#858"]
+}
