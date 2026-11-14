@@ -47,19 +47,29 @@ describe("the badges a video showed before each scene", () => {
     ])
   })
 
-  it("are never written by hand, never over the whole video, and a first appearance has time to spell itself out", () => {
+  it("leave out a state whose scene was too short for its badge to finish spelling itself out", () => {
+    const cut = parsed(
+      cutList([
+        shot("S1", { durationMs: 3299, burnIns: [badge("gap")] }),
+        long("S2", [badge("gap")]),
+        long("S3", [badge("gap")]),
+      ])
+    )
+    expect(
+      withBadgesSeen(cut.shots).map((bs) => bs[0]?.params["badgesSeen"])
+    ).toEqual([[], [], ["gap"]])
+  })
+
+  it("are never written by hand, and never over the whole video", () => {
     const p = parseCutList({
       ...cutList([
         long("S1", [
           { kind: "status-badge", params: { badge: "pr", badgesSeen: [] } },
         ]),
-        shot("S2", { durationMs: 3299, burnIns: [badge("gap")] }),
-        shot("S3", { durationMs: 1000, burnIns: [badge("pr")] }),
       ]),
       burnIns: [badge("main")],
     })
     expect(p.ok ? [] : p.problems).toEqual([
-      "S2: its badge spells itself out over 3.3 s, longer than the scene",
       "S1: the badges shown earlier are worked out from the scenes; nothing is written for them",
       "a status badge belongs to a scene, never to the whole video",
     ])
