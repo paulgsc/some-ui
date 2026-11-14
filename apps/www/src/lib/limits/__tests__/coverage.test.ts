@@ -37,6 +37,7 @@ const DESK =
 const NOT_SHOWN: Readonly<Record<string, string>> = {
   "apps/www/src/lib/takes-desk/index.ts#max": DESK,
   "apps/www/src/lib/takes-desk/index.ts#maxBytes(options.limits)": DESK,
+  "apps/www/src/lib/take-conveyor/model.ts#LABELS_MAX": ONE_ITEM,
   "packages/ui/soundbites/src/lib/policy.ts#SOUNDBITE_LIMIT":
     "Soundbites: its own screen shows how many of six are kept, beside the recorder, and which one the next replaces.",
   "packages/ui/soundbites/src/lib/policy.ts#SOUNDBITES_MAX_BYTES":
@@ -58,6 +59,8 @@ const NOT_SHOWN: Readonly<Record<string, string>> = {
   "packages/ui/aph/src/lib/draft.ts#MAX_DIGITS": ONE_ITEM,
   "packages/ui/auth/src/lib/schemas.ts#MAX_PASSWORD_LENGTH": ONE_ITEM,
   "packages/ui/burn-ins/src/lib/captions/timing.ts#MAX_ROWS": ONE_ITEM,
+  "packages/ui/interview-week/src/lib/faults/read.ts#READ_WORDS_MAX": ONE_ITEM,
+  "packages/ui/interview-week/src/lib/faults/words.ts#WORDS_MAX": ONE_ITEM,
   "packages/ui/game-week/src/lib/bite.ts#MAX_LINE_CHARS": ONE_ITEM,
   "packages/ui/leetype/src/lib/leetype/exercises/totality.ts#MAX_OBLIGATIONS_PER_ROUTE":
     ONE_ITEM,
