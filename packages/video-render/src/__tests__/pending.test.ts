@@ -315,6 +315,23 @@ describe("toFile, takes ready for pickup (CONVEYOR3)", () => {
       body: "b",
       issue: null,
     })
+    // Past what the mailbox takes as an issue: unknown, never a refused answer.
+    expect(parse({ repo: "paulgsc/some-ui", number: 1e9, body: "b" })).toEqual({
+      body: "b",
+      issue: null,
+    })
+    expect(
+      parse({
+        body: "b",
+        html_url: "https://github.com/paulgsc/some-ui/issues/1234567890",
+      })
+    ).toEqual({ body: "b", issue: null })
+    expect(
+      parse({
+        body: "b",
+        html_url: `https://github.com/${"a".repeat(101)}/some-ui/issues/1`,
+      })
+    ).toEqual({ body: "b", issue: null })
     expect(parse("just a body")).toBe("just a body")
   })
 

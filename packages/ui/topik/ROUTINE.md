@@ -642,7 +642,7 @@ whether or not they still carry `pending`, in `paulgsc/some-ui` and
 `paulgsc/server` (`list_issues`, every page), and save them, with their
 bodies, as one JSON list in a second scratch file (the filed file). Save each
 issue as `{"repo":"paulgsc/<the repository you listed>","number":<n>,"body":<its body>}`:
-the list names neither, and a take ready for pickup that an issue already
+the list doesn't say which repository an issue is in, and a take ready for pickup that an issue already
 carries is answered with that issue. Last,
 list the `feedback` folder's live items the same way, fetch each
 `feedback-<note>.json` once, and save their bodies as one JSON list in a
@@ -652,9 +652,7 @@ the summary that the notes on episodes wait for the next run. Then list the
 save their bodies as one JSON list in a fourth (the pickups file); and list the
 `picked` folder's live items and save just their names as one JSON list in a
 fifth (the picked file). If either listing is refused, save `[]` for both and
-say in the summary that the takes ready for pickup wait for the next run. Do
-the same when either repository's list of filed issues was refused: a take is
-filed once across both, so a list that is missing could file it twice. If a repository's list is refused, file nothing in that
+say in the summary that the takes ready for pickup wait for the next run. When either repository's list of filed issues was refused, save `[]` for the pickups and picked files too, so no take is filed or answered this run: a take is filed once across both repositories, and a list that is missing could file it twice. If a repository's list is refused, file nothing in that
 repository this run and say so in the summary: a take whose issue the list
 didn't show would be filed twice. A take whose transcript, or a note whose
 file, home archived before any run filed it (the mailbox archives after 30

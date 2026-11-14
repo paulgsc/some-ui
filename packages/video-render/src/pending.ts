@@ -221,7 +221,7 @@ export type Filed =
 
 /** `https://github.com/<owner>/<repo>/issues/<n>`, its parts. */
 const ISSUE_URL =
-  /^https:\/\/github\.com\/([\w.-]+)\/([\w.-]+)\/issues\/([1-9]\d{0,8})$/
+  /^https:\/\/github\.com\/([\w.-]{1,100})\/([\w.-]{1,100})\/issues\/([1-9]\d{0,8})$/
 /** `<owner>/<repo>`. */
 const REPO_NAME = /^[\w.-]{1,100}\/[\w.-]{1,100}$/
 
@@ -229,6 +229,9 @@ const REPO_NAME = /^[\w.-]{1,100}\/[\w.-]{1,100}$/
  * An issue already filed, as the routine saves it: its body as text, or the
  * issue with its `body` and where it is, by its `repo` (`<owner>/<repo>`,
  * the repository the routine listed) and `number`, or by its `html_url`.
+ * Where it is is held to what the mailbox takes as an issue, or left
+ * unknown; an entry of any other shape stops `render pending` whole, so a
+ * list it can't read files nothing twice.
  */
 export const FiledSchema = z.union([
   z.string(),

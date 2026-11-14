@@ -54,7 +54,7 @@
  * prints the Studio takes and the notes on episodes left to file as pending
  * issues (`pending.ts`): from the mailbox's transcripts (a list of their
  * bodies), the issues already filed (a list of their bodies, or of issues
- * each with its `body`, `repo` and `number`) and, when given, the mailbox's
+ * each with its `body` and its `repo` and `number`, or its `html_url`) and, when given, the mailbox's
  * `feedback` folder (a list of its bodies), its `pickup` folder (a list of
  * its bodies) and the names in its `picked` folder (a list of names).
  *
