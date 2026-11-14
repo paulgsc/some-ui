@@ -13,7 +13,8 @@
  * - **Promises** declared or amended, from commits' `Promise:` and
  *   `Relates:` trailers: the gray-area calls.
  * - **Open asks** (`ask.ts`), each read or refused with why.
- * - **Epics that moved**, with their "Where we are" as the epic says it.
+ * - **Epics that moved**, with their "Why" and "Where we are" as the epic
+ *   says them.
  */
 
 import { z } from "zod"
@@ -139,12 +140,28 @@ export function changeOf(
   }
 }
 
-/** The "Where we are" an epic's body carries, cut to `most` characters. */
-export function whereWeAreOf(body: string, most = 4000): string | null {
-  const text = sectionOf(body, "Where we are")
+/** The section `heading` of an epic's body, cut to `most` characters. */
+function cutSection(
+  body: string,
+  heading: string,
+  most: number
+): string | null {
+  const text = sectionOf(body, heading)
   if (text === null) return null
   return text.length > most ? `${text.slice(0, most)}…` : text
 }
+
+/** The "Where we are" an epic's body carries, cut to `most` characters. */
+export const whereWeAreOf = (body: string, most = 4000): string | null =>
+  cutSection(body, "Where we are", most)
+
+/**
+ * The "Why" an epic's body carries, cut to `most` characters: the owner's
+ * reasons for the work, which the interview week's cards present (IW4,
+ * paulgsc/some-ui#2935).
+ */
+export const whyOf = (body: string, most = 4000): string | null =>
+  cutSection(body, "Why", most)
 
 /** What the weekly run reads, for the agent that writes the week. */
 export type CallFacts = {
@@ -180,6 +197,7 @@ export type CallFacts = {
     readonly repo: Repo
     readonly number: number
     readonly title: string
+    readonly why: string | null
     readonly whereWeAre: string | null
   }>
 }

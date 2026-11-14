@@ -87,6 +87,7 @@ describe("lessonItemOf", () => {
         deck: { id: "x-a", title: "x", words: [], lines: [] },
         addedAt: "",
         openedAt: "2026-10-20T00:00:00.000Z",
+        archivedAt: null,
       },
     ]
     const holding = (decks: ReadonlyArray<unknown>): RoutineFile => ({
@@ -134,6 +135,7 @@ describe("searchLessons", () => {
       deck: { id, title: id, words: [], lines: [] },
       addedAt: "",
       openedAt: "2026-10-20T00:00:00.000Z",
+      archivedAt: null,
     })
     // Scene 1 is done with; scene 2's lens set still waits.
     const ordered = lessonItems(
