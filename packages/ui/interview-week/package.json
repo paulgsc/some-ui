@@ -2,7 +2,7 @@
   "name": "@some-ui/interview-week",
   "private": true,
   "version": "0.0.1",
-  "description": "The interview week: a mock interview and teleprompter reads by voice, then an essay on how I communicated. It holds the measured faults of a take (fillers, pauses, mumbling, pace, length, misreads) and the shape of the judged ones.",
+  "description": "The interview week: a mock interview and teleprompter reads by voice, then an essay on how I communicated. It holds the week's format, the Monday routine that writes it, the measured faults of a take (fillers, pauses, mumbling, pace, length, misreads) and the shape of the judged ones.",
   "type": "module",
   "someUi": {
     "audience": "public"
@@ -16,15 +16,19 @@
     "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "monday": "tsx scripts/monday.ts"
   },
   "dependencies": {
+    "@some-ui/core-utils": "workspace:*",
+    "@some-ui/video-render": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*",
-    "fast-check": "^4.10.2"
+    "fast-check": "^4.10.2",
+    "tsx": "^4.22.4"
   },
   "repository": {
     "type": "git",

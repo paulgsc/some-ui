@@ -150,7 +150,7 @@ function shapeRefusal(
   if (extra === undefined) return null
   if (AUDIO_KEY.test(extra)) return noAudio
   if (DRIVE_KEY.test(extra)) return noDrive
-  return `${extra} is not part of a ${what}`
+  return `${extra} is not part of ${/^[aeiou]/.test(what) ? "an" : "a"} ${what}`
 }
 
 /**
@@ -668,8 +668,8 @@ const CALL_INDEX_KEYS: ReadonlySet<string> = new Set([
 ])
 /** The keys of each week the call index lists; any other is refused. */
 const HELD_WEEK_KEYS: ReadonlySet<string> = new Set(["from", "to", "sha256"])
-/** The keys of a `some-ui.routine-index/1` body for the Rust Rounds routine; any other is refused. */
-const RUST_INDEX_KEYS: ReadonlySet<string> = new Set([
+/** The keys of a `some-ui.routine-index/1` body for a weekly routine (Rust Rounds, the interview week); any other is refused. */
+const WEEKLY_INDEX_KEYS: ReadonlySet<string> = new Set([
   "schema",
   "routine",
   "asOf",
@@ -786,17 +786,21 @@ function pastedTexts(body: Readonly<Record<string, unknown>>): Array<string> {
   })
 }
 
+/** `lists` said as a sentence names them: "a and b", "a, b and c". */
+const listed = (lists: ReadonlyArray<string>): string =>
+  lists.length < 2
+    ? lists.join("")
+    : `${lists.slice(0, -1).join(", ")} and ${lists.at(-1) ?? ""}`
+
 /**
- * The Rust Rounds index (RR18, paulgsc/some-ui#2693): every final week among
- * the newest home holds, each as home's record of it
- * (paulgsc/server `GET /rust-weeks/:id/record`), so the Monday routine writes
- * each essay from the final record, never a draft. A pasted error is the
- * owner's own text, and a linker's symbol can run past 256 base64-like
- * characters, so the scan for encoded bytes leaves each paste's text out
- * (`rustScanned`); a paste is still held to no `data:` URI, no Drive link and
- * home's own length.
+ * What a weekly routine's index (Rust Rounds', the interview week's) holds
+ * of each week, as home's record of it: a final week, named once by its id,
+ * whose `lists` are lists. Why not, or `null`.
  */
-const rustShape: IndexShape = (body) => {
+function finalWeeksRefusal(
+  body: Readonly<Record<string, unknown>>,
+  lists: ReadonlyArray<string>
+): string | null {
   const asOf = asOfRefusal(body)
   if (asOf !== null) return asOf
   const list = shapeOf([], ["weeks"], body)
@@ -817,10 +821,36 @@ const rustShape: IndexShape = (body) => {
     ) {
       return "each week's send must be its final, or null"
     }
-    if (!Array.isArray(week.tickets) || !Array.isArray(week.pastes)) {
-      return "each week's tickets and pastes must be lists"
+    if (!lists.every((key) => Array.isArray(week[key]))) {
+      return `each week's ${listed(lists)} must be lists`
     }
   }
+  return null
+}
+
+/**
+ * The interview week's index (IW4, paulgsc/some-ui#2935): every final week
+ * among the newest home holds, each as home's record of it (paulgsc/server
+ * `GET /interview-weeks/:id/record`), so the essay routine (IW6) writes from
+ * the final record, never a draft. It holds no text the owner typed, so the
+ * whole body is scanned for audio and Drive links.
+ */
+const interviewShape: IndexShape = (body) =>
+  finalWeeksRefusal(body, ["questions", "cards", "unanswered", "unread"])
+
+/**
+ * The Rust Rounds index (RR18, paulgsc/some-ui#2693): every final week among
+ * the newest home holds, each as home's record of it
+ * (paulgsc/server `GET /rust-weeks/:id/record`), so the Monday routine writes
+ * each essay from the final record, never a draft. A pasted error is the
+ * owner's own text, and a linker's symbol can run past 256 base64-like
+ * characters, so the scan for encoded bytes leaves each paste's text out
+ * (`rustScanned`); a paste is still held to no `data:` URI, no Drive link and
+ * home's own length.
+ */
+const rustShape: IndexShape = (body) => {
+  const weeks = finalWeeksRefusal(body, ["tickets", "pastes"])
+  if (weeks !== null) return weeks
   for (const text of pastedTexts(body)) {
     // Home counts characters, not UTF-16 units (`chars().count()`).
     if ([...text].length > PASTE_MAX_CHARS) {
@@ -865,7 +895,8 @@ const INDEX_ROUTINES: ReadonlyMap<
   ["jobs", { keys: JOBS_INDEX_KEYS, shape: jobsShape }],
   ["reflections", { keys: REFLECTIONS_INDEX_KEYS, shape: reflectionsShape }],
   ["call", { keys: CALL_INDEX_KEYS, shape: callShape }],
-  ["rust", { keys: RUST_INDEX_KEYS, shape: rustShape, scanned: rustScanned }],
+  ["rust", { keys: WEEKLY_INDEX_KEYS, shape: rustShape, scanned: rustScanned }],
+  ["interview", { keys: WEEKLY_INDEX_KEYS, shape: interviewShape }],
 ])
 
 /**
@@ -915,6 +946,62 @@ function rustWeekRefusal(
   return name === `rust-week-${body.id}.json`
     ? null
     : "the name must carry the week's id"
+}
+
+/** IW1's id for a question or card (paulgsc/some-ui#2935): a kebab slug, at most 64 characters. */
+const TAKE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+const TAKE_ID_MAX = 64
+
+/**
+ * The ids of `list`'s objects, as home will hold a take's ref to them: each
+ * a slug, once each, and never `reserved`. Why not, or `null`.
+ */
+function takeIdsRefusal(
+  list: unknown,
+  what: "question" | "card",
+  reserved: string | null
+): string | null {
+  if (!Array.isArray(list)) return `${what}s must be a list`
+  const seen = new Set<unknown>()
+  for (const item of list.values()) {
+    const id: unknown = isRecord(item) ? item.id : undefined
+    if (
+      typeof id !== "string" ||
+      id.length > TAKE_ID_MAX ||
+      !TAKE_ID.test(id)
+    ) {
+      return `each ${what}'s id must be a kebab slug of at most ${TAKE_ID_MAX} characters`
+    }
+    if (id === reserved) return `no ${what} may be named ${reserved}`
+    if (seen.has(id)) return `each ${what}'s id is used once`
+    seen.add(id)
+  }
+  return null
+}
+
+/**
+ * README, "What a put must satisfy". A week of mock interview the interview
+ * week's routine writes (IW4, paulgsc/some-ui#2935), named for its id. Home
+ * takes an interview take only by IW1's refs, `<week>:<question>` and
+ * `<week>:read:<card>`, so the Worker holds the ids those refs name; the
+ * routine holds the rest of the format (`readWeek` in
+ * `@some-ui/interview-week`) before it puts one.
+ */
+function interviewWeekRefusal(
+  body: Readonly<Record<string, unknown>>,
+  _text: string,
+  name: string
+): string | null {
+  if (typeof body.id !== "string" || !WEEK_ID.test(body.id)) {
+    return "id must be the week's, like 2026-w47"
+  }
+  if (name !== `interview-week-${body.id}.json`) {
+    return "the name must carry the week's id"
+  }
+  return (
+    takeIdsRefusal(body.questions, "question", "read") ??
+    takeIdsRefusal(body.cards, "card", null)
+  )
 }
 
 /**
@@ -1056,6 +1143,14 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
         name: /^rust-week-\d{4}-w\d{2}\.json$/,
         schema: "some-ui.rust-week/1",
         refuses: rustWeekRefusal,
+      },
+      // A week of mock interview the interview week's routine writes, for
+      // home to keep and serve to the phone (IW4, paulgsc/some-ui#2935).
+      {
+        folder: "brief",
+        name: /^interview-week-\d{4}-w\d{2}\.json$/,
+        schema: "some-ui.interview-week/1",
+        refuses: interviewWeekRefusal,
       },
       // The script of the essay that answers a week, for home to keep and
       // render; `-r2` on is a correction (RR16, paulgsc/some-ui#2691; the

@@ -121,6 +121,19 @@ describe("Takes on home (ST32)", () => {
     expect(screen.getByText("t1 at cooking, moves 1")).toBeTruthy()
   })
 
+  it("puts what a page adds under each of home's takes (CONVEYOR2)", async () => {
+    render(
+      <TakeLibrary
+        ports={{ home: home(), player: quietPlayer }}
+        pair={null}
+        row={(take) => <span>{`sorting ${take.id}`}</span>}
+      />
+    )
+    await settle()
+    expect(screen.getByText("sorting t1")).toBeTruthy()
+    expect(screen.getByText("sorting t2")).toBeTruthy()
+  })
+
   it("searches the words, says the search ran on words, and goes back to the newest", async () => {
     const takes = vi.fn(home().takes)
     render(

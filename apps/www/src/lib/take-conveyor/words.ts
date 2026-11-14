@@ -70,4 +70,23 @@ export const TAKE_CONVEYOR_WORDS = {
   } satisfies Record<MoveRefused, string>,
   /** A move this phone couldn't keep, so it wasn't made. */
   unkept: "This phone couldn't keep that move, so the take stays where it was.",
+  /** The conveyor page (CONVEYOR2): the one place a take is moved. */
+  page: {
+    heading: "On the conveyor",
+    intro:
+      "Listen to each take and move it along. Only a take you move to Ready for pickup is filed as an issue, by the next pickup. Canned sets one aside and home keeps it; deleting one for good is in My data.",
+    /** A take's move to `station`, said on its button. */
+    moveTo: (station: TakeStation): string => `Move to ${STATIONS[station]}`,
+    can: "Can it",
+    labels: "Labels",
+    labelsHint: "Commas between. Replaces its labels; blank keeps them.",
+    note: "A note",
+    noteHint: "Do you like it? What's it for?",
+    /**
+     * Said once a move is made, with where it went, in the row's own words
+     * for a move home hasn't taken (`standing`'s `going`).
+     */
+    moved: (station: TakeStation): string =>
+      `Moved to ${STATIONS[station]}. Home hasn't taken this move yet.`,
+  },
 } as const

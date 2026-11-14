@@ -462,6 +462,71 @@ describe("a week of Rust Rounds rides brief (MB2, RR12)", () => {
   })
 })
 
+describe("a week of mock interview rides brief (MB2, IW4)", () => {
+  const week = (fields: Record<string, unknown> = {}): string =>
+    JSON.stringify({
+      schema: "some-ui.interview-week/1",
+      id: "2026-w47",
+      questions: [{ id: "conflict" }, { id: "decision-c266" }],
+      cards: [{ id: "invariant-rs1" }],
+      ...fields,
+    })
+  const NAME = "interview-week-2026-w47.json"
+
+  it("the routine puts one in brief, and home reads it with the digests", async () => {
+    const d = deps()
+    expect((await put(d, "brief", NAME, { body: week() })).status).toBe(201)
+    const read = await send(d, "GET", `/v1/brief/items/${NAME}`, {
+      token: HOME,
+    })
+    expect(await read.text()).toBe(week())
+  })
+
+  it("refuses a week whose name isn't its id's, or whose ids a take's ref can't name", async () => {
+    const refused = async (body: string, name = NAME): Promise<unknown> =>
+      json(await put(deps(), "brief", name, { body }))
+    expect(await refused(week(), "interview-week-2026-w48.json")).toEqual({
+      error: "the name must carry the week's id",
+    })
+    expect(await refused(week({ id: "2026-W47" }))).toEqual({
+      error: "id must be the week's, like 2026-w47",
+    })
+    expect(await refused(week({ questions: [{ id: "read" }] }))).toEqual({
+      error: "no question may be named read",
+    })
+    // A card may be named read: its ref is <week>:read:<card>.
+    expect(
+      (
+        await put(deps(), "brief", NAME, {
+          body: week({ cards: [{ id: "read" }] }),
+        })
+      ).status
+    ).toBe(201)
+    const slug = {
+      error: "each card's id must be a kebab slug of at most 64 characters",
+    }
+    for (const id of ["Rs1", "a--b", "-a", "x".repeat(65), 7]) {
+      expect(await refused(week({ cards: [{ id }] }))).toEqual(slug)
+    }
+    expect(
+      await refused(week({ questions: [{ id: "a" }, { id: "a" }] }))
+    ).toEqual({ error: "each question's id is used once" })
+    expect(await refused(week({ cards: undefined }))).toEqual({
+      error: "cards must be a list",
+    })
+    expect(await refused(DIGEST)).toEqual({
+      error: "the body's schema must be some-ui.interview-week/1",
+    })
+    expect(
+      (
+        await put(deps(), "brief", "interview-week-2026-47.json", {
+          body: week(),
+        })
+      ).status
+    ).toBe(422)
+  })
+})
+
 describe("a Rust Rounds essay's script rides brief (MB2, RR16)", () => {
   const essay = (week: string): string =>
     JSON.stringify({
@@ -1342,7 +1407,7 @@ describe("home's indexes", () => {
       return json(response)
     }
     expect(await refused({ ...JOBS, routine: "topik" })).toEqual({
-      error: "routine must be jobs or reflections or call or rust",
+      error: "routine must be jobs or reflections or call or rust or interview",
     })
     expect(await refused(JOBS, "index-topik-20261031T144502118Z.json")).toEqual(
       { error: "the name must carry the body's routine" }
@@ -1784,6 +1849,82 @@ const ASKED_FOR = {
     "Write one scene: the fiancée meets his mother.",
   ].join("\n"),
 }
+
+describe("home's interview week index (IW4)", () => {
+  // A final week as home's record gives it (paulgsc/server `GET /interview-weeks/:id/record`).
+  const W47 = {
+    week: "2026-w47",
+    opens: "2026-11-16T00:00:00-08:00",
+    due: "2026-11-22T23:59:00-08:00",
+    closed: true,
+    sent: {
+      at: "2026-11-21T20:31:07.000Z",
+      receivedAt: "2026-11-21T20:31:09.120Z",
+      draft: false,
+    },
+    questions: [
+      {
+        question: "conflict",
+        answered: true,
+        take: "note-401",
+        recordedAt: "2026-11-21T20:12:40.000Z",
+      },
+    ],
+    cards: [
+      { card: "invariant-rs1", read: false, take: null, recordedAt: null },
+    ],
+    unanswered: [],
+    unread: ["invariant-rs1"],
+  }
+  const INDEX = {
+    schema: "some-ui.routine-index/1",
+    routine: "interview",
+    asOf: "2026-11-22T23:59:00.000-08:00",
+    weeks: [W47],
+  }
+  const NAME = "index-interview-20261123T090000000Z.json"
+  const asHome = (body: unknown): Promise<Response> =>
+    put(deps(), "index", NAME, { token: HOME, body: JSON.stringify(body) })
+
+  it("home puts it, before any week is final too", async () => {
+    expect((await asHome(INDEX)).status).toBe(201)
+    expect((await asHome({ ...INDEX, asOf: null, weeks: [] })).status).toBe(201)
+    expect(
+      (await asHome({ ...INDEX, weeks: [{ ...W47, sent: null }] })).status
+    ).toBe(201)
+  })
+
+  it("takes only final weeks with their lists, and only its own keys", async () => {
+    const error = async (body: unknown): Promise<unknown> =>
+      json(await asHome(body))
+    expect(await error({ ...INDEX, tickets: [] })).toEqual({
+      error: "tickets is not part of an interview index",
+    })
+    expect(
+      await error({ ...INDEX, weeks: [{ ...W47, closed: false }] })
+    ).toEqual({ error: "each week must be past its deadline" })
+    expect(
+      await error({ ...INDEX, weeks: [{ ...W47, sent: { draft: true } }] })
+    ).toEqual({ error: "each week's send must be its final, or null" })
+    expect(
+      await error({ ...INDEX, weeks: [{ ...W47, unread: undefined }] })
+    ).toEqual({
+      error:
+        "each week's questions, cards, unanswered and unread must be lists",
+    })
+    expect(await error({ ...INDEX, weeks: [W47, W47] })).toEqual({
+      error: "each week is named once",
+    })
+    expect(
+      (
+        await put(deps(), "index", "index-rust-20261123T090000000Z.json", {
+          token: HOME,
+          body: JSON.stringify(INDEX),
+        })
+      ).status
+    ).toBe(422)
+  })
+})
 
 describe("written reflections", () => {
   const REFLECTION = JSON.stringify(WRITTEN)
