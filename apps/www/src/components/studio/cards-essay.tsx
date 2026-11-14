@@ -9,6 +9,7 @@ import type { JSX } from "react"
 import { useEffect, useSyncExternalStore } from "react"
 import { Link } from "@tanstack/react-router"
 
+import { hasAudience } from "@/lib/build-profile"
 import {
   essayOf,
   essayVideo,
@@ -72,9 +73,12 @@ const Standing = ({
     return (
       <div className="flex flex-col gap-2">
         <Muted>{WORDS.notDone}</Muted>
-        <Link to="/journal/renders" className={LINK}>
-          {WORDS.seeRenders}
-        </Link>
+        {/* Renders is the phone's ("apk"), as this page is (A3). */}
+        {hasAudience("apk") && (
+          <Link to="/journal/renders" className={LINK}>
+            {WORDS.seeRenders}
+          </Link>
+        )}
       </div>
     )
   }

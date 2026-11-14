@@ -47,6 +47,10 @@ export const UNMEASURED: ReadonlyArray<Unmeasured> = [
     route: "/journal/renders",
     why: "What home is making and what's coming (SFEED13): a read of home's renders, with nothing to act on.",
   },
+  {
+    route: "/journal/cards/$key",
+    why: "A cards essay home made (CARDS7): its video to watch, with nothing offered back.",
+  },
   ...[
     "/journal",
     "/journal/asks",

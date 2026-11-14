@@ -12,6 +12,9 @@ import { homeLink } from "./index"
 import type { Asked } from "./while-busy"
 import { asked } from "./while-busy"
 
+const videoPath = (key: string): string =>
+  `/cards-essays/${encodeURIComponent(key)}/video`
+
 /** Asks home once for bytes `start` to `end` of essay `key`'s video; never rejects. */
 export function askCardsEssayPart(
   key: string,
@@ -20,10 +23,7 @@ export function askCardsEssayPart(
 ): Promise<Asked> {
   return asked(() =>
     homeLink().keep((send) =>
-      send("GET", `/cards-essays/${encodeURIComponent(key)}/video`, undefined, {
-        start,
-        end,
-      })
+      send("GET", videoPath(key), undefined, { start, end })
     )
   )
 }
