@@ -2297,7 +2297,7 @@
           "proof": [
             "server:crates/db/call_week/src/lib.rs#a_week_is_kept_once_as_served",
             "server:crates/db/call_week/src/lib.rs#no_kept_week_is_rewritten_or_deleted",
-            "server:apps/servers/file_host/src/call_weeks/pass.rs#each_listed_week_home_lacks_is_fetched_and_kept_as_served",
+            "server:apps/servers/file_host/src/call_weeks/pass.rs#each_listed_week_home_lacks_is_fetched_once_and_kept_as_served",
             "server:apps/servers/file_host/src/call_weeks/pass.rs#what_does_not_check_out_is_counted_by_kind_and_left_for_the_next_pass",
             "server:apps/servers/file_host/src/mailbox/pass.rs#the_call_index_is_put_once_a_week_is_held_and_again_for_each_new_week",
             "server:apps/servers/file_host/src/call_weeks/pass.rs#a_restamp_of_a_week_with_no_video_is_taken_and_rendered_as_parts",
@@ -2382,7 +2382,7 @@
             }
           ],
           "proof": [
-            "server:apps/servers/file_host/src/call_weeks/pass.rs#each_listed_week_home_lacks_is_fetched_and_kept_as_served",
+            "server:apps/servers/file_host/src/call_weeks/pass.rs#each_listed_week_home_lacks_is_fetched_once_and_kept_as_served",
             "server:apps/servers/file_host/src/call_weeks/pass.rs#a_failing_source_is_retried_sooner_but_never_more_often_than_it_is_read",
             "server:apps/servers/file_host/src/game_feed/pass.rs#a_declared_length_over_the_cap_is_refused_before_its_body",
             "server:apps/servers/file_host/src/game_feed/pass.rs#an_unending_answer_is_refused_once_it_passes_the_cap",
