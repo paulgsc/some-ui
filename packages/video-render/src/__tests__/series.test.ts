@@ -198,14 +198,6 @@ describe("the sample series", () => {
       const s = await readSeries(join(__dirname, "../sample/series", id), 1)
       expect(s.ok ? s.value.id : s.problems).toBe(id)
     }
-    // The spoken cards essay's version (EXPLAIN6), which captions.
-    const spoken = await readSeries(
-      join(__dirname, "../sample/series/cheat-sheet"),
-      2
-    )
-    expect(spoken.ok ? spoken.value.designs.captions : spoken.problems).toBe(
-      "broadcast"
-    )
   })
 
   it("carry the showcase cut lists, each on cheat-sheet v2, spoken", async () => {

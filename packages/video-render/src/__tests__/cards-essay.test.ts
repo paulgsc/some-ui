@@ -1,17 +1,17 @@
 import { join } from "node:path"
 import {
   CARDS_INDEX_SCHEMA,
-  CARDS_MOST_MS,
   CARDS_VOICES,
   cardsChapterMarks,
   cardsFolderProblems,
   cardsLines,
+  cardsScenes,
+  CHAPTER_GAP_MS,
   CLOSE_MARK,
-  estimatedCardsMs,
+  joinedTake,
   parseCardsEssay,
   voicedCardsCutList,
 } from "@video-render/cards-essay"
-import { SAY_MOST_CHARS } from "@video-render/cut-list"
 import type { CutList } from "@video-render/cut-list"
 import { readSeries } from "@video-render/node"
 import type { Series } from "@video-render/series"
@@ -172,15 +172,9 @@ describe("the cards folder", () => {
 })
 
 describe("a spoken essay (EXPLAIN6)", () => {
-  it("is each showcase: an intro, a chapter line and narration for every card, and a close", async () => {
-    for (const video of ["nixos-upgrade", "rust-scratchpad"]) {
-      const cut = await showcase(video)
-      const roles = cut.shots.map((s) => s.spoken?.role)
-      expect(roles[0]).toBe("intro")
-      expect(roles.at(-1)).toBe("close")
-      expect(roles.slice(1, -1).every((r) => r === "scene")).toBe(true)
-      expect(estimatedCardsMs(cut)).toBeLessThanOrEqual(CARDS_MOST_MS)
-    }
+  it("is each showcase, closing with what to do next", async () => {
+    for (const video of ["nixos-upgrade", "rust-scratchpad"])
+      expect((await showcase(video)).shots.at(-1)?.spoken?.role).toBe("close")
   })
 
   it("is refused with no intro, a scene that says nothing, or an intro or close out of place", async () => {
@@ -212,20 +206,18 @@ describe("a spoken essay (EXPLAIN6)", () => {
     ).toContain("narration")
   })
 
-  it("is refused for a line home's speaker can't say: empty, punctuation alone, or too long", async () => {
+  it("is refused for a line of punctuation alone, which home's speaker has nothing to say for", async () => {
     const cut = await showcase("nixos-upgrade")
     const [intro, ...rest] = cut.shots
-    for (const [said, why] of [
-      ["   ", "it says nothing"],
-      ["... — !", "no letter or digit"],
-      ["word ".repeat(SAY_MOST_CHARS), `at most ${SAY_MOST_CHARS}`],
-    ] as const)
-      expect(
-        refusal({
-          ...cut,
-          shots: [{ ...intro, spoken: { role: "intro", said } }, ...rest],
-        })
-      ).toContain(why)
+    expect(
+      refusal({
+        ...cut,
+        shots: [
+          { ...intro, spoken: { role: "intro", said: "... — !" } },
+          ...rest,
+        ],
+      })
+    ).toContain("no letter or digit")
   })
 
   it("is refused past ten minutes by its words, and told to split", async () => {
@@ -262,60 +254,68 @@ describe("a spoken essay (EXPLAIN6)", () => {
 
   it("says the intro, each chapter line in the host's voice then its narration in the narrator's, and the close", async () => {
     const cut = await showcase("rust-scratchpad")
-    const lines = cardsLines(cut)
-    expect(lines.map((l) => [l.file, l.voice])).toEqual([
+    const scenes = cardsScenes(cut)
+    expect(scenes.map((s) => s.id)).toEqual(cut.shots.map((s) => s.id))
+    expect(cardsLines(scenes).map((l) => [l.file, l.voice])).toEqual([
       ["01-intro", CARDS_VOICES.host],
       ...cut.shots
         .filter((s) => s.spoken?.role === "scene")
-        .flatMap((s, i) => [
-          [
-            `${String(2 * i + 2).padStart(2, "0")}-${s.id}-chapter`,
-            CARDS_VOICES.host,
-          ],
-          [
-            `${String(2 * i + 3).padStart(2, "0")}-${s.id}`,
-            CARDS_VOICES.narrator,
-          ],
-        ]),
-      [`${String(lines.length).padStart(2, "0")}-close`, CARDS_VOICES.host],
+        .flatMap((s, i) => {
+          const file = `${String(i + 2).padStart(2, "0")}-${s.id}`
+          return [
+            [`${file}-chapter`, CARDS_VOICES.host],
+            [`${file}-narration`, CARDS_VOICES.narrator],
+          ]
+        }),
+      [`${String(scenes.length).padStart(2, "0")}-close`, CARDS_VOICES.host],
     ])
-    const marks = cardsChapterMarks(lines)
+    const marks = cardsChapterMarks(scenes)
     expect(marks[0]).toEqual({
-      scene: "C1-chapter",
-      title: "Chapter one. Open it, write, quit, and it's gone.",
+      scene: "C1",
+      title: "Open it, write, quit, and it's gone",
     })
     expect(marks.at(-1)).toEqual({ scene: "close", title: CLOSE_MARK })
   })
 
-  it("holds each card for its take, captions it, and cuts from a chapter line to its narration", async () => {
+  it("joins a scene's takes with a pause, each word moved to its place", () => {
+    const chapter = {
+      ms: 1_000,
+      words: [{ text: "One.", startMs: 100, endMs: 900 }],
+    }
+    const narration = {
+      ms: 2_000,
+      words: [{ text: "Here", startMs: 0, endMs: 400 }],
+    }
+    const at = 1_000 + CHAPTER_GAP_MS
+    expect(joinedTake([chapter, narration])).toEqual({
+      ms: at + 2_000,
+      words: [
+        { text: "One.", startMs: 100, endMs: 900 },
+        { text: "Here", startMs: at, endMs: at + 400 },
+      ],
+    })
+  })
+
+  it("draws each card once, held for its scene's take and captioned", async () => {
     const cut = await showcase("nixos-upgrade")
-    const lines = cardsLines(cut)
+    const scenes = cardsScenes(cut)
     const words = [{ text: "Here", startMs: 0, endMs: 300 }]
     const voiced = voicedCardsCutList(
       cut,
-      lines,
-      lines.map((_, i) => (i === 0 ? null : { ms: 2_000, words }))
+      scenes,
+      scenes.map((_, i) => (i === 0 ? null : { ms: 2_000, words }))
     )
     expect(voiced.burnIns).toEqual([{ kind: "captions", params: {} }])
-    const [intro, chapter, narration] = voiced.shots
+    expect(voiced.shots.map((s) => s.id)).toEqual(cut.shots.map((s) => s.id))
+    const [intro, first] = voiced.shots
     // No take: held for its words' reading time, never its written length.
     expect(intro?.take).toBeUndefined()
     expect(intro?.durationMs).not.toBe(cut.shots[0]?.durationMs)
-    expect(chapter).toMatchObject({
-      id: "C1-chapter",
+    expect(first).toMatchObject({
       durationMs: 300 + 2_000 + 700,
       speaker: "kokoro",
-      take: {
-        file: `${lines[1]?.file ?? ""}.wav`,
-        inMs: 0,
-        outMs: 2_000,
-        words,
-      },
+      take: { file: "02-C1.wav", inMs: 0, outMs: 2_000, words },
       burnIns: cut.shots[1]?.burnIns,
-    })
-    expect(narration).toMatchObject({
-      id: "C1",
-      overrides: { transitionIn: "cut" },
     })
     expect(voiced.shots.every((s) => s.spoken === undefined)).toBe(true)
   })

@@ -39,8 +39,8 @@ rendered once, and published it where home picks it up.
 - **Home** reads `paulgsc/testing`'s `cards/` folder hourly and keeps each
   new essay as first served. Its render worker has Kokoro, the speech model
   home runs, say each line with each word's timing, holds each card for as
-  long as its words take, writes the words as captions at the foot of the
-  frame, and renders the video. The same essay on the same image gives the
+  long as its words take, writes the words as captions in the lower third
+  of the frame, below the card, and renders the video. The same essay on the same image gives the
   same video.
 
 ## The shape of a spoken essay

@@ -310,7 +310,7 @@ const STEPS = "cache/steps"
  * How a recorder keeps a video's steps: in its folder's `cache/steps`,
  * saying each step not kept and each answered from the cache.
  */
-export const STEP_CACHE = { stepCacheDir: STEPS, warn, hit } as const
+const STEP_CACHE = { stepCacheDir: STEPS, warn, hit } as const
 
 /**
  * A scene to record: its stage address, and what is said over it, in which
@@ -415,7 +415,7 @@ export async function recordStills({
 }
 
 /** A line for home's speaker to say into `<file>.wav`, with its words when `timed`. */
-export type Line = {
+type Line = {
   readonly file: string
   readonly text: string
   readonly voice: string
@@ -427,7 +427,7 @@ export type Line = {
  * asked of it once, then kept in `root`'s step cache by its model, voice and
  * words (`takeOf`), within `policy`'s cache budget.
  */
-export async function speakerOf(
+async function speakerOf(
   root: string,
   speaker: string,
   policy: RenderPolicy
@@ -448,6 +448,45 @@ export async function speakerOf(
       cache,
       ports,
     })
+}
+
+/**
+ * Each of `lines` said in order by home's speaker at `speaker` into `root`,
+ * or none with no speaker, saying the progress home's board reads (#2899):
+ * `scenes <n>` once, then `recorded <file>` per line, as `recordStills` does.
+ */
+export async function sayLines({
+  root,
+  lines,
+  speaker,
+  policy,
+}: {
+  readonly root: string
+  readonly lines: ReadonlyArray<{
+    readonly file: string
+    readonly said: string
+    readonly voice: string
+  }>
+  readonly speaker: string | null
+  readonly policy: RenderPolicy
+}): Promise<Array<StillTake | null>> {
+  const say = speaker === null ? null : await speakerOf(root, speaker, policy)
+  const takes: Array<StillTake | null> = []
+  console.log(`scenes ${String(lines.length)}`)
+  for (const line of lines) {
+    takes.push(
+      say === null
+        ? null
+        : await say({
+            file: line.file,
+            text: line.said,
+            voice: line.voice,
+            timed: true,
+          })
+    )
+    console.log(`recorded ${line.file}`)
+  }
+  return takes
 }
 
 /**

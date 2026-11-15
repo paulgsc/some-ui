@@ -11,31 +11,22 @@
  * so the same subject checked again on a later day is a new essay. Home has
  * no captures or takes for one: every scene is a card picture.
  *
- * From the cheat-sheet series' version 2 (EXPLAIN6, #3021, C370, C371) an essay is
- * spoken, a podcast you can watch: its first scene is the intro, every scene
- * after it has a chapter line and narration, and the last may be the close
- * (`Spoken`). The recorder has home's Kokoro speaker say each line, holds
- * the card for its take and captions it (`voicedCardsCutList`). An essay in
- * version 1 is silent, and stays as it was first served.
+ * From the cheat-sheet series' version 2 an essay is spoken (EXPLAIN6,
+ * #3021, C370, C371: `Spoken`); one in version 1 is silent.
  */
 
 import { z } from "zod"
 
+import { CALL_VOICES } from "./call"
 import type { ChapterMark } from "./chapters"
-import type { CutList, Parsed, Shot } from "./cut-list"
+import { withoutStop } from "./chapters"
+import type { CutList, Parsed, Shot, TimedWord } from "./cut-list"
 import { isCaptions, parseCutList, problemsOf } from "./cut-list"
 import { resolve } from "./resolve"
 import type { Series } from "./series"
 import { withSeries } from "./series"
-import {
-  estimatedMs,
-  FEED_SPEAKER,
-  readingMs,
-  stillFile,
-  TAIL_MS,
-  VOICE_IN_MS,
-} from "./stills"
-import type { StillTake } from "./stills"
+import { estimatedMs, heldFor, stillFile } from "./stills"
+import type { StillScene, StillTake } from "./stills"
 
 export const CARDS_INDEX_SCHEMA = "some-ui.cards-index/1"
 
@@ -56,8 +47,8 @@ export const isSpokenEssay = (cut: CutList): boolean =>
  * new chapter begin.
  */
 export const CARDS_VOICES = {
-  host: "am_michael",
-  narrator: "af_heart",
+  host: CALL_VOICES.intro,
+  narrator: CALL_VOICES.moved,
 } as const
 
 /**
@@ -65,12 +56,6 @@ export const CARDS_VOICES = {
  * ten minutes (owner, 2026-11-14). A longer subject is two essays (C373).
  */
 export const CARDS_MOST_MS = 600_000
-
-/** What a scene's chapter line is said over, after the scene's own id. */
-const CHAPTER = "-chapter"
-
-/** The longest id a spoken scene has, so its chapter's is a scene id too. */
-const SPOKEN_ID_MOST = 64 - CHAPTER.length
 
 /** A slug, then the stamp's day: `<slug>-<YYYY-MM-DD>`. */
 export const CARDS_KEY = /^[a-z0-9]+(-[a-z0-9]+)*-(\d{4}-\d{2}-\d{2})$/
@@ -169,14 +154,13 @@ export function parseCardsEssay(key: string, raw: unknown): Parsed<CutList> {
 
 /**
  * Every reason a spoken essay can't be said: a scene that says nothing, no
- * intro first, an intro or a close out of place, no scene that teaches, an
- * id too long for its chapter's, and words that run past `CARDS_MOST_MS`.
+ * intro first, an intro or a close out of place, no scene that teaches,
+ * and words that run past `CARDS_MOST_MS`.
  * Whether each line is one the speaker can say is the cut list's own
  * (`SayableSchema`).
  */
 function spokenProblems(cut: CutList): Array<string> {
   const { shots } = cut
-  const ids = new Set(shots.map((s) => s.id))
   const last = shots.length - 1
   const problems: Array<string> = []
   if (shots[0]?.spoken?.role !== "intro")
@@ -195,14 +179,6 @@ function spokenProblems(cut: CutList): Array<string> {
       problems.push(`${s.id}: only the first scene is the intro`)
     if (role === "close" && i !== last)
       problems.push(`${s.id}: only the last scene is the close`)
-    if (role === "scene" && s.id.length > SPOKEN_ID_MOST)
-      problems.push(
-        `${s.id}: a spoken scene's id is at most ${SPOKEN_ID_MOST} characters, so its chapter's is an id too`
-      )
-    if (role === "scene" && ids.has(`${s.id}${CHAPTER}`))
-      problems.push(
-        `${s.id}: its chapter line is said over ${s.id}${CHAPTER}, which another scene is called`
-      )
   })
   const ms = estimatedCardsMs(cut)
   if (ms > CARDS_MOST_MS)
@@ -212,128 +188,136 @@ function spokenProblems(cut: CutList): Array<string> {
   return problems
 }
 
-/**
- * A line of a spoken essay: the scene of the voiced cut list it is said
- * over, its files' name, what is said and in which voice, the essay's scene
- * it shows, and the chapter it opens, for the upload's chapter marks.
- */
+/** A take to ask home's speaker for: into `<file>.wav`, said in `voice`. */
 export type CardsLine = {
-  readonly id: string
-  /** Without extension: `<file>.wav`, `<file>.words.json`. */
   readonly file: string
-  /** Empty for a scene that says nothing, held for its own `durationMs`. */
   readonly said: string
   readonly voice: string
+}
+
+/**
+ * A scene of a spoken essay as the renderer draws it: the essay's scene
+ * (`shot`), its files' name and all it says (`StillScene`), the takes it is
+ * said in, one after another, and the chapter it opens, for the upload's
+ * chapter marks.
+ */
+export type CardsScene = StillScene & {
   readonly shot: Shot
+  readonly lines: ReadonlyArray<CardsLine>
   readonly mark?: string
 }
 
 /** The title of the close's chapter mark. */
 export const CLOSE_MARK = "What to do next"
 
+/** The pause between a scene's chapter line and its narration. */
+export const CHAPTER_GAP_MS = 500
+
+/** A chapter line as a title: "Chapter two. By hand." is "By hand". */
+const chapterTitle = (chapter: string): string =>
+  withoutStop(chapter.replace(/^chapter\s+[\w-]+\s*[.:,]\s*/i, ""))
+
 /**
- * What a spoken essay says, in order: the intro, each scene's chapter line
- * in the host's voice then its narration in the narrator's, and the close.
- * A scene's chapter line is said over its card, as its own scene,
- * `<id>-chapter`, so each chapter starts where its line does.
+ * What a spoken essay says, scene by scene: the intro, each scene's chapter
+ * line in the host's voice then its narration in the narrator's, and the
+ * close. A scene's two lines are two takes (C371), joined into one
+ * (`joinedTake`), so the card is drawn once, under both. A scene with
+ * nothing to say (which `parseCardsEssay` refuses) is left out.
  */
-export function cardsLines(cut: CutList): Array<CardsLine> {
-  const lines = cut.shots.flatMap((shot): Array<Omit<CardsLine, "file">> => {
-    const spoken = shot.spoken
-    const host = { voice: CARDS_VOICES.host, shot }
-    if (spoken === undefined) return [{ ...host, id: shot.id, said: "" }]
-    if (spoken.role === "scene")
-      return [
-        {
-          ...host,
-          id: `${shot.id}${CHAPTER}`,
-          said: spoken.chapter,
-          mark: spoken.chapter,
-        },
-        {
-          voice: CARDS_VOICES.narrator,
-          shot,
+export function cardsScenes(cut: CutList): Array<CardsScene> {
+  return cut.shots
+    .filter((shot) => shot.spoken !== undefined)
+    .map((shot, i) => {
+      const file = stillFile(i, shot.id)
+      const spoken = shot.spoken
+      if (spoken?.role === "scene")
+        return {
           id: shot.id,
-          said: spoken.narration,
-        },
-      ]
-    return [
-      {
-        ...host,
+          file,
+          shot,
+          said: `${spoken.chapter} ${spoken.narration}`,
+          lines: [
+            {
+              file: `${file}-chapter`,
+              said: spoken.chapter,
+              voice: CARDS_VOICES.host,
+            },
+            {
+              file: `${file}-narration`,
+              said: spoken.narration,
+              voice: CARDS_VOICES.narrator,
+            },
+          ],
+          mark: chapterTitle(spoken.chapter),
+        }
+      const said = spoken?.said ?? ""
+      return {
         id: shot.id,
-        said: spoken.said,
-        ...(spoken.role === "close" ? { mark: CLOSE_MARK } : {}),
-      },
-    ]
-  })
-  return lines.map((line, i) => ({ ...line, file: stillFile(i, line.id) }))
+        file,
+        shot,
+        said,
+        lines: [{ file, said, voice: CARDS_VOICES.host }],
+        ...(spoken?.role === "close" ? { mark: CLOSE_MARK } : {}),
+      }
+    })
 }
 
-/** How long a line holds with nothing said: its words' reading time, or a silent scene's own. */
-const unsaidLineMs = (line: CardsLine): number =>
-  line.said === "" ? line.shot.durationMs : readingMs(line.said)
+/** Every take a spoken essay's scenes are said in, in order. */
+export const cardsLines = (
+  scenes: ReadonlyArray<CardsScene>
+): Array<CardsLine> => scenes.flatMap((scene) => scene.lines)
 
 /**
  * About how long a spoken essay runs, from its words alone, as the call's
- * is estimated (`estimatedMs`): the recorder refuses one past the policy on
- * this before the speaker says a word.
+ * is (`estimatedMs`).
  */
 export const estimatedCardsMs = (cut: CutList): number =>
-  estimatedMs(
-    cardsLines(cut).map((line) => ({
-      said: line.said,
-      holdMs: unsaidLineMs(line),
-    }))
-  )
+  estimatedMs(cardsScenes(cut))
 
-/** Each chapter a spoken essay's lines open, for the upload's description. */
+/** Each chapter a spoken essay's scenes open, for the upload's description. */
 export const cardsChapterMarks = (
-  lines: ReadonlyArray<CardsLine>
+  scenes: ReadonlyArray<CardsScene>
 ): Array<ChapterMark> =>
-  lines.flatMap((line) =>
-    line.mark === undefined ? [] : [{ scene: line.id, title: line.mark }]
+  scenes.flatMap((scene) =>
+    scene.mark === undefined ? [] : [{ scene: scene.id, title: scene.mark }]
   )
 
 /**
- * The spoken essay `cut` as the cut list the renderer draws: a scene per
- * line (`cardsLines`), its card held for its take, `takes[i]`
- * (`<file>.wav`, home's speaker's), and captioned from the take's words. A
- * line with no take (the recorder run with `--voices none`) holds for its
- * words' reading time. A scene's narration cuts in from its own chapter
- * line, over the same card.
+ * Takes said one after another, `CHAPTER_GAP_MS` apart, as one: how long it
+ * runs, and each word's place in it. The recorder joins their audio the
+ * same way.
+ */
+export function joinedTake(takes: ReadonlyArray<StillTake>): StillTake {
+  let at = 0
+  const words: Array<TimedWord> = []
+  for (const [i, take] of takes.entries()) {
+    if (i > 0) at += CHAPTER_GAP_MS
+    for (const word of take.words ?? [])
+      words.push({
+        ...word,
+        startMs: word.startMs + at,
+        endMs: word.endMs + at,
+      })
+    at += take.ms
+  }
+  return { ms: at, ...(takes.some((t) => t.words) ? { words } : {}) }
+}
+
+/**
+ * The spoken essay as the cut list the renderer draws: a scene per card
+ * (`cardsScenes`), held for its take, `takes[i]` (`heldFor`), and
+ * captioned from the take's words.
  */
 export function voicedCardsCutList(
   cut: CutList,
-  lines: ReadonlyArray<CardsLine>,
+  scenes: ReadonlyArray<CardsScene>,
   takes: ReadonlyArray<StillTake | null>
 ): CutList {
   return {
     ...cut,
-    shots: lines.map((line, i) => {
-      const { spoken, ...shot } = line.shot
-      const take = takes[i] ?? null
-      const narration = line.id === shot.id && spoken?.role === "scene"
-      return {
-        ...shot,
-        id: line.id,
-        durationMs:
-          take === null ? unsaidLineMs(line) : VOICE_IN_MS + take.ms + TAIL_MS,
-        voiceInMs: VOICE_IN_MS,
-        ...(narration
-          ? { overrides: { ...shot.overrides, transitionIn: "cut" as const } }
-          : {}),
-        ...(take === null
-          ? {}
-          : {
-              take: {
-                file: `${line.file}.wav`,
-                inMs: 0,
-                outMs: take.ms,
-                ...(take.words ? { words: [...take.words] } : {}),
-              },
-              speaker: FEED_SPEAKER,
-            }),
-      }
+    shots: scenes.map((scene, i) => {
+      const { spoken: _spoken, ...shot } = scene.shot
+      return { ...shot, ...heldFor(scene, takes[i] ?? null) }
     }),
     burnIns: [
       ...cut.burnIns.filter((b) => !isCaptions(b)),
@@ -364,8 +348,7 @@ export function cardsFolderProblems(
         return [`${name}: the index lists it, and there is no such file`]
       const essay = parseCardsEssay(key, files.get(name))
       if (!essay.ok) return essay.problems.map((p) => `${name}: ${p}`)
-      // The newest essay is spoken (C374); older ones keep the version they
-      // were first served in, as the call's older weeks do.
+      // C374.
       if (i === 0 && !isSpokenEssay(essay.value))
         return [
           `${name}: it's silent, and the newest essay is spoken: it pins version ${CARDS_SPOKEN_VERSION} or later of its series, with an intro and a chapter line and narration for every scene`,
