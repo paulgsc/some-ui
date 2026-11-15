@@ -7,6 +7,7 @@
  */
 import { describe, expect, it } from "vitest"
 
+import { dayOf } from "@/lib/cards-essay-key"
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
 import type {
   Board,
@@ -17,7 +18,6 @@ import type {
 } from "@/lib/renders/model"
 import { subjectOf } from "@/lib/renders/subject"
 import {
-  dayOf,
   doneLine,
   failedLine,
   kindName,

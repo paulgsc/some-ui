@@ -1,0 +1,19 @@
+{
+  "id": "C374",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/cards-essay.ts",
+    "packages/video-render/src/sample/videos/nixos-upgrade/cut-list.json",
+    "packages/video-render/src/sample/videos/rust-scratchpad/cut-list.json"
+  ],
+  "chose": "cards-check refuses a cards folder whose newest essay is silent: a new essay is spoken. Older silent essays stay as first served and still pass and render. The two showcase samples are rewritten in place as spoken essays (cheat-sheet v2), with an intro over their first card and a close over the card to start from, rather than kept silent beside new spoken copies.",
+  "options": [
+    "the newest essay must be spoken; showcases rewritten as spoken",
+    "every essay must be spoken, the silent ones restamped",
+    "spoken optional, the writer's choice"
+  ],
+  "gray": "The owner said the voice comes first and that essays already written stay as they were; how the check makes new ones spoken without refusing old ones, and whether the samples keep a silent example, was the session's reading.",
+  "undo": "Drop the newest-essay check in cardsFolderProblems; restore a silent sample from git history if one is wanted as an example.",
+  "refs": ["#3021"]
+}

@@ -72,6 +72,12 @@ export const FEED_FACTS = {
     intuition: "Where the repositories stand, so I can guide what comes next.",
     cadence: "Every Friday",
   },
+  "cards-essay": {
+    name: "Cards essays",
+    intuition:
+      "How does this work, as the repositories that hold it stand today, with every claim checked?",
+    cadence: "When you ask for one",
+  },
   "playoff-delta": {
     name: "Playoff Delta",
     intuition:
@@ -151,6 +157,23 @@ export const FEED_KEPT = {
     testing: {
       what: "Nothing. An essay holds your voice, so it stays on home until you share it.",
       letGo: "Nothing to let go.",
+    },
+    drive: NOTHING_IN_DRIVE,
+  },
+  "cards-essay": {
+    home: {
+      what: "Every essay as home first read it, and each essay's video and what it was made from.",
+      letGo:
+        "Nothing lets an essay go yet. Home keeps each one, its video included.",
+    },
+    phone: {
+      what: "A copy of each essay you watched.",
+      letGo: "A watched copy is the phone's to clear.",
+    },
+    testing: {
+      what: "Every essay's cards, in the public paulgsc/testing.",
+      letGo:
+        "Never. The same subject checked on a later day is a new essay, so an old one is never rewritten.",
     },
     drive: NOTHING_IN_DRIVE,
   },
@@ -261,6 +284,8 @@ export const STUDIO_INDEX_WORDS = {
     templates: "Made with",
     episodes: "Its episodes",
     kept: "Where it's kept",
+    /** A feed whose episodes no template of Studio's makes (a cards essay's). */
+    noTemplates: "Its own cards, which Templates doesn't list.",
     places: {
       home: "On home",
       phone: "On this phone",

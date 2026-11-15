@@ -9,7 +9,12 @@ import { describe, expect, it } from "vitest"
 
 import type { Feed } from "@/lib/call-videos/model"
 import { FEEDS } from "@/lib/call-videos/model"
-import { FEED_WORDS, share, VIDEOS_WORDS } from "@/lib/call-videos/words"
+import {
+  episodeName,
+  FEED_WORDS,
+  share,
+  VIDEOS_WORDS,
+} from "@/lib/call-videos/words"
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
 
 function strings(value: unknown): Array<string> {
@@ -22,6 +27,7 @@ function strings(value: unknown): Array<string> {
 /** Each feed's keys as home makes them. */
 const KEYS: Record<Feed, ReadonlyArray<string>> = {
   call: ["2026-10-30", "2026-12-28"],
+  "cards-essay": ["zfs-2026-11-02", "rust-scratchpad-2026-11-14"],
   "playoff-delta": ["2026-SF-08", "2026-SF-00", "2026-SF-17"],
   "rust-essay": ["2026-w46", "2027-w01"],
 }
@@ -29,6 +35,7 @@ const KEYS: Record<Feed, ReadonlyArray<string>> = {
 /** Keys a feed can't read: another feed's, and none of home's. */
 const UNREAD: Record<Feed, ReadonlyArray<string>> = {
   call: ["2026-SF-08", "week-44", ""],
+  "cards-essay": ["2026-w46", "zfs-2026-02-31", "zfs", ""],
   "playoff-delta": ["2026-10-30", "2026-SF-8", ""],
   "rust-essay": ["2026-10-30", "2026-w4", "2026-w00", ""],
 }
@@ -78,6 +85,27 @@ describe("VIDEOS_WORDS and FEED_WORDS", () => {
     expect(FEED_WORDS["rust-essay"].label("2027-w01")).toBe("2027, week 1")
     expect(FEED_WORDS["rust-essay"].shareTitle("2026-w46")).toBe(
       "Rust Rounds, 2026, week 46"
+    )
+  })
+
+  it("names a cards essay by its title, else by its subject and the day it was checked", () => {
+    expect(FEED_WORDS["cards-essay"].label("zfs-2026-11-02")).toBe(
+      "Zfs, as of Monday, November 2"
+    )
+    expect(FEED_WORDS["cards-essay"].shareTitle("zfs-2026-11-02")).toBe(
+      "A cards essay: Zfs, as of Monday, November 2"
+    )
+    const essay = { key: "zfs-2026-11-02" }
+    expect(
+      episodeName("cards-essay", { ...essay, title: "How ZFS snapshots" })
+    ).toBe("How ZFS snapshots")
+    for (const title of [null, undefined, "", "  "])
+      expect(episodeName("cards-essay", { ...essay, title })).toBe(
+        "Zfs, as of Monday, November 2"
+      )
+    // The other feeds have no title: their label, as before.
+    expect(episodeName("call", { key: "2026-10-30", title: null })).toBe(
+      "2026-10-30 to 2026-11-05"
     )
   })
 

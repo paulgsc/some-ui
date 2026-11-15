@@ -3367,7 +3367,7 @@
     {
       "id": "cards-essay-rendered",
       "name": "Home makes each cards essay into a video",
-      "why": "A session writes a cards essay's cut list from the repositories it explains, every claim badged and every card stamped with the commits it was checked against, and puts it in paulgsc/testing's cards folder (C327); home renders it as it renders the call, with no speaker and no model, and the owner watches it there (#2979). The same essay on the same image gives the same video.",
+      "why": "A session writes a cards essay's cut list from the repositories it explains, every claim badged and every card stamped with the commits it was checked against, and puts it in paulgsc/testing's cards folder (C327); home renders it as it renders the call, each line said by home's Kokoro speaker and captioned, and the owner watches it there (#2979, #3021). The same essay on the same image gives the same video.",
       "paths": [
         "server:infra/render",
         "server:infra/compose/call-render.yml",
@@ -3379,7 +3379,8 @@
         "some-ui:apps/www/tests/record/burn-ins.ts",
         "server:apps/servers/file_host/src/cards_essays",
         "server:apps/servers/file_host/src/routes/cards_essays.rs",
-        "server:apps/servers/file_host/src/handlers/cards_essays.rs"
+        "server:apps/servers/file_host/src/handlers/cards_essays.rs",
+        "some-ui:apps/www/tests/record/voiced.ts"
       ],
       "modules": ["cards_essays"],
       "objectives": [
@@ -3388,14 +3389,14 @@
           "kind": "OA2",
           "property": "outcome",
           "claim": "Every essay paulgsc/testing's cards index lists becomes one video on home, drawn from its cut list alone, or is refused and said; one that failed is tried again.",
-          "requirement": "Home reads paulgsc/testing's cards/index.json hourly and keeps each essay it lacks, as first served, then writes it as <key>.json for the render worker; the render worker's cards-essay job runs record:cards on it, which refuses a file that isn't a cards essay (parseCardsEssay: its key not its stamp's day, another series, a scene that isn't a card, plays a take or a cue or stands on an image, and captions) before anything is drawn, and keeps cards.mp4, cut-list.json and shot-times.json in the essay's folder; a failed essay keeps its finished steps and is tried again.",
+          "requirement": "Home reads paulgsc/testing's cards/index.json hourly and keeps each essay it lacks, as first served, then writes it as <key>.json for the render worker; the render worker's cards-essay job runs record:cards on it, which refuses a file that isn't a cards essay (parseCardsEssay: its key not its stamp's day, another series, a scene that isn't a card, plays a take or a cue or stands on an image, and captions; in a spoken version, no intro, a scene with no chapter line or narration, a line the speaker can't say, or words past ten minutes) before anything is drawn or said, has home's speaker say each line of a spoken essay, and keeps cards.mp4, cut-list.json, essay.json and shot-times.json in the essay's folder; a failed essay keeps its finished steps and takes and is tried again.",
           "verdict": "unproven",
           "conclusion": "Structural on the some-ui side: cards-check and the recorder are tested, and both showcase essays were recorded locally from the stage build, the same bytes twice. Home's side (the keeper that reads the index and the render worker's cards-essay job) comes with server#854, and nothing has rendered on home yet.",
           "tracked": "some-ui#2979",
           "evidence": [
             {
               "class": "structural",
-              "says": "parseCardsEssay refuses a key that isn't its stamp's day, a series that isn't a cards series, a scene that isn't a card, plays a take or a cue or stands on an image, and captions; cardsFolderProblems refuses an index out of order, an essay it lists that is missing, pins a version of its series the checkout lacks or asks that series for what it lacks (resolve), and one it forgets; each tested.",
+              "says": "parseCardsEssay refuses a key that isn't its stamp's day, a series that isn't a cards series, a scene that isn't a card, plays a take or a cue or stands on an image, and captions, and in a spoken version (cheat-sheet v2, #3021) an essay with no intro, a scene that says nothing, an intro or close out of place, a line the speaker can't say, and words past ten minutes; cardsFolderProblems refuses an index out of order, a newest essay that is silent, an essay it lists that is missing, pins a version of its series the checkout lacks or asks that series for what it lacks (resolve), and one it forgets; each tested.",
               "ref": "some-ui:packages/video-render/src/cards-essay.ts"
             },
             {
@@ -3407,7 +3408,14 @@
           "watch": {
             "by": "none"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-14",
+              "change": "A cards essay is spoken from the cheat-sheet series' version 2: record:cards has home's Kokoro speaker say each line and captions it, so a render needs the speaker, as the call's does, and the requirement names the spoken refusals.",
+              "why": "The owner called a silent essay a misalignment: the spoken words matter more than the footage, and each scene has a spoken chapter (#3021). The outcome claim is unchanged; what a render needs grows by the speaker.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3021"
+            }
+          ]
         },
         {
           "id": "CE2",
@@ -6010,15 +6018,21 @@
         },
         {
           "id": "renders",
-          "name": "Studio's Renders shows the essay's video with the owner's other renders, played on the phone from file_host's cards_essays route. Home keeps each essay until it can be let go after a confirmed YouTube link, as other episodes are; until some-ui#2999 builds that, there is no let-go (C338). Ours, on home and the phone.",
+          "name": "Studio's Renders shows the essay's video with the owner's other renders, played on the phone from file_host's cards_essays route, and Studio's Episodes lists every essay as the cards-essay feed's episode and plays a done one from file_host's feed_videos routes (C379), each keeping its own copy on the phone. Home keeps each essay until it can be let go after a confirmed YouTube link, as other episodes are; until some-ui#2999 builds that, there is no link and no let-go (C338). Ours, on home and the phone.",
           "owner": "ours",
           "on": "home",
           "paths": [
             "server:apps/servers/file_host/src/feeds",
             "server:apps/servers/file_host/src/routes/cards_essays.rs",
             "server:apps/servers/file_host/src/handlers/cards_essays.rs",
+            "server:apps/servers/file_host/src/routes/feed_videos.rs",
+            "server:apps/servers/file_host/src/handlers/feed_videos.rs",
             "some-ui:apps/www/src/lib/cards-essay-video",
-            "some-ui:apps/www/src/components/studio/cards-essay.tsx"
+            "some-ui:apps/www/src/components/studio/cards-essay.tsx",
+            "some-ui:apps/www/src/lib/feeds",
+            "some-ui:apps/www/src/lib/call-videos",
+            "some-ui:apps/www/src/lib/home-link/call-videos.ts",
+            "some-ui:apps/www/src/components/call-videos.tsx"
           ]
         }
       ],

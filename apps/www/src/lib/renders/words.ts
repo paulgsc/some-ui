@@ -8,6 +8,7 @@ import { assertNever } from "@some-ui/core-utils"
 import { templateFormat } from "@some-ui/video-render"
 
 import { FEED_WORDS } from "@/lib/call-videos/words"
+import { dayOf, essayName } from "@/lib/cards-essay-key"
 import { isFeed } from "@/lib/feeds"
 import { FEED_FACTS } from "@/lib/studio-index/words"
 import { PREVIEW_WORDS } from "@/lib/template-preview/words"
@@ -137,30 +138,6 @@ export function roughly(seconds: number): string {
   if (minutes < 60) return `about ${String(minutes)} minutes`
   const hours = Math.round(minutes / 60)
   return hours === 1 ? "about an hour" : `about ${String(hours)} hours`
-}
-
-/** A day home expects something, as a person reads it. */
-/**
- * A cards essay by its key (`<slug>-<YYYY-MM-DD>`, CARDS7): its subject in
- * words and the day it was checked, "Rust scratchpad, as of Saturday,
- * November 14".
- */
-export function essayName(key: string): string {
-  const day = key.slice(-10)
-  const words = key.slice(0, -11).split("-").join(" ")
-  const subject = words.charAt(0).toUpperCase() + words.slice(1)
-  return `${subject}, as of ${dayOf(day)}`
-}
-
-export function dayOf(on: string): string {
-  const [year = 0, month = 1, day = 1] = on.split("-").map(Number)
-  const date = new Date(Date.UTC(year, month - 1, day))
-  return date.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    timeZone: "UTC",
-  })
 }
 
 export type NowLines = {

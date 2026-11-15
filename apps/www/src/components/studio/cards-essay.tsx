@@ -10,13 +10,14 @@ import { useEffect, useSyncExternalStore } from "react"
 import { Link } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
+import { essayName } from "@/lib/cards-essay-key"
 import {
   essayOf,
   essayVideo,
   ESSAY_WORDS as WORDS,
 } from "@/lib/cards-essay-video"
 import type { Essay } from "@/lib/cards-essay-video/model"
-import { essayName, RENDERS_WORDS, rendersQuery } from "@/lib/renders"
+import { RENDERS_WORDS, rendersQuery } from "@/lib/renders"
 import { VideoFetch } from "@/components/video-fetch"
 
 import { ReadList, StudioPage } from "./layout"

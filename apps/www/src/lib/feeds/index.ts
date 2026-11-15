@@ -8,14 +8,19 @@
  */
 import type { TemplateId } from "@some-ui/video-render"
 
-export const FEEDS = ["call", "playoff-delta", "rust-essay"] as const
+export const FEEDS = [
+  "call",
+  "cards-essay",
+  "playoff-delta",
+  "rust-essay",
+] as const
 
 export type Feed = (typeof FEEDS)[number]
 
 /**
  * The feeds whose episodes take a note (SFEED6): home keeps none on a Rust
  * Rounds essay (`GET /feeds/rust-essay/notes` is its `404`), whose week was
- * already answered by voice.
+ * already answered by voice, nor on a cards essay (its `404` too).
  */
 export const NOTED_FEEDS = [
   "call",
@@ -28,6 +33,22 @@ export type NotedFeed = (typeof NOTED_FEEDS)[number]
 export const isNoted = (feed: Feed): feed is NotedFeed =>
   NOTED_FEEDS.some((noted) => noted === feed)
 
+/**
+ * The feeds whose episodes take a YouTube link, and so can be let go from My
+ * data once it is saved (SFEED8): home answers a cards essay's link and
+ * let-go with `404` until some-ui#2999 builds them, so the phone offers
+ * neither for one.
+ */
+export const LINKED_FEEDS = [
+  "call",
+  "playoff-delta",
+  "rust-essay",
+] as const satisfies ReadonlyArray<Feed>
+
+/** Whether `feed`'s episodes take a YouTube link. */
+export const isLinked = (feed: Feed): boolean =>
+  LINKED_FEEDS.some((linked) => linked === feed)
+
 /** Whether `value` names a feed (a link's `$feed`, say). */
 export const isFeed = (value: unknown): value is Feed =>
   FEEDS.some((feed) => feed === value)
@@ -35,11 +56,14 @@ export const isFeed = (value: unknown): value is Feed =>
 /**
  * The templates each feed's episodes are made with (SFEED1): the call's one,
  * Playoff Delta's week and its legend, the season's opening, and the Rust
- * Rounds essay's (RR15).
+ * Rounds essay's (RR15). A cards essay is drawn in a series of cards
+ * (`CARDS_SERIES`), which Studio's Templates doesn't list, so it names none
+ * (C379).
  */
 export const FEED_TEMPLATES: Readonly<Record<Feed, ReadonlyArray<TemplateId>>> =
   {
     call: ["conference-call"],
+    "cards-essay": [],
     "playoff-delta": ["playoff-delta-legend", "playoff-delta-week"],
     "rust-essay": ["rust-essay"],
   }

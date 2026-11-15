@@ -1,5 +1,6 @@
 /**
- * My data's page for each feed's videos (`FEEDS`; ST38, #2661; FEED4): each
+ * My data's page for each feed's videos that can be let go (`LINKED_FEEDS`;
+ * ST38, #2661; FEED4): each
  * episode home holds, newest first, and what of it can be let go. An
  * episode's video is offered once its YouTube link is saved (Studio's feed
  * videos), and the rest of its folder once the video went; each step asks
@@ -23,9 +24,10 @@ import {
 } from "@some-ui/shared"
 
 import type { Feed } from "@/lib/call-videos"
-import { FEED_WORDS, FEEDS } from "@/lib/call-videos"
+import { FEED_WORDS } from "@/lib/call-videos"
 import type { Episode } from "@/lib/call-videos/model"
 import { standing } from "@/lib/call-videos/model"
+import { LINKED_FEEDS } from "@/lib/feeds"
 import { phoneCallDeleting } from "@/lib/my-data"
 import type { CallAsk, CallSheet } from "@/lib/my-data/call-deleting"
 import type { CallDeleting } from "@/lib/my-data/call-deleting-runtime"
@@ -241,7 +243,7 @@ export const DeviceMyDataCalls = (): JSX.Element => {
     <>
       <MyDataHeading title={WORDS.title} />
       <p className="text-muted-foreground text-sm">{WORDS.lead}</p>
-      {FEEDS.map((feed) => (
+      {LINKED_FEEDS.map((feed) => (
         <FeedSection key={feed} feed={feed} deleting={deleting} />
       ))}
       <CallSheetView

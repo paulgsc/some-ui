@@ -1,0 +1,22 @@
+{
+  "id": "C379",
+  "made": "2026-11-15",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/feeds/index.ts",
+    "some-ui:apps/www/src/lib/call-videos/words.ts",
+    "some-ui:apps/www/src/lib/studio-index/words.ts",
+    "some-ui:apps/www/src/lib/renders/subject.ts",
+    "some-ui:apps/www/src/components/call-videos.tsx"
+  ],
+  "chose": "Cards essays are a feed like the others (\"Cards essays\"), so they show in Studio's Episodes, Feeds and Intuitions: each essay named by the title home gives it, else by its subject and day as Renders names it; no template of Studio's (it says its cards are its own); no YouTube link to save, no My data let-go and no notes, since home answers none of those for an essay yet (#2999). An older home that lists no cards feed says to update home and that Renders plays them meanwhile, as the Rust Rounds essays did when they came, rather than the build hiding the feed until its own contract epoch reaches 10. A cards essay's row on Renders still opens the essay's own page, which plays it from any home; each keeps its own copy on the phone, so the two never write one file.",
+  "options": [
+    "a feed everywhere a feed shows, an older home saying to update it, Renders' page kept",
+    "the feed shown only once this build's contract epoch is 10 or more, which waits on the route snapshot",
+    "only in Episodes, not on Feeds or Intuitions",
+    "Renders' row opens the episode's page, and the essay's own page goes"
+  ],
+  "gray": "The owner asked for the gap closed (\"cards essay has no place in episodes\"), not for how a cards essay reads as a feed. No check or earlier decision names its intuition, its cadence, a template for it, or whether Renders keeps its page; the phone gates nothing else on the contract epoch, and a build's epoch is the snapshot's, not home's.",
+  "undo": "Drop \"cards-essay\" from FEEDS and its entries in FEED_FACTS, FEED_KEPT, FEED_WORDS and FEED_TEMPLATES; subjectOf then needs no case of its own for it.",
+  "refs": ["#2979", "#2999", "server#878"]
+}
