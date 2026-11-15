@@ -16,6 +16,7 @@ import {
   isBlockedProxyPath,
   resolveFileHostTarget,
 } from "./file-host.dev.ts"
+import { showcaseEvidencePlugin } from "./src/components/showcase/build-data.ts"
 import styleContext from "./style.context.ts"
 
 // The dev/preview counterpart of the /api/resume/ location in
@@ -286,6 +287,7 @@ export default defineConfig(
       },
     },
     plugins: [
+      showcaseEvidencePlugin(),
       // Which workspaces this build carries (build.profiles.ts). First, so it
       // redirects imports of the ones its profile leaves out to stubs before
       // the router plugin or vite's own resolver sees them.

@@ -35,3 +35,10 @@ interface ImportMetaEnv {
    */
   readonly VITE_BUILD_COMMIT?: string
 }
+
+/** Public repository snapshot computed by the showcase Vite plugin. */
+declare module "virtual:showcase-evidence" {
+  export const EVIDENCE: ReturnType<
+    typeof import("./components/showcase/build-data").readEvidence
+  >
+}
