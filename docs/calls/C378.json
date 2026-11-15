@@ -1,0 +1,20 @@
+{
+  "id": "C378",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/call_weeks/pass.rs",
+    "server:crates/db/call_week/src/lib.rs",
+    "server:migrations/20261115000100_create_call_week_revision.up.sql"
+  ],
+  "chose": "Re-fetch each held week with no video once per pass and append differing bytes to a sibling append-only table, call_week_revision; serve the newest revision, and clear the week's .parts after writing it.",
+  "options": [
+    "Re-fetch held weeks with no video once per pass (needs no index change, and the cost is bounded by the listed weeks waiting)",
+    "Carry each week's size or SHA in call/index.json and fetch only on a change (needs a some-ui index-schema change and the routine to write it)",
+    "Conditional GET with ETag/If-None-Match (the Fetch port carries no headers, and raw.githubusercontent's ETag is not a promise)",
+    "Add a revision column to call_week (its primary key is week_from, and rewriting the table breaks Never lose the record)"
+  ],
+  "gray": "No check or earlier owner decision said how a held week takes a newer version; the owner approved amending CW3 for it (server#879), and how it is detected was the session's choice.",
+  "undo": "Revert the PR. The down migration refuses while call_week_revision holds a row, so a revision already taken is kept until a person decides.",
+  "refs": ["server#879", "server#874", "server#872", "#2918", "testing#11"]
+}
