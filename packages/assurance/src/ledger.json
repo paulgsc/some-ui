@@ -2278,10 +2278,10 @@
           "id": "CW1",
           "kind": "OA4",
           "property": "outcome",
-          "claim": "Every week of the call the repository lists is kept on home once, as first served, and a week that fails is named by why and taken on a later pass.",
-          "requirement": "Each week call/index.json lists that home holds no week of is fetched, checked (some-ui.call-week/1, for exactly the days the index names, at most 1 MiB) and stored byte for byte with its SHA-256 in call_week, never updated or deleted; a week that fails is counted by kind (timeout, connect, transport, refused, too_big, unreadable), the other weeks are still taken, and it is asked again on the next pass.",
+          "claim": "Every week of the call the repository lists is kept on home as served, a newer version of it kept beside it and rendered while no part of the week has a video, and a week that fails is named by why and taken on a later pass.",
+          "requirement": "Each week call/index.json lists that home holds no week of is fetched, checked (some-ui.call-week/1, for exactly the days the index names, at most 1 MiB) and stored byte for byte with its SHA-256 in call_week, never updated or deleted; while no part of a held week has a video (no link and no call.mp4) and home can read its renders, a version the repository serves that differs from the newest kept is appended as its next revision in call_week_revision, never rewritten, and given to the render worker beside the week's first; the worker takes it in, before a job of that week, only while no part of the week is made, and once a part is made the week stays at the revision its parts were made from; a week that fails is counted by kind (timeout, connect, transport, refused, too_big, unreadable), the other weeks are still taken, and it is asked again on the next pass.",
           "verdict": "holds",
-          "conclusion": "Shown on home's own SQLite in the store's and the pass's tests: each week is kept once as served, an edit in the repository is not taken, a failing week is named by kind while the others are kept, and it is taken once it reads. A storage failure ends the pass and is logged as one; nothing tells the owner of a failure yet (CW2).",
+          "conclusion": "Shown on home's own SQLite in the store's and the pass's tests: each week is kept once as served, an edit in the repository is taken as a new revision only while no part of the week has a video, a failing week is named by kind while the others are kept, and it is taken once it reads. A storage failure ends the pass and is logged as one; nothing tells the owner of a failure yet (CW2).",
           "evidence": [
             {
               "class": "measured",
@@ -2299,12 +2299,21 @@
             "server:crates/db/call_week/src/lib.rs#no_kept_week_is_rewritten_or_deleted",
             "server:apps/servers/file_host/src/call_weeks/pass.rs#each_listed_week_home_lacks_is_fetched_once_and_kept_as_served",
             "server:apps/servers/file_host/src/call_weeks/pass.rs#what_does_not_check_out_is_counted_by_kind_and_left_for_the_next_pass",
-            "server:apps/servers/file_host/src/mailbox/pass.rs#the_call_index_is_put_once_a_week_is_held_and_again_for_each_new_week"
+            "server:apps/servers/file_host/src/mailbox/pass.rs#the_call_index_is_put_once_a_week_is_held_and_again_for_each_new_week",
+            "server:apps/servers/file_host/src/call_weeks/pass.rs#a_restamp_of_a_week_with_no_video_is_taken_and_rendered_as_parts",
+            "server:apps/servers/file_host/src/call_weeks/pass.rs#a_week_with_a_video_ignores_a_restamp_and_the_idle_pass_is_one_request"
           ],
           "watch": {
             "by": "none"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-15",
+              "change": "A held week with no video takes a newer version the repository serves, kept beside the first as its next revision; a week with a video stays as it was rendered.",
+              "why": "paulgsc/server#879: a week re-stamped to a newer template (the week of 2026-11-06, to version 5, so it renders as parts) never reached home, which kept it as first served.",
+              "decision": "https://github.com/paulgsc/server/issues/879#issuecomment-6886304969"
+            }
+          ]
         },
         {
           "id": "CW2",
@@ -2345,8 +2354,8 @@
           "id": "CW3",
           "kind": "RE3",
           "property": "work",
-          "claim": "Home reads the repository once an hour, and fetches a week only while it lacks it.",
-          "requirement": "A pass is one request for the index plus one per listed week home holds no week of; a week home holds is never fetched again; a pass that failed is tried again after 10 minutes, doubled per failure in a row, to at most the hourly interval; each answer is at most 1 MiB.",
+          "claim": "Home reads the repository once an hour, and fetches a week while it lacks it or while the week has no video yet.",
+          "requirement": "A pass is one request for the index plus one per listed week home holds no week of, plus one per listed week home holds that no part of has a video (no link and no call.mp4; none when home can't read its renders), at most the weeks the index lists (its keep, 8 today); a week with a video is never fetched again; a pass that failed is tried again after 10 minutes, doubled per failure in a row, to at most the hourly interval; each answer is at most 1 MiB.",
           "verdict": "holds",
           "conclusion": "The pass tests show the requests a pass makes and the retry spacing, from 10 minutes to the hour. Each answer is read in chunks and refused once it passes 1 MiB, or before its body when it declares more: an unending answer costs home 1 MiB and one chunk, and a refusal's body is never read.",
           "evidence": [
@@ -2364,13 +2373,21 @@
           "watch": {
             "by": "none"
           },
-          "amendments": [],
+          "amendments": [
+            {
+              "on": "2026-11-15",
+              "change": "A listed week home holds is fetched again each pass until it has a video, so a re-stamp reaches home: one more request per such week, at most the index's keep (8); the idle pass, every listed week with its video, is still one request an hour.",
+              "why": "paulgsc/server#879: a week re-stamped to a newer template (the week of 2026-11-06, to version 5, so it renders as parts) never reached home, which kept it as first served.",
+              "decision": "https://github.com/paulgsc/server/issues/879#issuecomment-6886304969"
+            }
+          ],
           "proof": [
             "server:apps/servers/file_host/src/call_weeks/pass.rs#each_listed_week_home_lacks_is_fetched_once_and_kept_as_served",
             "server:apps/servers/file_host/src/call_weeks/pass.rs#a_failing_source_is_retried_sooner_but_never_more_often_than_it_is_read",
             "server:apps/servers/file_host/src/game_feed/pass.rs#a_declared_length_over_the_cap_is_refused_before_its_body",
             "server:apps/servers/file_host/src/game_feed/pass.rs#an_unending_answer_is_refused_once_it_passes_the_cap",
-            "server:apps/servers/file_host/src/game_feed/pass.rs#a_refusal_over_the_cap_is_still_a_refusal"
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_refusal_over_the_cap_is_still_a_refusal",
+            "server:apps/servers/file_host/src/call_weeks/pass.rs#a_week_with_a_video_ignores_a_restamp_and_the_idle_pass_is_one_request"
           ]
         },
         {
@@ -2378,7 +2395,7 @@
           "kind": "RE9",
           "property": "work",
           "claim": "What home keeps of the call grows by one week a week, and is kept for good.",
-          "requirement": "call_week gains one row per week of the call, its file as served (about 80 KB for the first week), never updated or deleted; the call's YouTube links and let-go receipts are kept too, a few small rows a part, append-only (call_part_link, call_part_deletion, and the frozen call_video_link and call_video_deletion); nothing else is kept.",
+          "requirement": "call_week gains one row per week of the call, its file as served (about 80 KB for the first week), never updated or deleted, and call_week_revision a row per newer version of a week taken before it had a video (rare: a template bump of a week still waiting), each a copy of its file, append-only; the call's YouTube links and let-go receipts are kept too, a few small rows a part, append-only (call_part_link, call_part_deletion, and the frozen call_video_link and call_video_deletion); nothing else is kept.",
           "verdict": "holds",
           "conclusion": "One row per week, keyed by its first day, append-only by trigger: about 4 MB a year at the first week's size. Shown in the store's tests.",
           "evidence": [
@@ -2412,6 +2429,12 @@
               "change": "The requirement names what else the call keeps: each part's YouTube links and let-go receipts, and the frozen tables they began from; the claim's growth, one week a week, is unchanged.",
               "why": "paulgsc/some-ui#2918 (https://github.com/paulgsc/some-ui/issues/2918#issuecomment-6885321310): a long week of the call is a series of parts, each its own video, link and receipts (paulgsc/server#872).",
               "decision": "https://github.com/paulgsc/some-ui/issues/3017#issuecomment-6885361566"
+            },
+            {
+              "on": "2026-11-15",
+              "change": "The requirement names call_week_revision: a newer version of a week taken before it had a video.",
+              "why": "paulgsc/server#879: a week re-stamped to a newer template (the week of 2026-11-06, to version 5, so it renders as parts) never reached home, which kept it as first served.",
+              "decision": "https://github.com/paulgsc/server/issues/879#issuecomment-6886304969"
             }
           ]
         },
@@ -4238,6 +4261,12 @@
       "store": "server:call_week",
       "class": "record",
       "growth": "One row per week of the weekly call home takes from paulgsc/testing: the week's file as served (about 80 KB) with its SHA-256; append-only, triggers abort UPDATE and DELETE. The repository keeps the last few weeks; this keeps every one.",
+      "family": "call-kept"
+    },
+    {
+      "store": "server:call_week_revision",
+      "class": "record",
+      "growth": "One row per newer version of a held week of the call taken while no part of it has a video (rare: a template bump of a week still waiting): a copy of its file as served (about 80 KB, at most 1 MiB) with its SHA-256; append-only, triggers abort UPDATE and DELETE.",
       "family": "call-kept"
     },
     {
