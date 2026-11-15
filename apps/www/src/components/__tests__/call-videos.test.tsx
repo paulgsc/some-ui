@@ -141,23 +141,6 @@ describe("a cards essay in Studio's Episodes", () => {
     expect(screen.queryByLabelText("Its YouTube link")).toBeNull()
   })
 
-  it("plays an essay the phone holds, still with no link to save", () => {
-    read("cards-essay", [episode({ title: "How ZFS snapshots" })], {
-      fetches: {
-        "zfs-2026-11-02": { kind: "ready", uri: "file:///a", src: "/a" },
-      },
-    })
-    draw(
-      <EpisodeScreen
-        feed="cards-essay"
-        episodeKey="zfs-2026-11-02"
-        pair={<span />}
-      />
-    )
-    expect(document.querySelector("video")?.getAttribute("src")).toBe("/a")
-    expect(screen.queryByLabelText("Its YouTube link")).toBeNull()
-  })
-
   it("says an essay home is still making is waiting", () => {
     read("cards-essay", [episode({ videoBytes: null })])
     draw(

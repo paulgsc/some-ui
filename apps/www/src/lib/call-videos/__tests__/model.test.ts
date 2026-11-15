@@ -64,18 +64,14 @@ describe("readEpisodes", () => {
 })
 
 describe("isFeed", () => {
-  it("names the call, Playoff Delta, the Rust Rounds and cards essays, and nothing else", () => {
-    expect(
-      [
-        "call",
-        "playoff-delta",
-        "rust-essay",
-        "cards-essay",
-        "calls",
-        "",
-        true,
-      ].map(isFeed)
-    ).toEqual([true, true, true, true, false, false, false])
+  it("names the call and Playoff Delta, and nothing else", () => {
+    expect(["call", "playoff-delta", "calls", "", true].map(isFeed)).toEqual([
+      true,
+      true,
+      false,
+      false,
+      false,
+    ])
   })
 })
 

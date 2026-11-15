@@ -31,7 +31,7 @@ export function essayVideo(key: string): EssayVideo {
         ? readPart(asked.answer)
         : { kind: "away" }
     },
-    files: videoFiles("cards-essay"),
+    files: videoFiles("essay-page"),
     partBytes: PART_BYTES,
   })
   made.set(key, fresh)

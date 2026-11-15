@@ -9,8 +9,11 @@ describe("cachePath", () => {
     expect(cachePath("playoff-delta", "2026-SF-08")).toBe(
       `${DIR}/playoff-delta-2026-SF-08.mp4`
     )
-    // One copy of an essay, whether Renders' page or its episode brought it.
+    // An essay's episode and its page under Renders each keep their own.
     expect(cachePath("cards-essay", "zfs-2026-11-02")).toBe(
+      `${DIR}/episode_cards-essay-zfs-2026-11-02.mp4`
+    )
+    expect(cachePath("essay-page", "zfs-2026-11-02")).toBe(
       `${DIR}/cards-essay-zfs-2026-11-02.mp4`
     )
     expect(cachePath("preview", "conference-call-20261108T074500Z")).toBe(
