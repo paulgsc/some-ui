@@ -162,7 +162,7 @@ export const FEED_KEPT = {
   },
   "cards-essay": {
     home: {
-      what: "Every essay as home first read it, and each essay's video and what it was made from.",
+      what: "Every essay as home first read it, each essay's video and what it was made from, and its YouTube link once you save it.",
       letGo:
         "Nothing lets an essay go yet. Home keeps each one, its video included.",
     },

@@ -13,4 +13,6 @@ export const ESSAY_WORDS = {
   noSize:
     "Home hasn't said how big this video is, so the phone can't bring it yet. Update home, then come back.",
   seeRenders: "Open Studio › Renders",
+  /** The way to the essay's episode, where it is shared and its link saved. */
+  toEpisode: "Share it to YouTube and save its link",
 } as const

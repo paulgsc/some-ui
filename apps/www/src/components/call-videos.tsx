@@ -5,7 +5,8 @@
  * phone and plays it, Share to YouTube hands it to the share sheet, and its
  * YouTube link is saved with the episode where its feed takes one
  * (`LINKED_FEEDS`), beside its chapters to copy into
- * the upload's description (SFEED4); once home's copy is let go (My data),
+ * the upload's description (SFEED4); once home's copy is let go (My data,
+ * `LET_GO_FEEDS`, which a cards essay isn't among yet),
  * the link is how it is watched. Reads `lib/call-videos`' snapshot of
  * the feed (`useFeedVideos`) and says what was pressed; every word is its
  * `VIDEOS_WORDS` and `FEED_WORDS`. Phone build only.

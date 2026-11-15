@@ -6018,7 +6018,7 @@
         },
         {
           "id": "renders",
-          "name": "Studio's Renders shows the essay's video with the owner's other renders, played on the phone from file_host's cards_essays route, and Studio's Episodes lists every essay as the cards-essay feed's episode and plays a done one from file_host's feed_videos routes (C379), each keeping its own copy on the phone. Home keeps each essay until it can be let go after a confirmed YouTube link, as other episodes are; until some-ui#2999 builds that, there is no link and no let-go (C338). Ours, on home and the phone.",
+          "name": "Studio's Renders shows the essay's video with the owner's other renders, played on the phone from file_host's cards_essays route, and Studio's Episodes lists every essay as the cards-essay feed's episode and plays a done one from file_host's feed_videos routes (C379), each keeping its own copy on the phone. The owner saves each essay's YouTube link on its episode page, as other episodes take one (C389), and home keeps each essay until it can be let go after that link, as other episodes are; until some-ui#2999 builds the let-go, there is none (C338). Ours, on home and the phone.",
           "owner": "ours",
           "on": "home",
           "paths": [

@@ -3,7 +3,8 @@
  * Watch brings to the phone and plays, as a template's preview plays. The
  * essay is a row on Studio › Renders, read from the same board; the video
  * comes from `lib/cards-essay-video`'s runtime, and nothing here lets it go.
- * Phone build only.
+ * Sharing it and saving its YouTube link are its episode's page's (Studio's
+ * Episodes, `EpisodeScreen`; C389), which this one links to. Phone build only.
  */
 import type { JSX } from "react"
 import { useEffect, useSyncExternalStore } from "react"
@@ -83,10 +84,24 @@ const Standing = ({
       </div>
     )
   }
-  return essay.bytes === null ? (
-    <Muted>{WORDS.noSize}</Muted>
-  ) : (
-    <Watching essayKey={essayKey} bytes={essay.bytes} />
+  return (
+    <div className="flex flex-col gap-3">
+      {essay.bytes === null ? (
+        <Muted>{WORDS.noSize}</Muted>
+      ) : (
+        <Watching essayKey={essayKey} bytes={essay.bytes} />
+      )}
+      {/* The episode's page is the phone's ("apk"), as this page is (A3). */}
+      {hasAudience("apk") && (
+        <Link
+          to="/journal/episodes/$feed/$key"
+          params={{ feed: "cards-essay", key: essayKey }}
+          className={LINK}
+        >
+          {WORDS.toEpisode}
+        </Link>
+      )}
+    </div>
   )
 }
 
