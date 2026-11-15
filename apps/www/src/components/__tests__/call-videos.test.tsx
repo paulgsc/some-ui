@@ -2,9 +2,8 @@
  * @vitest-environment jsdom
  *
  * Studio's Episodes lists a cards essay as its feed's episode and plays a
- * done one from home, named by the title home gives it; it offers no YouTube
- * link to save, since home keeps none for an essay yet (#2999), while a feed
- * that takes one still offers it.
+ * done one from home, named by the title home gives it, with its YouTube link
+ * to save as every feed's episode takes one (#2999).
  */
 
 import type { ReactNode } from "react"
@@ -124,7 +123,7 @@ describe("a cards essay in Studio's Episodes", () => {
     ).toHaveProperty("pathname", "/cards-essay/nix-2026-11-01")
   })
 
-  it("brings a done essay from home to watch, with no link to save", () => {
+  it("brings a done essay from home to watch, with its link to save", () => {
     read("cards-essay", [episode({ title: "How ZFS snapshots" })])
     draw(
       <EpisodeScreen
@@ -138,7 +137,7 @@ describe("a cards essay in Studio's Episodes", () => {
     ).toBeTruthy()
     fireEvent.click(screen.getByRole("button", { name: /watch/i }))
     expect(lists.watched).toEqual(["cards-essay/zfs-2026-11-02"])
-    expect(screen.queryByLabelText("Its YouTube link")).toBeNull()
+    expect(screen.getByLabelText("Its YouTube link")).toBeTruthy()
   })
 
   it("says an essay home is still making is waiting", () => {
@@ -154,13 +153,5 @@ describe("a cards essay in Studio's Episodes", () => {
       screen.getByText("Home is still making this essay's video.")
     ).toBeTruthy()
     expect(screen.queryByRole("button", { name: /watch/i })).toBeNull()
-  })
-
-  it("still offers a link to save on a feed that takes one", () => {
-    read("rust-essay", [episode({ key: "2026-w46", title: null })])
-    draw(
-      <EpisodeScreen feed="rust-essay" episodeKey="2026-w46" pair={<span />} />
-    )
-    expect(screen.getByLabelText("Its YouTube link")).toBeTruthy()
   })
 })

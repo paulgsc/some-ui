@@ -1,0 +1,24 @@
+{
+  "id": "C389",
+  "made": "2026-11-15",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/feeds/index.ts",
+    "some-ui:apps/www/src/components/call-videos.tsx",
+    "some-ui:apps/www/src/lib/call-videos/words.ts",
+    "some-ui:apps/www/src/lib/studio-index/words.ts",
+    "some-ui:apps/www/src/components/settings/device-my-data-calls.tsx",
+    "some-ui:apps/www/src/components/studio/cards-essay.tsx",
+    "some-ui:apps/www/src/lib/cards-essay-video/words.ts"
+  ],
+  "chose": "A cards essay takes its YouTube link where every feed's episode does, on its episode page (Studio › Episodes), and the feeds that take a link (LINKED_FEEDS) are split from the feeds My data lets go (LET_GO_FEEDS), so a cards essay is in the first and not the second. Its own page, which a Renders row still opens, gains a way to that episode page (\"Share it to YouTube and save its link\") rather than a second link field of its own.",
+  "options": [
+    "the link on the episode page, the essay's own page pointing there",
+    "a second link field on the essay's own page too",
+    "Renders' row opens the episode page instead of the essay's own page"
+  ],
+  "gray": "The owner asked for the link (\"they don't have a part to add the YouTube link\") and, on #2999, kept home's copy for now; where a Renders row leads, and whether one key gates both the link and the let-go, no check or earlier call settles beyond C379, which this moves only in its \"no YouTube link to save\".",
+  "undo": "Drop \"cards-essay\" from LINKED_FEEDS and the essay page's link to its episode; LET_GO_FEEDS can then fold back into LINKED_FEEDS.",
+  "refs": ["#2999", "#2980"],
+  "moves": "C379"
+}

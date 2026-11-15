@@ -34,13 +34,12 @@ export const isNoted = (feed: Feed): feed is NotedFeed =>
   NOTED_FEEDS.some((noted) => noted === feed)
 
 /**
- * The feeds whose episodes take a YouTube link, and so can be let go from My
- * data once it is saved (SFEED8): home answers a cards essay's link and
- * let-go with `404` until some-ui#2999 builds them, so the phone offers
- * neither for one.
+ * The feeds whose episodes take a YouTube link (SFEED8): pasted on an
+ * episode's page once it is up, and kept on home with the episode.
  */
 export const LINKED_FEEDS = [
   "call",
+  "cards-essay",
   "playoff-delta",
   "rust-essay",
 ] as const satisfies ReadonlyArray<Feed>
@@ -48,6 +47,17 @@ export const LINKED_FEEDS = [
 /** Whether `feed`'s episodes take a YouTube link. */
 export const isLinked = (feed: Feed): boolean =>
   LINKED_FEEDS.some((linked) => linked === feed)
+
+/**
+ * The feeds whose episodes My data can let go once their link is saved
+ * (SFEED8); home answers a cards essay's let-go with `404` until
+ * some-ui#2999 builds it.
+ */
+export const LET_GO_FEEDS = [
+  "call",
+  "playoff-delta",
+  "rust-essay",
+] as const satisfies ReadonlyArray<(typeof LINKED_FEEDS)[number]>
 
 /** Whether `value` names a feed (a link's `$feed`, say). */
 export const isFeed = (value: unknown): value is Feed =>

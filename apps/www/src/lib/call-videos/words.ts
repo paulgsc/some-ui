@@ -147,7 +147,7 @@ export const FEED_WORDS = {
   "cards-essay": {
     heading: FEED_FACTS["cards-essay"].name,
     intro:
-      "Home makes each cards essay's video once the essay reaches it. Watch it here. Home keeps every one: nothing lets an essay go yet.",
+      "Home makes each cards essay's video once the essay reaches it. Watch it here, share it to YouTube, then save its link. Home keeps every one: nothing lets an essay go yet.",
     voice: null,
     unpaired: "Pair this phone with home to see the cards essays.",
     older:
@@ -157,8 +157,8 @@ export const FEED_WORDS = {
     week: cardsEssay,
     label: (key: string): string => cardsEssay(key) ?? "This essay",
     waiting: "Home is still making this essay's video.",
-    // Never said yet: no essay takes a link or is let go (#2999).
     linkSaved: "Saved. Home keeps the link with the essay.",
+    // Never said yet: no cards essay is let go (#2999).
     letGo: "You let home's copy go. The essay lives on YouTube.",
     shareTitle: (key: string): string => {
       const name = cardsEssay(key)
@@ -202,6 +202,7 @@ export const VIDEOS_WORDS = {
   saving: "Saving…",
   notAVideo: "That isn't a link to a YouTube video.",
   linkAway: "Home didn't answer, so the link isn't saved. Try again.",
+  linkOlder: "Home didn't keep the link. Update home, then try again.",
   onYouTube: "Watch on YouTube",
   /** Its chapters, for the upload's YouTube description (SFEED4). */
   chapters: "Its chapters",

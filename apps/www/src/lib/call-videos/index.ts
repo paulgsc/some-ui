@@ -58,7 +58,7 @@ function create(feed: Feed): Made {
     async saveLink(key, link) {
       const asked = await sendLink(feed, key, link)
       return asked.kind === "answered"
-        ? readLinkSaved(asked.answer)
+        ? readLinkSaved(feed, asked.answer)
         : { kind: "away" }
     },
     partBytes: PART_BYTES,
