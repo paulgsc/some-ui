@@ -45,17 +45,37 @@ describe("readEpisodes", () => {
       kind: "unreadable",
     })
   })
+
+  it("reads a cards essay's title, and a feed's episodes with none or from before it", () => {
+    const essay = episode({ key: "zfs-2026-11-02", title: "How ZFS snapshots" })
+    const untitled = episode({ key: "nix-2026-11-01", title: null })
+    const body = JSON.stringify({
+      episodes: [
+        { ...essay, week: essay.key, part: 1, of: 1 },
+        { ...untitled, week: untitled.key, part: 1, of: 1 },
+        episode(),
+      ],
+    })
+    expect(readEpisodes({ status: 200, body })).toEqual({
+      kind: "read",
+      episodes: [essay, untitled, episode()],
+    })
+  })
 })
 
 describe("isFeed", () => {
-  it("names the call and Playoff Delta, and nothing else", () => {
-    expect(["call", "playoff-delta", "calls", "", true].map(isFeed)).toEqual([
-      true,
-      true,
-      false,
-      false,
-      false,
-    ])
+  it("names the call, Playoff Delta, the Rust Rounds and cards essays, and nothing else", () => {
+    expect(
+      [
+        "call",
+        "playoff-delta",
+        "rust-essay",
+        "cards-essay",
+        "calls",
+        "",
+        true,
+      ].map(isFeed)
+    ).toEqual([true, true, true, true, false, false, false])
   })
 })
 

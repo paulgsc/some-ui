@@ -7,9 +7,10 @@
 import { addDays } from "@some-ui/core-utils"
 import { WEEK_ID, weekNumber } from "@some-ui/rust-rounds/entry"
 
+import { essayName, isEssayKey } from "@/lib/cards-essay-key"
 import { FEED_FACTS } from "@/lib/studio-index/words"
 
-import type { Feed, FetchFailure } from "./model"
+import type { Episode, Feed, FetchFailure } from "./model"
 
 /** A share of `done` of `total`, below a hundred until it is whole. */
 export function share(done: number, total: number): number {
@@ -43,6 +44,14 @@ function rustWeek(key: string): string | null {
   return WEEK_ID.test(key)
     ? `${key.slice(0, 4)}, week ${String(weekNumber(key))}`
     : null
+}
+
+/**
+ * A cards essay by its subject and the day it was checked (its key is
+ * `<slug>-<YYYY-MM-DD>`; C356), or `null`.
+ */
+function cardsEssay(key: string): string | null {
+  return isEssayKey(key) ? essayName(key) : null
 }
 
 type FeedWords = {
@@ -135,7 +144,41 @@ export const FEED_WORDS = {
     },
     what: "the Rust Rounds essays",
   },
+  "cards-essay": {
+    heading: FEED_FACTS["cards-essay"].name,
+    intro:
+      "Home makes each cards essay's video once the essay reaches it. Watch it here. Home keeps every one: nothing lets an essay go yet.",
+    voice: null,
+    unpaired: "Pair this phone with home to see the cards essays.",
+    older:
+      "Home doesn't list the cards essays here yet. Update home, then try again. Studio › Renders plays them meanwhile.",
+    none: "Home hasn't made a cards essay yet.",
+    gone: "This essay isn't among home's cards essays.",
+    week: cardsEssay,
+    label: (key: string): string => cardsEssay(key) ?? "This essay",
+    waiting: "Home is still making this essay's video.",
+    // Never said yet: no essay takes a link or is let go (#2999).
+    linkSaved: "Saved. Home keeps the link with the essay.",
+    letGo: "You let home's copy go. The essay lives on YouTube.",
+    shareTitle: (key: string): string => {
+      const name = cardsEssay(key)
+      return name === null ? "A cards essay" : `A cards essay: ${name}`
+    },
+    what: "the cards essays",
+  },
 } as const satisfies Record<Feed, FeedWords>
+
+/**
+ * An episode as its lists and page name it: the title home gives it, where
+ * its feed has one (a cards essay's), else its feed's `label`.
+ */
+export function episodeName(
+  feed: Feed,
+  episode: Pick<Episode, "key" | "title">
+): string {
+  const title = episode.title?.trim() ?? ""
+  return title === "" ? FEED_WORDS[feed].label(episode.key) : title
+}
 
 export const VIDEOS_WORDS = {
   reading: "Reading what home has…",

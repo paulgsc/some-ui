@@ -49,6 +49,12 @@ const SIDES = ["before", "after"] as const satisfies ReadonlyArray<ClipSide>
 
 /** What `row` is. */
 export function subjectOf(row: Row): Subject {
+  // A cards essay is a feed too now, but its row keeps opening the essay's
+  // own page, which plays it from any home; Episodes needs a newer one (C379).
+  if (row.feed === "cards-essay")
+    return isEssayKey(row.key)
+      ? { kind: "essay", key: row.key }
+      : { kind: "other" }
   if (isFeed(row.feed)) return { kind: "episode", feed: row.feed, key: row.key }
   if (row.feed === "preview") {
     if (row.template !== undefined)
@@ -58,8 +64,6 @@ export function subjectOf(row: Row): Subject {
       }
     return { kind: "preview", template: templateOfKey(row.key) }
   }
-  if (row.feed === "cards-essay" && isEssayKey(row.key))
-    return { kind: "essay", key: row.key }
   if (row.feed === "clip-walk") {
     for (const side of SIDES) {
       const clip = row.key.endsWith(`-${side}`)

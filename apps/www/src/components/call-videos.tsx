@@ -3,7 +3,8 @@
  * each feed (`FEEDS`), newest first, each on its own page under Studio's
  * Episodes (SFEED1, `EpisodeScreen`). On it, Watch brings the video to the
  * phone and plays it, Share to YouTube hands it to the share sheet, and its
- * YouTube link is saved with the episode, beside its chapters to copy into
+ * YouTube link is saved with the episode where its feed takes one
+ * (`LINKED_FEEDS`), beside its chapters to copy into
  * the upload's description (SFEED4); once home's copy is let go (My data),
  * the link is how it is watched. Reads `lib/call-videos`' snapshot of
  * the feed (`useFeedVideos`) and says what was pressed; every word is its
@@ -20,6 +21,7 @@ import { hasAudience } from "@/lib/build-profile"
 import type { Feed, FeedVideos } from "@/lib/call-videos"
 import {
   episodeChapters,
+  episodeName,
   FEED_WORDS,
   feedVideos,
   VIDEOS_WORDS,
@@ -33,7 +35,7 @@ import type {
   VideosState,
 } from "@/lib/call-videos/model"
 import { homeBytes, listedEpisode, standing } from "@/lib/call-videos/model"
-import { isNoted } from "@/lib/feeds"
+import { isLinked, isNoted } from "@/lib/feeds"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import { CopyButton } from "@/components/copy-button"
 import { EpisodeNote } from "@/components/studio/episode-feedback"
@@ -141,7 +143,7 @@ const EpisodeRow = ({
   const stands = standing(episode)
   return (
     <li className="flex flex-col gap-2 rounded-lg border p-3">
-      <h2 className="font-medium">{FEED_WORDS[feed].label(episode.key)}</h2>
+      <h2 className="font-medium">{episodeName(feed, episode)}</h2>
       {stands === "waiting" && (
         <p className="text-muted-foreground text-sm">
           {FEED_WORDS[feed].waiting}
@@ -163,7 +165,7 @@ const EpisodeRow = ({
           {WORDS.onYouTube}
         </a>
       )}
-      {stands === "kept" && (
+      {stands === "kept" && isLinked(feed) && (
         <LinkField episode={episode} save={save} videos={videos} />
       )}
     </li>
@@ -312,7 +314,7 @@ export const FeedEpisodeLinks = ({
                 params={{ feed, key: episode.key }}
                 className={TILE}
               >
-                <TileBody title={FEED_WORDS[feed].label(episode.key)} />
+                <TileBody title={episodeName(feed, episode)} />
               </Link>
             </li>
           ))}

@@ -25,9 +25,8 @@ import { createFeedVideos } from "./runtime"
 import { FEED_WORDS } from "./words"
 
 export type { Feed } from "./model"
-export { FEEDS } from "./model"
 export type { FeedVideos } from "./runtime"
-export { FEED_WORDS, VIDEOS_WORDS } from "./words"
+export { episodeName, FEED_WORDS, VIDEOS_WORDS } from "./words"
 
 /** A feed's runtime and its drag down, made together. */
 type Made = { readonly videos: FeedVideos; readonly refresher: Refresher }

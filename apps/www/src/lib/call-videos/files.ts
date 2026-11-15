@@ -56,18 +56,19 @@ const PORT: ForeignPort = {
 }
 
 /**
- * Whose videos a folder of files holds: a feed's, the templates' previews
- * (SFEED12), or the cards essays (CARDS7).
+ * Whose videos a folder of files holds: a feed's, or the templates' previews
+ * (SFEED12). A cards essay's one copy is shared by its page under Renders
+ * (CARDS7) and its episode's, so a video brought by either plays in both.
  */
-export type VideoOwner = Feed | "preview" | "cards-essay"
+export type VideoOwner = Feed | "preview"
 
 /** What each owner's file names start with, so no two owners' keys meet. */
 const PREFIX: Record<VideoOwner, string> = {
   call: "",
+  "cards-essay": "cards-essay-",
   "playoff-delta": "playoff-delta-",
   "rust-essay": "rust-essay-",
   preview: "preview-",
-  "cards-essay": "cards-essay-",
 }
 
 /**
