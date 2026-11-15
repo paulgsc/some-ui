@@ -9,7 +9,7 @@ import type { Destination } from "@/lib/site-map"
 import { destinationsHere, GROUP_TITLE } from "@/lib/site-map"
 import { webWingsHere } from "@/lib/wings"
 import { DemoLink } from "@/components/demo-link"
-import { ExtensionsPage } from "@/components/extensions/extensions-page"
+import { ShowcasePage } from "@/components/showcase/showcase-page"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 import { WING_GLYPHS } from "@/components/wing-glyph"
 
@@ -68,7 +68,7 @@ const PUBLISHED = destinationsHere().filter(
  * The web's foyer: how the system is running (the home network's build only,
  * `lib/purpose`), then the wings to go into (`lib/wings`), then what is
  * published from here, each with its channel (`lib/site-map`). A visitor with
- * no session gets the extensions tour instead (see `Root`).
+ * no session gets the showcase instead (see `Root`).
  */
 const Landing = (): JSX.Element => (
   <main className="bg-background text-foreground relative min-h-svh">
@@ -171,7 +171,7 @@ const Landing = (): JSX.Element => (
 /**
  * `"/"` is two pages. Where a person can learn on the device (every build with
  * a `file_host`), the landing above is everyone's front door. On the public
- * site, with no server and mostly strangers sent a link, the extensions comb
+ * site, with no server and mostly strangers sent a link, the working notebook
  * is the front door; someone who opened the demo gets the landing.
  *
  * Chosen in the component, not a `beforeLoad` redirect, so the front door
@@ -182,7 +182,7 @@ const Root = (): JSX.Element => {
   return backend !== "none" || session === "signed-in" ? (
     <Landing />
   ) : (
-    <ExtensionsPage chrome="front" />
+    <ShowcasePage />
   )
 }
 

@@ -2,6 +2,7 @@ import { resolve } from "node:path"
 import { defineConfig } from "vitest/config"
 
 import { buildAudiencePlugin } from "./build.profiles.ts"
+import { showcaseEvidencePlugin } from "./src/components/showcase/build-data.ts"
 
 /**
  * Scoped to src/**: vitest's default glob would also pick up tests/, whose
@@ -10,7 +11,10 @@ import { buildAudiencePlugin } from "./build.profiles.ts"
 export default defineConfig({
   // Serves `virtual:build-profile` (src/lib/build-profile), default profile,
   // without the import-gate check (gated-route tests sit outside the gate).
-  plugins: [buildAudiencePlugin({ checkGates: false })],
+  plugins: [
+    buildAudiencePlugin({ checkGates: false }),
+    showcaseEvidencePlugin(),
+  ],
   test: {
     include: ["src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
   },
