@@ -1,0 +1,18 @@
+{
+  "id": "C380",
+  "made": "2026-11-15",
+  "by": "claude",
+  "paths": [
+    "server:infra/render/render-calls.sh",
+    "server:apps/servers/file_host/src/call_weeks/pass.rs"
+  ],
+  "chose": "The render worker alone takes a newer revision of a week in. file_host writes a week's <from>.json once, at its first revision, and never rewrites it; it gives the newest revision of a week with no video beside it as <from>.next. At the start of a job of that week the worker copies .next to renders/call/.taken/<from>.json and records from it, but only while no part is made (a call.mp4, or a part let go). It drops the week's .parts and work, records the sha256 in <from>.served, and clears the week's failed logs. Once a part is made it never takes a revision in, and says so once in call-worker/<from>.frozen.log.",
+  "options": [
+    "The worker promotes (one actor that counts and renders also takes the revision in, between jobs, so nothing it reads changes under it)",
+    "Two writers, each window patched: file_host swaps the live file and clears .parts, the worker compares cksums (the first review found a race on the swap and a .parts clear that was never retried, and each patch only narrowed a window)",
+    "The worker owns the count, via .parts-of with the cksum it counted (file_host still swapped the file the worker renders from, so reviews 2 and 3 found a stale video snapshot, a yield that skipped the compare, a record naming a revision no video was made from, and stale part folders after a lower count)"
+  ],
+  "gray": "A revision file_host gives after a part is made is never taken in: the week stays at the revision its parts were made from, even though home's record and mailbox index list the newer one as held. renders/call/<from>.served says which revision the worker took in; nothing reads it yet.",
+  "undo": "Revert the PR. A .next or .taken file left behind is ignored by the old worker and by file_host.",
+  "refs": ["server#879", "server#881", "server#874"]
+}
