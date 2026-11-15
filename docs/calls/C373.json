@@ -1,0 +1,18 @@
+{
+  "id": "C373",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/cards-essay.ts",
+    "packages/video-render/CARDS-ROUTINE.md"
+  ],
+  "chose": "A spoken essay runs at most ten minutes, estimated from its words as the call's are, and cards-check refuses a longer one, saying to split it into two essays. It is not split into parts automatically, as the call is.",
+  "options": [
+    "a ten-minute cap, split by the writer into two essays",
+    "parts derived by code, as the call's version 5",
+    "no cap beyond home's render policy"
+  ],
+  "gray": "The owner's eight-to-ten-minute rule was set for the call; the coordinator asked to apply it to essays if cheap. The cap is cheap; automatic parts would need the call's part machinery for cards, so the split is left to the essay's writer.",
+  "undo": "Remove the CARDS_MOST_MS check from spokenProblems; home's --max-video-minutes still bounds a render.",
+  "refs": ["#3021", "#2918"]
+}

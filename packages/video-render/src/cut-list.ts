@@ -127,6 +127,49 @@ export const TimedWordSchema = z.object({
 
 export type TimedWord = Readonly<z.infer<typeof TimedWordSchema>>
 
+/**
+ * The most characters home's speaker says in one line: it refuses a longer
+ * one (paulgsc/server `infra/kokoro/say.py`, `MOST_CHARS`).
+ */
+export const SAY_MOST_CHARS = 4_000
+
+/**
+ * A line home's Kokoro speaker can say: some words, no longer than it takes,
+ * with at least one letter or digit, since a line of punctuation alone gives
+ * it nothing to say and it refuses it (`say.py`'s "nothing to say").
+ */
+export const SayableSchema = z
+  .string()
+  .trim()
+  .min(1, "it says nothing")
+  .max(
+    SAY_MOST_CHARS,
+    `home's speaker says at most ${SAY_MOST_CHARS} characters in one line`
+  )
+  .refine((text) => /[\p{L}\p{N}]/u.test(text), {
+    message: "it has no letter or digit, so the speaker has nothing to say",
+  })
+
+/**
+ * What a spoken cards essay says over a scene (EXPLAIN6, #3021): the essay's
+ * intro, a scene's chapter line and then its narration, or the close. The
+ * recorder has home's speaker say each (`cards-essay.ts`, `record:cards`).
+ */
+export const SpokenSchema = z.discriminatedUnion("role", [
+  /** What the essay is for, what you'll be able to do, and what it is as of. */
+  z.strictObject({ role: z.literal("intro"), said: SayableSchema }),
+  /** Where this step sits and why it matters, then what the card teaches. */
+  z.strictObject({
+    role: z.literal("scene"),
+    chapter: SayableSchema,
+    narration: SayableSchema,
+  }),
+  /** What to do next, and where to look when it fails. */
+  z.strictObject({ role: z.literal("close"), said: SayableSchema }),
+])
+
+export type Spoken = z.infer<typeof SpokenSchema>
+
 export const ShotSchema = z.object({
   id,
   /** The primer's cut this scene says. */
@@ -168,6 +211,8 @@ export const ShotSchema = z.object({
     .default({}),
   burnIns: z.array(BurnInSchema).default([]),
   idea: IdeaSchema.default({ origin: "agent" }),
+  /** What is said over it, in a spoken cards essay (EXPLAIN6). */
+  spoken: SpokenSchema.optional(),
 })
 
 const author = z.enum(["owner", "claude"])

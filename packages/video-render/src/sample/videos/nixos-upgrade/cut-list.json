@@ -1,13 +1,61 @@
 {
   "schema": "some-ui.cut-list/2",
   "title": "NixOS: how this machine upgrades itself",
-  "series": { "id": "cheat-sheet", "version": 1 },
+  "series": {
+    "id": "cheat-sheet",
+    "version": 2
+  },
   "look": "plain",
   "voice": "read",
   "shots": [
     {
+      "id": "intro",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 12000,
+      "burnIns": [
+        {
+          "kind": "flow",
+          "params": {
+            "kicker": "FLOW · THE LOOP",
+            "title": "Merging one PR is the whole upgrade",
+            "steps": [
+              {
+                "badge": "main",
+                "label": "Monday 06:00 UTC",
+                "command": "nix flake update",
+                "note": "CI builds both closures and opens one lockfile PR with the nvd diff."
+              },
+              {
+                "badge": "you",
+                "label": "You review and merge",
+                "note": "The only manual step."
+              },
+              {
+                "badge": "main",
+                "label": "Nightly 04:40, ± 20 min",
+                "note": "The box pulls main and switches. A night missed while it was off runs on next boot."
+              },
+              {
+                "badge": "main",
+                "label": "Home follows",
+                "note": "home-manager switches to the commit the system was just built from."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "intro",
+        "said": "This is a spoken cheat sheet on how your NixOS machine upgrades itself. Reach for it when you've been away from the machine for a while and want to know what happens on its own, what is left for you to do, and how to tell that an upgrade worked. By the end, you'll be able to take an upgrade through by merging one pull request, run one by hand when you can't wait, and read the report that says whether it went well. It is as of November fourteenth, twenty twenty-six, checked against the dotfiles repository, which holds this machine's whole configuration. Later commits may have moved things, and every card is stamped with the commit it was checked against."
+      }
+    },
+    {
       "id": "C1",
-      "picture": { "kind": "card" },
+      "picture": {
+        "kind": "card"
+      },
       "durationMs": 11300,
       "burnIns": [
         {
@@ -40,11 +88,18 @@
             ]
           }
         }
-      ]
+      ],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter one. The loop: merging one pull request is the whole upgrade.",
+        "narration": "Here is the whole cycle, in order. Every Monday at six in the morning, UTC, a job in continuous integration runs nix flake update. That moves every pinned version forward, builds both the system and your home environment, and opens one pull request with the new lock file and a diff of which packages change. Your part is the second step, and it is the only manual one: read that diff, and merge it. You run nothing on the machine. Then, every night at about four forty, give or take twenty minutes, the machine pulls main and switches to it. If it was off that night, the run happens on its next boot. Last, home-manager, which manages your dotfiles and your user programs, switches to the same commit the system was just built from, so the two never drift apart. If you merged and nothing seems to change, remember that the switch waits for the night."
+      }
     },
     {
       "id": "C2",
-      "picture": { "kind": "card" },
+      "picture": {
+        "kind": "card"
+      },
       "durationMs": 12450,
       "burnIns": [
         {
@@ -84,11 +139,18 @@
             ]
           }
         }
-      ]
+      ],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter two. By hand, for when you can't wait for the night.",
+        "narration": "To upgrade right now, run sudo systemctl start nixos-upgrade. It takes the same path as the nightly run, report included, so nothing you do by hand skips the checks. To watch it, follow the journal of three units together: nixos-upgrade, home-manager-upgrade, and upgrade-report. When it ends, read the verdict in latest dot md, under var lib upgrade-report. If the kernel changed, nothing reboots on its own; reboot when it suits you. One known gap, marked with a triangle: after a change to tmux, prefix r reloads the old file, dot tmux dot conf, which home-manager does not write. Run tmux source-file on the config under dot config instead. The card shows the exact command."
+      }
     },
     {
       "id": "C3",
-      "picture": { "kind": "card" },
+      "picture": {
+        "kind": "card"
+      },
       "durationMs": 13600,
       "burnIns": [
         {
@@ -127,22 +189,39 @@
             ]
           }
         }
-      ]
+      ],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter three. Where each run reports, and how you know it worked.",
+        "narration": "Every run is judged before anything is recorded. A run counts as good only when four things hold: both upgrade units succeeded, the system is on the tip of main, home is on that same commit, and the log capture found its canary line, which proves the logging itself worked. The verdict then goes to three places. Grafana's upgrades dashboard shows the verdict, each check, and how many nights were good over the last seven, thirty and ninety days. GitHub's deployments page for nixos gets one status per run. And an upgrade-log issue collects the warnings and errors, scrubbed before they leave the machine. Separately, a check off the machine runs every day at seventeen seventeen UTC, and opens an issue once thirty-six hours pass with no run at all. So if the machine goes quiet, you hear about it there, rather than by noticing."
+      }
     },
     {
       "id": "C4",
-      "picture": { "kind": "card" },
+      "picture": {
+        "kind": "card"
+      },
       "durationMs": 12450,
       "burnIns": [
         {
           "kind": "legend",
-          "params": { "kicker": "LEGEND", "title": "Reading the badges" }
+          "params": {
+            "kicker": "LEGEND",
+            "title": "Reading the badges"
+          }
         }
-      ]
+      ],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter four. Reading the badges on these cards.",
+        "narration": "Each claim on a card carries a badge that says how far to trust it. A filled square means it is on main, the default branch, at the commit the card is stamped with. A half-filled square is an open pull request, not merged yet. An empty square is planned and not built. A triangle is a known gap: something that doesn't work the way you'd expect. And a raised hand is a step only you do. When you come back to this later, trust the filled squares, and check the others against the repository before you rely on them."
+      }
     },
     {
       "id": "C5",
-      "picture": { "kind": "card" },
+      "picture": {
+        "kind": "card"
+      },
       "durationMs": 10150,
       "burnIns": [
         {
@@ -154,9 +233,67 @@
             "wins": "the doc"
           }
         }
-      ]
+      ],
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter five. How stale is this?",
+        "narration": "Everything here was true on the day it was stamped. If what you see differs from what you heard, the sources are the doc, auto-upgrade dot md in the dotfiles repository, and the code, and when they disagree, the doc wins, because it is the one meant to be kept current. Compare the commit stamped on the card with main to see how far things have moved since."
+      }
+    },
+    {
+      "id": "close",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 12000,
+      "burnIns": [
+        {
+          "kind": "cheat-sheet",
+          "params": {
+            "kicker": "CHEAT SHEET · BY HAND",
+            "title": "When you want it now",
+            "rows": [
+              {
+                "badge": "you",
+                "task": "Upgrade now",
+                "command": "sudo systemctl start nixos-upgrade",
+                "note": "Same path as the nightly run, report included."
+              },
+              {
+                "badge": "main",
+                "task": "Watch it",
+                "command": "journalctl -fu nixos-upgrade -u home-manager-upgrade -u upgrade-report"
+              },
+              {
+                "badge": "main",
+                "task": "Read the verdict",
+                "command": "cat /var/lib/upgrade-report/latest.md"
+              },
+              {
+                "badge": "you",
+                "task": "New kernel",
+                "command": "reboot when you choose",
+                "note": "Nothing reboots on its own."
+              },
+              {
+                "badge": "gap",
+                "task": "Reload tmux after a change",
+                "command": "tmux source-file ~/.config/tmux/tmux.conf",
+                "note": "prefix r reads ~/.tmux.conf, which home-manager does not write."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "close",
+        "said": "That's the whole upgrade. Next time, start from the lock file pull request that opens on Mondays: read its diff, merge it, and look at Grafana's upgrades dashboard the next morning. If a run fails, start with the journal of the three upgrade units, then the upgrade-log issue on GitHub."
+      }
     }
   ],
   "burnIns": [],
-  "stamp": { "sources": ["paulgsc/dotfiles@91cb11b"], "date": "2026-11-14" }
+  "stamp": {
+    "sources": ["paulgsc/dotfiles@91cb11b"],
+    "date": "2026-11-14"
+  }
 }

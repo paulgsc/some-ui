@@ -1,0 +1,15 @@
+{
+  "id": "C372",
+  "made": "2026-11-14",
+  "by": "claude",
+  "paths": ["packages/video-render/src/cards-essay.ts"],
+  "chose": "Two voices: the host, am_michael (the weekly call's host), says the intro, each chapter line and the close; the narrator, af_heart, teaches each card. The change of voice is how a listener hears a chapter start.",
+  "options": [
+    "a host and a narrator",
+    "one voice for everything",
+    "the call's per-section voices, one per card kind"
+  ],
+  "gray": "The coordinator suggested one host plus a voice per role if useful; which voices, and how many, is a matter of taste the owner hears in every essay.",
+  "undo": "Change CARDS_VOICES in cards-essay.ts; takes are cached by voice, so the next render says each line again.",
+  "refs": ["#3021"]
+}
