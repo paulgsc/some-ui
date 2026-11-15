@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  *
  * `"/"` is two pages: with a `file_host`, the destinations landing for
- * everyone; on the public site, the extensions comb without a (demo) session
+ * everyone; on the public site, the orientation page without a (demo) session
  * and the landing with one. Chosen in the component, so asserted by rendering
  * it under each state; a change swaps the page in place
  * (`useAuthoritySnapshot`).
@@ -51,11 +51,9 @@ vi.mock("@/lib/authority", async () => {
 })
 
 vi.mock(
-  "@/components/extensions/extensions-page",
-  (): { ExtensionsPage: (props: { chrome: string }) => JSX.Element } => ({
-    ExtensionsPage: ({ chrome }) => (
-      <div data-testid="extensions-page" data-chrome={chrome} />
-    ),
+  "@/components/orientation/orientation-page",
+  (): { OrientationPage: () => JSX.Element } => ({
+    OrientationPage: () => <div data-testid="orientation-page" />,
   })
 )
 
@@ -113,17 +111,16 @@ afterEach(() => {
 })
 
 describe('"/"', () => {
-  it("is the extensions comb, as the front door, on the public site without a session", async () => {
+  it("is the orientation page, as the front door, on the public site without a session", async () => {
     await renderRoot(PUBLIC_SITE)
-    const page = screen.getByTestId("extensions-page")
-    expect(page.dataset.chrome).toBe("front")
+    expect(screen.getByTestId("orientation-page")).toBeTruthy()
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull()
   })
 
   it("is the foyer on the public site once the demo is open", async () => {
     state.session = "signed-in"
     await renderRoot(PUBLIC_SITE)
-    expect(screen.queryByTestId("extensions-page")).toBeNull()
+    expect(screen.queryByTestId("orientation-page")).toBeNull()
     expect(
       screen.getByRole("heading", { level: 1, name: "Where to?" })
     ).toBeTruthy()
@@ -164,20 +161,20 @@ describe('"/"', () => {
   it("is the destinations landing wherever there is a server to learn against, with no session", async () => {
     state.backend = "remote"
     await renderRoot()
-    expect(screen.queryByTestId("extensions-page")).toBeNull()
+    expect(screen.queryByTestId("orientation-page")).toBeNull()
     expect(screen.getByRole("heading", { level: 1 })).toBeTruthy()
   })
 
   it("swaps to the landing in place when the demo opens", async () => {
     await renderRoot(PUBLIC_SITE)
-    expect(screen.getByTestId("extensions-page")).toBeTruthy()
+    expect(screen.getByTestId("orientation-page")).toBeTruthy()
 
     act(() => {
       state.session = "signed-in"
       for (const listener of listeners) listener()
     })
 
-    expect(screen.queryByTestId("extensions-page")).toBeNull()
+    expect(screen.queryByTestId("orientation-page")).toBeNull()
     expect(screen.getByRole("heading", { level: 1 })).toBeTruthy()
   })
 })

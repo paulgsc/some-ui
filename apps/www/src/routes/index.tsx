@@ -9,7 +9,7 @@ import type { Destination } from "@/lib/site-map"
 import { destinationsHere, GROUP_TITLE } from "@/lib/site-map"
 import { webWingsHere } from "@/lib/wings"
 import { DemoLink } from "@/components/demo-link"
-import { ExtensionsPage } from "@/components/extensions/extensions-page"
+import { OrientationPage } from "@/components/orientation/orientation-page"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 import { WING_GLYPHS } from "@/components/wing-glyph"
 
@@ -168,21 +168,13 @@ const Landing = (): JSX.Element => (
   </main>
 )
 
-/**
- * `"/"` is two pages. Where a person can learn on the device (every build with
- * a `file_host`), the landing above is everyone's front door. On the public
- * site, with no server and mostly strangers sent a link, the extensions comb
- * is the front door; someone who opened the demo gets the landing.
- *
- * Chosen in the component, not a `beforeLoad` redirect, so the front door
- * keeps the address `"/"`.
- */
+/** The public front door is the orientation page; a backend or demo session opens the foyer. */
 const Root = (): JSX.Element => {
   const { backend, session } = useAuthoritySnapshot()
   return backend !== "none" || session === "signed-in" ? (
     <Landing />
   ) : (
-    <ExtensionsPage chrome="front" />
+    <OrientationPage />
   )
 }
 

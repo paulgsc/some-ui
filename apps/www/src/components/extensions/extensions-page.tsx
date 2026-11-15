@@ -1,10 +1,9 @@
 import { Suspense } from "react"
 import type { JSX } from "react"
-import { BrandMark, MochiShapes } from "@some-ui/shared"
+import { MochiShapes } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
 
-import { destinationsHere } from "@/lib/site-map"
 import { ExtensionsComb } from "@/lib/web-surface"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
@@ -12,69 +11,23 @@ import { ThemeSwitcher } from "@/components/theme-switcher"
  * The five browser extensions in `extensions/`, for a non-technical visitor:
  * no versions, manifests or workflows; progress as a quantity.
  *
- * Mounted in two places: `"/"` for a visitor with no session (the front door,
- * so its chrome offers Playoff Delta, the résumé and sign-in), and
- * `"/extensions"`, the address to share (its chrome is a way back).
+ * Mounted only at `"/extensions"`, with a way back.
  */
 
 const CHIP =
   "text-muted-foreground hover:text-foreground bg-background/70 pointer-events-auto inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm backdrop-blur transition-colors"
 
-/** The build offers the stage (`lib/site-map`), so the front door names it. */
-const OFFERS_PLAYOFF_DELTA = destinationsHere().some(
-  (d) => d.to === "/playoff-delta"
-)
-
-type ExtensionsPageProps = {
-  /**
-   * `front` when this is the site's front door (`"/"` without a session),
-   * `back` when it is a page reached from somewhere and needs a way back.
-   */
-  chrome: "front" | "back"
-}
-
-export const ExtensionsPage = ({
-  chrome,
-}: ExtensionsPageProps): JSX.Element => (
+export const ExtensionsPage = (): JSX.Element => (
   <main className="bg-background text-foreground relative h-svh overflow-hidden">
     {/* The only chrome, in the two top corners a seven-cell comb never
         reaches, so the comb keeps the whole window. It wraps rather than
         overflowing with enlarged text: it is the only navigation. */}
     <div className="pointer-events-none fixed inset-x-0 top-0 z-10 flex flex-wrap items-center justify-between gap-2 px-3 py-3 md:px-6">
-      {chrome === "back" ? (
-        <Link to="/" className={CHIP}>
-          <ArrowLeft className="size-4" aria-hidden />
-          Back
-        </Link>
-      ) : (
-        <span className="pointer-events-auto inline-flex items-center gap-2 px-1">
-          {/* `brand` is the session theme's own mochi, so it follows the
-              theme as the comb does. */}
-          <BrandMark tone="brand" className="size-6" />
-          {/* The wordmark gives way on a phone. */}
-          <span className="text-muted-foreground sr-only text-sm font-medium tracking-wide uppercase sm:not-sr-only">
-            Some UI
-          </span>
-        </span>
-      )}
+      <Link to="/" className={CHIP}>
+        <ArrowLeft className="size-4" aria-hidden />
+        Back
+      </Link>
       <div className="pointer-events-auto ml-auto flex flex-wrap items-center justify-end gap-1.5">
-        {chrome === "front" && (
-          <>
-            {OFFERS_PLAYOFF_DELTA && (
-              <Link to="/playoff-delta" className={CHIP}>
-                Playoff Delta
-              </Link>
-            )}
-            <Link to="/resume" className={CHIP}>
-              Résumé
-            </Link>
-            {/* Only the owner signs in, on the home network; here the
-                passkey screen opens the demo (lib/demo). */}
-            <Link to="/auth" className={CHIP}>
-              Try the demo
-            </Link>
-          </>
-        )}
         <ThemeSwitcher />
       </div>
     </div>
