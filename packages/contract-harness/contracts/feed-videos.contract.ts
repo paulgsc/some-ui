@@ -25,7 +25,7 @@
  * (`readEpisodes`).
  */
 
-import { defineContract } from "../src/contract"
+import { defineContract, pairedPhoneOnly } from "../src/contract"
 
 const LIST = "/feeds/:feed/videos"
 
@@ -71,17 +71,12 @@ export const contracts = [
     expect: { status: 401 },
   }),
 
-  defineContract({
-    id: "feed_videos.cards_link_signed_out",
-    module: "feed_videos",
-    method: "PUT",
-    path: LINK,
-    request: {
-      ...ESSAY,
-      body: { link: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
-    },
-    summary:
-      "a cards essay's YouTube link is saved by a paired phone: without a session it is a 401",
-    expect: { status: 401 },
-  }),
+  ...pairedPhoneOnly(
+    "feed_videos",
+    "feed_videos.cards_link",
+    "PUT",
+    LINK,
+    "a cards essay's YouTube link",
+    { ...ESSAY, body: { link: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" } }
+  ),
 ]

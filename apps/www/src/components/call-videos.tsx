@@ -118,6 +118,9 @@ const LinkField = ({
       {save?.kind === "notAVideo" && (
         <p className="text-destructive text-sm">{WORDS.notAVideo}</p>
       )}
+      {save?.kind === "older" && (
+        <p className="text-destructive text-sm">{WORDS.linkOlder}</p>
+      )}
       {save?.kind === "away" && (
         <p className="text-destructive text-sm">{WORDS.linkAway}</p>
       )}

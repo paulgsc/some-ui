@@ -202,6 +202,7 @@ export const VIDEOS_WORDS = {
   saving: "Saving…",
   notAVideo: "That isn't a link to a YouTube video.",
   linkAway: "Home didn't answer, so the link isn't saved. Try again.",
+  linkOlder: "Home didn't keep the link. Update home, then try again.",
   onYouTube: "Watch on YouTube",
   /** Its chapters, for the upload's YouTube description (SFEED4). */
   chapters: "Its chapters",

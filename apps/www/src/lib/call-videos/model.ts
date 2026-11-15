@@ -98,12 +98,15 @@ export type LinkSaved =
   | { readonly kind: "saved"; readonly url: string }
   /** Home read no `YouTube` video in it. */
   | { readonly kind: "notAVideo" }
+  /** Home took no link for it: one from before a cards essay took one. */
+  | { readonly kind: "older" }
   | { readonly kind: "unreadable" }
 
 const KeptSchema = z.object({ url: z.string().min(1) })
 
 export function readLinkSaved(answer: HomeAnswer): LinkSaved {
   if (answer.status === 422) return { kind: "notAVideo" }
+  if (answer.status === 404) return { kind: "older" }
   if (answer.status !== 200) return { kind: "unreadable" }
   const kept = readAs(KeptSchema, answer.body)
   return kept === null
@@ -179,6 +182,7 @@ export type FetchFailure =
 export type LinkSave =
   | { readonly kind: "saving" }
   | { readonly kind: "notAVideo" }
+  | { readonly kind: "older" }
   | { readonly kind: "away" }
 
 /** What the screen says once, over itself (a `Notice`). */
@@ -270,8 +274,8 @@ export function step(state: VideosState, event: VideosEvent): VideosState {
         links: {
           ...state.links,
           [key]:
-            saved.kind === "notAVideo"
-              ? { kind: "notAVideo" }
+            saved.kind === "notAVideo" || saved.kind === "older"
+              ? { kind: saved.kind }
               : { kind: "away" },
         },
       }

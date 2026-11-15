@@ -111,6 +111,9 @@ describe("readLinkSaved", () => {
     expect(readLinkSaved({ status: 422, body: "{}" })).toEqual({
       kind: "notAVideo",
     })
+    expect(readLinkSaved({ status: 404, body: "" })).toEqual({
+      kind: "older",
+    })
     expect(readLinkSaved({ status: 409, body: "" })).toEqual({
       kind: "unreadable",
     })

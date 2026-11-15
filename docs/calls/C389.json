@@ -4,6 +4,9 @@
   "by": "claude",
   "paths": [
     "some-ui:apps/www/src/lib/feeds/index.ts",
+    "some-ui:apps/www/src/components/call-videos.tsx",
+    "some-ui:apps/www/src/lib/call-videos/words.ts",
+    "some-ui:apps/www/src/lib/studio-index/words.ts",
     "some-ui:apps/www/src/components/settings/device-my-data-calls.tsx",
     "some-ui:apps/www/src/components/studio/cards-essay.tsx",
     "some-ui:apps/www/src/lib/cards-essay-video/words.ts"
