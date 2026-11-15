@@ -1,0 +1,19 @@
+{
+  "id": "C388",
+  "made": "2026-11-15",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/feeds/videos.rs",
+    "server:apps/servers/file_host/src/handlers/feed_videos.rs",
+    "server:apps/servers/file_host/src/routes/feed_videos.rs"
+  ],
+  "chose": "A cards essay's YouTube link is recorded as every feed's: a new append-only table cards_essay_link (essay_key, a foreign key to cards_essay; youtube_id; recorded_at), written only by cards_essay_repo, read and written through the existing PUT /feeds/:feed/videos/:key/link. Recording a link no longer depends on Feed::lets_go. DELETE …/video and …/rest still answer a cards essay 404, link or not. This moves C338's 'never linked' half; its 'never let go' half stands until #2999's let-go story.",
+  "options": [
+    "A new append-only cards_essay_link beside cards_essay, through the existing link route, with DELETE still refused",
+    "Link and receipt tables and let go in the same change",
+    "The cards-essay shelf gets a link route of its own"
+  ],
+  "gray": "The owner (2026-11-15) asked only for the link: \"currently in the episodes for the card essays, they don't have a part to add the YouTube link.\" Letting home's copy go was ruled on #2996, but nobody asked for it today, so it stays later. cards_essay is append-only and holds the essay alone, so a link needs a table of its own, and reusing feeds::videos and the existing route keeps one implementation and no new route.",
+  "undo": "Restore the CardsEssay arms of Feed::links and Feed::record_link (empty and NoWeek) and the lets_go gate in videos::record_link. The table can stay: it is append-only and refuses its down migration once it holds a row.",
+  "refs": ["#2999", "#2996", "server#854"]
+}
