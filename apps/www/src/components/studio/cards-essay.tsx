@@ -4,7 +4,7 @@
  * essay is a row on Studio › Renders, read from the same board; the video
  * comes from `lib/cards-essay-video`'s runtime, and nothing here lets it go.
  * Sharing it and saving its YouTube link are its episode's page's (Studio's
- * Episodes, `EpisodeScreen`; C389), which this one links to. Phone build only.
+ * Episodes, `EpisodeScreen`; C389). Phone build only.
  */
 import type { JSX } from "react"
 import { useEffect, useSyncExternalStore } from "react"

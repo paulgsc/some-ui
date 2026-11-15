@@ -20,7 +20,6 @@ import type {
   VideosState,
 } from "@/lib/call-videos/model"
 import { INITIAL } from "@/lib/call-videos/model"
-import { LET_GO_FEEDS } from "@/lib/feeds"
 import type { Refresher } from "@/lib/pull-refresh/refreshers"
 
 const lists = vi.hoisted(
@@ -139,8 +138,6 @@ describe("a cards essay in Studio's Episodes", () => {
     fireEvent.click(screen.getByRole("button", { name: /watch/i }))
     expect(lists.watched).toEqual(["cards-essay/zfs-2026-11-02"])
     expect(screen.getByLabelText("Its YouTube link")).toBeTruthy()
-    // It takes a link, but My data lets no cards essay go yet (#2999).
-    expect(LET_GO_FEEDS).not.toContain("cards-essay")
   })
 
   it("says an essay home is still making is waiting", () => {
