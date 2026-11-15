@@ -30,6 +30,12 @@ const EpisodeSchema = z.object({
   restBytes: z.number().int().nonnegative().nullable(),
   link: LinkSchema.nullable(),
   receipts: z.array(ReceiptSchema),
+  /**
+   * What the episode is called, where its feed names it: a cards essay's
+   * title, at most 200 characters. `null` for the other feeds and for an
+   * essay with none, and absent from a home that came before it.
+   */
+  title: z.string().nullish(),
 })
 
 const EpisodesSchema = z.object({ episodes: z.array(EpisodeSchema) })

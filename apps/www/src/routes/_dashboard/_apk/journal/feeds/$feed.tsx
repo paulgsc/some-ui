@@ -33,19 +33,23 @@ const FeedPage = (): JSX.Element => {
         <p className="text-sm">{facts.cadence}</p>
       </Part>
       <Part label={WORDS.templates}>
-        <ul className="flex flex-col gap-2">
-          {FEED_TEMPLATES[feed].map((template) => (
-            <li key={template}>
-              <Link
-                to="/journal/templates/$template"
-                params={{ template }}
-                className={TILE}
-              >
-                <TileBody title={templateFormat(template).title} />
-              </Link>
-            </li>
-          ))}
-        </ul>
+        {FEED_TEMPLATES[feed].length === 0 ? (
+          <p className="text-sm">{WORDS.noTemplates}</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {FEED_TEMPLATES[feed].map((template) => (
+              <li key={template}>
+                <Link
+                  to="/journal/templates/$template"
+                  params={{ template }}
+                  className={TILE}
+                >
+                  <TileBody title={templateFormat(template).title} />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </Part>
       <Part label={WORDS.episodes}>
         <FeedEpisodes feed={feed} pairWords={STUDIO_WORDS.pair.pair} />
