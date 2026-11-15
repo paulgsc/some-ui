@@ -9,6 +9,8 @@ import type { HomeAnswer } from "@some-ui/core-utils"
 import { assertNever, readAs } from "@some-ui/core-utils"
 import { z } from "zod"
 
+import type { Feed } from "@/lib/feeds"
+
 export { FEEDS, isFeed, type Feed } from "@/lib/feeds"
 
 const LinkSchema = z.object({
@@ -98,15 +100,15 @@ export type LinkSaved =
   | { readonly kind: "saved"; readonly url: string }
   /** Home read no `YouTube` video in it. */
   | { readonly kind: "notAVideo" }
-  /** Home took no link for it: one from before a cards essay took one. */
+  /** Home took no cards essay's link: a home from before one took a link. */
   | { readonly kind: "older" }
   | { readonly kind: "unreadable" }
 
 const KeptSchema = z.object({ url: z.string().min(1) })
 
-export function readLinkSaved(answer: HomeAnswer): LinkSaved {
+export function readLinkSaved(feed: Feed, answer: HomeAnswer): LinkSaved {
   if (answer.status === 422) return { kind: "notAVideo" }
-  if (answer.status === 404) return { kind: "older" }
+  if (answer.status === 404 && feed === "cards-essay") return { kind: "older" }
   if (answer.status !== 200) return { kind: "unreadable" }
   const kept = readAs(KeptSchema, answer.body)
   return kept === null

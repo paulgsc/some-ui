@@ -103,18 +103,23 @@ describe("readPart", () => {
 describe("readLinkSaved", () => {
   it("reads the link home kept, and a link home refused", () => {
     expect(
-      readLinkSaved({
+      readLinkSaved("call", {
         status: 200,
         body: '{"url":"https://youtu.be/dQw4w9WgXcQ"}',
       })
     ).toEqual({ kind: "saved", url: "https://youtu.be/dQw4w9WgXcQ" })
-    expect(readLinkSaved({ status: 422, body: "{}" })).toEqual({
+    expect(readLinkSaved("call", { status: 422, body: "{}" })).toEqual({
       kind: "notAVideo",
     })
-    expect(readLinkSaved({ status: 404, body: "" })).toEqual({
-      kind: "older",
+    expect(readLinkSaved("call", { status: 409, body: "" })).toEqual({
+      kind: "unreadable",
     })
-    expect(readLinkSaved({ status: 409, body: "" })).toEqual({
+  })
+
+  it("reads a cards essay's link home didn't take as an older home", () => {
+    const missing = { status: 404, body: "" }
+    expect(readLinkSaved("cards-essay", missing)).toEqual({ kind: "older" })
+    expect(readLinkSaved("rust-essay", missing)).toEqual({
       kind: "unreadable",
     })
   })
