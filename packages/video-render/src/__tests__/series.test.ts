@@ -200,7 +200,7 @@ describe("the sample series", () => {
     }
   })
 
-  it("carry the showcase cut lists, each on cheat-sheet v1", async () => {
+  it("carry the showcase cut lists, each on cheat-sheet v2, spoken", async () => {
     const videos = await readdir(join(__dirname, "../sample/videos"))
     expect(videos.length).toBeGreaterThan(0)
     for (const video of videos) {
@@ -213,7 +213,7 @@ describe("the sample series", () => {
       const parsed = parseCutList(raw)
       expect(parsed.ok ? [] : parsed.problems).toEqual([])
       if (!parsed.ok) continue
-      expect(parsed.value.series).toEqual({ id: "cheat-sheet", version: 1 })
+      expect(parsed.value.series).toEqual({ id: "cheat-sheet", version: 2 })
     }
   })
 

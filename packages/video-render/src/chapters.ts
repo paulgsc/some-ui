@@ -41,7 +41,7 @@ export const chapterSlides = (
   }))
 
 /** `said` without the full stop and spaces it ends with. */
-function withoutStop(said: string): string {
+export function withoutStop(said: string): string {
   let end = said.length
   while (end > 0 && (said[end - 1] === "." || /\s/.test(said[end - 1] ?? "")))
     end -= 1

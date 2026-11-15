@@ -310,7 +310,7 @@ const STEPS = "cache/steps"
  * How a recorder keeps a video's steps: in its folder's `cache/steps`,
  * saying each step not kept and each answered from the cache.
  */
-export const STEP_CACHE = { stepCacheDir: STEPS, warn, hit } as const
+const STEP_CACHE = { stepCacheDir: STEPS, warn, hit } as const
 
 /**
  * A scene to record: its stage address, and what is said over it, in which
@@ -371,8 +371,7 @@ export async function recordStills({
 }): Promise<ReadonlyArray<StillTake | null>> {
   await mkdir(root, { recursive: true })
   const ports = nodePorts(root)
-  const cache = { ...stepCache(join(root, STEPS), policy, warn), hit }
-  const model = speaker === null ? null : await speakerModel(speaker)
+  const say = speaker === null ? null : await speakerOf(root, speaker, policy)
   const takes: Array<StillTake | null> = []
   const overflowing: Array<string> = []
   // Home's board says "scene k of n" (#2899): `scenes <n>` once, before the
@@ -401,18 +400,8 @@ export async function recordStills({
             file,
             ports,
           })
-        : speaker !== null && model !== null && shot.said !== ""
-          ? await takeOf({
-              speaker,
-              model,
-              voice: shot.voice,
-              text: shot.said,
-              timed,
-              root,
-              file,
-              cache,
-              ports,
-            })
+        : say !== null && shot.said !== ""
+          ? await say({ file, text: shot.said, voice: shot.voice, timed })
           : null
     )
     console.log(`recorded ${file}`)
@@ -423,6 +412,94 @@ export async function recordStills({
       ...overflowing,
     ])
   return takes
+}
+
+/** A line for home's speaker to say into `<file>.wav`, with its words when `timed`. */
+type Line = {
+  readonly file: string
+  readonly text: string
+  readonly voice: string
+  readonly timed: boolean
+}
+
+/**
+ * Home's Kokoro speaker at `speaker`, saying lines into `root`: each take
+ * asked of it once, then kept in `root`'s step cache by its model, voice and
+ * words (`takeOf`), within `policy`'s cache budget.
+ */
+async function speakerOf(
+  root: string,
+  speaker: string,
+  policy: RenderPolicy
+): Promise<(line: Line) => Promise<StillTake>> {
+  await mkdir(root, { recursive: true })
+  const ports = nodePorts(root)
+  const cache = { ...stepCache(join(root, STEPS), policy, warn), hit }
+  const model = await speakerModel(speaker)
+  return (line) =>
+    takeOf({
+      speaker,
+      model,
+      voice: line.voice,
+      text: line.text,
+      timed: line.timed,
+      root,
+      file: line.file,
+      cache,
+      ports,
+    })
+}
+
+/**
+ * Each of `lines` said in order by home's speaker at `speaker` into `root`,
+ * or none with no speaker, saying the progress home's board reads (#2899):
+ * `scenes <n>` once, then `recorded <file>` per line, as `recordStills` does.
+ */
+export async function sayLines({
+  root,
+  lines,
+  speaker,
+  policy,
+}: {
+  readonly root: string
+  readonly lines: ReadonlyArray<{
+    readonly file: string
+    readonly said: string
+    readonly voice: string
+  }>
+  readonly speaker: string | null
+  readonly policy: RenderPolicy
+}): Promise<Array<StillTake | null>> {
+  const say = speaker === null ? null : await speakerOf(root, speaker, policy)
+  const takes: Array<StillTake | null> = []
+  console.log(`scenes ${String(lines.length)}`)
+  for (const line of lines) {
+    takes.push(
+      say === null
+        ? null
+        : await say({
+            file: line.file,
+            text: line.said,
+            voice: line.voice,
+            timed: true,
+          })
+    )
+    console.log(`recorded ${line.file}`)
+  }
+  return takes
+}
+
+/**
+ * The speaker `values` ask for: `--speaker` under `--voices kokoro`, or null
+ * under `--voices none`, a silent video. Any other `--voices` is refused.
+ */
+export function speakerFlag(values: {
+  readonly voices: string
+  readonly speaker: string
+}): string | null {
+  if (values.voices !== "kokoro" && values.voices !== "none")
+    fail(["--voices is kokoro or none"])
+  return values.voices === "kokoro" ? values.speaker : null
 }
 
 /**

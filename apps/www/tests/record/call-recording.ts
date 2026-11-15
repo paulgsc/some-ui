@@ -30,6 +30,7 @@ import {
   renderCut,
   shownFrame,
   siteOf,
+  speakerFlag,
 } from "./voiced"
 
 /** The frame the stage is recorded at: the call's series. */
@@ -121,8 +122,7 @@ export async function recordCall(
   { preview = false }: { readonly preview?: boolean } = {}
 ): Promise<void> {
   const policy = policyOf(values)
-  if (values.voices !== "kokoro" && values.voices !== "none")
-    fail(["--voices is kokoro or none"])
+  const speaker = speakerFlag(values)
   // A preview is always of the template's sample week (SFEED12).
   const kept =
     !preview && values["week-file"] ? await keptWeek(values["week-file"]) : null
@@ -188,7 +188,7 @@ export async function recordCall(
         voice: CALL_VOICES[scene.section],
       })),
       frame: (id) => `[data-scene="${id}"]`,
-      speaker: values.voices === "kokoro" ? values.speaker : null,
+      speaker,
       timed: hasCaptions(callFormat(week.template.version)),
       policy,
     })

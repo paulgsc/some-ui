@@ -11,7 +11,7 @@
  */
 
 import { CUT_LIST_SCHEMA } from "./cut-list"
-import type { Composition, CutList, TimedWord } from "./cut-list"
+import type { Composition, CutList, Shot, TimedWord } from "./cut-list"
 import { markThemeOf } from "./format"
 import type { Format, Shape } from "./format"
 import type { Look } from "./plans"
@@ -123,6 +123,29 @@ export function brandPicture(
 }
 
 /**
+ * How long scene `scene` holds, and its take where `take` was said into
+ * `<file>.wav`: the take with a beat either side, or `heldMs` with none.
+ */
+export function heldFor(
+  scene: StillScene,
+  take: StillTake | null
+): Pick<Shot, "durationMs" | "voiceInMs" | "take" | "speaker"> {
+  if (take === null)
+    return { durationMs: heldMs(scene), voiceInMs: VOICE_IN_MS }
+  return {
+    durationMs: VOICE_IN_MS + take.ms + TAIL_MS,
+    voiceInMs: VOICE_IN_MS,
+    take: {
+      file: `${scene.file}.wav`,
+      inMs: 0,
+      outMs: take.ms,
+      ...(take.words ? { words: [...take.words] } : {}),
+    },
+    ...(take.owner ? {} : { speaker: FEED_SPEAKER }),
+  }
+}
+
+/**
  * The feed as a cut list: each scene's still (`<file>.png`), and its take
  * (`<file>.wav`) where one was said, `takes[i]`; a scene with none holds for
  * `unsaidMs`. With `captions`, each scene's are drawn from its take's words,
@@ -157,20 +180,7 @@ export function stillsCutList(
       return {
         id: scene.id,
         picture: motion ?? { kind: "still", source: `${scene.file}.png` },
-        durationMs:
-          take !== null ? VOICE_IN_MS + take.ms + TAIL_MS : heldMs(scene),
-        ...(take === null
-          ? {}
-          : {
-              take: {
-                file: `${scene.file}.wav`,
-                inMs: 0,
-                outMs: take.ms,
-                ...(take.words ? { words: [...take.words] } : {}),
-              },
-              ...(take.owner ? {} : { speaker: FEED_SPEAKER }),
-            }),
-        voiceInMs: VOICE_IN_MS,
+        ...heldFor(scene, take),
         // CV1: the still's text runs to the frame's edges, which any zoom
         // would crop; the look's crossfade and music still apply. A
         // composition draws its own picture.
