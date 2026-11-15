@@ -1,0 +1,13 @@
+{
+  "id": "C370",
+  "made": "2026-11-14",
+  "by": "owner",
+  "paths": [
+    "packages/video-render/CARDS-ROUTINE.md",
+    "packages/video-render/src/cards-essay.ts",
+    "apps/www/tests/record/cards.ts"
+  ],
+  "chose": "A cards essay is spoken: a pedagogical podcast that home voices with Kokoro, as it voices the weekly call. It opens with a spoken intro, and every scene has its own spoken chapter line, then narration that explains more than the card shows. The voice comes first and the cards second. This moves the silent design CARDS7 shipped (\"a silent video of cards\", \"nothing is said over cards\"). The listener is the owner months later, far from today's context.",
+  "undo": "Pin a later cheat-sheet version that is silent again and change CARDS-ROUTINE.md back; essays already spoken keep playing as first served.",
+  "refs": ["#3021", "#2980"]
+}

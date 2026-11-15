@@ -198,9 +198,17 @@ describe("the sample series", () => {
       const s = await readSeries(join(__dirname, "../sample/series", id), 1)
       expect(s.ok ? s.value.id : s.problems).toBe(id)
     }
+    // The spoken cards essay's version (EXPLAIN6), which captions.
+    const spoken = await readSeries(
+      join(__dirname, "../sample/series/cheat-sheet"),
+      2
+    )
+    expect(spoken.ok ? spoken.value.designs.captions : spoken.problems).toBe(
+      "broadcast"
+    )
   })
 
-  it("carry the showcase cut lists, each on cheat-sheet v1", async () => {
+  it("carry the showcase cut lists, each on cheat-sheet v2, spoken", async () => {
     const videos = await readdir(join(__dirname, "../sample/videos"))
     expect(videos.length).toBeGreaterThan(0)
     for (const video of videos) {
@@ -213,7 +221,7 @@ describe("the sample series", () => {
       const parsed = parseCutList(raw)
       expect(parsed.ok ? [] : parsed.problems).toEqual([])
       if (!parsed.ok) continue
-      expect(parsed.value.series).toEqual({ id: "cheat-sheet", version: 1 })
+      expect(parsed.value.series).toEqual({ id: "cheat-sheet", version: 2 })
     }
   })
 
