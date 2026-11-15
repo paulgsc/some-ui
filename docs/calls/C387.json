@@ -1,0 +1,14 @@
+{
+  "id": "C387",
+  "made": "2026-11-15",
+  "by": "claude",
+  "paths": ["server:apps/servers/file_host/src/feeds/renders.rs"],
+  "chose": "Renders' Coming list promises the Rust Rounds essay from the open round, before any essay exists: for each of the newest two Rust Rounds weeks home holds (the mailbox brief, rust-week-<id>.json) whose essay home has not taken or let go, the Monday after its due in America/Los_Angeles, while that Monday is today or later; the earliest such Monday is listed. Cards essays stay on no day.",
+  "options": [
+    "Promise the Monday after a held week's due from the round alone, even before the first essay (no ACTIVE_DAYS gate)",
+    "Stay silent until the first essay is taken, then promise Mondays by cadence like the other feeds"
+  ],
+  "gray": "The other feeds are promised only once one of their episodes was taken in the last ACTIVE_DAYS, so a feed that has never made an episode is never announced. The owner asked to see the Rust essay on Renders before its first Monday (2026-11-15), and the Monday routine (RR18) writes the essay of the round that closed on Sunday, so an open round is what says an essay is owed. Reading two weeks keeps a week put early from hiding the essay still owed for the week before.",
+  "undo": "Revert the RustEssay arm of feeds::renders::coming (and FeedSeen::rounds and rounds_of) to None; nothing is stored.",
+  "refs": ["server#890", "server#891", "#2231"]
+}
