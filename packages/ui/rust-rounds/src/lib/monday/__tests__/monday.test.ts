@@ -359,7 +359,7 @@ describe("a take home couldn't make out (HEARD2, #3072; EH1)", () => {
     })
   })
 
-  it("never becomes a reading: garble reaches neither bundle nor essay", () => {
+  it("never becomes a reading: its words never reach the bundle the essay is built from", () => {
     const prepared = unheard()
     expect(JSON.stringify(prepared.bundle)).not.toContain(GARBLE)
     const done = finish({ ...prepared, values: unheardValues(), runs: RUNS })

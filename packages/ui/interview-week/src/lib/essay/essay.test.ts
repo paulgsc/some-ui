@@ -349,18 +349,6 @@ describe("a take home couldn't make out (HEARD2; EH1)", () => {
     ])
   })
 
-  it("is never what a failed decode hides: a take heard either way is heard", () => {
-    const heard = heardByNote([
-      transcript("n", "plain text", "whisper"),
-      {
-        ...judged("n", "", verdictOf("failed")),
-        name: "transcript-n-2.json",
-      },
-    ])
-    const got = heard.get("n")
-    expect(got?.hearing === "heard" ? got.text : null).toBe("plain text")
-  })
-
   it("leaves a take home heard nothing in a plain silence, with a guess", () => {
     const bundle = prepared([
       judged("note-1", "", verdictOf("nothing_said")),

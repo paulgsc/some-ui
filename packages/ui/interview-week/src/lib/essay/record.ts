@@ -115,9 +115,9 @@ const VERBATIM = "+verbatim"
 
 /**
  * What home heard in each note, by the note's id. Of a note's transcripts,
- * one home heard is preferred, so a decode that failed never hides one that
- * didn't; then the verbatim decode's (IW2's model, `+verbatim-…`), since a
- * take heard both ways is filed twice; then the highest `<n>`. A file whose
+ * the verbatim decode's (IW2's model, `+verbatim-…`) is preferred, since a
+ * take heard both ways is filed twice, then the highest `<n>`, whatever its
+ * verdict: home's own essay check reads the newest one too. A file whose
  * body isn't a transcript of the note its name carries is left out.
  */
 export function heardByNote(
@@ -133,14 +133,10 @@ export function heardByNote(
     const verbatim = parsed.data.model?.includes(VERBATIM) ?? false
     const heard = heardOf(file.body, parsed.data.text)
     const held = best.get(note)
-    const isHeard = heard.hearing === "heard"
     const better =
       held === undefined ||
-      (isHeard !== (held.heard.hearing === "heard")
-        ? isHeard
-        : verbatim !== held.verbatim
-          ? verbatim
-          : n > held.n)
+      (verbatim && !held.verbatim) ||
+      (verbatim === held.verbatim && n > held.n)
     if (better) best.set(note, { verbatim, n, heard })
   }
   return new Map([...best].map(([note, { heard }]) => [note, heard]))
