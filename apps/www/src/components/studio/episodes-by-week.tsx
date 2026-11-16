@@ -3,7 +3,7 @@
  * feed's episodes in one feed, the newest week first, under a bar of genre
  * chips with counts, each a link that filters it. Each episode is a compact
  * row with its genre's stock thumbnail (`GenreThumb`), its status dot
- * (`dotClass`, one meaning on every screen), and a week's parts inline, each
+ * (`dotClass`, one meaning on every screen of a theme), and a week's parts inline, each
  * opening its own page. What it shows is `lib/episodes-feed`'s `feedView`;
  * every word is `EPISODES_FEED_WORDS`. The chip bar scrolls sideways on its
  * own and carries no touch code. Phone build only.
