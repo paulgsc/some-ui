@@ -98,11 +98,16 @@ up to 14 days.
 
    - there is no mailbox or no `call` index;
    - the index doesn't list the week;
-   - its SHA-256 differs. Home keeps a week as it first read it, so an edit
-     made since never reaches home.
+   - its SHA-256 differs. That doesn't mean home holds an old copy for good.
+     While no part of the week has a video (no link, no `call.mp4`, no
+     render running), home's hourly pass reads the week again and keeps a
+     re-stamp as its newest revision, so the edit reaches home within an
+     hour and the index then lists the new SHA-256: check again next run.
+     Once a part has a video, home never takes a re-stamp: the week stays at
+     the revision its video was made from, and its SHA-256 differs for good.
 
    Never delete a week home doesn't hold byte for byte, and never edit a
-   week home already holds.
+   week whose video home has made.
 
 7. **Open a pull request** in `paulgsc/testing`. Before pushing, run
    `python3 scripts/guard.py --staged` in paulgsc/testing until it says
