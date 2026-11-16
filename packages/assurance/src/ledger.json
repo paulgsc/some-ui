@@ -3444,8 +3444,8 @@
             {
               "on": "2026-11-16",
               "change": "An interview essay may leave silent an answer or read the final record names, when home's verdict on the transcript the routine reads is garbled, failed or nothing said (HEARD1, server#911); one it leaves silent is not played.",
-              "why": "The owner, on #3070 (2026-11-16): \"we'll fall back as if I never answered that question. And then it will, the video essay will proceed that way.\" Applied to the interview essay by the coordinator's reading on #3070 (C432).",
-              "decision": "https://github.com/paulgsc/some-ui/issues/3070"
+              "why": "The owner, on #3070 (2026-11-16), for Rust Rounds: \"we'll fall back as if I never answered that question. And then it will, the video essay will proceed that way.\" Asked whether the interview essay follows the same rule, the owner answered: \"Yes, it should follow the same rule.\"",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3070#issuecomment-6930187039"
             }
           ]
         }
