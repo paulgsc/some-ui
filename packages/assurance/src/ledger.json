@@ -797,7 +797,8 @@
             "server:apps/servers/file_host/src/mailbox/pass.rs#a_transcript_is_filed_and_handed_once_as_text_and_a_better_models_under_a_new_name",
             "server:apps/servers/file_host/src/mailbox/pass.rs#a_rust_rounds_take_home_could_not_hear_or_found_silent_is_filed",
             "server:crates/db/voice/src/verdict.rs#an_essay_judges_the_transcript_the_routine_reads",
-            "server:apps/servers/file_host/src/mailbox/pass.rs#a_silence_never_buries_words_heard"
+            "server:apps/servers/file_host/src/mailbox/pass.rs#a_silence_never_buries_words_heard",
+            "server:crates/db/voice/src/delete.rs#a_take_switched_on_goes_and_leaves_a_receipt"
           ],
           "watch": {
             "by": "alert",
@@ -4854,7 +4855,7 @@
     {
       "store": "server:voice_transcript_verdict",
       "class": "derived",
-      "growth": "Per final attempt at hearing a note, per model and rule (HEARD1, server#908): one small row (the verdict, its reasons, and the transcriber's signals for a heard or garbled take); append-only, a later rule a new row, so bounded by voice_transcript's rows times the rules in use (one: heard-1); leaves with the account and with its note when the owner deletes it for good.",
+      "growth": "Per final attempt at hearing a note, per model and rule (HEARD1, server#908): one small row (the verdict, its reason codes, and the transcriber's numbers and language for a heard or garbled take; no word of what was said); append-only, a later rule a new row, so bounded by voice_transcript's rows times the rules in use (one: heard-1); it outlives its note when the owner deletes the note for good, whose receipt names it, and leaves with the account.",
       "family": "voice-heard"
     },
     {

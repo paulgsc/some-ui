@@ -153,6 +153,7 @@ describe("My data's words", () => {
         .filter((line): line is string => line !== null),
       receiptParts(["recording", "words", "set-aside mark"]),
       receiptParts(["recording", "conveyor history"]),
+      receiptParts(["verdict"]),
       receiptParts(["mailbox copy", "drive copy", "a newer part"]),
       receiptParts([]),
       receiptKind("studio"),
@@ -165,7 +166,9 @@ describe("My data's words", () => {
     // Home's fixed words never reach the screen as they are.
     expect(
       said.filter((text) =>
-        /set-aside mark|mailbox copy|drive copy|conveyor history/.test(text)
+        /set-aside mark|mailbox copy|drive copy|conveyor history|verdict/.test(
+          text
+        )
       )
     ).toEqual([])
   })
@@ -196,6 +199,8 @@ describe("My data's words", () => {
     expect(receiptParts(["recording", "conveyor history"])).toBe(
       "The recording and each move it made along the conveyor"
     )
+    // Home's verdict on a take outlives it (HEARD1, server#911).
+    expect(receiptParts(["verdict"])).toBe("Whether home could make it out")
     // The whole receipt home sends for a take heard, let go and moved.
     expect(
       receiptParts(["recording", "words", "set-aside mark", "conveyor history"])
