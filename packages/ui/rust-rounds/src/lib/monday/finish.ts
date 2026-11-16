@@ -94,28 +94,53 @@ function essayTicket(
   }
   const reading = values.answer
   let answer: Essay["tickets"][number]["answer"] | null = null
-  if (ticket.answer.kind === "take") {
-    if ("guess" in reading) {
-      problems.push(
-        `${at}: answered, so it takes marks and a SOLO level, not a guess`
-      )
-    } else {
-      answer = {
-        kind: "take",
-        transcript: ticket.answer.transcript,
-        ...reading,
+  switch (ticket.answer.kind) {
+    case "take": {
+      if (reading === undefined || "guess" in reading) {
+        problems.push(
+          `${at}: answered, so it takes marks and a SOLO level, not ${reading === undefined ? "nothing" : "a guess"}`
+        )
+      } else {
+        answer = {
+          kind: "take",
+          transcript: ticket.answer.transcript,
+          ...reading,
+        }
       }
+      break
     }
-  } else if ("guess" in reading) {
-    answer = {
-      kind: "silence",
-      opened: ticket.answer.opened,
-      guess: reading.guess,
+    case "silence": {
+      if (reading !== undefined && "guess" in reading) {
+        answer = {
+          kind: "silence",
+          opened: ticket.answer.opened,
+          guess: reading.guess,
+        }
+      } else {
+        problems.push(
+          `${at}: left unanswered, so it takes a guess at why, not ${reading === undefined ? "nothing" : "marks"}`
+        )
+      }
+      break
     }
-  } else {
-    problems.push(
-      `${at}: left unanswered, so it takes a guess at why, not marks`
-    )
+    case "unheard": {
+      // Garble is not a weak answer: nothing is read from it (HEARD2).
+      if (reading === undefined) {
+        answer = {
+          kind: "silence",
+          opened: ticket.answer.opened,
+          unheard: true,
+        }
+      } else {
+        problems.push(
+          `${at}: home couldn't make out the take, so it takes no answer; leave answer out`
+        )
+      }
+      break
+    }
+    default: {
+      assertNever(ticket.answer)
+    }
   }
   values.dives.forEach((dive, k) => {
     const n = wordCount(dive.said)

@@ -41,10 +41,13 @@ outside the checkout as `<run>`.
    `<run>/bundle.json` and prints what is owed:
    - `essays`: each week owed an essay, oldest first, at most two a run. Each
      ticket is restated with its answer: a take and what home heard in it,
-     or a silence and how often the ticket was opened.
+     a silence and how often the ticket was opened, or `unheard`: a take
+     home couldn't make out (garbled, nothing made out, or failed). The
+     essay goes on as if that ticket was left unanswered, and code says so.
    - `waiting`: weeks owed an essay that can't be written yet, and why: home
-     hasn't made the record final, or hasn't heard a take. A later Monday
-     writes them. Never write an essay from a draft or a guess at a take.
+     hasn't made the record final, or hasn't heard a take yet. A later Monday
+     writes them. Never write an essay from a draft or a guess at a take. A
+     take home couldn't make out never holds a week back.
    - `next`: next week's id, when it opens and is due, its `seeds` (the
      errors the owner pasted, each with what they said about it) and its
      `topics`. It is `null` when the mailbox already holds next week.
@@ -110,6 +113,10 @@ with one ticket for each of the week's, by its id:
 - `answer`, for a silence: `{"guess"}`, a guess at why, in a sentence or two,
   from what the bundle shows (how often it was opened, what earlier weeks
   covered). Say it is a guess.
+- `answer`, for an `unheard` take: leave it out. Code says that something
+  was said and couldn't be made out. Write `beside` and `dives` as for a
+  silence: every point is a gap. Never read anything into a take home
+  couldn't make out, and never call it a weak answer.
 - `dives`: two deep dives on the ticket's biggest gaps. A gap is `missing`
   over `partly` over `covered`, and every point of a silence is a gap. Each
   dive is `{"point","title","shows","code","said"}`: the point it goes into

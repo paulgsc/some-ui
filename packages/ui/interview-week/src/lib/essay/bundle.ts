@@ -5,7 +5,8 @@
  * `brief` holds no essay of, it restates the week's company, role,
  * questions and cards, and each answer: a take with what home heard in it,
  * word by word, and IW3's measures of it (`measureAnswer`, `measureRead`),
- * or a silence. It also draws the faults chart over the weeks
+ * or a silence, or a take home couldn't make out (HEARD2, #3072), which the
+ * essay reads as a silence and never waits on. It also draws the faults chart over the weeks
  * (`chartOf`), so the model fills only the judged schema and the prose
  * (LEVERS, #2162).
  */
@@ -47,6 +48,8 @@ export type QuestionOwed = {
         readonly measured: AnswerFaults
       }
     | { readonly kind: "silence" }
+    /** A take home couldn't make out (HEARD2): read as if left unanswered. */
+    | { readonly kind: "unheard" }
 }
 
 type ReadOwed = {
@@ -60,6 +63,8 @@ type ReadOwed = {
         readonly measured: ReadFaults
       }
     | { readonly kind: "silence" }
+    /** A take home couldn't make out (HEARD2): read as if left unanswered. */
+    | { readonly kind: "unheard" }
 }
 
 type ChartRow = InterviewEssay["weeks"]["rows"][number]
@@ -252,12 +257,17 @@ function owed(
 ): Owed {
   if (week === undefined)
     return { ok: false, why: "brief holds no readable week file for it" }
+  /** A take's hearing: null for none sent, "unheard" for one home couldn't make out. */
   const heardOf = (
     take: string | null,
     what: string
-  ): { ok: true; heard: Heard | null } | { ok: false; why: string } => {
+  ):
+    | { ok: true; heard: Extract<Heard, { heard: true }> | null | "unheard" }
+    | { ok: false; why: string } => {
     if (take === null) return { ok: true, heard: null }
     const got = heard.get(take)
+    // Home couldn't make it out: the essay goes on without it (HEARD2).
+    if (got?.heard === false) return { ok: true, heard: "unheard" }
     if (got === undefined || got.text.trim() === "")
       return { ok: false, why: `home hasn't heard ${what}'s take yet` }
     if (got.words === null || got.words.length === 0)
@@ -281,15 +291,17 @@ function owed(
       answer:
         got.heard === null
           ? { kind: "silence" }
-          : {
-              kind: "take",
-              transcript: got.heard.text,
-              measured: measureAnswer({
-                words: got.heard.words ?? [],
-                targetMs: question.targetSeconds * 1000,
-                takeMs: null,
-              }),
-            },
+          : got.heard === "unheard"
+            ? { kind: "unheard" }
+            : {
+                kind: "take",
+                transcript: got.heard.text,
+                measured: measureAnswer({
+                  words: got.heard.words ?? [],
+                  targetMs: question.targetSeconds * 1000,
+                  takeMs: null,
+                }),
+              },
     })
   }
   const reads: Array<ReadOwed> = []
@@ -304,14 +316,16 @@ function owed(
       answer:
         got.heard === null
           ? { kind: "silence" }
-          : {
-              kind: "take",
-              transcript: got.heard.text,
-              measured: measureRead({
-                words: got.heard.words ?? [],
-                script: card.script,
-              }),
-            },
+          : got.heard === "unheard"
+            ? { kind: "unheard" }
+            : {
+                kind: "take",
+                transcript: got.heard.text,
+                measured: measureRead({
+                  words: got.heard.words ?? [],
+                  script: card.script,
+                }),
+              },
     })
   }
   return {

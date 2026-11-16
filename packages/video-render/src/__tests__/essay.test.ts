@@ -28,6 +28,7 @@ import type { Essay, EssayTicket } from "@video-render/essay"
 import { parseFormat } from "@video-render/format"
 import { versionOfFile } from "@video-render/series"
 import { spreadWords } from "@video-render/stills"
+import { hearingOf, UNHEARD_SAID } from "@video-render/verdict"
 import { describe, expect, it } from "vitest"
 
 const DIR = join(import.meta.dirname, "../templates", ESSAY_ID)
@@ -401,5 +402,67 @@ describe("the takes home hands the recorder", () => {
         "QM-400.words.json: word times with no take",
       ],
     })
+  })
+
+  it("set aside, unplayed, a take home couldn't make out (HEARD2)", () => {
+    const [first, ...rest] = essay.tickets
+    if (first === undefined) throw new Error("a ticket")
+    const unheard: Essay = {
+      ...essay,
+      tickets: [{ ...first, answer: UNHEARD }, ...rest],
+    }
+    expect(
+      essayTakeFiles(unheard, [
+        "QM-311.m4a",
+        "QM-311.words.json",
+        "QM-312.webm",
+      ])
+    ).toEqual({
+      ok: true,
+      value: { "QM-312": { audio: "QM-312.webm", words: null } },
+    })
+  })
+})
+
+/** A ticket's take home couldn't make out (HEARD2): a silence that says so. */
+const UNHEARD: EssayTicket["answer"] = {
+  kind: "silence",
+  opened: 1,
+  unheard: true,
+}
+
+describe("a take home couldn't make out (HEARD2; EH1)", () => {
+  const essay = sample()
+  const [first, ...rest] = essay.tickets
+  if (first === undefined) throw new Error("a ticket")
+  const withAnswer = (answer: unknown): ReturnType<typeof parseEssay> =>
+    parseEssay({ ...essay, tickets: [{ ...first, answer }, ...rest] })
+
+  it("is a silence that says so in code's words, with no guess", () => {
+    const parsed = withAnswer(UNHEARD)
+    if (!parsed.ok) throw new Error(parsed.problems.join("; "))
+    const said = essayScenes(parsed.value).find(
+      (scene) => scene.section === "answer" && scene.ticket === first.id
+    )
+    expect(said).toMatchObject({ speaker: "tutor", said: UNHEARD_SAID })
+  })
+
+  it("carries a guess or says it couldn't be made out, never both or neither", () => {
+    for (const answer of [
+      { kind: "silence", opened: 1, unheard: true, guess: "A guess." },
+      { kind: "silence", opened: 1 },
+    ])
+      expect(withAnswer(answer).ok).toBe(false)
+  })
+})
+
+describe("home's verdict on a transcript (HEARD1)", () => {
+  it("is heard only when it says so, and unjudged when it says nothing", () => {
+    expect(hearingOf({ text: "words" })).toBe("unjudged")
+    expect(hearingOf({ verdict: null })).toBe("unjudged")
+    expect(hearingOf({ verdict: "heard" })).toBe("heard")
+    expect(hearingOf({ verdict: { kind: "heard" } })).toBe("heard")
+    for (const verdict of ["garbled", { kind: "failed" }, { code: "x" }, 3])
+      expect(hearingOf({ verdict })).toBe("unheard")
   })
 })

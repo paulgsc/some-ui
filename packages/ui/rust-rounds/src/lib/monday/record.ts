@@ -13,7 +13,7 @@
  *   `<week>:PASTE:<at>` (paulgsc/server `voice_repo::is_rust_round_ref`).
  */
 import { WEEK_ID } from "@rust-rounds/lib/formats/week"
-import { transcriptName } from "@some-ui/video-render"
+import { hearingOf, transcriptName } from "@some-ui/video-render"
 import { z } from "zod"
 
 const Instant = z.iso.datetime({ offset: true })
@@ -85,15 +85,26 @@ export const TranscriptSchema = z.object({
 })
 
 /**
+ * What home heard in a note: its text, or that home couldn't make it out
+ * (HEARD2, #3072): home's verdict on the transcript (`hearingOf`) says
+ * garbled, nothing made out or failed. An unheard take's text is never kept
+ * here, so no essay can read garble as an answer.
+ */
+export type Heard =
+  | { readonly heard: true; readonly text: string }
+  | { readonly heard: false }
+
+/**
  * What home heard in each note, by the note's id: the transcript with the
  * highest `<n>` (compared as a number), since a better model's goes under a
  * new name. A file whose body isn't a transcript of the note its name carries
- * is left out.
+ * is left out. A transcript with no verdict, as every one before HEARD1,
+ * reads as heard.
  */
 export function heardByNote(
   files: ReadonlyArray<{ name: string; body: unknown }>
-): ReadonlyMap<string, string> {
-  const best = new Map<string, { n: bigint; text: string }>()
+): ReadonlyMap<string, Heard> {
+  const best = new Map<string, { n: bigint; heard: Heard }>()
   for (const file of files) {
     const named = transcriptName(file.name)
     if (named === null) continue
@@ -102,10 +113,14 @@ export function heardByNote(
     if (!parsed.success || parsed.data.note !== note) continue
     const held = best.get(note)
     if (held === undefined || n > held.n) {
-      best.set(note, { n, text: parsed.data.text })
+      const heard: Heard =
+        hearingOf(file.body) === "unheard"
+          ? { heard: false }
+          : { heard: true, text: parsed.data.text }
+      best.set(note, { n, heard })
     }
   }
-  return new Map([...best].map(([note, { text }]) => [note, text]))
+  return new Map([...best].map(([note, { heard }]) => [note, heard]))
 }
 
 /**

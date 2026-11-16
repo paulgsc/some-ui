@@ -6,6 +6,7 @@ import {
   markThemeOf,
   parseInterviewEssay,
   sampleInterviewEssay,
+  silenceSaid,
 } from "@some-ui/video-render"
 import type {
   InterviewEssay,
@@ -16,7 +17,7 @@ import type {
 import { Call, Inline, MARK_CLASS } from "./essay-parts"
 import type { EssayStageProps } from "./essay-stage"
 import { essayStageOf } from "./essay-view"
-import { ESSAY_WORDS as EW, weekNumber } from "./essay-words"
+import { ESSAY_WORDS as EW, leftOf, weekNumber } from "./essay-words"
 import { interviewEssaySource } from "./feed"
 import {
   BrandSlide,
@@ -122,7 +123,8 @@ const Faults = ({
 
 /**
  * An answer's or a read's take, played whole under its transcript, or the
- * silence and the guess at why: `took` and `left` name the two.
+ * silence and the guess at why: `took` and `left` name the two. A take that
+ * couldn't be made out (HEARD2) is named so, over code's words.
  */
 const Played = ({
   speaker,
@@ -134,15 +136,22 @@ const Played = ({
   speaker: InterviewEssayAt["speaker"]
   answer:
     | { readonly kind: "take"; readonly transcript: string }
-    | { readonly kind: "silence"; readonly guess: string }
+    | {
+        readonly kind: "silence"
+        readonly guess?: string
+        readonly unheard?: true
+      }
   took: string
   tag: string
   left: string
 }): JSX.Element => (
-  <Call speaker={speaker} tag={answer.kind === "take" ? tag : left}>
-    <Title>{answer.kind === "take" ? took : left}</Title>
+  <Call
+    speaker={speaker}
+    tag={answer.kind === "take" ? tag : leftOf(answer, left)}
+  >
+    <Title>{answer.kind === "take" ? took : leftOf(answer, left)}</Title>
     <p className="text-[0.95em] leading-snug">
-      {answer.kind === "take" ? answer.transcript : answer.guess}
+      {answer.kind === "take" ? answer.transcript : silenceSaid(answer)}
     </p>
   </Call>
 )

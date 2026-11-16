@@ -16,7 +16,8 @@
  *    - `question`: its spec and speak-to points;
  *    - `answer`: the owner's take, played whole and captioned with its
  *      transcript; for a ticket left unanswered, the silence and the guess
- *      at why;
+ *      at why; for a take home couldn't make out, a silence that says so
+ *      (HEARD2, #3072);
  *    - `best`: a best fit, an independent answer to each speak-to point,
  *      never called "correct";
  *    - `beside`: the best fit beside the owner's answer, each point covered,
@@ -64,6 +65,7 @@ import type { Storyboard } from "./storyboard"
 import { takeFilesOf } from "./take-files"
 import type { TakeFiles } from "./take-files"
 import sample from "./templates/rust-essay/sample-essay.json"
+import { isSilenceShape, SILENCE_SHAPE, silenceSaid } from "./verdict"
 
 export const ESSAY_SCHEMA = "some-ui.rust-essay/1"
 
@@ -291,13 +293,21 @@ const AnswerSchema = z.discriminatedUnion("kind", [
     ),
     solo: SoloSchema,
   }),
-  z.strictObject({
-    kind: z.literal("silence"),
-    /** How many times the ticket was opened and nothing sent. */
-    opened: z.number().int().nonnegative(),
-    /** The guess at why, said over the silence. */
-    guess: words,
-  }),
+  z
+    .strictObject({
+      kind: z.literal("silence"),
+      /** How many times the ticket was opened and nothing sent. */
+      opened: z.number().int().nonnegative(),
+      /** The guess at why, said over the silence. */
+      guess: words.optional(),
+      /**
+       * A take was sent and home couldn't make it out (HEARD2, #3072): the
+       * essay goes on as if it was left unanswered, and code says so
+       * (`UNHEARD_SAID`) in place of a guess.
+       */
+      unheard: z.literal(true).optional(),
+    })
+    .refine(isSilenceShape, SILENCE_SHAPE),
 ])
 
 const DiveSchema = z.strictObject({
@@ -672,7 +682,7 @@ export function essayScenes(
             id: id("answer"),
             ...of,
             speaker: "tutor",
-            said: ticket.answer.guess,
+            said: silenceSaid(ticket.answer),
           },
       {
         section: "best",
@@ -856,6 +866,12 @@ export const essayTakeFiles = (
         .map((ticket) => ticket.id),
       silent: essay.tickets
         .filter((ticket) => ticket.answer.kind === "silence")
+        .map((ticket) => ticket.id),
+      unheard: essay.tickets
+        .filter(
+          (ticket) =>
+            ticket.answer.kind === "silence" && ticket.answer.unheard === true
+        )
         .map((ticket) => ticket.id),
       noun: "ticket",
     },

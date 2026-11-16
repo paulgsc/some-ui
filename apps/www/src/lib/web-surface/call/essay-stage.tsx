@@ -7,6 +7,7 @@ import {
   markThemeOf,
   parseEssay,
   sampleEssay,
+  silenceSaid,
   SOLO_LEVELS,
   SOLO_SOURCE,
 } from "@some-ui/video-render"
@@ -20,7 +21,7 @@ import type {
 import { Call, Inline, MARK_CLASS } from "./essay-parts"
 import type { EssayAt, EssayView } from "./essay-view"
 import { essayAt, essayStageOf } from "./essay-view"
-import { ESSAY_WORDS as W, weekNumber } from "./essay-words"
+import { leftOf, ESSAY_WORDS as W, weekNumber } from "./essay-words"
 import { essaySource } from "./feed"
 import {
   BrandSlide,
@@ -91,7 +92,7 @@ const labelOf = (scene: EssayScene, essay: Essay): string => {
       const ticket = essay.tickets.find((t) => t.id === scene.ticket)
       const name =
         scene.section === "answer" && ticket?.answer.kind === "silence"
-          ? W.noAnswer
+          ? leftOf(ticket.answer)
           : scene.section === "dive"
             ? W.dive((scene.dive ?? 0) + 1)
             : (NAMES[scene.section] ?? "")
@@ -299,7 +300,7 @@ const Screen = ({
       return (
         <Call
           speaker={at.speaker}
-          tag={`${view.ticket.id} · ${answer.kind === "take" ? NAMES.answer : W.noAnswer}`}
+          tag={`${view.ticket.id} · ${answer.kind === "take" ? NAMES.answer : leftOf(answer)}`}
         >
           {answer.kind === "take" ? (
             <>
@@ -308,11 +309,13 @@ const Screen = ({
             </>
           ) : (
             <>
-              <Title>{W.noAnswer}</Title>
-              <p className="text-muted-foreground text-[0.8em]">
-                {W.opened(answer.opened)}
-              </p>
-              <p className="text-[1em] leading-snug">{answer.guess}</p>
+              <Title>{leftOf(answer)}</Title>
+              {answer.unheard === true ? null : (
+                <p className="text-muted-foreground text-[0.8em]">
+                  {W.opened(answer.opened)}
+                </p>
+              )}
+              <p className="text-[1em] leading-snug">{silenceSaid(answer)}</p>
             </>
           )}
         </Call>

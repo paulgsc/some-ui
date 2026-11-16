@@ -254,8 +254,16 @@ function build(
         model: { said: v.model },
         beside: { said: v.beside },
       }
+      if (q.answer.kind === "unheard") {
+        // Garble is not a weak answer: nothing is read from it (HEARD2).
+        if (v.answer !== undefined)
+          problems.push(
+            `${at}.questions["${q.id}"].answer: home couldn't make out the take, so leave answer out`
+          )
+        return { ...base, answer: { kind: "silence", unheard: true } }
+      }
       if (q.answer.kind === "silence") {
-        if (!("guess" in v.answer))
+        if (v.answer === undefined || !("guess" in v.answer))
           problems.push(
             `${at}.questions["${q.id}"].answer: it was left silent, so write {"guess"}`
           )
@@ -263,15 +271,18 @@ function build(
           ...base,
           answer: {
             kind: "silence",
-            guess: "guess" in v.answer ? v.answer.guess : "-",
+            guess:
+              v.answer !== undefined && "guess" in v.answer
+                ? v.answer.guess
+                : "-",
           },
         }
       }
-      if ("guess" in v.answer) {
+      if (v.answer === undefined || "guess" in v.answer) {
         problems.push(
           `${at}.questions["${q.id}"].answer: it was answered, so write {"judged","marks","said"}`
         )
-        return { ...base, answer: { kind: "silence", guess: v.answer.guess } }
+        return { ...base, answer: { kind: "silence", guess: "-" } }
       }
       for (const quote of quotesOf(v.answer.judged))
         if (!saidIn(q.answer.transcript, quote))
@@ -305,8 +316,16 @@ function build(
       problems.push(`${at}.reads: write "${r.id}", as the bundle asks`)
       return { ...base, answer: { kind: "silence", guess: "-" } }
     }
+    if (r.answer.kind === "unheard") {
+      // Garble is not a weak read: nothing is read from it (HEARD2).
+      if (v.answer !== undefined)
+        problems.push(
+          `${at}.reads["${r.id}"].answer: home couldn't make out the take, so leave answer out`
+        )
+      return { ...base, answer: { kind: "silence", unheard: true } }
+    }
     if (r.answer.kind === "silence") {
-      if (!("guess" in v.answer))
+      if (v.answer === undefined || !("guess" in v.answer))
         problems.push(
           `${at}.reads["${r.id}"].answer: it was left unread, so write {"guess"}`
         )
@@ -314,15 +333,18 @@ function build(
         ...base,
         answer: {
           kind: "silence",
-          guess: "guess" in v.answer ? v.answer.guess : "-",
+          guess:
+            v.answer !== undefined && "guess" in v.answer
+              ? v.answer.guess
+              : "-",
         },
       }
     }
-    if ("guess" in v.answer) {
+    if (v.answer === undefined || "guess" in v.answer) {
       problems.push(
         `${at}.reads["${r.id}"].answer: it was read, so write {"change","said"}`
       )
-      return { ...base, answer: { kind: "silence", guess: v.answer.guess } }
+      return { ...base, answer: { kind: "silence", guess: "-" } }
     }
     return {
       ...base,
@@ -386,6 +408,7 @@ function written(values: EssayValues): Array<[string, string]> {
       [`${at}.model`, q.model],
       [`${at}.beside`, q.beside]
     )
+    if (q.answer === undefined) continue
     if ("guess" in q.answer) out.push([`${at}.answer.guess`, q.answer.guess])
     else {
       out.push([`${at}.answer.said`, q.answer.said])
@@ -396,6 +419,7 @@ function written(values: EssayValues): Array<[string, string]> {
   for (const r of values.reads) {
     const at = `reads["${r.id}"]`
     out.push([`${at}.card`, r.card])
+    if (r.answer === undefined) continue
     if ("guess" in r.answer) out.push([`${at}.answer.guess`, r.answer.guess])
     else
       out.push(

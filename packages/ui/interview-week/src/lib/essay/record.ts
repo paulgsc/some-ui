@@ -14,7 +14,7 @@
 import { wordsOf } from "@interview-week/lib/faults"
 import type { HeardWord } from "@interview-week/lib/faults"
 import { WEEK_ID } from "@interview-week/lib/week"
-import { transcriptName } from "@some-ui/video-render"
+import { hearingOf, transcriptName } from "@some-ui/video-render"
 import { z } from "zod"
 
 const Instant = z.iso.datetime({ offset: true })
@@ -88,11 +88,20 @@ const TranscriptSchema = z.object({
   model: z.string().optional(),
 })
 
-/** What home heard in a take: its text, and its words, or null when home kept none. */
-export type Heard = {
-  readonly text: string
-  readonly words: ReadonlyArray<HeardWord> | null
-}
+/**
+ * What home heard in a take: its text, and its words, or null when home kept
+ * none; or that home couldn't make it out (HEARD2, #3072), from home's
+ * verdict on the transcript (`hearingOf`). An unheard take keeps no text, so
+ * no essay can read garble as an answer. A transcript with no verdict, as
+ * every one before HEARD1, reads as heard.
+ */
+export type Heard =
+  | {
+      readonly heard: true
+      readonly text: string
+      readonly words: ReadonlyArray<HeardWord> | null
+    }
+  | { readonly heard: false }
 
 /** Home's verbatim decode (IW2): it keeps the fillers a plain one drops. */
 const VERBATIM = "+verbatim"
@@ -123,7 +132,14 @@ export function heardByNote(
       best.set(note, {
         verbatim,
         n,
-        heard: { text: parsed.data.text, words: wordsOf(file.body) },
+        heard:
+          hearingOf(file.body) === "unheard"
+            ? { heard: false }
+            : {
+                heard: true,
+                text: parsed.data.text,
+                words: wordsOf(file.body),
+              },
       })
   }
   return new Map([...best].map(([note, { heard }]) => [note, heard]))
