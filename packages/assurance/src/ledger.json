@@ -810,6 +810,42 @@
             "ref": "server:infra/prometheus/rules/home.yml"
           },
           "amendments": []
+        },
+        {
+          "id": "VH5",
+          "kind": "OA2",
+          "property": "outcome",
+          "claim": "Every take home couldn't hear well is listed on the phone's Takes, by its codes, until the owner reconciles it, and each act the owner takes on it is kept on home for good.",
+          "requirement": "GET /voice-notes/attention lists every note of the paired owner, of any kind, whose newest verdict is garbled, failed or nothing_said and that no act in voice_note_attention answers, newest 100 by recordedAt with a total of all; POST /voice-notes/:id/attention keeps keep or again as a new row answering that verdict (the same act again writes nothing), and a delete for good from My data's path appends a deleted act in its transaction, its receipt naming reconciliation among what stayed; no act row is updated, and rows leave only with the account. The phone's Needs your attention page lists them by code and takes a reconciled one off its list only on home's answer.",
+          "verdict": "holds",
+          "conclusion": "Tested in server CI: every unheard take of any kind needs attention, an act answers the newest verdict and is kept append-only, and a delete records its act and keeps it. On the phone, the page's machine drops a take only on home's kept or settled answer or a delete's receipt (tested); whether the owner reaches the page is shown by real use.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "Every take home couldn't hear, of any kind, needs attention until an act answers its newest verdict, which is kept append-only.",
+              "ref": "server:crates/db/voice/src/attention.rs"
+            },
+            {
+              "class": "measured",
+              "says": "Deleting a garbled take for good records a deleted act and keeps it, and its receipt says reconciliation stayed.",
+              "ref": "server:crates/db/voice/src/delete.rs"
+            },
+            {
+              "class": "structural",
+              "says": "The phone's page lists the takes by code and drops one only on home's answer or a delete's receipt (HEARD3, #3077).",
+              "ref": "some-ui:packages/ui/soundbites/src/lib/reconcile/model.ts"
+            }
+          ],
+          "proof": [
+            "server:crates/db/voice/src/attention.rs#every_unheard_take_of_any_kind_needs_attention",
+            "server:crates/db/voice/src/attention.rs#an_act_answers_the_newest_verdict_and_is_kept",
+            "server:crates/db/voice/src/delete.rs#deleting_a_garbled_take_records_the_act_and_keeps_it",
+            "server:apps/servers/file_host/src/handlers/voice.rs#the_owner_reconciles_a_take_home_could_not_hear"
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
         }
       ]
     },
@@ -4868,6 +4904,12 @@
       "store": "server:voice_transcript_verdict",
       "class": "derived",
       "growth": "Per final attempt at hearing a note, per model and rule (HEARD1, server#908): one small row (the verdict, its reason codes, and the transcriber's numbers and language for a heard or garbled take; no word of what was said); append-only, a later rule a new row, so bounded by voice_transcript's rows times the rules in use (one: heard-1); it outlives its note when the owner deletes the note for good, whose receipt names it, and leaves with the account.",
+      "family": "voice-heard"
+    },
+    {
+      "store": "server:voice_note_attention",
+      "class": "record",
+      "growth": "Per act the owner takes on a take home couldn't hear well (HEARD3, server#912): one short row (the note's id, the act's number, kept, record_again or deleted, the verdict's key it answered, when); append-only (UPDATE aborts), a later act a new row, the same act on the same verdict writing nothing; it outlives its note when the owner deletes it for good, and leaves with the account.",
       "family": "voice-heard"
     },
     {

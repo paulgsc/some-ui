@@ -310,6 +310,10 @@ const RECEIPT_PARTS: Readonly<Record<string, string>> = {
   "conveyor history": "each move it made along the conveyor",
   // Home's verdict on it, which outlives the recording (HEARD1, C436).
   verdict: "whether home could make it out",
+  // What the owner chose on Needs your attention, which outlives it too
+  // (HEARD3, server#912).
+  reconciliation:
+    "what you chose to do with it after home couldn't hear it well",
 }
 
 /** A receipt's list of what went or stayed, as a sentence: `the recording and home's words for it`. */
