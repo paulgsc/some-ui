@@ -77,13 +77,14 @@ const LISTS: FeedLists = {
   "rust-essay": { kind: "read", episodes: [] },
 }
 
-function draw(chip: Chip): void {
+function draw(chip: Chip, lists: FeedLists = LISTS): void {
   render(
     <EpisodesView
-      view={feedView(LISTS, chip)}
+      view={feedView(lists, chip)}
       chip={chip}
       chips
-      pair={<span />}
+      pair={<span>Pair</span>}
+      top={<a href="/making">{"Videos you're making"}</a>}
       thisMonday="2026-11-09"
       onTryAgain={() => undefined}
     />
@@ -154,5 +155,32 @@ describe("Studio's Episodes, by week", () => {
         "Home hasn't made an essay yet. Each comes after its week has closed."
       )
     ).toBeTruthy()
+  })
+
+  it("says a feed home couldn't give beside the rest, and alone without them", () => {
+    draw("all", { ...LISTS, call: { kind: "away" } })
+    expect(
+      screen.getByText(
+        "Home couldn't give the call's videos. The rest are here."
+      )
+    ).toBeTruthy()
+    cleanup()
+    draw("call", { ...LISTS, call: { kind: "away" } })
+    expect(
+      screen.getByText(
+        "Home couldn't give the call's videos. Try again in a moment."
+      )
+    ).toBeTruthy()
+  })
+
+  it("keeps the way to the videos being made on a phone not paired", () => {
+    draw("all", { ...LISTS, call: { kind: "unpaired" } })
+    expect(
+      screen.getByText("Pair this phone with home to see your episodes.")
+    ).toBeTruthy()
+    expect(
+      screen.getByRole("link", { name: "Videos you're making" })
+    ).toBeTruthy()
+    expect(screen.queryByRole("navigation")).toBeNull()
   })
 })

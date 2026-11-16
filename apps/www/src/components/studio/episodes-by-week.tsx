@@ -276,7 +276,7 @@ export const EpisodesView = ({
         <TroubleCard
           key={one.feed}
           trouble={one}
-          alone={chip !== "all"}
+          alone={empty}
           onTryAgain={() => onTryAgain(one.feed)}
         />
       ))}

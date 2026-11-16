@@ -36,7 +36,7 @@ export const EPISODES_FEED_WORDS = {
   /** A week's heading: this week's, or the Monday it starts on. */
   week: (monday: string, thisMonday: string): string =>
     monday === thisMonday ? "This week" : `Week of ${formatDay(monday)}`,
-  /** Under a week's heading: its days and how many videos it holds. */
+  /** Under a week's heading: its days and how many episodes it holds. */
   weekLine: (monday: string, n: number): string =>
     `${formatDay(monday)} to ${formatDay(addDays(monday, 6))} · ${counted(n, "episode")}`,
   undated: "Not dated yet",
@@ -63,7 +63,10 @@ export const EPISODES_FEED_WORDS = {
   /** How long it runs, where home says. */
   length: (ms: number): string => formatTimecode(ms),
   voice: "Your voice",
-  /** Where a feed couldn't be read, beside the feeds that could. */
+  /**
+   * Where a feed couldn't be read: beside the episodes shown, or `alone`,
+   * with none shown.
+   */
   trouble: ({ feed, kind }: Trouble, alone: boolean): string =>
     kind === "older"
       ? FEED_WORDS[feed].older

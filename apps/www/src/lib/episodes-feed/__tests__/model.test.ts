@@ -86,7 +86,7 @@ describe("rowsOf", () => {
   })
 
   it("ignores a date home sends that isn't a day", () => {
-    for (const date of ["2026-13-01", "Friday", ""]) {
+    for (const date of ["2026-13-01", "Friday", "", null]) {
       const [row] = rowsOf("call", [episode("2026-11-06", { date })])
       expect(row).toMatchObject({ day: "2026-11-06" })
     }

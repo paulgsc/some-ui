@@ -25,9 +25,11 @@ describe("EPISODES_FEED_WORDS", () => {
       ...FEEDS.flatMap((feed) => [
         WORDS.chipLabel(WORDS.genre[feed], 3),
         WORDS.none(feed),
-        ...(["away", "older", "unreadable"] as const).map((kind) =>
-          WORDS.trouble({ feed, kind }, false)
-        ),
+        ...(["away", "older", "unreadable"] as const)
+          .map((kind) =>
+            [false, true].map((alone) => WORDS.trouble({ feed, kind }, alone))
+          )
+          .flat(),
       ]),
       WORDS.week("2026-11-09", "2026-11-09"),
       WORDS.week("2026-11-02", "2026-11-09"),
