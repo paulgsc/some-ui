@@ -14,6 +14,7 @@ import type {
 } from "@some-ui/video-render"
 
 import { Call, Inline, MARK_CLASS } from "./essay-parts"
+import type { EssayStageProps } from "./essay-stage"
 import { essayStageOf } from "./essay-view"
 import { ESSAY_WORDS as EW, weekNumber } from "./essay-words"
 import { interviewEssaySource } from "./feed"
@@ -42,12 +43,7 @@ import { INTERVIEW_ESSAY_WORDS as W } from "./interview-essay-words"
  * the template's sample.
  */
 
-export type InterviewEssayStageProps = {
-  week?: string
-  scene?: string
-  record?: boolean
-  onScene?: (scene: string) => void
-}
+export type InterviewEssayStageProps = Omit<EssayStageProps, "kind">
 
 const NAMES = sceneNames(interviewEssayFormat())
 
@@ -65,7 +61,7 @@ const labelOf = (scene: InterviewEssayScene): string => {
       return SW.brandOut
     }
     case "chapter": {
-      return W.chapter(scene.title)
+      return EW.chapter(scene.title)
     }
     case "open":
     case "weeks":
@@ -201,15 +197,15 @@ const Screen = ({
       return (
         <Call
           speaker={at.speaker}
-          tag={answer.kind === "take" ? NAMES.answer : W.noAnswer}
+          tag={answer.kind === "take" ? NAMES.answer : EW.noAnswer}
         >
           {answer.kind === "take" ? (
             <>
-              <Title>{W.youSaid}</Title>
+              <Title>{EW.youSaid}</Title>
               <p className="text-[0.95em] leading-snug">{answer.transcript}</p>
             </>
           ) : (
-            <Silence title={W.noAnswer} guess={answer.guess} />
+            <Silence title={EW.noAnswer} guess={answer.guess} />
           )}
         </Call>
       )
@@ -241,7 +237,7 @@ const Screen = ({
             <thead className="text-muted-foreground text-[0.85em]">
               <tr>
                 <th className="pr-[1em] font-normal">{W.guideline}</th>
-                <th className="font-normal">{W.yours}</th>
+                <th className="font-normal">{EW.yours}</th>
               </tr>
             </thead>
             <tbody>
@@ -254,7 +250,7 @@ const Screen = ({
                     <td className="py-[0.3em] align-top">
                       {mark === undefined ? (
                         <span className="text-muted-foreground">
-                          {W.unanswered}
+                          {EW.unanswered}
                         </span>
                       ) : (
                         <>
@@ -426,7 +422,7 @@ export const InterviewEssayStagePage = ({
       data={{ "data-essay": record ? JSON.stringify(essay) : undefined }}
       theme={format.shape?.theme}
       title={W.title}
-      where={voicing === "sample" ? `${where} · ${W.sample}` : where}
+      where={voicing === "sample" ? `${where} · ${EW.sample}` : where}
       captioned={record && hasCaptions(format)}
       said={at.scene.said}
       nav={

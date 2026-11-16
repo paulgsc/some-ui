@@ -7,7 +7,7 @@ import { ESSAY_WORDS as W } from "./essay-words"
  * What the essays' stages draw alike (`./essay-stage`, the Rust Rounds
  * essay's, and `./interview-essay-stage`, the interview essay's): template
  * A's two bubbles, the tutor and the owner, the one speaking lit, with the
- * scene's content beside them; text with code spans; a program; a mark.
+ * scene's content beside them; text with code spans; a mark.
  */
 
 /** The tutor's icon: neutral, never any company's mark. */
@@ -95,12 +95,6 @@ export const Inline = ({ text }: { text: string }): JSX.Element => (
       )
     )}
   </>
-)
-
-export const Code = ({ code }: { code: string }): JSX.Element => (
-  <pre className="bg-background border-border overflow-hidden rounded-[0.4em] border px-[0.8em] py-[0.5em] font-mono text-[0.62em] leading-snug [overflow-wrap:normal] whitespace-pre">
-    {code.trimEnd()}
-  </pre>
 )
 
 export const MARK_CLASS: Readonly<Record<string, string>> = {

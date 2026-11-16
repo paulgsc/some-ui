@@ -260,8 +260,8 @@ export function essayFormat(version: number = ESSAY_VERSION): Format {
   }
 }
 
-/** A week's id, as `some-ui.rust-week/1` writes it (`@some-ui/rust-rounds`' `WEEK_ID`). */
-const weekId = z
+/** A week's id, as `some-ui.rust-week/1` writes it (`@some-ui/rust-rounds`' `WEEK_ID`); the interview essay's too. */
+export const weekId = z
   .string()
   .regex(/^\d{4}-w(?:0[1-9]|[1-4]\d|5[0-3])$/, "a week's id is like 2026-w46")
 
@@ -436,6 +436,26 @@ function ticketProblems(ticket: EssayTicket): Array<string> {
   return problems
 }
 
+/**
+ * Why an essay's chart weeks and next week don't fit the week it answers:
+ * the chart ends on it, oldest first, each once, and next week comes after.
+ * Both essays' checkers say these the same way (`interview-essay.ts`).
+ */
+export function chartWeeksProblems(
+  week: string,
+  weeks: ReadonlyArray<string>
+): Array<string> {
+  const problems: Array<string> = []
+  if (weeks.at(-1) !== week)
+    problems.push(`weeks: the chart doesn't end on ${week}`)
+  if (weeks.some((each, i) => i > 0 && each <= (weeks[i - 1] ?? "")))
+    problems.push("weeks: they aren't oldest first, each once")
+  return problems
+}
+
+export const nextWeekProblems = (week: string, next: string): Array<string> =>
+  next <= week ? [`next: ${next} doesn't come after ${week}`] : []
+
 /** Every reason the essay's parsed data contradicts itself. */
 function essayProblems(essay: Essay): Array<string> {
   const problems: Array<string> = []
@@ -446,10 +466,7 @@ function essayProblems(essay: Essay): Array<string> {
     problems.push("tickets: two share an id")
   for (const ticket of essay.tickets) problems.push(...ticketProblems(ticket))
   const { weeks, concepts } = essay.weeks
-  if (weeks.at(-1) !== essay.week.id)
-    problems.push(`weeks: the chart doesn't end on ${essay.week.id}`)
-  if (weeks.some((week, i) => i > 0 && week <= (weeks[i - 1] ?? "")))
-    problems.push("weeks: they aren't oldest first, each once")
+  problems.push(...chartWeeksProblems(essay.week.id, weeks))
   for (const concept of concepts) {
     if (concept.cells.length !== weeks.length)
       problems.push(
@@ -468,10 +485,7 @@ function essayProblems(essay: Essay): Array<string> {
         )
     })
   }
-  if (essay.next.week <= essay.week.id)
-    problems.push(
-      `next: ${essay.next.week} doesn't come after ${essay.week.id}`
-    )
+  problems.push(...nextWeekProblems(essay.week.id, essay.next.week))
   return once(problems)
 }
 

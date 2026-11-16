@@ -70,14 +70,13 @@ type Said = {
  * essay (RR16) and the interview essay (IW6). Each kind's file names itself
  * by its `schema`, so `record:essay` takes either.
  */
-type EssayKind<E> = {
+type EssayKind<E extends { readonly week: { readonly id: string } }> = {
   readonly name: string
   /** The stage's read of an essay of this kind, by its week (`call/feed.ts`). */
   readonly read: RegExp
   /** The stage's `kind`, when it isn't the default. */
   readonly stage: string | null
   readonly parse: (raw: unknown) => Parsed<E>
-  readonly week: (essay: E) => string
   readonly takeFiles: (
     essay: E,
     names: ReadonlyArray<string>
@@ -101,7 +100,6 @@ const RUST: EssayKind<Essay> = {
   read: /\/rust-essays\/[^/?#]+\.json$/,
   stage: null,
   parse: parseEssay,
-  week: (essay) => essay.week.id,
   takeFiles: essayTakeFiles,
   scenes: (essay, voicing) =>
     essayScenes(essay, voicing).map((scene) => ({
@@ -121,7 +119,6 @@ const INTERVIEW: EssayKind<InterviewEssay> = {
   read: /\/interview-essays\/[^/?#]+\.json$/,
   stage: "interview",
   parse: parseInterviewEssay,
-  week: (essay) => essay.week.id,
   takeFiles: interviewEssayTakeFiles,
   scenes: (essay, voicing) =>
     interviewEssayScenes(essay, voicing).map((scene) => ({
@@ -137,7 +134,7 @@ const INTERVIEW: EssayKind<InterviewEssay> = {
 type Kept<E> = { readonly bytes: Buffer; readonly essay: E }
 
 /** Each answered take in `dir`, by its name there, or every reason not. */
-async function takesIn<E>(
+async function takesIn<E extends { readonly week: { readonly id: string } }>(
   dir: string,
   kind: EssayKind<E>,
   essay: E
@@ -203,7 +200,7 @@ export async function recordEssay(
 }
 
 /** Records and renders an essay of `kind`: the file read, or with none its sample. */
-async function recordKind<E>(
+async function recordKind<E extends { readonly week: { readonly id: string } }>(
   kind: EssayKind<E>,
   file: {
     readonly path: string
@@ -226,7 +223,7 @@ async function recordKind<E>(
       ? {}
       : await takesIn(here(values.takes ?? ""), kind, kept.essay)
   const voicing: Voicing = kept === null ? "sample" : "owner"
-  const week = kept === null ? "sample" : kind.week(kept.essay)
+  const week = kept === null ? "sample" : kept.essay.week.id
   const site = await siteOf(values)
   const browser = await launchChromium()
   try {
@@ -253,12 +250,12 @@ async function recordKind<E>(
     if (!parsed.ok)
       fail(["The stage's essay can't make a video:", ...parsed.problems])
     const essay = parsed.value
-    if (kept && kind.week(essay) !== week)
-      fail([`the stage played ${kind.week(essay)}, not ${week}`])
+    if (kept && essay.week.id !== week)
+      fail([`the stage played ${essay.week.id}, not ${week}`])
 
     const scenes = kind.scenes(essay, voicing)
     if (!preview) refuseLong(scenes, policy)
-    const root = here(preview ? values.out : join(values.out, kind.week(essay)))
+    const root = here(preview ? values.out : join(values.out, essay.week.id))
     const format = kind.format(essay)
     const takes = await recordStills({
       page,

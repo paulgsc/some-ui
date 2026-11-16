@@ -17,7 +17,7 @@ import type {
   EssayTicket,
 } from "@some-ui/video-render"
 
-import { Call, Code, Inline, MARK_CLASS } from "./essay-parts"
+import { Call, Inline, MARK_CLASS } from "./essay-parts"
 import type { EssayAt, EssayView } from "./essay-view"
 import { essayAt, essayStageOf } from "./essay-view"
 import { ESSAY_WORDS as W, weekNumber } from "./essay-words"
@@ -102,6 +102,12 @@ const labelOf = (scene: EssayScene, essay: Essay): string => {
     }
   }
 }
+
+const Code = ({ code }: { code: string }): JSX.Element => (
+  <pre className="bg-background border-border overflow-hidden rounded-[0.4em] border px-[0.8em] py-[0.5em] font-mono text-[0.62em] leading-snug [overflow-wrap:normal] whitespace-pre">
+    {code.trimEnd()}
+  </pre>
+)
 
 /** The whole SOLO scale, the answer's level marked when there is one. */
 const Solo = ({ level }: { level: number | undefined }): JSX.Element => (

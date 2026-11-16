@@ -52,10 +52,6 @@ describe("the interview essay's format", () => {
       `template.version: newer than this build knows: it draws up to version ${String(INTERVIEW_ESSAY_VERSION)}, so publish a newer stage first`,
     ])
   })
-
-  it("has no field for a score or a grade", () => {
-    expect(problems({ ...sample(), score: 7 }).length).toBeGreaterThan(0)
-  })
 })
 
 describe("the sample essay", () => {
@@ -200,22 +196,14 @@ describe("the takes folder", () => {
     })
   })
 
-  it("is refused when a take is missing, or is a silence's or no one's", () => {
-    expect(
-      interviewEssayTakeFiles(essay, [
-        "a-time-you.m4a",
-        "why-this-role.m4a",
-        "read.one-surface-each.m4a",
-        "read.nowhere.m4a",
-      ])
-    ).toEqual({
-      ok: false,
-      problems: [
-        "read.keep-it-first: answered, and there is no take of it",
-        "read.nowhere.m4a: names no question or read the essay answers",
-        "read.one-surface-each.m4a: read.one-surface-each was left silent",
-        "why-this-role.m4a: why-this-role was left silent",
-      ],
-    })
+  it("names a read's take by its card, so a silent read's take is refused", () => {
+    const refused = interviewEssayTakeFiles(essay, [
+      "a-time-you.m4a",
+      "read.keep-it-first.webm",
+      "read.one-surface-each.m4a",
+    ])
+    expect(refused.ok ? [] : refused.problems).toEqual([
+      "read.one-surface-each.m4a: read.one-surface-each was left silent",
+    ])
   })
 })

@@ -47,7 +47,13 @@ import { chapterSlides } from "./chapters"
 import { once, problemsOf } from "./cut-list"
 import type { CutList, Parsed } from "./cut-list"
 import type { Speaker, Voicing } from "./essay"
-import { MARKS } from "./essay"
+import {
+  chartWeeksProblems,
+  ESSAY_CHAPTERS,
+  MARKS,
+  nextWeekProblems,
+  weekId,
+} from "./essay"
 import { FORMAT_SCHEMA, repeatedId, versionRefusal, words } from "./format"
 import type { Format, Shape } from "./format"
 import { hasCaptions, stillFile, stillsCutList } from "./stills"
@@ -58,7 +64,6 @@ import sample from "./templates/interview-essay/sample-essay.json"
 
 export const INTERVIEW_ESSAY_SCHEMA = "some-ui.interview-essay/1"
 
-/** The interview essay's template: its format's id. */
 export const INTERVIEW_ESSAY_ID = "interview-essay"
 
 /** The newest version `interviewEssayFormat` gives, pinned as `v<n>.json` under `templates/`. */
@@ -72,15 +77,8 @@ const READS_MOST = 4
 export const INTERVIEW_FAULTS_MOST = 8
 
 /** The most weeks, and rows, the faults chart shows. */
-export const INTERVIEW_WEEKS_MOST = 12
-export const INTERVIEW_ROWS_MOST = 8
-
-/**
- * Where a take's prefix in the takes folder marks it a read's, as home
- * exports it: `read.<card>.<ext>`. A question's or card's id is a kebab
- * slug, so the dot never meets one.
- */
-export const READ_TAKE_PREFIX = "read."
+const INTERVIEW_WEEKS_MOST = 12
+const INTERVIEW_ROWS_MOST = 8
 
 type Section =
   | "open"
@@ -130,7 +128,7 @@ const scene = (
   ...(isRepeated(id) ? { repeat: { max: MOST[id] } } : {}),
 })
 
-/** The Rust essay's shape, a chapter slide opening each question, each read and the close. */
+/** Mochi Night with the moving brand, as the Rust essay; a chapter slide opens each question, each read and the close. */
 const SHAPE: Shape = nightInMotion({
   brand: { intro: true, outro: true },
   chapters: ["question", "card", "weeks"],
@@ -219,10 +217,6 @@ export function interviewEssayFormat(
     shape: SHAPE,
   }
 }
-
-const weekId = z
-  .string()
-  .regex(/^\d{4}-w(?:0[1-9]|[1-4]\d|5[0-3])$/, "a week's id is like 2026-w47")
 
 /** A question's or card's id, as `some-ui.interview-week/1` writes it. */
 const slug = z
@@ -376,19 +370,13 @@ function problemsOfEssay(essay: InterviewEssay): Array<string> {
     )
       problems.push(`${read.id}: a read's faults are measured, never judged`)
   const { weeks, rows } = essay.weeks
-  if (weeks.at(-1) !== essay.week.id)
-    problems.push(`weeks: the chart doesn't end on ${essay.week.id}`)
-  if (weeks.some((week, i) => i > 0 && week <= (weeks[i - 1] ?? "")))
-    problems.push("weeks: they aren't oldest first, each once")
+  problems.push(...chartWeeksProblems(essay.week.id, weeks))
   for (const row of rows)
     if (row.cells.length !== weeks.length)
       problems.push(
         `${row.name}: it has ${row.cells.length} cells for ${weeks.length} weeks`
       )
-  if (essay.next.week <= essay.week.id)
-    problems.push(
-      `next: ${essay.next.week} doesn't come after ${essay.week.id}`
-    )
+  problems.push(...nextWeekProblems(essay.week.id, essay.next.week))
   return once(problems)
 }
 
@@ -433,19 +421,13 @@ export type InterviewEssayScene =
       readonly said: string
     }
 
-/** Each chapter's title that isn't a question's or a read's. */
-export const INTERVIEW_CHAPTERS = {
-  weeks: "Over the weeks",
-  next: "Next week",
-} as const
-
 /** A question's chapter title, and a read's. */
-export const questionTitle = (n: number, of: number): string =>
+const questionTitle = (n: number, of: number): string =>
   `Question ${n} of ${of}`
-export const readTitle = (n: number, of: number): string => `Read ${n} of ${of}`
+const readTitle = (n: number, of: number): string => `Read ${n} of ${of}`
 
 /** How many questions, and reads, the owner answered. */
-export const interviewAnsweredOf = (
+const interviewAnsweredOf = (
   essay: InterviewEssay
 ): { readonly questions: number; readonly reads: number } => ({
   questions: essay.questions.filter((q) => q.answer.kind === "take").length,
@@ -504,6 +486,16 @@ export function interviewEssayIntro(
   }
 }
 
+/** Who says an answer's scene and what: the owner's take, or the tutor's guess over a silence. */
+const played = (
+  answer:
+    | { readonly kind: "take"; readonly transcript: string }
+    | { readonly kind: "silence"; readonly guess: string }
+): { readonly speaker: Speaker; readonly said: string } =>
+  answer.kind === "take"
+    ? { speaker: "you", said: answer.transcript }
+    : { speaker: "tutor", said: answer.guess }
+
 /**
  * The essay's scenes in the order said: the intro and the brand, the open,
  * each question's group, each read's, then the chart and next week, a
@@ -561,21 +553,7 @@ export function interviewEssayScenes(
         speaker: "tutor",
         said: question.question.said,
       },
-      answer.kind === "take"
-        ? {
-            section: "answer",
-            id: id("answer"),
-            ...of,
-            speaker: "you",
-            said: answer.transcript,
-          }
-        : {
-            section: "answer",
-            id: id("answer"),
-            ...of,
-            speaker: "tutor",
-            said: answer.guess,
-          }
+      { section: "answer", id: id("answer"), ...of, ...played(answer) }
     )
     if (answer.kind === "take") {
       faults += 1
@@ -629,21 +607,12 @@ export function interviewEssayScenes(
         speaker: "tutor",
         said: read.card.said,
       },
-      answer.kind === "take"
-        ? {
-            section: "reading",
-            id: repeatedId("reading", n),
-            ...of,
-            speaker: "you",
-            said: answer.transcript,
-          }
-        : {
-            section: "reading",
-            id: repeatedId("reading", n),
-            ...of,
-            speaker: "tutor",
-            said: answer.guess,
-          }
+      {
+        section: "reading",
+        id: repeatedId("reading", n),
+        ...of,
+        ...played(answer),
+      }
     )
     if (answer.kind === "take") {
       heard += 1
@@ -662,9 +631,9 @@ export function interviewEssayScenes(
         section: "chapter",
         id: `chapter-${section}`,
         of: section,
-        title: INTERVIEW_CHAPTERS[section],
+        title: ESSAY_CHAPTERS[section],
         speaker: "tutor",
-        said: `${INTERVIEW_CHAPTERS[section]}.`,
+        said: `${ESSAY_CHAPTERS[section]}.`,
       })
     scenes.push({
       section,
@@ -720,7 +689,7 @@ export const interviewEssayChapterMarks = (
   )
 
 /** The file name a read's take has in the takes folder: `read.<card>`. */
-export const readTakeId = (card: string): string => `${READ_TAKE_PREFIX}${card}`
+export const readTakeId = (card: string): string => `read.${card}`
 
 /**
  * Which of `names`, the files in the folder home hands the recorder, is each

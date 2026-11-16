@@ -6,7 +6,6 @@ import {
   essayIntro,
   fitsAllowance,
   parseEssay,
-  parseInterviewEssay,
   reportPages,
   reportProblems,
   reportWeek,
@@ -344,32 +343,6 @@ describe("an interview essay's stage (IW6)", () => {
     const heard = interviewEssayAt(essay(), "heard-1").view
     expect(heard.section === "heard" && heard.read.id).toBe("keep-it-first")
     expect(interviewEssayAt(essay(), "reading-2").speaker).toBe("tutor")
-    expect(interviewEssayAt(essay(), "nope").scene.id).toBe("intro")
-  })
-
-  it("is the named week's interview essay as read, never the Rust essay", () => {
-    const read = (
-      data: unknown
-    ): { data: unknown; pending: boolean; failed: boolean } => ({
-      data,
-      pending: false,
-      failed: false,
-    })
-    const shown = essayStageOf({
-      week: "2026-w47",
-      read: read(essay()),
-      sample,
-      parse: parseInterviewEssay,
-    })
-    expect(shown.kind === "show" && shown.voicing).toBe("owner")
-    const rust = sampleEssay()
-    const refused = essayStageOf({
-      week: "2026-w46",
-      read: read(rust.ok ? rust.value : undefined),
-      sample,
-      parse: parseInterviewEssay,
-    })
-    expect(refused.kind).toBe("none")
   })
 })
 

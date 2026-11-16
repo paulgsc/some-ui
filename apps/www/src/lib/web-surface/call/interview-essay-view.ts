@@ -98,7 +98,6 @@ export function interviewEssayAt(
     0,
     scenes.findIndex((scene) => scene.id === id)
   )
-  // `interviewEssayScenes` always gives the intro, the open and the close.
   const scene = scenes[index]
   return {
     scenes,
