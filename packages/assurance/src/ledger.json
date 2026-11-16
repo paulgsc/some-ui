@@ -345,35 +345,17 @@
               {
                 "label": "today",
                 "points": [
-                  [
-                    1000,
-                    12066
-                  ],
-                  [
-                    10000,
-                    120066
-                  ],
-                  [
-                    100000,
-                    1200066
-                  ]
+                  [1000, 12066],
+                  [10000, 120066],
+                  [100000, 1200066]
                 ]
               },
               {
                 "label": "with the index",
                 "points": [
-                  [
-                    1000,
-                    312
-                  ],
-                  [
-                    10000,
-                    312
-                  ],
-                  [
-                    100000,
-                    312
-                  ]
+                  [1000, 312],
+                  [10000, 312],
+                  [100000, 312]
                 ]
               }
             ],
@@ -414,9 +396,7 @@
       "id": "app-requests",
       "name": "A request the app makes stops when you stop it",
       "why": "The shared fetch client carries the app's reads of lessons, word lists and the NFL data; a request it keeps making after you have moved on is work for nothing.",
-      "paths": [
-        "some-ui:packages/fetch-kit"
-      ],
+      "paths": ["some-ui:packages/fetch-kit"],
       "modules": [],
       "objectives": [
         {
@@ -541,9 +521,7 @@
         "some-ui:apps/www/src/lib/app-events",
         "some-ui:apps/www/src/lib/home-link/app-events-send.ts"
       ],
-      "modules": [
-        "app_events"
-      ],
+      "modules": ["app_events"],
       "objectives": [
         {
           "id": "TE1",
@@ -658,9 +636,7 @@
         "some-ui:apps/www/src/lib/home-link/set-aside.ts",
         "server:apps/servers/file_host/src/transcribe"
       ],
-      "modules": [
-        "voice"
-      ],
+      "modules": ["voice"],
       "objectives": [
         {
           "id": "VH1",
@@ -891,9 +867,7 @@
         "some-ui:packages/ui/rust-rounds/src/lib/home",
         "some-ui:apps/www/src/lib/home-link/rust-rounds.ts"
       ],
-      "modules": [
-        "rust_rounds"
-      ],
+      "modules": ["rust_rounds"],
       "objectives": [
         {
           "id": "RC1",
@@ -1367,12 +1341,7 @@
         "server:apps/servers/file_host/src/nudge",
         "server:docs/study-nudge.md"
       ],
-      "modules": [
-        "presence",
-        "signals",
-        "push",
-        "outcomes"
-      ],
+      "modules": ["presence", "signals", "push", "outcomes"],
       "objectives": [
         {
           "id": "NW1",
@@ -2207,9 +2176,7 @@
         "server:infra/prometheus/rules/home.yml",
         "server:nix/modules/test.nix"
       ],
-      "modules": [
-        "compat"
-      ],
+      "modules": ["compat"],
       "objectives": [
         {
           "id": "HD1",
@@ -2305,9 +2272,7 @@
         "some-ui:packages/video-render",
         "server:crates/db/studio_video"
       ],
-      "modules": [
-        "studio_videos"
-      ],
+      "modules": ["studio_videos"],
       "objectives": [
         {
           "id": "VM1",
@@ -2411,10 +2376,7 @@
         "server:apps/servers/file_host/src/handlers/feed_videos.rs",
         "server:apps/servers/file_host/src/routes/feed_videos.rs"
       ],
-      "modules": [
-        "feed_videos",
-        "renders"
-      ],
+      "modules": ["feed_videos", "renders"],
       "objectives": [
         {
           "id": "CW1",
@@ -2828,9 +2790,7 @@
         "some-ui:packages/video-render/src/clip.ts",
         "some-ui:packages/video-motion/src/walk"
       ],
-      "modules": [
-        "clips"
-      ],
+      "modules": ["clips"],
       "objectives": [
         {
           "id": "CL1",
@@ -3178,9 +3138,7 @@
         "some-ui:apps/www/src/lib/template-preview",
         "some-ui:apps/www/src/components/studio/template-preview.tsx"
       ],
-      "modules": [
-        "previews"
-      ],
+      "modules": ["previews"],
       "objectives": [
         {
           "id": "PV1",
@@ -3600,9 +3558,7 @@
         "server:apps/servers/file_host/src/handlers/cards_essays.rs",
         "some-ui:apps/www/tests/record/voiced.ts"
       ],
-      "modules": [
-        "cards_essays"
-      ],
+      "modules": ["cards_essays"],
       "objectives": [
         {
           "id": "CE1",
@@ -5035,15 +4991,8 @@
       "id": "phone-recording",
       "name": "Recording on the phone",
       "why": "Every screen that records a take (Rust Rounds, the interview week, LeetType, the grammar lens, scene and reflection voice, Jobs notes, Soundbites, Studio, Game Week) opens the microphone through one kit, keeps the take on the phone, and says how it went. MIC0 (some-ui#2370) failed here while every test was green, and was found only by luck.",
-      "serves": [
-        "take-endings"
-      ],
-      "witnesses": [
-        "TE1",
-        "TE2",
-        "TE3",
-        "TE4"
-      ],
+      "serves": ["take-endings"],
+      "witnesses": ["TE1", "TE2", "TE3", "TE4"],
       "segments": [
         {
           "id": "take",
@@ -5060,18 +5009,14 @@
           "name": "The WebView's getUserMedia and MediaRecorder, and Android's microphone permission behind them. The browser's and Android's.",
           "owner": "foreign",
           "on": "phone",
-          "paths": [
-            "some-ui:packages/voice-capture/src/lib/recorder.ts"
-          ]
+          "paths": ["some-ui:packages/voice-capture/src/lib/recorder.ts"]
         },
         {
           "id": "kept",
           "name": "The take's audio on its own shelf in this phone's storage. Ours, over the WebView's IndexedDB.",
           "owner": "ours",
           "on": "phone",
-          "paths": [
-            "some-ui:packages/voice-capture/src/lib/blob-shelf.ts"
-          ]
+          "paths": ["some-ui:packages/voice-capture/src/lib/blob-shelf.ts"]
         },
         {
           "id": "note",
@@ -5095,9 +5040,7 @@
           "name": "Home keeps each note append-only and counts them per screen. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": [
-            "server:apps/servers/file_host/src/handlers/app_events.rs"
-          ]
+          "paths": ["server:apps/servers/file_host/src/handlers/app_events.rs"]
         }
       ],
       "signals": [
@@ -5118,10 +5061,7 @@
           "kind": "phone-check",
           "name": "The microphone opens, hears sound and is let go",
           "runs": "phone",
-          "segments": [
-            "phone-recording/microphone",
-            "phone-recording/take"
-          ],
+          "segments": ["phone-recording/microphone", "phone-recording/take"],
           "status": "planned",
           "tracked": "some-ui#2384"
         },
@@ -5178,9 +5118,7 @@
           "kind": "monitor",
           "name": "The take machine's rules checked on every real step, a break sending home a trace that replays as a test",
           "runs": "phone",
-          "segments": [
-            "phone-recording/take"
-          ],
+          "segments": ["phone-recording/take"],
           "status": "planned",
           "tracked": "some-ui#2382"
         }
@@ -5198,9 +5136,7 @@
           "name": "A listening, from the tap to the words heard, with LS1's deadlines. Ours.",
           "owner": "ours",
           "on": "phone",
-          "paths": [
-            "some-ui:apps/www/src/lib/device-listen"
-          ]
+          "paths": ["some-ui:apps/www/src/lib/device-listen"]
         },
         {
           "id": "plugin",
@@ -5237,9 +5173,7 @@
           "kind": "monitor",
           "name": "The recognizer's rules (LS1) checked on every real step, after the take machine's",
           "runs": "phone",
-          "segments": [
-            "recognizer/listening"
-          ],
+          "segments": ["recognizer/listening"],
           "status": "planned",
           "tracked": "some-ui#2382"
         }
@@ -5283,9 +5217,7 @@
       "id": "voice-going-home",
       "name": "Voice notes go home",
       "why": "A voice note waits on the phone until home holds a copy; the home link's voice lane sends it over the home network, and the phone lets its copy go once home has it.",
-      "serves": [
-        "voice-heard"
-      ],
+      "serves": ["voice-heard"],
       "witnesses": [],
       "segments": [
         {
@@ -5293,18 +5225,14 @@
           "name": "The note's record and audio on the phone while home does not hold it. Ours.",
           "owner": "ours",
           "on": "phone",
-          "paths": [
-            "some-ui:apps/www/src/lib/voice-home"
-          ]
+          "paths": ["some-ui:apps/www/src/lib/voice-home"]
         },
         {
           "id": "lane",
           "name": "The voice lane sends each waiting note and lets the phone's copy go once home holds it. Ours.",
           "owner": "ours",
           "on": "phone",
-          "paths": [
-            "some-ui:apps/www/src/lib/home-link/voice.ts"
-          ]
+          "paths": ["some-ui:apps/www/src/lib/home-link/voice.ts"]
         },
         {
           "id": "home-network",
@@ -5318,9 +5246,7 @@
           "name": "Home takes the note and keeps its audio for good. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": [
-            "server:apps/servers/file_host/src/routes/voice.rs"
-          ]
+          "paths": ["server:apps/servers/file_host/src/routes/voice.rs"]
         }
       ],
       "signals": [
@@ -5341,31 +5267,22 @@
       "id": "home-transcription",
       "name": "Home hears voice notes",
       "why": "Home transcribes every voice note in the background, and the transcript is what the routine reads.",
-      "serves": [
-        "voice-heard"
-      ],
-      "witnesses": [
-        "VH1",
-        "VH2"
-      ],
+      "serves": ["voice-heard"],
+      "witnesses": ["VH1", "VH2"],
       "segments": [
         {
           "id": "pass",
           "name": "A transcription pass takes a batch of notes, gives each a row and retries a failure a few times. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": [
-            "server:apps/servers/file_host/src/transcribe/pass.rs"
-          ]
+          "paths": ["server:apps/servers/file_host/src/transcribe/pass.rs"]
         },
         {
           "id": "engine",
           "name": "ffmpeg decodes the note, and whisper.cpp's VAD and Whisper hear it. Someone else's, on home.",
           "owner": "foreign",
           "on": "home",
-          "paths": [
-            "server:apps/servers/file_host/src/transcribe/engine.rs"
-          ]
+          "paths": ["server:apps/servers/file_host/src/transcribe/engine.rs"]
         }
       ],
       "signals": [
@@ -5386,10 +5303,7 @@
           "kind": "probe",
           "name": "A known clip goes in as a probe note, daily and from the page, and the words that come back are compared",
           "runs": "home",
-          "segments": [
-            "home-transcription/pass",
-            "home-transcription/engine"
-          ],
+          "segments": ["home-transcription/pass", "home-transcription/engine"],
           "status": "planned",
           "tracked": "some-ui#2383"
         }
@@ -5399,16 +5313,8 @@
       "id": "mailbox-passes",
       "name": "Home reads the mailbox",
       "why": "The routines put their files in the Jobs mailbox, a Cloudflare Worker; home reads them as soon as the mailbox rings it over a connection home holds open, and at least hourly while it does or every 15 minutes while it does not, keeps a checked copy, archives what has sat a while and puts back what a routine asks for.",
-      "serves": [
-        "routine-to-home",
-        "archive-restore"
-      ],
-      "witnesses": [
-        "MI1",
-        "MI2",
-        "MI3",
-        "MI4"
-      ],
+      "serves": ["routine-to-home", "archive-restore"],
+      "witnesses": ["MI1", "MI2", "MI3", "MI4"],
       "segments": [
         {
           "id": "routine-puts",
@@ -5422,9 +5328,7 @@
           "name": "The mailbox's Worker and its D1 database. Ours, on Cloudflare.",
           "owner": "ours",
           "on": "mailbox",
-          "paths": [
-            "some-ui:apps/mailbox"
-          ]
+          "paths": ["some-ui:apps/mailbox"]
         },
         {
           "id": "internet",
@@ -5438,9 +5342,7 @@
           "name": "Home's mailbox pass: read, keep a checked copy, hand over, archive and restore. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": [
-            "server:apps/servers/file_host/src/mailbox"
-          ]
+          "paths": ["server:apps/servers/file_host/src/mailbox"]
         }
       ],
       "signals": [
@@ -5461,13 +5363,8 @@
       "id": "morning-run",
       "name": "The morning run",
       "why": "The 7:52 Jobs routine runs at Anthropic and leaves its files in the mailbox; home records each run and expects the next, and Jobs on the phone says how this morning's went.",
-      "serves": [
-        "morning-run"
-      ],
-      "witnesses": [
-        "RR1",
-        "RR2"
-      ],
+      "serves": ["morning-run"],
+      "witnesses": ["RR1", "RR2"],
       "segments": [
         {
           "id": "routine",
@@ -5481,18 +5378,14 @@
           "name": "The run's files and record in the mailbox. Ours, on Cloudflare.",
           "owner": "ours",
           "on": "mailbox",
-          "paths": [
-            "some-ui:apps/mailbox"
-          ]
+          "paths": ["some-ui:apps/mailbox"]
         },
         {
           "id": "watch",
           "name": "Home records each run and sets when the next is due. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": [
-            "server:apps/servers/file_host/src/routine_watch.rs"
-          ]
+          "paths": ["server:apps/servers/file_host/src/routine_watch.rs"]
         },
         {
           "id": "home-network",
@@ -5506,9 +5399,7 @@
           "name": "Jobs' Today card and the morning row on How it's running. Ours, on the phone.",
           "owner": "ours",
           "on": "phone",
-          "paths": [
-            "some-ui:apps/www/src/lib/jobs/morning.ts"
-          ]
+          "paths": ["some-ui:apps/www/src/lib/jobs/morning.ts"]
         }
       ],
       "signals": [
@@ -5529,13 +5420,8 @@
       "id": "rust-rounds-runs",
       "name": "Rust Rounds' programs run on home",
       "why": "Home queues each program of a round or week it keeps and hands it to the sandboxed rust-runner in the background, keeping what rustc printed. A paired phone sends each round pasted on it home once, through the home link's Rust Rounds lane, and reads back the runs home recorded (RR4b, some-ui#2347).",
-      "serves": [
-        "rust-rounds-recorded"
-      ],
-      "witnesses": [
-        "RC1",
-        "RC2"
-      ],
+      "serves": ["rust-rounds-recorded"],
+      "witnesses": ["RC1", "RC2"],
       "segments": [
         {
           "id": "lane",
@@ -5560,9 +5446,7 @@
           "name": "Home keeps each round and queues its programs. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": [
-            "server:apps/servers/file_host/src/routes/rust_rounds.rs"
-          ]
+          "paths": ["server:apps/servers/file_host/src/routes/rust_rounds.rs"]
         },
         {
           "id": "week-intake",
@@ -5579,18 +5463,14 @@
           "name": "The recording pass takes a bounded batch of waiting programs and keeps each one's outcome. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": [
-            "server:apps/servers/file_host/src/rust_rounds"
-          ]
+          "paths": ["server:apps/servers/file_host/src/rust_rounds"]
         },
         {
           "id": "runner",
           "name": "The sandboxed rust-runner. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": [
-            "server:crates/rust_runner"
-          ]
+          "paths": ["server:crates/rust_runner"]
         },
         {
           "id": "toolchain",
@@ -5613,13 +5493,8 @@
       "id": "game-feed",
       "name": "Home follows the games",
       "why": "Home polls ESPN's public NFL feed in the background, keeping every answer and each game's plays.",
-      "serves": [
-        "game-feed"
-      ],
-      "witnesses": [
-        "GA1",
-        "GA4"
-      ],
+      "serves": ["game-feed"],
+      "witnesses": ["GA1", "GA4"],
       "segments": [
         {
           "id": "poller",
@@ -5660,13 +5535,8 @@
       "id": "bite-matched",
       "name": "Home matches bites to plays",
       "why": "A task in file_host wakes every 10 minutes, whether or not home is following games, and matches each final game's bites to its plays.",
-      "serves": [
-        "bite-matched"
-      ],
-      "witnesses": [
-        "BM1",
-        "BM3"
-      ],
+      "serves": ["bite-matched"],
+      "witnesses": ["BM1", "BM3"],
       "segments": [
         {
           "id": "reconciler",
@@ -5692,22 +5562,15 @@
       "id": "study-nudge",
       "name": "Study nudges",
       "why": "The phone tells home when it is present and what it did; home's waker decides when to nudge and sends the nudge by push.",
-      "serves": [
-        "study-nudge"
-      ],
-      "witnesses": [
-        "NW1",
-        "NW2"
-      ],
+      "serves": ["study-nudge"],
+      "witnesses": ["NW1", "NW2"],
       "segments": [
         {
           "id": "signals",
           "name": "The phone's presence and signals. Ours, on the phone.",
           "owner": "ours",
           "on": "phone",
-          "paths": [
-            "some-ui:apps/www/src/lib/study-nudge"
-          ]
+          "paths": ["some-ui:apps/www/src/lib/study-nudge"]
         },
         {
           "id": "home-network",
@@ -5721,9 +5584,7 @@
           "name": "Home's waker reads who is due and decides, within its batch and deadline. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": [
-            "server:apps/servers/file_host/src/nudge"
-          ]
+          "paths": ["server:apps/servers/file_host/src/nudge"]
         },
         {
           "id": "push",
@@ -5746,13 +5607,8 @@
       "id": "studio-video-queue",
       "name": "Queuing a finished video to be made",
       "why": "Finish keeps the video's DNA on the phone, the phone sends it home when home is in reach, and home keeps it until a routine fills it and home renders it (ST33's later slices).",
-      "serves": [
-        "video-made"
-      ],
-      "witnesses": [
-        "VM1",
-        "VM2"
-      ],
+      "serves": ["video-made"],
+      "witnesses": ["VM1", "VM2"],
       "segments": [
         {
           "id": "finish",
@@ -5777,9 +5633,7 @@
           "name": "Home keeps the DNA as sent. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": [
-            "server:crates/db/studio_video"
-          ]
+          "paths": ["server:crates/db/studio_video"]
         }
       ],
       "signals": [
@@ -5795,23 +5649,15 @@
       "id": "call-weeks",
       "name": "Keeping every week of the call on home, and making its video",
       "why": "The routine writes each week to paulgsc/testing, home reads its index hourly and keeps each week it lacks, and home's call index in the mailbox tells the routine which weeks may leave the repository; and the owner watches each week's video on the phone, shares it to the YouTube app and records its link, and lets home's copy go from My data (#2661).",
-      "serves": [
-        "call-kept"
-      ],
-      "witnesses": [
-        "CW1",
-        "CW2",
-        "CW5"
-      ],
+      "serves": ["call-kept"],
+      "witnesses": ["CW1", "CW2", "CW5"],
       "segments": [
         {
           "id": "routine",
           "name": "The weekly call's routine, at Anthropic, writes the week and the index to paulgsc/testing, and prunes only what home's call index lists. Someone else's.",
           "owner": "foreign",
           "on": "outside",
-          "paths": [
-            "some-ui:packages/video-render/CALL-ROUTINE.md"
-          ]
+          "paths": ["some-ui:packages/video-render/CALL-ROUTINE.md"]
         },
         {
           "id": "github",
@@ -5852,18 +5698,14 @@
           "name": "Home's Kokoro speaker says each scene, the same audio for the same words. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": [
-            "server:infra/kokoro"
-          ]
+          "paths": ["server:infra/kokoro"]
         },
         {
           "id": "stage",
           "name": "The published home-network app, pinned by digest, serves the call's stage to the worker. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": [
-            "server:infra/compose/call-render.yml"
-          ]
+          "paths": ["server:infra/compose/call-render.yml"]
         },
         {
           "id": "render",
@@ -5936,24 +5778,15 @@
       "id": "clips",
       "name": "Keeping each clip's frames on home, and showing them on the phone",
       "why": "paulgsc/testing keeps no media (testing#6), so home keeps clip frames (the owner's decision, 2026-11-11, C125): home reads the clip index hourly, renders each walk side itself on its render lane and keeps it once it matches the index, keeps the six legacy frames held to their pinned digests, and serves each frame to the paired phone, which Studio's clip page reads from.",
-      "serves": [
-        "clips-kept"
-      ],
-      "witnesses": [
-        "CL1",
-        "CL2",
-        "CL3",
-        "CL4"
-      ],
+      "serves": ["clips-kept"],
+      "witnesses": ["CL1", "CL2", "CL3", "CL4"],
       "segments": [
         {
           "id": "sessions",
           "name": "The session that lands a change writes its clip to paulgsc/testing: clips/index.json, and a walk's sample. Someone else's.",
           "owner": "foreign",
           "on": "outside",
-          "paths": [
-            "some-ui:packages/video-render/src/clip.ts"
-          ]
+          "paths": ["some-ui:packages/video-render/src/clip.ts"]
         },
         {
           "id": "github",
@@ -6036,23 +5869,15 @@
       "id": "pd-fills",
       "name": "Keeping every fill of Playoff Delta on home, and making its video",
       "why": "The narration routine writes each week's fill and the index of fills to paulgsc/testing, home reads the index hourly and keeps each fill it lacks with its season, home's render worker makes each voiced fill's video, and the owner watches it on the phone, shares it to the YouTube app, records its link and lets home's copy go from My data (FEED4, #2647).",
-      "serves": [
-        "pd-kept"
-      ],
-      "witnesses": [
-        "PK1",
-        "PK2",
-        "PK5"
-      ],
+      "serves": ["pd-kept"],
+      "witnesses": ["PK1", "PK2", "PK5"],
       "segments": [
         {
           "id": "routine",
           "name": "Playoff Delta's narration routine, at Anthropic, writes each week's fill and the index of fills to paulgsc/testing. Someone else's.",
           "owner": "foreign",
           "on": "outside",
-          "paths": [
-            "some-ui:packages/ui/playoff-delta/NARRATION-ROUTINE.md"
-          ]
+          "paths": ["some-ui:packages/ui/playoff-delta/NARRATION-ROUTINE.md"]
         },
         {
           "id": "github",
@@ -6083,18 +5908,14 @@
           "name": "Home's Kokoro speaker says each scene, the same audio for the same words. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": [
-            "server:infra/kokoro"
-          ]
+          "paths": ["server:infra/kokoro"]
         },
         {
           "id": "stage",
           "name": "The published home-network app, pinned by digest, serves Playoff Delta's stage to the worker. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": [
-            "server:infra/compose/call-render.yml"
-          ]
+          "paths": ["server:infra/compose/call-render.yml"]
         },
         {
           "id": "render",
@@ -6168,13 +5989,8 @@
       "id": "template-preview",
       "name": "Previewing a template",
       "why": "Preview on a template's page asks home for a short video of the template from its sample; home's render worker makes it under the lane like any render, and the phone brings it over and plays it until home lets it go (#2757).",
-      "serves": [
-        "template-preview"
-      ],
-      "witnesses": [
-        "PV1",
-        "PV2"
-      ],
+      "serves": ["template-preview"],
+      "witnesses": ["PV1", "PV2"],
       "segments": [
         {
           "id": "phone",
@@ -6234,9 +6050,7 @@
           "kind": "probe",
           "name": "Before the render image is published, it renders the weekly call's preview twice, offline and with no voices, under home's limits, and both videos must be the same bytes",
           "runs": "ci",
-          "segments": [
-            "template-preview/render"
-          ],
+          "segments": ["template-preview/render"],
           "status": "live",
           "ref": "some-ui:.github/workflows/render-docker-release.yml"
         }
@@ -6246,13 +6060,8 @@
       "id": "rust-essays",
       "name": "Making each week's Rust Rounds essay into a video on home",
       "why": "The Monday routine puts the week's essay in the mailbox; home's rust_essays worker gives it to the render only from the week's final record, with a copy of each take it plays; the render worker records the stage with home's speaker and the takes and keeps the video until the owner lets it go (#2691).",
-      "serves": [
-        "rust-essay-rendered"
-      ],
-      "witnesses": [
-        "EV2",
-        "EV3"
-      ],
+      "serves": ["rust-essay-rendered"],
+      "witnesses": ["EV2", "EV3"],
       "segments": [
         {
           "id": "routine",
@@ -6266,9 +6075,7 @@
           "name": "The mailbox holds the essay until home takes it. Ours, on Cloudflare.",
           "owner": "ours",
           "on": "mailbox",
-          "paths": [
-            "some-ui:apps/mailbox"
-          ]
+          "paths": ["some-ui:apps/mailbox"]
         },
         {
           "id": "given",
@@ -6285,9 +6092,7 @@
           "name": "Home's Kokoro speaker says the tutor's lines, the same audio for the same words. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": [
-            "server:infra/kokoro"
-          ]
+          "paths": ["server:infra/kokoro"]
         },
         {
           "id": "stage",
@@ -6338,21 +6143,15 @@
       "id": "report-weeks",
       "name": "Making each week's engagement report into a video on home",
       "why": "Home reads its own engagement records for the week and the three it is compared with; its report_weeks worker hands that answer to the render worker, which writes the report by code, records the stage with home's speaker and keeps the video until the owner lets it go (#2700).",
-      "serves": [
-        "engagement-report-rendered"
-      ],
-      "witnesses": [
-        "RW1"
-      ],
+      "serves": ["engagement-report-rendered"],
+      "witnesses": ["RW1"],
       "segments": [
         {
           "id": "read",
           "name": "Home's period read counts the week's engagement events and the three weeks it is compared with. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": [
-            "server:crates/db/app_event/src/weeks.rs"
-          ]
+          "paths": ["server:crates/db/app_event/src/weeks.rs"]
         },
         {
           "id": "given",
@@ -6366,9 +6165,7 @@
           "name": "Home's Kokoro speaker says the report, the same audio for the same words. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": [
-            "server:infra/kokoro"
-          ]
+          "paths": ["server:infra/kokoro"]
         },
         {
           "id": "render",
@@ -6401,12 +6198,8 @@
       "id": "cards-essays",
       "name": "Making each cards essay into a video on home",
       "why": "A session writes a cards essay to paulgsc/testing's cards folder, checked by cards-check before it merges; home reads the folder's index hourly and keeps each essay it lacks; the render worker records the stage's burn-ins page and keeps the video until it can be let go after a confirmed YouTube link, as other episodes are (#2979, C327, C338; the let-go comes with #2999).",
-      "serves": [
-        "cards-essay-rendered"
-      ],
-      "witnesses": [
-        "CE1"
-      ],
+      "serves": ["cards-essay-rendered"],
+      "witnesses": ["CE1"],
       "segments": [
         {
           "id": "routine",
@@ -6437,9 +6230,7 @@
           "name": "A keeper on home reads the cards index hourly and keeps each essay home lacks, as first served. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": [
-            "server:apps/servers/file_host/src/cards_essays"
-          ]
+          "paths": ["server:apps/servers/file_host/src/cards_essays"]
         },
         {
           "id": "render",
@@ -6488,13 +6279,8 @@
       "id": "home-deploy",
       "name": "Home updates itself when the app needs it",
       "why": "When the app was built against a newer server than home runs, home pulls a newer server, puts it up if it is newer, and rolls it back if it is not ready.",
-      "serves": [
-        "home-catches-up"
-      ],
-      "witnesses": [
-        "HD1",
-        "HD2"
-      ],
+      "serves": ["home-catches-up"],
+      "witnesses": ["HD1", "HD2"],
       "segments": [
         {
           "id": "compat",
@@ -6512,18 +6298,14 @@
           "name": "A systemd path unit starts the deploy while the mark is there (call C83). Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": [
-            "server:nix/modules/home-deploy.nix"
-          ]
+          "paths": ["server:nix/modules/home-deploy.nix"]
         },
         {
           "id": "deploy",
           "name": "Pull, put up only a newer server, wait for it to be ready, roll back, record what happened and clear the mark. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": [
-            "server:apps/envctl/src/deploy.rs"
-          ]
+          "paths": ["server:apps/envctl/src/deploy.rs"]
         },
         {
           "id": "internet",
