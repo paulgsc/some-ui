@@ -627,8 +627,8 @@ declared (checked by reading every call site and by the tests named).
   video (`youtubeLink` (`@some-ui/core-utils`)); one that
   has `takes-read.ts` send anything but one `GET` of `takesPath(q)` per ask,
   lets anything but `lib/take-library` call it, lets anything but the voice
-  run (`voice-copy.ts`) and `lib/take-library` read
-  `lib/home-link/voice-audio.ts`, or has `@some-ui/soundbites`' `stepLibrary`
+  run (`voice-copy.ts`), My data (`lib/my-data`, MD8), `lib/take-library`
+  and `lib/take-reconcile` (HEARD3) read `lib/home-link/voice-audio.ts`, or has `@some-ui/soundbites`' `stepLibrary`
   read but on the screen opening, Try again, a search (a blank one reads the
   newest), Show the newest, or once for the newest after one of the phone's
   takes reaches home (`arrived`) while no search is shown, or ask for audio
