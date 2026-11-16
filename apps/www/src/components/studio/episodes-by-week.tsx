@@ -11,8 +11,7 @@
 import type { JSX, ReactNode } from "react"
 import { useEffect, useSyncExternalStore } from "react"
 import { cn, dayOf, weekOf } from "@some-ui/core-utils"
-import { Button, dotClass } from "@some-ui/shared"
-import type { DotMeaning } from "@some-ui/shared"
+import { Button, Dot } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
@@ -33,16 +32,6 @@ import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import { GenreThumb } from "@/components/studio/genre-thumbs"
 
 const WORDS = EPISODES_FEED_WORDS
-
-const Dot = ({ meaning }: { meaning: DotMeaning }): JSX.Element => (
-  <span
-    aria-hidden
-    className={cn(
-      "inline-block size-1.5 shrink-0 rounded-full",
-      dotClass(meaning)
-    )}
-  />
-)
 
 /** The chip bar: All, then each genre A to Z, each with its count. */
 const ChipBar = ({
