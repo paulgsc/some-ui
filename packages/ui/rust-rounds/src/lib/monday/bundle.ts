@@ -17,7 +17,7 @@ import { dueAt, recordOf, weeksBetween } from "@rust-rounds/lib/decay"
 import { REFERENCES } from "@rust-rounds/lib/formats/week"
 import type { Reference, Ticket, Week } from "@rust-rounds/lib/formats/week"
 import { heardByNote, readFinalRecord } from "@rust-rounds/lib/monday/record"
-import type { WeekRecord } from "@rust-rounds/lib/monday/record"
+import type { Heard, WeekRecord } from "@rust-rounds/lib/monday/record"
 import { chooseTopics } from "@rust-rounds/lib/monday/topics"
 import type { Seed, Topic, TopicChoice } from "@rust-rounds/lib/monday/topics"
 import { readWeek } from "@rust-rounds/lib/week-check"
@@ -46,7 +46,7 @@ const ESSAY_NAME = /^rust-essay-(\d{4}-w\d{2})(?:-r(\d+))?\.json$/
 export type EndedTicket = Ticket & {
   readonly answer:
     | { readonly kind: "take"; readonly transcript: string }
-    | { readonly kind: "silence"; readonly opened: number }
+    | { readonly kind: "silence" | "unheard"; readonly opened: number }
 }
 
 /** A week owed its essay, ready to write. */
@@ -103,7 +103,9 @@ export type Prepared = { readonly bundle: Bundle; readonly history: History }
 
 /**
  * A week as the decay record reads it: each ticket's concepts and its SOLO
- * level in `answers` (an essay's tickets), or null for a silence.
+ * level in `answers` (an essay's tickets), or null for a silence. A take
+ * home couldn't make out (HEARD2, #3072) is no check at all: it shows
+ * nothing, isn't a silence and can't decay, so its ticket is left out (C431).
  */
 export function judgedWeek(
   week: string,
@@ -112,12 +114,15 @@ export function judgedWeek(
 ): Judged {
   return {
     week,
-    tickets: tickets.map((ticket) => {
+    tickets: tickets.flatMap((ticket) => {
       const answer = answers.find((t) => t.id === ticket.id)?.answer
-      return {
-        concepts: ticket.concepts,
-        level: answer?.kind === "take" ? answer.solo.level : null,
-      }
+      if (answer?.kind === "silence" && answer.unheard === true) return []
+      return [
+        {
+          concepts: ticket.concepts,
+          level: answer?.kind === "take" ? answer.solo.level : null,
+        },
+      ]
     }),
   }
 }
@@ -169,7 +174,7 @@ function readBrief(brief: ReadonlyArray<MailboxFile>): {
 function answersOf(
   week: Week,
   record: WeekRecord,
-  heard: ReadonlyMap<string, string>
+  heard: ReadonlyMap<string, Heard>
 ): { ok: true; tickets: Array<EndedTicket> } | { ok: false; why: string } {
   const tickets: Array<EndedTicket> = []
   for (const ticket of week.tickets) {
@@ -177,24 +182,30 @@ function answersOf(
     if (held === undefined) {
       return { ok: false, why: `home's record has no ${ticket.id}` }
     }
-    if (held.take === null) {
-      tickets.push({
-        ...ticket,
-        answer: { kind: "silence", opened: held.opens },
-      })
+    const hearing: Heard | undefined =
+      held.take === null ? { hearing: "silent" } : heard.get(held.take)
+    if (hearing?.hearing === "silent" || hearing?.hearing === "unheard") {
+      const kind = hearing.hearing === "silent" ? "silence" : "unheard"
+      tickets.push({ ...ticket, answer: { kind, opened: held.opens } })
       continue
     }
-    const transcript = heard.get(held.take)
-    if (transcript === undefined || transcript.trim() === "") {
+    if (hearing === undefined || hearing.text.trim() === "") {
       return {
         ok: false,
         why: `home hasn't heard the take on ${ticket.id} yet`,
       }
     }
-    tickets.push({ ...ticket, answer: { kind: "take", transcript } })
+    tickets.push({
+      ...ticket,
+      answer: { kind: "take", transcript: hearing.text },
+    })
   }
   return { ok: true, tickets }
 }
+
+/** What the owner said about a pasted error, when home made it out. */
+const saidOf = (hearing: Heard | undefined): string | null =>
+  hearing?.hearing === "heard" ? hearing.text : null
 
 const fullNames = (references: ReadonlyArray<Reference>): Array<string> =>
   references.map((reference) => REFERENCES[reference])
@@ -258,7 +269,7 @@ export function prepare({
         week: week.id,
         at: paste.at,
         text: paste.text,
-        said: paste.note === null ? null : (heard.get(paste.note) ?? null),
+        said: paste.note === null ? null : saidOf(heard.get(paste.note)),
       })
     }
   }

@@ -1,0 +1,15 @@
+{
+  "id": "C431",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": ["some-ui:packages/ui/rust-rounds/src/lib/monday/bundle.ts"],
+  "chose": "In the decay record (RR19), a take home couldn't make out is no check of its ticket's concepts that week: not a level, not \"Not answered\", and it doesn't send a concept back to the Leitner system's first box. A concept checked by nothing else that week reads as unchecked then, and may show as faded if its recheck passed.",
+  "options": [
+    "no check at all",
+    "a silence, as a ticket left unanswered is (back to box 1, \"Not answered\")",
+    "a cell of its own on the chart"
+  ],
+  "gray": "The owner said to proceed as if they never answered, which read literally would count it as a silence that resets the concept; the coordinator's reading says it is evidence neither way. The chart and next week's topics show the difference.",
+  "undo": "In judgedWeek, map an unheard silence to level null instead of leaving the ticket out; essays keep the marker, so the record re-derives on the next run.",
+  "refs": ["#3070", "#3072", "#2695"]
+}

@@ -3,8 +3,9 @@
  * else: the judged half of each answer (`JudgedAnswerSchema`, IW3), each
  * guideline's mark, and the prose said over each scene. The company, the
  * questions, the transcripts, every measured fault and the chart are the
- * bundle's (`bundle.ts`). Every object is strict; ROUTINE.md, "What you write
- * in an essay", says what each field holds.
+ * bundle's (`bundle.ts`). Every object is strict; ROUTINE.md, "What you
+ * write in an essay", says what each field holds, and that a take home
+ * couldn't make out takes no `answer`.
  */
 import { JudgedAnswerSchema } from "@interview-week/lib/faults"
 import { z } from "zod"
@@ -18,31 +19,35 @@ const QuestionValuesSchema = z.strictObject({
   question: Said,
   model: Said,
   beside: Said,
-  answer: z.union([
-    z.strictObject({
-      judged: JudgedAnswerSchema,
-      marks: z.array(
-        z.strictObject({
-          mark: z.enum(["covered", "partly", "missing"]),
-          note: Said.optional(),
-        })
-      ),
-      said: Said,
-    }),
-    z.strictObject({ guess: Said }),
-  ]),
+  answer: z
+    .union([
+      z.strictObject({
+        judged: JudgedAnswerSchema,
+        marks: z.array(
+          z.strictObject({
+            mark: z.enum(["covered", "partly", "missing"]),
+            note: Said.optional(),
+          })
+        ),
+        said: Said,
+      }),
+      z.strictObject({ guess: Said }),
+    ])
+    .optional(),
 })
 
 const ReadValuesSchema = z.strictObject({
   id: z.string(),
   card: Said,
-  answer: z.union([
-    z.strictObject({
-      change: Said,
-      said: Said,
-    }),
-    z.strictObject({ guess: Said }),
-  ]),
+  answer: z
+    .union([
+      z.strictObject({
+        change: Said,
+        said: Said,
+      }),
+      z.strictObject({ guess: Said }),
+    ])
+    .optional(),
 })
 
 const EssayValuesSchema = z.strictObject({

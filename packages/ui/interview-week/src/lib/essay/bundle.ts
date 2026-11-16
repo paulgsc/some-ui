@@ -5,7 +5,8 @@
  * `brief` holds no essay of, it restates the week's company, role,
  * questions and cards, and each answer: a take with what home heard in it,
  * word by word, and IW3's measures of it (`measureAnswer`, `measureRead`),
- * or a silence. It also draws the faults chart over the weeks
+ * or a silence, or a take home couldn't make out (HEARD2, #3072), which the
+ * essay reads as a silence and never waits on. It also draws the faults chart over the weeks
  * (`chartOf`), so the model fills only the judged schema and the prose
  * (LEVERS, #2162).
  */
@@ -47,6 +48,7 @@ export type QuestionOwed = {
         readonly measured: AnswerFaults
       }
     | { readonly kind: "silence" }
+    | { readonly kind: "unheard" }
 }
 
 type ReadOwed = {
@@ -60,6 +62,7 @@ type ReadOwed = {
         readonly measured: ReadFaults
       }
     | { readonly kind: "silence" }
+    | { readonly kind: "unheard" }
 }
 
 type ChartRow = InterviewEssay["weeks"]["rows"][number]
@@ -255,9 +258,11 @@ function owed(
   const heardOf = (
     take: string | null,
     what: string
-  ): { ok: true; heard: Heard | null } | { ok: false; why: string } => {
-    if (take === null) return { ok: true, heard: null }
-    const got = heard.get(take)
+  ): { ok: true; heard: Heard } | { ok: false; why: string } => {
+    const got: Heard | undefined =
+      take === null ? { hearing: "silent" } : heard.get(take)
+    if (got?.hearing === "silent" || got?.hearing === "unheard")
+      return { ok: true, heard: got }
     if (got === undefined || got.text.trim() === "")
       return { ok: false, why: `home hasn't heard ${what}'s take yet` }
     if (got.words === null || got.words.length === 0)
@@ -267,6 +272,11 @@ function owed(
       }
     return { ok: true, heard: got }
   }
+  /** A silence, or a take home couldn't make out, as the bundle restates it. */
+  const left = (
+    hearing: Exclude<Heard, { hearing: "heard" }>
+  ): { kind: "silence" } | { kind: "unheard" } =>
+    hearing.hearing === "silent" ? { kind: "silence" } : { kind: "unheard" }
   const questions: Array<QuestionOwed> = []
   for (const question of week.questions) {
     const held = record.questions.find((q) => q.question === question.id)
@@ -279,8 +289,8 @@ function owed(
       guidelines: question.guidelines,
       targetSeconds: question.targetSeconds,
       answer:
-        got.heard === null
-          ? { kind: "silence" }
+        got.heard.hearing !== "heard"
+          ? left(got.heard)
           : {
               kind: "take",
               transcript: got.heard.text,
@@ -302,8 +312,8 @@ function owed(
       situation: card.situation,
       script: card.script,
       answer:
-        got.heard === null
-          ? { kind: "silence" }
+        got.heard.hearing !== "heard"
+          ? left(got.heard)
           : {
               kind: "take",
               transcript: got.heard.text,
