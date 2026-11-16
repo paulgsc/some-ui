@@ -777,6 +777,11 @@
               "class": "measured",
               "says": "A garbled take raises TranscriptGarbled for the hour after.",
               "ref": "server:infra/prometheus/rules/home.test.yml"
+            },
+            {
+              "class": "measured",
+              "says": "A Rust Rounds take home couldn't make out or found silent is still filed to the mailbox, with empty text and its verdict.",
+              "ref": "server:apps/servers/file_host/src/mailbox/pass.rs"
             }
           ],
           "proof": [
@@ -789,7 +794,9 @@
             "server:crates/db/voice/src/verdict.rs#the_verdict_is_the_chosen_endings",
             "server:crates/db/voice/src/verdict.rs#a_final_failure_is_the_verdict_of_a_note_nothing_ended",
             "server:crates/db/voice/src/verdict.rs#a_verdict_reads_as_the_shape_the_routines_code_against",
-            "server:apps/servers/file_host/src/mailbox/pass.rs#a_transcript_is_filed_and_handed_once_as_text_and_a_better_models_under_a_new_name"
+            "server:apps/servers/file_host/src/mailbox/pass.rs#a_transcript_is_filed_and_handed_once_as_text_and_a_better_models_under_a_new_name",
+            "server:apps/servers/file_host/src/mailbox/pass.rs#a_rust_rounds_take_home_could_not_hear_or_found_silent_is_filed",
+            "server:crates/db/voice/src/verdict.rs#an_essay_judges_the_transcript_the_routine_reads"
           ],
           "watch": {
             "by": "alert",
@@ -3228,6 +3235,16 @@
               "class": "structural",
               "says": "The Monday routine writes an essay only from the week's final record, and fills each answer's transcript from home's newest transcript of the take that record names; the values the model writes have no transcript field, and a test pins the restated words.",
               "ref": "some-ui:packages/ui/rust-rounds/src/lib/monday/finish.ts"
+            },
+            {
+              "class": "measured",
+              "says": "An essay may leave silent a ticket the final record answered only when home's verdict on the transcript the routine reads is garbled, failed or nothing said; a heard take left silent is refused.",
+              "ref": "server:apps/servers/file_host/src/rust_essays.rs"
+            },
+            {
+              "class": "measured",
+              "says": "Home judges the same transcript the essay reads: the highest filed <n> for a Rust Rounds take (the verbatim decode first for an interview take), no verdict reading as heard.",
+              "ref": "server:crates/db/voice/src/verdict.rs"
             }
           ],
           "watch": {
@@ -3379,7 +3396,7 @@
           "claim": "An interview essay reaches the render only with the takes its week's final record names, one that contradicts that record is refused, and one whose take is deleted is withdrawn.",
           "requirement": "The essays worker, generalised over the kind (paulgsc/server#900), takes an interview-essay-<week>.json from the mailbox's brief folder only once the week is final; it plays exactly the answers and reads the final record names, less any whose take's newest transcript verdict is garbled, failed or nothing said, which the essay may leave silent, writes the essay with one take per answered question and read card to the week's folder, refuses an essay whose answers or reads differ from that record (<week>.refused.log), and withdraws the week when one of its takes is deleted (IW6, #2937).",
           "verdict": "holds",
-          "conclusion": "Tested in server CI on the interview kind of the one essay export: given from the week's final record with its takes, refused when it contradicts that record, withdrawn when a take is deleted, and playing exactly the answers and reads the final record names.",
+          "conclusion": "Tested in server CI on the interview kind of the one essay export: given from the week's final record with its takes, refused when it contradicts that record, withdrawn when a take is deleted, and playing exactly the answers and reads the final record names, less any whose take home couldn't make out or found silent, which it may leave silent.",
           "evidence": [
             {
               "class": "measured",
@@ -3390,13 +3407,21 @@
               "class": "measured",
               "says": "An interview essay plays exactly the answers and reads its week's final record names.",
               "ref": "server:crates/db/rust_round/src/essay.rs"
+            },
+            {
+              "class": "measured",
+              "says": "An interview essay may leave silent an answer or read whose take home couldn't make out or found silent.",
+              "ref": "server:crates/db/rust_round/src/essay.rs"
             }
           ],
           "proof": [
             "server:apps/servers/file_host/src/rust_essays.rs#an_interview_essay_is_given_from_its_weeks_final_with_its_takes",
             "server:apps/servers/file_host/src/rust_essays.rs#an_interview_essay_that_contradicts_its_weeks_final_is_refused",
             "server:apps/servers/file_host/src/rust_essays.rs#an_interview_essay_whose_take_is_deleted_is_withdrawn",
-            "server:crates/db/rust_round/src/essay.rs#an_interview_essay_plays_exactly_the_answers_and_reads_the_weeks_final_names"
+            "server:crates/db/rust_round/src/essay.rs#an_interview_essay_plays_exactly_the_answers_and_reads_the_weeks_final_names",
+            "server:apps/servers/file_host/src/rust_essays.rs#a_take_home_could_not_hear_may_be_a_silence",
+            "server:crates/db/rust_round/src/essay.rs#an_interview_answer_or_read_home_could_not_hear_may_be_a_silence",
+            "server:crates/db/voice/src/verdict.rs#an_essay_judges_the_transcript_the_routine_reads"
           ],
           "watch": {
             "by": "none"
