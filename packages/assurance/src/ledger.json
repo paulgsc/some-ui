@@ -822,7 +822,7 @@
           "kind": "OA2",
           "property": "outcome",
           "claim": "Every take home couldn't hear well is listed on the phone's Takes, by its codes, until the owner reconciles it, and each act the owner takes on it is kept on home for good.",
-          "requirement": "GET /voice-notes/attention lists every note of the paired owner, of any kind, whose newest verdict is garbled, failed or nothing_said and that no act in voice_note_attention answers, newest 100 by recordedAt with a total of all; POST /voice-notes/:id/attention keeps keep or again as a new row answering that verdict (the same act again writes nothing), and a delete for good from My data's path appends a deleted act in its transaction, its receipt naming reconciliation among what stayed; no act row is updated, and rows leave only with the account. The phone's Needs your attention page lists them by code and takes a reconciled one off its list only on home's answer.",
+          "requirement": "GET /voice-notes/attention lists every note of the paired owner, of any kind, whose newest verdict is garbled, failed or nothing_said and that no act in voice_note_attention answers, newest 100 by recordedAt with a total of all; POST /voice-notes/:id/attention keeps keep or again as a new row answering that verdict (the same act again writes nothing), and a delete for good from My data's path of such a note appends a deleted act in its transaction, its receipt naming reconciliation among what stayed; no act row is updated, and rows leave only with the account. The phone's Needs your attention page lists them by code and takes a reconciled one off its list only on home's answer.",
           "verdict": "holds",
           "conclusion": "Tested in server CI: every unheard take of any kind needs attention, an act answers the newest verdict and is kept append-only, and a delete records its act and keeps it. On the phone, the page's machine drops a take only on home's kept or settled answer or a delete's receipt (tested); whether the owner reaches the page is shown by real use.",
           "evidence": [
@@ -4915,7 +4915,7 @@
     {
       "store": "server:voice_note_attention",
       "class": "record",
-      "growth": "Per act the owner takes on a take home couldn't hear well (HEARD3, server#912): one short row (the note's id, the act's number, kept, record_again or deleted, the verdict's key it answered, when); append-only (UPDATE aborts), a later act a new row, the same act on the same verdict writing nothing; it outlives its note when the owner deletes it for good, and leaves with the account.",
+      "growth": "Per act the owner takes on a take home couldn't hear well (HEARD3, server#912): one short row (the note's id, the act's number, kept, record_again or deleted, the verdict's key it answered, when); append-only (UPDATE aborts), a later act a new row, the same act again, as the newest on that verdict, writing nothing; it outlives its note when the owner deletes it for good, and leaves with the account.",
       "family": "voice-heard"
     },
     {
