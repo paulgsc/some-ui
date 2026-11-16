@@ -1,0 +1,18 @@
+{
+  "id": "C422",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/routes/_dashboard/_apk/journal/takes/index.tsx",
+    "some-ui:packages/ui/soundbites/src/components/take-library/index.tsx"
+  ],
+  "chose": "Takes opens on the tiles alone; recording a take with no scene, and the takes home doesn't have yet, move one tap in, to Recorded here and All. The search is on the second page only.",
+  "options": [
+    "the recorder in Recorded here and All (now)",
+    "the recorder on the tiles page too, as the prototype's C drew a Record button there",
+    "the recorder on every compartment's page"
+  ],
+  "gray": "The owner chose C's tiles for the first page and A's list for the second, which leaves where recording lives unsaid; it moves a control the owner uses one tap deeper.",
+  "undo": "Render `PhoneTakes` above the tiles in `TakeLibrary` when `compartment` is null.",
+  "refs": ["#3029", "#3069"]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "C420",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/take-about/model.ts",
+    "some-ui:apps/www/src/lib/home-link/voice-copy.ts"
+  ],
+  "chose": "A note's spoken take says which note it belongs to only from the note this phone keeps (the note names its take's id); home keeps no link back, and the take still goes home as a plain take (`take:<id>`). A reinstalled phone, which no longer holds the note, shows such a take under Recorded here.",
+  "options": [
+    "the phone's join alone, home keeps no link (now)",
+    "send a note's take home under a ref naming its note, so home keeps the link",
+    "home keeps the link beside the take, on a new field paulgsc/server takes"
+  ],
+  "gray": "Whether home also keeps the link is the epic's open call (#3029, TAKES2); no check or earlier decision settles it, and it decides what a reinstalled phone shows in Takes. Sending a new ref changes what the routine and ST30 read by `take:<id>`, so it waits on a story of its own.",
+  "undo": "Have `libraryNote` send a note's take under a ref naming its note (or home keep the link), and read that ref in `aboutOfRef`; takes already home keep `take:<id>`.",
+  "refs": ["#3029", "#3068"]
+}

@@ -6,3 +6,4 @@ export {
   BundleNoticeLine,
   BundleReview,
 } from "./bundle"
+export { Dot } from "./dot"

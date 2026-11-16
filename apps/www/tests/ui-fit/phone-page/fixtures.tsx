@@ -61,6 +61,7 @@ import { ROUNDS_FIXTURES } from "./rounds"
 import { SettingsBar } from "./settings-bar"
 import { hearsOnStop, SOUNDBITES_FIXTURES } from "./soundbites"
 import { FIT_CUTS, FIT_PRIMER_TEXT } from "./studio-seed"
+import { TAKES_FIXTURES } from "./takes"
 import { TOPIK_FIXTURES } from "./topik"
 import { WWW_FIXTURES } from "./www"
 
@@ -399,6 +400,8 @@ export const PHONE_FIXTURES = {
   ...MY_DATA_FIXTURES,
   /** Studio's Episodes, by week (`./episodes`, `../episodes-fit.spec.ts`). */
   ...EPISODES_FIXTURES,
+  /** Studio's Takes, its tiles and a compartment (`./takes`, `../takes-fit.spec.ts`). */
+  ...TAKES_FIXTURES,
   /** The interview week (`./interview`, `../interview-fit.spec.ts`). */
   ...INTERVIEW_FIXTURES,
   /** aph's logger and History (`./aph`, `../stays-put.spec.ts`). */

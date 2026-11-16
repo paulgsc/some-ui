@@ -29,10 +29,17 @@ export { homeHearing } from "./lib/idea/hearing"
 export { TakeLibrary } from "./components/take-library"
 export type { LibraryPage, LibraryRead, LibraryTake } from "./lib/library/model"
 export type {
+  LibraryAbout,
   LibraryPhone,
   LibraryStations,
   TakesHome,
 } from "./lib/library/runtime"
+export type {
+  Compartment,
+  TakeAbout,
+  TakeKind,
+} from "./lib/library/compartments"
+export { isCompartment, TAKE_KINDS } from "./lib/library/compartments"
 export { LIBRARY_WORDS } from "./lib/library/words"
 export { Studio } from "./components/studio"
 export { StudioRecords } from "./components/studio-records"

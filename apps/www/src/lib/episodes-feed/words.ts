@@ -11,12 +11,11 @@ import {
   formatDay,
   formatTimecode,
 } from "@some-ui/core-utils"
-import type { DotMeaning } from "@some-ui/shared"
 
 import { FEED_WORDS, VIDEOS_WORDS } from "@/lib/call-videos/words"
 import type { Feed } from "@/lib/feeds"
 
-import type { Trouble } from "./index"
+import type { EpisodeStatus, Trouble } from "./index"
 
 export const EPISODES_FEED_WORDS = {
   /** What the chip bar is, for a screen reader. */
@@ -47,7 +46,7 @@ export const EPISODES_FEED_WORDS = {
     home: "On home",
     out: "On YouTube",
     making: "Being made",
-  } satisfies Record<DotMeaning, string>,
+  } satisfies Record<EpisodeStatus, string>,
   /** A row of a week in parts: how many, and how many are up. */
   parts: (of: number, out: number): string =>
     out === of
