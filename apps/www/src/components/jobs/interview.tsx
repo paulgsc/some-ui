@@ -240,13 +240,11 @@ const ReadHead = ({
 )
 
 const Cards = (props: Shown): JSX.Element => {
-  const { state, week, cue } = props
+  const { week, cue } = props
   const counting = cue.kind === "counting" ? cue : null
   return (
     <BundleCards
       {...props}
-      // The cue holds the cards where they are, as a take under way does.
-      state={counting === null ? state : { ...state, busy: true }}
       words={WORDS}
       renderHead={(item) => {
         const card = cardOf(item)

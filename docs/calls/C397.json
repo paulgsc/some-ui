@@ -3,7 +3,7 @@
   "made": "2026-11-16",
   "by": "claude",
   "paths": ["apps/www/src/lib/interview-week/cue.ts"],
-  "chose": "A teleprompter read's cue counts down 3 seconds on the card, under the script, then the take starts with the script still on screen. A tap on the take button again, a swipe or a dot, or the screen hidden calls the cue off, and nothing records. While it counts, the cards hold where they are, as during a take.",
+  "chose": "A teleprompter read's cue counts down 3 seconds on the card, under the script, then the take starts with the script still on screen. A tap on the take button again, a swipe or a dot, or the screen hidden calls the cue off, and nothing records. Started from the look over (Say it, Redo), the read's card comes on screen first and the cue counts there.",
   "options": [
     "(a) 3 seconds, called off by anything else done",
     "(b) 5 seconds",

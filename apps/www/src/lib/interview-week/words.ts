@@ -100,8 +100,6 @@ type Dated = Pick<InterviewWeek, "id" | "due">
 
 export const INTERVIEW_WORDS = {
   ...BUNDLE,
-  /** The Jobs wing's view, beside Today, Scout and Record. */
-  view: "Interview",
   reading: "Opening the week…",
   unreadable:
     "What this phone keeps for the week couldn't be read, so nothing new can be kept yet.",

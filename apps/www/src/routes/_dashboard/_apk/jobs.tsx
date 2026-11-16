@@ -2,7 +2,6 @@ import type { JSX } from "react"
 import { useEffect } from "react"
 import { createFileRoute, Outlet } from "@tanstack/react-router"
 
-import { INTERVIEW_WORDS } from "@/lib/interview-week/words"
 import { registerJobsPull } from "@/lib/jobs/pull"
 import { usePairedWithHome } from "@/components/device-home-glyph"
 import { KeptOnHome } from "@/components/jobs/parts"
@@ -17,7 +16,7 @@ const VIEWS = [
   { to: "/jobs", label: "Today", exact: true },
   { to: "/jobs/scout", label: "Scout", exact: false },
   { to: "/jobs/record", label: "Record", exact: false },
-  { to: "/jobs/interview", label: INTERVIEW_WORDS.view, exact: false },
+  { to: "/jobs/interview", label: "Interview", exact: false },
 ] as const satisfies ReadonlyArray<View>
 
 /**

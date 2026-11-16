@@ -5,8 +5,9 @@
  * them, and a read's cue (`./cue`), whose clock it owns.
  *
  * The screen dispatches through `dispatch`, never the bundle's own: a tap
- * that would start a read's take starts its cue instead, and the take starts
- * when the cue ends. Any other intent, or the screen hidden, calls a running
+ * that would start a read's take puts its card on screen (from the look
+ * over's Say it too) and starts its cue instead, and the take starts when the
+ * cue ends. Any other intent, or the screen hidden, calls a running
  * cue off first. A tap while a take is under way (to stop it) goes straight
  * through.
  */
@@ -128,6 +129,17 @@ export function createInterviewWeek(
     if (next.go !== null) bundle.dispatch({ type: "tap", item: next.go })
   }
 
+  /** Puts `item`'s card on screen, from the look over too, so its cue counts there. */
+  const showCard = (item: string): void => {
+    if (bundle.getSnapshot().screen === "review") {
+      bundle.dispatch({ type: "back" })
+    }
+    const index = machine.spec.items.indexOf(item)
+    if (bundle.getSnapshot().index !== index) {
+      bundle.dispatch({ type: "go", index })
+    }
+  }
+
   const dispatch = (intent: BundleIntent<InterviewKind>): void => {
     const counting = cue.getSnapshot()
     if (counting.kind === "counting") {
@@ -140,6 +152,7 @@ export function createInterviewWeek(
       cardOf(intent.item) !== null &&
       !bundle.getSnapshot().busy
     ) {
+      showCard(intent.item)
       moveCue({ type: "start", item: intent.item })
       stopClock = ports.every(1000, () => moveCue({ type: "tick" }))
       return

@@ -131,6 +131,23 @@ describe("the interview week on the phone (IW5)", () => {
     expect(on.run.bundle.getSnapshot().busy).toBe(true)
   })
 
+  it("puts a read's card on screen before its cue, from the look over too", async () => {
+    const on = phone(inMemoryStorage())
+    on.run.dispatch({ type: "go", index: 0 })
+    on.run.dispatch({ type: "review" })
+    on.run.dispatch({ type: "tap", item: "read:invariant-rs1" })
+    expect(on.run.bundle.getSnapshot()).toMatchObject({
+      screen: "cards",
+      index: 5,
+    })
+    expect(on.run.cue.getSnapshot()).toMatchObject({
+      kind: "counting",
+      item: "read:invariant-rs1",
+    })
+    await pass(CUE_SECONDS * 1000)
+    expect(on.run.bundle.getSnapshot().busy).toBe(true)
+  })
+
   it("calls the cue off, recording nothing, on a tap again, a swipe or the screen hidden", async () => {
     const on = phone(inMemoryStorage())
     on.run.dispatch({ type: "go", index: 4 })
