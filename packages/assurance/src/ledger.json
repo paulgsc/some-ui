@@ -756,7 +756,7 @@
           "claim": "Home judges every transcript it makes (heard, garbled, nothing said or failed, with its reasons), and every read of a transcript carries that verdict, so a take home couldn't make out is found on home, before any routine reads it.",
           "requirement": "Each final attempt at hearing a note (an ending, or the last failure) is kept with its verdict under rule heard-1 in voice_transcript_verdict, in the attempt's own transaction, append-only; every read that returns a transcript (GET /voice-notes/:id/heard, /ideas, /voice-notes/takes, the mailbox's transcript files and take-pickup/1) carries it; a rust-round or interview take that failed, or in which nothing was said, is still filed to the mailbox with its verdict; and a garbled or failed verdict raises TranscriptGarbled within the hour.",
           "verdict": "holds",
-          "conclusion": "Tested in server CI: each final attempt is judged and kept with its reasons and signals, the verdict reaches every read and the mailbox's files, and a garbled take raises the alert; whether the thresholds of heard-1 match the owner's takes is only shown by real use (C433).",
+          "conclusion": "Tested in server CI: each final attempt is judged and kept with its reasons and signals, the verdict reaches every read and the mailbox's files, and a garbled take raises the alert; whether the thresholds of heard-1 match the owner's takes is only shown by real use (C433); a take whose attempts ran out before HEARD1, or heard as blank text, can still leave its week waiting (server#913).",
           "evidence": [
             {
               "class": "measured",
@@ -796,7 +796,8 @@
             "server:crates/db/voice/src/verdict.rs#a_verdict_reads_as_the_shape_the_routines_code_against",
             "server:apps/servers/file_host/src/mailbox/pass.rs#a_transcript_is_filed_and_handed_once_as_text_and_a_better_models_under_a_new_name",
             "server:apps/servers/file_host/src/mailbox/pass.rs#a_rust_rounds_take_home_could_not_hear_or_found_silent_is_filed",
-            "server:crates/db/voice/src/verdict.rs#an_essay_judges_the_transcript_the_routine_reads"
+            "server:crates/db/voice/src/verdict.rs#an_essay_judges_the_transcript_the_routine_reads",
+            "server:apps/servers/file_host/src/mailbox/pass.rs#a_silence_never_buries_words_heard"
           ],
           "watch": {
             "by": "alert",
