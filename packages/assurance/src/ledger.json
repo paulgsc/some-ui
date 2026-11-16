@@ -782,6 +782,11 @@
               "class": "measured",
               "says": "A Rust Rounds take home couldn't make out or found silent is still filed to the mailbox, with empty text and its verdict.",
               "ref": "server:apps/servers/file_host/src/mailbox/pass.rs"
+            },
+            {
+              "class": "structural",
+              "says": "Both essays read the verdict, and a take home couldn't make out is never read as an answer: it is a silence the essay says it couldn't make out, and never holds a week back (EH1, #3073).",
+              "ref": "some-ui:packages/video-render/src/verdict.ts"
             }
           ],
           "proof": [
