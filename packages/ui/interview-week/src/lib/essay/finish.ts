@@ -255,7 +255,6 @@ function build(
         beside: { said: v.beside },
       }
       if (q.answer.kind === "unheard") {
-        // Garble is not a weak answer: nothing is read from it (HEARD2).
         if (v.answer !== undefined)
           problems.push(
             `${at}.questions["${q.id}"].answer: home couldn't make out the take, so leave answer out`
@@ -263,7 +262,7 @@ function build(
         return { ...base, answer: { kind: "silence", unheard: true } }
       }
       if (q.answer.kind === "silence") {
-        if (v.answer === undefined || !("guess" in v.answer))
+        if (guessOf(v.answer) === undefined)
           problems.push(
             `${at}.questions["${q.id}"].answer: it was left silent, so write {"guess"}`
           )
@@ -271,10 +270,7 @@ function build(
           ...base,
           answer: {
             kind: "silence",
-            guess:
-              v.answer !== undefined && "guess" in v.answer
-                ? v.answer.guess
-                : "-",
+            guess: guessOf(v.answer) ?? "-",
           },
         }
       }
@@ -317,7 +313,6 @@ function build(
       return { ...base, answer: { kind: "silence", guess: "-" } }
     }
     if (r.answer.kind === "unheard") {
-      // Garble is not a weak read: nothing is read from it (HEARD2).
       if (v.answer !== undefined)
         problems.push(
           `${at}.reads["${r.id}"].answer: home couldn't make out the take, so leave answer out`
@@ -325,7 +320,7 @@ function build(
       return { ...base, answer: { kind: "silence", unheard: true } }
     }
     if (r.answer.kind === "silence") {
-      if (v.answer === undefined || !("guess" in v.answer))
+      if (guessOf(v.answer) === undefined)
         problems.push(
           `${at}.reads["${r.id}"].answer: it was left unread, so write {"guess"}`
         )
@@ -333,10 +328,7 @@ function build(
         ...base,
         answer: {
           kind: "silence",
-          guess:
-            v.answer !== undefined && "guess" in v.answer
-              ? v.answer.guess
-              : "-",
+          guess: guessOf(v.answer) ?? "-",
         },
       }
     }
@@ -433,6 +425,12 @@ function written(values: EssayValues): Array<[string, string]> {
 /** Words that make an answer read as graded, which the essay never does (owner, 2026-11-13). */
 const GRADED =
   /\b(correct answer|the right answer|you scored|a score of|graded?|out of (?:ten|10|five|5))\b/i
+
+/** The guess a silence's values give, if they give one. */
+const guessOf = (answer: object | undefined): string | undefined =>
+  answer !== undefined && "guess" in answer && typeof answer.guess === "string"
+    ? answer.guess
+    : undefined
 
 /**
  * The essays the bundle owes, from the model's `values`, checked; `employers`

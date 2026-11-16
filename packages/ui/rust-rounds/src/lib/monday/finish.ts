@@ -124,7 +124,6 @@ function essayTicket(
       break
     }
     case "unheard": {
-      // Garble is not a weak answer: nothing is read from it (HEARD2).
       if (reading === undefined) {
         answer = {
           kind: "silence",
@@ -133,7 +132,7 @@ function essayTicket(
         }
       } else {
         problems.push(
-          `${at}: home couldn't make out the take, so it takes no answer; leave answer out`
+          `${at}: home couldn't make out the take, so leave answer out`
         )
       }
       break

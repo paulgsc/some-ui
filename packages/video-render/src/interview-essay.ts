@@ -16,7 +16,7 @@
  *    - `question`: the question, and what a good answer covers;
  *    - `answer`: the owner's take, played whole and captioned; for a
  *      question left unanswered, the silence and the guess at why; for a
- *      take home couldn't make out, a silence that says so (HEARD2);
+ *      take home couldn't make out, a silence that says so (`./verdict`);
  *    - `faults`, for a take: its faults said plainly, the measured ones
  *      (IW3, counted by code from the words home heard) apart from the
  *      judged ones (the model's, against the guidelines);
@@ -62,7 +62,14 @@ import type { StillTake } from "./stills"
 import { takeFilesOf } from "./take-files"
 import type { TakeFiles } from "./take-files"
 import sample from "./templates/interview-essay/sample-essay.json"
-import { isSilenceShape, SILENCE_SHAPE, silenceSaid } from "./verdict"
+import {
+  isSilenceShape,
+  isUnheard,
+  SILENCE_FIELDS,
+  SILENCE_SHAPE,
+  silenceSaid,
+} from "./verdict"
+import type { Silence } from "./verdict"
 
 export const INTERVIEW_ESSAY_SCHEMA = "some-ui.interview-essay/1"
 
@@ -247,18 +254,9 @@ const FaultSchema = z.discriminatedUnion("by", [
   }),
 ])
 
+/** Home records no openings of a week's question or card, so a silence counts none. */
 const SilenceSchema = z
-  .strictObject({
-    kind: z.literal("silence"),
-    /** The guess at why, said over the silence; home records no openings of a week's question or card. */
-    guess: words.optional(),
-    /**
-     * A take was sent and home couldn't make it out (HEARD2, #3072): the
-     * essay goes on as if it was left unanswered, and code says so
-     * (`UNHEARD_SAID`) in place of a guess.
-     */
-    unheard: z.literal(true).optional(),
-  })
+  .strictObject(SILENCE_FIELDS)
   .refine(isSilenceShape, SILENCE_SHAPE)
 
 const QuestionSchema = z.strictObject({
@@ -498,13 +496,7 @@ export function interviewEssayIntro(
 
 /** Who says an answer's scene and what: the owner's take, or the tutor's guess over a silence. */
 const played = (
-  answer:
-    | { readonly kind: "take"; readonly transcript: string }
-    | {
-        readonly kind: "silence"
-        readonly guess?: string
-        readonly unheard?: true
-      }
+  answer: { readonly kind: "take"; readonly transcript: string } | Silence
 ): { readonly speaker: Speaker; readonly said: string } =>
   answer.kind === "take"
     ? { speaker: "you", said: answer.transcript }
@@ -718,16 +710,12 @@ export const interviewEssayTakeFiles = (
   const items = [
     ...essay.questions.map((q) => ({ id: q.id, answer: q.answer })),
     ...essay.reads.map((r) => ({ id: readTakeId(r.id), answer: r.answer })),
-  ].map(({ id, answer }) => ({
-    id,
-    kind: answer.kind,
-    unheard: answer.kind === "silence" && answer.unheard === true,
-  }))
+  ]
   return takeFilesOf(
     {
-      answered: items.filter((i) => i.kind === "take").map((i) => i.id),
-      silent: items.filter((i) => i.kind === "silence").map((i) => i.id),
-      unheard: items.filter((i) => i.unheard).map((i) => i.id),
+      answered: items.filter((i) => i.answer.kind === "take").map((i) => i.id),
+      silent: items.filter((i) => i.answer.kind === "silence").map((i) => i.id),
+      unheard: items.filter((i) => isUnheard(i.answer)).map((i) => i.id),
       noun: "question or read",
     },
     names

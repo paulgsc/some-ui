@@ -72,12 +72,8 @@ export const ESSAY_WORDS = {
     `The essay read is ${got}'s, not ${asked}'s`,
 } as const
 
-/**
- * What an answer scene left without a take is called: `left` (nothing came,
- * or a card left unread), or, for a take that couldn't be made out
- * (HEARD2), that it was said and not made out.
- */
+/** What an answer left without a take is called: `nothing`, or said and not made out. */
 export const leftOf = (
   silence: { readonly unheard?: true },
-  left: string = ESSAY_WORDS.noAnswer
-): string => (silence.unheard === true ? ESSAY_WORDS.unheard : left)
+  nothing: string = ESSAY_WORDS.noAnswer
+): string => (silence.unheard === true ? ESSAY_WORDS.unheard : nothing)

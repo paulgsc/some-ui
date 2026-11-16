@@ -85,11 +85,8 @@ export const TranscriptSchema = z.object({
 })
 
 /**
- * What home heard in a note, by home's verdict on its transcript
- * (`hearingOf`, HEARD2, #3072): its text; that nothing was said
- * (`silent`); or that home couldn't make it out (`unheard`: garbled or
- * failed). Only a heard note keeps its text, so no essay can read garble as
- * an answer.
+ * What home heard in a note, by its verdict (`hearingOf`): only a heard
+ * note keeps its text, so no essay can read garble as an answer.
  */
 export type Heard =
   | { readonly hearing: "heard"; readonly text: string }
@@ -100,8 +97,7 @@ export type Heard =
  * What home heard in each note, by the note's id: the transcript with the
  * highest `<n>` (compared as a number), since a better model's goes under a
  * new name. A file whose body isn't a transcript of the note its name carries
- * is left out. A transcript with no verdict, as every one before HEARD1,
- * reads as heard.
+ * is left out.
  */
 export function heardByNote(
   files: ReadonlyArray<{ name: string; body: unknown }>
@@ -116,11 +112,13 @@ export function heardByNote(
     const held = best.get(note)
     if (held === undefined || n > held.n) {
       const hearing = hearingOf(file.body)
-      const heard: Heard =
-        hearing === "silent" || hearing === "unheard"
-          ? { hearing }
-          : { hearing: "heard", text: parsed.data.text }
-      best.set(note, { n, heard })
+      best.set(note, {
+        n,
+        heard:
+          hearing === "heard"
+            ? { hearing, text: parsed.data.text }
+            : { hearing },
+      })
     }
   }
   return new Map([...best].map(([note, { heard }]) => [note, heard]))

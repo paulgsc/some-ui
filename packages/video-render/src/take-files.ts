@@ -28,7 +28,7 @@ export function takeFilesOf(
   items: {
     readonly answered: ReadonlyArray<string>
     readonly silent: ReadonlyArray<string>
-    readonly unheard?: ReadonlyArray<string>
+    readonly unheard: ReadonlyArray<string>
     readonly noun: string
   },
   names: ReadonlyArray<string>
@@ -36,7 +36,7 @@ export function takeFilesOf(
   const audio = new Map<string, Array<string>>()
   const words = new Map<string, string>()
   const problems: Array<string> = []
-  const unheard = new Set(items.unheard ?? [])
+  const unheard = new Set(items.unheard)
   for (const name of [...names].sort()) {
     if (name.startsWith(".")) continue
     if (name.endsWith(TAKE_WORDS)) {

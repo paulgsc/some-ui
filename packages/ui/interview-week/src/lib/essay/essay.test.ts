@@ -303,21 +303,23 @@ const verdictOf = (kind: string): unknown => ({
 const GARBLE = "the the borrow um sh sh the the the the"
 
 describe("a take home couldn't make out (HEARD2; EH1)", () => {
+  /** The answer garbled, the read failed with no words at all. */
   const unheard = (): EssayBundle =>
     prepared([
       judged("note-1", GARBLE, verdictOf("garbled")),
-      transcript("note-2", C1.script.replaceAll("\n", " ")),
+      judged("note-2", "", verdictOf("failed")),
     ])
 
-  it("never waits: the essay is owed, the take read as a silence", () => {
+  it("never waits: the essay is owed, the answer and the read unheard", () => {
     const bundle = unheard()
     expect(bundle.waiting).toEqual([])
     expect(bundle.essays[0]?.questions[0]?.answer).toEqual({
       kind: "unheard",
     })
+    expect(bundle.essays[0]?.reads[0]?.answer).toEqual({ kind: "unheard" })
   })
 
-  it("is never read as an answer: its words reach neither bundle nor essay", () => {
+  it("is never read as an answer: the essay says it as a silence", () => {
     const bundle = unheard()
     expect(JSON.stringify(bundle)).not.toContain(GARBLE)
     const done = finishEssays({
@@ -327,33 +329,36 @@ describe("a take home couldn't make out (HEARD2; EH1)", () => {
     })
     if (!done.ok) throw new Error(done.problems.join("\n"))
     const essay = done.files[0]?.body
-    expect(essay?.questions[0]?.answer).toEqual({
-      kind: "silence",
-      unheard: true,
-    })
-    expect(JSON.stringify(essay)).not.toContain(GARBLE)
+    const unheardSilence = { kind: "silence", unheard: true }
+    expect(essay?.questions[0]?.answer).toEqual(unheardSilence)
+    expect(essay?.reads[0]?.answer).toEqual(unheardSilence)
   })
 
   it("takes no reading and no guess", () => {
     const bundle = unheard()
     const values = valuesFor_(bundle)
-    const question = values.essays[0]?.questions[0]
-    if (question === undefined) throw new Error("no question")
+    const [question] = values.essays[0]?.questions ?? []
+    const [read] = values.essays[0]?.reads ?? []
+    if (question === undefined || read === undefined) throw new Error("shape")
     question.answer = { guess: "A guess." }
+    read.answer = { change: "Slow down.", said: "What was counted." }
     const done = finishEssays({ bundle, values, resumeEmployers: [] })
     expect(done.ok ? [] : done.problems).toEqual([
       `essays["${W.id}"].questions["${Q1.id}"].answer: home couldn't make out the take, so leave answer out`,
+      `essays["${W.id}"].reads["${C1.id}"].answer: home couldn't make out the take, so leave answer out`,
     ])
   })
 
-  it("is garbled or failed; nothing said is a silence, and no verdict reads as heard", () => {
-    const of = (verdict: unknown): unknown =>
-      heardByNote([judged("n", "words", verdict)]).get("n")?.hearing
-    expect(of(verdictOf("heard"))).toBe("heard")
-    expect(of(null)).toBe("heard")
-    expect(of(verdictOf("nothing_said"))).toBe("silent")
-    for (const kind of ["garbled", "failed"])
-      expect(of(verdictOf(kind))).toBe("unheard")
+  it("is never what a failed decode hides: a take heard either way is heard", () => {
+    const heard = heardByNote([
+      transcript("n", "plain text", "whisper"),
+      {
+        ...judged("n", "", verdictOf("failed")),
+        name: "transcript-n-2.json",
+      },
+    ])
+    const got = heard.get("n")
+    expect(got?.hearing === "heard" ? got.text : null).toBe("plain text")
   })
 
   it("leaves a take home heard nothing in a plain silence, with a guess", () => {

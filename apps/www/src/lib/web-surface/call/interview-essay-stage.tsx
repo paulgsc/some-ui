@@ -12,6 +12,7 @@ import type {
   InterviewEssay,
   InterviewEssayScene,
   InterviewFault,
+  Silence,
 } from "@some-ui/video-render"
 
 import { Call, Inline, MARK_CLASS } from "./essay-parts"
@@ -123,8 +124,7 @@ const Faults = ({
 
 /**
  * An answer's or a read's take, played whole under its transcript, or the
- * silence and the guess at why: `took` and `left` name the two. A take that
- * couldn't be made out (HEARD2) is named so, over code's words.
+ * silence and the guess at why: `took` and `left` name the two.
  */
 const Played = ({
   speaker,
@@ -134,13 +134,7 @@ const Played = ({
   left,
 }: {
   speaker: InterviewEssayAt["speaker"]
-  answer:
-    | { readonly kind: "take"; readonly transcript: string }
-    | {
-        readonly kind: "silence"
-        readonly guess?: string
-        readonly unheard?: true
-      }
+  answer: { readonly kind: "take"; readonly transcript: string } | Silence
   took: string
   tag: string
   left: string

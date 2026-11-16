@@ -89,12 +89,9 @@ const TranscriptSchema = z.object({
 })
 
 /**
- * What home heard in a take, by home's verdict on its transcript
- * (`hearingOf`, HEARD2, #3072): its text, and its words, or null when home
- * kept none; that nothing was said (`silent`); or that home couldn't make it
- * out (`unheard`: garbled or failed). Only a heard take keeps its text, so
- * no essay can read garble as an answer. A transcript with no verdict, as
- * every one before HEARD1, reads as heard.
+ * What home heard in a take, by its verdict (`hearingOf`): only a heard take
+ * keeps its text, and its words, or null when home kept none, so no essay
+ * can read garble as an answer.
  */
 export type Heard =
   | {
@@ -108,9 +105,9 @@ export type Heard =
 /** A transcript's hearing, its text and words kept only when heard. */
 function heardOf(body: unknown, text: string): Heard {
   const hearing = hearingOf(body)
-  return hearing === "silent" || hearing === "unheard"
-    ? { hearing }
-    : { hearing: "heard", text, words: wordsOf(body) }
+  return hearing === "heard"
+    ? { hearing, text, words: wordsOf(body) }
+    : { hearing }
 }
 
 /** Home's verbatim decode (IW2): it keeps the fillers a plain one drops. */
@@ -118,8 +115,9 @@ const VERBATIM = "+verbatim"
 
 /**
  * What home heard in each note, by the note's id. Of a note's transcripts,
- * the verbatim decode's (IW2's model, `+verbatim-…`) is preferred, since a
- * take heard both ways is filed twice, then the highest `<n>`. A file whose
+ * one home heard is preferred, so a decode that failed never hides one that
+ * didn't; then the verbatim decode's (IW2's model, `+verbatim-…`), since a
+ * take heard both ways is filed twice; then the highest `<n>`. A file whose
  * body isn't a transcript of the note its name carries is left out.
  */
 export function heardByNote(
@@ -133,17 +131,17 @@ export function heardByNote(
     const parsed = TranscriptSchema.safeParse(file.body)
     if (!parsed.success || parsed.data.note !== note) continue
     const verbatim = parsed.data.model?.includes(VERBATIM) ?? false
+    const heard = heardOf(file.body, parsed.data.text)
     const held = best.get(note)
+    const isHeard = heard.hearing === "heard"
     const better =
       held === undefined ||
-      (verbatim && !held.verbatim) ||
-      (verbatim === held.verbatim && n > held.n)
-    if (better)
-      best.set(note, {
-        verbatim,
-        n,
-        heard: heardOf(file.body, parsed.data.text),
-      })
+      (isHeard !== (held.heard.hearing === "heard")
+        ? isHeard
+        : verbatim !== held.verbatim
+          ? verbatim
+          : n > held.n)
+    if (better) best.set(note, { verbatim, n, heard })
   }
   return new Map([...best].map(([note, { heard }]) => [note, heard]))
 }

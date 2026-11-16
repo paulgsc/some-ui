@@ -3,9 +3,9 @@
  * else: the judged half of each answer (`JudgedAnswerSchema`, IW3), each
  * guideline's mark, and the prose said over each scene. The company, the
  * questions, the transcripts, every measured fault and the chart are the
- * bundle's (`bundle.ts`). A take home couldn't make out takes no `answer`
- * at all: no reading and no guess (HEARD2, #3072). Every object is strict; ROUTINE.md, "What you write
- * in an essay", says what each field holds.
+ * bundle's (`bundle.ts`). Every object is strict; ROUTINE.md, "What you
+ * write in an essay", says what each field holds, and that a take home
+ * couldn't make out takes no `answer`.
  */
 import { JudgedAnswerSchema } from "@interview-week/lib/faults"
 import { z } from "zod"

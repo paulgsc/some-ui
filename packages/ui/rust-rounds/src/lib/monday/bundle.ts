@@ -46,12 +46,7 @@ const ESSAY_NAME = /^rust-essay-(\d{4}-w\d{2})(?:-r(\d+))?\.json$/
 export type EndedTicket = Ticket & {
   readonly answer:
     | { readonly kind: "take"; readonly transcript: string }
-    | { readonly kind: "silence"; readonly opened: number }
-    /**
-     * A take home couldn't make out (HEARD2, #3072): the essay goes on as if
-     * it was left unanswered, and nothing is read from it.
-     */
-    | { readonly kind: "unheard"; readonly opened: number }
+    | { readonly kind: "silence" | "unheard"; readonly opened: number }
 }
 
 /** A week owed its essay, ready to write. */
@@ -187,27 +182,11 @@ function answersOf(
     if (held === undefined) {
       return { ok: false, why: `home's record has no ${ticket.id}` }
     }
-    if (held.take === null) {
-      tickets.push({
-        ...ticket,
-        answer: { kind: "silence", opened: held.opens },
-      })
-      continue
-    }
-    const hearing = heard.get(held.take)
-    // Home heard nothing said: a silence, as a ticket left unanswered is.
-    if (hearing?.hearing === "silent") {
-      tickets.push({
-        ...ticket,
-        answer: { kind: "silence", opened: held.opens },
-      })
-      continue
-    }
-    if (hearing?.hearing === "unheard") {
-      tickets.push({
-        ...ticket,
-        answer: { kind: "unheard", opened: held.opens },
-      })
+    const hearing: Heard | undefined =
+      held.take === null ? { hearing: "silent" } : heard.get(held.take)
+    if (hearing?.hearing === "silent" || hearing?.hearing === "unheard") {
+      const kind = hearing.hearing === "silent" ? "silence" : "unheard"
+      tickets.push({ ...ticket, answer: { kind, opened: held.opens } })
       continue
     }
     if (hearing === undefined || hearing.text.trim() === "") {

@@ -48,7 +48,6 @@ export type QuestionOwed = {
         readonly measured: AnswerFaults
       }
     | { readonly kind: "silence" }
-    /** A take home couldn't make out (HEARD2): read as if left unanswered. */
     | { readonly kind: "unheard" }
 }
 
@@ -63,7 +62,6 @@ type ReadOwed = {
         readonly measured: ReadFaults
       }
     | { readonly kind: "silence" }
-    /** A take home couldn't make out (HEARD2): read as if left unanswered. */
     | { readonly kind: "unheard" }
 }
 
@@ -257,22 +255,14 @@ function owed(
 ): Owed {
   if (week === undefined)
     return { ok: false, why: "brief holds no readable week file for it" }
-  /** A take's hearing: null for none sent or nothing said, "unheard" for one home couldn't make out. */
   const heardOf = (
     take: string | null,
     what: string
-  ):
-    | {
-        ok: true
-        heard: Extract<Heard, { hearing: "heard" }> | null | "unheard"
-      }
-    | { ok: false; why: string } => {
-    if (take === null) return { ok: true, heard: null }
-    const got = heard.get(take)
-    // Home heard nothing said: a silence, as an answer left out is.
-    if (got?.hearing === "silent") return { ok: true, heard: null }
-    // Home couldn't make it out: the essay goes on without it (HEARD2).
-    if (got?.hearing === "unheard") return { ok: true, heard: "unheard" }
+  ): { ok: true; heard: Heard } | { ok: false; why: string } => {
+    const got: Heard | undefined =
+      take === null ? { hearing: "silent" } : heard.get(take)
+    if (got?.hearing === "silent" || got?.hearing === "unheard")
+      return { ok: true, heard: got }
     if (got === undefined || got.text.trim() === "")
       return { ok: false, why: `home hasn't heard ${what}'s take yet` }
     if (got.words === null || got.words.length === 0)
@@ -282,6 +272,11 @@ function owed(
       }
     return { ok: true, heard: got }
   }
+  /** A silence, or a take home couldn't make out, as the bundle restates it. */
+  const left = (
+    hearing: Exclude<Heard, { hearing: "heard" }>
+  ): { kind: "silence" } | { kind: "unheard" } =>
+    hearing.hearing === "silent" ? { kind: "silence" } : { kind: "unheard" }
   const questions: Array<QuestionOwed> = []
   for (const question of week.questions) {
     const held = record.questions.find((q) => q.question === question.id)
@@ -294,19 +289,17 @@ function owed(
       guidelines: question.guidelines,
       targetSeconds: question.targetSeconds,
       answer:
-        got.heard === null
-          ? { kind: "silence" }
-          : got.heard === "unheard"
-            ? { kind: "unheard" }
-            : {
-                kind: "take",
-                transcript: got.heard.text,
-                measured: measureAnswer({
-                  words: got.heard.words ?? [],
-                  targetMs: question.targetSeconds * 1000,
-                  takeMs: null,
-                }),
-              },
+        got.heard.hearing !== "heard"
+          ? left(got.heard)
+          : {
+              kind: "take",
+              transcript: got.heard.text,
+              measured: measureAnswer({
+                words: got.heard.words ?? [],
+                targetMs: question.targetSeconds * 1000,
+                takeMs: null,
+              }),
+            },
     })
   }
   const reads: Array<ReadOwed> = []
@@ -319,18 +312,16 @@ function owed(
       situation: card.situation,
       script: card.script,
       answer:
-        got.heard === null
-          ? { kind: "silence" }
-          : got.heard === "unheard"
-            ? { kind: "unheard" }
-            : {
-                kind: "take",
-                transcript: got.heard.text,
-                measured: measureRead({
-                  words: got.heard.words ?? [],
-                  script: card.script,
-                }),
-              },
+        got.heard.hearing !== "heard"
+          ? left(got.heard)
+          : {
+              kind: "take",
+              transcript: got.heard.text,
+              measured: measureRead({
+                words: got.heard.words ?? [],
+                script: card.script,
+              }),
+            },
     })
   }
   return {

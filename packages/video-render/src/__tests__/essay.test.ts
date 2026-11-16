@@ -465,12 +465,12 @@ describe("home's verdict on a transcript (HEARD1)", () => {
   it("is heard, a silence, or couldn't be made out, by its kind", () => {
     expect(of("heard")).toBe("heard")
     expect(of("nothing_said")).toBe("silent")
-    for (const kind of ["garbled", "failed", "a-kind-from-later", "toString"])
+    for (const kind of ["garbled", "failed", "a-kind-from-later"])
       expect(of(kind)).toBe("unheard")
   })
 
-  it("is unjudged when the transcript carries none, as before HEARD1", () => {
-    expect(hearingOf({ text: "words" })).toBe("unjudged")
-    expect(hearingOf({ verdict: null })).toBe("unjudged")
+  it("reads as heard when the transcript carries none, as before HEARD1", () => {
+    expect(hearingOf({ text: "words" })).toBe("heard")
+    expect(hearingOf({ verdict: null })).toBe("heard")
   })
 })

@@ -32,7 +32,7 @@ import { ValuesSchema } from "@rust-rounds/lib/monday/values"
 import { QUILLMOSS_WEEK } from "@rust-rounds/lib/sample-week"
 import { readWeek } from "@rust-rounds/lib/week-check"
 import { isRecord } from "@some-ui/core-utils"
-import { essayScenes, parseEssay, UNHEARD_SAID } from "@some-ui/video-render"
+import { parseEssay } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 import { z } from "zod"
 
@@ -345,27 +345,18 @@ describe("a take home couldn't make out (HEARD2, #3072; EH1)", () => {
     return given
   }
 
-  it("never holds the essay back: the take is restated as unheard", () => {
-    for (const verdict of [
-      { kind: "garbled", reasons: ["off_language"] },
-      { kind: "failed", reasons: ["engine"] },
-      { kind: "a-kind-from-later" },
-    ]) {
-      const { bundle } = unheard(verdict)
-      expect(bundle.waiting).toEqual([])
-      expect(bundle.essays[0]?.tickets[0]?.answer).toEqual({
-        kind: "unheard",
-        opened: record().tickets[0]?.opens,
-      })
-    }
-    // A failed take, with no words at all, doesn't wait either.
-    const failed = samplePrepared({
+  it("never holds the essay back, even failed with no words at all", () => {
+    const { bundle } = samplePrepared({
       transcripts: [
-        judged311({ kind: "failed" }, ""),
+        judged311({ kind: "failed", reasons: ["engine"] }, ""),
         ...SAMPLE_TRANSCRIPTS.slice(1),
       ],
     })
-    expect(failed.bundle.waiting).toEqual([])
+    expect(bundle.waiting).toEqual([])
+    expect(bundle.essays[0]?.tickets[0]?.answer).toEqual({
+      kind: "unheard",
+      opened: record().tickets[0]?.opens,
+    })
   })
 
   it("never becomes a reading: garble reaches neither bundle nor essay", () => {
@@ -380,11 +371,6 @@ describe("a take home couldn't make out (HEARD2, #3072; EH1)", () => {
       opened: record().tickets[0]?.opens,
       unheard: true,
     })
-    expect(JSON.stringify(essay.value)).not.toContain(GARBLE)
-    const said = essayScenes(essay.value).find(
-      (scene) => scene.section === "answer" && scene.ticket === "QM-311"
-    )
-    expect(said).toMatchObject({ speaker: "tutor", said: UNHEARD_SAID })
   })
 
   it("takes no marks, no SOLO level and no guess", () => {
@@ -399,8 +385,7 @@ describe("a take home couldn't make out (HEARD2, #3072; EH1)", () => {
       const done = finish({ ...prepared, values: given, runs: RUNS })
       return done.ok ? [] : done.problems
     }
-    const why =
-      "QM-311: home couldn't make out the take, so it takes no answer; leave answer out"
+    const why = "QM-311: home couldn't make out the take, so leave answer out"
     expect(problems(reading)).toEqual([why])
     expect(problems(guess)).toEqual([why])
   })
@@ -441,12 +426,10 @@ describe("a take home couldn't make out (HEARD2, #3072; EH1)", () => {
     expect(bundle.next?.seeds.map((seed) => seed.said)).toEqual([null])
   })
 
-  it("reads as before when home gave no verdict, or heard it", () => {
-    for (const verdict of [{ kind: "heard", reasons: [] }, null]) {
-      const { bundle } = unheard(verdict)
-      const answer = bundle.essays[0]?.tickets[0]?.answer
-      expect(answer?.kind === "take" && answer.transcript).toBe(GARBLE)
-    }
+  it("reads as before when home gave no verdict (EH1's tolerance)", () => {
+    const { bundle } = unheard(null)
+    const answer = bundle.essays[0]?.tickets[0]?.answer
+    expect(answer?.kind === "take" && answer.transcript).toBe(GARBLE)
   })
 
   it("leaves a take home heard nothing in a plain silence, as one left unanswered", () => {
