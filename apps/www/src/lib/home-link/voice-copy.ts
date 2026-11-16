@@ -33,6 +33,10 @@
  *   #2688): `rust-round`, the week and ticket as `<week>:<ticket>`, when
  *   taken, but only once its week is sent: until then it waits on the phone
  *   (`waits`), as a new idea's take does;
+ * - a take of the interview week (`lib/interview-week`'s `interviewDesk`,
+ *   IW5): `interview`, its line as IW1 names it (`<week>:<question>` for an
+ *   answer, `<week>:read:<card>` for a read), when taken, once its week is
+ *   sent, as a week's ticket does;
  * - a Studio idea answer's take (`lib/idea-takes`, MIC10): `studio`, the
  *   answer as `idea:<idea>:<question>`, when taken; home gives its words back
  *   to the idea screen (`./heard`). A new idea's take (ST26) goes the same
@@ -148,6 +152,7 @@ import { ON_PHONE } from "@some-ui/voice-capture"
 import { phoneGameBites } from "@/lib/game-bites"
 import type { IdeaTake } from "@/lib/idea-takes"
 import { ideaBundleDesk, ideaRedoDesk, ideaTakesDesk } from "@/lib/idea-takes"
+import { interviewDesk } from "@/lib/interview-week"
 import { jobVoiceAudio, phoneJobs } from "@/lib/jobs"
 import type { JobEvent, JobsState } from "@/lib/jobs/model"
 import type { LeetypeTake } from "@/lib/leetype-takes"
@@ -171,6 +176,7 @@ import type { Reflection } from "@/lib/session-reflection/policy"
 import { onSoundbitesKept, soundbiteKeeping } from "@/lib/soundbite-keeping"
 import { onStudioKept, studioKeeping } from "@/lib/studio-keeping"
 import { takeConveyor } from "@/lib/take-conveyor"
+import type { Take as DeskTake } from "@/lib/takes-desk"
 import { phoneVoiceHome } from "@/lib/voice-home"
 import { exchangeVoice } from "@/lib/voice-home/home"
 import type {
@@ -365,18 +371,19 @@ export function rustRoundNote(
 }
 
 /**
- * A take on a week's ticket (its `line` is `<week>:<ticket>`), as home is
- * told it: a Rust Rounds note named by its week and ticket.
+ * A week's take named by its line, as home is told it, said `of`: a Rust
+ * Rounds ticket's (`<week>:<ticket>`, RR13) or the interview week's
+ * (`<week>:<question>` or `<week>:read:<card>`, IW1). Its ref is its line.
  */
-export function rustWeekNote(take: RustRoundTake): VoiceOut {
-  return {
+export const lineNote =
+  (of: "rust-round" | "interview") =>
+  (take: DeskTake): VoiceOut => ({
     id: take.id,
-    of: "rust-round",
+    of,
     ref: take.line,
     at: new Date(take.takenAt).toISOString(),
     contentType: take.mimeType,
-  }
-}
+  })
 
 /**
  * A take on the desk of Studio's answers, as home is told it: a Studio note
@@ -650,8 +657,14 @@ function listed(
   })
   // RR13: only the takes of a week sent; one still waiting is not listed.
   const week = rustWeekDesk.kept().map((take) => ({
-    note: rustWeekNote(take),
+    note: lineNote("rust-round")(take),
     audio: (): Promise<Blob | null> => rustWeekDesk.audio(take.id),
+    aside: asideAt(take),
+  }))
+  // IW5: only the takes of a week sent; one still waiting is not listed.
+  const interview = interviewDesk.kept().map((take) => ({
+    note: lineNote("interview")(take),
+    audio: (): Promise<Blob | null> => interviewDesk.audio(take.id),
     aside: asideAt(take),
   }))
   const ideas = ideaTakesDesk.kept().map((take) => ({
@@ -687,6 +700,7 @@ function listed(
     ...leetype,
     ...rust,
     ...week,
+    ...interview,
     ...ideas,
     ...bundled,
     ...resaid,
@@ -1204,6 +1218,7 @@ function holdOffline(): void {
   ideaBundleDesk.keptWhere(voiceKept)
   ideaRedoDesk.keptWhere(voiceKept)
   rustWeekDesk.keptWhere(voiceKept)
+  interviewDesk.keptWhere(voiceKept)
   libraryTakesDesk.keptWhere(voiceKept)
   sceneNotesKept(voiceKept)
   reflectionNotesKept(voiceKept)
@@ -1259,6 +1274,8 @@ export function watchVoiceNotes(): () => void {
         ideaRedoDesk.phone().takes.subscribe(copySoon),
         // A week's takes go once it is sent (RR13): its Send is a change.
         rustWeekDesk.phone().takes.subscribe(copySoon),
+        // An interview week's takes go once it is sent (IW5).
+        interviewDesk.phone().takes.subscribe(copySoon),
         libraryTakesDesk.phone().takes.subscribe(copySoon)
       )
     }

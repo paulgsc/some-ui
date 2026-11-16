@@ -140,6 +140,10 @@ const HOME_LINK_CALLERS = new Set([
   // (`ideaHome`) and asks home once per opening for the words of each take
   // sent that the phone has none of.
   "routes/_dashboard/_apk/rust-rounds.tsx",
+  // LA8 (IW5): the interview week, which reads whether the phone is paired
+  // (`ideaHome`) and whether home holds a send from what the link last
+  // heard, asking home nothing of its own.
+  "routes/_dashboard/_apk/jobs/interview.tsx",
   // LA15, PULL2: a pull on a Jobs screen or the status page hears how the
   // jobs lane's run in the pull of home ended (`pulledLane`), asking nothing
   // of its own.

@@ -491,6 +491,9 @@ importers:
       '@some-ui/intent-kit':
         specifier: workspace:*
         version: link:../../packages/intent-kit
+      '@some-ui/interview-week':
+        specifier: workspace:*
+        version: link:../../packages/ui/interview-week
       '@some-ui/job-desk':
         specifier: workspace:*
         version: link:../../packages/job-desk

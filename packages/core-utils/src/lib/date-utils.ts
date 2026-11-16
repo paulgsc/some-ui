@@ -129,6 +129,23 @@ const PACIFIC_CLOCK = new Intl.DateTimeFormat("en-GB", {
   hourCycle: "h23",
 })
 
+const PACIFIC_WEEKDAY = new Intl.DateTimeFormat("en-US", {
+  timeZone: PACIFIC_TIME_ZONE,
+  weekday: "long",
+})
+
+/** The day of the week of `at` on the owner's clock, as a weekly routine's screens say it: `Sunday`. */
+export const pacificWeekday = (at: string | Date): string =>
+  PACIFIC_WEEKDAY.format(new Date(at))
+
+/** The time of day of `at` on the owner's clock: `23:59`. */
+export const pacificClock = (at: string | Date): string =>
+  PACIFIC_CLOCK.format(new Date(at))
+
+/** A week's number from its id (`weekAround`'s): `2026-w47` is 47. */
+export const weekNumber = (id: string): number =>
+  Number(id.slice(id.indexOf("w") + 1))
+
 /** The Pacific calendar day of `at`, `YYYY-MM-DD`. */
 export function pacificDay(at: Date): string {
   return PACIFIC_DAY.format(at)
@@ -155,6 +172,24 @@ function pacificInstant(day: string, hh: number, mm: number): string {
     }
   }
   throw new Error(`${day} ${clock} isn't a time in ${PACIFIC_TIME_ZONE}`)
+}
+
+/**
+ * Which week a phone plays at `at` (RR13, IW5): the newest of `weeks` that
+ * has opened, or, before any has, the one that opens first. A week can be
+ * answered before it opens: it closes at its deadline only.
+ */
+export function weekOpenNow<T>(
+  weeks: ReadonlyArray<T>,
+  opensOf: (week: T) => string,
+  at: number
+): T | null {
+  const opens = (week: T): number => Date.parse(opensOf(week))
+  const opened = weeks
+    .filter((week) => opens(week) <= at)
+    .sort((a, b) => opens(b) - opens(a))
+  const first = [...weeks].sort((a, b) => opens(a) - opens(b))[0]
+  return opened[0] ?? first ?? null
 }
 
 /**

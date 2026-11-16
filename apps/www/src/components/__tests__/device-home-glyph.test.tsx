@@ -308,9 +308,7 @@ describe("the Jobs record's mark", () => {
     )
     fireEvent.click(mark(/Where the Jobs record is kept/))
     expect(
-      within(screen.getByRole("dialog")).getByText(
-        /2 events wait on this phone/
-      )
+      within(screen.getByRole("dialog")).getByText(/2 items wait on this phone/)
     ).toBeTruthy()
   })
 

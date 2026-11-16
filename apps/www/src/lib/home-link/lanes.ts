@@ -55,6 +55,7 @@ export type LaneKind =
   | "episodeNotes"
   | "rounds"
   | "rustWeeks"
+  | "interviewWeeks"
   | "rustPastes"
   | "roundLog"
   | "endings"

@@ -20,6 +20,7 @@ import type { PhoneBite } from "@/lib/game-bites"
 import { phoneGameBites } from "@/lib/game-bites"
 import { ideasMoved } from "@/lib/idea-keeping"
 import { ideaBundleDesk, ideaRedoDesk, ideaTakesDesk } from "@/lib/idea-takes"
+import { interviewDesk } from "@/lib/interview-week"
 import { phoneJobs } from "@/lib/jobs"
 import { leetypeTakesDesk } from "@/lib/leetype-takes"
 import { lensTakesDesk } from "@/lib/lens-takes"
@@ -121,6 +122,9 @@ export const voiceLane: Lane = {
     // A week's takes, released by its Send (RR13).
     const week = rustWeekDesk.phone().takes
     useSyncExternalStore(week.subscribe, week.getSnapshot)
+    // An interview week's takes, released by its Send (IW5).
+    const interview = interviewDesk.phone().takes
+    useSyncExternalStore(interview.subscribe, interview.getSnapshot)
     const library = libraryTakesDesk.phone().takes
     useSyncExternalStore(library.subscribe, library.getSnapshot)
     const { gone } = useSyncExternalStore(

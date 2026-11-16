@@ -39,8 +39,15 @@ import type {
   BundleMachine,
   BundleSpec,
   BundleState,
+  SendsAtHome,
 } from "@some-ui/voice-capture"
-import { bundleMachine } from "@some-ui/voice-capture"
+import {
+  bundleMachine,
+  isPastDue,
+  latestSend,
+  sendsAtHome,
+  weekSendKey,
+} from "@some-ui/voice-capture"
 
 /** A week's answers as sent, kept on this phone. */
 export type WeekSent = {
@@ -79,47 +86,24 @@ export const ticketLine = (week: string, ticket: string): string =>
 
 /** Whether `at` is past the week's deadline. */
 export const isClosed = (week: Pick<Week, "due">, at: string): boolean =>
-  Date.parse(at) > Date.parse(week.due)
+  isPastDue(week.due, at)
 
-/** How home knows one send of a week, and how this phone remembers it went: `2026-w46/<at>`. */
-export const weekSendKey = (sent: Pick<WeekSent, "week" | "at">): string =>
-  `${sent.week}/${sent.at}`
+/** The shared week-send helpers, by the names this week's modules use. */
+export { latestSend, weekSendKey }
 
 /** A week's sends as home has them, as far as this phone knows. */
-export type WeekAtHome = {
-  /**
-   * The latest send home holds: what counts once the week closes; null
-   * when home holds none.
-   */
-  readonly holds: WeekSent | null
-  /** The latest send made on this phone, home's or not; null for none. */
-  readonly last: WeekSent | null
-}
+export type WeekAtHome = SendsAtHome<WeekSent>
 
 /**
  * What home holds of `week` (the owner's call, C56): of the sends kept on
  * this phone, the latest by `at` home holds (`held` says, by what the link
- * remembers), and the latest made. A send home doesn't hold by the deadline
- * never counts: home refuses it after.
+ * remembers), and the latest made.
  */
-export function weekAtHome(
+export const weekAtHome = (
   kept: ReadonlyArray<WeekSent>,
   week: Pick<Week, "id">,
   held: (sent: WeekSent) => boolean
-): WeekAtHome {
-  const sends = kept.filter((sent) => sent.week === week.id)
-  return { holds: latestSend(sends.filter(held)), last: latestSend(sends) }
-}
-
-/** The send of `sends` made last, by instant; null for none. */
-export const latestSend = (sends: ReadonlyArray<WeekSent>): WeekSent | null =>
-  sends.reduce<WeekSent | null>(
-    (latest, sent) =>
-      latest === null || Date.parse(sent.at) >= Date.parse(latest.at)
-        ? sent
-        : latest,
-    null
-  )
+): WeekAtHome => sendsAtHome(kept, week.id, held)
 
 function weekSpec(week: Week): BundleSpec<WeekKind> {
   return {

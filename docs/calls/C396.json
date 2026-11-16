@@ -1,0 +1,21 @@
+{
+  "id": "C396",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/routes/_dashboard/_apk/jobs.tsx",
+    "apps/www/src/routes/_dashboard/_apk/jobs/interview.tsx",
+    "apps/www/src/components/jobs/interview.tsx",
+    "apps/www/src/lib/home-link/jobs.ts",
+    "apps/www/src/lib/home-link/interview.ts"
+  ],
+  "chose": "The interview week lives in the Jobs wing as a fourth view, Interview, beside Today, Scout and Record, at /jobs/interview. Its weeks and sends go through the Jobs lane, after the Jobs record, so Settings lists the interview weeks sent under Jobs and home.",
+  "options": [
+    "(a) the Jobs wing, a fourth view, its exchange in the Jobs lane",
+    "(b) Practice, a card on Practice Home beside Rust Rounds, with a lane of its own",
+    "(c) a wing of its own"
+  ],
+  "gray": "#2936 names the Jobs wing as fitting (\"interview\" is already a stage there) and says it is a gray call. Practice holds Rust Rounds, whose template this follows, so either wing reads naturally on the phone, and the owner would notice which one it sits in.",
+  "undo": "Move the route under /practice (or its own wing), drop the fourth view from jobs.tsx, and give the exchange a lane of its own (LaneId, its words and Settings row) in place of the Jobs lane's second half.",
+  "refs": ["#2936", "#2931"]
+}
