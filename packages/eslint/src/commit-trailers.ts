@@ -23,7 +23,7 @@
 // whoever started the workflow and commits it as `github-actions[bot]`).
 
 const KIND_VALUES = new Set(["story", "defect"])
-// An area prefix of up to eight letters, as SFEED4 has, and a number.
+// An area prefix of up to eight letters, as SFEED4 has, and a number (TR1).
 const PROMISE_ID = "[A-Z]{1,8}\\d+"
 const PROMISE_SHAPE = new RegExp(`^${PROMISE_ID}\\s+\\S.*?\\s+\\|\\s+\\S.*$`)
 const RELATES_SHAPE = new RegExp(
