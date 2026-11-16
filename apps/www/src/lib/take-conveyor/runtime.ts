@@ -135,6 +135,7 @@ export function createTakeConveyor(ports: TakeConveyorPorts): TakeConveyor {
   }
 }
 
+/** Every station's name, in the order a take moves along them (the chips'). */
 export const STATION_NAMES: ReadonlyArray<string> = TAKE_STATIONS.map(
   (station) => TAKE_CONVEYOR_WORDS.stations[station]
 )

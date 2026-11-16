@@ -232,6 +232,26 @@ describe("Takes on home (ST32)", () => {
     expect(left.effects).toEqual([{ type: "stopPlayback" }])
   })
 
+  it("stops what plays when its row is about to leave the screen, and its late audio plays nowhere (TAKES3)", () => {
+    const playing = run([
+      { type: "entered" },
+      { type: "play", id: "t1" },
+      { type: "audioRead", play: 1, audio: AUDIO },
+    ])
+    const stopped = run([{ type: "stop" }], playing.state)
+    expect(stopped.state.playback).toEqual({ kind: "quiet" })
+    expect(stopped.effects).toEqual([{ type: "stopPlayback" }])
+    const loading = run([{ type: "play", id: "t2" }], stopped.state)
+    const late = run(
+      [{ type: "stop" }, { type: "audioRead", play: 3, audio: AUDIO }],
+      loading.state
+    )
+    expect(late.state.playback).toEqual({ kind: "quiet" })
+    expect(late.effects).toEqual([])
+    // Nothing playing: nothing to stop.
+    expect(run([{ type: "stop" }], late.state).effects).toEqual([])
+  })
+
   describe("the phone's own takes with no scene", () => {
     const take = (id: string, kept: TakeKept | null): PatternTake => ({
       id,

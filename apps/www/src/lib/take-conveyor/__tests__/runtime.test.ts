@@ -180,6 +180,14 @@ describe("createTakeConveyor", () => {
       setAsideAt: null,
       heard: null,
     }
+    // The chips' order: as a take moves along the conveyor.
+    expect(stations.names).toEqual([
+      "In the oven",
+      "Cooking",
+      "Ready for pickup",
+      "Picked up",
+      "Canned",
+    ])
     expect(stations.station({ ...take, station: "cooking" })).toEqual({
       name: "Cooking",
       canned: false,

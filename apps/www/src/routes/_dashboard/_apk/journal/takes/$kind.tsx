@@ -2,16 +2,29 @@ import type { JSX } from "react"
 import type { Compartment, LibraryTake } from "@some-ui/soundbites"
 import {
   isCompartment,
+  keptIdeaStore,
   LIBRARY_WORDS,
+  phoneProjectStore,
   STUDIO_WORDS,
   TakeLibrary,
 } from "@some-ui/soundbites"
 import { createFileRoute, Link, notFound } from "@tanstack/react-router"
 
 import { noteOfTake } from "@/lib/take-about"
+import type { AboutStores } from "@/lib/take-about"
 import { takePorts } from "@/lib/take-library/ports"
 import { PairHomeLink } from "@/components/pair-home-link"
 import { StudioPage } from "@/components/studio/layout"
+
+/** This phone's ideas and videos, for what each take was said for. */
+const STORES: AboutStores = {
+  ideas: () => keptIdeaStore().list() ?? [],
+  videos: () => phoneProjectStore().list(),
+}
+
+/** Takes' ports, in the Android app alone (`build.paths.ts`). */
+const PORTS =
+  import.meta.env.VITE_DEVICE_BACKEND === "true" ? takePorts(STORES) : null
 
 /**
  * Under a note's take, the way to its episode at the moment the note was
@@ -42,10 +55,10 @@ const KindPage = (): JSX.Element => {
   const { kind }: { kind: Compartment } = Route.useParams()
   return (
     <StudioPage heading={LIBRARY_WORDS.compartmentHeading(kind)} back="takes">
-      {takePorts !== null && (
+      {PORTS !== null && (
         <TakeLibrary
           key={kind}
-          ports={takePorts}
+          ports={PORTS}
           pair={<PairHomeLink>{STUDIO_WORDS.pair.pair}</PairHomeLink>}
           compartment={kind}
           row={toEpisode}

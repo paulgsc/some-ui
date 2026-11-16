@@ -1,6 +1,11 @@
 import type { ComponentProps, JSX } from "react"
 import type { LibraryTake } from "@some-ui/soundbites"
-import { STUDIO_WORDS, TakeLibrary } from "@some-ui/soundbites"
+import {
+  keptIdeaStore,
+  phoneProjectStore,
+  STUDIO_WORDS,
+  TakeLibrary,
+} from "@some-ui/soundbites"
 import { audioPlayer } from "@some-ui/voice-capture"
 import { createFileRoute } from "@tanstack/react-router"
 
@@ -36,7 +41,10 @@ const ConveyorPage = (): JSX.Element => {
   ports ??= {
     home: takesHome,
     player: audioPlayer,
-    about: takeAbout(),
+    about: takeAbout({
+      ideas: () => keptIdeaStore().list() ?? [],
+      videos: () => phoneProjectStore().list(),
+    }),
   }
   return (
     <StudioPage heading={WORDS.heading} back="takes">

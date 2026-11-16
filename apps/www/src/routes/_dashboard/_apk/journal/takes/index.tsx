@@ -1,14 +1,30 @@
 import type { JSX, ReactNode } from "react"
 import type { Compartment } from "@some-ui/soundbites"
-import { STUDIO_WORDS, TakeLibrary } from "@some-ui/soundbites"
+import {
+  keptIdeaStore,
+  phoneProjectStore,
+  STUDIO_WORDS,
+  TakeLibrary,
+} from "@some-ui/soundbites"
 import { createFileRoute, Link } from "@tanstack/react-router"
 
 import { KIND_WORDS, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
+import type { AboutStores } from "@/lib/take-about"
 import { takePorts } from "@/lib/take-library/ports"
 import { PairHomeLink } from "@/components/pair-home-link"
 import { StudioPage, TILE, TileBody } from "@/components/studio/layout"
 
 const WORDS = STUDIO_INDEX_WORDS.takes
+
+/** This phone's ideas and videos, for what each take was said for. */
+const STORES: AboutStores = {
+  ideas: () => keptIdeaStore().list() ?? [],
+  videos: () => phoneProjectStore().list(),
+}
+
+/** Takes' ports, in the Android app alone (`build.paths.ts`). */
+const PORTS =
+  import.meta.env.VITE_DEVICE_BACKEND === "true" ? takePorts(STORES) : null
 
 /** A compartment's tile: the way to its page (`./$kind`). */
 const kindTile = (compartment: Compartment, body: ReactNode): JSX.Element => (
@@ -31,9 +47,9 @@ const kindTile = (compartment: Compartment, body: ReactNode): JSX.Element => (
  */
 const Takes = (): JSX.Element => (
   <StudioPage heading={KIND_WORDS.takes.name} back="index">
-    {takePorts !== null && (
+    {PORTS !== null && (
       <TakeLibrary
-        ports={takePorts}
+        ports={PORTS}
         pair={<PairHomeLink>{STUDIO_WORDS.pair.pair}</PairHomeLink>}
         compartment={null}
         tile={kindTile}

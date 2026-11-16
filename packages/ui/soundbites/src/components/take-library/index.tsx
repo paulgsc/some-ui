@@ -441,11 +441,11 @@ const PhoneTakes = ({
     phone.pattern.subscribe,
     phone.pattern.getSnapshot
   )
-  const here = notYetHome(
-    takes,
-    playback.kind === "quiet" ? null : playback.id,
-    phone.line
-  ).filter(shows)
+  const playingId = playback.kind === "quiet" ? null : playback.id
+  // The take playing stays, with its Stop, until it stops (`notYetHome`).
+  const here = notYetHome(takes, playingId, phone.line).filter(
+    (take) => take.id === playingId || shows(take)
+  )
   return (
     <section className="flex flex-col gap-2">
       <h2 className="text-sm font-semibold">{WORDS.record}</h2>
@@ -701,11 +701,12 @@ export const TakeLibrary = ({
   const shows = (each: Sorted): boolean =>
     inCompartment(each, compartment) && underChips(each, chips)
   const phoneShown = phoneRows.filter(shows)
+  // While the phone records or plays, its controls stay whatever is picked.
   const recorder =
     phone !== undefined &&
     records(compartment) &&
-    chips.place !== "home" &&
-    chips.station === null
+    ((chips.place !== "home" && chips.station === null) ||
+      state.phone !== "quiet")
   const searchable = state.read.kind !== "unpaired"
   return (
     <div className="flex flex-col gap-4">
@@ -713,7 +714,11 @@ export const TakeLibrary = ({
         places={counts.places}
         stations={counts.stations}
         chips={chips}
-        onChips={setChips}
+        onChips={(next) => {
+          // A take playing from home may leave the list with its Stop.
+          dispatch({ type: "stop" })
+          setChips(next)
+        }}
       />
       {recorder && (
         <PhoneTakes
