@@ -1,0 +1,15 @@
+{
+  "id": "C432",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": ["some-ui:packages/ui/interview-week/src/lib/essay/bundle.ts"],
+  "chose": "The interview essay reads a take home couldn't make out as a silence and never waits on it. A take home heard without its words still waits, as before: its text is real and only the measures are missing.",
+  "options": [
+    "unheard is a silence; heard without its words still waits",
+    "both are silences",
+    "both wait, as before"
+  ],
+  "gray": "Applying the owner's Rust Rounds ruling to the interview essay is the coordinator's reading (#3070), and which of the two waiting cases it covers is not settled by any check or earlier decision; the owner would see an essay arrive or not.",
+  "undo": "In owed() in bundle.ts, return { ok: true, heard: \"unheard\" } for a take with no words too, or wait on an unheard one again.",
+  "refs": ["#3070", "#3072", "#3063"]
+}

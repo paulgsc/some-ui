@@ -14,7 +14,7 @@
 import { wordsOf } from "@interview-week/lib/faults"
 import type { HeardWord } from "@interview-week/lib/faults"
 import { WEEK_ID } from "@interview-week/lib/week"
-import { transcriptName } from "@some-ui/video-render"
+import { hearingOf, transcriptName } from "@some-ui/video-render"
 import { z } from "zod"
 
 const Instant = z.iso.datetime({ offset: true })
@@ -88,10 +88,26 @@ const TranscriptSchema = z.object({
   model: z.string().optional(),
 })
 
-/** What home heard in a take: its text, and its words, or null when home kept none. */
-export type Heard = {
-  readonly text: string
-  readonly words: ReadonlyArray<HeardWord> | null
+/**
+ * What home heard in a take, by its verdict (`hearingOf`): only a heard take
+ * keeps its text, and its words, or null when home kept none, so no essay
+ * can read garble as an answer.
+ */
+export type Heard =
+  | {
+      readonly hearing: "heard"
+      readonly text: string
+      readonly words: ReadonlyArray<HeardWord> | null
+    }
+  | { readonly hearing: "silent" }
+  | { readonly hearing: "unheard" }
+
+/** A transcript's hearing, its text and words kept only when heard. */
+function heardOf(body: unknown, text: string): Heard {
+  const hearing = hearingOf(body)
+  return hearing === "heard"
+    ? { hearing, text, words: wordsOf(body) }
+    : { hearing }
 }
 
 /** Home's verbatim decode (IW2): it keeps the fillers a plain one drops. */
@@ -100,7 +116,8 @@ const VERBATIM = "+verbatim"
 /**
  * What home heard in each note, by the note's id. Of a note's transcripts,
  * the verbatim decode's (IW2's model, `+verbatim-…`) is preferred, since a
- * take heard both ways is filed twice, then the highest `<n>`. A file whose
+ * take heard both ways is filed twice, then the highest `<n>`, whatever its
+ * verdict: home's own essay check reads the newest one too. A file whose
  * body isn't a transcript of the note its name carries is left out.
  */
 export function heardByNote(
@@ -114,17 +131,13 @@ export function heardByNote(
     const parsed = TranscriptSchema.safeParse(file.body)
     if (!parsed.success || parsed.data.note !== note) continue
     const verbatim = parsed.data.model?.includes(VERBATIM) ?? false
+    const heard = heardOf(file.body, parsed.data.text)
     const held = best.get(note)
     const better =
       held === undefined ||
       (verbatim && !held.verbatim) ||
       (verbatim === held.verbatim && n > held.n)
-    if (better)
-      best.set(note, {
-        verbatim,
-        n,
-        heard: { text: parsed.data.text, words: wordsOf(file.body) },
-      })
+    if (better) best.set(note, { verbatim, n, heard })
   }
   return new Map([...best].map(([note, { heard }]) => [note, heard]))
 }

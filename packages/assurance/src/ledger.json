@@ -3235,7 +3235,7 @@
             },
             {
               "class": "structural",
-              "says": "The Monday routine writes an essay only from the week's final record, and fills each answer's transcript from home's newest transcript of the take that record names; the values the model writes have no transcript field, and a test pins the restated words.",
+              "says": "The Monday routine writes an essay only from the week's final record, and fills each answer's transcript from home's newest transcript of the take that record names; a take whose transcript home judged garbled or failed is written as a silence marked as one home couldn't make out, never with its words. The values the model writes have no transcript field, and a test pins the restated words.",
               "ref": "some-ui:packages/ui/rust-rounds/src/lib/monday/finish.ts"
             },
             {
@@ -3266,14 +3266,14 @@
           "kind": "OA2",
           "property": "outcome",
           "claim": "Every essay home holds becomes a video within the render policy's caps, each answer playing exactly its take, whole, and a week that hasn't is tried again.",
-          "requirement": "Once home's lane admits it, the render worker's rust-essay job records the pinned stage's /essay with the tutor said by home's Kokoro speaker and each answer scene playing its take whole (its length the scene's), renders it within the call's caps (15 minutes, 500 MB, a 2,048 MB step cache), and moves the finished folder into renders/rust-essay/<week>/ on the database's drive, whole; the recorder checks the takes again and refuses a missing, doubled or stray one before anything is drawn; a failed week is left without a folder, keeps its finished steps and is tried again no sooner than an hour later.",
+          "requirement": "Once home's lane admits it, the render worker's rust-essay job records the pinned stage's /essay with the tutor said by home's Kokoro speaker and each answer scene playing its take whole (its length the scene's), renders it within the call's caps (15 minutes, 500 MB, a 2,048 MB step cache), and moves the finished folder into renders/rust-essay/<week>/ on the database's drive, whole; the recorder checks the takes again and refuses a missing, doubled or stray one before anything is drawn, setting aside unplayed a take of an answer the essay marks as one home couldn't make out; a failed week is left without a folder, keeps its finished steps and is tried again no sooner than an hour later.",
           "verdict": "unproven",
           "conclusion": "Structural and measured: the recorder is tested in paulgsc/some-ui and rendered once locally, and the worker's essay job with a fake recorder in CI; no essay has yet been rendered on home, which only home can show.",
           "tracked": "some-ui#2691",
           "evidence": [
             {
               "class": "structural",
-              "says": "record:essay refuses, before anything is drawn, a take missing for an answered ticket, two for one, or one for a ticket left silent (essayTakeFiles), and lays each owner's take whole in its answer scene, named as no speech model's (essayCutList); each tested.",
+              "says": "record:essay refuses, before anything is drawn, a take missing for an answered ticket, two for one, or one for a ticket left silent, and sets aside unplayed one for an answer marked as a take home couldn't make out (essayTakeFiles); it lays each owner's take whole in its answer scene, named as no speech model's (essayCutList); each tested.",
               "ref": "some-ui:packages/video-render/src/essay.ts"
             },
             {
@@ -3295,7 +3295,14 @@
           "watch": {
             "by": "none"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-16",
+              "change": "The recorder sets aside, unplayed, a take home hands over for an answer the essay marks as one home couldn't make out (garbled or failed), instead of refusing the essay.",
+              "why": "HEARD2 (#3072): the owner ruled that a take home couldn't make out never blocks the essay, which goes on as if it was never answered; home may still hand that take over with the week's others.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3070"
+            }
+          ]
         },
         {
           "id": "EV3",

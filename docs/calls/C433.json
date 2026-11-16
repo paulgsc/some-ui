@@ -1,0 +1,15 @@
+{
+  "id": "C433",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": ["server:apps/servers/file_host/src/transcribe"],
+  "chose": "Home's rule heard-1 judges a transcript garbled from Whisper's own signals: a segment is unsure if its avg_logprob is below -1.0, its compression ratio above 2.4, or its no_speech_prob above 0.6 with avg_logprob below -1.0; a take is garbled if at least a third of it is unsure, its detected language isn't the expected one, or it has under 1.0 words a second over at least 10 s.",
+  "options": [
+    "these thresholds",
+    "Whisper's own defaults for a fallback decode only",
+    "any unsure segment makes the take garbled"
+  ],
+  "gray": "Where a take turns from heard to garbled decides which takes an essay reads as answers and which the owner sees as needing attention; no check or earlier decision sets the numbers, and the owner would notice a take misjudged either way. Made by the HEARD1 server worker (session_01LDpdUJfiVChK9EX7M8ZE9W) in paulgsc/server#908; recorded from HEARD2's range at the coordinator's request.",
+  "undo": "Change heard-1's thresholds in paulgsc/server's transcriber and give the rule a new name, so verdicts made under each stay told apart.",
+  "refs": ["#3070", "#3072", "server#908"]
+}
