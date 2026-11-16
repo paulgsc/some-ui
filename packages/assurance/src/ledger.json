@@ -748,6 +748,54 @@
               "decision": "https://github.com/paulgsc/some-ui/issues/2473#issuecomment-6640040017"
             }
           ]
+        },
+        {
+          "id": "VH4",
+          "kind": "OA2",
+          "property": "outcome",
+          "claim": "Home judges every transcript it makes (heard, garbled, nothing said or failed, with its reasons), and every read of a transcript carries that verdict, so a take home couldn't make out is found on home, before any routine reads it.",
+          "requirement": "Each final attempt at hearing a note (an ending, or the last failure) is kept with its verdict under rule heard-1 in voice_transcript_verdict, in the attempt's own transaction, append-only; every read that returns a transcript (GET /voice-notes/:id/heard, /ideas, /voice-notes/takes, the mailbox's transcript files and take-pickup/1) carries it; a rust-round or interview take that failed, or in which nothing was said, is still filed to the mailbox with its verdict; and a garbled or failed verdict raises TranscriptGarbled within the hour.",
+          "verdict": "holds",
+          "conclusion": "Tested in server CI: each final attempt is judged and kept with its reasons and signals, the verdict reaches every read and the mailbox's files, and a garbled take raises the alert; whether the thresholds of heard-1 match the owner's takes is only shown by real use (C433).",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A take is judged garbled from its own signals (most words unsure, Whisper's thresholds, another language, too few words for its length), silence is nothing said, and only a last failure is failed.",
+              "ref": "server:apps/servers/file_host/src/transcribe/verdict.rs"
+            },
+            {
+              "class": "measured",
+              "says": "Verdicts are kept in the attempt's transaction, append-only, and read in the shape the routines code against.",
+              "ref": "server:crates/db/voice/src/verdict.rs"
+            },
+            {
+              "class": "measured",
+              "says": "The mailbox's transcript file carries the verdict.",
+              "ref": "server:apps/servers/file_host/src/mailbox/pass.rs"
+            },
+            {
+              "class": "measured",
+              "says": "A garbled take raises TranscriptGarbled for the hour after.",
+              "ref": "server:infra/prometheus/rules/home.test.yml"
+            }
+          ],
+          "proof": [
+            "server:apps/servers/file_host/src/transcribe/pass.rs#every_note_gets_a_row_and_a_failure_is_retried_a_few_times",
+            "server:apps/servers/file_host/src/transcribe/verdict.rs#most_words_unsure_is_garbled",
+            "server:apps/servers/file_host/src/transcribe/verdict.rs#whispers_own_thresholds_garble_a_take",
+            "server:apps/servers/file_host/src/transcribe/verdict.rs#another_language_than_the_kinds_is_garbled",
+            "server:apps/servers/file_host/src/transcribe/verdict.rs#a_long_take_with_few_words_is_sparse",
+            "server:apps/servers/file_host/src/transcribe/verdict.rs#silence_is_nothing_said_and_only_a_last_failure_is_failed",
+            "server:crates/db/voice/src/verdict.rs#the_verdict_is_the_chosen_endings",
+            "server:crates/db/voice/src/verdict.rs#a_final_failure_is_the_verdict_of_a_note_nothing_ended",
+            "server:crates/db/voice/src/verdict.rs#a_verdict_reads_as_the_shape_the_routines_code_against",
+            "server:apps/servers/file_host/src/mailbox/pass.rs#a_transcript_is_filed_and_handed_once_as_text_and_a_better_models_under_a_new_name"
+          ],
+          "watch": {
+            "by": "alert",
+            "ref": "server:infra/prometheus/rules/home.yml"
+          },
+          "amendments": []
         }
       ]
     },
@@ -3156,7 +3204,7 @@
           "kind": "OA4",
           "property": "outcome",
           "claim": "A week's essay reaches the render only from the week's final record, never a draft, and one that contradicts that record is refused and said.",
-          "requirement": "The rust_essays worker takes a rust-essay-<week>.json from the mailbox's brief folder only once the week is past its due and its final send (the last before due, #2832) is kept; it writes the essay and one take per ticket that record answered (and the take's word times) to the week's folder on home's database drive, whole; an essay whose answered tickets or transcripts differ from that record is not rendered, and is written to <week>.refused.log.",
+          "requirement": "The rust_essays worker takes a rust-essay-<week>.json from the mailbox's brief folder only once the week is past its due and its final send (the last before due, #2832) is kept; it writes the essay and one take per ticket that record answered (and the take's word times) to the week's folder on home's database drive, whole; an essay whose answered tickets or transcripts differ from that record is not rendered, and is written to <week>.refused.log; a silence for a ticket that record answered is accepted only when the take's newest transcript verdict is garbled, failed or nothing said, and that take is not given to the render.",
           "verdict": "unproven",
           "conclusion": "Structural, tested in server CI: an essay is given only from the final record and refused when its answers contradict it. The routine's essays take each answer's transcript only from home's own transcript of the take the final record names (some-ui's Monday finish step), so an essay it writes can't carry other words; an essay put by hand still can, since home compares no transcript with the record (it holds none). Not yet shown: a refusal when only a draft stands past the deadline has no test.",
           "tracked": "some-ui#2691",
@@ -3185,7 +3233,14 @@
           "watch": {
             "by": "none"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-16",
+              "change": "An essay may leave silent a ticket the final record answered, when home's newest verdict on that take's transcript is garbled, failed or nothing said (HEARD1, server#908); such a take is not given to the render.",
+              "why": "The owner, on #3070 (2026-11-16): \"we'll fall back as if I never answered that question. And then it will, the video essay will proceed that way.\" A take home couldn't make out was being scored as a weak answer (w46).",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3070"
+            }
+          ]
         },
         {
           "id": "EV2",
@@ -3322,7 +3377,7 @@
           "kind": "OA4",
           "property": "outcome",
           "claim": "An interview essay reaches the render only with the takes its week's final record names, one that contradicts that record is refused, and one whose take is deleted is withdrawn.",
-          "requirement": "The essays worker, generalised over the kind (paulgsc/server#900), takes an interview-essay-<week>.json from the mailbox's brief folder only once the week is final; it plays exactly the answers and reads the final record names, writes the essay with one take per answered question and read card to the week's folder, refuses an essay whose answers or reads differ from that record (<week>.refused.log), and withdraws the week when one of its takes is deleted (IW6, #2937).",
+          "requirement": "The essays worker, generalised over the kind (paulgsc/server#900), takes an interview-essay-<week>.json from the mailbox's brief folder only once the week is final; it plays exactly the answers and reads the final record names, less any whose take's newest transcript verdict is garbled, failed or nothing said, which the essay may leave silent, writes the essay with one take per answered question and read card to the week's folder, refuses an essay whose answers or reads differ from that record (<week>.refused.log), and withdraws the week when one of its takes is deleted (IW6, #2937).",
           "verdict": "holds",
           "conclusion": "Tested in server CI on the interview kind of the one essay export: given from the week's final record with its takes, refused when it contradicts that record, withdrawn when a take is deleted, and playing exactly the answers and reads the final record names.",
           "evidence": [
@@ -3346,7 +3401,14 @@
           "watch": {
             "by": "none"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-16",
+              "change": "An interview essay may leave silent an answer or read the final record names, when home's newest verdict on that take's transcript is garbled, failed or nothing said (HEARD1, server#908); such a take is not played.",
+              "why": "The owner, on #3070 (2026-11-16): \"we'll fall back as if I never answered that question. And then it will, the video essay will proceed that way.\" Applied to the interview essay by the coordinator's reading on #3070 (C432).",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3070"
+            }
+          ]
         }
       ]
     },
@@ -4761,6 +4823,12 @@
       "store": "server:voice_transcript",
       "class": "derived",
       "growth": "Per transcription attempt per note per model: one ending (heard/silent) per note and model plus up to ATTEMPTS = 3 failures; text only; append-only.",
+      "family": "voice-heard"
+    },
+    {
+      "store": "server:voice_transcript_verdict",
+      "class": "derived",
+      "growth": "Per final attempt at hearing a note, per model and rule (HEARD1, server#908): one small row (the verdict, its reasons, and the transcriber's signals for a heard or garbled take); append-only, a later rule a new row, so bounded by voice_transcript's rows times the rules in use (one: heard-1); leaves with the account and with its note when the owner deletes it for good.",
       "family": "voice-heard"
     },
     {
