@@ -1,0 +1,18 @@
+{
+  "id": "C440",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/ui/soundbites/src/lib/reconcile/codes.ts",
+    "some-ui:packages/ui/soundbites/src/components/take-reconcile/index.tsx"
+  ],
+  "chose": "Each take is listed once, in the group of its first code (garbled codes, then nothing said, then failed), and its card names every code it carries; a chip per code, counting every take that carries it, shows only those takes.",
+  "options": [
+    "one group per code, each take under its first code, with chips per code (now)",
+    "each take listed in every group it carries, so a take can show more than once",
+    "one group per verdict (garbled, nothing said, failed) with the codes as pills"
+  ],
+  "gray": "The owner asked for the takes to be grouped by each code, and a take can carry several codes. Nothing says whether such a take shows once or in each group.",
+  "undo": "List a take under each of its codes in `groupByCode`, and drop the chips.",
+  "refs": ["#3070", "#3075"]
+}

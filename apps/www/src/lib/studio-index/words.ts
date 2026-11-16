@@ -204,8 +204,10 @@ export const FEED_KEPT = {
 export const STUDIO_INDEX_WORDS = {
   heading: "Studio",
   aToZ: "Listed A to Z. None comes first.",
-  deleting: "Deleting any of it happens in one place:",
+  deleting: "Deleting any of it happens in",
   myData: "Settings › My data",
+  deletingAlso:
+    ", or on a take home couldn't hear well, under Takes. Each delete leaves a receipt.",
   /** The way back from a kind's page to the index. */
   back: "Back to Studio",
   /** The way back from an item's page to its kind's. */

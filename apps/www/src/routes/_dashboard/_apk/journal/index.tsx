@@ -39,6 +39,7 @@ const StudioIndex = (): JSX.Element => (
       <Link to="/settings/data" className="underline underline-offset-4">
         {WORDS.myData}
       </Link>
+      {WORDS.deletingAlso}
     </p>
   </StudioPage>
 )

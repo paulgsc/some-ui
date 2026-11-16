@@ -33,6 +33,9 @@
 import { assertNever } from "@some-ui/core-utils"
 import type { PatternTake } from "@some-ui/voice-capture"
 
+import type { PlayEffect, PlaySlice } from "./play"
+import { audioRead, played, playEnded, QUIET, stopped } from "./play"
+
 /** What home heard in a take: empty `text` when it heard no words. */
 type LibraryHeard = {
   readonly text: string
@@ -132,13 +135,7 @@ export function reachedHome(
 
 type PhoneSound = "quiet" | "playing" | "recording"
 
-/** What plays: nothing, a take whose audio is on its way, or a take playing. */
-type LibraryPlayback =
-  | { readonly kind: "quiet" }
-  | { readonly kind: "loading"; readonly id: string }
-  | { readonly kind: "playing"; readonly id: string }
-
-export type LibraryState = {
+export type LibraryState = PlaySlice & {
   /** The words in the search box, as typed. */
   readonly draft: string
   /** The search the list shows; null for the newest. */
@@ -146,11 +143,6 @@ export type LibraryState = {
   readonly read: { readonly kind: "reading" } | LibraryRead
   /** The latest read asked for; an answer to an earlier one is stale. */
   readonly seq: number
-  readonly playback: LibraryPlayback
-  /** The latest play asked for; audio for an earlier one is stale. */
-  readonly plays: number
-  /** The take whose audio home couldn't give back, the last time it was asked. */
-  readonly unplayable: string | null
   /** The search typed was longer than home takes, so nothing was asked. */
   readonly tooLong: boolean
   /** A take recorded here reached home since the newest were read. */
@@ -198,13 +190,7 @@ export type LibraryEffect =
       readonly seq: number
       readonly q: string | null
     }
-  | { readonly type: "readAudio"; readonly play: number; readonly id: string }
-  | {
-      readonly type: "startPlayback"
-      readonly play: number
-      readonly audio: Blob
-    }
-  | { readonly type: "stopPlayback" }
+  | PlayEffect
 
 export type LibraryStep = {
   readonly state: LibraryState
@@ -216,9 +202,7 @@ export const INITIAL_LIBRARY: LibraryState = {
   asked: null,
   read: { kind: "reading" },
   seq: 0,
-  playback: { kind: "quiet" },
-  plays: 0,
-  unplayable: null,
+  ...QUIET,
   tooLong: false,
   behind: false,
   phone: "quiet",
@@ -245,18 +229,6 @@ function readFor(state: LibraryState, asked: string | null): LibraryStep {
     effects: [...stop.effects, { type: "readTakes", seq, q: asked }],
   }
 }
-
-/** Stops what plays, under a new number, so its late answers are for nobody. */
-function stopped(state: LibraryState): LibraryStep {
-  if (state.playback.kind === "quiet") return same(state)
-  return {
-    state: { ...state, playback: { kind: "quiet" }, plays: state.plays + 1 },
-    effects: [{ type: "stopPlayback" }],
-  }
-}
-
-const playbackId = (playback: LibraryPlayback): string | null =>
-  playback.kind === "quiet" ? null : playback.id
 
 /**
  * The next state and effects for `event`; then, once nothing plays and the
@@ -306,38 +278,11 @@ function step(state: LibraryState, event: LibraryEvent): LibraryStep {
       return same({ ...state, read: event.read })
     }
     case "play": {
-      const again = playbackId(state.playback) === event.id
-      const stop = stopped(state)
-      if (again || state.phone === "recording") return stop
-      const play = stop.state.plays + 1
-      return {
-        state: {
-          ...stop.state,
-          plays: play,
-          playback: { kind: "loading", id: event.id },
-          unplayable: null,
-        },
-        effects: [...stop.effects, { type: "readAudio", play, id: event.id }],
-      }
+      if (state.phone === "recording") return stopped(state)
+      return played(state, event.id)
     }
     case "audioRead": {
-      const { playback } = state
-      if (event.play !== state.plays || playback.kind !== "loading") {
-        return same(state)
-      }
-      if (event.audio === null) {
-        return same({
-          ...state,
-          playback: { kind: "quiet" },
-          unplayable: playback.id,
-        })
-      }
-      return {
-        state: { ...state, playback: { kind: "playing", id: playback.id } },
-        effects: [
-          { type: "startPlayback", play: event.play, audio: event.audio },
-        ],
-      }
+      return audioRead(state, event.play, event.audio)
     }
     case "stop": {
       return stopped(state)
@@ -346,8 +291,7 @@ function step(state: LibraryState, event: LibraryEvent): LibraryStep {
       return same({ ...state, unplayable: null })
     }
     case "playEnded": {
-      if (event.play !== state.plays) return same(state)
-      return same({ ...state, playback: { kind: "quiet" } })
+      return playEnded(state, event.play)
     }
     case "arrived": {
       // A search shown stays; going back to the newest reads them anyway.

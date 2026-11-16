@@ -63,12 +63,11 @@ import {
   Clapperboard,
   Layers,
   Lightbulb,
-  LoaderCircle,
   Mic,
   MonitorPlay,
-  Pause,
-  Play,
 } from "lucide-react"
+
+import { Chip, CHIP_BAR, PlayButton } from "./parts"
 
 const WORDS = LIBRARY_WORDS
 
@@ -231,22 +230,12 @@ const HomeCard = ({
   return (
     <li className="bg-card border-border/50 flex flex-col gap-2 rounded-2xl border p-3">
       <div className="flex min-w-0 items-start gap-3">
-        <Button
-          type="button"
-          size="icon"
-          className="bg-brand text-brand-foreground hover:bg-brand/85 size-11 shrink-0 rounded-full"
-          onClick={() => dispatch({ type: "play", id: take.id })}
+        <PlayButton
+          playing={here}
+          loading={playback.kind === "loading"}
           disabled={state.phone === "recording"}
-          aria-label={here ? WORDS.stop : WORDS.play}
-        >
-          {!here ? (
-            <Play className="size-4" aria-hidden="true" />
-          ) : playback.kind === "loading" ? (
-            <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <Pause className="size-4" aria-hidden="true" />
-          )}
-        </Button>
+          onPress={() => dispatch({ type: "play", id: take.id })}
+        />
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <AboutTake about={about} recordedAt={take.recordedAt} />
           <p
@@ -529,35 +518,6 @@ const Tiles = ({
   )
 }
 
-/** A chip: what it shows, its count, and whether it is picked. */
-const Chip = ({
-  picked,
-  count,
-  dot,
-  onTap,
-  children,
-}: {
-  picked: boolean
-  count: number
-  dot: TakePlace | null
-  onTap: () => void
-  children: ReactNode
-}): JSX.Element => (
-  <button
-    type="button"
-    aria-pressed={picked}
-    onClick={onTap}
-    className={cn(
-      "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm",
-      picked ? "bg-foreground text-background" : "bg-card"
-    )}
-  >
-    {dot !== null && <Dot meaning={dot} className="size-2" />}
-    {children}
-    <span className="tabular-nums opacity-75">{count}</span>
-  </button>
-)
-
 /**
  * The chips in the top bar (TAKES3): where a take is, then its station,
  * each with how many takes tapping it shows.
@@ -577,10 +537,7 @@ const ChipBar = ({
   const picked = chips.place !== null || chips.station !== null
   if (places.length + stations.length < 2 && !picked) return null
   return (
-    <nav
-      aria-label={WORDS.chips}
-      className="bg-background sticky top-0 z-10 flex gap-2 overflow-x-auto py-1"
-    >
+    <nav aria-label={WORDS.chips} className={CHIP_BAR}>
       {places.map(({ chip, count }) => (
         <Chip
           key={chip}

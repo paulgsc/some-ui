@@ -42,7 +42,6 @@ import {
 import { hasAudience } from "@/lib/build-profile"
 import type {
   DeletableKind,
-  DeleteSheet,
   KindItem,
   MyDataState,
   Of,
@@ -55,7 +54,6 @@ import {
   kindOf,
   offersDelete,
   overviewOf,
-  phoneDeleting,
   phoneMyData,
   phoneReceipts,
 } from "@/lib/my-data"
@@ -97,7 +95,7 @@ import {
   WHERE_FILL,
   WhereBar,
 } from "./device-my-data-charts"
-import { DeleteSheetView } from "./device-my-data-delete"
+import { DeleteSheetView, useDeleting } from "./device-my-data-delete"
 
 /**
  * What the page says of how its reading went (home asked, home silent, a
@@ -608,19 +606,6 @@ export const MyDataHeading = ({ title }: { title: string }): JSX.Element => (
     </h1>
   </div>
 )
-
-/** The delete sheet's snapshot, and its runtime. */
-function useDeleting(): {
-  sheet: DeleteSheet
-  deleting: ReturnType<typeof phoneDeleting>
-} {
-  const deleting = phoneDeleting()
-  const { sheet } = useSyncExternalStore(
-    deleting.subscribe,
-    deleting.getSnapshot
-  )
-  return { sheet, deleting }
-}
 
 const KindList = ({
   of,

@@ -44,6 +44,10 @@ export const UNMEASURED: ReadonlyArray<Unmeasured> = [
     why: "Where Studio's takes are moved along (CONVEYOR2): sorting what's kept, with nothing offered back. What a take made Ready for pickup becomes is the pickup's (CONVEYOR3).",
   },
   {
+    route: "/journal/takes/attention",
+    why: "The takes home couldn't hear well (HEARD3): reconciling what's kept, each heard and kept, marked to record again, or deleted through My data's delete. Nothing is offered back.",
+  },
+  {
     route: "/journal/renders",
     why: "What home is making and what's coming (SFEED13): a read of home's renders, with nothing to act on.",
   },
