@@ -296,7 +296,7 @@ export const DELETABLE_NAMES: Readonly<
 > = {
   studio: { one: "Studio recording", many: "Studio recordings" },
   reflection: { one: "spoken reflection", many: "spoken reflections" },
-  game: { one: "recording from a game", many: "recordings from a game" },
+  game: { one: "recording from a game", many: "recordings from games" },
   leetype: { one: "LeetType answer", many: "LeetType answers" },
   lens: { one: "grammar lens take", many: "grammar lens takes" },
   scene: { one: "scene note", many: "scene notes" },
@@ -324,7 +324,7 @@ const STAYS_HERE: Readonly<
   },
   game: {
     one: "The game and the moment it was about",
-    many: "The game and the moment each was about",
+    many: "Each one's game and the moment it was about",
   },
   leetype: {
     one: "Its place in LeetType: the session and screen it answered",
