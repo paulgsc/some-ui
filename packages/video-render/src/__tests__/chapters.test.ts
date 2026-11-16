@@ -8,6 +8,7 @@ import {
 import type { CallWeek } from "@video-render/call"
 import {
   chapterLines,
+  chaptersFound,
   chaptersOf,
   FEWEST_CHAPTERS,
   OPENING,
@@ -168,9 +169,26 @@ function estimatedTimes(
 
 /**
  * SFEED4's Family takes in how a series splits a week (#3032 widens it): a
- * part can fall inside one section, which has one chapter slide.
+ * part can fall inside one section, which has one chapter slide. Its
+ * Tolerance: a part whose body is one item (an item long enough to fill a
+ * part alone) has the opening and that item, two chapters, so none; the
+ * recorder says so in its log.
  */
 describe("a week split into parts (#3032)", () => {
+  it("leave a part of one item with none, the Tolerance", () => {
+    const times = [
+      at("intro", 0, 20_000),
+      at("chapter-done", 20_000, 3_000),
+      at("done-1", 23_000, 600_000),
+    ]
+    const marks = [
+      { scene: "chapter-done", title: "What landed", slide: true },
+      { scene: "done-1", title: "Voice", finer: true },
+    ]
+    expect(chaptersFound(times, marks)).toHaveLength(2)
+    expect(chaptersOf(times, marks)).toEqual([])
+  })
+
   let nov6: CallWeek | null = null
 
   beforeAll(async () => {
