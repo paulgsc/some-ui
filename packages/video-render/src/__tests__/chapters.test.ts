@@ -154,6 +154,21 @@ describe("an episode's chapters (SFEED4)", () => {
   })
 })
 
+/**
+ * Whether three chapters can start among the scenes' starts, the first at
+ * 0:00, each ten seconds or more after the one before, the last ten seconds
+ * or more before `endMs`: YouTube's rules, by every choice of starts.
+ */
+function threeCanStart(times: ReadonlyArray<ShotTime>, endMs: number): boolean {
+  const starts = [...new Set(times.map((t) => t.startMs))].sort((a, b) => a - b)
+  return starts.some((second) =>
+    starts.some(
+      (third) =>
+        second >= 10_000 && third - second >= 10_000 && endMs - third >= 10_000
+    )
+  )
+}
+
 /** Each scene of `scenes` placed one after another, for as long as it is held. */
 function estimatedTimes(
   scenes: ReadonlyArray<{ readonly id: string; readonly said: string }>
@@ -170,11 +185,45 @@ function estimatedTimes(
 /**
  * SFEED4's Family takes in how a series splits a week (#3032 widens it): a
  * part can fall inside one section, which has one chapter slide. Its
- * Tolerance: a part whose body is one item (an item long enough to fill a
- * part alone) has the opening and that item, two chapters, so none; the
- * recorder says so in its log.
+ * Tolerance: a part where no three of its starts (the opening, a section,
+ * an item) lie ten seconds apart with the last ten before its end, such as
+ * a part of one item, can have none under YouTube's rules; the recorder
+ * says so in its log. Every other timing gets chapters, tried below.
  */
 describe("a week split into parts (#3032)", () => {
+  it("give a part chapters whenever three can start ten seconds apart", () => {
+    // A small fixed generator, so every run tries the same timings.
+    let seed = 7
+    const next = (most: number): number => {
+      seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648
+      return seed % most
+    }
+    const seen = new Set<boolean>()
+    for (let run = 0; run < 2_000; run += 1) {
+      const times = [at("intro", 0, 1_000 + next(30_000))]
+      let startMs = times[0]?.durationMs ?? 0
+      times.push(at("chapter-done", startMs, 3_000))
+      startMs += 3_000
+      const items = 1 + next(4)
+      for (let i = 1; i <= items; i += 1) {
+        const durationMs = 500 + next(40_000)
+        times.push(at(`done-${String(i)}`, startMs, durationMs))
+        startMs += durationMs
+      }
+      const marks = [
+        { scene: "chapter-done", title: "What landed", slide: true },
+        ...times
+          .filter((t) => t.id.startsWith("done-"))
+          .map((t) => ({ scene: t.id, title: t.id, finer: true })),
+      ]
+      const found = chaptersOf(times, marks).length >= FEWEST_CHAPTERS
+      expect(found, JSON.stringify(times)).toBe(threeCanStart(times, startMs))
+      seen.add(found)
+    }
+    // Both kinds of part were tried: some with chapters, some that can't.
+    expect([...seen].sort()).toEqual([false, true])
+  })
+
   it("leave a part of one item with none, the Tolerance", () => {
     const times = [
       at("intro", 0, 20_000),
