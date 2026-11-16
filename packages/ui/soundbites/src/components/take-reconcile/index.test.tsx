@@ -181,6 +181,7 @@ describe("Takes › Needs your attention (HEARD3)", () => {
     await settle()
     expect(screen.queryByText(W.none)).toBeNull()
     expect(screen.getByText(W.noneShown(3))).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy()
   })
 
   it("shows the way in only while a take waits, with how many", async () => {

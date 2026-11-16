@@ -90,7 +90,12 @@ describe("the takes needing attention's words (HEARD3)", () => {
     expect(RECONCILE_WORDS.shown(100, 140)).toBe(
       "100 of the 140 takes home couldn't hear well show here, by what went wrong."
     )
-    expect(RECONCILE_WORDS.noneShown(2)).toMatch(/^2 takes .* wait, but none/)
+    expect(RECONCILE_WORDS.noneShown(1)).toBe(
+      "1 more take home couldn't hear well waits on home, not shown here. Try again to read it."
+    )
+    expect(RECONCILE_WORDS.noneShown(2)).toMatch(
+      /^2 more takes .* wait on home/
+    )
     expect(RECONCILE_WORDS.shown(3, 3)).toBe(
       "3 takes home couldn't hear well, by what went wrong."
     )

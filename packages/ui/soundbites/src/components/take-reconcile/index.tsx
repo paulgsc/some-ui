@@ -292,10 +292,21 @@ export const TakeReconcile = ({
   return (
     <div className="flex flex-col gap-4">
       <Unread state={state} dispatch={dispatch} pair={pair} />
-      {page !== null && takes.length === 0 && (
-        <p className="text-muted-foreground text-sm">
-          {page.total === 0 ? WORDS.none : WORDS.noneShown(page.total)}
-        </p>
+      {page !== null && takes.length === 0 && page.total === 0 && (
+        <p className="text-muted-foreground text-sm">{WORDS.none}</p>
+      )}
+      {page !== null && takes.length === 0 && page.total > 0 && (
+        <div className="flex flex-col gap-2">
+          <p className="text-sm">{WORDS.noneShown(page.total)}</p>
+          <Button
+            type="button"
+            variant="outline"
+            className="self-start"
+            onClick={() => dispatch({ type: "readAgain" })}
+          >
+            {LIBRARY_WORDS.readAgain}
+          </Button>
+        </div>
       )}
       {page !== null && takes.length > 0 && (
         <>

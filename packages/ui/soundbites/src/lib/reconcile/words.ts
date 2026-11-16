@@ -59,9 +59,14 @@ export const RECONCILE_WORDS = {
     listed < total
       ? `${String(listed)} of the ${takes(total)} home couldn't hear well show here, by what went wrong.`
       : `${takes(total)} home couldn't hear well, by what went wrong.`,
-  /** Takes wait, and this phone can show none of them. */
+  /**
+   * Home counts takes waiting that the list doesn't show: past its newest,
+   * once those shown were settled, or of a kind this phone can't read yet.
+   */
   noneShown: (total: number): string =>
-    `${takes(total)} home couldn't hear well ${total === 1 ? "waits" : "wait"}, but none can show on this phone yet. Once it's updated, they show here.`,
+    total === 1
+      ? "1 more take home couldn't hear well waits on home, not shown here. Try again to read it."
+      : `${String(total)} more takes home couldn't hear well wait on home, not shown here. Try again to read them.`,
   /** What one code means: its name, and a line under it. */
   codes: {
     low_confidence: {
