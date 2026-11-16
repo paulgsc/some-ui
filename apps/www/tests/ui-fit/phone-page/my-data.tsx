@@ -75,12 +75,16 @@ const PHONE: ReadonlyArray<PhoneNote> = Array.from({ length: 6 }, (_, i) => ({
   going: i % 2 === 0,
 }))
 
-const routed = (Screen: () => JSX.Element): (() => JSX.Element) => {
+/** `Screen` under a router of its own, opened at `path`. */
+export const routed = (
+  Screen: () => JSX.Element,
+  path = "/settings/data"
+): (() => JSX.Element) => {
   const Routed = (): JSX.Element => {
     const [router] = useState(() =>
       createRouter({
         routeTree: createRootRoute({ component: Screen }),
-        history: createMemoryHistory({ initialEntries: ["/settings/data"] }),
+        history: createMemoryHistory({ initialEntries: [path] }),
       })
     )
     return <RouterProvider router={router} />

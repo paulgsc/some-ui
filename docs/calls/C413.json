@@ -1,0 +1,15 @@
+{
+  "id": "C413",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": ["some-ui:apps/www/src/lib/episodes-feed/index.ts"],
+  "chose": "An episode nothing dates (Playoff Delta's, whose key names a season's week but no day, until home sends a date) is listed after the dated weeks under \"Not dated yet\", never placed at a guessed week.",
+  "options": [
+    "listed after the dated weeks",
+    "placed by a season calendar kept on the phone",
+    "left out until home dates it"
+  ],
+  "gray": "Design A groups by week, and a Playoff Delta episode has no day to group by until paulgsc/server#906 lands; how the page shows it meanwhile is the owner's to see.",
+  "undo": "Change feedView's undated handling; once home sends date for every episode, the section is empty and draws nothing.",
+  "refs": ["#3067", "#3030"]
+}

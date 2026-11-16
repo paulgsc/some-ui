@@ -1,0 +1,17 @@
+{
+  "id": "C412",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/routes/_dashboard/_apk/journal/episodes/index.tsx"
+  ],
+  "chose": "Videos you're making leads the All feed, above the first week, as in every frame of the prototype the owner picked; it is not shown under a genre's chip.",
+  "options": [
+    "at the top of All",
+    "at the foot of the page, as before",
+    "a chip of its own"
+  ],
+  "gray": "The prototype left where it goes as a choice for the owner, who picked design A without answering it.",
+  "undo": "Move the top prop's tile in episodes/index.tsx back below FeedEpisodes.",
+  "refs": ["#3067", "#3030"]
+}

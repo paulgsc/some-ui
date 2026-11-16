@@ -37,8 +37,8 @@ function playoffDeltaWeek(key: string): string | null {
 }
 
 /**
- * A week of Rust Rounds by its year and number (its key is `<year>-w<NN>`),
- * or `null`.
+ * A week of Rust Rounds, or of the interview essay, by its year and number
+ * (its key is `<year>-w<NN>`), or `null`.
  */
 function rustWeek(key: string): string | null {
   return WEEK_ID.test(key)
@@ -144,6 +144,30 @@ export const FEED_WORDS = {
     },
     what: "the Rust Rounds essays",
   },
+  "interview-essay": {
+    heading: FEED_FACTS["interview-essay"].name,
+    intro:
+      "Home makes each week's essay once the interview week's deadline has passed. Watch it here, share it to YouTube, then save its link.",
+    voice:
+      "Its video holds your voice: every take you sent that week plays in it, whole.",
+    unpaired: "Pair this phone with home to see the interview essays.",
+    older:
+      "Home doesn't keep the interview essays yet. Update home, then try again.",
+    none: "Home hasn't made an interview essay yet. Each comes once its week's deadline has passed.",
+    gone: "This essay isn't among home's interview essays.",
+    week: rustWeek,
+    label: (key: string): string => rustWeek(key) ?? "This essay",
+    waiting: "Home is still making this week's essay.",
+    linkSaved: "Saved. Home keeps the link with the week.",
+    letGo: "You let home's copy go. The essay lives on YouTube.",
+    shareTitle: (key: string): string => {
+      const week = rustWeek(key)
+      return week === null
+        ? "The interview essay"
+        : `The interview essay, ${week}`
+    },
+    what: "the interview essays",
+  },
   "cards-essay": {
     heading: FEED_FACTS["cards-essay"].name,
     intro:
@@ -168,16 +192,24 @@ export const FEED_WORDS = {
   },
 } as const satisfies Record<Feed, FeedWords>
 
+/** A part of a series, after what it is a part of: "part 2 of 3". */
+const partOf = (part: number, of: number): string =>
+  `part ${String(part)} of ${String(of)}`
+
 /**
  * An episode as its lists and page name it: the title home gives it, where
- * its feed has one (a cards essay's), else its feed's `label`.
+ * its feed has one (a cards essay's), else its feed's `label` of what it is
+ * a part of, with which part once its week is a series (the call's, #2918).
  */
 export function episodeName(
   feed: Feed,
-  episode: Pick<Episode, "key" | "title">
+  episode: Pick<Episode, "key" | "title" | "week" | "part" | "of">
 ): string {
   const title = episode.title?.trim() ?? ""
-  return title === "" ? FEED_WORDS[feed].label(episode.key) : title
+  if (title !== "") return title
+  const label = FEED_WORDS[feed].label(episode.week ?? episode.key)
+  const { part = 1, of = 1 } = episode
+  return of > 1 ? `${label}, ${partOf(part, of)}` : label
 }
 
 export const VIDEOS_WORDS = {

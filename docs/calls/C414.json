@@ -1,0 +1,17 @@
+{
+  "id": "C414",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/episodes-feed/index.ts",
+    "some-ui:apps/www/src/lib/episodes-feed/words.ts"
+  ],
+  "chose": "A chip's count is how many rows its genre has: a week of the call in parts counts once, as it shows as one row.",
+  "options": [
+    "rows, as the feed shows them",
+    "videos, counting each part of a week"
+  ],
+  "gray": "The owner asked that chips show counts but not what one counts, and a week in parts is one row of several videos.",
+  "undo": "Count parts in feedView's counts instead of rows; the words say \"videos\" either way.",
+  "refs": ["#3067", "#3030"]
+}

@@ -38,6 +38,34 @@ const EpisodeSchema = z.object({
    * essay with none, and absent from a home that came before it.
    */
   title: z.string().nullish(),
+  /**
+   * What it is a part of (paulgsc/some-ui#2918): the call's week by its first
+   * day, so a week's parts are shown together; every other feed's episode is
+   * its own. Absent from a home that came before parts.
+   */
+  week: z.string().min(1).optional(),
+  /** Which part, from 1, of how many (`of`): 1 of 1 for an episode of one. */
+  part: z.number().int().positive().optional(),
+  of: z.number().int().positive().optional(),
+  /**
+   * The day home knows for it (`YYYY-MM-DD`; paulgsc/server#906, C416): the
+   * call's week's first day, on every part; the Monday of an essay's ISO
+   * week; a cards essay's own day; the day home took a Playoff Delta fill.
+   * `null` when home can't read one, and absent from a home before it. The
+   * episodes page groups by it, and ignores one that isn't a day rather than
+   * failing the whole list.
+   */
+  date: z.string().nullish(),
+  /**
+   * How long its video runs, in milliseconds, read from the video itself:
+   * `null` once the video is let go, or where home can't read it (#906).
+   */
+  durationMs: z.number().int().nonnegative().nullish(),
+  /**
+   * How long its whole week runs, every part summed, while home holds every
+   * part's video, else `null`; its own length for an episode of one (#906).
+   */
+  weekDurationMs: z.number().int().nonnegative().nullish(),
 })
 
 const EpisodesSchema = z.object({ episodes: z.array(EpisodeSchema) })

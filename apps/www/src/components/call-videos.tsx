@@ -16,9 +16,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { assertNever, formatSize } from "@some-ui/core-utils"
 import { Button, Input, Notice } from "@some-ui/shared"
 import { useQuery } from "@tanstack/react-query"
-import { Link } from "@tanstack/react-router"
 
-import { hasAudience } from "@/lib/build-profile"
 import type { Feed, FeedVideos } from "@/lib/call-videos"
 import {
   episodeChapters,
@@ -40,7 +38,6 @@ import { isLinked, isNoted } from "@/lib/feeds"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import { CopyButton } from "@/components/copy-button"
 import { EpisodeNote } from "@/components/studio/episode-feedback"
-import { TILE, TileBody } from "@/components/studio/layout"
 import { VideoFetch } from "@/components/video-fetch"
 
 const WORDS = VIDEOS_WORDS
@@ -284,48 +281,6 @@ export const EpisodesList = ({
       return assertNever(list)
     }
   }
-}
-
-/**
- * `feed`'s episodes as links to each one's page (SFEED1's Episodes list),
- * newest first, as home's list has them, or what the list says while it
- * can't show them.
- */
-export const FeedEpisodeLinks = ({
-  feed,
-  pair,
-}: {
-  feed: Feed
-  /** The way to pairing, for a phone that isn't paired. */
-  pair: JSX.Element
-}): JSX.Element => {
-  const { videos, state } = useFeedVideos(feed)
-  const { list } = state
-  return (
-    <EpisodesList
-      feed={feed}
-      list={list}
-      pair={pair}
-      onTryAgain={() => void videos.open()}
-    >
-      {/* An episode's page is the phone's ("apk"), as this list is (A3). */}
-      {list.kind === "read" && hasAudience("apk") && (
-        <ul className="flex flex-col gap-2">
-          {list.episodes.map((episode) => (
-            <li key={episode.key}>
-              <Link
-                to="/journal/episodes/$feed/$key"
-                params={{ feed, key: episode.key }}
-                className={TILE}
-              >
-                <TileBody title={episodeName(feed, episode)} />
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </EpisodesList>
-  )
 }
 
 /**

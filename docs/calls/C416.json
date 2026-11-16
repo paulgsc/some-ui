@@ -1,0 +1,18 @@
+{
+  "id": "C416",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/call-videos/model.ts",
+    "some-ui:apps/www/src/lib/episodes-feed/index.ts"
+  ],
+  "chose": "An episode's date is the day home knows for it: the call's week by its first day (on every part), an essay's ISO week by its Monday (Rust Rounds and the interview essay), a cards essay's own day, and the day home took a Playoff Delta fill (America/Los_Angeles); Episodes groups by it.",
+  "options": [
+    "the date home knows per feed",
+    "the day the video was rendered",
+    "no date"
+  ],
+  "gray": "Episodes groups by week, and nothing settled which day stands for an episode. The render day moves on a re-render and is gone once the video is let go, so the choice is felt in where an episode sits. Made by the server worker on paulgsc/server#906 (session_01LDpdUJAjTjsqgYy85gw6ZC), relayed by the sprint's coordinator, and recorded here where the phone reads it.",
+  "undo": "Change what paulgsc/server#906's list sends as date; the phone reads whatever day it sends, and falls back to the key's when it sends none.",
+  "refs": ["#3067", "#3030", "server#906"]
+}
