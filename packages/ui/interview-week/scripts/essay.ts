@@ -12,7 +12,6 @@ import { finishEssays } from "@interview-week/lib/essay/finish"
 import {
   indexWeeks,
   INTERVIEW_INDEX,
-  noteOfTranscript,
   notesNamed,
 } from "@interview-week/lib/essay/record"
 import { WEEK_FILE } from "@interview-week/lib/monday/bundle"
@@ -27,6 +26,7 @@ import {
   list,
   mailboxFromEnv,
   readJson,
+  transcriptName,
 } from "@some-ui/video-render/node"
 
 import { remadeBundle, root, routineCommand, writeOut } from "./routine"
@@ -58,7 +58,7 @@ async function pull(dir: string): Promise<void> {
   const wanted = notesNamed(indexWeeks(index))
   let heard = 0
   for (const item of await list(mailbox, "transcript")) {
-    const note = noteOfTranscript(item.name)
+    const note = transcriptName(item.name)?.note ?? null
     if (note === null || !wanted.has(note)) continue
     await writeFile(
       join(dir, "transcript", item.name),

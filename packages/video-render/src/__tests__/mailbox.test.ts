@@ -1,4 +1,4 @@
-import { get, list, put } from "@video-render/mailbox"
+import { get, list, put, transcriptName } from "@video-render/mailbox"
 import type { Fetch, Listed, Mailbox } from "@video-render/mailbox"
 import { describe, expect, it } from "vitest"
 
@@ -81,5 +81,15 @@ describe("the routines' mailbox", () => {
     expect(calls[0]).toBe(
       "PUT https://mailbox.test/v1/brief/items/rust-week-2026-w47.json"
     )
+  })
+})
+
+describe("a transcript's name", () => {
+  it("carries its note and number, and nothing else does", () => {
+    expect(transcriptName("transcript-note-311-12.json")).toEqual({
+      note: "note-311",
+      n: 12n,
+    })
+    expect(transcriptName("rust-week-2026-w46.json")).toBeNull()
   })
 })

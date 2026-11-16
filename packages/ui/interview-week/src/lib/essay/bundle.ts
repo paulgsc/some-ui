@@ -184,33 +184,44 @@ function weekCells(
   ]
 }
 
+/** One week's column of the chart: each row's value that week. */
+type Column = {
+  readonly week: string
+  readonly cells: ReturnType<typeof weekCells>
+}
+
+/** A chart's own week's column: each row's last cell. */
+const lastColumn = (week: string, rows: ReadonlyArray<ChartRow>): Column => ({
+  week,
+  cells: rows.map((row) => ({
+    name: row.name,
+    of: row.of,
+    value: row.cells.at(-1) ?? null,
+  })),
+})
+
 /**
- * The chart over the weeks: each earlier essay's own week's column, the
- * newest `CHART_WEEKS - 1` before `week`, then this week's cells.
+ * The chart over the weeks: the newest `CHART_WEEKS - 1` earlier columns
+ * before `week` (the essays `brief` holds, and those prepared earlier in this
+ * run), then this week's cells.
  */
 function chartOf(
   week: string,
   cells: ReturnType<typeof weekCells>,
-  earlier: ReadonlyArray<InterviewEssay>
+  earlier: ReadonlyArray<Column>
 ): EssayOwed["chart"] {
   const before = earlier
-    .filter((essay) => essay.week.id < week)
-    .sort((a, b) => (a.week.id < b.week.id ? -1 : 1))
+    .filter((column) => column.week < week)
+    .sort((a, b) => (a.week < b.week ? -1 : 1))
     .slice(-(CHART_WEEKS - 1))
-  const valueIn = (
-    essay: InterviewEssay,
-    name: string,
-    of: string
-  ): number | null => {
-    const row = essay.weeks.rows.find((r) => r.name === name && r.of === of)
-    return row?.cells.at(-1) ?? null
-  }
+  const valueIn = (column: Column, name: string, of: string): number | null =>
+    column.cells.find((c) => c.name === name && c.of === of)?.value ?? null
   return {
-    weeks: [...before.map((e) => e.week.id), week],
+    weeks: [...before.map((c) => c.week), week],
     rows: cells.map((cell) => ({
       name: cell.name,
       of: cell.of,
-      cells: [...before.map((e) => valueIn(e, cell.name, cell.of)), cell.value],
+      cells: [...before.map((c) => valueIn(c, cell.name, cell.of)), cell.value],
     })),
   }
 }
@@ -237,7 +248,7 @@ function owed(
   record: WeekRecord,
   week: InterviewWeek | undefined,
   heard: ReadonlyMap<string, Heard>,
-  earlier: ReadonlyArray<InterviewEssay>
+  earlier: ReadonlyArray<Column>
 ): Owed {
   if (week === undefined)
     return { ok: false, why: "brief holds no readable week file for it" }
@@ -349,10 +360,14 @@ export function prepareEssays(input: {
     .sort((a, b) => (a.week < b.week ? -1 : 1))
   const owedEssays: Array<EssayOwed> = []
   const waiting: Array<{ week: string; why: string }> = []
+  const columns = essays.map((e) => lastColumn(e.week.id, e.weeks.rows))
   for (const record of due) {
-    const result = owed(record, weeks.get(record.week), heard, essays)
+    const result = owed(record, weeks.get(record.week), heard, columns)
     if (!result.ok) waiting.push({ week: record.week, why: result.why })
-    else if (owedEssays.length < ESSAYS_PER_RUN) owedEssays.push(result.essay)
+    else if (owedEssays.length < ESSAYS_PER_RUN) {
+      owedEssays.push(result.essay)
+      columns.push(lastColumn(result.essay.week, result.essay.chart.rows))
+    }
   }
   return {
     bundle: {

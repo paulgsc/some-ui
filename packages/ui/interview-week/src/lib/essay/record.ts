@@ -14,6 +14,7 @@
 import { wordsOf } from "@interview-week/lib/faults"
 import type { HeardWord } from "@interview-week/lib/faults"
 import { WEEK_ID } from "@interview-week/lib/week"
+import { transcriptName } from "@some-ui/video-render"
 import { z } from "zod"
 
 const Instant = z.iso.datetime({ offset: true })
@@ -80,13 +81,6 @@ export function notesNamed(records: ReadonlyArray<WeekRecord>): Set<string> {
   return notes
 }
 
-/** A transcript's name in the mailbox: `transcript-<note>-<n>.json`. */
-const TRANSCRIPT_NAME = /^transcript-(.+)-([1-9]\d{0,18})\.json$/
-
-/** The note a transcript's name carries. */
-export const noteOfTranscript = (name: string): string | null =>
-  TRANSCRIPT_NAME.exec(name)?.[1] ?? null
-
 const TranscriptSchema = z.object({
   schema: z.literal("some-ui.voice-transcript/1"),
   note: z.string().min(1),
@@ -114,8 +108,9 @@ export function heardByNote(
 ): ReadonlyMap<string, Heard> {
   const best = new Map<string, { verbatim: boolean; n: bigint; heard: Heard }>()
   for (const file of files) {
-    const [, note, n] = TRANSCRIPT_NAME.exec(file.name) ?? []
-    if (note === undefined || n === undefined) continue
+    const named = transcriptName(file.name)
+    if (named === null) continue
+    const { note, n } = named
     const parsed = TranscriptSchema.safeParse(file.body)
     if (!parsed.success || parsed.data.note !== note) continue
     const verbatim = parsed.data.model?.includes(VERBATIM) ?? false
@@ -123,11 +118,11 @@ export function heardByNote(
     const better =
       held === undefined ||
       (verbatim && !held.verbatim) ||
-      (verbatim === held.verbatim && BigInt(n) > held.n)
+      (verbatim === held.verbatim && n > held.n)
     if (better)
       best.set(note, {
         verbatim,
-        n: BigInt(n),
+        n,
         heard: { text: parsed.data.text, words: wordsOf(file.body) },
       })
   }

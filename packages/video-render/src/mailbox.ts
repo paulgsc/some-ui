@@ -11,6 +11,20 @@
  */
 import { isRecord, sha256Hex } from "@some-ui/core-utils"
 
+/** A transcript's name in the `transcript` folder: `transcript-<note>-<n>.json`. */
+const TRANSCRIPT_NAME = /^transcript-(.+)-([1-9]\d{0,18})\.json$/
+
+/**
+ * The note and number a transcript's name carries, or null for any other
+ * name. A better model's transcript of a note goes under a higher `<n>`.
+ */
+export function transcriptName(
+  name: string
+): { readonly note: string; readonly n: bigint } | null {
+  const [, note, n] = TRANSCRIPT_NAME.exec(name) ?? []
+  return note === undefined || n === undefined ? null : { note, n: BigInt(n) }
+}
+
 export type Fetch = (url: string, init?: RequestInit) => Promise<Response>
 
 export type Mailbox = {

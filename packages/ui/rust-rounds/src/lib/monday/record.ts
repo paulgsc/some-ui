@@ -13,6 +13,7 @@
  *   `<week>:PASTE:<at>` (paulgsc/server `voice_repo::is_rust_round_ref`).
  */
 import { WEEK_ID } from "@rust-rounds/lib/formats/week"
+import { transcriptName } from "@some-ui/video-render"
 import { z } from "zod"
 
 const Instant = z.iso.datetime({ offset: true })
@@ -83,9 +84,6 @@ export const TranscriptSchema = z.object({
   text: z.string(),
 })
 
-/** A transcript's name in the mailbox: `transcript-<note>-<n>.json`. */
-export const TRANSCRIPT_NAME = /^transcript-(.+)-([1-9]\d{0,18})\.json$/
-
 /**
  * What home heard in each note, by the note's id: the transcript with the
  * highest `<n>` (compared as a number), since a better model's goes under a
@@ -97,13 +95,14 @@ export function heardByNote(
 ): ReadonlyMap<string, string> {
   const best = new Map<string, { n: bigint; text: string }>()
   for (const file of files) {
-    const [, note, n] = TRANSCRIPT_NAME.exec(file.name) ?? []
-    if (note === undefined || n === undefined) continue
+    const named = transcriptName(file.name)
+    if (named === null) continue
+    const { note, n } = named
     const parsed = TranscriptSchema.safeParse(file.body)
     if (!parsed.success || parsed.data.note !== note) continue
     const held = best.get(note)
-    if (held === undefined || BigInt(n) > held.n) {
-      best.set(note, { n: BigInt(n), text: parsed.data.text })
+    if (held === undefined || n > held.n) {
+      best.set(note, { n, text: parsed.data.text })
     }
   }
   return new Map([...best].map(([note, { text }]) => [note, text]))

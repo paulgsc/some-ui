@@ -17,10 +17,10 @@ import { finish } from "@interview-week/lib/monday/finish"
 import type { InterviewWeek } from "@interview-week/lib/week"
 import { describe, expect, it } from "vitest"
 
-/** Week 2026-w47 as the Monday routine writes it from the fixture. */
-function week(): InterviewWeek {
+/** The week the Monday routine writes from the fixture on Monday `now`. */
+function week(now = "2026-11-16T11:41:00Z"): InterviewWeek {
   const { bundle } = prepare({
-    now: new Date("2026-11-16T11:41:00Z"),
+    now: new Date(now),
     brief: [],
     corpus,
   })
@@ -74,7 +74,9 @@ const transcript = (
   },
 })
 
-const record = (overrides: Record<string, unknown> = {}): unknown => ({
+const record = (
+  overrides: Record<string, unknown> = {}
+): { weeks: Array<Record<string, unknown>> } & Record<string, unknown> => ({
   schema: "some-ui.routine-index/1",
   routine: "interview",
   asOf: "2026-11-22T23:59:00.000-08:00",
@@ -198,6 +200,51 @@ describe("the essays owed", () => {
       transcripts: [transcript("note-1", ANSWER)],
     }).bundle
     expect([bundle.essays, bundle.waiting]).toEqual([[], []])
+  })
+
+  it("chart a week prepared earlier in the same run", () => {
+    const next = week("2026-11-23T11:41:00Z")
+    const index = record()
+    const [first] = index.weeks
+    const bundle = prepareEssays({
+      now: new Date("2026-11-30T11:41:00Z"),
+      brief: [
+        { name: `interview-week-${W.id}.json`, body: W },
+        { name: `interview-week-${next.id}.json`, body: next },
+      ],
+      index: {
+        ...index,
+        weeks: [
+          first,
+          {
+            ...first,
+            week: next.id,
+            opens: next.opens,
+            due: next.due,
+            questions: next.questions.map((q) => ({
+              question: q.id,
+              answered: false,
+              take: null,
+              recordedAt: null,
+            })),
+            cards: next.cards.map((c) => ({
+              card: c.id,
+              read: false,
+              take: null,
+              recordedAt: null,
+            })),
+          },
+        ],
+      },
+      transcripts: [
+        transcript("note-1", ANSWER),
+        transcript("note-2", C1.script.replaceAll("\n", " ")),
+      ],
+    }).bundle
+    expect(bundle.essays.map((e) => e.chart.weeks)).toEqual([
+      [W.id],
+      [W.id, next.id],
+    ])
   })
 
   it("wait while a take was heard without its words", () => {
