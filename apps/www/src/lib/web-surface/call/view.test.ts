@@ -5,11 +5,14 @@ import {
   CALL_VERSION,
   essayIntro,
   fitsAllowance,
+  parseEssay,
+  parseInterviewEssay,
   reportPages,
   reportProblems,
   reportWeek,
   sampleCallWeek,
   sampleEssay,
+  sampleInterviewEssay,
   sampleReport,
 } from "@some-ui/video-render"
 import type {
@@ -17,10 +20,12 @@ import type {
   CallWeek,
   EngagementReport,
   Essay,
+  InterviewEssay,
 } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
 import { essayAt, essayStageOf } from "./essay-view"
+import { interviewEssayAt } from "./interview-essay-view"
 import { reportAt, reportStageOf } from "./report-view"
 import { callAt, stageOf, weekFrom } from "./view"
 import { CALL_WORDS } from "./words"
@@ -265,10 +270,11 @@ describe("the essay the stage draws (RR16)", () => {
     failed: more.failed ?? false,
   })
   const sample = sampleEssay()
+  const parse = parseEssay
 
   it("is the sample, voiced as one, with no week or with `sample`", () => {
     for (const week of [undefined, "sample"]) {
-      const state = essayStageOf({ week, read: read(undefined), sample })
+      const state = essayStageOf({ week, read: read(undefined), sample, parse })
       expect(
         state.kind === "show" && [state.essay.week.id, state.voicing]
       ).toEqual(["2026-w46", "sample"])
@@ -284,6 +290,7 @@ describe("the essay the stage draws (RR16)", () => {
       week: "2026-w46",
       read: read(essay()),
       sample,
+      parse,
     })
     expect(state.kind === "show" && state.voicing).toBe("owner")
     expect(
@@ -291,6 +298,7 @@ describe("the essay the stage draws (RR16)", () => {
         week: "2026-w46",
         read: read(undefined, { pending: true }),
         sample,
+        parse,
       })
     ).toEqual({ kind: "waiting" })
   })
@@ -301,13 +309,14 @@ describe("the essay the stage draws (RR16)", () => {
         week: "2026-w46",
         read: read(undefined, { failed: true }),
         sample,
+        parse,
       })
     ).toEqual({
       kind: "none",
       problems: ["No essay of 2026-w46 could be read"],
     })
     expect(
-      essayStageOf({ week: "2026-w47", read: read(essay()), sample })
+      essayStageOf({ week: "2026-w47", read: read(essay()), sample, parse })
     ).toEqual({
       kind: "none",
       problems: ["The essay read is 2026-w46's, not 2026-w47's"],
@@ -316,8 +325,51 @@ describe("the essay the stage draws (RR16)", () => {
       week: "2026-w46",
       read: read({ ...essay(), tickets: [] }),
       sample,
+      parse,
     })
     expect(broken.kind === "none" && broken.problems.length).toBeGreaterThan(0)
+  })
+})
+
+describe("an interview essay's stage (IW6)", () => {
+  const sample = sampleInterviewEssay()
+  const essay = (): InterviewEssay => {
+    if (!sample.ok) throw new Error(sample.problems.join("; "))
+    return sample.value
+  }
+
+  it("draws a question's scenes from its question, and a read's from its card", () => {
+    const faults = interviewEssayAt(essay(), "faults-1").view
+    expect(faults.section === "faults" && faults.question.id).toBe("a-time-you")
+    const heard = interviewEssayAt(essay(), "heard-1").view
+    expect(heard.section === "heard" && heard.read.id).toBe("keep-it-first")
+    expect(interviewEssayAt(essay(), "reading-2").speaker).toBe("tutor")
+    expect(interviewEssayAt(essay(), "nope").scene.id).toBe("intro")
+  })
+
+  it("is the named week's interview essay as read, never the Rust essay", () => {
+    const read = (
+      data: unknown
+    ): { data: unknown; pending: boolean; failed: boolean } => ({
+      data,
+      pending: false,
+      failed: false,
+    })
+    const shown = essayStageOf({
+      week: "2026-w47",
+      read: read(essay()),
+      sample,
+      parse: parseInterviewEssay,
+    })
+    expect(shown.kind === "show" && shown.voicing).toBe("owner")
+    const rust = sampleEssay()
+    const refused = essayStageOf({
+      week: "2026-w46",
+      read: read(rust.ok ? rust.value : undefined),
+      sample,
+      parse: parseInterviewEssay,
+    })
+    expect(refused.kind).toBe("none")
   })
 })
 

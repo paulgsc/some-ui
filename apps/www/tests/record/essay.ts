@@ -1,5 +1,7 @@
 /**
- * Records and renders one Rust Rounds essay (RR16, #2691): a still of each
+ * Records and renders one essay, a Rust Rounds essay (RR16, #2691) or an
+ * interview essay (IW6, #2937), whichever the file's `schema` names
+ * (`some-ui.rust-essay/1` or `some-ui.interview-essay/1`): a still of each
  * scene from the built app's `/essay?record`, the tutor's words said by
  * home's Kokoro speaker in `ESSAY_VOICES`' voice, each answer the owner's
  * own take, played whole, and the renderer (`@some-ui/video-render`) laying
@@ -9,16 +11,18 @@
  *   pnpm --filter www record:essay --essay-file essay.json --takes <dir> [--voices kokoro|none] [--speaker http://127.0.0.1:8880] [--out out/essay]
  *   pnpm --filter www record:essay --app http://call-stage --essay-file essay.json --takes <dir> --voices kokoro --brand /brand --out <dir>
  *
- * `--essay-file` is a `some-ui.rust-essay/1` file as home keeps it: the
- * stage's read of the essay (`/rust-essays/<week>.json`) is answered from it
- * alone. `--takes` is the folder of the owner's takes, as home hands them
+ * `--essay-file` is the essay's file as home keeps it: the stage's read of
+ * the essay (`/rust-essays/<week>.json`, or `/interview-essays/<week>.json`
+ * on `/essay?kind=interview`) is answered from it alone. `--takes` is the folder of the owner's takes, as home hands them
  * over: one audio file `<TICKET>.<ext>` (any audio ffmpeg reads) for each
  * ticket the owner answered, the take of their last send before the
  * deadline, and beside it, where home kept them, its word times
  * (`<TICKET>.words.json`, `[{ text, startMs, endMs }]`); with none, the
- * captions spread the transcript over the take. A take missing, two for one
- * ticket, or one for a ticket left silent is refused before anything is
- * drawn (`essayTakeFiles`).
+ * captions spread the transcript over the take. An interview essay's folder
+ * holds the same for each answered question, `<question>.<ext>`, and each
+ * answered read, `read.<card>.<ext>` (`interviewEssayTakeFiles`). A take
+ * missing, two for one answer, or one for an answer left silent is refused
+ * before anything is drawn (`essayTakeFiles`).
  *
  * It writes `<out>/<week>/essay.mp4`, with `cut-list.json`, `essay.json` and
  * `description.txt` (its chapters) beside it. The rest is `record:call`'s

@@ -1,13 +1,15 @@
 /**
- * The Rust Rounds essay's recording (RR16, #2691), shared by `record:essay`
- * (`./essay`) and the template's preview, `record:preview` (`./preview`):
- * the stage's stills, the tutor said in its voice, each answer the owner's
- * take, and the renderer laying them together. `./essay`'s header says how.
+ * An essay's recording, the Rust Rounds essay's (RR16, #2691) or the
+ * interview essay's (IW6, #2937), shared by `record:essay` (`./essay`) and
+ * the Rust essay template's preview, `record:preview` (`./preview`): the
+ * stage's stills, the tutor said in its voice, each answer the owner's take,
+ * and the renderer laying them together. `./essay`'s header says how.
  */
 import { readdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import type { Route } from "@playwright/test"
 import {
+  ESSAY_SCHEMA,
   ESSAY_VOICES,
   essayChapterMarks,
   essayCutList,
@@ -15,9 +17,28 @@ import {
   essayScenes,
   essayTakeFiles,
   hasCaptions,
+  INTERVIEW_ESSAY_SCHEMA,
+  interviewEssayChapterMarks,
+  interviewEssayCutList,
+  interviewEssayFormat,
+  interviewEssayScenes,
+  interviewEssayTakeFiles,
+  interviewTakeOf,
   parseEssay,
+  parseInterviewEssay,
 } from "@some-ui/video-render"
-import type { Essay, TakeFiles, Voicing } from "@some-ui/video-render"
+import type {
+  ChapterMark,
+  CutList,
+  Essay,
+  Format,
+  InterviewEssay,
+  Parsed,
+  Speaker,
+  StillTake,
+  TakeFiles,
+  Voicing,
+} from "@some-ui/video-render"
 
 import type { CallValues } from "./call-recording"
 import { FRAME, SERIES } from "./call-recording"
@@ -32,37 +53,102 @@ import {
   siteOf,
 } from "./voiced"
 
-/** The stage's read of an essay named by its week (`call/feed.ts`). */
-const ESSAY_READ = /\/rust-essays\/[^/?#]+\.json$/
-
 export type EssayValues = Omit<CallValues, "week" | "week-file"> & {
   readonly "essay-file"?: string
   readonly takes?: string
 }
 
-/** An essay as home keeps it: its file's bytes, and its data. */
-type Kept = { readonly bytes: Buffer; readonly essay: Essay }
-
-async function keptEssay(path: string): Promise<Kept> {
-  const bytes = await readFile(path)
-  const parsed = parseEssay(JSON.parse(bytes.toString("utf8")))
-  if (!parsed.ok)
-    fail([`${path} isn't a Rust Rounds essay:`, ...parsed.problems])
-  return { bytes, essay: parsed.value }
+/** A scene as the recorder reads it: its id, who says it and what. */
+type Said = {
+  readonly id: string
+  readonly speaker: Speaker
+  readonly said: string
 }
 
-/** Each answered ticket's take in `dir`, by its key, or every reason not. */
-async function takesIn(
+/**
+ * One kind of essay the recorder plays, all it needs of it: the Rust Rounds
+ * essay (RR16) and the interview essay (IW6). Each kind's file names itself
+ * by its `schema`, so `record:essay` takes either.
+ */
+type EssayKind<E> = {
+  readonly name: string
+  /** The stage's read of an essay of this kind, by its week (`call/feed.ts`). */
+  readonly read: RegExp
+  /** The stage's `kind`, when it isn't the default. */
+  readonly stage: string | null
+  readonly parse: (raw: unknown) => Parsed<E>
+  readonly week: (essay: E) => string
+  readonly takeFiles: (
+    essay: E,
+    names: ReadonlyArray<string>
+  ) => Parsed<Readonly<Record<string, TakeFiles>>>
+  /** Each scene, and the name of the owner's take it plays, if any. */
+  readonly scenes: (
+    essay: E,
+    voicing: Voicing
+  ) => ReadonlyArray<Said & { readonly take: string | null }>
+  readonly format: (essay: E) => Format
+  readonly cutList: (
+    essay: E,
+    takes: ReadonlyArray<StillTake | null>,
+    options: { readonly bed: boolean; readonly voicing: Voicing }
+  ) => CutList
+  readonly marks: (essay: E) => Array<ChapterMark>
+}
+
+const RUST: EssayKind<Essay> = {
+  name: "a Rust Rounds essay",
+  read: /\/rust-essays\/[^/?#]+\.json$/,
+  stage: null,
+  parse: parseEssay,
+  week: (essay) => essay.week.id,
+  takeFiles: essayTakeFiles,
+  scenes: (essay, voicing) =>
+    essayScenes(essay, voicing).map((scene) => ({
+      ...scene,
+      take:
+        scene.section === "answer" && scene.speaker === "you"
+          ? (scene.ticket ?? null)
+          : null,
+    })),
+  format: (essay) => essayFormat(essay.template.version),
+  cutList: essayCutList,
+  marks: essayChapterMarks,
+}
+
+const INTERVIEW: EssayKind<InterviewEssay> = {
+  name: "an interview essay",
+  read: /\/interview-essays\/[^/?#]+\.json$/,
+  stage: "interview",
+  parse: parseInterviewEssay,
+  week: (essay) => essay.week.id,
+  takeFiles: interviewEssayTakeFiles,
+  scenes: (essay, voicing) =>
+    interviewEssayScenes(essay, voicing).map((scene) => ({
+      ...scene,
+      take: interviewTakeOf(scene),
+    })),
+  format: (essay) => interviewEssayFormat(essay.template.version),
+  cutList: interviewEssayCutList,
+  marks: interviewEssayChapterMarks,
+}
+
+/** An essay as home keeps it: its file's bytes, and its data. */
+type Kept<E> = { readonly bytes: Buffer; readonly essay: E }
+
+/** Each answered take in `dir`, by its name there, or every reason not. */
+async function takesIn<E>(
   dir: string,
-  essay: Essay
+  kind: EssayKind<E>,
+  essay: E
 ): Promise<Readonly<Record<string, TakeFiles>>> {
-  const files = essayTakeFiles(essay, await readdir(dir))
+  const files = kind.takeFiles(essay, await readdir(dir))
   if (!files.ok)
     fail([`The takes in ${dir} don't fit the essay:`, ...files.problems])
   const at = (name: string): string => join(dir, name)
   return Object.fromEntries(
-    Object.entries(files.value).map(([ticket, take]) => [
-      ticket,
+    Object.entries(files.value).map(([id, take]) => [
+      id,
       {
         audio: at(take.audio),
         words: take.words === null ? null : at(take.words),
@@ -72,21 +158,20 @@ async function takesIn(
 }
 
 /** Answers the stage's read of the essay from the kept file alone. */
-function answer(route: Route, kept: Kept): Promise<void> {
+function answer(route: Route, bytes: Buffer, week: string): Promise<void> {
   const name = new URL(route.request().url()).pathname.split("/").at(-1)
-  if (name !== `${kept.essay.week.id}.json`)
-    return route.fulfill({ status: 404, body: "" })
+  if (name !== `${week}.json`) return route.fulfill({ status: 404, body: "" })
   return route.fulfill({
     status: 200,
     contentType: "application/json",
-    body: kept.bytes,
+    body: bytes,
   })
 }
 
 /**
- * Records and renders the essay of `values` into `<out>/<week>/essay.mp4`;
- * with `preview`, the template's sample essay (`Voicing`), cut to its
- * preview into `<out>/preview.mp4`.
+ * Records and renders the essay of `values`, of either kind, into
+ * `<out>/<week>/essay.mp4`; with `preview`, the Rust Rounds essay's sample
+ * (`Voicing`), cut to its preview into `<out>/preview.mp4`.
  */
 export async function recordEssay(
   values: EssayValues,
@@ -100,13 +185,48 @@ export async function recordEssay(
     (values["essay-file"] === undefined || values.takes === undefined)
   )
     fail(["--essay-file names the essay, and --takes the folder of its takes"])
-  const kept = preview
-    ? null
-    : await keptEssay(here(values["essay-file"] ?? ""))
+  if (preview) return recordKind(RUST, null, values, policy, true)
+  const path = here(values["essay-file"] ?? "")
+  const bytes = await readFile(path)
+  const raw: unknown = JSON.parse(bytes.toString("utf8"))
+  const schema =
+    typeof raw === "object" && raw !== null && "schema" in raw
+      ? raw.schema
+      : undefined
+  if (schema === ESSAY_SCHEMA)
+    return recordKind(RUST, { path, bytes, raw }, values, policy, false)
+  if (schema === INTERVIEW_ESSAY_SCHEMA)
+    return recordKind(INTERVIEW, { path, bytes, raw }, values, policy, false)
+  fail([
+    `${path} is no essay: its schema is neither ${ESSAY_SCHEMA} nor ${INTERVIEW_ESSAY_SCHEMA}`,
+  ])
+}
+
+/** Records and renders an essay of `kind`: the file read, or with none its sample. */
+async function recordKind<E>(
+  kind: EssayKind<E>,
+  file: {
+    readonly path: string
+    readonly bytes: Buffer
+    readonly raw: unknown
+  } | null,
+  values: EssayValues,
+  policy: ReturnType<typeof policyOf>,
+  preview: boolean
+): Promise<void> {
+  let kept: Kept<E> | null = null
+  if (file !== null) {
+    const parsed = kind.parse(file.raw)
+    if (!parsed.ok)
+      fail([`${file.path} isn't ${kind.name}:`, ...parsed.problems])
+    kept = { bytes: file.bytes, essay: parsed.value }
+  }
   const owned =
-    kept === null ? {} : await takesIn(here(values.takes ?? ""), kept.essay)
+    kept === null
+      ? {}
+      : await takesIn(here(values.takes ?? ""), kind, kept.essay)
   const voicing: Voicing = kept === null ? "sample" : "owner"
-  const week = kept?.essay.week.id ?? "sample"
+  const week = kept === null ? "sample" : kind.week(kept.essay)
   const site = await siteOf(values)
   const browser = await launchChromium()
   try {
@@ -114,33 +234,37 @@ export async function recordEssay(
       viewport: FRAME,
       deviceScaleFactor: 1,
     })
-    if (kept) await page.route(ESSAY_READ, (route) => answer(route, kept))
+    const bytes = kept?.bytes
+    if (bytes !== undefined)
+      await page.route(kind.read, (route) => answer(route, bytes, week))
     const url = (scene: string): string =>
-      `${site.origin}/essay?${new URLSearchParams({ week, scene, record: "true" }).toString()}`
+      `${site.origin}/essay?${new URLSearchParams({
+        ...(kind.stage === null ? {} : { kind: kind.stage }),
+        week,
+        scene,
+        record: "true",
+      }).toString()}`
 
     await page.goto(url("intro"))
     const frame = await shownFrame(page, "[data-scene]")
     const published = await frame.getAttribute("data-essay")
     if (published === null) fail(["the stage published no essay"])
-    const parsed = parseEssay(JSON.parse(published))
+    const parsed = kind.parse(JSON.parse(published))
     if (!parsed.ok)
       fail(["The stage's essay can't make a video:", ...parsed.problems])
     const essay = parsed.value
-    if (kept && essay.week.id !== kept.essay.week.id)
-      fail([`the stage played ${essay.week.id}, not ${kept.essay.week.id}`])
+    if (kept && kind.week(essay) !== week)
+      fail([`the stage played ${kind.week(essay)}, not ${week}`])
 
-    const scenes = essayScenes(essay, voicing)
+    const scenes = kind.scenes(essay, voicing)
     if (!preview) refuseLong(scenes, policy)
-    const root = here(preview ? values.out : join(values.out, essay.week.id))
-    const format = essayFormat(essay.template.version)
+    const root = here(preview ? values.out : join(values.out, kind.week(essay)))
+    const format = kind.format(essay)
     const takes = await recordStills({
       page,
       root,
       shots: scenes.map((scene) => {
-        const own =
-          scene.section === "answer" && scene.speaker === "you" && scene.ticket
-            ? owned[scene.ticket]
-            : undefined
+        const own = scene.take === null ? undefined : owned[scene.take]
         return {
           id: scene.id,
           url: url(scene.id),
@@ -167,11 +291,11 @@ export async function recordEssay(
     await renderCut(
       root,
       SERIES,
-      essayCutList(essay, takes, { bed, voicing }),
+      kind.cutList(essay, takes, { bed, voicing }),
       {
         preview,
         episode: "essay.mp4",
-        marks: () => essayChapterMarks(essay),
+        marks: () => kind.marks(essay),
         policy,
         browser,
         origin: site.origin,

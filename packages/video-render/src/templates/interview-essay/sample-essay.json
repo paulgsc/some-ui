@@ -1,0 +1,155 @@
+{
+  "schema": "some-ui.interview-essay/1",
+  "template": { "id": "interview-essay", "version": 1 },
+  "week": { "id": "2026-w47", "from": "2026-11-16", "to": "2026-11-22" },
+  "company": {
+    "name": "Larkspur Freight",
+    "about": "An invented company that books small freight loads for farms and moves them on regional trucks, with a phone app for drivers and a web desk for shippers."
+  },
+  "role": {
+    "title": "Full-stack engineer, driver tools",
+    "about": "Owns the driver's phone app and the services behind it, from the first screen to the build that ships."
+  },
+  "open": {
+    "said": "This week the company was Larkspur Freight, invented for the week. They book small freight loads for farms. The role was a full-stack engineer on the driver tools: the phone app and the services behind it. Two questions and two reads follow."
+  },
+  "questions": [
+    {
+      "id": "a-time-you",
+      "prompt": "Tell me about a time something you built failed in front of the people using it.",
+      "guidelines": [
+        "A clear structure: the situation, the task, the action and the result.",
+        "One concrete example, with what failed and who it reached.",
+        "What changed afterwards, and how that bears on the driver tools."
+      ],
+      "question": {
+        "said": "The first question was a time something you built failed in front of the people using it. A good answer has a clear structure, one concrete example, and what changed afterwards."
+      },
+      "answer": {
+        "kind": "take",
+        "transcript": "So, um, there was a time where the phone app, uh, lost a recording. Someone recorded a take and then it just wasn't there after the app restarted. I found it was saved only in memory. I moved it to the device's storage first and then sent it. And, um, after that nothing was lost, I think.",
+        "faults": [
+          { "by": "measured", "what": "Fillers", "shows": "4, or 6 a minute" },
+          {
+            "by": "measured",
+            "what": "Length",
+            "shows": "40 seconds of a 120-second target"
+          },
+          { "by": "measured", "what": "Longest pause", "shows": "2.1 seconds" },
+          {
+            "by": "judged",
+            "what": "The result is a guess",
+            "shows": "It ends on a hedge, with no measure of what changed",
+            "quote": "nothing was lost, I think"
+          },
+          {
+            "by": "judged",
+            "what": "No tie to the role",
+            "shows": "It never says how this bears on the driver tools",
+            "quote": "after that nothing was lost"
+          }
+        ],
+        "said": "Code counted four fillers, six a minute, and a longest pause of two seconds. The answer ran forty seconds of a two-minute target, so there was room for more. Judged against the guidelines: the result ends on a hedge, and the answer never ties the story to the driver tools.",
+        "marks": [
+          {
+            "mark": "partly",
+            "note": "Situation and action are there; the result is a guess."
+          },
+          { "mark": "covered" },
+          { "mark": "missing", "note": "Nothing about the role." }
+        ]
+      },
+      "model": {
+        "said": "On a phone app I built, a voice recording could vanish if the app restarted before it was sent. A person recorded, closed the app, and lost the take. My task was to make a recording survive anything short of a deleted phone. I wrote each take to the device's storage before anything else, and sent it from there, keeping it until home had it. In the months since, no take has been lost, and the app shows where each one is kept. For driver tools, where a phone loses signal on a rural road, I'd start from the same rule: keep it on the device first."
+      },
+      "beside": {
+        "said": "Beside the model answer, yours had the situation and the action. It had the example. What it lacked was a result you could stand on, and the step from the story to this role."
+      }
+    },
+    {
+      "id": "why-this-role",
+      "prompt": "Why this role?",
+      "guidelines": [
+        "Something specific in this role, not any role.",
+        "Tied to work the owner has done."
+      ],
+      "question": {
+        "said": "The second question was why this role. A good answer names something specific in it, tied to work you've done."
+      },
+      "answer": {
+        "kind": "silence",
+        "guess": "Nothing was sent for this one. A guess: the role's specifics were hard to tie to your own work on the spot."
+      },
+      "model": {
+        "said": "The driver tools have to work on a phone with a weak signal, for someone who can't stop to fix a form. I've built a phone app whose recordings survive a restart and send themselves later, so the problem of keeping someone's work safe when the network isn't there is one I've already lived with."
+      },
+      "beside": {
+        "said": "With no take, every guideline is open. The model answer names one thing specific to the role, a weak signal on the road, and ties it to something built."
+      }
+    }
+  ],
+  "reads": [
+    {
+      "id": "keep-it-first",
+      "situation": "A two-minute talk to a team about how the app keeps recordings.",
+      "script": "Every recording is kept on the phone before anything else happens.\nIf the network is gone, nothing is lost: it waits, and it goes when it can.\nI chose that because a lost take is the one failure nobody forgives.",
+      "card": {
+        "said": "The first read was a short talk to a team about how the app keeps recordings."
+      },
+      "answer": {
+        "kind": "take",
+        "transcript": "Every recording is kept on the phone before anything else happens. If the network is gone, nothing is lost. It waits, and it goes when it can. I chose that because, um, a lost take is the one failure nobody forgives.",
+        "faults": [
+          {
+            "by": "measured",
+            "what": "Misreads",
+            "shows": "1 word added, a filler"
+          },
+          {
+            "by": "measured",
+            "what": "Pauses mid-phrase",
+            "shows": "1, of 2.4 seconds"
+          },
+          {
+            "by": "measured",
+            "what": "Pace variation",
+            "shows": "0.06: even, close to flat"
+          }
+        ],
+        "change": "Slow down on the last line, and let the pause land after because, not inside it.",
+        "said": "Code counted one added filler and one pause in the middle of a phrase. The pace barely changed from line to line, which is what sounds stiff. Next time, slow down on the last line, and let the pause land after because, not inside it."
+      }
+    },
+    {
+      "id": "one-surface-each",
+      "situation": "A sixty-second spot introducing the app to a new user.",
+      "script": "The phone and the desktop are two different tools.\nEach is built for what its screen does well.",
+      "card": {
+        "said": "The second read was a short spot introducing the app."
+      },
+      "answer": {
+        "kind": "silence",
+        "guess": "Nothing was read from this card this week, and the guess is that the week ran out first."
+      }
+    }
+  ],
+  "weeks": {
+    "said": "Over the weeks, fillers a minute in answers came down from nine to six. Pauses mid-phrase in reads held at one. These are counts, not a score.",
+    "weeks": ["2026-w45", "2026-w46", "2026-w47"],
+    "rows": [
+      { "name": "Fillers a minute", "of": "answers", "cells": [9, 7.5, 6] },
+      {
+        "name": "Longest pause, seconds",
+        "of": "answers",
+        "cells": [3.2, null, 2.1]
+      },
+      { "name": "Pauses mid-phrase", "of": "reads", "cells": [2, 1, 1] },
+      { "name": "Pace variation", "of": "reads", "cells": [0.05, 0.07, 0.06] }
+    ]
+  },
+  "next": {
+    "said": "Next week comes back to ending an answer on a result, and to varying the pace of a read.",
+    "week": "2026-w48",
+    "topics": ["End on a result you can measure", "Vary the pace across a read"]
+  }
+}

@@ -1,12 +1,14 @@
 /**
  * The search a recording stage's route takes (`/call`, `/essay`, `/report`):
- * `week` names what it plays, `part` which video of a series (the call's,
+ * `week` names what it plays, `kind` which of a stage's templates (the
+ * essay's: `interview`), `part` which video of a series (the call's,
  * #2918), `scene` the scene, and `record` leaves out everything but the
  * frame. An empty or non-text value is left out, and a part that is no
  * whole number from 1.
  */
 export type StageSearch = {
   week?: string
+  kind?: string
   part?: number
   scene?: string
   record?: boolean
@@ -30,6 +32,9 @@ export function stageSearch(search: Record<string, unknown>): StageSearch {
     ...(part === undefined ? {} : { part }),
     ...(typeof search.week === "string" && search.week !== ""
       ? { week: search.week }
+      : {}),
+    ...(typeof search.kind === "string" && search.kind !== ""
+      ? { kind: search.kind }
       : {}),
     ...(typeof search.scene === "string" && search.scene !== ""
       ? { scene: search.scene }
