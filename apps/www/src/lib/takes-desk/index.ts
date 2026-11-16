@@ -115,8 +115,7 @@ type DeskShelf = {
   readonly letGo: (homeHolds: ReadonlySet<string>) => Promise<void>
   /**
    * Lets the audio of each sent take `deleted` names go from this phone,
-   * on any desk: home deleted those notes for good, from My data (#2579) or
-   * Needs your attention (HEARD4), so
+   * on any desk: home deleted those notes for good (#2579), so
    * nothing is to be heard of them again. The take stays listed and is
    * marked `onHome` first (LG1). A take still waiting for its item is a
    * draft and is never named by a receipt. Resolves false when the phone

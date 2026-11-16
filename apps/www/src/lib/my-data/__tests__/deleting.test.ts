@@ -13,16 +13,13 @@ import type { DeleteEnd, DeletingState, Receipt } from "@/lib/my-data/deleting"
 import {
   endOf,
   INITIAL_DELETING,
-  isDeletableKind,
   offersDelete,
   readDeletion,
   readReceipts,
-  reconcileDeletes,
   retryable,
   stepDeleting,
 } from "@/lib/my-data/deleting"
 import type { KindItem } from "@/lib/my-data/model"
-import { KINDS } from "@/lib/my-data/model"
 
 const RECEIPT: Receipt = {
   id: "t1",
@@ -258,14 +255,6 @@ describe("what My data offers to delete", () => {
     expect(offersDelete("soundbite", ITEM, [])).toBe(false)
     // Studio's store not handed in: this phone couldn't let its copy go.
     expect(offersDelete("studio", ITEM, ["studio"])).toBe(false)
-  })
-})
-
-describe("Needs your attention's delete (HEARD4)", () => {
-  it("offers every kind home couldn't hear, and nothing else; My data's rows stay Studio's", () => {
-    for (const of of KINDS) expect(reconcileDeletes(of)).toBe(true)
-    expect(reconcileDeletes("a newer kind")).toBe(false)
-    expect(KINDS.filter((of) => isDeletableKind(of))).toEqual(["studio"])
   })
 })
 

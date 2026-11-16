@@ -67,17 +67,11 @@ export type GameBites = BiteStore & {
   ready: () => ReadonlyArray<KeptBite>
   /**
    * Notes since when home holds each of `homeHolds` this record has on its way,
-   * then lets the audio of every bite home holds go. Failures go to the
-   * log; the next call tries again.
+   * then lets the audio of every bite home holds go: also the let-go of
+   * those home deleted for good, which it held first (LA19). False when the
+   * record or the shelf refused, said to the log; the next call tries again.
    */
-  letGo: (homeHolds: ReadonlySet<string>) => Promise<void>
-  /**
-   * `letGo` for the bites home deleted for good (LA19, HEARD4): home held
-   * each before it deleted it, so the record says since when, and the audio
-   * goes. False when the record or the shelf refused, so the audio may
-   * stay; never rejects.
-   */
-  letGoDeleted: (deleted: ReadonlySet<string>) => Promise<boolean>
+  letGo: (homeHolds: ReadonlySet<string>) => Promise<boolean>
   /** Bites the phone could not keep yet, held by this page load. */
   unkept: () => number
   audio: (id: string) => Promise<Blob | null>
@@ -312,20 +306,13 @@ export function createGameBites(ports: GameBitesPorts): GameBites {
         (bite) => bite.homeSince === undefined && isReady(bite, ports.now())
       ),
     letGo: (homeHolds) =>
-      inTurn(() => letGoNow(homeHolds)).catch((error: unknown) => {
-        reportFailure({
-          port: "game bites (let go once home holds them)",
-          error: toIntentError(error),
-        })
-      }),
-    letGoDeleted: (deleted) =>
       inTurn(async () => {
         if (!writable) return false
-        await letGoNow(deleted)
+        await letGoNow(homeHolds)
         return true
       }).catch((error: unknown) => {
         reportFailure({
-          port: "game bites (let go once home deleted them)",
+          port: "game bites (let go once home holds them)",
           error: toIntentError(error),
         })
         return false

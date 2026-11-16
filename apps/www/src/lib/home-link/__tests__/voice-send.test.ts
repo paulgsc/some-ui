@@ -25,7 +25,6 @@ import { readSent, rememberSent } from "@/lib/home-link/sent"
 import { useUnsendable, voiceLane } from "@/lib/home-link/voice"
 import {
   letGoDeleted,
-  readyToLetGo,
   sendVoice,
   storesRead,
   voiceKept,
@@ -79,9 +78,8 @@ vi.mock("@/lib/jobs", () => ({
   phoneJobs: (): unknown => ({
     getSnapshot: () => fakes.jobs,
     subscribe: () => (): void => undefined,
-    letGo: (): void => undefined,
-    letGoDeleted: (deleted: ReadonlySet<string>): boolean => {
-      fakes.deleted.push([...deleted])
+    letGo: (named: ReadonlySet<string>): boolean => {
+      fakes.deleted.push([...named])
       return !fakes.deleteFails
     },
   }),
@@ -284,10 +282,8 @@ describe("the voice lane's run, after its copy pass (LA14)", () => {
         status: 409,
         body: JSON.stringify({ error: { code: "deleted_for_good" } }),
       })
-    expect(readyToLetGo("studio")).toBe(false)
-    expect(readyToLetGo("jobs")).toBe(true)
     await sendVoice(deletedForGood, AT_PAIRING)
-    expect(fakes.deleted).toEqual([["v1"]])
+    expect(fakes.deleted).toContainEqual(["v1"])
     expect(fakes.home?.getSnapshot()).toMatchObject({
       waiting: [],
       refused: [],

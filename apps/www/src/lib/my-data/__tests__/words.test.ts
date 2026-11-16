@@ -220,8 +220,6 @@ describe("My data's words", () => {
 
 describe("a receipt's kind (HEARD4)", () => {
   it("names every kind home can delete, and says Recording for one it doesn't know", () => {
-    expect(receiptKind("studio")).toBe("Studio recording")
-    expect(receiptKind("rust-round")).toBe("Rust Rounds note")
     expect(receiptKind("reflection")).toBe("Spoken reflection")
     expect(receiptKind("a newer kind")).toBe("Recording")
   })

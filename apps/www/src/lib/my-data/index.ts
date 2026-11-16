@@ -184,7 +184,6 @@ export function phoneDeleting(): Deleting {
     deleteNotes,
     letGo: (of, ids) => {
       for (const hear of deletedHearers) hear(ids)
-      // This phone's own copies of each kind home deleted (HEARD4).
       return letGoDeleted(of, ids)
     },
     reread: () => {

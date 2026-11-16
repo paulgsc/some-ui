@@ -186,6 +186,7 @@ import type {
   CopyPass,
   Unsendable,
   VoiceHomeState,
+  VoiceOf,
   VoiceOut,
 } from "@/lib/voice-home/model"
 import {
@@ -1083,40 +1084,12 @@ export function voiceKept(id: string): TakeKept {
   return where.place === "going" && !paired() ? ON_PHONE : where
 }
 
-/** A voice note's kind, as home is told it. */
-type VoiceOf = VoiceOut["of"]
-
 /** Lets go of this phone's copies of one kind's notes that `deleted` names. */
 type LetsGoDeleted = (deleted: ReadonlySet<string>) => Promise<boolean>
 
-/** Whether every one of a kind's stores let its copies go. */
-async function allLet(
-  stores: ReadonlyArray<Promise<boolean>>
-): Promise<boolean> {
-  return (await Promise.all(stores)).every(Boolean)
-}
-
 /**
  * How this phone lets go of its own copy of each kind of note home deleted
- * for good (LA19; every kind since #3076, HEARD4). A store that let a
- * note's audio go once home held it has nothing more to let go:
- *
- * - Studio's: a take's audio, its record staying in its shot
- *   (`@some-ui/soundbites`' `letGoDeletedTakes`, once Studio's store is
- *   handed in), and an idea answer's or a take with no scene, the take
- *   staying listed (`letGoDeleted` on `lib/idea-takes`' three desks and on
- *   `lib/library-takes`');
- * - Rust Rounds' cards and week tickets, the interview week's, the grammar
- *   lens' and LeetType's takes: the audio, the take staying listed
- *   (`lib/takes-desk`'s `letGoDeleted`);
- * - a spoken reflection: its audio, the reflection staying in its session,
- *   marked (`letGoDeletedReflections`);
- * - a Jobs voice note: its entry and audio, the event that named it staying
- *   in the log;
- * - a scene note: the note and its audio, as home's word lets one go;
- * - a game bite: its audio, its record saying since when home held it;
- * - a soundbite: its audio, the soundbite staying listed, marked (once its
- *   page has handed its store in).
+ * for good (LA19, HEARD4): each kind's stores, each saying what it keeps.
  */
 const DELETED_LETS_GO: Readonly<Record<VoiceOf, LetsGoDeleted>> = {
   studio: async (deleted) => {
@@ -1131,27 +1104,30 @@ const DELETED_LETS_GO: Readonly<Record<VoiceOf, LetsGoDeleted>> = {
     ])
     return desks.every(Boolean)
   },
-  "rust-round": (deleted) =>
-    allLet([
-      rustRoundsDesk.letGoDeleted(deleted),
-      rustWeekDesk.letGoDeleted(deleted),
-    ]),
+  "rust-round": async (deleted) =>
+    (
+      await Promise.all([
+        rustRoundsDesk.letGoDeleted(deleted),
+        rustWeekDesk.letGoDeleted(deleted),
+      ])
+    ).every(Boolean),
   interview: (deleted) => interviewDesk.letGoDeleted(deleted),
   lens: (deleted) => lensTakesDesk.letGoDeleted(deleted),
   leetype: (deleted) => leetypeTakesDesk.letGoDeleted(deleted),
   reflection: (deleted) =>
     Promise.resolve(letGoDeletedReflections([...deleted])),
-  jobs: (deleted) => Promise.resolve(phoneJobs().letGoDeleted(deleted)),
-  scene: (deleted) => {
-    const named = sceneNotes
-      .read()
-      .filter((note) => deleted.has(note.id))
-      .map(({ id }) => id)
-    return Promise.resolve(
-      named.length === 0 || phoneSceneVoice().remove(named)
-    )
-  },
-  game: (deleted) => phoneGameBites().letGoDeleted(deleted),
+  jobs: (deleted) => Promise.resolve(phoneJobs().letGo(deleted)),
+  // A scene note goes whole, as home's word lets one go.
+  scene: (deleted) =>
+    Promise.resolve(
+      phoneSceneVoice().remove(
+        sceneNotes
+          .read()
+          .filter((note) => deleted.has(note.id))
+          .map(({ id }) => id)
+      )
+    ),
+  game: (deleted) => phoneGameBites().letGo(deleted),
   soundbite: async (deleted) => {
     const kept = soundbiteKeeping()
     if (kept === null) return false

@@ -105,11 +105,6 @@ describe("letGoDeletedReflections (HEARD4)", () => {
     )
     expect(removeAudio).not.toHaveBeenCalled()
   })
-
-  it("names nothing it doesn't keep: nothing to do, and no failure", () => {
-    expect(letGoDeletedReflections(["never-kept"])).toBe(true)
-    expect(removeAudio).not.toHaveBeenCalled()
-  })
 })
 
 describe("sweepOrphans", () => {

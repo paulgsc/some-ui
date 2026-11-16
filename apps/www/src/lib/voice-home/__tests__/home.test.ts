@@ -10,10 +10,10 @@ import { describe, expect, it } from "vitest"
 
 import type { DeletedPort, VoiceHomePort } from "@/lib/voice-home/home"
 import { exchangeVoice, NOTE_CEILING } from "@/lib/voice-home/home"
-import type { VoiceHomeState, VoiceOut } from "@/lib/voice-home/model"
+import type { VoiceHomeState, VoiceOf, VoiceOut } from "@/lib/voice-home/model"
 import { INITIAL_VOICE_HOME, stepVoiceHome } from "@/lib/voice-home/model"
 
-const note = (id: string, of: VoiceOut["of"] = "reflection"): VoiceOut => ({
+const note = (id: string, of: VoiceOf = "reflection"): VoiceOut => ({
   id,
   of,
   ref: of === "jobs" ? "2026-10-25:pick-1" : "session-7f2a",
@@ -86,7 +86,7 @@ const refusal = (details: Record<string, Array<string>>): HomeAnswer => ({
 })
 
 /** Every kind's let-go ready but Studio's, as before its store is handed in. */
-const beforeStudio = (of: VoiceOut["of"]): boolean => of !== "studio"
+const beforeStudio = (of: VoiceOf): boolean => of !== "studio"
 
 /** Every kind's let-go ready. */
 const allReady = (): boolean => true
@@ -240,7 +240,7 @@ describe("sending voice notes home", () => {
     const order: Array<string> = []
     // Recorded once the let-go ends, so an exchange that didn't wait fails.
     const letGo = (
-      _of: VoiceOut["of"],
+      _of: VoiceOf,
       ids: ReadonlyArray<string>
     ): Promise<boolean> =>
       new Promise((resolve) => {
@@ -334,7 +334,7 @@ describe("sending voice notes home", () => {
     const heldBack: DeletedPort["heldBack"] = new Map()
     const asked: Array<string> = []
     const letGo = (
-      _of: VoiceOut["of"],
+      _of: VoiceOf,
       ids: ReadonlyArray<string>
     ): Promise<boolean> => {
       asked.push(...ids)

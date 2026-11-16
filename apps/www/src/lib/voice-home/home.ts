@@ -18,7 +18,7 @@ import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { readAs, refusalOf, unexpectedAnswer } from "@some-ui/core-utils"
 import { z } from "zod"
 
-import type { NoteAnswered, VoiceHomeState, VoiceOut } from "./model"
+import type { NoteAnswered, VoiceHomeState, VoiceOf, VoiceOut } from "./model"
 
 /** Home's ceiling for one note (`voice_repo::NOTE_CEILING`). */
 export const NOTE_CEILING = 1024 * 1024
@@ -37,8 +37,7 @@ export type VoiceHomePort = {
 
 /**
  * How this phone lets go of a note home answers deleted for good: home's
- * word that the owner deleted it, from My data or from Takes › Needs your
- * attention, whose answer this phone never heard (LA8). `letGo` is the
+ * word that the owner deleted it, whose answer this phone never heard (LA8). `letGo` is the
  * delete path's own let-go on a receipt (`letGoDeleted`), kind by kind;
  * `ready` says whether a kind's let-go can run in this launch: Studio's
  * and the soundbites' wait for their page to hand its store in, and every
@@ -49,11 +48,8 @@ export type VoiceHomePort = {
  * (`failed`), so a store that keeps failing costs one request a launch.
  */
 export type DeletedPort = {
-  readonly letGo: (
-    of: VoiceOut["of"],
-    ids: ReadonlyArray<string>
-  ) => Promise<boolean>
-  readonly ready: (of: VoiceOut["of"]) => boolean
+  readonly letGo: (of: VoiceOf, ids: ReadonlyArray<string>) => Promise<boolean>
+  readonly ready: (of: VoiceOf) => boolean
   readonly heldBack: Map<string, "unready" | "failed">
 }
 

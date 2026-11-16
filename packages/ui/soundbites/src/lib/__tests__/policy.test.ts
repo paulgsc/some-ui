@@ -1,4 +1,4 @@
-import { bite, memoryStore } from "@soundbites/lib/memory-store"
+import { bite } from "@soundbites/lib/memory-store"
 import {
   byNewest,
   displacedBy,
@@ -104,17 +104,5 @@ describe("a soundbite home deleted for good (HEARD4)", () => {
     expect(patternTakes([bite("b2", 0)], () => true)[0]).toMatchObject({
       kept: { place: "home" },
     })
-  })
-
-  it("stays listed with its audio gone, its first time kept", async () => {
-    const { store } = memoryStore([bite("b1", 0), bite("b2", 1)])
-    await store.letGoDeleted(["b1", "never-kept"], "2026-11-16T12:00:00.000Z")
-    await store.letGoDeleted(["b1"], "2026-11-17T12:00:00.000Z")
-    const listed = await store.list()
-    expect(listed.map(({ id, deletedAt }) => ({ id, deletedAt }))).toEqual([
-      { id: "b1", deletedAt: "2026-11-16T12:00:00.000Z" },
-      { id: "b2", deletedAt: undefined },
-    ])
-    expect(await store.audio("b1")).toBeNull()
   })
 })

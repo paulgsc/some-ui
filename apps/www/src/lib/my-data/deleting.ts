@@ -40,12 +40,10 @@ import { KINDS } from "./model"
 const PHONE_LETS_GO = ["studio"] as const
 
 /**
- * The kinds Takes › Needs your attention offers to delete: every kind of
- * recording, on a take home couldn't hear (the owner, #3076: "allow delete
- * for any kind home couldn't hear"; HEARD4). This phone lets go of its own
- * copy of each (`lib/home-link/voice-copy`'s `letGoDeleted`). The page's
- * alone: My data's rows stay `PHONE_LETS_GO`'s, since home marks a
- * recording `deletable` there by its kind, not by what home heard.
+ * The kinds Takes › Needs your attention offers to delete, on a take home
+ * couldn't hear: every kind (HEARD4, C450). The page's alone: My data's
+ * rows stay `PHONE_LETS_GO`'s, since home marks a recording `deletable`
+ * there by its kind, not by what home heard.
  */
 export const RECONCILE_LETS_GO: ReadonlyArray<Of> = KINDS
 
