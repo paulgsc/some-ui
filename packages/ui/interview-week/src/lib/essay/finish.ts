@@ -41,10 +41,11 @@ function answerFaults(f: AnswerFaults): Array<InterviewFault> {
     {
       by: "measured",
       what: "Fillers",
+      // At least: the verbatim decode can miss fillers, until the owner checks it on real takes (#2937).
       shows:
         f.fillers.perMinute === null
-          ? `${f.fillers.count}`
-          : `${f.fillers.count}, or ${f.fillers.perMinute.toFixed(1)} a minute`,
+          ? `at least ${f.fillers.count}`
+          : `at least ${f.fillers.count}, or ${f.fillers.perMinute.toFixed(1)} a minute`,
     },
     {
       by: "measured",
@@ -193,6 +194,37 @@ export type FinishedEssays =
     }
   | { readonly ok: false; readonly problems: ReadonlyArray<string> }
 
+/** Every quote the judged schema holds: its parts', the hedges and a decision's options. */
+const quotesOf = (judged: JudgedAnswer): Array<string> => [
+  ...Object.values(judged.star).flatMap((p) => p.quote ?? []),
+  ...judged.hedges,
+  ...(judged.decision === null
+    ? []
+    : [
+        ...judged.decision.options,
+        ...[
+          judged.decision.why,
+          judged.decision.tradeOff,
+          judged.decision.undo,
+        ].flatMap((p) => p.quote ?? []),
+      ]),
+]
+
+/** Words only, lower case: a quote matches the transcript whatever its punctuation. */
+const plain = (text: string): string =>
+  text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+
+/**
+ * Whether `quote` is the owner's words: a judged quote is shown in the
+ * essay, so it must be found in the transcript, never the model's own
+ * words, which the employer check reads instead.
+ */
+const saidIn = (transcript: string, quote: string): boolean =>
+  ` ${plain(transcript)} `.includes(` ${plain(quote)} `)
+
 function build(
   owed: EssayOwed,
   values: EssayValues,
@@ -241,6 +273,11 @@ function build(
         )
         return { ...base, answer: { kind: "silence", guess: v.answer.guess } }
       }
+      for (const quote of quotesOf(v.answer.judged))
+        if (!saidIn(q.answer.transcript, quote))
+          problems.push(
+            `${at}.questions["${q.id}"].answer.judged: "${quote}" isn't in the transcript; quote the answer as heard`
+          )
       return {
         ...base,
         answer: {

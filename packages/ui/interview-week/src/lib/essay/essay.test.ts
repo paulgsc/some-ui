@@ -301,6 +301,20 @@ describe("the essays finished", () => {
   })
 })
 
+describe("a judged quote", () => {
+  it("is refused unless the take said it", () => {
+    const bundle = prepared()
+    const values = valuesFor_(bundle)
+    const answer = values.essays[0]?.questions[0]?.answer
+    if (answer === undefined || "guess" in answer) throw new Error("no take")
+    answer.judged.hedges = ["I worked at a big company"]
+    const done = finishEssays({ bundle, values, resumeEmployers: [] })
+    expect(done.ok ? [] : done.problems).toEqual([
+      `essays["${W.id}"].questions["${Q1.id}"].answer.judged: "I worked at a big company" isn't in the transcript; quote the answer as heard`,
+    ])
+  })
+})
+
 describe("judged faults", () => {
   it("list a missing part before a partial one, STAR only for a time-you question", () => {
     const judged = {
