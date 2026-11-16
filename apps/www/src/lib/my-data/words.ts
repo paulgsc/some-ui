@@ -314,6 +314,8 @@ const RECEIPT_PARTS: Readonly<Record<string, string>> = {
   // (HEARD3, server#912).
   reconciliation:
     "what you chose to do with it after home couldn't hear it well",
+  // A game note's moment: its scenario, screen and time (server#912).
+  "game bite": "the game moment it was about",
 }
 
 /** A receipt's list of what went or stayed, as a sentence: `the recording and home's words for it`. */
