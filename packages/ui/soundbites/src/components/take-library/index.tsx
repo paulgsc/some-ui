@@ -519,24 +519,24 @@ const Tiles = ({
     const body = (
       <TileBody compartment={compartment} count={counts[compartment]} />
     )
-    return (
-      <li
-        key={compartment}
-        className={cn("flex", compartment === "all" && "col-span-2")}
-      >
-        {tile === undefined ? (
-          <div className={cn(TILE, "w-full")}>{body}</div>
-        ) : (
-          tile(compartment, body)
-        )}
-      </li>
+    return tile === undefined ? (
+      <div className={cn(TILE, "w-full")}>{body}</div>
+    ) : (
+      <>{tile(compartment, body)}</>
     )
   }
   return (
-    <ul className="grid grid-cols-2 gap-3">
-      {TAKE_KINDS.map(one)}
+    <div className="flex flex-col gap-3">
+      <ul className="grid grid-cols-2 gap-3">
+        {TAKE_KINDS.map((kind) => (
+          <li key={kind} className="flex">
+            {one(kind)}
+          </li>
+        ))}
+      </ul>
+      {/* All, the width of the row below the kinds. */}
       {one("all")}
-    </ul>
+    </div>
   )
 }
 
@@ -593,7 +593,7 @@ const ChipBar = ({
   return (
     <nav
       aria-label={WORDS.chips}
-      className="bg-background sticky top-0 z-10 -mx-1 flex gap-2 overflow-x-auto px-1 py-1"
+      className="bg-background sticky top-0 z-10 flex gap-2 overflow-x-auto py-1"
     >
       {places.map(({ chip, count }) => (
         <Chip

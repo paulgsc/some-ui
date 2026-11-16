@@ -3,13 +3,13 @@
   "made": "2026-11-16",
   "by": "claude",
   "paths": ["some-ui:packages/ui/shared/src/lib/dot-meaning/index.ts"],
-  "chose": "One table in @some-ui/shared names what a dot's colour means, from the theme's five chart colours: on home sky, on this phone stone, waiting honey, being worked raspberry, done leaf, closed stone. Only on home takes sky.",
+  "chose": "Takes reads the one dot table in @some-ui/shared (`lib/dot-meaning`, Episodes' C411) and adds a single meaning, on this phone, in the theme token no other meaning has (`bg-chart-4`, Mochi Night's stone). On home stays sky (`bg-chart-2`). The filed issue's states (waiting, being worked, done, closed) are declared by TAKES4, each in a token of its own, not now.",
   "options": [
-    "this table and these hues (now)",
-    "each screen picks its own hues, the words beside each dot carrying the meaning",
-    "being worked on honey, waiting on stone"
+    "add on this phone alone now, the rest in TAKES4 (now)",
+    "declare every Takes meaning now, before TAKES4 draws them",
+    "fixed palette hues, one per meaning"
   ],
-  "gray": "The owner asked that a dot mean one thing on every screen and that sky be on home; which hue each other meaning takes, and where the table lives, is unsaid. Agreed with Episodes through the coordinator.",
-  "undo": "Edit `HUE` in dot-meaning; every screen reads it.",
+  "gray": "The owner asked that a dot mean one thing on every screen and that sky be on home; which token on this phone takes, and when the filed states join, is unsaid. Settled with Episodes through the coordinator: theme tokens only, since theme-protocol/no-fixed-status-color is the repo's rule.",
+  "undo": "Edit `HUE` in dot-meaning; its test refuses a token two meanings share.",
   "refs": ["#3029", "#3030", "#3069"]
 }
