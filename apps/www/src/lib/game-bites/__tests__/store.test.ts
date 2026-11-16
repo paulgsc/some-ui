@@ -389,6 +389,37 @@ describe("createGameBites", () => {
     expect(await shelf.ids()).toEqual([])
   })
 
+  it("lets a bite home deleted for good go, saying whether its audio went (HEARD4)", async () => {
+    const clock = world()
+    const shelf = memoryShelf()
+    let failing = true
+    const removing: BlobShelf = {
+      ...shelf,
+      remove: (ids): Promise<void> =>
+        failing ? Promise.reject(new Error("blocked")) : shelf.remove(ids),
+    }
+    const store = createGameBites({
+      storage: memoryStorage(),
+      shelf: removing,
+      ...clock.ports,
+    })
+    await store.keep(bite("b1"), new Blob(["x"]))
+    await store.keep(bite("b2"), new Blob(["y"]))
+    await store.release("b1")
+    await store.release("b2")
+    await clock.advance(1)
+    expect(await store.letGoDeleted(new Set(["b1"]))).toBe(false)
+    expect((await shelf.ids()).sort()).toEqual(["b1", "b2"])
+    failing = false
+    expect(await store.letGoDeleted(new Set(["b1"]))).toBe(true)
+    expect(await shelf.ids()).toEqual(["b2"])
+    // The record stays, saying since when home held it.
+    expect(store.getSnapshot()[0]).toMatchObject({
+      id: "b1",
+      homeSince: T0 + 1,
+    })
+  })
+
   it("keeps the record of a bite home holds, even if the clock goes back", async () => {
     const clock = world()
     const store = createGameBites({

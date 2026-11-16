@@ -1,0 +1,20 @@
+{
+  "id": "C452",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/home-link/voice-copy.ts",
+    "some-ui:apps/www/src/lib/reflection-voice/index.ts",
+    "some-ui:packages/ui/soundbites/src/lib/store.ts",
+    "some-ui:apps/www/src/lib/my-data/words.ts"
+  ],
+  "chose": "Once home deletes a recording, this phone lets its audio go and keeps what it was said for: a spoken reflection stays in its session and a soundbite in its list, each marked as deleted, and a take on a desk stays listed. A Jobs note's entry and a scene note go whole, as home's word already lets them go, while the Jobs event stays in the log. The sheet's Stays lines say this kind by kind, plus that home keeps whether it could make the take out.",
+  "options": [
+    "let the audio go and keep the record, marked, where the store has one",
+    "remove the whole entry on every kind, as `letGoReflections` does",
+    "let only the audio go everywhere, leaving no mark"
+  ],
+  "gray": "The owner's \"never lose the record\" keeps the history, but a deleted recording has no audio to play. A reflection let go whole would drop a session's spoken entry. An unmarked one would read to the sweep as audio that never landed, and the sweep would drop it.",
+  "undo": "Call `letGoReflections` and remove the soundbite row in `DELETED_LETS_GO` instead, and drop the `deletedAt` marks.",
+  "refs": ["#3079", "#2265"]
+}

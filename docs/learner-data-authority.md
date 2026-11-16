@@ -1731,7 +1731,9 @@ deleted only through My data's delete path, white-gloved (MD3, #2477). The
 owner added a second page on that same path on 2026-11-16 (#3070, the
 owner's comment: "I should be able to delete them"): Takes › Needs your
 attention (HEARD3, #3075) opens My data's sheet, with its words and its
-receipt, on one take home couldn't hear well. A draft, something
+receipt, on one take home couldn't hear well; of any kind since the
+owner's answer on 2026-11-16 (#3076: "allow delete for any kind home
+couldn't hear"; HEARD4, #3079). A draft, something
 still being made that hasn't gone home (a retake, an unsent idea answer's
 Delete), is deleted where it was made, and that delete is the phone's
 alone.
@@ -1775,10 +1777,14 @@ reaches:
   `phoneDeleting()`. Before that button, the sheet shows `DELETING.goes`
   and `DELETING.stays`, with "Keep it" first. A sheet is asked (`asked`)
   only for recordings `offersDelete` passes, or, on Needs your attention,
-  for one take whose kind `isDeletableKind` (`lib/my-data/deleting.ts`)
-  passes: only `studio`, a kind home's `SWITCHED_ON` deletes and
-  `PHONE_LETS_GO` lets go of. A take of that kind home keeps for good is
-  answered `409`, which the sheet says, and nothing goes. Every other delete of a recording on the phone (a
+  for one take whose kind `reconcileDeletes` (`lib/my-data/deleting.ts`)
+  passes: every kind in `RECONCILE_LETS_GO` (the owner, #3076), each of
+  which this phone lets go of its own copy of (`lib/home-link/voice-copy`'s
+  `DELETED_LETS_GO`). The page lists only takes home couldn't hear, and
+  home deletes such a take of any kind (paulgsc/server#912); a take of a
+  kind home keeps for good that home heard, or any take a home before
+  #912 holds, is answered `409`, which the sheet says, and nothing goes.
+  My data's own rows offer only `PHONE_LETS_GO`'s `studio`. Every other delete of a recording on the phone (a
   draft's) neither imports the link or My data nor calls `deleteNotes`, and
   none sits in a module that reaches the link; what it reaches past its own
   file is LA20's. Likewise a call week's step: `deleteCallStep` is called
@@ -1796,18 +1802,19 @@ reaches:
   - a hunk to `deleting.ts` that lets `stepDeleting` reach `deleting` from
     any sheet but `asking`, or any `ended` sheet's notes but `retryable`'s;
     widens `retryable` to a final answer (`kept`, `notHeld`, `forgotten`);
-    lets `asked` open on a kind not in `PHONE_LETS_GO`; or widens
-    `offersDelete` past home's `deletable`;
+    lets `asked` open on a kind not in `RECONCILE_LETS_GO`; or widens
+    `offersDelete` past home's `deletable` or `PHONE_LETS_GO`;
   - a hunk that calls a `Deleting`'s `confirm` from anything but
     `DeleteSheetView`'s `onConfirm`, or `ask` with recordings
     `offersDelete` refuses (`components/settings/device-my-data.tsx`'s
     `MyDataKind` and its `?note=` opening), or, on Needs your attention,
-    with more than the one take tapped or with a take `isDeletableKind`
+    with more than the one take tapped or with a take `reconcileDeletes`
     refuses; or a hunk to `deleting.ts` that adds a kind to
-    `PHONE_LETS_GO`: Needs your attention offers Delete… on a kind by
-    `isDeletableKind` alone (My data also needs home's `deletable`), so
-    each such hunk is re-checked against home's `SWITCHED_ON`
-    (paulgsc/server `crates/db/voice/src/delete.rs`);
+    `PHONE_LETS_GO` (My data's rows, which home's `deletable` also gates),
+    re-checked against home's `SWITCHED_ON` (paulgsc/server
+    `crates/db/voice/src/delete.rs`); or a hunk to `voice-copy.ts` that
+    makes a kind's `DELETED_LETS_GO` let go of more than the copies its
+    receipt names, or resolve true while a store kept its copy;
   - a hunk to `device-my-data-delete.tsx` that drops `DELETING.goes` or
     `DELETING.stays` from the sheet that asks, or puts the confirm before
     "Keep it";
@@ -1866,7 +1873,8 @@ reaches:
     - Amended for Needs your attention (HEARD3, #3075), read the same
       way: its route calls `ask(take.of, [take.id])` only from a take's
       Delete…, which `TakeReconcile` shows only where `isDeletableKind`
-      passes, and passes `confirm` only to `DeleteSheetView`'s `onConfirm`
+      passes (`reconcileDeletes` since HEARD4, #3079, read the same way),
+      and passes `confirm` only to `DeleteSheetView`'s `onConfirm`
       (through `useDeleting`, beside it); it imports neither `delete-note`
       nor `createDeleting`. What home deleted reaches the
       page by `hearDeletes`, which hears the ids of each receipt.

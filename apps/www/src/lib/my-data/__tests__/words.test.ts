@@ -134,9 +134,11 @@ describe("My data's words", () => {
       ...strings(DELETABLE_NAMES),
       ...strings(RECEIPTS),
       ...[1, 3].flatMap((n) => [
-        DELETING.title("studio", n),
+        ...KINDS.flatMap((of) => [
+          DELETING.title(of, n),
+          ...DELETING.stays(of, n),
+        ]),
         ...DELETING.goes(n),
-        ...DELETING.stays(n),
         DELETING.keep(n),
         DELETING.confirm(n),
         DELETING.gone(n),
@@ -213,5 +215,14 @@ describe("My data's words", () => {
   it("say where home's numbers are missing, and say nothing once they're in", () => {
     expect(homeLine("read")).toBeNull()
     expect(homeLine("unpaired")).toContain("isn't paired")
+  })
+})
+
+describe("a receipt's kind (HEARD4)", () => {
+  it("names every kind home can delete, and says Recording for one it doesn't know", () => {
+    expect(receiptKind("studio")).toBe("Studio recording")
+    expect(receiptKind("rust-round")).toBe("Rust Rounds note")
+    expect(receiptKind("reflection")).toBe("Spoken reflection")
+    expect(receiptKind("a newer kind")).toBe("Recording")
   })
 })

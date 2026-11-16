@@ -15,8 +15,14 @@ import { handedIn } from "@/lib/handed-in"
 
 /** What the lanes need of the soundbites, handed in by their page. */
 type SoundbiteKeeping = {
-  /** What the lanes read of the kept soundbites. */
-  readonly store: Pick<SoundbiteStore, "list" | "audio" | "subscribe">
+  /**
+   * What the lanes read of the kept soundbites, and the let-go of those home
+   * deleted for good (`letGoDeleted`, LA19, HEARD4).
+   */
+  readonly store: Pick<
+    SoundbiteStore,
+    "list" | "audio" | "subscribe" | "letGoDeleted"
+  >
   /**
    * How to read what home holds of them, audio and record both, once per
    * look: those may make room for a new one at the cap (soundbites'

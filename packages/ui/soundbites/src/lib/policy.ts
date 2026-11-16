@@ -84,7 +84,14 @@ export function patternTakes(
     durationMs: bite.durationMs,
     recordedAt: bite.recordedAt,
     standing: bite.standing ?? "current",
-    kept: held(bite.id) ? { place: "home", since: null } : { place: "phone" },
+    // Its recording home deleted for good is on neither (HEARD4).
+    ...(bite.deletedAt === undefined
+      ? {
+          kept: held(bite.id)
+            ? ({ place: "home", since: null } as const)
+            : ({ place: "phone" } as const),
+        }
+      : { kept: null, deleted: bite.deletedAt }),
   }))
 }
 

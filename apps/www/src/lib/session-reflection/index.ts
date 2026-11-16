@@ -217,6 +217,23 @@ export const reflections = {
   },
 
   /**
+   * Marks each spoken reflection `ids` names as one whose recording home
+   * deleted for good, at `at` (ISO 8601), keeping it (LA19, HEARD4): its
+   * audio is its module's to remove once this is stored. One marked already
+   * keeps its first time. False if the device would not store that.
+   */
+  markDeleted(ids: ReadonlyArray<string>, at: string): boolean {
+    const named = new Set(ids)
+    const written = list.update((r) => {
+      if (!named.has(r.id) || r.body.kind !== "voice") return r
+      if (r.body.deletedAt !== undefined) return r
+      return { ...r, body: { ...r.body, deletedAt: at } }
+    })
+    changed()
+    return written
+  },
+
+  /**
    * Removes these for good; false if the device would not store that. A
    * voice note's audio is its module's to remove.
    */

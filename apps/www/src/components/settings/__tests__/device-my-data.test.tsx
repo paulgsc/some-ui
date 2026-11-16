@@ -400,7 +400,7 @@ describe("the delete sheet (MD3)", () => {
       <DeleteSheetView sheet={asking} onConfirm={onConfirm} onClose={onClose} />
     )
     expect(screen.getByText(DELETING.title("studio", 1))).toBeTruthy()
-    for (const line of [...DELETING.goes(1), ...DELETING.stays(1)])
+    for (const line of [...DELETING.goes(1), ...DELETING.stays("studio", 1)])
       expect(screen.getByText(line)).toBeTruthy()
     const buttons = screen
       .getAllByRole("button")

@@ -6,7 +6,7 @@ import {
 } from "@some-ui/soundbites"
 import { createFileRoute } from "@tanstack/react-router"
 
-import { isDeletableKind } from "@/lib/my-data"
+import { reconcileDeletes } from "@/lib/my-data"
 import { reconcilePorts } from "@/lib/take-reconcile/ports"
 import { PairHomeLink } from "@/components/pair-home-link"
 import {
@@ -19,7 +19,10 @@ import { StudioPage } from "@/components/studio/layout"
 const PORTS =
   import.meta.env.VITE_DEVICE_BACKEND === "true" ? reconcilePorts() : null
 
-/** The reconciling, its Delete… on My data's one sheet (LA19). */
+/**
+ * The reconciling, its Delete… on My data's one sheet (LA19): on a take of
+ * any kind home couldn't hear (#3076, HEARD4).
+ */
 const Reconcile = ({
   ports,
 }: {
@@ -31,9 +34,9 @@ const Reconcile = ({
       <TakeReconcile
         ports={ports}
         pair={<PairHomeLink>{STUDIO_WORDS.pair.pair}</PairHomeLink>}
-        deletable={(take) => isDeletableKind(take.of)}
+        deletable={(take) => reconcileDeletes(take.of)}
         onDelete={(take) => {
-          if (isDeletableKind(take.of)) deleting.ask(take.of, [take.id])
+          if (reconcileDeletes(take.of)) deleting.ask(take.of, [take.id])
         }}
       />
       <DeleteSheetView

@@ -76,7 +76,8 @@ What follows from them:
   work, and every delete of a record home keeps leaves a receipt there, never deleted but
   with the account. Each kind has its own
   switch on home, and only Studio's recordings (takes and idea answers) are on (owner,
-  2026-11-04). "Let go" still sets a recording aside and keeps it.
+  2026-11-04), except that a take of any kind home couldn't hear may be deleted from
+  Needs your attention (owner, #3076). "Let go" still sets a recording aside and keeps it.
 
 `/mission` (`apps/www/src/routes/mission.tsx`) says the same to the viewer.
 

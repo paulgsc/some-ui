@@ -34,7 +34,7 @@ import { studioKeeping } from "@/lib/studio-keeping"
 
 import type { CallDeleting } from "./call-deleting-runtime"
 import { createCallDeleting } from "./call-deleting-runtime"
-import type { DeletableKind, ReceiptsReading } from "./deleting"
+import type { ReceiptsReading } from "./deleting"
 import { isDeletableKind, readReceipts } from "./deleting"
 import type { Deleting } from "./deleting-runtime"
 import { createDeleting } from "./deleting-runtime"
@@ -50,7 +50,7 @@ import { createWordSetsPage } from "./word-sets-runtime"
 export type { KindItem, Of, Overview, Where } from "./model"
 export { isKind, kindOf, overviewOf, WHERE_ORDER } from "./model"
 export type { DeletableKind, DeleteSheet, Receipt } from "./deleting"
-export { isDeletableKind, offersDelete } from "./deleting"
+export { isDeletableKind, offersDelete, reconcileDeletes } from "./deleting"
 export type { Deleting } from "./deleting-runtime"
 export type { Receipts, ReceiptsState } from "./receipts"
 export type { MyData } from "./runtime"
@@ -159,13 +159,6 @@ export function phoneMyData(): MyData {
   return myData
 }
 
-/** How this phone lets go of its own copies of each kind home deleted. */
-const LETS_GO: Readonly<
-  Record<DeletableKind, (ids: ReadonlyArray<string>) => Promise<boolean>>
-> = {
-  studio: letGoDeleted,
-}
-
 let deleting: Deleting | null = null
 
 /** Who hears what home deleted for good, with a receipt each. */
@@ -191,7 +184,8 @@ export function phoneDeleting(): Deleting {
     deleteNotes,
     letGo: (of, ids) => {
       for (const hear of deletedHearers) hear(ids)
-      return LETS_GO[of](ids)
+      // This phone's own copies of each kind home deleted (HEARD4).
+      return letGoDeleted(of, ids)
     },
     reread: () => {
       phoneMyData().refreshShown()

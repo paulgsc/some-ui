@@ -71,6 +71,13 @@ export type GameBites = BiteStore & {
    * log; the next call tries again.
    */
   letGo: (homeHolds: ReadonlySet<string>) => Promise<void>
+  /**
+   * `letGo` for the bites home deleted for good (LA19, HEARD4): home held
+   * each before it deleted it, so the record says since when, and the audio
+   * goes. False when the record or the shelf refused, so the audio may
+   * stay; never rejects.
+   */
+  letGoDeleted: (deleted: ReadonlySet<string>) => Promise<boolean>
   /** Bites the phone could not keep yet, held by this page load. */
   unkept: () => number
   audio: (id: string) => Promise<Blob | null>
@@ -310,6 +317,18 @@ export function createGameBites(ports: GameBitesPorts): GameBites {
           port: "game bites (let go once home holds them)",
           error: toIntentError(error),
         })
+      }),
+    letGoDeleted: (deleted) =>
+      inTurn(async () => {
+        if (!writable) return false
+        await letGoNow(deleted)
+        return true
+      }).catch((error: unknown) => {
+        reportFailure({
+          port: "game bites (let go once home deleted them)",
+          error: toIntentError(error),
+        })
+        return false
       }),
     unkept: () => held.length,
     isKept: (id) => bites.some((bite) => bite.id === id),

@@ -1,0 +1,18 @@
+{
+  "id": "C451",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/my-data/deleting.ts",
+    "server:crates/db/voice/src/delete.rs"
+  ],
+  "chose": "\"A take home couldn't hear\" is one whose newest verdict is garbled, failed or nothing_said: the takes Needs your attention lists. A take home heard stays kept for good under #2474, and home refuses its delete.",
+  "options": [
+    "newest verdict garbled, failed or nothing_said (the page's list)",
+    "garbled or failed only, since nothing_said heard silence correctly",
+    "any take that ever had a verdict other than heard"
+  ],
+  "gray": "The owner said \"any kind home couldn't hear\" without naming verdicts. nothing_said is home hearing silence, which the page lists as needing attention, and a take recorded again can carry an older bad verdict under a newer heard one.",
+  "undo": "Narrow paulgsc/server's `Deletable::Unheard` to the verdicts chosen; the page then gets 409 for the others and says home keeps them.",
+  "refs": ["#3076", "#3079", "server#912"]
+}

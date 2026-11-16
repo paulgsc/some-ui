@@ -45,6 +45,14 @@ export type SoundbiteStore = {
    */
   setAside: (id: string, at: string) => Promise<void>
   /**
+   * Lets the audio of each soundbite `ids` names go, once home deleted its
+   * recording for good (LA19, HEARD4), marking it deleted at `at` (ISO 8601)
+   * in the same write: it stays listed, and with no audio it holds no room.
+   * One marked already keeps its first time. Rejects, changing nothing, if
+   * the write fails.
+   */
+  letGoDeleted: (ids: ReadonlyArray<string>, at: string) => Promise<void>
+  /**
    * Calls `listener` after each write commits, on this page, so a page
    * showing the list can re-read it. Returns an unsubscribe.
    */
@@ -197,6 +205,21 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
       const row: unknown = await result(meta.get(id))
       if (isSoundbite(row) && row.standing !== "set-aside") {
         meta.put({ ...row, standing: "set-aside", setAsideAt: at })
+      }
+      await done(tx)
+      changed()
+    },
+
+    async letGoDeleted(ids, at): Promise<void> {
+      if (ids.length === 0) return
+      const tx = (await connect()).transaction([META, AUDIO], "readwrite")
+      const meta = tx.objectStore(META)
+      const audios = tx.objectStore(AUDIO)
+      for (const id of ids) {
+        const row: unknown = await result(meta.get(id))
+        if (!isSoundbite(row)) continue
+        if (row.deletedAt === undefined) meta.put({ ...row, deletedAt: at })
+        audios.delete(id)
       }
       await done(tx)
       changed()

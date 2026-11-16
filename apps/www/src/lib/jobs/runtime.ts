@@ -142,6 +142,13 @@ export type JobsRuntime = {
   voice: TakePattern
   /** Lets each voice note in `homeHolds` leave the phone (LG1). */
   letGo: (homeHolds: ReadonlySet<string>) => void
+  /**
+   * Lets each voice note `deleted` names leave the phone, audio and entry,
+   * once home deleted it for good (LA19, HEARD4): the event that names it
+   * stays in the log. False when the phone couldn't store that, so the note
+   * and its audio stayed.
+   */
+  letGoDeleted: (deleted: ReadonlySet<string>) => boolean
   /** Audio no note lists (the app closed mid-save). Best effort. */
   sweep: () => void
   /**
@@ -276,6 +283,20 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
     if (!quiet) problem = null
     publish()
     return true
+  }
+
+  /**
+   * Drops each voice note `named` lists, and then its audio: `none` when no
+   * note was named, `kept` when the phone couldn't store the drop, so an
+   * entry keeps its audio and the voice lane still finds it.
+   */
+  function leave(named: ReadonlySet<string>): "none" | "left" | "kept" {
+    const ids = state.voice.map((n) => n.id).filter((id) => named.has(id))
+    if (ids.length === 0) return "none"
+    if (!commit({ type: "voice-held", ids }, true)) return "kept"
+    // Ignored: audio no note lists is cleared by `sweep`.
+    ports.audio.remove(ids).catch(() => undefined)
+    return "left"
   }
 
   /**
@@ -508,15 +529,9 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
       }),
     voice,
     letGo(homeHolds): void {
-      const ids = state.voice.map((n) => n.id).filter((id) => homeHolds.has(id))
-      // An entry the phone couldn't drop keeps its audio, so the voice lane
-      // still finds it.
-      if (ids.length === 0 || !commit({ type: "voice-held", ids }, true)) {
-        return
-      }
-      // Ignored: audio no note lists is cleared by `sweep`.
-      ports.audio.remove(ids).catch(() => undefined)
+      leave(homeHolds)
     },
+    letGoDeleted: (deleted) => leave(deleted) !== "kept",
     sweep(): void {
       ports.audio
         .ids()
