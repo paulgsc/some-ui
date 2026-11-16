@@ -70,7 +70,9 @@ What follows from them:
   be false on landing. Declaring it, with a tag at each discard site, waits on the owner's
   call about those sites, which `docs/discard-sites.md` lists with each ruling so far (#2265).
   Deleting a record for good, as distinct from a cap or a prune, is the owner's own act and
-  happens in one place: My data in the phone's Settings (#2473). The tool can go, never the
+  goes through one path, My data's delete and its receipt (#2473, LA19): in the phone's
+  Settings, and on Takes › Needs your attention for a take home couldn't hear well (the
+  owner, #3070: "I should be able to delete them"). The tool can go, never the
   work, and every delete of a record home keeps leaves a receipt there, never deleted but
   with the account. Each kind has its own
   switch on home, and only Studio's recordings (takes and idea answers) are on (owner,

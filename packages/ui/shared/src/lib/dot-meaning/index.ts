@@ -7,7 +7,8 @@
  * still say what it means.
  *
  * Episodes (EPISODES2) says the first three; Takes (#3029) adds on this phone
- * (C425). Each meaning takes a token no other meaning has.
+ * (C425), and a take home couldn't hear (HEARD3, #3075; C441). Each meaning
+ * takes a token no other meaning has.
  */
 
 /** Each thing a dot can say. */
@@ -20,6 +21,8 @@ export const DOT_MEANINGS = [
   "making",
   /** Only this phone has it, until home does (Takes, #3029). */
   "phone",
+  /** Home couldn't hear it, and it waits on you (HEARD3, #3075). */
+  "attention",
 ] as const
 
 export type DotMeaning = (typeof DOT_MEANINGS)[number]
@@ -30,6 +33,7 @@ const HUE = {
   out: "bg-chart-3", // leaf
   making: "bg-muted-foreground", // grey
   phone: "bg-chart-4", // stone
+  attention: "bg-warning", // apart from sky under every colour blindness
 } as const satisfies Record<DotMeaning, string>
 
 /** The class that colours a dot saying `meaning`. */

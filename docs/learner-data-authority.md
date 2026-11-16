@@ -465,7 +465,14 @@ declared (checked by reading every call site and by the tests named).
   it asks again a second later, at most ten times, and not once a newer
   read or leaving the screen has made that one stale; and, per Play, one
   `GET /voice-notes/:id/audio` through `lib/home-link/voice-audio`'s `keep`,
-  sending nothing but the take's id; ST32), Studio's feed videos,
+  sending nothing but the take's id; ST32), its Needs your attention
+  (`lib/take-reconcile`, through `lib/home-link/attention`'s `keep`: one
+  `GET /voice-notes/attention` each time the page opens or Try again is
+  pressed, asked again while the link is busy as Takes on home's read is;
+  per Play, one `GET /voice-notes/:id/audio`; and per act tapped, one
+  `POST /voice-notes/:id/attention` naming the act, asked again while the
+  link is busy, sending nothing of the phone's but the take's id and the
+  act's name; HEARD3, #3075), Studio's feed videos,
   the weekly call's and Playoff Delta's (`lib/call-videos`, through
   `lib/home-link/call-videos`' `keep`: one `GET /feeds/:feed/videos` each
   time a feed's screen opens, on a drag down, on Try again and once after a
@@ -597,6 +604,7 @@ declared (checked by reading every call site and by the tests named).
   `lib/home-link/heard.ts`, `lib/home-link/voice-audio.ts` (RR6),
   `lib/home-link/kept-read.ts`, `lib/home-link/deleted-read.ts`,
   `lib/home-link/idea-reads.ts`, `lib/home-link/takes-read.ts`,
+  `lib/home-link/attention.ts`,
   `lib/home-link/call-videos.ts`, `lib/home-link/renders.ts`,
   `lib/home-link/previews.ts` and `lib/home-link/episode-notes-read.ts`; one
   that calls its `look` from anywhere but `lib/home-link/compat-read.ts`,
@@ -625,7 +633,12 @@ declared (checked by reading every call site and by the tests named).
   newest), Show the newest, or once for the newest after one of the phone's
   takes reaches home (`arrived`) while no search is shown, or ask for audio
   but on a Play, or `lib/take-library` ask again but while the link is busy
-  and the read is still wanted, more than ten times in all; one that has `idea-reads.ts` send anything
+  and the read is still wanted, more than ten times in all; one that has
+  `attention.ts` send anything but one `GET` of `ATTENTION_PATH` per read
+  and one `POST` of `actPath(id)` per act, lets anything but
+  `lib/take-reconcile` call it, or has `@some-ui/soundbites`'
+  `stepReconcile` read but on the page opening or Try again, or send an act
+  but on a tap, one at a time (HEARD3); one that has `idea-reads.ts` send anything
   but the one request `ideasPath` names per ask, lets anything but
   `lib/idea-home` call it, or has `@some-ui/soundbites`' `stepOnHome` read
   but on the screen opening or Try again, or write but on a tap (setting an
@@ -1709,11 +1722,15 @@ a scene note goes only once `prompted` and held (`lib/scene-voice`'s
   only through topik's `AskScene`, from the port `session-viewport.tsx`
   hands it on the phone; and `lib/scene-ask` imports nothing that sends.
 
-### LA19: a record kept on home is deleted only from My data's sheet, and a draft's delete never reaches home
+### LA19: a record kept on home is deleted only through My data's sheet, and a draft's delete never reaches home
 
 The owner's rule on MY-DATA (#2473, MD0 #2474, 2026-11-01 and 2026-11-02):
 deleting is "dedicated to only one place". A record kept on home is
-deleted only from My data, white-gloved (MD3, #2477). A draft, something
+deleted only through My data's delete path, white-gloved (MD3, #2477). The
+owner added a second page on that same path on 2026-11-16 (#3070, the
+owner's comment: "I should be able to delete them"): Takes › Needs your
+attention (HEARD3, #3075) opens My data's sheet, with its words and its
+receipt, on one take home couldn't hear well. A draft, something
 still being made that hasn't gone home (a retake, an unsent idea answer's
 Delete), is deleted where it was made, and that delete is the phone's
 alone.
@@ -1751,10 +1768,16 @@ reaches:
   a `confirmed`. It accepts one only from an `asking` sheet, or from an
   `ended` sheet's `retryable` notes. `confirm` is called only from the
   sheet's "Delete for good" and Try again buttons (`DeleteSheetView`'s
-  `onConfirm`, `components/settings/device-my-data-delete.tsx`). Before
-  that button, the sheet shows `DELETING.goes` and `DELETING.stays`, with
-  "Keep it" first. A sheet is asked (`asked`) only for recordings
-  `offersDelete` passes. Every other delete of a recording on the phone (a
+  `onConfirm`, `components/settings/device-my-data-delete.tsx`), on My
+  data's page or on Needs your attention's
+  (`routes/_dashboard/_apk/journal/takes/attention.tsx`), which share one
+  `phoneDeleting()`. Before that button, the sheet shows `DELETING.goes`
+  and `DELETING.stays`, with "Keep it" first. A sheet is asked (`asked`)
+  only for recordings `offersDelete` passes, or, on Needs your attention,
+  for one take whose kind `deletesKind` (`lib/take-reconcile/model.ts`)
+  passes: only `studio`, a kind home's `SWITCHED_ON` deletes and
+  `PHONE_LETS_GO` lets go of. A take of that kind home keeps for good is
+  answered `409`, which the sheet says, and nothing goes. Every other delete of a recording on the phone (a
   draft's) neither imports the link or My data nor calls `deleteNotes`, and
   none sits in a module that reaches the link; what it reaches past its own
   file is LA20's. Likewise a call week's step: `deleteCallStep` is called
@@ -1777,7 +1800,10 @@ reaches:
   - a hunk that calls a `Deleting`'s `confirm` from anything but
     `DeleteSheetView`'s `onConfirm`, or `ask` with recordings
     `offersDelete` refuses (`components/settings/device-my-data.tsx`'s
-    `MyDataKind` and its `?note=` opening);
+    `MyDataKind` and its `?note=` opening), or, on Needs your attention,
+    with more than the one take tapped or with a take `deletesKind`
+    refuses; or a hunk to `lib/take-reconcile/model.ts` that widens
+    `DELETABLE` past `PHONE_LETS_GO`;
   - a hunk to `device-my-data-delete.tsx` that drops `DELETING.goes` or
     `DELETING.stays` from the sheet that asks, or puts the confirm before
     "Keep it";
@@ -1806,7 +1832,9 @@ reaches:
   `call-deleting.ts`, `call-deleting-runtime.ts`, `index.ts`,
   `apps/www/src/lib/home-link/delete-note.ts`,
   `apps/www/src/components/settings/device-my-data.tsx`,
-  `device-my-data-delete.tsx` and `device-my-data-calls.tsx`. For a draft's delete: every module in
+  `device-my-data-delete.tsx` and `device-my-data-calls.tsx`,
+  `apps/www/src/routes/_dashboard/_apk/journal/takes/attention.tsx` and
+  `apps/www/src/lib/take-reconcile/model.ts`. For a draft's delete: every module in
   `apps/www` and `packages` that deletes a recording on the phone.
 - _Why not enforced:_
   - **Lint** can't hold that the port runs only after the person's confirm
@@ -1832,6 +1860,13 @@ reaches:
       `offer` finds home's list lets go. The phone's own copy of a week's
       video, which `forgetCopy` removes on the video's receipt, is a copy
       of what home kept, not a draft.
+    - Amended for Needs your attention (HEARD3, #3075), read the same
+      way: its route calls `ask("studio", [id])` only from a take's
+      Delete…, which `TakeReconcile` shows only where `deletesKind` passes,
+      and passes `confirm` only to `DeleteSheetView`'s `onConfirm`; it
+      imports neither `delete-note` nor `createDeleting`, only
+      `phoneDeleting` from `lib/my-data`. What home deleted reaches the
+      page by `hearDeletes`, which hears the ids of each receipt.
     - The phone's draft deletes (Studio's retake and take removal, an idea
       answer's Delete, the soundbites', lens and LeetType desks' and Rust
       Rounds' deletes, the reflection and scene voice budgets) live in

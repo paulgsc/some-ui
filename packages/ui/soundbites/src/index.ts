@@ -41,6 +41,17 @@ export type {
 } from "./lib/library/compartments"
 export { isCompartment, TAKE_KINDS } from "./lib/library/compartments"
 export { LIBRARY_WORDS } from "./lib/library/words"
+export { AttentionWayIn, TakeReconcile } from "./components/take-reconcile"
+export type {
+  ActAnswer,
+  AttentionPage,
+  AttentionRead,
+  AttentionTake,
+  ReconcileAct,
+} from "./lib/reconcile/model"
+export type { ReconcileHome } from "./lib/reconcile/runtime"
+export type { TakeVerdict } from "./lib/reconcile/codes"
+export { RECONCILE_WORDS } from "./lib/reconcile/words"
 export { Studio } from "./components/studio"
 export { StudioRecords } from "./components/studio-records"
 export type { StudioRecordsProps } from "./components/studio-records"

@@ -53,6 +53,7 @@ import {
 } from "@some-ui/voice-capture/testing"
 
 import { APH_FIXTURES } from "./aph"
+import { ATTENTION_FIXTURES } from "./attention"
 import { EPISODES_FIXTURES } from "./episodes"
 import { INTERVIEW_FIXTURES } from "./interview"
 import { MY_DATA_FIXTURES } from "./my-data"
@@ -402,6 +403,8 @@ export const PHONE_FIXTURES = {
   ...EPISODES_FIXTURES,
   /** Studio's Takes, its tiles and a compartment (`./takes`, `../takes-fit.spec.ts`). */
   ...TAKES_FIXTURES,
+  /** Takes › Needs your attention (`./attention`, `../attention-fit.spec.ts`). */
+  ...ATTENTION_FIXTURES,
   /** The interview week (`./interview`, `../interview-fit.spec.ts`). */
   ...INTERVIEW_FIXTURES,
   /** aph's logger and History (`./aph`, `../stays-put.spec.ts`). */

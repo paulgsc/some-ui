@@ -144,6 +144,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/take-about/**",
   "apps/www/src/lib/take-conveyor/**",
   "apps/www/src/lib/take-library/**",
+  "apps/www/src/lib/take-reconcile/**",
   "apps/www/src/lib/takes-desk/**",
   "apps/www/src/lib/template-preview/**",
   "apps/www/src/lib/cards-essay-video/**",

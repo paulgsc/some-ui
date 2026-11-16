@@ -168,11 +168,35 @@ const LETS_GO: Readonly<
 
 let deleting: Deleting | null = null
 
-/** Made on first use, so importing this module sends nothing. */
+/** Who hears what home deleted for good, with a receipt each. */
+const deletedHearers = new Set<(ids: ReadonlyArray<string>) => void>()
+
+/**
+ * Hears each delete My data's delete path made, with the ids home answered
+ * a receipt for, whichever page asked it (My data, or Takes › Needs your
+ * attention, HEARD3); returns the unsubscribe.
+ */
+export function hearDeletes(
+  listener: (ids: ReadonlyArray<string>) => void
+): () => void {
+  deletedHearers.add(listener)
+  return (): void => {
+    deletedHearers.delete(listener)
+  }
+}
+
+/**
+ * Made on first use, so importing this module sends nothing. My data and
+ * Takes › Needs your attention (HEARD3) share it: one delete path, one
+ * sheet, one receipt each (LA19).
+ */
 export function phoneDeleting(): Deleting {
   deleting ??= createDeleting({
     deleteNotes,
-    letGo: (of, ids) => LETS_GO[of](ids),
+    letGo: (of, ids) => {
+      for (const hear of deletedHearers) hear(ids)
+      return LETS_GO[of](ids)
+    },
     reread: () => {
       phoneMyData().refreshShown()
     },

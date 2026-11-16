@@ -1,0 +1,15 @@
+{
+  "id": "C441",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": ["some-ui:packages/ui/shared/src/lib/dot-meaning/index.ts"],
+  "chose": "A take that waits on the owner gets its own dot meaning, `attention`, in the theme's warning token, which no other meaning has.",
+  "options": [
+    "a new meaning in the warning token (now)",
+    "a new meaning in an unused chart token",
+    "no dot, only words"
+  ],
+  "gray": "The dot table holds one colour per meaning, and none says that something waits on the owner. Which colour says it is a look the owner would notice.",
+  "undo": "Drop `attention` from `DOT_MEANINGS` and the dots that say it.",
+  "refs": ["#3030", "#3075"]
+}
