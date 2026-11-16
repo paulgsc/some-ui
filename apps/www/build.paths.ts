@@ -156,6 +156,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/study-nudge/schedule.ts",
   "apps/www/src/components/call-videos.tsx",
   "apps/www/src/components/studio/episodes-by-week.tsx",
+  "apps/www/src/components/studio/genre-thumbs.tsx",
   "apps/www/src/components/video-fetch.tsx",
   "apps/www/src/components/studio/ask-answer.tsx",
   "apps/www/src/components/studio/clip-frames.tsx",
