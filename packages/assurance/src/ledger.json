@@ -709,10 +709,10 @@
           "id": "VH3",
           "kind": "RE9",
           "property": "work",
-          "claim": "Voice notes on home grow by a stated model, and their audio is kept for good unless the owner deletes a Studio recording from My data.",
-          "requirement": "Home keeps each voice note's audio and transcript for good (owner, 2026-10-25), except a Studio take or an idea's spoken answer the owner deletes from My data, which leaves a receipt kept for good (owner, 2026-11-04); its growth per note and per day is stated from measurement, and the phone keeps its copy only until home holds it.",
+          "claim": "Voice notes on home grow by a stated model, and their audio is kept for good unless the owner deletes a Studio recording from My data, or a take of any kind home couldn't hear from Needs your attention.",
+          "requirement": "Home keeps each voice note's audio and transcript for good (owner, 2026-10-25), except a Studio take or an idea's spoken answer the owner deletes from My data (owner, 2026-11-04), and a take of any kind whose newest verdict is garbled, failed or nothing said that the owner deletes from Needs your attention (owner, 2026-11-16, #3076); each delete leaves a receipt kept for good; its growth per note and per day is stated from measurement, and the phone keeps its copy only until home holds it.",
           "verdict": "unproven",
-          "conclusion": "Each note's audio is kept on home for good, but for a Studio recording the owner deletes from My data, and the phone lets its copy go once home holds it; how fast the audio grows, and when it should move off the box (about 20 GB was the plan), is not measured yet.",
+          "conclusion": "Each note's audio is kept on home for good, but for a Studio recording the owner deletes from My data, or a take home couldn't hear that the owner deletes from Needs your attention, and the phone lets its copy go once home holds it; how fast the audio grows, and when it should move off the box (about 20 GB was the plan), is not measured yet.",
           "evidence": [
             {
               "class": "structural",
@@ -721,7 +721,7 @@
             },
             {
               "class": "structural",
-              "says": "My data's delete is the one other way audio leaves home: only a kind the owner switched on (Studio takes and idea answers), each delete writing an append-only receipt.",
+              "says": "My data's delete is the one other way audio leaves home: a kind the owner switched on (Studio takes and idea answers), or a take of any kind home couldn't hear, deleted from Needs your attention; each delete writes an append-only receipt.",
               "ref": "server:crates/db/voice/src/delete.rs"
             },
             {
@@ -746,6 +746,12 @@
               "change": "Audio is kept for good except a Studio take or an idea's spoken answer the owner deletes from My data, each delete leaving a receipt kept for good.",
               "why": "The owner switched on deleting Studio's recordings, the first kind (#2473; MD3's machinery shipped off), and ruled an idea's spoken answer deletable too (#2579); every other kind is still kept for good.",
               "decision": "https://github.com/paulgsc/some-ui/issues/2473#issuecomment-6640040017"
+            },
+            {
+              "on": "2026-11-16",
+              "change": "Audio is also deleted when the owner deletes, from Needs your attention, a take of any kind whose newest verdict is garbled, failed or nothing said; each such delete leaves a receipt kept for good.",
+              "why": "The owner, on #3076 (2026-11-16): \"allow delete for any kind home couldn't hear\". A take home heard is still kept for good under #2474.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3076#issuecomment-6930203536"
             }
           ]
         },
@@ -808,6 +814,27 @@
           "watch": {
             "by": "alert",
             "ref": "server:infra/prometheus/rules/home.yml"
+          },
+          "amendments": []
+        },
+        {
+          "id": "VH5",
+          "kind": "OA2",
+          "property": "outcome",
+          "claim": "Every take home couldn't hear well is listed on the phone's Takes, by its codes, until the owner reconciles it, and each act the owner takes on it is kept on home for good.",
+          "requirement": "GET /voice-notes/attention lists every note of the paired owner, of any kind, whose newest verdict is garbled, failed or nothing_said and that no act in voice_note_attention answers, newest 100 by recordedAt with a total of all; POST /voice-notes/:id/attention keeps keep or again as a new row answering that verdict (the same act again writes nothing), and a delete for good from My data's path of such a note appends a deleted act in its transaction, its receipt naming reconciliation among what stayed; no act row is updated, and rows leave only with the account. The phone's Needs your attention page lists them by code and takes a reconciled one off its list only on home's answer.",
+          "verdict": "unproven",
+          "conclusion": "The phone's page lists the takes by code and drops one only on home's kept or settled answer or a delete's receipt (tested). Home's half (listing every unheard take of any kind, keeping each act append-only, recording a delete's act) is tested in server#918, and its proof is placed here once that reaches server main (AL1).",
+          "tracked": "server#912",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "The phone's page lists the takes by code and drops one only on home's answer or a delete's receipt (HEARD3, #3077).",
+              "ref": "some-ui:packages/ui/soundbites/src/lib/reconcile/model.ts"
+            }
+          ],
+          "watch": {
+            "by": "none"
           },
           "amendments": []
         }
@@ -4868,6 +4895,12 @@
       "store": "server:voice_transcript_verdict",
       "class": "derived",
       "growth": "Per final attempt at hearing a note, per model and rule (HEARD1, server#908): one small row (the verdict, its reason codes, and the transcriber's numbers and language for a heard or garbled take; no word of what was said); append-only, a later rule a new row, so bounded by voice_transcript's rows times the rules in use (one: heard-1); it outlives its note when the owner deletes the note for good, whose receipt names it, and leaves with the account.",
+      "family": "voice-heard"
+    },
+    {
+      "store": "server:voice_note_attention",
+      "class": "record",
+      "growth": "Per act the owner takes on a take home couldn't hear well (HEARD3, server#912): one short row (the note's id, the act's number, kept, record_again or deleted, the verdict's key it answered, when); append-only (UPDATE aborts), a later act a new row, the same act again, as the newest on that verdict, writing nothing; it outlives its note when the owner deletes it for good, and leaves with the account.",
       "family": "voice-heard"
     },
     {
