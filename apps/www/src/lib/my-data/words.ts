@@ -296,7 +296,7 @@ export const DELETABLE_NAMES: Readonly<
 > = {
   studio: { one: "Studio recording", many: "Studio recordings" },
   reflection: { one: "spoken reflection", many: "spoken reflections" },
-  game: { one: "game bite", many: "game bites" },
+  game: { one: "recording from a game", many: "recordings from a game" },
   leetype: { one: "LeetType answer", many: "LeetType answers" },
   lens: { one: "grammar lens take", many: "grammar lens takes" },
   scene: { one: "scene note", many: "scene notes" },
@@ -323,8 +323,8 @@ const STAYS_HERE: Readonly<
     many: "Each reflection, in its session, which says its recording was deleted",
   },
   game: {
-    one: "The bite's game and what it was about",
-    many: "Each bite's game and what it was about",
+    one: "The game and the moment it was about",
+    many: "The game and the moment each was about",
   },
   leetype: {
     one: "Its place in LeetType: the session and screen it answered",
