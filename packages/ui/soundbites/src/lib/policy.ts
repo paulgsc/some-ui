@@ -54,9 +54,9 @@ export const SOUNDBITE_ITEM = "soundbites"
 /**
  * The take pattern's options the page picks (`@some-ui/voice-capture`):
  * - many beside each other, and at `SOUNDBITE_LIMIT` the next makes room
- *   (`make-room`): the store lets go one home deleted, else the one home
- *   holds that the person picked, or the oldest, and refuses while home
- *   holds none (`displacedBy`);
+ *   (`make-room`): the store lets go the one the person picked, else one
+ *   home deleted, else the oldest home holds, and refuses while home holds
+ *   none and none is deleted (`displacedBy`);
  * - each played on its own, Redo and Let go as every screen has them (D2,
  *   D3: neither removes anything);
  * - the button counts down the minute (`clock: "left"`).
@@ -130,11 +130,11 @@ function inLeavingOrder(
 
 /**
  * Which kept soundbite the next one will replace, or null while there is
- * room, or while home holds none of them. Only one home deleted, or one
- * `held` says home holds, may be replaced: `choice` is the one the person
- * picked, honoured while it is still kept and may be; otherwise the first
- * of `inLeavingOrder`: one home deleted, one set aside, then one
- * superseded, then the oldest still listed.
+ * room, or while home holds none of them and none is deleted. Only one home
+ * deleted, or one `held` says home holds, may be replaced: `choice` is the
+ * one the person picked, honoured while it is still kept and may be;
+ * otherwise the first of `inLeavingOrder`: one home deleted, one set aside,
+ * then one superseded, then the oldest still listed.
  */
 export function nextReplaced(
   kept: ReadonlyArray<Soundbite>,
