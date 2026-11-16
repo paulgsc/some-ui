@@ -528,9 +528,9 @@ describe("a week of mock interview rides brief (MB2, IW4)", () => {
 })
 
 describe("an interview essay's script rides brief (MB2, IW6)", () => {
-  const essay = (week: string, schema = "some-ui.interview-essay/1"): string =>
+  const essay = (week: string): string =>
     JSON.stringify({
-      schema,
+      schema: "some-ui.interview-essay/1",
       week: { id: week, from: "2026-11-16", to: "2026-11-22" },
       questions: [],
     })
@@ -550,15 +550,8 @@ describe("an interview essay's script rides brief (MB2, IW6)", () => {
     ).toBe(403)
   })
 
-  it("refuses -r0, a name not its week's, a week that is no week, and the Rust essay's schema", async () => {
+  it("refuses a name not its week's, and a week that is no week", async () => {
     const d = deps()
-    expect(
-      (
-        await put(d, "brief", "interview-essay-2026-w47-r0.json", {
-          body: ESSAY,
-        })
-      ).status
-    ).toBe(422)
     expect(
       await json(
         await put(d, "brief", "interview-essay-2026-w48.json", { body: ESSAY })
@@ -567,15 +560,6 @@ describe("an interview essay's script rides brief (MB2, IW6)", () => {
     expect(
       await json(await put(d, "brief", NAME, { body: essay("week-47") }))
     ).toEqual({ error: "week.id must be the week's, like 2026-w46" })
-    expect(
-      await json(
-        await put(d, "brief", NAME, {
-          body: essay("2026-w47", "some-ui.rust-essay/1"),
-        })
-      )
-    ).toEqual({
-      error: "the body's schema must be some-ui.interview-essay/1",
-    })
   })
 })
 

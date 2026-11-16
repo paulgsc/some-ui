@@ -30,7 +30,7 @@ const ESSAYS_PER_RUN = 2
 const CHART_WEEKS = 12
 
 /** An essay's name in `brief`: `interview-essay-<week>.json`, `-r2` on for a correction. */
-const ESSAY_FILE = /^interview-essay-(\d{4}-w\d{2})(?:-r(\d+))?\.json$/
+export const ESSAY_FILE = /^interview-essay-(\d{4}-w\d{2})(?:-r(\d+))?\.json$/
 export const essayFileName = (week: string): string =>
   `interview-essay-${week}.json`
 
@@ -339,7 +339,10 @@ export function prepareEssays(input: {
     if (read.ok) weeks.set(read.week.id, read.week)
   }
   const essays = essaysIn(input.brief)
-  const written = new Set(essays.map((e) => e.week.id))
+  // Every essay `brief` names is written, read or not: a second put under its name is refused.
+  const written = new Set(
+    input.brief.flatMap((file) => ESSAY_FILE.exec(file.name)?.[1] ?? [])
+  )
   const heard = heardByNote(input.transcripts)
   const due = indexWeeks(input.index)
     .filter((record) => !written.has(record.week))

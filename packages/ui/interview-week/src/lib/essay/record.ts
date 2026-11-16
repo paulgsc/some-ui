@@ -11,7 +11,7 @@
  * - A transcript is `some-ui.voice-transcript/1`, named
  *   `transcript-<note>-<n>.json`; a better model's goes under a new `<n>`.
  */
-import { HeardWordSchema } from "@interview-week/lib/faults"
+import { wordsOf } from "@interview-week/lib/faults"
 import type { HeardWord } from "@interview-week/lib/faults"
 import { WEEK_ID } from "@interview-week/lib/week"
 import { z } from "zod"
@@ -92,7 +92,6 @@ const TranscriptSchema = z.object({
   note: z.string().min(1),
   text: z.string(),
   model: z.string().optional(),
-  words: z.array(HeardWordSchema).optional(),
 })
 
 /** What home heard in a take: its text, and its words, or null when home kept none. */
@@ -129,7 +128,7 @@ export function heardByNote(
       best.set(note, {
         verbatim,
         n: BigInt(n),
-        heard: { text: parsed.data.text, words: parsed.data.words ?? null },
+        heard: { text: parsed.data.text, words: wordsOf(file.body) },
       })
   }
   return new Map([...best].map(([note, { heard }]) => [note, heard]))

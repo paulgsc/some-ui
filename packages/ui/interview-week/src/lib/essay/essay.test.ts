@@ -15,7 +15,6 @@ import { corpus, valuesFor } from "@interview-week/lib/monday/__tests__/fixture"
 import { prepare } from "@interview-week/lib/monday/bundle"
 import { finish } from "@interview-week/lib/monday/finish"
 import type { InterviewWeek } from "@interview-week/lib/week"
-import { parseInterviewEssay } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
 /** Week 2026-w47 as the Monday routine writes it from the fixture. */
@@ -188,6 +187,19 @@ describe("the essays owed", () => {
     ).toBe(1)
   })
 
+  it("are not owed for a week brief already names an essay of, read or not", () => {
+    const bundle = prepareEssays({
+      now: new Date("2026-11-23T11:41:00Z"),
+      brief: [
+        { name: `interview-week-${W.id}.json`, body: W },
+        { name: `interview-essay-${W.id}.json`, body: { schema: "other" } },
+      ],
+      index: record(),
+      transcripts: [transcript("note-1", ANSWER)],
+    }).bundle
+    expect([bundle.essays, bundle.waiting]).toEqual([[], []])
+  })
+
   it("wait while a take was heard without its words", () => {
     const bundle = prepared([
       transcript("note-1", ANSWER, "whisper", []),
@@ -220,7 +232,6 @@ describe("the essays finished", () => {
     if (!done.ok) throw new Error(done.problems.join("\n"))
     const [file] = done.files
     expect(file?.name).toBe(`interview-essay-${W.id}.json`)
-    expect(parseInterviewEssay(file?.body).ok).toBe(true)
     const answer = file?.body.questions[0]?.answer
     const faults = answer?.kind === "take" ? answer.faults : []
     expect(

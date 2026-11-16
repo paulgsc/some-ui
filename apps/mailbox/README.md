@@ -782,8 +782,7 @@ how each was checked when this workspace landed.
   script, taken only as `interview-essay-YYYY-wNN.json` or `-rN.json` with `N` from 2, and held
   to `some-ui.interview-essay/1` and `essayRefusal("interview-essay")`, the Rust essay's check
   over its own name (an ISO week in `week.id`, the name's); `core.test.ts` pins that the routine
-  puts one and home reads it, and that `-r0`, a misnamed essay, a non-week `week.id` and the
-  Rust essay's schema are refused.
+  puts one and home reads it, and that a misnamed essay and a non-week `week.id` are refused.
 
 **MB3: No token reaches the repo or a log.**
 

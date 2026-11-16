@@ -4,9 +4,8 @@
  * only writes the values file between `prepare` and `finish`.
  */
 import { execFileSync } from "node:child_process"
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
-import { parseArgs } from "node:util"
 import type { Prepared } from "@interview-week/lib/monday/bundle"
 import { prepare, WEEK_FILE } from "@interview-week/lib/monday/bundle"
 import type { Doc } from "@interview-week/lib/monday/corpus"
@@ -28,29 +27,15 @@ import type { Call } from "@some-ui/eslint-kit/calls"
 import {
   fail,
   get,
-  here,
   jsonFilesIn,
   jsonText,
   list,
   mailboxFromEnv,
-  put,
   readJson,
-  Refused,
-  runCommand,
 } from "@some-ui/video-render/node"
 import { z } from "zod"
 
-const USAGE = [
-  "usage: monday pull --to <dir>",
-  "       monday prepare --from <dir> [--now <instant>]",
-  "       monday finish --from <dir>",
-  "       monday put --from <dir>",
-]
-
-const root = (): string =>
-  execFileSync("git", ["rev-parse", "--show-toplevel"], {
-    encoding: "utf8",
-  }).trim()
+import { remadeBundle, root, routineCommand, writeOut } from "./routine"
 
 /** `brief`'s interview weeks, and the command that reads the last week's epics. */
 async function pull(dir: string): Promise<void> {
@@ -160,88 +145,23 @@ async function prepareIn(dir: string, now: Date): Promise<void> {
   )
 }
 
-/**
- * The bundle `prepare` wrote is made again from the same folder, checkout
- * and moment, so `finish` builds from code's choices, never from a bundle
- * edited since.
- */
+/** `finish` builds from the bundle made again, never from one edited since (`remadeBundle`). */
 async function finishIn(dir: string): Promise<void> {
-  const held = z
-    .object({ now: z.iso.datetime() })
-    .safeParse(await readJson(join(dir, "bundle.json")))
-  if (!held.success) fail(["bundle.json isn't prepare's: run prepare again"])
-  const { bundle } = await preparedIn(dir, new Date(held.data.now))
-  if (jsonText(bundle) !== (await readFile(join(dir, "bundle.json"), "utf8"))) {
-    fail(["bundle.json changed since prepare wrote it: run prepare again"])
-  }
-  const finished = finish({
-    bundle,
-    values: await readJson(join(dir, "values.json")),
-    resumeEmployers: resumeEmployers(
-      await readFile(join(root(), RESUME_DATA), "utf8")
-    ),
-  })
-  if (!finished.ok)
-    fail(["not ready:", ...finished.problems.map((p) => `- ${p}`)])
-  await rm(join(dir, "out"), { recursive: true, force: true })
-  await mkdir(join(dir, "out"))
-  for (const file of finished.files) {
-    await writeFile(join(dir, "out", file.name), jsonText(file.body))
-  }
-  console.log(
-    finished.files.length === 0
-      ? "ready: nothing to put"
-      : ["ready:", ...finished.files.map((f) => `- ${f.name}`)].join("\n")
+  const { bundle } = await remadeBundle(dir, (now) => preparedIn(dir, now))
+  await writeOut(
+    dir,
+    finish({
+      bundle,
+      values: await readJson(join(dir, "values.json")),
+      resumeEmployers: resumeEmployers(
+        await readFile(join(root(), RESUME_DATA), "utf8")
+      ),
+    })
   )
 }
 
-/** Puts every file `finish` wrote into `brief`. */
-async function putFrom(dir: string): Promise<void> {
-  const mailbox = mailboxFromEnv()
-  const lines: Array<string> = []
-  let failed = false
-  for (const file of await jsonFilesIn(join(dir, "out"))) {
-    const { status, text } = await put(mailbox, "brief", file.name, file.body)
-    const ok = status === 201 || status === 200
-    failed ||= !ok
-    lines.push(`${file.name}: ${status}${ok ? "" : ` ${text.trim()}`}`)
-  }
-  console.log(lines.join("\n") || "nothing to put")
-  if (failed) fail(["a put was refused"])
-}
-
-await runCommand(async () => {
-  const { positionals, values } = parseArgs({
-    allowPositionals: true,
-    options: {
-      to: { type: "string" },
-      from: { type: "string" },
-      now: { type: "string" },
-    },
-  })
-  const [command] = positionals
-  switch (command) {
-    case "pull": {
-      if (values.to === undefined) fail(USAGE)
-      return pull(here(values.to))
-    }
-    case "prepare": {
-      if (values.from === undefined) fail(USAGE)
-      const now = values.now === undefined ? new Date() : new Date(values.now)
-      if (Number.isNaN(now.getTime()))
-        fail([`--now ${values.now ?? ""} isn't an instant`])
-      return prepareIn(here(values.from), now)
-    }
-    case "finish": {
-      if (values.from === undefined) fail(USAGE)
-      return finishIn(here(values.from))
-    }
-    case "put": {
-      if (values.from === undefined) fail(USAGE)
-      return putFrom(here(values.from))
-    }
-    default: {
-      throw new Refused(USAGE.join("\n"))
-    }
-  }
+await routineCommand("monday", {
+  pull,
+  prepare: prepareIn,
+  finish: finishIn,
 })
