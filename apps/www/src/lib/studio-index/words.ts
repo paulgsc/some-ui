@@ -78,6 +78,12 @@ export const FEED_FACTS = {
       "How does this work, as the repositories that hold it stand today, with every claim checked?",
     cadence: "When you ask for one",
   },
+  "interview-essay": {
+    name: "The interview essay",
+    intuition:
+      "How I came across in this week's interview, and what a stronger answer covers, so I can hear it and answer better next time.",
+    cadence: "Every week, once the interview week's deadline has passed",
+  },
   "playoff-delta": {
     name: "Playoff Delta",
     intuition:
@@ -153,6 +159,22 @@ export const FEED_KEPT = {
       what: "A copy of each essay you watched.",
       letGo:
         "A watched copy is the phone's to clear, and it goes when home's video is let go.",
+    },
+    testing: {
+      what: "Nothing. An essay holds your voice, so it stays on home until you share it.",
+      letGo: "Nothing to let go.",
+    },
+    drive: NOTHING_IN_DRIVE,
+  },
+  "interview-essay": {
+    home: {
+      what: "Every essay Claude wrote for an interview week, the takes you sent that it plays, and each essay's video and what it was made from.",
+      letGo:
+        "Nothing on this phone lets an interview essay go yet. Home keeps each one, its video included.",
+    },
+    phone: {
+      what: "A copy of each essay you watched.",
+      letGo: "A watched copy is the phone's to clear.",
     },
     testing: {
       what: "Nothing. An essay holds your voice, so it stays on home until you share it.",
@@ -263,7 +285,8 @@ export const STUDIO_INDEX_WORDS = {
   },
 
   episodes: {
-    intro: "Every video your feeds made, by feed, the newest first.",
+    intro:
+      "Every video your feeds made, by week, the newest first. Choose a genre to see only its videos.",
     making: "Videos you're making",
     makingLine:
       "Made in sittings from your takes: record, watch, shape, finish.",

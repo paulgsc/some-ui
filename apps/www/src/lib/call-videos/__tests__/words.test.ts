@@ -28,6 +28,7 @@ function strings(value: unknown): Array<string> {
 const KEYS: Record<Feed, ReadonlyArray<string>> = {
   call: ["2026-10-30", "2026-12-28"],
   "cards-essay": ["zfs-2026-11-02", "rust-scratchpad-2026-11-14"],
+  "interview-essay": ["2026-w46", "2027-w01"],
   "playoff-delta": ["2026-SF-08", "2026-SF-00", "2026-SF-17"],
   "rust-essay": ["2026-w46", "2027-w01"],
 }
@@ -36,6 +37,7 @@ const KEYS: Record<Feed, ReadonlyArray<string>> = {
 const UNREAD: Record<Feed, ReadonlyArray<string>> = {
   call: ["2026-SF-08", "week-44", ""],
   "cards-essay": ["2026-w46", "zfs-2026-02-31", "zfs", ""],
+  "interview-essay": ["2026-10-30", "2026-w4", "2026-w00", ""],
   "playoff-delta": ["2026-10-30", "2026-SF-8", ""],
   "rust-essay": ["2026-10-30", "2026-w4", "2026-w00", ""],
 }
@@ -107,6 +109,20 @@ describe("VIDEOS_WORDS and FEED_WORDS", () => {
     expect(episodeName("call", { key: "2026-10-30", title: null })).toBe(
       "2026-10-30 to 2026-11-05"
     )
+  })
+
+  it("names a part of the call's week by its week and which part, never its key", () => {
+    const week = { title: null, week: "2026-11-06", of: 3 }
+    expect(episodeName("call", { ...week, key: "2026-11-06", part: 1 })).toBe(
+      "2026-11-06 to 2026-11-12, part 1 of 3"
+    )
+    expect(
+      episodeName("call", { ...week, key: "2026-11-06-p2", part: 2 })
+    ).toBe("2026-11-06 to 2026-11-12, part 2 of 3")
+    // A week of one video is named as before.
+    expect(
+      episodeName("call", { ...week, key: "2026-11-06", part: 1, of: 1 })
+    ).toBe("2026-11-06 to 2026-11-12")
   })
 
   it("names an episode whose key it can't read by a plain word, never the key", () => {

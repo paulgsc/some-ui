@@ -52,7 +52,11 @@ const FeedPage = (): JSX.Element => {
         )}
       </Part>
       <Part label={WORDS.episodes}>
-        <FeedEpisodes feed={feed} pairWords={STUDIO_WORDS.pair.pair} />
+        <FeedEpisodes
+          chip={feed}
+          chips={false}
+          pairWords={STUDIO_WORDS.pair.pair}
+        />
       </Part>
       <Part label={WORDS.kept}>
         <dl className="flex flex-col gap-3">
