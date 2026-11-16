@@ -679,23 +679,45 @@ export function callIntro(
 /**
  * Where the call's chapters start (SFEED4): each chapter slide, and each ask
  * on its own, titled by its question, so it can be heard again before it is
- * answered.
+ * answered. Each other item (an epic moved, a batch landed, a call) marks a
+ * `finer` chapter by its title, which counts only where those make fewer
+ * than three, as in a part inside one long section (C391, #3032).
  */
 export function callChapterMarks(
   week: CallWeek,
   part: number = 1
 ): Array<ChapterMark> {
   const scenes = callScenes(week, part)
-  const asks = scenes.flatMap((scene) => {
-    if (scene.section !== "asks" || !("item" in scene)) return []
+  const items = scenes.flatMap((scene): Array<ChapterMark> => {
+    if (!("item" in scene) || scene.item === undefined) return []
     if (!isFirstPage(scene)) return []
-    const ask = week.asks.find((each) => each.id === scene.item)
-    return ask === undefined ? [] : [{ scene: scene.id, title: ask.question }]
+    const title = itemTitle(week, scene.section, scene.item)
+    if (title === undefined) return []
+    return scene.section === "asks"
+      ? [{ scene: scene.id, title }]
+      : [{ scene: scene.id, title, finer: true }]
   })
   return [
     ...chapterSlides(scenes.filter((scene) => scene.section === "chapter")),
-    ...asks,
+    ...items,
   ]
+}
+
+/** What an item's chapter is called: its title, an ask's question, an epic's tag. */
+function itemTitle(
+  week: CallWeek,
+  section: CallScene["section"],
+  item: string
+): string | undefined {
+  const find = <T extends { readonly id: string }>(
+    list: ReadonlyArray<T>
+  ): T | undefined => list.find((each) => each.id === item)
+  if (section === "moved") return find(week.moved)?.tag
+  if (section === "asks") return find(week.asks)?.question
+  if (section === "done" || section === "gray" || section === "mine")
+    return find<{ readonly id: string; readonly title: string }>(week[section])
+      ?.title
+  return undefined
 }
 
 /** A section's scene, as the body of a call lays it out. */
