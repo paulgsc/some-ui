@@ -12,6 +12,7 @@ import { seedDemo } from "@/lib/demo"
 import { bootDeviceBackend } from "@/lib/device-backend/boot"
 import { driveFiling } from "@/lib/drive-filing"
 import { sweepIdeaTakes } from "@/lib/idea-takes"
+import { sweepInterviewTakes } from "@/lib/interview-week"
 import { listenForNoticeTaps } from "@/lib/jobs/notice-native"
 import { sweepLeetypeTakes } from "@/lib/leetype-takes"
 import { sweepLensTakes } from "@/lib/lens-takes"
@@ -48,13 +49,14 @@ import.meta.glob(
 bootDeviceBackend()
 
 // Voice reflections, scene notes, grammar-lens takes, LeetType takes, Rust
-// Rounds' notes, Studio's idea takes and takes with no scene, and their
-// audio, each without the other.
+// Rounds' notes, the interview week's takes, Studio's idea takes and takes
+// with no scene, and their audio, each without the other.
 if (import.meta.env.VITE_DEVICE_BACKEND === "true") {
   sweepOrphans()
   sweepLensTakes()
   sweepLeetypeTakes()
   sweepRustRoundsNotes()
+  sweepInterviewTakes()
   sweepIdeaTakes()
   sweepLibraryTakes()
   sweepSceneVoice()

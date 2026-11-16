@@ -174,4 +174,5 @@ export type {
   BundleTakes,
 } from "./lib/bundle-runtime"
 export { bundleRuntime, NO_HOME } from "./lib/bundle-runtime"
+export { keptDrafts, keptRecords } from "./lib/bundle-store"
 export type { HeardAnswer } from "./lib/heard"

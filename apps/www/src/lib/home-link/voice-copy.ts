@@ -33,6 +33,10 @@
  *   #2688): `rust-round`, the week and ticket as `<week>:<ticket>`, when
  *   taken, but only once its week is sent: until then it waits on the phone
  *   (`waits`), as a new idea's take does;
+ * - a take of the interview week (`lib/interview-week`'s `interviewDesk`,
+ *   IW5): `interview`, its line as IW1 names it (`<week>:<question>` for an
+ *   answer, `<week>:read:<card>` for a read), when taken, once its week is
+ *   sent, as a week's ticket does;
  * - a Studio idea answer's take (`lib/idea-takes`, MIC10): `studio`, the
  *   answer as `idea:<idea>:<question>`, when taken; home gives its words back
  *   to the idea screen (`./heard`). A new idea's take (ST26) goes the same
@@ -148,6 +152,7 @@ import { ON_PHONE } from "@some-ui/voice-capture"
 import { phoneGameBites } from "@/lib/game-bites"
 import type { IdeaTake } from "@/lib/idea-takes"
 import { ideaBundleDesk, ideaRedoDesk, ideaTakesDesk } from "@/lib/idea-takes"
+import { interviewDesk } from "@/lib/interview-week"
 import { jobVoiceAudio, phoneJobs } from "@/lib/jobs"
 import type { JobEvent, JobsState } from "@/lib/jobs/model"
 import type { LeetypeTake } from "@/lib/leetype-takes"
@@ -372,6 +377,20 @@ export function rustWeekNote(take: RustRoundTake): VoiceOut {
   return {
     id: take.id,
     of: "rust-round",
+    ref: take.line,
+    at: new Date(take.takenAt).toISOString(),
+    contentType: take.mimeType,
+  }
+}
+
+/**
+ * A take of the interview week (its `line` is `<week>:<question>` or
+ * `<week>:read:<card>`), as home is told it: an interview note under it (IW1).
+ */
+function interviewNote(take: RustRoundTake): VoiceOut {
+  return {
+    id: take.id,
+    of: "interview",
     ref: take.line,
     at: new Date(take.takenAt).toISOString(),
     contentType: take.mimeType,
@@ -654,6 +673,12 @@ function listed(
     audio: (): Promise<Blob | null> => rustWeekDesk.audio(take.id),
     aside: asideAt(take),
   }))
+  // IW5: only the takes of a week sent; one still waiting is not listed.
+  const interview = interviewDesk.kept().map((take) => ({
+    note: interviewNote(take),
+    audio: (): Promise<Blob | null> => interviewDesk.audio(take.id),
+    aside: asideAt(take),
+  }))
   const ideas = ideaTakesDesk.kept().map((take) => ({
     note: ideaNote(take),
     audio: (): Promise<Blob | null> => ideaTakesDesk.audio(take.id),
@@ -687,6 +712,7 @@ function listed(
     ...leetype,
     ...rust,
     ...week,
+    ...interview,
     ...ideas,
     ...bundled,
     ...resaid,
@@ -1204,6 +1230,7 @@ function holdOffline(): void {
   ideaBundleDesk.keptWhere(voiceKept)
   ideaRedoDesk.keptWhere(voiceKept)
   rustWeekDesk.keptWhere(voiceKept)
+  interviewDesk.keptWhere(voiceKept)
   libraryTakesDesk.keptWhere(voiceKept)
   sceneNotesKept(voiceKept)
   reflectionNotesKept(voiceKept)
@@ -1259,6 +1286,8 @@ export function watchVoiceNotes(): () => void {
         ideaRedoDesk.phone().takes.subscribe(copySoon),
         // A week's takes go once it is sent (RR13): its Send is a change.
         rustWeekDesk.phone().takes.subscribe(copySoon),
+        // An interview week's takes go once it is sent (IW5).
+        interviewDesk.phone().takes.subscribe(copySoon),
         libraryTakesDesk.phone().takes.subscribe(copySoon)
       )
     }

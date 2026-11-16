@@ -2,17 +2,22 @@ import type { JSX } from "react"
 import { useEffect } from "react"
 import { createFileRoute, Outlet } from "@tanstack/react-router"
 
+import { INTERVIEW_WORDS } from "@/lib/interview-week/words"
 import { registerJobsPull } from "@/lib/jobs/pull"
 import { usePairedWithHome } from "@/components/device-home-glyph"
 import { KeptOnHome } from "@/components/jobs/parts"
 import type { View } from "@/components/view-strip"
 import { ViewStrip } from "@/components/view-strip"
 
-/** The Jobs wing's one screen: today's picks, my own finds, and the record. */
+/**
+ * The Jobs wing's one screen: today's picks, my own finds, the record, and
+ * the interview week (IW5, C396).
+ */
 const VIEWS = [
   { to: "/jobs", label: "Today", exact: true },
   { to: "/jobs/scout", label: "Scout", exact: false },
   { to: "/jobs/record", label: "Record", exact: false },
+  { to: "/jobs/interview", label: INTERVIEW_WORDS.view, exact: false },
 ] as const satisfies ReadonlyArray<View>
 
 /**

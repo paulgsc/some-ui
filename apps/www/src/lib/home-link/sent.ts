@@ -52,6 +52,7 @@ export type Sent = {
   readonly episodeNotes: Readonly<Record<string, string>>
   readonly videos: Readonly<Record<string, string>>
   readonly rustWeeks: Readonly<Record<string, string>>
+  readonly interviewWeeks: Readonly<Record<string, string>>
   readonly rustPastes: Readonly<Record<string, string>>
   readonly roundLog: Readonly<Record<string, string>>
   readonly events: Readonly<Record<string, string>>
@@ -75,6 +76,7 @@ const emptyFor = (pairing: string): Sent => ({
   episodeNotes: {},
   videos: {},
   rustWeeks: {},
+  interviewWeeks: {},
   rustPastes: {},
   roundLog: {},
   events: {},
@@ -116,6 +118,7 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
   const episodeNotes = stringsOf(parsed.episodeNotes)
   const videos = stringsOf(parsed.videos)
   const rustWeeks = stringsOf(parsed.rustWeeks)
+  const interviewWeeks = stringsOf(parsed.interviewWeeks)
   const rustPastes = stringsOf(parsed.rustPastes)
   const roundLog = stringsOf(parsed.roundLog)
   const events = stringsOf(parsed.events)
@@ -136,6 +139,7 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
       episodeNotes: episodeNotes.value,
       videos: videos.value,
       rustWeeks: rustWeeks.value,
+      interviewWeeks: interviewWeeks.value,
       rustPastes: rustPastes.value,
       roundLog: roundLog.value,
       events: events.value,
@@ -155,6 +159,7 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
       episodeNotes,
       videos,
       rustWeeks,
+      interviewWeeks,
       rustPastes,
       roundLog,
       events,
@@ -237,6 +242,7 @@ export function rememberSent(
     episodeNotes: { ...sent.episodeNotes, ...more.episodeNotes },
     videos: { ...sent.videos, ...more.videos },
     rustWeeks: { ...sent.rustWeeks, ...more.rustWeeks },
+    interviewWeeks: { ...sent.interviewWeeks, ...more.interviewWeeks },
     rustPastes: { ...sent.rustPastes, ...more.rustPastes },
     roundLog: { ...sent.roundLog, ...more.roundLog },
     events: keptOnly({ ...sent.events, ...more.events }, stays.events),
