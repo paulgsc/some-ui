@@ -21,7 +21,8 @@ import {
   resumeEmployers,
 } from "@interview-week/lib/monday/employers"
 import { finish } from "@interview-week/lib/monday/finish"
-import { addDays, pacificDay } from "@some-ui/core-utils"
+import { factsWindow } from "@interview-week/lib/monday/window"
+import { pacificDay } from "@some-ui/core-utils"
 import { callsInTree } from "@some-ui/eslint-kit/calls"
 import type { Call } from "@some-ui/eslint-kit/calls"
 import {
@@ -64,12 +65,12 @@ async function pull(dir: string): Promise<void> {
     )
     count += 1
   }
-  const to = addDays(pacificDay(new Date()), -1)
+  const { from, to } = factsWindow(pacificDay(new Date()))
   console.log(
     [
       `pulled ${count} interview weeks`,
       "now read the epics that moved in the last week:",
-      `pnpm --filter @some-ui/video-render render call-facts --from ${addDays(to, -6)} --to ${to} > ${join(dir, "facts.json")}`,
+      `pnpm --filter @some-ui/video-render render call-facts --from ${from} --to ${to} > ${join(dir, "facts.json")}`,
     ].join("\n")
   )
 }

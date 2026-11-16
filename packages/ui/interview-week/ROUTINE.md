@@ -22,13 +22,17 @@ guidelines, and each card's script.
 
 ## Before you start
 
-1. Work from `main` of `paulgsc/some-ui`, fetched back at least a week
-   (`git fetch --shallow-since=<a week ago> origin main` on a shallow clone).
-   Read its `CLAUDE.md`, then run `pnpm install --frozen-lockfile`.
-2. `JOBS_MAILBOX_URL` and `JOBS_MAILBOX_TOKEN` are set in this environment.
+1. Work from `main` of `paulgsc/some-ui`, fetched back two weeks, since
+   `render call-facts` reads a commit from before the week that ended. On a
+   shallow clone, run from the checkout's root:
+   `git fetch --shallow-since="$(date -u -d '14 days ago' +%F)" origin main`.
+2. Read its `CLAUDE.md`, then run `pnpm install --frozen-lockfile`, then
+   build the package's workspace dependencies, which a fresh clone has
+   none of: `npx turbo run build --filter="@some-ui/interview-week^..." --continue`.
+3. `JOBS_MAILBOX_URL` and `JOBS_MAILBOX_TOKEN` are set in this environment.
    Never print the token, and never turn on shell tracing. If either is
    unset, stop: say so in the summary and put nothing.
-3. `gh` must reach GitHub's search API, since `render call-facts` reads the
+4. `gh` must reach GitHub's search API, since `render call-facts` reads the
    week's epics through it.
 
 Run every command below from `packages/ui/interview-week`, with a scratch
