@@ -1,0 +1,17 @@
+{
+  "id": "C426",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/ui/soundbites/src/components/take-library/index.tsx"
+  ],
+  "chose": "A note's take home doesn't have yet shows in On episodes as a card with what it was for and \"On this phone\", without Play; it plays from All, where the phone's recorder lists it, until home has it.",
+  "options": [
+    "a card without Play in On episodes (now)",
+    "listed only in Recorded here and All until home has it",
+    "a recorder's list in On episodes too, which would record a plain take there"
+  ],
+  "gray": "The phone's recorder records takes with no scene, so it can't stand in On episodes; whether such a take shows there before home has it, and how, is unsaid.",
+  "undo": "Drop the `PhoneCard` list in `TakeLibrary`.",
+  "refs": ["#3029", "#3069"]
+}

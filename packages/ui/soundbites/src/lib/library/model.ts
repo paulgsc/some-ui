@@ -93,15 +93,6 @@ export type LibraryRead =
 /** The most characters a search may hold, as home takes one. */
 export const SEARCH_MAX = 200
 
-/** What a take is for, by the ref the phone sent it home with. */
-export type TakeFor = "scene" | "idea" | "other"
-
-export function takeFor(ref: string): TakeFor {
-  if (ref.startsWith("idea:")) return "idea"
-  // A video's scene: `<project>:<shot>:<take>`.
-  return ref.split(":").length === 3 ? "scene" : "other"
-}
-
 /** The phone's own takes with no scene, and whether it has room for another. */
 export type LibraryPhoneSnapshot = {
   readonly takes: ReadonlyArray<PatternTake>

@@ -1,0 +1,15 @@
+{
+  "id": "C425",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": ["some-ui:packages/ui/shared/src/lib/dot-meaning/index.ts"],
+  "chose": "One table in @some-ui/shared names what a dot's colour means, from the theme's five chart colours: on home sky, on this phone stone, waiting honey, being worked raspberry, done leaf, closed stone. Only on home takes sky.",
+  "options": [
+    "this table and these hues (now)",
+    "each screen picks its own hues, the words beside each dot carrying the meaning",
+    "being worked on honey, waiting on stone"
+  ],
+  "gray": "The owner asked that a dot mean one thing on every screen and that sky be on home; which hue each other meaning takes, and where the table lives, is unsaid. Agreed with Episodes through the coordinator.",
+  "undo": "Edit `HUE` in dot-meaning; every screen reads it.",
+  "refs": ["#3029", "#3030", "#3069"]
+}

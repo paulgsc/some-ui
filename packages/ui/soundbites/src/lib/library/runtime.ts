@@ -14,6 +14,7 @@
 import { assertNever } from "@some-ui/core-utils"
 import type { Playback, Player, TakePattern } from "@some-ui/voice-capture"
 
+import type { TakeAbout } from "./compartments"
 import type {
   LibraryEffect,
   LibraryEvent,
@@ -60,6 +61,25 @@ export type LibraryPorts = {
   readonly phone?: LibraryPhone | undefined
   /** The phone's moves along the conveyor (CONVEYOR1); absent, none. */
   readonly stations?: LibraryStations | undefined
+  /** What each take was said for, as the phone knows it (TAKES2); absent, its ref says. */
+  readonly about?: LibraryAbout | undefined
+}
+
+/**
+ * What the build knows each take was said for (TAKES2, #3068), from the
+ * stores the phone keeps (a note on an episode names its spoken take; a
+ * video names its scenes), said again on each change it tells of.
+ */
+export type LibraryAbout = {
+  readonly subscribe: (listener: () => void) => () => void
+  /** Changes whenever what `about` says may have. */
+  readonly getSnapshot: () => unknown
+  /**
+   * What take `id` was said for; null when the phone knows nothing more
+   * than its `ref` says (`aboutOfRef`). A take home doesn't have yet has
+   * no ref.
+   */
+  readonly about: (id: string, ref: string | null) => TakeAbout | null
 }
 
 /**
@@ -73,6 +93,15 @@ export type LibraryStations = {
   readonly getSnapshot: () => unknown
   /** What a take's row says of where it stands; null when it's on none. */
   readonly standing: (take: LibraryTake) => string | null
+  /** Every station's name, in the order a take moves along them (TAKES3). */
+  readonly names: ReadonlyArray<string>
+  /**
+   * The name of the station a take is at, and whether it is the shelf
+   * (Canned); null when it's on none.
+   */
+  readonly station: (
+    take: LibraryTake
+  ) => { readonly name: string; readonly canned: boolean } | null
 }
 
 export type LibraryRuntime = {

@@ -1,5 +1,7 @@
 /** @vitest-environment node */
-import type { LibraryBy, TakeFor } from "@soundbites/lib/library/model"
+import type { TakeAbout } from "@soundbites/lib/library/compartments"
+import { COMPARTMENTS, TAKE_KINDS } from "@soundbites/lib/library/compartments"
+import type { LibraryBy } from "@soundbites/lib/library/model"
 import { LIBRARY_WORDS } from "@soundbites/lib/library/words"
 import { describe, expect, it } from "vitest"
 
@@ -15,12 +17,45 @@ const MACHINERY =
 const OTHER_WORDS = /\b(recordings?|answers?|bites?|notes?|clips?)\b/i
 
 const BY: ReadonlyArray<LibraryBy> = ["newest", "words", "meaning"]
-const FOR: ReadonlyArray<TakeFor> = ["scene", "idea", "other"]
 const AT = "2026-11-03T09:00:00.000Z"
+
+/** What a take can be said for: what the phone knows of it, and less. */
+const ABOUTS: ReadonlyArray<TakeAbout> = [
+  {
+    kind: "note",
+    feed: "The weekly call",
+    episode: "Week of Nov 6",
+    atMs: 192_000,
+    picks: ["Pacing", "The voice"],
+  },
+  { kind: "scene", video: "The Rust Rounds essay", scene: 3 },
+  { kind: "scene", video: null, scene: null },
+  { kind: "idea", idea: "Typing rounds", question: "What's the video?" },
+  { kind: "idea", idea: null, question: null },
+  { kind: "ask", ask: "Should a canned take show?", number: 2876 },
+  { kind: "ask", ask: null, number: 2876 },
+  { kind: "ask", ask: null, number: null },
+  { kind: "here" },
+]
 
 /** Every word the table says: each fixed one, and each a maker makes. */
 function everyWord(): Array<string> {
-  const { shown, setAside, line, what, phoneFull, ...fixed } = LIBRARY_WORDS
+  const {
+    shown,
+    setAside,
+    phoneFull,
+    kinds,
+    compartmentHeading,
+    counted: countedFrom,
+    empty,
+    subject,
+    detail,
+    said,
+    place,
+    onHomeSince,
+    openEpisode,
+    ...fixed
+  } = LIBRARY_WORDS
   const counts: ReadonlyArray<[number, number, number | null]> = [
     [0, 0, null],
     [1, 1, null],
@@ -32,7 +67,16 @@ function everyWord(): Array<string> {
   ]
   return [
     ...Object.values(fixed),
-    ...Object.values(what),
+    ...TAKE_KINDS.flatMap((kind) => Object.values(kinds[kind])),
+    ...COMPARTMENTS.flatMap((each) => [compartmentHeading(each), empty(each)]),
+    countedFrom(50, 120),
+    ...ABOUTS.flatMap((about) => [subject(about), detail(about)]).filter(
+      (text) => text !== null
+    ),
+    said(AT),
+    ...Object.values(place),
+    onHomeSince(AT),
+    openEpisode(192_000),
     ...BY.flatMap((by) =>
       counts.flatMap(([listed, total, matched]) => [
         shown(by, "brand intro", listed, total, matched),
@@ -40,7 +84,6 @@ function everyWord(): Array<string> {
       ])
     ),
     setAside(AT),
-    ...FOR.map((each) => line(each, AT)),
     phoneFull(1),
     phoneFull(40),
   ]
@@ -76,6 +119,19 @@ describe("Takes on home's words (ST32)", () => {
     expect(LIBRARY_WORDS.phoneFull(40)).toBe(
       "This phone holds 40 takes home doesn't have yet. Once home has some, there's room for another."
     )
+  })
+
+  it("say what each kind of take was said for, from what the phone knows (TAKES2)", () => {
+    const [note, scene, , idea, , ask, askBare] = ABOUTS
+    expect(LIBRARY_WORDS.subject(note!)).toBe("The weekly call · Week of Nov 6")
+    expect(LIBRARY_WORDS.detail(note!)).toBe("At 3:12")
+    expect(LIBRARY_WORDS.subject(scene!)).toBe("The Rust Rounds essay")
+    expect(LIBRARY_WORDS.detail(scene!)).toBe("Scene 3")
+    expect(LIBRARY_WORDS.subject(idea!)).toBe("What's the video?")
+    expect(LIBRARY_WORDS.detail(idea!)).toBe("About “Typing rounds”")
+    expect(LIBRARY_WORDS.subject(ask!)).toBe("Should a canned take show?")
+    expect(LIBRARY_WORDS.subject(askBare!)).toBe("The ask #2876")
+    expect(LIBRARY_WORDS.subject({ kind: "here" })).toBeNull()
   })
 
   it("say how many home keeps, and that the newest come first", () => {

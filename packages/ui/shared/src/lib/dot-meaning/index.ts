@@ -6,8 +6,9 @@
  * and its test refuses a token used twice (C411). The words beside each dot
  * still say what it means.
  *
- * Episodes (EPISODES2) says these three; Takes (#3029) adds its own, each in
- * a token no other meaning has.
+ * Episodes (EPISODES2) says the first three; Takes (#3029) adds on this phone
+ * (C425). Each meaning takes a token no other meaning has; TAKES4 adds the
+ * filed issue's states the same way.
  */
 
 /** Each thing a dot can say. */
@@ -18,6 +19,8 @@ export const DOT_MEANINGS = [
   "out",
   /** Still being made. */
   "making",
+  /** Only this phone has it, until home does (Takes, #3029). */
+  "phone",
 ] as const
 
 export type DotMeaning = (typeof DOT_MEANINGS)[number]
@@ -27,6 +30,7 @@ const HUE = {
   home: "bg-chart-2", // sky
   out: "bg-chart-3", // leaf
   making: "bg-muted-foreground", // grey
+  phone: "bg-chart-4", // stone
 } as const satisfies Record<DotMeaning, string>
 
 /** The class that colours a dot saying `meaning`. */

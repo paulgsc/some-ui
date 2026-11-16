@@ -3,7 +3,12 @@ import { ONE_TAKE, TAKE_WORDS } from "@some-ui/voice-capture"
 import { simulatedPattern } from "@some-ui/voice-capture/testing"
 import { TakeLibrary } from "@soundbites/components/take-library"
 import type { LibraryRead, LibraryTake } from "@soundbites/lib/library/model"
-import type { LibraryPhone, TakesHome } from "@soundbites/lib/library/runtime"
+import type {
+  LibraryAbout,
+  LibraryPhone,
+  LibraryStations,
+  TakesHome,
+} from "@soundbites/lib/library/runtime"
 import { LIBRARY_WORDS } from "@soundbites/lib/library/words"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { act, fireEvent, render, screen } from "@testing-library/react"
@@ -67,7 +72,7 @@ describe("Takes on home (ST32)", () => {
       <TakeLibrary ports={{ home: home(), player: quietPlayer }} pair={null} />
     )
     await settle()
-    expect(screen.getByText(TAKE.heard!.text)).toBeTruthy()
+    expect(screen.getByText(`“${TAKE.heard!.text}”`)).toBeTruthy()
     expect(screen.getByText(W.notHeard)).toBeTruthy()
     expect(screen.getByText(W.shown("newest", null, 2, 2, null))).toBeTruthy()
     expect(screen.getByText(W.setAside(UNHEARD.setAsideAt!))).toBeTruthy()
@@ -104,6 +109,8 @@ describe("Takes on home (ST32)", () => {
               take.station === null
                 ? null
                 : `${take.id} at ${take.station ?? "none"}, moves ${String(moved)}`,
+            names: [],
+            station: () => null,
           },
         }}
         pair={null}
@@ -132,6 +139,134 @@ describe("Takes on home (ST32)", () => {
     await settle()
     expect(screen.getByText("sorting t1")).toBeTruthy()
     expect(screen.getByText("sorting t2")).toBeTruthy()
+  })
+
+  describe("in compartments (TAKES2, TAKES3)", () => {
+    const NOTE_TAKE: LibraryTake = {
+      ...TAKE,
+      id: "n1",
+      ref: "take:n1",
+      heard: { ...TAKE.heard!, text: "The middle drags" },
+    }
+    const RAMBLE: LibraryTake = {
+      ...TAKE,
+      id: "r1",
+      ref: "take:r1",
+      heard: { ...TAKE.heard!, text: "An aside" },
+    }
+    const CANNED: LibraryTake = {
+      ...TAKE,
+      id: "c1",
+      ref: "take:c1",
+      setAsideAt: "2026-11-04T10:00:00.000Z",
+      heard: { ...TAKE.heard!, text: "On the shelf" },
+    }
+    const all: LibraryRead = {
+      kind: "read",
+      page: {
+        takes: [NOTE_TAKE, RAMBLE, CANNED, TAKE, UNHEARD],
+        total: 5,
+        matched: null,
+        by: "newest",
+      },
+    }
+    const about: LibraryAbout = {
+      subscribe: () => () => undefined,
+      getSnapshot: () => 0,
+      about: (id) =>
+        id === "n1"
+          ? {
+              kind: "note",
+              feed: "The weekly call",
+              episode: "Week of Nov 6",
+              atMs: 192_000,
+              picks: ["Pacing", "The voice"],
+            }
+          : null,
+    }
+    const station = new Map([
+      ["n1", "Cooking"],
+      ["r1", "In the oven"],
+      ["c1", "Canned"],
+      ["t1", "Cooking"],
+    ])
+    const stations: LibraryStations = {
+      subscribe: () => () => undefined,
+      getSnapshot: () => 0,
+      standing: (take) => station.get(take.id) ?? null,
+      names: ["In the oven", "Cooking", "Canned"],
+      station: (take) => {
+        const name = station.get(take.id)
+        return name === undefined ? null : { name, canned: name === "Canned" }
+      },
+    }
+    const ports = {
+      home: home({ takes: () => Promise.resolve(all) }),
+      player: quietPlayer,
+      about,
+      stations,
+    }
+
+    it("opens on a tile per kind and one for all, each with its count", async () => {
+      render(
+        <TakeLibrary
+          ports={ports}
+          pair={null}
+          compartment={null}
+          tile={(compartment, body) => (
+            <a href={`#${compartment}`} aria-label={compartment}>
+              {body}
+            </a>
+          )}
+        />
+      )
+      await settle()
+      const count = (name: string): string | null | undefined =>
+        screen.getByRole("link", { name }).querySelector(".tabular-nums")
+          ?.textContent
+      expect(count("note")).toBe("1")
+      expect(count("scene")).toBe("1")
+      expect(count("idea")).toBe("1")
+      expect(count("ask")).toBe("0")
+      expect(count("here")).toBe("2")
+      expect(count("all")).toBe("5")
+      // The tiles list no take.
+      expect(screen.queryByRole("button", { name: W.play })).toBeNull()
+    })
+
+    it("says what a note's take was said for, from what the phone knows", async () => {
+      render(<TakeLibrary ports={ports} pair={null} compartment="note" />)
+      await settle()
+      expect(screen.getByText("The weekly call · Week of Nov 6")).toBeTruthy()
+      expect(screen.getByText(/^At 3:12 · Said /)).toBeTruthy()
+      expect(screen.getByText("Pacing")).toBeTruthy()
+      expect(screen.getByText("“The middle drags”")).toBeTruthy()
+      // Only the compartment's own takes.
+      expect(screen.queryByText("“An aside”")).toBeNull()
+    })
+
+    it("filters by a chip in the top bar, each chip with its count, and folds the canned under the rest", async () => {
+      render(<TakeLibrary ports={ports} pair={null} compartment="here" />)
+      await settle()
+      const bar = screen.getByRole("navigation", { name: W.chips })
+      const chip = (name: RegExp): HTMLElement =>
+        Array.from(bar.querySelectorAll("button")).find((button) =>
+          name.test(button.textContent)
+        )!
+      expect(chip(/^On home2$/)).toBeTruthy()
+      expect(chip(/^In the oven1$/)).toBeTruthy()
+      expect(chip(/^Canned1$/)).toBeTruthy()
+      // Canned folds under its own heading below the rest.
+      expect(screen.getByRole("heading", { name: /Canned/ })).toBeTruthy()
+      // A take on the conveyor says its station, not that it was set aside.
+      expect(screen.queryByText(W.setAside(CANNED.setAsideAt!))).toBeNull()
+      fireEvent.click(chip(/^In the oven/))
+      expect(chip(/^In the oven/).getAttribute("aria-pressed")).toBe("true")
+      expect(screen.getByText("“An aside”")).toBeTruthy()
+      expect(screen.queryByText("“On the shelf”")).toBeNull()
+      fireEvent.click(chip(/^In the oven/))
+      expect(screen.getByText("“On the shelf”")).toBeTruthy()
+    })
   })
 
   it("searches the words, says the search ran on words, and goes back to the newest", async () => {

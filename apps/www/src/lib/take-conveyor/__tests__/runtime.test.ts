@@ -167,4 +167,35 @@ describe("createTakeConveyor", () => {
       words({ station: "cooking", at: AT, seq: 0, going: true, missed: null })
     )
   })
+
+  it("names each take's station for Takes' chips, and which is the shelf (TAKES3)", () => {
+    const conveyor = conveyorOn(inMemoryStorage())
+    const stations = libraryStationsOf(conveyor)
+    const take = {
+      id: "t1",
+      ref: "",
+      recordedAt: AT,
+      storedAt: AT,
+      size: 1,
+      setAsideAt: null,
+      heard: null,
+    }
+    // Five stations, In the oven first, as a take moves along them.
+    expect(stations.names).toEqual([
+      "In the oven",
+      "Cooking",
+      "Ready for pickup",
+      "Picked up",
+      "Canned",
+    ])
+    expect(stations.station({ ...take, station: "cooking" })).toEqual({
+      name: "Cooking",
+      canned: false,
+    })
+    expect(stations.station({ ...take, station: "canned" })).toEqual({
+      name: "Canned",
+      canned: true,
+    })
+    expect(stations.station({ ...take, station: null })).toBeNull()
+  })
 })

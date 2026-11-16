@@ -74,6 +74,7 @@ import { Route as DashboardApkJournalEpisodesMakingRouteImport } from './routes/
 import { Route as DashboardApkJournalFeedsIndexRouteImport } from './routes/_dashboard/_apk/journal/feeds/index'
 import { Route as DashboardApkJournalFeedsFeedRouteImport } from './routes/_dashboard/_apk/journal/feeds/$feed'
 import { Route as DashboardApkJournalTakesIndexRouteImport } from './routes/_dashboard/_apk/journal/takes/index'
+import { Route as DashboardApkJournalTakesKindRouteImport } from './routes/_dashboard/_apk/journal/takes/$kind'
 import { Route as DashboardApkJournalTakesConveyorRouteImport } from './routes/_dashboard/_apk/journal/takes/conveyor'
 import { Route as DashboardApkJournalTakesKeptRouteImport } from './routes/_dashboard/_apk/journal/takes/kept'
 import { Route as DashboardApkJournalTemplatesIndexRouteImport } from './routes/_dashboard/_apk/journal/templates/index'
@@ -435,6 +436,12 @@ const DashboardApkJournalTakesIndexRoute =
     path: '/takes/',
     getParentRoute: () => DashboardApkJournalRoute,
   } as any)
+const DashboardApkJournalTakesKindRoute =
+  DashboardApkJournalTakesKindRouteImport.update({
+    id: '/takes/$kind',
+    path: '/takes/$kind',
+    getParentRoute: () => DashboardApkJournalRoute,
+  } as any)
 const DashboardApkJournalTakesConveyorRoute =
   DashboardApkJournalTakesConveyorRouteImport.update({
     id: '/takes/conveyor',
@@ -566,6 +573,7 @@ export interface FileRoutesByFullPath {
   '/journal/clips/$clip': typeof DashboardApkJournalClipsClipRoute
   '/journal/episodes/making': typeof DashboardApkJournalEpisodesMakingRoute
   '/journal/feeds/$feed': typeof DashboardApkJournalFeedsFeedRoute
+  '/journal/takes/$kind': typeof DashboardApkJournalTakesKindRoute
   '/journal/takes/conveyor': typeof DashboardApkJournalTakesConveyorRoute
   '/journal/takes/kept': typeof DashboardApkJournalTakesKeptRoute
   '/journal/templates/$template': typeof DashboardApkJournalTemplatesTemplateRoute
@@ -639,6 +647,7 @@ export interface FileRoutesByTo {
   '/journal/clips/$clip': typeof DashboardApkJournalClipsClipRoute
   '/journal/episodes/making': typeof DashboardApkJournalEpisodesMakingRoute
   '/journal/feeds/$feed': typeof DashboardApkJournalFeedsFeedRoute
+  '/journal/takes/$kind': typeof DashboardApkJournalTakesKindRoute
   '/journal/takes/conveyor': typeof DashboardApkJournalTakesConveyorRoute
   '/journal/takes/kept': typeof DashboardApkJournalTakesKeptRoute
   '/journal/templates/$template': typeof DashboardApkJournalTemplatesTemplateRoute
@@ -719,6 +728,7 @@ export interface FileRoutesById {
   '/_dashboard/_apk/journal/clips/$clip': typeof DashboardApkJournalClipsClipRoute
   '/_dashboard/_apk/journal/episodes/making': typeof DashboardApkJournalEpisodesMakingRoute
   '/_dashboard/_apk/journal/feeds/$feed': typeof DashboardApkJournalFeedsFeedRoute
+  '/_dashboard/_apk/journal/takes/$kind': typeof DashboardApkJournalTakesKindRoute
   '/_dashboard/_apk/journal/takes/conveyor': typeof DashboardApkJournalTakesConveyorRoute
   '/_dashboard/_apk/journal/takes/kept': typeof DashboardApkJournalTakesKeptRoute
   '/_dashboard/_apk/journal/templates/$template': typeof DashboardApkJournalTemplatesTemplateRoute
@@ -797,6 +807,7 @@ export interface FileRouteTypes {
     | '/journal/clips/$clip'
     | '/journal/episodes/making'
     | '/journal/feeds/$feed'
+    | '/journal/takes/$kind'
     | '/journal/takes/conveyor'
     | '/journal/takes/kept'
     | '/journal/templates/$template'
@@ -870,6 +881,7 @@ export interface FileRouteTypes {
     | '/journal/clips/$clip'
     | '/journal/episodes/making'
     | '/journal/feeds/$feed'
+    | '/journal/takes/$kind'
     | '/journal/takes/conveyor'
     | '/journal/takes/kept'
     | '/journal/templates/$template'
@@ -949,6 +961,7 @@ export interface FileRouteTypes {
     | '/_dashboard/_apk/journal/clips/$clip'
     | '/_dashboard/_apk/journal/episodes/making'
     | '/_dashboard/_apk/journal/feeds/$feed'
+    | '/_dashboard/_apk/journal/takes/$kind'
     | '/_dashboard/_apk/journal/takes/conveyor'
     | '/_dashboard/_apk/journal/takes/kept'
     | '/_dashboard/_apk/journal/templates/$template'
@@ -1441,6 +1454,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardApkJournalTakesIndexRouteImport
       parentRoute: typeof DashboardApkJournalRoute
     }
+    '/_dashboard/_apk/journal/takes/$kind': {
+      id: '/_dashboard/_apk/journal/takes/$kind'
+      path: '/takes/$kind'
+      fullPath: '/journal/takes/$kind'
+      preLoaderRoute: typeof DashboardApkJournalTakesKindRouteImport
+      parentRoute: typeof DashboardApkJournalRoute
+    }
     '/_dashboard/_apk/journal/takes/conveyor': {
       id: '/_dashboard/_apk/journal/takes/conveyor'
       path: '/takes/conveyor'
@@ -1577,6 +1597,7 @@ interface DashboardApkJournalRouteChildren {
   DashboardApkJournalClipsClipRoute: typeof DashboardApkJournalClipsClipRoute
   DashboardApkJournalEpisodesMakingRoute: typeof DashboardApkJournalEpisodesMakingRoute
   DashboardApkJournalFeedsFeedRoute: typeof DashboardApkJournalFeedsFeedRoute
+  DashboardApkJournalTakesKindRoute: typeof DashboardApkJournalTakesKindRoute
   DashboardApkJournalTakesConveyorRoute: typeof DashboardApkJournalTakesConveyorRoute
   DashboardApkJournalTakesKeptRoute: typeof DashboardApkJournalTakesKeptRoute
   DashboardApkJournalTemplatesTemplateRoute: typeof DashboardApkJournalTemplatesTemplateRoute
@@ -1603,6 +1624,7 @@ const DashboardApkJournalRouteChildren: DashboardApkJournalRouteChildren = {
   DashboardApkJournalEpisodesMakingRoute:
     DashboardApkJournalEpisodesMakingRoute,
   DashboardApkJournalFeedsFeedRoute: DashboardApkJournalFeedsFeedRoute,
+  DashboardApkJournalTakesKindRoute: DashboardApkJournalTakesKindRoute,
   DashboardApkJournalTakesConveyorRoute: DashboardApkJournalTakesConveyorRoute,
   DashboardApkJournalTakesKeptRoute: DashboardApkJournalTakesKeptRoute,
   DashboardApkJournalTemplatesTemplateRoute:

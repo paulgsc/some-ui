@@ -12,7 +12,6 @@ import {
   reachedHome,
   SEARCH_MAX,
   stepLibrary,
-  takeFor,
 } from "@soundbites/lib/library/model"
 import { describe, expect, it } from "vitest"
 
@@ -231,12 +230,6 @@ describe("Takes on home (ST32)", () => {
     )
     expect(left.state.unplayable).toBeNull()
     expect(left.effects).toEqual([{ type: "stopPlayback" }])
-  })
-
-  it("names what a take is for by the ref it went home with", () => {
-    expect(takeFor("week-8:intro:1")).toBe("scene")
-    expect(takeFor("idea:i1:what")).toBe("idea")
-    expect(takeFor("something else")).toBe("other")
   })
 
   describe("the phone's own takes with no scene", () => {
