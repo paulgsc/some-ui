@@ -1,34 +1,35 @@
 /**
- * What a status dot's colour means on the phone (the owner, 2026-11-15: "dot
- * color should mean the same thing on every screen"; #3030, #3029): one
- * table, keyed by meaning, that every phone screen drawing a status dot reads,
- * so a colour never stands for two things. Each is a fixed hue, not a theme
- * token: the themes put different hues in the same chart slot (Mochi's sky is
- * its fourth, Mochi Night's its second), and a dot's meaning can't follow
- * the theme. Words always go with a dot, so nothing is read from colour alone.
- * Its test holds that no two meanings share a hue. A screen with a meaning of
- * its own adds it here, in a hue no other meaning has. Here in the shared
- * package so the screens of every phone workspace (Episodes in www, Takes in
- * soundbites) read the same one.
+ * What a dot's colour means, on every screen of the phone (owner,
+ * 2026-11-15, epics #3030 and #3029: "dot color should mean the same thing on
+ * every screen"). A screen names the meaning; this table picks the hue, so no
+ * two screens can give one hue two meanings, and its test refuses a hue used
+ * twice. Each is a fixed hue, not a theme token: the themes put different
+ * hues in the same chart slot (Mochi's sky is its fourth, Mochi Night's its
+ * second), and a dot's meaning can't follow the theme (C411). The words
+ * beside each dot still say what it means.
+ *
+ * Episodes (EPISODES2) says these three; Takes (#3029) adds its own, each in
+ * a hue no other meaning has.
  */
 
-type Dot = {
-  /** The hue's name, as the owner and the prototypes say it. */
-  readonly hue: string
-  /** The dot's fill. */
-  readonly className: string
-}
-
-export const DOTS = {
-  /** Kept on home, and not out in the world yet (on YouTube, say). */
-  onHome: { hue: "sky", className: "bg-sky-500" },
+/** Each thing a dot can say. */
+export const DOT_MEANINGS = [
+  /** Home has it, and it isn't out in the world yet. */
+  "home",
   /** Out in the world: an episode on YouTube. */
-  // A dot's meaning is the same in every theme (C411), so its hue is fixed,
-  // not the theme's success token, which each theme paints its own way.
-  // eslint-disable-next-line theme-protocol/no-fixed-status-color -- C411: one hue per meaning in every theme
-  out: { hue: "leaf", className: "bg-emerald-500" },
+  "out",
   /** Still being made. */
-  making: { hue: "grey", className: "bg-muted-foreground" },
-} as const satisfies Record<string, Dot>
+  "making",
+] as const
 
-export type DotMeaning = keyof typeof DOTS
+export type DotMeaning = (typeof DOT_MEANINGS)[number]
+
+/** The fixed hue each meaning takes, by its name beside it. */
+const HUE = {
+  home: "bg-sky-500", // sky
+  out: "bg-emerald-500", // leaf
+  making: "bg-muted-foreground", // grey
+} as const satisfies Record<DotMeaning, string>
+
+/** The class that colours a dot saying `meaning`. */
+export const dotClass = (meaning: DotMeaning): string => HUE[meaning]

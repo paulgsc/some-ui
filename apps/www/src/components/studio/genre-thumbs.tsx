@@ -3,7 +3,7 @@
  * let's just have some stock svg in lieu of thumbail images for each
  * 'category' of video"), drawn in EPISODES1's prototype: one hue and one
  * shape per feed, so they stay apart at a row's size and for colour-blind
- * eyes. No genre takes sky or leaf, which a status dot means (`DOTS`,
+ * eyes. No genre takes sky or leaf, which a status dot means (`dotClass`,
  * C410). A drawing per episode, rendered by home, replaces these (EPISODES3).
  * Fixed art, the same in every theme, as a video's thumbnail is.
  */

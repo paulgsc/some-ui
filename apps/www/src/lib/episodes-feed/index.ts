@@ -141,7 +141,7 @@ export function partStatus(episode: Episode): DotMeaning {
       return "out"
     }
     case "kept": {
-      return episode.link === null ? "onHome" : "out"
+      return episode.link === null ? "home" : "out"
     }
     default: {
       return assertNever(stands)
@@ -156,7 +156,7 @@ export function partStatus(episode: Episode): DotMeaning {
 export function rowStatus(row: Row): DotMeaning {
   const each = row.parts.map(partStatus)
   if (each.includes("making")) return "making"
-  if (each.includes("onHome")) return "onHome"
+  if (each.includes("home")) return "home"
   return "out"
 }
 

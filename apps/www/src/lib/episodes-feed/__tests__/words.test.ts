@@ -36,7 +36,7 @@ describe("EPISODES_FEED_WORDS", () => {
       WORDS.parts(2, 2),
       WORDS.partsBadge(3),
       WORDS.part(2),
-      WORDS.partLabel(2, WORDS.status.onHome),
+      WORDS.partLabel(2, WORDS.status.home),
       WORDS.length(754_000),
     ]
     for (const line of said) expect(line).not.toMatch(MACHINERY)

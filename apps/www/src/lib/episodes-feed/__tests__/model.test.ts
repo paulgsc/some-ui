@@ -96,7 +96,7 @@ describe("rowsOf", () => {
 describe("a row's dot and length", () => {
   it("says being made, on home, or on YouTube", () => {
     expect(partStatus(episode("a", { videoBytes: null }))).toBe("making")
-    expect(partStatus(episode("a"))).toBe("onHome")
+    expect(partStatus(episode("a"))).toBe("home")
     const link = { url: "https://youtu.be/x", recordedAt: "2026-11-06" }
     expect(partStatus(episode("a", { link }))).toBe("out")
     const receipt = {
@@ -113,7 +113,7 @@ describe("a row's dot and length", () => {
     const link = { url: "https://youtu.be/x", recordedAt: "2026-11-06" }
     const row = (...parts: Array<Episode>): Row => rowsOf("call", parts)[0]
     const up = episode("w", { week: "w", link })
-    expect(rowStatus(row(up, episode("w-p2", { week: "w" })))).toBe("onHome")
+    expect(rowStatus(row(up, episode("w-p2", { week: "w" })))).toBe("home")
     expect(rowStatus(row(up, episode("w-p2", { week: "w", link })))).toBe("out")
     expect(
       rowStatus(row(up, episode("w-p2", { week: "w", videoBytes: null })))

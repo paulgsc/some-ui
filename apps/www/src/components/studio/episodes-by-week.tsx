@@ -3,7 +3,7 @@
  * feed's episodes in one feed, the newest week first, under a bar of genre
  * chips with counts, each a link that filters it. Each episode is a compact
  * row with its genre's stock thumbnail (`GenreThumb`), its status dot
- * (`DOTS`, one meaning on every screen), and a week's parts inline, each
+ * (`dotClass`, one meaning on every screen), and a week's parts inline, each
  * opening its own page. What it shows is `lib/episodes-feed`'s `feedView`;
  * every word is `EPISODES_FEED_WORDS`. The chip bar scrolls sideways on its
  * own and carries no touch code. Phone build only.
@@ -11,7 +11,7 @@
 import type { JSX, ReactNode } from "react"
 import { useEffect, useSyncExternalStore } from "react"
 import { cn, dayOf, weekOf } from "@some-ui/core-utils"
-import { Button, DOTS } from "@some-ui/shared"
+import { Button, dotClass } from "@some-ui/shared"
 import type { DotMeaning } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 
@@ -39,7 +39,7 @@ const Dot = ({ meaning }: { meaning: DotMeaning }): JSX.Element => (
     aria-hidden
     className={cn(
       "inline-block size-1.5 shrink-0 rounded-full",
-      DOTS[meaning].className
+      dotClass(meaning)
     )}
   />
 )

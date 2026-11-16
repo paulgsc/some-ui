@@ -47,7 +47,7 @@ export const EPISODES_FEED_WORDS = {
     "Home doesn't say which week these belong to, so they're listed here, newest first.",
   /** A row's dot, in words beside it. */
   status: {
-    onHome: "On home",
+    home: "On home",
     out: "On YouTube",
     making: "Being made",
   } satisfies Record<DotMeaning, string>,
