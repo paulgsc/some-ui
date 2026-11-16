@@ -12,7 +12,7 @@ import type { RustcRun } from "@rust-rounds/lib/formats"
 import type { Prepared } from "@rust-rounds/lib/monday/bundle"
 import { prepare } from "@rust-rounds/lib/monday/bundle"
 import { finish } from "@rust-rounds/lib/monday/finish"
-import { noteOfTranscript, notesNamed } from "@rust-rounds/lib/monday/mailbox"
+import { notesNamed } from "@rust-rounds/lib/monday/mailbox"
 import { indexWeeks, WeekRecordSchema } from "@rust-rounds/lib/monday/record"
 import type { Ran } from "@rust-rounds/lib/monday/rustc"
 import {
@@ -34,6 +34,7 @@ import {
   readJson,
   Refused,
   runCommand,
+  transcriptName,
 } from "@some-ui/video-render/node"
 import { z } from "zod"
 
@@ -82,7 +83,7 @@ async function pull(dir: string): Promise<void> {
   const wanted = notesNamed(records)
   let heard = 0
   for (const item of await list(mailbox, "transcript")) {
-    const note = noteOfTranscript(item.name)
+    const note = transcriptName(item.name)?.note ?? null
     if (note === null || !wanted.has(note)) continue
     await writeFile(
       join(dir, "transcript", item.name),

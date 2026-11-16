@@ -527,6 +527,42 @@ describe("a week of mock interview rides brief (MB2, IW4)", () => {
   })
 })
 
+describe("an interview essay's script rides brief (MB2, IW6)", () => {
+  const essay = (week: string): string =>
+    JSON.stringify({
+      schema: "some-ui.interview-essay/1",
+      week: { id: week, from: "2026-11-16", to: "2026-11-22" },
+      questions: [],
+    })
+  const ESSAY = essay("2026-w47")
+  const NAME = "interview-essay-2026-w47.json"
+
+  it("the routine puts one in brief, a correction as -r2, and home reads it", async () => {
+    const d = deps()
+    for (const name of [NAME, "interview-essay-2026-w47-r2.json"])
+      expect((await put(d, "brief", name, { body: ESSAY })).status).toBe(201)
+    const read = await send(d, "GET", `/v1/brief/items/${NAME}`, {
+      token: HOME,
+    })
+    expect(await read.text()).toBe(ESSAY)
+    expect(
+      (await put(d, "brief", NAME, { body: ESSAY, token: HOME })).status
+    ).toBe(403)
+  })
+
+  it("refuses a name not its week's, and a week that is no week", async () => {
+    const d = deps()
+    expect(
+      await json(
+        await put(d, "brief", "interview-essay-2026-w48.json", { body: ESSAY })
+      )
+    ).toEqual({ error: "the name must carry the week's id" })
+    expect(
+      await json(await put(d, "brief", NAME, { body: essay("week-47") }))
+    ).toEqual({ error: "week.id must be the week's, like 2026-w46" })
+  })
+})
+
 describe("a Rust Rounds essay's script rides brief (MB2, RR16)", () => {
   const essay = (week: string): string =>
     JSON.stringify({

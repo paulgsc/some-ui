@@ -3,7 +3,6 @@
  * the mailbox: which transcripts its records name. The reads and puts are
  * `@some-ui/video-render/node`'s, which the interview week's routine shares.
  */
-import { TRANSCRIPT_NAME } from "@rust-rounds/lib/monday/record"
 
 /** The take and paste notes home's records name, whose transcripts the essay needs. */
 export function notesNamed(
@@ -20,9 +19,4 @@ export function notesNamed(
       if (paste.note !== null) notes.add(paste.note)
   }
   return notes
-}
-
-/** The note a transcript's name carries: `transcript-<note>-<n>.json`. */
-export function noteOfTranscript(name: string): string | null {
-  return TRANSCRIPT_NAME.exec(name)?.[1] ?? null
 }

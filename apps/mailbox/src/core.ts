@@ -1005,23 +1005,27 @@ function interviewWeekRefusal(
 }
 
 /**
- * A Rust Rounds essay's script, named for the week it answers, and `-r2` on
- * for a correction (`some-ui.rust-essay/1`'s `week.id`, `EssaySchema` in
- * `@some-ui/video-render`).
+ * An essay's script, named `<kind>-<week>.json` for the week it answers, and
+ * `-r2` on for a correction: a Rust Rounds essay's (`rust-essay`,
+ * `some-ui.rust-essay/1`) or an interview essay's (`interview-essay`,
+ * `some-ui.interview-essay/1`, IW6), each by its `week.id` (`EssaySchema` and
+ * `InterviewEssaySchema` in `@some-ui/video-render`).
  */
-function rustEssayRefusal(
-  body: Readonly<Record<string, unknown>>,
-  _text: string,
-  name: string
-): string | null {
-  const week = isRecord(body.week) ? body.week.id : undefined
-  if (typeof week !== "string" || !WEEK_ID.test(week)) {
-    return "week.id must be the week's, like 2026-w46"
+const essayRefusal =
+  (kind: string) =>
+  (
+    body: Readonly<Record<string, unknown>>,
+    _text: string,
+    name: string
+  ): string | null => {
+    const week = isRecord(body.week) ? body.week.id : undefined
+    if (typeof week !== "string" || !WEEK_ID.test(week)) {
+      return "week.id must be the week's, like 2026-w46"
+    }
+    return name.replace(/(-r\d+)?\.json$/, "") === `${kind}-${week}`
+      ? null
+      : "the name must carry the week's id"
   }
-  return name.replace(/(-r\d+)?\.json$/, "") === `rust-essay-${week}`
-    ? null
-    : "the name must carry the week's id"
-}
 
 /** `WEEK_ID` in `packages/ui/rust-rounds/src/lib/formats/week.ts`, which this Worker cannot import. */
 const WEEK_ID = /^\d{4}-w(?:0[1-9]|[1-4]\d|5[0-3])$/
@@ -1159,7 +1163,15 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
         folder: "brief",
         name: /^rust-essay-\d{4}-w\d{2}(-r(?:[2-9]|[1-9]\d+))?\.json$/,
         schema: "some-ui.rust-essay/1",
-        refuses: rustEssayRefusal,
+        refuses: essayRefusal("rust-essay"),
+      },
+      // The script of the interview essay that answers a week, for home to
+      // keep and render, as the Rust essay's (IW6, paulgsc/some-ui#2937).
+      {
+        folder: "brief",
+        name: /^interview-essay-\d{4}-w\d{2}(-r(?:[2-9]|[1-9]\d+))?\.json$/,
+        schema: "some-ui.interview-essay/1",
+        refuses: essayRefusal("interview-essay"),
       },
     ],
   },
