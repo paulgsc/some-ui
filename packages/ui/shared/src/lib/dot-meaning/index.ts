@@ -7,8 +7,7 @@
  * still say what it means.
  *
  * Episodes (EPISODES2) says the first three; Takes (#3029) adds on this phone
- * (C425). Each meaning takes a token no other meaning has; TAKES4 adds the
- * filed issue's states the same way.
+ * (C425). Each meaning takes a token no other meaning has.
  */
 
 /** Each thing a dot can say. */

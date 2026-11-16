@@ -12,6 +12,7 @@
  *   shows exactly as many takes as it said.
  */
 
+import { parseAskId } from "@some-ui/video-render"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 
 /** What a take was said for, in the order Takes shows the kinds. */
@@ -82,11 +83,10 @@ export function aboutOfRef(ref: string): TakeAbout {
     }
   }
   if (ref.startsWith("ask:")) {
-    const number = /-([1-9]\d*)$/.exec(ref)?.[1]
     return {
       kind: "ask",
       ask: null,
-      number: number === undefined ? null : Number(number),
+      number: parseAskId(ref.slice("ask:".length))?.number ?? null,
     }
   }
   if (ref.split(":").length === 3) {

@@ -135,16 +135,15 @@ export function createTakeConveyor(ports: TakeConveyorPorts): TakeConveyor {
   }
 }
 
+export const STATION_NAMES: ReadonlyArray<string> = TAKE_STATIONS.map(
+  (station) => TAKE_CONVEYOR_WORDS.stations[station]
+)
+
 /**
  * Takes on home's word for where each take stands (`LibraryStations`): home's
  * station, read only when it is one this phone knows, and any later move of
  * the phone's, in the conveyor's words.
  */
-/** Every station's name, in the order a take moves along them. */
-export const STATION_NAMES: ReadonlyArray<string> = TAKE_STATIONS.map(
-  (station) => TAKE_CONVEYOR_WORDS.stations[station]
-)
-
 export const libraryStationsOf = (conveyor: TakeConveyor): LibraryStations => ({
   subscribe: conveyor.subscribe,
   getSnapshot: conveyor.getSnapshot,

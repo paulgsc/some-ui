@@ -180,14 +180,6 @@ describe("createTakeConveyor", () => {
       setAsideAt: null,
       heard: null,
     }
-    // Five stations, In the oven first, as a take moves along them.
-    expect(stations.names).toEqual([
-      "In the oven",
-      "Cooking",
-      "Ready for pickup",
-      "Picked up",
-      "Canned",
-    ])
     expect(stations.station({ ...take, station: "cooking" })).toEqual({
       name: "Cooking",
       canned: false,

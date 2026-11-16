@@ -19,7 +19,7 @@
 import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
-import { Button, dotClass, Input, Notice, TakeList } from "@some-ui/shared"
+import { Button, Dot, Input, Notice, TakeList } from "@some-ui/shared"
 import type { PatternTake } from "@some-ui/voice-capture"
 import { Unpaired } from "@soundbites/components/unpaired"
 import type {
@@ -96,7 +96,7 @@ export type TakeLibraryProps = {
 
 /**
  * Each kind's mark: its shape alone. A hue on a take means where it is
- * (`dotClass`), so a kind takes none.
+ * (`Dot`), so a kind takes none.
  */
 const MARKS: Readonly<Record<TakeKind, LucideIcon>> = {
   note: MonitorPlay,
@@ -154,25 +154,16 @@ function heardOf(take: LibraryTake): { text: string; said: boolean } {
     : { text, said: true }
 }
 
-/** A pill saying where a take is, its dot coloured by the meaning. */
-const PlacePill = ({
-  place,
+/** A pill on a card: where a take is (with its dot), or its station. */
+const Pill = ({
+  dot,
   children,
 }: {
-  place: TakePlace
+  dot?: TakePlace | undefined
   children: ReactNode
 }): JSX.Element => (
   <span className="border-border bg-background inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs">
-    <span
-      aria-hidden="true"
-      className={cn("size-1.5 rounded-full", dotClass(place))}
-    />
-    {children}
-  </span>
-)
-
-const Pill = ({ children }: { children: ReactNode }): JSX.Element => (
-  <span className="border-border bg-background inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs">
+    {dot !== undefined && <Dot meaning={dot} />}
     {children}
   </span>
 )
@@ -269,9 +260,7 @@ const HomeCard = ({
           </p>
           {/* Where it stands. TAKES4's "Filed as #n" joins these pills. */}
           <div className="mt-1 flex flex-wrap gap-1.5">
-            <PlacePill place="home">
-              {WORDS.onHomeSince(take.storedAt)}
-            </PlacePill>
+            <Pill dot="home">{WORDS.onHomeSince(take.storedAt)}</Pill>
             {standing !== null && <Pill>{standing}</Pill>}
             {/* A take on the conveyor says Canned there; set aside is said
                 only of one on none (C423). */}
@@ -308,7 +297,7 @@ const PhoneCard = ({
   <li className="bg-card border-border/50 flex flex-col gap-1 rounded-2xl border p-3">
     <AboutTake about={about} recordedAt={take.recordedAt} />
     <div className="mt-1 flex flex-wrap gap-1.5">
-      <PlacePill place="phone">{WORDS.place.phone}</PlacePill>
+      <Pill dot="phone">{WORDS.place.phone}</Pill>
     </div>
   </li>
 )
@@ -563,12 +552,7 @@ const Chip = ({
       picked ? "bg-foreground text-background" : "bg-card"
     )}
   >
-    {dot !== null && (
-      <span
-        aria-hidden="true"
-        className={cn("size-2 rounded-full", dotClass(dot))}
-      />
-    )}
+    {dot !== null && <Dot meaning={dot} className="size-2" />}
     {children}
     <span className="tabular-nums opacity-75">{count}</span>
   </button>
@@ -589,7 +573,9 @@ const ChipBar = ({
   chips: Chips
   onChips: (chips: Chips) => void
 }): JSX.Element | null => {
-  if (places.length + stations.length === 0) return null
+  // A lone chip, not picked, would filter nothing (the conveyor's page).
+  const picked = chips.place !== null || chips.station !== null
+  if (places.length + stations.length < 2 && !picked) return null
   return (
     <nav
       aria-label={WORDS.chips}
@@ -715,7 +701,6 @@ export const TakeLibrary = ({
   const shows = (each: Sorted): boolean =>
     inCompartment(each, compartment) && underChips(each, chips)
   const phoneShown = phoneRows.filter(shows)
-  const phoneIds = new Set(phoneShown.map(({ take }) => take.id))
   const recorder =
     phone !== undefined &&
     records(compartment) &&
@@ -731,7 +716,13 @@ export const TakeLibrary = ({
         onChips={setChips}
       />
       {recorder && (
-        <PhoneTakes phone={phone} shows={(take) => phoneIds.has(take.id)} />
+        <PhoneTakes
+          phone={phone}
+          shows={(take) => inCompartment(aboutOf(take.id, null), compartment)}
+        />
+      )}
+      {!recorder && phoneShown.length === 0 && chips.place === "phone" && (
+        <p className="text-muted-foreground text-sm">{WORDS.noneUnder}</p>
       )}
       {!recorder && phoneShown.length > 0 && (
         <ul className="flex flex-col gap-2">

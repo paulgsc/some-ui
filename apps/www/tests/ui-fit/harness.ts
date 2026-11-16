@@ -515,6 +515,40 @@ export const happens = (action: string, does: string, arg?: unknown): Tap => ({
 })
 
 /**
+ * Each of `fixtures` on the phone page at each of `PHONE_VIEWPORTS`, one
+ * test apiece: it loads without an error, shows a paragraph, and fits the
+ * phone (`expectFitsPhone`).
+ */
+export function fitsEachPhone(
+  title: string,
+  fixtures: ReadonlyArray<string>
+): void {
+  test.describe(title, () => {
+    const PAGE = servePhonePage()
+    PAGE.skipUnbuilt()
+    for (const phone of PHONE_VIEWPORTS) {
+      for (const fixture of fixtures) {
+        test(`${fixture} at ${phone.name} (${phone.width}x${phone.height})`, async ({
+          page,
+        }) => {
+          PAGE.expectBuilt()
+          await page.setViewportSize({
+            width: phone.width,
+            height: phone.height,
+          })
+          const errors: Array<string> = []
+          page.on("pageerror", (error) => errors.push(error.message))
+          await page.goto(PAGE.url(fixture), { waitUntil: "load" })
+          await expect(page.locator("[data-fit-slot] p").first()).toBeVisible()
+          expect(errors, errors.join("\n")).toEqual([])
+          await expectFitsPhone(page, fixture)
+        })
+      }
+    }
+  })
+}
+
+/**
  * HS1's walks over the phone page, one test per phone of `PHONE_VIEWPORTS`:
  * each walk on its fixture, opened afresh, every tap measured
  * (`holdStill`). `also` adds tests on the same page.

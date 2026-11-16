@@ -1,10 +1,11 @@
 /**
  * What each of Studio's takes was said for (TAKES2, #3068), as Takes reads
  * it (`@some-ui/soundbites`' `LibraryAbout`): `./model`'s join over the
- * stores the phone keeps. The notes and ideas are read as they are; the
- * videos (this phone's store) and the open asks (GitHub's public list, as
- * Studio's Asks reads it) once, on the first screen that asks, and each
- * screen is told when they land. A read that fails leaves the take saying
+ * stores the phone keeps. The notes are read as they are, the ideas each
+ * time a screen opens (their store tells of no change), and the videos
+ * (this phone's store) and the open asks (GitHub's public list, as Studio's
+ * Asks reads it) once, on the first screen that asks; each screen is told
+ * when they land. A read that fails leaves the take saying
  * what its ref says. Phone-only (`build.paths.ts`).
  */
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
@@ -43,11 +44,11 @@ function ideasKept(): ReadonlyMap<string, KnownIdea> {
   )
 }
 
-/** Reads what isn't read as it is: once a page load. */
+/** Reads the ideas, and the videos and asks once a page load. */
 function start(): void {
+  told({ ideas: ideasKept() })
   if (started) return
   started = true
-  told({ ideas: ideasKept() })
   phoneProjectStore()
     .list()
     .then((projects) => {
@@ -90,7 +91,6 @@ const port: LibraryAbout = {
   },
   getSnapshot() {
     const notes = episodeFeedback.getSnapshot()
-    // The same pair while neither changed, as a snapshot must be.
     if (snapshot?.[0] !== read || snapshot[1] !== notes) {
       snapshot = [read, notes]
     }

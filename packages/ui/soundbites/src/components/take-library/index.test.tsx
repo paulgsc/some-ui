@@ -141,6 +141,51 @@ describe("Takes on home (ST32)", () => {
     expect(screen.getByText("sorting t2")).toBeTruthy()
   })
 
+  it("keeps a take playing here on its row, with its Stop, when it reaches home meanwhile", async () => {
+    const reached: PatternTake = {
+      id: "there",
+      answers: "library",
+      durationMs: 4000,
+      recordedAt: "2026-11-05T09:00:00.000Z",
+      standing: "current",
+      kept: { place: "home", since: null },
+    }
+    const sim = simulatedPattern({
+      options: {
+        ...ONE_TAKE,
+        takes: { per: "many", max: 40, full: "make-room" },
+      },
+      seed: [reached],
+    })
+    const playing = {
+      ...sim.pattern.getSnapshot(),
+      playback: { kind: "playing", id: "there" } as const,
+    }
+    const snapshot = { takes: [reached], full: false }
+    render(
+      <TakeLibrary
+        ports={{
+          home: home(),
+          player: quietPlayer,
+          phone: {
+            pattern: { ...sim.pattern, getSnapshot: () => playing },
+            line: "library",
+            getSnapshot: () => snapshot,
+            subscribe: (): (() => void) => () => undefined,
+          },
+        }}
+        pair={null}
+        compartment="here"
+      />
+    )
+    await settle()
+    expect(
+      screen.getByRole("button", {
+        name: TAKE_WORDS.rowLabel(TAKE_WORDS.stop, 4000),
+      })
+    ).toBeTruthy()
+  })
+
   describe("in compartments (TAKES2, TAKES3)", () => {
     const NOTE_TAKE: LibraryTake = {
       ...TAKE,
