@@ -195,16 +195,19 @@ describe("a week split into parts (#3032)", () => {
     // A small fixed generator, so every run tries the same timings.
     let seed = 7
     const next = (most: number): number => {
-      seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648
+      // Park and Miller's: each product stays under 2^47, exact in a double.
+      seed = (seed * 48_271) % 2_147_483_647
       return seed % most
     }
     const seen = new Set<boolean>()
+    const counts = new Set<number>()
     for (let run = 0; run < 2_000; run += 1) {
       const times = [at("intro", 0, 1_000 + next(30_000))]
       let startMs = times[0]?.durationMs ?? 0
       times.push(at("chapter-done", startMs, 3_000))
       startMs += 3_000
       const items = 1 + next(4)
+      counts.add(items)
       for (let i = 1; i <= items; i += 1) {
         const durationMs = 500 + next(40_000)
         times.push(at(`done-${String(i)}`, startMs, durationMs))
@@ -222,6 +225,8 @@ describe("a week split into parts (#3032)", () => {
     }
     // Both kinds of part were tried: some with chapters, some that can't.
     expect([...seen].sort()).toEqual([false, true])
+    // And parts of one to four items.
+    expect([...counts].sort()).toEqual([1, 2, 3, 4])
   })
 
   it("leave a part of one item with none, the Tolerance", () => {
