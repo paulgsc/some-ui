@@ -168,16 +168,24 @@ export const FEED_WORDS = {
   },
 } as const satisfies Record<Feed, FeedWords>
 
+/** A part of a series, after what it is a part of: "part 2 of 3". */
+const partOf = (part: number, of: number): string =>
+  `part ${String(part)} of ${String(of)}`
+
 /**
  * An episode as its lists and page name it: the title home gives it, where
- * its feed has one (a cards essay's), else its feed's `label`.
+ * its feed has one (a cards essay's), else its feed's `label` of what it is
+ * a part of, with which part once its week is a series (the call's, #2918).
  */
 export function episodeName(
   feed: Feed,
-  episode: Pick<Episode, "key" | "title">
+  episode: Pick<Episode, "key" | "title" | "week" | "part" | "of">
 ): string {
   const title = episode.title?.trim() ?? ""
-  return title === "" ? FEED_WORDS[feed].label(episode.key) : title
+  if (title !== "") return title
+  const label = FEED_WORDS[feed].label(episode.week ?? episode.key)
+  const { part = 1, of = 1 } = episode
+  return of > 1 ? `${label}, ${partOf(part, of)}` : label
 }
 
 export const VIDEOS_WORDS = {

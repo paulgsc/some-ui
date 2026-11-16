@@ -38,6 +38,23 @@ const EpisodeSchema = z.object({
    * essay with none, and absent from a home that came before it.
    */
   title: z.string().nullish(),
+  /**
+   * What it is a part of (paulgsc/some-ui#2918): the call's week by its first
+   * day, so a week's parts are shown together; every other feed's episode is
+   * its own. Absent from a home that came before parts.
+   */
+  week: z.string().min(1).optional(),
+  /** Which part, from 1, of how many (`of`): 1 of 1 for an episode of one. */
+  part: z.number().int().positive().optional(),
+  of: z.number().int().positive().optional(),
+  /**
+   * The day home made it (`YYYY-MM-DD`), where home says (paulgsc/server#906);
+   * the episodes page groups by it before what the key gives, and ignores one
+   * that isn't a day rather than the whole list.
+   */
+  date: z.string().nullish(),
+  /** How long its video runs, in milliseconds, where home says (#906). */
+  durationMs: z.number().int().nonnegative().nullish(),
 })
 
 const EpisodesSchema = z.object({ episodes: z.array(EpisodeSchema) })

@@ -1,9 +1,9 @@
 /**
  * @vitest-environment jsdom
  *
- * Studio's Episodes lists a cards essay as its feed's episode and plays a
- * done one from home, named by the title home gives it, with its YouTube link
- * to save as every feed's episode takes one (#2999).
+ * Studio's Episodes plays a done cards essay from home, named by the title
+ * home gives it, with its YouTube link to save as every feed's episode takes
+ * one (#2999).
  */
 
 import type { ReactNode } from "react"
@@ -72,9 +72,7 @@ vi.mock("@/lib/call-videos", async (importOriginal) => {
   }
 })
 
-const { EpisodeScreen, FeedEpisodeLinks } = await import(
-  "@/components/call-videos"
-)
+const { EpisodeScreen } = await import("@/components/call-videos")
 
 const episode = (over: Partial<Episode>): Episode => ({
   key: "zfs-2026-11-02",
@@ -109,20 +107,6 @@ afterEach(() => {
 })
 
 describe("a cards essay in Studio's Episodes", () => {
-  it("lists each essay by its title, else its subject and day, as its own page", () => {
-    read("cards-essay", [
-      episode({ title: "How ZFS snapshots" }),
-      episode({ key: "nix-2026-11-01", title: null, videoBytes: null }),
-    ])
-    draw(<FeedEpisodeLinks feed="cards-essay" pair={<span />} />)
-    expect(
-      screen.getByRole("link", { name: "How ZFS snapshots" })
-    ).toHaveProperty("pathname", "/cards-essay/zfs-2026-11-02")
-    expect(
-      screen.getByRole("link", { name: "Nix, as of Sunday, November 1" })
-    ).toHaveProperty("pathname", "/cards-essay/nix-2026-11-01")
-  })
-
   it("brings a done essay from home to watch, with its link to save", () => {
     read("cards-essay", [episode({ title: "How ZFS snapshots" })])
     draw(

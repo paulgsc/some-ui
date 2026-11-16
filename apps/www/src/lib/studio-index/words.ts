@@ -263,7 +263,8 @@ export const STUDIO_INDEX_WORDS = {
   },
 
   episodes: {
-    intro: "Every video your feeds made, by feed, the newest first.",
+    intro:
+      "Every video your feeds made, by week, the newest first. Choose a genre to see only its videos.",
     making: "Videos you're making",
     makingLine:
       "Made in sittings from your takes: record, watch, shape, finish.",

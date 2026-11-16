@@ -109,6 +109,20 @@ describe("VIDEOS_WORDS and FEED_WORDS", () => {
     )
   })
 
+  it("names a part of the call's week by its week and which part, never its key", () => {
+    const week = { title: null, week: "2026-11-06", of: 3 }
+    expect(episodeName("call", { ...week, key: "2026-11-06", part: 1 })).toBe(
+      "2026-11-06 to 2026-11-12, part 1 of 3"
+    )
+    expect(
+      episodeName("call", { ...week, key: "2026-11-06-p2", part: 2 })
+    ).toBe("2026-11-06 to 2026-11-12, part 2 of 3")
+    // A week of one video is named as before.
+    expect(
+      episodeName("call", { ...week, key: "2026-11-06", part: 1, of: 1 })
+    ).toBe("2026-11-06 to 2026-11-12")
+  })
+
   it("names an episode whose key it can't read by a plain word, never the key", () => {
     expect(FEED_WORDS.call.label("week-44")).toBe("This week")
     expect(FEED_WORDS.call.shareTitle("week-44")).toBe("The weekly call")

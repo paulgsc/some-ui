@@ -18,7 +18,13 @@ import { shareUris } from "@/lib/share-files"
 
 import { DIR, videoFiles } from "./files"
 import type { ChaptersRead, Feed, ListState } from "./model"
-import { readChapters, readEpisodes, readLinkSaved, readPart } from "./model"
+import {
+  FEEDS,
+  readChapters,
+  readEpisodes,
+  readLinkSaved,
+  readPart,
+} from "./model"
 import { PART_BYTES } from "./parts"
 import type { FeedVideos } from "./runtime"
 import { createFeedVideos } from "./runtime"
@@ -111,3 +117,42 @@ export async function episodeChapters(
     ? readChapters(asked.answer)
     : { kind: "none" }
 }
+
+/** Every feed's list, as one snapshot (`lib/episodes-feed`'s `FeedLists`). */
+export type EveryFeedList = Readonly<Record<Feed, ListState>>
+
+let lastLists: EveryFeedList | null = null
+
+/**
+ * Every feed's list at once, for Studio's Episodes (EPISODES2): the same
+ * snapshot while no feed's list has moved, so a screen re-renders only when
+ * one does.
+ */
+function everyList(): EveryFeedList {
+  const list = (feed: Feed): ListState => feedVideos(feed).getSnapshot().list
+  const now: EveryFeedList = {
+    call: list("call"),
+    "cards-essay": list("cards-essay"),
+    "playoff-delta": list("playoff-delta"),
+    "rust-essay": list("rust-essay"),
+  }
+  if (
+    lastLists !== null &&
+    FEEDS.every((feed) => lastLists?.[feed] === now[feed])
+  ) {
+    return lastLists
+  }
+  lastLists = now
+  return now
+}
+
+/** Every feed's videos, read and watched together. */
+export const everyFeed = {
+  subscribe(listener: () => void): () => void {
+    const stops = FEEDS.map((feed) => feedVideos(feed).subscribe(listener))
+    return () => {
+      for (const stop of stops) stop()
+    }
+  },
+  getSnapshot: everyList,
+} as const

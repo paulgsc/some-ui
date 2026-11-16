@@ -1,0 +1,18 @@
+{
+  "id": "C415",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/routes/_dashboard/_apk/journal/episodes/index.tsx",
+    "some-ui:apps/www/src/components/studio/episodes-by-week.tsx"
+  ],
+  "chose": "The chosen chip is kept in the page's link (?genre=), so the way back from an episode returns to the same genre; each chip is a link that replaces the entry rather than adding one.",
+  "options": [
+    "in the link, replacing the entry",
+    "in the link, each chip a new entry",
+    "held only while the page is open"
+  ],
+  "gray": "Whether back undoes a chip or leaves the page is felt in how the owner moves through Studio, and nothing decides it.",
+  "undo": "Drop replace from the chip links, or hold the chip in state; the search is read in one place.",
+  "refs": ["#3067", "#3030"]
+}

@@ -53,6 +53,7 @@ import {
 } from "@some-ui/voice-capture/testing"
 
 import { APH_FIXTURES } from "./aph"
+import { EPISODES_FIXTURES } from "./episodes"
 import { INTERVIEW_FIXTURES } from "./interview"
 import { MY_DATA_FIXTURES } from "./my-data"
 import { PULL_FIXTURES } from "./pull"
@@ -396,6 +397,8 @@ export const PHONE_FIXTURES = {
   "settings-bar": SettingsBar,
   /** My data, its overview and a kind's list (`../my-data-fit.spec.ts`). */
   ...MY_DATA_FIXTURES,
+  /** Studio's Episodes, by week (`./episodes`, `../episodes-fit.spec.ts`). */
+  ...EPISODES_FIXTURES,
   /** The interview week (`./interview`, `../interview-fit.spec.ts`). */
   ...INTERVIEW_FIXTURES,
   /** aph's logger and History (`./aph`, `../stays-put.spec.ts`). */

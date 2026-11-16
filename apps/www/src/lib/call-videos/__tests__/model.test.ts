@@ -49,17 +49,39 @@ describe("readEpisodes", () => {
   it("reads a cards essay's title, and a feed's episodes with none or from before it", () => {
     const essay = episode({ key: "zfs-2026-11-02", title: "How ZFS snapshots" })
     const untitled = episode({ key: "nix-2026-11-01", title: null })
-    const body = JSON.stringify({
-      episodes: [
-        { ...essay, week: essay.key, part: 1, of: 1 },
-        { ...untitled, week: untitled.key, part: 1, of: 1 },
-        episode(),
-      ],
-    })
+    const one = { part: 1, of: 1 }
+    const episodes = [
+      { ...essay, week: essay.key, ...one },
+      { ...untitled, week: untitled.key, ...one },
+      episode(),
+    ]
+    const body = JSON.stringify({ episodes })
     expect(readEpisodes({ status: 200, body })).toEqual({
       kind: "read",
-      episodes: [essay, untitled, episode()],
+      episodes,
     })
+  })
+
+  it("reads a week's parts, and the day and length home says (#2918, EPISODES2)", () => {
+    const parts = [
+      episode({ key: "2026-11-06", week: "2026-11-06", part: 1, of: 2 }),
+      episode({
+        key: "2026-11-06-p2",
+        week: "2026-11-06",
+        part: 2,
+        of: 2,
+        date: "2026-11-13",
+        durationMs: 596_000,
+      }),
+    ]
+    const body = JSON.stringify({ episodes: parts })
+    expect(readEpisodes({ status: 200, body })).toEqual({
+      kind: "read",
+      episodes: parts,
+    })
+    // A day that isn't one is the page's to ignore, not the list's to refuse.
+    const odd = JSON.stringify({ episodes: [episode({ date: "Friday" })] })
+    expect(readEpisodes({ status: 200, body: odd }).kind).toBe("read")
   })
 })
 
