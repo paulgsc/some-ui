@@ -6,7 +6,7 @@
     "some-ui:apps/www/src/routes/_dashboard/_apk/journal/episodes/index.tsx",
     "some-ui:apps/www/src/components/studio/episodes-by-week.tsx"
   ],
-  "chose": "The chosen chip is kept in the page's link (?genre=), so the way back from an episode returns to the same genre; each chip is a link that replaces the entry rather than adding one.",
+  "chose": "The chosen chip is kept in the page's link (?genre=), so the phone's back from an episode returns to the same genre; each chip is a link that replaces the entry rather than adding one. The episode page's own \"Back to Episodes\" link returns to All until it carries the genre too (#3067).",
   "options": [
     "in the link, replacing the entry",
     "in the link, each chip a new entry",
