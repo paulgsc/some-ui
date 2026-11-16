@@ -1,0 +1,16 @@
+{
+  "id": "C437",
+  "made": "2026-11-16",
+  "by": "claude",
+  "moves": "C433",
+  "paths": ["server:apps/servers/file_host/src/transcribe/verdict.rs"],
+  "chose": "Home's rule heard-1, as shipped in server#911: a take is garbled when at least 0.4 of its words are below p 0.5, when its length-weighted avg_logprob is below -1.0, when its most repetitive segment's compression ratio is above 2.4, when no_speech_prob is above 0.6 on a segment that is also unsure, when its detected language is not the expected one, or when it has under 1.0 words a second over at least 10 s.",
+  "options": [
+    "these thresholds, by share of words",
+    "C433's: a third of segments unsure",
+    "any unsure segment makes the take garbled"
+  ],
+  "gray": "Where a take turns from heard to garbled decides which takes an essay reads as answers and which the owner is told need attention; the server worker refined C433's segment share to a word share after review, and no check or owner decision sets the numbers. Made by the HEARD1 server worker (session_01LDpdUJfiVChK9EX7M8ZE9W) in server#911; recorded from HEARD2's range.",
+  "undo": "Change heard-1's constants in paulgsc/server's transcribe/verdict.rs and give the rule a new name, so verdicts made under each stay told apart.",
+  "refs": ["#3070", "server#908", "server#911"]
+}

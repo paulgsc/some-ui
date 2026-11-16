@@ -308,6 +308,8 @@ const RECEIPT_PARTS: Readonly<Record<string, string>> = {
   idea: "the idea it answered",
   // Its moves along Studio's conveyor (CONVEYOR1, paulgsc/server#839).
   "conveyor history": "each move it made along the conveyor",
+  // Home's verdict on it, which outlives the recording (HEARD1, C436).
+  verdict: "whether home could make it out",
 }
 
 /** A receipt's list of what went or stayed, as a sentence: `the recording and home's words for it`. */
