@@ -166,14 +166,22 @@ describe("the cheat-sheet card", () => {
       const body = cardBody(geometryOf(frame))
       let accepted = 0
       for (let n = 1; n <= 8; n++) {
-        const params = { title: "Rows", rows: ROWS(n) }
-        if (!sheet(params, frame).ok) continue
+        // Laid out once per sheet: each step only reads the frame at t (#3065).
+        const prepared = sheet({ title: "Rows", rows: ROWS(n) }, frame)
+        if (!prepared.ok) continue
         accepted += 1
-        for (let t = 0; t <= END; t += 50)
-          for (const r of at(params, t, frame).rows)
-            expect(r.panel.y + r.panel.height).toBeLessThanOrEqual(
-              body.y + body.height
-            )
+        let lowest = { bottom: -Infinity, t: 0 }
+        for (let t = 0; t <= END; t += 50) {
+          const f = frameAt(prepared.value, t)
+          if (f.kind !== "cheat-sheet") throw new Error(f.kind)
+          for (const r of f.frame.rows)
+            if (r.panel.y + r.panel.height > lowest.bottom)
+              lowest = { bottom: r.panel.y + r.panel.height, t }
+        }
+        expect(
+          lowest.bottom,
+          `${frame.width}x${frame.height}, ${n} rows, at ${lowest.t} ms`
+        ).toBeLessThanOrEqual(body.y + body.height)
       }
       expect(accepted).toBeGreaterThan(0)
     }
