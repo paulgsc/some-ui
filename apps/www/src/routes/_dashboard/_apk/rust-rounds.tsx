@@ -5,10 +5,7 @@ import { Button } from "@some-ui/shared"
 import { createFileRoute, Link } from "@tanstack/react-router"
 
 import { askHeard } from "@/lib/home-link/heard"
-import {
-  homeHoldsWeekSend,
-  onHomeHoldsWeekSend,
-} from "@/lib/home-link/rust-kept"
+import { homeHoldsWeekSend, onHomeHeard } from "@/lib/home-link/rust-kept"
 import { ideaHome } from "@/lib/idea-hearing"
 import { phoneRustRoundsPorts, phoneRustWeekPorts } from "@/lib/rust-rounds"
 
@@ -36,7 +33,7 @@ const PhoneRustRounds = (): JSX.Element => {
       home: ideaHome,
       heard: askHeard,
       homeHolds: homeHoldsWeekSend,
-      onHomeHolds: onHomeHoldsWeekSend,
+      onHomeHolds: onHomeHeard,
     }),
   }))
   const [rounds, setRounds] = useState(false)

@@ -10,13 +10,13 @@
  * scene (`./prompts`) and the app events (`./app-events-send`) go by, and `sendEach`, the one PUT per item the study
  * notes (`./notes`) and the grammar-lens record (`./lens-record`) go by.
  */
-import type { HomeCall } from "@some-ui/core-utils"
+import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { canonicalJson, isRecord, jsonOf } from "@some-ui/core-utils"
 import type { HomeSession, SessionLog, SessionLogStore } from "@some-ui/leetype"
 
 import { digestOf, fingerprintOf } from "./sent"
 import type { EndedReport } from "./shelf"
-import { answerOrEnd } from "./shelf"
+import { answerOrEnd, endedPart } from "./shelf"
 
 /**
  * How a log's part of a send went (LeetType's sessions, Studio's sittings
@@ -177,6 +177,20 @@ export function emptyLogReport(): LogReport {
     forgotten: false,
     unreachable: false,
   }
+}
+
+/**
+ * How a run of PUTs ended (`sendEach`): as `endedPart` says when home did not
+ * answer as asked, else failed when home refused or held other bytes, else
+ * synced.
+ */
+export function sentOutcome(report: LogReport): HomeExchanged {
+  return (
+    endedPart(report) ??
+    (report.refused + report.other + report.differs > 0
+      ? { kind: "failed", why: "refused" }
+      : { kind: "synced" })
+  )
 }
 
 /**

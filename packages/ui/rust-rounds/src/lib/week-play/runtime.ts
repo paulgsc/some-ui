@@ -15,6 +15,7 @@
  */
 import type { HeldWeek } from "@rust-rounds/lib/weeks"
 import type { KeyedStorage } from "@some-ui/core-utils"
+import { weekOpenNow } from "@some-ui/core-utils"
 import type { EngagementEvent } from "@some-ui/engagement"
 import type {
   BundleHome,
@@ -25,7 +26,6 @@ import type {
 } from "@some-ui/voice-capture"
 import { bundleRuntime } from "@some-ui/voice-capture"
 
-import { weekOpenNow } from "./open-now"
 import type { OnScreen, Open } from "./opens"
 import { stepOpens } from "./opens"
 import type { PasteRuntime } from "./paste"
@@ -228,7 +228,7 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
   }
 }
 
-/** The week this phone plays at `at` (`./open-now`); null when it holds none. */
+/** The week this phone plays at `at`; null when it holds none. */
 export const currentWeek = (
   weeks: ReadonlyArray<HeldWeek>,
   at: number

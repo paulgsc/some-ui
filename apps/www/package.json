@@ -60,6 +60,7 @@
     "@some-ui/game-week": "workspace:*",
     "@some-ui/honeycomb": "workspace:*",
     "@some-ui/intent-kit": "workspace:*",
+    "@some-ui/interview-week": "workspace:*",
     "@some-ui/job-desk": "workspace:*",
     "@some-ui/leetype": "workspace:*",
     "@some-ui/lesson-crm": "workspace:*",

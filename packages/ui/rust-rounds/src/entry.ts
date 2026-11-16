@@ -7,7 +7,7 @@
  * shows it carries none of the session's weight.
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
-import { isRecord, openKept, readJson } from "@some-ui/core-utils"
+import { isRecord, openKept, readJson, weekOpenNow } from "@some-ui/core-utils"
 
 import {
   PLACE_KEY,
@@ -18,7 +18,6 @@ import {
 import type { Title } from "./lib/play/store"
 import { entryLine, WORDS } from "./lib/play/words"
 import { CARD_WORDS } from "./lib/week-play/card-words"
-import { weekOpenNow } from "./lib/week-play/open-now"
 
 export { WEEK_ID, weekNumber } from "./lib/formats/week-id"
 

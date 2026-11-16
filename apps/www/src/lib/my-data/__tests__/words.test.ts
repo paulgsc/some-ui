@@ -6,6 +6,7 @@
  */
 import { describe, expect, it } from "vitest"
 
+import { lengthOf } from "@/lib/format"
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
 import { KINDS } from "@/lib/my-data/model"
 import {
@@ -23,7 +24,6 @@ import {
   KIND_NAMES,
   kindLead,
   kindLine,
-  lengthOf,
   MY_DATA,
   receiptKind,
   receiptParts,

@@ -7,6 +7,7 @@ import { assertNever, counted, formatSize, listed } from "@some-ui/core-utils"
 
 import type { Feed } from "@/lib/call-videos/model"
 import { FEED_WORDS } from "@/lib/call-videos/words"
+import { lengthOf } from "@/lib/format"
 
 import type { DeletableKind, ReceiptsReading } from "./deleting"
 import { isDeletableKind } from "./deleting"
@@ -194,15 +195,6 @@ export function kindLead(
 ): string {
   const kept = `${notes} kept · ${formatSize(bytes)}`
   return since === null ? kept : `${kept} · since ${onDay(since)}`
-}
-
-/** How long a recording is: `42 s`, `3 min 5 s`. */
-export function lengthOf(ms: number): string {
-  const seconds = Math.max(1, Math.round(ms / 1000))
-  const minutes = Math.floor(seconds / 60)
-  const rest = seconds % 60
-  if (minutes === 0) return `${rest} s`
-  return rest === 0 ? `${minutes} min` : `${minutes} min ${rest} s`
 }
 
 /**
