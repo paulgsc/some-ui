@@ -1,8 +1,9 @@
 /**
- * IWR1 (#3056): ROUTINE.md's setup runs on a fresh, shallow clone. Its
- * "Before you start" fetches history back past the facts' window, so
- * `render call-facts` finds a commit from before the week that ended, and
- * builds the package's workspace dependencies before `pnpm monday pull`.
+ * IWR1 (#3056): ROUTINE.md's "Before you start" says a fetch that reaches
+ * back past the facts' window, as `window.ts` names both, and the build of
+ * the package's workspace dependencies before its first command. It holds
+ * the routine's words to the code, for any window; that those commands make
+ * a usable checkout is git's and turbo's, and the scheduled run shows it.
  */
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
