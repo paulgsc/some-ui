@@ -1,5 +1,7 @@
 import type { JSX } from "react"
+import { useEffect } from "react"
 import {
+  phoneSoundbiteKeeping,
   RECONCILE_WORDS,
   STUDIO_WORDS,
   TakeReconcile,
@@ -7,6 +9,7 @@ import {
 import { createFileRoute } from "@tanstack/react-router"
 
 import { reconcileDeletes } from "@/lib/my-data"
+import { keepSoundbites } from "@/lib/soundbite-keeping"
 import { reconcilePorts } from "@/lib/take-reconcile/ports"
 import { PairHomeLink } from "@/components/pair-home-link"
 import {
@@ -29,6 +32,11 @@ const Reconcile = ({
   ports: NonNullable<typeof PORTS>
 }): JSX.Element => {
   const { sheet, deleting } = useDeleting()
+  // A soundbite deleted here lets its copy go through their store, which
+  // the soundbites' own page may not have handed in yet (HEARD4).
+  useEffect(() => {
+    keepSoundbites(phoneSoundbiteKeeping())
+  }, [])
   return (
     <>
       <TakeReconcile

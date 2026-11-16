@@ -1141,7 +1141,7 @@ const DELETED_LETS_GO: Readonly<Record<VoiceOf, LetsGoDeleted>> = {
  * the soundbites' once their page has handed its store in, every other
  * kind's at once (HEARD4).
  */
-export function readyToLetGo(of: VoiceOf): boolean {
+function readyToLetGo(of: VoiceOf): boolean {
   if (of === "studio") return studioKeeping() !== null
   if (of === "soundbite") return soundbiteKeeping() !== null
   return true

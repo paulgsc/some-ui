@@ -69,6 +69,7 @@ export type { SoundbitesProps } from "./components/soundbites"
 export type { SoundbiteSituation } from "./lib/machine"
 export {
   phoneProjectStore,
+  phoneSoundbiteKeeping,
   phoneSoundbiteStore,
   phoneStudioKeeping,
 } from "./lib/phone"

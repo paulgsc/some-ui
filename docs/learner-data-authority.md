@@ -1812,9 +1812,13 @@ reaches:
     refuses; or a hunk to `deleting.ts` that adds a kind to
     `PHONE_LETS_GO` (My data's rows, which home's `deletable` also gates),
     re-checked against home's `SWITCHED_ON` (paulgsc/server
-    `crates/db/voice/src/delete.rs`); or a hunk to `voice-copy.ts` that
-    makes a kind's `DELETED_LETS_GO` let go of more than the copies its
-    receipt names, or resolve true while a store kept its copy;
+    `crates/db/voice/src/delete.rs`); or a hunk to `voice-home/model.ts`
+    that adds a kind to `VOICE_OFS`, which `RECONCILE_LETS_GO` (`KINDS`)
+    then offers to delete, re-checked against home's delete; or a hunk to
+    `voice-copy.ts` that makes a kind's `DELETED_LETS_GO` let go of more than
+    the copies its receipt names, resolve true while a store kept its copy,
+    or drop more of a kind's record than its audio where its store keeps
+    one, marked (a reflection, a soundbite, a desk's take: C452);
   - a hunk to `device-my-data-delete.tsx` that drops `DELETING.goes` or
     `DELETING.stays` from the sheet that asks, or puts the confirm before
     "Keep it";
@@ -1844,7 +1848,9 @@ reaches:
   `apps/www/src/lib/home-link/delete-note.ts`,
   `apps/www/src/components/settings/device-my-data.tsx`,
   `device-my-data-delete.tsx` and `device-my-data-calls.tsx`,
-  and `apps/www/src/routes/_dashboard/_apk/journal/takes/attention.tsx`. For a draft's delete: every module in
+  `apps/www/src/routes/_dashboard/_apk/journal/takes/attention.tsx`,
+  `apps/www/src/lib/home-link/voice-copy.ts` (`DELETED_LETS_GO`) and
+  `apps/www/src/lib/voice-home/model.ts` (`VOICE_OFS`). For a draft's delete: every module in
   `apps/www` and `packages` that deletes a recording on the phone.
 - _Why not enforced:_
   - **Lint** can't hold that the port runs only after the person's confirm

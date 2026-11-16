@@ -100,6 +100,12 @@ export type Take = {
    * and never after; absent otherwise.
    */
   onHome?: true
+  /**
+   * When this phone heard home deleted it for good (`letGoDeleted`, LA19),
+   * ms since the epoch: the row then says so. Written with `onHome` or after
+   * it, and never again; absent otherwise.
+   */
+  deletedAt?: number
 }
 
 export type TakesPorts = {

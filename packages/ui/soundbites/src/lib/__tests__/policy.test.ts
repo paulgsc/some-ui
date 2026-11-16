@@ -105,4 +105,16 @@ describe("a soundbite home deleted for good (HEARD4)", () => {
       kept: { place: "home" },
     })
   })
+
+  it("makes room first, held by home or not, so it never blocks a new one", () => {
+    const six = kept(6).map((each) =>
+      each.id === "b2"
+        ? { ...each, deletedAt: "2026-11-16T12:00:00.000Z" }
+        : each
+    )
+    const none = (): boolean => false
+    expect(nextReplaced(six, null, none)?.id).toBe("b2")
+    expect(nextReplaced(six, null, () => true)?.id).toBe("b2")
+    expect(displacedBy(six, null, none)).toEqual(["b2"])
+  })
 })

@@ -109,17 +109,20 @@ const LEAVES_FIRST: Readonly<
 > = { "set-aside": 0, earlier: 1, current: 2 }
 
 /**
- * The held ones in the order they make room: a soundbite let go (D3) before
- * one a Redo superseded (D2), before one still listed, and the oldest first
- * within each.
+ * The held ones in the order they make room: one whose recording home
+ * deleted (HEARD4), held or not, since nothing of it is left to keep here;
+ * then a soundbite let go (D3) before one a Redo superseded (D2), before one
+ * still listed, and the oldest first within each.
  */
 function inLeavingOrder(
   kept: ReadonlyArray<Soundbite>,
   held: (id: string) => boolean
 ): Array<Soundbite> {
   const rank = (bite: Soundbite): number =>
-    LEAVES_FIRST[bite.standing ?? "current"]
-  return byNewest(kept.filter((bite) => held(bite.id)))
+    bite.deletedAt === undefined ? LEAVES_FIRST[bite.standing ?? "current"] : -1
+  return byNewest(
+    kept.filter((bite) => bite.deletedAt !== undefined || held(bite.id))
+  )
     .reverse()
     .sort((a, b) => rank(a) - rank(b))
 }

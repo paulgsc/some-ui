@@ -181,7 +181,10 @@ export function createPatternTakes(
         durationMs: take.durationMs,
         recordedAt: new Date(take.takenAt).toISOString(),
         standing: take.standing ?? "current",
-        kept: keptOf(take),
+        // One home deleted is on neither, and says so (LA19).
+        ...(take.deletedAt === undefined
+          ? { kept: keptOf(take) }
+          : { kept: null, deleted: new Date(take.deletedAt).toISOString() }),
         ...(take.waits === true ? { waits: true as const } : {}),
       })
     )

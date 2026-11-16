@@ -45,7 +45,7 @@ const PHONE_LETS_GO = ["studio"] as const
  * rows stay `PHONE_LETS_GO`'s, since home marks a recording `deletable`
  * there by its kind, not by what home heard.
  */
-export const RECONCILE_LETS_GO: ReadonlyArray<Of> = KINDS
+const RECONCILE_LETS_GO: ReadonlyArray<Of> = KINDS
 
 /** A kind the delete path can ever delete, and its sheet name. */
 export type DeletableKind = Of

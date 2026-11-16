@@ -47,7 +47,8 @@ export type SoundbiteStore = {
   /**
    * Lets the audio of each soundbite `ids` names go, once home deleted its
    * recording for good (LA19, HEARD4), marking it deleted at `at` (ISO 8601)
-   * in the same write: it stays listed, and with no audio it holds no room.
+   * in the same write: it stays listed until a new one needs its place,
+   * and it is the first to make room (`./policy`).
    * One marked already keeps its first time. Rejects, changing nothing, if
    * the write fails.
    */
