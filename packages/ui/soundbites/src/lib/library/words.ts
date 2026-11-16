@@ -24,7 +24,7 @@ import { SEARCH_MAX } from "./model"
 const takes = (n: number): string => counted(n, "take")
 
 /** The day, on this phone's calendar. */
-const dayAt = (iso: string): string => formatDay(dayOf(new Date(iso)))
+export const dayAt = (iso: string): string => formatDay(dayOf(new Date(iso)))
 
 export const LIBRARY_WORDS = {
   heading: "Takes on home",

@@ -1,0 +1,17 @@
+{
+  "id": "C443",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/routes/_dashboard/_apk/journal/takes/attention.tsx"
+  ],
+  "chose": "Delete… is offered only on a Studio take, the one kind home deletes for good and this phone lets go of. A Rust Rounds, interview or reflection take says it is kept for good, and keep or record again still work. Switching on another kind is one entry in My data's `PHONE_LETS_GO`, which the page reads through `isDeletableKind`.",
+  "options": [
+    "Delete only where home's delete accepts the kind (now)",
+    "Delete on every take, home refusing the kinds it keeps",
+    "no Delete until the owner switches the work's kinds on"
+  ],
+  "gray": "The owner said \"I should be able to delete them\", but the owner's rule on #2474 keeps the work (a Rust Rounds take, an interview take) for good. Which of those kinds this page may delete is the owner's to say.",
+  "undo": "Add a kind to `PHONE_LETS_GO` (`lib/my-data/deleting.ts`) once home's `SWITCHED_ON` takes it.",
+  "refs": ["#2474", "#3070", "#3075"]
+}

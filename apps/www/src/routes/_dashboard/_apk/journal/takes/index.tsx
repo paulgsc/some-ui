@@ -1,6 +1,7 @@
 import type { JSX, ReactNode } from "react"
 import type { Compartment } from "@some-ui/soundbites"
 import {
+  AttentionWayIn,
   keptIdeaStore,
   phoneProjectStore,
   STUDIO_WORDS,
@@ -11,8 +12,13 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { KIND_WORDS, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
 import type { AboutStores } from "@/lib/take-about"
 import { takePorts } from "@/lib/take-library/ports"
+import { reconcilePorts } from "@/lib/take-reconcile/ports"
 import { PairHomeLink } from "@/components/pair-home-link"
 import { StudioPage, TILE, TileBody } from "@/components/studio/layout"
+
+/** The page's ports, in the Android app alone (`build.paths.ts`). */
+const ATTENTION =
+  import.meta.env.VITE_DEVICE_BACKEND === "true" ? reconcilePorts() : null
 
 const WORDS = STUDIO_INDEX_WORDS.takes
 
@@ -25,6 +31,12 @@ const STORES: AboutStores = {
 /** Takes' ports, in the Android app alone (`build.paths.ts`). */
 const PORTS =
   import.meta.env.VITE_DEVICE_BACKEND === "true" ? takePorts(STORES) : null
+
+const attentionTile = (body: ReactNode): JSX.Element => (
+  <Link to="/journal/takes/attention" className={TILE}>
+    {body}
+  </Link>
+)
 
 /** A compartment's tile: the way to its page (`./$kind`). */
 const kindTile = (compartment: Compartment, body: ReactNode): JSX.Element => (
@@ -42,8 +54,10 @@ const kindTile = (compartment: Compartment, body: ReactNode): JSX.Element => (
  * each with how many there are, and one for all of them, each opening that
  * compartment's list (`./$kind`); the way to the conveyor page (CONVEYOR2),
  * where takes are moved; and the way to What Studio keeps (MD4), where one
- * can be let go in My data. The tiles are the Android app's alone, so no
- * other build carries the link (`build.paths.ts`).
+ * can be let go in My data; and, while home lists any, the way to the
+ * takes it couldn't hear well (HEARD3, `./attention`). The tiles are
+ * the Android app's alone, so no other build carries the link
+ * (`build.paths.ts`).
  */
 const Takes = (): JSX.Element => (
   <StudioPage heading={KIND_WORDS.takes.name} back="index">
@@ -61,6 +75,10 @@ const Takes = (): JSX.Element => (
     <Link to="/journal/takes/kept" className={TILE}>
       <TileBody title={STUDIO_WORDS.records.open} line={WORDS.keptLine} />
     </Link>
+    {/* Last, so nothing above moves when it appears (HS1). */}
+    {ATTENTION !== null && (
+      <AttentionWayIn ports={ATTENTION} wayIn={attentionTile} />
+    )}
   </StudioPage>
 )
 

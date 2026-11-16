@@ -36,7 +36,11 @@ const PHONE_LETS_GO = ["studio"] as const
 /** A kind My data can ever offer to delete. */
 export type DeletableKind = (typeof PHONE_LETS_GO)[number]
 
-export function isDeletableKind(of: Of): of is DeletableKind {
+/**
+ * Whether `of` is a kind My data's delete can ever offer: on My data's
+ * page, and on Takes › Needs your attention (HEARD3).
+ */
+export function isDeletableKind(of: string): of is DeletableKind {
   return PHONE_LETS_GO.some((kind) => kind === of)
 }
 
