@@ -49,20 +49,33 @@ describe("checkCommitTrailers", () => {
 
   // TR1: a trailer reads every promise ID the repository declares, an area
   // prefix of one to eight letters and a number (Family: prefix length).
-  it("reads an area prefix of up to eight letters, as SFEED4's (TR1)", () => {
+  describe("reads an area prefix of one to eight letters, as SFEED4's (TR1)", () => {
     const defect = (lines: Array<string>): string =>
       msg("fix(x): y", ["Change-Kind: defect", ...lines, coAuthor].join("\n"))
-    expect(
-      checkCommitTrailers(
-        defect(["Promise: SFEED4 a/b | series split", "Relates: SFEED4 widens"])
-      )
-    ).toEqual([])
-    expect(checkCommitTrailers(defect(["Relates: ABCDEFGH1 breaks"]))).toEqual(
-      []
+    const prefixes = Array.from({ length: 8 }, (_, i) =>
+      "ABCDEFGH".slice(0, i + 1)
     )
-    expect(checkCommitTrailers(defect(["Relates: ABCDEFGHI1 breaks"]))).toEqual(
-      [{ kind: "badRelates", value: "ABCDEFGHI1 breaks" }]
-    )
+
+    it.each(prefixes)("accepts %s4 in Promise: and Relates:", (prefix) => {
+      const id = `${prefix}4`
+      expect(
+        checkCommitTrailers(
+          defect([`Promise: ${id} a/b | series split`, `Relates: ${id} widens`])
+        )
+      ).toEqual([])
+    })
+
+    it.each(["ABCDEFGHI", ""])("refuses a prefix of %s", (prefix) => {
+      const id = `${prefix}4`
+      expect(
+        checkCommitTrailers(
+          defect([`Promise: ${id} a/b | timing`, `Relates: ${id} breaks`])
+        )
+      ).toEqual([
+        { kind: "badPromise", value: `${id} a/b | timing` },
+        { kind: "badRelates", value: `${id} breaks` },
+      ])
+    })
   })
 
   it("reports a missing kind, and a subject with no body", () => {
