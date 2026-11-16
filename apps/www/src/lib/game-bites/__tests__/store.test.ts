@@ -380,13 +380,20 @@ describe("createGameBites", () => {
     }
     const store = createGameBites({ storage, shelf: removing, ...clock.ports })
     await store.keep(bite("b1"), new Blob(["x"]))
+    await store.keep(bite("b2"), new Blob(["y"]))
     await store.release("b1")
+    await store.release("b2")
     await clock.advance(1)
     expect(await store.letGo(new Set(["b1"]))).toBe(false)
-    expect(await shelf.ids()).toEqual(["b1"])
+    expect((await shelf.ids()).sort()).toEqual(["b1", "b2"])
     failing = false
     expect(await store.letGo(new Set(["b1"]))).toBe(true)
-    expect(await shelf.ids()).toEqual([])
+    // Only the bite named goes; its record stays, saying since when.
+    expect(await shelf.ids()).toEqual(["b2"])
+    expect(store.getSnapshot()[0]).toMatchObject({
+      id: "b1",
+      homeSince: T0 + 1,
+    })
   })
 
   it("keeps the record of a bite home holds, even if the clock goes back", async () => {

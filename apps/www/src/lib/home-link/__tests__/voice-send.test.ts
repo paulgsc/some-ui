@@ -275,15 +275,26 @@ const waiting = (): number =>
 
 describe("the voice lane's run, after its copy pass (LA14)", () => {
   it("HEARD4: home's deleted_for_good lets a Jobs note go while Studio's store isn't handed in", async () => {
-    setUp(5, { v1: new Blob(["a"]) })
-    fakes.deleted = []
     const deletedForGood: HomeCall = () =>
       Promise.resolve({
         status: 409,
         body: JSON.stringify({ error: { code: "deleted_for_good" } }),
       })
+    // Jobs' let-go failing keeps the copy waiting: the exchange waited on it.
+    setUp(5, { v1: new Blob(["a"]) })
+    fakes.deleteFails = true
+    try {
+      await sendVoice(deletedForGood, AT_PAIRING)
+    } finally {
+      fakes.deleteFails = false
+    }
+    expect(fakes.home?.getSnapshot().waiting.map(({ id }) => id)).toEqual([
+      "v1",
+    ])
+    setUp(5, { v1: new Blob(["a"]) })
+    fakes.deleted = []
     await sendVoice(deletedForGood, AT_PAIRING)
-    expect(fakes.deleted).toContainEqual(["v1"])
+    expect(fakes.deleted[0]).toEqual(["v1"])
     expect(fakes.home?.getSnapshot()).toMatchObject({
       waiting: [],
       refused: [],

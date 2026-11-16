@@ -118,7 +118,7 @@ type DeskShelf = {
    * Lets the audio of each sent take `deleted` names go from this phone,
    * on any desk: home deleted those notes for good (#2579), so
    * nothing is to be heard of them again. The take stays listed and is
-   * marked `onHome` first (LG1). A take still waiting for its item is a
+   * marked `onHome` and `deletedAt` first (LG1). A take still waiting for its item is a
    * draft and is never named by a receipt. Resolves false when the phone
    * could not store the mark, so the audio stayed.
    */
@@ -307,12 +307,6 @@ function desk<R extends Runtime>(
     return runtime
   }
 
-  /**
-   * Lets the audio of each sent take `holds` names go, keeping the take
-   * listed and marked `onHome` first (LG1): `letGo`'s, once home holds them,
-   * and `letGoDeleted`'s, once home deleted them. False when the phone
-   * could not store the mark, so nothing went.
-   */
   /** Sets aside take `id` where `which` lists it, its mark owed first. */
   const setAsideWhere = (
     id: string,
@@ -329,6 +323,13 @@ function desk<R extends Runtime>(
     return stored
   }
 
+  /**
+   * Lets the audio of each sent take `holds` names go, keeping the take
+   * listed and marked `onHome` first (LG1), and `deletedAt` with it when
+   * given: `letGo`'s, once home holds them, and `letGoDeleted`'s, once home
+   * deleted them. False when the phone could not store the mark, so
+   * nothing went.
+   */
   const release = async (
     holds: ReadonlySet<string>,
     deletedAt?: number
