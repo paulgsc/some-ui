@@ -14,9 +14,5 @@
   ],
   "gray": "Episodes groups by week, and nothing settled which day stands for an episode. The render day moves on a re-render and is gone once the video is let go, so the choice is felt in where an episode sits. Made by the server worker on paulgsc/server#906 (session_01LDpdUJAjTjsqgYy85gw6ZC), relayed by the sprint's coordinator, and recorded here where the phone reads it.",
   "undo": "Change what paulgsc/server#906's list sends as date; the phone reads whatever day it sends, and falls back to the key's when it sends none.",
-  "refs": [
-    "#3067",
-    "#3030",
-    "server#906"
-  ]
+  "refs": ["#3067", "#3030", "server#906"]
 }
