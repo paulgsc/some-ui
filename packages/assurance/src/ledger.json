@@ -3128,7 +3128,7 @@
     },
     {
       "id": "rust-essay-rendered",
-      "name": "Home makes each week's Rust Rounds essay into a video",
+      "name": "Home makes each week's Rust Rounds essay, and each interview essay, into a video",
       "why": "After a week's deadline, home renders the week's essay the way it renders the call, from the week's final record (#2832), with each answer the owner's own take. The owner chose that an essay video may hold their takes (#2691, 2026-11-10).",
       "paths": [
         "server:crates/db/rust_round",
@@ -3142,6 +3142,8 @@
         "server:apps/servers/file_host/src/handlers/feed_videos.rs",
         "server:apps/servers/file_host/src/routes/feed_videos.rs",
         "some-ui:packages/video-render/src/essay.ts",
+        "some-ui:packages/video-render/src/interview-essay.ts",
+        "some-ui:packages/ui/interview-week",
         "some-ui:apps/www/src/lib/web-surface/call",
         "some-ui:apps/www/tests/record/essay.ts",
         "some-ui:apps/www/tests/record/essay-recording.ts",
@@ -3309,6 +3311,37 @@
               "says": "A week withdrawn for a deleted take is neither listed among the feed's videos nor let go (an_essay_withdrawn_for_a_deleted_take_is_not_listed).",
               "ref": "server:apps/servers/file_host/src/feeds/videos.rs"
             }
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "EV6",
+          "kind": "OA4",
+          "property": "outcome",
+          "claim": "An interview essay reaches the render only with the takes its week's final record names, one that contradicts that record is refused, and one whose take is deleted is withdrawn.",
+          "requirement": "The essays worker, generalised over the kind (paulgsc/server#900), takes an interview-essay-<week>.json from the mailbox's brief folder only once the week is final; it plays exactly the answers and reads the final record names, writes the essay with one take per answered question and read card to the week's folder, refuses an essay whose answers or reads differ from that record (<week>.refused.log), and withdraws the week when one of its takes is deleted (IW6, #2937).",
+          "verdict": "holds",
+          "conclusion": "Tested in server CI on the interview kind of the one essay export: given from the week's final record with its takes, refused when it contradicts that record, withdrawn when a take is deleted, and playing exactly the answers and reads the final record names.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "An interview essay is given from its week's final record with its takes; one that contradicts it is refused; one whose take is deleted is withdrawn.",
+              "ref": "server:apps/servers/file_host/src/rust_essays.rs"
+            },
+            {
+              "class": "measured",
+              "says": "An interview essay plays exactly the answers and reads its week's final record names.",
+              "ref": "server:crates/db/rust_round/src/essay.rs"
+            }
+          ],
+          "proof": [
+            "server:apps/servers/file_host/src/rust_essays.rs#an_interview_essay_is_given_from_its_weeks_final_with_its_takes",
+            "server:apps/servers/file_host/src/rust_essays.rs#an_interview_essay_that_contradicts_its_weeks_final_is_refused",
+            "server:apps/servers/file_host/src/rust_essays.rs#an_interview_essay_whose_take_is_deleted_is_withdrawn",
+            "server:crates/db/rust_round/src/essay.rs#an_interview_essay_plays_exactly_the_answers_and_reads_the_weeks_final_names"
           ],
           "watch": {
             "by": "none"
