@@ -93,7 +93,10 @@ async function prepareIn(dir: string, now: Date): Promise<void> {
 
 /** `finish` builds from the bundle made again, never from one edited since (`remadeBundle`). */
 async function finishIn(dir: string): Promise<void> {
-  const { bundle } = await remadeBundle(dir, (now) => preparedIn(dir, now))
+  const bundle = await remadeBundle(
+    dir,
+    async (now) => (await preparedIn(dir, now)).bundle
+  )
   await writeOut(
     dir,
     finishEssays({
