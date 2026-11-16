@@ -1,0 +1,362 @@
+/**
+ * The essay half of the Monday routine (IW6, #2937): which weeks are owed an
+ * interview essay, and everything code knows about each before the model
+ * writes a word. For each week past its deadline that home made final and
+ * `brief` holds no essay of, it restates the week's company, role,
+ * questions and cards, and each answer: a take with what home heard in it,
+ * word by word, and IW3's measures of it (`measureAnswer`, `measureRead`),
+ * or a silence. It also draws the faults chart over the weeks
+ * (`chartOf`), so the model fills only the judged schema and the prose
+ * (LEVERS, #2162).
+ */
+import type { Heard, WeekRecord } from "@interview-week/lib/essay/record"
+import { heardByNote, indexWeeks } from "@interview-week/lib/essay/record"
+import { measureAnswer, measureRead } from "@interview-week/lib/faults"
+import type { AnswerFaults, ReadFaults } from "@interview-week/lib/faults"
+import type { MailboxFile } from "@interview-week/lib/monday/bundle"
+import { WEEK_FILE } from "@interview-week/lib/monday/bundle"
+import type { Family, InterviewWeek } from "@interview-week/lib/week"
+import { readWeek } from "@interview-week/lib/week"
+import { weekAround } from "@some-ui/core-utils"
+import { parseInterviewEssay } from "@some-ui/video-render"
+import type { InterviewEssay } from "@some-ui/video-render"
+
+const ESSAY_BUNDLE_SCHEMA = "some-ui.interview-essay-bundle/1"
+
+/** The most essays one run writes, oldest first. */
+const ESSAYS_PER_RUN = 2
+
+/** The most weeks the chart shows (`INTERVIEW_WEEKS_MOST`). */
+const CHART_WEEKS = 12
+
+/** An essay's name in `brief`: `interview-essay-<week>.json`, `-r2` on for a correction. */
+const ESSAY_FILE = /^interview-essay-(\d{4}-w\d{2})(?:-r(\d+))?\.json$/
+export const essayFileName = (week: string): string =>
+  `interview-essay-${week}.json`
+
+export type QuestionOwed = {
+  readonly id: string
+  readonly family: Family
+  readonly prompt: string
+  readonly guidelines: ReadonlyArray<string>
+  readonly targetSeconds: number
+  readonly answer:
+    | {
+        readonly kind: "take"
+        readonly transcript: string
+        readonly measured: AnswerFaults
+      }
+    | { readonly kind: "silence" }
+}
+
+type ReadOwed = {
+  readonly id: string
+  readonly situation: string
+  readonly script: string
+  readonly answer:
+    | {
+        readonly kind: "take"
+        readonly transcript: string
+        readonly measured: ReadFaults
+      }
+    | { readonly kind: "silence" }
+}
+
+type ChartRow = InterviewEssay["weeks"]["rows"][number]
+
+export type EssayOwed = {
+  readonly week: string
+  readonly from: string
+  readonly to: string
+  readonly company: InterviewWeek["company"]
+  readonly role: InterviewWeek["role"]
+  readonly questions: ReadonlyArray<QuestionOwed>
+  readonly reads: ReadonlyArray<ReadOwed>
+  /** The faults chart, drawn by code: the earlier essays' weeks, then this one. */
+  readonly chart: {
+    readonly weeks: ReadonlyArray<string>
+    readonly rows: ReadonlyArray<ChartRow>
+  }
+  /** The week after, which `next` speaks to. */
+  readonly next: string
+}
+
+export type EssayBundle = {
+  readonly schema: typeof ESSAY_BUNDLE_SCHEMA
+  readonly now: string
+  readonly essays: ReadonlyArray<EssayOwed>
+  /** Weeks owed an essay that can't be written yet, and why. */
+  readonly waiting: ReadonlyArray<{
+    readonly week: string
+    readonly why: string
+  }>
+}
+
+/**
+ * Each fault the chart counts, one row each, and how a week's value comes
+ * from its takes' measures: a mean, a sum or a longest, rounded. A week with
+ * no take of the row's kind has no value. No row adds faults up into a score.
+ */
+const ANSWER_ROWS: ReadonlyArray<{
+  readonly name: string
+  readonly of: (f: AnswerFaults) => number | null
+  readonly by: "mean" | "max" | "sum"
+}> = [
+  { name: "Fillers a minute", of: (f) => f.fillers.perMinute, by: "mean" },
+  {
+    name: "Longest pause, seconds",
+    of: (f) => (f.pauses.longestMs === null ? null : f.pauses.longestMs / 1000),
+    by: "max",
+  },
+  { name: "Mumbled words", of: (f) => f.mumbled.count, by: "sum" },
+  {
+    name: "Seconds over the target",
+    of: (f) => f.length.overMs / 1000,
+    by: "sum",
+  },
+]
+
+const READ_ROWS: ReadonlyArray<{
+  readonly name: string
+  readonly of: (f: ReadFaults) => number | null
+  readonly by: "mean" | "max" | "sum"
+}> = [
+  {
+    name: "Words misread",
+    of: (f) =>
+      f.misread.skipped +
+      f.misread.substituted +
+      f.misread.repeated +
+      f.misread.inserted,
+    by: "sum",
+  },
+  { name: "Pauses mid-phrase", of: (f) => f.pauses.midPhrase, by: "sum" },
+  { name: "Pace variation", of: (f) => f.pace.variation, by: "mean" },
+  {
+    name: "Lead-in, seconds",
+    of: (f) => (f.leadInMs === null ? null : f.leadInMs / 1000),
+    by: "mean",
+  },
+]
+
+const round = (n: number): number =>
+  Math.round(n * (Math.abs(n) < 1 ? 100 : 10)) / (Math.abs(n) < 1 ? 100 : 10)
+
+function combine(
+  values: ReadonlyArray<number | null>,
+  by: "mean" | "max" | "sum"
+): number | null {
+  const known = values.filter((v): v is number => v !== null)
+  if (known.length === 0) return null
+  const total = known.reduce((a, b) => a + b, 0)
+  return round(
+    by === "sum"
+      ? total
+      : by === "max"
+        ? Math.max(...known)
+        : total / known.length
+  )
+}
+
+/** This week's value of each chart row, from its takes' measures. */
+function weekCells(
+  questions: ReadonlyArray<QuestionOwed>,
+  reads: ReadonlyArray<ReadOwed>
+): Array<{ name: string; of: "answers" | "reads"; value: number | null }> {
+  const answers = questions.flatMap((q) =>
+    q.answer.kind === "take" ? [q.answer.measured] : []
+  )
+  const readings = reads.flatMap((r) =>
+    r.answer.kind === "take" ? [r.answer.measured] : []
+  )
+  return [
+    ...ANSWER_ROWS.map((row) => ({
+      name: row.name,
+      of: "answers" as const,
+      value: answers.length === 0 ? null : combine(answers.map(row.of), row.by),
+    })),
+    ...READ_ROWS.map((row) => ({
+      name: row.name,
+      of: "reads" as const,
+      value:
+        readings.length === 0 ? null : combine(readings.map(row.of), row.by),
+    })),
+  ]
+}
+
+/**
+ * The chart over the weeks: each earlier essay's own week's column, the
+ * newest `CHART_WEEKS - 1` before `week`, then this week's cells.
+ */
+function chartOf(
+  week: string,
+  cells: ReturnType<typeof weekCells>,
+  earlier: ReadonlyArray<InterviewEssay>
+): EssayOwed["chart"] {
+  const before = earlier
+    .filter((essay) => essay.week.id < week)
+    .sort((a, b) => (a.week.id < b.week.id ? -1 : 1))
+    .slice(-(CHART_WEEKS - 1))
+  const valueIn = (
+    essay: InterviewEssay,
+    name: string,
+    of: string
+  ): number | null => {
+    const row = essay.weeks.rows.find((r) => r.name === name && r.of === of)
+    return row?.cells.at(-1) ?? null
+  }
+  return {
+    weeks: [...before.map((e) => e.week.id), week],
+    rows: cells.map((cell) => ({
+      name: cell.name,
+      of: cell.of,
+      cells: [...before.map((e) => valueIn(e, cell.name, cell.of)), cell.value],
+    })),
+  }
+}
+
+/** The newest essay of each week `brief` holds: a correction's over the first. */
+function essaysIn(brief: ReadonlyArray<MailboxFile>): Array<InterviewEssay> {
+  const best = new Map<string, { r: number; essay: InterviewEssay }>()
+  for (const file of brief) {
+    const [, week, r] = ESSAY_FILE.exec(file.name) ?? []
+    if (week === undefined) continue
+    const parsed = parseInterviewEssay(file.body)
+    if (!parsed.ok) continue
+    const n = r === undefined ? 1 : Number(r)
+    const held = best.get(week)
+    if (held === undefined || n > held.r)
+      best.set(week, { r: n, essay: parsed.value })
+  }
+  return [...best.values()].map((b) => b.essay)
+}
+
+type Owed = { ok: true; essay: EssayOwed } | { ok: false; why: string }
+
+function owed(
+  record: WeekRecord,
+  week: InterviewWeek | undefined,
+  heard: ReadonlyMap<string, Heard>,
+  earlier: ReadonlyArray<InterviewEssay>
+): Owed {
+  if (week === undefined)
+    return { ok: false, why: "brief holds no readable week file for it" }
+  const heardOf = (
+    take: string | null,
+    what: string
+  ): { ok: true; heard: Heard | null } | { ok: false; why: string } => {
+    if (take === null) return { ok: true, heard: null }
+    const got = heard.get(take)
+    if (got === undefined || got.text.trim() === "")
+      return { ok: false, why: `home hasn't heard ${what}'s take yet` }
+    if (got.words === null || got.words.length === 0)
+      return {
+        ok: false,
+        why: `home heard ${what}'s take without its words, which the measures count from`,
+      }
+    return { ok: true, heard: got }
+  }
+  const questions: Array<QuestionOwed> = []
+  for (const question of week.questions) {
+    const held = record.questions.find((q) => q.question === question.id)
+    const got = heardOf(held?.take ?? null, question.id)
+    if (!got.ok) return got
+    questions.push({
+      id: question.id,
+      family: question.family,
+      prompt: question.prompt,
+      guidelines: question.guidelines,
+      targetSeconds: question.targetSeconds,
+      answer:
+        got.heard === null
+          ? { kind: "silence" }
+          : {
+              kind: "take",
+              transcript: got.heard.text,
+              measured: measureAnswer({
+                words: got.heard.words ?? [],
+                targetMs: question.targetSeconds * 1000,
+                takeMs: null,
+              }),
+            },
+    })
+  }
+  const reads: Array<ReadOwed> = []
+  for (const card of week.cards) {
+    const held = record.cards.find((c) => c.card === card.id)
+    const got = heardOf(held?.take ?? null, `the read of ${card.id}`)
+    if (!got.ok) return got
+    reads.push({
+      id: card.id,
+      situation: card.situation,
+      script: card.script,
+      answer:
+        got.heard === null
+          ? { kind: "silence" }
+          : {
+              kind: "take",
+              transcript: got.heard.text,
+              measured: measureRead({
+                words: got.heard.words ?? [],
+                script: card.script,
+              }),
+            },
+    })
+  }
+  return {
+    ok: true,
+    essay: {
+      week: week.id,
+      from: week.opens.slice(0, 10),
+      to: week.due.slice(0, 10),
+      company: week.company,
+      role: week.role,
+      questions,
+      reads,
+      chart: chartOf(week.id, weekCells(questions, reads), earlier),
+      // A minute past Sunday 23:59 is the next week's Monday.
+      next: weekAround(new Date(new Date(week.due).getTime() + 60_000)).id,
+    },
+  }
+}
+
+export type PreparedEssays = { readonly bundle: EssayBundle }
+
+/**
+ * The essays owed at `now`: from `brief` (weeks and essays), home's index of
+ * final records (`records`, the index's body) and the transcripts it names.
+ */
+export function prepareEssays(input: {
+  readonly now: Date
+  readonly brief: ReadonlyArray<MailboxFile>
+  readonly index: unknown
+  readonly transcripts: ReadonlyArray<MailboxFile>
+}): PreparedEssays {
+  const weeks = new Map<string, InterviewWeek>()
+  for (const file of input.brief) {
+    if (!WEEK_FILE.test(file.name)) continue
+    const read = readWeek(file.body)
+    if (read.ok) weeks.set(read.week.id, read.week)
+  }
+  const essays = essaysIn(input.brief)
+  const written = new Set(essays.map((e) => e.week.id))
+  const heard = heardByNote(input.transcripts)
+  const due = indexWeeks(input.index)
+    .filter((record) => !written.has(record.week))
+    .sort((a, b) => (a.week < b.week ? -1 : 1))
+  const owedEssays: Array<EssayOwed> = []
+  const waiting: Array<{ week: string; why: string }> = []
+  for (const record of due) {
+    const result = owed(record, weeks.get(record.week), heard, essays)
+    if (!result.ok) waiting.push({ week: record.week, why: result.why })
+    else if (owedEssays.length < ESSAYS_PER_RUN) owedEssays.push(result.essay)
+  }
+  return {
+    bundle: {
+      schema: ESSAY_BUNDLE_SCHEMA,
+      now: input.now.toISOString(),
+      essays: owedEssays,
+      waiting,
+    },
+  }
+}

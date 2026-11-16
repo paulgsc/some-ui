@@ -4,8 +4,9 @@ A scheduled cloud session runs this every Monday (IW4, #2935). It writes the
 week of mock interview that opens that day (`some-ui.interview-week/1`): an
 invented company and role, five questions to answer by voice (four while
 `docs/calls/` holds no call to ask about), and three teleprompter cards
-to read. The essay on the week that ended comes later
-(IW6, #2937).
+to read. First, it writes the essay on each week that ended
+(`some-ui.interview-essay/1`, IW6, #2937), the video home renders with the
+owner's own takes.
 
 This is a routine of its own, apart from Rust Rounds' `pnpm monday` (C277).
 The two share the mailbox client, the week's dates and `render call-facts`.
@@ -133,6 +134,98 @@ the kind that carries over to an ad read or a talk.
   and sets the card's target from them, at 150 words a minute.
 - **Breaths:** a line break where a breath belongs, each line at most 30
   words. A blank line between parts is fine.
+
+## The essay on the week that ended
+
+Run this before the week's steps, from `packages/ui/interview-week`, with
+`<run>/essay` as its folder. Code reads home's final record of each week
+past its deadline, what home heard in each take **with its words**, and runs
+IW3's measures (fillers, pauses, mumbling, pace, length; a read's misreads,
+pauses mid-phrase, pace variation and lead-in). It also draws the faults
+chart. You write only the judged half of each answer and the words said.
+You read text only, never audio.
+
+1. **Pull:** `pnpm essay pull --to <run>/essay`. It copies `brief`'s
+   interview weeks and essays, home's newest interview index
+   (`index-interview-…`) and the transcripts of every take it names.
+2. **Prepare:** `pnpm essay prepare --from <run>/essay`. It writes
+   `bundle.json` and prints what is owed:
+   - `essays`: each week owed an essay, oldest first, at most two a run.
+     Each question and card is restated with its answer: a take, what home
+     heard in it and its `measured` faults, or a silence. `chart` is the
+     faults over the weeks, as code counts them.
+   - `waiting`: weeks owed an essay that can't be written yet, and why (a
+     take not heard yet, or heard without its words). A later Monday writes
+     them. Never write an essay from a guess at a take.
+     If `essays` is empty, skip to the week's steps.
+3. **Write `<run>/essay/values.json`** from the bundle alone, as "What you
+   write in an essay" says.
+4. **Finish:** `pnpm essay finish --from <run>/essay`. It builds each essay
+   and checks it with the format's own parser, then answers `ready` and
+   writes it to `out`, or lists every problem. Fix exactly those problems in
+   `values.json` and run it again. Never change the bundle or the code to
+   get past a problem.
+5. **Put:** `pnpm essay put --from <run>/essay`. It puts each essay in
+   `brief` as `interview-essay-<week>.json`, where home reads it and renders
+   it. `201` and `200` are success. Report any other answer in the summary
+   and don't retry.
+
+The summary lists each essay put with its answer, and each week `waiting`
+and why.
+
+### What you write in an essay
+
+`values.json` is
+`{"schema":"some-ui.interview-essay-values/1","essays":[…]}`, one entry per
+week in the bundle's `essays`. Every object is strict: a field code fills (a
+transcript, a fault, a count, the chart) is refused there.
+
+**No score and no grade** (owner, 2026-11-13). Say what was there and what
+was missing; never rate the answer, and never call the model answer
+"correct". **No real employer:** the company and role were invented, and
+`finish` refuses an employer's name anywhere you write.
+
+An essay is `{"week","open","questions":[…],"reads":[…],"weeks","next"}`:
+
+- `open`: the invented company and role, restated in a few sentences.
+- `weeks`: what the chart shows, in plain words: counts week by week, which
+  went down and which up. Never a total.
+- `next`: `{"said","topics"}`, what next week comes back to (at most five
+  topics), from the faults that stood out.
+
+Each question is `{"id","question","model","beside","answer"}`:
+
+- `question`: the question and what a good answer covers, said.
+- `model`: a model answer that meets the guidelines, in the first person,
+  from the owner's real kind of work, written apart from their answer. Never
+  call it correct, and never name a real employer.
+- `beside`: the model answer set beside the owner's, guideline by guideline.
+- `answer`, for a take: `{"judged","marks","said"}`.
+  - `judged` fills IW3's judged schema: `star` (situation, task, action,
+    result), each `{"mark","quote"}`, the mark `covered`, `partly` or
+    `missing`, and the quote a few words of the transcript that show it, or
+    `null` when missing; `hedges`, each quoted ("I think maybe"); and
+    `decision`, for a decision question only, otherwise `null`: the
+    `options` named, each quoted, and `why`, `tradeOff` and `undo` marked
+    as above. Code turns them into faults; count nothing yourself.
+  - `marks`: one per guideline, in order, `{"mark","note"}`, `note` a
+    sentence on what is partly there or missing.
+  - `said`: the take's faults said plainly, the measured ones from the
+    bundle's `measured` (say the counts as they are) and the judged ones.
+- `answer`, for a silence: `{"guess"}`, a guess at why, said as a guess.
+
+**Filler counts** come from home's verbatim decode, which keeps most fillers
+but can miss some late in a long take (#2937). Until the owner has checked
+it against real takes, say a filler count as "at least".
+
+Each read is `{"id","card","answer"}`:
+
+- `card`: where the read is given, said.
+- `answer`, for a take: `{"change","said"}`. `change` is one plain sentence
+  on what to change next time, from the measured faults (a flat pace, a
+  pause inside a phrase, a slow lead-in, a misread word). `said` says the
+  faults and the change.
+- `answer`, for a card left unread: `{"guess"}`.
 
 ## When it runs
 

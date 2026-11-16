@@ -228,13 +228,15 @@ role, and it is the owner's call, so it is not built.
   mock interview named for the ISO week it opens, which is its `id`. Its questions' and cards'
   `id`s are what a take's ref names (`<week>:<question>`, `<week>:read:<card>`), so each must
   be a kebab slug of at most 64 characters, once each in its list, and no question may be
-  named `read`.
+  named `read`. `brief` also takes `interview-essay-YYYY-wNN.json` (MB2, IW6
+  paulgsc/some-ui#2937), the script of the essay that answers a week of mock interview, named
+  as the Rust essay's is, with `-rN` for a correction.
   Anything else, an audio file's name included, is `422`.
 - **Content type** `application/json` (parameters such as `charset` are ignored), and the body
   must be UTF-8 JSON with no byte-order mark.
 - **Schema**: the top-level `schema` must be `some-ui.job-digest/1`, `some-ui.job-decisions/1`,
   `some-ui.job-scouts/1`, `some-ui.routine-scene/1`, `some-ui.routine-drama/1`, `some-ui.routine-run/1`,
-  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1`, `some-ui.reflection/1`, `some-ui.drama-prompt/1`, `some-ui.episode-note/1`, `some-ui.take-pickup/1` or `some-ui.take-picked/1` to match the folder (and `some-ui.drive-takes/1` for a list of Drive's takes in `brief`, `some-ui.rust-week/1` for a week of Rust Rounds, `some-ui.rust-essay/1` for an essay's script, `some-ui.interview-week/1` for a week of mock interview). The Worker checks that and nothing deeper, except for a transcript, an index, a reflection, a prompt, a note on an episode, a take ready for pickup, an answer to one, a list of Drive's takes, a week's `id`, which must be the name's (below), and an interview week's question and card ids; the readers validate the full shape.
+  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1`, `some-ui.reflection/1`, `some-ui.drama-prompt/1`, `some-ui.episode-note/1`, `some-ui.take-pickup/1` or `some-ui.take-picked/1` to match the folder (and `some-ui.drive-takes/1` for a list of Drive's takes in `brief`, `some-ui.rust-week/1` for a week of Rust Rounds, `some-ui.rust-essay/1` for an essay's script, `some-ui.interview-week/1` for a week of mock interview, `some-ui.interview-essay/1` for an interview essay's script). The Worker checks that and nothing deeper, except for a transcript, an index, a reflection, a prompt, a note on an episode, a take ready for pickup, an answer to one, a list of Drive's takes, a week's `id`, which must be the name's (below), and an interview week's question and card ids; the readers validate the full shape.
 - **A scene** is `{"schema":"some-ui.routine-scene/1","answers":"<reflection>","title":"<the
 scene folder's name>","decks":[<read-aloud deck>,<lens deck>]}`, each deck exactly as the
   phone's word set check takes it. **A drama** is `{"schema":"some-ui.routine-drama/1",
@@ -645,10 +647,12 @@ how each was checked when this workspace landed.
   which only the routine role puts and home reads with the digests, and, the same way, a week of
   Rust Rounds (`rust-week-…`, `rustWeekRefusal`; the owner's RR12,
   [paulgsc/some-ui#2687](https://github.com/paulgsc/some-ui/issues/2687): "the routine puts a
-  week, and home reads it"), and an essay's script (`rust-essay-…`, `rustEssayRefusal`;
+  week, and home reads it"), and an essay's script (`rust-essay-…`, `essayRefusal`;
   [the owner's answer on paulgsc/some-ui#2684](https://github.com/paulgsc/some-ui/issues/2684#issuecomment-6714043601): "the routine puts it in a mailbox folder …, home reads and keeps it"), and a week of mock interview (`interview-week-…`, `interviewWeekRefusal`; the owner's
   IW4, [paulgsc/some-ui#2935](https://github.com/paulgsc/some-ui/issues/2935): "brief rules
-  for `brief/interview-week-<id>.json` next to `rustWeekRefusal`"). Every request passes `authenticate` and then one of `serve`'s
+  for `brief/interview-week-<id>.json` next to `rustWeekRefusal`"), and an interview essay's
+  script (`interview-essay-…`, `essayRefusal`; IW6,
+  [paulgsc/some-ui#2937](https://github.com/paulgsc/some-ui/issues/2937)). Every request passes `authenticate` and then one of `serve`'s
   `may(grant.get | put | ask | move)` checks before anything reaches the store, and
   `GET /v1/bell` passes `authenticate` and `listen`'s `grant.listen` check before anything
   reaches the bell.
@@ -664,8 +668,8 @@ how each was checked when this workspace landed.
   `DRIVE_ONLY_ENDED`, or lets `kindOf` take a backfill name `sharedDay` does not read or for a
   day outside them; or adds a kind to any folder's `also`, loosens the `drive-takes` name or
   `driveTakesRefusal` (a key beyond `schema`, `at` and `takes`, or beyond `sha256` per take),
-  loosens the `rust-week` name or `rustWeekRefusal`, loosens the `rust-essay` name or
-  `rustEssayRefusal`, loosens the `pickup` name or `pickupRefusal` (a key beyond `schema`,
+  loosens the `rust-week` name or `rustWeekRefusal`, loosens the `rust-essay` or `interview-essay` name or
+  `essayRefusal`, loosens the `pickup` name or `pickupRefusal` (a key beyond `schema`,
   `note`, `ref`, `heard`, `labels`, `readyAt` and `seq`, a `comment` included, against `C296`),
   loosens the `picked` name or `pickedRefusal` (a key beyond `schema`, `note`, `seq` and
   `issue`), loosens the `interview-week` name, `interviewWeekRefusal` or `takeIdsRefusal`,
@@ -770,7 +774,16 @@ how each was checked when this workspace landed.
   kebab slug of at most 64 characters, once each, no question named `read`); `core.test.ts`
   pins that the routine puts one and home reads it, and that a misnamed week, a non-week `id`, a
   question named `read`, an id that is no slug or is used twice, a missing list and another
-  schema are refused.
+  schema are refused. _Checked at the interview essay amendment (IW6,
+  [paulgsc/some-ui#2937](https://github.com/paulgsc/some-ui/issues/2937), the owner's story:
+  the interview essay goes to home as the Rust essay does, and the owner's go of 2026-11-16 on
+  [paulgsc/some-ui#2931](https://github.com/paulgsc/some-ui/issues/2931#issuecomment-6918049168)):_
+  `ROLES` is unchanged; `brief`'s `also` holds five kinds, the fifth the interview essay's
+  script, taken only as `interview-essay-YYYY-wNN.json` or `-rN.json` with `N` from 2, and held
+  to `some-ui.interview-essay/1` and `essayRefusal("interview-essay")`, the Rust essay's check
+  over its own name (an ISO week in `week.id`, the name's); `core.test.ts` pins that the routine
+  puts one and home reads it, and that `-r0`, a misnamed essay, a non-week `week.id` and the
+  Rust essay's schema are refused.
 
 **MB3: No token reaches the repo or a log.**
 

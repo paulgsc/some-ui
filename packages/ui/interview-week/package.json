@@ -17,7 +17,8 @@
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "monday": "tsx scripts/monday.ts"
+    "monday": "tsx scripts/monday.ts",
+    "essay": "tsx scripts/essay.ts"
   },
   "dependencies": {
     "@some-ui/core-utils": "workspace:*",
