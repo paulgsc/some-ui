@@ -18,9 +18,11 @@ import type { Browser, Locator, Page } from "@playwright/test"
 import { installedCompositionPort } from "@some-ui/video-motion/node"
 import {
   chapterLines,
+  chaptersFound,
   chaptersOf,
   DEFAULT_POLICY,
   estimatedMs,
+  FEWEST_CHAPTERS,
   MB,
   overLength,
   previewOf,
@@ -589,9 +591,15 @@ async function renderStills(
     // A render with no chapters leaves none from an earlier one.
     const file = join(root, "description.txt")
     await rm(file, { force: true })
+    const found = chaptersFound(done.value.shotTimes, marks)
     const lines = chapterLines(chaptersOf(done.value.shotTimes, marks))
     const description = UploadCopySchema.shape.description.safeParse(lines)
-    if (lines !== "" && !description.success)
+    // A render that marks chapters says why it wrote none (#3032).
+    if (marks.length > 0 && found.length < FEWEST_CHAPTERS)
+      process.stderr.write(
+        `no chapters: ${String(found.length)} found, YouTube shows chapters from ${String(FEWEST_CHAPTERS)}\n`
+      )
+    else if (lines !== "" && !description.success)
       process.stderr.write(
         `no chapters written: ${description.error.issues.map((i) => i.message).join("; ")}\n`
       )
