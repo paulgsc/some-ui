@@ -65,8 +65,8 @@ export const RECONCILE_WORDS = {
    */
   noneShown: (total: number): string =>
     total === 1
-      ? "1 more take home couldn't hear well waits on home, not shown here. Try again to read it."
-      : `${String(total)} more takes home couldn't hear well wait on home, not shown here. Try again to read them.`,
+      ? "1 take home couldn't hear well waits on home but doesn't show here."
+      : `${String(total)} takes home couldn't hear well wait on home but don't show here.`,
   /** What one code means: its name, and a line under it. */
   codes: {
     low_confidence: {
