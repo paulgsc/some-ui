@@ -120,17 +120,31 @@ const Faults = ({
   )
 }
 
-const Silence = ({
-  title,
-  guess,
+/**
+ * An answer's or a read's take, played whole under its transcript, or the
+ * silence and the guess at why: `took` and `left` name the two.
+ */
+const Played = ({
+  speaker,
+  answer,
+  took,
+  tag,
+  left,
 }: {
-  title: string
-  guess: string
+  speaker: InterviewEssayAt["speaker"]
+  answer:
+    | { readonly kind: "take"; readonly transcript: string }
+    | { readonly kind: "silence"; readonly guess: string }
+  took: string
+  tag: string
+  left: string
 }): JSX.Element => (
-  <>
-    <Title>{title}</Title>
-    <p className="text-[1em] leading-snug">{guess}</p>
-  </>
+  <Call speaker={speaker} tag={answer.kind === "take" ? tag : left}>
+    <Title>{answer.kind === "take" ? took : left}</Title>
+    <p className="text-[0.95em] leading-snug">
+      {answer.kind === "take" ? answer.transcript : answer.guess}
+    </p>
+  </Call>
 )
 
 const Screen = ({
@@ -193,21 +207,14 @@ const Screen = ({
       )
     }
     case "answer": {
-      const { answer } = view.question
       return (
-        <Call
+        <Played
           speaker={at.speaker}
-          tag={answer.kind === "take" ? NAMES.answer : EW.noAnswer}
-        >
-          {answer.kind === "take" ? (
-            <>
-              <Title>{EW.youSaid}</Title>
-              <p className="text-[0.95em] leading-snug">{answer.transcript}</p>
-            </>
-          ) : (
-            <Silence title={EW.noAnswer} guess={answer.guess} />
-          )}
-        </Call>
+          answer={view.question.answer}
+          took={EW.youSaid}
+          tag={NAMES.answer}
+          left={EW.noAnswer}
+        />
       )
     }
     case "faults": {
@@ -289,21 +296,14 @@ const Screen = ({
       )
     }
     case "reading": {
-      const { answer } = view.read
       return (
-        <Call
+        <Played
           speaker={at.speaker}
-          tag={answer.kind === "take" ? NAMES.reading : W.noRead}
-        >
-          {answer.kind === "take" ? (
-            <>
-              <Title>{W.youRead}</Title>
-              <p className="text-[0.95em] leading-snug">{answer.transcript}</p>
-            </>
-          ) : (
-            <Silence title={W.noRead} guess={answer.guess} />
-          )}
-        </Call>
+          answer={view.read.answer}
+          took={W.youRead}
+          tag={NAMES.reading}
+          left={W.noRead}
+        />
       )
     }
     case "heard": {
