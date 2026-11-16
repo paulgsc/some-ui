@@ -8,7 +8,8 @@
  * Per essay ticket: a best fit for each speak-to point (`bests`), what is said
  * over the question, the best fit and the comparison, the answer's reading
  * (each point covered, partly or missing, and its SOLO level) or, for a
- * silence, the guess at why, and two deep dives.
+ * silence, the guess at why, and two deep dives. A take home couldn't make
+ * out takes no answer at all: no reading and no guess (HEARD2, #3072).
  */
 import { TextSchema } from "@rust-rounds/lib/formats"
 import { TicketSchema, WEEK_ID } from "@rust-rounds/lib/formats/week"
@@ -45,8 +46,11 @@ const EssayTicketValuesSchema = z.strictObject({
   question: TextSchema,
   best: TextSchema,
   beside: TextSchema,
-  /** A take's reading, or a silence's guess at why. */
-  answer: z.union([ReadingSchema, GuessSchema]),
+  /**
+   * A take's reading, or a silence's guess at why. Left out for a take home
+   * couldn't make out (HEARD2): code says what is said over it.
+   */
+  answer: z.union([ReadingSchema, GuessSchema]).optional(),
   dives: z.array(DiveValuesSchema),
 })
 export type EssayTicketValues = z.infer<typeof EssayTicketValuesSchema>

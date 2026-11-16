@@ -152,11 +152,15 @@ You read text only, never audio.
    `bundle.json` and prints what is owed:
    - `essays`: each week owed an essay, oldest first, at most two a run.
      Each question and card is restated with its answer: a take, what home
-     heard in it and its `measured` faults, or a silence. `chart` is the
-     faults over the weeks, as code counts them.
+     heard in it and its `measured` faults, a silence (a take in which home
+     heard nothing said is one too), or `unheard`: a take home couldn't make
+     out (garbled, or home failed to hear it), which the essay reads as if
+     it was left unanswered. `chart` is the faults over
+     the weeks, as code counts them.
    - `waiting`: weeks owed an essay that can't be written yet, and why (a
      take not heard yet, or heard without its words). A later Monday writes
-     them. Never write an essay from a guess at a take.
+     them. Never write an essay from a guess at a take. A take home couldn't
+     make out never holds a week back.
      If `essays` is empty, skip to the week's steps.
 3. **Write `<run>/essay/values.json`** from the bundle alone, as "What you
    write in an essay" says.
@@ -213,6 +217,8 @@ Each question is `{"id","question","model","beside","answer"}`:
   - `said`: the take's faults said plainly, the measured ones from the
     bundle's `measured` (say the counts as they are) and the judged ones.
 - `answer`, for a silence: `{"guess"}`, a guess at why, said as a guess.
+- `answer`, for an `unheard` take: leave it out. Code says that something
+  was said and couldn't be made out; never read anything into it.
 
 **Filler counts** come from home's verbatim decode, which keeps most fillers
 but can miss some late in a long take (#2937). Until the owner has checked
@@ -225,7 +231,8 @@ Each read is `{"id","card","answer"}`:
   on what to change next time, from the measured faults (a flat pace, a
   pause inside a phrase, a slow lead-in, a misread word). `said` says the
   faults and the change.
-- `answer`, for a card left unread: `{"guess"}`.
+- `answer`, for a card left unread: `{"guess"}`; for an `unheard` read,
+  leave it out.
 
 ## When it runs
 

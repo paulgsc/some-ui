@@ -1,0 +1,15 @@
+{
+  "id": "C435",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": ["server:crates/db/mailbox/src/lib.rs"],
+  "chose": "When home fails to hear a rust-round or interview take, it files a transcript to the mailbox with empty text and words and a failed verdict, so a routine can tell a take home failed on from one not heard yet.",
+  "options": [
+    "file a transcript with a failed verdict",
+    "file nothing, as before, so the routine reads the absence",
+    "a separate failure file beside the transcripts"
+  ],
+  "gray": "Before, a take home couldn't hear left nothing in the mailbox and held its week's essay back; filing the failure puts a record of it where the routine reads, which the owner sees as an essay going ahead. Made by the HEARD1 server worker (session_01LDpdUJfiVChK9EX7M8ZE9W) in paulgsc/server#908; recorded from HEARD2's range at the coordinator's request.",
+  "undo": "Stop filing failed verdicts in paulgsc/server's mailbox pass; an essay then waits on such a take again.",
+  "refs": ["#3070", "#3072", "server#908"]
+}

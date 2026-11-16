@@ -1,7 +1,8 @@
 /**
  * The essay half of the routine (IW6, #2937): a final week with its takes'
  * words is owed an essay whose measured faults and chart are code's; a week
- * whose takes home heard without words waits; the verbatim decode is read
+ * whose takes home heard without words waits, and a take home couldn't make
+ * out is read as a silence and never waited on (HEARD2); the verbatim decode is read
  * over a plain one; and `finish` builds an essay the format's parser takes,
  * refusing a real employer and words that grade.
  */
@@ -15,6 +16,7 @@ import { corpus, valuesFor } from "@interview-week/lib/monday/__tests__/fixture"
 import { prepare } from "@interview-week/lib/monday/bundle"
 import { finish } from "@interview-week/lib/monday/finish"
 import type { InterviewWeek } from "@interview-week/lib/week"
+import { isRecord } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
 /** The week the Monday routine writes from the fixture on Monday `now`. */
@@ -135,31 +137,39 @@ function valuesFor_(bundle: EssayBundle): EssaysValues {
         question: "The question, said.",
         model: "One way to answer it, made apart from yours.",
         beside: "The model answer beside yours.",
-        answer:
-          q.answer.kind === "take"
-            ? {
-                judged: {
-                  star: {
-                    situation: PART,
-                    task: PART,
-                    action: PART,
-                    result: { mark: "missing", quote: null },
-                  },
-                  hedges: [],
-                  decision: null,
-                },
-                marks: q.guidelines.map(() => ({ mark: "partly" })),
-                said: "Here is what was counted, and what was judged.",
-              }
-            : { guess: "A guess: the week ran out." },
+        ...(q.answer.kind === "unheard"
+          ? {}
+          : {
+              answer:
+                q.answer.kind === "take"
+                  ? {
+                      judged: {
+                        star: {
+                          situation: PART,
+                          task: PART,
+                          action: PART,
+                          result: { mark: "missing", quote: null },
+                        },
+                        hedges: [],
+                        decision: null,
+                      },
+                      marks: q.guidelines.map(() => ({ mark: "partly" })),
+                      said: "Here is what was counted, and what was judged.",
+                    }
+                  : { guess: "A guess: the week ran out." },
+            }),
       })),
       reads: essay.reads.map((r) => ({
         id: r.id,
         card: "Where the read is given.",
-        answer:
-          r.answer.kind === "take"
-            ? { change: "Slow the last line.", said: "What was counted." }
-            : { guess: "A guess: not reached." },
+        ...(r.answer.kind === "unheard"
+          ? {}
+          : {
+              answer:
+                r.answer.kind === "take"
+                  ? { change: "Slow the last line.", said: "What was counted." }
+                  : { guess: "A guess: not reached." },
+            }),
       })),
       weeks: "These are counts, week by week.",
       next: { said: "Next week comes back to results.", topics: ["Results"] },
@@ -264,7 +274,88 @@ describe("the essays owed", () => {
         name: "transcript-n-2.json",
       },
     ])
-    expect(heard.get("n")?.text).toBe("verbatim um text")
+    const got = heard.get("n")
+    expect(got?.hearing === "heard" ? got.text : null).toBe("verbatim um text")
+  })
+})
+
+/** A transcript home judged when it made it (HEARD1, paulgsc/server#908). */
+const judged = (
+  note: string,
+  text: string,
+  verdict: unknown
+): { name: string; body: unknown } => {
+  const file = transcript(note, text)
+  return {
+    ...file,
+    body: { ...(isRecord(file.body) ? file.body : {}), verdict },
+  }
+}
+
+/** Home's verdict as HEARD1 files it. */
+const verdictOf = (kind: string): unknown => ({
+  kind,
+  reasons: kind === "garbled" ? ["low_confidence"] : [],
+  rule: "heard-1",
+  signals: null,
+})
+
+const GARBLE = "the the borrow um sh sh the the the the"
+
+describe("a take home couldn't make out (HEARD2; EH1)", () => {
+  /** The answer garbled, the read failed with no words at all. */
+  const unheard = (): EssayBundle =>
+    prepared([
+      judged("note-1", GARBLE, verdictOf("garbled")),
+      judged("note-2", "", verdictOf("failed")),
+    ])
+
+  it("never waits: the essay is owed, the answer and the read unheard", () => {
+    const bundle = unheard()
+    expect(bundle.waiting).toEqual([])
+    expect(bundle.essays[0]?.questions[0]?.answer).toEqual({
+      kind: "unheard",
+    })
+    expect(bundle.essays[0]?.reads[0]?.answer).toEqual({ kind: "unheard" })
+  })
+
+  it("is never read as an answer: the essay says it as a silence", () => {
+    const bundle = unheard()
+    expect(JSON.stringify(bundle)).not.toContain(GARBLE)
+    const done = finishEssays({
+      bundle,
+      values: valuesFor_(bundle),
+      resumeEmployers: [],
+    })
+    if (!done.ok) throw new Error(done.problems.join("\n"))
+    const essay = done.files[0]?.body
+    const unheardSilence = { kind: "silence", unheard: true }
+    expect(essay?.questions[0]?.answer).toEqual(unheardSilence)
+    expect(essay?.reads[0]?.answer).toEqual(unheardSilence)
+  })
+
+  it("takes no reading and no guess", () => {
+    const bundle = unheard()
+    const values = valuesFor_(bundle)
+    const [question] = values.essays[0]?.questions ?? []
+    const [read] = values.essays[0]?.reads ?? []
+    if (question === undefined || read === undefined) throw new Error("shape")
+    question.answer = { guess: "A guess." }
+    read.answer = { change: "Slow down.", said: "What was counted." }
+    const done = finishEssays({ bundle, values, resumeEmployers: [] })
+    expect(done.ok ? [] : done.problems).toEqual([
+      `essays["${W.id}"].questions["${Q1.id}"].answer: home couldn't make out the take, so leave answer out`,
+      `essays["${W.id}"].reads["${C1.id}"].answer: home couldn't make out the take, so leave answer out`,
+    ])
+  })
+
+  it("leaves a take home heard nothing in a plain silence, with a guess", () => {
+    const bundle = prepared([
+      judged("note-1", "", verdictOf("nothing_said")),
+      transcript("note-2", C1.script.replaceAll("\n", " ")),
+    ])
+    expect(bundle.waiting).toEqual([])
+    expect(bundle.essays[0]?.questions[0]?.answer).toEqual({ kind: "silence" })
   })
 })
 

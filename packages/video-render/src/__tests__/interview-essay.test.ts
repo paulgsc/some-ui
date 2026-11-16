@@ -20,6 +20,7 @@ import {
   sampleInterviewEssay,
 } from "@video-render/interview-essay"
 import type { InterviewEssay } from "@video-render/interview-essay"
+import { UNHEARD_SAID } from "@video-render/verdict"
 import { describe, expect, it } from "vitest"
 
 function sample(): InterviewEssay {
@@ -205,5 +206,38 @@ describe("the takes folder", () => {
     expect(refused.ok ? [] : refused.problems).toEqual([
       "read.one-surface-each.m4a: read.one-surface-each was left silent",
     ])
+  })
+})
+
+describe("a read home couldn't make out (HEARD2; EH1)", () => {
+  const essay = sample()
+  const unheard: InterviewEssay = {
+    ...essay,
+    reads: essay.reads.map((read) =>
+      read.id === "keep-it-first"
+        ? { ...read, answer: { kind: "silence", unheard: true } }
+        : read
+    ),
+  }
+
+  it("parses, and is said in code's words by the tutor", () => {
+    expect(problems(unheard)).toEqual([])
+    const reading = interviewEssayScenes(unheard).find(
+      (scene) => scene.section === "reading" && scene.read === "keep-it-first"
+    )
+    expect(reading).toMatchObject({ speaker: "tutor", said: UNHEARD_SAID })
+  })
+
+  it("has its take set aside, unplayed, when home hands it over", () => {
+    expect(
+      interviewEssayTakeFiles(unheard, [
+        "a-time-you.m4a",
+        "read.keep-it-first.webm",
+        "read.keep-it-first.words.json",
+      ])
+    ).toEqual({
+      ok: true,
+      value: { "a-time-you": { audio: "a-time-you.m4a", words: null } },
+    })
   })
 })

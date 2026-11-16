@@ -1,0 +1,15 @@
+{
+  "id": "C434",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": ["server:apps/servers/file_host/src/transcribe"],
+  "chose": "Home decodes rust-round and interview takes as English, instead of letting Whisper detect the language.",
+  "options": [
+    "decode as English",
+    "detect the language, as before",
+    "detect, and judge a take off-language when it isn't English"
+  ],
+  "gray": "The w46 take on QM-312 was detected as Portuguese for its opening 1.4 s and garbled from there; the owner answers both in English, but fixing the language changes what home hears in every such take. Made by the HEARD1 server worker (session_01LDpdUJfiVChK9EX7M8ZE9W) in paulgsc/server#908; recorded from HEARD2's range at the coordinator's request.",
+  "undo": "Drop the language pin for those kinds in paulgsc/server's transcriber.",
+  "refs": ["#3070", "server#908"]
+}

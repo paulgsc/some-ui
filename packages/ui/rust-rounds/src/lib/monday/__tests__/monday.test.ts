@@ -1,8 +1,13 @@
 import ROUTINE from "@rust-rounds-root/ROUTINE.md?raw"
+import { recordOf } from "@rust-rounds/lib/decay"
 import type { RustcRun } from "@rust-rounds/lib/formats"
 import { RustcRunSchema } from "@rust-rounds/lib/formats"
-import type { Prepared } from "@rust-rounds/lib/monday/bundle"
-import { ESSAYS_MOST, prepare } from "@rust-rounds/lib/monday/bundle"
+import type { MailboxFile, Prepared } from "@rust-rounds/lib/monday/bundle"
+import {
+  ESSAYS_MOST,
+  judgedWeek,
+  prepare,
+} from "@rust-rounds/lib/monday/bundle"
 import {
   DIVE_WORDS_LEAST,
   DIVE_WORDS_MOST,
@@ -301,6 +306,144 @@ describe("prepare", () => {
       ...bundle.essays.map((e) => e.week),
       ...bundle.waiting.map((w) => w.week),
     ]).toEqual(["2026-w46", "2026-w47"])
+  })
+})
+
+/** The sample's take on QM-311, as home judged it when it made it (HEARD1, paulgsc/server#908). */
+const GARBLE = "the the field field sh sh string the the the"
+const judged311 = (verdict: unknown, text = GARBLE): MailboxFile => ({
+  name: "transcript-note-311-1.json",
+  body: {
+    ...TranscriptSchema.parse(SAMPLE_TRANSCRIPTS[0]?.body),
+    text,
+    verdict,
+  },
+})
+
+/**
+ * EH1 (#3072): an essay never reads a take home couldn't make out as an
+ * answer, and never waits on one. It is restated as a silence marked
+ * unheard, said in code's words, and the decay record counts it as no check.
+ * Family: home's verdict (heard, garbled, failed, a kind this build doesn't
+ * know, none; nothing said, which is a plain silence); the essay (Rust Rounds here, the interview essay
+ * in its own `essay.test.ts`); the item (ticket, pasted error; question,
+ * read); and what the routine writes for it (a reading, a guess, nothing).
+ * Tolerance: a transcript with no verdict, as every one before HEARD1, reads
+ * as heard, garbled or not.
+ */
+describe("a take home couldn't make out (HEARD2, #3072; EH1)", () => {
+  const unheard = (verdict: unknown = { kind: "garbled" }): Prepared =>
+    samplePrepared({
+      transcripts: [judged311(verdict), ...SAMPLE_TRANSCRIPTS.slice(1)],
+    })
+  /** The sample's values, with no answer for QM-311: code says what is said over it. */
+  const unheardValues = (): Values => {
+    const given = values()
+    const first = given.essays[0]?.tickets[0]
+    if (first === undefined) throw new Error("the sample changed shape")
+    delete first.answer
+    return given
+  }
+
+  it("never holds the essay back, even failed with no words at all", () => {
+    const { bundle } = samplePrepared({
+      transcripts: [
+        judged311({ kind: "failed", reasons: ["engine"] }, ""),
+        ...SAMPLE_TRANSCRIPTS.slice(1),
+      ],
+    })
+    expect(bundle.waiting).toEqual([])
+    expect(bundle.essays[0]?.tickets[0]?.answer).toEqual({
+      kind: "unheard",
+      opened: record().tickets[0]?.opens,
+    })
+  })
+
+  it("never becomes a reading: its words never reach the bundle the essay is built from", () => {
+    const prepared = unheard()
+    expect(JSON.stringify(prepared.bundle)).not.toContain(GARBLE)
+    const done = finish({ ...prepared, values: unheardValues(), runs: RUNS })
+    if (!done.ok) throw new Error(done.problems.join("\n"))
+    const essay = parseEssay(done.files[0]?.body)
+    if (!essay.ok) throw new Error(essay.problems.join("\n"))
+    expect(essay.value.tickets[0]?.answer).toEqual({
+      kind: "silence",
+      opened: record().tickets[0]?.opens,
+      unheard: true,
+    })
+  })
+
+  it("takes no marks, no SOLO level and no guess", () => {
+    const prepared = unheard()
+    const reading = values()
+    const guess = values()
+    const silence = guess.essays[0]?.tickets[2]?.answer
+    const first = guess.essays[0]?.tickets[0]
+    if (first === undefined || silence === undefined) throw new Error("shape")
+    first.answer = silence
+    const problems = (given: Values): ReadonlyArray<string> => {
+      const done = finish({ ...prepared, values: given, runs: RUNS })
+      return done.ok ? [] : done.problems
+    }
+    const why = "QM-311: home couldn't make out the take, so leave answer out"
+    expect(problems(reading)).toEqual([why])
+    expect(problems(guess)).toEqual([why])
+  })
+
+  it("counts in the decay record as neither shown, silent nor decayed (RR19)", () => {
+    const prepared = unheard()
+    const done = finish({ ...prepared, values: unheardValues(), runs: RUNS })
+    if (!done.ok) throw new Error(done.problems.join("\n"))
+    const essay = parseEssay(done.files[0]?.body)
+    if (!essay.ok) throw new Error(essay.problems.join("\n"))
+    const week = prepared.bundle.essays[0]
+    if (week === undefined) throw new Error("no essay owed")
+    const checked = recordOf([
+      judgedWeek(week.week, week.tickets, essay.value.tickets),
+    ]).map((concept) => concept.id)
+    // QM-311's concepts were checked by nothing that week.
+    expect(checked).toEqual([
+      "borrows-into-a-reused-buffer",
+      "static-and-threads",
+    ])
+  })
+
+  it("seeds a pasted error without words home couldn't make out", () => {
+    const paste = SAMPLE_TRANSCRIPTS[2]
+    if (paste === undefined) throw new Error("shape")
+    const { bundle } = samplePrepared({
+      transcripts: [
+        ...SAMPLE_TRANSCRIPTS.slice(0, 2),
+        {
+          ...paste,
+          body: {
+            ...TranscriptSchema.parse(paste.body),
+            verdict: { kind: "garbled" },
+          },
+        },
+      ],
+    })
+    expect(bundle.next?.seeds.map((seed) => seed.said)).toEqual([null])
+  })
+
+  it("reads as before when home gave no verdict (EH1's tolerance)", () => {
+    const { bundle } = unheard(null)
+    const answer = bundle.essays[0]?.tickets[0]?.answer
+    expect(answer?.kind === "take" && answer.transcript).toBe(GARBLE)
+  })
+
+  it("leaves a take home heard nothing in a plain silence, as one left unanswered", () => {
+    const { bundle } = samplePrepared({
+      transcripts: [
+        judged311({ kind: "nothing_said", reasons: [] }, ""),
+        ...SAMPLE_TRANSCRIPTS.slice(1),
+      ],
+    })
+    expect(bundle.waiting).toEqual([])
+    expect(bundle.essays[0]?.tickets[0]?.answer).toEqual({
+      kind: "silence",
+      opened: record().tickets[0]?.opens,
+    })
   })
 })
 
