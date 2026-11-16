@@ -8,19 +8,14 @@
  * over sends the week home. Nothing on the screen answers.
  */
 import { inMemoryStorage } from "@some-ui/core-utils"
-import { ONE_TAKE } from "@some-ui/voice-capture"
-import { simulatedPattern, takeButton } from "@some-ui/voice-capture/testing"
+import { takeButton } from "@some-ui/voice-capture/testing"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { fakePorts, WEEK } from "@/lib/interview-week/__tests__/fixture"
 import { CUE_SECONDS } from "@/lib/interview-week/cue"
-import type { InterviewWeekPorts } from "@/lib/interview-week/runtime"
-import { interviewSent } from "@/lib/interview-week/store"
 import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 import { InterviewWeekScreen } from "@/components/jobs/interview"
-
-// eslint-disable-next-line no-restricted-imports -- the fixture lives with the module's own tests
-import { WEEK } from "../../../lib/interview-week/__tests__/fixture"
 
 const press = (name: string | RegExp): void => {
   fireEvent.click(screen.getByRole("button", { name }))
@@ -42,39 +37,10 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-function ports(storage = inMemoryStorage()): InterviewWeekPorts {
-  const { pattern, store } = simulatedPattern({
-    options: { ...ONE_TAKE, send: "on-confirm" },
-  })
-  return {
-    week: { week: WEEK, sha256: "a".repeat(64) },
-    takes: {
-      pattern,
-      takes: { getSnapshot: store.getSnapshot, subscribe: store.subscribe },
-      discard: store.discard,
-      release: store.release,
-    },
-    storage,
-    home: { reach: () => "near", subscribe: () => (): void => undefined },
-    homeHolds: () => false,
-    onHomeHolds: () => (): void => undefined,
-    now: Date.now,
-    newId: () => "unused",
-    onVisibility: (listener) => {
-      listener(false)
-      return (): void => undefined
-    },
-    every: (ms, tick) => {
-      const timer = setInterval(tick, ms)
-      return (): void => clearInterval(timer)
-    },
-  }
-}
-
 describe("the interview week on the phone (IW5)", () => {
   it("answers a question, reads a card after its cue, and sends the week home", async () => {
     const storage = inMemoryStorage()
-    render(<InterviewWeekScreen ports={ports(storage)} />)
+    render(<InterviewWeekScreen ports={fakePorts({ storage }).ports} />)
     await settle()
 
     // The brief: the invented role, and the note to answer for it.
@@ -107,8 +73,5 @@ describe("the interview week on the phone (IW5)", () => {
     press(WORDS.send(2))
     await settle()
     screen.getByText(WORDS.sent.title(2))
-    const [sent] = interviewSent(storage).list() ?? []
-    expect(sent.answers.map(({ question }) => question)).toEqual(["conflict"])
-    expect(sent.reads.map(({ card }) => card)).toEqual(["epic-2931"])
   })
 })

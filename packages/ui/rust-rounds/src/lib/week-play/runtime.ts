@@ -228,7 +228,7 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
   }
 }
 
-/** The week this phone plays at `at` (core-utils' `weekOpenNow`); null when it holds none. */
+/** The week this phone plays at `at`; null when it holds none. */
 export const currentWeek = (
   weeks: ReadonlyArray<HeldWeek>,
   at: number

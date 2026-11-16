@@ -1,15 +1,8 @@
 /**
- * What the interview week keeps on this phone (IW5), each in one
- * `localStorage` record read and written only through core-utils' `openKept`
- * and `writeKept` (KR1), so a value that can't be read whole is moved aside,
- * never written over:
- *
- * - **The weeks held** (`heldWeeks`), as `./home` reads them from home, each
- *   the copy first read under its id, so the questions a draft answers never
- *   change under it.
- * - **A draft per week** (`interviewDrafts`), written over freely: nothing in
- *   it has left the phone.
- * - **The weeks sent** (`interviewSent`), which only grow.
+ * What the interview week keeps on this phone (IW5): the weeks held, each the
+ * copy first read under its id, through core-utils' `openKept`/`writeKept`
+ * (KR1); a draft per week and the weeks sent, through voice-capture's
+ * `keptDrafts` and `keptRecords`.
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { openKept, readJson, writeKept } from "@some-ui/core-utils"

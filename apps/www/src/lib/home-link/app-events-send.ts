@@ -11,8 +11,7 @@ import type { AppEvent } from "@/lib/app-events"
 import { appEventsWaiting, letGoHeldAppEvents } from "@/lib/app-events"
 
 import type { WholeLane } from "./leetype-log"
-import { emptyLogReport, sendWhole } from "./leetype-log"
-import { endedPart } from "./shelf"
+import { emptyLogReport, sendWhole, sentOutcome } from "./leetype-log"
 
 const APP_EVENTS: WholeLane<AppEvent> = {
   path: "/app-events",
@@ -46,10 +45,5 @@ export async function exchangeAppEvents(
     // What home holds, as this run heard it, however the run ended.
     letGoHeldAppEvents(held)
   }
-  return (
-    endedPart(report) ??
-    (report.refused + report.other + report.differs > 0
-      ? { kind: "failed", why: "refused" }
-      : { kind: "synced" })
-  )
+  return sentOutcome(report)
 }

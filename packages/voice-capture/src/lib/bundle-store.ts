@@ -4,8 +4,11 @@
  * grow. Each is one `localStorage` record read and written only through
  * core-utils' `openKept` and `writeKept` (KR1), so a value that can't be read
  * whole is moved aside, never written over. The caller gives each its key,
- * and the records how to read them; Rust Rounds' week and the interview week
- * share these.
+ * and the records how to read them.
+ *
+ * A week's sends (RR22) are such records: each names its week and when it was
+ * sent, the latest home holds is what stands at the week's deadline, and the
+ * helpers at the end read them so.
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import {
@@ -112,4 +115,48 @@ export function keptRecords<R>(
       return writeKept(storage, key, next, read) ? next : null
     },
   }
+}
+
+/** One send of a week: the week's id, and when it was sent, ISO. */
+type WeekSend = { readonly week: string; readonly at: string }
+
+/** Whether `at` is past a week's deadline, `due`. */
+export const isPastDue = (due: string, at: string): boolean =>
+  Date.parse(at) > Date.parse(due)
+
+/** How one send of a week is known, at home and on this phone: `2026-w46/<at>`. */
+export const weekSendKey = (sent: WeekSend): string => `${sent.week}/${sent.at}`
+
+/** The send of `sends` made last, by instant; null for none. */
+export const latestSend = <R extends WeekSend>(
+  sends: ReadonlyArray<R>
+): R | null =>
+  sends.reduce<R | null>(
+    (latest, sent) =>
+      latest === null || Date.parse(sent.at) >= Date.parse(latest.at)
+        ? sent
+        : latest,
+    null
+  )
+
+/** A week's sends as home has them, as far as this phone knows. */
+export type SendsAtHome<R> = {
+  /** The latest send home holds: what counts at the deadline; null for none. */
+  readonly holds: R | null
+  /** The latest send made on this phone, home's or not; null for none. */
+  readonly last: R | null
+}
+
+/**
+ * What home holds of week `week`: of the sends kept on this phone, the latest
+ * home holds (`held`, by what the link remembers), and the latest made. A send
+ * home doesn't hold by the deadline never counts: home refuses it after.
+ */
+export function sendsAtHome<R extends WeekSend>(
+  kept: ReadonlyArray<R>,
+  week: string,
+  held: (sent: R) => boolean
+): SendsAtHome<R> {
+  const sends = kept.filter((sent) => sent.week === week)
+  return { holds: latestSend(sends.filter(held)), last: latestSend(sends) }
 }

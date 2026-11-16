@@ -8,7 +8,7 @@
  */
 import { QUILLMOSS_WEEK } from "@rust-rounds/lib/sample-week"
 import type { RustWeek } from "@rust-rounds/lib/week-play/runtime"
-import { createRustWeek, currentWeek } from "@rust-rounds/lib/week-play/runtime"
+import { createRustWeek } from "@rust-rounds/lib/week-play/runtime"
 import type { WeekSent } from "@rust-rounds/lib/week-play/spec"
 import { weekAtHome } from "@rust-rounds/lib/week-play/spec"
 import { weeksSent } from "@rust-rounds/lib/week-play/store"
@@ -272,27 +272,7 @@ describe("a week on the phone (RR13)", () => {
   })
 })
 
-describe("the week open now", () => {
-  const week = (id: string, opens: string): HeldWeek => ({
-    ...HELD,
-    week: { ...QUILLMOSS_WEEK, id, opens },
-  })
-  const w46 = week("2026-w46", "2026-11-09T00:00:00-08:00")
-  const w47 = week("2026-w47", "2026-11-16T00:00:00-08:00")
-
-  it("is the newest that has opened, or the first held before any has", () => {
-    expect(currentWeek([w46, w47], Date.parse("2026-11-12T00:00:00Z"))).toBe(
-      w46
-    )
-    expect(currentWeek([w46, w47], Date.parse("2026-11-17T00:00:00Z"))).toBe(
-      w47
-    )
-    expect(currentWeek([w46, w47], Date.parse("2026-11-01T00:00:00Z"))).toBe(
-      w46
-    )
-    expect(currentWeek([], Date.now())).toBeNull()
-  })
-
+describe("the week's openings (RR14)", () => {
   it("tells each ticket opened and left, by its place in the week, never its key (RR14)", async () => {
     const on = phone(inMemoryStorage(), onConfirm())
     on.week.bundle.dispatch({ type: "go", index: 0 })

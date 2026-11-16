@@ -8,40 +8,23 @@
  *
  * The cards' and the look over's words are the shared bundle's parts'
  * (`@some-ui/shared`'s `BundleWords`), filled in here; a take's own are the
- * take pattern's.
+ * take pattern's. Many read as Rust Rounds' week's do (`@some-ui/rust-rounds`
+ * `week-play/words.ts`); each product keeps its own copy, free to say its own
+ * week in its own words.
  */
-import { PACIFIC_TIME_ZONE } from "@some-ui/core-utils"
+import {
+  pacificClock as clock,
+  pacificWeekday as weekday,
+  weekNumber,
+} from "@some-ui/core-utils"
 import type { InterviewWeek } from "@some-ui/interview-week"
+import { TAKE_MAX_SECONDS } from "@some-ui/interview-week"
 import type { BundleWords } from "@some-ui/shared"
 import { TAKE_WORDS } from "@some-ui/voice-capture"
 
-/** The day of the week of `at`, on the owner's clock. */
-const weekday = (at: string): string =>
-  new Date(at).toLocaleDateString("en-US", {
-    weekday: "long",
-    timeZone: PACIFIC_TIME_ZONE,
-  })
-
-/** The time of day of `at`, on the owner's clock: 23:59. */
-const clock = (at: string): string =>
-  new Date(at).toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: PACIFIC_TIME_ZONE,
-  })
-
-/** The week's number, from its id: `2026-w47` is 47. */
-const weekNumber = (id: string): number => Number(id.slice(id.indexOf("w") + 1))
+import { lengthOf } from "@/lib/format"
 
 const takes = (n: number): string => (n === 1 ? "1 take" : `${n} takes`)
-
-/** A length in seconds, as a card shows its target: "1 min 30 s". */
-export const lengthOf = (seconds: number): string => {
-  const minutes = Math.floor(seconds / 60)
-  const rest = seconds % 60
-  if (minutes === 0) return `${rest} s`
-  return rest === 0 ? `${minutes} min` : `${minutes} min ${rest} s`
-}
 
 const BUNDLE: BundleWords = {
   dot: {
@@ -146,8 +129,8 @@ export const INTERVIEW_WORDS = {
     resaid: "Said again, on this phone until you send",
   } satisfies Record<CardStanding, string>,
   /** A card's target length, and the cap on a take. */
-  aim: (seconds: number): string => `Aim for about ${lengthOf(seconds)}`,
-  cap: "A take stops at 2 minutes.",
+  aim: (seconds: number): string => `Aim for about ${lengthOf(seconds * 1000)}`,
+  cap: `A take stops at ${lengthOf(TAKE_MAX_SECONDS * 1000)}.`,
   toReviewOf: (n: number, of: number): string =>
     `Look it over before sending · ${n} of ${of}`,
   /** A question's card. */

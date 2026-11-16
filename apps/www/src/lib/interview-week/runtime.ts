@@ -19,12 +19,12 @@ import type {
   BundleRuntime,
   BundleTakes,
 } from "@some-ui/voice-capture"
-import { bundleRuntime } from "@some-ui/voice-capture"
+import { bundleRuntime, sendsAtHome } from "@some-ui/voice-capture"
 
 import type { Cue, CueEvent } from "./cue"
 import { NO_CUE, stepCue } from "./cue"
 import type { InterviewAtHome, InterviewKind, InterviewSent } from "./spec"
-import { cardOf, interviewAtHome, interviewMachine } from "./spec"
+import { cardOf, interviewMachine } from "./spec"
 import type { HeldInterview } from "./store"
 import { interviewDrafts, interviewSent } from "./store"
 
@@ -104,7 +104,7 @@ export function createInterviewWeek(
   })
 
   const readAtHome = (): InterviewAtHome =>
-    interviewAtHome(sends.list() ?? [], week, ports.homeHolds)
+    sendsAtHome(sends.list() ?? [], week.id, ports.homeHolds)
   const atHome = cell(readAtHome())
   const lookHome = (): void => {
     const next = readAtHome()

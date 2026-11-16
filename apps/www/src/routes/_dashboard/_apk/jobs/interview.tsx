@@ -2,10 +2,8 @@ import type { JSX } from "react"
 import { useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 
-import {
-  homeHoldsInterviewSend,
-  onHomeHoldsInterviewSend,
-} from "@/lib/home-link/interview"
+import { homeHoldsInterviewSend } from "@/lib/home-link/interview"
+import { onHomeHeard } from "@/lib/home-link/rust-kept"
 import { ideaHome } from "@/lib/idea-hearing"
 import { phoneInterviewPorts } from "@/lib/interview-week"
 import {
@@ -30,7 +28,7 @@ const PhoneInterview = (): JSX.Element => {
     phoneInterviewPorts({
       home: ideaHome,
       homeHolds: homeHoldsInterviewSend,
-      onHomeHolds: onHomeHoldsInterviewSend,
+      onHomeHolds: onHomeHeard,
     })
   )
   return ports === null ? (

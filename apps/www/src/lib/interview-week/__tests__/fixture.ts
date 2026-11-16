@@ -1,5 +1,11 @@
+import { inMemoryStorage } from "@some-ui/core-utils"
 import type { InterviewWeek } from "@some-ui/interview-week"
 import { INTERVIEW_WEEK_SCHEMA, readWeek } from "@some-ui/interview-week"
+import { ONE_TAKE } from "@some-ui/voice-capture"
+import type { SimulatedPattern } from "@some-ui/voice-capture/testing"
+import { simulatedPattern } from "@some-ui/voice-capture/testing"
+
+import type { InterviewWeekPorts } from "@/lib/interview-week/runtime"
 
 const guidelines = [
   "Says what the situation was.",
@@ -76,3 +82,45 @@ export const WEEK: InterviewWeek = {
 
 // The fixture comes in by the one door a week does.
 if (!readWeek(WEEK).ok) throw new Error("the fixture week doesn't read")
+
+/**
+ * The week's ports over the simulated microphone (`send: "on-confirm"`), in
+ * memory, home near and holding nothing, the cue's clock on timers; `over`
+ * replaces any of them.
+ */
+export function fakePorts(over: Partial<InterviewWeekPorts> = {}): {
+  readonly ports: InterviewWeekPorts
+  readonly simulated: SimulatedPattern
+} {
+  const simulated = simulatedPattern({
+    options: { ...ONE_TAKE, send: "on-confirm" },
+  })
+  const { pattern, store } = simulated
+  return {
+    simulated,
+    ports: {
+      week: { week: WEEK, sha256: "a".repeat(64) },
+      takes: {
+        pattern,
+        takes: { getSnapshot: store.getSnapshot, subscribe: store.subscribe },
+        discard: store.discard,
+        release: store.release,
+      },
+      storage: inMemoryStorage(),
+      home: { reach: () => "near", subscribe: () => (): void => undefined },
+      homeHolds: () => false,
+      onHomeHolds: () => (): void => undefined,
+      now: Date.now,
+      newId: () => "unused",
+      onVisibility: (listener) => {
+        listener(false)
+        return (): void => undefined
+      },
+      every: (ms, tick) => {
+        const timer = setInterval(tick, ms)
+        return (): void => clearInterval(timer)
+      },
+      ...over,
+    },
+  }
+}

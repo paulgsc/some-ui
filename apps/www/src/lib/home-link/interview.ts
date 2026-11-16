@@ -10,6 +10,7 @@
  */
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { canonicalJson, isRecord, jsonOf } from "@some-ui/core-utils"
+import { weekSendKey } from "@some-ui/voice-capture"
 
 import { phoneInterviews } from "@/lib/interview-week"
 import type { InterviewGoing } from "@/lib/interview-week/home"
@@ -18,17 +19,15 @@ import {
   interviewGoing,
 } from "@/lib/interview-week/home"
 import type { InterviewSent } from "@/lib/interview-week/spec"
-import { sendKey } from "@/lib/interview-week/spec"
 import { phoneJobs } from "@/lib/jobs"
 import { exchangeJobs } from "@/lib/jobs/home"
 import { browserLocalStorage } from "@/lib/tenant/storage"
 
-import { homeLink, pairingOf } from "./index"
+import { pairingOf } from "./index"
 import type { EachSent } from "./leetype-log"
-import { emptyLogReport, sendEach } from "./leetype-log"
+import { emptyLogReport, sendEach, sentOutcome } from "./leetype-log"
 import type { Sent } from "./sent"
 import { fingerprintOf, readSent, rememberSent } from "./sent"
-import { endedPart } from "./shelf"
 
 /** Whether `memory` says home holds `sent`, one send of a week, as it is. */
 const holdsInterviewSend = (
@@ -36,7 +35,7 @@ const holdsInterviewSend = (
   sent: InterviewSent
 ): boolean =>
   memory !== null &&
-  memory.interviewWeeks[sendKey(sent)] === fingerprintOf(sent)
+  memory.interviewWeeks[weekSendKey(sent)] === fingerprintOf(sent)
 
 /** `holdsInterviewSend` under the pairing this phone holds now: the week's port. */
 export const homeHoldsInterviewSend = (sent: InterviewSent): boolean => {
@@ -46,10 +45,6 @@ export const homeHoldsInterviewSend = (sent: InterviewSent): boolean => {
     sent
   )
 }
-
-/** Calls `listener` each time the link changes, when what home holds may have. */
-export const onHomeHoldsInterviewSend = (listener: () => void): (() => void) =>
-  homeLink().subscribe(listener)
 
 /** Of the sends going now, how many home holds as they are, and how many wait. */
 export function interviewCounts(
@@ -89,11 +84,7 @@ async function sendInterviews(
   } finally {
     rememberSent(browserLocalStorage, memory, { interviewWeeks: held })
   }
-  const ended = endedPart(report)
-  if (ended !== null) return ended
-  return report.refused + report.other + report.differs > 0
-    ? { kind: "failed", why: "refused" }
-    : { kind: "synced" }
+  return sentOutcome(report)
 }
 
 /** The interview week's run, under `pairing`: its weeks, then its sends. */

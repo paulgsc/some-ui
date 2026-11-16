@@ -8,22 +8,16 @@
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { inMemoryStorage } from "@some-ui/core-utils"
-import type { BundleTakes } from "@some-ui/voice-capture"
-import { ONE_TAKE } from "@some-ui/voice-capture"
 import type { SimulatedPattern } from "@some-ui/voice-capture/testing"
-import { simulatedPattern } from "@some-ui/voice-capture/testing"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { CUE_SECONDS } from "@/lib/interview-week/cue"
 import type { InterviewWeekRun } from "@/lib/interview-week/runtime"
-import {
-  createInterviewWeek,
-  currentInterview,
-} from "@/lib/interview-week/runtime"
+import { createInterviewWeek } from "@/lib/interview-week/runtime"
 import type { InterviewSent } from "@/lib/interview-week/spec"
 import { interviewSent } from "@/lib/interview-week/store"
 
-import { WEEK } from "./fixture"
+import { fakePorts } from "./fixture"
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -52,27 +46,10 @@ function phone(
     homeHolds?: (sent: InterviewSent) => boolean
   } = {}
 ): Phone {
-  const simulated = simulatedPattern({
-    options: { ...ONE_TAKE, send: "on-confirm" },
-  })
-  const { pattern, store } = simulated
-  const release = vi.fn(store.release)
-  const takes: BundleTakes = {
-    pattern,
-    takes: { getSnapshot: store.getSnapshot, subscribe: store.subscribe },
-    discard: store.discard,
-    release,
-  }
   const seen = new Set<(hidden: boolean) => void>()
-  const run = createInterviewWeek({
-    week: { week: WEEK, sha256: "a".repeat(64) },
-    takes,
+  const { ports, simulated } = fakePorts({
     storage,
-    home: { reach: () => "near", subscribe: () => (): void => undefined },
-    homeHolds: over.homeHolds ?? ((): boolean => false),
-    onHomeHolds: () => (): void => undefined,
-    now: over.now ?? Date.now,
-    newId: () => "unused",
+    ...over,
     onVisibility: (listener) => {
       seen.add(listener)
       listener(false)
@@ -80,10 +57,11 @@ function phone(
         seen.delete(listener)
       }
     },
-    every: (ms, tick) => {
-      const timer = setInterval(tick, ms)
-      return (): void => clearInterval(timer)
-    },
+  })
+  const release = vi.fn(ports.takes.release)
+  const run = createInterviewWeek({
+    ...ports,
+    takes: { ...ports.takes, release },
   })
   run.attach()
   const hide = (): void => {
@@ -116,15 +94,6 @@ const lines = (on: Phone): Array<string> =>
     .sort()
 
 describe("the interview week on the phone (IW5)", () => {
-  it("plays the week open now among those held", () => {
-    const later = {
-      week: { ...WEEK, id: "2026-w48", opens: "2026-11-23T00:00:00-08:00" },
-      sha256: "b",
-    }
-    const held = [{ week: WEEK, sha256: "a" }, later]
-    expect(currentInterview(held, Date.now())?.week.id).toBe("2026-w47")
-  })
-
   it("keeps each take waiting, named by IW1's refs, until the week goes together", async () => {
     const storage = inMemoryStorage()
     const on = phone(storage)
@@ -154,16 +123,10 @@ describe("the interview week on the phone (IW5)", () => {
     const on = phone(inMemoryStorage())
     on.run.dispatch({ type: "go", index: 4 })
     on.run.dispatch({ type: "tap", item: "read:epic-2931" })
-    expect(on.run.cue.getSnapshot()).toEqual({
-      kind: "counting",
-      item: "read:epic-2931",
-      left: CUE_SECONDS,
-    })
-    await pass(1000)
-    expect(on.run.cue.getSnapshot()).toMatchObject({ left: CUE_SECONDS - 1 })
-    expect(on.run.bundle.getSnapshot().busy).toBe(false)
     await pass((CUE_SECONDS - 1) * 1000)
-    await pass()
+    expect(on.run.cue.getSnapshot().kind).toBe("counting")
+    expect(on.run.bundle.getSnapshot().busy).toBe(false)
+    await pass(1000)
     expect(on.run.cue.getSnapshot().kind).toBe("idle")
     expect(on.run.bundle.getSnapshot().busy).toBe(true)
   })

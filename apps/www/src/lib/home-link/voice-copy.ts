@@ -176,6 +176,7 @@ import type { Reflection } from "@/lib/session-reflection/policy"
 import { onSoundbitesKept, soundbiteKeeping } from "@/lib/soundbite-keeping"
 import { onStudioKept, studioKeeping } from "@/lib/studio-keeping"
 import { takeConveyor } from "@/lib/take-conveyor"
+import type { Take as DeskTake } from "@/lib/takes-desk"
 import { phoneVoiceHome } from "@/lib/voice-home"
 import { exchangeVoice } from "@/lib/voice-home/home"
 import type {
@@ -370,32 +371,19 @@ export function rustRoundNote(
 }
 
 /**
- * A take on a week's ticket (its `line` is `<week>:<ticket>`), as home is
- * told it: a Rust Rounds note named by its week and ticket.
+ * A week's take named by its line, as home is told it, said `of`: a Rust
+ * Rounds ticket's (`<week>:<ticket>`, RR13) or the interview week's
+ * (`<week>:<question>` or `<week>:read:<card>`, IW1). Its ref is its line.
  */
-export function rustWeekNote(take: RustRoundTake): VoiceOut {
-  return {
+export const lineNote =
+  (of: "rust-round" | "interview") =>
+  (take: DeskTake): VoiceOut => ({
     id: take.id,
-    of: "rust-round",
+    of,
     ref: take.line,
     at: new Date(take.takenAt).toISOString(),
     contentType: take.mimeType,
-  }
-}
-
-/**
- * A take of the interview week (its `line` is `<week>:<question>` or
- * `<week>:read:<card>`), as home is told it: an interview note under it (IW1).
- */
-function interviewNote(take: RustRoundTake): VoiceOut {
-  return {
-    id: take.id,
-    of: "interview",
-    ref: take.line,
-    at: new Date(take.takenAt).toISOString(),
-    contentType: take.mimeType,
-  }
-}
+  })
 
 /**
  * A take on the desk of Studio's answers, as home is told it: a Studio note
@@ -669,13 +657,13 @@ function listed(
   })
   // RR13: only the takes of a week sent; one still waiting is not listed.
   const week = rustWeekDesk.kept().map((take) => ({
-    note: rustWeekNote(take),
+    note: lineNote("rust-round")(take),
     audio: (): Promise<Blob | null> => rustWeekDesk.audio(take.id),
     aside: asideAt(take),
   }))
   // IW5: only the takes of a week sent; one still waiting is not listed.
   const interview = interviewDesk.kept().map((take) => ({
-    note: interviewNote(take),
+    note: lineNote("interview")(take),
     audio: (): Promise<Blob | null> => interviewDesk.audio(take.id),
     aside: asideAt(take),
   }))

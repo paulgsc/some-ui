@@ -129,6 +129,23 @@ const PACIFIC_CLOCK = new Intl.DateTimeFormat("en-GB", {
   hourCycle: "h23",
 })
 
+const PACIFIC_WEEKDAY = new Intl.DateTimeFormat("en-US", {
+  timeZone: PACIFIC_TIME_ZONE,
+  weekday: "long",
+})
+
+/** The day of the week of `at` on the owner's clock, as a weekly routine's screens say it: `Sunday`. */
+export const pacificWeekday = (at: string | Date): string =>
+  PACIFIC_WEEKDAY.format(new Date(at))
+
+/** The time of day of `at` on the owner's clock: `23:59`. */
+export const pacificClock = (at: string | Date): string =>
+  PACIFIC_CLOCK.format(new Date(at))
+
+/** A week's number from its id (`weekAround`'s): `2026-w47` is 47. */
+export const weekNumber = (id: string): number =>
+  Number(id.slice(id.indexOf("w") + 1))
+
 /** The Pacific calendar day of `at`, `YYYY-MM-DD`. */
 export function pacificDay(at: Date): string {
   return PACIFIC_DAY.format(at)

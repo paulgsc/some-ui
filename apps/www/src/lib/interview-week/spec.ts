@@ -32,8 +32,9 @@ import type {
   BundleMachine,
   BundleSpec,
   BundleState,
+  SendsAtHome,
 } from "@some-ui/voice-capture"
-import { bundleMachine } from "@some-ui/voice-capture"
+import { bundleMachine, isPastDue } from "@some-ui/voice-capture"
 
 /** A take as a send names it. */
 type Taken = { readonly take: string; readonly recordedAt: string }
@@ -93,45 +94,10 @@ export const takeLine = (week: string, item: string): string =>
 export const isClosed = (
   week: Pick<InterviewWeek, "due">,
   at: string
-): boolean => Date.parse(at) > Date.parse(week.due)
+): boolean => isPastDue(week.due, at)
 
-/** How this phone remembers one send of a week went home: `2026-w47/<at>`. */
-export const sendKey = (sent: Pick<InterviewSent, "week" | "at">): string =>
-  `${sent.week}/${sent.at}`
-
-/** The send of `sends` made last, by instant; null for none. */
-export const latestSend = (
-  sends: ReadonlyArray<InterviewSent>
-): InterviewSent | null =>
-  sends.reduce<InterviewSent | null>(
-    (latest, sent) =>
-      latest === null || Date.parse(sent.at) >= Date.parse(latest.at)
-        ? sent
-        : latest,
-    null
-  )
-
-/** A week's sends as home has them, as far as this phone knows. */
-export type InterviewAtHome = {
-  /** The latest send home holds: what stands at `due`; null when home holds none. */
-  readonly holds: InterviewSent | null
-  /** The latest send made on this phone, home's or not; null for none. */
-  readonly last: InterviewSent | null
-}
-
-/**
- * What home holds of `week`: of the sends kept on this phone, the latest by
- * `at` home holds (`held` says, by what the link remembers), and the latest
- * made. A send home doesn't hold by the deadline never counts.
- */
-export function interviewAtHome(
-  kept: ReadonlyArray<InterviewSent>,
-  week: Pick<InterviewWeek, "id">,
-  held: (sent: InterviewSent) => boolean
-): InterviewAtHome {
-  const sends = kept.filter((sent) => sent.week === week.id)
-  return { holds: latestSend(sends.filter(held)), last: latestSend(sends) }
-}
+/** A week's sends as home has them: the latest it holds, and the latest made. */
+export type InterviewAtHome = SendsAtHome<InterviewSent>
 
 /** Every take a send names, answers then reads. */
 export const takesOf = (sent: InterviewSent): ReadonlyArray<string> => [

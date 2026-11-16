@@ -11,19 +11,19 @@
  *   the routine's: the phone never writes one. The first copy read of an id
  *   is the one kept; a week the phone can't read is not read again.
  * - **The sends** (`interviewGoing`): the latest send of each week, to
- *   `PUT /interview-weeks/:id/sent`, known by its `at` (`./spec`'s
- *   `sendKey`). Home keeps it as the week's draft, and the draft standing at
- *   the deadline is final. Nothing goes once the week's deadline has passed
+ *   `PUT /interview-weeks/:id/sent`, known by its `at` (voice-capture's
+ *   `weekSendKey`), as `./spec` says how a week resends. Nothing goes once the week's deadline has passed
  *   on this phone's clock, since home refuses it then. Earlier sends stay on
  *   this phone and go nowhere.
  */
 import type { HomeCall, HomeExchanged, KeyedStorage } from "@some-ui/core-utils"
 import { readAs, unexpectedAnswer } from "@some-ui/core-utils"
 import { readWeek } from "@some-ui/interview-week"
+import { latestSend, weekSendKey } from "@some-ui/voice-capture"
 import { z } from "zod"
 
 import type { InterviewSent } from "./spec"
-import { isClosed, latestSend, sendKey } from "./spec"
+import { isClosed } from "./spec"
 import type { HeldInterview, InterviewsHeld, InterviewsStore } from "./store"
 import { heldWeeks, interviewSent } from "./store"
 
@@ -106,7 +106,7 @@ export async function exchangeInterviewWeeks(
 
 /** A send that goes home: where, and the body it goes as. */
 export type InterviewGoing = {
-  /** `sendKey`: the week and when it was sent. */
+  /** `weekSendKey`: the week and when it was sent. */
   readonly id: string
   readonly path: string
   readonly wire: InterviewSent
@@ -130,7 +130,7 @@ export function interviewGoing(
       return of === null || !isClosed(of.week, now)
     })
     .map((sent) => ({
-      id: sendKey(sent),
+      id: weekSendKey(sent),
       path: `${weekPath(sent.week)}/sent`,
       wire: sent,
     }))

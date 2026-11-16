@@ -4,25 +4,13 @@
  * but these. Held to the same rules by `__tests__/words.test.ts`.
  */
 import type { Week } from "@rust-rounds/lib/formats/week"
-import { weekNumber } from "@rust-rounds/lib/formats/week-id"
-import { PACIFIC_TIME_ZONE } from "@some-ui/core-utils"
+import {
+  pacificClock as clock,
+  pacificWeekday as weekday,
+  weekNumber,
+} from "@some-ui/core-utils"
 
-export { weekNumber } from "@rust-rounds/lib/formats/week-id"
-
-/** The day of the week of `at`, on the owner's clock. */
-export const weekday = (at: string): string =>
-  new Date(at).toLocaleDateString("en-US", {
-    weekday: "long",
-    timeZone: PACIFIC_TIME_ZONE,
-  })
-
-/** The time of day of `at`, on the owner's clock: 23:59. */
-export const clock = (at: string): string =>
-  new Date(at).toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: PACIFIC_TIME_ZONE,
-  })
+export { clock, weekday, weekNumber }
 
 type CardWeek = Pick<Week, "id" | "due"> & {
   readonly company: Pick<Week["company"], "name">

@@ -8,9 +8,7 @@ import { CUE_SECONDS, NO_CUE, stepCue } from "@/lib/interview-week/cue"
 import type { InterviewSent } from "@/lib/interview-week/spec"
 import {
   cardOf,
-  interviewAtHome,
   interviewMachine,
-  isClosed,
   itemsOf,
   readItem,
   sentTakeOf,
@@ -38,11 +36,6 @@ describe("the interview week's items (IW5)", () => {
     expect(takeLine(WEEK.id, readItem("epic-2931"))).toBe(
       "2026-w47:read:epic-2931"
     )
-  })
-
-  it("close after the deadline only", () => {
-    expect(isClosed(WEEK, "2026-11-23T07:59:00.000Z")).toBe(false)
-    expect(isClosed(WEEK, "2026-11-23T08:00:00.000Z")).toBe(true)
   })
 })
 
@@ -113,21 +106,6 @@ describe("the record Send keeps", () => {
     expect(again.passed).toEqual(["walk-me-through", "decision-c266"])
     expect(sentTakeOf(again, "read:epic-2931")).toBe("t2")
     expect(sentTakeOf(again, "walk-me-through")).toBeNull()
-  })
-
-  it("says what home holds: its latest held, and the latest made", () => {
-    const at = (when: string): InterviewSent => ({
-      week: WEEK.id,
-      at: when,
-      answers: [],
-      reads: [],
-      passed: [],
-      passedReads: [],
-    })
-    const sends = [at("2026-11-17T00:00Z"), at("2026-11-18T00:00Z")]
-    const home = interviewAtHome(sends, WEEK, (sent) => sent === sends[0])
-    expect(home.holds).toBe(sends[0])
-    expect(home.last).toBe(sends[1])
   })
 })
 

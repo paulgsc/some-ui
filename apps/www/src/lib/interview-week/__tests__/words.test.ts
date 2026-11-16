@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vitest"
 
-import { INTERVIEW_WORDS, lengthOf } from "@/lib/interview-week/words"
+import { INTERVIEW_WORDS } from "@/lib/interview-week/words"
 
 import { WEEK } from "./fixture"
 
@@ -60,10 +60,9 @@ describe("the interview week's words (IW5)", () => {
   })
 
   it("show a target length as a person reads one", () => {
-    expect(lengthOf(60)).toBe("1 min")
-    expect(lengthOf(90)).toBe("1 min 30 s")
-    expect(lengthOf(45)).toBe("45 s")
+    expect(INTERVIEW_WORDS.aim(90)).toBe("Aim for about 1 min 30 s")
     expect(INTERVIEW_WORDS.aim(120)).toBe("Aim for about 2 min")
+    expect(INTERVIEW_WORDS.cap).toBe("A take stops at 2 min.")
   })
 
   it("say the brief's week on the owner's clock", () => {

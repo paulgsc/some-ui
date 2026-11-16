@@ -159,23 +159,17 @@ const Brief = (props: Shown): JSX.Element => {
   )
 }
 
-/** Whether the take home holds for `item` is another than the one on this phone now. */
+/** On a card sent before: whether the take here is the one home holds. */
 const HomeLine = ({
-  state,
-  item,
+  standing: now,
 }: {
-  state: InterviewState
-  item: string
-}): JSX.Element | null => {
-  const sent = sentTakeOf(state.sent, item)
-  if (sent === null) return null
-  const now = currentTakeOf(state.takes, takeLine(state.draft.id, item))
-  return (
+  standing: CardStanding
+}): JSX.Element | null =>
+  now === "sent" || now === "resaid" ? (
     <p className="text-muted-foreground text-sm">
-      {now !== null && now.id !== sent ? WORDS.home.again : WORDS.home.holds}
+      {now === "resaid" ? WORDS.home.again : WORDS.home.holds}
     </p>
-  )
-}
+  ) : null
 
 const QuestionHead = ({
   question,
@@ -256,8 +250,6 @@ const Cards = (props: Shown): JSX.Element => {
       words={WORDS}
       renderHead={(item) => {
         const card = cardOf(item)
-        const question = week.questions.findIndex(({ id }) => id === item)
-        const read = week.cards.findIndex(({ id }) => id === card)
         const asked = week.questions.find(({ id }) => id === item)
         const script = week.cards.find(({ id }) => id === card)
         return (
@@ -265,19 +257,19 @@ const Cards = (props: Shown): JSX.Element => {
             {asked !== undefined && (
               <QuestionHead
                 question={asked}
-                n={question + 1}
+                n={week.questions.indexOf(asked) + 1}
                 of={week.questions.length}
               />
             )}
             {script !== undefined && (
               <ReadHead
                 card={script}
-                n={read + 1}
+                n={week.cards.indexOf(script) + 1}
                 of={week.cards.length}
                 counting={counting?.item === item ? counting.left : null}
               />
             )}
-            <HomeLine state={state} item={item} />
+            <HomeLine standing={standing(props, item)} />
           </>
         )
       }}
