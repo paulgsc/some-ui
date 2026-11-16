@@ -47,6 +47,19 @@ describe("checkCommitTrailers", () => {
     ).toEqual([])
   })
 
+  it("reads an area prefix of up to eight letters, as SFEED4's", () => {
+    const defect = (lines: Array<string>): string =>
+      msg("fix(x): y", ["Change-Kind: defect", ...lines, coAuthor].join("\n"))
+    expect(
+      checkCommitTrailers(
+        defect(["Promise: SFEED4 a/b | series split", "Relates: SFEED4 widens"])
+      )
+    ).toEqual([])
+    expect(checkCommitTrailers(defect(["Relates: ABCDEFGHI1 breaks"]))).toEqual(
+      [{ kind: "badRelates", value: "ABCDEFGHI1 breaks" }]
+    )
+  })
+
   it("reports a missing kind, and a subject with no body", () => {
     expect(checkCommitTrailers(msg("feat(x): y", coAuthor))).toEqual([
       { kind: "missingKind" },
