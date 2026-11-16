@@ -1,0 +1,19 @@
+{
+  "id": "C401",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/interview-essay.ts",
+    "some-ui:packages/video-render/src/templates.ts",
+    "some-ui:apps/www/src/routes/essay.tsx"
+  ],
+  "chose": "The interview essay plays on the Rust essay's stage, `/essay?kind=interview`, and through the same `record:essay`, which reads the file's schema; it is not yet one of Studio's templates (no pinned format, storyboard or preview), and joins them with its feed (`Feed::InterviewEssay`).",
+  "options": [
+    "this: the same stage and recorder, Studio's template list later with the feed",
+    "a route and recorder of its own, `/interview-essay` and `record:interview-essay`",
+    "a Studio template now, with its pinned format, storyboard and preview, before home can render or list one"
+  ],
+  "gray": "Studio's Templates page is on the owner's phone, and whether the essay shows there before its feed does is no earlier decision's; the route's name is what home's render job calls.",
+  "undo": "Pin `interviewEssayFormat` as templates/interview-essay/v1.json and list it in TEMPLATE_IDS with its storyboard and preview; the stage's `kind` stays.",
+  "refs": ["#2937", "#2931"]
+}
