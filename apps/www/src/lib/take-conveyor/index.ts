@@ -9,7 +9,7 @@ import type { LibraryStations } from "@some-ui/soundbites"
 import { browserLocalStorage } from "@/lib/tenant/storage"
 
 import type { TakeConveyor } from "./runtime"
-import { createTakeConveyor, libraryStationsOf } from "./runtime"
+import { createTakeConveyor, libraryStationsOf, STATION_NAMES } from "./runtime"
 
 let conveyor: TakeConveyor | null = null
 
@@ -32,4 +32,6 @@ export const libraryStations = (): LibraryStations => ({
   subscribe: (listener) => takeConveyor().subscribe(listener),
   getSnapshot: () => takeConveyor().getSnapshot(),
   standing: (take) => libraryStationsOf(takeConveyor()).standing(take),
+  names: STATION_NAMES,
+  station: (take) => libraryStationsOf(takeConveyor()).station(take),
 })

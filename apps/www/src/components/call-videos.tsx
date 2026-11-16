@@ -42,16 +42,26 @@ import { VideoFetch } from "@/components/video-fetch"
 
 const WORDS = VIDEOS_WORDS
 
+/**
+ * `src` starting at `ms`, by a media fragment (`#t=`), so the player opens
+ * there with no seek of ours to time.
+ */
+const atMoment = (src: string, ms: number): string =>
+  `${src}#t=${String(Math.floor(ms / 1000))}`
+
 const Watching = ({
   feed,
   episode,
   fetch,
   videos,
+  startAt,
 }: {
   feed: Feed
   episode: Episode
   fetch: Fetch | undefined
   videos: FeedVideos
+  /** Where the video starts, from its start: a note's moment (TAKES2). */
+  startAt?: number | undefined
 }): JSX.Element => {
   const video = useRef<HTMLVideoElement>(null)
   if (fetch?.kind === "ready") {
@@ -60,7 +70,7 @@ const Watching = ({
         {/* eslint-disable-next-line jsx-a11y/media-has-caption -- the words are drawn on screen (the call's in every scene, Playoff Delta's where its shape draws captions), and home makes no caption file */}
         <video
           ref={video}
-          src={fetch.src}
+          src={startAt === undefined ? fetch.src : atMoment(fetch.src, startAt)}
           controls
           playsInline
           className="w-full rounded-lg"
@@ -134,12 +144,14 @@ const EpisodeRow = ({
   fetch,
   save,
   videos,
+  startAt,
 }: {
   feed: Feed
   episode: Episode
   fetch: Fetch | undefined
   save: LinkSave | undefined
   videos: FeedVideos
+  startAt?: number | undefined
 }): JSX.Element => {
   const stands = standing(episode)
   return (
@@ -151,7 +163,13 @@ const EpisodeRow = ({
         </p>
       )}
       {stands === "kept" && (
-        <Watching feed={feed} episode={episode} fetch={fetch} videos={videos} />
+        <Watching
+          feed={feed}
+          episode={episode}
+          fetch={fetch}
+          videos={videos}
+          startAt={startAt}
+        />
       )}
       {stands === "letGo" && (
         <p className="text-muted-foreground text-sm">
@@ -292,9 +310,12 @@ export const EpisodeScreen = ({
   feed,
   episodeKey,
   pair,
+  startAt,
 }: {
   feed: Feed
   episodeKey: string
+  /** Where its video starts, from its start (a note's moment, TAKES2). */
+  startAt?: number | undefined
   /** The way to pairing, for a phone that isn't paired. */
   pair: JSX.Element
 }): JSX.Element => {
@@ -333,6 +354,7 @@ export const EpisodeScreen = ({
                 fetch={state.fetches[episode.key]}
                 save={state.links[episode.key]}
                 videos={videos}
+                startAt={startAt}
               />
             </ul>
             <Chapters feed={feed} episodeKey={episode.key} />

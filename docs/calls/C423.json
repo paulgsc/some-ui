@@ -1,0 +1,17 @@
+{
+  "id": "C423",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/ui/soundbites/src/components/take-library/index.tsx"
+  ],
+  "chose": "Canned and Set aside are one state said once: a take on the conveyor says its station (Canned, when canned), and \"Set aside … Home still keeps it.\" is said only of a take on no conveyor (an idea's answer).",
+  "options": [
+    "the station wins, set aside only off the conveyor (now)",
+    "both, as before",
+    "set aside wins, and Canned is not said on the row"
+  ],
+  "gray": "#3029 found the two words on one row for one state. Canning sets a take aside on home, so both were true; which word the owner reads is theirs.",
+  "undo": "Drop the `standing === null` condition on the set-aside pill in `HomeCard`.",
+  "refs": ["#3029", "#3069"]
+}

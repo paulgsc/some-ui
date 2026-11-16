@@ -114,8 +114,11 @@ export function rowsOf(
   })
 }
 
+/** What an episode's dot can say: the shared table's meanings Episodes uses. */
+export type EpisodeStatus = Extract<DotMeaning, "home" | "out" | "making">
+
 /** A part's dot: being made, on home, or out on YouTube. */
-export function partStatus(episode: Episode): DotMeaning {
+export function partStatus(episode: Episode): EpisodeStatus {
   const stands = standing(episode)
   switch (stands) {
     case "waiting": {
@@ -137,7 +140,7 @@ export function partStatus(episode: Episode): DotMeaning {
  * A row's dot: being made while any part is, else on home while any part
  * isn't out yet, else out.
  */
-export function rowStatus(row: Row): DotMeaning {
+export function rowStatus(row: Row): EpisodeStatus {
   const each = row.parts.map(partStatus)
   if (each.includes("making")) return "making"
   if (each.includes("home")) return "home"

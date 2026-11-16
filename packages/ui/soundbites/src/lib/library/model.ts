@@ -93,15 +93,6 @@ export type LibraryRead =
 /** The most characters a search may hold, as home takes one. */
 export const SEARCH_MAX = 200
 
-/** What a take is for, by the ref the phone sent it home with. */
-export type TakeFor = "scene" | "idea" | "other"
-
-export function takeFor(ref: string): TakeFor {
-  if (ref.startsWith("idea:")) return "idea"
-  // A video's scene: `<project>:<shot>:<take>`.
-  return ref.split(":").length === 3 ? "scene" : "other"
-}
-
 /** The phone's own takes with no scene, and whether it has room for another. */
 export type LibraryPhoneSnapshot = {
   readonly takes: ReadonlyArray<PatternTake>
@@ -174,6 +165,8 @@ export type LibraryIntent =
   | { readonly type: "newest" }
   | { readonly type: "readAgain" }
   | { readonly type: "play"; readonly id: string }
+  /** What plays stops: its row is about to leave the screen (a chip, TAKES3). */
+  | { readonly type: "stop" }
   /** The person closed "home can't give that take back". */
   | { readonly type: "noticeDismissed" }
 
@@ -345,6 +338,9 @@ function step(state: LibraryState, event: LibraryEvent): LibraryStep {
           { type: "startPlayback", play: event.play, audio: event.audio },
         ],
       }
+    }
+    case "stop": {
+      return stopped(state)
     }
     case "noticeDismissed": {
       return same({ ...state, unplayable: null })

@@ -1,0 +1,17 @@
+{
+  "id": "C424",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/ui/soundbites/src/components/take-library/index.tsx",
+    "some-ui:packages/ui/soundbites/src/lib/library/words.ts"
+  ],
+  "chose": "The prototype's open choices take its first option: canned takes fold under the rest of each list, under their station's name (when no station chip is picked); the kind recorded on Takes is called \"Recorded here\"; a note with no spoken part stays on Feedback and out of Takes. Issue status (and whether it replaces Picked up, and how a take filed to two issues reads) waits for TAKES4.",
+  "options": [
+    "each choice's first option on the prototype page (now)",
+    "the owner's answer to each, when given"
+  ],
+  "gray": "The owner left these open on the TAKES1 prototype page; the coordinator's rule for the sprint is to take the first option and say so.",
+  "undo": "Each is one place: the canned fold in `Listed`, `LIBRARY_WORDS.kinds.here`, and no change for notes with no take.",
+  "refs": ["#3029", "#3069"]
+}

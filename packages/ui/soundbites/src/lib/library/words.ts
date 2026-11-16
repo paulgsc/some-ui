@@ -4,9 +4,21 @@
  * machinery. "Take" is the one word for a recording here (ST34).
  * `__tests__/words.test.ts` holds both.
  */
-import { counted, dayOf, formatDay } from "@some-ui/core-utils"
+import {
+  assertNever,
+  counted,
+  dayOf,
+  formatDay,
+  formatTimecode,
+} from "@some-ui/core-utils"
 
-import type { LibraryBy, TakeFor } from "./model"
+import type {
+  Compartment,
+  TakeAbout,
+  TakeKind,
+  TakePlace,
+} from "./compartments"
+import type { LibraryBy } from "./model"
 import { SEARCH_MAX } from "./model"
 
 const takes = (n: number): string => counted(n, "take")
@@ -63,14 +75,124 @@ export const LIBRARY_WORDS = {
   silent: "Home heard no words in this take.",
   setAside: (at: string): string =>
     `Set aside ${dayAt(at)}. Home still keeps it.`,
-  /** A take's line: what it is for, and when it was recorded. */
-  line: (what: TakeFor, recordedAt: string): string =>
-    `${LIBRARY_WORDS.what[what]} · ${dayAt(recordedAt)}`,
-  what: {
-    scene: "For a video's scene",
-    idea: "For an idea",
-    other: "A take",
-  } satisfies Record<TakeFor, string>,
+  /**
+   * What each kind of take was said for (TAKES2, TAKES3): its name on a
+   * take's card (`one`), on its tile and as its page's heading (`many`),
+   * and what goes there, said on its tile.
+   */
+  kinds: {
+    note: {
+      one: "On an episode",
+      many: "On episodes",
+      line: "What you say on an episode, at its moment.",
+    },
+    scene: {
+      one: "For a video's scene",
+      many: "Scenes",
+      line: "Takes for a scene of a video you're making.",
+    },
+    idea: {
+      one: "For an idea",
+      many: "Ideas",
+      line: "What you say to an idea's questions.",
+    },
+    ask: {
+      one: "For an ask",
+      many: "Asks",
+      line: "What you say on an ask's page, deciding it.",
+    },
+    here: {
+      one: "Recorded here",
+      many: "Recorded here",
+      line: "Takes recorded on Takes itself, before there's anything they're for.",
+    },
+  } satisfies Record<
+    TakeKind,
+    { readonly one: string; readonly many: string; readonly line: string }
+  >,
+  all: "All takes",
+  allLine: "Every kind together, newest first.",
+  /** A compartment's heading. */
+  compartmentHeading: (compartment: Compartment): string =>
+    compartment === "all"
+      ? LIBRARY_WORDS.all
+      : LIBRARY_WORDS.kinds[compartment].many,
+  /** The tiles count only what home listed, when it listed fewer than it keeps. */
+  counted: (listed: number, total: number): string =>
+    `Counted from the newest ${String(listed)} of the ${takes(total)} home keeps.`,
+  /** A compartment that holds no take. */
+  empty: (compartment: Compartment): string =>
+    compartment === "all"
+      ? "No takes yet. Each kind fills its own place as you say things for it."
+      : `None yet. ${LIBRARY_WORDS.kinds[compartment].line}`,
+  /** The chips picked show no take. */
+  noneUnder: "No take here is where you picked. Tap a chip again to show all.",
+  /** What a take's card says first: what it was said for. */
+  subject: (about: TakeAbout): string | null => {
+    switch (about.kind) {
+      case "note": {
+        return `${about.feed} · ${about.episode}`
+      }
+      case "scene": {
+        return about.video ?? "A video you're making"
+      }
+      case "idea": {
+        return about.question ?? "One of an idea's questions"
+      }
+      case "ask": {
+        return (
+          about.ask ??
+          (about.number === null
+            ? "An ask"
+            : `The ask #${String(about.number)}`)
+        )
+      }
+      case "here": {
+        return null
+      }
+      default: {
+        return assertNever(about)
+      }
+    }
+  },
+  /** What the card says under it, when the phone knows more. */
+  detail: (about: TakeAbout): string | null => {
+    switch (about.kind) {
+      case "note": {
+        return `At ${formatTimecode(about.atMs)}`
+      }
+      case "scene": {
+        return about.scene === null ? null : `Scene ${String(about.scene)}`
+      }
+      case "idea": {
+        return about.idea === null ? null : `About “${about.idea}”`
+      }
+      case "ask": {
+        return about.ask === null || about.number === null
+          ? null
+          : `#${String(about.number)}`
+      }
+      case "here": {
+        return null
+      }
+      default: {
+        return assertNever(about)
+      }
+    }
+  },
+  /** When a take was said. */
+  said: (recordedAt: string): string => `Said ${dayAt(recordedAt)}`,
+  /** Where a take is, on its card and its chip. */
+  place: {
+    phone: "On this phone",
+    home: "On home",
+  } satisfies Record<TakePlace, string>,
+  onHomeSince: (storedAt: string): string => `On home since ${dayAt(storedAt)}`,
+  /** What a row of chips does, for a reader that can't see it. */
+  chips: "Show only the takes",
+  /** The way from a note's take to its episode, at the moment it was left. */
+  openEpisode: (atMs: number): string =>
+    `Open the episode at ${formatTimecode(atMs)}`,
   play: "Play this take",
   stop: "Stop this take",
   loading: "Getting it from home…",
