@@ -168,6 +168,21 @@ describe("Takes › Needs your attention (HEARD3)", () => {
     expect(screen.getByText(W.shown(1, 1))).toBeTruthy()
   })
 
+  it("never says nothing waits while home counts takes this phone can't show", async () => {
+    render(
+      <TakeReconcile
+        ports={{
+          home: home({ kind: "read", page: { takes: [], total: 3 } }),
+          player: quietPlayer,
+        }}
+        pair={null}
+      />
+    )
+    await settle()
+    expect(screen.queryByText(W.none)).toBeNull()
+    expect(screen.getByText(W.noneShown(3))).toBeTruthy()
+  })
+
   it("shows the way in only while a take waits, with how many", async () => {
     const wayIn = (body: React.ReactNode): React.ReactNode => (
       <a href="#attention">{body}</a>

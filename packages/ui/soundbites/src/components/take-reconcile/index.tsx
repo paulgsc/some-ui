@@ -293,7 +293,9 @@ export const TakeReconcile = ({
     <div className="flex flex-col gap-4">
       <Unread state={state} dispatch={dispatch} pair={pair} />
       {page !== null && takes.length === 0 && (
-        <p className="text-muted-foreground text-sm">{WORDS.none}</p>
+        <p className="text-muted-foreground text-sm">
+          {page.total === 0 ? WORDS.none : WORDS.noneShown(page.total)}
+        </p>
       )}
       {page !== null && takes.length > 0 && (
         <>

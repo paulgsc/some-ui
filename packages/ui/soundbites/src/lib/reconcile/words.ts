@@ -51,11 +51,17 @@ export const RECONCILE_WORDS = {
   unreadable:
     "What home said couldn't be read on this phone. Try again in a moment.",
   none: "Every take home has heard came through. Nothing waits on you here.",
-  /** What the page holds, said once at its top. */
+  /**
+   * What the page holds, said once at its top: home may list fewer than
+   * wait (its newest), and this phone may not show every one it lists.
+   */
   shown: (listed: number, total: number): string =>
     listed < total
-      ? `The newest ${String(listed)} of the ${takes(total)} home couldn't hear well, by what went wrong.`
+      ? `${String(listed)} of the ${takes(total)} home couldn't hear well show here, by what went wrong.`
       : `${takes(total)} home couldn't hear well, by what went wrong.`,
+  /** Takes wait, and this phone can show none of them. */
+  noneShown: (total: number): string =>
+    `${takes(total)} home couldn't hear well ${total === 1 ? "waits" : "wait"}, but none can show on this phone yet. Once it's updated, they show here.`,
   /** What one code means: its name, and a line under it. */
   codes: {
     low_confidence: {
@@ -143,9 +149,9 @@ export const RECONCILE_WORDS = {
       "Marked to record again. It leaves this list; home keeps this take too.",
   },
   acting: "Telling home…",
-  /** An act home didn't take: nothing changed, and the take stays. */
   /** Home had nothing left to settle on a take: it leaves the list. */
   settled:
     "Home has nothing left to settle on that take, so it leaves this list.",
+  /** An act home didn't take: nothing changed, and the take stays. */
   notTaken: "Home didn't take that just now, so nothing changed. Try again.",
 } as const

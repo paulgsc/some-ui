@@ -1803,7 +1803,9 @@ reaches:
     `offersDelete` refuses (`components/settings/device-my-data.tsx`'s
     `MyDataKind` and its `?note=` opening), or, on Needs your attention,
     with more than the one take tapped or with a take `isDeletableKind`
-    refuses;
+    refuses; or a hunk to `deleting.ts` that adds a kind to
+    `PHONE_LETS_GO` that home's `SWITCHED_ON` doesn't delete, which would
+    offer Delete… on it on both pages;
   - a hunk to `device-my-data-delete.tsx` that drops `DELETING.goes` or
     `DELETING.stays` from the sheet that asks, or puts the confirm before
     "Keep it";

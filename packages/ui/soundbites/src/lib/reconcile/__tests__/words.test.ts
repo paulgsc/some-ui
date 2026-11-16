@@ -33,12 +33,24 @@ const AT = "2026-11-03T09:00:00.000Z"
 
 /** Every word the table says: each fixed one, and each a maker makes. */
 function everyWord(): Array<string> {
-  const { wayIn, shown, codes, heardAs, said, of, acts, done, ...fixed } =
-    RECONCILE_WORDS
+  const {
+    wayIn,
+    shown,
+    noneShown,
+    codes,
+    heardAs,
+    said,
+    of,
+    acts,
+    done,
+    ...fixed
+  } = RECONCILE_WORDS
   return [
     ...Object.values(fixed),
     ...[0, 1, 7].flatMap((n) => [wayIn(n), shown(n, n)]),
     shown(100, 140),
+    noneShown(1),
+    noneShown(4),
     ...CODES.flatMap((code) => [codes[code].name, codes[code].line]),
     heardAs("pt", "en"),
     heardAs("xx", null),
@@ -74,10 +86,11 @@ describe("the takes needing attention's words (HEARD3)", () => {
     )
   })
 
-  it("say when home lists only the newest of the takes waiting", () => {
+  it("say when fewer show than wait, and never that nothing waits when some do", () => {
     expect(RECONCILE_WORDS.shown(100, 140)).toBe(
-      "The newest 100 of the 140 takes home couldn't hear well, by what went wrong."
+      "100 of the 140 takes home couldn't hear well show here, by what went wrong."
     )
+    expect(RECONCILE_WORDS.noneShown(2)).toMatch(/^2 takes .* wait, but none/)
     expect(RECONCILE_WORDS.shown(3, 3)).toBe(
       "3 takes home couldn't hear well, by what went wrong."
     )
