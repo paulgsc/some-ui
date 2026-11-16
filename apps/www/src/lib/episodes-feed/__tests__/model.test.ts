@@ -2,7 +2,7 @@
  * @vitest-environment node
  *
  * Studio's Episodes, by week (EPISODES2): every feed's episodes in one feed,
- * placed by the day home made each where home says, else by the week its key
+ * placed by the day home knows for each where home says, else by the week its key
  * names, never at a guessed one; a call's parts on one row; each chip's count
  * over every feed, whatever the chip; and a feed that can't be read beside the
  * ones that can.
@@ -42,6 +42,7 @@ const LISTS: FeedLists = {
   ),
   "cards-essay": read(episode("zfs-2026-11-12")),
   "playoff-delta": read(episode("2026-SF-10"), episode("2026-SF-09")),
+  "interview-essay": read(),
   "rust-essay": read(episode("2026-w45")),
 }
 
@@ -49,6 +50,7 @@ describe("keyDay", () => {
   it("reads the day each feed's key names, and none from Playoff Delta's", () => {
     expect(keyDay("call", "2026-11-06")).toBe("2026-11-06")
     expect(keyDay("rust-essay", "2026-w45")).toBe("2026-11-02")
+    expect(keyDay("interview-essay", "2026-w46")).toBe("2026-11-09")
     expect(keyDay("cards-essay", "zfs-2026-11-12")).toBe("2026-11-12")
     expect(keyDay("playoff-delta", "2026-SF-10")).toBeNull()
   })
@@ -74,19 +76,19 @@ describe("rowsOf", () => {
     ])
   })
 
-  it("places a row by the day home made it before its key's", () => {
-    const [made] = rowsOf("playoff-delta", [
+  it("places a row by the day home knows before its key's", () => {
+    const [sent] = rowsOf("playoff-delta", [
       episode("2026-SF-10", { date: "2026-11-10" }),
     ])
-    expect(made).toMatchObject({ day: "2026-11-10", made: true })
-    const [keyed] = rowsOf("call", [episode("2026-11-06")])
-    expect(keyed).toMatchObject({ day: "2026-11-06", made: false })
+    expect(sent).toMatchObject({ day: "2026-11-10" })
+    const [keyed] = rowsOf("call", [episode("2026-11-06", { date: null })])
+    expect(keyed).toMatchObject({ day: "2026-11-06" })
   })
 
   it("ignores a date home sends that isn't a day", () => {
     for (const date of ["2026-13-01", "Friday", "", null]) {
       const [row] = rowsOf("call", [episode("2026-11-06", { date })])
-      expect(row).toMatchObject({ day: "2026-11-06", made: false })
+      expect(row).toMatchObject({ day: "2026-11-06" })
     }
   })
 })
@@ -131,6 +133,16 @@ describe("a row's dot and length", () => {
       episode("w-p2", { week: "w" }),
     ])
     expect(rowLength(half)).toBeNull()
+    // Home's whole week, while it holds every part, before any sum.
+    const [week] = rowsOf("call", [
+      episode("w", { week: "w", durationMs: 60_000, weekDurationMs: 95_000 }),
+      episode("w-p2", {
+        week: "w",
+        durationMs: 35_000,
+        weekDurationMs: 95_000,
+      }),
+    ])
+    expect(rowLength(week)).toBe(95_000)
   })
 })
 
@@ -159,6 +171,7 @@ describe("feedView", () => {
       all: 6,
       call: 2,
       "cards-essay": 1,
+      "interview-essay": 0,
       "playoff-delta": 2,
       "rust-essay": 1,
     }

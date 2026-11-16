@@ -14,10 +14,11 @@ import { FEED_FACTS } from "@/lib/studio-index"
 
 type Paint = { readonly hue: string; readonly ground: string }
 
-/** Each genre's hue on its ground; honey, lavender, lime and rose. */
+/** Each genre's hue on its ground: honey, sand, lavender, lime and rose. */
 const GENRE_PAINT = {
   call: { hue: "#e8a93c", ground: "#2e2416" },
-  "cards-essay": { hue: "#b5a6ec", ground: "#201b33" },
+  "cards-essay": { hue: "#e3d2ab", ground: "#29241a" },
+  "interview-essay": { hue: "#b5a6ec", ground: "#201b33" },
   "playoff-delta": { hue: "#c9d46a", ground: "#252914" },
   "rust-essay": { hue: "#e58fb6", ground: "#2d1724" },
 } as const satisfies Record<Feed, Paint>
@@ -152,6 +153,55 @@ const Delta = ({ hue, dim }: { hue: string; dim: string }): JSX.Element => (
 )
 
 /** The waveform's bars: each one's height, where it stands, whether it's lit. */
+const INTERVIEW_BARS = [10, 22, 14, 28, 18, 24, 10].map((h, i) => ({
+  h,
+  x: 182 + i * 10,
+}))
+
+/** A question and an answer, the answer said aloud. */
+const Interview = ({
+  hue,
+  ground,
+}: {
+  hue: string
+  ground: string
+}): JSX.Element => (
+  <>
+    <path
+      d="M70 44h92a12 12 0 0 1 12 12v40a12 12 0 0 1-12 12h-56l-20 18v-18h-16a12 12 0 0 1-12-12V56a12 12 0 0 1 12-12z"
+      fill={hue}
+    />
+    <text
+      x={116}
+      y={92}
+      textAnchor="middle"
+      fontFamily="Georgia, serif"
+      fontWeight={700}
+      fontSize={40}
+      fill={ground}
+    >
+      ?
+    </text>
+    <path
+      d="M162 76h88a12 12 0 0 1 12 12v36a12 12 0 0 1-12 12h-14v16l-18-16h-56a12 12 0 0 1-12-12V88a12 12 0 0 1 12-12z"
+      fill={ground}
+      stroke={hue}
+      strokeWidth={3.5}
+    />
+    {INTERVIEW_BARS.map(({ h, x }) => (
+      <rect
+        key={x}
+        x={x}
+        y={106 - h / 2}
+        width={5}
+        height={h}
+        rx={2.5}
+        fill={hue}
+      />
+    ))}
+  </>
+)
+
 const RUST_BARS = [14, 30, 22, 44, 34, 52, 28, 40, 18, 32, 12].map((h, i) => ({
   h,
   x: 194 + i * 9,
@@ -225,6 +275,7 @@ export const GenreThumb = ({ feed }: { feed: Feed }): JSX.Element => {
       ))}
       {feed === "call" && <Call hue={hue} dim={dim} />}
       {feed === "cards-essay" && <Cards hue={hue} dim={dim} ground={ground} />}
+      {feed === "interview-essay" && <Interview hue={hue} ground={ground} />}
       {feed === "playoff-delta" && <Delta hue={hue} dim={dim} />}
       {feed === "rust-essay" && <Rust hue={hue} dim={dim} ground={ground} />}
     </svg>

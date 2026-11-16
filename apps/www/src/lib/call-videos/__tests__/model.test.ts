@@ -79,6 +79,18 @@ describe("readEpisodes", () => {
       kind: "read",
       episodes: parts,
     })
+    // What home doesn't know it sends as null, and the list still reads.
+    const unknown = JSON.stringify({
+      episodes: [
+        episode({ date: null, durationMs: null, weekDurationMs: null }),
+      ],
+    })
+    expect(readEpisodes({ status: 200, body: unknown })).toEqual({
+      kind: "read",
+      episodes: [
+        episode({ date: null, durationMs: null, weekDurationMs: null }),
+      ],
+    })
     // A day that isn't one is the page's to ignore, not the list's to refuse.
     const odd = JSON.stringify({ episodes: [episode({ date: "Friday" })] })
     expect(readEpisodes({ status: 200, body: odd }).kind).toBe("read")

@@ -1,0 +1,24 @@
+{
+  "id": "C417",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/studio-index/words.ts",
+    "some-ui:apps/www/src/lib/call-videos/words.ts",
+    "some-ui:apps/www/src/lib/feeds/index.ts",
+    "some-ui:apps/www/src/lib/episodes-feed/words.ts"
+  ],
+  "chose": "The interview essay is a feed of its own on the phone: named \"The interview essay\" (its chip \"Interview essays\"), fed the intuition \"How I came across in this week's interview, and what a stronger answer covers, so I can hear it and answer better next time.\", run every week once the interview week's deadline has passed, each essay named by its year and week. It takes a YouTube link; My data has no page to let one go yet, and the page says home keeps each.",
+  "options": [
+    "these words, the feed linked but not let go from the phone",
+    "the feed with My data's let-go page too",
+    "leave the feed off the phone until its own story"
+  ],
+  "gray": "Home lists interview essays (IW6, paulgsc/server#900) and the coordinator asked for a genre of its own; the feed's name and intuition are said on the owner's screens as the owner's, and no check or earlier decision names them.",
+  "undo": "Edit the interview-essay entries of FEED_FACTS, FEED_KEPT, FEED_WORDS and the chip's word; add it to LET_GO_FEEDS with My data's words to let one go.",
+  "refs": [
+    "#3067",
+    "#3030",
+    "#2937"
+  ]
+}

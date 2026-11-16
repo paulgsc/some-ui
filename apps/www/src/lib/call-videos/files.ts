@@ -68,6 +68,7 @@ const PREFIX: Record<VideoOwner, string> = {
   // `_` is in no key, so these never meet the page's, kept as first named.
   "cards-essay": "episode_cards-essay-",
   "essay-page": "cards-essay-",
+  "interview-essay": "interview-essay-",
   "playoff-delta": "playoff-delta-",
   "rust-essay": "rust-essay-",
   preview: "preview-",

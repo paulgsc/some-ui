@@ -82,6 +82,7 @@ vi.mock("@/lib/call-videos", async (importOriginal) => {
         const now = {
           call: snapshot("call").list,
           "cards-essay": snapshot("cards-essay").list,
+          "interview-essay": snapshot("interview-essay").list,
           "playoff-delta": snapshot("playoff-delta").list,
           "rust-essay": snapshot("rust-essay").list,
         }
@@ -124,6 +125,7 @@ function readAll(): void {
     episode("nix-2026-11-01", { title: null, videoBytes: null }),
   ])
   read("playoff-delta", [episode("2026-SF-10")])
+  read("interview-essay", [episode("2026-w46")])
   read("rust-essay", [])
 }
 
@@ -151,6 +153,7 @@ describe("Studio's Episodes, by week", () => {
       .getAllByRole("heading", { level: 2 })
       .map((heading) => heading.textContent)
     expect(headings).toEqual([
+      "Week of Nov 9",
       "Week of Nov 2",
       "Week of Oct 26",
       "Not dated yet",
@@ -175,8 +178,9 @@ describe("Studio's Episodes, by week", () => {
     const bar = screen.getByRole("navigation", { name: "Genres" })
     const chips = within(bar).getAllByRole("link")
     expect(chips.map((chip) => chip.getAttribute("aria-label"))).toEqual([
-      "All, 4 videos",
+      "All, 5 videos",
       "Cards essays, 2 videos",
+      "Interview essays, 1 video",
       "Playoff Delta, 1 video",
       "Rust Rounds, 0 videos",
       "Weekly call, 1 video",

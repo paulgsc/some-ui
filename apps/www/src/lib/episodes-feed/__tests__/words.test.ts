@@ -25,7 +25,6 @@ describe("EPISODES_FEED_WORDS", () => {
       ...FEEDS.flatMap((feed) => [
         WORDS.chipLabel(WORDS.genre[feed], 3),
         WORDS.none(feed),
-        WORDS.madeOn(WORDS.genre[feed], "2026-11-13"),
         ...(["away", "older", "unreadable"] as const).map((kind) =>
           WORDS.trouble({ feed, kind })
         ),

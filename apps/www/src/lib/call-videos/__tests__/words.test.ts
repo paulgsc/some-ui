@@ -28,6 +28,7 @@ function strings(value: unknown): Array<string> {
 const KEYS: Record<Feed, ReadonlyArray<string>> = {
   call: ["2026-10-30", "2026-12-28"],
   "cards-essay": ["zfs-2026-11-02", "rust-scratchpad-2026-11-14"],
+  "interview-essay": ["2026-w46", "2027-w01"],
   "playoff-delta": ["2026-SF-08", "2026-SF-00", "2026-SF-17"],
   "rust-essay": ["2026-w46", "2027-w01"],
 }
@@ -36,6 +37,7 @@ const KEYS: Record<Feed, ReadonlyArray<string>> = {
 const UNREAD: Record<Feed, ReadonlyArray<string>> = {
   call: ["2026-SF-08", "week-44", ""],
   "cards-essay": ["2026-w46", "zfs-2026-02-31", "zfs", ""],
+  "interview-essay": ["2026-10-30", "2026-w4", "2026-w00", ""],
   "playoff-delta": ["2026-10-30", "2026-SF-8", ""],
   "rust-essay": ["2026-10-30", "2026-w4", "2026-w00", ""],
 }

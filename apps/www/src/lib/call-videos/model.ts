@@ -48,13 +48,24 @@ const EpisodeSchema = z.object({
   part: z.number().int().positive().optional(),
   of: z.number().int().positive().optional(),
   /**
-   * The day home made it (`YYYY-MM-DD`), where home says (paulgsc/server#906);
-   * the episodes page groups by it before what the key gives, and ignores one
-   * that isn't a day rather than the whole list.
+   * The day home knows for it (`YYYY-MM-DD`; paulgsc/server#906, C416): the
+   * call's week's first day, on every part; the Monday of an essay's ISO
+   * week; a cards essay's own day; the day home took a Playoff Delta fill.
+   * `null` when home can't read one, and absent from a home before it. The
+   * episodes page groups by it, and ignores one that isn't a day rather than
+   * failing the whole list.
    */
   date: z.string().nullish(),
-  /** How long its video runs, in milliseconds, where home says (#906). */
+  /**
+   * How long its video runs, in milliseconds, read from the video itself:
+   * `null` once the video is let go, or where home can't read it (#906).
+   */
   durationMs: z.number().int().nonnegative().nullish(),
+  /**
+   * How long its whole week runs, every part summed, while home holds every
+   * part's video, else `null`; its own length for an episode of one (#906).
+   */
+  weekDurationMs: z.number().int().nonnegative().nullish(),
 })
 
 const EpisodesSchema = z.object({ episodes: z.array(EpisodeSchema) })

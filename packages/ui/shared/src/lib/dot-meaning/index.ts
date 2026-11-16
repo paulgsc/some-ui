@@ -7,7 +7,9 @@
  * its fourth, Mochi Night's its second), and a dot's meaning can't follow
  * the theme. Words always go with a dot, so nothing is read from colour alone.
  * Its test holds that no two meanings share a hue. A screen with a meaning of
- * its own adds it here, in a hue no other meaning has.
+ * its own adds it here, in a hue no other meaning has. Here in the shared
+ * package so the screens of every phone workspace (Episodes in www, Takes in
+ * soundbites) read the same one.
  */
 
 type Dot = {
@@ -21,6 +23,9 @@ export const DOTS = {
   /** Kept on home, and not out in the world yet (on YouTube, say). */
   onHome: { hue: "sky", className: "bg-sky-500" },
   /** Out in the world: an episode on YouTube. */
+  // A dot's meaning is the same in every theme (C411), so its hue is fixed,
+  // not the theme's success token, which each theme paints its own way.
+  // eslint-disable-next-line theme-protocol/no-fixed-status-color -- C411: one hue per meaning in every theme
   out: { hue: "leaf", className: "bg-emerald-500" },
   /** Still being made. */
   making: { hue: "grey", className: "bg-muted-foreground" },

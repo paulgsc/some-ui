@@ -17,6 +17,16 @@
  * phone reads as optional (`lib/call-videos/model`) so an older home still
  * reads.
  *
+ * Since server#906 every entry also carries `date` (`YYYY-MM-DD`, the day
+ * home knows for it: the call's week's first day, an essay's ISO-week
+ * Monday, a cards essay's own day, a Playoff Delta fill's day; C416),
+ * `durationMs` (its video's length, read from the file) and `weekDurationMs`
+ * (its whole week's, while home holds every part), each `null` when home
+ * doesn't know it. The phone reads all three as optional and nullable, so
+ * one unknown never fails the list, and Studio's Episodes groups by `date`
+ * (EPISODES2, some-ui#3067). The interview essays' feed (`interview-essay`,
+ * server#900) is listed like the others and is a paired phone's too.
+ *
  * The routes are a paired phone's only (`Paired`): without a session each is
  * a `401`, and a browser's cookie session, which is what a `session`
  * contract carries, is a `403`. So the contracts here pin the refusals; the
@@ -34,6 +44,8 @@ const VIDEO = "/feeds/:feed/videos/:key/video"
 const LINK = "/feeds/:feed/videos/:key/link"
 
 const CARDS = { path: { feed: "cards-essay" } }
+
+const INTERVIEW = { path: { feed: "interview-essay" } }
 
 const ESSAY = { path: { feed: "cards-essay", key: "zfs-2026-11-02" } }
 
@@ -58,6 +70,17 @@ export const contracts = [
     request: CARDS,
     summary: "a browser's session is not a paired phone's: it is a 403",
     expect: { status: 403 },
+  }),
+
+  defineContract({
+    id: "feed_videos.interview_list_signed_out",
+    module: "feed_videos",
+    method: "GET",
+    path: LIST,
+    request: INTERVIEW,
+    summary:
+      "the interview essays' episodes are a paired phone's: without a session it is a 401",
+    expect: { status: 401 },
   }),
 
   defineContract({

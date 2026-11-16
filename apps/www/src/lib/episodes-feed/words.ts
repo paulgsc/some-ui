@@ -10,11 +10,10 @@ import {
   counted,
   formatDay,
   formatTimecode,
-  formatWeekday,
 } from "@some-ui/core-utils"
+import type { DotMeaning } from "@some-ui/shared"
 
 import { FEED_WORDS, VIDEOS_WORDS } from "@/lib/call-videos/words"
-import type { DotMeaning } from "@/lib/dot-colours"
 import type { Feed } from "@/lib/feeds"
 
 import type { Trouble } from "./index"
@@ -30,6 +29,7 @@ export const EPISODES_FEED_WORDS = {
   genre: {
     call: "Weekly call",
     "cards-essay": "Cards essays",
+    "interview-essay": "Interview essays",
     "playoff-delta": "Playoff Delta",
     "rust-essay": "Rust Rounds",
   } satisfies Record<Feed, string>,
@@ -42,12 +42,9 @@ export const EPISODES_FEED_WORDS = {
   /** Under a week's heading: its days and how many videos it holds. */
   weekLine: (monday: string, n: number): string =>
     `${formatDay(monday)} to ${formatDay(addDays(monday, 6))} · ${counted(n, "video")}`,
-  /** Under a row's name: its genre, and the weekday home made it. */
-  madeOn: (genre: string, day: string): string =>
-    `${genre} · ${formatWeekday(day)}`,
   undated: "Not dated yet",
   undatedLine:
-    "Home doesn't say which day these were made, so they're listed here, newest first.",
+    "Home doesn't say which week these belong to, so they're listed here, newest first.",
   /** A row's dot, in words beside it. */
   status: {
     onHome: "On home",

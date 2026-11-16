@@ -5,20 +5,21 @@
  * and says what the page shows, so every grouping and every count is held by
  * its test; the page (`components/studio/episodes-by-week`) only draws it.
  *
- * An episode is placed by the day home made it, where home says
- * (`Episode.date`, paulgsc/server#906), else by the week its key names (the
- * call's first day, a Rust Rounds essay's ISO week, a cards essay's day). A
- * Playoff Delta key names a season's week but no day, so until home says, it
+ * An episode is placed by the day home knows for it (`Episode.date`,
+ * paulgsc/server#906; C416): the call's week by its first day, an essay's
+ * week by its Monday, a cards essay by its own day, a Playoff Delta week by
+ * the day home took its fill. From a home before that, the day its key names
+ * stands in, and a Playoff Delta key, which names a season's week but no day,
  * is listed after the dated weeks, never at a guessed one. Nothing here makes
  * up a length: a row shows one only where home sends it.
  */
 import { assertNever, isoWeekMonday, weekOf } from "@some-ui/core-utils"
 import { WEEK_ID } from "@some-ui/rust-rounds/entry"
+import type { DotMeaning } from "@some-ui/shared"
 
 import type { Episode, ListState } from "@/lib/call-videos/model"
 import { standing } from "@/lib/call-videos/model"
 import { isEssayKey } from "@/lib/cards-essay-key"
-import type { DotMeaning } from "@/lib/dot-colours"
 import type { Feed } from "@/lib/feeds"
 import { FEEDS_A_TO_Z } from "@/lib/studio-index"
 
@@ -34,8 +35,6 @@ export type Row = {
   readonly parts: ReadonlyArray<Episode>
   /** The day it is placed by, or `null` where nothing honestly gives one. */
   readonly day: string | null
-  /** Whether `day` is the day home made it, not one its key names. */
-  readonly made: boolean
 }
 
 /** A week of rows, the Monday it starts on, newest row first. */
@@ -88,6 +87,7 @@ export function keyDay(feed: Feed, week: string): string | null {
     case "call": {
       return isDay(week) ? week : null
     }
+    case "interview-essay":
     case "rust-essay": {
       if (!WEEK_ID.test(week)) return null
       try {
@@ -126,8 +126,7 @@ export function rowsOf(
     const sent = ordered.find(
       (part) => typeof part.date === "string" && isDay(part.date)
     )?.date
-    const day = sent ?? keyDay(feed, week)
-    return { feed, week, parts: ordered, day, made: sent !== undefined }
+    return { feed, week, parts: ordered, day: sent ?? keyDay(feed, week) }
   })
 }
 
@@ -161,8 +160,14 @@ export function rowStatus(row: Row): DotMeaning {
   return "out"
 }
 
-/** How long a row's video runs, where home says for every part, else `null`. */
+/**
+ * How long a row runs, where home says: a week's whole length while home
+ * holds every part (`weekDurationMs`), else the sum of its parts' where home
+ * says each; else `null`.
+ */
 export function rowLength(row: Row): number | null {
+  const week = row.parts[0].weekDurationMs
+  if (typeof week === "number") return week
   let total = 0
   for (const part of row.parts) {
     if (typeof part.durationMs !== "number") return null
@@ -189,6 +194,7 @@ export function feedView(lists: FeedLists, chip: Chip): FeedView {
     all: 0,
     call: 0,
     "cards-essay": 0,
+    "interview-essay": 0,
     "playoff-delta": 0,
     "rust-essay": 0,
   }

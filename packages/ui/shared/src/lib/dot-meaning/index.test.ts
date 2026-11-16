@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vitest"
 
-import { DOTS } from "@/lib/dot-colours"
+import { DOTS } from "./index"
 
 describe("DOTS", () => {
   it("gives each meaning its own hue and its own fill", () => {

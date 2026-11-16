@@ -40,8 +40,9 @@ const LISTS: FeedLists = {
           part,
           of: 3,
           link: part === 1 ? LINK : null,
-          date: "2026-11-13",
+          date: "2026-11-06",
           durationMs: 596_000,
+          weekDurationMs: 1_788_000,
         })
       ),
       episode("2026-10-30", { link: LINK }),
@@ -56,6 +57,10 @@ const LISTS: FeedLists = {
       }),
       episode("phone-pairing-2026-11-12", { videoBytes: null }),
     ],
+  },
+  "interview-essay": {
+    kind: "read",
+    episodes: [episode("2026-w46", { date: "2026-11-09" })],
   },
   "playoff-delta": {
     kind: "read",

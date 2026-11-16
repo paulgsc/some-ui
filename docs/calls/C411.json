@@ -2,7 +2,7 @@
   "id": "C411",
   "made": "2026-11-16",
   "by": "claude",
-  "paths": ["some-ui:apps/www/src/lib/dot-colours/index.ts"],
+  "paths": ["some-ui:packages/ui/shared/src/lib/dot-meaning/index.ts"],
   "chose": "A status dot's colour is a fixed hue from the shared DOTS table (sky-500 on home, emerald-500 on YouTube, the muted ink being made), the same in every theme.",
   "options": [
     "fixed hues, one table, a test that no two meanings share one",

@@ -133,6 +133,7 @@ function everyList(): EveryFeedList {
   const now: EveryFeedList = {
     call: list("call"),
     "cards-essay": list("cards-essay"),
+    "interview-essay": list("interview-essay"),
     "playoff-delta": list("playoff-delta"),
     "rust-essay": list("rust-essay"),
   }

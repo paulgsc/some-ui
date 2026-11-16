@@ -11,7 +11,8 @@
 import type { JSX, ReactNode } from "react"
 import { useEffect, useSyncExternalStore } from "react"
 import { cn, dayOf, weekOf } from "@some-ui/core-utils"
-import { Button } from "@some-ui/shared"
+import { Button, DOTS } from "@some-ui/shared"
+import type { DotMeaning } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
@@ -25,13 +26,10 @@ import type { Feed } from "@/lib/call-videos/model"
 import { FEEDS } from "@/lib/call-videos/model"
 import { FEED_WORDS } from "@/lib/call-videos/words"
 import { useMinuteClock } from "@/lib/clock"
-import type { DotMeaning } from "@/lib/dot-colours"
-import { DOTS } from "@/lib/dot-colours"
 import type { Chip, FeedView, Row, Trouble } from "@/lib/episodes-feed"
 import { feedView, partStatus, rowLength, rowStatus } from "@/lib/episodes-feed"
 import { EPISODES_FEED_WORDS } from "@/lib/episodes-feed/words"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
-import { FEEDS_A_TO_Z } from "@/lib/studio-index"
 import { GenreThumb } from "@/components/studio/genre-thumbs"
 
 const WORDS = EPISODES_FEED_WORDS
@@ -56,7 +54,10 @@ const ChipBar = ({
 }): JSX.Element => {
   const chips: ReadonlyArray<{ id: Chip; name: string }> = [
     { id: "all", name: WORDS.all },
-    ...FEEDS_A_TO_Z.map((feed) => ({ id: feed, name: WORDS.genre[feed] })),
+    // A to Z by what each chip says, so the bar's order ranks nothing.
+    ...FEEDS.map((feed) => ({ id: feed, name: WORDS.genre[feed] })).sort(
+      (a, b) => a.name.localeCompare(b.name, "en")
+    ),
   ]
   return (
     <nav
@@ -124,10 +125,6 @@ const EpisodeRow = ({ row }: { row: Row }): JSX.Element => {
   const [first] = row.parts
   const { feed } = row
   const name = episodeName(feed, { ...first, part: 1, of: 1 })
-  const sub =
-    row.made && row.day !== null
-      ? WORDS.madeOn(WORDS.genre[feed], row.day)
-      : WORDS.genre[feed]
   return (
     <li className="flex flex-col gap-2">
       <Link
@@ -140,7 +137,9 @@ const EpisodeRow = ({ row }: { row: Row }): JSX.Element => {
           <span className="line-clamp-2 text-sm leading-snug font-bold">
             {name}
           </span>
-          <span className="text-muted-foreground text-xs">{sub}</span>
+          <span className="text-muted-foreground text-xs">
+            {WORDS.genre[feed]}
+          </span>
           <span className="flex flex-wrap gap-1.5">
             <span className="bg-card inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs">
               <Dot meaning={rowStatus(row)} />
