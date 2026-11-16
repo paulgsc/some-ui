@@ -275,7 +275,7 @@ describe("the essays owed", () => {
       },
     ])
     const got = heard.get("n")
-    expect(got?.heard === true ? got.text : null).toBe("verbatim um text")
+    expect(got?.hearing === "heard" ? got.text : null).toBe("verbatim um text")
   })
 })
 
@@ -292,12 +292,20 @@ const judged = (
   }
 }
 
+/** Home's verdict as HEARD1 files it. */
+const verdictOf = (kind: string): unknown => ({
+  kind,
+  reasons: kind === "garbled" ? ["low_confidence"] : [],
+  rule: "heard-1",
+  signals: null,
+})
+
 const GARBLE = "the the borrow um sh sh the the the the"
 
 describe("a take home couldn't make out (HEARD2; EH1)", () => {
   const unheard = (): EssayBundle =>
     prepared([
-      judged("note-1", GARBLE, { kind: "garbled" }),
+      judged("note-1", GARBLE, verdictOf("garbled")),
       transcript("note-2", C1.script.replaceAll("\n", " ")),
     ])
 
@@ -338,14 +346,23 @@ describe("a take home couldn't make out (HEARD2; EH1)", () => {
     ])
   })
 
-  it("is any verdict but heard; a transcript with none reads as heard", () => {
+  it("is garbled or failed; nothing said is a silence, and no verdict reads as heard", () => {
     const of = (verdict: unknown): unknown =>
-      heardByNote([judged("n", "words", verdict)]).get("n")?.heard
-    expect(of("heard")).toBe(true)
-    expect(of({ kind: "heard" })).toBe(true)
-    expect(of(undefined)).toBe(true)
-    for (const verdict of ["garbled", { kind: "failed" }, { kind: "nothing" }])
-      expect(of(verdict)).toBe(false)
+      heardByNote([judged("n", "words", verdict)]).get("n")?.hearing
+    expect(of(verdictOf("heard"))).toBe("heard")
+    expect(of(null)).toBe("heard")
+    expect(of(verdictOf("nothing_said"))).toBe("silent")
+    for (const kind of ["garbled", "failed"])
+      expect(of(verdictOf(kind))).toBe("unheard")
+  })
+
+  it("leaves a take home heard nothing in a plain silence, with a guess", () => {
+    const bundle = prepared([
+      judged("note-1", "", verdictOf("nothing_said")),
+      transcript("note-2", C1.script.replaceAll("\n", " ")),
+    ])
+    expect(bundle.waiting).toEqual([])
+    expect(bundle.essays[0]?.questions[0]?.answer).toEqual({ kind: "silence" })
   })
 })
 

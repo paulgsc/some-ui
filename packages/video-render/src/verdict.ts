@@ -5,32 +5,38 @@
  * verdict instead of guessing from the words (HEARD2, paulgsc/some-ui#3072).
  *
  * - **heard:** home made out what was said; the text is the answer.
- * - **unheard:** something was said and home couldn't make it out (garbled,
- *   nothing made out, the transcriber failed, or any verdict this build
- *   doesn't know). An essay reads it as if the owner never answered, and
- *   never reads the text as an answer: garble is not a weak answer.
- * - **unjudged:** the transcript carries no verdict, as every one home made
- *   before HEARD1 does. It reads as it always has, as heard.
+ * - **silent:** home heard that nothing was said (`nothing_said`): the
+ *   take reads as a silence, as a ticket left unanswered does.
+ * - **unheard:** something was said and home couldn't make it out
+ *   (`garbled` or `failed`, or a verdict this build doesn't know). An essay
+ *   reads it as if the owner never answered, and never reads the text as an
+ *   answer: garble is not a weak answer.
+ * - **unjudged:** the transcript carries no verdict (`null`), as every one
+ *   home made before HEARD1 does. It reads as it always has, as heard.
+ *
+ * The verdict is `{"kind","reasons","rule","signals"}`, top-level beside
+ * `text`; only `kind` is read here.
  */
 import { isRecord } from "@some-ui/core-utils"
 
 /** Home's verdict on a transcript, as an essay reads it. */
-export type Hearing = "heard" | "unheard" | "unjudged"
+export type Hearing = "heard" | "silent" | "unheard" | "unjudged"
 
-/** The verdict that means home made out what was said. */
-const HEARD = "heard"
+/** Each verdict kind home gives that isn't "couldn't make it out". */
+const KINDS: Readonly<Record<string, Hearing>> = {
+  heard: "heard",
+  nothing_said: "silent",
+}
 
-/**
- * The hearing a transcript's body carries. `verdict` is read as a word
- * (`"heard"`) or as an object naming it (`{"kind":"heard",…}`); anything
- * else present there is a verdict that home couldn't make the take out.
- */
+/** The hearing a transcript's body carries in its `verdict`. */
 export function hearingOf(transcript: unknown): Hearing {
   if (!isRecord(transcript)) return "unjudged"
   const verdict = transcript["verdict"]
   if (verdict === undefined || verdict === null) return "unjudged"
-  const kind = isRecord(verdict) ? verdict["kind"] : verdict
-  return kind === HEARD ? "heard" : "unheard"
+  const kind = isRecord(verdict) ? verdict["kind"] : undefined
+  return typeof kind === "string" && Object.hasOwn(KINDS, kind)
+    ? (KINDS[kind] ?? "unheard")
+    : "unheard"
 }
 
 /**

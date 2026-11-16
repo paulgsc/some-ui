@@ -152,9 +152,10 @@ You read text only, never audio.
    `bundle.json` and prints what is owed:
    - `essays`: each week owed an essay, oldest first, at most two a run.
      Each question and card is restated with its answer: a take, what home
-     heard in it and its `measured` faults, a silence, or `unheard`: a take
-     home couldn't make out (garbled, nothing made out, or failed), which the
-     essay reads as if it was left unanswered. `chart` is the faults over
+     heard in it and its `measured` faults, a silence (a take in which home
+     heard nothing said is one too), or `unheard`: a take home couldn't make
+     out (garbled, or home failed to hear it), which the essay reads as if
+     it was left unanswered. `chart` is the faults over
      the weeks, as code counts them.
    - `waiting`: weeks owed an essay that can't be written yet, and why (a
      take not heard yet, or heard without its words). A later Monday writes

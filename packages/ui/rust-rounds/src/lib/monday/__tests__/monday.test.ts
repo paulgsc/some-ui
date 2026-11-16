@@ -324,8 +324,8 @@ const judged311 = (verdict: unknown, text = GARBLE): MailboxFile => ({
  * EH1 (#3072): an essay never reads a take home couldn't make out as an
  * answer, and never waits on one. It is restated as a silence marked
  * unheard, said in code's words, and the decay record counts it as no check.
- * Family: home's verdict (heard, garbled, nothing said, failed, a code this
- * build doesn't know, none); the essay (Rust Rounds here, the interview essay
+ * Family: home's verdict (heard, garbled, failed, a kind this build doesn't
+ * know, none; nothing said, which is a plain silence); the essay (Rust Rounds here, the interview essay
  * in its own `essay.test.ts`); the item (ticket, pasted error; question,
  * read); and what the routine writes for it (a reading, a guess, nothing).
  * Tolerance: a transcript with no verdict, as every one before HEARD1, reads
@@ -347,9 +347,9 @@ describe("a take home couldn't make out (HEARD2, #3072; EH1)", () => {
 
   it("never holds the essay back: the take is restated as unheard", () => {
     for (const verdict of [
-      { kind: "garbled" },
-      { kind: "failed" },
-      "nothing-said",
+      { kind: "garbled", reasons: ["off_language"] },
+      { kind: "failed", reasons: ["engine"] },
+      { kind: "a-kind-from-later" },
     ]) {
       const { bundle } = unheard(verdict)
       expect(bundle.waiting).toEqual([])
@@ -442,9 +442,25 @@ describe("a take home couldn't make out (HEARD2, #3072; EH1)", () => {
   })
 
   it("reads as before when home gave no verdict, or heard it", () => {
-    const { bundle } = unheard({ kind: "heard" })
-    const answer = bundle.essays[0]?.tickets[0]?.answer
-    expect(answer?.kind === "take" && answer.transcript).toBe(GARBLE)
+    for (const verdict of [{ kind: "heard", reasons: [] }, null]) {
+      const { bundle } = unheard(verdict)
+      const answer = bundle.essays[0]?.tickets[0]?.answer
+      expect(answer?.kind === "take" && answer.transcript).toBe(GARBLE)
+    }
+  })
+
+  it("leaves a take home heard nothing in a plain silence, as one left unanswered", () => {
+    const { bundle } = samplePrepared({
+      transcripts: [
+        judged311({ kind: "nothing_said", reasons: [] }, ""),
+        ...SAMPLE_TRANSCRIPTS.slice(1),
+      ],
+    })
+    expect(bundle.waiting).toEqual([])
+    expect(bundle.essays[0]?.tickets[0]?.answer).toEqual({
+      kind: "silence",
+      opened: record().tickets[0]?.opens,
+    })
   })
 })
 

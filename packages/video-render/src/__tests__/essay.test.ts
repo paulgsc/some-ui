@@ -457,12 +457,20 @@ describe("a take home couldn't make out (HEARD2; EH1)", () => {
 })
 
 describe("home's verdict on a transcript (HEARD1)", () => {
-  it("is heard only when it says so, and unjudged when it says nothing", () => {
+  const of = (kind: unknown): ReturnType<typeof hearingOf> =>
+    hearingOf({
+      verdict: { kind, reasons: [], rule: "heard-1", signals: null },
+    })
+
+  it("is heard, a silence, or couldn't be made out, by its kind", () => {
+    expect(of("heard")).toBe("heard")
+    expect(of("nothing_said")).toBe("silent")
+    for (const kind of ["garbled", "failed", "a-kind-from-later", "toString"])
+      expect(of(kind)).toBe("unheard")
+  })
+
+  it("is unjudged when the transcript carries none, as before HEARD1", () => {
     expect(hearingOf({ text: "words" })).toBe("unjudged")
     expect(hearingOf({ verdict: null })).toBe("unjudged")
-    expect(hearingOf({ verdict: "heard" })).toBe("heard")
-    expect(hearingOf({ verdict: { kind: "heard" } })).toBe("heard")
-    for (const verdict of ["garbled", { kind: "failed" }, { code: "x" }, 3])
-      expect(hearingOf({ verdict })).toBe("unheard")
   })
 })

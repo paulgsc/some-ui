@@ -89,19 +89,29 @@ const TranscriptSchema = z.object({
 })
 
 /**
- * What home heard in a take: its text, and its words, or null when home kept
- * none; or that home couldn't make it out (HEARD2, #3072), from home's
- * verdict on the transcript (`hearingOf`). An unheard take keeps no text, so
+ * What home heard in a take, by home's verdict on its transcript
+ * (`hearingOf`, HEARD2, #3072): its text, and its words, or null when home
+ * kept none; that nothing was said (`silent`); or that home couldn't make it
+ * out (`unheard`: garbled or failed). Only a heard take keeps its text, so
  * no essay can read garble as an answer. A transcript with no verdict, as
  * every one before HEARD1, reads as heard.
  */
 export type Heard =
   | {
-      readonly heard: true
+      readonly hearing: "heard"
       readonly text: string
       readonly words: ReadonlyArray<HeardWord> | null
     }
-  | { readonly heard: false }
+  | { readonly hearing: "silent" }
+  | { readonly hearing: "unheard" }
+
+/** A transcript's hearing, its text and words kept only when heard. */
+function heardOf(body: unknown, text: string): Heard {
+  const hearing = hearingOf(body)
+  return hearing === "silent" || hearing === "unheard"
+    ? { hearing }
+    : { hearing: "heard", text, words: wordsOf(body) }
+}
 
 /** Home's verbatim decode (IW2): it keeps the fillers a plain one drops. */
 const VERBATIM = "+verbatim"
@@ -132,14 +142,7 @@ export function heardByNote(
       best.set(note, {
         verbatim,
         n,
-        heard:
-          hearingOf(file.body) === "unheard"
-            ? { heard: false }
-            : {
-                heard: true,
-                text: parsed.data.text,
-                words: wordsOf(file.body),
-              },
+        heard: heardOf(file.body, parsed.data.text),
       })
   }
   return new Map([...best].map(([note, { heard }]) => [note, heard]))

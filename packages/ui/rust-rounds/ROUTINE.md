@@ -41,9 +41,10 @@ outside the checkout as `<run>`.
    `<run>/bundle.json` and prints what is owed:
    - `essays`: each week owed an essay, oldest first, at most two a run. Each
      ticket is restated with its answer: a take and what home heard in it,
-     a silence and how often the ticket was opened, or `unheard`: a take
-     home couldn't make out (garbled, nothing made out, or failed). The
-     essay goes on as if that ticket was left unanswered, and code says so.
+     a silence and how often the ticket was opened (a take in which home
+     heard nothing said is one too), or `unheard`: a take home couldn't
+     make out (garbled, or home failed to hear it). The essay goes on as if
+     that ticket was left unanswered, and code says so.
    - `waiting`: weeks owed an essay that can't be written yet, and why: home
      hasn't made the record final, or hasn't heard a take yet. A later Monday
      writes them. Never write an essay from a draft or a guess at a take. A

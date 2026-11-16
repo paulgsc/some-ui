@@ -195,7 +195,15 @@ function answersOf(
       continue
     }
     const hearing = heard.get(held.take)
-    if (hearing?.heard === false) {
+    // Home heard nothing said: a silence, as a ticket left unanswered is.
+    if (hearing?.hearing === "silent") {
+      tickets.push({
+        ...ticket,
+        answer: { kind: "silence", opened: held.opens },
+      })
+      continue
+    }
+    if (hearing?.hearing === "unheard") {
       tickets.push({
         ...ticket,
         answer: { kind: "unheard", opened: held.opens },
@@ -218,7 +226,7 @@ function answersOf(
 
 /** What the owner said about a pasted error, when home made it out. */
 const saidOf = (hearing: Heard | undefined): string | null =>
-  hearing?.heard === true ? hearing.text : null
+  hearing?.hearing === "heard" ? hearing.text : null
 
 const fullNames = (references: ReadonlyArray<Reference>): Array<string> =>
   references.map((reference) => REFERENCES[reference])

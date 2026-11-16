@@ -85,14 +85,16 @@ export const TranscriptSchema = z.object({
 })
 
 /**
- * What home heard in a note: its text, or that home couldn't make it out
- * (HEARD2, #3072): home's verdict on the transcript (`hearingOf`) says
- * garbled, nothing made out or failed. An unheard take's text is never kept
- * here, so no essay can read garble as an answer.
+ * What home heard in a note, by home's verdict on its transcript
+ * (`hearingOf`, HEARD2, #3072): its text; that nothing was said
+ * (`silent`); or that home couldn't make it out (`unheard`: garbled or
+ * failed). Only a heard note keeps its text, so no essay can read garble as
+ * an answer.
  */
 export type Heard =
-  | { readonly heard: true; readonly text: string }
-  | { readonly heard: false }
+  | { readonly hearing: "heard"; readonly text: string }
+  | { readonly hearing: "silent" }
+  | { readonly hearing: "unheard" }
 
 /**
  * What home heard in each note, by the note's id: the transcript with the
@@ -113,10 +115,11 @@ export function heardByNote(
     if (!parsed.success || parsed.data.note !== note) continue
     const held = best.get(note)
     if (held === undefined || n > held.n) {
+      const hearing = hearingOf(file.body)
       const heard: Heard =
-        hearingOf(file.body) === "unheard"
-          ? { heard: false }
-          : { heard: true, text: parsed.data.text }
+        hearing === "silent" || hearing === "unheard"
+          ? { hearing }
+          : { hearing: "heard", text: parsed.data.text }
       best.set(note, { n, heard })
     }
   }

@@ -257,17 +257,22 @@ function owed(
 ): Owed {
   if (week === undefined)
     return { ok: false, why: "brief holds no readable week file for it" }
-  /** A take's hearing: null for none sent, "unheard" for one home couldn't make out. */
+  /** A take's hearing: null for none sent or nothing said, "unheard" for one home couldn't make out. */
   const heardOf = (
     take: string | null,
     what: string
   ):
-    | { ok: true; heard: Extract<Heard, { heard: true }> | null | "unheard" }
+    | {
+        ok: true
+        heard: Extract<Heard, { hearing: "heard" }> | null | "unheard"
+      }
     | { ok: false; why: string } => {
     if (take === null) return { ok: true, heard: null }
     const got = heard.get(take)
+    // Home heard nothing said: a silence, as an answer left out is.
+    if (got?.hearing === "silent") return { ok: true, heard: null }
     // Home couldn't make it out: the essay goes on without it (HEARD2).
-    if (got?.heard === false) return { ok: true, heard: "unheard" }
+    if (got?.hearing === "unheard") return { ok: true, heard: "unheard" }
     if (got === undefined || got.text.trim() === "")
       return { ok: false, why: `home hasn't heard ${what}'s take yet` }
     if (got.words === null || got.words.length === 0)
