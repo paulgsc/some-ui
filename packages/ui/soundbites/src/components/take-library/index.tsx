@@ -701,12 +701,14 @@ export const TakeLibrary = ({
   const shows = (each: Sorted): boolean =>
     inCompartment(each, compartment) && underChips(each, chips)
   const phoneShown = phoneRows.filter(shows)
-  // While the phone records or plays, its controls stay whatever is picked.
+  // The phone's takes have no station, and none is on home.
+  const listsPhone = chips.place !== "home" && chips.station === null
+  // While the phone records or plays, its controls stay whatever is picked,
+  // with the take playing and none other the chips leave out.
   const recorder =
     phone !== undefined &&
     records(compartment) &&
-    ((chips.place !== "home" && chips.station === null) ||
-      state.phone !== "quiet")
+    (listsPhone || state.phone !== "quiet")
   const searchable = state.read.kind !== "unpaired"
   return (
     <div className="flex flex-col gap-4">
@@ -715,15 +717,26 @@ export const TakeLibrary = ({
         stations={counts.stations}
         chips={chips}
         onChips={(next) => {
-          // A take playing from home may leave the list with its Stop.
-          dispatch({ type: "stop" })
+          // A take of home's playing stops if its row leaves with its Stop.
+          const { playback } = state
+          const playing =
+            playback.kind === "quiet"
+              ? undefined
+              : homeRows.find(({ take }) => take.id === playback.id)
+          if (playing !== undefined && !underChips(playing, next)) {
+            dispatch({ type: "stop" })
+          }
           setChips(next)
         }}
       />
       {recorder && (
         <PhoneTakes
           phone={phone}
-          shows={(take) => inCompartment(aboutOf(take.id, null), compartment)}
+          shows={(take) =>
+            listsPhone &&
+            !onHome.has(take.id) &&
+            inCompartment(aboutOf(take.id, null), compartment)
+          }
         />
       )}
       {!recorder && phoneShown.length === 0 && chips.place === "phone" && (

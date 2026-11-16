@@ -312,6 +312,75 @@ describe("Takes on home (ST32)", () => {
       fireEvent.click(chip(/^In the oven/))
       expect(screen.getByText("“On the shelf”")).toBeTruthy()
     })
+
+    it("stops a take of home's playing only when a chip takes its row away", async () => {
+      const stop = vi.fn()
+      const player: Player = {
+        play: () => ({ ended: new Promise(() => undefined), stop }),
+      }
+      render(
+        <TakeLibrary
+          ports={{ ...ports, player }}
+          pair={null}
+          compartment="here"
+        />
+      )
+      await settle()
+      const bar = screen.getByRole("navigation", { name: W.chips })
+      const chip = (name: RegExp): HTMLElement =>
+        Array.from(bar.querySelectorAll("button")).find((button) =>
+          name.test(button.textContent)
+        )!
+      // r1, "An aside", is the first of the compartment's cards.
+      fireEvent.click(screen.getAllByRole("button", { name: W.play })[0]!)
+      await settle()
+      fireEvent.click(chip(/^In the oven/))
+      expect(stop).not.toHaveBeenCalled()
+      fireEvent.click(chip(/^In the oven/))
+      fireEvent.click(chip(/^Canned/))
+      expect(stop).toHaveBeenCalledTimes(1)
+    })
+
+    it("shows a take home already lists once, though the phone hasn't heard home has it", async () => {
+      const going: PatternTake = {
+        id: "r1",
+        answers: "library",
+        durationMs: 4000,
+        recordedAt: "2026-11-05T09:00:00.000Z",
+        standing: "current",
+        kept: { place: "going" },
+      }
+      const sim = simulatedPattern({
+        options: {
+          ...ONE_TAKE,
+          takes: { per: "many", max: 40, full: "make-room" },
+        },
+        seed: [going],
+      })
+      const snapshot = { takes: [going], full: false }
+      render(
+        <TakeLibrary
+          ports={{
+            ...ports,
+            phone: {
+              pattern: sim.pattern,
+              line: "library",
+              getSnapshot: () => snapshot,
+              subscribe: (): (() => void) => () => undefined,
+            },
+          }}
+          pair={null}
+          compartment="here"
+        />
+      )
+      await settle()
+      expect(screen.getAllByText("“An aside”")).toHaveLength(1)
+      expect(
+        screen.queryByRole("button", {
+          name: TAKE_WORDS.rowLabel(TAKE_WORDS.play, 4000),
+        })
+      ).toBeNull()
+    })
   })
 
   it("searches the words, says the search ran on words, and goes back to the newest", async () => {
