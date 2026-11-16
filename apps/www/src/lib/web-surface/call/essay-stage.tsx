@@ -1,10 +1,11 @@
-import type { JSX, ReactNode } from "react"
+import type { JSX } from "react"
 import { assertNever } from "@some-ui/core-utils"
 import {
   essayFormat,
   hasCaptions,
   LEITNER,
   markThemeOf,
+  parseEssay,
   sampleEssay,
   SOLO_LEVELS,
   SOLO_SOURCE,
@@ -14,9 +15,9 @@ import type {
   Essay,
   EssayScene,
   EssayTicket,
-  Speaker,
 } from "@some-ui/video-render"
 
+import { Call, Inline, MARK_CLASS } from "./essay-parts"
 import type { EssayAt, EssayView } from "./essay-view"
 import { essayAt, essayStageOf } from "./essay-view"
 import { ESSAY_WORDS as W, weekNumber } from "./essay-words"
@@ -33,6 +34,7 @@ import {
   whereOf,
 } from "./frame"
 import { STAGE_WORDS as SW } from "./frame-words"
+import { InterviewEssayStagePage } from "./interview-essay-stage"
 
 /**
  * The Rust Rounds essay's stage (`@some-ui/video-render`'s `essay.ts`, RR15):
@@ -47,6 +49,8 @@ import { STAGE_WORDS as SW } from "./frame-words"
  */
 
 export type EssayStageProps = {
+  /** Which essay: `interview` for the interview essay's (IW6), the Rust Rounds essay's otherwise. */
+  kind?: string
   /** The essay shown, by its week's id ("2026-w46"), or "sample". */
   week?: string
   /** The scene shown, by its id; the first when absent or unknown. */
@@ -99,104 +103,11 @@ const labelOf = (scene: EssayScene, essay: Essay): string => {
   }
 }
 
-/** The tutor's icon: neutral, never any company's mark. */
-const TutorIcon = (): JSX.Element => (
-  <svg viewBox="0 0 48 48" aria-hidden="true" className="size-full">
-    <rect width="48" height="48" className="fill-muted" />
-    <path
-      d="M24 9 37 16.5v15L24 39 11 31.5v-15Z"
-      fill="none"
-      strokeWidth="2.5"
-      className="stroke-foreground"
-    />
-    <circle cx="24" cy="24" r="4.5" className="fill-foreground" />
-  </svg>
-)
-
-/** The owner's icon. */
-const YouIcon = (): JSX.Element => (
-  <svg viewBox="0 0 48 48" aria-hidden="true" className="size-full">
-    <rect width="48" height="48" className="fill-muted" />
-    <circle cx="24" cy="19" r="7" className="fill-foreground" />
-    <path d="M10 40c2-8 8-12 14-12s12 4 14 12" className="fill-foreground" />
-  </svg>
-)
-
-const Bubble = ({ who, lit }: { who: Speaker; lit: boolean }): JSX.Element => (
-  <div
-    data-speaker={who}
-    data-lit={lit ? "true" : undefined}
-    className={
-      lit
-        ? "text-foreground flex flex-col items-center gap-[0.4em]"
-        : "text-muted-foreground flex flex-col items-center gap-[0.4em] opacity-50"
-    }
-  >
-    <div
-      className={
-        lit
-          ? "ring-primary size-[7em] overflow-hidden rounded-full ring-[0.3em]"
-          : "size-[7em] overflow-hidden rounded-full"
-      }
-    >
-      {who === "tutor" ? <TutorIcon /> : <YouIcon />}
-    </div>
-    <p className="text-[0.9em] font-semibold">
-      {who === "tutor" ? W.tutor : W.you}
-    </p>
-  </div>
-)
-
-/** Template A: the two bubbles, the one speaking lit, and the content beside them. */
-const Call = ({
-  speaker,
-  tag,
-  children,
-}: {
-  speaker: Speaker
-  tag: string
-  children: ReactNode
-}): JSX.Element => (
-  <div className="grid min-h-full grid-cols-[16%_1fr] gap-[1.2em]">
-    <div className="flex flex-col items-center justify-center gap-[2em]">
-      <Bubble who="tutor" lit={speaker === "tutor"} />
-      <Bubble who="you" lit={speaker === "you"} />
-    </div>
-    <div className="border-border bg-background/60 space-y-[0.6em] rounded-[0.6em] border px-[1.4em] py-[1em]">
-      <p className="text-primary text-[0.7em] tracking-wide uppercase">{tag}</p>
-      {children}
-    </div>
-  </div>
-)
-
-/** Text with `code` spans drawn as code. */
-const Inline = ({ text }: { text: string }): JSX.Element => (
-  <>
-    {text.split(/(`[^`]+`)/).map((part, i) =>
-      part.startsWith("`") && part.endsWith("`") && part.length > 1 ? (
-        // eslint-disable-next-line react/no-array-index-key
-        <code key={i} className="font-mono text-[0.9em]">
-          {part.slice(1, -1)}
-        </code>
-      ) : (
-        // eslint-disable-next-line react/no-array-index-key
-        <span key={i}>{part}</span>
-      )
-    )}
-  </>
-)
-
 const Code = ({ code }: { code: string }): JSX.Element => (
   <pre className="bg-background border-border overflow-hidden rounded-[0.4em] border px-[0.8em] py-[0.5em] font-mono text-[0.62em] leading-snug [overflow-wrap:normal] whitespace-pre">
     {code.trimEnd()}
   </pre>
 )
-
-const MARK_CLASS: Readonly<Record<string, string>> = {
-  covered: "text-primary font-semibold",
-  partly: "text-foreground font-semibold",
-  missing: "text-destructive font-semibold",
-}
 
 /** The whole SOLO scale, the answer's level marked when there is one. */
 const Solo = ({ level }: { level: number | undefined }): JSX.Element => (
@@ -598,7 +509,7 @@ const Screen = ({
   }
 }
 
-export const EssayStagePage = ({
+const RustEssayStage = ({
   week,
   scene,
   record = false,
@@ -617,6 +528,7 @@ export const EssayStagePage = ({
       failed: read.isError,
     },
     sample: SAMPLE,
+    parse: parseEssay,
   })
   if (state.kind === "waiting") return null
   if (state.kind === "none")
@@ -660,3 +572,14 @@ export const EssayStagePage = ({
     </StageFrame>
   )
 }
+
+/** The stage of the essay `kind` names: the interview essay's, or the Rust Rounds essay's. */
+export const EssayStagePage = ({
+  kind,
+  ...props
+}: EssayStageProps): JSX.Element | null =>
+  kind === "interview" ? (
+    <InterviewEssayStagePage {...props} />
+  ) : (
+    <RustEssayStage {...props} />
+  )

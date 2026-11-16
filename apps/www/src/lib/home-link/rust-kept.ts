@@ -23,10 +23,10 @@ import { browserLocalStorage } from "@/lib/tenant/storage"
 
 import { homeLink, pairingOf } from "./index"
 import type { EachSent } from "./leetype-log"
-import { emptyLogReport, sendEach } from "./leetype-log"
+import { emptyLogReport, sendEach, sentOutcome } from "./leetype-log"
 import type { Sent } from "./sent"
 import { fingerprintOf, readSent, rememberSent } from "./sent"
-import { answerOrEnd, endedPart } from "./shelf"
+import { answerOrEnd } from "./shelf"
 
 /** Whether `sent` says home holds `item` as it is now. */
 const heldNow = (sent: Sent, item: KeptItem): boolean =>
@@ -68,8 +68,11 @@ export const homeHoldsWeekSend = (sent: WeekSent): boolean => {
   )
 }
 
-/** Calls `listener` each time the link changes, when what home holds may have. */
-export const onHomeHoldsWeekSend = (listener: () => void): (() => void) =>
+/**
+ * Calls `listener` each time the link changes, when what home holds of a
+ * week's send may have: the week screens' `onHomeHolds`.
+ */
+export const onHomeHeard = (listener: () => void): (() => void) =>
   homeLink().subscribe(listener)
 
 /** The key home's answer to a PUT holds the item under, where it echoes one. */
@@ -115,11 +118,7 @@ export async function sendRustKept(
   } finally {
     rememberSent(storage, sent, held)
   }
-  const ended = endedPart(report)
-  if (ended !== null) return ended
-  return report.refused + report.other + report.differs > 0
-    ? { kind: "failed", why: "refused" }
-    : { kind: "synced" }
+  return sentOutcome(report)
 }
 
 /**

@@ -7,4 +7,4 @@
 export const WEEK_ID = /^\d{4}-w(?:0[1-9]|[1-4]\d|5[0-3])$/
 
 /** A week's number, as the owner knows it: `2026-w46` is week 46. */
-export const weekNumber = (id: string): number => Number(id.slice(6))
+export { weekNumber } from "@some-ui/core-utils"

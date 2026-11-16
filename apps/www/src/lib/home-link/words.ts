@@ -122,13 +122,20 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
   jobs: {
     markLabel: "Where the Jobs record is kept",
     title: "Jobs and home",
-    rows: [{ kind: "jobs", label: "The record", one: "event", many: "events" }],
-    waits: waits("event"),
+    rows: [
+      { kind: "jobs", label: "The record", one: "event", many: "events" },
+      {
+        kind: "interviewWeeks",
+        label: "Interview weeks you sent",
+        one: "week",
+      },
+    ],
+    waits: waits("item"),
     phoneOnly: `The Jobs record is only on this phone. ${PAIR}`,
     partly:
       "Some of the Jobs record is on home. New events stay on this phone until it is paired again.",
     footnote:
-      "This phone keeps its whole record. Its voice notes go to home too, and its decisions and scouts go to the morning run through home.",
+      "This phone keeps its whole record. Its voice notes go to home too, and its decisions and scouts go to the morning run through home. Each interview week you send goes to home, which keeps the takes and which questions and reads you answered; what home has at the week's deadline is kept for good. Home's interview weeks come to this phone.",
     clash: null,
     unread: null,
   },
@@ -139,7 +146,7 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
       {
         kind: "voice",
         label:
-          "Spoken reflections, soundbites, lens and LeetType takes, Jobs, game, scene and Rust Rounds notes, Studio takes",
+          "Spoken reflections, soundbites, lens and LeetType takes, Jobs, game, scene and Rust Rounds notes, interview takes, Studio takes",
         one: "voice note",
       },
       { kind: "ideas", label: "Studio ideas, each sent whole", one: "idea" },

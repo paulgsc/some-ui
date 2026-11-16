@@ -5,7 +5,6 @@ import {
   essayIntro,
   essayScenes,
   isPast,
-  parseEssay,
 } from "@some-ui/video-render"
 import type {
   CellView,
@@ -210,19 +209,22 @@ export function essayAt(
   }
 }
 
-/** What the essay's stage draws: an essay, nothing yet, or why it can't. */
-export type EssayStageState =
+/** What an essay's stage draws: an essay, nothing yet, or why it can't. */
+export type EssayStageState<E = Essay> =
   | { readonly kind: "waiting" }
-  | { readonly kind: "show"; readonly essay: Essay; readonly voicing: Voicing }
+  | { readonly kind: "show"; readonly essay: E; readonly voicing: Voicing }
   | { readonly kind: "none"; readonly problems: ReadonlyArray<string> }
 
 /**
- * What the stage draws from its read (RR16): with a week named, that week's
- * essay, as read, or why it can't, never the sample in its place, so a
- * recording of a week fails instead of drawing someone else's; with none, or
- * `sample`, the template's sample, voiced as one.
+ * What an essay's stage draws from its read (RR16), for either kind of
+ * essay, read by `parse`: with a week named, that week's essay, as read, or
+ * why it can't, never the sample in its place, so a recording of a week
+ * fails instead of drawing someone else's; with none, or `sample`, the
+ * template's sample, voiced as one.
  */
-export function essayStageOf(input: {
+export function essayStageOf<
+  E extends { readonly week: { readonly id: string } },
+>(input: {
   readonly week: string | undefined
   /** The named essay's file as read, parsed here. */
   readonly read: {
@@ -230,8 +232,9 @@ export function essayStageOf(input: {
     readonly pending: boolean
     readonly failed: boolean
   }
-  readonly sample: Parsed<Essay>
-}): EssayStageState {
+  readonly sample: Parsed<E>
+  readonly parse: (raw: unknown) => Parsed<E>
+}): EssayStageState<E> {
   const { week, read } = input
   if (week === undefined || week === "sample")
     return input.sample.ok
@@ -240,7 +243,7 @@ export function essayStageOf(input: {
   if (read.pending) return { kind: "waiting" }
   if (read.failed || read.data === undefined)
     return { kind: "none", problems: [W.unread(week)] }
-  const parsed = parseEssay(read.data)
+  const parsed = input.parse(read.data)
   if (!parsed.ok) return { kind: "none", problems: parsed.problems }
   if (parsed.value.week.id !== week)
     return {

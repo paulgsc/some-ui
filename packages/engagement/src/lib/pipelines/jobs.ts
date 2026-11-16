@@ -58,6 +58,16 @@ const jobs: Pipeline = {
       emits: ["taken"],
       touches: true,
     },
+    // Interview: the week's mock interview and reads, said aloud (IW5).
+    {
+      id: "interview-week",
+      surface: "apk",
+      name: "The interview week",
+      routes: ["/jobs/interview"],
+      offer: null,
+      emits: ["taken"],
+      touches: true,
+    },
     // The desktop: one morning's run, what it picked and why.
     {
       id: "morning-run",

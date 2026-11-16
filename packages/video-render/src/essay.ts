@@ -61,6 +61,8 @@ import { hasCaptions, stillFile, stillsCutList } from "./stills"
 import type { StillTake } from "./stills"
 import { boardSceneOf, storyboardOf } from "./storyboard"
 import type { Storyboard } from "./storyboard"
+import { takeFilesOf } from "./take-files"
+import type { TakeFiles } from "./take-files"
 import sample from "./templates/rust-essay/sample-essay.json"
 
 export const ESSAY_SCHEMA = "some-ui.rust-essay/1"
@@ -258,8 +260,8 @@ export function essayFormat(version: number = ESSAY_VERSION): Format {
   }
 }
 
-/** A week's id, as `some-ui.rust-week/1` writes it (`@some-ui/rust-rounds`' `WEEK_ID`). */
-const weekId = z
+/** A week's id, as `some-ui.rust-week/1` writes it (`@some-ui/rust-rounds`' `WEEK_ID`); the interview essay's too. */
+export const weekId = z
   .string()
   .regex(/^\d{4}-w(?:0[1-9]|[1-4]\d|5[0-3])$/, "a week's id is like 2026-w46")
 
@@ -434,6 +436,26 @@ function ticketProblems(ticket: EssayTicket): Array<string> {
   return problems
 }
 
+/**
+ * Why an essay's chart weeks and next week don't fit the week it answers:
+ * the chart ends on it, oldest first, each once, and next week comes after.
+ * Both essays' checkers say these the same way (`interview-essay.ts`).
+ */
+export function chartWeeksProblems(
+  week: string,
+  weeks: ReadonlyArray<string>
+): Array<string> {
+  const problems: Array<string> = []
+  if (weeks.at(-1) !== week)
+    problems.push(`weeks: the chart doesn't end on ${week}`)
+  if (weeks.some((each, i) => i > 0 && each <= (weeks[i - 1] ?? "")))
+    problems.push("weeks: they aren't oldest first, each once")
+  return problems
+}
+
+export const nextWeekProblems = (week: string, next: string): Array<string> =>
+  next <= week ? [`next: ${next} doesn't come after ${week}`] : []
+
 /** Every reason the essay's parsed data contradicts itself. */
 function essayProblems(essay: Essay): Array<string> {
   const problems: Array<string> = []
@@ -444,10 +466,7 @@ function essayProblems(essay: Essay): Array<string> {
     problems.push("tickets: two share an id")
   for (const ticket of essay.tickets) problems.push(...ticketProblems(ticket))
   const { weeks, concepts } = essay.weeks
-  if (weeks.at(-1) !== essay.week.id)
-    problems.push(`weeks: the chart doesn't end on ${essay.week.id}`)
-  if (weeks.some((week, i) => i > 0 && week <= (weeks[i - 1] ?? "")))
-    problems.push("weeks: they aren't oldest first, each once")
+  problems.push(...chartWeeksProblems(essay.week.id, weeks))
   for (const concept of concepts) {
     if (concept.cells.length !== weeks.length)
       problems.push(
@@ -466,10 +485,7 @@ function essayProblems(essay: Essay): Array<string> {
         )
     })
   }
-  if (essay.next.week <= essay.week.id)
-    problems.push(
-      `next: ${essay.next.week} doesn't come after ${essay.week.id}`
-    )
+  problems.push(...nextWeekProblems(essay.week.id, essay.next.week))
   return once(problems)
 }
 
@@ -823,65 +839,25 @@ export function essayStoryboard(): Storyboard {
   )
 }
 
-/** An owner's take as home hands it to the recorder: its audio, and its word times if home kept them. */
-export type TakeFiles = {
-  readonly audio: string
-  readonly words: string | null
-}
-
-/** The suffix of a take's word times beside its audio: `QM-311.words.json`. */
-const TAKE_WORDS = ".words.json"
-
 /**
  * Which of `names`, the files in the folder home hands the recorder, is each
  * answered ticket's take (RR16): exactly one audio file `<TICKET>.<ext>` for
  * each ticket the owner answered, and its word times `<TICKET>.words.json`
- * where home kept them. Refuses, with every reason, a take missing, two for
- * one ticket, one for a ticket left silent or not in the essay, and word
- * times with no take, so nothing is drawn from the wrong voice.
+ * where home kept them (`takeFilesOf`, which says what it refuses).
  */
-export function essayTakeFiles(
+export const essayTakeFiles = (
   essay: Essay,
   names: ReadonlyArray<string>
-): Parsed<Readonly<Record<string, TakeFiles>>> {
-  const audio = new Map<string, Array<string>>()
-  const words = new Map<string, string>()
-  const problems: Array<string> = []
-  for (const name of [...names].sort()) {
-    if (name.startsWith(".")) continue
-    if (name.endsWith(TAKE_WORDS)) {
-      words.set(name.slice(0, -TAKE_WORDS.length), name)
-      continue
-    }
-    const dot = name.lastIndexOf(".")
-    const ticket = dot <= 0 ? name : name.slice(0, dot)
-    audio.set(ticket, [...(audio.get(ticket) ?? []), name])
-  }
-  const files: Record<string, TakeFiles> = {}
-  const answered = new Set<string>()
-  for (const ticket of essay.tickets) {
-    if (ticket.answer.kind !== "take") continue
-    answered.add(ticket.id)
-    const found = audio.get(ticket.id) ?? []
-    const [only] = found
-    if (only === undefined || found.length > 1) {
-      problems.push(
-        only === undefined
-          ? `${ticket.id}: answered, and there is no take of it`
-          : `${ticket.id}: ${found.length} takes (${found.join(", ")}); one plays`
-      )
-      continue
-    }
-    files[ticket.id] = { audio: only, words: words.get(ticket.id) ?? null }
-  }
-  for (const [ticket, found] of audio)
-    if (!answered.has(ticket))
-      problems.push(
-        `${found.join(", ")}: ${essay.tickets.some((t) => t.id === ticket) ? `${ticket} was left silent` : "names no ticket the essay answers"}`
-      )
-  for (const [ticket, name] of words)
-    if (!audio.has(ticket)) problems.push(`${name}: word times with no take`)
-  return problems.length > 0
-    ? { ok: false, problems }
-    : { ok: true, value: files }
-}
+): Parsed<Readonly<Record<string, TakeFiles>>> =>
+  takeFilesOf(
+    {
+      answered: essay.tickets
+        .filter((ticket) => ticket.answer.kind === "take")
+        .map((ticket) => ticket.id),
+      silent: essay.tickets
+        .filter((ticket) => ticket.answer.kind === "silence")
+        .map((ticket) => ticket.id),
+      noun: "ticket",
+    },
+    names
+  )

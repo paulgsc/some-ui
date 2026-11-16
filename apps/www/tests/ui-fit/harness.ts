@@ -437,6 +437,30 @@ export type Walk = {
 }
 
 /**
+ * On the phone page (`./phone-page`): no violation in the fixture's slot,
+ * and nothing in the page's column wider than the phone.
+ */
+export async function expectFitsPhone(
+  page: Page,
+  where: string
+): Promise<void> {
+  const { mounted, violations } = await findViolations(page)
+  expect(mounted).toBe(true)
+  expect(
+    violations.map((violation) => describeViolation(where, violation))
+  ).toEqual([])
+  const wide = await page.evaluate(() => {
+    const body = document.querySelector<HTMLElement>(
+      "[data-scroll-intent=page]"
+    )!
+    return { scroll: body.scrollWidth, room: body.clientWidth }
+  })
+  expect(wide.scroll, `${where} is wider than the phone`).toBeLessThanOrEqual(
+    wide.room + 1
+  )
+}
+
+/**
  * Opens `url` and waits for its screen. Returns the page's errors, which
  * keep coming in as the walk goes on.
  */

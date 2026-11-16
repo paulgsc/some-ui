@@ -68,6 +68,8 @@ const NOT_SHOWN: Readonly<Record<string, string>> = {
   "packages/ui/interview-week/src/lib/week/index.ts#SLUG_MAX": ONE_ITEM,
   "packages/ui/interview-week/src/lib/week/index.ts#QUESTIONS_MAX": ONE_ITEM,
   "packages/ui/interview-week/src/lib/week/index.ts#CARDS_MAX": ONE_ITEM,
+  "packages/ui/interview-week/src/lib/monday/window.ts#FACTS_DAYS": TIME,
+  "packages/ui/interview-week/src/lib/monday/window.ts#FETCH_DAYS": TIME,
   "packages/ui/game-week/src/lib/bite.ts#MAX_LINE_CHARS": ONE_ITEM,
   "packages/ui/leetype/src/lib/leetype/exercises/totality.ts#MAX_OBLIGATIONS_PER_ROUTE":
     ONE_ITEM,

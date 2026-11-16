@@ -3871,6 +3871,30 @@
       "family": "what-is-kept"
     },
     {
+      "store": "phone:interview-week-drafts",
+      "class": "record",
+      "growth": "bounded per week: one draft of the interview week's bundle by week id (the cards left for later), written over freely, since nothing in it has left the phone; one a week (`some-ui:interview-week.drafts`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:interview-week-sent",
+      "class": "record",
+      "growth": "Per send of an interview week from the phone (IW5, #2936): when, each question's and card's take id, and those not said; only grows (a change that drops or rewrites one is refused); a week stays open until its deadline and can be sent again, so a few a week, no cap; the phone keeps every send, and only each week's latest goes home (`PUT /interview-weeks/:id/sent`, `lib/home-link/interview`), none once the week has closed (`some-ui:interview-week.sent`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:interview-week-takes",
+      "class": "record",
+      "growth": "Per take on an interview week's question or read (IW5, up to two minutes at 32 kbps, ~480 KB): one current take a card, waiting on the phone until the week is sent (`send: on-confirm`), then going home as an interview voice note (IW1); a card said again after a send keeps the take sent, set apart, beside the new one, so a card can hold a few; a take let go before it is sent is deleted for good; no count of its own (max = +Infinity), so takes grow until the device's measured room (withRoom, the 25 MiB pool) refuses one; none is evicted to make room (`some-ui:interview-week.takes`, `some-ui.interview-week-takes`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:interview-weeks",
+      "class": "record",
+      "growth": "Per interview week the routine wrote that the phone read from home (IW5): the week as home serves it (a few KB: the invented company and role, its questions and its cards' scripts), and per week it can't read, its id and hash; the first copy of a week id is kept and never rewritten; one a week, no cap (`some-ui:interview-week.weeks`).",
+      "family": "what-is-kept"
+    },
+    {
       "store": "phone:library-takes",
       "class": "record",
       "growth": "bounded: the takes recorded with no scene on Takes on home (ST32 #2590, `some-ui:library-takes`), an offline set of 40 takes of <= 180 s: 40 x 180 x 4,000 = 28,800,000 B; past 40, a new one makes room with the oldest home holds, and is refused while home holds none.",
@@ -4778,7 +4802,7 @@
     {
       "id": "phone-recording",
       "name": "Recording on the phone",
-      "why": "Every screen that records a take (Rust Rounds, LeetType, the grammar lens, scene and reflection voice, Jobs notes, Soundbites, Studio, Game Week) opens the microphone through one kit, keeps the take on the phone, and says how it went. MIC0 (some-ui#2370) failed here while every test was green, and was found only by luck.",
+      "why": "Every screen that records a take (Rust Rounds, the interview week, LeetType, the grammar lens, scene and reflection voice, Jobs notes, Soundbites, Studio, Game Week) opens the microphone through one kit, keeps the take on the phone, and says how it went. MIC0 (some-ui#2370) failed here while every test was green, and was found only by luck.",
       "serves": ["take-endings"],
       "witnesses": ["TE1", "TE2", "TE3", "TE4"],
       "segments": [

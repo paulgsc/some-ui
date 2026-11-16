@@ -14,6 +14,7 @@ import {
   parseIsoWeek,
   weekAround,
   weekOf,
+  weekOpenNow,
 } from "@core-utils/lib/date-utils"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -247,5 +248,29 @@ describe("weekAround", () => {
       opens: "2026-10-26T00:00:00-07:00",
       due: "2026-11-01T23:59:00-08:00",
     })
+  })
+})
+
+describe("weekOpenNow", () => {
+  const weeks = [
+    { id: "w47", opens: "2026-11-16T08:00:00Z" },
+    { id: "w48", opens: "2026-11-23T08:00:00Z" },
+  ]
+  const opensOf = ({ opens }: { opens: string }): string => opens
+
+  it("plays the newest week that has opened", () => {
+    expect(
+      weekOpenNow(weeks, opensOf, Date.parse("2026-11-24T00:00:00Z"))?.id
+    ).toBe("w48")
+    expect(
+      weekOpenNow(weeks, opensOf, Date.parse("2026-11-17T00:00:00Z"))?.id
+    ).toBe("w47")
+  })
+
+  it("before any has opened, the one that opens first; none for none", () => {
+    expect(
+      weekOpenNow(weeks, opensOf, Date.parse("2026-11-01T00:00:00Z"))?.id
+    ).toBe("w47")
+    expect(weekOpenNow([], opensOf, 0)).toBeNull()
   })
 })

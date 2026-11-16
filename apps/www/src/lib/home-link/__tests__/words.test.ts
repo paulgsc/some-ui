@@ -474,7 +474,7 @@ describe("the routine's files in Korean", () => {
     )
     expect(view).toMatchObject({ how: "unpaired", word: "Not paired" })
     expect(view.line).toBe(
-      "This phone isn't paired with home now. Pair it in Settings. 1 event waits on this phone and goes next time."
+      "This phone isn't paired with home now. Pair it in Settings. 1 item waits on this phone and goes next time."
     )
   })
 })
