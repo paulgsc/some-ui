@@ -4774,6 +4774,18 @@
       "family": "rust-essay-rendered"
     },
     {
+      "store": "server:interview_essay_video_link",
+      "class": "record",
+      "growth": "About one row per interview essay week whose YouTube link the owner records (subject, week, YouTube id, when), the newest standing; append-only, triggers abort UPDATE, DELETE only once the account is gone; subject-scoped, it leaves with the account (IW6, #2937).",
+      "family": "rust-essay-rendered"
+    },
+    {
+      "store": "server:interview_essay_video_deletion",
+      "class": "record",
+      "growth": "Per step of an interview essay week let go (the video, then the rest), one receipt row (subject, week, step, cause let-go or take-deleted, YouTube id when there was one, bytes, when): at most two per week; append-only, subject-scoped, it leaves with the account (IW6, #2937).",
+      "family": "rust-essay-rendered"
+    },
+    {
       "store": "server:cards_essay",
       "class": "record",
       "growth": "One row per cards essay home takes from paulgsc/testing's cards/: its key (<slug>-<YYYY-MM-DD>), the cut list as served (a few KB, at most 1 MiB) with its SHA-256, and when taken; append-only, triggers abort UPDATE and DELETE. No subject: a session's claims about public repositories, nobody's record, so deleting an account removes none. The repository keeps every essay too (CARDS-ROUTINE), and home's copy of each, its video included (renders/cards-essay/<key>/), is kept until it can be let go after a confirmed YouTube link, as other episodes are, which comes with #2999 (the owner, on #2996).",
