@@ -2,7 +2,6 @@
 import type { ProblemCode, TakeVerdict } from "@soundbites/lib/reconcile/codes"
 import {
   codeCounts,
-  CODES,
   codesOf,
   FAILED_CODES,
   GARBLED_CODES,
@@ -77,14 +76,5 @@ describe("the codes a take home couldn't hear is listed under (HEARD3)", () => {
       { code: "sparse", count: 2 },
       { code: "deadline", count: 1 },
     ])
-  })
-
-  it("orders the codes garbled, nothing said, then failed", () => {
-    expect(CODES.indexOf("nothing_said")).toBeGreaterThan(
-      CODES.indexOf("garbled")
-    )
-    expect(CODES.indexOf("unreadable")).toBeGreaterThan(
-      CODES.indexOf("nothing_said")
-    )
   })
 })

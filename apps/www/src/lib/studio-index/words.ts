@@ -204,7 +204,6 @@ export const FEED_KEPT = {
 export const STUDIO_INDEX_WORDS = {
   heading: "Studio",
   aToZ: "Listed A to Z. None comes first.",
-  /** Where a record is deleted for good: My data's delete (LA19, HEARD3). */
   deleting: "Deleting any of it happens in",
   myData: "Settings › My data",
   deletingAlso:

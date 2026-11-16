@@ -11,14 +11,22 @@
  * Rules that hold by structure:
  *
  * - **A read answers only the read asked last,** and a play only the play
- *   asked last (numbered, as Takes on home's are, `../library/model`).
+ *   asked last (`../library/play`).
  * - **One act at a time.** While home is told of one, no other is sent, so
  *   two taps can't race; its answer counts only for the act asked last.
- * - **A take leaves the list only once home kept the act** (or its delete's
- *   receipt): an act home didn't take leaves the take where it was, and
- *   says so. What plays stops when its take leaves.
+ * - **A take leaves the list only once home kept the act,** said it has
+ *   nothing left to reconcile on it, or answered its delete with a receipt:
+ *   an act home didn't take leaves the take where it was, and says so. What plays stops when its take leaves.
  */
 import { assertNever } from "@some-ui/core-utils"
+import type { PlayEffect, PlaySlice } from "@soundbites/lib/library/play"
+import {
+  audioRead,
+  played,
+  playEnded,
+  QUIET,
+  stopped,
+} from "@soundbites/lib/library/play"
 
 import type { TakeVerdict } from "./codes"
 
@@ -60,21 +68,14 @@ export type ReconcileAct = "keep" | "again"
 export type ActAnswer =
   /** Home kept it: the take is answered. */
   | "kept"
+  /** Home has nothing left to reconcile on it (judged heard, or gone). */
+  | "settled"
   /** Home didn't take it, or didn't answer: nothing changed. */
   | "notTaken"
 
-type Playback =
-  | { readonly kind: "quiet" }
-  | { readonly kind: "loading"; readonly id: string }
-  | { readonly kind: "playing"; readonly id: string }
-
-export type ReconcileState = {
+export type ReconcileState = PlaySlice & {
   readonly read: { readonly kind: "reading" } | AttentionRead
   readonly seq: number
-  readonly playback: Playback
-  readonly plays: number
-  /** The take whose audio home couldn't give back, the last time asked. */
-  readonly unplayable: string | null
   /** The act home is being told of; null while none is. */
   readonly acting: {
     readonly id: string
@@ -85,6 +86,7 @@ export type ReconcileState = {
   /** What the screen says of the last act: kept, or not taken. */
   readonly said:
     | { readonly kind: "kept"; readonly act: ReconcileAct }
+    | { readonly kind: "settled" }
     | { readonly kind: "notTaken"; readonly id: string }
     | null
 }
@@ -95,8 +97,10 @@ export type ReconcileIntent =
   /** What plays stops: its row is about to leave the screen (a chip). */
   | { readonly type: "stop" }
   | { readonly type: "act"; readonly id: string; readonly act: ReconcileAct }
-  /** The person closed what the screen said. */
+  /** The person closed what the screen said of the last act. */
   | { readonly type: "noticeDismissed" }
+  /** The person closed "home can't give that take back". */
+  | { readonly type: "unplayableDismissed" }
 
 export type ReconcileEvent =
   | ReconcileIntent
@@ -123,13 +127,7 @@ export type ReconcileEvent =
 
 export type ReconcileEffect =
   | { readonly type: "readTakes"; readonly seq: number }
-  | { readonly type: "readAudio"; readonly play: number; readonly id: string }
-  | {
-      readonly type: "startPlayback"
-      readonly play: number
-      readonly audio: Blob
-    }
-  | { readonly type: "stopPlayback" }
+  | PlayEffect
   | {
       readonly type: "sendAct"
       readonly seq: number
@@ -145,9 +143,7 @@ export type ReconcileStep = {
 export const INITIAL_RECONCILE: ReconcileState = {
   read: { kind: "reading" },
   seq: 0,
-  playback: { kind: "quiet" },
-  plays: 0,
-  unplayable: null,
+  ...QUIET,
   acting: null,
   acts: 0,
   said: null,
@@ -157,15 +153,6 @@ const same = (state: ReconcileState): ReconcileStep => ({
   state,
   effects: [],
 })
-
-/** Stops what plays, under a new number, so its late answers are for nobody. */
-function stopped(state: ReconcileState): ReconcileStep {
-  if (state.playback.kind === "quiet") return same(state)
-  return {
-    state: { ...state, playback: { kind: "quiet" }, plays: state.plays + 1 },
-    effects: [{ type: "stopPlayback" }],
-  }
-}
 
 function readTakes(state: ReconcileState): ReconcileStep {
   const stop = stopped(state)
@@ -211,43 +198,13 @@ export function stepReconcile(
       return same({ ...state, read: event.read })
     }
     case "play": {
-      const { playback } = state
-      const again = playback.kind !== "quiet" && playback.id === event.id
-      const stop = stopped(state)
-      if (again) return stop
-      const play = stop.state.plays + 1
-      return {
-        state: {
-          ...stop.state,
-          plays: play,
-          playback: { kind: "loading", id: event.id },
-          unplayable: null,
-        },
-        effects: [...stop.effects, { type: "readAudio", play, id: event.id }],
-      }
+      return played(state, event.id)
     }
     case "audioRead": {
-      const { playback } = state
-      if (event.play !== state.plays || playback.kind !== "loading") {
-        return same(state)
-      }
-      if (event.audio === null) {
-        return same({
-          ...state,
-          playback: { kind: "quiet" },
-          unplayable: playback.id,
-        })
-      }
-      return {
-        state: { ...state, playback: { kind: "playing", id: playback.id } },
-        effects: [
-          { type: "startPlayback", play: event.play, audio: event.audio },
-        ],
-      }
+      return audioRead(state, event.play, event.audio)
     }
     case "playEnded": {
-      if (event.play !== state.plays) return same(state)
-      return same({ ...state, playback: { kind: "quiet" } })
+      return playEnded(state, event.play)
     }
     case "act": {
       if (state.acting !== null) return same(state)
@@ -273,16 +230,20 @@ export function stepReconcile(
       if (event.answer === "notTaken") {
         return same({ ...done, said: { kind: "notTaken", id: acting.id } })
       }
-      return without(
-        { ...done, said: { kind: "kept", act: acting.act } },
-        new Set([acting.id])
-      )
+      const said =
+        event.answer === "settled"
+          ? ({ kind: "settled" } as const)
+          : ({ kind: "kept", act: acting.act } as const)
+      return without({ ...done, said }, new Set([acting.id]))
     }
     case "deleted": {
       return without(state, new Set(event.ids))
     }
     case "noticeDismissed": {
-      return same({ ...state, said: null, unplayable: null })
+      return same({ ...state, said: null })
+    }
+    case "unplayableDismissed": {
+      return same({ ...state, unplayable: null })
     }
     default: {
       return assertNever(event)

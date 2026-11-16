@@ -1,8 +1,8 @@
 /**
  * The ports Studio's Takes › Needs your attention hands `TakeReconcile`
- * (HEARD3, #3075): home, a player, and what My data's delete path deleted
- * (`hearDeletes`, LA19), so a take deleted for good leaves the list. Made
- * once, in the Android app alone (`build.paths.ts`).
+ * and its way in (HEARD3, #3075): home, a player, and what My data's delete
+ * path deleted (`hearDeletes`, LA19), so a take deleted for good leaves the
+ * list. The Android app's alone (`build.paths.ts`).
  */
 import type { ComponentProps } from "react"
 import type { TakeReconcile } from "@some-ui/soundbites"
@@ -16,7 +16,11 @@ type Ports = ComponentProps<typeof TakeReconcile>["ports"]
 
 let ports: Ports | null = null
 
-/** The page's ports, made on first use. */
+/**
+ * The page's ports, made on first use. Each route reads the build's flag
+ * itself before calling this, so the bundler drops the call from the web
+ * builds (`check:bundle-paths`).
+ */
 export function reconcilePorts(): Ports {
   ports ??= { home: reconcileHome, player: audioPlayer, deletes: hearDeletes }
   return ports

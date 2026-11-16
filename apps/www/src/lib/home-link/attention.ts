@@ -6,8 +6,7 @@
  * it, or record it again), through the link's `keep` (LA8). It sends
  * nothing of the phone's but the take's id and the act's name. Home answers
  * the takes with what it heard and its verdict, never their audio, which
- * Play asks for one take at a time (`./voice-audio`). What the page makes of
- * the answers is `lib/take-reconcile`'s, its one caller.
+ * Play asks for one take at a time (`./voice-audio`).
  */
 import type { ReconcileAct } from "@some-ui/soundbites"
 

@@ -165,7 +165,7 @@ describe("Takes › Needs your attention (HEARD3)", () => {
     await settle()
     act(() => tell(["s1"]))
     expect(screen.queryByText(W.neverHeard)).toBeNull()
-    expect(screen.getByText(W.shown(1))).toBeTruthy()
+    expect(screen.getByText(W.shown(1, 1))).toBeTruthy()
   })
 
   it("shows the way in only while a take waits, with how many", async () => {

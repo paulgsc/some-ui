@@ -3,12 +3,12 @@
  *
  * Home, as Takes › Needs your attention reads it (HEARD3): each answer of
  * `GET /voice-notes/attention` and of an act said in the page's terms, a
- * verdict as HEARD1 serves it, and Delete… only on a kind home deletes.
+ * verdict as HEARD1 serves it.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
-import { deletesKind, readAct, readAttention } from "@/lib/take-reconcile/model"
+import { readAct, readAttention } from "@/lib/take-reconcile/model"
 
 const reply = (status: number, body: unknown = ""): HomeAnswer => ({
   status,
@@ -105,34 +105,40 @@ describe("Takes › Needs your attention's reads of home (HEARD3)", () => {
     expect(take?.verdict.language).toBeNull()
   })
 
-  it("says a home without the read judges nothing yet, and an answer it can't read", () => {
-    expect(readAttention(reply(404))).toEqual({ kind: "older" })
-    expect(readAttention(reply(500))).toEqual({ kind: "unreadable" })
-    expect(readAttention(reply(200, "{"))).toEqual({ kind: "unreadable" })
-    const guess = {
+  it("leaves out only a take it can't read, never the page", () => {
+    const newer = {
       ...PAGE,
       takes: [
         {
           ...PAGE.takes[0],
           verdict: { ...PAGE.takes[0].verdict, kind: "maybe" },
         },
+        { ...PAGE.takes[1], heard: undefined },
       ],
     }
-    expect(readAttention(reply(200, guess))).toEqual({ kind: "unreadable" })
+    const read = readAttention(reply(200, newer))
+    expect(read.kind === "read" && read.page.takes.map((t) => t.id)).toEqual([
+      "t2",
+    ])
+    expect(read.kind === "read" && read.page.total).toBe(2)
   })
 
-  it("counts an act kept only when home kept it", () => {
+  it("says a home without the read judges nothing yet, and an answer it can't read", () => {
+    expect(readAttention(reply(404))).toEqual({ kind: "older" })
+    expect(readAttention(reply(500))).toEqual({ kind: "unreadable" })
+    expect(readAttention(reply(200, "{"))).toEqual({ kind: "unreadable" })
+    expect(readAttention(reply(200, { takes: "none", total: 1 }))).toEqual({
+      kind: "unreadable",
+    })
+  })
+
+  it("counts an act kept only when home kept it, and settled when nothing is left to reconcile", () => {
     expect(readAct(reply(200))).toBe("kept")
     expect(readAct(reply(201))).toBe("kept")
-    for (const status of [404, 409, 422, 500]) {
+    expect(readAct(reply(409))).toBe("settled")
+    expect(readAct(reply(404))).toBe("settled")
+    for (const status of [401, 422, 500]) {
       expect(readAct(reply(status))).toBe("notTaken")
-    }
-  })
-
-  it("offers Delete… only on a kind home deletes (C443)", () => {
-    expect(deletesKind("studio")).toBe(true)
-    for (const of of ["rust-round", "interview", "reflection", "newer"]) {
-      expect(deletesKind(of)).toBe(false)
     }
   })
 })

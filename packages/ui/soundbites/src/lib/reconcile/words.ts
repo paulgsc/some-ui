@@ -5,14 +5,12 @@
  * machinery behind it. "Take" is the one word for a recording (ST34).
  * `__tests__/words.test.ts` holds both.
  */
-import { counted, dayOf, formatDay } from "@some-ui/core-utils"
+import { counted } from "@some-ui/core-utils"
+import { dayAt } from "@soundbites/lib/library/words"
 
 import type { ProblemCode } from "./codes"
 
 const takes = (n: number): string => counted(n, "take")
-
-/** The day, on this phone's calendar. */
-const dayAt = (iso: string): string => formatDay(dayOf(new Date(iso)))
 
 /** Languages home names, as the page says them; others by their code. */
 const LANGUAGES: Readonly<Record<string, string>> = {
@@ -27,7 +25,7 @@ const LANGUAGES: Readonly<Record<string, string>> = {
 }
 
 const languageName = (code: string): string =>
-  LANGUAGES[code] ?? `another language (${code})`
+  LANGUAGES[code] ?? "another language"
 
 /** Each kind of take home keeps, by home's name for it. */
 const OF_WORDS: Readonly<Record<string, string>> = {
@@ -54,8 +52,10 @@ export const RECONCILE_WORDS = {
     "What home said couldn't be read on this phone. Try again in a moment.",
   none: "Every take home has heard came through. Nothing waits on you here.",
   /** What the page holds, said once at its top. */
-  shown: (count: number): string =>
-    `${takes(count)} home couldn't hear well, by what went wrong.`,
+  shown: (listed: number, total: number): string =>
+    listed < total
+      ? `The newest ${String(listed)} of the ${takes(total)} home couldn't hear well, by what went wrong.`
+      : `${takes(total)} home couldn't hear well, by what went wrong.`,
   /** What one code means: its name, and a line under it. */
   codes: {
     low_confidence: {
@@ -127,11 +127,6 @@ export const RECONCILE_WORDS = {
   of: (of: string): string => OF_WORDS[of] ?? "A take",
   /** What a row of chips does, for a reader that can't see it. */
   chips: "Show only the takes where",
-  play: "Play this take",
-  stop: "Stop this take",
-  loading: "Getting it from home…",
-  unplayable:
-    "Home couldn't give this take back just now. Try again in a moment.",
   /** The three acts, and what each keeps. */
   acts: {
     keep: "Keep it",
@@ -149,5 +144,8 @@ export const RECONCILE_WORDS = {
   },
   acting: "Telling home…",
   /** An act home didn't take: nothing changed, and the take stays. */
+  /** Home had nothing left to settle on a take: it leaves the list. */
+  settled:
+    "Home has nothing left to settle on that take, so it leaves this list.",
   notTaken: "Home didn't take that just now, so nothing changed. Try again.",
 } as const

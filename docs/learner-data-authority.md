@@ -468,7 +468,7 @@ declared (checked by reading every call site and by the tests named).
   sending nothing but the take's id; ST32), its Needs your attention
   (`lib/take-reconcile`, through `lib/home-link/attention`'s `keep`: one
   `GET /voice-notes/attention` each time the page opens or Try again is
-  pressed, asked again while the link is busy as Takes on home's read is;
+  pressed, and each time Takes' first page opens, for its way in's count, asked again while the link is busy as Takes on home's read is;
   per Play, one `GET /voice-notes/:id/audio`; and per act tapped, one
   `POST /voice-notes/:id/attention` naming the act, asked again while the
   link is busy, sending nothing of the phone's but the take's id and the
@@ -637,7 +637,8 @@ declared (checked by reading every call site and by the tests named).
   `attention.ts` send anything but one `GET` of `ATTENTION_PATH` per read
   and one `POST` of `actPath(id)` per act, lets anything but
   `lib/take-reconcile` call it, or has `@some-ui/soundbites`'
-  `stepReconcile` read but on the page opening or Try again, or send an act
+  `stepReconcile` read but on the page or Takes' first page opening or Try
+  again, or send an act
   but on a tap, one at a time (HEARD3); one that has `idea-reads.ts` send anything
   but the one request `ideasPath` names per ask, lets anything but
   `lib/idea-home` call it, or has `@some-ui/soundbites`' `stepOnHome` read
@@ -1774,7 +1775,7 @@ reaches:
   `phoneDeleting()`. Before that button, the sheet shows `DELETING.goes`
   and `DELETING.stays`, with "Keep it" first. A sheet is asked (`asked`)
   only for recordings `offersDelete` passes, or, on Needs your attention,
-  for one take whose kind `deletesKind` (`lib/take-reconcile/model.ts`)
+  for one take whose kind `isDeletableKind` (`lib/my-data/deleting.ts`)
   passes: only `studio`, a kind home's `SWITCHED_ON` deletes and
   `PHONE_LETS_GO` lets go of. A take of that kind home keeps for good is
   answered `409`, which the sheet says, and nothing goes. Every other delete of a recording on the phone (a
@@ -1801,9 +1802,8 @@ reaches:
     `DeleteSheetView`'s `onConfirm`, or `ask` with recordings
     `offersDelete` refuses (`components/settings/device-my-data.tsx`'s
     `MyDataKind` and its `?note=` opening), or, on Needs your attention,
-    with more than the one take tapped or with a take `deletesKind`
-    refuses; or a hunk to `lib/take-reconcile/model.ts` that widens
-    `DELETABLE` past `PHONE_LETS_GO`;
+    with more than the one take tapped or with a take `isDeletableKind`
+    refuses;
   - a hunk to `device-my-data-delete.tsx` that drops `DELETING.goes` or
     `DELETING.stays` from the sheet that asks, or puts the confirm before
     "Keep it";
@@ -1833,8 +1833,7 @@ reaches:
   `apps/www/src/lib/home-link/delete-note.ts`,
   `apps/www/src/components/settings/device-my-data.tsx`,
   `device-my-data-delete.tsx` and `device-my-data-calls.tsx`,
-  `apps/www/src/routes/_dashboard/_apk/journal/takes/attention.tsx` and
-  `apps/www/src/lib/take-reconcile/model.ts`. For a draft's delete: every module in
+  and `apps/www/src/routes/_dashboard/_apk/journal/takes/attention.tsx`. For a draft's delete: every module in
   `apps/www` and `packages` that deletes a recording on the phone.
 - _Why not enforced:_
   - **Lint** can't hold that the port runs only after the person's confirm
@@ -1861,11 +1860,11 @@ reaches:
       video, which `forgetCopy` removes on the video's receipt, is a copy
       of what home kept, not a draft.
     - Amended for Needs your attention (HEARD3, #3075), read the same
-      way: its route calls `ask("studio", [id])` only from a take's
-      Delete…, which `TakeReconcile` shows only where `deletesKind` passes,
-      and passes `confirm` only to `DeleteSheetView`'s `onConfirm`; it
-      imports neither `delete-note` nor `createDeleting`, only
-      `phoneDeleting` from `lib/my-data`. What home deleted reaches the
+      way: its route calls `ask(take.of, [take.id])` only from a take's
+      Delete…, which `TakeReconcile` shows only where `isDeletableKind`
+      passes, and passes `confirm` only to `DeleteSheetView`'s `onConfirm`
+      (through `useDeleting`, beside it); it imports neither `delete-note`
+      nor `createDeleting`. What home deleted reaches the
       page by `hearDeletes`, which hears the ids of each receipt.
     - The phone's draft deletes (Studio's retake and take removal, an idea
       answer's Delete, the soundbites', lens and LeetType desks' and Rust

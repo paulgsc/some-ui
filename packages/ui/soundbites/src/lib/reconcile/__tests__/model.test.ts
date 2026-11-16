@@ -92,6 +92,29 @@ describe("the takes needing attention's machine (HEARD3)", () => {
     expect(state.acting).toBeNull()
   })
 
+  it("drops a take home has nothing left to reconcile on, and says so", () => {
+    const { state } = run([
+      ...listed,
+      { type: "act", id: "a", act: "keep" },
+      { type: "actAnswered", seq: 1, answer: "settled" },
+    ])
+    expect(ids(state)).toEqual(["b"])
+    expect(state.said).toEqual({ kind: "settled" })
+  })
+
+  it("closes each notice on its own", () => {
+    const { state } = run([
+      ...listed,
+      { type: "act", id: "a", act: "again" },
+      { type: "actAnswered", seq: 1, answer: "notTaken" },
+      { type: "play", id: "b" },
+      { type: "audioRead", play: 1, audio: null },
+      { type: "unplayableDismissed" },
+    ])
+    expect(state.unplayable).toBeNull()
+    expect(state.said).toEqual({ kind: "notTaken", id: "a" })
+  })
+
   it("never acts on a take the list doesn't hold", () => {
     const { effects } = run([...listed, { type: "act", id: "z", act: "keep" }])
     expect(effects).toEqual(["readTakes"])
@@ -129,26 +152,5 @@ describe("the takes needing attention's machine (HEARD3)", () => {
     const other = run([{ type: "deleted", ids: ["b"] }], playing)
     expect(other.effects).toEqual([])
     expect(other.state.playback.kind).toBe("playing")
-  })
-
-  it("plays one take at a time, and never plays audio for a play overtaken", () => {
-    const { state, effects } = run([
-      ...listed,
-      { type: "play", id: "a" },
-      { type: "play", id: "b" },
-      { type: "audioRead", play: 1, audio: new Blob(["x"]) },
-    ])
-    expect(effects).toEqual([
-      "readTakes",
-      "readAudio",
-      "stopPlayback",
-      "readAudio",
-    ])
-    expect(state.playback).toEqual({ kind: "loading", id: "b" })
-    const none = run(
-      [{ type: "audioRead", play: state.plays, audio: null }],
-      state
-    )
-    expect(none.state.unplayable).toBe("b")
   })
 })

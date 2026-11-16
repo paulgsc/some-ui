@@ -50,11 +50,14 @@ const VerdictSchema: z.ZodType<TakeVerdict> = z
 /** What home heard: its words, as a transcript or as text; none as null. */
 const HeardSchema = z
   .union([
-    z.object({ text: z.string() }).transform(({ text }) => text),
+    z.object({ text: z.string().nullable() }).transform(({ text }) => text),
     z.string(),
   ])
   .nullable()
-  .transform((text) => (text === null || text.trim() === "" ? null : text))
+  .optional()
+  .transform((text) =>
+    text === null || text === undefined || text.trim() === "" ? null : text
+  )
 
 const TakeSchema = z.object({
   id: z.string().min(1),
@@ -65,10 +68,23 @@ const TakeSchema = z.object({
   verdict: VerdictSchema,
 })
 
-const PageSchema: z.ZodType<AttentionPage> = z.object({
-  takes: z.array(TakeSchema),
-  total: z.number().int().nonnegative(),
-})
+/**
+ * The page, each take read on its own: one this phone can't read (a verdict
+ * kind a newer home adds) is left out, never the page with it, and `total`
+ * still counts it.
+ */
+const PageSchema: z.ZodType<AttentionPage> = z
+  .object({
+    takes: z.array(z.unknown()),
+    total: z.number().int().nonnegative(),
+  })
+  .transform(({ takes, total }) => ({
+    takes: takes.flatMap((take) => {
+      const read = TakeSchema.safeParse(take)
+      return read.success ? [read.data] : []
+    }),
+    total,
+  }))
 
 /** What home's answer to the read says, for the page. */
 export function readAttention(answer: HomeAnswer): AttentionRead {
@@ -80,18 +96,12 @@ export function readAttention(answer: HomeAnswer): AttentionRead {
 }
 
 /**
- * Whether home kept an act: a `200` or `201` is kept (an act sent again
- * answers as kept); anything else changed nothing.
+ * What came of an act (server#912): `201` kept, `200` the same act already
+ * kept; `409` a take with nothing to reconcile (no verdict, or heard) and
+ * `404` one home doesn't hold, both settled; anything else changed nothing.
  */
-export const readAct = (answer: HomeAnswer): ActAnswer =>
-  answer.status === 200 || answer.status === 201 ? "kept" : "notTaken"
-
-/**
- * The kinds home deletes for good (paulgsc/server `delete::SWITCHED_ON`, a
- * Studio take or an idea's spoken take), through My data's delete path
- * (LA19): one entry per kind the owner switches on (C443).
- */
-const DELETABLE: ReadonlyArray<string> = ["studio"]
-
-/** Whether the page offers Delete… on a take of kind `of`. */
-export const deletesKind = (of: string): boolean => DELETABLE.includes(of)
+export function readAct(answer: HomeAnswer): ActAnswer {
+  if (answer.status === 200 || answer.status === 201) return "kept"
+  if (answer.status === 404 || answer.status === 409) return "settled"
+  return "notTaken"
+}

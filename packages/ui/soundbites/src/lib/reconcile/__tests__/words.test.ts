@@ -37,7 +37,8 @@ function everyWord(): Array<string> {
     RECONCILE_WORDS
   return [
     ...Object.values(fixed),
-    ...[0, 1, 7].flatMap((n) => [wayIn(n), shown(n)]),
+    ...[0, 1, 7].flatMap((n) => [wayIn(n), shown(n, n)]),
+    shown(100, 140),
     ...CODES.flatMap((code) => [codes[code].name, codes[code].line]),
     heardAs("pt", "en"),
     heardAs("xx", null),
@@ -69,7 +70,16 @@ describe("the takes needing attention's words (HEARD3)", () => {
       "Heard as Portuguese, said in English."
     )
     expect(RECONCILE_WORDS.heardAs("xx", null)).toBe(
-      "Heard as another language (xx)."
+      "Heard as another language."
+    )
+  })
+
+  it("say when home lists only the newest of the takes waiting", () => {
+    expect(RECONCILE_WORDS.shown(100, 140)).toBe(
+      "The newest 100 of the 140 takes home couldn't hear well, by what went wrong."
+    )
+    expect(RECONCILE_WORDS.shown(3, 3)).toBe(
+      "3 takes home couldn't hear well, by what went wrong."
     )
   })
 

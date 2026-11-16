@@ -1,11 +1,9 @@
 /**
  * The takes needing attention (HEARD3, #3075): every take home couldn't
- * hear well, grouped by what went wrong, one group per code home judged it
- * by (owner, #3070: "we don't want to call out all error codes under one
- * thing"), each take saying every code it carries. Each plays, shows what
- * home heard, and offers the owner's acts: keep it, record it again, or
- * delete it, where home deletes that kind. Renders `lib/reconcile/model.ts`'s
- * state and forwards taps; its words are `lib/reconcile/words.ts`'s.
+ * hear well, grouped by code (`lib/reconcile/codes`). Each plays, shows
+ * what home heard, and offers keep it, record it again, or delete it, where
+ * the build deletes that kind. Renders `lib/reconcile/model.ts`'s state and
+ * forwards taps; its words are `lib/reconcile/words.ts`'s.
  *
  * Delete is the build's: `onDelete` opens its delete path (My data's, LA19),
  * which tells the runtime what went (`ports.deletes`).
@@ -14,6 +12,11 @@ import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
 import { Button, Dot, Notice } from "@some-ui/shared"
+import {
+  Chip,
+  CHIP_BAR,
+  PlayButton,
+} from "@soundbites/components/take-library/parts"
 import { Unpaired } from "@soundbites/components/unpaired"
 import { aboutOfRef } from "@soundbites/lib/library/compartments"
 import { LIBRARY_WORDS } from "@soundbites/lib/library/words"
@@ -31,7 +34,6 @@ import type {
 import type { ReconcilePorts } from "@soundbites/lib/reconcile/runtime"
 import { createReconcile } from "@soundbites/lib/reconcile/runtime"
 import { RECONCILE_WORDS } from "@soundbites/lib/reconcile/words"
-import { LoaderCircle, Pause, Play } from "lucide-react"
 
 const WORDS = RECONCILE_WORDS
 
@@ -82,26 +84,16 @@ const TakeCard = ({
   const here = playback.kind !== "quiet" && playback.id === take.id
   const codes = codesOfTake(take)
   const { language } = take.verdict
-  const heard = take.heard?.trim() ?? ""
+  const heard = take.heard ?? ""
   const busy = acting !== null
   return (
     <li className="bg-card border-border/50 flex flex-col gap-2 rounded-2xl border p-3">
       <div className="flex min-w-0 items-start gap-3">
-        <Button
-          type="button"
-          size="icon"
-          className="bg-brand text-brand-foreground hover:bg-brand/85 size-11 shrink-0 rounded-full"
-          onClick={() => dispatch({ type: "play", id: take.id })}
-          aria-label={here ? WORDS.stop : WORDS.play}
-        >
-          {!here ? (
-            <Play className="size-4" aria-hidden="true" />
-          ) : playback.kind === "loading" ? (
-            <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <Pause className="size-4" aria-hidden="true" />
-          )}
-        </Button>
+        <PlayButton
+          playing={here}
+          loading={playback.kind === "loading"}
+          onPress={() => dispatch({ type: "play", id: take.id })}
+        />
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <p className="text-muted-foreground text-xs font-bold tracking-wide uppercase">
             {kindOf(take)}
@@ -173,13 +165,15 @@ const TakeCard = ({
         <p className="text-muted-foreground text-xs">{WORDS.keptForGood}</p>
       )}
       {acting?.id === take.id && <Notice>{WORDS.acting}</Notice>}
-      {here && playback.kind === "loading" && <Notice>{WORDS.loading}</Notice>}
+      {here && playback.kind === "loading" && (
+        <Notice>{LIBRARY_WORDS.loading}</Notice>
+      )}
       {state.unplayable === take.id && (
         <Notice
           tone="danger"
-          onDismiss={() => dispatch({ type: "noticeDismissed" })}
+          onDismiss={() => dispatch({ type: "unplayableDismissed" })}
         >
-          {WORDS.unplayable}
+          {LIBRARY_WORDS.unplayable}
         </Notice>
       )}
       {state.said?.kind === "notTaken" && state.said.id === take.id && (
@@ -206,25 +200,17 @@ const CodeChips = ({
 }): JSX.Element | null => {
   if (counts.length < 2 && picked === null) return null
   return (
-    <nav
-      aria-label={WORDS.chips}
-      className="bg-background sticky top-0 z-10 flex gap-2 overflow-x-auto py-1"
-    >
+    <nav aria-label={WORDS.chips} className={CHIP_BAR}>
       {counts.map(({ code, count }) => (
-        <button
+        <Chip
           key={code}
-          type="button"
-          aria-pressed={picked === code}
-          onClick={() => onPick(picked === code ? null : code)}
-          className={cn(
-            "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm",
-            picked === code ? "bg-foreground text-background" : "bg-card"
-          )}
+          picked={picked === code}
+          count={count}
+          dot="attention"
+          onTap={() => onPick(picked === code ? null : code)}
         >
-          <Dot meaning="attention" className="size-2" />
           {WORDS.codes[code].name}
-          <span className="tabular-nums opacity-75">{count}</span>
-        </button>
+        </Chip>
       ))}
     </nav>
   )
@@ -312,7 +298,7 @@ export const TakeReconcile = ({
       {page !== null && takes.length > 0 && (
         <>
           <p className="text-muted-foreground text-sm" aria-live="polite">
-            {WORDS.shown(page.total)}
+            {WORDS.shown(takes.length, page.total)}
           </p>
           <CodeChips
             counts={counts}
@@ -360,6 +346,11 @@ export const TakeReconcile = ({
       {state.said?.kind === "kept" && (
         <Notice onDismiss={() => dispatch({ type: "noticeDismissed" })}>
           {WORDS.done[state.said.act]}
+        </Notice>
+      )}
+      {state.said?.kind === "settled" && (
+        <Notice onDismiss={() => dispatch({ type: "noticeDismissed" })}>
+          {WORDS.settled}
         </Notice>
       )}
     </div>

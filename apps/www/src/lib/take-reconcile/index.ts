@@ -27,5 +27,3 @@ export const reconcileHome: ReconcileHome = {
     return asked.kind === "answered" ? readAct(asked.answer) : "notTaken"
   },
 }
-
-export { deletesKind } from "./model"

@@ -185,11 +185,7 @@ export function hearDeletes(
   }
 }
 
-/**
- * Made on first use, so importing this module sends nothing. My data and
- * Takes › Needs your attention (HEARD3) share it: one delete path, one
- * sheet, one receipt each (LA19).
- */
+/** Made on first use, so importing this module sends nothing. */
 export function phoneDeleting(): Deleting {
   deleting ??= createDeleting({
     deleteNotes,
