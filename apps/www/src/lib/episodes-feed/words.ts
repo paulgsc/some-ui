@@ -18,9 +18,6 @@ import type { Feed } from "@/lib/feeds"
 
 import type { Trouble } from "./index"
 
-const capital = (line: string): string =>
-  line.charAt(0).toUpperCase() + line.slice(1)
-
 export const EPISODES_FEED_WORDS = {
   /** What the chip bar is, for a screen reader. */
   chips: "Genres",
@@ -35,13 +32,13 @@ export const EPISODES_FEED_WORDS = {
   } satisfies Record<Feed, string>,
   /** A chip as a screen reader says it, with its count. */
   chipLabel: (name: string, n: number): string =>
-    `${name}, ${counted(n, "video")}`,
+    `${name}, ${counted(n, "episode")}`,
   /** A week's heading: this week's, or the Monday it starts on. */
   week: (monday: string, thisMonday: string): string =>
     monday === thisMonday ? "This week" : `Week of ${formatDay(monday)}`,
   /** Under a week's heading: its days and how many videos it holds. */
   weekLine: (monday: string, n: number): string =>
-    `${formatDay(monday)} to ${formatDay(addDays(monday, 6))} · ${counted(n, "video")}`,
+    `${formatDay(monday)} to ${formatDay(addDays(monday, 6))} · ${counted(n, "episode")}`,
   undated: "Not dated yet",
   undatedLine:
     "Home doesn't say which week these belong to, so they're listed here, newest first.",
@@ -67,10 +64,12 @@ export const EPISODES_FEED_WORDS = {
   length: (ms: number): string => formatTimecode(ms),
   voice: "Your voice",
   /** Where a feed couldn't be read, beside the feeds that could. */
-  trouble: ({ feed, kind }: Trouble): string =>
+  trouble: ({ feed, kind }: Trouble, alone: boolean): string =>
     kind === "older"
       ? FEED_WORDS[feed].older
-      : `${capital(FEED_WORDS[feed].what)} couldn't be read. The rest are here.`,
+      : alone
+        ? `Home couldn't give ${FEED_WORDS[feed].what}. Try again in a moment.`
+        : `Home couldn't give ${FEED_WORDS[feed].what}. The rest are here.`,
   tryAgain: VIDEOS_WORDS.tryAgain,
   reading: VIDEOS_WORDS.reading,
   unpaired: "Pair this phone with home to see your episodes.",

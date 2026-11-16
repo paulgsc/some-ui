@@ -23,7 +23,7 @@ function validateEpisodesSearch(
 /**
  * Studio's Episodes (SFEED1, #2731; EPISODES2, #3067): every feed's episodes
  * as home holds them (ST38, FEED4), mixed and by week, the newest first,
- * under a chip per genre that filters them (in the link, so the way back from
+ * under a chip per genre that filters them (in the link, so the phone's back from
  * an episode keeps it); the videos being made in sittings lead All.
  */
 const Episodes = (): JSX.Element => {

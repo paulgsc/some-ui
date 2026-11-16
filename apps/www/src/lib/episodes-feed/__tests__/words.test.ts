@@ -26,7 +26,7 @@ describe("EPISODES_FEED_WORDS", () => {
         WORDS.chipLabel(WORDS.genre[feed], 3),
         WORDS.none(feed),
         ...(["away", "older", "unreadable"] as const).map((kind) =>
-          WORDS.trouble({ feed, kind })
+          WORDS.trouble({ feed, kind }, false)
         ),
       ]),
       WORDS.week("2026-11-09", "2026-11-09"),
@@ -45,8 +45,8 @@ describe("EPISODES_FEED_WORDS", () => {
   it("names this week, else a week by its Monday and days", () => {
     expect(WORDS.week("2026-11-09", "2026-11-09")).toBe("This week")
     expect(WORDS.week("2026-11-02", "2026-11-09")).toBe("Week of Nov 2")
-    expect(WORDS.weekLine("2026-10-26", 1)).toBe("Oct 26 to Nov 1 · 1 video")
-    expect(WORDS.weekLine("2026-11-02", 2)).toBe("Nov 2 to Nov 8 · 2 videos")
+    expect(WORDS.weekLine("2026-10-26", 1)).toBe("Oct 26 to Nov 1 · 1 episode")
+    expect(WORDS.weekLine("2026-11-02", 2)).toBe("Nov 2 to Nov 8 · 2 episodes")
   })
 
   it("says how many of a week's parts are on YouTube", () => {
@@ -55,8 +55,12 @@ describe("EPISODES_FEED_WORDS", () => {
   })
 
   it("names a feed that couldn't be read in its own words", () => {
-    expect(WORDS.trouble({ feed: "call", kind: "away" })).toBe(
-      "The call's videos couldn't be read. The rest are here."
+    expect(WORDS.trouble({ feed: "call", kind: "away" }, false)).toBe(
+      "Home couldn't give the call's videos. The rest are here."
+    )
+    // Alone under its chip, it promises no others.
+    expect(WORDS.trouble({ feed: "call", kind: "away" }, true)).toBe(
+      "Home couldn't give the call's videos. Try again in a moment."
     )
   })
 })

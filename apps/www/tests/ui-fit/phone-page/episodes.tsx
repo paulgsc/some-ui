@@ -6,18 +6,16 @@
  * Each is mounted under a router of its own, since its rows are links.
  */
 import type { JSX } from "react"
-import { useState } from "react"
-import {
-  createMemoryHistory,
-  createRootRoute,
-  createRouter,
-  RouterProvider,
-} from "@tanstack/react-router"
 
 import type { Episode } from "@/lib/call-videos/model"
 import type { Chip, FeedLists } from "@/lib/episodes-feed"
 import { feedView } from "@/lib/episodes-feed"
 import { EpisodesView } from "@/components/studio/episodes-by-week"
+
+import { routed as routedAt } from "./my-data"
+
+const routed = (Screen: () => JSX.Element): (() => JSX.Element) =>
+  routedAt(Screen, "/journal/episodes")
 
 const episode = (key: string, over: Partial<Episode> = {}): Episode => ({
   key,
@@ -70,19 +68,6 @@ const LISTS: FeedLists = {
     kind: "read",
     episodes: [episode("2026-w45", { durationMs: 845_000 })],
   },
-}
-
-const routed = (Screen: () => JSX.Element): (() => JSX.Element) => {
-  const Routed = (): JSX.Element => {
-    const [router] = useState(() =>
-      createRouter({
-        routeTree: createRootRoute({ component: Screen }),
-        history: createMemoryHistory({ initialEntries: ["/journal/episodes"] }),
-      })
-    )
-    return <RouterProvider router={router} />
-  }
-  return Routed
 }
 
 const noop = (): void => undefined

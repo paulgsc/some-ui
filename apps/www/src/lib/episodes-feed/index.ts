@@ -5,12 +5,9 @@
  * and says what the page shows, so every grouping and every count is held by
  * its test; the page (`components/studio/episodes-by-week`) only draws it.
  *
- * An episode is placed by the day home knows for it (`Episode.date`,
- * paulgsc/server#906; C416): the call's week by its first day, an essay's
- * week by its Monday, a cards essay by its own day, a Playoff Delta week by
- * the day home took its fill. From a home before that, the day its key names
- * stands in, and a Playoff Delta key, which names a season's week but no day,
- * is listed after the dated weeks, never at a guessed one. Nothing here makes
+ * An episode is placed by the day home knows for it (`Episode.date`, C416),
+ * else by the day its key names (`keyDay`); a Playoff Delta key names none,
+ * so such a one is listed after the dated weeks, never at a guessed one. Nothing here makes
  * up a length: a row shows one only where home sends it.
  */
 import { assertNever, isoWeekMonday, weekOf } from "@some-ui/core-utils"
@@ -19,7 +16,7 @@ import type { DotMeaning } from "@some-ui/shared"
 
 import type { Episode, ListState } from "@/lib/call-videos/model"
 import { standing } from "@/lib/call-videos/model"
-import { isEssayKey } from "@/lib/cards-essay-key"
+import { isDay, isEssayKey } from "@/lib/cards-essay-key"
 import type { Feed } from "@/lib/feeds"
 import { FEEDS_A_TO_Z } from "@/lib/studio-index"
 
@@ -68,20 +65,7 @@ export type FeedView =
 /** Every feed's list, as each feed's runtime holds it. */
 export type FeedLists = Readonly<Record<Feed, ListState>>
 
-const DAY = /^\d{4}-\d{2}-\d{2}$/
-
-/** Whether `day` is a day the calendar has, as `YYYY-MM-DD`. */
-function isDay(day: string): boolean {
-  if (!DAY.test(day)) return false
-  const parsed = new Date(`${day}T00:00:00Z`)
-  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(day)
-}
-
-/**
- * The day an episode's key names, or `null`: the call's week by its first
- * day, the Monday of a Rust Rounds essay's week, the day a cards essay was
- * checked. Playoff Delta's key names none.
- */
+/** The day an episode's key names, as `Episode.date` would, or `null`. */
 export function keyDay(feed: Feed, week: string): string | null {
   switch (feed) {
     case "call": {

@@ -62,7 +62,6 @@ const ChipBar = ({
   return (
     <nav
       aria-label={WORDS.chips}
-      // The bar scrolls sideways when the chips are wider than the phone.
       data-scroll-intent=""
       className="flex gap-2 overflow-x-auto py-1 [scrollbar-width:none]"
     >
@@ -179,13 +178,16 @@ const EpisodeRow = ({ row }: { row: Row }): JSX.Element => {
 
 const TroubleCard = ({
   trouble,
+  alone,
   onTryAgain,
 }: {
   trouble: Trouble
+  /** Whether it is the only feed shown, so no others are here. */
+  alone: boolean
   onTryAgain: () => void
 }): JSX.Element => (
   <div className="bg-card flex flex-col gap-2 rounded-lg p-3">
-    <p className="text-sm">{WORDS.trouble(trouble)}</p>
+    <p className="text-sm">{WORDS.trouble(trouble, alone)}</p>
     <Button
       size="sm"
       variant="outline"
@@ -253,10 +255,14 @@ export const EpisodesView = ({
   onTryAgain: (feed: Feed) => void
 }): JSX.Element => {
   if (view.kind === "unpaired") {
+    // The videos being made are the phone's own, so they stay reachable.
     return (
-      <div className="flex flex-col gap-2">
-        <p className="text-sm">{WORDS.unpaired}</p>
-        {pair}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
+          <p className="text-sm">{WORDS.unpaired}</p>
+          {pair}
+        </div>
+        {chip === "all" && top}
       </div>
     )
   }
@@ -270,6 +276,7 @@ export const EpisodesView = ({
         <TroubleCard
           key={one.feed}
           trouble={one}
+          alone={chip !== "all"}
           onTryAgain={() => onTryAgain(one.feed)}
         />
       ))}
