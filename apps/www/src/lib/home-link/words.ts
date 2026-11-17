@@ -307,7 +307,7 @@ export const CLEAR = {
         return `Couldn't reach ${host}. Are you on the home network? Nothing left this phone.`
       }
       case "forgotten": {
-        return `${host} no longer knows this phone: unpair, then pair again. Nothing left this phone.`
+        return `${host} no longer knows this phone: pair again from Settings, Home. Nothing left this phone.`
       }
       case "busy": {
         return "Home is busy right now. Try again in a minute; nothing left this phone."
@@ -380,7 +380,7 @@ export const LET_GO = {
         return `Couldn't reach ${host}. Are you on the home network? It stays on this phone.`
       }
       case "forgotten": {
-        return `${host} no longer knows this phone: unpair, then pair again. It stays on this phone.`
+        return `${host} no longer knows this phone: pair again from Settings, Home. It stays on this phone.`
       }
       case "busy": {
         return `${host} is busy just now. Try again in a minute; ${stays}.`
