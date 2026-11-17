@@ -5,10 +5,10 @@
 //   node apps/mobile/compat/check-budget.mjs <all.json> <budget.json>
 //
 // <all.json> is the stub's GET /all: { requests: [{ at, key, status,
-// retryAfter? }] }. Only requests under budget.limited count: home's limiter
-// covers its versioned routes (/api/v1/) and nothing else, so /compat is
-// neither limited nor part of the budget. Prints one line per breach and
-// exits non-zero on any:
+// retryAfter? }] }. Every request counts, /compat too: home's limiter
+// answers 429 only under /api/v1/, but HERD1's pace takes a turn for
+// everything the phone sends home (look and the session check included).
+// Prints one line per breach and exits non-zero on any:
 //
 // - rate: in any window of T ms, more than burst + ceil(T / sustainedMs)
 //   requests (checked for every pair of requests, so every window that
@@ -24,7 +24,7 @@
 // CS1: the storm check fails the app only on what HERD1 and HERD2 promise.
 // Family: a pull while another is under way or after it has ended (the
 // joined phase, home slowed by /slow); a route home's limiter covers or
-// not (budget.limited); the nth request after a 429 at any spacing. Proof:
+// not (every request counts); the nth request after a 429 at any spacing. Proof:
 // these rules, each matching HERD1's herd.test.ts (expectPaced) or HERD2's
 // refreshers.test.ts, and the joined phase in storm.sh.
 import { readFileSync } from "node:fs"
@@ -46,14 +46,12 @@ const numbers = [
 if (
   !Array.isArray(requests) ||
   numbers.some((n) => typeof n !== "number") ||
-  typeof budget.limited !== "string" ||
   requests.some((r) => r.status === 429 && typeof r.retryAfter !== "number")
 ) {
   throw new Error("check-budget.mjs: no request log or budget to check")
 }
 const exempt = new Set(budget.exempt ?? [])
-const limited = (r) => r.key.split(" ")[1]?.startsWith(budget.limited)
-const sent = requests.filter(limited).sort((a, b) => a.at - b.at)
+const sent = [...requests].sort((a, b) => a.at - b.at)
 const breaches = []
 
 // Rate: the worst window per starting request.
