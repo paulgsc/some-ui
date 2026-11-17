@@ -33,46 +33,56 @@ export const SPEAKER_CHUNK_CHARS = 400
  */
 export const SPEAKER_DEADLINE_MS = 4 * 60_000
 
-/** A sentence, with the closing marks and the space after it. */
-const SENTENCE = /[^.!?…]+(?:[.!?…]+["'”’)\]]*)?\s*|[.!?…]+\s*/gu
+/**
+ * Where a sentence ends: the space after `.`, `!`, `?` or `…` and any closing
+ * quote or bracket, before a capital or a digit. A mark with no space after
+ * it ("3.5", "example.com"), or one a lower-case word follows ("e.g. at"),
+ * ends nothing.
+ */
+const SENTENCE_END = /(?<=[.!?…]["'”’)\]]*)(\s+)(?=["'“‘([]*[\p{Lu}\p{N}])/u
 
-/** `text` cut between words into runs of at most `most`; a longer word stands alone. */
-function byWords(text: string, most: number): Array<string> {
-  const runs: Array<string> = []
-  let run = ""
-  for (const word of text.split(/\s+/u).filter((w) => w !== "")) {
-    const joined = run === "" ? word : `${run} ${word}`
-    if (joined.length <= most || run === "") run = joined
-    else {
-      runs.push(run)
-      run = word
-    }
-  }
-  if (run !== "") runs.push(run)
-  return runs
+/** A run of `text` to pack, and the whitespace before it, as written. */
+type Unit = { readonly before: string; readonly text: string }
+
+/** `text` split at `at` (a pattern with one capturing group for the gap), gaps kept. */
+function unitsOf(text: string, at: RegExp): Array<Unit> {
+  const bits = text.split(at)
+  const units: Array<Unit> = []
+  for (let i = 0; i < bits.length; i += 2)
+    units.push({
+      before: i === 0 ? "" : (bits[i - 1] ?? ""),
+      text: bits[i] ?? "",
+    })
+  return units.filter((u) => u.text !== "")
 }
 
 /**
  * `text` in the parts the speaker is asked for, in order: whole sentences
  * packed up to `most` characters, a sentence longer than that cut between
- * words. Every word of `text` is in exactly one part, in order.
+ * words, and a word longer than that alone. Each part is `text`'s own
+ * characters, as written, between two of its gaps; a scene that fits is
+ * one part, exactly `text`.
  */
 export function speakerChunks(
   text: string,
   most: number = SPEAKER_CHUNK_CHARS
 ): ReadonlyArray<string> {
-  const whole = text.trim()
-  if (whole.length <= most) return [whole]
+  if (text.length <= most) return [text]
+  const units = unitsOf(text.trim(), SENTENCE_END).flatMap((sentence) =>
+    sentence.text.length <= most
+      ? [sentence]
+      : unitsOf(sentence.text, /(\s+)/u).map((word, i) =>
+          i === 0 ? { ...word, before: sentence.before } : word
+        )
+  )
   const parts: Array<string> = []
   let part = ""
-  for (const sentence of whole.match(SENTENCE) ?? [whole]) {
-    for (const piece of byWords(sentence, most)) {
-      const joined = part === "" ? piece : `${part} ${piece}`
-      if (joined.length <= most || part === "") part = joined
-      else {
-        parts.push(part)
-        part = piece
-      }
+  for (const unit of units) {
+    const joined = part === "" ? unit.text : `${part}${unit.before}${unit.text}`
+    if (joined.length <= most || part === "") part = joined
+    else {
+      parts.push(part)
+      part = unit.text
     }
   }
   if (part !== "") parts.push(part)

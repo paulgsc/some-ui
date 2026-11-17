@@ -41,12 +41,12 @@ function wav(samples: ReadonlyArray<number>, rate = 24_000): Uint8Array {
 
 /** A stub speaker: each word 10 ms of audio and its place, answered after `ms`. */
 function speaker(
-  ms: (part: string) => number | "hang" | Error
+  ms: (part: string, nth: number) => number | "hang" | Error
 ): AskSpeaker & { readonly asked: Array<string> } {
   const asked: Array<string> = []
   const ask = (part: string, signal: AbortSignal): Promise<SpeakerTake> => {
     asked.push(part)
-    const after = ms(part)
+    const after = ms(part, asked.length)
     if (after instanceof Error) return Promise.reject(after)
     return new Promise((done, failed) => {
       signal.addEventListener("abort", () => {
@@ -59,11 +59,11 @@ function speaker(
           // Each word 10 ms of audio (240 samples at 24 kHz).
           wav: wav(
             Array.from(
-              { length: part.split(" ").length * 240 },
+              { length: part.split(/\s+/u).length * 240 },
               (_, i) => i % 97
             )
           ),
-          words: part.split(" ").map((text) => {
+          words: part.split(/\s+/u).map((text) => {
             const word = { text, startMs: at, endMs: at + 10 }
             at += 10
             return word
@@ -81,7 +81,19 @@ const SHORT = sentence(1)
 const LONG = Array.from({ length: 30 }, (_, i) => sentence(i)).join(" ")
 const RUN_ON = Array.from({ length: 200 }, () => "word").join(" ")
 const ONE_WORD = "x".repeat(SPEAKER_CHUNK_CHARS + 50)
-const SCENES = { short: SHORT, long: LONG, runOn: RUN_ON, oneWord: ONE_WORD }
+/** Marks inside sentences that end nothing, a line break, quotes and accents. */
+const PROSE = Array.from(
+  { length: 8 },
+  (_, i) =>
+    `Item ${String(i)} costs 3.5 dollars, e.g. at example.com... "Really?" she asked.\nCafé, naïve — fine!`
+).join(" ")
+const SCENES = {
+  short: SHORT,
+  long: LONG,
+  prose: PROSE,
+  runOn: RUN_ON,
+  oneWord: ONE_WORD,
+}
 
 afterEach(() => {
   vi.useRealTimers()
@@ -93,6 +105,13 @@ describe("speakerChunks", () => {
     (_, text) => {
       const parts = speakerChunks(text)
       expect(parts.join(" ").split(/\s+/u)).toEqual(text.trim().split(/\s+/u))
+      // Each part is the scene's own characters as written, in order.
+      let from = 0
+      for (const part of parts) {
+        const at = text.indexOf(part, from)
+        expect(at, part).toBeGreaterThanOrEqual(from)
+        from = at + part.length
+      }
       for (const part of parts)
         expect(
           part.length <= SPEAKER_CHUNK_CHARS || !part.includes(" "),
@@ -103,6 +122,17 @@ describe("speakerChunks", () => {
 
   it("asks a scene that fits in one part exactly as written", () => {
     expect(speakerChunks(SHORT)).toEqual([SHORT])
+    expect(speakerChunks(`\n${SHORT} `)).toEqual([`\n${SHORT} `])
+  })
+
+  it("splits only where a sentence ends, never inside 3.5, after e.g. or in a web address", () => {
+    const parts = speakerChunks(PROSE)
+    expect(parts.length).toBeGreaterThan(1)
+    for (const part of parts.slice(0, -1))
+      expect(part).toMatch(/[.!?…]["'”’)\]]*$/u)
+    for (const part of parts) expect(part).not.toMatch(/e\.g\.$/u)
+    expect(parts.join(" ")).toContain("3.5 dollars, e.g. at example.com...")
+    expect(parts.join(" ")).toContain("asked.\nCafé")
   })
 
   it("splits after a sentence, not inside one, when sentences fit", () => {
@@ -178,4 +208,25 @@ describe("SPK1: speakScene", () => {
     expect(joinTakes([a, { wav: wav([1], 48_000), words: null }])).toBeNull()
     expect(joinTakes([a, { wav: new Uint8Array(8), words: null }])).toBeNull()
   })
+
+  it.each([
+    ["hangs", (): "hang" => "hang"],
+    [
+      "fails",
+      (): Error => new Error("it answered 500: the line could not be said"),
+    ],
+  ])(
+    "a later part that %s fails the scene by that part, after the earlier parts were said",
+    async (_, later) => {
+      vi.useFakeTimers()
+      const ask = speaker((_part, nth) => (nth === 1 ? 1_000 : later()))
+      const spoken = speakScene({ scene: "09-dive", text: LONG, ask })
+      await vi.runAllTimersAsync()
+      const result = await spoken
+      expect(ask.asked).toHaveLength(2)
+      expect(result.ok).toBe(false)
+      if (!result.ok)
+        expect(result.problem).toMatch(/scene 09-dive \(part 2 of \d+\)/u)
+    }
+  )
 })
