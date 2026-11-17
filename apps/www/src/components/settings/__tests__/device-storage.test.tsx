@@ -52,6 +52,7 @@ const UNPAIRED: HomeLinkState = {
   drain: { kind: "idle" },
   pairFailure: null,
   homeBusyUntil: null,
+  busyHomes: {},
   away: null,
   awayReleases: 0,
 }
@@ -62,6 +63,7 @@ const UNREADABLE: HomeLinkState = {
   drain: { kind: "idle" },
   pairFailure: null,
   homeBusyUntil: null,
+  busyHomes: {},
   away: null,
   awayReleases: 0,
 }
@@ -79,6 +81,7 @@ const PAIRED: HomeLinkState = {
   drain: { kind: "idle" },
   pairFailure: null,
   homeBusyUntil: null,
+  busyHomes: {},
   away: null,
   awayReleases: 0,
 }

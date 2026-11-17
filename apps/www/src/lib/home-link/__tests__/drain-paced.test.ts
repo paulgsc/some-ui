@@ -375,7 +375,7 @@ describe("the practice drain under home's limit (AD3, LA15)", () => {
       reads.push(read.ms)
     }
     const synced = await timed(
-      theLink().sync((get) => get(`${BASE}/curriculum/manifest.json`))
+      theLink().sync(BASE, (get) => get(`${BASE}/curriculum/manifest.json`))
     )
     expect(synced.value?.kind).toBe("done")
     expect(Math.max(...reads, synced.ms)).toBeLessThanOrEqual(2_000)

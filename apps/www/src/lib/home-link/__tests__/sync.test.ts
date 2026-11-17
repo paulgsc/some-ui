@@ -31,8 +31,11 @@ vi.mock("@/lib/device-backend/home-sync", async (actual) => ({
 }))
 vi.mock("@/lib/home-link/index", () => ({
   homeLink: (): {
-    sync: (run: (get: unknown) => Promise<unknown>) => Promise<unknown>
-  } => ({ sync: (run) => run(() => undefined) }),
+    sync: (
+      base: string,
+      run: (get: unknown) => Promise<unknown>
+    ) => Promise<unknown>
+  } => ({ sync: (_base, run) => run(() => undefined) }),
 }))
 
 afterEach(() => {

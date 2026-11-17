@@ -139,7 +139,11 @@ describe("pairing again (model)", () => {
   })
 
   it("carries home's busy over to a pairing with the same home, never another", () => {
-    const busy = step(FORGOTTEN, { type: "homeBusy", until: 99 })
+    const busy = step(FORGOTTEN, {
+      type: "homeBusy",
+      until: 99,
+      base: HOME.base,
+    })
     expect(run([PAIR, PAIRED], busy).homeBusyUntil).toBe(99)
     const elsewhere = run(
       [
@@ -154,6 +158,51 @@ describe("pairing again (model)", () => {
       busy
     )
     expect(elsewhere.homeBusyUntil).toBeNull()
+  })
+
+  it("keeps each home's busy its own: one heard from a pairing elsewhere neither ends nor takes another's (#3127)", () => {
+    const OTHER = "https://other.example/api/v1"
+    const THIRD = "https://third.example/api/v1"
+    // Forgotten by a busy home, a pairing tried elsewhere hears a shorter
+    // busy; paired with the first home again, its own wait still holds.
+    const tried = run(
+      [
+        { type: "homeBusy", until: 600, base: HOME.base },
+        { type: "pairPressed", base: OTHER },
+        { type: "homeBusy", until: 5, base: OTHER },
+        { type: "pairFailed", failure: "too-many" },
+        PAIR,
+        PAIRED,
+      ],
+      FORGOTTEN
+    )
+    expect(tried.homeBusyUntil).toBe(600)
+    // Unpaired, two homes' busies stay apart: pairing the first keeps its own.
+    const unpaired: HomeLinkState = {
+      ...INITIAL,
+      link: { kind: "unpaired", note: null },
+    }
+    const apart = run(
+      [
+        { type: "homeBusy", until: 600, base: OTHER },
+        { type: "homeBusy", until: 5, base: THIRD },
+        { type: "pairPressed", base: OTHER },
+        { type: "paired", base: OTHER, id: "p2", at: 50 },
+      ],
+      unpaired
+    )
+    expect(apart.homeBusyUntil).toBe(600)
+    const third = run(
+      [
+        { type: "pairPressed", base: THIRD },
+        { type: "paired", base: THIRD, id: "p3", at: 50 },
+      ],
+      { ...apart, link: { kind: "unpaired", note: null } }
+    )
+    expect(third.homeBusyUntil).toBe(5)
+    // Each home's busy ends at its own time.
+    expect(step(third, { type: "cooled", at: 5 }).homeBusyUntil).toBeNull()
+    expect(step(apart, { type: "cooled", at: 5 }).homeBusyUntil).toBe(600)
   })
 
   it("lets the drain start again once the new pairing is made", () => {
