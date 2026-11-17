@@ -280,6 +280,43 @@ describe("a pull on Ideas on home waits on the lists (HERD2)", () => {
   })
 })
 
+describe("a pull on Ideas on home says a failed read over unpaired (HERD2)", () => {
+  it("fails when the lists could not be read, even while the ideas say unpaired", async () => {
+    const storage = inMemoryStorage()
+    let pulls = 0
+    const home: IdeasHome = {
+      ideas: () => Promise.resolve({ kind: "unpaired" }),
+      lists: () => {
+        pulls += 1
+        return Promise.resolve(
+          pulls === 1
+            ? { kind: "read", value: { topics: [], keywords: [] } }
+            : { kind: "away" }
+        )
+      },
+      furnish: vi.fn(),
+      setAside: vi.fn(),
+      entry: vi.fn(),
+    }
+    const pulled: { check: (() => Promise<void>) | null } = { check: null }
+    const runtime = createIdeasOnHome({
+      home,
+      ideas: keptIdeaStore(() => storage),
+      lists: keptIdeaLists(() => storage),
+      refresh: ({ checkAgain }) => {
+        pulled.check = checkAgain
+        return (): void => undefined
+      },
+    })
+    const detach = runtime.attach(true)
+    await vi.waitFor(() =>
+      expect(runtime.getSnapshot().lists.kind).toBe("read")
+    )
+    await expect(pulled.check?.()).rejects.toThrow("away")
+    detach()
+  })
+})
+
 describe("the lists as home last said them, for New idea (ST26 c)", () => {
   it("are kept from each change home takes, not only from a read", async () => {
     const storage = inMemoryStorage()

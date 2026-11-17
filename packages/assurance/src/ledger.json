@@ -2005,6 +2005,12 @@
               "change": "The pace is kept across page loads with a burst of 20, a 429 spends the burst and slows the pace by home's Retry-After, and a pull, the app coming back, the network or a watch mounted joins a lane's run under way instead of asking another (HERD1).",
               "why": "Home's ClientRateLimited fired twice on 2026-11-17 from the owner's older phone: a slow phone's runs were still going when the app came back and a pull landed, so each lane ran twice, and closing and opening the app handed the pace a whole burst against a bucket that had not refilled. The promise only grows: the floor of 11 now holds across page loads too.",
               "decision": "https://github.com/paulgsc/some-ui/issues/3100"
+            },
+            {
+              "on": "2026-11-17",
+              "change": "Home's overload, 503 service_overloaded with a Retry-After (paulgsc/server#934, AD4), starts the same wait a 429 does; a 503 with no Retry-After is one of home's caps and is passed on, not waited on (HERD2).",
+              "why": "Home now sheds a request it has no room for at once, with a 503 and a Retry-After, where it used to keep it waiting past the phone's deadline; read as a failed run, that answer would have the phone ask again at once. The promise only grows: every 429 is still waited out as before.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3100"
             }
           ]
         }
