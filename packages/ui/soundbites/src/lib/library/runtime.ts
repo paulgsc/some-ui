@@ -13,6 +13,8 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { Playback, Player, TakePattern } from "@some-ui/voice-capture"
+import type { Refresh } from "@soundbites/lib/refresh"
+import { checkAgainOf } from "@soundbites/lib/refresh"
 
 import type { TakeAbout } from "./compartments"
 import type {
@@ -25,6 +27,7 @@ import type {
   LibraryTake,
 } from "./model"
 import { INITIAL_LIBRARY, reachedHome, stepLibrary } from "./model"
+import { LIBRARY_WORDS } from "./words"
 
 /** Home, as Takes on home reads it. Every call resolves. */
 export type TakesHome = {
@@ -63,6 +66,8 @@ export type LibraryPorts = {
   readonly stations?: LibraryStations | undefined
   /** What each take was said for, as the phone knows it (TAKES2); absent, its ref says. */
   readonly about?: LibraryAbout | undefined
+  /** The shell's refresh port: a pull reads the takes again (HERD2); absent, none. */
+  readonly refresh?: Refresh | undefined
 }
 
 /**
@@ -209,18 +214,30 @@ export function createTakeLibrary(ports: LibraryPorts): LibraryRuntime {
     }
   }
 
+  const subscribe = (listener: () => void): (() => void) => {
+    listeners.add(listener)
+    return (): void => {
+      listeners.delete(listener)
+    }
+  }
+
   return {
     getSnapshot: () => state,
-    subscribe(listener): () => void {
-      listeners.add(listener)
-      return (): void => {
-        listeners.delete(listener)
-      }
-    },
+    subscribe,
     dispatch: (intent) => send(intent),
     attach(): () => void {
       attached = true
-      const stops = watchPhone()
+      const stops = [
+        ...watchPhone(),
+        ports.refresh?.({
+          what: LIBRARY_WORDS.pullWhat,
+          checkAgain: checkAgainOf({
+            getSnapshot: () => state,
+            subscribe,
+            readAgain: () => send({ type: "readAgain" }),
+          }),
+        }) ?? ((): void => undefined),
+      ]
       send({ type: "entered" })
       return (): void => {
         for (const stop of stops) stop()

@@ -470,6 +470,65 @@ describe("the home link", () => {
     await vi.waitFor(() => expect(out).toHaveLength(5))
   })
 
+  it("hears home's overload, 503 service_overloaded with a Retry-After, as busy: answered busy, nothing sent until it has passed (HERD2)", async () => {
+    let busy = true
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t" }),
+      answer: () => {
+        if (!busy) return { status: 200, body: "{}" }
+        busy = false
+        return {
+          status: 503,
+          body: JSON.stringify({ error: { code: "service_overloaded" } }),
+          retryAfter: "5",
+        }
+      },
+    })
+    await home.link.load()
+    const statuses = async (): Promise<Array<number>> => {
+      const outcome = await home.link.keep(async (send) => [
+        (await send("GET", "/aph")).status,
+        (await send("GET", "/aph")).status,
+      ])
+      return outcome?.kind === "done" ? outcome.value : []
+    }
+    expect(await statuses()).toEqual([429, 429])
+    expect(home.sent).toHaveLength(1)
+    expect(home.link.getSnapshot().homeBusyUntil).toBe(5_000)
+    // Nothing found home silent: an overload is an answer.
+    expect(home.link.getSnapshot().away).toBeNull()
+    home.pass(5_000)
+    expect(home.link.getSnapshot().homeBusyUntil).toBeNull()
+  })
+
+  it("passes on a 503 that is one of home's caps (no Retry-After) or not its overload, and is not busy for it (HERD2)", async () => {
+    const answers: Array<HomeAnswer> = [
+      {
+        status: 503,
+        body: JSON.stringify({ error: { code: "service_overloaded" } }),
+      },
+      {
+        status: 503,
+        body: JSON.stringify({ error: { code: "feature_not_configured" } }),
+        retryAfter: "5",
+      },
+      { status: 503, body: "Service Unavailable", retryAfter: "5" },
+    ]
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t" }),
+      answer: () => answers.shift() ?? { status: 200, body: "{}" },
+    })
+    await home.link.load()
+    const outcome = await home.link.keep(async (send) => [
+      (await send("GET", "/aph")).status,
+      (await send("GET", "/aph")).status,
+      (await send("GET", "/aph")).status,
+    ])
+    expect(outcome).toEqual({ kind: "done", value: [503, 503, 503] })
+    expect(home.sent).toHaveLength(3)
+    expect(home.link.getSnapshot().homeBusyUntil).toBeNull()
+  })
+
   it("ends home's busy once its time has passed, even when the timer is held back", async () => {
     let busy = true
     const home = setup({

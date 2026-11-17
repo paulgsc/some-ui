@@ -42,6 +42,8 @@ const OF_WORDS: Readonly<Record<string, string>> = {
 
 export const RECONCILE_WORDS = {
   heading: "Needs your attention",
+  /** What a pull down reads again, for "Couldn't check … just now". */
+  pullWhat: "the takes home couldn't hear well",
   /** The way in, on Takes' first page, with how many wait. */
   wayIn: (count: number): string => `${takes(count)} home couldn't hear well`,
   wayInLine: "Hear each one, then keep it, record it again, or delete it.",

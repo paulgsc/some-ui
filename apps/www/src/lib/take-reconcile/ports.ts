@@ -9,6 +9,7 @@ import type { TakeReconcile } from "@some-ui/soundbites"
 import { audioPlayer } from "@some-ui/voice-capture"
 
 import { hearDeletes } from "@/lib/my-data"
+import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 
 import { reconcileHome } from "./index"
 
@@ -22,6 +23,11 @@ let ports: Ports | null = null
  * builds (`check:bundle-paths`).
  */
 export function reconcilePorts(): Ports {
-  ports ??= { home: reconcileHome, player: audioPlayer, deletes: hearDeletes }
+  ports ??= {
+    home: reconcileHome,
+    player: audioPlayer,
+    deletes: hearDeletes,
+    refresh: screenRefreshers.register,
+  }
   return ports
 }

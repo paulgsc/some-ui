@@ -7,6 +7,9 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { BundleTakes } from "@some-ui/voice-capture"
+import type { ReadKind, Refresh } from "@soundbites/lib/refresh"
+import { checkAgainOf } from "@soundbites/lib/refresh"
+import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 
 import type { Idea } from "./model"
 import type {
@@ -85,6 +88,8 @@ export type OnHomePorts = {
   readonly redo?: RedoPorts | undefined
   /** Milliseconds since the epoch; `Date.now` unless a test gives one. */
   readonly now?: (() => number) | undefined
+  /** The shell's refresh port: a pull reads the ideas again (HERD2); absent, none. */
+  readonly refresh?: Refresh | undefined
 }
 
 export type OnHomeRuntime = {
@@ -93,6 +98,23 @@ export type OnHomeRuntime = {
   readonly dispatch: (intent: OnHomeIntent) => void
   /** The screen is showing, on the lists when `lists`. Returns the detach. */
   readonly attach: (lists: boolean) => () => void
+}
+
+/**
+ * How a pull's read again stands: `readAgain` reads both the ideas and the
+ * lists, and either may be on screen, so it is done once both are, and
+ * failed if either brought nothing to show (HERD2).
+ */
+function bothRead(state: OnHomeState): { readonly kind: ReadKind } {
+  const reads = [state.ideas, state.lists]
+  const unfinished = reads.find(({ kind }) => kind === "reading")
+  if (unfinished !== undefined) return unfinished
+  // A failure first, whichever read it was; then unpaired; then read.
+  return (
+    reads.find(({ kind }) => kind !== "read" && kind !== "unpaired") ??
+    reads.find(({ kind }) => kind === "unpaired") ??
+    state.ideas
+  )
 }
 
 export function createIdeasOnHome(ports: OnHomePorts): OnHomeRuntime {
@@ -296,14 +318,16 @@ export function createIdeasOnHome(ports: OnHomePorts): OnHomeRuntime {
     }
   }
 
+  const subscribe = (listener: () => void): (() => void) => {
+    listeners.add(listener)
+    return (): void => {
+      listeners.delete(listener)
+    }
+  }
+
   return {
     getSnapshot: () => state,
-    subscribe(listener): () => void {
-      listeners.add(listener)
-      return (): void => {
-        listeners.delete(listener)
-      }
-    },
+    subscribe,
     dispatch: (intent) => send(intent),
     attach(lists): () => void {
       attached = true
@@ -319,9 +343,18 @@ export function createIdeasOnHome(ports: OnHomePorts): OnHomeRuntime {
       if (kept !== null) readPhone(kept)
       const unlisten = desk?.subscribe(listed)
       listed()
+      const unpull = ports.refresh?.({
+        what: STUDIO_WORDS.onHome.pullWhat,
+        checkAgain: checkAgainOf({
+          getSnapshot: () => ({ seq: state.seq, read: bothRead(state) }),
+          subscribe,
+          readAgain: () => send({ type: "readAgain" }),
+        }),
+      })
       send({ type: "entered", lists })
       return (): void => {
         attached = false
+        unpull?.()
         unlisten?.()
       }
     },

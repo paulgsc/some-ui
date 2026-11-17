@@ -417,6 +417,67 @@ install over a CI build, or the other way round.
 - **`versionCode` is the run number**, so each APK is an update of the last,
   and Settings → Apps → Some UI shows which build is installed.
 
+### Stamping a release's Android compatibility
+
+`.github/workflows/android-compat.yml` ("Android Compat") runs the APK on
+slowed emulators across the Android versions it supports. I run it by hand
+when a release wants a stamp: **Actions → Android Compat → Run workflow**,
+choosing the branch or tag to stamp under "Use workflow from" (default
+`main`), the API levels (default 34 and 36; 24, 28 and 31, down to
+`minSdkVersion` in `android/variables.gradle`, may be added) and a CPU cap
+(default 60% of one host core). It never runs on a push, a pull request or a
+schedule, and nothing waits on it. A bare commit, or a tag from before the
+workflow existed, cannot be stamped: the run builds only the commit it runs
+from, so code from elsewhere never runs in `main`'s cache scope.
+
+It builds the release APK (R8) and the debug APK from that commit, signed with a
+key made for that run, so it needs no secrets and no approval. Each API level
+is then its own job: a `google_apis` x86_64 emulator with one core, 1.5 GB of
+memory, a 3G link and its CPU capped, which stands in for an older, slower
+phone. Each runs:
+
+1. **Launch:** the launch test above, on the release APK.
+2. **Storm:** `compat/storm.sh`, on the release APK, since R8, the stripped
+   console and release timing are what the stamp has to catch. A stand-in
+   home on the runner (`compat/stub-home.mjs`, sample data only) counts every
+   request. The phone pairs only over https, so the run makes its own CA and
+   `compat/trust-ca.sh` puts it in the emulator's system store; the app's
+   network config stays as shipped. The app pairs as a person would, through
+   the foyer's Settings, its Home tab and the Pair form with a sample code,
+   driven over the accessibility tree (`compat/ui.mjs`). Then it is pulled
+   down once, pulled twice a second apart, pulled in a burst, pulled while home answers 429 with `Retry-After`, sent to the
+   background and back, and cut off the network and given it back. It fails
+   when what home heard over the whole run breaks HERD1's budget
+   (`compat/budget.json`, checked by `compat/check-budget.mjs`): more than
+   20 requests at once and one per 2 s after that, any request inside a
+   429's `Retry-After`, or requests faster than one per 2 s once it ends;
+   or when two pulls a second apart cost home more than one pull alone. A
+   level whose Pair form cannot be driven pairs the debug APK instead and
+   says "via debug build"; a level whose store cannot take the CA says "no
+   system CA" and runs unpaired.
+3. **Refresh:** from the same run, it fails when a pull with home up does not
+   end `pull checked: read`, nor the pull after coming back from the
+   background, nor the pull after the network returns, or when the app
+   restarted to get there.
+
+The run's summary is the stamp: a table of API level against launch, storm
+and refresh, a line to paste into the release notes, and the same as JSON.
+It is kept nowhere else; its artifacts (the APKs, each level's logs and
+screenshots) last a day.
+
+What it cannot show: Samsung's One UI and its own WebView quirks, a real
+radio dropping and returning, thermal throttling, and a phone's real
+memory pressure. An emulator's old API level carries the WebView its system
+image shipped: on 2026-11-17 the API 24 and 28 images carried Chrome 69 and
+API 31's WebView 91, while the bundle is built for Vite's default target
+(about Chrome 111), so the page would load blank there. A real phone on
+Android 7 to 9 gets Android System WebView from Play, at 111 or later
+(Android 7 tops out around 119), so that blank page is the image's limit,
+not a phone's. Such a level is not tested: its row says "stock WebView
+<n> (needs ≥111)". The "Image's WebView" column says which each level
+ran. A level that cannot boot on GitHub's hosted runners shows as "not
+run".
+
 ### Play readiness
 
 The app is sideloaded today, and headed for Google Play as a free personal
