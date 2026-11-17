@@ -23,7 +23,7 @@ export type KeptRecord = {
 export type Front = Pick<Document, "visibilityState">
 
 /** Whether a run may be asked for: the phone is paired and the app is in front. */
-const mayAsk = (doc: Front): boolean =>
+export const mayAsk = (doc: Front): boolean =>
   paired() && doc.visibilityState === "visible"
 
 /** Asks for a run when the phone is paired and the app is in front. */

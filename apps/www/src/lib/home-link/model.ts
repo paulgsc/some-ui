@@ -300,6 +300,14 @@ export function awayHeld(state: HomeLinkState, now: number): boolean {
   return held(state.away, now)
 }
 
+/**
+ * Whether the link is stopping its drain run: the background, or a send, a
+ * pairing or an Unpair taking the link (HERD4, `./kept-runtime`'s `stopping`).
+ */
+export function drainStopping(state: HomeLinkState): boolean {
+  return state.drain.kind === "draining" && state.drain.stopping
+}
+
 /** Whether the link would start a drain run at `now`, home not busy nor held away. */
 export function linkOpen(state: HomeLinkState, now: number): boolean {
   return drainFree(state) && !homeBusy(state, now) && !awayHeld(state, now)

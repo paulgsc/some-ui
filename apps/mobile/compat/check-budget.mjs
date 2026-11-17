@@ -5,15 +5,34 @@
 //   node apps/mobile/compat/check-budget.mjs <all.json> <budget.json>
 //
 // <all.json> is the stub's GET /all: { requests: [{ at, key, status,
-// retryAfter? }] }. Prints one line per breach and exits non-zero on any:
+// retryAfter? }] }. Every request counts, /compat too: home's limiter
+// answers 429 only under /api/v1/, but HERD1's pace takes a turn for
+// everything the phone sends home (look and the session check included).
+// Prints one line per breach and exits non-zero on any:
 //
 // - rate: in any window of T ms, more than burst + ceil(T / sustainedMs)
 //   requests (checked for every pair of requests, so every window that
 //   starts and ends on one);
-// - busy: a request, other than an exempt one, inside a 429's Retry-After,
-//   after graceMs for the 429 to reach the phone;
-// - paced: after a Retry-After ends, two requests closer than sustainedMs
-//   (less toleranceMs) within pacedForMs of it.
+// - busy: no 429 in the whole run, or a request, other than an exempt one,
+//   inside a 429's Retry-After;
+// - paced: the nth request after a 429 (from 0, other than an exempt one,
+//   up to pacedForMs after its Retry-After) sent sooner than n + 1 paces
+//   (sustainedMs, less toleranceMs) after the 429: HERD1's own rule
+//   (expectPaced in apps/www/src/lib/home-link/__tests__/herd.test.ts),
+//   under which the Retry-After itself can pay for the first few.
+// Both run from every 429, overlapping ones included. A request within
+// graceMs of a 429 (the 429 still on its way to the phone) is excused from
+// both but still counted in n.
+//
+// CS1: the storm check fails the app only on what HERD1 and HERD2 promise.
+// Family: a moment while a pull's lanes' run is under way, or after it
+// has ended (the joined phase: a pull, then the app coming back, home slowed
+// by /slow; at most two pulls' reads, no read
+// asked more than twice, no write sent twice); a route home's limiter covers
+// or not (every request counts); the nth request after a 429 at any spacing,
+// overlapping 429s included; the wait home sends (1 s, as file_host). Proof:
+// these rules, each matching HERD1's herd.test.ts (expectPaced) or HERD2's
+// refreshers.test.ts, and the joined phase in storm.sh.
 import { readFileSync } from "node:fs"
 
 const [allFile, budgetFile] = process.argv.slice(2)
@@ -59,40 +78,43 @@ if (worst) {
   )
 }
 
-// Busy and paced: from each 429 the phone was sent.
+// Busy and paced: from every 429, as expectPaced holds it. The requests
+// after a 429 (other than exempt ones) are counted from 0 in order; one
+// sent within graceMs of the 429 (the emulator's slowed link delays it) is
+// excused but still counted. Every other one must come after the 429's
+// Retry-After (busy) and no sooner than n + 1 paces after the 429 (paced).
 const { toleranceMs, pacedForMs, graceMs } = budget.afterBusy
-// A 429 sent inside an earlier one's wait is that wait's breach, not a new
-// wait of its own.
-let waitEnds = -Infinity
-const turnedAway = sent.filter((r) => {
-  if (r.status !== 429 || r.at < waitEnds) return false
-  waitEnds = r.at + r.retryAfter * 1000
-  return true
-})
+const turnedAway = sent.filter((r) => r.status === 429)
+// A run in which home never said 429 checked nothing after a wait.
+if (turnedAway.length === 0) {
+  breaches.push("busy: home never answered 429, so no wait was checked")
+}
+const busyAt = []
+const pacedAt = []
 for (const turned of turnedAway) {
   const until = turned.at + turned.retryAfter * 1000
-  // A request sent before the phone heard the 429 (graceMs: the emulator's
-  // slowed link delays it) is not one sent during the wait.
-  const inside = sent.filter(
-    (r) => r.at > turned.at + graceMs && r.at < until && !exempt.has(r.key)
-  )
-  if (inside.length > 0) {
-    breaches.push(
-      `busy: ${inside.length} request(s) inside a ${turned.retryAfter} s Retry-After (first ${inside[0].key}, ${inside[0].at - turned.at} ms after the 429)`
-    )
-  }
   const after = sent.filter(
-    (r) => r.at >= until && r.at < until + pacedForMs && !exempt.has(r.key)
+    (r) => r.at > turned.at && r.at < until + pacedForMs && !exempt.has(r.key)
   )
-  for (let k = 1; k < after.length; k += 1) {
-    const gap = after[k].at - after[k - 1].at
-    if (gap < budget.sustainedMs - toleranceMs) {
-      breaches.push(
-        `paced: two requests ${gap} ms apart after a Retry-After ended (${after[k - 1].key}, ${after[k].key}), under ${budget.sustainedMs} ms`
-      )
-      break
+  after.forEach((r, n) => {
+    if (r.at <= turned.at + graceMs) return
+    if (r.at < until) busyAt.push({ r, turned })
+    else if (r.at < turned.at + (n + 1) * budget.sustainedMs - toleranceMs) {
+      pacedAt.push({ r, turned, n })
     }
-  }
+  })
+}
+if (busyAt.length > 0) {
+  const { r, turned } = busyAt[0]
+  breaches.push(
+    `busy: ${busyAt.length} request(s) inside a Retry-After (first ${r.key}, ${r.at - turned.at} ms after a ${turned.retryAfter} s 429)`
+  )
+}
+if (pacedAt.length > 0) {
+  const { r, turned, n } = pacedAt[0]
+  breaches.push(
+    `paced: ${pacedAt.length} request(s) sooner than their pace after a 429 (first ${r.key}, request ${n + 1} after it, ${r.at - turned.at} ms, under ${n + 1} paces of ${budget.sustainedMs} ms)`
+  )
 }
 
 for (const line of breaches) process.stdout.write(`${line}\n`)
