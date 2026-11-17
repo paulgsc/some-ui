@@ -17,6 +17,10 @@ import {
   isBlockedProxyPath,
   resolveFileHostTarget,
 } from "./file-host.dev.ts"
+import {
+  OLD_WEBVIEW_PAGE,
+  oldWebViewPage,
+} from "./src/lib/old-webview/index.ts"
 import styleContext from "./style.context.ts"
 
 // The dev/preview counterpart of the /api/resume/ location in
@@ -215,6 +219,21 @@ function pagesConnectPolicy(): Plugin {
   }
 }
 
+// Capacitor's errorPath for a WebView too old for the bundle (src/lib/old-webview).
+function oldWebViewPageAsset(): Plugin {
+  return {
+    name: "old-webview-page",
+    apply: "build",
+    generateBundle(): void {
+      this.emitFile({
+        type: "asset",
+        fileName: OLD_WEBVIEW_PAGE,
+        source: oldWebViewPage(),
+      })
+    },
+  }
+}
+
 /**
  * The commit this build is made from, which `/assurance` names as the copy
  * of the ledger it shows; empty where there is no git checkout (a Docker
@@ -316,6 +335,7 @@ export default defineConfig(
         : []),
       omitOffPathPublicFiles(offPathPublicFiles(process.env.SOME_UI_PROFILE)),
       pagesConnectPolicy(),
+      ...(isMobileBuild ? [oldWebViewPageAsset()] : []),
       ...(isStageBuild ? [stagePageAtRoot()] : []),
     ],
     // An http:// page skips the proxy and asks :3000 directly
