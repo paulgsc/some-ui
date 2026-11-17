@@ -200,12 +200,13 @@ pull_end() {
   echo none
 }
 
-# One phase: reset home's count, run its gestures, let it settle, record.
-# $1 name, $2 the budget's key for its limit (or "" for none), then the
-# command that drives it. Prints nothing; appends to phases.
+# One phase: reset home's per-phase count, run its gestures, let it settle,
+# record what home heard and how the pulls ended. $1 name, then the command
+# that drives it. The budget is checked once, over the whole run, after the
+# last phase (check-budget.mjs). Prints nothing; appends to phases.
 phase() {
-  local name=$1 limit_key=$2
-  shift 2
+  local name=$1
+  shift
   curl -sf -X POST "$control/reset" > /dev/null
   local before
   before=$(native_count "pull checked: [a-z]+")
@@ -214,16 +215,9 @@ phase() {
   sleep "$(budget_of .settleSeconds)"
   local heard
   heard=$(requests)
-  local limit=null
-  if [ -n "$limit_key" ]; then
-    limit=$(budget_of ".$limit_key")
-    if [ "$heard" -gt "$limit" ]; then
-      fail "$name: home heard $heard requests, over the budget of $limit (stub.json)"
-    fi
-  fi
   curl -sf "$control/counts" > "$out/stub-$name.json"
   adb exec-out screencap -p > "$out/$name.png" || true
-  phases+=("{\"phase\":\"$name\",\"requests\":$heard,\"limit\":$limit,\"pulls\":\"$ends\",\"newEnds\":$(($(native_count "pull checked: [a-z]+") - before))}")
+  phases+=("{\"phase\":\"$name\",\"requests\":$heard,\"pulls\":\"$ends\",\"newEnds\":$(($(native_count "pull checked: [a-z]+") - before))}")
 }
 
 # One pull, and how it ended. A drag the wing's own navigation landed on
@@ -242,9 +236,9 @@ one_pull() {
 
 burst() {
   local n
-  n=$(budget_of .burst.pulls)
+  n=$(budget_of .burstPulls.pulls)
   local gap
-  gap=$(budget_of .burst.gapSeconds)
+  gap=$(budget_of .burstPulls.gapSeconds)
   for _ in $(seq 1 "$n"); do
     pull_down
     sleep "$gap"
@@ -254,7 +248,7 @@ burst() {
 
 busy() {
   local seconds
-  seconds=$(budget_of .busy.retryAfterSeconds)
+  seconds=$(budget_of .afterBusy.retryAfterSeconds)
   curl -sf -X POST "$control/busy?seconds=$seconds" > /dev/null
   local before
   before=$(native_count "pull checked: [a-z]+")
@@ -299,18 +293,24 @@ offline() {
   echo "cut:$cut back:$back"
 }
 
-phase single pullOnce one_pull
+phase single one_pull
 first_end=$(echo "${phases[-1]}" | grep -oE '"pulls":"[a-z]+"' | grep -oE '[a-z]+"$' | tr -d '"')
 if [ "$first_end" != "read" ]; then
   fail_refresh "single: a pull with home up ended \"$first_end\", not \"read\": the page did not refresh"
 fi
-phase burst burstTotal burst
-phase busy busy.duringRetryAfter busy
-phase background pullOnce background
-phase offline offlineAndBack offline
+phase burst burst
+phase busy busy
+phase background background
+phase offline offline
 
 kill "$logcat_pid" 2>/dev/null || true
 grep -E "\bSomeUI\b" "$out/logcat.txt" > "$out/native-log.txt" || true
+
+# HERD1's budget over everything home heard in the run.
+curl -sf "$control/all" > "$out/stub-all.json"
+while IFS= read -r breach; do
+  [ -n "$breach" ] && fail "$breach (stub-all.json)"
+done < <(node "$here/check-budget.mjs" "$out/stub-all.json" "$budget" || true)
 
 heard_any=$(cat "$out"/stub-*.json | grep -oE '"total":[0-9]+' | grep -oE '[0-9]+' | awk '{ n += $1 } END { print n + 0 }')
 if [ "$heard_any" -eq 0 ]; then

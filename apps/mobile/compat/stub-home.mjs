@@ -12,11 +12,12 @@
 //
 // Two listeners, so the app can never reach the controls:
 // - :port, on every interface, is home. The emulator reaches it at
-//   http://10.0.2.2:<port>. Each request is logged with its time and answered
+//   https://10.0.2.2:<port>. Each request is logged with its time and answered
 //   from the routes file (method and path, query ignored); anything else is a
-//   404. While busy, every request is answered 429 with `Retry-After`.
+//   200 `{}`. While busy, every request is answered 429 with `Retry-After`.
 // - :control, on 127.0.0.1 only, is the scenario's:
 //     GET  /counts         every request since the last reset, as JSON
+//     GET  /all            every request since the stub started
 //     POST /reset          forget them
 //     POST /busy?seconds=N answer 429 + Retry-After: N until /calm
 //     POST /calm           answer normally again
@@ -43,7 +44,10 @@ const { values } = parseArgs({
 
 /** `"GET /api/v1/..."` -> `{ status, body }`. */
 const routes = JSON.parse(readFileSync(values.routes, "utf8")).routes
+const FALLBACK = { status: 200, body: {} }
 const requests = []
+// Never reset: the budget is checked over the whole run (check-budget.mjs).
+const everything = []
 let busySeconds = 0
 
 const tls =
@@ -54,9 +58,18 @@ const tls =
 const answerHome = (req, res) => {
   const path = new URL(req.url ?? "/", "http://stub").pathname
   const key = `${req.method} ${path}`
-  const answer = busySeconds > 0 ? null : routes[key]
-  const status = busySeconds > 0 ? 429 : answer ? (answer.status ?? 200) : 404
-  requests.push({ at: Date.now(), key, status })
+  // Anything unlisted is a 200 `{}` (HERD1's advice): a lane that cannot
+  // parse it ends failed, which is fine for counting.
+  const answer = busySeconds > 0 ? null : (routes[key] ?? FALLBACK)
+  const status = busySeconds > 0 ? 429 : (answer.status ?? 200)
+  const entry = {
+    at: Date.now(),
+    key,
+    status,
+    ...(busySeconds > 0 ? { retryAfter: busySeconds } : {}),
+  }
+  requests.push(entry)
+  everything.push(entry)
   // Drain the body so a POST does not hold the socket open.
   req.resume()
   req.on("end", () => {
@@ -66,11 +79,6 @@ const answerHome = (req, res) => {
         "Content-Type": "application/json",
       })
       res.end(JSON.stringify({ error: "busy" }))
-      return
-    }
-    if (!answer) {
-      res.writeHead(404, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ error: "not found" }))
       return
     }
     const body = JSON.stringify(answer.body ?? null)
@@ -93,6 +101,8 @@ const control = createServer((req, res) => {
     const byRoute = {}
     for (const r of requests) byRoute[r.key] = (byRoute[r.key] ?? 0) + 1
     reply({ total: requests.length, byRoute, requests })
+  } else if (req.method === "GET" && url.pathname === "/all") {
+    reply({ requests: everything })
   } else if (req.method === "POST" && url.pathname === "/reset") {
     requests.length = 0
     reply({ ok: true })

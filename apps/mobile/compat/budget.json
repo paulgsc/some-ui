@@ -1,10 +1,14 @@
 {
-  "$comment": "How much a pull may ask of home, as android-compat.yml's storm scenario (storm.sh) checks it: requests home hears per phase, after settleSeconds. The numbers are HERD1's (the pull's promise to home). PROVISIONAL until HERD1 lands: until then they are this file's own guess and a red storm column is a finding to read, not a verdict.",
-  "source": "HERD1 (provisional)",
+  "$comment": "HERD1's budget, as android-compat.yml's storm scenario checks it (check-budget.mjs) over every request home hears in the whole run, all routes and pulls together: in any window of T ms, at most burst + ceil(T / sustainedMs) requests; after a 429, none until its Retry-After has passed (pairing and sign-out excepted), then at most one per sustainedMs for pacedForMs. Numbers from the HERD worker (claude/herd1-pull-storm, apps/www/src/lib/home-link/__tests__/herd.test.ts); re-read them there when HERD1 lands.",
+  "source": "HERD1",
+  "burst": 20,
+  "sustainedMs": 2000,
+  "afterBusy": {
+    "retryAfterSeconds": 20,
+    "pacedForMs": 60000,
+    "toleranceMs": 150
+  },
+  "exempt": ["POST /api/v1/auth/pairing/finish", "POST /api/v1/auth/sign-out"],
   "settleSeconds": 10,
-  "pullOnce": 6,
-  "burst": { "pulls": 5, "gapSeconds": 1 },
-  "burstTotal": 12,
-  "busy": { "retryAfterSeconds": 20, "duringRetryAfter": 2 },
-  "offlineAndBack": 12
+  "burstPulls": { "pulls": 5, "gapSeconds": 1 }
 }
