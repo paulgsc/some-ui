@@ -10,7 +10,8 @@
 // - rate: in any window of T ms, more than burst + ceil(T / sustainedMs)
 //   requests (checked for every pair of requests, so every window that
 //   starts and ends on one);
-// - busy: a request, other than an exempt one, inside a 429's Retry-After;
+// - busy: a request, other than an exempt one, inside a 429's Retry-After,
+//   after graceMs for the 429 to reach the phone;
 // - paced: after a Retry-After ends, two requests closer than sustainedMs
 //   (less toleranceMs) within pacedForMs of it.
 import { readFileSync } from "node:fs"
@@ -21,6 +22,9 @@ if (!allFile || !budgetFile) {
 }
 const { requests } = JSON.parse(readFileSync(allFile, "utf8"))
 const budget = JSON.parse(readFileSync(budgetFile, "utf8"))
+if (!Array.isArray(requests) || typeof budget.burst !== "number") {
+  throw new Error("check-budget.mjs: no request log or budget to check")
+}
 const exempt = new Set(budget.exempt ?? [])
 const sent = [...requests].sort((a, b) => a.at - b.at)
 const breaches = []
@@ -44,7 +48,7 @@ if (worst) {
 }
 
 // Busy and paced: from each 429 the phone was sent.
-const { toleranceMs, pacedForMs } = budget.afterBusy
+const { toleranceMs, pacedForMs, graceMs } = budget.afterBusy
 // A 429 sent inside an earlier one's wait is that wait's breach, not a new
 // wait of its own.
 let waitEnds = -Infinity
@@ -55,8 +59,10 @@ const turnedAway = sent.filter((r) => {
 })
 for (const turned of turnedAway) {
   const until = turned.at + turned.retryAfter * 1000
+  // A request sent before the phone heard the 429 (graceMs: the emulator's
+  // slowed link delays it) is not one sent during the wait.
   const inside = sent.filter(
-    (r) => r.at > turned.at && r.at < until && !exempt.has(r.key)
+    (r) => r.at > turned.at + graceMs && r.at < until && !exempt.has(r.key)
   )
   if (inside.length > 0) {
     breaches.push(

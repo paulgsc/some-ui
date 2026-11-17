@@ -80,17 +80,27 @@ page() { node "$here/page.mjs" "$1"; }
 budget_of() { node -e "console.log(require('$budget')$1)"; }
 
 # A clean install of $1, opened at the foyer, its database open.
+# Waits for a new "device storage: opened" line: the log already holds the
+# one from an earlier install.
 install() {
+  local opened
+  opened=$(native_count "device storage: opened")
   adb uninstall "$pkg" > /dev/null 2>&1 || true
   adb install -r "$1" > /dev/null
   adb shell am start -W -n "$pkg/.MainActivity" > /dev/null
-  native_line "device storage: opened" 60
+  for _ in $(seq 1 60); do
+    [ "$(native_count "device storage: opened")" -gt "$opened" ] && return 0
+    sleep 1
+  done
+  return 1
 }
 ui() { node "$here/ui.mjs" "$@" > /dev/null 2>> "$out/ui-errors.txt"; }
 # Closes the soft keyboard, which can sit over the button below a field.
 # Back only while it shows, so it never leaves the page.
 hide_keyboard() {
-  if adb shell dumpsys input_method | grep -q "mInputShown=true"; then
+  local ime
+  ime=$(adb shell dumpsys input_method || true)
+  if [[ "$ime" == *"mInputShown=true"* ]]; then
     adb shell input keyevent 4
     sleep 1
   fi
@@ -329,9 +339,16 @@ grep -E "\bSomeUI\b" "$out/logcat.txt" > "$out/native-log.txt" || true
 
 # HERD1's budget over everything home heard in the run.
 curl -sf "$control/all" > "$out/stub-all.json"
+# The checker prints one line per breach and exits non-zero; one that exits
+# non-zero having printed none could not check (a crash, a bad log).
+checked=0
+node "$here/check-budget.mjs" "$out/stub-all.json" "$budget" > "$out/breaches.txt" || checked=$?
 while IFS= read -r breach; do
   [ -n "$breach" ] && fail "$breach (stub-all.json)"
-done < <(node "$here/check-budget.mjs" "$out/stub-all.json" "$budget" || true)
+done < "$out/breaches.txt"
+if [ "$checked" -ne 0 ] && [ ! -s "$out/breaches.txt" ]; then
+  fail "the budget could not be checked: check-budget.mjs exited $checked (stub-all.json)"
+fi
 
 heard_any=$(cat "$out"/stub-*.json | grep -oE '"total":[0-9]+' | grep -oE '[0-9]+' | awk '{ n += $1 } END { print n + 0 }')
 if [ "$heard_any" -eq 0 ]; then

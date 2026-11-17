@@ -127,7 +127,7 @@ const control = createServer((req, res) => {
     requests.length = 0
     reply({ ok: true })
   } else if (req.method === "POST" && url.pathname === "/busy") {
-    busySeconds = Math.max(1, Number(url.searchParams.get("seconds") ?? "30"))
+    busySeconds = Math.max(1, Number(url.searchParams.get("seconds")) || 30)
     reply({ busySeconds })
   } else if (req.method === "POST" && url.pathname === "/calm") {
     busySeconds = 0
