@@ -27,7 +27,8 @@ import type { HomeAnswer } from "@some-ui/core-utils"
 
 import type { Feed } from "@/lib/call-videos/model"
 
-import { homeLink, paired } from "./index"
+import { homeLink } from "./index"
+import { pairedOnceRead } from "./paired-once-read"
 
 /** The delete of note `id`, as home takes it. */
 export function deletePath(id: string): string {
@@ -69,7 +70,7 @@ export async function deleteNotes(
     await settle(asked)
     return asked
   }
-  if (!paired()) return say({ kind: "unpaired" })
+  if (!(await pairedOnceRead())) return say({ kind: "unpaired" })
   try {
     const outcome = await homeLink().send(async (send) => {
       const answers: Array<NoteAnswer> = []
@@ -112,7 +113,7 @@ export async function deleteCallStep(
   key: string,
   step: CallStep
 ): Promise<CallStepAsked> {
-  if (!paired()) return { kind: "unpaired" }
+  if (!(await pairedOnceRead())) return { kind: "unpaired" }
   try {
     const outcome = await homeLink().send((send) =>
       send("DELETE", callStepPath(feed, key, step))
