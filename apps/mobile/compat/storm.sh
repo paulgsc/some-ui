@@ -72,17 +72,12 @@ adb logcat -c
 adb logcat > "$out/logcat.txt" 2>&1 &
 logcat_pid=$!
 
-native_count() { grep -cE "\bSomeUI\b.*$1" "$out/logcat.txt" || true; }
-native_line() {
-  for _ in $(seq 1 "${2:-30}"); do
-    grep -qE "\bSomeUI\b.*$1" "$out/logcat.txt" && return 0
-    sleep 1
-  done
-  return 1
-}
+# native_line, native_count, last_pull_end, pull_down and $PULL_CHECKED,
+# shared with the launch test.
+# shellcheck source=apps/mobile/launch/native-log.sh
+source "$here/../launch/native-log.sh"
 page() { node "$here/page.mjs" "$1"; }
 budget_of() { node -e "console.log(require('$budget')$1)"; }
-requests() { curl -sf "$control/counts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).total))'; }
 
 # A clean install of $1, opened at the foyer, its database open.
 install() {
@@ -190,22 +185,13 @@ paired=$how
 adb shell am start -W -n "$pkg/.WingPractice" > /dev/null
 sleep 10
 
-size=$(adb shell wm size | tr -d '\r' | grep -oE "[0-9]+x[0-9]+" | tail -1 || true)
-size=${size:-1080x1920}
-width=${size%x*}
-height=${size#*x}
-pull_down() {
-  adb shell input swipe $((width / 2)) $((height * 30 / 100)) \
-    $((width / 2)) $((height * 75 / 100)) 600
-}
-
 # How the newest pull ended, waiting up to 40 s for one more line than
 # `before` (the pull's own deadline is 20 s; a slowed emulator needs more).
 pull_end() {
   local before=$1
   for _ in $(seq 1 40); do
-    if [ "$(native_count "pull checked: [a-z]+")" -gt "$before" ]; then
-      grep -oE "\bSomeUI\b.*pull checked: [a-z]+" "$out/logcat.txt" | tail -1 | grep -oE "[a-z]+$"
+    if [ "$(native_count "$PULL_CHECKED")" -gt "$before" ]; then
+      last_pull_end
       return 0
     fi
     sleep 1
@@ -222,15 +208,15 @@ phase() {
   shift
   curl -sf -X POST "$control/reset" > /dev/null
   local before
-  before=$(native_count "pull checked: [a-z]+")
+  before=$(native_count "$PULL_CHECKED")
   local ends
   ends=$("$@" || echo error)
   sleep "$(budget_of .settleSeconds)"
-  local heard
-  heard=$(requests)
   curl -sf "$control/counts" > "$out/stub-$name.json"
+  local heard
+  heard=$(node -e 'console.log(require(require("path").resolve(process.argv[1])).total)' "$out/stub-$name.json")
   adb exec-out screencap -p > "$out/$name.png" || true
-  phases+=("{\"phase\":\"$name\",\"requests\":$heard,\"pulls\":\"$ends\",\"newEnds\":$(($(native_count "pull checked: [a-z]+") - before))}")
+  phases+=("{\"phase\":\"$name\",\"requests\":$heard,\"pulls\":\"$ends\",\"newEnds\":$(($(native_count "$PULL_CHECKED") - before))}")
 }
 
 # One pull, and how it ended. A drag the wing's own navigation landed on
@@ -239,7 +225,7 @@ phase() {
 one_pull() {
   local before end
   for _ in 1 2; do
-    before=$(native_count "pull checked: [a-z]+")
+    before=$(native_count "$PULL_CHECKED")
     pull_down
     end=$(pull_end "$before")
     [ "$end" = none ] || break
@@ -264,7 +250,7 @@ busy() {
   seconds=$(budget_of .afterBusy.retryAfterSeconds)
   curl -sf -X POST "$control/busy?seconds=$seconds" > /dev/null
   local before
-  before=$(native_count "pull checked: [a-z]+")
+  before=$(native_count "$PULL_CHECKED")
   pull_down
   sleep 3
   pull_down
@@ -280,7 +266,7 @@ busy() {
 # no more than from the single pull before it.
 two_pulls() {
   local before
-  before=$(native_count "pull checked: [a-z]+")
+  before=$(native_count "$PULL_CHECKED")
   pull_down
   sleep 1
   pull_down

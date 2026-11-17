@@ -34,9 +34,16 @@ if [ "$cpu" -gt 0 ]; then
   fi
 fi
 
-# The WebView this image carries, for the stamp: an old image's is older
-# than any phone that updates it from Play has, and the bundle needs a
-# recent one (Vite's default target), so a blank page there is the image's.
+# The level's row of the stamp: write_row <launch> <paired> <storm> <refresh>.
+write_row() {
+  node -e '
+const [api, webview, launch, paired, storm, refresh, file] = process.argv.slice(1)
+require("fs").writeFileSync(file, JSON.stringify({ api: Number(api), webview, launch, paired, storm, refresh }))
+' "$api" "$webview" "$1" "$2" "$3" "$4" "$out/row.json"
+  cat "$out/row.json"
+}
+
+# The WebView this image carries, for the stamp.
 webview=$(adb shell dumpsys webviewupdate | tr -d '\r' \
   | grep -oE "Current WebView package \(name, version\): \([^)]*\)" \
   | grep -oE "[0-9][0-9.]+" | head -1 || true)
@@ -51,11 +58,7 @@ MIN_WEBVIEW=111
 major=${webview%%.*}
 if [[ "$major" =~ ^[0-9]+$ ]] && [ "$major" -lt "$MIN_WEBVIEW" ]; then
   why="stock WebView $major (needs ≥$MIN_WEBVIEW)"
-  node -e '
-const [api, webview, why, file] = process.argv.slice(1)
-require("fs").writeFileSync(file, JSON.stringify({ api: Number(api), webview, launch: why, paired: why, storm: why, refresh: why }))
-' "$api" "$webview" "$why" "$out/row.json"
-  cat "$out/row.json"
+  write_row "$why" "$why" "$why" "$why"
   echo "::notice title=API $api::$why: the image's WebView is older than the bundle needs; a phone updated from Play is not. Not tested."
   exit 0
 fi
@@ -89,11 +92,7 @@ console.log(paired, r.storm.length ? "fail" : "pass", r.refresh.length ? "fail" 
   paired=${paired//-/ }
 fi
 
-node -e '
-const [api, webview, launch, paired, storm, refresh, file] = process.argv.slice(1)
-require("fs").writeFileSync(file, JSON.stringify({ api: Number(api), webview, launch, paired, storm, refresh }))
-' "$api" "$webview" "$launch" "$paired" "$storm" "$refresh" "$out/row.json"
-cat "$out/row.json"
+write_row "$launch" "$paired" "$storm" "$refresh"
 
 # A level that paired via the debug build, or ran unpaired for want of a
 # system CA, says so in its row and is not failed for it.

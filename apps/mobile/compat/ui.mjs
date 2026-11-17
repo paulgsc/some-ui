@@ -26,7 +26,6 @@ if (!action || !pattern) {
   throw new Error("usage: ui.mjs find|tap|type '<names>' ['<text>']")
 }
 const names = pattern.split("|").map((name) => name.toLowerCase())
-/** Whether a node's label is one of the names. */
 const wanted = (label) => {
   const seen = label.toLowerCase()
   return names.some((name) =>
@@ -92,8 +91,6 @@ for (const end = Date.now() + 30_000; Date.now() < end; await sleep(1_000)) {
   adb("shell", "uiautomator", "dump", "/sdcard/ui.xml")
   xml = adb("exec-out", "cat", "/sdcard/ui.xml")
   found = find(xml)
-  // `find` takes a match anywhere in the tree; tapping or typing needs it on
-  // screen, and a form below the fold is reached by scrolling down to it.
   if (found && (found.visible || action === "find")) break
   if (action !== "find") scrollDown()
 }

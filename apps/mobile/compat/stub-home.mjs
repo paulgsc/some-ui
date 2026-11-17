@@ -68,8 +68,8 @@ const tls =
 const answerHome = (req, res) => {
   const path = new URL(req.url ?? "/", "http://stub").pathname
   const key = `${req.method} ${path}`
-  // Anything unlisted is a 200 `{}` (HERD1's advice): a lane that cannot
-  // parse it ends failed, which is fine for counting.
+  // A lane that cannot parse the unlisted 200 `{}` ends failed, which is
+  // fine for counting (HERD1's advice).
   const answer = busySeconds > 0 ? null : (routeOf(key) ?? FALLBACK)
   const status = busySeconds > 0 ? 429 : (answer.status ?? 200)
   const entry = {
