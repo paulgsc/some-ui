@@ -1,0 +1,19 @@
+{
+  "id": "C498",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/handlers/auth.rs",
+    "server:apps/servers/file_host/src/routes/auth.rs",
+    "server:migrations/20261117000100_add_pairing_to_auth_session.up.sql"
+  ],
+  "chose": "A phone's name (auth_session.label) is set in two places: an optional label on POST /auth/pairing/finish, typed while pairing, and PATCH /auth/phones/:id { label } from the list, a browser's passkey session only (label is required; null or blank clears it). It is trimmed, at most 40 characters, and refused with 422 if it holds a control or line-separator character, a bidi mark or override, or a zero-width space (the zero-width joiner and non-joiner stay allowed, for emoji and scripts that need them); a refused name at pairing leaves the code open. The phone app never prefills one.",
+  "options": [
+    "while pairing and from the list",
+    "from the list only",
+    "while pairing only"
+  ],
+  "gray": "The owner (2026-11-17): \"yes, let me name each phone too\". The server cannot tell a typed name from a prefilled one at pairing, so \"only what the owner typed\" rests on the phone app there; a phone's own token cannot rename it, so a lifted token cannot relabel a phone in the owner's list.",
+  "undo": "Drop the label field from FinishPairing, or the PATCH route from routes/auth.rs (raising CONTRACT_EPOCH).",
+  "refs": ["#3092", "#3086", "#2123", "server#925"]
+}

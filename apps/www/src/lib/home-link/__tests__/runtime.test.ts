@@ -606,3 +606,19 @@ describe("a look at home's word on itself (#2843)", () => {
     stop()
   })
 })
+
+describe("pairing with a name (SIGNIN2)", () => {
+  const finish = (home: Home): unknown =>
+    home.sent.find((call) => call.url.endsWith("/auth/pairing/finish"))?.body
+  const answered = (): HomeAnswer => ({
+    status: 200,
+    body: JSON.stringify({ token: "phone-token", expiresAt: 1 }),
+  })
+
+  it("sends the name the owner typed beside the code", async () => {
+    const home = setup({ answer: answered })
+    await home.link.load()
+    await home.link.pair(HOME, "K7QF2M9X", "Pixel at home")
+    expect(finish(home)).toEqual({ code: "K7QF2M9X", label: "Pixel at home" })
+  })
+})

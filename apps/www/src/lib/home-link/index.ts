@@ -26,7 +26,7 @@ import { createHomeLink } from "./runtime"
 import { onHidden } from "./visibility"
 
 export { hostOf, pairingAddress, typedCode } from "./address"
-export type { HomeLinkState, PairFailure } from "./model"
+export type { HomeLinkState } from "./model"
 export type { HomeLink } from "./runtime"
 
 let link: HomeLink | null = null
