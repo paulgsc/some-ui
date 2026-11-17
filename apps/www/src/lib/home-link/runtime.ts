@@ -52,9 +52,13 @@ import { stringFieldOf } from "@/lib/device-backend/common"
 import type { HomeGet } from "@/lib/device-backend/home-sync"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import type { HomeRequest } from "@/lib/device-backend/native-http"
+import type { HomeBlockedReason } from "@/lib/device-backend/native-http/no-answer"
 import {
+  blockedReason,
   HomeAwayError,
+  HomeBlockedError,
   HomeNoAnswerError,
+  phoneOnline,
 } from "@/lib/device-backend/native-http/no-answer"
 import { isFileHostTimeout } from "@/lib/file-host-config/client"
 
@@ -116,6 +120,18 @@ function retryAfterMs(retryAfter: string | undefined): number | null {
   return /^\d+$/.test(text) ? Number(text) * 1_000 : null
 }
 
+/** Home's error code in an answer's body, or null. */
+function errorCodeOf(answer: HomeAnswer): string | null {
+  try {
+    const parsed: unknown = JSON.parse(answer.body)
+    const code =
+      isRecord(parsed) && isRecord(parsed.error) ? parsed.error.code : null
+    return typeof code === "string" ? code : null
+  } catch {
+    return null
+  }
+}
+
 /**
  * Home said it has no room just now (paulgsc/server#934, AD4): `503` with
  * its code `service_overloaded` and a `Retry-After` this phone can read. Busy,
@@ -124,20 +140,11 @@ function retryAfterMs(retryAfter: string | undefined): number | null {
  * moment does not end, so it is not busy.
  */
 function overloaded(answer: HomeAnswer): boolean {
-  if (answer.status !== 503 || retryAfterMs(answer.retryAfter) === null) {
-    return false
-  }
-  try {
-    const parsed: unknown = JSON.parse(answer.body)
-    return (
-      isRecord(parsed) &&
-      isRecord(parsed.error) &&
-      parsed.error.code === "service_overloaded"
-    )
-  } catch {
-    // Ignored: a body that is not home's JSON error is not its overload.
-    return false
-  }
+  return (
+    answer.status === 503 &&
+    retryAfterMs(answer.retryAfter) !== null &&
+    errorCodeOf(answer) === "service_overloaded"
+  )
 }
 
 /** What the link answers for home while home's busy lasts: nothing was sent. */
@@ -168,24 +175,43 @@ export function parsePairing(record: string): Pairing | null {
   }
 }
 
-/** What a pairing answer other than 200 says. */
-function refusalOf(status: number): PairFailure {
+/**
+ * What a pairing answer other than 200 says. A 503 is read by its code
+ * (#3099): `service_overloaded` with a `Retry-After` is home shedding load
+ * for a while; without one, it is home's cap on pairing attempts, which no
+ * wait lifts soon; anything else is pairing not set up there.
+ */
+function refusalOf(answer: HomeAnswer): PairFailure {
+  const { status } = answer
   if (status === 422) return "bad-code"
   if (status === 429) return "too-many"
-  if (status === 503) return "not-set-up"
+  if (status === 503) {
+    if (overloaded(answer)) return "busy"
+    // Overloaded with no wait to keep: home's cap on tries (#3099).
+    return errorCodeOf(answer) === "service_overloaded"
+      ? "too-many"
+      : "not-set-up"
+  }
   // A www host without the proxy path, say: nothing there pairs.
   if (status === 404 || status === 405) return "not-home"
   return "other"
 }
 
-/** What a pairing request that threw says: TLS refused, or no answer. */
+/**
+ * What a pairing request that threw says: a certificate this phone doesn't
+ * trust, a name it can't find (NA1, `native-http`'s `blockedReason`), or no
+ * answer.
+ */
 function thrownFailureOf(error: unknown): PairFailure {
-  const words = [error, isRecord(error) ? error.cause : undefined]
-    .map(String)
-    .join(" ")
-  return /SSL|certif|CertPath|trust anchor/i.test(words)
-    ? "untrusted"
-    : "unreachable"
+  // A silence first: offline, every name fails as a blocked one would.
+  if (unanswered(error)) return "unreachable"
+  const blocked =
+    error instanceof HomeBlockedError
+      ? error.reason
+      : blockedReason(error, phoneOnline())
+  if (blocked === "trust") return "untrusted"
+  if (blocked === "name") return "no-name"
+  return "unreachable"
 }
 
 /**
@@ -202,6 +228,20 @@ export function unanswered(error: unknown): boolean {
     }
   }
   return false
+}
+
+/** What the native log says as a blocked stretch starts (NA1). */
+const BLOCKED_SUMMARY: Readonly<Record<HomeBlockedReason, string>> = {
+  name: "This phone couldn't find home's name on this network.",
+  trust: "This phone doesn't trust home's certificate.",
+}
+
+/** Why `error`, or a cause of it, failed before home could answer (NA1). */
+export function blockedOf(error: unknown): HomeBlockedReason | null {
+  for (let cause = error; cause instanceof Error; cause = cause.cause) {
+    if (cause instanceof HomeBlockedError) return cause.reason
+  }
+  return null
 }
 
 /** `send`, and whether home answered any of it as busy (`429`). */
@@ -422,8 +462,15 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     if (state.away?.heldUntil != null) lapse()
     return false
   }
-  /** Whether home answered `answered`, or `cause` found it silent. */
-  const reached = (answered: boolean, cause: unknown = null): void => {
+  /**
+   * Whether home answered `answered`, or `cause` found it silent; `summary`
+   * is what the native log says as the stretch starts.
+   */
+  const reached = (
+    answered: boolean,
+    cause: unknown = null,
+    summary = "Away from home: home didn't answer."
+  ): void => {
     if (answered) {
       if (state.away === null) return
       cancelLapse?.()
@@ -441,7 +488,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
         error: {
           kind: "unreachable",
           retryable: true,
-          summary: "Away from home: home didn't answer.",
+          summary,
           cause,
         },
       })
@@ -449,15 +496,27 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     cancelLapse?.()
     cancelLapse = ports.after(Math.max(after.heldUntil - ports.now(), 0), lapse)
   }
-  /** `request` as sent, its answer or silence told to the away state. */
+  /**
+   * `request` as sent, its answer or silence told to the away state (AW1),
+   * and a failure before home could answer told as itself (NA1).
+   */
   const heard = (request: Promise<HomeAnswer>): Promise<HomeAnswer> =>
     request.then(
       (answer) => {
         reached(true)
+        if (state.blocked !== null) dispatch({ type: "unblocked" })
         return answer
       },
       (error: unknown) => {
-        if (unanswered(error)) reached(false, error)
+        const blocked = blockedOf(error)
+        if (blocked !== null) {
+          // Held as a silence is (C476), so the phone asks no more often
+          // than away; said as itself (NA1), so never as away.
+          reached(false, error, BLOCKED_SUMMARY[blocked])
+          dispatch({ type: "blocked", reason: blocked, at: ports.now() })
+        } else if (unanswered(error)) {
+          reached(false, error)
+        }
         throw error
       }
     )
@@ -615,9 +674,9 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     } catch (error) {
       return thrownFailureOf(error)
     }
-    // Home's overload is busy, not a pairing it can't do (AD3, #3127).
-    if (overloaded(answer)) return "busy"
-    if (answer.status !== 200) return refusalOf(answer.status)
+    // Home's overload is busy, not a pairing it can't do (AD3, #3127);
+    // `refusalOf` reads it by its code (#3099).
+    if (answer.status !== 200) return refusalOf(answer)
     const token = stringFieldOf(answer.body, "token")
     if (token === null) return "other"
     try {

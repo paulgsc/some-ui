@@ -234,6 +234,7 @@ export function laneReading(
         state.away === null
           ? null
           : { since: state.away.since, now: LINK_CLOCK.now() },
+      blocked: state.blocked?.reason ?? null,
     }),
     sendNow: offersSendNow(run, counts, isPaired),
   }

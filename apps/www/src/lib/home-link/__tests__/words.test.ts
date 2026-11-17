@@ -49,6 +49,7 @@ const facts = (over: Partial<LaneFacts> = {}): LaneFacts => ({
   pulled: true,
   serves: null,
   away: null,
+  blocked: null,
   ...over,
 })
 
@@ -448,6 +449,11 @@ describe("the routine's files in Korean", () => {
       kept(last({ kind: "failed", why: "room" })),
       kept(last({ kind: "failed", why: "refused" })),
       kept(last({ kind: "failed", why: "fault" })),
+      facts({
+        paired: true,
+        run: last({ kind: "unreachable", at: 1 }),
+        blocked: "name",
+      }),
       kept(last({ kind: "failed", why: "an entry" })),
       facts({ paired: true, serves: "updating" }),
       facts({ paired: true, serves: "not-yet" }),
@@ -505,5 +511,37 @@ describe("away from home (AW1)", () => {
     expect(
       laneView(WORDS.practice, facts({ paired: true, run: unreachable })).word
     ).toBe("No answer")
+  })
+})
+
+describe("a request that couldn't reach home, though home may be there (NA1)", () => {
+  it("is never said as away, even within the hold, and says which it was in the person's terms", () => {
+    const blocked = (reason: "name" | "trust"): LaneFacts =>
+      facts({
+        paired: true,
+        waiting: 2,
+        // A run that met it, or one the link held back for it since.
+        run: { ...INITIAL_KEPT, last: { kind: "unreachable", at: 2 } },
+        blocked: reason,
+        away: { since: 1, now: 2 },
+      })
+    const views = (["name", "trust"] as const).map((reason) =>
+      laneView(WORDS.aph, blocked(reason))
+    )
+    for (const view of views) {
+      expect(view.how).toBe("blocked")
+      expect(view.line).not.toMatch(/away/i)
+      expect(view.line).not.toMatch(MACHINERY)
+      expect(view.line).toMatch(/on this phone and go next time/)
+    }
+    expect(views[0]?.line).toMatch(/can't find home's name on this network/)
+    expect(views[1]?.line).toMatch(/doesn't trust home's certificate/)
+    // Once nothing is blocked, the same run is away again.
+    expect(
+      laneView(WORDS.aph, {
+        ...blocked("name"),
+        blocked: null,
+      }).line
+    ).toMatch(/^Away from home since/)
   })
 })
