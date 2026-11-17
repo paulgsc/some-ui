@@ -1,0 +1,18 @@
+{
+  "id": "C550",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/tests/snips/apk.spec.ts",
+    "some-ui:apps/mobile/snips/capture-apk.sh"
+  ],
+  "chose": "The APK's snips are taken on the debug APK, paired through its own screen, with Playwright opening its WebView to reach each route and freeze the page's clock.",
+  "options": [
+    "the debug APK, driven through its WebView",
+    "the release APK, reaching routes by tapping through the UI",
+    "the release APK with WebView debugging switched on for this build"
+  ],
+  "gray": "The brief named the release APK and UI pairing; only a debuggable WebView lets a capture reach every route and freeze the page's clock, and the debug build carries the same JavaScript, so the screens are the same.",
+  "undo": "Build assembleRelease with the throwaway key, as android-compat.yml does, and replace apk.spec.ts's walk with ui.mjs taps through each wing's navigation.",
+  "refs": ["#3114", "#3115"]
+}
