@@ -1,0 +1,18 @@
+{
+  "id": "C543",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:.github/workflows/android-compat.yml",
+    "some-ui:apps/mobile/compat/run-level.sh"
+  ],
+  "chose": "An emulator is slowed with one core, 1536 MB, a 3G link (netdelay umts, netspeed hsdpa) and its process capped at 60% of a host core by cpulimit (an input).",
+  "options": [
+    "this mix, cap 60%",
+    "cores and memory only, no CPU cap",
+    "a harder cap (30%) and an EDGE link"
+  ],
+  "gray": "How slow stands in for an S21 Ultra on an older WebView is a judgement; too slow turns timing into ANRs no phone shows, too fast hides the race.",
+  "undo": "Change the emulator inputs in the level job and the cpu_percent default.",
+  "refs": ["#3104"]
+}
