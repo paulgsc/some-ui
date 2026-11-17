@@ -1,0 +1,14 @@
+{
+  "id": "C501",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": ["server:infra/render/render-calls.sh"],
+  "chose": "A too-large refusal is held until its input, cap or image changes, the same as a too-long one.",
+  "options": [
+    "hold both too-long and too-large",
+    "hold only too-long (decided before anything is recorded); too-large keeps the hourly retry"
+  ],
+  "gray": "The ask named refusals decided before anything is recorded; too-large is decided after a full render, so each hourly retry costs the most, but ffmpeg's output size for the same input is deterministic only in practice.",
+  "undo": "In render-calls.sh `refusal`, drop the REFUSED_LARGE branch (and its test).",
+  "refs": ["server#937", "server#928", "server#752"]
+}
