@@ -8,6 +8,26 @@
  * credentialed answer also says it (`./runtime`'s `heardKey`), so a phone
  * sending anyway rarely needs the check at all. The link's `check` itself
  * sends nothing unpaired, forgotten, away or while home is busy.
+ *
+ * **RN1: a paired phone's session with home is renewed while the app is
+ * used** (#3096). Held by tests, so not a gray-area invariant:
+ *
+ * - _Claim:_ while this phone is paired and home has not refused its key,
+ *   each time the app comes to the front on a network where home answers,
+ *   the phone sends home's own `GET /auth/session` with its key, which
+ *   slides the session past half its term (paulgsc/server
+ *   `handlers::auth::session`).
+ * - _Family:_ how often the app comes to the front; whether home was known,
+ *   unchecked or busy at each coming; the phone away from home at each
+ *   coming; the pairing's age against the half-term.
+ * - _Proof:_ `__tests__/standing.test.ts`, "RN1: …" (the real link and the
+ *   real watch, every coming to the front, home's busy waited out), with
+ *   "sends nothing while held away from home" for away. The age dimension
+ *   is the server's: its slide past half a term is held by its own test
+ *   `a_phones_session_slides_without_a_cookie`.
+ * - _Tolerance:_ a phone that never comes to the front on a network where
+ *   home answers for a whole half-term (15 days) lapses, and says so
+ *   (SIGNIN1's forgotten look).
  */
 import { pairingOf } from "./index"
 import type { HomeLinkState } from "./model"

@@ -400,3 +400,64 @@ describe("the standing watch", () => {
     expect(fake.checks()).toBe(1)
   })
 })
+
+/**
+ * RN1 (#3096), end to end: the real link and the real watch, so a paired
+ * phone that comes to the front asks home's own `GET /auth/session` with
+ * its key, the one request that renews its session. Before SIGNIN1 nothing
+ * did, and every pairing ended 30 days after it was made.
+ */
+describe("RN1: a paired phone's session is renewed while the app is used", () => {
+  const settle = (): Promise<void> =>
+    new Promise((resolve) => {
+      setTimeout(resolve, 0)
+    })
+  const renewals = (home: Home): Array<HomeRequest> =>
+    home.sent.filter(
+      (call) =>
+        call.method === "GET" &&
+        call.url === "https://home.example/api/v1/auth/session" &&
+        call.token === "t"
+    )
+
+  it("asks home on every coming to the front, known or not", async () => {
+    const home = setup({ record: KEPT })
+    const page = fakeDoc()
+    watchStanding({ link: home.link, doc: page.doc })
+    await home.link.load()
+    await settle()
+    expect(renewals(home)).toHaveLength(1)
+    expect(standingOf(home.link.getSnapshot())).toEqual({ kind: "known" })
+    for (const n of [2, 3, 4]) {
+      page.show(false)
+      page.show(true)
+      await settle()
+      expect(renewals(home)).toHaveLength(n)
+    }
+  })
+
+  it("waits out home's busy, then asks again on the next coming to the front", async () => {
+    let busy = true
+    const home = setup({
+      record: KEPT,
+      answer: () =>
+        busy
+          ? { status: 429, body: "", retryAfter: "30" }
+          : { status: 200, body: "{}" },
+    })
+    const page = fakeDoc()
+    watchStanding({ link: home.link, doc: page.doc })
+    await home.link.load()
+    await settle()
+    expect(renewals(home)).toHaveLength(1)
+    page.show(true)
+    await settle()
+    expect(renewals(home)).toHaveLength(1)
+    busy = false
+    home.pass(30_000)
+    page.show(true)
+    await settle()
+    expect(renewals(home)).toHaveLength(2)
+    expect(standingOf(home.link.getSnapshot())).toEqual({ kind: "known" })
+  })
+})
