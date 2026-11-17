@@ -16,7 +16,10 @@ import {
   isBlockedProxyPath,
   resolveFileHostTarget,
 } from "./file-host.dev.ts"
-import { oldWebViewScript } from "./src/lib/old-webview/index.ts"
+import {
+  OLD_WEBVIEW_PAGE,
+  oldWebViewPage as oldWebViewPageHtml,
+} from "./src/lib/old-webview/index.ts"
 import styleContext from "./style.context.ts"
 
 // The dev/preview counterpart of the /api/resume/ location in
@@ -216,21 +219,19 @@ function pagesConnectPolicy(): Plugin {
 }
 
 // The phone's page for a WebView too old for the bundle (#3117,
-// src/lib/old-webview): a classic inline script, so it runs where the
-// module cannot even parse. First in the head, before anything else loads.
-function oldWebViewNotice(): Plugin {
+// src/lib/old-webview), which Capacitor loads as its errorPath. The phone
+// build alone carries it.
+function oldWebViewPage(): Plugin {
   return {
-    name: "old-webview-notice",
+    name: "old-webview-page",
     apply: "build",
-    transformIndexHtml(): Array<HtmlTagDescriptor> {
-      if (process.env.SOME_UI_PROFILE !== MOBILE_PROFILE) return []
-      return [
-        {
-          tag: "script",
-          children: oldWebViewScript(),
-          injectTo: "head-prepend",
-        },
-      ]
+    generateBundle(): void {
+      if (process.env.SOME_UI_PROFILE !== MOBILE_PROFILE) return
+      this.emitFile({
+        type: "asset",
+        fileName: OLD_WEBVIEW_PAGE,
+        source: oldWebViewPageHtml(),
+      })
     },
   }
 }
@@ -336,7 +337,7 @@ export default defineConfig(
         : []),
       omitOffPathPublicFiles(offPathPublicFiles(process.env.SOME_UI_PROFILE)),
       pagesConnectPolicy(),
-      oldWebViewNotice(),
+      oldWebViewPage(),
       ...(isStageBuild ? [stagePageAtRoot()] : []),
     ],
     // An http:// page skips the proxy and asks :3000 directly

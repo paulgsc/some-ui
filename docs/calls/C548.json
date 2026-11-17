@@ -4,15 +4,16 @@
   "by": "claude",
   "paths": [
     "some-ui:apps/www/src/lib/old-webview/index.ts",
-    "some-ui:apps/www/vite.config.ts"
+    "some-ui:apps/www/vite.config.ts",
+    "some-ui:apps/mobile/capacitor.config.ts"
   ],
-  "chose": "On the phone build, a WebView whose user agent names Chrome below 111 (Vite's default target) gets a plain screen, \"This phone needs a newer WebView\", saying to update Android System WebView from the Play Store, with an \"Open it in Play\" link to its Play page; judged by the Chrome version in the user agent, from an inline ES5 script first in the head.",
+  "chose": "A WebView older than Chrome 111 (Vite's default target) gets a plain page instead of the app, through Capacitor's own check: android.minWebViewVersion 111 and server.errorPath webview-too-old.html, a page the phone build alone carries. It says \"This phone needs a newer WebView\", to update Android System WebView from the Play Store, with an \"Update WebView in the Play Store\" link to its Play page.",
   "options": [
-    "user agent's Chrome version, with a Play link",
-    "feature detection of what the bundle uses",
+    "Capacitor's minWebViewVersion and errorPath, a static page",
+    "an inline script in index.html reading the user agent's Chrome version",
     "the words alone, no link"
   ],
-  "gray": "The owner approved the screen (#3117) but not its words, its link, or how an old WebView is recognised; feature detection would track the bundle more closely but needs a list kept in step with Vite's target, where the version names it directly.",
-  "undo": "Remove oldWebViewNotice from apps/www/vite.config.ts and delete apps/www/src/lib/old-webview.",
+  "gray": "The owner approved the screen (#3117) but not its words, its link, or how an old WebView is recognised. Capacitor's check reads the installed WebView package, before the app loads; an inline script would read the user agent on every launch and push index.html's charset declaration later.",
+  "undo": "Remove errorPath and android.minWebViewVersion from apps/mobile/capacitor.config.ts, oldWebViewPage from apps/www/vite.config.ts, and delete apps/www/src/lib/old-webview.",
   "refs": ["#3117", "#3104"]
 }
