@@ -196,6 +196,9 @@ export function pairFailureLine(failure: PairFailure, host: string): string {
     case "too-many": {
       return "Too many tries. Wait a minute and try again."
     }
+    case "busy": {
+      return `${host} is busy. Try again in a moment.`
+    }
     case "not-set-up": {
       return `${host} can't pair phones: passkey sign-in isn't set up there.`
     }

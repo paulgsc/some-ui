@@ -139,7 +139,11 @@ describe("pairing again (model)", () => {
   })
 
   it("carries home's busy over to a pairing with the same home, never another", () => {
-    const busy = step(FORGOTTEN, { type: "homeBusy", until: 99 })
+    const busy = step(FORGOTTEN, {
+      type: "homeBusy",
+      until: 99,
+      base: HOME.base,
+    })
     expect(run([PAIR, PAIRED], busy).homeBusyUntil).toBe(99)
     const elsewhere = run(
       [

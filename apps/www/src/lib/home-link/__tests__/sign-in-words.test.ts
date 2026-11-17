@@ -98,6 +98,7 @@ describe("the sign-in mark's words", () => {
       "untrusted",
       "bad-code",
       "too-many",
+      "busy",
       "not-set-up",
       "not-home",
       "not-kept",

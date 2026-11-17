@@ -349,7 +349,11 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     if (state.homeBusyUntil !== null) cool()
     return false
   }
-  const heardBusy = (answer: HomeAnswer): void => {
+  const heardBusy = (
+    answer: HomeAnswer,
+    /** The home that said it; the paired one's unless given (#3127). */
+    base: string | null = state.link.kind === "paired" ? state.link.base : null
+  ): void => {
     // One lesson a busy stretch: requests already out when it began come
     // back busy too, and say nothing more of home's rate.
     const learning = !homeBusy(state, ports.now())
@@ -357,6 +361,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     dispatch({
       type: "homeBusy",
       until: ports.now() + homeBusyFor(answer.retryAfter),
+      base,
     })
     const until = state.homeBusyUntil
     if (until === null) return
@@ -486,13 +491,19 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     }
   }
 
-  /** `call` sent at its turn on the pace, as the person's (pairing, Unpair). */
-  const personal = async (call: HomeRequest): Promise<HomeAnswer> => {
+  /**
+   * `call` to the home at `base`, sent at its turn on the pace, as the
+   * person's (pairing, Unpair).
+   */
+  const personal = async (
+    call: HomeRequest,
+    base: string
+  ): Promise<HomeAnswer> => {
     await pace.turn(true)
     const answer = await ports.request(call)
     // Home busy starts the link's wait for every other request (AD3, #3127);
     // a pairing or an Unpair still goes during one, so it never waits on it.
-    if (answer.status === 429 || overloaded(answer)) heardBusy(answer)
+    if (answer.status === 429 || overloaded(answer)) heardBusy(answer, base)
     // An answer ends a stretch away; a silence here is a pairing's or an
     // Unpair's own to say, and starts none (AW1).
     reached(true)
@@ -571,14 +582,19 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     if (new URL(base).protocol !== "https:") return "other"
     let answer: HomeAnswer
     try {
-      answer = await personal({
-        method: "POST",
-        url: `${base}/auth/pairing/finish`,
-        body: name === undefined ? { code } : { code, label: name },
-      })
+      answer = await personal(
+        {
+          method: "POST",
+          url: `${base}/auth/pairing/finish`,
+          body: name === undefined ? { code } : { code, label: name },
+        },
+        base
+      )
     } catch (error) {
       return thrownFailureOf(error)
     }
+    // Home's overload is busy, not a pairing it can't do (AD3, #3127).
+    if (overloaded(answer)) return "busy"
     if (answer.status !== 200) return refusalOf(answer.status)
     const token = stringFieldOf(answer.body, "token")
     if (token === null) return "other"
@@ -589,7 +605,10 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     } catch {
       // Home made a session this phone cannot keep: end it, in the same
       // tap, rather than leave it to expire.
-      await personal({ method: "POST", url: `${base}/auth/sign-out`, token })
+      await personal(
+        { method: "POST", url: `${base}/auth/sign-out`, token },
+        base
+      )
         // Ignored: a sign-out home does not hear leaves that session to
         // expire on its own; this phone kept nothing of it either way.
         .catch(() => undefined)
@@ -737,11 +756,14 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       try {
         const pairing = await readPairing()
         if (pairing) {
-          const answer = await personal({
-            method: "POST",
-            url: `${pairing.base}/auth/sign-out`,
-            token: pairing.token,
-          })
+          const answer = await personal(
+            {
+              method: "POST",
+              url: `${pairing.base}/auth/sign-out`,
+              token: pairing.token,
+            },
+            pairing.base
+          )
           told = answer.status >= 200 && answer.status < 300
         }
       } catch {

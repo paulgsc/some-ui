@@ -178,6 +178,16 @@ describe("the home link", () => {
       [{ answer: () => ({ status: 422, body: "{}" }) }, "bad-code"],
       [{ answer: () => ({ status: 429, body: "{}" }) }, "too-many"],
       [{ answer: () => ({ status: 503, body: "{}" }) }, "not-set-up"],
+      [
+        {
+          answer: () => ({
+            status: 503,
+            body: JSON.stringify({ error: { code: "service_overloaded" } }),
+            retryAfter: "5",
+          }),
+        },
+        "busy",
+      ],
       [{ answer: () => ({ status: 404, body: "" }) }, "not-home"],
       [{ answer: () => ({ status: 200, body: "<html>" }) }, "other"],
       [
@@ -543,11 +553,63 @@ describe("the home link", () => {
     expect(home.sent.map((call) => call.url)).toEqual([
       `${HOME.base}/auth/pairing/finish`,
       `${HOME.base}/auth/pairing/finish`,
-      expect.stringContaining(HOME.base),
+      `${HOME.base}/auth/sign-out`,
     ])
     expect(home.link.getSnapshot().link).toMatchObject({
       kind: "unpaired",
       note: "unpaired",
+    })
+  })
+
+  it("starts home's busy from an Unpair's sign-out, and keeps none of it for the next home paired (#3127)", async () => {
+    const OTHER = {
+      base: "https://other.example/api/v1",
+      host: "other.example",
+    }
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t", id: "p1" }),
+      answer: (call) =>
+        call.url.endsWith("/auth/sign-out")
+          ? { status: 429, body: "", retryAfter: "600" }
+          : {
+              status: 200,
+              body: JSON.stringify({ token: "phone-token", expiresAt: 1 }),
+            },
+    })
+    await home.link.load()
+    await home.link.unpair()
+    expect(home.link.getSnapshot()).toMatchObject({
+      link: { kind: "unpaired" },
+      homeBusyUntil: 600_000,
+    })
+    await drive(home, home.link.pair(OTHER, "K7QF2M9X"))
+    expect(home.link.getSnapshot()).toMatchObject({
+      link: { kind: "paired", base: OTHER.base },
+      homeBusyUntil: null,
+    })
+  })
+
+  it("keeps none of a busy a failed pairing heard for the home then paired (#3127)", async () => {
+    const OTHER = {
+      base: "https://other.example/api/v1",
+      host: "other.example",
+    }
+    const home = setup({
+      answer: (call) =>
+        call.url.startsWith(OTHER.base)
+          ? { status: 429, body: "", retryAfter: "600" }
+          : {
+              status: 200,
+              body: JSON.stringify({ token: "phone-token", expiresAt: 1 }),
+            },
+    })
+    await home.link.load()
+    await home.link.pair(OTHER, "K7QF2M9X")
+    expect(home.link.getSnapshot().homeBusyUntil).toBe(600_000)
+    await drive(home, home.link.pair(HOME, "K7QF2M9X"))
+    expect(home.link.getSnapshot()).toMatchObject({
+      link: { kind: "paired", base: HOME.base },
+      homeBusyUntil: null,
     })
   })
 

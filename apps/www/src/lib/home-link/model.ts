@@ -47,6 +47,7 @@ export type PairFailure =
   | "untrusted"
   | "bad-code"
   | "too-many"
+  | "busy"
   | "not-set-up"
   | "not-home"
   | "not-kept"
@@ -119,6 +120,8 @@ export type HomeLinkState = {
   } | null
   /** When home's busy ends (AD3, `./runtime`); null while it is not busy. */
   readonly homeBusyUntil: number | null
+  /** The home that said it is busy, while it is (#3127). */
+  readonly homeBusyBase: string | null
   /** The stretch away from home under way (AW1, `./away`); null at home. */
   readonly away: Away | null
   /**
@@ -165,7 +168,12 @@ export type HomeLinkEvent =
   /** The sync or send in flight ended, finished or stopped. */
   | { readonly type: "workEnded" }
   /** Home answered `429`, asking to be left alone until `until`. */
-  | { readonly type: "homeBusy"; readonly until: number }
+  | {
+      readonly type: "homeBusy"
+      readonly until: number
+      /** The home that said it, when the phone knows (#3127). */
+      readonly base: string | null
+    }
   /** The time home asked for has passed. */
   | { readonly type: "cooled" }
   /**
@@ -189,6 +197,7 @@ export const INITIAL: HomeLinkState = {
   drain: { kind: "idle" },
   pairFailure: null,
   homeBusyUntil: null,
+  homeBusyBase: null,
   away: null,
   awayReleases: 0,
 }
@@ -292,12 +301,14 @@ export function step(
     case "paired": {
       if (activity.kind !== "pairing" || activity.base !== event.base)
         return state
-      // Pairing again with another home (SIGNIN3): the old one's busy is
-      // not this one's.
-      const elsewhere = link.kind === "paired" && link.base !== event.base
+      // Home's busy is the home's that said it (#3127): pairing with
+      // another, from a pairing tried there or an Unpair's sign-out, starts
+      // with none.
+      const same = state.homeBusyBase === event.base
       return {
         ...state,
-        homeBusyUntil: elsewhere ? null : state.homeBusyUntil,
+        homeBusyUntil: same ? state.homeBusyUntil : null,
+        homeBusyBase: same ? state.homeBusyBase : null,
         link: {
           kind: "paired",
           base: event.base,
@@ -373,12 +384,15 @@ export function step(
     }
     case "homeBusy": {
       const until = Math.max(state.homeBusyUntil ?? event.until, event.until)
-      if (until === state.homeBusyUntil) return state
-      return { ...state, homeBusyUntil: until }
+      const base = event.base ?? state.homeBusyBase
+      if (until === state.homeBusyUntil && base === state.homeBusyBase) {
+        return state
+      }
+      return { ...state, homeBusyUntil: until, homeBusyBase: base }
     }
     case "cooled": {
       if (state.homeBusyUntil === null) return state
-      return { ...state, homeBusyUntil: null }
+      return { ...state, homeBusyUntil: null, homeBusyBase: null }
     }
     case "heard": {
       if (link.kind !== "paired" || link.id !== event.id) return state

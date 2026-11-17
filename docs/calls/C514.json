@@ -1,0 +1,18 @@
+{
+  "id": "C514",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/home-link/sign-in-words.ts",
+    "some-ui:apps/www/src/lib/home-link/runtime.ts"
+  ],
+  "chose": "A pairing home answers with its overload says \"<host> is busy. Try again in a moment.\", its own failure beside \"Too many tries\", instead of \"<host> can't pair phones: passkey sign-in isn't set up there.\"",
+  "options": [
+    "a failure of its own, busy, saying the host is busy for a moment",
+    "say it as too many tries, wait a minute",
+    "leave it as not set up, as every 503 was read before"
+  ],
+  "gray": "The line is on the pairing screen, and no earlier decision covers an overload there; not set up is untrue of a busy home, and too many tries blames the person for a home that is full.",
+  "undo": "In finishPairing, drop the overloaded(answer) line that returns busy, and remove the busy case from PairFailure and pairFailureLine.",
+  "refs": ["#3127", "#3131"]
+}
