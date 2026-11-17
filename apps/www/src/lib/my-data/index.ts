@@ -30,12 +30,13 @@ import {
   voiceKept,
 } from "@/lib/home-link/voice-copy"
 import { askWhileBusy } from "@/lib/home-link/while-busy"
+import { soundbiteKeeping } from "@/lib/soundbite-keeping"
 import { studioKeeping } from "@/lib/studio-keeping"
 
 import type { CallDeleting } from "./call-deleting-runtime"
 import { createCallDeleting } from "./call-deleting-runtime"
 import type { ReceiptsReading } from "./deleting"
-import { isDeletableKind, readReceipts } from "./deleting"
+import { readReceipts } from "./deleting"
 import type { Deleting } from "./deleting-runtime"
 import { createDeleting } from "./deleting-runtime"
 import type { HomeReading, Of, PhoneNote, PhoneRead } from "./model"
@@ -50,7 +51,7 @@ import { createWordSetsPage } from "./word-sets-runtime"
 export type { KindItem, Of, Overview, Where } from "./model"
 export { isKind, kindOf, overviewOf, WHERE_ORDER } from "./model"
 export type { DeletableKind, DeleteSheet, Receipt } from "./deleting"
-export { isDeletableKind, offersDelete, reconcileDeletes } from "./deleting"
+export { offersDelete } from "./deleting"
 export type { Deleting } from "./deleting-runtime"
 export type { Receipts, ReceiptsState } from "./receipts"
 export type { MyData } from "./runtime"
@@ -80,7 +81,14 @@ async function readPhone(): Promise<PhoneRead> {
         port: "my data: this phone's recordings",
         error: toIntentError(error),
       })
-      return { notes: [], unread: [] }
+      // Unread for deleting too: no store's copy is let go unknown.
+      return {
+        notes: [],
+        unread: [
+          ...(studioKeeping() === null ? (["studio"] as const) : []),
+          ...(soundbiteKeeping() === null ? (["soundbite"] as const) : []),
+        ],
+      }
     }
   )
   const read = await Promise.all(
@@ -132,13 +140,7 @@ async function audioOf(id: string): Promise<Blob | null> {
 export async function deletableStudioTakes(): Promise<ReadonlySet<string>> {
   const home = await askHome("studio")
   // This phone lets its own copy go only through Studio's store.
-  if (
-    home.kind !== "read" ||
-    studioKeeping() === null ||
-    !isDeletableKind("studio")
-  ) {
-    return new Set()
-  }
+  if (home.kind !== "read" || studioKeeping() === null) return new Set()
   return new Set(
     (home.kept.notes ?? [])
       .filter((note) => note.deletable)

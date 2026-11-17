@@ -77,7 +77,9 @@ What follows from them:
   with the account. Each kind has its own
   switch on home, and only Studio's recordings (takes and idea answers) are on (owner,
   2026-11-04), except that a take of any kind home couldn't hear may be deleted from
-  Needs your attention (owner, #3076). "Let go" still sets a recording aside and keeps it.
+  Needs your attention (owner, #3076) and from My data (owner, on paulgsc/server#919:
+  "yes, My data should offer the unheard delete too"). "Let go" still sets a recording
+  aside and keeps it.
 
 `/mission` (`apps/www/src/routes/mission.tsx`) says the same to the viewer.
 

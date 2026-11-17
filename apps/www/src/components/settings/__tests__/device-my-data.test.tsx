@@ -255,7 +255,13 @@ describe("a kind's list", () => {
     const onPlay = vi.fn()
     const view = kindOf("studio", "studio", HOME, [], NOW)
     render(
-      <MyDataKind view={view} playing={null} onPlay={onPlay} onStop={vi.fn()} />
+      <MyDataKind
+        view={view}
+        playing={null}
+        unread={[]}
+        onPlay={onPlay}
+        onStop={vi.fn()}
+      />
     )
     expect(screen.getByText(`3 kept · 3.0 MB · since ${SINCE}`)).toBeTruthy()
     expect(screen.getByText(`${WHERE_WORDS.home} · 2.0 KB`)).toBeTruthy()
@@ -266,7 +272,13 @@ describe("a kind's list", () => {
     cleanup()
     const lens = kindOf("lens", "lens", HOME, PHONE, NOW)
     render(
-      <MyDataKind view={lens} playing={null} onPlay={onPlay} onStop={vi.fn()} />
+      <MyDataKind
+        view={lens}
+        playing={null}
+        unread={[]}
+        onPlay={onPlay}
+        onStop={vi.fn()}
+      />
     )
     fireEvent.click(screen.getByRole("button", { name: /^Play/ }))
     expect(onPlay).toHaveBeenCalledWith("p1")
@@ -290,7 +302,13 @@ describe("a kind's list", () => {
     }
     const view = kindOf("studio", "studio", heard, [], NOW)
     const { rerender } = render(
-      <MyDataKind view={view} playing={null} onPlay={onPlay} onStop={vi.fn()} />
+      <MyDataKind
+        view={view}
+        playing={null}
+        unread={[]}
+        onPlay={onPlay}
+        onStop={vi.fn()}
+      />
     )
     expect(screen.getByText("“I was thinking about the scene”")).toBeTruthy()
     expect(screen.getByText(/^Recorded .* · 42 s long$/)).toBeTruthy()
@@ -302,6 +320,7 @@ describe("a kind's list", () => {
       <MyDataKind
         view={view}
         playing="t1"
+        unread={[]}
         fetching
         onPlay={onPlay}
         onStop={vi.fn()}
@@ -315,6 +334,7 @@ describe("a kind's list", () => {
       <MyDataKind
         view={view}
         playing={null}
+        unread={[]}
         missed="t1"
         onPlay={onPlay}
         onStop={vi.fn()}
@@ -331,6 +351,7 @@ describe("deleting from a kind's list (MD3)", () => {
       <MyDataKind
         view={kindOf("studio", "studio", HOME, [], NOW)}
         playing={null}
+        unread={[]}
         onPlay={vi.fn()}
         onStop={vi.fn()}
         onDelete={onDelete}
@@ -346,6 +367,7 @@ describe("deleting from a kind's list (MD3)", () => {
       <MyDataKind
         view={kindOf("studio", "studio", home, [], NOW)}
         playing={null}
+        unread={[]}
         onPlay={vi.fn()}
         onStop={vi.fn()}
         onDelete={onDelete}
@@ -386,7 +408,52 @@ describe("deleting from a kind's list (MD3)", () => {
       />
     )
     expect(screen.queryByText(DELETING.row)).toBeNull()
-    expect(screen.getByText(DELETING.waitsOnStudio)).toBeTruthy()
+    expect(screen.getByText(DELETING.waitsOn("studio"))).toBeTruthy()
+  })
+
+  it("offers no Studio row while this phone's read isn't in, and says it is reading", () => {
+    render(
+      <MyDataKind
+        view={kindOf("studio", "studio", DELETABLE, [], NOW)}
+        playing={null}
+        onPlay={vi.fn()}
+        onStop={vi.fn()}
+        unread={null}
+        onDelete={vi.fn()}
+      />
+    )
+    expect(screen.queryByText(DELETING.row)).toBeNull()
+    expect(screen.getByText(MY_DATA.phoneReading)).toBeTruthy()
+  })
+
+  it("offers a kind that waits on no store while this phone's read isn't in", () => {
+    render(
+      <MyDataKind
+        view={kindOf("reflection", "reflection", DELETABLE, [], NOW)}
+        playing={null}
+        onPlay={vi.fn()}
+        onStop={vi.fn()}
+        unread={null}
+        onDelete={vi.fn()}
+      />
+    )
+    expect(screen.getAllByText(DELETING.row).length).toBeGreaterThan(0)
+  })
+
+  it("offers Delete… on a take of another kind home marks deletable (HEARD5)", () => {
+    const onDelete = vi.fn()
+    render(
+      <MyDataKind
+        view={kindOf("reflection", "reflection", DELETABLE, [], NOW)}
+        playing={null}
+        unread={[]}
+        onPlay={vi.fn()}
+        onStop={vi.fn()}
+        onDelete={onDelete}
+      />
+    )
+    fireEvent.click(screen.getAllByText(DELETING.row)[0])
+    expect(onDelete).toHaveBeenCalledWith("reflection", [expect.any(String)])
   })
 })
 

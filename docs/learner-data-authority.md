@@ -1733,7 +1733,10 @@ owner's comment: "I should be able to delete them"): Takes › Needs your
 attention (HEARD3, #3075) opens My data's sheet, with its words and its
 receipt, on one take home couldn't hear well; of any kind since the
 owner's answer on 2026-11-16 (#3076: "allow delete for any kind home
-couldn't hear"; HEARD4, #3079). A draft, something
+couldn't hear"; HEARD4, #3079). My data's own rows offer that delete too
+since the owner's answer on 2026-11-17 (paulgsc/server#919, recorded on
+#3070: "yes, My data should offer the unheard delete too"; HEARD5, #3084,
+C460). A draft, something
 still being made that hasn't gone home (a retake, an unsent idea answer's
 Delete), is deleted where it was made, and that delete is the phone's
 alone.
@@ -1777,14 +1780,20 @@ reaches:
   `phoneDeleting()`. Before that button, the sheet shows `DELETING.goes`
   and `DELETING.stays`, with "Keep it" first. A sheet is asked (`asked`)
   only for recordings `offersDelete` passes, or, on Needs your attention,
-  for one take whose kind `reconcileDeletes` (`lib/my-data/deleting.ts`)
-  passes: every kind in `RECONCILE_LETS_GO` (the owner, #3076), each of
-  which this phone lets go of its own copy of (`lib/home-link/voice-copy`'s
-  `DELETED_LETS_GO`). The page lists only takes home couldn't hear, and
-  home deletes such a take of any kind (paulgsc/server#912); a take of a
-  kind home keeps for good that home heard, or any take a home before
-  #912 holds, is answered `409`, which the sheet says, and nothing goes.
-  My data's own rows offer only `PHONE_LETS_GO`'s `studio`. Every other delete of a recording on the phone (a
+  for one take of a kind this build knows (`isKind`, `lib/my-data/model.ts`).
+  Both offer every kind (the owner, #3076 and server#919), each of which
+  this phone lets go of its own copy of (`lib/home-link/voice-copy`'s
+  `DELETED_LETS_GO`). The page lists only
+  takes home couldn't hear, and home deletes such a take of any kind
+  (paulgsc/server#912); a take of a kind home keeps for good that home
+  heard, or any take a home before #912 holds, is answered `409`, which
+  the sheet says, and nothing goes. My data's own rows offer only what
+  home's list marks `deletable` (`lib/my-data/model.ts`, false when home
+  says nothing and for a recording only this phone holds): Studio's
+  recordings, and since paulgsc/server#919 a take of any kind home
+  couldn't hear; a home before #919 marks only Studio's. A Studio or
+  soundbite row is offered only once this phone's read says its store is
+  handed in (`offersDelete`'s `unread`, null until read). Every other delete of a recording on the phone (a
   draft's) neither imports the link or My data nor calls `deleteNotes`, and
   none sits in a module that reaches the link; what it reaches past its own
   file is LA20's. Likewise a call week's step: `deleteCallStep` is called
@@ -1802,19 +1811,26 @@ reaches:
   - a hunk to `deleting.ts` that lets `stepDeleting` reach `deleting` from
     any sheet but `asking`, or any `ended` sheet's notes but `retryable`'s;
     widens `retryable` to a final answer (`kept`, `notHeld`, `forgotten`);
-    lets `asked` open on a kind not in `RECONCILE_LETS_GO`; or widens
-    `offersDelete` past home's `deletable` or `PHONE_LETS_GO`;
+    or widens `offersDelete` past home's `deletable`, or past a store not
+    handed in or not known yet (`WAITS_ON_STORE`, `unread`);
   - a hunk that calls a `Deleting`'s `confirm` from anything but
     `DeleteSheetView`'s `onConfirm`, or `ask` with recordings
     `offersDelete` refuses (`components/settings/device-my-data.tsx`'s
     `MyDataKind` and its `?note=` opening), or, on Needs your attention,
-    with more than the one take tapped or with a take `reconcileDeletes`
-    refuses; or a hunk to `deleting.ts` that adds a kind to
-    `PHONE_LETS_GO` (My data's rows, which home's `deletable` also gates),
-    re-checked against home's `SWITCHED_ON` (paulgsc/server
-    `crates/db/voice/src/delete.rs`); or a hunk to `voice-home/model.ts`
-    that adds a kind to `VOICE_OFS`, which `RECONCILE_LETS_GO` (`KINDS`)
-    then offers to delete, re-checked against home's delete; or a hunk to
+    with more than the one take tapped or with a take `isKind` refuses;
+    or a hunk to `my-data/model.ts` that makes `deletable` true where home
+    didn't say so (its default, or a recording only this phone holds); or
+    a hunk to `my-data/index.ts` whose `readPhone` reads a store as handed
+    in that isn't; or a hunk to `device-my-data.tsx` that hands `MyDataKind`, or
+    `KindList`'s `?note=` check, an `unread` other than this phone's read
+    (null until it is in); or a hunk to `device-my-data.tsx` that
+    makes `MyDataKind`'s `unread` optional or defaults it, or passes
+    `offersDelete` anything but it; or a hunk to `voice-copy.ts` that changes which
+    kinds `readyToLetGo` waits on a handed-in store for without the same
+    change to `deleting.ts`'s `WAITS_ON_STORE`; or a hunk to `voice-home/model.ts` that adds a kind to
+    `VOICE_OFS`, which both pages then offer to delete, re-checked against home's delete and its list's `deletable`
+    (paulgsc/server `crates/db/voice/src/delete.rs` and `kept.rs`); or a
+    hunk to
     `voice-copy.ts` that makes a kind's `DELETED_LETS_GO` let go of more than
     the copies its receipt names, resolve true while a store kept its copy,
     or drop more of a kind's record than its audio where its store keeps
@@ -1849,7 +1865,9 @@ reaches:
   `apps/www/src/components/settings/device-my-data.tsx`,
   `device-my-data-delete.tsx` and `device-my-data-calls.tsx`,
   `apps/www/src/routes/_dashboard/_apk/journal/takes/attention.tsx`,
-  `apps/www/src/lib/home-link/voice-copy.ts` (`DELETED_LETS_GO`) and
+  `apps/www/src/lib/my-data/model.ts` (`deletable`),
+  `apps/www/src/lib/home-link/voice-copy.ts` (`DELETED_LETS_GO`,
+  `readyToLetGo`) and
   `apps/www/src/lib/voice-home/model.ts` (`VOICE_OFS`). For a draft's delete: every module in
   `apps/www` and `packages` that deletes a recording on the phone.
 - _Why not enforced:_
@@ -1878,12 +1896,24 @@ reaches:
       of what home kept, not a draft.
     - Amended for Needs your attention (HEARD3, #3075), read the same
       way: its route calls `ask(take.of, [take.id])` only from a take's
-      Delete…, which `TakeReconcile` shows only where `isDeletableKind`
-      passes (`reconcileDeletes` since HEARD4, #3079, read the same way),
+      Delete…, which `TakeReconcile` shows only where `isKind` passes
+      (`reconcileDeletes` from HEARD4, #3079, to HEARD5, #3084, read the
+      same way),
       and passes `confirm` only to `DeleteSheetView`'s `onConfirm`
       (through `useDeleting`, beside it); it imports neither `delete-note`
       nor `createDeleting`. What home deleted reaches the
       page by `hearDeletes`, which hears the ids of each receipt.
+    - Amended for My data's rows on any kind (HEARD5, #3084, C460), read
+      the same way: `PHONE_LETS_GO` and `RECONCILE_LETS_GO` went, every
+      kind being offered; `MyDataKind` still asks only for ids
+      `offersDelete` passes and `KindList`'s `?note=` effect still runs
+      only where it passes; `offersDelete` still requires home's
+      `deletable` (`model.ts` defaults it false and sets it false for a
+      phone-only recording), which a home before paulgsc/server#919 sets
+      on Studio's recordings alone, and refuses a Studio or soundbite row
+      until `KindList` has this phone's read (`unread` null before it) and
+      that read says the store is handed in; a failed read names every
+      store not handed in (`readPhone`).
     - The phone's draft deletes (Studio's retake and take removal, an idea
       answer's Delete, the soundbites', lens and LeetType desks' and Rust
       Rounds' deletes, the reflection and scene voice budgets) live in

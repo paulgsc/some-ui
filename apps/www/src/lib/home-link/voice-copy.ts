@@ -1139,7 +1139,8 @@ const DELETED_LETS_GO: Readonly<Record<VoiceOf, LetsGoDeleted>> = {
 /**
  * Whether this launch can let go of its copies of kind `of`: Studio's and
  * the soundbites' once their page has handed its store in, every other
- * kind's at once (HEARD4).
+ * kind's at once (HEARD4). My data's `WAITS_ON_STORE` names the same kinds
+ * (LA19).
  */
 function readyToLetGo(of: VoiceOf): boolean {
   if (of === "studio") return studioKeeping() !== null

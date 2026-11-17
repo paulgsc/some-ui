@@ -49,7 +49,6 @@ import type {
   ReceiptsState,
 } from "@/lib/my-data"
 import {
-  isDeletableKind,
   isKind,
   kindOf,
   offersDelete,
@@ -415,7 +414,7 @@ export const MyDataKind = ({
   missed = null,
   onPlay,
   onStop,
-  unread = [],
+  unread,
   onDelete,
 }: {
   view: KindView
@@ -426,8 +425,12 @@ export const MyDataKind = ({
   missed?: MyDataState["missed"]
   onPlay: (id: string) => void
   onStop: () => void
-  /** This kind's store, when its recordings on this phone aren't counted yet. */
-  unread?: PhoneRead["unread"]
+  /**
+   * This kind's store, when its recordings on this phone aren't counted yet;
+   * null while this phone's read isn't in, which offers no Studio or
+   * soundbite row for deleting.
+   */
+  unread: PhoneRead["unread"] | null
   /** Opens the delete sheet on `ids`; without it, nothing offers Delete…. */
   onDelete?: (of: DeletableKind, ids: ReadonlyArray<string>) => void
 }): JSX.Element => {
@@ -435,18 +438,17 @@ export const MyDataKind = ({
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
   const { of } = view
   const offered =
-    onDelete === undefined || !isDeletableKind(of)
+    onDelete === undefined
       ? []
       : view.items.filter((item) => offersDelete(of, item, unread))
   const offers = new Set(offered.map((item) => item.id))
-  const waits =
-    onDelete !== undefined &&
-    offered.length === 0 &&
-    view.items.some((item) => item.deletable) &&
-    unread.some((store) => store === of)
+  const waitsOn =
+    onDelete !== undefined && view.items.some((item) => item.deletable)
+      ? (unread?.find((store) => store === of) ?? null)
+      : null
   const chosen = [...selected].filter((id) => offers.has(id))
   const ask = (ids: ReadonlyArray<string>): void => {
-    if (onDelete !== undefined && isDeletableKind(of)) onDelete(of, ids)
+    if (onDelete !== undefined) onDelete(of, ids)
   }
   const removeOf = (item: KindItem): RowDelete => {
     if (!offers.has(item.id)) return { kind: "none" }
@@ -466,8 +468,15 @@ export const MyDataKind = ({
   return (
     <div className="space-y-4">
       <Status line={homeLine(view.home)} />
-      <Status line={unreadLine(unread)} />
-      {waits ? <Status line={DELETING.waitsOnStudio} /> : null}
+      <Status
+        line={
+          unread === null
+            ? MY_DATA.phoneReading
+            : waitsOn === null
+              ? unreadLine(unread)
+              : DELETING.waitsOn(waitsOn)
+        }
+      />
       {missed === null ? null : (
         <Notice key={missed} tone="warning" role="alert" dismissible>
           {MY_DATA.kind.missed}
@@ -624,16 +633,16 @@ const KindList = ({
     state.phone?.notes ?? [],
     new Date()
   )
-  const unread = (state.phone?.unread ?? []).filter((store) => store === of)
+  const unread =
+    state.phone === null
+      ? null
+      : state.phone.unread.filter((store) => store === of)
   // `?note=` opens the sheet on that recording once, when it offers Delete….
   const opened = useRef<string | null>(null)
   const named = view.items.find((item) => item.id === note)
-  const offersNamed =
-    named !== undefined &&
-    isDeletableKind(of) &&
-    offersDelete(of, named, unread)
+  const offersNamed = named !== undefined && offersDelete(of, named, unread)
   useEffect(() => {
-    if (note === undefined || !offersNamed || !isDeletableKind(of)) return
+    if (note === undefined || !offersNamed) return
     if (opened.current === note) return
     opened.current = note
     deleting.ask(of, [note])
