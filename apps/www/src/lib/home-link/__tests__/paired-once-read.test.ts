@@ -19,14 +19,18 @@
  *   pairing, none, one lost, one it can't read).
  * - _Proof:_ these tests. Each ask is started in a fresh page while the
  *   record's read is held, and must neither answer nor send until it ends;
- *   a pairing then sends its request, and no pairing answers unpaired with
+ *   a pairing then sends its request, and no pairing (none, lost, a record
+ *   that won't parse, or a read that itself fails) answers unpaired with
  *   nothing sent. The last test fails on a file in `lib/home-link` that
  *   answers unpaired on the bare `paired()`, so a new ask can't copy the old
  *   gate.
  * - _Tolerance:_ the ask waits as long as the record's read, at most
  *   `./credential`'s 5 s. The link's watchers (`./kept-watch`,
  *   `./practice-reads`, `./lanes`) read `paired()` as it stands and run
- *   again when the link changes, so they are outside this family.
+ *   again when the link changes, so they are outside this family. The scan
+ *   catches the old gate as it was written (`if (!paired())` beside an
+ *   unpaired answer, in this folder); a new ask gated another way is held
+ *   only once it joins `ASKS`.
  *
  * Relates: none (New). The asks were each written to read `paired()` as
  * it stood, which a screen opened from the app's launcher only ever read
@@ -202,6 +206,33 @@ describe("a one-shot ask as a page opens (PO1)", () => {
       }
     })
   }
+
+  it("says unpaired, sending nothing, once the record's read itself fails", async () => {
+    for (const { ask } of ASKS) {
+      vi.resetModules()
+      let fail: (error: Error) => void = () => undefined
+      const held = new Promise<Read>((_resolve, reject) => {
+        fail = reject
+      })
+      home.read = (): Promise<Read> => held
+      let settled = false
+      const asking = ask().then((outcome) => {
+        settled = true
+        return outcome
+      })
+      await ticks(2)
+      expect(settled).toBe(false)
+      // The phone couldn't read its record (its key gone, say).
+      fail(new Error("unreadable"))
+      const outcome = await asking
+      expect(home.sent).toHaveLength(0)
+      expect([
+        { kind: "unpaired" },
+        { kind: "unreachable" },
+        null,
+      ]).toContainEqual(outcome)
+    }
+  })
 
   it("asks at once once the record was read before", async () => {
     home.read = (): Promise<Read> => Promise.resolve(PAIRING)
