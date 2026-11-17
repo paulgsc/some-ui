@@ -1,13 +1,14 @@
 /** A pull's check of a screen that reads home (HERD2, `../refresh`). */
+import type { ReadKind } from "@soundbites/lib/refresh"
 import { checkAgainOf } from "@soundbites/lib/refresh"
 import { describe, expect, it } from "vitest"
 
-type Screen = { seq: number; read: { kind: string } }
+type Screen = { seq: number; read: { kind: ReadKind } }
 
 /** A screen whose `readAgain` starts read `seq + 1`, answered when the test says. */
 function screen(): {
   readonly view: Parameters<typeof checkAgainOf>[0]
-  readonly answer: (kind: string) => void
+  readonly answer: (kind: ReadKind) => void
   readonly asked: () => number
 } {
   let state: Screen = { seq: 0, read: { kind: "read" } }
@@ -45,8 +46,8 @@ describe("a pull's check of a screen (HERD2)", () => {
     await expect(checked).resolves.toBeUndefined()
   })
 
-  it("rejects when the read found home away, or an answer it could not read (home busy among them)", async () => {
-    for (const kind of ["away", "unreadable"]) {
+  it("rejects when the read brought nothing to show: home away, an answer it could not read (home busy among them), or a home too old", async () => {
+    for (const kind of ["away", "unreadable", "older"] as const) {
       const page = screen()
       const checked = checkAgainOf(page.view)()
       page.answer(kind)
@@ -54,13 +55,11 @@ describe("a pull's check of a screen (HERD2)", () => {
     }
   })
 
-  it("resolves on an answer that is not a failure to check: unpaired, or an older home", async () => {
-    for (const kind of ["unpaired", "older"]) {
-      const page = screen()
-      const checked = checkAgainOf(page.view)()
-      page.answer(kind)
-      await expect(checked).resolves.toBeUndefined()
-    }
+  it("resolves when the phone isn't paired: there is no home to check", async () => {
+    const page = screen()
+    const checked = checkAgainOf(page.view)()
+    page.answer("unpaired")
+    await expect(checked).resolves.toBeUndefined()
   })
 
   it("resolves once a newer read replaced it: that one answers for itself", async () => {

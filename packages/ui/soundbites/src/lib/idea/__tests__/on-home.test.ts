@@ -184,6 +184,50 @@ describe("home's words for a said answer, kept on the phone (ST26 c)", () => {
   })
 })
 
+describe("a pull on Ideas on home (HERD2)", () => {
+  it("is done once both the ideas and the lists are read again, and failed if either could not be", async () => {
+    const storage = inMemoryStorage()
+    const listsAnswers: Array<"read" | "away"> = ["read", "away", "read"]
+    const home: IdeasHome = {
+      ideas: () =>
+        Promise.resolve({ kind: "read", value: { ideas: [], more: false } }),
+      lists: () =>
+        Promise.resolve(
+          listsAnswers.shift() === "away"
+            ? { kind: "away" }
+            : { kind: "read", value: { topics: [], keywords: [] } }
+        ),
+      furnish: vi.fn(),
+      setAside: vi.fn(),
+      entry: vi.fn(),
+    }
+    const pulled: { check: (() => Promise<void>) | null; dropped: boolean } = {
+      check: null,
+      dropped: false,
+    }
+    const runtime = createIdeasOnHome({
+      home,
+      ideas: keptIdeaStore(() => storage),
+      lists: keptIdeaLists(() => storage),
+      refresh: ({ checkAgain }) => {
+        pulled.check = checkAgain
+        return (): void => {
+          pulled.dropped = true
+        }
+      },
+    })
+    const detach = runtime.attach(true)
+    await vi.waitFor(() =>
+      expect(runtime.getSnapshot().lists.kind).toBe("read")
+    )
+    // The ideas read again, the lists away: the pull could not check.
+    await expect(pulled.check?.()).rejects.toThrow("away")
+    await expect(pulled.check?.()).resolves.toBeUndefined()
+    detach()
+    expect(pulled.dropped).toBe(true)
+  })
+})
+
 describe("the lists as home last said them, for New idea (ST26 c)", () => {
   it("are kept from each change home takes, not only from a read", async () => {
     const storage = inMemoryStorage()

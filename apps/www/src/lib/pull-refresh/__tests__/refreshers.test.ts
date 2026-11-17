@@ -172,25 +172,50 @@ describe("the refresh port", () => {
     expect(feed.calls()).toBe(2)
   })
 
-  it("asks afresh a refresher whose check has been out longer than a pull may take, dropping the late answer (HERD2)", async () => {
-    let now = 0
-    const refreshers = createRefreshers(() => now)
-    const hung = held("the feed")
-    refreshers.register(hung)
-    const first = refreshers.checkAll()
-    await started()
-    expect(hung.calls()).toBe(1)
-    now = CHECK_MS - 1
-    void refreshers.checkAll()
-    await started()
-    expect(hung.calls()).toBe(1)
-    now = CHECK_MS
-    const fresh = refreshers.checkAll()
-    await started()
-    expect(hung.calls()).toBe(2)
-    // Both answers come; each pull hears its own, and the next is asked anew.
-    hung.answer()
-    expect(await fresh).toEqual([])
-    expect(await first).toEqual([])
+  it("asks afresh a refresher whose check has been out longer than a pull may take, in either order of the two answers, and a pull after joins the fresh one (HERD2)", async () => {
+    for (const lateFirst of [true, false]) {
+      let now = 0
+      const refreshers = createRefreshers(() => now)
+      // Each check waits until the test answers it, one by one.
+      const checks: Array<{ ok: () => void; fail: () => void }> = []
+      refreshers.register({
+        what: "the feed",
+        checkAgain: () =>
+          new Promise<void>((resolve, reject) =>
+            checks.push({ ok: resolve, fail: () => reject(new Error("x")) })
+          ),
+      })
+      const first = refreshers.checkAll()
+      await started()
+      now = CHECK_MS - 1
+      void refreshers.checkAll()
+      await started()
+      expect(checks).toHaveLength(1)
+      now = CHECK_MS
+      const fresh = refreshers.checkAll()
+      await started()
+      expect(checks).toHaveLength(2)
+      const [late, newer] = checks
+      if (lateFirst) {
+        // The late answer first: it must not end the fresh one's hold.
+        late.fail()
+        expect(await first).toEqual(["the feed"])
+        const joined = refreshers.checkAll()
+        await started()
+        expect(checks).toHaveLength(2)
+        newer.ok()
+        expect(await fresh).toEqual([])
+        expect(await joined).toEqual([])
+      } else {
+        newer.ok()
+        expect(await fresh).toEqual([])
+        late.fail()
+        expect(await first).toEqual(["the feed"])
+        // Neither is out now: the next pull asks again.
+        void refreshers.checkAll()
+        await started()
+        expect(checks).toHaveLength(3)
+      }
+    }
   })
 })

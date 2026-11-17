@@ -7,7 +7,7 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { BundleTakes } from "@some-ui/voice-capture"
-import type { Refresh } from "@soundbites/lib/refresh"
+import type { ReadKind, Refresh } from "@soundbites/lib/refresh"
 import { checkAgainOf } from "@soundbites/lib/refresh"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 
@@ -98,6 +98,18 @@ export type OnHomeRuntime = {
   readonly dispatch: (intent: OnHomeIntent) => void
   /** The screen is showing, on the lists when `lists`. Returns the detach. */
   readonly attach: (lists: boolean) => () => void
+}
+
+/**
+ * How a pull's read again stands: `readAgain` reads both the ideas and the
+ * lists, and either may be on screen, so it is done once both are, and
+ * failed if either brought nothing to show (HERD2).
+ */
+function bothRead(state: OnHomeState): { readonly kind: ReadKind } {
+  const reads = [state.ideas, state.lists]
+  const unfinished = reads.find(({ kind }) => kind === "reading")
+  if (unfinished !== undefined) return unfinished
+  return reads.find(({ kind }) => kind !== "read") ?? state.ideas
 }
 
 export function createIdeasOnHome(ports: OnHomePorts): OnHomeRuntime {
@@ -329,7 +341,7 @@ export function createIdeasOnHome(ports: OnHomePorts): OnHomeRuntime {
       const unpull = ports.refresh?.({
         what: STUDIO_WORDS.onHome.pullWhat,
         checkAgain: checkAgainOf({
-          getSnapshot: () => ({ seq: state.seq, read: state.ideas }),
+          getSnapshot: () => ({ seq: state.seq, read: bothRead(state) }),
           subscribe,
           readAgain: () => send({ type: "readAgain" }),
         }),

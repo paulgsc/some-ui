@@ -11,22 +11,31 @@ export type Refresh = (refresher: {
   readonly checkAgain: () => Promise<void>
 }) => () => void
 
+/** How a screen's read of home stands: every kind the three screens' reads end in. */
+export type ReadKind =
+  | "reading"
+  | "read"
+  | "unpaired"
+  | "older"
+  | "away"
+  | "unreadable"
+
 /** A screen's runtime whose `readAgain` starts its read of home, numbered `seq`. */
 export type ReadsAgain = {
   readonly getSnapshot: () => {
     readonly seq: number
-    readonly read: { readonly kind: string }
+    readonly read: { readonly kind: ReadKind }
   }
   readonly subscribe: (listener: () => void) => () => void
   readonly readAgain: () => void
 }
 
 /**
- * What a read that could not be done ends as: home away, or an answer this
- * phone could not read (home busy or overloaded among them). Unpaired and
- * an older home are answers, not failures to check.
+ * What a read that brought nothing to show ends as: home away, an answer
+ * this phone could not read (home busy or overloaded among them), or a home
+ * too old to answer. Unpaired is no home to check, so not a failure.
  */
-const UNREAD: ReadonlySet<string> = new Set(["away", "unreadable"])
+const UNREAD: ReadonlySet<ReadKind> = new Set(["away", "unreadable", "older"])
 
 /**
  * A pull's check of `screen` (HERD2, #3102): asks its read again, and
