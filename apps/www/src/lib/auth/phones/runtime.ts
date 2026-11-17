@@ -53,8 +53,12 @@ export function createPhones(ports: PhonesPorts): Phones {
       (phones) => {
         if (asked === reads) dispatch({ type: "read", phones })
       },
-      () => {
-        if (asked === reads) dispatch({ type: "readFailed" })
+      (error: unknown) => {
+        if (asked !== reads) return
+        dispatch({
+          type: "readFailed",
+          signedOut: ports.refusalOf(error) === "signedOut",
+        })
       }
     )
   }

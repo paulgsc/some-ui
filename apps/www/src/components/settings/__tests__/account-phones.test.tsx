@@ -162,6 +162,40 @@ describe("the lan web's paired phones", () => {
     expect(home.asked).toEqual(["list"])
   })
 
+  it("says so when this browser's sign-in with home has ended", async () => {
+    const ports: PhonesPorts = {
+      ...fakeHome([PIXEL]).ports,
+      list: (): Promise<ReadonlyArray<Phone>> =>
+        Promise.reject(new FileHostResponseError(401, "/auth/phones", null)),
+    }
+    render(<AccountPhones make={() => createPhones(ports)} />)
+    expect(
+      await screen.findByText(
+        "This browser isn't signed in to home anymore. Sign in again to change your phones."
+      )
+    ).toBeTruthy()
+  })
+
+  it("keeps focus in the name field when home refuses the name", async () => {
+    const home = fakeHome([OLD])
+    const ports: PhonesPorts = {
+      ...home.ports,
+      rename: (id): Promise<void> =>
+        Promise.reject(
+          new FileHostResponseError(422, `/auth/phones/${id}`, null)
+        ),
+    }
+    render(<AccountPhones make={() => createPhones(ports)} />)
+    fireEvent.click(await screen.findByRole("button", { name: "Rename" }))
+    const field = screen.getByLabelText("Name")
+    fireEvent.change(field, { target: { value: "Kitchen" } })
+    fireEvent.submit(field)
+    await screen.findByText(/^Home can't keep that name/, {
+      selector: "[data-notice] *",
+    })
+    expect(document.activeElement).toBe(screen.getByLabelText("Name"))
+  })
+
   it("says when home didn't give a list, and reads again on Try again", async () => {
     let fail = true
     const ports: PhonesPorts = {

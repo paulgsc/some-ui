@@ -27,12 +27,23 @@ describe("the phone list (model)", () => {
   it("shows what was read, and keeps it shown when a later read fails", () => {
     expect(phonesOf(INITIAL.list)).toBeNull()
     expect(phonesOf(LISTED.list)).toEqual([A, B])
-    const failed = step(LISTED, { type: "readFailed" })
-    expect(failed.list).toEqual({ kind: "unread", phones: [A, B] })
-    expect(step(INITIAL, { type: "readFailed" }).list).toEqual({
+    const failed = step(LISTED, { type: "readFailed", signedOut: false })
+    expect(failed.list).toEqual({
+      kind: "unread",
+      phones: [A, B],
+      signedOut: false,
+    })
+    expect(
+      step(INITIAL, { type: "readFailed", signedOut: false }).list
+    ).toEqual({
       kind: "unread",
       phones: null,
+      signedOut: false,
     })
+    // Home refused it as this browser's sign-in ended: said so.
+    expect(
+      step(LISTED, { type: "readFailed", signedOut: true }).list
+    ).toMatchObject({ kind: "unread", signedOut: true })
   })
 
   it("names a phone: starts from its name, saves, and says so", () => {
@@ -129,7 +140,7 @@ describe("the phone list (model)", () => {
   })
 
   it("shows a rename or sign-out on a list whose last read failed, still marked so", () => {
-    const unread = step(LISTED, { type: "readFailed" })
+    const unread = step(LISTED, { type: "readFailed", signedOut: false })
     const out = run(
       [
         { type: "signOutPressed", id: "b" },
@@ -138,7 +149,7 @@ describe("the phone list (model)", () => {
       ],
       unread
     )
-    expect(out.list).toEqual({ kind: "unread", phones: [A] })
+    expect(out.list).toEqual({ kind: "unread", phones: [A], signedOut: false })
     const named = run(
       [
         { type: "renamePressed", id: "a" },

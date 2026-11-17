@@ -64,7 +64,9 @@ const PhoneRow = ({
             // press, never on a page load (it appears only after one).
             ref={takeFocus}
             value={text}
-            disabled={doing.kind === "saving"}
+            // Read-only, not disabled, while it saves: the field keeps focus,
+            // so a name home refused is there to fix where the keys are.
+            readOnly={doing.kind === "saving"}
             onChange={(event) => phones.typed(event.target.value)}
           />
           <p className="text-muted-foreground text-xs">
@@ -181,7 +183,11 @@ export const AccountPhones = ({
       {list.kind === "unread" ? (
         <div className="space-y-2">
           <p className="text-muted-foreground text-sm">
-            {shown === null ? PHONES.unreadNone : PHONES.unreadSome}
+            {list.signedOut
+              ? PHONES.signedOutHere
+              : shown === null
+                ? PHONES.unreadNone
+                : PHONES.unreadSome}
           </p>
           <Button
             type="button"

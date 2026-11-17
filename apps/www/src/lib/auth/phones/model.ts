@@ -31,6 +31,8 @@ export type List =
   | {
       readonly kind: "unread"
       readonly phones: ReadonlyArray<Phone> | null
+      /** Home refused it because this browser's sign-in has ended. */
+      readonly signedOut: boolean
     }
 
 /** What the owner is doing to one phone. */
@@ -84,7 +86,7 @@ export const INITIAL: PhonesState = {
 export type PhonesEvent =
   | { readonly type: "readStarted" }
   | { readonly type: "read"; readonly phones: ReadonlyArray<Phone> }
-  | { readonly type: "readFailed" }
+  | { readonly type: "readFailed"; readonly signedOut: boolean }
   | { readonly type: "renamePressed"; readonly id: string }
   | { readonly type: "typed"; readonly text: string }
   /** The owner pressed Save with a name `lib/phone-name` took. */
@@ -136,6 +138,7 @@ function withPhone(
   change: (phone: Phone) => Phone | null
 ): List {
   const shown = phonesOf(list)
+  // `reading` lists nothing; the kind check narrows the spread below.
   if (shown === null || list.kind === "reading") return list
   const phones = shown.flatMap((phone) => {
     if (phone.id !== id) return [phone]
@@ -171,7 +174,11 @@ export function step(state: PhonesState, event: PhonesEvent): PhonesState {
     case "readFailed": {
       return {
         ...state,
-        list: { kind: "unread", phones: phonesOf(state.list) },
+        list: {
+          kind: "unread",
+          phones: phonesOf(state.list),
+          signedOut: event.signedOut,
+        },
       }
     }
     case "renamePressed": {
