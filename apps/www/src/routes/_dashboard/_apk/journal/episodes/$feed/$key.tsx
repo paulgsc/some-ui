@@ -16,21 +16,31 @@ const Episode =
 /**
  * One episode of a feed (SFEED1, #2731): watch it, share it to YouTube and
  * save its link (ST38, FEED4), under the feed's name and the episode's days
- * or week.
+ * or week; opened from a note's take, at the note's moment (`?at=`, TAKES2).
  */
 const EpisodePage = (): JSX.Element => {
   const { feed, key }: { feed: Feed; key: string } = Route.useParams()
+  const { at }: EpisodeSearch = Route.useSearch()
   return (
     <StudioPage heading={FEED_FACTS[feed].name} back="episodes">
       {Episode !== null && (
         <Episode
           feed={feed}
           episodeKey={key}
+          startAt={at}
           pair={<PairHomeLink>{STUDIO_WORDS.pair.pair}</PairHomeLink>}
         />
       )}
     </StudioPage>
   )
+}
+
+/** The moment to open at, from the episode's start: a note's (TAKES2). */
+type EpisodeSearch = { at?: number }
+
+function validateEpisodeSearch(search: Record<string, unknown>): EpisodeSearch {
+  const { at } = search
+  return typeof at === "number" && Number.isInteger(at) && at >= 0 ? { at } : {}
 }
 
 export const Route = createFileRoute(
@@ -49,5 +59,6 @@ export const Route = createFileRoute(
       key: string
     }): { feed: string; key: string } => ({ feed, key }),
   },
+  validateSearch: validateEpisodeSearch,
   component: EpisodePage,
 })

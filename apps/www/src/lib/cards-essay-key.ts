@@ -10,11 +10,16 @@ import { CARDS_KEY } from "@some-ui/video-render"
 /** The longest key home keeps an essay under (`cards_essays::pass::MAX_KEY`). */
 const MAX_ESSAY_KEY = 128
 
-export function isEssayKey(key: string): boolean {
-  if (key.length > MAX_ESSAY_KEY || !CARDS_KEY.test(key)) return false
-  const day = key.slice(-10)
+/** Whether `day` is a day the calendar has, as `YYYY-MM-DD`. */
+export function isDay(day: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return false
   const parsed = new Date(`${day}T00:00:00Z`)
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(day)
+}
+
+export function isEssayKey(key: string): boolean {
+  if (key.length > MAX_ESSAY_KEY || !CARDS_KEY.test(key)) return false
+  return isDay(key.slice(-10))
 }
 
 /**

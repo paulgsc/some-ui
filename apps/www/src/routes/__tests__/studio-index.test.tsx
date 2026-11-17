@@ -48,7 +48,8 @@ const link = vi.hoisted(() => {
 })
 vi.mock("@/lib/home-link", async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  paired: (): boolean => link.kind === "paired",
+  pairing: (): object =>
+    link.kind === "paired" ? { kind: "paired", id: "p1" } : { kind: link.kind },
   useHomeLink: (): object => ({ link: { kind: link.kind } }),
 }))
 vi.mock("@/lib/home-link/clips", () => ({ askClipFrame: vi.fn() }))

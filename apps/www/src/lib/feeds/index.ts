@@ -11,6 +11,7 @@ import type { TemplateId } from "@some-ui/video-render"
 export const FEEDS = [
   "call",
   "cards-essay",
+  "interview-essay",
   "playoff-delta",
   "rust-essay",
 ] as const
@@ -18,8 +19,8 @@ export const FEEDS = [
 export type Feed = (typeof FEEDS)[number]
 
 /**
- * The feeds whose episodes take a note (SFEED6): home keeps none on a Rust
- * Rounds essay (`GET /feeds/rust-essay/notes` is its `404`), whose week was
+ * The feeds whose episodes take a note (SFEED6): home keeps none on an
+ * interview essay or a Rust Rounds essay (`GET /feeds/rust-essay/notes` is its `404`), whose week was
  * already answered by voice, nor on a cards essay (its `404` too).
  */
 export const NOTED_FEEDS = [
@@ -40,6 +41,7 @@ export const isNoted = (feed: Feed): feed is NotedFeed =>
 export const LINKED_FEEDS = [
   "call",
   "cards-essay",
+  "interview-essay",
   "playoff-delta",
   "rust-essay",
 ] as const satisfies ReadonlyArray<Feed>
@@ -51,7 +53,8 @@ export const isLinked = (feed: Feed): boolean =>
 /**
  * The feeds whose episodes My data can let go once their link is saved
  * (SFEED8); home answers a cards essay's let-go with `404` until
- * some-ui#2999 builds it.
+ * some-ui#2999 builds it. Home lets an interview essay go too, but My data
+ * has no page for them yet (EPISODES2 added the feed; #3067).
  */
 export const LET_GO_FEEDS = [
   "call",
@@ -74,6 +77,9 @@ export const FEED_TEMPLATES: Readonly<Record<Feed, ReadonlyArray<TemplateId>>> =
   {
     call: ["conference-call"],
     "cards-essay": [],
+    // Drawn with `@some-ui/video-render`'s interview essay, which Studio's
+    // Templates doesn't list yet.
+    "interview-essay": [],
     "playoff-delta": ["playoff-delta-legend", "playoff-delta-week"],
     "rust-essay": ["rust-essay"],
   }

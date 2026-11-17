@@ -45,11 +45,13 @@ export async function syncLessonsFrom(
   const ran = { yes: false }
   try {
     const { context } = await deviceBackend()
-    const outcome = await homeLink().sync((get) => {
+    const outcome = await homeLink().sync(base, (get) => {
       ran.yes = true
       return syncFromHome(context.db, base, get)
     })
-    if (outcome === null) return { ok: false, line: "" }
+    if (outcome.kind === "refused") {
+      return { ok: false, line: syncLine({ kind: "phone-busy" }) }
+    }
     if (outcome.kind === "stopped") {
       return { ok: true, line: syncLine({ kind: "stopped" }) }
     }

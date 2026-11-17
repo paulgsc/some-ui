@@ -7,10 +7,10 @@
  * The one wiring (`./lanes`) hands in each lane's record and its runtime
  * (`./kept-runtime`); this module names no record.
  */
-import { homeLink, LINK_CLOCK, paired, pairingOf } from "./index"
+import { homeLink, LINK_CLOCK, pairing } from "./index"
 import type { KeptRun } from "./kept-model"
 import type { Kept } from "./kept-runtime"
-import { drainFree, linkOpen } from "./model"
+import { drainFree, linkOpen, pairingIn } from "./model"
 
 /** A record as the watch sees it. */
 export type KeptRecord = {
@@ -22,13 +22,21 @@ export type KeptRecord = {
 /** The document as an ask reads it: whether the app is in front. */
 export type Front = Pick<Document, "visibilityState">
 
-/** Whether a run may be asked for: the phone is paired and the app is in front. */
-const mayAsk = (doc: Front): boolean =>
-  paired() && doc.visibilityState === "visible"
+/**
+ * Whether a run may be asked for: the phone is known to be paired (not
+ * while its record is read) and the app is in front.
+ */
+export const mayAsk = (doc: Front): boolean =>
+  pairing().kind === "paired" && doc.visibilityState === "visible"
 
 /** Asks for a run when the phone is paired and the app is in front. */
 export function askKept(home: Kept, doc: Document): void {
   if (mayAsk(doc)) home.want()
+}
+
+/** As `askKept`, through `Kept.nudge`: for a moment that changed nothing on this phone. */
+function nudgeKept(home: Kept, doc: Document): void {
+  if (mayAsk(doc)) home.nudge()
 }
 
 /**
@@ -63,7 +71,7 @@ export function watchKept(
 ): () => void {
   const link = homeLink()
   let revision = record.revision()
-  let wasPaired = pairingOf(link.getSnapshot()) !== null
+  let wasPaired = pairingIn(link.getSnapshot()).kind === "paired"
   let idle = drainFree(link.getSnapshot())
   let open = linkOpen(link.getSnapshot(), LINK_CLOCK.now())
   // Who turned the lane's last run away, while it has not been asked since:
@@ -109,7 +117,7 @@ export function watchKept(
   }
   const onLink = (): void => {
     const state = link.getSnapshot()
-    const nowPaired = pairingOf(state) !== null
+    const nowPaired = pairingIn(state).kind === "paired"
     const nowIdle = drainFree(state)
     const nowOpen = linkOpen(state, LINK_CLOCK.now())
     const run = home.getSnapshot()
@@ -132,7 +140,7 @@ export function watchKept(
     if (ask) askKept(home, doc)
   }
   const onBack = (): void => {
-    askKept(home, doc)
+    nudgeKept(home, doc)
   }
 
   const unsubscribeRecord = record.subscribe(onRecord)
@@ -140,7 +148,7 @@ export function watchKept(
   const unsubscribeLink = link.subscribe(onLink)
   doc.addEventListener("visibilitychange", onBack)
   win.addEventListener("online", onBack)
-  askKept(home, doc)
+  nudgeKept(home, doc)
   return () => {
     stopped = true
     unsubscribeRecord()

@@ -10,7 +10,6 @@ import { FEED_WORDS } from "@/lib/call-videos/words"
 import { lengthOf } from "@/lib/format"
 
 import type { DeletableKind, ReceiptsReading } from "./deleting"
-import { isDeletableKind } from "./deleting"
 import type { Heard, HomeReading, Of, Where } from "./model"
 import { isKind } from "./model"
 import type { RecordHeld, RecordKind, RecordReading } from "./record"
@@ -19,7 +18,7 @@ import type { RecordHeld, RecordKind, RecordReading } from "./record"
 export const KIND_NAMES: Readonly<Record<Of, string>> = {
   studio: "Studio takes and idea answers",
   reflection: "Spoken reflections",
-  game: "Game bites",
+  game: "Recordings from a game",
   leetype: "LeetType answers",
   lens: "Grammar lens takes",
   scene: "Scene notes",
@@ -35,6 +34,7 @@ export const WHERE_WORDS: Readonly<Record<Where, string>> = {
   aside: "Set aside, on home",
   going: "Going home",
   phone: "Only on this phone",
+  unknown: "Not known yet",
 }
 
 /**
@@ -246,6 +246,9 @@ export function itemName(at: string): string {
   return `${onDay(at)}, ${clock.format(new Date(at))}`
 }
 
+/** The page that hands each store in. */
+const STORE_PAGES = { studio: "Studio", soundbite: "Soundbites" } as const
+
 /**
  * Which of this phone's recordings aren't counted yet, and why: a page
  * hands its recordings in when it opens.
@@ -253,9 +256,7 @@ export function itemName(at: string): string {
 export function unreadLine(
   unread: ReadonlyArray<"studio" | "soundbite">
 ): string | null {
-  const pages = unread.map((store) =>
-    store === "studio" ? "Studio" : "Soundbites"
-  )
+  const pages = unread.map((store) => STORE_PAGES[store])
   if (pages.length === 0) return null
   const named = pages.join(" and ")
   return `${named} ${pages.length === 1 ? "hasn't" : "haven't"} been opened since the app started, so ${pages.length === 1 ? "its" : "their"} recordings on this phone aren't counted yet.`
@@ -282,6 +283,9 @@ export function homeLine(home: HomeReading["kind"]): string | null {
     case "unreachable": {
       return "Home didn't answer, so only what isn't on home yet is counted. Drag down to try again."
     }
+    case "busy": {
+      return "This phone was busy with home just then, so only what isn't on home yet is counted. Drag down to try again in a moment."
+    }
     case "older": {
       return "Home can't say what it keeps until it runs a newer version, so only what isn't on home yet is counted."
     }
@@ -296,6 +300,65 @@ export const DELETABLE_NAMES: Readonly<
   Record<DeletableKind, { readonly one: string; readonly many: string }>
 > = {
   studio: { one: "Studio recording", many: "Studio recordings" },
+  reflection: { one: "spoken reflection", many: "spoken reflections" },
+  game: { one: "recording from a game", many: "recordings from games" },
+  leetype: { one: "LeetType answer", many: "LeetType answers" },
+  lens: { one: "grammar lens take", many: "grammar lens takes" },
+  scene: { one: "scene note", many: "scene notes" },
+  soundbite: { one: "soundbite", many: "soundbites" },
+  jobs: { one: "Jobs note", many: "Jobs notes" },
+  "rust-round": { one: "Rust Rounds note", many: "Rust Rounds notes" },
+  interview: { one: "interview take", many: "interview takes" },
+}
+
+/**
+ * What stays on this phone of each kind once home deleted its recording
+ * (HEARD4), one and many: where it was said, as its own page keeps it
+ * (`lib/home-link/voice-copy`'s `letGoDeleted` says what each lets go).
+ */
+const STAYS_HERE: Readonly<
+  Record<DeletableKind, { readonly one: string; readonly many: string }>
+> = {
+  studio: {
+    one: "Its place in Studio: the shot it was taken for, or the idea it answered, which says it was deleted",
+    many: "Each one's place in Studio: the shot it was taken for, or the idea it answered, which says it was deleted",
+  },
+  reflection: {
+    one: "The reflection, in its session, which says its recording was deleted",
+    many: "Each reflection, in its session, which says its recording was deleted",
+  },
+  game: {
+    one: "The game and the moment it was about",
+    many: "Each one's game and the moment it was about",
+  },
+  leetype: {
+    one: "Its place in LeetType: the session and screen it answered",
+    many: "Each one's place in LeetType: the session and screen it answered",
+  },
+  lens: {
+    one: "Its place in the grammar lens: the line it was taken on",
+    many: "Each one's place in the grammar lens: the line it was taken on",
+  },
+  scene: {
+    one: "The scene it was said for",
+    many: "The scenes they were said for",
+  },
+  soundbite: {
+    one: "The soundbite in your list, which says its recording was deleted",
+    many: "Each soundbite in your list, which says its recording was deleted",
+  },
+  jobs: {
+    one: "The Jobs record it was said for",
+    many: "The Jobs record they were said for",
+  },
+  "rust-round": {
+    one: "Its place in Rust Rounds: the card or week ticket it was said on",
+    many: "Each one's place in Rust Rounds: the card or week ticket it was said on",
+  },
+  interview: {
+    one: "Its place in the interview week: the question or card it answered",
+    many: "Each one's place in the interview week: the question or card it answered",
+  },
 }
 
 /** What went or stayed with a deleted recording, as home's receipt names it. */
@@ -308,6 +371,14 @@ const RECEIPT_PARTS: Readonly<Record<string, string>> = {
   idea: "the idea it answered",
   // Its moves along Studio's conveyor (CONVEYOR1, paulgsc/server#839).
   "conveyor history": "each move it made along the conveyor",
+  // Home's verdict on it, which outlives the recording (HEARD1, C436).
+  verdict: "whether home could make it out",
+  // What the owner chose on Needs your attention, which outlives it too
+  // (HEARD3, server#912).
+  reconciliation:
+    "what you chose to do with it after home couldn't hear it well",
+  // A game note's moment: its scenario, screen and time (server#912).
+  "game bite": "the game moment it was about",
 }
 
 /** A receipt's list of what went or stayed, as a sentence: `the recording and home's words for it`. */
@@ -321,9 +392,9 @@ export function receiptParts(parts: ReadonlyArray<string>): string {
 
 /** What kind a receipt's recording was. */
 export function receiptKind(of: string): string {
-  return isKind(of) && isDeletableKind(of)
-    ? DELETABLE_NAMES[of].one
-    : "Recording"
+  if (!isKind(of)) return "Recording"
+  const name = DELETABLE_NAMES[of].one
+  return name.charAt(0).toUpperCase() + name.slice(1)
 }
 
 /** "Delete…" and the sheet that asks once (MD3, #2477). */
@@ -337,8 +408,8 @@ export const DELETING = {
   deleteSelected: (n: number): string =>
     n === 0 ? "Delete…" : `Delete ${String(n)}…`,
   /** When a kind's store isn't handed in, so its copies can't be let go. */
-  waitsOnStudio:
-    "Studio hasn't been opened since the app started, so its takes can't be deleted here yet.",
+  waitsOn: (store: keyof typeof STORE_PAGES): string =>
+    `${STORE_PAGES[store]} hasn't been opened since the app started, so its recordings on this phone aren't counted yet, and none of its recordings can be deleted here until it is.`,
   title: (of: DeletableKind, n: number): string =>
     n === 1
       ? `Delete this ${DELETABLE_NAMES[of].one} for good?`
@@ -349,16 +420,18 @@ export const DELETING = {
     n === 1
       ? ["The recording, on home and on this phone", "Home's words for it"]
       : ["The recordings, on home and on this phone", "Home's words for them"],
-  stays: (n: number): ReadonlyArray<string> =>
+  stays: (of: DeletableKind, n: number): ReadonlyArray<string> =>
     n === 1
       ? [
-          "Its place in Studio: the shot it was taken for, or the idea it answered, which says it was deleted",
+          STAYS_HERE[of].one,
+          "Whether home could make it out",
           "Any copy of its words already in the Jobs mailbox",
           "Its copy in your Drive, if it has one. This app can't reach Drive: delete it there if you want it gone.",
           "A receipt: what kind it was, when it was recorded, how big it was, and when it was deleted. Never what you said.",
         ]
       : [
-          "Each one's place in Studio: the shot it was taken for, or the idea it answered, which says it was deleted",
+          STAYS_HERE[of].many,
+          "Whether home could make each out",
           "Any copy of their words already in the Jobs mailbox",
           "Their copies in your Drive, if they have any. This app can't reach Drive: delete them there if you want them gone.",
           "A receipt for each: what kind it was, when it was recorded, how big it was, and when it was deleted. Never what you said.",
@@ -438,6 +511,9 @@ export function receiptsLine(home: ReceiptsReading["kind"]): string | null {
     }
     case "unreachable": {
       return "Home didn't answer. Drag down to try again."
+    }
+    case "busy": {
+      return "This phone was busy with home just then. Drag down to try again in a moment."
     }
     case "older": {
       return "Home can't list what was deleted until it runs a newer version."

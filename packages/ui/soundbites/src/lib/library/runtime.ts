@@ -13,7 +13,10 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { Playback, Player, TakePattern } from "@some-ui/voice-capture"
+import type { Refresh } from "@soundbites/lib/refresh"
+import { checkAgainOf } from "@soundbites/lib/refresh"
 
+import type { TakeAbout } from "./compartments"
 import type {
   LibraryEffect,
   LibraryEvent,
@@ -24,6 +27,7 @@ import type {
   LibraryTake,
 } from "./model"
 import { INITIAL_LIBRARY, reachedHome, stepLibrary } from "./model"
+import { LIBRARY_WORDS } from "./words"
 
 /** Home, as Takes on home reads it. Every call resolves. */
 export type TakesHome = {
@@ -60,6 +64,27 @@ export type LibraryPorts = {
   readonly phone?: LibraryPhone | undefined
   /** The phone's moves along the conveyor (CONVEYOR1); absent, none. */
   readonly stations?: LibraryStations | undefined
+  /** What each take was said for, as the phone knows it (TAKES2); absent, its ref says. */
+  readonly about?: LibraryAbout | undefined
+  /** The shell's refresh port: a pull reads the takes again (HERD2); absent, none. */
+  readonly refresh?: Refresh | undefined
+}
+
+/**
+ * What the build knows each take was said for (TAKES2, #3068), from the
+ * stores the phone keeps (a note on an episode names its spoken take; a
+ * video names its scenes), said again on each change it tells of.
+ */
+export type LibraryAbout = {
+  readonly subscribe: (listener: () => void) => () => void
+  /** Changes whenever what `about` says may have. */
+  readonly getSnapshot: () => unknown
+  /**
+   * What take `id` was said for; null when the phone knows nothing more
+   * than its `ref` says (`aboutOfRef`). A take home doesn't have yet has
+   * no ref.
+   */
+  readonly about: (id: string, ref: string | null) => TakeAbout | null
 }
 
 /**
@@ -73,6 +98,15 @@ export type LibraryStations = {
   readonly getSnapshot: () => unknown
   /** What a take's row says of where it stands; null when it's on none. */
   readonly standing: (take: LibraryTake) => string | null
+  /** Every station's name, in the order a take moves along them (TAKES3). */
+  readonly names: ReadonlyArray<string>
+  /**
+   * The name of the station a take is at, and whether it is the shelf
+   * (Canned); null when it's on none.
+   */
+  readonly station: (
+    take: LibraryTake
+  ) => { readonly name: string; readonly canned: boolean } | null
 }
 
 export type LibraryRuntime = {
@@ -180,18 +214,30 @@ export function createTakeLibrary(ports: LibraryPorts): LibraryRuntime {
     }
   }
 
+  const subscribe = (listener: () => void): (() => void) => {
+    listeners.add(listener)
+    return (): void => {
+      listeners.delete(listener)
+    }
+  }
+
   return {
     getSnapshot: () => state,
-    subscribe(listener): () => void {
-      listeners.add(listener)
-      return (): void => {
-        listeners.delete(listener)
-      }
-    },
+    subscribe,
     dispatch: (intent) => send(intent),
     attach(): () => void {
       attached = true
-      const stops = watchPhone()
+      const stops = [
+        ...watchPhone(),
+        ports.refresh?.({
+          what: LIBRARY_WORDS.pullWhat,
+          checkAgain: checkAgainOf({
+            getSnapshot: () => state,
+            subscribe,
+            readAgain: () => send({ type: "readAgain" }),
+          }),
+        }) ?? ((): void => undefined),
+      ]
       send({ type: "entered" })
       return (): void => {
         for (const stop of stops) stop()

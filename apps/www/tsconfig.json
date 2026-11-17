@@ -26,6 +26,7 @@
       "@/build.profiles": ["./build.profiles"],
       "@/build.paths": ["./build.paths"],
       "@/build.minify": ["./build.minify"],
+      "@/build.treeshake": ["./build.treeshake"],
       "@/file-host.dev": ["./file-host.dev"],
       "@/stage-packages": ["./scripts/stage-packages"],
       "@tests/*": ["./tests/*"],

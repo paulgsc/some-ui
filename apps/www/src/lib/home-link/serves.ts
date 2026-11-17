@@ -13,8 +13,8 @@
 import type { Refresher } from "@/lib/pull-refresh/refreshers"
 
 import type { CompatAsked } from "./compat-read"
-import { pairingOf } from "./index"
 import type { HomeLinkState } from "./model"
+import { pairingIn, samePairing } from "./model"
 import type { ServesEvent, ServesState } from "./serves-model"
 import { INITIAL_SERVES, servesOf, step } from "./serves-model"
 
@@ -102,17 +102,18 @@ export function watchServes(
   serves: ServesRun,
   { link, doc }: ServesWatchPorts
 ): () => void {
-  let pairing = pairingOf(link.getSnapshot())
+  let pairing = pairingIn(link.getSnapshot())
   const ask = (why: "start" | "front" | "missing"): void => {
-    if (pairing === null || doc.visibilityState !== "visible") return
+    if (pairing.kind !== "paired" || doc.visibilityState !== "visible") return
     void serves.ask(why)
   }
 
   const onLink = (): void => {
-    const now = pairingOf(link.getSnapshot())
-    if (now !== pairing) {
+    const now = pairingIn(link.getSnapshot())
+    if (!samePairing(now, pairing)) {
       pairing = now
-      if (now === null) serves.forget()
+      // Reading or unpaired: nothing is asked, and nothing known is kept.
+      if (now.kind !== "paired") serves.forget()
       else ask("start")
     } else if (serves.owes() && !serves.getSnapshot().asking) {
       ask("start")

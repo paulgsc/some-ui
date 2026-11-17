@@ -140,8 +140,13 @@ export type JobsRuntime = {
    * (D3); a note the record names stays as it is.
    */
   voice: TakePattern
-  /** Lets each voice note in `homeHolds` leave the phone (LG1). */
-  letGo: (homeHolds: ReadonlySet<string>) => void
+  /**
+   * Lets each voice note in `homeHolds` leave the phone, entry and audio
+   * (LG1): also the let-go of those home deleted for good (LA19), the event
+   * that names each staying in the log. False when the phone couldn't store
+   * that, so the note and its audio stayed.
+   */
+  letGo: (homeHolds: ReadonlySet<string>) => boolean
   /** Audio no note lists (the app closed mid-save). Best effort. */
   sweep: () => void
   /**
@@ -507,15 +512,15 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
         stamp: stamp(),
       }),
     voice,
-    letGo(homeHolds): void {
+    letGo(homeHolds): boolean {
       const ids = state.voice.map((n) => n.id).filter((id) => homeHolds.has(id))
+      if (ids.length === 0) return true
       // An entry the phone couldn't drop keeps its audio, so the voice lane
       // still finds it.
-      if (ids.length === 0 || !commit({ type: "voice-held", ids }, true)) {
-        return
-      }
+      if (!commit({ type: "voice-held", ids }, true)) return false
       // Ignored: audio no note lists is cleared by `sweep`.
       ports.audio.remove(ids).catch(() => undefined)
+      return true
     },
     sweep(): void {
       ports.audio

@@ -11,7 +11,7 @@
  *   nothing. Nothing here lets a video go: home keeps it, and the phone's
  *   cache is the phone's to clear.
  */
-import type { PartRead } from "@/lib/call-videos/model"
+import type { PartAsked } from "@/lib/call-videos/model"
 import { bringVideo, keptCopy } from "@/lib/call-videos/parts"
 import type { VideoFiles } from "@/lib/call-videos/runtime"
 
@@ -20,10 +20,7 @@ import { INITIAL, step } from "./model"
 
 export type EssayVideoPorts = {
   /** Bytes `start` to `end` of the essay's video. */
-  part: (
-    start: number,
-    end: number
-  ) => Promise<PartRead | { readonly kind: "away" }>
+  part: (start: number, end: number) => Promise<PartAsked>
   files: VideoFiles
   partBytes: number
 }

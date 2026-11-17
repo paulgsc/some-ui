@@ -48,8 +48,15 @@ export function memoryStore(initial: ReadonlyArray<Soundbite> = []): {
     store: {
       list: (): Promise<Array<Soundbite>> =>
         Promise.resolve(byNewest([...kept.values()].map((k) => k.bite))),
-      audio: (id): Promise<Blob | null> =>
-        Promise.resolve(kept.get(id)?.audio ?? null),
+      audio: (id): Promise<Blob | null> => {
+        const each = kept.get(id)
+        // One home deleted for good keeps no audio (HEARD4).
+        return Promise.resolve(
+          each === undefined || each.bite.deletedAt !== undefined
+            ? null
+            : each.audio
+        )
+      },
       save: (b, audio, replace, supersedes = null): Promise<void> => {
         const all = [...kept.values()].map((k) => k.bite)
         const leaving = displacedBy(all, replace, homeHoldsNow())
@@ -72,6 +79,18 @@ export function memoryStore(initial: ReadonlyArray<Soundbite> = []): {
             ...each,
             bite: { ...each.bite, standing: "set-aside", setAsideAt: at },
           })
+        changed()
+        return Promise.resolve()
+      },
+      letGoDeleted: (ids, at): Promise<void> => {
+        for (const id of ids) {
+          const each = kept.get(id)
+          if (each === undefined) continue
+          kept.set(id, {
+            ...each,
+            bite: { ...each.bite, deletedAt: each.bite.deletedAt ?? at },
+          })
+        }
         changed()
         return Promise.resolve()
       },

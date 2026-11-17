@@ -1084,10 +1084,13 @@ export const STUDIO_WORDS = {
   onHome: {
     heading: "Ideas on home",
     open: "Ideas on home",
+    /** What a pull down reads again, for "Couldn't check … just now". */
+    pullWhat: "your ideas on home",
     reading: "Asking home…",
     unpaired:
       "This phone isn't paired with home, so it can't show what home keeps.",
     away: "Home can't be reached right now. Try again once you're back in reach.",
+    busy: "This phone was busy with home just then. Try again in a moment.",
     older:
       "Home doesn't keep ideas yet. Once it runs a newer version, the ideas you send show here.",
     unreadable: "Home's answer couldn't be read. Try again in a moment.",
@@ -1161,6 +1164,7 @@ export const STUDIO_WORDS = {
       removed: "Taken off. Ideas that use it keep it.",
       notWritten: "Home didn't take that, so nothing changed.",
       away: "Home can't be reached right now, so nothing changed.",
+      busy: "This phone was busy with home just then, so nothing changed. Try again in a moment.",
       sentAgain:
         "Sent again. It reaches home with its new takes, and the takes they replace are set aside there.",
       sentAgainPartly:

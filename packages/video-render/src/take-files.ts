@@ -20,12 +20,15 @@ const TAKE_WORDS = ".words.json"
  * `<id>.words.json` where home kept them. Refuses, with every reason, a take
  * missing, two for one item, one for an item of `silent` or of neither, and
  * word times with no take, so nothing is drawn from the wrong voice. `noun`
- * names an item in those reasons ("ticket").
+ * names an item in those reasons ("ticket"). A take of an item of `unheard`
+ * (a silence home couldn't make out, HEARD2) is set aside, not refused:
+ * home may hand it over, and the essay plays none of it.
  */
 export function takeFilesOf(
   items: {
     readonly answered: ReadonlyArray<string>
     readonly silent: ReadonlyArray<string>
+    readonly unheard: ReadonlyArray<string>
     readonly noun: string
   },
   names: ReadonlyArray<string>
@@ -33,14 +36,17 @@ export function takeFilesOf(
   const audio = new Map<string, Array<string>>()
   const words = new Map<string, string>()
   const problems: Array<string> = []
+  const unheard = new Set(items.unheard)
   for (const name of [...names].sort()) {
     if (name.startsWith(".")) continue
     if (name.endsWith(TAKE_WORDS)) {
-      words.set(name.slice(0, -TAKE_WORDS.length), name)
+      const id = name.slice(0, -TAKE_WORDS.length)
+      if (!unheard.has(id)) words.set(id, name)
       continue
     }
     const dot = name.lastIndexOf(".")
     const id = dot <= 0 ? name : name.slice(0, dot)
+    if (unheard.has(id)) continue
     audio.set(id, [...(audio.get(id) ?? []), name])
   }
   const files: Record<string, TakeFiles> = {}

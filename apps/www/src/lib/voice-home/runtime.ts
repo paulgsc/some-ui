@@ -23,6 +23,8 @@ import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import type { BlobShelf } from "@some-ui/voice-capture"
 import { ShelfFullError } from "@some-ui/voice-capture"
 
+import type { Pairing } from "@/lib/home-link/model"
+
 import type { DeletedPort, Encoded, VoiceHomePort } from "./home"
 import type {
   AsidePort,
@@ -47,7 +49,8 @@ const QUARANTINE_PREFIX = "some-ui:voice-home.unreadable."
  * while it is still being read; and a way to hear it change.
  */
 export type PairingPort = {
-  readonly current: () => string | null | undefined
+  /** Whether this phone is paired (#3152): not known while its record is read. */
+  readonly current: () => Pairing
   readonly subscribe: (listener: () => void) => () => void
 }
 
@@ -229,8 +232,13 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
       if (followed?.port === port) return
       followed?.stop()
       const step = (): void => {
-        const pairing = port.current()
-        if (pairing !== undefined) apply({ kind: "paired", pairing })
+        const now = port.current()
+        // Not known yet: what home holds is read once the pairing is.
+        if (now.kind === "reading") return
+        apply({
+          kind: "paired",
+          pairing: now.kind === "paired" ? now.id : null,
+        })
       }
       step()
       followed = { port, stop: port.subscribe(step) }

@@ -11,6 +11,7 @@
  * delete starts, from a sheet that has said what goes and what stays.
  */
 import type { JSX, ReactNode } from "react"
+import { useSyncExternalStore } from "react"
 import { assertNever, formatSize } from "@some-ui/core-utils"
 import {
   Button,
@@ -25,6 +26,7 @@ import { CircleCheck, CircleMinus, CloudOff, ReceiptText } from "lucide-react"
 
 import { hasAudience } from "@/lib/build-profile"
 import type { DeleteSheet, Receipt } from "@/lib/my-data"
+import { phoneDeleting } from "@/lib/my-data"
 import { retryable } from "@/lib/my-data/deleting"
 import {
   DELETING,
@@ -32,6 +34,22 @@ import {
   receiptKind,
   receiptParts,
 } from "@/lib/my-data/words"
+
+/**
+ * The delete sheet's snapshot, and its runtime: My data's page and Takes ›
+ * Needs your attention's (HEARD3) share the one `phoneDeleting()`.
+ */
+export function useDeleting(): {
+  sheet: DeleteSheet
+  deleting: ReturnType<typeof phoneDeleting>
+} {
+  const deleting = phoneDeleting()
+  const { sheet } = useSyncExternalStore(
+    deleting.subscribe,
+    deleting.getSnapshot
+  )
+  return { sheet, deleting }
+}
 
 /** A sheet's big answer button. */
 export const BIG = "h-12 rounded-2xl text-base"
@@ -218,7 +236,7 @@ const Asking = ({
       <Lines title={DELETING.goesTitle} lines={DELETING.goes(n)} tone="goes" />
       <Lines
         title={DELETING.staysTitle}
-        lines={DELETING.stays(n)}
+        lines={DELETING.stays(sheet.of, n)}
         tone="stays"
       />
       <div className="flex flex-col gap-2.5">

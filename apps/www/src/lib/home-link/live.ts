@@ -22,13 +22,14 @@ import { onPageVisibility } from "@some-ui/voice-capture"
 
 import { browserLocalStorage } from "@/lib/tenant/storage"
 
-import { homeLink, pairingOf } from "./index"
+import { homeLink, pairing as pairingNow } from "./index"
 import type { LiveEffect, LiveEvent, LiveTimer } from "./live-machine"
 import { feedOf, initialLive, step } from "./live-machine"
 import { parseWeek } from "./live-model"
 import { livePairing } from "./live-pairing"
 import type { LiveSocket, LiveSocketEvents } from "./live-socket"
 import { openLiveSocket } from "./live-socket"
+import type { Pairing } from "./model"
 import { awayHeld } from "./model"
 
 export { OPEN_MS, PING_MS, QUIET_MS } from "./live-machine"
@@ -58,7 +59,7 @@ export type LivePorts = {
   /** Tells the home link home answered the socket (AW1). */
   reached: () => void
   /** The id of the pairing this phone holds now, or null. */
-  pairingId: () => string | null
+  pairingId: () => Pairing
   open: (url: string, token: string, on: LiveSocketEvents) => LiveSocket
   /** Milliseconds since the epoch. */
   now: () => number
@@ -238,7 +239,7 @@ export function gameDayFeed(wire: LiveWire): FeedPort {
     onLink: link.subscribe,
     held: () => awayHeld(link.getSnapshot(), Date.now()),
     reached: () => link.answered(),
-    pairingId: () => pairingOf(),
+    pairingId: () => pairingNow(),
     open: openLiveSocket,
     now: () => Date.now(),
     utcOffsetMinutes: () => -new Date().getTimezoneOffset(),

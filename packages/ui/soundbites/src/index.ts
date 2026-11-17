@@ -29,11 +29,29 @@ export { homeHearing } from "./lib/idea/hearing"
 export { TakeLibrary } from "./components/take-library"
 export type { LibraryPage, LibraryRead, LibraryTake } from "./lib/library/model"
 export type {
+  LibraryAbout,
   LibraryPhone,
   LibraryStations,
   TakesHome,
 } from "./lib/library/runtime"
+export type {
+  Compartment,
+  TakeAbout,
+  TakeKind,
+} from "./lib/library/compartments"
+export { isCompartment, TAKE_KINDS } from "./lib/library/compartments"
 export { LIBRARY_WORDS } from "./lib/library/words"
+export { AttentionWayIn, TakeReconcile } from "./components/take-reconcile"
+export type {
+  ActAnswer,
+  AttentionPage,
+  AttentionRead,
+  AttentionTake,
+  ReconcileAct,
+} from "./lib/reconcile/model"
+export type { ReconcileHome } from "./lib/reconcile/runtime"
+export type { TakeVerdict } from "./lib/reconcile/codes"
+export { RECONCILE_WORDS } from "./lib/reconcile/words"
 export { Studio } from "./components/studio"
 export { StudioRecords } from "./components/studio-records"
 export type { StudioRecordsProps } from "./components/studio-records"
@@ -51,6 +69,7 @@ export type { SoundbitesProps } from "./components/soundbites"
 export type { SoundbiteSituation } from "./lib/machine"
 export {
   phoneProjectStore,
+  phoneSoundbiteKeeping,
   phoneSoundbiteStore,
   phoneStudioKeeping,
 } from "./lib/phone"

@@ -29,6 +29,7 @@ import {
   parseConveyor,
   stationOf,
   stepConveyor,
+  TAKE_STATIONS,
 } from "./model"
 import { TAKE_CONVEYOR_WORDS } from "./words"
 
@@ -134,6 +135,11 @@ export function createTakeConveyor(ports: TakeConveyorPorts): TakeConveyor {
   }
 }
 
+/** Every station's name, in the order a take moves along them (the chips'). */
+export const STATION_NAMES: ReadonlyArray<string> = TAKE_STATIONS.map(
+  (station) => TAKE_CONVEYOR_WORDS.stations[station]
+)
+
 /**
  * Takes on home's word for where each take stands (`LibraryStations`): home's
  * station, read only when it is one this phone knows, and any later move of
@@ -145,5 +151,15 @@ export const libraryStationsOf = (conveyor: TakeConveyor): LibraryStations => ({
   standing: (take): string | null => {
     const standing = conveyor.standing(take.id, homeStationOf(take))
     return standing === null ? null : TAKE_CONVEYOR_WORDS.standing(standing)
+  },
+  names: STATION_NAMES,
+  station: (take): { name: string; canned: boolean } | null => {
+    const standing = conveyor.standing(take.id, homeStationOf(take))
+    return standing === null
+      ? null
+      : {
+          name: TAKE_CONVEYOR_WORDS.stations[standing.station],
+          canned: standing.station === "canned",
+        }
   },
 })

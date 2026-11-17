@@ -1,0 +1,15 @@
+{
+  "id": "C436",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": ["some-ui:apps/www/src/lib/my-data/words.ts"],
+  "chose": "A delete receipt in My data names home's verdict on the recording, which stays after it is deleted for good, as \"whether home could make it out\" (\"Stayed: Whether home could make it out\").",
+  "options": [
+    "whether home could make it out",
+    "what home made of it (its problem codes)",
+    "left as \"something else\", the fallback for a part this build doesn't know"
+  ],
+  "gray": "The words are on the owner's My data screen, beside what went and what stayed of a recording they deleted for good; no check or earlier decision names this part.",
+  "undo": "Edit RECEIPT_PARTS.verdict in apps/www/src/lib/my-data/words.ts, or remove it so the receipt says \"something else\".",
+  "refs": ["#3070", "server#911"]
+}

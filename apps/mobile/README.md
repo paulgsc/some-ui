@@ -417,6 +417,78 @@ install over a CI build, or the other way round.
 - **`versionCode` is the run number**, so each APK is an update of the last,
   and Settings → Apps → Some UI shows which build is installed.
 
+### Stamping a release's Android compatibility
+
+`.github/workflows/android-compat.yml` ("Android Compat") runs the APK on
+slowed emulators across the Android versions it supports. I run it by hand
+when a release wants a stamp: **Actions → Android Compat → Run workflow**,
+choosing the branch or tag to stamp under "Use workflow from" (default
+`main`), the API levels (default 34 and 36; 24, 28 and 31, down to
+`minSdkVersion` in `android/variables.gradle`, may be added) and a CPU cap
+(default 60% of one host core). It never runs on a push, a pull request or a
+schedule, and nothing waits on it. A bare commit, or a tag from before the
+workflow existed, cannot be stamped: the run builds only the commit it runs
+from, so code from elsewhere never runs in `main`'s cache scope.
+
+It builds the release APK (R8) and the debug APK from that commit, signed with a
+key made for that run, so it needs no secrets and no approval. Each API level
+is then its own job: a `google_apis` x86_64 emulator with one core, 1.5 GB of
+memory, a 3G link and its CPU capped, which stands in for an older, slower
+phone. Each runs:
+
+1. **Launch:** the launch test above, on the release APK.
+2. **Storm:** `compat/storm.sh`, on the release APK, since R8, the stripped
+   console and release timing are what the stamp has to catch. A stand-in
+   home on the runner (`compat/stub-home.mjs`, sample data only) counts every
+   request. The phone pairs only over https, so the run makes its own CA and
+   `compat/trust-ca.sh` puts it in the emulator's system store; the app's
+   network config stays as shipped. The app pairs as a person would, through
+   the foyer's Settings, its Home tab and the Pair form with a sample code,
+   driven over the accessibility tree (`compat/ui.mjs`). Then it is pulled
+   down once; pulled, then sent home and brought back while home answers
+   slowly, so the pull's run is still under way; pulled in a burst; pulled
+   while home answers 429 with `Retry-After: 1`, as home's limiter does; sent
+   to the background and back; and cut off the network and given it back. It
+   fails when what home heard over the whole run breaks HERD1's budget
+   (`compat/budget.json`, checked by `compat/check-budget.mjs`): more than
+   20 requests at once and one per 2 s after that, no 429 at all, any request
+   inside a 429's `Retry-After`, or the nth request after a 429 sooner than
+   n + 1 paces of 2 s after it; or when the app coming back during the
+   pull's run reads more than two pulls would, asks a read more than twice
+   what one pull did, or sends a write twice (a second run started). A
+   level whose Pair form cannot be driven pairs the debug APK instead and
+   says "via debug build"; a level whose store cannot take the CA says "no
+   system CA" and runs unpaired.
+3. **Refresh:** from the same run, it fails when a pull with home up does not
+   end `pull checked: read`, or when the app restarted to get there. The
+   pull after coming back from the background and the pull after the network
+   returns join the kept lanes' run that coming back, or the network's
+   return, started, which may send its queued writes first (HERD1): each
+   fails when that run has not read every route again within one pace per
+   request home heard since the pull (`compat/lane-done.mjs`). The pull's
+   own line is not judged there (#3140).
+
+The run's summary is the stamp: a table of API level against launch, storm
+and refresh, a line to paste into the release notes, and the same as JSON.
+It is kept nowhere else; its artifacts (the APKs, each level's logs and
+screenshots) last a day.
+
+What it cannot show: Samsung's One UI and its own WebView quirks, a real
+radio dropping and returning, thermal throttling, and a phone's real
+memory pressure. An emulator's old API level carries the WebView its system
+image shipped: on 2026-11-17 the API 24 and 28 images carried Chrome 69 and
+API 31's WebView 91, while the bundle is built for Vite's default target
+(about Chrome 111), and below it the app opens its update page
+(`webview-too-old.html`, #3117) in place of itself. A real phone on
+Android 7 to 9 gets Android System WebView from Play, at 111 or later
+(Android 7 tops out around 119), so such a level checks only that the
+update page shows and stays through every way in, each cold and then warm:
+the plain icon, each wing's icon and the New idea shortcut (OWV1, in
+`compat/run-level.sh`; `old-webview.png`). Its Launch cell says "update page
+shown" or "blank", and the rest say "stock WebView <n> (needs ≥111)". The
+"Image's WebView" column says which each level ran. A level that cannot boot on GitHub's hosted runners shows as "not
+run".
+
 ### Play readiness
 
 The app is sideloaded today, and headed for Google Play as a free personal
@@ -586,7 +658,8 @@ sends anything to the home server, and only on a tap there
 being paired sends nothing; there is no retry and no background work.
 
 Unpaired, it has an address field (for example `192.168.1.10:3000`) and
-**Sync lessons from home**. Paired, it shows **Paired · host** with **Unpair**,
+**Sync lessons from home**. Paired, it says where the phone is signed in, with
+**Sign out of home** (and **Pair again**, once home has forgotten the phone),
 and the sync reads from the paired host. **Sync lessons from home**, pressed
 while on the home network, copies every listed TOPIK lesson and every
 served drama into the phone's database.
@@ -620,9 +693,11 @@ phone, **Pair...** takes that `https://` address (never `http://`) and the
 code; the button names the host, and the tap sends only the code. Home answers
 with a session token, which the app's own `HomeCredential` plugin seals with
 an Android Keystore key and keeps out of every backup and device transfer
-(`res/xml/backup_rules.xml`, `res/xml/data_extraction_rules.xml`). **Unpair**
-asks once more, tells home if it can, and forgets the token on the phone
-either way. Signing out everywhere on the computer ends a phone's session too.
+(`res/xml/backup_rules.xml`, `res/xml/data_extraction_rules.xml`). **Sign out
+of home** asks once more, saying what the phone and home each keep, tells home
+if it can, and forgets the token on the phone either way; it deletes nothing.
+Once home has forgotten the phone, **Pair again** pairs it in place, without
+signing out first. Signing out everywhere on the computer ends a phone's session too.
 The server side is `paulgsc/server` `docs/identity.md`, "Pairing a phone".
 
 **Everything the phone keeps goes to home on its own**, once paired

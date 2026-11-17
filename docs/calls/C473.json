@@ -1,0 +1,18 @@
+{
+  "id": "C473",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/components/settings/device-pair-form.tsx",
+    "some-ui:apps/www/src/components/settings/device-section.tsx"
+  ],
+  "chose": "The pairing form keeps its own address field, started from what the screen hands it: in Settings › Home, the sync's address as it is when Pair is pressed; in the welcome, the address typed last. One field shared by the sync and pairing was tried and dropped.",
+  "options": [
+    "the form's own address, started from the sync's",
+    "one address field shared by the sync and pairing",
+    "the form's own address, empty"
+  ],
+  "gray": "The sync reads a bare host as plain http (a phone on the LAN reading published lessons) and pairing as https only, so one shared field would read the same text two ways and the Pair button would name a host it then fails to reach; the issue asked for one address, and starting the form from the sync's keeps the owner from typing it twice in the common case.",
+  "undo": "Have device-section hand PairForm an empty initialAddress, or read both with one scheme; nothing stores the choice.",
+  "refs": ["#3088", "#3108"]
+}

@@ -6,7 +6,7 @@
  * the page is left. Phone-only (`build.paths.ts`).
  */
 import { videoFiles } from "@/lib/call-videos/files"
-import { readPart } from "@/lib/call-videos/model"
+import { partOf } from "@/lib/call-videos/model"
 import { PART_BYTES } from "@/lib/call-videos/parts"
 import { askCardsEssayPart } from "@/lib/home-link/cards-essays"
 import { askWhileBusy } from "@/lib/home-link/while-busy"
@@ -27,9 +27,7 @@ export function essayVideo(key: string): EssayVideo {
   const fresh = createEssayVideo(key, {
     async part(start, end) {
       const asked = await askWhileBusy(() => askCardsEssayPart(key, start, end))
-      return asked.kind === "answered"
-        ? readPart(asked.answer)
-        : { kind: "away" }
+      return partOf(asked)
     },
     files: videoFiles("essay-page"),
     partBytes: PART_BYTES,

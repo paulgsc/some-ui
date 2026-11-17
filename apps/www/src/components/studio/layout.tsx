@@ -12,6 +12,7 @@ import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
+import { phoneWasBusy } from "@/lib/phone-busy"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import type { StudioKind } from "@/lib/studio-index"
 import { kindPath, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
@@ -98,6 +99,9 @@ type ReadWords = {
   readonly reading: string
   readonly away: string
   readonly stale: string
+  /** What it says when this phone stayed busy with home (#3155), if it can be. */
+  readonly busy?: string
+  readonly busyStale?: string
 }
 
 /**
@@ -117,9 +121,11 @@ export function ReadList<T, K extends QueryKey>({
     pending: () => (
       <p className="text-muted-foreground text-sm">{words.reading}</p>
     ),
-    failed: (_error, retry) => (
+    failed: (error, retry) => (
       <div className="flex flex-col gap-2">
-        <p className="text-sm">{words.away}</p>
+        <p className="text-sm">
+          {(phoneWasBusy(error) ? words.busy : undefined) ?? words.away}
+        </p>
         <Button size="sm" variant="outline" onClick={retry}>
           {STUDIO_INDEX_WORDS.tryAgain}
         </Button>
@@ -136,7 +142,8 @@ export function ReadList<T, K extends QueryKey>({
               onClick: refreshError.retry,
             }}
           >
-            {words.stale}
+            {(phoneWasBusy(refreshError.error) ? words.busyStale : undefined) ??
+              words.stale}
           </Notice>
         )}
         {children(value)}

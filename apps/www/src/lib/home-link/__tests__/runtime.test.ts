@@ -6,9 +6,11 @@
  */
 import { fakeClock } from "@/test-support/fake-clock"
 import type { HomeAnswer } from "@some-ui/core-utils"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import type { HomeRequest } from "@/lib/device-backend/native-http"
+import type { HomeLinkState } from "@/lib/home-link/model"
+import { BURST, MS_PER_REQUEST } from "@/lib/home-link/pace"
 import type { CredentialPort, HomeLink } from "@/lib/home-link/runtime"
 import { createHomeLink, homeBusyFor } from "@/lib/home-link/runtime"
 
@@ -84,6 +86,22 @@ function setup(options: Options = {}): Home {
   }
 }
 
+/** Runs the clock a turn of the pace at a time until `work` settles. */
+async function drive<T>(home: Home, work: Promise<T>): Promise<T> {
+  const waiting = Symbol("waiting")
+  for (let turn = 0; turn < 10; turn += 1) {
+    const now = await Promise.race([
+      work,
+      new Promise<typeof waiting>((resolve) =>
+        setTimeout(() => resolve(waiting), 0)
+      ),
+    ])
+    if (now !== waiting) return now
+    home.pass(MS_PER_REQUEST)
+  }
+  return work
+}
+
 describe("the home link", () => {
   it("reads the phone's own record and sends nothing", async () => {
     const paired = setup({
@@ -96,6 +114,9 @@ describe("the home link", () => {
       base: HOME.base,
       id: HOME.base,
       notForgotten: false,
+      since: null,
+      name: null,
+      standing: { kind: "unchecked" },
     })
     expect(paired.sent).toEqual([])
 
@@ -144,6 +165,10 @@ describe("the home link", () => {
       base: HOME.base,
       token: "phone-token",
       id: first,
+      pairedAt: 0,
+      // A home that gives no id for the phone, and no name typed.
+      phoneId: null,
+      name: null,
     })
 
     // Paired again to the same address, it is a new pairing.
@@ -153,11 +178,53 @@ describe("the home link", () => {
     expect(idOf()).not.toBe(first)
   })
 
+  it("keeps home's id for the phone and the name it paired with, and reads them back (SIGNIN7)", async () => {
+    const home = setup({
+      answer: () => ({
+        status: 200,
+        body: JSON.stringify({
+          token: "phone-token",
+          expiresAt: 1,
+          phoneId: "q1w2e3r4t5y6u7i8o9p0aa",
+        }),
+      }),
+    })
+    await home.link.load()
+    await home.link.pair(HOME, "K7QF2M9X", "Kitchen")
+    const record = home.record()
+    expect(JSON.parse(record ?? "null")).toMatchObject({
+      phoneId: "q1w2e3r4t5y6u7i8o9p0aa",
+      name: "Kitchen",
+    })
+    expect(home.link.getSnapshot().link).toMatchObject({
+      kind: "paired",
+      name: "Kitchen",
+    })
+
+    // The next time the app starts, the record says the same.
+    const again = setup({ record: record ?? "" })
+    await again.link.load()
+    expect(again.link.getSnapshot().link).toMatchObject({
+      kind: "paired",
+      name: "Kitchen",
+    })
+  })
+
   it("says why a pairing failed, once, and keeps nothing", async () => {
     const cases: Array<[Options, string]> = [
       [{ answer: () => ({ status: 422, body: "{}" }) }, "bad-code"],
       [{ answer: () => ({ status: 429, body: "{}" }) }, "too-many"],
       [{ answer: () => ({ status: 503, body: "{}" }) }, "not-set-up"],
+      [
+        {
+          answer: () => ({
+            status: 503,
+            body: JSON.stringify({ error: { code: "service_overloaded" } }),
+            retryAfter: "5",
+          }),
+        },
+        "busy",
+      ],
       [{ answer: () => ({ status: 404, body: "" }) }, "not-home"],
       [{ answer: () => ({ status: 200, body: "<html>" }) }, "other"],
       [
@@ -165,7 +232,10 @@ describe("the home link", () => {
           answer: () =>
             Promise.reject(
               new Error("couldn't", {
-                cause: new Error("javax.net.ssl.SSLHandshakeException"),
+                // A certificate failure, not a TLS connection dropped (NA1).
+                cause: new Error(
+                  "javax.net.ssl.SSLHandshakeException: java.security.cert.CertPathValidatorException: Trust anchor for certification path not found."
+                ),
               })
             ),
         },
@@ -288,7 +358,7 @@ describe("the home link", () => {
         record: JSON.stringify({ base: HOME.base, token: "t" }),
       })
       await home.link.load()
-      const outcome = await home.link.sync(async (get) => {
+      const outcome = await home.link.sync(HOME.base, async (get) => {
         await get(`${HOME.base}/curriculum/manifest.json`, '"v1"')
         if (stop === "tap") home.link.stop()
         else home.hide()
@@ -383,8 +453,92 @@ describe("the home link", () => {
       await send("PUT", "/shelf/topik/a", "{}")
       return "finished"
     })
-    expect(outcome).toBeNull()
+    expect(outcome).toEqual({ kind: "refused", why: "unpaired" })
     expect(home.sent).toEqual([])
+  })
+
+  it("says a drain stopped for an Unpair was preempted, and the next one unpaired (#3155)", async () => {
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t" }),
+    })
+    await home.link.load()
+    let release: () => void = () => undefined
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const draining = home.link.drain(async () => {
+      await held
+      return "drained"
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    const unpairing = drive(home, home.link.unpair())
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    release()
+    await expect(draining).resolves.toEqual({
+      kind: "refused",
+      why: "preempted",
+    })
+    await unpairing
+    expect(home.link.getSnapshot().link.kind).toBe("unpaired")
+    // The link turned the next away itself: not left at the last one's.
+    await expect(home.link.drain(() => Promise.resolve("x"))).resolves.toEqual({
+      kind: "refused",
+      why: "unpaired",
+    })
+  })
+
+  it("holds a run asked for while the record is read, then runs it as the read found (#3152)", async () => {
+    for (const found of ["paired", "unpaired"] as const) {
+      let end: (record: string | null) => void = () => undefined
+      const read = new Promise<{ record: string | null; lost: boolean }>(
+        (resolve) => {
+          end = (record): void => resolve({ record, lost: false })
+        }
+      )
+      const home = setup({ read: () => read })
+      let settled = false
+      const keeping = home.link
+        .keep((send) => send("GET", "/kept"))
+        .then((outcome) => {
+          settled = true
+          return outcome
+        })
+      // A sync needs no pairing: once the read ends, it runs either way.
+      const syncing = home.link.sync(HOME.base, () => Promise.resolve("synced"))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      // Waiting as the link's state, nothing sent, nothing said.
+      expect(home.link.getSnapshot().parked).toHaveLength(2)
+      expect(settled).toBe(false)
+      expect(home.sent).toEqual([])
+      end(
+        found === "paired"
+          ? JSON.stringify({ base: HOME.base, token: "t" })
+          : null
+      )
+      if (found === "paired") {
+        await expect(keeping).resolves.toEqual({
+          kind: "done",
+          value: { status: 200, body: "{}" },
+        })
+        expect(home.sent.map((call) => call.url)).toEqual([`${HOME.base}/kept`])
+        // The sync waited its turn behind the read: the link was busy.
+        await expect(syncing).resolves.toEqual({
+          kind: "refused",
+          why: "busy",
+        })
+      } else {
+        await expect(keeping).resolves.toEqual({
+          kind: "refused",
+          why: "unpaired",
+        })
+        await expect(syncing).resolves.toEqual({
+          kind: "done",
+          value: "synced",
+        })
+        expect(home.sent).toEqual([])
+      }
+      expect(home.link.getSnapshot().parked).toEqual([])
+    }
   })
 
   it("after home says busy, sends nothing until its Retry-After has passed, answering busy itself (AD3)", async () => {
@@ -403,7 +557,7 @@ describe("the home link", () => {
         (await send("GET", "/aph")).status,
         (await send("GET", "/aph")).status,
       ])
-      return outcome?.kind === "done" ? outcome.value : []
+      return outcome.kind === "done" ? outcome.value : []
     }
 
     // Home's 429 ends the run's sending; the next request is answered here.
@@ -413,11 +567,346 @@ describe("the home link", () => {
     // The sync too, while it lasts (the lanes' runs: home-busy.test.ts).
     home.pass(29_999)
     const synced = await home.link.sync(
+      HOME.base,
       async (get) => (await get(`${HOME.base}/curriculum/manifest.json`)).status
     )
     expect(synced).toEqual({ kind: "done", value: 429 })
     expect(home.sent).toHaveLength(1)
     home.pass(1)
+    expect(home.link.getSnapshot().homeBusyUntil).toBeNull()
+  })
+
+  it("learns home's rate once a busy stretch: requests already out that come back busy too teach nothing more (HERD1)", async () => {
+    const clock = fakeClock()
+    const out: Array<(answer: HomeAnswer) => void> = []
+    const link = createHomeLink({
+      credential: {
+        read: () =>
+          Promise.resolve({
+            record: JSON.stringify({ base: HOME.base, token: "t" }),
+            lost: false,
+          }),
+        write: () => Promise.resolve(),
+        clear: () => Promise.resolve(),
+      },
+      // Every request waits until the test answers it.
+      request: () => new Promise((resolve) => out.push(resolve)),
+      onHidden: () => (): void => undefined,
+      now: clock.now,
+      after: clock.after,
+    })
+    await link.load()
+    const reads = link.keep((send) =>
+      Promise.all([0, 1, 2].map(() => send("GET", "/aph")))
+    )
+    await vi.waitFor(() => expect(out).toHaveLength(3))
+    for (const answer of out) answer({ status: 429, body: "", retryAfter: "6" })
+    await reads
+    clock.pass(6_000)
+    const ask = (): Promise<unknown> => link.keep((send) => send("GET", "/aph"))
+    const first = ask()
+    await vi.waitFor(() => expect(out).toHaveLength(4))
+    out[3]?.({ status: 200, body: "{}" })
+    await first
+    // Learned once: a 4 s pace (2 s + 2 s) left half a turn after the 6 s
+    // wait, so the next goes 2 s on. Unlearned (2 s) it would go at once;
+    // doubled three times (16 s) the one before would not have gone.
+    void ask()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(out).toHaveLength(4)
+    clock.pass(2_000)
+    await vi.waitFor(() => expect(out).toHaveLength(5))
+  })
+
+  it("hears home's overload, 503 service_overloaded with a Retry-After, as busy: answered busy, nothing sent until it has passed (HERD2)", async () => {
+    let busy = true
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t" }),
+      answer: () => {
+        if (!busy) return { status: 200, body: "{}" }
+        busy = false
+        return {
+          status: 503,
+          body: JSON.stringify({ error: { code: "service_overloaded" } }),
+          retryAfter: "5",
+        }
+      },
+    })
+    await home.link.load()
+    const statuses = async (): Promise<Array<number>> => {
+      const outcome = await home.link.keep(async (send) => [
+        (await send("GET", "/aph")).status,
+        (await send("GET", "/aph")).status,
+      ])
+      return outcome.kind === "done" ? outcome.value : []
+    }
+    expect(await statuses()).toEqual([429, 429])
+    expect(home.sent).toHaveLength(1)
+    expect(home.link.getSnapshot().homeBusyUntil).toBe(5_000)
+    // Nothing found home silent: an overload is an answer.
+    expect(home.link.getSnapshot().away).toBeNull()
+    home.pass(5_000)
+    expect(home.link.getSnapshot().homeBusyUntil).toBeNull()
+  })
+
+  it("starts home's busy from a pairing's 429, and still sends an Unpair during it (AD3, #3127)", async () => {
+    let busy = true
+    const home = setup({
+      answer: (call) => {
+        if (call.url.endsWith("/auth/pairing/finish") && busy) {
+          busy = false
+          return { status: 429, body: "", retryAfter: "30" }
+        }
+        return {
+          status: 200,
+          body: JSON.stringify({ token: "phone-token", expiresAt: 1 }),
+        }
+      },
+    })
+    await home.link.load()
+    await home.link.pair(HOME, "K7QF2M9X")
+    expect(home.link.getSnapshot()).toMatchObject({
+      pairFailure: { failure: "too-many" },
+      homeBusyUntil: 30_000,
+    })
+    // A pairing is the person's own, and goes during the wait, at the
+    // pace's next turn (the 429 spent its burst, HERD1).
+    await drive(home, home.link.pair(HOME, "K7QF2M9X"))
+    expect(home.link.getSnapshot().link.kind).toBe("paired")
+    await drive(home, home.link.unpair())
+    expect(home.link.getSnapshot().homeBusyUntil).toBe(30_000)
+    expect(home.sent.map((call) => call.url)).toEqual([
+      `${HOME.base}/auth/pairing/finish`,
+      `${HOME.base}/auth/pairing/finish`,
+      `${HOME.base}/auth/sign-out`,
+    ])
+    expect(home.link.getSnapshot().link).toMatchObject({
+      kind: "unpaired",
+      note: "unpaired",
+    })
+  })
+
+  it("starts home's busy from every request the person sends, on a 429 and on home's overload (AD3, #3127)", async () => {
+    const busyAnswers: ReadonlyArray<[string, HomeAnswer]> = [
+      ["429", { status: 429, body: "", retryAfter: "30" }],
+      [
+        "overload",
+        {
+          status: 503,
+          body: JSON.stringify({ error: { code: "service_overloaded" } }),
+          retryAfter: "30",
+        },
+      ],
+    ]
+    const TOKEN = {
+      status: 200,
+      body: JSON.stringify({ token: "phone-token", expiresAt: 1 }),
+    }
+    const paths: ReadonlyArray<
+      [string, (busy: HomeAnswer) => Promise<HomeLinkState>]
+    > = [
+      [
+        "a pairing",
+        async (busy): Promise<HomeLinkState> => {
+          const home = setup({ answer: () => busy })
+          await home.link.load()
+          await home.link.pair(HOME, "K7QF2M9X")
+          return home.link.getSnapshot()
+        },
+      ],
+      [
+        "the sign-out of a pairing the phone could not keep",
+        async (busy): Promise<HomeLinkState> => {
+          const home = setup({
+            answer: (call) =>
+              call.url.endsWith("/auth/sign-out") ? busy : TOKEN,
+            write: () => Promise.reject(new Error("keystore")),
+          })
+          await home.link.load()
+          await home.link.pair(HOME, "K7QF2M9X")
+          return home.link.getSnapshot()
+        },
+      ],
+      [
+        "an Unpair's sign-out",
+        async (busy): Promise<HomeLinkState> => {
+          const home = setup({
+            record: JSON.stringify({ base: HOME.base, token: "t", id: "p1" }),
+            answer: () => busy,
+          })
+          await home.link.load()
+          await home.link.unpair()
+          return home.link.getSnapshot()
+        },
+      ],
+    ]
+    for (const [path, run] of paths) {
+      for (const [kind, busy] of busyAnswers) {
+        const snapshot = await run(busy)
+        expect(snapshot.homeBusyUntil, `${path}, ${kind}`).toBe(30_000)
+        expect(snapshot.busyHomes, `${path}, ${kind}`).toEqual({
+          [HOME.base]: 30_000,
+        })
+      }
+    }
+  })
+
+  it("starts home's busy from an Unpair's sign-out, and keeps none of it for the next home paired (#3127)", async () => {
+    const OTHER = {
+      base: "https://other.example/api/v1",
+      host: "other.example",
+    }
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t", id: "p1" }),
+      answer: (call) =>
+        call.url.endsWith("/auth/sign-out")
+          ? { status: 429, body: "", retryAfter: "600" }
+          : {
+              status: 200,
+              body: JSON.stringify({ token: "phone-token", expiresAt: 1 }),
+            },
+    })
+    await home.link.load()
+    await home.link.unpair()
+    expect(home.link.getSnapshot()).toMatchObject({
+      link: { kind: "unpaired" },
+      homeBusyUntil: 600_000,
+    })
+    await drive(home, home.link.pair(OTHER, "K7QF2M9X"))
+    expect(home.link.getSnapshot()).toMatchObject({
+      link: { kind: "paired", base: OTHER.base },
+      homeBusyUntil: null,
+    })
+  })
+
+  it("keeps none of a busy a failed pairing heard for the home then paired (#3127)", async () => {
+    const OTHER = {
+      base: "https://other.example/api/v1",
+      host: "other.example",
+    }
+    const home = setup({
+      answer: (call) =>
+        call.url.startsWith(OTHER.base)
+          ? { status: 429, body: "", retryAfter: "600" }
+          : {
+              status: 200,
+              body: JSON.stringify({ token: "phone-token", expiresAt: 1 }),
+            },
+    })
+    await home.link.load()
+    await home.link.pair(OTHER, "K7QF2M9X")
+    expect(home.link.getSnapshot().homeBusyUntil).toBe(600_000)
+    await drive(home, home.link.pair(HOME, "K7QF2M9X"))
+    expect(home.link.getSnapshot()).toMatchObject({
+      link: { kind: "paired", base: HOME.base },
+      homeBusyUntil: null,
+    })
+  })
+
+  it("puts a busy that comes back after an Unpair on the home that said it, never the home paired since (#3127)", async () => {
+    const OTHER = {
+      base: "https://other.example/api/v1",
+      host: "other.example",
+    }
+    let late: (answer: HomeAnswer) => void = () => undefined
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t", id: "p1" }),
+      answer: (call) => {
+        if (call.url === `${HOME.base}/auth/session`) {
+          return new Promise<HomeAnswer>((resolve) => {
+            late = resolve
+          })
+        }
+        return {
+          status: 200,
+          body: JSON.stringify({ token: "phone-token", expiresAt: 1 }),
+        }
+      },
+    })
+    await home.link.load()
+    const checked = home.link.check()
+    await drive(home, home.link.unpair())
+    await drive(home, home.link.pair(OTHER, "K7QF2M9X"))
+    late({ status: 429, body: "", retryAfter: "600" })
+    await checked
+    expect(home.link.getSnapshot()).toMatchObject({
+      link: { kind: "paired", base: OTHER.base },
+      homeBusyUntil: null,
+    })
+    expect(Object.keys(home.link.getSnapshot().busyHomes)).toEqual([HOME.base])
+  })
+
+  it("keeps an unpaired Sync's busy for the home it read from: paired with it, the wait still holds, and a Sync elsewhere never waits on it (#3127)", async () => {
+    const OTHER = {
+      base: "https://other.example/api/v1",
+      host: "other.example",
+    }
+    let busy = true
+    const home = setup({
+      answer: (call) => {
+        if (call.url.endsWith("/auth/pairing/finish")) {
+          return {
+            status: 200,
+            body: JSON.stringify({ token: "phone-token", expiresAt: 1 }),
+          }
+        }
+        if (call.url.startsWith(HOME.base) && busy) {
+          busy = false
+          return { status: 429, body: "", retryAfter: "600" }
+        }
+        return { status: 200, body: "{}" }
+      },
+    })
+    await home.link.load()
+    const manifest = (base: string): Promise<unknown> =>
+      home.link.sync(
+        base,
+        async (get) => (await get(`${base}/curriculum/manifest.json`)).status
+      )
+    expect(await manifest(HOME.base)).toEqual({ kind: "done", value: 429 })
+    expect(home.link.getSnapshot().busyHomes).toEqual({
+      [HOME.base]: 600_000,
+    })
+    // Another home said nothing: its Sync goes.
+    const sent = home.sent.length
+    expect(await drive(home, manifest(OTHER.base))).toEqual({
+      kind: "done",
+      value: 200,
+    })
+    expect(home.sent).toHaveLength(sent + 1)
+    // Paired with the busy home, its wait holds for every lane.
+    await drive(home, home.link.pair(HOME, "K7QF2M9X"))
+    expect(home.link.getSnapshot()).toMatchObject({
+      link: { kind: "paired", base: HOME.base },
+      homeBusyUntil: 600_000,
+    })
+  })
+
+  it("passes on a 503 that is one of home's caps (no Retry-After) or not its overload, and is not busy for it (HERD2)", async () => {
+    const answers: Array<HomeAnswer> = [
+      {
+        status: 503,
+        body: JSON.stringify({ error: { code: "service_overloaded" } }),
+      },
+      {
+        status: 503,
+        body: JSON.stringify({ error: { code: "feature_not_configured" } }),
+        retryAfter: "5",
+      },
+      { status: 503, body: "Service Unavailable", retryAfter: "5" },
+    ]
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t" }),
+      answer: () => answers.shift() ?? { status: 200, body: "{}" },
+    })
+    await home.link.load()
+    const outcome = await home.link.keep(async (send) => [
+      (await send("GET", "/aph")).status,
+      (await send("GET", "/aph")).status,
+      (await send("GET", "/aph")).status,
+    ])
+    expect(outcome).toEqual({ kind: "done", value: [503, 503, 503] })
+    expect(home.sent).toHaveLength(3)
     expect(home.link.getSnapshot().homeBusyUntil).toBeNull()
   })
 
@@ -466,6 +955,7 @@ describe("the home link", () => {
     await home.link.load()
     let release: () => void = () => undefined
     const syncing = home.link.sync(
+      HOME.base,
       () =>
         new Promise<string>((resolve) => {
           release = (): void => resolve("ok")
@@ -507,7 +997,7 @@ describe("a look at home's word on itself (#2843)", () => {
     })
     await home.link.load()
     // Use up the pace's burst, so the next asks wait their turns.
-    for (let i = 0; i < 49; i += 1) {
+    for (let i = 0; i < BURST; i += 1) {
       await home.link.keep((send) => send("GET", "/aph"))
     }
     next = { status: 429, body: "", retryAfter: "60" }
@@ -520,7 +1010,9 @@ describe("a look at home's word on itself (#2843)", () => {
     home.pass(2_000)
     await kept
     await settle()
-    home.pass(2_000)
+    // Home's 429 spent the burst and doubled the pace (HERD1): the look's
+    // turn comes 4 s on.
+    home.pass(4_000)
     expect(await looked).toEqual({
       kind: "done",
       value: { status: 429, body: "" },
@@ -531,7 +1023,10 @@ describe("a look at home's word on itself (#2843)", () => {
   it("asks nothing unpaired", async () => {
     const home = setup()
     await home.link.load()
-    expect(await home.link.look("/compat?needs=2")).toBeNull()
+    expect(await home.link.look("/compat?needs=2")).toEqual({
+      kind: "refused",
+      why: "unpaired",
+    })
     expect(home.sent).toEqual([])
   })
 
@@ -556,5 +1051,21 @@ describe("a look at home's word on itself (#2843)", () => {
     await home.link.keep((send) => send("GET", "/gone"))
     expect(heard).toBe(1)
     stop()
+  })
+})
+
+describe("pairing with a name (SIGNIN2)", () => {
+  const finish = (home: Home): unknown =>
+    home.sent.find((call) => call.url.endsWith("/auth/pairing/finish"))?.body
+  const answered = (): HomeAnswer => ({
+    status: 200,
+    body: JSON.stringify({ token: "phone-token", expiresAt: 1 }),
+  })
+
+  it("sends the name the owner typed beside the code", async () => {
+    const home = setup({ answer: answered })
+    await home.link.load()
+    await home.link.pair(HOME, "K7QF2M9X", "Pixel at home")
+    expect(finish(home)).toEqual({ code: "K7QF2M9X", label: "Pixel at home" })
   })
 })

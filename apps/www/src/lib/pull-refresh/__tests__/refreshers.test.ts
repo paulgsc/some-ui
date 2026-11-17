@@ -1,6 +1,39 @@
-/** The refresh port (PULL1). */
+/**
+ * The refresh port (PULL1).
+ *
+ * **HERD2: nothing a pull waits on holds the pulls after it** (#3102, epic
+ * #3100).
+ *
+ * - _Claim:_ a refresher's check (here) or the home pull's ask of its lanes
+ *   (`lib/home-link/pull.ts`) out longer than a pull may take (`CHECK_MS`)
+ *   no longer answers the pulls after it: the next pull asks afresh, so one
+ *   that never settles leaves the page to refresh on the next pull, not on a
+ *   restart; a pull lets the home link's hold away go before the page or
+ *   any screen reads again (`before`); the screens that read home outside
+ *   the query cache (Takes on home, Needs your attention, Ideas on home)
+ *   read again on a pull while they show; a clip's frames home was away for
+ *   are asked again on the next visit; and home's overload (`503
+ *   service_overloaded` with a `Retry-After`) is home busy, waited out as a
+ *   `429` is, never home away.
+ * - _Family:_ a check that settles before, at or after `CHECK_MS`, or never;
+ *   pulls landing before and after that time; the late answer settling
+ *   before or after the fresh one; the page's reads and the screens' asked
+ *   with a hold away standing; each such screen shown, read away or read,
+ *   then pulled, and gone; a clip page visited again after an away read and
+ *   after a whole one; home answering overload with or without a
+ *   `Retry-After`, with its code or another, or with a body not its JSON.
+ * - _Proof:_ the "(HERD2)" cases here, in `./reads.test.ts`,
+ *   `lib/home-link/__tests__/pull.test.ts`,
+ *   `lib/home-link/__tests__/runtime.test.ts` and
+ *   `lib/studio-clips/__tests__/home.test.ts`; in `@some-ui/soundbites`,
+ *   `lib/__tests__/refresh.test.ts` and `lib/library/__tests__/runtime.test.ts`.
+ * - _Tolerance:_ a check asked afresh may run beside the one still out; a
+ *   refresher whose own runtime dedupes (the home pull's lanes, HERD1) runs
+ *   once, and any other twice at most.
+ */
 import { describe, expect, it, vi } from "vitest"
 
+import { CHECK_MS } from "@/lib/pull-refresh/model"
 import type { Refresher } from "@/lib/pull-refresh/refreshers"
 import { createRefreshers } from "@/lib/pull-refresh/refreshers"
 
@@ -113,5 +146,76 @@ describe("the refresh port", () => {
     first.answer()
     late.answer()
     expect(await third).toEqual([])
+  })
+
+  it("asks one refresher two screens registered once a pull, while either holds it (HERD1)", async () => {
+    const refreshers = createRefreshers()
+    const feed = held("the feed")
+    const dropOne = refreshers.register(feed)
+    const dropOther = refreshers.register(feed)
+    const pulled = refreshers.checkAll()
+    await started()
+    expect(feed.calls()).toBe(1)
+    feed.fail()
+    expect(await pulled).toEqual(["the feed"])
+
+    // One screen went: the other still holds it, so a pull asks it.
+    dropOne()
+    dropOne()
+    const again = refreshers.checkAll()
+    await started()
+    expect(feed.calls()).toBe(2)
+    dropOther()
+    // Its screens all gone, its answer is stale and left out.
+    expect(await again).toEqual([])
+    expect(await refreshers.checkAll()).toEqual([])
+    expect(feed.calls()).toBe(2)
+  })
+
+  it("asks afresh a refresher whose check has been out longer than a pull may take, in either order of the two answers, and a pull after joins the fresh one (HERD2)", async () => {
+    for (const lateFirst of [true, false]) {
+      let now = 0
+      const refreshers = createRefreshers(() => now)
+      // Each check waits until the test answers it, one by one.
+      const checks: Array<{ ok: () => void; fail: () => void }> = []
+      refreshers.register({
+        what: "the feed",
+        checkAgain: () =>
+          new Promise<void>((resolve, reject) =>
+            checks.push({ ok: resolve, fail: () => reject(new Error("x")) })
+          ),
+      })
+      const first = refreshers.checkAll()
+      await started()
+      now = CHECK_MS - 1
+      void refreshers.checkAll()
+      await started()
+      expect(checks).toHaveLength(1)
+      now = CHECK_MS
+      const fresh = refreshers.checkAll()
+      await started()
+      expect(checks).toHaveLength(2)
+      const [late, newer] = checks
+      if (lateFirst) {
+        // The late answer first: it must not end the fresh one's hold.
+        late.fail()
+        expect(await first).toEqual(["the feed"])
+        const joined = refreshers.checkAll()
+        await started()
+        expect(checks).toHaveLength(2)
+        newer.ok()
+        expect(await fresh).toEqual([])
+        expect(await joined).toEqual([])
+      } else {
+        newer.ok()
+        expect(await fresh).toEqual([])
+        late.fail()
+        expect(await first).toEqual(["the feed"])
+        // Neither is out now: the next pull asks again.
+        void refreshers.checkAll()
+        await started()
+        expect(checks).toHaveLength(3)
+      }
+    }
   })
 })

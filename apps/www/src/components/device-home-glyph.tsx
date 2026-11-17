@@ -29,7 +29,8 @@ import {
 import { Link } from "@tanstack/react-router"
 
 import { pageOf } from "@/lib/front-desk"
-import { pairingOf, useHomeLink } from "@/lib/home-link"
+import type { Pairing } from "@/lib/home-link"
+import { usePairing } from "@/lib/home-link"
 import { appEventsLane } from "@/lib/home-link/app-events"
 import { jobsLane } from "@/lib/home-link/jobs"
 import type { Lane } from "@/lib/home-link/lanes"
@@ -58,7 +59,7 @@ import {
 const BIG = "h-12 rounded-2xl text-base"
 
 const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
-  const { run, paired, view, sendNow } = useLaneView(lane)
+  const { run, pairing, view, sendNow } = useLaneView(lane)
   const [open, setOpen] = useState(false)
   const words = WORDS[lane.id]
   const trouble =
@@ -139,7 +140,7 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
             {/* Kept while paired, off when there is nothing to send or a
                 send is under way: the sheet grows up from the bottom, so a
                 button that went would move everything above it (HS1). */}
-            {paired ? (
+            {pairing.kind === "paired" ? (
               <Button
                 size="lg"
                 className={BIG}
@@ -149,9 +150,11 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
                 {SHEET.sendNow}
               </Button>
             ) : null}
-            {paired ? null : (
+            {/* Said only once it is known: never while the record is read
+                (#3157). */}
+            {pairing.kind === "unpaired" ? (
               <p className="text-muted-foreground text-sm">{SHEET.pairFirst}</p>
-            )}
+            ) : null}
             <p className="text-muted-foreground text-sm">{words.footnote}</p>
             <SharingLegend className="rounded-2xl border p-3" />
             <Link
@@ -169,11 +172,12 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
 }
 
 /**
- * Whether this phone is paired with home, so a Jobs exchange files its
- * decisions and scouts there: its cards say so (J0).
+ * Whether this phone is paired with home (#3152), for a screen that may not
+ * reach the link itself (LA8): the Jobs wing's cards, which say where their
+ * files are, and nothing of it while the pairing record is read (#3157).
  */
-export function usePairedWithHome(): boolean {
-  return pairingOf(useHomeLink()) !== null
+export function useHomePairing(): Pairing {
+  return usePairing()
 }
 
 /**

@@ -116,8 +116,31 @@ export function letGoReflections(ids: ReadonlyArray<string>): boolean {
 }
 
 /**
+ * Lets the audio of each spoken reflection `ids` names go, once home deleted
+ * its recording for good (LA19, HEARD4): the reflection stays in its
+ * session, marked first, so it never reads as one whose audio never landed.
+ * False, keeping both, if the list would not store the mark. Audio that
+ * fails to go is left for `sweepOrphans`, which clears a marked one's.
+ */
+export function letGoDeletedReflections(ids: ReadonlyArray<string>): boolean {
+  const named = new Set(ids)
+  const spoken = reflections
+    .getSnapshot()
+    .kept.filter((r) => named.has(r.id) && r.body.kind === "voice")
+    .map((r) => r.id)
+  if (spoken.length === 0) return true
+  if (!reflections.markDeleted(spoken, new Date().toISOString())) return false
+  reflectionAudio()
+    .remove(spoken)
+    // Ignored: audio that fails to go is left for `sweepOrphans` (below).
+    .catch(() => undefined)
+  return true
+}
+
+/**
  * Each half without the other, cleared so the shelf and the list agree:
- * audio no reflection names (the app closed between the two removals), and a
+ * audio no reflection names (the app closed between the two removals) or
+ * whose recording home deleted for good (`letGoDeletedReflections`), and a
  * voice reflection whose audio never landed (its save failed, and so did
  * taking it back out). Best effort, and nothing waits on it.
  */
@@ -128,14 +151,25 @@ export function sweepOrphans(): void {
     .then(async (ids) => {
       // Read after the ids: a reflection kept meanwhile names its audio.
       const { kept } = reflections.getSnapshot()
-      const named = new Set(kept.map((r) => r.id))
+      const named = new Set(
+        kept
+          .filter(
+            (r) => r.body.kind !== "voice" || r.body.deletedAt === undefined
+          )
+          .map((r) => r.id)
+      )
       const stored = new Set(ids)
       await audio.remove(ids.filter((id) => !named.has(id)))
       // Saving now, or saved since the ids were read: not silent. A save
       // starts with its reflection kept, so one in `kept` is past that.
       const silent: Array<string> = []
       for (const r of kept) {
-        if (r.body.kind !== "voice" || stored.has(r.id) || isSaving(r.id))
+        if (
+          r.body.kind !== "voice" ||
+          r.body.deletedAt !== undefined ||
+          stored.has(r.id) ||
+          isSaving(r.id)
+        )
           continue
         if ((await audio.get(r.id)) === null) silent.push(r.id)
       }

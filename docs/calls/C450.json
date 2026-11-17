@@ -1,0 +1,19 @@
+{
+  "id": "C450",
+  "made": "2026-11-16",
+  "by": "owner",
+  "paths": [
+    "some-ui:apps/www/src/lib/my-data/deleting.ts",
+    "some-ui:apps/www/src/routes/_dashboard/_apk/journal/takes/attention.tsx"
+  ],
+  "chose": "Takes › Needs your attention offers Delete… on a take of any kind home couldn't hear (`RECONCILE_LETS_GO`, every kind), and this phone lets go of its own copy of each kind. My data's own rows stay Studio's (`PHONE_LETS_GO`).",
+  "options": [
+    "delete any kind home couldn't hear",
+    "keep the kept-for-good kinds",
+    "per kind"
+  ],
+  "gray": "The owner's rule on #2474 keeps the work (a Rust Rounds take, an interview take, a reflection) for good, and C443 offered Delete… only on Studio's takes until the owner said which kinds this page may delete.",
+  "undo": "Set `RECONCILE_LETS_GO` back to `PHONE_LETS_GO`'s kinds in `lib/my-data/deleting.ts`; the per-kind let-go in `lib/home-link/voice-copy` can stay, since the voice run's deleted_for_good uses it too.",
+  "refs": ["#3076", "#3079", "#3070", "#2474"],
+  "moves": "C443"
+}

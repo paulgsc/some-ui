@@ -121,9 +121,11 @@ export const ONE_TAKE: TakePatternOptions = {
 
 /**
  * Where a take is kept, in the person's terms (`./take-words`): on this
- * phone alone, on this phone and waiting to go home, or on home.
+ * phone alone, on this phone and waiting to go home, or on home; or on this
+ * phone while the phone hasn't yet read whether it is paired, so whether it
+ * goes home isn't known (`unknown`, PO1, #3157).
  */
-export type TakePlace = "phone" | "going" | "home"
+export type TakePlace = "phone" | "going" | "home" | "unknown"
 
 /**
  * Where a take is kept, and since when (MIC3), as its screen's store reads
@@ -135,6 +137,8 @@ export type TakeKept =
   | { readonly place: "phone" }
   /** On this phone, its copy waiting to go home. */
   | { readonly place: "going" }
+  /** On this phone, whether it goes home not known yet. */
+  | { readonly place: "unknown" }
   | {
       readonly place: "home"
       /**

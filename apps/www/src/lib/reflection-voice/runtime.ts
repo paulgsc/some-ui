@@ -181,7 +181,10 @@ export function createVoiceNote(
             durationMs: body.durationMs,
             recordedAt: reflection.createdAt,
             standing: body.standing ?? "current",
-            kept: ports.kept(reflection.id),
+            // Its recording home deleted for good is on neither (HEARD4).
+            ...(body.deletedAt === undefined
+              ? { kept: ports.kept(reflection.id) }
+              : { kept: null, deleted: body.deletedAt }),
           },
         ]
       })

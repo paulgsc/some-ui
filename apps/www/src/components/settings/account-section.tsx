@@ -7,10 +7,10 @@
  * button that adds one.
  *
  * Pairing shows a one-time code and the address to type with it on the
- * phone; the phone itself sends nothing until it is tapped there (LA8). No
- * list of paired phones: the server keeps no record of which session is a
- * phone (`paulgsc/server` `docs/identity.md`), so a lost one is unpaired by
- * signing out everywhere.
+ * phone; the phone itself sends nothing until it is tapped there (LA8).
+ * Below it, the phones paired with this account, each with Rename and Sign
+ * out (`./account-phones`, SIGNIN7). What it says of the phone is
+ * `lib/auth/phone-pairing-words`', in the phone's own page names.
  *
  * Deleting takes two presses (the second button appears after the first); what
  * it removes and leaves is said by `lib/auth/account-erases`.
@@ -33,10 +33,15 @@ import {
 import type { Kind } from "@/lib/auth/account-erases"
 import { ACCOUNT_ERASES } from "@/lib/auth/account-erases"
 import { ACCOUNT_KEEPS } from "@/lib/auth/account-keeps"
+import { PHONE_PAIRING } from "@/lib/auth/phone-pairing-words"
+import { homePhones, phonesTransport } from "@/lib/auth/phones/home"
+import { createPhones } from "@/lib/auth/phones/runtime"
 import { absoluteFileHostBase } from "@/lib/file-host-config"
 import { useAsyncIntent } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { passkeysSupported } from "@/lib/passkey"
+
+import { AccountPhones } from "./account-phones"
 
 const KindList = ({
   title,
@@ -91,6 +96,7 @@ export const AccountSection = (): JSX.Element => {
   // offered.
   const pairAt = absoluteFileHostBase()
   const pairable = pairAt?.startsWith("https:") ?? false
+  const phonesHome = phonesTransport()
   const addIntent = useAsyncIntent(
     (_: undefined) =>
       addPasskey().then(
@@ -153,12 +159,8 @@ export const AccountSection = (): JSX.Element => {
 
       <Separator />
       <div className="space-y-2" aria-labelledby="phones-heading">
-        <Label id="phones-heading">Phones</Label>
-        <p className="text-muted-foreground text-sm">
-          A paired phone sends here only what you tap to send, or chose there to
-          keep sending, and names this server first. To unpair a lost phone,
-          sign out everywhere.
-        </p>
+        <Label id="phones-heading">{PHONE_PAIRING.heading}</Label>
+        <p className="text-muted-foreground text-sm">{PHONE_PAIRING.lead}</p>
         {pairAt !== undefined && !pairable ? (
           <p className="text-muted-foreground text-xs break-all">
             Phones pair over https only, and this server is at {pairAt}.
@@ -166,12 +168,12 @@ export const AccountSection = (): JSX.Element => {
         ) : null}
         {pairing ? (
           <div className="space-y-1" role="status">
-            <p className="text-sm">Code for your phone</p>
+            <p className="text-sm">{PHONE_PAIRING.codeFor}</p>
             <p className="font-mono text-2xl tracking-widest select-all">
               {pairing.code.slice(0, 4)} {pairing.code.slice(4)}
             </p>
             <p className="text-muted-foreground text-xs break-all">
-              On the phone: Settings, This phone, Pair, with{" "}
+              {PHONE_PAIRING.onThePhone}{" "}
               <span className="select-all">{pairAt}</span>
             </p>
             <p className="text-muted-foreground text-xs">
@@ -190,9 +192,12 @@ export const AccountSection = (): JSX.Element => {
           variant="outline"
           size="sm"
           disabled={!pairable}
-          idleLabel={pairing ? "Get a new code" : "Pair a phone"}
+          idleLabel={pairing ? PHONE_PAIRING.newCode : PHONE_PAIRING.pairAPhone}
           workingLabel="Getting a code..."
         />
+        {phonesHome === null ? null : (
+          <AccountPhones make={() => createPhones(homePhones(phonesHome))} />
+        )}
       </div>
 
       <Separator />

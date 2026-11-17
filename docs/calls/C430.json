@@ -1,0 +1,20 @@
+{
+  "id": "C430",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/verdict.ts",
+    "some-ui:packages/video-render/src/essay.ts",
+    "some-ui:packages/video-render/src/interview-essay.ts",
+    "some-ui:apps/www/src/lib/web-surface/call/essay-words.ts"
+  ],
+  "chose": "A take home couldn't make out stays a silence in the essay file, marked \"unheard\", with no guess. Code says over it: \"Something was said for this one, but the recording couldn't be made out, so the essay goes on as if it was left unanswered.\" The stage titles it \"Said, but it couldn't be made out\" and shows no count of openings.",
+  "options": [
+    "a silence marked unheard, said in code's words",
+    "a third answer kind beside take and silence",
+    "a plain silence with the routine's guess at why"
+  ],
+  "gray": "The words are said in a published essay and shown on its frame; the owner asked only that the essay go on \"as if I never answered\" and acknowledge something was said. Keeping it a silence keeps home's essay check (it reads only take or silence) and every reader working.",
+  "undo": "Edit UNHEARD_SAID in packages/video-render/src/verdict.ts and ESSAY_WORDS.unheard; essays already put keep their marker, which a reader can drop.",
+  "refs": ["#3070", "#3072"]
+}

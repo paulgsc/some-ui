@@ -4,7 +4,7 @@
  * the phone's file as it comes, so a video is never held whole. Stops,
  * writing nothing more, once `stopped` says so.
  */
-import type { Fetch, PartRead } from "./model"
+import type { Fetch, PartAsked } from "./model"
 import type { VideoFiles } from "./runtime"
 
 /** The most bytes of a video one request asks for: about 4 MB. */
@@ -30,10 +30,7 @@ export async function keptCopy(
 export type BringPorts = {
   files: VideoFiles
   /** Bytes `start` to `end` of the video, or why there are none. */
-  part: (
-    start: number,
-    end: number
-  ) => Promise<PartRead | { readonly kind: "away" }>
+  part: (start: number, end: number) => Promise<PartAsked>
   partBytes: number
   stopped: () => boolean
   /** Where the video stands on the phone, each time that moves. */
@@ -66,7 +63,7 @@ export async function bringVideo(
     if (part.kind !== "bytes") {
       ports.moved({
         kind: "failed",
-        why: part.kind === "gone" ? "gone" : "away",
+        why: part.kind === "gone" || part.kind === "busy" ? part.kind : "away",
       })
       return
     }

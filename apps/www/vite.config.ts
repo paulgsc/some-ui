@@ -10,12 +10,17 @@ import { defineConfig, loadEnv } from "vite"
 import { RELEASE_MINIFY } from "./build.minify.ts"
 import { offPathPublicFiles } from "./build.paths.ts"
 import { buildAudiencePlugin, MOBILE_PROFILE } from "./build.profiles.ts"
+import { moduleSideEffects } from "./build.treeshake.ts"
 import {
   describeTarget,
   fileHostDevPlugin,
   isBlockedProxyPath,
   resolveFileHostTarget,
 } from "./file-host.dev.ts"
+import {
+  OLD_WEBVIEW_PAGE,
+  oldWebViewPage,
+} from "./src/lib/old-webview/index.ts"
 import styleContext from "./style.context.ts"
 
 // The dev/preview counterpart of the /api/resume/ location in
@@ -214,6 +219,21 @@ function pagesConnectPolicy(): Plugin {
   }
 }
 
+// Capacitor's errorPath for a WebView too old for the bundle (src/lib/old-webview).
+function oldWebViewPageAsset(): Plugin {
+  return {
+    name: "old-webview-page",
+    apply: "build",
+    generateBundle(): void {
+      this.emitFile({
+        type: "asset",
+        fileName: OLD_WEBVIEW_PAGE,
+        source: oldWebViewPage(),
+      })
+    },
+  }
+}
+
 /**
  * The commit this build is made from, which `/assurance` names as the copy
  * of the ledger it shows; empty where there is no git checkout (a Docker
@@ -315,6 +335,7 @@ export default defineConfig(
         : []),
       omitOffPathPublicFiles(offPathPublicFiles(process.env.SOME_UI_PROFILE)),
       pagesConnectPolicy(),
+      ...(isMobileBuild ? [oldWebViewPageAsset()] : []),
       ...(isStageBuild ? [stagePageAtRoot()] : []),
     ],
     // An http:// page skips the proxy and asks :3000 directly
@@ -395,11 +416,13 @@ export default defineConfig(
         output: { minify: RELEASE_MINIFY },
         // Tree shaking options
         treeshake: {
-          // Every module is treated as side-effect free, so an import that
-          // binds nothing (`import "@some-ui/x/register"`) is dropped from the
-          // bundle along with whatever that module does at load time. Keep
-          // that in mind before adding one: this line overrides the
-          // `sideEffects` field of every workspace package's manifest for JS.
+          // Every module but those build.treeshake.ts lists is treated as
+          // side-effect free, so an import that binds nothing
+          // (`import "@some-ui/x/register"`) is dropped from the bundle along
+          // with whatever that module does at load time, unless it is listed
+          // there (VS1, #3121: the viewer's storage was dropped this way).
+          // This overrides the `sideEffects` field of every workspace
+          // package's manifest for JS.
           //
           // It does NOT drop stylesheets (#1458, measured on Vite 8 /
           // Rolldown): with `import "@some-ui/auth/style.css"` added to a
@@ -409,7 +432,7 @@ export default defineConfig(
           // manifests that declare `sideEffects: ["*.css"]` are not being
           // overridden here; www imports no package CSS today anyway
           // (src/index.css runs one Tailwind pass over style.context.ts).
-          moduleSideEffects: false,
+          moduleSideEffects,
           // Custom tree shaking for your authored packages
           propertyReadSideEffects: false,
           // Enable pure annotation checking

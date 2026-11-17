@@ -11,19 +11,25 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type { Kept } from "@/lib/home-link/kept-runtime"
 import { createKept } from "@/lib/home-link/kept-runtime"
+import type { Pairing } from "@/lib/home-link/model"
 import type { HomePullPorts } from "@/lib/home-link/pull"
 import { homeRefresher } from "@/lib/home-link/pull"
+import { CHECK_MS } from "@/lib/pull-refresh/model"
 
 const link = vi.hoisted(() => ({
   /** Whether a run holds the link, which turns any other away (`keep`). */
   held: false,
+  /** The link's clock, epoch ms. */
+  now: 0,
 }))
 vi.mock("@/lib/home-link/index", () => ({
-  paired: (): boolean => true,
+  pairing: (): Pairing => ({ kind: "paired", id: "p" }),
+  LINK_CLOCK: { now: (): number => link.now },
 }))
 
 afterEach(() => {
   link.held = false
+  link.now = 0
 })
 
 type Lane = Kept & { runs: number }
@@ -35,7 +41,7 @@ function lane(ends: () => Promise<HomeExchanged>): Lane {
     ...createKept({
       exchange: () => ends(),
       keep: async (run) => {
-        if (link.held) return null
+        if (link.held) return { kind: "refused", why: "busy" }
         link.held = true
         counted.runs += 1
         try {
@@ -44,7 +50,7 @@ function lane(ends: () => Promise<HomeExchanged>): Lane {
           link.held = false
         }
       },
-      paired: () => true,
+      pairing: (): Pairing => ({ kind: "paired", id: "p" }),
       homeBusy: () => false,
       now: () => 7,
     }),
@@ -135,6 +141,8 @@ describe("a pull's ask of home", () => {
       doc: { visibilityState: "visible" },
       free: () => Promise.resolve(),
       lookAgain: () => undefined,
+      // The lanes' clock: a run that ended before a pull answers none of it.
+      now: () => 7,
     })
     const heard = home.ended(shown)
     const all = home.checkAgain()
@@ -173,5 +181,34 @@ describe("a pull's ask of home", () => {
     })
     await pullOver([one], { lookAgain: () => order.push("look again") })
     expect(order).toEqual(["look again", "ran"])
+  })
+
+  it("no longer holds the pulls after it once out longer than a pull may take: the next asks afresh (HERD2)", async () => {
+    // A lane whose first run never ends (a request that never settles).
+    let first = true
+    const hung = lane(() => {
+      if (!first) return synced()
+      first = false
+      return new Promise<HomeExchanged>(() => undefined)
+    })
+    let asked = 0
+    const refresher = homeRefresher({
+      watched: () => new Set([hung]),
+      doc: { visibilityState: "visible" },
+      free: () => Promise.resolve(),
+      lookAgain: () => {
+        asked += 1
+      },
+    })
+    void refresher.checkAgain()
+    await Promise.resolve()
+    // Within a pull's time, the next pull joins the one out.
+    link.now = CHECK_MS - 1
+    void refresher.checkAgain()
+    expect(asked).toBe(1)
+    // Past it, the next is a pull of its own.
+    link.now = CHECK_MS
+    void refresher.checkAgain()
+    expect(asked).toBe(2)
   })
 })

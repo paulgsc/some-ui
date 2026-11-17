@@ -78,6 +78,12 @@ export const FEED_FACTS = {
       "How does this work, as the repositories that hold it stand today, with every claim checked?",
     cadence: "When you ask for one",
   },
+  "interview-essay": {
+    name: "The interview essay",
+    intuition:
+      "How I came across in this week's interview, and what a stronger answer covers, so I can hear it and answer better next time.",
+    cadence: "Every week, once the interview week's deadline has passed",
+  },
   "playoff-delta": {
     name: "Playoff Delta",
     intuition:
@@ -160,6 +166,22 @@ export const FEED_KEPT = {
     },
     drive: NOTHING_IN_DRIVE,
   },
+  "interview-essay": {
+    home: {
+      what: "Every essay Claude wrote for an interview week, the takes you sent that it plays, and each essay's video and what it was made from.",
+      letGo:
+        "Nothing on this phone lets an interview essay go yet. Home keeps each one, its video included.",
+    },
+    phone: {
+      what: "A copy of each essay you watched.",
+      letGo: "A watched copy is the phone's to clear.",
+    },
+    testing: {
+      what: "Nothing. An essay holds your voice, so it stays on home until you share it.",
+      letGo: "Nothing to let go.",
+    },
+    drive: NOTHING_IN_DRIVE,
+  },
   "cards-essay": {
     home: {
       what: "Every essay as home first read it, each essay's video and what it was made from, and its YouTube link once you save it.",
@@ -182,8 +204,10 @@ export const FEED_KEPT = {
 export const STUDIO_INDEX_WORDS = {
   heading: "Studio",
   aToZ: "Listed A to Z. None comes first.",
-  deleting: "Deleting any of it happens in one place:",
+  deleting: "Deleting any of it happens in",
   myData: "Settings › My data",
+  deletingAlso:
+    ", or on a take home couldn't hear well, under Takes. Each delete leaves a receipt.",
   /** The way back from a kind's page to the index. */
   back: "Back to Studio",
   /** The way back from an item's page to its kind's. */
@@ -256,6 +280,8 @@ export const STUDIO_INDEX_WORDS = {
       "This screen is on the change's page. Only what it showed is kept here.",
     homeAway:
       "Home didn't answer, so this screen isn't here. Try again in a moment.",
+    phoneBusy:
+      "This phone was busy with home just then, so this screen isn't here. Try again in a moment.",
     unreadable: "Home sent this screen, but it couldn't be shown.",
     onlyLabels:
       "This phone isn't paired with home, where the screens are kept, so only what each one shows is listed.",
@@ -263,7 +289,8 @@ export const STUDIO_INDEX_WORDS = {
   },
 
   episodes: {
-    intro: "Every video your feeds made, by feed, the newest first.",
+    intro:
+      "Every video your feeds made, by week, the newest first. Choose a genre to see only its videos.",
     making: "Videos you're making",
     makingLine:
       "Made in sittings from your takes: record, watch, shape, finish.",

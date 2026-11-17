@@ -78,7 +78,8 @@ export const VOICE_OFS = [
   "interview",
 ] as const
 
-type VoiceOf = (typeof VOICE_OFS)[number]
+/** A voice note's kind, as home is told it. */
+export type VoiceOf = (typeof VOICE_OFS)[number]
 
 /** One note as home is told it: what it belongs to, and when it was recorded. */
 export type VoiceOut = {

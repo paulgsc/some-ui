@@ -54,8 +54,9 @@ export const SOUNDBITE_ITEM = "soundbites"
 /**
  * The take pattern's options the page picks (`@some-ui/voice-capture`):
  * - many beside each other, and at `SOUNDBITE_LIMIT` the next makes room
- *   (`make-room`): the store lets go the one home holds that the person
- *   picked, or the oldest, and refuses while home holds none (`displacedBy`);
+ *   (`make-room`): the store lets go the one the person picked, else one
+ *   home deleted, else the oldest home holds, and refuses while home holds
+ *   none and none is deleted (`displacedBy`);
  * - each played on its own, Redo and Let go as every screen has them (D2,
  *   D3: neither removes anything);
  * - the button counts down the minute (`clock: "left"`).
@@ -84,7 +85,14 @@ export function patternTakes(
     durationMs: bite.durationMs,
     recordedAt: bite.recordedAt,
     standing: bite.standing ?? "current",
-    kept: held(bite.id) ? { place: "home", since: null } : { place: "phone" },
+    // Its recording home deleted for good is on neither (HEARD4).
+    ...(bite.deletedAt === undefined
+      ? {
+          kept: held(bite.id)
+            ? ({ place: "home", since: null } as const)
+            : ({ place: "phone" } as const),
+        }
+      : { kept: null, deleted: bite.deletedAt }),
   }))
 }
 
@@ -102,27 +110,31 @@ const LEAVES_FIRST: Readonly<
 > = { "set-aside": 0, earlier: 1, current: 2 }
 
 /**
- * The held ones in the order they make room: a soundbite let go (D3) before
- * one a Redo superseded (D2), before one still listed, and the oldest first
- * within each.
+ * The held ones in the order they make room: one whose recording home
+ * deleted (HEARD4), held or not, since nothing of it is left to keep here;
+ * then a soundbite let go (D3) before one a Redo superseded (D2), before one
+ * still listed, and the oldest first within each.
  */
 function inLeavingOrder(
   kept: ReadonlyArray<Soundbite>,
   held: (id: string) => boolean
 ): Array<Soundbite> {
   const rank = (bite: Soundbite): number =>
-    LEAVES_FIRST[bite.standing ?? "current"]
-  return byNewest(kept.filter((bite) => held(bite.id)))
+    bite.deletedAt === undefined ? LEAVES_FIRST[bite.standing ?? "current"] : -1
+  return byNewest(
+    kept.filter((bite) => bite.deletedAt !== undefined || held(bite.id))
+  )
     .reverse()
     .sort((a, b) => rank(a) - rank(b))
 }
 
 /**
  * Which kept soundbite the next one will replace, or null while there is
- * room, or while home holds none of them. Only one `held` says home holds
- * may be replaced: `choice` is the one the person picked, honoured while it
- * is still kept and held; otherwise the first of `inLeavingOrder`: one set
- * aside, then one superseded, then the oldest still listed.
+ * room, or while home holds none of them and none is deleted. Only one home
+ * deleted, or one `held` says home holds, may be replaced: `choice` is the
+ * one the person picked, honoured while it is still kept and may be;
+ * otherwise the first of `inLeavingOrder`: one home deleted, one set aside,
+ * then one superseded, then the oldest still listed.
  */
 export function nextReplaced(
   kept: ReadonlyArray<Soundbite>,

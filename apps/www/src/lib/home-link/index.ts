@@ -12,19 +12,22 @@
  * Phone-only (`build.paths.ts`).
  */
 import { useSyncExternalStore } from "react"
+import { localStorageOrNull } from "@some-ui/core-utils"
 import { reportFailure } from "@some-ui/intent-kit"
 
 import { after } from "@/lib/clock"
 import { homeRequest } from "@/lib/device-backend/native-http"
 
 import { nativeCredential } from "./credential"
-import type { HomeLinkState } from "./model"
+import type { HomeLinkState, Pairing } from "./model"
+import { pairingIn } from "./model"
+import { storedPace } from "./pace"
 import type { HomeLink, HomeLinkPorts } from "./runtime"
 import { createHomeLink } from "./runtime"
 import { onHidden } from "./visibility"
 
 export { hostOf, pairingAddress, typedCode } from "./address"
-export type { HomeLinkState, PairFailure, UnpairedNote } from "./model"
+export type { HomeLinkState, Pairing } from "./model"
 export type { HomeLink } from "./runtime"
 
 let link: HomeLink | null = null
@@ -47,6 +50,7 @@ export function homeLink(): HomeLink {
       onHidden,
       ...LINK_CLOCK,
       report: reportFailure,
+      paceMemory: storedPace(localStorageOrNull()),
       onNetwork: (listener) => {
         window.addEventListener("online", listener)
         return (): void => {
@@ -59,16 +63,19 @@ export function homeLink(): HomeLink {
   return link
 }
 
-/** The id of the pairing this phone holds, or `null`. */
-export function pairingOf(
+/**
+ * Whether this phone is paired with home, as `state` says (#3152): the one
+ * read of it, with `reading` for not known yet (`./model`'s `Pairing`).
+ */
+export function pairing(
   state: HomeLinkState = homeLink().getSnapshot()
-): string | null {
-  return state.link.kind === "paired" ? state.link.id : null
+): Pairing {
+  return pairingIn(state)
 }
 
-/** Whether this phone is paired with home now: the one gate on sending. */
-export function paired(): boolean {
-  return pairingOf() !== null
+/** `pairing()`, read again whenever the link changes. */
+export function usePairing(): Pairing {
+  return pairingIn(useHomeLink())
 }
 
 export function useHomeLink(): HomeLinkState {

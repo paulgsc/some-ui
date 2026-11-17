@@ -1,0 +1,18 @@
+{
+  "id": "C442",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/ui/soundbites/src/lib/reconcile/model.ts",
+    "some-ui:packages/ui/soundbites/src/lib/reconcile/words.ts"
+  ],
+  "chose": "Record it again tells home the owner wants that take recorded again, and the take leaves the list. The page doesn't open a recorder, and home keeps the take as it is.",
+  "options": [
+    "a mark kept on home, with no recorder on the page (now)",
+    "opening the screen where that kind of take is recorded",
+    "a recorder on the page that records the new take in its place"
+  ],
+  "gray": "Each kind of take is recorded on its own screen (a Rust Rounds week, a Studio scene). Nothing says where a take recorded again should go, or whether this page should open that screen.",
+  "undo": "Have the `again` act open the kind's recorder through a port, or drop it.",
+  "refs": ["#3070", "#3075"]
+}

@@ -26,7 +26,7 @@ import type {
   FetchFailure,
   LinkSaved,
   ListState,
-  PartRead,
+  PartAsked,
   VideosEvent,
   VideosState,
 } from "./model"
@@ -53,11 +53,7 @@ export type VideoFiles = {
 
 export type VideosPorts = {
   list: () => Promise<ListState>
-  part: (
-    key: string,
-    start: number,
-    end: number
-  ) => Promise<PartRead | { readonly kind: "away" }>
+  part: (key: string, start: number, end: number) => Promise<PartAsked>
   files: VideoFiles
   share: (
     uri: string,

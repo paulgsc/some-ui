@@ -1,0 +1,19 @@
+{
+  "id": "C477",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/auth/phones/words.ts",
+    "some-ui:apps/www/src/components/settings/account-phones.tsx"
+  ],
+  "chose": "The lan web's phone list says when each phone was last used as \"Used <day> or later\": the day its sign-in last renewed, which home keeps (C493), and the latest day that can be known for sure. Each row also says the day it paired, or that home didn't keep it.",
+  "options": [
+    "\"Used <day> or later\", from the day its sign-in last renewed",
+    "\"Last renewed <day>\"",
+    "\"Last seen <day>\"",
+    "no time of use at all"
+  ],
+  "gray": "Home keeps no last-seen time, only when a phone's sign-in last started or slid (C493), which can be up to half a term behind its last use. \"Last seen\" would claim more than home knows, and \"renewed\" names the machinery the screen is not to show; saying the day as a lower bound is true and in the person's terms.",
+  "undo": "Change `PHONES.used` in lib/auth/phones/words.ts; nothing stores the choice.",
+  "refs": ["#3095"]
+}

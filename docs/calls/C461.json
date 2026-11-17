@@ -1,0 +1,17 @@
+{
+  "id": "C461",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/components/settings/device-my-data.tsx",
+    "some-ui:apps/www/src/lib/my-data/words.ts"
+  ],
+  "chose": "My data offers Delete… on an unheard soundbite only once the Soundbites page has handed its store in this run, as it already waits on Studio's, and says so naming Soundbites (`DELETING.waitsOn`); My data does not hand the soundbites' store in itself.",
+  "options": [
+    "wait on the Soundbites page, and say so",
+    "My data's soundbite page hands their store in itself, as Needs your attention does"
+  ],
+  "gray": "Needs your attention hands the soundbites' store in so its delete can let go; My data's rows were read before any hand-in, so handing it in there also needs a read again, and makes My data start the soundbites' lane, which the owner would see as a soundbite sent from Settings.",
+  "undo": "In `routes/_dashboard/_apk/settings/data/$kind.tsx`, hand in `phoneSoundbiteKeeping()` with `keepSoundbites` on the soundbite kind and read My data again once kept (`onSoundbitesKept`).",
+  "refs": ["#3084", "#3080"]
+}

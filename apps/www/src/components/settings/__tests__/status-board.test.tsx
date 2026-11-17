@@ -17,13 +17,19 @@ import type { BoardRow } from "@/lib/status-board"
 import { BOARD_WORDS } from "@/lib/status-board/words"
 import { StatusBoard } from "@/components/settings/status-board"
 
-const sources = vi.hoisted((): { lanes: Array<unknown>; look: unknown } => ({
-  lanes: [],
-  look: null,
-}))
+const sources = vi.hoisted(
+  (): { lanes: Array<unknown>; look: unknown; pairing: { kind: string } } => ({
+    lanes: [],
+    look: null,
+    pairing: { kind: "unpaired" },
+  })
+)
 
 vi.mock("@/components/settings/device-kept-on-home", () => ({
-  useLaneRows: (): unknown => ({ rows: sources.lanes, paired: false }),
+  useLaneRows: (): unknown => ({
+    rows: sources.lanes,
+    pairing: sources.pairing,
+  }),
 }))
 vi.mock("@/components/settings/device-routine-reads", () => ({
   useLookRow: (): unknown => sources.look,
@@ -159,5 +165,22 @@ describe("StatusBoard", () => {
     expect(links(BOARD_WORDS.groups.studio)).toEqual([
       [expect.stringMatching(/^Videos home makesMaking/), "/journal/renders"],
     ])
+  })
+
+  it("says the morning run isn't known, and lifts nothing for it, while the pairing record is read (PO1)", () => {
+    sources.lanes = []
+    sources.look = null
+    sources.pairing = { kind: "reading" }
+    render(<StatusBoard />)
+    expect(
+      screen.getAllByText(/still reading whether it’s paired with home/).length
+    ).toBeGreaterThan(0)
+    const lifted = [
+      ...screen
+        .getByRole("region", { name: BOARD_WORDS.needsYou })
+        .querySelectorAll("a"),
+    ].map((a) => a.textContent)
+    expect(lifted.filter((text) => /Today’s run/.test(text))).toEqual([])
+    sources.pairing = { kind: "unpaired" }
   })
 })

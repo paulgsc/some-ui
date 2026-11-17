@@ -52,8 +52,11 @@ const UNPAIRED: HomeLinkState = {
   drain: { kind: "idle" },
   pairFailure: null,
   homeBusyUntil: null,
+  busyHomes: {},
   away: null,
   awayReleases: 0,
+  blocked: null,
+  parked: [],
 }
 
 const UNREADABLE: HomeLinkState = {
@@ -62,8 +65,11 @@ const UNREADABLE: HomeLinkState = {
   drain: { kind: "idle" },
   pairFailure: null,
   homeBusyUntil: null,
+  busyHomes: {},
   away: null,
   awayReleases: 0,
+  blocked: null,
+  parked: [],
 }
 
 const PAIRED: HomeLinkState = {
@@ -72,13 +78,19 @@ const PAIRED: HomeLinkState = {
     base: "https://home.example/api/v1",
     id: "pairing-1",
     notForgotten: false,
+    since: null,
+    name: null,
+    standing: { kind: "unchecked" },
   },
   activity: { kind: "idle" },
   drain: { kind: "idle" },
   pairFailure: null,
   homeBusyUntil: null,
+  busyHomes: {},
   away: null,
   awayReleases: 0,
+  blocked: null,
+  parked: [],
 }
 
 const home = vi.hoisted(

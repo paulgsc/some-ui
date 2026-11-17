@@ -53,13 +53,17 @@ import {
 } from "@some-ui/voice-capture/testing"
 
 import { APH_FIXTURES } from "./aph"
+import { ATTENTION_FIXTURES } from "./attention"
+import { EPISODES_FIXTURES } from "./episodes"
 import { INTERVIEW_FIXTURES } from "./interview"
 import { MY_DATA_FIXTURES } from "./my-data"
 import { PULL_FIXTURES } from "./pull"
 import { ROUNDS_FIXTURES } from "./rounds"
 import { SettingsBar } from "./settings-bar"
+import { SIGN_IN_FIXTURES } from "./sign-in-header"
 import { hearsOnStop, SOUNDBITES_FIXTURES } from "./soundbites"
 import { FIT_CUTS, FIT_PRIMER_TEXT } from "./studio-seed"
+import { TAKES_FIXTURES } from "./takes"
 import { TOPIK_FIXTURES } from "./topik"
 import { WWW_FIXTURES } from "./www"
 
@@ -394,8 +398,16 @@ export const PHONE_FIXTURES = {
   ...PULL_FIXTURES,
   /** Settings' bar of pages, for `../settings-bar-fit.spec.ts`. */
   "settings-bar": SettingsBar,
+  /** The header's sign-in mark, each look (`./sign-in-header`, `../sign-in-fit.spec.ts`). */
+  ...SIGN_IN_FIXTURES,
   /** My data, its overview and a kind's list (`../my-data-fit.spec.ts`). */
   ...MY_DATA_FIXTURES,
+  /** Studio's Episodes, by week (`./episodes`, `../episodes-fit.spec.ts`). */
+  ...EPISODES_FIXTURES,
+  /** Studio's Takes, its tiles and a compartment (`./takes`, `../takes-fit.spec.ts`). */
+  ...TAKES_FIXTURES,
+  /** Takes › Needs your attention (`./attention`, `../attention-fit.spec.ts`). */
+  ...ATTENTION_FIXTURES,
   /** The interview week (`./interview`, `../interview-fit.spec.ts`). */
   ...INTERVIEW_FIXTURES,
   /** aph's logger and History (`./aph`, `../stays-put.spec.ts`). */

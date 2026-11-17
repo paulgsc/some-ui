@@ -40,6 +40,7 @@ const MARK = {
 
 /** Each part of "where", a step of the ramp: see the module's note. */
 export const WHERE_FILL: Readonly<Record<Where, string>> = {
+  unknown: "bg-blue-200 dark:bg-blue-900",
   phone: "bg-blue-400 dark:bg-blue-700",
   going: "bg-blue-600 dark:bg-blue-500",
   home: "bg-blue-800 dark:bg-blue-300",

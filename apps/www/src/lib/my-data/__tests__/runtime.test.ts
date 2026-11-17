@@ -25,8 +25,7 @@ const PHONE: PhoneRead = {
       of: "studio",
       at: "2026-11-01T09:00:00.000Z",
       bytes: 10,
-      held: false,
-      going: true,
+      place: "going",
     },
   ],
   unread: [],
@@ -35,6 +34,10 @@ const PHONE: PhoneRead = {
 /** Ports whose home answers wait until the test answers them, in the order asked. */
 function ports(): {
   ports: MyDataPorts
+  /** What this phone's side reads next, and how often it was read. */
+  phone: { next: PhoneRead; reads: number }
+  /** Hears the pairing become known, as the link would say it. */
+  placed: Set<() => void>
   home: Array<{ of: Of | null; answer: Deferred<HomeReading> }>
   played: Array<{ audio: Blob; ended: Deferred<void>; stopped: boolean }>
 } {
@@ -58,16 +61,29 @@ function ports(): {
       }
     },
   }
+  const phone = { next: PHONE, reads: 0 }
+  const placed = new Set<() => void>()
   return {
     home,
     played,
+    phone,
+    placed,
     ports: {
       askHome: (of): Promise<HomeReading> => {
         const answer = deferred<HomeReading>()
         home.push({ of, answer })
         return answer.promise
       },
-      readPhone: (): Promise<PhoneRead> => Promise.resolve(PHONE),
+      readPhone: (): Promise<PhoneRead> => {
+        phone.reads += 1
+        return Promise.resolve(phone.next)
+      },
+      placesKnown: (listener): (() => void) => {
+        placed.add(listener)
+        return (): void => {
+          placed.delete(listener)
+        }
+      },
       audioOf: (id): Promise<Blob | null> =>
         Promise.resolve(id === "gone" ? null : new Blob([id])),
       player,
@@ -111,6 +127,58 @@ describe("My data's runtime", () => {
     const unpaired = data.checkAgain()
     home[2]?.answer.resolve({ kind: "unpaired" })
     await expect(unpaired).resolves.toBeUndefined()
+  })
+
+  it("reads this phone's side again by itself once the pairing is known, asking home nothing more (#3152)", async () => {
+    const { ports: p, home, phone, placed } = ports()
+    const unknown: PhoneRead = {
+      notes: [{ ...PHONE.notes[0], place: "unknown" }],
+      unread: [],
+    }
+    phone.next = unknown
+    const data = createMyData(p)
+    data.open(null)
+    await flush()
+    expect(data.getSnapshot().phone).toEqual(unknown)
+    expect(placed.size).toBe(1)
+    // A read again while it waits keeps the one wait.
+    data.open(null)
+    await flush()
+    expect(placed.size).toBe(1)
+    phone.next = PHONE
+    for (const listener of [...placed]) listener()
+    await flush()
+    expect(data.getSnapshot().phone).toEqual(PHONE)
+    expect(phone.reads).toBe(3)
+    expect(home).toHaveLength(2)
+    expect(placed.size).toBe(0)
+  })
+
+  it("waits for nothing when every recording's place is known, or the pairing already is", async () => {
+    const known = ports()
+    createMyData(known.ports).open(null)
+    await flush()
+    expect(known.placed.size).toBe(0)
+
+    const { ports: p, phone } = ports()
+    phone.next = {
+      notes: [{ ...PHONE.notes[0], place: "unknown" }],
+      unread: [],
+    }
+    // Known by the time the wait starts: it reads again at once.
+    const data = createMyData({
+      ...p,
+      placesKnown: (listener) => {
+        phone.next = PHONE
+        listener()
+        return (): void => undefined
+      },
+    })
+    data.open(null)
+    await flush()
+    await flush()
+    expect(phone.reads).toBe(2)
+    expect(data.getSnapshot().phone).toEqual(PHONE)
   })
 
   it("reads the shown page again after a delete only while a page shows it (MD3)", () => {

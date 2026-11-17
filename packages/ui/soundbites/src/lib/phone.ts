@@ -12,6 +12,7 @@ import {
   onPageVisibility,
 } from "@some-ui/voice-capture"
 
+import { soundbitesHeldByHome } from "./home-held"
 import type { BundlePorts } from "./idea/bundle-runtime"
 import { keptDraftStore, keptIdeaLists } from "./idea/draft"
 import type { IdeaPorts } from "./idea/runtime"
@@ -48,6 +49,19 @@ let projects: ProjectStore | null = null
 export function phoneSoundbiteStore(): SoundbiteStore {
   store ??= indexedDbSoundbiteStore()
   return store
+}
+
+/**
+ * What the soundbites hand the home link (www's `lib/soundbite-keeping`):
+ * their store, and how to read what home holds of them. Any page that needs
+ * the lanes to carry them hands it in: the soundbites' own, and Takes ›
+ * Needs your attention, which deletes one home couldn't hear (HEARD4).
+ */
+export function phoneSoundbiteKeeping(): {
+  readonly store: SoundbiteStore
+  readonly heldByHome: typeof soundbitesHeldByHome
+} {
+  return { store: phoneSoundbiteStore(), heldByHome: soundbitesHeldByHome }
 }
 
 export function phonePorts(): SoundbitesPorts {

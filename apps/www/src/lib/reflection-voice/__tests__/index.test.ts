@@ -6,6 +6,7 @@ import { simulatedMicrophone } from "@some-ui/voice-capture/testing"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
+  letGoDeletedReflections,
   letGoReflections,
   onAudioSettled,
   phoneVoiceNote,
@@ -81,7 +82,45 @@ describe("letGoReflections", () => {
   })
 })
 
+describe("letGoDeletedReflections (HEARD4)", () => {
+  it("keeps the reflection, marked, and lets its audio go", () => {
+    shelved.add("v1")
+    expect(letGoDeletedReflections(["v1", "never-kept"])).toBe(true)
+    const [kept] = reflections.getSnapshot().kept
+    expect(kept.body).toMatchObject({
+      kind: "voice",
+      deletedAt: expect.any(String),
+    })
+    expect(removeAudio).toHaveBeenCalledWith(["v1"])
+  })
+
+  it("keeps the audio when the phone would not store the mark", () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("full", "QuotaExceededError")
+    })
+    expect(letGoDeletedReflections(["v1"])).toBe(false)
+    vi.restoreAllMocks()
+    expect(reflections.getSnapshot().kept[0].body).not.toHaveProperty(
+      "deletedAt"
+    )
+    expect(removeAudio).not.toHaveBeenCalled()
+  })
+})
+
 describe("sweepOrphans", () => {
+  it("clears the audio of a reflection home deleted, and keeps the reflection (HEARD4)", async () => {
+    shelved.add("v1")
+    expect(reflections.markDeleted(["v1"], "2026-11-16T12:00:00.000Z")).toBe(
+      true
+    )
+    removeAudio.mockClear()
+    sweepOrphans()
+    await vi.waitFor(() => {
+      expect(removeAudio).toHaveBeenCalledWith(["v1"])
+    })
+    expect(reflections.getSnapshot().kept.map((r) => r.id)).toEqual(["v1"])
+  })
+
   it("removes audio no reflection names, and lets go of a voice note with no audio", async () => {
     shelved.add("v2").add("stray")
     voice("v2")

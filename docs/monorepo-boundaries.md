@@ -316,6 +316,59 @@ came first and stays: its four laws are the same idea inside one package.
 > database (`apps/www/src/lib/device-backend/capacitor-sqlite`) and its share
 > sheet (`apps/www/src/lib/share-files`).
 
+## One translation per fact: every module receives it
+
+The owner's direction (2026-11-17). Keep three things apart:
+
+1. **What I/O hands back.** This is a promise's raw outcome from a service we
+   don't control, home included. It can hang forever, come back corrupt, come
+   twice (two mounts, two pages, a retry), or arrive after a newer answer.
+2. **One translation.** The module at the edge owns it (`lib/home-link` for
+   home, `device-backend` for the phone's store, each port of the foreign
+   boundary above). It has two parts, as the component rule above splits
+   them:
+
+   - **a pure `step`**, which parses and checks the shape, turns an error into
+     a named state, and, given the current state, recognises a duplicate or a
+     stale answer and leaves the state as it is;
+   - **its runtime, or `callForeign`**, which bounds the wait with a clock and
+     feeds each outcome, the deadline's included, to `step`.
+
+   "Not known yet" is one of those states. For a fact the whole app shares,
+   it is never folded into "no". That is stricter than "A port translates"
+   above, which allows a collapsing translation if it says so: a shared
+   fact's translation may not collapse at all.
+
+3. **The state.** A closed union with its valid transitions, fixed at compile
+   time, is what every screen renders. It cannot hold an invalid value,
+   because only the translation writes it.
+
+**A fact the whole app shares is translated once, at the edge.** Studio,
+Practice, Jobs and every other feature import the state, never the raw result.
+None of them reads a status, checks a `null`, or classifies an error to work
+out for itself whether the phone is paired. A module that gets that right on
+its own still counts: a second interpreter is a second place to be wrong.
+
+**So two modules can't disagree about a shared fact.** If Studio says
+"paired" while Practice says "not paired", the fault is in the one
+translation or in a module that reached past it. It is never in how each
+screen "made sense of" the promise, because neither is meant to. Look in the
+translation first.
+
+This rule is wider than the component rule above, which is about React. It
+holds for any module, React or not.
+
+It is the direction, not yet a declared invariant, because the code does not
+meet it yet everywhere. `lib/home-link` meets it for the pairing and for how a
+run of the link ends (#3152, #3155): `./model`'s `Pairing` is the one answer,
+with `reading` for not known yet; a run asked for while the record is read
+waits as the link's own state (`parked`); and `./settle` is the one
+translation of the record's read and of a run's end, which every ask of home
+receives. Home's answers themselves are still read by status code in each
+feature module (#3156), and the LAYERS audit (#3154) lists the other places
+where a raw result reaches a module. Declare the rule, with a check, once
+those land.
+
 ## A failure reaches the log
 
 www's release build strips `console.*` (`apps/www/build.minify.ts`), and the

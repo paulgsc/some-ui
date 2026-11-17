@@ -1,0 +1,15 @@
+{
+  "id": "C530",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": ["server:apps/servers/file_host/src/admission.rs"],
+  "chose": "Home answers every request within 8 s (ANSWER_WITHIN), down from 15 s, and the pool's acquire is bounded at 3 s.",
+  "options": [
+    "8 s and 3 s",
+    "9 s and 4 s",
+    "keep 15 s and bound only the queue and the pool"
+  ],
+  "gray": "The phone's deadline is 10 s, but how much of the 2 s left over the network and Caddy take is unmeasured. A slow upload taking 8 to 10 s is now answered busy where it would have been served before, and the phone had already given up on those.",
+  "undo": "Raise ANSWER_WITHIN and POOL_ACQUIRE_TIMEOUT in admission.rs. The const asserts keep both under 10 s.",
+  "refs": ["#2918", "server#934"]
+}

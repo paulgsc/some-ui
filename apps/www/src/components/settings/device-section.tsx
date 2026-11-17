@@ -1,6 +1,6 @@
 /**
  * The Android app's Home page (Settings → Home, paulgsc/some-ui#2107): the
- * Home server block, where the phone is paired, unpaired and synced, and
+ * Home server block, where the phone is paired, signed out (SIGNIN3) and synced, and
  * where a finished session home holds is cleared from the phone (LA8,
  * docs/learner-data-authority.md), each a tap that names where it goes.
  * Everything else the phone keeps goes to home on its own once paired
@@ -11,32 +11,36 @@
 
 import type { JSX } from "react"
 import { useState } from "react"
-import { assertNever } from "@some-ui/core-utils"
 import { Button, Input, Label, Notice } from "@some-ui/shared"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
 import { homeApiBase } from "@/lib/device-backend/home-sync"
-import type { HomeLinkState, PairFailure, UnpairedNote } from "@/lib/home-link"
-import {
-  homeLink,
-  hostOf,
-  pairingAddress,
-  typedCode,
-  useHomeLink,
-} from "@/lib/home-link"
+import type { HomeLinkState } from "@/lib/home-link"
+import { homeLink, hostOf, useHomeLink } from "@/lib/home-link"
+import { addressOf } from "@/lib/home-link/address"
 import type { ClearEnd } from "@/lib/home-link/clear"
 import { clearHeld, finishedOnPhone } from "@/lib/home-link/clear"
-import { remember, remembered } from "@/lib/home-link/remembered"
+import { rememberSeen } from "@/lib/home-link/first-run"
+import {
+  HOME_ADDRESS_KEY,
+  remember,
+  remembered,
+} from "@/lib/home-link/remembered"
+import {
+  PAIR_FORM,
+  SIGN_OUT,
+  signInView,
+  UNPAIRED_NOTES,
+} from "@/lib/home-link/sign-in-words"
 import type { SyncResult } from "@/lib/home-link/sync"
 import { lastSync, syncLessonsFrom } from "@/lib/home-link/sync"
 import { CLEAR, HOME_BLOCK } from "@/lib/home-link/words"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { KeptOnHome } from "@/components/settings/device-kept-on-home"
+import { PairForm } from "@/components/settings/device-pair-form"
 import { DeviceRoutineReads } from "@/components/settings/device-routine-reads"
-
-const HOME_KEY = "some-ui.device.home-server.v1"
 
 /** A bare address as its host, for "Reads from"; `null` when it is not one. */
 function typedHost(address: string): string | null {
@@ -45,129 +49,6 @@ function typedHost(address: string): string | null {
   } catch {
     return null
   }
-}
-
-const NOTES: Record<UnpairedNote, string> = {
-  unpaired: "Unpaired.",
-  "unpaired-offline":
-    "Unpaired on this phone. Home couldn't be reached, so it still holds this phone's key until it expires: sign out everywhere on your computer to end it now.",
-  lost: "This phone's pairing didn't survive a restore. Pair again; to end the old one, sign out everywhere on your computer.",
-  unreadable:
-    "This phone couldn't read its pairing just now. Restart the app to try again. Pairing again replaces it; to end the old one, sign out everywhere on your computer.",
-}
-
-function failureLine(failure: PairFailure, host: string): string {
-  switch (failure) {
-    case "unreachable": {
-      return `Couldn't reach ${host}. Are you on the home network?`
-    }
-    case "untrusted": {
-      return `This phone doesn't trust ${host}'s certificate. Nothing was sent.`
-    }
-    case "bad-code": {
-      return "That code didn't work. Codes work once, for 10 minutes. Get a new one on your computer."
-    }
-    case "too-many": {
-      return "Too many tries. Wait a minute and try again."
-    }
-    case "not-set-up": {
-      return `${host} can't pair phones: passkey sign-in isn't set up there.`
-    }
-    case "not-home": {
-      return `${host} doesn't answer as a home server. Check the address your computer shows.`
-    }
-    case "not-kept": {
-      return "This phone couldn't keep the pairing. Get a new code and try again."
-    }
-    case "other": {
-      return "Pairing failed. Get a new code and try again."
-    }
-    default: {
-      return assertNever(failure)
-    }
-  }
-}
-
-/** The pairing form: an https address and the code from the computer. */
-const PairForm = ({
-  state,
-  onCancel,
-}: {
-  state: HomeLinkState
-  onCancel: () => void
-}): JSX.Element => {
-  const [address, setAddress] = useState("")
-  const [code, setCode] = useState("")
-  const read = pairingAddress(address)
-  const target = typeof read === "string" ? null : read
-  const typed = typedCode(code)
-  const pairing = state.activity.kind === "pairing"
-  const { pairFailure } = state
-  const failed =
-    pairFailure === null
-      ? null
-      : failureLine(pairFailure.failure, hostOf(pairFailure.base))
-  const pair = useAsyncIntent(
-    (variables: { target: NonNullable<typeof target>; code: string }) =>
-      homeLink().pair(variables.target, variables.code),
-    { presentation: "interactive" }
-  )
-
-  return (
-    <div className="space-y-2 rounded-md border p-3">
-      <Label htmlFor="pair-address">Home server address</Label>
-      <Input
-        id="pair-address"
-        inputMode="url"
-        autoCapitalize="off"
-        autoCorrect="off"
-        placeholder="https://file-host.home.example"
-        value={address}
-        onChange={(event) => setAddress(event.target.value)}
-      />
-      {read === "not-https" && (
-        <Notice tone="warning">Pairing needs an https:// address.</Notice>
-      )}
-      <Label htmlFor="pair-code">Code from your computer</Label>
-      <Input
-        id="pair-code"
-        autoCapitalize="characters"
-        autoCorrect="off"
-        autoComplete="one-time-code"
-        placeholder="K7QF 2M9X"
-        value={code}
-        onChange={(event) => setCode(event.target.value)}
-      />
-      {/* Pair takes the row's room whatever host it names, so a keystroke
-          moves neither it nor Cancel (HS1). */}
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-        <IntentButton
-          state={pair.state}
-          onPress={() => {
-            if (target && typed) pair.start({ target, code: typed })
-          }}
-          disabled={!target || !typed || pairing}
-          size="sm"
-          className="w-full"
-          idleLabel={
-            <span className="min-w-0 truncate">
-              {target ? `Pair with ${target.host}` : "Pair"}
-            </span>
-          }
-          workingLabel="Pairing..."
-        />
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-          Cancel
-        </Button>
-      </div>
-      <p className="text-muted-foreground text-xs">Sends only this code.</p>
-      {failed !== null && (
-        <Notice key={failed} tone="danger" dismissible>
-          {failed}
-        </Notice>
-      )}
-    </div>
-  )
 }
 
 /** A sync's or send's end, said once. */
@@ -284,12 +165,23 @@ const ClearHeld = ({
 export const DeviceSection = (): JSX.Element => {
   const queryClient = useQueryClient()
   const state = useHomeLink()
-  const [address, setAddress] = useState(() => remembered(HOME_KEY))
+  const [address, setAddress] = useState(() => remembered(HOME_ADDRESS_KEY))
   const [pairOpen, setPairOpen] = useState(false)
   const [confirmingUnpair, setConfirmingUnpair] = useState(false)
 
   const { link, activity } = state
   const paired = link.kind === "paired" ? link : null
+  // Home forgot this phone: it may pair again in place (SIGNIN3).
+  const forgotten = paired?.standing.kind === "forgotten"
+  // The pairing form closes once the link it was opened over changes (a
+  // pairing made, or home knowing the phone again), so nothing it held
+  // back stays held back with no form on screen.
+  const linkKey = paired ? `${paired.id}:${paired.standing.kind}` : link.kind
+  const [openedOver, setOpenedOver] = useState(linkKey)
+  if (openedOver !== linkKey) {
+    setOpenedOver(linkKey)
+    setPairOpen(false)
+  }
   const note = link.kind === "unpaired" ? link.note : null
   const typed = address.trim()
   const base = paired ? paired.base : typed === "" ? null : homeApiBase(typed)
@@ -316,35 +208,57 @@ export const DeviceSection = (): JSX.Element => {
         {paired ? (
           <>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm break-all">Paired · {host}</p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={activity.kind !== "idle" || confirmingUnpair}
-                onClick={() => setConfirmingUnpair(true)}
-              >
-                Unpair
-              </Button>
+              <p className="min-w-0 flex-1 text-sm break-words">
+                {signInView(state).line}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {forgotten ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={
+                      activity.kind !== "idle" || confirmingUnpair || pairOpen
+                    }
+                    onClick={() => setPairOpen(true)}
+                  >
+                    {SIGN_OUT.pairAgain}
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={
+                    activity.kind !== "idle" || confirmingUnpair || pairOpen
+                  }
+                  onClick={() => setConfirmingUnpair(true)}
+                >
+                  {SIGN_OUT.button}
+                </Button>
+              </div>
             </div>
             {confirmingUnpair ? (
               <div className="space-y-2">
-                <p className="text-sm">
-                  Unpair from {host}? This phone forgets its key and can&apos;t
-                  send there until you pair again. Nothing already sent is
-                  deleted.
-                </p>
+                <p className="text-sm">{SIGN_OUT.ask(host ?? "")}</p>
+                <ul className="list-disc space-y-1 pl-5 text-sm">
+                  {SIGN_OUT.keeps.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
                 <div className="flex flex-wrap gap-2">
                   <IntentButton
                     state={unpair.state}
                     onPress={() => {
                       setConfirmingUnpair(false)
+                      // The person signed out on purpose: the first run's
+                      // welcome is not for this phone again (SIGNIN2).
+                      rememberSeen("unpaired")
                       unpair.start(undefined)
                     }}
                     variant="destructive"
                     size="sm"
-                    idleLabel="Yes, unpair"
-                    workingLabel="Unpairing..."
+                    idleLabel={SIGN_OUT.yes}
+                    workingLabel={SIGN_OUT.signingOut}
                   />
                   <Button
                     type="button"
@@ -352,15 +266,26 @@ export const DeviceSection = (): JSX.Element => {
                     size="sm"
                     onClick={() => setConfirmingUnpair(false)}
                   >
-                    Keep
+                    {SIGN_OUT.stay}
                   </Button>
                 </div>
               </div>
             ) : null}
+            {forgotten && pairOpen ? (
+              <div className="space-y-2">
+                <p className="text-muted-foreground text-xs">
+                  {SIGN_OUT.pairAgainLead}
+                </p>
+                <PairForm
+                  state={state}
+                  initialAddress={addressOf(paired.base)}
+                  onCancel={() => setPairOpen(false)}
+                />
+              </div>
+            ) : null}
             {paired.notForgotten ? (
               <Notice tone="danger" dismissible>
-                This phone couldn&apos;t forget its key, so it is still paired.
-                Try Unpair again.
+                {SIGN_OUT.notForgotten}
               </Notice>
             ) : null}
             <p className="text-muted-foreground text-xs">{HOME_BLOCK.lead}</p>
@@ -373,7 +298,9 @@ export const DeviceSection = (): JSX.Element => {
               blocked={confirmingUnpair}
             />
           </>
-        ) : (
+        ) : link.kind === "reading" ? null : (
+          // While the record is read, neither layout: the address form shows
+          // only once the phone is known to hold no pairing (#3157).
           <>
             <Input
               id="home-server"
@@ -393,7 +320,7 @@ export const DeviceSection = (): JSX.Element => {
             </p>
             {note !== null ? (
               <Notice key={note} dismissible>
-                {NOTES[note]}
+                {UNPAIRED_NOTES[note]}
               </Notice>
             ) : null}
           </>
@@ -407,7 +334,7 @@ export const DeviceSection = (): JSX.Element => {
               state={sync.state}
               onPress={() => {
                 if (base === null) return
-                if (!paired) remember(HOME_KEY, typed)
+                if (!paired) remember(HOME_ADDRESS_KEY, typed)
                 sync.start(base)
               }}
               disabled={
@@ -421,7 +348,7 @@ export const DeviceSection = (): JSX.Element => {
               workingLabel="Syncing..."
             />
           )}
-          {paired ? null : (
+          {paired || link.kind === "reading" ? null : (
             <Button
               type="button"
               variant="outline"
@@ -431,7 +358,7 @@ export const DeviceSection = (): JSX.Element => {
               }
               onClick={() => setPairOpen(true)}
             >
-              Pair...
+              {PAIR_FORM.open}
             </Button>
           )}
         </div>
@@ -439,7 +366,11 @@ export const DeviceSection = (): JSX.Element => {
           {synced === "" ? "Not synced yet." : `Last sync: ${synced}`}
         </p>
         {pairOpen && !paired ? (
-          <PairForm state={state} onCancel={() => setPairOpen(false)} />
+          <PairForm
+            state={state}
+            initialAddress={address}
+            onCancel={() => setPairOpen(false)}
+          />
         ) : null}
       </div>
     </section>

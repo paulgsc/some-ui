@@ -36,7 +36,7 @@ import { createKept, laneExchange } from "@/lib/home-link/kept-runtime"
 import { askKept, watchKept } from "@/lib/home-link/kept-watch"
 import type { Lane, LaneId } from "@/lib/home-link/lanes"
 import { busyNow } from "@/lib/home-link/lanes"
-import type { HomeLinkState } from "@/lib/home-link/model"
+import type { HomeLinkState, Pairing } from "@/lib/home-link/model"
 import { awayHeld } from "@/lib/home-link/model"
 import type { HomeLink } from "@/lib/home-link/runtime"
 import { createHomeLink } from "@/lib/home-link/runtime"
@@ -56,15 +56,12 @@ function theLink(): HomeLink {
   return made.link
 }
 
-vi.mock("@/lib/home-link/index", () => {
-  const pairingOf = (state?: HomeLinkState): string | null => {
-    const now = state ?? theLink().getSnapshot()
-    return now.link.kind === "paired" ? now.link.id : null
-  }
+vi.mock("@/lib/home-link/index", async () => {
+  const { pairingIn } = await import("@/lib/home-link/model")
   return {
     homeLink: theLink,
-    pairingOf,
-    paired: (): boolean => pairingOf() !== null,
+    pairing: (state?: HomeLinkState): Pairing =>
+      pairingIn(state ?? theLink().getSnapshot()),
     LINK_CLOCK: {
       now: (): number => made.clock?.now() ?? 0,
       after: (ms: number, run: () => void): (() => void) =>
@@ -92,7 +89,8 @@ describe("stepAway over every ordering (AW1)", () => {
     (now): Move => ({ type: "unanswered", now }),
     (): Move => ({ type: "answered" }),
     (): Move => ({ type: "lapsed" }),
-    (): Move => ({ type: "lookAgain" }),
+    (): Move => ({ type: "lookAgain", fresh: true }),
+    (): Move => ({ type: "lookAgain", fresh: false }),
     (): Move => ({ type: "pass", ms: FIRST_HOLD_MS }),
     (): Move => ({ type: "pass", ms: LONGEST_HOLD_MS }),
   ]
@@ -107,7 +105,7 @@ describe("stepAway over every ordering (AW1)", () => {
     }
   }
 
-  // Every ordering of six moves (6^6 = 46,656) is the proof, so it keeps the
+  // Every ordering of six moves (7^6 = 117,649) is the proof, so it keeps the
   // whole family and gets a timeout of its own: about 1 s alone, it passed 5 s
   // when a lockfile change ran every package's tests at once (#2956).
   it(
@@ -136,6 +134,12 @@ describe("stepAway over every ordering (AW1)", () => {
           }
           if (move.type === "lapsed" || move.type === "lookAgain") {
             expect(away?.heldUntil ?? null).toBeNull()
+          }
+          // A pull keeps the stretch's tries; a new network starts them over (HERD1).
+          if (move.type === "lookAgain") {
+            expect(away?.tries).toBe(
+              before === null ? undefined : move.fresh ? 0 : before.tries
+            )
           }
           expect(away?.since ?? null).toBe(since)
         }
@@ -249,9 +253,9 @@ function watchedLane(id: LaneId, watch = true): Watched {
     },
   }
   const kept = createKept({
-    exchange: laneExchange(lane, () => "p"),
+    exchange: laneExchange(lane, (): Pairing => ({ kind: "paired", id: "p" })),
     keep: (run) => theLink().drain(run),
-    paired: () => true,
+    pairing: (): Pairing => ({ kind: "paired", id: "p" }),
     homeBusy: busyNow,
     now: () => 0,
   })
@@ -367,7 +371,7 @@ describe("away from home over the real link (AW1)", () => {
     await settled(lanes)
     home.reachable = true
     const sent = await theLink().send((send) => send("GET", "/tapped"))
-    expect(sent?.kind).toBe("done")
+    expect(sent.kind).toBe("done")
     expect(home.sent).toContain("/tapped")
     expect(theLink().getSnapshot().away).toBeNull()
   })
@@ -377,7 +381,7 @@ describe("away from home over the real link (AW1)", () => {
       const home = await pairedHome()
       home.hold = true
       const lanes = [watchedLane("practice")]
-      const tap = theLink().sync((get) => get(`${BASE}/sync`))
+      const tap = theLink().sync(BASE, (get) => get(`${BASE}/sync`))
       await vi.waitFor(() => expect(home.sent).toHaveLength(2))
       home.release(!tapFirst)
       await expect(tap).rejects.toThrow()
@@ -398,7 +402,7 @@ describe("away from home over the real link (AW1)", () => {
     const home = await pairedHome()
     home.reachable = true
     home.hold = true
-    const tap = theLink().sync((get) => get(`${BASE}/sync`))
+    const tap = theLink().sync(BASE, (get) => get(`${BASE}/sync`))
     await vi.waitFor(() => expect(home.sent).toEqual(["/sync"]))
     home.reachable = false
     home.hold = false
@@ -421,7 +425,7 @@ describe("away from home over the real link (AW1)", () => {
     expect(home.sent).toHaveLength(before)
     home.reachable = true
     const read = await theLink().keep((send) => send("GET", "/asked"))
-    expect(read?.kind).toBe("done")
+    expect(read.kind).toBe("done")
     expect(home.sent[before]).toBe("/asked")
     expect(theLink().getSnapshot().away).toBeNull()
   })
@@ -537,9 +541,12 @@ describe("away from home over the real link (AW1)", () => {
         },
       }
       const kept = createKept({
-        exchange: laneExchange(lane, () => "p"),
+        exchange: laneExchange(
+          lane,
+          (): Pairing => ({ kind: "paired", id: "p" })
+        ),
         keep: (run) => theLink().drain(run),
-        paired: () => true,
+        pairing: (): Pairing => ({ kind: "paired", id: "p" }),
         homeBusy: busyNow,
         now: () => 0,
       })

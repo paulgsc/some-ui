@@ -1,0 +1,15 @@
+{
+  "id": "C411",
+  "made": "2026-11-16",
+  "by": "claude",
+  "paths": ["some-ui:packages/ui/shared/src/lib/dot-meaning/index.ts"],
+  "chose": "A status dot's colour is the theme's token from the shared dot table (dotClass): chart-2 on home (sky in Mochi Night), chart-3 on YouTube (leaf), the muted ink being made; within a theme no two meanings share a token.",
+  "options": [
+    "theme tokens, one per meaning, a test refusing a token used twice",
+    "fixed hues the same in every theme (refused by theme-protocol/no-fixed-status-color)",
+    "new per-theme dot tokens in some-styles"
+  ],
+  "gray": "The owner said a dot's colour means one thing on every screen and chose sky for on home; whether that holds across themes or within each was not said. The sprint's coordinator ruled within each theme, since the repo's theme protocol refuses fixed status hues.",
+  "undo": "Change the tokens in dotClass's table; every screen reads the one table.",
+  "refs": ["#3067", "#3030"]
+}

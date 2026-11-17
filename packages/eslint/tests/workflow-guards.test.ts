@@ -623,6 +623,8 @@ describe("checkRetentionTriggers", () => {
     "Extension Release",
     "Sign Firefox Extension (Manual)",
     "WASM Release",
+    "Android Compat",
+    "Snips Capture",
   ])
 
   it("reads only the workflow_run list, and asks for each kept family's workflow", () => {
@@ -632,6 +634,7 @@ describe("checkRetentionTriggers", () => {
       "    workflows:",
       "      - Mobile APK",
       '      - "Extension Release"',
+      "      - Snips Capture",
       "    types: [completed]",
       "  pull_request:",
       "    paths:",

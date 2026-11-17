@@ -1,0 +1,14 @@
+{
+  "id": "C552",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/eslint/src/retention.ts",
+    "some-ui:.github/workflows/retention.yml"
+  ],
+  "chose": "The bundle artifact keeps the newest one for its day (keep 1, TTL 1) rather than being consumed in its run, so retention.yml runs after Snips Capture.",
+  "options": ["keep 1, TTL 1", "keep 0, TTL 1"],
+  "gray": "Home picks the bundle up after the run; keep 0 lets the hourly sweep delete it before home can, while one day is still the repo's default life.",
+  "undo": "Set the snips-bundle family to keep 0 and drop Snips Capture from retention.yml's workflow_run list.",
+  "refs": ["#3114", "#3115"]
+}

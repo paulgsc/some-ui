@@ -404,7 +404,8 @@ jobs:
       # nothing else in the bundle sends. Two builds, because the two claims
       # are about different ones: the lan build with a stand-in file_host
       # (corpus reads only, no cookie, sessions survive a reload with it down),
-      # and the Pages build (its connect-src policy is present and enforced).
+      # and the Pages build (its connect-src policy is present and enforced,
+      # and a viewer's storage is the in-memory copy: VS1, #3121).
       #
       # The spec fails, not skips, when a build is missing under CI, so a
       # broken build step cannot turn this into a green run that measured
@@ -418,7 +419,11 @@ jobs:
             'apps/www/index.html' \
             'apps/www/resume/index.html' \
             'apps/www/build.profiles.ts' \
+            'apps/www/build.treeshake.ts' \
             'apps/www/playwright.config.ts' \
+            'apps/www/package.json' \
+            'pnpm-lock.yaml' \
+            'packages/core-utils/**' \
             'packages/fetch-kit/**' \
             'packages/server-routes/**' || true)
           if [ -n "$files" ]; then
@@ -428,7 +433,8 @@ jobs:
               pnpm --filter www exec vite build --outDir dist-pages --emptyOutDir
             nix develop .#ci-playwright --command env \
               WWW_DIST_LAN=apps/www/dist WWW_DIST_PAGES=apps/www/dist-pages \
-              pnpm --filter www test:e2e tests/local-mode/no-egress.spec.ts
+              pnpm --filter www test:e2e tests/local-mode/no-egress.spec.ts \
+              tests/local-mode/viewer-storage.spec.ts
           else
             echo "No files that decide what the built app sends changed."
           fi

@@ -18,14 +18,14 @@ import { SERVER_CONTRACT_EPOCH } from "@some-ui/server-routes"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 
 import { askCompat } from "./compat-read"
-import { homeLink, LINK_CLOCK, paired, pairingOf, useHomeLink } from "./index"
+import { homeLink, LINK_CLOCK, pairing, useHomeLink } from "./index"
 import type { KeptRun, KeptState } from "./kept-model"
 import type { Kept, KeptPorts } from "./kept-runtime"
 import { createKept, laneExchange } from "./kept-runtime"
 import type { KeptRecord } from "./kept-watch"
 import { askKept, watchKept } from "./kept-watch"
-import type { HomeLinkState } from "./model"
-import { homeBusy } from "./model"
+import type { HomeLinkState, Pairing } from "./model"
+import { drainStopping, homeBusy } from "./model"
 import type { HomeRefresher } from "./pull"
 import { homeRefresher } from "./pull"
 import type { ServesRun } from "./serves"
@@ -107,8 +107,11 @@ export function busyNow(): boolean {
 /** How every run here reaches home: through the link's drain, one at a time. */
 const LINK_PORTS: Omit<KeptPorts, "exchange"> = {
   keep: (run) => homeLink().drain(run),
-  paired,
+  pairing: () => pairing(),
   homeBusy: busyNow,
+  stopping: () => drainStopping(homeLink().getSnapshot()),
+  inFront: () =>
+    typeof document === "undefined" || document.visibilityState === "visible",
   now: LINK_CLOCK.now,
 }
 
@@ -120,7 +123,7 @@ function wire(lane: Lane): Wired {
     record: { revision: lane.revision, subscribe: lane.subscribe },
     sending: createKept({
       ...LINK_PORTS,
-      exchange: laneExchange(lane, () => pairingOf()),
+      exchange: laneExchange(lane, () => pairing()),
     }),
   }
   wired.set(lane.id, made)
@@ -206,8 +209,12 @@ function offersSendNow(
 /** A lane as its mark and Settings show it. */
 export type LaneReading = {
   readonly run: KeptState
-  /** The phone is paired with home, so the lane drains. */
-  readonly paired: boolean
+  /**
+   * Whether the phone is paired with home, so the lane drains (#3152), with
+   * `reading` while its record is read: a reader that would say "not paired"
+   * holds back then (#3157).
+   */
+  readonly pairing: Pairing
   readonly view: LaneView
   readonly sendNow: boolean
 }
@@ -220,10 +227,11 @@ export function laneReading(
   state: HomeLinkState,
   serves: Serves | null
 ): LaneReading {
-  const isPaired = pairingOf(state) !== null
+  const now = pairing(state)
+  const isPaired = now.kind === "paired"
   return {
     run,
-    paired: isPaired,
+    pairing: now,
     view: laneView(WORDS[id], {
       ...counts,
       known: state.link.kind !== "reading",
@@ -234,6 +242,7 @@ export function laneReading(
         state.away === null
           ? null
           : { since: state.away.since, now: LINK_CLOCK.now() },
+      blocked: state.blocked?.reason ?? null,
     }),
     sendNow: offersSendNow(run, counts, isPaired),
   }

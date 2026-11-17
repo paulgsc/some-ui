@@ -34,6 +34,8 @@ import type { HomeSession } from "@some-ui/leetype"
 import type { Kept } from "@/lib/device-backend/handlers/shelf"
 import type { SessionRecord } from "@/lib/tenant/types"
 
+import type { Pairing } from "./model"
+
 export const SENT_KEY = "some-ui.home.sent.v1"
 
 export type Sent = {
@@ -165,6 +167,15 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
       events,
     ].every((kind) => kind.whole),
   }
+}
+
+/**
+ * What this phone knows home holds under `pairing` (#3152): its record for
+ * a pairing; none while the phone's record is still being read, or with no
+ * pairing, since nothing is known held then.
+ */
+export function sentUnder(storage: Store, pairing: Pairing): Sent | null {
+  return pairing.kind === "paired" ? readSent(storage, pairing.id) : null
 }
 
 /** What this phone knows home holds under `pairing`; nothing, for another. */

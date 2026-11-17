@@ -118,7 +118,7 @@ describe("a scout filed with home without a tap (JB2)", () => {
     const { JobsScout } = await import("@/components/jobs/scout")
     const { KeptOnHome } = await import("@/components/jobs/parts")
     render(
-      <KeptOnHome value>
+      <KeptOnHome value={{ kind: "paired", id: "p1" }}>
         <JobsScout />
       </KeptOnHome>
     )

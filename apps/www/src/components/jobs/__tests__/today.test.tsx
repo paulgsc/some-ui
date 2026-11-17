@@ -9,6 +9,7 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { READING, UNPAIRED, type Pairing } from "@/lib/home-link/model"
 import type { PickRef } from "@/lib/jobs/model"
 
 /** A runtime of its own for each test: a mock's factory runs once otherwise. */
@@ -36,12 +37,13 @@ afterEach(() => {
 })
 
 const PICKER = "Open picks from Drive"
+const PAIRED: Pairing = { kind: "paired", id: "p1" }
 
 /** Today, as the phone shows it at `now`, holding the digest of `day` (or none). */
 async function showToday(
   now: string,
   day: string | null,
-  kept = false
+  pairing: Pairing = UNPAIRED
 ): Promise<void> {
   vi.setSystemTime(new Date(now))
   mockJobs()
@@ -53,7 +55,7 @@ async function showToday(
   const { JobsToday } = await import("@/components/jobs/today")
   const { KeptOnHome } = await import("@/components/jobs/parts")
   render(
-    <KeptOnHome value={kept}>
+    <KeptOnHome value={pairing}>
       <JobsToday />
     </KeptOnHome>
   )
@@ -75,13 +77,23 @@ describe("Today, as the picks arrive", () => {
   })
 
   it("past the run on a phone that hasn't heard from home since, says so and offers Drive", async () => {
-    await showToday("2026-10-22T17:00:00Z", null, true)
+    await showToday("2026-10-22T17:00:00Z", null, PAIRED)
     expect(screen.getByText("Not checked with home since the run")).toBeTruthy()
     expect(screen.getByText(PICKER)).toBeTruthy()
   })
 
+  it("past the run while the phone still reads its pairing, says so and offers no Drive", async () => {
+    await showToday("2026-10-22T17:00:00Z", null, READING)
+    expect(
+      screen.getByText(
+        "This phone is still reading whether it’s paired with home."
+      )
+    ).toBeTruthy()
+    expect(screen.queryByText(PICKER)).toBeNull()
+  })
+
   it("once home answered with nothing for today, says there is no word of the run", async () => {
-    await showToday("2026-10-22T17:00:00Z", null, true)
+    await showToday("2026-10-22T17:00:00Z", null, PAIRED)
     const { phoneJobs } = await import("@/lib/jobs")
     act(() => {
       phoneJobs().keeping.fetched([])

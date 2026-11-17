@@ -42,7 +42,12 @@
  *   `GET /voice-notes/takes` per open, Try again, search or Show the
  *   newest, a blank search showing the newest, `?q=` holding the search's
  *   words) and, per Play, for one take's audio, through the same read Rust
- *   Rounds' notes use (`lib/home-link/voice-audio`). Studio's feed videos
+ *   Rounds' notes use (`lib/home-link/voice-audio`). Its Needs your
+ *   attention (`lib/take-reconcile`, HEARD3) asks home for the takes it
+ *   couldn't hear well (`lib/home-link/attention`, one
+ *   `GET /voice-notes/attention` per open or Try again), per Play for one
+ *   take's audio, and per act tapped tells home of it (one
+ *   `POST /voice-notes/:id/attention`). Studio's feed videos
  *   (`lib/call-videos`, ST38, FEED4) asks home for the episodes of a feed
  *   (the weekly call or Playoff Delta) it holds (`lib/home-link/call-videos`,
  *   one `GET /feeds/:feed/videos` per open, drag down, Try again or Save home
@@ -52,7 +57,9 @@
  *   and sends an episode's link on Save (one `PUT
  *   /feeds/:feed/videos/:key/link`).
  *
- * - **LA19 (MY-DATA MD5): only My data deletes a record on home.** Only
+ * - **LA19 (MY-DATA MD5): only My data's delete path deletes a record on
+ *   home** (its sheet, on My data's page or Takes › Needs your attention's,
+ *   HEARD3). Only
  *   `lib/home-link/delete-note` sends home a `DELETE` (a recording's notes,
  *   or a step of a feed's episode), only `lib/my-data` imports it, and only its
  *   two delete runtimes call it, once a run each
@@ -107,6 +114,12 @@ const NATIVE_HTTP = "lib/device-backend/native-http/index.ts"
 const NATIVE_HTTP_CALLERS = new Set(["lib/home-link/index.ts"])
 const HOME_LINK_CALLERS = new Set([
   "components/settings/device-section.tsx",
+  // LA8 (SIGNIN2): the pairing form, Settings' Home server block's and the
+  // welcome's, whose Pair sends the code (and a typed name, where home
+  // takes one); and the welcome the foyer draws on a phone not paired,
+  // which reads the link to choose.
+  "components/settings/device-pair-form.tsx",
+  "components/settings/device-welcome.tsx",
   // Settings' readout of what this phone keeps on home and what waits
   // (LA15), with Send now; the status page's rows for the same records are
   // read here too, sending nothing of their own.
@@ -115,6 +128,9 @@ const HOME_LINK_CALLERS = new Set([
   // header, and what hands aph's lane to them.
   "components/device-home-glyph.tsx",
   "components/aph/device-aph-lane.tsx",
+  // LA8 (SIGNIN1): the sign-in mark on every phone screen, which reads the
+  // link and runs the standing watch, whose one ask is the link's `check`.
+  "components/device-sign-in-mark.tsx",
   // Settings' readout of Korean's look at the routine's files, and the port
   // Korean reads them through.
   "components/settings/device-routine-reads.tsx",
@@ -159,6 +175,10 @@ const HOME_LINK_CALLERS = new Set([
   // keeps as the screen opens and on Try again, a search (a blank one reads
   // the newest) or Show the newest, and for one take's audio on each Play.
   "lib/take-library/index.ts",
+  // LA8 (HEARD3): Studio's Takes › Needs your attention, which asks home for
+  // the takes it couldn't hear well as the page opens and on Try again, for
+  // one take's audio on each Play, and tells home of each act on a tap.
+  "lib/take-reconcile/index.ts",
   // LA8 (ST38, FEED4): Studio's feed videos, which asks home for a feed's
   // episodes it holds as the screen opens, on a drag down, on Try again and
   // after a Save, for an episode's video a part at a time on Watch, and sends
@@ -215,6 +235,7 @@ const KEEPERS = new Set([
   "lib/home-link/deleted-read.ts",
   "lib/home-link/idea-reads.ts",
   "lib/home-link/takes-read.ts",
+  "lib/home-link/attention.ts",
   "lib/home-link/call-videos.ts",
   "lib/home-link/renders.ts",
   "lib/home-link/previews.ts",
@@ -269,6 +290,16 @@ const KEPT_SENDS = [
 /** LA8, ST32: the read of the takes home keeps, and the one request it may send. */
 const TAKES_READ = "lib/home-link/takes-read.ts"
 const TAKES_SENDS = [['"GET"', "takesPath(q)"]]
+
+/**
+ * LA8, HEARD3: the read of the takes home couldn't hear well, and the act
+ * on one: the two requests it may send.
+ */
+const ATTENTION_READ = "lib/home-link/attention.ts"
+const ATTENTION_SENDS = [
+  ['"GET"', "ATTENTION_PATH"],
+  ['"POST"', "actPath(id)", "JSON.stringify({ act })"],
+]
 
 /**
  * LA8, ST38, FEED4: Studio's feed videos' reads of a feed's episodes, of an
@@ -830,6 +861,24 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(read(CALLS_READ)).toContain("homeLink().keep(")
   })
 
+  it("asks whether home still knows this phone only from the standing watch, through the link's one GET of /auth/session (SIGNIN1)", () => {
+    const checks = (f: string): boolean => /\.check\(\)/.test(read(f))
+    expect(
+      sources.filter(
+        (f) =>
+          (f.startsWith("lib/home-link/") || HOME_LINK_CALLERS.has(f)) &&
+          checks(f)
+      )
+    ).toEqual(["lib/home-link/standing.ts"])
+    expect(read("lib/home-link/runtime.ts")).toContain(
+      "url: `${pairing.base}/auth/session`"
+    )
+    const watchers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) => /from "@\/lib\/home-link\/standing"/.test(read(f)))
+    expect(watchers).toEqual(["components/device-sign-in-mark.tsx"])
+  })
+
   it("looks at home's own word only for whether home works with this build: one GET of /compat, without the credential, which only the marks' wiring asks (#2843)", () => {
     const looks = (f: string): boolean => /\.look\(/.test(read(f))
     expect(
@@ -884,6 +933,23 @@ describe("LA8: the phone reaches home through one module", () => {
         )
       )
     expect(readers).toEqual(["lib/take-library/index.ts"])
+  })
+
+  it("sends nothing from Takes › Needs your attention but one GET of /voice-notes/attention and one POST of an act, and only the page asks them (HEARD3)", () => {
+    expect(sendCalls(ATTENTION_READ, read(ATTENTION_READ))).toEqual(
+      ATTENTION_SENDS
+    )
+    expect(read(ATTENTION_READ)).toContain('"/voice-notes/attention"')
+    expect(read(ATTENTION_READ)).toContain(
+      "`/voice-notes/${encodeURIComponent(id)}/attention`"
+    )
+    expect(read(ATTENTION_READ)).toContain("homeLink().keep(")
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/attention"|from "@\/lib\/home-link\/attention"/.test(read(f))
+      )
+    expect(readers).toEqual(["lib/take-reconcile/index.ts"])
   })
 
   it("sends nothing from Studio's feed videos but a feed's list, its video's parts and an episode's link, and only Studio's feed videos asks them (ST38, FEED4)", () => {
@@ -976,7 +1042,7 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(callers).toEqual(["lib/idea-home/index.ts"])
   })
 
-  it("sends nothing from the read of a note's audio but one GET of /voice-notes/:id/audio, and only the voice lane, Takes on home and My data read it (RR6, ST32, MD8)", () => {
+  it("sends nothing from the read of a note's audio but one GET of /voice-notes/:id/audio, and only the voice lane, Takes on home, Needs your attention and My data read it (RR6, ST32, MD8, HEARD3)", () => {
     expect(sendCalls(AUDIO_READ, read(AUDIO_READ))).toEqual(AUDIO_SENDS)
     const readers = sourceFiles()
       .filter((f) => !isTestFile(f))
@@ -989,6 +1055,7 @@ describe("LA8: the phone reaches home through one module", () => {
       "lib/home-link/voice-copy.ts",
       "lib/my-data/index.ts",
       "lib/take-library/index.ts",
+      "lib/take-reconcile/index.ts",
     ])
   })
 

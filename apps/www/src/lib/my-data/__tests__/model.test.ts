@@ -42,8 +42,7 @@ const note = (over: Partial<PhoneNote> & { id: string }): PhoneNote => ({
   of: "studio",
   at: "2026-11-01T09:00:00.000Z",
   bytes: 100,
-  held: false,
-  going: true,
+  place: "going",
   ...over,
 })
 
@@ -124,16 +123,22 @@ describe("the overview", () => {
     const view = overviewOf(
       READ,
       [
-        note({ id: "held", held: true, bytes: 999 }),
+        note({ id: "held", place: "home", bytes: 999 }),
         note({ id: "going", bytes: 300 }),
-        note({ id: "only", going: false, of: "lens", bytes: 50 }),
+        note({ id: "only", place: "phone", of: "lens", bytes: 50 }),
       ],
       NOW
     )
     expect(view.homeBytes).toBe(11_000)
     expect(view.phoneBytes).toBe(350)
     expect(view.recordings).toBe(7)
-    expect(view.where).toEqual({ home: 4, aside: 1, going: 1, phone: 1 })
+    expect(view.where).toEqual({
+      home: 4,
+      aside: 1,
+      going: 1,
+      phone: 1,
+      unknown: 0,
+    })
     expect(
       view.kinds.map((k) => [k.of, k.notes, k.bytes, k.phoneOnly])
     ).toEqual([
@@ -159,12 +164,22 @@ describe("the overview", () => {
       "unreachable",
       "older",
     ] as const) {
-      const view = overviewOf({ kind }, [note({ id: "a", going: false })], NOW)
+      const view = overviewOf(
+        { kind },
+        [note({ id: "a", place: "phone" })],
+        NOW
+      )
       expect(view.home).toBe(kind)
       expect(view.homeBytes).toBeNull()
       expect(view.growth).toEqual([])
       expect(view.recordings).toBe(1)
-      expect(view.where).toEqual({ home: 0, aside: 0, going: 0, phone: 1 })
+      expect(view.where).toEqual({
+        home: 0,
+        aside: 0,
+        going: 0,
+        phone: 1,
+        unknown: 0,
+      })
     }
   })
 })
@@ -278,7 +293,7 @@ describe("a kind's list", () => {
       "studio",
       listed,
       [
-        note({ id: "on-home", held: true, at: "2026-10-20T09:00:00.000Z" }),
+        note({ id: "on-home", place: "home", at: "2026-10-20T09:00:00.000Z" }),
         note({ id: "going", at: "2026-11-01T09:00:00.000Z" }),
         note({ id: "lens", of: "lens" }),
       ],

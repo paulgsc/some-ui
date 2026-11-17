@@ -1,0 +1,19 @@
+{
+  "id": "C471",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/routes/_dashboard/_apk/foyer.tsx",
+    "some-ui:apps/www/src/lib/home-link/first-run.ts",
+    "some-ui:apps/www/src/components/settings/device-welcome.tsx"
+  ],
+  "chose": "A phone never paired with home opens on a welcome that pairs it, drawn in the foyer's place (no route of its own), with \"Not now\" beside the form: saying it keeps everything on this phone, shows the wings, and is remembered so the welcome does not come back; a pairing a restore lost opens the welcome again, whatever was said before it, until \"Not now\" is said to that. A phone the person just unpaired never sees it.",
+  "options": [
+    "a welcome offered once, with \"Not now\" remembered",
+    "a welcome that blocks the foyer until the phone pairs",
+    "no welcome: a card on the foyer that offers pairing"
+  ],
+  "gray": "The owner asked for an onboarding flow that pairs a new phone, and named no way out; blocking would keep the phone's own wings (which work unpaired) behind home, and a card alone is what the owner found too easy to miss.",
+  "undo": "Have the foyer stop asking firstRun (routes/_dashboard/_apk/foyer.tsx); the remembered choice is one localStorage key, some-ui.home.welcome-not-now.v1.",
+  "refs": ["#3088", "#3086"]
+}

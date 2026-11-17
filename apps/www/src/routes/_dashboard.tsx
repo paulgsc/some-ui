@@ -43,6 +43,7 @@ import { navOf, owns, webSettingsOf, wingOf } from "@/lib/wings"
 import { AudioIndicator } from "@/components/audio/audio-indicator"
 import { AccountUnavailableBanner } from "@/components/auth/account-unavailable-banner"
 import { DeviceHomeGlyph, HomeLanes } from "@/components/device-home-glyph"
+import { SignInMark, SignInWatch } from "@/components/device-sign-in-mark"
 import { LocIndicator } from "@/components/loc/loc-indicator"
 import {
   barOf,
@@ -239,6 +240,9 @@ const DashboardLayout = (): JSX.Element => {
       >
         {/* Notices float here, under the header (HS1). */}
         <NoticeLayer className={bareViewport ? "top-3" : "top-16"}>
+          {/* Whether home still knows this phone, asked and said on every
+            screen, the session player's included (SIGNIN1). */}
+          {import.meta.env.VITE_DEVICE_BACKEND === "true" && <SignInWatch />}
           {!bareViewport && (
             <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
               {!MOBILE_APP && <SidebarTrigger />}
@@ -256,15 +260,23 @@ const DashboardLayout = (): JSX.Element => {
               {(!MOBILE_APP || wing?.id === "practice") && <AudioIndicator />}
               {/* Lines written lately (`lib/loc-report`); nothing in a build
                 without a snapshot. On the phone it is Studio's: what gets
-                made about the build. Before the Settings link `ml-auto`
-                pins. */}
+                made about the build. Before the phone's marks, which
+                `ml-auto` pins right. */}
               {(!MOBILE_APP || wing?.id === "studio") && <LocIndicator />}
               <SiteLauncher />
-              {MOBILE_APP && <MobileSettingsLink pathname={pathname} />}
-              {/* The wing's sharing mark: where its record is kept, and what waits (LA15). */}
-              {import.meta.env.VITE_DEVICE_BACKEND === "true" && wing && (
-                <DeviceHomeGlyph wing={wing.id} />
-              )}
+              {/* The phone's marks, pinned right together whether or not
+                the gear shows (the front desk has none). */}
+              <div className="ml-auto flex shrink-0 items-center gap-2">
+                {MOBILE_APP && <MobileSettingsLink pathname={pathname} />}
+                {/* The wing's sharing mark: where its record is kept, and what waits (LA15). */}
+                {import.meta.env.VITE_DEVICE_BACKEND === "true" && wing && (
+                  <DeviceHomeGlyph wing={wing.id} />
+                )}
+                {/* Whether this phone is signed in to home, on every screen (SIGNIN1). */}
+                {import.meta.env.VITE_DEVICE_BACKEND === "true" && (
+                  <SignInMark />
+                )}
+              </div>
             </header>
           )}
           {!bareViewport && <AccountUnavailableBanner />}

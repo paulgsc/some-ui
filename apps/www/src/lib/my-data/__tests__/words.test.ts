@@ -50,6 +50,10 @@ describe("My data's words", () => {
     expect(Object.keys(KIND_NAMES).sort()).toEqual([...KINDS].sort())
   })
 
+  it("name a game's recordings as the owner asked (2026-11-17)", () => {
+    expect(KIND_NAMES.game).toBe("Recordings from a game")
+  })
+
   it("never name the machinery", () => {
     const said = [
       ...strings(MY_DATA),
@@ -134,9 +138,11 @@ describe("My data's words", () => {
       ...strings(DELETABLE_NAMES),
       ...strings(RECEIPTS),
       ...[1, 3].flatMap((n) => [
-        DELETING.title("studio", n),
+        ...KINDS.flatMap((of) => [
+          DELETING.title(of, n),
+          ...DELETING.stays(of, n),
+        ]),
         ...DELETING.goes(n),
-        ...DELETING.stays(n),
         DELETING.keep(n),
         DELETING.confirm(n),
         DELETING.gone(n),
@@ -146,6 +152,8 @@ describe("My data's words", () => {
         DELETING.unreachable(n),
         DELETING.deleteSelected(n),
       ]),
+      DELETING.waitsOn("studio"),
+      DELETING.waitsOn("soundbite"),
       DELETING.rowName(itemName(AT)),
       DELETING.selectName(itemName(AT)),
       ...(["reading", "unpaired", "unreachable", "older", "read"] as const)
@@ -153,6 +161,9 @@ describe("My data's words", () => {
         .filter((line): line is string => line !== null),
       receiptParts(["recording", "words", "set-aside mark"]),
       receiptParts(["recording", "conveyor history"]),
+      receiptParts(["verdict"]),
+      receiptParts(["verdict", "reconciliation"]),
+      receiptParts(["recording", "game bite"]),
       receiptParts(["mailbox copy", "drive copy", "a newer part"]),
       receiptParts([]),
       receiptKind("studio"),
@@ -165,7 +176,9 @@ describe("My data's words", () => {
     // Home's fixed words never reach the screen as they are.
     expect(
       said.filter((text) =>
-        /set-aside mark|mailbox copy|drive copy|conveyor history/.test(text)
+        /set-aside mark|mailbox copy|drive copy|conveyor history|verdict|reconciliation|game bite/.test(
+          text
+        )
       )
     ).toEqual([])
   })
@@ -196,6 +209,16 @@ describe("My data's words", () => {
     expect(receiptParts(["recording", "conveyor history"])).toBe(
       "The recording and each move it made along the conveyor"
     )
+    // Home's verdict on a take outlives it (HEARD1, server#911).
+    expect(receiptParts(["verdict"])).toBe("Whether home could make it out")
+    // A game note's moment stays after its recording goes (server#912).
+    expect(receiptParts(["recording", "game bite"])).toBe(
+      "The recording and the game moment it was about"
+    )
+    // What the owner chose on Needs your attention outlives it too (HEARD3).
+    expect(receiptParts(["verdict", "reconciliation"])).toBe(
+      "Whether home could make it out and what you chose to do with it after home couldn't hear it well"
+    )
     // The whole receipt home sends for a take heard, let go and moved.
     expect(
       receiptParts(["recording", "words", "set-aside mark", "conveyor history"])
@@ -208,5 +231,12 @@ describe("My data's words", () => {
   it("say where home's numbers are missing, and say nothing once they're in", () => {
     expect(homeLine("read")).toBeNull()
     expect(homeLine("unpaired")).toContain("isn't paired")
+  })
+})
+
+describe("a receipt's kind (HEARD4)", () => {
+  it("names every kind home can delete, and says Recording for one it doesn't know", () => {
+    expect(receiptKind("reflection")).toBe("Spoken reflection")
+    expect(receiptKind("a newer kind")).toBe("Recording")
   })
 })

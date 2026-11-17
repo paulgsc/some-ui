@@ -8,6 +8,8 @@
 import type { TurnListener } from "@some-ui/voice-capture"
 import { turnListening } from "@some-ui/voice-capture"
 
+import type { Pairing } from "@/lib/home-link/model"
+
 import type { AnswerEvent, AnswerState } from "./model"
 import { initialAnswer, step } from "./model"
 
@@ -28,7 +30,8 @@ export type AskAnswerPorts = {
   readonly listener: TurnListener
   /** Settles once the phone's pairing has been read; never rejects. */
   readonly loaded: () => Promise<void>
-  readonly paired: () => boolean
+  /** Whether this phone is paired (#3152), read once its record is. */
+  readonly pairing: () => Pairing
   /** As `onPageVisibility`: now, then on each change. */
   readonly onVisibility: (listener: (hidden: boolean) => void) => () => void
 }
@@ -54,8 +57,10 @@ export function createAskAnswer(
   // Only home hears an answer, so the phone's pairing is read first.
   const checkVoice = (): void => {
     void ports.loaded().then(() => {
-      if (ports.paired()) run({ type: "checkVoice" })
-      else send({ type: "unpaired" })
+      const now = ports.pairing()
+      // `loaded` ends only once the record is read, so it is known here.
+      if (now.kind === "paired") run({ type: "checkVoice" })
+      else if (now.kind === "unpaired") send({ type: "unpaired" })
     })
   }
   return {
