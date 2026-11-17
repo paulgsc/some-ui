@@ -1,0 +1,20 @@
+{
+  "id": "C560",
+  "made": "2026-11-17",
+  "by": "owner",
+  "paths": [
+    "docs/discard-sites.md",
+    "server:crates/db/voice/src/interview.rs",
+    "server:crates/db/voice/src/delete.rs",
+    "server:apps/servers/file_host/src/handlers/interview_weeks.rs"
+  ],
+  "chose": "\"keep first and latest, go with your proposal\": within a week, home keeps the audio of each question's first take and its latest, and every take's transcript and measured counts; the audio of the takes in between is let go when the week closes, each with a receipt. The phone shows a question's latest take only, saying it again replaces it on screen, and the essay reads the latest. The first take goes home on its own once kept, so a take replaced before Send still keeps the cold first try (owner, 2026-11-17, on the prototype).",
+  "options": [
+    "keep the first and latest take's audio, every transcript, let the middle audio go at week close",
+    "keep the latest only, letting every earlier take's audio go at week close",
+    "keep every take's audio"
+  ],
+  "gray": "Retakes within a week pile up recordings, and the owner asked not to accumulate them, while CLAUDE.md's \"Never lose the record\" keeps the history that shows growth: how much of it is the cold first try against where the week got to.",
+  "undo": "Stop home's let-go at week close (server let_go_retakes) and keep every take's audio; a let-go already run is gone, its receipt kept.",
+  "refs": ["#3175", "#2931", "#2265"]
+}

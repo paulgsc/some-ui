@@ -1,0 +1,22 @@
+{
+  "id": "C558",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "docs/discard-sites.md",
+    "server:crates/db/voice/src/interview.rs",
+    "server:crates/db/voice/src/delete.rs",
+    "server:apps/servers/file_host/src/handlers/interview_weeks.rs",
+    "server:crates/db/voice/src/kept.rs",
+    "server:crates/db/voice/src/transcript.rs",
+    "server:docs/identity.md"
+  ],
+  "chose": "The owner's keep rule (C560), read for home: per question in a week, \"first\" is its earliest take by when it was recorded, \"latest\" the newest recording, and a take the final send names is kept too. A question with two takes or fewer loses nothing, and so does a take no model has finished hearing or one whose verdict waits on the owner. It runs once, when the week becomes final, so a week never sent is never let go; only the recording goes, each with a receipt, and the note, its transcript, words, verdicts and counts stay.",
+  "options": [
+    "latest is the newest recording, and the take a send names is kept too",
+    "latest is the take the final send names, and only it"
+  ],
+  "gray": "The owner's \"latest\" could mean the newest recording or the take sent; they differ when the owner says a question again after sending and never sends again.",
+  "undo": "Narrow let_go_retakes to keep only what the final send names besides the first.",
+  "refs": ["#3175", "#2931"]
+}
