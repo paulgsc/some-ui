@@ -255,11 +255,14 @@ export function routineRow(view: RoutineView): BoardRow {
 
 /**
  * What home is making for the feeds (SFEED13, #2761), as Studio's line says
- * it; it opens Studio › Renders. `stale` when home didn't answer the latest
- * read, so the board is what it said last, and the row says so as the page
- * does.
+ * it; it opens Studio › Renders. `stale` when the latest read failed, so
+ * the board is what home said last, and the row says so as the page does:
+ * `busy` when this phone stayed busy with home (#3155), else `away`.
  */
-export function renderRow(board: RenderBoard, stale = false): BoardRow {
+export function renderRow(
+  board: RenderBoard,
+  stale: "away" | "busy" | null = null
+): BoardRow {
   const shape = renderShape(board)
   return {
     id: "renders",
@@ -267,7 +270,10 @@ export function renderRow(board: RenderBoard, stale = false): BoardRow {
     name: SHAPE_WORDS.name,
     word: SHAPE_WORDS.words[shape],
     line: liveLine(board),
-    more: stale ? [RENDERS_WORDS.stale] : [],
+    more:
+      stale === null
+        ? []
+        : [stale === "busy" ? RENDERS_WORDS.busyStale : RENDERS_WORDS.stale],
     mark: { kind: "render", shape },
     page: "renders",
   }

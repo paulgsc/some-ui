@@ -20,7 +20,8 @@ export type ClipFrameRef = {
 
 /**
  * Every frame of clip `id` in `frames`, from home, in their order; never
- * rejects. A frame left unread once `wanted` says no is `away`.
+ * rejects. A frame left unread once `wanted` says no is `away`, or `busy`
+ * when it went unwanted while the link was busy (#3155).
  */
 export async function readClipFrames(
   id: string,

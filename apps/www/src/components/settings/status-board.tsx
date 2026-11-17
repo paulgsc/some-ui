@@ -26,6 +26,7 @@ import { ChevronRight, Clapperboard } from "lucide-react"
 
 import { hasAudience } from "@/lib/build-profile"
 import { useMinuteClock } from "@/lib/clock"
+import { phoneWasBusy } from "@/lib/home-link/phone-busy"
 import { kindJourney } from "@/lib/jobs/journey"
 import { everyMorning, morningOf } from "@/lib/jobs/morning"
 import { registerJobsPull } from "@/lib/jobs/pull"
@@ -318,7 +319,16 @@ export const StatusBoard = (): JSX.Element => {
     ...(look === null ? [] : [look]),
     // A failed refresh keeps the last board, and the row says it's the last.
     ...(renders.data?.kind === "read"
-      ? [renderRow(renders.data.board, renders.isError)]
+      ? [
+          renderRow(
+            renders.data.board,
+            renders.isError
+              ? phoneWasBusy(renders.error)
+                ? "busy"
+                : "away"
+              : null
+          ),
+        ]
       : []),
   ]
   const board = boardOf(rows)

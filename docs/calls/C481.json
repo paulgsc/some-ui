@@ -9,6 +9,7 @@
     "some-ui:apps/www/src/lib/renders/index.ts",
     "some-ui:apps/www/src/lib/episode-feedback/home-read.ts",
     "some-ui:apps/www/src/components/studio/layout.tsx",
+    "some-ui:apps/www/src/lib/status-board/index.ts",
     "some-ui:apps/www/src/lib/my-data/words.ts",
     "some-ui:apps/www/src/lib/call-videos/words.ts",
     "some-ui:packages/ui/soundbites/src/lib/reconcile/words.ts"
