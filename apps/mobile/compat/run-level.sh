@@ -47,19 +47,80 @@ require("fs").writeFileSync(file, JSON.stringify({ api: Number(api), webview, la
 webview=$(adb shell dumpsys webviewupdate | tr -d '\r' \
   | grep -oE "Current WebView package \(name, version\): \([^)]*\)" \
   | grep -oE "[0-9][0-9.]+" | head -1 || true)
+# Some images (API 24) do not name it there; then the provider's own
+# version, read as Capacitor reads it below API 26
+# (Bridge.isMinimumWebViewInstalled: Chrome, then com.android.webview).
+if [ -z "$webview" ]; then
+  for provider in com.android.chrome com.android.webview; do
+    webview=$(adb shell dumpsys package "$provider" | tr -d '\r' \
+      | grep -oE "versionName=[0-9][0-9.]+" | head -1 | cut -d= -f2 || true)
+    [ -n "$webview" ] && break
+  done
+fi
 webview=${webview:-unknown}
 
 # The bundle's floor: Vite's default target (baseline-widely-available),
-# about Chrome 111. Below it the page loads blank, which on a real phone
-# cannot happen once Play has updated Android System WebView (Android 7
-# takes up to about 119), so such a level is not tested and its row says
-# why rather than reading red.
+# about Chrome 111, and the app's android.minWebViewVersion
+# (apps/mobile/capacitor.config.ts). Below it Capacitor opens the update
+# page (webview-too-old.html, #3117) in place of the app. A phone updated
+# from Play is past the floor (Android 7 takes up to about 119), so such a
+# level runs only OWV1's proof and says why the rest is not run.
+#
+# OWV1: on a WebView below the floor, every way into the app leaves the
+# update page on screen (MainActivity.onNewIntent returns before any entry
+# replaces it). Family: the entry (the plain icon, each wing's icon, the
+# shortcut) x the start (cold, warm) x how Capacitor reads the WebView's
+# version (API 26 and later from the current WebView package; 24 and 25
+# from Chrome's). Proof: this block, run at a level of each version path
+# (31 and 24): every entry cold, then every entry warm, each found by the
+# page's title in the accessibility tree, with a screenshot.
 MIN_WEBVIEW=111
+OLD_WEBVIEW_TITLE="This phone needs a newer WebView"
 major=${webview%%.*}
 if [[ "$major" =~ ^[0-9]+$ ]] && [ "$major" -lt "$MIN_WEBVIEW" ]; then
   why="stock WebView $major (needs ≥$MIN_WEBVIEW)"
-  write_row "$why" "$why" "$why" "$why"
-  echo "::notice title=API $api::$why: the image's WebView is older than the bundle needs; a phone updated from Play is not. Not tested."
+  pkg=dev.paulgsc.someui
+  missed=()
+  # still_shown <entry>: the update page is on screen after that entry.
+  still_shown() {
+    (cd "$out/launch" && UI_WAIT_SECONDS=60 node "$here/ui.mjs" find "$OLD_WEBVIEW_TITLE" > /dev/null 2>> ui-errors.txt) ||
+      missed+=("$1")
+  }
+  adb install -r "$apks/launch.apk" > /dev/null || missed+=("install")
+  # enter <entry>: start the app by that entry. The wings are
+  # MainActivity.wingRoot's aliases, named here because API 24 and 25 cannot
+  # list them (no query-activities).
+  enter() {
+    case $1 in
+      plain) adb shell am start -W -n "$pkg/.MainActivity" > /dev/null ;;
+      shortcut) adb shell am start -W -a dev.paulgsc.someui.NEW_IDEA -n "$pkg/.MainActivity" > /dev/null ;;
+      *) adb shell am start -W -n "$pkg/.$1" > /dev/null ;;
+    esac
+  }
+  # Every entry cold (the app stopped first), then every entry warm (the
+  # app running on the update page): OWV1's whole entry x start family.
+  entries=(plain WingPractice WingSelf WingStudio WingJobs shortcut)
+  for entry in "${entries[@]}"; do
+    adb shell am force-stop "$pkg"
+    enter "$entry"
+    still_shown "$entry, cold"
+  done
+  adb exec-out screencap -p > "$out/launch/old-webview.png" || true
+  for entry in "${entries[@]}"; do
+    enter "$entry"
+    still_shown "$entry, warm"
+  done
+  if [ "${#missed[@]}" -eq 0 ]; then
+    shown="update page shown"
+  else
+    shown="blank"
+  fi
+  write_row "$shown" "$why" "$why" "$why"
+  if [ "${#missed[@]}" -gt 0 ]; then
+    echo "::error title=API $api::$why: the update page was not on screen after: $(IFS=';'; echo "${missed[*]}")."
+    exit 1
+  fi
+  echo "::notice title=API $api::$why: the update page stayed on screen through every entry; the rest is not run."
   exit 0
 fi
 
