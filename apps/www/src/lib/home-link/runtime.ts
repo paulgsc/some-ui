@@ -151,7 +151,24 @@ function overloaded(answer: HomeAnswer): boolean {
 const HOME_BUSY: HomeAnswer = { status: 429, body: "" }
 
 /** A pairing kept before it had an id is known by its base. */
-type Pairing = { base: string; token: string; id: string; since: number | null }
+/**
+ * The pairing record on the phone. `phoneId` is home's id for this phone
+ * (SIGNIN7, C496), which its owner's phone list shows it by; `name` is what
+ * the owner typed while pairing. Both are null for a pairing made before
+ * home gave them.
+ */
+type Pairing = {
+  base: string
+  token: string
+  id: string
+  since: number | null
+  phoneId: string | null
+  name: string | null
+}
+
+/** `value` if it is a non-empty string, else null. */
+const textOrNull = (value: unknown): string | null =>
+  typeof value === "string" && value !== "" ? value : null
 
 export function parsePairing(record: string): Pairing | null {
   try {
@@ -168,6 +185,8 @@ export function parsePairing(record: string): Pairing | null {
             Number.isFinite(parsed.pairedAt)
               ? parsed.pairedAt
               : null,
+          phoneId: textOrNull(parsed.phoneId),
+          name: textOrNull(parsed.name),
         }
       : null
   } catch {
@@ -679,9 +698,18 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     if (answer.status !== 200) return refusalOf(answer)
     const token = stringFieldOf(answer.body, "token")
     if (token === null) return "other"
+    // Home's id for this phone, from a home that gives one (C496).
+    const phoneId = stringFieldOf(answer.body, "phoneId")
     try {
       await ports.credential.write(
-        JSON.stringify({ base, token, id, pairedAt })
+        JSON.stringify({
+          base,
+          token,
+          id,
+          pairedAt,
+          phoneId,
+          name: name ?? null,
+        })
       )
     } catch {
       // Home made a session this phone cannot keep: end it, in the same
@@ -763,7 +791,12 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
           dispatch({
             type: "read",
             found: pairing
-              ? { base: pairing.base, id: pairing.id, since: pairing.since }
+              ? {
+                  base: pairing.base,
+                  id: pairing.id,
+                  since: pairing.since,
+                  name: pairing.name,
+                }
               : lost
                 ? "lost"
                 : null,
@@ -791,7 +824,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       const failure = await finishPairing(base, code, name, id, at)
       dispatch(
         failure === null
-          ? { type: "paired", base, id, at }
+          ? { type: "paired", base, id, at, name: name ?? null }
           : { type: "pairFailed", failure }
       )
     },

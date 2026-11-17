@@ -115,6 +115,7 @@ describe("the home link", () => {
       id: HOME.base,
       notForgotten: false,
       since: null,
+      name: null,
       standing: { kind: "unchecked" },
     })
     expect(paired.sent).toEqual([])
@@ -165,6 +166,9 @@ describe("the home link", () => {
       token: "phone-token",
       id: first,
       pairedAt: 0,
+      // A home that gives no id for the phone, and no name typed.
+      phoneId: null,
+      name: null,
     })
 
     // Paired again to the same address, it is a new pairing.
@@ -172,6 +176,38 @@ describe("the home link", () => {
     await home.link.pair(HOME, "K7QF2M9X")
     expect(idOf()).toEqual(expect.any(String))
     expect(idOf()).not.toBe(first)
+  })
+
+  it("keeps home's id for the phone and the name it paired with, and reads them back (SIGNIN7)", async () => {
+    const home = setup({
+      answer: () => ({
+        status: 200,
+        body: JSON.stringify({
+          token: "phone-token",
+          expiresAt: 1,
+          phoneId: "q1w2e3r4t5y6u7i8o9p0aa",
+        }),
+      }),
+    })
+    await home.link.load()
+    await home.link.pair(HOME, "K7QF2M9X", "Kitchen")
+    const record = home.record()
+    expect(JSON.parse(record ?? "null")).toMatchObject({
+      phoneId: "q1w2e3r4t5y6u7i8o9p0aa",
+      name: "Kitchen",
+    })
+    expect(home.link.getSnapshot().link).toMatchObject({
+      kind: "paired",
+      name: "Kitchen",
+    })
+
+    // The next time the app starts, the record says the same.
+    const again = setup({ record: record ?? "" })
+    await again.link.load()
+    expect(again.link.getSnapshot().link).toMatchObject({
+      kind: "paired",
+      name: "Kitchen",
+    })
   })
 
   it("says why a pairing failed, once, and keeps nothing", async () => {

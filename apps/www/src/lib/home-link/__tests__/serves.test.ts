@@ -39,6 +39,7 @@ const PAIRED: HomeLinkState = {
     id: "p1",
     notForgotten: true,
     since: null,
+    name: null,
     standing: { kind: "unchecked" },
   },
 }
