@@ -9,11 +9,20 @@ import { templateFormat } from "@some-ui/video-render"
 
 import { FEED_WORDS } from "@/lib/call-videos/words"
 import { dayOf, essayName } from "@/lib/cards-essay-key"
+import type { Feed } from "@/lib/feeds"
 import { isFeed } from "@/lib/feeds"
 import { FEED_FACTS } from "@/lib/studio-index/words"
 import { PREVIEW_WORDS } from "@/lib/template-preview/words"
 
-import type { Board, HeldBy, Now, RenderEpisode, RenderFailed } from "./model"
+import type {
+  Board,
+  HeldBy,
+  Now,
+  Refusal,
+  RenderEpisode,
+  RenderFailed,
+} from "./model"
+import { refusalOf } from "./model"
 import type { Row, Subject } from "./subject"
 import { subjectOf } from "./subject"
 
@@ -195,6 +204,75 @@ export function nowLines(now: Now): NowLines {
   }
 }
 
+/** Each feed's videos, as the limit on their length is said of them. */
+const FEED_VIDEOS = {
+  call: "the call's videos",
+  "cards-essay": "cards essays",
+  "interview-essay": "interview essays",
+  "playoff-delta": "Playoff Delta videos",
+  "rust-essay": "Rust Rounds essays",
+} as const satisfies Record<Feed, string>
+
+/**
+ * A length to the tenth of a minute, as a person says it: "24.4 minutes",
+ * "30 minutes", "1 hour 52 minutes" (never a number of three digits).
+ */
+export function minutesSaid(minutes: number): string {
+  const tenths = Math.round(minutes * 10) / 10
+  const plural = (n: number, one: string): string =>
+    `${String(n)} ${one}${n === 1 ? "" : "s"}`
+  if (tenths < 60) return plural(tenths, "minute")
+  const whole = Math.round(tenths)
+  const hours = Math.floor(whole / 60)
+  const rest = whole % 60
+  return rest === 0
+    ? plural(hours, "hour")
+    : `${plural(hours, "hour")} ${plural(rest, "minute")}`
+}
+
+/** How much larger than the cap, in a person's terms (never "MB"). */
+function largerSaid(mb: number, capMb: number): string {
+  if (mb >= capMb * 2) return "at least twice as large as"
+  const share = ((mb - capMb) / capMb) * 100
+  return share < 1
+    ? "a little larger than"
+    : `${String(Math.min(99, Math.round(share)))}% larger than`
+}
+
+/**
+ * What the render policy refused, and that home leaves it be (RNR1;
+ * paulgsc/server#937 holds a refusal until what it was made from, its cap
+ * or home's way of making videos changes, so "as it is" is true).
+ */
+export const REFUSAL_WORDS = {
+  tooLong: (feed: string, minutes: number, capMinutes: number): string => {
+    const videos = isFeed(feed) ? FEED_VIDEOS[feed] : "videos like it"
+    const cap = minutesSaid(capMinutes)
+    // Sent in tenths, a length just past its cap can read as the cap itself.
+    const run =
+      minutesSaid(minutes) === cap
+        ? `a little past ${cap}, where ${videos} stop`
+        : `${minutesSaid(minutes)}, and ${videos} stop at ${cap}`
+    return `Too long to make: it would run ${run}. Home doesn't try it again as it is.`
+  },
+  tooLarge: (mb: number, capMb: number): string =>
+    `Too large to keep: it came out ${largerSaid(mb, capMb)} home keeps a video. Home doesn't try it again as it is.`,
+} as const
+
+function refusalLine(feed: string, refusal: Refusal): string {
+  switch (refusal.kind) {
+    case "too-long": {
+      return REFUSAL_WORDS.tooLong(feed, refusal.minutes, refusal.capMinutes)
+    }
+    case "too-large": {
+      return REFUSAL_WORDS.tooLarge(refusal.mb, refusal.capMb)
+    }
+    default: {
+      return assertNever(refusal)
+    }
+  }
+}
+
 /** What stopped a render, in the person's terms. */
 export function failedLine(failed: RenderFailed): string {
   // A preview is made once a person asks, never again on its own.
@@ -202,6 +280,8 @@ export function failedLine(failed: RenderFailed): string {
     return (
       PREVIEW_WORDS.failedWhy(failed.reason) ?? PREVIEW_WORDS.standing.failed
     )
+  const refusal = refusalOf(failed)
+  if (refusal !== null) return refusalLine(failed.feed, refusal)
   return failed.by === "home"
     ? "Home couldn't keep its files. It tries again in an hour."
     : "It couldn't be made this time. Home tries again in an hour, and keeps what it had finished."

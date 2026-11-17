@@ -17,6 +17,7 @@ import type { Board, RendersOutcome, Row, Subject } from "@/lib/renders"
 import {
   CONVEYOR_WORDS,
   doneLine,
+  failedAside,
   failedLine,
   feedName,
   kindName,
@@ -259,7 +260,7 @@ const BoardView = ({ board }: { board: Board }): JSX.Element => {
               <RowTile
                 key={`${failed.feed}/${failed.key}`}
                 row={failed}
-                tag={ROW_TAGS.failed}
+                tag={CONVEYOR_WORDS.asides[failedAside(failed)]}
                 line={failedLine(failed)}
               />
             ))}
