@@ -237,4 +237,43 @@ describe("Takes on home's runtime (ST32)", () => {
       expect(leave).toHaveBeenCalledTimes(1)
     })
   })
+
+  it("reads the takes again on a pull while its screen shows, and asks no pull once it has gone (HERD2)", async () => {
+    const answers: Array<LibraryRead> = [
+      page("newest", "t1"),
+      { kind: "away" },
+      page("newest", "t2"),
+    ]
+    let reads = 0
+    const home: TakesHome = {
+      takes: () => {
+        reads += 1
+        return Promise.resolve(answers.shift() ?? page("newest", "t3"))
+      },
+      audio: () => Promise.resolve(null),
+    }
+    const registered: Array<() => Promise<void>> = []
+    let dropped = 0
+    const library = createTakeLibrary({
+      home,
+      player: player().player,
+      refresh: ({ checkAgain }) => {
+        registered.push(checkAgain)
+        return (): void => {
+          dropped += 1
+        }
+      },
+    })
+    const detach = library.attach()
+    await settle()
+    expect(reads).toBe(1)
+    expect(registered).toHaveLength(1)
+    // A pull while home is away says it could not read; the next reads.
+    await expect(registered[0]?.()).rejects.toThrow()
+    await expect(registered[0]?.()).resolves.toBeUndefined()
+    expect(reads).toBe(3)
+    expect(library.getSnapshot().read).toEqual(page("newest", "t2"))
+    detach()
+    expect(dropped).toBe(1)
+  })
 })

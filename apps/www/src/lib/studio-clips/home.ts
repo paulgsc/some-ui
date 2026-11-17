@@ -41,5 +41,10 @@ export const clipFramesQuery = (
       query.state.data?.every((f) => f.kind === "frame") === true
         ? Infinity
         : 0,
+    // The app's queries keep their answer across visits (`refetchOnMount`
+    // false, `providers/tanstack-query`); this one asks again on the next
+    // visit whenever its `staleTime` says, so frames home was away for are
+    // not kept until the app restarts (HERD2).
+    refetchOnMount: true,
     retry: false,
   })

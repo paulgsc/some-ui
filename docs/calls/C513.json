@@ -1,0 +1,18 @@
+{
+  "id": "C513",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/ui/soundbites/src/lib/library/runtime.ts",
+    "some-ui:packages/ui/soundbites/src/lib/reconcile/runtime.ts"
+  ],
+  "chose": "A pull down on Takes on home or Needs your attention reads the takes again as its Try again does, which stops a take that is playing there.",
+  "options": [
+    "read again as Try again does, stopping what plays",
+    "skip the pull's read on that screen while a take plays",
+    "read again and keep the take playing across the new list"
+  ],
+  "gray": "Whether a pull while listening should stop the take is felt on the screen, and no earlier decision says; Try again already stops it, and keeping it playing would need the list's read to leave playback alone, a change to both machines.",
+  "undo": "In each runtime's refresher, resolve without dispatching readAgain while state.play is not idle; or drop the `refresh` port from takePorts and reconcilePorts.",
+  "refs": ["#3102", "#3112"]
+}

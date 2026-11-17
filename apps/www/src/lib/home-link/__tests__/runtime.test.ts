@@ -6,9 +6,10 @@
  */
 import { fakeClock } from "@/test-support/fake-clock"
 import type { HomeAnswer } from "@some-ui/core-utils"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import type { HomeRequest } from "@/lib/device-backend/native-http"
+import { BURST } from "@/lib/home-link/pace"
 import type { CredentialPort, HomeLink } from "@/lib/home-link/runtime"
 import { createHomeLink, homeBusyFor } from "@/lib/home-link/runtime"
 
@@ -424,6 +425,107 @@ describe("the home link", () => {
     expect(home.link.getSnapshot().homeBusyUntil).toBeNull()
   })
 
+  it("learns home's rate once a busy stretch: requests already out that come back busy too teach nothing more (HERD1)", async () => {
+    const clock = fakeClock()
+    const out: Array<(answer: HomeAnswer) => void> = []
+    const link = createHomeLink({
+      credential: {
+        read: () =>
+          Promise.resolve({
+            record: JSON.stringify({ base: HOME.base, token: "t" }),
+            lost: false,
+          }),
+        write: () => Promise.resolve(),
+        clear: () => Promise.resolve(),
+      },
+      // Every request waits until the test answers it.
+      request: () => new Promise((resolve) => out.push(resolve)),
+      onHidden: () => (): void => undefined,
+      now: clock.now,
+      after: clock.after,
+    })
+    await link.load()
+    const reads = link.keep((send) =>
+      Promise.all([0, 1, 2].map(() => send("GET", "/aph")))
+    )
+    await vi.waitFor(() => expect(out).toHaveLength(3))
+    for (const answer of out) answer({ status: 429, body: "", retryAfter: "6" })
+    await reads
+    clock.pass(6_000)
+    const ask = (): Promise<unknown> => link.keep((send) => send("GET", "/aph"))
+    const first = ask()
+    await vi.waitFor(() => expect(out).toHaveLength(4))
+    out[3]?.({ status: 200, body: "{}" })
+    await first
+    // Learned once: a 4 s pace (2 s + 2 s) left half a turn after the 6 s
+    // wait, so the next goes 2 s on. Unlearned (2 s) it would go at once;
+    // doubled three times (16 s) the one before would not have gone.
+    void ask()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(out).toHaveLength(4)
+    clock.pass(2_000)
+    await vi.waitFor(() => expect(out).toHaveLength(5))
+  })
+
+  it("hears home's overload, 503 service_overloaded with a Retry-After, as busy: answered busy, nothing sent until it has passed (HERD2)", async () => {
+    let busy = true
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t" }),
+      answer: () => {
+        if (!busy) return { status: 200, body: "{}" }
+        busy = false
+        return {
+          status: 503,
+          body: JSON.stringify({ error: { code: "service_overloaded" } }),
+          retryAfter: "5",
+        }
+      },
+    })
+    await home.link.load()
+    const statuses = async (): Promise<Array<number>> => {
+      const outcome = await home.link.keep(async (send) => [
+        (await send("GET", "/aph")).status,
+        (await send("GET", "/aph")).status,
+      ])
+      return outcome?.kind === "done" ? outcome.value : []
+    }
+    expect(await statuses()).toEqual([429, 429])
+    expect(home.sent).toHaveLength(1)
+    expect(home.link.getSnapshot().homeBusyUntil).toBe(5_000)
+    // Nothing found home silent: an overload is an answer.
+    expect(home.link.getSnapshot().away).toBeNull()
+    home.pass(5_000)
+    expect(home.link.getSnapshot().homeBusyUntil).toBeNull()
+  })
+
+  it("passes on a 503 that is one of home's caps (no Retry-After) or not its overload, and is not busy for it (HERD2)", async () => {
+    const answers: Array<HomeAnswer> = [
+      {
+        status: 503,
+        body: JSON.stringify({ error: { code: "service_overloaded" } }),
+      },
+      {
+        status: 503,
+        body: JSON.stringify({ error: { code: "feature_not_configured" } }),
+        retryAfter: "5",
+      },
+      { status: 503, body: "Service Unavailable", retryAfter: "5" },
+    ]
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t" }),
+      answer: () => answers.shift() ?? { status: 200, body: "{}" },
+    })
+    await home.link.load()
+    const outcome = await home.link.keep(async (send) => [
+      (await send("GET", "/aph")).status,
+      (await send("GET", "/aph")).status,
+      (await send("GET", "/aph")).status,
+    ])
+    expect(outcome).toEqual({ kind: "done", value: [503, 503, 503] })
+    expect(home.sent).toHaveLength(3)
+    expect(home.link.getSnapshot().homeBusyUntil).toBeNull()
+  })
+
   it("ends home's busy once its time has passed, even when the timer is held back", async () => {
     let busy = true
     const home = setup({
@@ -510,7 +612,7 @@ describe("a look at home's word on itself (#2843)", () => {
     })
     await home.link.load()
     // Use up the pace's burst, so the next asks wait their turns.
-    for (let i = 0; i < 49; i += 1) {
+    for (let i = 0; i < BURST; i += 1) {
       await home.link.keep((send) => send("GET", "/aph"))
     }
     next = { status: 429, body: "", retryAfter: "60" }
@@ -523,7 +625,9 @@ describe("a look at home's word on itself (#2843)", () => {
     home.pass(2_000)
     await kept
     await settle()
-    home.pass(2_000)
+    // Home's 429 spent the burst and doubled the pace (HERD1): the look's
+    // turn comes 4 s on.
+    home.pass(4_000)
     expect(await looked).toEqual({
       kind: "done",
       value: { status: 429, body: "" },

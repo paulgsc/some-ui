@@ -20,7 +20,9 @@
  *   record; the one read on a timer is that last one, bounded by its screen.
  * - **No retry.** A failed request is said once and left; the next tap, or
  *   the drain's next ask (LA15), is the next try.
- * - **Home's busy is kept** (AD3): the first `429` a sync or send hears
+ * - **Home's busy is kept** (AD3): the first `429` a sync or send hears,
+ *   or home's overload (`503 service_overloaded` with a `Retry-After`,
+ *   `overloaded`, HERD2),
  *   leaves nothing more to send until home's `Retry-After` has passed
  *   (`homeBusyFor`); until then the link answers every request of every run
  *   busy itself, as home last did, so each says so in its own words and
@@ -59,6 +61,7 @@ import { isFileHostTimeout } from "@/lib/file-host-config/client"
 import type { HomeAddress } from "./address"
 import type { HomeLinkEvent, HomeLinkState, PairFailure } from "./model"
 import { awayHeld, homeBusy, INITIAL, step, working, writing } from "./model"
+import type { PaceMemory } from "./pace"
 import { createPace } from "./pace"
 
 /** The phone's sealed record (`HomeCredentialPlugin`): read, kept, forgotten. */
@@ -86,6 +89,8 @@ export type HomeLinkPorts = {
    * returns an unsubscribe. Held for the page's life.
    */
   onNetwork?: (listener: () => void) => () => void
+  /** Where the pace is kept between page loads (HERD1, `./pace`). */
+  paceMemory?: PaceMemory | null
 }
 
 /** How long home's busy lasts when its `Retry-After` can't be read. */
@@ -100,10 +105,39 @@ const HOME_BUSY_MAX_MS = 600_000
  * this phone can read (a date, say).
  */
 export function homeBusyFor(retryAfter: string | undefined): number {
-  const text = retryAfter?.trim() ?? ""
-  if (!/^\d+$/.test(text)) return HOME_BUSY_MS
-  const ms = Number(text) * 1_000
+  const ms = retryAfterMs(retryAfter)
+  if (ms === null) return HOME_BUSY_MS
   return Math.min(Math.max(ms, HOME_BUSY_MIN_MS), HOME_BUSY_MAX_MS)
+}
+
+/** Home's `Retry-After` in ms, when it sent whole seconds; null otherwise. */
+function retryAfterMs(retryAfter: string | undefined): number | null {
+  const text = retryAfter?.trim() ?? ""
+  return /^\d+$/.test(text) ? Number(text) * 1_000 : null
+}
+
+/**
+ * Home said it has no room just now (paulgsc/server#934, AD4): `503` with
+ * its code `service_overloaded` and a `Retry-After` this phone can read. Busy,
+ * as a `429` is (HERD2). A `503` with that code and no `Retry-After` is one
+ * of home's caps (a day's new accounts, pairing), which waiting out a
+ * moment does not end, so it is not busy.
+ */
+function overloaded(answer: HomeAnswer): boolean {
+  if (answer.status !== 503 || retryAfterMs(answer.retryAfter) === null) {
+    return false
+  }
+  try {
+    const parsed: unknown = JSON.parse(answer.body)
+    return (
+      isRecord(parsed) &&
+      isRecord(parsed.error) &&
+      parsed.error.code === "service_overloaded"
+    )
+  } catch {
+    // Ignored: a body that is not home's JSON error is not its overload.
+    return false
+  }
 }
 
 /** What the link answers for home while home's busy lasts: nothing was sent. */
@@ -258,7 +292,7 @@ export type HomeLink = {
   stop: () => void
   /**
    * Ends a hold away from home (AW1), so the next ask goes at once: the
-   * person pulled to check again.
+   * person pulled to check again (`AwayEvent`'s `lookAgain`).
    */
   lookAgain: () => void
   /**
@@ -297,7 +331,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       ? state.drain.kind === "draining" && state.drain.stopping
       : working(state.activity) && state.activity.stopping
 
-  const pace = createPace(ports)
+  const pace = createPace(ports, ports.paceMemory ?? null)
 
   // Home's busy (AD3): the cancel of the timer that ends it, while it lasts.
   let cancelCooling: (() => void) | null = null
@@ -316,6 +350,10 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     return false
   }
   const heardBusy = (answer: HomeAnswer): void => {
+    // One lesson a busy stretch: requests already out when it began come
+    // back busy too, and say nothing more of home's rate.
+    const learning = !homeBusy(state, ports.now())
+    pace.spend(learning ? retryAfterMs(answer.retryAfter) : null)
     dispatch({
       type: "homeBusy",
       until: ports.now() + homeBusyFor(answer.retryAfter),
@@ -398,12 +436,12 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
         throw error
       }
     )
-  const lookAgain = (): void => {
+  const lookAgain = (fresh: boolean): void => {
     cancelLapse?.()
     cancelLapse = null
-    dispatch({ type: "lookAgain" })
+    dispatch({ type: "lookAgain", fresh })
   }
-  ports.onNetwork?.(lookAgain)
+  ports.onNetwork?.(() => lookAgain(true))
 
   /**
    * `call` sent at its turn on the pace and tracked, its `429` starting
@@ -427,6 +465,11 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     onSent?.(ports.now())
     const answer = await track(side, heard(ports.request(call)))
     if (answer.status === 429) heardBusy(answer)
+    // Home's overload is its busy, said to the caller as the link says it.
+    if (overloaded(answer)) {
+      heardBusy(answer)
+      return HOME_BUSY
+    }
     return answer
   }
 
@@ -765,6 +808,10 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
         })
       )
       if (answer.status === 429) heardBusy(answer)
+      if (overloaded(answer)) {
+        heardBusy(answer)
+        return { kind: "done", value: HOME_BUSY }
+      }
       return { kind: "done", value: answer }
     },
 
@@ -793,7 +840,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       pace.leave(true)
     },
 
-    lookAgain,
+    lookAgain: (): void => lookAgain(false),
 
     answered(): void {
       reached(true)
