@@ -87,7 +87,9 @@ function scrollDown() {
 
 let found = null
 let xml = ""
-for (const end = Date.now() + 30_000; Date.now() < end; await sleep(1_000)) {
+// UI_WAIT_SECONDS shortens the wait, to ask whether something is on screen.
+const waitMs = Number(process.env.UI_WAIT_SECONDS || 30) * 1000
+for (const end = Date.now() + waitMs; Date.now() < end; await sleep(1_000)) {
   adb("shell", "uiautomator", "dump", "/sdcard/ui.xml")
   xml = adb("exec-out", "cat", "/sdcard/ui.xml")
   found = find(xml)

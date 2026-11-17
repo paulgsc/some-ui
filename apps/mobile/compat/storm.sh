@@ -142,8 +142,9 @@ else
   # the front desk's Home server field, which is plain http and reaches
   # what home publishes without a pairing.
   if install "$release_apk"; then
+    dismiss_welcome
     ui tap 'Settings' &&
-    ui tap 'Home' &&
+      ui tap 'Home' &&
       ui type 'home-server|192.168.1.10:3000' '10.0.2.2:8787' &&
       hide_keyboard &&
       ui tap 'Sync lessons from home' ||
