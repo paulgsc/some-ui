@@ -17,6 +17,7 @@ import { useHomeLink } from "@/lib/home-link"
 import type { Seen } from "@/lib/home-link/first-run"
 import {
   firstRun,
+  mayOpen,
   rememberSeen,
   restored,
   seenHere,
@@ -27,9 +28,12 @@ import { PairForm } from "@/components/settings/device-pair-form"
 
 export const DeviceWelcome = ({
   state,
+  restored,
   onNotNow,
 }: {
   state: HomeLinkState
+  /** Whether it is for a pairing gone without an unpair. */
+  restored: boolean
   onNotNow: () => void
 }): JSX.Element => (
   <div className="mx-auto flex w-full max-w-md flex-col gap-5">
@@ -37,7 +41,7 @@ export const DeviceWelcome = ({
       <BrandMark tone="brand" className="size-12 shrink-0" />
       <h1 className="text-2xl font-bold tracking-tight">{WELCOME.title}</h1>
     </header>
-    {restored(state) ? <p className="text-sm">{WELCOME.restored}</p> : null}
+    {restored ? <p className="text-sm">{WELCOME.restored}</p> : null}
     <p className="text-muted-foreground text-sm">{WELCOME.lead}</p>
     <ol className="text-muted-foreground list-decimal space-y-1 pl-5 text-sm">
       {WELCOME.steps.map((step) => (
@@ -62,7 +66,7 @@ export const DeviceWelcome = ({
 /**
  * The foyer on the phone: the welcome while `firstRun` holds, else
  * `children` (the wings); nothing while the phone's record is read and the
- * welcome could still open, so the screen doesn't swap once it is (HS1).
+ * welcome may open (`mayOpen`), so the screen doesn't swap once it is (HS1).
  * Here, beside the device code it reads, so the foyer names it only behind
  * the build's device flag and the web builds carry none of it.
  */
@@ -74,18 +78,24 @@ export const DeviceFirstRun = ({
   const state = useHomeLink()
   const [seen, setSeen] = useState<Seen>(seenHere)
   const paired = state.link.kind === "paired"
-  // A phone paired here is never a first run again, even once the person
-  // unpairs it and the app restarts; while it runs, the link's own state
-  // already says so.
+  // What tells a restore from an unpair once the record is gone: a pairing
+  // this phone remembers, and an unpair, which Settings remembers as it is
+  // pressed and this keeps once the link says it ended.
+  const unpaired =
+    state.link.kind === "unpaired" &&
+    (state.link.note === "unpaired" || state.link.note === "unpaired-offline")
   useEffect(() => {
     if (paired) rememberSeen("paired")
-  }, [paired])
-  if (state.link.kind === "reading") return seen === "" ? null : children
+    else if (unpaired) rememberSeen("unpaired")
+  }, [paired, unpaired])
+  if (state.link.kind === "reading") return mayOpen(seen) ? null : children
   if (!firstRun(state, seen)) return children
-  const to = restored(state) ? "restored" : "welcome"
+  const lost = restored(state, seen)
+  const to = lost ? "restored" : "welcome"
   return (
     <DeviceWelcome
       state={state}
+      restored={lost}
       onNotNow={() => {
         rememberSeen(to)
         setSeen(to)

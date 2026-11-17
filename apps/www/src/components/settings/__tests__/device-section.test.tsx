@@ -199,10 +199,16 @@ describe("DeviceSection's Home server block", () => {
     expect(home.sent).toEqual([])
     expect(screen.getByText("Signed in to home at home.example.")).toBeTruthy()
 
+    expect(localStorage.getItem("some-ui.home.welcome-not-now.v1")).toBeNull()
     await press(/^unpair$/i)
     await press(/^yes, unpair$/i)
     expect(home.sent).toHaveLength(1)
     expect(screen.getByText("Unpaired.")).toBeTruthy()
+    // So a restart, which reads no record, doesn't take it for a restore
+    // and open the first run's welcome (SIGNIN2).
+    expect(localStorage.getItem("some-ui.home.welcome-not-now.v1")).toBe(
+      "unpaired"
+    )
   })
 
   it("clears finished sessions only after a confirm that names the count and the host, and only reads home", async () => {

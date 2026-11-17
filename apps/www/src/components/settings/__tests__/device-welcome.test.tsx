@@ -8,6 +8,7 @@
  */
 import type * as ReactRouterModule from "@tanstack/react-router"
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -153,27 +154,50 @@ describe("the foyer's welcome", () => {
     home.lost = true
     await foyer()
     expect(
-      await screen.findByText(/pairing didn't survive a restore/i)
+      await screen.findByText(/doesn't come back from a backup/i)
     ).toBeTruthy()
   })
 
-  it("never opens again on a phone paired here, once unpaired and restarted", async () => {
-    home.record = JSON.stringify({
-      base: "https://home.example/api/v1",
-      token: "t",
-      id: "p1",
-    })
+  const PAIRED = JSON.stringify({
+    base: "https://home.example/api/v1",
+    token: "t",
+    id: "p1",
+  })
+
+  it("never opens again on a phone the person unpaired, once restarted", async () => {
+    home.record = PAIRED
     await foyer()
     await waitFor(() => expect(wings()).not.toBeNull())
-    // Unpaired: the record is gone, and a restart reads it as never paired.
+    const { homeLink } = await import("@/lib/home-link")
+    await act(() => homeLink().unpair())
+    // A restart reads no record, as on a phone never paired.
     cleanup()
     vi.resetModules()
-    home.record = null
     await foyer()
     await waitFor(() => expect(wings()).not.toBeNull())
     expect(
       screen.queryByRole("heading", { name: /pair this phone/i })
     ).toBeNull()
+  })
+
+  it("opens after a restore or a move that left the pairing behind, and says so first", async () => {
+    home.record = PAIRED
+    await foyer()
+    await waitFor(() => expect(wings()).not.toBeNull())
+    // The backup carries what the phone remembers, never its record.
+    cleanup()
+    vi.resetModules()
+    home.record = null
+    await foyer()
+    expect(
+      await screen.findByText(/doesn't come back from a backup/i)
+    ).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", { name: "Not now" }))
+    expect(wings()).not.toBeNull()
+    cleanup()
+    vi.resetModules()
+    await foyer()
+    await waitFor(() => expect(wings()).not.toBeNull())
   })
 
   it("draws nothing while the phone's record is read, so the screen doesn't swap (HS1)", async () => {

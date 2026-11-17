@@ -226,7 +226,11 @@ const HomeFixture = (): JSX.Element => <DeviceSection />
  * it does when home doesn't answer.
  */
 const WelcomeFixture = (): JSX.Element => (
-  <DeviceWelcome state={useHomeLink()} onNotNow={() => undefined} />
+  <DeviceWelcome
+    state={useHomeLink()}
+    restored={false}
+    onNotNow={() => undefined}
+  />
 )
 
 export const WWW_FIXTURES = {

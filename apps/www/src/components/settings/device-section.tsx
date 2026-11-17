@@ -218,7 +218,7 @@ export const DeviceSection = (): JSX.Element => {
                       setConfirmingUnpair(false)
                       // The person unpaired on purpose: the first run's
                       // welcome is not for this phone again (SIGNIN2).
-                      rememberSeen("paired")
+                      rememberSeen("unpaired")
                       unpair.start(undefined)
                     }}
                     variant="destructive"

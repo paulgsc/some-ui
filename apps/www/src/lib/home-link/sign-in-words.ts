@@ -220,7 +220,7 @@ export const WELCOME = {
   title: "Pair this phone with home",
   lead: "Home is your own computer at home. Paired, this phone keeps a copy of what you do there, whenever the app is open on your home network.",
   restored:
-    "This phone's pairing didn't survive a restore, so it needs pairing again.",
+    "A pairing stays with the phone it was made on, and doesn't come back from a backup, so this one needs pairing again.",
   steps: [
     "On your computer, open Settings, then Account, then Phones, and choose Pair a phone.",
     "Type the address and the code it shows here.",
