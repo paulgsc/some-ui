@@ -26,12 +26,13 @@
  *   the lane mark's sheet; the game outbox; idea hearing's reach and
  *   listener; the voice record's pairing port; ask-answer; the link's
  *   watchers (`kept-watch`, `practice-reads`, `serves`, `standing`, `live`,
- *   the voice copy's gates). Outside it, until #3157's second part:
- *   soundbites' `isPaired`, which folds not known into unpaired, and
- *   `voiceKept`, which says a take going home is on this phone while
- *   reading. Outside it too, as they say nothing of no pairing (a control
- *   that is absent until paired): `routine.ts`'s pairing port,
- *   `device-routine-files` and Studio's clip frames.
+ *   the voice copy's gates); where a take is kept (`voiceKept`, every
+ *   screen's take row through it, and My data's count by
+ *   `voiceKeptOnceRead`); Studio's takes and what Studio keeps, through
+ *   voice-capture's `pairedOf` and its `unknown` place. Outside it, as they
+ *   say nothing of no pairing (a control that is absent until paired):
+ *   `routine.ts`'s pairing port, `device-routine-files` and Studio's clip
+ *   frames.
  * - _Proof:_ the type where it reaches. `pairing()` and `usePairing()` are
  *   the only reads of the pairing `lib/home-link` exports for a screen, and
  *   a switch over the union fails to compile without `reading`; a reader
@@ -45,14 +46,18 @@
  *   screen, the status board, Settings › Home and the lane mark's sheet
  *   (each with the read held, then ending both ways), a run turned away and
  *   `laneExchange` (`./kept.test.ts`), ask-answer, idea hearing, the voice
- *   record, and the game outbox's words.
+ *   record, the game outbox's words, where a take is kept and My data's
+ *   wait for the record (`./voice-send.test.ts`), and soundbites' Studio
+ *   and records (`record-take`, `records` and `studio` tests).
  * - _Tolerance:_ an ask waits as long as the record's read, at most
  *   `./credential`'s 5 s. Until #3152's second part, a run the link turns
  *   away while reading is said as busy and asked again.
  *
  * Relates: widens PO1 (#3157). Its first Family held only the ten asks;
  * the readers past it took the answer as a boolean or an id-or-null, which
- * had no member for not known yet, so `false` and `null` stood for it.
+ * had no member for not known yet, so `false` and `null` stood for it. A
+ * take's place had none either, so a take going home read as on this phone
+ * alone until #3157's second part gave it `unknown`.
  */
 import { readdirSync, readFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"

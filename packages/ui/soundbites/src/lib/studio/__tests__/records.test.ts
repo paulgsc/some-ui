@@ -27,7 +27,7 @@ describe("what Studio keeps (MD4)", () => {
     await letGoHeldTakes(memory.store, new Set(["t1", "t2"]), null)
     const [held] = await memory.store.list()
     if (held === undefined) throw new Error("no project")
-    const [project] = recordsView([held], new Set(["t1"]), null, true)
+    const [project] = recordsView([held], new Set(["t1"]), null, "paired")
     // Both were recorded at the fixture's one time, so they keep their order.
     expect(project?.rows.map((row) => [row.take.id, row.canDelete])).toEqual([
       ["t1", true],
@@ -39,14 +39,15 @@ describe("what Studio keeps (MD4)", () => {
     await letGoDeletedTakes(memory.store, new Set(["t1"]), deleted)
     const [after] = await memory.store.list()
     if (after === undefined) throw new Error("no project")
-    const row = recordsView([after], new Set(["t1"]), null, true)[0]?.rows[0]
+    const row = recordsView([after], new Set(["t1"]), null, "paired")[0]
+      ?.rows[0]
     expect(row).toMatchObject({ canDelete: false, canPlay: false })
     expect(row?.take.deleted).toBe(deleted)
   })
 
   it("hears whether this phone is paired from the home port, and again when it changes (ST34)", () => {
-    // Before the phone has read whether it is paired (C5), it isn't known
-    // to be: a take says it is kept here, not going home.
+    // Before the phone has read whether it is paired, it says so: a take
+    // says nothing of home then (PO1, #3157).
     let reach: HomeReach = "unknown"
     const listeners = new Set<() => void>()
     const records = createStudioRecords({
@@ -63,14 +64,15 @@ describe("what Studio keeps (MD4)", () => {
         },
       },
     })
+    expect(records.getSnapshot().paired).toBe("unknown")
     const detach = records.attach()
-    expect(records.getSnapshot().paired).toBe(false)
+    expect(records.getSnapshot().paired).toBe("unknown")
     reach = "away"
     for (const listener of listeners) listener()
-    expect(records.getSnapshot().paired).toBe(true)
+    expect(records.getSnapshot().paired).toBe("paired")
     reach = "unpaired"
     for (const listener of listeners) listener()
-    expect(records.getSnapshot().paired).toBe(false)
+    expect(records.getSnapshot().paired).toBe("unpaired")
     detach()
     expect(listeners.size).toBe(0)
   })

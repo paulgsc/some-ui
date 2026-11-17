@@ -27,7 +27,7 @@ import { askAudio } from "@/lib/home-link/voice-audio"
 import {
   letGoDeleted,
   recordingsOnPhone,
-  voiceKept,
+  voiceKeptOnceRead,
 } from "@/lib/home-link/voice-copy"
 import { askWhileBusy } from "@/lib/home-link/while-busy"
 import { soundbiteKeeping } from "@/lib/soundbite-keeping"
@@ -91,6 +91,8 @@ async function readPhone(): Promise<PhoneRead> {
       }
     }
   )
+  // Where each is kept, once this phone knows whether it is paired (PO1).
+  const voiceKept = await voiceKeptOnceRead()
   const read = await Promise.all(
     notes.map(async ({ id, of, at, audio }): Promise<PhoneNote | null> => {
       const blob = await audio()

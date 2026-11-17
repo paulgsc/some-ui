@@ -3,12 +3,12 @@
  * `recordTake` alone: the scene's take as the take pattern's parts draw it,
  * over where the take is kept and what the machine is doing.
  */
-import type { TakeKept } from "@some-ui/voice-capture"
+import type { Paired, TakeKept } from "@some-ui/voice-capture"
 import type { ProjectTake } from "@soundbites/lib/project/model"
 import { recordTake } from "@soundbites/lib/studio/view"
 import { describe, expect, it } from "vitest"
 
-const IDLE = { activity: { kind: "idle" }, paired: true } as const
+const IDLE = { activity: { kind: "idle" }, paired: "paired" } as const
 
 function take(over: Partial<ProjectTake> = {}): ProjectTake {
   return {
@@ -24,10 +24,10 @@ function take(over: Partial<ProjectTake> = {}): ProjectTake {
 }
 
 describe("recordTake", () => {
-  it("says where the chosen take is kept: home, going home on a paired phone, kept on an unpaired one, or no place", () => {
+  it("says where the chosen take is kept: home, going home on a paired phone, kept on an unpaired one, on this phone while that isn't known, or no place", () => {
     const kept = (
       over: Partial<ProjectTake>,
-      paired = true
+      paired: Paired = "paired"
     ): TakeKept | null | undefined =>
       recordTake({ ...IDLE, paired }, { take: take(over) }).row?.take.kept
     expect(kept({ keptBy: ["home"], onPhone: true })).toEqual({
@@ -39,12 +39,21 @@ describe("recordTake", () => {
       since: null,
     })
     expect(kept({ keptBy: [], onPhone: true })).toEqual({ place: "going" })
-    // Not known to be paired (ST34), it is kept here; what home already
+    // Known not to be paired (ST34), it is kept here; what home already
     // holds stays on home.
-    expect(kept({ keptBy: [], onPhone: true }, false)).toEqual({
+    expect(kept({ keptBy: [], onPhone: true }, "unpaired")).toEqual({
       place: "phone",
     })
-    expect(kept({ keptBy: ["home"], onPhone: true }, false)).toEqual({
+    expect(kept({ keptBy: ["home"], onPhone: true }, "unpaired")).toEqual({
+      place: "home",
+      since: null,
+    })
+    // While the phone reads whether it is paired, nothing is said of home
+    // (PO1, #3157); what home already holds stays on home.
+    expect(kept({ keptBy: [], onPhone: true }, "unknown")).toEqual({
+      place: "unknown",
+    })
+    expect(kept({ keptBy: ["home"], onPhone: true }, "unknown")).toEqual({
       place: "home",
       since: null,
     })
@@ -59,7 +68,7 @@ describe("recordTake", () => {
     ).toBe(false)
     const playing = {
       activity: { kind: "playing", take: "t1", seq: 1 },
-      paired: true,
+      paired: "paired",
     } as const
     expect(recordTake(playing, { take: take() }).row).toMatchObject({
       playing: true,
@@ -89,7 +98,7 @@ describe("recordTake", () => {
         capMs: 60_000,
         project: "p",
       },
-      paired: true,
+      paired: "paired",
     } as const
     expect(recordTake(recording, { take: null }).button).toEqual({
       kind: "recording",

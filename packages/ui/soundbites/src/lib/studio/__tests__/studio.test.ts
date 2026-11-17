@@ -398,9 +398,10 @@ describe("recording a scene", () => {
 
 describe("whether this phone is paired with home (ST34)", () => {
   it("is heard from the home port on attach and on each change, never paired without one", () => {
-    expect(studio(memoryProjectStore()).getSnapshot().paired).toBe(false)
-    // Before the phone has read whether it is paired (C5), it isn't known
-    // to be: a take says it is kept here, not going home.
+    // With no home port, never paired.
+    expect(studio(memoryProjectStore()).getSnapshot().paired).toBe("unpaired")
+    // Before the phone has read whether it is paired, it says so: a take
+    // says nothing of home then (PO1, #3157).
     let reach: HomeReach = "unknown"
     const listeners = new Set<() => void>()
     const runtime = studio(
@@ -421,14 +422,14 @@ describe("whether this phone is paired with home (ST34)", () => {
         },
       }
     )
-    expect(runtime.getSnapshot().paired).toBe(false)
+    expect(runtime.getSnapshot().paired).toBe("unknown")
     // Out of reach is still paired: a take is still going home.
     reach = "away"
     for (const listener of listeners) listener()
-    expect(runtime.getSnapshot().paired).toBe(true)
+    expect(runtime.getSnapshot().paired).toBe("paired")
     reach = "unpaired"
     for (const listener of listeners) listener()
-    expect(runtime.getSnapshot().paired).toBe(false)
+    expect(runtime.getSnapshot().paired).toBe("unpaired")
     runtime.detach()
     expect(listeners.size).toBe(0)
   })

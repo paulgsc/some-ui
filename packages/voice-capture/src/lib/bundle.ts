@@ -242,9 +242,28 @@ type BundleConfirm<I extends string> =
  */
 export type HomeReach = "near" | "away" | "unpaired" | "unknown"
 
-/** Whether this phone is known to be paired with home (ST34). */
-export function isPaired(reach: HomeReach): boolean {
-  return reach === "near" || reach === "away"
+/**
+ * Whether this phone is paired with home (ST34), with `unknown` while it
+ * hasn't yet read whether it is: a screen says nothing of no pairing then
+ * (PO1, #3157).
+ */
+export type Paired = "paired" | "unpaired" | "unknown"
+
+/** Whether `reach` says this phone is paired with home. */
+export function pairedOf(reach: HomeReach): Paired {
+  switch (reach) {
+    case "near":
+    case "away": {
+      return "paired"
+    }
+    case "unpaired":
+    case "unknown": {
+      return reach
+    }
+    default: {
+      return assertNever(reach)
+    }
+  }
 }
 
 /** What the screen says once, after something happened. */

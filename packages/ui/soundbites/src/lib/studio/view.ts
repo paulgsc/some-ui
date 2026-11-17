@@ -5,8 +5,10 @@
 import { assertNever } from "@some-ui/core-utils"
 import type { EpisodePin, Idea, Shot } from "@some-ui/video-render"
 import type {
+  Paired,
   PatternTake,
   TakeButtonView,
+  TakeKept,
   TakeRowView,
 } from "@some-ui/voice-capture"
 import { NEARLY_UP_MS } from "@some-ui/voice-capture"
@@ -451,8 +453,15 @@ export function originView(
   }
 }
 
+/** Where a take not yet on home is kept, by whether this phone is paired. */
+const KEPT_UNDER: Readonly<Record<Paired, TakeKept>> = {
+  paired: { place: "going" },
+  unpaired: { place: "phone" },
+  unknown: { place: "unknown" },
+}
+
 /** A project's take as the take pattern's row draws it. */
-export function patternTakeOf(take: ProjectTake, paired: boolean): PatternTake {
+export function patternTakeOf(take: ProjectTake, paired: Paired): PatternTake {
   return {
     id: take.id,
     answers: take.shot,
@@ -460,12 +469,13 @@ export function patternTakeOf(take: ProjectTake, paired: boolean): PatternTake {
     recordedAt: take.recordedAt,
     standing: "current",
     // On home once home holds it; on this phone until then, going home
-    // only on a phone paired with it (ST34); on neither, no place (a take
-    // carried in without its audio).
+    // only on a phone paired with it (ST34), and saying nothing of home while
+    // that isn't known (PO1); on neither, no place (a take carried in
+    // without its audio).
     kept: homeHolds(take)
       ? { place: "home", since: null }
       : take.onPhone
-        ? { place: paired ? "going" : "phone" }
+        ? KEPT_UNDER[paired]
         : null,
     ...(take.deletedAt === undefined ? {} : { deleted: take.deletedAt }),
   }

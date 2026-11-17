@@ -17,9 +17,9 @@ import type {
 } from "@some-ui/voice-capture"
 // eslint-disable-next-line one-owner/no-local-microphone -- Studio runs its own take until its machine embeds the take kit (#2442)
 import {
-  isPaired,
   NO_HOME,
   NO_LISTENER,
+  pairedOf,
   takeRunner,
 } from "@some-ui/voice-capture"
 import { TAKE_TICK_MS } from "@soundbites/lib/policy"
@@ -358,7 +358,7 @@ export function createStudio(
       )
       const home = ports.home ?? NO_HOME
       const tellPaired = (): void =>
-        send({ type: "paired", paired: isPaired(home.reach()) })
+        send({ type: "paired", paired: pairedOf(home.reach()) })
       const unwatchHome = home.subscribe(tellPaired)
       tellPaired()
       const { videos } = ports

@@ -1,0 +1,19 @@
+{
+  "id": "C480",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/voice-capture/src/lib/take-words.ts",
+    "some-ui:packages/voice-capture/src/lib/take-pattern.ts",
+    "some-ui:apps/www/src/lib/my-data/index.ts"
+  ],
+  "chose": "While the phone still reads whether it's paired with home, a take not yet on home says \"On this phone\", with nothing of home, and set aside says \"Set aside. It stays on this phone.\"; My data waits for that read before it counts where each recording is kept.",
+  "options": [
+    "\"On this phone\", saying nothing of home, and My data waits for the read",
+    "\"Kept on this phone\", as for a phone known not to be paired",
+    "no place on the row until the read ends"
+  ],
+  "gray": "A take's place had no word for not known yet. \"Kept on this phone\" implies it stays there, which is false on a paired phone, and a blank place moves the row. No check or earlier call settles it; the owner sees it on every take row for the moments the record's read takes.",
+  "undo": "Map the unknown place to phone's words in take-words.ts, and drop My data's voiceKeptOnceRead for voiceKept.",
+  "refs": ["#3157", "#3152"]
+}
