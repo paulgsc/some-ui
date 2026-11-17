@@ -457,6 +457,36 @@ describe("the home link", () => {
     expect(home.sent).toEqual([])
   })
 
+  it("says a drain stopped for an Unpair was preempted, and the next one unpaired (#3155)", async () => {
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t" }),
+    })
+    await home.link.load()
+    let release: () => void = () => undefined
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const draining = home.link.drain(async () => {
+      await held
+      return "drained"
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    const unpairing = drive(home, home.link.unpair())
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    release()
+    await expect(draining).resolves.toEqual({
+      kind: "refused",
+      why: "preempted",
+    })
+    await unpairing
+    expect(home.link.getSnapshot().link.kind).toBe("unpaired")
+    // The link turned the next away itself: not left at the last one's.
+    await expect(home.link.drain(() => Promise.resolve("x"))).resolves.toEqual({
+      kind: "refused",
+      why: "unpaired",
+    })
+  })
+
   it("holds a run asked for while the record is read, then runs it as the read found (#3152)", async () => {
     for (const found of ["paired", "unpaired"] as const) {
       let end: (record: string | null) => void = () => undefined

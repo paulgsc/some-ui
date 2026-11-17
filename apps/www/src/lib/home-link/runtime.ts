@@ -260,8 +260,8 @@ export type HomeLink = {
     run: (get: HomeGet) => Promise<T>
   ) => Promise<Run<T>>
   /**
-   * Runs `run` with a `send` to the paired home; `null` when unpaired or
-   * busy.
+   * Runs `run` with a `send` to the paired home; `refused` when unpaired or
+   * busy (`./model`'s `Refusal`).
    */
   send: <T>(run: (send: HomeCall) => Promise<T>) => Promise<Run<T>>
   /**
@@ -275,8 +275,9 @@ export type HomeLink = {
     options?: { readonly onItsOwn?: boolean }
   ) => Promise<Run<T>>
   /**
-   * As `send`, for one lane's run of the drain (`./lanes`, LA15); `null`
-   * also when a send or an Unpair stopped it to go first (`./model`).
+   * As `send`, for one lane's run of the drain (`./lanes`, LA15);
+   * `refused: preempted` also when a send, a pairing or an Unpair stopped
+   * it to go first (`./model`).
    */
   drain: <T>(run: (send: HomeCall) => Promise<T>) => Promise<Run<T>>
   /**
@@ -284,7 +285,8 @@ export type HomeLink = {
    * and without the credential: home's word on itself, which it answers
    * anyone (`/compat`, `./compat-read`). It takes the drain's turn on the
    * pace and holds no activity, so it goes beside anything the person or a
-   * lane is doing; `null` when unpaired or its turn was let go.
+   * lane is doing; `refused` when unpaired or its record is gone, and
+   * `stopped` when its turn was let go.
    */
   look: (path: string) => Promise<Run<HomeAnswer>>
   /**
@@ -957,7 +959,11 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
         false,
         run
       )
-      return preempted ? refused("preempted") : outcome
+      // Only a run that started was preempted: one the link turned away
+      // says why itself, whatever an earlier run left `preempted` at.
+      return preempted && outcome.kind !== "refused"
+        ? refused("preempted")
+        : outcome
     },
 
     stop(): void {

@@ -11,6 +11,8 @@ import type { HomeAnswer } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/core-utils"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 
+import { ForeignCallError } from "@/lib/intent/foreign"
+
 import type { Run } from "./model"
 import type { RawRun } from "./settle"
 import { settleRun } from "./settle"
@@ -77,6 +79,10 @@ export function answered<T, A>(
       return found(settled.value)
     }
     case "failed": {
+      // A foreign port's failure (the Keystore's) was reported by its port.
+      if (settled.fault instanceof ForeignCallError) {
+        return { kind: "unreachable" }
+      }
       reportFailure({
         port: "home link: an ask of home",
         error: toIntentError(settled.fault),

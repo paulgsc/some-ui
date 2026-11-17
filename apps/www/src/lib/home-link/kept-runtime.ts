@@ -108,9 +108,13 @@ export function createKept(ports: KeptPorts): Kept {
           case "gone": {
             return { kind: "unpaired" }
           }
-          case "busy":
-          case "pairing":
           case "preempted": {
+            // Stopped for an Unpair: said as the pairing it left (#3152).
+            if (ports.pairing().kind === "unpaired") return { kind: "unpaired" }
+            return ports.homeBusy() ? BUSY : { kind: "busy" }
+          }
+          case "busy":
+          case "pairing": {
             return ports.homeBusy() ? BUSY : { kind: "busy" }
           }
           default: {

@@ -368,13 +368,13 @@ describe("the practice drain under home's limit (AD3, LA15)", () => {
       const read = await timed(
         theLink().keep((send) => send("GET", "/voice-notes/kept"))
       )
-      expect(read.value?.kind).toBe("done")
+      expect(read.value.kind).toBe("done")
       reads.push(read.ms)
     }
     const synced = await timed(
       theLink().sync(BASE, (get) => get(`${BASE}/curriculum/manifest.json`))
     )
-    expect(synced.value?.kind).toBe("done")
+    expect(synced.value.kind).toBe("done")
     expect(Math.max(...reads, synced.ms)).toBeLessThanOrEqual(2_000)
     await until(() => !run.getSnapshot().running)
     expect(run.getSnapshot().last?.kind).toBe("synced")
@@ -391,7 +391,7 @@ describe("the practice drain under home's limit (AD3, LA15)", () => {
     const tap = await timed(
       theLink().send((send) => send("DELETE", "/voice-notes/n1"))
     )
-    expect(tap.value?.kind).toBe("done")
+    expect(tap.value.kind).toBe("done")
     expect(tap.ms).toBeLessThanOrEqual(2_000)
     // No drain request between the tap and its own.
     expect(home.reached.at(-1)).toBe("DELETE /voice-notes/n1")

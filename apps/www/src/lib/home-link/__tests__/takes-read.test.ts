@@ -34,7 +34,16 @@ vi.mock("@/lib/home-link", () => ({
   }),
 }))
 
+const reported = vi.hoisted((): Array<string> => [])
+vi.mock("@some-ui/intent-kit", async (actual) => ({
+  ...(await actual<object>()),
+  reportFailure: ({ port }: { port: string }): void => {
+    reported.push(port)
+  },
+}))
+
 const { askTakes, takesPath } = await import("@/lib/home-link/takes-read")
+const { ForeignCallError } = await import("@/lib/intent/foreign")
 
 beforeEach(() => {
   pairedNow = true
@@ -67,5 +76,20 @@ describe("the read of the takes home keeps (ST32)", () => {
     await expect(askTakes(null)).resolves.toEqual({ kind: "busy" })
     answer = new Error("no answer")
     await expect(askTakes(null)).resolves.toEqual({ kind: "unreachable" })
+  })
+
+  it("reports a fault on this phone once: a foreign port's own was reported by it (#3155)", async () => {
+    reported.length = 0
+    answer = new Error("a fault")
+    await expect(askTakes(null)).resolves.toEqual({ kind: "unreachable" })
+    expect(reported).toEqual(["home link: an ask of home"])
+    answer = new ForeignCallError({
+      kind: "unknown",
+      retryable: false,
+      summary: "The phone couldn't read or keep its pairing.",
+      cause: null,
+    })
+    await expect(askTakes(null)).resolves.toEqual({ kind: "unreachable" })
+    expect(reported).toEqual(["home link: an ask of home"])
   })
 })
