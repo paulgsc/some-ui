@@ -7,7 +7,10 @@
  * **AW1: away from home is said once and waited out, not a failure per call.**
  *
  * - _Claim:_ once a request to home other than a pairing's or an Unpair's
- *   finds no answer, the link tells it once (`report`, as the stretch
+ *   finds no answer (a refused connection or a timeout, `native-http`'s
+ *   `HomeNoAnswerError`; or a name this phone can't find or a certificate
+ *   it doesn't trust, which are held the same but said as themselves, NA1
+ *   in `__tests__/blocked.test.ts`), the link tells it once (`report`, as the stretch
  *   starts) and, until home answers, sends nothing the phone starts on its
  *   own (a lane's drain, a screen's read on its own, home's word on itself,
  *   Game day's socket) but one try each hold, `holdMs` doubling from 30 s to
@@ -24,7 +27,8 @@
  *   (an edit, the app in front, the network, a pull, the hold's end); the
  *   live socket made, found silent or opened against a hold beginning or
  *   ending; a screen's read asked for or on its own; a pairing or Unpair
- *   finding no answer.
+ *   finding no answer; a request failing for a name not found or an
+ *   untrusted certificate, which holds as a silence does (#3099).
  * - _Proof:_ `__tests__/away.test.ts` ("AW1"), over `stepAway` and over the
  *   real link, lanes and watches; `__tests__/live-machine.test.ts` and
  *   `__tests__/live.test.ts` for the socket; `__tests__/pull.test.ts` and
