@@ -10,6 +10,7 @@
  */
 import { assertNever, counted } from "@some-ui/core-utils"
 
+import type { HomeBlockedReason } from "@/lib/device-backend/native-http/no-answer"
 import { whenSaid } from "@/lib/journey"
 import { OFFLINE_SET_WORDS } from "@/lib/session-reflection/policy"
 import type { How, Where } from "@/lib/sharing-marks"
@@ -422,6 +423,17 @@ export type LaneFacts = LaneCounts & {
   serves: Serves | null
   /** Away from home since `since` (AW1, `./away`), read at `now`; null at home. */
   away: { readonly since: number; readonly now: number } | null
+  /** Why the last request couldn't reach home, if the phone can name it (NA1). */
+  blocked: HomeBlockedReason | null
+}
+
+/**
+ * Why the phone couldn't reach home, though home may be right there (NA1,
+ * #3099): never "away", since the phone may well be at home.
+ */
+export const BLOCKED_LINE: Readonly<Record<HomeBlockedReason, string>> = {
+  name: "This phone can't find home's name on this network. On your home network, your router may be blocking it.",
+  trust: "This phone doesn't trust home's certificate.",
 }
 
 export type LaneView = {
@@ -554,6 +566,16 @@ export function laneView(words: LaneWords, facts: LaneFacts): LaneView {
     )
   }
   if (last?.kind === "unreachable") {
+    // Stopped by a name or a certificate the phone can name (NA1): said as
+    // itself, never as away, though the link holds it as one.
+    if (facts.blocked !== null) {
+      return show(
+        "kept",
+        "blocked",
+        "Can't reach",
+        `${BLOCKED_LINE[facts.blocked]}${later}`
+      )
+    }
     if (facts.away !== null) {
       const since = whenSaid(
         new Date(facts.away.since).toISOString(),

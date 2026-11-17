@@ -384,7 +384,7 @@ describe("away from home over the real link (AW1)", () => {
       const home = await pairedHome()
       home.hold = true
       const lanes = [watchedLane("practice")]
-      const tap = theLink().sync((get) => get(`${BASE}/sync`))
+      const tap = theLink().sync(BASE, (get) => get(`${BASE}/sync`))
       await vi.waitFor(() => expect(home.sent).toHaveLength(2))
       home.release(!tapFirst)
       await expect(tap).rejects.toThrow()
@@ -405,7 +405,7 @@ describe("away from home over the real link (AW1)", () => {
     const home = await pairedHome()
     home.reachable = true
     home.hold = true
-    const tap = theLink().sync((get) => get(`${BASE}/sync`))
+    const tap = theLink().sync(BASE, (get) => get(`${BASE}/sync`))
     await vi.waitFor(() => expect(home.sent).toEqual(["/sync"]))
     home.reachable = false
     home.hold = false

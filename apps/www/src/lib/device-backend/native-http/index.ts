@@ -13,6 +13,10 @@
  * - **No redirect is followed,** so a token never follows one to another
  *   origin, and a read never lands somewhere the person did not name.
  * - **Every wait is bounded** (`callForeign`).
+ * - **Only silence is no answer** (NA1, #3099): a refused connection or a
+ *   timeout is `HomeNoAnswerError`, which the link reads as away (AW1); a
+ *   name this phone can't find or a certificate it doesn't trust is
+ *   `HomeBlockedError`, said as itself.
  *
  * The plugin parses any `application/json` answer regardless of
  * `responseType`, so `body` is re-serialised here.
@@ -33,7 +37,13 @@ import {
   isMissingPlugin,
 } from "@/lib/intent/foreign"
 
-import { HomeNoAnswerError } from "./no-answer"
+import type { HomeBlockedReason } from "./no-answer"
+import {
+  blockedReason,
+  HomeBlockedError,
+  HomeNoAnswerError,
+  phoneOnline,
+} from "./no-answer"
 
 /** Long enough for a slow LAN; short enough to say "unreachable" promptly. */
 const TIMEOUT_MS = 10_000
@@ -71,7 +81,19 @@ class InsecureHomeError extends Error {
   }
 }
 
+/** What a `HomeBlockedReason` failure is, as the native log reads it. */
+const BLOCKED: Readonly<Record<HomeBlockedReason, string>> = {
+  name: "This phone can't find home's name on this network.",
+  trust: "This phone doesn't trust home's certificate.",
+}
+
 function classify(error: unknown): ForeignVerdict {
+  const blocked = blockedReason(error, phoneOnline())
+  if (blocked !== null) {
+    // Not home's silence (NA1): a network or certificate change mends it,
+    // so asking again can succeed.
+    return { kind: "rejected", retryable: true, summary: BLOCKED[blocked] }
+  }
   if (error instanceof ForeignDeadlineError) {
     return {
       kind: "unreachable",
@@ -96,9 +118,12 @@ const PORT: ForeignPort = {
   name: "home server (native http)",
   classify,
   // Home's silence is the link's to tell, once a stretch away (AW1,
-  // `lib/home-link/away`); every other failure is told here.
+  // `lib/home-link/away`), and so is a name or a certificate that stopped
+  // a request (NA1); every other failure is told here.
   report: (failure) => {
-    if (failure.error.kind !== "unreachable") reportFailure(failure)
+    if (failure.error.kind === "unreachable") return
+    if (blockedReason(failure.error.cause, phoneOnline()) !== null) return
+    reportFailure(failure)
   },
 }
 
@@ -138,10 +163,14 @@ export async function homeRequest(call: HomeRequest): Promise<HomeAnswer> {
           readTimeout: TIMEOUT_MS,
         }),
     }),
-    (error) =>
-      error.kind === "unreachable"
-        ? new HomeNoAnswerError(error)
-        : new ForeignCallError(error)
+    (error) => {
+      if (error.kind === "unreachable") return new HomeNoAnswerError(error)
+      // `classify` already read the network: a `rejected` is a blocked one.
+      const blocked = blockedReason(error.cause)
+      return blocked === null
+        ? new ForeignCallError(error)
+        : new HomeBlockedError(error, blocked)
+    }
   )
   const { data } = answer
   const header = (wanted: string): string | undefined =>

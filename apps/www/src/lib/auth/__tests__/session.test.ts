@@ -360,3 +360,26 @@ describe("leaving", () => {
     expect(auth.hasSession()).toBe(false)
   })
 })
+
+describe("openDemo (SIGNIN5)", () => {
+  it("is the viewer build's alone: a server build refuses it, signs nothing in and sends nothing", () => {
+    expect(() => auth.openDemo()).toThrow()
+    expect(auth.hasSession()).toBe(false)
+    expect(server.calls).toEqual([])
+  })
+
+  it("opens the demo on the viewer build with no ceremony and no request", async () => {
+    vi.stubEnv("VITE_STATIC_DATA", "true")
+    vi.resetModules()
+    try {
+      const viewer = await import("@/lib/auth")
+      viewer.resetSessionForTests()
+      viewer.openDemo()
+      expect(viewer.hasSession()).toBe(true)
+      expect(server.calls).toEqual([])
+    } finally {
+      vi.unstubAllEnvs()
+      vi.resetModules()
+    }
+  })
+})
