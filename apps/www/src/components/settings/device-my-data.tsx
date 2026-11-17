@@ -12,9 +12,8 @@
  * (home's line says it couldn't be reached). A Play whose audio didn't come
  * is said in a `Notice` over the list (HS1).
  *
- * Deleting (MD3, #2477) is offered on a kind's list, of any kind, only for
- * a recording home marks deletable (`lib/my-data`'s `offersDelete`): a
- * Studio recording, or a take home couldn't hear (HEARD5). "Delete…" on its
+ * Deleting (MD3, #2477) is offered on a kind's list only for a recording
+ * home marks deletable (`lib/my-data`'s `offersDelete`): "Delete…" on its
  * row, or Select and "Delete n…", opens the sheet
  * (`./device-my-data-delete`), which asks once. The Deleted page lists the
  * receipts.
@@ -426,8 +425,11 @@ export const MyDataKind = ({
   missed?: MyDataState["missed"]
   onPlay: (id: string) => void
   onStop: () => void
-  /** This kind's store, when its recordings on this phone aren't counted yet. */
-  unread?: PhoneRead["unread"]
+  /**
+   * This kind's store, when its recordings on this phone aren't counted yet;
+   * null while this phone's read isn't in.
+   */
+  unread?: PhoneRead["unread"] | null
   /** Opens the delete sheet on `ids`; without it, nothing offers Delete…. */
   onDelete?: (of: DeletableKind, ids: ReadonlyArray<string>) => void
 }): JSX.Element => {
@@ -440,10 +442,8 @@ export const MyDataKind = ({
       : view.items.filter((item) => offersDelete(of, item, unread))
   const offers = new Set(offered.map((item) => item.id))
   const waitsOn =
-    onDelete !== undefined &&
-    offered.length === 0 &&
-    view.items.some((item) => item.deletable)
-      ? (unread.find((store) => store === of) ?? null)
+    onDelete !== undefined && view.items.some((item) => item.deletable)
+      ? (unread?.find((store) => store === of) ?? null)
       : null
   const chosen = [...selected].filter((id) => offers.has(id))
   const ask = (ids: ReadonlyArray<string>): void => {
@@ -467,8 +467,13 @@ export const MyDataKind = ({
   return (
     <div className="space-y-4">
       <Status line={homeLine(view.home)} />
-      <Status line={unreadLine(unread)} />
-      {waitsOn === null ? null : <Status line={DELETING.waitsOn(waitsOn)} />}
+      <Status
+        line={
+          waitsOn === null
+            ? unreadLine(unread ?? [])
+            : DELETING.waitsOn(waitsOn)
+        }
+      />
       {missed === null ? null : (
         <Notice key={missed} tone="warning" role="alert" dismissible>
           {MY_DATA.kind.missed}
@@ -625,7 +630,10 @@ const KindList = ({
     state.phone?.notes ?? [],
     new Date()
   )
-  const unread = (state.phone?.unread ?? []).filter((store) => store === of)
+  const unread =
+    state.phone === null
+      ? null
+      : state.phone.unread.filter((store) => store === of)
   // `?note=` opens the sheet on that recording once, when it offers Delete….
   const opened = useRef<string | null>(null)
   const named = view.items.find((item) => item.id === note)

@@ -245,6 +245,9 @@ export function itemName(at: string): string {
   return `${onDay(at)}, ${clock.format(new Date(at))}`
 }
 
+/** The page that hands each store in. */
+const STORE_PAGES = { studio: "Studio", soundbite: "Soundbites" } as const
+
 /**
  * Which of this phone's recordings aren't counted yet, and why: a page
  * hands its recordings in when it opens.
@@ -252,9 +255,7 @@ export function itemName(at: string): string {
 export function unreadLine(
   unread: ReadonlyArray<"studio" | "soundbite">
 ): string | null {
-  const pages = unread.map((store) =>
-    store === "studio" ? "Studio" : "Soundbites"
-  )
+  const pages = unread.map((store) => STORE_PAGES[store])
   if (pages.length === 0) return null
   const named = pages.join(" and ")
   return `${named} ${pages.length === 1 ? "hasn't" : "haven't"} been opened since the app started, so ${pages.length === 1 ? "its" : "their"} recordings on this phone aren't counted yet.`
@@ -403,10 +404,8 @@ export const DELETING = {
   deleteSelected: (n: number): string =>
     n === 0 ? "Delete…" : `Delete ${String(n)}…`,
   /** When a kind's store isn't handed in, so its copies can't be let go. */
-  waitsOn: (store: "studio" | "soundbite"): string =>
-    store === "studio"
-      ? "Studio hasn't been opened since the app started, so its takes can't be deleted here yet."
-      : "Soundbites hasn't been opened since the app started, so its recordings can't be deleted here yet.",
+  waitsOn: (store: keyof typeof STORE_PAGES): string =>
+    `${STORE_PAGES[store]} hasn't been opened since the app started, so its recordings can't be deleted here yet.`,
   title: (of: DeletableKind, n: number): string =>
     n === 1
       ? `Delete this ${DELETABLE_NAMES[of].one} for good?`

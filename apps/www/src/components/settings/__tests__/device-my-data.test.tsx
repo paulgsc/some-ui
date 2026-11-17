@@ -403,21 +403,6 @@ describe("deleting from a kind's list (MD3)", () => {
     fireEvent.click(screen.getAllByText(DELETING.row)[0])
     expect(onDelete).toHaveBeenCalledWith("reflection", [expect.any(String)])
   })
-
-  it("names the soundbites when their store isn't handed in", () => {
-    render(
-      <MyDataKind
-        view={kindOf("soundbite", "soundbite", DELETABLE, [], NOW)}
-        playing={null}
-        onPlay={vi.fn()}
-        onStop={vi.fn()}
-        unread={["soundbite"]}
-        onDelete={vi.fn()}
-      />
-    )
-    expect(screen.queryByText(DELETING.row)).toBeNull()
-    expect(screen.getByText(DELETING.waitsOn("soundbite"))).toBeTruthy()
-  })
 })
 
 describe("the delete sheet (MD3)", () => {

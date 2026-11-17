@@ -67,9 +67,9 @@ const Kept = z.object({
         setAsideAt: z.string().nullable(),
         /**
          * Home marks a note My data may offer to delete (MD3, #2477): its
-         * kind is switched on and it is not the work, or, since
-         * paulgsc/server#919, home couldn't hear it (HEARD5). An older home
-         * says nothing, which is no.
+         * kind is switched on and it is not the work, or home couldn't hear
+         * it (HEARD5, paulgsc/server#919). An older home says nothing,
+         * which is no.
          */
         deletable: z.boolean().default(false),
         /**

@@ -8,7 +8,7 @@ import {
 } from "@some-ui/soundbites"
 import { createFileRoute } from "@tanstack/react-router"
 
-import { isDeletableKind } from "@/lib/my-data"
+import { isKind } from "@/lib/my-data"
 import { keepSoundbites } from "@/lib/soundbite-keeping"
 import { reconcilePorts } from "@/lib/take-reconcile/ports"
 import { PairHomeLink } from "@/components/pair-home-link"
@@ -42,9 +42,9 @@ const Reconcile = ({
       <TakeReconcile
         ports={ports}
         pair={<PairHomeLink>{STUDIO_WORDS.pair.pair}</PairHomeLink>}
-        deletable={(take) => isDeletableKind(take.of)}
+        deletable={(take) => isKind(take.of)}
         onDelete={(take) => {
-          if (isDeletableKind(take.of)) deleting.ask(take.of, [take.id])
+          if (isKind(take.of)) deleting.ask(take.of, [take.id])
         }}
       />
       <DeleteSheetView

@@ -30,6 +30,7 @@ import {
   voiceKept,
 } from "@/lib/home-link/voice-copy"
 import { askWhileBusy } from "@/lib/home-link/while-busy"
+import { soundbiteKeeping } from "@/lib/soundbite-keeping"
 import { studioKeeping } from "@/lib/studio-keeping"
 
 import type { CallDeleting } from "./call-deleting-runtime"
@@ -50,7 +51,7 @@ import { createWordSetsPage } from "./word-sets-runtime"
 export type { KindItem, Of, Overview, Where } from "./model"
 export { isKind, kindOf, overviewOf, WHERE_ORDER } from "./model"
 export type { DeletableKind, DeleteSheet, Receipt } from "./deleting"
-export { isDeletableKind, offersDelete } from "./deleting"
+export { offersDelete } from "./deleting"
 export type { Deleting } from "./deleting-runtime"
 export type { Receipts, ReceiptsState } from "./receipts"
 export type { MyData } from "./runtime"
@@ -80,7 +81,14 @@ async function readPhone(): Promise<PhoneRead> {
         port: "my data: this phone's recordings",
         error: toIntentError(error),
       })
-      return { notes: [], unread: [] }
+      // Unread for deleting too: no store's copy is let go unknown.
+      return {
+        notes: [],
+        unread: [
+          ...(studioKeeping() === null ? (["studio"] as const) : []),
+          ...(soundbiteKeeping() === null ? (["soundbite"] as const) : []),
+        ],
+      }
     }
   )
   const read = await Promise.all(
