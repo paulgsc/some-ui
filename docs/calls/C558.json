@@ -11,12 +11,13 @@
     "server:crates/db/voice/src/transcript.rs",
     "server:docs/identity.md"
   ],
-  "chose": "The owner's keep rule (C560), read for home: per question in a week, \"first\" is its earliest take by when it was recorded, \"latest\" the newest recording, and a take the final send names is kept too. A question with two takes or fewer loses nothing, and so does a take no model has finished hearing or one whose verdict waits on the owner. It runs once, when the week becomes final, so a week never sent is never let go; only the recording goes, each with a receipt, and the note, its transcript, words, verdicts and counts stay.",
+  "chose": "The owner's keep rule (C560), read for home: per question in a week, \"first\" is its earliest take by when it was recorded, \"latest\" the newest recording, and a take the final send names is kept too. A question with two takes or fewer loses nothing, and so does a take no model has finished hearing or one whose verdict waits on the owner. It runs once, when the week becomes final, so a week with no final send lets nothing go. Only the recording is deleted for good, each with a receipt, and the note, its transcript, words, verdicts and counts stay.",
   "options": [
     "latest is the newest recording, and the take a send names is kept too",
-    "latest is the take the final send names, and only it"
+    "latest is the take the final send names, and only it",
+    "delete the middle takes' recordings at the week's deadline whether or not it was sent"
   ],
-  "gray": "The owner's \"latest\" could mean the newest recording or the take sent; they differ when the owner says a question again after sending and never sends again.",
+  "gray": "The owner's \"latest\" could mean the newest recording or the take sent; they differ when the owner says a question again after sending and never sends again. And whether a week with no final send ever loses its middle takes, since the proposal said \"when the week closes\".",
   "undo": "Narrow let_go_retakes to keep only what the final send names besides the first.",
   "refs": ["#3175", "#2931"]
 }
