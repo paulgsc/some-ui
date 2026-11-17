@@ -239,7 +239,7 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
         "apps/www/src/lib/auth/errors.ts",
       ],
       profiles: ["lan", "pages"],
-      why: "the passkey screen and what only it says: the Android app has no sign-in, and its /auth offers a reload instead (src/components/auth/device-session-lost). Pages shows a viewer's page instead (SIGNIN5), and carries these only through lib/auth's ceremonies",
+      why: "the passkey screen and what only it says: the Android app has no sign-in, and its /auth offers a reload instead (src/components/auth/device-session-lost). Pages shows a viewer's page instead (SIGNIN5), and carries these only through lib/auth and Settings' account section",
     },
     {
       modules: [
