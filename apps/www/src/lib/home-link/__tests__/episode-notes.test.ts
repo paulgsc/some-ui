@@ -115,7 +115,9 @@ describe("notes on episodes going home (SFEED6)", () => {
     await sendEpisodeNotes(port, home({ a: { status: 409 } }, sent))
     await sendEpisodeNotes(port, home({}, sent))
     expect(sent).toHaveLength(1)
-    expect([...episodeNotesWaiting(storage, pairedAs("p1")).refused]).toEqual(["a"])
+    expect([...episodeNotesWaiting(storage, pairedAs("p1")).refused]).toEqual([
+      "a",
+    ])
     expect(episodeFeedback.getSnapshot().map((n) => n.id)).toEqual(["a"])
     expect(reportFailure).toHaveBeenCalledTimes(1)
   })
@@ -154,7 +156,9 @@ describe("notes on episodes going home (SFEED6)", () => {
     ])
     expect(episodeNotesWaiting(storage, pairedAs("p1")).waiting).toBe(1)
     await sendEpisodeNotes(port, home({}, sent))
-    expect([...episodeNotesWaiting(storage, pairedAs("p1")).held]).toEqual(["s"])
+    expect([...episodeNotesWaiting(storage, pairedAs("p1")).held]).toEqual([
+      "s",
+    ])
   })
 
   it("waits, neither held nor refused, while home names the note's take as not held, and goes once it is", async () => {
@@ -174,7 +178,9 @@ describe("notes on episodes going home (SFEED6)", () => {
     expect(reportFailure).not.toHaveBeenCalled()
     await sendEpisodeNotes(port, home({}, sent))
     expect(sent).toHaveLength(2)
-    expect([...episodeNotesWaiting(storage, pairedAs("p1")).held]).toEqual(["s"])
+    expect([...episodeNotesWaiting(storage, pairedAs("p1")).held]).toEqual([
+      "s",
+    ])
   })
 
   it("starts from nothing under another pairing", async () => {

@@ -21,6 +21,7 @@ import { keptSaid, ShelfFullError, TAKE_WORDS } from "@some-ui/voice-capture"
 import { renderHook } from "@testing-library/react"
 import { beforeAll, describe, expect, it, vi } from "vitest"
 
+import type { Pairing } from "@/lib/home-link/model"
 import { readSent, rememberSent } from "@/lib/home-link/sent"
 import { useUnsendable, voiceLane } from "@/lib/home-link/voice"
 import {
@@ -31,7 +32,6 @@ import {
   watchVoiceNotes,
 } from "@/lib/home-link/voice-copy"
 import { keepIdeas } from "@/lib/idea-keeping"
-import type { Pairing } from "@/lib/home-link/model"
 import type { JobEvent, JobsState } from "@/lib/jobs/model"
 import { EMPTY } from "@/lib/jobs/model"
 import { keepSoundbites } from "@/lib/soundbite-keeping"

@@ -200,10 +200,7 @@ function sayingBusy(exchange: Exchange): Exchange {
  * when the run starts (nothing, unpaired), and home being busy said as such
  * (`sayingBusy`).
  */
-export function laneExchange(
-  lane: Lane,
-  pairing: () => Pairing
-): Exchange {
+export function laneExchange(lane: Lane, pairing: () => Pairing): Exchange {
   return (link) => {
     const under = pairing()
     // The link runs a lane only once paired; nothing to send otherwise.

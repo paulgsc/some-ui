@@ -11,7 +11,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import type { AskAnswerPorts } from "@/lib/ask-answer"
 import { createAskAnswer } from "@/lib/ask-answer"
-import { type Pairing, READING, UNPAIRED } from "@/lib/home-link/model"
+import { READING, UNPAIRED, type Pairing } from "@/lib/home-link/model"
 
 const PAIRED: Pairing = { kind: "paired", id: "p1" }
 

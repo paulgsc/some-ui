@@ -144,9 +144,9 @@ describe("a record kept on home", () => {
       { kind: "unpaired" }
     )
     // Still reading the pairing is not unpaired: the link was not ready yet.
-    expect(await lastOf({ keep: keep(true), pairing: () => READING })).toEqual(
-      { kind: "busy" }
-    )
+    expect(await lastOf({ keep: keep(true), pairing: () => READING })).toEqual({
+      kind: "busy",
+    })
     // While home waits out a busy, it was home's to turn away too (AD3).
     expect(await lastOf({ keep: keep(true), homeBusy: () => true })).toEqual({
       kind: "failed",

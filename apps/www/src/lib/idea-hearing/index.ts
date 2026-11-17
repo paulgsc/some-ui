@@ -184,8 +184,7 @@ export function reachOf(now: Pairing, last: KeptRun | null): HomeReach {
  * reach; near otherwise.
  */
 export const ideaHome: BundleHome = {
-  reach: () =>
-    reachOf(pairing(), laneRun(voiceLane).getSnapshot().last),
+  reach: () => reachOf(pairing(), laneRun(voiceLane).getSnapshot().last),
   subscribe: (listener) => {
     const stops = [
       homeLink().subscribe(listener),

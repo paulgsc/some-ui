@@ -541,7 +541,10 @@ describe("away from home over the real link (AW1)", () => {
         },
       }
       const kept = createKept({
-        exchange: laneExchange(lane, (): Pairing => ({ kind: "paired", id: "p" })),
+        exchange: laneExchange(
+          lane,
+          (): Pairing => ({ kind: "paired", id: "p" })
+        ),
         keep: (run) => theLink().drain(run),
         pairing: (): Pairing => ({ kind: "paired", id: "p" }),
         homeBusy: busyNow,

@@ -33,6 +33,7 @@ import type { HomeSession } from "@some-ui/leetype"
 
 import type { Kept } from "@/lib/device-backend/handlers/shelf"
 import type { SessionRecord } from "@/lib/tenant/types"
+
 import type { Pairing } from "./model"
 
 export const SENT_KEY = "some-ui.home.sent.v1"

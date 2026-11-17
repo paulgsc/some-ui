@@ -61,10 +61,7 @@ export function holdsWeekSend(memory: Sent | null, sent: WeekSent): boolean {
 
 /** `holdsWeekSend` under the pairing this phone holds now: the week's port. */
 export const homeHoldsWeekSend = (sent: WeekSent): boolean => {
-  return holdsWeekSend(
-    sentUnder(browserLocalStorage, pairing()),
-    sent
-  )
+  return holdsWeekSend(sentUnder(browserLocalStorage, pairing()), sent)
 }
 
 /**

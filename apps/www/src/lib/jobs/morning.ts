@@ -24,6 +24,7 @@ import { assertNever, counted } from "@some-ui/core-utils"
 import type { JobsRun } from "@some-ui/job-desk"
 import { pacificDay, pacificMinutes, PICKS_PER_DAY } from "@some-ui/job-desk"
 
+import type { Pairing } from "@/lib/home-link/model"
 import type {
   JourneyTheme,
   Listed,
@@ -37,7 +38,6 @@ import { whenSaid } from "@/lib/journey"
 
 import type { JobsState } from "./model"
 import { decisionOf, digestOf, placesFull } from "./model"
-import type { Pairing } from "@/lib/home-link/model"
 
 /** When the scheduled run starts, Pacific (`packages/job-desk/ROUTINE.md`). */
 const RUN_STARTS = { hour: 7, minute: 52 }
@@ -248,9 +248,10 @@ const SHAPES: Readonly<
     sign: "none",
     road: { stops: DRIVE_ROAD, marks: [U, A, R], legs: ["ahead", "ahead"] },
   },
+  // Not known yet, on this phone: its record of the pairing is still read.
   reading: {
     theme: "waiting",
-    at: "home",
+    at: "phone",
     sign: "unknown",
     road: {
       stops: HOME_ROAD,

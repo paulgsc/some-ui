@@ -104,7 +104,11 @@ const CASES: Readonly<
     now: RUNNING,
   },
   // Heard from home before the run was due, so home's answer says nothing yet.
-  away: { state: lookedAt("2026-10-22T16:00:00Z"), pairing: PAIRED, now: AFTER },
+  away: {
+    state: lookedAt("2026-10-22T16:00:00Z"),
+    pairing: PAIRED,
+    now: AFTER,
+  },
   stopped: {
     state: told(lookedAt("2026-10-22T16:30:00Z"), [STOPPED]),
     pairing: PAIRED,
@@ -116,7 +120,11 @@ const CASES: Readonly<
     pairing: PAIRED,
     now: AFTER,
   },
-  quiet: { state: lookedAt("2026-10-22T16:30:00Z"), pairing: PAIRED, now: AFTER },
+  quiet: {
+    state: lookedAt("2026-10-22T16:30:00Z"),
+    pairing: PAIRED,
+    now: AFTER,
+  },
   "not-kept": { state: EMPTY, pairing: UNPAIRED, now: AFTER },
   reading: { state: EMPTY, pairing: READING, now: AFTER },
 }
@@ -179,9 +187,9 @@ describe("this morning's run", () => {
     // A stopped run put nothing in Drive, and picks this phone holds need none.
     const stopped = morningOf(told(heard, [STOPPED]), PAIRED, AFTER)
     expect(offersDrive(stopped)).toBe(false)
-    expect(offersDrive(morningOf(told(holding(), [PARTLY]), PAIRED, AFTER))).toBe(
-      false
-    )
+    expect(
+      offersDrive(morningOf(told(holding(), [PARTLY]), PAIRED, AFTER))
+    ).toBe(false)
   })
 
   it("says only that the pairing is still being read, with no Drive to offer, until it is known", () => {

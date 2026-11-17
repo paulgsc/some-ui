@@ -9,8 +9,8 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { READING, UNPAIRED, type Pairing } from "@/lib/home-link/model"
 import type { PickRef } from "@/lib/jobs/model"
-import { type Pairing, READING, UNPAIRED } from "@/lib/home-link/model"
 
 /** A runtime of its own for each test: a mock's factory runs once otherwise. */
 function mockJobs(): void {

@@ -14,6 +14,7 @@ import {
 import { Button, Notice, TakeList, useTakePattern } from "@some-ui/shared"
 import { FolderOpen } from "lucide-react"
 
+import type { Pairing } from "@/lib/home-link/model"
 import type { JobsSnapshot } from "@/lib/jobs"
 import { phoneJobs } from "@/lib/jobs"
 import type { JourneyContext } from "@/lib/jobs/journey"
@@ -23,8 +24,6 @@ import { openFromDrive, voiceGoesHome } from "@/lib/jobs/words"
 import type { Journey, Noun } from "@/lib/journey"
 import { lookIn } from "@/lib/share-files"
 import { journeyBarState, StatusCard } from "@/components/journey-status"
-import type { Pairing } from "@/lib/home-link/model"
-import { READING } from "@/lib/home-link/model"
 
 export function useJobs(): JobsSnapshot {
   const jobs = phoneJobs()
@@ -183,7 +182,7 @@ export const OpenDigest = (): JSX.Element => {
  * (`usePairing`): only then does an exchange file the cards' files. Outside
  * the wing, not known (#3157), so a card claims nothing of where its file is.
  */
-const KeptOnHomeContext = createContext<Pairing>(READING)
+const KeptOnHomeContext = createContext<Pairing>({ kind: "reading" })
 
 export const KeptOnHome = KeptOnHomeContext.Provider
 

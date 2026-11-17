@@ -39,10 +39,7 @@ const holdsInterviewSend = (
 
 /** `holdsInterviewSend` under the pairing this phone holds now: the week's port. */
 export const homeHoldsInterviewSend = (sent: InterviewSent): boolean => {
-  return holdsInterviewSend(
-    sentUnder(browserLocalStorage, pairing()),
-    sent
-  )
+  return holdsInterviewSend(sentUnder(browserLocalStorage, pairing()), sent)
 }
 
 /** Of the sends going now, how many home holds as they are, and how many wait. */

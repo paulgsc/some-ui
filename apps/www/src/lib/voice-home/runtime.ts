@@ -23,6 +23,8 @@ import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import type { BlobShelf } from "@some-ui/voice-capture"
 import { ShelfFullError } from "@some-ui/voice-capture"
 
+import type { Pairing } from "@/lib/home-link/model"
+
 import type { DeletedPort, Encoded, VoiceHomePort } from "./home"
 import type {
   AsidePort,
@@ -38,7 +40,6 @@ import {
   settled,
   stepVoiceHome,
 } from "./model"
-import type { Pairing } from "@/lib/home-link/model"
 
 const STORAGE_KEY = "some-ui:voice-home"
 const QUARANTINE_PREFIX = "some-ui:voice-home.unreadable."

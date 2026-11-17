@@ -36,6 +36,7 @@ import { homeLink, pairing } from "./index"
 import type { KeptState } from "./kept-model"
 import type { Lane, LaneCounts } from "./lanes"
 import { useLaneHome } from "./lanes"
+import type { Pairing } from "./model"
 import { videosMoved, videosWaiting } from "./videos"
 import {
   candidates,
@@ -45,7 +46,6 @@ import {
   unsendable,
   watchVoiceNotes,
 } from "./voice-copy"
-import type { Pairing } from "./model"
 
 /** The Studio videos kept for home that home doesn't hold yet, under the pairing now. */
 const videosNow = (): number => videosWaiting(localStorageOrNull(), pairing())

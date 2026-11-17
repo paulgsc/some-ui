@@ -13,6 +13,8 @@ import type { StudioKeeping, VideoForHome } from "@some-ui/soundbites"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { describe, expect, it, vi } from "vitest"
 
+import type { Pairing } from "@/lib/home-link/model"
+import { READING, UNPAIRED } from "@/lib/home-link/model"
 import {
   phoneVideos,
   sendVideos,
@@ -23,8 +25,6 @@ import {
   videosWaiting,
 } from "@/lib/home-link/videos"
 import { keepStudio } from "@/lib/studio-keeping"
-import type { Pairing } from "@/lib/home-link/model"
-import { READING, UNPAIRED } from "@/lib/home-link/model"
 
 /** A pairing by its id (#3152's union). */
 const pairedAs = (id: string): Pairing => ({ kind: "paired", id })
@@ -175,7 +175,9 @@ describe("Studio's videos made on home (ST33)", () => {
     const again: Array<[string, string, unknown]> = []
     await sendVideos(phoneVideos(storage, "p1"), home({}, again))
     expect(again.map(([method]) => method)).toEqual(["PUT", "GET"])
-    expect(videoAnswers(storage, pairedAs("p1"))).toEqual({ "w3/1": { kind: "held" } })
+    expect(videoAnswers(storage, pairedAs("p1"))).toEqual({
+      "w3/1": { kind: "held" },
+    })
   })
 
   it("stops sending a video whose missing takes home deleted for good, and counts it waiting no more", async () => {

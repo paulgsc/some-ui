@@ -2,8 +2,8 @@
 import type { Listened, Listening, TurnListener } from "@some-ui/voice-capture"
 import { describe, expect, it, vi } from "vitest"
 
-import { AWAY_MS, eitherListener, reachOf } from "@/lib/idea-hearing"
 import type { Pairing } from "@/lib/home-link"
+import { AWAY_MS, eitherListener, reachOf } from "@/lib/idea-hearing"
 
 /** A listener that says who it is in what it hears, unless told otherwise. */
 function fake(

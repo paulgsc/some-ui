@@ -34,7 +34,7 @@
  *   half-term (15 days) lapses, and says so (SIGNIN1's forgotten look).
  */
 import type { HomeLinkState, Pairing } from "./model"
-import { READING, pairingIn, samePairing } from "./model"
+import { pairingIn, READING, samePairing } from "./model"
 
 /** What the watch hears and calls. */
 export type StandingWatchPorts = {

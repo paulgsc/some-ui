@@ -8,9 +8,10 @@
 import type { TurnListener } from "@some-ui/voice-capture"
 import { turnListening } from "@some-ui/voice-capture"
 
+import type { Pairing } from "@/lib/home-link/model"
+
 import type { AnswerEvent, AnswerState } from "./model"
 import { initialAnswer, step } from "./model"
-import type { Pairing } from "@/lib/home-link/model"
 
 export type { AnswerNotice, AnswerPhase } from "./model"
 

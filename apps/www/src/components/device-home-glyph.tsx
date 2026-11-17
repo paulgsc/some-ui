@@ -29,6 +29,8 @@ import {
 import { Link } from "@tanstack/react-router"
 
 import { pageOf } from "@/lib/front-desk"
+import type { Pairing } from "@/lib/home-link"
+import { usePairing } from "@/lib/home-link"
 import { appEventsLane } from "@/lib/home-link/app-events"
 import { jobsLane } from "@/lib/home-link/jobs"
 import type { Lane } from "@/lib/home-link/lanes"
@@ -167,6 +169,15 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
       </Sheet>
     </>
   )
+}
+
+/**
+ * Whether this phone is paired with home (#3152), for a screen that may not
+ * reach the link itself (LA8): the Jobs wing's cards, which say where their
+ * files are, and nothing of it while the pairing record is read (#3157).
+ */
+export function useHomePairing(): Pairing {
+  return usePairing()
 }
 
 /**

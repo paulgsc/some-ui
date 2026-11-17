@@ -49,9 +49,6 @@ export function notesAnswered(): {
   readonly held: ReadonlySet<string>
   readonly refused: ReadonlySet<string>
 } {
-  const { held, refused } = episodeNotesWaiting(
-    localStorageOrNull(),
-    pairing()
-  )
+  const { held, refused } = episodeNotesWaiting(localStorageOrNull(), pairing())
   return { held, refused }
 }
