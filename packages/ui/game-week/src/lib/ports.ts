@@ -71,8 +71,11 @@ export type OutboxView = {
    * first held one (ms since the epoch); null for none.
    */
   readonly onHome: { readonly count: number; readonly since: number } | null
-  /** Whether this phone sends voice notes home at all. */
-  readonly sending: boolean
+  /**
+   * Whether this phone sends voice notes home at all; null while that isn't
+   * known yet (the phone still reading its pairing), so nothing is said of it.
+   */
+  readonly sending: boolean | null
 }
 
 export type OutboxPort = {

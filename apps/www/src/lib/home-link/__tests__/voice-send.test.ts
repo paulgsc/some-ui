@@ -21,6 +21,7 @@ import { keptSaid, ShelfFullError, TAKE_WORDS } from "@some-ui/voice-capture"
 import { renderHook } from "@testing-library/react"
 import { beforeAll, describe, expect, it, vi } from "vitest"
 
+import type { Pairing } from "@/lib/home-link/model"
 import { readSent, rememberSent } from "@/lib/home-link/sent"
 import { useUnsendable, voiceLane } from "@/lib/home-link/voice"
 import {
@@ -155,8 +156,8 @@ vi.mock("@/lib/home-link", () => ({
     subscribe: () => (): void => undefined,
     getSnapshot: () => ({ link: { kind: "paired" } }),
   }),
-  paired: (): boolean => fakes.paired,
-  pairingOf: (): string => PAIRING,
+  pairing: (): Pairing =>
+    fakes.paired ? { kind: "paired", id: PAIRING } : { kind: "unpaired" },
 }))
 vi.mock("@some-ui/topik", () => ({
   lensRecordHeldByHome: (): void => undefined,

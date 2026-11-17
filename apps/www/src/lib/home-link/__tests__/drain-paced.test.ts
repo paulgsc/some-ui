@@ -19,7 +19,7 @@ import type { KeptRun } from "@/lib/home-link/kept-model"
 import type { Lane, LaneId } from "@/lib/home-link/lanes"
 import { askLane, laneRun } from "@/lib/home-link/lanes"
 import type { EventLog } from "@/lib/home-link/leetype-log"
-import type { HomeLinkState } from "@/lib/home-link/model"
+import type { HomeLinkState, Pairing } from "@/lib/home-link/model"
 import { writtenToSend } from "@/lib/home-link/reflections"
 import type { HomeLink } from "@/lib/home-link/runtime"
 import { createHomeLink } from "@/lib/home-link/runtime"
@@ -46,15 +46,12 @@ function theLink(): HomeLink {
   return held.link
 }
 
-vi.mock("@/lib/home-link/index", () => {
-  const pairingOf = (state?: HomeLinkState): string | null => {
-    const now = state ?? theLink().getSnapshot()
-    return now.link.kind === "paired" ? now.link.id : null
-  }
+vi.mock("@/lib/home-link/index", async () => {
+  const { pairingIn } = await import("@/lib/home-link/model")
   return {
     homeLink: theLink,
-    pairingOf,
-    paired: (): boolean => pairingOf() !== null,
+    pairing: (state?: HomeLinkState): Pairing =>
+      pairingIn(state ?? theLink().getSnapshot()),
     useHomeLink: (): HomeLinkState => theLink().getSnapshot(),
     LINK_CLOCK: {
       now: (): number => theClock().now(),

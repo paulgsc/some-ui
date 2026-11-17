@@ -164,9 +164,11 @@ export function outboxLine(view: OutboxView): string {
     const bites =
       view.waiting === 1 ? "1 bite waits" : `${view.waiting} bites wait`
     lines.push(
-      view.sending
-        ? `${bites} on this phone until home has ${view.waiting === 1 ? "it" : "them"}.`
-        : `${bites} on this phone. They go home once this phone is paired with home, in Settings.`
+      view.sending === null
+        ? `${bites} on this phone.`
+        : view.sending
+          ? `${bites} on this phone until home has ${view.waiting === 1 ? "it" : "them"}.`
+          : `${bites} on this phone. They go home once this phone is paired with home, in Settings.`
     )
   }
   if (view.refused > 0) {

@@ -511,10 +511,10 @@ const HowPicked = ({
 }
 
 export const JobsToday = (): JSX.Element => {
-  const { state, kept } = useJourneyContext()
+  const { state, pairing } = useJourneyContext()
   const now = useMinuteClock()
   const today = pacificDay(now)
-  const morning = morningOf(state, kept, now)
+  const morning = morningOf(state, pairing, now)
   const digest = currentDigest(state)
   const card = (
     <MorningCard morning={morning} runs={state.home.runs ?? []} now={now}>

@@ -17,6 +17,7 @@ import {
 } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+import type { Pairing } from "@/lib/home-link/model"
 import type { SessionRecord } from "@/lib/tenant/types"
 import type { Unsendable } from "@/lib/voice-home/model"
 
@@ -227,7 +228,7 @@ describe("what this phone keeps on home", () => {
 /** The status page's rows, as `useLaneRows` gives them now. */
 async function rows(): Promise<{
   rows: ReadonlyArray<{ id: string; line: string; mark: unknown }>
-  paired: boolean
+  pairing: Pairing
 }> {
   const { useLaneRows } = await import(
     "@/components/settings/device-kept-on-home"
@@ -251,7 +252,7 @@ describe("the status page's rows", () => {
       line: "How its last send went shows once aph opens.",
       mark: { kind: "lane", where: "kept", how: null },
     })
-    expect(board.paired).toBe(true)
+    expect(board.pairing.kind).toBe("paired")
   })
 })
 

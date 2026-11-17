@@ -23,11 +23,11 @@ import { phoneJobs } from "@/lib/jobs"
 import { exchangeJobs } from "@/lib/jobs/home"
 import { browserLocalStorage } from "@/lib/tenant/storage"
 
-import { pairingOf } from "./index"
+import { pairing } from "./index"
 import type { EachSent } from "./leetype-log"
 import { emptyLogReport, sendEach, sentOutcome } from "./leetype-log"
 import type { Sent } from "./sent"
-import { fingerprintOf, readSent, rememberSent } from "./sent"
+import { fingerprintOf, readSent, rememberSent, sentUnder } from "./sent"
 
 /** Whether `memory` says home holds `sent`, one send of a week, as it is. */
 const holdsInterviewSend = (
@@ -39,11 +39,7 @@ const holdsInterviewSend = (
 
 /** `holdsInterviewSend` under the pairing this phone holds now: the week's port. */
 export const homeHoldsInterviewSend = (sent: InterviewSent): boolean => {
-  const pairing = pairingOf()
-  return holdsInterviewSend(
-    pairing === null ? null : readSent(browserLocalStorage, pairing),
-    sent
-  )
+  return holdsInterviewSend(sentUnder(browserLocalStorage, pairing()), sent)
 }
 
 /** Of the sends going now, how many home holds as they are, and how many wait. */

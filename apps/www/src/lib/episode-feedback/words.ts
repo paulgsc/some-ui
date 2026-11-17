@@ -63,6 +63,8 @@ export const FEEDBACK_WORDS = {
   onHomeSent: "On home",
   onPhone: "On this phone; it goes home on its own while paired",
   notTaken: "Home didn't take this note, so it stays on this phone",
+  /** While the phone is still reading whether it's paired with home. */
+  notKnown: "On this phone; whether home has it too isn't known yet",
   /** Why the page says nothing of home. */
   home: {
     unpaired: "This phone isn't paired with home, so the notes are only here.",

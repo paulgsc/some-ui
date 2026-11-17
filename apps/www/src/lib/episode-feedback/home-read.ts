@@ -7,7 +7,7 @@
 import { localStorageOrNull } from "@some-ui/core-utils"
 
 import { NOTED_FEEDS } from "@/lib/feeds"
-import { pairingOf } from "@/lib/home-link"
+import { pairing } from "@/lib/home-link"
 import { episodeNotesWaiting } from "@/lib/home-link/episode-notes"
 import { askEpisodeNotes } from "@/lib/home-link/episode-notes-read"
 import { askWhileBusy } from "@/lib/home-link/while-busy"
@@ -44,14 +44,18 @@ export async function readHomeNotes(
   return { kind: "read", storedAt }
 }
 
-/** The notes home read back, and refused, as this phone sent them under the pairing now. */
+/**
+ * The notes home read back, and refused, as this phone sent them under the
+ * pairing now; null while the pairing record is read, when neither is known
+ * (PO1, #3157). The page renders again once its read of home ends, which
+ * waits on that record.
+ */
 export function notesAnswered(): {
   readonly held: ReadonlySet<string>
   readonly refused: ReadonlySet<string>
-} {
-  const { held, refused } = episodeNotesWaiting(
-    localStorageOrNull(),
-    pairingOf()
-  )
+} | null {
+  const now = pairing()
+  if (now.kind === "reading") return null
+  const { held, refused } = episodeNotesWaiting(localStorageOrNull(), now)
   return { held, refused }
 }

@@ -11,6 +11,8 @@ import type { BlobShelf } from "@some-ui/voice-capture"
 import { ShelfFullError } from "@some-ui/voice-capture"
 import { describe, expect, it, vi } from "vitest"
 
+import type { Pairing } from "@/lib/home-link/model"
+import { READING } from "@/lib/home-link/model"
 import type { VoiceOut } from "@/lib/voice-home/model"
 import { createVoiceHome } from "@/lib/voice-home/runtime"
 
@@ -49,8 +51,10 @@ const now = (): number => Date.parse(HEARD)
 
 /** The pairing this phone holds throughout, unless a test moves it (HP1). */
 const PAIRING = "pairing-1"
+/** Paired with home under `id`. */
+const pairedAs = (id: string): Pairing => ({ kind: "paired", id })
 const pairing = {
-  current: (): string => PAIRING,
+  current: (): Pairing => pairedAs(PAIRING),
   subscribe: () => (): void => undefined,
 }
 
@@ -195,10 +199,10 @@ describe("the voice notes on their way home", () => {
 
   it("follows the pairing the phone holds, stepping nothing while it is read, and keeps each home's word across a relaunch (HP1)", async () => {
     const storage = memoryStorage()
-    let current: string | null | undefined = undefined
+    let current: Pairing = READING
     const listeners = new Set<() => void>()
     const link = {
-      current: (): string | null | undefined => current,
+      current: (): Pairing => current,
       subscribe: (listener: () => void) => {
         listeners.add(listener)
         return (): void => {
@@ -206,7 +210,7 @@ describe("the voice notes on their way home", () => {
         }
       },
     }
-    const move = (to: string | null): void => {
+    const move = (to: Pairing): void => {
       current = to
       for (const listener of listeners) listener()
     }
@@ -217,23 +221,23 @@ describe("the voice notes on their way home", () => {
     }
     const home = make()
     expect(home.getSnapshot().pairing).toBeNull()
-    move(PAIRING)
+    move(pairedAs(PAIRING))
     await home.copy(note("n1"), new Blob(["a"]))
     home.keeping.answered({ kind: "held", id: "n1", pairing: PAIRING })
     expect(home.getSnapshot().held).toEqual(["n1"])
 
     const heard = vi.fn()
     home.subscribe(heard)
-    move("pairing-2")
+    move(pairedAs("pairing-2"))
     expect(heard).toHaveBeenCalled()
     expect(home.getSnapshot()).toMatchObject({ pairing: "pairing-2", held: [] })
     expect(home.settled("n1")).toBe(false)
 
     // A relaunch reads the record as kept, while the link is read.
-    current = undefined
+    current = READING
     const relaunched = make()
     expect(relaunched.getSnapshot()).toEqual(home.getSnapshot())
-    move(PAIRING)
+    move(pairedAs(PAIRING))
     expect(relaunched.getSnapshot()).toMatchObject({
       pairing: PAIRING,
       held: ["n1"],
@@ -250,7 +254,7 @@ describe("the voice notes on their way home", () => {
       now,
     })
     home.follow({
-      current: (): string => "pairing-2",
+      current: (): Pairing => pairedAs("pairing-2"),
       subscribe: () => (): void => undefined,
     })
     await home.copy(note("n1"), new Blob(["a"]))

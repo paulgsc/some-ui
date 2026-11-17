@@ -36,7 +36,7 @@ import { createKept, laneExchange } from "@/lib/home-link/kept-runtime"
 import { askKept, watchKept } from "@/lib/home-link/kept-watch"
 import type { Lane, LaneId } from "@/lib/home-link/lanes"
 import { busyNow } from "@/lib/home-link/lanes"
-import type { HomeLinkState } from "@/lib/home-link/model"
+import type { HomeLinkState, Pairing } from "@/lib/home-link/model"
 import { awayHeld } from "@/lib/home-link/model"
 import type { HomeLink } from "@/lib/home-link/runtime"
 import { createHomeLink } from "@/lib/home-link/runtime"
@@ -56,15 +56,12 @@ function theLink(): HomeLink {
   return made.link
 }
 
-vi.mock("@/lib/home-link/index", () => {
-  const pairingOf = (state?: HomeLinkState): string | null => {
-    const now = state ?? theLink().getSnapshot()
-    return now.link.kind === "paired" ? now.link.id : null
-  }
+vi.mock("@/lib/home-link/index", async () => {
+  const { pairingIn } = await import("@/lib/home-link/model")
   return {
     homeLink: theLink,
-    pairingOf,
-    paired: (): boolean => pairingOf() !== null,
+    pairing: (state?: HomeLinkState): Pairing =>
+      pairingIn(state ?? theLink().getSnapshot()),
     LINK_CLOCK: {
       now: (): number => made.clock?.now() ?? 0,
       after: (ms: number, run: () => void): (() => void) =>
@@ -256,9 +253,9 @@ function watchedLane(id: LaneId, watch = true): Watched {
     },
   }
   const kept = createKept({
-    exchange: laneExchange(lane, () => "p"),
+    exchange: laneExchange(lane, (): Pairing => ({ kind: "paired", id: "p" })),
     keep: (run) => theLink().drain(run),
-    paired: () => true,
+    pairing: (): Pairing => ({ kind: "paired", id: "p" }),
     homeBusy: busyNow,
     now: () => 0,
   })
@@ -544,9 +541,12 @@ describe("away from home over the real link (AW1)", () => {
         },
       }
       const kept = createKept({
-        exchange: laneExchange(lane, () => "p"),
+        exchange: laneExchange(
+          lane,
+          (): Pairing => ({ kind: "paired", id: "p" })
+        ),
         keep: (run) => theLink().drain(run),
-        paired: () => true,
+        pairing: (): Pairing => ({ kind: "paired", id: "p" }),
         homeBusy: busyNow,
         now: () => 0,
       })

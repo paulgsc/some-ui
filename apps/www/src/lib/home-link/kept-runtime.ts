@@ -16,6 +16,7 @@ import { ForeignCallError } from "@/lib/intent/foreign"
 import type { KeptEvent, KeptRun, KeptState } from "./kept-model"
 import { INITIAL_KEPT, stepKept } from "./kept-model"
 import type { Lane } from "./lanes"
+import type { Pairing } from "./model"
 import type { HomeLink } from "./runtime"
 import { blockedOf, noticingBusy, unanswered } from "./runtime"
 import { HomeUnansweredError } from "./shelf"
@@ -33,8 +34,12 @@ export type KeptPorts = {
   /** One exchange through `send`; throws what `send` throws. */
   exchange: (send: HomeCall) => Promise<HomeExchanged>
   keep: HomeLink["drain"]
-  /** Whether the phone is paired, read when the link turns a run away. */
-  paired: () => boolean
+  /**
+   * Whether the phone is paired (#3152), read when the link turns a run
+   * away: unpaired, the run says so; while the record is read, the link was
+   * not ready, said as busy so it is asked again.
+   */
+  pairing: () => Pairing
   /** Whether home is busy (AD3): a run the link turns away then was home's. */
   homeBusy: () => boolean
   /**
@@ -94,7 +99,10 @@ export function createKept(ports: KeptPorts): Kept {
     try {
       const outcome = await ports.keep(ports.exchange)
       if (outcome === null) {
-        if (!ports.paired()) return { kind: "unpaired" }
+        const now = ports.pairing()
+        if (now.kind === "unpaired") return { kind: "unpaired" }
+        // Still reading: the link turned it away as not yet ready.
+        if (now.kind === "reading") return { kind: "busy" }
         return ports.homeBusy() ? BUSY : { kind: "busy" }
       }
       if (outcome.kind === "stopped") return { kind: "stopped" }
@@ -192,13 +200,13 @@ function sayingBusy(exchange: Exchange): Exchange {
  * when the run starts (nothing, unpaired), and home being busy said as such
  * (`sayingBusy`).
  */
-export function laneExchange(
-  lane: Lane,
-  pairing: () => string | null
-): Exchange {
+export function laneExchange(lane: Lane, pairing: () => Pairing): Exchange {
   return (link) => {
     const under = pairing()
-    if (under === null) return Promise.resolve({ kind: "synced" })
-    return sayingBusy((send) => lane.exchange(send, { pairing: under }))(link)
+    // The link runs a lane only once paired; nothing to send otherwise.
+    if (under.kind !== "paired") return Promise.resolve({ kind: "synced" })
+    return sayingBusy((send) => lane.exchange(send, { pairing: under.id }))(
+      link
+    )
   }
 }

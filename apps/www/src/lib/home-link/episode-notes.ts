@@ -31,8 +31,9 @@ import { movesSignal } from "@/lib/moves"
 
 import type { KeyedSend } from "./keyed-send"
 import { sendKeyed, untakenTold } from "./keyed-send"
+import type { Pairing } from "./model"
 import type { Sent } from "./sent"
-import { readSent, rememberSent } from "./sent"
+import { readSent, rememberSent, sentUnder } from "./sent"
 
 /** How home answered for one note, as `sent.episodeNotes` remembers it. */
 type Answered = "held" | "refused"
@@ -131,16 +132,17 @@ export function phoneEpisodeNotes(
  */
 export function episodeNotesWaiting(
   storage: KeyedStorage | null,
-  pairing: string | null
+  pairing: Pairing
 ): {
   readonly waiting: number
   readonly held: ReadonlySet<string>
   readonly refused: ReadonlySet<string>
 } {
   const notes = episodeFeedback.getSnapshot()
-  if (pairing === null)
+  const known = sentUnder(storage, pairing)
+  if (known === null)
     return { waiting: notes.length, held: new Set(), refused: new Set() }
-  const sent = readSent(storage, pairing).episodeNotes
+  const sent = known.episodeNotes
   const ids = (answered: Answered): ReadonlySet<string> =>
     new Set(notes.filter((n) => sent[n.id] === answered).map((n) => n.id))
   return {

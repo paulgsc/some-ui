@@ -16,6 +16,7 @@
 import type { JSX, ReactNode } from "react"
 import { Button, Label, Notice, Switch } from "@some-ui/shared"
 
+import type { Pairing } from "@/lib/home-link"
 import { useHomeLink } from "@/lib/home-link"
 import { appEventsLane } from "@/lib/home-link/app-events"
 import { jobsLane } from "@/lib/home-link/jobs"
@@ -81,10 +82,10 @@ function useAphReading(): LaneReading {
  */
 function laneRow(
   id: LaneId,
-  { run, paired, view }: LaneReading,
+  { run, pairing, view }: LaneReading,
   more: ReadonlyArray<string> = []
 ): BoardRow {
-  const unseen = id === "aph" && paired
+  const unseen = id === "aph" && pairing.kind === "paired"
   const last = run.last
   return {
     id,
@@ -241,12 +242,13 @@ const AppEventsRow = (): JSX.Element => (
  * Each record kept on home as the status page shows it (#2165): where it is
  * kept and how its last send went, read without a watch of its own
  * (`useLaneView`), so nothing is sent from the page. Voice notes add what
- * this phone can't send (LA14). `paired`: whether this phone is paired with
- * home, so the Jobs record goes there, as the morning run's words need it.
+ * this phone can't send (LA14). `pairing`: whether this phone is paired with
+ * home, so the Jobs record goes there, as the morning run's words need it,
+ * with `reading` while its record is read (#3157).
  */
 export function useLaneRows(): {
   rows: ReadonlyArray<BoardRow>
-  paired: boolean
+  pairing: Pairing
 } {
   const practice = useLaneView(practiceLane)
   return {
@@ -258,7 +260,7 @@ export function useLaneRows(): {
       laneRow("rust-rounds", useLaneView(rustRoundsLane)),
       laneRow("app-events", useLaneView(appEventsLane)),
     ],
-    paired: practice.paired,
+    pairing: practice.pairing,
   }
 }
 
