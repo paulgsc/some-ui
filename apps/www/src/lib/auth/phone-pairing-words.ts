@@ -13,7 +13,7 @@ const PHONE_PAIR = "Pair"
 
 export const PHONE_PAIRING = {
   heading: "Phones",
-  lead: "A paired phone sends here only what you tap to send, or chose there to keep sending, and names this server first. To end a lost phone's sign-in, sign out everywhere.",
+  lead: "A paired phone sends here only what you tap to send, or chose there to keep sending, and names this server first. To end a lost phone's sign-in, sign it out from the list below.",
   pairAPhone: "Pair a phone",
   newCode: "Get a new code",
   codeFor: "Code for your phone",

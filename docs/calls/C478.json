@@ -1,0 +1,20 @@
+{
+  "id": "C478",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/home-link/runtime.ts",
+    "some-ui:apps/www/src/lib/home-link/model.ts",
+    "some-ui:apps/www/src/lib/home-link/sign-in-words.ts"
+  ],
+  "chose": "The phone keeps home's id for it and the name the owner typed while pairing in its pairing record, and its sign-in sheet says \"Signed in to home at <host>, paired as <name>\". A rename on the lan web since doesn't reach the phone, so the sheet names the phone by the name it paired with, which stays true.",
+  "options": [
+    "\"paired as <name>\", the name typed while pairing",
+    "\"as <name>\", the name typed while pairing, stale after a rename on the web",
+    "ask home for this phone's current name (a new route: home lists phones to a browser only, C497)",
+    "no name on the phone"
+  ],
+  "gray": "Home answers the account's phone list to a browser's passkey session only and refuses a phone's token (C497), so the phone cannot learn a name given on the web. Saying the name as current would go stale after such a rename; a new route for it is server work this story doesn't need. The owner sees the sentence on the phone's sign-in sheet.",
+  "undo": "Drop the `paired as` clause in sign-in-words.ts's signed-in line; the record's fields are read nowhere else.",
+  "refs": ["#3095"]
+}

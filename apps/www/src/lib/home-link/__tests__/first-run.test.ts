@@ -79,7 +79,10 @@ describe("the first run's welcome", () => {
     for (const said of SEEN) {
       expect(firstRun(INITIAL, said)).toBe(false)
       expect(
-        firstRun(read({ base: "https://h/api/v1", id: "p", since: null }), said)
+        firstRun(
+          read({ base: "https://h/api/v1", id: "p", since: null, name: null }),
+          said
+        )
       ).toBe(false)
       expect(firstRun(unpaired("unpaired"), said)).toBe(false)
       expect(firstRun(unpaired("unpaired-offline"), said)).toBe(false)
@@ -111,7 +114,12 @@ describe("what the phone keeps of its pairing", () => {
     }
   }
 
-  const PAIRED = read({ base: "https://h/api/v1", id: "p", since: null })
+  const PAIRED = read({
+    base: "https://h/api/v1",
+    id: "p",
+    since: null,
+    name: null,
+  })
 
   it("remembers a pairing and an unpair, and nothing else the link says", () => {
     const fake = link(INITIAL)

@@ -77,6 +77,7 @@ const PAIRED: HomeLinkState = {
     id: "pairing-1",
     notForgotten: false,
     since: null,
+    name: null,
     standing: { kind: "unchecked" },
   },
   activity: { kind: "idle" },

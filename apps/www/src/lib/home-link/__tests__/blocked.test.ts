@@ -244,7 +244,7 @@ describe("NA1: what the link makes of it", () => {
   it("forgets what blocked a request on a network change, a new pairing or a sign-out", () => {
     const paired = step(INITIAL, {
       type: "read",
-      found: { base: HOME.base, id: "p1", since: 1 },
+      found: { base: HOME.base, id: "p1", since: 1, name: null },
     })
     const blocked = step(paired, { type: "blocked", reason: "name", at: 5 })
     expect(blocked.blocked).toEqual({ reason: "name", at: 5 })
@@ -294,7 +294,7 @@ describe("NA1: what the link makes of it", () => {
 describe("NA1: what the person reads", () => {
   const paired: HomeLinkState = step(INITIAL, {
     type: "read",
-    found: { base: HOME.base, id: "p1", since: null },
+    found: { base: HOME.base, id: "p1", since: null, name: null },
   })
 
   it("says on the sign-in sheet which it was, never away, in the person's terms", () => {

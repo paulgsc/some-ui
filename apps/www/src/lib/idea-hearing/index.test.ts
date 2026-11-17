@@ -171,6 +171,7 @@ describe("where a new idea goes (ST26 b)", () => {
       id: "p1",
       notForgotten: false,
       since: null,
+      name: null,
       standing: { kind: "unchecked" },
     } as const
     const unpaired = { kind: "unpaired", note: null } as const

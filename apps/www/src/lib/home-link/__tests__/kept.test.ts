@@ -234,6 +234,7 @@ describe("the link's drain", () => {
         base: "https://home.example/api/v1",
         id: "pairing-1",
         since: null,
+        name: null,
       },
     })
     const draining = step(paired, { type: "drainStarted" })
@@ -265,6 +266,7 @@ describe("the link's keep lane", () => {
         base: "https://home.example/api/v1",
         id: "pairing-1",
         since: null,
+        name: null,
       },
     })
     const keeping = step(paired, { type: "keepStarted" })
@@ -384,7 +386,7 @@ describe("a lane's run", () => {
 describe("Send now", () => {
   const PAIRED = step(INITIAL, {
     type: "read",
-    found: { base: "https://home.lan", id: "p", since: null },
+    found: { base: "https://home.lan", id: "p", since: null, name: null },
   })
   const NOTHING_WAITS: LaneCounts = {
     held: { sessions: 2 },

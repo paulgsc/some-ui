@@ -1,11 +1,11 @@
 /**
- * A name for this phone as home takes it (SIGNIN2, #3088; C498): trimmed,
+ * A phone's name as home takes it (SIGNIN2, #3088; SIGNIN7; C498): trimmed,
  * at most 40 characters, nothing hidden or line-breaking, the joiners
  * emoji and some scripts need kept.
  */
 import { describe, expect, it } from "vitest"
 
-import { typedName } from "@/lib/home-link/naming"
+import { typedName } from "@/lib/phone-name"
 
 describe("a typed name for this phone", () => {
   it("is none when blank, and trimmed otherwise", () => {

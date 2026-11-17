@@ -14,11 +14,12 @@ import { Button, Input, Label, Notice } from "@some-ui/shared"
 
 import type { HomeLinkState } from "@/lib/home-link"
 import { homeLink, hostOf, pairingAddress, typedCode } from "@/lib/home-link"
-import type { TypedName } from "@/lib/home-link/naming"
-import { PHONE_NAMES, typedName } from "@/lib/home-link/naming"
+import { PHONE_NAMES } from "@/lib/home-link/naming"
 import { PAIR_FORM, pairFailureLine } from "@/lib/home-link/sign-in-words"
 import { useAsyncIntent } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
+import type { TypedName } from "@/lib/phone-name"
+import { typedName } from "@/lib/phone-name"
 
 const NO_NAME: TypedName = { kind: "none" }
 

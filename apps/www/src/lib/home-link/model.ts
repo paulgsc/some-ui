@@ -95,6 +95,12 @@ type Link =
       readonly notForgotten: boolean
       /** When this phone paired, or null for a pairing kept before the day was. */
       readonly since: number | null
+      /**
+       * The name the owner gave this phone as it paired (SIGNIN7, C498), or
+       * null: none was typed, or it paired before names were kept. A rename
+       * on the lan web since is home's, not this phone's (C478).
+       */
+      readonly name: string | null
       readonly standing: Standing
     }
 
@@ -162,6 +168,7 @@ export type HomeLinkEvent =
             readonly base: string
             readonly id: string
             readonly since: number | null
+            readonly name: string | null
           }
         | "lost"
         | "unreadable"
@@ -174,6 +181,8 @@ export type HomeLinkEvent =
       readonly id: string
       /** When the pairing was made, which is also when home last knew it. */
       readonly at: number
+      /** The name the owner typed while pairing, or null. */
+      readonly name: string | null
     }
   | { readonly type: "pairFailed"; readonly failure: PairFailure }
   | { readonly type: "unpairPressed" }
@@ -337,6 +346,7 @@ function advance(state: HomeLinkState, event: HomeLinkEvent): HomeLinkState {
                   id: found.id,
                   notForgotten: false,
                   since: found.since,
+                  name: found.name,
                   standing: UNCHECKED,
                 },
       }
@@ -361,6 +371,7 @@ function advance(state: HomeLinkState, event: HomeLinkEvent): HomeLinkState {
           id: event.id,
           notForgotten: false,
           since: event.at,
+          name: event.name,
           standing: KNOWN,
         },
         activity: idle,
