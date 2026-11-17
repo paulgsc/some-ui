@@ -9,6 +9,7 @@ import type { HomeAnswer } from "@some-ui/core-utils"
 import { describe, expect, it, vi } from "vitest"
 
 import type { HomeRequest } from "@/lib/device-backend/native-http"
+import { FIRST_HOLD_MS } from "@/lib/home-link/away"
 import type { HomeLinkEvent, HomeLinkState } from "@/lib/home-link/model"
 import { INITIAL, step } from "@/lib/home-link/model"
 import type { HomeLink } from "@/lib/home-link/runtime"
@@ -454,10 +455,43 @@ describe("RN1: a paired phone's session is renewed while the app is used", () =>
     await settle()
     expect(renewals(home)).toHaveLength(1)
     busy = false
-    home.pass(30_000)
+    // Home's own Retry-After, not the link's shortest wait, holds it.
+    home.pass(29_999)
+    page.show(true)
+    await settle()
+    expect(renewals(home)).toHaveLength(1)
+    home.pass(1)
     page.show(true)
     await settle()
     expect(renewals(home)).toHaveLength(2)
     expect(standingOf(home.link.getSnapshot())).toEqual({ kind: "known" })
+  })
+
+  it("asks nothing while held away, then asks on the first coming to the front after the hold", async () => {
+    let silent = true
+    const home = setup({
+      record: KEPT,
+      answer: async () => {
+        if (!silent) return { status: 200, body: "{}" }
+        const { noAnswer } = await import("@/test-support/no-answer")
+        throw noAnswer()
+      },
+    })
+    const page = fakeDoc()
+    watchStanding({ link: home.link, doc: page.doc })
+    await home.link.load()
+    await settle()
+    expect(renewals(home)).toHaveLength(1)
+    expect(home.link.getSnapshot().away).not.toBeNull()
+    silent = false
+    page.show(true)
+    await settle()
+    expect(renewals(home)).toHaveLength(1)
+    home.pass(FIRST_HOLD_MS)
+    page.show(true)
+    await settle()
+    expect(renewals(home)).toHaveLength(2)
+    expect(standingOf(home.link.getSnapshot())).toEqual({ kind: "known" })
+    expect(home.link.getSnapshot().away).toBeNull()
   })
 })
