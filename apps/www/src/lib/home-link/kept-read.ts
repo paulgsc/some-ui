@@ -17,7 +17,8 @@ import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import type { VoiceOut } from "@/lib/voice-home/model"
 
-import { homeLink, paired } from "./index"
+import { homeLink } from "./index"
+import { pairedOnceRead } from "./paired-once-read"
 
 /**
  * The read of what home keeps, with `of`'s newest when one is asked, and
@@ -55,7 +56,7 @@ export async function askKept(
   of: VoiceOut["of"] | null,
   note: string | null = null
 ): Promise<KeptAsked> {
-  if (!paired()) return { kind: "unpaired" }
+  if (!(await pairedOnceRead())) return { kind: "unpaired" }
   try {
     const outcome = await homeLink().keep(async (send) => ({
       answer: await send("GET", keptPath(of, note)),

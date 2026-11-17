@@ -27,7 +27,8 @@ import type { HomeAnswer } from "@some-ui/core-utils"
 import { readAs, sha256Hex } from "@some-ui/core-utils"
 import { z } from "zod"
 
-import { homeLink, paired } from "./index"
+import { homeLink } from "./index"
+import { pairedOnceRead } from "./paired-once-read"
 
 const NoteAudio = z.object({
   id: z.string(),
@@ -76,7 +77,7 @@ async function checkedAudio(audio: HomeAudio): Promise<Blob | null> {
 
 /** Note `id`'s audio from home, asked once; never rejects. */
 export async function askAudio(id: string): Promise<Blob | null> {
-  if (!paired()) return null
+  if (!(await pairedOnceRead())) return null
   try {
     const outcome = await homeLink().keep((send) => send("GET", audioPath(id)))
     if (outcome?.kind !== "done") return null

@@ -10,8 +10,10 @@ let answer: HomeAnswer | Error | null = { status: 200, body: "{}" }
 let recordFails: Error | null = null
 const asked: Array<[string, string]> = []
 
+vi.mock("@/lib/home-link/paired-once-read", () => ({
+  pairedOnceRead: (): Promise<boolean> => Promise.resolve(pairedNow),
+}))
 vi.mock("@/lib/home-link", () => ({
-  paired: (): boolean => pairedNow,
   homeLink: (): unknown => ({
     keep: async (
       run: (send: HomeCall) => Promise<unknown>

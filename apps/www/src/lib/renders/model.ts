@@ -71,8 +71,18 @@ const EpisodeSchema = z.object({
 const FailedSchema = EpisodeSchema.extend({
   by: z.enum(["recorder", "home"]),
   exit: z.number().int().nullable(),
-  /** Why, where home knows one the person can act on (`no-sample`). */
+  /**
+   * Why, as a short class: a preview's (`no-sample`, …), and from contract
+   * epoch 15 (paulgsc/server#932) any row the render policy refused
+   * (`too-long`, `too-large`), with by how much below.
+   */
   reason: z.string().min(1).optional(),
+  /** How long a refused video would run, and its kind's cap, in minutes. */
+  minutes: z.number().nonnegative().optional(),
+  capMinutes: z.number().positive().optional(),
+  /** How large a refused video came out, and the cap, in MB. */
+  mb: z.number().nonnegative().optional(),
+  capMb: z.number().positive().optional(),
 })
 
 const ComingSchema = z.object({
@@ -109,6 +119,32 @@ export function readBoard(answer: HomeAnswer): BoardRead {
   if (answer.status !== 200) return { kind: "unreadable" }
   const board = readAs(BoardSchema, answer.body)
   return board === null ? { kind: "unreadable" } : { kind: "read", board }
+}
+
+/**
+ * What the render policy refused a row for, where home says (RNR1): a home
+ * from before contract epoch 15 sends no numbers, and a row without both of
+ * its reason's numbers is no refusal, so the screen says what it said before.
+ */
+export type Refusal =
+  | {
+      readonly kind: "too-long"
+      readonly minutes: number
+      readonly capMinutes: number
+    }
+  | { readonly kind: "too-large"; readonly mb: number; readonly capMb: number }
+
+export function refusalOf(failed: RenderFailed): Refusal | null {
+  const { reason, minutes, capMinutes, mb, capMb } = failed
+  if (
+    reason === "too-long" &&
+    minutes !== undefined &&
+    capMinutes !== undefined
+  )
+    return { kind: "too-long", minutes, capMinutes }
+  if (reason === "too-large" && mb !== undefined && capMb !== undefined)
+    return { kind: "too-large", mb, capMb }
+  return null
 }
 
 /**
