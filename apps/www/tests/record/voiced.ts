@@ -27,6 +27,9 @@ import {
   overLength,
   previewOf,
   QUIET,
+  SPEAKER_DEADLINE_MS,
+  speakerChunks,
+  speakScene,
   spreadWords,
   stillFile,
   TimedWordSchema,
@@ -37,9 +40,9 @@ import type {
   CutList,
   Ports,
   RenderPolicy,
+  SpeakerTake,
   StillTake,
   TakeFiles,
-  TimedWord,
 } from "@some-ui/video-render"
 import {
   keyOf,
@@ -97,39 +100,47 @@ const TimedSchema = z.object({
 })
 
 /**
- * `text` said in `voice` by home's Kokoro speaker at `speaker`, as a WAV: the
- * same bytes for the same words and voice. With `timed`, each word's place
- * in it too (`/timed`), for the captions.
+ * One part of a scene said in `voice` by home's Kokoro speaker at `speaker`,
+ * as a WAV: the same bytes for the same words and voice. With `timed`, each
+ * word's place in it too (`/timed`), for the captions. Gives up when
+ * `signal` aborts (`speakScene`'s deadline).
  */
 async function said(
   speaker: string,
   text: string,
   voice: string,
-  timed: boolean
-): Promise<{ wav: Buffer; words: ReadonlyArray<TimedWord> | null }> {
+  timed: boolean,
+  signal: AbortSignal
+): Promise<SpeakerTake> {
   const response = await fetch(new URL(timed ? "/timed" : "/say", speaker), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text, voice }),
+    signal,
   })
   if (!response.ok)
-    fail([
-      `The speaker at ${speaker} answered ${String(response.status)}: ${await response.text()}`,
-    ])
+    throw new Error(
+      `it answered ${String(response.status)}: ${await response.text()}`
+    )
   if (!timed)
-    return { wav: Buffer.from(await response.arrayBuffer()), words: null }
+    return { wav: new Uint8Array(await response.arrayBuffer()), words: null }
   const parsed = TimedSchema.safeParse(await response.json())
-  if (!parsed.success)
-    fail([`The speaker at ${speaker} gave no words with its take`])
+  if (!parsed.success) throw new Error("it gave no words with its take")
   return {
-    wav: Buffer.from(parsed.data.audio, "base64"),
+    wav: new Uint8Array(Buffer.from(parsed.data.audio, "base64")),
     words: parsed.data.words,
   }
 }
 
 /** The speaker's model, by its SHA-256: part of every take's key. */
 async function speakerModel(speaker: string): Promise<string> {
-  const response = await fetch(new URL("/health", speaker))
+  const response = await fetch(new URL("/health", speaker), {
+    signal: AbortSignal.timeout(SPEAKER_DEADLINE_MS),
+  }).catch((e: unknown) =>
+    fail([
+      `The speaker at ${speaker} couldn't be reached: ${e instanceof Error ? e.message : String(e)}`,
+    ])
+  )
   if (!response.ok)
     fail([`The speaker at ${speaker} answered ${String(response.status)}`])
   const health: unknown = await response.json()
@@ -186,15 +197,25 @@ async function takeOf({
 }): Promise<StillTake> {
   const wav = join(root, `${file}.wav`)
   const kept = join(root, `${file}.words.json`)
-  const key = keyOf({ take: 1, model, voice, text })
-  const wordsKey = keyOf({ words: 1, model, voice, text })
+  // A scene said in several parts (SPK1) is a different take from one said
+  // whole, so its parts are in its key; a scene of one part keeps its key.
+  const parts = speakerChunks(text)
+  const chunks = parts.length === 1 ? {} : { parts }
+  const key = keyOf({ take: 1, model, voice, text, ...chunks })
+  const wordsKey = keyOf({ words: 1, model, voice, text, ...chunks })
   const cached =
     (await cache.get(key, ".wav", wav)) &&
     (!timed || (await cache.get(wordsKey, ".json", kept)))
   if (cached) {
     cache.hit(`${file}.wav`)
   } else {
-    const take = await said(speaker, text, voice, timed)
+    const spoken = await speakScene({
+      scene: file,
+      text,
+      ask: (part, signal) => said(speaker, part, voice, timed, signal),
+    })
+    if (!spoken.ok) fail([`The speaker at ${speaker}: ${spoken.problem}`])
+    const take = spoken.take
     await writeFile(wav, take.wav)
     await cache.put(key, ".wav", wav, `${file}.wav`)
     if (take.words) {
