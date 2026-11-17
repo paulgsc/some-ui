@@ -1,0 +1,11 @@
+{
+  "id": "C532",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": ["server:apps/servers/file_host/src/error.rs"],
+  "chose": "A busy answer is logged at WARN, not ERROR, so it stays out of tracing_events_total, and is counted in refusals_total.",
+  "options": ["WARN plus refusals_total", "ERROR like every other 5xx"],
+  "gray": "A shed is a 5xx, and the ERROR signal is what pages. A storm would page once per request for load that shedding already handled, but it is home's own capacity, not the client's mistake.",
+  "undo": "Drop the Busy arm before the is_server_error branch in FileHostError::into_response.",
+  "refs": ["#2918", "server#934"]
+}

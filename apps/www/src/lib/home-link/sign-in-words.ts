@@ -243,6 +243,8 @@ export function pairFailureLine(failure: PairFailure, host: string): string {
 
 /** The pairing form's words, in Settings › Home and in the welcome. */
 export const PAIR_FORM = {
+  /** Settings › Home's button that opens the form, unpaired. */
+  open: "Pair...",
   address: "Home's address",
   addressHint: "The address your computer shows beside the code.",
   homeAt: (host: string): string => `Home at ${host}`,

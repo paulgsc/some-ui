@@ -5,7 +5,8 @@ import { isAccountRouteId } from "@/lib/auth/guards"
 import { useAuthority } from "@/lib/authority"
 
 /**
- * Sends the person to the passkey screen if they are on a page that is the
+ * Sends the person to `/auth` (the passkey screen; a viewer's page on Pages)
+ * if they are on a page that is the
  * account's own and the account stops being their data authority there.
  *
  * `requireAccount` only runs on navigation. A session can also end between
