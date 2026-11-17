@@ -54,13 +54,20 @@ async function pull(dir: string): Promise<void> {
   console.log(
     [
       `pulled ${count} interview weeks`,
-      "now read the epics that moved in the last week:",
+      "now read the epics that moved and the pull requests merged in the last week:",
       `pnpm --filter @some-ui/video-render render call-facts --from ${from} --to ${to} > ${join(dir, "facts.json")}`,
     ].join("\n")
   )
 }
 
 const FactsSchema = z.looseObject({
+  pulls: z.array(
+    z.looseObject({
+      repo: z.enum(["some-ui", "server"]),
+      number: z.number(),
+      title: z.string(),
+    })
+  ),
   epics: z.array(
     z.looseObject({
       repo: z.enum(["some-ui", "server"]),
@@ -118,12 +125,21 @@ async function preparedIn(dir: string, now: Date): Promise<Prepared> {
   const docs = await markdown(top)
   return prepare({
     now,
+    // The body of work is the checkout's: a ready answer's sources are read at this commit.
+    commit: execFileSync("git", ["-C", top, "rev-parse", "HEAD"], {
+      encoding: "utf8",
+    }).trim(),
     brief: await jsonFilesIn(join(dir, "brief")),
     corpus: {
       calls: callsOf(recordIn(top)),
       epics: epicsOf(facts.data.epics),
       docs: docsOf(docs),
       invariants: invariantsOf(docs),
+      pulls: facts.data.pulls.map(({ repo, number, title }) => ({
+        repo,
+        number,
+        title,
+      })),
     },
   })
 }

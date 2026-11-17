@@ -476,6 +476,11 @@ describe("a week of mock interview rides brief (MB2, IW4)", () => {
   it("the routine puts one in brief, and home reads it with the digests", async () => {
     const d = deps()
     expect((await put(d, "brief", NAME, { body: week() })).status).toBe(201)
+    // The second version, with ready answers (IW8), rides the same way.
+    const second = week({ schema: "some-ui.interview-week/2" })
+    expect((await put(deps(), "brief", NAME, { body: second })).status).toBe(
+      201
+    )
     const read = await send(d, "GET", `/v1/brief/items/${NAME}`, {
       token: HOME,
     })
@@ -515,7 +520,8 @@ describe("a week of mock interview rides brief (MB2, IW4)", () => {
       error: "cards must be a list",
     })
     expect(await refused(DIGEST)).toEqual({
-      error: "the body's schema must be some-ui.interview-week/1",
+      error:
+        "the body's schema must be some-ui.interview-week/2 or some-ui.interview-week/1",
     })
     expect(
       (

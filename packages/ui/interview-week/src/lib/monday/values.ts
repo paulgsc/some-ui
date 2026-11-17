@@ -1,14 +1,14 @@
 /**
  * What the model writes on a Monday for the interview week (IW4, #2935), and
- * nothing else: the invented company and role, each question's prompt and
- * guidelines, and each card's script. Ids, families, sources, situations,
+ * nothing else: the invented company and role, each question's prompt,
+ * guidelines and ready answer (IW8), and each card's script. Ids, families, sources, situations,
  * dates and targets are the bundle's (`bundle.ts`), so the model decides
  * nothing about the week's shape (LEVERS, #2162). Every object is strict.
  */
-import { TextSchema } from "@interview-week/lib/week"
+import { ReadySchema, TextSchema } from "@interview-week/lib/week"
 import { z } from "zod"
 
-export const VALUES_SCHEMA = "some-ui.interview-monday-values/1"
+export const VALUES_SCHEMA = "some-ui.interview-monday-values/2"
 
 const WeekValuesSchema = z.strictObject({
   company: z.strictObject({ name: TextSchema, about: TextSchema }),
@@ -18,6 +18,7 @@ const WeekValuesSchema = z.strictObject({
       id: z.string(),
       prompt: TextSchema,
       guidelines: z.array(TextSchema),
+      ready: ReadySchema,
     })
   ),
   cards: z.array(z.strictObject({ id: z.string(), script: TextSchema })),

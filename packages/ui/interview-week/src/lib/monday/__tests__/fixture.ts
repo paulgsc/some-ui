@@ -1,6 +1,8 @@
 import type { Bundle, Corpus } from "@interview-week/lib/monday/bundle"
+import { SAY_WORDS_PER_MINUTE } from "@interview-week/lib/monday/finish"
 import type { Values } from "@interview-week/lib/monday/values"
 import { VALUES_SCHEMA } from "@interview-week/lib/monday/values"
+import type { Ready } from "@interview-week/lib/week"
 
 const call = (id: string, made: string): Corpus["calls"][number] => ({
   id,
@@ -12,7 +14,10 @@ const call = (id: string, made: string): Corpus["calls"][number] => ({
   refs: ["#2931"],
 })
 
-/** A small corpus: three calls, two epics, two docs and two invariants. */
+/** The commit the fixture's body of work is read at. */
+export const COMMIT = "c9fd3215e0a1b2c3d4e5f60718293a4b5c6d7e8f"
+
+/** A small corpus: three calls, two epics, two docs, two invariants and a pull. */
 export const corpus: Corpus = {
   calls: [
     call("C266", "2026-11-13"),
@@ -65,6 +70,13 @@ export const corpus: Corpus = {
       text: "**L3: names.**",
     },
   ],
+  pulls: [
+    {
+      repo: "some-ui",
+      number: 3170,
+      title: "a home link run waits out the pairing read as state",
+    },
+  ],
 }
 
 /** A script of `lines` lines of ten words each: read aloud, about four seconds a line. */
@@ -73,6 +85,47 @@ export const script = (lines: number): string =>
     { length: lines },
     (_, i) => `Line ${i + 1} of the read, said aloud in one breath.`
   ).join("\n")
+
+/** `n` words of a sentence said aloud. */
+const words = (n: number): string =>
+  Array.from({ length: n }, (_, i) => (i === 0 ? "I" : "said")).join(" ")
+
+/**
+ * A ready answer that passes `finish` for a `targetSeconds` question: four
+ * parts at 80% of the target's words, each citing what the corpus holds.
+ */
+export function readyFor(targetSeconds: number): Ready {
+  const target = (targetSeconds / 60) * SAY_WORDS_PER_MINUTE
+  const part = Math.round((target * 0.8) / 4)
+  const cite = [{ kind: "pull", repo: "some-ui", number: 3170 } as const]
+  return {
+    answer: [
+      "The situation",
+      "The options",
+      "The choice",
+      "The edge cases",
+    ].map((label) => ({
+      label,
+      text: words(part),
+      note: "Names what the listener can check.",
+      sources: cite,
+    })),
+    another: {
+      text: words(Math.round(target * 0.7)),
+      note: "Leads with the principle, then the example.",
+      sources: [{ kind: "call", id: "C266" }],
+    },
+    poor: {
+      text: words(30),
+      notes: [
+        "Doesn't say what failed, or for whom.",
+        "Names no alternative at all.",
+      ],
+      sources: [],
+    },
+    cues: ["not known yet", "wait in each caller", "the type holds it"],
+  }
+}
 
 /** Words that fill every slot of `bundle`'s next week and pass `finish`. */
 export function valuesFor(bundle: Bundle): Values {
@@ -98,6 +151,7 @@ export function valuesFor(bundle: Bundle): Values {
           "Names the situation in a sentence or two.",
           "Says what they did and what came of it.",
         ],
+        ready: readyFor(q.targetSeconds),
       })),
       cards: next.cards.map((c) => ({ id: c.id, script: script(20) })),
     },

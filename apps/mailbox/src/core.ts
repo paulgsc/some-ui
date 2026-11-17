@@ -1075,7 +1075,8 @@ type FolderRules = {
   readonly folder: Folder
   /** Audio files match none, on purpose: the mailbox carries text. */
   readonly name: RegExp
-  readonly schema: string
+  /** The schema a body carries; one of several where a format kept its earlier version readable. */
+  readonly schema: string | readonly [string, ...Array<string>]
   /**
    * Checks deeper than the schema, for a folder whose shape the mailbox
    * itself must hold: why the body is refused, or `null`.
@@ -1153,7 +1154,9 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
       {
         folder: "brief",
         name: /^interview-week-\d{4}-w\d{2}\.json$/,
-        schema: "some-ui.interview-week/1",
+        // The second version carries each question's ready answer (IW8,
+        // paulgsc/some-ui#3175); the first is the weeks written before it.
+        schema: ["some-ui.interview-week/2", "some-ui.interview-week/1"],
         refuses: interviewWeekRefusal,
       },
       // The script of the essay that answers a week, for home to keep and
@@ -1710,8 +1713,14 @@ async function bodyOf(
 
   const parsed = parseJson(bytes)
   if (!parsed.ok) return refuse(422, "the body is not JSON")
-  if (!isRecord(parsed.value) || parsed.value.schema !== kind.schema) {
-    return refuse(422, `the body's schema must be ${kind.schema}`)
+  const schemas: ReadonlyArray<string> =
+    typeof kind.schema === "string" ? [kind.schema] : kind.schema
+  if (
+    !isRecord(parsed.value) ||
+    typeof parsed.value.schema !== "string" ||
+    !schemas.includes(parsed.value.schema)
+  ) {
+    return refuse(422, `the body's schema must be ${schemas.join(" or ")}`)
   }
   const refusal = kind.refuses?.(parsed.value, parsed.text, name) ?? null
   if (refusal !== null) return refuse(422, refusal)

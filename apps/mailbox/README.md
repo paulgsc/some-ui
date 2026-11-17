@@ -236,7 +236,7 @@ role, and it is the owner's call, so it is not built.
   must be UTF-8 JSON with no byte-order mark.
 - **Schema**: the top-level `schema` must be `some-ui.job-digest/1`, `some-ui.job-decisions/1`,
   `some-ui.job-scouts/1`, `some-ui.routine-scene/1`, `some-ui.routine-drama/1`, `some-ui.routine-run/1`,
-  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1`, `some-ui.reflection/1`, `some-ui.drama-prompt/1`, `some-ui.episode-note/1`, `some-ui.take-pickup/1` or `some-ui.take-picked/1` to match the folder (and `some-ui.drive-takes/1` for a list of Drive's takes in `brief`, `some-ui.rust-week/1` for a week of Rust Rounds, `some-ui.rust-essay/1` for an essay's script, `some-ui.interview-week/1` for a week of mock interview, `some-ui.interview-essay/1` for an interview essay's script). The Worker checks that and nothing deeper, except for a transcript, an index, a reflection, a prompt, a note on an episode, a take ready for pickup, an answer to one, a list of Drive's takes, a week's `id`, which must be the name's (below), and an interview week's question and card ids; the readers validate the full shape.
+  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1`, `some-ui.reflection/1`, `some-ui.drama-prompt/1`, `some-ui.episode-note/1`, `some-ui.take-pickup/1` or `some-ui.take-picked/1` to match the folder (and `some-ui.drive-takes/1` for a list of Drive's takes in `brief`, `some-ui.rust-week/1` for a week of Rust Rounds, `some-ui.rust-essay/1` for an essay's script, `some-ui.interview-week/2` (or the earlier `/1`) for a week of mock interview, `some-ui.interview-essay/1` for an interview essay's script). The Worker checks that and nothing deeper, except for a transcript, an index, a reflection, a prompt, a note on an episode, a take ready for pickup, an answer to one, a list of Drive's takes, a week's `id`, which must be the name's (below), and an interview week's question and card ids; the readers validate the full shape.
 - **A scene** is `{"schema":"some-ui.routine-scene/1","answers":"<reflection>","title":"<the
 scene folder's name>","decks":[<read-aloud deck>,<lens deck>]}`, each deck exactly as the
   phone's word set check takes it. **A drama** is `{"schema":"some-ui.routine-drama/1",
@@ -769,7 +769,7 @@ how each was checked when this workspace landed.
   week amendment (IW4, [paulgsc/some-ui#2935](https://github.com/paulgsc/some-ui/issues/2935),
   the owner's "brief rules for `brief/interview-week-<id>.json` next to `rustWeekRefusal`"):_
   `ROLES` is unchanged; `brief`'s `also` holds four kinds, the fourth the interview week, taken
-  only as `interview-week-YYYY-wNN.json` and held to `some-ui.interview-week/1` and
+  only as `interview-week-YYYY-wNN.json` and held to `some-ui.interview-week/2` (or `/1`, the weeks before IW8) and
   `interviewWeekRefusal` (an ISO week `id`, the name's, and each question's and card's `id` a
   kebab slug of at most 64 characters, once each, no question named `read`); `core.test.ts`
   pins that the routine puts one and home reads it, and that a misnamed week, a non-week `id`, a

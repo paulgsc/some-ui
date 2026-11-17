@@ -3,7 +3,7 @@
  * bundle's choices and the model's words, and answers the file to put or
  * every problem, so the model fixes exactly those in its values.
  */
-import type { Bundle } from "@interview-week/lib/monday/bundle"
+import type { Bundle, WorkEntry } from "@interview-week/lib/monday/bundle"
 import {
   READ_WORDS_PER_MINUTE,
   SCRIPT_WORDS,
@@ -16,8 +16,13 @@ import {
 } from "@interview-week/lib/monday/employers"
 import { ValuesSchema } from "@interview-week/lib/monday/values"
 import type { WeekValues } from "@interview-week/lib/monday/values"
-import type { InterviewWeek } from "@interview-week/lib/week"
-import { INTERVIEW_WEEK_SCHEMA, readWeek } from "@interview-week/lib/week"
+import type { InterviewWeek, Ready, WorkSource } from "@interview-week/lib/week"
+import {
+  GROUND,
+  INTERVIEW_WEEK_SCHEMA,
+  readWeek,
+  workSourceKey,
+} from "@interview-week/lib/week"
 
 /** Which routine wrote the week. */
 const BY = "claude-routine"
@@ -35,7 +40,37 @@ const WORDS = {
   guidelines: { min: 2, max: 5 },
   /** A script's line: one breath. */
   line: { min: 1, max: 30 },
+  /** A ready answer's part: a sentence or a few (IW8). */
+  part: { min: 6, max: 80 },
+  /** The label over a part, like "The options". */
+  label: { min: 1, max: 5 },
+  /** A note on why a part works, or why a poor answer is poor. */
+  note: { min: 4, max: 40 },
+  poor: { min: 15, max: 120 },
+  /** A cue: a few words to lean on (rung 3). */
+  cue: { min: 1, max: 6 },
 } as const
+
+/**
+ * The most a week's file may weigh as the routine writes it: home refuses a
+ * week over 64 KiB (paulgsc/server `interview.rs`, `WEEK_CEILING`).
+ */
+const WEEK_BYTES_MOST = 64 * 1024
+
+/**
+ * How fast an answer is said, for its length against the question's target
+ * (IW8): 140 words a minute, a little slower than a read.
+ */
+export const SAY_WORDS_PER_MINUTE = 140
+
+/**
+ * A ready answer's length against its question's target: at least 60% of
+ * it, so the answer says enough, and at most all of it, so reading it aloud
+ * never runs past (#2931: running past the target is a fault). Another
+ * good answer, a different shape, runs from 40% to all of it.
+ */
+const ANSWER_SHARE = { min: 0.6, max: 1 } as const
+const ANOTHER_SHARE = { min: 0.4, max: 1 } as const
 
 /** The words of `text`, as a reader counts them. */
 const wordCount = (text: string): number =>
@@ -65,8 +100,10 @@ function checkWords(
   values: WeekValues,
   problems: Array<string>,
   employers: ReadonlyArray<string>,
-  earlierCompanies: ReadonlyArray<string>
+  next: NonNullable<Bundle["next"]>
 ): void {
+  const { earlierCompanies } = next
+  const work = new Map(next.sources.map((s) => [s.key, s]))
   within(problems, "week.company.name", values.company.name, WORDS.name)
   within(problems, "week.company.about", values.company.about, WORDS.about)
   within(problems, "week.role.title", values.role.title, WORDS.title)
@@ -100,6 +137,18 @@ function checkWords(
     )
     employer.push([`${at}.prompt`, q.prompt])
     q.guidelines.forEach((g, j) => employer.push([`${at}.guidelines[${j}]`, g]))
+    const slot = next.questions.find((s) => s.id === q.id)
+    if (slot !== undefined) {
+      checkReady(
+        at,
+        q.ready,
+        slot.targetSeconds,
+        work,
+        next.commit,
+        problems,
+        employer
+      )
+    }
   })
   for (const [at, text] of employer) {
     for (const name of employersIn(text, [...employers, ...PLATFORMS])) {
@@ -122,6 +171,96 @@ function checkWords(
       problems.push(`${at}: names ${name}, a real employer`)
     }
   })
+}
+
+/**
+ * A question's ready answer (IW8): each text's words, its length against the
+ * target, and every source in the week's body of work at its commit. A claim
+ * with no source is the schema's to refuse (`ReadySchema`).
+ */
+function checkReady(
+  at: string,
+  ready: Ready,
+  targetSeconds: number,
+  work: ReadonlyMap<string, WorkEntry>,
+  commit: string,
+  problems: Array<string>,
+  employer: Array<[string, string]>
+): void {
+  const sourced = (where: string, sources: ReadonlyArray<WorkSource>): void => {
+    sources.forEach((source, k) => {
+      const key = workSourceKey(source)
+      const entry = work.get(key)
+      if (entry === undefined) {
+        problems.push(
+          `${where}.sources[${k}]: ${key} isn't in the body of work at ${commit.slice(0, 12)}; cite one the bundle's sources list`
+        )
+      } else if ("path" in source && source.path !== entry.path) {
+        problems.push(
+          `${where}.sources[${k}]: ${key} is in ${entry.path ?? "no file"}, not ${source.path}`
+        )
+      }
+    })
+  }
+  const target = (targetSeconds / 60) * SAY_WORDS_PER_MINUTE
+  const share = (
+    where: string,
+    n: number,
+    bounds: { readonly min: number; readonly max: number }
+  ): void => {
+    const min = Math.ceil(target * bounds.min)
+    const max = Math.floor(target * bounds.max)
+    if (n < min || n > max) {
+      problems.push(
+        `${where}: ${n} words; at ${SAY_WORDS_PER_MINUTE} a minute against a ${targetSeconds}-second target, write ${min} to ${max}`
+      )
+    }
+  }
+  ready.answer.forEach((part, k) => {
+    const where = `${at}.ready.answer[${k}]`
+    within(problems, `${where}.label`, part.label, WORDS.label)
+    within(problems, `${where}.text`, part.text, WORDS.part)
+    within(problems, `${where}.note`, part.note, WORDS.note)
+    sourced(where, part.sources)
+    employer.push(
+      [`${where}.label`, part.label],
+      [`${where}.text`, part.text],
+      [`${where}.note`, part.note]
+    )
+  })
+  share(
+    `${at}.ready.answer`,
+    ready.answer.reduce((n, part) => n + wordCount(part.text), 0),
+    ANSWER_SHARE
+  )
+  share(
+    `${at}.ready.another.text`,
+    wordCount(ready.another.text),
+    ANOTHER_SHARE
+  )
+  within(problems, `${at}.ready.another.note`, ready.another.note, WORDS.note)
+  sourced(`${at}.ready.another`, ready.another.sources)
+  within(problems, `${at}.ready.poor.text`, ready.poor.text, WORDS.poor)
+  ready.poor.notes.forEach((note, k) =>
+    within(problems, `${at}.ready.poor.notes[${k}]`, note, WORDS.note)
+  )
+  sourced(`${at}.ready.poor`, ready.poor.sources)
+  ready.cues.forEach((cue, k) =>
+    within(problems, `${at}.ready.cues[${k}]`, cue, WORDS.cue)
+  )
+  employer.push(
+    [`${at}.ready.another.text`, ready.another.text],
+    [`${at}.ready.another.note`, ready.another.note],
+    [`${at}.ready.poor.text`, ready.poor.text],
+    ...ready.poor.notes.map((note, k): [string, string] => [
+      `${at}.ready.poor.notes[${k}]`,
+      note,
+    ]),
+    ...ready.cues.map((cue, k): [string, string] => [
+      `${at}.ready.cues[${k}]`,
+      cue,
+    ])
+  )
 }
 
 /** The same ids, once each, in any order: what the bundle asks for against what the values fill. */
@@ -188,12 +327,7 @@ export function finish(input: {
     values.cards.map((c) => c.id),
     problems
   )
-  checkWords(
-    values,
-    problems,
-    [...EMPLOYERS, ...input.resumeEmployers],
-    next.earlierCompanies
-  )
+  checkWords(values, problems, [...EMPLOYERS, ...input.resumeEmployers], next)
   if (problems.length > 0) return { ok: false, problems }
 
   const words = (id: string): WeekValues["questions"][number] | undefined =>
@@ -215,6 +349,8 @@ export function finish(input: {
       prompt: words(q.id)?.prompt ?? "",
       targetSeconds: q.targetSeconds,
       guidelines: words(q.id)?.guidelines ?? [],
+      ground: GROUND[q.family],
+      ...(words(q.id) === undefined ? {} : { ready: words(q.id)?.ready }),
       ...(q.call === undefined
         ? {}
         : { source: { kind: "call", id: q.call.id } as const }),
@@ -229,5 +365,17 @@ export function finish(input: {
   }
   const read = readWeek(week)
   if (!read.ok) return { ok: false, problems: read.problems }
+  // As `jsonText` writes it: two-space indent and a trailing newline.
+  const bytes = new TextEncoder().encode(
+    `${JSON.stringify(read.week, null, 2)}\n`
+  ).length
+  if (bytes > WEEK_BYTES_MOST) {
+    return {
+      ok: false,
+      problems: [
+        `the week is ${bytes} bytes, and home keeps one of at most ${WEEK_BYTES_MOST}: shorten the ready answers' notes and the poor answers first`,
+      ],
+    }
+  }
   return { ok: true, files: [{ name: weekFileName(week.id), body: read.week }] }
 }
