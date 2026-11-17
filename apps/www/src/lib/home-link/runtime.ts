@@ -123,7 +123,7 @@ function retryAfterMs(retryAfter: string | undefined): number | null {
  * of home's caps (a day's new accounts, pairing), which waiting out a
  * moment does not end, so it is not busy.
  */
-export function overloaded(answer: HomeAnswer): boolean {
+function overloaded(answer: HomeAnswer): boolean {
   if (answer.status !== 503 || retryAfterMs(answer.retryAfter) === null) {
     return false
   }
