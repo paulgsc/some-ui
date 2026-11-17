@@ -1,0 +1,18 @@
+{
+  "id": "C544",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/mobile/compat/trust-ca.sh",
+    "some-ui:apps/mobile/compat/storm.sh"
+  ],
+  "chose": "The storm pairs over https with a CA made per level and put in the emulator's system store (a tmpfs over the store, bound into each zygote's namespace from API 34); where that fails the level says \"no system CA\" and runs the storm unpaired over plain http, without failing.",
+  "options": [
+    "system-store CA, unpaired fallback said in the stamp",
+    "system-store CA, the level fails when it cannot be installed",
+    "unpaired plain http only"
+  ],
+  "gray": "The coordinator directed the system-store route and an app left as shipped; whether a level without it fails or is only marked is a judgement about what a stamp should say.",
+  "undo": "Make run-level.sh's last line require paired = pass, or drop COMPAT_CERTS to run unpaired only.",
+  "refs": ["#3104", "#3106"]
+}

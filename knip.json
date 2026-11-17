@@ -26,6 +26,8 @@
       "ignoreDependencies": ["cloudflare"]
     },
     "apps/mobile": {
+      "entry": ["compat/*.mjs"],
+      "ignoreBinaries": ["adb"],
       "ignoreDependencies": [
         "@capacitor-community/sqlite",
         "@capacitor-community/text-to-speech",
