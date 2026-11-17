@@ -1,23 +1,79 @@
 {
-  "$comment": "What the stub home (stub-home.mjs) answers, by method and path (query ignored; a `:name` segment matches any one segment); anything else is a 200 {}, still counted. `echo` answers { <echo>: <the request body> }, as home answers a PUT it now holds. Sample data only: a fixed token for any well-formed pairing code, empty listings, and this build supported. Shapes from the readers in apps/www/src/lib/home-link, apps/www/src/lib/jobs/home.ts and packages/ui/rust-rounds/src/lib/home.",
+  "$comment": "What the stub home (stub-home.mjs) answers, by method and path (query ignored; a `:name` segment matches any one segment); anything else is a 200 {}, still counted. `echo` answers { <echo>: <the request body> }, as home answers a PUT it now holds. Sample data only: a fixed token for any well-formed pairing code, empty listings, and this build supported. Shapes from the readers in apps/www/src/lib/home-link, apps/www/src/lib/jobs/home.ts, apps/www/src/lib/interview-week/home.ts and packages/ui/rust-rounds/src/lib (home, weeks).",
   "routes": {
     "POST /api/v1/auth/pairing/finish": {
       "status": 200,
-      "body": { "token": "compat-sample-token" }
+      "body": {
+        "token": "compat-sample-token"
+      }
     },
-    "POST /api/v1/auth/sign-out": { "status": 200, "body": {} },
-    "GET /api/v1/auth/session": { "status": 200, "body": {} },
-    "GET /compat": { "status": 200, "body": { "supported": true } },
+    "POST /api/v1/auth/sign-out": {
+      "status": 200,
+      "body": {}
+    },
+    "GET /api/v1/auth/session": {
+      "status": 200,
+      "body": {}
+    },
+    "GET /compat": {
+      "status": 200,
+      "body": {
+        "supported": true
+      }
+    },
     "GET /api/v1/curriculum/manifest.json": {
       "status": 200,
-      "body": { "topiks": [] }
+      "body": {
+        "topiks": []
+      }
     },
-    "GET /api/v1/jobs": { "status": 200, "body": { "events": [] } },
-    "GET /api/v1/jobs/runs": { "status": 200, "body": { "runs": [] } },
-    "GET /api/v1/jobs/digests": { "status": 200, "body": { "digests": [] } },
-    "PUT /api/v1/jobs/notice": { "status": 404, "body": {} },
-    "DELETE /api/v1/jobs/notice": { "status": 404, "body": {} },
-    "GET /api/v1/rust-rounds": { "status": 200, "body": { "rounds": [] } },
-    "PUT /api/v1/app-events/:id": { "status": 200, "echo": "event" }
+    "GET /api/v1/jobs": {
+      "status": 200,
+      "body": {
+        "events": []
+      }
+    },
+    "GET /api/v1/jobs/runs": {
+      "status": 200,
+      "body": {
+        "runs": []
+      }
+    },
+    "GET /api/v1/jobs/digests": {
+      "status": 200,
+      "body": {
+        "digests": []
+      }
+    },
+    "PUT /api/v1/jobs/notice": {
+      "status": 404,
+      "body": {}
+    },
+    "DELETE /api/v1/jobs/notice": {
+      "status": 404,
+      "body": {}
+    },
+    "GET /api/v1/rust-rounds": {
+      "status": 200,
+      "body": {
+        "rounds": []
+      }
+    },
+    "PUT /api/v1/app-events/:id": {
+      "status": 200,
+      "echo": "event"
+    },
+    "GET /api/v1/interview-weeks": {
+      "status": 200,
+      "body": {
+        "weeks": []
+      }
+    },
+    "GET /api/v1/rust-weeks": {
+      "status": 200,
+      "body": {
+        "weeks": []
+      }
+    }
   }
 }

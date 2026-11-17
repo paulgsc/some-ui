@@ -109,8 +109,8 @@ pair_by_ui() {
   ui tap '^Settings$' &&
     ui tap '^Home$' &&
     ui tap '^Pair\.\.\.$' &&
-    ui type '^pair-address$|^https://file-host\.home\.example$' 'https://10.0.2.2:8787' &&
-    ui type '^pair-code$|^K7QF 2M9X$' 'K7QF2M9X' &&
+    ui type '^pair-address$|^https://file-host\.home\.example$|^Home server address$' 'https://10.0.2.2:8787' &&
+    ui type '^pair-code$|^K7QF 2M9X$|^Code from your computer$' 'K7QF2M9X' &&
     hide_keyboard &&
     ui tap '^Pair with' &&
     ui find '^Unpair$|^Home: signed in$'

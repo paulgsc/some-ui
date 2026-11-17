@@ -42,6 +42,8 @@ function find(xml) {
       attribute(node, n)
     )
     if (!names.some((name) => name !== "" && wanted.test(name))) continue
+    // A disabled control does nothing when tapped: wait for it to enable.
+    if (action !== "find" && attribute(node, "enabled") === "false") continue
     const bounds = attribute(node, "bounds").match(/-?\d+/g)?.map(Number)
     if (!bounds || bounds.length !== 4) continue
     const [left, top, right, bottom] = bounds
