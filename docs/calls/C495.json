@@ -1,0 +1,22 @@
+{
+  "id": "C495",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/auth.rs",
+    "server:crates/db/auth/src/repository.rs"
+  ],
+  "chose": "A phone paired before rows said what they are is tagged kind = 'phone' with a fresh pairing_id and no day the first time its bearer token is read by any route; until then the browser cap can still end it.",
+  "options": [
+    "tagged lazily on its next bearer read",
+    "every existing pairing must pair again"
+  ],
+  "gray": "No stored row tells an old phone from a browser (its hash is domain-separated), so only its next request can; a forced re-pair would sign out phones that work today.",
+  "undo": "Drop AuthContext::tag_if_unmarked_phone; untagged rows then stay browsers.",
+  "refs": [
+    "#3092",
+    "#3086",
+    "#2123",
+    "server#925"
+  ]
+}

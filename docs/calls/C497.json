@@ -1,0 +1,22 @@
+{
+  "id": "C497",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/routes/auth.rs",
+    "server:apps/servers/file_host/src/handlers/auth.rs"
+  ],
+  "chose": "DELETE /auth/phones/:id signs one paired phone out, from a browser's passkey session only, scoped to the account that asks; 404 for an id that is none of its phones. With GET and PATCH /auth/phones it raises the contract epoch to 12.",
+  "options": [
+    "a route to sign one phone out",
+    "only sign out everywhere, or the phone's own sign-out"
+  ],
+  "gray": "The owner asked to list phones; signing out a lost one otherwise means signing out everywhere. It is the optional route the story allowed.",
+  "undo": "Remove the route from routes/auth.rs and raise CONTRACT_EPOCH again.",
+  "refs": [
+    "#3092",
+    "#3086",
+    "#2123",
+    "server#925"
+  ]
+}

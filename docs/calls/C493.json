@@ -1,0 +1,22 @@
+{
+  "id": "C493",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/handlers/auth.rs",
+    "server:docs/identity.md"
+  ],
+  "chose": "No last-seen time is stored. GET /auth/phones answers renewedAt, read off expiresAt less the session term: when the session last started or slid, so the phone was used then at least and possibly later, by up to half a term.",
+  "options": [
+    "renewedAt derived from expiry",
+    "a last_seen column written on each request"
+  ],
+  "gray": "invariant 10 (docs/identity.md) keeps the auth tables from holding a timeline of use; a per-request column would build one, and the owner asked for last seen only if cheap and honest.",
+  "undo": "Add a last_seen column to auth_session and write it in AuthContext::session_subject.",
+  "refs": [
+    "#3092",
+    "#3086",
+    "#2123",
+    "server#925"
+  ]
+}

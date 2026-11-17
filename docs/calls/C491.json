@@ -1,0 +1,23 @@
+{
+  "id": "C491",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "server:crates/db/auth/src/lib.rs",
+    "server:crates/db/auth/src/repository.rs"
+  ],
+  "chose": "Paired phones have their own cap of 16 per account (MAX_PHONES_PER_SUBJECT): a pairing past it is refused with 409 and the code is used up, never evicting a phone; the browser cap of 32 counts and trims browser sessions only.",
+  "options": [
+    "a separate phone cap of 16, refused past it",
+    "phones uncapped",
+    "phones counted in the shared cap of 32 (as before)"
+  ],
+  "gray": "The owner said \"keep phone pairings past 32\" but named no bound; uncapped would break auth_repo's bounded rows per subject, and evicting a phone is the failure SIGNIN6 removes.",
+  "undo": "Change MAX_PHONES_PER_SUBJECT, or drop the count from pair_phone's INSERT.",
+  "refs": [
+    "#3092",
+    "#3086",
+    "#2123",
+    "server#925"
+  ]
+}
