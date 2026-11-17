@@ -422,12 +422,15 @@ install over a CI build, or the other way round.
 `.github/workflows/android-compat.yml` ("Android Compat") runs the APK on
 slowed emulators across the Android versions it supports. I run it by hand
 when a release wants a stamp: **Actions → Android Compat → Run workflow**,
-with the ref (default `main`), the API levels (default 34 and 36; 24, 28 and
-31, down to `minSdkVersion` in `android/variables.gradle`, may be added) and
-a CPU cap (default 60% of one host core). It never runs on a push, a pull
-request or a schedule, and nothing waits on it.
+choosing the branch or tag to stamp under "Use workflow from" (default
+`main`), the API levels (default 34 and 36; 24, 28 and 31, down to
+`minSdkVersion` in `android/variables.gradle`, may be added) and a CPU cap
+(default 60% of one host core). It never runs on a push, a pull request or a
+schedule, and nothing waits on it. A bare commit, or a tag from before the
+workflow existed, cannot be stamped: the run builds only the commit it runs
+from, so code from elsewhere never runs in `main`'s cache scope.
 
-It builds the release APK (R8) and the debug APK from the ref, signed with a
+It builds the release APK (R8) and the debug APK from that commit, signed with a
 key made for that run, so it needs no secrets and no approval. Each API level
 is then its own job: a `google_apis` x86_64 emulator with one core, 1.5 GB of
 memory, a 3G link and its CPU capped, which stands in for an older, slower

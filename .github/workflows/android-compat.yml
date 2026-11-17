@@ -1,7 +1,7 @@
 name: Android Compat
 
 # Stamps a release's Android compatibility (epic COMPAT): the APK built from
-# a ref, run on slowed emulators across the API levels it supports, through
+# the branch or tag it is run from, run on slowed emulators across the API levels it supports, through
 # the launch test and the storm scenario (apps/mobile/compat/storm.sh), and
 # tabulated into a stamp the release can cite. apps/mobile/README.md,
 # "Stamping a release's Android compatibility", says what it proves and what
@@ -19,11 +19,13 @@ name: Android Compat
 # real one, which is the point).
 on:
   workflow_dispatch:
+    # The branch or tag to stamp is the one the workflow is run from ("Use
+    # workflow from"), not an input: the job then runs only its own commit,
+    # and whatever it caches stays in that ref's scope. Building another ref
+    # from main would run that code in main's cache scope, which PR runs read
+    # (CodeQL: cache poisoning). A bare commit, or a tag from before this
+    # workflow, cannot be stamped.
     inputs:
-      ref:
-        description: "Branch, tag or commit to build and test."
-        required: false
-        default: main
       api_levels:
         description: "Android API levels, comma-separated. Default 34 and 36: the images whose stock WebView (113, 133) runs the bundle. 24, 28 and 31 (minSdk 24, in apps/mobile/android/variables.gradle) may be added; their stock WebView is older than the bundle needs, and their rows say so."
         required: false
@@ -37,7 +39,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: android-compat-${{ inputs.ref }}
+  group: android-compat-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -50,8 +52,6 @@ jobs:
       levels: ${{ steps.levels.outputs.levels }}
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ inputs.ref }}
       - id: sha
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - id: levels
@@ -64,23 +64,9 @@ jobs:
             exit 1
           fi
           echo "levels=$json" >> "$GITHUB_OUTPUT"
-      # No cache is restored or saved in this job: it runs the code at
-      # inputs.ref, any branch or commit, while a dispatch from main writes
-      # in main's cache scope, which every PR run reads (CodeQL: cache
-      # poisoning). Slower than node-ci-setup, which a dispatched stamp can
-      # afford.
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@v14
+      - uses: ./.github/actions/node-ci-setup
         with:
-          extra-conf: |
-            experimental-features = nix-command flakes
-            accept-flake-config = true
-      # Why not node-ci-setup: its Nix and pnpm caches would save what code at
-      # an arbitrary ref put there into main's cache scope (above).
-      - name: Install dependencies
-        run: nix develop .#ci --command pnpm install --frozen-lockfile
-        env:
-          HUSKY: 0
+          build: none
 
       - name: Build www for the device and sync it into Android
         run: nix develop .#ci --command pnpm --filter @some-ui/mobile bundle
@@ -137,8 +123,7 @@ jobs:
       matrix:
         api: ${{ fromJSON(needs.apk.outputs.levels) }}
     steps:
-      # The harness from this workflow's own commit, so a stamp of an older
-      # ref still runs today's checks.
+      # The harness, from the commit the APKs were built from.
       - uses: actions/checkout@v7
         with:
           sparse-checkout: |
@@ -210,7 +195,7 @@ jobs:
       - name: Write the stamp
         env:
           SHA: ${{ needs.apk.outputs.sha }}
-          REF: ${{ inputs.ref }}
+          REF: ${{ github.ref_name }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           jq -s 'sort_by(.api)' rows/*/row.json > stamp-rows.json
