@@ -235,10 +235,10 @@ busy() {
 }
 
 # Two pulls a second apart while home answers slowly, so the first is still
-# under way when the second starts: HERD1 joins the second to it, and home
-# must hear no more than from the single pull before it. A pull after one
-# has ended is asked afresh (HERD2), so on a quick home the two would
-# rightly cost two pulls.
+# under way when the second starts. Each pull reads the page once (HERD2),
+# and a pull during the kept lanes' drain starts no second drain (HERD1), so
+# home must hear no more than two single pulls, and no route more than twice
+# (HERD's owner on #3134).
 two_pulls() {
   local before
   curl -sf -X POST "$control/slow?ms=$(budget_of .joinedSlowMs)" > /dev/null
@@ -293,8 +293,15 @@ fi
 phase joined two_pulls
 single_heard=$(echo "${phases[0]}" | grep -oE '"requests":[0-9]+' | grep -oE '[0-9]+$')
 joined_heard=$(echo "${phases[-1]}" | grep -oE '"requests":[0-9]+' | grep -oE '[0-9]+$')
-if [ "$joined_heard" -gt "$single_heard" ]; then
-  fail "joined: two pulls 1 s apart, with home slow to answer, sent $joined_heard requests, more than one pull alone ($single_heard); HERD1 joins a pull to the run under way (stub-joined.json)"
+if [ "$joined_heard" -gt $((2 * single_heard)) ]; then
+  fail "joined: two pulls 1 s apart, with home slow to answer, sent $joined_heard requests, more than two pulls alone ($((2 * single_heard))) (stub-joined.json)"
+fi
+twice=$(node -e '
+const { byRoute } = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))
+console.log(Object.entries(byRoute).filter(([, n]) => n > 2).map(([k, n]) => `${k} ×${n}`).join(", "))
+' "$out/stub-joined.json")
+if [ -n "$twice" ]; then
+  fail "joined: two pulls asked a route more than twice ($twice): a pull during a drain started a second one (stub-joined.json)"
 fi
 phase burst burst
 phase busy busy
