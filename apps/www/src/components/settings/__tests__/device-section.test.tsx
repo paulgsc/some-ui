@@ -162,17 +162,18 @@ describe("DeviceSection's Home server block", () => {
     expect(home.sent).toEqual([])
   })
 
-  it("names the server on the pair button, and refuses an http address", async () => {
+  it("starts pairing from the sync's address, names the server on Pair, and refuses an http address", async () => {
     await open()
+    const typed = document.querySelector("#home-server")
+    if (typed === null) throw new Error("no Home server field")
+    fireEvent.change(typed, { target: { value: "home.example" } })
     await press(/^pair/i)
-    fireEvent.change(screen.getByLabelText(/home server address/i), {
-      target: { value: "http://192.168.1.10:3000" },
-    })
-    expect(screen.getByText(/pairing needs an https/i)).toBeTruthy()
-
-    fireEvent.change(screen.getByLabelText(/home server address/i), {
-      target: { value: "home.example" },
-    })
+    // Its own field, started from the sync's: pairing reads a bare host as
+    // https, the sync as plain http (C473).
+    expect(screen.getByLabelText("Home's address")).toHaveProperty(
+      "value",
+      "home.example"
+    )
     fireEvent.change(screen.getByLabelText(/code from your computer/i), {
       target: { value: "k7qf 2m9" },
     })
@@ -180,6 +181,10 @@ describe("DeviceSection's Home server block", () => {
       name: /pair with home.example/i,
     })
     expect(button).toHaveProperty("disabled", true)
+    fireEvent.change(screen.getByLabelText("Home's address"), {
+      target: { value: "http://192.168.1.10:3000" },
+    })
+    expect(screen.getByText(/pairing needs a secure address/i)).toBeTruthy()
     expect(home.sent).toEqual([])
   })
 
@@ -194,10 +199,16 @@ describe("DeviceSection's Home server block", () => {
     expect(home.sent).toEqual([])
     expect(screen.getByText("Signed in to home at home.example.")).toBeTruthy()
 
+    expect(localStorage.getItem("some-ui.home.welcome-not-now.v1")).toBeNull()
     await press(/^unpair$/i)
     await press(/^yes, unpair$/i)
     expect(home.sent).toHaveLength(1)
     expect(screen.getByText("Unpaired.")).toBeTruthy()
+    // So a restart, which reads no record, doesn't take it for a restore
+    // and open the first run's welcome (SIGNIN2).
+    expect(localStorage.getItem("some-ui.home.welcome-not-now.v1")).toBe(
+      "unpaired"
+    )
   })
 
   it("clears finished sessions only after a confirm that names the count and the host, and only reads home", async () => {
