@@ -453,8 +453,9 @@ phone. Each runs:
    says "via debug build"; a level whose store cannot take the CA says "no
    system CA" and runs unpaired.
 3. **Refresh:** from the same run, it fails when a pull with home up does not
-   end `pull checked: read`, or when a pull after the network returns does
-   not, or the app restarted to get there.
+   end `pull checked: read`, nor the pull after coming back from the
+   background, nor the pull after the network returns, or when the app
+   restarted to get there.
 
 The run's summary is the stamp: a table of API level against launch, storm
 and refresh, a line to paste into the release notes, and the same as JSON.

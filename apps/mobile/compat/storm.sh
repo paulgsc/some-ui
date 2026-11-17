@@ -292,7 +292,12 @@ background() {
   sleep 15
   adb shell am start -W -n "$pkg/.WingPractice" > /dev/null
   sleep 5
-  one_pull
+  local end
+  end=$(one_pull)
+  if [ "$end" != "read" ]; then
+    fail_refresh "background: a pull after coming back from the background ended \"$end\", not \"read\": the page did not refresh"
+  fi
+  echo "$end"
 }
 
 offline() {
