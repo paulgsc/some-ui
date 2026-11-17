@@ -8,6 +8,8 @@ import { MAX_OPEN_PICKS, TRACKS } from "@some-ui/job-desk"
 import { describe, expect, it } from "vitest"
 
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
+import type { Pairing } from "@/lib/home-link/model"
+import { READING, UNPAIRED } from "@/lib/home-link/model"
 import type { JobsState } from "@/lib/jobs/model"
 import { EMPTY, step } from "@/lib/jobs/model"
 import type { Morning, MorningId } from "@/lib/jobs/morning"
@@ -25,6 +27,7 @@ import {
 import { digest, run } from "./fixture"
 
 const DAY = "2026-10-22"
+const PAIRED: Pairing = { kind: "paired", id: "p1" }
 /** 07:00, 08:30 and 10:00 on the 22nd in Los Angeles. */
 const BEFORE = new Date("2026-10-22T14:00:00Z")
 const RUNNING = new Date("2026-10-22T15:30:00Z")
@@ -88,63 +91,64 @@ const full = {
 
 /** A record and a moment for each state. */
 const CASES: Readonly<
-  Record<MorningId, { state: JobsState; kept: boolean; now: Date }>
+  Record<MorningId, { state: JobsState; pairing: Pairing; now: Date }>
 > = {
-  picked: { state: holding(), kept: true, now: AFTER },
-  decided: { state: passedAll(holding()), kept: true, now: AFTER },
-  rested: { state: holding(none), kept: true, now: AFTER },
-  full: { state: holding(full), kept: true, now: AFTER },
-  before: { state: EMPTY, kept: true, now: BEFORE },
+  picked: { state: holding(), pairing: PAIRED, now: AFTER },
+  decided: { state: passedAll(holding()), pairing: PAIRED, now: AFTER },
+  rested: { state: holding(none), pairing: PAIRED, now: AFTER },
+  full: { state: holding(full), pairing: PAIRED, now: AFTER },
+  before: { state: EMPTY, pairing: PAIRED, now: BEFORE },
   running: {
     state: lookedAt("2026-10-22T15:20:00Z"),
-    kept: true,
+    pairing: PAIRED,
     now: RUNNING,
   },
   // Heard from home before the run was due, so home's answer says nothing yet.
-  away: { state: lookedAt("2026-10-22T16:00:00Z"), kept: true, now: AFTER },
+  away: { state: lookedAt("2026-10-22T16:00:00Z"), pairing: PAIRED, now: AFTER },
   stopped: {
     state: told(lookedAt("2026-10-22T16:30:00Z"), [STOPPED]),
-    kept: true,
+    pairing: PAIRED,
     now: AFTER,
   },
-  partly: { state: told(holding(), [PARTLY]), kept: true, now: AFTER },
+  partly: { state: told(holding(), [PARTLY]), pairing: PAIRED, now: AFTER },
   "partly-in-drive": {
     state: told(lookedAt("2026-10-22T16:30:00Z"), [PARTLY]),
-    kept: true,
+    pairing: PAIRED,
     now: AFTER,
   },
-  quiet: { state: lookedAt("2026-10-22T16:30:00Z"), kept: true, now: AFTER },
-  "not-kept": { state: EMPTY, kept: false, now: AFTER },
+  quiet: { state: lookedAt("2026-10-22T16:30:00Z"), pairing: PAIRED, now: AFTER },
+  "not-kept": { state: EMPTY, pairing: UNPAIRED, now: AFTER },
+  reading: { state: EMPTY, pairing: READING, now: AFTER },
 }
 
 describe("this morning's run", () => {
   it.each(MORNING_IDS)("reaches %s from its record", (id) => {
-    const { state, kept, now } = CASES[id]
-    expect(morningOf(state, kept, now).id).toBe(id)
+    const { state, pairing, now } = CASES[id]
+    expect(morningOf(state, pairing, now).id).toBe(id)
   })
 
   it("counts what it picked and what still waits", () => {
-    const m = morningOf(holding(), true, AFTER)
+    const m = morningOf(holding(), PAIRED, AFTER)
     expect(m).toMatchObject({ picked: 2, undecided: 2, seen: 12 })
   })
 
   it("counts a look at home from an earlier day as no look since the run", () => {
-    expect(morningOf(lookedAt("2026-10-21T20:00:00Z"), true, AFTER).id).toBe(
+    expect(morningOf(lookedAt("2026-10-21T20:00:00Z"), PAIRED, AFTER).id).toBe(
       "away"
     )
-    expect(morningOf(lookedAt(null), true, AFTER).id).toBe("away")
+    expect(morningOf(lookedAt(null), PAIRED, AFTER).id).toBe("away")
   })
 
   it("says the day by the Pacific clock, not UTC's", () => {
     // 23:59 on the 22nd in Los Angeles, the 23rd in UTC: today's run held.
     const late = new Date("2026-10-23T06:59:00Z")
-    expect(morningOf(holding(), true, late).id).toBe("picked")
+    expect(morningOf(holding(), PAIRED, late).id).toBe("picked")
   })
 
   it("says a stopped run stopped, with its first reason, however early", () => {
     const heard = told(lookedAt("2026-10-22T15:05:00Z"), [STOPPED])
     for (const now of [RUNNING, AFTER]) {
-      const m = morningOf(heard, true, now)
+      const m = morningOf(heard, PAIRED, now)
       expect(m).toMatchObject({ id: "stopped", problem: STOPPED.problems[0] })
       expect(morningSaid(m, now)).toEqual({
         title: "This morning’s run stopped",
@@ -154,7 +158,7 @@ describe("this morning's run", () => {
   })
 
   it("says a run that left something undone did only part of it, and what it still picked", () => {
-    const m = morningOf(told(holding(), [PARTLY]), true, AFTER)
+    const m = morningOf(told(holding(), [PARTLY]), PAIRED, AFTER)
     expect(m).toMatchObject({ id: "partly", picked: 2, seen: 12 })
     expect(morningSaid(m, AFTER).title).toBe(
       "This morning’s run did only part of it"
@@ -166,18 +170,30 @@ describe("this morning's run", () => {
 
   it("offers Drive for a run whose picks are there but not on this phone", () => {
     const heard = told(lookedAt("2026-10-22T16:30:00Z"), [PARTLY])
-    const m = morningOf(heard, true, AFTER)
+    const m = morningOf(heard, PAIRED, AFTER)
     expect(m.id).toBe("partly-in-drive")
     expect(offersDrive(m)).toBe(true)
     expect(morningSaid(m, AFTER).line).toBe(
       "One voice note couldn’t be heard. Its picks are in Drive, not on this phone; open them from there."
     )
     // A stopped run put nothing in Drive, and picks this phone holds need none.
-    const stopped = morningOf(told(heard, [STOPPED]), true, AFTER)
+    const stopped = morningOf(told(heard, [STOPPED]), PAIRED, AFTER)
     expect(offersDrive(stopped)).toBe(false)
-    expect(offersDrive(morningOf(told(holding(), [PARTLY]), true, AFTER))).toBe(
+    expect(offersDrive(morningOf(told(holding(), [PARTLY]), PAIRED, AFTER))).toBe(
       false
     )
+  })
+
+  it("says only that the pairing is still being read, with no Drive to offer, until it is known", () => {
+    const m = morningOf(EMPTY, READING, AFTER)
+    expect(m.id).toBe("reading")
+    expect(offersDrive(m)).toBe(false)
+    expect(morningSaid(m, AFTER)).toEqual({
+      title: "Today’s run",
+      line: "This phone is still reading whether it’s paired with home.",
+    })
+    // Unpaired, the same morning is not kept on home, and Drive is the way in.
+    expect(morningOf(EMPTY, UNPAIRED, AFTER).id).toBe("not-kept")
   })
 
   it("lets the run that added the picks speak for a morning re-run", () => {
@@ -186,13 +202,13 @@ describe("this morning's run", () => {
       "Today’s picks were already in Drive, so this run added none.",
     ])
     const morning = told(holding(), [rerun, run(MORNING)])
-    expect(morningOf(morning, true, AFTER).id).toBe("picked")
+    expect(morningOf(morning, PAIRED, AFTER).id).toBe("picked")
   })
 
   it("hears nothing of today from yesterday's stopped run", () => {
     const yesterday = run("2026-10-21T14:52:07Z", "stopped")
     const heard = told(lookedAt("2026-10-22T16:30:00Z"), [yesterday])
-    expect(morningOf(heard, true, AFTER)).toMatchObject({
+    expect(morningOf(heard, PAIRED, AFTER)).toMatchObject({
       id: "quiet",
       unrecorded: true,
     })
@@ -200,12 +216,12 @@ describe("this morning's run", () => {
 
   it("says home has no record of a run only from a home that keeps them", () => {
     const at = "2026-10-22T16:30:00Z"
-    const keeps = morningOf(told(lookedAt(at), []), true, AFTER)
+    const keeps = morningOf(told(lookedAt(at), []), PAIRED, AFTER)
     expect(keeps).toMatchObject({ id: "quiet", unrecorded: true })
     expect(morningSaid(keeps, AFTER).line).toMatch(
       /^Home had no record of a run/
     )
-    const keepsNone = morningOf(lookedAt(at), true, AFTER)
+    const keepsNone = morningOf(lookedAt(at), PAIRED, AFTER)
     expect(keepsNone).toMatchObject({ id: "quiet", unrecorded: false })
   })
 
@@ -219,8 +235,8 @@ describe("this morning's run", () => {
 
   it("says nothing of the machinery, in any state", () => {
     const said = MORNING_IDS.flatMap((id) => {
-      const { state, kept, now } = CASES[id]
-      const m: Morning = morningOf(state, kept, now)
+      const { state, pairing, now } = CASES[id]
+      const m: Morning = morningOf(state, pairing, now)
       // The largest counts a run makes, as the fit fixture draws them.
       const big = { ...m, picked: 5, undecided: 4, seen: 48 }
       return [m, big].flatMap((x) => {

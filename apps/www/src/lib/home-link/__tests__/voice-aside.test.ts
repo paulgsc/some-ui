@@ -17,6 +17,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { setAsidePath } from "@/lib/home-link/set-aside"
 import { asideAt, sendVoice, watchVoiceNotes } from "@/lib/home-link/voice-copy"
+import type { Pairing } from "@/lib/home-link/model"
 import type { JobsState, VoiceNote } from "@/lib/jobs/model"
 import { EMPTY } from "@/lib/jobs/model"
 import type { KeptSceneNote } from "@/lib/scene-voice"
@@ -181,8 +182,8 @@ vi.mock("@/lib/home-link", () => ({
     subscribe: () => (): void => undefined,
     getSnapshot: () => ({ link: { kind: "paired" } }),
   }),
-  paired: (): boolean => fakes.paired,
-  pairingOf: (): string => "pairing-1",
+  pairing: (): Pairing =>
+    fakes.paired ? { kind: "paired", id: "pairing-1" } : { kind: "unpaired" },
 }))
 vi.mock("@some-ui/intent-kit", async (actual) => ({
   ...(await actual<object>()),

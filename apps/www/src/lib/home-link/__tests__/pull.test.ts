@@ -11,6 +11,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type { Kept } from "@/lib/home-link/kept-runtime"
 import { createKept } from "@/lib/home-link/kept-runtime"
+import type { Pairing } from "@/lib/home-link/model"
 import type { HomePullPorts } from "@/lib/home-link/pull"
 import { homeRefresher } from "@/lib/home-link/pull"
 import { CHECK_MS } from "@/lib/pull-refresh/model"
@@ -22,7 +23,7 @@ const link = vi.hoisted(() => ({
   now: 0,
 }))
 vi.mock("@/lib/home-link/index", () => ({
-  paired: (): boolean => true,
+  pairing: (): Pairing => ({ kind: "paired", id: "p" }),
   LINK_CLOCK: { now: (): number => link.now },
 }))
 
@@ -49,7 +50,7 @@ function lane(ends: () => Promise<HomeExchanged>): Lane {
           link.held = false
         }
       },
-      paired: () => true,
+      pairing: (): Pairing => ({ kind: "paired", id: "p" }),
       homeBusy: () => false,
       now: () => 7,
     }),

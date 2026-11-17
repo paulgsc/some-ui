@@ -11,6 +11,9 @@ import { describe, expect, it, vi } from "vitest"
 
 import type { AskAnswerPorts } from "@/lib/ask-answer"
 import { createAskAnswer } from "@/lib/ask-answer"
+import { type Pairing, READING, UNPAIRED } from "@/lib/home-link/model"
+
+const PAIRED: Pairing = { kind: "paired", id: "p1" }
 
 const REF = answerRef({ repo: "some-ui", number: 2676 })
 
@@ -50,13 +53,13 @@ function fakeListener(): FakeListener {
 
 function portsOf(
   listener: TurnListener,
-  paired: boolean
+  pairing: Pairing
 ): AskAnswerPorts & { hide: () => void } {
   let onHidden: (hidden: boolean) => void = () => undefined
   return {
     listener,
     loaded: () => Promise.resolve(),
-    paired: () => paired,
+    pairing: () => pairing,
     onVisibility: (each) => {
       onHidden = each
       return () => undefined
@@ -70,7 +73,7 @@ const settle = (): Promise<void> => new Promise((r) => setTimeout(r, 0))
 describe("an ask answered by voice (SFEED5)", () => {
   it("starts the take under the ask's ref, and shows home's words for it", async () => {
     const listener = fakeListener()
-    const answer = createAskAnswer(portsOf(listener, true), REF)
+    const answer = createAskAnswer(portsOf(listener, PAIRED), REF)
     answer.attach()
     await settle()
     expect(answer.getSnapshot().voice).toBe("ready")
@@ -93,7 +96,7 @@ describe("an ask answered by voice (SFEED5)", () => {
   it("records nothing on a phone not paired with home, and says so", async () => {
     const listener = fakeListener()
     const available = vi.spyOn(listener, "available")
-    const answer = createAskAnswer(portsOf(listener, false), REF)
+    const answer = createAskAnswer(portsOf(listener, UNPAIRED), REF)
     answer.attach()
     await settle()
     expect(answer.getSnapshot().voice).toBe("unpaired")
@@ -102,9 +105,19 @@ describe("an ask answered by voice (SFEED5)", () => {
     expect(available).not.toHaveBeenCalled()
   })
 
+  it("reads a pairing still being read as neither paired nor unpaired", async () => {
+    const listener = fakeListener()
+    const available = vi.spyOn(listener, "available")
+    const answer = createAskAnswer(portsOf(listener, READING), REF)
+    answer.attach()
+    await settle()
+    expect(answer.getSnapshot().voice).not.toBe("unpaired")
+    expect(available).not.toHaveBeenCalled()
+  })
+
   it("ends the take when the page hides", async () => {
     const listener = fakeListener()
-    const ports = portsOf(listener, true)
+    const ports = portsOf(listener, PAIRED)
     const answer = createAskAnswer(ports, REF)
     answer.attach()
     await settle()

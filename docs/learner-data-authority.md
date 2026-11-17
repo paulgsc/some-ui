@@ -708,7 +708,7 @@ declared (checked by reading every call site and by the tests named).
   the voice run call it; one that has `routes/_dashboard/_apk/journal/episodes/making.tsx`
   or `lib/home-link/studio-videos.ts` call anything in `lib/home-link` but
   what Finish reads (`studioVideos`, and, in `studio-videos.ts`,
-  `pairingOf` and `./videos`' `videoAnswers`, `videoHanded`,
+  `pairing` and `./videos`' `videoAnswers`, `videoHanded`,
   `videosListed` and `videosMoved`), or has `studioVideos` call a
   `homeLink()` method that sends, `sendVideos` or `phoneVideos`; one that
   sends from `createHomeLink` or `load`, or, outside LA15's watch,
@@ -933,7 +933,8 @@ only from the lane's hook and the scene notes read for home only there
 (`egress-choke-points`). What no test can say is when a note is copied:
 
 - _Claim:_ a voice note's audio is copied for home (`phoneVoiceHome().copy`)
-  only while the phone is paired (`paired()`), and only from `copyAll` (each
+  only while the phone is known to be paired (`pairing().kind === "paired"`,
+  #3152), and only from `copyAll` (each
   spoken reflection, named Jobs note, scene note in the draft, game bite past
   its hold, Studio take still on the phone, soundbite, and grammar-lens and
   LeetType take on its desk, and Studio idea answer's take on its desk, a
@@ -1030,7 +1031,7 @@ only from the lane's hook and the scene notes read for home only there
   is not `prompted` (an ask home holds named it, LA18) or that home does not
   hold; a hunk
   to `lib/home-link/voice-copy.ts` that calls `copy` from anywhere but
-  `copyAll`, removes its `paired()` checks (before every note and again
+  `copyAll`, removes its pairing checks (before every note and again
   after its audio is read), starts
   `copySoon` from anything but `watchVoiceNotes`, its subscriptions and
   `sendVoice`, or makes `sendVoice` anything but a copy pass, then
@@ -1114,7 +1115,7 @@ only from the lane's hook and the scene notes read for home only there
   copies only while the phone is paired is a reading of its guard, which a
   source scan sees as text and a lint rule cannot tie to the link's state.
   Held when declared (reworded for HF8, and for HF2), by reading every
-  call: `copy` only in `copyAll`, behind `paired()` before each note and
+  call: `copy` only in `copyAll`, behind the pairing check before each note and
   after its audio is read; `sceneNotes.read` only in `candidates`, over
   the draft's list, which `shelveTake` writes only after the audio is
   shelved; the soundbites, lens takes and LeetType takes read only in

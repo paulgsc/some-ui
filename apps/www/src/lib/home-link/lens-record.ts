@@ -16,11 +16,11 @@ import type { HomeCall } from "@some-ui/core-utils"
 import { localStorageOrNull } from "@some-ui/core-utils"
 import type { LensRecordExport } from "@some-ui/topik"
 
-import { pairingOf } from "./index"
+import { pairing } from "./index"
 import type { EachSent, LogReport } from "./leetype-log"
 import { entryCarries, sendEach } from "./leetype-log"
 import type { Sent } from "./sent"
-import { fingerprintOf, readSent } from "./sent"
+import { fingerprintOf, sentUnder } from "./sent"
 
 export type LensEntry = LensRecordExport["entries"][number]
 
@@ -73,8 +73,7 @@ export async function sendLens(
  * heard: none while unpaired. One reading, made once per look at the record.
  */
 export function lensEntriesHeld(): (entry: LensEntry) => boolean {
-  const pairing = pairingOf()
-  if (pairing === null) return () => false
-  const { lens } = readSent(localStorageOrNull(), pairing)
-  return (entry) => lens[lensKey(entry)] === lensDigest(entry)
+  const sent = sentUnder(localStorageOrNull(), pairing())
+  if (sent === null) return () => false
+  return (entry) => sent.lens[lensKey(entry)] === lensDigest(entry)
 }

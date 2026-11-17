@@ -24,6 +24,8 @@ import {
 import type { LivePorts, LiveWire } from "@/lib/home-link/live"
 import { liveFeed, OPEN_MS, PING_MS, QUIET_MS } from "@/lib/home-link/live"
 import type { LiveSocketEvents } from "@/lib/home-link/live-socket"
+import type { Pairing } from "@/lib/home-link/model"
+import { UNPAIRED } from "@/lib/home-link/model"
 
 /**
  * The messages as plain JSON of what each one reads as: the recorder's own
@@ -99,7 +101,7 @@ function offerText(
 type Harness = {
   ports: LivePorts
   sockets: Array<Socket>
-  state: { paired: boolean; pairingId: string | null }
+  state: { paired: boolean; pairingId: Pairing }
   advance: (ms: number) => Promise<void>
   hide: (hidden: boolean) => void
   relink: () => void
@@ -120,7 +122,10 @@ function harness(paired = true): Harness {
   const sockets: Array<Socket> = []
   const linkListeners = new Set<() => void>()
   let visibility: ((hidden: boolean) => void) | null = null
-  const state: Harness["state"] = { paired, pairingId: paired ? "p1" : null }
+  const state: Harness["state"] = {
+    paired,
+    pairingId: paired ? { kind: "paired", id: "p1" } : UNPAIRED,
+  }
   // The home link's hold away from home (AW1), as `./away` steps it.
   let away: Away | null = null
   const toLink = (event: AwayEvent): void => {
@@ -342,7 +347,7 @@ describe("liveFeed", () => {
     const unpaired = await watched(u)
     expect([unpaired.last().link, u.sockets.length]).toEqual(["unpaired", 0])
     u.state.paired = true
-    u.state.pairingId = "p2"
+    u.state.pairingId = { kind: "paired", id: "p2" }
     u.relink()
     await Promise.resolve()
     await Promise.resolve()

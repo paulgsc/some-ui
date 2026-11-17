@@ -41,7 +41,7 @@ import {
   HomeNoAnswerError,
 } from "@/lib/device-backend/native-http/no-answer"
 import { createKept } from "@/lib/home-link/kept-runtime"
-import type { HomeLinkState } from "@/lib/home-link/model"
+import type { HomeLinkState, Pairing } from "@/lib/home-link/model"
 import { INITIAL, step } from "@/lib/home-link/model"
 import { createHomeLink } from "@/lib/home-link/runtime"
 import { pairFailureLine, signInView } from "@/lib/home-link/sign-in-words"
@@ -269,7 +269,7 @@ describe("NA1: what the link makes of it", () => {
       exchange: (): Promise<HomeExchanged> =>
         Promise.resolve({ kind: "synced" }),
       keep: () => Promise.reject(blockedError("trust")),
-      paired: () => true,
+      pairing: (): Pairing => ({ kind: "paired", id: "p" }),
       homeBusy: () => false,
       now: () => 1,
     })

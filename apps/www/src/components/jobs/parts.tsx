@@ -23,6 +23,8 @@ import { openFromDrive, voiceGoesHome } from "@/lib/jobs/words"
 import type { Journey, Noun } from "@/lib/journey"
 import { lookIn } from "@/lib/share-files"
 import { journeyBarState, StatusCard } from "@/components/journey-status"
+import type { Pairing } from "@/lib/home-link/model"
+import { READING } from "@/lib/home-link/model"
 
 export function useJobs(): JobsSnapshot {
   const jobs = phoneJobs()
@@ -178,20 +180,25 @@ export const OpenDigest = (): JSX.Element => {
 
 /**
  * Whether this phone is paired with home, as the wing's layout reads it
- * (`usePairedWithHome`): only then does an exchange file the cards' files.
+ * (`usePairing`): only then does an exchange file the cards' files. Outside
+ * the wing, not known (#3157), so a card claims nothing of where its file is.
  */
-const KeptOnHomeContext = createContext(false)
+const KeptOnHomeContext = createContext<Pairing>(READING)
 
 export const KeptOnHome = KeptOnHomeContext.Provider
 
 /**
- * What the Jobs cards read their state from (`lib/jobs/journey`); `kept`
+ * What the Jobs cards read their state from (`lib/jobs/journey`); `pairing`
  * where a page outside the wing knows it, the wing's layout's otherwise.
  */
-export function useJourneyContext(kept?: boolean): JourneyContext {
+export function useJourneyContext(pairing?: Pairing): JourneyContext {
   const { state } = useJobs()
   const wing = useContext(KeptOnHomeContext)
-  return { state, kept: kept ?? wing, outgoing: phoneJobs().keeping.outgoing }
+  return {
+    state,
+    pairing: pairing ?? wing,
+    outgoing: phoneJobs().keeping.outgoing,
+  }
 }
 
 /** A card whose title bar wears where its file is, and what it holds. */

@@ -27,6 +27,8 @@ import {
   triesAgain,
   UNREADABLE,
 } from "./live-model"
+import type { Pairing } from "./model"
+import { READING, samePairing } from "./model"
 
 /** How often the phone checks the clocks, which also keeps the socket warm. */
 export const PING_MS = 15_000
@@ -69,7 +71,7 @@ export type LiveState = {
   /** Tries since home last answered, for the wait before the next. */
   readonly attempt: number
   /** The pairing the current opening was made under. */
-  readonly pairedAs: string | null
+  readonly pairedAs: Pairing
   /**
    * The home link holds what the phone starts on its own, away from home
    * (AW1, `./away`): no socket is asked for until the hold ends.
@@ -83,14 +85,14 @@ export type LiveEvent =
   | { readonly kind: "watch" }
   | { readonly kind: "unwatch" }
   | { readonly kind: "visibility"; readonly hidden: boolean }
-  | { readonly kind: "relinked"; readonly pairingId: string | null }
+  | { readonly kind: "relinked"; readonly pairingId: Pairing }
   /** The home link's hold away from home began or ended (AW1). */
   | { readonly kind: "home"; readonly held: boolean }
   | { readonly kind: "choose"; readonly choice: FeedChoice }
   | {
       readonly kind: "pairing-read"
       readonly at: number
-      readonly pairingId: string | null
+      readonly pairingId: Pairing
     }
   | {
       readonly kind: "paired"
@@ -157,7 +159,7 @@ export function initialLive(games: ReadonlyArray<Game>): LiveState {
     watched: false,
     hidden: false,
     attempt: 0,
-    pairedAs: null,
+    pairedAs: READING,
     held: false,
   }
 }
@@ -331,7 +333,7 @@ export function step(state: LiveState, event: LiveEvent): LiveStep {
         : connect(done({ ...state, held: false }))
     }
     case "relinked": {
-      if (event.pairingId === state.pairedAs) return done(state)
+      if (samePairing(event.pairingId, state.pairedAs)) return done(state)
       return connect(end({ ...state, attempt: 0, lastSeq: null }, "asking"))
     }
     case "choose": {

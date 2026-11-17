@@ -31,6 +31,7 @@ import {
   watchVoiceNotes,
 } from "@/lib/home-link/voice-copy"
 import { keepIdeas } from "@/lib/idea-keeping"
+import type { Pairing } from "@/lib/home-link/model"
 import type { JobEvent, JobsState } from "@/lib/jobs/model"
 import { EMPTY } from "@/lib/jobs/model"
 import { keepSoundbites } from "@/lib/soundbite-keeping"
@@ -155,8 +156,8 @@ vi.mock("@/lib/home-link", () => ({
     subscribe: () => (): void => undefined,
     getSnapshot: () => ({ link: { kind: "paired" } }),
   }),
-  paired: (): boolean => fakes.paired,
-  pairingOf: (): string => PAIRING,
+  pairing: (): Pairing =>
+    fakes.paired ? { kind: "paired", id: PAIRING } : { kind: "unpaired" },
 }))
 vi.mock("@some-ui/topik", () => ({
   lensRecordHeldByHome: (): void => undefined,

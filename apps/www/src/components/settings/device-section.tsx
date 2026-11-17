@@ -298,7 +298,9 @@ export const DeviceSection = (): JSX.Element => {
               blocked={confirmingUnpair}
             />
           </>
-        ) : (
+        ) : link.kind === "reading" ? null : (
+          // While the record is read, neither layout: the address form shows
+          // only once the phone is known to hold no pairing (#3157).
           <>
             <Input
               id="home-server"
@@ -346,7 +348,7 @@ export const DeviceSection = (): JSX.Element => {
               workingLabel="Syncing..."
             />
           )}
-          {paired ? null : (
+          {paired || link.kind === "reading" ? null : (
             <Button
               type="button"
               variant="outline"

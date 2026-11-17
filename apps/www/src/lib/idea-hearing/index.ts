@@ -20,6 +20,7 @@
  * in by the idea screens' routes (`routes/_dashboard/_apk/journal`), which
  * may import it. Phone-only (`build.paths.ts`).
  */
+import { assertNever } from "@some-ui/core-utils"
 import type { HearingPorts } from "@some-ui/soundbites"
 import type {
   BundleHome,
@@ -30,8 +31,8 @@ import type {
 import { onPageVisibility } from "@some-ui/voice-capture"
 
 import { deviceListener } from "@/lib/device-listen"
-import type { HomeLinkState } from "@/lib/home-link"
-import { homeLink, pairingOf } from "@/lib/home-link"
+import type { Pairing } from "@/lib/home-link"
+import { homeLink, pairing } from "@/lib/home-link"
 import { askHeard } from "@/lib/home-link/heard"
 import type { KeptRun } from "@/lib/home-link/kept-model"
 import { laneRun } from "@/lib/home-link/lanes"
@@ -54,7 +55,8 @@ export function eitherListener(ports: {
   /** Settles once the phone's pairing has been read; never rejects. */
   loaded: () => Promise<void>
   /** The id of the pairing the phone holds now, or `null`. */
-  pairing: () => string | null
+  /** Whether this phone is paired (#3152): not known while its record is read. */
+  pairing: () => Pairing
   home: TurnListener
   device: TurnListener
   /** Milliseconds since the epoch. */
@@ -63,9 +65,10 @@ export function eitherListener(ports: {
   /** Home didn't answer: the pairing then, and until when it is skipped. */
   let away: { readonly pairing: string; readonly until: number } | null = null
   const home = (): boolean => {
-    const pairing = ports.pairing()
-    if (pairing === null) return false
-    return away?.pairing !== pairing || ports.now() >= away.until
+    const now = ports.pairing()
+    // Home hears only on a phone known to be paired.
+    if (now.kind !== "paired") return false
+    return away?.pairing !== now.id || ports.now() >= away.until
   }
   const which = (): TurnListener => (home() ? ports.home : ports.device)
   return {
@@ -78,13 +81,13 @@ export function eitherListener(ports: {
         // Marked before the screen hears of it, so its next look at what
         // can listen (`available`) already skips home.
         done: listening.done.then((result) => {
-          const pairing = ports.pairing()
+          const now = ports.pairing()
           if (
             result.kind === "kept" &&
             result.why === "away" &&
-            pairing !== null
+            now.kind === "paired"
           ) {
-            away = { pairing, until: ports.now() + AWAY_MS }
+            away = { pairing: now.id, until: ports.now() + AWAY_MS }
           }
           return result
         }),
@@ -122,12 +125,12 @@ function phoneHomeListener(
 export function phoneAskHearing(hear: (ports: HearingPorts) => TurnListener): {
   readonly listener: TurnListener
   readonly loaded: () => Promise<void>
-  readonly paired: () => boolean
+  readonly pairing: () => Pairing
 } {
   return {
     listener: phoneHomeListener(hear),
     loaded: () => homeLink().load(),
-    paired: () => pairingOf() !== null,
+    pairing: () => pairing(),
   }
 }
 
@@ -140,7 +143,7 @@ export function phoneIdeaListener(
 ): TurnListener {
   return eitherListener({
     loaded: () => homeLink().load(),
-    pairing: () => pairingOf(),
+    pairing: () => pairing(),
     home: {
       available: () => phoneHomeListener(hear).available(),
       listen: (onWords, onReady, take) =>
@@ -156,13 +159,21 @@ export function phoneIdeaListener(
  * run: unknown while the phone's own record of its pairing is still being
  * read, so a paired phone never says it isn't for that moment (ST34).
  */
-export function reachOf(
-  link: HomeLinkState["link"],
-  last: KeptRun | null
-): HomeReach {
-  if (link.kind === "reading") return "unknown"
-  if (link.kind !== "paired") return "unpaired"
-  return last?.kind === "unreachable" ? "away" : "near"
+export function reachOf(now: Pairing, last: KeptRun | null): HomeReach {
+  switch (now.kind) {
+    case "reading": {
+      return "unknown"
+    }
+    case "unpaired": {
+      return "unpaired"
+    }
+    case "paired": {
+      return last?.kind === "unreachable" ? "away" : "near"
+    }
+    default: {
+      return assertNever(now)
+    }
+  }
 }
 
 /**
@@ -174,10 +185,7 @@ export function reachOf(
  */
 export const ideaHome: BundleHome = {
   reach: () =>
-    reachOf(
-      homeLink().getSnapshot().link,
-      laneRun(voiceLane).getSnapshot().last
-    ),
+    reachOf(pairing(), laneRun(voiceLane).getSnapshot().last),
   subscribe: (listener) => {
     const stops = [
       homeLink().subscribe(listener),

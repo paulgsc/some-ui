@@ -5,11 +5,12 @@
  * reads as it starts (at most `./credential`'s 5 s, usually a few
  * milliseconds), so a paired phone never says it isn't paired. The record's
  * read never rejects: one it can't read is unpaired. Kept out of `./index`,
- * which React imports (R1).
+ * which React imports (R1). Removed in #3152's second part, where an ask
+ * made while the record is read waits as the link's own state.
  */
-import { homeLink, paired } from "./index"
+import { homeLink, pairing } from "./index"
 
 export async function pairedOnceRead(): Promise<boolean> {
   await homeLink().load()
-  return paired()
+  return pairing().kind === "paired"
 }

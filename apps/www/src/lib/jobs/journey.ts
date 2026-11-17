@@ -50,6 +50,7 @@ import type { Outgoing } from "./files"
 import { isFile } from "./files"
 import type { JobEvent, JobsState, ShareKind } from "./model"
 import { coveredBy, DIGESTS_KEPT, isPickStep } from "./model"
+import type { Pairing } from "@/lib/home-link/model"
 
 /** How long home takes to hand a file to the mailbox (its 900-second pass). */
 export const HANDOVER_MS = 15 * 60_000
@@ -293,8 +294,12 @@ function runsNow(state: JobsState): Runs {
 /** What a card reads its state from. */
 export type JourneyContext = {
   readonly state: JobsState
-  /** This phone is paired with home, so an exchange files its files. */
-  readonly kept: boolean
+  /**
+   * Whether this phone is paired with home (#3152): paired, an exchange
+   * files its files; while its record is read, nothing is said of where a
+   * file not yet filed is (#3157).
+   */
+  readonly pairing: Pairing
   /** The file of each kind an exchange would file now (`keeping.outgoing`). */
   readonly outgoing: (kind: ShareKind) => Outgoing
 }
@@ -303,7 +308,8 @@ export type JourneyContext = {
 function outgoingJourney(ctx: JourneyContext, kind: ShareKind): Journey | null {
   const file = ctx.outgoing(kind)
   if (!isFile(file)) return null
-  if (!ctx.kept) return journey("unpaired")
+  if (ctx.pairing.kind === "reading") return null
+  if (ctx.pairing.kind === "unpaired") return journey("unpaired")
   if (ctx.state.home.refusedFiles.includes(file.name)) {
     return journey("home-refused")
   }

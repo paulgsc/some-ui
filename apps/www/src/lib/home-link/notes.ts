@@ -23,11 +23,11 @@ import type { Soundbite } from "@some-ui/soundbites"
 
 import type { LeetypeTakeNote } from "@/lib/leetype-takes"
 
-import { pairingOf } from "./index"
+import { pairing } from "./index"
 import type { EachSent, LogReport } from "./leetype-log"
 import { sendEach } from "./leetype-log"
 import type { Sent } from "./sent"
-import { readSent } from "./sent"
+import { sentUnder } from "./sent"
 
 /** What home's `PUT /study-notes/:kind/:id` takes as `kind`. */
 export type NoteKind = "soundbite" | "leetype"
@@ -115,8 +115,7 @@ export async function sendNotes(
  * heard: none while unpaired. One reading, made once per look at a store.
  */
 export function notesHeld(kind: NoteKind): (id: string) => boolean {
-  const pairing = pairingOf()
-  if (pairing === null) return () => false
-  const { notes } = readSent(localStorageOrNull(), pairing)
-  return (id) => noteKey(kind, id) in notes
+  const sent = sentUnder(localStorageOrNull(), pairing())
+  if (sent === null) return () => false
+  return (id) => noteKey(kind, id) in sent.notes
 }

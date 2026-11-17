@@ -243,6 +243,52 @@ export const INITIAL: HomeLinkState = {
   blocked: null,
 }
 
+/**
+ * Whether this phone is paired with home (#3152): the one answer every
+ * reader gets, with `reading` for not known yet, so no reader can take a
+ * record still being read for no pairing (#3128, #3157). Derived from the
+ * link's state alone, with nothing awaited: `load()` is what moves it out
+ * of `reading`, and every way that read ends (a pairing, none, one lost,
+ * one it couldn't read) lands in `paired` or `unpaired`. The pairing's
+ * own id is what this phone's record of what home holds is kept under
+ * (`./sent`).
+ */
+export type Pairing =
+  | { readonly kind: "reading" }
+  | { readonly kind: "unpaired" }
+  | { readonly kind: "paired"; readonly id: string }
+
+export const READING: Pairing = { kind: "reading" }
+export const UNPAIRED: Pairing = { kind: "unpaired" }
+
+/** `state`'s answer to whether this phone is paired. */
+export function pairingIn(state: HomeLinkState): Pairing {
+  const { link } = state
+  switch (link.kind) {
+    case "reading": {
+      return READING
+    }
+    case "unpaired": {
+      return UNPAIRED
+    }
+    case "paired": {
+      return { kind: "paired", id: link.id }
+    }
+    default: {
+      return assertNever(link)
+    }
+  }
+}
+
+/**
+ * Whether two answers name the same pairing, or the same not-paired:
+ * what a watcher compares to know the pairing moved.
+ */
+export function samePairing(a: Pairing, b: Pairing): boolean {
+  if (a.kind === "paired" && b.kind === "paired") return a.id === b.id
+  return a.kind === b.kind
+}
+
 const idle = { kind: "idle" } as const
 const UNCHECKED: Standing = { kind: "unchecked" }
 const KNOWN: Standing = { kind: "known" }

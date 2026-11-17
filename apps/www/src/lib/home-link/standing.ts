@@ -33,8 +33,8 @@
  *   comes to the front on a network where home answers for a whole
  *   half-term (15 days) lapses, and says so (SIGNIN1's forgotten look).
  */
-import { pairingOf } from "./index"
-import type { HomeLinkState } from "./model"
+import type { HomeLinkState, Pairing } from "./model"
+import { READING, pairingIn, samePairing } from "./model"
 
 /** What the watch hears and calls. */
 export type StandingWatchPorts = {
@@ -56,7 +56,7 @@ const unchecked = ({ link }: HomeLinkState): boolean =>
 export function watchStanding({ link, doc }: StandingWatchPorts): () => void {
   let checking = false
   let stopped = false
-  let pairing: string | null = null
+  let pairing: Pairing = READING
   const check = (): void => {
     if (stopped || checking || doc.visibilityState !== "visible") return
     checking = true
@@ -64,18 +64,18 @@ export function watchStanding({ link, doc }: StandingWatchPorts): () => void {
     void link.check().finally(() => {
       checking = false
       // A pairing found while that check was out has not been asked about.
-      if (pairing !== asked && unchecked(link.getSnapshot())) check()
+      if (!samePairing(pairing, asked) && unchecked(link.getSnapshot())) check()
     })
   }
 
   const onLink = (): void => {
-    const now = pairingOf(link.getSnapshot())
-    if (now === pairing) return
+    const now = pairingIn(link.getSnapshot())
+    if (samePairing(now, pairing)) return
     pairing = now
     if (unchecked(link.getSnapshot())) check()
   }
   const onFront = (): void => {
-    if (pairing !== null) check()
+    if (pairing.kind === "paired") check()
   }
 
   const unsubscribe = link.subscribe(onLink)

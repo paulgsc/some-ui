@@ -299,7 +299,7 @@ const Legends = (): JSX.Element => (
 export const StatusBoard = (): JSX.Element => {
   const lanes = useLaneRows()
   const look = useLookRow()
-  const files = useJourneyContext(lanes.paired)
+  const files = useJourneyContext(lanes.pairing)
   const now = useMinuteClock()
   const routineFiles = useHomeRoutineFiles()
   const routine = useRoutineStatus(routineFiles?.key ?? "", now)
@@ -308,7 +308,7 @@ export const StatusBoard = (): JSX.Element => {
   useEffect(registerJobsPull, [])
   const rows = [
     ...lanes.rows,
-    morningRow(morningOf(files.state, lanes.paired, now), now),
+    morningRow(morningOf(files.state, lanes.pairing, now), now),
     ...(["decisions", "scouts"] as const).flatMap((kind) => {
       const j = kindJourney(files, kind)
       return j === null ? [] : [journeyRow(kind, j, now)]

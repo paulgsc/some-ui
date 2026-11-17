@@ -7,7 +7,7 @@
 import { localStorageOrNull } from "@some-ui/core-utils"
 
 import { NOTED_FEEDS } from "@/lib/feeds"
-import { pairingOf } from "@/lib/home-link"
+import { pairing } from "@/lib/home-link"
 import { episodeNotesWaiting } from "@/lib/home-link/episode-notes"
 import { askEpisodeNotes } from "@/lib/home-link/episode-notes-read"
 import { askWhileBusy } from "@/lib/home-link/while-busy"
@@ -51,7 +51,7 @@ export function notesAnswered(): {
 } {
   const { held, refused } = episodeNotesWaiting(
     localStorageOrNull(),
-    pairingOf()
+    pairing()
   )
   return { held, refused }
 }

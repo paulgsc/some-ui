@@ -37,6 +37,7 @@ import { whenSaid } from "@/lib/journey"
 
 import type { JobsState } from "./model"
 import { decisionOf, digestOf, placesFull } from "./model"
+import type { Pairing } from "@/lib/home-link/model"
 
 /** When the scheduled run starts, Pacific (`packages/job-desk/ROUTINE.md`). */
 const RUN_STARTS = { hour: 7, minute: 52 }
@@ -60,6 +61,7 @@ export const MORNING_IDS = [
   "away",
   "quiet",
   "not-kept",
+  "reading",
 ] as const
 
 export type MorningId = (typeof MORNING_IDS)[number]
@@ -98,7 +100,11 @@ function runOf(runs: ReadonlyArray<JobsRun>, today: string): JobsRun | null {
 }
 
 /** This morning's run at `now`, given whether the phone is paired with home. */
-export function morningOf(state: JobsState, kept: boolean, now: Date): Morning {
+export function morningOf(
+  state: JobsState,
+  pairing: Pairing,
+  now: Date
+): Morning {
   const today = pacificDay(now)
   const digest = digestOf(state, today)
   const { lookedAt, runs } = state.home
@@ -135,7 +141,10 @@ export function morningOf(state: JobsState, kept: boolean, now: Date): Morning {
   const minutes = pacificMinutes(now)
   if (minutes < STARTS) return { id: "before", ...base }
   if (minutes < DUE) return { id: "running", ...base }
-  if (!kept) return { id: "not-kept", ...base }
+  // While the phone's record is read, it isn't known whether picks come by
+  // themselves, so nothing is said of where they are (#3157).
+  if (pairing.kind === "reading") return { id: "reading", ...base }
+  if (pairing.kind === "unpaired") return { id: "not-kept", ...base }
   const heard = lookedAt !== null && afterDue(new Date(lookedAt), today)
   if (!heard) return { id: "away", ...base }
   return { ...base, id: "quiet", unrecorded: runs !== null && run === null }
@@ -238,6 +247,16 @@ const SHAPES: Readonly<
     at: "drive",
     sign: "none",
     road: { stops: DRIVE_ROAD, marks: [U, A, R], legs: ["ahead", "ahead"] },
+  },
+  reading: {
+    theme: "waiting",
+    at: "home",
+    sign: "unknown",
+    road: {
+      stops: HOME_ROAD,
+      marks: [U, U, U, U],
+      legs: ["ahead", "ahead", "ahead"],
+    },
   },
 }
 
@@ -347,6 +366,12 @@ export function morningSaid(m: Morning, now: Date): Said {
         line: "This phone isn’t paired with home, so picks don’t come by themselves. Open them from Drive.",
       }
     }
+    case "reading": {
+      return {
+        title: "Today’s run",
+        line: "This phone is still reading whether it’s paired with home.",
+      }
+    }
     default: {
       return assertNever(m.id)
     }
@@ -367,6 +392,7 @@ export const MORNING_LEGEND: Readonly<Record<MorningId, string>> = {
   away: "Not checked with home since the run",
   quiet: "No word of this morning’s run",
   "not-kept": "Today’s picks are in Drive",
+  reading: "This phone hasn’t yet read whether it’s paired with home",
 }
 
 /** Every state the morning can be in, each with its legend's line. */

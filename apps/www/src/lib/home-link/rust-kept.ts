@@ -21,11 +21,11 @@ import {
 import { phoneRounds, phoneWeeks } from "@/lib/rust-rounds"
 import { browserLocalStorage } from "@/lib/tenant/storage"
 
-import { homeLink, pairingOf } from "./index"
+import { homeLink, pairing } from "./index"
 import type { EachSent } from "./leetype-log"
 import { emptyLogReport, sendEach, sentOutcome } from "./leetype-log"
 import type { Sent } from "./sent"
-import { fingerprintOf, readSent, rememberSent } from "./sent"
+import { fingerprintOf, readSent, rememberSent, sentUnder } from "./sent"
 import { answerOrEnd } from "./shelf"
 
 /** Whether `sent` says home holds `item` as it is now. */
@@ -61,9 +61,8 @@ export function holdsWeekSend(memory: Sent | null, sent: WeekSent): boolean {
 
 /** `holdsWeekSend` under the pairing this phone holds now: the week's port. */
 export const homeHoldsWeekSend = (sent: WeekSent): boolean => {
-  const pairing = pairingOf()
   return holdsWeekSend(
-    pairing === null ? null : readSent(browserLocalStorage, pairing),
+    sentUnder(browserLocalStorage, pairing()),
     sent
   )
 }

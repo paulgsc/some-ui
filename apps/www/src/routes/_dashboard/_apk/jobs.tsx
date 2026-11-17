@@ -2,8 +2,8 @@ import type { JSX } from "react"
 import { useEffect } from "react"
 import { createFileRoute, Outlet } from "@tanstack/react-router"
 
+import { usePairing } from "@/lib/home-link"
 import { registerJobsPull } from "@/lib/jobs/pull"
-import { usePairedWithHome } from "@/components/device-home-glyph"
 import { KeptOnHome } from "@/components/jobs/parts"
 import type { View } from "@/components/view-strip"
 import { ViewStrip } from "@/components/view-strip"
@@ -26,7 +26,7 @@ const VIEWS = [
 const KeptOutlet = (): JSX.Element => {
   useEffect(registerJobsPull, [])
   return (
-    <KeptOnHome value={usePairedWithHome()}>
+    <KeptOnHome value={usePairing()}>
       <Outlet />
     </KeptOnHome>
   )

@@ -37,7 +37,7 @@ const OFFER: HomeMessage = {
 /** Every event made under an opening, at `at`. */
 function underOpening(at: number): ReadonlyArray<LiveEvent> {
   return [
-    { kind: "pairing-read", at, pairingId: "p2" },
+    { kind: "pairing-read", at, pairingId: { kind: "paired", id: "p2" } },
     { kind: "paired", at, pairing: { base: "https://h.example", token: "t" } },
     { kind: "paired", at, pairing: null },
     { kind: "pairing-failed", at },
@@ -69,7 +69,7 @@ function open(lastSeq: number | null): LiveState {
     watched: true,
     choice: CHOICE,
     lastSeq,
-    pairedAs: "p1",
+    pairedAs: { kind: "paired", id: "p1" },
   }
 }
 
@@ -163,7 +163,7 @@ describe("the live socket's machine", () => {
       for (const event of [
         { kind: "watch" },
         { kind: "visibility", hidden: false },
-        { kind: "relinked", pairingId: "p2" },
+        { kind: "relinked", pairingId: { kind: "paired", id: "p2" } },
         { kind: "due", at: 2, timer: "retry" },
         { kind: "home", held: true },
       ] as const) {

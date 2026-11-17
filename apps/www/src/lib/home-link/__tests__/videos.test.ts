@@ -23,6 +23,11 @@ import {
   videosWaiting,
 } from "@/lib/home-link/videos"
 import { keepStudio } from "@/lib/studio-keeping"
+import type { Pairing } from "@/lib/home-link/model"
+import { READING, UNPAIRED } from "@/lib/home-link/model"
+
+/** A pairing by its id (#3152's union). */
+const pairedAs = (id: string): Pairing => ({ kind: "paired", id })
 
 vi.mock("@some-ui/intent-kit", async (actual) => ({
   ...(await actual<object>()),
@@ -132,25 +137,28 @@ describe("Studio's videos made on home (ST33)", () => {
       ["GET", "/studio/videos", undefined],
     ])
     expect(moved).toHaveBeenCalled()
-    expect(videoAnswers(storage, "p1")).toEqual({
+    expect(videoAnswers(storage, pairedAs("p1"))).toEqual({
       "w3/1": { kind: "held" },
       "w/4/2": { kind: "held" },
     })
-    expect(videosWaiting(storage, "p1")).toBe(0)
+    expect(videosWaiting(storage, pairedAs("p1"))).toBe(0)
     // A stage this version can't name is shown, as one it can't name yet.
-    expect(videosListed("p1")).toEqual({
+    expect(videosListed(pairedAs("p1"))).toEqual({
       "w3/1": { storedAt: "2026-11-05T17:05:00.000Z", stage: "queued" },
       "w/4/2": { storedAt: "2026-11-06T08:00:00.000Z", stage: "other" },
     })
-    expect(videosListed("p2")).toEqual({})
+    expect(videosListed(pairedAs("p2"))).toEqual({})
 
     const again: Array<[string, string, unknown]> = []
     await sendVideos(phoneVideos(storage, "p1"), home({}, again))
     expect(again).toEqual([["GET", "/studio/videos", undefined]])
     // Under another pairing, every one goes; unpaired, every one waits.
-    expect(videosWaiting(storage, "p2")).toBe(2)
-    expect(videosWaiting(storage, null)).toBe(2)
-    expect(videoAnswers(storage, null)).toEqual({})
+    expect(videosWaiting(storage, pairedAs("p2"))).toBe(2)
+    expect(videosWaiting(storage, UNPAIRED)).toBe(2)
+    expect(videoAnswers(storage, UNPAIRED)).toEqual({})
+    // While the record is read, nothing is known held either (#3152).
+    expect(videosWaiting(storage, READING)).toBe(2)
+    expect(videoAnswers(storage, READING)).toEqual({})
   })
 
   it("names the takes home doesn't hold yet, and sends the video again on the next run", async () => {
@@ -160,14 +168,14 @@ describe("Studio's videos made on home (ST33)", () => {
       phoneVideos(storage, "p1"),
       home({ "/studio/videos/w3/queued/1": missing(["t-open", "t-close"]) }, [])
     )
-    expect(videoAnswers(storage, "p1")).toEqual({
+    expect(videoAnswers(storage, pairedAs("p1"))).toEqual({
       "w3/1": { kind: "missing", notes: ["t-open", "t-close"] },
     })
-    expect(videosWaiting(storage, "p1")).toBe(1)
+    expect(videosWaiting(storage, pairedAs("p1"))).toBe(1)
     const again: Array<[string, string, unknown]> = []
     await sendVideos(phoneVideos(storage, "p1"), home({}, again))
     expect(again.map(([method]) => method)).toEqual(["PUT", "GET"])
-    expect(videoAnswers(storage, "p1")).toEqual({ "w3/1": { kind: "held" } })
+    expect(videoAnswers(storage, pairedAs("p1"))).toEqual({ "w3/1": { kind: "held" } })
   })
 
   it("stops sending a video whose missing takes home deleted for good, and counts it waiting no more", async () => {
@@ -177,10 +185,10 @@ describe("Studio's videos made on home (ST33)", () => {
       phoneVideos(storage, "p1"),
       home({ "/studio/videos/w6/queued/1": missing(["t-close"]) }, [])
     )
-    expect(videoAnswers(storage, "p1")).toEqual({
+    expect(videoAnswers(storage, pairedAs("p1"))).toEqual({
       "w6/1": { kind: "missing", notes: ["t-close"] },
     })
-    expect(videosWaiting(storage, "p1")).toBe(0)
+    expect(videosWaiting(storage, pairedAs("p1"))).toBe(0)
     const again: Array<[string, string, unknown]> = []
     await sendVideos(phoneVideos(storage, "p1"), home({}, again))
     expect(again.map(([method]) => method)).toEqual(["GET"])
@@ -190,7 +198,7 @@ describe("Studio's videos made on home (ST33)", () => {
       phoneVideos(storage, "p1"),
       home({ "/studio/videos/w7/queued/1": missing(["t-close", "t-open"]) }, [])
     )
-    expect(videosWaiting(storage, "p1")).toBe(1)
+    expect(videosWaiting(storage, pairedAs("p1"))).toBe(1)
   })
 
   it("keeps a refused video on the phone, says so as a fault, and offers it again only once its body changes", async () => {
@@ -219,12 +227,12 @@ describe("Studio's videos made on home (ST33)", () => {
       )
     )
     expect(vi.mocked(reportFailure)).toHaveBeenCalledTimes(3)
-    expect(videoAnswers(storage, "p1")).toEqual({
+    expect(videoAnswers(storage, pairedAs("p1"))).toEqual({
       "w3/1": { kind: "refused" },
       "w4/1": { kind: "refused" },
       "w5/1": { kind: "refused" },
     })
-    expect(videosWaiting(storage, "p1")).toBe(0)
+    expect(videosWaiting(storage, pairedAs("p1"))).toBe(0)
     kept = [
       video("w3", 1, '{"video":"w3","again":true}'),
       video("w4"),
@@ -250,7 +258,7 @@ describe("Studio's videos made on home (ST33)", () => {
     await sendVideos(phoneVideos(storage, "p1"), older)
     expect(sent.map(([method]) => method)).toEqual(["PUT", "PUT"])
     expect(vi.mocked(reportFailure)).toHaveBeenCalledTimes(1)
-    expect(videosWaiting(storage, "p1")).toBe(2)
+    expect(videosWaiting(storage, pairedAs("p1"))).toBe(2)
     expect(
       await sendVideos(
         phoneVideos(storage, "p1"),
@@ -265,7 +273,7 @@ describe("Studio's videos made on home (ST33)", () => {
         )
       ).kind
     ).toBe("failed")
-    expect(videosWaiting(storage, "p1")).toBe(2)
+    expect(videosWaiting(storage, pairedAs("p1"))).toBe(2)
   })
 
   it("ends the run on a list it can't read, and says nothing of a home with no list", async () => {
@@ -285,20 +293,20 @@ describe("Studio's videos made on home (ST33)", () => {
         home({ "/studio/videos": { status: 404 } }, [])
       )
     ).toEqual({ kind: "synced" })
-    expect(videosListed("p9")).toEqual({})
+    expect(videosListed(pairedAs("p9"))).toEqual({})
   })
 
   it("counts a video Finish hands over as waiting at once, before the lane reads the projects", () => {
     const storage = memoryStorage()
     kept = []
-    const before = videosWaiting(storage, "p7")
+    const before = videosWaiting(storage, pairedAs("p7"))
     const moved = vi.fn()
     const stop = videosMoved.subscribe(moved)
     videoHanded(video("new-one"))
     videoHanded(video("new-one"))
     stop()
     expect(moved).toHaveBeenCalledTimes(1)
-    expect(videosWaiting(storage, "p7")).toBe(before + 1)
+    expect(videosWaiting(storage, pairedAs("p7"))).toBe(before + 1)
   })
 
   it("says what home answered for a video kept on an earlier launch once Studio is handed in, before any run", async () => {
@@ -309,16 +317,16 @@ describe("Studio's videos made on home (ST33)", () => {
     vi.resetModules()
     const fresh = await import("@/lib/home-link/videos")
     const keeping = await import("@/lib/studio-keeping")
-    expect(fresh.videoAnswers(storage, "p1")).toEqual({})
+    expect(fresh.videoAnswers(storage, pairedAs("p1"))).toEqual({})
     const moved = vi.fn()
     fresh.videosMoved.subscribe(moved)
     keeping.keepStudio(studio)
     await vi.waitFor(() => {
-      expect(fresh.videoAnswers(storage, "p1")).toEqual({
+      expect(fresh.videoAnswers(storage, pairedAs("p1"))).toEqual({
         "w3/1": { kind: "held" },
       })
     })
     expect(moved).toHaveBeenCalled()
-    expect(fresh.videosWaiting(storage, "p1")).toBe(0)
+    expect(fresh.videosWaiting(storage, pairedAs("p1"))).toBe(0)
   })
 })
