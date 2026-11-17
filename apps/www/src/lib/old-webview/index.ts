@@ -12,16 +12,18 @@ export const OLD_WEBVIEW_PAGE = "webview-too-old.html"
 /** What the page says, in the person's terms. */
 export const OLD_WEBVIEW_WORDS = {
   title: "This phone needs a newer WebView",
-  body: "The app runs inside Android System WebView, and the one on this phone is too old to open it. Update Android System WebView from the Play Store (on Android 7 to 9, Chrome is the WebView: update Chrome), then open the app again.",
-  action: "Update WebView in the Play Store",
+  body: "The app runs inside Android System WebView, and the one on this phone is too old to open it. Update Android System WebView from the Play Store (on Android 7 to 9, Chrome is usually the WebView: update Chrome), then open the app again.",
+  updateWebView: "Update Android System WebView",
+  updateChrome: "Update Chrome",
 } as const
 
-const WEBVIEW_ON_PLAY =
-  "https://play.google.com/store/apps/details?id=com.google.android.webview"
+const ON_PLAY = "https://play.google.com/store/apps/details?id="
+const BUTTON =
+  "display:inline-block;margin:0 0.5rem 0.75rem 0;padding:0.75rem 1.25rem;border-radius:999px;background:#3b2a1e;color:#fff5e7;text-decoration:none"
 
 /** The page, styled inline. The words go in as written: a test holds them to need no escaping. */
 export function oldWebViewPage(): string {
-  const { title, body, action } = OLD_WEBVIEW_WORDS
+  const { title, body, updateWebView, updateChrome } = OLD_WEBVIEW_WORDS
   return [
     "<!doctype html>",
     '<html lang="en">',
@@ -34,7 +36,8 @@ export function oldWebViewPage(): string {
     '<main style="max-width:32rem;margin:0 auto;padding:2rem 1.5rem">',
     `<h1 style="font-size:1.375rem;margin:0 0 1rem">${title}</h1>`,
     `<p style="margin:0 0 1.5rem">${body}</p>`,
-    `<a href="${WEBVIEW_ON_PLAY}" style="display:inline-block;padding:0.75rem 1.25rem;border-radius:999px;background:#3b2a1e;color:#fff5e7;text-decoration:none">${action}</a>`,
+    `<a href="${ON_PLAY}com.google.android.webview" style="${BUTTON}">${updateWebView}</a>`,
+    `<a href="${ON_PLAY}com.android.chrome" style="${BUTTON}">${updateChrome}</a>`,
     "</main>",
     "</body>",
     "</html>",

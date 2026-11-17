@@ -7,7 +7,7 @@
     "some-ui:apps/www/vite.config.ts",
     "some-ui:apps/mobile/capacitor.config.ts"
   ],
-  "chose": "A WebView older than Chrome 111 (Vite's default target) gets a plain page instead of the app, through Capacitor's own check: android.minWebViewVersion 111 and server.errorPath webview-too-old.html, a page the phone build alone carries. It says \"This phone needs a newer WebView\", to update Android System WebView from the Play Store, with an \"Update WebView in the Play Store\" link to its Play page.",
+  "chose": "A WebView older than Chrome 111 (Vite's default target) gets a plain page instead of the app, through Capacitor's own check: android.minWebViewVersion 111 and server.errorPath webview-too-old.html, a page the phone build alone carries. It says \"This phone needs a newer WebView\", to update Android System WebView from the Play Store or, on Android 7 to 9 where Chrome is usually the WebView, Chrome, with a button to each one's Play page.",
   "options": [
     "Capacitor's minWebViewVersion and errorPath, a static page",
     "an inline script in index.html reading the user agent's Chrome version",
