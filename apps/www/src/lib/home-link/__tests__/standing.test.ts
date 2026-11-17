@@ -9,6 +9,7 @@ import type { HomeAnswer } from "@some-ui/core-utils"
 import { describe, expect, it, vi } from "vitest"
 
 import type { HomeRequest } from "@/lib/device-backend/native-http"
+import { FIRST_HOLD_MS } from "@/lib/home-link/away"
 import type { HomeLinkEvent, HomeLinkState } from "@/lib/home-link/model"
 import { INITIAL, step } from "@/lib/home-link/model"
 import type { HomeLink } from "@/lib/home-link/runtime"
@@ -123,7 +124,7 @@ describe("the record's pairing day", () => {
 type Home = {
   link: HomeLink
   sent: Array<HomeRequest>
-  pass: (ms: number) => void
+  pass: (ms: number, timersRun?: boolean) => void
 }
 
 function setup(
@@ -398,5 +399,135 @@ describe("the standing watch", () => {
     page.show(true)
     page.show(true)
     expect(fake.checks()).toBe(1)
+  })
+})
+
+/**
+ * RN1 (#3096), end to end: the real link and the real watch, so a paired
+ * phone that comes to the front asks home's own `GET /auth/session` with
+ * its key, the one request that renews its session. Before SIGNIN1 nothing
+ * did, and every pairing ended 30 days after it was made.
+ */
+describe("RN1: a paired phone's session is renewed while the app is used", () => {
+  const settle = (): Promise<void> =>
+    new Promise((resolve) => {
+      setTimeout(resolve, 0)
+    })
+  const renewals = (home: Home): Array<HomeRequest> =>
+    home.sent.filter(
+      (call) =>
+        call.method === "GET" &&
+        call.url === "https://home.example/api/v1/auth/session" &&
+        call.token === "t"
+    )
+
+  it("asks home on every coming to the front, known or not", async () => {
+    const home = setup({ record: KEPT })
+    const page = fakeDoc()
+    watchStanding({ link: home.link, doc: page.doc })
+    await home.link.load()
+    await settle()
+    expect(renewals(home)).toHaveLength(1)
+    expect(standingOf(home.link.getSnapshot())).toEqual({ kind: "known" })
+    for (const n of [2, 3, 4]) {
+      page.show(false)
+      page.show(true)
+      await settle()
+      expect(renewals(home)).toHaveLength(n)
+    }
+  })
+
+  it("lets one ask already out stand for comings to the front while it is, and asks at the next after", async () => {
+    let answer: (value: HomeAnswer) => void = () => undefined
+    const home = setup({
+      record: KEPT,
+      answer: () =>
+        new Promise<HomeAnswer>((resolve) => {
+          answer = resolve
+        }),
+    })
+    const page = fakeDoc()
+    watchStanding({ link: home.link, doc: page.doc })
+    await home.link.load()
+    await settle()
+    expect(renewals(home)).toHaveLength(1)
+    page.show(false)
+    page.show(true)
+    page.show(false)
+    page.show(true)
+    await settle()
+    // The one out is the renewal those comings asked for.
+    expect(renewals(home)).toHaveLength(1)
+    answer({ status: 200, body: "{}" })
+    await settle()
+    expect(renewals(home)).toHaveLength(1)
+    page.show(false)
+    page.show(true)
+    await settle()
+    expect(renewals(home)).toHaveLength(2)
+  })
+
+  it("waits out home's busy, then asks again on the next coming to the front", async () => {
+    let busy = true
+    const home = setup({
+      record: KEPT,
+      answer: () =>
+        busy
+          ? { status: 429, body: "", retryAfter: "30" }
+          : { status: 200, body: "{}" },
+    })
+    const page = fakeDoc()
+    watchStanding({ link: home.link, doc: page.doc })
+    await home.link.load()
+    await settle()
+    expect(renewals(home)).toHaveLength(1)
+    page.show(true)
+    await settle()
+    expect(renewals(home)).toHaveLength(1)
+    busy = false
+    // Home's own Retry-After, not the link's shortest wait, holds it.
+    home.pass(29_999)
+    page.show(true)
+    await settle()
+    expect(renewals(home)).toHaveLength(1)
+    home.pass(1)
+    page.show(true)
+    await settle()
+    expect(renewals(home)).toHaveLength(2)
+    expect(standingOf(home.link.getSnapshot())).toEqual({ kind: "known" })
+  })
+
+  it("asks nothing while held away, then asks on the first coming to the front after the hold", async () => {
+    let silent = true
+    const home = setup({
+      record: KEPT,
+      answer: async () => {
+        if (!silent) return { status: 200, body: "{}" }
+        const { noAnswer } = await import("@/test-support/no-answer")
+        throw noAnswer()
+      },
+    })
+    const page = fakeDoc()
+    watchStanding({ link: home.link, doc: page.doc })
+    await home.link.load()
+    await settle()
+    expect(renewals(home)).toHaveLength(1)
+    expect(home.link.getSnapshot().away).not.toBeNull()
+    silent = false
+    page.show(true)
+    await settle()
+    expect(renewals(home)).toHaveLength(1)
+    home.pass(FIRST_HOLD_MS - 1)
+    page.show(true)
+    await settle()
+    expect(renewals(home)).toHaveLength(1)
+    // Its timer held back, as a WebView in the background holds it: the
+    // hold ends on the link's own reading of the clock.
+    home.pass(1, false)
+    page.show(true)
+    await settle()
+    expect(renewals(home)).toHaveLength(2)
+    expect(standingOf(home.link.getSnapshot())).toEqual({ kind: "known" })
+    expect(home.link.getSnapshot().away).toBeNull()
   })
 })
