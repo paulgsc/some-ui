@@ -9,6 +9,11 @@ import { assertNever } from "@some-ui/core-utils"
 import { Link, useNavigate } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
+import type { SayRung } from "@/lib/interview-week/ladder"
+
+/** How a link to a page of the week, a question or a read looks. */
+export const CARD_LINK =
+  "bg-card hover:bg-muted flex flex-col items-start gap-1 rounded-2xl border p-3 text-left"
 
 /** A page of the week. */
 export type Page =
@@ -21,7 +26,7 @@ export type Page =
   | {
       readonly page: "say"
       readonly question: string
-      readonly rung: "cues" | "own"
+      readonly rung: SayRung
     }
 
 /** A link to `to`, carrying `className`. */

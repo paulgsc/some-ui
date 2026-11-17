@@ -5,16 +5,11 @@
  * runtime over `ports`, and each page as its route renders it.
  */
 import type { JSX } from "react"
-import { useState } from "react"
-import {
-  createMemoryHistory,
-  createRootRoute,
-  createRoute,
-  createRouter,
-  Outlet,
-  RouterProvider,
-} from "@tanstack/react-router"
+import { MemoryRouted } from "@/test-support/memory-routed"
+import { createRootRoute, createRoute, Outlet } from "@tanstack/react-router"
 
+import type { SayRung } from "@/lib/interview-week/ladder"
+import { sayRungOf } from "@/lib/interview-week/ladder"
 import type { InterviewWeekPorts } from "@/lib/interview-week/runtime"
 import {
   AloudPage,
@@ -52,8 +47,8 @@ function interviewTree(ports: InterviewWeekPorts) {
   const say = createRoute({
     getParentRoute: () => question,
     path: "/say",
-    validateSearch: (search): { rung: "cues" | "own" } => ({
-      rung: search.rung === "cues" ? "cues" : "own",
+    validateSearch: (search): { rung: SayRung } => ({
+      rung: sayRungOf(search),
     }),
     component: function Say() {
       return (
@@ -106,12 +101,6 @@ export type RoutedInterviewProps = {
 export const RoutedInterview = ({
   ports,
   path = "/jobs/interview",
-}: RoutedInterviewProps): JSX.Element => {
-  const [router] = useState(() =>
-    createRouter({
-      routeTree: interviewTree(ports()),
-      history: createMemoryHistory({ initialEntries: [path] }),
-    })
-  )
-  return <RouterProvider router={router} />
-}
+}: RoutedInterviewProps): JSX.Element => (
+  <MemoryRouted initialTree={() => interviewTree(ports())} initialPath={path} />
+)

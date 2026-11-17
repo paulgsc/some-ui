@@ -11,12 +11,9 @@
  * cue off first. A tap while a take is under way (to stop it) goes straight
  * through.
  *
- * Each page of a question's ladder (IW8, #3175) shows one item: `focus` puts
- * its card on screen while the page is up, and once the page goes, the
- * bundle steps back to the screen before the cards, a take under way
- * stopped and kept first. A take started from a rung (`dispatchOn`) is
- * marked with it, and a read aloud counts down first as a read's does. Each
- * question's first take is let go home on its own (`./ladder`'s `firsts`).
+ * A page of a question's ladder (IW8, #3175) shows one item (`focus`); once
+ * it goes, the bundle steps back to the screen before the cards, a take
+ * under way stopped and kept first.
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { weekOpenNow } from "@some-ui/core-utils"
@@ -32,9 +29,9 @@ import { bundleRuntime, sendsAtHome } from "@some-ui/voice-capture"
 import type { Cue, CueEvent } from "./cue"
 import { NO_CUE, stepCue } from "./cue"
 import type { Asked, Ladder, Rung } from "./ladder"
-import { firsts, markRung } from "./ladder"
+import { firsts, markRung, takesFor } from "./ladder"
 import type { InterviewAtHome, InterviewKind, InterviewSent } from "./spec"
-import { cardOf, interviewMachine, isClosed, takeLine } from "./spec"
+import { cardOf, interviewMachine, isClosed } from "./spec"
 import type { HeldInterview } from "./store"
 import { interviewDrafts, interviewLadder, interviewSent } from "./store"
 
@@ -167,17 +164,16 @@ export function createInterviewWeek(
   const climb = (): void => {
     const { takes, at } = bundle.getSnapshot()
     let next = ladder.getSnapshot()
-    if (asked !== null) {
-      const marked = markRung(next, asked, takes, week.id)
-      next = marked.ladder
-      if (marked.done) asked = null
-    }
+    const marked = asked === null ? null : markRung(next, asked, takes, week.id)
+    if (marked !== null) next = marked.ladder
     const first = firsts(next, takes, week.id, questions)
     if (first.ladder !== ladder.getSnapshot()) {
-      // The marks are kept before any take goes, so none is let go twice.
+      // The marks are kept before any take goes, so none is let go twice;
+      // one not kept is asked again on the next change.
       if (!kept.write(first.ladder)) return
       ladder.set(first.ladder)
     }
+    if (marked?.done === true) asked = null
     if (first.release.length > 0 && !isClosed(week, at)) {
       ports.takes.release(first.release)
     }
@@ -201,11 +197,9 @@ export function createInterviewWeek(
           : {
               item: intent.item,
               rung,
-              before: now.takes
-                .filter(
-                  ({ answers }) => answers === takeLine(week.id, intent.item)
-                )
-                .map(({ id }) => id),
+              before: takesFor(now.takes, week.id, intent.item).map(
+                ({ id }) => id
+              ),
             }
       if (cardOf(intent.item) !== null || rung === "aloud") {
         showCard(intent.item)

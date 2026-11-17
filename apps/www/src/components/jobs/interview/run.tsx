@@ -16,7 +16,14 @@ import {
 } from "react"
 import type { InterviewWeek } from "@some-ui/interview-week"
 import { bundleConfirm, ConfirmSheet, useTakePattern } from "@some-ui/shared"
-import type { BundleTakes, TakePatternSnapshot } from "@some-ui/voice-capture"
+import type {
+  BundleTakes,
+  PatternTake,
+  TakeItemView,
+  TakePatternSnapshot,
+  TakeRowView,
+} from "@some-ui/voice-capture"
+import { currentTakeOf, takeItemView } from "@some-ui/voice-capture"
 
 import type { Cue } from "@/lib/interview-week/cue"
 import type { Ladder } from "@/lib/interview-week/ladder"
@@ -26,7 +33,7 @@ import type {
 } from "@/lib/interview-week/runtime"
 import { createInterviewWeek } from "@/lib/interview-week/runtime"
 import type { InterviewAtHome, InterviewState } from "@/lib/interview-week/spec"
-import { cardOf } from "@/lib/interview-week/spec"
+import { cardOf, takeLine } from "@/lib/interview-week/spec"
 import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 
 /** What every page of the week reads. */
@@ -49,6 +56,32 @@ export function useInterview(): Interview {
   if (held === null) throw new Error("an interview page outside its week")
   return held
 }
+
+/** `item`'s takes as the take parts draw them. */
+export const viewOf = (
+  { run, state, snapshot, takes }: Interview,
+  item: string
+): TakeItemView =>
+  takeItemView(
+    snapshot,
+    state.takes,
+    run.machine.answersOf(state, item),
+    takes.pattern.options
+  )
+
+/** `item`'s take on screen now, if it has one. */
+export const currentOf = (
+  { state }: Pick<Interview, "state">,
+  item: string
+): PatternTake | null =>
+  currentTakeOf(state.takes, takeLine(state.draft.id, item))
+
+/** A take's row, to play and nothing more. */
+export const playOnly = (row: TakeRowView): TakeRowView => ({
+  ...row,
+  canRedo: false,
+  canLetGo: false,
+})
 
 /** A card's name in the look over: "Question 2", "Read 1". */
 export function labelOf(week: InterviewWeek, item: string): string {

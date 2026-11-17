@@ -16,13 +16,12 @@
  * week in its own words.
  */
 import {
-  assertNever,
   pacificClock as clock,
   pacificWeekday as weekday,
   weekNumber,
 } from "@some-ui/core-utils"
 import type { InterviewWeek, WorkSource } from "@some-ui/interview-week"
-import { TAKE_MAX_SECONDS } from "@some-ui/interview-week"
+import { TAKE_MAX_SECONDS, workSourceKey } from "@some-ui/interview-week"
 import type { BundleWords } from "@some-ui/shared"
 import { TAKE_WORDS } from "@some-ui/voice-capture"
 
@@ -64,10 +63,10 @@ const BUNDLE: BundleWords = {
     line: "Left for later. It's marked on the dots above.",
     sayNow: "Say it now",
   },
-  saidCount: (n, of) => `${n} of ${of} said · all on this phone until you send`,
+  saidCount: (n, of) => `${n} of ${of} said`,
   toReview: "Look it over before sending",
   review: {
-    kept: "Kept on this phone only. Nothing has been sent.",
+    kept: "Each question's first take has gone home on its own. The rest are on this phone until you send.",
     playAll: "Play all, in order",
     stopAll: "Stop",
     deleteAll: "Delete all",
@@ -82,9 +81,9 @@ const BUNDLE: BundleWords = {
       `Your take on ${label} hasn't left this phone, so deleting it removes it for good. You can say it again.`,
     besideLine: (label) =>
       `Your take on ${label} hasn't left this phone, so deleting it removes it for good. You can say it again.`,
-    allTitle: "Delete every take this week?",
+    allTitle: "Delete the takes still on this phone?",
     allLine:
-      "None of them has left this phone, so every take this week is removed for good.",
+      "Every take this week that hasn't left this phone is removed for good. Each question's first take already went home and stays.",
     yes: "Delete for good",
     keep: "Keep it",
   },
@@ -94,29 +93,15 @@ const BUNDLE: BundleWords = {
     notKept:
       "This phone couldn't keep that change, so it would be lost if you left now.",
     notSent:
-      "This phone couldn't keep the week's takes as sent, so nothing went. They're all still here.",
+      "This phone couldn't keep the week's takes as sent, so the send didn't go. The takes are all still here.",
     notDeleted: "That couldn't be deleted, so it's still here.",
   },
 }
 
-/** A claim's source, as its chip names it: `some-ui#3170`, `C266`, a doc's path. */
+/** A claim's source, as its chip names it: its key's name, `some-ui#3170`, `C266`, a doc's path. */
 function sourceName(source: WorkSource): string {
-  switch (source.kind) {
-    case "pull":
-    case "issue": {
-      return `${source.repo}#${source.number}`
-    }
-    case "call":
-    case "invariant": {
-      return source.id
-    }
-    case "doc": {
-      return source.path
-    }
-    default: {
-      return assertNever(source)
-    }
-  }
+  const key = workSourceKey(source)
+  return key.slice(key.indexOf(":") + 1)
 }
 
 type Dated = Pick<InterviewWeek, "id" | "due">
@@ -174,7 +159,6 @@ export const INTERVIEW_WORDS = {
   toInterview: "Interview",
   toQuestion: "The question",
   toAnswer: "The answer",
-  toReads: "Read aloud",
   notInWeek: "This isn't in this week's interview.",
   /** The study page. */
   study: {
@@ -183,7 +167,6 @@ export const INTERVIEW_WORDS = {
     ready: "A ready answer",
     another: "Another good answer",
     poor: "A poor answer",
-    readIt: "Read it aloud",
   },
   /** A claim's source, as its chip names it. */
   source: sourceName,

@@ -19,7 +19,6 @@ import type {
   TakeItemView,
   TakeRowView,
 } from "@some-ui/voice-capture"
-import { currentTakeOf, takeItemView } from "@some-ui/voice-capture"
 
 import type { InterviewKind, InterviewState } from "@/lib/interview-week/spec"
 import {
@@ -27,14 +26,13 @@ import {
   isClosed,
   itemsOf,
   sentTakeOf,
-  takeLine,
   takesOf,
 } from "@/lib/interview-week/spec"
 import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 
 import type { Interview } from "./run"
-import { labelOf, useInterview } from "./run"
-import { To, useOpenItem } from "./to"
+import { currentOf, labelOf, playOnly, useInterview, viewOf } from "./run"
+import { CARD_LINK, To, useOpenItem } from "./to"
 
 const Role = ({ week }: { week: InterviewWeek }): JSX.Element => (
   <header className="space-y-1">
@@ -55,16 +53,13 @@ export function doneLine(
   { state, ladder }: Pick<Interview, "state" | "ladder">,
   item: string
 ): string | null {
-  const take = currentTakeOf(state.takes, takeLine(state.draft.id, item))
+  const take = currentOf({ state }, item)
   if (take === null) return null
-  return WORDS.done(
-    WORDS.past[ladder.rungs[take.id] ?? "said"],
-    take.recordedAt
-  )
+  // A read is read aloud; a question's take is said on its rung.
+  const did =
+    cardOf(item) === null ? (ladder.rungs[take.id] ?? "said") : "aloud"
+  return WORDS.done(WORDS.past[did], take.recordedAt)
 }
-
-const entryClass =
-  "bg-card hover:bg-muted flex flex-col items-start gap-1 rounded-2xl border p-3 text-left"
 
 const Home = ({ held }: { held: Interview }): JSX.Element => {
   const { week, state, atHome, run } = held
@@ -76,7 +71,7 @@ const Home = ({ held }: { held: Interview }): JSX.Element => {
       <To
         key={id}
         to={{ page: "question", question: id }}
-        className={entryClass}
+        className={CARD_LINK}
       >
         <span className="font-semibold">{prompt}</span>
         {done !== null && (
@@ -148,7 +143,6 @@ const Review = ({ held }: { held: Interview }): JSX.Element => {
   const needs = machine.missing(state)
   const n = takesOf(machine.bundleRecord(state, state.at)).length
   const notNear = state.reach === "near" ? null : WORDS.notNear[state.reach]
-  // Saying an item from the look over opens its page, where its rungs are.
   const dispatch = (intent: BundleIntent<InterviewKind>): void => {
     if (intent.type === "tap" && !state.busy) {
       const card = cardOf(intent.item)
@@ -211,20 +205,12 @@ const SentList = ({
   sent: InterviewState["sent"]
   readOnly: boolean
 }): JSX.Element => {
-  const { run, state, snapshot, takes, week } = held
+  const { run, week } = held
   return (
     <ol className="flex flex-col gap-3">
       {itemsOf(week).map((item) => {
         const take = sentTakeOf(sent, item)
-        const row = rowOf(
-          takeItemView(
-            snapshot,
-            state.takes,
-            run.machine.answersOf(state, item),
-            takes.pattern.options
-          ),
-          take
-        )
+        const row = rowOf(viewOf(held, item), take)
         return (
           <li key={item} className="flex flex-col gap-2">
             <p className="text-sm font-semibold">{labelOf(week, item)}</p>
@@ -234,9 +220,7 @@ const SentList = ({
               </p>
             ) : (
               <TakeRow
-                row={
-                  readOnly ? { ...row, canRedo: false, canLetGo: false } : row
-                }
+                row={readOnly ? playOnly(row) : row}
                 onPlay={() => run.dispatch({ type: "play", take: row.take.id })}
               />
             )}

@@ -242,6 +242,23 @@ describe("a question's ladder on the phone (IW8)", () => {
     expect(on.run.ladder.getSnapshot().first).toEqual({ conflict: first.id })
   })
 
+  it("deletes before Send only what never left: a question's first take stays", async () => {
+    const on = phone(inMemoryStorage())
+    on.run.dispatch({ type: "go", index: 1 })
+    await answer(on, "conflict")
+    const [first] = on.simulated.store.getSnapshot()
+    await pass(60_000)
+    await answer(on, "conflict")
+
+    on.run.dispatch({ type: "review" })
+    on.run.dispatch({ type: "askDeleteAll" })
+    on.run.dispatch({ type: "confirmed" })
+    await pass()
+    expect(on.simulated.store.getSnapshot().map(({ id }) => id)).toEqual([
+      first.id,
+    ])
+  })
+
   it("asks again for a first take that didn't go, and keeps its mark across a reload", async () => {
     const storage = inMemoryStorage()
     const { ports } = fakePorts({ storage })

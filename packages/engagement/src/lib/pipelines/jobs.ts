@@ -58,8 +58,7 @@ const jobs: Pipeline = {
       emits: ["taken"],
       touches: true,
     },
-    // Interview: the week's mock interview and reads, said aloud (IW5), each
-    // step of a question's ladder and each read a page of its own (IW8).
+    // Interview: the week's mock interview and reads, said aloud (IW5).
     {
       id: "interview-week",
       surface: "apk",

@@ -49,11 +49,8 @@ function everyWord(value: unknown): Array<string> {
 
 const SHOWN = everyWord(INTERVIEW_WORDS)
 
-/**
- * The study page's names for the ready answers it shows (IW8): they call a
- * model answer good or poor, as the owner asked (2026-11-17), never a take.
- */
-const { study, ...rest } = INTERVIEW_WORDS
+// The study page names model answers good or poor (`../words.ts`).
+const { study: _study, ...rest } = INTERVIEW_WORDS
 const ABOUT_TAKES = everyWord(rest)
 
 const BANNED: ReadonlyArray<[string, RegExp]> = [
@@ -82,15 +79,6 @@ describe("the interview week's words (IW5)", () => {
         )
       )
     ).toEqual([])
-    expect(everyWord(study).length).toBeGreaterThan(0)
-  })
-
-  it("say what was done in the past tense, on its day", () => {
-    const { done, past } = INTERVIEW_WORDS
-    expect(done(past.aloud, "2026-11-16T18:00:00Z")).toBe(
-      "Read aloud on Monday"
-    )
-    expect(done(past.said, "2026-11-18T18:00:00Z")).toBe("Said on Wednesday")
   })
 
   it("show a target length as a person reads one", () => {

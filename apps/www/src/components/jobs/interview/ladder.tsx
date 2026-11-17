@@ -6,27 +6,24 @@
  * and the take page, said from cues or your own way. A week written before
  * ready answers offers the last two rungs only (`stepsOf`). Each page names
  * its way back, and Android's back steps through them too.
- *
- * A take page shows its item while it is up (`run.focus`), and marks a take
- * it starts with its rung (`run.dispatchOn`).
  */
 import type { JSX, ReactNode } from "react"
 import { useEffect } from "react"
+import { cn } from "@some-ui/core-utils"
 import type { Question, WorkSource } from "@some-ui/interview-week"
 import { workSourceKey } from "@some-ui/interview-week"
 import { BundleTake, TakeRow } from "@some-ui/shared"
-import { currentTakeOf, takeItemView } from "@some-ui/voice-capture"
 import { ChevronLeft } from "lucide-react"
 
-import type { Rung, Step } from "@/lib/interview-week/ladder"
+import type { Rung, SayRung, Step } from "@/lib/interview-week/ladder"
 import { scriptOf, stepsOf } from "@/lib/interview-week/ladder"
-import { isClosed, sentTakeOf, takeLine } from "@/lib/interview-week/spec"
+import { isClosed, sentTakeOf } from "@/lib/interview-week/spec"
 import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 
 import type { Interview } from "./run"
-import { useInterview } from "./run"
+import { currentOf, playOnly, useInterview, viewOf } from "./run"
 import type { Page } from "./to"
-import { To } from "./to"
+import { CARD_LINK, To } from "./to"
 import { doneLine, Opening } from "./week"
 
 /** A page's way back: a link, so Android's back and this step the same way. */
@@ -99,9 +96,6 @@ const Head = ({
   </div>
 )
 
-const rungClass =
-  "bg-card hover:bg-muted flex min-h-28 flex-col gap-1.5 rounded-2xl border p-3 text-left"
-
 /** One rung, as a link to its page. */
 const RungLink = ({
   step,
@@ -128,7 +122,7 @@ const RungLink = ({
           ? { page: "say", question, rung: step }
           : { page: step, question }
       }
-      className={rungClass}
+      className={cn(CARD_LINK, "min-h-28 gap-1.5")}
     >
       {inside}
     </To>
@@ -143,13 +137,8 @@ const LatestTake = ({
   held: Interview
   question: string
 }): JSX.Element | null => {
-  const { run, state, snapshot, takes } = held
-  const row = takeItemView(
-    snapshot,
-    state.takes,
-    run.machine.answersOf(state, question),
-    takes.pattern.options
-  ).current.at(0)
+  const { run } = held
+  const row = viewOf(held, question).current.at(0)
   const done = doneLine(held, question)
   if (row === undefined || done === null) return null
   return (
@@ -158,7 +147,7 @@ const LatestTake = ({
         <strong>{WORDS.yourTake}</strong>, {done}
       </p>
       <TakeRow
-        row={{ ...row, canRedo: false, canLetGo: false }}
+        row={playOnly(row)}
         onPlay={() => run.dispatch({ type: "play", take: row.take.id })}
       />
       <p className="text-muted-foreground text-sm">{WORDS.inItsPlace}</p>
@@ -280,7 +269,7 @@ export const StudyPage = ({ id }: { id: string }): JSX.Element => (
             to={{ page: "aloud", question: id }}
             className="bg-primary text-primary-foreground self-start rounded-full px-5 py-3 font-bold"
           >
-            {WORDS.study.readIt}
+            {WORDS.step.aloud.name}
           </To>
         </>
       )
@@ -345,7 +334,7 @@ const HomeLine = ({
   const { state } = held
   const sent = sentTakeOf(state.sent, item)
   if (sent === null) return null
-  const now = currentTakeOf(state.takes, takeLine(state.draft.id, item))
+  const now = currentOf(held, item)
   return (
     <p className="text-muted-foreground text-sm">
       {now !== null && now.id !== sent ? WORDS.home.again : WORDS.home.holds}
@@ -429,9 +418,18 @@ export const AloudPage = ({ id }: { id: string }): JSX.Element => (
   <WithQuestion id={id}>
     {(question, held) => (
       <>
-        <BackTo to={{ page: "study", question: id }}>{WORDS.toAnswer}</BackTo>
-        {question.ready === undefined ? null : (
-          <AloudTake held={held} question={question} />
+        {question.ready === undefined ? (
+          // A week written before ready answers has none to read aloud.
+          <BackTo to={{ page: "question", question: id }}>
+            {WORDS.toQuestion}
+          </BackTo>
+        ) : (
+          <>
+            <BackTo to={{ page: "study", question: id }}>
+              {WORDS.toAnswer}
+            </BackTo>
+            <AloudTake held={held} question={question} />
+          </>
         )}
       </>
     )}
@@ -445,10 +443,12 @@ const SayTake = ({
 }: {
   held: Interview
   question: Question
-  rung: "cues" | "own"
+  rung: SayRung
 }): JSX.Element => {
   useFocus(held, question.id)
-  const cues = rung === "cues" ? (question.ready?.cues ?? []) : []
+  // A week written before ready answers leans on what to cover.
+  const cues =
+    rung === "cues" ? (question.ready?.cues ?? question.guidelines) : []
   return (
     <TakeOn
       held={held}
@@ -486,7 +486,7 @@ export const SayPage = ({
   rung,
 }: {
   id: string
-  rung: "cues" | "own"
+  rung: SayRung
 }): JSX.Element => (
   <WithQuestion id={id}>
     {(question, held) => (

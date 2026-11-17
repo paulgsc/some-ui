@@ -1,6 +1,8 @@
 import type { JSX } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 
+import type { SayRung } from "@/lib/interview-week/ladder"
+import { sayRungOf } from "@/lib/interview-week/ladder"
 import { SayPage } from "@/components/jobs/interview/ladder"
 
 const Say = (): JSX.Element => (
@@ -12,7 +14,5 @@ export const Route = createFileRoute(
   "/_dashboard/_apk/jobs/interview/q/$question/say"
 )({
   component: Say,
-  validateSearch: (search): { rung: "cues" | "own" } => ({
-    rung: search.rung === "cues" ? "cues" : "own",
-  }),
+  validateSearch: (search): { rung: SayRung } => ({ rung: sayRungOf(search) }),
 })

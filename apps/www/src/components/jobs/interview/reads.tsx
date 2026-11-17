@@ -12,7 +12,7 @@ import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 import { BackTo, CueLine, Script, TakeOn, useFocus } from "./ladder"
 import type { Interview } from "./run"
 import { useInterview } from "./run"
-import { To } from "./to"
+import { CARD_LINK, To } from "./to"
 import { doneLine, Opening } from "./week"
 
 /** The week's reads, each a link to its page. */
@@ -32,7 +32,7 @@ export const ReadsPage = (): JSX.Element => {
           <To
             key={card.id}
             to={{ page: "read", card: card.id }}
-            className="bg-card hover:bg-muted flex flex-col items-start gap-1 rounded-2xl border p-3 text-left"
+            className={CARD_LINK}
           >
             <span className="font-semibold">{card.situation}</span>
             <span className="text-muted-foreground text-xs">
@@ -79,7 +79,7 @@ export const ReadPage = ({ id }: { id: string }): JSX.Element => {
   const card = held.week.cards.find((read) => read.id === id)
   return (
     <div className="flex flex-col gap-4">
-      <BackTo to={{ page: "reads" }}>{WORDS.toReads}</BackTo>
+      <BackTo to={{ page: "reads" }}>{WORDS.reads}</BackTo>
       {card === undefined ? (
         <p className="text-muted-foreground">{WORDS.notInWeek}</p>
       ) : (

@@ -35,9 +35,12 @@ export const stepsOf = (
     ? ["cues", "own"]
     : ["study", "aloud", "cues", "own"]
 
-/** A rung named in a page's search, or null for anything else. */
-export const rungOf = (value: unknown): Rung | null =>
-  RUNGS.find((rung) => rung === value) ?? null
+/** The rungs said without the answer on screen: the take page's. */
+export type SayRung = Exclude<Rung, "aloud">
+
+/** The take page's rung, from its search: your own way unless it names cues. */
+export const sayRungOf = (search: Record<string, unknown>): SayRung =>
+  search.rung === "cues" ? "cues" : "own"
 
 /**
  * The ready answer as read aloud: its parts' texts in order, a phrase a
@@ -69,7 +72,7 @@ export type Asked = {
 }
 
 /** The takes of `week` answering `item`. */
-const takesFor = (
+export const takesFor = (
   takes: ReadonlyArray<PatternTake>,
   week: string,
   item: string
