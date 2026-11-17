@@ -1,0 +1,15 @@
+{
+  "id": "C553",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": ["some-ui:apps/www/tests/snips/capture.ts"],
+  "chose": "A snip is the viewport as it first settles, not the whole scrolling page, plus a 4-second recording only where two pictures a second apart differ.",
+  "options": [
+    "the viewport, with a recording where the screen moves",
+    "the full scrolling page",
+    "a recording of every screen"
+  ],
+  "gray": "The pictures are for essays and a showcase, where a screen-sized image reads like the phone; full pages and blanket recordings multiply the bundle for screens nobody asked to see.",
+  "undo": "Pass fullPage: true to the web camera, or record unconditionally in walk().",
+  "refs": ["#3114", "#3115"]
+}
