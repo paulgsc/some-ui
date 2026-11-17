@@ -2018,8 +2018,8 @@
           "id": "AD4",
           "kind": "RE8",
           "property": "work",
-          "claim": "Home answers every request within 8 s, so the phone hears home busy rather than home away.",
-          "requirement": "Every request file_host's router serves is answered within 8 s, under the phone's 10 s deadline. A request home has no room for (all 100 of its slots taken, no database connection within 3 s, or the 8 s reached) is answered at once with 503 service_overloaded and Retry-After: 5, never kept waiting. The bound starts once the request head is parsed; time on the network and in Caddy before that is outside it.",
+          "claim": "Home answers every request but its health checks within 8 s, so the phone hears home busy rather than home away.",
+          "requirement": "Every request file_host's router serves but the health checks (/health, /ready) is answered within 8 s, under the phone's 10 s deadline. A request home has no room for is answered 503 service_overloaded with Retry-After: 5 rather than left waiting: at once when all 100 of its slots are taken, within 3 s when no database connection comes, and at the 8 s deadline otherwise. A pool timeout a handler turns into its own error (the dedup cache, hopium, a mood event) is answered within the bound but as that error, not as busy. The bound starts once the request head is parsed; time on the network and in Caddy before that is outside it.",
           "bound": {
             "value": 8,
             "unit": "seconds to an answer, per request",
@@ -2044,7 +2044,8 @@
             "server:apps/servers/file_host/src/admission.rs#a_full_limit_is_shed_at_once_on_every_module",
             "server:apps/servers/file_host/src/admission.rs#work_past_the_deadline_is_answered_busy_at_it",
             "server:apps/servers/file_host/src/admission.rs#a_pool_with_no_connection_free_is_answered_busy",
-            "server:apps/servers/file_host/src/admission.rs#a_cross_origin_busy_answer_is_readable"
+            "server:apps/servers/file_host/src/admission.rs#a_cross_origin_busy_answer_is_readable",
+            "server:apps/servers/file_host/src/admission.rs#the_exempt_modules_are_the_health_checks"
           ],
           "watch": {
             "by": "alert",
