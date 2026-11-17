@@ -36,7 +36,7 @@ import {
   routesFor,
 } from "@/lib/snips"
 
-import { walk, writePart } from "./capture"
+import { recordScreen, walk, writePart } from "./capture"
 import { releaseWalk } from "./release-walk"
 
 const OUT = process.env["SNIPS_OUT"]
@@ -130,12 +130,7 @@ test.describe("snips: apk", () => {
       },
       camera: {
         shoot: () => device.screenshot(),
-        record: async () => {
-          await device.shell("screenrecord --time-limit 4 /sdcard/snip.mp4")
-          const bytes = await device.shell("cat /sdcard/snip.mp4")
-          await device.shell("rm -f /sdcard/snip.mp4")
-          return bytes.length > 0 ? { bytes, kind: "mp4" } : null
-        },
+        record: () => recordScreen(device),
       },
     })
     expect(

@@ -24,7 +24,7 @@ import {
 } from "@/lib/snips"
 import type { Part, SnipRecord, Unreached, Viewport } from "@/lib/snips"
 
-import { hashOf, pngSize, save } from "./capture"
+import { hashOf, pngSize, recordScreen, save } from "./capture"
 
 /** The bar: tabs whose centre sits in the bottom part of the screen. */
 const BAR_FROM = 0.85
@@ -66,7 +66,7 @@ export async function releaseWalk(w: ReleaseWalk): Promise<Part> {
     // walk does: set it back before each picture, so a screen that shows
     // the time draws the same on every run.
     await shell(`date ${toyboxDate(FROZEN_AT)}`)
-    const png = await settled(w.device)
+    const { png, moving } = await settled(w.device)
     if (!(await inFront(shell, w.pkg))) {
       // A tap that opened something else (a permission dialog, another
       // app): not the app's screen, so not a snip.
@@ -78,9 +78,16 @@ export async function releaseWalk(w: ReleaseWalk): Promise<Part> {
       await shell("input keyevent 4")
       return
     }
-    const sha256 = hashOf(png)
+    const sha256 = await hashOf(png)
     if (seen.has(sha256)) return
     seen.add(sha256)
+    const stem = `apk/${w.viewport.name}/release-${slugOf(path)}-${sha256.slice(0, 12)}`
+    const image = await save(w.out, `${stem}.png`, "png", png)
+    // A screen still moving after SETTLE_TRIES gets a short recording too.
+    const clip = moving ? await recordScreen(w.device) : null
+    const recording = clip
+      ? await save(w.out, `${stem}.${clip.kind}`, clip.kind, clip.bytes)
+      : undefined
     const module = moduleOf(path)
     const shows = tab ?? wing
     snips.push({
@@ -101,12 +108,8 @@ export async function releaseWalk(w: ReleaseWalk): Promise<Part> {
       module,
       shows,
       description: describe(module, shows, w.viewport),
-      image: save(
-        w.out,
-        `apk/${w.viewport.name}/release-${slugOf(path)}-${sha256.slice(0, 12)}.png`,
-        "png",
-        png
-      ),
+      image,
+      ...(recording ? { recording } : {}),
     })
   }
 
@@ -140,10 +143,12 @@ async function launchers(
   const listed = await shell(
     "cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER"
   )
-  return [
-    ...listed.matchAll(new RegExp(`${pkg.replace(/\./g, "\\.")}/(\\S+)`, "g")),
-  ]
-    .map((m) => m[1])
+  // `<package>/<component>` lines, read without building a pattern from
+  // the package's name.
+  return listed
+    .split(/\s+/)
+    .filter((word) => word.startsWith(`${pkg}/`))
+    .map((word) => word.slice(pkg.length + 1))
     .sort()
 }
 
@@ -216,14 +221,19 @@ function toyboxDate(iso: string): string {
   return `${two(d.getUTCMonth() + 1)}${two(d.getUTCDate())}${two(d.getUTCHours())}${two(d.getUTCMinutes())}${d.getUTCFullYear()}.${two(d.getUTCSeconds())}`
 }
 
-/** The screen once two pictures a second apart agree, or after SETTLE_TRIES. */
-async function settled(device: AndroidDevice): Promise<Buffer> {
+/**
+ * The screen once two pictures a second apart agree, or after SETTLE_TRIES,
+ * with whether it was still moving then.
+ */
+async function settled(
+  device: AndroidDevice
+): Promise<{ readonly png: Buffer; readonly moving: boolean }> {
   let last = await device.screenshot()
   for (let i = 0; i < SETTLE_TRIES; i += 1) {
     await new Promise((resolve) => setTimeout(resolve, 1_000))
     const now = await device.screenshot()
-    if (now.equals(last)) return now
+    if (now.equals(last)) return { png: now, moving: false }
     last = now
   }
-  return last
+  return { png: last, moving: true }
 }

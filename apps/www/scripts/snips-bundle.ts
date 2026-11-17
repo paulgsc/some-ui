@@ -11,7 +11,6 @@
  * app versions, or two snips with one id.
  */
 
-import { createHash } from "node:crypto"
 import {
   existsSync,
   readdirSync,
@@ -21,6 +20,7 @@ import {
   writeFileSync,
 } from "node:fs"
 import { join } from "node:path"
+import { sha256Hex } from "@some-ui/core-utils"
 
 import { checksumsOf, manifestOf, parsePart } from "@/lib/snips"
 import type { SnipFile } from "@/lib/snips"
@@ -42,7 +42,7 @@ const files: Array<SnipFile> = manifest.snips.flatMap((s) =>
 )
 for (const file of files) {
   const bytes = readFileSync(join(dir, file.name))
-  const sha256 = createHash("sha256").update(bytes).digest("hex")
+  const sha256 = await sha256Hex(new Uint8Array(bytes).buffer)
   if (sha256 !== file.sha256 || bytes.length !== file.bytes) {
     throw new Error(`${file.name} is not the file its record names`)
   }
@@ -64,7 +64,7 @@ for (const surface of ["apk", "web"]) {
 
 const text = `${JSON.stringify(manifest, null, 2)}\n`
 writeFileSync(join(dir, "manifest.json"), text)
-const manifestSum = createHash("sha256").update(text).digest("hex")
+const manifestSum = await sha256Hex(text)
 writeFileSync(
   join(dir, "SHA256SUMS"),
   checksumsOf([...files, { name: "manifest.json", sha256: manifestSum }])

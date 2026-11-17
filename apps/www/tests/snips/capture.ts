@@ -9,10 +9,10 @@
  * spec photographs the page, the APK spec the emulator's whole screen.
  */
 
-import { createHash } from "node:crypto"
 import { mkdirSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
-import type { Page } from "@playwright/test"
+import type { AndroidDevice, Page } from "@playwright/test"
+import { sha256Hex } from "@some-ui/core-utils"
 
 import {
   describe,
@@ -93,7 +93,7 @@ export async function walk(w: Walk): Promise<Part> {
       return
     }
     const png = await w.camera.shoot()
-    const sha256 = hashOf(png)
+    const sha256 = await hashOf(png)
     const same = seen.get(sha256)
     if (same !== undefined) {
       unreached.push({
@@ -113,15 +113,15 @@ export async function walk(w: Walk): Promise<Part> {
     })
     const drawn = w.build === "debug" ? "debug-" : ""
     const stem = `${w.surface}/${w.viewport.name}/${drawn}${slugOf(path)}-${sha256.slice(0, 12)}`
-    const image = save(w.out, `${stem}.png`, "png", png)
+    const image = await save(w.out, `${stem}.png`, "png", png)
     // A second picture a moment later: where the screen moved, a recording
     // shows what the still cannot.
     await w.page.waitForTimeout(1_000)
     const again = await w.camera.shoot()
-    const moving = hashOf(again) !== sha256
+    const moving = (await hashOf(again)) !== sha256
     const clip = moving ? await w.camera.record() : null
     const recording = clip
-      ? save(w.out, `${stem}.${clip.kind}`, clip.kind, clip.bytes)
+      ? await save(w.out, `${stem}.${clip.kind}`, clip.kind, clip.bytes)
       : undefined
     const module = moduleOf(path)
     snips.push({
@@ -170,20 +170,34 @@ export function pngSize(png: Buffer): { width: number; height: number } {
   return { width: png.readUInt32BE(16), height: png.readUInt32BE(20) }
 }
 
-export function hashOf(bytes: Buffer): string {
-  return createHash("sha256").update(bytes).digest("hex")
+/** A file's SHA-256, as home hashes content (`sha256Hex`). */
+export function hashOf(bytes: Buffer): Promise<string> {
+  return sha256Hex(new Uint8Array(bytes).buffer)
 }
 
-export function save(
+/**
+ * A 4-second recording of the emulator's screen, for an APK screen still
+ * moving after it was taken: both builds' walks use it.
+ */
+export async function recordScreen(
+  device: AndroidDevice
+): Promise<{ readonly bytes: Buffer; readonly kind: "mp4" } | null> {
+  await device.shell("screenrecord --time-limit 4 /sdcard/snip.mp4")
+  const bytes = await device.shell("cat /sdcard/snip.mp4")
+  await device.shell("rm -f /sdcard/snip.mp4")
+  return bytes.length > 0 ? { bytes, kind: "mp4" } : null
+}
+
+export async function save(
   out: string,
   name: string,
   kind: SnipFile["kind"],
   bytes: Buffer
-): SnipFile {
+): Promise<SnipFile> {
   const file = join(out, name)
   mkdirSync(dirname(file), { recursive: true })
   writeFileSync(file, bytes)
-  return { name, kind, bytes: bytes.length, sha256: hashOf(bytes) }
+  return { name, kind, bytes: bytes.length, sha256: await hashOf(bytes) }
 }
 
 /** Waits for the network to go quiet and fonts to load, then a beat for late paints. */
