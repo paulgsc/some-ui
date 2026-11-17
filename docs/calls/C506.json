@@ -1,0 +1,18 @@
+{
+  "id": "C506",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/speaker.ts",
+    "some-ui:apps/www/tests/record/voiced.ts"
+  ],
+  "chose": "A scene longer than 400 characters is said by home's speaker in parts of at most 400, split after a sentence (else between words), each given 4 minutes, and the parts' audio joined; a scene of one part is asked exactly as before, so its take and its kept copy are unchanged.",
+  "options": [
+    "parts of at most 400 characters, 4 minutes each",
+    "one request a scene with a longer wait (a custom fetch dispatcher past undici's 300 s)",
+    "parts by sentence, one sentence a request"
+  ],
+  "gray": "A scene said in parts can sound slightly different at a part's seam than one said whole, which the owner hears in the video; a longer single wait keeps the voice as before but leaves a scene's wait unbounded by its length, and one sentence a request multiplies the speaker's calls.",
+  "undo": "In speaker.ts, raise SPEAKER_CHUNK_CHARS past the speaker's 4,000-character limit, so every scene is one part.",
+  "refs": ["server#927"]
+}
