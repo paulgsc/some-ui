@@ -440,17 +440,18 @@ phone. Each runs:
    request. The phone pairs only over https, so the run makes its own CA and
    `compat/trust-ca.sh` puts it in the emulator's system store; the app's
    network config stays as shipped. The app pairs as a person would, through
-   the foyer's Settings and the Pair form with a sample code, driven over the
-   accessibility tree (`compat/ui.mjs`). Then it is pulled down once, pulled
-   in a burst, pulled while home answers 429 with `Retry-After`, sent to the
+   the foyer's Settings, its Home tab and the Pair form with a sample code,
+   driven over the accessibility tree (`compat/ui.mjs`). Then it is pulled
+   down once, pulled twice a second apart, pulled in a burst, pulled while home answers 429 with `Retry-After`, sent to the
    background and back, and cut off the network and given it back. It fails
    when what home heard over the whole run breaks HERD1's budget
    (`compat/budget.json`, checked by `compat/check-budget.mjs`): more than
    20 requests at once and one per 2 s after that, any request inside a
    429's `Retry-After`, or requests faster than one per 2 s once it ends;
-   or when two pulls a second apart cost home more than one pull alone. A level whose Pair form cannot be driven pairs the debug APK
-   instead and says "via debug build"; a level whose store cannot take the
-   CA says "no system CA" and runs unpaired.
+   or when two pulls a second apart cost home more than one pull alone. A
+   level whose Pair form cannot be driven pairs the debug APK instead and
+   says "via debug build"; a level whose store cannot take the CA says "no
+   system CA" and runs unpaired.
 3. **Refresh:** from the same run, it fails when a pull with home up does not
    end `pull checked: read`, or when a pull after the network returns does
    not, or the app restarted to get there.
