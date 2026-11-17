@@ -12,8 +12,9 @@
 # each one found; the script fails if any did.
 #
 # The row, <out-dir>/row.json: {api, launch, paired, storm, refresh}, each
-# "pass", "fail" or "not run" (paired also "no system CA", where the storm
-# ran unpaired), which the stamp job tabulates.
+# "pass", "fail" or "not run" (paired also "via debug build", where the
+# release APK's Pair form could not be driven, and "no system CA", where the
+# storm ran unpaired), which the stamp job tabulates.
 set -uo pipefail
 
 api=$1
@@ -51,14 +52,14 @@ openssl x509 -req -in "$certs/home.csr" -CA "$certs/ca.pem" -CAkey "$certs/ca.ke
 storm="not run"
 refresh="not run"
 paired="not run"
-COMPAT_CERTS=$certs bash "$here/storm.sh" "$apks/debug.apk" "$out/storm"
+COMPAT_CERTS=$certs bash "$here/storm.sh" "$apks/launch.apk" "$apks/debug.apk" "$out/storm"
 if [ -f "$out/storm/storm.json" ]; then
   read -r paired storm refresh < <(node -e '
 const r = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))
-const paired = r.paired === "paired" ? "pass" : r.paired === "no" ? "no-system-CA" : "fail"
+const paired = { paired: "pass", debug: "via-debug-build", no: "no-system-CA" }[r.paired] ?? "fail"
 console.log(paired, r.storm.length ? "fail" : "pass", r.refresh.length ? "fail" : "pass")
 ' "$out/storm/storm.json")
-  [ "$paired" = no-system-CA ] && paired="no system CA"
+  paired=${paired//-/ }
 fi
 
 node -e '
@@ -67,6 +68,6 @@ require("fs").writeFileSync(file, JSON.stringify({ api: Number(api), launch, pai
 ' "$api" "$launch" "$paired" "$storm" "$refresh" "$out/row.json"
 cat "$out/row.json"
 
-# A level with no system CA ran the storm unpaired: said in the row, not
-# failed.
+# A level that paired via the debug build, or ran unpaired for want of a
+# system CA, says so in its row and is not failed for it.
 [ "$launch" = pass ] && [ "$paired" != fail ] && [ "$storm" = pass ] && [ "$refresh" = pass ]

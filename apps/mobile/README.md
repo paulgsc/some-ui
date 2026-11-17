@@ -434,18 +434,20 @@ memory, a 3G link and its CPU capped, which stands in for an older, slower
 phone. Each runs:
 
 1. **Launch:** the launch test above, on the release APK.
-2. **Storm:** `compat/storm.sh`, on the debug APK (its page can be read over
-   DevTools; its JavaScript is the release build's). A stand-in home on the
-   runner (`compat/stub-home.mjs`, sample data only) counts every request.
-   The phone pairs only over https, so the run makes its own CA and
+2. **Storm:** `compat/storm.sh`, on the release APK, since R8, the stripped
+   console and release timing are what the stamp has to catch. A stand-in
+   home on the runner (`compat/stub-home.mjs`, sample data only) counts every
+   request. The phone pairs only over https, so the run makes its own CA and
    `compat/trust-ca.sh` puts it in the emulator's system store; the app's
-   network config stays as shipped. The app pairs through its own Pair form
-   with a sample code, then is pulled down once, pulled in a burst, pulled
-   while home answers 429 with `Retry-After`, sent to the background and
-   back, and cut off the network and given it back. It fails when home
-   hears more than the budget in `compat/budget.json` (HERD1's numbers).
-   Where the CA cannot be put in the store, the level says "no system CA"
-   and runs the same steps against the unpaired sync's plain-http address.
+   network config stays as shipped. The app pairs as a person would, through
+   the foyer's Settings and the Pair form with a sample code, driven over the
+   accessibility tree (`compat/ui.mjs`). Then it is pulled down once, pulled
+   in a burst, pulled while home answers 429 with `Retry-After`, sent to the
+   background and back, and cut off the network and given it back. It fails
+   when home hears more than the budget in `compat/budget.json` (HERD1's
+   numbers). A level whose Pair form cannot be driven pairs the debug APK
+   instead and says "via debug build"; a level whose store cannot take the
+   CA says "no system CA" and runs unpaired.
 3. **Refresh:** from the same run, it fails when a pull with home up does not
    end `pull checked: read`, or when a pull after the network returns does
    not, or the app restarted to get there.

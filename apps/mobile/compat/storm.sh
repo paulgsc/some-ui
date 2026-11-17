@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # The storm scenario (COMPAT2), run by android-compat.yml inside a booted,
-# slowed emulator after the launch test: the debug APK paired with a
+# slowed emulator after the launch test: the release APK paired with a
 # stand-in home on the runner (stub-home.mjs, reached at
 # https://10.0.2.2:8787), then pulled down, pulled in bursts, pulled while
 # home is busy, sent to the background and back, and cut off the network and
 # given it back. Fails when home hears more than the budget
 # (budget.json, HERD1's numbers) or when a pull does not refresh the page.
 #
-#   COMPAT_CERTS=<dir> bash apps/mobile/compat/storm.sh <debug-apk> <out-dir>
+#   COMPAT_CERTS=<dir> bash apps/mobile/compat/storm.sh <release-apk> <debug-apk> <out-dir>
 #
 # <dir> holds ca.pem, home.pem and home.key (run-level.sh makes them). The
 # phone pairs only over https, so the CA goes into the emulator's system
@@ -15,22 +15,26 @@
 # level runs the same phases against the unpaired sync's plain-http address
 # instead, and storm.json says `paired: "no"`.
 #
-# Writes <out-dir>/storm.json (each phase's request count and how its pulls
-# ended), stub.json (every request home heard), the native log and
-# screenshots; android-compat.yml reads storm.json into the stamp.
+# The release APK (R8, console stripped) is what the stamp is about, so it
+# pairs through the UI as a person would: the foyer's Settings, Pair..., the
+# address and a sample code typed into the form (ui.mjs, over the
+# accessibility tree). Only if that cannot be driven on a level does it fall
+# back to the debug APK, filled over DevTools (page.mjs), and storm.json then
+# says `paired: "debug"`, which the stamp shows as "paired via debug build".
 #
-# Why the debug APK: its page can be read over the WebView's DevTools socket
-# (page.mjs), which a release build closes. Its JavaScript is the release
-# APK's byte for byte (R8 shrinks only the Java), and the storm is the
-# page's. The launch test before this covers the release build itself.
+# Writes <out-dir>/storm.json (how it paired, each phase's request count and
+# how its pulls ended), stub-<phase>.json (every request home heard), the
+# native log and screenshots; android-compat.yml reads storm.json into the
+# stamp.
 #
 # A pull "refreshes" when the native log gets a `pull checked: read` line for
 # it (lib/pull-refresh's `note` port, as launch-test.sh reads it). Sample
 # data only: the stub answers fixtures and holds nothing personal.
 set -euo pipefail
 
-apk=$1
-out=${2:-storm-out}
+release_apk=$1
+debug_apk=$2
+out=${3:-storm-out}
 here=$(cd "$(dirname "$0")" && pwd)
 pkg=dev.paulgsc.someui
 control=http://127.0.0.1:8788
@@ -64,8 +68,6 @@ for _ in $(seq 1 20); do
   sleep 0.5
 done
 
-adb uninstall "$pkg" > /dev/null 2>&1 || true
-adb install -r "$apk" > /dev/null
 adb logcat -c
 adb logcat > "$out/logcat.txt" 2>&1 &
 logcat_pid=$!
@@ -82,18 +84,34 @@ page() { node "$here/page.mjs" "$1"; }
 budget_of() { node -e "console.log(require('$budget')$1)"; }
 requests() { curl -sf "$control/counts" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).total))'; }
 
-adb shell am start -W -n "$pkg/.WingPractice" > /dev/null
-if ! native_line "device storage: opened" 60; then
-  fail "the debug APK's database never opened"
-fi
+# A clean install of $1, opened at the foyer, its database open.
+install() {
+  adb uninstall "$pkg" > /dev/null 2>&1 || true
+  adb install -r "$1" > /dev/null
+  adb shell am start -W -n "$pkg/.MainActivity" > /dev/null
+  native_line "device storage: opened" 60
+}
+ui() { node "$here/ui.mjs" "$@" > /dev/null 2>> "$out/ui-errors.txt"; }
 
-if [ "$paired" = trusted ]; then
-  # Paired as a person pairs: the front desk's Pair form, filled and pressed
-  # through the page (the sample code is any well-formed one; the stub
-  # answers it with a sample token). Then back to the wing.
-  page "location.href = '/settings'; true" > /dev/null || true
+# Pairs as a person does, on the release APK: the foyer's gear, Pair..., the
+# address and code typed, Pair with <host>. The fields are found by their
+# HTML id or placeholder (device-section.tsx), whichever the WebView exposes.
+pair_by_ui() {
+  ui tap '^Settings$' &&
+    ui tap '^Pair\.\.\.$' &&
+    ui type '^pair-address$|^https://file-host\.home\.example$' 'https://10.0.2.2:8787' &&
+    ui type '^pair-code$|^K7QF 2M9X$' 'K7QF2M9X' &&
+    ui tap '^Pair with' &&
+    ui find '^Unpair$'
+}
+
+# The same through the debug APK's page, for a level where the UI cannot be
+# driven.
+pair_by_page() {
+  page "location.href = '/settings'; true" > /dev/null || return 1
   sleep 8
-  paired=$(page "(async () => {
+  local said
+  said=$(page "(async () => {
     const wait = (ms) => new Promise((r) => setTimeout(r, ms))
     const until = async (find, ms = 30000) => {
       for (const end = Date.now() + ms; Date.now() < end; await wait(250)) {
@@ -121,16 +139,42 @@ if [ "$paired" = trusted ]; then
     const said = [...document.querySelectorAll('[role=alert], [role=status]')].map((n) => n.textContent.trim()).filter(Boolean)
     return 'not paired: ' + (said.join(' / ') || 'no answer')
   })()" 2> "$out/pair-error.txt" | tr -d '"' || echo "the page could not be driven")
-  adb exec-out screencap -p > "$out/paired.png" || true
-  if [ "$paired" != paired ]; then
-    fail "pairing with the stand-in home failed: $paired"
+  echo "$said" > "$out/pair-debug.txt"
+  [ "$said" = paired ]
+}
+
+how=no
+if [ "$paired" = trusted ]; then
+  how=failed
+  if install "$release_apk" && pair_by_ui; then
+    how=paired
+  else
+    adb exec-out screencap -p > "$out/pair-ui-failed.png" || true
+    cp ui-last.xml "$out/pair-ui-last.xml" 2>/dev/null || true
+    echo "::warning title=Storm::the release APK's Pair form could not be driven on this level (pair-ui-failed.png, pair-ui-last.xml); pairing the debug APK instead"
+    if install "$debug_apk" && pair_by_page; then
+      how=debug
+    fi
   fi
-  adb shell am start -W -n "$pkg/.WingPractice" > /dev/null
+  adb exec-out screencap -p > "$out/paired.png" || true
+  if [ "$how" = failed ]; then
+    fail "pairing with the stand-in home failed on the release APK and the debug APK (pair-debug.txt, pair-ui-failed.png)"
+  fi
 else
-  # No trusted https on this level: the unpaired sync's address only, which
-  # is plain http and reaches what home publishes without a pairing.
-  page "localStorage.setItem('some-ui.device.home-server.v1', 'http://10.0.2.2:8787'); location.reload(); true" > /dev/null || true
+  # No trusted https on this level: the unpaired sync's address, typed into
+  # the front desk's Home server field, which is plain http and reaches
+  # what home publishes without a pairing.
+  if install "$release_apk"; then
+    ui tap '^Settings$' &&
+      ui type '^home-server$|^192\.168\.1\.10:3000$' '10.0.2.2:8787' &&
+      ui tap '^Sync lessons from home$' ||
+      fail "the release APK's Home server field could not be driven (ui-errors.txt)"
+  else
+    fail "the release APK's database never opened"
+  fi
 fi
+paired=$how
+adb shell am start -W -n "$pkg/.WingPractice" > /dev/null
 sleep 10
 
 size=$(adb shell wm size | tr -d '\r' | grep -oE "[0-9]+x[0-9]+" | tail -1 || true)
