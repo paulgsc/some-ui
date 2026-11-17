@@ -2013,6 +2013,45 @@
               "decision": "https://github.com/paulgsc/some-ui/issues/3102"
             }
           ]
+        },
+        {
+          "id": "AD4",
+          "kind": "RE8",
+          "property": "work",
+          "claim": "Home's router answers every request but its health checks within 8 s of reading it, 2 s inside the phone's deadline, so a phone whose request reaches home in time hears it busy rather than away.",
+          "requirement": "Every request file_host's router serves but the health checks (/health, /ready) is answered within 8 s, under the phone's 10 s deadline. A request home has no room for is answered 503 service_overloaded with Retry-After: 5 rather than left waiting: at once when all 100 of its slots are taken, within 3 s of asking for a database connection when none comes, and at the 8 s deadline otherwise. A pool timeout a handler turns into its own error (among them the dedup cache, the tabs' deletes, prune and reconcile, hopium and mood events) is answered within the bound but as that error, not as busy. The bound starts once the request head is parsed; time on the network and in Caddy before that is outside it.",
+          "bound": {
+            "value": 8,
+            "unit": "seconds to an answer, per request",
+            "tighter": "lower"
+          },
+          "verdict": "holds",
+          "conclusion": "Under a storm past every limit, home's router serves each request or tells it busy with when to come back within 8 s of reading it; none waits there until the phone gives up. Time on the network and in Caddy, before home reads the request and after it answers, is outside that bound.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "The deadline sits outermost, the load shed directly over one concurrency limit every route shares, so a full limit is shed at once; the pool's acquire is bounded at 3 s and a pool timeout is answered 503, not 500.",
+              "ref": "server:apps/servers/file_host/src/admission.rs"
+            },
+            {
+              "class": "structural",
+              "says": "Every shed is counted in refusals_total{stage=\"http\"} as load_shed, timeout or pool_timeout.",
+              "ref": "server:apps/servers/file_host/src/metrics/refusals.rs"
+            }
+          ],
+          "proof": [
+            "server:apps/servers/file_host/src/admission.rs#a_storm_past_every_limit_is_answered_within_the_bound",
+            "server:apps/servers/file_host/src/admission.rs#a_full_limit_is_shed_at_once_on_every_module",
+            "server:apps/servers/file_host/src/admission.rs#work_past_the_deadline_is_answered_busy_at_it",
+            "server:apps/servers/file_host/src/admission.rs#a_pool_with_no_connection_free_is_answered_busy",
+            "server:apps/servers/file_host/src/admission.rs#a_cross_origin_busy_answer_is_readable",
+            "server:apps/servers/file_host/src/admission.rs#the_exempt_modules_are_the_health_checks"
+          ],
+          "watch": {
+            "by": "alert",
+            "ref": "server:infra/prometheus/rules/home.yml"
+          },
+          "amendments": []
         }
       ]
     },
