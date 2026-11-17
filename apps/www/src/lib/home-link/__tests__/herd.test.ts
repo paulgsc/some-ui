@@ -246,18 +246,19 @@ async function flush(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0))
 }
 
-/** Moves the clock on by `ms`, running what falls due on the way. */
+/** Moves the clock on by `ms`, running what falls due on the way and nothing after. */
 async function pass(clock: FakeClock, ms: number): Promise<void> {
   const until = clock.now() + ms
   await flush()
-  for (let guard = 0; guard < 10_000; guard += 1) {
-    const before = clock.now()
-    if (!clock.next() || clock.now() > until) break
-    expect(clock.now()).toBeGreaterThanOrEqual(before)
+  for (
+    let due = clock.nextAt();
+    due !== null && due <= until;
+    due = clock.nextAt()
+  ) {
+    clock.next()
     await flush()
   }
-  // `next` may have stepped past `until` without running a timer; settle at it.
-  if (clock.now() < until) clock.pass(until - clock.now())
+  clock.pass(until - clock.now())
   await flush()
 }
 
