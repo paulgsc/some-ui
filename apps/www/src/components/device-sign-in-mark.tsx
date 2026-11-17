@@ -7,7 +7,9 @@
  * `SignInWatch`, mounted by the app shell on every screen (the session
  * player's too, where the header steps aside), runs the watch that asks
  * home (`lib/home-link/standing`) and says once, as a `Notice`, that home
- * doesn't know the phone. Neither sends anything itself. Their words are
+ * doesn't know the phone, and keeps what the first run's welcome needs to
+ * tell a restore from an unpair (`lib/home-link/first-run`'s
+ * `watchPairing`, SIGNIN2). Neither sends anything itself. Their words are
  * `lib/home-link/sign-in-words`' alone.
  */
 import type { JSX } from "react"
@@ -33,6 +35,7 @@ import {
 import { pageOf } from "@/lib/front-desk"
 import type { HomeLinkState } from "@/lib/home-link"
 import { homeLink, useHomeLink } from "@/lib/home-link"
+import { watchPairing } from "@/lib/home-link/first-run"
 import type { SignedIn } from "@/lib/home-link/sign-in-words"
 import { SIGN_IN, signInView, TONE_OF } from "@/lib/home-link/sign-in-words"
 import { watchStanding } from "@/lib/home-link/standing"
@@ -54,6 +57,7 @@ const TONES = {
 /** The watch, and the notice when home doesn't know the phone. */
 export const SignInWatch = (): JSX.Element | null => {
   useEffect(() => watchStanding({ link: homeLink(), doc: document }), [])
+  useEffect(() => watchPairing(homeLink()), [])
   const { link } = useHomeLink()
   if (link.kind !== "paired" || link.standing.kind !== "forgotten") return null
   return (

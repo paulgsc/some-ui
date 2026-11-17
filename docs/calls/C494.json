@@ -1,0 +1,13 @@
+{
+  "id": "C494",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "server:migrations/20261117000100_add_pairing_to_auth_session.up.sql"
+  ],
+  "chose": "auth_session.paired_on keeps the UTC day a phone paired (YYYY-MM-DD), phones only; a browser session keeps no creation time.",
+  "options": ["the UTC day", "the unix second"],
+  "gray": "The epic's \"since &lt;day&gt;\" needs only the day, and a day says when a phone joined without timing anyone's use (invariant 10).",
+  "undo": "Store unix seconds in a new column; paired_on is read only by AuthRepository::phones.",
+  "refs": ["#3092", "#3086", "#2123", "server#925"]
+}

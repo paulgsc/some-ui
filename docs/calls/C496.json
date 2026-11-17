@@ -1,0 +1,18 @@
+{
+  "id": "C496",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/handlers/auth.rs",
+    "server:apps/servers/file_host/src/auth/pairing.rs"
+  ],
+  "chose": "A phone is shown to its owner by a random phoneId (16 bytes, base64url, never derived from the token or its hash), the day it paired, and the owner's own name for it; /auth/pairing/finish answers the same phoneId so the phone can show its own.",
+  "options": [
+    "a random id, the day, and the owner's own name",
+    "a random id and the day only",
+    "the device model or User-Agent"
+  ],
+  "gray": "The owner (2026-11-17): \"yes, let me name each phone too\". User-Agent is barred (invariant 3) and a device model would say what device it is (invariant 7), so the only name is one the owner typed.",
+  "undo": "Drop label from PhoneView and auth_session; phones are then told apart by id and day.",
+  "refs": ["#3092", "#3086", "#2123", "server#925"]
+}
