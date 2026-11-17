@@ -9,6 +9,7 @@ import type { HomeAnswer } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
 import type { HomeRequest } from "@/lib/device-backend/native-http"
+import { BURST } from "@/lib/home-link/pace"
 import type { CredentialPort, HomeLink } from "@/lib/home-link/runtime"
 import { createHomeLink, homeBusyFor } from "@/lib/home-link/runtime"
 
@@ -510,7 +511,7 @@ describe("a look at home's word on itself (#2843)", () => {
     })
     await home.link.load()
     // Use up the pace's burst, so the next asks wait their turns.
-    for (let i = 0; i < 49; i += 1) {
+    for (let i = 0; i < BURST; i += 1) {
       await home.link.keep((send) => send("GET", "/aph"))
     }
     next = { status: 429, body: "", retryAfter: "60" }
@@ -523,7 +524,9 @@ describe("a look at home's word on itself (#2843)", () => {
     home.pass(2_000)
     await kept
     await settle()
-    home.pass(2_000)
+    // Home's 429 spent the burst and doubled the pace (HERD1): the look's
+    // turn comes 4 s on.
+    home.pass(4_000)
     expect(await looked).toEqual({
       kind: "done",
       value: { status: 429, body: "" },

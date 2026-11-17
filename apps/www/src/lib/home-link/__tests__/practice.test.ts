@@ -232,6 +232,8 @@ function watched(): { want: ReturnType<typeof vi.fn>; stop: () => void } {
     getSnapshot: () => INITIAL_KEPT,
     subscribe: () => (): void => undefined,
     want,
+    // The watch's own first ask: the lane is idle here, so it asks for a run.
+    nudge: want,
     pull: () => Promise.reject(new Error("the watch never pulls")),
   }
   const stop = watchKept(

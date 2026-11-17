@@ -59,6 +59,7 @@ import { isFileHostTimeout } from "@/lib/file-host-config/client"
 import type { HomeAddress } from "./address"
 import type { HomeLinkEvent, HomeLinkState, PairFailure } from "./model"
 import { awayHeld, homeBusy, INITIAL, step, working, writing } from "./model"
+import type { PaceMemory } from "./pace"
 import { createPace } from "./pace"
 
 /** The phone's sealed record (`HomeCredentialPlugin`): read, kept, forgotten. */
@@ -86,6 +87,8 @@ export type HomeLinkPorts = {
    * returns an unsubscribe. Held for the page's life.
    */
   onNetwork?: (listener: () => void) => () => void
+  /** Where the pace is kept between page loads (HERD1, `./pace`). */
+  paceMemory?: PaceMemory | null
 }
 
 /** How long home's busy lasts when its `Retry-After` can't be read. */
@@ -104,6 +107,12 @@ export function homeBusyFor(retryAfter: string | undefined): number {
   if (!/^\d+$/.test(text)) return HOME_BUSY_MS
   const ms = Number(text) * 1_000
   return Math.min(Math.max(ms, HOME_BUSY_MIN_MS), HOME_BUSY_MAX_MS)
+}
+
+/** Home's `Retry-After` in ms, when it sent whole seconds; null otherwise. */
+export function retryAfterMs(retryAfter: string | undefined): number | null {
+  const text = retryAfter?.trim() ?? ""
+  return /^\d+$/.test(text) ? Number(text) * 1_000 : null
 }
 
 /** What the link answers for home while home's busy lasts: nothing was sent. */
@@ -253,7 +262,8 @@ export type HomeLink = {
   stop: () => void
   /**
    * Ends a hold away from home (AW1), so the next ask goes at once: the
-   * person pulled to check again.
+   * person pulled to check again. The stretch's tries stay, so the next
+   * silence holds longer (HERD1); only a network change starts them over.
    */
   lookAgain: () => void
   /**
@@ -292,7 +302,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       ? state.drain.kind === "draining" && state.drain.stopping
       : working(state.activity) && state.activity.stopping
 
-  const pace = createPace(ports)
+  const pace = createPace(ports, ports.paceMemory ?? null)
 
   // Home's busy (AD3): the cancel of the timer that ends it, while it lasts.
   let cancelCooling: (() => void) | null = null
@@ -311,6 +321,9 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     return false
   }
   const heardBusy = (answer: HomeAnswer): void => {
+    // Home's bucket is empty: nothing is left of the pace's burst, and its
+    // wait is how long one request takes to come back (HERD1).
+    pace.spend(retryAfterMs(answer.retryAfter))
     dispatch({
       type: "homeBusy",
       until: ports.now() + homeBusyFor(answer.retryAfter),
@@ -393,12 +406,12 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
         throw error
       }
     )
-  const lookAgain = (): void => {
+  const lookAgain = (fresh: boolean): void => {
     cancelLapse?.()
     cancelLapse = null
-    dispatch({ type: "lookAgain" })
+    dispatch({ type: "lookAgain", fresh })
   }
-  ports.onNetwork?.(lookAgain)
+  ports.onNetwork?.(() => lookAgain(true))
 
   /**
    * `call` sent at its turn on the pace and tracked, its `429` starting
@@ -774,7 +787,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       pace.leave(true)
     },
 
-    lookAgain,
+    lookAgain: (): void => lookAgain(false),
 
     answered(): void {
       reached(true)

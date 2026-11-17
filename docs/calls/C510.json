@@ -1,0 +1,16 @@
+{
+  "id": "C510",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": ["some-ui:apps/www/src/lib/home-link/pace.ts"],
+  "chose": "The pace lets 20 requests to home go at once (BURST), down from 49, and keeps what is left of it across page loads in the phone's own storage, so closing and opening the app hands it no new burst.",
+  "options": [
+    "a burst of 20, kept across page loads",
+    "a burst of 49, kept across page loads",
+    "a burst of 10, kept across page loads",
+    "a burst read from home's own word on its limit, once home says it (a server change)"
+  ],
+  "gray": "Home's RATE_LIMIT is encrypted (two digits), so no check settles how big a burst it takes; a smaller burst makes a pull of many lanes slower to finish on the phone, which the owner would notice, and a larger one is refused by a home whose limit is under it.",
+  "undo": "Set BURST in apps/www/src/lib/home-link/pace.ts; delete the home-link:pace key's write (storedPace) to start every page load whole again.",
+  "refs": ["#3100", "#3101"]
+}

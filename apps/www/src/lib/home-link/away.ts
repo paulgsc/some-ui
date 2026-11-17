@@ -51,8 +51,12 @@ export type AwayEvent =
   | { readonly type: "answered" }
   /** The hold's time has passed. */
   | { readonly type: "lapsed" }
-  /** The network changed, or the person pulled to check again. */
-  | { readonly type: "lookAgain" }
+  /**
+   * The network changed (`fresh`: a new network, so the stretch's tries
+   * start over), or the person pulled or tapped Send now: the hold ends,
+   * and the next silence holds as long as the tries say (HERD1).
+   */
+  | { readonly type: "lookAgain"; readonly fresh: boolean }
 
 /** The first hold of a stretch: longer than one try's own wait. */
 export const FIRST_HOLD_MS = 30_000
@@ -88,9 +92,13 @@ export function stepAway(away: Away | null, event: AwayEvent): Away | null {
       return away?.heldUntil == null ? away : { ...away, heldUntil: null }
     }
     case "lookAgain": {
-      return away === null || (away.heldUntil === null && away.tries === 0)
+      if (away === null) return away
+      // A pull after a pull keeps the stretch's tries: it does not start
+      // the backoff over (HERD1). A new network does.
+      const tries = event.fresh ? 0 : away.tries
+      return away.heldUntil === null && away.tries === tries
         ? away
-        : { ...away, tries: 0, heldUntil: null }
+        : { ...away, tries, heldUntil: null }
     }
     default: {
       return assertNever(event)

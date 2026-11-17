@@ -1,0 +1,15 @@
+{
+  "id": "C511",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": ["some-ui:apps/www/src/lib/home-link/pace.ts"],
+  "chose": "After home's 429, the pace adds home's Retry-After between requests (at most doubling the gap each time, at most a minute apart, its burst as much smaller) and keeps that for a day across page loads, then goes back to one each 2 s.",
+  "options": [
+    "learn from Retry-After, kept a day",
+    "learn from Retry-After for the page load only",
+    "never learn: wait out each 429 and go on at one each 2 s"
+  ],
+  "gray": "How long the phone stays slower after home turned it away is felt as how quickly a pull finishes, and no check or earlier decision says it; never learning leaves a home whose limit is under the pace refusing most requests, and each lane's run failing part way, for as long as the app is open.",
+  "undo": "Set LEARNED_MS in apps/www/src/lib/home-link/pace.ts, or pass null to pace.spend in runtime.ts's heardBusy to stop learning.",
+  "refs": ["#3100", "#3101"]
+}
