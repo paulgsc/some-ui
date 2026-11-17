@@ -50,16 +50,29 @@ webview=$(adb shell dumpsys webviewupdate | tr -d '\r' \
 webview=${webview:-unknown}
 
 # The bundle's floor: Vite's default target (baseline-widely-available),
-# about Chrome 111. Below it the page loads blank, which on a real phone
-# cannot happen once Play has updated Android System WebView (Android 7
-# takes up to about 119), so such a level is not tested and its row says
-# why rather than reading red.
+# about Chrome 111, and the app's android.minWebViewVersion
+# (apps/mobile/capacitor.config.ts). Below it Capacitor opens the update
+# page (webview-too-old.html, #3117) in place of the app, so such a level
+# checks only that the page shows, by its title in the accessibility tree,
+# and keeps a screenshot. A phone updated from Play is past the floor
+# (Android 7 takes up to about 119), so the rest is not run.
 MIN_WEBVIEW=111
+OLD_WEBVIEW_TITLE="This phone needs a newer WebView"
 major=${webview%%.*}
 if [[ "$major" =~ ^[0-9]+$ ]] && [ "$major" -lt "$MIN_WEBVIEW" ]; then
   why="stock WebView $major (needs ≥$MIN_WEBVIEW)"
-  write_row "$why" "$why" "$why" "$why"
-  echo "::notice title=API $api::$why: the image's WebView is older than the bundle needs; a phone updated from Play is not. Not tested."
+  shown=blank
+  adb install -r "$apks/launch.apk" > /dev/null &&
+    adb shell am start -W -n dev.paulgsc.someui/.MainActivity > /dev/null &&
+    (cd "$out/launch" && UI_WAIT_SECONDS=60 node "$here/ui.mjs" find "$OLD_WEBVIEW_TITLE" > /dev/null 2> ui-errors.txt) &&
+    shown="update page shown"
+  adb exec-out screencap -p > "$out/launch/old-webview.png" || true
+  write_row "$shown" "$why" "$why" "$why"
+  if [ "$shown" = blank ]; then
+    echo "::error title=API $api::$why: the app did not show its update page."
+    exit 1
+  fi
+  echo "::notice title=API $api::$why: the app showed its update page; the rest is not run."
   exit 0
 fi
 
