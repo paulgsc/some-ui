@@ -9,7 +9,8 @@ import type { HomeAnswer } from "@some-ui/core-utils"
 import { describe, expect, it, vi } from "vitest"
 
 import type { HomeRequest } from "@/lib/device-backend/native-http"
-import { BURST } from "@/lib/home-link/pace"
+import type { HomeLinkState } from "@/lib/home-link/model"
+import { BURST, MS_PER_REQUEST } from "@/lib/home-link/pace"
 import type { CredentialPort, HomeLink } from "@/lib/home-link/runtime"
 import { createHomeLink, homeBusyFor } from "@/lib/home-link/runtime"
 
@@ -83,6 +84,22 @@ function setup(options: Options = {}): Home {
     hide: (): void => hide(),
     pass: clock.pass,
   }
+}
+
+/** Runs the clock a turn of the pace at a time until `work` settles. */
+async function drive<T>(home: Home, work: Promise<T>): Promise<T> {
+  const waiting = Symbol("waiting")
+  for (let turn = 0; turn < 10; turn += 1) {
+    const now = await Promise.race([
+      work,
+      new Promise<typeof waiting>((resolve) =>
+        setTimeout(() => resolve(waiting), 0)
+      ),
+    ])
+    if (now !== waiting) return now
+    home.pass(MS_PER_REQUEST)
+  }
+  return work
 }
 
 describe("the home link", () => {
@@ -162,6 +179,16 @@ describe("the home link", () => {
       [{ answer: () => ({ status: 422, body: "{}" }) }, "bad-code"],
       [{ answer: () => ({ status: 429, body: "{}" }) }, "too-many"],
       [{ answer: () => ({ status: 503, body: "{}" }) }, "not-set-up"],
+      [
+        {
+          answer: () => ({
+            status: 503,
+            body: JSON.stringify({ error: { code: "service_overloaded" } }),
+            retryAfter: "5",
+          }),
+        },
+        "busy",
+      ],
       [{ answer: () => ({ status: 404, body: "" }) }, "not-home"],
       [{ answer: () => ({ status: 200, body: "<html>" }) }, "other"],
       [
@@ -169,7 +196,10 @@ describe("the home link", () => {
           answer: () =>
             Promise.reject(
               new Error("couldn't", {
-                cause: new Error("javax.net.ssl.SSLHandshakeException"),
+                // A certificate failure, not a TLS connection dropped (NA1).
+                cause: new Error(
+                  "javax.net.ssl.SSLHandshakeException: java.security.cert.CertPathValidatorException: Trust anchor for certification path not found."
+                ),
               })
             ),
         },
@@ -292,7 +322,7 @@ describe("the home link", () => {
         record: JSON.stringify({ base: HOME.base, token: "t" }),
       })
       await home.link.load()
-      const outcome = await home.link.sync(async (get) => {
+      const outcome = await home.link.sync(HOME.base, async (get) => {
         await get(`${HOME.base}/curriculum/manifest.json`, '"v1"')
         if (stop === "tap") home.link.stop()
         else home.hide()
@@ -417,6 +447,7 @@ describe("the home link", () => {
     // The sync too, while it lasts (the lanes' runs: home-busy.test.ts).
     home.pass(29_999)
     const synced = await home.link.sync(
+      HOME.base,
       async (get) => (await get(`${HOME.base}/curriculum/manifest.json`)).status
     )
     expect(synced).toEqual({ kind: "done", value: 429 })
@@ -498,6 +529,239 @@ describe("the home link", () => {
     expect(home.link.getSnapshot().homeBusyUntil).toBeNull()
   })
 
+  it("starts home's busy from a pairing's 429, and still sends an Unpair during it (AD3, #3127)", async () => {
+    let busy = true
+    const home = setup({
+      answer: (call) => {
+        if (call.url.endsWith("/auth/pairing/finish") && busy) {
+          busy = false
+          return { status: 429, body: "", retryAfter: "30" }
+        }
+        return {
+          status: 200,
+          body: JSON.stringify({ token: "phone-token", expiresAt: 1 }),
+        }
+      },
+    })
+    await home.link.load()
+    await home.link.pair(HOME, "K7QF2M9X")
+    expect(home.link.getSnapshot()).toMatchObject({
+      pairFailure: { failure: "too-many" },
+      homeBusyUntil: 30_000,
+    })
+    // A pairing is the person's own, and goes during the wait, at the
+    // pace's next turn (the 429 spent its burst, HERD1).
+    await drive(home, home.link.pair(HOME, "K7QF2M9X"))
+    expect(home.link.getSnapshot().link.kind).toBe("paired")
+    await drive(home, home.link.unpair())
+    expect(home.link.getSnapshot().homeBusyUntil).toBe(30_000)
+    expect(home.sent.map((call) => call.url)).toEqual([
+      `${HOME.base}/auth/pairing/finish`,
+      `${HOME.base}/auth/pairing/finish`,
+      `${HOME.base}/auth/sign-out`,
+    ])
+    expect(home.link.getSnapshot().link).toMatchObject({
+      kind: "unpaired",
+      note: "unpaired",
+    })
+  })
+
+  it("starts home's busy from every request the person sends, on a 429 and on home's overload (AD3, #3127)", async () => {
+    const busyAnswers: ReadonlyArray<[string, HomeAnswer]> = [
+      ["429", { status: 429, body: "", retryAfter: "30" }],
+      [
+        "overload",
+        {
+          status: 503,
+          body: JSON.stringify({ error: { code: "service_overloaded" } }),
+          retryAfter: "30",
+        },
+      ],
+    ]
+    const TOKEN = {
+      status: 200,
+      body: JSON.stringify({ token: "phone-token", expiresAt: 1 }),
+    }
+    const paths: ReadonlyArray<
+      [string, (busy: HomeAnswer) => Promise<HomeLinkState>]
+    > = [
+      [
+        "a pairing",
+        async (busy): Promise<HomeLinkState> => {
+          const home = setup({ answer: () => busy })
+          await home.link.load()
+          await home.link.pair(HOME, "K7QF2M9X")
+          return home.link.getSnapshot()
+        },
+      ],
+      [
+        "the sign-out of a pairing the phone could not keep",
+        async (busy): Promise<HomeLinkState> => {
+          const home = setup({
+            answer: (call) =>
+              call.url.endsWith("/auth/sign-out") ? busy : TOKEN,
+            write: () => Promise.reject(new Error("keystore")),
+          })
+          await home.link.load()
+          await home.link.pair(HOME, "K7QF2M9X")
+          return home.link.getSnapshot()
+        },
+      ],
+      [
+        "an Unpair's sign-out",
+        async (busy): Promise<HomeLinkState> => {
+          const home = setup({
+            record: JSON.stringify({ base: HOME.base, token: "t", id: "p1" }),
+            answer: () => busy,
+          })
+          await home.link.load()
+          await home.link.unpair()
+          return home.link.getSnapshot()
+        },
+      ],
+    ]
+    for (const [path, run] of paths) {
+      for (const [kind, busy] of busyAnswers) {
+        const snapshot = await run(busy)
+        expect(snapshot.homeBusyUntil, `${path}, ${kind}`).toBe(30_000)
+        expect(snapshot.busyHomes, `${path}, ${kind}`).toEqual({
+          [HOME.base]: 30_000,
+        })
+      }
+    }
+  })
+
+  it("starts home's busy from an Unpair's sign-out, and keeps none of it for the next home paired (#3127)", async () => {
+    const OTHER = {
+      base: "https://other.example/api/v1",
+      host: "other.example",
+    }
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t", id: "p1" }),
+      answer: (call) =>
+        call.url.endsWith("/auth/sign-out")
+          ? { status: 429, body: "", retryAfter: "600" }
+          : {
+              status: 200,
+              body: JSON.stringify({ token: "phone-token", expiresAt: 1 }),
+            },
+    })
+    await home.link.load()
+    await home.link.unpair()
+    expect(home.link.getSnapshot()).toMatchObject({
+      link: { kind: "unpaired" },
+      homeBusyUntil: 600_000,
+    })
+    await drive(home, home.link.pair(OTHER, "K7QF2M9X"))
+    expect(home.link.getSnapshot()).toMatchObject({
+      link: { kind: "paired", base: OTHER.base },
+      homeBusyUntil: null,
+    })
+  })
+
+  it("keeps none of a busy a failed pairing heard for the home then paired (#3127)", async () => {
+    const OTHER = {
+      base: "https://other.example/api/v1",
+      host: "other.example",
+    }
+    const home = setup({
+      answer: (call) =>
+        call.url.startsWith(OTHER.base)
+          ? { status: 429, body: "", retryAfter: "600" }
+          : {
+              status: 200,
+              body: JSON.stringify({ token: "phone-token", expiresAt: 1 }),
+            },
+    })
+    await home.link.load()
+    await home.link.pair(OTHER, "K7QF2M9X")
+    expect(home.link.getSnapshot().homeBusyUntil).toBe(600_000)
+    await drive(home, home.link.pair(HOME, "K7QF2M9X"))
+    expect(home.link.getSnapshot()).toMatchObject({
+      link: { kind: "paired", base: HOME.base },
+      homeBusyUntil: null,
+    })
+  })
+
+  it("puts a busy that comes back after an Unpair on the home that said it, never the home paired since (#3127)", async () => {
+    const OTHER = {
+      base: "https://other.example/api/v1",
+      host: "other.example",
+    }
+    let late: (answer: HomeAnswer) => void = () => undefined
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t", id: "p1" }),
+      answer: (call) => {
+        if (call.url === `${HOME.base}/auth/session`) {
+          return new Promise<HomeAnswer>((resolve) => {
+            late = resolve
+          })
+        }
+        return {
+          status: 200,
+          body: JSON.stringify({ token: "phone-token", expiresAt: 1 }),
+        }
+      },
+    })
+    await home.link.load()
+    const checked = home.link.check()
+    await drive(home, home.link.unpair())
+    await drive(home, home.link.pair(OTHER, "K7QF2M9X"))
+    late({ status: 429, body: "", retryAfter: "600" })
+    await checked
+    expect(home.link.getSnapshot()).toMatchObject({
+      link: { kind: "paired", base: OTHER.base },
+      homeBusyUntil: null,
+    })
+    expect(Object.keys(home.link.getSnapshot().busyHomes)).toEqual([HOME.base])
+  })
+
+  it("keeps an unpaired Sync's busy for the home it read from: paired with it, the wait still holds, and a Sync elsewhere never waits on it (#3127)", async () => {
+    const OTHER = {
+      base: "https://other.example/api/v1",
+      host: "other.example",
+    }
+    let busy = true
+    const home = setup({
+      answer: (call) => {
+        if (call.url.endsWith("/auth/pairing/finish")) {
+          return {
+            status: 200,
+            body: JSON.stringify({ token: "phone-token", expiresAt: 1 }),
+          }
+        }
+        if (call.url.startsWith(HOME.base) && busy) {
+          busy = false
+          return { status: 429, body: "", retryAfter: "600" }
+        }
+        return { status: 200, body: "{}" }
+      },
+    })
+    await home.link.load()
+    const manifest = (base: string): Promise<unknown> =>
+      home.link.sync(
+        base,
+        async (get) => (await get(`${base}/curriculum/manifest.json`)).status
+      )
+    expect(await manifest(HOME.base)).toEqual({ kind: "done", value: 429 })
+    expect(home.link.getSnapshot().busyHomes).toEqual({
+      [HOME.base]: 600_000,
+    })
+    // Another home said nothing: its Sync goes.
+    const sent = home.sent.length
+    expect(await drive(home, manifest(OTHER.base))).toEqual({
+      kind: "done",
+      value: 200,
+    })
+    expect(home.sent).toHaveLength(sent + 1)
+    // Paired with the busy home, its wait holds for every lane.
+    await drive(home, home.link.pair(HOME, "K7QF2M9X"))
+    expect(home.link.getSnapshot()).toMatchObject({
+      link: { kind: "paired", base: HOME.base },
+      homeBusyUntil: 600_000,
+    })
+  })
+
   it("passes on a 503 that is one of home's caps (no Retry-After) or not its overload, and is not busy for it (HERD2)", async () => {
     const answers: Array<HomeAnswer> = [
       {
@@ -571,6 +835,7 @@ describe("the home link", () => {
     await home.link.load()
     let release: () => void = () => undefined
     const syncing = home.link.sync(
+      HOME.base,
       () =>
         new Promise<string>((resolve) => {
           release = (): void => resolve("ok")

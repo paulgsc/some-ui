@@ -28,6 +28,8 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 
+import type { HomeBlockedReason } from "@/lib/device-backend/native-http/no-answer"
+
 import type { Away, AwayEvent } from "./away"
 import { held, stepAway } from "./away"
 
@@ -45,6 +47,10 @@ export type UnpairedNote =
 export type PairFailure =
   | "unreachable"
   | "untrusted"
+  /** This phone couldn't find home's name on this network (NA1). */
+  | "no-name"
+  /** Home is shedding load for a while (a 503 `service_overloaded`). */
+  | "busy"
   | "bad-code"
   | "too-many"
   | "not-set-up"
@@ -117,8 +123,16 @@ export type HomeLinkState = {
     readonly failure: PairFailure
     readonly base: string
   } | null
-  /** When home's busy ends (AD3, `./runtime`); null while it is not busy. */
+  /**
+   * When home's busy ends (AD3, `./runtime`); null while it is not busy.
+   * The paired home's, from `busyHomes`; unpaired, the latest any said.
+   */
   readonly homeBusyUntil: number | null
+  /**
+   * When each home that said it is busy is done with it (#3127): a busy
+   * stays with the home that said it, so pairing another starts with none.
+   */
+  readonly busyHomes: Readonly<Record<string, number>>
   /** The stretch away from home under way (AW1, `./away`); null at home. */
   readonly away: Away | null
   /**
@@ -127,6 +141,17 @@ export type HomeLinkState = {
    * (`./kept-watch`). A network change, a pull or Send now ask themselves.
    */
   readonly awayReleases: number
+  /**
+   * The last request to home failed before home could answer, for `reason`
+   * (NA1, #3099): this phone couldn't find home's name on this network, or
+   * doesn't trust home's certificate. Held as a silence is (AW1, C476), but
+   * said as itself, never as away; the next answer, a network change, a
+   * silence or a new pairing clears it. Null otherwise.
+   */
+  readonly blocked: {
+    readonly reason: HomeBlockedReason
+    readonly at: number
+  } | null
 }
 
 export type HomeLinkEvent =
@@ -165,9 +190,15 @@ export type HomeLinkEvent =
   /** The sync or send in flight ended, finished or stopped. */
   | { readonly type: "workEnded" }
   /** Home answered `429`, asking to be left alone until `until`. */
-  | { readonly type: "homeBusy"; readonly until: number }
+  | {
+      readonly type: "homeBusy"
+      readonly until: number
+      /** The home that said it: the base its request went to (#3127). */
+      readonly base: string
+    }
   /** The time home asked for has passed. */
-  | { readonly type: "cooled" }
+  /** Every home's busy that ended by `at` is over. */
+  | { readonly type: "cooled"; readonly at: number }
   /**
    * Home answered pairing `id`'s key (`known`) or refused it, on a request
    * sent at `at` (SIGNIN1): dropped for any other pairing, so a late answer
@@ -182,6 +213,14 @@ export type HomeLinkEvent =
     }
   /** Away from home (AW1, `./away`): a request found no answer, or one did. */
   | AwayEvent
+  /** A request failed for `reason` before home could answer (NA1). */
+  | {
+      readonly type: "blocked"
+      readonly reason: HomeBlockedReason
+      readonly at: number
+    }
+  /** Home answered a request, after one was blocked (NA1). */
+  | { readonly type: "unblocked" }
 
 export const INITIAL: HomeLinkState = {
   link: { kind: "reading" },
@@ -189,8 +228,10 @@ export const INITIAL: HomeLinkState = {
   drain: { kind: "idle" },
   pairFailure: null,
   homeBusyUntil: null,
+  busyHomes: {},
   away: null,
   awayReleases: 0,
+  blocked: null,
 }
 
 const idle = { kind: "idle" } as const
@@ -259,6 +300,25 @@ export function step(
   state: HomeLinkState,
   event: HomeLinkEvent
 ): HomeLinkState {
+  const next = advance(state, event)
+  const until = busyUntil(next)
+  return until === next.homeBusyUntil ? next : { ...next, homeBusyUntil: until }
+}
+
+/**
+ * The busy the link shows and its lanes keep (#3127): the paired home's, or,
+ * unpaired, the latest any home said. A request keeps its own home's busy
+ * (`./runtime`), so a Sync unpaired never waits on another home's.
+ */
+function busyUntil(state: HomeLinkState): number | null {
+  if (state.link.kind === "paired") {
+    return state.busyHomes[state.link.base] ?? null
+  }
+  const ends = Object.values(state.busyHomes)
+  return ends.length === 0 ? null : Math.max(...ends)
+}
+
+function advance(state: HomeLinkState, event: HomeLinkEvent): HomeLinkState {
   const { link, activity } = state
   switch (event.type) {
     case "read": {
@@ -292,12 +352,9 @@ export function step(
     case "paired": {
       if (activity.kind !== "pairing" || activity.base !== event.base)
         return state
-      // Pairing again with another home (SIGNIN3): the old one's busy is
-      // not this one's.
-      const elsewhere = link.kind === "paired" && link.base !== event.base
       return {
         ...state,
-        homeBusyUntil: elsewhere ? null : state.homeBusyUntil,
+        blocked: null,
         link: {
           kind: "paired",
           base: event.base,
@@ -333,6 +390,7 @@ export function step(
         activity: idle,
         pairFailure: null,
         away: null,
+        blocked: null,
       }
     }
     case "unpairFailed": {
@@ -372,13 +430,19 @@ export function step(
       return { ...state, drain: idle }
     }
     case "homeBusy": {
-      const until = Math.max(state.homeBusyUntil ?? event.until, event.until)
-      if (until === state.homeBusyUntil) return state
-      return { ...state, homeBusyUntil: until }
+      const until = Math.max(state.busyHomes[event.base] ?? 0, event.until)
+      if (until === state.busyHomes[event.base]) return state
+      return {
+        ...state,
+        busyHomes: { ...state.busyHomes, [event.base]: until },
+      }
     }
     case "cooled": {
-      if (state.homeBusyUntil === null) return state
-      return { ...state, homeBusyUntil: null }
+      const left = Object.entries(state.busyHomes).filter(
+        ([, until]) => until > event.at
+      )
+      if (left.length === Object.keys(state.busyHomes).length) return state
+      return { ...state, busyHomes: Object.fromEntries(left) }
     }
     case "heard": {
       if (link.kind !== "paired" || link.id !== event.id) return state
@@ -404,15 +468,35 @@ export function step(
     case "answered":
     case "lapsed":
     case "lookAgain": {
+      // The latest failure is home's silence, or the network changed: what
+      // blocked a request before is not what is said now (NA1).
+      const blocked =
+        event.type === "unanswered" ||
+        (event.type === "lookAgain" && event.fresh)
+          ? null
+          : state.blocked
       const away = stepAway(state.away, event)
-      if (away === state.away) return state
+      if (away === state.away && blocked === state.blocked) return state
       // A hold ending on its time, or home answering: a release (AW1).
-      const released = event.type === "lapsed" || event.type === "answered"
+      const released =
+        away !== state.away &&
+        (event.type === "lapsed" || event.type === "answered")
       return {
         ...state,
         away,
         awayReleases: state.awayReleases + (released ? 1 : 0),
+        blocked,
       }
+    }
+    case "blocked": {
+      if (link.kind !== "paired") return state
+      const { reason, at } = event
+      if (state.blocked?.reason === reason) return state
+      return { ...state, blocked: { reason, at } }
+    }
+    case "unblocked": {
+      if (state.blocked === null) return state
+      return { ...state, blocked: null }
     }
     default: {
       return assertNever(event)

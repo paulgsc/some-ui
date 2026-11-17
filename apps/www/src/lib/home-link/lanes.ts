@@ -109,6 +109,10 @@ const LINK_PORTS: Omit<KeptPorts, "exchange"> = {
   keep: (run) => homeLink().drain(run),
   paired,
   homeBusy: busyNow,
+  stopping: () => {
+    const { drain } = homeLink().getSnapshot()
+    return drain.kind === "draining" && drain.stopping
+  },
   now: LINK_CLOCK.now,
 }
 
@@ -234,6 +238,7 @@ export function laneReading(
         state.away === null
           ? null
           : { since: state.away.since, now: LINK_CLOCK.now() },
+      blocked: state.blocked?.reason ?? null,
     }),
     sendNow: offersSendNow(run, counts, isPaired),
   }

@@ -32,6 +32,7 @@
 # not failed: the emulator has no home to read. Back pressed at a wing's root,
 # entered by its icon, must leave the app: MainActivity's back handling is
 # reached by nothing else, since the monkey run below never presses back.
+# The launcher shortcut, on the running app, must log its entry too.
 #
 # What it cannot see is a WebView that starts and stays blank: that does not
 # crash. Only the screenshot shows the page rendered. Two signals that looked
@@ -148,6 +149,12 @@ if [ ${#wings[@]} -gt 0 ]; then
   else
     back_left=yes
   fi
+fi
+# The launcher shortcut (res/xml/shortcuts.xml) on the running app: its
+# fixed action opens its page, which MainActivity logs as an entry.
+adb shell am start -W -a dev.paulgsc.someui.NEW_IDEA -n "$pkg/.MainActivity" > /dev/null
+if ! native_line "wing entered: shortcut /journal/idea"; then
+  failures+=("the New idea shortcut logged no \"wing entered: shortcut /journal/idea\" (logcat.txt)")
 fi
 # The plain icon on the running app resumes it, which brings it back for the
 # monkey run.

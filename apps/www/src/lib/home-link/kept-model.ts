@@ -28,16 +28,24 @@ export type KeptState = {
   readonly running: boolean
   /** Asked for again while running: one more run once this one ends. */
   readonly again: boolean
+  /**
+   * The app came back (or the network, or a watch) while the run under way
+   * was being stopped: if it ends stopped, it goes on once (HERD4, #3134).
+   */
+  readonly resume: boolean
   readonly last: KeptRun | null
 }
 
 export type KeptEvent =
   | { readonly type: "wanted" }
+  /** A moment that would join the run under way came while it was stopping. */
+  | { readonly type: "resumed" }
   | { readonly type: "ran"; readonly run: KeptRun }
 
 export const INITIAL_KEPT: KeptState = {
   running: false,
   again: false,
+  resume: false,
   last: null,
 }
 
@@ -56,6 +64,10 @@ export function stepKept(state: KeptState, event: KeptEvent): KeptState {
       if (state.running) return state.again ? state : { ...state, again: true }
       return { ...state, running: true }
     }
+    case "resumed": {
+      if (!state.running || state.resume) return state
+      return { ...state, resume: true }
+    }
     case "ran": {
       if (!state.running) return state
       // A run asked for again goes on only after one that reached home: one
@@ -66,8 +78,13 @@ export function stepKept(state: KeptState, event: KeptEvent): KeptState {
       // waited for, and nothing else would ask.
       const turnedAway =
         event.run.kind === "busy" || event.run.kind === "unpaired"
-      const goOn = state.again && (event.run.kind === "synced" || turnedAway)
-      return { running: goOn, again: false, last: event.run }
+      // A run the background stopped goes on once the app is back in front
+      // (HERD4): the moment that came back joined it while it was stopping,
+      // and nothing else would ask again.
+      const resumed = state.resume && event.run.kind === "stopped"
+      const goOn =
+        (state.again && (event.run.kind === "synced" || turnedAway)) || resumed
+      return { running: goOn, again: false, resume: false, last: event.run }
     }
     default: {
       return assertNever(event)
