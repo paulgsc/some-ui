@@ -25,8 +25,9 @@
 // both but still counted in n.
 //
 // CS1: the storm check fails the app only on what HERD1 and HERD2 promise.
-// Family: a pull while another is under way or after it has ended (the
-// joined phase, home slowed by /slow: two pulls cost at most two, no read
+// Family: a moment while a pull's lanes' run is under way, or after it
+// has ended (the joined phase: a pull, then the app coming back, home slowed
+// by /slow; at most two pulls' worth, no read
 // asked more than twice, no write sent twice); a route home's limiter covers
 // or not (every request counts); the nth request after a 429 at any spacing,
 // overlapping 429s included; the wait home sends (1 s, as file_host). Proof:

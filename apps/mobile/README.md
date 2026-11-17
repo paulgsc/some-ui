@@ -445,13 +445,17 @@ phone. Each runs:
    network config stays as shipped. The app pairs as a person would, through
    the foyer's Settings, its Home tab and the Pair form with a sample code,
    driven over the accessibility tree (`compat/ui.mjs`). Then it is pulled
-   down once, pulled twice a second apart, pulled in a burst, pulled while home answers 429 with `Retry-After`, sent to the
-   background and back, and cut off the network and given it back. It fails
-   when what home heard over the whole run breaks HERD1's budget
+   down once; pulled, then sent home and brought back while home answers
+   slowly, so the pull's run is still under way; pulled in a burst; pulled
+   while home answers 429 with `Retry-After: 1`, as home's limiter does; sent
+   to the background and back; and cut off the network and given it back. It
+   fails when what home heard over the whole run breaks HERD1's budget
    (`compat/budget.json`, checked by `compat/check-budget.mjs`): more than
-   20 requests at once and one per 2 s after that, any request inside a
-   429's `Retry-After`, or requests faster than one per 2 s once it ends;
-   or when two pulls a second apart cost home more than one pull alone. A
+   20 requests at once and one per 2 s after that, no 429 at all, any request
+   inside a 429's `Retry-After`, or the nth request after a 429 sooner than
+   n + 1 paces of 2 s after it; or when the app coming back during the
+   pull's run costs home more than two pulls, asks a read more than twice
+   what one pull did, or sends a write twice (a second run started). A
    level whose Pair form cannot be driven pairs the debug APK instead and
    says "via debug build"; a level whose store cannot take the CA says "no
    system CA" and runs unpaired.

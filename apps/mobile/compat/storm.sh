@@ -256,18 +256,23 @@ busy() {
   echo "$end"
 }
 
-# Two pulls a second apart while home answers slowly, so the first is still
-# under way when the second starts. Each pull reads the page once (HERD2),
-# and a pull during the kept lanes' drain starts no second drain (HERD1), so
-# home must hear no more than two single pulls, and no route more than twice
-# (HERD's owner on #3134).
-two_pulls() {
+# A pull, then the app sent home and brought back while home still answers
+# slowly, so the pull's lanes' run is in flight when the app comes back.
+# HERD1 joins that moment to the run under way. A second pull gesture would
+# not do: the page ignores a drag while its pull is checking
+# (lib/pull-refresh/model.ts), so it would never reach the lanes (Codex on
+# #3139). The pull reads the page once (HERD2), so home must hear no more
+# than two single pulls, no read more than twice what the single pull
+# asked, and no write twice (HERD's owner on #3134).
+pull_then_back() {
   local before
   curl -sf -X POST "$control/slow?ms=$(budget_of .joinedSlowMs)" > /dev/null
   before=$(native_count "$PULL_CHECKED")
   pull_down
   sleep 1
-  pull_down
+  adb shell input keyevent 3
+  sleep 1
+  adb shell am start -W -n "$pkg/.WingPractice" > /dev/null
   pull_end "$before"
   curl -sf -X POST "$control/calm" > /dev/null || true
 }
@@ -310,11 +315,11 @@ first_end=$(echo "${phases[-1]}" | grep -oE '"pulls":"[a-z]+"' | grep -oE '[a-z]
 if [ "$first_end" != "read" ]; then
   fail_refresh "single: a pull with home up ended \"$first_end\", not \"read\": the page did not refresh"
 fi
-phase joined two_pulls
+phase joined pull_then_back
 single_heard=$(echo "${phases[0]}" | grep -oE '"requests":[0-9]+' | grep -oE '[0-9]+$')
 joined_heard=$(echo "${phases[-1]}" | grep -oE '"requests":[0-9]+' | grep -oE '[0-9]+$')
 if [ "$joined_heard" -gt $((2 * single_heard)) ]; then
-  fail "joined: two pulls 1 s apart, with home slow to answer, sent $joined_heard requests, more than two pulls alone ($((2 * single_heard))) (stub-joined.json)"
+  fail "joined: a pull and the app coming back while its run was in flight sent $joined_heard requests, more than two pulls alone ($((2 * single_heard))) (stub-joined.json)"
 fi
 # A read asked more than twice the single pull asked it, or a write (a
 # drained item: each has its own path) sent twice, means a second drain run
@@ -327,7 +332,7 @@ const over = ([key, n]) =>
 console.log(Object.entries(joined).filter(over).map(([k, n]) => `${k} ×${n}`).join(", "))
 ' "$out/stub-joined.json" "$out/stub-single.json")
 if [ -n "$twice" ]; then
-  fail "joined: two pulls repeated a read or a write ($twice): a pull during a drain started a second one (stub-joined.json)"
+  fail "joined: the app coming back during a run repeated a read or a write ($twice): it started a second run (stub-joined.json)"
 fi
 phase burst burst
 phase busy busy
