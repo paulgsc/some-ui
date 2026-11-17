@@ -68,6 +68,7 @@ import type { Idea, Look, Review, Voice } from "@some-ui/video-render"
 import { EPISODE_SCHEMA, readReview } from "@some-ui/video-render"
 import type {
   Listened,
+  Paired,
   RecordingFailure,
   Take,
   TakePhase,
@@ -392,9 +393,10 @@ export type StudioState = {
   /**
    * Whether this phone is paired with home, as the home port last said
    * (ST34): a take not on home yet is going home only on a paired phone, and
-   * kept on this phone otherwise. False until the port says.
+   * kept on this phone on one known not to be; `unknown` until the port
+   * says, when a take's place says nothing of home (PO1, #3157).
    */
-  readonly paired: boolean
+  readonly paired: Paired
   /**
    * A Done for now's close waiting on the take under way, and every write asked
    * for after it, in order, so none runs ahead of that close.
@@ -519,7 +521,7 @@ type StudioSignal =
   | { readonly type: "carried"; readonly carried: Carried }
   | { readonly type: "carryFailed" }
   /** The home port says whether this phone is paired (ST34). */
-  | { readonly type: "paired"; readonly paired: boolean }
+  | { readonly type: "paired"; readonly paired: Paired }
   | { readonly type: "storeChanged" }
   | { readonly type: "ticked"; readonly now: number; readonly level: number }
   | { readonly type: "micOpened"; readonly at: number }
@@ -662,7 +664,7 @@ export function initialStudioState(
     said: [],
     roomBytes: null,
     letGo,
-    paired: false,
+    paired: "unknown",
     held: [],
     closed: null,
     filings: [],

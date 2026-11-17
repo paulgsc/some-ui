@@ -203,6 +203,7 @@ import { phoneEpisodeNotes, sendEpisodeNotes } from "./episode-notes"
 import { phoneIdeas, sendIdeas } from "./ideas"
 import { homeLink, pairing } from "./index"
 import { lensEntriesHeld } from "./lens-record"
+import type { Pairing } from "./model"
 import { notesHeld } from "./notes"
 import { askOnDrive } from "./on-drive"
 import { blockedOf, unanswered } from "./runtime"
@@ -1083,11 +1084,29 @@ export function voiceKept(id: string): TakeKept {
   const state = phoneVoiceHome().getSnapshot()
   if (kept?.from !== state) kept = { from: state, of: keptIn(state) }
   const where = kept.of(id)
-  // While the record is read this still says on this phone: a take's place
-  // has no member for not known yet (#3157's take place, to follow).
-  return where.place === "going" && pairing().kind !== "paired"
-    ? ON_PHONE
-    : where
+  if (where.place !== "going") return where
+  // Going home only on a paired phone; on this phone, saying nothing of
+  // home, while the pairing record is read (PO1, #3157).
+  return GOING_UNDER[pairing().kind]
+}
+
+/**
+ * `voiceKept`, once the pairing record has been read: for a read made as a
+ * page opens (My data), which counts each recording where it is kept and
+ * so can't say one is only on this phone while that isn't known (PO1).
+ * The record's read never rejects. Removed with `./paired-once-read` in
+ * #3152's second part, where My data's count follows the link's state.
+ */
+export async function voiceKeptOnceRead(): Promise<(id: string) => TakeKept> {
+  await homeLink().load()
+  return voiceKept
+}
+
+/** Where a take waiting to go home is kept, by whether this phone is paired. */
+const GOING_UNDER: Readonly<Record<Pairing["kind"], TakeKept>> = {
+  paired: { place: "going" },
+  unpaired: ON_PHONE,
+  reading: { place: "unknown" },
 }
 
 /** Lets go of this phone's copies of one kind's notes that `deleted` names. */

@@ -13,12 +13,13 @@
  */
 import type {
   BundleHome,
+  Paired,
   PatternTake,
   Player,
   TakePatternOptions,
   TakeRowView,
 } from "@some-ui/voice-capture"
-import { deletesInMyData, isPaired, NO_HOME } from "@some-ui/voice-capture"
+import { deletesInMyData, NO_HOME, pairedOf } from "@some-ui/voice-capture"
 import type { Project, ProjectTake } from "@soundbites/lib/project/model"
 import { latest } from "@soundbites/lib/project/model"
 import type { ProjectStore } from "@soundbites/lib/project/store"
@@ -44,14 +45,17 @@ type RecordsState = {
   readonly deletable: ReadonlySet<string>
   /** The take being read or playing, if one is. */
   readonly playing: string | null
-  /** Whether this phone is paired with home, as the home port last said (ST34). */
-  readonly paired: boolean
+  /**
+   * Whether this phone is paired with home, as the home port last said
+   * (ST34); `unknown` until it says (PO1, #3157).
+   */
+  readonly paired: Paired
 }
 
 function patternTake(
   take: ProjectTake,
   deletable: ReadonlySet<string>,
-  paired: boolean
+  paired: Paired
 ): PatternTake {
   return {
     ...patternTakeOf(take, paired),
@@ -64,7 +68,7 @@ export function recordsView(
   projects: ReadonlyArray<Project>,
   deletable: ReadonlySet<string>,
   playing: string | null,
-  paired: boolean
+  paired: Paired
 ): ReadonlyArray<ProjectRecords> {
   return projects.flatMap((project) => {
     if (project.takes.length === 0) return []
@@ -108,7 +112,7 @@ const INITIAL: RecordsState = {
   projects: null,
   deletable: new Set(),
   playing: null,
-  paired: false,
+  paired: "unknown",
 }
 
 export function createStudioRecords(ports: RecordsPorts): StudioRecords {
@@ -208,7 +212,7 @@ export function createStudioRecords(ports: RecordsPorts): StudioRecords {
       const unsubscribe = ports.store.subscribe(read)
       const home = ports.home ?? NO_HOME
       const tellPaired = (): void => {
-        const paired = isPaired(home.reach())
+        const paired = pairedOf(home.reach())
         if (paired !== state.paired) set({ ...state, paired })
       }
       const unwatchHome = home.subscribe(tellPaired)
