@@ -1,0 +1,15 @@
+{
+  "id": "C533",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": ["server:apps/servers/file_host/src/handlers/compat.rs"],
+  "chose": "GET /compat tells each client its limit as rate_limit: {per_minute, burst}, in snake_case like the rest of the answer, read from the quota the limiter is built with.",
+  "options": [
+    "rate_limit {per_minute, burst}",
+    "rateLimit {perMinute, burst}",
+    "also the refill interval in ms"
+  ],
+  "gray": "The coordinator's brief suggested camelCase. The rest of /compat's answer is snake_case, and the refill interval follows from per_minute.",
+  "undo": "Rename the RateLimit fields in handlers/compat.rs, before a client reads them.",
+  "refs": ["#2918", "server#938"]
+}

@@ -2043,7 +2043,8 @@
             "server:apps/servers/file_host/src/admission.rs#a_storm_past_every_limit_is_answered_within_the_bound",
             "server:apps/servers/file_host/src/admission.rs#a_full_limit_is_shed_at_once_on_every_module",
             "server:apps/servers/file_host/src/admission.rs#work_past_the_deadline_is_answered_busy_at_it",
-            "server:apps/servers/file_host/src/admission.rs#a_pool_with_no_connection_free_is_answered_busy"
+            "server:apps/servers/file_host/src/admission.rs#a_pool_with_no_connection_free_is_answered_busy",
+            "server:apps/servers/file_host/src/admission.rs#a_cross_origin_busy_answer_is_readable"
           ],
           "watch": {
             "by": "alert",

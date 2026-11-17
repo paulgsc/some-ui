@@ -1,0 +1,15 @@
+{
+  "id": "C531",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": ["server:apps/servers/file_host/src/error.rs"],
+  "chose": "Every busy 503 (shed, timeout, pool) carries Retry-After: 5.",
+  "options": [
+    "5 s",
+    "1 s",
+    "the time until the oldest in-flight request's deadline"
+  ],
+  "gray": "No measurement says how long a storm on home takes to drain. 5 s is long enough for a pull-to-refresh burst to pass, and short enough that the person's next tap is served.",
+  "undo": "Change BUSY_RETRY_AFTER_S in error.rs, and the tests' expected \"5\".",
+  "refs": ["#2918", "server#934"]
+}
