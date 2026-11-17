@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { pairingAddress, typedCode } from "@/lib/home-link/address"
+import { addressOf, pairingAddress, typedCode } from "@/lib/home-link/address"
 
 describe("pairingAddress", () => {
   it("reads a bare host, a proxy path or a full base as an https API base", () => {
@@ -37,6 +37,20 @@ describe("typedCode", () => {
   it("is nothing until it can be a code", () => {
     for (const text of ["", "K7QF2M9", "K7QF2M9XY", "K7QF2M9U"]) {
       expect(typedCode(text), text).toBeNull()
+    }
+  })
+})
+
+describe("a stored base as an address to type again (SIGNIN3)", () => {
+  it("keeps the scheme, the host and a proxy's path, and pairs at the same base", () => {
+    for (const base of [
+      "https://home.example/api/v1",
+      "https://www.home.example/api/file-host/api/v1",
+      "https://home.example:8443/api/v1",
+    ]) {
+      const typed = addressOf(base)
+      expect(typed).not.toMatch(/\/api\/v1$/)
+      expect(pairingAddress(typed)).toMatchObject({ base })
     }
   })
 })

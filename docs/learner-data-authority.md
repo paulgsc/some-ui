@@ -1352,8 +1352,9 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   `drain`; a hunk to `lib/home-link/runtime.ts` or `model.ts` that sends a
   request other than at its turn on the link's pace (`ask`, `personal`),
   takes a turn for one it answers busy itself, starts a drain run beside
-  another or beside a send or an Unpair, or lets a send or an Unpair send
-  before the drain run it stopped has ended; a hunk to
+  another or beside a send, an Unpair or a pairing again over one home
+  forgot (SIGNIN3), or lets any of those send before the drain run it
+  stopped has ended; a hunk to
   `lib/home-link/leetype-log.ts`'s `sendLogs` that sends an event `taken`
   says home took, or forgets a log's events other than once it is read
   back; a hunk to
