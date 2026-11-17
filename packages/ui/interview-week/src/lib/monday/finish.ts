@@ -55,7 +55,7 @@ const WORDS = {
  * The most a week's file may weigh as the routine writes it: home refuses a
  * week over 64 KiB (paulgsc/server `interview.rs`, `WEEK_CEILING`).
  */
-export const WEEK_BYTES_MOST = 64 * 1024
+const WEEK_BYTES_MOST = 64 * 1024
 
 /**
  * How fast an answer is said, for its length against the question's target

@@ -123,7 +123,7 @@ export type Corpus = {
 }
 
 /** A merged pull request, as `render call-facts` lists it. */
-export type Pull = {
+type Pull = {
   readonly repo: "some-ui" | "server"
   readonly number: number
   readonly title: string
@@ -136,7 +136,7 @@ export type Pull = {
  * and the epics that moved in the last week. An older pull request is
  * reached through the call that names it.
  */
-export function workOf(corpus: Corpus): Array<WorkEntry> {
+function workOf(corpus: Corpus): Array<WorkEntry> {
   const entries: Array<WorkEntry> = [
     ...corpus.pulls.map((p) => ({
       key: `pull:${p.repo}#${p.number}`,
