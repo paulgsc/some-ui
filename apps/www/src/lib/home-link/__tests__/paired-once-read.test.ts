@@ -16,14 +16,15 @@
  *   receipts, ideas, a note's delete, an episode step's let-go, a take's
  *   words, a note's audio) × when the record's read ends (after the ask
  *   starts, as a fresh page load has it, or before) × what it finds (a
- *   pairing, none, one lost, one it can't read).
- * - _Proof:_ these tests. Each ask is started in a fresh page while the
- *   record's read is held, and must neither answer nor send until it ends;
- *   a pairing then sends its request, and no pairing (none, lost, a record
- *   that won't parse, or a read that itself fails) answers unpaired with
- *   nothing sent. The last test fails on a file in `lib/home-link` that
- *   answers unpaired on the bare `paired()`, so a new ask can't copy the old
- *   gate.
+ *   pairing, none, one lost, a record that won't parse, a read that itself
+ *   fails).
+ * - _Proof:_ these tests, one per member of the family (`FAMILY`), each in
+ *   a fresh page. Where the read ends after the ask starts, the ask must
+ *   neither answer nor send while it is held. A pairing then sends the
+ *   ask's request; every other outcome answers unpaired with nothing sent.
+ *   With the old gate back in every ask, each ask's five held-read cases
+ *   fail. The last test fails on a file in `lib/home-link` that answers
+ *   unpaired on the bare `paired()`, so a new ask can't copy the old gate.
  * - _Tolerance:_ the ask waits as long as the record's read, at most
  *   `./credential`'s 5 s. The link's watchers (`./kept-watch`,
  *   `./practice-reads`, `./lanes`) read `paired()` as it stands and run
@@ -140,11 +141,52 @@ const ASKS: ReadonlyArray<{
   },
 ]
 
-/** A record's read held until `end` is called with what it finds. */
-function heldRead(): (found: Read) => void {
-  let end: (found: Read) => void = () => undefined
-  const held = new Promise<Read>((resolve) => {
-    end = resolve
+/** What the record's read comes to: a record it found, or a failure. */
+type Found =
+  | { readonly kind: "found"; readonly read: Read }
+  | { readonly kind: "fails" }
+
+/** Every outcome of the read, and whether it leaves the phone paired. */
+const OUTCOMES: ReadonlyArray<{
+  readonly name: string
+  readonly found: Found
+  readonly paired: boolean
+}> = [
+  { name: "a pairing", found: { kind: "found", read: PAIRING }, paired: true },
+  {
+    name: "no record",
+    found: { kind: "found", read: { record: null, lost: false } },
+    paired: false,
+  },
+  {
+    name: "a record lost",
+    found: { kind: "found", read: { record: null, lost: true } },
+    paired: false,
+  },
+  {
+    name: "a record that won't parse",
+    found: { kind: "found", read: { record: "not a record", lost: false } },
+    paired: false,
+  },
+  {
+    // The phone couldn't read its record (its key gone, say).
+    name: "a read that itself fails",
+    found: { kind: "fails" },
+    paired: false,
+  },
+]
+
+/** When the record's read ends: after the ask starts, or before it. */
+const TIMINGS = ["after the ask starts", "before the ask"] as const
+
+/** A record's read held until the returned call ends it with `found`. */
+function heldRead(): (found: Found) => void {
+  let end: (found: Found) => void = () => undefined
+  const held = new Promise<Read>((resolve, reject) => {
+    end = (found): void => {
+      if (found.kind === "found") resolve(found.read)
+      else reject(new Error("unreadable"))
+    }
   })
   home.read = (): Promise<Read> => held
   return (found) => end(found)
@@ -163,84 +205,52 @@ afterEach(() => {
     Promise.resolve({ record: null, lost: false })
 })
 
+/** Each ask × each outcome × each timing: PO1's whole family. */
+const FAMILY = ASKS.flatMap((ask) =>
+  OUTCOMES.flatMap((outcome) =>
+    TIMINGS.map((timing) => ({
+      ask: ask.ask,
+      paired: outcome.paired,
+      found: outcome.found,
+      timing,
+      name: `${ask.name}, the read finding ${outcome.name} ${timing}`,
+    }))
+  )
+)
+
 describe("a one-shot ask as a page opens (PO1)", () => {
-  it.each(ASKS)(
-    "$name waits for a pairing's record, then asks home",
-    async ({ ask }) => {
-      const end = heldRead()
-      let settled = false
-      const asking = ask().then((outcome) => {
-        settled = true
-        return outcome
-      })
+  it.each(FAMILY)("$name", async ({ ask, paired, found, timing }) => {
+    const end = heldRead()
+    if (timing === "before the ask") {
+      end(found)
+      const { homeLink } = await import("@/lib/home-link")
+      await homeLink().load()
+    }
+    let settled = false
+    const asking = ask().then((outcome) => {
+      settled = true
+      return outcome
+    })
+    if (timing === "after the ask starts") {
       await ticks(5)
       // Still reading the record: nothing said, nothing sent.
       expect(settled).toBe(false)
       expect(home.sent).toHaveLength(0)
-      end(PAIRING)
-      const outcome = await asking
+      end(found)
+    }
+    const outcome = await asking
+    if (paired) {
       expect(home.sent.length).toBeGreaterThan(0)
       expect(outcome).not.toEqual({ kind: "unpaired" })
-    }
-  )
-
-  for (const found of [
-    { record: null, lost: false },
-    { record: null, lost: true },
-    { record: "not a record", lost: false },
-  ] satisfies ReadonlyArray<Read>) {
-    it(`says unpaired, sending nothing, once the read finds ${JSON.stringify(found)}`, async () => {
-      for (const { ask } of ASKS) {
-        vi.resetModules()
-        const end = heldRead()
-        const asking = ask()
-        end(found)
-        const outcome = await asking
-        expect(home.sent).toHaveLength(0)
-        // A take's words say unreachable, and a note's audio none, unpaired.
-        expect([
-          { kind: "unpaired" },
-          { kind: "unreachable" },
-          null,
-        ]).toContainEqual(outcome)
-      }
-    })
-  }
-
-  it("says unpaired, sending nothing, once the record's read itself fails", async () => {
-    for (const { ask } of ASKS) {
-      vi.resetModules()
-      let fail: (error: Error) => void = () => undefined
-      const held = new Promise<Read>((_resolve, reject) => {
-        fail = reject
-      })
-      home.read = (): Promise<Read> => held
-      let settled = false
-      const asking = ask().then((outcome) => {
-        settled = true
-        return outcome
-      })
-      await ticks(2)
-      expect(settled).toBe(false)
-      // The phone couldn't read its record (its key gone, say).
-      fail(new Error("unreadable"))
-      const outcome = await asking
+    } else {
       expect(home.sent).toHaveLength(0)
+      // A take's words say unreachable, and a note's audio none, unpaired.
       expect([
         { kind: "unpaired" },
         { kind: "unreachable" },
         null,
       ]).toContainEqual(outcome)
     }
-  })
-
-  it("asks at once once the record was read before", async () => {
-    home.read = (): Promise<Read> => Promise.resolve(PAIRING)
-    const { homeLink } = await import("@/lib/home-link")
-    await homeLink().load()
-    const { askDeleted } = await import("@/lib/home-link/deleted-read")
-    await askDeleted()
-    expect(home.sent).toHaveLength(1)
   })
 
   it("no ask in lib/home-link says unpaired on the bare paired()", () => {
