@@ -1,0 +1,18 @@
+{
+  "id": "C549",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/mobile/compat/run-level.sh",
+    "some-ui:apps/mobile/README.md"
+  ],
+  "chose": "A stamp level whose stock WebView is under 111 launches the release APK and checks that the update page (webview-too-old.html) shows, by its title, with a screenshot; its Launch cell says \"update page shown\" or \"blank\", and a blank page fails the level. The storm and refresh are still not run there.",
+  "options": [
+    "check the update page shows, fail on blank",
+    "check it and only report, never fail",
+    "keep skipping such levels"
+  ],
+  "gray": "C546 made these levels a skip that never reads red; #3117 gave the app a page for them, and the coordinator asked for device proof that it shows. Failing on a blank page makes an optional old level able to turn a stamp red, which the owner may not want.",
+  "undo": "Restore run-level.sh's skip for a level under MIN_WEBVIEW (exit 0 with the stock WebView row) and the README paragraph it replaced.",
+  "refs": ["#3104", "#3117"]
+}
