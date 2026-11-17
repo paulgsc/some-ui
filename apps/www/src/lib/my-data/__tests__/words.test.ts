@@ -50,6 +50,10 @@ describe("My data's words", () => {
     expect(Object.keys(KIND_NAMES).sort()).toEqual([...KINDS].sort())
   })
 
+  it("name a game's recordings as the owner asked (2026-11-17)", () => {
+    expect(KIND_NAMES.game).toBe("Recordings from a game")
+  })
+
   it("never name the machinery", () => {
     const said = [
       ...strings(MY_DATA),

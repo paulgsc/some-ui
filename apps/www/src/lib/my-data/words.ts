@@ -18,7 +18,7 @@ import type { RecordHeld, RecordKind, RecordReading } from "./record"
 export const KIND_NAMES: Readonly<Record<Of, string>> = {
   studio: "Studio takes and idea answers",
   reflection: "Spoken reflections",
-  game: "Game bites",
+  game: "Recordings from a game",
   leetype: "LeetType answers",
   lens: "Grammar lens takes",
   scene: "Scene notes",
