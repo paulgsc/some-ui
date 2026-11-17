@@ -15,10 +15,5 @@
   ],
   "gray": "The owner (2026-11-17): \"yes, let me name each phone too\". The server cannot tell a typed name from a prefilled one at pairing, so \"only what the owner typed\" rests on the phone app there; a phone's own token cannot rename it, so a lifted token cannot relabel a phone in the owner's list.",
   "undo": "Drop the label field from FinishPairing, or the PATCH route from routes/auth.rs (raising CONTRACT_EPOCH).",
-  "refs": [
-    "#3092",
-    "#3086",
-    "#2123",
-    "server#925"
-  ]
+  "refs": ["#3092", "#3086", "#2123", "server#925"]
 }

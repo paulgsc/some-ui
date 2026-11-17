@@ -13,10 +13,5 @@
   ],
   "gray": "The owner asked to list phones; signing out a lost one otherwise means signing out everywhere. It is the optional route the story allowed.",
   "undo": "Remove the route from routes/auth.rs and raise CONTRACT_EPOCH again.",
-  "refs": [
-    "#3092",
-    "#3086",
-    "#2123",
-    "server#925"
-  ]
+  "refs": ["#3092", "#3086", "#2123", "server#925"]
 }

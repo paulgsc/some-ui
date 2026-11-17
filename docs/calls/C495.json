@@ -13,10 +13,5 @@
   ],
   "gray": "No stored row tells an old phone from a browser (its hash is domain-separated), so only its next request can; a forced re-pair would sign out phones that work today.",
   "undo": "Drop AuthContext::tag_if_unmarked_phone; untagged rows then stay browsers.",
-  "refs": [
-    "#3092",
-    "#3086",
-    "#2123",
-    "server#925"
-  ]
+  "refs": ["#3092", "#3086", "#2123", "server#925"]
 }

@@ -14,10 +14,5 @@
   ],
   "gray": "The owner said \"keep phone pairings past 32\" but named no bound; uncapped would break auth_repo's bounded rows per subject, and evicting a phone is the failure SIGNIN6 removes.",
   "undo": "Change MAX_PHONES_PER_SUBJECT, or drop the count from pair_phone's INSERT.",
-  "refs": [
-    "#3092",
-    "#3086",
-    "#2123",
-    "server#925"
-  ]
+  "refs": ["#3092", "#3086", "#2123", "server#925"]
 }

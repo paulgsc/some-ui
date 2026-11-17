@@ -2,9 +2,7 @@
   "id": "C492",
   "made": "2026-11-17",
   "by": "claude",
-  "paths": [
-    "server:apps/servers/file_host/src/handlers/auth.rs"
-  ],
+  "paths": ["server:apps/servers/file_host/src/handlers/auth.rs"],
   "chose": "A phone's session keeps the browser's term: AUTH_SESSION_DAYS (30), slid to a full term by GET /auth/session past halfway.",
   "options": [
     "the same sliding 30 days",
@@ -13,10 +11,5 @@
   ],
   "gray": "A phone's token sits in app storage, easier to lift than an HttpOnly cookie, so a longer life widens a stolen token's window; SIGNIN1's phone calls GET /auth/session when it opens, so a phone in use never lapses.",
   "undo": "Give pair_phone and the slide in handlers::auth::session a phone-specific term.",
-  "refs": [
-    "#3092",
-    "#3086",
-    "#2123",
-    "server#925"
-  ]
+  "refs": ["#3092", "#3086", "#2123", "server#925"]
 }
