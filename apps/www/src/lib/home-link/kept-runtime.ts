@@ -37,6 +37,11 @@ export type KeptPorts = {
   paired: () => boolean
   /** Whether home is busy (AD3): a run the link turns away then was home's. */
   homeBusy: () => boolean
+  /**
+   * Whether the link is stopping its drain run (Stop, or the background);
+   * without it, a moment always joins the run under way.
+   */
+  stopping?: () => boolean
   now: () => number
 }
 
@@ -70,7 +75,12 @@ export function createKept(ports: KeptPorts): Kept {
     const next = stepKept(state, event)
     if (next === state) return
     state = next
-    if (event.type === "ran") {
+    // A pull waits on through a stopped run that goes on (HERD4): the run
+    // that resumes is the one it joined.
+    if (
+      event.type === "ran" &&
+      !(event.run.kind === "stopped" && state.running)
+    ) {
       for (const answer of pulls) answer(event.run)
       pulls.clear()
     }
@@ -131,6 +141,9 @@ export function createKept(ports: KeptPorts): Kept {
 
   const nudge = (): void => {
     if (!state.running) want()
+    // Joining a run the link is stopping would leave the lane undone once it
+    // ends (HERD4, #3134): it goes on instead.
+    else if (ports.stopping?.() === true) dispatch({ type: "resumed" })
   }
 
   return {

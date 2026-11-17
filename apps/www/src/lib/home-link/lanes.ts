@@ -109,6 +109,10 @@ const LINK_PORTS: Omit<KeptPorts, "exchange"> = {
   keep: (run) => homeLink().drain(run),
   paired,
   homeBusy: busyNow,
+  stopping: () => {
+    const { drain } = homeLink().getSnapshot()
+    return drain.kind === "draining" && drain.stopping
+  },
   now: LINK_CLOCK.now,
 }
 

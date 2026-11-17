@@ -209,7 +209,12 @@ describe("stepKept", () => {
     expect(stepKept(again, { type: "wanted" })).toBe(again)
     expect(
       stepKept(again, { type: "ran", run: { kind: "synced", at: 1 } })
-    ).toEqual({ running: true, again: false, last: { kind: "synced", at: 1 } })
+    ).toEqual({
+      running: true,
+      again: false,
+      resume: false,
+      last: { kind: "synced", at: 1 },
+    })
     expect(
       stepKept(again, { type: "ran", run: { kind: "unreachable", at: 1 } })
     ).toMatchObject({ running: false, again: false })
@@ -217,12 +222,92 @@ describe("stepKept", () => {
       expect(stepKept(again, { type: "ran", run: { kind } })).toEqual({
         running: true,
         again: false,
+        resume: false,
         last: { kind },
       })
       expect(stepKept(running, { type: "ran", run: { kind } })).toMatchObject({
         running: false,
       })
     }
+  })
+})
+
+describe("a run the background stopped (HERD4, #3134)", () => {
+  it("goes on once when the app came back while it was being stopped, and only then", () => {
+    const running = stepKept(INITIAL_KEPT, { type: "wanted" })
+    const resumed = stepKept(running, { type: "resumed" })
+    expect(stepKept(resumed, { type: "resumed" })).toBe(resumed)
+    expect(stepKept(INITIAL_KEPT, { type: "resumed" })).toBe(INITIAL_KEPT)
+    expect(
+      stepKept(resumed, { type: "ran", run: { kind: "stopped" } })
+    ).toEqual({
+      running: true,
+      again: false,
+      resume: false,
+      last: { kind: "stopped" },
+    })
+    // Stopped with nothing come back: it waits for the next moment, as before.
+    expect(
+      stepKept(running, { type: "ran", run: { kind: "stopped" } })
+    ).toMatchObject({ running: false })
+    // A resume asks nothing of a run that ended any other way.
+    for (const run of [
+      { kind: "synced", at: 1 },
+      { kind: "unreachable", at: 1 },
+    ] as const) {
+      expect(stepKept(resumed, { type: "ran", run })).toMatchObject({
+        running: false,
+        resume: false,
+      })
+    }
+  })
+
+  it("is finished once the app is back: the moment that joins it while it stops runs it again, and a pull waiting on it is answered by that run", async () => {
+    let stopping = false
+    let runs = 0
+    let release: () => void = () => undefined
+    const home = homeWith({
+      stopping: () => stopping,
+      exchange: () => {
+        runs += 1
+        if (runs > 1) return Promise.resolve<HomeExchanged>({ kind: "synced" })
+        return new Promise<HomeExchanged>((_, reject) => {
+          release = (): void => reject(new SyncStoppedError())
+        })
+      },
+    })
+    home.want()
+    await Promise.resolve()
+    const pulled = home.pull()
+    // The app went to the background: the link stops the run under way.
+    stopping = true
+    // Back in front while that run's request is still out: the watch nudges.
+    home.nudge()
+    stopping = false
+    release()
+    await expect(pulled).resolves.toEqual({ kind: "synced", at: 7 })
+    expect(runs).toBe(2)
+    expect((await settled(home)).last).toEqual({ kind: "synced", at: 7 })
+  })
+
+  it("joins a run that isn't being stopped, as HERD1 asks", async () => {
+    let runs = 0
+    let finish: () => void = () => undefined
+    const home = homeWith({
+      stopping: () => false,
+      exchange: () => {
+        runs += 1
+        return new Promise<HomeExchanged>((resolve) => {
+          finish = (): void => resolve({ kind: "synced" })
+        })
+      },
+    })
+    home.want()
+    await Promise.resolve()
+    home.nudge()
+    finish()
+    await settled(home)
+    expect(runs).toBe(1)
   })
 })
 
