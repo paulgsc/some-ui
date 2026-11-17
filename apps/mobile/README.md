@@ -437,10 +437,15 @@ phone. Each runs:
 2. **Storm:** `compat/storm.sh`, on the debug APK (its page can be read over
    DevTools; its JavaScript is the release build's). A stand-in home on the
    runner (`compat/stub-home.mjs`, sample data only) counts every request.
-   The app is pointed at it, then pulled down once, pulled in a burst, pulled
+   The phone pairs only over https, so the run makes its own CA and
+   `compat/trust-ca.sh` puts it in the emulator's system store; the app's
+   network config stays as shipped. The app pairs through its own Pair form
+   with a sample code, then is pulled down once, pulled in a burst, pulled
    while home answers 429 with `Retry-After`, sent to the background and
-   back, and cut off the network and given it back. It fails when home hears
-   more than the budget in `compat/budget.json` (HERD1's numbers).
+   back, and cut off the network and given it back. It fails when home
+   hears more than the budget in `compat/budget.json` (HERD1's numbers).
+   Where the CA cannot be put in the store, the level says "no system CA"
+   and runs the same steps against the unpaired sync's plain-http address.
 3. **Refresh:** from the same run, it fails when a pull with home up does not
    end `pull checked: read`, or when a pull after the network returns does
    not, or the app restarted to get there.

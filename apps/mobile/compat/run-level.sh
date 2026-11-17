@@ -11,8 +11,9 @@
 # for. Every step runs even when one before it failed, so the row says what
 # each one found; the script fails if any did.
 #
-# The row, <out-dir>/row.json: {api, launch, storm, refresh}, each "pass",
-# "fail" or "not run", which the stamp job tabulates.
+# The row, <out-dir>/row.json: {api, launch, paired, storm, refresh}, each
+# "pass", "fail" or "not run" (paired also "no system CA", where the storm
+# ran unpaired), which the stamp job tabulates.
 set -uo pipefail
 
 api=$1
@@ -35,18 +36,37 @@ launch=fail
 GITHUB_STEP_SUMMARY=${GITHUB_STEP_SUMMARY:-/dev/null} \
   bash "$here/../launch/launch-test.sh" "$apks/launch.apk" "$out/launch" && launch=pass
 
+# The stand-in home's certificate, from a CA made for this level and
+# trusted by nothing else.
+certs=$(mktemp -d)
+openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj "/CN=android-compat CA" \
+  -keyout "$certs/ca.key" -out "$certs/ca.pem" \
+  -addext basicConstraints=critical,CA:TRUE -addext keyUsage=critical,keyCertSign > /dev/null 2>&1
+openssl req -newkey rsa:2048 -nodes -subj "/CN=10.0.2.2" \
+  -keyout "$certs/home.key" -out "$certs/home.csr" > /dev/null 2>&1
+printf 'subjectAltName=IP:10.0.2.2\nextendedKeyUsage=serverAuth\n' > "$certs/ext"
+openssl x509 -req -in "$certs/home.csr" -CA "$certs/ca.pem" -CAkey "$certs/ca.key" \
+  -CAcreateserial -days 1 -extfile "$certs/ext" -out "$certs/home.pem" > /dev/null 2>&1
+
 storm="not run"
 refresh="not run"
-bash "$here/storm.sh" "$apks/debug.apk" "$out/storm"
+paired="not run"
+COMPAT_CERTS=$certs bash "$here/storm.sh" "$apks/debug.apk" "$out/storm"
 if [ -f "$out/storm/storm.json" ]; then
-  storm=$(node -e 'const r=require(process.argv[1]); console.log(r.storm.length ? "fail" : "pass")' "$out/storm/storm.json")
-  refresh=$(node -e 'const r=require(process.argv[1]); console.log(r.refresh.length ? "fail" : "pass")' "$out/storm/storm.json")
+  read -r paired storm refresh < <(node -e '
+const r = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))
+const paired = r.paired === "paired" ? "pass" : r.paired === "no" ? "no-system-CA" : "fail"
+console.log(paired, r.storm.length ? "fail" : "pass", r.refresh.length ? "fail" : "pass")
+' "$out/storm/storm.json")
+  [ "$paired" = no-system-CA ] && paired="no system CA"
 fi
 
 node -e '
-const [api, launch, storm, refresh, file] = process.argv.slice(1)
-require("fs").writeFileSync(file, JSON.stringify({ api: Number(api), launch, storm, refresh }))
-' "$api" "$launch" "$storm" "$refresh" "$out/row.json"
+const [api, launch, paired, storm, refresh, file] = process.argv.slice(1)
+require("fs").writeFileSync(file, JSON.stringify({ api: Number(api), launch, paired, storm, refresh }))
+' "$api" "$launch" "$paired" "$storm" "$refresh" "$out/row.json"
 cat "$out/row.json"
 
-[ "$launch" = pass ] && [ "$storm" = pass ] && [ "$refresh" = pass ]
+# A level with no system CA ran the storm unpaired: said in the row, not
+# failed.
+[ "$launch" = pass ] && [ "$paired" != fail ] && [ "$storm" = pass ] && [ "$refresh" = pass ]

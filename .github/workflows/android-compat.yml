@@ -169,7 +169,7 @@ jobs:
         if: always()
         run: |
           mkdir -p compat-out
-          [ -f compat-out/row.json ] || echo '{"api":${{ matrix.api }},"launch":"not run","storm":"not run","refresh":"not run"}' > compat-out/row.json
+          [ -f compat-out/row.json ] || echo '{"api":${{ matrix.api }},"launch":"not run","paired":"not run","storm":"not run","refresh":"not run"}' > compat-out/row.json
       # Retention: read by this run's stamp job, and by a person reading a
       # red level right after the run; a later look is a dispatch away.
       - name: Upload what the level showed
@@ -203,17 +203,17 @@ jobs:
           {
             echo "## Android compatibility: \`${SHA::7}\` ($REF)"
             echo
-            echo "| API | Launch | Storm | Refresh |"
-            echo "| --- | --- | --- | --- |"
-            jq -r '.[] | [.api, .launch, .storm, .refresh] | @tsv' stamp-rows.json |
-              while IFS=$'\t' read -r api launch storm refresh; do
-                echo "| $api | $(mark "$launch") | $(mark "$storm") | $(mark "$refresh") |"
+            echo "| API | Launch | Paired (https) | Storm | Refresh |"
+            echo "| --- | --- | --- | --- | --- |"
+            jq -r '.[] | [.api, .launch, .paired, .storm, .refresh] | @tsv' stamp-rows.json |
+              while IFS=$'\t' read -r api launch paired storm refresh; do
+                echo "| $api | $(mark "$launch") | $(mark "$paired") | $(mark "$storm") | $(mark "$refresh") |"
               done
             echo
-            passed=$(jq -r '[.[] | select(.launch == "pass" and .storm == "pass" and .refresh == "pass") | .api] | join(", ")' stamp-rows.json)
+            passed=$(jq -r '[.[] | select(.launch == "pass" and .paired == "pass" and .storm == "pass" and .refresh == "pass") | .api] | join(", ")' stamp-rows.json)
             echo "For the release notes:"
             echo
-            echo "> Android compatibility, \`${SHA::7}\`: launch, storm and refresh pass on API ${passed:-none} (slowed emulators, $(date -u +%F); [run]($RUN_URL))."
+            echo "> Android compatibility, \`${SHA::7}\`: launch, paired storm and refresh pass on API ${passed:-none} (slowed emulators, $(date -u +%F); [run]($RUN_URL))."
             echo
             echo "The record:"
             echo

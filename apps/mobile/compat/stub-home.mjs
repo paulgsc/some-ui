@@ -4,7 +4,11 @@
 // request it gets, and can be told to answer 429 with Retry-After.
 //
 //   node apps/mobile/compat/stub-home.mjs [--port 8787] [--control 8788]
-//     [--routes apps/mobile/compat/stub-routes.json]
+//     [--routes apps/mobile/compat/stub-routes.json] [--cert c.pem --key k.pem]
+//
+// With --cert and --key, home is https, as a paired phone requires: the
+// certificate is the run's own, from a CA trust-ca.sh puts in the
+// emulator's system store (the app's network config stays as shipped).
 //
 // Two listeners, so the app can never reach the controls:
 // - :port, on every interface, is home. The emulator reaches it at
@@ -21,6 +25,7 @@
 // talks to the owner's home or holds anything of theirs.
 import { readFileSync } from "node:fs"
 import { createServer } from "node:http"
+import { createServer as createTlsServer } from "node:https"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { parseArgs } from "node:util"
@@ -31,6 +36,8 @@ const { values } = parseArgs({
     port: { type: "string", default: "8787" },
     control: { type: "string", default: "8788" },
     routes: { type: "string", default: join(here, "stub-routes.json") },
+    cert: { type: "string" },
+    key: { type: "string" },
   },
 })
 
@@ -39,7 +46,12 @@ const routes = JSON.parse(readFileSync(values.routes, "utf8")).routes
 const requests = []
 let busySeconds = 0
 
-const home = createServer((req, res) => {
+const tls =
+  values.cert && values.key
+    ? { cert: readFileSync(values.cert), key: readFileSync(values.key) }
+    : null
+
+const answerHome = (req, res) => {
   const path = new URL(req.url ?? "/", "http://stub").pathname
   const key = `${req.method} ${path}`
   const answer = busySeconds > 0 ? null : routes[key]
@@ -68,7 +80,8 @@ const home = createServer((req, res) => {
     })
     res.end(body)
   })
-})
+}
+const home = tls ? createTlsServer(tls, answerHome) : createServer(answerHome)
 
 const control = createServer((req, res) => {
   const url = new URL(req.url ?? "/", "http://control")
@@ -98,5 +111,5 @@ const control = createServer((req, res) => {
 home.listen(Number(values.port), "0.0.0.0")
 control.listen(Number(values.control), "127.0.0.1")
 process.stdout.write(
-  `stub home on :${values.port}, controls on 127.0.0.1:${values.control}\n`
+  `stub home (${tls ? "https" : "http"}) on :${values.port}, controls on 127.0.0.1:${values.control}\n`
 )

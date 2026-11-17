@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
 # The storm scenario (COMPAT2), run by android-compat.yml inside a booted,
-# slowed emulator after the launch test: the debug APK pointed at a stand-in
-# home on the runner (stub-home.mjs, reached at http://10.0.2.2:8787), then
-# pulled down, pulled in bursts, sent to the background and back, and cut off
-# the network and given it back. Fails when home hears more than the budget
+# slowed emulator after the launch test: the debug APK paired with a
+# stand-in home on the runner (stub-home.mjs, reached at
+# https://10.0.2.2:8787), then pulled down, pulled in bursts, pulled while
+# home is busy, sent to the background and back, and cut off the network and
+# given it back. Fails when home hears more than the budget
 # (budget.json, HERD1's numbers) or when a pull does not refresh the page.
 #
-#   bash apps/mobile/compat/storm.sh <debug-apk> <out-dir>
+#   COMPAT_CERTS=<dir> bash apps/mobile/compat/storm.sh <debug-apk> <out-dir>
+#
+# <dir> holds ca.pem, home.pem and home.key (run-level.sh makes them). The
+# phone pairs only over https, so the CA goes into the emulator's system
+# store (trust-ca.sh) and the app stays as shipped. Where that fails, the
+# level runs the same phases against the unpaired sync's plain-http address
+# instead, and storm.json says `paired: "no"`.
 #
 # Writes <out-dir>/storm.json (each phase's request count and how its pulls
 # ended), stub.json (every request home heard), the native log and
@@ -38,7 +45,18 @@ phases=()
 fail() { echo "$1" >> "$out/failures.txt"; }
 fail_refresh() { echo "$1" >> "$out/refresh.txt"; }
 
-node "$here/stub-home.mjs" --port 8787 --control 8788 > "$out/stub.log" 2>&1 &
+# The stand-in home, over https with the run's certificate when run-level.sh
+# made one and trust-ca.sh got its CA into the system store: a paired phone
+# reaches home only over https (LA8).
+paired=no
+stub_tls=()
+if [ -n "${COMPAT_CERTS:-}" ] && bash "$here/trust-ca.sh" "$COMPAT_CERTS/ca.pem" > "$out/trust-ca.log" 2>&1; then
+  paired=trusted
+  stub_tls=(--cert "$COMPAT_CERTS/home.pem" --key "$COMPAT_CERTS/home.key")
+else
+  echo "::warning title=Storm::the run's CA could not be put in this level's system store (trust-ca.log); the paired flow is not run here"
+fi
+node "$here/stub-home.mjs" --port 8787 --control 8788 "${stub_tls[@]}" > "$out/stub.log" 2>&1 &
 stub_pid=$!
 trap 'kill "$stub_pid" 2>/dev/null || true; kill "${logcat_pid:-0}" 2>/dev/null || true' EXIT
 for _ in $(seq 1 20); do
@@ -69,10 +87,50 @@ if ! native_line "device storage: opened" 60; then
   fail "the debug APK's database never opened"
 fi
 
-# The stand-in home's address, as a person types it in Settings
-# (device-section.tsx keeps it under this key), then a reload so every
-# screen reads it from the start.
-page "localStorage.setItem('some-ui.device.home-server.v1', 'http://10.0.2.2:8787'); location.reload(); true" > /dev/null
+if [ "$paired" = trusted ]; then
+  # Paired as a person pairs: the front desk's Pair form, filled and pressed
+  # through the page (the sample code is any well-formed one; the stub
+  # answers it with a sample token). Then back to the wing.
+  page "location.href = '/settings'; true" > /dev/null || true
+  sleep 8
+  paired=$(page "(async () => {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+    const until = async (find, ms = 30000) => {
+      for (const end = Date.now() + ms; Date.now() < end; await wait(250)) {
+        const found = find()
+        if (found) return found
+      }
+      return null
+    }
+    const button = (label) => [...document.querySelectorAll('button')]
+      .find((b) => b.textContent.trim().startsWith(label) && !b.disabled)
+    const type = (input, value) => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, value)
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+    const open = await until(() => button('Pair...'))
+    if (!open) return 'no Pair button'
+    open.click()
+    const address = await until(() => document.getElementById('pair-address'))
+    type(address, 'https://10.0.2.2:8787')
+    type(document.getElementById('pair-code'), 'K7QF2M9X')
+    const go = await until(() => button('Pair with'))
+    if (!go) return 'Pair never enabled'
+    go.click()
+    if (await until(() => button('Unpair'))) return 'paired'
+    const said = [...document.querySelectorAll('[role=alert], [role=status]')].map((n) => n.textContent.trim()).filter(Boolean)
+    return 'not paired: ' + (said.join(' / ') || 'no answer')
+  })()" 2> "$out/pair-error.txt" | tr -d '"' || echo "the page could not be driven")
+  adb exec-out screencap -p > "$out/paired.png" || true
+  if [ "$paired" != paired ]; then
+    fail "pairing with the stand-in home failed: $paired"
+  fi
+  adb shell am start -W -n "$pkg/.WingPractice" > /dev/null
+else
+  # No trusted https on this level: the unpaired sync's address only, which
+  # is plain http and reaches what home publishes without a pairing.
+  page "localStorage.setItem('some-ui.device.home-server.v1', 'http://10.0.2.2:8787'); location.reload(); true" > /dev/null || true
+fi
 sleep 10
 
 size=$(adb shell wm size | tr -d '\r' | grep -oE "[0-9]+x[0-9]+" | tail -1 || true)
@@ -210,17 +268,22 @@ fi
 
 node -e '
 const fs = require("fs")
-const [phases, storm, refresh, file] = process.argv.slice(1)
+const [phases, storm, refresh, file, paired] = process.argv.slice(1)
 const lines = (f) => fs.readFileSync(f, "utf8").split("\n").filter(Boolean)
 fs.writeFileSync(
   file,
   JSON.stringify(
-    { phases: JSON.parse(phases), storm: lines(storm), refresh: lines(refresh) },
+    {
+      paired,
+      phases: JSON.parse(phases),
+      storm: lines(storm),
+      refresh: lines(refresh),
+    },
     null,
     2
   )
 )
-' "[$(IFS=,; echo "${phases[*]}")]" "$out/failures.txt" "$out/refresh.txt" "$out/storm.json"
+' "[$(IFS=,; echo "${phases[*]}")]" "$out/failures.txt" "$out/refresh.txt" "$out/storm.json" "$paired"
 
 while IFS= read -r f; do echo "::error title=Storm::$f"; done < "$out/failures.txt"
 while IFS= read -r f; do echo "::error title=Refresh::$f"; done < "$out/refresh.txt"
