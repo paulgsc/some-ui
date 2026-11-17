@@ -2,11 +2,7 @@
 // Whether the lanes' run a pull joined has finished reading, for
 // android-compat.yml's storm scenario (CS1, #3134).
 //
-//   node apps/mobile/compat/lane-done.mjs <all.json> <single.json> <pull-at-ms> <budget.json> [--lanes-only]
-//
-// With --lanes-only, the page's own reads (budget.pageReads) are left out:
-// a pull cut short by going home never reads its page again (HERD2), so
-// only the lanes' routes say whether the lanes' run finished.
+//   node apps/mobile/compat/lane-done.mjs <all.json> <single.json> <pull-at-ms> <budget.json>
 //
 // A pull joins the kept lanes' run already under way (HERD1), and that run
 // may send its queued writes before it reads again: drain turns, one pace
@@ -24,8 +20,7 @@
 import { readFileSync } from "node:fs"
 
 function main() {
-  const [allFile, singleFile, pullAtArg, budgetFile, mode] =
-    process.argv.slice(2)
+  const [allFile, singleFile, pullAtArg, budgetFile] = process.argv.slice(2)
   const pullAt = Number(pullAtArg)
   if (!allFile || !singleFile || !budgetFile || !Number.isFinite(pullAt)) {
     throw new Error(
@@ -37,14 +32,8 @@ function main() {
   const budget = JSON.parse(readFileSync(budgetFile, "utf8"))
   const { sustainedMs } = budget
   const toleranceMs = budget.afterBusy?.toleranceMs
-  const pageReads = new Set(
-    mode === "--lanes-only" ? (budget.pageReads ?? []) : []
-  )
-  if (mode === "--lanes-only" && pageReads.size === 0) {
-    throw new Error("lane-done.mjs: --lanes-only needs budget.pageReads")
-  }
-  const wanted = Object.keys(byRoute ?? {}).filter(
-    (key) => key.startsWith("GET ") && !pageReads.has(key)
+  const wanted = Object.keys(byRoute ?? {}).filter((key) =>
+    key.startsWith("GET ")
   )
   // An empty or malformed input would read as finished at once.
   if (
