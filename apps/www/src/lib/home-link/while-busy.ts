@@ -10,7 +10,7 @@
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/core-utils"
 
-import { paired } from "./index"
+import { pairedOnceRead } from "./paired-once-read"
 
 const TRIES = 10
 const WAIT_MS = 1_000
@@ -40,7 +40,7 @@ export async function asked(
     { kind: "done"; value: HomeAnswer } | { kind: "stopped" } | null
   >
 ): Promise<Asked> {
-  if (!paired()) return { kind: "unpaired" }
+  if (!(await pairedOnceRead())) return { kind: "unpaired" }
   try {
     const outcome = await run()
     return outcome?.kind === "done"

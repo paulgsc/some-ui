@@ -40,7 +40,7 @@ import type { SessionRecord } from "@/lib/tenant/types"
 import type { HomeLink, HomeLinkState } from "./index"
 import { homeLink } from "./index"
 import { letGoUnchanged } from "./let-go"
-import { noticingBusy, unanswered } from "./runtime"
+import { blockedOf, noticingBusy, unanswered } from "./runtime"
 import { causedBy, copyHome, HomeForgotPhoneError, readHeld } from "./sessions"
 
 /** What the confirm said happens: home keeps it, or nothing does. */
@@ -311,7 +311,10 @@ function endOf(error: unknown, busy: boolean): LetGoEnd {
   if (causedBy(error, SyncStoppedError)) return { kind: "stopped" }
   if (causedBy(error, HomeForgotPhoneError)) return { kind: "forgotten" }
   if (busy) return { kind: "busy" }
-  if (unanswered(error)) return { kind: "unreachable" }
+  // Home not reached, for no reason on this phone (AW1, NA1).
+  if (unanswered(error) || blockedOf(error) !== null) {
+    return { kind: "unreachable" }
+  }
   if (
     causedBy(error, FileHostResponseError) ||
     causedBy(error, FileHostNotConfiguredError) ||

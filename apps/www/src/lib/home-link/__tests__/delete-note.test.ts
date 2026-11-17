@@ -21,8 +21,10 @@ const settled = (said: { kind: string }): Promise<void> => {
   return Promise.resolve()
 }
 
+vi.mock("@/lib/home-link/paired-once-read", () => ({
+  pairedOnceRead: (): Promise<boolean> => Promise.resolve(pairedNow),
+}))
 vi.mock("@/lib/home-link", () => ({
-  paired: (): boolean => pairedNow,
   homeLink: (): unknown => ({
     send: async (
       run: (send: HomeCall) => Promise<unknown>

@@ -25,7 +25,7 @@ import { createKept, laneExchange } from "./kept-runtime"
 import type { KeptRecord } from "./kept-watch"
 import { askKept, watchKept } from "./kept-watch"
 import type { HomeLinkState } from "./model"
-import { homeBusy } from "./model"
+import { drainStopping, homeBusy } from "./model"
 import type { HomeRefresher } from "./pull"
 import { homeRefresher } from "./pull"
 import type { ServesRun } from "./serves"
@@ -109,6 +109,9 @@ const LINK_PORTS: Omit<KeptPorts, "exchange"> = {
   keep: (run) => homeLink().drain(run),
   paired,
   homeBusy: busyNow,
+  stopping: () => drainStopping(homeLink().getSnapshot()),
+  inFront: () =>
+    typeof document === "undefined" || document.visibilityState === "visible",
   now: LINK_CLOCK.now,
 }
 
@@ -234,6 +237,7 @@ export function laneReading(
         state.away === null
           ? null
           : { since: state.away.since, now: LINK_CLOCK.now() },
+      blocked: state.blocked?.reason ?? null,
     }),
     sendNow: offersSendNow(run, counts, isPaired),
   }

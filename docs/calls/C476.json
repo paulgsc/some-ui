@@ -1,0 +1,19 @@
+{
+  "id": "C476",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/home-link/model.ts",
+    "some-ui:apps/www/src/lib/home-link/runtime.ts",
+    "some-ui:apps/www/src/lib/device-backend/native-http/index.ts"
+  ],
+  "chose": "A request that failed because this phone couldn't find home's name on this network, or doesn't trust home's certificate, is held as home's silence is (AW1's stretch, so the phone asks no more often than when away) but said as itself, on the lane's mark and the sign-in sheet, never as away. A name failure counts only while the phone is on some network; with none, every name fails the same way, and that is away. The next answer, a network change, a silence or a new pairing clears what was said.",
+  "options": [
+    "held as a silence, said as itself",
+    "said as itself, holding nothing back",
+    "said as itself, and no asks until the network changes"
+  ],
+  "gray": "Neither failure reaches home, but holding nothing back made every lane and screen ask at each moment, a burst the limiter work (HERD1) exists to stop, and the log filled; and an offline phone's resolver fails exactly as a router blocking the name does. Holding as a silence keeps the asks bounded, and a network change, a pull or Send now still ask at once once the person has fixed it.",
+  "undo": "Have runtime.ts `heard` dispatch only `blocked` for a HomeBlockedError, without `reached(false)`; nothing stores the choice.",
+  "refs": ["#3099"]
+}

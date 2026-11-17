@@ -100,6 +100,9 @@ const LANE_NEEDS: Readonly<Record<How, Need>> = {
   waiting: "moving",
   sending: "moving",
   "no-answer": "watch",
+  // A name or certificate the phone can't get past (NA1): the person's to
+  // look at, since waiting doesn't mend it.
+  blocked: "you",
   busy: "watch",
   forgotten: "you",
   unpaired: "you",

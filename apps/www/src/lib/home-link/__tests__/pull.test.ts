@@ -140,6 +140,8 @@ describe("a pull's ask of home", () => {
       doc: { visibilityState: "visible" },
       free: () => Promise.resolve(),
       lookAgain: () => undefined,
+      // The lanes' clock: a run that ended before a pull answers none of it.
+      now: () => 7,
     })
     const heard = home.ended(shown)
     const all = home.checkAgain()
