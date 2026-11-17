@@ -4,12 +4,19 @@
  */
 import { describe, expect, it } from "vitest"
 
-import type { HomeLinkEvent, HomeLinkState } from "@/lib/home-link/model"
+import type {
+  HomeLinkEvent,
+  HomeLinkState,
+  PairFailure,
+} from "@/lib/home-link/model"
 import { INITIAL, step } from "@/lib/home-link/model"
 import {
+  PAIR_FORM,
+  pairFailureLine,
   SIGN_IN,
   signInView,
   UNPAIRED_NOTES,
+  WELCOME,
 } from "@/lib/home-link/sign-in-words"
 
 import { MACHINERY } from "./machinery"
@@ -81,6 +88,34 @@ describe("the sign-in mark's words", () => {
       ...Object.values(UNPAIRED_NOTES),
     ]) {
       expect(words).not.toMatch(MACHINERY)
+    }
+  })
+
+  it("say pairing's failures, the form and the welcome in the person's terms", () => {
+    const failures: ReadonlyArray<PairFailure> = [
+      "unreachable",
+      "untrusted",
+      "bad-code",
+      "too-many",
+      "not-set-up",
+      "not-home",
+      "not-kept",
+      "other",
+    ]
+    const words = [
+      ...failures.map((failure) => pairFailureLine(failure, "home.example")),
+      ...Object.values(PAIR_FORM).map((word) =>
+        typeof word === "function" ? word("home.example") : word
+      ),
+      WELCOME.title,
+      WELCOME.lead,
+      WELCOME.restored,
+      WELCOME.notNow,
+      WELCOME.notNowNote,
+      ...WELCOME.steps,
+    ]
+    for (const word of words) {
+      expect(word.replace(/home\.example/g, "home")).not.toMatch(MACHINERY)
     }
   })
 })

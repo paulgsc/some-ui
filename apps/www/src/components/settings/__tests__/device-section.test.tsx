@@ -165,14 +165,19 @@ describe("DeviceSection's Home server block", () => {
   it("names the server on the pair button, and refuses an http address", async () => {
     await open()
     await press(/^pair/i)
-    fireEvent.change(screen.getByLabelText(/home server address/i), {
+    // One address on the page: the Home server field, shared with the sync.
+    expect(screen.queryByLabelText(/home's address/i)).toBeNull()
+    const address = (): Element => {
+      const field = document.querySelector("#home-server")
+      if (field === null) throw new Error("no Home server field")
+      return field
+    }
+    fireEvent.change(address(), {
       target: { value: "http://192.168.1.10:3000" },
     })
-    expect(screen.getByText(/pairing needs an https/i)).toBeTruthy()
+    expect(screen.getByText(/pairing needs a secure address/i)).toBeTruthy()
 
-    fireEvent.change(screen.getByLabelText(/home server address/i), {
-      target: { value: "home.example" },
-    })
+    fireEvent.change(address(), { target: { value: "home.example" } })
     fireEvent.change(screen.getByLabelText(/code from your computer/i), {
       target: { value: "k7qf 2m9" },
     })

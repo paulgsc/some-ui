@@ -12,7 +12,7 @@
 import { assertNever } from "@some-ui/core-utils"
 
 import { hostOf } from "./address"
-import type { HomeLinkState, UnpairedNote } from "./model"
+import type { HomeLinkState, PairFailure, UnpairedNote } from "./model"
 import { lookedAt } from "./words"
 
 /** Which of the mark's looks the phone is in. */
@@ -157,3 +157,75 @@ export const TONE_OF: Readonly<Record<SignedIn, "quiet" | "ok" | "warn">> = {
   away: "warn",
   lost: "warn",
 }
+
+/** What a pairing that didn't take says, with the host it was tried at. */
+export function pairFailureLine(failure: PairFailure, host: string): string {
+  switch (failure) {
+    case "unreachable": {
+      return `Couldn't reach ${host}. Are you on the home network?`
+    }
+    case "untrusted": {
+      return `This phone doesn't trust ${host}'s certificate. Nothing was sent.`
+    }
+    case "bad-code": {
+      return "That code didn't work. Codes work once, for 10 minutes. Get a new one on your computer."
+    }
+    case "too-many": {
+      return "Too many tries. Wait a minute and try again."
+    }
+    case "not-set-up": {
+      return `${host} can't pair phones: passkey sign-in isn't set up there.`
+    }
+    case "not-home": {
+      return `${host} doesn't answer as home. Check the address your computer shows.`
+    }
+    case "not-kept": {
+      return "This phone couldn't keep the pairing. Get a new code and try again."
+    }
+    case "other": {
+      return "Pairing failed. Get a new code and try again."
+    }
+    default: {
+      return assertNever(failure)
+    }
+  }
+}
+
+/** The pairing form's words, in Settings › Home and in the welcome. */
+export const PAIR_FORM = {
+  address: "Home's address",
+  addressHint: "The address your computer shows beside the code.",
+  homeAt: (host: string): string => `Home at ${host}`,
+  notHttps:
+    "Pairing needs a secure address: type the one your computer shows, as it shows it.",
+  code: "Code from your computer",
+  name: "Name this phone (optional)",
+  nameHint: "Only you see it, in home's list of phones.",
+  nameRefused:
+    "A name can be up to 40 characters, with no hidden or line-breaking characters.",
+  pair: "Pair",
+  pairWith: (host: string): string => `Pair with ${host}`,
+  pairing: "Pairing...",
+  cancel: "Cancel",
+  sends: "Sends only this code.",
+  sendsWithName: "Sends only this code and the name you typed.",
+} as const
+
+/**
+ * The first run's welcome on a phone not paired with home (SIGNIN2, #3088):
+ * what home is, where the code comes from, and that saying no keeps
+ * everything here.
+ */
+export const WELCOME = {
+  title: "Pair this phone with home",
+  lead: "Home is your own computer at home. Paired, this phone keeps a copy of what you do there, whenever the app is open on your home network.",
+  restored:
+    "This phone's pairing didn't survive a restore, so it needs pairing again.",
+  steps: [
+    "On your computer, open Settings, then Account, then Phones, and choose Pair a phone.",
+    "Type the address and the code it shows here.",
+  ],
+  notNow: "Not now",
+  notNowNote:
+    "Everything stays on this phone. You can pair any time from the mark at the top of the screen, or Settings, Home.",
+} as const

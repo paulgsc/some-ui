@@ -5,6 +5,9 @@
  */
 import { localStorageOrNull } from "@some-ui/core-utils"
 
+/** The home address typed last, in Settings › Home or the welcome. */
+export const HOME_ADDRESS_KEY = "some-ui.device.home-server.v1"
+
 export function remembered(key: string): string {
   return localStorageOrNull()?.getItem(key) ?? ""
 }
