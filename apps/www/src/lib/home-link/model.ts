@@ -118,10 +118,16 @@ export type HomeLinkState = {
     readonly failure: PairFailure
     readonly base: string
   } | null
-  /** When home's busy ends (AD3, `./runtime`); null while it is not busy. */
+  /**
+   * When home's busy ends (AD3, `./runtime`); null while it is not busy.
+   * The paired home's, from `busyHomes`; unpaired, the latest any said.
+   */
   readonly homeBusyUntil: number | null
-  /** The home that said it is busy, while it is (#3127). */
-  readonly homeBusyBase: string | null
+  /**
+   * When each home that said it is busy is done with it (#3127): a busy
+   * stays with the home that said it, so pairing another starts with none.
+   */
+  readonly busyHomes: Readonly<Record<string, number>>
   /** The stretch away from home under way (AW1, `./away`); null at home. */
   readonly away: Away | null
   /**
@@ -171,11 +177,12 @@ export type HomeLinkEvent =
   | {
       readonly type: "homeBusy"
       readonly until: number
-      /** The home that said it, when the phone knows (#3127). */
-      readonly base: string | null
+      /** The home that said it: the base its request went to (#3127). */
+      readonly base: string
     }
   /** The time home asked for has passed. */
-  | { readonly type: "cooled" }
+  /** Every home's busy that ended by `at` is over. */
+  | { readonly type: "cooled"; readonly at: number }
   /**
    * Home answered pairing `id`'s key (`known`) or refused it, on a request
    * sent at `at` (SIGNIN1): dropped for any other pairing, so a late answer
@@ -197,7 +204,7 @@ export const INITIAL: HomeLinkState = {
   drain: { kind: "idle" },
   pairFailure: null,
   homeBusyUntil: null,
-  homeBusyBase: null,
+  busyHomes: {},
   away: null,
   awayReleases: 0,
 }
@@ -268,6 +275,24 @@ export function step(
   state: HomeLinkState,
   event: HomeLinkEvent
 ): HomeLinkState {
+  const next = advance(state, event)
+  const until = busyUntil(next)
+  return until === next.homeBusyUntil ? next : { ...next, homeBusyUntil: until }
+}
+
+/**
+ * The busy the link keeps (#3127): the paired home's, or, unpaired, the
+ * latest any home said, since only a pairing goes then, and it goes anyway.
+ */
+function busyUntil(state: HomeLinkState): number | null {
+  if (state.link.kind === "paired") {
+    return state.busyHomes[state.link.base] ?? null
+  }
+  const ends = Object.values(state.busyHomes)
+  return ends.length === 0 ? null : Math.max(...ends)
+}
+
+function advance(state: HomeLinkState, event: HomeLinkEvent): HomeLinkState {
   const { link, activity } = state
   switch (event.type) {
     case "read": {
@@ -301,14 +326,8 @@ export function step(
     case "paired": {
       if (activity.kind !== "pairing" || activity.base !== event.base)
         return state
-      // Home's busy is the home's that said it (#3127): pairing with
-      // another, from a pairing tried there or an Unpair's sign-out, starts
-      // with none.
-      const same = state.homeBusyBase === event.base
       return {
         ...state,
-        homeBusyUntil: same ? state.homeBusyUntil : null,
-        homeBusyBase: same ? state.homeBusyBase : null,
         link: {
           kind: "paired",
           base: event.base,
@@ -383,16 +402,19 @@ export function step(
       return { ...state, drain: idle }
     }
     case "homeBusy": {
-      const until = Math.max(state.homeBusyUntil ?? event.until, event.until)
-      const base = event.base ?? state.homeBusyBase
-      if (until === state.homeBusyUntil && base === state.homeBusyBase) {
-        return state
+      const until = Math.max(state.busyHomes[event.base] ?? 0, event.until)
+      if (until === state.busyHomes[event.base]) return state
+      return {
+        ...state,
+        busyHomes: { ...state.busyHomes, [event.base]: until },
       }
-      return { ...state, homeBusyUntil: until, homeBusyBase: base }
     }
     case "cooled": {
-      if (state.homeBusyUntil === null) return state
-      return { ...state, homeBusyUntil: null, homeBusyBase: null }
+      const left = Object.entries(state.busyHomes).filter(
+        ([, until]) => until > event.at
+      )
+      if (left.length === Object.keys(state.busyHomes).length) return state
+      return { ...state, busyHomes: Object.fromEntries(left) }
     }
     case "heard": {
       if (link.kind !== "paired" || link.id !== event.id) return state

@@ -620,7 +620,9 @@ describe("the home link", () => {
       for (const [kind, busy] of busyAnswers) {
         const snapshot = await run(busy)
         expect(snapshot.homeBusyUntil, `${path}, ${kind}`).toBe(30_000)
-        expect(snapshot.homeBusyBase, `${path}, ${kind}`).toBe(HOME.base)
+        expect(snapshot.busyHomes, `${path}, ${kind}`).toEqual({
+          [HOME.base]: 30_000,
+        })
       }
     }
   })
@@ -675,6 +677,39 @@ describe("the home link", () => {
       link: { kind: "paired", base: HOME.base },
       homeBusyUntil: null,
     })
+  })
+
+  it("puts a busy that comes back after an Unpair on the home that said it, never the home paired since (#3127)", async () => {
+    const OTHER = {
+      base: "https://other.example/api/v1",
+      host: "other.example",
+    }
+    let late: (answer: HomeAnswer) => void = () => undefined
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t", id: "p1" }),
+      answer: (call) => {
+        if (call.url === `${HOME.base}/auth/session`) {
+          return new Promise<HomeAnswer>((resolve) => {
+            late = resolve
+          })
+        }
+        return {
+          status: 200,
+          body: JSON.stringify({ token: "phone-token", expiresAt: 1 }),
+        }
+      },
+    })
+    await home.link.load()
+    const checked = home.link.check()
+    await drive(home, home.link.unpair())
+    await drive(home, home.link.pair(OTHER, "K7QF2M9X"))
+    late({ status: 429, body: "", retryAfter: "600" })
+    await checked
+    expect(home.link.getSnapshot()).toMatchObject({
+      link: { kind: "paired", base: OTHER.base },
+      homeBusyUntil: null,
+    })
+    expect(Object.keys(home.link.getSnapshot().busyHomes)).toEqual([HOME.base])
   })
 
   it("passes on a 503 that is one of home's caps (no Retry-After) or not its overload, and is not busy for it (HERD2)", async () => {

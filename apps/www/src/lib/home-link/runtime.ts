@@ -338,7 +338,18 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
   const cool = (): void => {
     cancelCooling?.()
     cancelCooling = null
-    dispatch({ type: "cooled" })
+    dispatch({ type: "cooled", at: ports.now() })
+    armCooling()
+  }
+  /** The timer for the soonest end of a home's busy still under way. */
+  const armCooling = (): void => {
+    const ends = Object.values(state.busyHomes)
+    if (ends.length === 0) return
+    cancelCooling?.()
+    cancelCooling = ports.after(
+      Math.max(Math.min(...ends) - ports.now(), 0),
+      cool
+    )
   }
   /**
    * Whether home is still to be left alone; a wait already over ends here,
@@ -346,27 +357,25 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
    */
   const homeBusyNow = (): boolean => {
     if (homeBusy(state, ports.now())) return true
-    if (state.homeBusyUntil !== null) cool()
+    const now = ports.now()
+    if (Object.values(state.busyHomes).some((until) => until <= now)) cool()
     return false
   }
   const heardBusy = (
     answer: HomeAnswer,
-    /** The home that said it; the paired one's unless given (#3127). */
-    base: string | null = state.link.kind === "paired" ? state.link.base : null
+    /** The home that said it: the base its request went to (#3127). */
+    base: string
   ): void => {
     // One lesson a busy stretch: requests already out when it began come
     // back busy too, and say nothing more of home's rate.
-    const learning = !homeBusy(state, ports.now())
+    const learning = !((state.busyHomes[base] ?? 0) > ports.now())
     pace.spend(learning ? retryAfterMs(answer.retryAfter) : null)
     dispatch({
       type: "homeBusy",
       until: ports.now() + homeBusyFor(answer.retryAfter),
       base,
     })
-    const until = state.homeBusyUntil
-    if (until === null) return
-    cancelCooling?.()
-    cancelCooling = ports.after(Math.max(until - ports.now(), 0), cool)
+    armCooling()
   }
 
   // Every request each side's run started, until it settles: a caller can
@@ -455,6 +464,8 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
    */
   const ask = async (
     side: Side,
+    /** The home `call` goes to, whose busy it hears (#3127). */
+    base: string,
     call: HomeRequest,
     tapped: boolean,
     /** Told the moment the request goes, after its turn (SIGNIN1). */
@@ -469,10 +480,10 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     if (homeBusyNow()) return HOME_BUSY
     onSent?.(ports.now())
     const answer = await track(side, heard(ports.request(call)))
-    if (answer.status === 429) heardBusy(answer)
+    if (answer.status === 429) heardBusy(answer, base)
     // Home's overload is its busy, said to the caller as the link says it.
     if (overloaded(answer)) {
-      heardBusy(answer)
+      heardBusy(answer, base)
       return HOME_BUSY
     }
     return answer
@@ -637,6 +648,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
         let sent: number | null = null
         return ask(
           side,
+          pairing.base,
           {
             method,
             url: `${pairing.base}${path}`,
@@ -743,7 +755,9 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
         // A silence is the away state's (`heard`); nothing else is said.
         return
       }
-      if (answer.status === 429 || overloaded(answer)) heardBusy(answer)
+      if (answer.status === 429 || overloaded(answer)) {
+        heardBusy(answer, pairing.base)
+      }
       heardKey(pairing.id, answer, sent)
     },
 
@@ -784,8 +798,11 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     sync<T>(run: (get: HomeGet) => Promise<T>): Promise<SyncOutcome<T> | null> {
       const get: HomeGet = (url, etag) => {
         if (stopped("person")) return Promise.reject(new SyncStoppedError())
+        // Its busy is the paired home's, or unpaired, the address read's.
+        const { link } = state
         return ask(
           "person",
+          link.kind === "paired" ? link.base : new URL(url).origin,
           {
             method: "GET",
             url,
@@ -832,9 +849,9 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
           url: `${pairing.base.replace(/\/api\/v1$/, "")}${path}`,
         })
       )
-      if (answer.status === 429) heardBusy(answer)
+      if (answer.status === 429) heardBusy(answer, pairing.base)
       if (overloaded(answer)) {
-        heardBusy(answer)
+        heardBusy(answer, pairing.base)
         return { kind: "done", value: HOME_BUSY }
       }
       return { kind: "done", value: answer }
