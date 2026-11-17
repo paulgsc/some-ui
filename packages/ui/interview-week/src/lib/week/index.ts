@@ -447,7 +447,7 @@ export function readWeek(body: unknown): WeekReading {
 const DAY_MS = 86_400_000
 
 /**
- * Today's question (IW8, C-rotation): one a day, by a fixed rotation over the
+ * Today's question (IW8, C555): one a day, by a fixed rotation over the
  * week's questions in their order, starting Monday with the first. `day` is
  * the owner's calendar day, `YYYY-MM-DD` (`pacificDay`). Nothing carries
  * over: a day left alone leaves no trace, and the next day brings its own.

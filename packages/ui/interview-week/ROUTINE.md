@@ -147,7 +147,7 @@ the two kinds are written differently:
 For either kind:
 
 - **Ground what you cite** in the bundle's `next.sources`, the body of work at
-  `next.commit`: every recorded call, doc and declared invariant, and the
+  `next.commit`: every recorded call, doc under `docs/` and declared invariant, and the
   pull requests merged and epics that moved in the last week, in both repos.
   An older pull request is cited through the call that names it. A doc or
   invariant is cited with its `path` as `next.sources` gives it. Pick the one or two pieces that answer the

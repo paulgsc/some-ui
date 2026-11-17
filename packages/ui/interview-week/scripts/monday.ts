@@ -54,7 +54,7 @@ async function pull(dir: string): Promise<void> {
   console.log(
     [
       `pulled ${count} interview weeks`,
-      "now read the epics that moved in the last week:",
+      "now read the epics that moved and the pull requests merged in the last week:",
       `pnpm --filter @some-ui/video-render render call-facts --from ${from} --to ${to} > ${join(dir, "facts.json")}`,
     ].join("\n")
   )

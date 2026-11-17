@@ -1,6 +1,6 @@
 /**
  * The interview week on home (IW4, paulgsc/some-ui#2935): the weeks the
- * Monday routine writes (`some-ui.interview-week/1`, kept from the mailbox's
+ * Monday routine writes (`some-ui.interview-week/1` and, once home takes it, `/2`, kept from the mailbox's
  * `brief/interview-week-<id>.json`, so there is no `PUT` of a week), the
  * phone's send of a week's takes, and the week's record.
  *
