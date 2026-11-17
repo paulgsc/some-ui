@@ -260,6 +260,11 @@ describe("DeviceSection's Home server block", () => {
       "https://home.example/api/v1/auth/pairing/finish",
     ])
     expect(JSON.parse(home.record ?? "{}")).toMatchObject({ token: "new" })
+    // The form closed with the pairing made, and holds nothing back.
+    expect(screen.queryByLabelText("Home's address")).toBeNull()
+    expect(
+      screen.getByRole("button", { name: /^sign out of home$/i })
+    ).toHaveProperty("disabled", false)
   })
 
   it("clears finished sessions only after a confirm that names the count and the host, and only reads home", async () => {

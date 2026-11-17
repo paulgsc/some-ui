@@ -171,6 +171,15 @@ export const DeviceSection = (): JSX.Element => {
   const paired = link.kind === "paired" ? link : null
   // Home forgot this phone: it may pair again in place (SIGNIN3).
   const forgotten = paired?.standing.kind === "forgotten"
+  // The pairing form closes once the link it was opened over changes (a
+  // pairing made, or home knowing the phone again), so nothing it held
+  // back stays held back with no form on screen.
+  const linkKey = paired ? `${paired.id}:${paired.standing.kind}` : link.kind
+  const [openedOver, setOpenedOver] = useState(linkKey)
+  if (openedOver !== linkKey) {
+    setOpenedOver(linkKey)
+    setPairOpen(false)
+  }
   const note = link.kind === "unpaired" ? link.note : null
   const typed = address.trim()
   const base = paired ? paired.base : typed === "" ? null : homeApiBase(typed)

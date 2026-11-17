@@ -292,8 +292,12 @@ export function step(
     case "paired": {
       if (activity.kind !== "pairing" || activity.base !== event.base)
         return state
+      // Pairing again with another home (SIGNIN3): the old one's busy is
+      // not this one's.
+      const elsewhere = link.kind === "paired" && link.base !== event.base
       return {
         ...state,
+        homeBusyUntil: elsewhere ? null : state.homeBusyUntil,
         link: {
           kind: "paired",
           base: event.base,
@@ -378,11 +382,10 @@ export function step(
     }
     case "heard": {
       if (link.kind !== "paired" || link.id !== event.id) return state
-      // What home said of a key being let go: the sign-out's or the new
-      // pairing's answer says what comes next.
-      if (activity.kind === "unpairing" || activity.kind === "pairing") {
-        return state
-      }
+      // A key being let go: the sign-out's answer says what comes next. A
+      // pairing again still hears it, so one that fails leaves the old
+      // pairing as home last said it was.
+      if (activity.kind === "unpairing") return state
       const { standing } = link
       if (event.known) {
         if (standing.kind === "known") return state

@@ -457,6 +457,9 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
   // an Unpair stopped it to go first.
   let draining: Promise<void> | null = null
   let preempted = false
+  /** Whether the person is pairing, read afresh after a wait. */
+  const pairingNow = (): boolean => state.activity.kind === "pairing"
+
   /** Stops the drain's run, if one runs, and resolves once it has ended. */
   const drainGone = async (): Promise<void> => {
     if (draining === null) return
@@ -629,8 +632,12 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       dispatch({ type: "pairPressed", base: address.base })
       if (state === before) return
       // Over a pairing home forgot (SIGNIN3): no run under the old key goes
-      // on beside the new pairing. Its key is not signed out; home refused it.
-      if (before.link.kind === "paired") await drainGone()
+      // on beside the new pairing, nor a check waiting its turn. Its key is
+      // not signed out; home refused it.
+      if (before.link.kind === "paired") {
+        pace.leave(false)
+        await drainGone()
+      }
       const { base } = address
       const id = crypto.randomUUID()
       const at = ports.now()
@@ -645,6 +652,8 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     async check(): Promise<void> {
       const { link } = state
       if (link.kind !== "paired" || link.standing.kind === "forgotten") return
+      // Pairing again (SIGNIN3): the new pairing is known once made.
+      if (pairingNow()) return
       const pairing = await readPairing()
         // Ignored: a record the phone can't read just now is the read's own
         // to say (`load`); the check asks again at its next moment.
@@ -652,8 +661,9 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       if (pairing?.id !== link.id) return
       if (awayNow() || homeBusyNow()) return
       if (!(await pace.turn(false))) return
-      // Home may have asked to be left alone while this waited its turn.
-      if (awayNow() || homeBusyNow()) return
+      // Home may have asked to be left alone while this waited its turn, or
+      // the person may have started pairing again.
+      if (awayNow() || homeBusyNow() || pairingNow()) return
       let answer: HomeAnswer
       const sent = ports.now()
       try {

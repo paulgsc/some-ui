@@ -41,6 +41,7 @@ const PAIRED: HomeLinkEvent = {
   at: 50,
 }
 const FAILED: HomeLinkEvent = { type: "pairFailed", failure: "bad-code" }
+const ENDS: ReadonlyArray<HomeLinkEvent> = [PAIRED, FAILED]
 
 /** A phone paired as p1, which home has refused. */
 const FORGOTTEN = run([READ, heard(false, 9)])
@@ -106,25 +107,53 @@ describe("pairing again (model)", () => {
       }
       for (const during of AROUND) {
         const mid = step(pressed, during)
-        // Nothing else of the person's starts, no drain run starts, and
-        // home's word on the old key changes nothing while it pairs.
+        // Nothing else of the person's starts and no drain run starts while
+        // it pairs; only home's word on the old key may change the old
+        // pairing, as it would at any time.
         expect(mid.activity).toEqual(pressed.activity)
-        expect(mid.link).toBe(pressed.link)
+        if (during.type !== "heard") expect(mid.link).toBe(pressed.link)
         if (pressed.drain.kind === "idle") {
           expect(mid.drain.kind).toBe("idle")
         }
         expect(drainFree(mid)).toBe(false)
-        for (const end of [PAIRED, FAILED]) {
+        for (const end of ENDS) {
           const after = step(mid, end)
           expect(after.activity).toEqual({ kind: "idle" })
-          expect(after.link).toMatchObject(
-            end === PAIRED
-              ? { id: "p2", standing: { kind: "known" } }
-              : { id: "p1", standing: { kind: "forgotten", at: 9 } }
-          )
+          if (end === PAIRED) {
+            expect(after.link).toMatchObject({
+              id: "p2",
+              standing: { kind: "known" },
+            })
+          } else {
+            // A failure leaves the old pairing as home last said it was.
+            expect(after.link).toBe(mid.link)
+          }
         }
       }
     }
+  })
+
+  it("keeps home's word that it knows the old key again, heard while pairing failed", () => {
+    const failed = run([PAIR, heard(true, 30), FAILED], FORGOTTEN)
+    expect(failed.link).toMatchObject({ id: "p1", standing: { kind: "known" } })
+  })
+
+  it("carries home's busy over to a pairing with the same home, never another", () => {
+    const busy = step(FORGOTTEN, { type: "homeBusy", until: 99 })
+    expect(run([PAIR, PAIRED], busy).homeBusyUntil).toBe(99)
+    const elsewhere = run(
+      [
+        { type: "pairPressed", base: "https://other.example/api/v1" },
+        {
+          type: "paired",
+          base: "https://other.example/api/v1",
+          id: "p2",
+          at: 50,
+        },
+      ],
+      busy
+    )
+    expect(elsewhere.homeBusyUntil).toBeNull()
   })
 
   it("lets the drain start again once the new pairing is made", () => {
@@ -180,8 +209,11 @@ const REFUSED: HomeAnswer = { status: 401, body: "{}" }
 describe("pairing again (runtime)", () => {
   it("waits for a drain run under the old key to end, sends nothing more under it, then pairs", async () => {
     let release: (answer: HomeAnswer) => void = () => undefined
+    let released = false
+    let pairedAfterRelease: boolean | null = null
     const home = forgottenHome((call) => {
       if (call.url.endsWith("/auth/pairing/finish")) {
+        pairedAfterRelease = released
         return Promise.resolve({
           status: 200,
           body: JSON.stringify({ token: "new", expiresAt: 1 }),
@@ -203,12 +235,18 @@ describe("pairing again (runtime)", () => {
       await send("PUT", "/sessions/a", "{}")
       await send("PUT", "/sessions/b", "{}")
     })
-    await Promise.resolve()
+    while (!home.sent.some((call) => call.url.endsWith("/sessions/a"))) {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    }
     const before = home.sent.length
 
     const pairing = home.link.pair(HOME, "K7QF2M9X")
-    await Promise.resolve()
+    // However long the drain's request takes, the pairing waits for it.
+    for (let tick = 0; tick < 5; tick += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    }
     expect(home.sent).toHaveLength(before)
+    released = true
     release({ status: 200, body: "{}" })
     await lane
     await pairing
@@ -218,6 +256,7 @@ describe("pairing again (runtime)", () => {
       `${HOME.base}/auth/pairing/finish`,
     ])
     expect(after.every((call) => call.token !== "old")).toBe(true)
+    expect(pairedAfterRelease).toBe(true)
     expect(home.link.getSnapshot().link).toMatchObject({
       kind: "paired",
       standing: { kind: "known" },
