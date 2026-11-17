@@ -4891,7 +4891,7 @@
     {
       "store": "server:voice_note_deletion",
       "class": "record",
-      "growth": "Per voice note the owner deletes for good from My data (MD3, #2477; paulgsc/server invariant 23): one small receipt row (the note's id and kind, three times, its size, what went and what stayed in fixed words), append-only and never deleted but with the account, at most one per voice note. Only Studio's recordings (takes and idea answers) are switched on (owner, 2026-11-04), so it grows with what the owner deletes of them.",
+      "growth": "Per voice note the owner deletes for good from My data (MD3, #2477; paulgsc/server invariant 23): one small receipt row (the note's id and kind, three times, its size, what went and what stayed in fixed words), append-only and never deleted but with the account, at most one per voice note. Only Studio's recordings (takes and idea answers) are switched on (owner, 2026-11-04), and a take of any kind home couldn't hear may be deleted too, from Takes › Needs your attention (owner, some-ui#3076) and from My data (owner, on server#919), so it grows with what the owner deletes of them.",
       "family": "voice-heard"
     },
     {
