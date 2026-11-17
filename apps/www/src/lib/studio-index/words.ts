@@ -280,6 +280,8 @@ export const STUDIO_INDEX_WORDS = {
       "This screen is on the change's page. Only what it showed is kept here.",
     homeAway:
       "Home didn't answer, so this screen isn't here. Try again in a moment.",
+    phoneBusy:
+      "This phone was busy with home just then, so this screen isn't here. Try again in a moment.",
     unreadable: "Home sent this screen, but it couldn't be shown.",
     onlyLabels:
       "This phone isn't paired with home, where the screens are kept, so only what each one shows is listed.",

@@ -93,16 +93,14 @@ export async function answered<T, A>(
 }
 
 /**
- * Home's answer to `ask`, asked again while the link is busy; `unreachable`
- * once it stayed busy `TRIES` times, or once `wanted` says the answer is
- * no longer wanted, before the next ask.
+ * Home's answer to `ask`, asked again while the link is busy; `busy` once
+ * it stayed busy `TRIES` times, or once `wanted` says the answer is no
+ * longer wanted before the next ask, since home was never asked (#3155).
  */
 export async function askWhileBusy<A extends { readonly kind: "answered" }>(
   ask: () => Promise<A | NotAnswered>,
   wanted: () => boolean = () => true
-): Promise<
-  A | { readonly kind: "unpaired" } | { readonly kind: "unreachable" }
-> {
+): Promise<A | NotAnswered> {
   for (let tried = 0; tried < TRIES && wanted(); tried += 1) {
     const asked = await ask()
     switch (asked.kind) {
@@ -120,5 +118,5 @@ export async function askWhileBusy<A extends { readonly kind: "answered" }>(
       }
     }
   }
-  return { kind: "unreachable" }
+  return { kind: "busy" }
 }

@@ -81,16 +81,19 @@ describe("the takes needing attention's machine (HEARD3)", () => {
     )
   })
 
-  it("leaves a take where it was when home didn't take the act, and says so", () => {
-    const { state } = run([
-      ...listed,
-      { type: "act", id: "a", act: "again" },
-      { type: "actAnswered", seq: 1, answer: "notTaken" },
-    ])
-    expect(ids(state)).toEqual(["a", "b"])
-    expect(state.said).toEqual({ kind: "notTaken", id: "a" })
-    expect(state.acting).toBeNull()
-  })
+  it.each(["notTaken", "busy"] as const)(
+    "leaves a take where it was when the act ended %s, and says so",
+    (answer) => {
+      const { state } = run([
+        ...listed,
+        { type: "act", id: "a", act: "again" },
+        { type: "actAnswered", seq: 1, answer },
+      ])
+      expect(ids(state)).toEqual(["a", "b"])
+      expect(state.said).toEqual({ kind: answer, id: "a" })
+      expect(state.acting).toBeNull()
+    }
+  )
 
   it("drops a take home has nothing left to reconcile on, and says so", () => {
     const { state } = run([

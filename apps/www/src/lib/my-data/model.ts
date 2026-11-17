@@ -104,8 +104,10 @@ export type HomeReading =
   | { readonly kind: "reading" }
   /** Not paired: nothing was asked. */
   | { readonly kind: "unpaired" }
-  /** No answer, busy, or an answer the phone can't read. */
+  /** No answer, or an answer the phone can't read. */
   | { readonly kind: "unreachable" }
+  /** This phone stayed busy with home, so nothing was asked (#3155). */
+  | { readonly kind: "busy" }
   /** Home answered, without this read: it runs an older version. */
   | { readonly kind: "older" }
   | {

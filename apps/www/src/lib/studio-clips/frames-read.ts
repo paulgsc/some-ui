@@ -37,9 +37,9 @@ export async function readClipFrames(
     shown.push(
       asked.kind === "answered"
         ? readFrame(asked.answer)
-        : asked.kind === "unpaired"
-          ? asked
-          : { kind: "away" }
+        : asked.kind === "unreachable"
+          ? { kind: "away" }
+          : asked
     )
   }
   return shown

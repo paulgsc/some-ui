@@ -6,7 +6,8 @@
  * in the screen's own terms why it has nothing: not paired, out of reach, a
  * home that keeps no ideas yet, or an answer this phone can't read. A read
  * that finds the link busy with another run asks again a second later, at
- * most ten times, as My data's does. Phone-only (`build.paths.ts`).
+ * most ten times, as My data's does, and says this phone was busy once it
+ * stayed so. Phone-only (`build.paths.ts`).
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { jsonOf } from "@some-ui/core-utils"
@@ -67,6 +68,7 @@ type Answered =
   | { readonly kind: "answered"; readonly answer: HomeAnswer }
   | { readonly kind: "unpaired" }
   | { readonly kind: "away" }
+  | { readonly kind: "busy" }
 
 async function ask(what: IdeasAsk): Promise<Answered> {
   const asked = await askWhileBusy(() => askIdeas(what))

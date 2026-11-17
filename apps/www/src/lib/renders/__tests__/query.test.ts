@@ -48,6 +48,12 @@ describe("Renders' read on its own (AW1)", () => {
     )
   })
 
+  it("asks again in half a minute once this phone stayed busy with home (#3155)", () => {
+    expect(rendersAgainIn({ error: null, data: { kind: "busy" } })).toBe(
+      WHILE_UNDER_WAY_MS
+    )
+  })
+
   it("stops once home gave no answer, and when nothing is under way", () => {
     expect(
       rendersAgainIn({ error: new RendersUnanswered("x"), data: UNDER_WAY })

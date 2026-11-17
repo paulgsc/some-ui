@@ -71,6 +71,7 @@ export const FEEDBACK_WORDS = {
     older:
       "Home doesn't keep notes on episodes yet, so they wait on this phone.",
     away: "Home didn't answer, so this is what the phone knows of it.",
+    busy: "This phone was busy with home just then, so this is what the phone knows of it. Drag down to try again.",
   },
   goes: "Where it goes",
 } as const

@@ -151,7 +151,8 @@ export function createMyData(ports: MyDataPorts): MyData {
     },
     async checkAgain(): Promise<void> {
       const home = await read(state.of)
-      if (home.kind === "unreachable") throw new Error("home didn't answer")
+      if (home.kind === "unreachable" || home.kind === "busy")
+        throw new Error("home didn't answer")
     },
     refreshShown(): void {
       if (listeners.size > 0) void read(state.of)

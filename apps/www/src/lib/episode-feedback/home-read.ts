@@ -21,10 +21,12 @@ export type HomeNotesOutcome =
   | { readonly kind: "read"; readonly storedAt: ReadonlyMap<string, string> }
   | { readonly kind: "older" }
   | { readonly kind: "unpaired" }
+  /** This phone stayed busy with home, so nothing was asked (#3155). */
+  | { readonly kind: "busy" }
 
 /**
  * Reads the notes home keeps on every feed that takes them, asking again while the link is
- * busy. Rejects when home didn't answer or an answer couldn't be read, so the
+ * busy, and says `busy` once it stayed busy. Rejects when home didn't answer or an answer couldn't be read, so the
  * page keeps what it last read and says so.
  */
 export async function readHomeNotes(
@@ -33,7 +35,7 @@ export async function readHomeNotes(
   const storedAt = new Map<string, string>()
   for (const feed of NOTED_FEEDS) {
     const asked = await askWhileBusy(() => askEpisodeNotes(feed), wanted)
-    if (asked.kind === "unpaired") return asked
+    if (asked.kind === "unpaired" || asked.kind === "busy") return asked
     if (asked.kind === "unreachable") throw new Error("home didn't answer")
     const read = readFeedNotes(asked.answer)
     if (read.kind === "older") return read

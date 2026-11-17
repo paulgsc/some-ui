@@ -18,16 +18,18 @@ export * from "./words"
 
 /**
  * When the board is read again on its own: every half minute while home has
- * something under way, never otherwise, and not once home gave no answer
- * (away from home; AW1, lib/home-link/away): a pull or Try again reads again.
+ * something under way or this phone was busy with home, never otherwise, and
+ * not once home gave no answer (away from home; AW1, lib/home-link/away): a
+ * pull or Try again reads again.
  */
 export function rendersAgainIn(state: {
   readonly error: unknown
   readonly data: RendersOutcome | undefined
 }): number | false {
-  return !(state.error instanceof RendersUnanswered) &&
-    state.data?.kind === "read" &&
-    underWay(state.data.board)
+  if (state.error instanceof RendersUnanswered) return false
+  const read = state.data
+  return read?.kind === "busy" ||
+    (read?.kind === "read" && underWay(read.board))
     ? WHILE_UNDER_WAY_MS
     : false
 }

@@ -61,6 +61,8 @@ export type MakeAsked =
   | { readonly kind: "asked" }
   | { readonly kind: "unpaired" }
   | { readonly kind: "away" }
+  /** This phone stayed busy with home, so nothing was asked (#3155). */
+  | { readonly kind: "busy" }
   | { readonly kind: "older" }
   | { readonly kind: "unreadable" }
 
@@ -84,6 +86,8 @@ export type HomeState =
   | { readonly kind: "read"; readonly preview: Preview | null }
   | { readonly kind: "unpaired" }
   | { readonly kind: "away" }
+  /** This phone stayed busy with home, so nothing was asked (#3155). */
+  | { readonly kind: "busy" }
   | { readonly kind: "older" }
   | { readonly kind: "unreadable" }
 
@@ -99,7 +103,7 @@ export type PreviewState = {
 }
 
 /** A read again that didn't come back, while the page still shows the last. */
-export type ReadFailure = "away" | "unreadable"
+export type ReadFailure = "away" | "busy" | "unreadable"
 
 /**
  * What the page says once, over itself (a `Notice`): that home took the
@@ -147,7 +151,9 @@ export function step(state: PreviewState, event: PreviewEvent): PreviewState {
       // a preview being watched included, and says so once.
       if (
         state.home.kind === "read" &&
-        (event.home.kind === "away" || event.home.kind === "unreadable")
+        (event.home.kind === "away" ||
+          event.home.kind === "busy" ||
+          event.home.kind === "unreadable")
       )
         return { ...state, said: { kind: "readFailed", why: event.home.kind } }
       const next = { ...state, home: event.home }

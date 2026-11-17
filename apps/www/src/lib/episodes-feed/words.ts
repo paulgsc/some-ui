@@ -69,9 +69,11 @@ export const EPISODES_FEED_WORDS = {
   trouble: ({ feed, kind }: Trouble, alone: boolean): string =>
     kind === "older"
       ? FEED_WORDS[feed].older
-      : alone
-        ? `Home couldn't give ${FEED_WORDS[feed].what}. Try again in a moment.`
-        : `Home couldn't give ${FEED_WORDS[feed].what}. The rest are here.`,
+      : kind === "busy"
+        ? `This phone was busy with home just then, so ${FEED_WORDS[feed].what} didn't come. ${alone ? "Try again in a moment." : "The rest are here."}`
+        : alone
+          ? `Home couldn't give ${FEED_WORDS[feed].what}. Try again in a moment.`
+          : `Home couldn't give ${FEED_WORDS[feed].what}. The rest are here.`,
   tryAgain: VIDEOS_WORDS.tryAgain,
   reading: VIDEOS_WORDS.reading,
   unpaired: "Pair this phone with home to see your episodes.",

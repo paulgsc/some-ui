@@ -385,6 +385,7 @@ export const RENDERS_WORDS = {
   older:
     "Home doesn't say what it's making yet. It will after its next update.",
   unpaired: "Pair this phone with home to see what it's making.",
+  busy: "This phone was busy with home just then. It asks again in half a minute.",
   open: "See what home is making",
   lineUntilRead: "Home's renders",
 } as const
