@@ -48,17 +48,17 @@ pair_by_ui() {
   local address=${1:-https://10.0.2.2:8787} code=${2:-K7QF2M9X}
   local host=${address#*://}
   host=${host%%/*}
-  if ! UI_WAIT_SECONDS=10 ui find 'Pair this phone with home'; then
+  if ! UI_WAIT_SECONDS=25 ui find 'Pair this phone with home'; then
     ui tap 'Settings' && ui tap 'Home' && ui tap 'Pair...' || return 1
   fi
   ui type "pair-address|Home's address|file-host.home.example|Home server address|https://file-host.home.example" "$address" &&
     ui type 'pair-code|Code from your computer|K7QF 2M9X' "$code" &&
     hide_keyboard &&
     ui tap "Pair with $host" &&
-    ui find 'Unpair|Home: signed in*'
+    ui find 'Sign out of home|Unpair|Home: signed in*'
 }
 
 # The first run's welcome (SIGNIN2), set aside for a run that does not pair.
 dismiss_welcome() {
-  UI_WAIT_SECONDS=10 ui tap 'Not now' || true
+  UI_WAIT_SECONDS=25 ui tap 'Not now' || true
 }
