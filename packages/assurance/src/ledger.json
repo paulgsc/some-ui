@@ -3142,9 +3142,9 @@
               "ref": "server:infra/render/render-calls.sh"
             },
             {
-              "class": "measured",
-              "says": "render-calls.sh, with a fake recorder, keeps a refused attempt's reason and numbers beside its failed log and does not try it again while its input, its job's caps, the render image, the speaker's image, the worker script and the brand files are unchanged, trying it at once when any changes (the script's sum is read when the worker starts); any other failure keeps the hourly retry; CI runs it on every pull request.",
-              "ref": "server:infra/render/render-calls.test.sh"
+              "class": "structural",
+              "says": "Playoff Delta's job fails, is held and is tried again through the same render_one, failed_recently and held_by as the call's and the Rust Rounds essay's, which render-calls.test.sh measures: a refusal is held until its input, its caps, the render image, the speaker's image, the worker script or the brand files change, and every other failure keeps the hourly retry.",
+              "ref": "server:infra/render/render-calls.sh"
             }
           ],
           "watch": {
@@ -3677,9 +3677,9 @@
               "ref": "some-ui#2979"
             },
             {
-              "class": "measured",
-              "says": "render-calls.sh, with a fake recorder, keeps a refused attempt's reason and numbers beside its failed log and does not try it again while its input, its job's caps, the render image, the speaker's image, the worker script and the brand files are unchanged, trying it at once when any changes (the script's sum is read when the worker starts); any other failure keeps the hourly retry; CI runs it on every pull request.",
-              "ref": "server:infra/render/render-calls.test.sh"
+              "class": "structural",
+              "says": "The cards-essay job fails, is held and is tried again through the same render_one, failed_recently and held_by as the call's and the Rust Rounds essay's, which render-calls.test.sh measures: a refusal is held until its input, its caps, the render image, the speaker's image, the worker script or the brand files change, and every other failure keeps the hourly retry.",
+              "ref": "server:infra/render/render-calls.sh"
             }
           ],
           "watch": {
