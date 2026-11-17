@@ -66,8 +66,8 @@ export const ACCOUNT_ERASES = {
       text: "Each note you left at a moment of an episode and your phone sent home: which episode, the moment, what you picked about it, the take you said for it if any, and when you wrote it.",
     },
     {
-      label: "Voice notes, game bites included",
-      text: "Each voice note your phone sent home, its sound included, and what home heard in it; for a game-day bite, also what it was about and what the screen showed as you said it.",
+      label: "Voice notes, recordings from a game included",
+      text: "Each voice note your phone sent home, its sound included, and what home heard in it; for a recording from a game, also what it was about and what the screen showed as you said it.",
     },
     {
       label: "What the phone noted beside a soundbite or a LeetType answer",

@@ -72,6 +72,10 @@ describe("the takes needing attention's words (HEARD3)", () => {
     expect(all.filter((text) => OTHER_WORDS.test(text))).toEqual([])
   })
 
+  it("name a game's take as the owner asked (2026-11-17)", () => {
+    expect(RECONCILE_WORDS.of("game")).toBe("A take from a game")
+  })
+
   it("name each code apart, never one for all (owner, #3070)", () => {
     const names = CODES.map((code) => RECONCILE_WORDS.codes[code].name)
     expect(new Set(names).size).toBe(CODES.length)
