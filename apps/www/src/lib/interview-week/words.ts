@@ -1,8 +1,11 @@
 /**
- * Every word the interview week's screen puts on the phone (IW5), in one pure
- * table, held to the owner's rules by `__tests__/words.test.ts`: no score,
- * grade, verdict or "you said", nothing that calls an answer good or bad, and
- * no status code or internal name. Nothing answers a take: the essay comes
+ * Every word the interview week's pages put on the phone (IW5, IW8), in one
+ * pure table, held to the owner's rules by `__tests__/words.test.ts`: no
+ * score, grade, verdict or "you said", nothing that calls a take good or bad,
+ * no count, nothing about what wasn't done, and no status code or internal
+ * name. What was done reads in the past tense ("Read aloud on Monday"). The
+ * study page's names for the ready answers it shows ("Another good answer",
+ * "A poor answer") are about those answers, never a take (owner, 2026-11-17). Nothing answers a take: the essay comes
  * from home after the deadline. The interview is invented (owner,
  * 2026-11-13), so the brief says to answer for its role.
  *
@@ -13,16 +16,19 @@
  * week in its own words.
  */
 import {
+  assertNever,
   pacificClock as clock,
   pacificWeekday as weekday,
   weekNumber,
 } from "@some-ui/core-utils"
-import type { InterviewWeek } from "@some-ui/interview-week"
+import type { InterviewWeek, WorkSource } from "@some-ui/interview-week"
 import { TAKE_MAX_SECONDS } from "@some-ui/interview-week"
 import type { BundleWords } from "@some-ui/shared"
 import { TAKE_WORDS } from "@some-ui/voice-capture"
 
 import { lengthOf } from "@/lib/format"
+
+import type { Rung, Step } from "./ladder"
 
 const takes = (n: number): string => (n === 1 ? "1 take" : `${n} takes`)
 
@@ -93,8 +99,25 @@ const BUNDLE: BundleWords = {
   },
 }
 
-/** Where a card stands, on the brief. */
-export type CardStanding = "open" | "said" | "sent" | "resaid"
+/** A claim's source, as its chip names it: `some-ui#3170`, `C266`, a doc's path. */
+function sourceName(source: WorkSource): string {
+  switch (source.kind) {
+    case "pull":
+    case "issue": {
+      return `${source.repo}#${source.number}`
+    }
+    case "call":
+    case "invariant": {
+      return source.id
+    }
+    case "doc": {
+      return source.path
+    }
+    default: {
+      return assertNever(source)
+    }
+  }
+}
 
 type Dated = Pick<InterviewWeek, "id" | "due">
 
@@ -119,23 +142,55 @@ export const INTERVIEW_WORDS = {
   questions: "Questions",
   reads: "Read aloud",
   readsLine:
-    "Each read shows its script, counts down, and records while the script stays on screen. Read it as written.",
-  standing: {
-    open: "Not said",
-    said: "Said, on this phone",
-    sent: "Sent",
-    resaid: "Said again, on this phone until you send",
-  } satisfies Record<CardStanding, string>,
+    "Short scripts about why a piece of this work exists, read as written, the way you'd open a talk.",
+  readsEntry:
+    "Read aloud has its own page: short scripts about the work, read as written.",
+  /** The Interview page (IW8). */
+  today: "Today's question",
+  todayLine: "A minute or two, at whatever step you like",
+  others: "The week's other questions",
+  kept: "Your first take of each question goes home on its own. The rest stay on this phone until you send the week.",
+  /** What was done on each rung, and on a take said before rungs were kept. */
+  past: {
+    aloud: "Read aloud",
+    cues: "Said from cues",
+    own: "Said your way",
+    said: "Said",
+  } satisfies Record<Rung | "said", string>,
+  /** What was last done with a question or a read, on its day: "Read aloud on Monday". */
+  done: (did: string, at: string): string => `${did} on ${weekday(at)}`,
+  /** A question's ladder (IW8): the agreed names (owner, 2026-11-17). */
+  step: {
+    study: {
+      name: "Read the answer",
+      line: "Two good answers and a poor one, with notes",
+    },
+    aloud: { name: "Read it aloud", line: "The answer, one phrase a line" },
+    cues: { name: "Say it from cues", line: "A few words to lean on" },
+    own: { name: "Say it your way", line: "Just the question" },
+  } satisfies Record<Step, { name: string; line: string }>,
+  yourTake: "Your take",
+  inItsPlace: "Saying it again puts the new one here in its place.",
+  toInterview: "Interview",
+  toQuestion: "The question",
+  toAnswer: "The answer",
+  toReads: "Read aloud",
+  notInWeek: "This isn't in this week's interview.",
+  /** The study page. */
+  study: {
+    work: "Every claim names where it comes from in your own work. Each source was checked at this week's commit.",
+    open: "Built on the shape that works for this kind of question, fitted to you.",
+    ready: "A ready answer",
+    another: "Another good answer",
+    poor: "A poor answer",
+    readIt: "Read it aloud",
+  },
+  /** A claim's source, as its chip names it. */
+  source: sourceName,
   /** A card's target length, and the cap on a take. */
   aim: (seconds: number): string => `Aim for about ${lengthOf(seconds * 1000)}`,
   cap: `A take stops at ${lengthOf(TAKE_MAX_SECONDS * 1000)}.`,
-  toReviewOf: (n: number, of: number): string =>
-    `Look it over before sending · ${n} of ${of}`,
-  /** A question's card. */
-  questionOf: (n: number, of: number): string => `Question ${n} of ${of}`,
   guidelines: "What to cover",
-  /** A read's card. */
-  readOf: (n: number, of: number): string => `Read ${n} of ${of}`,
   situation: "Where this is read",
   script: "Read this",
   /** The count before a read records. */
@@ -167,11 +222,11 @@ export const INTERVIEW_WORDS = {
   openUntil: (week: Pick<InterviewWeek, "due">): string =>
     `What home has at ${weekday(week.due)} ${clock(week.due)} is what counts, and is kept for good. Until then you can say any card, say one again and send the week again.`,
   backToWeek: "Back to the week",
-  /** A card, for its take home holds. */
+  /** A take page, once the week was sent: whether the take there is the one home holds. */
   home: {
-    holds: "This is the take you sent for this card.",
+    holds: "This is the take you sent for this.",
     again:
-      "You sent an earlier take for this card. The one here goes when you send again.",
+      "You sent an earlier take for this. The one here goes when you send again.",
   },
   /** After Send. */
   sent: {

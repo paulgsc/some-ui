@@ -1,6 +1,11 @@
 import { inMemoryStorage } from "@some-ui/core-utils"
-import type { InterviewWeek } from "@some-ui/interview-week"
-import { INTERVIEW_WEEK_SCHEMA_V1, readWeek } from "@some-ui/interview-week"
+import type { InterviewWeek, Ready } from "@some-ui/interview-week"
+import {
+  GROUND,
+  INTERVIEW_WEEK_SCHEMA,
+  INTERVIEW_WEEK_SCHEMA_V1,
+  readWeek,
+} from "@some-ui/interview-week"
 import { ONE_TAKE } from "@some-ui/voice-capture"
 import type { SimulatedPattern } from "@some-ui/voice-capture/testing"
 import { simulatedPattern } from "@some-ui/voice-capture/testing"
@@ -80,8 +85,65 @@ export const WEEK: InterviewWeek = {
   ],
 }
 
-// The fixture comes in by the one door a week does.
-if (!readWeek(WEEK).ok) throw new Error("the fixture week doesn't read")
+/** A ready answer in the routine's shape (IW8), about `topic`, its claims citing `cite`. */
+function readyAbout(topic: string, cite: Ready["another"]["sources"]): Ready {
+  return {
+    answer: [
+      [
+        "The situation",
+        `On my phone app, ${topic} reached the screen as home can't be reached.`,
+      ],
+      [
+        "The options",
+        "I had two ways out: wait in each caller, or make not known yet a state of its own.",
+      ],
+      [
+        "The choice and its cost",
+        "I chose the state. It touched 54 files, and one place now decides.",
+      ],
+    ].map(([label, text]) => ({
+      label,
+      text,
+      note: `${label} names what the listener can check.`,
+      sources: cite,
+    })),
+    another: {
+      text: "I keep one rule for anything the whole app shares: not known yet is a value, never folded into no.",
+      note: "Leads with the principle, then the example.",
+      sources: cite,
+    },
+    poor: {
+      text: "We had some sync bugs, so I refactored the networking layer.",
+      notes: [
+        "Sync bugs doesn't say what failed, or for whom.",
+        "No alternative is named, so no decision is shown.",
+      ],
+      sources: [],
+    },
+    cues: ["not paired too early", "wait in each caller", "the type holds it"],
+  }
+}
+
+/** The same week as the routine writes it since IW8 (`/2`): each question with its ground and ready answer. */
+export const WEEK_2: InterviewWeek = {
+  ...WEEK,
+  schema: INTERVIEW_WEEK_SCHEMA,
+  questions: WEEK.questions.map((question) => ({
+    ...question,
+    ground: GROUND[question.family],
+    ready: readyAbout(
+      question.id,
+      GROUND[question.family] === "work"
+        ? [{ kind: "pull", repo: "some-ui", number: 3170 }]
+        : []
+    ),
+  })),
+}
+
+// The fixtures come in by the one door a week does.
+for (const week of [WEEK, WEEK_2]) {
+  if (!readWeek(week).ok) throw new Error(`${week.schema} fixture doesn't read`)
+}
 
 /**
  * The week's ports over the simulated microphone (`send: "on-confirm"`), in
