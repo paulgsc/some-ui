@@ -214,14 +214,14 @@ export function pairFailureLine(failure: PairFailure, host: string): string {
     case "no-name": {
       return `This phone can't find ${host} on this network. On your home network, your router may be blocking it. Nothing was sent.`
     }
-    case "busy": {
-      return `${host} is busy just now. Wait a minute and try again.`
-    }
     case "bad-code": {
       return "That code didn't work. Codes work once, for 10 minutes. Get a new one on your computer."
     }
     case "too-many": {
       return "Home has had too many pairing tries. Try again later."
+    }
+    case "busy": {
+      return `${host} is busy. Try again in a moment.`
     }
     case "not-set-up": {
       return `${host} can't pair phones: passkey sign-in isn't set up there.`

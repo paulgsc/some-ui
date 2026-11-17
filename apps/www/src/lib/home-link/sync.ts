@@ -45,7 +45,7 @@ export async function syncLessonsFrom(
   const ran = { yes: false }
   try {
     const { context } = await deviceBackend()
-    const outcome = await homeLink().sync((get) => {
+    const outcome = await homeLink().sync(base, (get) => {
       ran.yes = true
       return syncFromHome(context.db, base, get)
     })

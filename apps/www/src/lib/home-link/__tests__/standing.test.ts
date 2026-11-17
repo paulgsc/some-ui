@@ -497,6 +497,24 @@ describe("RN1: a paired phone's session is renewed while the app is used", () =>
     expect(standingOf(home.link.getSnapshot())).toEqual({ kind: "known" })
   })
 
+  it("hears home's overload on the check as busy: the link waits out its Retry-After (AD3, #3127)", async () => {
+    const home = setup({
+      record: KEPT,
+      answer: () => ({
+        status: 503,
+        body: JSON.stringify({ error: { code: "service_overloaded" } }),
+        retryAfter: "5",
+      }),
+    })
+    await home.link.load()
+    await home.link.check()
+    expect(home.link.getSnapshot().homeBusyUntil).toBe(5_000)
+    await home.link.check()
+    expect(home.sent).toHaveLength(1)
+    home.pass(5_000)
+    expect(home.link.getSnapshot().homeBusyUntil).toBeNull()
+  })
+
   it("asks nothing while held away, then asks on the first coming to the front after the hold", async () => {
     let silent = true
     const home = setup({
