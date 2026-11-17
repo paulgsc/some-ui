@@ -3,10 +3,13 @@
  * as one line the launch test can search for, and nothing else unless the
  * app writes it on purpose.
  */
+import { fakeClock } from "@/test-support/fake-clock"
 import { FOREIGN_FAILURE_TAG, reportFailure } from "@some-ui/intent-kit"
+import type { ForeignFailure } from "@some-ui/intent-kit"
 import { describe, expect, it, vi } from "vitest"
 
 import { HomeNoAnswerError } from "@/lib/device-backend/native-http/no-answer"
+import { createHomeLink } from "@/lib/home-link/runtime"
 
 import { failureLine, installNativeLog } from "./index"
 
@@ -62,6 +65,47 @@ describe("the native log", () => {
     expect(line).toContain("from /10.0.0.5")
   })
 
+  it("NL1: the home link's one report of a stretch away carries the phone's network", async () => {
+    const reported: Array<ForeignFailure> = []
+    const clock = fakeClock()
+    const link = createHomeLink({
+      credential: {
+        read: () =>
+          Promise.resolve({
+            record: JSON.stringify({
+              base: "https://home.example/api/v1",
+              token: "t",
+              id: "p1",
+            }),
+            lost: false,
+          }),
+        write: () => Promise.resolve(),
+        clear: () => Promise.resolve(),
+      },
+      request: () =>
+        Promise.reject(
+          new HomeNoAnswerError({
+            kind: "unreachable",
+            retryable: true,
+            summary: "Couldn't reach the home server.",
+            cause: new Error(
+              "failed to connect to /192.168.1.10 (port 443) from /10.0.0.5 (port 51234) after 10000ms"
+            ),
+          })
+        ),
+      onHidden: () => (): void => undefined,
+      now: clock.now,
+      after: clock.after,
+      report: (reportedFailure) => reported.push(reportedFailure),
+    })
+    await link.load()
+    await link
+      .send((send) => send("GET", "/voice-notes/kept"))
+      .catch(() => undefined)
+    expect(reported).toHaveLength(1)
+    expect(failureLine(reported[0])).toContain("from /10.0.0.5")
+  })
+
   it("NL1: stops at a cycle or a long chain, and writes a cause that is no error as text", () => {
     const loop = new Error("a")
     loop.cause = loop
@@ -73,5 +117,9 @@ describe("the native log", () => {
     expect(
       failureLine({ ...failure, error: { ...failure.error, cause: null } })
     ).toMatch(/\(null\)$/)
+    const wrapped = new Error("a", { cause: "the plugin's own words" })
+    expect(
+      failureLine({ ...failure, error: { ...failure.error, cause: wrapped } })
+    ).toMatch(/\(Error: a <- the plugin's own words\)$/)
   })
 })
