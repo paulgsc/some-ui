@@ -50,7 +50,7 @@ export function useFocus(held: Interview, item: string): void {
 }
 
 /** The week's question `id`, or a line saying it isn't in this week. */
-export const WithQuestion = ({
+const WithQuestion = ({
   id,
   children,
 }: {
