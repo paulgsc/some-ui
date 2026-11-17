@@ -49,7 +49,7 @@ phases=()
 fail() { echo "$1" >> "$out/failures.txt"; }
 fail_refresh() { echo "$1" >> "$out/refresh.txt"; }
 
-# lanes_wait <pull-at-ms>: waits up to 2 min for lane-done.mjs to say the
+# lanes_wait <pull-at-ms> [--lanes-only]: waits up to 2 min for lane-done.mjs to say the
 # run read every route again, and prints what it said; its exit code is
 # lane-done's (0 done, 1 late, 3 could not check), or 2 for not in time.
 # lanes_read <pull-at-ms> <phase>: waits up to 2 min for the lanes' run the
@@ -58,11 +58,11 @@ fail_refresh() { echo "$1" >> "$out/refresh.txt"; }
 # not. The pull's own line is not judged: a joined run may send its queued
 # writes first (HERD's owner on #3134), and how the pull says so is #3140.
 lanes_wait() {
-  local pull_at=$1 said="" rc=2
+  local pull_at=$1 mode=${2:-} said="" rc=2
   for _ in $(seq 1 120); do
     if curl -sf "$control/all" > "$out/all-now.json"; then
       # set -e: lane-done.mjs exits 1, 2 and 3 by design, so its code is kept.
-      said=$(node "$here/lane-done.mjs" "$out/all-now.json" "$out/stub-single.json" "$pull_at" "$budget") && rc=0 || rc=$?
+      said=$(node "$here/lane-done.mjs" "$out/all-now.json" "$out/stub-single.json" "$pull_at" "$budget" $mode) && rc=0 || rc=$?
       [ "$rc" = 2 ] || break
     fi
     sleep 1
@@ -287,14 +287,16 @@ pull_then_back() {
   sleep 1
   adb shell am start -W -n "$pkg/.WingPractice" > /dev/null
   pull_end "$before"
-  # Count only once the run has settled, still slowed, so none of it (nor
-  # a second run) lands in the next phase (review of #3139): up to 2 min
-  # for every route the single pull read to come again. The page's own
-  # reads may never come, since going home cut its pull short and a page
-  # reads once per pull (HERD2), so that is noted, not failed; the counts
-  # below judge the phase.
-  said=$(lanes_wait "$pull_at") && rc=0 || rc=$?
+  # Count only once the lanes' run has finished, still slowed, so none of
+  # it (nor a second run) lands in the next phase (reviews of #3139): up to
+  # 2 min for every lane route the single pull read to come again. The
+  # page's own reads are left out (--lanes-only): going home cut its pull
+  # short, and a page reads once per pull (HERD2). Its pace is not judged
+  # here, since home holds every answer; a run that never finished fails.
+  said=$(lanes_wait "$pull_at" --lanes-only) && rc=0 || rc=$?
   echo "lane-done after joined (exit $rc): $said" > "$out/joined-settled.txt"
+  [ "$rc" = 0 ] || [ "$rc" = 1 ] ||
+    fail "joined: the lanes' run the pull and the app coming back joined did not finish reading: $said"
   curl -sf -X POST "$control/calm" > /dev/null || true
 }
 
