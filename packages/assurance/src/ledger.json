@@ -1023,7 +1023,7 @@
     {
       "id": "game-feed",
       "name": "Home follows the games of the week",
-      "why": "Home polls ESPN's public NFL feed in the background, keeping every answer and appending each game's plays to a log, so the phone's game-day bites can later be matched to the play they are about. No route serves the log; the paired phone's game day socket (in the `websocket` module, placed in `synchronous`) reads it to offer what can be happening now, only while the socket is open.",
+      "why": "Home polls ESPN's public NFL feed in the background, keeping every answer and appending each game's plays to a log, so the phone's recordings from a game can later be matched to the play they are about. No route serves the log; the paired phone's game day socket (in the `websocket` module, placed in `synchronous`) reads it to offer what can be happening now, only while the socket is open.",
       "paths": [
         "server:apps/servers/file_host/src/game_feed",
         "server:crates/nfl_feed",
@@ -1212,7 +1212,7 @@
     {
       "id": "bite-matched",
       "name": "Home matches each recording from a game to its play",
-      "why": "Home's reconciler, a task beside the game feed's worker, reads the feed's play log and the game's bites, and keeps for each bite the play it was about or why there was none, so every short can lay the right moment over a bite (GWB7, paulgsc/some-ui#2081). It runs whether or not home is following games, and reads only what the feed has kept; while the feed is paused a pass reconciles only games already final, again only when their bites or mappings changed, or after home restarts.",
+      "why": "Home's reconciler, a task beside the game feed's worker, reads the feed's play log and the game's recordings, and keeps for each recording the play it was about or why there was none, so every short can lay the right moment over a recording (GWB7, paulgsc/some-ui#2081). It runs whether or not home is following games, and reads only what the feed has kept; while the feed is paused a pass reconciles only games already final, again only when their recordings or mappings changed, or after home restarts.",
       "paths": [
         "server:apps/servers/file_host/src/reconcile.rs",
         "server:crates/db/voice/src/bite_match.rs"
