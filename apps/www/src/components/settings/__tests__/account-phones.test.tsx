@@ -72,7 +72,7 @@ const PIXEL: Phone = {
   id: "a",
   pairedOn: "2026-11-03",
   name: "Pixel",
-  renewedAt: new Date(2026, 10, 17, 9).getTime(),
+  renewedAt: Date.UTC(2026, 10, 17, 9),
 }
 const OLD: Phone = { id: "b", pairedOn: null, name: null, renewedAt: 1 }
 
@@ -134,6 +134,21 @@ describe("the lan web's paired phones", () => {
     expect(home.asked).toContain("rename b Kitchen")
   })
 
+  it("puts focus on what a press shows, and saves a name on Enter", async () => {
+    const home = fakeHome([OLD])
+    render(<AccountPhones make={() => createPhones(home.ports)} />)
+    fireEvent.click(await screen.findByRole("button", { name: "Rename" }))
+    const field = screen.getByLabelText("Name")
+    expect(document.activeElement).toBe(field)
+    fireEvent.change(field, { target: { value: "Kitchen" } })
+    fireEvent.submit(field)
+    await screen.findByText("Named Kitchen.")
+    fireEvent.click(screen.getByRole("button", { name: "Sign out" }))
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Yes, sign it out" })
+    )
+  })
+
   it("won't send a name home would refuse, and says why", async () => {
     const home = fakeHome([OLD])
     render(<AccountPhones make={() => createPhones(home.ports)} />)
@@ -157,9 +172,7 @@ describe("the lan web's paired phones", () => {
           : Promise.resolve([PIXEL]),
     }
     render(<AccountPhones make={() => createPhones(ports)} />)
-    await screen.findByText(
-      /^Home didn't answer, so your phones can't be listed/
-    )
+    await screen.findByText("Your phones can't be listed just now.")
     fail = false
     fireEvent.click(screen.getByRole("button", { name: "Try again" }))
     expect(await screen.findByText("Pixel")).toBeTruthy()

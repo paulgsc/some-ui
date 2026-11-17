@@ -19,6 +19,8 @@ const SAID: ReadonlyArray<Said> = [
   { kind: "notNamed", why: "refused" },
   { kind: "notNamed", why: "gone" },
   { kind: "notNamed", why: "failed" },
+  { kind: "notNamed", why: "signedOut" },
+  { kind: "notSignedOut", why: "signedOut" },
   { kind: "notSignedOut", why: "gone" },
   { kind: "notSignedOut", why: "failed" },
 ]
@@ -56,9 +58,11 @@ describe("the phone list's words", () => {
   it("says when a phone paired and was last used, by day", () => {
     expect(PHONES.paired("2026-11-03")).toBe("Paired Nov 3")
     expect(PHONES.paired(null)).toBe("Paired before home kept the day")
-    expect(PHONES.used(new Date(2026, 10, 17, 9).getTime())).toBe(
-      "Used Nov 17 or later"
-    )
+    expect(PHONES.used(Date.UTC(2026, 10, 17, 9))).toBe("Used Nov 17 or later")
+    // Both days are home's UTC days: a phone paired late on the 3rd, west
+    // of Greenwich, never reads as used before it paired.
+    expect(PHONES.used(Date.UTC(2026, 10, 4, 3))).toBe("Used Nov 4 or later")
+    expect(PHONES.paired("2026-11-04")).toBe("Paired Nov 4")
   })
 
   it("says what stays when a phone is signed out", () => {

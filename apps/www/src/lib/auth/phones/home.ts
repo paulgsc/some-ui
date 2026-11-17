@@ -44,6 +44,7 @@ export function refusalOf(error: unknown): Refusal {
   if (error instanceof FileHostResponseError) {
     if (error.status === 404) return "gone"
     if (error.status === 422) return "refused"
+    if (error.status === 401) return "signedOut"
   }
   return "failed"
 }

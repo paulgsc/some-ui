@@ -51,6 +51,8 @@ export type Refusal =
   | "refused"
   /** Home no longer has this phone (signed out elsewhere, say). */
   | "gone"
+  /** This browser's own sign-in with home has ended. */
+  | "signedOut"
   /** No answer, or one that said nothing. */
   | "failed"
 
@@ -133,13 +135,15 @@ function withPhone(
   id: string,
   change: (phone: Phone) => Phone | null
 ): List {
-  if (list.kind !== "read") return list
-  const phones = list.phones.flatMap((phone) => {
+  const shown = phonesOf(list)
+  if (shown === null || list.kind === "reading") return list
+  const phones = shown.flatMap((phone) => {
     if (phone.id !== id) return [phone]
     const next = change(phone)
     return next === null ? [] : [next]
   })
-  return { kind: "read", phones }
+  // A list whose last read failed stays marked so, with the change shown.
+  return { ...list, phones }
 }
 
 /** Whether nothing is being done to a phone, so another may start. */
@@ -188,6 +192,8 @@ export function step(state: PhonesState, event: PhonesEvent): PhonesState {
       return {
         ...state,
         doing: { kind: "saving", id: state.doing.id, name: event.name },
+        // What the last try said is gone as this one starts.
+        said: null,
       }
     }
     case "saved": {
@@ -234,7 +240,11 @@ export function step(state: PhonesState, event: PhonesEvent): PhonesState {
     }
     case "confirmed": {
       if (state.doing.kind !== "confirming") return state
-      return { ...state, doing: { kind: "signingOut", id: state.doing.id } }
+      return {
+        ...state,
+        doing: { kind: "signingOut", id: state.doing.id },
+        said: null,
+      }
     }
     case "signedOut": {
       if (state.doing.kind !== "signingOut" || state.doing.id !== event.id) {

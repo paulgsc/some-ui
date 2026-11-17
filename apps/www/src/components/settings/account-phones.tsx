@@ -16,6 +16,14 @@ import type { Phones } from "@/lib/auth/phones/runtime"
 import { phoneName, PHONES } from "@/lib/auth/phones/words"
 import { typedName } from "@/lib/phone-name"
 
+/**
+ * Moves focus to what a press just showed in place of the button pressed,
+ * which is gone, so a keyboard keeps its place.
+ */
+const takeFocus = (node: HTMLElement | null): void => {
+  node?.focus()
+}
+
 const PhoneRow = ({
   phone,
   state,
@@ -34,41 +42,54 @@ const PhoneRow = ({
     const typed = typedName(text)
     const refused = typed.kind === "refused"
     const inputId = `phone-name-${phone.id}`
+    const save = (): void => {
+      if (doing.kind === "naming" && !refused) {
+        phones.save(typed.kind === "name" ? typed.name : null)
+      }
+    }
     return (
-      <li className="space-y-2">
-        <Label htmlFor={inputId}>{PHONES.nameLabel}</Label>
-        <Input
-          id={inputId}
-          autoComplete="off"
-          value={text}
-          disabled={doing.kind === "saving"}
-          onChange={(event) => phones.typed(event.target.value)}
-        />
-        <p className="text-muted-foreground text-xs">
-          {refused ? PHONES.nameRefused : PHONES.nameHint}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={doing.kind === "saving" || refused}
-            onClick={() =>
-              phones.save(typed.kind === "name" ? typed.name : null)
-            }
-          >
-            {doing.kind === "saving" ? PHONES.saving : PHONES.save}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
+      <li>
+        <form
+          className="space-y-2"
+          onSubmit={(event) => {
+            event.preventDefault()
+            save()
+          }}
+        >
+          <Label htmlFor={inputId}>{PHONES.nameLabel}</Label>
+          <Input
+            id={inputId}
+            autoComplete="off"
+            // The field the owner just asked for: focus goes with their
+            // press, never on a page load (it appears only after one).
+            ref={takeFocus}
+            value={text}
             disabled={doing.kind === "saving"}
-            onClick={phones.cancel}
-          >
-            {PHONES.cancel}
-          </Button>
-        </div>
+            onChange={(event) => phones.typed(event.target.value)}
+          />
+          <p className="text-muted-foreground text-xs">
+            {refused ? PHONES.nameRefused : PHONES.nameHint}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="submit"
+              variant="outline"
+              size="sm"
+              disabled={doing.kind === "saving" || refused}
+            >
+              {doing.kind === "saving" ? PHONES.saving : PHONES.save}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={doing.kind === "saving"}
+              onClick={phones.cancel}
+            >
+              {PHONES.cancel}
+            </Button>
+          </div>
+        </form>
       </li>
     )
   }
@@ -89,6 +110,8 @@ const PhoneRow = ({
               type="button"
               variant="destructive"
               size="sm"
+              // The question the owner's press just asked: focus goes there.
+              ref={takeFocus}
               disabled={doing.kind === "signingOut"}
               onClick={phones.confirm}
             >

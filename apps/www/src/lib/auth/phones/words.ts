@@ -6,7 +6,7 @@
  * name is the owner's own text, shown as typed. `./__tests__/words.test.ts`
  * holds that no line names the machinery.
  */
-import { assertNever, dayOf, formatDay } from "@some-ui/core-utils"
+import { assertNever, formatDay } from "@some-ui/core-utils"
 
 import type { Phone, Said } from "./model"
 
@@ -23,10 +23,13 @@ export const PHONES = {
   list: "Paired phones",
   reading: "Reading your paired phones...",
   none: "No phone is paired with this account.",
-  /** Home didn't give a list, and none was read before. */
-  unreadNone: "Home didn't answer, so your phones can't be listed just now.",
-  /** Home didn't give a list; the one shown is the last read. */
-  unreadSome: "Home didn't answer, so this list may be out of date.",
+  /** No list came back, and none was read before. */
+  unreadNone: "Your phones can't be listed just now.",
+  /** No list came back; the one shown is the last read. */
+  unreadSome: "This list may be out of date: it couldn't be read again.",
+  /** This browser's own sign-in with home has ended. */
+  signedOutHere:
+    "This browser isn't signed in to home anymore. Sign in again to change your phones.",
   tryAgain: "Try again",
   rename: "Rename",
   nameLabel: "Name",
@@ -47,9 +50,12 @@ export const PHONES = {
       ? "Paired before home kept the day"
       : `Paired ${formatDay(pairedOn)}`,
 
-  /** When it was last used, as late as can be known. */
+  /**
+   * When it was last used, as late as can be known: the UTC day, as home
+   * keeps the day it paired, so the two never disagree.
+   */
   used: (renewedAt: number): string =>
-    `Used ${formatDay(dayOf(new Date(renewedAt)))} or later`,
+    `Used ${formatDay(new Date(renewedAt).toISOString().slice(0, 10))} or later`,
 
   /** Asked before signing a phone out: what stays where. */
   confirm: (phone: Pick<Phone, "name">): string =>
@@ -75,8 +81,11 @@ export const PHONES = {
           case "gone": {
             return "That phone isn't paired anymore, so it can't be named."
           }
+          case "signedOut": {
+            return PHONES.signedOutHere
+          }
           case "failed": {
-            return "Home didn't answer, so the name wasn't saved. Try again."
+            return "The name wasn't saved. Try again."
           }
           default: {
             return assertNever(why)
@@ -89,8 +98,11 @@ export const PHONES = {
           case "gone": {
             return "That phone was already signed out."
           }
+          case "signedOut": {
+            return PHONES.signedOutHere
+          }
           case "failed": {
-            return "Home didn't answer, so the phone is still signed in. Try again."
+            return "The phone is still signed in. Try again."
           }
           default: {
             return assertNever(why)

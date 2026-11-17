@@ -128,6 +128,55 @@ describe("the phone list (model)", () => {
     }
   })
 
+  it("shows a rename or sign-out on a list whose last read failed, still marked so", () => {
+    const unread = step(LISTED, { type: "readFailed" })
+    const out = run(
+      [
+        { type: "signOutPressed", id: "b" },
+        { type: "confirmed" },
+        { type: "signedOut", id: "b" },
+      ],
+      unread
+    )
+    expect(out.list).toEqual({ kind: "unread", phones: [A] })
+    const named = run(
+      [
+        { type: "renamePressed", id: "a" },
+        { type: "savePressed", name: "Kitchen" },
+        { type: "saved", id: "a", name: "Kitchen" },
+      ],
+      unread
+    )
+    expect(phonesOf(named.list)?.[0]?.name).toBe("Kitchen")
+    expect(named.list.kind).toBe("unread")
+  })
+
+  it("takes down what the last try said as a retry starts", () => {
+    const failed = run(
+      [
+        { type: "renamePressed", id: "a" },
+        { type: "savePressed", name: "Kitchen" },
+        { type: "saveFailed", id: "a", why: "failed" },
+      ],
+      LISTED
+    )
+    expect(failed.said).not.toBeNull()
+    expect(
+      step(failed, { type: "savePressed", name: "Kitchen" }).said
+    ).toBeNull()
+    const outFailed = run(
+      [
+        { type: "signOutPressed", id: "b" },
+        { type: "confirmed" },
+        { type: "signOutFailed", id: "b", why: "failed" },
+        { type: "signOutPressed", id: "b" },
+        { type: "confirmed" },
+      ],
+      LISTED
+    )
+    expect(outFailed.said).toBeNull()
+  })
+
   it("clears what it said on a dismiss, and when the next thing starts", () => {
     const said = run(
       [

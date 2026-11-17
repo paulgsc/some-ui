@@ -145,6 +145,30 @@ describe("the phone list (runtime)", () => {
   })
 })
 
+describe("a rename beside a read already asked", () => {
+  it("reads again once the name is saved, so an older read can't put the old name back", async () => {
+    const home = heldHome()
+    const phones = createPhones(home.ports)
+    phones.read()
+    home.lists[0]?.resolve([A])
+    await settle()
+    // A read goes out (a sign-out's, say), and the rename lands first.
+    phones.read()
+    phones.renamePressed("a")
+    phones.save("Kitchen")
+    home.renames[0]?.answer.resolve()
+    await settle()
+    expect(home.lists).toHaveLength(3)
+    // The older read, holding the old name, lands and is dropped.
+    home.lists[1]?.resolve([A])
+    await settle()
+    expect(shown(phones.getSnapshot().list)?.[0]?.name).toBe("Kitchen")
+    home.lists[2]?.resolve([{ ...A, name: "Kitchen" }])
+    await settle()
+    expect(shown(phones.getSnapshot().list)?.[0]?.name).toBe("Kitchen")
+  })
+})
+
 describe("home's answers, as the list reads them", () => {
   it("reads home's list, and refuses one that isn't", () => {
     expect(
@@ -174,7 +198,7 @@ describe("home's answers, as the list reads them", () => {
     expect(() => phonesFrom(null)).toThrow()
   })
 
-  it("reads a 404 as gone, a 422 as refused, and anything else as failed", () => {
+  it("reads a 404 as gone, a 422 as refused, a 401 as signed out, and anything else as failed", () => {
     const answered = (status: number): FileHostResponseError =>
       new FileHostResponseError(status, "/auth/phones/a", null, {
         method: "DELETE",
@@ -182,6 +206,9 @@ describe("home's answers, as the list reads them", () => {
       })
     expect(refusalOf(answered(404))).toBe("gone")
     expect(refusalOf(answered(422))).toBe("refused")
+    // This browser's own sign-in ended: home did answer.
+    expect(refusalOf(answered(401))).toBe("signedOut")
+    expect(refusalOf(answered(403))).toBe("failed")
     expect(refusalOf(answered(500))).toBe("failed")
     expect(refusalOf(new Error("no answer"))).toBe("failed")
   })

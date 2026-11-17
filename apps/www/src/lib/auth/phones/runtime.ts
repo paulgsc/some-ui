@@ -2,7 +2,7 @@
  * The phone list's runtime (SIGNIN7): runs `./model`'s step over ports that
  * ask home (`./home`), and owns which answer still counts. A read that a
  * newer read has passed is dropped, so a slow first read never replaces a
- * list read after a sign-out. A rename or a sign-out answers for the phone
+ * list read after a sign-out or a rename, each of which reads again. A rename or a sign-out answers for the phone
  * it was asked about, which the model checks against what is under way.
  */
 import type { Phone, PhonesEvent, PhonesState, Refusal } from "./model"
@@ -76,7 +76,12 @@ export function createPhones(ports: PhonesPorts): Phones {
       if (state === before || state.doing.kind !== "saving") return
       const { id } = state.doing
       ports.rename(id, name).then(
-        () => dispatch({ type: "saved", id, name }),
+        () => {
+          dispatch({ type: "saved", id, name })
+          // A read asked before the rename landed holds the old name; this
+          // one passes it.
+          read()
+        },
         (error: unknown) =>
           dispatch({ type: "saveFailed", id, why: ports.refusalOf(error) })
       )

@@ -10,13 +10,16 @@
 const NAME_MAX = 40
 
 /**
- * What home refuses in a name (C498): a control or line-separator
- * character, a bidi mark or override, or a zero-width space. The
- * zero-width joiner and non-joiner stay, for emoji and scripts that need
- * them.
+ * What home refuses in a name (C498), exactly as paulgsc/server's
+ * `handlers::auth::unseen` lists it: a control character, the soft hyphen,
+ * a bidi mark, embedding, override or isolate, a line or paragraph
+ * separator, a zero-width space, the word joiner and the invisible
+ * operators beside it, the byte-order mark, and the interlinear annotation
+ * characters. The zero-width joiner and non-joiner stay, for emoji and
+ * scripts that need them.
  */
 const HIDDEN =
-  /[\p{Cc}\p{Zl}\p{Zp}\u200B\u200E\u200F\u202A-\u202E\u2066-\u2069]/u
+  /[\p{Cc}\u00AD\u061C\u180E\u200B\u200E\u200F\u2028-\u202E\u2060-\u206F\uFEFF\uFFF9-\uFFFB]/u
 
 /** A typed name as home would take it: none (blank), the name, or refused. */
 export type TypedName =
