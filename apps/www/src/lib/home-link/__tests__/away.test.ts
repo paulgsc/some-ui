@@ -92,7 +92,8 @@ describe("stepAway over every ordering (AW1)", () => {
     (now): Move => ({ type: "unanswered", now }),
     (): Move => ({ type: "answered" }),
     (): Move => ({ type: "lapsed" }),
-    (): Move => ({ type: "lookAgain" }),
+    (): Move => ({ type: "lookAgain", fresh: true }),
+    (): Move => ({ type: "lookAgain", fresh: false }),
     (): Move => ({ type: "pass", ms: FIRST_HOLD_MS }),
     (): Move => ({ type: "pass", ms: LONGEST_HOLD_MS }),
   ]
@@ -107,7 +108,7 @@ describe("stepAway over every ordering (AW1)", () => {
     }
   }
 
-  // Every ordering of six moves (6^6 = 46,656) is the proof, so it keeps the
+  // Every ordering of six moves (7^6 = 117,649) is the proof, so it keeps the
   // whole family and gets a timeout of its own: about 1 s alone, it passed 5 s
   // when a lockfile change ran every package's tests at once (#2956).
   it(
@@ -136,6 +137,12 @@ describe("stepAway over every ordering (AW1)", () => {
           }
           if (move.type === "lapsed" || move.type === "lookAgain") {
             expect(away?.heldUntil ?? null).toBeNull()
+          }
+          // A pull keeps the stretch's tries; a new network starts them over (HERD1).
+          if (move.type === "lookAgain") {
+            expect(away?.tries).toBe(
+              before === null ? undefined : move.fresh ? 0 : before.tries
+            )
           }
           expect(away?.since ?? null).toBe(since)
         }

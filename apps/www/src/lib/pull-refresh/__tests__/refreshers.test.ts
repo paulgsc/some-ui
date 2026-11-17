@@ -114,4 +114,28 @@ describe("the refresh port", () => {
     late.answer()
     expect(await third).toEqual([])
   })
+
+  it("asks one refresher two screens registered once a pull, while either holds it (HERD1)", async () => {
+    const refreshers = createRefreshers()
+    const feed = held("the feed")
+    const dropOne = refreshers.register(feed)
+    const dropOther = refreshers.register(feed)
+    const pulled = refreshers.checkAll()
+    await started()
+    expect(feed.calls()).toBe(1)
+    feed.fail()
+    expect(await pulled).toEqual(["the feed"])
+
+    // One screen went: the other still holds it, so a pull asks it.
+    dropOne()
+    dropOne()
+    const again = refreshers.checkAll()
+    await started()
+    expect(feed.calls()).toBe(2)
+    dropOther()
+    // Its screens all gone, its answer is stale and left out.
+    expect(await again).toEqual([])
+    expect(await refreshers.checkAll()).toEqual([])
+    expect(feed.calls()).toBe(2)
+  })
 })

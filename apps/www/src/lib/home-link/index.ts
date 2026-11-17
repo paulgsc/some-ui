@@ -12,6 +12,7 @@
  * Phone-only (`build.paths.ts`).
  */
 import { useSyncExternalStore } from "react"
+import { localStorageOrNull } from "@some-ui/core-utils"
 import { reportFailure } from "@some-ui/intent-kit"
 
 import { after } from "@/lib/clock"
@@ -19,6 +20,7 @@ import { homeRequest } from "@/lib/device-backend/native-http"
 
 import { nativeCredential } from "./credential"
 import type { HomeLinkState } from "./model"
+import { storedPace } from "./pace"
 import type { HomeLink, HomeLinkPorts } from "./runtime"
 import { createHomeLink } from "./runtime"
 import { onHidden } from "./visibility"
@@ -47,6 +49,7 @@ export function homeLink(): HomeLink {
       onHidden,
       ...LINK_CLOCK,
       report: reportFailure,
+      paceMemory: storedPace(localStorageOrNull()),
       onNetwork: (listener) => {
         window.addEventListener("online", listener)
         return (): void => {
