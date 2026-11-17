@@ -11,7 +11,10 @@ import { LOAD_TIME_MODULES, moduleSideEffects } from "@/build.treeshake"
 import { describe, expect, it } from "vitest"
 
 const WWW = join(import.meta.dirname, "../../../..")
-/** The workspace packages www bundles, which the same setting shakes. */
+/**
+ * Every workspace package, a superset of those www bundles, which the same
+ * setting shakes.
+ */
 const PACKAGES = join(WWW, "../../packages")
 
 function sources(dir: string): Array<string> {
@@ -23,17 +26,25 @@ function sources(dir: string): Array<string> {
         ? []
         : sources(path)
     }
-    return /\.(ts|tsx|js|mjs)$/.test(entry.name) &&
+    return /\.(ts|tsx|mts|cts|js|jsx|mjs)$/.test(entry.name) &&
       !/\.(test|spec)\.|\.config\.|^vitest\.setup\./.test(entry.name)
       ? [path]
       : []
   })
 }
 
-/** Every bare import that is not a stylesheet, in the files under `dir`. */
+/**
+ * Every import that binds nothing and is not a stylesheet, in the files
+ * under `dir`: `import "x"`, `import"x"` and `import {} from "x"`, which the
+ * bundler drops alike.
+ */
 function bareImports(dir: string): Array<{ file: string; specifier: string }> {
   return sources(dir).flatMap((file) =>
-    [...readFileSync(file, "utf8").matchAll(/^\s*import ["']([^"']+)["']/gm)]
+    [
+      ...readFileSync(file, "utf8").matchAll(
+        /^\s*import\s*(?:\{\s*\}\s*from\s*)?["']([^"']+)["']/gm
+      ),
+    ]
       .map((m) => m[1])
       .filter((s) => !s.endsWith(".css"))
       .map((s) => ({ file: relative(WWW, file), specifier: s }))
@@ -64,9 +75,11 @@ describe("modules that act on load", () => {
     }
   })
 
-  it("finds no bare import in the packages www bundles, which nothing would keep", () => {
+  it("finds no bare import in the workspace packages, which nothing would keep", () => {
     // The setting reaches every module in the bundle, not only www's own:
-    // a package's bare import would be dropped the same way.
+    // a package's bare import would be dropped the same way, and
+    // moduleSideEffects keeps only www's own listed files, so one needs
+    // build.treeshake.ts to learn packages first.
     expect(sources(PACKAGES).length).toBeGreaterThan(100)
     expect(bareImports(PACKAGES)).toEqual([])
   })

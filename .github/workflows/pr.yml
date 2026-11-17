@@ -421,6 +421,9 @@ jobs:
             'apps/www/build.profiles.ts' \
             'apps/www/build.treeshake.ts' \
             'apps/www/playwright.config.ts' \
+            'apps/www/package.json' \
+            'pnpm-lock.yaml' \
+            'packages/core-utils/**' \
             'packages/fetch-kit/**' \
             'packages/server-routes/**' || true)
           if [ -n "$files" ]; then
