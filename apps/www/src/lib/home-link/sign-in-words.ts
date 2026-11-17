@@ -115,10 +115,10 @@ export function signInView(
         return {
           signedIn: "lost",
           label: "Home: no longer signed in",
-          line: `Home didn't know this phone when this phone last asked, on ${when.moment(standing.at)}.`,
+          line: `Home didn't know this phone when the phone last asked, on ${when.moment(standing.at)}.`,
           notes: [
             "What you do stays on this phone until you pair it again. Nothing on the phone or on home was deleted.",
-            "Home forgets a phone when you sign out everywhere, or when it hasn't heard from the phone for a long while. If home's sign-in was only off for a while, this clears the next time this phone sends home something.",
+            "Home forgets a phone when you sign out everywhere, or when it hasn't heard from the phone for a long while. If home's sign-in was only off for a while, this clears the next time this phone sends something home.",
           ],
           action: SIGN_IN.pairAgain,
         }

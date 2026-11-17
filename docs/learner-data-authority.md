@@ -517,8 +517,9 @@ declared (checked by reading every call site and by the tests named).
   (`lib/home-link/standing`'s watch, through the link's `check`: one
   `GET /auth/session` with the credential, on the drain's turn of the pace
   and holding no activity of the person's, once as each pairing is read
-  back (the app's start; a new pairing is known already) and each time the
-  app comes back to the foreground, one
+  back (the app's start; a new pairing is known already), or, if a check
+  was out then, once it ends, and each time the app comes back to the
+  foreground, one
   at a time, never on a timer nor on any other change of the link, and none
   while held away or home is busy, unpaired, or once home has refused the
   key; sending nothing of the phone's; SIGNIN1, #3087),
