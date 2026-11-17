@@ -18,10 +18,6 @@ name: Android Compat
 # and nowhere else that matters (the phone refuses it as an update of the
 # real one, which is the point).
 on:
-  # TEMPORARY, removed before review: one run from this branch, which cannot
-  # be dispatched until the file is on main.
-  push:
-    branches: [claude/android-compat-stamp]
   workflow_dispatch:
     inputs:
       ref:
@@ -55,12 +51,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref || github.sha }}
+          ref: ${{ inputs.ref }}
       - id: sha
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - id: levels
         env:
-          LEVELS: ${{ inputs.api_levels || '34,36' }}
+          LEVELS: ${{ inputs.api_levels }}
         run: |
           json=$(echo "$LEVELS" | tr -d ' ' | tr ',' '\n' | grep -E '^[0-9]+$' | jq -R 'tonumber' | jq -sc .)
           if [ "$json" = "[]" ]; then
@@ -153,7 +149,7 @@ jobs:
       - name: Run the level
         uses: reactivecircus/android-emulator-runner@v2
         env:
-          CPU_PERCENT: ${{ inputs.cpu_percent || '60' }}
+          CPU_PERCENT: ${{ inputs.cpu_percent }}
         with:
           api-level: ${{ matrix.api }}
           target: google_apis
