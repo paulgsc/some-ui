@@ -64,7 +64,7 @@ up within that day, and a missed one is a re-run of the same commit.
 ```
 manifest.json
 SHA256SUMS
-apk/android/release-<slug>-<hash12>.png   (the release build's)
+apk/android/release-<slug>-<hash12>.png   (and .mp4 where it moved)
 apk/android/debug-<slug>-<hash12>.png     (and .mp4 where it moved)
 web/desktop/<slug>-<hash12>.png           (and .webm where it moved)
 web/phone/<slug>-<hash12>.png

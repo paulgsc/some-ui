@@ -35,7 +35,10 @@ const ROW_PX = 24
  * since one could ask for the microphone or end the pairing every later
  * picture relies on.
  */
-const ACTS = /sign out|unpair|delete|record|let go|remove|erase|forget/i
+const ACTS =
+  /\b(sign out|unpair|delete|record|let go|remove|erase|forget|cancel|save|send|submit|share|clear|start|stop)\b/i
+/** A bar spans the screen: its tabs reach across at least this share of it. */
+const BAR_SPAN = 0.5
 /** How long a screen may take to hold still before it is taken anyway. */
 const SETTLE_TRIES = 10
 
@@ -55,17 +58,18 @@ export type ReleaseWalk = {
 
 export async function releaseWalk(w: ReleaseWalk): Promise<Part> {
   const snips: Array<SnipRecord> = []
-  const seen = new Set<string>()
+  /** Each picture's hash, to the place that drew it first. */
+  const seen = new Map<string, string>()
   const shell = async (command: string): Promise<string> =>
     (await w.device.shell(command)).toString("utf8")
 
   const unreached: Array<Unreached> = []
+  // The release build reads the device's clock, which runs while the walk
+  // does: set it back just before each launch or tap, so the screen it draws
+  // shows the same time on every run.
+  const freeze = (): Promise<string> => shell(`date ${toyboxDate(FROZEN_AT)}`)
   const take = async (wing: string, tab?: string): Promise<void> => {
     const path = wingPath(wing, tab)
-    // The release build reads the device's clock, which runs while the
-    // walk does: set it back before each picture, so a screen that shows
-    // the time draws the same on every run.
-    await shell(`date ${toyboxDate(FROZEN_AT)}`)
     const { png, moving } = await settled(w.device)
     if (!(await inFront(shell, w.pkg))) {
       // A tap that opened something else (a permission dialog, another
@@ -73,14 +77,25 @@ export async function releaseWalk(w: ReleaseWalk): Promise<Part> {
       unreached.push({
         surface: "apk",
         route: path,
-        why: "the tap opened a screen that is not the app's",
+        why:
+          tab === undefined
+            ? "its icon opened a screen that is not the app's"
+            : "the tap opened a screen that is not the app's",
       })
       await shell("input keyevent 4")
       return
     }
     const sha256 = await hashOf(png)
-    if (seen.has(sha256)) return
-    seen.add(sha256)
+    const same = seen.get(sha256)
+    if (same !== undefined) {
+      unreached.push({
+        surface: "apk",
+        route: path,
+        why: `it shows the same screen as ${same}`,
+      })
+      return
+    }
+    seen.set(sha256, path)
     const stem = `apk/${w.viewport.name}/release-${slugOf(path)}-${sha256.slice(0, 12)}`
     const image = await save(w.out, `${stem}.png`, "png", png)
     // A screen still moving after SETTLE_TRIES gets a short recording too.
@@ -116,11 +131,12 @@ export async function releaseWalk(w: ReleaseWalk): Promise<Part> {
   for (const component of await launchers(shell, w.pkg)) {
     const wing = wingOf(component)
     const open = async (): Promise<void> => {
+      await freeze()
       await shell(`am start -W -n ${w.pkg}/${component}`)
     }
     await open()
     await take(wing)
-    const screen = pngSize(await w.device.screenshot()).height
+    const screen = pngSize(await w.device.screenshot())
     for (const tab of bar(await dump(shell), w.pkg, screen)) {
       await open()
       await settled(w.device)
@@ -128,6 +144,7 @@ export async function releaseWalk(w: ReleaseWalk): Promise<Part> {
         (n) => n.label === tab.label
       )
       if (!now) continue
+      await freeze()
       await shell(`input tap ${now.x} ${now.y}`)
       await take(wing, tab.label)
     }
@@ -171,14 +188,15 @@ const attribute = (node: string, name: string): string =>
 /**
  * The tabs of the bar along the bottom, left to right: the app's own
  * labelled controls in the lowest row of two or more across the bottom of
- * the screen. A lone button near the bottom, a row of digits (the Self
+ * the screen, reaching across at least half its width (a pair of buttons
+ * side by side, such as Cancel and Save, does not). A lone button near the bottom, a row of digits (the Self
  * wing's rating, which proof run 44042604819 tapped) and any control that
  * acts (`ACTS`) are not tabs.
  */
 function bar(
   xml: string,
   pkg: string,
-  screenHeight: number
+  screen: { readonly width: number; readonly height: number }
 ): ReadonlyArray<Node> {
   const nodes: Array<Node> = []
   for (const node of xml.match(/<node\b[^>]*>/g) ?? []) {
@@ -190,7 +208,7 @@ function bar(
     if (bounds.length !== 4) continue
     const [left = 0, top = 0, right = 0, bottom = 0] = bounds
     const y = Math.round((top + bottom) / 2)
-    if (y < screenHeight * BAR_FROM) continue
+    if (y < screen.height * BAR_FROM) continue
     nodes.push({ label, x: Math.round((left + right) / 2), y })
   }
   const rows: Array<Array<Node>> = []
@@ -199,7 +217,12 @@ function bar(
     if (row) row.push(node)
     else rows.push([node])
   }
-  const tabs = rows.find((r) => new Set(r.map((n) => n.label)).size >= 2) ?? []
+  const spans = (r: ReadonlyArray<Node>): boolean => {
+    const xs = r.map((n) => n.x)
+    return Math.max(...xs) - Math.min(...xs) >= screen.width * BAR_SPAN
+  }
+  const tabs =
+    rows.find((r) => new Set(r.map((n) => n.label)).size >= 2 && spans(r)) ?? []
   const unique = new Map(tabs.map((n) => [n.label, n]))
   return [...unique.values()].sort((a, b) => a.x - b.x)
 }
