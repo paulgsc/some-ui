@@ -182,8 +182,15 @@ function refusalOf(answer: HomeAnswer): PairFailure {
  * answer.
  */
 function thrownFailureOf(error: unknown): PairFailure {
+  // A silence first: offline, every name fails as a blocked one would.
+  if (unanswered(error)) return "unreachable"
   const blocked =
-    error instanceof HomeBlockedError ? error.reason : blockedReason(error)
+    error instanceof HomeBlockedError
+      ? error.reason
+      : blockedReason(
+          error,
+          typeof navigator === "undefined" || navigator.onLine !== false
+        )
   if (blocked === "trust") return "untrusted"
   if (blocked === "name") return "no-name"
   return "unreachable"

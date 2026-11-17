@@ -32,7 +32,6 @@ const runs: Array<KeptState> = [
       { kind: "failed", why: "full" },
       { kind: "failed", why: "refused" },
       { kind: "failed", why: "fault" },
-      { kind: "failed", why: "blocked" },
       { kind: "failed", why: "room" },
       { kind: "failed", why: "an entry: home answered 500" },
     ] satisfies Array<KeptRun>
@@ -452,7 +451,7 @@ describe("the routine's files in Korean", () => {
       kept(last({ kind: "failed", why: "fault" })),
       facts({
         paired: true,
-        run: last({ kind: "failed", why: "blocked" }),
+        run: last({ kind: "unreachable", at: 1 }),
         blocked: "name",
       }),
       kept(last({ kind: "failed", why: "an entry" })),
@@ -516,17 +515,17 @@ describe("away from home (AW1)", () => {
 })
 
 describe("a request that couldn't reach home, though home may be there (NA1)", () => {
-  it("is never said as away, and says which it was in the person's terms", () => {
-    const blocked = (reason: "name" | "trust" | null): LaneFacts =>
+  it("is never said as away, even within the hold, and says which it was in the person's terms", () => {
+    const blocked = (reason: "name" | "trust"): LaneFacts =>
       facts({
         paired: true,
         waiting: 2,
-        run: { ...INITIAL_KEPT, last: { kind: "failed", why: "blocked" } },
+        // A run that met it, or one the link held back for it since.
+        run: { ...INITIAL_KEPT, last: { kind: "unreachable", at: 2 } },
         blocked: reason,
-        // Even while a stretch away is under way, the latest failure is said.
         away: { since: 1, now: 2 },
       })
-    const views = (["name", "trust", null] as const).map((reason) =>
+    const views = (["name", "trust"] as const).map((reason) =>
       laneView(WORDS.aph, blocked(reason))
     )
     for (const view of views) {
@@ -537,5 +536,12 @@ describe("a request that couldn't reach home, though home may be there (NA1)", (
     }
     expect(views[0]?.line).toMatch(/can't find home's name on this network/)
     expect(views[1]?.line).toMatch(/doesn't trust home's certificate/)
+    // Once nothing is blocked, the same run is away again.
+    expect(
+      laneView(WORDS.aph, {
+        ...blocked("name"),
+        blocked: null,
+      }).line
+    ).toMatch(/^Away from home since/)
   })
 })

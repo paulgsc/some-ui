@@ -84,7 +84,7 @@ const BLOCKED: Readonly<Record<HomeBlockedReason, string>> = {
 
 /** Whether the phone is on some network, as the WebView knows it. */
 const online = (): boolean =>
-  typeof navigator === "undefined" || navigator.onLine
+  typeof navigator === "undefined" || navigator.onLine !== false
 
 function classify(error: unknown): ForeignVerdict {
   const blocked = blockedReason(error, online())

@@ -19,7 +19,6 @@ import { NO_ROOM } from "@/lib/voice-home/model"
 
 import type { ClearEnd } from "./clear"
 import type { KeptState } from "./kept-model"
-import { BLOCKED_WHY } from "./kept-model"
 import type { LaneCounts, LaneId, LaneKind } from "./lanes"
 import type { LastRead } from "./routine-model"
 import type { Serves } from "./serves-model"
@@ -567,6 +566,16 @@ export function laneView(words: LaneWords, facts: LaneFacts): LaneView {
     )
   }
   if (last?.kind === "unreachable") {
+    // Stopped by a name or a certificate the phone can name (NA1): said as
+    // itself, never as away, though the link holds it as one.
+    if (facts.blocked !== null) {
+      return show(
+        "kept",
+        "blocked",
+        "Can't reach",
+        `${BLOCKED_LINE[facts.blocked]}${later}`
+      )
+    }
     if (facts.away !== null) {
       const since = whenSaid(
         new Date(facts.away.since).toISOString(),
@@ -588,16 +597,6 @@ export function laneView(words: LaneWords, facts: LaneFacts): LaneView {
         "busy",
         "Home busy",
         `Home is busy right now.${later}`
-      )
-    }
-    if (last.why === BLOCKED_WHY) {
-      return show(
-        "kept",
-        "blocked",
-        "Can't reach",
-        facts.blocked === null
-          ? `This phone couldn't reach home.${later}`
-          : `${BLOCKED_LINE[facts.blocked]}${later}`
       )
     }
     if (last.why === "full") {

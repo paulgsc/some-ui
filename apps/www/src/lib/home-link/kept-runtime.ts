@@ -14,7 +14,7 @@ import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import { ForeignCallError } from "@/lib/intent/foreign"
 
 import type { KeptEvent, KeptRun, KeptState } from "./kept-model"
-import { BLOCKED_WHY, INITIAL_KEPT, stepKept } from "./kept-model"
+import { INITIAL_KEPT, stepKept } from "./kept-model"
 import type { Lane } from "./lanes"
 import type { HomeLink } from "./runtime"
 import { blockedOf, noticingBusy, unanswered } from "./runtime"
@@ -91,10 +91,14 @@ export function createKept(ports: KeptPorts): Kept {
         : value
     } catch (error) {
       if (error instanceof SyncStoppedError) return { kind: "stopped" }
-      // Home wasn't reached for a reason the phone can name (NA1): no
-      // silence, so not away; the lane says which (`./words`).
-      if (blockedOf(error) !== null) return { kind: "failed", why: BLOCKED_WHY }
-      if (unanswered(error) || error instanceof HomeUnansweredError) {
+      // Home not reached: silent, or stopped by a name or a certificate the
+      // phone can name (NA1), which the link holds as a silence and the
+      // lane says from the link's `blocked` (`./words`).
+      if (
+        unanswered(error) ||
+        blockedOf(error) !== null ||
+        error instanceof HomeUnansweredError
+      ) {
         return { kind: "unreachable", at: ports.now() }
       }
       // A fault on this phone, not home's silence: it goes to the native

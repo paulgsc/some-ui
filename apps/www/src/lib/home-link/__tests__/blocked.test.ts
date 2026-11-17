@@ -23,7 +23,10 @@
  *   request a router drops without a word is a timeout, so away. On mobile
  *   data, a name only the home router knows fails as a blocked name, said
  *   with "on your home network" so it reads true either way. The app's own
- *   deadline is `ForeignDeadlineError`, never matched, so a silence.
+ *   deadline is `ForeignDeadlineError`, never matched, so a silence. The
+ *   native log hears a stretch once, as it starts (AW1); a name or a
+ *   certificate met later in a stretch a silence began, or a change from
+ *   one to the other, is said on the screen but not logged again.
  */
 import { fakeClock } from "@/test-support/fake-clock"
 import { noAnswer } from "@/test-support/no-answer"
@@ -261,7 +264,7 @@ describe("NA1: what the link makes of it", () => {
     )
   })
 
-  it("ends a lane's run as blocked, neither away nor a fault on the phone", async () => {
+  it("ends a lane's run as a silence does, so the hold's one try asks again (AW1), never as a fault", async () => {
     const kept = createKept({
       exchange: (): Promise<HomeExchanged> =>
         Promise.resolve({ kind: "synced" }),
@@ -272,7 +275,19 @@ describe("NA1: what the link makes of it", () => {
     })
     kept.want()
     await vi.waitFor(() => expect(kept.getSnapshot().running).toBe(false))
-    expect(kept.getSnapshot().last).toEqual({ kind: "failed", why: "blocked" })
+    expect(kept.getSnapshot().last).toEqual({ kind: "unreachable", at: 1 })
+  })
+
+  it("keeps saying which it was while the hold turns a lane's run away", async () => {
+    const { link } = pairedLink(() => Promise.reject(blockedError("name")))
+    await link.load()
+    await link.send((send) => send("GET", "/x")).catch(() => undefined)
+    // Within the hold, a run the phone starts on its own sends nothing.
+    const held = await link
+      .drain((send) => send("GET", "/x"))
+      .catch((e: unknown) => e)
+    expect(held).toBeInstanceOf(HomeNoAnswerError)
+    expect(link.getSnapshot().blocked).toMatchObject({ reason: "name" })
   })
 })
 
@@ -323,6 +338,14 @@ describe("NA1: what the person reads", () => {
       /doesn't trust home\.example's certificate/
     )
     expect(await pairingMeets(noAnswer())).toMatch(/^Couldn't reach/)
+    // Offline, native-http already called the name failure a silence.
+    const offline = new HomeNoAnswerError({
+      kind: "unreachable",
+      retryable: true,
+      summary: "Couldn't reach the home server.",
+      cause: ANDROID.name,
+    })
+    expect(await pairingMeets(offline)).toMatch(/^Couldn't reach/)
   })
 })
 
