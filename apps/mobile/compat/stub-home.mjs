@@ -64,6 +64,8 @@ const requests = []
 const everything = []
 let busySeconds = 0
 let slowMs = 0
+/** The longest /slow may hold an answer. */
+const MAX_SLOW_MS = 30_000
 /** What home's limiter covers (file_host's versioned modules). */
 const LIMITED = "/api/v1/"
 
@@ -141,7 +143,9 @@ const control = createServer((req, res) => {
     busySeconds = Math.max(1, Number(url.searchParams.get("seconds")) || 30)
     reply({ busySeconds })
   } else if (req.method === "POST" && url.pathname === "/slow") {
-    slowMs = Math.max(0, Number(url.searchParams.get("ms")) || 0)
+    // Bounded, so no caller can hold an answer longer than a phase lasts.
+    const ms = Number(url.searchParams.get("ms")) || 0
+    slowMs = ms > 0 && ms <= MAX_SLOW_MS ? ms : 0
     reply({ slowMs })
   } else if (req.method === "POST" && url.pathname === "/calm") {
     busySeconds = 0
