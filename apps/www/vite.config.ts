@@ -18,7 +18,7 @@ import {
 } from "./file-host.dev.ts"
 import {
   OLD_WEBVIEW_PAGE,
-  oldWebViewPage as oldWebViewPageHtml,
+  oldWebViewPage,
 } from "./src/lib/old-webview/index.ts"
 import styleContext from "./style.context.ts"
 
@@ -218,19 +218,16 @@ function pagesConnectPolicy(): Plugin {
   }
 }
 
-// The phone's page for a WebView too old for the bundle (#3117,
-// src/lib/old-webview), which Capacitor loads as its errorPath. The phone
-// build alone carries it.
-function oldWebViewPage(): Plugin {
+// Capacitor's errorPath for a WebView too old for the bundle (src/lib/old-webview).
+function oldWebViewPageAsset(): Plugin {
   return {
     name: "old-webview-page",
     apply: "build",
     generateBundle(): void {
-      if (process.env.SOME_UI_PROFILE !== MOBILE_PROFILE) return
       this.emitFile({
         type: "asset",
         fileName: OLD_WEBVIEW_PAGE,
-        source: oldWebViewPageHtml(),
+        source: oldWebViewPage(),
       })
     },
   }
@@ -337,7 +334,7 @@ export default defineConfig(
         : []),
       omitOffPathPublicFiles(offPathPublicFiles(process.env.SOME_UI_PROFILE)),
       pagesConnectPolicy(),
-      oldWebViewPage(),
+      ...(isMobileBuild ? [oldWebViewPageAsset()] : []),
       ...(isStageBuild ? [stagePageAtRoot()] : []),
     ],
     // An http:// page skips the proxy and asks :3000 directly

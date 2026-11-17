@@ -39,6 +39,7 @@ import {
   parseXml,
   readZip,
   reviewElf,
+  reviewErrorPage,
   reviewLint,
   reviewManifest,
   reviewPluginConfig,
@@ -182,6 +183,13 @@ for (const variant of ["debug", "release"]) {
       label,
       configEntry && entryBytes(bytes, configEntry).toString("utf8"),
       policy.pluginConfig
+    )
+  )
+  add(
+    reviewErrorPage(
+      label,
+      configEntry && entryBytes(bytes, configEntry).toString("utf8"),
+      entries.map((e) => e.name)
     )
   )
 

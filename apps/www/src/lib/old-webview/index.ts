@@ -1,16 +1,9 @@
 /**
- * The phone's page for a WebView too old for the app (#3117): a plain
- * "Update Android System WebView from the Play Store" instead of a blank
- * white page.
- *
- * The bundle is built for Vite's default target, `baseline-widely-available`
- * (Chrome 111). Capacitor checks the installed WebView before it loads
- * anything: below `android.minWebViewVersion` it loads `server.errorPath`
- * instead of the app (apps/mobile/capacitor.config.ts, where 111 is that
- * floor, to be raised with Vite's target, and the path repeats
- * `OLD_WEBVIEW_PAGE`). The phone build alone carries the page (vite.config.ts,
- * `oldWebViewPage`). It has no script and no stylesheet, so any WebView shows
- * it.
+ * The phone's page for a WebView too old for the app (#3117), in place of a
+ * blank white page: Capacitor loads it as `server.errorPath` below
+ * `android.minWebViewVersion` (apps/mobile/capacitor.config.ts says why 111),
+ * and only the phone build carries it. No script and no stylesheet, so any
+ * WebView shows it. apps/mobile/review checks the APK carries it.
  */
 
 /** Where the page is, under the build's root: Capacitor's `errorPath`. */
@@ -19,17 +12,14 @@ export const OLD_WEBVIEW_PAGE = "webview-too-old.html"
 /** What the page says, in the person's terms. */
 export const OLD_WEBVIEW_WORDS = {
   title: "This phone needs a newer WebView",
-  body: "The app runs inside Android System WebView, and the one on this phone is too old to open it. Update Android System WebView from the Play Store, then open the app again.",
+  body: "The app runs inside Android System WebView, and the one on this phone is too old to open it. Update Android System WebView from the Play Store (on Android 7, update Chrome), then open the app again.",
   action: "Update WebView in the Play Store",
 } as const
 
 const WEBVIEW_ON_PLAY =
   "https://play.google.com/store/apps/details?id=com.google.android.webview"
 
-/**
- * The page, whole and styled inline. The words are fixed text with nothing
- * to escape; a test holds them to that.
- */
+/** The page, styled inline. The words go in as written: a test holds them to need no escaping. */
 export function oldWebViewPage(): string {
   const { title, body, action } = OLD_WEBVIEW_WORDS
   return [
