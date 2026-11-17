@@ -40,8 +40,8 @@ import {
   notesAnswered,
 } from "@/lib/episode-feedback/home-query"
 import type { NotedFeed } from "@/lib/feeds"
-import { phoneWasBusy } from "@/lib/home-link/phone-busy"
 import { libraryTakes } from "@/lib/library-takes"
+import { phoneWasBusy } from "@/lib/phone-busy"
 import { FEED_FACTS } from "@/lib/studio-index"
 
 const WORDS = FEEDBACK_WORDS

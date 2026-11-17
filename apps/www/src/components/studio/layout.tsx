@@ -12,7 +12,7 @@ import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
-import { phoneWasBusy } from "@/lib/home-link/phone-busy"
+import { phoneWasBusy } from "@/lib/phone-busy"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import type { StudioKind } from "@/lib/studio-index"
 import { kindPath, STUDIO_INDEX_WORDS } from "@/lib/studio-index"

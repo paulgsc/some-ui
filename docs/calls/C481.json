@@ -4,7 +4,7 @@
   "by": "claude",
   "paths": [
     "some-ui:apps/www/src/lib/home-link/while-busy.ts",
-    "some-ui:apps/www/src/lib/home-link/phone-busy.ts",
+    "some-ui:apps/www/src/lib/phone-busy/index.ts",
     "some-ui:apps/www/src/lib/renders/read.ts",
     "some-ui:apps/www/src/lib/renders/index.ts",
     "some-ui:apps/www/src/lib/episode-feedback/home-read.ts",
@@ -12,7 +12,10 @@
     "some-ui:apps/www/src/lib/status-board/index.ts",
     "some-ui:apps/www/src/lib/my-data/words.ts",
     "some-ui:apps/www/src/lib/call-videos/words.ts",
-    "some-ui:packages/ui/soundbites/src/lib/reconcile/words.ts"
+    "some-ui:packages/ui/soundbites/src/lib/reconcile/words.ts",
+    "some-ui:apps/www/src/components/settings/status-board.tsx",
+    "some-ui:apps/www/src/lib/renders/words.ts",
+    "some-ui:apps/www/src/lib/episode-feedback/words.ts"
   ],
   "chose": "A read of home that finds this phone still busy with home after its ten tries says so on each screen in one shape, \"This phone was busy with home just then\", with that screen's own ending (try again in a moment, drag down, or what is shown instead), never that home can't be reached. Where a page keeps what it last read (Studio › Renders, the Feedback page's notes, the status board's renders row), a busy read rejects as before, so the last read stays and is said as last; Renders asks again on its own in half a minute.",
   "options": [

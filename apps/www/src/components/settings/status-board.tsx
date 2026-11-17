@@ -26,11 +26,11 @@ import { ChevronRight, Clapperboard } from "lucide-react"
 
 import { hasAudience } from "@/lib/build-profile"
 import { useMinuteClock } from "@/lib/clock"
-import { phoneWasBusy } from "@/lib/home-link/phone-busy"
 import { kindJourney } from "@/lib/jobs/journey"
 import { everyMorning, morningOf } from "@/lib/jobs/morning"
 import { registerJobsPull } from "@/lib/jobs/pull"
 import { everyJourney } from "@/lib/journey"
+import { readFailure } from "@/lib/phone-busy"
 import { rendersQuery, SHAPE_WORDS } from "@/lib/renders"
 import type { RenderShape } from "@/lib/renders"
 import type { How } from "@/lib/sharing-marks"
@@ -322,11 +322,7 @@ export const StatusBoard = (): JSX.Element => {
       ? [
           renderRow(
             renders.data.board,
-            renders.isError
-              ? phoneWasBusy(renders.error)
-                ? "busy"
-                : "away"
-              : null
+            readFailure(renders.isError, renders.error)
           ),
         ]
       : []),

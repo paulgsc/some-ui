@@ -10,8 +10,8 @@ import { NOTED_FEEDS } from "@/lib/feeds"
 import { pairing } from "@/lib/home-link"
 import { episodeNotesWaiting } from "@/lib/home-link/episode-notes"
 import { askEpisodeNotes } from "@/lib/home-link/episode-notes-read"
-import { PhoneBusyError } from "@/lib/home-link/phone-busy"
 import { askWhileBusy } from "@/lib/home-link/while-busy"
+import { PhoneBusyError } from "@/lib/phone-busy"
 
 import { readFeedNotes } from "./home"
 

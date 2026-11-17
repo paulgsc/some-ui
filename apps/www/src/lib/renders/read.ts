@@ -3,9 +3,9 @@
  * again while the link is busy, and what it came to. Kept out of the query's
  * module, which React imports (R1).
  */
-import { PhoneBusyError } from "@/lib/home-link/phone-busy"
 import { askRenders } from "@/lib/home-link/renders"
 import { askWhileBusy } from "@/lib/home-link/while-busy"
+import { PhoneBusyError } from "@/lib/phone-busy"
 
 import type { Board } from "./model"
 import { readBoard } from "./model"

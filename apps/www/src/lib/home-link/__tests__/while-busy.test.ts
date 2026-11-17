@@ -6,10 +6,10 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { PhoneBusyError, phoneWasBusy } from "@/lib/home-link/phone-busy"
 import type { NotAnswered } from "@/lib/home-link/while-busy"
 import { askWhileBusy } from "@/lib/home-link/while-busy"
 import { mapFileHostError } from "@/lib/intent/errors"
+import { PhoneBusyError, phoneWasBusy, readFailure } from "@/lib/phone-busy"
 
 type Answered = { readonly kind: "answered"; readonly answer: string }
 
@@ -67,5 +67,11 @@ describe("phoneWasBusy", () => {
     expect(phoneWasBusy(mapFileHostError(busy))).toBe(true)
     expect(phoneWasBusy(new Error("home didn't answer"))).toBe(false)
     expect(phoneWasBusy(null)).toBe(false)
+  })
+
+  it("says why a kept read's latest read failed", () => {
+    expect(readFailure(false, null)).toBeNull()
+    expect(readFailure(true, new PhoneBusyError("busy"))).toBe("busy")
+    expect(readFailure(true, new Error("home didn't answer"))).toBe("away")
   })
 })

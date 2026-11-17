@@ -6,7 +6,7 @@
  */
 import { queryOptions } from "@tanstack/react-query"
 
-import { phoneWasBusy } from "@/lib/home-link/phone-busy"
+import { phoneWasBusy } from "@/lib/phone-busy"
 
 import { underWay, WHILE_UNDER_WAY_MS } from "./model"
 import type { RendersOutcome } from "./read"

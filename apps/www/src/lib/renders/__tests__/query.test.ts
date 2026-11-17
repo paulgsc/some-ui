@@ -8,7 +8,7 @@
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
-import { PhoneBusyError } from "@/lib/home-link/phone-busy"
+import { PhoneBusyError } from "@/lib/phone-busy"
 import { rendersAgainIn, WHILE_UNDER_WAY_MS } from "@/lib/renders"
 import { readBoard } from "@/lib/renders/model"
 import { RendersUnanswered } from "@/lib/renders/read"
