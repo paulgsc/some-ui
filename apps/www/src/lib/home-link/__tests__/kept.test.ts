@@ -354,7 +354,12 @@ describe("the link's drain", () => {
   it("says it is stopping only while a run it stopped is still out (HERD4's port)", () => {
     const paired = step(INITIAL, {
       type: "read",
-      found: { base: "https://home.example/api/v1", id: "p1", since: null },
+      found: {
+        base: "https://home.example/api/v1",
+        id: "p1",
+        since: null,
+        name: null,
+      },
     })
     const draining = step(paired, { type: "drainStarted" })
     expect(drainStopping(paired)).toBe(false)
