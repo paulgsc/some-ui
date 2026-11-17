@@ -7,8 +7,8 @@
  * ceremonies. A `401` from any route ends it (`markSignedOut`). Nothing here
  * holds or sends a name, an email, or a device detail.
  *
- * On the Pages build there is no server: "signing in" only opens the demo
- * (`DATA_MODE === "static"`).
+ * On the Pages build there is no server: `/auth` opens the demo with
+ * `openDemo` (`DATA_MODE === "static"`, SIGNIN5), and no ceremony runs.
  */
 import { useSyncExternalStore } from "react"
 
