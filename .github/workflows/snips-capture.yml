@@ -16,10 +16,6 @@ name: Snips Capture
 # fonts the nix shell pins. The same commit gives the same snips, which is
 # what lets the bundle live one day: a lost one is a re-run away.
 on:
-  # TEMPORARY, removed before review: one run from this branch, which cannot
-  # be dispatched until the file is on main.
-  push:
-    branches: [claude/snips-capture-2]
   workflow_dispatch:
 
 permissions:

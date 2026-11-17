@@ -29,7 +29,7 @@ repo=$(cd "$here/../../.." && pwd)
 out="$snips/logs"
 mkdir -p "$snips" "$out"
 
-# The screen: one size and density on every run, animations off, the status
+# The screen: the emulator image's own size (1080x1920), animations off, the status
 # bar in demo mode (a fixed clock, full battery and signal, no
 # notifications), and the device's clock at FROZEN_AT
 # (apps/www/src/lib/snips), which the release build reads, its page being
@@ -88,11 +88,6 @@ adb shell settings put global auto_time 0
 adb shell settings put global auto_time_zone 0
 adb shell setprop persist.sys.timezone UTC
 adb shell date 110209302026.00 > /dev/null
-# The screen's size after trust-ca.sh's root restart, which an earlier
-# `wm size` did not survive (proof run 44038963058 drew 1080x1920). Each
-# record still carries the size its picture really has.
-adb shell wm size 1080x2400
-adb shell wm density 420
 # Demo mode needs both switches on recent images, and its broadcast sent to
 # SystemUI itself (proof run 44031477446 showed the real clock without).
 adb shell settings put global sysui_demo_allowed 1

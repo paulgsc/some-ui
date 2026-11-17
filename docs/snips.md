@@ -13,7 +13,7 @@ request, and CI Gate does not need it. It photographs two surfaces:
 
 - **`apk`:** the Android app on an emulator (API 34), installed clean and
   paired through its own screen with the stand-in home on the runner
-  (`apps/mobile/compat/stub-home.mjs`, COMPAT's rig), at 1080×2400. Each
+  (`apps/mobile/compat/stub-home.mjs`, COMPAT's rig), at 1080×1920. Each
   picture is the whole screen, with the status bar in demo mode and the
   device's clock at `FROZEN_AT`. `apps/mobile/snips/capture-apk.sh` sets it up
   and takes two builds in turn:
@@ -126,7 +126,7 @@ owner's one step. The workflow holds no mailbox secret.
   `id`. They are not in this bundle.
 - **SNIPS4, the snip scene**, names an `id`. An essay is refused when the
   index lacks one, and a render is refused when the file has gone missing.
-  Phone shots are 1080×2400 (APK) or 824×1830 (web phone), both portrait.
+  Phone shots are 1080×1920 (APK) or 824×1830 (web phone, drawn at 2×), both portrait.
   The owner chooses between a device frame and a full-bleed 9:16 once they see
   them.
 - The APK's screens show what a fresh install paired with the stub shows. The

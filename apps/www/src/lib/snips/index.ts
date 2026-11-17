@@ -70,11 +70,14 @@ export const WEB_VIEWPORTS: ReadonlyArray<Viewport> = [
   },
 ]
 
-/** The emulator's screen, set with `wm size` and `wm density` before capture. */
+/**
+ * The emulator's screen, as the runner's default device draws it. Each
+ * record carries the size read from its picture, whatever this says.
+ */
 export const APK_VIEWPORT: Viewport = {
   name: "android",
   width: 1080,
-  height: 2400,
+  height: 1920,
   scale: 1,
   words: "the Android app",
 }

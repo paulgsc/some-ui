@@ -143,7 +143,9 @@ function bar(
     if (attribute(node, "package") !== pkg) continue
     if (attribute(node, "clickable") !== "true") continue
     const label = attribute(node, "text") || attribute(node, "content-desc")
-    if (label === "") continue
+    // A bar's tab is a word; a row of digits along the bottom (the Self
+    // wing's rating) is a control, which proof run 44042604819 tapped.
+    if (label === "" || /^\d+$/.test(label)) continue
     const bounds = (attribute(node, "bounds").match(/-?\d+/g) ?? []).map(Number)
     if (bounds.length !== 4) continue
     const [left = 0, top = 0, right = 0, bottom = 0] = bounds
