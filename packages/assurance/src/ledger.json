@@ -2019,7 +2019,7 @@
           "kind": "RE8",
           "property": "work",
           "claim": "Home's router answers every request but its health checks within 8 s of reading it, 2 s inside the phone's deadline, so a phone whose request reaches home in time hears it busy rather than away.",
-          "requirement": "Every request file_host's router serves but the health checks (/health, /ready) is answered within 8 s, under the phone's 10 s deadline. A request home has no room for is answered 503 service_overloaded with Retry-After: 5 rather than left waiting: at once when all 100 of its slots are taken, within 3 s of asking for a database connection when none comes, and at the 8 s deadline otherwise. A pool timeout a handler turns into its own error (among them the dedup cache, the tabs' deletes, prune and reconcile, hopium and mood events) is answered within the bound but as that error, not as busy. The bound starts once the request head is parsed; time on the network and in Caddy before that is outside it.",
+          "requirement": "Every request file_host's router serves but the health checks (/health, /ready) is answered within 8 s, under the phone's 10 s deadline. A request home has no room for is answered 503 service_overloaded with Retry-After: 5 rather than left waiting: at once when all 100 of its slots are taken, within 3 s of asking for a database connection when none comes, and at the 8 s deadline otherwise. A pool timeout a handler turns into its own error (among them the dedup cache, which the tabs' reads go through, hopium and mood events) is answered within the bound but as that error, not as busy. The bound starts once the request head is parsed; time on the network and in Caddy before that is outside it.",
           "bound": {
             "value": 8,
             "unit": "seconds to an answer, per request",
@@ -2045,13 +2045,24 @@
             "server:apps/servers/file_host/src/admission.rs#work_past_the_deadline_is_answered_busy_at_it",
             "server:apps/servers/file_host/src/admission.rs#a_pool_with_no_connection_free_is_answered_busy",
             "server:apps/servers/file_host/src/admission.rs#a_cross_origin_busy_answer_is_readable",
-            "server:apps/servers/file_host/src/admission.rs#the_exempt_modules_are_the_health_checks"
+            "server:apps/servers/file_host/src/admission.rs#the_exempt_modules_are_the_health_checks",
+            "server:apps/servers/file_host/src/handlers/db/tab.rs#delete_tab_answers_a_pool_timeout_busy",
+            "server:apps/servers/file_host/src/handlers/db/tab.rs#batch_delete_tabs_answers_a_pool_timeout_busy",
+            "server:apps/servers/file_host/src/handlers/db/tab.rs#prune_tabs_answers_a_pool_timeout_busy",
+            "server:apps/servers/file_host/src/handlers/db/tab.rs#reconcile_tabs_answers_a_pool_timeout_busy"
           ],
           "watch": {
             "by": "alert",
             "ref": "server:infra/prometheus/rules/home.yml"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-17",
+              "change": "The tabs' deletes, prune and reconcile now answer a pool timeout busy, 503 service_overloaded with Retry-After: 5, so they leave the requirement's list of handlers that answer one as their own error; the tabs' reads, through the dedup cache, stay on it.",
+              "why": "paulgsc/server#948 fixed the four tab write handlers that answered a database pool timeout with a 500, found while AD4 was recorded (#3126). The promise only grows: every request was already answered within the bound, and four more now answer busy as well.",
+              "decision": "https://github.com/paulgsc/server/issues/946"
+            }
+          ]
         }
       ]
     },
