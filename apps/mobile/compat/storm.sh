@@ -83,9 +83,9 @@ budget_of() { node -e "console.log(require('$budget')$1)"; }
 # Waits for a new "device storage: opened" line: the log already holds the
 # one from an earlier install.
 install() {
+  adb uninstall "$pkg" > /dev/null 2>&1 || true
   local opened
   opened=$(native_count "device storage: opened")
-  adb uninstall "$pkg" > /dev/null 2>&1 || true
   adb install -r "$1" > /dev/null
   adb shell am start -W -n "$pkg/.MainActivity" > /dev/null
   for _ in $(seq 1 60); do

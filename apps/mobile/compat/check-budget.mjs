@@ -22,7 +22,19 @@ if (!allFile || !budgetFile) {
 }
 const { requests } = JSON.parse(readFileSync(allFile, "utf8"))
 const budget = JSON.parse(readFileSync(budgetFile, "utf8"))
-if (!Array.isArray(requests) || typeof budget.burst !== "number") {
+// A missing number would make every comparison false and pass in silence.
+const numbers = [
+  budget.burst,
+  budget.sustainedMs,
+  budget.afterBusy?.graceMs,
+  budget.afterBusy?.pacedForMs,
+  budget.afterBusy?.toleranceMs,
+]
+if (
+  !Array.isArray(requests) ||
+  numbers.some((n) => typeof n !== "number") ||
+  requests.some((r) => r.status === 429 && typeof r.retryAfter !== "number")
+) {
   throw new Error("check-budget.mjs: no request log or budget to check")
 }
 const exempt = new Set(budget.exempt ?? [])
