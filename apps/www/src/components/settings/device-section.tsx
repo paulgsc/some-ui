@@ -18,6 +18,7 @@ import { toast } from "sonner"
 import { homeApiBase } from "@/lib/device-backend/home-sync"
 import type { HomeLinkState } from "@/lib/home-link"
 import { homeLink, hostOf, useHomeLink } from "@/lib/home-link"
+import { addressOf } from "@/lib/home-link/address"
 import type { ClearEnd } from "@/lib/home-link/clear"
 import { clearHeld, finishedOnPhone } from "@/lib/home-link/clear"
 import { rememberSeen } from "@/lib/home-link/first-run"
@@ -276,7 +277,7 @@ export const DeviceSection = (): JSX.Element => {
                 </p>
                 <PairForm
                   state={state}
-                  initialAddress={`https://${hostOf(paired.base)}`}
+                  initialAddress={addressOf(paired.base)}
                   onCancel={() => setPairOpen(false)}
                 />
               </div>
