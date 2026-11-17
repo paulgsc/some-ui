@@ -249,7 +249,11 @@ export type HomeLink = {
    * app goes to the background. Credential-free: the sync reads published
    * content only.
    */
-  sync: <T>(run: (get: HomeGet) => Promise<T>) => Promise<SyncOutcome<T> | null>
+  sync: <T>(
+    /** The API base the sync reads from, whose busy it keeps (#3127). */
+    base: string,
+    run: (get: HomeGet) => Promise<T>
+  ) => Promise<SyncOutcome<T> | null>
   /**
    * Runs `run` with a `send` to the paired home; `null` when unpaired or
    * busy.
@@ -355,9 +359,16 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
    * Whether home is still to be left alone; a wait already over ends here,
    * as well as on its timer, which a backgrounded WebView can hold back.
    */
-  const homeBusyNow = (): boolean => {
-    if (homeBusy(state, ports.now())) return true
+  const homeBusyNow = (
+    /** The home a request goes to; the link's own busy if none (#3127). */
+    base?: string
+  ): boolean => {
     const now = ports.now()
+    const busy =
+      base === undefined
+        ? homeBusy(state, now)
+        : (state.busyHomes[base] ?? now) > now
+    if (busy) return true
     if (Object.values(state.busyHomes).some((until) => until <= now)) cool()
     return false
   }
@@ -473,11 +484,11 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
   ): Promise<HomeAnswer> => {
     const away = (): boolean => !tapped && awayNow()
     if (away()) throw new HomeAwayError()
-    if (homeBusyNow()) return HOME_BUSY
+    if (homeBusyNow(base)) return HOME_BUSY
     const went = await pace.turn(side === "person")
     if (!went || stopped(side)) throw new SyncStoppedError()
     if (away()) throw new HomeAwayError()
-    if (homeBusyNow()) return HOME_BUSY
+    if (homeBusyNow(base)) return HOME_BUSY
     onSent?.(ports.now())
     const answer = await track(side, heard(ports.request(call)))
     if (answer.status === 429) heardBusy(answer, base)
@@ -795,14 +806,15 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       dispatch({ type: "unpaired", told })
     },
 
-    sync<T>(run: (get: HomeGet) => Promise<T>): Promise<SyncOutcome<T> | null> {
+    sync<T>(
+      base: string,
+      run: (get: HomeGet) => Promise<T>
+    ): Promise<SyncOutcome<T> | null> {
       const get: HomeGet = (url, etag) => {
         if (stopped("person")) return Promise.reject(new SyncStoppedError())
-        // Its busy is the paired home's, or unpaired, the address read's.
-        const { link } = state
         return ask(
           "person",
-          link.kind === "paired" ? link.base : new URL(url).origin,
+          base,
           {
             method: "GET",
             url,

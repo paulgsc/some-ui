@@ -319,7 +319,7 @@ describe("the home link", () => {
         record: JSON.stringify({ base: HOME.base, token: "t" }),
       })
       await home.link.load()
-      const outcome = await home.link.sync(async (get) => {
+      const outcome = await home.link.sync(HOME.base, async (get) => {
         await get(`${HOME.base}/curriculum/manifest.json`, '"v1"')
         if (stop === "tap") home.link.stop()
         else home.hide()
@@ -444,6 +444,7 @@ describe("the home link", () => {
     // The sync too, while it lasts (the lanes' runs: home-busy.test.ts).
     home.pass(29_999)
     const synced = await home.link.sync(
+      HOME.base,
       async (get) => (await get(`${HOME.base}/curriculum/manifest.json`)).status
     )
     expect(synced).toEqual({ kind: "done", value: 429 })
@@ -712,6 +713,52 @@ describe("the home link", () => {
     expect(Object.keys(home.link.getSnapshot().busyHomes)).toEqual([HOME.base])
   })
 
+  it("keeps an unpaired Sync's busy for the home it read from: paired with it, the wait still holds, and a Sync elsewhere never waits on it (#3127)", async () => {
+    const OTHER = {
+      base: "https://other.example/api/v1",
+      host: "other.example",
+    }
+    let busy = true
+    const home = setup({
+      answer: (call) => {
+        if (call.url.endsWith("/auth/pairing/finish")) {
+          return {
+            status: 200,
+            body: JSON.stringify({ token: "phone-token", expiresAt: 1 }),
+          }
+        }
+        if (call.url.startsWith(HOME.base) && busy) {
+          busy = false
+          return { status: 429, body: "", retryAfter: "600" }
+        }
+        return { status: 200, body: "{}" }
+      },
+    })
+    await home.link.load()
+    const manifest = (base: string): Promise<unknown> =>
+      home.link.sync(
+        base,
+        async (get) => (await get(`${base}/curriculum/manifest.json`)).status
+      )
+    expect(await manifest(HOME.base)).toEqual({ kind: "done", value: 429 })
+    expect(home.link.getSnapshot().busyHomes).toEqual({
+      [HOME.base]: 600_000,
+    })
+    // Another home said nothing: its Sync goes.
+    const sent = home.sent.length
+    expect(await drive(home, manifest(OTHER.base))).toEqual({
+      kind: "done",
+      value: 200,
+    })
+    expect(home.sent).toHaveLength(sent + 1)
+    // Paired with the busy home, its wait holds for every lane.
+    await drive(home, home.link.pair(HOME, "K7QF2M9X"))
+    expect(home.link.getSnapshot()).toMatchObject({
+      link: { kind: "paired", base: HOME.base },
+      homeBusyUntil: 600_000,
+    })
+  })
+
   it("passes on a 503 that is one of home's caps (no Retry-After) or not its overload, and is not busy for it (HERD2)", async () => {
     const answers: Array<HomeAnswer> = [
       {
@@ -785,6 +832,7 @@ describe("the home link", () => {
     await home.link.load()
     let release: () => void = () => undefined
     const syncing = home.link.sync(
+      HOME.base,
       () =>
         new Promise<string>((resolve) => {
           release = (): void => resolve("ok")

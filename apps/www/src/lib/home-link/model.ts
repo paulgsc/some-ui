@@ -281,8 +281,9 @@ export function step(
 }
 
 /**
- * The busy the link keeps (#3127): the paired home's, or, unpaired, the
- * latest any home said, since only a pairing goes then, and it goes anyway.
+ * The busy the link shows and its lanes keep (#3127): the paired home's, or,
+ * unpaired, the latest any home said. A request keeps its own home's busy
+ * (`./runtime`), so a Sync unpaired never waits on another home's.
  */
 function busyUntil(state: HomeLinkState): number | null {
   if (state.link.kind === "paired") {
