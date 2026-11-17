@@ -7,29 +7,31 @@
  * 44057475902) failed with ERR_MODULE_NOT_FOUND once the script began to
  * import `@some-ui/core-utils`, which no test ran from a fresh checkout.
  *
- * Family: every `@some-ui/*` import (`from`, `export … from` and bare) of
- * the script and of each `@/lib` module it imports, against the job's
+ * Family: every `@some-ui/*` module the script and each `@/lib` module it
+ * imports load at run time (`specifiersOf`, the reader RI1 holds the render
+ * image with: imports, re-exports and dynamic `import()`, not types), against the job's
  * `--filter=` arguments on non-comment lines, and their order.
  */
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
+import { specifiersOf } from "@/stage-packages"
 import { describe, expect, it } from "vitest"
 
 const WWW = join(import.meta.dirname, "../../../..")
 const REPO = join(WWW, "../..")
 
-/** The `@some-ui/*` packages a file imports, by `from` or bare. */
+/** The `@some-ui/*` packages a source file loads (`specifiersOf`, as RI1 reads). */
 function workspaceImports(text: string): ReadonlyArray<string> {
-  return [...text.matchAll(/(?:from|import)\s*"(@some-ui\/[a-z0-9-]+)/g)].map(
-    (m) => m[1]
-  )
+  return specifiersOf(text, ".ts")
+    .map((spec) => /^@some-ui\/[a-z0-9-]+/.exec(spec)?.[0])
+    .filter((name): name is string => name !== undefined)
 }
 
-/** The `@/lib/...` modules a file imports, as files under `src/`. */
+/** The `@/lib/...` modules a file loads, as files under `src/`. */
 function libModules(text: string): ReadonlyArray<string> {
-  return [...text.matchAll(/from "@\/(lib\/[a-z0-9/-]+)"/g)].map((m) =>
-    join(WWW, "src", `${m[1]}/index.ts`)
-  )
+  return specifiersOf(text, ".ts")
+    .filter((spec) => spec.startsWith("@/lib/"))
+    .map((spec) => join(WWW, "src", `${spec.slice(2)}/index.ts`))
 }
 
 /** The bundle job's text: from its key to the next top-level job. */
