@@ -144,7 +144,11 @@ export function signInView(
     }
     case "paired": {
       const host = hostOf(link.base)
-      const signedIn = `Signed in to home at ${host}${since(link.since, when.day)}.`
+      // The name the owner gave this phone as it paired (SIGNIN7, C478):
+      // said as the name it paired with, which a rename on the lan web since
+      // doesn't reach, so it stays true.
+      const as = link.name === null ? "" : `, paired as ${link.name}`
+      const signedIn = `Signed in to home at ${host}${as}${since(link.since, when.day)}.`
       const { standing } = link
       if (standing.kind === "forgotten") {
         return {

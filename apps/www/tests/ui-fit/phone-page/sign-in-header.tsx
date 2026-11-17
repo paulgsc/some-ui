@@ -29,7 +29,7 @@ const AT = "/practice"
 const BASE = "https://file-host.home.example/api/v1"
 const PAIRED: HomeLinkEvent = {
   type: "read",
-  found: { base: BASE, id: "p1", since: Date.UTC(2026, 10, 17, 9) },
+  found: { base: BASE, id: "p1", since: Date.UTC(2026, 10, 17, 9), name: null },
 }
 
 const run = (...events: ReadonlyArray<HomeLinkEvent>): HomeLinkState =>

@@ -32,7 +32,7 @@ const standingOf = (state: HomeLinkState): unknown =>
 
 const READ: HomeLinkEvent = {
   type: "read",
-  found: { base: HOME.base, id: "p1", since: 1_000 },
+  found: { base: HOME.base, id: "p1", since: 1_000, name: null },
 }
 const known = (id: string, at = 5): HomeLinkEvent => ({
   type: "heard",
@@ -53,7 +53,7 @@ describe("the link's standing (model)", () => {
     const paired = run([
       { type: "read", found: null },
       { type: "pairPressed", base: HOME.base },
-      { type: "paired", base: HOME.base, id: "p2", at: 7 },
+      { type: "paired", base: HOME.base, id: "p2", at: 7, name: null },
     ])
     expect(paired.link).toMatchObject({ since: 7, standing: { kind: "known" } })
   })
@@ -95,7 +95,7 @@ describe("the link's standing (model)", () => {
       { type: "unpairPressed" },
       { type: "unpaired", told: false },
       { type: "pairPressed", base: HOME.base },
-      { type: "paired", base: HOME.base, id: "p2", at: 20 },
+      { type: "paired", base: HOME.base, id: "p2", at: 20, name: null },
       // The old pairing's refusal, answering late.
       refused("p1", 21),
     ])
@@ -362,7 +362,12 @@ describe("the standing watch", () => {
     watchStanding({ link: fake.link, doc: fakeDoc().doc })
     expect(count).toBe(1)
     fake.set(
-      run([{ type: "read", found: { base: HOME.base, id: "p2", since: null } }])
+      run([
+        {
+          type: "read",
+          found: { base: HOME.base, id: "p2", since: null, name: null },
+        },
+      ])
     )
     expect(count).toBe(1)
     finish()
@@ -383,7 +388,12 @@ describe("the standing watch", () => {
     }
     const stop = watchStanding({ link: fake.link, doc: fakeDoc().doc })
     fake.set(
-      run([{ type: "read", found: { base: HOME.base, id: "p2", since: null } }])
+      run([
+        {
+          type: "read",
+          found: { base: HOME.base, id: "p2", since: null, name: null },
+        },
+      ])
     )
     stop()
     finish()
