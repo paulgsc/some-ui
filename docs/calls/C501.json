@@ -2,6 +2,7 @@
   "id": "C501",
   "made": "2026-11-17",
   "by": "claude",
+  "agreed": "2026-11-17",
   "paths": ["server:infra/render/render-calls.sh"],
   "chose": "A too-large refusal is held until what it is made with changes (its input, its caps, the render image, the speaker's image, the worker script or the brand files), the same as a too-long one.",
   "options": [

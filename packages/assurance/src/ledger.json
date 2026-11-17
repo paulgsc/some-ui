@@ -2709,7 +2709,7 @@
               "on": "2026-11-17",
               "change": "A video the render policy refuses (too long or too large) is no longer tried again every hour: it waits until what it is made with changes (its input, its caps, the render image, the speaker's image, the worker script or the brand files), then is tried at once (RF1, server#937). Every other failure keeps the hourly retry.",
               "why": "A refusal is decided by the same input, caps and image each time, so the hourly retry got the same refusal every hour, and a too-large one rendered in full each hour to be refused again (C501).",
-              "decision": "https://github.com/paulgsc/server/issues/928"
+              "decision": "https://github.com/paulgsc/some-ui/pull/3136#issuecomment-6955373765"
             }
           ]
         },
@@ -3173,7 +3173,7 @@
               "on": "2026-11-17",
               "change": "A video the render policy refuses (too long or too large) is no longer tried again every hour: it waits until what it is made with changes (its input, its caps, the render image, the speaker's image, the worker script or the brand files), then is tried at once (RF1, server#937). Every other failure keeps the hourly retry.",
               "why": "A refusal is decided by the same input, caps and image each time, so the hourly retry got the same refusal every hour, and a too-large one rendered in full each hour to be refused again (C501).",
-              "decision": "https://github.com/paulgsc/server/issues/928"
+              "decision": "https://github.com/paulgsc/some-ui/pull/3136#issuecomment-6955373765"
             }
           ]
         },
@@ -3454,7 +3454,7 @@
               "on": "2026-11-17",
               "change": "A video the render policy refuses (too long or too large) is no longer tried again every hour: it waits until what it is made with changes (its input, its caps, the render image, the speaker's image, the worker script or the brand files), then is tried at once (RF1, server#937). Every other failure keeps the hourly retry.",
               "why": "Week 46's essay was refused at 24.4 minutes against the 15-minute cap and retried hourly with the same input, cap and image, the same refusal each time; a too-large one rendered in full each hour to be refused again (C501).",
-              "decision": "https://github.com/paulgsc/server/issues/928"
+              "decision": "https://github.com/paulgsc/some-ui/pull/3136#issuecomment-6955373765"
             }
           ]
         },
@@ -3707,7 +3707,7 @@
               "on": "2026-11-17",
               "change": "A video the render policy refuses (too long or too large) is no longer tried again every hour: it waits until what it is made with changes (its input, its caps, the render image, the speaker's image, the worker script or the brand files), then is tried at once (RF1, server#937). Every other failure keeps the hourly retry.",
               "why": "A refusal is decided by the same input, caps and image each time, so the hourly retry got the same refusal every hour, and a too-large one rendered in full each hour to be refused again (C501).",
-              "decision": "https://github.com/paulgsc/server/issues/928"
+              "decision": "https://github.com/paulgsc/some-ui/pull/3136#issuecomment-6955373765"
             }
           ]
         },
