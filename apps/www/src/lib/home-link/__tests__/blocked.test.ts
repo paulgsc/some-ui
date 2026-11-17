@@ -2,27 +2,33 @@
  * Promise NA1 (#3099): the phone says "Away from home" only when home gave
  * no answer.
  * - Claim: a request to home that failed because this phone couldn't find
- *   home's name on this network, or doesn't trust home's certificate, is
- *   said as that, never as away (AW1) and never as a fault on the phone; a
- *   refused connection or a timeout stays home's silence. A pairing 503 is
+ *   home's name on the network it is on, or doesn't trust home's
+ *   certificate, is said as that, never as away and never as a fault on the
+ *   phone, though it is held as a silence is (AW1, C476); a refused
+ *   connection, a timeout, a TLS connection dropped or timed out, or a name
+ *   failing on no network at all stays home's silence. A pairing 503 is
  *   read by its code: `service_overloaded` is home busy (or its cap on
  *   tries, with no `Retry-After`), anything else is pairing not set up.
  * - Family: the kind of failure (a name not found, an untrusted
- *   certificate, a refused connection, a timeout, the app's own deadline,
- *   a missing plugin) × who says it (`native-http`'s error, the link's
+ *   certificate, a refused connection, a timeout, a TLS connection dropped
+ *   or timed out, a missing plugin) × whether the phone is on any network
+ *   × who says it (`native-http`'s error, the link's
  *   state, a lane's run and its words, the sign-in sheet, pairing's line);
  *   and a pairing 503's code × whether it has a `Retry-After`.
  * - Proof: these tests, over `native-http`'s `classify` with the platform's
  *   own messages, the link's `heard` over the real runtime, a lane's run,
  *   `laneView` (`./words.test.ts`) and `signInView`.
- * - Tolerance: the platform's messages are matched by their words, as
- *   pairing always has; a failure Android words otherwise is home's
- *   silence. A request a router drops without a word is a timeout, so away.
+ * - Tolerance: the platform's messages and exception classes are matched
+ *   by their words; a failure Android words otherwise is home's silence. A
+ *   request a router drops without a word is a timeout, so away. On mobile
+ *   data, a name only the home router knows fails as a blocked name, said
+ *   with "on your home network" so it reads true either way. The app's own
+ *   deadline is `ForeignDeadlineError`, never matched, so a silence.
  */
 import { fakeClock } from "@/test-support/fake-clock"
 import { noAnswer } from "@/test-support/no-answer"
 import type { HomeAnswer, HomeExchanged } from "@some-ui/core-utils"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { homeRequest } from "@/lib/device-backend/native-http"
 import type { HomeRequest } from "@/lib/device-backend/native-http"
@@ -51,18 +57,40 @@ beforeEach(() => {
 const HOME = { base: "https://home.example/api/v1", host: "home.example" }
 const URL_ = `${HOME.base}/x`
 
-/** Android's own words for each failure, as the plugin rejects with them. */
+/**
+ * Each failure as Capacitor's HTTP plugin rejects with it on Android:
+ * `getLocalizedMessage()` as `message`, the exception's class as `code`.
+ */
 const ANDROID = {
-  name: new Error(
-    'java.net.UnknownHostException: Unable to resolve host "home.example": No address associated with hostname'
-  ),
-  trust: new Error(
-    "javax.net.ssl.SSLHandshakeException: java.security.cert.CertPathValidatorException: Trust anchor for certification path not found."
-  ),
-  refused: new Error(
-    "java.net.ConnectException: Failed to connect to /10.0.0.202:443"
-  ),
-  timeout: new Error("java.net.SocketTimeoutException: timeout"),
+  name: {
+    message:
+      'Unable to resolve host "home.example": No address associated with hostname',
+    code: "UnknownHostException",
+  },
+  trust: {
+    message:
+      "java.security.cert.CertPathValidatorException: Trust anchor for certification path not found.",
+    code: "SSLHandshakeException",
+  },
+  unverified: {
+    message: "Hostname home.example not verified",
+    code: "SSLPeerUnverifiedException",
+  },
+  refused: {
+    message: "Failed to connect to /10.0.0.202:443",
+    code: "ConnectException",
+  },
+  timeout: { message: "timeout", code: "SocketTimeoutException" },
+  // A TLS connection dropped or timed out is no answer, not a certificate.
+  tlsDropped: {
+    message:
+      "SSL handshake aborted: ssl=0x7a: I/O error during system call, Software caused connection abort",
+    code: "SSLHandshakeException",
+  },
+  tlsTimedOut: {
+    message: "SSL handshake timed out",
+    code: "SocketTimeoutException",
+  },
 } as const
 
 const failureOf = async (error: unknown): Promise<unknown> => {
@@ -71,28 +99,50 @@ const failureOf = async (error: unknown): Promise<unknown> => {
 }
 
 describe("NA1: which failure the phone's request met (native-http)", () => {
+  afterEach(() => vi.unstubAllGlobals())
+
   it("tells a name not found and an untrusted certificate apart from silence", async () => {
-    const name = await failureOf(ANDROID.name)
-    expect(name).toBeInstanceOf(HomeBlockedError)
-    expect(name).not.toBeInstanceOf(HomeNoAnswerError)
-    expect(name).toMatchObject({ reason: "name" })
-
-    const trust = await failureOf(ANDROID.trust)
-    expect(trust).toBeInstanceOf(HomeBlockedError)
-    expect(trust).toMatchObject({ reason: "trust" })
-
-    for (const silence of [ANDROID.refused, ANDROID.timeout]) {
-      const error = await failureOf(silence)
-      expect(error).toBeInstanceOf(HomeNoAnswerError)
-      expect(error).not.toBeInstanceOf(HomeBlockedError)
+    for (const [error, reason] of [
+      [ANDROID.name, "name"],
+      [ANDROID.trust, "trust"],
+      [ANDROID.unverified, "trust"],
+    ] as const) {
+      const failed = await failureOf(error)
+      expect(failed).toBeInstanceOf(HomeBlockedError)
+      expect(failed).not.toBeInstanceOf(HomeNoAnswerError)
+      expect(failed).toMatchObject({ reason })
     }
+    for (const silence of [
+      ANDROID.refused,
+      ANDROID.timeout,
+      ANDROID.tlsDropped,
+      ANDROID.tlsTimedOut,
+    ]) {
+      const failed = await failureOf(silence)
+      expect(failed).toBeInstanceOf(HomeNoAnswerError)
+      expect(failed).not.toBeInstanceOf(HomeBlockedError)
+    }
+  })
+
+  it("reads a name failure on no network at all as away, since every name fails there", async () => {
+    vi.stubGlobal("navigator", { onLine: false })
+    expect(await failureOf(ANDROID.name)).toBeInstanceOf(HomeNoAnswerError)
+    // A certificate is the certificate's, whatever the network.
+    expect(await failureOf(ANDROID.trust)).toBeInstanceOf(HomeBlockedError)
+  })
+
+  it("leaves a build without the plugin a fault on the phone, neither silence nor blocked", async () => {
+    const missing = await failureOf({ code: "UNIMPLEMENTED" })
+    expect(missing).not.toBeInstanceOf(HomeNoAnswerError)
+    expect(missing).not.toBeInstanceOf(HomeBlockedError)
   })
 
   it("reads the platform's words wherever they sit in the cause chain", () => {
     expect(blockedReason(new Error("wrapped", { cause: ANDROID.name }))).toBe(
       "name"
     )
-    expect(blockedReason({ message: String(ANDROID.trust) })).toBe("trust")
+    expect(blockedReason({ message: ANDROID.trust.message })).toBe("trust")
+    expect(blockedReason(ANDROID.name, false)).toBeNull()
     expect(blockedReason(ANDROID.refused)).toBeNull()
     expect(blockedReason(null)).toBeNull()
   })
@@ -137,7 +187,7 @@ const blockedError = (reason: "name" | "trust"): HomeBlockedError =>
   )
 
 describe("NA1: what the link makes of it", () => {
-  it("never holds the phone away for a name or a certificate, and an answer clears it", async () => {
+  it("holds as a silence does, but keeps which it was, and an answer clears both", async () => {
     let next: () => Promise<HomeAnswer> = () =>
       Promise.reject(blockedError("name"))
     const { link } = pairedLink(() => next())
@@ -146,18 +196,18 @@ describe("NA1: what the link makes of it", () => {
       link.send((send) => send("GET", "/x")).catch((e: unknown) => e)
 
     await run()
-    expect(link.getSnapshot().away).toBeNull()
+    expect(link.getSnapshot().away).not.toBeNull()
     expect(link.getSnapshot().blocked).toMatchObject({ reason: "name" })
 
     next = (): Promise<HomeAnswer> => Promise.reject(blockedError("trust"))
     await run()
     expect(link.getSnapshot().blocked).toMatchObject({ reason: "trust" })
-    expect(link.getSnapshot().away).toBeNull()
 
     next = (): Promise<HomeAnswer> =>
       Promise.resolve({ status: 200, body: "{}" })
     await run()
     expect(link.getSnapshot().blocked).toBeNull()
+    expect(link.getSnapshot().away).toBeNull()
   })
 
   it("says home's silence as away, and clears what blocked a request before", async () => {

@@ -136,9 +136,9 @@ export type HomeLinkState = {
   /**
    * The last request to home failed before home could answer, for `reason`
    * (NA1, #3099): this phone couldn't find home's name on this network, or
-   * doesn't trust home's certificate. Not a silence, so not away (AW1), and
-   * nothing is held for it; the next answer, a network change, a silence or
-   * a new pairing clears it. Null otherwise.
+   * doesn't trust home's certificate. Held as a silence is (AW1, C476), but
+   * said as itself, never as away; the next answer, a network change, a
+   * silence or a new pairing clears it. Null otherwise.
    */
   readonly blocked: {
     readonly reason: HomeBlockedReason

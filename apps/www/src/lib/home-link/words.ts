@@ -433,7 +433,7 @@ export type LaneFacts = LaneCounts & {
  * #3099): never "away", since the phone may well be at home.
  */
 export const BLOCKED_LINE: Readonly<Record<HomeBlockedReason, string>> = {
-  name: "This phone can't find home's name on this network; your router may be blocking it.",
+  name: "This phone can't find home's name on this network. On your home network, your router may be blocking it.",
   trust: "This phone doesn't trust home's certificate.",
 }
 

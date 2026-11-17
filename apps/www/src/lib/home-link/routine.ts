@@ -36,7 +36,7 @@ import { homeLink } from "./index"
 import type { ReadEvent, ReadState, Under } from "./routine-model"
 import { heldFor, INITIAL_READ, mayRead, stepRead } from "./routine-model"
 import type { HomeLink } from "./runtime"
-import { unanswered } from "./runtime"
+import { blockedOf, unanswered } from "./runtime"
 
 /** What `list` answers when nothing was read under the pairing held now. */
 const NO_FILES = { files: [] } as const
@@ -127,7 +127,10 @@ export function createRoutineReads(ports: RoutinePorts): RoutineReads {
     try {
       outcome = await ports.keep((send) => send("GET", "/routine/files"))
     } catch (error) {
-      if (unanswered(error)) return end(under, "unreachable")
+      // Home not reached, for no reason on this phone (AW1, NA1).
+      if (unanswered(error) || blockedOf(error) !== null) {
+        return end(under, "unreachable")
+      }
       reportFault(error)
       return end(under, "failed")
     }

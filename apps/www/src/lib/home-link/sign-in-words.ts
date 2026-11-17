@@ -212,7 +212,7 @@ export function pairFailureLine(failure: PairFailure, host: string): string {
       return `This phone doesn't trust ${host}'s certificate. Nothing was sent.`
     }
     case "no-name": {
-      return `This phone can't find ${host} on this network; your router may be blocking it. Nothing was sent.`
+      return `This phone can't find ${host} on this network. On your home network, your router may be blocking it. Nothing was sent.`
     }
     case "busy": {
       return `${host} is busy just now. Wait a minute and try again.`

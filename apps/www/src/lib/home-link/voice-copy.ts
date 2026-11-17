@@ -205,7 +205,7 @@ import { homeLink, paired, pairingOf } from "./index"
 import { lensEntriesHeld } from "./lens-record"
 import { notesHeld } from "./notes"
 import { askOnDrive } from "./on-drive"
-import { unanswered } from "./runtime"
+import { blockedOf, unanswered } from "./runtime"
 import { markSetAside } from "./set-aside"
 import { sendStationMoves } from "./take-stations"
 import { phoneVideos, sendVideos } from "./videos"
@@ -948,8 +948,9 @@ function copySoon(): void {
 
 /** Home's word on Drive could not be read or acted on, to the native log. */
 function unheard(error: unknown): void {
-  // Home's silence is the link's to tell, once a stretch away (AW1).
-  if (unanswered(error)) return
+  // Home's silence, or a name or certificate that stopped the request, is
+  // the link's to tell, once a stretch (AW1, NA1).
+  if (unanswered(error) || blockedOf(error) !== null) return
   reportFailure({
     port: "voice notes (which takes Drive has)",
     error: {

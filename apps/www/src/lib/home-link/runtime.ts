@@ -205,6 +205,12 @@ export function unanswered(error: unknown): boolean {
   return false
 }
 
+/** What the native log says as a blocked stretch starts (NA1). */
+const BLOCKED_SUMMARY: Readonly<Record<HomeBlockedReason, string>> = {
+  name: "This phone couldn't find home's name on this network.",
+  trust: "This phone doesn't trust home's certificate.",
+}
+
 /** Why `error`, or a cause of it, failed before home could answer (NA1). */
 export function blockedOf(error: unknown): HomeBlockedReason | null {
   for (let cause = error; cause instanceof Error; cause = cause.cause) {
@@ -406,8 +412,15 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     if (state.away?.heldUntil != null) lapse()
     return false
   }
-  /** Whether home answered `answered`, or `cause` found it silent. */
-  const reached = (answered: boolean, cause: unknown = null): void => {
+  /**
+   * Whether home answered `answered`, or `cause` found it silent; `summary`
+   * is what the native log says as the stretch starts.
+   */
+  const reached = (
+    answered: boolean,
+    cause: unknown = null,
+    summary = "Away from home: home didn't answer."
+  ): void => {
     if (answered) {
       if (state.away === null) return
       cancelLapse?.()
@@ -425,7 +438,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
         error: {
           kind: "unreachable",
           retryable: true,
-          summary: "Away from home: home didn't answer.",
+          summary,
           cause,
         },
       })
@@ -447,6 +460,9 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       (error: unknown) => {
         const blocked = blockedOf(error)
         if (blocked !== null) {
+          // Held as a silence is (C476), so the phone asks no more often
+          // than away; said as itself (NA1), so never as away.
+          reached(false, error, BLOCKED_SUMMARY[blocked])
           dispatch({ type: "blocked", reason: blocked, at: ports.now() })
         } else if (unanswered(error)) {
           reached(false, error)

@@ -82,8 +82,12 @@ const BLOCKED: Readonly<Record<HomeBlockedReason, string>> = {
   trust: "This phone doesn't trust home's certificate.",
 }
 
+/** Whether the phone is on some network, as the WebView knows it. */
+const online = (): boolean =>
+  typeof navigator === "undefined" || navigator.onLine
+
 function classify(error: unknown): ForeignVerdict {
-  const blocked = blockedReason(error)
+  const blocked = blockedReason(error, online())
   if (blocked !== null) {
     // Not home's silence (NA1): a network or certificate change mends it,
     // so asking again can succeed.
@@ -113,9 +117,12 @@ const PORT: ForeignPort = {
   name: "home server (native http)",
   classify,
   // Home's silence is the link's to tell, once a stretch away (AW1,
-  // `lib/home-link/away`); every other failure is told here.
+  // `lib/home-link/away`), and so is a name or a certificate that stopped
+  // a request (NA1); every other failure is told here.
   report: (failure) => {
-    if (failure.error.kind !== "unreachable") reportFailure(failure)
+    if (failure.error.kind === "unreachable") return
+    if (blockedReason(failure.error.cause, online()) !== null) return
+    reportFailure(failure)
   },
 }
 
@@ -157,6 +164,7 @@ export async function homeRequest(call: HomeRequest): Promise<HomeAnswer> {
     }),
     (error) => {
       if (error.kind === "unreachable") return new HomeNoAnswerError(error)
+      // `classify` already read the network: a `rejected` is a blocked one.
       const blocked = blockedReason(error.cause)
       return blocked === null
         ? new ForeignCallError(error)

@@ -42,20 +42,39 @@ export type HomeBlockedReason = "name" | "trust"
 
 /**
  * Which `HomeBlockedReason` an Android failure is, read from the
- * platform's own words (`UnknownHostException`, `SSLHandshakeException`
- * and the like), from `error` and its cause; null for any other failure.
+ * exception's class, which Capacitor's HTTP plugin rejects with as `code`
+ * (`UnknownHostException`, `SSLPeerUnverifiedException`), and the
+ * platform's own words, from `error` and its causes; null for any other
+ * failure. Only certificate words say `trust`: a TLS connection dropped or
+ * timed out (`SSL handshake aborted`, `SSL handshake timed out`) is no
+ * answer. `online` is false when the phone is on no network at all, where
+ * Android fails every name the same way: that is away, not `name`.
  */
-export function blockedReason(error: unknown): HomeBlockedReason | null {
+export function blockedReason(
+  error: unknown,
+  online = true
+): HomeBlockedReason | null {
   const words: Array<string> = []
   for (let at: unknown = error, depth = 0; at != null && depth < 4; depth++) {
     words.push(String(at))
-    if (typeof at === "object" && "message" in at)
-      words.push(String(at.message))
+    if (typeof at === "object") {
+      if ("message" in at) words.push(String(at.message))
+      if ("code" in at) words.push(String(at.code))
+    }
     at = typeof at === "object" && "cause" in at ? at.cause : null
   }
   const said = words.join(" ")
-  if (/SSL|certif|CertPath|trust anchor/i.test(said)) return "trust"
-  if (/UnknownHost|Unable to resolve host|No address associated/i.test(said)) {
+  if (
+    /CertPathValidator|Trust anchor|certificate|SSLPeerUnverified|not verified/i.test(
+      said
+    )
+  ) {
+    return "trust"
+  }
+  if (
+    online &&
+    /UnknownHost|Unable to resolve host|No address associated/i.test(said)
+  ) {
     return "name"
   }
   return null

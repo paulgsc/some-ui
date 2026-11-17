@@ -169,7 +169,10 @@ describe("the home link", () => {
           answer: () =>
             Promise.reject(
               new Error("couldn't", {
-                cause: new Error("javax.net.ssl.SSLHandshakeException"),
+                // A certificate failure, not a TLS connection dropped (NA1).
+                cause: new Error(
+                  "javax.net.ssl.SSLHandshakeException: java.security.cert.CertPathValidatorException: Trust anchor for certification path not found."
+                ),
               })
             ),
         },
