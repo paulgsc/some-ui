@@ -58,6 +58,7 @@ import {
   HomeAwayError,
   HomeBlockedError,
   HomeNoAnswerError,
+  phoneOnline,
 } from "@/lib/device-backend/native-http/no-answer"
 import { isFileHostTimeout } from "@/lib/file-host-config/client"
 
@@ -119,6 +120,18 @@ function retryAfterMs(retryAfter: string | undefined): number | null {
   return /^\d+$/.test(text) ? Number(text) * 1_000 : null
 }
 
+/** Home's error code in an answer's body, or null. */
+function errorCodeOf(answer: HomeAnswer): string | null {
+  try {
+    const parsed: unknown = JSON.parse(answer.body)
+    const code =
+      isRecord(parsed) && isRecord(parsed.error) ? parsed.error.code : null
+    return typeof code === "string" ? code : null
+  } catch {
+    return null
+  }
+}
+
 /**
  * Home said it has no room just now (paulgsc/server#934, AD4): `503` with
  * its code `service_overloaded` and a `Retry-After` this phone can read. Busy,
@@ -127,20 +140,11 @@ function retryAfterMs(retryAfter: string | undefined): number | null {
  * moment does not end, so it is not busy.
  */
 function overloaded(answer: HomeAnswer): boolean {
-  if (answer.status !== 503 || retryAfterMs(answer.retryAfter) === null) {
-    return false
-  }
-  try {
-    const parsed: unknown = JSON.parse(answer.body)
-    return (
-      isRecord(parsed) &&
-      isRecord(parsed.error) &&
-      parsed.error.code === "service_overloaded"
-    )
-  } catch {
-    // Ignored: a body that is not home's JSON error is not its overload.
-    return false
-  }
+  return (
+    answer.status === 503 &&
+    retryAfterMs(answer.retryAfter) !== null &&
+    errorCodeOf(answer) === "service_overloaded"
+  )
 }
 
 /** What the link answers for home while home's busy lasts: nothing was sent. */
@@ -171,18 +175,6 @@ export function parsePairing(record: string): Pairing | null {
   }
 }
 
-/** Home's error code in an answer's body, or null. */
-function errorCodeOf(answer: HomeAnswer): string | null {
-  try {
-    const parsed: unknown = JSON.parse(answer.body)
-    const code =
-      isRecord(parsed) && isRecord(parsed.error) ? parsed.error.code : null
-    return typeof code === "string" ? code : null
-  } catch {
-    return null
-  }
-}
-
 /**
  * What a pairing answer other than 200 says. A 503 is read by its code
  * (#3099): `service_overloaded` with a `Retry-After` is home shedding load
@@ -194,8 +186,11 @@ function refusalOf(answer: HomeAnswer): PairFailure {
   if (status === 422) return "bad-code"
   if (status === 429) return "too-many"
   if (status === 503) {
-    if (errorCodeOf(answer) !== "service_overloaded") return "not-set-up"
-    return answer.retryAfter === undefined ? "too-many" : "busy"
+    if (overloaded(answer)) return "busy"
+    // Overloaded with no wait to keep: home's cap on tries (#3099).
+    return errorCodeOf(answer) === "service_overloaded"
+      ? "too-many"
+      : "not-set-up"
   }
   // A www host without the proxy path, say: nothing there pairs.
   if (status === 404 || status === 405) return "not-home"
@@ -213,10 +208,7 @@ function thrownFailureOf(error: unknown): PairFailure {
   const blocked =
     error instanceof HomeBlockedError
       ? error.reason
-      : blockedReason(
-          error,
-          typeof navigator === "undefined" || navigator.onLine !== false
-        )
+      : blockedReason(error, phoneOnline())
   if (blocked === "trust") return "untrusted"
   if (blocked === "name") return "no-name"
   return "unreachable"

@@ -80,6 +80,10 @@ export function blockedReason(
   return null
 }
 
+/** Whether the phone is on some network, as the WebView knows it. */
+export const phoneOnline = (): boolean =>
+  typeof navigator === "undefined" || navigator.onLine !== false
+
 /**
  * A request to home that failed for a `HomeBlockedReason`: home was not
  * asked, so this is no answer from it, and not a fault on this phone.

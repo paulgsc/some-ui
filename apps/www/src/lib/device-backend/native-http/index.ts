@@ -38,7 +38,12 @@ import {
 } from "@/lib/intent/foreign"
 
 import type { HomeBlockedReason } from "./no-answer"
-import { blockedReason, HomeBlockedError, HomeNoAnswerError } from "./no-answer"
+import {
+  blockedReason,
+  HomeBlockedError,
+  HomeNoAnswerError,
+  phoneOnline,
+} from "./no-answer"
 
 /** Long enough for a slow LAN; short enough to say "unreachable" promptly. */
 const TIMEOUT_MS = 10_000
@@ -82,12 +87,8 @@ const BLOCKED: Readonly<Record<HomeBlockedReason, string>> = {
   trust: "This phone doesn't trust home's certificate.",
 }
 
-/** Whether the phone is on some network, as the WebView knows it. */
-const online = (): boolean =>
-  typeof navigator === "undefined" || navigator.onLine !== false
-
 function classify(error: unknown): ForeignVerdict {
-  const blocked = blockedReason(error, online())
+  const blocked = blockedReason(error, phoneOnline())
   if (blocked !== null) {
     // Not home's silence (NA1): a network or certificate change mends it,
     // so asking again can succeed.
@@ -121,7 +122,7 @@ const PORT: ForeignPort = {
   // a request (NA1); every other failure is told here.
   report: (failure) => {
     if (failure.error.kind === "unreachable") return
-    if (blockedReason(failure.error.cause, online()) !== null) return
+    if (blockedReason(failure.error.cause, phoneOnline()) !== null) return
     reportFailure(failure)
   },
 }
