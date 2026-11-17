@@ -178,17 +178,13 @@ for (const variant of ["debug", "release"]) {
   const configEntry = entries.find(
     (e) => e.name === "assets/capacitor.config.json"
   )
-  add(
-    reviewPluginConfig(
-      label,
-      configEntry && entryBytes(bytes, configEntry).toString("utf8"),
-      policy.pluginConfig
-    )
-  )
+  const configText =
+    configEntry && entryBytes(bytes, configEntry).toString("utf8")
+  add(reviewPluginConfig(label, configText, policy.pluginConfig))
   add(
     reviewErrorPage(
       label,
-      configEntry && entryBytes(bytes, configEntry).toString("utf8"),
+      configText,
       entries.map((e) => e.name)
     )
   )

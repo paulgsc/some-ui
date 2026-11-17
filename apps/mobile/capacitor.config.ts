@@ -67,7 +67,7 @@ const config: CapacitorConfig = {
      * The oldest WebView the bundle runs on: Vite's default target,
      * `baseline-widely-available`, is `chrome111`. Raise it with that
      * target. Capacitor's own default is 60. On Android 7 it reads Chrome's
-     * version, which is the WebView there.
+     * version; on 8 and 9 Chrome is usually the WebView too.
      */
     minWebViewVersion: 111,
   },

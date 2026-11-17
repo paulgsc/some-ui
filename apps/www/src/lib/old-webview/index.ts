@@ -12,7 +12,7 @@ export const OLD_WEBVIEW_PAGE = "webview-too-old.html"
 /** What the page says, in the person's terms. */
 export const OLD_WEBVIEW_WORDS = {
   title: "This phone needs a newer WebView",
-  body: "The app runs inside Android System WebView, and the one on this phone is too old to open it. Update Android System WebView from the Play Store (on Android 7, update Chrome), then open the app again.",
+  body: "The app runs inside Android System WebView, and the one on this phone is too old to open it. Update Android System WebView from the Play Store (on Android 7 to 9, Chrome is the WebView: update Chrome), then open the app again.",
   action: "Update WebView in the Play Store",
 } as const
 
