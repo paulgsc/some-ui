@@ -5,6 +5,7 @@ import { ChevronRight } from "lucide-react"
 
 import { isOnMobileSurface } from "@/lib/app-surface"
 import { WINGS } from "@/lib/wings"
+import { DeviceFirstRun } from "@/components/settings/device-welcome"
 import { WING_GLYPHS } from "@/components/wing-glyph"
 
 /**
@@ -13,8 +14,21 @@ import { WING_GLYPHS } from "@/components/wing-glyph"
  * what is inside: no "due", no counts, no "missed". A status line primes the
  * visit with what was not done before it starts, and a foyer that shows each
  * wing's state becomes the Home that mixed them all.
+ *
+ * On a phone not paired with home, it is the welcome that pairs it until
+ * the person pairs or says "Not now" (SIGNIN2, `lib/home-link/first-run`).
  */
-const Foyer = (): JSX.Element => {
+const Foyer = (): JSX.Element =>
+  import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
+    <DeviceFirstRun>
+      <Wings />
+    </DeviceFirstRun>
+  ) : (
+    <Wings />
+  )
+
+/** The wings, each with what it is for. */
+const Wings = (): JSX.Element => {
   const wings = WINGS.flatMap((wing) =>
     wing.home !== null && isOnMobileSurface(wing.home)
       ? [{ ...wing, home: wing.home }]

@@ -1,0 +1,17 @@
+{
+  "id": "C472",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/components/settings/device-pair-form.tsx",
+    "some-ui:apps/www/src/components/settings/device-welcome.tsx"
+  ],
+  "chose": "The phone pairs by typing home's address and the 8-character code the computer shows; no QR code to scan for now.",
+  "options": [
+    "type the address and the code",
+    "scan a QR code the computer shows (address and code)"
+  ],
+  "gray": "A scan is quicker but needs a camera plugin and its permission in apps/mobile/android, which no PR CI builds; the owner pairs a phone rarely, and typing works on every phone today.",
+  "undo": "Add a scan beside the form's fields, reading the same address and code; nothing stores the choice.",
+  "refs": ["#3088", "#3086"]
+}

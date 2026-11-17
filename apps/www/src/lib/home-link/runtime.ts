@@ -203,7 +203,11 @@ export type HomeLink = {
    * (AD3). Only `./standing`'s watch calls it.
    */
   check: () => Promise<void>
-  pair: (address: HomeAddress, code: string) => Promise<void>
+  /**
+   * Pairs with `address` by `code`, sending `name` too when the owner typed
+   * one (SIGNIN2; only where home takes one, `./naming`).
+   */
+  pair: (address: HomeAddress, code: string, name?: string) => Promise<void>
   unpair: () => Promise<void>
   /**
    * Runs `run` with a `get` that stops sending once `stop` is pressed or the
@@ -509,6 +513,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
   const finishPairing = async (
     base: string,
     code: string,
+    name: string | undefined,
     id: string,
     pairedAt: number
   ): Promise<PairFailure | null> => {
@@ -519,7 +524,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       answer = await personal({
         method: "POST",
         url: `${base}/auth/pairing/finish`,
-        body: { code },
+        body: name === undefined ? { code } : { code, label: name },
       })
     } catch (error) {
       return thrownFailureOf(error)
@@ -618,14 +623,14 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       return loading
     },
 
-    async pair(address, code): Promise<void> {
+    async pair(address, code, name): Promise<void> {
       const before = state
       dispatch({ type: "pairPressed", base: address.base })
       if (state === before) return
       const { base } = address
       const id = crypto.randomUUID()
       const at = ports.now()
-      const failure = await finishPairing(base, code, id, at)
+      const failure = await finishPairing(base, code, name, id, at)
       dispatch(
         failure === null
           ? { type: "paired", base, id, at }

@@ -524,8 +524,14 @@ declared (checked by reading every call site and by the tests named).
   while held away or home is busy, unpaired, or once home has refused the
   key; sending nothing of the phone's; SIGNIN1, #3087),
   which are the other callers of `lib/home-link`, is started by a tap in the Home server block of Settings
-  (`components/settings/device-section.tsx`): the sync (published lessons
-  and dramas, read with no credential), pairing (the code only), unpairing,
+  (`components/settings/device-section.tsx`), or, for pairing alone, in the
+  first run's welcome the foyer draws on a phone not paired
+  (`components/settings/device-welcome.tsx`): the sync (published lessons
+  and dramas, read with no credential), pairing (the code, and a name for
+  the phone only where home takes one and only as the owner typed it, never
+  filled in; `components/settings/device-pair-form.tsx`, which the
+  first run's welcome, `components/settings/device-welcome.tsx`, draws too;
+  SIGNIN2, #3088), unpairing,
   and the clear of finished sessions home holds (`lib/home-link/clear`,
   after one confirm that names how many and the host): each finished
   session (`mayLeavePhone`: completed, not today's) read back from home
@@ -597,7 +603,10 @@ declared (checked by reading every call site and by the tests named).
   `CapacitorHttp`, call `native-http`, call `lib/home-link`); one that calls
   a `homeLink()` method that sends (`pair`, `unpair`, `sync`, `send`) from
   anywhere but a press handler in the Home server block or a module that
-  block calls, My data's delete (`lib/home-link/delete-note`, below), or the study list's let-go (`letSessionGo`, run through
+  block calls (the pairing form, which the welcome draws too), or draws the
+  pairing form (`components/settings/device-pair-form.tsx`) anywhere but
+  those two, or has it send a name the owner did not type there (a default,
+  the device's model), My data's delete (`lib/home-link/delete-note`, below), or the study list's let-go (`letSessionGo`, run through
   `letSessionGoFor`, which only keeps the asked host beside its end) started from
   anywhere but its confirm's `onConfirm` and the phone-full offer's "Remove
   it" `onPress` (`components/settings/device-storage.tsx`), or that confirm

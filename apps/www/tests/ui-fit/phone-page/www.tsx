@@ -20,6 +20,7 @@ import { simulatedPattern } from "@some-ui/voice-capture/testing"
 
 import type { RemovableSession } from "@/lib/device-backend/handlers/sessions"
 import type { DeviceStorageView } from "@/lib/device-backend/storage-view"
+import { useHomeLink } from "@/lib/home-link"
 import type { LetGoRun } from "@/lib/home-link/study-let-go"
 import { JobsScout } from "@/components/jobs/scout"
 import { DeviceSection } from "@/components/settings/device-section"
@@ -27,6 +28,7 @@ import {
   RemoveOffer,
   StoragePrompt,
 } from "@/components/settings/device-storage"
+import { DeviceWelcome } from "@/components/settings/device-welcome"
 
 import type { FitActions } from "./fit-actions"
 import { useFitActions } from "./fit-actions"
@@ -218,6 +220,19 @@ const KeepFixture = (): JSX.Element => {
  */
 const HomeFixture = (): JSX.Element => <DeviceSection />
 
+/**
+ * The welcome the foyer draws on a phone never paired (SIGNIN2), on the
+ * link as this page has it: unpaired, with no plugin, so pairing fails as
+ * it does when home doesn't answer.
+ */
+const WelcomeFixture = (): JSX.Element => (
+  <DeviceWelcome
+    state={useHomeLink()}
+    restored={false}
+    onNotNow={() => undefined}
+  />
+)
+
 export const WWW_FIXTURES = {
   /**
    * Jobs → Scout, alone on its page as the route draws it, on the app's own
@@ -225,6 +240,7 @@ export const WWW_FIXTURES = {
    */
   "www-scout": JobsScout,
   "www-home": HomeFixture,
+  "www-welcome": WelcomeFixture,
   "www-storage": StorageFixture,
   "www-take-full": TakeFullFixture,
   "www-keep": KeepFixture,
