@@ -50,16 +50,62 @@ webview=$(adb shell dumpsys webviewupdate | tr -d '\r' \
 webview=${webview:-unknown}
 
 # The bundle's floor: Vite's default target (baseline-widely-available),
-# about Chrome 111. Below it the page loads blank, which on a real phone
-# cannot happen once Play has updated Android System WebView (Android 7
-# takes up to about 119), so such a level is not tested and its row says
-# why rather than reading red.
+# about Chrome 111, and the app's android.minWebViewVersion
+# (apps/mobile/capacitor.config.ts). Below it Capacitor opens the update
+# page (webview-too-old.html, #3117) in place of the app. A phone updated
+# from Play is past the floor (Android 7 takes up to about 119), so such a
+# level runs only OWV1's proof and says why the rest is not run.
+#
+# OWV1: on a WebView below the floor, every way into the app leaves the
+# update page on screen (MainActivity.onNewIntent returns before any entry
+# replaces it). Family: the entry (the plain icon, each wing's icon, the
+# shortcut) x the start (cold, warm) x how Capacitor reads the WebView's
+# version (API 26 and later from the current WebView package; 24 and 25
+# from Chrome's). Proof: this block, run at a level of each version path
+# (31 and 24): a cold start by the plain icon, each wing's icon and the
+# shortcut warm, then a cold start by a wing's icon, each found by the
+# page's title in the accessibility tree, with a screenshot of the first.
 MIN_WEBVIEW=111
+OLD_WEBVIEW_TITLE="This phone needs a newer WebView"
 major=${webview%%.*}
 if [[ "$major" =~ ^[0-9]+$ ]] && [ "$major" -lt "$MIN_WEBVIEW" ]; then
   why="stock WebView $major (needs ≥$MIN_WEBVIEW)"
-  write_row "$why" "$why" "$why" "$why"
-  echo "::notice title=API $api::$why: the image's WebView is older than the bundle needs; a phone updated from Play is not. Not tested."
+  pkg=dev.paulgsc.someui
+  missed=()
+  # still_shown <entry>: the update page is on screen after that entry.
+  still_shown() {
+    (cd "$out/launch" && UI_WAIT_SECONDS=60 node "$here/ui.mjs" find "$OLD_WEBVIEW_TITLE" > /dev/null 2>> ui-errors.txt) ||
+      missed+=("$1")
+  }
+  adb install -r "$apks/launch.apk" > /dev/null || missed+=("install")
+  adb shell am start -W -n "$pkg/.MainActivity" > /dev/null
+  still_shown "the plain icon, cold"
+  adb exec-out screencap -p > "$out/launch/old-webview.png" || true
+  # The wing icons, as launch-test.sh finds them (none listed on API 24 and
+  # 25, which lack query-activities; the cold wing entry below still runs).
+  aliases=$(adb shell cmd package query-activities --brief \
+    -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -p "$pkg" 2> /dev/null \
+    | tr -d '\r' | grep -oE "$pkg/[A-Za-z0-9_.]+" | grep -v '\.MainActivity$' || true)
+  for component in $aliases; do
+    adb shell am start -W -n "$component" > /dev/null
+    still_shown "${component##*.}, warm"
+  done
+  adb shell am start -W -a dev.paulgsc.someui.NEW_IDEA -n "$pkg/.MainActivity" > /dev/null
+  still_shown "the shortcut, warm"
+  adb shell am force-stop "$pkg"
+  adb shell am start -W -n "$pkg/.WingPractice" > /dev/null
+  still_shown "WingPractice, cold"
+  if [ "${#missed[@]}" -eq 0 ]; then
+    shown="update page shown"
+  else
+    shown="blank"
+  fi
+  write_row "$shown" "$why" "$why" "$why"
+  if [ "${#missed[@]}" -gt 0 ]; then
+    echo "::error title=API $api::$why: the update page was not on screen after: $(IFS=';'; echo "${missed[*]}")."
+    exit 1
+  fi
+  echo "::notice title=API $api::$why: the update page stayed on screen through every entry; the rest is not run."
   exit 0
 fi
 
