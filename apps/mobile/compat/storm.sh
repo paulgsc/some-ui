@@ -49,6 +49,40 @@ phases=()
 fail() { echo "$1" >> "$out/failures.txt"; }
 fail_refresh() { echo "$1" >> "$out/refresh.txt"; }
 
+# lanes_wait <pull-at-ms>: waits up to 2 min for lane-done.mjs to say the
+# run read every route again, and prints what it said; its exit code is
+# lane-done's (0 done, 1 late, 3 could not check), or 2 for not in time.
+# lanes_read <pull-at-ms> <phase>: waits up to 2 min for the lanes' run the
+# pull joined to read every route the single pull read again, within one
+# pace per request (lane-done.mjs, CS1), and fails the refresh if it does
+# not. The pull's own line is not judged: a joined run may send its queued
+# writes first (HERD's owner on #3134), and how the pull says so is #3140.
+lanes_wait() {
+  local pull_at=$1 said="" rc=2
+  for _ in $(seq 1 120); do
+    if curl -sf "$control/all" > "$out/all-now.json"; then
+      # set -e: lane-done.mjs exits 1, 2 and 3 by design, so its code is kept.
+      said=$(node "$here/lane-done.mjs" "$out/all-now.json" "$out/stub-single.json" "$pull_at" "$budget") && rc=0 || rc=$?
+      [ "$rc" = 2 ] || break
+    fi
+    sleep 1
+  done
+  echo "$said"
+  return "$rc"
+}
+
+lanes_read() {
+  local pull_at=$1 name=$2 said rc
+  said=$(lanes_wait "$pull_at") && rc=0 || rc=$?
+  case $rc in
+    0) return 0 ;;
+    1) fail_refresh "$name: the lanes' run the pull joined was slower than its pace: $said" ;;
+    2) fail_refresh "$name: the lanes' run the pull joined had not read again 2 min after the pull: $said" ;;
+    *) fail_refresh "$name: the lanes' run could not be checked: $said" ;;
+  esac
+  return 1
+}
+
 # The stand-in home, over https with the run's certificate when run-level.sh
 # made one and trust-ca.sh got its CA into the system store: a paired phone
 # reaches home only over https (LA8).
@@ -230,19 +264,40 @@ busy() {
   local end
   end=$(pull_end "$before")
   sleep "$seconds"
-  curl -sf -X POST "$control/calm" > /dev/null
+  curl -sf -X POST "$control/calm" > /dev/null || true
   echo "$end"
 }
 
-# Two pulls a second apart, which HERD1 joins into one run: home must hear
-# no more than from the single pull before it.
-two_pulls() {
-  local before
+# A pull, then the app sent home and brought back while home still answers
+# slowly, so the pull's lanes' run is in flight when the app comes back.
+# HERD1 joins that moment to the run under way. A second pull gesture would
+# not do: the page ignores a drag while its pull is checking
+# (lib/pull-refresh/model.ts), so it would never reach the lanes (Codex on
+# #3139). The pull reads the page once (HERD2), so home must hear no more
+# than two single pulls, no read more than twice what the single pull
+# asked, and no write twice (HERD's owner on #3134).
+pull_then_back() {
+  local before pull_at said rc
+  curl -sf -X POST "$control/slow?ms=$(budget_of .joinedSlowMs)" > /dev/null
   before=$(native_count "$PULL_CHECKED")
+  pull_at=$(date +%s%3N)
   pull_down
   sleep 1
-  pull_down
+  adb shell input keyevent 3
+  sleep 1
+  adb shell am start -W -n "$pkg/.WingPractice" > /dev/null
   pull_end "$before"
+  # Count only once the run has finished, still slowed, so none of it (nor
+  # a second run) lands in the next phase (reviews of #3139): up to 2 min
+  # for every route the single pull read to come again. Those are all the
+  # lanes' reads (the Jobs lane's runs, digests and interview weeks among
+  # them), so a run the app coming back dropped fails here. Its pace is not
+  # judged, since home holds every answer.
+  said=$(lanes_wait "$pull_at") && rc=0 || rc=$?
+  echo "lane-done after joined (exit $rc): $said" > "$out/joined-settled.txt"
+  [ "$rc" = 0 ] || [ "$rc" = 1 ] ||
+    fail "joined: the lanes' run the pull and the app coming back joined did not finish reading: $said"
+  curl -sf -X POST "$control/calm" > /dev/null || true
 }
 
 background() {
@@ -250,11 +305,10 @@ background() {
   sleep 15
   adb shell am start -W -n "$pkg/.WingPractice" > /dev/null
   sleep 5
-  local end
+  local end pull_at
+  pull_at=$(date +%s%3N)
   end=$(one_pull)
-  if [ "$end" != "read" ]; then
-    fail_refresh "background: a pull after coming back from the background ended \"$end\", not \"read\": the page did not refresh"
-  fi
+  lanes_read "$pull_at" "background: after coming back from the background" > /dev/null || true
   echo "$end"
 }
 
@@ -269,14 +323,13 @@ offline() {
   adb shell svc wifi enable || true
   adb shell svc data enable || true
   sleep 15
-  local back
+  local back pull_at
+  pull_at=$(date +%s%3N)
   back=$(one_pull)
   if [ "$(adb shell pidof "$pkg" | tr -d '\r')" != "$pid_before" ]; then
     fail_refresh "offline: the app's process changed across the network toggle (it restarted)"
   fi
-  if [ "$back" != "read" ]; then
-    fail_refresh "offline: a pull after the network returned ended \"$back\", not \"read\": the page did not recover without a restart"
-  fi
+  lanes_read "$pull_at" "offline: after the network returned" > /dev/null || true
   echo "cut:$cut back:$back"
 }
 
@@ -285,11 +338,40 @@ first_end=$(echo "${phases[-1]}" | grep -oE '"pulls":"[a-z]+"' | grep -oE '[a-z]
 if [ "$first_end" != "read" ]; then
   fail_refresh "single: a pull with home up ended \"$first_end\", not \"read\": the page did not refresh"
 fi
-phase joined two_pulls
-single_heard=$(echo "${phases[0]}" | grep -oE '"requests":[0-9]+' | grep -oE '[0-9]+$')
-joined_heard=$(echo "${phases[-1]}" | grep -oE '"requests":[0-9]+' | grep -oE '[0-9]+$')
-if [ "$joined_heard" -gt "$single_heard" ]; then
-  fail "joined: two pulls 1 s apart sent $joined_heard requests, more than one pull alone ($single_heard); HERD1 joins a pull to the run under way (stub-joined.json)"
+phase joined pull_then_back
+# Reads only: the writes the run drains (each app event once, checked
+# below) are new work, which coming back may well have queued.
+reads_of() {
+  node -e '
+const { byRoute } = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))
+console.log(Object.entries(byRoute).filter(([k]) => k.startsWith("GET ")).reduce((n, [, c]) => n + c, 0))
+' "$1"
+}
+single_reads=$(reads_of "$out/stub-single.json")
+joined_reads=$(reads_of "$out/stub-joined.json")
+if [ "$joined_reads" -gt $((2 * single_reads)) ]; then
+  fail "joined: a pull and the app coming back while its run was in flight read $joined_reads times, more than two pulls alone ($((2 * single_reads))) (stub-joined.json)"
+fi
+# A read asked more than twice the single pull asked it, or a write (a
+# drained item: each has its own path) sent twice, means a second drain run
+# started during the first.
+twice=$(node -e '
+const read = (f) => JSON.parse(require("fs").readFileSync(f, "utf8")).byRoute
+const [joined, single] = [read(process.argv[1]), read(process.argv[2])]
+const over = ([key, n]) =>
+  key.startsWith("GET ") ? n > 2 * Math.max(single[key] ?? 0, 1) : n > 1
+console.log(Object.entries(joined).filter(over).map(([k, n]) => `${k} ×${n}`).join(", "))
+' "$out/stub-joined.json" "$out/stub-single.json")
+if [ -n "$twice" ]; then
+  fail "joined: the app coming back during a run repeated a read or a write ($twice): it started a second run (stub-joined.json)"
+fi
+# A second run sends each read once, which the caps above allow; only a
+# write sent twice shows it, so a phase that drained no write checked nothing.
+if ! node -e '
+const { byRoute } = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))
+process.exitCode = Object.keys(byRoute).some((k) => !k.startsWith("GET ")) ? 0 : 1
+' "$out/stub-joined.json"; then
+  fail "joined: the run drained no write, so a second run could not be seen (stub-joined.json)"
 fi
 phase burst burst
 phase busy busy
