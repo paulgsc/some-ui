@@ -72,6 +72,8 @@ const PAIRED: HomeLinkState = {
     base: "https://home.example/api/v1",
     id: "pairing-1",
     notForgotten: false,
+    since: null,
+    standing: { kind: "unchecked" },
   },
   activity: { kind: "idle" },
   drain: { kind: "idle" },

@@ -223,7 +223,11 @@ describe("the link's drain", () => {
   it("runs one lane at a time, beside a read or a sync, and never beside a send or an Unpair", () => {
     const paired = step(INITIAL, {
       type: "read",
-      found: { base: "https://home.example/api/v1", id: "pairing-1" },
+      found: {
+        base: "https://home.example/api/v1",
+        id: "pairing-1",
+        since: null,
+      },
     })
     const draining = step(paired, { type: "drainStarted" })
     expect(draining.drain).toEqual({ kind: "draining", stopping: false })
@@ -250,7 +254,11 @@ describe("the link's keep lane", () => {
   it("starts only when paired and idle", () => {
     const paired = step(INITIAL, {
       type: "read",
-      found: { base: "https://home.example/api/v1", id: "pairing-1" },
+      found: {
+        base: "https://home.example/api/v1",
+        id: "pairing-1",
+        since: null,
+      },
     })
     const keeping = step(paired, { type: "keepStarted" })
     expect(keeping.activity).toEqual({ kind: "keeping", stopping: false })
@@ -369,7 +377,7 @@ describe("a lane's run", () => {
 describe("Send now", () => {
   const PAIRED = step(INITIAL, {
     type: "read",
-    found: { base: "https://home.lan", id: "p" },
+    found: { base: "https://home.lan", id: "p", since: null },
   })
   const NOTHING_WAITS: LaneCounts = {
     held: { sessions: 2 },

@@ -38,6 +38,8 @@ const PAIRED: HomeLinkState = {
     base: "https://home.example/api/v1",
     id: "p1",
     notForgotten: true,
+    since: null,
+    standing: { kind: "unchecked" },
   },
 }
 const UNPAIRED: HomeLinkState = {

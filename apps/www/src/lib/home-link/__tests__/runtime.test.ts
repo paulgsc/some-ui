@@ -96,6 +96,8 @@ describe("the home link", () => {
       base: HOME.base,
       id: HOME.base,
       notForgotten: false,
+      since: null,
+      standing: { kind: "unchecked" },
     })
     expect(paired.sent).toEqual([])
 
@@ -144,6 +146,7 @@ describe("the home link", () => {
       base: HOME.base,
       token: "phone-token",
       id: first,
+      pairedAt: 0,
     })
 
     // Paired again to the same address, it is a new pairing.

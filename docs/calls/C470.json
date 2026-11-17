@@ -1,0 +1,18 @@
+{
+  "id": "C470",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/home-link/sign-in-words.ts",
+    "some-ui:apps/www/src/components/device-sign-in-mark.tsx"
+  ],
+  "chose": "On the phone, the screen says \"signed in to home\" for a phone paired with home that home still knows, and keeps \"pair\" as the name of the act that signs it in (\"Pair with home\", \"Pair again\"); the mark is a person icon (checked, plain or crossed) beside the gear on every screen.",
+  "options": [
+    "\"Signed in to home\" for the state, \"pair\" for the act",
+    "\"Paired with home\" for the state, as Settings › Home said before",
+    "\"Signed in\" for both, renaming pairing to signing in"
+  ],
+  "gray": "The owner asked for \"clear visual communication that you're in a signed in session\" while the app has always said \"paired\"; no check or earlier decision says which word the phone uses for the state, and the owner reads it on every screen.",
+  "undo": "Edit SIGN_IN and signInView in apps/www/src/lib/home-link/sign-in-words.ts, and ICONS in apps/www/src/components/device-sign-in-mark.tsx; nothing stores the words.",
+  "refs": ["#3086", "#3087"]
+}

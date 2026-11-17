@@ -14,7 +14,9 @@
  *   look at the routine's files, and `lib/home-link/heard`, which reads
  *   home's words for an idea answer's take while the idea screen shows it
  *   (MIC10), or `look`, which `lib/home-link/compat-read` calls for whether
- *   home serves this build (`./serves`, #2843). Creating the runtime and `load` read only the phone's own
+ *   home serves this build (`./serves`, #2843), or `check`, which
+ *   `./standing`'s watch calls for whether home still knows this phone
+ *   (SIGNIN1). Creating the runtime and `load` read only the phone's own
  *   record; the one read on a timer is that last one, bounded by its screen.
  * - **No retry.** A failed request is said once and left; the next tap, or
  *   the drain's next ask (LA15), is the next try.
@@ -108,7 +110,7 @@ export function homeBusyFor(retryAfter: string | undefined): number {
 const HOME_BUSY: HomeAnswer = { status: 429, body: "" }
 
 /** A pairing kept before it had an id is known by its base. */
-type Pairing = { base: string; token: string; id: string }
+type Pairing = { base: string; token: string; id: string; since: number | null }
 
 export function parsePairing(record: string): Pairing | null {
   try {
@@ -120,6 +122,11 @@ export function parsePairing(record: string): Pairing | null {
           base: parsed.base,
           token: parsed.token,
           id: typeof parsed.id === "string" ? parsed.id : parsed.base,
+          since:
+            typeof parsed.pairedAt === "number" &&
+            Number.isFinite(parsed.pairedAt)
+              ? parsed.pairedAt
+              : null,
         }
       : null
   } catch {
@@ -188,6 +195,14 @@ export type HomeLink = {
   subscribe: (listener: () => void) => () => void
   /** Reads the phone's own record, once. Sends nothing. */
   load: () => Promise<void>
+  /**
+   * Asks home once whether it still knows this phone (SIGNIN1): one
+   * `GET /auth/session` with the key, on the drain's turn of the pace and
+   * holding no activity, so it goes beside anything else. Nothing while
+   * unpaired, already forgotten, held away (AW1) or while home is busy
+   * (AD3). Only `./standing`'s watch calls it.
+   */
+  check: () => Promise<void>
   pair: (address: HomeAddress, code: string) => Promise<void>
   unpair: () => Promise<void>
   /**
@@ -393,7 +408,9 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
   const ask = async (
     side: Side,
     call: HomeRequest,
-    tapped: boolean
+    tapped: boolean,
+    /** Told the moment the request goes, after its turn (SIGNIN1). */
+    onSent?: (at: number) => void
   ): Promise<HomeAnswer> => {
     const away = (): boolean => !tapped && awayNow()
     if (away()) throw new HomeAwayError()
@@ -402,9 +419,23 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     if (!went || stopped(side)) throw new SyncStoppedError()
     if (away()) throw new HomeAwayError()
     if (homeBusyNow()) return HOME_BUSY
+    onSent?.(ports.now())
     const answer = await track(side, heard(ports.request(call)))
     if (answer.status === 429) heardBusy(answer)
     return answer
+  }
+
+  /**
+   * What an answer to pairing `id`'s key, sent at `sent`, says of home
+   * knowing this phone (SIGNIN1): a refusal (`401`) that it doesn't, any
+   * success that it does. Anything else (busy, a fault on home) says neither.
+   */
+  const heardKey = (id: string, answer: HomeAnswer, sent: number): void => {
+    if (answer.status === 401) {
+      dispatch({ type: "heard", id, known: false, at: sent })
+    } else if (answer.status >= 200 && answer.status < 300) {
+      dispatch({ type: "heard", id, known: true, at: sent })
+    }
   }
 
   /** `call` sent at its turn on the pace, as the person's (pairing, Unpair). */
@@ -478,7 +509,8 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
   const finishPairing = async (
     base: string,
     code: string,
-    id: string
+    id: string,
+    pairedAt: number
   ): Promise<PairFailure | null> => {
     // `pairingAddress` refuses http; this is the runtime's own guard.
     if (new URL(base).protocol !== "https:") return "other"
@@ -496,7 +528,9 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     const token = stringFieldOf(answer.body, "token")
     if (token === null) return "other"
     try {
-      await ports.credential.write(JSON.stringify({ base, token, id }))
+      await ports.credential.write(
+        JSON.stringify({ base, token, id, pairedAt })
+      )
     } catch {
       // Home made a session this phone cannot keep: end it, in the same
       // tap, rather than leave it to expire.
@@ -524,6 +558,9 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
         if (!path.startsWith("/")) {
           return Promise.reject(new Error(`not a path: ${path}`))
         }
+        // When the request went; a busy answer sends nothing and says
+        // nothing of the key.
+        let sent: number | null = null
         return ask(
           side,
           {
@@ -533,8 +570,12 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
             ...(body === undefined ? {} : { body }),
             ...(range === undefined ? {} : { range }),
           },
-          tapped
+          tapped,
+          (at) => {
+            sent = at
+          }
         ).then((answer) => {
+          if (sent !== null) heardKey(pairing.id, answer, sent)
           // Home answers a route it doesn't have in plain words ("not
           // found"); a record it doesn't hold comes as its JSON error.
           if (
@@ -566,7 +607,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
           dispatch({
             type: "read",
             found: pairing
-              ? { base: pairing.base, id: pairing.id }
+              ? { base: pairing.base, id: pairing.id, since: pairing.since }
               : lost
                 ? "lost"
                 : null,
@@ -583,12 +624,43 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       if (state === before) return
       const { base } = address
       const id = crypto.randomUUID()
-      const failure = await finishPairing(base, code, id)
+      const at = ports.now()
+      const failure = await finishPairing(base, code, id, at)
       dispatch(
         failure === null
-          ? { type: "paired", base, id }
+          ? { type: "paired", base, id, at }
           : { type: "pairFailed", failure }
       )
+    },
+
+    async check(): Promise<void> {
+      const { link } = state
+      if (link.kind !== "paired" || link.standing.kind === "forgotten") return
+      const pairing = await readPairing()
+        // Ignored: a record the phone can't read just now is the read's own
+        // to say (`load`); the check asks again at its next moment.
+        .catch(() => null)
+      if (pairing?.id !== link.id) return
+      if (awayNow() || homeBusyNow()) return
+      if (!(await pace.turn(false))) return
+      // Home may have asked to be left alone while this waited its turn.
+      if (awayNow() || homeBusyNow()) return
+      let answer: HomeAnswer
+      const sent = ports.now()
+      try {
+        answer = await heard(
+          ports.request({
+            method: "GET",
+            url: `${pairing.base}/auth/session`,
+            token: pairing.token,
+          })
+        )
+      } catch {
+        // A silence is the away state's (`heard`); nothing else is said.
+        return
+      }
+      if (answer.status === 429) heardBusy(answer)
+      heardKey(pairing.id, answer, sent)
     },
 
     async unpair(): Promise<void> {

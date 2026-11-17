@@ -17,7 +17,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
 import { homeApiBase } from "@/lib/device-backend/home-sync"
-import type { HomeLinkState, PairFailure, UnpairedNote } from "@/lib/home-link"
+import type { HomeLinkState, PairFailure } from "@/lib/home-link"
 import {
   homeLink,
   hostOf,
@@ -28,6 +28,7 @@ import {
 import type { ClearEnd } from "@/lib/home-link/clear"
 import { clearHeld, finishedOnPhone } from "@/lib/home-link/clear"
 import { remember, remembered } from "@/lib/home-link/remembered"
+import { signInView, UNPAIRED_NOTES } from "@/lib/home-link/sign-in-words"
 import type { SyncResult } from "@/lib/home-link/sync"
 import { lastSync, syncLessonsFrom } from "@/lib/home-link/sync"
 import { CLEAR, HOME_BLOCK } from "@/lib/home-link/words"
@@ -45,15 +46,6 @@ function typedHost(address: string): string | null {
   } catch {
     return null
   }
-}
-
-const NOTES: Record<UnpairedNote, string> = {
-  unpaired: "Unpaired.",
-  "unpaired-offline":
-    "Unpaired on this phone. Home couldn't be reached, so it still holds this phone's key until it expires: sign out everywhere on your computer to end it now.",
-  lost: "This phone's pairing didn't survive a restore. Pair again; to end the old one, sign out everywhere on your computer.",
-  unreadable:
-    "This phone couldn't read its pairing just now. Restart the app to try again. Pairing again replaces it; to end the old one, sign out everywhere on your computer.",
 }
 
 function failureLine(failure: PairFailure, host: string): string {
@@ -316,7 +308,9 @@ export const DeviceSection = (): JSX.Element => {
         {paired ? (
           <>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm break-all">Paired · {host}</p>
+              <p className="min-w-0 flex-1 text-sm break-words">
+                {signInView(state).line}
+              </p>
               <Button
                 type="button"
                 variant="outline"
@@ -393,7 +387,7 @@ export const DeviceSection = (): JSX.Element => {
             </p>
             {note !== null ? (
               <Notice key={note} dismissible>
-                {NOTES[note]}
+                {UNPAIRED_NOTES[note]}
               </Notice>
             ) : null}
           </>
