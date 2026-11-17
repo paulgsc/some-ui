@@ -1,0 +1,14 @@
+{
+  "id": "C500",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": ["server:infra/render/render-calls.sh"],
+  "chose": "Only the rust-essay job's length cap is 30 minutes; the interview-essay job keeps 15, though the same recorder makes it.",
+  "options": [
+    "rust-essay only",
+    "rust-essay and interview-essay (one recorder, one cap)"
+  ],
+  "gray": "The owner was asked about Rust Rounds essays only; the mock interview essay is recorded by the same essay.ts under the Rust Rounds essay's rules, so either reading of 'essays' is plausible.",
+  "undo": "In render-calls.sh `max_minutes`, add interview-essay to the rust-essay case.",
+  "refs": ["server#930", "server#927"]
+}
