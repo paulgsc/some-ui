@@ -2059,7 +2059,7 @@
             {
               "on": "2026-11-17",
               "change": "The tabs' deletes, prune and reconcile now answer a pool timeout busy, 503 service_overloaded with Retry-After: 5, so they leave the requirement's list of handlers that answer one as their own error; the tabs' reads, through the dedup cache, stay on it.",
-              "why": "paulgsc/server#948 fixed the four tab write handlers that answered a database pool timeout with a 500, found while AD4 was recorded (#3126). The promise only grows: every request was already answered within the bound, and four more now answer busy as well.",
+              "why": "The four tab write handlers answered a database pool timeout with a 500, found while AD4 was recorded (#3126), and this requirement listed them as an exception, looser than the server's own AD4 tolerance, which never exempted them. paulgsc/server#948 fixed the handlers as a defect there, and the requirement now matches the server. The promise only grows: every request was already answered within the bound, and four more now answer busy as well.",
               "decision": "https://github.com/paulgsc/server/issues/946"
             }
           ]
