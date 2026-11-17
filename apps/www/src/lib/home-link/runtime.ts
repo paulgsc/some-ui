@@ -490,6 +490,9 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
   const personal = async (call: HomeRequest): Promise<HomeAnswer> => {
     await pace.turn(true)
     const answer = await ports.request(call)
+    // Home busy starts the link's wait for every other request (AD3, #3127);
+    // a pairing or an Unpair still goes during one, so it never waits on it.
+    if (answer.status === 429 || overloaded(answer)) heardBusy(answer)
     // An answer ends a stretch away; a silence here is a pairing's or an
     // Unpair's own to say, and starts none (AW1).
     reached(true)
@@ -721,7 +724,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
         // A silence is the away state's (`heard`); nothing else is said.
         return
       }
-      if (answer.status === 429) heardBusy(answer)
+      if (answer.status === 429 || overloaded(answer)) heardBusy(answer)
       heardKey(pairing.id, answer, sent)
     },
 

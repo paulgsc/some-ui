@@ -9,7 +9,7 @@ import type { HomeAnswer } from "@some-ui/core-utils"
 import { describe, expect, it, vi } from "vitest"
 
 import type { HomeRequest } from "@/lib/device-backend/native-http"
-import { BURST } from "@/lib/home-link/pace"
+import { BURST, MS_PER_REQUEST } from "@/lib/home-link/pace"
 import type { CredentialPort, HomeLink } from "@/lib/home-link/runtime"
 import { createHomeLink, homeBusyFor } from "@/lib/home-link/runtime"
 
@@ -83,6 +83,22 @@ function setup(options: Options = {}): Home {
     hide: (): void => hide(),
     pass: clock.pass,
   }
+}
+
+/** Runs the clock a turn of the pace at a time until `work` settles. */
+async function drive<T>(home: Home, work: Promise<T>): Promise<T> {
+  const waiting = Symbol("waiting")
+  for (let turn = 0; turn < 10; turn += 1) {
+    const now = await Promise.race([
+      work,
+      new Promise<typeof waiting>((resolve) =>
+        setTimeout(() => resolve(waiting), 0)
+      ),
+    ])
+    if (now !== waiting) return now
+    home.pass(MS_PER_REQUEST)
+  }
+  return work
 }
 
 describe("the home link", () => {
@@ -496,6 +512,43 @@ describe("the home link", () => {
     expect(home.link.getSnapshot().away).toBeNull()
     home.pass(5_000)
     expect(home.link.getSnapshot().homeBusyUntil).toBeNull()
+  })
+
+  it("starts home's busy from a pairing's 429, and still sends an Unpair during it (AD3, #3127)", async () => {
+    let busy = true
+    const home = setup({
+      answer: (call) => {
+        if (call.url.endsWith("/auth/pairing/finish") && busy) {
+          busy = false
+          return { status: 429, body: "", retryAfter: "30" }
+        }
+        return {
+          status: 200,
+          body: JSON.stringify({ token: "phone-token", expiresAt: 1 }),
+        }
+      },
+    })
+    await home.link.load()
+    await home.link.pair(HOME, "K7QF2M9X")
+    expect(home.link.getSnapshot()).toMatchObject({
+      pairFailure: { failure: "too-many" },
+      homeBusyUntil: 30_000,
+    })
+    // A pairing is the person's own, and goes during the wait, at the
+    // pace's next turn (the 429 spent its burst, HERD1).
+    await drive(home, home.link.pair(HOME, "K7QF2M9X"))
+    expect(home.link.getSnapshot().link.kind).toBe("paired")
+    await drive(home, home.link.unpair())
+    expect(home.link.getSnapshot().homeBusyUntil).toBe(30_000)
+    expect(home.sent.map((call) => call.url)).toEqual([
+      `${HOME.base}/auth/pairing/finish`,
+      `${HOME.base}/auth/pairing/finish`,
+      expect.stringContaining(HOME.base),
+    ])
+    expect(home.link.getSnapshot().link).toMatchObject({
+      kind: "unpaired",
+      note: "unpaired",
+    })
   })
 
   it("passes on a 503 that is one of home's caps (no Retry-After) or not its overload, and is not busy for it (HERD2)", async () => {
