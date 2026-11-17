@@ -2018,7 +2018,7 @@
           "id": "AD4",
           "kind": "RE8",
           "property": "work",
-          "claim": "Home answers every request but its health checks within 8 s, so the phone hears home busy rather than home away.",
+          "claim": "Home's router answers every request but its health checks within 8 s of reading it, 2 s inside the phone's deadline, so a phone whose request reaches home in time hears it busy rather than away.",
           "requirement": "Every request file_host's router serves but the health checks (/health, /ready) is answered within 8 s, under the phone's 10 s deadline. A request home has no room for is answered 503 service_overloaded with Retry-After: 5 rather than left waiting: at once when all 100 of its slots are taken, within 3 s when no database connection comes, and at the 8 s deadline otherwise. A pool timeout a handler turns into its own error (the dedup cache, hopium, a mood event) is answered within the bound but as that error, not as busy. The bound starts once the request head is parsed; time on the network and in Caddy before that is outside it.",
           "bound": {
             "value": 8,
@@ -2026,7 +2026,7 @@
             "tighter": "lower"
           },
           "verdict": "holds",
-          "conclusion": "Under a storm past every limit, each request is served or told busy with when to come back, within 8 s; none hangs until the phone gives up.",
+          "conclusion": "Under a storm past every limit, home's router serves each request or tells it busy with when to come back within 8 s of reading it; none waits there until the phone gives up. Time on the network and in Caddy, before home reads the request and after it answers, is outside that bound.",
           "evidence": [
             {
               "class": "structural",
