@@ -112,7 +112,7 @@ pair_by_page() {
     const go = await until(() => button('Pair with'))
     if (!go) return 'Pair never enabled'
     go.click()
-    if (await until(() => button('Unpair'))) return 'paired'
+    if (await until(() => button('Sign out of home') || button('Unpair'))) return 'paired'
     const said = [...document.querySelectorAll('[role=alert], [role=status]')].map((n) => n.textContent.trim()).filter(Boolean)
     return 'not paired: ' + (said.join(' / ') || 'no answer')
   })()" 2> "$out/pair-error.txt" | tr -d '"' || echo "the page could not be driven")

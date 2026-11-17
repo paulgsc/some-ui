@@ -55,7 +55,7 @@ pair_by_ui() {
     ui type 'pair-code|Code from your computer|K7QF 2M9X' "$code" &&
     hide_keyboard &&
     ui tap "Pair with $host" &&
-    ui find 'Unpair|Home: signed in*'
+    ui find 'Sign out of home|Unpair|Home: signed in*'
 }
 
 # The first run's welcome (SIGNIN2), set aside for a run that does not pair.
