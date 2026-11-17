@@ -498,6 +498,7 @@ describe("a moment that lands while a lane's run is under way joins it (HERD1)",
     const lanes = sixLanes()
     await quiet(home.clock)
     const before = lanes.map((lane) => lane.runs())
+    const sentBefore = home.sent.length
     const pull = homeRefresher({
       watched: () => new Set(lanes.map(({ kept }) => kept)),
       doc: document,
@@ -514,6 +515,8 @@ describe("a moment that lands while a lane's run is under way joins it (HERD1)",
     expect(lanes.map((lane, i) => lane.runs() - (before[i] ?? 0))).toEqual([
       2, 1, 1, 1, 1, 1,
     ])
+    // One read-through, and the one request the stopped run had out.
+    expect(home.sent.length - sentBefore).toBe(READS + 1)
     expect(
       lanes.every(({ kept }) => kept.getSnapshot().last?.kind === "synced")
     ).toBe(true)
