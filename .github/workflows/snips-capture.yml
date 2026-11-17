@@ -117,7 +117,11 @@ jobs:
           target: google_apis
           arch: x86_64
           emulator-boot-timeout: 900
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          # No DNS (192.0.2.1 is a documentation address that answers
+          # nothing): the stand-in home is reached by IP, and the live
+          # public data the app reads (GitHub's asks, the clips index)
+          # cannot load into a picture on either build.
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -dns-server 192.0.2.1
           script: nix develop .#ci --command bash apps/mobile/snips/capture-apk.sh apps/mobile/android/app/build/outputs/apk/release/app-release.apk apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/snips-apk"
       # Retention: read by this run's bundle job, and by a person reading a
       # failed capture right after the run; a later look is a dispatch away.

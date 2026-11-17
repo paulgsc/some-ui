@@ -30,6 +30,10 @@ request, and CI Gate does not need it. It photographs two surfaces:
   named by where the taps reached it, such as `@studio/takes` (`wingPath`).
   Every record says which `build` drew it, and the editorial desk shows that.
 
+  The emulator resolves no host names. The stand-in home is reached by IP,
+  so the live public data the app reads by design (Studio's asks from
+  GitHub, the clips index) never loads into a picture, on either build.
+
 - **`web`:** the Pages build, the viewer's, at `desktop` (1440×900) and `phone`
   (412×915 at 2×). `apps/www/tests/snips/web.spec.ts` walks it.
 

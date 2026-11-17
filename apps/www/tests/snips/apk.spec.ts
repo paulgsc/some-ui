@@ -18,9 +18,10 @@
  * It skips unless `SNIPS_OUT` and `SNIPS_APK_BUILD` are set.
  *
  * No owner data can reach a picture: the app is a clean install whose only
- * home is the stand-in on the runner, and in the debug pass every request
- * the page makes to anywhere but itself and that stand-in is refused and
- * fails the capture.
+ * home is the stand-in on the runner, and the emulator resolves no names, so
+ * the live public data the app reads (`OFFLINE_BY_DESIGN`) cannot load on
+ * either build. In the debug pass every request the page makes elsewhere is
+ * refused, and any but those fails the capture.
  */
 
 import { readFileSync } from "node:fs"
@@ -46,6 +47,15 @@ const APP = "https://localhost"
 /** The stand-in home, as the emulator reaches the runner (`stub-home.mjs`). */
 const HOME = "https://10.0.2.2:8787"
 const WWW = join(import.meta.dirname, "../..")
+/**
+ * Public hosts the APK reads live data from. The capture keeps them
+ * unreachable on both builds (snips-capture.yml gives the emulator no
+ * DNS), so no live data reaches a picture and the two builds draw alike.
+ */
+const OFFLINE_BY_DESIGN = [
+  "https://api.github.com/",
+  "https://raw.githubusercontent.com/",
+]
 
 test.describe("snips: apk", () => {
   test.skip(
@@ -97,8 +107,13 @@ test.describe("snips: apk", () => {
         await route.continue()
         return
       }
-      leaked.push(url)
-      await route.abort()
+      // Refused as the release pass's emulator refuses it (no DNS), and
+      // not counted: public reads the app makes by design, of live data
+      // that is not a sample (Studio's asks, the clips index).
+      if (!OFFLINE_BY_DESIGN.some((host) => url.startsWith(host))) {
+        leaked.push(url)
+      }
+      await route.abort("internetdisconnected")
     })
 
     const part = await walk({
