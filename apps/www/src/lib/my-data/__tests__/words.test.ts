@@ -148,6 +148,8 @@ describe("My data's words", () => {
         DELETING.unreachable(n),
         DELETING.deleteSelected(n),
       ]),
+      DELETING.waitsOn("studio"),
+      DELETING.waitsOn("soundbite"),
       DELETING.rowName(itemName(AT)),
       DELETING.selectName(itemName(AT)),
       ...(["reading", "unpaired", "unreachable", "older", "read"] as const)

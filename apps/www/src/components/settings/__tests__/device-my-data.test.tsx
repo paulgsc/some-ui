@@ -386,7 +386,37 @@ describe("deleting from a kind's list (MD3)", () => {
       />
     )
     expect(screen.queryByText(DELETING.row)).toBeNull()
-    expect(screen.getByText(DELETING.waitsOnStudio)).toBeTruthy()
+    expect(screen.getByText(DELETING.waitsOn("studio"))).toBeTruthy()
+  })
+
+  it("offers Delete… on a take of another kind home marks deletable (HEARD5)", () => {
+    const onDelete = vi.fn()
+    render(
+      <MyDataKind
+        view={kindOf("reflection", "reflection", DELETABLE, [], NOW)}
+        playing={null}
+        onPlay={vi.fn()}
+        onStop={vi.fn()}
+        onDelete={onDelete}
+      />
+    )
+    fireEvent.click(screen.getAllByText(DELETING.row)[0])
+    expect(onDelete).toHaveBeenCalledWith("reflection", [expect.any(String)])
+  })
+
+  it("names the soundbites when their store isn't handed in", () => {
+    render(
+      <MyDataKind
+        view={kindOf("soundbite", "soundbite", DELETABLE, [], NOW)}
+        playing={null}
+        onPlay={vi.fn()}
+        onStop={vi.fn()}
+        unread={["soundbite"]}
+        onDelete={vi.fn()}
+      />
+    )
+    expect(screen.queryByText(DELETING.row)).toBeNull()
+    expect(screen.getByText(DELETING.waitsOn("soundbite"))).toBeTruthy()
   })
 })
 

@@ -403,8 +403,10 @@ export const DELETING = {
   deleteSelected: (n: number): string =>
     n === 0 ? "Delete…" : `Delete ${String(n)}…`,
   /** When a kind's store isn't handed in, so its copies can't be let go. */
-  waitsOnStudio:
-    "Studio hasn't been opened since the app started, so its takes can't be deleted here yet.",
+  waitsOn: (store: "studio" | "soundbite"): string =>
+    store === "studio"
+      ? "Studio hasn't been opened since the app started, so its takes can't be deleted here yet."
+      : "Soundbites hasn't been opened since the app started, so its recordings can't be deleted here yet.",
   title: (of: DeletableKind, n: number): string =>
     n === 1
       ? `Delete this ${DELETABLE_NAMES[of].one} for good?`

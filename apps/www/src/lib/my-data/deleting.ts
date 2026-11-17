@@ -5,15 +5,17 @@
  * the request and the phone's let-go, and decides which answer is stale;
  * `./words`' `DELETING` says each state; the page reads the snapshot.
  *
- * - **Only what home deletes, only where the page may offer it.** My data
- *   offers a recording for deleting only when home's list marks it
- *   `deletable` (its kind switched on: Studio takes and idea answers) and
+ * - **Only what home deletes, only where the page may offer it.** A page
+ *   offers a recording for deleting only when home marks it deletable and
  *   this phone knows how to let go of its own copy of that kind
- *   (`PHONE_LETS_GO`: Studio's recordings, once Studio's store is handed
- *   in). Takes › Needs your attention (HEARD3) offers it on a take of any
- *   kind home couldn't hear (`RECONCILE_LETS_GO`; the owner's decision,
- *   #3076, HEARD4), and home deletes only such a take of a kind it keeps
- *   for good.
+ *   (`LETS_GO`: every kind, each let go as `lib/home-link/voice-copy`'s
+ *   `DELETED_LETS_GO` says). On My data's rows home's list marks each note
+ *   (`deletable`: its kind switched on, Studio's recordings, or a take of
+ *   any kind home couldn't hear, paulgsc/server#919), and Studio's and the
+ *   soundbites' copies wait for their store to be handed in. Takes › Needs
+ *   your attention (HEARD3) lists only takes home couldn't hear, and offers
+ *   it on each (the owner's decisions, #3076, HEARD4, and on server#919,
+ *   HEARD5, C460).
  * - **It asks once,** "Keep it" first: `asked` opens the sheet, `confirmed`
  *   deletes. While it deletes, the sheet can't be closed or asked again.
  * - **Home's answer is final but for silence.** A receipt (`200`) is gone
@@ -24,7 +26,7 @@
  *
  * LA19 (docs/learner-data-authority.md): `deleting` is reached only from
  * `asking` or an `ended` sheet's `retryable` notes, and `asked` only for
- * what `offersDelete` passes on My data, or `reconcileDeletes` on Needs
+ * what `offersDelete` passes on My data, or `isDeletableKind` on Needs
  * your attention.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
@@ -36,31 +38,20 @@ import type { DeleteAsked } from "@/lib/home-link/delete-note"
 import type { KindItem, Of } from "./model"
 import { KINDS } from "./model"
 
-/** The kinds My data's own rows offer to delete. */
-const PHONE_LETS_GO = ["studio"] as const
-
 /**
- * The kinds Takes › Needs your attention offers to delete, on a take home
- * couldn't hear: every kind (HEARD4, C450). The page's alone: My data's
- * rows stay `PHONE_LETS_GO`'s, since home marks a recording `deletable`
- * there by its kind, not by what home heard.
+ * The kinds My data's rows and Takes › Needs your attention offer to
+ * delete: every kind (HEARD4, C450; HEARD5, C460). Home's word decides
+ * which recordings: My data's rows only those home marks `deletable`, and
+ * the page only the takes home couldn't hear.
  */
-const RECONCILE_LETS_GO: ReadonlyArray<Of> = KINDS
+const LETS_GO: ReadonlyArray<Of> = KINDS
 
 /** A kind the delete path can ever delete, and its sheet name. */
 export type DeletableKind = Of
 
-/** Whether `of` is a kind My data's own rows can ever offer to delete. */
+/** Whether `of` is a kind the delete path can offer to delete. */
 export function isDeletableKind(of: string): of is DeletableKind {
-  return PHONE_LETS_GO.some((kind) => kind === of)
-}
-
-/**
- * Whether Takes › Needs your attention offers "Delete…" on a take of kind
- * `of` home couldn't hear (HEARD4).
- */
-export function reconcileDeletes(of: string): of is DeletableKind {
-  return RECONCILE_LETS_GO.some((kind) => kind === of)
+  return LETS_GO.some((kind) => kind === of)
 }
 
 /**

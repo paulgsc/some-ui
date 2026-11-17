@@ -13,6 +13,7 @@ import type { DeleteEnd, DeletingState, Receipt } from "@/lib/my-data/deleting"
 import {
   endOf,
   INITIAL_DELETING,
+  isDeletableKind,
   offersDelete,
   readDeletion,
   readReceipts,
@@ -20,6 +21,7 @@ import {
   stepDeleting,
 } from "@/lib/my-data/deleting"
 import type { KindItem } from "@/lib/my-data/model"
+import { KINDS } from "@/lib/my-data/model"
 
 const RECEIPT: Receipt = {
   id: "t1",
@@ -246,15 +248,23 @@ describe("the sheet's step", () => {
 })
 
 describe("what My data offers to delete", () => {
-  it("offers Delete… only on what home marks deletable, of a kind this phone lets go", () => {
-    expect(offersDelete("studio", ITEM, [])).toBe(true)
-    expect(offersDelete("studio", { ...ITEM, deletable: false }, [])).toBe(
-      false
-    )
-    expect(offersDelete("reflection", ITEM, [])).toBe(false)
-    expect(offersDelete("soundbite", ITEM, [])).toBe(false)
-    // Studio's store not handed in: this phone couldn't let its copy go.
+  it("offers Delete… on what home marks deletable, of any kind, and nothing else (HEARD5)", () => {
+    // Home's word decides: a Studio recording, or since paulgsc/server#919
+    // a take of any kind home couldn't hear. An older home marks only
+    // Studio's, so nothing else is offered.
+    for (const of of KINDS) {
+      expect(offersDelete(of, ITEM, [])).toBe(true)
+      expect(offersDelete(of, { ...ITEM, deletable: false }, [])).toBe(false)
+    }
+    // A store not handed in: this phone couldn't let its copy go.
     expect(offersDelete("studio", ITEM, ["studio"])).toBe(false)
+    expect(offersDelete("soundbite", ITEM, ["soundbite"])).toBe(false)
+    expect(offersDelete("reflection", ITEM, ["studio", "soundbite"])).toBe(true)
+  })
+
+  it("can delete every kind, and nothing it doesn't know", () => {
+    expect(KINDS.every((of) => isDeletableKind(of))).toBe(true)
+    expect(isDeletableKind("a newer kind")).toBe(false)
   })
 })
 
