@@ -244,7 +244,7 @@ function largerSaid(mb: number, capMb: number): string {
  * paulgsc/server#937 holds a refusal until what it was made from, its cap
  * or home's way of making videos changes, so "as it is" is true).
  */
-export const REFUSAL_WORDS = {
+const REFUSAL_WORDS = {
   tooLong: (feed: string, minutes: number, capMinutes: number): string => {
     const videos = isFeed(feed) ? FEED_VIDEOS[feed] : "videos like it"
     const cap = minutesSaid(capMinutes)
