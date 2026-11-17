@@ -47,6 +47,16 @@ require("fs").writeFileSync(file, JSON.stringify({ api: Number(api), webview, la
 webview=$(adb shell dumpsys webviewupdate | tr -d '\r' \
   | grep -oE "Current WebView package \(name, version\): \([^)]*\)" \
   | grep -oE "[0-9][0-9.]+" | head -1 || true)
+# Some images (API 24) do not name it there; then the provider's own
+# version, read in the order Capacitor reads it below API 26
+# (Bridge.isMinimumWebViewInstalled: Chrome first).
+if [ -z "$webview" ]; then
+  for provider in com.android.chrome com.google.android.webview com.android.webview; do
+    webview=$(adb shell dumpsys package "$provider" | tr -d '\r' \
+      | grep -oE "versionName=[0-9][0-9.]+" | head -1 | cut -d= -f2 || true)
+    [ -n "$webview" ] && break
+  done
+fi
 webview=${webview:-unknown}
 
 # The bundle's floor: Vite's default target (baseline-widely-available),
