@@ -50,7 +50,9 @@
  *   wait for the record (`./voice-send.test.ts`), and soundbites' Studio
  *   and records (`record-take`, `records` and `studio` tests).
  * - _Tolerance:_ an ask waits as long as the record's read, at most
- *   `./credential`'s 5 s. Until #3152's second part, a run the link turns
+ *   `./credential`'s 5 s, and so does My data's count of where each
+ *   recording is kept (`voiceKeptOnceRead`), until #3152's second part
+ *   makes it follow the link's state. Until #3152's second part, a run the link turns
  *   away while reading is said as busy and asked again.
  *
  * Relates: widens PO1 (#3157). Its first Family held only the ten asks;

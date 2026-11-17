@@ -1094,7 +1094,8 @@ export function voiceKept(id: string): TakeKept {
  * `voiceKept`, once the pairing record has been read: for a read made as a
  * page opens (My data), which counts each recording where it is kept and
  * so can't say one is only on this phone while that isn't known (PO1).
- * The record's read never rejects.
+ * The record's read never rejects. Removed with `./paired-once-read` in
+ * #3152's second part, where My data's count follows the link's state.
  */
 export async function voiceKeptOnceRead(): Promise<(id: string) => TakeKept> {
   await homeLink().load()
