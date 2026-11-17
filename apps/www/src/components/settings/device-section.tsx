@@ -26,7 +26,11 @@ import {
   remember,
   remembered,
 } from "@/lib/home-link/remembered"
-import { signInView, UNPAIRED_NOTES } from "@/lib/home-link/sign-in-words"
+import {
+  PAIR_FORM,
+  signInView,
+  UNPAIRED_NOTES,
+} from "@/lib/home-link/sign-in-words"
 import type { SyncResult } from "@/lib/home-link/sync"
 import { lastSync, syncLessonsFrom } from "@/lib/home-link/sync"
 import { CLEAR, HOME_BLOCK } from "@/lib/home-link/words"
@@ -311,7 +315,7 @@ export const DeviceSection = (): JSX.Element => {
               }
               onClick={() => setPairOpen(true)}
             >
-              Pair...
+              {PAIR_FORM.open}
             </Button>
           )}
         </div>

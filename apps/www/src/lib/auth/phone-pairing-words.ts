@@ -1,8 +1,10 @@
 /**
  * What the lan web's Settings › Account › Phones says beside a pairing code
  * (SIGNIN4, #3090): where the code goes on the phone, in the phone's own
- * page names, so a rename there fails this table's test instead of leaving
- * these words pointing at a page that is gone.
+ * names: its Home page's title, read from `lib/front-desk`, and its Pair
+ * button's, which this table's test holds against the phone's own words, so
+ * a rename there fails it instead of leaving these words pointing at a page
+ * or button that is gone.
  */
 import { concern } from "@/lib/front-desk"
 
@@ -16,7 +18,7 @@ export const PHONE_PAIRING = {
   newCode: "Get a new code",
   codeFor: "Code for your phone",
   /** Where the code goes on the phone; the address follows it. */
-  onThePhone: `On the phone: a new phone asks for this code when it first opens. Otherwise tap the mark at the top of the screen, or open Settings, then ${concern("home").title}, then ${PHONE_PAIR}. The address to type:`,
+  onThePhone: `On the phone: a new phone opened from the app's main icon asks for this code. Otherwise tap the mark at the top of the screen, or open Settings, then ${concern("home").title}, then ${PHONE_PAIR}. The address to type:`,
 } as const
 
 /** The phone's own words this table names, for its test. */
