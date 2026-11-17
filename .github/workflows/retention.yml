@@ -19,6 +19,7 @@ on:
       - Mobile APK
       - Extension Release
       - Sign Firefox Extension (Manual)
+      - Snips Capture
     types: [completed]
   schedule:
     - cron: "17 * * * *"

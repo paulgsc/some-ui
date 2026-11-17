@@ -98,6 +98,32 @@ export const ARTIFACT_FAMILIES: ReadonlyArray<ArtifactFamily> = [
     keep: 0,
     ttlDays: 1,
   },
+  // snips-capture.yml (SNIPS1, docs/snips.md): each capture job's half,
+  // joined by its bundle job in the same run; nothing kept.
+  {
+    kind: "artifact",
+    name: "snips-web-${{ github.run_id }}",
+    workflows: ["Snips Capture"],
+    keep: 0,
+    ttlDays: 1,
+  },
+  {
+    kind: "artifact",
+    name: "snips-apk-${{ github.run_id }}",
+    workflows: ["Snips Capture"],
+    keep: 0,
+    ttlDays: 1,
+  },
+  // The bundle home picks up after the run (SNIPS2): the newest is kept for
+  // its day, an older one superseded once a newer capture succeeds. A missed
+  // one is a re-run away, the capture being deterministic.
+  {
+    kind: "artifact",
+    name: "snips-bundle-${{ github.sha }}",
+    workflows: ["Snips Capture"],
+    keep: 1,
+    ttlDays: 1,
+  },
   {
     kind: "artifact",
     name: "github-pages",
