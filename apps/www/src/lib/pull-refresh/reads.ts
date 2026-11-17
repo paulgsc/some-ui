@@ -79,6 +79,8 @@ export function readsOnScreen(
     readAgain: async (): Promise<CheckEnd> => {
       // No connection: nothing is asked, neither the page nor its screens.
       if (!network.isOnline()) return OFFLINE
+      // Before anything reads: no read of this pull meets a hold it lets go.
+      refreshers.prepare()
       const [onPage, registered] = await Promise.all([
         page(),
         refreshers.checkAll(),
