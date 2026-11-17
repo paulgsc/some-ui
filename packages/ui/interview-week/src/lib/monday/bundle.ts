@@ -72,8 +72,16 @@ type CardSlot = {
   readonly material: string
 }
 
-/** A piece of the body of work a ready answer may cite, by its key (`workSourceKey`). */
-export type WorkEntry = { readonly key: string; readonly title: string }
+/**
+ * A piece of the body of work a ready answer may cite, by its key
+ * (`workSourceKey`); a doc's or invariant's file, which a citation must name
+ * as written.
+ */
+export type WorkEntry = {
+  readonly key: string
+  readonly title: string
+  readonly path?: string
+}
 
 type Next = {
   readonly id: string
@@ -122,9 +130,11 @@ export type Pull = {
 }
 
 /**
- * The body of work a ready answer may cite (IW8, #3175): the calls record,
- * the epics, the docs and invariants of the checkout, and the week's merged
- * pull requests, each once, by key.
+ * The body of work a ready answer may cite (IW8, #3175), each once, by key:
+ * the whole calls record and every doc and declared invariant of the
+ * checkout, and of what `render call-facts` reads, the pull requests merged
+ * and the epics that moved in the last week. An older pull request is
+ * reached through the call that names it.
  */
 export function workOf(corpus: Corpus): Array<WorkEntry> {
   const entries: Array<WorkEntry> = [
@@ -134,8 +144,12 @@ export function workOf(corpus: Corpus): Array<WorkEntry> {
     })),
     ...corpus.calls.map((c) => ({ key: `call:${c.id}`, title: c.chose })),
     ...corpus.epics.map((e) => ({ key: e.key, title: e.title })),
-    ...corpus.docs.map((d) => ({ key: d.key, title: d.title })),
-    ...corpus.invariants.map((i) => ({ key: i.key, title: i.title })),
+    ...corpus.docs.map((d) => ({ key: d.key, title: d.title, path: d.path })),
+    ...corpus.invariants.map((i) => ({
+      key: i.key,
+      title: i.title,
+      path: i.path,
+    })),
   ]
   const seen = new Set<string>()
   return entries.filter((e) => !seen.has(e.key) && seen.add(e.key))

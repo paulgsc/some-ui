@@ -1,5 +1,6 @@
 /**
- * A week of mock interview, `some-ui.interview-week/1` (IW4, #2935).
+ * A week of mock interview, `some-ui.interview-week/2` (IW8, #3175) and the
+ * first version, `/1` (IW4, #2935).
  *
  * A week sets an invented company and role. It holds two flows (#2931):
  *

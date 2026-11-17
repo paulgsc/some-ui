@@ -142,20 +142,22 @@ the two kinds are written differently:
   is concrete and falsifiable. Every part of `answer` and `another` names at
   least one source, and every claim in it is one the source shows: what the
   thing is, what it's for, the options, the trade-off, the edge cases. Vague
-  or made-up claims are what its poor answer shows, and what the essay checks
-  the owner's own answer for.
+  or made-up claims are what its poor answer shows.
 
 For either kind:
 
 - **Ground what you cite** in the bundle's `next.sources`, the body of work at
-  `next.commit`: pull requests in both repos, recorded calls, epics, docs
-  and declared invariants. Pick the one or two pieces that answer the
+  `next.commit`: every recorded call, doc and declared invariant, and the
+  pull requests merged and epics that moved in the last week, in both repos.
+  An older pull request is cited through the call that names it. A doc or
+  invariant is cited with its `path` as `next.sources` gives it. Pick the one or two pieces that answer the
   question best for this role, and read them (`gh pr view`, the file, the
   call's JSON) before you write. A source is cited as
   `{"kind":"pull","repo":"some-ui","number":3170}`, `{"kind":"issue",…}`,
   `{"kind":"call","id":"C266"}`, `{"kind":"doc","path":"docs/…"}` or
   `{"kind":"invariant","id":"RS1","path":"CLAUDE.md"}`. `finish` refuses one
-  not in `next.sources`. Never state a number, a count or a result the source
+  not in `next.sources`, and a week whose file would pass 64 KiB, the most
+  home keeps. Never state a number, a count or a result the source
   doesn't show.
 - **What a body-of-work answer communicates:** the architecture and
   infrastructure, a decision with its alternatives and trade-offs, the edge
@@ -176,9 +178,11 @@ For either kind:
 - **`cues`:** 3 to 8 cues of 1 to 6 words each, in order, that bring back
   each part when said from cues.
 
-The essay reads the owner's own answer the same way (IW6): an open one for
+The essay is to read the owner's own answer the same way: an open one for
 its structure, a body-of-work one also against its sources, facts anyone can
-look up. Never a score.
+look up, never a score. Today's essay (below) doesn't yet: it reads neither
+`ground` nor `ready`, and still writes its own model answer. That waits on a
+follow-up to IW6 (#3175).
 
 ### A card
 

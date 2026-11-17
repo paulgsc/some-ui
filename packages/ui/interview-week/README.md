@@ -6,7 +6,7 @@ faults and charts them over the weeks; nothing here grades.
 
 ## What it holds
 
-`src/lib/week` (#2935): the week's format, `some-ui.interview-week/1`, and
+`src/lib/week` (#2935, #3175): the week's format, `some-ui.interview-week/2`, and
 `readWeek`, the one door a week comes in by. A week sets an invented company
 and role, 4 to 6 questions from a closed list of families
 (`FAMILIES`: about yourself, a time you…, why this role, strengths and

@@ -3,7 +3,7 @@
  * bundle's choices and the model's words, and answers the file to put or
  * every problem, so the model fixes exactly those in its values.
  */
-import type { Bundle } from "@interview-week/lib/monday/bundle"
+import type { Bundle, WorkEntry } from "@interview-week/lib/monday/bundle"
 import {
   READ_WORDS_PER_MINUTE,
   SCRIPT_WORDS,
@@ -52,6 +52,12 @@ const WORDS = {
 } as const
 
 /**
+ * The most a week's file may weigh as the routine writes it: home refuses a
+ * week over 64 KiB (paulgsc/server `interview.rs`, `WEEK_CEILING`).
+ */
+export const WEEK_BYTES_MOST = 64 * 1024
+
+/**
  * How fast an answer is said, for its length against the question's target
  * (IW8): 140 words a minute, a little slower than a read.
  */
@@ -97,7 +103,7 @@ function checkWords(
   next: NonNullable<Bundle["next"]>
 ): void {
   const { earlierCompanies } = next
-  const work = new Set(next.sources.map((s) => s.key))
+  const work = new Map(next.sources.map((s) => [s.key, s]))
   within(problems, "week.company.name", values.company.name, WORDS.name)
   within(problems, "week.company.about", values.company.about, WORDS.about)
   within(problems, "week.role.title", values.role.title, WORDS.title)
@@ -176,7 +182,7 @@ function checkReady(
   at: string,
   ready: Ready,
   targetSeconds: number,
-  work: ReadonlySet<string>,
+  work: ReadonlyMap<string, WorkEntry>,
   commit: string,
   problems: Array<string>,
   employer: Array<[string, string]>
@@ -184,9 +190,14 @@ function checkReady(
   const sourced = (where: string, sources: ReadonlyArray<WorkSource>): void => {
     sources.forEach((source, k) => {
       const key = workSourceKey(source)
-      if (!work.has(key)) {
+      const entry = work.get(key)
+      if (entry === undefined) {
         problems.push(
           `${where}.sources[${k}]: ${key} isn't in the body of work at ${commit.slice(0, 12)}; cite one the bundle's sources list`
+        )
+      } else if ("path" in source && source.path !== entry.path) {
+        problems.push(
+          `${where}.sources[${k}]: ${key} is in ${entry.path ?? "no file"}, not ${source.path}`
         )
       }
     })
@@ -211,7 +222,11 @@ function checkReady(
     within(problems, `${where}.text`, part.text, WORDS.part)
     within(problems, `${where}.note`, part.note, WORDS.note)
     sourced(where, part.sources)
-    employer.push([`${where}.text`, part.text], [`${where}.note`, part.note])
+    employer.push(
+      [`${where}.label`, part.label],
+      [`${where}.text`, part.text],
+      [`${where}.note`, part.note]
+    )
   })
   share(
     `${at}.ready.answer`,
@@ -350,5 +365,17 @@ export function finish(input: {
   }
   const read = readWeek(week)
   if (!read.ok) return { ok: false, problems: read.problems }
+  // As `jsonText` writes it: two-space indent and a trailing newline.
+  const bytes = new TextEncoder().encode(
+    `${JSON.stringify(read.week, null, 2)}\n`
+  ).length
+  if (bytes > WEEK_BYTES_MOST) {
+    return {
+      ok: false,
+      problems: [
+        `the week is ${bytes} bytes, and home keeps one of at most ${WEEK_BYTES_MOST}: shorten the ready answers' notes and the poor answers first`,
+      ],
+    }
+  }
   return { ok: true, files: [{ name: weekFileName(week.id), body: read.week }] }
 }

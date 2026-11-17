@@ -123,6 +123,56 @@ describe("the interview week's finish", () => {
     ])
   })
 
+  it("holds a cited invariant to its file, a label to no employer, and the week to what home keeps", () => {
+    const values = valuesFor(bundle)
+    const week = values.week!
+    const first = week.questions[0]!
+    const [part, ...rest] = first.ready.answer
+    const changed = {
+      ...first,
+      ready: {
+        ...first.ready,
+        answer: [
+          {
+            ...part!,
+            label: "At Harbour Works",
+            sources: [
+              { kind: "invariant", id: "RS1", path: "REVIEW.md" } as const,
+            ],
+          },
+          ...rest,
+        ],
+      },
+    }
+    expect(
+      problems(
+        {
+          ...values,
+          week: { ...week, questions: [changed, ...week.questions.slice(1)] },
+        },
+        ["Harbour Works"]
+      )
+    ).toEqual([
+      'week.questions[0] ("walk-me-through").ready.answer[0].sources[0]: invariant:RS1 is in CLAUDE.md, not REVIEW.md',
+      'week.questions[0] ("walk-me-through").ready.answer[0].label: names Harbour Works, a real employer; the interview is for an invented one',
+    ])
+    // A cue is one long word, so every count passes and only the weight doesn't.
+    const heavy = week.questions.map((q) => ({
+      ...q,
+      ready: {
+        ...q.ready,
+        cues: Array.from({ length: 8 }, () => "x".repeat(2000)),
+      },
+    }))
+    expect(
+      problems({ ...values, week: { ...week, questions: heavy } })
+    ).toEqual([
+      expect.stringMatching(
+        /^the week is \d+ bytes, and home keeps one of at most 65536/
+      ),
+    ])
+  })
+
   it("refuses a real employer, the owner's own included, and a company an earlier week used", () => {
     const values = valuesFor(bundle)
     const week = values.week!

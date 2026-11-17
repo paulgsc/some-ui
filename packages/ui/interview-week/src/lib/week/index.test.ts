@@ -168,7 +168,7 @@ describe("the interview week's format", () => {
     ])
   })
 
-  it("holds every claim of a question about the body of work to a source, and an open question's to none", () => {
+  it("holds every claim of a question about the body of work to a source, and leaves an open question's sources optional", () => {
     const ready = readyFor(90)
     const unsourced = {
       ...ready,
