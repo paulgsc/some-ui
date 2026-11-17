@@ -586,7 +586,8 @@ sends anything to the home server, and only on a tap there
 being paired sends nothing; there is no retry and no background work.
 
 Unpaired, it has an address field (for example `192.168.1.10:3000`) and
-**Sync lessons from home**. Paired, it shows **Paired · host** with **Unpair**,
+**Sync lessons from home**. Paired, it says where the phone is signed in, with
+**Sign out of home** (and **Pair again**, once home has forgotten the phone),
 and the sync reads from the paired host. **Sync lessons from home**, pressed
 while on the home network, copies every listed TOPIK lesson and every
 served drama into the phone's database.
@@ -620,9 +621,11 @@ phone, **Pair...** takes that `https://` address (never `http://`) and the
 code; the button names the host, and the tap sends only the code. Home answers
 with a session token, which the app's own `HomeCredential` plugin seals with
 an Android Keystore key and keeps out of every backup and device transfer
-(`res/xml/backup_rules.xml`, `res/xml/data_extraction_rules.xml`). **Unpair**
-asks once more, tells home if it can, and forgets the token on the phone
-either way. Signing out everywhere on the computer ends a phone's session too.
+(`res/xml/backup_rules.xml`, `res/xml/data_extraction_rules.xml`). **Sign out
+of home** asks once more, saying what the phone and home each keep, tells home
+if it can, and forgets the token on the phone either way; it deletes nothing.
+Once home has forgotten the phone, **Pair again** pairs it in place, without
+signing out first. Signing out everywhere on the computer ends a phone's session too.
 The server side is `paulgsc/server` `docs/identity.md`, "Pairing a phone".
 
 **Everything the phone keeps goes to home on its own**, once paired

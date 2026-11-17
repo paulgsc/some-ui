@@ -205,7 +205,8 @@ export type HomeLink = {
   check: () => Promise<void>
   /**
    * Pairs with `address` by `code`, sending `name` too when the owner typed
-   * one (SIGNIN2; only where home takes one, `./naming`).
+   * one (SIGNIN2; only where home takes one, `./naming`): unpaired, or over
+   * a pairing home has forgotten, which it replaces (SIGNIN3, `mayPair`).
    */
   pair: (address: HomeAddress, code: string, name?: string) => Promise<void>
   unpair: () => Promise<void>
@@ -627,6 +628,9 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       const before = state
       dispatch({ type: "pairPressed", base: address.base })
       if (state === before) return
+      // Over a pairing home forgot (SIGNIN3): no run under the old key goes
+      // on beside the new pairing. Its key is not signed out; home refused it.
+      if (before.link.kind === "paired") await drainGone()
       const { base } = address
       const id = crypto.randomUUID()
       const at = ports.now()

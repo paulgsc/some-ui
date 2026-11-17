@@ -19,8 +19,10 @@
  *   runs: the runtime stops that run, which keeps what home took, and sends
  *   nothing until that run has ended (`writing`); no drain starts while one
  *   runs, and a tap's let-go on the phone of what home answered happens
- *   inside its run (`./delete-note`'s `settle`). Pairing happens only
- *   unpaired, when nothing drains.
+ *   inside its run (`./delete-note`'s `settle`). Pairing happens unpaired,
+ *   when nothing drains, or over a pairing home has forgotten (SIGNIN3),
+ *   which writes as an Unpair does: the runtime stops the drain's run under
+ *   the old key first, and none starts until the pairing has ended.
  *
  * A result for an operation that is no longer the current one is dropped.
  */
@@ -216,7 +218,23 @@ export function homeBusy(state: HomeLinkState, now: number): boolean {
 
 /** The person's activities no drain run goes beside. */
 export function writing(activity: Activity): boolean {
-  return activity.kind === "sending" || activity.kind === "unpairing"
+  return (
+    activity.kind === "sending" ||
+    activity.kind === "unpairing" ||
+    activity.kind === "pairing"
+  )
+}
+
+/**
+ * Whether Pair may start from `link` (SIGNIN3, #3089): unpaired, or over a
+ * pairing home has forgotten, which the new one replaces without a sign-out
+ * first. A pairing home knows signs out before another is made.
+ */
+export function mayPair(link: HomeLinkState["link"]): boolean {
+  return (
+    link.kind === "unpaired" ||
+    (link.kind === "paired" && link.standing.kind === "forgotten")
+  )
 }
 
 /** Whether the link would start a drain run. */
@@ -264,7 +282,7 @@ export function step(
       }
     }
     case "pairPressed": {
-      if (link.kind !== "unpaired" || activity.kind !== "idle") return state
+      if (!mayPair(link) || activity.kind !== "idle") return state
       return {
         ...state,
         activity: { kind: "pairing", base: event.base },
@@ -360,7 +378,11 @@ export function step(
     }
     case "heard": {
       if (link.kind !== "paired" || link.id !== event.id) return state
-      if (activity.kind === "unpairing") return state
+      // What home said of a key being let go: the sign-out's or the new
+      // pairing's answer says what comes next.
+      if (activity.kind === "unpairing" || activity.kind === "pairing") {
+        return state
+      }
       const { standing } = link
       if (event.known) {
         if (standing.kind === "known") return state
