@@ -122,8 +122,7 @@ export async function walk(w: Walk): Promise<Part> {
       route: route.path,
       path,
       viewport: w.viewport.name,
-      width: w.viewport.width,
-      height: w.viewport.height,
+      ...pngSize(png),
       appVersion: w.appVersion,
       module,
       shows: screen.shows || module,
@@ -155,6 +154,11 @@ export function writePart(out: string, part: Part, name: string): void {
     join(out, `part-${name}.json`),
     `${JSON.stringify(part, null, 2)}\n`
   )
+}
+
+/** A PNG's own size, from its header: what was drawn, whatever was asked for. */
+export function pngSize(png: Buffer): { width: number; height: number } {
+  return { width: png.readUInt32BE(16), height: png.readUInt32BE(20) }
 }
 
 export function hashOf(bytes: Buffer): string {

@@ -17,7 +17,7 @@ import type { AndroidDevice } from "@playwright/test"
 import { describe, moduleOf, slugOf, snipId, wingPath } from "@/lib/snips"
 import type { Part, SnipRecord, Viewport } from "@/lib/snips"
 
-import { hashOf, save } from "./capture"
+import { hashOf, pngSize, save } from "./capture"
 
 /** The bar: tabs whose centre sits in the bottom part of the screen. */
 const BAR_FROM = 0.85
@@ -65,8 +65,7 @@ export async function releaseWalk(w: ReleaseWalk): Promise<Part> {
       route: path,
       path,
       viewport: w.viewport.name,
-      width: w.viewport.width,
-      height: w.viewport.height,
+      ...pngSize(png),
       appVersion: w.appVersion,
       module,
       shows,
@@ -87,10 +86,11 @@ export async function releaseWalk(w: ReleaseWalk): Promise<Part> {
     }
     await open()
     await take(wing)
-    for (const tab of bar(await dump(shell), w.pkg, w.viewport)) {
+    const screen = pngSize(await w.device.screenshot()).height
+    for (const tab of bar(await dump(shell), w.pkg, screen)) {
       await open()
       await settled(w.device)
-      const now = bar(await dump(shell), w.pkg, w.viewport).find(
+      const now = bar(await dump(shell), w.pkg, screen).find(
         (n) => n.label === tab.label
       )
       if (!now) continue
@@ -136,7 +136,7 @@ const attribute = (node: string, name: string): string =>
 function bar(
   xml: string,
   pkg: string,
-  viewport: Viewport
+  screenHeight: number
 ): ReadonlyArray<Node> {
   const nodes: Array<Node> = []
   for (const node of xml.match(/<node\b[^>]*>/g) ?? []) {
@@ -148,7 +148,7 @@ function bar(
     if (bounds.length !== 4) continue
     const [left = 0, top = 0, right = 0, bottom = 0] = bounds
     const y = Math.round((top + bottom) / 2)
-    if (y < viewport.height * BAR_FROM) continue
+    if (y < screenHeight * BAR_FROM) continue
     nodes.push({ label, x: Math.round((left + right) / 2), y })
   }
   const unique = new Map(nodes.map((n) => [n.label, n]))
