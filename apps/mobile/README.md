@@ -456,9 +456,12 @@ phone. Each runs:
    says "via debug build"; a level whose store cannot take the CA says "no
    system CA" and runs unpaired.
 3. **Refresh:** from the same run, it fails when a pull with home up does not
-   end `pull checked: read`, nor the pull after coming back from the
-   background, nor the pull after the network returns, or when the app
-   restarted to get there.
+   end `pull checked: read`, or when the app restarted to get there. The
+   pull after coming back from the background and the pull after the network
+   returns join the kept lanes' run already under way, which may send its
+   queued writes first (HERD1): each fails when that run has not read every
+   route again within one pace per request home heard since the pull
+   (`compat/lane-done.mjs`).
 
 The run's summary is the stamp: a table of API level against launch, storm
 and refresh, a line to paste into the release notes, and the same as JSON.

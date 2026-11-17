@@ -49,6 +49,28 @@ phases=()
 fail() { echo "$1" >> "$out/failures.txt"; }
 fail_refresh() { echo "$1" >> "$out/refresh.txt"; }
 
+# lanes_read <pull-at-ms> <phase>: waits up to 2 min for the lanes' run the
+# pull joined to read every route the single pull read again, within one
+# pace per request (lane-done.mjs, CS1), and fails the refresh if it does
+# not. The pull's own line is not judged: a joined run may send its queued
+# writes first (HERD's owner on #3134), and how the pull says so is #3140.
+lanes_read() {
+  local pull_at=$1 name=$2 said rc
+  for _ in $(seq 1 120); do
+    curl -sf "$control/all" > "$out/all-now.json" || true
+    # set -e: lane-done.mjs exits 1 and 2 by design, so its code is kept.
+    said=$(node "$here/lane-done.mjs" "$out/all-now.json" "$out/stub-single.json" "$pull_at" "$budget") && rc=0 || rc=$?
+    case $rc in
+      0) return 0 ;;
+      1) fail_refresh "$name: the lanes' run the pull joined was slower than its pace: $said" && return 1 ;;
+      2) sleep 1 ;;
+      *) fail_refresh "$name: the lanes' run could not be checked (lane-done.mjs exited $rc)" && return 1 ;;
+    esac
+  done
+  fail_refresh "$name: the lanes' run the pull joined had not read again 2 min after the pull: $said"
+  return 1
+}
+
 # The stand-in home, over https with the run's certificate when run-level.sh
 # made one and trust-ca.sh got its CA into the system store: a paired phone
 # reaches home only over https (LA8).
@@ -255,11 +277,10 @@ background() {
   sleep 15
   adb shell am start -W -n "$pkg/.WingPractice" > /dev/null
   sleep 5
-  local end
+  local end pull_at
+  pull_at=$(date +%s%3N)
   end=$(one_pull)
-  if [ "$end" != "read" ]; then
-    fail_refresh "background: a pull after coming back from the background ended \"$end\", not \"read\": the page did not refresh"
-  fi
+  lanes_read "$pull_at" "background: after coming back from the background" > /dev/null || true
   echo "$end"
 }
 
@@ -274,14 +295,13 @@ offline() {
   adb shell svc wifi enable || true
   adb shell svc data enable || true
   sleep 15
-  local back
+  local back pull_at
+  pull_at=$(date +%s%3N)
   back=$(one_pull)
   if [ "$(adb shell pidof "$pkg" | tr -d '\r')" != "$pid_before" ]; then
     fail_refresh "offline: the app's process changed across the network toggle (it restarted)"
   fi
-  if [ "$back" != "read" ]; then
-    fail_refresh "offline: a pull after the network returned ended \"$back\", not \"read\": the page did not recover without a restart"
-  fi
+  lanes_read "$pull_at" "offline: after the network returned" > /dev/null || true
   echo "cut:$cut back:$back"
 }
 
