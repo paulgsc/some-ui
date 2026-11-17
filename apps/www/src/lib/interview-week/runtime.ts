@@ -183,7 +183,7 @@ export function createInterviewWeek(
     }
   }
 
-  const send = (
+  const forward = (
     intent: BundleIntent<InterviewKind>,
     rung: Rung | null
   ): void => {
@@ -217,7 +217,7 @@ export function createInterviewWeek(
     bundle.dispatch(intent)
   }
   const dispatch = (intent: BundleIntent<InterviewKind>): void => {
-    send(intent, null)
+    forward(intent, null)
   }
 
   let focused: string | null = null
@@ -247,7 +247,7 @@ export function createInterviewWeek(
     machine,
     bundle,
     dispatch,
-    dispatchOn: (rung) => (intent) => send(intent, rung),
+    dispatchOn: (rung) => (intent) => forward(intent, rung),
     focus,
     ladder,
     atHome,

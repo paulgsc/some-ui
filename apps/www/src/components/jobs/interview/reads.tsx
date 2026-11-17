@@ -5,7 +5,6 @@
  * waits on this phone until the week is sent.
  */
 import type { JSX } from "react"
-import { Link } from "@tanstack/react-router"
 
 import { readItem } from "@/lib/interview-week/spec"
 import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
@@ -13,6 +12,7 @@ import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 import { BackTo, CueLine, Script, TakeOn, useFocus } from "./ladder"
 import type { Interview } from "./run"
 import { useInterview } from "./run"
+import { To } from "./to"
 import { doneLine, Opening } from "./week"
 
 /** The week's reads, each a link to its page. */
@@ -21,7 +21,7 @@ export const ReadsPage = (): JSX.Element => {
   const { week } = held
   return (
     <div className="flex flex-col gap-4">
-      <BackTo to="/jobs/interview">{WORDS.toInterview}</BackTo>
+      <BackTo to={{ page: "interview" }}>{WORDS.toInterview}</BackTo>
       <div className="flex flex-col gap-1.5">
         <h2 className="text-3xl font-extrabold">{WORDS.reads}</h2>
         <p className="text-muted-foreground text-sm">{WORDS.readsLine}</p>
@@ -29,17 +29,16 @@ export const ReadsPage = (): JSX.Element => {
       {week.cards.map((card) => {
         const done = doneLine(held, readItem(card.id))
         return (
-          <Link
+          <To
             key={card.id}
-            to="/jobs/interview/reads/$card"
-            params={{ card: card.id }}
+            to={{ page: "read", card: card.id }}
             className="bg-card hover:bg-muted flex flex-col items-start gap-1 rounded-2xl border p-3 text-left"
           >
             <span className="font-semibold">{card.situation}</span>
             <span className="text-muted-foreground text-xs">
               {done ?? WORDS.aim(card.targetSeconds)}
             </span>
-          </Link>
+          </To>
         )
       })}
     </div>
@@ -80,7 +79,7 @@ export const ReadPage = ({ id }: { id: string }): JSX.Element => {
   const card = held.week.cards.find((read) => read.id === id)
   return (
     <div className="flex flex-col gap-4">
-      <BackTo to="/jobs/interview/reads">{WORDS.toReads}</BackTo>
+      <BackTo to={{ page: "reads" }}>{WORDS.toReads}</BackTo>
       {card === undefined ? (
         <p className="text-muted-foreground">{WORDS.notInWeek}</p>
       ) : (

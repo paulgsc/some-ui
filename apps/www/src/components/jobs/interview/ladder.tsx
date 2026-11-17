@@ -12,12 +12,10 @@
  */
 import type { JSX, ReactNode } from "react"
 import { useEffect } from "react"
-import { assertNever } from "@some-ui/core-utils"
 import type { Question, WorkSource } from "@some-ui/interview-week"
 import { workSourceKey } from "@some-ui/interview-week"
 import { BundleTake, TakeRow } from "@some-ui/shared"
 import { currentTakeOf, takeItemView } from "@some-ui/voice-capture"
-import { Link } from "@tanstack/react-router"
 import { ChevronLeft } from "lucide-react"
 
 import type { Rung, Step } from "@/lib/interview-week/ladder"
@@ -27,28 +25,25 @@ import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 
 import type { Interview } from "./run"
 import { useInterview } from "./run"
+import type { Page } from "./to"
+import { To } from "./to"
 import { doneLine, Opening } from "./week"
 
 /** A page's way back: a link, so Android's back and this step the same way. */
 export const BackTo = ({
+  to,
   children,
-  ...link
 }: {
+  to: Page
   children: ReactNode
-} & (
-  | { to: "/jobs/interview" | "/jobs/interview/reads" }
-  | {
-      to: "/jobs/interview/q/$question" | "/jobs/interview/q/$question/study"
-      params: { question: string }
-    }
-)): JSX.Element => (
-  <Link
-    {...link}
+}): JSX.Element => (
+  <To
+    to={to}
     className="hover:bg-muted inline-flex items-center gap-0.5 self-start rounded-xl px-2 py-1.5 text-sm font-semibold"
   >
     <ChevronLeft className="size-4" aria-hidden="true" />
     {children}
-  </Link>
+  </To>
 )
 
 /** Shows `item` on the week's runtime while the page is up. */
@@ -71,7 +66,7 @@ export const WithQuestion = ({
     <div className="flex flex-col gap-4">
       {question === undefined ? (
         <>
-          <BackTo to="/jobs/interview">{WORDS.toInterview}</BackTo>
+          <BackTo to={{ page: "interview" }}>{WORDS.toInterview}</BackTo>
           <p className="text-muted-foreground">{WORDS.notInWeek}</p>
         </>
       ) : (
@@ -126,47 +121,18 @@ const RungLink = ({
       </span>
     </>
   )
-  const params = { question }
-  switch (step) {
-    case "study": {
-      return (
-        <Link
-          to="/jobs/interview/q/$question/study"
-          params={params}
-          className={rungClass}
-        >
-          {inside}
-        </Link>
-      )
-    }
-    case "aloud": {
-      return (
-        <Link
-          to="/jobs/interview/q/$question/aloud"
-          params={params}
-          className={rungClass}
-        >
-          {inside}
-        </Link>
-      )
-    }
-    case "cues":
-    case "own": {
-      return (
-        <Link
-          to="/jobs/interview/q/$question/say"
-          params={params}
-          search={{ rung: step }}
-          className={rungClass}
-        >
-          {inside}
-        </Link>
-      )
-    }
-    default: {
-      return assertNever(step)
-    }
-  }
+  return (
+    <To
+      to={
+        step === "cues" || step === "own"
+          ? { page: "say", question, rung: step }
+          : { page: step, question }
+      }
+      className={rungClass}
+    >
+      {inside}
+    </To>
+  )
 }
 
 /** The question's latest take, playable, and that saying it again replaces it here. */
@@ -205,7 +171,7 @@ export const QuestionPage = ({ id }: { id: string }): JSX.Element => (
   <WithQuestion id={id}>
     {(question, held) => (
       <>
-        <BackTo to="/jobs/interview">{WORDS.toInterview}</BackTo>
+        <BackTo to={{ page: "interview" }}>{WORDS.toInterview}</BackTo>
         <Head question={question} eyebrow={WORDS.aim(question.targetSeconds)} />
         <nav className="grid grid-cols-2 gap-2.5">
           {stepsOf(question).map((step, i) => (
@@ -258,7 +224,7 @@ export const StudyPage = ({ id }: { id: string }): JSX.Element => (
   <WithQuestion id={id}>
     {(question) => {
       const back = (
-        <BackTo to="/jobs/interview/q/$question" params={{ question: id }}>
+        <BackTo to={{ page: "question", question: id }}>
           {WORDS.toQuestion}
         </BackTo>
       )
@@ -310,13 +276,12 @@ export const StudyPage = ({ id }: { id: string }): JSX.Element => (
               ))}
             </ul>
           </section>
-          <Link
-            to="/jobs/interview/q/$question/aloud"
-            params={{ question: id }}
+          <To
+            to={{ page: "aloud", question: id }}
             className="bg-primary text-primary-foreground self-start rounded-full px-5 py-3 font-bold"
           >
             {WORDS.study.readIt}
-          </Link>
+          </To>
         </>
       )
     }}
@@ -464,12 +429,7 @@ export const AloudPage = ({ id }: { id: string }): JSX.Element => (
   <WithQuestion id={id}>
     {(question, held) => (
       <>
-        <BackTo
-          to="/jobs/interview/q/$question/study"
-          params={{ question: id }}
-        >
-          {WORDS.toAnswer}
-        </BackTo>
+        <BackTo to={{ page: "study", question: id }}>{WORDS.toAnswer}</BackTo>
         {question.ready === undefined ? null : (
           <AloudTake held={held} question={question} />
         )}
@@ -531,7 +491,7 @@ export const SayPage = ({
   <WithQuestion id={id}>
     {(question, held) => (
       <>
-        <BackTo to="/jobs/interview/q/$question" params={{ question: id }}>
+        <BackTo to={{ page: "question", question: id }}>
           {WORDS.toQuestion}
         </BackTo>
         <SayTake held={held} question={question} rung={rung} />

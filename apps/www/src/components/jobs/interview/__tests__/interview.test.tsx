@@ -23,6 +23,9 @@ import type { InterviewWeekPorts } from "@/lib/interview-week/runtime"
 import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 import { RoutedInterview } from "@/components/jobs/interview/__tests__/routed"
 
+// The pages are the Android app's alone (AUDIENCES.md A3); tests run another profile.
+vi.mock("@/lib/build-profile", () => ({ hasAudience: (): boolean => true }))
+
 const settle = async (ms = 0): Promise<void> => {
   await act(async () => {
     await vi.advanceTimersByTimeAsync(ms)

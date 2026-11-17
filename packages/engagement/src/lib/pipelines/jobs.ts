@@ -58,12 +58,21 @@ const jobs: Pipeline = {
       emits: ["taken"],
       touches: true,
     },
-    // Interview: the week's mock interview and reads, said aloud (IW5).
+    // Interview: the week's mock interview and reads, said aloud (IW5), each
+    // step of a question's ladder and each read a page of its own (IW8).
     {
       id: "interview-week",
       surface: "apk",
       name: "The interview week",
-      routes: ["/jobs/interview"],
+      routes: [
+        "/jobs/interview",
+        "/jobs/interview/q/$question",
+        "/jobs/interview/q/$question/study",
+        "/jobs/interview/q/$question/aloud",
+        "/jobs/interview/q/$question/say",
+        "/jobs/interview/reads",
+        "/jobs/interview/reads/$card",
+      ],
       offer: null,
       emits: ["taken"],
       touches: true,

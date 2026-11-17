@@ -20,7 +20,6 @@ import type {
   TakeRowView,
 } from "@some-ui/voice-capture"
 import { currentTakeOf, takeItemView } from "@some-ui/voice-capture"
-import { Link, useNavigate } from "@tanstack/react-router"
 
 import type { InterviewKind, InterviewState } from "@/lib/interview-week/spec"
 import {
@@ -35,6 +34,7 @@ import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 
 import type { Interview } from "./run"
 import { labelOf, useInterview } from "./run"
+import { To, useOpenItem } from "./to"
 
 const Role = ({ week }: { week: InterviewWeek }): JSX.Element => (
   <header className="space-y-1">
@@ -73,26 +73,24 @@ const Home = ({ held }: { held: Interview }): JSX.Element => {
   const entry = (id: string, prompt: string): JSX.Element => {
     const done = doneLine(held, id)
     return (
-      <Link
+      <To
         key={id}
-        to="/jobs/interview/q/$question"
-        params={{ question: id }}
+        to={{ page: "question", question: id }}
         className={entryClass}
       >
         <span className="font-semibold">{prompt}</span>
         {done !== null && (
           <span className="text-muted-foreground text-xs">{done}</span>
         )}
-      </Link>
+      </To>
     )
   }
   return (
     <div className="flex flex-col gap-4">
       <Role week={week} />
       {today !== null && (
-        <Link
-          to="/jobs/interview/q/$question"
-          params={{ question: today.id }}
+        <To
+          to={{ page: "question", question: today.id }}
           className="bg-brand text-brand-foreground flex flex-col gap-1.5 rounded-3xl p-4 text-left"
         >
           <span className="text-xs font-semibold opacity-85">
@@ -104,12 +102,12 @@ const Home = ({ held }: { held: Interview }): JSX.Element => {
           <span className="text-xs font-semibold opacity-85">
             {doneLine(held, today.id) ?? WORDS.todayLine}
           </span>
-        </Link>
+        </To>
       )}
       <section className="bg-card flex flex-col gap-2 rounded-2xl border p-3">
         <p className="text-sm">{WORDS.readsEntry}</p>
         <Button asChild variant="outline" className="self-start">
-          <Link to="/jobs/interview/reads">{WORDS.reads}</Link>
+          <To to={{ page: "reads" }}>{WORDS.reads}</To>
         </Button>
       </section>
       {others.length > 0 && (
@@ -143,31 +141,23 @@ const Home = ({ held }: { held: Interview }): JSX.Element => {
   )
 }
 
-/** The page of `item`: a question's, or a read's. */
-function useItemPage(): (item: string) => void {
-  const navigate = useNavigate()
-  return (item) => {
-    const card = cardOf(item)
-    void (card === null
-      ? navigate({
-          to: "/jobs/interview/q/$question",
-          params: { question: item },
-        })
-      : navigate({ to: "/jobs/interview/reads/$card", params: { card } }))
-  }
-}
-
 const Review = ({ held }: { held: Interview }): JSX.Element => {
   const { run, state, week, takes, snapshot } = held
-  const toPage = useItemPage()
+  const open = useOpenItem()
   const { machine } = run
   const needs = machine.missing(state)
   const n = takesOf(machine.bundleRecord(state, state.at)).length
   const notNear = state.reach === "near" ? null : WORDS.notNear[state.reach]
   // Saying an item from the look over opens its page, where its rungs are.
   const dispatch = (intent: BundleIntent<InterviewKind>): void => {
-    if (intent.type === "tap" && !state.busy) toPage(intent.item)
-    else run.dispatch(intent)
+    if (intent.type === "tap" && !state.busy) {
+      const card = cardOf(intent.item)
+      open(
+        card === null
+          ? { page: "question", question: intent.item }
+          : { page: "read", card }
+      )
+    } else run.dispatch(intent)
   }
   return (
     <div className="flex flex-col gap-4">
