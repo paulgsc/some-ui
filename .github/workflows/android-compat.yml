@@ -64,9 +64,23 @@ jobs:
             exit 1
           fi
           echo "levels=$json" >> "$GITHUB_OUTPUT"
-      - uses: ./.github/actions/node-ci-setup
+      # No cache is restored or saved in this job: it runs the code at
+      # inputs.ref, any branch or commit, while a dispatch from main writes
+      # in main's cache scope, which every PR run reads (CodeQL: cache
+      # poisoning). Slower than node-ci-setup, which a dispatched stamp can
+      # afford.
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v14
         with:
-          build: none
+          extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+      # Why not node-ci-setup: its Nix and pnpm caches would save what code at
+      # an arbitrary ref put there into main's cache scope (above).
+      - name: Install dependencies
+        run: nix develop .#ci --command pnpm install --frozen-lockfile
+        env:
+          HUSKY: 0
 
       - name: Build www for the device and sync it into Android
         run: nix develop .#ci --command pnpm --filter @some-ui/mobile bundle
