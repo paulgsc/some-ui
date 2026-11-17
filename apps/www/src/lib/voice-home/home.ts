@@ -18,7 +18,7 @@ import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { readAs, refusalOf, unexpectedAnswer } from "@some-ui/core-utils"
 import { z } from "zod"
 
-import type { NoteAnswered, VoiceHomeState, VoiceOut } from "./model"
+import type { NoteAnswered, VoiceHomeState, VoiceOf, VoiceOut } from "./model"
 
 /** Home's ceiling for one note (`voice_repo::NOTE_CEILING`). */
 export const NOTE_CEILING = 1024 * 1024
@@ -37,24 +37,26 @@ export type VoiceHomePort = {
 
 /**
  * How this phone lets go of a note home answers deleted for good: home's
- * word that the owner deleted it from My data, whose answer this phone never
- * heard (LA8). `letGo` is My data's own let-go on a receipt
- * (`letGoDeleted`), null until Studio's store is handed in. A note so
- * answered that can't be let go yet is held back, for this launch only, in
- * `heldBack`: until `letGo` is handed in (`studio`), so the first run that
- * can sends it once more and lets it go; or for the rest of the launch once
- * its let-go failed (`failed`), so a store that keeps failing costs one
- * request a launch.
+ * word that the owner deleted it, whose answer this phone never heard (LA8). `letGo` is the
+ * delete path's own let-go on a receipt (`letGoDeleted`), kind by kind;
+ * `ready` says whether a kind's let-go can run in this launch: Studio's
+ * and the soundbites' wait for their page to hand its store in, and every
+ * other kind is ready at once (HEARD4, #3079). A note so answered whose kind
+ * isn't ready is held back, for this launch only, in `heldBack`: until its
+ * kind is ready (`unready`), so the first run that can sends it once more
+ * and lets it go; or for the rest of the launch once its let-go failed
+ * (`failed`), so a store that keeps failing costs one request a launch.
  */
 export type DeletedPort = {
-  readonly letGo: ((ids: ReadonlyArray<string>) => Promise<boolean>) | null
-  readonly heldBack: Map<string, "studio" | "failed">
+  readonly letGo: (of: VoiceOf, ids: ReadonlyArray<string>) => Promise<boolean>
+  readonly ready: (of: VoiceOf) => boolean
+  readonly heldBack: Map<string, "unready" | "failed">
 }
 
-/** Whether `deleted` holds `id` back from this run. */
-function heldBack(deleted: DeletedPort, id: string): boolean {
-  const why = deleted.heldBack.get(id)
-  return why === "failed" || (why === "studio" && deleted.letGo === null)
+/** Whether `deleted` holds `note` back from this run. */
+function heldBack(deleted: DeletedPort, note: VoiceOut): boolean {
+  const why = deleted.heldBack.get(note.id)
+  return why === "failed" || (why === "unready" && !deleted.ready(note.of))
 }
 
 const DeletedForGood = z.object({
@@ -95,7 +97,7 @@ export async function exchangeVoice(
   pairing: string
 ): Promise<HomeExchanged> {
   for (const note of port.state().waiting) {
-    if (heldBack(deleted, note.id)) continue
+    if (heldBack(deleted, note)) continue
     const blob = await port.audio(note.id)
     if (blob === null) {
       port.answered({
@@ -120,9 +122,9 @@ export async function exchangeVoice(
     })
     if (answer.status === 401) return { kind: "forgotten" }
     if (answer.status === 409 && readAs(DeletedForGood, answer.body) !== null) {
-      if (deleted.letGo === null) {
-        deleted.heldBack.set(note.id, "studio")
-      } else if (await deleted.letGo([note.id])) {
+      if (!deleted.ready(note.of)) {
+        deleted.heldBack.set(note.id, "unready")
+      } else if (await deleted.letGo(note.of, [note.id])) {
         deleted.heldBack.delete(note.id)
       } else {
         deleted.heldBack.set(note.id, "failed")

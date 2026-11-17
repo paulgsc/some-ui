@@ -78,7 +78,10 @@ vi.mock("@/lib/jobs", () => ({
   phoneJobs: (): unknown => ({
     getSnapshot: () => fakes.jobs,
     subscribe: () => (): void => undefined,
-    letGo: (): void => undefined,
+    letGo: (named: ReadonlySet<string>): boolean => {
+      fakes.deleted.push([...named])
+      return !fakes.deleteFails
+    },
   }),
   jobVoiceAudio: (): unknown => ({
     get: (id: string): Promise<Blob | null> => {
@@ -271,6 +274,35 @@ const waiting = (): number =>
   renderHook(() => voiceLane.useCounts()).result.current.waiting
 
 describe("the voice lane's run, after its copy pass (LA14)", () => {
+  it("HEARD4: home's deleted_for_good lets a Jobs note go while Studio's store isn't handed in", async () => {
+    const deletedForGood: HomeCall = () =>
+      Promise.resolve({
+        status: 409,
+        body: JSON.stringify({ error: { code: "deleted_for_good" } }),
+      })
+    // Jobs' let-go failing keeps the copy waiting: the exchange waited on it.
+    setUp(5, { v1: new Blob(["a"]) })
+    fakes.deleteFails = true
+    try {
+      await sendVoice(deletedForGood, AT_PAIRING)
+    } finally {
+      fakes.deleteFails = false
+    }
+    expect(fakes.home?.getSnapshot().waiting.map(({ id }) => id)).toEqual([
+      "v1",
+    ])
+    setUp(5, { v1: new Blob(["a"]) })
+    fakes.deleted = []
+    await sendVoice(deletedForGood, AT_PAIRING)
+    expect(fakes.deleted[0]).toEqual(["v1"])
+    expect(fakes.home?.getSnapshot()).toMatchObject({
+      waiting: [],
+      refused: [],
+    })
+    // Studio's own kind still waits for its store.
+    expect(await letGoDeleted("studio", ["t9"])).toBe(false)
+  })
+
   it("fails for no room, counts no note whose audio is gone, and sends the rest once there is room", async () => {
     setUp(1, { v1: new Blob(["a"]), gone: null, v3: new Blob(["c"]) })
     expect(await sendVoice(send, AT_PAIRING)).toEqual({
@@ -413,7 +445,7 @@ describe("Studio's takes, once its route hands them in (ST12)", () => {
       "t1",
     ])
     fakes.deleted = []
-    expect(await letGoDeleted(["t1"])).toBe(true)
+    expect(await letGoDeleted("studio", ["t1"])).toBe(true)
     expect(fakes.home?.getSnapshot().waiting).toEqual([])
     expect(await fakes.home?.keeping.audio("t1")).toBeNull()
     expect(fakes.deleted).toEqual([["t1"]])
@@ -565,6 +597,7 @@ describe("the soundbites, once their page hands them in (HF5)", () => {
         audio: (id: string) =>
           Promise.resolve(id === "b1" ? new Blob(["bite"]) : null),
         subscribe: () => (): void => undefined,
+        letGoDeleted: () => Promise.resolve(),
       },
       heldByHome: (next): void => {
         told.push(next()("b1"))

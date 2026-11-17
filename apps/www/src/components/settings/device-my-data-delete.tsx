@@ -236,7 +236,7 @@ const Asking = ({
       <Lines title={DELETING.goesTitle} lines={DELETING.goes(n)} tone="goes" />
       <Lines
         title={DELETING.staysTitle}
-        lines={DELETING.stays(n)}
+        lines={DELETING.stays(sheet.of, n)}
         tone="stays"
       />
       <div className="flex flex-col gap-2.5">

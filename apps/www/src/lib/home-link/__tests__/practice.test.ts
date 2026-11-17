@@ -267,6 +267,7 @@ beforeAll(async () => {
           fakes.bitesHeard.delete(listener)
         }
       },
+      letGoDeleted: () => Promise.resolve(),
     },
     heldByHome: (next): void => {
       fakes.bitesHeld.push(next)
