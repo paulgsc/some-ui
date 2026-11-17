@@ -422,8 +422,8 @@ install over a CI build, or the other way round.
 `.github/workflows/android-compat.yml` ("Android Compat") runs the APK on
 slowed emulators across the Android versions it supports. I run it by hand
 when a release wants a stamp: **Actions → Android Compat → Run workflow**,
-with the ref (default `main`), the API levels (default 24, 28, 31, 34 and 36,
-from `minSdkVersion` to `targetSdkVersion` in `android/variables.gradle`) and
+with the ref (default `main`), the API levels (default 34 and 36; 24, 28 and
+31, down to `minSdkVersion` in `android/variables.gradle`, may be added) and
 a CPU cap (default 60% of one host core). It never runs on a push, a pull
 request or a schedule, and nothing waits on it.
 
@@ -464,12 +464,15 @@ screenshots) last a day.
 What it cannot show: Samsung's One UI and its own WebView quirks, a real
 radio dropping and returning, thermal throttling, and a phone's real
 memory pressure. An emulator's old API level carries the WebView its system
-image shipped, which is older than any phone that updates from Play has: on
-2026-11-17 the API 24 and 28 images carried Chrome 69 and API 31's WebView
-91, while the bundle is built for Vite's default target (about Chrome 111),
-so the page loads blank there and the launch fails. The stamp's "Image's
-WebView" column says which a level ran. A level that cannot boot on GitHub's
-hosted runners shows as "not run".
+image shipped: on 2026-11-17 the API 24 and 28 images carried Chrome 69 and
+API 31's WebView 91, while the bundle is built for Vite's default target
+(about Chrome 111), so the page would load blank there. A real phone on
+Android 7 to 9 gets Android System WebView from Play, at 111 or later
+(Android 7 tops out around 119), so that blank page is the image's limit,
+not a phone's. Such a level is not tested: its row says "stock WebView
+<n> (needs ≥111)". The "Image's WebView" column says which each level
+ran. A level that cannot boot on GitHub's hosted runners shows as "not
+run".
 
 ### Play readiness
 

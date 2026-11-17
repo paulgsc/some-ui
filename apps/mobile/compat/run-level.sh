@@ -42,6 +42,24 @@ webview=$(adb shell dumpsys webviewupdate | tr -d '\r' \
   | grep -oE "[0-9][0-9.]+" | head -1 || true)
 webview=${webview:-unknown}
 
+# The bundle's floor: Vite's default target (baseline-widely-available),
+# about Chrome 111. Below it the page loads blank, which on a real phone
+# cannot happen once Play has updated Android System WebView (Android 7
+# takes up to about 119), so such a level is not tested and its row says
+# why rather than reading red.
+MIN_WEBVIEW=111
+major=${webview%%.*}
+if [[ "$major" =~ ^[0-9]+$ ]] && [ "$major" -lt "$MIN_WEBVIEW" ]; then
+  why="stock WebView $major (needs ≥$MIN_WEBVIEW)"
+  node -e '
+const [api, webview, why, file] = process.argv.slice(1)
+require("fs").writeFileSync(file, JSON.stringify({ api: Number(api), webview, launch: why, paired: why, storm: why, refresh: why }))
+' "$api" "$webview" "$why" "$out/row.json"
+  cat "$out/row.json"
+  echo "::notice title=API $api::$why: the image's WebView is older than the bundle needs; a phone updated from Play is not. Not tested."
+  exit 0
+fi
+
 launch=fail
 GITHUB_STEP_SUMMARY=${GITHUB_STEP_SUMMARY:-/dev/null} \
   bash "$here/../launch/launch-test.sh" "$apks/launch.apk" "$out/launch" && launch=pass

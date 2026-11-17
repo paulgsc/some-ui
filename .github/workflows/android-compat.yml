@@ -29,9 +29,9 @@ on:
         required: false
         default: main
       api_levels:
-        description: "Android API levels, comma-separated: minSdk (24) up to targetSdk (36), in apps/mobile/android/variables.gradle."
+        description: "Android API levels, comma-separated. Default 34 and 36: the images whose stock WebView (113, 133) runs the bundle. 24, 28 and 31 (minSdk 24, in apps/mobile/android/variables.gradle) may be added; their stock WebView is older than the bundle needs, and their rows say so."
         required: false
-        default: "24,28,31,34,36"
+        default: "34,36"
       cpu_percent:
         description: "Cap each emulator's one core at this share of a host core (0 for no cap)."
         required: false
@@ -60,7 +60,7 @@ jobs:
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - id: levels
         env:
-          LEVELS: ${{ inputs.api_levels || '24,28,31,34,36' }}
+          LEVELS: ${{ inputs.api_levels || '34,36' }}
         run: |
           json=$(echo "$LEVELS" | tr -d ' ' | tr ',' '\n' | grep -E '^[0-9]+$' | jq -R 'tonumber' | jq -sc .)
           if [ "$json" = "[]" ]; then
