@@ -45,7 +45,7 @@ const BUNDLE: BundleWords = {
   prev: (n) => `← ${n}`,
   next: (n) => `${n} →`,
   last: "Last card",
-  unsaid: () => "Swipe on to leave it for now.",
+  unsaid: () => "Tap once to start, and once more when you're done.",
   failed: {
     title: "You wanted to say this. Your voice didn't come through.",
     line: "Nothing was kept. Try again, or come back to it later.",
