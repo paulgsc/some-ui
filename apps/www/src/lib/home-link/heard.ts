@@ -24,7 +24,7 @@ import type { HeardAnswer } from "@some-ui/voice-capture"
 import { z } from "zod"
 
 import { homeLink } from "./index"
-import { answered, ranOf } from "./while-busy"
+import { answered } from "./while-busy"
 
 const Heard = z.object({
   // Other fields home adds are let through unread.
@@ -53,12 +53,11 @@ export function readHeard(answer: HomeAnswer): HeardAnswer {
 
 /** Home's words for note `id`, asked once; never rejects. */
 export async function askHeard(id: string): Promise<HeardAnswer> {
-  const said = answered(
-    await ranOf(() =>
+  const said = await answered(
+    () =>
       homeLink().keep((send) => send("GET", heardPath(id)), {
         onItsOwn: true,
-      })
-    ),
+      }),
     readHeard
   )
   // Unpaired, home can't give the words: the screen stops waiting for them.

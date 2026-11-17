@@ -28,7 +28,8 @@ import type { HomeAnswer } from "@some-ui/core-utils"
 import type { Feed } from "@/lib/call-videos/model"
 
 import { homeLink } from "./index"
-import { answered, ranOf } from "./while-busy"
+import type { Run } from "./model"
+import { answered } from "./while-busy"
 
 /** The delete of note `id`, as home takes it. */
 export function deletePath(id: string): string {
@@ -70,7 +71,7 @@ export async function deleteNotes(
     await settle(asked)
     return asked
   }
-  const raw = await ranOf(() =>
+  const run = (): Promise<Run<DeleteAsked>> =>
     homeLink().send(async (send) => {
       const answers: Array<NoteAnswer> = []
       for (const id of ids) {
@@ -87,9 +88,8 @@ export async function deleteNotes(
         answers: ids.map((id) => ({ id, answer: held.get(id) ?? null })),
       })
     })
-  )
   // Said once: a run that answered has said it already.
-  return say(answered(raw, (value) => value))
+  return say(await answered(run, (value) => value))
 }
 
 /** A step of letting an episode go: its video, then the rest. */
@@ -112,9 +112,8 @@ export async function deleteCallStep(
   step: CallStep
 ): Promise<CallStepAsked> {
   return answered(
-    await ranOf(() =>
-      homeLink().send((send) => send("DELETE", callStepPath(feed, key, step)))
-    ),
+    () =>
+      homeLink().send((send) => send("DELETE", callStepPath(feed, key, step))),
     (answer): CallStepAsked => ({ kind: "answered", answer })
   )
 }

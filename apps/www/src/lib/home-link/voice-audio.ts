@@ -28,7 +28,7 @@ import { readAs, sha256Hex } from "@some-ui/core-utils"
 import { z } from "zod"
 
 import { homeLink } from "./index"
-import { answered, ranOf } from "./while-busy"
+import { answered } from "./while-busy"
 
 const NoteAudio = z.object({
   id: z.string(),
@@ -77,8 +77,8 @@ async function checkedAudio(audio: HomeAudio): Promise<Blob | null> {
 
 /** Note `id`'s audio from home, asked once; never rejects. */
 export async function askAudio(id: string): Promise<Blob | null> {
-  const said = answered(
-    await ranOf(() => homeLink().keep((send) => send("GET", audioPath(id)))),
+  const said = await answered(
+    () => homeLink().keep((send) => send("GET", audioPath(id))),
     (answer) => ({ kind: "answered" as const, audio: readAudio(answer, id) })
   )
   if (said.kind !== "answered" || said.audio === null) return null

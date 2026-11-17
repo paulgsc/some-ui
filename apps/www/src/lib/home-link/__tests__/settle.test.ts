@@ -43,7 +43,7 @@ import type {
   HomeLinkState,
   Refusal,
 } from "@/lib/home-link/model"
-import { INITIAL, pairingIn, step } from "@/lib/home-link/model"
+import { INITIAL, step } from "@/lib/home-link/model"
 import type { RawRead, RawRun, Settled } from "@/lib/home-link/settle"
 import { settleRead, settleRun } from "@/lib/home-link/settle"
 
@@ -54,39 +54,29 @@ const read = (raw: RawRead): HomeLinkState =>
   step(INITIAL, { type: "read", found: settleRead(raw) })
 
 describe("the pairing record's read, settled", () => {
-  it.each<[string, RawRead, ReturnType<typeof pairingIn>["kind"], unknown]>([
-    ["a record", { kind: "read", record: RECORD, lost: false }, "paired", null],
-    ["none", { kind: "read", record: null, lost: false }, "unpaired", null],
+  it.each<[string, RawRead, ReturnType<typeof settleRead>]>([
     [
-      "one lost",
-      { kind: "read", record: null, lost: true },
-      "unpaired",
-      "lost",
+      "a record",
+      { kind: "read", record: RECORD, lost: false },
+      { base: BASE, id: "p1", since: 1, name: null },
     ],
+    ["none", { kind: "read", record: null, lost: false }, null],
+    ["one lost", { kind: "read", record: null, lost: true }, "lost"],
     [
-      "one that won't parse (corrupt)",
+      "one that won't parse (corrupt): no record, as before",
       { kind: "read", record: "{not json", lost: false },
-      "unpaired",
       null,
     ],
     [
       "one missing its token (corrupt)",
       { kind: "read", record: JSON.stringify({ base: BASE }), lost: false },
-      "unpaired",
       null,
     ],
     // The plugin failing, and `./credential`'s deadline passing, both
     // reject the read.
-    [
-      "the read failing or past its deadline",
-      { kind: "failed" },
-      "unpaired",
-      "unreadable",
-    ],
-  ])("%s", (_, raw, kind, note) => {
-    const state = read(raw)
-    expect(pairingIn(state).kind).toBe(kind)
-    if (state.link.kind === "unpaired") expect(state.link.note).toBe(note)
+    ["the read failing or past its deadline", { kind: "failed" }, "unreadable"],
+  ])("%s", (_, raw, found) => {
+    expect(settleRead(raw)).toEqual(found)
   })
 
   it("keeps the first answer: a duplicate read, or one after the link moved on, is dropped", () => {

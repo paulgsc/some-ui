@@ -46,33 +46,25 @@ export type Asked =
  * `./settle` alone; a fault on this phone is reported, and said as home
  * not reached.
  */
-export async function asked(
-  run: () => Promise<Run<HomeAnswer>>
-): Promise<Asked> {
-  return answered(await ranOf(run), (answer) => ({
-    kind: "answered",
-    answer,
-  }))
-}
-
-/** `run`'s end, as `./settle` takes it: what it returned, or its throw. */
-export async function ranOf<T>(run: () => Promise<Run<T>>): Promise<RawRun<T>> {
-  try {
-    return { kind: "ran", run: await run() }
-  } catch (error) {
-    return { kind: "threw", error }
-  }
+export function asked(run: () => Promise<Run<HomeAnswer>>): Promise<Asked> {
+  return answered(run, (answer) => ({ kind: "answered", answer }))
 }
 
 /**
- * What an ask says of a run that ended as `raw` (`./settle`): `found` of
+ * What an ask says of `run`'s end, read by `./settle` alone: `found` of
  * what it returned; a fault on this phone reported, and said as home not
  * reached (#3155).
  */
-export function answered<T, A>(
-  raw: RawRun<T>,
+export async function answered<T, A>(
+  run: () => Promise<Run<T>>,
   found: (value: T) => A
-): A | NotAnswered {
+): Promise<A | NotAnswered> {
+  let raw: RawRun<T>
+  try {
+    raw = { kind: "ran", run: await run() }
+  } catch (error) {
+    raw = { kind: "threw", error }
+  }
   const settled = settleRun(raw)
   switch (settled.kind) {
     case "answered": {

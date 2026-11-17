@@ -18,7 +18,7 @@ import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import type { VoiceOut } from "@/lib/voice-home/model"
 
 import { homeLink } from "./index"
-import { answered, ranOf } from "./while-busy"
+import { answered } from "./while-busy"
 
 /**
  * The read of what home keeps, with `of`'s newest when one is asked, and
@@ -57,12 +57,11 @@ export async function askKept(
   note: string | null = null
 ): Promise<KeptAsked> {
   return answered(
-    await ranOf(() =>
+    () =>
       homeLink().keep(async (send) => ({
         answer: await send("GET", keptPath(of, note)),
         record: of === null ? await askRecord(send) : null,
-      }))
-    ),
+      })),
     (value): KeptAsked => ({ kind: "answered", ...value })
   )
 }

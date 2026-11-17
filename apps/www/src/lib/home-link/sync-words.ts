@@ -14,10 +14,7 @@ export type SyncEnd =
   | { readonly kind: "stopped" }
   /** Home answered `429`. */
   | { readonly kind: "busy" }
-  /**
-   * Never started: the phone was already pairing, sending or reading
-   * (#3155), so the tap says so instead of nothing.
-   */
+  /** Never started: the phone was already pairing, sending or reading. */
   | { readonly kind: "phone-busy" }
   | { readonly kind: "unreachable" }
   /** The phone's own storage, in its words. */

@@ -15,8 +15,6 @@
  *   away and why (`./model`'s `Refusal`), or threw. A throw is home not
  *   answering (`unanswered`), the phone blocked from reaching it
  *   (`blockedOf`, NA1), or a fault on this phone, which its caller reports.
- *   An ask whose answer lands after a newer one is no longer wanted, which
- *   `./while-busy`'s `wanted` says before it asks again.
  */
 import { assertNever, isRecord } from "@some-ui/core-utils"
 

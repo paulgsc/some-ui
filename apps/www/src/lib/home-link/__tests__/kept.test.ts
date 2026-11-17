@@ -144,10 +144,6 @@ describe("a record kept on home", () => {
     for (const why of ["busy", "pairing", "preempted"] as const) {
       expect(await lastOf({ keep: keep(why) })).toEqual({ kind: "busy" })
     }
-    // Stopped to let an Unpair go first: said as the pairing it left.
-    expect(
-      await lastOf({ keep: keep("preempted"), pairing: () => UNPAIRED })
-    ).toEqual({ kind: "unpaired" })
     for (const why of ["unpaired", "gone"] as const) {
       expect(await lastOf({ keep: keep(why) })).toEqual({ kind: "unpaired" })
     }

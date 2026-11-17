@@ -9,7 +9,7 @@
 import type { HomeAnswer } from "@some-ui/core-utils"
 
 import { homeLink } from "./index"
-import { answered, ranOf } from "./while-busy"
+import { answered } from "./while-busy"
 
 /** The ask for a build made against server version `needs`. */
 const compatPath = (needs: number): string => `/compat?needs=${String(needs)}`
@@ -27,7 +27,7 @@ export type CompatAsked =
 /** Asks home once; never rejects. */
 export async function askCompat(needs: number): Promise<CompatAsked> {
   return answered(
-    await ranOf(() => homeLink().look(compatPath(needs))),
+    () => homeLink().look(compatPath(needs)),
     (answer): CompatAsked =>
       // Busy, or something between the phone and home answering for it:
       // nothing was said of this build.

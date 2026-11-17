@@ -162,7 +162,8 @@ export type HomeLinkState = {
    * The runs asked for while the pairing record is read (#3152), by ticket:
    * each waits here, as the link's own state, not on a promise of the read.
    * The read's end releases them all (`releasedBy`), and each is started
-   * again against the link as the read left it.
+   * again against the link as the read left it. Not known yet is never a
+   * run's refusal: it is this wait.
    */
   readonly parked: ReadonlyArray<number>
 }
@@ -237,11 +238,7 @@ export type HomeLinkEvent =
     }
   /** Home answered a request, after one was blocked (NA1). */
   | { readonly type: "unblocked" }
-  /**
-   * A run was asked for while the pairing record is read: it waits as
-   * `ticket` until the read ends (#3152). Dropped once the read has ended,
-   * and for a ticket already waiting.
-   */
+  /** A run asked for while the record is read waits as `ticket` (`parked`). */
   | { readonly type: "parked"; readonly ticket: number }
 
 export const INITIAL: HomeLinkState = {
@@ -313,8 +310,7 @@ export type RunStart = Extract<
 >
 
 /**
- * Why the link turned a run away (#3155), said to its caller in place of
- * one `null` for all of them:
+ * Why the link turned a run away (#3155):
  *
  * - `unpaired`: it needs a pairing and there is none;
  * - `busy`: another run of the same side is under way;
@@ -322,9 +318,6 @@ export type RunStart = Extract<
  * - `preempted`: a drain run a send, a pairing or an Unpair stopped to go
  *   first (`./runtime`'s `drain`);
  * - `gone`: the link says paired, but the record on the phone has gone.
- *
- * Not known yet is no refusal: a run asked for while the record is read
- * waits for it (`parked`), so no caller is told anything of it.
  */
 export type Refusal = "unpaired" | "busy" | "pairing" | "preempted" | "gone"
 
@@ -379,9 +372,8 @@ export function refusalOf(
 }
 
 /**
- * The runs `after` releases from waiting on the read (#3152), each with the
- * pairing the read found: every ticket `before` held that `after` no longer
- * does. The runtime starts each again; `step` decides whom and to what.
+ * The runs `after` releases from `parked`, each with the pairing the read
+ * found.
  */
 export function releasedBy(
   before: HomeLinkState,

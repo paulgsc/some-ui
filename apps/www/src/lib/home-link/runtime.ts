@@ -357,7 +357,6 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     if (next === state) return
     const before = state
     state = next
-    // What the step released, delivered: the runtime decides none of it.
     for (const { ticket, to } of releasedBy(before, next)) {
       const release = parkedRuns.get(ticket)
       parkedRuns.delete(ticket)
@@ -379,6 +378,10 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       dispatch({ type: "parked", ticket })
       void load()
     })
+
+  /** Whether this phone is paired, once the record's read has ended. */
+  const known = async (): Promise<LinkPairing> =>
+    state.link.kind === "reading" ? parked() : pairingIn(state)
 
   /** A refusal said as a run's end. */
   const refused = (why: Refusal): Run<never> => ({ kind: "refused", why })
@@ -633,9 +636,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
   ): Promise<Run<T>> => {
     const why = refusalOf(state, pressed)
     if (why === "reading") {
-      // Asked before the record is read: the run waits for it, then starts
-      // against the link as the read left it.
-      await parked()
+      await known()
       return work(side, pressed, run)
     }
     if (why !== null) return refused(why)
@@ -918,10 +919,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
 
     async look(path: string): Promise<Run<HomeAnswer>> {
       if (!path.startsWith("/")) throw new Error(`not a path: ${path}`)
-      // Asked before the record is read: it waits for the read (#3152).
-      const to =
-        state.link.kind === "reading" ? await parked() : pairingIn(state)
-      if (to.kind !== "paired") return refused("unpaired")
+      if ((await known()).kind !== "paired") return refused("unpaired")
       const pairing = await readPairing()
       if (pairing === null) return refused("gone")
       if (awayNow()) throw new HomeAwayError()
