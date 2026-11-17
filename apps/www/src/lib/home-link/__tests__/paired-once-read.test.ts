@@ -8,8 +8,10 @@
  *
  * - _Claim:_ each reader named in the Family reads whether this phone is
  *   paired as `../model`'s `Pairing` (`pairing()`, `usePairing()`,
- *   `pairingIn`), whose `reading` member stands for not known yet, and says
- *   nothing it would say of no pairing while it is `reading`. Each one-shot
+ *   `pairingIn`), whose `reading` member stands for not known yet, or, in
+ *   soundbites, as voice-capture's `HomeReach` that idea hearing's
+ *   `reachOf` makes of it (`unknown`, through `pairedOf`), and says nothing
+ *   it would say of no pairing while it is not known. Each one-shot
  *   ask of home in `lib/home-link` decides "unpaired" only after the record
  *   has been read (`pairedOnceRead`).
  * - _Family:_ each reader × when the record's read ends (after the reader
@@ -46,9 +48,13 @@
  *   screen, the status board, Settings › Home and the lane mark's sheet
  *   (each with the read held, then ending both ways), a run turned away and
  *   `laneExchange` (`./kept.test.ts`), ask-answer, idea hearing, the voice
- *   record, the game outbox's words, where a take is kept and My data's
- *   wait for the record (`./voice-send.test.ts`), and soundbites' Studio
- *   and records (`record-take`, `records` and `studio` tests).
+ *   record, the game outbox's words, where a take is kept and
+ *   `voiceKeptOnceRead`'s wait for the record (`./voice-send.test.ts`),
+ *   `pairedOf` and the unknown place's words (voice-capture's
+ *   `not-known.test.ts`), and soundbites' Studio and records
+ *   (`record-take`, `records` and `studio` tests). That My data's read
+ *   goes through `voiceKeptOnceRead` is review's until the second part
+ *   replaces it.
  * - _Tolerance:_ an ask waits as long as the record's read, at most
  *   `./credential`'s 5 s, and so does My data's count of where each
  *   recording is kept (`voiceKeptOnceRead`), until #3152's second part

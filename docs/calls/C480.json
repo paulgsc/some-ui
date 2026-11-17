@@ -7,7 +7,7 @@
     "some-ui:packages/voice-capture/src/lib/take-pattern.ts",
     "some-ui:apps/www/src/lib/my-data/index.ts"
   ],
-  "chose": "While the phone still reads whether it's paired with home, a take not yet on home says \"On this phone\", with nothing of home, and set aside says \"Set aside. It stays on this phone.\"; My data waits for that read before it counts where each recording is kept.",
+  "chose": "While the phone still reads whether it's paired with home, a take not yet on home says \"On this phone\", with nothing of home, and set aside says \"Set aside. It's on this phone.\", which says nothing of whether it stays; My data waits for that read before it counts where each recording is kept.",
   "options": [
     "\"On this phone\", saying nothing of home, and My data waits for the read",
     "\"Kept on this phone\", as for a phone known not to be paired",

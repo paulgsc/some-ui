@@ -143,7 +143,7 @@ export const TAKE_WORDS: TakeWords = {
     phone: "Set aside. It stays on this phone.",
     going: "Set aside. It stays on this phone until home has it.",
     home: "Set aside. Home keeps it.",
-    unknown: "Set aside. It stays on this phone.",
+    unknown: "Set aside. It's on this phone.",
   },
   unplayable: "Couldn't play that take.",
   // The pattern's row offers Redo beside the take, so it says so.
