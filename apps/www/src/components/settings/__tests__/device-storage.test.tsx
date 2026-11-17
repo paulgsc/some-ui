@@ -56,6 +56,7 @@ const UNPAIRED: HomeLinkState = {
   away: null,
   awayReleases: 0,
   blocked: null,
+  parked: [],
 }
 
 const UNREADABLE: HomeLinkState = {
@@ -68,6 +69,7 @@ const UNREADABLE: HomeLinkState = {
   away: null,
   awayReleases: 0,
   blocked: null,
+  parked: [],
 }
 
 const PAIRED: HomeLinkState = {
@@ -88,6 +90,7 @@ const PAIRED: HomeLinkState = {
   away: null,
   awayReleases: 0,
   blocked: null,
+  parked: [],
 }
 
 const home = vi.hoisted(

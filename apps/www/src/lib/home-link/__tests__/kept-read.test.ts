@@ -10,18 +10,18 @@ let answer: HomeAnswer | Error | null = { status: 200, body: "{}" }
 let recordFails: Error | null = null
 const asked: Array<[string, string]> = []
 
-vi.mock("@/lib/home-link/paired-once-read", () => ({
-  pairedOnceRead: (): Promise<boolean> => Promise.resolve(pairedNow),
-}))
 vi.mock("@/lib/home-link", () => ({
   homeLink: (): unknown => ({
     keep: async (
       run: (send: HomeCall) => Promise<unknown>
     ): Promise<
-      { kind: "done"; value: unknown } | { kind: "stopped" } | null
+      | { kind: "done"; value: unknown }
+      | { kind: "stopped" }
+      | { kind: "refused"; why: string }
     > => {
       // A link busy with another run turns this one away.
-      if (answer === null) return null
+      if (!pairedNow) return { kind: "refused", why: "unpaired" }
+      if (answer === null) return { kind: "refused", why: "busy" }
       const reply = answer
       try {
         const value = await run((method, path) => {

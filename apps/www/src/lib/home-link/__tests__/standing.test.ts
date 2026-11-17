@@ -13,7 +13,8 @@ import { FIRST_HOLD_MS } from "@/lib/home-link/away"
 import type { HomeLinkEvent, HomeLinkState } from "@/lib/home-link/model"
 import { INITIAL, step } from "@/lib/home-link/model"
 import type { HomeLink } from "@/lib/home-link/runtime"
-import { createHomeLink, parsePairing } from "@/lib/home-link/runtime"
+import { createHomeLink } from "@/lib/home-link/runtime"
+import { parsePairing } from "@/lib/home-link/settle"
 import { watchStanding } from "@/lib/home-link/standing"
 
 const HOME = { base: "https://home.example/api/v1", host: "home.example" }

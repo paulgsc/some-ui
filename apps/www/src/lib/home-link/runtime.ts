@@ -57,16 +57,34 @@ import {
   blockedReason,
   HomeAwayError,
   HomeBlockedError,
-  HomeNoAnswerError,
   phoneOnline,
 } from "@/lib/device-backend/native-http/no-answer"
-import { isFileHostTimeout } from "@/lib/file-host-config/client"
 
 import type { HomeAddress } from "./address"
-import type { HomeLinkEvent, HomeLinkState, PairFailure } from "./model"
-import { awayHeld, homeBusy, INITIAL, step, working, writing } from "./model"
+import type {
+  HomeLinkEvent,
+  HomeLinkState,
+  Pairing as LinkPairing,
+  PairFailure,
+  Refusal,
+  Run,
+  RunStart,
+} from "./model"
+import {
+  awayHeld,
+  homeBusy,
+  INITIAL,
+  pairingIn,
+  refusalOf,
+  releasedBy,
+  step,
+  working,
+  writing,
+} from "./model"
 import type { PaceMemory } from "./pace"
 import { createPace } from "./pace"
+import type { PairingRecord } from "./settle"
+import { blockedOf, parsePairing, settleRead, unanswered } from "./settle"
 
 /** The phone's sealed record (`HomeCredentialPlugin`): read, kept, forgotten. */
 export type CredentialPort = {
@@ -150,57 +168,13 @@ function overloaded(answer: HomeAnswer): boolean {
 /** What the link answers for home while home's busy lasts: nothing was sent. */
 const HOME_BUSY: HomeAnswer = { status: 429, body: "" }
 
-/** A pairing kept before it had an id is known by its base. */
-/**
- * The pairing record on the phone. `phoneId` is home's id for this phone
- * (SIGNIN7, C496), which its owner's phone list shows it by; `name` is what
- * the owner typed while pairing. Both are null for a pairing made before
- * home gave them.
- */
-type Pairing = {
-  base: string
-  token: string
-  id: string
-  since: number | null
-  phoneId: string | null
-  name: string | null
-}
-
-/** `value` if it is a non-empty string, else null. */
-const textOrNull = (value: unknown): string | null =>
-  typeof value === "string" && value !== "" ? value : null
-
-export function parsePairing(record: string): Pairing | null {
-  try {
-    const parsed: unknown = JSON.parse(record)
-    return isRecord(parsed) &&
-      typeof parsed.base === "string" &&
-      typeof parsed.token === "string"
-      ? {
-          base: parsed.base,
-          token: parsed.token,
-          id: typeof parsed.id === "string" ? parsed.id : parsed.base,
-          since:
-            typeof parsed.pairedAt === "number" &&
-            Number.isFinite(parsed.pairedAt)
-              ? parsed.pairedAt
-              : null,
-          phoneId: textOrNull(parsed.phoneId),
-          name: textOrNull(parsed.name),
-        }
-      : null
-  } catch {
-    return null
-  }
-}
-
 /**
  * What a pairing answer other than 200 says. A 503 is read by its code
  * (#3099): `service_overloaded` with a `Retry-After` is home shedding load
  * for a while; without one, it is home's cap on pairing attempts, which no
  * wait lifts soon; anything else is pairing not set up there.
  */
-function refusalOf(answer: HomeAnswer): PairFailure {
+function pairRefusalOf(answer: HomeAnswer): PairFailure {
   const { status } = answer
   if (status === 422) return "bad-code"
   if (status === 429) return "too-many"
@@ -233,34 +207,10 @@ function thrownFailureOf(error: unknown): PairFailure {
   return "unreachable"
 }
 
-/**
- * `error` is a request finding no answer from home, or a wrapping of that:
- * `native-http`'s connection failing or timing out (`HomeNoAnswerError`),
- * or `requestJSON`'s own deadline passing first (`isFileHostTimeout`). Any
- * other failure, a Keystore read or a plugin missing from the build among
- * them, is a fault on this phone.
- */
-export function unanswered(error: unknown): boolean {
-  for (let cause = error; cause instanceof Error; cause = cause.cause) {
-    if (cause instanceof HomeNoAnswerError || isFileHostTimeout(cause)) {
-      return true
-    }
-  }
-  return false
-}
-
 /** What the native log says as a blocked stretch starts (NA1). */
 const BLOCKED_SUMMARY: Readonly<Record<HomeBlockedReason, string>> = {
   name: "This phone couldn't find home's name on this network.",
   trust: "This phone doesn't trust home's certificate.",
-}
-
-/** Why `error`, or a cause of it, failed before home could answer (NA1). */
-export function blockedOf(error: unknown): HomeBlockedReason | null {
-  for (let cause = error; cause instanceof Error; cause = cause.cause) {
-    if (cause instanceof HomeBlockedError) return cause.reason
-  }
-  return null
 }
 
 /** `send`, and whether home answered any of it as busy (`429`). */
@@ -278,10 +228,6 @@ export function noticingBusy(send: HomeCall): {
     },
   }
 }
-
-type SyncOutcome<T> =
-  | { readonly kind: "done"; readonly value: T }
-  | { readonly kind: "stopped" }
 
 export type HomeLink = {
   getSnapshot: () => HomeLinkState
@@ -312,14 +258,12 @@ export type HomeLink = {
     /** The API base the sync reads from, whose busy it keeps (#3127). */
     base: string,
     run: (get: HomeGet) => Promise<T>
-  ) => Promise<SyncOutcome<T> | null>
+  ) => Promise<Run<T>>
   /**
-   * Runs `run` with a `send` to the paired home; `null` when unpaired or
-   * busy.
+   * Runs `run` with a `send` to the paired home; `refused` when unpaired or
+   * busy (`./model`'s `Refusal`).
    */
-  send: <T>(
-    run: (send: HomeCall) => Promise<T>
-  ) => Promise<SyncOutcome<T> | null>
+  send: <T>(run: (send: HomeCall) => Promise<T>) => Promise<Run<T>>
   /**
    * As `send`, for a screen's read (Korean's look at the routine's files,
    * `./routine`; an idea answer's words, `./heard`; My data), which goes
@@ -329,22 +273,22 @@ export type HomeLink = {
   keep: <T>(
     run: (send: HomeCall) => Promise<T>,
     options?: { readonly onItsOwn?: boolean }
-  ) => Promise<SyncOutcome<T> | null>
+  ) => Promise<Run<T>>
   /**
-   * As `send`, for one lane's run of the drain (`./lanes`, LA15); `null`
-   * also when a send or an Unpair stopped it to go first (`./model`).
+   * As `send`, for one lane's run of the drain (`./lanes`, LA15);
+   * `refused: preempted` also when a send, a pairing or an Unpair stopped
+   * it to go first (`./model`).
    */
-  drain: <T>(
-    run: (send: HomeCall) => Promise<T>
-  ) => Promise<SyncOutcome<T> | null>
+  drain: <T>(run: (send: HomeCall) => Promise<T>) => Promise<Run<T>>
   /**
    * One `GET` of `path` at the paired home's own address, outside the API
    * and without the credential: home's word on itself, which it answers
    * anyone (`/compat`, `./compat-read`). It takes the drain's turn on the
    * pace and holds no activity, so it goes beside anything the person or a
-   * lane is doing; `null` when unpaired or its turn was let go.
+   * lane is doing; `refused` when unpaired or its record is gone, and
+   * `stopped` when its turn was let go.
    */
-  look: (path: string) => Promise<SyncOutcome<HomeAnswer> | null>
+  look: (path: string) => Promise<Run<HomeAnswer>>
   /**
    * Calls `listener` each time a request with the credential is answered
    * not found other than as home's JSON error, which is how home answers a
@@ -365,6 +309,14 @@ export type HomeLink = {
   answered: () => void
 }
 
+/**
+ * The link says paired, but the record on the phone has gone (a key the
+ * Keystore lost since the read): the run is turned away as `gone`.
+ */
+class PairingGoneError extends Error {
+  override name = "PairingGoneError"
+}
+
 /** The person's side of the link, or the drain's (`./model`). */
 type Side = "person" | "drain"
 
@@ -377,14 +329,64 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
   const listeners = new Set<() => void>()
   const missingListeners = new Set<() => void>()
 
+  /**
+   * Reads the phone's own record, once: whatever the read comes to,
+   * `./settle` makes it what the link's `read` finds.
+   */
+  const load = (): Promise<void> => {
+    loading ??= ports.credential.read().then(
+      ({ record, lost }) => {
+        dispatch({
+          type: "read",
+          found: settleRead({ kind: "read", record, lost }),
+        })
+      },
+      () => {
+        dispatch({ type: "read", found: settleRead({ kind: "failed" }) })
+      }
+    )
+    return loading
+  }
+
+  // The runs waiting on the pairing record's read, by ticket (#3152).
+  const parkedRuns = new Map<number, (to: LinkPairing) => void>()
+  let nextTicket = 0
+
   const dispatch = (event: HomeLinkEvent): void => {
     const next = step(state, event)
     if (next === state) return
+    const before = state
     state = next
+    for (const { ticket, to } of releasedBy(before, next)) {
+      const release = parkedRuns.get(ticket)
+      parkedRuns.delete(ticket)
+      release?.(to)
+    }
     for (const listener of listeners) listener()
   }
 
-  const readPairing = async (): Promise<Pairing | null> => {
+  /**
+   * Waits, as the link's state, for the pairing record's read (#3152): a
+   * run asked for while it is read parks here, and the read's end releases
+   * it with what the read found. Starts the read, should nothing have yet.
+   */
+  const parked = (): Promise<LinkPairing> =>
+    new Promise((resolve) => {
+      nextTicket += 1
+      const ticket = nextTicket
+      parkedRuns.set(ticket, resolve)
+      dispatch({ type: "parked", ticket })
+      void load()
+    })
+
+  /** Whether this phone is paired, once the record's read has ended. */
+  const known = async (): Promise<LinkPairing> =>
+    state.link.kind === "reading" ? parked() : pairingIn(state)
+
+  /** A refusal said as a run's end. */
+  const refused = (why: Refusal): Run<never> => ({ kind: "refused", why })
+
+  const readPairing = async (): Promise<PairingRecord | null> => {
     const { record } = await ports.credential.read()
     return record === null ? null : parsePairing(record)
   }
@@ -629,12 +631,16 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
   /** Shared by every run; ends once its requests have settled. */
   const work = async <T>(
     side: Side,
-    pressed: HomeLinkEvent,
+    pressed: RunStart,
     run: () => Promise<T>
-  ): Promise<SyncOutcome<T> | null> => {
-    const before = state
+  ): Promise<Run<T>> => {
+    const why = refusalOf(state, pressed)
+    if (why === "reading") {
+      await known()
+      return work(side, pressed, run)
+    }
+    if (why !== null) return refused(why)
     dispatch(pressed)
-    if (state === before) return null
     let ended = (): void => undefined
     if (side === "drain") {
       preempted = false
@@ -656,6 +662,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       return { kind: "done", value }
     } catch (error) {
       if (error instanceof SyncStoppedError) return { kind: "stopped" }
+      if (error instanceof PairingGoneError) return refused("gone")
       throw error
     } finally {
       unsubscribe()
@@ -694,8 +701,8 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       return thrownFailureOf(error)
     }
     // Home's overload is busy, not a pairing it can't do (AD3, #3127);
-    // `refusalOf` reads it by its code (#3099).
-    if (answer.status !== 200) return refusalOf(answer)
+    // `pairRefusalOf` reads it by its code (#3099).
+    if (answer.status !== 200) return pairRefusalOf(answer)
     const token = stringFieldOf(answer.body, "token")
     if (token === null) return "other"
     // Home's id for this phone, from a home that gives one (C496).
@@ -729,13 +736,13 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
   /** A run with a `send` to the paired home, after `pressed` starts it. */
   const credentialed = <T>(
     side: Side,
-    pressed: HomeLinkEvent,
+    pressed: RunStart,
     tapped: boolean,
     run: (send: HomeCall) => Promise<T>
-  ): Promise<SyncOutcome<T> | null> =>
+  ): Promise<Run<T>> =>
     work(side, pressed, async () => {
       const pairing = await readPairing()
-      if (pairing === null) throw new Error("this phone's pairing is gone")
+      if (pairing === null) throw new PairingGoneError()
       const send: HomeCall = (method, path, body, range) => {
         if (stopped(side)) return Promise.reject(new SyncStoppedError())
         if (!path.startsWith("/")) {
@@ -784,28 +791,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       }
     },
 
-    load(): Promise<void> {
-      loading ??= ports.credential.read().then(
-        ({ record, lost }) => {
-          const pairing = record === null ? null : parsePairing(record)
-          dispatch({
-            type: "read",
-            found: pairing
-              ? {
-                  base: pairing.base,
-                  id: pairing.id,
-                  since: pairing.since,
-                  name: pairing.name,
-                }
-              : lost
-                ? "lost"
-                : null,
-          })
-        },
-        () => dispatch({ type: "read", found: "unreadable" })
-      )
-      return loading
-    },
+    load,
 
     async pair(address, code, name): Promise<void> {
       const before = state
@@ -898,10 +884,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       dispatch({ type: "unpaired", told })
     },
 
-    sync<T>(
-      base: string,
-      run: (get: HomeGet) => Promise<T>
-    ): Promise<SyncOutcome<T> | null> {
+    sync<T>(base: string, run: (get: HomeGet) => Promise<T>): Promise<Run<T>> {
       const get: HomeGet = (url, etag) => {
         if (stopped("person")) return Promise.reject(new SyncStoppedError())
         return ask(
@@ -918,16 +901,14 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       return work("person", { type: "syncPressed" }, () => run(get))
     },
 
-    send<T>(
-      run: (send: HomeCall) => Promise<T>
-    ): Promise<SyncOutcome<T> | null> {
+    send<T>(run: (send: HomeCall) => Promise<T>): Promise<Run<T>> {
       return credentialed("person", { type: "sendPressed" }, true, run)
     },
 
     keep<T>(
       run: (send: HomeCall) => Promise<T>,
       options?: { readonly onItsOwn?: boolean }
-    ): Promise<SyncOutcome<T> | null> {
+    ): Promise<Run<T>> {
       return credentialed(
         "person",
         { type: "keepStarted" },
@@ -936,14 +917,15 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       )
     },
 
-    async look(path: string): Promise<SyncOutcome<HomeAnswer> | null> {
+    async look(path: string): Promise<Run<HomeAnswer>> {
       if (!path.startsWith("/")) throw new Error(`not a path: ${path}`)
-      if (state.link.kind !== "paired") return null
+      if ((await known()).kind !== "paired") return refused("unpaired")
       const pairing = await readPairing()
-      if (pairing === null) return null
+      if (pairing === null) return refused("gone")
       if (awayNow()) throw new HomeAwayError()
       if (homeBusyNow()) return { kind: "done", value: HOME_BUSY }
-      if (!(await pace.turn(false))) return null
+      // Its turn let go: the app went to the background while it waited.
+      if (!(await pace.turn(false))) return { kind: "stopped" }
       // Home may have asked to be left alone while this waited its turn.
       if (awayNow()) throw new HomeAwayError()
       if (homeBusyNow()) return { kind: "done", value: HOME_BUSY }
@@ -968,16 +950,18 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       }
     },
 
-    async drain<T>(
-      run: (send: HomeCall) => Promise<T>
-    ): Promise<SyncOutcome<T> | null> {
+    async drain<T>(run: (send: HomeCall) => Promise<T>): Promise<Run<T>> {
       const outcome = await credentialed(
         "drain",
         { type: "drainStarted" },
         false,
         run
       )
-      return preempted ? null : outcome
+      // Only a run that started was preempted: one the link turned away
+      // says why itself, whatever an earlier run left `preempted` at.
+      return preempted && outcome.kind !== "refused"
+        ? refused("preempted")
+        : outcome
     },
 
     stop(): void {

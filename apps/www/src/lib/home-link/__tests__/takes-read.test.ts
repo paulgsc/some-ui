@@ -12,16 +12,16 @@ let pairedNow = true
 let answer: HomeAnswer | Error | null = { status: 200, body: "{}" }
 const asked: Array<[string, string]> = []
 
-vi.mock("@/lib/home-link/paired-once-read", () => ({
-  pairedOnceRead: (): Promise<boolean> => Promise.resolve(pairedNow),
-}))
 vi.mock("@/lib/home-link", () => ({
   homeLink: (): unknown => ({
     keep: async (
       run: (send: HomeCall) => Promise<unknown>
-    ): Promise<{ kind: "done"; value: unknown } | null> => {
+    ): Promise<
+      { kind: "done"; value: unknown } | { kind: "refused"; why: string }
+    > => {
       // A link busy with another run turns this one away.
-      if (answer === null) return null
+      if (!pairedNow) return { kind: "refused", why: "unpaired" }
+      if (answer === null) return { kind: "refused", why: "busy" }
       const reply = answer
       const value = await run((method, path) => {
         asked.push([method, path])
@@ -34,7 +34,16 @@ vi.mock("@/lib/home-link", () => ({
   }),
 }))
 
+const reported = vi.hoisted((): Array<string> => [])
+vi.mock("@some-ui/intent-kit", async (actual) => ({
+  ...(await actual<object>()),
+  reportFailure: ({ port }: { port: string }): void => {
+    reported.push(port)
+  },
+}))
+
 const { askTakes, takesPath } = await import("@/lib/home-link/takes-read")
+const { ForeignCallError } = await import("@/lib/intent/foreign")
 
 beforeEach(() => {
   pairedNow = true
@@ -67,5 +76,20 @@ describe("the read of the takes home keeps (ST32)", () => {
     await expect(askTakes(null)).resolves.toEqual({ kind: "busy" })
     answer = new Error("no answer")
     await expect(askTakes(null)).resolves.toEqual({ kind: "unreachable" })
+  })
+
+  it("reports a fault on this phone once: a foreign port's own was reported by it (#3155)", async () => {
+    reported.length = 0
+    answer = new Error("a fault")
+    await expect(askTakes(null)).resolves.toEqual({ kind: "unreachable" })
+    expect(reported).toEqual(["home link: an ask of home"])
+    answer = new ForeignCallError({
+      kind: "unknown",
+      retryable: false,
+      summary: "The phone couldn't read or keep its pairing.",
+      cause: null,
+    })
+    await expect(askTakes(null)).resolves.toEqual({ kind: "unreachable" })
+    expect(reported).toEqual(["home link: an ask of home"])
   })
 })

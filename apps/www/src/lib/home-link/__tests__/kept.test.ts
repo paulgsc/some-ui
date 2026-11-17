@@ -19,7 +19,7 @@ import type { Kept, KeptPorts } from "@/lib/home-link/kept-runtime"
 import { createKept, laneExchange } from "@/lib/home-link/kept-runtime"
 import type { Lane, LaneCounts } from "@/lib/home-link/lanes"
 import { laneReading } from "@/lib/home-link/lanes"
-import type { Pairing } from "@/lib/home-link/model"
+import type { Pairing, Refusal } from "@/lib/home-link/model"
 import {
   drainStopping,
   INITIAL,
@@ -34,9 +34,9 @@ import { ForeignCallError } from "@/lib/intent/foreign"
 const send: HomeCall = () => Promise.resolve({ status: 200, body: "" })
 
 /** The link's `keep`: runs `run` at once, or turns it away. */
-function keep(busy = false): HomeLink["keep"] {
+function keep(turnedAway: Refusal | null = null): HomeLink["keep"] {
   return async (run) => {
-    if (busy) return null
+    if (turnedAway !== null) return { kind: "refused", why: turnedAway }
     try {
       return { kind: "done", value: await run(send) }
     } catch (error) {
@@ -139,16 +139,16 @@ describe("a record kept on home", () => {
   })
 
   it("says why the link turned it away", async () => {
-    expect(await lastOf({ keep: keep(true) })).toEqual({ kind: "busy" })
-    expect(await lastOf({ keep: keep(true), pairing: () => UNPAIRED })).toEqual(
-      { kind: "unpaired" }
-    )
-    // Still reading the pairing is not unpaired: the link was not ready yet.
-    expect(await lastOf({ keep: keep(true), pairing: () => READING })).toEqual({
-      kind: "busy",
-    })
+    // A run asked for while the pairing is read waits for it in the link
+    // (#3152), so the link's own reason is the whole answer.
+    for (const why of ["busy", "pairing", "preempted"] as const) {
+      expect(await lastOf({ keep: keep(why) })).toEqual({ kind: "busy" })
+    }
+    for (const why of ["unpaired", "gone"] as const) {
+      expect(await lastOf({ keep: keep(why) })).toEqual({ kind: "unpaired" })
+    }
     // While home waits out a busy, it was home's to turn away too (AD3).
-    expect(await lastOf({ keep: keep(true), homeBusy: () => true })).toEqual({
+    expect(await lastOf({ keep: keep("busy"), homeBusy: () => true })).toEqual({
       kind: "failed",
       why: "busy",
     })

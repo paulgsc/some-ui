@@ -359,11 +359,13 @@ This rule is wider than the component rule above, which is about React. It
 holds for any module, React or not.
 
 It is the direction, not yet a declared invariant, because the code does not
-meet it yet. The bare `paired()` in `lib/home-link` is a boolean that reads
-"still reading" as "no", which is how Studio came to say "Pair this phone" on
-a paired phone (#3128). #3143 patched ten callers with `pairedOnceRead`, a
-third way to read the same fact. #3152 is to replace all three with one
-translation and one union. The LAYERS audit (#3154) lists the other places
+meet it yet everywhere. `lib/home-link` meets it for the pairing and for how a
+run of the link ends (#3152, #3155): `./model`'s `Pairing` is the one answer,
+with `reading` for not known yet; a run asked for while the record is read
+waits as the link's own state (`parked`); and `./settle` is the one
+translation of the record's read and of a run's end, which every ask of home
+receives. Home's answers themselves are still read by status code in each
+feature module (#3156), and the LAYERS audit (#3154) lists the other places
 where a raw result reaches a module. Declare the rule, with a check, once
 those land.
 

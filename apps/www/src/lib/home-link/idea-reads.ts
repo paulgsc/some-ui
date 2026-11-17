@@ -10,7 +10,7 @@ import type { HomeAnswer } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/core-utils"
 
 import { homeLink } from "./index"
-import { pairedOnceRead } from "./paired-once-read"
+import { asked } from "./while-busy"
 
 /** The one request each ask may send. */
 export type IdeasAsk =
@@ -65,10 +65,9 @@ export type IdeasAsked =
 
 /** Asks home once; never rejects. */
 export async function askIdeas(ask: IdeasAsk): Promise<IdeasAsked> {
-  if (!(await pairedOnceRead())) return { kind: "unpaired" }
   const path = ideasPath(ask)
-  try {
-    const outcome = await homeLink().keep((send) => {
+  return asked(() =>
+    homeLink().keep((send) => {
       switch (ask.kind) {
         case "ideas":
         case "lists": {
@@ -92,10 +91,5 @@ export async function askIdeas(ask: IdeasAsk): Promise<IdeasAsked> {
         }
       }
     })
-    return outcome?.kind === "done"
-      ? { kind: "answered", answer: outcome.value }
-      : { kind: "busy" }
-  } catch {
-    return { kind: "unreachable" }
-  }
+  )
 }

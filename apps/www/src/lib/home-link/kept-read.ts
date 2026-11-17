@@ -18,7 +18,7 @@ import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import type { VoiceOut } from "@/lib/voice-home/model"
 
 import { homeLink } from "./index"
-import { pairedOnceRead } from "./paired-once-read"
+import { answered } from "./while-busy"
 
 /**
  * The read of what home keeps, with `of`'s newest when one is asked, and
@@ -56,18 +56,14 @@ export async function askKept(
   of: VoiceOut["of"] | null,
   note: string | null = null
 ): Promise<KeptAsked> {
-  if (!(await pairedOnceRead())) return { kind: "unpaired" }
-  try {
-    const outcome = await homeLink().keep(async (send) => ({
-      answer: await send("GET", keptPath(of, note)),
-      record: of === null ? await askRecord(send) : null,
-    }))
-    return outcome?.kind === "done"
-      ? { kind: "answered", ...outcome.value }
-      : { kind: "busy" }
-  } catch {
-    return { kind: "unreachable" }
-  }
+  return answered(
+    () =>
+      homeLink().keep(async (send) => ({
+        answer: await send("GET", keptPath(of, note)),
+        record: of === null ? await askRecord(send) : null,
+      })),
+    (value): KeptAsked => ({ kind: "answered", ...value })
+  )
 }
 
 /** The record's count, whose failure leaves the recordings' answer standing. */

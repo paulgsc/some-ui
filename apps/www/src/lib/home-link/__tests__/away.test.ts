@@ -371,7 +371,7 @@ describe("away from home over the real link (AW1)", () => {
     await settled(lanes)
     home.reachable = true
     const sent = await theLink().send((send) => send("GET", "/tapped"))
-    expect(sent?.kind).toBe("done")
+    expect(sent.kind).toBe("done")
     expect(home.sent).toContain("/tapped")
     expect(theLink().getSnapshot().away).toBeNull()
   })
@@ -425,7 +425,7 @@ describe("away from home over the real link (AW1)", () => {
     expect(home.sent).toHaveLength(before)
     home.reachable = true
     const read = await theLink().keep((send) => send("GET", "/asked"))
-    expect(read?.kind).toBe("done")
+    expect(read.kind).toBe("done")
     expect(home.sent[before]).toBe("/asked")
     expect(theLink().getSnapshot().away).toBeNull()
   })

@@ -158,6 +158,14 @@ export type HomeLinkState = {
     readonly reason: HomeBlockedReason
     readonly at: number
   } | null
+  /**
+   * The runs asked for while the pairing record is read (#3152), by ticket:
+   * each waits here, as the link's own state, not on a promise of the read.
+   * The read's end releases them all (`releasedBy`), and each is started
+   * again against the link as the read left it. Not known yet is never a
+   * run's refusal: it is this wait.
+   */
+  readonly parked: ReadonlyArray<number>
 }
 
 export type HomeLinkEvent =
@@ -230,6 +238,8 @@ export type HomeLinkEvent =
     }
   /** Home answered a request, after one was blocked (NA1). */
   | { readonly type: "unblocked" }
+  /** A run asked for while the record is read waits as `ticket` (`parked`). */
+  | { readonly type: "parked"; readonly ticket: number }
 
 export const INITIAL: HomeLinkState = {
   link: { kind: "reading" },
@@ -241,6 +251,7 @@ export const INITIAL: HomeLinkState = {
   away: null,
   awayReleases: 0,
   blocked: null,
+  parked: [],
 }
 
 /**
@@ -287,6 +298,92 @@ export function pairingIn(state: HomeLinkState): Pairing {
 export function samePairing(a: Pairing, b: Pairing): boolean {
   if (a.kind === "paired" && b.kind === "paired") return a.id === b.id
   return a.kind === b.kind
+}
+
+/**
+ * What starts a run of the link (`./runtime`'s `sync`, `send`, `keep` and
+ * `drain`): the events `refusalOf` answers.
+ */
+export type RunStart = Extract<
+  HomeLinkEvent,
+  { type: "syncPressed" | "sendPressed" | "keepStarted" | "drainStarted" }
+>
+
+/**
+ * Why the link turned a run away (#3155):
+ *
+ * - `unpaired`: it needs a pairing and there is none;
+ * - `busy`: another run of the same side is under way;
+ * - `pairing`: the person is pairing or unpairing;
+ * - `preempted`: a drain run a send, a pairing or an Unpair stopped to go
+ *   first (`./runtime`'s `drain`);
+ * - `gone`: the link says paired, but the record on the phone has gone.
+ */
+export type Refusal = "unpaired" | "busy" | "pairing" | "preempted" | "gone"
+
+/**
+ * How a run of the link ended (#3155): it ran and returned `value`; it was
+ * stopped (Stop, or the app went to the background) before it could; or
+ * the link turned it away, and why. A run that throws ends in its throw,
+ * which `./settle` reads.
+ */
+export type Run<T> =
+  | { readonly kind: "done"; readonly value: T }
+  | { readonly kind: "stopped" }
+  | { readonly kind: "refused"; readonly why: Refusal }
+
+/** Why the person's side, doing `activity`, takes no other run. */
+function activityRefusal(activity: Activity): Refusal {
+  return activity.kind === "pairing" || activity.kind === "unpairing"
+    ? "pairing"
+    : "busy"
+}
+
+/**
+ * Why `step` turns `event` away from `state`, `reading` while the pairing
+ * record is read, or null when it starts the run: the one place a run's
+ * start is decided (`step` reads it), so what the runtime says of a run it
+ * didn't start is what the step did.
+ */
+export function refusalOf(
+  state: HomeLinkState,
+  event: RunStart
+): Refusal | "reading" | null {
+  const { link, activity } = state
+  if (link.kind === "reading") return "reading"
+  switch (event.type) {
+    case "syncPressed": {
+      return activity.kind === "idle" ? null : activityRefusal(activity)
+    }
+    case "sendPressed":
+    case "keepStarted": {
+      if (link.kind !== "paired") return "unpaired"
+      return activity.kind === "idle" ? null : activityRefusal(activity)
+    }
+    case "drainStarted": {
+      if (link.kind !== "paired") return "unpaired"
+      if (state.drain.kind !== "idle") return "busy"
+      return writing(activity) ? activityRefusal(activity) : null
+    }
+    default: {
+      return assertNever(event)
+    }
+  }
+}
+
+/**
+ * The runs `after` releases from `parked`, each with the pairing the read
+ * found.
+ */
+export function releasedBy(
+  before: HomeLinkState,
+  after: HomeLinkState
+): ReadonlyArray<{ readonly ticket: number; readonly to: Pairing }> {
+  if (before.parked === after.parked) return []
+  const to = pairingIn(after)
+  return before.parked
+    .filter((ticket) => !after.parked.includes(ticket))
+    .map((ticket) => ({ ticket, to }))
 }
 
 const idle = { kind: "idle" } as const
@@ -389,6 +486,7 @@ function advance(state: HomeLinkState, event: HomeLinkEvent): HomeLinkState {
       const { found } = event
       return {
         ...state,
+        parked: [],
         link:
           found === null
             ? { kind: "unpaired", note: null }
@@ -463,15 +561,15 @@ function advance(state: HomeLinkState, event: HomeLinkEvent): HomeLinkState {
       return { ...state, link: { ...link, notForgotten: true }, activity: idle }
     }
     case "syncPressed": {
-      if (link.kind === "reading" || activity.kind !== "idle") return state
+      if (refusalOf(state, event) !== null) return state
       return { ...state, activity: { kind: "syncing", stopping: false } }
     }
     case "sendPressed": {
-      if (link.kind !== "paired" || activity.kind !== "idle") return state
+      if (refusalOf(state, event) !== null) return state
       return { ...state, activity: { kind: "sending", stopping: false } }
     }
     case "keepStarted": {
-      if (link.kind !== "paired" || activity.kind !== "idle") return state
+      if (refusalOf(state, event) !== null) return state
       return { ...state, activity: { kind: "keeping", stopping: false } }
     }
     case "stopPressed": {
@@ -483,7 +581,7 @@ function advance(state: HomeLinkState, event: HomeLinkEvent): HomeLinkState {
       return { ...state, activity: idle }
     }
     case "drainStarted": {
-      if (link.kind !== "paired" || !drainFree(state)) return state
+      if (refusalOf(state, event) !== null) return state
       return { ...state, drain: { kind: "draining", stopping: false } }
     }
     case "drainStopped": {
@@ -562,6 +660,12 @@ function advance(state: HomeLinkState, event: HomeLinkEvent): HomeLinkState {
     case "unblocked": {
       if (state.blocked === null) return state
       return { ...state, blocked: null }
+    }
+    case "parked": {
+      if (link.kind !== "reading" || state.parked.includes(event.ticket)) {
+        return state
+      }
+      return { ...state, parked: [...state.parked, event.ticket] }
     }
     default: {
       return assertNever(event)

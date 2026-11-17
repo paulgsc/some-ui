@@ -206,8 +206,8 @@ import { lensEntriesHeld } from "./lens-record"
 import type { Pairing } from "./model"
 import { notesHeld } from "./notes"
 import { askOnDrive } from "./on-drive"
-import { blockedOf, unanswered } from "./runtime"
 import { markSetAside } from "./set-aside"
+import { blockedOf, unanswered } from "./settle"
 import { sendStationMoves } from "./take-stations"
 import { phoneVideos, sendVideos } from "./videos"
 import { askAudio } from "./voice-audio"
@@ -1091,15 +1091,26 @@ export function voiceKept(id: string): TakeKept {
 }
 
 /**
- * `voiceKept`, once the pairing record has been read: for a read made as a
- * page opens (My data), which counts each recording where it is kept and
- * so can't say one is only on this phone while that isn't known (PO1).
- * The record's read never rejects. Removed with `./paired-once-read` in
- * #3152's second part, where My data's count follows the link's state.
+ * Calls `listener` once the pairing record has been read, at once if it
+ * has: from then on `voiceKept` says no take's place is `unknown` (#3152).
+ * My data reads this phone's side again then, by itself. Returns the
+ * unsubscribe.
  */
-export async function voiceKeptOnceRead(): Promise<(id: string) => TakeKept> {
-  await homeLink().load()
-  return voiceKept
+export function whenPlacesKnown(listener: () => void): () => void {
+  const link = homeLink()
+  const known = (): boolean => pairing(link.getSnapshot()).kind !== "reading"
+  if (known()) {
+    listener()
+    return (): void => undefined
+  }
+  let heard = false
+  const stop = link.subscribe(() => {
+    if (heard || !known()) return
+    heard = true
+    stop()
+    listener()
+  })
+  return stop
 }
 
 /** Where a take waiting to go home is kept, by whether this phone is paired. */

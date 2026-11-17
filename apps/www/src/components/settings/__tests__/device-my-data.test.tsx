@@ -170,8 +170,7 @@ const PHONE = [
     of: "lens" as const,
     at: "2026-11-01T09:00:00.000Z",
     bytes: 1024,
-    held: false,
-    going: false,
+    place: "phone" as const,
   },
 ]
 
@@ -563,6 +562,7 @@ describe("on the phone", () => {
   it("reads the page on opening, is read again by a drag down, and stops playing on leaving", async () => {
     runtime.state = {
       seq: 1,
+      phoneSeq: 1,
       of: null,
       home: HOME,
       phone: { notes: PHONE, unread: ["studio"] },

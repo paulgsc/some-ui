@@ -41,7 +41,7 @@ function lane(ends: () => Promise<HomeExchanged>): Lane {
     ...createKept({
       exchange: () => ends(),
       keep: async (run) => {
-        if (link.held) return null
+        if (link.held) return { kind: "refused", why: "busy" }
         link.held = true
         counted.runs += 1
         try {

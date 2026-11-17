@@ -9,8 +9,13 @@
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/core-utils"
+import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 
-import { pairedOnceRead } from "./paired-once-read"
+import { ForeignCallError } from "@/lib/intent/foreign"
+
+import type { Run } from "./model"
+import type { RawRun } from "./settle"
+import { settleRun } from "./settle"
 
 const TRIES = 10
 const WAIT_MS = 1_000
@@ -34,20 +39,56 @@ export type Asked =
   /** No answer. */
   | { readonly kind: "unreachable" }
 
-/** Asks home once through `run`, one run of the link's `keep`; never rejects. */
-export async function asked(
-  run: () => Promise<
-    { kind: "done"; value: HomeAnswer } | { kind: "stopped" } | null
-  >
-): Promise<Asked> {
-  if (!(await pairedOnceRead())) return { kind: "unpaired" }
+/**
+ * Asks home once through `run`, one run of the link's `keep`; never rejects.
+ * Asked before the pairing record is read, the run waits for it as the
+ * link's own state (PO1, `./model`'s `parked`). Its end is read by
+ * `./settle` alone; a fault on this phone is reported, and said as home
+ * not reached.
+ */
+export function asked(run: () => Promise<Run<HomeAnswer>>): Promise<Asked> {
+  return answered(run, (answer) => ({ kind: "answered", answer }))
+}
+
+/**
+ * What an ask says of `run`'s end, read by `./settle` alone: `found` of
+ * what it returned; a fault on this phone reported, and said as home not
+ * reached (#3155).
+ */
+export async function answered<T, A>(
+  run: () => Promise<Run<T>>,
+  found: (value: T) => A
+): Promise<A | NotAnswered> {
+  let raw: RawRun<T>
   try {
-    const outcome = await run()
-    return outcome?.kind === "done"
-      ? { kind: "answered", answer: outcome.value }
-      : { kind: "busy" }
-  } catch {
-    return { kind: "unreachable" }
+    raw = { kind: "ran", run: await run() }
+  } catch (error) {
+    raw = { kind: "threw", error }
+  }
+  const settled = settleRun(raw)
+  switch (settled.kind) {
+    case "answered": {
+      return found(settled.value)
+    }
+    case "failed": {
+      // A foreign port's failure (the Keystore's) was reported by its port.
+      if (settled.fault instanceof ForeignCallError) {
+        return { kind: "unreachable" }
+      }
+      reportFailure({
+        port: "home link: an ask of home",
+        error: toIntentError(settled.fault),
+      })
+      return { kind: "unreachable" }
+    }
+    case "unpaired":
+    case "busy":
+    case "unreachable": {
+      return settled
+    }
+    default: {
+      return assertNever(settled)
+    }
   }
 }
 

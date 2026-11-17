@@ -71,8 +71,7 @@ const PHONE: ReadonlyArray<PhoneNote> = Array.from({ length: 6 }, (_, i) => ({
   of: "studio",
   at: new Date(Date.UTC(2026, 10, 1, 21, 12) - i * 60_000).toISOString(),
   bytes: 999_999,
-  held: false,
-  going: i % 2 === 0,
+  place: i % 2 === 0 ? ("going" as const) : ("phone" as const),
 }))
 
 /** `Screen` under a router of its own, opened at `path`. */

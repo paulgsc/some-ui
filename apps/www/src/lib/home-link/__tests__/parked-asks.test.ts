@@ -1,8 +1,9 @@
 /**
  * @vitest-environment jsdom
  *
- * PO1 (#3128, widened by #3152 and #3157): no reader of whether this phone
- * is paired takes a pairing record still being read for no pairing.
+ * PO1 (#3128, widened by #3152 and #3157, moved onto the type by #3152's
+ * second part): no reader of whether this phone is paired takes a pairing
+ * record still being read for no pairing.
  *
  * **PO1: no reader says unpaired while the pairing record is read.**
  *
@@ -11,65 +12,65 @@
  *   `pairingIn`), whose `reading` member stands for not known yet, or, in
  *   soundbites, as voice-capture's `HomeReach` that idea hearing's
  *   `reachOf` makes of it (`unknown`, through `pairedOf`), and says nothing
- *   it would say of no pairing while it is not known. Each one-shot
- *   ask of home in `lib/home-link` decides "unpaired" only after the record
- *   has been read (`pairedOnceRead`).
+ *   it would say of no pairing while it is not known. A run of the link
+ *   asked for while the record is read waits for it as the link's own state
+ *   (`../model`'s `parked`), and is then started, or turned away, against
+ *   the link as the read left it, so no run's end says anything of a
+ *   record not yet read.
  * - _Family:_ each reader × when the record's read ends (after the reader
  *   looks, as a fresh page load has it, or before) × what it finds (a
  *   pairing, none, one lost, a record that won't parse, a read that itself
- *   fails). The readers: the ten one-shot asks (Studio's renders and every
- *   read through `while-busy`'s `asked`, home's compat, takes, what home
- *   keeps, its receipts, ideas, a note's delete, an episode step's let-go,
- *   a take's words, a note's audio); what this phone knows home holds
- *   (`sentUnder`, the waiting counts over it, and Studio › Feedback's place
- *   of each note); the lanes' readings and runs (`laneReading`,
- *   `laneExchange`, a run turned away); the Jobs cards' journeys and the
- *   morning row, on Jobs and on the status board; Settings › Home's layout;
- *   the lane mark's sheet; the game outbox; idea hearing's reach and
- *   listener; the voice record's pairing port; ask-answer; the link's
- *   watchers (`kept-watch`, `practice-reads`, `serves`, `standing`, `live`,
- *   the voice copy's gates); where a take is kept (`voiceKept`, every
- *   screen's take row through it, and My data's count by
- *   `voiceKeptOnceRead`); Studio's takes and what Studio keeps, through
- *   voice-capture's `pairedOf` and its `unknown` place. Outside it, as they
- *   say nothing of no pairing (a control that is absent until paired):
- *   `routine.ts`'s pairing port, `device-routine-files` and Studio's clip
- *   frames.
- * - _Proof:_ the type where it reaches. `pairing()` and `usePairing()` are
- *   the only reads of the pairing `lib/home-link` exports for a screen, and
- *   a switch over the union fails to compile without `reading`; a reader
- *   that folds it to `kind === "paired"` is not held by the type, so each
- *   reader holds its `reading` case in its own test. `./pairing.test.ts`
- *   holds the union's transitions over every link state × every event, and
- *   maps each way the read ends. These tests hold each ask over its whole
- *   family (`FAMILY`); with the old gate back, each ask's held-read cases
- *   fail. The readers' own: the waiting counts, Studio › Feedback
- *   (`lib/episode-feedback`), the journey and morning (`lib/jobs`), the Jobs
- *   screen, the status board, Settings › Home and the lane mark's sheet
- *   (each with the read held, then ending both ways), a run turned away and
- *   `laneExchange` (`./kept.test.ts`), ask-answer, idea hearing, the voice
- *   record, the game outbox's words, where a take is kept and
- *   `voiceKeptOnceRead`'s wait for the record (`./voice-send.test.ts`),
- *   `pairedOf` and the unknown place's words (voice-capture's
- *   `not-known.test.ts`), and soundbites' Studio and records
- *   (`record-take`, `records` and `studio` tests). That My data's read
- *   goes through `voiceKeptOnceRead` is review's until the second part
- *   replaces it.
- * - _Tolerance:_ an ask waits as long as the record's read, at most
- *   `./credential`'s 5 s, and so does My data's count of where each
- *   recording is kept (`voiceKeptOnceRead`), until #3152's second part
- *   makes it follow the link's state. Until #3152's second part, a run the link turns
- *   away while reading is said as busy and asked again.
+ *   fails). The readers: every run of the link (`sync`, `send`, `keep`,
+ *   `drain`, `look`) and so every ask made through one (Studio's renders and
+ *   every read through `../while-busy`'s `asked`, home's compat, takes,
+ *   what home keeps, its receipts, ideas, a note's delete, an episode
+ *   step's let-go, a take's words, a note's audio); what this phone knows
+ *   home holds (`sentUnder`, the waiting counts over it, and Studio ›
+ *   Feedback's place of each note); the lanes' readings and runs
+ *   (`laneReading`, `laneExchange`, a run turned away); the Jobs cards'
+ *   journeys and the morning row, on Jobs and on the status board;
+ *   Settings › Home's layout; the lane mark's sheet; the game outbox; idea
+ *   hearing's reach and listener; the voice record's pairing port;
+ *   ask-answer; the link's watchers (`kept-watch`, `practice-reads`,
+ *   `serves`, `standing`, `live`, the voice copy's gates); where a take is
+ *   kept (`voiceKept`, every screen's take row through it, and My data's
+ *   count, which says `unknown` places as not known yet and reads this
+ *   phone's side again once `whenPlacesKnown` hears the pairing known);
+ *   Studio's takes and what Studio keeps, through voice-capture's
+ *   `pairedOf` and its `unknown` place. Outside it, as they say nothing of
+ *   no pairing (a control that is absent until paired): `routine.ts`'s
+ *   pairing port, `device-routine-files` and Studio's clip frames.
+ * - _Proof:_ the type. `pairing()` and `usePairing()` are the only reads of
+ *   the pairing `lib/home-link` exports for a screen, and a switch over the
+ *   union fails to compile without `reading`. A run's end is `../model`'s
+ *   `Run`, whose `Refusal` has no member for not known yet: `refusalOf`'s
+ *   `reading` is handled inside the runtime, which parks the run, and
+ *   nowhere else can it be returned. `./pairing.test.ts` holds the union's
+ *   transitions and the parked runs' release over every link state × every
+ *   event; `./runtime.test.ts` holds a run parked over the read, released
+ *   both ways; these tests hold each ask over its whole family (`FAMILY`),
+ *   through the real link. A reader that folds the union to
+ *   `kind === "paired"` is not held by the type, so each such reader holds
+ *   its `reading` case in its own test: the waiting counts, Studio ›
+ *   Feedback (`lib/episode-feedback`), the journey and morning
+ *   (`lib/jobs`), the Jobs screen, the status board, Settings › Home and the
+ *   lane mark's sheet (each with the read held, then ending both ways), a
+ *   run turned away and `laneExchange` (`./kept.test.ts`), ask-answer, idea
+ *   hearing, the voice record, the game outbox's words, where a take is
+ *   kept and `whenPlacesKnown` (`./voice-send.test.ts`), My data's re-read
+ *   (`lib/my-data`'s runtime test), `pairedOf` and the unknown place's words
+ *   (voice-capture's `not-known.test.ts`), and soundbites' Studio and
+ *   records (`record-take`, `records` and `studio` tests).
+ * - _Tolerance:_ a run waits as long as the record's read, at most
+ *   `./credential`'s 5 s, usually a few milliseconds.
  *
- * Relates: widens PO1 (#3157). Its first Family held only the ten asks;
- * the readers past it took the answer as a boolean or an id-or-null, which
- * had no member for not known yet, so `false` and `null` stood for it. A
- * take's place had none either, so a take going home read as on this phone
- * alone until #3157's second part gave it `unknown`.
+ * Relates: widens PO1 (#3157), then moves its proof onto the type
+ * (#3152). Its first Family held only the ten asks, which each awaited the
+ * record before asking (`pairedOnceRead`); the readers past it took the
+ * answer as a boolean or an id-or-null, which had no member for not known
+ * yet. The second part made the wait the link's own state, so no ask
+ * awaits the record itself, and the grep that held the ten is gone.
  */
-import { readdirSync, readFileSync } from "node:fs"
-import { dirname, join, resolve } from "node:path"
-import { fileURLToPath } from "node:url"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type { HomeRequest as NativeCall } from "@/lib/device-backend/native-http"
@@ -234,9 +235,6 @@ afterEach(() => {
     Promise.resolve({ record: null, lost: false })
 })
 
-/** A read of the pairing as it is now, without waiting for the record. */
-const BARE = /(?<![.\w])pairing\(\)\.kind/
-
 /** Each ask × each outcome × each timing: PO1's whole family. */
 const FAMILY = ASKS.flatMap((ask) =>
   OUTCOMES.flatMap((outcome) =>
@@ -283,22 +281,5 @@ describe("a one-shot ask as a page opens (PO1)", () => {
         null,
       ]).toContainEqual(outcome)
     }
-  })
-
-  it("no ask in lib/home-link says unpaired on the bare pairing()", () => {
-    const dir = resolve(dirname(fileURLToPath(import.meta.url)), "..")
-    const files = readdirSync(dir).filter(
-      (name) => name.endsWith(".ts") && !name.endsWith(".test.ts")
-    )
-    // The scan reads the right folder.
-    expect(files).toContain("index.ts")
-    const offenders = files.filter((name) => {
-      const text = readFileSync(join(dir, name), "utf8")
-      return /kind: "unpaired"/.test(text) && BARE.test(text)
-    })
-    expect(offenders).toEqual([])
-    // The scan matches the gate as it would be written now.
-    expect(BARE.test('if (pairing().kind !== "paired")')).toBe(true)
-    expect(BARE.test('if (homeLink.pairing().kind !== "paired")')).toBe(false)
   })
 })

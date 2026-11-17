@@ -18,7 +18,8 @@ import { INITIAL_KEPT, stepKept } from "./kept-model"
 import type { Lane } from "./lanes"
 import type { Pairing } from "./model"
 import type { HomeLink } from "./runtime"
-import { blockedOf, noticingBusy, unanswered } from "./runtime"
+import { noticingBusy } from "./runtime"
+import { blockedOf, settleRun, unanswered } from "./settle"
 import { HomeUnansweredError } from "./shelf"
 
 /** A run's end that was this phone's fault, as `failed`'s `why`. */
@@ -98,11 +99,10 @@ export function createKept(ports: KeptPorts): Kept {
   const once = async (): Promise<KeptRun> => {
     try {
       const outcome = await ports.keep(ports.exchange)
-      if (outcome === null) {
-        const now = ports.pairing()
-        if (now.kind === "unpaired") return { kind: "unpaired" }
-        // Still reading: the link turned it away as not yet ready.
-        if (now.kind === "reading") return { kind: "busy" }
+      if (outcome.kind === "refused") {
+        if (settleRun({ kind: "ran", run: outcome }).kind === "unpaired") {
+          return { kind: "unpaired" }
+        }
         return ports.homeBusy() ? BUSY : { kind: "busy" }
       }
       if (outcome.kind === "stopped") return { kind: "stopped" }
