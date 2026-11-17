@@ -1,0 +1,17 @@
+{
+  "id": "C541",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:.github/workflows/android-compat.yml",
+    "some-ui:apps/mobile/compat"
+  ],
+  "chose": "The APKs are built from the ref under test, and the checks (launch-test.sh, apps/mobile/compat) come from the workflow's own commit.",
+  "options": [
+    "checks from the workflow's commit",
+    "checks from the ref under test"
+  ],
+  "gray": "A stamp of an older ref either runs today's checks or the checks that ref carried; neither the owner nor a convention says which a stamp means.",
+  "undo": "Add `ref: ${{ inputs.ref }}` to the level job's checkout.",
+  "refs": ["#3104"]
+}

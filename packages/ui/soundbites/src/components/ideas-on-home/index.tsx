@@ -55,6 +55,7 @@ import {
 import type { IdeasHome, RedoPorts } from "@soundbites/lib/idea/on-home-runtime"
 import { createIdeasOnHome } from "@soundbites/lib/idea/on-home-runtime"
 import { keptIdeaStore } from "@soundbites/lib/idea/store"
+import type { Refresh } from "@soundbites/lib/refresh"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { ChevronLeft, Pause, Play, X } from "lucide-react"
 
@@ -85,6 +86,8 @@ export type IdeasOnHomeProps = {
   redo?: RedoPorts | undefined
   /** The app's way to pairing, shown while this phone isn't paired (ST34). */
   pair: ReactNode
+  /** The shell's refresh port: a pull reads the ideas again (HERD2). Read once. */
+  refresh?: Refresh | undefined
 }
 
 const Tab = ({
@@ -747,6 +750,7 @@ export const IdeasOnHome = ({
   openInMyData,
   redo,
   pair,
+  refresh,
 }: IdeasOnHomeProps): JSX.Element => {
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime, and what it runs on, are taken once per mount, as the idea screens' are */
   const [runtime] = useState(() =>
@@ -755,6 +759,7 @@ export const IdeasOnHome = ({
       ideas: keptIdeaStore(),
       lists: keptIdeaLists(),
       redo,
+      refresh,
     })
   )
   const [redoTakes] = useState(() => redo?.takes)

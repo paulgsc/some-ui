@@ -112,6 +112,32 @@ describe("a pull's reads", () => {
     ).toEqual({ kind: "unread", what: ["this page", "today’s digest"] })
   })
 
+  it("lets each screen's hold go before the page or any screen reads again (HERD2)", async () => {
+    const order: Array<string> = []
+    shown("on", () => {
+      order.push("page read")
+      return Promise.resolve("a")
+    })
+    await vi.waitFor(() => expect(client.getQueryData(["on"])).toBe("a"))
+    order.splice(0)
+    const refreshers = createRefreshers()
+    stops.push(
+      refreshers.register({
+        what: "home",
+        before: () => order.push("hold let go"),
+        checkAgain: () => {
+          order.push("home read")
+          return Promise.resolve()
+        },
+      })
+    )
+    const { router } = fakeRouter()
+    await readsOnScreen(client, router, onlineManager, refreshers).readAgain()
+    expect(order[0]).toBe("hold let go")
+    expect(order).toContain("page read")
+    expect(order).toContain("home read")
+  })
+
   it("reads nothing, and says so, with no connection", async () => {
     const read = vi.fn(() => Promise.resolve("a"))
     shown("on", read)

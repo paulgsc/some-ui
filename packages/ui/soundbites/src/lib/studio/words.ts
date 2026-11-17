@@ -1084,6 +1084,8 @@ export const STUDIO_WORDS = {
   onHome: {
     heading: "Ideas on home",
     open: "Ideas on home",
+    /** What a pull down reads again, for "Couldn't check … just now". */
+    pullWhat: "your ideas on home",
     reading: "Asking home…",
     unpaired:
       "This phone isn't paired with home, so it can't show what home keeps.",

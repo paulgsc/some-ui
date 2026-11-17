@@ -623,6 +623,7 @@ describe("checkRetentionTriggers", () => {
     "Extension Release",
     "Sign Firefox Extension (Manual)",
     "WASM Release",
+    "Android Compat",
   ])
 
   it("reads only the workflow_run list, and asks for each kept family's workflow", () => {
