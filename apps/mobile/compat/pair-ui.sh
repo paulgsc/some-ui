@@ -39,18 +39,26 @@ hide_keyboard() {
 
 # pair_by_ui [address] [code] (default the stand-in home at
 # https://10.0.2.2:8787 and a sample code). Pairs as a person does, on the
-# release APK: the foyer's gear, the front
-# desk's Home tab (/settings/home, the bar's; it opens on Running), Pair..., the
-# address and code typed, Pair with <host>. The fields are found by their
-# HTML id or placeholder (device-section.tsx), whichever the WebView exposes.
+# release APK: in the first run's welcome when it is on screen (SIGNIN2),
+# else the foyer's gear, the front desk's Home tab (/settings/home; it opens
+# on Running) and Pair.... Both show the same form (device-pair-form.tsx):
+# the address and code typed, then Pair with <host>. Fields are found by
+# HTML id, label or placeholder; the earlier form's names are kept too.
 pair_by_ui() {
   local address=${1:-https://10.0.2.2:8787} code=${2:-K7QF2M9X}
-  ui tap 'Settings' &&
-    ui tap 'Home' &&
-    ui tap 'Pair...' &&
-    ui type 'pair-address|https://file-host.home.example|Home server address' "$address" &&
-    ui type 'pair-code|K7QF 2M9X|Code from your computer' "$code" &&
+  local host=${address#*://}
+  host=${host%%/*}
+  if ! UI_WAIT_SECONDS=10 ui find 'Pair this phone with home'; then
+    ui tap 'Settings' && ui tap 'Home' && ui tap 'Pair...' || return 1
+  fi
+  ui type "pair-address|Home's address|file-host.home.example|Home server address|https://file-host.home.example" "$address" &&
+    ui type 'pair-code|Code from your computer|K7QF 2M9X' "$code" &&
     hide_keyboard &&
-    ui tap 'Pair with*' &&
-    ui find 'Unpair|Home: signed in'
+    ui tap "Pair with $host" &&
+    ui find 'Unpair|Home: signed in*'
+}
+
+# The first run's welcome (SIGNIN2), set aside for a run that does not pair.
+dismiss_welcome() {
+  UI_WAIT_SECONDS=10 ui tap 'Not now' || true
 }
