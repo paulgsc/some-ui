@@ -72,54 +72,15 @@ adb logcat -c
 adb logcat > "$out/logcat.txt" 2>&1 &
 logcat_pid=$!
 
-# native_line, native_count, last_pull_end, pull_down and $PULL_CHECKED,
-# shared with the launch test.
-# shellcheck source=apps/mobile/launch/native-log.sh
-source "$here/../launch/native-log.sh"
 page() { node "$here/page.mjs" "$1"; }
 budget_of() { node -e "console.log(require('$budget')$1)"; }
 
-# A clean install of $1, opened at the foyer, its database open.
-# Waits for a new "device storage: opened" line: the log already holds the
-# one from an earlier install.
-install() {
-  adb uninstall "$pkg" > /dev/null 2>&1 || true
-  local opened
-  opened=$(native_count "device storage: opened")
-  adb install -r "$1" > /dev/null
-  adb shell am start -W -n "$pkg/.MainActivity" > /dev/null
-  for _ in $(seq 1 60); do
-    [ "$(native_count "device storage: opened")" -gt "$opened" ] && return 0
-    sleep 1
-  done
-  return 1
-}
-ui() { node "$here/ui.mjs" "$@" > /dev/null 2>> "$out/ui-errors.txt"; }
-# Closes the soft keyboard, which can sit over the button below a field.
-# Back only while it shows, so it never leaves the page.
-hide_keyboard() {
-  local ime
-  ime=$(adb shell dumpsys input_method || true)
-  if [[ "$ime" == *"mInputShown=true"* ]]; then
-    adb shell input keyevent 4
-    sleep 1
-  fi
-}
-
-# Pairs as a person does, on the release APK: the foyer's gear, the front
-# desk's Home tab (/settings/home, the bar's; it opens on Running), Pair..., the
-# address and code typed, Pair with <host>. The fields are found by their
-# HTML id or placeholder (device-section.tsx), whichever the WebView exposes.
-pair_by_ui() {
-  ui tap 'Settings' &&
-    ui tap 'Home' &&
-    ui tap 'Pair...' &&
-    ui type 'pair-address|https://file-host.home.example|Home server address' 'https://10.0.2.2:8787' &&
-    ui type 'pair-code|K7QF 2M9X|Code from your computer' 'K7QF2M9X' &&
-    hide_keyboard &&
-    ui tap 'Pair with*' &&
-    ui find 'Unpair|Home: signed in'
-}
+# install, ui, hide_keyboard and pair_by_ui, shared with other workflows
+# that drive the app on an emulator; it sources native-log.sh (native_line,
+# native_count, last_pull_end, pull_down and $PULL_CHECKED, shared with the
+# launch test).
+# shellcheck source=apps/mobile/compat/pair-ui.sh
+source "$here/pair-ui.sh"
 
 # The same through the debug APK's page, for a level where the UI cannot be
 # driven.
