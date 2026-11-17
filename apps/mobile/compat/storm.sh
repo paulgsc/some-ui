@@ -234,15 +234,20 @@ busy() {
   echo "$end"
 }
 
-# Two pulls a second apart, which HERD1 joins into one run: home must hear
-# no more than from the single pull before it.
+# Two pulls a second apart while home answers slowly, so the first is still
+# under way when the second starts: HERD1 joins the second to it, and home
+# must hear no more than from the single pull before it. A pull after one
+# has ended is asked afresh (HERD2), so on a quick home the two would
+# rightly cost two pulls.
 two_pulls() {
   local before
+  curl -sf -X POST "$control/slow?ms=$(budget_of .joinedSlowMs)" > /dev/null
   before=$(native_count "$PULL_CHECKED")
   pull_down
   sleep 1
   pull_down
   pull_end "$before"
+  curl -sf -X POST "$control/calm" > /dev/null
 }
 
 background() {
@@ -289,7 +294,7 @@ phase joined two_pulls
 single_heard=$(echo "${phases[0]}" | grep -oE '"requests":[0-9]+' | grep -oE '[0-9]+$')
 joined_heard=$(echo "${phases[-1]}" | grep -oE '"requests":[0-9]+' | grep -oE '[0-9]+$')
 if [ "$joined_heard" -gt "$single_heard" ]; then
-  fail "joined: two pulls 1 s apart sent $joined_heard requests, more than one pull alone ($single_heard); HERD1 joins a pull to the run under way (stub-joined.json)"
+  fail "joined: two pulls 1 s apart, with home slow to answer, sent $joined_heard requests, more than one pull alone ($single_heard); HERD1 joins a pull to the run under way (stub-joined.json)"
 fi
 phase burst burst
 phase busy busy

@@ -1,6 +1,7 @@
 {
-  "$comment": "HERD1's budget, as android-compat.yml's storm scenario checks it (check-budget.mjs) over every request home hears in the whole run, all routes and pulls together: in any window of T ms, at most burst + ceil(T / sustainedMs) requests; after a 429, none until its Retry-After has passed (pairing and sign-out excepted; graceMs for the 429 to reach the phone over the slowed link), then at most one per sustainedMs for pacedForMs. Per pull, HERD1 promises structure, not a count (one pull may reach the burst): two pulls 1 s apart must cost home no more than one alone, which storm.sh checks as its 'joined' phase. From HERD1, PR #3110 (apps/www/src/lib/home-link/__tests__/herd.test.ts); re-read it there when it lands.",
-  "source": "HERD1 (#3110)",
+  "$comment": "HERD1's budget, as android-compat.yml's storm scenario checks it (check-budget.mjs) over every request home hears in the whole run under `limited`, the routes home's limiter covers (file_host's versioned modules; /compat is not limited): in any window of T ms, at most burst + ceil(T / sustainedMs) requests; after a 429, none until its Retry-After has passed (pairing and sign-out excepted; graceMs for the 429 to reach the phone over the slowed link), then at most one per sustainedMs for pacedForMs. Per pull, HERD1 promises structure, not a count (one pull may reach the burst): a pull while another is still under way joins it (HERD1, HERD2's refreshers), which storm.sh checks as its 'joined' phase with home answering slowly; a pull after one has ended is asked afresh (HERD2). From HERD1, PR #3110 (apps/www/src/lib/home-link/__tests__/herd.test.ts) and HERD2, PR #3112 (apps/www/src/lib/pull-refresh/__tests__/refreshers.test.ts).",
+  "source": "HERD1 (#3110), HERD2 (#3112)",
+  "limited": "/api/v1/",
   "burst": 20,
   "sustainedMs": 2000,
   "afterBusy": {
@@ -14,5 +15,6 @@
   "burstPulls": {
     "pulls": 5,
     "gapSeconds": 1
-  }
+  },
+  "joinedSlowMs": 4000
 }

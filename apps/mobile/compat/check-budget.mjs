@@ -5,15 +5,21 @@
 //   node apps/mobile/compat/check-budget.mjs <all.json> <budget.json>
 //
 // <all.json> is the stub's GET /all: { requests: [{ at, key, status,
-// retryAfter? }] }. Prints one line per breach and exits non-zero on any:
+// retryAfter? }] }. Only requests under budget.limited count: home's limiter
+// covers its versioned routes (/api/v1/) and nothing else, so /compat is
+// neither limited nor part of the budget. Prints one line per breach and
+// exits non-zero on any:
 //
 // - rate: in any window of T ms, more than burst + ceil(T / sustainedMs)
 //   requests (checked for every pair of requests, so every window that
 //   starts and ends on one);
 // - busy: a request, other than an exempt one, inside a 429's Retry-After,
 //   after graceMs for the 429 to reach the phone;
-// - paced: after a Retry-After ends, two requests closer than sustainedMs
-//   (less toleranceMs) within pacedForMs of it.
+// - paced: the nth request after a 429 (from 0, other than an exempt one,
+//   within its Retry-After and pacedForMs after) sent sooner than n + 1
+//   paces (sustainedMs, less toleranceMs) after the 429: HERD1's own
+//   rule (expectPaced in apps/www/src/lib/home-link/__tests__/herd.test.ts),
+//   under which the Retry-After itself can pay for the first few.
 import { readFileSync } from "node:fs"
 
 const [allFile, budgetFile] = process.argv.slice(2)
@@ -33,12 +39,14 @@ const numbers = [
 if (
   !Array.isArray(requests) ||
   numbers.some((n) => typeof n !== "number") ||
+  typeof budget.limited !== "string" ||
   requests.some((r) => r.status === 429 && typeof r.retryAfter !== "number")
 ) {
   throw new Error("check-budget.mjs: no request log or budget to check")
 }
 const exempt = new Set(budget.exempt ?? [])
-const sent = [...requests].sort((a, b) => a.at - b.at)
+const limited = (r) => r.key.split(" ")[1]?.startsWith(budget.limited)
+const sent = requests.filter(limited).sort((a, b) => a.at - b.at)
 const breaches = []
 
 // Rate: the worst window per starting request.
@@ -82,16 +90,19 @@ for (const turned of turnedAway) {
     )
   }
   const after = sent.filter(
-    (r) => r.at >= until && r.at < until + pacedForMs && !exempt.has(r.key)
+    (r) =>
+      r.at > turned.at + graceMs &&
+      r.at < until + pacedForMs &&
+      !exempt.has(r.key)
   )
-  for (let k = 1; k < after.length; k += 1) {
-    const gap = after[k].at - after[k - 1].at
-    if (gap < budget.sustainedMs - toleranceMs) {
-      breaches.push(
-        `paced: two requests ${gap} ms apart after a Retry-After ended (${after[k - 1].key}, ${after[k].key}), under ${budget.sustainedMs} ms`
-      )
-      break
-    }
+  const early = after.findIndex(
+    (r, n) => r.at < turned.at + (n + 1) * budget.sustainedMs - toleranceMs
+  )
+  if (early >= 0) {
+    const r = after[early]
+    breaches.push(
+      `paced: request ${early + 1} after a 429 (${r.key}) came ${r.at - turned.at} ms after it, sooner than ${early + 1} paces of ${budget.sustainedMs} ms`
+    )
   }
 }
 

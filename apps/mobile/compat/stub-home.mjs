@@ -14,12 +14,16 @@
 // - :port, on every interface, is home. The emulator reaches it at
 //   https://10.0.2.2:<port>. Each request is logged with its time and answered
 //   from the routes file (method and path, query ignored); anything else is a
-//   200 `{}`. While busy, every request is answered 429 with `Retry-After`.
+//   200 `{}`. While busy, every request under /api/v1/ is answered 429 with
+//   `Retry-After`: home's limiter covers its versioned routes only, so
+//   /compat is answered as usual. While slow, every answer waits.
 // - :control, on 127.0.0.1 only, is the scenario's:
 //     GET  /counts         every request since the last reset, as JSON
 //     GET  /all            every request since the stub started
 //     POST /reset          forget them
 //     POST /busy?seconds=N answer 429 + Retry-After: N until /calm
+//     POST /slow?ms=N      hold every answer N ms until /calm, so a pull is
+//                          still under way when the next one starts
 //     POST /calm           answer normally again
 //
 // Sample data only: the routes file is fixed fixtures, and nothing here
@@ -59,6 +63,9 @@ const requests = []
 // Never reset: the budget is checked over the whole run (check-budget.mjs).
 const everything = []
 let busySeconds = 0
+let slowMs = 0
+/** What home's limiter covers (file_host's versioned modules). */
+const LIMITED = "/api/v1/"
 
 const tls =
   values.cert && values.key
@@ -68,15 +75,16 @@ const tls =
 const answerHome = (req, res) => {
   const path = new URL(req.url ?? "/", "http://stub").pathname
   const key = `${req.method} ${path}`
+  const busy = busySeconds > 0 && path.startsWith(LIMITED)
   // A lane that cannot parse the unlisted 200 `{}` ends failed, which is
   // fine for counting (HERD1's advice).
-  const answer = busySeconds > 0 ? null : (routeOf(key) ?? FALLBACK)
-  const status = busySeconds > 0 ? 429 : (answer.status ?? 200)
+  const answer = busy ? null : (routeOf(key) ?? FALLBACK)
+  const status = busy ? 429 : (answer.status ?? 200)
   const entry = {
     at: Date.now(),
     key,
     status,
-    ...(busySeconds > 0 ? { retryAfter: busySeconds } : {}),
+    ...(busy ? { retryAfter: busySeconds } : {}),
   }
   requests.push(entry)
   everything.push(entry)
@@ -84,8 +92,8 @@ const answerHome = (req, res) => {
   // answers a PUT it now holds.
   const chunks = []
   req.on("data", (chunk) => chunks.push(chunk))
-  req.on("end", () => {
-    if (busySeconds > 0) {
+  const send = () => {
+    if (busy) {
       res.writeHead(429, {
         "Retry-After": String(busySeconds),
         "Content-Type": "application/json",
@@ -107,7 +115,8 @@ const answerHome = (req, res) => {
       ETag: `"${body.length}"`,
     })
     res.end(body)
-  })
+  }
+  req.on("end", () => setTimeout(send, slowMs))
 }
 const home = tls ? createTlsServer(tls, answerHome) : createServer(answerHome)
 
@@ -129,9 +138,13 @@ const control = createServer((req, res) => {
   } else if (req.method === "POST" && url.pathname === "/busy") {
     busySeconds = Math.max(1, Number(url.searchParams.get("seconds")) || 30)
     reply({ busySeconds })
+  } else if (req.method === "POST" && url.pathname === "/slow") {
+    slowMs = Math.max(0, Number(url.searchParams.get("ms")) || 0)
+    reply({ slowMs })
   } else if (req.method === "POST" && url.pathname === "/calm") {
     busySeconds = 0
-    reply({ busySeconds })
+    slowMs = 0
+    reply({ busySeconds, slowMs })
   } else {
     res.writeHead(404)
     res.end()
