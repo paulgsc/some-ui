@@ -124,7 +124,7 @@ describe("the record's pairing day", () => {
 type Home = {
   link: HomeLink
   sent: Array<HomeRequest>
-  pass: (ms: number) => void
+  pass: (ms: number, timersRun?: boolean) => void
 }
 
 function setup(
@@ -437,6 +437,36 @@ describe("RN1: a paired phone's session is renewed while the app is used", () =>
     }
   })
 
+  it("lets one ask already out stand for comings to the front while it is, and asks at the next after", async () => {
+    let answer: (value: HomeAnswer) => void = () => undefined
+    const home = setup({
+      record: KEPT,
+      answer: () =>
+        new Promise<HomeAnswer>((resolve) => {
+          answer = resolve
+        }),
+    })
+    const page = fakeDoc()
+    watchStanding({ link: home.link, doc: page.doc })
+    await home.link.load()
+    await settle()
+    expect(renewals(home)).toHaveLength(1)
+    page.show(false)
+    page.show(true)
+    page.show(false)
+    page.show(true)
+    await settle()
+    // The one out is the renewal those comings asked for.
+    expect(renewals(home)).toHaveLength(1)
+    answer({ status: 200, body: "{}" })
+    await settle()
+    expect(renewals(home)).toHaveLength(1)
+    page.show(false)
+    page.show(true)
+    await settle()
+    expect(renewals(home)).toHaveLength(2)
+  })
+
   it("waits out home's busy, then asks again on the next coming to the front", async () => {
     let busy = true
     const home = setup({
@@ -487,7 +517,13 @@ describe("RN1: a paired phone's session is renewed while the app is used", () =>
     page.show(true)
     await settle()
     expect(renewals(home)).toHaveLength(1)
-    home.pass(FIRST_HOLD_MS)
+    home.pass(FIRST_HOLD_MS - 1)
+    page.show(true)
+    await settle()
+    expect(renewals(home)).toHaveLength(1)
+    // Its timer held back, as a WebView in the background holds it: the
+    // hold ends on the link's own reading of the clock.
+    home.pass(1, false)
     page.show(true)
     await settle()
     expect(renewals(home)).toHaveLength(2)
