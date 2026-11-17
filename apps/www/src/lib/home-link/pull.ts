@@ -117,6 +117,7 @@ export function homeRefresher({
   }
   return {
     what: PULL_HOME.what,
+    before: lookAgain,
     checkAgain: async (): Promise<void> => {
       const ends = await Promise.all(pull().values())
       if (ends.some((end) => end !== null && !resynced(end))) {

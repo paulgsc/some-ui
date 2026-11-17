@@ -12,6 +12,8 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { Playback, Player } from "@some-ui/voice-capture"
+import type { Refresh } from "@soundbites/lib/refresh"
+import { checkAgainOf } from "@soundbites/lib/refresh"
 
 import type {
   ActAnswer,
@@ -23,6 +25,7 @@ import type {
   ReconcileState,
 } from "./model"
 import { INITIAL_RECONCILE, stepReconcile } from "./model"
+import { RECONCILE_WORDS } from "./words"
 
 /** Home, as the takes needing attention reach it. Every call resolves. */
 export type ReconcileHome = {
@@ -47,6 +50,8 @@ export type ReconcilePorts = {
   readonly deletes?:
     | ((listener: (ids: ReadonlyArray<string>) => void) => () => void)
     | undefined
+  /** The shell's refresh port: a pull reads the takes again (HERD2); absent, none. */
+  readonly refresh?: Refresh | undefined
 }
 
 export type ReconcileRuntime = {
@@ -133,22 +138,33 @@ export function createReconcile(ports: ReconcilePorts): ReconcileRuntime {
     }
   }
 
+  const subscribe = (listener: () => void): (() => void) => {
+    listeners.add(listener)
+    return (): void => {
+      listeners.delete(listener)
+    }
+  }
+
   return {
     getSnapshot: () => state,
-    subscribe(listener): () => void {
-      listeners.add(listener)
-      return (): void => {
-        listeners.delete(listener)
-      }
-    },
+    subscribe,
     dispatch: (intent) => send(intent),
     attach(): () => void {
       attached = true
       const unhear = ports.deletes?.((ids) => {
         if (attached) send({ type: "deleted", ids })
       })
+      const unpull = ports.refresh?.({
+        what: RECONCILE_WORDS.pullWhat,
+        checkAgain: checkAgainOf({
+          getSnapshot: () => state,
+          subscribe,
+          readAgain: () => send({ type: "readAgain" }),
+        }),
+      })
       send({ type: "entered" })
       return (): void => {
+        unpull?.()
         unhear?.()
         send({ type: "left" })
         attached = false

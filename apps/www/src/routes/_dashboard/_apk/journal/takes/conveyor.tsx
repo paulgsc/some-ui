@@ -9,6 +9,7 @@ import {
 import { audioPlayer } from "@some-ui/voice-capture"
 import { createFileRoute } from "@tanstack/react-router"
 
+import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import { takeAbout } from "@/lib/take-about"
 import { takeConveyor } from "@/lib/take-conveyor"
 import { TAKE_CONVEYOR_WORDS } from "@/lib/take-conveyor/words"
@@ -45,6 +46,7 @@ const ConveyorPage = (): JSX.Element => {
       ideas: () => keptIdeaStore().list() ?? [],
       videos: () => phoneProjectStore().list(),
     }),
+    refresh: screenRefreshers.register,
   }
   return (
     <StudioPage heading={WORDS.heading} back="takes">

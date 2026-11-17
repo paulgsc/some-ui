@@ -8,15 +8,25 @@
  *   (`lib/home-link/pull.ts`) out longer than a pull may take (`CHECK_MS`)
  *   no longer answers the pulls after it: the next pull asks afresh, so one
  *   that never settles leaves the page to refresh on the next pull, not on a
- *   restart; and home's overload (`503 service_overloaded` with a
- *   `Retry-After`) is home busy, waited out as a `429` is, never home away.
+ *   restart; a pull lets the home link's hold away go before the page or
+ *   any screen reads again (`before`); the screens that read home outside
+ *   the query cache (Takes on home, Needs your attention, Ideas on home)
+ *   read again on a pull while they show; a clip's frames home was away for
+ *   are asked again on the next visit; and home's overload (`503
+ *   service_overloaded` with a `Retry-After`) is home busy, waited out as a
+ *   `429` is, never home away.
  * - _Family:_ a check that settles before, at or after `CHECK_MS`, or never;
  *   pulls landing before and after that time; the late answer settling
- *   before or after the fresh one; home answering overload with or without a
+ *   before or after the fresh one; the page's reads and the screens' asked
+ *   with a hold away standing; each such screen shown, read away or read,
+ *   then pulled, and gone; a clip page visited again after an away read and
+ *   after a whole one; home answering overload with or without a
  *   `Retry-After`, with its code or another, or with a body not its JSON.
- * - _Proof:_ the "(HERD2)" cases here, in
- *   `lib/home-link/__tests__/pull.test.ts` and in
- *   `lib/home-link/__tests__/runtime.test.ts`.
+ * - _Proof:_ the "(HERD2)" cases here, in `./reads.test.ts`,
+ *   `lib/home-link/__tests__/pull.test.ts`,
+ *   `lib/home-link/__tests__/runtime.test.ts` and
+ *   `lib/studio-clips/__tests__/home.test.ts`; in `@some-ui/soundbites`,
+ *   `lib/__tests__/refresh.test.ts` and `lib/library/__tests__/runtime.test.ts`.
  * - _Tolerance:_ a check asked afresh may run beside the one still out; a
  *   refresher whose own runtime dedupes (the home pull's lanes, HERD1) runs
  *   once, and any other twice at most.

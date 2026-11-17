@@ -19,6 +19,12 @@ export type Refresher = {
   readonly what: string
   /** Reads it again: resolves once it came back, rejects if it could not. */
   readonly checkAgain: () => Promise<void>
+  /**
+   * What a pull does first, before the page or any screen reads again: the
+   * home link lets its hold away go, so no read of the pull finds it
+   * (HERD2).
+   */
+  readonly before?: () => void
 }
 
 export type Refreshers = {
@@ -39,6 +45,8 @@ export type Refreshers = {
    * it (HERD2): the next is asked afresh, and the late answer is dropped.
    */
   readonly checkAll: () => Promise<ReadonlyArray<string>>
+  /** Runs every registered refresher's `before`, at once: a pull's first step. */
+  readonly prepare: () => void
 }
 
 type Entry = {
@@ -113,7 +121,11 @@ export function createRefreshers(
       answers.filter((what): what is string => what !== null)
     )
 
-  return { register, checkAll }
+  const prepare = (): void => {
+    for (const { refresher } of entries.values()) refresher.before?.()
+  }
+
+  return { register, checkAll, prepare }
 }
 
 /**
