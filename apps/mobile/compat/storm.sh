@@ -49,25 +49,37 @@ phases=()
 fail() { echo "$1" >> "$out/failures.txt"; }
 fail_refresh() { echo "$1" >> "$out/refresh.txt"; }
 
+# lanes_wait <pull-at-ms>: waits up to 2 min for lane-done.mjs to say the
+# run read every route again, and prints what it said; its exit code is
+# lane-done's (0 done, 1 late, 3 could not check), or 2 for not in time.
 # lanes_read <pull-at-ms> <phase>: waits up to 2 min for the lanes' run the
 # pull joined to read every route the single pull read again, within one
 # pace per request (lane-done.mjs, CS1), and fails the refresh if it does
 # not. The pull's own line is not judged: a joined run may send its queued
 # writes first (HERD's owner on #3134), and how the pull says so is #3140.
+lanes_wait() {
+  local pull_at=$1 said="" rc=2
+  for _ in $(seq 1 120); do
+    if curl -sf "$control/all" > "$out/all-now.json"; then
+      # set -e: lane-done.mjs exits 1, 2 and 3 by design, so its code is kept.
+      said=$(node "$here/lane-done.mjs" "$out/all-now.json" "$out/stub-single.json" "$pull_at" "$budget") && rc=0 || rc=$?
+      [ "$rc" = 2 ] || break
+    fi
+    sleep 1
+  done
+  echo "$said"
+  return "$rc"
+}
+
 lanes_read() {
   local pull_at=$1 name=$2 said rc
-  for _ in $(seq 1 120); do
-    curl -sf "$control/all" > "$out/all-now.json" || true
-    # set -e: lane-done.mjs exits 1 and 2 by design, so its code is kept.
-    said=$(node "$here/lane-done.mjs" "$out/all-now.json" "$out/stub-single.json" "$pull_at" "$budget") && rc=0 || rc=$?
-    case $rc in
-      0) return 0 ;;
-      1) fail_refresh "$name: the lanes' run the pull joined was slower than its pace: $said" && return 1 ;;
-      2) sleep 1 ;;
-      *) fail_refresh "$name: the lanes' run could not be checked (lane-done.mjs exited $rc)" && return 1 ;;
-    esac
-  done
-  fail_refresh "$name: the lanes' run the pull joined had not read again 2 min after the pull: $said"
+  said=$(lanes_wait "$pull_at") && rc=0 || rc=$?
+  case $rc in
+    0) return 0 ;;
+    1) fail_refresh "$name: the lanes' run the pull joined was slower than its pace: $said" ;;
+    2) fail_refresh "$name: the lanes' run the pull joined had not read again 2 min after the pull: $said" ;;
+    *) fail_refresh "$name: the lanes' run could not be checked: $said" ;;
+  esac
   return 1
 }
 
@@ -265,15 +277,21 @@ busy() {
 # than two single pulls, no read more than twice what the single pull
 # asked, and no write twice (HERD's owner on #3134).
 pull_then_back() {
-  local before
+  local before pull_at said rc
   curl -sf -X POST "$control/slow?ms=$(budget_of .joinedSlowMs)" > /dev/null
   before=$(native_count "$PULL_CHECKED")
+  pull_at=$(date +%s%3N)
   pull_down
   sleep 1
   adb shell input keyevent 3
   sleep 1
   adb shell am start -W -n "$pkg/.WingPractice" > /dev/null
   pull_end "$before"
+  # Count only once the run has finished, still slowed, so none of it (nor
+  # a second run) lands in the next phase (review of #3139).
+  said=$(lanes_wait "$pull_at") && rc=0 || rc=$?
+  [ "$rc" = 0 ] || [ "$rc" = 1 ] ||
+    fail "joined: the run the pull and the app coming back joined did not finish reading: $said"
   curl -sf -X POST "$control/calm" > /dev/null || true
 }
 
@@ -341,6 +359,14 @@ console.log(Object.entries(joined).filter(over).map(([k, n]) => `${k} ×${n}`).j
 ' "$out/stub-joined.json" "$out/stub-single.json")
 if [ -n "$twice" ]; then
   fail "joined: the app coming back during a run repeated a read or a write ($twice): it started a second run (stub-joined.json)"
+fi
+# A second run sends each read once, which the caps above allow; only a
+# write sent twice shows it, so a phase that drained no write checked nothing.
+if ! node -e '
+const { byRoute } = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))
+process.exitCode = Object.keys(byRoute).some((k) => !k.startsWith("GET ")) ? 0 : 1
+' "$out/stub-joined.json"; then
+  fail "joined: the run drained no write, so a second run could not be seen (stub-joined.json)"
 fi
 phase burst burst
 phase busy busy

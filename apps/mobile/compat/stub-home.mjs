@@ -143,9 +143,10 @@ const control = createServer((req, res) => {
     busySeconds = Math.max(1, Number(url.searchParams.get("seconds")) || 30)
     reply({ busySeconds })
   } else if (req.method === "POST" && url.pathname === "/slow") {
-    // Bounded, so no caller can hold an answer longer than a phase lasts.
+    // Bounded (clamped, never dropped), so no caller can hold an answer
+    // longer than a phase lasts.
     const ms = Number(url.searchParams.get("ms")) || 0
-    slowMs = ms > 0 && ms <= MAX_SLOW_MS ? ms : 0
+    slowMs = ms > MAX_SLOW_MS ? MAX_SLOW_MS : ms > 0 ? ms : 0
     reply({ slowMs })
   } else if (req.method === "POST" && url.pathname === "/calm") {
     busySeconds = 0

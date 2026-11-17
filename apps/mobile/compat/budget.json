@@ -15,5 +15,5 @@
     "pulls": 5,
     "gapSeconds": 1
   },
-  "joinedSlowMs": 8000
+  "joinedSlowMs": 6000
 }

@@ -14,61 +14,77 @@
 // pull until then.
 //
 // Prints one line and exits: 0 "done", 1 "late: ..." (finished, but slower
-// than the pace allows), 2 "pending: ..." (not finished yet).
+// than the pace allows), 2 "pending: ..." (not finished yet), 3 "error: ..."
+// (no log, single pull or budget to read), never 1, so a check that could
+// not run is never told as the app's pace.
 import { readFileSync } from "node:fs"
 
-const [allFile, singleFile, pullAtArg, budgetFile] = process.argv.slice(2)
-const pullAt = Number(pullAtArg)
-if (!allFile || !singleFile || !budgetFile || !Number.isFinite(pullAt)) {
-  throw new Error(
-    "usage: lane-done.mjs <all.json> <single.json> <pull-at-ms> <budget.json>"
-  )
-}
-const { requests } = JSON.parse(readFileSync(allFile, "utf8"))
-const { byRoute } = JSON.parse(readFileSync(singleFile, "utf8"))
-const budget = JSON.parse(readFileSync(budgetFile, "utf8"))
-const { sustainedMs } = budget
-const toleranceMs = budget.afterBusy?.toleranceMs
-const wanted = Object.keys(byRoute ?? {}).filter((key) =>
-  key.startsWith("GET ")
-)
-// An empty or malformed input would read as finished at once.
-if (
-  !Array.isArray(requests) ||
-  wanted.length === 0 ||
-  typeof sustainedMs !== "number" ||
-  typeof toleranceMs !== "number"
-) {
-  throw new Error(
-    "lane-done.mjs: no request log, single pull or budget to read"
-  )
-}
-
-const after = requests.filter((r) => r.at >= pullAt).sort((a, b) => a.at - b.at)
-const missing = new Set(wanted)
-let finished = -1
-for (let i = 0; i < after.length && missing.size > 0; i += 1) {
-  missing.delete(after[i].key)
-  if (missing.size === 0) finished = i
-}
-
-if (finished < 0) {
-  process.stdout.write(
-    `pending: not read again yet: ${[...missing].join(", ")}\n`
-  )
-  process.exitCode = 2
-} else {
-  const took = after[finished].at - pullAt
-  const allowed = (finished + 1) * (sustainedMs + toleranceMs)
-  if (took > allowed) {
-    process.stdout.write(
-      `late: read again ${took} ms after the pull, over ${allowed} ms for ${finished + 1} requests at one pace each\n`
+function main() {
+  const [allFile, singleFile, pullAtArg, budgetFile] = process.argv.slice(2)
+  const pullAt = Number(pullAtArg)
+  if (!allFile || !singleFile || !budgetFile || !Number.isFinite(pullAt)) {
+    throw new Error(
+      "usage: lane-done.mjs <all.json> <single.json> <pull-at-ms> <budget.json>"
     )
-    process.exitCode = 1
-  } else {
-    process.stdout.write(
-      `done: read again ${took} ms after the pull, ${finished + 1} requests\n`
-    )
-    process.exitCode = 0
   }
+  const { requests } = JSON.parse(readFileSync(allFile, "utf8"))
+  const { byRoute } = JSON.parse(readFileSync(singleFile, "utf8"))
+  const budget = JSON.parse(readFileSync(budgetFile, "utf8"))
+  const { sustainedMs } = budget
+  const toleranceMs = budget.afterBusy?.toleranceMs
+  const wanted = Object.keys(byRoute ?? {}).filter((key) =>
+    key.startsWith("GET ")
+  )
+  // An empty or malformed input would read as finished at once.
+  if (
+    !Array.isArray(requests) ||
+    wanted.length === 0 ||
+    typeof sustainedMs !== "number" ||
+    typeof toleranceMs !== "number"
+  ) {
+    throw new Error(
+      "lane-done.mjs: no request log, single pull or budget to read"
+    )
+  }
+
+  const after = requests
+    .filter((r) => r.at >= pullAt)
+    .sort((a, b) => a.at - b.at)
+  const missing = new Set(wanted)
+  let finished = -1
+  for (let i = 0; i < after.length && missing.size > 0; i += 1) {
+    missing.delete(after[i].key)
+    if (missing.size === 0) finished = i
+  }
+
+  if (finished < 0) {
+    process.stdout.write(
+      `pending: not read again yet: ${[...missing].join(", ")}\n`
+    )
+    process.exitCode = 2
+  } else {
+    const took = after[finished].at - pullAt
+    const allowed = (finished + 1) * (sustainedMs + toleranceMs)
+    if (took > allowed) {
+      process.stdout.write(
+        `late: read again ${took} ms after the pull, over ${allowed} ms for ${finished + 1} requests at one pace each\n`
+      )
+      process.exitCode = 1
+    } else {
+      process.stdout.write(
+        `done: read again ${took} ms after the pull, ${finished + 1} requests\n`
+      )
+      process.exitCode = 0
+    }
+  }
+}
+
+try {
+  main()
+} catch (error) {
+  // Ignored: reported as "could not check" (3), never as the app's pace (1).
+  process.stdout.write(
+    `error: ${error instanceof Error ? error.message : String(error)}\n`
+  )
+  process.exitCode = 3
 }

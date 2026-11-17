@@ -94,11 +94,7 @@ const pacedAt = []
 for (const turned of turnedAway) {
   const until = turned.at + turned.retryAfter * 1000
   const after = sent.filter(
-    (r) =>
-      r !== turned &&
-      r.at >= turned.at &&
-      r.at < until + pacedForMs &&
-      !exempt.has(r.key)
+    (r) => r.at > turned.at && r.at < until + pacedForMs && !exempt.has(r.key)
   )
   after.forEach((r, n) => {
     if (r.at <= turned.at + graceMs) return
