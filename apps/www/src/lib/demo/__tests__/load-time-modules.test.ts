@@ -11,13 +11,33 @@ import { LOAD_TIME_MODULES, moduleSideEffects } from "@/build.treeshake"
 import { describe, expect, it } from "vitest"
 
 const WWW = join(import.meta.dirname, "../../../..")
+/** The workspace packages www bundles, which the same setting shakes. */
+const PACKAGES = join(WWW, "../../packages")
 
 function sources(dir: string): Array<string> {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const path = join(dir, entry.name)
-    if (entry.isDirectory()) return sources(path)
-    return /\.(ts|tsx)$/.test(entry.name) ? [path] : []
+    if (entry.isDirectory()) {
+      // Tests and their setup run in vitest, never in a bundle.
+      return /^(node_modules|dist|__tests__|tests|vitest)$/.test(entry.name)
+        ? []
+        : sources(path)
+    }
+    return /\.(ts|tsx|js|mjs)$/.test(entry.name) &&
+      !/\.(test|spec)\.|\.config\.|^vitest\.setup\./.test(entry.name)
+      ? [path]
+      : []
   })
+}
+
+/** Every bare import that is not a stylesheet, in the files under `dir`. */
+function bareImports(dir: string): Array<{ file: string; specifier: string }> {
+  return sources(dir).flatMap((file) =>
+    [...readFileSync(file, "utf8").matchAll(/^\s*import ["']([^"']+)["']/gm)]
+      .map((m) => m[1])
+      .filter((s) => !s.endsWith(".css"))
+      .map((s) => ({ file: relative(WWW, file), specifier: s }))
+  )
 }
 
 /** `@/lib/x` -> `src/lib/x.ts` or `src/lib/x/index.ts`, whichever exists. */
@@ -28,14 +48,10 @@ function resolveAlias(specifier: string): ReadonlyArray<string> {
 
 describe("modules that act on load", () => {
   it("lists every module www's source imports bare", () => {
-    const files = sources(join(WWW, "src"))
-    expect(files.map((f) => relative(WWW, f))).toContain("src/main.tsx")
-    const bare = files.flatMap((file) =>
-      [...readFileSync(file, "utf8").matchAll(/^import "([^"]+)"/gm)]
-        .map((m) => m[1])
-        .filter((s) => !s.endsWith(".css"))
-        .map((s) => ({ file: relative(WWW, file), specifier: s }))
+    expect(sources(join(WWW, "src")).map((f) => relative(WWW, f))).toContain(
+      "src/main.tsx"
     )
+    const bare = bareImports(join(WWW, "src"))
     expect(bare.length).toBeGreaterThan(0)
     for (const { file, specifier } of bare) {
       expect(specifier, `${file}: a bare import goes through "@/"`).toMatch(
@@ -46,6 +62,13 @@ describe("modules that act on load", () => {
         `${file} imports ${specifier} bare: list it in build.treeshake.ts`
       ).toBe(true)
     }
+  })
+
+  it("finds no bare import in the packages www bundles, which nothing would keep", () => {
+    // The setting reaches every module in the bundle, not only www's own:
+    // a package's bare import would be dropped the same way.
+    expect(sources(PACKAGES).length).toBeGreaterThan(100)
+    expect(bareImports(PACKAGES)).toEqual([])
   })
 
   it("keeps a listed module and no other", () => {
