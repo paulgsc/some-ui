@@ -95,8 +95,6 @@ export function stepAway(away: Away | null, event: AwayEvent): Away | null {
     }
     case "lookAgain": {
       if (away === null) return away
-      // A pull after a pull keeps the stretch's tries: it does not start
-      // the backoff over (HERD1). A new network does.
       const tries = event.fresh ? 0 : away.tries
       return away.heldUntil === null && away.tries === tries
         ? away

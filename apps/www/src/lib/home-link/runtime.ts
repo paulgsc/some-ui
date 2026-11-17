@@ -103,9 +103,8 @@ const HOME_BUSY_MAX_MS = 600_000
  * this phone can read (a date, say).
  */
 export function homeBusyFor(retryAfter: string | undefined): number {
-  const text = retryAfter?.trim() ?? ""
-  if (!/^\d+$/.test(text)) return HOME_BUSY_MS
-  const ms = Number(text) * 1_000
+  const ms = retryAfterMs(retryAfter)
+  if (ms === null) return HOME_BUSY_MS
   return Math.min(Math.max(ms, HOME_BUSY_MIN_MS), HOME_BUSY_MAX_MS)
 }
 
@@ -262,8 +261,7 @@ export type HomeLink = {
   stop: () => void
   /**
    * Ends a hold away from home (AW1), so the next ask goes at once: the
-   * person pulled to check again. The stretch's tries stay, so the next
-   * silence holds longer (HERD1); only a network change starts them over.
+   * person pulled to check again (`AwayEvent`'s `lookAgain`).
    */
   lookAgain: () => void
   /**
@@ -321,9 +319,10 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     return false
   }
   const heardBusy = (answer: HomeAnswer): void => {
-    // Home's bucket is empty: nothing is left of the pace's burst, and its
-    // wait is how long one request takes to come back (HERD1).
-    pace.spend(retryAfterMs(answer.retryAfter))
+    // One lesson a busy stretch: requests already out when it began come
+    // back busy too, and say nothing more of home's rate.
+    const learning = !homeBusy(state, ports.now())
+    pace.spend(learning ? retryAfterMs(answer.retryAfter) : null)
     dispatch({
       type: "homeBusy",
       until: ports.now() + homeBusyFor(answer.retryAfter),

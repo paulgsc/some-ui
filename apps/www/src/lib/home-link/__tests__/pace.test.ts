@@ -2,9 +2,10 @@
  * The one pace every request to home takes a turn on (AD3, HERD1, `../pace`).
  */
 import { fakeClock } from "@/test-support/fake-clock"
+import { inMemoryStorage } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
-import type { PaceKept, PaceMemory } from "@/lib/home-link/pace"
+import type { PaceMemory } from "@/lib/home-link/pace"
 import {
   BURST,
   createPace,
@@ -16,15 +17,10 @@ const settle = (): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, 0))
 
 /** A page's store, kept between the pages a test opens on it. */
-function memory(): PaceMemory & { kept: PaceKept | null } {
-  const box: PaceMemory & { kept: PaceKept | null } = {
-    kept: null,
-    read: () => box.kept,
-    write: (kept) => {
-      box.kept = kept
-    },
-  }
-  return box
+function memory(): PaceMemory {
+  const kept = storedPace(inMemoryStorage())
+  if (kept === null) throw new Error("a store was handed in")
+  return kept
 }
 
 describe("the pace", () => {
@@ -159,7 +155,7 @@ describe("the pace", () => {
   it("trusts nothing odd kept: a clock set back, more turns than the burst, or no number", async () => {
     const clock = fakeClock(1_000)
     const odd = memory()
-    odd.kept = { turns: 500, at: 9_999_999 }
+    odd.write({ turns: 500, at: 9_999_999 })
     const pace = createPace(clock, odd)
     let went = 0
     void Promise.all(
@@ -172,18 +168,12 @@ describe("the pace", () => {
     await settle()
     expect(went).toBe(BURST)
 
-    const store = new Map<string, string>()
-    const storage: Pick<Storage, "getItem" | "setItem"> = {
-      getItem: (key) => store.get(key) ?? null,
-      setItem: (key, value) => {
-        store.set(key, value)
-      },
-    }
+    const storage = inMemoryStorage()
     const stored = storedPace(storage)
     expect(stored?.read()).toBeNull()
-    store.set("home-link:pace", "{not json")
+    storage.setItem("home-link:pace", "{not json")
     expect(stored?.read()).toBeNull()
-    store.set("home-link:pace", JSON.stringify({ turns: "3", at: 1 }))
+    storage.setItem("home-link:pace", JSON.stringify({ turns: "3", at: 1 }))
     expect(stored?.read()).toBeNull()
     stored?.write({ turns: 3, at: 1 })
     expect(stored?.read()).toEqual({ turns: 3, at: 1 })
@@ -241,5 +231,40 @@ describe("the pace", () => {
     )
     await settle()
     expect(whole).toBe(BURST)
+  })
+
+  it("learns nothing from a wait shorter than one turn of the pace: home's bucket emptied by a burst, not a slower refill (HERD1)", async () => {
+    const clock = fakeClock()
+    const pace = createPace(clock)
+    pace.spend(1_000)
+    let went = 0
+    const two = [0, 1].map(() =>
+      pace.turn(false).then(() => {
+        went += 1
+      })
+    )
+    clock.pass(MS_PER_REQUEST)
+    await settle()
+    expect(went).toBe(1)
+    clock.pass(MS_PER_REQUEST)
+    await Promise.all(two)
+    expect(went).toBe(2)
+  })
+
+  it("keeps a learned pace kept with a clock since set back, as learned just now (HERD1)", async () => {
+    const kept = memory()
+    kept.write({ turns: 0, at: 0, learned: { ms: 8_000, at: 9_999_999 } })
+    const clock = fakeClock(1_000)
+    const pace = createPace(clock, kept)
+    let went = false
+    const turn = pace.turn(false).then(() => {
+      went = true
+    })
+    clock.pass(MS_PER_REQUEST)
+    await settle()
+    expect(went).toBe(false)
+    clock.pass(8_000)
+    await turn
+    expect(went).toBe(true)
   })
 })

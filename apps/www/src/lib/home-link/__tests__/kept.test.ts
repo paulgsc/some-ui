@@ -160,23 +160,6 @@ describe("a record kept on home", () => {
 })
 
 describe("a pull's run (PULL3)", () => {
-  it("asked while a run is under way, joins it: answered by that run, and no second run is asked (HERD1)", async () => {
-    let runs = 0
-    let pulled: Promise<unknown> | null = null
-    let home: Kept | null = null
-    home = homeWith({
-      exchange: () => {
-        runs += 1
-        pulled ??= home?.pull() ?? null
-        return Promise.resolve({ kind: "failed", why: "full" })
-      },
-    })
-    home.want()
-    await settled(home)
-    await expect(pulled).resolves.toEqual({ kind: "failed", why: "full" })
-    expect(runs).toBe(1)
-  })
-
   it("asked while a run is under way with another wanted after it, is answered by the run under way", async () => {
     const ends: Array<HomeExchanged> = [
       { kind: "synced" },
@@ -202,7 +185,7 @@ describe("a pull's run (PULL3)", () => {
     expect(runs).toBe(2)
   })
 
-  it("asked while a run is under way that none follows, is answered by that run", async () => {
+  it("asked while a run is under way that none follows, joins it: answered by that run, and no second run is asked (HERD1)", async () => {
     let runs = 0
     let pulled: Promise<unknown> | null = null
     let home: Kept | null = null

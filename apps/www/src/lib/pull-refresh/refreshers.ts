@@ -60,7 +60,7 @@ export function createRefreshers(): Refreshers {
       if (!held) return
       held = false
       entry.holds -= 1
-      if (entry.holds > 0 || !live(entry)) return
+      if (entry.holds > 0) return
       entries.delete(refresher)
       dropped.forEach((wake) => wake())
     }

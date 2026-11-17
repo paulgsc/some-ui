@@ -6,7 +6,7 @@
  */
 import { fakeClock } from "@/test-support/fake-clock"
 import type { HomeAnswer } from "@some-ui/core-utils"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import type { HomeRequest } from "@/lib/device-backend/native-http"
 import { BURST } from "@/lib/home-link/pace"
@@ -423,6 +423,44 @@ describe("the home link", () => {
     expect(home.sent).toHaveLength(1)
     home.pass(1)
     expect(home.link.getSnapshot().homeBusyUntil).toBeNull()
+  })
+
+  it("learns home's rate once a busy stretch: requests already out that come back busy too teach nothing more (HERD1)", async () => {
+    const clock = fakeClock()
+    const out: Array<(answer: HomeAnswer) => void> = []
+    const link = createHomeLink({
+      credential: {
+        read: () =>
+          Promise.resolve({
+            record: JSON.stringify({ base: HOME.base, token: "t" }),
+            lost: false,
+          }),
+        write: () => Promise.resolve(),
+        clear: () => Promise.resolve(),
+      },
+      // Every request waits until the test answers it.
+      request: () => new Promise((resolve) => out.push(resolve)),
+      onHidden: () => (): void => undefined,
+      now: clock.now,
+      after: clock.after,
+    })
+    await link.load()
+    const reads = link.keep((send) =>
+      Promise.all([0, 1, 2].map(() => send("GET", "/aph")))
+    )
+    await vi.waitFor(() => expect(out).toHaveLength(3))
+    for (const answer of out) answer({ status: 429, body: "", retryAfter: "6" })
+    await reads
+    clock.pass(6_000)
+    const ask = (): Promise<unknown> => link.keep((send) => send("GET", "/aph"))
+    const first = ask()
+    await vi.waitFor(() => expect(out).toHaveLength(4))
+    out[3]?.({ status: 200, body: "{}" })
+    await first
+    // Learned once (2 s + 2 s), not doubled three times (16 s).
+    void ask()
+    clock.pass(4_000)
+    await vi.waitFor(() => expect(out).toHaveLength(5))
   })
 
   it("ends home's busy once its time has passed, even when the timer is held back", async () => {

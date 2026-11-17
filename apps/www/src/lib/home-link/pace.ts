@@ -25,7 +25,8 @@
  * screen's timed read comes slower (an idea answer's words, every 5 s while
  * its screen shows).
  */
-import { isRecord } from "@some-ui/core-utils"
+import type { KeyedStorage } from "@some-ui/core-utils"
+import { isRecord, jsonOf, writeRecord } from "@some-ui/core-utils"
 
 import type { HomeLinkPorts } from "./runtime"
 
@@ -59,8 +60,8 @@ export type Pace = {
    * Home said busy (`429`): its bucket is empty, so nothing is left of the
    * burst; and `waitMs`, home's `Retry-After` when it sent one this phone
    * can read, is how far short of home's refill the pace fell, which it adds
-   * between requests from now on: at most doubling the pace each time, and
-   * at most `SLOWEST_MS` apart.
+   * between requests from now on, when it is at least one turn of the pace:
+   * at most doubling the pace each time, and at most `SLOWEST_MS` apart.
    */
   readonly spend: (waitMs: number | null) => void
 }
@@ -69,6 +70,7 @@ export type Pace = {
 function trusted(kept: PaceKept | null, now: number): PaceKept | null {
   if (kept === null) return null
   const { turns, at, learned } = kept
+  // JSON reads `1e400` as Infinity.
   if (!Number.isFinite(turns) || !Number.isFinite(at)) return null
   // A clock set back reads as kept just now.
   const trimmed = {
@@ -77,9 +79,11 @@ function trusted(kept: PaceKept | null, now: number): PaceKept | null {
   }
   return learned !== undefined &&
     Number.isFinite(learned.ms) &&
-    learned.at <= now &&
-    now - learned.at < LEARNED_MS
-    ? { ...trimmed, learned: { ms: paceOf(learned.ms), at: learned.at } }
+    Number.isFinite(learned.at)
+    ? {
+        ...trimmed,
+        learned: { ms: paceOf(learned.ms), at: Math.min(learned.at, now) },
+      }
     : trimmed
 }
 
@@ -143,11 +147,10 @@ export function createPace(
     spend: (waitMs): void => {
       turns = 0
       at = clock.now()
-      if (waitMs !== null) {
-        // The limiter's wait is what the pace fell short by: home gives one
-        // back each (the pace now + that wait), or slower. At most double
-        // each time: a wait longer than one request's (another of home's
-        // answers, a clock off) backs off, never jumps to the slowest.
+      // A wait shorter than one turn of the pace is home's bucket emptied by
+      // a burst (this phone's, or another on its address), not a refill
+      // slower than the pace: nothing to learn.
+      if (waitMs !== null && waitMs >= MS_PER_REQUEST) {
         const now = every()
         const ms = paceOf(now + Math.min(waitMs, now))
         learned = ms > MS_PER_REQUEST ? { ms, at } : null
@@ -162,37 +165,27 @@ export function createPace(
   }
 }
 
-/** The key the pace is kept under between page loads. */
 const PACE_KEY = "home-link:pace"
 
 /** The pace kept in `storage` (the phone's own); null without one. */
-export function storedPace(
-  storage: Pick<Storage, "getItem" | "setItem"> | null
-): PaceMemory | null {
+export function storedPace(storage: KeyedStorage | null): PaceMemory | null {
   if (storage === null) return null
   return {
     read: (): PaceKept | null => {
-      try {
-        const parsed: unknown = JSON.parse(storage.getItem(PACE_KEY) ?? "null")
-        if (!isRecord(parsed)) return null
-        const { turns, at, learned } = parsed
-        if (typeof turns !== "number" || typeof at !== "number") return null
-        return isRecord(learned) &&
-          typeof learned.ms === "number" &&
-          typeof learned.at === "number"
-          ? { turns, at, learned: { ms: learned.ms, at: learned.at } }
-          : { turns, at }
-      } catch {
-        return null
-      }
+      const parsed = jsonOf(storage.getItem(PACE_KEY) ?? "null")
+      if (!isRecord(parsed)) return null
+      const { turns, at, learned } = parsed
+      if (typeof turns !== "number" || typeof at !== "number") return null
+      return isRecord(learned) &&
+        typeof learned.ms === "number" &&
+        typeof learned.at === "number"
+        ? { turns, at, learned: { ms: learned.ms, at: learned.at } }
+        : { turns, at }
     },
+    // A store that refuses it keeps this page's pace only: a reload then
+    // starts it whole (HERD1's Tolerance).
     write: (kept): void => {
-      try {
-        storage.setItem(PACE_KEY, JSON.stringify(kept))
-      } catch {
-        // Ignored: a full or refused store keeps this page's pace only, and
-        // a reload then starts it whole, as before HERD1 (its Tolerance).
-      }
+      writeRecord(storage, PACE_KEY, JSON.stringify(kept), jsonOf)
     },
   }
 }

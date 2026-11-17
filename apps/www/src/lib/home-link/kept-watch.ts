@@ -31,10 +31,7 @@ export function askKept(home: Kept, doc: Document): void {
   if (mayAsk(doc)) home.want()
 }
 
-/**
- * As `askKept`, joining a run under way rather than asking one after it
- * (HERD1): for a moment that changed nothing on this phone.
- */
+/** As `askKept`, through `Kept.nudge`: for a moment that changed nothing on this phone. */
 function nudgeKept(home: Kept, doc: Document): void {
   if (mayAsk(doc)) home.nudge()
 }
