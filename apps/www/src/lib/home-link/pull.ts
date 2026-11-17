@@ -27,7 +27,7 @@ import type { KeptRun } from "./kept-model"
 import { resynced } from "./kept-model"
 import type { Kept } from "./kept-runtime"
 import type { Front } from "./kept-watch"
-import { pullKept } from "./kept-watch"
+import { mayAsk, pullKept } from "./kept-watch"
 import { drainFree } from "./model"
 import { PULL_HOME } from "./words"
 
@@ -78,12 +78,30 @@ export function homeRefresher({
   lookAgain = (): void => homeLink().lookAgain(),
   now = LINK_CLOCK.now,
 }: HomePullPorts): HomeRefresher {
-  const pullLane = async (lane: Kept): Promise<KeptRun | null> => {
+  /**
+   * The run that already answers a pull sent at `since`: the lane's last,
+   * if it got in step with home after the pull went out and none runs now
+   * (HERD4). The watch reads a lane the pull hasn't reached yet as the
+   * drain frees, and that run joins the pull as one under way would (HERD1).
+   */
+  const answered = (lane: Kept, since: number): KeptRun | null => {
+    const { running, last } = lane.getSnapshot()
+    return !running && last?.kind === "synced" && last.at > since ? last : null
+  }
+  const pullLane = async (
+    lane: Kept,
+    since: number
+  ): Promise<KeptRun | null> => {
+    // A pull that could ask nothing (hidden, unpaired) is answered by nothing.
+    if (!mayAsk(doc)) return null
+    const already = answered(lane, since)
+    if (already !== null) return already
     const end = await pullKept(lane, doc)
     if (end?.kind !== "busy") return end
     await free()
     // Its screens may have gone while it waited (aph's).
-    return watched().has(lane) ? pullKept(lane, doc) : null
+    if (!watched().has(lane)) return null
+    return answered(lane, since) ?? pullKept(lane, doc)
   }
   /**
    * Each lane's end in the pull still out, and when it went out; null once
@@ -98,17 +116,20 @@ export function homeRefresher({
   const pull = (): ReadonlyMap<Kept, Promise<KeptRun | null>> => {
     if (out !== null && now() - out.at < CHECK_MS) return out.ends
     lookAgain()
+    const since = now()
     const ends = new Map<Kept, Promise<KeptRun | null>>()
     let turn: Promise<void> = Promise.resolve()
     for (const lane of Array.from(watched())) {
-      const end = turn.then(() => (watched().has(lane) ? pullLane(lane) : null))
+      const end = turn.then(() =>
+        watched().has(lane) ? pullLane(lane, since) : null
+      )
       ends.set(lane, end)
       turn = end.then(
         () => undefined,
         () => undefined
       )
     }
-    const sent = { ends, at: now() }
+    const sent = { ends, at: since }
     out = sent
     void turn.then(() => {
       if (out === sent) out = null
