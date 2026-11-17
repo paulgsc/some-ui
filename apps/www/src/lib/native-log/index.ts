@@ -14,10 +14,33 @@ const NativeLog = registerPlugin<{
   write: (options: { line: string; level: Level }) => Promise<void>
 }>("NativeLog")
 
-/** A failure's cause as one line: its type and message, never an object dump. */
+/** How many causes deep a line goes; a cycle or a long chain stops there. */
+const CAUSE_DEPTH = 4
+
+/**
+ * A failure's cause as one line: each error's type and message, the cause
+ * it wraps after ` <- `, never an object dump. The innermost is often the
+ * platform's own words, such as Android's "failed to connect to /<home>
+ * from /<this phone>", which say which network the phone was on.
+ *
+ * NL1 (#3097): a reported failure's line carries every message in its
+ * cause chain, to `CAUSE_DEPTH`, whichever reporter reports it (a port, or
+ * the home link's one report of a stretch away). Held by `./index.test.ts`.
+ */
 function describeCause(cause: unknown): string {
-  if (cause instanceof Error) return `${cause.name}: ${cause.message}`
-  return String(cause)
+  const parts: Array<string> = []
+  let at: unknown = cause
+  for (let depth = 0; depth < CAUSE_DEPTH; depth += 1) {
+    if (!(at instanceof Error)) {
+      if (depth === 0 || (at !== undefined && at !== null)) {
+        parts.push(String(at))
+      }
+      break
+    }
+    parts.push(`${at.name}: ${at.message}`)
+    at = at.cause
+  }
+  return parts.join(" <- ")
 }
 
 /** The line a reported failure becomes; what the launch test greps for. */

@@ -6,6 +6,8 @@
 import { FOREIGN_FAILURE_TAG, reportFailure } from "@some-ui/intent-kit"
 import { describe, expect, it, vi } from "vitest"
 
+import { HomeNoAnswerError } from "@/lib/device-backend/native-http/no-answer"
+
 import { failureLine, installNativeLog } from "./index"
 
 const write = vi.hoisted(() => vi.fn(() => Promise.resolve()))
@@ -33,5 +35,43 @@ describe("the native log", () => {
     expect(failureLine(failure)).toBe(line)
     expect(write).toHaveBeenCalledTimes(1)
     expect(write).toHaveBeenCalledWith({ line, level: "error" })
+  })
+
+  it("NL1: keeps every cause a failure wraps, so home's silence says which network the phone was on (#3097)", () => {
+    const android = new Error(
+      "failed to connect to /192.168.1.10 (port 443) from /10.0.0.5 (port 51234) after 10000ms"
+    )
+    const silence = new HomeNoAnswerError({
+      kind: "unreachable",
+      retryable: true,
+      summary: "Couldn't reach the home server.",
+      cause: android,
+    })
+    const line = failureLine({
+      port: "home server",
+      error: {
+        kind: "unreachable",
+        retryable: true,
+        summary: "Away from home: home didn't answer.",
+        cause: silence,
+      },
+    })
+    expect(line).toBe(
+      `${FOREIGN_FAILURE_TAG} [home server] unreachable: Away from home: home didn't answer. (HomeNoAnswerError: Couldn't reach the home server. <- Error: ${android.message})`
+    )
+    expect(line).toContain("from /10.0.0.5")
+  })
+
+  it("NL1: stops at a cycle or a long chain, and writes a cause that is no error as text", () => {
+    const loop = new Error("a")
+    loop.cause = loop
+    const line = failureLine({
+      ...failure,
+      error: { ...failure.error, cause: loop },
+    })
+    expect(line.match(/Error: a/g)).toHaveLength(4)
+    expect(
+      failureLine({ ...failure, error: { ...failure.error, cause: null } })
+    ).toMatch(/\(null\)$/)
   })
 })
