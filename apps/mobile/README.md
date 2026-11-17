@@ -474,8 +474,8 @@ API 31's WebView 91, while the bundle is built for Vite's default target
 (`webview-too-old.html`, #3117) in place of itself. A real phone on
 Android 7 to 9 gets Android System WebView from Play, at 111 or later
 (Android 7 tops out around 119), so such a level checks only that the
-update page shows and stays through every way in: the plain icon cold, each
-wing's icon and the shortcut warm, and a wing's icon cold (OWV1, in
+update page shows and stays through every way in, each cold and then warm:
+the plain icon, each wing's icon and the New idea shortcut (OWV1, in
 `compat/run-level.sh`; `old-webview.png`). Its Launch cell says "update page
 shown" or "blank", and the rest say "stock WebView <n> (needs ≥111)". The
 "Image's WebView" column says which each level ran. A level that cannot boot on GitHub's hosted runners shows as "not

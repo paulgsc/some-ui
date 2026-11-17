@@ -48,10 +48,10 @@ webview=$(adb shell dumpsys webviewupdate | tr -d '\r' \
   | grep -oE "Current WebView package \(name, version\): \([^)]*\)" \
   | grep -oE "[0-9][0-9.]+" | head -1 || true)
 # Some images (API 24) do not name it there; then the provider's own
-# version, read in the order Capacitor reads it below API 26
-# (Bridge.isMinimumWebViewInstalled: Chrome first).
+# version, read as Capacitor reads it below API 26
+# (Bridge.isMinimumWebViewInstalled: Chrome, then com.android.webview).
 if [ -z "$webview" ]; then
-  for provider in com.android.chrome com.google.android.webview com.android.webview; do
+  for provider in com.android.chrome com.android.webview; do
     webview=$(adb shell dumpsys package "$provider" | tr -d '\r' \
       | grep -oE "versionName=[0-9][0-9.]+" | head -1 | cut -d= -f2 || true)
     [ -n "$webview" ] && break
@@ -72,9 +72,8 @@ webview=${webview:-unknown}
 # shortcut) x the start (cold, warm) x how Capacitor reads the WebView's
 # version (API 26 and later from the current WebView package; 24 and 25
 # from Chrome's). Proof: this block, run at a level of each version path
-# (31 and 24): a cold start by the plain icon, each wing's icon and the
-# shortcut warm, then a cold start by a wing's icon, each found by the
-# page's title in the accessibility tree, with a screenshot of the first.
+# (31 and 24): every entry cold, then every entry warm, each found by the
+# page's title in the accessibility tree, with a screenshot.
 MIN_WEBVIEW=111
 OLD_WEBVIEW_TITLE="This phone needs a newer WebView"
 major=${webview%%.*}
@@ -88,23 +87,29 @@ if [[ "$major" =~ ^[0-9]+$ ]] && [ "$major" -lt "$MIN_WEBVIEW" ]; then
       missed+=("$1")
   }
   adb install -r "$apks/launch.apk" > /dev/null || missed+=("install")
-  adb shell am start -W -n "$pkg/.MainActivity" > /dev/null
-  still_shown "the plain icon, cold"
-  adb exec-out screencap -p > "$out/launch/old-webview.png" || true
-  # The wing icons, as launch-test.sh finds them (none listed on API 24 and
-  # 25, which lack query-activities; the cold wing entry below still runs).
-  aliases=$(adb shell cmd package query-activities --brief \
-    -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -p "$pkg" 2> /dev/null \
-    | tr -d '\r' | grep -oE "$pkg/[A-Za-z0-9_.]+" | grep -v '\.MainActivity$' || true)
-  for component in $aliases; do
-    adb shell am start -W -n "$component" > /dev/null
-    still_shown "${component##*.}, warm"
+  # enter <entry>: start the app by that entry. The wings are
+  # MainActivity.wingRoot's aliases, named here because API 24 and 25 cannot
+  # list them (no query-activities).
+  enter() {
+    case $1 in
+      plain) adb shell am start -W -n "$pkg/.MainActivity" > /dev/null ;;
+      shortcut) adb shell am start -W -a dev.paulgsc.someui.NEW_IDEA -n "$pkg/.MainActivity" > /dev/null ;;
+      *) adb shell am start -W -n "$pkg/.$1" > /dev/null ;;
+    esac
+  }
+  # Every entry cold (the app stopped first), then every entry warm (the
+  # app running on the update page): OWV1's whole entry x start family.
+  entries=(plain WingPractice WingSelf WingStudio WingJobs shortcut)
+  for entry in "${entries[@]}"; do
+    adb shell am force-stop "$pkg"
+    enter "$entry"
+    still_shown "$entry, cold"
   done
-  adb shell am start -W -a dev.paulgsc.someui.NEW_IDEA -n "$pkg/.MainActivity" > /dev/null
-  still_shown "the shortcut, warm"
-  adb shell am force-stop "$pkg"
-  adb shell am start -W -n "$pkg/.WingPractice" > /dev/null
-  still_shown "WingPractice, cold"
+  adb exec-out screencap -p > "$out/launch/old-webview.png" || true
+  for entry in "${entries[@]}"; do
+    enter "$entry"
+    still_shown "$entry, warm"
+  done
   if [ "${#missed[@]}" -eq 0 ]; then
     shown="update page shown"
   else
