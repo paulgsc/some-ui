@@ -75,7 +75,9 @@ const tls =
 const answerHome = (req, res) => {
   const path = new URL(req.url ?? "/", "http://stub").pathname
   const key = `${req.method} ${path}`
-  const busy = busySeconds > 0 && path.startsWith(LIMITED)
+  // The wait as it stood when the request came, which its answer carries.
+  const wait = busySeconds
+  const busy = wait > 0 && path.startsWith(LIMITED)
   // A lane that cannot parse the unlisted 200 `{}` ends failed, which is
   // fine for counting (HERD1's advice).
   const answer = busy ? null : (routeOf(key) ?? FALLBACK)
@@ -84,7 +86,7 @@ const answerHome = (req, res) => {
     at: Date.now(),
     key,
     status,
-    ...(busy ? { retryAfter: busySeconds } : {}),
+    ...(busy ? { retryAfter: wait } : {}),
   }
   requests.push(entry)
   everything.push(entry)
@@ -95,7 +97,7 @@ const answerHome = (req, res) => {
   const send = () => {
     if (busy) {
       res.writeHead(429, {
-        "Retry-After": String(busySeconds),
+        "Retry-After": String(wait),
         "Content-Type": "application/json",
       })
       res.end(JSON.stringify({ error: "busy" }))

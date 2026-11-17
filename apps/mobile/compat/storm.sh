@@ -252,7 +252,7 @@ busy() {
   local end
   end=$(pull_end "$before")
   sleep "$seconds"
-  curl -sf -X POST "$control/calm" > /dev/null
+  curl -sf -X POST "$control/calm" > /dev/null || true
   echo "$end"
 }
 
@@ -269,7 +269,7 @@ two_pulls() {
   sleep 1
   pull_down
   pull_end "$before"
-  curl -sf -X POST "$control/calm" > /dev/null
+  curl -sf -X POST "$control/calm" > /dev/null || true
 }
 
 background() {
@@ -316,12 +316,18 @@ joined_heard=$(echo "${phases[-1]}" | grep -oE '"requests":[0-9]+' | grep -oE '[
 if [ "$joined_heard" -gt $((2 * single_heard)) ]; then
   fail "joined: two pulls 1 s apart, with home slow to answer, sent $joined_heard requests, more than two pulls alone ($((2 * single_heard))) (stub-joined.json)"
 fi
+# A read asked more than twice the single pull asked it, or a write (a
+# drained item: each has its own path) sent twice, means a second drain run
+# started during the first.
 twice=$(node -e '
-const { byRoute } = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))
-console.log(Object.entries(byRoute).filter(([, n]) => n > 2).map(([k, n]) => `${k} ×${n}`).join(", "))
-' "$out/stub-joined.json")
+const read = (f) => JSON.parse(require("fs").readFileSync(f, "utf8")).byRoute
+const [joined, single] = [read(process.argv[1]), read(process.argv[2])]
+const over = ([key, n]) =>
+  key.startsWith("GET ") ? n > 2 * Math.max(single[key] ?? 0, 1) : n > 1
+console.log(Object.entries(joined).filter(over).map(([k, n]) => `${k} ×${n}`).join(", "))
+' "$out/stub-joined.json" "$out/stub-single.json")
 if [ -n "$twice" ]; then
-  fail "joined: two pulls asked a route more than twice ($twice): a pull during a drain started a second one (stub-joined.json)"
+  fail "joined: two pulls repeated a read or a write ($twice): a pull during a drain started a second one (stub-joined.json)"
 fi
 phase burst burst
 phase busy busy
