@@ -1,0 +1,19 @@
+{
+  "id": "C475",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/home-link/model.ts",
+    "some-ui:apps/www/src/lib/home-link/runtime.ts",
+    "some-ui:apps/www/src/components/settings/device-section.tsx"
+  ],
+  "chose": "Settings › Home offers Pair again only once home has forgotten the phone, beside Sign out of home, opening the one pairing form in place, started from the old pairing's address (which the person may change: the home that forgot the phone holds no working sign-in for it). A pairing home still knows is signed out first; no button replaces a working sign-in in one step.",
+  "options": [
+    "Pair again only over a pairing home forgot, in place",
+    "Pair again over any pairing, replacing a working sign-in without a sign-out",
+    "no Pair again: sign out, then pair, as before"
+  ],
+  "gray": "The issue asks for pairing again in one step when home has forgotten the phone. Offering it over a known pairing too would leave home holding a working session for the old key that nothing signs out, and puts a second way to move to another home next to Sign out; offering it nowhere keeps the two steps the owner found awkward on a new phone.",
+  "undo": "Have mayPair in model.ts accept only an unpaired link and drop the Pair again button in device-section.tsx; the runtime's drainGone before a pairing then never runs.",
+  "refs": ["#3089"]
+}
