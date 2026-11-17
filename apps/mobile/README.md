@@ -447,7 +447,8 @@ phone. Each runs:
    when what home heard over the whole run breaks HERD1's budget
    (`compat/budget.json`, checked by `compat/check-budget.mjs`): more than
    20 requests at once and one per 2 s after that, any request inside a
-   429's `Retry-After`, or requests faster than one per 2 s once it ends. A level whose Pair form cannot be driven pairs the debug APK
+   429's `Retry-After`, or requests faster than one per 2 s once it ends;
+   or when two pulls a second apart cost home more than one pull alone. A level whose Pair form cannot be driven pairs the debug APK
    instead and says "via debug build"; a level whose store cannot take the
    CA says "no system CA" and runs unpaired.
 3. **Refresh:** from the same run, it fails when a pull with home up does not

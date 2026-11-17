@@ -276,6 +276,17 @@ busy() {
   echo "$end"
 }
 
+# Two pulls a second apart, which HERD1 joins into one run: home must hear
+# no more than from the single pull before it.
+two_pulls() {
+  local before
+  before=$(native_count "pull checked: [a-z]+")
+  pull_down
+  sleep 1
+  pull_down
+  pull_end "$before"
+}
+
 background() {
   adb shell input keyevent 3
   sleep 15
@@ -310,6 +321,12 @@ phase single one_pull
 first_end=$(echo "${phases[-1]}" | grep -oE '"pulls":"[a-z]+"' | grep -oE '[a-z]+"$' | tr -d '"')
 if [ "$first_end" != "read" ]; then
   fail_refresh "single: a pull with home up ended \"$first_end\", not \"read\": the page did not refresh"
+fi
+phase joined two_pulls
+single_heard=$(echo "${phases[0]}" | grep -oE '"requests":[0-9]+' | grep -oE '[0-9]+$')
+joined_heard=$(echo "${phases[-1]}" | grep -oE '"requests":[0-9]+' | grep -oE '[0-9]+$')
+if [ "$joined_heard" -gt "$single_heard" ]; then
+  fail "joined: two pulls 1 s apart sent $joined_heard requests, more than one pull alone ($single_heard); HERD1 joins a pull to the run under way (stub-joined.json)"
 fi
 phase burst burst
 phase busy busy
