@@ -13,9 +13,9 @@ import {
 } from "@/lib/auth"
 import { ACCOUNT_KEEPS } from "@/lib/auth/account-keeps"
 import { authority, useAuthoritySnapshot } from "@/lib/authority"
-import { DATA_MODE } from "@/lib/data-mode"
 import { passkeysSupported } from "@/lib/passkey"
 import { DeviceSessionLost } from "@/components/auth/device-session-lost"
+import { ViewerAuth } from "@/components/auth/viewer-auth"
 
 type AuthSearch = { redirect?: string }
 
@@ -39,7 +39,7 @@ const PasskeyScreen = (): JSX.Element => {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [signupClosed, setSignupClosed] = useState(false)
-  const supported = DATA_MODE === "static" || passkeysSupported()
+  const supported = passkeysSupported()
 
   const run = (attempt: "sign-in" | "create"): void => {
     setPending(true)
@@ -121,37 +121,37 @@ const PasskeyScreen = (): JSX.Element => {
           "Continue with your passkey to pick up where you left off, or create one to start.",
       }}
       notice={
-        DATA_MODE === "static"
+        !supported
           ? {
-              title: "A demo on sample data",
+              title: "Passkeys aren't available here",
               description:
-                "This build has no server, so there are no accounts. Continuing opens my toolkit on sample data; try anything, and nothing you do is kept.",
+                "This browser or connection can't use passkeys. Open the app over HTTPS in a current browser.",
             }
-          : !supported
-            ? {
-                title: "Passkeys aren't available here",
-                description:
-                  "This browser or connection can't use passkeys. Open the app over HTTPS in a current browser.",
-              }
-            : {
-                title: "What the server keeps",
-                description: ACCOUNT_KEEPS,
-              }
+          : {
+              title: "What the server keeps",
+              description: ACCOUNT_KEEPS,
+            }
       }
     />
   )
 }
 
 /**
- * The Android app has no sign-in (src/components/auth/device-session-lost).
+ * The Android app has no sign-in (src/components/auth/device-session-lost),
+ * and the viewer build has none a viewer can use
+ * (src/components/auth/viewer-auth, SIGNIN5).
  * The flag is read here, not through a module's constant, so the passkey
  * screen and everything only it imports never reach that build
  * (packages/some-vite-config/AUDIENCES.md, "Paths").
  */
 const AuthPage = (): JSX.Element => {
   const search = Route.useSearch()
-  return import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
-    <DeviceSessionLost {...search} />
+  if (import.meta.env.VITE_DEVICE_BACKEND === "true") {
+    return <DeviceSessionLost {...search} />
+  }
+  // A viewer has no sign-in to use (SIGNIN5): the page says so plainly.
+  return import.meta.env.VITE_STATIC_DATA === "true" ? (
+    <ViewerAuth {...search} />
   ) : (
     <PasskeyScreen />
   )

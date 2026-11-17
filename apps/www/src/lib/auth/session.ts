@@ -216,6 +216,17 @@ export async function signIn(): Promise<void> {
 }
 
 /**
+ * The viewer build's way in (SIGNIN5, #3091): no ceremony and no server, so
+ * the demo's session is the page's own, kept in memory like everything the
+ * viewer does (`lib/demo/viewer-storage`). Only the static build has it.
+ */
+export function openDemo(): void {
+  if (DATA_MODE !== "static")
+    throw new Error("only the viewer build opens the demo")
+  markSignedIn()
+}
+
+/**
  * Add a passkey on this device to the signed-in account. A `401` here has
  * already ended the session through the transport's unauthorized handler.
  */

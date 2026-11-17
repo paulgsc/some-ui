@@ -242,6 +242,14 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "the passkey screen and what only it says: the Android app has no sign-in, and its /auth offers a reload instead (src/components/auth/device-session-lost)",
     },
     {
+      modules: [
+        "apps/www/src/components/auth/viewer-auth.tsx",
+        "apps/www/src/lib/auth/viewer-words.ts",
+      ],
+      profiles: ["pages"],
+      why: "the viewer's /auth (SIGNIN5): only the Pages build has viewers, who have no sign-in to use",
+    },
+    {
       modules: [`${SPEECH_ENTRY}/web-speech.es.js`],
       profiles: ["lan", "pages"],
       why: "the web builds' voice, the browser's own synthesizer: the Android app speaks only with the phone's engine (src/providers/tts.tsx)",
