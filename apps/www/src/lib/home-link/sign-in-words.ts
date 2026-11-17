@@ -50,9 +50,9 @@ const pairedOn = (t: number): string =>
 
 /** Why the phone is not paired, said once (Settings › Home and the sheet). */
 export const UNPAIRED_NOTES: Readonly<Record<UnpairedNote, string>> = {
-  unpaired: "Unpaired.",
+  unpaired: "Signed out of home.",
   "unpaired-offline":
-    "Unpaired on this phone. Home couldn't be reached, so it still holds this phone's key until it expires: sign out everywhere on your computer to end it now.",
+    "Signed out on this phone. Home couldn't be reached, so it still holds this phone's key until it expires: sign out everywhere on your computer to end it now.",
   lost: "This phone's pairing didn't survive a restore. Pair again; to end the old one, sign out everywhere on your computer.",
   unreadable:
     "This phone couldn't read its pairing just now. Restart the app to try again. Pairing again replaces it; to end the old one, sign out everywhere on your computer.",
@@ -69,6 +69,29 @@ export const SIGN_IN = {
   /** The notice when home doesn't know the phone. */
   lostNotice:
     "Home doesn't know this phone any more. What you do stays here until you pair again.",
+} as const
+
+/**
+ * Signing out of home and pairing again, in Settings › Home (SIGNIN3,
+ * #3089): what each place keeps, never what is deleted, since neither
+ * deletes anything.
+ */
+export const SIGN_OUT = {
+  button: "Sign out of home",
+  ask: (host: string): string => `Sign out of home at ${host}?`,
+  keeps: [
+    "This phone keeps everything it holds.",
+    "Home keeps everything already sent to it.",
+    "From now on, what you do stays on this phone until it pairs again.",
+  ],
+  yes: "Yes, sign out",
+  signingOut: "Signing out...",
+  stay: "Stay signed in",
+  notForgotten:
+    "This phone couldn't forget its key, so it is still signed in. Try Sign out of home again.",
+  pairAgain: SIGN_IN.pairAgain,
+  pairAgainLead:
+    "Pairing again signs this phone in anew, in place of the sign-in home forgot. What home already holds stays as it is, and what it doesn't hold yet goes there.",
 } as const
 
 /** The day the phone paired, as a clause, or nothing for a pairing kept before it was kept. */

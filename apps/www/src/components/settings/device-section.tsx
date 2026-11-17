@@ -1,6 +1,6 @@
 /**
  * The Android app's Home page (Settings → Home, paulgsc/some-ui#2107): the
- * Home server block, where the phone is paired, unpaired and synced, and
+ * Home server block, where the phone is paired, signed out (SIGNIN3) and synced, and
  * where a finished session home holds is cleared from the phone (LA8,
  * docs/learner-data-authority.md), each a tap that names where it goes.
  * Everything else the phone keeps goes to home on its own once paired
@@ -18,6 +18,7 @@ import { toast } from "sonner"
 import { homeApiBase } from "@/lib/device-backend/home-sync"
 import type { HomeLinkState } from "@/lib/home-link"
 import { homeLink, hostOf, useHomeLink } from "@/lib/home-link"
+import { addressOf } from "@/lib/home-link/address"
 import type { ClearEnd } from "@/lib/home-link/clear"
 import { clearHeld, finishedOnPhone } from "@/lib/home-link/clear"
 import { rememberSeen } from "@/lib/home-link/first-run"
@@ -26,7 +27,11 @@ import {
   remember,
   remembered,
 } from "@/lib/home-link/remembered"
-import { signInView, UNPAIRED_NOTES } from "@/lib/home-link/sign-in-words"
+import {
+  SIGN_OUT,
+  signInView,
+  UNPAIRED_NOTES,
+} from "@/lib/home-link/sign-in-words"
 import type { SyncResult } from "@/lib/home-link/sync"
 import { lastSync, syncLessonsFrom } from "@/lib/home-link/sync"
 import { CLEAR, HOME_BLOCK } from "@/lib/home-link/words"
@@ -165,6 +170,17 @@ export const DeviceSection = (): JSX.Element => {
 
   const { link, activity } = state
   const paired = link.kind === "paired" ? link : null
+  // Home forgot this phone: it may pair again in place (SIGNIN3).
+  const forgotten = paired?.standing.kind === "forgotten"
+  // The pairing form closes once the link it was opened over changes (a
+  // pairing made, or home knowing the phone again), so nothing it held
+  // back stays held back with no form on screen.
+  const linkKey = paired ? `${paired.id}:${paired.standing.kind}` : link.kind
+  const [openedOver, setOpenedOver] = useState(linkKey)
+  if (openedOver !== linkKey) {
+    setOpenedOver(linkKey)
+    setPairOpen(false)
+  }
   const note = link.kind === "unpaired" ? link.note : null
   const typed = address.trim()
   const base = paired ? paired.base : typed === "" ? null : homeApiBase(typed)
@@ -194,37 +210,54 @@ export const DeviceSection = (): JSX.Element => {
               <p className="min-w-0 flex-1 text-sm break-words">
                 {signInView(state).line}
               </p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={activity.kind !== "idle" || confirmingUnpair}
-                onClick={() => setConfirmingUnpair(true)}
-              >
-                Unpair
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                {forgotten ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={
+                      activity.kind !== "idle" || confirmingUnpair || pairOpen
+                    }
+                    onClick={() => setPairOpen(true)}
+                  >
+                    {SIGN_OUT.pairAgain}
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={
+                    activity.kind !== "idle" || confirmingUnpair || pairOpen
+                  }
+                  onClick={() => setConfirmingUnpair(true)}
+                >
+                  {SIGN_OUT.button}
+                </Button>
+              </div>
             </div>
             {confirmingUnpair ? (
               <div className="space-y-2">
-                <p className="text-sm">
-                  Unpair from {host}? This phone forgets its key and can&apos;t
-                  send there until you pair again. Nothing already sent is
-                  deleted.
-                </p>
+                <p className="text-sm">{SIGN_OUT.ask(host ?? "")}</p>
+                <ul className="list-disc space-y-1 pl-5 text-sm">
+                  {SIGN_OUT.keeps.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
                 <div className="flex flex-wrap gap-2">
                   <IntentButton
                     state={unpair.state}
                     onPress={() => {
                       setConfirmingUnpair(false)
-                      // The person unpaired on purpose: the first run's
+                      // The person signed out on purpose: the first run's
                       // welcome is not for this phone again (SIGNIN2).
                       rememberSeen("unpaired")
                       unpair.start(undefined)
                     }}
                     variant="destructive"
                     size="sm"
-                    idleLabel="Yes, unpair"
-                    workingLabel="Unpairing..."
+                    idleLabel={SIGN_OUT.yes}
+                    workingLabel={SIGN_OUT.signingOut}
                   />
                   <Button
                     type="button"
@@ -232,15 +265,26 @@ export const DeviceSection = (): JSX.Element => {
                     size="sm"
                     onClick={() => setConfirmingUnpair(false)}
                   >
-                    Keep
+                    {SIGN_OUT.stay}
                   </Button>
                 </div>
               </div>
             ) : null}
+            {forgotten && pairOpen ? (
+              <div className="space-y-2">
+                <p className="text-muted-foreground text-xs">
+                  {SIGN_OUT.pairAgainLead}
+                </p>
+                <PairForm
+                  state={state}
+                  initialAddress={addressOf(paired.base)}
+                  onCancel={() => setPairOpen(false)}
+                />
+              </div>
+            ) : null}
             {paired.notForgotten ? (
               <Notice tone="danger" dismissible>
-                This phone couldn&apos;t forget its key, so it is still paired.
-                Try Unpair again.
+                {SIGN_OUT.notForgotten}
               </Notice>
             ) : null}
             <p className="text-muted-foreground text-xs">{HOME_BLOCK.lead}</p>
