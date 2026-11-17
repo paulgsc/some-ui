@@ -1,8 +1,8 @@
 /**
  * When the phone asks home whether it still knows it (SIGNIN1, #3087): the
- * link's `check`, once as each pairing is found (the app's start, a restore
- * read back) and each time the app comes back to the foreground, one at a
- * time. Never on a timer, and never on any other change of the link: a
+ * link's `check`, once as each pairing is read back (the app's start; a
+ * new pairing is known already) and each time the app comes back to the
+ * foreground, one at a time. Never on a timer, and never on any other change of the link: a
  * check that found home silent or busy waits for the next of those
  * moments. Every credentialed answer also says it (`./runtime`'s
  * `heardKey`), so a phone sending anyway rarely needs the check at all.
@@ -25,6 +25,9 @@ export type StandingWatchPorts = {
   >
 }
 
+const unchecked = ({ link }: HomeLinkState): boolean =>
+  link.kind === "paired" && link.standing.kind === "unchecked"
+
 /** Checks at the watch's moments until the returned unsubscribe is called. */
 export function watchStanding({ link, doc }: StandingWatchPorts): () => void {
   let checking = false
@@ -32,8 +35,11 @@ export function watchStanding({ link, doc }: StandingWatchPorts): () => void {
   const check = (): void => {
     if (checking || doc.visibilityState !== "visible") return
     checking = true
+    const asked = pairing
     void link.check().finally(() => {
       checking = false
+      // A pairing found while that check was out has not been asked about.
+      if (pairing !== asked && unchecked(link.getSnapshot())) check()
     })
   }
 
@@ -41,8 +47,7 @@ export function watchStanding({ link, doc }: StandingWatchPorts): () => void {
     const now = pairingOf(link.getSnapshot())
     if (now === pairing) return
     pairing = now
-    const { link: found } = link.getSnapshot()
-    if (found.kind === "paired" && found.standing.kind === "unchecked") check()
+    if (unchecked(link.getSnapshot())) check()
   }
   const onFront = (): void => {
     if (pairing !== null) check()

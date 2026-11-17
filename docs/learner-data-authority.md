@@ -516,8 +516,9 @@ declared (checked by reading every call site and by the tests named).
   #2843), and the sign-in mark asking whether home still knows this phone
   (`lib/home-link/standing`'s watch, through the link's `check`: one
   `GET /auth/session` with the credential, on the drain's turn of the pace
-  and holding no activity of the person's, once as each pairing is found
-  (the app's start) and each time the app comes back to the foreground, one
+  and holding no activity of the person's, once as each pairing is read
+  back (the app's start; a new pairing is known already) and each time the
+  app comes back to the foreground, one
   at a time, never on a timer nor on any other change of the link, and none
   while held away or home is busy, unpaired, or once home has refused the
   key; sending nothing of the phone's; SIGNIN1, #3087),
@@ -622,9 +623,11 @@ declared (checked by reading every call site and by the tests named).
   that calls the link's `check` from anywhere but
   `lib/home-link/standing.ts`, has `check` send anything but one
   `GET /auth/session` or send while held away, home is busy, unpaired or
-  once home has refused the key, lets anything but
-  `components/device-sign-in-mark.tsx` run that watch, or has the watch ask
-  but at the moments above or with a second ask out (SIGNIN1); one
+  once home has refused the key, or take the person's turn of the pace or
+  hold an activity, lets anything but `components/device-sign-in-mark.tsx`
+  run that watch, mounts its `SignInWatch` anywhere but once in
+  `routes/_dashboard.tsx`, or has the watch ask but at the moments above or
+  with a second ask out (SIGNIN1); one
   that has `renders.ts` send anything but one `GET /renders`, `previews.ts`
   anything but the three asks above, or `episode-notes-read.ts` anything but
   one `GET /feeds/:feed/notes`, or lets anything but `lib/renders`,

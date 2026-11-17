@@ -57,7 +57,7 @@ describe("the sign-in mark's words", () => {
     const lost = signInView(LOOKS.lost, WHEN)
     expect(lost).toMatchObject({
       signedIn: "lost",
-      line: "Home didn't know this phone when it last asked, on 17 Nov, 9:30.",
+      line: "Home didn't know this phone when this phone last asked, on 17 Nov, 9:30.",
       action: SIGN_IN.pairAgain,
     })
   })

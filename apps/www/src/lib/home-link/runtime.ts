@@ -408,7 +408,9 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
   const ask = async (
     side: Side,
     call: HomeRequest,
-    tapped: boolean
+    tapped: boolean,
+    /** Told the moment the request goes, after its turn (SIGNIN1). */
+    onSent?: (at: number) => void
   ): Promise<HomeAnswer> => {
     const away = (): boolean => !tapped && awayNow()
     if (away()) throw new HomeAwayError()
@@ -417,6 +419,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     if (!went || stopped(side)) throw new SyncStoppedError()
     if (away()) throw new HomeAwayError()
     if (homeBusyNow()) return HOME_BUSY
+    onSent?.(ports.now())
     const answer = await track(side, heard(ports.request(call)))
     if (answer.status === 429) heardBusy(answer)
     return answer
@@ -555,9 +558,9 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
         if (!path.startsWith("/")) {
           return Promise.reject(new Error(`not a path: ${path}`))
         }
-        // Taken before its turn on the pace: a refusal then reads no
-        // later than it went, and a success no earlier (SIGNIN1).
-        const sent = ports.now()
+        // When the request went; a busy answer sends nothing and says
+        // nothing of the key.
+        let sent: number | null = null
         return ask(
           side,
           {
@@ -567,9 +570,12 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
             ...(body === undefined ? {} : { body }),
             ...(range === undefined ? {} : { range }),
           },
-          tapped
+          tapped,
+          (at) => {
+            sent = at
+          }
         ).then((answer) => {
-          heardKey(pairing.id, answer, sent)
+          if (sent !== null) heardKey(pairing.id, answer, sent)
           // Home answers a route it doesn't have in plain words ("not
           // found"); a record it doesn't hold comes as its JSON error.
           if (

@@ -348,6 +348,28 @@ describe("the standing watch", () => {
     }
   })
 
+  it("asks about a pairing found while another check was out, once it ends", async () => {
+    let finish: () => void = () => undefined
+    const fake = fakeLink(run([READ]))
+    let count = 0
+    fake.link.check = (): Promise<void> => {
+      count += 1
+      return new Promise((resolve) => {
+        finish = resolve
+      })
+    }
+    watchStanding({ link: fake.link, doc: fakeDoc().doc })
+    expect(count).toBe(1)
+    fake.set(
+      run([{ type: "read", found: { base: HOME.base, id: "p2", since: null } }])
+    )
+    expect(count).toBe(1)
+    finish()
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(count).toBe(2)
+  })
+
   it("asks one at a time", () => {
     const fake = fakeLink(run([READ]))
     const page = fakeDoc()
