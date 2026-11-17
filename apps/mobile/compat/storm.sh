@@ -226,11 +226,18 @@ phase() {
   phases+=("{\"phase\":\"$name\",\"requests\":$heard,\"limit\":$limit,\"pulls\":\"$ends\",\"newEnds\":$(($(native_count "pull checked: [a-z]+") - before))}")
 }
 
+# One pull, and how it ended. A drag the wing's own navigation landed on
+# ends silently, so one that ends "none" is tried once more, as
+# launch-test.sh does.
 one_pull() {
-  local before
-  before=$(native_count "pull checked: [a-z]+")
-  pull_down
-  pull_end "$before"
+  local before end
+  for _ in 1 2; do
+    before=$(native_count "pull checked: [a-z]+")
+    pull_down
+    end=$(pull_end "$before")
+    [ "$end" = none ] || break
+  done
+  echo "$end"
 }
 
 burst() {
