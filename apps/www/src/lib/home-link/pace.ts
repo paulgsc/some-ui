@@ -33,12 +33,12 @@ import type { HomeLinkPorts } from "./runtime"
 export const BURST = 20
 export const MS_PER_REQUEST = 2_000
 /** The slowest pace home's `Retry-After` can teach: one each minute. */
-export const SLOWEST_MS = 60_000
+const SLOWEST_MS = 60_000
 /** How long a pace learned from home's `429` lasts. */
-export const LEARNED_MS = 24 * 60 * 60 * 1_000
+const LEARNED_MS = 24 * 60 * 60 * 1_000
 
 /** What the pace had left, and when: kept across page loads. */
-export type PaceKept = {
+type PaceKept = {
   readonly turns: number
   readonly at: number
   /** The wait between requests home's `429` taught, and when; absent at 2 s. */

@@ -109,7 +109,7 @@ export function homeBusyFor(retryAfter: string | undefined): number {
 }
 
 /** Home's `Retry-After` in ms, when it sent whole seconds; null otherwise. */
-export function retryAfterMs(retryAfter: string | undefined): number | null {
+function retryAfterMs(retryAfter: string | undefined): number | null {
   const text = retryAfter?.trim() ?? ""
   return /^\d+$/.test(text) ? Number(text) * 1_000 : null
 }
