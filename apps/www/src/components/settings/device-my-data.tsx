@@ -414,7 +414,7 @@ export const MyDataKind = ({
   missed = null,
   onPlay,
   onStop,
-  unread = [],
+  unread,
   onDelete,
 }: {
   view: KindView
@@ -427,9 +427,10 @@ export const MyDataKind = ({
   onStop: () => void
   /**
    * This kind's store, when its recordings on this phone aren't counted yet;
-   * null while this phone's read isn't in.
+   * null while this phone's read isn't in, which offers no Studio or
+   * soundbite row for deleting.
    */
-  unread?: PhoneRead["unread"] | null
+  unread: PhoneRead["unread"] | null
   /** Opens the delete sheet on `ids`; without it, nothing offers Delete…. */
   onDelete?: (of: DeletableKind, ids: ReadonlyArray<string>) => void
 }): JSX.Element => {
@@ -469,9 +470,11 @@ export const MyDataKind = ({
       <Status line={homeLine(view.home)} />
       <Status
         line={
-          waitsOn === null
-            ? unreadLine(unread ?? [])
-            : DELETING.waitsOn(waitsOn)
+          unread === null
+            ? MY_DATA.phoneReading
+            : waitsOn === null
+              ? unreadLine(unread)
+              : DELETING.waitsOn(waitsOn)
         }
       />
       {missed === null ? null : (

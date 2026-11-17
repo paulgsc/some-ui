@@ -1821,7 +1821,11 @@ reaches:
     or a hunk to `my-data/model.ts` that makes `deletable` true where home
     didn't say so (its default, or a recording only this phone holds); or
     a hunk to `my-data/index.ts` whose `readPhone` reads a store as handed
-    in that isn't; or a hunk to `voice-home/model.ts` that adds a kind to
+    in that isn't; or a hunk to `device-my-data.tsx` that hands `MyDataKind`, or
+    `KindList`'s `?note=` check, an `unread` other than this phone's read
+    (null until it is in); or a hunk to `voice-copy.ts` that changes which
+    kinds `readyToLetGo` waits on a handed-in store for without the same
+    change to `deleting.ts`'s `WAITS_ON_STORE`; or a hunk to `voice-home/model.ts` that adds a kind to
     `VOICE_OFS`, which both pages then offer to delete, re-checked against home's delete and its list's `deletable`
     (paulgsc/server `crates/db/voice/src/delete.rs` and `kept.rs`); or a
     hunk to
@@ -1860,7 +1864,8 @@ reaches:
   `device-my-data-delete.tsx` and `device-my-data-calls.tsx`,
   `apps/www/src/routes/_dashboard/_apk/journal/takes/attention.tsx`,
   `apps/www/src/lib/my-data/model.ts` (`deletable`),
-  `apps/www/src/lib/home-link/voice-copy.ts` (`DELETED_LETS_GO`) and
+  `apps/www/src/lib/home-link/voice-copy.ts` (`DELETED_LETS_GO`,
+  `readyToLetGo`) and
   `apps/www/src/lib/voice-home/model.ts` (`VOICE_OFS`). For a draft's delete: every module in
   `apps/www` and `packages` that deletes a recording on the phone.
 - _Why not enforced:_

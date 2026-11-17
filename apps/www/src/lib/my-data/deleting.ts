@@ -37,7 +37,10 @@ import type { KindItem, Of } from "./model"
 /** A kind the delete path can ever delete, and its sheet name. */
 export type DeletableKind = Of
 
-/** The kinds whose copies this phone lets go only through a store a page hands in. */
+/**
+ * The kinds whose copies this phone lets go only through a store a page
+ * hands in: those `lib/home-link/voice-copy`'s `readyToLetGo` waits on (LA19).
+ */
 const WAITS_ON_STORE: ReadonlyArray<Of> = ["studio", "soundbite"]
 
 /**

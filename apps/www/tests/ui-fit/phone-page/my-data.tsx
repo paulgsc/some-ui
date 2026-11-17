@@ -105,6 +105,7 @@ export const MY_DATA_FIXTURES = {
     <MyDataKind
       view={kindOf("studio", "studio", HOME, PHONE, NOW)}
       playing="phone-0"
+      unread={[]}
       onPlay={noop}
       onStop={noop}
       onDelete={noop}
