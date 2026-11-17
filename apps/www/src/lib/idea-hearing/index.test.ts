@@ -170,6 +170,8 @@ describe("where a new idea goes (ST26 b)", () => {
       base: "https://home.lan",
       id: "p1",
       notForgotten: false,
+      since: null,
+      standing: { kind: "unchecked" },
     } as const
     const unpaired = { kind: "unpaired", note: null } as const
     expect(reachOf(unpaired, { kind: "unreachable", at: 1 })).toBe("unpaired")

@@ -122,6 +122,9 @@ const HOME_LINK_CALLERS = new Set([
   // header, and what hands aph's lane to them.
   "components/device-home-glyph.tsx",
   "components/aph/device-aph-lane.tsx",
+  // LA8 (SIGNIN1): the sign-in mark on every phone screen, which reads the
+  // link and runs the standing watch, whose one ask is the link's `check`.
+  "components/device-sign-in-mark.tsx",
   // Settings' readout of Korean's look at the routine's files, and the port
   // Korean reads them through.
   "components/settings/device-routine-reads.tsx",
@@ -850,6 +853,24 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(read(DELETED_READ)).toContain("homeLink().keep(")
     expect(read(TAKES_READ)).toContain("homeLink().keep(")
     expect(read(CALLS_READ)).toContain("homeLink().keep(")
+  })
+
+  it("asks whether home still knows this phone only from the standing watch, through the link's one GET of /auth/session (SIGNIN1)", () => {
+    const checks = (f: string): boolean => /\.check\(\)/.test(read(f))
+    expect(
+      sources.filter(
+        (f) =>
+          (f.startsWith("lib/home-link/") || HOME_LINK_CALLERS.has(f)) &&
+          checks(f)
+      )
+    ).toEqual(["lib/home-link/standing.ts"])
+    expect(read("lib/home-link/runtime.ts")).toContain(
+      "url: `${pairing.base}/auth/session`"
+    )
+    const watchers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) => /from "@\/lib\/home-link\/standing"/.test(read(f)))
+    expect(watchers).toEqual(["components/device-sign-in-mark.tsx"])
   })
 
   it("looks at home's own word only for whether home works with this build: one GET of /compat, without the credential, which only the marks' wiring asks (#2843)", () => {

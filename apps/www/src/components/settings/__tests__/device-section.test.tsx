@@ -155,7 +155,7 @@ describe("DeviceSection's Home server block", () => {
 
     paired()
     await open()
-    expect(screen.getByText("Paired · home.example")).toBeTruthy()
+    expect(screen.getByText("Signed in to home at home.example.")).toBeTruthy()
     expect(
       screen.getByText(/goes to home on its own while the app is open/i)
     ).toBeTruthy()
@@ -192,7 +192,7 @@ describe("DeviceSection's Home server block", () => {
 
     await press(/^keep$/i)
     expect(home.sent).toEqual([])
-    expect(screen.getByText("Paired · home.example")).toBeTruthy()
+    expect(screen.getByText("Signed in to home at home.example.")).toBeTruthy()
 
     await press(/^unpair$/i)
     await press(/^yes, unpair$/i)
