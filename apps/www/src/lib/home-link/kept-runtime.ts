@@ -38,10 +38,13 @@ export type KeptPorts = {
   /** Whether home is busy (AD3): a run the link turns away then was home's. */
   homeBusy: () => boolean
   /**
-   * Whether the link is stopping its drain run (Stop, or the background);
-   * without it, a moment always joins the run under way.
+   * Whether the link is stopping its drain run (the background, or a send,
+   * a pairing or an Unpair taking the link); without it, a moment always
+   * joins the run under way.
    */
   stopping?: () => boolean
+  /** Whether the app is in front; without it, it is taken to be. */
+  inFront?: () => boolean
   now: () => number
 }
 
@@ -129,7 +132,8 @@ export function createKept(ports: KeptPorts): Kept {
 
   const loop = async (): Promise<void> => {
     while (state.running) {
-      dispatch({ type: "ran", run: await once() })
+      const run = await once()
+      dispatch({ type: "ran", run, inFront: ports.inFront?.() ?? true })
     }
   }
 

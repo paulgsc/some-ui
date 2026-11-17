@@ -19,7 +19,7 @@ import type { Kept, KeptPorts } from "@/lib/home-link/kept-runtime"
 import { createKept, laneExchange } from "@/lib/home-link/kept-runtime"
 import type { Lane, LaneCounts } from "@/lib/home-link/lanes"
 import { laneReading } from "@/lib/home-link/lanes"
-import { INITIAL, step } from "@/lib/home-link/model"
+import { drainStopping, INITIAL, step } from "@/lib/home-link/model"
 import type { HomeLink } from "@/lib/home-link/runtime"
 import { HomeUnansweredError } from "@/lib/home-link/shelf"
 import { ForeignCallError } from "@/lib/intent/foreign"
@@ -246,6 +246,15 @@ describe("a run the background stopped (HERD4, #3134)", () => {
       resume: false,
       last: { kind: "stopped" },
     })
+    // The app went home again before it ended: it waits, and never resumes
+    // behind; back in front, the next moment asks a fresh run.
+    expect(
+      stepKept(resumed, {
+        type: "ran",
+        run: { kind: "stopped" },
+        inFront: false,
+      })
+    ).toMatchObject({ running: false, resume: false })
     // Stopped with nothing come back: it waits for the next moment, as before.
     expect(
       stepKept(running, { type: "ran", run: { kind: "stopped" } })
@@ -339,6 +348,19 @@ describe("the link's drain", () => {
       expect(step(writer, { type: "drainStarted" })).toBe(writer)
     }
     expect(step(INITIAL, { type: "drainStarted" })).toBe(INITIAL)
+  })
+
+  it("says it is stopping only while a run it stopped is still out (HERD4's port)", () => {
+    const paired = step(INITIAL, {
+      type: "read",
+      found: { base: "https://home.example/api/v1", id: "p1", since: null },
+    })
+    const draining = step(paired, { type: "drainStarted" })
+    expect(drainStopping(paired)).toBe(false)
+    expect(drainStopping(draining)).toBe(false)
+    const stopping = step(draining, { type: "drainStopped" })
+    expect(drainStopping(stopping)).toBe(true)
+    expect(drainStopping(step(stopping, { type: "drainEnded" }))).toBe(false)
   })
 })
 

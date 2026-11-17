@@ -29,8 +29,8 @@ export type KeptState = {
   /** Asked for again while running: one more run once this one ends. */
   readonly again: boolean
   /**
-   * The app came back (or the network, or a watch) while the run under way
-   * was being stopped: if it ends stopped, it goes on once (HERD4, #3134).
+   * The app came back to the front while the background was stopping the
+   * run under way: if it ends stopped, it goes on once (HERD4, #3147).
    */
   readonly resume: boolean
   readonly last: KeptRun | null
@@ -40,7 +40,12 @@ export type KeptEvent =
   | { readonly type: "wanted" }
   /** A moment that would join the run under way came while it was stopping. */
   | { readonly type: "resumed" }
-  | { readonly type: "ran"; readonly run: KeptRun }
+  | {
+      readonly type: "ran"
+      readonly run: KeptRun
+      /** Whether the app is in front as it ends; a run never resumes behind. */
+      readonly inFront?: boolean
+    }
 
 export const INITIAL_KEPT: KeptState = {
   running: false,
@@ -81,7 +86,8 @@ export function stepKept(state: KeptState, event: KeptEvent): KeptState {
       // A run the background stopped goes on once the app is back in front
       // (HERD4): the moment that came back joined it while it was stopping,
       // and nothing else would ask again.
-      const resumed = state.resume && event.run.kind === "stopped"
+      const resumed =
+        state.resume && event.run.kind === "stopped" && event.inFront !== false
       const goOn =
         (state.again && (event.run.kind === "synced" || turnedAway)) || resumed
       return { running: goOn, again: false, resume: false, last: event.run }
