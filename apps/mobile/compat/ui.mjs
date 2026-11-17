@@ -5,12 +5,14 @@
 // placeholder and HTML id) and taps it or types into it with `adb shell
 // input`. It works on the release APK, which keeps DevTools closed.
 //
-//   node apps/mobile/compat/ui.mjs find '<pattern>'
-//   node apps/mobile/compat/ui.mjs tap '<pattern>'
-//   node apps/mobile/compat/ui.mjs type '<pattern>' '<text>'
+//   node apps/mobile/compat/ui.mjs find '<names>'
+//   node apps/mobile/compat/ui.mjs tap '<names>'
+//   node apps/mobile/compat/ui.mjs type '<names>' '<text>'
 //
-// <pattern> is a case-insensitive regular expression matched against each
-// node's text, content-desc, hint and resource-id. Retries for up to 30 s,
+// <names> is one or more names separated by `|`, each compared, ignoring
+// case, with a node's text, content-desc, hint and resource-id: equal, or
+// starting with it when it ends in `*` ("Pair with*"). Literal text, never
+// a pattern, so no argument is compiled into a regular expression. Retries for up to 30 s,
 // since a slowed emulator renders late; `find` accepts a match scrolled out
 // of view, while `tap` and `type` scroll the page down until it is on
 // screen. Exits non-zero when nothing
@@ -21,9 +23,16 @@ import { writeFileSync } from "node:fs"
 
 const [action, pattern, text] = process.argv.slice(2)
 if (!action || !pattern) {
-  throw new Error("usage: ui.mjs find|tap|type '<pattern>' ['<text>']")
+  throw new Error("usage: ui.mjs find|tap|type '<names>' ['<text>']")
 }
-const wanted = new RegExp(pattern, "i")
+const names = pattern.split("|").map((name) => name.toLowerCase())
+/** Whether a node's label is one of the names. */
+const wanted = (label) => {
+  const seen = label.toLowerCase()
+  return names.some((name) =>
+    name.endsWith("*") ? seen.startsWith(name.slice(0, -1)) : seen === name
+  )
+}
 
 const adb = (...args) => execFileSync("adb", args, { encoding: "utf8" })
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -38,10 +47,10 @@ const attribute = (node, name) =>
 function find(xml) {
   let offScreen = null
   for (const node of xml.match(/<node\b[^>]*>/g) ?? []) {
-    const names = ["text", "content-desc", "hint", "resource-id"].map((n) =>
+    const labels = ["text", "content-desc", "hint", "resource-id"].map((n) =>
       attribute(node, n)
     )
-    if (!names.some((name) => name !== "" && wanted.test(name))) continue
+    if (!labels.some((label) => label !== "" && wanted(label))) continue
     // A disabled control does nothing when tapped: wait for it to enable.
     if (action !== "find" && attribute(node, "enabled") === "false") continue
     const bounds = attribute(node, "bounds").match(/-?\d+/g)?.map(Number)
@@ -90,7 +99,7 @@ for (const end = Date.now() + 30_000; Date.now() < end; await sleep(1_000)) {
 }
 if (found && !found.visible && action !== "find") found = null
 writeFileSync("ui-last.xml", xml)
-if (!found) throw new Error(`nothing on screen matches /${pattern}/i`)
+if (!found) throw new Error(`nothing on screen is named ${pattern}`)
 
 if (action === "tap" || action === "type") {
   adb("shell", "input", "tap", String(found.x), String(found.y))

@@ -106,14 +106,14 @@ hide_keyboard() {
 # address and code typed, Pair with <host>. The fields are found by their
 # HTML id or placeholder (device-section.tsx), whichever the WebView exposes.
 pair_by_ui() {
-  ui tap '^Settings$' &&
-    ui tap '^Home$' &&
-    ui tap '^Pair\.\.\.$' &&
-    ui type '^pair-address$|^https://file-host\.home\.example$|^Home server address$' 'https://10.0.2.2:8787' &&
-    ui type '^pair-code$|^K7QF 2M9X$|^Code from your computer$' 'K7QF2M9X' &&
+  ui tap 'Settings' &&
+    ui tap 'Home' &&
+    ui tap 'Pair...' &&
+    ui type 'pair-address|https://file-host.home.example|Home server address' 'https://10.0.2.2:8787' &&
+    ui type 'pair-code|K7QF 2M9X|Code from your computer' 'K7QF2M9X' &&
     hide_keyboard &&
-    ui tap '^Pair with' &&
-    ui find '^Unpair$|^Home: signed in$'
+    ui tap 'Pair with*' &&
+    ui find 'Unpair|Home: signed in'
 }
 
 # The same through the debug APK's page, for a level where the UI cannot be
@@ -176,11 +176,11 @@ else
   # the front desk's Home server field, which is plain http and reaches
   # what home publishes without a pairing.
   if install "$release_apk"; then
-    ui tap '^Settings$' &&
-    ui tap '^Home$' &&
-      ui type '^home-server$|^192\.168\.1\.10:3000$' '10.0.2.2:8787' &&
+    ui tap 'Settings' &&
+    ui tap 'Home' &&
+      ui type 'home-server|192.168.1.10:3000' '10.0.2.2:8787' &&
       hide_keyboard &&
-      ui tap '^Sync lessons from home$' ||
+      ui tap 'Sync lessons from home' ||
       fail "the release APK's Home server field could not be driven (ui-errors.txt)"
   else
     fail "the release APK's database never opened"
