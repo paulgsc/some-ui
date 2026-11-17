@@ -1,7 +1,11 @@
+import { readyFor } from "@interview-week/lib/monday/__tests__/fixture"
 import type { InterviewWeek } from "@interview-week/lib/week"
 import {
   FAMILIES,
+  GROUND,
   INTERVIEW_WEEK_SCHEMA,
+  INTERVIEW_WEEK_SCHEMA_V1,
+  questionOfDay,
   readWeek,
   RESERVED_QUESTION_ID,
   SLUG,
@@ -11,8 +15,9 @@ import { describe, expect, it } from "vitest"
 
 const guidelines = ["Says what the situation was.", "Says what they did."]
 
+/** A first-version week (IW4): no ready answers. */
 const week = (): InterviewWeek => ({
-  schema: INTERVIEW_WEEK_SCHEMA,
+  schema: INTERVIEW_WEEK_SCHEMA_V1,
   id: "2026-w47",
   by: "claude-routine",
   opens: "2026-11-16T00:00:00-08:00",
@@ -126,5 +131,104 @@ describe("the interview week's format", () => {
     expect(
       problems({ ...week(), due: "2026-11-22T23:59:00-07:00" })
     ).toHaveLength(1)
+  })
+
+  it("reads a second-version week only with every question's ready answer, and a first only with none", () => {
+    const v1 = week()
+    const v2 = {
+      ...v1,
+      schema: INTERVIEW_WEEK_SCHEMA,
+      questions: v1.questions.map((q) => ({
+        ...q,
+        ground: GROUND[q.family],
+        ready: readyFor(q.targetSeconds),
+      })),
+    }
+    expect(problems(v2)).toEqual([])
+    expect(
+      problems({
+        ...v2,
+        questions: [{ ...v1.questions[0]! }, ...v2.questions.slice(1)],
+      })
+    ).toEqual([
+      `questions[0] ("walk-me-through"): every question of a ${INTERVIEW_WEEK_SCHEMA} week has its ready answer`,
+      `questions[0] ("walk-me-through"): every question of a ${INTERVIEW_WEEK_SCHEMA} week names its ground`,
+    ])
+    expect(problems({ ...v1, questions: v2.questions })).toHaveLength(8)
+    expect(
+      problems({
+        ...v2,
+        questions: [
+          { ...v2.questions[0]!, ground: "work" },
+          ...v2.questions.slice(1),
+        ],
+      })
+    ).toEqual([
+      `questions[0] ("walk-me-through"): the about-yourself family's ground is open`,
+    ])
+  })
+
+  it("holds every claim of a question about the body of work to a source, and an open question's to none", () => {
+    const ready = readyFor(90)
+    const unsourced = {
+      ...ready,
+      answer: ready.answer.map((p) => ({ ...p, sources: [] })),
+      another: { ...ready.another, sources: [] },
+    }
+    const at = (r: unknown): Array<string> =>
+      problems({
+        ...week(),
+        schema: INTERVIEW_WEEK_SCHEMA,
+        questions: week().questions.map((q) => ({
+          ...q,
+          ground: GROUND[q.family],
+          ready: r,
+        })),
+      })
+    // Only decision-c266, the one question about the body of work, is held.
+    expect(at(unsourced)).toEqual([
+      ...[0, 1, 2, 3].map(
+        (k) =>
+          `questions[3] ("decision-c266").ready.answer[${k}]: a question about the body of work names a source for every claim`
+      ),
+      'questions[3] ("decision-c266").ready.another: a question about the body of work names a source for every claim',
+    ])
+    expect(at({ ...ready, score: 3 }).join("\n")).toMatch(/score/)
+  })
+})
+
+describe("today's question", () => {
+  const w = week()
+  const ids = (days: Array<string>): Array<string | null> =>
+    days.map((d) => questionOfDay(w, d)?.id ?? null)
+
+  it("takes one a day in the week's order from Monday, round again, with nothing carried over", () => {
+    expect(
+      ids([
+        "2026-11-16",
+        "2026-11-17",
+        "2026-11-18",
+        "2026-11-19",
+        "2026-11-20",
+        "2026-11-21",
+        "2026-11-22",
+      ])
+    ).toEqual([
+      "walk-me-through",
+      "conflict",
+      "why-now",
+      "decision-c266",
+      "walk-me-through",
+      "conflict",
+      "why-now",
+    ])
+  })
+
+  it("has none on a day outside the week", () => {
+    expect(ids(["2026-11-15", "2026-11-23", "not a day"])).toEqual([
+      null,
+      null,
+      null,
+    ])
   })
 })

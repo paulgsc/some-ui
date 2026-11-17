@@ -12,7 +12,11 @@ import { finishEssays, judgedFaults } from "@interview-week/lib/essay/finish"
 import { heardByNote } from "@interview-week/lib/essay/record"
 import { ESSAY_VALUES_SCHEMA } from "@interview-week/lib/essay/values"
 import type { EssaysValues } from "@interview-week/lib/essay/values"
-import { corpus, valuesFor } from "@interview-week/lib/monday/__tests__/fixture"
+import {
+  COMMIT,
+  corpus,
+  valuesFor,
+} from "@interview-week/lib/monday/__tests__/fixture"
 import { prepare } from "@interview-week/lib/monday/bundle"
 import { finish } from "@interview-week/lib/monday/finish"
 import type { InterviewWeek } from "@interview-week/lib/week"
@@ -22,6 +26,7 @@ import { describe, expect, it } from "vitest"
 /** The week the Monday routine writes from the fixture on Monday `now`. */
 function week(now = "2026-11-16T11:41:00Z"): InterviewWeek {
   const { bundle } = prepare({
+    commit: COMMIT,
     now: new Date(now),
     brief: [],
     corpus,

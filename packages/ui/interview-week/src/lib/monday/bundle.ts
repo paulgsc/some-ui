@@ -25,7 +25,7 @@ import {
 } from "@interview-week/lib/week"
 import { assertNever, weekAround } from "@some-ui/core-utils"
 
-const BUNDLE_SCHEMA = "some-ui.interview-monday-bundle/1"
+const BUNDLE_SCHEMA = "some-ui.interview-monday-bundle/2"
 
 /** A card's script runs 1 to 2 minutes: about 150 to 300 words (#2935). */
 export const SCRIPT_WORDS = { min: 150, max: 300 } as const
@@ -72,8 +72,15 @@ type CardSlot = {
   readonly material: string
 }
 
+/** A piece of the body of work a ready answer may cite, by its key (`workSourceKey`). */
+export type WorkEntry = { readonly key: string; readonly title: string }
+
 type Next = {
   readonly id: string
+  /** The commit the body of work was read at: every source a ready answer names is in `sources`. */
+  readonly commit: string
+  /** The body of work at `commit` (IW8): what a ready answer's claim may name as its source. */
+  readonly sources: ReadonlyArray<WorkEntry>
   readonly opens: string
   readonly due: string
   /** The companies earlier weeks invented, so a new one is new. */
@@ -103,6 +110,35 @@ export type Corpus = {
   readonly docs: ReadonlyArray<Material & { readonly path: string }>
   /** Every declared invariant (`invariantsOf`). */
   readonly invariants: ReadonlyArray<Invariant>
+  /** The pull requests that merged in the last week, in both repos (`render call-facts`). */
+  readonly pulls: ReadonlyArray<Pull>
+}
+
+/** A merged pull request, as `render call-facts` lists it. */
+export type Pull = {
+  readonly repo: "some-ui" | "server"
+  readonly number: number
+  readonly title: string
+}
+
+/**
+ * The body of work a ready answer may cite (IW8, #3175): the calls record,
+ * the epics, the docs and invariants of the checkout, and the week's merged
+ * pull requests, each once, by key.
+ */
+export function workOf(corpus: Corpus): Array<WorkEntry> {
+  const entries: Array<WorkEntry> = [
+    ...corpus.pulls.map((p) => ({
+      key: `pull:${p.repo}#${p.number}`,
+      title: p.title,
+    })),
+    ...corpus.calls.map((c) => ({ key: `call:${c.id}`, title: c.chose })),
+    ...corpus.epics.map((e) => ({ key: e.key, title: e.title })),
+    ...corpus.docs.map((d) => ({ key: d.key, title: d.title })),
+    ...corpus.invariants.map((i) => ({ key: i.key, title: i.title })),
+  ]
+  const seen = new Set<string>()
+  return entries.filter((e) => !seen.has(e.key) && seen.add(e.key))
 }
 
 export const WEEK_FILE = /^interview-week-(\d{4}-w\d{2})\.json$/
@@ -278,6 +314,8 @@ export type Prepared = {
 /** The bundle for `now`, from the mailbox's weeks and the corpus. */
 export function prepare(input: {
   readonly now: Date
+  /** The checkout's commit, which the corpus was read at. */
+  readonly commit: string
   readonly brief: ReadonlyArray<MailboxFile>
   readonly corpus: Corpus
 }): Prepared {
@@ -296,6 +334,8 @@ export function prepare(input: {
     const asked = askedIn(weeks)
     next = {
       id: around.id,
+      commit: input.commit,
+      sources: workOf(input.corpus),
       opens: around.opens,
       due: around.due,
       earlierCompanies: [...new Set(weeks.map((w) => w.company.name))],

@@ -1,6 +1,6 @@
 import { inMemoryStorage } from "@some-ui/core-utils"
 import type { InterviewWeek } from "@some-ui/interview-week"
-import { INTERVIEW_WEEK_SCHEMA, readWeek } from "@some-ui/interview-week"
+import { INTERVIEW_WEEK_SCHEMA_V1, readWeek } from "@some-ui/interview-week"
 import { ONE_TAKE } from "@some-ui/voice-capture"
 import type { SimulatedPattern } from "@some-ui/voice-capture/testing"
 import { simulatedPattern } from "@some-ui/voice-capture/testing"
@@ -14,7 +14,7 @@ const guidelines = [
 
 /** A week as the routine writes it (`some-ui.interview-week/1`), for 2026-w47. */
 export const WEEK: InterviewWeek = {
-  schema: INTERVIEW_WEEK_SCHEMA,
+  schema: INTERVIEW_WEEK_SCHEMA_V1,
   id: "2026-w47",
   by: "claude-routine",
   opens: "2026-11-16T00:00:00-08:00",

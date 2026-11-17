@@ -21,17 +21,28 @@
  * - **A real employer's name.** The interview is faux (owner, 2026-11-13).
  *   The routine's `finish` checks the week's texts against the employers it
  *   knows, as written (`lib/monday/employers.ts`, C279).
- * - **A model answer or a score.** Model answers are written after the
- *   deadline, in the essay (IW6). Every object is strict, so a field like
- *   `answer` is refused rather than ignored.
+ * - **A score.** Nothing in a week grades the owner. Every object is strict,
+ *   so a field like `score` is refused rather than ignored.
+ *
+ * **The second version** (`some-ui.interview-week/2`, IW8, #3175) adds to each
+ * question its `ready` answer, the first rung of its ladder: a good answer in
+ * parts, each with a note on why it works; another good answer in another
+ * shape; a poor answer with notes on why it is poor; and cue words for saying
+ * it from cues. On a question about the body of work (`GROUND`, `work`) every
+ * claim names its source (`WorkSource`), which the routine checks exists at
+ * the week's commit; on an open question a claim may. A first-version week,
+ * written before, has no ready answers and still reads.
  *
  * The schema holds the shape and its counts. `readWeek` adds what relates one
  * field to another: dates, ids, and each family's variants and source.
  */
-import { weekAround } from "@some-ui/core-utils"
+import { assertNever, weekAround } from "@some-ui/core-utils"
 import { z } from "zod"
 
-export const INTERVIEW_WEEK_SCHEMA = "some-ui.interview-week/1"
+/** The version the routine writes: a week with ready answers (IW8). */
+export const INTERVIEW_WEEK_SCHEMA = "some-ui.interview-week/2"
+/** The first version (IW4), with no ready answers; weeks written before IW8 still read. */
+export const INTERVIEW_WEEK_SCHEMA_V1 = "some-ui.interview-week/1"
 
 /** A week's id: its ISO year and week in lower case, like `2026-w47` (rust-week's `WEEK_ID`, IW1's refs). */
 export const WEEK_ID = /^\d{4}-w(?:0[1-9]|[1-4]\d|5[0-3])$/
@@ -91,6 +102,32 @@ export const FAMILIES = {
   },
 } as const satisfies Record<Family, Record<string, string>>
 
+/**
+ * What a question's answer rests on (IW8; the owner, 2026-11-17), two kinds
+ * that never mix:
+ *
+ * - **`open`:** a generic question ("tell me about yourself"). Its ready
+ *   answer follows the structure research agrees on and is skewed to the
+ *   owner, without having to speak about the code. A claim may cite the body
+ *   of work, and needn't.
+ * - **`work`:** a question about the body of work itself: the repositories,
+ *   the apps, the infrastructure. Its answer is concrete and falsifiable, so
+ *   every claim names its source, and the essay checks the owner's answer
+ *   against those sources.
+ *
+ * Code decides it from the family, never the model (LEVERS, #2162).
+ */
+export const GROUNDS = ["open", "work"] as const
+export type Ground = (typeof GROUNDS)[number]
+
+export const GROUND: Record<Family, Ground> = {
+  "about-yourself": "open",
+  "a-time-you": "open",
+  "why-this-role": "open",
+  "strengths-weaknesses": "open",
+  decision: "work",
+}
+
 /** How long an answer in each family should run, in seconds. A take is capped at 120 (#2931). */
 export const TARGET_SECONDS: Record<Family, number> = {
   "about-yourself": 90,
@@ -148,6 +185,96 @@ const CardSourceSchema = z.discriminatedUnion("kind", [
 ])
 export type CardSource = z.infer<typeof CardSourceSchema>
 
+/**
+ * A piece of the owner's body of work a ready answer's claim rests on: a pull
+ * request or an issue in either repo, a recorded call, a doc, or a declared
+ * invariant. The routine refuses one the week's commit doesn't hold
+ * (`lib/monday/finish.ts`).
+ */
+export const WorkSourceSchema = z.discriminatedUnion("kind", [
+  z.strictObject({
+    kind: z.literal("pull"),
+    repo: RepoSchema,
+    number: z.int().positive(),
+  }),
+  z.strictObject({
+    kind: z.literal("issue"),
+    repo: RepoSchema,
+    number: z.int().positive(),
+  }),
+  CallSourceSchema,
+  z.strictObject({ kind: z.literal("doc"), path: TextSchema }),
+  z.strictObject({
+    kind: z.literal("invariant"),
+    id: z.string().regex(/^[A-Z][A-Z0-9]*\d+$/, "an invariant's id, like RS1"),
+    path: TextSchema,
+  }),
+])
+export type WorkSource = z.infer<typeof WorkSourceSchema>
+
+/** A source's key, as the routine's inventory names it: `pull:some-ui#3170`, `call:C266`. */
+export function workSourceKey(source: WorkSource): string {
+  switch (source.kind) {
+    case "pull":
+    case "issue": {
+      return `${source.kind}:${source.repo}#${source.number}`
+    }
+    case "call": {
+      return `call:${source.id}`
+    }
+    case "doc": {
+      return `doc:${source.path}`
+    }
+    case "invariant": {
+      return `invariant:${source.id}`
+    }
+    default: {
+      return assertNever(source)
+    }
+  }
+}
+
+/** A claim's sources: required on a `work` question's claims (`readWeek`), optional on an `open` one's. */
+const SourcesSchema = z.array(WorkSourceSchema).max(4)
+
+/** One part of a good answer: what is said, and a note on why it works. */
+const PartSchema = z.strictObject({
+  /** What the part does: "The situation", "The options". */
+  label: TextSchema,
+  /** Said as written, first person. */
+  text: TextSchema,
+  /** Why this part works, for the study page. */
+  note: TextSchema,
+  sources: SourcesSchema,
+})
+export type ReadyPart = z.infer<typeof PartSchema>
+
+/** Parts a ready answer has: enough for a shape, few enough to study on a phone. */
+export const READY_PARTS = { min: 3, max: 6 } as const
+
+/**
+ * A question's ready answer (IW8), the first rung of its ladder. Rung 2 reads
+ * `answer`'s texts aloud, in order; rung 3 says it from `cues`.
+ */
+export const ReadySchema = z.strictObject({
+  answer: z.array(PartSchema).min(READY_PARTS.min).max(READY_PARTS.max),
+  /** Another good answer, in another shape, with why it also works. */
+  another: z.strictObject({
+    text: TextSchema,
+    note: TextSchema,
+    sources: SourcesSchema,
+  }),
+  /** A poor answer, and why it is poor; what its notes check names its source. */
+  poor: z.strictObject({
+    text: TextSchema,
+    notes: z.array(TextSchema).min(2).max(5),
+    sources: z.array(WorkSourceSchema).max(4),
+  }),
+  /** A few words each, to lean on while saying it (rung 3). */
+  cues: z.array(TextSchema).min(3).max(8),
+})
+export type Ready = z.infer<typeof ReadySchema>
+
 const QuestionSchema = z.strictObject({
   id: IdSchema,
   family: z.enum(FAMILY_IDS),
@@ -160,6 +287,14 @@ const QuestionSchema = z.strictObject({
   guidelines: z.array(TextSchema).min(2).max(5),
   /** A decision question's call; absent on every other question. */
   source: CallSourceSchema.optional(),
+  /**
+   * What its answer rests on (`GROUND`), kept on the question so weeks and
+   * takes can be queried and pivoted by it as they accumulate: on every
+   * question of a second-version week, as its family says.
+   */
+  ground: z.enum(GROUNDS).optional(),
+  /** Its ready answer: on every question of a second-version week, none of a first's. */
+  ready: ReadySchema.optional(),
 })
 export type Question = z.infer<typeof QuestionSchema>
 
@@ -178,7 +313,7 @@ const questionCount = `a week has ${QUESTIONS_MIN} to ${QUESTIONS_MAX} questions
 const cardCount = `a week has ${CARDS_MIN} to ${CARDS_MAX} cards`
 
 export const InterviewWeekSchema = z.strictObject({
-  schema: z.literal(INTERVIEW_WEEK_SCHEMA),
+  schema: z.enum([INTERVIEW_WEEK_SCHEMA, INTERVIEW_WEEK_SCHEMA_V1]),
   id: z
     .string()
     .regex(WEEK_ID, "a week's id is its ISO year and week, like 2026-w47"),
@@ -234,6 +369,48 @@ function relations(week: InterviewWeek): Array<string> {
         `${at}: ${question.family}'s variants are ${Object.keys(variants).join(", ")}`
       )
     }
+    if (
+      (week.schema === INTERVIEW_WEEK_SCHEMA) !==
+      (question.ready !== undefined)
+    ) {
+      problems.push(
+        week.schema === INTERVIEW_WEEK_SCHEMA
+          ? `${at}: every question of a ${INTERVIEW_WEEK_SCHEMA} week has its ready answer`
+          : `${at}: a ${INTERVIEW_WEEK_SCHEMA_V1} week holds no ready answer`
+      )
+    }
+    if (
+      question.ground !== undefined &&
+      question.ground !== GROUND[question.family]
+    ) {
+      problems.push(
+        `${at}: the ${question.family} family's ground is ${GROUND[question.family]}`
+      )
+    }
+    if (
+      (week.schema === INTERVIEW_WEEK_SCHEMA) !==
+      (question.ground !== undefined)
+    ) {
+      problems.push(
+        week.schema === INTERVIEW_WEEK_SCHEMA
+          ? `${at}: every question of a ${INTERVIEW_WEEK_SCHEMA} week names its ground`
+          : `${at}: a ${INTERVIEW_WEEK_SCHEMA_V1} week names no ground`
+      )
+    }
+    if (question.ready !== undefined && GROUND[question.family] === "work") {
+      const unsourced = [
+        ...question.ready.answer.map((part, k) => ({
+          at: `ready.answer[${k}]`,
+          sources: part.sources,
+        })),
+        { at: "ready.another", sources: question.ready.another.sources },
+      ].filter(({ sources }) => sources.length === 0)
+      for (const { at: where } of unsourced) {
+        problems.push(
+          `${at}.${where}: a question about the body of work names a source for every claim`
+        )
+      }
+    }
     if ((question.family === "decision") !== (question.source !== undefined)) {
       problems.push(
         `${at}: a decision question names its call, and no other question names one`
@@ -264,4 +441,26 @@ export function readWeek(body: unknown): WeekReading {
   return problems.length === 0
     ? { ok: true, week: parsed.data }
     : { ok: false, problems }
+}
+
+const DAY_MS = 86_400_000
+
+/**
+ * Today's question (IW8, C-rotation): one a day, by a fixed rotation over the
+ * week's questions in their order, starting Monday with the first. `day` is
+ * the owner's calendar day, `YYYY-MM-DD` (`pacificDay`). Nothing carries
+ * over: a day left alone leaves no trace, and the next day brings its own.
+ * Null on a day outside the week.
+ */
+export function questionOfDay(
+  week: Pick<InterviewWeek, "opens" | "questions">,
+  day: string
+): Question | null {
+  const index = Math.round(
+    (Date.parse(`${day}T00:00:00Z`) -
+      Date.parse(`${week.opens.slice(0, 10)}T00:00:00Z`)) /
+      DAY_MS
+  )
+  if (!Number.isFinite(index) || index < 0 || index > 6) return null
+  return week.questions[index % week.questions.length] ?? null
 }

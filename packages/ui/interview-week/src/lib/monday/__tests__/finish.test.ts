@@ -1,10 +1,12 @@
 import { prepare } from "@interview-week/lib/monday/bundle"
 import { finish } from "@interview-week/lib/monday/finish"
+import { VALUES_SCHEMA } from "@interview-week/lib/monday/values"
 import { describe, expect, it } from "vitest"
 
-import { corpus, script, valuesFor } from "./fixture"
+import { COMMIT, corpus, script, valuesFor } from "./fixture"
 
 const { bundle } = prepare({
+  commit: COMMIT,
   now: new Date("2026-11-16T11:41:00Z"),
   brief: [],
   corpus,
@@ -72,6 +74,55 @@ describe("the interview week's finish", () => {
     ])
   })
 
+  it("builds each question's ready answer, and refuses a source outside the body of work at the commit, a length off its target and an employer", () => {
+    const values = valuesFor(bundle)
+    const done = finish({ bundle, values, resumeEmployers: [] })
+    if (!done.ok) throw new Error(done.problems.join("\n"))
+    expect(done.files[0]?.body.schema).toBe("some-ui.interview-week/2")
+    expect(done.files[0]?.body.questions[0]?.ready?.cues).toHaveLength(3)
+
+    const week = values.week!
+    const first = week.questions[0]!
+    const ready = first.ready
+    const changed = {
+      ...first,
+      ready: {
+        ...ready,
+        answer: [
+          {
+            ...ready.answer[0]!,
+            sources: [{ kind: "pull", repo: "server", number: 9999 } as const],
+          },
+          ready.answer[1]!,
+          {
+            ...ready.answer[2]!,
+            text: "I said it plainly and then I stopped there.",
+          },
+        ],
+        poor: {
+          ...ready.poor,
+          notes: [
+            "Says it was at Harbour Works.",
+            ...ready.poor.notes.slice(1),
+          ],
+        },
+      },
+    }
+    expect(
+      problems(
+        {
+          ...values,
+          week: { ...week, questions: [changed, ...week.questions.slice(1)] },
+        },
+        ["Harbour Works"]
+      )
+    ).toEqual([
+      "week.questions[0] (\"walk-me-through\").ready.answer[0].sources[0]: pull:server#9999 isn't in the body of work at c9fd3215e0a1; cite one the bundle's sources list",
+      'week.questions[0] ("walk-me-through").ready.answer: 93 words; at 140 a minute against a 90-second target, write 126 to 210',
+      'week.questions[0] ("walk-me-through").ready.poor.notes[0]: names Harbour Works, a real employer; the interview is for an invented one',
+    ])
+  })
+
   it("refuses a real employer, the owner's own included, and a company an earlier week used", () => {
     const values = valuesFor(bundle)
     const week = values.week!
@@ -119,7 +170,7 @@ describe("the interview week's finish", () => {
     expect(
       finish({
         bundle: held,
-        values: { schema: "some-ui.interview-monday-values/1", week: null },
+        values: { schema: VALUES_SCHEMA, week: null },
         resumeEmployers: [],
       })
     ).toEqual({ ok: true, files: [] })

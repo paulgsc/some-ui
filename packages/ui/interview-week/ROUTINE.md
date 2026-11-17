@@ -1,7 +1,7 @@
 # The interview week: the Monday routine
 
 A scheduled cloud session runs this every Monday (IW4, #2935). It writes the
-week of mock interview that opens that day (`some-ui.interview-week/1`): an
+week of mock interview that opens that day (`some-ui.interview-week/2`): an
 invented company and role, five questions to answer by voice (four while
 `docs/calls/` holds no call to ask about), and three teleprompter cards
 to read. First, it writes the essay on each week that ended
@@ -17,9 +17,10 @@ Code does everything a model needn't decide (LEVERS, #2162). It chooses:
 - each decision question's recorded call (`docs/calls/<ID>.json`);
 - each card's source (an epic, a doc, an invariant) and situation.
 
-It also fills the ids, dates and targets, checks the week and puts it. You
-write only the words: the company and role, each question's prompt and
-guidelines, and each card's script.
+It also fills the ids, dates and targets, reads the owner's body of work at
+the checkout's commit, checks the week and puts it. You write only the words:
+the company and role, each question's prompt, guidelines and ready answer,
+and each card's script.
 
 ## Before you start
 
@@ -44,11 +45,12 @@ folder outside the checkout as `<run>`.
 1. **Pull:** `pnpm monday pull --to <run>`. It copies the mailbox's interview
    weeks (`brief/interview-week-…`) and prints one more command.
 2. **Facts:** run the command `pull` printed. It writes `<run>/facts.json`:
-   the epics that moved in the last week, each with its "Why".
+   the epics that moved in the last week, each with its "Why", and the pull
+   requests that merged.
 3. **Prepare:** `pnpm monday prepare --from <run>`. It writes
    `<run>/bundle.json` and prints what it chose. The bundle's `next` is
    `null` when the mailbox already holds this week. Only in that case, write
-   `{"schema":"some-ui.interview-monday-values/1","week":null}` and go to
+   `{"schema":"some-ui.interview-monday-values/2","week":null}` and go to
    step 5.
 4. **Write `<run>/values.json`** from the bundle alone, as "What you write"
    says.
@@ -65,13 +67,15 @@ folder outside the checkout as `<run>`.
 
 ## What you write
 
-`values.json` is `{"schema":"some-ui.interview-monday-values/1","week":…}`:
+`values.json` is `{"schema":"some-ui.interview-monday-values/2","week":…}`:
 
 ```json
 {
   "company": { "name": "…", "about": "…" },
   "role": { "title": "…", "about": "…" },
-  "questions": [{ "id": "…", "prompt": "…", "guidelines": ["…"] }],
+  "questions": [
+    { "id": "…", "prompt": "…", "guidelines": ["…"], "ready": { "…": "…" } }
+  ],
   "cards": [{ "id": "…", "script": "…" }]
 }
 ```
@@ -116,6 +120,65 @@ invented, and never a real employer, past or prospective.
     options, what it cost, or what would undo it. Never quote the record
     back. The guidelines ask the answer to name the options, why this one
     was chosen, the trade-off, and what would undo it.
+
+### A question's ready answer
+
+`ready` is the first rung of the question's ladder (IW8, #3175): the owner
+studies it, reads it aloud, says it from its cues, and in time says it in
+their own words. It is the normal way in, never a rescue. It is drawn from
+the owner's body of work, and every claim names where it comes from.
+
+Each question carries its `ground`, which code sets from its family, and
+the two kinds are written differently:
+
+- **An open question** (`ground: "open"`: about yourself, a time you…, why
+  this role, strengths and weaknesses) is generic. Its answer follows the
+  structure research agrees on for that kind of question (for a time you…,
+  the situation, task, action and result; for about yourself, present,
+  past, future, tied to the role), skewed to the owner: their path, how they
+  work, what they build. It needn't speak about the code. A claim may cite
+  a source, and `finish` doesn't require one.
+- **A question about the body of work** (`ground: "work"`: a decision, today)
+  is concrete and falsifiable. Every part of `answer` and `another` names at
+  least one source, and every claim in it is one the source shows: what the
+  thing is, what it's for, the options, the trade-off, the edge cases. Vague
+  or made-up claims are what its poor answer shows, and what the essay checks
+  the owner's own answer for.
+
+For either kind:
+
+- **Ground what you cite** in the bundle's `next.sources`, the body of work at
+  `next.commit`: pull requests in both repos, recorded calls, epics, docs
+  and declared invariants. Pick the one or two pieces that answer the
+  question best for this role, and read them (`gh pr view`, the file, the
+  call's JSON) before you write. A source is cited as
+  `{"kind":"pull","repo":"some-ui","number":3170}`, `{"kind":"issue",…}`,
+  `{"kind":"call","id":"C266"}`, `{"kind":"doc","path":"docs/…"}` or
+  `{"kind":"invariant","id":"RS1","path":"CLAUDE.md"}`. `finish` refuses one
+  not in `next.sources`. Never state a number, a count or a result the source
+  doesn't show.
+- **What a body-of-work answer communicates:** the architecture and
+  infrastructure, a decision with its alternatives and trade-offs, the edge
+  cases, and enough of a thread that an interviewer can ask the next
+  question.
+- **`answer`:** 3 to 6 parts, in the order they're said. Each part has a
+  `label` (1 to 5 words, like "The situation" or "The options"), its `text`
+  (6 to 80 words, first person, spoken), a `note` (4 to 40 words) on why this
+  part works, and its `sources`. Together the texts run 60% to all of the
+  question's target at 140 words a minute.
+- **`another`:** a second good answer in a different shape (principle first,
+  say, where `answer` tells a story), with a `note` on when that shape suits
+  and its `sources`. From 40% to all of the target's words.
+- **`poor`:** a poor answer someone might give (vague, no alternative named,
+  a claim the work doesn't show, the strongest work left out), 15 to 120
+  words, with 2 to 5 `notes` on why it's poor. Cite in `sources` whatever a
+  note checks it against. It's for study, so it's plausible, never a joke.
+- **`cues`:** 3 to 8 cues of 1 to 6 words each, in order, that bring back
+  each part when said from cues.
+
+The essay reads the owner's own answer the same way (IW6): an open one for
+its structure, a body-of-work one also against its sources, facts anyone can
+look up. Never a score.
 
 ### A card
 

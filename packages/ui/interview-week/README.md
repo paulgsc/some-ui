@@ -13,14 +13,21 @@ and role, 4 to 6 questions from a closed list of families
 weaknesses, a decision), and 2 to 4 teleprompter cards, each presenting an
 epic, a doc or a declared invariant of this repo. Ids follow IW1's refs: a
 week is `YYYY-wNN`, a question or card a kebab slug of at most 64
-characters, and no question is named `read`.
+characters, and no question is named `read`. The second version,
+`some-ui.interview-week/2` (IW8, #3175), gives every question its `ready`
+answer, the first rung of its ladder: a good answer in parts with a note on
+why each works, another good answer, a poor one with notes, and cue words,
+every claim citing the owner's body of work (`WorkSource`). A first-version
+week still reads, with no ready answers. `questionOfDay` is today's question:
+one a day, in the week's order from Monday, with nothing carried over.
 
 `src/lib/monday` and `scripts/monday.ts` (#2935): the Monday routine that
 writes each week, run as `ROUTINE.md` says. Code chooses every question's
 family and variant, each decision question's recorded call, and each card's
 source and situation, each rotated least recently asked first; the model
-writes only the words, and `finish` checks their lengths, the schema, and
-that no real employer is named (C277–C280).
+writes only the words, and `finish` checks their lengths, the schema, that
+no real employer is named (C277–C280), and that every source a ready answer
+cites is in the body of work at the checkout's commit (`next.sources`).
 
 `src/lib/faults` (#2934): the faults of one take, from the words home heard
 (`some-ui.voice-transcript/1`'s `words`, each with its timing and `p`).
