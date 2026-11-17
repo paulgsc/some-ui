@@ -68,8 +68,8 @@ export const ExtensionsPage = ({
             <Link to="/resume" className={CHIP}>
               Résumé
             </Link>
-            {/* Only the owner signs in, on the home network; here the
-                passkey screen opens the demo (lib/demo). */}
+            {/* Only the owner signs in, on the home network; here /auth
+                says so and opens the demo (components/auth/viewer-auth). */}
             <Link to="/auth" className={CHIP}>
               Try the demo
             </Link>

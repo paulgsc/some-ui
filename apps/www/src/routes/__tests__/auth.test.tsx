@@ -41,11 +41,15 @@ vi.mock("@/lib/auth/enter", () => ({
     void entered.push({ href, mode }),
 }))
 
-const created = vi.hoisted((): { refusal: Error | null } => ({
+const created = vi.hoisted((): { refusal: Error | null; demos: number } => ({
   refusal: null,
+  demos: 0,
 }))
 vi.mock("@/lib/auth/session", async (importOriginal) => ({
   ...(await importOriginal<object>()),
+  openDemo: (): void => {
+    created.demos += 1
+  },
   createAccount: (): Promise<void> =>
     created.refusal === null
       ? Promise.resolve()
@@ -163,6 +167,41 @@ describe("/auth in the Android app, which has no sign-in", () => {
     expect(entered).toEqual([
       { href: "/sessions", mode: "server" },
       { href: "/foyer", mode: "server" },
+    ])
+  })
+})
+
+describe("/auth on the viewer build, where only the owner signs in (SIGNIN5)", () => {
+  beforeEach(() => {
+    // Read where it is branched on (src/vite-env.d.ts), at render.
+    vi.stubEnv("VITE_STATIC_DATA", "true")
+    created.demos = 0
+  })
+
+  it("says only the owner signs in, names no passkey, and offers only the demo", () => {
+    renderAuth()
+    expect(
+      screen.getByRole("heading", { name: "Only I sign in here" })
+    ).toBeTruthy()
+    expect(screen.queryByText(/passkey/i)).toBeNull()
+    const buttons = screen.getAllByRole("button")
+    expect(buttons.map((button) => button.textContent)).toEqual([
+      "Open the demo",
+    ])
+  })
+
+  it("opens the demo where the viewer was headed, or the app", () => {
+    search = { redirect: "/sessions" }
+    renderAuth()
+    fireEvent.click(screen.getByRole("button", { name: "Open the demo" }))
+    cleanup()
+    search = {}
+    renderAuth()
+    fireEvent.click(screen.getByRole("button", { name: "Open the demo" }))
+    expect(created.demos).toBe(2)
+    expect(entered).toEqual([
+      { href: "/sessions", mode: undefined },
+      { href: "/app", mode: undefined },
     ])
   })
 })
