@@ -454,7 +454,7 @@ phone. Each runs:
    20 requests at once and one per 2 s after that, no 429 at all, any request
    inside a 429's `Retry-After`, or the nth request after a 429 sooner than
    n + 1 paces of 2 s after it; or when the app coming back during the
-   pull's run costs home more than two pulls, asks a read more than twice
+   pull's run reads more than two pulls would, asks a read more than twice
    what one pull did, or sends a write twice (a second run started). A
    level whose Pair form cannot be driven pairs the debug APK instead and
    says "via debug build"; a level whose store cannot take the CA says "no

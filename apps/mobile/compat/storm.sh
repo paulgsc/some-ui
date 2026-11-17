@@ -316,10 +316,18 @@ if [ "$first_end" != "read" ]; then
   fail_refresh "single: a pull with home up ended \"$first_end\", not \"read\": the page did not refresh"
 fi
 phase joined pull_then_back
-single_heard=$(echo "${phases[0]}" | grep -oE '"requests":[0-9]+' | grep -oE '[0-9]+$')
-joined_heard=$(echo "${phases[-1]}" | grep -oE '"requests":[0-9]+' | grep -oE '[0-9]+$')
-if [ "$joined_heard" -gt $((2 * single_heard)) ]; then
-  fail "joined: a pull and the app coming back while its run was in flight sent $joined_heard requests, more than two pulls alone ($((2 * single_heard))) (stub-joined.json)"
+# Reads only: the writes the run drains (each app event once, checked
+# below) are new work, which coming back may well have queued.
+reads_of() {
+  node -e '
+const { byRoute } = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))
+console.log(Object.entries(byRoute).filter(([k]) => k.startsWith("GET ")).reduce((n, [, c]) => n + c, 0))
+' "$1"
+}
+single_reads=$(reads_of "$out/stub-single.json")
+joined_reads=$(reads_of "$out/stub-joined.json")
+if [ "$joined_reads" -gt $((2 * single_reads)) ]; then
+  fail "joined: a pull and the app coming back while its run was in flight read $joined_reads times, more than two pulls alone ($((2 * single_reads))) (stub-joined.json)"
 fi
 # A read asked more than twice the single pull asked it, or a write (a
 # drained item: each has its own path) sent twice, means a second drain run
