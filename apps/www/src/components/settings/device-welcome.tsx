@@ -9,7 +9,7 @@
  * `lib/home-link/sign-in-words`' alone.
  */
 import type { JSX, ReactNode } from "react"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { BrandMark, Button } from "@some-ui/shared"
 
 import type { HomeLinkState } from "@/lib/home-link"
@@ -77,17 +77,6 @@ export const DeviceFirstRun = ({
 }): ReactNode => {
   const state = useHomeLink()
   const [seen, setSeen] = useState<Seen>(seenHere)
-  const paired = state.link.kind === "paired"
-  // What tells a restore from an unpair once the record is gone: a pairing
-  // this phone remembers, and an unpair, which Settings remembers as it is
-  // pressed and this keeps once the link says it ended.
-  const unpaired =
-    state.link.kind === "unpaired" &&
-    (state.link.note === "unpaired" || state.link.note === "unpaired-offline")
-  useEffect(() => {
-    if (paired) rememberSeen("paired")
-    else if (unpaired) rememberSeen("unpaired")
-  }, [paired, unpaired])
   if (state.link.kind === "reading") return mayOpen(seen) ? null : children
   if (!firstRun(state, seen)) return children
   const lost = restored(state, seen)

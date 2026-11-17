@@ -1,11 +1,19 @@
 /**
+ * @vitest-environment jsdom
+ *
  * SIGNIN2 (#3088): which phones open on the welcome, by what the link read
  * and what the person said on this phone.
  */
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it } from "vitest"
 
 import type { Seen } from "@/lib/home-link/first-run"
-import { firstRun, mayOpen, restored } from "@/lib/home-link/first-run"
+import {
+  firstRun,
+  mayOpen,
+  restored,
+  seenHere,
+  watchPairing,
+} from "@/lib/home-link/first-run"
 import type {
   HomeLinkEvent,
   HomeLinkState,
@@ -40,8 +48,9 @@ describe("the first run's welcome", () => {
     // paired, and what the phone remembers keeps the welcome away.
     expect(firstRun(read(null), "unpaired")).toBe(false)
     expect(firstRun(unpaired("unreadable"), "unpaired")).toBe(false)
-    // A record this phone can't read, on a phone that remembers a pairing.
-    expect(firstRun(unpaired("unreadable"), "paired")).toBe(true)
+    // A record there but not read just now, on a phone that remembers a
+    // pairing: no reason to pair again.
+    expect(firstRun(unpaired("unreadable"), "paired")).toBe(false)
     expect(restored(unpaired("unreadable"), "paired")).toBe(false)
   })
 
@@ -75,5 +84,62 @@ describe("the first run's welcome", () => {
       expect(firstRun(unpaired("unpaired"), said)).toBe(false)
       expect(firstRun(unpaired("unpaired-offline"), said)).toBe(false)
     }
+  })
+})
+
+describe("what the phone keeps of its pairing", () => {
+  afterEach(() => localStorage.clear())
+
+  /** A link whose state the test sets, and tells its listeners of. */
+  function link(first: HomeLinkState): {
+    getSnapshot: () => HomeLinkState
+    subscribe: (listener: () => void) => () => void
+    set: (next: HomeLinkState) => void
+  } {
+    let state = first
+    const listeners = new Set<() => void>()
+    return {
+      getSnapshot: () => state,
+      subscribe: (listener) => {
+        listeners.add(listener)
+        return () => listeners.delete(listener)
+      },
+      set: (next): void => {
+        state = next
+        for (const listener of listeners) listener()
+      },
+    }
+  }
+
+  const PAIRED = read({ base: "https://h/api/v1", id: "p", since: null })
+
+  it("remembers a pairing and an unpair, and nothing else the link says", () => {
+    const fake = link(INITIAL)
+    const stop = watchPairing(fake)
+    expect(seenHere()).toBe("")
+    fake.set(read(null))
+    expect(seenHere()).toBe("")
+    fake.set(PAIRED)
+    expect(seenHere()).toBe("paired")
+    fake.set(unpaired("unpaired-offline"))
+    expect(seenHere()).toBe("unpaired")
+    fake.set(PAIRED)
+    stop()
+    fake.set(unpaired("unpaired"))
+    expect(seenHere()).toBe("paired")
+  })
+
+  it("takes back an unpair remembered as it was pressed, once the link stays paired", () => {
+    localStorage.setItem("some-ui.home.welcome-not-now.v1", "unpaired")
+    const stop = watchPairing(link(PAIRED))
+    expect(seenHere()).toBe("paired")
+    stop()
+  })
+
+  it("leaves what was said to the welcome while nothing is paired", () => {
+    localStorage.setItem("some-ui.home.welcome-not-now.v1", "restored")
+    const stop = watchPairing(link(read("lost")))
+    expect(seenHere()).toBe("restored")
+    stop()
   })
 })

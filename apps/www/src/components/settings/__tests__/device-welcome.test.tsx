@@ -82,6 +82,8 @@ beforeAll(async () => {
 }, 30_000)
 
 afterEach(() => {
+  stopWatch()
+  stopWatch = (): void => undefined
   cleanup()
   home.sent = []
   home.record = null
@@ -91,10 +93,17 @@ afterEach(() => {
   vi.resetModules()
 })
 
+let stopWatch: () => void = (): void => undefined
+
+/** The foyer, with what the app shell keeps of the pairing (`SignInWatch`). */
 async function foyer(): Promise<void> {
   const { Route } = await import("@/routes/_dashboard/_apk/foyer")
+  const { homeLink } = await import("@/lib/home-link")
+  const { watchPairing } = await import("@/lib/home-link/first-run")
   const Foyer = Route.options.component
   if (Foyer === undefined) throw new Error("the foyer route draws nothing")
+  stopWatch()
+  stopWatch = watchPairing(homeLink())
   render(<Foyer />)
 }
 
