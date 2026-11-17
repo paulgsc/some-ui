@@ -114,6 +114,12 @@ const NATIVE_HTTP = "lib/device-backend/native-http/index.ts"
 const NATIVE_HTTP_CALLERS = new Set(["lib/home-link/index.ts"])
 const HOME_LINK_CALLERS = new Set([
   "components/settings/device-section.tsx",
+  // LA8 (SIGNIN2): the pairing form, Settings' Home server block's and the
+  // welcome's, whose Pair sends the code (and a typed name, where home
+  // takes one); and the welcome the foyer draws on a phone not paired,
+  // which reads the link to choose.
+  "components/settings/device-pair-form.tsx",
+  "components/settings/device-welcome.tsx",
   // Settings' readout of what this phone keeps on home and what waits
   // (LA15), with Send now; the status page's rows for the same records are
   // read here too, sending nothing of their own.

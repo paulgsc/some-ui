@@ -1,0 +1,20 @@
+{
+  "id": "C474",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/home-link/first-run.ts",
+    "some-ui:apps/www/src/components/settings/device-welcome.tsx",
+    "some-ui:apps/www/src/components/settings/device-section.tsx",
+    "some-ui:apps/www/src/components/device-sign-in-mark.tsx"
+  ],
+  "chose": "The phone remembers, beside what was said to the welcome, that it is paired and that the person unpaired it. A phone that remembers a pairing and holds no record lost it to a restore or a move to a new phone, and opens on the welcome saying so; one that remembers an unpair never opens on it again, nor does one that remembers a pairing whose record is there but not read just now. The app shell keeps the memory on every screen as the link changes. The memory sits in the page's storage, which the backup carries, while the pairing record stays out of the backup.",
+  "options": [
+    "remember a pairing and an unpair in the page's storage, and read a pairing remembered with no record as a restore",
+    "keep the memory beside the record, in storage the backup leaves out (a change to the phone's credential plugin)",
+    "remember only that the phone was paired, so neither a restore nor an unpair brings the welcome back"
+  ],
+  "gray": "Android's backup and a move to a new phone bring back the page's storage but not the pairing record, which the backup rules leave out, so the record reads as never made, the same as after an unpair and a restart. Only something remembered beside it can tell the two apart, and which of them the welcome answers is what the owner sees on a restored phone.",
+  "undo": "Have firstRun read a missing record as never paired whatever is remembered, and drop \"unpaired\" from Seen; the remembered value is only read by first-run.ts.",
+  "refs": ["#3088", "#3108"]
+}

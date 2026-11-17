@@ -110,6 +110,14 @@ const pairs = (does: string): Tap => ({
   },
 })
 
+/** The first run's welcome (SIGNIN2): an address, a code, and Pair. */
+const WELCOME: ReadonlyArray<Tap> = [
+  types("pair-address", "home-server.example.com"),
+  types("pair-code", "K7QF 2M9X"),
+  pairs("pairs, and home doesn't answer"),
+  pairs("pairs again"),
+]
+
 /** Settings → Home, unpaired: an address, then the pairing form. */
 const HOME: ReadonlyArray<Tap> = [
   types("home-server", "h"),
@@ -118,7 +126,12 @@ const HOME: ReadonlyArray<Tap> = [
     ...button("Pair...", "opens the pairing form"),
     grows: "the pairing form, below the buttons",
   },
-  types("pair-address", "http://home"),
+  // The form's own address, started from the sync's (SIGNIN2, C473).
+  types("pair-address", "x"),
+  {
+    does: "makes the address an http one",
+    act: (page) => page.locator("#pair-address").fill("http://home"),
+  },
   {
     does: "makes it an https address",
     act: (page) =>
@@ -168,5 +181,6 @@ walkEachPhone("a tap moves nothing it leaves on www's phone screens (HS1)", [
   { panel: "www-keep", taps: KEEP_INVALID, label: "keep, invalid" },
   { panel: "www-keep", taps: KEEP_FULL, label: "keep, shelf full" },
   { panel: "www-home", taps: HOME, label: "settings, home" },
+  { panel: "www-welcome", taps: WELCOME, label: "first run, welcome" },
   { panel: "www-scout", taps: SCOUT, label: "jobs, scout" },
 ])
