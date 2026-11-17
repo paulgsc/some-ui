@@ -82,32 +82,10 @@ else
 fi
 adb exec-out screencap -p > "$out/launched.png" || true
 
-# Up to 10 s for a line in the app's native log, as the stream has it so far.
-native_line() {
-  for _ in $(seq 1 10); do
-    grep -qE "\bSomeUI\b.*$1" "$out/logcat.txt" && return 0
-    sleep 1
-  done
-  return 1
-}
-
-# How many lines in the app's native log so far carry $1.
-native_count() {
-  grep -cE "\bSomeUI\b.*$1" "$out/logcat.txt" || true
-}
-
-# A drag down the middle of the screen from 30% to 75% of its height: below
-# the header, on the page, far past the pull's arming distance at any
-# density. `wm size` prints an override line after the physical one when
-# there is one, and the last is what is drawn.
-size=$(adb shell wm size | tr -d '\r' | grep -oE "[0-9]+x[0-9]+" | tail -1 || true)
-size=${size:-1080x1920}
-width=${size%x*}
-height=${size#*x}
-pull_down() {
-  adb shell input swipe $((width / 2)) $((height * 30 / 100)) \
-    $((width / 2)) $((height * 75 / 100)) 600
-}
+# native_line, native_count, last_pull_end, pull_down and $PULL_CHECKED.
+here=$(cd "$(dirname "$0")" && pwd)
+# shellcheck source=apps/mobile/launch/native-log.sh
+source "$here/native-log.sh"
 pulls=()
 
 if [ -n "$pid" ] && ! native_line "wing entered: foyer"; then
@@ -139,12 +117,11 @@ for component in $aliases; do
   # (CHECK_MS), and a drag the wing's navigation landed on ends silently.
   pulled=""
   for _ in 1 2; do
-    before=$(native_count "pull checked: [a-z]+")
+    before=$(native_count "$PULL_CHECKED")
     pull_down
     for _ in $(seq 1 30); do
-      if [ "$(native_count "pull checked: [a-z]+")" -gt "$before" ]; then
-        pulled=$(grep -oE "\bSomeUI\b.*pull checked: [a-z]+" "$out/logcat.txt" \
-          | tail -1 | grep -oE "[a-z]+$" || true)
+      if [ "$(native_count "$PULL_CHECKED")" -gt "$before" ]; then
+        pulled=$(last_pull_end)
         break 2
       fi
       sleep 1

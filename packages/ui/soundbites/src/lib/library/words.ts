@@ -28,6 +28,8 @@ export const dayAt = (iso: string): string => formatDay(dayOf(new Date(iso)))
 
 export const LIBRARY_WORDS = {
   heading: "Takes on home",
+  /** What a pull down reads again, for "Couldn't check … just now". */
+  pullWhat: "your takes on home",
   reading: "Asking home…",
   /** Said with Studio's way to pairing (`STUDIO_WORDS.pair`) beside it (ST34). */
   unpaired:

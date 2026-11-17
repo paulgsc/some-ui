@@ -184,6 +184,139 @@ describe("home's words for a said answer, kept on the phone (ST26 c)", () => {
   })
 })
 
+describe("a pull on Ideas on home (HERD2)", () => {
+  it("is done once both the ideas and the lists are read again, and failed if either could not be", async () => {
+    const storage = inMemoryStorage()
+    const listsAnswers: Array<"read" | "away"> = ["read", "away", "read"]
+    const home: IdeasHome = {
+      ideas: () =>
+        Promise.resolve({ kind: "read", value: { ideas: [], more: false } }),
+      lists: () =>
+        Promise.resolve(
+          listsAnswers.shift() === "away"
+            ? { kind: "away" }
+            : { kind: "read", value: { topics: [], keywords: [] } }
+        ),
+      furnish: vi.fn(),
+      setAside: vi.fn(),
+      entry: vi.fn(),
+    }
+    const pulled: { check: (() => Promise<void>) | null; dropped: boolean } = {
+      check: null,
+      dropped: false,
+    }
+    const runtime = createIdeasOnHome({
+      home,
+      ideas: keptIdeaStore(() => storage),
+      lists: keptIdeaLists(() => storage),
+      refresh: ({ checkAgain }) => {
+        pulled.check = checkAgain
+        return (): void => {
+          pulled.dropped = true
+        }
+      },
+    })
+    const detach = runtime.attach(true)
+    await vi.waitFor(() =>
+      expect(runtime.getSnapshot().lists.kind).toBe("read")
+    )
+    // The ideas read again, the lists away: the pull could not check.
+    await expect(pulled.check?.()).rejects.toThrow("away")
+    await expect(pulled.check?.()).resolves.toBeUndefined()
+    detach()
+    expect(pulled.dropped).toBe(true)
+  })
+})
+
+describe("a pull on Ideas on home waits on the lists (HERD2)", () => {
+  it("is still out while the lists are, and done once they answer", async () => {
+    const storage = inMemoryStorage()
+    let land: () => void = () => undefined
+    let first = true
+    const home: IdeasHome = {
+      ideas: () =>
+        Promise.resolve({ kind: "read", value: { ideas: [], more: false } }),
+      lists: () => {
+        const value = { topics: [], keywords: [] }
+        if (first) {
+          first = false
+          return Promise.resolve({ kind: "read", value })
+        }
+        return new Promise((resolve) => {
+          land = (): void => resolve({ kind: "read", value })
+        })
+      },
+      furnish: vi.fn(),
+      setAside: vi.fn(),
+      entry: vi.fn(),
+    }
+    const pulled: { check: (() => Promise<void>) | null } = { check: null }
+    const runtime = createIdeasOnHome({
+      home,
+      ideas: keptIdeaStore(() => storage),
+      lists: keptIdeaLists(() => storage),
+      refresh: ({ checkAgain }) => {
+        pulled.check = checkAgain
+        return (): void => undefined
+      },
+    })
+    const detach = runtime.attach(true)
+    await vi.waitFor(() =>
+      expect(runtime.getSnapshot().lists.kind).toBe("read")
+    )
+    let done = false
+    const checked = pulled.check?.().then(() => {
+      done = true
+    })
+    await vi.waitFor(() =>
+      expect(runtime.getSnapshot().ideas.kind).toBe("read")
+    )
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(done).toBe(false)
+    land()
+    await checked
+    expect(done).toBe(true)
+    detach()
+  })
+})
+
+describe("a pull on Ideas on home says a failed read over unpaired (HERD2)", () => {
+  it("fails when the lists could not be read, even while the ideas say unpaired", async () => {
+    const storage = inMemoryStorage()
+    let pulls = 0
+    const home: IdeasHome = {
+      ideas: () => Promise.resolve({ kind: "unpaired" }),
+      lists: () => {
+        pulls += 1
+        return Promise.resolve(
+          pulls === 1
+            ? { kind: "read", value: { topics: [], keywords: [] } }
+            : { kind: "away" }
+        )
+      },
+      furnish: vi.fn(),
+      setAside: vi.fn(),
+      entry: vi.fn(),
+    }
+    const pulled: { check: (() => Promise<void>) | null } = { check: null }
+    const runtime = createIdeasOnHome({
+      home,
+      ideas: keptIdeaStore(() => storage),
+      lists: keptIdeaLists(() => storage),
+      refresh: ({ checkAgain }) => {
+        pulled.check = checkAgain
+        return (): void => undefined
+      },
+    })
+    const detach = runtime.attach(true)
+    await vi.waitFor(() =>
+      expect(runtime.getSnapshot().lists.kind).toBe("read")
+    )
+    await expect(pulled.check?.()).rejects.toThrow("away")
+    detach()
+  })
+})
+
 describe("the lists as home last said them, for New idea (ST26 c)", () => {
   it("are kept from each change home takes, not only from a read", async () => {
     const storage = inMemoryStorage()

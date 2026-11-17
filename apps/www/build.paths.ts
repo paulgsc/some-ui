@@ -226,6 +226,7 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
         "apps/www/src/lib/tenant/sessions-transfer/**",
         "apps/www/src/lib/tenant/transfer-lock/**",
         "apps/www/src/lib/auth/account-erases.ts",
+        "apps/www/src/lib/auth/phone-pairing-words.ts",
         "apps/www/src/components/settings/account-section.tsx",
         "apps/www/src/components/settings/data-home-section.tsx",
       ],

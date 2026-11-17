@@ -52,6 +52,24 @@ const config: CapacitorConfig = {
      * key under `android`. `pnpm typecheck` here guards that.
      */
     androidScheme: "https",
+
+    /**
+     * What Capacitor loads instead of the app when the installed WebView is
+     * older than `android.minWebViewVersion`: www's page saying to update it
+     * from the Play Store (www `src/lib/old-webview`, phone build only).
+     * Without it the app opens on a blank white page.
+     */
+    errorPath: "webview-too-old.html",
+  },
+
+  android: {
+    /**
+     * The oldest WebView the bundle runs on: Vite's default target,
+     * `baseline-widely-available`, is `chrome111`. Raise it with that
+     * target. Capacitor's own default is 60. On Android 7 it reads Chrome's
+     * version; on 8 and 9 Chrome is usually the WebView too.
+     */
+    minWebViewVersion: 111,
   },
 
   plugins: {

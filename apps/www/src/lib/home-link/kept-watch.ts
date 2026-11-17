@@ -31,6 +31,11 @@ export function askKept(home: Kept, doc: Document): void {
   if (mayAsk(doc)) home.want()
 }
 
+/** As `askKept`, through `Kept.nudge`: for a moment that changed nothing on this phone. */
+function nudgeKept(home: Kept, doc: Document): void {
+  if (mayAsk(doc)) home.nudge()
+}
+
 /**
  * A pull's ask (`./pull`): as `askKept`, resolving to how the run that
  * answers it ended, or to null when nothing was asked.
@@ -132,7 +137,7 @@ export function watchKept(
     if (ask) askKept(home, doc)
   }
   const onBack = (): void => {
-    askKept(home, doc)
+    nudgeKept(home, doc)
   }
 
   const unsubscribeRecord = record.subscribe(onRecord)
@@ -140,7 +145,7 @@ export function watchKept(
   const unsubscribeLink = link.subscribe(onLink)
   doc.addEventListener("visibilitychange", onBack)
   win.addEventListener("online", onBack)
-  askKept(home, doc)
+  nudgeKept(home, doc)
   return () => {
     stopped = true
     unsubscribeRecord()

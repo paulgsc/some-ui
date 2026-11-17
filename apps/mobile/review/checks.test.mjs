@@ -16,6 +16,7 @@ import {
   parseXml,
   readZip,
   reviewElf,
+  reviewErrorPage,
   reviewLint,
   reviewManifest,
   reviewPluginConfig,
@@ -454,4 +455,26 @@ test("reviewPluginConfig holds the shipped config to policy.json, and fails with
     levels(reviewPluginConfig("apk", undefined, policy.pluginConfig)),
     ["error:plugin-config"]
   )
+})
+
+test("reviewErrorPage needs the old-WebView page in the APK once a minimum is set", () => {
+  const config = (server, android) =>
+    JSON.stringify({ appId: "x", server, android })
+  const page = "assets/public/webview-too-old.html"
+  const set = config(
+    { errorPath: "webview-too-old.html" },
+    { minWebViewVersion: 111 }
+  )
+  assert.deepEqual(reviewErrorPage("apk", set, [page]), [])
+  // Neither set: Capacitor's default, nothing to hold.
+  assert.deepEqual(reviewErrorPage("apk", config({}, {}), []), [])
+  // The page missing from the APK, or never named.
+  for (const [text, names] of [
+    [set, []],
+    [config({}, { minWebViewVersion: 111 }), [page]],
+  ]) {
+    const findings = reviewErrorPage("apk", text, names)
+    assert.equal(findings.length, 1)
+    assert.equal(findings[0].check, "error-page")
+  }
 })

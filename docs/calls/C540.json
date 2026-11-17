@@ -1,0 +1,15 @@
+{
+  "id": "C540",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": ["some-ui:.github/workflows/android-compat.yml"],
+  "chose": "The stamp's APKs are signed with a key made on the runner for that run, so the workflow needs no secrets and no mobile-release approval.",
+  "options": [
+    "a throwaway key per run",
+    "the repository's signing key behind the mobile-release approval",
+    "reuse mobile-apk.yml's launch-test artifact"
+  ],
+  "gray": "The owner asked that it be runnable at will and gated only if signing needs secrets; an emulator install needs a signature but not the phone's, and mobile-apk.yml's artifact lives a day and exists only for approved main pushes.",
+  "undo": "Replace the 'Make a throwaway signing key' step with mobile-apk.yml's 'Install the signing key' step and add the approve job.",
+  "refs": ["#3104"]
+}

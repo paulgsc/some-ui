@@ -8,6 +8,8 @@
  * waits through `callForeign` (F1).
  */
 
+import { CHECK_MS } from "./model"
+
 /** One thing a screen shows that a pull reads again. */
 export type Refresher = {
   /**
@@ -17,10 +19,20 @@ export type Refresher = {
   readonly what: string
   /** Reads it again: resolves once it came back, rejects if it could not. */
   readonly checkAgain: () => Promise<void>
+  /**
+   * What a pull does first, before the page or any screen reads again: the
+   * home link lets its hold away go, so no read of the pull finds it
+   * (HERD2).
+   */
+  readonly before?: () => void
 }
 
 export type Refreshers = {
-  /** Adds `refresher` to every pull from now on, until the returned drop. */
+  /**
+   * Adds `refresher` to every pull from now on, until the returned drop. The
+   * same refresher registered by two screens is asked once a pull (HERD1),
+   * for as long as either still holds it.
+   */
   readonly register: (refresher: Refresher) => () => void
   /**
    * Runs every refresher registered now, together, and resolves once each
@@ -28,30 +40,42 @@ export type Refreshers = {
    * stale and left out), to the `what` of each that could not read. One
    * check per refresher at a time: one whose check is still out is not asked
    * again, and this ask waits on that answer, so its `checkAgain` never runs
-   * twice at once, while one registered since is asked now.
+   * twice at once, while one registered since is asked now. A check out
+   * longer than a pull may take (`CHECK_MS`) no longer holds the pulls after
+   * it (HERD2): the next is asked afresh, and the late answer is dropped.
    */
   readonly checkAll: () => Promise<ReadonlyArray<string>>
+  /** Runs every registered refresher's `before`, at once: a pull's first step. */
+  readonly prepare: () => void
 }
 
 type Entry = {
   readonly refresher: Refresher
-  live: boolean
-  /** Its check still out, which a new ask waits on. */
-  out: Promise<string | null> | null
+  /** The registrations that hold it; it is dropped once none does. */
+  holds: number
+  /** Its check still out, which a new ask waits on, and when it went out. */
+  out: { readonly answer: Promise<string | null>; readonly at: number } | null
 }
 
-export function createRefreshers(): Refreshers {
-  const entries = new Set<Entry>()
+export function createRefreshers(
+  now: () => number = () => Date.now()
+): Refreshers {
+  const entries = new Map<Refresher, Entry>()
   /** Wakes a check waiting on an entry that was just dropped. */
   const dropped = new Set<() => void>()
+  const live = (entry: Entry): boolean => entries.get(entry.refresher) === entry
 
   const register = (refresher: Refresher): (() => void) => {
-    const entry: Entry = { refresher, live: true, out: null }
-    entries.add(entry)
+    const entry = entries.get(refresher) ?? { refresher, holds: 0, out: null }
+    entry.holds += 1
+    entries.set(refresher, entry)
+    let held = true
     return (): void => {
-      if (!entry.live) return
-      entry.live = false
-      entries.delete(entry)
+      if (!held) return
+      held = false
+      entry.holds -= 1
+      if (entry.holds > 0) return
+      entries.delete(refresher)
       dropped.forEach((wake) => wake())
     }
   }
@@ -60,14 +84,14 @@ export function createRefreshers(): Refreshers {
   const answerOf = (entry: Entry): Promise<string | null> =>
     new Promise((resolve) => {
       const wake = (): void => {
-        if (entry.live) return
+        if (live(entry)) return
         dropped.delete(wake)
         resolve(null)
       }
       dropped.add(wake)
       const settle = (unread: string | null) => (): void => {
         dropped.delete(wake)
-        resolve(entry.live ? unread : null)
+        resolve(live(entry) ? unread : null)
       }
       // Through a resolved promise, so one that throws before it returns a
       // promise is a refresher that could not read, not a broken pull.
@@ -76,23 +100,32 @@ export function createRefreshers(): Refreshers {
         .then(settle(null), settle(entry.refresher.what))
     })
 
-  /** `entry`'s check still out, or a new one. */
+  /** `entry`'s check still out, unless out past a pull's time; or a new one. */
   const askOf = (entry: Entry): Promise<string | null> => {
-    if (entry.out !== null) return entry.out
-    const answer = answerOf(entry).then((unread) => {
-      entry.out = null
-      return unread
-    })
-    entry.out = answer
-    return answer
+    if (entry.out !== null && now() - entry.out.at < CHECK_MS) {
+      return entry.out.answer
+    }
+    const out = {
+      at: now(),
+      answer: answerOf(entry).then((unread) => {
+        if (entry.out === out) entry.out = null
+        return unread
+      }),
+    }
+    entry.out = out
+    return out.answer
   }
 
   const checkAll = (): Promise<ReadonlyArray<string>> =>
-    Promise.all(Array.from(entries, askOf)).then((answers) =>
+    Promise.all(Array.from(entries.values(), askOf)).then((answers) =>
       answers.filter((what): what is string => what !== null)
     )
 
-  return { register, checkAll }
+  const prepare = (): void => {
+    for (const { refresher } of entries.values()) refresher.before?.()
+  }
+
+  return { register, checkAll, prepare }
 }
 
 /**

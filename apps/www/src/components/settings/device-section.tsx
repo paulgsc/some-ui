@@ -28,6 +28,7 @@ import {
   remembered,
 } from "@/lib/home-link/remembered"
 import {
+  PAIR_FORM,
   SIGN_OUT,
   signInView,
   UNPAIRED_NOTES,
@@ -355,7 +356,7 @@ export const DeviceSection = (): JSX.Element => {
               }
               onClick={() => setPairOpen(true)}
             >
-              Pair...
+              {PAIR_FORM.open}
             </Button>
           )}
         </div>

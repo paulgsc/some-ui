@@ -12,11 +12,13 @@
  *   own (a lane's drain, a screen's read on its own, home's word on itself,
  *   Game day's socket) but one try each hold, `holdMs` doubling from 30 s to
  *   10 minutes; a network change, a pull or Send now lets the next try go at
- *   once, what the person asks for (a sync, a send, a screen's read) still
+ *   once (a network change starts the stretch's tries over; a pull or Send
+ *   now keeps them, so the next silence holds as long as they say, HERD1),
+ *   what the person asks for (a sync, a send, a screen's read) still
  *   goes, and nothing waiting on the phone is dropped. The lanes say "Away
  *   from home since …" (`./words`).
  * - _Family:_ every ordering of a silence, an answer, the hold's end, a
- *   network change or a pull, and time passing (six long); requests in
+ *   network change, a pull, and time passing (six long); requests in
  *   flight as a stretch starts, settling in either order; an answer to a
  *   request sent before the stretch began; every moment a lane is asked
  *   (an edit, the app in front, the network, a pull, the hold's end); the
@@ -51,8 +53,12 @@ export type AwayEvent =
   | { readonly type: "answered" }
   /** The hold's time has passed. */
   | { readonly type: "lapsed" }
-  /** The network changed, or the person pulled to check again. */
-  | { readonly type: "lookAgain" }
+  /**
+   * The network changed (`fresh`: a new network, so the stretch's tries
+   * start over), or the person pulled or tapped Send now: the hold ends,
+   * and the next silence holds as long as the tries say (HERD1).
+   */
+  | { readonly type: "lookAgain"; readonly fresh: boolean }
 
 /** The first hold of a stretch: longer than one try's own wait. */
 export const FIRST_HOLD_MS = 30_000
@@ -88,9 +94,11 @@ export function stepAway(away: Away | null, event: AwayEvent): Away | null {
       return away?.heldUntil == null ? away : { ...away, heldUntil: null }
     }
     case "lookAgain": {
-      return away === null || (away.heldUntil === null && away.tries === 0)
+      if (away === null) return away
+      const tries = event.fresh ? 0 : away.tries
+      return away.heldUntil === null && away.tries === tries
         ? away
-        : { ...away, tries: 0, heldUntil: null }
+        : { ...away, tries, heldUntil: null }
     }
     default: {
       return assertNever(event)

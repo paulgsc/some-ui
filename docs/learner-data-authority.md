@@ -1275,7 +1275,13 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   (`lib/jobs/pull.ts`, PULL2, registered while the Jobs screens or the
   status page show), and it joins the pull under way, or starts the one
   the refresher's own ask in that pull joins, so each lane is still asked
-  once, in turn; a pull first lets the link's hold away from home go (AW1).
+  once, in turn; a pull first lets the link's hold away from home go (AW1),
+  keeping the stretch's tries, so pulls one after another do not start its
+  backoff over (HERD1). A pull, the app coming back, the network coming back
+  or a watch mounted while a lane's run is under way joins that run rather
+  than asking another after it (`nudge`); only a change on this phone (an
+  edit, the link freeing up, home's busy or the hold ending) asks a run after
+  the one under way (HERD1, `lib/home-link/__tests__/herd.test.ts`).
   Nothing asks on a timer: home's busy and the hold away each end on one
   (the link's, `runtime.ts`), which only opens the link again to the lanes
   home turned away. A run goes

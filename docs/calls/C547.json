@@ -1,0 +1,16 @@
+{
+  "id": "C547",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": ["some-ui:.github/workflows/android-compat.yml"],
+  "chose": "Android Compat stamps the branch or tag it is run from (GitHub's \"Use workflow from\"), with no ref input; the APKs and the checks come from that one commit.",
+  "options": [
+    "the dispatched ref only, no ref input",
+    "a ref input built with no cache actions",
+    "a ref input, as before (C541)"
+  ],
+  "gray": "CodeQL flagged cache poisoning: building another ref from a dispatch on main runs that code in main's cache scope, which PR runs read, and dropping the cache actions does not close it since any step can write caches with the runner's token. Dropping the input means a bare commit or a tag older than the workflow cannot be stamped, which the owner may want.",
+  "undo": "Restore the ref input and its checkout `ref:`, accepting the cache-poisoning alert, or build it in a job with no cache access.",
+  "refs": ["#3104", "#3120"],
+  "moves": "C541"
+}

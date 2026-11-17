@@ -82,6 +82,22 @@ export const ARTIFACT_FAMILIES: ReadonlyArray<ArtifactFamily> = [
     keep: 0,
     ttlDays: 1,
   },
+  // android-compat.yml: the APKs its level jobs install, and each level's
+  // row and logs, read by its stamp job. Dispatch only; nothing is kept.
+  {
+    kind: "artifact",
+    name: "android-compat-apk-${{ github.run_id }}",
+    workflows: ["Android Compat"],
+    keep: 0,
+    ttlDays: 1,
+  },
+  {
+    kind: "artifact",
+    name: "android-compat-out-${{ matrix.api }}-${{ github.run_id }}",
+    workflows: ["Android Compat"],
+    keep: 0,
+    ttlDays: 1,
+  },
   {
     kind: "artifact",
     name: "github-pages",
