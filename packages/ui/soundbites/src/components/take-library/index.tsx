@@ -389,6 +389,7 @@ const Unread = ({
       return <Unpaired line={WORDS.unpaired} pair={pair} />
     }
     case "away":
+    case "busy":
     case "older":
     case "unreadable": {
       return (

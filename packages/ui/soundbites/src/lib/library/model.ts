@@ -88,6 +88,8 @@ export type LibraryRead =
   | { readonly kind: "unpaired" }
   /** Home didn't answer. */
   | { readonly kind: "away" }
+  /** This phone stayed busy with home, so nothing was asked. */
+  | { readonly kind: "busy" }
   /** Home answered, but keeps no library of takes yet. */
   | { readonly kind: "older" }
   /** Home answered with something this phone can't read. */

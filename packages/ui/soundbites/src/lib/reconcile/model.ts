@@ -56,6 +56,8 @@ export type AttentionRead =
   | { readonly kind: "unpaired" }
   /** Home didn't answer. */
   | { readonly kind: "away" }
+  /** This phone stayed busy with home, so nothing was asked. */
+  | { readonly kind: "busy" }
   /** Home answered, but doesn't judge what it hears yet. */
   | { readonly kind: "older" }
   /** Home answered with something this phone can't read. */
@@ -72,6 +74,8 @@ export type ActAnswer =
   | "settled"
   /** Home didn't take it, or didn't answer: nothing changed. */
   | "notTaken"
+  /** This phone stayed busy with home, so home wasn't told: nothing changed. */
+  | "busy"
 
 export type ReconcileState = PlaySlice & {
   readonly read: { readonly kind: "reading" } | AttentionRead
@@ -88,6 +92,7 @@ export type ReconcileState = PlaySlice & {
     | { readonly kind: "kept"; readonly act: ReconcileAct }
     | { readonly kind: "settled" }
     | { readonly kind: "notTaken"; readonly id: string }
+    | { readonly kind: "busy"; readonly id: string }
     | null
 }
 
@@ -227,8 +232,8 @@ export function stepReconcile(
       const { acting } = state
       if (event.seq !== state.acts || acting === null) return same(state)
       const done = { ...state, acting: null }
-      if (event.answer === "notTaken") {
-        return same({ ...done, said: { kind: "notTaken", id: acting.id } })
+      if (event.answer === "notTaken" || event.answer === "busy") {
+        return same({ ...done, said: { kind: event.answer, id: acting.id } })
       }
       const said =
         event.answer === "settled"

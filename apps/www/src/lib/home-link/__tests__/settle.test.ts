@@ -14,12 +14,16 @@
  *   each end in `../model`'s `Run` (done, stopped, or refused with its
  *   `Refusal`) or a throw, never `null`; `../while-busy`'s `asked` and
  *   `answered` say each through `settleRun`, which reports a fault on this
- *   phone and says home's silence or a block as unreachable.
+ *   phone and says home's silence or a block as unreachable; and
+ *   `askWhileBusy` ends a link that stayed busy for every try, or a read no
+ *   longer wanted, as `busy`, never unreachable.
  * - _Family:_ the run's kind (`sync`, `send`, `keep`, `drain`, `look`) ×
  *   the link's state at its start (reading, unpaired, busy with another
  *   run, pairing or unpairing, a drain preempted, its record gone, paired
  *   and free) × its raw outcome (ran, stopped, refused, threw home's
- *   silence, a block, a fault, a foreign port's fault).
+ *   silence, a block, a fault, a foreign port's fault) × for
+ *   `askWhileBusy`, the tries (busy on every one, busy then another end,
+ *   no longer wanted).
  * - _Proof:_ the type (`Run` has no `null`, `Refusal` no not-known-yet);
  *   `./pairing.test.ts` holds `refusalOf` against `step` over every link
  *   state × every start (the four person and drain kinds; `look` takes
@@ -27,10 +31,7 @@
  *   every raw outcome; `./runtime.test.ts` holds a run parked over the
  *   read, a look refused unpaired, and a drain preempted by an Unpair, then
  *   refused as unpaired; `./takes-read.test.ts` holds a fault reported
- *   once.
- * - _Tolerance:_ `askWhileBusy` still ends a link that stayed busy for all
- *   its tries as unreachable, and so do the screens that read through it;
- *   their busy words are #3155's rest.
+ *   once; `./while-busy.test.ts` holds `askWhileBusy` over its tries.
  */
 import { describe, expect, it } from "vitest"
 

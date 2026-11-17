@@ -41,6 +41,7 @@ import {
 } from "@/lib/episode-feedback/home-query"
 import type { NotedFeed } from "@/lib/feeds"
 import { libraryTakes } from "@/lib/library-takes"
+import { phoneWasBusy } from "@/lib/phone-busy"
 import { FEED_FACTS } from "@/lib/studio-index"
 
 const WORDS = FEEDBACK_WORDS
@@ -229,9 +230,10 @@ type Place = (id: string) => string
 /** What the page says of home, above the notes, when it can't list them. */
 function homeLine(
   read: HomeNotesOutcome | undefined,
-  failed: boolean
+  failed: unknown
 ): string | null {
-  if (failed) return WORDS.home.away
+  if (failed !== null)
+    return phoneWasBusy(failed) ? WORDS.home.busy : WORDS.home.away
   if (read === undefined || read.kind === "read") return null
   return WORDS.home[read.kind]
 }
@@ -262,7 +264,7 @@ export const FeedbackNotes = ({ none }: { none: string }): JSX.Element => {
     if (answered.held.has(id)) return WORDS.onHomeSent
     return answered.refused.has(id) ? WORDS.notTaken : WORDS.onPhone
   }
-  const line = homeLine(home.data, home.isError)
+  const line = homeLine(home.data, home.error)
   return (
     <>
       <p className="text-muted-foreground text-sm">{WORDS.kept}</p>

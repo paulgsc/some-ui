@@ -30,3 +30,5 @@ export type FrameShown =
   | { readonly kind: "unpaired" }
   /** Home didn't answer. */
   | { readonly kind: "away" }
+  /** This phone stayed busy with home, so it wasn't asked (#3155). */
+  | { readonly kind: "busy" }

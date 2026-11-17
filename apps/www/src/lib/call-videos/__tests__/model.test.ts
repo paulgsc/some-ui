@@ -12,6 +12,7 @@ import {
   INITIAL,
   isFeed,
   listedEpisode,
+  partOf,
   readChapters,
   readEpisodes,
   readLinkSaved,
@@ -119,6 +120,17 @@ describe("readChapters (SFEED4)", () => {
     expect(readChapters({ status: 500, body: "" })).toEqual({
       kind: "unreadable",
     })
+  })
+})
+
+describe("partOf (#3155)", () => {
+  it("reads home's answer, keeps busy apart, and says the rest as away", () => {
+    expect(
+      partOf({ kind: "answered", answer: { status: 404, body: "" } })
+    ).toEqual({ kind: "gone" })
+    expect(partOf({ kind: "busy" })).toEqual({ kind: "busy" })
+    expect(partOf({ kind: "unreachable" })).toEqual({ kind: "away" })
+    expect(partOf({ kind: "unpaired" })).toEqual({ kind: "away" })
   })
 })
 

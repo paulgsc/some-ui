@@ -35,6 +35,7 @@ export const LIBRARY_WORDS = {
   unpaired:
     "This phone isn't paired with home, so it can't show the takes home keeps.",
   away: "Home can't be reached right now. Try again once you're back in reach.",
+  busy: "This phone was busy with home just then. Try again in a moment.",
   older:
     "Home doesn't list its takes yet. Once it runs a newer version, every take it keeps shows here.",
   unreadable:

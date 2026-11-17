@@ -8,6 +8,7 @@
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
+import { PhoneBusyError } from "@/lib/phone-busy"
 import { rendersAgainIn, WHILE_UNDER_WAY_MS } from "@/lib/renders"
 import { readBoard } from "@/lib/renders/model"
 import { RendersUnanswered } from "@/lib/renders/read"
@@ -46,6 +47,14 @@ describe("Renders' read on its own (AW1)", () => {
     expect(rendersAgainIn({ error: new Error("busy"), data: UNDER_WAY })).toBe(
       WHILE_UNDER_WAY_MS
     )
+  })
+
+  it("asks again in half a minute once this phone stayed busy with home (#3155)", () => {
+    const busy = new PhoneBusyError("busy")
+    expect(rendersAgainIn({ error: busy, data: undefined })).toBe(
+      WHILE_UNDER_WAY_MS
+    )
+    expect(rendersAgainIn({ error: busy, data: IDLE })).toBe(WHILE_UNDER_WAY_MS)
   })
 
   it("stops once home gave no answer, and when nothing is under way", () => {

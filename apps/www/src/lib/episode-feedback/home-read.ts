@@ -11,6 +11,7 @@ import { pairing } from "@/lib/home-link"
 import { episodeNotesWaiting } from "@/lib/home-link/episode-notes"
 import { askEpisodeNotes } from "@/lib/home-link/episode-notes-read"
 import { askWhileBusy } from "@/lib/home-link/while-busy"
+import { PhoneBusyError } from "@/lib/phone-busy"
 
 import { readFeedNotes } from "./home"
 
@@ -24,7 +25,8 @@ export type HomeNotesOutcome =
 
 /**
  * Reads the notes home keeps on every feed that takes them, asking again while the link is
- * busy. Rejects when home didn't answer or an answer couldn't be read, so the
+ * busy. Rejects when home didn't answer, the phone stayed busy with home
+ * (`PhoneBusyError`, #3155), or an answer couldn't be read, so the
  * page keeps what it last read and says so.
  */
 export async function readHomeNotes(
@@ -34,6 +36,7 @@ export async function readHomeNotes(
   for (const feed of NOTED_FEEDS) {
     const asked = await askWhileBusy(() => askEpisodeNotes(feed), wanted)
     if (asked.kind === "unpaired") return asked
+    if (asked.kind === "busy") throw new PhoneBusyError("this phone was busy")
     if (asked.kind === "unreachable") throw new Error("home didn't answer")
     const read = readFeedNotes(asked.answer)
     if (read.kind === "older") return read

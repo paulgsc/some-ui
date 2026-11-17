@@ -2,8 +2,11 @@
  * A read of home asked again while the link is busy with another run: it
  * takes one run at a time, and a drag down drains every lane in turn
  * (PULL3), so a read that finds it busy waits a second and asks again, at
- * most `TRIES` times in all. My data, Ideas on home, Takes on home, Studio's
- * feed videos, Studio › Renders and a template's preview read through it.
+ * most `TRIES` times in all, then says this phone was busy (#3155). My
+ * data, Ideas on home, Takes on home, Needs your attention, Studio's feed
+ * videos, a cards essay, a clip's frames, Studio's Feedback notes, Studio ›
+ * Renders (and the status board's row of it) and a template's preview read
+ * through it.
  * Asks nothing of its own: `ask` is the caller's one request, and `asked`
  * turns one run of the link's `keep` into what a read says.
  */
@@ -93,16 +96,14 @@ export async function answered<T, A>(
 }
 
 /**
- * Home's answer to `ask`, asked again while the link is busy; `unreachable`
- * once it stayed busy `TRIES` times, or once `wanted` says the answer is
- * no longer wanted, before the next ask.
+ * Home's answer to `ask`, asked again while the link is busy; `busy` once
+ * it stayed busy `TRIES` times, or once `wanted` says the answer is no
+ * longer wanted before the next ask, since home was never asked (#3155).
  */
 export async function askWhileBusy<A extends { readonly kind: "answered" }>(
   ask: () => Promise<A | NotAnswered>,
   wanted: () => boolean = () => true
-): Promise<
-  A | { readonly kind: "unpaired" } | { readonly kind: "unreachable" }
-> {
+): Promise<A | NotAnswered> {
   for (let tried = 0; tried < TRIES && wanted(); tried += 1) {
     const asked = await ask()
     switch (asked.kind) {
@@ -120,5 +121,5 @@ export async function askWhileBusy<A extends { readonly kind: "answered" }>(
       }
     }
   }
-  return { kind: "unreachable" }
+  return { kind: "busy" }
 }

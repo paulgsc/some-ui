@@ -5,6 +5,7 @@
  */
 import { askRenders } from "@/lib/home-link/renders"
 import { askWhileBusy } from "@/lib/home-link/while-busy"
+import { PhoneBusyError } from "@/lib/phone-busy"
 
 import type { Board } from "./model"
 import { readBoard } from "./model"
@@ -22,22 +23,16 @@ export class RendersUnanswered extends Error {
 
 /**
  * Reads home's render jobs, asking again while the link is busy. Rejects
- * when home didn't answer (`RendersUnanswered`), the link stayed busy, or its
- * answer couldn't be read, so a page keeps the board it last read and says so.
+ * when home didn't answer (`RendersUnanswered`), the phone stayed busy with
+ * home (`PhoneBusyError`, #3155), or its answer couldn't be read, so a page
+ * keeps the board it last read and says so.
  */
 export async function readRenders(): Promise<RendersOutcome> {
-  // Whether the last ask found home silent, as against the link staying busy.
-  const last = { silent: false }
-  const asked = await askWhileBusy(async () => {
-    const each = await askRenders()
-    last.silent = each.kind === "unreachable"
-    return each
-  })
+  const asked = await askWhileBusy(askRenders)
   if (asked.kind === "unpaired") return asked
+  if (asked.kind === "busy") throw new PhoneBusyError("this phone was busy")
   if (asked.kind === "unreachable") {
-    throw last.silent
-      ? new RendersUnanswered("home didn't answer")
-      : new Error("the link stayed busy")
+    throw new RendersUnanswered("home didn't answer")
   }
   const read = readBoard(asked.answer)
   if (read.kind === "unreadable")

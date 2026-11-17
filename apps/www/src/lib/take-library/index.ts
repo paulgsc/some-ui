@@ -19,7 +19,7 @@ export const takesHome: TakesHome = {
   async takes(q, wanted) {
     const asked = await askWhileBusy(() => askTakes(q), wanted)
     if (asked.kind === "answered") return readTakes(asked.answer)
-    return asked.kind === "unpaired" ? asked : { kind: "away" }
+    return asked.kind === "unreachable" ? { kind: "away" } : asked
   },
   audio: (id) => askAudio(id),
 }

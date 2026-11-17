@@ -119,11 +119,7 @@ export const CardsEssayPage = ({
             essay={essayOf(outcome.board, essayKey)}
           />
         ) : (
-          <Muted>
-            {outcome.kind === "unpaired"
-              ? RENDERS_WORDS.unpaired
-              : RENDERS_WORDS.older}
-          </Muted>
+          <Muted>{RENDERS_WORDS[outcome.kind]}</Muted>
         )
       }
     </ReadList>

@@ -82,6 +82,7 @@ const Standing = ({
       )
     }
     case "away":
+    case "busy":
     case "older":
     case "unreadable": {
       return (

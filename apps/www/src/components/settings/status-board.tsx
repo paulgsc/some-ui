@@ -30,6 +30,7 @@ import { kindJourney } from "@/lib/jobs/journey"
 import { everyMorning, morningOf } from "@/lib/jobs/morning"
 import { registerJobsPull } from "@/lib/jobs/pull"
 import { everyJourney } from "@/lib/journey"
+import { readFailure } from "@/lib/phone-busy"
 import { rendersQuery, SHAPE_WORDS } from "@/lib/renders"
 import type { RenderShape } from "@/lib/renders"
 import type { How } from "@/lib/sharing-marks"
@@ -318,7 +319,12 @@ export const StatusBoard = (): JSX.Element => {
     ...(look === null ? [] : [look]),
     // A failed refresh keeps the last board, and the row says it's the last.
     ...(renders.data?.kind === "read"
-      ? [renderRow(renders.data.board, renders.isError)]
+      ? [
+          renderRow(
+            renders.data.board,
+            readFailure(renders.isError, renders.error)
+          ),
+        ]
       : []),
   ]
   const board = boardOf(rows)
