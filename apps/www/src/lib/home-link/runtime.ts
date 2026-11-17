@@ -109,11 +109,7 @@ export function homeBusyFor(retryAfter: string | undefined): number {
 /** What the link answers for home while home's busy lasts: nothing was sent. */
 const HOME_BUSY: HomeAnswer = { status: 429, body: "" }
 
-/**
- * A pairing kept before it had an id is known by its base, and one kept
- * before it had a `pairedAt` has no `since` (SIGNIN1): the record is read
- * as it was kept, never rewritten.
- */
+/** A pairing kept before it had an id is known by its base. */
 type Pairing = { base: string; token: string; id: string; since: number | null }
 
 export function parsePairing(record: string): Pairing | null {
@@ -427,15 +423,15 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
   }
 
   /**
-   * What an answer to pairing `id`'s key says of home knowing this phone
-   * (SIGNIN1): a refusal (`401`) that it doesn't, any success that it does.
-   * Anything else (busy, a fault on home) says neither.
+   * What an answer to pairing `id`'s key, sent at `sent`, says of home
+   * knowing this phone (SIGNIN1): a refusal (`401`) that it doesn't, any
+   * success that it does. Anything else (busy, a fault on home) says neither.
    */
-  const heardKey = (id: string, answer: HomeAnswer): void => {
+  const heardKey = (id: string, answer: HomeAnswer, sent: number): void => {
     if (answer.status === 401) {
-      dispatch({ type: "heard", id, known: false, at: ports.now() })
+      dispatch({ type: "heard", id, known: false, at: sent })
     } else if (answer.status >= 200 && answer.status < 300) {
-      dispatch({ type: "heard", id, known: true, at: ports.now() })
+      dispatch({ type: "heard", id, known: true, at: sent })
     }
   }
 
@@ -559,6 +555,9 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
         if (!path.startsWith("/")) {
           return Promise.reject(new Error(`not a path: ${path}`))
         }
+        // Taken before its turn on the pace: a refusal then reads no
+        // later than it went, and a success no earlier (SIGNIN1).
+        const sent = ports.now()
         return ask(
           side,
           {
@@ -570,7 +569,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
           },
           tapped
         ).then((answer) => {
-          heardKey(pairing.id, answer)
+          heardKey(pairing.id, answer, sent)
           // Home answers a route it doesn't have in plain words ("not
           // found"); a record it doesn't hold comes as its JSON error.
           if (
@@ -641,6 +640,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       // Home may have asked to be left alone while this waited its turn.
       if (awayNow() || homeBusyNow()) return
       let answer: HomeAnswer
+      const sent = ports.now()
       try {
         answer = await heard(
           ports.request({
@@ -654,7 +654,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
         return
       }
       if (answer.status === 429) heardBusy(answer)
-      heardKey(pairing.id, answer)
+      heardKey(pairing.id, answer, sent)
     },
 
     async unpair(): Promise<void> {

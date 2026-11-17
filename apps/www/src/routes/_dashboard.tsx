@@ -43,7 +43,7 @@ import { navOf, owns, webSettingsOf, wingOf } from "@/lib/wings"
 import { AudioIndicator } from "@/components/audio/audio-indicator"
 import { AccountUnavailableBanner } from "@/components/auth/account-unavailable-banner"
 import { DeviceHomeGlyph, HomeLanes } from "@/components/device-home-glyph"
-import { SignInMark } from "@/components/device-sign-in-mark"
+import { SignInMark, SignInWatch } from "@/components/device-sign-in-mark"
 import { LocIndicator } from "@/components/loc/loc-indicator"
 import {
   barOf,
@@ -240,6 +240,9 @@ const DashboardLayout = (): JSX.Element => {
       >
         {/* Notices float here, under the header (HS1). */}
         <NoticeLayer className={bareViewport ? "top-3" : "top-16"}>
+          {/* Whether home still knows this phone, asked and said on every
+            screen, the session player's included (SIGNIN1). */}
+          {import.meta.env.VITE_DEVICE_BACKEND === "true" && <SignInWatch />}
           {!bareViewport && (
             <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
               {!MOBILE_APP && <SidebarTrigger />}

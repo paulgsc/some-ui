@@ -28,7 +28,7 @@ import {
 import type { ClearEnd } from "@/lib/home-link/clear"
 import { clearHeld, finishedOnPhone } from "@/lib/home-link/clear"
 import { remember, remembered } from "@/lib/home-link/remembered"
-import { homeLine, UNPAIRED_NOTES } from "@/lib/home-link/sign-in-words"
+import { signInView, UNPAIRED_NOTES } from "@/lib/home-link/sign-in-words"
 import type { SyncResult } from "@/lib/home-link/sync"
 import { lastSync, syncLessonsFrom } from "@/lib/home-link/sync"
 import { CLEAR, HOME_BLOCK } from "@/lib/home-link/words"
@@ -309,7 +309,7 @@ export const DeviceSection = (): JSX.Element => {
           <>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="min-w-0 flex-1 text-sm break-words">
-                {homeLine(state)}
+                {signInView(state).line}
               </p>
               <Button
                 type="button"

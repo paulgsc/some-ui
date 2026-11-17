@@ -1,11 +1,15 @@
 /**
  * When the phone asks home whether it still knows it (SIGNIN1, #3087): the
- * link's `check`, at the moments this watch names, one at a time. The
- * phone found paired with nothing yet heard of it (the app's start, a
- * restore read back), and the app coming back to the foreground. Never on a
- * timer. Every credentialed answer also says it (`./runtime`'s `heardKey`),
- * so a phone sending anyway rarely needs the check at all.
+ * link's `check`, once as each pairing is found (the app's start, a restore
+ * read back) and each time the app comes back to the foreground, one at a
+ * time. Never on a timer, and never on any other change of the link: a
+ * check that found home silent or busy waits for the next of those
+ * moments. Every credentialed answer also says it (`./runtime`'s
+ * `heardKey`), so a phone sending anyway rarely needs the check at all.
+ * The link's `check` itself sends nothing unpaired, forgotten, away or
+ * while home is busy.
  */
+import { pairingOf } from "./index"
 import type { HomeLinkState } from "./model"
 
 /** What the watch hears and calls. */
@@ -21,17 +25,12 @@ export type StandingWatchPorts = {
   >
 }
 
-/** Whether `state` is a pairing home hasn't answered for yet. */
-const unchecked = (state: HomeLinkState): boolean =>
-  state.link.kind === "paired" && state.link.standing.kind === "unchecked"
-
 /** Checks at the watch's moments until the returned unsubscribe is called. */
 export function watchStanding({ link, doc }: StandingWatchPorts): () => void {
   let checking = false
+  let pairing: string | null = null
   const check = (): void => {
-    const { link: now } = link.getSnapshot()
     if (checking || doc.visibilityState !== "visible") return
-    if (now.kind !== "paired" || now.standing.kind === "forgotten") return
     checking = true
     void link.check().finally(() => {
       checking = false
@@ -39,10 +38,14 @@ export function watchStanding({ link, doc }: StandingWatchPorts): () => void {
   }
 
   const onLink = (): void => {
-    if (unchecked(link.getSnapshot())) check()
+    const now = pairingOf(link.getSnapshot())
+    if (now === pairing) return
+    pairing = now
+    const { link: found } = link.getSnapshot()
+    if (found.kind === "paired" && found.standing.kind === "unchecked") check()
   }
   const onFront = (): void => {
-    check()
+    if (pairing !== null) check()
   }
 
   const unsubscribe = link.subscribe(onLink)

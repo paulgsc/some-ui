@@ -57,16 +57,17 @@ export type PairFailure =
  * running out), so the record on the phone says only that it was paired.
  * Learned from home's own word: a credentialed answer, or the check
  * (`./standing`). Only a refusal of the key says forgotten; a silence says
- * nothing of it (`away`). Forgotten stays until the phone pairs or unpairs:
- * home never knows an ended session again, so a later "known" is an older
- * request answering late.
+ * nothing of it (`away`). Home also refuses every key while its sign-in is
+ * off, and knows them again once it is back, so a success from a request
+ * sent after the refusal says known again; an older one answering late
+ * says nothing.
  */
 type Standing =
   /** Home hasn't answered this pairing's key since the app started. */
   | { readonly kind: "unchecked" }
   /** Home answered this pairing's key. */
   | { readonly kind: "known" }
-  /** Home refused this pairing's key, first at `at`. */
+  /** Home refused this pairing's key, on a request sent at `at`. */
   | { readonly kind: "forgotten"; readonly at: number }
 
 type Link =
@@ -84,7 +85,7 @@ type Link =
       readonly id: string
       /** The last Unpair could not forget the key on the phone. */
       readonly notForgotten: boolean
-      /** When this phone paired, or null for a pairing kept before it was kept. */
+      /** When this phone paired, or null for a pairing kept before the day was. */
       readonly since: number | null
       readonly standing: Standing
     }
@@ -166,9 +167,10 @@ export type HomeLinkEvent =
   /** The time home asked for has passed. */
   | { readonly type: "cooled" }
   /**
-   * Home answered pairing `id`'s key (`known`) or refused it (SIGNIN1):
-   * dropped for any other pairing, so a late answer to an old one says
-   * nothing of the new.
+   * Home answered pairing `id`'s key (`known`) or refused it, on a request
+   * sent at `at` (SIGNIN1): dropped for any other pairing, so a late answer
+   * to an old one says nothing of the new, and during an Unpair, whose own
+   * sign-out ends the key.
    */
   | {
       readonly type: "heard"
@@ -358,12 +360,16 @@ export function step(
     }
     case "heard": {
       if (link.kind !== "paired" || link.id !== event.id) return state
+      if (activity.kind === "unpairing") return state
       const { standing } = link
-      if (standing.kind === "forgotten") return state
       if (event.known) {
         if (standing.kind === "known") return state
+        if (standing.kind === "forgotten" && event.at <= standing.at) {
+          return state
+        }
         return { ...state, link: { ...link, standing: KNOWN } }
       }
+      if (standing.kind === "forgotten") return state
       return {
         ...state,
         link: { ...link, standing: { kind: "forgotten", at: event.at } },

@@ -74,8 +74,15 @@ beforeEach(() => {
 afterEach(cleanup)
 
 async function mark(): Promise<HTMLElement> {
-  const { SignInMark } = await import("@/components/device-sign-in-mark")
-  render(<SignInMark />)
+  const { SignInMark, SignInWatch } = await import(
+    "@/components/device-sign-in-mark"
+  )
+  render(
+    <>
+      <SignInWatch />
+      <SignInMark />
+    </>
+  )
   return screen.getByRole("button", { name: /^Home:/ })
 }
 
@@ -116,7 +123,7 @@ describe("the sign-in mark", () => {
     ).toBeTruthy()
   })
 
-  it("says once that home stopped knowing the phone, and leads to pairing again", async () => {
+  it("says once that home doesn't know the phone, and leads to pairing again", async () => {
     home.credential = {
       base: "https://home.example/api/v1",
       token: "t",
@@ -129,7 +136,7 @@ describe("the sign-in mark", () => {
     )
     expect(
       screen.getByText(
-        "Home stopped knowing this phone. What you do stays here until you pair again."
+        "Home doesn't know this phone any more. What you do stays here until you pair again."
       )
     ).toBeTruthy()
     fireEvent.click(button)

@@ -13,6 +13,7 @@ import { assertNever } from "@some-ui/core-utils"
 
 import { hostOf } from "./address"
 import type { HomeLinkState, UnpairedNote } from "./model"
+import { lookedAt } from "./words"
 
 /** Which of the mark's looks the phone is in. */
 export type SignedIn =
@@ -47,15 +48,6 @@ const pairedOn = (t: number): string =>
     year: "numeric",
   })
 
-/** A moment home stopped knowing the phone: its day and time. */
-const lostAt = (t: number): string =>
-  new Date(t).toLocaleString(undefined, {
-    day: "numeric",
-    month: "short",
-    hour: "numeric",
-    minute: "2-digit",
-  })
-
 /** Why the phone is not paired, said once (Settings › Home and the sheet). */
 export const UNPAIRED_NOTES: Readonly<Record<UnpairedNote, string>> = {
   unpaired: "Unpaired.",
@@ -74,9 +66,9 @@ export const SIGN_IN = {
   pair: "Pair with home",
   pairAgain: "Pair again",
   settings: "Home settings",
-  /** The notice when home stops knowing the phone. */
+  /** The notice when home doesn't know the phone. */
   lostNotice:
-    "Home stopped knowing this phone. What you do stays here until you pair again.",
+    "Home doesn't know this phone any more. What you do stays here until you pair again.",
 } as const
 
 /** The day the phone paired, as a clause, or nothing for a pairing kept before it was kept. */
@@ -88,7 +80,7 @@ export function signInView(
   state: HomeLinkState,
   when: { day: (t: number) => string; moment: (t: number) => string } = {
     day: pairedOn,
-    moment: lostAt,
+    moment: lookedAt,
   }
 ): SignInView {
   const { link } = state
@@ -123,10 +115,10 @@ export function signInView(
         return {
           signedIn: "lost",
           label: "Home: no longer signed in",
-          line: `Home stopped knowing this phone on ${when.moment(standing.at)}.`,
+          line: `Home didn't know this phone when it last asked, on ${when.moment(standing.at)}.`,
           notes: [
             "What you do stays on this phone until you pair it again. Nothing on the phone or on home was deleted.",
-            "Home forgets a phone when you sign out everywhere, or when it hasn't heard from the phone for a long while.",
+            "Home forgets a phone when you sign out everywhere, or when it hasn't heard from the phone for a long while. If home's sign-in was only off for a while, this clears the next time home takes something from this phone.",
           ],
           action: SIGN_IN.pairAgain,
         }
@@ -157,27 +149,11 @@ export function signInView(
   }
 }
 
-/** Settings › Home's first line while paired. */
-export function homeLine(state: HomeLinkState): string {
-  return signInView(state).line
-}
-
-/** Exhaustive over `SignedIn`, for the mark's tone. */
-export function toneOfSignedIn(signedIn: SignedIn): "quiet" | "ok" | "warn" {
-  switch (signedIn) {
-    case "reading":
-    case "out": {
-      return "quiet"
-    }
-    case "in": {
-      return "ok"
-    }
-    case "away":
-    case "lost": {
-      return "warn"
-    }
-    default: {
-      return assertNever(signedIn)
-    }
-  }
+/** The mark's tone in each look: muted, settled, or asking to be looked at. */
+export const TONE_OF: Readonly<Record<SignedIn, "quiet" | "ok" | "warn">> = {
+  reading: "quiet",
+  out: "quiet",
+  in: "ok",
+  away: "warn",
+  lost: "warn",
 }

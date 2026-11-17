@@ -57,13 +57,21 @@ describe("the link's standing (model)", () => {
     expect(paired.link).toMatchObject({ since: 7, standing: { kind: "known" } })
   })
 
-  it("is forgotten on a refusal and stays so whatever answers late", () => {
+  it("is forgotten on a refusal; only a success sent after it says known again", () => {
     const lost = run([READ, known("p1"), refused("p1", 9)])
     expect(standingOf(lost)).toEqual({ kind: "forgotten", at: 9 })
     // An older request's success, answering after the refusal.
-    expect(step(lost, known("p1", 10))).toBe(lost)
+    expect(step(lost, known("p1", 8))).toBe(lost)
+    expect(step(lost, known("p1", 9))).toBe(lost)
     // A second refusal keeps the first moment.
     expect(step(lost, refused("p1", 11))).toBe(lost)
+    // Home's sign-in back on: a request sent after the refusal is taken.
+    expect(standingOf(step(lost, known("p1", 10)))).toEqual({ kind: "known" })
+  })
+
+  it("hears nothing while an Unpair runs, whose own sign-out ends the key", () => {
+    const unpairing = run([READ, known("p1"), { type: "unpairPressed" }])
+    expect(step(unpairing, refused("p1"))).toBe(unpairing)
   })
 
   it("drops an answer for any other pairing, or none", () => {
@@ -115,7 +123,7 @@ describe("the record's pairing day", () => {
 type Home = {
   link: HomeLink
   sent: Array<HomeRequest>
-  record: () => string | null
+  pass: (ms: number) => void
 }
 
 function setup(
@@ -149,7 +157,7 @@ function setup(
     now: clock.now,
     after: clock.after,
   })
-  return { link, sent, record: () => record }
+  return { link, sent, pass: clock.pass }
 }
 
 describe("the link's check (runtime)", () => {
@@ -210,29 +218,40 @@ describe("the link's check (runtime)", () => {
     expect(home.sent).toEqual([])
   })
 
-  it("keeps the day it paired, and a credentialed refusal says forgotten", async () => {
-    let refuse = false
+  it("hears a credentialed refusal as forgotten, and a later success as known", async () => {
+    let status = 401
     const home = setup({
-      answer: (call) =>
-        call.url.endsWith("/pairing/finish")
-          ? { status: 200, body: JSON.stringify({ token: "k", expiresAt: 1 }) }
-          : { status: refuse ? 401 : 200, body: "{}" },
+      record: KEPT,
+      answer: () => ({ status, body: "{}" }),
     })
     await home.link.load()
-    await home.link.pair(HOME, "K7QF2M9X")
-    const kept: unknown = JSON.parse(home.record() ?? "null")
-    expect(kept).toMatchObject({
-      base: HOME.base,
-      token: "k",
-      pairedAt: expect.any(Number),
-    })
-    expect(standingOf(home.link.getSnapshot())).toEqual({ kind: "known" })
-
-    refuse = true
     await home.link.send((send) => send("GET", "/voice-notes/kept"))
     expect(standingOf(home.link.getSnapshot())).toMatchObject({
       kind: "forgotten",
     })
+    status = 200
+    home.pass(1)
+    await home.link.send((send) => send("GET", "/voice-notes/kept"))
+    expect(standingOf(home.link.getSnapshot())).toEqual({ kind: "known" })
+  })
+
+  it("sends nothing while held away from home", async () => {
+    let silent = true
+    const home = setup({
+      record: KEPT,
+      answer: async () => {
+        if (!silent) return { status: 200, body: "{}" }
+        const { noAnswer } = await import("@/test-support/no-answer")
+        throw noAnswer()
+      },
+    })
+    await home.link.load()
+    await home.link.check()
+    expect(home.link.getSnapshot().away).not.toBeNull()
+    silent = false
+    const before = home.sent.length
+    await home.link.check()
+    expect(home.sent).toHaveLength(before)
   })
 })
 
@@ -288,7 +307,7 @@ function fakeDoc(visible = true): {
 }
 
 describe("the standing watch", () => {
-  it("checks a pairing found unchecked, and again on coming to the front", async () => {
+  it("checks once as a pairing is found, and again on coming to the front", async () => {
     const fake = fakeLink(INITIAL)
     const page = fakeDoc()
     const stop = watchStanding({ link: fake.link, doc: page.doc })
@@ -296,7 +315,10 @@ describe("the standing watch", () => {
     fake.set(run([READ]))
     expect(fake.checks()).toBe(1)
     await Promise.resolve()
-    fake.set(run([READ, known("p1")]))
+    // Any other change of the link, a silence or busy ending among them,
+    // asks nothing.
+    fake.set(run([READ, { type: "unanswered", now: 1 }]))
+    fake.set(run([READ]))
     expect(fake.checks()).toBe(1)
     page.show(false)
     expect(fake.checks()).toBe(1)
@@ -308,14 +330,12 @@ describe("the standing watch", () => {
     expect(fake.checks()).toBe(2)
   })
 
-  it("never checks unpaired, forgotten, hidden, or on a clock", () => {
+  it("never checks unpaired, hidden, or on a clock", () => {
     vi.useFakeTimers()
     try {
       const fake = fakeLink(run([{ type: "read", found: null }]))
       const page = fakeDoc()
       watchStanding({ link: fake.link, doc: page.doc })
-      page.show(true)
-      fake.set(run([READ, refused("p1")]))
       page.show(true)
       vi.advanceTimersByTime(24 * 60 * 60 * 1_000)
       expect(fake.checks()).toBe(0)

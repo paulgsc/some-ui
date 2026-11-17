@@ -96,7 +96,6 @@ describe("the home link", () => {
       base: HOME.base,
       id: HOME.base,
       notForgotten: false,
-      // Kept before pairings kept their day, and not yet heard of (SIGNIN1).
       since: null,
       standing: { kind: "unchecked" },
     })
@@ -147,7 +146,6 @@ describe("the home link", () => {
       base: HOME.base,
       token: "phone-token",
       id: first,
-      // The day it paired, on the test's clock (SIGNIN1).
       pairedAt: 0,
     })
 
