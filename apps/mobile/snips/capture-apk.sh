@@ -39,20 +39,28 @@ adb shell wm density 420
 for scale in window_animation_scale transition_animation_scale animator_duration_scale; do
   adb shell settings put global "$scale" 0
 done
-adb shell settings put global sysui_demo_allowed 1
-demo() { adb shell am broadcast -a com.android.systemui.demo -e command "$@" > /dev/null; }
-demo enter
-demo clock -e hhmm 0930
-demo battery -e level 100 -e plugged false
-demo network -e wifi show -e level 4 -e mobile hide
-demo notifications -e visible false
 
 certs=$(mktemp -d)
 bash "$here/make-certs.sh" "$certs"
 # trust-ca.sh also leaves adb running as root, which setting the clock needs.
 bash "$here/trust-ca.sh" "$certs/ca.pem" > "$out/trust-ca.log" 2>&1
 adb shell settings put global auto_time 0
+adb shell settings put global auto_time_zone 0
+adb shell setprop persist.sys.timezone UTC
 adb shell date 110209302026.00 > /dev/null
+# Demo mode needs both switches on recent images, and its broadcast sent to
+# SystemUI itself (proof run 44031477446 showed the real clock without).
+adb shell settings put global sysui_demo_allowed 1
+adb shell settings put global sysui_tuner_demo_on 1
+demo() { adb shell am broadcast -a com.android.systemui.demo -p com.android.systemui -e command "$@" > /dev/null; }
+demo enter
+demo clock -e hhmm 0930
+demo battery -e level 100 -e plugged false
+demo network -e wifi show -e level 4 -e mobile hide
+demo notifications -e visible false
+# What the status bar looks like now, for reading a run whose pictures show
+# the real clock.
+adb exec-out screencap -p > "$out/demo-mode.png" || true
 node "$here/stub-home.mjs" --port 8787 --control 8788 \
   --cert "$certs/home.pem" --key "$certs/home.key" > "$out/stub.log" 2>&1 &
 stub_pid=$!
