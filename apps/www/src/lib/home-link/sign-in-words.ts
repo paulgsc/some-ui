@@ -1,0 +1,183 @@
+/**
+ * Every word the phone says about being signed in to home (SIGNIN1, #3087):
+ * the sign-in mark on every screen, its sheet, the notice when home stops
+ * knowing the phone, and Settings › Home's first line. Pure, and the one
+ * place those words live, so they say what is kept where and since when,
+ * never the machinery (`__tests__/sign-in-words.test.ts`).
+ *
+ * On the phone "signed in" means paired with home and known there: the
+ * phone's own record needs no sign-in, and pairing is how it signs in to
+ * home (docs/calls/C470.json).
+ */
+import { assertNever } from "@some-ui/core-utils"
+
+import { hostOf } from "./address"
+import type { HomeLinkState, UnpairedNote } from "./model"
+
+/** Which of the mark's looks the phone is in. */
+export type SignedIn =
+  /** The phone's record is being read. */
+  | "reading"
+  /** Paired, and home hasn't said otherwise. */
+  | "in"
+  /** Paired, and home isn't answering just now. */
+  | "away"
+  /** Not paired. */
+  | "out"
+  /** Paired, and home stopped knowing the phone. */
+  | "lost"
+
+export type SignInView = {
+  readonly signedIn: SignedIn
+  /** The mark's spoken name, with how it stands. */
+  readonly label: string
+  /** The sheet's first line, and Settings › Home's. */
+  readonly line: string
+  /** What the sheet says under it, a sentence each. */
+  readonly notes: ReadonlyArray<string>
+  /** The sheet's one way on, to Settings › Home. */
+  readonly action: string
+}
+
+/** A day the phone paired: its date. */
+const pairedOn = (t: number): string =>
+  new Date(t).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  })
+
+/** A moment home stopped knowing the phone: its day and time. */
+const lostAt = (t: number): string =>
+  new Date(t).toLocaleString(undefined, {
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  })
+
+/** Why the phone is not paired, said once (Settings › Home and the sheet). */
+export const UNPAIRED_NOTES: Readonly<Record<UnpairedNote, string>> = {
+  unpaired: "Unpaired.",
+  "unpaired-offline":
+    "Unpaired on this phone. Home couldn't be reached, so it still holds this phone's key until it expires: sign out everywhere on your computer to end it now.",
+  lost: "This phone's pairing didn't survive a restore. Pair again; to end the old one, sign out everywhere on your computer.",
+  unreadable:
+    "This phone couldn't read its pairing just now. Restart the app to try again. Pairing again replaces it; to end the old one, sign out everywhere on your computer.",
+}
+
+export const SIGN_IN = {
+  /** The sheet's title. */
+  title: "Signed in to home",
+  /** What being signed in is, said in every look's sheet. */
+  what: "Home is your own computer at home. While this phone is signed in there, what you keep here goes there too, whenever the app is open on your home network.",
+  pair: "Pair with home",
+  pairAgain: "Pair again",
+  settings: "Home settings",
+  /** The notice when home stops knowing the phone. */
+  lostNotice:
+    "Home stopped knowing this phone. What you do stays here until you pair again.",
+} as const
+
+/** The day the phone paired, as a clause, or nothing for a pairing kept before it was kept. */
+const since = (at: number | null, day: (t: number) => string): string =>
+  at === null ? "" : `, since ${day(at)}`
+
+/** What the phone says of being signed in to home, from the link's state. */
+export function signInView(
+  state: HomeLinkState,
+  when: { day: (t: number) => string; moment: (t: number) => string } = {
+    day: pairedOn,
+    moment: lostAt,
+  }
+): SignInView {
+  const { link } = state
+  switch (link.kind) {
+    case "reading": {
+      return {
+        signedIn: "reading",
+        label: "Home: looking",
+        line: "Looking for this phone's pairing.",
+        notes: [],
+        action: SIGN_IN.settings,
+      }
+    }
+    case "unpaired": {
+      return {
+        signedIn: "out",
+        label: "Home: not signed in",
+        line: "Not signed in to home.",
+        notes: [
+          ...(link.note === null ? [] : [UNPAIRED_NOTES[link.note]]),
+          "What you do stays on this phone.",
+          SIGN_IN.what,
+        ],
+        action: SIGN_IN.pair,
+      }
+    }
+    case "paired": {
+      const host = hostOf(link.base)
+      const signedIn = `Signed in to home at ${host}${since(link.since, when.day)}.`
+      const { standing } = link
+      if (standing.kind === "forgotten") {
+        return {
+          signedIn: "lost",
+          label: "Home: no longer signed in",
+          line: `Home stopped knowing this phone ${when.moment(standing.at)}.`,
+          notes: [
+            "What you do stays on this phone until you pair it again. Nothing on the phone or on home was deleted.",
+            "Home forgets a phone when you sign out everywhere, or when it hasn't heard from the phone for a long while.",
+          ],
+          action: SIGN_IN.pairAgain,
+        }
+      }
+      if (state.away !== null) {
+        return {
+          signedIn: "away",
+          label: "Home: signed in, not answering",
+          line: signedIn,
+          notes: [
+            "Home isn't answering right now, so what you do waits on this phone and goes once home answers.",
+            SIGN_IN.what,
+          ],
+          action: SIGN_IN.settings,
+        }
+      }
+      return {
+        signedIn: "in",
+        label: "Home: signed in",
+        line: signedIn,
+        notes: [SIGN_IN.what],
+        action: SIGN_IN.settings,
+      }
+    }
+    default: {
+      return assertNever(link)
+    }
+  }
+}
+
+/** Settings › Home's first line while paired. */
+export function homeLine(state: HomeLinkState): string {
+  return signInView(state).line
+}
+
+/** Exhaustive over `SignedIn`, for the mark's tone. */
+export function toneOfSignedIn(signedIn: SignedIn): "quiet" | "ok" | "warn" {
+  switch (signedIn) {
+    case "reading":
+    case "out": {
+      return "quiet"
+    }
+    case "in": {
+      return "ok"
+    }
+    case "away":
+    case "lost": {
+      return "warn"
+    }
+    default: {
+      return assertNever(signedIn)
+    }
+  }
+}

@@ -513,7 +513,14 @@ declared (checked by reading every call site and by the tests named).
   once a minute, when a credentialed request is answered not found other
   than as home's JSON error (a route home lacks), one at a time and never on
   a timer;
-  #2843),
+  #2843), and the sign-in mark asking whether home still knows this phone
+  (`lib/home-link/standing`'s watch, through the link's `check`: one
+  `GET /auth/session` with the credential, on the drain's turn of the pace
+  and holding no activity of the person's, when a pairing read back has not
+  yet been answered (the app's start) and when the app comes back to the
+  foreground, one at a time, never on a timer, and none while held away or
+  home is busy, unpaired, or once home has refused the key; sending nothing
+  of the phone's; SIGNIN1, #3087),
   which are the other callers of `lib/home-link`, is started by a tap in the Home server block of Settings
   (`components/settings/device-section.tsx`): the sync (published lessons
   and dramas, read with no credential), pairing (the code only), unpairing,

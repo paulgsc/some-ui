@@ -50,6 +50,25 @@ export type PairFailure =
   | "not-kept"
   | "other"
 
+/**
+ * Whether home still knows a paired phone (SIGNIN1, #3087): the phone's
+ * sign-in. Pairing makes home's session for it, which home can end on its
+ * own (sign out everywhere, a later sign-in pushing it out, its time
+ * running out), so the record on the phone says only that it was paired.
+ * Learned from home's own word: a credentialed answer, or the check
+ * (`./standing`). Only a refusal of the key says forgotten; a silence says
+ * nothing of it (`away`). Forgotten stays until the phone pairs or unpairs:
+ * home never knows an ended session again, so a later "known" is an older
+ * request answering late.
+ */
+type Standing =
+  /** Home hasn't answered this pairing's key since the app started. */
+  | { readonly kind: "unchecked" }
+  /** Home answered this pairing's key. */
+  | { readonly kind: "known" }
+  /** Home refused this pairing's key, first at `at`. */
+  | { readonly kind: "forgotten"; readonly at: number }
+
 type Link =
   /** The phone's own record is being read: no request to home. */
   | { readonly kind: "reading" }
@@ -65,6 +84,9 @@ type Link =
       readonly id: string
       /** The last Unpair could not forget the key on the phone. */
       readonly notForgotten: boolean
+      /** When this phone paired, or null for a pairing kept before it was kept. */
+      readonly since: number | null
+      readonly standing: Standing
     }
 
 type Activity =
@@ -108,13 +130,23 @@ export type HomeLinkEvent =
   | {
       readonly type: "read"
       readonly found:
-        | { readonly base: string; readonly id: string }
+        | {
+            readonly base: string
+            readonly id: string
+            readonly since: number | null
+          }
         | "lost"
         | "unreadable"
         | null
     }
   | { readonly type: "pairPressed"; readonly base: string }
-  | { readonly type: "paired"; readonly base: string; readonly id: string }
+  | {
+      readonly type: "paired"
+      readonly base: string
+      readonly id: string
+      /** When the pairing was made, which is also when home last knew it. */
+      readonly at: number
+    }
   | { readonly type: "pairFailed"; readonly failure: PairFailure }
   | { readonly type: "unpairPressed" }
   | { readonly type: "unpaired"; readonly told: boolean }
@@ -133,6 +165,17 @@ export type HomeLinkEvent =
   | { readonly type: "homeBusy"; readonly until: number }
   /** The time home asked for has passed. */
   | { readonly type: "cooled" }
+  /**
+   * Home answered pairing `id`'s key (`known`) or refused it (SIGNIN1):
+   * dropped for any other pairing, so a late answer to an old one says
+   * nothing of the new.
+   */
+  | {
+      readonly type: "heard"
+      readonly id: string
+      readonly known: boolean
+      readonly at: number
+    }
   /** Away from home (AW1, `./away`): a request found no answer, or one did. */
   | AwayEvent
 
@@ -147,6 +190,8 @@ export const INITIAL: HomeLinkState = {
 }
 
 const idle = { kind: "idle" } as const
+const UNCHECKED: Standing = { kind: "unchecked" }
+const KNOWN: Standing = { kind: "known" }
 
 /** A sync, a send or a read: the activities Stop ends. */
 export function working(
@@ -211,6 +256,8 @@ export function step(
                   base: found.base,
                   id: found.id,
                   notForgotten: false,
+                  since: found.since,
+                  standing: UNCHECKED,
                 },
       }
     }
@@ -232,6 +279,8 @@ export function step(
           base: event.base,
           id: event.id,
           notForgotten: false,
+          since: event.at,
+          standing: KNOWN,
         },
         activity: idle,
         pairFailure: null,
@@ -306,6 +355,19 @@ export function step(
     case "cooled": {
       if (state.homeBusyUntil === null) return state
       return { ...state, homeBusyUntil: null }
+    }
+    case "heard": {
+      if (link.kind !== "paired" || link.id !== event.id) return state
+      const { standing } = link
+      if (standing.kind === "forgotten") return state
+      if (event.known) {
+        if (standing.kind === "known") return state
+        return { ...state, link: { ...link, standing: KNOWN } }
+      }
+      return {
+        ...state,
+        link: { ...link, standing: { kind: "forgotten", at: event.at } },
+      }
     }
     case "unanswered":
     case "answered":
