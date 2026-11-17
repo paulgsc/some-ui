@@ -1,0 +1,15 @@
+{
+  "id": "C503",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": ["some-ui:apps/www/src/lib/renders/words.ts"],
+  "chose": "A refused render says \"Too long to make: it would run 31.2 minutes, and Rust Rounds essays stop at 30 minutes. Home doesn't try it again as it is.\" (lengths to the tenth, an hour and over in hours and minutes, and \"a little past\" the cap when the length home sends reads as the cap itself), and a too-large one says how much larger as a rounded share (\"2% larger than home keeps a video\", \"a little larger\" under 1%, \"at least twice as large\"), never in MB.",
+  "options": [
+    "lengths to the tenth, size as a percent over",
+    "whole minutes and the size in MB (\"512 MB, past 500 MB\")",
+    "no numbers, only the reason"
+  ],
+  "gray": "The owner asked for the reason in their terms; MB and three-digit numbers read as machinery by the words test, and home sends lengths in tenths and sizes in whole MB, so a video just past its cap can arrive equal to it and must not read as at the cap.",
+  "undo": "Edit REFUSAL_WORDS, minutesSaid and largerSaid in words.ts; nothing stores them.",
+  "refs": ["server#932", "server#929"]
+}

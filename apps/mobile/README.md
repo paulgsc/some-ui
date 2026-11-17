@@ -470,12 +470,15 @@ radio dropping and returning, thermal throttling, and a phone's real
 memory pressure. An emulator's old API level carries the WebView its system
 image shipped: on 2026-11-17 the API 24 and 28 images carried Chrome 69 and
 API 31's WebView 91, while the bundle is built for Vite's default target
-(about Chrome 111), so the page would load blank there. A real phone on
+(about Chrome 111), and below it the app opens its update page
+(`webview-too-old.html`, #3117) in place of itself. A real phone on
 Android 7 to 9 gets Android System WebView from Play, at 111 or later
-(Android 7 tops out around 119), so that blank page is the image's limit,
-not a phone's. Such a level is not tested: its row says "stock WebView
-<n> (needs ≥111)". The "Image's WebView" column says which each level
-ran. A level that cannot boot on GitHub's hosted runners shows as "not
+(Android 7 tops out around 119), so such a level checks only that the
+update page shows and stays through every way in, each cold and then warm:
+the plain icon, each wing's icon and the New idea shortcut (OWV1, in
+`compat/run-level.sh`; `old-webview.png`). Its Launch cell says "update page
+shown" or "blank", and the rest say "stock WebView <n> (needs ≥111)". The
+"Image's WebView" column says which each level ran. A level that cannot boot on GitHub's hosted runners shows as "not
 run".
 
 ### Play readiness

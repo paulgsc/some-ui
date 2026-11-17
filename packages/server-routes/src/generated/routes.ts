@@ -3,7 +3,7 @@
 export const API_BASE_PATH = "/api/v1";
 
 /** The server contract epoch this snapshot is (file_host's `contract::CONTRACT_EPOCH`). */
-export const SERVER_CONTRACT_EPOCH = 10;
+export const SERVER_CONTRACT_EPOCH = 15;
 /** The lowest epoch that server still serves (`contract::OLDEST_SUPPORTED`). */
 export const SERVER_OLDEST_SUPPORTED = 1;
 
@@ -23,6 +23,8 @@ export type ServerRoute =
   | "/api/v1/auth/pairing/start"
   | "/api/v1/auth/passkeys/finish"
   | "/api/v1/auth/passkeys/start"
+  | "/api/v1/auth/phones"
+  | "/api/v1/auth/phones/:id"
   | "/api/v1/auth/register/finish"
   | "/api/v1/auth/register/start"
   | "/api/v1/auth/session"
@@ -125,10 +127,12 @@ export type ServerRoute =
   | "/api/v1/tabs/summaries"
   | "/api/v1/utter"
   | "/api/v1/voice-notes/:id"
+  | "/api/v1/voice-notes/:id/attention"
   | "/api/v1/voice-notes/:id/audio"
   | "/api/v1/voice-notes/:id/heard"
   | "/api/v1/voice-notes/:id/set-aside"
   | "/api/v1/voice-notes/:id/station"
+  | "/api/v1/voice-notes/attention"
   | "/api/v1/voice-notes/conveyor"
   | "/api/v1/voice-notes/deleted"
   | "/api/v1/voice-notes/kept"
