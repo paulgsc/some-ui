@@ -250,15 +250,17 @@ export const FeedbackNotes = ({ none }: { none: string }): JSX.Element => {
   const home = useQuery(homeNotesQuery)
   if (notes.length === 0)
     return <p className="text-muted-foreground text-sm">{none}</p>
-  const { held, refused } = notesAnswered()
+  const answered = notesAnswered()
   const storedAt =
     home.data?.kind === "read" ? home.data.storedAt : new Map<string, string>()
   const today = dayOf(new Date())
   const place: Place = (id) => {
     const at = storedAt.get(id)
     if (at !== undefined) return WORDS.onHome(at, today)
-    if (held.has(id)) return WORDS.onHomeSent
-    return refused.has(id) ? WORDS.notTaken : WORDS.onPhone
+    // Not known yet: never said as only on this phone (PO1).
+    if (answered === null) return WORDS.notKnown
+    if (answered.held.has(id)) return WORDS.onHomeSent
+    return answered.refused.has(id) ? WORDS.notTaken : WORDS.onPhone
   }
   const line = homeLine(home.data, home.isError)
   return (

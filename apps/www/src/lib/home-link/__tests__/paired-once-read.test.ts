@@ -6,12 +6,12 @@
  *
  * **PO1: no reader says unpaired while the pairing record is read.**
  *
- * - _Claim:_ whether this phone is paired is read only as `../model`'s
- *   `Pairing` (`pairing()`, `usePairing()`, `pairingIn`), whose `reading`
- *   member stands for not known yet, and every reader named in the Family
- *   says nothing it would say of no pairing while it is `reading`. Each
- *   one-shot ask of home in `lib/home-link` decides "unpaired" only after
- *   the record has been read (`pairedOnceRead`).
+ * - _Claim:_ each reader named in the Family reads whether this phone is
+ *   paired as `../model`'s `Pairing` (`pairing()`, `usePairing()`,
+ *   `pairingIn`), whose `reading` member stands for not known yet, and says
+ *   nothing it would say of no pairing while it is `reading`. Each one-shot
+ *   ask of home in `lib/home-link` decides "unpaired" only after the record
+ *   has been read (`pairedOnceRead`).
  * - _Family:_ each reader × when the record's read ends (after the reader
  *   looks, as a fresh page load has it, or before) × what it finds (a
  *   pairing, none, one lost, a record that won't parse, a read that itself
@@ -19,29 +19,36 @@
  *   read through `while-busy`'s `asked`, home's compat, takes, what home
  *   keeps, its receipts, ideas, a note's delete, an episode step's let-go,
  *   a take's words, a note's audio); what this phone knows home holds
- *   (`sentUnder`, and the waiting counts over it); the lanes' readings and
- *   runs (`laneReading`, `laneExchange`, a run turned away); the Jobs cards'
- *   journeys and the morning row; Settings › Home's layout; the lane mark's
- *   sheet; the game outbox; idea hearing's reach and listener; the voice
- *   record's pairing port; ask-answer; the link's watchers (`kept-watch`,
- *   `practice-reads`, `serves`, `standing`, `live`, the voice copy's gates).
- * - _Proof:_ the type first. No boolean or id-or-null read of the pairing
- *   is exported, so a reader must take the union, and a switch over it
- *   fails to compile without `reading`. `./pairing.test.ts` holds the
- *   union's transitions over every link state × every event, and maps each
- *   way the read ends. These tests hold each ask over its whole family
- *   (`FAMILY`); with the old gate back, each ask's held-read cases fail.
- *   Each reader's own test holds its `reading` case: the waiting counts,
- *   the journey and morning (`lib/jobs`), the Jobs screen, a run turned
- *   away and `laneExchange` (`./kept.test.ts`), ask-answer, idea hearing,
- *   the voice record, and the game outbox's words.
+ *   (`sentUnder`, the waiting counts over it, and Studio › Feedback's place
+ *   of each note); the lanes' readings and runs (`laneReading`,
+ *   `laneExchange`, a run turned away); the Jobs cards' journeys and the
+ *   morning row, on Jobs and on the status board; Settings › Home's layout;
+ *   the lane mark's sheet; the game outbox; idea hearing's reach and
+ *   listener; the voice record's pairing port; ask-answer; the link's
+ *   watchers (`kept-watch`, `practice-reads`, `serves`, `standing`, `live`,
+ *   the voice copy's gates). Outside it, until #3157's second part:
+ *   soundbites' `isPaired`, which folds not known into unpaired, and
+ *   `voiceKept`, which says a take going home is on this phone while
+ *   reading. Outside it too, as they say nothing of no pairing (a control
+ *   that is absent until paired): `routine.ts`'s pairing port,
+ *   `device-routine-files` and Studio's clip frames.
+ * - _Proof:_ the type where it reaches. `pairing()` and `usePairing()` are
+ *   the only reads of the pairing `lib/home-link` exports for a screen, and
+ *   a switch over the union fails to compile without `reading`; a reader
+ *   that folds it to `kind === "paired"` is not held by the type, so each
+ *   reader holds its `reading` case in its own test. `./pairing.test.ts`
+ *   holds the union's transitions over every link state × every event, and
+ *   maps each way the read ends. These tests hold each ask over its whole
+ *   family (`FAMILY`); with the old gate back, each ask's held-read cases
+ *   fail. The readers' own: the waiting counts, Studio › Feedback
+ *   (`lib/episode-feedback`), the journey and morning (`lib/jobs`), the Jobs
+ *   screen, the status board, Settings › Home and the lane mark's sheet
+ *   (each with the read held, then ending both ways), a run turned away and
+ *   `laneExchange` (`./kept.test.ts`), ask-answer, idea hearing, the voice
+ *   record, and the game outbox's words.
  * - _Tolerance:_ an ask waits as long as the record's read, at most
  *   `./credential`'s 5 s. Until #3152's second part, a run the link turns
- *   away while reading is said as busy and asked again. Until PR 1b
- *   (#3157): soundbites' `isPaired` folds not known into unpaired, and
- *   `voiceKept` says a take going home is on this phone while reading. The
- *   scan below catches the old gate as it was written; it goes with the
- *   second part.
+ *   away while reading is said as busy and asked again.
  *
  * Relates: widens PO1 (#3157). Its first Family held only the ten asks;
  * the readers past it took the answer as a boolean or an id-or-null, which
@@ -214,6 +221,9 @@ afterEach(() => {
     Promise.resolve({ record: null, lost: false })
 })
 
+/** A read of the pairing as it is now, without waiting for the record. */
+const BARE = /(?<![.\w])pairing\(\)\.kind/
+
 /** Each ask × each outcome × each timing: PO1's whole family. */
 const FAMILY = ASKS.flatMap((ask) =>
   OUTCOMES.flatMap((outcome) =>
@@ -262,7 +272,7 @@ describe("a one-shot ask as a page opens (PO1)", () => {
     }
   })
 
-  it("no ask in lib/home-link says unpaired on the bare paired()", () => {
+  it("no ask in lib/home-link says unpaired on the bare pairing()", () => {
     const dir = resolve(dirname(fileURLToPath(import.meta.url)), "..")
     const files = readdirSync(dir).filter(
       (name) => name.endsWith(".ts") && !name.endsWith(".test.ts")
@@ -271,8 +281,11 @@ describe("a one-shot ask as a page opens (PO1)", () => {
     expect(files).toContain("index.ts")
     const offenders = files.filter((name) => {
       const text = readFileSync(join(dir, name), "utf8")
-      return /kind: "unpaired"/.test(text) && /(?<![.\w])!paired\(\)/.test(text)
+      return /kind: "unpaired"/.test(text) && BARE.test(text)
     })
     expect(offenders).toEqual([])
+    // The scan matches the gate as it would be written now.
+    expect(BARE.test('if (pairing().kind !== "paired")')).toBe(true)
+    expect(BARE.test('if (homeLink.pairing().kind !== "paired")')).toBe(false)
   })
 })

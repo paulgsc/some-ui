@@ -31,12 +31,15 @@ const home = vi.hoisted(
     gone: Array<string>
     /** Whether home refuses the phone's key, as one that forgot it does. */
     forgot: boolean
+    /** The pairing record's read, held until the test ends it (PO1). */
+    held: Promise<void> | null
   } => ({
     sent: [],
     record: null,
     sessions: [],
     gone: [],
     forgot: false,
+    held: null,
   })
 )
 
@@ -78,8 +81,10 @@ vi.mock("@/lib/device-backend/native-http", () => ({
 }))
 vi.mock("@/lib/home-link/credential", () => ({
   nativeCredential: {
-    read: (): Promise<{ record: string | null; lost: boolean }> =>
-      Promise.resolve({ record: home.record, lost: false }),
+    read: async (): Promise<{ record: string | null; lost: boolean }> => {
+      await home.held
+      return { record: home.record, lost: false }
+    },
     write: (record: string): Promise<void> => {
       home.record = record
       return Promise.resolve()
@@ -119,6 +124,7 @@ afterEach(() => {
   home.sessions = []
   home.gone = []
   home.forgot = false
+  home.held = null
   localStorage.clear()
   vi.resetModules()
 })
@@ -172,6 +178,37 @@ describe("DeviceSection's Home server block", () => {
     expect(
       screen.getByText(/goes to home on its own while the app is open/i)
     ).toBeTruthy()
+    expect(home.sent).toEqual([])
+  })
+
+  it("shows neither the address form nor Pair while the pairing record is read, then the layout it finds (PO1)", async () => {
+    for (const found of ["none", "a pairing"] as const) {
+      let end: () => void = () => undefined
+      home.held = new Promise((resolve) => {
+        end = resolve
+      })
+      if (found === "a pairing") paired()
+      await open()
+      expect(document.querySelector("#home-server")).toBeNull()
+      expect(screen.queryByRole("button", { name: /pair/i })).toBeNull()
+      expect(screen.queryByText(/signed in to home/i)).toBeNull()
+      await act(async () => {
+        end()
+        await new Promise((resolve) => setTimeout(resolve, 0))
+      })
+      if (found === "none") {
+        expect(document.querySelector("#home-server")).not.toBeNull()
+        expect(screen.getByRole("button", { name: /pair/i })).toBeTruthy()
+      } else {
+        expect(document.querySelector("#home-server")).toBeNull()
+        expect(
+          screen.getByText("Signed in to home at home.example.")
+        ).toBeTruthy()
+      }
+      cleanup()
+      vi.resetModules()
+      home.record = null
+    }
     expect(home.sent).toEqual([])
   })
 

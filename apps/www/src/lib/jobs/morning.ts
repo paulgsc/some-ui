@@ -249,8 +249,9 @@ const SHAPES: Readonly<
     road: { stops: DRIVE_ROAD, marks: [U, A, R], legs: ["ahead", "ahead"] },
   },
   // Not known yet, on this phone: its record of the pairing is still read.
+  // Under way, not waiting on the person, so the board lifts nothing (PO1).
   reading: {
-    theme: "waiting",
+    theme: "moving",
     at: "phone",
     sign: "unknown",
     road: {

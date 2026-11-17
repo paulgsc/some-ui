@@ -44,11 +44,18 @@ export async function readHomeNotes(
   return { kind: "read", storedAt }
 }
 
-/** The notes home read back, and refused, as this phone sent them under the pairing now. */
+/**
+ * The notes home read back, and refused, as this phone sent them under the
+ * pairing now; null while the pairing record is read, when neither is known
+ * (PO1, #3157). The page renders again once its read of home ends, which
+ * waits on that record.
+ */
 export function notesAnswered(): {
   readonly held: ReadonlySet<string>
   readonly refused: ReadonlySet<string>
-} {
-  const { held, refused } = episodeNotesWaiting(localStorageOrNull(), pairing())
+} | null {
+  const now = pairing()
+  if (now.kind === "reading") return null
+  const { held, refused } = episodeNotesWaiting(localStorageOrNull(), now)
   return { held, refused }
 }
