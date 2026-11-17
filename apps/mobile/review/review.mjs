@@ -39,6 +39,7 @@ import {
   parseXml,
   readZip,
   reviewElf,
+  reviewErrorPage,
   reviewLint,
   reviewManifest,
   reviewPluginConfig,
@@ -177,11 +178,14 @@ for (const variant of ["debug", "release"]) {
   const configEntry = entries.find(
     (e) => e.name === "assets/capacitor.config.json"
   )
+  const configText =
+    configEntry && entryBytes(bytes, configEntry).toString("utf8")
+  add(reviewPluginConfig(label, configText, policy.pluginConfig))
   add(
-    reviewPluginConfig(
+    reviewErrorPage(
       label,
-      configEntry && entryBytes(bytes, configEntry).toString("utf8"),
-      policy.pluginConfig
+      configText,
+      entries.map((e) => e.name)
     )
   )
 
