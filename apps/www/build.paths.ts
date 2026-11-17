@@ -240,7 +240,15 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
         "apps/www/src/lib/auth/errors.ts",
       ],
       profiles: ["lan", "pages"],
-      why: "the passkey screen and what only it says: the Android app has no sign-in, and its /auth offers a reload instead (src/components/auth/device-session-lost)",
+      why: "the passkey screen and what only it says: the Android app has no sign-in, and its /auth offers a reload instead (src/components/auth/device-session-lost). Pages shows a viewer's page instead (SIGNIN5), and carries these only through lib/auth and Settings' account section",
+    },
+    {
+      modules: [
+        "apps/www/src/components/auth/viewer-auth.tsx",
+        "apps/www/src/lib/auth/viewer-words.ts",
+      ],
+      profiles: ["pages"],
+      why: "the viewer's /auth (SIGNIN5): only the Pages build has viewers, who have no sign-in to use",
     },
     {
       modules: [`${SPEECH_ENTRY}/web-speech.es.js`],
@@ -380,6 +388,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
         "apps/www/src/lib/native-log/index.ts",
       ],
       why: "the Android app answers file_host, speaks, nudges and logs its failures through these; a build without one is an APK that installs and then fails, or fails and says nothing",
+    },
+    {
+      profile: "pages",
+      modules: ["apps/www/src/components/auth/viewer-auth.tsx"],
+      why: "the viewer's /auth (SIGNIN5): without it the route renders the passkey screen, a sign-in a viewer cannot use. Also what keeps its `exclusive` rule from passing by matching nothing",
     },
     {
       profile: MOBILE_PROFILE,

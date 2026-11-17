@@ -7,8 +7,8 @@
  * ceremonies. A `401` from any route ends it (`markSignedOut`). Nothing here
  * holds or sends a name, an email, or a device detail.
  *
- * On the Pages build there is no server: "signing in" only opens the demo
- * (`DATA_MODE === "static"`).
+ * On the Pages build there is no server: `/auth` opens the demo with
+ * `openDemo` (`DATA_MODE === "static"`, SIGNIN5), and no ceremony runs.
  */
 import { useSyncExternalStore } from "react"
 
@@ -212,6 +212,17 @@ export async function signIn(): Promise<void> {
       credential
     )
   }
+  markSignedIn()
+}
+
+/**
+ * The viewer build's way in (SIGNIN5, #3091): no ceremony and no server, so
+ * the demo's session is the page's own, kept in memory like everything the
+ * viewer does (`lib/demo/viewer-storage`). Only the static build has it.
+ */
+export function openDemo(): void {
+  if (DATA_MODE !== "static")
+    throw new Error("only the viewer build opens the demo")
   markSignedIn()
 }
 
