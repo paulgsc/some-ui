@@ -14,6 +14,7 @@ import {
   PAIR_FORM,
   pairFailureLine,
   SIGN_IN,
+  SIGN_OUT,
   signInView,
   UNPAIRED_NOTES,
   WELCOME,
@@ -117,5 +118,26 @@ describe("the sign-in mark's words", () => {
     for (const word of words) {
       expect(word.replace(/home\.example/g, "home")).not.toMatch(MACHINERY)
     }
+  })
+
+  it("say signing out and pairing again by what each place keeps (SIGNIN3)", () => {
+    const words = [
+      SIGN_OUT.button,
+      SIGN_OUT.ask("home.example"),
+      ...SIGN_OUT.keeps,
+      SIGN_OUT.yes,
+      SIGN_OUT.signingOut,
+      SIGN_OUT.stay,
+      SIGN_OUT.notForgotten,
+      SIGN_OUT.pairAgain,
+      SIGN_OUT.pairAgainLead,
+    ]
+    for (const word of words) {
+      expect(word.replace(/home\.example/g, "home")).not.toMatch(MACHINERY)
+      // Neither deletes anything, so neither says it does.
+      expect(word).not.toMatch(/\bdelet|\berase|\bremov|\bwipe/i)
+    }
+    expect(SIGN_OUT.keeps.join(" ")).toMatch(/this phone keeps everything/i)
+    expect(SIGN_OUT.keeps.join(" ")).toMatch(/home keeps everything/i)
   })
 })
