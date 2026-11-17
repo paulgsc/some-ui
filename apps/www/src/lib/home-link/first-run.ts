@@ -3,8 +3,9 @@
  * #3088; docs/calls/C471.json). What this phone remembers of the welcome
  * and its pairing (`Seen`) decides it with the link's state:
  *
- * - never paired, or its record unreadable: the welcome, until the person
- *   says "Not now" or the phone is paired;
+ * - never paired, or its record unreadable on a phone that remembers no
+ *   pairing: the welcome, until the person says "Not now" or the phone is
+ *   paired;
  * - a pairing gone without an unpair: the welcome, with that said first,
  *   until "Not now" is said to it. A restore or a move to a new phone brings
  *   back what this phone remembers but never its pairing (the backup leaves
@@ -87,6 +88,9 @@ export function rememberSeen(seen: Exclude<Seen, "">): void {
 /** What `state` says to remember of the pairing, if anything. */
 function pairingSeen(state: HomeLinkState): "paired" | "unpaired" | null {
   const { link } = state
+  // An unpair under way: Settings remembered it as it was pressed, and the
+  // link says how it ended (paired again if it failed).
+  if (state.activity.kind === "unpairing") return null
   if (link.kind === "paired") return "paired"
   if (
     link.kind === "unpaired" &&

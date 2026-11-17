@@ -136,6 +136,20 @@ describe("what the phone keeps of its pairing", () => {
     stop()
   })
 
+  it("keeps an unpair remembered as it was pressed while it runs, and takes it back if it fails", () => {
+    const fake = link(PAIRED)
+    const stop = watchPairing(fake)
+    expect(seenHere()).toBe("paired")
+    // Settings' confirm, then the link's unpairPressed.
+    localStorage.setItem("some-ui.home.welcome-not-now.v1", "unpaired")
+    const unpairing = step(PAIRED, { type: "unpairPressed" })
+    fake.set(unpairing)
+    expect(seenHere()).toBe("unpaired")
+    fake.set(step(unpairing, { type: "unpairFailed" }))
+    expect(seenHere()).toBe("paired")
+    stop()
+  })
+
   it("leaves what was said to the welcome while nothing is paired", () => {
     localStorage.setItem("some-ui.home.welcome-not-now.v1", "restored")
     const stop = watchPairing(link(read("lost")))
