@@ -67,8 +67,8 @@ export const UNPAIRED_NOTES: Readonly<Record<UnpairedNote, string>> = {
 }
 
 export const SIGN_IN = {
-  /** The sheet's title. */
-  title: "Signed in to home",
+  /** The sheet's title, the same in every look. */
+  title: "This phone and home",
   /** What being signed in is, said in every look's sheet. */
   what: "Home is your own computer at home. While this phone is signed in there, what you keep here goes there too, whenever the app is open on your home network.",
   pair: "Pair with home",
@@ -123,7 +123,7 @@ export function signInView(
         return {
           signedIn: "lost",
           label: "Home: no longer signed in",
-          line: `Home stopped knowing this phone ${when.moment(standing.at)}.`,
+          line: `Home stopped knowing this phone on ${when.moment(standing.at)}.`,
           notes: [
             "What you do stays on this phone until you pair it again. Nothing on the phone or on home was deleted.",
             "Home forgets a phone when you sign out everywhere, or when it hasn't heard from the phone for a long while.",

@@ -30,6 +30,7 @@ import {
 } from "lucide-react"
 
 import { pageOf } from "@/lib/front-desk"
+import type { HomeLinkState } from "@/lib/home-link"
 import { homeLink, useHomeLink } from "@/lib/home-link"
 import type { SignedIn } from "@/lib/home-link/sign-in-words"
 import {
@@ -58,9 +59,21 @@ function useStandingWatch(): void {
   useEffect(() => watchStanding({ link: homeLink(), doc: document }), [])
 }
 
+/** The phone's sign-in mark, asking home at the watch's moments. */
 export const SignInMark = (): JSX.Element => {
   useStandingWatch()
-  const state = useHomeLink()
+  return <SignInMarkView state={useHomeLink()} />
+}
+
+/**
+ * The mark for a given state of the link, asking nothing: what
+ * `SignInMark` draws, and what the ui-fit phone page draws in each look.
+ */
+export const SignInMarkView = ({
+  state,
+}: {
+  state: HomeLinkState
+}): JSX.Element => {
   const [open, setOpen] = useState(false)
   const view = signInView(state)
   const Icon = ICONS[view.signedIn]
@@ -121,7 +134,7 @@ export const SignInMark = (): JSX.Element => {
             <Link
               to={pageOf("home")}
               onClick={() => setOpen(false)}
-              className="text-brand self-start text-base font-semibold underline underline-offset-4"
+              className="self-start text-base font-semibold underline underline-offset-4"
             >
               {view.action}
             </Link>
