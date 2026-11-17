@@ -12,11 +12,13 @@
  *   own (a lane's drain, a screen's read on its own, home's word on itself,
  *   Game day's socket) but one try each hold, `holdMs` doubling from 30 s to
  *   10 minutes; a network change, a pull or Send now lets the next try go at
- *   once, what the person asks for (a sync, a send, a screen's read) still
+ *   once (a network change starts the stretch's tries over; a pull or Send
+ *   now keeps them, so the next silence holds as long as they say, HERD1),
+ *   what the person asks for (a sync, a send, a screen's read) still
  *   goes, and nothing waiting on the phone is dropped. The lanes say "Away
  *   from home since …" (`./words`).
  * - _Family:_ every ordering of a silence, an answer, the hold's end, a
- *   network change or a pull, and time passing (six long); requests in
+ *   network change, a pull, and time passing (six long); requests in
  *   flight as a stretch starts, settling in either order; an answer to a
  *   request sent before the stretch began; every moment a lane is asked
  *   (an edit, the app in front, the network, a pull, the hold's end); the
