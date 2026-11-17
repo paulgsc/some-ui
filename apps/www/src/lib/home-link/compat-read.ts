@@ -8,7 +8,8 @@
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 
-import { homeLink, paired } from "./index"
+import { homeLink } from "./index"
+import { answered } from "./while-busy"
 
 /** The ask for a build made against server version `needs`. */
 const compatPath = (needs: number): string => `/compat?needs=${String(needs)}`
@@ -25,17 +26,13 @@ export type CompatAsked =
 
 /** Asks home once; never rejects. */
 export async function askCompat(needs: number): Promise<CompatAsked> {
-  if (!paired()) return { kind: "unpaired" }
-  try {
-    const outcome = await homeLink().look(compatPath(needs))
-    if (outcome?.kind !== "done") return { kind: "busy" }
-    // Busy, or something between the phone and home answering for it:
-    // nothing was said of this build.
-    const { status } = outcome.value
-    return status === 429 || status >= 500
-      ? { kind: "unreachable" }
-      : { kind: "answered", answer: outcome.value }
-  } catch {
-    return { kind: "unreachable" }
-  }
+  return answered(
+    () => homeLink().look(compatPath(needs)),
+    (answer): CompatAsked =>
+      // Busy, or something between the phone and home answering for it:
+      // nothing was said of this build.
+      answer.status === 429 || answer.status >= 500
+        ? { kind: "unreachable" }
+        : { kind: "answered", answer }
+  )
 }

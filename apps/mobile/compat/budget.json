@@ -1,10 +1,10 @@
 {
-  "$comment": "HERD1's budget, as android-compat.yml's storm scenario checks it (check-budget.mjs) over every request home hears in the whole run, all routes and pulls together: in any window of T ms, at most burst + ceil(T / sustainedMs) requests; after a 429, none until its Retry-After has passed (pairing and sign-out excepted; graceMs for the 429 to reach the phone over the slowed link), then at most one per sustainedMs for pacedForMs. Per pull, HERD1 promises structure, not a count (one pull may reach the burst): two pulls 1 s apart must cost home no more than one alone, which storm.sh checks as its 'joined' phase. From HERD1, PR #3110 (apps/www/src/lib/home-link/__tests__/herd.test.ts); re-read it there when it lands.",
-  "source": "HERD1 (#3110)",
+  "$comment": "HERD1's budget, as android-compat.yml's storm scenario checks it (check-budget.mjs) over every request home hears in the whole run (every route: home's limiter answers 429 only under /api/v1/, as the stub does, but HERD1's pace takes a turn for /compat and the session check too): in any window of T ms, at most burst + ceil(T / sustainedMs) requests; from every 429 (overlapping ones too), none until its Retry-After has passed and the nth request after it no sooner than n + 1 sustainedMs after it, as HERD1's expectPaced holds it (pairing and sign-out excepted; a request within graceMs of the 429, still on its way over the slowed link, excused but counted), for pacedForMs after the wait; and the run must hold at least one 429. Per pull, HERD1 promises structure, not a count (one pull may reach the burst): each pull reads the page once (HERD2) and a moment during the kept lanes' run (the app coming back) joins it rather than starting another (HERD1), which storm.sh checks as its 'joined' phase, a pull and then the app sent home and back with home answering slowly (a second drag would not reach the lanes: the page ignores it while checking): the two read at most what two single pulls read, no read is asked more than twice what the single pull asked, and no write is sent twice. From HERD1, PR #3110 (apps/www/src/lib/home-link/__tests__/herd.test.ts) and HERD2, PR #3112 (apps/www/src/lib/pull-refresh/__tests__/refreshers.test.ts). The busy phase answers 429 with Retry-After: 1, as file_host does (its GCRA wait at 60 a minute; HERD's owner on #3134): a longer wait teaches HERD1's pace a longer gap for a day, which slows every later phase's lane runs past a pull's check.",
+  "source": "HERD1 (#3110), HERD2 (#3112)",
   "burst": 20,
   "sustainedMs": 2000,
   "afterBusy": {
-    "retryAfterSeconds": 20,
+    "retryAfterSeconds": 1,
     "graceMs": 1000,
     "pacedForMs": 60000,
     "toleranceMs": 150
@@ -14,5 +14,6 @@
   "burstPulls": {
     "pulls": 5,
     "gapSeconds": 1
-  }
+  },
+  "joinedSlowMs": 6000
 }

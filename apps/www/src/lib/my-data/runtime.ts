@@ -19,6 +19,12 @@ export type MyDataPorts = {
   /** This phone's recordings; never rejects (one it can't read is left out). */
   readonly readPhone: () => Promise<PhoneRead>
   /**
+   * Calls `listener` once the pairing record has been read, at once if it
+   * has (#3152): where a recording going home is kept is known from then.
+   * Returns the unsubscribe.
+   */
+  readonly placesKnown: (listener: () => void) => () => void
+  /**
    * Recording `id`'s audio: this phone's copy, else home's (MD8), or null
    * when neither came.
    */
@@ -66,14 +72,37 @@ export function createMyData(ports: MyDataPorts): MyData {
     for (const listener of listeners) listener()
   }
 
+  /** The wait for the pairing to be known, while one is out. */
+  let unplaced: (() => void) | null = null
+
+  /**
+   * This phone's side, read for `phoneSeq`; while any of it is not known
+   * yet, read again by itself once the pairing is (#3152).
+   */
+  const readPhone = async (): Promise<void> => {
+    const seq = state.phoneSeq
+    const phone = await ports.readPhone()
+    dispatch({ type: "phoneRead", seq, phone })
+    if (seq !== state.phoneSeq || unplaced !== null) return
+    if (!phone.notes.some((note) => note.place === "unknown")) return
+    const wait = { known: false }
+    const stop = ports.placesKnown(() => {
+      if (wait.known) return
+      wait.known = true
+      unplaced?.()
+      unplaced = null
+      dispatch({ type: "phoneAsked" })
+      void readPhone()
+    })
+    // Known already: the listener ran before there was a wait to keep.
+    if (wait.known) stop()
+    else unplaced = stop
+  }
+
   const read = async (of: Of | null): Promise<HomeReading> => {
     dispatch({ type: "asked", of })
     const { seq } = state
-    const [home, phone] = await Promise.all([
-      ports.askHome(of, named),
-      ports.readPhone(),
-    ])
-    dispatch({ type: "phoneRead", seq, phone })
+    const [home] = await Promise.all([ports.askHome(of, named), readPhone()])
     dispatch({ type: "homeAnswered", seq, home })
     return home
   }
@@ -122,7 +151,8 @@ export function createMyData(ports: MyDataPorts): MyData {
     },
     async checkAgain(): Promise<void> {
       const home = await read(state.of)
-      if (home.kind === "unreachable") throw new Error("home didn't answer")
+      if (home.kind === "unreachable" || home.kind === "busy")
+        throw new Error("home didn't answer")
     },
     refreshShown(): void {
       if (listeners.size > 0) void read(state.of)

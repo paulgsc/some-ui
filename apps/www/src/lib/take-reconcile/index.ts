@@ -19,11 +19,12 @@ export const reconcileHome: ReconcileHome = {
   async takes(wanted) {
     const asked = await askWhileBusy(askAttention, wanted)
     if (asked.kind === "answered") return readAttention(asked.answer)
-    return asked.kind === "unpaired" ? asked : { kind: "away" }
+    return asked.kind === "unreachable" ? { kind: "away" } : asked
   },
   audio: (id) => askAudio(id),
   async act(id, act) {
     const asked = await askWhileBusy(() => askAct(id, act))
-    return asked.kind === "answered" ? readAct(asked.answer) : "notTaken"
+    if (asked.kind === "answered") return readAct(asked.answer)
+    return asked.kind === "busy" ? "busy" : "notTaken"
   },
 }

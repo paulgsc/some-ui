@@ -19,10 +19,10 @@ import { keptGoing, roundsCounts, roundsTaken } from "@some-ui/rust-rounds"
 import { phoneRounds } from "@/lib/rust-rounds"
 import { browserLocalStorage } from "@/lib/tenant/storage"
 
-import { pairingOf, useHomeLink } from "./index"
+import { usePairing } from "./index"
 import type { Lane, LaneCounts } from "./lanes"
 import { exchangeRustRoundsLane, keptCounts } from "./rust-kept"
-import { fingerprintOf, readSent } from "./sent"
+import { fingerprintOf, sentUnder } from "./sent"
 
 /** The counts as one value, so an unchanged record reads as the same snapshot. */
 function countsKey(): string {
@@ -46,11 +46,11 @@ export const rustRoundsLane: Lane = {
   useCounts: (): LaneCounts => {
     const key = useSyncExternalStore(phoneRounds().subscribe, countsKey)
     // Read again whenever a run ends, which is when home's answers land.
-    const pairing = pairingOf(useHomeLink())
+    const pairing = usePairing()
     const [onHome = 0, refused = 0, waiting = 0] = key.split("/").map(Number)
     const kept = keptCounts(
       keptGoing(browserLocalStorage, Date.now()),
-      pairing === null ? null : readSent(browserLocalStorage, pairing)
+      sentUnder(browserLocalStorage, pairing)
     )
     return {
       held: {

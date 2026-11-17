@@ -23,7 +23,7 @@ import type {
 import { act, renderHook } from "@testing-library/react"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 
-import { homeLink, paired } from "@/lib/home-link/index"
+import { homeLink, pairing } from "@/lib/home-link/index"
 import { INITIAL_KEPT } from "@/lib/home-link/kept-model"
 import type { Kept } from "@/lib/home-link/kept-runtime"
 import { watchKept } from "@/lib/home-link/kept-watch"
@@ -277,7 +277,7 @@ beforeAll(async () => {
   })
   homeLink()
   await vi.waitFor(() => {
-    expect(paired()).toBe(true)
+    expect(pairing().kind).toBe("paired")
   })
 })
 

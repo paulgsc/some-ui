@@ -44,11 +44,14 @@ const home = vi.hoisted(
     sent: Array<NativeCall>
     answer: (call: NativeCall) => Promise<{ status: number; body: string }>
     jobs: { snapshot: { state: JobsState } | null }
+    /** The pairing record's read, held until the test ends it (PO1). */
+    held: Promise<void> | null
   } => ({
     credential: { base: "https://home.example/api/v1", token: "t" },
     sent: [],
     answer: () => unreachable(),
     jobs: { snapshot: null },
+    held: null,
   })
 )
 /**
@@ -90,12 +93,14 @@ vi.mock("@/lib/device-backend/native-http", () => ({
 }))
 vi.mock("@/lib/home-link/credential", () => ({
   nativeCredential: {
-    read: (): Promise<{ record: string | null; lost: boolean }> =>
-      Promise.resolve({
+    read: async (): Promise<{ record: string | null; lost: boolean }> => {
+      await home.held
+      return {
         record:
           home.credential === null ? null : JSON.stringify(home.credential),
         lost: false,
-      }),
+      }
+    },
     write: (): Promise<void> => Promise.resolve(),
     clear: (): Promise<void> => Promise.resolve(),
   },
@@ -171,6 +176,7 @@ afterEach(() => {
   home.answer = (): Promise<never> => unreachable()
   home.jobs.snapshot = null
   home.credential = { base: PAIRING, token: "t" }
+  home.held = null
 })
 
 /** The Practice wing's mark, with or without the shell's drain. */
@@ -240,6 +246,41 @@ describe("Practice's sharing mark", () => {
       screen.getAllByText(/Pair this phone with home in Settings/).length
     ).toBeGreaterThan(0)
     expect(screen.queryByRole("button", { name: "Send now" })).toBeNull()
+  })
+
+  it("says neither pair first nor Send now while the pairing record is read, then what it finds (PO1)", async () => {
+    for (const found of ["none", "a pairing"] as const) {
+      let end: () => void = () => undefined
+      home.held = new Promise((resolve) => {
+        end = resolve
+      })
+      home.credential = found === "none" ? null : { base: PAIRING, token: "t" }
+      await mount()
+      expect(mark().getAttribute("aria-label")).not.toContain(
+        "only on this phone"
+      )
+      fireEvent.click(mark())
+      expect(
+        screen.queryAllByText(/Pair this phone with home in Settings/)
+      ).toHaveLength(0)
+      expect(screen.queryByRole("button", { name: "Send now" })).toBeNull()
+      await act(async () => {
+        end()
+        await new Promise((resolve) => setTimeout(resolve, 0))
+      })
+      if (found === "none") {
+        expect(
+          screen.getAllByText(/Pair this phone with home in Settings/).length
+        ).toBeGreaterThan(0)
+        expect(screen.queryByRole("button", { name: "Send now" })).toBeNull()
+      } else {
+        expect(
+          screen.getByRole("button", { name: "Send now", hidden: true })
+        ).toBeTruthy()
+      }
+      cleanup()
+      vi.resetModules()
+    }
   })
 
   it("draws each mark in its legend in a form no other shares", async () => {

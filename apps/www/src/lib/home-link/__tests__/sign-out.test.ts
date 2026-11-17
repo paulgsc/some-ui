@@ -25,7 +25,7 @@ const run = (
 
 const READ: HomeLinkEvent = {
   type: "read",
-  found: { base: HOME.base, id: "p1", since: 1_000 },
+  found: { base: HOME.base, id: "p1", since: 1_000, name: null },
 }
 const heard = (known: boolean, at: number): HomeLinkEvent => ({
   type: "heard",
@@ -39,6 +39,7 @@ const PAIRED: HomeLinkEvent = {
   base: HOME.base,
   id: "p2",
   at: 50,
+  name: null,
 }
 const FAILED: HomeLinkEvent = { type: "pairFailed", failure: "bad-code" }
 const ENDS: ReadonlyArray<HomeLinkEvent> = [PAIRED, FAILED]
@@ -83,6 +84,7 @@ describe("pairing again (model)", () => {
       id: "p2",
       notForgotten: false,
       since: 50,
+      name: null,
       standing: { kind: "known" },
     })
     const failed = run([PAIR, FAILED], FORGOTTEN)
@@ -153,6 +155,7 @@ describe("pairing again (model)", () => {
           base: "https://other.example/api/v1",
           id: "p2",
           at: 50,
+          name: null,
         },
       ],
       busy
@@ -187,7 +190,7 @@ describe("pairing again (model)", () => {
         { type: "homeBusy", until: 600, base: OTHER },
         { type: "homeBusy", until: 5, base: THIRD },
         { type: "pairPressed", base: OTHER },
-        { type: "paired", base: OTHER, id: "p2", at: 50 },
+        { type: "paired", base: OTHER, id: "p2", at: 50, name: null },
       ],
       unpaired
     )
@@ -195,7 +198,7 @@ describe("pairing again (model)", () => {
     const third = run(
       [
         { type: "pairPressed", base: THIRD },
-        { type: "paired", base: THIRD, id: "p3", at: 50 },
+        { type: "paired", base: THIRD, id: "p3", at: 50, name: null },
       ],
       { ...apart, link: { kind: "unpaired", note: null } }
     )

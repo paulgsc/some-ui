@@ -10,8 +10,9 @@
  *   home holds is home's, wherever else a copy still sits.
  * - **This phone's side** is what home doesn't hold yet: each recording
  *   still here that home hasn't said it holds, going home while its copy
- *   waits and the phone is paired, otherwise only on this phone (as every
- *   screen's row says it, `lib/home-link/voice-copy`'s `voiceKept`).
+ *   waits and the phone is paired, not known yet while the pairing record
+ *   is read, otherwise only on this phone (as every screen's row says it,
+ *   `lib/home-link/voice-copy`'s `voiceKept`).
  * - **The record kept for good** is home's count of it too
  *   (`GET /subjects/me/kept`, `./record`), read beside the recordings' on
  *   the overview.
@@ -19,6 +20,7 @@
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { readAs } from "@some-ui/core-utils"
+import type { TakePlace } from "@some-ui/voice-capture"
 import { z } from "zod"
 
 import type { VoiceOut } from "@/lib/voice-home/model"
@@ -102,8 +104,10 @@ export type HomeReading =
   | { readonly kind: "reading" }
   /** Not paired: nothing was asked. */
   | { readonly kind: "unpaired" }
-  /** No answer, busy, or an answer the phone can't read. */
+  /** No answer, or an answer the phone can't read. */
   | { readonly kind: "unreachable" }
+  /** This phone stayed busy with home, so nothing was asked (#3155). */
+  | { readonly kind: "busy" }
   /** Home answered, without this read: it runs an older version. */
   | { readonly kind: "older" }
   | {
@@ -141,10 +145,13 @@ export type PhoneNote = {
   /** When it was recorded, ISO 8601. */
   readonly at: string
   readonly bytes: number
-  /** Home has said it holds it: it is counted on home's side. */
-  readonly held: boolean
-  /** Its copy waits to go home while the phone is paired. */
-  readonly going: boolean
+  /**
+   * Where it is kept, as every screen's row says it (MIC3): `home` once
+   * home has said it holds it, and so is counted on home's side; `going`
+   * while its copy waits to go home on a paired phone; `unknown` while the
+   * pairing record is read (#3152), so not yet counted as either.
+   */
+  readonly place: TakePlace
 }
 
 /**
@@ -158,10 +165,11 @@ export type PhoneRead = {
 }
 
 /** Where a recording is kept, as the page says it. */
-export type Where = "home" | "aside" | "going" | "phone"
+export type Where = "home" | "aside" | "going" | "phone" | "unknown"
 
 /** The order the parts of "where" are drawn and listed: furthest from home first. */
 export const WHERE_ORDER: ReadonlyArray<Where> = [
+  "unknown",
   "phone",
   "going",
   "home",
@@ -256,7 +264,7 @@ export function overviewOf(
   now: Date
 ): Overview {
   const kept = home.kind === "read" ? home.kept : null
-  const waiting = phone.filter((note) => !note.held)
+  const waiting = phone.filter((note) => note.place !== "home")
   const lines = new Map<Of, KindLine>()
   for (const kind of kept?.kinds ?? [])
     lines.set(kind.of, {
@@ -288,7 +296,8 @@ export function overviewOf(
   }
   const onHome = (kept?.kinds ?? []).reduce((n, k) => n + k.notes, 0)
   const aside = (kept?.kinds ?? []).reduce((n, k) => n + k.setAside, 0)
-  const going = waiting.filter((note) => note.going).length
+  const count = (place: TakePlace): number =>
+    waiting.filter((note) => note.place === place).length
   return {
     home: home.kind,
     homeBytes:
@@ -302,8 +311,9 @@ export function overviewOf(
     where: {
       home: onHome - aside,
       aside,
-      going,
-      phone: waiting.length - going,
+      going: count("going"),
+      phone: count("phone"),
+      unknown: count("unknown"),
     },
   }
 }
@@ -394,7 +404,7 @@ export function kindOf(
   const onList = new Set((homeList ?? []).map((note) => note.id))
   // A recording home lists is home's, whatever this phone last heard.
   const known = phone.map((note) =>
-    onList.has(note.id) ? { ...note, held: true } : note
+    onList.has(note.id) ? { ...note, place: "home" as const } : note
   )
   const line = overviewOf(home, known, now).kinds.find((k) => k.of === of)
   const mine = known.filter((note) => note.of === of)
@@ -413,12 +423,12 @@ export function kindOf(
         }))
       : []
   const fromPhone: ReadonlyArray<KindItem> = mine
-    .filter((note) => !note.held)
+    .filter((note) => note.place !== "home")
     .map((note) => ({
       id: note.id,
       at: note.at,
       bytes: note.bytes,
-      where: note.going ? "going" : "phone",
+      where: note.place,
       plays: "here",
       durationMs: null,
       heard: { kind: "notYet" },

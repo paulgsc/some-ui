@@ -19,7 +19,7 @@ import type { KeptRun } from "@/lib/home-link/kept-model"
 import type { Lane, LaneId } from "@/lib/home-link/lanes"
 import { askLane, laneRun } from "@/lib/home-link/lanes"
 import type { EventLog } from "@/lib/home-link/leetype-log"
-import type { HomeLinkState } from "@/lib/home-link/model"
+import type { HomeLinkState, Pairing } from "@/lib/home-link/model"
 import { writtenToSend } from "@/lib/home-link/reflections"
 import type { HomeLink } from "@/lib/home-link/runtime"
 import { createHomeLink } from "@/lib/home-link/runtime"
@@ -46,15 +46,12 @@ function theLink(): HomeLink {
   return held.link
 }
 
-vi.mock("@/lib/home-link/index", () => {
-  const pairingOf = (state?: HomeLinkState): string | null => {
-    const now = state ?? theLink().getSnapshot()
-    return now.link.kind === "paired" ? now.link.id : null
-  }
+vi.mock("@/lib/home-link/index", async () => {
+  const { pairingIn } = await import("@/lib/home-link/model")
   return {
     homeLink: theLink,
-    pairingOf,
-    paired: (): boolean => pairingOf() !== null,
+    pairing: (state?: HomeLinkState): Pairing =>
+      pairingIn(state ?? theLink().getSnapshot()),
     useHomeLink: (): HomeLinkState => theLink().getSnapshot(),
     LINK_CLOCK: {
       now: (): number => theClock().now(),
@@ -371,13 +368,13 @@ describe("the practice drain under home's limit (AD3, LA15)", () => {
       const read = await timed(
         theLink().keep((send) => send("GET", "/voice-notes/kept"))
       )
-      expect(read.value?.kind).toBe("done")
+      expect(read.value.kind).toBe("done")
       reads.push(read.ms)
     }
     const synced = await timed(
       theLink().sync(BASE, (get) => get(`${BASE}/curriculum/manifest.json`))
     )
-    expect(synced.value?.kind).toBe("done")
+    expect(synced.value.kind).toBe("done")
     expect(Math.max(...reads, synced.ms)).toBeLessThanOrEqual(2_000)
     await until(() => !run.getSnapshot().running)
     expect(run.getSnapshot().last?.kind).toBe("synced")
@@ -394,7 +391,7 @@ describe("the practice drain under home's limit (AD3, LA15)", () => {
     const tap = await timed(
       theLink().send((send) => send("DELETE", "/voice-notes/n1"))
     )
-    expect(tap.value?.kind).toBe("done")
+    expect(tap.value.kind).toBe("done")
     expect(tap.ms).toBeLessThanOrEqual(2_000)
     // No drain request between the tap and its own.
     expect(home.reached.at(-1)).toBe("DELETE /voice-notes/n1")

@@ -30,9 +30,12 @@ const WHEN = {
 
 const run = (...events: ReadonlyArray<HomeLinkEvent>): HomeLinkState =>
   events.reduce(step, INITIAL)
-const READ = (since: number | null): HomeLinkEvent => ({
+const READ = (
+  since: number | null,
+  name: string | null = null
+): HomeLinkEvent => ({
   type: "read",
-  found: { base: BASE, id: "p1", since },
+  found: { base: BASE, id: "p1", since, name },
 })
 
 const LOOKS: Record<string, HomeLinkState> = {
@@ -54,6 +57,16 @@ describe("the sign-in mark's words", () => {
     // A pairing kept before the day was kept says no day.
     expect(signInView(LOOKS.inBefore, WHEN).line).toBe(
       "Signed in to home at home.example."
+    )
+    // A phone named as it paired says the name it paired with (SIGNIN7, C478).
+    const named = run(READ(1, "Kitchen"), {
+      type: "heard",
+      id: "p1",
+      known: true,
+      at: 2,
+    })
+    expect(signInView(named, WHEN).line).toBe(
+      "Signed in to home at home.example, paired as Kitchen, since 17 Nov 2026."
     )
   })
 

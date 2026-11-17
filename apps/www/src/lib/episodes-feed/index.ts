@@ -43,7 +43,7 @@ type WeekGroup = {
 /** A feed whose list couldn't be shown, and why. */
 export type Trouble = {
   readonly feed: Feed
-  readonly kind: "away" | "older" | "unreadable"
+  readonly kind: "away" | "busy" | "older" | "unreadable"
 }
 
 /** What the page shows. */
@@ -203,6 +203,7 @@ export function feedView(lists: FeedLists, chip: Chip): FeedView {
         break
       }
       case "away":
+      case "busy":
       case "older":
       case "unreadable": {
         if (shows(feed)) trouble.push({ feed, kind: list.kind })

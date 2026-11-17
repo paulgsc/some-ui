@@ -12,7 +12,7 @@ import type { HomeVideos, VideosHome } from "@some-ui/soundbites"
 
 import { ideaHome } from "@/lib/idea-hearing"
 
-import { pairingOf } from "./index"
+import { pairing as pairingNow } from "./index"
 import { videoAnswers, videoHanded, videosListed, videosMoved } from "./videos"
 
 let last: HomeVideos | null = null
@@ -24,7 +24,7 @@ const same = (a: HomeVideos, b: HomeVideos): boolean =>
 export const studioVideos: VideosHome = {
   handed: videoHanded,
   getSnapshot(): HomeVideos {
-    const pairing = pairingOf()
+    const pairing = pairingNow()
     const next: HomeVideos = {
       reach: ideaHome.reach(),
       answers: videoAnswers(localStorageOrNull(), pairing),

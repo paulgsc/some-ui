@@ -445,20 +445,28 @@ phone. Each runs:
    network config stays as shipped. The app pairs as a person would, through
    the foyer's Settings, its Home tab and the Pair form with a sample code,
    driven over the accessibility tree (`compat/ui.mjs`). Then it is pulled
-   down once, pulled twice a second apart, pulled in a burst, pulled while home answers 429 with `Retry-After`, sent to the
-   background and back, and cut off the network and given it back. It fails
-   when what home heard over the whole run breaks HERD1's budget
+   down once; pulled, then sent home and brought back while home answers
+   slowly, so the pull's run is still under way; pulled in a burst; pulled
+   while home answers 429 with `Retry-After: 1`, as home's limiter does; sent
+   to the background and back; and cut off the network and given it back. It
+   fails when what home heard over the whole run breaks HERD1's budget
    (`compat/budget.json`, checked by `compat/check-budget.mjs`): more than
-   20 requests at once and one per 2 s after that, any request inside a
-   429's `Retry-After`, or requests faster than one per 2 s once it ends;
-   or when two pulls a second apart cost home more than one pull alone. A
+   20 requests at once and one per 2 s after that, no 429 at all, any request
+   inside a 429's `Retry-After`, or the nth request after a 429 sooner than
+   n + 1 paces of 2 s after it; or when the app coming back during the
+   pull's run reads more than two pulls would, asks a read more than twice
+   what one pull did, or sends a write twice (a second run started). A
    level whose Pair form cannot be driven pairs the debug APK instead and
    says "via debug build"; a level whose store cannot take the CA says "no
    system CA" and runs unpaired.
 3. **Refresh:** from the same run, it fails when a pull with home up does not
-   end `pull checked: read`, nor the pull after coming back from the
-   background, nor the pull after the network returns, or when the app
-   restarted to get there.
+   end `pull checked: read`, or when the app restarted to get there. The
+   pull after coming back from the background and the pull after the network
+   returns join the kept lanes' run that coming back, or the network's
+   return, started, which may send its queued writes first (HERD1): each
+   fails when that run has not read every route again within one pace per
+   request home heard since the pull (`compat/lane-done.mjs`). The pull's
+   own line is not judged there (#3140).
 
 The run's summary is the stamp: a table of API level against launch, storm
 and refresh, a line to paste into the release notes, and the same as JSON.
@@ -470,12 +478,15 @@ radio dropping and returning, thermal throttling, and a phone's real
 memory pressure. An emulator's old API level carries the WebView its system
 image shipped: on 2026-11-17 the API 24 and 28 images carried Chrome 69 and
 API 31's WebView 91, while the bundle is built for Vite's default target
-(about Chrome 111), so the page would load blank there. A real phone on
+(about Chrome 111), and below it the app opens its update page
+(`webview-too-old.html`, #3117) in place of itself. A real phone on
 Android 7 to 9 gets Android System WebView from Play, at 111 or later
-(Android 7 tops out around 119), so that blank page is the image's limit,
-not a phone's. Such a level is not tested: its row says "stock WebView
-<n> (needs ≥111)". The "Image's WebView" column says which each level
-ran. A level that cannot boot on GitHub's hosted runners shows as "not
+(Android 7 tops out around 119), so such a level checks only that the
+update page shows and stays through every way in, each cold and then warm:
+the plain icon, each wing's icon and the New idea shortcut (OWV1, in
+`compat/run-level.sh`; `old-webview.png`). Its Launch cell says "update page
+shown" or "blank", and the rest say "stock WebView <n> (needs ≥111)". The
+"Image's WebView" column says which each level ran. A level that cannot boot on GitHub's hosted runners shows as "not
 run".
 
 ### Play readiness

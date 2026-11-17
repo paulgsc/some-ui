@@ -7,7 +7,8 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 
-import type { Now } from "./model"
+import type { Now, RenderFailed } from "./model"
+import { refusalOf } from "./model"
 
 /** The line every render moves along, in order. */
 export const STATIONS = ["line", "room", "oven", "boxing", "ready"] as const
@@ -15,7 +16,7 @@ export const STATIONS = ["line", "room", "oven", "boxing", "ready"] as const
 export type StationId = (typeof STATIONS)[number]
 
 /** Where a render sits for now beside the line, rather than on it. */
-export type Aside = "counter" | "burnt"
+export type Aside = "counter" | "burnt" | "tooBigForOven" | "tooBigForBox"
 
 export const CONVEYOR_WORDS = {
   label: "Where it is",
@@ -29,6 +30,8 @@ export const CONVEYOR_WORDS = {
   asides: {
     counter: "Set on the counter",
     burnt: "Burnt",
+    tooBigForOven: "Too big for the oven",
+    tooBigForBox: "Too big for the box",
   } satisfies Record<Aside, string>,
   /** What the worker is doing in the oven, where home says. */
   recording: (scene: number, scenes: number): string =>
@@ -82,9 +85,29 @@ export function stationLine(now: Now): string | null {
     : null
 }
 
-/** The station, or side track, a row on the board is at. */
+/** The station a waiting or finished row on the board is at. */
 export const ROW_TAGS = {
   waiting: CONVEYOR_WORDS.stations.line,
   done: CONVEYOR_WORDS.stations.ready,
-  failed: CONVEYOR_WORDS.asides.burnt,
 } as const
+
+/**
+ * The side track a failed row sits on (C502): one the render policy refused
+ * was never burnt, it didn't fit, before the oven (too long) or in the box
+ * (too large); any other failure is burnt, as before.
+ */
+export function failedAside(failed: RenderFailed): Aside {
+  const refusal = refusalOf(failed)
+  if (refusal === null) return "burnt"
+  switch (refusal.kind) {
+    case "too-long": {
+      return "tooBigForOven"
+    }
+    case "too-large": {
+      return "tooBigForBox"
+    }
+    default: {
+      return assertNever(refusal)
+    }
+  }
+}

@@ -18,6 +18,7 @@ export type ReadKind =
   | "unpaired"
   | "older"
   | "away"
+  | "busy"
   | "unreadable"
 
 /** A screen's runtime whose `readAgain` starts its read of home, numbered `seq`. */
@@ -31,11 +32,17 @@ export type ReadsAgain = {
 }
 
 /**
- * What a read that brought nothing to show ends as: home away, an answer
- * this phone could not read (home busy or overloaded among them), or a home
- * too old to answer. Unpaired is no home to check, so not a failure.
+ * What a read that brought nothing to show ends as: home away, this phone
+ * staying busy with home, an answer this phone could not read (home busy or
+ * overloaded among them), or a home too old to answer. Unpaired is no home
+ * to check, so not a failure.
  */
-const UNREAD: ReadonlySet<ReadKind> = new Set(["away", "unreadable", "older"])
+const UNREAD: ReadonlySet<ReadKind> = new Set([
+  "away",
+  "busy",
+  "unreadable",
+  "older",
+])
 
 /**
  * A pull's check of `screen` (HERD2, #3102): asks its read again, and

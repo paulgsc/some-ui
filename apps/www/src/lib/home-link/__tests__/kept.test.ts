@@ -19,7 +19,14 @@ import type { Kept, KeptPorts } from "@/lib/home-link/kept-runtime"
 import { createKept, laneExchange } from "@/lib/home-link/kept-runtime"
 import type { Lane, LaneCounts } from "@/lib/home-link/lanes"
 import { laneReading } from "@/lib/home-link/lanes"
-import { INITIAL, step } from "@/lib/home-link/model"
+import type { Pairing, Refusal } from "@/lib/home-link/model"
+import {
+  drainStopping,
+  INITIAL,
+  READING,
+  step,
+  UNPAIRED,
+} from "@/lib/home-link/model"
 import type { HomeLink } from "@/lib/home-link/runtime"
 import { HomeUnansweredError } from "@/lib/home-link/shelf"
 import { ForeignCallError } from "@/lib/intent/foreign"
@@ -27,9 +34,9 @@ import { ForeignCallError } from "@/lib/intent/foreign"
 const send: HomeCall = () => Promise.resolve({ status: 200, body: "" })
 
 /** The link's `keep`: runs `run` at once, or turns it away. */
-function keep(busy = false): HomeLink["keep"] {
+function keep(turnedAway: Refusal | null = null): HomeLink["keep"] {
   return async (run) => {
-    if (busy) return null
+    if (turnedAway !== null) return { kind: "refused", why: turnedAway }
     try {
       return { kind: "done", value: await run(send) }
     } catch (error) {
@@ -39,11 +46,14 @@ function keep(busy = false): HomeLink["keep"] {
   }
 }
 
+/** The pairing these lanes send under. */
+const UNDER: Pairing = { kind: "paired", id: "p" }
+
 function homeWith(over: Partial<KeptPorts>): Kept {
   return createKept({
     exchange: () => Promise.resolve<HomeExchanged>({ kind: "synced" }),
     keep: keep(),
-    paired: () => true,
+    pairing: () => UNDER,
     homeBusy: () => false,
     now: () => 7,
     ...over,
@@ -129,12 +139,16 @@ describe("a record kept on home", () => {
   })
 
   it("says why the link turned it away", async () => {
-    expect(await lastOf({ keep: keep(true) })).toEqual({ kind: "busy" })
-    expect(await lastOf({ keep: keep(true), paired: () => false })).toEqual({
-      kind: "unpaired",
-    })
+    // A run asked for while the pairing is read waits for it in the link
+    // (#3152), so the link's own reason is the whole answer.
+    for (const why of ["busy", "pairing", "preempted"] as const) {
+      expect(await lastOf({ keep: keep(why) })).toEqual({ kind: "busy" })
+    }
+    for (const why of ["unpaired", "gone"] as const) {
+      expect(await lastOf({ keep: keep(why) })).toEqual({ kind: "unpaired" })
+    }
     // While home waits out a busy, it was home's to turn away too (AD3).
-    expect(await lastOf({ keep: keep(true), homeBusy: () => true })).toEqual({
+    expect(await lastOf({ keep: keep("busy"), homeBusy: () => true })).toEqual({
       kind: "failed",
       why: "busy",
     })
@@ -209,7 +223,12 @@ describe("stepKept", () => {
     expect(stepKept(again, { type: "wanted" })).toBe(again)
     expect(
       stepKept(again, { type: "ran", run: { kind: "synced", at: 1 } })
-    ).toEqual({ running: true, again: false, last: { kind: "synced", at: 1 } })
+    ).toEqual({
+      running: true,
+      again: false,
+      resume: false,
+      last: { kind: "synced", at: 1 },
+    })
     expect(
       stepKept(again, { type: "ran", run: { kind: "unreachable", at: 1 } })
     ).toMatchObject({ running: false, again: false })
@@ -217,12 +236,101 @@ describe("stepKept", () => {
       expect(stepKept(again, { type: "ran", run: { kind } })).toEqual({
         running: true,
         again: false,
+        resume: false,
         last: { kind },
       })
       expect(stepKept(running, { type: "ran", run: { kind } })).toMatchObject({
         running: false,
       })
     }
+  })
+})
+
+describe("a run the background stopped (HERD4, #3134)", () => {
+  it("goes on once when the app came back while it was being stopped, and only then", () => {
+    const running = stepKept(INITIAL_KEPT, { type: "wanted" })
+    const resumed = stepKept(running, { type: "resumed" })
+    expect(stepKept(resumed, { type: "resumed" })).toBe(resumed)
+    expect(stepKept(INITIAL_KEPT, { type: "resumed" })).toBe(INITIAL_KEPT)
+    expect(
+      stepKept(resumed, { type: "ran", run: { kind: "stopped" } })
+    ).toEqual({
+      running: true,
+      again: false,
+      resume: false,
+      last: { kind: "stopped" },
+    })
+    // The app went home again before it ended: it waits, and never resumes
+    // behind; back in front, the next moment asks a fresh run.
+    expect(
+      stepKept(resumed, {
+        type: "ran",
+        run: { kind: "stopped" },
+        inFront: false,
+      })
+    ).toMatchObject({ running: false, resume: false })
+    // Stopped with nothing come back: it waits for the next moment, as before.
+    expect(
+      stepKept(running, { type: "ran", run: { kind: "stopped" } })
+    ).toMatchObject({ running: false })
+    // A resume asks nothing of a run that ended any other way.
+    for (const run of [
+      { kind: "synced", at: 1 },
+      { kind: "unreachable", at: 1 },
+    ] as const) {
+      expect(stepKept(resumed, { type: "ran", run })).toMatchObject({
+        running: false,
+        resume: false,
+      })
+    }
+  })
+
+  it("is finished once the app is back: the moment that joins it while it stops runs it again, and a pull waiting on it is answered by that run", async () => {
+    let stopping = false
+    let runs = 0
+    let release: () => void = () => undefined
+    const home = homeWith({
+      stopping: () => stopping,
+      exchange: () => {
+        runs += 1
+        if (runs > 1) return Promise.resolve<HomeExchanged>({ kind: "synced" })
+        return new Promise<HomeExchanged>((_, reject) => {
+          release = (): void => reject(new SyncStoppedError())
+        })
+      },
+    })
+    home.want()
+    await Promise.resolve()
+    const pulled = home.pull()
+    // The app went to the background: the link stops the run under way.
+    stopping = true
+    // Back in front while that run's request is still out: the watch nudges.
+    home.nudge()
+    stopping = false
+    release()
+    await expect(pulled).resolves.toEqual({ kind: "synced", at: 7 })
+    expect(runs).toBe(2)
+    expect((await settled(home)).last).toEqual({ kind: "synced", at: 7 })
+  })
+
+  it("joins a run that isn't being stopped, as HERD1 asks", async () => {
+    let runs = 0
+    let finish: () => void = () => undefined
+    const home = homeWith({
+      stopping: () => false,
+      exchange: () => {
+        runs += 1
+        return new Promise<HomeExchanged>((resolve) => {
+          finish = (): void => resolve({ kind: "synced" })
+        })
+      },
+    })
+    home.want()
+    await Promise.resolve()
+    home.nudge()
+    finish()
+    await settled(home)
+    expect(runs).toBe(1)
   })
 })
 
@@ -234,6 +342,7 @@ describe("the link's drain", () => {
         base: "https://home.example/api/v1",
         id: "pairing-1",
         since: null,
+        name: null,
       },
     })
     const draining = step(paired, { type: "drainStarted" })
@@ -255,6 +364,24 @@ describe("the link's drain", () => {
     }
     expect(step(INITIAL, { type: "drainStarted" })).toBe(INITIAL)
   })
+
+  it("says it is stopping only while a run it stopped is still out (HERD4's port)", () => {
+    const paired = step(INITIAL, {
+      type: "read",
+      found: {
+        base: "https://home.example/api/v1",
+        id: "p1",
+        since: null,
+        name: null,
+      },
+    })
+    const draining = step(paired, { type: "drainStarted" })
+    expect(drainStopping(paired)).toBe(false)
+    expect(drainStopping(draining)).toBe(false)
+    const stopping = step(draining, { type: "drainStopped" })
+    expect(drainStopping(stopping)).toBe(true)
+    expect(drainStopping(step(stopping, { type: "drainEnded" }))).toBe(false)
+  })
 })
 
 describe("the link's keep lane", () => {
@@ -265,6 +392,7 @@ describe("the link's keep lane", () => {
         base: "https://home.example/api/v1",
         id: "pairing-1",
         since: null,
+        name: null,
       },
     })
     const keeping = step(paired, { type: "keepStarted" })
@@ -315,7 +443,12 @@ describe("a lane's run", () => {
   it("sends nothing unpaired", async () => {
     const { send, sent } = home()
     await expect(
-      laneExchange(lane(2, SYNCED), () => null)(send)
+      laneExchange(lane(2, SYNCED), () => UNPAIRED)(send)
+    ).resolves.toEqual(SYNCED)
+    expect(sent).toEqual([])
+    // Nor while the pairing is still being read.
+    await expect(
+      laneExchange(lane(2, SYNCED), () => READING)(send)
     ).resolves.toEqual(SYNCED)
     expect(sent).toEqual([])
   })
@@ -331,7 +464,7 @@ describe("a lane's run", () => {
         return SYNCED
       },
     }
-    await expect(laneExchange(declared, () => "p")(send)).resolves.toEqual(
+    await expect(laneExchange(declared, () => UNDER)(send)).resolves.toEqual(
       SYNCED
     )
     expect(sent).toEqual(["/jobs/0"])
@@ -344,7 +477,7 @@ describe("a lane's run", () => {
     for (const ends of [SYNCED, failed]) {
       const { send } = home([429])
       await expect(
-        laneExchange(lane(2, ends), () => "p")(send)
+        laneExchange(lane(2, ends), () => UNDER)(send)
       ).resolves.toEqual(busy)
     }
     const throwing: Lane = {
@@ -355,28 +488,28 @@ describe("a lane's run", () => {
       },
     }
     await expect(
-      laneExchange(throwing, () => "p")(home([429]).send)
+      laneExchange(throwing, () => UNDER)(home([429]).send)
     ).resolves.toEqual(busy)
   })
 
   it("says forgotten, a stop, or no answer as they were when home was not busy", async () => {
     const forgotten: HomeExchanged = { kind: "forgotten" }
     await expect(
-      laneExchange(lane(1, forgotten), () => "p")(home([429]).send)
+      laneExchange(lane(1, forgotten), () => UNDER)(home([429]).send)
     ).resolves.toEqual(forgotten)
     const throwing: Lane = {
       ...lane(0, SYNCED),
       exchange: () => Promise.reject(new Error("home did not answer")),
     }
     await expect(
-      laneExchange(throwing, () => "p")(home().send)
+      laneExchange(throwing, () => UNDER)(home().send)
     ).rejects.toThrow("home did not answer")
     const stopping: Lane = {
       ...lane(0, SYNCED),
       exchange: () => Promise.reject(new SyncStoppedError()),
     }
     await expect(
-      laneExchange(stopping, () => "p")(home([429]).send)
+      laneExchange(stopping, () => UNDER)(home([429]).send)
     ).rejects.toBeInstanceOf(SyncStoppedError)
   })
 })
@@ -384,7 +517,7 @@ describe("a lane's run", () => {
 describe("Send now", () => {
   const PAIRED = step(INITIAL, {
     type: "read",
-    found: { base: "https://home.lan", id: "p", since: null },
+    found: { base: "https://home.lan", id: "p", since: null, name: null },
   })
   const NOTHING_WAITS: LaneCounts = {
     held: { sessions: 2 },

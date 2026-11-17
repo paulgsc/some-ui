@@ -38,6 +38,9 @@ function missing(
     case "away": {
       return WORDS.homeAway
     }
+    case "busy": {
+      return WORDS.phoneBusy
+    }
     case "unreadable": {
       return WORDS.unreadable
     }

@@ -87,11 +87,13 @@ export const PREVIEW_WORDS = {
   makeFailed: {
     unpaired: "Pair this phone with home to make a preview.",
     away: "Home didn't answer, so no preview was asked for. Try again.",
+    busy: "This phone was busy with home just then, so no preview was asked for. Try again in a moment.",
     older: OLDER,
     unreadable: VIDEOS_WORDS.unreadable,
   } satisfies Record<MakeFailure, string>,
   readFailed: {
     away: "Home didn't answer, so this is the preview as last read.",
+    busy: "This phone was busy with home just then, so this is the preview as last read.",
     unreadable:
       "Home's answer couldn't be read, so this is the preview as last read.",
   } satisfies Record<ReadFailure, string>,
@@ -99,6 +101,7 @@ export const PREVIEW_WORDS = {
   older: OLDER,
   reading: VIDEOS_WORDS.reading,
   away: VIDEOS_WORDS.away,
+  busy: VIDEOS_WORDS.busy,
   unreadable: VIDEOS_WORDS.unreadable,
   tryAgain: VIDEOS_WORDS.tryAgain,
 } as const

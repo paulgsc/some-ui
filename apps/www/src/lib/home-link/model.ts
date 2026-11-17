@@ -28,6 +28,8 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 
+import type { HomeBlockedReason } from "@/lib/device-backend/native-http/no-answer"
+
 import type { Away, AwayEvent } from "./away"
 import { held, stepAway } from "./away"
 
@@ -45,9 +47,12 @@ export type UnpairedNote =
 export type PairFailure =
   | "unreachable"
   | "untrusted"
+  /** This phone couldn't find home's name on this network (NA1). */
+  | "no-name"
+  /** Home is shedding load for a while (a 503 `service_overloaded`). */
+  | "busy"
   | "bad-code"
   | "too-many"
-  | "busy"
   | "not-set-up"
   | "not-home"
   | "not-kept"
@@ -90,6 +95,12 @@ type Link =
       readonly notForgotten: boolean
       /** When this phone paired, or null for a pairing kept before the day was. */
       readonly since: number | null
+      /**
+       * The name the owner gave this phone as it paired (SIGNIN7, C498), or
+       * null: none was typed, or it paired before names were kept. A rename
+       * on the lan web since is home's, not this phone's (C478).
+       */
+      readonly name: string | null
       readonly standing: Standing
     }
 
@@ -136,6 +147,25 @@ export type HomeLinkState = {
    * (`./kept-watch`). A network change, a pull or Send now ask themselves.
    */
   readonly awayReleases: number
+  /**
+   * The last request to home failed before home could answer, for `reason`
+   * (NA1, #3099): this phone couldn't find home's name on this network, or
+   * doesn't trust home's certificate. Held as a silence is (AW1, C476), but
+   * said as itself, never as away; the next answer, a network change, a
+   * silence or a new pairing clears it. Null otherwise.
+   */
+  readonly blocked: {
+    readonly reason: HomeBlockedReason
+    readonly at: number
+  } | null
+  /**
+   * The runs asked for while the pairing record is read (#3152), by ticket:
+   * each waits here, as the link's own state, not on a promise of the read.
+   * The read's end releases them all (`releasedBy`), and each is started
+   * again against the link as the read left it. Not known yet is never a
+   * run's refusal: it is this wait.
+   */
+  readonly parked: ReadonlyArray<number>
 }
 
 export type HomeLinkEvent =
@@ -146,6 +176,7 @@ export type HomeLinkEvent =
             readonly base: string
             readonly id: string
             readonly since: number | null
+            readonly name: string | null
           }
         | "lost"
         | "unreadable"
@@ -158,6 +189,8 @@ export type HomeLinkEvent =
       readonly id: string
       /** When the pairing was made, which is also when home last knew it. */
       readonly at: number
+      /** The name the owner typed while pairing, or null. */
+      readonly name: string | null
     }
   | { readonly type: "pairFailed"; readonly failure: PairFailure }
   | { readonly type: "unpairPressed" }
@@ -197,6 +230,16 @@ export type HomeLinkEvent =
     }
   /** Away from home (AW1, `./away`): a request found no answer, or one did. */
   | AwayEvent
+  /** A request failed for `reason` before home could answer (NA1). */
+  | {
+      readonly type: "blocked"
+      readonly reason: HomeBlockedReason
+      readonly at: number
+    }
+  /** Home answered a request, after one was blocked (NA1). */
+  | { readonly type: "unblocked" }
+  /** A run asked for while the record is read waits as `ticket` (`parked`). */
+  | { readonly type: "parked"; readonly ticket: number }
 
 export const INITIAL: HomeLinkState = {
   link: { kind: "reading" },
@@ -207,6 +250,140 @@ export const INITIAL: HomeLinkState = {
   busyHomes: {},
   away: null,
   awayReleases: 0,
+  blocked: null,
+  parked: [],
+}
+
+/**
+ * Whether this phone is paired with home (#3152): the one answer every
+ * reader gets, with `reading` for not known yet, so no reader can take a
+ * record still being read for no pairing (#3128, #3157). Derived from the
+ * link's state alone, with nothing awaited: `load()` is what moves it out
+ * of `reading`, and every way that read ends (a pairing, none, one lost,
+ * one it couldn't read) lands in `paired` or `unpaired`. The pairing's
+ * own id is what this phone's record of what home holds is kept under
+ * (`./sent`).
+ */
+export type Pairing =
+  | { readonly kind: "reading" }
+  | { readonly kind: "unpaired" }
+  | { readonly kind: "paired"; readonly id: string }
+
+export const READING: Pairing = { kind: "reading" }
+export const UNPAIRED: Pairing = { kind: "unpaired" }
+
+/** `state`'s answer to whether this phone is paired. */
+export function pairingIn(state: HomeLinkState): Pairing {
+  const { link } = state
+  switch (link.kind) {
+    case "reading": {
+      return READING
+    }
+    case "unpaired": {
+      return UNPAIRED
+    }
+    case "paired": {
+      return { kind: "paired", id: link.id }
+    }
+    default: {
+      return assertNever(link)
+    }
+  }
+}
+
+/**
+ * Whether two answers name the same pairing, or the same not-paired:
+ * what a watcher compares to know the pairing moved.
+ */
+export function samePairing(a: Pairing, b: Pairing): boolean {
+  if (a.kind === "paired" && b.kind === "paired") return a.id === b.id
+  return a.kind === b.kind
+}
+
+/**
+ * What starts a run of the link (`./runtime`'s `sync`, `send`, `keep` and
+ * `drain`): the events `refusalOf` answers.
+ */
+export type RunStart = Extract<
+  HomeLinkEvent,
+  { type: "syncPressed" | "sendPressed" | "keepStarted" | "drainStarted" }
+>
+
+/**
+ * Why the link turned a run away (#3155):
+ *
+ * - `unpaired`: it needs a pairing and there is none;
+ * - `busy`: another run of the same side is under way;
+ * - `pairing`: the person is pairing or unpairing;
+ * - `preempted`: a drain run a send, a pairing or an Unpair stopped to go
+ *   first (`./runtime`'s `drain`);
+ * - `gone`: the link says paired, but the record on the phone has gone.
+ */
+export type Refusal = "unpaired" | "busy" | "pairing" | "preempted" | "gone"
+
+/**
+ * How a run of the link ended (#3155): it ran and returned `value`; it was
+ * stopped (Stop, or the app went to the background) before it could; or
+ * the link turned it away, and why. A run that throws ends in its throw,
+ * which `./settle` reads.
+ */
+export type Run<T> =
+  | { readonly kind: "done"; readonly value: T }
+  | { readonly kind: "stopped" }
+  | { readonly kind: "refused"; readonly why: Refusal }
+
+/** Why the person's side, doing `activity`, takes no other run. */
+function activityRefusal(activity: Activity): Refusal {
+  return activity.kind === "pairing" || activity.kind === "unpairing"
+    ? "pairing"
+    : "busy"
+}
+
+/**
+ * Why `step` turns `event` away from `state`, `reading` while the pairing
+ * record is read, or null when it starts the run: the one place a run's
+ * start is decided (`step` reads it), so what the runtime says of a run it
+ * didn't start is what the step did.
+ */
+export function refusalOf(
+  state: HomeLinkState,
+  event: RunStart
+): Refusal | "reading" | null {
+  const { link, activity } = state
+  if (link.kind === "reading") return "reading"
+  switch (event.type) {
+    case "syncPressed": {
+      return activity.kind === "idle" ? null : activityRefusal(activity)
+    }
+    case "sendPressed":
+    case "keepStarted": {
+      if (link.kind !== "paired") return "unpaired"
+      return activity.kind === "idle" ? null : activityRefusal(activity)
+    }
+    case "drainStarted": {
+      if (link.kind !== "paired") return "unpaired"
+      if (state.drain.kind !== "idle") return "busy"
+      return writing(activity) ? activityRefusal(activity) : null
+    }
+    default: {
+      return assertNever(event)
+    }
+  }
+}
+
+/**
+ * The runs `after` releases from `parked`, each with the pairing the read
+ * found.
+ */
+export function releasedBy(
+  before: HomeLinkState,
+  after: HomeLinkState
+): ReadonlyArray<{ readonly ticket: number; readonly to: Pairing }> {
+  if (before.parked === after.parked) return []
+  const to = pairingIn(after)
+  return before.parked
+    .filter((ticket) => !after.parked.includes(ticket))
+    .map((ticket) => ({ ticket, to }))
 }
 
 const idle = { kind: "idle" } as const
@@ -266,6 +443,14 @@ export function awayHeld(state: HomeLinkState, now: number): boolean {
   return held(state.away, now)
 }
 
+/**
+ * Whether the link is stopping its drain run: the background, or a send, a
+ * pairing or an Unpair taking the link (HERD4, `./kept-runtime`'s `stopping`).
+ */
+export function drainStopping(state: HomeLinkState): boolean {
+  return state.drain.kind === "draining" && state.drain.stopping
+}
+
 /** Whether the link would start a drain run at `now`, home not busy nor held away. */
 export function linkOpen(state: HomeLinkState, now: number): boolean {
   return drainFree(state) && !homeBusy(state, now) && !awayHeld(state, now)
@@ -301,6 +486,7 @@ function advance(state: HomeLinkState, event: HomeLinkEvent): HomeLinkState {
       const { found } = event
       return {
         ...state,
+        parked: [],
         link:
           found === null
             ? { kind: "unpaired", note: null }
@@ -312,6 +498,7 @@ function advance(state: HomeLinkState, event: HomeLinkEvent): HomeLinkState {
                   id: found.id,
                   notForgotten: false,
                   since: found.since,
+                  name: found.name,
                   standing: UNCHECKED,
                 },
       }
@@ -329,12 +516,14 @@ function advance(state: HomeLinkState, event: HomeLinkEvent): HomeLinkState {
         return state
       return {
         ...state,
+        blocked: null,
         link: {
           kind: "paired",
           base: event.base,
           id: event.id,
           notForgotten: false,
           since: event.at,
+          name: event.name,
           standing: KNOWN,
         },
         activity: idle,
@@ -364,6 +553,7 @@ function advance(state: HomeLinkState, event: HomeLinkEvent): HomeLinkState {
         activity: idle,
         pairFailure: null,
         away: null,
+        blocked: null,
       }
     }
     case "unpairFailed": {
@@ -371,15 +561,15 @@ function advance(state: HomeLinkState, event: HomeLinkEvent): HomeLinkState {
       return { ...state, link: { ...link, notForgotten: true }, activity: idle }
     }
     case "syncPressed": {
-      if (link.kind === "reading" || activity.kind !== "idle") return state
+      if (refusalOf(state, event) !== null) return state
       return { ...state, activity: { kind: "syncing", stopping: false } }
     }
     case "sendPressed": {
-      if (link.kind !== "paired" || activity.kind !== "idle") return state
+      if (refusalOf(state, event) !== null) return state
       return { ...state, activity: { kind: "sending", stopping: false } }
     }
     case "keepStarted": {
-      if (link.kind !== "paired" || activity.kind !== "idle") return state
+      if (refusalOf(state, event) !== null) return state
       return { ...state, activity: { kind: "keeping", stopping: false } }
     }
     case "stopPressed": {
@@ -391,7 +581,7 @@ function advance(state: HomeLinkState, event: HomeLinkEvent): HomeLinkState {
       return { ...state, activity: idle }
     }
     case "drainStarted": {
-      if (link.kind !== "paired" || !drainFree(state)) return state
+      if (refusalOf(state, event) !== null) return state
       return { ...state, drain: { kind: "draining", stopping: false } }
     }
     case "drainStopped": {
@@ -441,15 +631,41 @@ function advance(state: HomeLinkState, event: HomeLinkEvent): HomeLinkState {
     case "answered":
     case "lapsed":
     case "lookAgain": {
+      // The latest failure is home's silence, or the network changed: what
+      // blocked a request before is not what is said now (NA1).
+      const blocked =
+        event.type === "unanswered" ||
+        (event.type === "lookAgain" && event.fresh)
+          ? null
+          : state.blocked
       const away = stepAway(state.away, event)
-      if (away === state.away) return state
+      if (away === state.away && blocked === state.blocked) return state
       // A hold ending on its time, or home answering: a release (AW1).
-      const released = event.type === "lapsed" || event.type === "answered"
+      const released =
+        away !== state.away &&
+        (event.type === "lapsed" || event.type === "answered")
       return {
         ...state,
         away,
         awayReleases: state.awayReleases + (released ? 1 : 0),
+        blocked,
       }
+    }
+    case "blocked": {
+      if (link.kind !== "paired") return state
+      const { reason, at } = event
+      if (state.blocked?.reason === reason) return state
+      return { ...state, blocked: { reason, at } }
+    }
+    case "unblocked": {
+      if (state.blocked === null) return state
+      return { ...state, blocked: null }
+    }
+    case "parked": {
+      if (link.kind !== "reading" || state.parked.includes(event.ticket)) {
+        return state
+      }
+      return { ...state, parked: [...state.parked, event.ticket] }
     }
     default: {
       return assertNever(event)

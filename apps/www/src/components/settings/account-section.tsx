@@ -7,9 +7,9 @@
  * button that adds one.
  *
  * Pairing shows a one-time code and the address to type with it on the
- * phone; the phone itself sends nothing until it is tapped there (LA8). No
- * list of paired phones yet (SIGNIN7), so a lost one's sign-in is ended by
- * signing out everywhere. What it says of the phone is
+ * phone; the phone itself sends nothing until it is tapped there (LA8).
+ * Below it, the phones paired with this account, each with Rename and Sign
+ * out (`./account-phones`, SIGNIN7). What it says of the phone is
  * `lib/auth/phone-pairing-words`', in the phone's own page names.
  *
  * Deleting takes two presses (the second button appears after the first); what
@@ -34,10 +34,14 @@ import type { Kind } from "@/lib/auth/account-erases"
 import { ACCOUNT_ERASES } from "@/lib/auth/account-erases"
 import { ACCOUNT_KEEPS } from "@/lib/auth/account-keeps"
 import { PHONE_PAIRING } from "@/lib/auth/phone-pairing-words"
+import { homePhones, phonesTransport } from "@/lib/auth/phones/home"
+import { createPhones } from "@/lib/auth/phones/runtime"
 import { absoluteFileHostBase } from "@/lib/file-host-config"
 import { useAsyncIntent } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { passkeysSupported } from "@/lib/passkey"
+
+import { AccountPhones } from "./account-phones"
 
 const KindList = ({
   title,
@@ -92,6 +96,7 @@ export const AccountSection = (): JSX.Element => {
   // offered.
   const pairAt = absoluteFileHostBase()
   const pairable = pairAt?.startsWith("https:") ?? false
+  const phonesHome = phonesTransport()
   const addIntent = useAsyncIntent(
     (_: undefined) =>
       addPasskey().then(
@@ -190,6 +195,9 @@ export const AccountSection = (): JSX.Element => {
           idleLabel={pairing ? PHONE_PAIRING.newCode : PHONE_PAIRING.pairAPhone}
           workingLabel="Getting a code..."
         />
+        {phonesHome === null ? null : (
+          <AccountPhones make={() => createPhones(homePhones(phonesHome))} />
+        )}
       </div>
 
       <Separator />

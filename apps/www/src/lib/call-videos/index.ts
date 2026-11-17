@@ -20,10 +20,10 @@ import { DIR, videoFiles } from "./files"
 import type { ChaptersRead, Feed, ListState } from "./model"
 import {
   FEEDS,
+  partOf,
   readChapters,
   readEpisodes,
   readLinkSaved,
-  readPart,
 } from "./model"
 import { PART_BYTES } from "./parts"
 import type { FeedVideos } from "./runtime"
@@ -43,7 +43,7 @@ function create(feed: Feed): Made {
   const videos = createFeedVideos({
     async list(): Promise<ListState> {
       const asked = await askWhileBusy(() => askEpisodes(feed))
-      if (asked.kind === "unpaired") return asked
+      if (asked.kind === "unpaired" || asked.kind === "busy") return asked
       if (asked.kind === "unreachable") return { kind: "away" }
       return readEpisodes(asked.answer)
     },
@@ -51,9 +51,7 @@ function create(feed: Feed): Made {
       const asked = await askWhileBusy(() =>
         askVideoPart(feed, key, start, end)
       )
-      return asked.kind === "answered"
-        ? readPart(asked.answer)
-        : { kind: "away" }
+      return partOf(asked)
     },
     files: videoFiles(feed),
     async share(uri, key) {
@@ -76,7 +74,11 @@ function create(feed: Feed): Made {
     async checkAgain(): Promise<void> {
       await videos.open()
       const { list } = videos.getSnapshot()
-      if (list.kind === "away" || list.kind === "unreadable") {
+      if (
+        list.kind === "away" ||
+        list.kind === "busy" ||
+        list.kind === "unreadable"
+      ) {
         throw new Error("home didn't answer")
       }
     },

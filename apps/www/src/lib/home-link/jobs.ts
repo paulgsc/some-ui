@@ -20,10 +20,10 @@ import { homeOutbox } from "@/lib/jobs/model"
 import { noticeFiling } from "@/lib/jobs/notice"
 import { browserLocalStorage } from "@/lib/tenant/storage"
 
-import { pairingOf, useHomeLink } from "./index"
+import { usePairing } from "./index"
 import { exchangeJobsLane, interviewCounts } from "./interview"
 import type { Lane, LaneCounts } from "./lanes"
-import { fingerprintOf, readSent } from "./sent"
+import { fingerprintOf, sentUnder } from "./sent"
 
 export const jobsLane: Lane = {
   id: "jobs",
@@ -49,10 +49,10 @@ export const jobsLane: Lane = {
     const jobs = phoneJobs()
     const { state } = useSyncExternalStore(jobs.subscribe, jobs.getSnapshot)
     // Read again whenever a run ends, which is when home's answers land.
-    const pairing = pairingOf(useHomeLink())
+    const pairing = usePairing()
     const interview = interviewCounts(
       interviewGoing(browserLocalStorage, Date.now()),
-      pairing === null ? null : readSent(browserLocalStorage, pairing)
+      sentUnder(browserLocalStorage, pairing)
     )
     return {
       held: {

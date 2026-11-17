@@ -146,6 +146,12 @@ jobs:
           pattern: snips-*-${{ github.run_id }}
           path: snips-bundle
           merge-multiple: true
+      # What scripts/snips-bundle.ts imports from the workspace, built: a fresh
+      # checkout has no dist/, and tsx resolves a package through it (SN1;
+      # src/lib/snips/__tests__/bundle-job.test.ts holds this list to the
+      # script's imports).
+      - name: Build what the bundle script imports
+        run: nix develop .#ci --command pnpm turbo build --filter=@some-ui/core-utils
       - name: Join the halves, check every file, write the manifest and checksums
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

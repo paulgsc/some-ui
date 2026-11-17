@@ -44,11 +44,13 @@ import { createKept, laneExchange } from "@/lib/home-link/kept-runtime"
 import { watchKept } from "@/lib/home-link/kept-watch"
 import type { Lane, LaneId } from "@/lib/home-link/lanes"
 import { busyNow } from "@/lib/home-link/lanes"
-import type { HomeLinkState } from "@/lib/home-link/model"
+import type { HomeLinkState, Pairing } from "@/lib/home-link/model"
+import { drainStopping } from "@/lib/home-link/model"
 import { BURST, MS_PER_REQUEST } from "@/lib/home-link/pace"
 import { homeRefresher } from "@/lib/home-link/pull"
 import type { HomeLink } from "@/lib/home-link/runtime"
 import { createHomeLink } from "@/lib/home-link/runtime"
+import { onHidden } from "@/lib/home-link/visibility"
 
 const BASE = "https://home.example/api/v1"
 
@@ -64,15 +66,12 @@ function theLink(): HomeLink {
   return held.link
 }
 
-vi.mock("@/lib/home-link/index", () => {
-  const pairingOf = (state?: HomeLinkState): string | null => {
-    const now = state ?? theLink().getSnapshot()
-    return now.link.kind === "paired" ? now.link.id : null
-  }
+vi.mock("@/lib/home-link/index", async () => {
+  const { pairingIn } = await import("@/lib/home-link/model")
   return {
     homeLink: theLink,
-    pairingOf,
-    paired: (): boolean => pairingOf() !== null,
+    pairing: (state?: HomeLinkState): Pairing =>
+      pairingIn(state ?? theLink().getSnapshot()),
     LINK_CLOCK: {
       now: (): number => held.clock?.now() ?? 0,
       after: (ms: number, run: () => void): (() => void) =>
@@ -81,10 +80,13 @@ vi.mock("@/lib/home-link/index", () => {
   }
 })
 
+/** Whether the app is in front: a trip home sets it hidden (HERD4). */
+let front: DocumentVisibilityState = "visible"
+
 beforeAll(() => {
   Object.defineProperty(document, "visibilityState", {
     configurable: true,
-    get: () => "visible",
+    get: () => front,
   })
 })
 
@@ -93,6 +95,7 @@ afterEach(() => {
   for (const stop of stops.splice(0)) stop()
   held.link = null
   held.clock = null
+  front = "visible"
 })
 
 /** Home's limiter: `size` at once, one back each `refillMs`. */
@@ -156,7 +159,7 @@ async function pairedHome(limiter: Limiter, latencyMs: number): Promise<Home> {
         clock.after(latencyMs, () => resolve(answer))
       )
     },
-    onHidden: () => (): void => undefined,
+    onHidden: (listener) => onHidden(listener),
     now: clock.now,
     after: clock.after,
   })
@@ -202,11 +205,13 @@ function watchedLane(id: LaneId, reads: number): Watched {
     },
   }
   const kept = createKept({
-    exchange: laneExchange(lane, () => "p"),
+    exchange: laneExchange(lane, (): Pairing => ({ kind: "paired", id: "p" })),
     keep: (run) => theLink().drain(run),
-    paired: () => true,
+    pairing: (): Pairing => ({ kind: "paired", id: "p" }),
     homeBusy: busyNow,
-    now: () => 0,
+    stopping: () => drainStopping(theLink().getSnapshot()),
+    inFront: () => document.visibilityState === "visible",
+    now: () => held.clock?.now() ?? 0,
   })
   let unwatch = watchKept(lane, kept)
   stops.push(() => unwatch())
@@ -483,6 +488,36 @@ describe("a moment that lands while a lane's run is under way joins it (HERD1)",
     lanes[0]?.edit()
     await quiet(home.clock)
     expect(lanes.map((lane) => lane.runs())).toEqual([2, 1, 1, 1, 1, 1])
+  })
+
+  it("a trip home while a pull's runs are out, on a slow home: each lane is read through once the app is back, and none twice (HERD4)", async () => {
+    const home = await pairedHome(AT_60, 6_000)
+    const lanes = sixLanes()
+    await quiet(home.clock)
+    const before = lanes.map((lane) => lane.runs())
+    const sentBefore = home.sent.length
+    const pull = homeRefresher({
+      watched: () => new Set(lanes.map(({ kept }) => kept)),
+      doc: document,
+    })
+    void pull.checkAgain().catch(() => undefined)
+    await pass(home.clock, 1_000)
+    front = "hidden"
+    document.dispatchEvent(new Event("visibilitychange"))
+    await pass(home.clock, 1_000)
+    front = "visible"
+    document.dispatchEvent(new Event("visibilitychange"))
+    await quiet(home.clock)
+    // The lane the trip stopped runs again; every other lane runs once.
+    expect(lanes.map((lane, i) => lane.runs() - (before[i] ?? 0))).toEqual([
+      2, 1, 1, 1, 1, 1,
+    ])
+    // One read-through, and the one request the stopped run had out.
+    expect(home.sent.length - sentBefore).toBe(READS + 1)
+    expect(
+      lanes.every(({ kept }) => kept.getSnapshot().last?.kind === "synced")
+    ).toBe(true)
+    expectSettled(lanes)
   })
 
   it("a pull with nothing running asks each lane once, one after another", async () => {

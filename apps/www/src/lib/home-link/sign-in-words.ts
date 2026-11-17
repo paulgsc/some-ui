@@ -11,9 +11,11 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 
+import type { HomeBlockedReason } from "@/lib/device-backend/native-http/no-answer"
+
 import { hostOf } from "./address"
 import type { HomeLinkState, PairFailure, UnpairedNote } from "./model"
-import { lookedAt } from "./words"
+import { BLOCKED_LINE, lookedAt } from "./words"
 
 /** Which of the mark's looks the phone is in. */
 export type SignedIn =
@@ -94,6 +96,16 @@ export const SIGN_OUT = {
     "Pairing again signs this phone in anew, in place of the sign-in home forgot. What home already holds stays as it is, and what it doesn't hold yet goes there.",
 } as const
 
+/**
+ * Why the phone can't reach home though home may be right there (NA1,
+ * #3099), and what that means for what the person does. Never "away": the
+ * phone may well be at home.
+ */
+const BLOCKED: Readonly<Record<HomeBlockedReason, string>> = {
+  name: `${BLOCKED_LINE.name} What you do waits on this phone.`,
+  trust: `${BLOCKED_LINE.trust} What you do waits on this phone.`,
+}
+
 /** The day the phone paired, as a clause, or nothing for a pairing kept before it was kept. */
 const since = (at: number | null, day: (t: number) => string): string =>
   at === null ? "" : `, since ${day(at)}`
@@ -132,7 +144,11 @@ export function signInView(
     }
     case "paired": {
       const host = hostOf(link.base)
-      const signedIn = `Signed in to home at ${host}${since(link.since, when.day)}.`
+      // The name the owner gave this phone as it paired (SIGNIN7, C478):
+      // said as the name it paired with, which a rename on the lan web since
+      // doesn't reach, so it stays true.
+      const as = link.name === null ? "" : `, paired as ${link.name}`
+      const signedIn = `Signed in to home at ${host}${as}${since(link.since, when.day)}.`
       const { standing } = link
       if (standing.kind === "forgotten") {
         return {
@@ -144,6 +160,15 @@ export function signInView(
             "Home forgets a phone when you sign out everywhere, or when it hasn't heard from the phone for a long while. If home's sign-in was only off for a while, this clears the next time this phone sends something home.",
           ],
           action: SIGN_IN.pairAgain,
+        }
+      }
+      if (state.blocked !== null) {
+        return {
+          signedIn: "away",
+          label: "Home: signed in, can't reach it",
+          line: signedIn,
+          notes: [BLOCKED[state.blocked.reason], SIGN_IN.what],
+          action: SIGN_IN.settings,
         }
       }
       if (state.away !== null) {
@@ -190,11 +215,14 @@ export function pairFailureLine(failure: PairFailure, host: string): string {
     case "untrusted": {
       return `This phone doesn't trust ${host}'s certificate. Nothing was sent.`
     }
+    case "no-name": {
+      return `This phone can't find ${host} on this network. On your home network, your router may be blocking it. Nothing was sent.`
+    }
     case "bad-code": {
       return "That code didn't work. Codes work once, for 10 minutes. Get a new one on your computer."
     }
     case "too-many": {
-      return "Too many tries. Wait a minute and try again."
+      return "Home has had too many pairing tries. Try again later."
     }
     case "busy": {
       return `${host} is busy. Try again in a moment.`

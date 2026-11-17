@@ -115,6 +115,7 @@ describe("the home link", () => {
       id: HOME.base,
       notForgotten: false,
       since: null,
+      name: null,
       standing: { kind: "unchecked" },
     })
     expect(paired.sent).toEqual([])
@@ -165,6 +166,9 @@ describe("the home link", () => {
       token: "phone-token",
       id: first,
       pairedAt: 0,
+      // A home that gives no id for the phone, and no name typed.
+      phoneId: null,
+      name: null,
     })
 
     // Paired again to the same address, it is a new pairing.
@@ -172,6 +176,38 @@ describe("the home link", () => {
     await home.link.pair(HOME, "K7QF2M9X")
     expect(idOf()).toEqual(expect.any(String))
     expect(idOf()).not.toBe(first)
+  })
+
+  it("keeps home's id for the phone and the name it paired with, and reads them back (SIGNIN7)", async () => {
+    const home = setup({
+      answer: () => ({
+        status: 200,
+        body: JSON.stringify({
+          token: "phone-token",
+          expiresAt: 1,
+          phoneId: "q1w2e3r4t5y6u7i8o9p0aa",
+        }),
+      }),
+    })
+    await home.link.load()
+    await home.link.pair(HOME, "K7QF2M9X", "Kitchen")
+    const record = home.record()
+    expect(JSON.parse(record ?? "null")).toMatchObject({
+      phoneId: "q1w2e3r4t5y6u7i8o9p0aa",
+      name: "Kitchen",
+    })
+    expect(home.link.getSnapshot().link).toMatchObject({
+      kind: "paired",
+      name: "Kitchen",
+    })
+
+    // The next time the app starts, the record says the same.
+    const again = setup({ record: record ?? "" })
+    await again.link.load()
+    expect(again.link.getSnapshot().link).toMatchObject({
+      kind: "paired",
+      name: "Kitchen",
+    })
   })
 
   it("says why a pairing failed, once, and keeps nothing", async () => {
@@ -196,7 +232,10 @@ describe("the home link", () => {
           answer: () =>
             Promise.reject(
               new Error("couldn't", {
-                cause: new Error("javax.net.ssl.SSLHandshakeException"),
+                // A certificate failure, not a TLS connection dropped (NA1).
+                cause: new Error(
+                  "javax.net.ssl.SSLHandshakeException: java.security.cert.CertPathValidatorException: Trust anchor for certification path not found."
+                ),
               })
             ),
         },
@@ -414,8 +453,92 @@ describe("the home link", () => {
       await send("PUT", "/shelf/topik/a", "{}")
       return "finished"
     })
-    expect(outcome).toBeNull()
+    expect(outcome).toEqual({ kind: "refused", why: "unpaired" })
     expect(home.sent).toEqual([])
+  })
+
+  it("says a drain stopped for an Unpair was preempted, and the next one unpaired (#3155)", async () => {
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t" }),
+    })
+    await home.link.load()
+    let release: () => void = () => undefined
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const draining = home.link.drain(async () => {
+      await held
+      return "drained"
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    const unpairing = drive(home, home.link.unpair())
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    release()
+    await expect(draining).resolves.toEqual({
+      kind: "refused",
+      why: "preempted",
+    })
+    await unpairing
+    expect(home.link.getSnapshot().link.kind).toBe("unpaired")
+    // The link turned the next away itself: not left at the last one's.
+    await expect(home.link.drain(() => Promise.resolve("x"))).resolves.toEqual({
+      kind: "refused",
+      why: "unpaired",
+    })
+  })
+
+  it("holds a run asked for while the record is read, then runs it as the read found (#3152)", async () => {
+    for (const found of ["paired", "unpaired"] as const) {
+      let end: (record: string | null) => void = () => undefined
+      const read = new Promise<{ record: string | null; lost: boolean }>(
+        (resolve) => {
+          end = (record): void => resolve({ record, lost: false })
+        }
+      )
+      const home = setup({ read: () => read })
+      let settled = false
+      const keeping = home.link
+        .keep((send) => send("GET", "/kept"))
+        .then((outcome) => {
+          settled = true
+          return outcome
+        })
+      // A sync needs no pairing: once the read ends, it runs either way.
+      const syncing = home.link.sync(HOME.base, () => Promise.resolve("synced"))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      // Waiting as the link's state, nothing sent, nothing said.
+      expect(home.link.getSnapshot().parked).toHaveLength(2)
+      expect(settled).toBe(false)
+      expect(home.sent).toEqual([])
+      end(
+        found === "paired"
+          ? JSON.stringify({ base: HOME.base, token: "t" })
+          : null
+      )
+      if (found === "paired") {
+        await expect(keeping).resolves.toEqual({
+          kind: "done",
+          value: { status: 200, body: "{}" },
+        })
+        expect(home.sent.map((call) => call.url)).toEqual([`${HOME.base}/kept`])
+        // The sync waited its turn behind the read: the link was busy.
+        await expect(syncing).resolves.toEqual({
+          kind: "refused",
+          why: "busy",
+        })
+      } else {
+        await expect(keeping).resolves.toEqual({
+          kind: "refused",
+          why: "unpaired",
+        })
+        await expect(syncing).resolves.toEqual({
+          kind: "done",
+          value: "synced",
+        })
+        expect(home.sent).toEqual([])
+      }
+      expect(home.link.getSnapshot().parked).toEqual([])
+    }
   })
 
   it("after home says busy, sends nothing until its Retry-After has passed, answering busy itself (AD3)", async () => {
@@ -434,7 +557,7 @@ describe("the home link", () => {
         (await send("GET", "/aph")).status,
         (await send("GET", "/aph")).status,
       ])
-      return outcome?.kind === "done" ? outcome.value : []
+      return outcome.kind === "done" ? outcome.value : []
     }
 
     // Home's 429 ends the run's sending; the next request is answered here.
@@ -515,7 +638,7 @@ describe("the home link", () => {
         (await send("GET", "/aph")).status,
         (await send("GET", "/aph")).status,
       ])
-      return outcome?.kind === "done" ? outcome.value : []
+      return outcome.kind === "done" ? outcome.value : []
     }
     expect(await statuses()).toEqual([429, 429])
     expect(home.sent).toHaveLength(1)
@@ -900,7 +1023,10 @@ describe("a look at home's word on itself (#2843)", () => {
   it("asks nothing unpaired", async () => {
     const home = setup()
     await home.link.load()
-    expect(await home.link.look("/compat?needs=2")).toBeNull()
+    expect(await home.link.look("/compat?needs=2")).toEqual({
+      kind: "refused",
+      why: "unpaired",
+    })
     expect(home.sent).toEqual([])
   })
 

@@ -10,6 +10,7 @@ import { assertNever, readAs } from "@some-ui/core-utils"
 import { z } from "zod"
 
 import type { Feed } from "@/lib/feeds"
+import type { Asked } from "@/lib/home-link/while-busy"
 
 export { FEEDS, isFeed, type Feed } from "@/lib/feeds"
 
@@ -96,6 +97,34 @@ export type PartRead =
   | { readonly kind: "gone" }
   | { readonly kind: "unreadable" }
 
+/**
+ * A part of a video, or why none came: home didn't answer (`away`), or this
+ * phone stayed busy with home, so it wasn't asked (`busy`, #3155).
+ */
+export type PartAsked =
+  | PartRead
+  | { readonly kind: "away" }
+  | { readonly kind: "busy" }
+
+/** What a part ask of the link came to, as a video's runtime takes it. */
+export function partOf(asked: Asked): PartAsked {
+  switch (asked.kind) {
+    case "answered": {
+      return readPart(asked.answer)
+    }
+    case "busy": {
+      return asked
+    }
+    case "unpaired":
+    case "unreachable": {
+      return { kind: "away" }
+    }
+    default: {
+      return assertNever(asked)
+    }
+  }
+}
+
 export function readPart(answer: HomeAnswer): PartRead {
   if (answer.status === 404) return { kind: "gone" }
   if (answer.status !== 206 && answer.status !== 200) {
@@ -178,6 +207,8 @@ export type ListState =
   | { readonly kind: "read"; readonly episodes: ReadonlyArray<Episode> }
   | { readonly kind: "unpaired" }
   | { readonly kind: "away" }
+  /** This phone stayed busy with home, so the list wasn't asked (#3155). */
+  | { readonly kind: "busy" }
   | { readonly kind: "older" }
   | { readonly kind: "unreadable" }
 
@@ -203,6 +234,8 @@ export type Fetch =
 export type FetchFailure =
   /** Home didn't answer. */
   | "away"
+  /** This phone stayed busy with home, so a part wasn't asked (#3155). */
+  | "busy"
   /** Home no longer has the video. */
   | "gone"
   /** The phone couldn't keep it (full, or the files refused). */

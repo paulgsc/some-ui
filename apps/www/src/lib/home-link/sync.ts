@@ -49,7 +49,9 @@ export async function syncLessonsFrom(
       ran.yes = true
       return syncFromHome(context.db, base, get)
     })
-    if (outcome === null) return { ok: false, line: "" }
+    if (outcome.kind === "refused") {
+      return { ok: false, line: syncLine({ kind: "phone-busy" }) }
+    }
     if (outcome.kind === "stopped") {
       return { ok: true, line: syncLine({ kind: "stopped" }) }
     }

@@ -156,7 +156,7 @@ describe("Takes on home's reads of home (ST32)", () => {
     expect(await takesHome.takes(null, always)).toEqual({ kind: "away" })
   })
 
-  it("asks a busy link again a second later, at most ten times, and not once the read is no longer wanted", async () => {
+  it("asks a busy link again a second later, at most ten times, then says busy, and not once the read is no longer wanted", async () => {
     vi.useFakeTimers()
     asked.answers = [{ kind: "busy" }, answered(200, TAKES)]
     const twice = takesHome.takes(null, always)
@@ -168,7 +168,7 @@ describe("Takes on home's reads of home (ST32)", () => {
     asked.answers = Array.from({ length: 12 }, () => ({ kind: "busy" }))
     const busy = takesHome.takes(null, always)
     await vi.advanceTimersByTimeAsync(10_000)
-    expect(await busy).toEqual({ kind: "away" })
+    expect(await busy).toEqual({ kind: "busy" })
     expect(asked.asks).toHaveLength(10)
 
     asked.asks = []
@@ -178,7 +178,7 @@ describe("Takes on home's reads of home (ST32)", () => {
     await vi.advanceTimersByTimeAsync(1_000)
     wanted = false
     await vi.advanceTimersByTimeAsync(10_000)
-    expect(await stale).toEqual({ kind: "away" })
+    expect(await stale).toEqual({ kind: "busy" })
     expect(asked.asks).toEqual(["brand", "brand"])
   })
 })

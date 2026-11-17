@@ -5,6 +5,10 @@
  *
  * - Each read is numbered (`seq`). An answer to an older read (the page
  *   opened another kind, or was pulled again since) changes nothing.
+ * - This phone's side is numbered too (`phoneSeq`): a read of both asks
+ *   it again, and so does the pairing becoming known (#3152), which asks
+ *   nothing of home, since only where this phone's own recordings are kept
+ *   was not known.
  * - Reading again keeps what was shown until the new answer lands, so a
  *   pull doesn't blank the page. Opening another kind keeps home's counts
  *   but not its list, which was of the other kind.
@@ -19,6 +23,8 @@ import type { HomeReading, Of, PhoneRead } from "./model"
 
 export type MyDataState = {
   readonly seq: number
+  /** The latest read of this phone's side, by itself or with home's. */
+  readonly phoneSeq: number
   /** The kind whose list is shown, or null on the overview. */
   readonly of: Of | null
   readonly home: HomeReading
@@ -34,6 +40,7 @@ export type MyDataState = {
 
 export const INITIAL_MY_DATA: MyDataState = {
   seq: 0,
+  phoneSeq: 0,
   of: null,
   home: { kind: "reading" },
   phone: null,
@@ -44,6 +51,8 @@ export const INITIAL_MY_DATA: MyDataState = {
 
 export type MyDataEvent =
   | { readonly type: "asked"; readonly of: Of | null }
+  /** This phone's side alone is read again: its places became known. */
+  | { readonly type: "phoneAsked" }
   | {
       readonly type: "homeAnswered"
       readonly seq: number
@@ -51,6 +60,7 @@ export type MyDataEvent =
     }
   | {
       readonly type: "phoneRead"
+      /** The `phoneSeq` it answers. */
       readonly seq: number
       readonly phone: PhoneRead
     }
@@ -65,11 +75,12 @@ export function stepMyData(
 ): MyDataState {
   switch (event.type) {
     case "asked": {
+      const seqs = { seq: state.seq + 1, phoneSeq: state.phoneSeq + 1 }
       return event.of === state.of
-        ? { ...state, seq: state.seq + 1 }
+        ? { ...state, ...seqs }
         : {
             ...state,
-            seq: state.seq + 1,
+            ...seqs,
             of: event.of,
             // A miss is said only on the kind it happened on.
             missed: null,
@@ -82,8 +93,13 @@ export function stepMyData(
     case "homeAnswered": {
       return event.seq === state.seq ? { ...state, home: event.home } : state
     }
+    case "phoneAsked": {
+      return { ...state, phoneSeq: state.phoneSeq + 1 }
+    }
     case "phoneRead": {
-      return event.seq === state.seq ? { ...state, phone: event.phone } : state
+      return event.seq === state.phoneSeq
+        ? { ...state, phone: event.phone }
+        : state
     }
     case "played": {
       return { ...state, playing: event.id, fetching: true, missed: null }

@@ -48,6 +48,7 @@ export const RECONCILE_WORDS = {
   wayIn: (count: number): string => `${takes(count)} home couldn't hear well`,
   wayInLine: "Hear each one, then keep it, record it again, or delete it.",
   away: "Home can't be reached right now. Try again once you're back in reach.",
+  busy: "This phone was busy with home just then. Try again in a moment.",
   older:
     "Home doesn't say yet which takes it couldn't hear well. Once it runs a newer version, they show here.",
   unreadable:
@@ -161,4 +162,7 @@ export const RECONCILE_WORDS = {
     "Home has nothing left to settle on that take, so it leaves this list.",
   /** An act home didn't take: nothing changed, and the take stays. */
   notTaken: "Home didn't take that just now, so nothing changed. Try again.",
+  /** An act home wasn't told of: this phone stayed busy with home. */
+  phoneBusy:
+    "This phone was busy with home just then, so nothing changed. Try again in a moment.",
 } as const

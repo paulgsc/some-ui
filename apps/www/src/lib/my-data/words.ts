@@ -34,6 +34,7 @@ export const WHERE_WORDS: Readonly<Record<Where, string>> = {
   aside: "Set aside, on home",
   going: "Going home",
   phone: "Only on this phone",
+  unknown: "Not known yet",
 }
 
 /**
@@ -282,6 +283,9 @@ export function homeLine(home: HomeReading["kind"]): string | null {
     case "unreachable": {
       return "Home didn't answer, so only what isn't on home yet is counted. Drag down to try again."
     }
+    case "busy": {
+      return "This phone was busy with home just then, so only what isn't on home yet is counted. Drag down to try again in a moment."
+    }
     case "older": {
       return "Home can't say what it keeps until it runs a newer version, so only what isn't on home yet is counted."
     }
@@ -507,6 +511,9 @@ export function receiptsLine(home: ReceiptsReading["kind"]): string | null {
     }
     case "unreachable": {
       return "Home didn't answer. Drag down to try again."
+    }
+    case "busy": {
+      return "This phone was busy with home just then. Drag down to try again in a moment."
     }
     case "older": {
       return "Home can't list what was deleted until it runs a newer version."

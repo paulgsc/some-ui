@@ -7,10 +7,11 @@
 import { localStorageOrNull } from "@some-ui/core-utils"
 
 import { NOTED_FEEDS } from "@/lib/feeds"
-import { pairingOf } from "@/lib/home-link"
+import { pairing } from "@/lib/home-link"
 import { episodeNotesWaiting } from "@/lib/home-link/episode-notes"
 import { askEpisodeNotes } from "@/lib/home-link/episode-notes-read"
 import { askWhileBusy } from "@/lib/home-link/while-busy"
+import { PhoneBusyError } from "@/lib/phone-busy"
 
 import { readFeedNotes } from "./home"
 
@@ -24,7 +25,8 @@ export type HomeNotesOutcome =
 
 /**
  * Reads the notes home keeps on every feed that takes them, asking again while the link is
- * busy. Rejects when home didn't answer or an answer couldn't be read, so the
+ * busy. Rejects when home didn't answer, the phone stayed busy with home
+ * (`PhoneBusyError`, #3155), or an answer couldn't be read, so the
  * page keeps what it last read and says so.
  */
 export async function readHomeNotes(
@@ -34,6 +36,7 @@ export async function readHomeNotes(
   for (const feed of NOTED_FEEDS) {
     const asked = await askWhileBusy(() => askEpisodeNotes(feed), wanted)
     if (asked.kind === "unpaired") return asked
+    if (asked.kind === "busy") throw new PhoneBusyError("this phone was busy")
     if (asked.kind === "unreachable") throw new Error("home didn't answer")
     const read = readFeedNotes(asked.answer)
     if (read.kind === "older") return read
@@ -44,14 +47,18 @@ export async function readHomeNotes(
   return { kind: "read", storedAt }
 }
 
-/** The notes home read back, and refused, as this phone sent them under the pairing now. */
+/**
+ * The notes home read back, and refused, as this phone sent them under the
+ * pairing now; null while the pairing record is read, when neither is known
+ * (PO1, #3157). The page renders again once its read of home ends, which
+ * waits on that record.
+ */
 export function notesAnswered(): {
   readonly held: ReadonlySet<string>
   readonly refused: ReadonlySet<string>
-} {
-  const { held, refused } = episodeNotesWaiting(
-    localStorageOrNull(),
-    pairingOf()
-  )
+} | null {
+  const now = pairing()
+  if (now.kind === "reading") return null
+  const { held, refused } = episodeNotesWaiting(localStorageOrNull(), now)
   return { held, refused }
 }

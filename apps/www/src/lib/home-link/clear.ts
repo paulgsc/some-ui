@@ -83,7 +83,7 @@ export async function clearHeld(
   let read: { ended: unknown; busy: boolean }
   try {
     const run = await ports.run((send) => readHeld(send, leaving, held))
-    if (run === null) return { kind: "busy" }
+    if (run.kind === "refused") return { kind: "busy" }
     if (run.kind === "stopped") return { kind: "stopped" }
     read = run.value
   } catch (error) {

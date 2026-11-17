@@ -163,8 +163,9 @@ export type {
   BundleState,
   CardView,
   HomeReach,
+  Paired,
 } from "./lib/bundle"
-export { bundleMachine, isPaired } from "./lib/bundle"
+export { bundleMachine, pairedOf } from "./lib/bundle"
 export type {
   BundleDrafts,
   BundleHome,

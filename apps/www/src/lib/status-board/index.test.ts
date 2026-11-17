@@ -48,6 +48,7 @@ describe("what each mark asks of its person", () => {
       waiting: "moving",
       sending: "moving",
       "no-answer": "watch",
+      blocked: "you",
       busy: "watch",
       forgotten: "you",
       unpaired: "you",
@@ -89,7 +90,8 @@ describe("what each mark asks of its person", () => {
   it("says when home's renders are what it said last (SFEED13)", () => {
     const board = { now: null, waiting: [], failed: [], done: [], coming: [] }
     expect(renderRow(board).more).toEqual([])
-    expect(renderRow(board, true).more).toEqual([RENDERS_WORDS.stale])
+    expect(renderRow(board, "away").more).toEqual([RENDERS_WORDS.stale])
+    expect(renderRow(board, "busy").more).toEqual([RENDERS_WORDS.busyStale])
     expect(renderRow(board).page).toBe("renders")
   })
 

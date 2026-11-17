@@ -176,14 +176,15 @@ const TakeCard = ({
           {LIBRARY_WORDS.unplayable}
         </Notice>
       )}
-      {state.said?.kind === "notTaken" && state.said.id === take.id && (
-        <Notice
-          tone="danger"
-          onDismiss={() => dispatch({ type: "noticeDismissed" })}
-        >
-          {WORDS.notTaken}
-        </Notice>
-      )}
+      {(state.said?.kind === "notTaken" || state.said?.kind === "busy") &&
+        state.said.id === take.id && (
+          <Notice
+            tone="danger"
+            onDismiss={() => dispatch({ type: "noticeDismissed" })}
+          >
+            {state.said.kind === "busy" ? WORDS.phoneBusy : WORDS.notTaken}
+          </Notice>
+        )}
     </li>
   )
 }
@@ -240,6 +241,7 @@ const Unread = ({
       return <Unpaired line={LIBRARY_WORDS.unpaired} pair={pair} />
     }
     case "away":
+    case "busy":
     case "older":
     case "unreadable": {
       return (

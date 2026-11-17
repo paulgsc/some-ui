@@ -201,12 +201,13 @@ import { wireVoiceMarks } from "@/lib/voice-marks"
 
 import { phoneEpisodeNotes, sendEpisodeNotes } from "./episode-notes"
 import { phoneIdeas, sendIdeas } from "./ideas"
-import { homeLink, paired, pairingOf } from "./index"
+import { homeLink, pairing } from "./index"
 import { lensEntriesHeld } from "./lens-record"
+import type { Pairing } from "./model"
 import { notesHeld } from "./notes"
 import { askOnDrive } from "./on-drive"
-import { unanswered } from "./runtime"
 import { markSetAside } from "./set-aside"
+import { blockedOf, unanswered } from "./settle"
 import { sendStationMoves } from "./take-stations"
 import { phoneVideos, sendVideos } from "./videos"
 import { askAudio } from "./voice-audio"
@@ -884,7 +885,7 @@ async function copyAll(): Promise<CopyPass> {
   oweMarks(all)
   settleMarks(all)
   for (const { note, audio } of all) {
-    if (!paired()) break
+    if (pairing().kind !== "paired") break
     if (home.settled(note.id)) continue
     try {
       const blob = await audio()
@@ -893,7 +894,7 @@ async function copyAll(): Promise<CopyPass> {
         continue
       }
       // An unpairing can land while the audio is read.
-      if (!paired()) break
+      if (pairing().kind !== "paired") break
       pass = passWith(pass, await home.copy(note, blob))
     } catch (error) {
       if (!failed) reported(error)
@@ -922,7 +923,8 @@ export const copyPasses = {
 
 /** One copy pass at a time; a change during one asks for one more after it. */
 function copySoon(): void {
-  if (!paired()) return
+  // Only once known paired; a pairing read later asks again (`changed`).
+  if (pairing().kind !== "paired") return
   if (copying !== null) {
     again = true
     return
@@ -948,8 +950,9 @@ function copySoon(): void {
 
 /** Home's word on Drive could not be read or acted on, to the native log. */
 function unheard(error: unknown): void {
-  // Home's silence is the link's to tell, once a stretch away (AW1).
-  if (unanswered(error)) return
+  // Home's silence, or a name or certificate that stopped the request, is
+  // the link's to tell, once a stretch (AW1, NA1).
+  if (unanswered(error) || blockedOf(error) !== null) return
   reportFailure({
     port: "voice notes (which takes Drive has)",
     error: {
@@ -1081,7 +1084,40 @@ export function voiceKept(id: string): TakeKept {
   const state = phoneVoiceHome().getSnapshot()
   if (kept?.from !== state) kept = { from: state, of: keptIn(state) }
   const where = kept.of(id)
-  return where.place === "going" && !paired() ? ON_PHONE : where
+  if (where.place !== "going") return where
+  // Going home only on a paired phone; on this phone, saying nothing of
+  // home, while the pairing record is read (PO1, #3157).
+  return GOING_UNDER[pairing().kind]
+}
+
+/**
+ * Calls `listener` once the pairing record has been read, at once if it
+ * has: from then on `voiceKept` says no take's place is `unknown` (#3152).
+ * My data reads this phone's side again then, by itself. Returns the
+ * unsubscribe.
+ */
+export function whenPlacesKnown(listener: () => void): () => void {
+  const link = homeLink()
+  const known = (): boolean => pairing(link.getSnapshot()).kind !== "reading"
+  if (known()) {
+    listener()
+    return (): void => undefined
+  }
+  let heard = false
+  const stop = link.subscribe(() => {
+    if (heard || !known()) return
+    heard = true
+    stop()
+    listener()
+  })
+  return stop
+}
+
+/** Where a take waiting to go home is kept, by whether this phone is paired. */
+const GOING_UNDER: Readonly<Record<Pairing["kind"], TakeKept>> = {
+  paired: { place: "going" },
+  unpaired: ON_PHONE,
+  reading: { place: "unknown" },
 }
 
 /** Lets go of this phone's copies of one kind's notes that `deleted` names. */
@@ -1191,9 +1227,11 @@ export async function letGoDeleted(
  */
 function settleDeleted(ids: ReadonlyArray<string>): void {
   const home = phoneVoiceHome()
-  const pairing = pairingOf()
-  if (pairing !== null) {
-    for (const id of ids) home.keeping.answered({ kind: "held", id, pairing })
+  const now = pairing()
+  if (now.kind === "paired") {
+    for (const id of ids) {
+      home.keeping.answered({ kind: "held", id, pairing: now.id })
+    }
   }
   home.drop(ids)
 }
@@ -1232,7 +1270,7 @@ let lensRecordTold = false
  * phone never paired loads none of topik for it.
  */
 function holdLensRecord(): void {
-  if (lensRecordTold || !paired()) return
+  if (lensRecordTold || pairing().kind !== "paired") return
   lensRecordTold = true
   import("@some-ui/topik")
     .then(({ lensRecordHeldByHome }) => {
@@ -1297,10 +1335,7 @@ function holdOffline(): void {
  * `lib/voice-home/model.ts`).
  */
 const linkPairing: PairingPort = {
-  current: () => {
-    const state = homeLink().getSnapshot()
-    return state.link.kind === "reading" ? undefined : pairingOf(state)
-  },
+  current: () => pairing(),
   subscribe: (listener) => homeLink().subscribe(listener),
 }
 
@@ -1311,7 +1346,7 @@ export function watchVoiceNotes(): () => void {
   let takes = false
   let saidBites = false
   const changed = (): void => {
-    if (paired() && stores.length === 0) {
+    if (pairing().kind === "paired" && stores.length === 0) {
       stores.push(
         reflections.subscribe(copySoon),
         // A spoken reflection is listed before its audio is written.

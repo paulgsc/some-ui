@@ -14,6 +14,7 @@ import {
 import { Button, Notice, TakeList, useTakePattern } from "@some-ui/shared"
 import { FolderOpen } from "lucide-react"
 
+import type { Pairing } from "@/lib/home-link/model"
 import type { JobsSnapshot } from "@/lib/jobs"
 import { phoneJobs } from "@/lib/jobs"
 import type { JourneyContext } from "@/lib/jobs/journey"
@@ -178,20 +179,25 @@ export const OpenDigest = (): JSX.Element => {
 
 /**
  * Whether this phone is paired with home, as the wing's layout reads it
- * (`usePairedWithHome`): only then does an exchange file the cards' files.
+ * (`usePairing`): only then does an exchange file the cards' files. Outside
+ * the wing, not known (#3157), so a card claims nothing of where its file is.
  */
-const KeptOnHomeContext = createContext(false)
+const KeptOnHomeContext = createContext<Pairing>({ kind: "reading" })
 
 export const KeptOnHome = KeptOnHomeContext.Provider
 
 /**
- * What the Jobs cards read their state from (`lib/jobs/journey`); `kept`
+ * What the Jobs cards read their state from (`lib/jobs/journey`); `pairing`
  * where a page outside the wing knows it, the wing's layout's otherwise.
  */
-export function useJourneyContext(kept?: boolean): JourneyContext {
+export function useJourneyContext(pairing?: Pairing): JourneyContext {
   const { state } = useJobs()
   const wing = useContext(KeptOnHomeContext)
-  return { state, kept: kept ?? wing, outgoing: phoneJobs().keeping.outgoing }
+  return {
+    state,
+    pairing: pairing ?? wing,
+    outgoing: phoneJobs().keeping.outgoing,
+  }
 }
 
 /** A card whose title bar wears where its file is, and what it holds. */

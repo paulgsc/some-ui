@@ -17,10 +17,16 @@ import { reportFailure } from "@some-ui/intent-kit"
 import type { Soundbite } from "@some-ui/soundbites"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import type { BlobShelf } from "@some-ui/voice-capture"
-import { keptSaid, ShelfFullError, TAKE_WORDS } from "@some-ui/voice-capture"
+import {
+  keptSaid,
+  ON_PHONE,
+  ShelfFullError,
+  TAKE_WORDS,
+} from "@some-ui/voice-capture"
 import { renderHook } from "@testing-library/react"
 import { beforeAll, describe, expect, it, vi } from "vitest"
 
+import type { Pairing } from "@/lib/home-link/model"
 import { readSent, rememberSent } from "@/lib/home-link/sent"
 import { useUnsendable, voiceLane } from "@/lib/home-link/voice"
 import {
@@ -29,6 +35,7 @@ import {
   storesRead,
   voiceKept,
   watchVoiceNotes,
+  whenPlacesKnown,
 } from "@/lib/home-link/voice-copy"
 import { keepIdeas } from "@/lib/idea-keeping"
 import type { JobEvent, JobsState } from "@/lib/jobs/model"
@@ -58,8 +65,10 @@ const fakes = vi.hoisted(
     deleted: Array<ReadonlyArray<string>>
     /** Whether Studio's store fails to let a deleted take go. */
     deleteFails: boolean
-    /** Whether the phone is paired with home. */
-    paired: boolean
+    /** Whether the phone is paired with home, as its record was read. */
+    paired: Pairing["kind"]
+    /** Who listens to the link, to hear the pairing become known. */
+    linkListeners: Set<() => void>
   } => ({
     jobs: null,
     audio: new Map(),
@@ -70,7 +79,8 @@ const fakes = vi.hoisted(
     onDrive: [],
     deleted: [],
     deleteFails: false,
-    paired: true,
+    paired: "paired",
+    linkListeners: new Set(),
   })
 )
 
@@ -152,11 +162,18 @@ vi.mock("@/lib/home-link/lanes", () => ({
 vi.mock("@/lib/home-link", () => ({
   // Read as paired: the voice record follows its pairing (HP1).
   homeLink: (): unknown => ({
-    subscribe: () => (): void => undefined,
+    subscribe: (listener: () => void): (() => void) => {
+      fakes.linkListeners.add(listener)
+      return (): void => {
+        fakes.linkListeners.delete(listener)
+      }
+    },
     getSnapshot: () => ({ link: { kind: "paired" } }),
   }),
-  paired: (): boolean => fakes.paired,
-  pairingOf: (): string => PAIRING,
+  pairing: (): Pairing =>
+    fakes.paired === "paired"
+      ? { kind: "paired", id: PAIRING }
+      : { kind: fakes.paired },
 }))
 vi.mock("@some-ui/topik", () => ({
   lensRecordHeldByHome: (): void => undefined,
@@ -256,7 +273,7 @@ function setUp(
   audio: Record<string, Blob | Error | null>,
   { arrived = false, storage = memoryStorage(), now = Date.now } = {}
 ): void {
-  fakes.paired = true
+  fakes.paired = "paired"
   fakes.jobs = record(Object.keys(audio), arrived)
   fakes.scene = []
   fakes.audio = new Map(
@@ -354,10 +371,44 @@ describe("the voice lane's run, after its copy pass (LA14)", () => {
     expect((await sendVoice(busy, AT_PAIRING)).kind).toBe("failed")
     expect(said("v1")).toBe(TAKE_WORDS.place.going)
     // Unpaired, its copy goes nowhere: kept here until paired again.
-    fakes.paired = false
+    fakes.paired = "unpaired"
     expect(said("v1")).toBe(TAKE_WORDS.place.phone)
-    fakes.paired = true
+    // While the pairing record is read, on this phone, and nothing said of
+    // home (PO1, #3157).
+    fakes.paired = "reading"
+    expect(voiceKept("v1")).toEqual({ place: "unknown" })
+    expect(said("v1")).toBe(TAKE_WORDS.place.unknown)
+    expect(said("v1")).not.toMatch(/home/i)
+    fakes.paired = "paired"
     expect(said("v1")).toBe(TAKE_WORDS.place.going)
+
+    // My data hears the pairing become known (#3152), once, and from
+    // then on every take's place is known.
+    fakes.paired = "reading"
+    let heardKnown = 0
+    const others = new Set(fakes.linkListeners)
+    whenPlacesKnown(() => {
+      heardKnown += 1
+    })
+    // Its own listener alone: the lane's watchers hear the link as well.
+    const mine = (): Array<() => void> =>
+      [...fakes.linkListeners].filter((listener) => !others.has(listener))
+    for (const listener of mine()) listener()
+    expect(heardKnown).toBe(0)
+    fakes.paired = "unpaired"
+    const [heard1] = mine()
+    heard1()
+    heard1()
+    expect(heardKnown).toBe(1)
+    expect(mine()).toEqual([])
+    expect(voiceKept("v1")).toEqual(ON_PHONE)
+    // Known already: heard at once, with nothing to wait on.
+    whenPlacesKnown(() => {
+      heardKnown += 1
+    })
+    expect(heardKnown).toBe(2)
+    expect(mine()).toEqual([])
+    fakes.paired = "paired"
 
     expect(await sendVoice(send, AT_PAIRING)).toEqual({ kind: "synced" })
     expect(voiceKept("v1")).toEqual({ place: "home", since: heard })

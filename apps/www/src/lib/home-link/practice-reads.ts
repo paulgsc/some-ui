@@ -25,7 +25,7 @@ import type { Soundbite } from "@some-ui/soundbites"
 import { onSoundbitesKept, soundbiteKeeping } from "@/lib/soundbite-keeping"
 import { onStudioKept, studioKeeping } from "@/lib/studio-keeping"
 
-import { homeLink, paired } from "./index"
+import { homeLink, pairing } from "./index"
 import { finishedOnPhone } from "./leetype-log"
 import type { LensEntry } from "./lens-record"
 import { lensDigest, lensKey } from "./lens-record"
@@ -155,7 +155,8 @@ export function watchPracticeStores(): () => void {
 
   let lensAsked = false
   const lens = (): void => {
-    if (lensAsked || !paired()) return
+    // Only once known paired; `onLink` asks again when the record is read.
+    if (lensAsked || pairing().kind !== "paired") return
     lensAsked = true
     import("@some-ui/topik").then(
       ({ lensRecordForExport, onLensRecordWritten, onReadAloudWritten }) => {
@@ -187,7 +188,7 @@ export function watchPracticeStores(): () => void {
 
   let logAsked = false
   const log = (): void => {
-    if (logAsked || !paired()) return
+    if (logAsked || pairing().kind !== "paired") return
     logAsked = true
     import("@some-ui/leetype").then(
       (leetype) => {

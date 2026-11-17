@@ -215,6 +215,7 @@ export function episodeName(
 export const VIDEOS_WORDS = {
   reading: "Reading what home has…",
   away: "Home didn't answer. Try again in a moment.",
+  busy: "This phone was busy with home just then. Try again in a moment.",
   unreadable: "Home's answer couldn't be read. Try again.",
   tryAgain: "Try again",
   watch: "Watch",
@@ -222,6 +223,7 @@ export const VIDEOS_WORDS = {
     `Bringing it to the phone, ${String(share(done, total))}%`,
   failed: {
     away: "Home stopped answering. Watch again to start over.",
+    busy: "This phone was busy with home, so the video stopped coming. Watch again in a moment.",
     gone: "Home no longer has this video.",
     phone:
       "The phone couldn't keep the video. Free some space and watch again.",

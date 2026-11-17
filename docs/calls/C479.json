@@ -1,0 +1,19 @@
+{
+  "id": "C479",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/jobs/morning.ts",
+    "some-ui:apps/www/src/lib/episode-feedback/words.ts",
+    "some-ui:apps/www/src/components/studio/episode-feedback.tsx"
+  ],
+  "chose": "While the phone still reads whether it's paired with home, the morning run's row takes the moving theme, so the status board does not lift it into Needs you, and Studio › Feedback says each note is \"On this phone; whether home has it too isn't known yet\".",
+  "options": [
+    "moving theme, not lifted; Feedback says not known yet",
+    "waiting theme, lifted into Needs you for the moments the record is read",
+    "no morning row and no place on each note until the record is read"
+  ],
+  "gray": "Not knowing yet asks nothing of the owner, but a row that comes and goes moves the board, and a note's place could be left blank. No check or earlier call settles it; the owner sees both on the phone for the few milliseconds to 5 s the record's read takes.",
+  "undo": "Set the reading shape's theme back to waiting in morning.ts, and have Feedback's place fall through to onPhone while notesAnswered is null.",
+  "refs": ["#3152", "#3157", "#3168"]
+}

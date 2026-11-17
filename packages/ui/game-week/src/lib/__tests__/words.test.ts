@@ -96,6 +96,10 @@ describe("the recorder's words", () => {
     expect(outboxLine({ ...none, waiting: 2, sending: false })).toMatch(
       /paired with home/
     )
+    // Not known yet whether this phone sends: nothing said of pairing.
+    expect(outboxLine({ ...none, waiting: 2, sending: null })).toBe(
+      "2 bites wait on this phone."
+    )
     expect(outboxLine({ ...none, notKept: 2, waiting: 1 })).toBe(
       "2 bites couldn't be kept on this phone yet. The app keeps trying while it's open. 1 bite waits on this phone until home has it."
     )

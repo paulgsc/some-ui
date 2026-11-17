@@ -23,7 +23,8 @@ import { readAs } from "@some-ui/core-utils"
 import type { HeardAnswer } from "@some-ui/voice-capture"
 import { z } from "zod"
 
-import { homeLink, paired } from "./index"
+import { homeLink } from "./index"
+import { answered } from "./while-busy"
 
 const Heard = z.object({
   // Other fields home adds are let through unread.
@@ -52,18 +53,13 @@ export function readHeard(answer: HomeAnswer): HeardAnswer {
 
 /** Home's words for note `id`, asked once; never rejects. */
 export async function askHeard(id: string): Promise<HeardAnswer> {
-  if (!paired()) return { kind: "unreachable" }
-  try {
-    const outcome = await homeLink().keep(
-      (send) => send("GET", heardPath(id)),
-      {
+  const said = await answered(
+    () =>
+      homeLink().keep((send) => send("GET", heardPath(id)), {
         onItsOwn: true,
-      }
-    )
-    return outcome?.kind === "done"
-      ? readHeard(outcome.value)
-      : { kind: "busy" }
-  } catch {
-    return { kind: "unreachable" }
-  }
+      }),
+    readHeard
+  )
+  // Unpaired, home can't give the words: the screen stops waiting for them.
+  return said.kind === "unpaired" ? { kind: "unreachable" } : said
 }

@@ -1,0 +1,15 @@
+{
+  "id": "C502",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": ["some-ui:apps/www/src/lib/renders/conveyor.ts"],
+  "chose": "On Studio › Renders' conveyor, a render the render policy refused sits aside as \"Too big for the oven\" (too long) or \"Too big for the box\" (too large), not \"Burnt\"; any other failure stays \"Burnt\".",
+  "options": [
+    "\"Too big for the oven\" / \"Too big for the box\"",
+    "keep \"Burnt\" for every failure",
+    "one aside for both, such as \"Sent back\""
+  ],
+  "gray": "The conveyor's pizza names are the owner's (#2876, C139); a refused video was never burnt, since nothing went wrong while making it, but no earlier call names what a refusal is.",
+  "undo": "In conveyor.ts, have failedAside return \"burnt\" for every row and drop the two asides.",
+  "refs": ["#2899", "server#932", "server#929"]
+}

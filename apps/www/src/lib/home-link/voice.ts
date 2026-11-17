@@ -32,10 +32,11 @@ import type { Unsendable, VoiceHomeState } from "@/lib/voice-home/model"
 
 import { episodeNotesMoved, episodeNotesWaiting } from "./episode-notes"
 import { ideasWaiting } from "./ideas"
-import { homeLink, paired, pairingOf } from "./index"
+import { homeLink, pairing } from "./index"
 import type { KeptState } from "./kept-model"
 import type { Lane, LaneCounts } from "./lanes"
 import { useLaneHome } from "./lanes"
+import type { Pairing } from "./model"
 import { videosMoved, videosWaiting } from "./videos"
 import {
   candidates,
@@ -47,15 +48,15 @@ import {
 } from "./voice-copy"
 
 /** The Studio videos kept for home that home doesn't hold yet, under the pairing now. */
-const videosNow = (): number => videosWaiting(localStorageOrNull(), pairingOf())
+const videosNow = (): number => videosWaiting(localStorageOrNull(), pairing())
 
 /** The notes on episodes home doesn't hold yet, and holds, under the pairing now. */
 const episodeNotesNow = (): ReturnType<typeof episodeNotesWaiting> =>
-  episodeNotesWaiting(localStorageOrNull(), pairingOf())
+  episodeNotesWaiting(localStorageOrNull(), pairing())
 
 /** The Studio ideas home doesn't hold yet, and holds, under the pairing now. */
 const ideasNow = (): ReturnType<typeof ideasWaiting> =>
-  ideasWaiting(localStorageOrNull(), pairingOf())
+  ideasWaiting(localStorageOrNull(), pairing())
 
 export const voiceLane: Lane = {
   id: "voice",
@@ -202,7 +203,7 @@ export function outboxView(
   notKept: number,
   bites: ReadonlyArray<PhoneBite>,
   home: VoiceHomeState,
-  sending: boolean
+  sending: boolean | null
 ): OutboxView {
   const held = new Set(home.held)
   const refused = new Set(home.refused.map(({ id }) => id))
@@ -226,6 +227,11 @@ export function outboxView(
   }
 }
 
+/** Whether bites go home, as the outbox says it: not known while the record is read. */
+function sendsHome(now: Pairing): boolean | null {
+  return now.kind === "reading" ? null : now.kind === "paired"
+}
+
 let last: OutboxView | null = null
 
 function sameView(a: OutboxView, b: OutboxView): boolean {
@@ -246,7 +252,7 @@ export const gameOutbox: OutboxPort = {
       bites.unkept(),
       bites.getSnapshot(),
       phoneVoiceHome().getSnapshot(),
-      paired()
+      sendsHome(pairing())
     )
     // The same view while nothing changed, as `useSyncExternalStore` asks.
     if (last === null || !sameView(last, next)) last = next

@@ -92,7 +92,8 @@ export function createReceipts(ports: ReceiptsPorts): Receipts {
     },
     async checkAgain(): Promise<void> {
       const reading = await read()
-      if (reading.kind === "unreachable") throw new Error("home didn't answer")
+      if (reading.kind === "unreachable" || reading.kind === "busy")
+        throw new Error("home didn't answer")
     },
   }
 }
