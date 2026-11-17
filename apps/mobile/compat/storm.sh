@@ -92,15 +92,26 @@ install() {
   native_line "device storage: opened" 60
 }
 ui() { node "$here/ui.mjs" "$@" > /dev/null 2>> "$out/ui-errors.txt"; }
+# Closes the soft keyboard, which can sit over the button below a field.
+# Back only while it shows, so it never leaves the page.
+hide_keyboard() {
+  if adb shell dumpsys input_method | grep -q "mInputShown=true"; then
+    adb shell input keyevent 4
+    sleep 1
+  fi
+}
 
-# Pairs as a person does, on the release APK: the foyer's gear, Pair..., the
+# Pairs as a person does, on the release APK: the foyer's gear, the front
+# desk's Home tab (/settings/home, the bar's; it opens on Running), Pair..., the
 # address and code typed, Pair with <host>. The fields are found by their
 # HTML id or placeholder (device-section.tsx), whichever the WebView exposes.
 pair_by_ui() {
   ui tap '^Settings$' &&
+    ui tap '^Home$' &&
     ui tap '^Pair\.\.\.$' &&
     ui type '^pair-address$|^https://file-host\.home\.example$' 'https://10.0.2.2:8787' &&
     ui type '^pair-code$|^K7QF 2M9X$' 'K7QF2M9X' &&
+    hide_keyboard &&
     ui tap '^Pair with' &&
     ui find '^Unpair$'
 }
@@ -108,7 +119,7 @@ pair_by_ui() {
 # The same through the debug APK's page, for a level where the UI cannot be
 # driven.
 pair_by_page() {
-  page "location.href = '/settings'; true" > /dev/null || return 1
+  page "location.href = '/settings/home'; true" > /dev/null || return 1
   sleep 8
   local said
   said=$(page "(async () => {
@@ -166,7 +177,9 @@ else
   # what home publishes without a pairing.
   if install "$release_apk"; then
     ui tap '^Settings$' &&
+    ui tap '^Home$' &&
       ui type '^home-server$|^192\.168\.1\.10:3000$' '10.0.2.2:8787' &&
+      hide_keyboard &&
       ui tap '^Sync lessons from home$' ||
       fail "the release APK's Home server field could not be driven (ui-errors.txt)"
   else
