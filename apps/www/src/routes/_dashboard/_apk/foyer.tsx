@@ -19,7 +19,6 @@ import { WING_GLYPHS } from "@/components/wing-glyph"
  * the person pairs or says "Not now" (SIGNIN2, `lib/home-link/first-run`).
  */
 const Foyer = (): JSX.Element =>
-  // The build's flag, read here, so the web builds carry no device code.
   import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
     <DeviceFirstRun>
       <Wings />

@@ -1,10 +1,12 @@
 /**
- * The pairing form (SIGNIN2, #3088): the code from the computer, a name for
- * this phone where home takes one (`lib/home-link/naming`, never filled in
- * for the owner), and Pair. The address is the caller's own field, one per
- * screen: Settings › Home's, shared with its sync, or the welcome's.
- * `lib/home-link` does the pairing; this form only asks for it. Its words
- * are `lib/home-link/sign-in-words`' alone.
+ * The pairing form (SIGNIN2, #3088), the one place pairing is asked for,
+ * drawn by Settings › Home and the first run's welcome: home's address
+ * (started from what the screen hands it), the code from the computer, a
+ * name for this phone where home takes one (`lib/home-link/naming`, never
+ * filled in for the owner), and Pair. Its address is its own: the sync
+ * reads a bare host as plain http, pairing as https (docs/calls/C473.json).
+ * `lib/home-link` does the pairing. Its words are
+ * `lib/home-link/sign-in-words`' alone.
  */
 import type { JSX } from "react"
 import { useState } from "react"
@@ -22,15 +24,16 @@ const NO_NAME: TypedName = { kind: "none" }
 
 export const PairForm = ({
   state,
-  address,
+  initialAddress,
   onCancel,
 }: {
   state: HomeLinkState
-  /** What the screen's address field holds now. */
-  address: string
+  /** The address the form starts from; the person may change it. */
+  initialAddress: string
   /** Closes the form; none where the form is the screen's only way on. */
   onCancel?: () => void
 }): JSX.Element => {
+  const [address, setAddress] = useState(initialAddress)
   const [code, setCode] = useState("")
   const [name, setName] = useState("")
   const read = pairingAddress(address)
@@ -55,9 +58,25 @@ export const PairForm = ({
 
   return (
     <div className="space-y-2 rounded-md border p-3">
-      {read === "not-https" && (
-        <Notice tone="warning">{PAIR_FORM.notHttps}</Notice>
-      )}
+      <Label htmlFor="pair-address">{PAIR_FORM.address}</Label>
+      <Input
+        id="pair-address"
+        inputMode="url"
+        autoCapitalize="off"
+        autoCorrect="off"
+        placeholder="file-host.home.example"
+        value={address}
+        onChange={(event) => setAddress(event.target.value)}
+      />
+      {/* Always one line: what is typed changes its words, not the form's
+          layout (HS1). */}
+      <p className="text-muted-foreground truncate text-xs">
+        {read === "not-https"
+          ? PAIR_FORM.notHttps
+          : target === null
+            ? PAIR_FORM.addressHint
+            : PAIR_FORM.homeAt(target.host)}
+      </p>
       <Label htmlFor="pair-code">{PAIR_FORM.code}</Label>
       <Input
         id="pair-code"
@@ -77,8 +96,6 @@ export const PairForm = ({
             value={name}
             onChange={(event) => setName(event.target.value)}
           />
-          {/* Always one line: what is typed changes its words, not the
-              form's layout (HS1). */}
           <p className="text-muted-foreground truncate text-xs">
             {refused ? PAIR_FORM.nameRefused : PAIR_FORM.nameHint}
           </p>

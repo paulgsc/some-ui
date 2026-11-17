@@ -11,7 +11,7 @@ import { SERVER_CONTRACT_EPOCH } from "@some-ui/server-routes"
 /** The contract epoch whose `POST /auth/pairing/finish` takes a `label`. */
 const NAMED_PAIRING_EPOCH = 12
 
-/** The snapshot's epoch, as a number: it moves with every snapshot. */
+/** Widened from its literal type, which moves with each snapshot, so the check below reads as one. */
 const SNAPSHOT_EPOCH: number = SERVER_CONTRACT_EPOCH
 
 /**

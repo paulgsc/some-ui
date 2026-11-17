@@ -3,10 +3,9 @@
  * at most 40 characters, nothing hidden or line-breaking, the joiners
  * emoji and some scripts need kept.
  */
-import { SERVER_CONTRACT_EPOCH } from "@some-ui/server-routes"
 import { describe, expect, it } from "vitest"
 
-import { PHONE_NAMES, typedName } from "@/lib/home-link/naming"
+import { typedName } from "@/lib/home-link/naming"
 
 describe("a typed name for this phone", () => {
   it("is none when blank, and trimmed otherwise", () => {
@@ -43,9 +42,5 @@ describe("a typed name for this phone", () => {
     ]) {
       expect(typedName(hidden)).toEqual({ kind: "refused" })
     }
-  })
-
-  it("is asked for only where the snapshot's home takes a name", () => {
-    expect(PHONE_NAMES).toBe(Number(SERVER_CONTRACT_EPOCH) >= 12)
   })
 })

@@ -19,10 +19,17 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 import type { HomeRequest } from "@/lib/device-backend/native-http"
 
 const home = vi.hoisted(
-  (): { sent: Array<HomeRequest>; record: string | null; lost: boolean } => ({
+  (): {
+    sent: Array<HomeRequest>
+    record: string | null
+    lost: boolean
+    /** While set, the phone's record isn't read back yet. */
+    held: Promise<void> | null
+  } => ({
     sent: [],
     record: null,
     lost: false,
+    held: null,
   })
 )
 
@@ -45,8 +52,10 @@ vi.mock("@/lib/device-backend/native-http", () => ({
 }))
 vi.mock("@/lib/home-link/credential", () => ({
   nativeCredential: {
-    read: (): Promise<{ record: string | null; lost: boolean }> =>
-      Promise.resolve({ record: home.record, lost: home.lost }),
+    read: async (): Promise<{ record: string | null; lost: boolean }> => {
+      await home.held
+      return { record: home.record, lost: home.lost }
+    },
     write: (record: string): Promise<void> => {
       home.record = record
       return Promise.resolve()
@@ -76,6 +85,7 @@ afterEach(() => {
   home.sent = []
   home.record = null
   home.lost = false
+  home.held = null
   localStorage.clear()
   vi.resetModules()
 })
@@ -114,6 +124,8 @@ describe("the foyer's welcome", () => {
       screen.getByRole("button", { name: /pair with home\.example/i })
     )
     await waitFor(() => expect(wings()).not.toBeNull())
+    // The code alone: no name the owner didn't type (none is asked for
+    // until the snapshot's home takes one).
     expect(home.sent).toEqual([
       {
         method: "POST",
@@ -145,7 +157,7 @@ describe("the foyer's welcome", () => {
     ).toBeTruthy()
   })
 
-  it("opens on the wings on a phone already paired", async () => {
+  it("never opens again on a phone paired here, once unpaired and restarted", async () => {
     home.record = JSON.stringify({
       base: "https://home.example/api/v1",
       token: "t",
@@ -153,5 +165,31 @@ describe("the foyer's welcome", () => {
     })
     await foyer()
     await waitFor(() => expect(wings()).not.toBeNull())
+    // Unpaired: the record is gone, and a restart reads it as never paired.
+    cleanup()
+    vi.resetModules()
+    home.record = null
+    await foyer()
+    await waitFor(() => expect(wings()).not.toBeNull())
+    expect(
+      screen.queryByRole("heading", { name: /pair this phone/i })
+    ).toBeNull()
+  })
+
+  it("draws nothing while the phone's record is read, so the screen doesn't swap (HS1)", async () => {
+    let release: () => void = () => undefined
+    home.held = new Promise((resolve) => {
+      release = resolve
+    })
+    await foyer()
+    await Promise.resolve()
+    expect(wings()).toBeNull()
+    expect(
+      screen.queryByRole("heading", { name: /pair this phone/i })
+    ).toBeNull()
+    release()
+    expect(
+      await screen.findByRole("heading", { name: "Pair this phone with home" })
+    ).toBeTruthy()
   })
 })

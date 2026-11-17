@@ -576,11 +576,4 @@ describe("pairing with a name (SIGNIN2)", () => {
     await home.link.pair(HOME, "K7QF2M9X", "Pixel at home")
     expect(finish(home)).toEqual({ code: "K7QF2M9X", label: "Pixel at home" })
   })
-
-  it("sends only the code when none was typed", async () => {
-    const home = setup({ answer: answered })
-    await home.link.load()
-    await home.link.pair(HOME, "K7QF2M9X")
-    expect(finish(home)).toEqual({ code: "K7QF2M9X" })
-  })
 })

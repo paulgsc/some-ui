@@ -162,22 +162,18 @@ describe("DeviceSection's Home server block", () => {
     expect(home.sent).toEqual([])
   })
 
-  it("names the server on the pair button, and refuses an http address", async () => {
+  it("starts pairing from the sync's address, names the server on Pair, and refuses an http address", async () => {
     await open()
+    const typed = document.querySelector("#home-server")
+    if (typed === null) throw new Error("no Home server field")
+    fireEvent.change(typed, { target: { value: "home.example" } })
     await press(/^pair/i)
-    // One address on the page: the Home server field, shared with the sync.
-    expect(screen.queryByLabelText(/home's address/i)).toBeNull()
-    const address = (): Element => {
-      const field = document.querySelector("#home-server")
-      if (field === null) throw new Error("no Home server field")
-      return field
-    }
-    fireEvent.change(address(), {
-      target: { value: "http://192.168.1.10:3000" },
-    })
-    expect(screen.getByText(/pairing needs a secure address/i)).toBeTruthy()
-
-    fireEvent.change(address(), { target: { value: "home.example" } })
+    // Its own field, started from the sync's: pairing reads a bare host as
+    // https, the sync as plain http (C473).
+    expect(screen.getByLabelText("Home's address")).toHaveProperty(
+      "value",
+      "home.example"
+    )
     fireEvent.change(screen.getByLabelText(/code from your computer/i), {
       target: { value: "k7qf 2m9" },
     })
@@ -185,6 +181,10 @@ describe("DeviceSection's Home server block", () => {
       name: /pair with home.example/i,
     })
     expect(button).toHaveProperty("disabled", true)
+    fireEvent.change(screen.getByLabelText("Home's address"), {
+      target: { value: "http://192.168.1.10:3000" },
+    })
+    expect(screen.getByText(/pairing needs a secure address/i)).toBeTruthy()
     expect(home.sent).toEqual([])
   })
 

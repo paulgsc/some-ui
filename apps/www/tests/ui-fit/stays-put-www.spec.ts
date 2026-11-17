@@ -112,7 +112,7 @@ const pairs = (does: string): Tap => ({
 
 /** The first run's welcome (SIGNIN2): an address, a code, and Pair. */
 const WELCOME: ReadonlyArray<Tap> = [
-  types("welcome-address", "home-server.example.com"),
+  types("pair-address", "home-server.example.com"),
   types("pair-code", "K7QF 2M9X"),
   pairs("pairs, and home doesn't answer"),
   pairs("pairs again"),
@@ -126,15 +126,16 @@ const HOME: ReadonlyArray<Tap> = [
     ...button("Pair...", "opens the pairing form"),
     grows: "the pairing form, below the buttons",
   },
-  // One address on the page (SIGNIN2): the Home server field, shared.
+  // The form's own address, started from the sync's (SIGNIN2, C473).
+  types("pair-address", "x"),
   {
     does: "makes the address an http one",
-    act: (page) => page.locator("#home-server").fill("http://home"),
+    act: (page) => page.locator("#pair-address").fill("http://home"),
   },
   {
     does: "makes it an https address",
     act: (page) =>
-      page.locator("#home-server").fill("https://home-server.example.com"),
+      page.locator("#pair-address").fill("https://home-server.example.com"),
   },
   types("pair-code", "K7QF 2M9X"),
   pairs("pairs, and home doesn't answer"),

@@ -20,6 +20,7 @@ import type { HomeLinkState } from "@/lib/home-link"
 import { homeLink, hostOf, useHomeLink } from "@/lib/home-link"
 import type { ClearEnd } from "@/lib/home-link/clear"
 import { clearHeld, finishedOnPhone } from "@/lib/home-link/clear"
+import { rememberSeen } from "@/lib/home-link/first-run"
 import {
   HOME_ADDRESS_KEY,
   remember,
@@ -215,6 +216,9 @@ export const DeviceSection = (): JSX.Element => {
                     state={unpair.state}
                     onPress={() => {
                       setConfirmingUnpair(false)
+                      // The person unpaired on purpose: the first run's
+                      // welcome is not for this phone again (SIGNIN2).
+                      rememberSeen("paired")
                       unpair.start(undefined)
                     }}
                     variant="destructive"
@@ -317,7 +321,7 @@ export const DeviceSection = (): JSX.Element => {
         {pairOpen && !paired ? (
           <PairForm
             state={state}
-            address={address}
+            initialAddress={address}
             onCancel={() => setPairOpen(false)}
           />
         ) : null}
