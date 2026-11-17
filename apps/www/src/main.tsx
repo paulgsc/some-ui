@@ -1,5 +1,6 @@
 // First: on the Pages build, the page's storage becomes an in-memory copy
-// before any module reads it (lib/demo/viewer-storage).
+// before any module reads it (lib/demo/viewer-storage). The release build
+// keeps it only because build.treeshake.ts lists it (VS1, #3121).
 import "@/lib/demo/viewer-storage"
 
 import { StrictMode } from "react"

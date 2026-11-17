@@ -14,7 +14,7 @@ import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import { ForeignCallError } from "@/lib/intent/foreign"
 
 import type { KeptEvent, KeptRun, KeptState } from "./kept-model"
-import { answersPull, INITIAL_KEPT, stepKept } from "./kept-model"
+import { INITIAL_KEPT, stepKept } from "./kept-model"
 import type { Lane } from "./lanes"
 import type { HomeLink } from "./runtime"
 import { noticingBusy, unanswered } from "./runtime"
@@ -43,35 +43,36 @@ export type KeptPorts = {
 export type Kept = {
   getSnapshot: () => KeptState
   subscribe: (listener: () => void) => () => void
-  /** Asks for a run: now, or once the one under way ends. */
+  /**
+   * Asks for a run: now, or once the one under way ends. For a change on
+   * this phone, which the run under way may have missed.
+   */
   want: () => void
   /**
-   * Asks for a run as `want` does, and resolves to how the run that answers
-   * it ended (`answersPull`).
+   * Asks for a run unless one is under way, which answers it (HERD1): the
+   * app back in front, the network back, a watch mounted.
+   */
+  nudge: () => void
+  /**
+   * Resolves to how the next run to end ended: the one under way, which the
+   * pull joins (HERD1: a pull never asks a second run of a lane already
+   * running), or, with none, the one it asks for as `want` does.
    */
   pull: () => Promise<KeptRun>
 }
 
-/** A pull waiting for its run: `midRun` while a run it did not start is under way. */
-type Waiting = { midRun: boolean; readonly answer: (run: KeptRun) => void }
-
 export function createKept(ports: KeptPorts): Kept {
   let state = INITIAL_KEPT
   const listeners = new Set<() => void>()
-  const pulls = new Set<Waiting>()
+  /** The pulls waiting on the run under way, answered as it ends. */
+  const pulls = new Set<(run: KeptRun) => void>()
   const dispatch = (event: KeptEvent): void => {
     const next = stepKept(state, event)
     if (next === state) return
     state = next
     if (event.type === "ran") {
-      for (const waiting of pulls) {
-        if (answersPull(waiting.midRun, next)) {
-          pulls.delete(waiting)
-          waiting.answer(event.run)
-        } else {
-          waiting.midRun = false
-        }
-      }
+      for (const answer of pulls) answer(event.run)
+      pulls.clear()
     }
     for (const listener of listeners) listener()
   }
@@ -121,6 +122,10 @@ export function createKept(ports: KeptPorts): Kept {
     if (idle && state.running) void loop()
   }
 
+  const nudge = (): void => {
+    if (!state.running) want()
+  }
+
   return {
     getSnapshot: () => state,
     subscribe(listener): () => void {
@@ -130,10 +135,11 @@ export function createKept(ports: KeptPorts): Kept {
       }
     },
     want,
+    nudge,
     pull: (): Promise<KeptRun> =>
       new Promise((answer) => {
-        pulls.add({ midRun: state.running, answer })
-        want()
+        pulls.add(answer)
+        nudge()
       }),
   }
 }
