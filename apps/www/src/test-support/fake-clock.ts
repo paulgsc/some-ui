@@ -12,6 +12,8 @@ export type FakeClock = {
   readonly pass: (ms: number, timersRun?: boolean) => void
   /** Moves to the earliest timer and runs those due then; false when none waits. */
   readonly next: () => boolean
+  /** When the earliest timer waiting is due; null when none waits. */
+  readonly nextAt: () => number | null
 }
 
 export function fakeClock(start = 0): FakeClock {
@@ -35,6 +37,8 @@ export function fakeClock(start = 0): FakeClock {
       now += ms
       if (timersRun) runDue()
     },
+    nextAt: (): number | null =>
+      timers.length === 0 ? null : Math.min(...timers.map((timer) => timer.at)),
     next: (): boolean => {
       if (timers.length === 0) return false
       now = Math.max(now, Math.min(...timers.map((timer) => timer.at)))

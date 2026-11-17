@@ -10,6 +10,7 @@ import { defineConfig, loadEnv } from "vite"
 import { RELEASE_MINIFY } from "./build.minify.ts"
 import { offPathPublicFiles } from "./build.paths.ts"
 import { buildAudiencePlugin, MOBILE_PROFILE } from "./build.profiles.ts"
+import { moduleSideEffects } from "./build.treeshake.ts"
 import {
   describeTarget,
   fileHostDevPlugin,
@@ -415,11 +416,13 @@ export default defineConfig(
         output: { minify: RELEASE_MINIFY },
         // Tree shaking options
         treeshake: {
-          // Every module is treated as side-effect free, so an import that
-          // binds nothing (`import "@some-ui/x/register"`) is dropped from the
-          // bundle along with whatever that module does at load time. Keep
-          // that in mind before adding one: this line overrides the
-          // `sideEffects` field of every workspace package's manifest for JS.
+          // Every module but those build.treeshake.ts lists is treated as
+          // side-effect free, so an import that binds nothing
+          // (`import "@some-ui/x/register"`) is dropped from the bundle along
+          // with whatever that module does at load time, unless it is listed
+          // there (VS1, #3121: the viewer's storage was dropped this way).
+          // This overrides the `sideEffects` field of every workspace
+          // package's manifest for JS.
           //
           // It does NOT drop stylesheets (#1458, measured on Vite 8 /
           // Rolldown): with `import "@some-ui/auth/style.css"` added to a
@@ -429,7 +432,7 @@ export default defineConfig(
           // manifests that declare `sideEffects: ["*.css"]` are not being
           // overridden here; www imports no package CSS today anyway
           // (src/index.css runs one Tailwind pass over style.context.ts).
-          moduleSideEffects: false,
+          moduleSideEffects,
           // Custom tree shaking for your authored packages
           propertyReadSideEffects: false,
           // Enable pure annotation checking

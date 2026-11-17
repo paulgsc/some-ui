@@ -1,0 +1,19 @@
+{
+  "id": "C545",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/mobile/compat/storm.sh",
+    "some-ui:apps/mobile/compat/ui.mjs"
+  ],
+  "chose": "The storm runs on the release APK, paired through its own UI (uiautomator over the accessibility tree, then adb input); only a level where that cannot be driven falls back to the debug APK filled over DevTools, and its row says \"via debug build\".",
+  "options": [
+    "release APK by UI, debug fallback marked",
+    "release APK by UI, the level fails when the UI cannot be driven",
+    "debug APK over DevTools (C542)"
+  ],
+  "gray": "The coordinator corrected C542: the stamp exists to catch release-only differences (R8, stripped console, timing). Whether an undrivable level fails or is marked is a judgement; the coordinator asked it be marked.",
+  "undo": "Pass the debug APK first in run-level.sh, or drop the fallback in storm.sh so a UI failure fails the level.",
+  "refs": ["#3104", "#3106"],
+  "moves": "C542"
+}

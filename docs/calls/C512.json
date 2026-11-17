@@ -1,0 +1,18 @@
+{
+  "id": "C512",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/home-link/kept-runtime.ts",
+    "some-ui:apps/www/src/lib/home-link/kept-watch.ts"
+  ],
+  "chose": "A pull, the app coming back, the network coming back or a watch mounted while a lane's run is under way joins that run, and the pull is answered by it, even when that run read home's record before the pull; only a change on this phone asks a run after it. This follows the owner's direction on #3100 that repeated pulls collapse into the one refresh in flight.",
+  "options": [
+    "join the run under way",
+    "ask one run after the run under way (PULL3 as it was, a second full drain on a slow phone)",
+    "join only a run that has not yet sent its first request, else ask one after it"
+  ],
+  "gray": "A pull that joins a run already part way may say home is in step without reading home's record after the finger lifted (a change made on another device in those seconds shows on the next pull), which the owner could notice; asking one after it doubles every lane's drain on a slow phone, the storm #3100 is about.",
+  "undo": "In apps/www/src/lib/home-link/kept-runtime.ts, make `pull` call `want()` instead of `nudge()`, so a pull mid-run asks the run after it; kept-watch's nudges are independent.",
+  "refs": ["#3100", "#3101", "#3110"]
+}
