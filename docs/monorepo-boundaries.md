@@ -323,17 +323,21 @@ The owner's direction (2026-11-17). Keep three things apart:
 1. **What I/O hands back.** This is a promise's raw outcome from a service we
    don't control, home included. It can hang forever, come back corrupt, come
    twice (two mounts, two pages, a retry), or arrive after a newer answer.
-2. **One translation.** A pure function, owned by the module at the edge
-   (`lib/home-link` for home, `device-backend` for the phone's store, each
-   port of the foreign boundary above), turns every raw outcome into a valid
-   state:
+2. **One translation.** The module at the edge owns it (`lib/home-link` for
+   home, `device-backend` for the phone's store, each port of the foreign
+   boundary above). It has two parts, as the component rule above splits
+   them:
 
-   - it parses and checks the shape;
-   - it bounds the wait;
-   - it drops a duplicate or a stale answer;
-   - it turns an error into a named state.
+   - **a pure `step`**, which parses and checks the shape, turns an error into
+     a named state, and, given the current state, recognises a duplicate or a
+     stale answer and leaves the state as it is;
+   - **its runtime, or `callForeign`**, which bounds the wait with a clock and
+     feeds each outcome, the deadline's included, to `step`.
 
-   "Not known yet" is one of those states. It is never folded into "no".
+   "Not known yet" is one of those states. For a fact the whole app shares,
+   it is never folded into "no". That is stricter than "A port translates"
+   above, which allows a collapsing translation if it says so: a shared
+   fact's translation may not collapse at all.
 
 3. **The state.** A closed union with its valid transitions, fixed at compile
    time, is what every screen renders. It cannot hold an invalid value,
@@ -355,10 +359,13 @@ This rule is wider than the component rule above, which is about React. It
 holds for any module, React or not.
 
 It is the direction, not yet a declared invariant, because the code does not
-meet it yet. #3128 was a module answering "paired?" on a reading of the link
-that folded "still reading" into "no". #3152 moves pairing to one translation
-and one union. The `[EPIC][LAYERS]` audit lists the other places where a raw
-result reaches a module. Declare it, with a check, once those land.
+meet it yet. The bare `paired()` in `lib/home-link` is a boolean that reads
+"still reading" as "no", which is how Studio came to say "Pair this phone" on
+a paired phone (#3128). #3143 patched ten callers with `pairedOnceRead`, a
+third way to read the same fact. #3152 is to replace all three with one
+translation and one union. The LAYERS audit (#3154) lists the other places
+where a raw result reaches a module. Declare the rule, with a check, once
+those land.
 
 ## A failure reaches the log
 
