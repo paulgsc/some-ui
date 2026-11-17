@@ -148,7 +148,9 @@ jobs:
       # netspeed hsdpa); run-level.sh caps the core's CPU.
       - name: Run the level
         uses: reactivecircus/android-emulator-runner@v2
+        # Inputs reach the script as environment, never interpolated into it.
         env:
+          API: ${{ matrix.api }}
           CPU_PERCENT: ${{ inputs.cpu_percent }}
         with:
           api-level: ${{ matrix.api }}
@@ -158,14 +160,17 @@ jobs:
           ram-size: 1536M
           emulator-boot-timeout: 900
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -netdelay umts -netspeed hsdpa
-          script: bash apps/mobile/compat/run-level.sh ${{ matrix.api }} compat-apk compat-out "$CPU_PERCENT"
+          script: bash apps/mobile/compat/run-level.sh "$API" compat-apk compat-out "$CPU_PERCENT"
       # The level's row of the stamp, written even when the emulator never
       # booted, so the table shows it.
       - name: Note a level that never ran
         if: always()
+        env:
+          API: ${{ matrix.api }}
         run: |
           mkdir -p compat-out
-          [ -f compat-out/row.json ] || echo '{"api":${{ matrix.api }},"webview":"unknown","launch":"not run","paired":"not run","storm":"not run","refresh":"not run"}' > compat-out/row.json
+          [ -f compat-out/row.json ] || jq -nc --arg api "$API" \
+            '{api: ($api | tonumber? // $api), webview: "unknown", launch: "not run", paired: "not run", storm: "not run", refresh: "not run"}' > compat-out/row.json
       # Retention: read by this run's stamp job, and by a person reading a
       # red level right after the run; a later look is a dispatch away.
       - name: Upload what the level showed
