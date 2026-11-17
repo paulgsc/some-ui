@@ -19,9 +19,10 @@
  * shows one lane hears that lane's end in the same pull (`ended`; Jobs'
  * morning run, PULL2) and names it in its own words.
  */
+import { CHECK_MS } from "@/lib/pull-refresh/model"
 import type { Refresher } from "@/lib/pull-refresh/refreshers"
 
-import { homeLink } from "./index"
+import { homeLink, LINK_CLOCK } from "./index"
 import type { KeptRun } from "./kept-model"
 import { resynced } from "./kept-model"
 import type { Kept } from "./kept-runtime"
@@ -38,6 +39,8 @@ export type HomePullPorts = {
   readonly free?: () => Promise<void>
   /** Ends the link's hold away from home, so the pull's asks go (AW1). */
   readonly lookAgain?: () => void
+  /** Epoch ms, for how long the pull under way has been out (HERD2). */
+  readonly now?: () => number
 }
 
 /** Resolves once the home link would start a drain run. */
@@ -73,6 +76,7 @@ export function homeRefresher({
   doc,
   free = linkFree,
   lookAgain = (): void => homeLink().lookAgain(),
+  now = LINK_CLOCK.now,
 }: HomePullPorts): HomeRefresher {
   const pullLane = async (lane: Kept): Promise<KeptRun | null> => {
     const end = await pullKept(lane, doc)
@@ -81,10 +85,18 @@ export function homeRefresher({
     // Its screens may have gone while it waited (aph's).
     return watched().has(lane) ? pullKept(lane, doc) : null
   }
-  /** Each lane's end in the pull still out; null once it is done. */
-  let out: ReadonlyMap<Kept, Promise<KeptRun | null>> | null = null
+  /**
+   * Each lane's end in the pull still out, and when it went out; null once
+   * it is done. One out longer than a pull may take (`CHECK_MS`) no longer
+   * holds the pulls after it (HERD2): the next asks every lane afresh, which
+   * joins a run still under way rather than asking another (HERD1).
+   */
+  let out: {
+    readonly ends: ReadonlyMap<Kept, Promise<KeptRun | null>>
+    readonly at: number
+  } | null = null
   const pull = (): ReadonlyMap<Kept, Promise<KeptRun | null>> => {
-    if (out !== null) return out
+    if (out !== null && now() - out.at < CHECK_MS) return out.ends
     lookAgain()
     const ends = new Map<Kept, Promise<KeptRun | null>>()
     let turn: Promise<void> = Promise.resolve()
@@ -96,9 +108,10 @@ export function homeRefresher({
         () => undefined
       )
     }
-    out = ends
+    const sent = { ends, at: now() }
+    out = sent
     void turn.then(() => {
-      if (out === ends) out = null
+      if (out === sent) out = null
     })
     return ends
   }

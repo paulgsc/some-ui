@@ -1,6 +1,29 @@
-/** The refresh port (PULL1). */
+/**
+ * The refresh port (PULL1).
+ *
+ * **HERD2: nothing a pull waits on holds the pulls after it** (#3102, epic
+ * #3100).
+ *
+ * - _Claim:_ a refresher's check (here) or the home pull's ask of its lanes
+ *   (`lib/home-link/pull.ts`) out longer than a pull may take (`CHECK_MS`)
+ *   no longer answers the pulls after it: the next pull asks afresh, so one
+ *   that never settles leaves the page to refresh on the next pull, not on a
+ *   restart; and home's overload (`503 service_overloaded` with a
+ *   `Retry-After`) is home busy, waited out as a `429` is, never home away.
+ * - _Family:_ a check that settles before, at or after `CHECK_MS`, or never;
+ *   pulls landing before and after that time; the late answer settling
+ *   before or after the fresh one; home answering overload with or without a
+ *   `Retry-After`, with its code or another, or with a body not its JSON.
+ * - _Proof:_ the "(HERD2)" cases here, in
+ *   `lib/home-link/__tests__/pull.test.ts` and in
+ *   `lib/home-link/__tests__/runtime.test.ts`.
+ * - _Tolerance:_ a check asked afresh may run beside the one still out; a
+ *   refresher whose own runtime dedupes (the home pull's lanes, HERD1) runs
+ *   once, and any other twice at most.
+ */
 import { describe, expect, it, vi } from "vitest"
 
+import { CHECK_MS } from "@/lib/pull-refresh/model"
 import type { Refresher } from "@/lib/pull-refresh/refreshers"
 import { createRefreshers } from "@/lib/pull-refresh/refreshers"
 
@@ -137,5 +160,27 @@ describe("the refresh port", () => {
     expect(await again).toEqual([])
     expect(await refreshers.checkAll()).toEqual([])
     expect(feed.calls()).toBe(2)
+  })
+
+  it("asks afresh a refresher whose check has been out longer than a pull may take, dropping the late answer (HERD2)", async () => {
+    let now = 0
+    const refreshers = createRefreshers(() => now)
+    const hung = held("the feed")
+    refreshers.register(hung)
+    const first = refreshers.checkAll()
+    await started()
+    expect(hung.calls()).toBe(1)
+    now = CHECK_MS - 1
+    void refreshers.checkAll()
+    await started()
+    expect(hung.calls()).toBe(1)
+    now = CHECK_MS
+    const fresh = refreshers.checkAll()
+    await started()
+    expect(hung.calls()).toBe(2)
+    // Both answers come; each pull hears its own, and the next is asked anew.
+    hung.answer()
+    expect(await fresh).toEqual([])
+    expect(await first).toEqual([])
   })
 })

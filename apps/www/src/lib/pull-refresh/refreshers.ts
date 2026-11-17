@@ -8,6 +8,8 @@
  * waits through `callForeign` (F1).
  */
 
+import { CHECK_MS } from "./model"
+
 /** One thing a screen shows that a pull reads again. */
 export type Refresher = {
   /**
@@ -32,7 +34,9 @@ export type Refreshers = {
    * stale and left out), to the `what` of each that could not read. One
    * check per refresher at a time: one whose check is still out is not asked
    * again, and this ask waits on that answer, so its `checkAgain` never runs
-   * twice at once, while one registered since is asked now.
+   * twice at once, while one registered since is asked now. A check out
+   * longer than a pull may take (`CHECK_MS`) no longer holds the pulls after
+   * it (HERD2): the next is asked afresh, and the late answer is dropped.
    */
   readonly checkAll: () => Promise<ReadonlyArray<string>>
 }
@@ -41,11 +45,13 @@ type Entry = {
   readonly refresher: Refresher
   /** The registrations that hold it; it is dropped once none does. */
   holds: number
-  /** Its check still out, which a new ask waits on. */
-  out: Promise<string | null> | null
+  /** Its check still out, which a new ask waits on, and when it went out. */
+  out: { readonly answer: Promise<string | null>; readonly at: number } | null
 }
 
-export function createRefreshers(): Refreshers {
+export function createRefreshers(
+  now: () => number = () => Date.now()
+): Refreshers {
   const entries = new Map<Refresher, Entry>()
   /** Wakes a check waiting on an entry that was just dropped. */
   const dropped = new Set<() => void>()
@@ -86,15 +92,20 @@ export function createRefreshers(): Refreshers {
         .then(settle(null), settle(entry.refresher.what))
     })
 
-  /** `entry`'s check still out, or a new one. */
+  /** `entry`'s check still out, unless out past a pull's time; or a new one. */
   const askOf = (entry: Entry): Promise<string | null> => {
-    if (entry.out !== null) return entry.out
-    const answer = answerOf(entry).then((unread) => {
-      entry.out = null
-      return unread
-    })
-    entry.out = answer
-    return answer
+    if (entry.out !== null && now() - entry.out.at < CHECK_MS) {
+      return entry.out.answer
+    }
+    const out = {
+      at: now(),
+      answer: answerOf(entry).then((unread) => {
+        if (entry.out === out) entry.out = null
+        return unread
+      }),
+    }
+    entry.out = out
+    return out.answer
   }
 
   const checkAll = (): Promise<ReadonlyArray<string>> =>
