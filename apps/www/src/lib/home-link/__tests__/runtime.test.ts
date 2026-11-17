@@ -9,6 +9,7 @@ import type { HomeAnswer } from "@some-ui/core-utils"
 import { describe, expect, it, vi } from "vitest"
 
 import type { HomeRequest } from "@/lib/device-backend/native-http"
+import type { HomeLinkState } from "@/lib/home-link/model"
 import { BURST, MS_PER_REQUEST } from "@/lib/home-link/pace"
 import type { CredentialPort, HomeLink } from "@/lib/home-link/runtime"
 import { createHomeLink, homeBusyFor } from "@/lib/home-link/runtime"
@@ -559,6 +560,69 @@ describe("the home link", () => {
       kind: "unpaired",
       note: "unpaired",
     })
+  })
+
+  it("starts home's busy from every request the person sends, on a 429 and on home's overload (AD3, #3127)", async () => {
+    const busyAnswers: ReadonlyArray<[string, HomeAnswer]> = [
+      ["429", { status: 429, body: "", retryAfter: "30" }],
+      [
+        "overload",
+        {
+          status: 503,
+          body: JSON.stringify({ error: { code: "service_overloaded" } }),
+          retryAfter: "30",
+        },
+      ],
+    ]
+    const TOKEN = {
+      status: 200,
+      body: JSON.stringify({ token: "phone-token", expiresAt: 1 }),
+    }
+    const paths: ReadonlyArray<
+      [string, (busy: HomeAnswer) => Promise<HomeLinkState>]
+    > = [
+      [
+        "a pairing",
+        async (busy): Promise<HomeLinkState> => {
+          const home = setup({ answer: () => busy })
+          await home.link.load()
+          await home.link.pair(HOME, "K7QF2M9X")
+          return home.link.getSnapshot()
+        },
+      ],
+      [
+        "the sign-out of a pairing the phone could not keep",
+        async (busy): Promise<HomeLinkState> => {
+          const home = setup({
+            answer: (call) =>
+              call.url.endsWith("/auth/sign-out") ? busy : TOKEN,
+            write: () => Promise.reject(new Error("keystore")),
+          })
+          await home.link.load()
+          await home.link.pair(HOME, "K7QF2M9X")
+          return home.link.getSnapshot()
+        },
+      ],
+      [
+        "an Unpair's sign-out",
+        async (busy): Promise<HomeLinkState> => {
+          const home = setup({
+            record: JSON.stringify({ base: HOME.base, token: "t", id: "p1" }),
+            answer: () => busy,
+          })
+          await home.link.load()
+          await home.link.unpair()
+          return home.link.getSnapshot()
+        },
+      ],
+    ]
+    for (const [path, run] of paths) {
+      for (const [kind, busy] of busyAnswers) {
+        const snapshot = await run(busy)
+        expect(snapshot.homeBusyUntil, `${path}, ${kind}`).toBe(30_000)
+        expect(snapshot.homeBusyBase, `${path}, ${kind}`).toBe(HOME.base)
+      }
+    }
   })
 
   it("starts home's busy from an Unpair's sign-out, and keeps none of it for the next home paired (#3127)", async () => {
