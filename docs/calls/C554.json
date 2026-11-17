@@ -1,0 +1,21 @@
+{
+  "id": "C554",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/tests/snips/apk.spec.ts",
+    "some-ui:apps/www/tests/snips/release-walk.ts",
+    "some-ui:apps/mobile/snips/capture-apk.sh",
+    "some-ui:.github/workflows/snips-capture.yml"
+  ],
+  "chose": "The APK's snips come from the release build wherever its own navigation reaches a screen: each launcher icon's wing and the tabs of its bar, by taps over the accessibility tree. The debug APK is used for every other route by address, and a debug picture is kept only where no release picture shows the same pixels. Every record says which build drew it, and both run on API 34.",
+  "options": [
+    "release by taps, debug only for the rest, labelled by build",
+    "the debug APK for every screen (C550)",
+    "the release APK alone, leaving unreached screens out"
+  ],
+  "gray": "The coordinator's ruling for the owner, who wants pictures of the real application. Taps reach only what the bar offers, a release picture is named by route only when the debug pass drew it pixel for pixel, and the debug build's WebView loads blank on API 36.",
+  "undo": "Drop the release pass from capture-apk.sh and apk.spec.ts, so the bundle holds debug pictures only (C550).",
+  "refs": ["#3114", "#3115"],
+  "moves": "C550"
+}
