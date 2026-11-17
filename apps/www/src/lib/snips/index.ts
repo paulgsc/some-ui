@@ -15,12 +15,12 @@ import { z } from "zod"
 export type Surface = "apk" | "web"
 
 /** The audience a route's layout gates it to (`routes/_dashboard/_apk.tsx`, `_lan.tsx`). */
-export type RouteAudience = "public" | "apk" | "lan"
+type RouteAudience = "public" | "apk" | "lan"
 
 export type RouteEntry = {
   /** The router's id, layouts included: `/_dashboard/_apk/journal/`. */
   readonly id: string
-  /** The address a person opens: `/journal`, `/jobs/pick/$day/$pickId`. */
+  /** The address a person opens, its `$param`s unfilled: /settings/appearance. */
   readonly path: string
   readonly audience: RouteAudience
 }
@@ -29,7 +29,7 @@ export type RouteEntry = {
 export const FROZEN_AT = "2026-11-02T09:30:00.000Z"
 
 /** The schema the manifest carries; home refuses another (`docs/snips.md`). */
-export const MANIFEST_SCHEMA = "some-ui.snips/1"
+const MANIFEST_SCHEMA = "some-ui.snips/1"
 
 /** At most this many concrete addresses for one `$param` route. */
 export const PER_PATTERN = 3
@@ -204,7 +204,7 @@ export function snipId(parts: {
   return `${parts.surface}:${parts.path}:${parts.viewport}:${parts.appVersion}:${hash}`
 }
 
-/** A file name for an address: `/journal/takes/kept` -> `journal~takes~kept`. */
+/** A file name for an address: /settings/appearance -> settings~appearance. */
 export function slugOf(path: string): string {
   return path === "/" ? "front" : path.slice(1).replace(/\//g, "~")
 }

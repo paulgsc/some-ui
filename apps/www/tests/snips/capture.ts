@@ -32,7 +32,7 @@ import type {
   Viewport,
 } from "@/lib/snips"
 
-export type Camera = {
+type Camera = {
   /** The picture, as PNG bytes. */
   readonly shoot: () => Promise<Buffer>
   /** A short recording of the screen, as its bytes and kind, or null where none is made. */

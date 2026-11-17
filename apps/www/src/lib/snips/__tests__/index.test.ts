@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { expect, describe as group, it } from "vitest"
 
-import type { Part, SnipRecord } from "./index"
+import type { Part, SnipRecord } from "@/lib/snips"
 import {
   APK_VIEWPORT,
   checksumsOf,
@@ -17,10 +17,10 @@ import {
   slugOf,
   snipId,
   WEB_VIEWPORTS,
-} from "./index"
+} from "@/lib/snips"
 
 const TREE = readFileSync(
-  join(import.meta.dirname, "../../routeTree.gen.ts"),
+  join(import.meta.dirname, "../../../routeTree.gen.ts"),
   "utf8"
 )
 
