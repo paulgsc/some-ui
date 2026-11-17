@@ -1,0 +1,10 @@
+{
+  "$comment": "How much a pull may ask of home, as android-compat.yml's storm scenario (storm.sh) checks it: requests home hears per phase, after settleSeconds. The numbers are HERD1's (the pull's promise to home). PROVISIONAL until HERD1 lands: until then they are this file's own guess and a red storm column is a finding to read, not a verdict.",
+  "source": "HERD1 (provisional)",
+  "settleSeconds": 10,
+  "pullOnce": 6,
+  "burst": { "pulls": 5, "gapSeconds": 1 },
+  "burstTotal": 12,
+  "busy": { "retryAfterSeconds": 20, "duringRetryAfter": 2 },
+  "offlineAndBack": 12
+}

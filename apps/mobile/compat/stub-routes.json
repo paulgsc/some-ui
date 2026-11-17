@@ -1,0 +1,9 @@
+{
+  "$comment": "What the stub home (stub-home.mjs) answers, by method and path (query ignored). Sample data only. The sync from home reads both curriculum manifests (?activity= is ignored here); an empty listing is a valid home with nothing published.",
+  "routes": {
+    "GET /api/v1/curriculum/manifest.json": {
+      "status": 200,
+      "body": { "topiks": [] }
+    }
+  }
+}

@@ -417,6 +417,45 @@ install over a CI build, or the other way round.
 - **`versionCode` is the run number**, so each APK is an update of the last,
   and Settings → Apps → Some UI shows which build is installed.
 
+### Stamping a release's Android compatibility
+
+`.github/workflows/android-compat.yml` ("Android Compat") runs the APK on
+slowed emulators across the Android versions it supports. I run it by hand
+when a release wants a stamp: **Actions → Android Compat → Run workflow**,
+with the ref (default `main`), the API levels (default 24, 28, 31, 34 and 36,
+from `minSdkVersion` to `targetSdkVersion` in `android/variables.gradle`) and
+a CPU cap (default 60% of one host core). It never runs on a push, a pull
+request or a schedule, and nothing waits on it.
+
+It builds the release APK (R8) and the debug APK from the ref, signed with a
+key made for that run, so it needs no secrets and no approval. Each API level
+is then its own job: a `google_apis` x86_64 emulator with one core, 1.5 GB of
+memory, a 3G link and its CPU capped, which stands in for an older, slower
+phone. Each runs:
+
+1. **Launch:** the launch test above, on the release APK.
+2. **Storm:** `compat/storm.sh`, on the debug APK (its page can be read over
+   DevTools; its JavaScript is the release build's). A stand-in home on the
+   runner (`compat/stub-home.mjs`, sample data only) counts every request.
+   The app is pointed at it, then pulled down once, pulled in a burst, pulled
+   while home answers 429 with `Retry-After`, sent to the background and
+   back, and cut off the network and given it back. It fails when home hears
+   more than the budget in `compat/budget.json` (HERD1's numbers).
+3. **Refresh:** from the same run, it fails when a pull with home up does not
+   end `pull checked: read`, or when a pull after the network returns does
+   not, or the app restarted to get there.
+
+The run's summary is the stamp: a table of API level against launch, storm
+and refresh, a line to paste into the release notes, and the same as JSON.
+It is kept nowhere else; its artifacts (the APKs, each level's logs and
+screenshots) last a day.
+
+What it cannot show: Samsung's One UI and its own WebView quirks, a real
+radio dropping and returning, thermal throttling, and a phone's real
+memory pressure. An emulator's old API level carries the WebView its system
+image shipped, which is older than any phone that updates from Play has. A
+level that cannot boot on GitHub's hosted runners shows as "not run".
+
 ### Play readiness
 
 The app is sideloaded today, and headed for Google Play as a free personal
