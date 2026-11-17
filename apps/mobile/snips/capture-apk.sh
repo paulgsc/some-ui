@@ -48,6 +48,8 @@ bash "$here/trust-ca.sh" "$certs/ca.pem" > "$out/trust-ca.log" 2>&1
 adb shell settings put global auto_time 0
 adb shell settings put global auto_time_zone 0
 adb shell setprop persist.sys.timezone UTC
+# FROZEN_AT (apps/www/src/lib/snips) as toybox `date` takes it; the release
+# walk sets it again before each picture, and the certificates above cover it.
 adb shell date 110209302026.00 > /dev/null
 # Demo mode needs both switches on recent images, and its broadcast sent to
 # SystemUI itself (proof run 44031477446 showed the real clock without).
@@ -69,10 +71,18 @@ adb logcat -c
 adb logcat > "$out/logcat.txt" 2>&1 &
 logcat_pid=$!
 trap 'kill "$stub_pid" "$logcat_pid" 2>/dev/null || true' EXIT
+stub_up=no
 for _ in $(seq 1 20); do
-  curl -sf http://127.0.0.1:8788/counts > /dev/null && break
+  if curl -sf http://127.0.0.1:8788/counts > /dev/null; then
+    stub_up=yes
+    break
+  fi
   sleep 0.5
 done
+if [ "$stub_up" != yes ]; then
+  echo "::error title=Snips::the stand-in home never answered (logs/stub.log)"
+  exit 1
+fi
 
 # install, ui, hide_keyboard and pair_by_ui, after the screen is sized and
 # logcat streams (native-log.sh reads both when sourced).

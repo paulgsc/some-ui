@@ -12,7 +12,14 @@
  */
 
 import { createHash } from "node:crypto"
-import { readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import {
+  existsSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs"
 import { join } from "node:path"
 
 import { checksumsOf, manifestOf, parsePart } from "@/lib/snips"
@@ -38,6 +45,20 @@ for (const file of files) {
   const sha256 = createHash("sha256").update(bytes).digest("hex")
   if (sha256 !== file.sha256 || bytes.length !== file.bytes) {
     throw new Error(`${file.name} is not the file its record names`)
+  }
+}
+
+// A picture the manifest does not name (a debug one whose screen a release
+// picture shows) leaves the bundle, so every file in it is in SHA256SUMS.
+const named = new Set(files.map((f) => f.name))
+for (const surface of ["apk", "web"]) {
+  const root = join(dir, surface)
+  if (!existsSync(root)) continue
+  for (const entry of readdirSync(root, { recursive: true })) {
+    const name = `${surface}/${String(entry)}`
+    if (statSync(join(dir, name)).isFile() && !named.has(name)) {
+      rmSync(join(dir, name))
+    }
   }
 }
 

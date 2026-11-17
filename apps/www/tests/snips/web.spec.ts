@@ -16,7 +16,7 @@
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { expect, test } from "@playwright/test"
-import type { BrowserContext } from "@playwright/test"
+import type { BrowserContext, BrowserContextOptions } from "@playwright/test"
 import { builtApp, serveBuild } from "@tests/local-mode/harness"
 import type { Listening } from "@tests/local-mode/harness"
 
@@ -27,6 +27,7 @@ import {
   routesFor,
   WEB_VIEWPORTS,
 } from "@/lib/snips"
+import type { Viewport } from "@/lib/snips"
 
 import { walk, writePart } from "./capture"
 
@@ -63,16 +64,7 @@ test.describe("snips: web", () => {
     const base = `${origin}${BASE.replace(/\/$/, "")}`
     const parts = []
     for (const viewport of WEB_VIEWPORTS) {
-      const context = await browser.newContext({
-        viewport: { width: viewport.width, height: viewport.height },
-        deviceScaleFactor: viewport.scale,
-        isMobile: viewport.name === "phone",
-        hasTouch: viewport.name === "phone",
-        reducedMotion: "reduce",
-        locale: "en-US",
-        timezoneId: "UTC",
-        colorScheme: "light",
-      })
+      const context = await browser.newContext(contextFor(viewport))
       const leaked: Array<string> = []
       await hold(context, origin, leaked)
       const page = await context.newPage()
@@ -95,8 +87,7 @@ test.describe("snips: web", () => {
           // moved gets a second look in a context that records.
           record: async () => {
             const recorder = await browser.newContext({
-              viewport: { width: viewport.width, height: viewport.height },
-              reducedMotion: "reduce",
+              ...contextFor(viewport),
               recordVideo: {
                 dir: join(OUT!, ".video"),
                 size: { width: viewport.width, height: viewport.height },
@@ -154,4 +145,18 @@ async function hold(
     leaked.push(url)
     await route.abort()
   })
+}
+
+/** How a size's pictures and recordings are both drawn: one context shape. */
+function contextFor(viewport: Viewport): BrowserContextOptions {
+  return {
+    viewport: { width: viewport.width, height: viewport.height },
+    deviceScaleFactor: viewport.scale,
+    isMobile: viewport.name === "phone",
+    hasTouch: viewport.name === "phone",
+    reducedMotion: "reduce",
+    locale: "en-US",
+    timezoneId: "UTC",
+    colorScheme: "light",
+  }
 }

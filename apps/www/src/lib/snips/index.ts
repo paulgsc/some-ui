@@ -412,8 +412,11 @@ function preferRelease(
     if (s.build !== "debug") continue
     const release = releaseBySha.get(s.image.sha256)
     if (release && !named.has(release)) {
+      // The debug record's names; the release snip's own files only, so
+      // no file the release build did not draw rides on a release record.
+      const { recording: _recording, ...fromDebug } = s
       named.set(release, {
-        ...s,
+        ...fromDebug,
         build: "release",
         image: release.image,
         ...(release.recording ? { recording: release.recording } : {}),

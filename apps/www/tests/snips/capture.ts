@@ -66,7 +66,8 @@ export async function walk(w: Walk): Promise<Part> {
   const links = new Set<string>()
   const snips: Array<SnipRecord> = []
   const unreached: Array<Unreached> = []
-  const seen = new Set<string>()
+  /** Each picture's hash, to the address that drew it first. */
+  const seen = new Map<string, string>()
   const plain = w.routes.filter((r) => !isPattern(r.path))
   const patterns = w.routes.filter((r) => isPattern(r.path))
 
@@ -93,8 +94,16 @@ export async function walk(w: Walk): Promise<Part> {
     }
     const png = await w.camera.shoot()
     const sha256 = hashOf(png)
-    if (seen.has(sha256)) return
-    seen.add(sha256)
+    const same = seen.get(sha256)
+    if (same !== undefined) {
+      unreached.push({
+        surface: w.surface,
+        route: route.path,
+        why: `it shows the same screen as ${same}`,
+      })
+      return
+    }
+    seen.set(sha256, path)
     const id = snipId({
       surface: w.surface,
       path,

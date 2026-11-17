@@ -17,7 +17,11 @@ set -euo pipefail
 certs=$1
 mkdir -p "$certs"
 
-if [ -n "${CERT_FROM:-}" ] && [ -n "${CERT_TO:-}" ]; then
+if { [ -n "${CERT_FROM:-}" ] && [ -z "${CERT_TO:-}" ]; } || { [ -z "${CERT_FROM:-}" ] && [ -n "${CERT_TO:-}" ]; }; then
+  echo "make-certs.sh: set both CERT_FROM and CERT_TO, or neither" >&2
+  exit 1
+fi
+if [ -n "${CERT_FROM:-}" ]; then
   mkdir -p "$certs/db"
   : > "$certs/db/index"
   echo 01 > "$certs/db/serial"

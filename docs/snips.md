@@ -14,8 +14,9 @@ request, and CI Gate does not need it. It photographs two surfaces:
 - **`apk`:** the Android app on an emulator (API 34), installed clean and
   paired through its own screen with the stand-in home on the runner
   (`apps/mobile/compat/stub-home.mjs`, COMPAT's rig), at 1080×1920. Each
-  picture is the whole screen, with the status bar in demo mode and the
-  device's clock at `FROZEN_AT`. `apps/mobile/snips/capture-apk.sh` sets it up
+  picture is the whole screen, with the status bar in demo mode. The
+  device's clock is set to `FROZEN_AT` before each release picture, and the
+  debug pass freezes the page's clock there. `apps/mobile/snips/capture-apk.sh` sets it up
   and takes two builds in turn:
 
   - **release**, the app as it ships, reached only by its own taps
@@ -63,13 +64,15 @@ up within that day, and a missed one is a re-run of the same commit.
 ```
 manifest.json
 SHA256SUMS
-apk/android/<slug>-<hash12>.png      (and .mp4)
-web/desktop/<slug>-<hash12>.png      (and .webm)
+apk/android/release-<slug>-<hash12>.png   (the release build's)
+apk/android/debug-<slug>-<hash12>.png     (and .mp4 where it moved)
+web/desktop/<slug>-<hash12>.png           (and .webm where it moved)
 web/phone/<slug>-<hash12>.png
 ```
 
 `SHA256SUMS` is in `sha256sum -c` form. It covers every file the manifest
-names, and the manifest itself.
+names, and the manifest itself, and the bundle holds no other file: a debug
+picture whose screen a release picture shows is dropped with its record.
 
 `manifest.json`:
 
@@ -85,16 +88,18 @@ names, and the manifest itself.
 
 A snip record:
 
-| Field                                    | What it is                                                             |
-| ---------------------------------------- | ---------------------------------------------------------------------- |
-| `id`                                     | `<surface>:<path>:<viewport>:<appVersion>:<hash12>`                    |
-| `surface`, `viewport`, `width`, `height` | Where and at what size                                                 |
-| `route`                                  | The route, `$param`s and all                                           |
-| `path`                                   | The address taken                                                      |
-| `module`                                 | The part of the app (`moduleOf`), for grouping on the desk             |
-| `shows`                                  | The screen's own heading, or else its module                           |
-| `description`                            | One plain line: "Studio: Takes, on the Android app, with sample data." |
-| `image`, `recording?`                    | `{name, kind, bytes, sha256}`                                          |
+| Field                 | What it is                                                                                                            |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `id`                  | `<surface>:<path>:<viewport>:<appVersion>:<hash12>`; `path` may be `@wing/tab`                                        |
+| `surface`, `viewport` | Where, and at which named size                                                                                        |
+| `width`, `height`     | The picture's own size, read from the PNG                                                                             |
+| `build`               | `release` (the APK as it ships, or the Pages site) or `debug` (the APK's debug build, for a screen taps do not reach) |
+| `route`               | The route, `$param`s and all, or a release screen's `@wing/tab`                                                       |
+| `path`                | The address taken                                                                                                     |
+| `module`              | The part of the app (`moduleOf`), for grouping on the desk                                                            |
+| `shows`               | The screen's own heading, or else its module                                                                          |
+| `description`         | One plain line: "Studio: Takes, on the Android app, with sample data."                                                |
+| `image`, `recording?` | `{name, kind, bytes, sha256}`                                                                                         |
 
 `hash12` is the first 12 hex digits of the PNG's SHA-256. A screen that
 changes gets a new id. The same screen captured again keeps its id, so a
