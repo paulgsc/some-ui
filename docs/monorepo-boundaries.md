@@ -316,6 +316,50 @@ came first and stays: its four laws are the same idea inside one package.
 > database (`apps/www/src/lib/device-backend/capacitor-sqlite`) and its share
 > sheet (`apps/www/src/lib/share-files`).
 
+## One translation per fact: every module receives it
+
+The owner's direction (2026-11-17). Keep three things apart:
+
+1. **What I/O hands back.** This is a promise's raw outcome from a service we
+   don't control, home included. It can hang forever, come back corrupt, come
+   twice (two mounts, two pages, a retry), or arrive after a newer answer.
+2. **One translation.** A pure function, owned by the module at the edge
+   (`lib/home-link` for home, `device-backend` for the phone's store, each
+   port of the foreign boundary above), turns every raw outcome into a valid
+   state:
+
+   - it parses and checks the shape;
+   - it bounds the wait;
+   - it drops a duplicate or a stale answer;
+   - it turns an error into a named state.
+
+   "Not known yet" is one of those states. It is never folded into "no".
+
+3. **The state.** A closed union with its valid transitions, fixed at compile
+   time, is what every screen renders. It cannot hold an invalid value,
+   because only the translation writes it.
+
+**A fact the whole app shares is translated once, at the edge.** Studio,
+Practice, Jobs and every other feature import the state, never the raw result.
+None of them reads a status, checks a `null`, or classifies an error to work
+out for itself whether the phone is paired. A module that gets that right on
+its own still counts: a second interpreter is a second place to be wrong.
+
+**So two modules can't disagree about a shared fact.** If Studio says
+"paired" while Practice says "not paired", the fault is in the one
+translation or in a module that reached past it. It is never in how each
+screen "made sense of" the promise, because neither is meant to. Look in the
+translation first.
+
+This rule is wider than the component rule above, which is about React. It
+holds for any module, React or not.
+
+It is the direction, not yet a declared invariant, because the code does not
+meet it yet. #3128 was a module answering "paired?" on a reading of the link
+that folded "still reading" into "no". #3152 moves pairing to one translation
+and one union. The `[EPIC][LAYERS]` audit lists the other places where a raw
+result reaches a module. Declare it, with a check, once those land.
+
 ## A failure reaches the log
 
 www's release build strips `console.*` (`apps/www/build.minify.ts`), and the
