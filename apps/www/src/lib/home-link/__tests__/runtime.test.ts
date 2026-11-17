@@ -457,9 +457,13 @@ describe("the home link", () => {
     await vi.waitFor(() => expect(out).toHaveLength(4))
     out[3]?.({ status: 200, body: "{}" })
     await first
-    // Learned once (2 s + 2 s), not doubled three times (16 s).
+    // Learned once: a 4 s pace (2 s + 2 s) left half a turn after the 6 s
+    // wait, so the next goes 2 s on. Unlearned (2 s) it would go at once;
+    // doubled three times (16 s) the one before would not have gone.
     void ask()
-    clock.pass(4_000)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(out).toHaveLength(4)
+    clock.pass(2_000)
     await vi.waitFor(() => expect(out).toHaveLength(5))
   })
 

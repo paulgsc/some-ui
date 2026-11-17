@@ -60,7 +60,7 @@ export type Pace = {
    * Home said busy (`429`): its bucket is empty, so nothing is left of the
    * burst; and `waitMs`, home's `Retry-After` when it sent one this phone
    * can read, is how far short of home's refill the pace fell, which it adds
-   * between requests from now on, when it is at least one turn of the pace:
+   * between requests from now on, when it is at least `MS_PER_REQUEST`:
    * at most doubling the pace each time, and at most `SLOWEST_MS` apart.
    */
   readonly spend: (waitMs: number | null) => void
@@ -147,7 +147,7 @@ export function createPace(
     spend: (waitMs): void => {
       turns = 0
       at = clock.now()
-      // A wait shorter than one turn of the pace is home's bucket emptied by
+      // A wait shorter than `MS_PER_REQUEST` is home's bucket emptied by
       // a burst (this phone's, or another on its address), not a refill
       // slower than the pace: nothing to learn.
       if (waitMs !== null && waitMs >= MS_PER_REQUEST) {
