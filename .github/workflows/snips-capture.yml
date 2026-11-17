@@ -19,7 +19,7 @@ on:
   # TEMPORARY, removed before review: one run from this branch, which cannot
   # be dispatched until the file is on main.
   push:
-    branches: [claude/snips-capture]
+    branches: [claude/snips-capture-2]
   workflow_dispatch:
 
 permissions:
@@ -152,7 +152,7 @@ jobs:
         run: |
           nix develop .#ci --command pnpm --filter www exec tsx scripts/snips-bundle.ts \
             "$GITHUB_WORKSPACE/snips-bundle" "$GITHUB_SHA" "$RUN_URL"
-          rm -rf snips-bundle/logs snips-bundle/ui-errors.txt
+          rm -rf snips-bundle/logs
           (cd snips-bundle && sha256sum -c SHA256SUMS --quiet)
           {
             echo "## Snips: \`${GITHUB_SHA::7}\`"
