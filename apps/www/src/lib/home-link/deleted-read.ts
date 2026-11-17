@@ -10,7 +10,8 @@
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 
-import { homeLink, paired } from "./index"
+import { homeLink } from "./index"
+import { pairedOnceRead } from "./paired-once-read"
 
 /** The read of the receipts. */
 const DELETED_PATH = "/voice-notes/deleted"
@@ -27,7 +28,7 @@ export type DeletedAsked =
 
 /** Asks home once for its receipts; never rejects. */
 export async function askDeleted(): Promise<DeletedAsked> {
-  if (!paired()) return { kind: "unpaired" }
+  if (!(await pairedOnceRead())) return { kind: "unpaired" }
   try {
     const outcome = await homeLink().keep((send) => send("GET", DELETED_PATH))
     return outcome?.kind === "done"

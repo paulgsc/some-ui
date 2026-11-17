@@ -8,7 +8,8 @@
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 
-import { homeLink, paired } from "./index"
+import { homeLink } from "./index"
+import { pairedOnceRead } from "./paired-once-read"
 
 /** The ask for a build made against server version `needs`. */
 const compatPath = (needs: number): string => `/compat?needs=${String(needs)}`
@@ -25,7 +26,7 @@ export type CompatAsked =
 
 /** Asks home once; never rejects. */
 export async function askCompat(needs: number): Promise<CompatAsked> {
-  if (!paired()) return { kind: "unpaired" }
+  if (!(await pairedOnceRead())) return { kind: "unpaired" }
   try {
     const outcome = await homeLink().look(compatPath(needs))
     if (outcome?.kind !== "done") return { kind: "busy" }

@@ -11,7 +11,8 @@
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 
-import { homeLink, paired } from "./index"
+import { homeLink } from "./index"
+import { pairedOnceRead } from "./paired-once-read"
 
 /** The read of the newest takes, or of those whose words hold `q`'s. */
 export function takesPath(q: string | null): string {
@@ -32,7 +33,7 @@ export type TakesAsked =
 
 /** Asks home once for the takes it keeps; never rejects. */
 export async function askTakes(q: string | null): Promise<TakesAsked> {
-  if (!paired()) return { kind: "unpaired" }
+  if (!(await pairedOnceRead())) return { kind: "unpaired" }
   try {
     const outcome = await homeLink().keep((send) => send("GET", takesPath(q)))
     return outcome?.kind === "done"
