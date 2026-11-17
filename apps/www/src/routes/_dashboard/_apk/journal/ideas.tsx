@@ -22,6 +22,7 @@ import { ideaBundleTakes, ideaRedoTakes } from "@/lib/idea-takes"
 import { useAsyncIntent } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { shareIdea } from "@/lib/journal-share"
+import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import { keepStudio } from "@/lib/studio-keeping"
 import { PairHomeLink } from "@/components/pair-home-link"
 
@@ -131,6 +132,7 @@ const OnHome = ({ lists }: { lists: boolean }): JSX.Element | null => {
       redo={redo}
       initialLists={lists}
       pair={<PairHomeLink>{STUDIO_WORDS.pair.pair}</PairHomeLink>}
+      refresh={screenRefreshers.register}
       // An answer's Delete… opens My data on its recording (#2579, MD4).
       openInMyData={(note) =>
         void navigate({

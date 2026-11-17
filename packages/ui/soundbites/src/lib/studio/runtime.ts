@@ -25,6 +25,7 @@ import {
 import { TAKE_TICK_MS } from "@soundbites/lib/policy"
 import type { ProjectStore } from "@soundbites/lib/project/store"
 import { ProjectFullError } from "@soundbites/lib/project/store"
+import type { Refresh } from "@soundbites/lib/refresh"
 
 import type { VideosHome } from "./home-videos"
 import type { LetGoStore } from "./let-go-store"
@@ -70,7 +71,7 @@ export type StudioPorts = {
    * a show is on view (`pullable`), a pull reads the phone's videos again
    * through `checkAgain` (SHOW SH6).
    */
-  refresh?: StudioRefresh
+  refresh?: Refresh
   /**
    * Home, as far as this phone can tell (ST34): whether it is paired, so a
    * take not on home yet says it is going home only once the phone is known
@@ -86,15 +87,6 @@ export type StudioPorts = {
   videos?: VideosHome
 }
 
-/**
- * Adds a refresher to every pull until the returned drop, as the shell's
- * refresh port does (`apps/www/src/lib/pull-refresh/refreshers.ts`).
- */
-type StudioRefresh = (refresher: {
-  readonly what: string
-  readonly checkAgain: () => Promise<void>
-}) => () => void
-
 export type StudioRuntime = {
   getSnapshot: () => StudioState
   subscribe: (listener: () => void) => () => void
@@ -104,7 +96,7 @@ export type StudioRuntime = {
   /**
    * Reads again what the phone keeps (a pull, SHOW SH6): resolves once that
    * read lands, rejects if it could not be read. `step` decides which read
-   * answers; a pull's refresher (`StudioRefresh`) calls it.
+   * answers; a pull's refresher (`Refresh`) calls it.
    */
   checkAgain: () => Promise<void>
 }

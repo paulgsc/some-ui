@@ -10,6 +10,7 @@ import type { TakeLibrary } from "@some-ui/soundbites"
 import { audioPlayer } from "@some-ui/voice-capture"
 
 import { libraryTakes } from "@/lib/library-takes"
+import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import type { AboutStores } from "@/lib/take-about"
 import { takeAbout } from "@/lib/take-about"
 import { libraryStations } from "@/lib/take-conveyor"
@@ -28,6 +29,7 @@ export function takePorts(stores: AboutStores): Ports {
     phone: libraryTakes(),
     stations: libraryStations(),
     about: takeAbout(stores),
+    refresh: screenRefreshers.register,
   }
   return ports
 }
