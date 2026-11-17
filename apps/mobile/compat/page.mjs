@@ -28,7 +28,14 @@ const targets = await (await fetch(`http://127.0.0.1:${PORT}/json`)).json()
 const page = targets.find((t) => t.type === "page")
 if (!page) throw new Error(`no page in ${socket}: ${JSON.stringify(targets)}`)
 
-const ws = new WebSocket(page.webSocketDebuggerUrl)
+// The socket's address is built here, on the forwarded local port: only the
+// page's id comes from the listing, never a host to connect to.
+if (typeof page.id !== "string" || !/^[A-Za-z0-9-]+$/.test(page.id)) {
+  throw new Error(
+    `the page's DevTools id is not one: ${JSON.stringify(page.id)}`
+  )
+}
+const ws = new WebSocket(`ws://127.0.0.1:${PORT}/devtools/page/${page.id}`)
 await new Promise((resolve, reject) => {
   ws.onopen = resolve
   ws.onerror = reject
