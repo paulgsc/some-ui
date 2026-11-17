@@ -426,6 +426,20 @@ describe("deleting from a kind's list (MD3)", () => {
     expect(screen.getByText(MY_DATA.phoneReading)).toBeTruthy()
   })
 
+  it("offers a kind that waits on no store while this phone's read isn't in", () => {
+    render(
+      <MyDataKind
+        view={kindOf("reflection", "reflection", DELETABLE, [], NOW)}
+        playing={null}
+        onPlay={vi.fn()}
+        onStop={vi.fn()}
+        unread={null}
+        onDelete={vi.fn()}
+      />
+    )
+    expect(screen.getAllByText(DELETING.row).length).toBeGreaterThan(0)
+  })
+
   it("offers Delete… on a take of another kind home marks deletable (HEARD5)", () => {
     const onDelete = vi.fn()
     render(

@@ -1823,7 +1823,9 @@ reaches:
     a hunk to `my-data/index.ts` whose `readPhone` reads a store as handed
     in that isn't; or a hunk to `device-my-data.tsx` that hands `MyDataKind`, or
     `KindList`'s `?note=` check, an `unread` other than this phone's read
-    (null until it is in); or a hunk to `voice-copy.ts` that changes which
+    (null until it is in); or a hunk to `device-my-data.tsx` that
+    makes `MyDataKind`'s `unread` optional or defaults it, or passes
+    `offersDelete` anything but it; or a hunk to `voice-copy.ts` that changes which
     kinds `readyToLetGo` waits on a handed-in store for without the same
     change to `deleting.ts`'s `WAITS_ON_STORE`; or a hunk to `voice-home/model.ts` that adds a kind to
     `VOICE_OFS`, which both pages then offer to delete, re-checked against home's delete and its list's `deletable`
