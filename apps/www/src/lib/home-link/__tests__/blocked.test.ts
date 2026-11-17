@@ -374,6 +374,10 @@ describe("a pairing 503, read by home's code", () => {
       await pairing({ status: 503, body: overloaded, retryAfter: "5" })
     ).toBe("busy")
     expect(await pairing({ status: 503, body: overloaded })).toBe("too-many")
+    // A Retry-After that isn't whole seconds says no time to wait for.
+    expect(
+      await pairing({ status: 503, body: overloaded, retryAfter: "abc" })
+    ).toBe("too-many")
     expect(
       await pairing({
         status: 503,
