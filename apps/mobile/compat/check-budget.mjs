@@ -20,6 +20,13 @@
 //   paces (sustainedMs, less toleranceMs) after the 429: HERD1's own
 //   rule (expectPaced in apps/www/src/lib/home-link/__tests__/herd.test.ts),
 //   under which the Retry-After itself can pay for the first few.
+//
+// CS1: the storm check fails the app only on what HERD1 and HERD2 promise.
+// Family: a pull while another is under way or after it has ended (the
+// joined phase, home slowed by /slow); a route home's limiter covers or
+// not (budget.limited); the nth request after a 429 at any spacing. Proof:
+// these rules, each matching HERD1's herd.test.ts (expectPaced) or HERD2's
+// refreshers.test.ts, and the joined phase in storm.sh.
 import { readFileSync } from "node:fs"
 
 const [allFile, budgetFile] = process.argv.slice(2)
