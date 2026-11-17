@@ -1023,7 +1023,7 @@
     {
       "id": "game-feed",
       "name": "Home follows the games of the week",
-      "why": "Home polls ESPN's public NFL feed in the background, keeping every answer and appending each game's plays to a log, so the phone's game-day bites can later be matched to the play they are about. No route serves the log; the paired phone's game day socket (in the `websocket` module, placed in `synchronous`) reads it to offer what can be happening now, only while the socket is open.",
+      "why": "Home polls ESPN's public NFL feed in the background, keeping every answer and appending each game's plays to a log, so the phone's recordings from a game can later be matched to the play they are about. No route serves the log; the paired phone's game day socket (in the `websocket` module, placed in `synchronous`) reads it to offer what can be happening now, only while the socket is open.",
       "paths": [
         "server:apps/servers/file_host/src/game_feed",
         "server:crates/nfl_feed",
@@ -2017,7 +2017,7 @@
           "claim": "Everything I keep grows by a stated model, and none of it is given up for space without my say.",
           "requirement": "Every table and store is listed with its class, growth and horizon (the ledger's stores); every place that discards or rewrites what is kept carries the owner's ruling (docs/discard-sites.md); and no one store can take the phone's room from the others.",
           "verdict": "broken",
-          "conclusion": "Every table and store is listed with how it grows, but some places still drop old takes, stops and practice days with no ruling from me, game bites have no cap, and the other caps do not keep one store from taking most of the phone's room: voice-home's alone is about 91% of it.",
+          "conclusion": "Every table and store is listed with how it grows, but some places still drop old takes, stops and practice days with no ruling from me, recordings from a game have no cap, and the other caps do not keep one store from taking most of the phone's room: voice-home's alone is about 91% of it.",
           "evidence": [
             {
               "class": "structural",
@@ -2026,7 +2026,7 @@
             },
             {
               "class": "structural",
-              "says": "Game bites' audio store has no cap (maxBytes is Infinity). Since #2080 a bite's audio leaves the phone once home holds it, but bites home does not hold yet (away from home, or voice notes not kept there) can still fill the 25 MiB pool, after which every other save is refused (some-ui#2264).",
+              "says": "The audio store of recordings from a game has no cap (maxBytes is Infinity). Since #2080 a recording's audio leaves the phone once home holds it, but recordings home does not hold yet (away from home, or voice notes not kept there) can still fill the 25 MiB pool, after which every other save is refused (some-ui#2264).",
               "ref": "some-ui:apps/www/src/lib/game-bites"
             },
             {

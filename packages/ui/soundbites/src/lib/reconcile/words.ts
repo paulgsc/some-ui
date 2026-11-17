@@ -32,7 +32,7 @@ const OF_WORDS: Readonly<Record<string, string>> = {
   "rust-round": "A Rust Rounds take",
   interview: "An interview take",
   reflection: "A spoken reflection",
-  game: "A game day take",
+  game: "A take from a game",
   leetype: "A LeetType take",
   lens: "A grammar lens take",
   scene: "A drama scene take",
