@@ -22,9 +22,16 @@ export type ReadsAgain = {
 }
 
 /**
+ * What a read that could not be done ends as: home away, or an answer this
+ * phone could not read (home busy or overloaded among them). Unpaired and
+ * an older home are answers, not failures to check.
+ */
+const UNREAD: ReadonlySet<string> = new Set(["away", "unreadable"])
+
+/**
  * A pull's check of `screen` (HERD2, #3102): asks its read again, and
- * resolves once that read lands, rejecting when it found home away. A read
- * a newer one replaced, or a screen gone, answers for itself, as resolved.
+ * resolves once that read lands, rejecting when it could not be read
+ * (`UNREAD`). A read a newer one replaced answers for itself, as resolved.
  */
 export function checkAgainOf(screen: ReadsAgain): () => Promise<void> {
   return () =>
@@ -36,7 +43,7 @@ export function checkAgainOf(screen: ReadsAgain): () => Promise<void> {
         const { seq: now, read } = screen.getSnapshot()
         if (now === seq && read.kind === "reading") return
         stop()
-        if (now === seq && read.kind === "away") reject(new Error("away"))
+        if (now === seq && UNREAD.has(read.kind)) reject(new Error(read.kind))
         else resolve()
       }
       stop = screen.subscribe(check)

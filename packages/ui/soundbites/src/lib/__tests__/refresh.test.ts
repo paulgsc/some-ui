@@ -45,11 +45,22 @@ describe("a pull's check of a screen (HERD2)", () => {
     await expect(checked).resolves.toBeUndefined()
   })
 
-  it("rejects when the read found home away", async () => {
-    const page = screen()
-    const checked = checkAgainOf(page.view)()
-    page.answer("away")
-    await expect(checked).rejects.toThrow()
+  it("rejects when the read found home away, or an answer it could not read (home busy among them)", async () => {
+    for (const kind of ["away", "unreadable"]) {
+      const page = screen()
+      const checked = checkAgainOf(page.view)()
+      page.answer(kind)
+      await expect(checked).rejects.toThrow(kind)
+    }
+  })
+
+  it("resolves on an answer that is not a failure to check: unpaired, or an older home", async () => {
+    for (const kind of ["unpaired", "older"]) {
+      const page = screen()
+      const checked = checkAgainOf(page.view)()
+      page.answer(kind)
+      await expect(checked).resolves.toBeUndefined()
+    }
   })
 
   it("resolves once a newer read replaced it: that one answers for itself", async () => {
