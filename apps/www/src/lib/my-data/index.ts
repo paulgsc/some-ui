@@ -27,7 +27,8 @@ import { askAudio } from "@/lib/home-link/voice-audio"
 import {
   letGoDeleted,
   recordingsOnPhone,
-  voiceKeptOnceRead,
+  voiceKept,
+  whenPlacesKnown,
 } from "@/lib/home-link/voice-copy"
 import { askWhileBusy } from "@/lib/home-link/while-busy"
 import { soundbiteKeeping } from "@/lib/soundbite-keeping"
@@ -91,8 +92,6 @@ async function readPhone(): Promise<PhoneRead> {
       }
     }
   )
-  // Where each is kept, once this phone knows whether it is paired (PO1).
-  const voiceKept = await voiceKeptOnceRead()
   const read = await Promise.all(
     notes.map(async ({ id, of, at, audio }): Promise<PhoneNote | null> => {
       const blob = await audio()
@@ -100,7 +99,9 @@ async function readPhone(): Promise<PhoneRead> {
         // counted this time; the next open or drag down reads it again.
         .catch(() => null)
       if (blob === null) return null
-      // Where every screen's row says it is (MIC3).
+      // Where every screen's row says it is (MIC3): not known yet while
+      // the pairing record is read, which the runtime reads again after
+      // (#3152).
       const { place } = voiceKept(id)
       return {
         id,
@@ -109,8 +110,7 @@ async function readPhone(): Promise<PhoneRead> {
         // IndexedDB hands back a handle whose size is known without its
         // bytes being read.
         bytes: blob.size,
-        held: place === "home",
-        going: place === "going",
+        place,
       }
     })
   )
@@ -157,6 +157,7 @@ export function phoneMyData(): MyData {
   myData ??= createMyData({
     askHome,
     readPhone,
+    placesKnown: whenPlacesKnown,
     audioOf,
     player: audioPlayer,
   })

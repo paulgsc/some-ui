@@ -34,6 +34,7 @@ export const WHERE_WORDS: Readonly<Record<Where, string>> = {
   aside: "Set aside, on home",
   going: "Going home",
   phone: "Only on this phone",
+  unknown: "Not known yet",
 }
 
 /**

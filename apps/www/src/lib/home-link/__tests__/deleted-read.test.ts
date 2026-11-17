@@ -6,15 +6,15 @@ let pairedNow = true
 let answer: HomeAnswer | Error | null = { status: 200, body: "{}" }
 const asked: Array<[string, string]> = []
 
-vi.mock("@/lib/home-link/paired-once-read", () => ({
-  pairedOnceRead: (): Promise<boolean> => Promise.resolve(pairedNow),
-}))
 vi.mock("@/lib/home-link", () => ({
   homeLink: (): unknown => ({
     keep: async (
       run: (send: HomeCall) => Promise<unknown>
-    ): Promise<{ kind: "done"; value: unknown } | null> => {
-      if (answer === null) return null
+    ): Promise<
+      { kind: "done"; value: unknown } | { kind: "refused"; why: string }
+    > => {
+      if (!pairedNow) return { kind: "refused", why: "unpaired" }
+      if (answer === null) return { kind: "refused", why: "busy" }
       const reply = answer
       const value = await run((method, path) => {
         asked.push([method, path])

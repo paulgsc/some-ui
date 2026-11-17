@@ -527,13 +527,15 @@ describe("the study list's Let it go", () => {
     await expect(letGo("a")).resolves.toEqual({ kind: "forgotten" })
     // The link runs nothing while it is busy: this phone's own, not home's.
     await expect(
-      letGo("a", "paired", "home", { run: () => Promise.resolve(null) })
+      letGo("a", "paired", "home", {
+        run: () => Promise.resolve({ kind: "refused", why: "busy" } as const),
+      })
     ).resolves.toEqual({ kind: "phone-busy" })
     // Or once the phone was unpaired while it was asking.
     let reads = 0
     await expect(
       letGo("a", "paired", "home", {
-        run: () => Promise.resolve(null),
+        run: () => Promise.resolve({ kind: "refused", why: "busy" } as const),
         pairing: () => Promise.resolve(++reads === 1 ? "paired" : "unpaired"),
       })
     ).resolves.toEqual({ kind: "unpaired" })

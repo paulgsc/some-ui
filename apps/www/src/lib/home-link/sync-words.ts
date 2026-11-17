@@ -14,6 +14,11 @@ export type SyncEnd =
   | { readonly kind: "stopped" }
   /** Home answered `429`. */
   | { readonly kind: "busy" }
+  /**
+   * Never started: the phone was already pairing, sending or reading
+   * (#3155), so the tap says so instead of nothing.
+   */
+  | { readonly kind: "phone-busy" }
   | { readonly kind: "unreachable" }
   /** The phone's own storage, in its words. */
   | { readonly kind: "storage"; readonly summary: string }
@@ -48,6 +53,9 @@ export function syncLine(end: SyncEnd): string {
     }
     case "busy": {
       return "Home is busy right now. What came before that stays on this phone; try again in a minute."
+    }
+    case "phone-busy": {
+      return "This phone is already busy with home. Nothing was copied; try again once that's done."
     }
     case "unreachable": {
       return "Couldn't reach home. Are you on the home network?"

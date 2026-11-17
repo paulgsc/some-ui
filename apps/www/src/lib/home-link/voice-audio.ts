@@ -28,7 +28,7 @@ import { readAs, sha256Hex } from "@some-ui/core-utils"
 import { z } from "zod"
 
 import { homeLink } from "./index"
-import { pairedOnceRead } from "./paired-once-read"
+import { answered, ranOf } from "./while-busy"
 
 const NoteAudio = z.object({
   id: z.string(),
@@ -77,13 +77,11 @@ async function checkedAudio(audio: HomeAudio): Promise<Blob | null> {
 
 /** Note `id`'s audio from home, asked once; never rejects. */
 export async function askAudio(id: string): Promise<Blob | null> {
-  if (!(await pairedOnceRead())) return null
-  try {
-    const outcome = await homeLink().keep((send) => send("GET", audioPath(id)))
-    if (outcome?.kind !== "done") return null
-    const audio = readAudio(outcome.value, id)
-    return audio === null ? null : await checkedAudio(audio)
-  } catch {
-    return null
-  }
+  const said = answered(
+    await ranOf(() => homeLink().keep((send) => send("GET", audioPath(id)))),
+    (answer) => ({ kind: "answered" as const, audio: readAudio(answer, id) })
+  )
+  if (said.kind !== "answered" || said.audio === null) return null
+  // Ignored: bytes this phone can't hash are no audio to play.
+  return checkedAudio(said.audio).catch(() => null)
 }

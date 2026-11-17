@@ -28,7 +28,7 @@ import type { HomeAnswer } from "@some-ui/core-utils"
 import type { Feed } from "@/lib/call-videos/model"
 
 import { homeLink } from "./index"
-import { pairedOnceRead } from "./paired-once-read"
+import { answered, ranOf } from "./while-busy"
 
 /** The delete of note `id`, as home takes it. */
 export function deletePath(id: string): string {
@@ -70,9 +70,8 @@ export async function deleteNotes(
     await settle(asked)
     return asked
   }
-  if (!(await pairedOnceRead())) return say({ kind: "unpaired" })
-  try {
-    const outcome = await homeLink().send(async (send) => {
+  const raw = await ranOf(() =>
+    homeLink().send(async (send) => {
       const answers: Array<NoteAnswer> = []
       for (const id of ids) {
         try {
@@ -82,16 +81,15 @@ export async function deleteNotes(
           break
         }
       }
-      const answered = new Map(answers.map(({ id, answer }) => [id, answer]))
+      const held = new Map(answers.map(({ id, answer }) => [id, answer]))
       return say({
         kind: "answered",
-        answers: ids.map((id) => ({ id, answer: answered.get(id) ?? null })),
+        answers: ids.map((id) => ({ id, answer: held.get(id) ?? null })),
       })
     })
-    return outcome?.kind === "done" ? outcome.value : say({ kind: "busy" })
-  } catch {
-    return say({ kind: "unreachable" })
-  }
+  )
+  // Said once: a run that answered has said it already.
+  return say(answered(raw, (value) => value))
 }
 
 /** A step of letting an episode go: its video, then the rest. */
@@ -113,15 +111,10 @@ export async function deleteCallStep(
   key: string,
   step: CallStep
 ): Promise<CallStepAsked> {
-  if (!(await pairedOnceRead())) return { kind: "unpaired" }
-  try {
-    const outcome = await homeLink().send((send) =>
-      send("DELETE", callStepPath(feed, key, step))
-    )
-    return outcome?.kind === "done"
-      ? { kind: "answered", answer: outcome.value }
-      : { kind: "busy" }
-  } catch {
-    return { kind: "unreachable" }
-  }
+  return answered(
+    await ranOf(() =>
+      homeLink().send((send) => send("DELETE", callStepPath(feed, key, step)))
+    ),
+    (answer): CallStepAsked => ({ kind: "answered", answer })
+  )
 }

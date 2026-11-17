@@ -40,8 +40,9 @@ import type { SessionRecord } from "@/lib/tenant/types"
 import type { HomeLink, HomeLinkState } from "./index"
 import { homeLink } from "./index"
 import { letGoUnchanged } from "./let-go"
-import { blockedOf, noticingBusy, unanswered } from "./runtime"
+import { noticingBusy } from "./runtime"
 import { causedBy, copyHome, HomeForgotPhoneError, readHeld } from "./sessions"
+import { blockedOf, unanswered } from "./settle"
 
 /** What the confirm said happens: home keeps it, or nothing does. */
 export type LetGoPromise = "home" | "phone-only"
@@ -281,7 +282,7 @@ async function keptHome(
   try {
     const run = await ports.run((send) => copyThenRead(send, asked))
     // The link runs nothing while busy, or once the phone is unpaired.
-    if (run === null)
+    if (run.kind === "refused")
       return notPaired(await ports.pairing()) ?? { kind: "phone-busy" }
     if (run.kind === "stopped") return { kind: "stopped" }
     read = run.value

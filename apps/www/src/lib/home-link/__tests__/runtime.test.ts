@@ -453,8 +453,62 @@ describe("the home link", () => {
       await send("PUT", "/shelf/topik/a", "{}")
       return "finished"
     })
-    expect(outcome).toBeNull()
+    expect(outcome).toEqual({ kind: "refused", why: "unpaired" })
     expect(home.sent).toEqual([])
+  })
+
+  it("holds a run asked for while the record is read, then runs it as the read found (#3152)", async () => {
+    for (const found of ["paired", "unpaired"] as const) {
+      let end: (record: string | null) => void = () => undefined
+      const read = new Promise<{ record: string | null; lost: boolean }>(
+        (resolve) => {
+          end = (record): void => resolve({ record, lost: false })
+        }
+      )
+      const home = setup({ read: () => read })
+      let settled = false
+      const keeping = home.link
+        .keep((send) => send("GET", "/kept"))
+        .then((outcome) => {
+          settled = true
+          return outcome
+        })
+      // A sync needs no pairing: once the read ends, it runs either way.
+      const syncing = home.link.sync(HOME.base, () => Promise.resolve("synced"))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      // Waiting as the link's state, nothing sent, nothing said.
+      expect(home.link.getSnapshot().parked).toHaveLength(2)
+      expect(settled).toBe(false)
+      expect(home.sent).toEqual([])
+      end(
+        found === "paired"
+          ? JSON.stringify({ base: HOME.base, token: "t" })
+          : null
+      )
+      if (found === "paired") {
+        await expect(keeping).resolves.toEqual({
+          kind: "done",
+          value: { status: 200, body: "{}" },
+        })
+        expect(home.sent.map((call) => call.url)).toEqual([`${HOME.base}/kept`])
+        // The sync waited its turn behind the read: the link was busy.
+        await expect(syncing).resolves.toEqual({
+          kind: "refused",
+          why: "busy",
+        })
+      } else {
+        await expect(keeping).resolves.toEqual({
+          kind: "refused",
+          why: "unpaired",
+        })
+        await expect(syncing).resolves.toEqual({
+          kind: "done",
+          value: "synced",
+        })
+        expect(home.sent).toEqual([])
+      }
+      expect(home.link.getSnapshot().parked).toEqual([])
+    }
   })
 
   it("after home says busy, sends nothing until its Retry-After has passed, answering busy itself (AD3)", async () => {
@@ -473,7 +527,7 @@ describe("the home link", () => {
         (await send("GET", "/aph")).status,
         (await send("GET", "/aph")).status,
       ])
-      return outcome?.kind === "done" ? outcome.value : []
+      return outcome.kind === "done" ? outcome.value : []
     }
 
     // Home's 429 ends the run's sending; the next request is answered here.
@@ -554,7 +608,7 @@ describe("the home link", () => {
         (await send("GET", "/aph")).status,
         (await send("GET", "/aph")).status,
       ])
-      return outcome?.kind === "done" ? outcome.value : []
+      return outcome.kind === "done" ? outcome.value : []
     }
     expect(await statuses()).toEqual([429, 429])
     expect(home.sent).toHaveLength(1)
@@ -939,7 +993,10 @@ describe("a look at home's word on itself (#2843)", () => {
   it("asks nothing unpaired", async () => {
     const home = setup()
     await home.link.load()
-    expect(await home.link.look("/compat?needs=2")).toBeNull()
+    expect(await home.link.look("/compat?needs=2")).toEqual({
+      kind: "refused",
+      why: "unpaired",
+    })
     expect(home.sent).toEqual([])
   })
 

@@ -8,6 +8,7 @@
  * request of their own.
  */
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
+import { assertNever } from "@some-ui/core-utils"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
@@ -18,7 +19,8 @@ import { INITIAL_KEPT, stepKept } from "./kept-model"
 import type { Lane } from "./lanes"
 import type { Pairing } from "./model"
 import type { HomeLink } from "./runtime"
-import { blockedOf, noticingBusy, unanswered } from "./runtime"
+import { noticingBusy } from "./runtime"
+import { blockedOf, unanswered } from "./settle"
 import { HomeUnansweredError } from "./shelf"
 
 /** A run's end that was this phone's fault, as `failed`'s `why`. */
@@ -98,12 +100,23 @@ export function createKept(ports: KeptPorts): Kept {
   const once = async (): Promise<KeptRun> => {
     try {
       const outcome = await ports.keep(ports.exchange)
-      if (outcome === null) {
-        const now = ports.pairing()
-        if (now.kind === "unpaired") return { kind: "unpaired" }
-        // Still reading: the link turned it away as not yet ready.
-        if (now.kind === "reading") return { kind: "busy" }
-        return ports.homeBusy() ? BUSY : { kind: "busy" }
+      if (outcome.kind === "refused") {
+        // The link says why it turned the run away; one asked while the
+        // pairing record is read waited for it (#3152).
+        switch (outcome.why) {
+          case "unpaired":
+          case "gone": {
+            return { kind: "unpaired" }
+          }
+          case "busy":
+          case "pairing":
+          case "preempted": {
+            return ports.homeBusy() ? BUSY : { kind: "busy" }
+          }
+          default: {
+            return assertNever(outcome.why)
+          }
+        }
       }
       if (outcome.kind === "stopped") return { kind: "stopped" }
       const { value } = outcome
