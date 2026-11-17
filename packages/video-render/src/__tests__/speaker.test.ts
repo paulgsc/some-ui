@@ -85,7 +85,7 @@ const ONE_WORD = "x".repeat(SPEAKER_CHUNK_CHARS + 50)
 const PROSE = Array.from(
   { length: 8 },
   (_, i) =>
-    `Item ${String(i)} costs 3.5 dollars, e.g. at example.com... "Really?" she asked.\nCafé, naïve — fine!`
+    `Item ${String(i)} costs 3.5 dollars, e.g. at example.com... "Really?" she asked.\nCafé, naïve — fine! See main.rs, i.e. Rust 1.0 calls foo.unwrap() and v1.25.3 too.`
 ).join(" ")
 const SCENES = {
   short: SHORT,
@@ -130,8 +130,11 @@ describe("speakerChunks", () => {
     expect(parts.length).toBeGreaterThan(1)
     for (const part of parts.slice(0, -1))
       expect(part).toMatch(/[.!?…]["'”’)\]]*$/u)
-    for (const part of parts) expect(part).not.toMatch(/e\.g\.$/u)
+    for (const part of parts) expect(part).not.toMatch(/(e\.g|i\.e)\.$/u)
     expect(parts.join(" ")).toContain("3.5 dollars, e.g. at example.com...")
+    expect(parts.join(" ")).toContain(
+      "See main.rs, i.e. Rust 1.0 calls foo.unwrap() and v1.25.3 too."
+    )
     expect(parts.join(" ")).toContain("asked.\nCafé")
   })
 
