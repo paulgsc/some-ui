@@ -109,7 +109,12 @@ function bothRead(state: OnHomeState): { readonly kind: ReadKind } {
   const reads = [state.ideas, state.lists]
   const unfinished = reads.find(({ kind }) => kind === "reading")
   if (unfinished !== undefined) return unfinished
-  return reads.find(({ kind }) => kind !== "read") ?? state.ideas
+  // A failure first, whichever read it was; then unpaired; then read.
+  return (
+    reads.find(({ kind }) => kind !== "read" && kind !== "unpaired") ??
+    reads.find(({ kind }) => kind === "unpaired") ??
+    state.ideas
+  )
 }
 
 export function createIdeasOnHome(ports: OnHomePorts): OnHomeRuntime {
