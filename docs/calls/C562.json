@@ -1,0 +1,18 @@
+{
+  "id": "C562",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/interview-week/ladder.ts",
+    "apps/www/src/components/jobs/interview/ladder.tsx"
+  ],
+  "chose": "A week written before ready answers (some-ui.interview-week/1) offers a question's last two rungs only, Say it from cues and Say it your way, numbered 1 and 2, with no cue words; nothing says what is missing.",
+  "options": [
+    "the last two rungs only",
+    "all four, the first two saying there is no ready answer this week",
+    "the IW5 cards as they were"
+  ],
+  "gray": "A /1 week has no answer to read or read aloud; whether its absence shows is something the owner would see on screen.",
+  "undo": "Have stepsOf return all four steps and draw the first two as unavailable on a /1 week.",
+  "refs": ["#3175"]
+}
