@@ -39,49 +39,10 @@ for scale in window_animation_scale transition_animation_scale animator_duration
 done
 
 # The stand-in home's certificate and its CA, valid around the frozen date
-# the device is set to below (make-certs.sh mints them valid from now, which
-# a device set to an earlier day refuses). The runner's OpenSSL 3.0 backdates
-# only through `openssl ca`. Moves into make-certs.sh as an optional window
-# once #3120 has merged (agreed with COMPAT).
-dated_certs() {
-  local dir=$1 from=20261101000000Z to=20261231000000Z
-  mkdir -p "$dir/db"
-  : > "$dir/db/index"
-  echo 01 > "$dir/db/serial"
-  cat > "$dir/ca.cnf" <<CNF
-[ca]
-default_ca = run
-[run]
-database = $dir/db/index
-serial = $dir/db/serial
-new_certs_dir = $dir/db
-default_md = sha256
-policy = any
-copy_extensions = none
-unique_subject = no
-[any]
-commonName = supplied
-[root]
-basicConstraints = critical,CA:TRUE
-keyUsage = critical,keyCertSign
-[home]
-subjectAltName = IP:10.0.2.2
-extendedKeyUsage = serverAuth
-basicConstraints = CA:FALSE
-CNF
-  openssl req -new -newkey rsa:2048 -nodes -subj "/CN=snips-capture CA" \
-    -keyout "$dir/ca.key" -out "$dir/ca.csr" > /dev/null 2>&1
-  openssl ca -batch -selfsign -config "$dir/ca.cnf" -keyfile "$dir/ca.key" \
-    -in "$dir/ca.csr" -out "$dir/ca.pem" -extensions root \
-    -startdate "$from" -enddate "$to" -notext > /dev/null 2>&1
-  openssl req -newkey rsa:2048 -nodes -subj "/CN=10.0.2.2" \
-    -keyout "$dir/home.key" -out "$dir/home.csr" > /dev/null 2>&1
-  openssl ca -batch -config "$dir/ca.cnf" -cert "$dir/ca.pem" -keyfile "$dir/ca.key" \
-    -in "$dir/home.csr" -out "$dir/home.pem" -extensions home \
-    -startdate "$from" -enddate "$to" -notext > /dev/null 2>&1
-}
+# the device is set to below: minted valid from now, a device set to an
+# earlier day refuses them.
 certs=$(mktemp -d)
-dated_certs "$certs"
+CERT_FROM=20261101000000Z CERT_TO=20261231000000Z bash "$here/make-certs.sh" "$certs"
 # trust-ca.sh also leaves adb running as root, which setting the clock needs.
 bash "$here/trust-ca.sh" "$certs/ca.pem" > "$out/trust-ca.log" 2>&1
 adb shell settings put global auto_time 0
