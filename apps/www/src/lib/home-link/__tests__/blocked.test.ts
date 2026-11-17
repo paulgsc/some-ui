@@ -131,6 +131,22 @@ describe("NA1: which failure the phone's request met (native-http)", () => {
     expect(await failureOf(ANDROID.trust)).toBeInstanceOf(HomeBlockedError)
   })
 
+  it("reads the app's own deadline passing as silence", async () => {
+    vi.useFakeTimers()
+    try {
+      plugin.request.mockReturnValue(new Promise(() => undefined))
+      const pending = homeRequest({ method: "GET", url: URL_ }).catch(
+        (e: unknown) => e
+      )
+      await vi.advanceTimersByTimeAsync(60_000)
+      const failed = await pending
+      expect(failed).toBeInstanceOf(HomeNoAnswerError)
+      expect(failed).not.toBeInstanceOf(HomeBlockedError)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("leaves a build without the plugin a fault on the phone, neither silence nor blocked", async () => {
     const missing = await failureOf({ code: "UNIMPLEMENTED" })
     expect(missing).not.toBeInstanceOf(HomeNoAnswerError)
@@ -277,11 +293,36 @@ describe("NA1: what the person reads", () => {
     }
   })
 
-  it("says a pairing that met either as itself", () => {
-    expect(pairFailureLine("no-name", "home.example")).toMatch(
+  it("says a pairing that met either as itself, through the link's own pairing", async () => {
+    const pairingMeets = async (error: unknown): Promise<string | null> => {
+      const clock = fakeClock()
+      const link = createHomeLink({
+        credential: {
+          read: () => Promise.resolve({ record: null, lost: false }),
+          write: () => Promise.resolve(),
+          clear: () => Promise.resolve(),
+        },
+        request: () => Promise.reject(error),
+        onHidden: () => (): void => undefined,
+        now: clock.now,
+        after: clock.after,
+      })
+      await link.load()
+      await link.pair(HOME, "K7QF2M9X")
+      const failure = link.getSnapshot().pairFailure?.failure
+      return failure === undefined ? null : pairFailureLine(failure, HOME.host)
+    }
+    // As native-http throws it, and as Android words it under any wrapper.
+    expect(await pairingMeets(blockedError("name"))).toMatch(
       /can't find home\.example on this network/
     )
-    expect(pairFailureLine("untrusted", "home.example")).toMatch(/certificate/)
+    expect(
+      await pairingMeets(new Error("couldn't", { cause: ANDROID.name }))
+    ).toMatch(/can't find home\.example on this network/)
+    expect(await pairingMeets(blockedError("trust"))).toMatch(
+      /doesn't trust home\.example's certificate/
+    )
+    expect(await pairingMeets(noAnswer())).toMatch(/^Couldn't reach/)
   })
 })
 
