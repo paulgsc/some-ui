@@ -39,7 +39,7 @@ describe("what deleting the account says", () => {
       "Written reflections",
       "Asks for the next scene",
       "Notes on the feeds' episodes",
-      "Voice notes, game bites included",
+      "Voice notes, recordings from a game included",
       "What the phone noted beside a soundbite or a LeetType answer",
       "Rust Rounds' rounds",
       "How each recording ended",
@@ -75,7 +75,7 @@ describe("what deleting the account says", () => {
   })
 
   it("says a voice note goes with what home heard in it, the copy filed for the mailbox included", () => {
-    const voice = textOf(goes, "Voice notes, game bites included")
+    const voice = textOf(goes, "Voice notes, recordings from a game included")
     expect(voice).toMatch(/sound included, and what home heard/)
     expect(voice).toMatch(/game-day bite, also what it was about/)
     expect(textOf(goes, "Filed with home for the mailbox")).toMatch(
