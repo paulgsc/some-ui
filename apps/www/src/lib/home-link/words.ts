@@ -10,6 +10,7 @@
  */
 import { assertNever, counted } from "@some-ui/core-utils"
 
+import type { HomeBlockedReason } from "@/lib/device-backend/native-http/no-answer"
 import { whenSaid } from "@/lib/journey"
 import { OFFLINE_SET_WORDS } from "@/lib/session-reflection/policy"
 import type { How, Where } from "@/lib/sharing-marks"
@@ -18,6 +19,7 @@ import { NO_ROOM } from "@/lib/voice-home/model"
 
 import type { ClearEnd } from "./clear"
 import type { KeptState } from "./kept-model"
+import { BLOCKED_WHY } from "./kept-model"
 import type { LaneCounts, LaneId, LaneKind } from "./lanes"
 import type { LastRead } from "./routine-model"
 import type { Serves } from "./serves-model"
@@ -422,6 +424,17 @@ export type LaneFacts = LaneCounts & {
   serves: Serves | null
   /** Away from home since `since` (AW1, `./away`), read at `now`; null at home. */
   away: { readonly since: number; readonly now: number } | null
+  /** Why the last request couldn't reach home, if the phone can name it (NA1). */
+  blocked: HomeBlockedReason | null
+}
+
+/**
+ * Why the phone couldn't reach home, though home may be right there (NA1,
+ * #3099): never "away", since the phone may well be at home.
+ */
+export const BLOCKED_LINE: Readonly<Record<HomeBlockedReason, string>> = {
+  name: "This phone can't find home's name on this network; your router may be blocking it.",
+  trust: "This phone doesn't trust home's certificate.",
 }
 
 export type LaneView = {
@@ -575,6 +588,16 @@ export function laneView(words: LaneWords, facts: LaneFacts): LaneView {
         "busy",
         "Home busy",
         `Home is busy right now.${later}`
+      )
+    }
+    if (last.why === BLOCKED_WHY) {
+      return show(
+        "kept",
+        "blocked",
+        "Can't reach",
+        facts.blocked === null
+          ? `This phone couldn't reach home.${later}`
+          : `${BLOCKED_LINE[facts.blocked]}${later}`
       )
     }
     if (last.why === "full") {

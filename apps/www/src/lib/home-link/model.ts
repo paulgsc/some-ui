@@ -28,6 +28,8 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 
+import type { HomeBlockedReason } from "@/lib/device-backend/native-http/no-answer"
+
 import type { Away, AwayEvent } from "./away"
 import { held, stepAway } from "./away"
 
@@ -45,6 +47,10 @@ export type UnpairedNote =
 export type PairFailure =
   | "unreachable"
   | "untrusted"
+  /** This phone couldn't find home's name on this network (NA1). */
+  | "no-name"
+  /** Home is shedding load for a while (a 503 `service_overloaded`). */
+  | "busy"
   | "bad-code"
   | "too-many"
   | "not-set-up"
@@ -127,6 +133,17 @@ export type HomeLinkState = {
    * (`./kept-watch`). A network change, a pull or Send now ask themselves.
    */
   readonly awayReleases: number
+  /**
+   * The last request to home failed before home could answer, for `reason`
+   * (NA1, #3099): this phone couldn't find home's name on this network, or
+   * doesn't trust home's certificate. Not a silence, so not away (AW1), and
+   * nothing is held for it; the next answer, a network change, a silence or
+   * a new pairing clears it. Null otherwise.
+   */
+  readonly blocked: {
+    readonly reason: HomeBlockedReason
+    readonly at: number
+  } | null
 }
 
 export type HomeLinkEvent =
@@ -182,6 +199,14 @@ export type HomeLinkEvent =
     }
   /** Away from home (AW1, `./away`): a request found no answer, or one did. */
   | AwayEvent
+  /** A request failed for `reason` before home could answer (NA1). */
+  | {
+      readonly type: "blocked"
+      readonly reason: HomeBlockedReason
+      readonly at: number
+    }
+  /** Home answered a request, after one was blocked (NA1). */
+  | { readonly type: "unblocked" }
 
 export const INITIAL: HomeLinkState = {
   link: { kind: "reading" },
@@ -191,6 +216,7 @@ export const INITIAL: HomeLinkState = {
   homeBusyUntil: null,
   away: null,
   awayReleases: 0,
+  blocked: null,
 }
 
 const idle = { kind: "idle" } as const
@@ -298,6 +324,7 @@ export function step(
       return {
         ...state,
         homeBusyUntil: elsewhere ? null : state.homeBusyUntil,
+        blocked: null,
         link: {
           kind: "paired",
           base: event.base,
@@ -333,6 +360,7 @@ export function step(
         activity: idle,
         pairFailure: null,
         away: null,
+        blocked: null,
       }
     }
     case "unpairFailed": {
@@ -404,15 +432,35 @@ export function step(
     case "answered":
     case "lapsed":
     case "lookAgain": {
+      // The latest failure is home's silence, or the network changed: what
+      // blocked a request before is not what is said now (NA1).
+      const blocked =
+        event.type === "unanswered" ||
+        (event.type === "lookAgain" && event.fresh)
+          ? null
+          : state.blocked
       const away = stepAway(state.away, event)
-      if (away === state.away) return state
+      if (away === state.away && blocked === state.blocked) return state
       // A hold ending on its time, or home answering: a release (AW1).
-      const released = event.type === "lapsed" || event.type === "answered"
+      const released =
+        away !== state.away &&
+        (event.type === "lapsed" || event.type === "answered")
       return {
         ...state,
         away,
         awayReleases: state.awayReleases + (released ? 1 : 0),
+        blocked,
       }
+    }
+    case "blocked": {
+      if (link.kind !== "paired") return state
+      const { reason, at } = event
+      if (state.blocked?.reason === reason) return state
+      return { ...state, blocked: { reason, at } }
+    }
+    case "unblocked": {
+      if (state.blocked === null) return state
+      return { ...state, blocked: null }
     }
     default: {
       return assertNever(event)

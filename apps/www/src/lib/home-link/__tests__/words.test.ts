@@ -32,6 +32,7 @@ const runs: Array<KeptState> = [
       { kind: "failed", why: "full" },
       { kind: "failed", why: "refused" },
       { kind: "failed", why: "fault" },
+      { kind: "failed", why: "blocked" },
       { kind: "failed", why: "room" },
       { kind: "failed", why: "an entry: home answered 500" },
     ] satisfies Array<KeptRun>
@@ -49,6 +50,7 @@ const facts = (over: Partial<LaneFacts> = {}): LaneFacts => ({
   pulled: true,
   serves: null,
   away: null,
+  blocked: null,
   ...over,
 })
 
@@ -448,6 +450,11 @@ describe("the routine's files in Korean", () => {
       kept(last({ kind: "failed", why: "room" })),
       kept(last({ kind: "failed", why: "refused" })),
       kept(last({ kind: "failed", why: "fault" })),
+      facts({
+        paired: true,
+        run: last({ kind: "failed", why: "blocked" }),
+        blocked: "name",
+      }),
       kept(last({ kind: "failed", why: "an entry" })),
       facts({ paired: true, serves: "updating" }),
       facts({ paired: true, serves: "not-yet" }),
@@ -505,5 +512,30 @@ describe("away from home (AW1)", () => {
     expect(
       laneView(WORDS.practice, facts({ paired: true, run: unreachable })).word
     ).toBe("No answer")
+  })
+})
+
+describe("a request that couldn't reach home, though home may be there (NA1)", () => {
+  it("is never said as away, and says which it was in the person's terms", () => {
+    const blocked = (reason: "name" | "trust" | null): LaneFacts =>
+      facts({
+        paired: true,
+        waiting: 2,
+        run: { ...INITIAL_KEPT, last: { kind: "failed", why: "blocked" } },
+        blocked: reason,
+        // Even while a stretch away is under way, the latest failure is said.
+        away: { since: 1, now: 2 },
+      })
+    const views = (["name", "trust", null] as const).map((reason) =>
+      laneView(WORDS.aph, blocked(reason))
+    )
+    for (const view of views) {
+      expect(view.how).toBe("blocked")
+      expect(view.line).not.toMatch(/away/i)
+      expect(view.line).not.toMatch(MACHINERY)
+      expect(view.line).toMatch(/on this phone and go next time/)
+    }
+    expect(views[0]?.line).toMatch(/can't find home's name on this network/)
+    expect(views[1]?.line).toMatch(/doesn't trust home's certificate/)
   })
 })

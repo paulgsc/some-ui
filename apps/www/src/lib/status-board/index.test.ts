@@ -48,6 +48,7 @@ describe("what each mark asks of its person", () => {
       waiting: "moving",
       sending: "moving",
       "no-answer": "watch",
+      blocked: "you",
       busy: "watch",
       forgotten: "you",
       unpaired: "you",

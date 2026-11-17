@@ -13,6 +13,9 @@ import type { HomeExchanged } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/core-utils"
 
 /** How one run ended: as its exchange did, or before one could. */
+/** A run that couldn't reach home for a reason the phone can name (NA1). */
+export const BLOCKED_WHY = "blocked"
+
 export type KeptRun =
   | Exclude<HomeExchanged, { kind: "synced" }>
   | { readonly kind: "synced"; readonly at: number }

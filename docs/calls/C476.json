@@ -1,0 +1,19 @@
+{
+  "id": "C476",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/home-link/model.ts",
+    "some-ui:apps/www/src/lib/home-link/runtime.ts",
+    "some-ui:apps/www/src/lib/device-backend/native-http/index.ts"
+  ],
+  "chose": "A request that failed because this phone couldn't find home's name on this network, or doesn't trust home's certificate, holds nothing back: the phone says which it was, on the lane's mark and the sign-in sheet, and asks again at its next moment as it would have anyway. Only home's silence is held away (AW1). The next answer, a network change, a silence or a new pairing clears what was said.",
+  "options": [
+    "say it, and hold nothing back",
+    "say it, and hold back as a silence is held (AW1's stretch)",
+    "say it, and stop asking until the network changes"
+  ],
+  "gray": "Neither failure reaches home, so asking again costs home nothing and the phone little, and the fix is the person's (a router setting, a certificate) or a network change, after which asking at once is what they want. Holding back like a silence would make the phone slow to notice the fix; stopping until the network changes would miss a fix made on the same network.",
+  "undo": "Have the link's `blocked` event also step the away state as `unanswered` does (runtime.ts `heard`), or hold the lanes while `blocked` is set; nothing stores the choice.",
+  "refs": ["#3099"]
+}

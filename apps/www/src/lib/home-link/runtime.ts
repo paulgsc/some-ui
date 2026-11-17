@@ -50,8 +50,11 @@ import { stringFieldOf } from "@/lib/device-backend/common"
 import type { HomeGet } from "@/lib/device-backend/home-sync"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import type { HomeRequest } from "@/lib/device-backend/native-http"
+import type { HomeBlockedReason } from "@/lib/device-backend/native-http/no-answer"
 import {
+  blockedReason,
   HomeAwayError,
+  HomeBlockedError,
   HomeNoAnswerError,
 } from "@/lib/device-backend/native-http/no-answer"
 import { isFileHostTimeout } from "@/lib/file-host-config/client"
@@ -142,24 +145,48 @@ export function parsePairing(record: string): Pairing | null {
   }
 }
 
-/** What a pairing answer other than 200 says. */
-function refusalOf(status: number): PairFailure {
+/** Home's error code in an answer's body, or null. */
+function errorCodeOf(answer: HomeAnswer): string | null {
+  try {
+    const parsed: unknown = JSON.parse(answer.body)
+    const code =
+      isRecord(parsed) && isRecord(parsed.error) ? parsed.error.code : null
+    return typeof code === "string" ? code : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * What a pairing answer other than 200 says. A 503 is read by its code
+ * (#3099): `service_overloaded` with a `Retry-After` is home shedding load
+ * for a while; without one, it is home's cap on pairing attempts, which no
+ * wait lifts soon; anything else is pairing not set up there.
+ */
+function refusalOf(answer: HomeAnswer): PairFailure {
+  const { status } = answer
   if (status === 422) return "bad-code"
   if (status === 429) return "too-many"
-  if (status === 503) return "not-set-up"
+  if (status === 503) {
+    if (errorCodeOf(answer) !== "service_overloaded") return "not-set-up"
+    return answer.retryAfter === undefined ? "too-many" : "busy"
+  }
   // A www host without the proxy path, say: nothing there pairs.
   if (status === 404 || status === 405) return "not-home"
   return "other"
 }
 
-/** What a pairing request that threw says: TLS refused, or no answer. */
+/**
+ * What a pairing request that threw says: a certificate this phone doesn't
+ * trust, a name it can't find (NA1, `native-http`'s `blockedReason`), or no
+ * answer.
+ */
 function thrownFailureOf(error: unknown): PairFailure {
-  const words = [error, isRecord(error) ? error.cause : undefined]
-    .map(String)
-    .join(" ")
-  return /SSL|certif|CertPath|trust anchor/i.test(words)
-    ? "untrusted"
-    : "unreachable"
+  const blocked =
+    error instanceof HomeBlockedError ? error.reason : blockedReason(error)
+  if (blocked === "trust") return "untrusted"
+  if (blocked === "name") return "no-name"
+  return "unreachable"
 }
 
 /**
@@ -176,6 +203,14 @@ export function unanswered(error: unknown): boolean {
     }
   }
   return false
+}
+
+/** Why `error`, or a cause of it, failed before home could answer (NA1). */
+export function blockedOf(error: unknown): HomeBlockedReason | null {
+  for (let cause = error; cause instanceof Error; cause = cause.cause) {
+    if (cause instanceof HomeBlockedError) return cause.reason
+  }
+  return null
 }
 
 /** `send`, and whether home answered any of it as busy (`429`). */
@@ -398,15 +433,24 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     cancelLapse?.()
     cancelLapse = ports.after(Math.max(after.heldUntil - ports.now(), 0), lapse)
   }
-  /** `request` as sent, its answer or silence told to the away state. */
+  /**
+   * `request` as sent, its answer or silence told to the away state (AW1),
+   * and a failure before home could answer told as itself (NA1).
+   */
   const heard = (request: Promise<HomeAnswer>): Promise<HomeAnswer> =>
     request.then(
       (answer) => {
         reached(true)
+        if (state.blocked !== null) dispatch({ type: "unblocked" })
         return answer
       },
       (error: unknown) => {
-        if (unanswered(error)) reached(false, error)
+        const blocked = blockedOf(error)
+        if (blocked !== null) {
+          dispatch({ type: "blocked", reason: blocked, at: ports.now() })
+        } else if (unanswered(error)) {
+          reached(false, error)
+        }
         throw error
       }
     )
@@ -545,7 +589,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     } catch (error) {
       return thrownFailureOf(error)
     }
-    if (answer.status !== 200) return refusalOf(answer.status)
+    if (answer.status !== 200) return refusalOf(answer)
     const token = stringFieldOf(answer.body, "token")
     if (token === null) return "other"
     try {
