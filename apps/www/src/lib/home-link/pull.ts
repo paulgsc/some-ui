@@ -27,7 +27,7 @@ import type { KeptRun } from "./kept-model"
 import { resynced } from "./kept-model"
 import type { Kept } from "./kept-runtime"
 import type { Front } from "./kept-watch"
-import { pullKept } from "./kept-watch"
+import { mayAsk, pullKept } from "./kept-watch"
 import { drainFree } from "./model"
 import { PULL_HOME } from "./words"
 
@@ -92,6 +92,8 @@ export function homeRefresher({
     lane: Kept,
     since: number
   ): Promise<KeptRun | null> => {
+    // A pull that could ask nothing (hidden, unpaired) is answered by nothing.
+    if (!mayAsk(doc)) return null
     const already = answered(lane, since)
     if (already !== null) return already
     const end = await pullKept(lane, doc)
