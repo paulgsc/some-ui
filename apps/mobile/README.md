@@ -464,8 +464,12 @@ screenshots) last a day.
 What it cannot show: Samsung's One UI and its own WebView quirks, a real
 radio dropping and returning, thermal throttling, and a phone's real
 memory pressure. An emulator's old API level carries the WebView its system
-image shipped, which is older than any phone that updates from Play has. A
-level that cannot boot on GitHub's hosted runners shows as "not run".
+image shipped, which is older than any phone that updates from Play has: on
+2026-11-17 the API 24 and 28 images carried Chrome 69 and API 31's WebView
+91, while the bundle is built for Vite's default target (about Chrome 111),
+so the page loads blank there and the launch fails. The stamp's "Image's
+WebView" column says which a level ran. A level that cannot boot on GitHub's
+hosted runners shows as "not run".
 
 ### Play readiness
 

@@ -44,6 +44,16 @@ const { values } = parseArgs({
 
 /** `"GET /api/v1/..."` -> `{ status, body }`. */
 const routes = JSON.parse(readFileSync(values.routes, "utf8")).routes
+
+/** A route key's path as a pattern: each `:name` segment matches one. */
+const patterns = Object.keys(routes).map((key) => ({
+  key,
+  match: new RegExp(
+    `^${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/:[a-z]+/gi, "[^/]+")}$`
+  ),
+}))
+const routeOf = (key) =>
+  routes[key] ?? routes[patterns.find((p) => p.match.test(key))?.key]
 const FALLBACK = { status: 200, body: {} }
 const requests = []
 // Never reset: the budget is checked over the whole run (check-budget.mjs).
@@ -60,7 +70,7 @@ const answerHome = (req, res) => {
   const key = `${req.method} ${path}`
   // Anything unlisted is a 200 `{}` (HERD1's advice): a lane that cannot
   // parse it ends failed, which is fine for counting.
-  const answer = busySeconds > 0 ? null : (routes[key] ?? FALLBACK)
+  const answer = busySeconds > 0 ? null : (routeOf(key) ?? FALLBACK)
   const status = busySeconds > 0 ? 429 : (answer.status ?? 200)
   const entry = {
     at: Date.now(),
@@ -70,8 +80,10 @@ const answerHome = (req, res) => {
   }
   requests.push(entry)
   everything.push(entry)
-  // Drain the body so a POST does not hold the socket open.
-  req.resume()
+  // Read the body: an `echo` route answers `{ [echo]: <the body> }`, as home
+  // answers a PUT it now holds.
+  const chunks = []
+  req.on("data", (chunk) => chunks.push(chunk))
   req.on("end", () => {
     if (busySeconds > 0) {
       res.writeHead(429, {
@@ -81,7 +93,15 @@ const answerHome = (req, res) => {
       res.end(JSON.stringify({ error: "busy" }))
       return
     }
-    const body = JSON.stringify(answer.body ?? null)
+    let sent = null
+    try {
+      sent = JSON.parse(Buffer.concat(chunks).toString("utf8"))
+    } catch {
+      // Ignored: a body that is not JSON is echoed as null; nothing reads it.
+    }
+    const body = JSON.stringify(
+      answer.echo ? { [answer.echo]: sent } : (answer.body ?? null)
+    )
     res.writeHead(status, {
       "Content-Type": "application/json",
       ETag: `"${body.length}"`,

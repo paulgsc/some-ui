@@ -113,7 +113,7 @@ pair_by_ui() {
     ui type '^pair-code$|^K7QF 2M9X$' 'K7QF2M9X' &&
     hide_keyboard &&
     ui tap '^Pair with' &&
-    ui find '^Unpair$'
+    ui find '^Unpair$|^Home: signed in$'
 }
 
 # The same through the debug APK's page, for a level where the UI cannot be

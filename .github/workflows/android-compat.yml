@@ -169,7 +169,7 @@ jobs:
         if: always()
         run: |
           mkdir -p compat-out
-          [ -f compat-out/row.json ] || echo '{"api":${{ matrix.api }},"launch":"not run","paired":"not run","storm":"not run","refresh":"not run"}' > compat-out/row.json
+          [ -f compat-out/row.json ] || echo '{"api":${{ matrix.api }},"webview":"unknown","launch":"not run","paired":"not run","storm":"not run","refresh":"not run"}' > compat-out/row.json
       # Retention: read by this run's stamp job, and by a person reading a
       # red level right after the run; a later look is a dispatch away.
       - name: Upload what the level showed
@@ -203,11 +203,11 @@ jobs:
           {
             echo "## Android compatibility: \`${SHA::7}\` ($REF)"
             echo
-            echo "| API | Launch | Paired (https) | Storm | Refresh |"
-            echo "| --- | --- | --- | --- | --- |"
-            jq -r '.[] | [.api, .launch, .paired, .storm, .refresh] | @tsv' stamp-rows.json |
-              while IFS=$'\t' read -r api launch paired storm refresh; do
-                echo "| $api | $(mark "$launch") | $(mark "$paired") | $(mark "$storm") | $(mark "$refresh") |"
+            echo "| API | Image's WebView | Launch | Paired (https) | Storm | Refresh |"
+            echo "| --- | --- | --- | --- | --- | --- |"
+            jq -r '.[] | [.api, (.webview // "unknown"), .launch, .paired, .storm, .refresh] | @tsv' stamp-rows.json |
+              while IFS=$'\t' read -r api webview launch paired storm refresh; do
+                echo "| $api | $webview | $(mark "$launch") | $(mark "$paired") | $(mark "$storm") | $(mark "$refresh") |"
               done
             echo
             passed=$(jq -r '[.[] | select(.launch == "pass" and .paired == "pass" and .storm == "pass" and .refresh == "pass") | .api] | join(", ")' stamp-rows.json)

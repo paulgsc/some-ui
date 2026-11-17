@@ -11,7 +11,9 @@
 //
 // <pattern> is a case-insensitive regular expression matched against each
 // node's text, content-desc, hint and resource-id. Retries for up to 30 s,
-// since a slowed emulator renders late. Exits non-zero when nothing
+// since a slowed emulator renders late; `find` accepts a match scrolled out
+// of view, while `tap` and `type` scroll the page down until it is on
+// screen. Exits non-zero when nothing
 // matches, and leaves the last dump at ui-last.xml in the working directory
 // for reading why.
 import { execFileSync } from "node:child_process"
@@ -29,8 +31,12 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const attribute = (node, name) =>
   (node.match(new RegExp(`\\b${name}="([^"]*)"`)) ?? [])[1] ?? ""
 
-/** The first matching node's centre, or null. */
+/**
+ * The first matching node: its centre, and whether it is on screen. A node
+ * scrolled out of the WebView's view is still in the tree, with no height.
+ */
 function find(xml) {
+  let offScreen = null
   for (const node of xml.match(/<node\b[^>]*>/g) ?? []) {
     const names = ["text", "content-desc", "hint", "resource-id"].map((n) =>
       attribute(node, n)
@@ -39,13 +45,34 @@ function find(xml) {
     const bounds = attribute(node, "bounds").match(/-?\d+/g)?.map(Number)
     if (!bounds || bounds.length !== 4) continue
     const [left, top, right, bottom] = bounds
-    if (right <= left || bottom <= top) continue
-    return {
+    const centre = {
       x: Math.round((left + right) / 2),
       y: Math.round((top + bottom) / 2),
     }
+    if (right > left && bottom > top) return { ...centre, visible: true }
+    offScreen ??= { ...centre, visible: false }
   }
-  return null
+  return offScreen
+}
+
+// Scrolls the page down a third of the screen: a drag upwards, never down,
+// which at the page's top would be a pull.
+function scrollDown() {
+  const size = adb("shell", "wm", "size").match(/(\d+)x(\d+)\s*$/m)
+  const [width, height] = size
+    ? [Number(size[1]), Number(size[2])]
+    : [1080, 1920]
+  const x = String(Math.round(width / 2))
+  adb(
+    "shell",
+    "input",
+    "swipe",
+    x,
+    String(Math.round(height * 0.7)),
+    x,
+    String(Math.round(height * 0.4)),
+    "400"
+  )
 }
 
 let found = null
@@ -54,8 +81,12 @@ for (const end = Date.now() + 30_000; Date.now() < end; await sleep(1_000)) {
   adb("shell", "uiautomator", "dump", "/sdcard/ui.xml")
   xml = adb("exec-out", "cat", "/sdcard/ui.xml")
   found = find(xml)
-  if (found) break
+  // `find` takes a match anywhere in the tree; tapping or typing needs it on
+  // screen, and a form below the fold is reached by scrolling down to it.
+  if (found && (found.visible || action === "find")) break
+  if (action !== "find") scrollDown()
 }
+if (found && !found.visible && action !== "find") found = null
 writeFileSync("ui-last.xml", xml)
 if (!found) throw new Error(`nothing on screen matches /${pattern}/i`)
 

@@ -11,7 +11,8 @@
 # for. Every step runs even when one before it failed, so the row says what
 # each one found; the script fails if any did.
 #
-# The row, <out-dir>/row.json: {api, launch, paired, storm, refresh}, each
+# The row, <out-dir>/row.json: {api, webview, launch, paired, storm,
+# refresh}, webview the image's WebView version and the rest each
 # "pass", "fail" or "not run" (paired also "via debug build", where the
 # release APK's Pair form could not be driven, and "no system CA", where the
 # storm ran unpaired), which the stamp job tabulates.
@@ -32,6 +33,14 @@ if [ "$cpu" -gt 0 ]; then
     echo "::warning::no qemu process found to cap; the emulator runs uncapped"
   fi
 fi
+
+# The WebView this image carries, for the stamp: an old image's is older
+# than any phone that updates it from Play has, and the bundle needs a
+# recent one (Vite's default target), so a blank page there is the image's.
+webview=$(adb shell dumpsys webviewupdate | tr -d '\r' \
+  | grep -oE "Current WebView package \(name, version\): \([^)]*\)" \
+  | grep -oE "[0-9][0-9.]+" | head -1 || true)
+webview=${webview:-unknown}
 
 launch=fail
 GITHUB_STEP_SUMMARY=${GITHUB_STEP_SUMMARY:-/dev/null} \
@@ -63,9 +72,9 @@ console.log(paired, r.storm.length ? "fail" : "pass", r.refresh.length ? "fail" 
 fi
 
 node -e '
-const [api, launch, paired, storm, refresh, file] = process.argv.slice(1)
-require("fs").writeFileSync(file, JSON.stringify({ api: Number(api), launch, paired, storm, refresh }))
-' "$api" "$launch" "$paired" "$storm" "$refresh" "$out/row.json"
+const [api, webview, launch, paired, storm, refresh, file] = process.argv.slice(1)
+require("fs").writeFileSync(file, JSON.stringify({ api: Number(api), webview, launch, paired, storm, refresh }))
+' "$api" "$webview" "$launch" "$paired" "$storm" "$refresh" "$out/row.json"
 cat "$out/row.json"
 
 # A level that paired via the debug build, or ran unpaired for want of a
