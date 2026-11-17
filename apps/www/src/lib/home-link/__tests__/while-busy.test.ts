@@ -6,8 +6,10 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { PhoneBusyError, phoneWasBusy } from "@/lib/home-link/phone-busy"
 import type { NotAnswered } from "@/lib/home-link/while-busy"
 import { askWhileBusy } from "@/lib/home-link/while-busy"
+import { mapFileHostError } from "@/lib/intent/errors"
 
 type Answered = { readonly kind: "answered"; readonly answer: string }
 
@@ -55,5 +57,15 @@ describe("askWhileBusy", () => {
     await vi.runAllTimersAsync()
     await expect(ended).resolves.toEqual(end)
     expect(ask).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe("phoneWasBusy", () => {
+  it("knows a busy read's rejection, raw and as a query maps it", () => {
+    const busy = new PhoneBusyError("busy")
+    expect(phoneWasBusy(busy)).toBe(true)
+    expect(phoneWasBusy(mapFileHostError(busy))).toBe(true)
+    expect(phoneWasBusy(new Error("home didn't answer"))).toBe(false)
+    expect(phoneWasBusy(null)).toBe(false)
   })
 })

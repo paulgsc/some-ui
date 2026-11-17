@@ -6,6 +6,8 @@
  */
 import { queryOptions } from "@tanstack/react-query"
 
+import { phoneWasBusy } from "@/lib/home-link/phone-busy"
+
 import { underWay, WHILE_UNDER_WAY_MS } from "./model"
 import type { RendersOutcome } from "./read"
 import { readRenders, RendersUnanswered } from "./read"
@@ -18,18 +20,17 @@ export * from "./words"
 
 /**
  * When the board is read again on its own: every half minute while home has
- * something under way or this phone was busy with home, never otherwise, and
- * not once home gave no answer (away from home; AW1, lib/home-link/away): a
- * pull or Try again reads again.
+ * something under way or this phone was busy with home (#3155), never
+ * otherwise, and not once home gave no answer (away from home; AW1,
+ * lib/home-link/away): a pull or Try again reads again.
  */
 export function rendersAgainIn(state: {
   readonly error: unknown
   readonly data: RendersOutcome | undefined
 }): number | false {
   if (state.error instanceof RendersUnanswered) return false
-  const read = state.data
-  return read?.kind === "busy" ||
-    (read?.kind === "read" && underWay(read.board))
+  if (phoneWasBusy(state.error)) return WHILE_UNDER_WAY_MS
+  return state.data?.kind === "read" && underWay(state.data.board)
     ? WHILE_UNDER_WAY_MS
     : false
 }

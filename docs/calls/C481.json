@@ -4,19 +4,22 @@
   "by": "claude",
   "paths": [
     "some-ui:apps/www/src/lib/home-link/while-busy.ts",
+    "some-ui:apps/www/src/lib/home-link/phone-busy.ts",
     "some-ui:apps/www/src/lib/renders/read.ts",
     "some-ui:apps/www/src/lib/renders/index.ts",
+    "some-ui:apps/www/src/lib/episode-feedback/home-read.ts",
+    "some-ui:apps/www/src/components/studio/layout.tsx",
     "some-ui:apps/www/src/lib/my-data/words.ts",
     "some-ui:apps/www/src/lib/call-videos/words.ts",
     "some-ui:packages/ui/soundbites/src/lib/reconcile/words.ts"
   ],
-  "chose": "A read of home that finds this phone still busy with home after its ten tries says so on each screen as \"This phone was busy with home just then\", with that screen's own ending (try again in a moment, drag down, or what is shown instead), never that home can't be reached. Studio › Renders shows that line in place of the board and asks again on its own in half a minute, rather than keeping the board it last read.",
+  "chose": "A read of home that finds this phone still busy with home after its ten tries says so on each screen in one shape, \"This phone was busy with home just then\", with that screen's own ending (try again in a moment, drag down, or what is shown instead), never that home can't be reached. Where a page keeps what it last read (Studio › Renders, the Feedback page's notes, the status board's renders row), a busy read rejects as before, so the last read stays and is said as last; Renders asks again on its own in half a minute.",
   "options": [
-    "say this phone was busy, in each screen's words; Renders shows the line and asks again in half a minute",
-    "say this phone was busy; Renders keeps its last board and says so over it, as for no answer",
+    "say this phone was busy, in one shape with each screen's ending; pages that keep their last read keep it on busy",
+    "say this phone was busy; a busy read resolves and replaces what the page last read",
     "say home is busy, as Settings' Sync says of home's own 429"
   ],
-  "gray": "The busy is the phone's, not home's: Sync already says \"Home is busy\" for home's own answer, so the same words would blur two states the person can act on differently. Keeping Renders' last board would need the shared ReadList to tell one rejection from another, which it reads only as a generic error.",
-  "undo": "Have readRenders throw on busy again and drop the busy arm of rendersAgainIn; change each surface's busy words in its words table.",
+  "gray": "The busy is the phone's, not home's: Sync already says \"Home is busy\" for home's own answer, so the same words would blur two states the person can act on differently. A busy read resolving would drop the board and notes a drag down had just shown, at the moment a drag down makes busy likely.",
+  "undo": "Change each surface's busy words in its words table; to drop the kept last read, have readRenders and readHomeNotes resolve busy instead of throwing PhoneBusyError.",
   "refs": ["#3155", "#3170"]
 }

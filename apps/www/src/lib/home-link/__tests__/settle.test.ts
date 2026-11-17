@@ -31,8 +31,7 @@
  *   every raw outcome; `./runtime.test.ts` holds a run parked over the
  *   read, a look refused unpaired, and a drain preempted by an Unpair, then
  *   refused as unpaired; `./takes-read.test.ts` holds a fault reported
- *   once; `./while-busy.test.ts` holds `askWhileBusy` over its tries, and
- *   the type makes each screen that reads through it say busy apart.
+ *   once; `./while-busy.test.ts` holds `askWhileBusy` over its tries.
  */
 import { describe, expect, it } from "vitest"
 

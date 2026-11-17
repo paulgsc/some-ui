@@ -3,6 +3,7 @@
  * again while the link is busy, and what it came to. Kept out of the query's
  * module, which React imports (R1).
  */
+import { PhoneBusyError } from "@/lib/home-link/phone-busy"
 import { askRenders } from "@/lib/home-link/renders"
 import { askWhileBusy } from "@/lib/home-link/while-busy"
 
@@ -14,8 +15,6 @@ export type RendersOutcome =
   | { readonly kind: "read"; readonly board: Board }
   | { readonly kind: "older" }
   | { readonly kind: "unpaired" }
-  /** This phone stayed busy with home, so nothing was asked (#3155). */
-  | { readonly kind: "busy" }
 
 /** Home gave no answer to a read of its render jobs (AW1: away from home, say). */
 export class RendersUnanswered extends Error {
@@ -23,14 +22,15 @@ export class RendersUnanswered extends Error {
 }
 
 /**
- * Reads home's render jobs, asking again while the link is busy, and says
- * `busy` once it stayed busy. Rejects when home didn't answer
- * (`RendersUnanswered`) or its answer couldn't be read, so a page keeps the
- * board it last read and says so.
+ * Reads home's render jobs, asking again while the link is busy. Rejects
+ * when home didn't answer (`RendersUnanswered`), the phone stayed busy with
+ * home (`PhoneBusyError`, #3155), or its answer couldn't be read, so a page
+ * keeps the board it last read and says so.
  */
 export async function readRenders(): Promise<RendersOutcome> {
   const asked = await askWhileBusy(askRenders)
-  if (asked.kind === "unpaired" || asked.kind === "busy") return asked
+  if (asked.kind === "unpaired") return asked
+  if (asked.kind === "busy") throw new PhoneBusyError("this phone was busy")
   if (asked.kind === "unreachable") {
     throw new RendersUnanswered("home didn't answer")
   }

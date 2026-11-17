@@ -309,9 +309,6 @@ const notRead = (
     case "older": {
       return WORDS.older
     }
-    case "busy": {
-      return WORDS.busy
-    }
     default: {
       return assertNever(outcome)
     }
