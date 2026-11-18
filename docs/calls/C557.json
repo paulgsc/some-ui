@@ -1,0 +1,18 @@
+{
+  "id": "C557",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/ui/interview-week/src/lib/week/index.ts",
+    "some-ui:packages/ui/interview-week/ROUTINE.md"
+  ],
+  "chose": "A question's ground follows its family: about yourself, a time you…, why this role, and strengths and weaknesses are open; a decision is about the body of work. It is written on each question so weeks and takes can be queried by it, and only a body-of-work question's claims must each name a source.",
+  "options": [
+    "by family, written on the question",
+    "by family, derived wherever it's read",
+    "chosen per question by the model"
+  ],
+  "gray": "The owner set the two kinds apart (2026-11-17) and wants them queryable, not mixed; which families fall on which side is a judgement, and a time you… could be told either way.",
+  "undo": "Change GROUND, or move a family to the other side.",
+  "refs": ["#3175"]
+}

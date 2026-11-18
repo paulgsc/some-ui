@@ -1,0 +1,19 @@
+{
+  "id": "C556",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/ui/interview-week/src/lib/week/index.ts",
+    "some-ui:packages/ui/interview-week/src/lib/monday/finish.ts",
+    "some-ui:apps/mailbox/src/core.ts"
+  ],
+  "chose": "Ready answers ride in the week's own file, as a second version of its format (some-ui.interview-week/2), each question carrying its ready answer; the first version still reads. The routine checks every cited source is in the body of work it read at the checkout's commit, and an answer runs 60% to 100% of its question's target at 140 words a minute.",
+  "options": [
+    "a second version of the week's file, the first still read",
+    "a separate file beside the week, with its own route on home",
+    "an optional field in the first version"
+  ],
+  "gray": "The week's file is kept on home byte for byte and read by the phone, the mailbox and home, so where the answers live sets what each must accept; an optional field would change what /1 means to readers already shipped.",
+  "undo": "Drop /2 from the format, the mailbox rule and home, and move the ready answers to their own file.",
+  "refs": ["#3175", "#2935"]
+}

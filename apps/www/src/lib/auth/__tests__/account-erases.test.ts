@@ -43,6 +43,7 @@ describe("what deleting the account says", () => {
       "What the phone noted beside a soundbite or a LeetType answer",
       "Rust Rounds' rounds",
       "How each recording ended",
+      "Each week's engagement report",
       "Studio's time log",
       "What your phones share",
       "Sign-in",

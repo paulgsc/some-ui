@@ -36,8 +36,13 @@ import type {
 } from "@some-ui/voice-capture"
 import { bundleMachine, isPastDue } from "@some-ui/voice-capture"
 
+import type { Rung } from "./ladder"
+
 /** A take as a send names it. */
 type Taken = { readonly take: string; readonly recordedAt: string }
+
+/** A question's take as a send names it, with the rung it was said on when the phone knew (IW8). */
+type Answered = Taken & { readonly question: string; readonly rung?: Rung }
 
 /** A week's takes as sent, kept on this phone, in home's shape (`PUT /interview-weeks/:id/sent`). */
 export type InterviewSent = {
@@ -46,7 +51,7 @@ export type InterviewSent = {
   /** When it was sent, ISO. */
   readonly at: string
   /** Each question said, in the week's order, with its take. */
-  readonly answers: ReadonlyArray<Taken & { readonly question: string }>
+  readonly answers: ReadonlyArray<Answered>
   /** Each card read, in the week's order, with its take. */
   readonly reads: ReadonlyArray<Taken & { readonly card: string }>
   /** The questions not said, in the week's order. */
@@ -131,7 +136,8 @@ function interviewSpec(week: InterviewWeek): BundleSpec<InterviewKind> {
       isClosed(week, at) ? "closed" : said === 0 ? "nothing" : null,
     resumesOnCards: () => false,
     record: (draft, answers, _passed, at, last): InterviewSent => {
-      const said = new Map<string, Taken>(
+      // An answer carried from the last send keeps the rung it went with.
+      const said = new Map<string, Taken & { readonly rung?: Rung }>(
         answers.flatMap(({ item, take }) =>
           take === null ? [] : [[item, { take: take.id, recordedAt: take.at }]]
         )

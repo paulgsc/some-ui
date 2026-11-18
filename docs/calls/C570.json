@@ -1,0 +1,19 @@
+{
+  "id": "C570",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/report_weeks.rs",
+    "server:crates/db/app_event/src/report.rs",
+    "server:migrations/20261118000100_create_report_week.up.sql"
+  ],
+  "chose": "Home keeps each ended week's engagement report once, in an append-only, subject-scoped table (report_week) that leaves with the account; the drive file report-weeks/<week>.json is the render worker's copy, written from it, as call_week is the call's record and call-weeks/ its copy.",
+  "options": [
+    "a subject-scoped table as the record, the drive file its copy",
+    "the drive file alone as the record, with a .let-go mark beside it once its video is let go",
+    "no record: read the week again whenever its file is missing"
+  ],
+  "gray": "The file alone is less code, but it outlives the account (nothing ties it to a subject), it is lost with the drive, and a let-go needs a mark so the worker isn't given it again. Re-reading the week breaks 'the same records give the same video' once late events arrive. The owner would notice which: what My data says deleting the account erases, and whether a week can be rendered again from home. The owner said on 2026-11-13, of ENG12: \"Let's just go with the recommended.\"",
+  "undo": "Drop report_week (its down migration refuses while it holds a row, so give a durable copy first) and have report_weeks write the weekly read straight to the drive, marking let-go weeks.",
+  "refs": ["server#821", "#2700"]
+}

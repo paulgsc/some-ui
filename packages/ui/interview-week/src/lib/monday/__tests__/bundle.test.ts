@@ -7,7 +7,7 @@ import type { Bundle } from "@interview-week/lib/monday/bundle"
 import { finish } from "@interview-week/lib/monday/finish"
 import { describe, expect, it } from "vitest"
 
-import { corpus, valuesFor } from "./fixture"
+import { COMMIT, corpus, valuesFor } from "./fixture"
 
 /** Monday 16 November 2026, 03:41 Pacific: when the routine runs. */
 const MONDAY = new Date("2026-11-16T11:41:00Z")
@@ -19,6 +19,7 @@ function run(n: number): Array<Bundle> {
   const bundles: Array<Bundle> = []
   for (let i = 0; i < n; i += 1) {
     const { bundle } = prepare({
+      commit: COMMIT,
       now: new Date(MONDAY.getTime() + i * WEEK_MS),
       brief,
       corpus,
@@ -96,6 +97,7 @@ describe("the interview week's choices", () => {
 
   it("tops the cards up from another kind when one has none", () => {
     const { bundle } = prepare({
+      commit: COMMIT,
       now: MONDAY,
       brief: [],
       corpus: { ...corpus, epics: [] },
@@ -120,7 +122,7 @@ describe("the interview week's choices", () => {
       { name: weekFileName("2026-w40"), body: { schema: "nope" } },
       { name: "rust-week-2026-w47.json", body: {} },
     ]
-    const { bundle } = prepare({ now: MONDAY, brief, corpus })
+    const { bundle } = prepare({ now: MONDAY, commit: COMMIT, brief, corpus })
     expect(bundle.next).toBeNull()
     expect(bundle.unread.map((u) => u.name)).toEqual([
       "interview-week-2026-w40.json",

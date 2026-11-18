@@ -21,7 +21,7 @@
  * pulls per batch, later asks, options, refs, next steps); every text's
  * length and how it wraps, in the routine's prose, including a part split
  * from the rest by a page break; and the host that
- * records it, whose sans face the frame draws in (`SANS`): a cloud
+ * records it, whose sans face the frame draws in (`./frame-text`'s `SANS`): a cloud
  * session's Inter, and home's render image's WenQuanYi Zen Hei.
  *
  * Proof: `apps/www/tests/ui-fit/call-fit.spec.ts` draws the sample, the week
@@ -40,80 +40,9 @@
  */
 
 import type { CallWeek } from "./call"
+import { lineOf, linesOf, px, stack, widthOf } from "./frame-text"
+import type { Face, Part } from "./frame-text"
 import { refKey } from "./refs"
-
-/** The frame's font size: the stage's `1.5cqw`, at 1920 px wide. */
-const BASE = 28.8
-
-/**
- * A line's height per em: the stage's 1.5, with room for a line that mixes
- * in the monospace face, whose line box is a little taller (measured 1.53).
- */
-const LINE = 1.56
-
-/**
- * Each printable ASCII glyph's advance, from the space (32) to the tilde
- * (126), in thousandths of an em: the widest of the stage's sans face on
- * each host that records it, regular (`SANS`) and semibold or bold
- * (`SANS_BOLD`). The frame names no face of its own (`ui-sans-serif,
- * system-ui, sans-serif`), so each host draws its own: Inter in a cloud
- * session, and WenQuanYi Zen Hei in home's render image (the Playwright
- * 1.62.1 noble image `infra/render/Dockerfile` pins), measured 2026-11-14.
- */
-// prettier-ignore
-const SANS = [
-  300, 300, 466, 634, 642, 982, 680, 300, 365, 365, 600, 662, 300, 460, 300,
-  520, 631, 600, 610, 618, 646, 608, 621, 600, 619, 621, 300, 302, 662, 662,
-  662, 540, 966, 704, 655, 731, 722, 602, 591, 747, 744, 269, 571, 672, 566,
-  904, 754, 765, 639, 765, 644, 642, 646, 745, 704, 1008, 683, 679, 629, 365,
-  520, 365, 600, 500, 380, 562, 613, 572, 613, 584, 335, 614, 592, 243, 243,
-  549, 243, 876, 591, 600, 613, 613, 391, 528, 320, 592, 563, 819, 546, 563,
-  553, 427, 333, 427, 662,
-] as const
-
-// prettier-ignore
-const SANS_BOLD = [
-  300, 338, 552, 649, 655, 1016, 680, 339, 377, 377, 600, 679, 334, 468, 334,
-  520, 675, 600, 630, 646, 677, 640, 650, 600, 651, 650, 334, 343, 679, 679,
-  679, 560, 1017, 760, 662, 740, 723, 608, 588, 751, 748, 281, 585, 720, 566,
-  932, 763, 771, 648, 777, 657, 655, 668, 736, 760, 1058, 739, 731, 665, 377,
-  520, 377, 600, 500, 380, 581, 631, 589, 631, 596, 361, 632, 623, 271, 271,
-  581, 271, 913, 623, 614, 631, 631, 414, 561, 335, 623, 600, 851, 581, 603,
-  573, 469, 372, 469, 679,
-] as const
-
-/** Any other glyph's advance, in em: the widest measured (an em dash, an arrow). */
-const OTHER = 1.02
-
-/** The monospace face's advance, in em: 0.602 in a session, 0.5 at home. */
-const MONO = 0.61
-
-/** The capitals' tracking, `tracking-wide`, in em per glyph. */
-const TRACKING = 0.025
-
-/**
- * How a run is set: the sans face regular, semibold or bold, its capitals
- * (taken at bold), or the monospace face.
- */
-type Face = "prose" | "bold" | "caps" | "mono"
-
-/** One glyph's advance in `face`, in em. */
-function advance(glyph: string, face: Face): number {
-  if (face === "mono") return MONO
-  const code = glyph.codePointAt(0) ?? 0
-  const table = face === "prose" ? SANS : SANS_BOLD
-  const sans = code >= 32 && code <= 126 ? table[code - 32] : undefined
-  const em = sans === undefined ? OTHER : sans / 1000
-  return face === "caps" ? em + TRACKING : em
-}
-
-/** A word's width in `face` at `em`, in px. */
-function widthOf(word: string, face: Face, em: number): number {
-  const set = face === "caps" ? word.toUpperCase() : word
-  let sum = 0
-  for (const glyph of set) sum += advance(glyph, face)
-  return sum * em * BASE
-}
 
 /** The body of the captioned frame a scene's picture is drawn in, in px. */
 export const CALL_BODY = { width: 1825, height: 573 } as const
@@ -134,46 +63,6 @@ export const fitsAllowance = (
   allowed: string,
   face: Face
 ): boolean => widthOf(word, face, 1) <= widthOf(allowed, face, 1)
-
-const px = (em: number): number => em * BASE
-
-const lineOf = (em: number): number => px(em) * LINE
-
-type Run = {
-  readonly text: string
-  readonly face: Face
-  /** Its font size, in em of the frame's. */
-  readonly em: number
-  /** Space before it, in px, on the same line: a margin or a gap. */
-  readonly before?: number
-}
-
-/**
- * How many lines `runs` wrap to in `width` px, greedily by word, a word
- * wider than a line broken across lines as `overflow-wrap: anywhere` does.
- */
-export function linesOf(runs: ReadonlyArray<Run>, width: number): number {
-  let lines = 1
-  let x = 0
-  for (const run of runs) {
-    const space = widthOf(" ", run.face, run.em)
-    const words = run.text.split(/\s+/).filter((w) => w.length > 0)
-    for (const [i, word] of words.entries()) {
-      const gap = i === 0 ? (run.before ?? space) : space
-      const w = widthOf(word, run.face, run.em)
-      if (x > 0 && x + gap + w > width) {
-        lines += 1
-        x = 0
-      }
-      x += x > 0 ? gap + w : w
-      while (x > width) {
-        lines += 1
-        x -= width
-      }
-    }
-  }
-  return lines
-}
 
 const text = (
   words: string,
@@ -233,20 +122,6 @@ function option(
       : text(`${CALL_STAGE_WORDS.unblocks} ${o.unblocks}`, "prose", 0.75, inner)
   return border + 2 * px(0.3) + says + unblocks
 }
-
-/** A part of a scene: its height, and its font size, in em of the frame's. */
-type Part = { readonly h: number; readonly em: number }
-
-/**
- * Parts stacked as `space-y-[0.6em]` stacks them: each but the last with a
- * margin below of 0.6em of its own font size.
- */
-const stack = (parts: ReadonlyArray<Part>): number =>
-  parts.reduce(
-    (sum, part, i) =>
-      sum + part.h + (i < parts.length - 1 ? 0.6 * px(part.em) : 0),
-    0
-  )
 
 /**
  * A run of a scene's picture the stage draws in one box, which a page may

@@ -1,12 +1,14 @@
 /**
- * Does the interview week fit the phone? (IW5, #2936.)
+ * Does the interview week fit the phone? (IW5, #2936; IW8, #3175.)
  *
  * The week is the phone's alone, so it is swept on the phone page
  * (`./phone-page`, built under the Android app's profile) at the phone's
- * sizes (`PHONE_VIEWPORTS`, the phone held sideways among them): the brief, a
- * question's card, a read's card with its script, the same while its cue
- * counts, and the look over. Each must leave the page as it was and never be
- * wider than the phone; a read's script scrolls inside its own box.
+ * sizes (`PHONE_VIEWPORTS`, the phone held sideways among them), each page
+ * of it (IW8): the Interview page, a question and its ladder, the study
+ * page, the answer read aloud while its cue counts, a take said from cues,
+ * Read aloud and a read's page, and the look over. Each must leave the page
+ * as it was and never be wider than the phone; a script scrolls inside its
+ * own box.
  *
  * Run against a built phone page:
  *
@@ -34,26 +36,42 @@ test.describe("the interview week fits the phone", () => {
       await page.goto(PAGE.url("interview"), { waitUntil: "load" })
       await expect(page.getByText("Backend engineer at Tidewell")).toBeVisible()
       expect(errors, errors.join("\n")).toEqual([])
-      await expectFitsPhone(page, "the brief")
+      await expectFitsPhone(page, "the Interview page")
 
-      await page
-        .getByRole("button", { name: /^Tell me about a time you disagreed/ })
-        .click()
+      await page.getByRole("link", { name: /^Today's question/ }).click()
       await expect(
-        page.getByRole("region", { name: "Card 2 of 6" })
+        page.getByRole("link", { name: /Say it from cues/ })
       ).toBeVisible()
-      await expectFitsPhone(page, "a question's card")
+      await expectFitsPhone(page, "a question and its ladder")
 
-      await page.getByRole("button", { name: "Card 5, not said yet" }).click()
-      const read = page.getByRole("region", { name: "Card 5 of 6" })
-      await expect(read.locator("[data-script]")).toBeVisible()
-      await expectFitsPhone(page, "a read's card")
+      await page.getByRole("link", { name: /Read the answer/ }).click()
+      await expect(page.getByText("A poor answer")).toBeVisible()
+      await expectFitsPhone(page, "the study page")
 
-      await read.getByRole("button", { name: "Start talking" }).click()
-      await expect(read.getByText("Recording in 3")).toBeVisible()
-      await expectFitsPhone(page, "a read's cue")
-      await read.getByRole("button", { name: "Start talking" }).click()
+      await page.getByRole("link", { name: "Read it aloud" }).click()
+      const aloud = page.locator("[data-card]")
+      await expect(aloud.locator("[data-script]")).toBeVisible()
+      await aloud.getByRole("button", { name: "Start talking" }).click()
+      await expect(aloud.getByText("Recording in 3")).toBeVisible()
+      await expectFitsPhone(page, "the answer read aloud, its cue counting")
+      await aloud.getByRole("button", { name: "Start talking" }).click()
 
+      await page.getByRole("link", { name: "The answer" }).click()
+      await page.getByRole("link", { name: "The question" }).click()
+      await page.getByRole("link", { name: /Say it from cues/ }).click()
+      await expect(page.locator("[data-card]")).toBeVisible()
+      await expectFitsPhone(page, "a take said from cues")
+
+      await page.getByRole("link", { name: "The question" }).click()
+      await page.getByRole("link", { name: "Interview" }).click()
+      await page.getByRole("link", { name: "Read aloud" }).click()
+      await expectFitsPhone(page, "Read aloud")
+      await page.getByRole("link", { name: /^Opening a team demo/ }).click()
+      await expect(page.locator("[data-script]")).toBeVisible()
+      await expectFitsPhone(page, "a read's page")
+
+      await page.getByRole("link", { name: "Read aloud" }).click()
+      await page.getByRole("link", { name: "Interview" }).click()
       await page
         .getByRole("button", { name: "Look it over before sending" })
         .click()

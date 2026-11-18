@@ -60,7 +60,9 @@ outside the checkout as `<run>`.
 3. **Write `<run>/values.json`** from the bundle alone, as "What you write"
    says.
 4. **Finish:** `pnpm monday finish --from <run>`. It runs every program of
-   next week with rustc, builds both files and checks them. It answers
+   next week with rustc, builds both files and checks them, measuring each
+   essay's best fit, comparison and deep dive scenes against the video's
+   frame (EF1) and naming any that runs past it and what to shorten. It answers
    `ready` and writes them to `<run>/out`, or lists every problem. Fix
    exactly those problems in `values.json` and run it again. Never change the
    bundle, a fact it states or the code to get past a problem.
@@ -123,7 +125,8 @@ with one ticket for each of the week's, by its id:
   dive is `{"point","title","shows","code","said"}`: the point it goes into
   (from 0), a title, one to five lines the frame lists while it is said, an
   optional snippet, and `said`. `said` takes 2 to 5 minutes, 300 to 750 words,
-  and `finish` counts them. Dive into a covered point only when no
+  and `finish` counts them. The title, the lines and the snippet share one
+  frame: four one-line `shows` leave room for about five lines of code. Dive into a covered point only when no
   point has a bigger gap, and then go one step past the ticket.
 
 **SOLO** (Biggs & Collis, 1982), as applied to explaining code by Lister et

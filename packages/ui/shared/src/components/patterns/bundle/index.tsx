@@ -1,7 +1,7 @@
 /**
  * A bundle's parts (STUDIO ST26; RR13 #2688):
  * its cards, one item each, swiped between with the thumb (`BundleCards`),
- * each answer said and heard back on the take pattern's parts, and the look
+ * or one item's take on a page of its own (`BundleTake`), each answer said and heard back on the take pattern's parts, and the look
  * over before Send (`BundleReview`). They render `@some-ui/voice-capture`'s
  * `bundleMachine` state and forward taps; what an item says (a question, a
  * ticket) is the screen's (`renderHead`, `label`), and the words are the screen's
@@ -281,21 +281,14 @@ const Typed = <K extends BundleKind>({
   </div>
 )
 
-type CardProps<K extends BundleKind> = Parts<K> & {
+type BodyProps<K extends BundleKind> = Parts<K> & {
   item: K["item"]
-  n: number
+  /** Its card is the one on screen: only that one says why a take failed. */
   active: boolean
-  /** What the card says of its item, above its take. */
-  head: ReactNode
-  /** Where it sits beside the card on screen, and the finger's travel. */
-  offset: {
-    readonly cards: number
-    readonly px: number
-    readonly easing: boolean
-  }
 }
 
-const Card = <K extends BundleKind>({
+/** What a card offers under its head: its take, or what to do when one didn't come through. */
+const CardBody = <K extends BundleKind>({
   machine,
   state,
   takes,
@@ -303,17 +296,13 @@ const Card = <K extends BundleKind>({
   dispatch,
   words,
   item,
-  n,
   active,
-  head,
-  offset,
-}: CardProps<K>): JSX.Element => {
+}: BodyProps<K>): JSX.Element => {
   const { spec } = machine
   const answers = machine.answersOf(state, item)
   const recording =
     snapshot.take.kind !== "idle" && snapshot.answers === answers
   const card = machine.cardView(state, item, recording)
-  const of = spec.items.length
   const view = takeItemView(
     snapshot,
     state.takes,
@@ -321,20 +310,7 @@ const Card = <K extends BundleKind>({
     takes.pattern.options
   )
   return (
-    <section
-      aria-label={words.cardOf(n, of)}
-      aria-hidden={!active}
-      inert={!active}
-      data-card={item}
-      className={cn(
-        "col-start-1 row-start-1 flex min-w-0 flex-col gap-3 px-1",
-        offset.easing && "transition-transform duration-200 ease-out"
-      )}
-      style={{
-        transform: `translateX(calc(${offset.cards * 100}% + ${offset.px}px))`,
-      }}
-    >
-      {head}
+    <>
       {card.kind === "failed" && (
         <Failed
           item={item}
@@ -401,6 +377,41 @@ const Card = <K extends BundleKind>({
           {words.unheard.type}
         </Button>
       )}
+    </>
+  )
+}
+
+type CardProps<K extends BundleKind> = BodyProps<K> & {
+  n: number
+  /** What the card says of its item, above its take. */
+  head: ReactNode
+  /** Where it sits beside the card on screen, and the finger's travel. */
+  offset: {
+    readonly cards: number
+    readonly px: number
+    readonly easing: boolean
+  }
+}
+
+const Card = <K extends BundleKind>(props: CardProps<K>): JSX.Element => {
+  const { machine, words, item, n, active, head, offset } = props
+  const of = machine.spec.items.length
+  return (
+    <section
+      aria-label={words.cardOf(n, of)}
+      aria-hidden={!active}
+      inert={!active}
+      data-card={item}
+      className={cn(
+        "col-start-1 row-start-1 flex min-w-0 flex-col gap-3 px-1",
+        offset.easing && "transition-transform duration-200 ease-out"
+      )}
+      style={{
+        transform: `translateX(calc(${offset.cards * 100}% + ${offset.px}px))`,
+      }}
+    >
+      {head}
+      <CardBody {...props} />
       <p className="text-muted-foreground flex justify-between text-xs">
         <span>{n > 1 ? words.prev(n - 1) : ""}</span>
         <span>{n < of ? words.next(n + 1) : words.last}</span>
@@ -408,6 +419,30 @@ const Card = <K extends BundleKind>({
     </section>
   )
 }
+
+export type BundleTakeProps<K extends BundleKind> = Parts<K> & {
+  item: K["item"]
+  /** What the page says of its item, above its take. */
+  head: ReactNode
+}
+
+/**
+ * One item's take on a page of its own (IW8, #3175), where a screen steps
+ * between its items by navigation rather than by swiping a row of cards.
+ */
+export const BundleTake = <K extends BundleKind>(
+  props: BundleTakeProps<K>
+): JSX.Element => (
+  <section data-card={props.item} className="flex flex-col gap-3">
+    {props.head}
+    <CardBody {...props} active />
+    <BundleNoticeLine
+      notice={props.state.notice}
+      onDismiss={() => props.dispatch({ type: "noticeDismissed" })}
+      words={props.words}
+    />
+  </section>
+)
 
 export type BundleCardsProps<K extends BundleKind> = Parts<K> & {
   /** What a card says of its item, above its take: a question, a ticket. */

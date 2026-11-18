@@ -10,6 +10,10 @@
  * cue ends. Any other intent, or the screen hidden, calls a running
  * cue off first. A tap while a take is under way (to stop it) goes straight
  * through.
+ *
+ * A page of a question's ladder (IW8, #3175) shows one item (`focus`); once
+ * it goes, the bundle steps back to the screen before the cards, a take
+ * under way stopped and kept first.
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { weekOpenNow } from "@some-ui/core-utils"
@@ -24,10 +28,12 @@ import { bundleRuntime, sendsAtHome } from "@some-ui/voice-capture"
 
 import type { Cue, CueEvent } from "./cue"
 import { NO_CUE, stepCue } from "./cue"
+import type { Ladder, Rung } from "./ladder"
+import { ask, firsts, markRung, takesFor, withRungs } from "./ladder"
 import type { InterviewAtHome, InterviewKind, InterviewSent } from "./spec"
-import { cardOf, interviewMachine } from "./spec"
+import { cardOf, interviewMachine, isClosed } from "./spec"
 import type { HeldInterview } from "./store"
-import { interviewDrafts, interviewSent } from "./store"
+import { interviewDrafts, interviewLadder, interviewSent } from "./store"
 
 export type InterviewWeekPorts = {
   /** The week to play: the one this phone holds that is open now. */
@@ -60,6 +66,14 @@ export type InterviewWeekRun = {
   readonly bundle: BundleRuntime<InterviewKind>
   /** What the screen dispatches: the bundle's intents, through the cue. */
   readonly dispatch: (intent: BundleIntent<InterviewKind>) => void
+  /** The same, from a rung's page: a take it starts is marked with `rung`. */
+  readonly dispatchOn: (
+    rung: Rung
+  ) => (intent: BundleIntent<InterviewKind>) => void
+  /** A page shows `item` while it is up. Returns the page's leaving. */
+  readonly focus: (item: string) => () => void
+  /** The rungs takes were said on, and each question's first take. */
+  readonly ladder: Readable<Ladder>
   /** What home holds of the week and what this phone last sent. */
   readonly atHome: Readable<InterviewAtHome>
   readonly cue: Readable<Cue>
@@ -93,10 +107,24 @@ export function createInterviewWeek(
   const { week } = ports.week
   const machine = interviewMachine(week)
   const sends = interviewSent(ports.storage)
+  const kept = interviewLadder(ports.storage, week.id)
+  // What this phone last kept, which the ladder on screen can run ahead of.
+  let written = kept.read()
+  const ladder = cell(written)
   const bundle = bundleRuntime(machine, {
     takes: ports.takes,
     drafts: interviewDrafts(ports.storage, week.id),
-    records: sends,
+    // A send is kept with the rung each answer's take was said on (IW8);
+    // the records kept before it go on as they were kept.
+    records: {
+      list: sends.list,
+      keep: (change) =>
+        sends.keep((before) =>
+          change(before).map((sent) =>
+            before.includes(sent) ? sent : withRungs(sent, ladder.getSnapshot())
+          )
+        ),
+    },
     context: () => null,
     home: ports.home,
     now: ports.now,
@@ -129,47 +157,134 @@ export function createInterviewWeek(
     if (next.go !== null) bundle.dispatch({ type: "tap", item: next.go })
   }
 
-  /** Puts `item`'s card on screen, from the look over too, so its cue counts there. */
+  /** Puts `item`'s card on screen, from the look over or the screen before the cards too. */
   const showCard = (item: string): void => {
-    if (bundle.getSnapshot().screen === "review") {
+    const { screen } = bundle.getSnapshot()
+    if (screen === "review" || screen === "sent") {
       bundle.dispatch({ type: "back" })
     }
     const index = machine.spec.items.indexOf(item)
-    if (bundle.getSnapshot().index !== index) {
+    const now = bundle.getSnapshot()
+    if (now.screen === "intro" || now.index !== index) {
       bundle.dispatch({ type: "go", index })
     }
   }
 
-  const dispatch = (intent: BundleIntent<InterviewKind>): void => {
+  const questions = week.questions.map(({ id }) => id)
+  let releasing = false
+  /** Keeps `next` as the week's ladder; false when this phone couldn't. */
+  const keep = (next: Ladder): boolean => {
+    if (next === written) return true
+    if (!kept.write(next)) return false
+    written = next
+    ladder.set(next)
+    return true
+  }
+  /** Marks a take kept since it was asked for, and lets each question's first go home. */
+  const climb = (): void => {
+    const { takes, at } = bundle.getSnapshot()
+    const marked = markRung(ladder.getSnapshot(), takes, week.id)
+    const first = firsts(marked, takes, week.id, questions)
+    // The marks are kept before any take goes, so none is let go twice;
+    // one not kept is asked again on the next change.
+    if (!keep(first.ladder)) return
+    // Letting go publishes the takes again, which calls this again: a take
+    // that didn't go waits for the next change, not this one's echo.
+    if (first.release.length > 0 && !isClosed(week, at) && !releasing) {
+      releasing = true
+      try {
+        ports.takes.release(first.release)
+      } finally {
+        releasing = false
+      }
+    }
+  }
+
+  const forward = (
+    intent: BundleIntent<InterviewKind>,
+    rung: Rung | null
+  ): void => {
     const counting = cue.getSnapshot()
     if (counting.kind === "counting") {
       moveCue({ type: "cancel" })
       // A tap on the read counting down calls it off, and only that.
       if (intent.type === "tap" && intent.item === counting.item) return
     }
-    if (
-      intent.type === "tap" &&
-      cardOf(intent.item) !== null &&
-      !bundle.getSnapshot().busy
-    ) {
-      showCard(intent.item)
-      moveCue({ type: "start", item: intent.item })
-      stopClock = ports.every(1000, () => moveCue({ type: "tick" }))
-      return
+    const now = bundle.getSnapshot()
+    if (intent.type === "tap" && !now.busy) {
+      // Asked for even when this phone couldn't keep it yet, so an earlier
+      // ask never marks this take; the next change keeps it.
+      const asking = ask(
+        ladder.getSnapshot(),
+        rung === null
+          ? null
+          : {
+              item: intent.item,
+              rung,
+              before: takesFor(now.takes, week.id, intent.item).map(
+                ({ id }) => id
+              ),
+            }
+      )
+      if (!keep(asking)) {
+        ladder.set(asking)
+        // An earlier ask left in storage would mark this take when the
+        // week next opens; letting it go is smaller than what is kept.
+        const cleared = ask(written, null)
+        if (cleared !== written && kept.write(cleared)) written = cleared
+      }
+      if (cardOf(intent.item) !== null || rung === "aloud") {
+        showCard(intent.item)
+        moveCue({ type: "start", item: intent.item })
+        stopClock = ports.every(1000, () => moveCue({ type: "tick" }))
+        return
+      }
     }
     bundle.dispatch(intent)
+  }
+  const dispatch = (intent: BundleIntent<InterviewKind>): void => {
+    forward(intent, null)
+  }
+
+  let focused: string | null = null
+  /** A page left while its take was under way: back once the take ends. */
+  let leaving = false
+  const settleFocus = (): void => {
+    const now = bundle.getSnapshot()
+    if (!leaving || focused !== null || now.busy) return
+    leaving = false
+    if (now.screen === "cards") bundle.dispatch({ type: "back" })
+  }
+  const focus = (item: string): (() => void) => {
+    focused = item
+    leaving = false
+    showCard(item)
+    return (): void => {
+      if (focused !== item) return
+      focused = null
+      moveCue({ type: "cancel" })
+      leaving = true
+      if (bundle.getSnapshot().busy) bundle.dispatch({ type: "tap", item })
+      settleFocus()
+    }
   }
 
   return {
     machine,
     bundle,
     dispatch,
+    dispatchOn: (rung) => (intent) => forward(intent, rung),
+    focus,
+    ladder,
     atHome,
     cue,
     attach(): () => void {
       const detach = bundle.attach()
       lookHome()
+      climb()
       const stopHome = bundle.subscribe(lookHome)
+      const stopClimb = bundle.subscribe(climb)
+      const stopFocus = bundle.subscribe(settleFocus)
       const stopHeld = ports.onHomeHolds(lookHome)
       const stopSeen = ports.onVisibility((hidden) => {
         if (hidden) moveCue({ type: "cancel" })
@@ -178,6 +293,8 @@ export function createInterviewWeek(
         moveCue({ type: "cancel" })
         stopSeen()
         stopHeld()
+        stopFocus()
+        stopClimb()
         stopHome()
         detach()
       }

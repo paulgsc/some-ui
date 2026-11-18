@@ -1,0 +1,15 @@
+{
+  "id": "C573",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": ["server:apps/servers/file_host/src/report_weeks.rs"],
+  "chose": "Each hourly pass asks the last whole week and the three before it that home doesn't hold (report_weeks::LOOKBACK = 4), oldest first, so a week a down home or a failing pass missed is still written once home is back; a week older than that is never asked.",
+  "options": [
+    "the last whole week and the three before it",
+    "the last whole week only",
+    "every ended week since the first engagement record"
+  ],
+  "gray": "Only the last week loses a week for good whenever home is down or failing across a whole week, against RW1's 'every week that has ended'. Every week since the first record is unbounded work per pass, and would render a backlog of old weeks the first time it runs. Four weeks bounds a pass at four weekly reads and covers any outage a month long. The owner would notice it as a week with no video, or as old reports appearing at once. The owner said on 2026-11-13, of ENG12: \"Let's just go with the recommended.\"",
+  "undo": "Set report_weeks::LOOKBACK to 1, and drop the test a_week_a_down_home_missed_is_written_once_it_is_back_within_the_lookback.",
+  "refs": ["server#821", "#2700"]
+}

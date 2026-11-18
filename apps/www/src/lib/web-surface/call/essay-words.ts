@@ -1,3 +1,4 @@
+import { ESSAY_STAGE_WORDS } from "@some-ui/video-render"
 import type { Mark } from "@some-ui/video-render"
 
 /** A week's number within its year, from its id: "46" from "2026-w46". */
@@ -42,7 +43,7 @@ export const ESSAY_WORDS = {
   notJudged: "No answer to place on the scale",
   dive: (n: number): string => `Deep dive ${n}`,
   past: "One step past the ticket",
-  into: "Into",
+  into: ESSAY_STAGE_WORDS.into,
   ticketOf: (n: number, of: number): string => `Ticket ${n} of ${of}`,
   cell: {
     unmet: "Not met yet",

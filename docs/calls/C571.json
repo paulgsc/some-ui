@@ -1,0 +1,15 @@
+{
+  "id": "C571",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": ["server:apps/servers/file_host/src/report_weeks.rs"],
+  "chose": "A week's engagement report is first asked a day after the week ends on the owner's clock (report_weeks::GRACE, Tuesday 00:00 Pacific), not at the first hourly pass after Monday midnight, so the phone's Sunday-evening records, sent home when it next opens, are in it.",
+  "options": [
+    "a day after the week ends",
+    "at the first pass after the week ends",
+    "several days after, or once the phone says it has sent everything"
+  ],
+  "gray": "The report is written once and never again, so a record that reaches home after it was written is missing from that week for good; waiting longer catches more of them but makes the video later. Nothing settles how late the phone sends. The owner would see it as the day the report arrives and as a Sunday that reads short. The owner said on 2026-11-13, of ENG12: \"Let's just go with the recommended.\"",
+  "undo": "Set report_weeks::GRACE to zero (or another length) and update its test the_week_asked_is_the_last_whole_one_a_day_after_it_ended_on_the_owners_clock.",
+  "refs": ["server#821", "#2700"]
+}

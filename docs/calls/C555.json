@@ -1,0 +1,16 @@
+{
+  "id": "C555",
+  "made": "2026-11-17",
+  "by": "claude",
+  "agreed": "2026-11-17",
+  "paths": ["some-ui:packages/ui/interview-week/src/lib/week/index.ts"],
+  "chose": "One question a day, in the week's order from Monday and round again, with nothing carried over: a day left alone leaves no trace, and the next day brings its own. The week's other questions stay one tap away.",
+  "options": [
+    "one a day, nothing carried over",
+    "two a day",
+    "one a day, yesterday's carried over quietly until something is done with it"
+  ],
+  "gray": "How much the day asks of the owner, for a skill they avoid: one is the tiniest start, and a carried-over question is a quiet mark of a day missed.",
+  "undo": "Change questionOfDay to take two, or to hold a question until a take answers it.",
+  "refs": ["#3175", "#2931"]
+}

@@ -8,13 +8,8 @@
  */
 
 import type { JSX } from "react"
-import { useState } from "react"
-import {
-  createMemoryHistory,
-  createRootRoute,
-  createRouter,
-  RouterProvider,
-} from "@tanstack/react-router"
+import { MemoryRouted } from "@/test-support/memory-routed"
+import { createRootRoute } from "@tanstack/react-router"
 
 import { MobileNav } from "@/components/mobile-shell"
 
@@ -23,12 +18,9 @@ const AT = "/settings/data"
 
 const Bar = (): JSX.Element => <MobileNav pathname={AT} />
 
-export const SettingsBar = (): JSX.Element => {
-  const [router] = useState(() =>
-    createRouter({
-      routeTree: createRootRoute({ component: Bar }),
-      history: createMemoryHistory({ initialEntries: [AT] }),
-    })
-  )
-  return <RouterProvider router={router} />
-}
+export const SettingsBar = (): JSX.Element => (
+  <MemoryRouted
+    initialTree={() => createRootRoute({ component: Bar })}
+    initialPath={AT}
+  />
+)

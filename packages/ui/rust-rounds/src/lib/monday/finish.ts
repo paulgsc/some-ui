@@ -18,8 +18,9 @@
  * - a seed ticket's source, as a sentence at the end of its spec (#2685).
  *
  * What it holds beyond the parsers: each deep dive said in 2 to 5 minutes
- * (C103), every topic and seed covered by a ticket, and each topic's concept
- * named as the area table names it.
+ * (C103), every best, beside and deep dive scene within the essay's frame
+ * (EF1, `essayFit`), every topic and seed covered by a ticket, and each
+ * topic's concept named as the area table names it.
  */
 import type { Judged } from "@rust-rounds/lib/decay"
 import { chartOf, recordOf, roleAt } from "@rust-rounds/lib/decay"
@@ -50,6 +51,7 @@ import {
   ESSAY_ID,
   ESSAY_SCHEMA,
   ESSAY_WEEKS_MOST,
+  essayFit,
   needsDecayVersion,
   parseEssay,
 } from "@some-ui/video-render"
@@ -230,8 +232,13 @@ function buildEssay(
     next: { said: values.next, week: following.id, topics },
   }
   const parsed = parseEssay(essay)
-  if (!parsed.ok) {
-    problems.push(...parsed.problems.map((p) => `${ended.week} essay: ${p}`))
+  const unfit = parsed.ok ? essayFit(parsed.value).problems : []
+  if (!parsed.ok || unfit.length > 0) {
+    problems.push(
+      ...(parsed.ok ? unfit : parsed.problems).map(
+        (p) => `${ended.week} essay: ${p}`
+      )
+    )
     return null
   }
   return parsed.value

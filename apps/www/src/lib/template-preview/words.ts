@@ -36,6 +36,10 @@ const FAILED_WHY: ReadonlyMap<string, string> = new Map([
     "The preview came out larger than home will keep, so it can't be previewed as it is.",
   ],
   [
+    "overflow",
+    "Some scenes of its sample don't fit the frame, so it can't be previewed as it is.",
+  ],
+  [
     "overdue",
     "Home didn't finish the preview in time and set it aside. Make another to try again.",
   ],

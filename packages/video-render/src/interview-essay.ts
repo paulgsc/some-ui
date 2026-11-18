@@ -78,7 +78,7 @@ export const INTERVIEW_ESSAY_ID = "interview-essay"
 /** The newest version `interviewEssayFormat` gives, pinned as `v<n>.json` under `templates/`. */
 export const INTERVIEW_ESSAY_VERSION = 1
 
-/** The most questions and cards a week has (`some-ui.interview-week/1`). */
+/** The most questions and cards a week has (`some-ui.interview-week/1` and `/2`). */
 const QUESTIONS_MOST = 6
 const READS_MOST = 4
 
@@ -227,7 +227,7 @@ export function interviewEssayFormat(
   }
 }
 
-/** A question's or card's id, as `some-ui.interview-week/1` writes it. */
+/** A question's or card's id, as `some-ui.interview-week/1` and `/2` write it. */
 const slug = z
   .string()
   .max(64)

@@ -3615,7 +3615,8 @@
         "some-ui:packages/video-render/src/engagement-report-video.ts",
         "some-ui:apps/www/src/lib/web-surface/call",
         "some-ui:apps/www/tests/record/report.ts",
-        "some-ui:apps/www/tests/record/report-recording.ts"
+        "some-ui:apps/www/tests/record/report-recording.ts",
+        "server:apps/servers/file_host/src/report_weeks.rs"
       ],
       "modules": [],
       "objectives": [
@@ -3626,7 +3627,7 @@
           "claim": "Every week that has ended becomes one report video, drawn only from home's own records under the public-safety rule, or is refused and said; a week that hasn't is tried again.",
           "requirement": "Once a week has ended on the owner's clock, home's report_weeks worker writes its answer to GET /app-events/weeks/:week as report-weeks/<YYYY-Www>.json for the render worker, once; the render worker's report job runs record:report on it, which refuses an answer that isn't home's weeks, a week still under way or edges other than the owner's Pacific week before anything is drawn, writes the report with reportWeek and the registry, and keeps report.mp4, cut-list.json and report.json in the week's folder; a failed week keeps its finished steps and is tried again.",
           "verdict": "unproven",
-          "conclusion": "Structural on the some-ui side: the recorder and stage are tested, and a week was recorded locally from a file in home's answer's shape. The server side (the report_weeks worker and the render job, paulgsc/server#821) is not built yet, so nothing renders on home.",
+          "conclusion": "Structural on both sides: the recorder and stage are tested, and a week was recorded locally from a file in home's answer's shape; home's report_weeks worker (server#976) keeps each ended week once and gives it to the render worker, tested. The render job (server#821's second part) is not on home yet, so no report has rendered there.",
           "tracked": "some-ui#2700",
           "evidence": [
             {
@@ -3638,6 +3639,37 @@
               "class": "measured",
               "says": "Recorded locally on 2026-11-13 from the template's sample answer with the whole registry: 25 scenes at 1920x1080 with no overflow and a 3:57 report.mp4 with no voices; the template's preview gave the same bytes twice.",
               "ref": "some-ui#2700"
+            },
+            {
+              "class": "structural",
+              "says": "An ended week with engagement records is kept once and given to the render worker byte for byte; tested.",
+              "ref": "server:apps/servers/file_host/src/report_weeks.rs#an_ended_measured_week_is_kept_once_and_given_byte_for_byte"
+            },
+            {
+              "class": "structural",
+              "says": "A week still under way, or one with no records, is never written; tested.",
+              "ref": "server:apps/servers/file_host/src/report_weeks.rs#a_week_under_way_or_unmeasured_is_never_written"
+            }
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "RW2",
+          "kind": "RE9",
+          "property": "work",
+          "claim": "Home keeps one engagement report a week, a few KB each, for as long as the account lasts.",
+          "requirement": "report_week gains one row per ended ISO week with engagement records (the week's period read as JSON, a few KB), written once a day after the week ends; append-only, it leaves only with the account.",
+          "verdict": "unproven",
+          "conclusion": "The table's model is stated; its measured growth and the report videos' share of home's drive are unknown until home writes and renders reports (server#821).",
+          "tracked": "server#821",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "The week's report is home's own period read of its engagement records, a bounded per-week answer (counts per pipeline and affordance for this week, last week, a quarter and a year back), so a row is a few KB whatever the week held.",
+              "ref": "server:crates/db/app_event/src/weeks.rs"
             }
           ],
           "watch": {
@@ -5102,6 +5134,24 @@
       "class": "record",
       "growth": "Per YouTube video the owner records for a cards essay: one tiny row (the essay's key, the video's id, when), the newest standing; about one per essay; append-only, triggers abort UPDATE and DELETE. No subject: a public video of an essay about public repositories, nobody's record, so deleting an account removes none.",
       "family": "cards-essay-rendered"
+    },
+    {
+      "store": "server:report_week",
+      "class": "record",
+      "growth": "One row per ended ISO week the owner has engagement records for (subject, week, the period read GET /app-events/weeks/:week answers as JSON, a few KB, when written): about one a week, written once a day after the week ends; append-only, triggers abort UPDATE, DELETE only once the account is gone; subject-scoped, it leaves with the account.",
+      "family": "engagement-report-rendered"
+    },
+    {
+      "store": "server:report_video_link",
+      "class": "record",
+      "growth": "About one row per engagement report week whose YouTube link the owner records (subject, week, YouTube id, when), the newest standing; append-only, triggers abort UPDATE, DELETE only once the account is gone; subject-scoped, it leaves with the account.",
+      "family": "engagement-report-rendered"
+    },
+    {
+      "store": "server:report_video_deletion",
+      "class": "record",
+      "growth": "Per step of a report week let go (the video, then the rest), one receipt row (subject, week, step, YouTube id, bytes, when): at most two per week; append-only, subject-scoped, it leaves with the account.",
+      "family": "engagement-report-rendered"
     }
   ],
   "processes": [
@@ -6276,7 +6326,10 @@
           "name": "The report_weeks worker writes each ended week's answer for the render worker, once. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": []
+          "paths": [
+            "server:apps/servers/file_host/src/report_weeks.rs",
+            "server:crates/db/app_event/src/report.rs"
+          ]
         },
         {
           "id": "speaker",

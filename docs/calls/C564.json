@@ -1,0 +1,16 @@
+{
+  "id": "C564",
+  "made": "2026-11-17",
+  "by": "claude",
+  "agreed": "2026-11-17",
+  "paths": ["apps/www/src/lib/interview-week/words.ts"],
+  "chose": "The ladder's rungs are \"Read the answer · Read it aloud · Say it from cues · Say it your way\", at equal weight. The Interview page leads with \"Today's question\" and \"A minute or two, at whatever step you like\", and says what was done in the past tense on its day (\"Said from cues on Wednesday\"), with no Start, no count of what has been said and nothing about what wasn't done.",
+  "options": [
+    "Read the answer · Read it aloud · Say it from cues · Say it your way",
+    "Hear it · Read along · With cues · On your own",
+    "Study · Read aloud · Cued · Cold"
+  ],
+  "gray": "The words the owner reads every day on a skill they avoid; the owner asked that nothing feel negative.",
+  "undo": "Change INTERVIEW_WORDS.step and the Interview page's words.",
+  "refs": ["#3175"]
+}

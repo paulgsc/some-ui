@@ -70,6 +70,7 @@ import {
   homeLine,
   itemLine,
   itemName,
+  itemWent,
   itemWhere,
   KEPT_FOR_GOOD,
   keptLine,
@@ -83,6 +84,7 @@ import {
   RECEIPTS,
   receiptsLine,
   unreadLine,
+  wentAtClose,
   WORD_SETS,
 } from "@/lib/my-data/words"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
@@ -379,14 +381,26 @@ const Item = ({
         >
           {itemLine(item.at, item.durationMs)}
         </span>
-        <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
-          <span
-            className={`${WHERE_FILL[item.where]} size-2 shrink-0 rounded-full`}
-            aria-hidden
-          />
-          {itemWhere(item.where, item.bytes)}
-        </span>
-        {item.plays === "none" && remove.kind !== "select" ? (
+        {item.wentAt === null ? (
+          <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+            <span
+              className={`${WHERE_FILL[item.where]} size-2 shrink-0 rounded-full`}
+              aria-hidden
+            />
+            {itemWhere(item.where, item.bytes)}
+          </span>
+        ) : (
+          <span className="text-muted-foreground block text-xs">
+            {itemWent(
+              item.wentAt,
+              item.plays === "here",
+              item.where === "aside"
+            )}
+          </span>
+        )}
+        {item.plays === "none" &&
+        item.wentAt === null &&
+        remove.kind !== "select" ? (
           <span className="text-muted-foreground block text-xs">
             {MY_DATA.kind.noPlay}
           </span>
@@ -715,11 +729,18 @@ export const MyDataReceipts = ({
                 )}
               </p>
               <p className="text-muted-foreground text-xs">
-                {RECEIPTS.deletedLine(itemName(receipt.deletedAt))}
+                {wentAtClose(receipt)
+                  ? RECEIPTS.closedLine(itemName(receipt.deletedAt))
+                  : RECEIPTS.deletedLine(itemName(receipt.deletedAt))}
               </p>
               <p className="text-muted-foreground text-xs">
                 {RECEIPTS.wentLine(receiptParts(receipt.went))}
               </p>
+              {wentAtClose(receipt) ? (
+                <p className="text-muted-foreground text-xs">
+                  {RECEIPTS.stayedLine(receiptParts(receipt.stayed))}
+                </p>
+              ) : null}
             </li>
           ))}
         </ul>
