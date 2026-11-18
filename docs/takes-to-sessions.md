@@ -172,7 +172,7 @@ GitHub's public search:
   a difference. In each body it finds the line `From take tk…` and takes the IDs it holds a
   take for. GitHub stems the phrase, so most results lack the line: a normal pass reads one page
   of each query. The first pass (no pass has completed yet) reads up to search's 1,000-result
-  cap (ten pages a query); it spaces its pages to at most eight a minute and keeps where it got
+  cap (ten pages a query, plus one re-read page for each time it stops); it spaces its pages to at most eight a minute and keeps where it got
   to, so a pass that stops resumes rather than starting over. It resumes one page early, re-reading
   the last page it read, since an item that left the results while it was stopped shifts the
   rest up by one; more than a page of items leaving during one stop is outside this design. No other pass
@@ -246,14 +246,14 @@ to a session finds the issue it became"**, served by one process with two segmen
 home (the search pass) and home → phone (the takes read). The copy is the phone's alone and
 crosses nothing. Its objectives:
 
-| ID  | Kind     | Requirement                                                                                                                                                                                                             |
-| --- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| TF1 | OA3      | "Became #n" shows only once `take_issue_link` holds a link to an issue; a pull request alone reads "in PR #m".                                                                                                          |
-| TF2 | OA6      | A search pass that stopped reads apart from a quiet one: each pass's start and outcome is a metric, and a missed hour alerts.                                                                                           |
-| TF3 | OA8      | Every failed pass is counted and named (no network, rate limit, `5xx`), and a run of failures alerts (`TakeSearchFailing`).                                                                                             |
-| TF4 | RE1      | Every search request is counted, with GitHub's own rate-limit headers kept.                                                                                                                                             |
-| TF5 | RE3, RE7 | A pass is two search requests (issues, pull requests) plus a page for each further 100 items updated since an hour before the start of the last completed pass; the first pass reads at most search's 1,000-result cap. |
-| TF6 | RE9      | Growth: one link row per item (issue or pull request) carrying a take's ID, one seen row per change; nothing deleted but with the take or the account.                                                                  |
+| ID  | Kind     | Requirement                                                                                                                                                                                                                                                                  |
+| --- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TF1 | OA3      | "Became #n" shows only once `take_issue_link` holds a link to an issue; a pull request alone reads "in PR #m".                                                                                                                                                               |
+| TF2 | OA6      | A search pass that stopped reads apart from a quiet one: each pass's start and outcome is a metric, and a missed hour alerts.                                                                                                                                                |
+| TF3 | OA8      | Every failed pass is counted and named (no network, rate limit, `5xx`), and a run of failures alerts (`TakeSearchFailing`).                                                                                                                                                  |
+| TF4 | RE1      | Every search request is counted, with GitHub's own rate-limit headers kept.                                                                                                                                                                                                  |
+| TF5 | RE3, RE7 | A pass is two search requests (issues, pull requests) plus a page for each further 100 items updated since an hour before the start of the last completed pass; the first pass reads at most search's 1,000-result cap, in ten pages a query plus one re-read page per stop. |
+| TF6 | RE9      | Growth: one link row per item (issue or pull request) carrying a take's ID, one seen row per change; nothing deleted but with the take or the account.                                                                                                                       |
 
 Stores: `server:take_issue_link`, `server:take_issue_seen`, `server:take_search_pass`. The `routine-to-home` family loses
 the pickup's objectives as Part E retires, and the mailbox stores' growth lines lose `pickup`
