@@ -249,6 +249,8 @@ describe("a question's ladder on the phone (IW8)", () => {
     const [first] = on.simulated.store.getSnapshot()
     await pass(60_000)
     await answer(on, "conflict")
+    expect(on.release).toHaveBeenCalledWith([first.id])
+    expect(waiting(on)).toEqual(["2026-w47:conflict"])
 
     on.run.dispatch({ type: "review" })
     on.run.dispatch({ type: "askDeleteAll" })

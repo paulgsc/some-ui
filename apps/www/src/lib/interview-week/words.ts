@@ -31,6 +31,10 @@ import type { Rung, Step } from "./ladder"
 
 const takes = (n: number): string => (n === 1 ? "1 take" : `${n} takes`)
 
+/** Where the week's takes are kept, said on the Interview page and the look over. */
+const KEPT =
+  "Your first take of each question goes home on its own. The rest stay on this phone until you send the week."
+
 const BUNDLE: BundleWords = {
   dot: {
     said: (n) => `Card ${n}, said`,
@@ -63,10 +67,11 @@ const BUNDLE: BundleWords = {
     line: "Left for later. It's marked on the dots above.",
     sayNow: "Say it now",
   },
+  // The swiped cards' line; the interview's pages draw no row of cards.
   saidCount: (n, of) => `${n} of ${of} said`,
   toReview: "Look it over before sending",
   review: {
-    kept: "Each question's first take has gone home on its own. The rest are on this phone until you send.",
+    kept: KEPT,
     playAll: "Play all, in order",
     stopAll: "Stop",
     deleteAll: "Delete all",
@@ -83,7 +88,7 @@ const BUNDLE: BundleWords = {
       `Your take on ${label} hasn't left this phone, so deleting it removes it for good. You can say it again.`,
     allTitle: "Delete the takes still on this phone?",
     allLine:
-      "Every take this week that hasn't left this phone is removed for good. Each question's first take already went home and stays.",
+      "Every take that hasn't left this phone is removed for good. Any that already went home stay.",
     yes: "Delete for good",
     keep: "Keep it",
   },
@@ -134,7 +139,7 @@ export const INTERVIEW_WORDS = {
   today: "Today's question",
   todayLine: "A minute or two, at whatever step you like",
   others: "The week's other questions",
-  kept: "Your first take of each question goes home on its own. The rest stay on this phone until you send the week.",
+  kept: KEPT,
   /** What was done on each rung, and on a take said before rungs were kept. */
   past: {
     aloud: "Read aloud",

@@ -6,7 +6,7 @@
  * with today's question; a question's page offers its rungs at equal weight;
  * the study page shows the ready answer with its notes, another good answer
  * and a poor one, citing the body of work only on a `work` question; a take
- * said from cues is marked with its rung and its first goes home on its own;
+ * said from cues shows as said from cues;
  * a read has its own page, counts down, and records with the script still on
  * screen; the look over sends the week home. Nothing on a page answers a take
  * or says what wasn't done.
@@ -100,7 +100,7 @@ describe("the interview week's pages on the phone (IW8)", () => {
     expect(screen.queryByText("some-ui#3170")).toBeNull()
     expect(document.querySelector("[data-card]")).toBeNull()
 
-    // From cues: the cue words, a take marked with its rung, gone home first.
+    // From cues: the cue words, and a take shown as said from cues.
     await follow(WORDS.toQuestion)
     await follow(new RegExp(WORDS.step.cues.name))
     for (const cue of conflict.ready?.cues ?? []) screen.getByText(cue)
@@ -129,6 +129,9 @@ describe("the interview week's pages on the phone (IW8)", () => {
     await settle()
 
     await follow(WORDS.reads)
+    screen.getByText(
+      new RegExp(WORDS.done(WORDS.past.aloud, "2026-11-17T18:00:00Z"))
+    )
     await follow(WORDS.toInterview)
     await press(WORDS.toReview)
     await press(WORDS.send(2))
@@ -140,5 +143,11 @@ describe("the interview week's pages on the phone (IW8)", () => {
     await settle()
     screen.getByText(WORDS.study.work)
     expect(screen.getAllByText("some-ui#3170").length).toBeGreaterThan(0)
+  })
+
+  it("gives a week written before ready answers its cues from what to cover", async () => {
+    open(WEEK, "/jobs/interview/q/conflict/say?rung=cues")
+    await settle()
+    for (const line of WEEK.questions[1].guidelines) screen.getByText(line)
   })
 })

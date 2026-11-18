@@ -13,6 +13,6 @@
     "all four, the first two saying there is no ready answer this week"
   ],
   "gray": "A /1 week has no answer to read or read aloud; whether its absence shows is something the owner would see on screen.",
-  "undo": "Have stepsOf return [\"own\"] on a /1 week, or all four with the first two drawn as unavailable.",
+  "undo": "Have stepsOf return [\"own\"] on a /1 week, or all four with the first two drawn as unavailable; and drop the `?? question.guidelines` fallback in SayTake (apps/www/src/components/jobs/interview/ladder.tsx).",
   "refs": ["#3175"]
 }
