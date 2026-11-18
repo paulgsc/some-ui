@@ -3644,6 +3644,27 @@
             "by": "none"
           },
           "amendments": []
+        },
+        {
+          "id": "RW2",
+          "kind": "RE9",
+          "property": "work",
+          "claim": "Home keeps one engagement report a week, a few KB each, for as long as the account lasts.",
+          "requirement": "report_week gains one row per ended ISO week with engagement records (the week's period read as JSON, a few KB), written once a day after the week ends; append-only, it leaves only with the account.",
+          "verdict": "unproven",
+          "conclusion": "The table's model is stated; its measured growth and the report videos' share of home's drive are unknown until home writes and renders reports (server#821).",
+          "tracked": "server#821",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "The week's report is home's own period read of its engagement records, a bounded per-week answer (counts per pipeline and affordance for this week, last week, a quarter and a year back), so a row is a few KB whatever the week held.",
+              "ref": "server:crates/db/app_event/src/weeks.rs"
+            }
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
         }
       ]
     },
@@ -5102,6 +5123,12 @@
       "class": "record",
       "growth": "Per YouTube video the owner records for a cards essay: one tiny row (the essay's key, the video's id, when), the newest standing; about one per essay; append-only, triggers abort UPDATE and DELETE. No subject: a public video of an essay about public repositories, nobody's record, so deleting an account removes none.",
       "family": "cards-essay-rendered"
+    },
+    {
+      "store": "server:report_week",
+      "class": "record",
+      "growth": "One row per ended ISO week the owner has engagement records for (subject, week, the period read GET /app-events/weeks/:week answers as JSON, a few KB, when written): about one a week, written once a day after the week ends; append-only, triggers abort UPDATE, DELETE only once the account is gone; subject-scoped, it leaves with the account.",
+      "family": "engagement-report-rendered"
     }
   ],
   "processes": [
