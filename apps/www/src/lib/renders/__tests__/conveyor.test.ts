@@ -136,7 +136,7 @@ describe("home's conveyor", () => {
     ).toBe("read")
   })
 
-  it("sets a refused row aside as too big, and any other failed row as burnt (C502)", () => {
+  it("sets a refused row aside as too big or spilled over, and any other failed row as burnt (C502, C566)", () => {
     const row = {
       feed: "rust-essay",
       key: "2026-w46",
@@ -150,6 +150,14 @@ describe("home's conveyor", () => {
     expect(
       failedAside({ ...row, reason: "too-large", mb: 512, capMb: 500 })
     ).toBe("tooBigForBox")
+    expect(
+      failedAside({
+        ...row,
+        reason: "overflow",
+        scenes: ["dive-2"],
+        sceneCount: 1,
+      })
+    ).toBe("spilledOver")
     // An older home: the reason with no numbers is not a refusal it can say.
     expect(failedAside({ ...row, reason: "too-long" })).toBe("burnt")
     expect(failedAside(row)).toBe("burnt")
