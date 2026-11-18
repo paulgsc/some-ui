@@ -116,7 +116,11 @@ installs it on the repositories home may file into. Its issues read as the app's
 ("… [bot]"), apart from the owner's. The app's ID, its installation's ID and its private
 key live in `deploy/home/file_host.sops.env` beside `MAILBOX_TOKEN`, encrypted to the
 owner's key; only the owner can add them, since only they can encrypt with sops. Home
-mints a one-hour installation token from them when it needs one. Nothing expires on a
+mints a one-hour installation token from them when it needs one. If minting fails (the
+key revoked or wrong, the installation removed, home's clock too far off for GitHub to
+accept it), nothing reaches a repository, so no attempt starts: sends wait, the card says
+"Home's key to GitHub no longer works", `TakeIssueRefused` alerts the owner, and home
+tries to mint again each pass. Nothing expires on a
 date, so there is no expiry to warn about.
 
 Home's config treats their absence as "filing is off": the phone then withdraws the "Make
@@ -224,13 +228,13 @@ takes one take at a time. For a take:
    attempt as made and the pairing, and go back to step 1. Not found: record it as not
    made, but only once the attempt is at least ten minutes old, since GitHub can finish a
    create after home stopped waiting for its answer; until then it stays unsettled and the
-   card still says "Home is filing this". If the repository is gone (`404`), or the ask is
-   (`404` on its comments, or `410` there while the repository's issue list still answers:
-   a deleted issue), the attempt is not made: anything made there is gone with it. A `410`
-   on the comments while the issue list also answers `410` means issues are turned off,
-   which takes the path below. If the lookup can't be made for any other reason (a `410` on
-   the repository's issue list, which means issues are turned off and can come back,
-   included), the attempt stays unsettled, no new attempt is made for
+   card still says "Home is filing this". Only an ask known to be deleted settles
+   this way: a `404` or `410` on its comments while the repository's issue list still
+   answers, so the app can read the repository and the ask is gone with anything made on
+   it; the attempt is then not made. A `404` on the repository itself proves nothing, since
+   an app gets a `404` for a repository it isn't installed on (or was removed from), and a
+   `410` on the issue list means issues are turned off and can come back. In those cases,
+   and whenever else the lookup can't be made, the attempt stays unsettled, no new attempt is made for
    that take, and the card says "Home is checking whether GitHub made this". Counted from
    the attempt's start, after 24 hours that becomes overdue: an alert reaches the owner
    (`TakeIssueUnsettled`), and the card offers "Check on GitHub" (the repository's issues)
@@ -352,12 +356,12 @@ send, shows "Write its issue": home files nothing for it until the owner sends a
   stays, home retries with backoff within one budget (RE2), and the card says "Home is
   filing this". After 24 hours it says "Home hasn't been able to file this since <when>",
   and an alert reaches the owner.
-- **GitHub refuses** (`401` the app's key was revoked; `403` no access to that
-  repository, told apart from GitHub's rate limits, which answer `403` or `429` and are
+- **GitHub refuses** (`401` the app's key was revoked; `403`, or a `404` on the
+  repository, the app isn't installed there or has no access to it, told apart from GitHub's rate limits, which answer `403` or `429` and are
   waited out in GitHub's order (as `retry-after` says when it is
   given; else, when `x-ratelimit-remaining` is `0`, until `x-ratelimit-reset`; else at least
   a minute, longer on each repeat) when any of `retry-after`,
-  `x-ratelimit-remaining: 0` or a body naming the secondary rate limit is present; `404` or `410` the repository is gone or has issues off; `422` a label
+  `x-ratelimit-remaining: 0` or a body naming the secondary rate limit is present; `410` the repository has issues off; `422` a label
   missing). Home records the refusal and doesn't retry it on its own. The card says what is
   wrong in the person's terms ("Home's key to GitHub no longer works"; "Home isn't allowed to
   file in server"), and offers "Try again" once the owner has fixed it, or "Send it
@@ -453,7 +457,8 @@ stays with #3035.
    carrying each take's issues.
 3. **TAKES8** (#3204, some-ui): the "Make it an issue" sheet, the conveyor's new words and the
    card's status words.
-4. **TAKES9** (#3205, server): the filer. Waits on #3199 and #3200.
+4. **TAKES9** (#3205, server): the filer. Turns on once the owner has created and installed
+   the app and added its three values to `file_host.sops.env` (C590).
 5. **TAKES10** (#3206, server): the status poll.
 6. **TAKES11** (#3207, some-ui): the "Takes with issues" page.
 7. **TAKES12** (#3208, both): what retires. Its some-ui half (Part E) lands before the
