@@ -19,12 +19,14 @@ const asked = vi.hoisted(
   (): {
     answers: Array<TakesAsked>
     asks: Array<string | null>
-  } => ({ answers: [], asks: [] })
+    afters: Array<string | null>
+  } => ({ answers: [], asks: [], afters: [] })
 )
 
 vi.mock("@/lib/home-link/takes-read", () => ({
-  askTakes: (q: string | null): Promise<TakesAsked> => {
+  askTakes: (q: string | null, after: string | null): Promise<TakesAsked> => {
     asked.asks.push(q)
+    asked.afters.push(after)
     return Promise.resolve(asked.answers.shift() ?? { kind: "unreachable" })
   },
 }))
@@ -106,6 +108,7 @@ const always = (): boolean => true
 beforeEach(() => {
   asked.answers = []
   asked.asks = []
+  asked.afters = []
 })
 
 afterEach(() => {
@@ -180,6 +183,8 @@ describe("Takes on home's reads of home (ST32)", () => {
     const read = await takesHome.takes("brand", always)
     expect(read.kind).toBe("read")
     expect(asked.asks).toEqual(["brand"])
+    await takesHome.takes(null, always, "t9")
+    expect(asked.afters.at(-1)).toBe("t9")
     asked.answers = [{ kind: "unpaired" }]
     expect(await takesHome.takes(null, always)).toEqual({ kind: "unpaired" })
     asked.answers = [{ kind: "unreachable" }]
@@ -225,44 +230,85 @@ describe("one home for every take (TAKES20)", () => {
     )
   })
 
-  it("reads each take's kind and what it keeps beside its ref, and says home listed every kind", () => {
+  it("reads each take's kind, how home keeps it and home's name for a game, and where the next page starts (epoch 19)", () => {
     const [studio] = TAKES.takes
     const read = readTakes(
       reply(200, {
         ...TAKES,
+        next: "d1",
         takes: [
-          { ...studio, of: "studio" },
+          { ...studio, kind: "studio", status: "kept" },
           {
             ...studio,
             id: "b1",
-            of: "game",
+            kind: "game",
             ref: "401772",
-            fields: { strip: "Q3 4:12", scenario: "fourth-down" },
+            status: "kept",
+            about: {
+              key: "game:401772",
+              game: "401772",
+              label: "NE @ CHI",
+              bite: {
+                scenario: "fourth-down",
+                how: "offered",
+                strip: "Q3 4:12",
+                started: "2026-11-16T21:00:00Z",
+              },
+              match: null,
+            },
           },
-          { ...studio, id: "d1", of: "dream", fields: { n: 3 } },
+          // The narrower read: the game and its match, no bite.
+          {
+            ...studio,
+            id: "b2",
+            kind: "game",
+            ref: "401772",
+            about: {
+              key: "game:401772",
+              game: "401772",
+              label: null,
+              bite: null,
+            },
+          },
+          {
+            ...studio,
+            id: "d1",
+            kind: "dream",
+            ref: null,
+            heard: null,
+            status: "deleted",
+            about: null,
+          },
         ],
       })
     )
     const page = read.kind === "read" ? read.page : null
     expect(page?.covers).toBe("every")
+    expect(page?.next).toBe("d1")
     expect(page?.takes.map(({ of }) => of)).toEqual([
       "studio",
+      "game",
       "game",
       "unknown",
     ])
     expect(page?.takes[1]?.fields).toEqual({
-      strip: "Q3 4:12",
+      label: "NE @ CHI",
       scenario: "fourth-down",
+      strip: "Q3 4:12",
+      started: "2026-11-16T21:00:00Z",
     })
-    // Fields this phone can't read are dropped, not the take.
-    expect(page?.takes[2]?.fields).toBeUndefined()
+    expect(page?.takes[2]?.fields).toEqual({})
+    // A deleted take keeps no ref; it still shows, as deleted.
+    expect(page?.takes[3]).toMatchObject({ ref: "", status: "deleted" })
   })
 
-  it("says a home that lists Studio's alone, and claims nothing of an empty list", () => {
+  it("says a home that lists Studio's alone, as a home before epoch 19 answers", () => {
     const older = readTakes(reply(200, TAKES))
     expect(older.kind === "read" && older.page.covers).toBe("studio")
-    const empty = readTakes(reply(200, { ...TAKES, takes: [], total: 0 }))
-    expect(empty.kind === "read" && empty.page.covers).toBeUndefined()
+    const last = readTakes(
+      reply(200, { ...TAKES, takes: [], total: 0, next: null })
+    )
+    expect(last.kind === "read" && last.page.covers).toBe("every")
   })
 
   it("lists the phone's takes of every kind, and the bites home holds whose audio left, from home", async () => {

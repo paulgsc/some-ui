@@ -74,6 +74,7 @@ function everyWord(): Array<string> {
     openEpisode,
     status,
     order,
+    letGone,
     ...fixed
   } = LIBRARY_WORDS
   const counts: ReadonlyArray<[number, number, number | null]> = [
@@ -89,6 +90,8 @@ function everyWord(): Array<string> {
     ...Object.values(fixed),
     ...Object.values(status),
     ...Object.values(order),
+    letGone("let-go"),
+    letGone("deleted"),
     ABOUT_WORDS.week(47),
     ABOUT_WORDS.read,
     ABOUT_WORDS.gameOn("Nov 16"),

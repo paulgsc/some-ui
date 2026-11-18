@@ -66,6 +66,17 @@ export type LibraryTake = {
   readonly size: number
   /** When the owner set it aside; null while nothing has. */
   readonly setAsideAt: string | null
+  /**
+   * How home keeps it (TAKES20): kept, set aside, its recording let go (the
+   * record stays), or deleted for good with a receipt. Absent from a home
+   * before TAKES20: kept, or set aside by `setAsideAt`.
+   */
+  readonly status?:
+    | "kept"
+    | "set-aside"
+    | "recording-let-go"
+    | "deleted"
+    | undefined
   /** Null until home has heard it. */
   readonly heard: LibraryHeard | null
   /**
@@ -96,6 +107,8 @@ export type LibraryPage = {
    * as a home before it does: then what waits on a newer home is said.
    */
   readonly covers?: "every" | "studio" | undefined
+  /** The take to read on from for the next page; null or absent on the last. */
+  readonly next?: string | null | undefined
 }
 
 /** How a read of home went. */
@@ -168,6 +181,11 @@ export type LibraryState = PlaySlice & {
   readonly behind: boolean
   /** What the phone's own takes do: nothing, play one, or record one. */
   readonly phone: PhoneSound
+  /**
+   * A page of older takes (TAKES20): being read, or the last ask for one
+   * went unanswered; null otherwise. The takes shown stay either way.
+   */
+  readonly older: "reading" | "unread" | null
 }
 
 export type LibraryIntent =
@@ -175,6 +193,8 @@ export type LibraryIntent =
   | { readonly type: "search" }
   | { readonly type: "newest" }
   | { readonly type: "readAgain" }
+  /** Show the next page, older than the takes shown (TAKES20). */
+  | { readonly type: "older" }
   | { readonly type: "play"; readonly id: string }
   /** What plays stops: its row is about to leave the screen (a chip, TAKES3). */
   | { readonly type: "stop" }
@@ -208,6 +228,8 @@ export type LibraryEffect =
       readonly type: "readTakes"
       readonly seq: number
       readonly q: string | null
+      /** The take to read on from; null for the first page. */
+      readonly after: string | null
     }
   | PlayEffect
 
@@ -225,6 +247,7 @@ export const INITIAL_LIBRARY: LibraryState = {
   tooLong: false,
   behind: false,
   phone: "quiet",
+  older: null,
 }
 
 const same = (state: LibraryState): LibraryStep => ({ state, effects: [] })
@@ -244,8 +267,12 @@ function readFor(state: LibraryState, asked: string | null): LibraryStep {
       read: { kind: "reading" },
       tooLong: false,
       behind: false,
+      older: null,
     },
-    effects: [...stop.effects, { type: "readTakes", seq, q: asked }],
+    effects: [
+      ...stop.effects,
+      { type: "readTakes", seq, q: asked, after: null },
+    ],
   }
 }
 
@@ -292,9 +319,41 @@ function step(state: LibraryState, event: LibraryEvent): LibraryStep {
     case "newest": {
       return readFor({ ...state, draft: "" }, null)
     }
+    case "older": {
+      const { read } = state
+      const next = read.kind === "read" ? (read.page.next ?? null) : null
+      if (next === null || state.older === "reading") return same(state)
+      const seq = state.seq + 1
+      return {
+        state: { ...state, seq, older: "reading" },
+        effects: [{ type: "readTakes", seq, q: state.asked, after: next }],
+      }
+    }
     case "takesRead": {
       if (event.seq !== state.seq) return same(state)
-      return same({ ...state, read: event.read })
+      if (state.older !== "reading") {
+        return same({ ...state, read: event.read })
+      }
+      // A page of older takes joins those shown; one unanswered leaves them.
+      const { read } = state
+      if (read.kind !== "read" || event.read.kind !== "read") {
+        return same({ ...state, older: "unread" })
+      }
+      const shown = new Set(read.page.takes.map(({ id }) => id))
+      return same({
+        ...state,
+        older: null,
+        read: {
+          kind: "read",
+          page: {
+            ...event.read.page,
+            takes: [
+              ...read.page.takes,
+              ...event.read.page.takes.filter(({ id }) => !shown.has(id)),
+            ],
+          },
+        },
+      })
     }
     case "play": {
       if (state.phone === "recording") return stopped(state)

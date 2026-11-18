@@ -57,7 +57,9 @@ describe("Takes on home (ST32)", () => {
   it("reads the newest takes as the screen opens, and again on Try again", () => {
     const opened = run([{ type: "entered" }])
     expect(opened.state.read).toEqual({ kind: "reading" })
-    expect(opened.effects).toEqual([{ type: "readTakes", seq: 1, q: null }])
+    expect(opened.effects).toEqual([
+      { type: "readTakes", seq: 1, q: null, after: null },
+    ])
     const away = run(
       [
         { type: "takesRead", seq: 1, read: { kind: "away" } },
@@ -65,7 +67,9 @@ describe("Takes on home (ST32)", () => {
       ],
       opened.state
     )
-    expect(away.effects).toEqual([{ type: "readTakes", seq: 2, q: null }])
+    expect(away.effects).toEqual([
+      { type: "readTakes", seq: 2, q: null, after: null },
+    ])
   })
 
   it("searches the words typed, trimmed, and reads nothing on typing alone", () => {
@@ -76,7 +80,7 @@ describe("Takes on home (ST32)", () => {
     expect(typed.effects).toEqual([])
     const searched = stepLibrary(typed.state, { type: "search" })
     expect(searched.effects).toEqual([
-      { type: "readTakes", seq: 2, q: "brand intro" },
+      { type: "readTakes", seq: 2, q: "brand intro", after: null },
     ])
     expect(searched.state.asked).toBe("brand intro")
   })
@@ -110,7 +114,9 @@ describe("Takes on home (ST32)", () => {
       { type: "typed", text: "   " },
       { type: "search" },
     ])
-    expect(blank.effects).toEqual([{ type: "readTakes", seq: 2, q: null }])
+    expect(blank.effects).toEqual([
+      { type: "readTakes", seq: 2, q: null, after: null },
+    ])
     const long = run(
       [{ type: "typed", text: "a".repeat(SEARCH_MAX + 1) }, { type: "search" }],
       blank.state
@@ -122,7 +128,7 @@ describe("Takes on home (ST32)", () => {
       long.state
     )
     expect(fits.effects).toEqual([
-      { type: "readTakes", seq: 3, q: "a".repeat(SEARCH_MAX) },
+      { type: "readTakes", seq: 3, q: "a".repeat(SEARCH_MAX), after: null },
     ])
     expect(fits.state.tooLong).toBe(false)
   })
@@ -136,7 +142,9 @@ describe("Takes on home (ST32)", () => {
     ])
     expect(back.state.asked).toBeNull()
     expect(back.state.draft).toBe("")
-    expect(back.effects).toEqual([{ type: "readTakes", seq: 3, q: null }])
+    expect(back.effects).toEqual([
+      { type: "readTakes", seq: 3, q: null, after: null },
+    ])
   })
 
   it("plays one take at a time, from home, and asks for audio only on a Play", () => {
@@ -193,7 +201,7 @@ describe("Takes on home (ST32)", () => {
     const searched = stepLibrary(playing.state, { type: "search" })
     expect(searched.effects).toEqual([
       { type: "stopPlayback" },
-      { type: "readTakes", seq: 2, q: "intro" },
+      { type: "readTakes", seq: 2, q: "intro", after: null },
     ])
     expect(searched.state.playback).toEqual({ kind: "quiet" })
     const loading = run(
@@ -202,7 +210,7 @@ describe("Takes on home (ST32)", () => {
     )
     expect(loading.effects).toEqual([
       { type: "stopPlayback" },
-      { type: "readTakes", seq: 3, q: null },
+      { type: "readTakes", seq: 3, q: null, after: null },
     ])
     const late = stepLibrary(loading.state, {
       type: "audioRead",
@@ -308,7 +316,9 @@ describe("Takes on home (ST32)", () => {
         { type: "takesRead", seq: 1, read: { kind: "read", page: PAGE } },
       ])
       const now = stepLibrary(read.state, { type: "arrived" })
-      expect(now.effects).toEqual([{ type: "readTakes", seq: 2, q: null }])
+      expect(now.effects).toEqual([
+        { type: "readTakes", seq: 2, q: null, after: null },
+      ])
       expect(now.state.behind).toBe(false)
 
       const playing = run(
@@ -322,7 +332,9 @@ describe("Takes on home (ST32)", () => {
       expect(playing.effects).toEqual([])
       expect(playing.state.behind).toBe(true)
       const ended = stepLibrary(playing.state, { type: "playEnded", play: 1 })
-      expect(ended.effects).toEqual([{ type: "readTakes", seq: 2, q: null }])
+      expect(ended.effects).toEqual([
+        { type: "readTakes", seq: 2, q: null, after: null },
+      ])
       expect(ended.state.behind).toBe(false)
     })
 
@@ -364,6 +376,62 @@ describe("Takes on home (ST32)", () => {
       expect(again.effects).toEqual([
         { type: "readAudio", play: again.state.plays, id: "t1" },
       ])
+    })
+  })
+})
+
+describe("older takes, a page at a time (TAKES20)", () => {
+  const first = PAGE.takes[0]!
+  const paged: LibraryPage = { ...PAGE, total: 60, next: "t1" }
+  const older: LibraryPage = {
+    ...PAGE,
+    takes: [first, { ...first, id: "t0" }],
+    total: 60,
+    next: null,
+  }
+  const opened = run([
+    { type: "entered" },
+    { type: "takesRead", seq: 1, read: { kind: "read", page: paged } },
+  ])
+
+  it("reads on from the last take shown, and adds what home answers below it", () => {
+    const asked = run([{ type: "older" }], opened.state)
+    expect(asked.effects).toEqual([
+      { type: "readTakes", seq: 2, q: null, after: "t1" },
+    ])
+    // Asked twice while one is on its way, it asks once.
+    expect(run([{ type: "older" }], asked.state).effects).toEqual([])
+    const read = run(
+      [{ type: "takesRead", seq: 2, read: { kind: "read", page: older } }],
+      asked.state
+    ).state
+    expect(read.older).toBeNull()
+    const page = read.read.kind === "read" ? read.read.page : null
+    expect(page?.takes.map(({ id }) => id)).toEqual(["t1", "t0"])
+    expect(page?.next).toBeNull()
+    // On the last page there is nothing older to ask for.
+    expect(run([{ type: "older" }], read).effects).toEqual([])
+  })
+
+  it("keeps the takes shown when home doesn't answer, saying so", () => {
+    const asked = run([{ type: "older" }], opened.state)
+    const away = run(
+      [{ type: "takesRead", seq: 2, read: { kind: "away" } }],
+      asked.state
+    ).state
+    expect(away.older).toBe("unread")
+    expect(away.read).toEqual({ kind: "read", page: paged })
+    // A new search starts over from its first page.
+    const searched = run(
+      [{ type: "typed", text: "brand" }, { type: "search" }],
+      away
+    )
+    expect(searched.state.older).toBeNull()
+    expect(searched.effects).toContainEqual({
+      type: "readTakes",
+      seq: 3,
+      q: "brand",
+      after: null,
     })
   })
 })

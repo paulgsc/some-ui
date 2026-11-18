@@ -53,8 +53,14 @@ beforeEach(() => {
 
 describe("the read of the takes home keeps (ST32)", () => {
   it("asks for the newest, or for the takes whose words hold a search's", () => {
-    expect(takesPath(null)).toBe("/voice-notes/takes")
-    expect(takesPath("brand intro")).toBe("/voice-notes/takes?q=brand%20intro")
+    // Every kind, from epoch 19; a home before it ignores `kind` (TAKES20).
+    expect(takesPath(null)).toBe("/voice-notes/takes?kind=all")
+    expect(takesPath("brand intro")).toBe(
+      "/voice-notes/takes?kind=all&q=brand%20intro"
+    )
+    expect(takesPath(null, "t 9")).toBe(
+      "/voice-notes/takes?kind=all&after=t%209"
+    )
   })
 
   it("hands back home's answer to one GET", async () => {
@@ -62,7 +68,7 @@ describe("the read of the takes home keeps (ST32)", () => {
       kind: "answered",
       answer,
     })
-    expect(asked).toEqual([["GET", "/voice-notes/takes?q=brand"]])
+    expect(asked).toEqual([["GET", "/voice-notes/takes?kind=all&q=brand"]])
   })
 
   it("asks nothing while unpaired", async () => {

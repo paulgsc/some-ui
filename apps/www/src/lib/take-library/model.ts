@@ -1,6 +1,14 @@
 /**
  * Home's answer to `GET /voice-notes/takes` (paulgsc/server, ST32), read as
  * Takes on home means it: pure, so every answer can be held by a test.
+ *
+ * From contract epoch 19 (TAKES20, #3219), asked with `kind=all`, home lists
+ * every kind: each take says its `kind`, how home keeps it (`status`), and
+ * what it is about (`about`, by kind), and the answer says where the next
+ * page starts (`next`). A home before it answers Studio's alone, as before.
+ * A game's `about` carries home's name for the game (`label`) and the
+ * bite's moment, which may be left out (`bite: null`); the rest of a kind's
+ * `about` is what its ref already says, which Takes' ports read.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { readAs } from "@some-ui/core-utils"
@@ -17,16 +25,37 @@ const TakeSchema = z.object({
   id: z.string().min(1),
   // Its kind (TAKES20): a home before it says none, and lists Studio's
   // alone; a kind this phone doesn't know still shows, as another kind.
-  of: z
+  kind: z
     .unknown()
     .transform((value) =>
       value === undefined ? undefined : isTakeOf(value) ? value : "unknown"
     )
     .optional(),
-  // What a kind keeps beside its ref (a game bite's moment); none read
-  // from a value this phone can't.
-  fields: z.record(z.string(), z.string()).optional().catch(undefined),
-  ref: z.string(),
+  // How home keeps it; one this phone doesn't know reads as none said.
+  status: z
+    .enum(["kept", "set-aside", "recording-let-go", "deleted"])
+    .optional()
+    .catch(undefined),
+  // What a game is about, as far as the phone reads it: home's name for the
+  // game and the bite's moment. Anything else, or none, reads as nothing.
+  about: z
+    .object({
+      label: z.string().min(1).nullable().optional().catch(undefined),
+      bite: z
+        .object({
+          scenario: z.string().nullable().optional().catch(undefined),
+          strip: z.string().nullable().optional().catch(undefined),
+          started: z.string().nullable().optional().catch(undefined),
+        })
+        .nullable()
+        .optional()
+        .catch(undefined),
+    })
+    .nullable()
+    .optional()
+    .catch(undefined),
+  // A deleted take keeps no ref, by design.
+  ref: z.string().nullable(),
   recordedAt: z.string().min(1),
   storedAt: z.string().min(1),
   size: z.number().int().nonnegative(),
@@ -64,18 +93,39 @@ const TakesSchema = z.object({
   matched: z.number().int().nonnegative().nullable(),
   // "meaning" is home's once its index of meaning lands; read it already.
   by: z.enum(["newest", "words", "meaning"]),
+  // Where the next page starts (TAKES20); a home before it says nothing.
+  next: z.string().min(1).nullable().optional(),
 })
 
-/**
- * Whether home listed every kind (TAKES20): a take that says its kind says
- * so; a list of Studio's alone, with none that does, is a home before it.
- * An empty list says neither.
- */
-function coversOf(
-  takes: ReadonlyArray<{ readonly of?: unknown }>
-): LibraryPage["covers"] {
-  if (takes.length === 0) return undefined
-  return takes.some(({ of }) => of !== undefined) ? "every" : "studio"
+type ReadTake = z.infer<typeof TakeSchema>
+
+/** A game's moment, by the names its port reads (`fields`). */
+function gameFields(
+  about: ReadTake["about"]
+): Readonly<Record<string, string>> | undefined {
+  if (about == null) return undefined
+  const fields: Record<string, string> = {}
+  if (about.label != null) fields.label = about.label
+  const { scenario, strip, started } = about.bite ?? {}
+  if (scenario != null) fields.scenario = scenario
+  if (strip != null) fields.strip = strip
+  if (started != null) fields.started = started
+  return fields
+}
+
+/** One take as Takes means it. */
+function asTake({
+  kind,
+  about,
+  ref,
+  ...take
+}: ReadTake): LibraryPage["takes"][number] {
+  return {
+    ...take,
+    of: kind,
+    ref: ref ?? "",
+    ...(kind === "game" ? { fields: gameFields(about) } : {}),
+  }
 }
 
 /** What home's answer says, for the screen. */
@@ -85,7 +135,16 @@ export function readTakes(answer: HomeAnswer): LibraryRead {
   if (answer.status !== 200) return { kind: "unreadable" }
   const page = readAs(TakesSchema, answer.body)
   if (page === null) return { kind: "unreadable" }
-  return { kind: "read", page: { ...page, covers: coversOf(page.takes) } }
+  // A home at epoch 19 always says where the next page starts, even with
+  // none; one before it never does, and lists Studio's alone.
+  return {
+    kind: "read",
+    page: {
+      ...page,
+      takes: page.takes.map(asTake),
+      covers: page.next === undefined ? "studio" : "every",
+    },
+  }
 }
 
 /**

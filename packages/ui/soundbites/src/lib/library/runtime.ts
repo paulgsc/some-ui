@@ -39,7 +39,9 @@ export type TakesHome = {
    */
   readonly takes: (
     q: string | null,
-    wanted: () => boolean
+    wanted: () => boolean,
+    /** The take to read on from (TAKES20); null or absent, the first page. */
+    after?: string | null
   ) => Promise<LibraryRead>
   /** Take `id`'s audio from home; null when home can't give it back now. */
   readonly audio: (id: string) => Promise<Blob | null>
@@ -207,7 +209,7 @@ export function createTakeLibrary(ports: LibraryPorts): LibraryRuntime {
       case "readTakes": {
         const { seq } = effect
         const wanted = (): boolean => attached && state.seq === seq
-        later(ports.home.takes(effect.q, wanted), (read) => ({
+        later(ports.home.takes(effect.q, wanted, effect.after), (read) => ({
           type: "takesRead",
           seq,
           read,

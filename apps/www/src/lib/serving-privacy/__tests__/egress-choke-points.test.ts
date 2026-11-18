@@ -291,7 +291,7 @@ const KEPT_SENDS = [
 
 /** LA8, ST32: the read of the takes home keeps, and the one request it may send. */
 const TAKES_READ = "lib/home-link/takes-read.ts"
-const TAKES_SENDS = [['"GET"', "takesPath(q)"]]
+const TAKES_SENDS = [['"GET"', "takesPath(q, after)"]]
 
 /**
  * LA8, HEARD3: the read of the takes home couldn't hear well, and the act

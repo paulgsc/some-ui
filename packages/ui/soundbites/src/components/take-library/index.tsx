@@ -273,17 +273,30 @@ const HomeCard = ({
   const here = playback.kind !== "quiet" && playback.id === take.id
   const heard = heardOf(take)
   const standing = stations?.standing(take) ?? null
+  const gone =
+    take.status === "deleted"
+      ? "deleted"
+      : take.status === "recording-let-go"
+        ? "let-go"
+        : null
   return (
     <li className="bg-card border-border/50 flex flex-col gap-2 rounded-2xl border p-3">
       <div className="flex min-w-0 items-start gap-3">
-        <PlayButton
-          playing={here}
-          loading={playback.kind === "loading"}
-          disabled={state.phone === "recording"}
-          onPress={() => dispatch({ type: "play", id: take.id })}
-        />
+        {gone === null && (
+          <PlayButton
+            playing={here}
+            loading={playback.kind === "loading"}
+            disabled={state.phone === "recording"}
+            onPress={() => dispatch({ type: "play", id: take.id })}
+          />
+        )}
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <AboutTake about={about} recordedAt={take.recordedAt} />
+          {gone !== null && (
+            <p className="text-muted-foreground text-sm">
+              {WORDS.letGone(gone)}
+            </p>
+          )}
           <p
             className={
               heard.said
@@ -475,6 +488,21 @@ const Listed = ({
           </h2>
           <ul className="flex flex-col gap-2">{canned.map(card)}</ul>
         </section>
+      )}
+      {/* Last, so nothing above moves when it is pressed (HS1). */}
+      {(page?.next ?? null) !== null && (
+        <Button
+          type="button"
+          variant="outline"
+          className="self-start"
+          disabled={state.older === "reading"}
+          onClick={() => dispatch({ type: "older" })}
+        >
+          {state.older === "reading" ? WORDS.olderReading : WORDS.showOlder}
+        </Button>
+      )}
+      {state.older === "unread" && (
+        <Notice tone="warning">{WORDS.olderUnread}</Notice>
       )}
     </div>
   )
@@ -779,7 +807,9 @@ const aboutWith =
 
 /** How a take of home's stands (TAKES20). */
 function statusOf(take: LibraryTake): TakeStatus {
-  if (take.setAsideAt !== null) return "aside"
+  if (take.status === "deleted") return "deleted"
+  if (take.status === "recording-let-go") return "let-go"
+  if (take.status === "set-aside" || take.setAsideAt !== null) return "aside"
   if (take.heard === null) return "waiting"
   return take.heard.text.trim() === "" ? "silent" : "heard"
 }

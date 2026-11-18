@@ -259,7 +259,18 @@ export const LIBRARY_WORDS = {
     waiting: "Not heard yet",
     silent: "No words heard",
     aside: "Set aside",
+    "let-go": "Let go",
+    deleted: "Deleted",
   } satisfies Record<TakeStatus, string>,
+  /** A take whose recording is gone: what its card says instead of Play (TAKES20). */
+  letGone: (status: "let-go" | "deleted"): string =>
+    status === "deleted"
+      ? "Deleted for good. Home keeps a receipt of what went."
+      : "Let go. Home keeps what it heard in it, without its audio.",
+  /** The next page, older than the takes shown (TAKES20). */
+  showOlder: "Show older takes",
+  olderReading: "Asking home for older takes…",
+  olderUnread: "Home couldn't be reached just then. Try again in a moment.",
   /** How a list is ordered (TAKES20). */
   order: {
     newest: "Newest",

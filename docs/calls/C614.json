@@ -1,0 +1,19 @@
+{
+  "id": "C614",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/take-library/model.ts",
+    "some-ui:packages/ui/soundbites/src/lib/library/model.ts",
+    "some-ui:packages/ui/soundbites/src/components/take-library/index.tsx"
+  ],
+  "chose": "Takes asks home for every kind at once (kind=all) and pages with \"Show older takes\" (after=); kinds, topics, statuses and order are filtered on the pages shown, not asked of home; a take home deleted for good or whose recording was let go still shows, with no Play, saying \"Deleted for good. Home keeps a receipt of what went.\" or \"Let go. Home keeps what it heard in it, without its audio.\", under Deleted and Let go chips.",
+  "options": [
+    "every kind at once, chips over the pages shown",
+    "each chip asks home again with kind/about/from/to/sort",
+    "deleted and let-go takes left out of Takes, as before"
+  ],
+  "gray": "Whether deleted takes show among the rest, and whether a chip counts what is shown or all home keeps, is what the owner sees and no check settles it.",
+  "undo": "Filter status deleted and recording-let-go out in TakeLibrary's homeRows; pass chips to takesPath to ask home per chip.",
+  "refs": ["#3219", "#3029"]
+}

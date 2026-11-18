@@ -197,7 +197,7 @@ describe("Takes on home's runtime (ST32)", () => {
       move([{ ...OWN, kept: { place: "home", since: null } }])
       await settle()
       expect(takes).toHaveBeenCalledTimes(2)
-      expect(takes).toHaveBeenLastCalledWith(null, expect.any(Function))
+      expect(takes).toHaveBeenLastCalledWith(null, expect.any(Function), null)
       move([{ ...OWN, kept: { place: "home", since: "2026-11-05T09:01:00Z" } }])
       await settle()
       expect(takes).toHaveBeenCalledTimes(2)

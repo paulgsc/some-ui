@@ -188,10 +188,18 @@ const TAKE_PLACES: ReadonlyArray<TakePlace> = ["phone", "home"]
 
 /**
  * How a take stands (TAKES20): home heard words in it, it waits to be heard
- * (on this phone, or on home not heard yet), home heard no words in it, or
- * it was set aside.
+ * (on this phone, or on home not heard yet), home heard no words in it, it
+ * was set aside, its recording was let go (the record stays), or it was
+ * deleted for good, with a receipt.
  */
-const TAKE_STATUSES = ["heard", "waiting", "silent", "aside"] as const
+const TAKE_STATUSES = [
+  "heard",
+  "waiting",
+  "silent",
+  "aside",
+  "let-go",
+  "deleted",
+] as const
 
 export type TakeStatus = (typeof TAKE_STATUSES)[number]
 

@@ -161,8 +161,11 @@ export const ABOUT_PORTS: Readonly<Record<OtherOf, AboutPort>> = {
   scene: () => ({ kind: "drama", topic: null, parts: [] }),
   game: ({ ref, fields = {} }, names, words) => {
     const day = dayAtOrNull(fields.started)
+    // Home names the game it fetched (`label`); else the build; else its day.
     const label =
-      names.game(ref) ?? (day === null ? words.aGame : words.gameOn(day))
+      fields.label ??
+      names.game(ref) ??
+      (day === null ? words.aGame : words.gameOn(day))
     const clock = fields.strip?.split(" · ")[0]
     const scenario =
       fields.scenario === undefined ? null : names.scenario(fields.scenario)
