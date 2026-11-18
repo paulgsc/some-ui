@@ -467,6 +467,35 @@ describe("finish", () => {
     ])
   })
 
+  it("refuses a deep dive the essay's frame can't hold, before the put (EF1)", () => {
+    const given = values()
+    const dive = given.essays[0]?.tickets[0]?.dives[1]
+    if (dive === undefined) throw new Error("the sample changed shape")
+    // 2026-w46's QM-311 dive 2, which home's recorder refused (#2231).
+    dive.shows = [
+      "Return `&str` slices: no bytes copied.",
+      "Elision ties the slices to `line`.",
+      "The caller passes one `Vec`; `clear` keeps its capacity.",
+      "Copy out only what must outlive the line.",
+    ]
+    dive.code = [
+      "fn fields<'a>(",
+      "    line: &'a str,",
+      "    out: &mut Vec<&'a str>,",
+      ") {",
+      "    out.clear();",
+      "    out.extend(",
+      "        line.split(',').map(str::trim),",
+      "    );",
+      "}",
+    ].join("\n")
+    expect(problemsOf(given)).toEqual([
+      expect.stringMatching(
+        /^\d{4}-w\d{2} essay: QM-311 deep dive 2 \(dive-2\) runs about \d+ px past the frame: shorten its title, shows or code$/
+      ),
+    ])
+  })
+
   it("refuses a guess on an answered ticket, and marks on a silence", () => {
     const given = values()
     const [first, , third] = given.essays[0]?.tickets ?? []

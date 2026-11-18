@@ -1,6 +1,7 @@
 import type { JSX } from "react"
 import { assertNever } from "@some-ui/core-utils"
 import {
+  ESSAY_POINT_COLUMN,
   essayFormat,
   hasCaptions,
   LEITNER,
@@ -16,6 +17,7 @@ import type {
   Essay,
   EssayScene,
   EssayTicket,
+  Voicing,
 } from "@some-ui/video-render"
 
 import { Call, Inline, MARK_CLASS } from "./essay-parts"
@@ -341,7 +343,11 @@ const Screen = ({
       const answer = view.ticket.answer
       return (
         <Call speaker={at.speaker} tag={`${view.ticket.id} · ${NAMES.beside}`}>
-          <table className="w-full text-left text-[0.8em]">
+          <table className="w-full table-fixed text-left text-[0.8em]">
+            <colgroup>
+              <col style={{ width: `${String(100 * ESSAY_POINT_COLUMN)}%` }} />
+              <col />
+            </colgroup>
             <thead className="text-muted-foreground text-[0.85em]">
               <tr>
                 <th className="pr-[1em] font-normal">{W.point}</th>
@@ -542,7 +548,35 @@ const RustEssayStage = ({
       />
     )
   const { essay, voicing } = state
-  const at = essayAt(essay, scene, voicing)
+  return (
+    <EssaySceneFrame
+      essay={essay}
+      at={essayAt(essay, scene, voicing)}
+      voicing={voicing}
+      record={record}
+      onScene={onScene}
+    />
+  )
+}
+
+/**
+ * One scene of `essay` in the stage's frame: the stage's, and the essay
+ * fit's fixture (`tests/ui-fit/essay-fit.spec.ts`, EF1), which draws an
+ * essay it is handed.
+ */
+export const EssaySceneFrame = ({
+  essay,
+  at,
+  voicing,
+  record,
+  onScene,
+}: {
+  essay: Essay
+  at: EssayAt
+  voicing: Voicing
+  record: boolean
+  onScene?: ((scene: string) => void) | undefined
+}): JSX.Element => {
   const format = essayFormat(essay.template.version)
   return (
     <StageFrame
