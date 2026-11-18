@@ -7,6 +7,7 @@ import type { PatternTake } from "@some-ui/voice-capture"
 import { describe, expect, it } from "vitest"
 
 import {
+  ask,
   firsts,
   markRung,
   NO_LADDER,
@@ -59,15 +60,17 @@ describe("a question's ladder (IW8)", () => {
       take("new", "2026-w47:conflict", "2026-11-17T10:00:00Z"),
       take("other", "2026-w47:why-now", "2026-11-17T10:00:00Z"),
     ]
-    const asked = { item: "conflict", rung: "cues", before: ["old"] } as const
-    expect(markRung(NO_LADDER, asked, takes.slice(0, 1), "2026-w47")).toEqual({
-      ladder: NO_LADDER,
-      done: false,
+    const asking = ask(NO_LADDER, {
+      item: "conflict",
+      rung: "cues",
+      before: ["old"],
     })
-    expect(markRung(NO_LADDER, asked, takes, "2026-w47")).toEqual({
-      ladder: { first: {}, rungs: { new: "cues" } },
-      done: true,
+    expect(markRung(asking, takes.slice(0, 1), "2026-w47")).toBe(asking)
+    expect(markRung(asking, takes, "2026-w47")).toEqual({
+      first: {},
+      rungs: { new: "cues" },
     })
+    expect(ask(asking, null)).toEqual(NO_LADDER)
   })
 
   it("lets each question's earliest take go home, never a later one", () => {

@@ -60,6 +60,11 @@ export type Ladder = {
   readonly first: Readonly<Partial<Record<string, string>>>
   /** The rung each take was said on, by the take's id. */
   readonly rungs: Readonly<Partial<Record<string, Rung>>>
+  /**
+   * A take asked for on a rung and not yet kept: kept here, not in memory,
+   * so a take kept after its page or the whole week was left is still marked.
+   */
+  readonly asked?: Asked
 }
 
 export const NO_LADDER: Ladder = { first: {}, rungs: {} }
@@ -80,24 +85,28 @@ export const takesFor = (
   takes.filter(({ answers }) => answers === takeLine(week, item))
 
 /**
- * Marks with its rung the take kept for `asked` since it was asked for: one
- * its item didn't have then. Returns the ladder unchanged (the same object)
- * while there is none, and `done` once it is marked.
+ * Marks with its rung the take kept for the ladder's `asked` since it was
+ * asked for, one its item didn't have then, and lets `asked` go. Returns the
+ * ladder unchanged (the same object) while there is none.
  */
 export function markRung(
   ladder: Ladder,
-  asked: Asked,
   takes: ReadonlyArray<PatternTake>,
   week: string
-): { readonly ladder: Ladder; readonly done: boolean } {
+): Ladder {
+  const { asked, ...rest } = ladder
+  if (asked === undefined) return ladder
   const kept = takesFor(takes, week, asked.item).find(
     ({ id }) => !asked.before.includes(id) && ladder.rungs[id] === undefined
   )
-  if (kept === undefined) return { ladder, done: false }
-  return {
-    ladder: { ...ladder, rungs: { ...ladder.rungs, [kept.id]: asked.rung } },
-    done: true,
-  }
+  if (kept === undefined) return ladder
+  return { ...rest, rungs: { ...ladder.rungs, [kept.id]: asked.rung } }
+}
+
+/** The ladder asking for a take on `asked`'s rung, or for one on none. */
+export function ask(ladder: Ladder, asked: Asked | null): Ladder {
+  const { asked: _was, ...rest } = ladder
+  return asked === null ? rest : { ...rest, asked }
 }
 
 /**

@@ -98,6 +98,13 @@ export const interviewSent = (
 const LadderSchema = z.object({
   first: z.record(z.string(), z.string()),
   rungs: z.record(z.string(), z.enum(RUNGS)),
+  asked: z
+    .object({
+      item: z.string(),
+      rung: z.enum(RUNGS),
+      before: z.array(z.string()),
+    })
+    .optional(),
 })
 
 const readLadders = readJson((value) => {

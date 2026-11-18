@@ -294,6 +294,65 @@ describe("a question's ladder on the phone (IW8)", () => {
     expect(again.ladder.getSnapshot().first["why-now"]).toBe(marked)
   })
 
+  it("asks a refused first take again on the next change, never in its own echo", async () => {
+    const { ports, simulated } = fakePorts({ storage: inMemoryStorage() })
+    // As the phone's desk does: a refused release still publishes the takes.
+    const listeners = new Set<() => void>()
+    let shown = simulated.store.getSnapshot()
+    const publish = (): void => {
+      for (const listener of listeners) listener()
+    }
+    simulated.store.subscribe(() => {
+      shown = simulated.store.getSnapshot()
+      publish()
+    })
+    const release = vi.fn((): boolean => {
+      shown = [...shown]
+      publish()
+      return false
+    })
+    const run = createInterviewWeek({
+      ...ports,
+      takes: {
+        ...ports.takes,
+        takes: {
+          getSnapshot: () => shown,
+          subscribe: (listener) => {
+            listeners.add(listener)
+            return (): void => {
+              listeners.delete(listener)
+            }
+          },
+        },
+        release,
+      },
+    })
+    run.attach()
+    run.dispatch({ type: "go", index: 0 })
+    run.dispatch({ type: "tap", item: "why-now" })
+    await pass(2_000)
+    const before = release.mock.calls.length
+    run.dispatch({ type: "tap", item: "why-now" })
+    await pass()
+    expect(release.mock.calls.length - before).toBeLessThan(5)
+  })
+
+  it("marks a take kept after the whole week was left with the rung it was asked on", async () => {
+    const storage = inMemoryStorage()
+    const { ports, simulated } = fakePorts({ storage })
+    const run = createInterviewWeek(ports)
+    const detach = run.attach()
+    run.focus("conflict")
+    run.dispatchOn("cues")({ type: "tap", item: "conflict" })
+    await pass(2_000)
+    detach()
+    await pass()
+    const [take] = simulated.store.getSnapshot()
+    const again = createInterviewWeek(ports)
+    again.attach()
+    expect(again.ladder.getSnapshot().rungs).toEqual({ [take.id]: "cues" })
+  })
+
   it("marks a take with the rung it was said on, and a read aloud after its cue", async () => {
     const on = phone(inMemoryStorage())
     const leave = on.run.focus("conflict")

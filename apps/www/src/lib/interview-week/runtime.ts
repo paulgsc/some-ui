@@ -28,8 +28,8 @@ import { bundleRuntime, sendsAtHome } from "@some-ui/voice-capture"
 
 import type { Cue, CueEvent } from "./cue"
 import { NO_CUE, stepCue } from "./cue"
-import type { Asked, Ladder, Rung } from "./ladder"
-import { firsts, markRung, takesFor } from "./ladder"
+import type { Ladder, Rung } from "./ladder"
+import { ask, firsts, markRung, takesFor } from "./ladder"
 import type { InterviewAtHome, InterviewKind, InterviewSent } from "./spec"
 import { cardOf, interviewMachine, isClosed } from "./spec"
 import type { HeldInterview } from "./store"
@@ -158,24 +158,32 @@ export function createInterviewWeek(
 
   const kept = interviewLadder(ports.storage, week.id)
   const ladder = cell(kept.read())
-  let asked: Asked | null = null
   const questions = week.questions.map(({ id }) => id)
+  let releasing = false
+  /** Keeps `next` as the week's ladder; false when this phone couldn't. */
+  const keep = (next: Ladder): boolean => {
+    if (next === ladder.getSnapshot()) return true
+    if (!kept.write(next)) return false
+    ladder.set(next)
+    return true
+  }
   /** Marks a take kept since it was asked for, and lets each question's first go home. */
   const climb = (): void => {
     const { takes, at } = bundle.getSnapshot()
-    let next = ladder.getSnapshot()
-    const marked = asked === null ? null : markRung(next, asked, takes, week.id)
-    if (marked !== null) next = marked.ladder
-    const first = firsts(next, takes, week.id, questions)
-    if (first.ladder !== ladder.getSnapshot()) {
-      // The marks are kept before any take goes, so none is let go twice;
-      // one not kept is asked again on the next change.
-      if (!kept.write(first.ladder)) return
-      ladder.set(first.ladder)
-    }
-    if (marked?.done === true) asked = null
-    if (first.release.length > 0 && !isClosed(week, at)) {
-      ports.takes.release(first.release)
+    const marked = markRung(ladder.getSnapshot(), takes, week.id)
+    const first = firsts(marked, takes, week.id, questions)
+    // The marks are kept before any take goes, so none is let go twice;
+    // one not kept is asked again on the next change.
+    if (!keep(first.ladder)) return
+    // Letting go publishes the takes again, which calls this again: a take
+    // that didn't go waits for the next change, not this one's echo.
+    if (first.release.length > 0 && !isClosed(week, at) && !releasing) {
+      releasing = true
+      try {
+        ports.takes.release(first.release)
+      } finally {
+        releasing = false
+      }
     }
   }
 
@@ -191,16 +199,21 @@ export function createInterviewWeek(
     }
     const now = bundle.getSnapshot()
     if (intent.type === "tap" && !now.busy) {
-      asked =
-        rung === null
-          ? null
-          : {
-              item: intent.item,
-              rung,
-              before: takesFor(now.takes, week.id, intent.item).map(
-                ({ id }) => id
-              ),
-            }
+      // A rung not kept leaves the take unmarked, never unsaid.
+      keep(
+        ask(
+          ladder.getSnapshot(),
+          rung === null
+            ? null
+            : {
+                item: intent.item,
+                rung,
+                before: takesFor(now.takes, week.id, intent.item).map(
+                  ({ id }) => id
+                ),
+              }
+        )
+      )
       if (cardOf(intent.item) !== null || rung === "aloud") {
         showCard(intent.item)
         moveCue({ type: "start", item: intent.item })
