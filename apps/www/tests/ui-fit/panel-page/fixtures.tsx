@@ -41,6 +41,7 @@ import { PANELS } from "@/lib/playable"
 
 import { CallStageFixture } from "./call-stage"
 import { CodeCardFixture } from "./code-card"
+import { EssayStageFixture } from "./essay-stage"
 import { IncidentFixture } from "./incident"
 import { IntentFailureFixture } from "./intent-failure"
 import { JobsStatusFixture } from "./jobs-status"
@@ -575,6 +576,8 @@ export const PANEL_FIXTURES = {
   "code-card": CodeCardFixture,
 
   "call-stage": CallStageFixture,
+
+  "essay-stage": EssayStageFixture,
 
   "intent-failure": IntentFailureFixture,
 

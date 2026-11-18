@@ -3,17 +3,22 @@
  *
  * The door (A4, packages/some-vite-config/AUDIENCES.md): the web builds get
  * Hangul Honeycomb's panel, the extensions comb, the Playoff Delta stage,
- * the burn-ins' preview and recorder page, the weekly call's stage and the
- * Rust Rounds essay's, and a build without a web
+ * the burn-ins' preview and recorder page, the weekly call's stage, the
+ * Rust Rounds essay's and one of its scenes, and a build without a web
  * surface gets something inert in their place. Vitest builds the `lan`
  * profile; the Android app's build is stood in for by its flag, and a
  * profile without "web" by mocking `@/lib/build-profile`.
  */
 
+import { sampleEssay } from "@some-ui/video-render"
 import { cleanup, render } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type * as WebSurface from "."
+
+const sample = sampleEssay()
+if (!sample.ok) throw new Error(sample.problems.join("; "))
+const SAMPLE_ESSAY = sample.value
 
 async function loadDoor({
   device = false,
@@ -41,11 +46,12 @@ const isLazy = (component: unknown): boolean =>
   Reflect.get(component, "$$typeof") === Symbol.for("react.lazy")
 
 describe("a web build", () => {
-  it("binds Hangul Honeycomb's panel, the extensions comb, the Playoff Delta stage, the burn-ins' pages and the call's and essay's stages", async () => {
+  it("binds Hangul Honeycomb's panel, the extensions comb, the Playoff Delta stage, the burn-ins' pages and the call's and essay's stages and an essay's scene", async () => {
     const {
       BurnInRecord,
       BurnInsPreview,
       CallStage,
+      EssaySceneFrame,
       EssayStage,
       ExtensionsComb,
       PlayoffDeltaStage,
@@ -59,6 +65,7 @@ describe("a web build", () => {
     expect(isLazy(BurnInRecord)).toBe(true)
     expect(isLazy(CallStage)).toBe(true)
     expect(isLazy(EssayStage)).toBe(true)
+    expect(isLazy(EssaySceneFrame)).toBe(true)
   })
 })
 
@@ -72,6 +79,7 @@ describe("a build with no web surface", () => {
       BurnInRecord,
       BurnInsPreview,
       CallStage,
+      EssaySceneFrame,
       EssayStage,
       ExtensionsComb,
       PlayoffDeltaStage,
@@ -87,6 +95,7 @@ describe("a build with no web surface", () => {
         <BurnInRecord />
         <CallStage />
         <EssayStage />
+        <EssaySceneFrame essay={SAMPLE_ESSAY} record />
       </>
     )
     expect(container.innerHTML).toBe("")
