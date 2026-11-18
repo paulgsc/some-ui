@@ -7,7 +7,7 @@
     "server:crates/db/voice/src/conveyor.rs",
     "some-ui:apps/www/src/lib/take-conveyor/words.ts"
   ],
-  "chose": "\"Make it an issue\" is the conveyor's move to ready-for-pickup under new words: home, not the routine, files from that station, every attempt first checking the take is still at that move, and the move to picked-up carries the issue, so a take has at most one; the conveyor widens to Rust Rounds and interview takes and idea answers so every kind has the one entrance.",
+  "chose": "\"Make it an issue\" is the conveyor's move to ready-for-pickup under new words: home, not the routine, files from that station, every attempt first checking the take is still at that move, and the move to picked-up carries the issue, so a take has at most one; the conveyor widens to Rust Rounds and interview takes and idea answers so every kind has the one entrance. This also replaces C297's routine filing of pickups in some-ui; C588 records the move of C297 for its ask-answer half.",
   "options": [
     "the ready-for-pickup move, renamed, as the one entrance",
     "a separate request route outside the conveyor, from any station",
