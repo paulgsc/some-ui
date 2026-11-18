@@ -78,8 +78,10 @@ since there is no station to move, so they go from Captured straight to Became.
 
 **No move to Brought without the copy.** The conveyor page's "Move to …" control no longer
 offers Brought; "Bring to a session" is the only way there, so the status says what was done.
-A take already at `ready-for-pickup` when this ships (moved there under the old meaning, and
-never filed by Part E) reads "Brought to a session · not copied yet" and offers Bring.
+A take already at `ready-for-pickup` when this ships was moved there under the old meaning,
+"ready for pickup", which is what Brought now names: it reads "Brought to a session", and Bring
+copies its block like any other. Nothing stored says whether it was ever copied, and nothing is
+added to say so.
 
 "Captured" covers both early stations; the card keeps "working on" as a mark so the owner's own
 sorting isn't lost. The words live in `apps/www/src/lib/take-conveyor/words.ts`: the station
@@ -169,10 +171,14 @@ GitHub's public search:
   indexed only after it; reading an item twice changes nothing, since rows are written only on
   a difference. In each body it finds the line `From take tk…` and takes the IDs it holds a
   take for. GitHub stems the phrase, so most results lack the line: a normal pass reads one page
-  of each query, and the first pass reads up to search's 1,000-result cap.
+  of each query. The first pass, with nothing seen yet, reads up to search's 1,000-result cap
+  (ten pages a query); it spaces its pages to at most eight a minute and keeps where it got to,
+  so a pass that stops resumes at its next page rather than starting over.
 - **Issues make the move, pull requests add a link.** Only an issue moves a take to Became; a
   pull request that carries the line (often copied from the issue it closes) is kept as a link,
-  "also in PR #m", whether it is read before the issue or after.
+  whether it is read before the issue or after. A take whose only link is a pull request stays
+  Brought, and its card reads "Brought to a session · in PR #m"; with an issue too, "also in
+  PR #m".
 - **Limits:** unauthenticated search allows 10 requests a minute from an address; home makes
   eight an hour, plus pages. A failed pass (no network, a `403` or `429` rate limit, a `5xx`)
   waits for the next, honouring `retry-after` when given. Only public repositories are seen;
@@ -185,9 +191,10 @@ GitHub's public search:
     stays, since it was true when seen.
   - `take_issue_seen`: for each linked item, by its GitHub `id`, what home saw and when: open
     or closed, why it closed or whether it merged, and its address if that changed (a
-    transfer). A row only when something changed. An item whose line was later removed, or
-    whose repository went private, no longer matches, so its state is as current as the last
-    pass that saw it, and the card says since when.
+    transfer). A row only when something changed. Home reads only items updated since an hour before its last
+    pass, so an unchanged item and one that stopped matching look alike: both are absent. So
+    an item whose line was later removed, or whose repository went private, keeps the state
+    home last saw, and a later close is never seen. That is this design's limit.
 - **The move to Became:** when home first links an issue to a take at Brought, it appends the
   move to `picked-up` with that issue, in the same transaction (invariant 4's rule: only from
   `ready-for-pickup`). A take linked while at another station, or on no conveyor, keeps its
@@ -205,7 +212,7 @@ Removed by the stories below, in the same PRs that replace them:
 - **Part E** of `packages/ui/topik/ROUTINE.md` (all three kinds it files: answers to asks,
   notes on episodes, pickups), `@some-ui/video-render`'s `pending.ts` and its `render pending`
   command, and the line about Part E in the Reflections scheduled task's prompt. Moving Part E
-  is a change to a recorded call, so it is a story that `moves` it (C585 moves C298).
+  is a change to a recorded call, so it is a story that `moves` it (C585 moves C297, and with it C298).
 - **The mailbox's `pickup` and `picked` folders**: home's `file_pickups` and its picked reader
   (`file_host/src/mailbox/pass.rs`, `PICKUP_SCHEMA`, `PICKED_SCHEMA`), the folders in
   `apps/mailbox`, and server `docs/conveyor.md`'s "Pickup" section. Every answer the routine
@@ -235,12 +242,12 @@ crosses nothing. Its objectives:
 
 | ID  | Kind     | Requirement                                                                                                                                                                                      |
 | --- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| TF1 | OA3      | "Became #n" shows only once `take_issue_link` holds the link.                                                                                                                                    |
+| TF1 | OA3      | "Became #n" shows only once `take_issue_link` holds a link to an issue; a pull request alone reads "in PR #m".                                                                                   |
 | TF2 | OA6      | A search pass that stopped reads apart from a quiet one: each pass's start and outcome is a metric, and a missed hour alerts.                                                                    |
 | TF3 | OA8      | Every failed pass is counted and named (no network, rate limit, `5xx`), and a run of failures alerts (`TakeSearchFailing`).                                                                      |
 | TF4 | RE1      | Every search request is counted, with GitHub's own rate-limit headers kept.                                                                                                                      |
 | TF5 | RE3, RE7 | A pass is two search requests (issues, pull requests) plus a page for each further 100 items updated since an hour before the last pass; the first pass reads at most search's 1,000-result cap. |
-| TF6 | RE9      | Growth: one link row per issue carrying a take's ID, one seen row per change; nothing deleted but with the take or the account.                                                                  |
+| TF6 | RE9      | Growth: one link row per item (issue or pull request) carrying a take's ID, one seen row per change; nothing deleted but with the take or the account.                                           |
 
 Stores: `server:take_issue_link`, `server:take_issue_seen`. The `routine-to-home` family loses
 the pickup's objectives as Part E retires, and the mailbox stores' growth lines lose `pickup`
