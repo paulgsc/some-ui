@@ -1,0 +1,15 @@
+{
+  "id": "C627",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": ["apps/www/src/components/jobs/interview/week.tsx"],
+  "chose": "A week counts as under way once any item has a current take on this phone or a send exists; before that the first page is the way in, after it the page lists what was done.",
+  "options": [
+    "any current take or any send",
+    "only once a send exists",
+    "once a take reaches home"
+  ],
+  "gray": "The owner asked that a week with a session look different from one without; what counts as a session is open.",
+  "undo": "Change isUnderWay in week.tsx.",
+  "refs": ["#3225"]
+}

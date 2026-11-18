@@ -62,7 +62,7 @@ const WithQuestion = ({
     <div className="flex flex-col gap-4">
       {question === undefined ? (
         <>
-          <BackTo to={{ page: "interview" }}>{WORDS.toInterview}</BackTo>
+          <BackTo to={{ page: "questions" }}>{WORDS.toQuestions}</BackTo>
           <p className="text-muted-foreground">{WORDS.notInWeek}</p>
         </>
       ) : (
@@ -159,7 +159,7 @@ export const QuestionPage = ({ id }: { id: string }): JSX.Element => (
   <WithQuestion id={id}>
     {(question, held) => (
       <>
-        <BackTo to={{ page: "interview" }}>{WORDS.toInterview}</BackTo>
+        <BackTo to={{ page: "questions" }}>{WORDS.toQuestions}</BackTo>
         <Head question={question} eyebrow={WORDS.aim(question.targetSeconds)} />
         <nav className="grid grid-cols-2 gap-2.5">
           {stepsOf(question).map((step, i) => (

@@ -14,7 +14,7 @@ import type { SayRung } from "@/lib/interview-week/ladder"
 
 /** A page of the week. */
 export type Page =
-  | { readonly page: "interview" | "reads" }
+  | { readonly page: "interview" | "questions" | "how" | "reads" }
   | { readonly page: "read"; readonly card: string }
   | {
       readonly page: "question" | "study" | "aloud"
@@ -41,6 +41,12 @@ export const To = ({
   switch (to.page) {
     case "interview": {
       return <Link to="/jobs/interview" {...link} />
+    }
+    case "questions": {
+      return <Link to="/jobs/interview/questions" {...link} />
+    }
+    case "how": {
+      return <Link to="/jobs/interview/how" {...link} />
     }
     case "reads": {
       return <Link to="/jobs/interview/reads" {...link} />

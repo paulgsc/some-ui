@@ -78,10 +78,13 @@ describe("the interview week's pages on the phone (IW8)", () => {
     open()
     await settle()
 
-    // The Interview page: the invented role, and today's question as one tap.
-    screen.getByText(WORDS.role(WEEK.role.title, WEEK.company.name))
-    screen.getByText(WORDS.invented)
+    // The Interview page before anything is said: the way in (IW15), each
+    // kind one tap away; Questions leads with today's question.
+    screen.getByText(WORDS.wayIn.title)
+    screen.getByText(WORDS.wayIn.line(WEEK.role.title, WEEK.company.name))
+    expect(screen.queryByText(WORDS.wayIn.soFar)).toBeNull()
     expect(document.body.textContent).not.toMatch(/not said/i)
+    await follow(new RegExp(`^${WORDS.questions}`))
     await follow(new RegExp(`^${WORDS.today}`))
 
     // Its page: the four rungs at equal weight.
@@ -112,9 +115,16 @@ describe("the interview week's pages on the phone (IW8)", () => {
       new RegExp(WORDS.done(WORDS.past.cues, "2026-11-17T18:00:00Z"))
     )
 
-    // A read on its own page: the script, its cue, then a take.
+    // Once something is said, the first page lists it, where its take is (IW16).
+    await follow(WORDS.toQuestions)
     await follow(WORDS.toInterview)
-    await follow(WORDS.reads)
+    screen.getByText(WORDS.role(WEEK.role.title, WEEK.company.name))
+    screen.getByText(WORDS.wayIn.soFar)
+    screen.getByText(conflict.prompt)
+    expect(screen.queryByText(WORDS.wayIn.title)).toBeNull()
+
+    // A read on its own page: the script, its cue, then a take.
+    await follow(new RegExp(`^${WORDS.reads}`))
     await follow(new RegExp(`^${WEEK.cards[0].situation}`))
     const script = document.querySelector('[data-script="epic-2931"]')
     expect(script?.textContent).toContain("So I built a week that asks them")
@@ -136,6 +146,20 @@ describe("the interview week's pages on the phone (IW8)", () => {
     await press(WORDS.toReview)
     await press(WORDS.send(2))
     screen.getByText(WORDS.sent.title(2))
+
+    // Back on the first page, the send is said, and saying again still open (IW16).
+    await press(WORDS.backToWeek)
+    screen.getByText(WORDS.wayIn.soFar)
+    screen.getByText(WORDS.openUntil(WEEK))
+  })
+
+  it("says how a week goes, home named once (IW15)", async () => {
+    open(WEEK_2, "/jobs/interview/how")
+    await settle()
+    for (const { name } of WORDS.how.steps) screen.getByText(name)
+    screen.getByText(/Home is your own computer/)
+    await follow(WORDS.toInterview)
+    screen.getByText(WORDS.wayIn.title)
   })
 
   it("cites the body of work on a question about it", async () => {
