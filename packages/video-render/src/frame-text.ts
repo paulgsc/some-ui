@@ -89,13 +89,18 @@ export type Run = {
   readonly em: number
   /** Space before it, in px, on the same line: a margin or a gap. */
   readonly before?: number
+  /**
+   * Whether it continues the word the run before it ends with, as "`Vec`;"
+   * does: no break and no gap between them. A run otherwise starts a word,
+   * after its own space or `before`.
+   */
+  readonly touches?: boolean
 }
 
 /**
- * The words `runs` break into, each with the gap before it: a break falls
- * only at whitespace or before a run with `before`, so text that touches
- * across runs ("`Vec`;" as `Inline` sets it) is one word, as the browser
- * keeps it.
+ * The words `runs` break into, each with the gap before it: a break falls at
+ * whitespace and between runs, except before a run that `touches` the one
+ * before it.
  */
 function wordsOf(
   runs: ReadonlyArray<Run>
@@ -104,9 +109,9 @@ function wordsOf(
   let current: { w: number; gap: number } | null = null
   let gap = 0
   for (const run of runs) {
-    if (run.before !== undefined) {
+    if (run.touches !== true) {
       current = null
-      gap = run.before
+      gap = run.before ?? widthOf(" ", run.face, run.em)
     }
     for (const piece of run.text.split(/(\s+)/)) {
       if (piece.length === 0) continue

@@ -72,17 +72,22 @@ export function codeSpans(
     )
 }
 
-/** Text with `code` spans, set as the stage's `Inline` sets it, at `em`. */
+/**
+ * Text with `code` spans, set as the stage's `Inline` sets it, at `em`: a
+ * span with no whitespace between it and the one before continues its word.
+ */
 const inline = (
   text: string,
   em: number,
   face: "prose" | "bold" = "prose"
 ): ReadonlyArray<Run> =>
-  codeSpans(text).map((span) =>
-    span.code
-      ? { text: span.text, face: "mono" as const, em: em * 0.9 }
-      : { text: span.text, face, em }
-  )
+  codeSpans(text).map((span, i, spans) => ({
+    text: span.text,
+    face: span.code ? ("mono" as const) : face,
+    em: span.code ? em * 0.9 : em,
+    touches:
+      i > 0 && !/\s$/.test(spans[i - 1]?.text ?? "") && !/^\s/.test(span.text),
+  }))
 
 const lines = (runs: ReadonlyArray<Run>, width: number, em: number): number =>
   linesOf(runs, width) * lineOf(em)

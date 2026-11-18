@@ -559,7 +559,6 @@ const RustEssayStage = ({
   )
 }
 
-/** One scene of `essay` in the stage's frame. */
 export type EssaySceneFrameProps = {
   essay: Essay
   /** The scene's id; the essay's first scene when it has none by that id. */
@@ -569,6 +568,7 @@ export type EssaySceneFrameProps = {
   onScene?: ((scene: string) => void) | undefined
 }
 
+/** One scene of `essay` in the stage's frame. */
 export const EssaySceneFrame = ({
   essay,
   scene,
