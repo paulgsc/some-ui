@@ -216,7 +216,13 @@ export function createInterviewWeek(
               ),
             }
       )
-      if (!keep(asking)) ladder.set(asking)
+      if (!keep(asking)) {
+        ladder.set(asking)
+        // An earlier ask left in storage would mark this take when the
+        // week next opens; letting it go is smaller than what is kept.
+        const cleared = ask(written, null)
+        if (cleared !== written && kept.write(cleared)) written = cleared
+      }
       if (cardOf(intent.item) !== null || rung === "aloud") {
         showCard(intent.item)
         moveCue({ type: "start", item: intent.item })

@@ -15,7 +15,7 @@ import { CUE_SECONDS } from "@/lib/interview-week/cue"
 import type { InterviewWeekRun } from "@/lib/interview-week/runtime"
 import { createInterviewWeek } from "@/lib/interview-week/runtime"
 import type { InterviewSent } from "@/lib/interview-week/spec"
-import { interviewSent } from "@/lib/interview-week/store"
+import { interviewLadder, interviewSent } from "@/lib/interview-week/store"
 
 import { fakePorts } from "./fixture"
 
@@ -346,13 +346,13 @@ describe("a question's ladder on the phone (IW8)", () => {
 
   it("never marks a take with an earlier rung when this phone couldn't keep its own", async () => {
     const inner = inMemoryStorage()
-    let refuseLadder = false
+    // A phone too full for a ladder that asks, though one that doesn't fits.
+    let full = false
     const storage: KeyedStorage = {
       getItem: (key) => inner.getItem(key),
       removeItem: (key) => inner.removeItem(key),
       setItem: (key, value) => {
-        if (refuseLadder && key.endsWith(".ladder")) {
-          refuseLadder = false
+        if (full && key.endsWith(".ladder") && value.includes('"asked"')) {
           throw new Error("full")
         }
         inner.setItem(key, value)
@@ -363,9 +363,12 @@ describe("a question's ladder on the phone (IW8)", () => {
     // Asked on aloud, then called off before it records.
     on.run.dispatchOn("aloud")({ type: "tap", item: "conflict" })
     on.run.dispatchOn("aloud")({ type: "tap", item: "conflict" })
-    refuseLadder = true
+    full = true
     const own = on.run.dispatchOn("own")
     own({ type: "tap", item: "conflict" })
+    // Nor when the week next opens: the earlier ask isn't left in storage.
+    expect(interviewLadder(storage, "2026-w47").read().asked).toBeUndefined()
+    full = false
     await pass(2_000)
     own({ type: "tap", item: "conflict" })
     await pass()

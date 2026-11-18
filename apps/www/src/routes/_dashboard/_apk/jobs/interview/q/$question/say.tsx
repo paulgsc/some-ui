@@ -1,6 +1,7 @@
 import type { JSX } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 
+import type { SayRung } from "@/lib/interview-week/ladder"
 import { SayPage } from "@/components/jobs/interview/ladder"
 
 /**
@@ -20,8 +21,8 @@ export const Route = createFileRoute(
   "/_dashboard/_apk/jobs/interview/q/$question/say"
 )({
   component: Say,
-  // Read here, not from lib/interview-week, which only the phone's build carries.
-  validateSearch: (search): { rung: "cues" | "own" } => ({
+  // Parsed here, not by lib/interview-week, which only the phone's build carries.
+  validateSearch: (search): { rung: SayRung } => ({
     rung: search.rung === "cues" ? "cues" : "own",
   }),
 })
