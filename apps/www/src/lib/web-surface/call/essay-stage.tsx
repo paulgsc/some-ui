@@ -551,7 +551,7 @@ const RustEssayStage = ({
   return (
     <EssaySceneFrame
       essay={essay}
-      at={essayAt(essay, scene, voicing)}
+      scene={scene}
       voicing={voicing}
       record={record}
       onScene={onScene}
@@ -560,19 +560,23 @@ const RustEssayStage = ({
 }
 
 /** One scene of `essay` in the stage's frame. */
-export const EssaySceneFrame = ({
-  essay,
-  at,
-  voicing,
-  record,
-  onScene,
-}: {
+export type EssaySceneFrameProps = {
   essay: Essay
-  at: EssayAt
-  voicing: Voicing
+  /** The scene's id; the essay's first scene when it has none by that id. */
+  scene?: string | undefined
+  voicing?: Voicing
   record: boolean
   onScene?: ((scene: string) => void) | undefined
-}): JSX.Element => {
+}
+
+export const EssaySceneFrame = ({
+  essay,
+  scene,
+  voicing = "owner",
+  record,
+  onScene,
+}: EssaySceneFrameProps): JSX.Element => {
+  const at = essayAt(essay, scene, voicing)
   const format = essayFormat(essay.template.version)
   return (
     <StageFrame

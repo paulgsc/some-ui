@@ -38,9 +38,12 @@ export const prose = (
     (_, i) => words[(from + i) % words.length] ?? "word"
   ).join(" ")
 
-/** `WORDS` with code spans among them, as the essay's texts carry. */
+/**
+ * `WORDS` with code spans among them, as the essay's texts carry, some
+ * touching the punctuation after them ("`Vec`;"), where no line may break.
+ */
 export const WORDS_WITH_CODE: ReadonlyArray<string> = WORDS.flatMap((w, i) =>
-  i % 7 === 3 ? ["`Vec<&'a str>`", w] : [w]
+  i % 7 === 3 ? ["`Vec<&'a str>`", w] : i % 7 === 5 ? ["`MmWw`'s", w] : [w]
 )
 
 /** A copy of `base` changed by `change`, read back by `parse`. */

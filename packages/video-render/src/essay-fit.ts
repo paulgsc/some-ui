@@ -1,7 +1,7 @@
 /**
  * What the Rust Rounds essay's captioned frame holds (EF1, #2231): the
- * scenes whose words the Monday routine writes (C574), laid out as the stage lays
- * them out (`apps/www`'s `web-surface/call/essay-stage.tsx`), measured in CSS
+ * scenes whose words the Monday routine writes (C574), laid out as the
+ * stage lays them out (`apps/www`'s `web-surface/call/essay-stage.tsx`), measured in CSS
  * px at the 1920×1080 frame the recorder draws, with an allowance that errs
  * toward too long. The routine's `finish` refuses an essay this says runs
  * past the frame, naming the scene and what to shorten, before it is put
@@ -12,16 +12,19 @@
  *
  * Family: every text the routine writes on those scenes (best fits, notes,
  * SOLO's why, a dive's title and shows) at any length and wrap, with code
- * spans; a dive's code at any number of lines and columns; two or three
- * speak-to points, at any length; and the host that records it, whose sans
- * face the frame draws in (`./frame-text`'s `SANS`): a cloud session's Inter,
- * and home's render image's WenQuanYi Zen Hei.
+ * spans, including a span touching the punctuation after it; two or three
+ * speak-to points, at any length; a dive's code at any number of lines and
+ * columns, tabs included; and the host that records it, whose sans face the
+ * frame draws in (`./frame-text`'s `SANS`): a cloud session's Inter, and
+ * home's render image's WenQuanYi Zen Hei.
  *
  * Proof: `apps/www/tests/ui-fit/essay-fit.spec.ts` draws the sample and
- * essays with each of those texts and the code grown to the most this
- * accepts, on the real stage, and fails where this says a scene is shorter
- * than drawn or an accepted scene overflows. CI runs it in the Playwright
- * image home's render image is built from (`pr.yml`), as CF1's.
+ * essays with each of those texts, and the code by lines, columns and tabs,
+ * grown to the most this accepts, on the real stage, and fails where this
+ * says a scene is shorter than drawn or an accepted scene overflows or clips
+ * its code. CI runs it in the Playwright image home's render image is built
+ * from (`pr.yml`), as CF1's; a session's Inter was checked by hand,
+ * 2026-11-18.
  *
  * Tolerance: CF1's. The other scenes are outside the Family: the answer
  * scene shows the owner's transcript, which no length bounds and the routine
@@ -41,6 +44,9 @@ import type { Part, Run } from "./frame-text"
  * within the card's border and padding.
  */
 const CARD = { width: 1416, height: 514 } as const
+
+/** The words the stage sets beside the essay's own that this model measures. */
+export const ESSAY_STAGE_WORDS = { into: "Into" } as const
 
 /** The point column's share of the beside table (`table-fixed`, C575). */
 export const ESSAY_POINT_COLUMN = 0.3
@@ -107,6 +113,20 @@ const CODE_EM = 0.62
 const CODE_COLUMNS = Math.floor(
   (CARD.width - 2 * px(0.8 * CODE_EM) - 2) / widthOf("m", "mono", CODE_EM)
 )
+
+/**
+ * How many columns `line` takes in the stage's `whitespace-pre` code block:
+ * a tab runs to the next stop of 8 (CSS's `tab-size`), and a glyph from the
+ * East Asian wide ranges or past them takes two.
+ */
+function codeColumns(line: string): number {
+  let columns = 0
+  for (const glyph of line) {
+    if (glyph === "\t") columns += 8 - (columns % 8)
+    else columns += (glyph.codePointAt(0) ?? 0) >= 0x1100 ? 2 : 1
+  }
+  return columns
+}
 
 function code(text: string): Part {
   const n = text.trimEnd().split("\n").length
@@ -182,7 +202,11 @@ function dive(ticket: EssayTicket, k: number): number {
       ? []
       : [
           {
-            h: lines(inline(`Into: ${point.to}`, 0.75), CARD.width, 0.75),
+            h: lines(
+              inline(`${ESSAY_STAGE_WORDS.into}: ${point.to}`, 0.75),
+              CARD.width,
+              0.75
+            ),
             em: 0.75,
           },
         ]),
@@ -239,7 +263,7 @@ export function essayFit(essay: Essay): {
     }
     const wide = (ticket.dives[k]?.code ?? "")
       .split("\n")
-      .filter((line) => line.length > CODE_COLUMNS)
+      .filter((line) => codeColumns(line) > CODE_COLUMNS)
     if (scene.section === "dive" && wide.length > 0)
       problems.push(
         `${ticket.id} ${name} (${scene.id}): ${wide.length} code lines are wider than the frame's ${CODE_COLUMNS} columns`

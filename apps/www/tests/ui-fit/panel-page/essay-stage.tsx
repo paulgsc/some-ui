@@ -1,9 +1,9 @@
+import { Suspense } from "react"
 import type { JSX } from "react"
 import { essayFit } from "@some-ui/video-render"
 import type { Essay } from "@some-ui/video-render"
 
-import { EssaySceneFrame } from "@/lib/web-surface/call/essay-stage"
-import { essayAt } from "@/lib/web-surface/call/essay-view"
+import { EssaySceneFrame } from "@/lib/web-surface"
 
 import { accepted, atTheLimit, sample } from "./essays"
 
@@ -28,17 +28,14 @@ export const EssayStageFixture = (): JSX.Element => {
     return <p data-essay-fit-limits={atTheLimit().length}>no such essay</p>
   const fit = essayFit(essay)
   return (
-    <div data-essay-fit={accepted(essay) ? "accepted" : "refused"}>
-      {fit.scenes.map((scene) => (
-        <div key={scene.id} data-model={scene.h}>
-          <EssaySceneFrame
-            essay={essay}
-            at={essayAt(essay, scene.id)}
-            voicing="owner"
-            record
-          />
-        </div>
-      ))}
-    </div>
+    <Suspense fallback={null}>
+      <div data-essay-fit={accepted(essay) ? "accepted" : "refused"}>
+        {fit.scenes.map((scene) => (
+          <div key={scene.id} data-model={scene.h}>
+            <EssaySceneFrame essay={essay} scene={scene.id} record />
+          </div>
+        ))}
+      </div>
+    </Suspense>
   )
 }

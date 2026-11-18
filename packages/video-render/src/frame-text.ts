@@ -92,27 +92,55 @@ export type Run = {
 }
 
 /**
+ * The words `runs` break into, each with the gap before it: a break falls
+ * only at whitespace or before a run with `before`, so text that touches
+ * across runs ("`Vec`;" as `Inline` sets it) is one word, as the browser
+ * keeps it.
+ */
+function wordsOf(
+  runs: ReadonlyArray<Run>
+): ReadonlyArray<{ readonly w: number; readonly gap: number }> {
+  const words: Array<{ w: number; gap: number }> = []
+  let current: { w: number; gap: number } | null = null
+  let gap = 0
+  for (const run of runs) {
+    if (run.before !== undefined) {
+      current = null
+      gap = run.before
+    }
+    for (const piece of run.text.split(/(\s+)/)) {
+      if (piece.length === 0) continue
+      if (/^\s+$/.test(piece)) {
+        current = null
+        gap = widthOf(" ", run.face, run.em)
+        continue
+      }
+      if (current === null) {
+        current = { w: 0, gap: words.length === 0 ? 0 : gap }
+        words.push(current)
+      }
+      current.w += widthOf(piece, run.face, run.em)
+    }
+  }
+  return words
+}
+
+/**
  * How many lines `runs` wrap to in `width` px, greedily by word, a word
  * wider than a line broken across lines as `overflow-wrap: anywhere` does.
  */
 export function linesOf(runs: ReadonlyArray<Run>, width: number): number {
   let lines = 1
   let x = 0
-  for (const run of runs) {
-    const space = widthOf(" ", run.face, run.em)
-    const words = run.text.split(/\s+/).filter((w) => w.length > 0)
-    for (const [i, word] of words.entries()) {
-      const gap = i === 0 ? (run.before ?? space) : space
-      const w = widthOf(word, run.face, run.em)
-      if (x > 0 && x + gap + w > width) {
-        lines += 1
-        x = 0
-      }
-      x += x > 0 ? gap + w : w
-      while (x > width) {
-        lines += 1
-        x -= width
-      }
+  for (const { w, gap } of wordsOf(runs)) {
+    if (x > 0 && x + gap + w > width) {
+      lines += 1
+      x = 0
+    }
+    x += x > 0 ? gap + w : w
+    while (x > width) {
+      lines += 1
+      x -= width
     }
   }
   return lines

@@ -56,7 +56,8 @@ export function atTheLimit(): ReadonlyArray<Essay> {
     }),
     grown(base, (e, n) => {
       for (const ticket of e.tickets)
-        for (const point of ticket.points) point.to = prose(n, n)
+        for (const [i, point] of ticket.points.entries())
+          point.to = prose(n, n + i)
     }),
     grown(base, (e, n) => {
       for (const ticket of e.tickets)
@@ -87,6 +88,11 @@ export function atTheLimit(): ReadonlyArray<Essay> {
     grown(base, (e, n) => {
       dives(e, (dive) => {
         dive.code = [codeLine(40 + n, 0), codeLine(40, 1)].join("\n")
+      })
+    }),
+    grown(base, (e, n) => {
+      dives(e, (dive) => {
+        dive.code = [`${"\t".repeat(n)}let x = 1;`, codeLine(40, 1)].join("\n")
       })
     }),
   ]
