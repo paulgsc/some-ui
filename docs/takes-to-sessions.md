@@ -166,7 +166,7 @@ GitHub's public search:
   body, state, why it closed (issues) and whether it merged (pull requests), so the queries both
   find new items and keep found ones' status current (a change of state updates an item, which
   brings it to the top).
-- **Reading it:** home reads pages back to an hour before its last pass, not just to the last
+- **Reading it:** home reads pages back to an hour before the start of its last completed pass, not just to the last
   pass, since search is eventually consistent and an item updated just before a pass can be
   indexed only after it; reading an item twice changes nothing, since rows are written only on
   a difference. In each body it finds the line `From take tk…` and takes the IDs it holds a
@@ -174,8 +174,10 @@ GitHub's public search:
   of each query. The first pass (no pass has completed yet) reads up to search's 1,000-result
   cap (ten pages a query); it spaces its pages to at most eight a minute and keeps where it got
   to, so a pass that stops resumes at its next page rather than starting over. No other pass
-  runs while it does. Where a pass got to and when the last one completed live in a third,
-  one-row table, `take_search_pass`, which is the pass's own state, not a record.
+  runs while it does. Where a pass got to and when the last completed pass started (its first page's
+  time, for a first pass that took hours) live in a third, one-row table, `take_search_pass`,
+  which is the pass's own state, not a record. Every later pass reads back to an hour before
+  that start, so an item updated while a pass was stopped is read by the next.
 - **Issues make the move, pull requests add a link.** Only an issue moves a take to Became; a
   pull request that carries the line (often copied from the issue it closes) is kept as a link,
   whether it is read before the issue or after. A take whose only link is a pull request keeps whatever
@@ -277,7 +279,7 @@ from this design. In order:
    and share, the move to Brought, the ID on the card.
 4. **TAKES17, the "From take" line** (#3216, some-ui): the coordinate skill tells a session that files an epic or
    story from a pasted take to put the block's line in its body, in its own words otherwise.
-5. **TAKES19, the search pass** (#3218, server): the worker, `take_issue_link` and `take_issue_seen`, the move
+5. **TAKES19, the search pass** (#3218, server): the worker, `take_issue_link`, `take_issue_seen` and `take_search_pass`, the move
    to `picked-up`, the takes read carrying each take's links and their state, metrics and the
    alert.
 6. **TAKES18, Find again** (#3217, some-ui): status chips in the owner's words, sort, search over every take
