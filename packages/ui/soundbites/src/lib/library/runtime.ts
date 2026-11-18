@@ -41,7 +41,7 @@ export type TakesHome = {
   readonly takes: (
     q: string | null,
     wanted: () => boolean,
-    /** The take to read on from (TAKES20); null or absent, the first page. */
+    /** Where to read on from, as home marked it (TAKES20); null or absent, the first page. */
     after?: string | null,
     /** The kinds, topic and order asked for (TAKES20); absent, every kind, newest first. */
     query?: LibraryQuery

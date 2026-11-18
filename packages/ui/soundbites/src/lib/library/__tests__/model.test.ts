@@ -426,7 +426,9 @@ describe("older takes, a page at a time (TAKES20)", () => {
   })
 
   const first = PAGE.takes[0]!
-  const paged: LibraryPage = { ...PAGE, total: 60, next: "t1" }
+  // Home's cursor, opaque to the phone: passed back as it came.
+  const cursor = "2026-11-03T09:00:00.000Z|2026-11-03T09:01:00.000Z|t1"
+  const paged: LibraryPage = { ...PAGE, total: 60, next: cursor }
   const older: LibraryPage = {
     ...PAGE,
     takes: [first, { ...first, id: "t0" }],
@@ -441,7 +443,7 @@ describe("older takes, a page at a time (TAKES20)", () => {
   it("reads on from the last take shown, and adds what home answers below it", () => {
     const asked = run([{ type: "older" }], opened.state)
     expect(asked.effects).toEqual([
-      { type: "readTakes", seq: 2, q: null, after: "t1", query: EVERY_KIND },
+      { type: "readTakes", seq: 2, q: null, after: cursor, query: EVERY_KIND },
     ])
     // Asked twice while one is on its way, it asks once.
     expect(run([{ type: "older" }], asked.state).effects).toEqual([])

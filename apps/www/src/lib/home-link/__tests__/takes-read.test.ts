@@ -58,8 +58,11 @@ describe("the read of the takes home keeps (ST32)", () => {
     expect(takesPath("brand intro")).toBe(
       "/voice-notes/takes?kind=all&q=brand%20intro"
     )
-    expect(takesPath(null, "t 9")).toBe(
-      "/voice-notes/takes?kind=all&after=t%209"
+    // `next` goes back as home gave it, an opaque cursor, URL-encoded.
+    expect(
+      takesPath(null, "2026-11-03T09:00:00.000Z|2026-11-03T09:01:00.000Z|t1")
+    ).toBe(
+      "/voice-notes/takes?kind=all&after=2026-11-03T09%3A00%3A00.000Z%7C2026-11-03T09%3A01%3A00.000Z%7Ct1"
     )
     // The kinds, topic and order picked, asked of home (TAKES20).
     expect(

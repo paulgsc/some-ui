@@ -107,7 +107,7 @@ export type LibraryPage = {
    * as a home before it does: then what waits on a newer home is said.
    */
   readonly covers?: "every" | "studio" | undefined
-  /** The take to read on from for the next page; null or absent on the last. */
+  /** Where the next page starts, as home marks it (a cursor the phone passes back as it came); null or absent on the last. */
   readonly next?: string | null | undefined
 }
 
@@ -259,7 +259,7 @@ export type LibraryEffect =
       readonly type: "readTakes"
       readonly seq: number
       readonly q: string | null
-      /** The take to read on from; null for the first page. */
+      /** Where to read on from, as home marked it; null for the first page. */
       readonly after: string | null
       readonly query: LibraryQuery
     }

@@ -183,8 +183,14 @@ describe("Takes on home's reads of home (ST32)", () => {
     const read = await takesHome.takes("brand", always)
     expect(read.kind).toBe("read")
     expect(asked.asks).toEqual(["brand"])
-    await takesHome.takes(null, always, "t9")
-    expect(asked.afters.at(-1)).toBe("t9")
+    await takesHome.takes(
+      null,
+      always,
+      "2026-11-03T09:00:00.000Z|2026-11-03T09:01:00.000Z|t1"
+    )
+    expect(asked.afters.at(-1)).toBe(
+      "2026-11-03T09:00:00.000Z|2026-11-03T09:01:00.000Z|t1"
+    )
     asked.answers = [{ kind: "unpaired" }]
     expect(await takesHome.takes(null, always)).toEqual({ kind: "unpaired" })
     asked.answers = [{ kind: "unreachable" }]
@@ -235,7 +241,7 @@ describe("one home for every take (TAKES20)", () => {
     const read = readTakes(
       reply(200, {
         ...TAKES,
-        next: "d1",
+        next: "2026-11-03T09:00:00.000Z|2026-11-03T09:01:00.000Z|t1",
         takes: [
           { ...studio, kind: "studio", status: "kept" },
           {
@@ -284,7 +290,9 @@ describe("one home for every take (TAKES20)", () => {
     )
     const page = read.kind === "read" ? read.page : null
     expect(page?.covers).toBe("every")
-    expect(page?.next).toBe("d1")
+    expect(page?.next).toBe(
+      "2026-11-03T09:00:00.000Z|2026-11-03T09:01:00.000Z|t1"
+    )
     expect(page?.takes.map(({ of }) => of)).toEqual([
       "studio",
       "game",
