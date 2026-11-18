@@ -19,6 +19,9 @@ import {
 const NOW = new Date("2026-11-02T12:00:00Z")
 const MB = 1024 * 1024
 
+/** A week's middle take whose recording went: heard ones, one set aside too. */
+const went = (i: number): boolean => i % 12 === 4 || i % 12 === 0
+
 /** Home holding every kind, the biggest with over a thousand megabytes. */
 const HOME: HomeReading = {
   kind: "read",
@@ -39,6 +42,10 @@ const HOME: HomeReading = {
     })),
     notes: Array.from({ length: 50 }, (_, i) => ({
       id: `home-${i}`,
+      // Every twelfth (from the fourth) a week's middle take whose recording
+      // went when its week closed (IW14), as home sends one: heard, with no
+      // Play and no Delete; every twelfth from the first also set aside, for
+      // the longest line a row says.
       recordedAt: new Date(
         Date.UTC(2026, 9, 30, 23, 59) - i * 3_600_000
       ).toISOString(),
@@ -47,7 +54,7 @@ const HOME: HomeReading = {
       setAsideAt: i % 3 === 0 ? "2026-10-31T00:00:00.000Z" : null,
       // As home will mark takes once they're switched on (MD3): every row
       // that offers Delete… is drawn beside those that don't.
-      deletable: i % 2 === 0,
+      deletable: i % 2 === 0 && !went(i),
       // Each way a row says what it is (MD8): long words, none heard, not
       // heard yet, and one whose audio home keeps to itself.
       durationMs: i % 4 === 2 ? null : 30_000 + i * 61_000,
@@ -56,7 +63,8 @@ const HOME: HomeReading = {
           ? "So what I keep coming back to is that the second scene doesn't earn the turn, and the whole middle sags because of it"
           : null,
       heardCut: i % 8 === 0,
-      playsBack: i % 4 !== 3,
+      playsBack: i % 4 !== 3 && !went(i),
+      recordingLetGoAt: went(i) ? "2026-10-31T00:00:00.000Z" : null,
     })),
   },
 }

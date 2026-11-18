@@ -91,6 +91,12 @@ const Kept = z.object({
          * home. An older home says nothing, which is no.
          */
         playsBack: z.boolean().default(false),
+        /**
+         * When home let its recording go, a week of mock interview's middle
+         * take (IW8, paulgsc/server#972); null while home holds it. An older
+         * home says nothing, which is held.
+         */
+        recordingLetGoAt: z.string().nullable().default(null),
       })
     )
     .nullable(),
@@ -356,6 +362,11 @@ export type KindItem = {
    * phone can let its own copy go.
    */
   readonly deletable: boolean
+  /**
+   * When home let its recording go (IW14, #3183), ISO 8601; null while home
+   * holds it, and for one only on this phone. Its words stay on home.
+   */
+  readonly wentAt: string | null
 }
 
 export type KindView = {
@@ -420,6 +431,7 @@ export function kindOf(
           durationMs: note.durationMs,
           heard: heardOf(note),
           deletable: note.deletable,
+          wentAt: note.recordingLetGoAt,
         }))
       : []
   const fromPhone: ReadonlyArray<KindItem> = mine
@@ -435,6 +447,7 @@ export function kindOf(
       // Only home's word makes a recording deletable: one home doesn't hold
       // is a draft, deleted where it was made.
       deletable: false,
+      wentAt: null,
     }))
   return {
     of,
