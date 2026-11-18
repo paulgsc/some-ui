@@ -324,6 +324,24 @@ Until they answer, the stories that need only the shape (the tables, the phone's
 page behind a switch that stays off) can go ahead; the filer stays off until a credential is
 on home.
 
+## Stories
+
+Sub-issues of #3029, in order. Notes on episodes use the same filer from the note; that half
+stays with #3035.
+
+1. **TAKES6** (#3202, some-ui): the `take-filed` family in the ledger and its process.
+2. **TAKES7** (#3203, server): the three tables, the draft on the move, and the takes read
+   carrying each take's issues.
+3. **TAKES8** (#3204, some-ui): the "Make it an issue" sheet, the conveyor's new words and the
+   card's status words.
+4. **TAKES9** (#3205, server): the filer. Waits on #3199 and #3200.
+5. **TAKES10** (#3206, server): the status poll.
+6. **TAKES11** (#3207, some-ui): the "Takes with issues" page.
+7. **TAKES12** (#3208, both): what retires, once the filer runs on home.
+8. **TAKES13** (#3210, server): the conveyor and the library widened to Rust Rounds, interview
+   takes and idea answers.
+9. **TAKES14** (#3211, some-ui): the Rust Rounds and Interview weeks compartments.
+
 ## Calls
 
 - **C585:** "Make it an issue" is the conveyor's ready-for-pickup move under new words, one
