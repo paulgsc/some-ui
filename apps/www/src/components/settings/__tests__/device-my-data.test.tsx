@@ -24,12 +24,14 @@ import type { RecordKind } from "@/lib/my-data/record"
 import { RECORD_KINDS } from "@/lib/my-data/record"
 import {
   DELETING,
-  itemLetGo,
+  itemName,
+  itemWent,
   itemWhere,
   KEPT_FOR_GOOD,
   keptNote,
   MY_DATA,
   onDay,
+  receiptParts,
   RECEIPTS,
   WHERE_WORDS,
 } from "@/lib/my-data/words"
@@ -399,7 +401,7 @@ describe("deleting from a kind's list (MD3)", () => {
         onDelete={vi.fn()}
       />
     )
-    screen.getByText(itemLetGo(at, false))
+    screen.getByText(itemWent(at, false, false))
     expect(screen.queryByRole("button", { name: /^Play/ })).toBeNull()
     expect(screen.queryByText(DELETING.row)).toBeNull()
     expect(screen.queryByText(itemWhere("home", 2048))).toBeNull()
@@ -583,6 +585,33 @@ describe("the delete sheet (MD3)", () => {
 })
 
 describe("the Deleted page (MD3)", () => {
+  it("says a week's middle take went when the week closed, and what stayed, on the Deleted page (IW14)", () => {
+    const at = "2026-11-23T08:00:00.000Z"
+    render(
+      <MyDataReceipts
+        state={{
+          seq: 1,
+          reading: {
+            kind: "read",
+            total: 1,
+            receipts: [
+              {
+                ...RECEIPT,
+                of: "interview",
+                deletedAt: at,
+                went: ["recording"],
+                stayed: ["note", "words"],
+              },
+            ],
+          },
+        }}
+      />
+    )
+    screen.getByText(RECEIPTS.closedLine(itemName(at)))
+    screen.getByText(RECEIPTS.stayedLine(receiptParts(["note", "words"])))
+    expect(screen.queryByText(RECEIPTS.deletedLine(itemName(at)))).toBeNull()
+  })
+
   it("lists each receipt, and says when home can't list them yet", () => {
     render(
       <MyDataReceipts

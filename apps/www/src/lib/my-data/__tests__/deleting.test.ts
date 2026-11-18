@@ -46,7 +46,7 @@ const ITEM: KindItem = {
   durationMs: null,
   heard: { kind: "notYet" },
   deletable: true,
-  letGoAt: null,
+  wentAt: null,
 }
 
 describe("what home's answer to a delete says", () => {

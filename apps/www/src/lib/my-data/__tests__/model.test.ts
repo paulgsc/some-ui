@@ -312,7 +312,7 @@ describe("a kind's list", () => {
         durationMs: null,
         heard: { kind: "notYet" },
         deletable: false,
-        letGoAt: null,
+        wentAt: null,
       },
       {
         id: "on-home",
@@ -323,7 +323,7 @@ describe("a kind's list", () => {
         durationMs: 42_000,
         heard: { kind: "words", text: "first words", cut: true },
         deletable: true,
-        letGoAt: null,
+        wentAt: null,
       },
       {
         id: "let-go",
@@ -334,7 +334,7 @@ describe("a kind's list", () => {
         durationMs: 3_000,
         heard: { kind: "silent" },
         deletable: false,
-        letGoAt: null,
+        wentAt: null,
       },
       {
         id: "aside",
@@ -345,7 +345,7 @@ describe("a kind's list", () => {
         durationMs: null,
         heard: { kind: "notYet" },
         deletable: false,
-        letGoAt: null,
+        wentAt: null,
       },
     ])
     expect(view.notes).toBe(4)
@@ -379,7 +379,7 @@ describe("a kind's list", () => {
     expect(gone).toMatchObject({
       plays: "none",
       deletable: false,
-      letGoAt: "2026-11-23T08:00:00.000Z",
+      wentAt: "2026-11-23T08:00:00.000Z",
     })
     const here = kindOf(
       "interview",
@@ -390,7 +390,7 @@ describe("a kind's list", () => {
     ).items[0]
     expect(here).toMatchObject({
       plays: "here",
-      letGoAt: "2026-11-23T08:00:00.000Z",
+      wentAt: "2026-11-23T08:00:00.000Z",
     })
   })
 

@@ -366,7 +366,7 @@ export type KindItem = {
    * When home let its recording go (IW14, #3183), ISO 8601; null while home
    * holds it, and for one only on this phone. Its words stay on home.
    */
-  readonly letGoAt: string | null
+  readonly wentAt: string | null
 }
 
 export type KindView = {
@@ -431,7 +431,7 @@ export function kindOf(
           durationMs: note.durationMs,
           heard: heardOf(note),
           deletable: note.deletable,
-          letGoAt: note.recordingLetGoAt,
+          wentAt: note.recordingLetGoAt,
         }))
       : []
   const fromPhone: ReadonlyArray<KindItem> = mine
@@ -447,7 +447,7 @@ export function kindOf(
       // Only home's word makes a recording deletable: one home doesn't hold
       // is a draft, deleted where it was made.
       deletable: false,
-      letGoAt: null,
+      wentAt: null,
     }))
   return {
     of,

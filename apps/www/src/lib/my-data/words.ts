@@ -9,7 +9,7 @@ import type { Feed } from "@/lib/call-videos/model"
 import { FEED_WORDS } from "@/lib/call-videos/words"
 import { lengthOf } from "@/lib/format"
 
-import type { DeletableKind, ReceiptsReading } from "./deleting"
+import type { DeletableKind, Receipt, ReceiptsReading } from "./deleting"
 import type { Heard, HomeReading, Of, Where } from "./model"
 import { isKind } from "./model"
 import type { RecordHeld, RecordKind, RecordReading } from "./record"
@@ -220,9 +220,16 @@ export function itemWhere(where: Where, bytes: number): string {
  * the words of all. What stays, and where it still plays, in place of where
  * it is kept and its room.
  */
-export function itemLetGo(at: string, playsHere: boolean): string {
-  const went = `Its recording went when its week closed, on ${onDay(at)}. What home heard in it stays.`
-  return playsHere ? `${went} It still plays from this phone.` : went
+export function itemWent(
+  at: string,
+  playsHere: boolean,
+  setAside: boolean
+): string {
+  return [
+    `Its recording went when its week closed, on ${onDay(at)}. What home heard in it stays.`,
+    ...(setAside ? ["You'd set it aside."] : []),
+    ...(playsHere ? ["It still plays from this phone."] : []),
+  ].join(" ")
 }
 
 /**
@@ -372,9 +379,19 @@ const STAYS_HERE: Readonly<
   },
 }
 
+/**
+ * Whether home's receipt is a week's middle take's (IW14): its recording
+ * alone went when the week closed, and the note stays, which the owner's
+ * own delete never keeps (paulgsc/server `delete::let_go_audio`).
+ */
+export const wentAtClose = (receipt: Pick<Receipt, "stayed">): boolean =>
+  receipt.stayed.includes("note")
+
 /** What went or stayed with a deleted recording, as home's receipt names it. */
 const RECEIPT_PARTS: Readonly<Record<string, string>> = {
   recording: "the recording",
+  // A week of mock interview's middle take, whose recording alone went (IW14).
+  note: "its place in your record",
   words: "home's words for it",
   "set-aside mark": "its Let go mark",
   "mailbox copy": "a copy of its words in the Jobs mailbox",
@@ -498,14 +515,17 @@ export const RECEIPTS = {
   row: "Deleted",
   rowLine: "What went, and when",
   title: "Deleted",
-  lead: "Each recording you deleted, and when. None of them holds what you said.",
+  lead: "Each recording that went for good, and when: one you deleted, or a middle take of an interview week, whose words stay.",
   empty: "Nothing has been deleted.",
   /** What a drag down reads again. */
   pullWhat: "what home deleted",
   line: (kind: string, recorded: string): string =>
     `${kind}, recorded ${recorded}`,
   deletedLine: (at: string): string => `Deleted ${at}`,
+  /** A week of mock interview's middle take, its recording gone when the week closed (IW14). */
+  closedLine: (at: string): string => `Went when its week closed, ${at}`,
   wentLine: (went: string): string => `Went: ${went}`,
+  stayedLine: (stayed: string): string => `Stayed: ${stayed}`,
 } as const
 
 /** What the Deleted page says when it has no receipts from home, or null. */
