@@ -1861,8 +1861,8 @@ importers:
         specifier: 0.9.22
         version: 0.9.22(@types/node@26.6.6)(supports-color@10.2.2)
       playwright-core:
-        specifier: 1.62.1
-        version: 1.62.1
+        specifier: 1.65.1
+        version: 1.65.1
       zod:
         specifier: 'catalog:'
         version: 4.6.6
@@ -7571,6 +7571,11 @@ packages:
 
   playwright-core@1.62.1:
     resolution: {integrity: sha512-wPYSwEBJY9GHraISXqyqtx0na0LpO3XEX7jNDhntbex7tzUS7kLnZsOlFruFJB4Hi/rhDMjXGqHewDZ68nYZVw==}
+    engines: {node: '>=20'}
+    hasBin: true
+
+  playwright-core@1.65.1:
+    resolution: {integrity: sha512-hqPpz7blSMPxWVdoeE1yiBSzXsKiVOd2k+kjCvmUywD2GPO2Dd9HfcWnq9NN0GHbNZDFgZ9JfBFr+X5/BLo0qw==}
     engines: {node: '>=20'}
     hasBin: true
 
@@ -14496,6 +14501,8 @@ snapshots:
       pathe: 2.0.3
 
   playwright-core@1.62.1: {}
+
+  playwright-core@1.65.1: {}
 
   playwright@1.62.1:
     dependencies:
