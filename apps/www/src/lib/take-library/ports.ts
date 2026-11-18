@@ -15,9 +15,8 @@ import type { AboutStores } from "@/lib/take-about"
 import { takeAbout } from "@/lib/take-about"
 import { libraryStations } from "@/lib/take-conveyor"
 
-import { takesHome } from "./index"
+import { phoneOnlyTakes, takesHome } from "./index"
 import { takeNames } from "./names"
-import { phoneOnlyTakes } from "./on-phone"
 
 type Ports = ComponentProps<typeof TakeLibrary>["ports"]
 

@@ -52,6 +52,10 @@ const {
   readonly TAKE_OFS: ReadonlyArray<string>
 } = await import(KINDS_SOURCE)
 
+// The phone's own takes are read by `phoneOnlyTakes`, not here.
+vi.mock("@/lib/home-link/voice-copy", () => ({}))
+vi.mock("@/lib/game-bites", () => ({}))
+
 vi.mock("@/lib/home-link/voice-audio", () => ({
   askAudio: (): Promise<Blob | null> => Promise.resolve(null),
 }))
