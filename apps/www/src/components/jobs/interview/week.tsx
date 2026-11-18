@@ -32,7 +32,7 @@ import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 
 import type { Interview } from "./run"
 import { currentOf, labelOf, playOnly, useInterview, viewOf } from "./run"
-import { CARD_LINK, To, useOpenItem } from "./to"
+import { CardTo, To, useOpenItem } from "./to"
 
 const Role = ({ week }: { week: InterviewWeek }): JSX.Element => (
   <header className="space-y-1">
@@ -68,16 +68,12 @@ const Home = ({ held }: { held: Interview }): JSX.Element => {
   const entry = (id: string, prompt: string): JSX.Element => {
     const done = doneLine(held, id)
     return (
-      <To
-        key={id}
-        to={{ page: "question", question: id }}
-        className={CARD_LINK}
-      >
+      <CardTo key={id} to={{ page: "question", question: id }}>
         <span className="font-semibold">{prompt}</span>
         {done !== null && (
           <span className="text-muted-foreground text-xs">{done}</span>
         )}
-      </To>
+      </CardTo>
     )
   }
   return (

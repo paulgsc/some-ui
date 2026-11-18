@@ -8,7 +8,7 @@
  */
 import type { JSX, ReactNode } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import { StationStrip } from "@some-ui/shared"
+import { CardLink, CardLinkBody, StationStrip } from "@some-ui/shared"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 
@@ -186,9 +186,11 @@ const RowTile = ({
       {!opens(subject) ? (
         <div className={TILE}>{body}</div>
       ) : (
-        <ToPage subject={subject} className={TILE}>
-          {body}
-        </ToPage>
+        <CardLink asChild>
+          <ToPage subject={subject} className="">
+            <CardLinkBody>{body}</CardLinkBody>
+          </ToPage>
+        </CardLink>
       )}
     </li>
   )
@@ -330,12 +332,16 @@ export const RendersLine = (): JSX.Element | null => {
   const line = lineOf(useQuery(rendersQuery).data)
   // The page is the phone's ("apk"), as this line is (A3).
   return hasAudience("apk") ? (
-    <Link to="/journal/renders" className={TILE}>
-      <span className="truncate text-sm font-medium">{line}</span>
-      <span className="text-muted-foreground truncate text-sm">
-        {WORDS.open}
-      </span>
-    </Link>
+    <CardLink asChild>
+      <Link to="/journal/renders">
+        <CardLinkBody className="gap-0">
+          <span className="w-full truncate text-sm font-medium">{line}</span>
+          <span className="text-muted-foreground w-full truncate text-sm">
+            {WORDS.open}
+          </span>
+        </CardLinkBody>
+      </Link>
+    </CardLink>
   ) : null
 }
 

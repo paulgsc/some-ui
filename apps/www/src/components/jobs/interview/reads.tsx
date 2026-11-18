@@ -12,7 +12,7 @@ import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 import { BackTo, CueLine, Script, TakeOn, useFocus } from "./ladder"
 import type { Interview } from "./run"
 import { useInterview } from "./run"
-import { CARD_LINK, To } from "./to"
+import { CardTo } from "./to"
 import { doneLine, Opening } from "./week"
 
 /** The week's reads, each a link to its page. */
@@ -29,16 +29,12 @@ export const ReadsPage = (): JSX.Element => {
       {week.cards.map((card) => {
         const done = doneLine(held, readItem(card.id))
         return (
-          <To
-            key={card.id}
-            to={{ page: "read", card: card.id }}
-            className={CARD_LINK}
-          >
+          <CardTo key={card.id} to={{ page: "read", card: card.id }}>
             <span className="font-semibold">{card.situation}</span>
             <span className="text-muted-foreground text-xs">
               {done ?? WORDS.aim(card.targetSeconds)}
             </span>
-          </To>
+          </CardTo>
         )
       })}
     </div>

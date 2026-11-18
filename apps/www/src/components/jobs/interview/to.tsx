@@ -6,14 +6,11 @@
  */
 import type { JSX, ReactNode } from "react"
 import { assertNever } from "@some-ui/core-utils"
+import { CardLink, CardLinkBody } from "@some-ui/shared"
 import { Link, useNavigate } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
 import type { SayRung } from "@/lib/interview-week/ladder"
-
-/** How a link to a page of the week, a question or a read looks. */
-export const CARD_LINK =
-  "bg-card hover:bg-muted flex flex-col items-start gap-1 rounded-2xl border p-3 text-left"
 
 /** A page of the week. */
 export type Page =
@@ -118,3 +115,23 @@ export function useOpenItem(): (
         }))
   }
 }
+
+/**
+ * A link to a page of the week, a question or a read, as a card that opens
+ * something (`CardLink`, #3234): its words stacked, then the chevron.
+ */
+export const CardTo = ({
+  to,
+  className,
+  children,
+}: {
+  to: Page
+  className?: string
+  children: ReactNode
+}): JSX.Element => (
+  <CardLink asChild className={className}>
+    <To to={to}>
+      <CardLinkBody>{children}</CardLinkBody>
+    </To>
+  </CardLink>
+)
