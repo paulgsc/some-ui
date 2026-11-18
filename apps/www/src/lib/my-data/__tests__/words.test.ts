@@ -15,6 +15,7 @@ import {
   DELETING,
   heardLine,
   homeLine,
+  itemLetGo,
   itemLine,
   itemName,
   itemWhere,
@@ -25,6 +26,7 @@ import {
   kindLead,
   kindLine,
   MY_DATA,
+  onDay,
   receiptKind,
   receiptParts,
   RECEIPTS,
@@ -93,6 +95,8 @@ describe("My data's words", () => {
       itemLine(AT, null),
       itemLine(AT, 42_000),
       itemWhere("home", 2_048),
+      itemLetGo(AT, false),
+      itemLetGo(AT, true),
       ...(["home", "phone"] as const).flatMap((where) =>
         (
           [
@@ -199,6 +203,15 @@ describe("My data's words", () => {
     // A key the feed can't read is named by the feed alone, never the key.
     expect(CALL_DELETING.episode("playoff-delta", "2026-10-30")).toBe(
       "Playoff Delta"
+    )
+  })
+
+  it("say when a week's middle take's recording went, what stayed, and where it still plays (IW14)", () => {
+    expect(itemLetGo("2026-11-23T08:00:00.000Z", false)).toBe(
+      `Its recording went when its week closed, on ${onDay("2026-11-23T08:00:00.000Z")}. What home heard in it stays.`
+    )
+    expect(itemLetGo("2026-11-23T08:00:00.000Z", true)).toMatch(
+      / It still plays from this phone\.$/
     )
   })
 

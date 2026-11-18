@@ -51,7 +51,10 @@
  * kind is a `422`. Each note says whether My data may delete it
  * (`deletable`, MD3 some-ui#2477), and what it is (MD8): how long, once
  * home heard it (`durationMs`), the first words home heard (`heard`, `heardCut` when it heard more), and
- * whether home gives its audio back to the phone (`playsBack`).
+ * whether home gives its audio back to the phone (`playsBack`); a week of mock
+ * interview's middle take whose recording home let go says when
+ * (`recordingLetGoAt`, server#972 at 2b85647), and then neither plays back
+ * nor is deletable.
  *
  * Studio's takes on a conveyor (CONVEYOR1, some-ui#2873; `studio_take_move`):
  * the phone moves a take with `POST /voice-notes/:id/station`
@@ -142,6 +145,9 @@ const KeptSchema = z.object({
         heard: z.string().nullable().optional(),
         heardCut: z.boolean().optional(),
         playsBack: z.boolean().optional(),
+        // When home let its recording go, a week of mock interview's middle
+        // take (IW8, server#972); null while home holds it.
+        recordingLetGoAt: z.string().nullable().optional(),
       })
     )
     .nullable(),

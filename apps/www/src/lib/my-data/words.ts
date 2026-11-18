@@ -215,6 +215,17 @@ export function itemWhere(where: Where, bytes: number): string {
 }
 
 /**
+ * A recording whose audio home let go when its week closed (IW14, #3183): a
+ * week of mock interview keeps each question's first and newest take, and
+ * the words of all. What stays, and where it still plays, in place of where
+ * it is kept and its room.
+ */
+export function itemLetGo(at: string, playsHere: boolean): string {
+  const went = `Its recording went when its week closed, on ${onDay(at)}. What home heard in it stays.`
+  return playsHere ? `${went} It still plays from this phone.` : went
+}
+
+/**
  * What home heard in a recording home holds (MD8): its first words, in
  * quotes, or that it heard none, or not yet. Null for one only on this
  * phone, which home hasn't had to hear.

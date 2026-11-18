@@ -68,6 +68,7 @@ import {
   DELETING,
   heardLine,
   homeLine,
+  itemLetGo,
   itemLine,
   itemName,
   itemWhere,
@@ -379,14 +380,22 @@ const Item = ({
         >
           {itemLine(item.at, item.durationMs)}
         </span>
-        <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
-          <span
-            className={`${WHERE_FILL[item.where]} size-2 shrink-0 rounded-full`}
-            aria-hidden
-          />
-          {itemWhere(item.where, item.bytes)}
-        </span>
-        {item.plays === "none" && remove.kind !== "select" ? (
+        {item.letGoAt === null ? (
+          <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+            <span
+              className={`${WHERE_FILL[item.where]} size-2 shrink-0 rounded-full`}
+              aria-hidden
+            />
+            {itemWhere(item.where, item.bytes)}
+          </span>
+        ) : (
+          <span className="text-muted-foreground block text-xs">
+            {itemLetGo(item.letGoAt, item.plays === "here")}
+          </span>
+        )}
+        {item.plays === "none" &&
+        item.letGoAt === null &&
+        remove.kind !== "select" ? (
           <span className="text-muted-foreground block text-xs">
             {MY_DATA.kind.noPlay}
           </span>

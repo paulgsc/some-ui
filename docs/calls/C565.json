@@ -1,0 +1,19 @@
+{
+  "id": "C565",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/my-data/model.ts",
+    "apps/www/src/lib/my-data/words.ts",
+    "apps/www/src/components/settings/device-my-data.tsx"
+  ],
+  "chose": "In My data, a week of mock interview's middle take whose recording home deleted at week close (C560, C558) keeps its row, with what home heard in it and when it was recorded, no Delete, and one line in place of where it is kept and its room: \"Its recording went when its week closed, on <day>. What home heard in it stays.\" A copy still on this phone plays from the phone, and the line adds \"It still plays from this phone.\"; the ruling deletes home's recording only, and the phone is the owner's own store.",
+  "options": [
+    "keep the row, say when it went and what stays; a copy on this phone still plays",
+    "keep the row, and offer no Play even where this phone holds a copy",
+    "drop the row from the list, leaving only its receipt on the Deleted page"
+  ],
+  "gray": "How My data shows a recording home let go by rule rather than by the owner's own delete, and whether the phone's own copy still plays once home's is gone.",
+  "undo": "Drop the letGoAt line and its branch in device-my-data.tsx, and play from home only (playsFrom ignoring the phone's copy for a let-go note).",
+  "refs": ["#3183", "#3175", "#2931"]
+}

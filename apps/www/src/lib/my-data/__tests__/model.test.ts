@@ -258,6 +258,7 @@ describe("a kind's list", () => {
           heard: "  first words ",
           heardCut: true,
           playsBack: true,
+          recordingLetGoAt: null,
         },
         {
           id: "let-go",
@@ -270,6 +271,7 @@ describe("a kind's list", () => {
           heard: null,
           heardCut: false,
           playsBack: true,
+          recordingLetGoAt: null,
         },
         {
           id: "aside",
@@ -282,6 +284,7 @@ describe("a kind's list", () => {
           heard: null,
           heardCut: false,
           playsBack: false,
+          recordingLetGoAt: null,
         },
       ],
     },
@@ -309,6 +312,7 @@ describe("a kind's list", () => {
         durationMs: null,
         heard: { kind: "notYet" },
         deletable: false,
+        letGoAt: null,
       },
       {
         id: "on-home",
@@ -319,6 +323,7 @@ describe("a kind's list", () => {
         durationMs: 42_000,
         heard: { kind: "words", text: "first words", cut: true },
         deletable: true,
+        letGoAt: null,
       },
       {
         id: "let-go",
@@ -329,6 +334,7 @@ describe("a kind's list", () => {
         durationMs: 3_000,
         heard: { kind: "silent" },
         deletable: false,
+        letGoAt: null,
       },
       {
         id: "aside",
@@ -339,10 +345,53 @@ describe("a kind's list", () => {
         durationMs: null,
         heard: { kind: "notYet" },
         deletable: false,
+        letGoAt: null,
       },
     ])
     expect(view.notes).toBe(4)
     expect(view.since).toBe("2026-09-12T10:00:00.000Z")
+  })
+
+  it("says when home let a week's middle take go, and plays it from this phone only if it is still here (IW14)", () => {
+    // As home sends a week's middle take once it let its recording go.
+    const home: HomeReading = {
+      kind: "read",
+      kept: {
+        ...KEPT,
+        notes: [
+          {
+            id: "middle",
+            recordedAt: "2026-11-18T09:00:00.000Z",
+            storedAt: "2026-11-18T09:01:00.000Z",
+            size: 2_000,
+            setAsideAt: null,
+            deletable: false,
+            durationMs: 3_000,
+            heard: "the options",
+            heardCut: false,
+            playsBack: false,
+            recordingLetGoAt: "2026-11-23T08:00:00.000Z",
+          },
+        ],
+      },
+    }
+    const gone = kindOf("interview", "interview", home, [], NOW).items[0]
+    expect(gone).toMatchObject({
+      plays: "none",
+      deletable: false,
+      letGoAt: "2026-11-23T08:00:00.000Z",
+    })
+    const here = kindOf(
+      "interview",
+      "interview",
+      home,
+      [note({ id: "middle", of: "interview", place: "home" })],
+      NOW
+    ).items[0]
+    expect(here).toMatchObject({
+      plays: "here",
+      letGoAt: "2026-11-23T08:00:00.000Z",
+    })
   })
 
   it("counts a recording home lists as home's, though this phone hasn't heard yet", () => {

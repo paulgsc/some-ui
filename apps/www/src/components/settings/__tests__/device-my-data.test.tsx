@@ -24,6 +24,8 @@ import type { RecordKind } from "@/lib/my-data/record"
 import { RECORD_KINDS } from "@/lib/my-data/record"
 import {
   DELETING,
+  itemLetGo,
+  itemWhere,
   KEPT_FOR_GOOD,
   keptNote,
   MY_DATA,
@@ -125,6 +127,7 @@ const HOME: HomeReading = {
         heard: null,
         heardCut: false,
         playsBack: false,
+        recordingLetGoAt: null,
       },
     ],
   },
@@ -148,6 +151,7 @@ const DELETABLE: HomeReading = {
         heard: null,
         heardCut: false,
         playsBack: false,
+        recordingLetGoAt: null,
       },
     ],
   },
@@ -296,6 +300,7 @@ describe("a kind's list", () => {
           durationMs: 42_000,
           heard: "I was thinking about the scene",
           playsBack: true,
+          recordingLetGoAt: null,
         })),
       },
     }
@@ -358,6 +363,46 @@ describe("deleting from a kind's list (MD3)", () => {
     )
     expect(screen.queryByText(DELETING.row)).toBeNull()
     expect(screen.queryByText(DELETING.select)).toBeNull()
+  })
+
+  it("keeps the row of a week's middle take home let go, with no Play or Delete, saying what stayed (IW14)", () => {
+    const at = "2026-11-23T08:00:00.000Z"
+    const home: HomeReading = {
+      kind: "read",
+      kept: {
+        kinds: [],
+        weeks: [],
+        notes: [
+          {
+            id: "middle",
+            recordedAt: "2026-11-18T09:00:00.000Z",
+            storedAt: "2026-11-18T09:01:00.000Z",
+            size: 2048,
+            setAsideAt: null,
+            deletable: false,
+            durationMs: 3_000,
+            heard: "the options",
+            heardCut: false,
+            playsBack: false,
+            recordingLetGoAt: at,
+          },
+        ],
+      },
+    }
+    render(
+      <MyDataKind
+        view={kindOf("interview", "interview", home, [], NOW)}
+        playing={null}
+        unread={[]}
+        onPlay={vi.fn()}
+        onStop={vi.fn()}
+        onDelete={vi.fn()}
+      />
+    )
+    screen.getByText(itemLetGo(at, false))
+    expect(screen.queryByRole("button", { name: /^Play/ })).toBeNull()
+    expect(screen.queryByText(DELETING.row)).toBeNull()
+    expect(screen.queryByText(itemWhere("home", 2048))).toBeNull()
   })
 
   it("offers Delete… on what home marks deletable, opening the sheet on it, and Select on several until it is cancelled", () => {

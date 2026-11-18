@@ -56,7 +56,10 @@ const HOME: HomeReading = {
           ? "So what I keep coming back to is that the second scene doesn't earn the turn, and the whole middle sags because of it"
           : null,
       heardCut: i % 8 === 0,
-      playsBack: i % 4 !== 3,
+      playsBack: i % 4 !== 3 && i % 6 !== 5,
+      // And one whose recording went when its week closed (IW14), its words
+      // staying: no Play, no Delete, and the longest line a row says.
+      recordingLetGoAt: i % 6 === 5 ? "2026-10-31T00:00:00.000Z" : null,
     })),
   },
 }
