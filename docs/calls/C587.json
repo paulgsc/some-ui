@@ -2,15 +2,15 @@
   "id": "C587",
   "made": "2026-11-18",
   "by": "claude",
-  "paths": ["some-ui:docs/takes-to-issues.md"],
-  "chose": "Home learns each issue's status by polling every 15 minutes, with the same token it files with: at most three conditional lists per repository to fixed URLs (issues labelled from-studio; asks, while a take answers one; open pull requests, while a paired issue is open), one conditional read of each paired issue a day (a deleted or moved issue only drops out of a list), and one GraphQL read of each closed issue's ClosedEvent closer.",
+  "paths": ["some-ui:docs/takes-to-sessions.md"],
+  "chose": "Home finds the issue a take became by one unauthenticated GitHub search every 15 minutes, `user:paulgsc \"From take\" in:body`, sorted by update, reading each body for `From take tk…`; the same query keeps the found issues' state current. Pull requests that carry the line link the same way; whether a pull request is working on an issue is not read.",
   "options": [
-    "lists per repository, a daily read per issue, and a read per closure, with the token",
-    "only a GET per issue, every pass",
-    "a webhook relayed through the mailbox",
-    "the phone reads the public issue itself"
+    "one search across the owner's public repositories every 15 minutes",
+    "a search per take",
+    "a search per repository",
+    "reading each found issue by number as well"
   ],
-  "gray": "Home can't receive a webhook on the LAN, and the owner named no freshness; the interval and the request shape set how soon a take's status changes on the screen.",
-  "undo": "Change the interval or the request in the poller; the state rows it appends don't depend on how they were read.",
+  "gray": "The owner named public search with no key but no freshness or scope; these set how soon \"Became #n\" appears and which repositories count.",
+  "undo": "Change the query or the interval in home's search pass; the link and seen rows don't depend on how they were read.",
   "refs": ["#3029", "#3035", "#2973"]
 }

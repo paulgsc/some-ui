@@ -2,8 +2,12 @@
   "id": "C590",
   "made": "2026-11-18",
   "by": "owner",
-  "paths": ["some-ui:docs/takes-to-issues.md"],
-  "chose": "Home files issues as its own GitHub App, with Issues read and write, Pull requests read and Metadata read, and no webhook; the owner creates it, installs it on the repositories home may file into, and adds its app ID, installation ID and private key to deploy/home/file_host.sops.env, from which home mints one-hour installation tokens. Owner, verbatim: \"go with the GitHub App\".",
-  "undo": "Uninstall the app and remove its three values from file_host.sops.env; filing turns off. A token of the owner's in their place is a new call.",
-  "refs": ["#3199", "#3029"]
+  "paths": ["some-ui:docs/takes-to-sessions.md"],
+  "chose": "Path A: the owner brings a take to a coordinator session by pasting one block; nothing is published, home holds no GitHub key, and home finds the issue a take became by public search. Owner, verbatim: \"go with A\".",
+  "options": [
+    "A: paste into a session",
+    "B: A plus a private mailbox mirror that sessions can read"
+  ],
+  "undo": "Add B's mirror later: a mailbox folder of takes that sessions read.",
+  "refs": ["#3029", "#3209"]
 }

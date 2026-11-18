@@ -2,14 +2,15 @@
   "id": "C586",
   "made": "2026-11-18",
   "by": "claude",
-  "paths": ["some-ui:docs/takes-to-issues.md"],
-  "chose": "The owner sees and edits the issue's draft on the phone before home sends it: a title, the body (what home heard or nothing, per #3201), then the take's context, its labels as words, and a marker line; home's LAN address, the audio and the move's comment (C296) never reach GitHub.",
+  "paths": ["some-ui:docs/takes-to-sessions.md"],
+  "chose": "A take's ID is `tk` and the first ten base-32 characters (a–z, 2–7) of the SHA-256 of its note id, one word to GitHub search and computed alike on the phone and home; \"Bring to a session\" copies (or shares) a plain block of the take's ID, kind, what it's about, when it was said, what home heard and how, and the line `From take <id>` for the session to put in what it files.",
   "options": [
-    "an editable draft the owner sends",
-    "home files at once from what it heard, unseen",
-    "home files only the context, never what was heard"
+    "a derived ten-character ID and this block",
+    "the note id itself as the ID",
+    "a stored random ID home hands out",
+    "a block without the transcript, only its context"
   ],
-  "gray": "The issues are public and the words are the owner's spoken ones; no check or earlier decision says how much of a take is published or whether the owner reviews it first.",
-  "undo": "Drop the sheet and have the filer build the body itself; nothing stored depends on the sheet beyond take_issue_request's title and body.",
+  "gray": "The owner asked for kind, context, date, what home heard and the ID, but not the ID's form or the block's lines; both are what the owner pastes and searches by.",
+  "undo": "Change the ID function and the block's module on the phone and the matching function on home; nothing stored names the ID, since it is derived.",
   "refs": ["#3029", "#3035", "#2973"]
 }
