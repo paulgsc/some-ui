@@ -141,9 +141,9 @@ export const INTERVIEW_WORDS = {
   wayIn: {
     title: "A practice interview, once a week",
     line: (title: string, company: string): string =>
-      `For an invented job: ${title} at ${company}. You answer aloud, and once the week closes home makes a video essay of how you came across.`,
+      `For an invented job: ${title} at ${company}. You answer aloud, your takes go to home, your own computer, and once the week closes home makes a video essay of how you came across.`,
     kinds: "Two kinds of practice",
-    anyOrder: "Do either, in any order, on any day this week.",
+    anyOrder: "Do one kind or both, in any order, on any day this week.",
     questions: {
       what: "Answer in your own words",
       cost: (n: number, seconds: number): string =>
