@@ -200,7 +200,7 @@ then says the issue link went; the issue itself stays on GitHub):
   comment's id), when it was filed. At most one per take (section 1).
 - `take_issue_state`: what home has seen of each issue. Issue, when seen, state
   (open, closed), why it closed (`completed`, `not_planned`, `duplicate`), the pull requests
-  that closed or reference it, and the ETag. A row is appended only when something changed.
+  that closed or reference it, where it is now if it moved (`now_at`), and the ETag. A row is appended only when something changed.
 
 On success home also appends the conveyor move to `picked-up` with the issue, if the take's
 newest move is still the request's. That is the move Part E's answer makes today.
@@ -232,13 +232,20 @@ takes one take at a time. For a take:
    or, for an ask, among the ask's comments (`GET /repos/<o>/<r>/issues/<n>/comments`) in
    the same window. The lookup also matches Part E's line (section 10). Found: record the
    attempt as made and the pairing, and go back to step 1. Not found: record it as not
-   made. If the lookup itself can't be made, the attempt stays unsettled, no new attempt
-   is made for that take, and the card says "Home is checking whether GitHub made this".
+   made, but only once the attempt is at least ten minutes old, since GitHub can finish a
+   create after home stopped waiting for its answer; until then it stays unsettled. If the
+   repository or the ask is gone (`404` or `410`), the attempt is not made: anything made
+   there is gone with it. If the lookup can't be made for any other reason, the attempt
+   stays unsettled, no new attempt is made for that take, and the card says "Home is
+   checking whether GitHub made this". After 24 hours that becomes overdue, and the card
+   offers "Check on GitHub" (the repository's issues) and "It wasn't made, send again",
+   which records the owner's word as the attempt's outcome and opens the draft.
 3. **Still wanted?** Check the take's newest move is still the newest send's ready move
    (section 1). If not, stop: the owner withdrew it.
 4. **Make it.** Append the attempt, then create the issue or comment, then record the
    outcome, the pairing, and (if step 3's condition still holds) the move to `picked-up`,
-   in one transaction.
+   in one transaction. If the answer is lost (a timeout, a `5xx`, a crash), the attempt is
+   left unsettled and the take's turn ends this pass; step 2 settles it on a later pass.
 5. **Refused.** A refusal is recorded as the attempt's outcome, with its reason, and shown
    to the owner (section 9). A refusal is settled: "Send it elsewhere" after it is safe,
    since GitHub made nothing.
@@ -279,7 +286,9 @@ Two reads by issue, beside the lists:
 - **Once a day,** home reads each paired issue by number
   (`GET /repos/<owner>/<repo>/issues/<n>`, conditional), closed ones included: a deleted
   issue only drops out of a list. A `301` (the issue moved to another repository) is
-  followed and the new place recorded; a `404` or `410` reads as "Home can't see it any
+  followed, and the new address is kept in a `take_issue_state` row (its `now_at`), which
+  later reads and the card use; the pairing itself is never rewritten. A move to a
+  repository the token can't read, and a `404` or `410`, read as "Home can't see it any
   more".
 
 A quiet pass is one to three `304`s per repository, which GitHub doesn't count against the
@@ -294,14 +303,16 @@ token already reads issues, so the poll uses it.
 
 **On a take's card** (`TakeLibrary`, beside the place and station pills):
 
-| The issue                                                      | The card says                                     |
-| -------------------------------------------------------------- | ------------------------------------------------- |
-| asked, not yet filed                                           | Home is filing this                               |
-| open, no pull request yet                                      | Filed as #n · Waiting for a session               |
-| open, a pull request references it                             | Filed as #n · Being worked in PR #m               |
-| closed as completed                                            | Filed as #n · Done (in PR #m, when one closed it) |
-| closed as not planned or duplicate                             | Filed as #n · Closed without a change             |
-| home can't see it any more (deleted, or the token lost access) | Filed as #n · Home can't see it any more          |
+| The issue                                                      | The card says                                                                               |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| asked, not yet filed                                           | Home is filing this                                                                         |
+| an attempt home can't settle yet                               | Home is checking whether GitHub made this                                                   |
+| that, after 24 hours                                           | Home couldn't check whether GitHub made this · Check on GitHub · It wasn't made, send again |
+| open, no pull request yet                                      | Filed as #n · Waiting for a session                                                         |
+| open, a pull request references it                             | Filed as #n · Being worked in PR #m                                                         |
+| closed as completed                                            | Filed as #n · Done (in PR #m, when one closed it)                                           |
+| closed as not planned or duplicate                             | Filed as #n · Closed without a change                                                       |
+| home can't see it any more (deleted, or the token lost access) | Filed as #n · Home can't see it any more                                                    |
 
 The words live in one pure table with its test (`packages/ui/soundbites/src/lib/library/words.ts`
 for the card), and no state name, status code or "open/closed" reaches the screen (CLAUDE.md,
@@ -332,7 +343,8 @@ send, shows "Write its issue": home files nothing for it until the owner sends a
   filing this". After 24 hours it says "Home hasn't been able to file this since <when>",
   and an alert reaches the owner.
 - **GitHub refuses** (`401` the token expired or was revoked; `403` no access to that
-  repository; `404` or `410` the repository is gone or has issues off; `422` a label
+  repository, told apart from GitHub's secondary rate limit, which also answers `403` but
+  carries `retry-after` or `x-ratelimit-remaining: 0` and is retried like a rate limit; `404` or `410` the repository is gone or has issues off; `422` a label
   missing). Home records the refusal and doesn't retry it on its own. The card says what is
   wrong in the person's terms ("Home's key to GitHub has run out"; "Home isn't allowed to
   file in server"), and offers "Try again" once the owner has fixed it, or "Send it
@@ -430,7 +442,7 @@ Sub-issues of #3029, in order. Notes on episodes use the same filer from the not
 stays with #3035.
 
 1. **TAKES6** (#3202, some-ui): the `take-filed` family in the ledger and its process.
-2. **TAKES7** (#3203, server): the three tables, the draft on the move, and the takes read
+2. **TAKES7** (#3203, server): the four tables, the draft on the move, and the takes read
    carrying each take's issues.
 3. **TAKES8** (#3204, some-ui): the "Make it an issue" sheet, the conveyor's new words and the
    card's status words.
