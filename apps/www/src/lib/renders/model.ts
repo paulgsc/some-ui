@@ -74,7 +74,8 @@ const FailedSchema = EpisodeSchema.extend({
   /**
    * Why, as a short class: a preview's (`no-sample`, …), and from contract
    * epoch 15 (paulgsc/server#932) any row the render policy refused
-   * (`too-long`, `too-large`), with by how much below.
+   * (`too-long`, `too-large`), and from epoch 16 (server#977) one whose
+   * scenes don't fit their frame (`overflow`), with its numbers below.
    */
   reason: z.string().min(1).optional(),
   /** How long a refused video would run, and its kind's cap, in minutes. */
@@ -83,6 +84,14 @@ const FailedSchema = EpisodeSchema.extend({
   /** How large a refused video came out, and the cap, in MB. */
   mb: z.number().nonnegative().optional(),
   capMb: z.number().positive().optional(),
+  /**
+   * A video whose scenes don't fit its frame (`overflow`, paulgsc/server#977):
+   * the first of them by name (home sends up to 12), and how many in all.
+   * Read leniently, so a field this phone can't read leaves the row an
+   * ordinary failure rather than the whole board unread.
+   */
+  scenes: z.array(z.string().min(1)).optional().catch(undefined),
+  sceneCount: z.number().int().positive().optional().catch(undefined),
 })
 
 const ComingSchema = z.object({
@@ -133,9 +142,14 @@ export type Refusal =
       readonly capMinutes: number
     }
   | { readonly kind: "too-large"; readonly mb: number; readonly capMb: number }
+  | {
+      readonly kind: "overflow"
+      readonly scenes: ReadonlyArray<string>
+      readonly sceneCount: number
+    }
 
 export function refusalOf(failed: RenderFailed): Refusal | null {
-  const { reason, minutes, capMinutes, mb, capMb } = failed
+  const { reason, minutes, capMinutes, mb, capMb, scenes, sceneCount } = failed
   if (
     reason === "too-long" &&
     minutes !== undefined &&
@@ -144,6 +158,13 @@ export function refusalOf(failed: RenderFailed): Refusal | null {
     return { kind: "too-long", minutes, capMinutes }
   if (reason === "too-large" && mb !== undefined && capMb !== undefined)
     return { kind: "too-large", mb, capMb }
+  if (
+    reason === "overflow" &&
+    scenes !== undefined &&
+    scenes.length > 0 &&
+    sceneCount !== undefined
+  )
+    return { kind: "overflow", scenes, sceneCount }
   return null
 }
 
