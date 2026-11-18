@@ -3,9 +3,9 @@
   "made": "2026-11-18",
   "by": "claude",
   "paths": ["some-ui:docs/takes-to-issues.md"],
-  "chose": "Home learns each issue's status by polling, every 15 minutes, one conditional list per repository of issues labelled from-studio updated since its last pass, with the same token it files with; a pull request's link is read from the timeline only for an issue that changed.",
+  "chose": "Home learns each issue's status by polling every 15 minutes, with the same token it files with, at most three conditional requests per repository to fixed URLs (issues labelled from-studio; asks, while a take answers one; open pull requests, while a paired issue is open), reading a closed issue's timeline once for the pull request that closed it.",
   "options": [
-    "a conditional list per repository, every 15 minutes, with the token",
+    "at most three conditional lists per repository, every 15 minutes, with the token",
     "a GET per issue",
     "a webhook relayed through the mailbox",
     "the phone reads the public issue itself"

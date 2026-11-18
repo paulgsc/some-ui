@@ -7,13 +7,14 @@
     "server:crates/db/voice/src/conveyor.rs",
     "some-ui:apps/www/src/lib/take-conveyor/words.ts"
   ],
-  "chose": "\"Make it an issue\" is the conveyor's move to ready-for-pickup under new words: home files only from that station and the move to picked-up carries the issue, as the schema already holds; the conveyor widens to Rust Rounds and interview takes so every kind has the one entrance.",
+  "chose": "\"Make it an issue\" is the conveyor's move to ready-for-pickup under new words: home, not the routine, files from that station, every attempt first checking the take is still at that move, and the move to picked-up carries the issue, so a take has at most one; the conveyor widens to Rust Rounds and interview takes and idea answers so every kind has the one entrance.",
   "options": [
     "the ready-for-pickup move, renamed, as the one entrance",
     "a separate request route outside the conveyor, from any station",
     "both: a request route, and the conveyor move appended after filing"
   ],
   "gray": "The owner said takes go on the conveyor and home files when they say so, but not whether saying so is a station or a separate act; it changes what the owner taps on every take.",
-  "undo": "Add a request route outside the conveyor and stop treating ready-for-pickup as the request; the words in take-conveyor/words.ts go back to \"Ready for pickup\".",
-  "refs": ["#3029", "#3035", "#2973"]
+  "undo": "Add a request route outside the conveyor and stop treating ready-for-pickup as the request; the words in apps/www/src/lib/take-conveyor/words.ts go back to \"Ready for pickup\".",
+  "refs": ["#3029", "#3035", "#2973"],
+  "moves": "C298"
 }

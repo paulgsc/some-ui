@@ -10,5 +10,6 @@
   ],
   "gray": "The owner said home creates the issue; for an ask the issue already exists, and which of the two the owner meant is not settled by their words or docs/asks.md.",
   "undo": "File a new issue that says \"Answers #<ask>\" instead of commenting; take_issue already allows either kind of target.",
-  "refs": ["#3029", "#3035", "#2973"]
+  "refs": ["#3029", "#3035", "#2973"],
+  "moves": "C297"
 }

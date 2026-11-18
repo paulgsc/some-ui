@@ -2,7 +2,7 @@
 
 The design of TAKES4 as the owner reshaped it on 2026-11-18 (epic #3029, the comment
 "Owner's direction, 2026-11-18 (night)"). Design only: nothing here is built yet, and the
-stories at the end build it. Checked against `main` of both repositories on 2026-11-19
+stories at the end build it. Checked against `main` of both repositories on 2026-11-18
 (some-ui `fb04d1d`, paulgsc/server `efe3c37`).
 
 ## What the owner asked for
@@ -68,32 +68,46 @@ today. What changes is who acts on it: home's own filer instead of the mailbox a
 routine.
 
 The move carries a draft (section 4). Home keeps it in a new append-only table,
-`take_issue_request`, keyed by the take and the move's `seq`, because a move is never
-updated and the draft is longer than a move's 280-character comment.
+`take_issue_request`, because a move is never updated and the draft is longer than a move's
+280-character comment. A send is a row of its own (the take, the move's `seq`, and the send's
+own number), so sending again after a refusal, to the same place or another, appends a row
+and the newest send for that move is the one home files.
+
+**One issue per take.** `picked-up` is the conveyor's last station (server
+`docs/conveyor.md`, invariant 4), so a take is filed once. A second thought on a filed take
+is a new take. A note on an episode that goes to two places is a note, not a take, and its
+two issues are #3035's.
 
 Every kind of take reaches the same entrance. Today only `studio` takes that are no idea's
-answer are on the conveyor; widening it to `rust-round` and `interview` takes (and idea answers, and any kind added later) is a
-migration that widens which takes `voice_repo::conveyor::advance` (server `crates/db/voice/src/conveyor.rs`) accepts, the same rebuild
-`20261113002100_add_interview_to_voice_note` did for `voice_note`. Takes then shows a
-compartment for each: Rust Rounds and Interview weeks, beside the five there are now.
+answer and that was not let go of are on the conveyor (server `docs/conveyor.md`,
+invariant 3). That rule lives in the conveyor's queries, not in a CHECK: `holds_take`,
+`at_station` and `in_the_oven` in server `crates/db/voice/src/conveyor.rs`, and the library
+read in `takes.rs`. Widening it to `rust-round` and `interview` takes, idea answers, and any
+kind added later is a change to those queries and an amendment to invariant 3; no
+migration. Takes then shows a compartment for each: Rust Rounds and Interview weeks, beside
+the five there are now. A filed take that is later let go keeps its issue: "Takes with
+issues" still lists it, marked set aside, since the pairing is the record.
 
-Withdrawing before home files (#2973's case) can't file: home files within a minute of the
-move, and in the same read that starts the filing it checks that the take's newest move is
-still the `ready-for-pickup` move the request names. A take moved on in that minute is not
-filed. If the move lands after the issue was created, the issue is still kept with the take
-(section 5); the take stays where the owner put it.
+Withdrawing (#2973's case) is a cancel. Home starts filing as soon as it can reach GitHub,
+and every attempt, the first and each retry, first checks that the take's newest move is
+still the `ready-for-pickup` move the send names. A take moved on before that check is not
+filed, however long home was waiting. What remains is the moment between that check and
+GitHub's answer, since a request to GitHub can't sit inside home's transaction. A move that
+lands in that moment leaves the take where the owner put it, and the issue is still kept
+with the take (section 5), so nothing is lost and nothing is filed twice.
 
 ### 2. Home's GitHub credential and its least scope
 
 Home needs to create issues, add labels at creation, comment (an ask's answer, section 3),
-and read issue state. On GitHub that is **Issues: read and write**, plus **Metadata: read**
-(which every token carries), on the repositories home files into, and nothing else: no
-contents, no pull requests, no workflows, no administration.
+read issue state, and read which pull requests mention an issue (section 7). On GitHub that
+is **Issues: read and write**, **Pull requests: read**, and **Metadata: read** (which every
+token carries), on the repositories home files into, and nothing else: no contents, no
+writes to pull requests, no workflows, no administration.
 
 Two forms hold that scope; the owner chooses (ask, below):
 
 - **A fine-grained personal access token**, owned by the owner, limited to the named
-  repositories with those two permissions. The issues read as the owner's own, which they
+  repositories with those permissions. The issues read as the owner's own, which they
   are. It has an expiry the owner sets, so home says how long it has left.
 - **A GitHub App** installed on those repositories with the same permissions. Home holds
   its private key and mints an hour-long token for each pass. The issues read as the app's
@@ -148,17 +162,20 @@ with a draft the owner can edit and then sends:
   - when it was said;
   - how home heard it (its verdict: heard, unclear, nothing said), so a session knows when
     to listen instead;
-  - the owner's labels and comment from the conveyor, as words;
+  - the owner's labels from the conveyor, as words. The move's comment stays on home, by
+    the owner's own call (C296);
   - the link back: the take's id and where it is ("Studio › Takes on home, take
     `<id>`"). Home's address is LAN-only and is never written into a public issue; the
     coordinator asks the owner to play the take when it needs to.
 - **Last line:** a fixed marker, `<!-- take <note> <seq> -->`, which is how home recognises
   its own issue (section 6).
 
-Never sent: the audio, the transcript's words beyond what the owner left in the draft, and
-anything about another take. Since some-ui and paulgsc/server are public, what the owner
-sends is published. Whether the draft starts from what home heard at all, or starts empty,
-is the owner's call (ask, below).
+Never sent: the audio, the move's comment, and anything about another take. Since some-ui
+and paulgsc/server are public, what the owner sends is published. Part E never quoted what
+home heard (ROUTINE.md's C2 rule, #2670 decision 11: "never quote the transcript"), and had
+a model write the issue in its own words. Home has no such model, so the body is the owner's
+words or nothing. Whether the draft starts from what home heard, which would replace that
+rule, or starts empty is the owner's call (#3201). The design works either way.
 
 A take home hasn't heard yet can still be sent: the draft says "Home hasn't heard this take
 yet" in place of the words, and the owner types the title.
@@ -172,8 +189,7 @@ then says the issue link went; the issue itself stays on GitHub):
 - `take_issue_request`: the owner's word. Take, `seq`, the repository chosen, title, body,
   when it was asked.
 - `take_issue`: the pairing. Take, `seq`, `<owner>/<repo>#<n>` (or the ask and the
-  comment's id), when it was filed. A take may hold more than one: a note that goes to two
-  places, or a take filed again after its first issue closed.
+  comment's id), when it was filed. At most one per take (section 1).
 - `take_issue_state`: what home has seen of each issue. Issue, when seen, state
   (open, closed), why it closed (`completed`, `not_planned`, `duplicate`), the pull requests
   that closed or reference it, and the ETag. A row is appended only when something changed.
@@ -183,12 +199,18 @@ newest move is still the request's. That is the move Part E's answer makes today
 
 ### 6. Filing, once
 
-Home's filer is a worker beside the mailbox pass, woken by the move and on a timer.
+Home's filer is one worker beside the mailbox pass, woken by the move and on a timer. It
+runs one pass at a time (a single-flight lock in the process, as home runs one `file_host`),
+and takes sends one at a time, so two passes never race on one take.
 
-1. Read the request and check the take is still at that move (section 1).
-2. Before creating, list the repository's open issues labelled `from-studio` created since
-   the request and look for its marker. Found: record it (a crash after an earlier create).
-   This is what keeps a retry to one issue, since GitHub's create is not idempotent.
+1. Read the newest send and check the take is still at that move (section 1).
+2. Before creating, list the repository's issues labelled `from-studio`, open and closed
+   (`state=all`), created since the send, and look for its marker. Found: record it, with
+   its state, as the take's issue (a crash after an earlier create, the issue perhaps closed
+   since). This is what keeps a retry to one issue, since GitHub's create is not idempotent.
+   The same lookup also matches Part E's own line, ``Kept on home as the take `<id>`.``
+   (`pending.ts`, `filedLine`), so a take Part E filed is recorded, never filed again
+   (section 10).
 3. Create the issue, then record `take_issue` and the move in one transaction.
 4. A refusal is recorded against the request, with its reason, append-only, and shown to the
    owner (section 9).
@@ -198,13 +220,25 @@ Home's filer is a worker beside the mailbox pass, woken by the move and on a tim
 A webhook can't reach home: home is on the LAN and makes only outbound requests, as
 `call_weeks.rs` says. So home polls.
 
-Each pass (every 15 minutes) makes one request per repository home has filed into:
-`GET /repos/<owner>/<repo>/issues?labels=from-studio&state=all&since=<last seen>`, with
-`If-None-Match`. A quiet pass is one `304` per repository, which GitHub doesn't count
-against the rate limit. For an issue that changed, home appends a `take_issue_state` row.
-Which pull requests are working on or closed an issue come from the issue's timeline,
-read only for an issue whose state changed in that pass. An ask's comment follows the
-ask's own state the same way, by number, since the ask carries no `from-studio` label.
+Each pass (every 15 minutes) makes, per repository home has filed into, at most three
+conditional requests, each to a fixed URL so its ETag still matches next pass:
+
+1. `GET /repos/<owner>/<repo>/issues?labels=from-studio&state=all&sort=updated&direction=desc&per_page=100`
+   with `If-None-Match`. A `304` means nothing changed. On a `200`, home reads pages until it
+   reaches an issue no newer than the last it saw, skips every item with a `pull_request`
+   key (this endpoint lists pull requests too), and appends a `take_issue_state` row for
+   each paired issue whose state changed.
+2. The same with `labels=ask`, only while a take is paired with an ask's comment: an ask
+   carries no `from-studio` label, and GitHub's `labels=` matches issues holding all of
+   them, so one list can't hold both.
+3. `GET /repos/<owner>/<repo>/pulls?state=open&per_page=100`, conditional, only while a
+   paired issue is open: home reads which open pull requests mention a paired issue
+   (`#<n>` in the title or body), which gives "Being worked in PR #m". A mention doesn't
+   change the issue, so the issue list alone can't show it. When an issue closes, home
+   reads its timeline once to find the pull request that closed it.
+
+A quiet pass is one to three `304`s per repository, which GitHub doesn't count against the
+rate limit for a request with a token.
 
 Issues are public, so the poll could go without the token, but GitHub allows only 60
 unauthenticated requests an hour from an address. With the token it has 5,000, and the
@@ -223,10 +257,10 @@ token already reads issues, so the poll uses it.
 | closed as not planned or duplicate                             | Filed as #n · Closed without a change             |
 | home can't see it any more (deleted, or the token lost access) | Filed as #n · Home can't see it any more          |
 
-The words live in one pure table with its test (`lib/library/words.ts` for the card, beside
-`take-conveyor/words.ts`), and no state name, status code or "open/closed" reaches the
-screen (CLAUDE.md, "State in the person's terms"). `#n` opens the issue on GitHub. A take
-filed twice shows both, newest first.
+The words live in one pure table with its test (`packages/ui/soundbites/src/lib/library/words.ts`
+for the card), and no state name, status code or "open/closed" reaches the screen (CLAUDE.md,
+"State in the person's terms"). "PR #m" is the owner's own wording for this row (TAKES4 on
+#3029). `#n` opens the issue on GitHub.
 
 **"Takes with issues"**, a page of its own: `journal/takes/filed`, reached from a tile on
 Takes' first page beside the kind tiles. It lists every take that has an issue, under the
@@ -236,8 +270,11 @@ for. **Archived** is a closed issue's take: it folds under the rest, as canned t
 kind's page, and leaves "Takes with issues" counts of what is still open. The take itself is
 never deleted or moved off the record; "archived" is how the page groups it.
 
-The conveyor's words change with it (`take-conveyor/words.ts`): "Ready for pickup" becomes
-"Make it an issue", and "Picked up" becomes "Has an issue".
+The conveyor's words change with it (`apps/www/src/lib/take-conveyor/words.ts`): "Ready for
+pickup" becomes "Make it an issue", "Picked up" becomes "Has an issue", and what each
+station `means` follows ("The next pickup files it as an issue." becomes "Home files it as
+an issue once you send it."). A take already at ready for pickup when this lands, with no
+send, shows "Write its issue": home files nothing for it until the owner sends a draft.
 
 ### 9. Offline, and when GitHub refuses
 
@@ -252,7 +289,8 @@ The conveyor's words change with it (`take-conveyor/words.ts`): "Ready for picku
   missing). Home records the refusal and doesn't retry it on its own. The card says what is
   wrong in the person's terms ("Home's key to GitHub has run out"; "Home isn't allowed to
   file in server"), and offers "Try again" once the owner has fixed it, or "Send it
-  elsewhere", which opens the draft again. Each refusal is counted and alerted.
+  elsewhere", which opens the draft again. Either is a new send for the same move
+  (section 1). Each refusal is counted and alerted.
 - **The token nears its expiry** (personal token only): home says so two weeks ahead, in
   the alert and on Settings' home status.
 - **Filing is off** (no credential on home): the control is withdrawn, with "Home can't file
@@ -275,11 +313,17 @@ Removed by the stories below, in the same PRs that replace them:
 - **The `feedback` folder's role in filing**: notes on episodes are filed the same way,
   from the note (#3035, which owns the notes' half). Home still forwards notes to the
   mailbox only if something else reads them; otherwise the folder retires with them.
-- **#2973** closes as not planned: nothing routine-driven files pickups, and section 1 holds
-  its case.
+- **#2973** closes as not planned: nothing routine-driven files pickups. Section 1 narrows
+  its case from up to a day to the moment between home's check and GitHub's answer, and in
+  that moment the issue is kept with the take, not left stray.
 - **`docs/asks.md`, "Answering"**: an answer said on an ask's page becomes a comment on the
   ask when the owner sends it.
 - Issues Part E filed so far (#3173, #3174) stay as they are.
+
+**The cutover, so no take is filed by both.** Part E's pickup branch stops before home's
+filer turns on: TAKES12's some-ui half (Part E, `pending.ts`) lands first, and the
+credential goes on home only after it. Home's lookup also matches Part E's line
+(section 6), so a take Part E filed in its last run is recorded, not filed again.
 
 ## Against the assurance grammar
 
@@ -293,12 +337,12 @@ takes read. Its objectives:
 | --- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | TF1 | OA2       | Every request is filed, refused with its reason, or shown as overdue after 24 hours.                                                      |
 | TF2 | OA3       | "Filed as #n" shows only once `take_issue` holds it; a retry or replay makes at most one issue (the marker).                              |
-| TF3 | OA4       | A take filed into two places reports each place's outcome as itself.                                                                      |
+| TF3 | OA5       | A take moved off "Make it an issue" before an attempt's check is not filed by that attempt or any later one.                              |
 | TF4 | OA6       | A poller or filer that stopped reads apart from a quiet one: each pass's start is a metric, and a missed hour alerts.                     |
 | TF5 | OA8       | Every refusal is counted, named and alerted (`TakeIssueRefused`, `TakeIssueTokenExpiring`); the token never appears in a record.          |
-| TF6 | RE1       | Every GitHub request is counted by operation (file, find, poll, timeline), with GitHub's own rate-limit headers kept.                     |
+| TF6 | RE1       | Every GitHub request is counted by operation (file, find, poll, pulls, timeline), with GitHub's own rate-limit headers kept.              |
 | TF7 | RE2, RE10 | Filing attempts share one budget per request; a backlog of refused requests never delays a new one.                                       |
-| TF8 | RE7       | An idle poll is one conditional request per repository per pass.                                                                          |
+| TF8 | RE7       | An idle poll is at most three conditional requests per repository per pass, each a `304`.                                                 |
 | TF9 | RE9       | Growth: one request row per send, one pairing per issue, one state row per change seen; nothing deleted but with the take or the account. |
 
 Stores: `server:take_issue_request`, `server:take_issue`, `server:take_issue_state`. The
@@ -337,7 +381,8 @@ stays with #3035.
 4. **TAKES9** (#3205, server): the filer. Waits on #3199 and #3200.
 5. **TAKES10** (#3206, server): the status poll.
 6. **TAKES11** (#3207, some-ui): the "Takes with issues" page.
-7. **TAKES12** (#3208, both): what retires, once the filer runs on home.
+7. **TAKES12** (#3208, both): what retires. Its some-ui half (Part E) lands before the
+   credential goes on home; its server half (the pickup folders) after the filer runs.
 8. **TAKES13** (#3210, server): the conveyor and the library widened to Rust Rounds, interview
    takes and idea answers.
 9. **TAKES14** (#3211, some-ui): the Rust Rounds and Interview weeks compartments.
@@ -345,10 +390,11 @@ stays with #3035.
 ## Calls
 
 - **C585:** "Make it an issue" is the conveyor's ready-for-pickup move under new words, one
-  entrance for every kind of take.
+  entrance for every kind of take, filed by home. Moves C298 (the routine's known limit).
 - **C586:** the owner reviews and edits the issue's draft on the phone before home sends it;
   home's LAN address is never in the issue.
-- **C587:** home learns status by polling one conditional list per repository every 15
-  minutes, with the token.
-- **C588:** an answer to an ask is a comment on the ask, not a new issue.
+- **C587:** home learns status by polling every 15 minutes, with the token, at most three
+  conditional requests per repository to fixed URLs.
+- **C588:** an answer to an ask is a comment on the ask, not a new issue. Moves C297 (pickups
+  filed in some-ui by the routine).
 - **C589:** the status words on a take's card, and "archived" as a closed issue's fold.
