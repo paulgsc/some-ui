@@ -3,7 +3,7 @@
  * table, in the person's terms, held by its test to no machinery. The
  * categories are decision 7's fixed set (#2670), as the owner wrote them.
  */
-import { counted, dayWords, formatTimecode } from "@some-ui/core-utils"
+import { counted, dayWords, formatTimecode, listed } from "@some-ui/core-utils"
 
 import type { Category, Destination } from "./model"
 
@@ -70,6 +70,9 @@ export const FEEDBACK_WORDS = {
     unpaired: "This phone isn't paired with home, so the notes are only here.",
     older:
       "Home doesn't keep notes on episodes yet, so they wait on this phone.",
+    /** Home keeps some feeds' notes and not yet these (`names`). */
+    notYet: (names: ReadonlyArray<string>): string =>
+      `Home doesn't keep notes on these episodes yet, so they wait on this phone: ${listed(names)}.`,
     away: "Home didn't answer, so this is what the phone knows of it.",
     busy: "This phone was busy with home just then, so this is what the phone knows of it. Drag down to try again.",
   },

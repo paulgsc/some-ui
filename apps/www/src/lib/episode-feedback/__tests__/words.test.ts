@@ -28,6 +28,7 @@ const all = [
   ...[1, 2].map(FEEDBACK_WORDS.onThis),
   FEEDBACK_WORDS.onHome("2026-11-14T03:01:00.000Z", "2026-11-14"),
   FEEDBACK_WORDS.onHome("2025-11-14T03:01:00.000Z", "2026-11-14"),
+  FEEDBACK_WORDS.home.notYet(["Cards essays", "The Rust Rounds essay"]),
 ]
 
 describe("feedback's words", () => {

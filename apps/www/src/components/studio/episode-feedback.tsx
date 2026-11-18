@@ -39,7 +39,8 @@ import {
   homeNotesQuery,
   notesAnswered,
 } from "@/lib/episode-feedback/home-query"
-import type { NotedFeed } from "@/lib/feeds"
+import type { Feed } from "@/lib/feeds"
+import { FEEDS } from "@/lib/feeds"
 import { libraryTakes } from "@/lib/library-takes"
 import { phoneWasBusy } from "@/lib/phone-busy"
 import { FEED_FACTS } from "@/lib/studio-index"
@@ -136,7 +137,7 @@ export const EpisodeNote = ({
   episode,
   video,
 }: {
-  feed: NotedFeed
+  feed: Feed
   episode: string
   video: RefObject<HTMLVideoElement | null>
 }): JSX.Element => {
@@ -227,15 +228,25 @@ export const EpisodeNote = ({
 /** Where one note is, as home's list or the phone's last word from home says. */
 type Place = (id: string) => string
 
-/** What the page says of home, above the notes, when it can't list them. */
+/**
+ * What the page says of home, above the notes, when it can't list them all:
+ * of a home that keeps some feeds' notes, the feeds of `notes` it doesn't yet.
+ */
 function homeLine(
   read: HomeNotesOutcome | undefined,
-  failed: unknown
+  failed: unknown,
+  notes: ReadonlyArray<Note>
 ): string | null {
   if (failed !== null)
     return phoneWasBusy(failed) ? WORDS.home.busy : WORDS.home.away
-  if (read === undefined || read.kind === "read") return null
-  return WORDS.home[read.kind]
+  if (read === undefined) return null
+  if (read.kind !== "read") return WORDS.home[read.kind]
+  const waiting = FEEDS.filter(
+    (feed) => read.notYet.has(feed) && notes.some((n) => n.feed === feed)
+  )
+  return waiting.length === 0
+    ? null
+    : WORDS.home.notYet(waiting.map((feed) => FEED_FACTS[feed].name))
 }
 
 /**
@@ -264,7 +275,7 @@ export const FeedbackNotes = ({ none }: { none: string }): JSX.Element => {
     if (answered.held.has(id)) return WORDS.onHomeSent
     return answered.refused.has(id) ? WORDS.notTaken : WORDS.onPhone
   }
-  const line = homeLine(home.data, home.error)
+  const line = homeLine(home.data, home.error, notes)
   return (
     <>
       <p className="text-muted-foreground text-sm">{WORDS.kept}</p>

@@ -122,16 +122,20 @@ describe("notes on episodes going home (SFEED6)", () => {
     expect(reportFailure).toHaveBeenCalledTimes(1)
   })
 
-  it("waits on a home that keeps no notes yet, and ends the run on one that forgot this phone", async () => {
-    episodeFeedback.keep(note("a"))
-    episodeFeedback.keep(note("b"))
+  it("waits on a feed home keeps no notes on yet while the other feeds' go, and ends the run on a home that forgot this phone", async () => {
+    episodeFeedback.keep(note("a", "rust-essay"))
+    episodeFeedback.keep(note("b", "rust-essay"))
+    episodeFeedback.keep(note("c"))
     const storage = memoryStorage()
     const port = phoneEpisodeNotes(storage, "p1")
     const sent: Array<[string, string, unknown]> = []
     expect(
       await sendEpisodeNotes(port, home({ a: { status: 404 } }, sent))
     ).toEqual({ kind: "synced" })
-    expect(sent).toHaveLength(1)
+    expect(sent.map(([, path]) => path)).toEqual([
+      "/feeds/call/notes/c",
+      "/feeds/rust-essay/notes/a",
+    ])
     expect(
       await sendEpisodeNotes(port, home({ a: { status: 401 } }, []))
     ).toEqual({ kind: "forgotten" })
