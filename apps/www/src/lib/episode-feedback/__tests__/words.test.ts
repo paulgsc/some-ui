@@ -41,6 +41,17 @@ describe("feedback's words", () => {
     expect(all.filter((line) => MACHINERY.test(line))).toEqual([])
   })
 
+  it("names the feeds whose notes wait mid-sentence", () => {
+    expect(
+      FEEDBACK_WORDS.home.notYet([
+        "The interview essay",
+        "The Rust Rounds essay",
+      ])
+    ).toBe(
+      "Home doesn't keep notes on the interview essay and the Rust Rounds essay yet, so those wait on this phone until home runs a newer version."
+    )
+  })
+
   it("says a moment the way the player's clock reads", () => {
     expect(FEEDBACK_WORDS.at(134_000)).toBe("At 2:14")
   })

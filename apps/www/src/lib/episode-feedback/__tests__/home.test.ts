@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vitest"
 
-import { readFeedNotes } from "@/lib/episode-feedback/home"
+import { readFeedNotes, waitingFeeds } from "@/lib/episode-feedback/home"
 
 const answer = (
   status: number,
@@ -45,5 +45,25 @@ describe("home's notes on a feed", () => {
     expect(readFeedNotes(answer(200, { notes: [{ id: "a" }] }))).toEqual({
       kind: "unreadable",
     })
+  })
+})
+
+describe("the feeds whose notes wait on an older home (#3035)", () => {
+  it("names only feeds home keeps none on yet that have a note, in the feeds' order", () => {
+    const notYet = new Set([
+      "rust-essay",
+      "cards-essay",
+      "interview-essay",
+    ] as const)
+    expect(
+      waitingFeeds(notYet, [
+        { feed: "rust-essay" },
+        { feed: "call" },
+        { feed: "cards-essay" },
+        { feed: "rust-essay" },
+      ])
+    ).toEqual(["cards-essay", "rust-essay"])
+    expect(waitingFeeds(notYet, [{ feed: "call" }])).toEqual([])
+    expect(waitingFeeds(new Set(), [{ feed: "rust-essay" }])).toEqual([])
   })
 })

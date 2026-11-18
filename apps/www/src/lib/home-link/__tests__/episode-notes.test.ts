@@ -142,6 +142,31 @@ describe("notes on episodes going home (SFEED6)", () => {
     expect(episodeNotesWaiting(storage, pairedAs("p1")).waiting).toBe(2)
   })
 
+  it("sends a later feed's notes after an earlier feed's wait, and stops every feed's on a home that forgot this phone", async () => {
+    episodeFeedback.keep(note("e", "playoff-delta"))
+    episodeFeedback.keep(note("d", "cards-essay"))
+    const storage = memoryStorage()
+    const port = phoneEpisodeNotes(storage, "p1")
+    const forgot: Array<[string, string, unknown]> = []
+    expect(
+      await sendEpisodeNotes(port, home({ d: { status: 401 } }, forgot))
+    ).toEqual({ kind: "forgotten" })
+    expect(forgot.map(([, path]) => path)).toEqual([
+      "/feeds/cards-essay/notes/d",
+    ])
+    const sent: Array<[string, string, unknown]> = []
+    expect(
+      await sendEpisodeNotes(port, home({ d: { status: 404 } }, sent))
+    ).toEqual({ kind: "synced" })
+    expect(sent.map(([, path]) => path)).toEqual([
+      "/feeds/cards-essay/notes/d",
+      "/feeds/playoff-delta/notes/e",
+    ])
+    expect(episodeNotesWaiting(storage, pairedAs("p1")).held).toEqual(
+      new Set(["e"])
+    )
+  })
+
   it("sends a spoken note's take, and counts it held only when home carries that take back", async () => {
     const spoken: Note = { ...note("s"), take: "take-7" }
     episodeFeedback.keep(spoken)

@@ -8,13 +8,13 @@
     "some-ui:apps/www/src/components/studio/episode-feedback.tsx",
     "some-ui:apps/www/src/lib/home-link/episode-notes.ts"
   ],
-  "chose": "Every feed's episode page offers a note. Paired with a home that keeps notes on some feeds and not yet others, Studio's Feedback page still shows when home came to keep each note it does keep, and adds one line naming the feeds whose notes wait on the phone (only feeds that have a note); the phone sends each feed's notes on their own, so one feed home doesn't keep yet holds back only that feed's.",
+  "chose": "Every feed's episode page offers a note. Paired with a home that keeps notes on some feeds and not yet others, Studio's Feedback page still shows when home came to keep each note it does keep, and adds one line naming the feeds whose notes wait on the phone (only feeds that have a note), and each such note says it goes home once home runs a newer version; the phone sends each feed's notes on their own, so one feed home doesn't keep yet holds back only that feed's.",
   "options": [
     "this per-feed line, with the other feeds' notes still read and sent",
     "the page's single line that home keeps no notes yet whenever any feed is missing, as before",
     "offer notes on the new feeds only once the build's contract epoch says home keeps them"
   ],
   "gray": "What the Feedback page says of an older home is on the owner's screen, and no check or earlier decision says how a home that keeps some feeds' notes is described.",
-  "undo": "Return readHomeNotes to ending on the first feed home answers 404 for, and drop FEEDBACK_WORDS.home.notYet and the per-feed loop in sendEpisodeNotes.",
+  "undo": "Return readHomeNotes to ending on the first feed home answers 404 for, and drop FEEDBACK_WORDS.home.notYet, FEEDBACK_WORDS.waits, waitingFeeds and the per-feed loop in sendEpisodeNotes.",
   "refs": ["#3035", "server#983"]
 }
