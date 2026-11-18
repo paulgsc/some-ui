@@ -373,7 +373,7 @@ describe("a take home couldn't make out (HEARD2; EH1)", () => {
 
 describe("the essay's opening (IW10)", () => {
   const OPENED = "I'm paulgsc. This week I practise telling a decision."
-  const opened = (text: string | null): EssayBundle =>
+  const opened = (text: string | null, words?: unknown): EssayBundle =>
     prepareEssays({
       now: new Date("2026-11-23T11:41:00Z"),
       brief: [{ name: `interview-week-${W.id}.json`, body: W }],
@@ -389,7 +389,13 @@ describe("the essay's opening (IW10)", () => {
       transcripts: [
         transcript("note-1", ANSWER),
         transcript("note-2", C1.script.replaceAll("\n", " ")),
-        ...(text === null ? [] : [transcript("note-3", text)]),
+        ...(text === null
+          ? []
+          : [
+              words === undefined
+                ? transcript("note-3", text)
+                : transcript("note-3", text, "whisper+verbatim-1", words),
+            ]),
       ],
     }).bundle
 
@@ -412,7 +418,15 @@ describe("the essay's opening (IW10)", () => {
       values: valuesFor_(prepared()),
       resumeEmployers: [],
     })
-    expect(plain.ok && "opening" in (plain.files[0]?.body ?? {})).toBe(false)
+    if (!plain.ok) throw new Error(plain.problems.join("\n"))
+    expect(plain.files[0]?.body).toBeDefined()
+    expect("opening" in (plain.files[0]?.body ?? {})).toBe(false)
+  })
+
+  it("never waits on the opening's word times: it is played, never measured", () => {
+    const bundle = opened(OPENED, [])
+    expect(bundle.waiting).toEqual([])
+    expect(bundle.essays[0]?.opening).toEqual({ transcript: OPENED })
   })
 
   it("names the card the essay plays its take by", () => {

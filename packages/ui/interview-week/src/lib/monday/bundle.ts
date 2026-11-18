@@ -176,6 +176,15 @@ export const ESSAY_FILE = /^interview-essay-(\d{4}-w\d{2})(?:-r(\d+))?\.json$/
 export const essayFileName = (week: string): string =>
   `interview-essay-${week}.json`
 
+/** The week an essay's file `name` is of, and its revision (1 for the first); null for another file. */
+export function essayRevision(
+  name: string
+): { readonly week: string; readonly r: number } | null {
+  const [, week, r] = ESSAY_FILE.exec(name) ?? []
+  if (week === undefined) return null
+  return { week, r: r === undefined ? 1 : Number(r) }
+}
+
 export const WEEK_FILE = /^interview-week-(\d{4}-w\d{2})\.json$/
 
 /** `name` as a week's file in `brief`. */
@@ -256,11 +265,18 @@ export function lastNext(
   brief: ReadonlyArray<MailboxFile>,
   week: string
 ): { readonly said: string; readonly topics: ReadonlyArray<string> } | null {
-  let newest: { name: string; body: unknown } | null = null
+  // The latest week before `week`, and of it the highest revision: a
+  // correction's over the first (`essayRevision`).
+  let newest: { week: string; r: number; body: unknown } | null = null
   for (const file of brief) {
-    const of = ESSAY_FILE.exec(file.name)?.[1]
-    if (of === undefined || of >= week) continue
-    if (newest === null || file.name > newest.name) newest = file
+    const of = essayRevision(file.name)
+    if (of === null || of.week >= week) continue
+    if (
+      newest === null ||
+      of.week > newest.week ||
+      (of.week === newest.week && of.r > newest.r)
+    )
+      newest = { ...of, body: file.body }
   }
   if (newest === null) return null
   const said = (value: unknown): string | null => {

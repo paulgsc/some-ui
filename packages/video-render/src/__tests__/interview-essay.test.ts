@@ -247,6 +247,7 @@ describe("the essay's opening in the owner's voice (IW10)", () => {
   const essay = sample()
   const opened: InterviewEssay = {
     ...essay,
+    template: { id: INTERVIEW_ESSAY_ID, version: 2 },
     opening: {
       transcript: "I'm paulgsc. This week I practise telling a decision.",
     },
@@ -254,6 +255,14 @@ describe("the essay's opening in the owner's voice (IW10)", () => {
 
   it("plays the owner's take first after the brand, and leaves an essay without one as it was", () => {
     expect(problems(opened)).toEqual([])
+    // A version-1 essay, from before the opening, holds none, and its format draws none.
+    expect(problems({ ...opened, template: essay.template })).toEqual([
+      "opening: the template draws the owner's opening from version 2",
+    ])
+    expect(interviewEssayFormat(1).scenes.map((s) => s.id)).not.toContain(
+      "opening"
+    )
+    expect(interviewEssayFormat(2).scenes.map((s) => s.id)[0]).toBe("opening")
     const scenes = interviewEssayScenes(opened)
     expect(scenes.map((s) => s.id).slice(0, 4)).toEqual([
       "intro",

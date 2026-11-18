@@ -134,8 +134,21 @@ describe("the interview week's format", () => {
       script: "I'm paulgsc. This week I practise telling a decision.",
       targetSeconds: 20,
     }
-    const base = week()
+    const base = { ...week(), schema: INTERVIEW_WEEK_SCHEMA }
+    // A second-version week's questions carry their ground and ready answer.
+    base.questions = base.questions.map((q) => ({
+      ...q,
+      ground: GROUND[q.family],
+      ready: readyFor(q.targetSeconds),
+    }))
     const withOpening = { ...base, cards: [opening, ...base.cards] }
+    const first = readWeek({
+      ...withOpening,
+      ...{ schema: INTERVIEW_WEEK_SCHEMA_V1, questions: week().questions },
+    })
+    expect(first.ok ? [] : first.problems).toEqual([
+      'cards[0] ("opening"): a some-ui.interview-week/1 week has no essay\'s opening',
+    ])
     expect(readWeek(withOpening).ok).toBe(true)
     expect(readWeek(withOpening).ok && isOpening(withOpening.cards[0]!)).toBe(
       true

@@ -15,7 +15,11 @@ import { heardByNote, indexWeeks } from "@interview-week/lib/essay/record"
 import { measureAnswer, measureRead } from "@interview-week/lib/faults"
 import type { AnswerFaults, ReadFaults } from "@interview-week/lib/faults"
 import type { MailboxFile } from "@interview-week/lib/monday/bundle"
-import { ESSAY_FILE, WEEK_FILE } from "@interview-week/lib/monday/bundle"
+import {
+  ESSAY_FILE,
+  essayRevision,
+  WEEK_FILE,
+} from "@interview-week/lib/monday/bundle"
 import type { Family, InterviewWeek } from "@interview-week/lib/week"
 import { isOpening, readWeek } from "@interview-week/lib/week"
 import { weekAround } from "@some-ui/core-utils"
@@ -235,14 +239,13 @@ function chartOf(
 function essaysIn(brief: ReadonlyArray<MailboxFile>): Array<InterviewEssay> {
   const best = new Map<string, { r: number; essay: InterviewEssay }>()
   for (const file of brief) {
-    const [, week, r] = ESSAY_FILE.exec(file.name) ?? []
-    if (week === undefined) continue
+    const of = essayRevision(file.name)
+    if (of === null) continue
     const parsed = parseInterviewEssay(file.body)
     if (!parsed.ok) continue
-    const n = r === undefined ? 1 : Number(r)
-    const held = best.get(week)
-    if (held === undefined || n > held.r)
-      best.set(week, { r: n, essay: parsed.value })
+    const held = best.get(of.week)
+    if (held === undefined || of.r > held.r)
+      best.set(of.week, { r: of.r, essay: parsed.value })
   }
   return [...best.values()].map((b) => b.essay)
 }
@@ -259,7 +262,9 @@ function owed(
     return { ok: false, why: "brief holds no readable week file for it" }
   const heardOf = (
     take: string | null,
-    what: string
+    what: string,
+    // The opening is played, never measured, so it needs no word times.
+    measured = true
   ): { ok: true; heard: Heard } | { ok: false; why: string } => {
     const got: Heard | undefined =
       take === null ? { hearing: "silent" } : heard.get(take)
@@ -267,7 +272,7 @@ function owed(
       return { ok: true, heard: got }
     if (got === undefined || got.text.trim() === "")
       return { ok: false, why: `home hasn't heard ${what}'s take yet` }
-    if (got.words === null || got.words.length === 0)
+    if (measured && (got.words === null || got.words.length === 0))
       return {
         ok: false,
         why: `home heard ${what}'s take without its words, which the measures count from`,
@@ -308,7 +313,11 @@ function owed(
   let opening: EssayOwed["opening"] = null
   for (const card of week.cards) {
     const held = record.cards.find((c) => c.card === card.id)
-    const got = heardOf(held?.take ?? null, `the read of ${card.id}`)
+    const got = heardOf(
+      held?.take ?? null,
+      `the read of ${card.id}`,
+      !isOpening(card)
+    )
     if (!got.ok) return got
     if (isOpening(card)) {
       if (got.heard.hearing === "heard") {

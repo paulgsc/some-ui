@@ -79,7 +79,10 @@ export const INTERVIEW_ESSAY_SCHEMA = "some-ui.interview-essay/1"
 export const INTERVIEW_ESSAY_ID = "interview-essay"
 
 /** The newest version `interviewEssayFormat` gives, pinned as `v<n>.json` under `templates/`. */
-export const INTERVIEW_ESSAY_VERSION = 1
+export const INTERVIEW_ESSAY_VERSION = 2
+
+/** The first version with the owner's own opening (IW10): an essay before it holds none. */
+const OPENING_SINCE = 2
 
 /** The most questions and cards a week has (`some-ui.interview-week/1` and `/2`). */
 const QUESTIONS_MOST = 6
@@ -170,12 +173,16 @@ export function interviewEssayFormat(
     series: { id: CALL_ID, version: 2 },
     look: "calm",
     scenes: [
-      scene(
-        "opening",
-        "Your opening",
-        "The essay's opening, in your own voice; left out when it went unread",
-        40_000
-      ),
+      ...(version >= OPENING_SINCE
+        ? [
+            scene(
+              "opening",
+              "Your opening",
+              "The essay's opening, in your own voice; left out when it went unread",
+              40_000
+            ),
+          ]
+        : []),
       scene("open", "The week", "The invented company and role", 30_000),
       scene(
         "question",
@@ -373,6 +380,10 @@ function problemsOfEssay(essay: InterviewEssay): Array<string> {
   const problems: Array<string> = []
   if (essay.week.to < essay.week.from)
     problems.push("week: it ends before it starts")
+  if (essay.opening !== undefined && essay.template.version < OPENING_SINCE)
+    problems.push(
+      `opening: the template draws the owner's opening from version ${String(OPENING_SINCE)}`
+    )
   for (const [list, ids] of [
     ["questions", essay.questions.map((q) => q.id)],
     ["reads", essay.reads.map((r) => r.id)],

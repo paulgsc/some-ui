@@ -218,7 +218,7 @@ brand. Left unread, the essay opens as it always has.
 - **No assessment.** No rating, score or grade, no "how ready am I", no
   pass or fail, and no finish line. The practice is ongoing: there's always
   another week. `finish` refuses a script that assesses.
-- **Length:** 25 to 90 words, so 10 to 40 seconds, a breath a line.
+- **Length:** 25 to 90 words, so about 10 to 35 seconds, a breath a line.
 
 ## The essay on the week that ended
 

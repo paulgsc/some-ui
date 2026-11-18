@@ -116,7 +116,7 @@ const cardSeconds = (script: string, opening: boolean): number => {
  * (C619).
  */
 const ASSESSING =
-  /\b(?:score[ds]?|scoring|rat(?:e|ed|ing)|grade[ds]?|grading|assess\w*|ready|readiness|pass(?:ed)?|fail(?:ed)?|level|finish(?:ed)? line|the end of|graduat\w*)\b/giu
+  /\b(?:scor(?:e|es|ed|ing)|ratings?|rated|grad(?:e|es|ed|ing)|assess\w*|readiness|how ready|ready for (?:it|the|an?)\b|pass or fail|finish(?:ed)? line|finish(?:es|ed)? (?:it|the)\b|graduat\w*|levell?ed up|level up)\b/giu
 
 function checkWords(
   values: WeekValues,
@@ -184,7 +184,8 @@ function checkWords(
     const opening = card.id === OPENING_CARD
     within(problems, at, card.script, opening ? OPENING_WORDS : SCRIPT_WORDS)
     if (opening) {
-      if (!(card.script.split("\n")[0] ?? "").includes(MONIKER)) {
+      const first = (card.script.split("\n")[0] ?? "").toLowerCase()
+      if (!first.includes(MONIKER)) {
         problems.push(`${at}: the opening says "${MONIKER}" in its first line`)
       }
       for (const [word] of card.script.matchAll(ASSESSING)) {

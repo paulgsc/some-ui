@@ -24,8 +24,10 @@ import {
   WEEK_2_OPENED,
 } from "@/lib/interview-week/__tests__/fixture"
 import { CUE_SECONDS } from "@/lib/interview-week/cue"
+import { readItem } from "@/lib/interview-week/spec"
 import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 import { RoutedInterview } from "@/components/jobs/interview/__tests__/routed"
+import { labelOf } from "@/components/jobs/interview/run"
 
 // The pages are the Android app's alone (AUDIENCES.md A3); tests run another profile.
 vi.mock("@/lib/build-profile", () => ({ hasAudience: (): boolean => true }))
@@ -201,6 +203,13 @@ describe("the interview week's pages on the phone (IW8)", () => {
       `[data-script="${OPENING_CARD_OF_WEEK.id}"]`
     )
     expect(script?.textContent).toContain("one more week of it")
+    // The look over names it for what it is, and counts the reads without it.
+    expect(labelOf(WEEK_2_OPENED, readItem(OPENING_CARD_OF_WEEK.id))).toBe(
+      WORDS.opening
+    )
+    expect(labelOf(WEEK_2_OPENED, readItem(WEEK_2.cards[0].id))).toBe(
+      WORDS.readLabel(1)
+    )
   })
 
   it("gives a week written before ready answers its cues from what to cover", async () => {

@@ -454,6 +454,11 @@ function relations(week: InterviewWeek): Array<string> {
         `${at}: the card named "${OPENING_CARD}" is the essay's opening, and no other card is`
       )
     }
+    if (opening && week.schema !== INTERVIEW_WEEK_SCHEMA) {
+      problems.push(
+        `${at}: a ${INTERVIEW_WEEK_SCHEMA_V1} week has no essay's opening`
+      )
+    }
     if (opening && i !== 0) {
       problems.push(`${at}: the essay's opening is the week's first card`)
     }

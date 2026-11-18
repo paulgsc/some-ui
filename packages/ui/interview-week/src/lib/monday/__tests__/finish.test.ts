@@ -97,14 +97,20 @@ describe("the interview week's finish", () => {
     expect(opening(OPENING)).toEqual([])
     expect(
       opening(
-        `This week I train decision stories, until I'm ready.\n${OPENING.split("\n").slice(1).join("\n")}\nI'll rate it after, and score how I did.`
+        `This week I train decision stories, until I'm ready for the interview.\n${OPENING.split("\n").slice(1).join("\n")}\nThen I'll check my rating, and grade how I did.`
       )
     ).toEqual([
       'week.cards[0] ("opening").script: the opening says "paulgsc" in its first line',
-      'week.cards[0] ("opening").script: "ready" assesses; the opening says what the week trains, with no rating and no finish line',
-      'week.cards[0] ("opening").script: "rate" assesses; the opening says what the week trains, with no rating and no finish line',
-      'week.cards[0] ("opening").script: "score" assesses; the opening says what the week trains, with no rating and no finish line',
+      'week.cards[0] ("opening").script: "ready for the" assesses; the opening says what the week trains, with no rating and no finish line',
+      'week.cards[0] ("opening").script: "rating" assesses; the opening says what the week trains, with no rating and no finish line',
+      'week.cards[0] ("opening").script: "grade" assesses; the opening says what the week trains, with no rating and no finish line',
     ])
+    // The work's own words pass: a rate limit, a high level, tests that pass or fail, a time something failed.
+    expect(
+      opening(
+        `Paulgsc here.\n${OPENING.split("\n").slice(1).join("\n")}\nI'll tell a time a deploy failed, the tests that pass, a rate limit, and a high level view.`
+      )
+    ).toEqual([])
     expect(opening(script(20))[0]).toBe(
       'week.cards[0] ("opening").script: 200 words; write 25 to 90'
     )
