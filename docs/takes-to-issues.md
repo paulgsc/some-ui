@@ -234,23 +234,30 @@ takes one take at a time. For a take:
    attempt as made and the pairing, and go back to step 1. Not found: record it as not
    made, but only once the attempt is at least ten minutes old, since GitHub can finish a
    create after home stopped waiting for its answer; until then it stays unsettled and the
-   card still says "Home is filing this". If the repository or the ask is gone (`404`), the
-   attempt is not made: anything made there is gone with it. If the lookup can't be made
-   for any other reason (a `410` for issues turned off included, since they come back when
-   issues are turned on again), the attempt stays unsettled, no new attempt is made for
+   card still says "Home is filing this". If the repository is gone (`404`), or the ask is
+   (`404`, or `410` on its comments: a deleted issue), the attempt is not made: anything
+   made there is gone with it. If the lookup can't be made for any other reason (a `410` on
+   the repository's issue list, which means issues are turned off and can come back,
+   included), the attempt stays unsettled, no new attempt is made for
    that take, and the card says "Home is checking whether GitHub made this". Counted from
    the attempt's start, after 24 hours that becomes overdue: an alert reaches the owner
    (`TakeIssueUnsettled`), and the card offers "Check on GitHub" (the repository's issues)
    and "It wasn't made, send again". That records the owner's word as the attempt's
    outcome, sets aside the send it was for (home files only a send newer than it), and
    opens the draft; nothing is filed until the owner sends it. The first attempt after an
-   owner-settled one runs this step's lookup once more before it creates.
+   owner-settled one runs this step's lookup once more before it creates. If the marker
+   turns up, a later row records the attempt as made after all and the take is paired; the
+   newest outcome row is the one read. If that lookup can't be made either, the new attempt
+   goes ahead: the owner has already accepted that risk (TF2's tolerance). Until the owner
+   sends, the card says "Write its issue", as for a take waiting on its first draft.
 3. **Still wanted?** Check the take's newest move is still the newest send's ready move
    (section 1). If not, stop: the owner withdrew it.
 4. **Make it.** Append the attempt, then create the issue or comment, then record the
    outcome, the pairing, and (if step 3's condition still holds) the move to `picked-up`,
    in one transaction. If the answer is lost (a timeout, a `5xx`, a crash), the attempt is
-   left unsettled and the take's turn ends this pass; step 2 settles it on a later pass.
+   left unsettled and the take's turn ends this pass; step 2 settles it on a later pass. If
+   GitHub answers with a rate limit (section 9), it made nothing: the attempt is recorded
+   as not made and the next one waits the limit out.
 5. **Refused.** A refusal is recorded as the attempt's outcome, with its reason, and shown
    to the owner (section 9). A refusal is settled: "Send it elsewhere" after it is safe,
    since GitHub made nothing.
@@ -313,6 +320,7 @@ token already reads issues, so the poll uses it.
 
 | The issue                                                      | The card says                                                                               |
 | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| waiting on the owner's draft (none yet, or set aside)          | Write its issue                                                                             |
 | asked, not yet filed                                           | Home is filing this                                                                         |
 | an attempt home can't settle yet                               | Home is checking whether GitHub made this                                                   |
 | that, after 24 hours                                           | Home couldn't check whether GitHub made this · Check on GitHub · It wasn't made, send again |
@@ -352,7 +360,8 @@ send, shows "Write its issue": home files nothing for it until the owner sends a
   and an alert reaches the owner.
 - **GitHub refuses** (`401` the token expired or was revoked; `403` no access to that
   repository, told apart from GitHub's rate limits, which answer `403` or `429` and are
-  waited out (at least a minute, or as `retry-after` says) when any of `retry-after`,
+  waited out (until `x-ratelimit-reset` when that is given, else as `retry-after` says,
+  else at least a minute) when any of `retry-after`,
   `x-ratelimit-remaining: 0` or a body naming the secondary rate limit is present; `404` or `410` the repository is gone or has issues off; `422` a label
   missing). Home records the refusal and doesn't retry it on its own. The card says what is
   wrong in the person's terms ("Home's key to GitHub has run out"; "Home isn't allowed to
@@ -411,15 +420,15 @@ takes read. Its objectives:
 
 | ID  | Kind      | Requirement                                                                                                                                                                                                                                                          |
 | --- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| TF1 | OA2       | Every request is filed, refused with its reason, or shown as overdue after 24 hours.                                                                                                                                                                                 |
+| TF1 | OA2       | Every send is filed, refused with its reason, waits on the owner's draft ("Write its issue"), or is shown as overdue after 24 hours, with an alert (`TakeIssueUnsettled` for an attempt home can't settle).                                                          |
 | TF2 | OA3       | "Filed as #n" shows only once `take_issue` holds it; a retry, a lost answer or a send elsewhere makes at most one issue or comment (the attempt record, the marker, and one pairing per take). Tolerance: the owner's own "It wasn't made" after 24 hours unchecked. |
 | TF3 | OA5       | A take moved off "Make it an issue" before an attempt's check is not filed by that attempt or any later one.                                                                                                                                                         |
 | TF4 | OA6       | A poller or filer that stopped reads apart from a quiet one: each pass's start is a metric, and a missed hour alerts.                                                                                                                                                |
-| TF5 | OA8       | Every refusal is counted, named and alerted (`TakeIssueRefused`, `TakeIssueUnsettled`, `TakeIssueTokenExpiring`); the token never appears in a record.                                                                                                               |
+| TF5 | OA8       | Every refusal is counted, named and alerted (`TakeIssueRefused`, `TakeIssueTokenExpiring`); the token never appears in a record.                                                                                                                                     |
 | TF6 | RE1       | Every GitHub request is counted by operation (file, settle, poll, pulls, closer, daily read), with GitHub's own rate-limit headers kept.                                                                                                                             |
 | TF7 | RE2, RE10 | Filing attempts share one budget per request; a backlog of refused requests never delays a new one.                                                                                                                                                                  |
 | TF8 | RE7       | An idle pass is at most three conditional lists per repository, each a `304`; the daily read adds one conditional request per paired issue.                                                                                                                          |
-| TF9 | RE9       | Growth: one request row per send, two attempt rows (start, outcome) per attempt, one pairing per issue, one state row per change seen; nothing deleted but with the take or the account.                                                                             |
+| TF9 | RE9       | Growth: one request row per send, two attempt rows (start, outcome) per attempt, a third only when a re-check finds an attempt the owner said wasn't made, one pairing per issue, one state row per change seen; nothing deleted but with the take or the account.   |
 
 Stores: `server:take_issue_request`, `server:take_issue_attempt`, `server:take_issue`,
 `server:take_issue_state`. The
