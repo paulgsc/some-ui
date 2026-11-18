@@ -87,6 +87,19 @@ describe("the interview week's words (IW5)", () => {
     expect(INTERVIEW_WORDS.cap).toBe("A take stops at 2 min.")
   })
 
+  // IWC1: what counts for the week is what was sent. Home's record answers a
+  // question only from the send standing at the deadline; a first take home
+  // holds unsent is a copy, not an answer (paulgsc/server interview_weeks.rs
+  // `week_record`). Every word the table can say, with its samples, is held.
+  it("say that what counts is what was sent, never what home has (IWC1)", () => {
+    const counts = SHOWN.filter((word) => /\bwhat counts\b/i.test(word))
+    expect(counts.length).toBeGreaterThan(0)
+    expect(counts.filter((word) => !/\bsen[dt]\b/i.test(word))).toEqual([])
+    expect(
+      SHOWN.filter((word) => /\bwhat home (has|had)\b/i.test(word))
+    ).toEqual([])
+  })
+
   it("say the brief's week on the owner's clock", () => {
     expect(INTERVIEW_WORDS.heading(WEEK)).toBe("Week 47 · due Sunday 23:59")
   })

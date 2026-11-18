@@ -31,9 +31,13 @@ import type { Rung, Step } from "./ladder"
 
 const takes = (n: number): string => (n === 1 ? "1 take" : `${n} takes`)
 
-/** Where the week's takes are kept, said on the Interview page and the look over. */
+/**
+ * Where the week's takes are kept, said on the Interview page and the look
+ * over. A first take goes home as a copy kept for good (owner, 2026-11-17, on
+ * retakes); only what is sent counts for the week (IWC1).
+ */
 const KEPT =
-  "Your first take of each question goes home on its own. The rest stay on this phone until you send the week."
+  "Your first take of each question goes home on its own, as a copy kept for good. The rest stay on this phone until you send the week, and what you send is what counts."
 
 const BUNDLE: BundleWords = {
   dot: {
@@ -208,7 +212,7 @@ export const INTERVIEW_WORDS = {
   goesHome: (n: number, at: string): string =>
     `Your send from ${weekday(at)} ${clock(at)}, ${takes(n)}, is on this phone. It goes home when you're in reach.`,
   openUntil: (week: Pick<InterviewWeek, "due">): string =>
-    `What home has at ${weekday(week.due)} ${clock(week.due)} is what counts, and is kept for good. Until then you can say any card, say one again and send the week again.`,
+    `What you've sent by ${weekday(week.due)} ${clock(week.due)} is what counts, and is kept for good. Until then you can say any card, say one again and send the week again.`,
   backToWeek: "Back to the week",
   /** A take page, once the week was sent: whether the take there is the one home holds. */
   home: {
@@ -227,7 +231,7 @@ export const INTERVIEW_WORDS = {
     title: (week: Pick<InterviewWeek, "id">): string =>
       `Week ${weekNumber(week.id)} has closed.`,
     line: (week: Pick<InterviewWeek, "due">): string =>
-      `It closed ${weekday(week.due)} ${clock(week.due)}. What home had then is what counts, kept for good, and the essay comes from home. Nothing more can be said or sent here.`,
+      `It closed ${weekday(week.due)} ${clock(week.due)}. What you had sent by then is what counts, kept for good, and the essay comes from home. Nothing more can be said or sent here.`,
     held: (n: number): string => `Home had ${takes(n)} at the deadline.`,
     late: (at: string): string =>
       `Your send from ${weekday(at)} ${clock(at)} didn't reach home before the deadline, so it doesn't count. It stays on this phone.`,
