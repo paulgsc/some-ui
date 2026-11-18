@@ -173,7 +173,9 @@ GitHub's public search:
   take for. GitHub stems the phrase, so most results lack the line: a normal pass reads one page
   of each query. The first pass (no pass has completed yet) reads up to search's 1,000-result
   cap (ten pages a query); it spaces its pages to at most eight a minute and keeps where it got
-  to, so a pass that stops resumes at its next page rather than starting over. No other pass
+  to, so a pass that stops resumes rather than starting over. It resumes one page early, re-reading
+  the last page it read, since an item that left the results while it was stopped shifts the
+  rest up by one; more than a page of items leaving during one stop is outside this design. No other pass
   runs while it does. Where a pass got to and when the last completed pass started (its first page's
   time, for a first pass that took hours) live in a third, one-row table, `take_search_pass`,
   which is the pass's own state, not a record. Every later pass reads back to an hour before
@@ -195,8 +197,8 @@ GitHub's public search:
     stays, since it was true when seen.
   - `take_issue_seen`: for each linked item, by its GitHub `id`, what home saw and when: open
     or closed, why it closed or whether it merged, and its address if that changed (a
-    transfer). A row only when something changed. Home reads only items updated since an hour before its last
-    pass, so an unchanged item and one that stopped matching look alike: both are absent. So
+    transfer). A row only when something changed. Home reads only items updated since an hour before the start of its last
+    completed pass, so an unchanged item and one that stopped matching look alike: both are absent. So
     an item whose line was later removed, or whose repository went private, keeps the state
     home last saw, and a later close is never seen. That is this design's limit.
 - **The move to Became:** when home first links an issue to a take at Brought, it appends the
@@ -244,14 +246,14 @@ to a session finds the issue it became"**, served by one process with two segmen
 home (the search pass) and home → phone (the takes read). The copy is the phone's alone and
 crosses nothing. Its objectives:
 
-| ID  | Kind     | Requirement                                                                                                                                                                                      |
-| --- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| TF1 | OA3      | "Became #n" shows only once `take_issue_link` holds a link to an issue; a pull request alone reads "in PR #m".                                                                                   |
-| TF2 | OA6      | A search pass that stopped reads apart from a quiet one: each pass's start and outcome is a metric, and a missed hour alerts.                                                                    |
-| TF3 | OA8      | Every failed pass is counted and named (no network, rate limit, `5xx`), and a run of failures alerts (`TakeSearchFailing`).                                                                      |
-| TF4 | RE1      | Every search request is counted, with GitHub's own rate-limit headers kept.                                                                                                                      |
-| TF5 | RE3, RE7 | A pass is two search requests (issues, pull requests) plus a page for each further 100 items updated since an hour before the last pass; the first pass reads at most search's 1,000-result cap. |
-| TF6 | RE9      | Growth: one link row per item (issue or pull request) carrying a take's ID, one seen row per change; nothing deleted but with the take or the account.                                           |
+| ID  | Kind     | Requirement                                                                                                                                                                                                             |
+| --- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TF1 | OA3      | "Became #n" shows only once `take_issue_link` holds a link to an issue; a pull request alone reads "in PR #m".                                                                                                          |
+| TF2 | OA6      | A search pass that stopped reads apart from a quiet one: each pass's start and outcome is a metric, and a missed hour alerts.                                                                                           |
+| TF3 | OA8      | Every failed pass is counted and named (no network, rate limit, `5xx`), and a run of failures alerts (`TakeSearchFailing`).                                                                                             |
+| TF4 | RE1      | Every search request is counted, with GitHub's own rate-limit headers kept.                                                                                                                                             |
+| TF5 | RE3, RE7 | A pass is two search requests (issues, pull requests) plus a page for each further 100 items updated since an hour before the start of the last completed pass; the first pass reads at most search's 1,000-result cap. |
+| TF6 | RE9      | Growth: one link row per item (issue or pull request) carrying a take's ID, one seen row per change; nothing deleted but with the take or the account.                                                                  |
 
 Stores: `server:take_issue_link`, `server:take_issue_seen`, `server:take_search_pass`. The `routine-to-home` family loses
 the pickup's objectives as Part E retires, and the mailbox stores' growth lines lose `pickup`
