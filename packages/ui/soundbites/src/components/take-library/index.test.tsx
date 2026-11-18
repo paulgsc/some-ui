@@ -713,6 +713,47 @@ describe("one home for every take (TAKES20)", () => {
     expect(screen.queryByText(W.waitsHere)).toBeNull()
   })
 
+  it("puts interview takes of both ref shapes in Interview week, by home's kind or the phone's, never by guessing from the ref", async () => {
+    const read: LibraryTake = {
+      ...INTERVIEW,
+      id: "i2",
+      ref: "2026-w47:read:intro",
+    }
+    render(
+      <TakeLibrary
+        ports={ports({
+          home: home({
+            takes: () =>
+              Promise.resolve({
+                kind: "read",
+                page: { ...every.page, takes: [INTERVIEW, read] },
+              }),
+          }),
+          onPhone: onPhone([
+            { ...OWN, id: "i3", of: "interview", ref: "2026-w48:conflict" },
+            { ...OWN, id: "i4", of: "interview", ref: "2026-w48:read:close" },
+          ]),
+        })}
+        pair={null}
+        compartment={null}
+        tile={(compartment, body) => (
+          <a href={`#${compartment}`} aria-label={compartment}>
+            {body}
+          </a>
+        )}
+      />
+    )
+    await settle()
+    const count = (name: string): string | null | undefined =>
+      screen.getByRole("link", { name }).querySelector(".tabular-nums")
+        ?.textContent
+    expect(count("interview")).toBe("4")
+    // A ref of three parts or of two would read as a scene or one recorded
+    // here, were it guessed.
+    expect(count("scene")).toBe("0")
+    expect(count("here")).toBe("0")
+  })
+
   it("still shows the phone's takes on a home that lists Studio's alone, saying what waits on a newer one", async () => {
     render(
       <TakeLibrary
