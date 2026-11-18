@@ -18,6 +18,7 @@
 import type { Question, Ready } from "@some-ui/interview-week"
 import type { PatternTake } from "@some-ui/voice-capture"
 
+import type { InterviewSent } from "./spec"
 import { takeLine } from "./spec"
 
 /** The rungs a take is said on: read aloud, from cues, in your own words. */
@@ -49,6 +50,25 @@ export const scriptOf = (ready: Pick<Ready, "answer">): ReadonlyArray<string> =>
       .map((phrase) => phrase.trim())
       .filter((phrase) => phrase !== "")
   )
+
+/**
+ * `sent` with each answer's rung as `ladder` marked its take, for an answer
+ * that doesn't already say one. Called once, as Send keeps the record, so a
+ * kept send never changes body (home refuses a send again under the same
+ * time with another body, paulgsc/server#966).
+ */
+export const withRungs = (
+  sent: InterviewSent,
+  ladder: Ladder
+): InterviewSent => ({
+  ...sent,
+  answers: sent.answers.map((answer) => {
+    const rung = ladder.rungs[answer.take]
+    return answer.rung !== undefined || rung === undefined
+      ? answer
+      : { ...answer, rung }
+  }),
+})
 
 /** What this phone keeps of a week's ladder. */
 export type Ladder = {

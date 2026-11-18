@@ -80,7 +80,13 @@ const Taken = { take: z.string(), recordedAt: z.string() }
 const SentSchema: z.ZodType<InterviewSent> = z.object({
   week: z.string(),
   at: z.string(),
-  answers: z.array(z.object({ question: z.string(), ...Taken })),
+  answers: z.array(
+    z.object({
+      question: z.string(),
+      ...Taken,
+      rung: z.enum(RUNGS).optional(),
+    })
+  ),
   reads: z.array(z.object({ card: z.string(), ...Taken })),
   passed: z.array(z.string()),
   passedReads: z.array(z.string()),

@@ -29,7 +29,7 @@ import { bundleRuntime, sendsAtHome } from "@some-ui/voice-capture"
 import type { Cue, CueEvent } from "./cue"
 import { NO_CUE, stepCue } from "./cue"
 import type { Ladder, Rung } from "./ladder"
-import { ask, firsts, markRung, takesFor } from "./ladder"
+import { ask, firsts, markRung, takesFor, withRungs } from "./ladder"
 import type { InterviewAtHome, InterviewKind, InterviewSent } from "./spec"
 import { cardOf, interviewMachine, isClosed } from "./spec"
 import type { HeldInterview } from "./store"
@@ -107,10 +107,24 @@ export function createInterviewWeek(
   const { week } = ports.week
   const machine = interviewMachine(week)
   const sends = interviewSent(ports.storage)
+  const kept = interviewLadder(ports.storage, week.id)
+  // What this phone last kept, which the ladder on screen can run ahead of.
+  let written = kept.read()
+  const ladder = cell(written)
   const bundle = bundleRuntime(machine, {
     takes: ports.takes,
     drafts: interviewDrafts(ports.storage, week.id),
-    records: sends,
+    // A send is kept with the rung each answer's take was said on (IW8);
+    // the records kept before it go on as they were kept.
+    records: {
+      list: sends.list,
+      keep: (change) =>
+        sends.keep((before) =>
+          change(before).map((sent) =>
+            before.includes(sent) ? sent : withRungs(sent, ladder.getSnapshot())
+          )
+        ),
+    },
     context: () => null,
     home: ports.home,
     now: ports.now,
@@ -156,10 +170,6 @@ export function createInterviewWeek(
     }
   }
 
-  const kept = interviewLadder(ports.storage, week.id)
-  // What this phone last kept, which the ladder on screen can run ahead of.
-  let written = kept.read()
-  const ladder = cell(written)
   const questions = week.questions.map(({ id }) => id)
   let releasing = false
   /** Keeps `next` as the week's ladder; false when this phone couldn't. */

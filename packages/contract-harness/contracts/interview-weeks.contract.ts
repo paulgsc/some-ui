@@ -1,12 +1,12 @@
 /**
  * The interview week on home (IW4, paulgsc/some-ui#2935): the weeks the
- * Monday routine writes (`some-ui.interview-week/1` and, once home takes it, `/2`, kept from the mailbox's
+ * Monday routine writes (`some-ui.interview-week/1` and `/2`, kept from the mailbox's
  * `brief/interview-week-<id>.json`, so there is no `PUT` of a week), the
  * phone's send of a week's takes, and the week's record.
  *
  * Hand-written against paulgsc/server's `handlers/interview_weeks.rs` and
  * `rust_round_repo::interview` (`Sent`, strict), as on its `main` at
- * 3e8910c: `WeekList` of `WeekEntry`, and
+ * 6c4d592 (server#966): `WeekList` of `WeekEntry`, and
  * `HeldInterviewWeek` and `InterviewRecord`. `week` is the routine's file byte for byte, so
  * here it is only an object; the interview week's own format reads it (IW4).
  *
@@ -37,6 +37,9 @@ const Slug = z
   .string()
   .max(64)
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+/** `rust_round_repo::interview::Rung`: how an answer was said, never a score. */
+const Rung = z.enum(["aloud", "cues", "own"])
+
 const HashSchema = z.string().regex(/^[0-9a-f]{64}$/)
 
 const WeekEntrySchema = z.object({
@@ -65,9 +68,13 @@ const RecordSchema = z.object({
   questions: z.array(
     z.object({
       question: Slug,
+      /** What it rests on, from the week's question (IW8): `open`, `work` or another slug; null on a `/1` week. */
+      ground: Slug.nullable(),
       answered: z.boolean(),
       take: NoteId.nullable(),
       recordedAt: When.nullable(),
+      /** The rung its take was said on, when the send says (IW8). */
+      rung: Rung.nullable(),
     })
   ),
   cards: z.array(
@@ -91,6 +98,7 @@ const SENT = {
       question: "conflict",
       take: "take-1",
       recordedAt: "1999-01-05T11:59:00.000Z",
+      rung: "cues",
     },
   ],
   reads: [],
