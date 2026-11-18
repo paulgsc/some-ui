@@ -625,6 +625,9 @@ describe("the Deleted page (MD3)", () => {
     expect(
       screen.getByText("Went: The recording and home's words for it")
     ).toBeTruthy()
+    // The owner's own delete reads as one, with no line for what stayed.
+    screen.getByText(RECEIPTS.deletedLine(itemName(RECEIPT.deletedAt)))
+    expect(screen.queryByText(/^Stayed:/)).toBeNull()
     cleanup()
     render(<MyDataReceipts state={{ seq: 1, reading: { kind: "older" } }} />)
     expect(screen.getByRole("status").textContent).toContain("newer version")

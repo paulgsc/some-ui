@@ -515,7 +515,7 @@ export const RECEIPTS = {
   row: "Deleted",
   rowLine: "What went, and when",
   title: "Deleted",
-  lead: "Each recording that went for good, and when: one you deleted, or a middle take of an interview week, whose words stay.",
+  lead: "Each recording home no longer keeps, and when: one you deleted, or a middle take of an interview week, whose words stay.",
   empty: "Nothing has been deleted.",
   /** What a drag down reads again. */
   pullWhat: "what home deleted",
