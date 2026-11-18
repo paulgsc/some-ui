@@ -157,13 +157,16 @@ export function createInterviewWeek(
   }
 
   const kept = interviewLadder(ports.storage, week.id)
-  const ladder = cell(kept.read())
+  // What this phone last kept, which the ladder on screen can run ahead of.
+  let written = kept.read()
+  const ladder = cell(written)
   const questions = week.questions.map(({ id }) => id)
   let releasing = false
   /** Keeps `next` as the week's ladder; false when this phone couldn't. */
   const keep = (next: Ladder): boolean => {
-    if (next === ladder.getSnapshot()) return true
+    if (next === written) return true
     if (!kept.write(next)) return false
+    written = next
     ladder.set(next)
     return true
   }
@@ -199,21 +202,21 @@ export function createInterviewWeek(
     }
     const now = bundle.getSnapshot()
     if (intent.type === "tap" && !now.busy) {
-      // A rung not kept leaves the take unmarked, never unsaid.
-      keep(
-        ask(
-          ladder.getSnapshot(),
-          rung === null
-            ? null
-            : {
-                item: intent.item,
-                rung,
-                before: takesFor(now.takes, week.id, intent.item).map(
-                  ({ id }) => id
-                ),
-              }
-        )
+      // Asked for even when this phone couldn't keep it yet, so an earlier
+      // ask never marks this take; the next change keeps it.
+      const asking = ask(
+        ladder.getSnapshot(),
+        rung === null
+          ? null
+          : {
+              item: intent.item,
+              rung,
+              before: takesFor(now.takes, week.id, intent.item).map(
+                ({ id }) => id
+              ),
+            }
       )
+      if (!keep(asking)) ladder.set(asking)
       if (cardOf(intent.item) !== null || rung === "aloud") {
         showCard(intent.item)
         moveCue({ type: "start", item: intent.item })

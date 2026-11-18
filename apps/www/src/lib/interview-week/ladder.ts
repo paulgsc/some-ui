@@ -38,10 +38,6 @@ export const stepsOf = (
 /** The rungs said without the answer on screen: the take page's. */
 export type SayRung = Exclude<Rung, "aloud">
 
-/** The take page's rung, from its search: your own way unless it names cues. */
-export const sayRungOf = (search: Record<string, unknown>): SayRung =>
-  search.rung === "cues" ? "cues" : "own"
-
 /**
  * The ready answer as read aloud: its parts' texts in order, a phrase a
  * line, broken after each clause's punctuation.
@@ -105,6 +101,7 @@ export function markRung(
 
 /** The ladder asking for a take on `asked`'s rung, or for one on none. */
 export function ask(ladder: Ladder, asked: Asked | null): Ladder {
+  if (asked === null && ladder.asked === undefined) return ladder
   const { asked: _was, ...rest } = ladder
   return asked === null ? rest : { ...rest, asked }
 }

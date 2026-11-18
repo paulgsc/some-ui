@@ -9,7 +9,6 @@ import { MemoryRouted } from "@/test-support/memory-routed"
 import { createRootRoute, createRoute, Outlet } from "@tanstack/react-router"
 
 import type { SayRung } from "@/lib/interview-week/ladder"
-import { sayRungOf } from "@/lib/interview-week/ladder"
 import type { InterviewWeekPorts } from "@/lib/interview-week/runtime"
 import {
   AloudPage,
@@ -47,8 +46,9 @@ function interviewTree(ports: InterviewWeekPorts) {
   const say = createRoute({
     getParentRoute: () => question,
     path: "/say",
+    // As the say route reads it.
     validateSearch: (search): { rung: SayRung } => ({
-      rung: sayRungOf(search),
+      rung: search.rung === "cues" ? "cues" : "own",
     }),
     component: function Say() {
       return (

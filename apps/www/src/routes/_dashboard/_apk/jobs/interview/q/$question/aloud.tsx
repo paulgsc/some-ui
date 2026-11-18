@@ -3,7 +3,16 @@ import { createFileRoute } from "@tanstack/react-router"
 
 import { AloudPage } from "@/components/jobs/interview/ladder"
 
-const Aloud = (): JSX.Element => <AloudPage id={Route.useParams().question} />
+/**
+ * The phone's alone: the flag is read inline, so other builds drop the page
+ * (vite-env.d.ts, VITE_DEVICE_BACKEND), as the layout's does.
+ */
+const Aloud = (): JSX.Element | null => {
+  const { question } = Route.useParams()
+  return import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
+    <AloudPage id={question} />
+  ) : null
+}
 
 /** A question's ready answer, read aloud (IW8). */
 export const Route = createFileRoute(

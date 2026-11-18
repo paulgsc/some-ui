@@ -306,7 +306,11 @@ describe("a question's ladder on the phone (IW8)", () => {
       shown = simulated.store.getSnapshot()
       publish()
     })
-    const release = vi.fn((): boolean => {
+    // Refused once, as a full phone does, then let go.
+    let refuse = true
+    const release = vi.fn((ids: ReadonlyArray<string>): boolean => {
+      if (!refuse) return ports.takes.release(ids)
+      refuse = false
       shown = [...shown]
       publish()
       return false
@@ -331,10 +335,42 @@ describe("a question's ladder on the phone (IW8)", () => {
     run.dispatch({ type: "go", index: 0 })
     run.dispatch({ type: "tap", item: "why-now" })
     await pass(2_000)
-    const before = release.mock.calls.length
     run.dispatch({ type: "tap", item: "why-now" })
     await pass()
-    expect(release.mock.calls.length - before).toBeLessThan(5)
+    // Refused once without recursing, asked again by a later change, and gone.
+    const [refused, again] = release.mock.calls
+    expect(again).toEqual(refused)
+    expect(release.mock.calls.length).toBeLessThan(4)
+    expect(simulated.store.getSnapshot()[0].waits).toBeUndefined()
+  })
+
+  it("never marks a take with an earlier rung when this phone couldn't keep its own", async () => {
+    const inner = inMemoryStorage()
+    let refuseLadder = false
+    const storage: KeyedStorage = {
+      getItem: (key) => inner.getItem(key),
+      removeItem: (key) => inner.removeItem(key),
+      setItem: (key, value) => {
+        if (refuseLadder && key.endsWith(".ladder")) {
+          refuseLadder = false
+          throw new Error("full")
+        }
+        inner.setItem(key, value)
+      },
+    }
+    const on = phone(storage)
+    on.run.focus("conflict")
+    // Asked on aloud, then called off before it records.
+    on.run.dispatchOn("aloud")({ type: "tap", item: "conflict" })
+    on.run.dispatchOn("aloud")({ type: "tap", item: "conflict" })
+    refuseLadder = true
+    const own = on.run.dispatchOn("own")
+    own({ type: "tap", item: "conflict" })
+    await pass(2_000)
+    own({ type: "tap", item: "conflict" })
+    await pass()
+    const [take] = on.simulated.store.getSnapshot()
+    expect(on.run.ladder.getSnapshot().rungs).toEqual({ [take.id]: "own" })
   })
 
   it("marks a take kept after the whole week was left with the rung it was asked on", async () => {

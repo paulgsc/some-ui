@@ -3,7 +3,16 @@ import { createFileRoute } from "@tanstack/react-router"
 
 import { StudyPage } from "@/components/jobs/interview/ladder"
 
-const Study = (): JSX.Element => <StudyPage id={Route.useParams().question} />
+/**
+ * The phone's alone: the flag is read inline, so other builds drop the page
+ * (vite-env.d.ts, VITE_DEVICE_BACKEND), as the layout's does.
+ */
+const Study = (): JSX.Element | null => {
+  const { question } = Route.useParams()
+  return import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
+    <StudyPage id={question} />
+  ) : null
+}
 
 /** A question's ready answer, studied (IW8). */
 export const Route = createFileRoute(
