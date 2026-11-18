@@ -83,7 +83,7 @@ export const ACCOUNT_ERASES = {
     },
     {
       label: "Each week's engagement report",
-      text: "The counts home kept for each week's engagement report, what you used and how often, as it wrote them for the video. Never a time of day, an answer or anything you said.",
+      text: "The counts home kept for each week's engagement report, what you used and how often, as it wrote them for the video, and that video's YouTube links and what you let go. Never a time of day, an answer or anything you said.",
     },
     {
       label: "Studio's time log",
