@@ -33,6 +33,7 @@
 import { assertNever } from "@some-ui/core-utils"
 import type { PatternTake } from "@some-ui/voice-capture"
 
+import type { TakeOf } from "./kinds"
 import type { PlayEffect, PlaySlice } from "./play"
 import { audioRead, played, playEnded, QUIET, stopped } from "./play"
 
@@ -44,9 +45,20 @@ type LibraryHeard = {
   readonly heardAt: string
 }
 
-/** One take as home keeps it. */
+/**
+ * One take as home keeps it, of whatever kind (TAKES20, #3219): what it is
+ * (`of`, when, how long, what home heard, where it's kept), what it is about
+ * (`ref` and `fields`, read by its kind's port, `./kinds`), and how it stands.
+ */
 export type LibraryTake = {
   readonly id: string
+  /**
+   * Its kind, as home calls it; `unknown` for one this phone doesn't know.
+   * Absent from a home before TAKES20, which lists Studio's alone.
+   */
+  readonly of?: TakeOf | "unknown" | undefined
+  /** What a kind keeps beside its ref (a game bite's moment); absent for none. */
+  readonly fields?: Readonly<Record<string, string>> | undefined
   /** What the take is for, as the phone named it when it went home. */
   readonly ref: string
   readonly recordedAt: string
@@ -79,6 +91,11 @@ export type LibraryPage = {
   /** With a search, how many matched (can be more than listed); else null. */
   readonly matched: number | null
   readonly by: LibraryBy
+  /**
+   * Whether home listed every kind of take (TAKES20), or Studio's alone,
+   * as a home before it does: then what waits on a newer home is said.
+   */
+  readonly covers?: "every" | "studio" | undefined
 }
 
 /** How a read of home went. */

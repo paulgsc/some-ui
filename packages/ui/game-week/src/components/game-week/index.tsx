@@ -17,7 +17,7 @@
  * the modes open in the shared sheet over this screen: which is open is the
  * screen's own, and nothing outside it depends on it.
  */
-import type { JSX } from "react"
+import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import type { Said } from "@game-week/lib/bite"
 import type { Game, JustHappened, OfferCard } from "@game-week/lib/feed"
@@ -72,6 +72,12 @@ export type GameWeekProps = {
   ports: GameWeekPorts
   /** What of the kept bites is still only on this phone. */
   outbox: OutboxPort
+  /**
+   * The app's way to what was said here, in Studio's Takes (TAKES20), for
+   * the game picked (its id) or every game (null), with its words; none
+   * without.
+   */
+  takesLink?: ((gameId: string | null, label: string) => ReactNode) | undefined
 }
 
 type Panel = "none" | "legend" | "modes"
@@ -467,7 +473,11 @@ const Modes = ({
   </div>
 )
 
-export const GameWeek = ({ ports, outbox }: GameWeekProps): JSX.Element => {
+export const GameWeek = ({
+  ports,
+  outbox,
+  takesLink,
+}: GameWeekProps): JSX.Element => {
   // The runtime owns the microphone, the store and home's feed for this
   // mount, so it is made once, from the ports it arrived with.
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime is created once per mount (see above) */
@@ -629,6 +639,8 @@ export const GameWeek = ({ ports, outbox }: GameWeekProps): JSX.Element => {
       {outboxWords !== "" && (
         <p className="text-muted-foreground text-xs">{outboxWords}</p>
       )}
+
+      {takesLink?.(game?.id ?? null, WORDS.yourTakes(game !== null))}
 
       <Sheet
         open={panel !== "none"}

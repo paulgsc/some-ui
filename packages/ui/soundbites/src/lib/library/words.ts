@@ -14,14 +14,30 @@ import {
 
 import type {
   Compartment,
+  Order,
   TakeAbout,
   TakeKind,
   TakePlace,
+  TakeStatus,
 } from "./compartments"
+import type { AboutPortWords } from "./kinds"
 import type { LibraryBy } from "./model"
 import { SEARCH_MAX } from "./model"
 
 const takes = (n: number): string => counted(n, "take")
+
+/**
+ * What the kinds' ports say that isn't data (TAKES20, `./kinds`): a week, a
+ * teleprompter read, a game named only by its day, a soundbite's start.
+ */
+export const ABOUT_WORDS: AboutPortWords = {
+  week: (n) => `Week ${String(n)}`,
+  read: "Read aloud",
+  gameOn: (day) => `A game on ${day}`,
+  aGame: "A game",
+  soundbiteFrom: (source) =>
+    source === "direct" ? "Recorded on Soundbites" : "Recorded from a lesson",
+}
 
 /** The day, on this phone's calendar. */
 export const dayAt = (iso: string): string => formatDay(dayOf(new Date(iso)))
@@ -41,7 +57,7 @@ export const LIBRARY_WORDS = {
   unreadable:
     "What home said couldn't be read on this phone. Try again in a moment.",
   readAgain: "Try again",
-  searchLabel: "Search the words home heard in your takes",
+  searchLabel: "Search what you said and what it was about",
   searchHint: "A word or two you said",
   search: "Search",
   newest: "Show the newest",
@@ -109,6 +125,56 @@ export const LIBRARY_WORDS = {
       many: "Recorded here",
       line: "Takes recorded on Takes itself, before there's anything they're for.",
     },
+    bite: {
+      one: "At a game",
+      many: "Game day",
+      line: "What you say during a game, at its moment.",
+    },
+    round: {
+      one: "On Rust Rounds",
+      many: "Rust Rounds",
+      line: "What you say on a Rust Rounds card or a week's ticket.",
+    },
+    interview: {
+      one: "For interview week",
+      many: "Interview week",
+      line: "What you say to a week's questions, and what you read aloud.",
+    },
+    reflection: {
+      one: "A reflection",
+      many: "Reflections",
+      line: "What you say after a study session.",
+    },
+    jobs: {
+      one: "On a job",
+      many: "Jobs",
+      line: "What you say about a job you picked or passed.",
+    },
+    drama: {
+      one: "For the drama",
+      many: "Drama",
+      line: "The drama's next scene, said aloud.",
+    },
+    soundbite: {
+      one: "A soundbite",
+      many: "Soundbites",
+      line: "Short things you say on Soundbites or in a lesson.",
+    },
+    lens: {
+      one: "A line read aloud",
+      many: "Grammar lens",
+      line: "Lines you read aloud in the grammar lens.",
+    },
+    leetype: {
+      one: "On LeetType",
+      many: "LeetType",
+      line: "What you say to a LeetType screen.",
+    },
+    other: {
+      one: "Another kind",
+      many: "Other takes",
+      line: "Takes of a kind this app doesn't name yet. A newer app shows them in their own place.",
+    },
   } satisfies Record<
     TakeKind,
     { readonly one: string; readonly many: string; readonly line: string }
@@ -132,6 +198,7 @@ export const LIBRARY_WORDS = {
   noneUnder: "No take here is where you picked. Tap a chip again to show all.",
   /** What a take's card says first: what it was said for. */
   subject: (about: TakeAbout): string | null => {
+    if ("parts" in about) return about.topic?.label ?? null
     switch (about.kind) {
       case "note": {
         return `${about.feed} · ${about.episode}`
@@ -160,6 +227,9 @@ export const LIBRARY_WORDS = {
   },
   /** What the card says under it, when the phone knows more. */
   detail: (about: TakeAbout): string | null => {
+    if ("parts" in about) {
+      return about.parts.length === 0 ? null : about.parts.join(" · ")
+    }
     switch (about.kind) {
       case "note": {
         return `At ${formatTimecode(about.atMs)}`
@@ -183,7 +253,33 @@ export const LIBRARY_WORDS = {
       }
     }
   },
-  /** When a take was said. */
+  /** How a take stands, on its chip (TAKES20). */
+  status: {
+    heard: "Heard",
+    waiting: "Not heard yet",
+    silent: "No words heard",
+    aside: "Set aside",
+  } satisfies Record<TakeStatus, string>,
+  /** How a list is ordered (TAKES20). */
+  order: {
+    newest: "Newest",
+    oldest: "Oldest",
+    topic: "By what it's about",
+  } satisfies Record<Order, string>,
+  orderLabel: "Order the takes",
+  /** The phone's own takes, of any kind, that home doesn't list (TAKES20). */
+  waitsHere: "Only on this phone so far. It shows from home once home has it.",
+  /** One home holds that its list doesn't show yet: what waits on a newer home. */
+  homeLater:
+    "Home keeps it. What home heard in it shows here once home runs a newer version.",
+  /**
+   * A home that lists only Studio's takes: what waits on a newer one
+   * (TAKES20). The phone's own still show.
+   */
+  studioOnly:
+    "Home lists only Studio's takes until it runs a newer version. Your other takes show here once it does, and those still on this phone show here now.",
+  /** A take's moment in a game, said beside it (TAKES20): its game's page. */
+  openGame: "Open its game",
   said: (recordedAt: string): string => `Said ${dayAt(recordedAt)}`,
   /** Where a take is, on its card and its chip. */
   place: {

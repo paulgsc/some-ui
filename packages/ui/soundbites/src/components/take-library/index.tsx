@@ -23,24 +23,35 @@ import { Button, Dot, Input, Notice, TakeList } from "@some-ui/shared"
 import type { PatternTake } from "@some-ui/voice-capture"
 import { Unpaired } from "@soundbites/components/unpaired"
 import type {
+  ChipGroups,
+  ChipPick,
   Chips,
   Compartment,
+  Order,
   Sorted,
   TakeAbout,
   TakeKind,
   TakePlace,
+  TakeStatus,
 } from "@soundbites/lib/library/compartments"
 import {
   aboutBoth,
   aboutOfRef,
+  anyPicked,
   chipCounts,
   compartmentCounts,
+  holdsWords,
   inCompartment,
   NO_CHIPS,
+  ordered,
+  ORDERS,
   TAKE_KINDS,
   toggled,
+  topicOf,
   underChips,
 } from "@soundbites/lib/library/compartments"
+import type { TakeNames, TakeOf } from "@soundbites/lib/library/kinds"
+import { NO_NAMES, portAbout } from "@soundbites/lib/library/kinds"
 import type {
   LibraryIntent,
   LibraryPage,
@@ -54,17 +65,28 @@ import type {
   LibraryPhone,
   LibraryPorts,
   LibraryStations,
+  PhoneTake,
 } from "@soundbites/lib/library/runtime"
 import { createTakeLibrary } from "@soundbites/lib/library/runtime"
-import { LIBRARY_WORDS } from "@soundbites/lib/library/words"
+import { ABOUT_WORDS, LIBRARY_WORDS } from "@soundbites/lib/library/words"
 import type { LucideIcon } from "lucide-react"
 import {
+  AudioLines,
+  BriefcaseBusiness,
   CircleHelp,
   Clapperboard,
+  Cog,
+  Drama,
+  Glasses,
+  Keyboard,
   Layers,
   Lightbulb,
+  MessagesSquare,
   Mic,
   MonitorPlay,
+  NotebookPen,
+  Shapes,
+  Trophy,
 } from "lucide-react"
 
 import { Chip, CHIP_BAR, PlayButton } from "./parts"
@@ -91,6 +113,11 @@ export type TakeLibraryProps = {
    * episode); none on the plain list.
    */
   row?: ((take: LibraryTake) => ReactNode) | undefined
+  /**
+   * The chips picked when the page opens (TAKES20): a wing's own view is
+   * this home filtered, as Game day's way to a game's takes is. Read once.
+   */
+  initialChips?: Partial<Chips> | undefined
 }
 
 /**
@@ -103,6 +130,16 @@ const MARKS: Readonly<Record<TakeKind, LucideIcon>> = {
   idea: Lightbulb,
   ask: CircleHelp,
   here: Mic,
+  bite: Trophy,
+  round: Cog,
+  interview: MessagesSquare,
+  reflection: NotebookPen,
+  jobs: BriefcaseBusiness,
+  drama: Drama,
+  soundbite: AudioLines,
+  lens: Glasses,
+  leetype: Keyboard,
+  other: Shapes,
 }
 
 const Mark = ({
@@ -138,6 +175,15 @@ type PhoneRow = Sorted & {
   readonly take: PatternTake
   readonly about: TakeAbout
 }
+
+/** One of the phone's takes of another kind that home doesn't list (TAKES20). */
+type OwnRow = Sorted & {
+  readonly own: PhoneTake
+  readonly about: TakeAbout
+}
+
+const noOwn: ReadonlyArray<PhoneTake> = []
+const noOwnSnapshot = (): ReadonlyArray<PhoneTake> => noOwn
 
 const noPhone: LibraryPhoneSnapshot = { takes: [], full: false }
 const unsubscribed = (): (() => void) => () => undefined
@@ -291,6 +337,57 @@ const PhoneCard = ({
   </li>
 )
 
+/**
+ * One of the phone's takes of another kind that home doesn't list yet
+ * (TAKES20): what it is about, that it is on this phone alone, and Play,
+ * from the phone.
+ */
+const OwnCard = ({
+  item: { own, about },
+  state,
+  dispatch,
+}: {
+  item: OwnRow
+  state: LibraryState
+  dispatch: Dispatch
+}): JSX.Element => {
+  const { playback } = state
+  const here = playback.kind !== "quiet" && playback.id === own.id
+  return (
+    <li className="bg-card border-border/50 flex flex-col gap-2 rounded-2xl border p-3">
+      <div className="flex min-w-0 items-start gap-3">
+        <PlayButton
+          playing={here}
+          loading={playback.kind === "loading"}
+          disabled={state.phone === "recording"}
+          onPress={() => dispatch({ type: "play", id: own.id })}
+        />
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <AboutTake about={about} recordedAt={own.recordedAt} />
+          <p className="text-muted-foreground text-sm italic">
+            {own.home === true ? WORDS.homeLater : WORDS.waitsHere}
+          </p>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            {own.home === true ? (
+              <Pill dot="home">{WORDS.place.home}</Pill>
+            ) : (
+              <Pill dot="phone">{WORDS.place.phone}</Pill>
+            )}
+          </div>
+        </div>
+      </div>
+      {state.unplayable === own.id && (
+        <Notice
+          tone="danger"
+          onDismiss={() => dispatch({ type: "noticeDismissed" })}
+        >
+          {WORDS.unplayable}
+        </Notice>
+      )}
+    </li>
+  )
+}
+
 const Listed = ({
   page,
   rows,
@@ -302,9 +399,10 @@ const Listed = ({
   row,
   dispatch,
 }: {
-  page: LibraryPage
-  /** Home's takes in the compartment, under the chips picked. */
-  rows: ReadonlyArray<HomeRow>
+  /** Home's answer; null while there is none, so only the phone's show. */
+  page: LibraryPage | null
+  /** The takes in the compartment, under the chips picked, in order. */
+  rows: ReadonlyArray<HomeRow | OwnRow>
   /** How many of the phone's takes show above it. */
   others: number
   compartment: Compartment
@@ -313,44 +411,59 @@ const Listed = ({
   stations: LibraryStations | undefined
   row: TakeLibraryProps["row"]
   dispatch: Dispatch
-}): JSX.Element => {
-  if (page.total === 0) {
+}): JSX.Element | null => {
+  if (page !== null && page.total === 0 && rows.length === 0) {
     return <p className="text-muted-foreground text-sm">{WORDS.none}</p>
   }
-  const card = (each: HomeRow): JSX.Element => (
-    <HomeCard
-      key={each.take.id}
-      item={each}
-      state={state}
-      stations={stations}
-      row={row}
-      dispatch={dispatch}
-    />
-  )
+  const card = (each: HomeRow | OwnRow): JSX.Element =>
+    "own" in each ? (
+      <OwnCard
+        key={each.own.id}
+        item={each}
+        state={state}
+        dispatch={dispatch}
+      />
+    ) : (
+      <HomeCard
+        key={each.take.id}
+        item={each}
+        state={state}
+        stations={stations}
+        row={row}
+        dispatch={dispatch}
+      />
+    )
+  const isCanned = (each: HomeRow | OwnRow): boolean =>
+    !("own" in each) && each.canned
   // With no station picked, the canned fold under the rest (C424).
   const fold = chips.station === null
-  const live = fold ? rows.filter((each) => !each.canned) : rows
-  const canned = fold ? rows.filter((each) => each.canned) : []
+  const live = fold ? rows.filter((each) => !isCanned(each)) : rows
+  const canned = fold ? rows.filter(isCanned) : []
   const shelf = canned[0]?.station ?? null
   return (
     <div className="flex flex-col gap-3">
       {/* What the list below holds: the screen's own content. */}
-      <p className="text-muted-foreground text-sm" aria-live="polite">
-        {WORDS.shown(
-          page.by,
-          state.asked,
-          page.takes.length,
-          page.total,
-          page.matched
-        )}
-      </p>
-      {rows.length === 0 && others === 0 && page.takes.length > 0 && (
-        <p className="text-muted-foreground text-sm">
-          {chips.place === null && chips.station === null
-            ? WORDS.empty(compartment)
-            : WORDS.noneUnder}
+      {page !== null && (
+        <p className="text-muted-foreground text-sm" aria-live="polite">
+          {WORDS.shown(
+            page.by,
+            state.asked,
+            page.takes.length,
+            page.total,
+            page.matched
+          )}
         </p>
       )}
+      {page?.covers === "studio" && (
+        <p className="text-muted-foreground text-sm">{WORDS.studioOnly}</p>
+      )}
+      {rows.length === 0 &&
+        others === 0 &&
+        (page === null ? chips.place === "phone" : page.takes.length > 0) && (
+          <p className="text-muted-foreground text-sm">
+            {anyPicked(chips) ? WORDS.noneUnder : WORDS.empty(compartment)}
+          </p>
+        )}
       {live.length > 0 && (
         <ul className="flex flex-col gap-2">{live.map(card)}</ul>
       )}
@@ -507,11 +620,14 @@ const Tiles = ({
   return (
     <div className="flex flex-col gap-3">
       <ul className="grid grid-cols-2 gap-3">
-        {TAKE_KINDS.map((kind) => (
-          <li key={kind} className="flex">
-            {one(kind)}
-          </li>
-        ))}
+        {/* A kind this phone doesn't know shows only while it holds any. */}
+        {TAKE_KINDS.filter((kind) => kind !== "other" || counts.other > 0).map(
+          (kind) => (
+            <li key={kind} className="flex">
+              {one(kind)}
+            </li>
+          )
+        )}
       </ul>
       {/* All, the width of the row below the kinds. */}
       {one("all")}
@@ -520,45 +636,84 @@ const Tiles = ({
 }
 
 /**
- * The chips in the top bar (TAKES3): where a take is, then its station,
- * each with how many takes tapping it shows.
+ * The chips in the top bar (TAKES3, TAKES20): where a take is, its station,
+ * its kind (in All), what it is about and how it stands, each with how many
+ * takes tapping it shows.
  */
 const ChipBar = ({
-  places,
-  stations,
+  groups,
   chips,
   onChips,
 }: {
-  places: ReturnType<typeof chipCounts>["places"]
-  stations: ReturnType<typeof chipCounts>["stations"]
+  groups: ChipGroups
   chips: Chips
   onChips: (chips: Chips) => void
 }): JSX.Element | null => {
+  const { places, stations, kinds, topics, statuses } = groups
+  const tap = (pick: ChipPick) => (): void => {
+    onChips(toggled(chips, pick))
+  }
+  const many =
+    places.length +
+    stations.length +
+    kinds.length +
+    topics.length +
+    statuses.length
   // A lone chip, not picked, would filter nothing (the conveyor's page).
-  const picked = chips.place !== null || chips.station !== null
-  if (places.length + stations.length < 2 && !picked) return null
+  if (many < 2 && !anyPicked(chips)) return null
   return (
     <nav aria-label={WORDS.chips} className={CHIP_BAR}>
       {places.map(({ chip, count }) => (
         <Chip
-          key={chip}
+          key={`place:${chip}`}
           picked={chips.place === chip}
           count={count}
           dot={chip}
-          onTap={() => onChips(toggled(chips, { group: "place", value: chip }))}
+          onTap={tap({ group: "place", value: chip })}
         >
           {WORDS.place[chip]}
         </Chip>
       ))}
+      {kinds.map(({ chip, count }) => (
+        <Chip
+          key={`kind:${chip}`}
+          picked={chips.kind === chip}
+          count={count}
+          dot={null}
+          onTap={tap({ group: "kind", value: chip })}
+        >
+          {WORDS.kinds[chip].many}
+        </Chip>
+      ))}
+      {topics.map(({ chip, count }) => (
+        <Chip
+          key={`topic:${chip.key}`}
+          picked={chips.topic === chip.key}
+          count={count}
+          dot={null}
+          onTap={tap({ group: "topic", value: chip.key })}
+        >
+          {chip.label}
+        </Chip>
+      ))}
+      {statuses.map(({ chip, count }) => (
+        <Chip
+          key={`status:${chip}`}
+          picked={chips.status === chip}
+          count={count}
+          dot={null}
+          onTap={tap({ group: "status", value: chip })}
+        >
+          {WORDS.status[chip]}
+        </Chip>
+      ))}
       {stations.map(({ chip, count }) => (
         <Chip
-          key={chip}
+          key={`station:${chip}`}
           picked={chips.station === chip}
           count={count}
           dot={null}
-          onTap={() =>
-            onChips(toggled(chips, { group: "station", value: chip }))
-          }
+          onTap={tap({ group: "station", value: chip })}
         >
           {chip}
         </Chip>
@@ -567,14 +722,76 @@ const ChipBar = ({
   )
 }
 
-/** What a take was said for: the build's word, else its ref's. */
+/** How the list is ordered (TAKES20): newest, oldest, or by what it's about. */
+const OrderBar = ({
+  order,
+  onOrder,
+}: {
+  order: Order
+  onOrder: (order: Order) => void
+}): JSX.Element => (
+  <div role="group" aria-label={WORDS.orderLabel} className="flex gap-2">
+    {ORDERS.map((each) => (
+      <Button
+        key={each}
+        type="button"
+        size="sm"
+        variant={each === order ? "default" : "outline"}
+        aria-pressed={each === order}
+        onClick={() => onOrder(each)}
+      >
+        {WORDS.order[each]}
+      </Button>
+    ))}
+  </div>
+)
+
+/**
+ * What a take was said for: Studio's by the build's word over its ref's;
+ * every other kind through its port (TAKES20).
+ */
 const aboutWith =
-  (about: LibraryAbout | undefined) =>
-  (id: string, ref: string | null): TakeAbout =>
-    aboutBoth(
+  (about: LibraryAbout | undefined, names: TakeNames) =>
+  (
+    id: string,
+    told: {
+      readonly of?: TakeOf | "unknown" | undefined
+      readonly ref: string | null
+      readonly fields?: Readonly<Record<string, string>> | undefined
+    }
+  ): TakeAbout => {
+    const { ref } = told
+    const ported =
+      ref === null
+        ? null
+        : portAbout(
+            told.of ?? "studio",
+            { ref, fields: told.fields },
+            names,
+            ABOUT_WORDS
+          )
+    if (ported !== null) return ported
+    return aboutBoth(
       ref === null ? { kind: "here" } : aboutOfRef(ref),
       about?.about(id, ref) ?? null
     )
+  }
+
+/** How a take of home's stands (TAKES20). */
+function statusOf(take: LibraryTake): TakeStatus {
+  if (take.setAsideAt !== null) return "aside"
+  if (take.heard === null) return "waiting"
+  return take.heard.text.trim() === "" ? "silent" : "heard"
+}
+
+/** What a take's card says it is about, for a search (TAKES20). */
+function aboutWords(about: TakeAbout): ReadonlyArray<string> {
+  return [
+    WORDS.kinds[about.kind].one,
+    WORDS.subject(about),
+    WORDS.detail(about),
+  ].filter((part) => part !== null)
+}
 
 /** Whether the phone's recorder belongs in `compartment`. */
 const records = (compartment: Compartment): boolean =>
@@ -586,13 +803,18 @@ export const TakeLibrary = ({
   compartment = "all",
   tile,
   row,
+  initialChips,
 }: TakeLibraryProps): JSX.Element => {
   /* eslint-disable-next-line owner-guard/no-mount-snapshot -- the runtime is made once per mount, as Studio's screens' are */
   const [library] = useState(() => createTakeLibrary(ports))
   useEffect(() => library.attach(), [library])
   const state = useSyncExternalStore(library.subscribe, library.getSnapshot)
-  const [chips, setChips] = useState<Chips>(NO_CHIPS)
-  const { stations, phone, about } = ports
+  const [chips, setChips] = useState<Chips>(() => ({
+    ...NO_CHIPS,
+    ...initialChips,
+  }))
+  const [order, setOrder] = useState<Order>("newest")
+  const { stations, phone, about, onPhone } = ports
   // Renders again whenever what a row's station or kind says may have changed.
   useSyncExternalStore(
     stations?.subscribe ?? unsubscribed,
@@ -606,12 +828,16 @@ export const TakeLibrary = ({
     phone?.subscribe ?? unsubscribed,
     phone?.getSnapshot ?? noPhoneSnapshot
   ).takes
+  const ownTakes = useSyncExternalStore(
+    onPhone?.subscribe ?? unsubscribed,
+    onPhone?.getSnapshot ?? noOwnSnapshot
+  )
   const { dispatch } = library
-  const aboutOf = aboutWith(about)
+  const aboutOf = aboutWith(about, ports.names ?? NO_NAMES)
   const page = state.read.kind === "read" ? state.read.page : null
   const homeRows: ReadonlyArray<HomeRow> = (page?.takes ?? []).map((take) => {
     const at = stations?.station(take) ?? null
-    const said = aboutOf(take.id, take.ref)
+    const said = aboutOf(take.id, take)
     return {
       take,
       about: said,
@@ -619,6 +845,8 @@ export const TakeLibrary = ({
       place: "home",
       station: at?.name ?? null,
       canned: at?.canned ?? false,
+      topic: topicOf(said),
+      status: statusOf(take),
     }
   })
   const onHome = new Set(homeRows.map(({ take }) => take.id))
@@ -629,16 +857,34 @@ export const TakeLibrary = ({
   )
     .filter((take) => !onHome.has(take.id))
     .map((take) => {
-      const said = aboutOf(take.id, null)
+      const said = aboutOf(take.id, { ref: null })
       return {
         take,
         about: said,
         kind: said.kind,
         place: "phone",
         station: null,
+        topic: topicOf(said),
+        status: "waiting",
       }
     })
-  const sorted: ReadonlyArray<Sorted> = [...phoneRows, ...homeRows]
+  // Recorded on Takes itself, they are listed by the recorder (`phone`).
+  const recordedHere = new Set(phoneTakes.map(({ id }) => id))
+  const ownRows: ReadonlyArray<OwnRow> = ownTakes
+    .filter(({ id }) => !onHome.has(id) && !recordedHere.has(id))
+    .map((own) => {
+      const said = aboutOf(own.id, own)
+      return {
+        own,
+        about: said,
+        kind: said.kind,
+        place: own.home === true ? "home" : "phone",
+        station: null,
+        topic: topicOf(said),
+        status: own.home === true ? undefined : "waiting",
+      }
+    })
+  const sorted: ReadonlyArray<Sorted> = [...phoneRows, ...ownRows, ...homeRows]
 
   if (compartment === null) {
     const listed = page?.takes.length ?? 0
@@ -650,12 +896,15 @@ export const TakeLibrary = ({
             {WORDS.counted(listed, page.total)}
           </p>
         )}
+        {page?.covers === "studio" && (
+          <p className="text-muted-foreground text-sm">{WORDS.studioOnly}</p>
+        )}
         <Tiles counts={compartmentCounts(sorted)} tile={tile} />
       </div>
     )
   }
 
-  const counts = chipCounts(sorted, compartment, chips, stations?.names ?? [])
+  const groups = chipCounts(sorted, compartment, chips, stations?.names ?? [])
   const shows = (each: Sorted): boolean =>
     inCompartment(each, compartment) && underChips(each, chips)
   const phoneShown = phoneRows.filter(shows)
@@ -668,19 +917,35 @@ export const TakeLibrary = ({
     records(compartment) &&
     (listsPhone || state.phone !== "quiet")
   const searchable = state.read.kind !== "unpaired"
+  // Home searched what it heard; the phone's own are searched by what
+  // they are about, here (TAKES20).
+  const ownShown = ownRows.filter(
+    (each) =>
+      shows(each) &&
+      (state.asked === null || holdsWords(aboutWords(each.about), state.asked))
+  )
+  const at = (each: HomeRow | OwnRow): string =>
+    "own" in each ? each.own.recordedAt : each.take.recordedAt
+  const listedRows = ordered(
+    [...ownShown, ...homeRows.filter(shows)],
+    order,
+    at
+  )
   return (
     <div className="flex flex-col gap-4">
       <ChipBar
-        places={counts.places}
-        stations={counts.stations}
+        groups={groups}
         chips={chips}
         onChips={(next) => {
-          // A take of home's playing stops if its row leaves with its Stop.
+          // A take playing stops if its row leaves with its Stop.
           const { playback } = state
           const playing =
             playback.kind === "quiet"
               ? undefined
-              : homeRows.find(({ take }) => take.id === playback.id)
+              : [...homeRows, ...ownRows].find(
+                  (each) =>
+                    ("own" in each ? each.own.id : each.take.id) === playback.id
+                )
           if (playing !== undefined && !underChips(playing, next)) {
             dispatch({ type: "stop" })
           }
@@ -693,12 +958,9 @@ export const TakeLibrary = ({
           shows={(take) =>
             listsPhone &&
             !onHome.has(take.id) &&
-            inCompartment(aboutOf(take.id, null), compartment)
+            inCompartment(aboutOf(take.id, { ref: null }), compartment)
           }
         />
-      )}
-      {!recorder && phoneShown.length === 0 && chips.place === "phone" && (
-        <p className="text-muted-foreground text-sm">{WORDS.noneUnder}</p>
       )}
       {!recorder && phoneShown.length > 0 && (
         <ul className="flex flex-col gap-2">
@@ -748,20 +1010,19 @@ export const TakeLibrary = ({
           )}
         </form>
       )}
+      <OrderBar order={order} onOrder={setOrder} />
       <Unread state={state} dispatch={dispatch} pair={pair} />
-      {page !== null && chips.place !== "phone" && (
-        <Listed
-          page={page}
-          rows={homeRows.filter(shows)}
-          others={phoneShown.length}
-          compartment={compartment}
-          chips={chips}
-          state={state}
-          stations={stations}
-          row={row}
-          dispatch={dispatch}
-        />
-      )}
+      <Listed
+        page={chips.place === "phone" ? null : page}
+        rows={listedRows}
+        others={phoneShown.length}
+        compartment={compartment}
+        chips={chips}
+        state={state}
+        stations={stations}
+        row={row}
+        dispatch={dispatch}
+      />
     </div>
   )
 }

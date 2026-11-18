@@ -4,8 +4,9 @@ import {
   line,
   MAX_LINE_CHARS,
   pickedAfter,
+  scenarioName,
 } from "@game-week/lib/bite"
-import { CATALOG_VERSION } from "@some-ui/game-scenarios"
+import { CATALOG_VERSION, SCENARIOS } from "@some-ui/game-scenarios"
 import { describe, expect, it } from "vitest"
 
 const MOMENT: BiteMoment = {
@@ -116,5 +117,14 @@ describe("biteFields (GW4)", () => {
     expect([...(fields.strip ?? "")]).toHaveLength(MAX_LINE_CHARS)
     expect(fields.context).toBe(line(long))
     expect(fields.strip).not.toMatch(/\n/)
+  })
+})
+
+describe("a bite's scenario by name (TAKES20)", () => {
+  it("names each scenario of the catalog, and none it lacks", () => {
+    for (const scenario of SCENARIOS) {
+      expect(scenarioName(scenario.id)).toBe(scenario.name)
+    }
+    expect(scenarioName("not-a-scenario")).toBeNull()
   })
 })

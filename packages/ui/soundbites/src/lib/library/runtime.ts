@@ -17,6 +17,7 @@ import type { Refresh } from "@soundbites/lib/refresh"
 import { checkAgainOf } from "@soundbites/lib/refresh"
 
 import type { TakeAbout } from "./compartments"
+import type { TakeNames, TakeOf } from "./kinds"
 import type {
   LibraryEffect,
   LibraryEvent,
@@ -57,6 +58,33 @@ export type LibraryPhone = {
   readonly subscribe: (listener: () => void) => () => void
 }
 
+/**
+ * One of the phone's takes of any kind (TAKES20): what home is told of it
+ * and its audio, for those home doesn't list yet. Studio's takes with no
+ * scene come through `LibraryPhone` instead, where they are recorded.
+ */
+export type PhoneTake = {
+  readonly id: string
+  readonly of: TakeOf
+  readonly ref: string
+  readonly fields?: Readonly<Record<string, string>> | undefined
+  /** When it was recorded, ISO 8601. */
+  readonly recordedAt: string
+  /**
+   * Home holds it, though its list doesn't show it (a home before TAKES20
+   * lists Studio's alone): it plays from home.
+   */
+  readonly home?: boolean | undefined
+  readonly audio: () => Promise<Blob | null>
+}
+
+/** The phone's takes of every kind, as the build reads them. */
+export type LibraryOnPhone = {
+  readonly subscribe: (listener: () => void) => () => void
+  /** The same array while nothing changed. */
+  readonly getSnapshot: () => ReadonlyArray<PhoneTake>
+}
+
 export type LibraryPorts = {
   readonly home: TakesHome
   readonly player: Player
@@ -66,6 +94,10 @@ export type LibraryPorts = {
   readonly stations?: LibraryStations | undefined
   /** What each take was said for, as the phone knows it (TAKES2); absent, its ref says. */
   readonly about?: LibraryAbout | undefined
+  /** The phone's takes of every kind (TAKES20); absent, none but `phone`'s. */
+  readonly onPhone?: LibraryOnPhone | undefined
+  /** What the build can name that a ref only points at (TAKES20); absent, none. */
+  readonly names?: TakeNames | undefined
   /** The shell's refresh port: a pull reads the takes again (HERD2); absent, none. */
   readonly refresh?: Refresh | undefined
 }
@@ -186,7 +218,18 @@ export function createTakeLibrary(ports: LibraryPorts): LibraryRuntime {
         const { play } = effect
         // One sound at a time: the phone's own take stops for home's.
         ports.phone?.pattern.stopPlaying()
-        later(ports.home.audio(effect.id), (audio) => ({
+        // A take only on this phone plays from the phone (TAKES20).
+        const own = ports.onPhone
+          ?.getSnapshot()
+          .find((take) => take.id === effect.id)
+        const audio =
+          own === undefined
+            ? ports.home.audio(effect.id)
+            : own.audio().catch(() => {
+                // Ignored: audio the phone can't read back plays as none, which its row says (`unplayable`).
+                return null
+              })
+        later(audio, (audio) => ({
           type: "audioRead",
           play,
           audio,

@@ -5,8 +5,10 @@ import { TakeLibrary } from "@soundbites/components/take-library"
 import type { LibraryRead, LibraryTake } from "@soundbites/lib/library/model"
 import type {
   LibraryAbout,
+  LibraryOnPhone,
   LibraryPhone,
   LibraryStations,
+  PhoneTake,
   TakesHome,
 } from "@soundbites/lib/library/runtime"
 import { LIBRARY_WORDS } from "@soundbites/lib/library/words"
@@ -282,7 +284,12 @@ describe("Takes on home (ST32)", () => {
     it("says what a note's take was said for, from what the phone knows", async () => {
       render(<TakeLibrary ports={ports} pair={null} compartment="note" />)
       await settle()
-      expect(screen.getByText("The weekly call · Week of Nov 6")).toBeTruthy()
+      // On its card, and as the chip of what it's about (TAKES20).
+      expect(
+        screen
+          .getAllByText("The weekly call · Week of Nov 6")
+          .map((each) => each.tagName)
+      ).toEqual(expect.arrayContaining(["BUTTON", "P"]))
       expect(screen.getByText(/^At 3:12 · Said /)).toBeTruthy()
       expect(screen.getByText("Pacing")).toBeTruthy()
       expect(screen.getByText("“The middle drags”")).toBeTruthy()
@@ -547,5 +554,184 @@ describe("Takes on home (ST32)", () => {
     expect(
       screen.getByRole("button", { name: TAKE_WORDS.buttonLabel.ready })
     ).toBeDisabled()
+  })
+})
+
+describe("one home for every take (TAKES20)", () => {
+  const BITE: LibraryTake = {
+    ...TAKE,
+    id: "b1",
+    of: "game",
+    ref: "401772",
+    recordedAt: "2026-11-16T21:00:00.000Z",
+    fields: { strip: "Q3 4:12 · SF 17, LAR 13", scenario: "fourth-down" },
+  }
+  const OTHER_GAME: LibraryTake = {
+    ...BITE,
+    id: "b2",
+    ref: "401999",
+    recordedAt: "2026-11-09T21:00:00.000Z",
+    fields: { strip: "Q1 9:00" },
+  }
+  const INTERVIEW: LibraryTake = {
+    ...TAKE,
+    id: "i1",
+    of: "interview",
+    ref: "2026-w47:time",
+    recordedAt: "2026-11-17T09:00:00.000Z",
+  }
+  const every: LibraryRead = {
+    kind: "read",
+    page: {
+      takes: [INTERVIEW, BITE, OTHER_GAME, { ...TAKE, of: "studio" }],
+      total: 4,
+      matched: null,
+      by: "newest",
+      covers: "every",
+    },
+  }
+  const names = {
+    game: (id: string): string | null =>
+      id === "401772" ? "49ers vs Rams" : null,
+    scenario: (id: string): string | null =>
+      id === "fourth-down" ? "Fourth down" : null,
+    question: (): string | null => "Tell me about a time",
+  }
+  const onPhone = (takes: ReadonlyArray<PhoneTake>): LibraryOnPhone => ({
+    subscribe: () => () => undefined,
+    getSnapshot: () => takes,
+  })
+  const OWN: PhoneTake = {
+    id: "r1",
+    of: "rust-round",
+    ref: "2026-w46:QM-311",
+    recordedAt: "2026-11-18T08:00:00.000Z",
+    audio: () => Promise.resolve(new Blob(["own"])),
+  }
+  const ports = (
+    more: object = {}
+  ): Parameters<typeof TakeLibrary>[0]["ports"] => ({
+    home: home({ takes: () => Promise.resolve(every) }),
+    player: quietPlayer,
+    names,
+    ...more,
+  })
+
+  it("gives every kind its tile, counting the phone's own takes with home's", async () => {
+    render(
+      <TakeLibrary
+        ports={ports({ onPhone: onPhone([OWN]) })}
+        pair={null}
+        compartment={null}
+        tile={(compartment, body) => (
+          <a href={`#${compartment}`} aria-label={compartment}>
+            {body}
+          </a>
+        )}
+      />
+    )
+    await settle()
+    const count = (name: string): string | null | undefined =>
+      screen.getByRole("link", { name }).querySelector(".tabular-nums")
+        ?.textContent
+    expect(count("bite")).toBe("2")
+    expect(count("interview")).toBe("1")
+    expect(count("round")).toBe("1")
+    expect(count("all")).toBe("5")
+    // No tile for a kind this phone doesn't know, while it holds none.
+    expect(screen.queryByRole("link", { name: "other" })).toBeNull()
+  })
+
+  it("says each bite's game, moment and scenario in one row form, and opens filtered to one game", async () => {
+    render(
+      <TakeLibrary
+        ports={ports()}
+        pair={null}
+        compartment="bite"
+        initialChips={{ topic: "401772" }}
+      />
+    )
+    await settle()
+    expect(screen.getAllByText("49ers vs Rams").length).toBeGreaterThan(0)
+    expect(screen.getByText(/^Q3 4:12 · Fourth down · Said /)).toBeTruthy()
+    // The other game's bite waits behind its own chip.
+    expect(screen.queryByText(/^Q1 9:00/)).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: /^49ers vs Rams/ }))
+    expect(screen.getByText(/^Q1 9:00/)).toBeTruthy()
+  })
+
+  it("orders newest, oldest, or by what each is about", async () => {
+    render(<TakeLibrary ports={ports()} pair={null} compartment="bite" />)
+    await settle()
+    const said = (): Array<string> =>
+      screen
+        .getAllByText(/ · Said /)
+        .map((each) => each.textContent.split(" · ")[0] ?? "")
+    expect(said()).toEqual(["Q3 4:12", "Q1 9:00"])
+    fireEvent.click(screen.getByRole("button", { name: W.order.oldest }))
+    expect(said()).toEqual(["Q1 9:00", "Q3 4:12"])
+  })
+
+  it("lists the phone's own take of another kind with Play, from the phone, and finds it by what it's about", async () => {
+    const played: Array<Blob> = []
+    render(
+      <TakeLibrary
+        ports={ports({
+          onPhone: onPhone([OWN]),
+          player: {
+            play: (audio: Blob) => {
+              played.push(audio)
+              return {
+                ended: new Promise<void>(() => undefined),
+                stop: (): void => undefined,
+              }
+            },
+          },
+        })}
+        pair={null}
+        compartment="round"
+      />
+    )
+    await settle()
+    expect(screen.getAllByText("Week 46").length).toBe(2)
+    expect(screen.getByText(W.waitsHere)).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", { name: W.play }))
+    await settle()
+    await settle()
+    // The phone's own audio ("own"), not home's ("take").
+    expect(played[0]?.size).toBe(3)
+    const search = async (words: string): Promise<void> => {
+      fireEvent.change(screen.getByLabelText(W.searchLabel), {
+        target: { value: words },
+      })
+      fireEvent.submit(screen.getByRole("search"))
+      await settle()
+    }
+    await search("week 46 qm-311")
+    expect(screen.getByText(W.waitsHere)).toBeTruthy()
+    await search("punt")
+    expect(screen.queryByText(W.waitsHere)).toBeNull()
+  })
+
+  it("still shows the phone's takes on a home that lists Studio's alone, saying what waits on a newer one", async () => {
+    render(
+      <TakeLibrary
+        ports={ports({
+          home: home({
+            takes: () =>
+              Promise.resolve({
+                kind: "read",
+                page: { ...newest.page, covers: "studio" },
+              }),
+          }),
+          onPhone: onPhone([{ ...OWN, home: true }]),
+        })}
+        pair={null}
+        compartment="all"
+      />
+    )
+    await settle()
+    expect(screen.getByText(W.studioOnly)).toBeTruthy()
+    expect(screen.getByText(W.homeLater)).toBeTruthy()
   })
 })

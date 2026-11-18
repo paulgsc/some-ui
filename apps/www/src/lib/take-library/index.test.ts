@@ -8,9 +8,12 @@
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import type { PhoneBite } from "@/lib/game-bites"
 import type { TakesAsked } from "@/lib/home-link/takes-read"
+import type { OnPhone } from "@/lib/home-link/voice-copy"
 import { takesHome } from "@/lib/take-library"
-import { readTakes } from "@/lib/take-library/model"
+import { phoneTakesOf, readTakes } from "@/lib/take-library/model"
+import { VOICE_OFS } from "@/lib/voice-home/model"
 
 const asked = vi.hoisted(
   (): {
@@ -25,6 +28,29 @@ vi.mock("@/lib/home-link/takes-read", () => ({
     return Promise.resolve(asked.answers.shift() ?? { kind: "unreachable" })
   },
 }))
+
+/**
+ * Soundbites' kinds, from its source: vitest runs the `lan` profile, which
+ * stubs `@some-ui/soundbites` (an `apk` workspace) by its name, and the
+ * reads here call its `isTakeOf`.
+ */
+const KINDS_SOURCE = vi.hoisted(
+  () =>
+    new URL(
+      "../../../../../packages/ui/soundbites/src/lib/library/kinds.ts",
+      import.meta.url
+    ).pathname
+)
+
+vi.mock("@some-ui/soundbites", () => import(KINDS_SOURCE))
+
+const {
+  KIND_OF,
+  TAKE_OFS,
+}: {
+  readonly KIND_OF: Readonly<Record<string, string>>
+  readonly TAKE_OFS: ReadonlyArray<string>
+} = await import(KINDS_SOURCE)
 
 vi.mock("@/lib/home-link/voice-audio", () => ({
   askAudio: (): Promise<Blob | null> => Promise.resolve(null),
@@ -180,5 +206,107 @@ describe("Takes on home's reads of home (ST32)", () => {
     await vi.advanceTimersByTimeAsync(10_000)
     expect(await stale).toEqual({ kind: "busy" })
     expect(asked.asks).toEqual(["brand", "brand"])
+  })
+})
+
+describe("one home for every take (TAKES20)", () => {
+  // The check: a kind of voice note home takes (`VOICE_OFS`, home's
+  // `voice_repo::Of`) that Takes has no compartment or about port for
+  // fails here, so a recording can't again go somewhere Takes doesn't show.
+  it("covers every kind of take the phone sends home, in home's order", () => {
+    expect([...TAKE_OFS]).toEqual([...VOICE_OFS])
+    // Each but Studio's (split by its ref) has a compartment of its own.
+    expect(Object.keys(KIND_OF).sort()).toEqual(
+      VOICE_OFS.filter((of) => of !== "studio").sort()
+    )
+  })
+
+  it("reads each take's kind and what it keeps beside its ref, and says home listed every kind", () => {
+    const [studio] = TAKES.takes
+    const read = readTakes(
+      reply(200, {
+        ...TAKES,
+        takes: [
+          { ...studio, of: "studio" },
+          {
+            ...studio,
+            id: "b1",
+            of: "game",
+            ref: "401772",
+            fields: { strip: "Q3 4:12", scenario: "fourth-down" },
+          },
+          { ...studio, id: "d1", of: "dream", fields: { n: 3 } },
+        ],
+      })
+    )
+    const page = read.kind === "read" ? read.page : null
+    expect(page?.covers).toBe("every")
+    expect(page?.takes.map(({ of }) => of)).toEqual([
+      "studio",
+      "game",
+      "unknown",
+    ])
+    expect(page?.takes[1]?.fields).toEqual({
+      strip: "Q3 4:12",
+      scenario: "fourth-down",
+    })
+    // Fields this phone can't read are dropped, not the take.
+    expect(page?.takes[2]?.fields).toBeUndefined()
+  })
+
+  it("says a home that lists Studio's alone, and claims nothing of an empty list", () => {
+    const older = readTakes(reply(200, TAKES))
+    expect(older.kind === "read" && older.page.covers).toBe("studio")
+    const empty = readTakes(reply(200, { ...TAKES, takes: [], total: 0 }))
+    expect(empty.kind === "read" && empty.page.covers).toBeUndefined()
+  })
+
+  it("lists the phone's takes of every kind, and the bites home holds whose audio left, from home", async () => {
+    const audio = (): Promise<Blob | null> => Promise.resolve(null)
+    const notes: ReadonlyArray<OnPhone> = [
+      {
+        id: "r1",
+        of: "rust-round",
+        ref: "2026-w46:QM-311",
+        at: "2026-11-10T09:00:00Z",
+        audio,
+      },
+      {
+        id: "b1",
+        of: "game",
+        ref: "401772",
+        fields: { strip: "Q3 4:12" },
+        at: "2026-11-16T21:00:00Z",
+        audio,
+      },
+    ]
+    const bite = (id: string, homeSince?: number): PhoneBite => ({
+      id,
+      gameId: "401772",
+      at: "2026-11-16T20:00:00Z",
+      contentType: "audio/webm",
+      durationMs: 4_000,
+      fields: { strip: "Q2 1:00" },
+      holdUntil: 0,
+      ...(homeSince === undefined ? {} : { homeSince }),
+    })
+    const fromHome: Array<string> = []
+    const takes = phoneTakesOf(
+      notes,
+      [bite("b1"), bite("b2", 1)],
+      (id) => id === "r1",
+      (id) => {
+        fromHome.push(id)
+        return Promise.resolve(null)
+      }
+    )
+    expect(takes.map(({ id, of, home }) => [id, of, home])).toEqual([
+      ["r1", "rust-round", true],
+      ["b1", "game", false],
+      ["b2", "game", true],
+    ])
+    expect(takes[2]?.fields).toEqual({ strip: "Q2 1:00" })
+    await takes[2]?.audio()
+    expect(fromHome).toEqual(["b2"])
   })
 })

@@ -1,0 +1,243 @@
+/**
+ * One home for every take (TAKES20, #3219; epic #3029): what home calls each
+ * kind of voice note (`of`), which of Takes' compartments each goes in, and
+ * one port per kind that says what a take of it is about, from what home was
+ * told of it (`ref`, and a game bite's `fields`) and the names the build
+ * knows (`TakeNames`). Pure; the words are `./words`'.
+ *
+ * - **Every kind home keeps has a compartment and an about port.** Both are
+ *   `Record`s over `TAKE_OFS`, so a kind added there without one fails the
+ *   typecheck; www's `lib/take-library` test holds `TAKE_OFS` to the phone's
+ *   own `VOICE_OFS` (home's `voice_repo::Of`), so a kind home gains fails
+ *   there until it is placed here.
+ * - **A kind this phone doesn't know still shows** (`other`): in All, with
+ *   its day, never dropped.
+ * - **Studio's takes keep their own split** (`./compartments`' `aboutOfRef`):
+ *   an episode note, a scene, an idea, an ask or one recorded on Takes.
+ */
+import { dayOf, formatDay } from "@some-ui/core-utils"
+
+/**
+ * What home calls a voice note's kind, in home's order (paulgsc/server
+ * `voice_repo::Of`). www's `VOICE_OFS` is held to it by a test.
+ */
+export const TAKE_OFS = [
+  "reflection",
+  "jobs",
+  "scene",
+  "game",
+  "studio",
+  "soundbite",
+  "lens",
+  "leetype",
+  "rust-round",
+  "interview",
+] as const
+
+export type TakeOf = (typeof TAKE_OFS)[number]
+
+export const isTakeOf = (value: unknown): value is TakeOf =>
+  TAKE_OFS.some((of) => of === value)
+
+/** The kinds a port names, each its own compartment: every kind but Studio's. */
+export type OtherOf = Exclude<TakeOf, "studio">
+
+/** A compartment for each kind but Studio's, by what home calls it. */
+export const KIND_OF = {
+  reflection: "reflection",
+  jobs: "jobs",
+  scene: "drama",
+  game: "bite",
+  soundbite: "soundbite",
+  lens: "lens",
+  leetype: "leetype",
+  "rust-round": "round",
+  interview: "interview",
+} as const satisfies Record<OtherOf, string>
+
+/** A compartment named by a port, or `other` for a kind this phone doesn't know. */
+export type PortKind = (typeof KIND_OF)[OtherOf] | "other"
+
+/**
+ * What a take is about, that takes of its kind share and can be filtered
+ * and sorted by (a game, a week, a session file): `key` is what home was
+ * told, `label` says it in the person's words.
+ */
+export type TakeTopic = { readonly key: string; readonly label: string }
+
+/**
+ * What a take of a port's kind is about: its topic, if it has one, and the
+ * rest of its about line, each part already in the person's words.
+ */
+export type PortAbout = {
+  readonly kind: PortKind
+  readonly topic: TakeTopic | null
+  readonly parts: ReadonlyArray<string>
+}
+
+/** What a build can name that a take's ref only points at. Each is null when it can't. */
+export type TakeNames = {
+  /** A game, by ESPN's id: "49ers vs Rams". */
+  readonly game: (id: string) => string | null
+  /** A game-day scenario, by its id: "Fourth down". */
+  readonly scenario: (id: string) => string | null
+  /** An interview week's question, by the week and the question's id. */
+  readonly question: (week: string, question: string) => string | null
+}
+
+export const NO_NAMES: TakeNames = {
+  game: () => null,
+  scenario: () => null,
+  question: () => null,
+}
+
+/** What home was told of a take, as a port reads it. */
+export type TakeTold = {
+  readonly ref: string
+  readonly fields?: Readonly<Record<string, string>> | undefined
+}
+
+/** The words a port says that aren't data: `./words`' `ABOUT_WORDS`. */
+export type AboutPortWords = {
+  readonly week: (n: number) => string
+  readonly read: string
+  readonly gameOn: (day: string) => string
+  readonly aGame: string
+  readonly soundbiteFrom: (source: string) => string
+}
+
+/** One port: what a take of its kind is about. */
+export type AboutPort = (
+  told: TakeTold,
+  names: TakeNames,
+  words: AboutPortWords
+) => PortAbout
+
+/** A week's id as the weeks name it (`2026-w46`), or null. */
+const WEEK = /^\d{4}-w(\d{1,2})$/
+
+function weekTopic(
+  id: string | undefined,
+  words: AboutPortWords
+): TakeTopic | null {
+  if (id === undefined) return null
+  const n = WEEK.exec(id)?.[1]
+  return n === undefined ? null : { key: id, label: words.week(Number(n)) }
+}
+
+const present = (
+  parts: ReadonlyArray<string | null | undefined>
+): Array<string> =>
+  parts.flatMap((part) =>
+    part === null || part === undefined || part.trim() === "" ? [] : [part]
+  )
+
+/** The day an ISO time falls on, on this phone's calendar; null if it isn't one. */
+function dayAtOrNull(iso: string | undefined): string | null {
+  if (iso === undefined) return null
+  const at = new Date(iso)
+  return Number.isNaN(at.getTime()) ? null : formatDay(dayOf(at))
+}
+
+/** A ref's words: `-` and `_` read as spaces, as `refOf` wrote them. */
+const spoken = (ref: string): string => ref.replace(/[-_]+/g, " ").trim()
+
+/**
+ * Each kind's port. A bite: its game (by name, else the day it started),
+ * the clock and situation shown then, and the scenario it was said on. A
+ * week's take: its week and what it answers. The rest: what their ref says.
+ */
+export const ABOUT_PORTS: Readonly<Record<OtherOf, AboutPort>> = {
+  reflection: () => ({ kind: "reflection", topic: null, parts: [] }),
+  jobs: ({ ref }) => {
+    const [day, pick] = ref.split(":")
+    const named = pick !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(day ?? "")
+    return {
+      kind: "jobs",
+      topic: named && day !== undefined ? { key: day, label: day } : null,
+      parts: present([named ? spoken(pick) : spoken(ref)]),
+    }
+  },
+  scene: () => ({ kind: "drama", topic: null, parts: [] }),
+  game: ({ ref, fields = {} }, names, words) => {
+    const day = dayAtOrNull(fields.started)
+    const label =
+      names.game(ref) ?? (day === null ? words.aGame : words.gameOn(day))
+    const clock = fields.strip?.split(" · ")[0]
+    const scenario =
+      fields.scenario === undefined ? null : names.scenario(fields.scenario)
+    return {
+      kind: "bite",
+      topic: { key: ref, label },
+      parts: present([clock, scenario]),
+    }
+  },
+  soundbite: ({ ref }, _names, words) => ({
+    kind: "soundbite",
+    topic: null,
+    parts: [words.soundbiteFrom(ref)],
+  }),
+  lens: ({ ref }) => ({ kind: "lens", topic: null, parts: [spoken(ref)] }),
+  leetype: ({ ref }) => {
+    const [file, screen] = ref.split(":")
+    return {
+      kind: "leetype",
+      topic:
+        file === undefined || file === ""
+          ? null
+          : { key: file, label: spoken(file) },
+      parts: present([screen === undefined ? null : spoken(screen)]),
+    }
+  },
+  "rust-round": ({ ref }, _names, words) => {
+    const [first, second] = ref.split(":")
+    const week = weekTopic(first, words)
+    if (week !== null) {
+      return { kind: "round", topic: week, parts: present([second]) }
+    }
+    return {
+      kind: "round",
+      topic: first === undefined ? null : { key: first, label: spoken(first) },
+      parts: present([second === undefined ? null : spoken(second)]),
+    }
+  },
+  interview: ({ ref }, names, words) => {
+    const [week, second, third] = ref.split(":")
+    const topic = weekTopic(week, words)
+    if (second === "read") {
+      return {
+        kind: "interview",
+        topic,
+        parts: present([
+          words.read,
+          third === undefined ? null : spoken(third),
+        ]),
+      }
+    }
+    const question =
+      week === undefined || second === undefined
+        ? null
+        : (names.question(week, second) ?? spoken(second))
+    return { kind: "interview", topic, parts: present([question]) }
+  },
+}
+
+/** What a take of a kind this phone doesn't know is about: nothing more than its kind. */
+export const OTHER_ABOUT: PortAbout = { kind: "other", topic: null, parts: [] }
+
+/**
+ * What a take is about, from what home was told of it: Studio's by its ref
+ * (`studio`), every other kind through its port, and a kind this phone
+ * doesn't know as `other`. A home before TAKES20 says no `of`: its takes are
+ * all Studio's.
+ */
+export function portAbout(
+  of: TakeOf | "unknown",
+  told: TakeTold,
+  names: TakeNames,
+  words: AboutPortWords
+): PortAbout | null {
+  if (of === "studio") return null
+  if (of === "unknown") return OTHER_ABOUT
+  return ABOUT_PORTS[of](told, names, words)
+}

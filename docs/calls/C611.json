@@ -1,0 +1,18 @@
+{
+  "id": "C611",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/ui/soundbites/src/lib/library/kinds.ts",
+    "some-ui:packages/ui/soundbites/src/lib/library/words.ts"
+  ],
+  "chose": "Each kind's about line is built on the phone from what home was told (ref and fields) through one port per kind: a bite says its game (by home's or the build's name, else \"A game on <day>\"), the clock part of its strip and its scenario's name; a week's take says \"Week N\" and its question or ticket; the rest say their ref in words. What a take is about that others share (a game, a week, a session file) is its topic, the key of the about filter and the by-what-it's-about sort.",
+  "options": [
+    "ports on the phone over ref and fields",
+    "home's read sends a ready-made about line per take",
+    "only home's read names a take; the phone shows the ref"
+  ],
+  "gray": "The words on every row are what the owner reads to find a take again, and whether the phone or home words them is not settled by any check or decision.",
+  "undo": "Edit ABOUT_PORTS in kinds.ts; a home about can take over in aboutWith in components/take-library.",
+  "refs": ["#3219", "#3029"]
+}
