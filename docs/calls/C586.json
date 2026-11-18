@@ -1,0 +1,15 @@
+{
+  "id": "C586",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": ["some-ui:docs/takes-to-issues.md"],
+  "chose": "The owner sees and edits the issue's draft on the phone before home sends it: a title, what home heard as the body, then the take's context and a marker line; home's LAN address, the audio and anything the owner removed from the draft never reach GitHub.",
+  "options": [
+    "an editable draft the owner sends",
+    "home files at once from what it heard, unseen",
+    "home files only the context, never what was heard"
+  ],
+  "gray": "The issues are public and the words are the owner's spoken ones; no check or earlier decision says how much of a take is published or whether the owner reviews it first.",
+  "undo": "Drop the sheet and have the filer build the body itself; nothing stored depends on the sheet beyond take_issue_request's title and body.",
+  "refs": ["#3029", "#3035", "#2973"]
+}

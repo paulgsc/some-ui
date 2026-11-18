@@ -1,0 +1,18 @@
+{
+  "id": "C589",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": [
+    "some-ui:docs/takes-to-issues.md",
+    "some-ui:packages/ui/soundbites/src/lib/library/words.ts"
+  ],
+  "chose": "A take's card says: Home is filing this; Filed as #n · Waiting for a session; Being worked in PR #m; Done (in PR #m); Closed without a change; Home can't see it any more. A closed issue's take is archived: it folds under the rest on Takes with issues, as canned takes do, and is never removed.",
+  "options": [
+    "these words and a fold",
+    "a separate Archived page",
+    "closed takes leave Takes with issues"
+  ],
+  "gray": "GitHub has no archive for issues, so what the owner called archived has to be drawn from closed; the words are on the owner's screen and no table settles them yet.",
+  "undo": "Edit the words table and the page's grouping; nothing stored names them.",
+  "refs": ["#3029", "#3035", "#2973"]
+}

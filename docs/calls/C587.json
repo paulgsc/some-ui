@@ -1,0 +1,16 @@
+{
+  "id": "C587",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": ["some-ui:docs/takes-to-issues.md"],
+  "chose": "Home learns each issue's status by polling, every 15 minutes, one conditional list per repository of issues labelled from-studio updated since its last pass, with the same token it files with; a pull request's link is read from the timeline only for an issue that changed.",
+  "options": [
+    "a conditional list per repository, every 15 minutes, with the token",
+    "a GET per issue",
+    "a webhook relayed through the mailbox",
+    "the phone reads the public issue itself"
+  ],
+  "gray": "Home can't receive a webhook on the LAN, and the owner named no freshness; the interval and the request shape set how soon a take's status changes on the screen.",
+  "undo": "Change the interval or the request in the poller; the state rows it appends don't depend on how they were read.",
+  "refs": ["#3029", "#3035", "#2973"]
+}
