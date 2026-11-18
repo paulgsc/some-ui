@@ -1,0 +1,10 @@
+{
+  "id": "C592",
+  "made": "2026-11-18",
+  "by": "owner",
+  "paths": ["some-ui:docs/takes-to-issues.md"],
+  "chose": "The issue's draft starts empty apart from what the take was for (its kind, episode or subject, and moment); nothing the owner said aloud is published unless they type it. Owner, verbatim: \"start empty for 3201\".",
+  "undo": "Prefill the draft's title and body from what home heard in the sheet (TAKES8); nothing stored changes.",
+  "refs": ["#3201", "#3029"],
+  "moves": "C586"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "C591",
+  "made": "2026-11-18",
+  "by": "owner",
+  "paths": ["some-ui:docs/takes-to-issues.md"],
+  "chose": "The repository a take's issue goes to is picked in the draft each time, from the repositories the app is installed on; there are no defaults per kind, and an answer to an ask still goes to the ask (C588). Owner, verbatim: \"setting the repo is part of the flow to trigger issues create, so that would be set then\".",
+  "undo": "Add a default per kind to the draft's picker in the sheet (TAKES8); home's filer is unchanged.",
+  "refs": ["#3200", "#3029"]
+}

@@ -106,41 +106,32 @@ with the take (section 5), so nothing is lost and nothing is filed twice.
 
 Home needs to create issues, add labels at creation, comment (an ask's answer, section 3),
 read issue state, and read which pull requests mention an issue (section 7). On GitHub that
-is **Issues: read and write**, **Pull requests: read**, and **Metadata: read** (which every
-token carries), on the repositories home files into, and nothing else: no contents, no
+is **Issues: read and write**, **Pull requests: read**, and **Metadata: read**, on the
+repositories home files into, and nothing else: no contents, no
 writes to pull requests, no workflows, no administration.
 
-Two forms hold that scope; the owner chooses (ask, below):
+**Home files as its own GitHub App** (the owner's call, C590, #3199: "go with the GitHub
+App"). The owner creates the app with exactly those permissions and no webhook, and
+installs it on the repositories home may file into. Its issues read as the app's
+("… [bot]"), apart from the owner's. The app's ID, its installation's ID and its private
+key live in `deploy/home/file_host.sops.env` beside `MAILBOX_TOKEN`, encrypted to the
+owner's key; only the owner can add them, since only they can encrypt with sops. Home
+mints a one-hour installation token from them when it needs one. Nothing expires on a
+date, so there is no expiry to warn about.
 
-- **A fine-grained personal access token**, owned by the owner, limited to the named
-  repositories with those permissions. The issues read as the owner's own, which they
-  are. It has an expiry the owner sets, so home says how long it has left.
-- **A GitHub App** installed on those repositories with the same permissions. Home holds
-  its private key and mints an hour-long token for each pass. The issues read as the app's
-  ("… [bot]"), apart from the owner's. More set-up, no expiry.
-
-Either way the secret lives in `deploy/home/file_host.sops.env` beside `MAILBOX_TOKEN`
-(the token, or the app's id and key file), encrypted to the owner's key. Only the owner can
-add it, since only they can encrypt with sops. Home's config treats its absence as "filing
-is off": the phone then withdraws the "Make it an issue" control and says why, in the
-person's terms ("Home can't file issues yet"). The token is never sent to the phone, never
-logged (`redacted.rs`), and never reaches the mailbox.
+Home's config treats their absence as "filing is off": the phone then withdraws the "Make
+it an issue" control and says why, in the person's terms ("Home can't file issues yet").
+The key and the tokens are never sent to the phone, never logged (`redacted.rs`), and never
+reach the mailbox.
 
 ### 3. Which repository, and which labels
 
-Each take kind has a default repository, and the draft lets the owner pick another from
-the repositories the credential covers. The proposed defaults (ask, below):
-
-| Take for                             | Files into                                                      | Why                                    |
-| ------------------------------------ | --------------------------------------------------------------- | -------------------------------------- |
-| A note on an episode, on the video   | some-ui                                                         | templates and fill routines live there |
-| A note on an episode, on the content | the repository the content is about; some-ui if unsure          | #3035's second kind                    |
-| A scene                              | some-ui                                                         | Studio and the Build Journal           |
-| An idea                              | some-ui                                                         | Studio                                 |
-| An answer to an ask                  | **a comment on the ask itself**, in the ask's repository (C588) |                                        |
-| Rust Rounds                          | some-ui                                                         | the Rust Rounds feed and essay         |
-| An interview week                    | some-ui                                                         | the interview feed                     |
-| Recorded here                        | some-ui                                                         |                                        |
+The owner picks the repository in the draft, each time, from the repositories the app is
+installed on (the owner's call, C591, #3200: "setting the repo is part of the flow to
+trigger issues create"). There are no defaults per kind, and which repositories home may
+file into is which the owner installs the app on. The one exception is an answer to an
+ask: it goes to the ask itself, in the ask's repository (C588), and the draft says so
+instead of offering a picker.
 
 **An ask's answer is a comment on the ask, not a new issue (C588).** The ask is already the
 issue the answer belongs to, and the session that acts on it reads it there
@@ -158,10 +149,12 @@ by home at runtime.
 The owner sees the issue before it exists. "Make it an issue" opens a sheet on the phone
 with a draft the owner can edit and then sends:
 
-- **Title:** the first sentence of what home heard, cut to 80 characters, or what the owner
-  types.
-- **Body:** what home heard, as the owner left it on the sheet. Then the context, from the
-  same join Takes already makes (`take-about`):
+The draft starts empty apart from what the take was for (the owner's call, C592, #3201:
+"start empty"). Nothing the owner said aloud is published unless they type it.
+
+- **Title:** what the owner types.
+- **Body:** what the owner types. Then the context, filled in by home from the same join
+  Takes already makes (`take-about`):
   - what the take was for, in the kind's own words: "A note on the call, week of Nov 6, at
     3:12 (Pacing, The voice)"; "Scene 4 of _Home deploy, part 1_"; "An answer to #2545";
     "Rust Rounds, 2026, week 46";
@@ -180,12 +173,9 @@ with a draft the owner can edit and then sends:
 Never sent: the audio, the move's comment, and anything about another take. Since some-ui
 and paulgsc/server are public, what the owner sends is published. Part E never quoted what
 home heard (ROUTINE.md's C2 rule, #2670 decision 11: "never quote the transcript"), and had
-a model write the issue in its own words. Home has no such model, so the body is the owner's
-words or nothing. Whether the draft starts from what home heard, which would replace that
-rule, or starts empty is the owner's call (#3201). The design works either way.
-
-A take home hasn't heard yet can still be sent: the draft says "Home hasn't heard this take
-yet" in place of the words, and the owner types the title.
+a model write the issue in its own words. Home has no such model, and the owner chose an
+empty draft, so that rule holds: the body is only what the owner types. A take home hasn't
+heard yet can be sent the same way.
 
 ### 5. Home keeps the issue with the take (append-only)
 
@@ -235,8 +225,10 @@ takes one take at a time. For a take:
    made, but only once the attempt is at least ten minutes old, since GitHub can finish a
    create after home stopped waiting for its answer; until then it stays unsettled and the
    card still says "Home is filing this". If the repository is gone (`404`), or the ask is
-   (`404`, or `410` on its comments: a deleted issue), the attempt is not made: anything
-   made there is gone with it. If the lookup can't be made for any other reason (a `410` on
+   (`404` on its comments, or `410` there while the repository's issue list still answers:
+   a deleted issue), the attempt is not made: anything made there is gone with it. A `410`
+   on the comments while the issue list also answers `410` means issues are turned off,
+   which takes the path below. If the lookup can't be made for any other reason (a `410` on
    the repository's issue list, which means issues are turned off and can come back,
    included), the attempt stays unsettled, no new attempt is made for
    that take, and the card says "Home is checking whether GitHub made this". Counted from
@@ -244,8 +236,9 @@ takes one take at a time. For a take:
    (`TakeIssueUnsettled`), and the card offers "Check on GitHub" (the repository's issues)
    and "It wasn't made, send again". That records the owner's word as the attempt's
    outcome, sets aside the send it was for (home files only a send newer than it), and
-   opens the draft; nothing is filed until the owner sends it. The first attempt after an
-   owner-settled one runs this step's lookup once more before it creates. If the marker
+   opens the draft; nothing is filed until the owner sends it. After an owner-settled
+   attempt, each new attempt runs this step's lookup once more before it creates, until one
+   reaches GitHub (made, refused, or its answer lost). If the marker
    turns up, a later row records the attempt as made after all and the take is paired; the
    newest outcome row is the one read. If that lookup can't be made either, the new attempt
    goes ahead: the owner has already accepted that risk (TF2's tolerance). Until the owner
@@ -303,14 +296,14 @@ Two reads by issue, beside the lists:
   followed, and the new address is kept in a `take_issue_state` row (its `now_at`), which
   later reads and the card use. A moved issue's status then comes only from this daily
   read unless home also files into its new repository, so it can lag by a day; the pairing itself is never rewritten. A move to a
-  repository the token can't read, and a `404` or `410`, read as "Home can't see it any
+  repository the app can't read, and a `404` or `410`, read as "Home can't see it any
   more".
 
 A quiet pass is one to three `304`s per repository, which GitHub doesn't count against the
 rate limit for a request with a token. The daily reads add one `304` per paired issue a
 day, and the closing read one request per closure.
 
-Issues are public, so the poll could go without the token, but GitHub allows only 60
+Issues are public, so the poll could go without the app's token, but GitHub allows only 60
 unauthenticated requests an hour from an address. With the token it has 5,000, and the
 token already reads issues, so the poll uses it.
 
@@ -318,17 +311,18 @@ token already reads issues, so the poll uses it.
 
 **On a take's card** (`TakeLibrary`, beside the place and station pills):
 
-| The issue                                                      | The card says                                                                               |
-| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| waiting on the owner's draft (none yet, or set aside)          | Write its issue                                                                             |
-| asked, not yet filed                                           | Home is filing this                                                                         |
-| an attempt home can't settle yet                               | Home is checking whether GitHub made this                                                   |
-| that, after 24 hours                                           | Home couldn't check whether GitHub made this · Check on GitHub · It wasn't made, send again |
-| open, no pull request yet                                      | Filed as #n · Waiting for a session                                                         |
-| open, a pull request references it                             | Filed as #n · Being worked in PR #m                                                         |
-| closed as completed                                            | Filed as #n · Done (in PR #m, when one closed it)                                           |
-| closed as not planned or duplicate                             | Filed as #n · Closed without a change                                                       |
-| home can't see it any more (deleted, or the token lost access) | Filed as #n · Home can't see it any more                                                    |
+| The issue                                                    | The card says                                                                               |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| waiting on the owner's draft (none yet, or set aside)        | Write its issue                                                                             |
+| asked, not yet filed                                         | Home is filing this                                                                         |
+| not filed after 24 hours of trying                           | Home hasn't been able to file this since <when>                                             |
+| an attempt home can't settle yet                             | Home is checking whether GitHub made this                                                   |
+| that, after 24 hours                                         | Home couldn't check whether GitHub made this · Check on GitHub · It wasn't made, send again |
+| open, no pull request yet                                    | Filed as #n · Waiting for a session                                                         |
+| open, a pull request references it                           | Filed as #n · Being worked in PR #m                                                         |
+| closed as completed                                          | Filed as #n · Done (in PR #m, when one closed it)                                           |
+| closed as not planned or duplicate                           | Filed as #n · Closed without a change                                                       |
+| home can't see it any more (deleted, or the app lost access) | Filed as #n · Home can't see it any more                                                    |
 
 The words live in one pure table with its test (`packages/ui/soundbites/src/lib/library/words.ts`
 for the card), and no state name, status code or "open/closed" reaches the screen (CLAUDE.md,
@@ -358,18 +352,17 @@ send, shows "Write its issue": home files nothing for it until the owner sends a
   stays, home retries with backoff within one budget (RE2), and the card says "Home is
   filing this". After 24 hours it says "Home hasn't been able to file this since <when>",
   and an alert reaches the owner.
-- **GitHub refuses** (`401` the token expired or was revoked; `403` no access to that
+- **GitHub refuses** (`401` the app's key was revoked; `403` no access to that
   repository, told apart from GitHub's rate limits, which answer `403` or `429` and are
-  waited out (until `x-ratelimit-reset` when that is given, else as `retry-after` says,
-  else at least a minute) when any of `retry-after`,
+  waited out in GitHub's order (as `retry-after` says when it is
+  given; else, when `x-ratelimit-remaining` is `0`, until `x-ratelimit-reset`; else at least
+  a minute, longer on each repeat) when any of `retry-after`,
   `x-ratelimit-remaining: 0` or a body naming the secondary rate limit is present; `404` or `410` the repository is gone or has issues off; `422` a label
   missing). Home records the refusal and doesn't retry it on its own. The card says what is
-  wrong in the person's terms ("Home's key to GitHub has run out"; "Home isn't allowed to
+  wrong in the person's terms ("Home's key to GitHub no longer works"; "Home isn't allowed to
   file in server"), and offers "Try again" once the owner has fixed it, or "Send it
   elsewhere", which opens the draft again. Either is a new send for the same move
   (section 1). Each refusal is counted and alerted.
-- **The token nears its expiry** (personal token only): home says so two weeks ahead, in
-  the alert and on Settings' home status.
 - **Filing is off** (no credential on home): the control is withdrawn, with "Home can't file
   issues yet".
 
@@ -420,11 +413,11 @@ takes read. Its objectives:
 
 | ID  | Kind      | Requirement                                                                                                                                                                                                                                                          |
 | --- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| TF1 | OA2       | Every send is filed, refused with its reason, waits on the owner's draft ("Write its issue"), or is shown as overdue after 24 hours, with an alert (`TakeIssueUnsettled` for an attempt home can't settle).                                                          |
+| TF1 | OA2       | Every send is filed, refused with its reason, waits on the owner's draft ("Write its issue"), or is shown as overdue after 24 hours, with an alert (`TakeIssueOverdue` for a send not filed, `TakeIssueUnsettled` for an attempt home can't settle).                 |
 | TF2 | OA3       | "Filed as #n" shows only once `take_issue` holds it; a retry, a lost answer or a send elsewhere makes at most one issue or comment (the attempt record, the marker, and one pairing per take). Tolerance: the owner's own "It wasn't made" after 24 hours unchecked. |
 | TF3 | OA5       | A take moved off "Make it an issue" before an attempt's check is not filed by that attempt or any later one.                                                                                                                                                         |
 | TF4 | OA6       | A poller or filer that stopped reads apart from a quiet one: each pass's start is a metric, and a missed hour alerts.                                                                                                                                                |
-| TF5 | OA8       | Every refusal is counted, named and alerted (`TakeIssueRefused`, `TakeIssueTokenExpiring`); the token never appears in a record.                                                                                                                                     |
+| TF5 | OA8       | Every refusal is counted, named and alerted (`TakeIssueRefused`); the app's key and tokens never appear in a record.                                                                                                                                                 |
 | TF6 | RE1       | Every GitHub request is counted by operation (file, settle, poll, pulls, closer, daily read), with GitHub's own rate-limit headers kept.                                                                                                                             |
 | TF7 | RE2, RE10 | Filing attempts share one budget per request; a backlog of refused requests never delays a new one.                                                                                                                                                                  |
 | TF8 | RE7       | An idle pass is at most three conditional lists per repository, each a `304`; the daily read adds one conditional request per paired issue.                                                                                                                          |
@@ -439,20 +432,16 @@ owner. The new route module is placed in `take-filed` before the route snapshot 
 (CLAUDE.md, "Operational assurance"), and the new tables are placed only once their server
 PR is ready to merge.
 
-## What waits on the owner
+## What the owner decided
 
-Filed as `ask` issues (`docs/asks.md`):
+The three asks are answered and closed (2026-11-18):
 
-- #3199: who owns home's GitHub credential, and in which form: a fine-grained token of theirs, or a
-  GitHub App.
-- #3200: which repositories home may file into (this is the credential's scope), and each kind's
-  default.
-- #3201: whether an issue's draft starts from what home heard, or starts empty, given the issue is
-  public.
+- #3199 (C590): home files as its own GitHub App.
+- #3200 (C591): the repository is picked in the draft, from the app's installed
+  repositories.
+- #3201 (C592): the draft starts empty apart from what the take was for.
 
-Until they answer, the stories that need only the shape (the tables, the phone's sheet and
-page behind a switch that stays off) can go ahead; the filer stays off until a credential is
-on home.
+The filer stays off until the app's key is on home.
 
 ## Stories
 
@@ -485,3 +474,10 @@ stays with #3035.
 - **C588:** an answer to an ask is a comment on the ask, not a new issue. Moves C297, whose
   other half, the routine filing pickups in some-ui, C585 replaces.
 - **C589:** the status words on a take's card, and "archived" as a closed issue's fold.
+
+The owner's (2026-11-18):
+
+- **C590:** home files as its own GitHub App.
+- **C591:** the repository is picked in the draft, from the app's installed repositories.
+- **C592:** the draft starts empty apart from what the take was for. Moves C586, whose
+  draft started from what home heard.
