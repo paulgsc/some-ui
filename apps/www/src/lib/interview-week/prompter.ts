@@ -19,7 +19,10 @@
  *   one starting after the last ended, reads from the first word.
  * - **A gap between reads never moves it.** The time since the last read
  *   counts only up to `GAP_MS`, so a phone that slept mid-take doesn't jump.
- * - **It stops at the end**, and stays on the last line.
+ * - **It stops at the end**, and stays on the last line, holding.
+ * - **A hand can always move the script.** The band scrolls an ordinary
+ *   scroller, so a take whose level isn't measured (no Web Audio, or one
+ *   that never started) still reads, by hand, as the script did before.
  */
 import { assertNever } from "@some-ui/core-utils"
 import { HEARD_FLOOR } from "@some-ui/voice-capture"
@@ -142,7 +145,11 @@ export function bandOf(
     if (state.words < before + words) break
     before += words
   }
-  const moving = state.heardAt !== null && state.at - state.heardAt <= HOLD_MS
+  // At the last word there is nowhere to move: the band holds.
+  const moving =
+    state.words < totalOf(lines) &&
+    state.heardAt !== null &&
+    state.at - state.heardAt <= HOLD_MS
   return {
     line,
     state: state.paused ? "paused" : moving ? "moving" : "holding",

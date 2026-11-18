@@ -104,7 +104,10 @@ describe("the teleprompter band's step (IW9)", () => {
   it("stops at the script's last word, on the last line", () => {
     const state = run(reads(0, 60_000, LOUD))
     expect(wordsOf(state)).toBe(TOTAL)
-    expect(bandOf(state, LINE, LINES).line).toBe(LINES.length - 1)
+    expect(bandOf(state, LINE, LINES)).toEqual({
+      line: LINES.length - 1,
+      state: "holding",
+    })
   })
 
   it("starts each take from the top: another line, or after one ended", () => {

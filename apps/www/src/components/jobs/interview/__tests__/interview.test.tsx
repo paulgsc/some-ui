@@ -141,10 +141,18 @@ describe("the interview week's pages on the phone (IW8)", () => {
     await settle(2_000)
     expect(document.querySelector('[data-script="epic-2931"]')).toBe(script)
     // The band moves while the take hears you, and Pause holds it (IW9).
-    screen.getByText(WORDS.band.moving)
+    const lit = (): string | null | undefined =>
+      script?.querySelector('[aria-current="true"]')?.getAttribute("data-line")
+    expect(lit()).toBe("0")
+    await settle(3_000)
+    expect(lit()).not.toBe("0")
     fireEvent.click(screen.getByRole("button", { name: WORDS.band.pause }))
     screen.getByText(WORDS.band.paused)
+    const held = lit()
+    await settle(3_000)
+    expect(lit()).toBe(held)
     fireEvent.click(screen.getByRole("button", { name: WORDS.band.goOn }))
+    screen.getByRole("button", { name: WORDS.band.pause })
     fireEvent.click(takeButton(card))
     await settle()
 

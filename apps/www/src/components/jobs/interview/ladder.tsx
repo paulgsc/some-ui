@@ -309,22 +309,26 @@ export const Script = ({
   const reading = take.kind === "recording" && snapshot.answers === answers
   const level = reading ? take.level : 0
   const windowRef = useRef<HTMLDivElement>(null)
-  const trackRef = useRef<HTMLDivElement>(null)
-  // The lit line sits at the band: a measure of laid-out lines, so it is
-  // read after layout, and again when the window changes size.
+  // What the lines say, for the effect: a new array of the same lines each
+  // render moves nothing.
+  const text = lines.join("\n")
+  // The lit line is scrolled to the band: a measure of laid-out lines, so it
+  // is read after layout, and again when the window changes size. The window
+  // is an ordinary scroller, so a hand on the script can always move it too,
+  // whether or not the microphone's level is measured.
   useLayoutEffect(() => {
     const view = windowRef.current
-    const track = trackRef.current
-    if (view === null || track === null) return undefined
+    if (view === null) return undefined
     const place = (): void => {
-      const line = track.children.item(band.line)
-      const top = line instanceof HTMLElement ? line.offsetTop : 0
-      track.style.transform = `translateY(${view.clientHeight * BAND_AT - top}px)`
+      const line = view.querySelector(`[data-line="${band.line}"]`)
+      if (!(line instanceof HTMLElement)) return
+      // Eased by the scroller's own CSS, and not where motion is reduced.
+      view.scrollTop = line.offsetTop - view.clientHeight * BAND_AT
     }
     place()
     window.addEventListener("resize", place)
     return (): void => window.removeEventListener("resize", place)
-  }, [band.line, lines])
+  }, [band.line, text])
   return (
     <section
       aria-label={WORDS.script}
@@ -335,34 +339,36 @@ export const Script = ({
         <span>{WORDS.script}</span>
         {reading && <span>{WORDS.band.time(take.elapsedMs, seconds)}</span>}
       </p>
-      <div ref={windowRef} className="relative h-[45vh] overflow-hidden">
-        <div
-          aria-hidden
-          className="bg-brand/20 pointer-events-none absolute inset-x-2 top-[30%] h-[4.6rem] -translate-y-2.5 rounded-2xl"
-        />
-        <div
-          ref={trackRef}
-          className="absolute inset-x-0 top-0 flex flex-col gap-3.5 px-5 transition-transform duration-500 ease-out motion-reduce:transition-none"
-        >
-          {lines.map((line, i) => (
-            <p
-              // A script can say a phrase twice; its place is its key.
-              // eslint-disable-next-line react/no-array-index-key
-              key={i}
-              aria-current={i === band.line ? "true" : undefined}
-              className={cn(
-                "text-2xl leading-snug font-bold transition-opacity duration-300 motion-reduce:transition-none",
-                i === band.line
-                  ? "opacity-100"
-                  : i === band.line + 1
-                    ? "opacity-45"
-                    : "opacity-20"
-              )}
-            >
-              {line}
-            </p>
-          ))}
-        </div>
+      <div
+        ref={windowRef}
+        data-scroll-intent
+        className={
+          /* scroll-intent: the band scrolls the script as it is read, and a hand can scroll it too, while the take records under it (#2936, IW9) */
+          "relative flex h-[45vh] scroll-smooth flex-col gap-3.5 overflow-y-auto px-5 motion-reduce:scroll-auto"
+        }
+      >
+        {/* Room above the first line and below the last, so each can sit at the band. */}
+        <div aria-hidden className="h-[30%] shrink-0" />
+        {lines.map((line, i) => (
+          <p
+            // A script can say a phrase twice; its place is its key.
+            // eslint-disable-next-line react/no-array-index-key
+            key={i}
+            data-line={i}
+            aria-current={i === band.line ? "true" : undefined}
+            className={cn(
+              "-mx-3 rounded-2xl px-3 py-1 text-2xl leading-snug font-bold transition-[opacity,background-color] duration-300 motion-reduce:transition-none",
+              i === band.line
+                ? "bg-brand/20 opacity-100"
+                : i === band.line + 1
+                  ? "opacity-45"
+                  : "opacity-20"
+            )}
+          >
+            {line}
+          </p>
+        ))}
+        <div aria-hidden className="h-[70%] shrink-0" />
       </div>
       <div className="flex min-h-11 items-center gap-3 px-4">
         <span aria-hidden className="flex h-6 items-end gap-0.5">
