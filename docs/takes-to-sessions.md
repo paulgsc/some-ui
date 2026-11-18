@@ -229,20 +229,20 @@ is ready to merge (CLAUDE.md, "Operational assurance").
 
 ## Stories
 
-Sub-issues of #3029. TAKES12 (#3208), TAKES13 (#3210) and TAKES14 (#3211) stay; the rest are
-proposed here, in order:
+Sub-issues of #3029. TAKES12 (#3208), TAKES13 (#3210) and TAKES14 (#3211) stay; the others were filed
+from this design. In order:
 
 1. **TAKES12, some-ui half** (#3208): Part E out, and the Reflections run's record showing it.
    Before anything in step 3.
-2. **The ledger** (some-ui): the `take-found` family and its process.
-3. **Bring to a session** (some-ui): the take ID, the block (a pure module with its test), copy
+2. **TAKES15, the ledger** (#3214, some-ui): the `take-found` family and its process.
+3. **TAKES16, Bring to a session** (#3215, some-ui): the take ID, the block (a pure module with its test), copy
    and share, the move to Brought, the ID on the card.
-4. **The "From take" line** (some-ui): the coordinate skill tells a session that files an epic or
+4. **TAKES17, the "From take" line** (#3216, some-ui): the coordinate skill tells a session that files an epic or
    story from a pasted take to put the block's line in its body, in its own words otherwise.
-5. **The search pass** (server): the worker, `take_issue_link` and `take_issue_seen`, the move
+5. **TAKES19, the search pass** (#3218, server): the worker, `take_issue_link` and `take_issue_seen`, the move
    to `picked-up`, the takes read carrying each take's links and their state, metrics and the
    alert.
-6. **Find again** (some-ui): status chips in the owner's words, sort, search over every take
+6. **TAKES18, Find again** (#3217, some-ui): status chips in the owner's words, sort, search over every take
    (words, what it's about, its ID), and "Became #n" on the card.
 7. **TAKES12, server half** (#3208): the pickup folders retire.
 8. **TAKES13** (#3210, server) and **TAKES14** (#3211, some-ui): Rust Rounds and interview takes
