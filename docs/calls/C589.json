@@ -6,7 +6,7 @@
     "some-ui:docs/takes-to-sessions.md",
     "some-ui:packages/ui/soundbites/src/lib/library/words.ts"
   ],
-  "chose": "A found take's card says \"Became #n · open\", \"Became #n · done\" or \"Became #n · closed without a change\", and \"Became #n, also in #m\" for a second issue; Captured keeps a \"working on\" mark for cooking; a pull request's progress isn't shown.",
+  "chose": "A found take's card says \"Became #n · open\", \"Became #n · done\" or \"Became #n · closed without a change\", \"also in #m\" or \"also in PR #m\" for further links, and since when when the item no longer matches; Captured keeps a \"working on\" mark for cooking; a set-aside take reads Let go, as canned does; a take at ready-for-pickup that was never copied reads \"Brought to a session · not copied yet\".",
   "options": [
     "these words",
     "show the pull request working on it",

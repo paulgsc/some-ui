@@ -7,7 +7,7 @@
     "server:crates/db/voice/src/conveyor.rs",
     "some-ui:apps/www/src/lib/take-conveyor/words.ts"
   ],
-  "chose": "The owner's four statuses (Captured, Brought to a session, Became #n, Let go) are the conveyor's stations under new words: in the oven and cooking read Captured, \"Bring to a session\" is the move to ready-for-pickup, \"Became #n\" is the move to picked-up home makes when it finds the take's issue, and canned is Let go. This also replaces the routine's filing of pickups (C297).",
+  "chose": "The owner's four statuses (Captured, Brought to a session, Became #n, Let go) are the conveyor's stations under new words: in the oven and cooking read Captured, \"Bring to a session\" is the only move to ready-for-pickup, \"Became #n\" is the move to picked-up home makes when it finds the take's issue, and canned is Let go. Takes on no conveyor (an idea's answer, a set-aside take) read Captured, Let go or Became #n from what home holds. This replaces the routine's filing of pickups (C297) and with it C298, that filing's known limit.",
   "options": [
     "the conveyor's stations, renamed",
     "a new status column beside the conveyor",
@@ -16,5 +16,5 @@
   "gray": "The owner named four statuses but not whether they replace the conveyor's five stations or sit beside them; the owner sees the result on every take.",
   "undo": "Give the statuses a table of their own and restore the station words in apps/www/src/lib/take-conveyor/words.ts; the conveyor's rows are unchanged.",
   "refs": ["#3029", "#3035", "#2973"],
-  "moves": "C298"
+  "moves": "C297"
 }

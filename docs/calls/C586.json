@@ -3,7 +3,7 @@
   "made": "2026-11-18",
   "by": "claude",
   "paths": ["some-ui:docs/takes-to-sessions.md"],
-  "chose": "A take's ID is `tk` and the first ten base-32 characters (a–z, 2–7) of the SHA-256 of its note id, one word to GitHub search and computed alike on the phone and home; \"Bring to a session\" copies (or shares) a plain block of the take's ID, kind, what it's about, when it was said, what home heard and how, and the line `From take <id>` for the session to put in what it files.",
+  "chose": "A take's ID is `tk` and the first ten base-32 characters (a–z, 2–7) of the SHA-256 of its note id, one word to GitHub search and computed alike on the phone and home; \"Bring to a session\" copies, or shares as text, a plain block of the take's ID, kind, what it's about, when it was said, what home heard and how, and the line `From take <id>` for the session to put in what it files.",
   "options": [
     "a derived ten-character ID and this block",
     "the note id itself as the ID",
