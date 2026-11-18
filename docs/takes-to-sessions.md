@@ -171,14 +171,16 @@ GitHub's public search:
   indexed only after it; reading an item twice changes nothing, since rows are written only on
   a difference. In each body it finds the line `From take tk…` and takes the IDs it holds a
   take for. GitHub stems the phrase, so most results lack the line: a normal pass reads one page
-  of each query. The first pass, with nothing seen yet, reads up to search's 1,000-result cap
-  (ten pages a query); it spaces its pages to at most eight a minute and keeps where it got to,
-  so a pass that stops resumes at its next page rather than starting over.
+  of each query. The first pass (no pass has completed yet) reads up to search's 1,000-result
+  cap (ten pages a query); it spaces its pages to at most eight a minute and keeps where it got
+  to, so a pass that stops resumes at its next page rather than starting over. No other pass
+  runs while it does. Where a pass got to and when the last one completed live in a third,
+  one-row table, `take_search_pass`, which is the pass's own state, not a record.
 - **Issues make the move, pull requests add a link.** Only an issue moves a take to Became; a
   pull request that carries the line (often copied from the issue it closes) is kept as a link,
-  whether it is read before the issue or after. A take whose only link is a pull request stays
-  Brought, and its card reads "Brought to a session · in PR #m"; with an issue too, "also in
-  PR #m".
+  whether it is read before the issue or after. A take whose only link is a pull request keeps whatever
+  status it had, with "in PR #m" beside it ("Brought to a session · in PR #m", "Captured · in
+  PR #m", "Let go · in PR #m"); with an issue too, "also in PR #m".
 - **Limits:** unauthenticated search allows 10 requests a minute from an address; home makes
   eight an hour, plus pages. A failed pass (no network, a `403` or `429` rate limit, a `5xx`)
   waits for the next, honouring `retry-after` when given. Only public repositories are seen;
@@ -249,7 +251,7 @@ crosses nothing. Its objectives:
 | TF5 | RE3, RE7 | A pass is two search requests (issues, pull requests) plus a page for each further 100 items updated since an hour before the last pass; the first pass reads at most search's 1,000-result cap. |
 | TF6 | RE9      | Growth: one link row per item (issue or pull request) carrying a take's ID, one seen row per change; nothing deleted but with the take or the account.                                           |
 
-Stores: `server:take_issue_link`, `server:take_issue_seen`. The `routine-to-home` family loses
+Stores: `server:take_issue_link`, `server:take_issue_seen`, `server:take_search_pass`. The `routine-to-home` family loses
 the pickup's objectives as Part E retires, and the mailbox stores' growth lines lose `pickup`
 and `picked`. Each is a narrowing of a promise, so the story that makes it carries an amendment
 naming the owner's decision of 2026-11-18. The new tables are placed only once their server PR
