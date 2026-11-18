@@ -331,7 +331,8 @@ describe("RENDERS_WORDS and what it says of each render", () => {
  * and that home leaves it as it is, and every other row says what it said
  * before. Family: every reason (too-long, too-large, overflow, another,
  * none) × its numbers (both, one, none: a home from before contract epoch
- * 15 sends none, or before server#975 for overflow; and the other reason's)
+ * 15 sends none, or before 16 (server#977) for overflow; and each other
+ * reason's)
  * × every kind of row (each feed, something else) × who failed (recorder,
  * home), each read through the board's own reader.
  */
@@ -466,7 +467,7 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
     expect(other && failedLine(other.row)).toMatch(/videos like it stop at/)
   })
 
-  it("names the scenes that don't fit their frame, and counts the rest (server#975)", () => {
+  it("names the scenes that don't fit their frame, and counts the rest (server#977)", () => {
     const line = (row: Record<string, unknown>): string =>
       failedLine(
         read({
@@ -483,6 +484,9 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
       line({ scenes: ["dive-2", "beside-2", "dive-3"], sceneCount: 5 })
     ).toBe(
       "Some scenes don't fit the frame: dive-2, beside-2, dive-3 and 2 more. Home doesn't try it again as it is."
+    )
+    expect(line({ scenes: ["dive-2", "beside-2"], sceneCount: 2 })).toBe(
+      "Some scenes don't fit the frame: dive-2, beside-2. Home doesn't try it again as it is."
     )
     expect(line({ scenes: ["dive-2"], sceneCount: 1 })).toBe(
       "dive-2 doesn't fit the frame. Home doesn't try it again as it is."
