@@ -16,7 +16,12 @@ export const STATIONS = ["line", "room", "oven", "boxing", "ready"] as const
 export type StationId = (typeof STATIONS)[number]
 
 /** Where a render sits for now beside the line, rather than on it. */
-export type Aside = "counter" | "burnt" | "tooBigForOven" | "tooBigForBox"
+export type Aside =
+  | "counter"
+  | "burnt"
+  | "tooBigForOven"
+  | "tooBigForBox"
+  | "spilledOver"
 
 export const CONVEYOR_WORDS = {
   label: "Where it is",
@@ -32,6 +37,7 @@ export const CONVEYOR_WORDS = {
     burnt: "Burnt",
     tooBigForOven: "Too big for the oven",
     tooBigForBox: "Too big for the box",
+    spilledOver: "Spilled over the pan",
   } satisfies Record<Aside, string>,
   /** What the worker is doing in the oven, where home says. */
   recording: (scene: number, scenes: number): string =>
@@ -94,7 +100,8 @@ export const ROW_TAGS = {
 /**
  * The side track a failed row sits on (C502): one the render policy refused
  * was never burnt, it didn't fit, before the oven (too long) or in the box
- * (too large); any other failure is burnt, as before.
+ * (too large), or its scenes spilled over their frame (C566); any other
+ * failure is burnt, as before.
  */
 export function failedAside(failed: RenderFailed): Aside {
   const refusal = refusalOf(failed)
@@ -105,6 +112,9 @@ export function failedAside(failed: RenderFailed): Aside {
     }
     case "too-large": {
       return "tooBigForBox"
+    }
+    case "overflow": {
+      return "spilledOver"
     }
     default: {
       return assertNever(refusal)

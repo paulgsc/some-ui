@@ -83,6 +83,12 @@ const FailedSchema = EpisodeSchema.extend({
   /** How large a refused video came out, and the cap, in MB. */
   mb: z.number().nonnegative().optional(),
   capMb: z.number().positive().optional(),
+  /**
+   * A video whose scenes don't fit its frame (`overflow`, paulgsc/server#975):
+   * the first of them, at most 12, and how many there are in all.
+   */
+  scenes: z.array(z.string().min(1)).max(12).optional(),
+  sceneCount: z.number().int().positive().optional(),
 })
 
 const ComingSchema = z.object({
@@ -133,9 +139,14 @@ export type Refusal =
       readonly capMinutes: number
     }
   | { readonly kind: "too-large"; readonly mb: number; readonly capMb: number }
+  | {
+      readonly kind: "overflow"
+      readonly scenes: ReadonlyArray<string>
+      readonly sceneCount: number
+    }
 
 export function refusalOf(failed: RenderFailed): Refusal | null {
-  const { reason, minutes, capMinutes, mb, capMb } = failed
+  const { reason, minutes, capMinutes, mb, capMb, scenes, sceneCount } = failed
   if (
     reason === "too-long" &&
     minutes !== undefined &&
@@ -144,6 +155,13 @@ export function refusalOf(failed: RenderFailed): Refusal | null {
     return { kind: "too-long", minutes, capMinutes }
   if (reason === "too-large" && mb !== undefined && capMb !== undefined)
     return { kind: "too-large", mb, capMb }
+  if (
+    reason === "overflow" &&
+    scenes !== undefined &&
+    scenes.length > 0 &&
+    sceneCount !== undefined
+  )
+    return { kind: "overflow", scenes, sceneCount }
   return null
 }
 

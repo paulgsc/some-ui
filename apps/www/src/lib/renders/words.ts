@@ -257,6 +257,13 @@ const REFUSAL_WORDS = {
   },
   tooLarge: (mb: number, capMb: number): string =>
     `Too large to keep: it came out ${largerSaid(mb, capMb)} home keeps a video. Home doesn't try it again as it is.`,
+  /** Scenes too full for their frame, by name, the rest counted. */
+  overflow: (scenes: ReadonlyArray<string>, sceneCount: number): string => {
+    const more = sceneCount - scenes.length
+    const named =
+      more > 0 ? `${scenes.join(", ")} and ${more} more` : scenes.join(", ")
+    return `Doesn't fit the frame: ${named}. Home doesn't try it again as it is.`
+  },
 } as const
 
 function refusalLine(feed: string, refusal: Refusal): string {
@@ -266,6 +273,9 @@ function refusalLine(feed: string, refusal: Refusal): string {
     }
     case "too-large": {
       return REFUSAL_WORDS.tooLarge(refusal.mb, refusal.capMb)
+    }
+    case "overflow": {
+      return REFUSAL_WORDS.overflow(refusal.scenes, refusal.sceneCount)
     }
     default: {
       return assertNever(refusal)
