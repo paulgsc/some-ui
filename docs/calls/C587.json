@@ -3,10 +3,10 @@
   "made": "2026-11-18",
   "by": "claude",
   "paths": ["some-ui:docs/takes-to-issues.md"],
-  "chose": "Home learns each issue's status by polling every 15 minutes, with the same token it files with, at most three conditional requests per repository to fixed URLs (issues labelled from-studio; asks, while a take answers one; open pull requests, while a paired issue is open), reading a closed issue's timeline once for the pull request that closed it.",
+  "chose": "Home learns each issue's status by polling every 15 minutes, with the same token it files with: at most three conditional lists per repository to fixed URLs (issues labelled from-studio; asks, while a take answers one; open pull requests, while a paired issue is open), one conditional read of each paired issue a day (a deleted or moved issue only drops out of a list), and one GraphQL read of each closed issue's ClosedEvent closer.",
   "options": [
-    "at most three conditional lists per repository, every 15 minutes, with the token",
-    "a GET per issue",
+    "lists per repository, a daily read per issue, and a read per closure, with the token",
+    "only a GET per issue, every pass",
     "a webhook relayed through the mailbox",
     "the phone reads the public issue itself"
   ],

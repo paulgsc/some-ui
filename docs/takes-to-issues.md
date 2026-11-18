@@ -84,8 +84,11 @@ Every kind of take reaches the same entrance. Today only `studio` takes that are
 answer and that was not let go of are on the conveyor (server `docs/conveyor.md`,
 invariant 3). That rule lives in the conveyor's queries, not in a CHECK: `holds_take`,
 `at_station` and `in_the_oven` in server `crates/db/voice/src/conveyor.rs`, the library
-read in `takes.rs`, and being let go (`studio_take_held` in `set_aside.rs`), which widens with
-it. Widening it to `rust-round` and `interview` takes, idea answers, and any
+read in `takes.rs`. The let-go rule is already inside those three queries (a `NOT EXISTS`
+on `voice_note_set_aside`, which checks no kind), so it needs no change. The library read
+decides "on the conveyor" through `delete::deletable` (`takes.rs`), which also feeds the
+owner's per-kind delete switch (`delete.rs`, `allows`): widening the library must not widen
+`deletable`, or which kinds can be deleted widens with it. Widening it to `rust-round` and `interview` takes, idea answers, and any
 kind added later is a change to those queries and an amendment to invariant 3; no
 migration. Takes then shows a compartment for each: Rust Rounds and Interview weeks, beside
 the five there are now. A filed take that is later let go keeps its issue: "Takes with
@@ -186,10 +189,11 @@ yet" in place of the words, and the owner types the title.
 
 ### 5. Home keeps the issue with the take (append-only)
 
-Three new tables on home, each append-only (an UPDATE aborts), each leaving with the
+Four new tables on home, each append-only (an UPDATE aborts), each leaving with the
 account and with its take when the owner deletes it for good from My data (whose receipt
 then says the issue link went; the issue itself stays on GitHub):
 
+- `take_issue_attempt`: each attempt and its outcome (section 6).
 - `take_issue_request`: the owner's word. Take, `seq`, the repository chosen, title, body,
   when it was asked.
 - `take_issue`: the pairing. Take, `seq`, `<owner>/<repo>#<n>` (or the ask and the
@@ -203,25 +207,45 @@ newest move is still the request's. That is the move Part E's answer makes today
 
 ### 6. Filing, once
 
-Home's filer is one worker beside the mailbox pass, woken by the move and on a timer. It
-runs one pass at a time (a single-flight lock in the process, as home runs one `file_host`),
-and takes sends one at a time, so two passes never race on one take. `take_issue` holds at
-most one row per take (its key is the take), so a second pairing can't be written.
+GitHub's create is not idempotent, and its answer can be lost (a crash, a timeout, a
+`5xx`) after it has made the issue. So home records each attempt before it makes it, and
+settles every attempt before it makes another for the same take.
 
-1. If the take already has a `take_issue`, create nothing: append the move to `picked-up`
-   if the take is at "Make it an issue", and stop. A take that has an issue but sits at
-   another station (a move that landed while its issue was being made) shows its issue on
-   its card all the same, and "Make it an issue" isn't offered for it again.
-2. List the send's repository's issues labelled `from-studio`, open and closed
-   (`state=all`), created since the take's first send, and look for its marker. Found:
-   record it, with its state, as the take's issue (a crash after an earlier create, the
-   issue perhaps closed since), and go to step 1. This runs before step 3's check, so an
-   issue made before a crash is paired even if the owner has since moved the take on.
-   This is what keeps a retry to one issue, since GitHub's create is not idempotent.
-3. Check the take's newest move is still the send's (section 1). If not, stop.
-4. Create the issue, then record `take_issue` and the move in one transaction.
-5. A refusal is recorded against the request, with its reason, append-only, and shown to the
-   owner (section 9).
+A fourth append-only table, `take_issue_attempt`, holds one row per attempt (the take, the
+send, the repository and what it creates: an issue, or a comment on an ask, and when it
+started) and, as later rows, each attempt's outcome: made (with its number), not made, or
+refused (with why). An attempt with no outcome is unsettled.
+
+Home's filer is one worker beside the mailbox pass, woken by a send and on a timer. It runs
+one pass at a time (a single-flight lock in the process, as home runs one `file_host`) and
+takes one take at a time. For a take:
+
+1. **Paired already?** If the take has a `take_issue` (its key is the take, so it holds at
+   most one), create nothing. Append the move to `picked-up` only if the take's newest move
+   is still the paired send's ready move. A take that has an issue but sits at another
+   station shows its issue on its card all the same, and "Make it an issue" isn't offered
+   for it again.
+2. **Settle what came before.** For each unsettled attempt, in whichever repository it named,
+   look for the take's marker: among that repository's `from-studio` issues, open and closed,
+   created no earlier than ten minutes before the attempt started (GitHub's clock and
+   home's differ; the list is fetched with `since=` and filtered by `created_at` on home),
+   or, for an ask, among the ask's comments (`GET /repos/<o>/<r>/issues/<n>/comments`) in
+   the same window. The lookup also matches Part E's line (section 10). Found: record the
+   attempt as made and the pairing, and go back to step 1. Not found: record it as not
+   made. If the lookup itself can't be made, the attempt stays unsettled, no new attempt
+   is made for that take, and the card says "Home is checking whether GitHub made this".
+3. **Still wanted?** Check the take's newest move is still the newest send's ready move
+   (section 1). If not, stop: the owner withdrew it.
+4. **Make it.** Append the attempt, then create the issue or comment, then record the
+   outcome, the pairing, and (if step 3's condition still holds) the move to `picked-up`,
+   in one transaction.
+5. **Refused.** A refusal is recorded as the attempt's outcome, with its reason, and shown
+   to the owner (section 9). A refusal is settled: "Send it elsewhere" after it is safe,
+   since GitHub made nothing.
+
+Because step 2 runs before step 3, an issue made before a crash is paired even if the owner
+moved the take on since; because no attempt starts while another is unsettled, a send to a
+second repository can't make a second issue.
 
 ### 7. How home learns the status: a poll (C587)
 
@@ -229,7 +253,7 @@ A webhook can't reach home: home is on the LAN and makes only outbound requests,
 `call_weeks.rs` says. So home polls.
 
 Each pass (every 15 minutes) makes, per repository home has filed into, at most three
-conditional requests, each to a fixed URL so its ETag still matches next pass:
+conditional lists, each to a fixed URL so its ETag still matches next pass:
 
 1. `GET /repos/<owner>/<repo>/issues?labels=from-studio&state=all&sort=updated&direction=desc&per_page=100`
    with `If-None-Match`. A `304` means nothing changed. On a `200`, home reads pages until it
@@ -242,18 +266,25 @@ conditional requests, each to a fixed URL so its ETag still matches next pass:
 3. `GET /repos/<owner>/<repo>/pulls?state=open&per_page=100`, conditional, only while a
    paired issue is open: home reads which open pull requests mention a paired issue, as
    `#<n>` in the same repository or `paulgsc/<repo>#<n>` from another, matched as a whole
-   reference (`#12` is not `#123`). That gives "Being worked in PR #m". A mention doesn't
-   change the issue, so the issue list alone can't show it. Pull requests are read in the
-   repositories the credential covers, so work from any other repository doesn't show.
+   reference (`#12` is not `#123`), or as the issue's full address on github.com. That
+   gives "Being worked in PR #m". A mention doesn't change the issue, so the issue list
+   alone can't show it. Pull requests are read in the repositories home has filed into, so
+   work from any other repository doesn't show.
 
-When an issue closes, home asks GitHub's GraphQL API once for the pull request that closed
-it (`closedByPullRequestsReferences`), since the REST timeline's close names only a
-commit. Once a day, home also reads each paired issue it hasn't seen closed by number
-(`GET /repos/<owner>/<repo>/issues/<n>`, conditional): a deleted issue only drops out of a
-list, and this is how "Home can't see it any more" is known.
+Two reads by issue, beside the lists:
+
+- **When an issue closes,** home asks GitHub's GraphQL API once what closed it
+  (`timelineItems(itemTypes: CLOSED_EVENT)`, each `ClosedEvent`'s `closer`: a pull request
+  or a commit), since the REST timeline's close names only a commit.
+- **Once a day,** home reads each paired issue by number
+  (`GET /repos/<owner>/<repo>/issues/<n>`, conditional), closed ones included: a deleted
+  issue only drops out of a list. A `301` (the issue moved to another repository) is
+  followed and the new place recorded; a `404` or `410` reads as "Home can't see it any
+  more".
 
 A quiet pass is one to three `304`s per repository, which GitHub doesn't count against the
-rate limit for a request with a token, plus the daily read of each issue still open.
+rate limit for a request with a token. The daily reads add one `304` per paired issue a
+day, and the closing read one request per closure.
 
 Issues are public, so the poll could go without the token, but GitHub allows only 60
 unauthenticated requests an hour from an address. With the token it has 5,000, and the
@@ -287,8 +318,9 @@ never deleted or moved off the record; "archived" is how the page groups it.
 
 The conveyor's words change with it (`apps/www/src/lib/take-conveyor/words.ts`): "Ready for
 pickup" becomes "Make it an issue", "Picked up" becomes "Has an issue", and what each
-station `means` follows, as does the conveyor page's `intro` ("The next pickup files it as an issue." becomes "Home files it as
-an issue once you send it."). A take already at ready for pickup when this lands, with no
+station `means` follows ("The next pickup files it as an issue." becomes "Home files it as
+an issue once you send it."), as do the conveyor page's `intro` ("…filed as an issue, by the
+next pickup…") and the refusals that name the pickup (`refused.pickup`, `refused.final`). A take already at ready for pickup when this lands, with no
 send, shows "Write its issue": home files nothing for it until the owner sends a draft.
 
 ### 9. Offline, and when GitHub refuses
@@ -337,10 +369,14 @@ Removed by the stories below, in the same PRs that replace them:
 
 **The cutover, so no take is filed by both.** Part E's pickup branch stops before home's
 filer turns on: TAKES12's some-ui half (Part E, `pending.ts`) lands first, and the
-credential goes on home only after it. Then, before it files anything, home reads every
-issue Part E filed (paulgsc/some-ui, label `from-studio`, `state=all`, no date bound) once,
-and records each one whose body holds Part E's line, ``Kept on home as the take `<id>`.``
-(`pending.ts`, `filedLine`), as that take's issue. A take Part E filed, even one the owner
+credential goes on home only after the Reflections run's record shows a run with no Part E
+(its first run after that merge). Then, before it files anything, home reads every issue
+Part E filed, in both paulgsc/some-ui and paulgsc/server (Part E filed an ask's answer in
+the ask's repository), label `from-studio`, `state=all`, no date bound, once, and records
+each one whose body holds Part E's line, ``Kept on home as the take `<id>`.``
+(`pending.ts`, `filedLine`), as that take's issue. Such a pairing names no send, since
+Part E filed from what home heard, not from a move. Step 2's lookups keep matching that
+line too, at no cost. A take Part E filed, even one the owner
 has since moved back to "Make it an issue", already has its issue, and section 6's step 1
 files nothing more.
 
@@ -352,19 +388,20 @@ segments, split where ownership changes: phone → home (the move and its draft)
 GitHub (the filer), GitHub → home (the poll), with home → phone read through the existing
 takes read. Its objectives:
 
-| ID  | Kind      | Requirement                                                                                                                               |
-| --- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| TF1 | OA2       | Every request is filed, refused with its reason, or shown as overdue after 24 hours.                                                      |
-| TF2 | OA3       | "Filed as #n" shows only once `take_issue` holds it; a retry or replay makes at most one issue (the marker, and one pairing per take).    |
-| TF3 | OA5       | A take moved off "Make it an issue" before an attempt's check is not filed by that attempt or any later one.                              |
-| TF4 | OA6       | A poller or filer that stopped reads apart from a quiet one: each pass's start is a metric, and a missed hour alerts.                     |
-| TF5 | OA8       | Every refusal is counted, named and alerted (`TakeIssueRefused`, `TakeIssueTokenExpiring`); the token never appears in a record.          |
-| TF6 | RE1       | Every GitHub request is counted by operation (file, find, poll, pulls, timeline), with GitHub's own rate-limit headers kept.              |
-| TF7 | RE2, RE10 | Filing attempts share one budget per request; a backlog of refused requests never delays a new one.                                       |
-| TF8 | RE7       | An idle poll is at most three conditional requests per repository per pass, each a `304`.                                                 |
-| TF9 | RE9       | Growth: one request row per send, one pairing per issue, one state row per change seen; nothing deleted but with the take or the account. |
+| ID  | Kind      | Requirement                                                                                                                                                                                    |
+| --- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TF1 | OA2       | Every request is filed, refused with its reason, or shown as overdue after 24 hours.                                                                                                           |
+| TF2 | OA3       | "Filed as #n" shows only once `take_issue` holds it; a retry, a lost answer or a send elsewhere makes at most one issue or comment (the attempt record, the marker, and one pairing per take). |
+| TF3 | OA5       | A take moved off "Make it an issue" before an attempt's check is not filed by that attempt or any later one.                                                                                   |
+| TF4 | OA6       | A poller or filer that stopped reads apart from a quiet one: each pass's start is a metric, and a missed hour alerts.                                                                          |
+| TF5 | OA8       | Every refusal is counted, named and alerted (`TakeIssueRefused`, `TakeIssueTokenExpiring`); the token never appears in a record.                                                               |
+| TF6 | RE1       | Every GitHub request is counted by operation (file, settle, poll, pulls, closer, daily read), with GitHub's own rate-limit headers kept.                                                       |
+| TF7 | RE2, RE10 | Filing attempts share one budget per request; a backlog of refused requests never delays a new one.                                                                                            |
+| TF8 | RE7       | An idle pass is at most three conditional lists per repository, each a `304`; the daily read adds one conditional request per paired issue.                                                    |
+| TF9 | RE9       | Growth: one request row per send, two attempt rows (start, outcome) per attempt, one pairing per issue, one state row per change seen; nothing deleted but with the take or the account.       |
 
-Stores: `server:take_issue_request`, `server:take_issue`, `server:take_issue_state`. The
+Stores: `server:take_issue_request`, `server:take_issue_attempt`, `server:take_issue`,
+`server:take_issue_state`. The
 `routine-to-home` family loses the pickup's objectives as Part E retires, and the
 `mailbox` stores' growth lines lose `pickup` and `picked`. Each of those is a narrowing of a
 promise, so the story that makes it carries an amendment naming this direction from the
@@ -412,8 +449,9 @@ stays with #3035.
   entrance for every kind of take, filed by home. Moves C298 (the routine's known limit).
 - **C586:** the owner reviews and edits the issue's draft on the phone before home sends it;
   home's LAN address is never in the issue.
-- **C587:** home learns status by polling every 15 minutes, with the token, at most three
-  conditional requests per repository to fixed URLs.
+- **C587:** home learns status by polling every 15 minutes, with the token: at most three
+  conditional lists per repository to fixed URLs, a daily conditional read of each paired
+  issue, and one GraphQL read of what closed an issue.
 - **C588:** an answer to an ask is a comment on the ask, not a new issue. Moves C297, whose
   other half, the routine filing pickups in some-ui, C585 replaces.
 - **C589:** the status words on a take's card, and "archived" as a closed issue's fold.
