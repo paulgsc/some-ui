@@ -34,6 +34,10 @@ import type { Interview } from "./run"
 import { currentOf, labelOf, playOnly, useInterview, viewOf } from "./run"
 import { CardTo, To, useOpenItem } from "./to"
 
+/** Today's question: a card link in the brand's colour, the page's lead. */
+const TODAY =
+  "border-transparent from-brand to-brand text-brand-foreground rounded-3xl p-4"
+
 const Role = ({ week }: { week: InterviewWeek }): JSX.Element => (
   <header className="space-y-1">
     <p className="text-muted-foreground text-xs font-semibold">
@@ -80,10 +84,7 @@ const Home = ({ held }: { held: Interview }): JSX.Element => {
     <div className="flex flex-col gap-4">
       <Role week={week} />
       {today !== null && (
-        <To
-          to={{ page: "question", question: today.id }}
-          className="bg-brand text-brand-foreground flex flex-col gap-1.5 rounded-3xl p-4 text-left"
-        >
+        <CardTo to={{ page: "question", question: today.id }} className={TODAY}>
           <span className="text-xs font-semibold opacity-85">
             {WORDS.today}
           </span>
@@ -93,7 +94,7 @@ const Home = ({ held }: { held: Interview }): JSX.Element => {
           <span className="text-xs font-semibold opacity-85">
             {doneLine(held, today.id) ?? WORDS.todayLine}
           </span>
-        </To>
+        </CardTo>
       )}
       <section className="bg-card flex flex-col gap-2 rounded-2xl border p-3">
         <p className="text-sm">{WORDS.readsEntry}</p>

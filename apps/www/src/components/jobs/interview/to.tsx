@@ -128,10 +128,15 @@ export const CardTo = ({
   to: Page
   className?: string
   children: ReactNode
-}): JSX.Element => (
-  <CardLink asChild className={className}>
-    <To to={to}>
-      <CardLinkBody>{children}</CardLinkBody>
-    </To>
-  </CardLink>
-)
+}): JSX.Element =>
+  // Where the build carries no pages to open, the words stay plain: a card
+  // that opens nothing never takes the card link's look (C630).
+  hasAudience("apk") ? (
+    <CardLink asChild className={className}>
+      <To to={to}>
+        <CardLinkBody>{children}</CardLinkBody>
+      </To>
+    </CardLink>
+  ) : (
+    <span className={className}>{children}</span>
+  )

@@ -20,9 +20,9 @@ import { cn } from "../../../lib/utils"
  * the chevron is the part's.
  */
 
-/** The look, for the rare caller that can't render through `CardLink`. */
-export const CARD_LINK_CLASS =
-  "group/card-link flex w-full items-center gap-3 rounded-2xl border-2 border-primary/25 bg-linear-to-b from-card to-brand/15 p-3 text-left text-card-foreground shadow-md shadow-primary/10 ring-1 ring-inset ring-card transition-[transform,box-shadow,border-color] hover:border-primary/50 active:translate-y-px active:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none motion-reduce:active:translate-y-0"
+/** The look; only `CardLink` draws it, so every card link has the chevron too. */
+const CARD_LINK_CLASS =
+  "group/card-link flex w-full items-center gap-3 rounded-2xl border-2 border-primary/25 bg-linear-to-b from-card to-brand/15 p-3 text-left text-card-foreground shadow-md shadow-primary/10 ring-1 ring-inset ring-card transition-[translate,box-shadow,border-color] hover:border-primary/50 active:translate-y-px active:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none motion-reduce:active:translate-y-0"
 
 export type CardLinkProps = {
   /** Render through the one child, a link, merging the look onto it. */
@@ -36,12 +36,7 @@ export const CardLink = forwardRef<HTMLAnchorElement, CardLinkProps>(
   ({ asChild = false, className, children, ...props }, ref) => {
     const Comp = asChild ? Slot : "a"
     return (
-      <Comp
-        ref={ref}
-        data-card-link=""
-        className={cn(CARD_LINK_CLASS, className)}
-        {...props}
-      >
+      <Comp ref={ref} className={cn(CARD_LINK_CLASS, className)} {...props}>
         <Slottable>{children}</Slottable>
         <span
           aria-hidden="true"

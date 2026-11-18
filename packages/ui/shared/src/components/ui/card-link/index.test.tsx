@@ -7,7 +7,7 @@
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 
-import { CARD_LINK_CLASS, CardLink, CardLinkBody } from "."
+import { CardLink, CardLinkBody } from "."
 
 describe("CardLink", () => {
   it("is one link holding its words and a chevron", () => {
@@ -21,7 +21,6 @@ describe("CardLink", () => {
     )
     const link = screen.getByRole("link", { name: /^Questions/ })
     expect(link.getAttribute("href")).toBe("/questions")
-    expect(link.hasAttribute("data-card-link")).toBe(true)
     expect(link.querySelector("svg")).not.toBeNull()
     expect(link.className).toContain("border-2")
   })
@@ -39,14 +38,9 @@ describe("CardLink", () => {
     const [link] = links
     expect(link?.getAttribute("href")).toBe("/how")
     expect(link?.hasAttribute("data-router")).toBe(true)
-    expect(link?.hasAttribute("data-card-link")).toBe(true)
+    expect(link?.className).toContain("border-2")
     expect(link?.className).toContain("mt-2")
     expect(link?.querySelector("svg")).not.toBeNull()
     expect(link?.textContent).toBe("How a week goes")
-  })
-
-  it("keeps one look for every caller", () => {
-    expect(CARD_LINK_CLASS).toMatch(/\bborder-2\b/)
-    expect(CARD_LINK_CLASS).toMatch(/\bshadow-md\b/)
   })
 })
