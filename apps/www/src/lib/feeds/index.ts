@@ -16,11 +16,6 @@ export const FEEDS = [
   "rust-essay",
 ] as const
 
-/**
- * A feed's episodes each take notes by being a feed's (SFEED6, #3035): one
- * module, `lib/episode-feedback`, for every feed here, and home keeps them
- * on each from contract epoch 18 (paulgsc/server#983).
- */
 export type Feed = (typeof FEEDS)[number]
 
 /**

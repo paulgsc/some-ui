@@ -98,9 +98,7 @@ const notesSent = (port: EpisodeNotesPort): KeyedSend<Note> => ({
 
 /**
  * Sends each note `port` names, a feed at a time and oldest first within
- * it, and says how the run ended. A feed whose notes home doesn't keep yet
- * (`404`) ends only that feed's part, so an older home that keeps some
- * feeds' notes still gets theirs.
+ * it, and says how the run ended.
  */
 export async function sendEpisodeNotes(
   port: EpisodeNotesPort,

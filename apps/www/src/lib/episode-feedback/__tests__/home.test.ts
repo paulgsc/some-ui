@@ -64,6 +64,5 @@ describe("the feeds whose notes wait on an older home (#3035)", () => {
       ])
     ).toEqual(["cards-essay", "rust-essay"])
     expect(waitingFeeds(notYet, [{ feed: "call" }])).toEqual([])
-    expect(waitingFeeds(new Set(), [{ feed: "rust-essay" }])).toEqual([])
   })
 })

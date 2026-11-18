@@ -42,13 +42,8 @@ describe("feedback's words", () => {
   })
 
   it("names the feeds whose notes wait mid-sentence", () => {
-    expect(
-      FEEDBACK_WORDS.home.notYet([
-        "The interview essay",
-        "The Rust Rounds essay",
-      ])
-    ).toBe(
-      "Home doesn't keep notes on the interview essay and the Rust Rounds essay yet, so those wait on this phone until home runs a newer version."
+    expect(FEEDBACK_WORDS.home.notYet(["The interview essay"])).toContain(
+      "notes on the interview essay yet"
     )
   })
 

@@ -2,9 +2,8 @@
  * @vitest-environment node
  *
  * PO1 (#3157): what Studio's Feedback page says home holds of each note is
- * not known while the pairing record is read, and never said as none. And
- * the read of every feed (#3035): a feed an older home keeps no notes on
- * waits on its own, and the others' answers still count.
+ * not known while the pairing record is read, and never said as none; and
+ * the read of every feed (#3035).
  */
 import { describe, expect, it, vi } from "vitest"
 

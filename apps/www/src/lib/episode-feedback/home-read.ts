@@ -23,11 +23,7 @@ export type HomeNotesOutcome =
   | {
       readonly kind: "read"
       readonly storedAt: ReadonlyMap<string, string>
-      /**
-       * The feeds whose notes this home doesn't keep yet (a home from before
-       * paulgsc/server#983 keeps the call's and Playoff Delta's only), so
-       * theirs wait on the phone.
-       */
+      /** The feeds whose notes this home doesn't keep yet, so theirs wait on the phone. */
       readonly notYet: ReadonlySet<Feed>
     }
   /** A home that keeps notes on no feed yet. */
@@ -36,8 +32,7 @@ export type HomeNotesOutcome =
 
 /**
  * Reads the notes home keeps on every feed, asking again while the link is
- * busy. A feed this home keeps no notes on yet is named in `notYet`, and
- * every other feed's answer still counts. Rejects when home didn't answer, the phone stayed busy with home
+ * busy. Rejects when home didn't answer, the phone stayed busy with home
  * (`PhoneBusyError`, #3155), or an answer couldn't be read, so the
  * page keeps what it last read and says so.
  */

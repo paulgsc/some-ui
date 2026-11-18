@@ -30,6 +30,9 @@ export const DESTINATION_WORDS = {
   defect: "A slide to fix",
 } as const satisfies Record<Destination, string>
 
+/** A feed's name as it reads mid-sentence. */
+const inSentence = (name: string): string => name.replace(/^The /, "the ")
+
 export const FEEDBACK_WORDS = {
   /** On an episode's page, under its video. */
   leave: "Leave a note here",
@@ -77,7 +80,7 @@ export const FEEDBACK_WORDS = {
      * name, which may start "The").
      */
     notYet: (names: ReadonlyArray<string>): string =>
-      `Home doesn't keep notes on ${listed(names.map((name) => name.replace(/^The /, "the ")))} yet, so those wait on this phone until home runs a newer version.`,
+      `Home doesn't keep notes on ${listed(names.map(inSentence))} yet, so those wait on this phone until home runs a newer version.`,
     away: "Home didn't answer, so this is what the phone knows of it.",
     busy: "This phone was busy with home just then, so this is what the phone knows of it. Drag down to try again.",
   },
