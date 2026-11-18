@@ -1,0 +1,20 @@
+{
+  "id": "C561",
+  "made": "2026-11-17",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/routes/_dashboard/_apk/jobs/interview.tsx",
+    "apps/www/src/routes/_dashboard/_apk/jobs/interview",
+    "apps/www/src/components/jobs/interview",
+    "apps/www/src/lib/interview-week/runtime.ts"
+  ],
+  "chose": "Each page of the interview week is a route under /jobs/interview (the Interview page, a question, its study page, read aloud, the take page from cues or your own way, Read aloud and each read), so Android's back steps through them. One runtime lives in the layout route for as long as any of them is up, and a take page shows its item only while it is open; leaving mid-take stops and keeps the take. Saying an item from the look over opens its page rather than recording there.",
+  "options": [
+    "a route per page, one runtime in the layout",
+    "one route, the pages as steps of the bundle's own screen state",
+    "a route per page, each with its own runtime"
+  ],
+  "gray": "The owner asked for every artifact to be its own view; whether a view is a route (back works, a link can open it) or a screen inside one route is how the owner moves through the week.",
+  "undo": "Fold the child routes back into interview.tsx and render the pages from a page state in the runtime.",
+  "refs": ["#3175", "#2931"]
+}

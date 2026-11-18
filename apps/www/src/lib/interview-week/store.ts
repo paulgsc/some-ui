@@ -2,7 +2,8 @@
  * What the interview week keeps on this phone (IW5): the weeks held, each the
  * copy first read under its id, through core-utils' `openKept`/`writeKept`
  * (KR1); a draft per week and the weeks sent, through voice-capture's
- * `keptDrafts` and `keptRecords`.
+ * `keptDrafts` and `keptRecords`; and each week's ladder (`./ladder`, IW8):
+ * the rung each take was said on and each question's first take.
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { openKept, readJson, writeKept } from "@some-ui/core-utils"
@@ -16,11 +17,14 @@ import type {
 import { keptDrafts, keptRecords } from "@some-ui/voice-capture"
 import { z } from "zod"
 
+import type { Ladder } from "./ladder"
+import { NO_LADDER, RUNGS } from "./ladder"
 import type { InterviewSent } from "./spec"
 
 const WEEKS_KEY = "some-ui:interview-week.weeks"
 const DRAFTS_KEY = "some-ui:interview-week.drafts"
 const SENT_KEY = "some-ui:interview-week.sent"
+const LADDER_KEY = "some-ui:interview-week.ladder"
 
 /** The desk of the week's takes (`./index`). */
 export const TAKES_KEY = "some-ui:interview-week.takes"
@@ -90,3 +94,41 @@ export const interviewSent = (
     const parsed = z.array(SentSchema).safeParse(value)
     return parsed.success ? parsed.data : null
   })
+
+const LadderSchema = z.object({
+  first: z.record(z.string(), z.string()),
+  rungs: z.record(z.string(), z.enum(RUNGS)),
+  asked: z
+    .object({
+      item: z.string(),
+      rung: z.enum(RUNGS),
+      before: z.array(z.string()),
+    })
+    .optional(),
+})
+
+const readLadders = readJson((value) => {
+  const parsed = z.record(z.string(), LadderSchema).safeParse(value)
+  return parsed.success ? parsed.data : null
+})
+
+export type LadderStore = {
+  /** The week's ladder as kept; none kept reads as an empty one. */
+  readonly read: () => Ladder
+  /** Keeps `ladder` as the week's, beside every other week's; false when not kept. */
+  readonly write: (ladder: Ladder) => boolean
+}
+
+/** Week `week`'s ladder, among every week's in `storage`, which are never let go. */
+export function interviewLadder(
+  storage: KeyedStorage | null,
+  week: string
+): LadderStore {
+  const all = (): Readonly<Record<string, Ladder>> =>
+    openKept(storage, LADDER_KEY, readLadders, {}).value
+  return {
+    read: () => all()[week] ?? NO_LADDER,
+    write: (ladder) =>
+      writeKept(storage, LADDER_KEY, { ...all(), [week]: ladder }, readLadders),
+  }
+}

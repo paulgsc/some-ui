@@ -21,7 +21,15 @@ function everyWord(value: unknown): Array<string> {
             [2, "2026-11-17T10:00:00.000Z"],
             [1, 6],
           ]
-        : [[1], [3], [90], [WEEK], ["2026-11-17T10:00:00.000Z"]]
+        : [
+            [1],
+            [3],
+            [90],
+            [WEEK],
+            ["2026-11-17T10:00:00.000Z"],
+            [{ kind: "pull", repo: "some-ui", number: 3170 }],
+            [{ kind: "doc", path: "docs/calls/C266.json" }],
+          ]
     const said = samples.flatMap((sample) => {
       try {
         const word: unknown = Reflect.apply(value, undefined, sample)
@@ -41,13 +49,17 @@ function everyWord(value: unknown): Array<string> {
 
 const SHOWN = everyWord(INTERVIEW_WORDS)
 
+// The study page names model answers good or poor (`../words.ts`).
+const { study: _study, ...rest } = INTERVIEW_WORDS
+const ABOUT_TAKES = everyWord(rest)
+
 const BANNED: ReadonlyArray<[string, RegExp]> = [
   [
     "a score or verdict",
     /\b(score|points?|correct|incorrect|wrong|verdict|grade|rating|pass(ed)? the|fail(ed)?\b)/i,
   ],
-  ["a take judged", /\b(you said|good answer|bad answer|well done|great)\b/i],
   ["a level or streak", /\b(level|streak|xp)\b/i],
+  ["a miss counted", /\b(skipped|missed|you haven't)\b/i],
   [
     "the machinery",
     /\b(\d{3} |request|status|sync|grant|draft|bundle|ref|of=|sha|undefined|null)\b/i,
@@ -57,6 +69,16 @@ const BANNED: ReadonlyArray<[string, RegExp]> = [
 describe("the interview week's words (IW5)", () => {
   it.each(BANNED)("never say %s", (_, pattern) => {
     expect(SHOWN.filter((word) => pattern.test(word))).toEqual([])
+  })
+
+  it("never judge a take", () => {
+    expect(
+      ABOUT_TAKES.filter((word) =>
+        /\b(you said|good answer|bad answer|poor answer|well done|great)\b/i.test(
+          word
+        )
+      )
+    ).toEqual([])
   })
 
   it("show a target length as a person reads one", () => {

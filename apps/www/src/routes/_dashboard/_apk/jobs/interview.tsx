@@ -1,20 +1,21 @@
 import type { JSX } from "react"
 import { useState } from "react"
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Outlet } from "@tanstack/react-router"
 
 import { homeHoldsInterviewSend } from "@/lib/home-link/interview"
 import { onHomeHeard } from "@/lib/home-link/rust-kept"
 import { ideaHome } from "@/lib/idea-hearing"
 import { phoneInterviewPorts } from "@/lib/interview-week"
 import {
-  InterviewWeekScreen,
+  InterviewWeekRuntime,
   NoInterviewWeek,
-} from "@/components/jobs/interview"
+} from "@/components/jobs/interview/run"
 
 /**
- * The interview week (IW5, #2936), the Jobs wing's fourth view (C396): the
- * week open now among those this phone holds from home, its brief, a card per
- * question and per read, a take each, looked over and sent home together.
+ * The interview week (IW5, #2936; IW8, #3175), the Jobs wing's fourth view
+ * (C396): the week open now among those this phone holds from home. Each of
+ * its pages is a route under this one, so Android's back steps through
+ * them; this layout holds the week's one runtime while any of them is up.
  *
  * Its ports reach home in one way only: whether home is in reach, read from
  * the voice lane's last run (`ideaHome`). Whether home holds a send is read
@@ -34,7 +35,9 @@ const PhoneInterview = (): JSX.Element => {
   return ports === null ? (
     <NoInterviewWeek />
   ) : (
-    <InterviewWeekScreen ports={ports} />
+    <InterviewWeekRuntime ports={ports}>
+      <Outlet />
+    </InterviewWeekRuntime>
   )
 }
 
@@ -42,9 +45,9 @@ const PhoneInterview = (): JSX.Element => {
  * The phone's alone: the flag is read inline, so other builds drop the
  * week's storage and microphone (vite-env.d.ts, VITE_DEVICE_BACKEND).
  */
-const InterviewRoute = (): JSX.Element | null =>
+const InterviewLayout = (): JSX.Element | null =>
   import.meta.env.VITE_DEVICE_BACKEND === "true" ? <PhoneInterview /> : null
 
 export const Route = createFileRoute("/_dashboard/_apk/jobs/interview")({
-  component: InterviewRoute,
+  component: InterviewLayout,
 })

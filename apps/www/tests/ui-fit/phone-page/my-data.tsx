@@ -6,13 +6,8 @@
  * nothing else), since its rows are route links.
  */
 import type { JSX } from "react"
-import { useState } from "react"
-import {
-  createMemoryHistory,
-  createRootRoute,
-  createRouter,
-  RouterProvider,
-} from "@tanstack/react-router"
+import { MemoryRouted } from "@/test-support/memory-routed"
+import { createRootRoute } from "@tanstack/react-router"
 
 import type { HomeReading, PhoneNote } from "@/lib/my-data/model"
 import { kindOf, KINDS, overviewOf } from "@/lib/my-data/model"
@@ -79,15 +74,12 @@ export const routed = (
   Screen: () => JSX.Element,
   path = "/settings/data"
 ): (() => JSX.Element) => {
-  const Routed = (): JSX.Element => {
-    const [router] = useState(() =>
-      createRouter({
-        routeTree: createRootRoute({ component: Screen }),
-        history: createMemoryHistory({ initialEntries: [path] }),
-      })
-    )
-    return <RouterProvider router={router} />
-  }
+  const Routed = (): JSX.Element => (
+    <MemoryRouted
+      initialTree={() => createRootRoute({ component: Screen })}
+      initialPath={path}
+    />
+  )
   return Routed
 }
 

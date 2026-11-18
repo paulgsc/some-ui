@@ -10,14 +10,9 @@
  */
 
 import type { JSX } from "react"
-import { useState } from "react"
+import { MemoryRouted } from "@/test-support/memory-routed"
 import { NoticeLayer } from "@some-ui/shared"
-import {
-  createMemoryHistory,
-  createRootRoute,
-  createRouter,
-  RouterProvider,
-} from "@tanstack/react-router"
+import { createRootRoute } from "@tanstack/react-router"
 
 import type { HomeLinkState } from "@/lib/home-link"
 import type { HomeLinkEvent } from "@/lib/home-link/model"
@@ -86,15 +81,12 @@ const Routed = ({
   initialLook,
 }: {
   initialLook: keyof typeof LOOKS
-}): JSX.Element => {
-  const [router] = useState(() =>
-    createRouter({
-      routeTree: createRootRoute({ component: ROWS[initialLook] }),
-      history: createMemoryHistory({ initialEntries: [AT] }),
-    })
-  )
-  return <RouterProvider router={router} />
-}
+}): JSX.Element => (
+  <MemoryRouted
+    initialTree={() => createRootRoute({ component: ROWS[initialLook] })}
+    initialPath={AT}
+  />
+)
 
 export const SIGN_IN_FIXTURES = {
   "sign-in-reading": (): JSX.Element => <Routed initialLook="reading" />,
