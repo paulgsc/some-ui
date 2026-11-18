@@ -1,0 +1,16 @@
+{
+  "id": "C587",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": ["some-ui:docs/takes-to-sessions.md"],
+  "chose": "Home finds the issue a take became by two unauthenticated GitHub searches every 15 minutes, `user:paulgsc author:paulgsc \"From take\" in:body` with `is:issue` and with `is:pull-request`, sorted by update, reading back to an hour before the last pass and each body for `From take tk…`; only an issue moves a take to Became, and a pull request adds a link. The same queries keep found items' state current.",
+  "options": [
+    "two searches of the owner's own items across their public repositories every 15 minutes",
+    "a search per take",
+    "a search per repository",
+    "any author's items"
+  ],
+  "gray": "The owner named public search with no key but no freshness or scope; these set how soon \"Became #n\" appears and which repositories count.",
+  "undo": "Change the query or the interval in home's search pass; the link and seen rows don't depend on how they were read.",
+  "refs": ["#3029", "#3035", "#2973"]
+}
