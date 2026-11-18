@@ -87,16 +87,33 @@ describe("the interview week's words (IW5)", () => {
     expect(INTERVIEW_WORDS.cap).toBe("A take stops at 2 min.")
   })
 
-  // IWC1: what counts for the week is what was sent. Home's record answers a
-  // question only from the send standing at the deadline; a first take home
-  // holds unsent is a copy, not an answer (paulgsc/server interview_weeks.rs
-  // `week_record`). Every word the table can say, with its samples, is held.
-  it("say that what counts is what was sent, never what home has (IWC1)", () => {
-    const counts = SHOWN.filter((word) => /\bwhat counts\b/i.test(word))
-    expect(counts.length).toBeGreaterThan(0)
-    expect(counts.filter((word) => !/\bsen[dt]\b/i.test(word))).toEqual([])
+  // IWC1: what counts for the week is the send home has by the deadline.
+  // Home's record answers a question only from the send standing at the
+  // deadline, judged on arrival; a first take home holds unsent is kept but
+  // answers nothing (paulgsc/server interview_weeks.rs `week_record`,
+  // `put_sent`). Every sentence the table can say that says what counts names
+  // the send and home; none says a take counts by being on home, or by being
+  // sent before the deadline without reaching it.
+  it("say that the send home has is what counts (IWC1)", () => {
+    const sentences = SHOWN.flatMap((word) => word.split(/(?<=[.!?])\s+/))
+    const counting = sentences.filter(
+      (sentence) =>
+        /\bcounts?\b/i.test(sentence) &&
+        !/\b(can't|doesn't|don't|won't) count\b/i.test(sentence)
+    )
+    expect(counting.length).toBeGreaterThan(0)
     expect(
-      SHOWN.filter((word) => /\bwhat home (has|had)\b/i.test(word))
+      counting.filter(
+        (sentence) =>
+          !/\bsen[dt]\b/i.test(sentence) || !/\bhome\b/i.test(sentence)
+      )
+    ).toEqual([])
+    expect(
+      sentences.filter((sentence) =>
+        /\b(what home (has|had|holds)|home (has|had) \d|sent by)\b/i.test(
+          sentence
+        )
+      )
     ).toEqual([])
   })
 

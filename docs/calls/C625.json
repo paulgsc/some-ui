@@ -3,7 +3,7 @@
   "made": "2026-11-18",
   "by": "claude",
   "paths": ["apps/www/src/lib/interview-week/words.ts"],
-  "chose": "The interview week's words say that what you send by the deadline is what counts, and that a question's first take goes home on its own as a copy kept for good. Before, they said what home has at the deadline is what counts.",
+  "chose": "The interview week's words say that the send home has by the deadline is what counts, and that a question's first take goes home on its own and is kept for good but counts only if sent. Before, they said what home has at the deadline is what counts.",
   "options": [
     "change the words to match the record: the send counts, the first take is a copy",
     "make home's record count an unsent question's first take as its answer (a server change)"
