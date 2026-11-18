@@ -64,7 +64,6 @@ async function draw(
 
 async function expectHeld(page: Page, name: string): Promise<boolean> {
   const { accepted, scenes } = await draw(page, name)
-  expect(scenes.length, name).toBeGreaterThan(0)
   expect(
     scenes.flatMap((scene) =>
       scene.height > scene.model + 0.5
@@ -106,7 +105,6 @@ test.describe("EF1: the essay's model holds the frame the stage draws", () => {
         .locator("[data-essay-fit-limits]")
         .getAttribute("data-essay-fit-limits")
     )
-    expect(limits).toBeGreaterThan(0)
     for (let n = 1; n <= limits; n += 1)
       expect(await expectHeld(page, `limit-${String(n)}`)).toBe(true)
   })

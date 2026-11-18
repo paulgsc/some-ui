@@ -1,4 +1,5 @@
 import type { JSX, ReactNode } from "react"
+import { codeSpans } from "@some-ui/video-render"
 import type { Speaker } from "@some-ui/video-render"
 
 import { ESSAY_WORDS as W } from "./essay-words"
@@ -83,15 +84,15 @@ export const Call = ({
 /** Text with `code` spans drawn as code. */
 export const Inline = ({ text }: { text: string }): JSX.Element => (
   <>
-    {text.split(/(`[^`]+`)/).map((part, i) =>
-      part.startsWith("`") && part.endsWith("`") && part.length > 1 ? (
+    {codeSpans(text).map((span, i) =>
+      span.code ? (
         // eslint-disable-next-line react/no-array-index-key
         <code key={i} className="font-mono text-[0.9em]">
-          {part.slice(1, -1)}
+          {span.text}
         </code>
       ) : (
         // eslint-disable-next-line react/no-array-index-key
-        <span key={i}>{part}</span>
+        <span key={i}>{span.text}</span>
       )
     )}
   </>

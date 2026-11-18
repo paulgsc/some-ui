@@ -1,0 +1,14 @@
+{
+  "id": "C575",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": ["apps/www/src/lib/web-surface/call/essay-stage.tsx"],
+  "chose": "The essay's comparison table (\"The best fit beside yours\") has fixed columns, 30% for the speak-to point and 70% for the owner's mark and note, so how a note wraps can be measured before the put.",
+  "options": [
+    "fixed columns, 30% and 70%",
+    "the browser's automatic widths, as before"
+  ],
+  "gray": "It changes how every essay's comparison looks on screen, and no check or earlier decision sets the split.",
+  "undo": "Remove table-fixed and the colgroup from the beside scene, and model the table some other way in essay-fit.ts.",
+  "refs": ["#2231"]
+}

@@ -1,6 +1,6 @@
 /**
  * What the Rust Rounds essay's captioned frame holds (EF1, #2231): the
- * scenes whose words the Monday routine writes, laid out as the stage lays
+ * scenes whose words the Monday routine writes (C574), laid out as the stage lays
  * them out (`apps/www`'s `web-surface/call/essay-stage.tsx`), measured in CSS
  * px at the 1920×1080 frame the recorder draws, with an allowance that errs
  * toward too long. The routine's `finish` refuses an essay this says runs
@@ -23,12 +23,11 @@
  * than drawn or an accepted scene overflows. CI runs it in the Playwright
  * image home's render image is built from (`pr.yml`), as CF1's.
  *
- * Tolerance: CF1's (a host whose sans face is wider than `SANS`, text far
- * wider than prose). The other scenes are outside it: the answer scene
- * shows the owner's transcript, which no length bounds and the routine
- * can't shorten, and the open, question, weeks and next scenes restate
- * what earlier files hold. The recorder's `data-overflow` refusal stays the
- * guard there, so no video is cut off.
+ * Tolerance: CF1's. The other scenes are outside the Family: the answer
+ * scene shows the owner's transcript, which no length bounds and the routine
+ * can't shorten (#3187), and the open, question, weeks and next scenes
+ * restate what earlier files hold. The recorder's `data-overflow` refusal
+ * stays the guard there, so no video is cut off.
  */
 
 import type { Essay, EssayTicket } from "./essay"
@@ -43,30 +42,41 @@ import type { Part, Run } from "./frame-text"
  */
 const CARD = { width: 1416, height: 514 } as const
 
-/** The point column's share of the beside table (`table-fixed`). */
+/** The point column's share of the beside table (`table-fixed`, C575). */
 export const ESSAY_POINT_COLUMN = 0.3
 
-/** `leading-tight`, with room as `LINE` has. */
+/** `leading-tight` and `leading-snug`, each with room as `LINE` has. */
 const TIGHT = 1.3
-
-/** `leading-snug`, with room. */
 const SNUG = 1.42
 
-/** Text with `code` spans, as the stage's `Inline` sets it, at `em`. */
-function inline(
-  text: string,
-  em: number,
-  face: "prose" | "bold" = "prose"
-): ReadonlyArray<Run> {
+/**
+ * `text` split into its plain runs and its `code` spans, as the stage's
+ * `Inline` draws them and this model measures them.
+ */
+export function codeSpans(
+  text: string
+): ReadonlyArray<{ readonly text: string; readonly code: boolean }> {
   return text
     .split(/(`[^`]+`)/)
     .filter((part) => part.length > 0)
     .map((part) =>
       part.startsWith("`") && part.endsWith("`") && part.length > 1
-        ? { text: part.slice(1, -1), face: "mono" as const, em: em * 0.9 }
-        : { text: part, face, em }
+        ? { text: part.slice(1, -1), code: true }
+        : { text: part, code: false }
     )
 }
+
+/** Text with `code` spans, set as the stage's `Inline` sets it, at `em`. */
+const inline = (
+  text: string,
+  em: number,
+  face: "prose" | "bold" = "prose"
+): ReadonlyArray<Run> =>
+  codeSpans(text).map((span) =>
+    span.code
+      ? { text: span.text, face: "mono" as const, em: em * 0.9 }
+      : { text: span.text, face, em }
+  )
 
 const lines = (runs: ReadonlyArray<Run>, width: number, em: number): number =>
   linesOf(runs, width) * lineOf(em)
@@ -91,8 +101,9 @@ function list(
   return { h, em }
 }
 
-/** The widest code line the card shows whole, in columns of the mono face. */
 const CODE_EM = 0.62
+
+/** The widest code line the card shows whole, in columns of the mono face. */
 const CODE_COLUMNS = Math.floor(
   (CARD.width - 2 * px(0.8 * CODE_EM) - 2) / widthOf("m", "mono", CODE_EM)
 )

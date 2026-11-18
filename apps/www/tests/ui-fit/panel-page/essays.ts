@@ -6,6 +6,8 @@ import {
 } from "@some-ui/video-render"
 import type { Essay } from "@some-ui/video-render"
 
+import { grown as grownBy, prose as words, WORDS_WITH_CODE } from "./grown"
+
 /**
  * The essays `../essay-fit.spec.ts` draws (EF1): the template's sample, and
  * the sample with each text the routine writes on a best, beside or deep
@@ -13,35 +15,7 @@ import type { Essay } from "@some-ui/video-render"
  * the model accepts.
  */
 
-/** Plain prose, wide letters first, with code spans as the routine writes them. */
-const WORDS = [
-  "Whenever",
-  "MOMENTUM",
-  "wandering",
-  "`Vec<&'a str>`",
-  "homework",
-  "WebView",
-  "Mandarin",
-  "mailbox",
-  "`push_str`",
-  "overwhelm",
-  "Monday",
-  "windows",
-  "Malformed",
-  "workflows",
-  "memory",
-  "Woodworking",
-  "shown",
-  "drawn",
-  "owner",
-  "week",
-] as const
-
-const prose = (n: number, from = 0): string =>
-  Array.from(
-    { length: n },
-    (_, i) => WORDS[(from + i) % WORDS.length] ?? "word"
-  ).join(" ")
+const prose = (n: number, from = 0): string => words(n, from, WORDS_WITH_CODE)
 
 /** A line of Rust as wide as `columns`. */
 const codeLine = (columns: number, i: number): string =>
@@ -56,25 +30,15 @@ export function sample(): Essay {
   return parsed.value
 }
 
-function edited(essay: Essay, change: (draft: Essay) => void): Essay {
-  const draft = structuredClone<Essay>(essay)
-  change(draft)
-  return EssaySchema.parse(draft)
-}
-
-const accepted = (essay: Essay): boolean =>
+/** Whether the model and the schema accept `essay`: the fixture's verdict too. */
+export const accepted = (essay: Essay): boolean =>
   parseEssay(essay).ok && essayFit(essay).problems.length === 0
 
-/** `essay` with what `set` writes grown, a step at a time, to the most the model accepts. */
-function grown(essay: Essay, set: (draft: Essay, n: number) => void): Essay {
-  let best = essay
-  for (let n = 1; n < 400; n += 1) {
-    const next = edited(essay, (e) => set(e, n))
-    if (!accepted(next)) break
-    best = next
-  }
-  return best
-}
+const grown = (essay: Essay, set: (draft: Essay, n: number) => void): Essay =>
+  grownBy(essay, set, {
+    parse: (raw) => EssaySchema.parse(raw),
+    accepts: accepted,
+  })
 
 /** Each text of the sample's best, beside and dive scenes, each grown to its limit. */
 export function atTheLimit(): ReadonlyArray<Essay> {

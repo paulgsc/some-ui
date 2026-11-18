@@ -559,11 +559,7 @@ const RustEssayStage = ({
   )
 }
 
-/**
- * One scene of `essay` in the stage's frame: the stage's, and the essay
- * fit's fixture (`tests/ui-fit/essay-fit.spec.ts`, EF1), which draws an
- * essay it is handed.
- */
+/** One scene of `essay` in the stage's frame. */
 export const EssaySceneFrame = ({
   essay,
   at,
