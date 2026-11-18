@@ -117,6 +117,18 @@ describe("the interview week's words (IW5)", () => {
     ).toEqual([])
   })
 
+  it("say what counts in these words (IWC1)", () => {
+    expect(INTERVIEW_WORDS.kept).toBe(
+      "Your first take of each question goes home on its own and is kept for good, but counts only if you send it. The rest stay on this phone until you send the week."
+    )
+    expect(INTERVIEW_WORDS.openUntil(WEEK)).toBe(
+      "The send home has by Sunday 23:59 is what counts, and is kept for good. Until then you can say any card, say one again and send the week again."
+    )
+    expect(INTERVIEW_WORDS.closed.line(WEEK)).toBe(
+      "It closed Sunday 23:59. The send home had then is what counts, kept for good, and the essay comes from home. Nothing more can be said or sent here."
+    )
+  })
+
   it("say the brief's week on the owner's clock", () => {
     expect(INTERVIEW_WORDS.heading(WEEK)).toBe("Week 47 · due Sunday 23:59")
   })

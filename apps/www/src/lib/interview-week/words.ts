@@ -234,6 +234,7 @@ export const INTERVIEW_WORDS = {
       `It closed ${weekday(week.due)} ${clock(week.due)}. The send home had then is what counts, kept for good, and the essay comes from home. Nothing more can be said or sent here.`,
     held: (n: number): string =>
       `The send home had at the deadline: ${takes(n)}.`,
+    noSend: "Home had no send from you at the deadline.",
     late: (at: string): string =>
       `Your send from ${weekday(at)} ${clock(at)} didn't reach home before the deadline, so it doesn't count. It stays on this phone.`,
   },

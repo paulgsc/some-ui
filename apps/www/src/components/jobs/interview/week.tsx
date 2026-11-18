@@ -258,7 +258,11 @@ const ReadBack = ({ held }: { held: Interview }): JSX.Element => {
       <section className="bg-card flex flex-col gap-1 rounded-2xl p-3 text-sm">
         <p className="font-semibold">{WORDS.closed.title(week)}</p>
         <p className="text-muted-foreground">{WORDS.closed.line(week)}</p>
-        <p>{WORDS.closed.held(holds === null ? 0 : takesOf(holds).length)}</p>
+        <p>
+          {holds === null
+            ? WORDS.closed.noSend
+            : WORDS.closed.held(takesOf(holds).length)}
+        </p>
         {last !== null && last.at !== holds?.at && (
           <p className="text-muted-foreground">{WORDS.closed.late(last.at)}</p>
         )}

@@ -9,6 +9,6 @@
     "make home's record count an unsent question's first take as its answer (a server change)"
   ],
   "gray": "The words and the record disagreed, and either could move. The Nov 17 retake ruling (keep the first take's audio for good, the first goes home on its own) is about keeping the audio, and it says nothing on whether a first take answers the question unsent.",
-  "undo": "Restore KEPT, openUntil and closed.line in words.ts, and drop the IWC1 case from words.test.ts; or change home's week_record to answer from the first take.",
+  "undo": "Restore KEPT, openUntil, closed.line and closed.held in words.ts (and closed.noSend's use in week.tsx), and drop the IWC1 cases from words.test.ts; or change home's week_record to answer from the first take.",
   "refs": ["#3229", "#3221", "#2931", "#3175"]
 }
