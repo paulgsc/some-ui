@@ -8,8 +8,8 @@
  * Questions, a question and its ladder, the study page, the answer read
  * aloud while its cue counts, a take said from cues, Read aloud and a read's
  * page, how a week goes, and the look over. Each must leave the page
- * as it was and never be wider than the phone; a script scrolls inside its
- * own box.
+ * as it was and never be wider than the phone; a script moves inside its
+ * own band (IW9).
  *
  * Run against a built phone page:
  *

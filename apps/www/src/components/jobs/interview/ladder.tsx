@@ -8,15 +8,17 @@
  * its way back, and Android's back steps through them too.
  */
 import type { JSX, ReactNode } from "react"
-import { useEffect } from "react"
+import { useEffect, useLayoutEffect, useRef } from "react"
+import { cn } from "@some-ui/core-utils"
 import type { Question, WorkSource } from "@some-ui/interview-week"
 import { workSourceKey } from "@some-ui/interview-week"
-import { BundleTake, TakeRow } from "@some-ui/shared"
+import { BundleTake, Button, TakeRow } from "@some-ui/shared"
 import { ChevronLeft } from "lucide-react"
 
 import type { Rung, SayRung, Step } from "@/lib/interview-week/ladder"
 import { scriptOf, stepsOf } from "@/lib/interview-week/ladder"
-import { isClosed, sentTakeOf } from "@/lib/interview-week/spec"
+import { bandOf } from "@/lib/interview-week/prompter"
+import { isClosed, sentTakeOf, takeLine } from "@/lib/interview-week/spec"
 import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 
 import type { Interview } from "./run"
@@ -276,30 +278,122 @@ export const StudyPage = ({ id }: { id: string }): JSX.Element => (
   </WithQuestion>
 )
 
-/** A script read aloud, a phrase a line, large and scrollable while the take records under it. */
+/** Bars standing for the microphone's level, as the band's foot shows it. */
+const LEVEL_BARS = [0.1, 0.25, 0.4, 0.55, 0.7] as const
+
+/**
+ * A script read aloud through the teleprompter band (IW9, #3176): a phrase a
+ * line in large type, the line read lit at a third of the way down and the
+ * next dimmed, moving while the take under way hears you and holding while
+ * it doesn't (`@/lib/interview-week/prompter`). Built to the prototype the
+ * owner agreed (page 4); the band only keeps your place, and home's
+ * transcript says the pace afterwards.
+ */
 export const Script = ({
+  held,
+  item,
   lines,
   id,
+  seconds,
 }: {
+  held: Interview
+  item: string
   lines: ReadonlyArray<string>
   id: string
-}): JSX.Element => (
-  <section
-    aria-label={WORDS.script}
-    data-script={id}
-    data-scroll-intent
-    className={
-      /* scroll-intent: a teleprompter's script scrolls as it is read, while the take records under it (#2936) */
-      "bg-card flex max-h-[45vh] flex-col gap-2 overflow-y-auto rounded-2xl p-4 text-2xl leading-snug font-semibold"
+  seconds: number
+}): JSX.Element => {
+  const { prompter, snapshot, run, week } = held
+  const answers = takeLine(week.id, item)
+  const band = bandOf(prompter, answers, lines)
+  const { take } = snapshot
+  const reading = take.kind === "recording" && snapshot.answers === answers
+  const level = reading ? take.level : 0
+  const windowRef = useRef<HTMLDivElement>(null)
+  const trackRef = useRef<HTMLDivElement>(null)
+  // The lit line sits at the band: a measure of laid-out lines, so it is
+  // read after layout, and again when the window changes size.
+  useLayoutEffect(() => {
+    const view = windowRef.current
+    const track = trackRef.current
+    if (view === null || track === null) return undefined
+    const place = (): void => {
+      const line = track.children.item(band.line)
+      const top = line instanceof HTMLElement ? line.offsetTop : 0
+      track.style.transform = `translateY(${view.clientHeight * BAND_AT - top}px)`
     }
-  >
-    {lines.map((line, i) => (
-      // A script can say a phrase twice; its place is its key.
-      // eslint-disable-next-line react/no-array-index-key
-      <p key={i}>{line}</p>
-    ))}
-  </section>
-)
+    place()
+    window.addEventListener("resize", place)
+    return (): void => window.removeEventListener("resize", place)
+  }, [band.line, lines])
+  return (
+    <section
+      aria-label={WORDS.script}
+      data-script={id}
+      className="bg-card flex flex-col gap-2 rounded-2xl py-3"
+    >
+      <p className="text-muted-foreground flex justify-between px-4 text-xs font-semibold">
+        <span>{WORDS.script}</span>
+        {reading && <span>{WORDS.band.time(take.elapsedMs, seconds)}</span>}
+      </p>
+      <div ref={windowRef} className="relative h-[45vh] overflow-hidden">
+        <div
+          aria-hidden
+          className="bg-brand/20 pointer-events-none absolute inset-x-2 top-[30%] h-[4.6rem] -translate-y-2.5 rounded-2xl"
+        />
+        <div
+          ref={trackRef}
+          className="absolute inset-x-0 top-0 flex flex-col gap-3.5 px-5 transition-transform duration-500 ease-out motion-reduce:transition-none"
+        >
+          {lines.map((line, i) => (
+            <p
+              // A script can say a phrase twice; its place is its key.
+              // eslint-disable-next-line react/no-array-index-key
+              key={i}
+              aria-current={i === band.line ? "true" : undefined}
+              className={cn(
+                "text-2xl leading-snug font-bold transition-opacity duration-300 motion-reduce:transition-none",
+                i === band.line
+                  ? "opacity-100"
+                  : i === band.line + 1
+                    ? "opacity-45"
+                    : "opacity-20"
+              )}
+            >
+              {line}
+            </p>
+          ))}
+        </div>
+      </div>
+      <div className="flex min-h-11 items-center gap-3 px-4">
+        <span aria-hidden className="flex h-6 items-end gap-0.5">
+          {LEVEL_BARS.map((bar) => (
+            <i
+              key={bar}
+              className={cn(
+                "w-1.5 rounded-sm transition-[height] duration-150 motion-reduce:transition-none",
+                level >= bar ? "bg-foreground h-6" : "bg-muted-foreground h-1"
+              )}
+            />
+          ))}
+        </span>
+        <p
+          aria-live="polite"
+          className="text-muted-foreground min-w-0 flex-1 text-sm"
+        >
+          {reading ? WORDS.band[band.state] : WORDS.band.ready}
+        </p>
+        {reading && (
+          <Button type="button" variant="outline" onClick={run.pause}>
+            {band.state === "paused" ? WORDS.band.goOn : WORDS.band.pause}
+          </Button>
+        )}
+      </div>
+    </section>
+  )
+}
+
+/** Where the band sits, from the window's top: about a third of the way. */
+const BAND_AT = 0.3
 
 /** Under a read's script: the count before it records, holding its place (HS1). */
 export const CueLine = ({
@@ -403,7 +497,13 @@ const AloudTake = ({
             {WORDS.step.aloud.name} · {WORDS.aim(question.targetSeconds)}
           </p>
           {ready !== undefined && (
-            <Script lines={scriptOf(ready)} id={question.id} />
+            <Script
+              held={held}
+              item={question.id}
+              lines={scriptOf(ready)}
+              id={question.id}
+              seconds={question.targetSeconds}
+            />
           )}
           <CueLine held={held} item={question.id} />
         </>

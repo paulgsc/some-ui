@@ -1,0 +1,15 @@
+{
+  "id": "C616",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": ["apps/www/src/lib/interview-week/prompter.ts"],
+  "chose": "The band moves at 140 words a minute while the voice is heard (the take's level at or over HEARD_FLOOR, the line a take must reach to count as heard), holds once a second passes with nothing heard, and counts at most a second between two of the recorder's reads, so a phone that slept never jumps it.",
+  "options": [
+    "140 a minute, held after 1 s quiet",
+    "the read card's own target pace (its words over its target seconds)",
+    "a pace the owner sets on the page"
+  ],
+  "gray": "#3176 says about 140 a minute and about a second; the agreed prototype shows the behaviour, not the numbers, and the owner would feel either one while reading.",
+  "undo": "Change PACE_WPM or HOLD_MS in prompter.ts.",
+  "refs": ["#3176"]
+}

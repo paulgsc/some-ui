@@ -1,11 +1,12 @@
 /**
  * Read aloud, a section of its own (IW8, paulgsc/some-ui#3175): the week's
  * short scripts, each opening its own reading page, which counts down and
- * records while the script stays on screen (IW5's read). A read's take
+ * records while the script moves through the reading band (IW9). A read's take
  * waits on this phone until the week is sent.
  */
 import type { JSX } from "react"
 
+import { linesOf } from "@/lib/interview-week/ladder"
 import { readItem } from "@/lib/interview-week/spec"
 import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 
@@ -61,7 +62,13 @@ const ReadTake = ({
             {WORDS.situation} · {WORDS.aim(card.targetSeconds)}
           </p>
           <p className="text-sm">{card.situation}</p>
-          <Script lines={card.script.split("\n")} id={card.id} />
+          <Script
+            held={held}
+            item={item}
+            lines={linesOf(held.week, item)}
+            id={card.id}
+            seconds={card.targetSeconds}
+          />
           <CueLine held={held} item={item} />
         </>
       }

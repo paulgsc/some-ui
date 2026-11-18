@@ -140,6 +140,11 @@ describe("the interview week's pages on the phone (IW8)", () => {
     await settle(CUE_SECONDS * 1000)
     await settle(2_000)
     expect(document.querySelector('[data-script="epic-2931"]')).toBe(script)
+    // The band moves while the take hears you, and Pause holds it (IW9).
+    screen.getByText(WORDS.band.moving)
+    fireEvent.click(screen.getByRole("button", { name: WORDS.band.pause }))
+    screen.getByText(WORDS.band.paused)
+    fireEvent.click(screen.getByRole("button", { name: WORDS.band.goOn }))
     fireEvent.click(takeButton(card))
     await settle()
 
