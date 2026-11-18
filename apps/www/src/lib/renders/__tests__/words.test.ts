@@ -385,11 +385,10 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
   const cases = FEEDS.flatMap((feed) =>
     (["recorder", "home"] as const).flatMap((by) =>
       REASONS.flatMap((reason) => {
-        const own = refused(reason) ? NUMBERS[reason] : NUMBERS["too-long"]
-        const other =
-          reason === "too-long" ? NUMBERS["too-large"] : NUMBERS["too-long"]
+        const ownKey: Refused = refused(reason) ? reason : "too-long"
+        const own = NUMBERS[ownKey]
         // Both of its own numbers; each one alone; none (a home from before
-        // epoch 15); and the other reason's numbers.
+        // epoch 15, or 16 for overflow); and each other reason's numbers.
         const sets: ReadonlyArray<[string, Record<string, unknown>]> = [
           ["both", own],
           ...Object.entries(own).map(
@@ -399,7 +398,12 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
             ]
           ),
           ["none", {}],
-          ["crossed", other],
+          ...Object.entries(NUMBERS)
+            .filter(([key]) => key !== ownKey)
+            .map(([key, n]): [string, Record<string, unknown>] => [
+              `crossed ${key}`,
+              n,
+            ]),
         ]
         return sets.map(([which, extra]) => ({
           feed,
@@ -421,7 +425,7 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
   )
 
   it("covers the whole family", () => {
-    expect(cases).toHaveLength(FEEDS.length * 2 * REASONS.length * 5)
+    expect(cases).toHaveLength(FEEDS.length * 2 * REASONS.length * 6)
   })
 
   it("says a refusal with both its numbers, and today's line otherwise", () => {
@@ -478,15 +482,53 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
     expect(
       line({ scenes: ["dive-2", "beside-2", "dive-3"], sceneCount: 5 })
     ).toBe(
-      "Doesn't fit the frame: dive-2, beside-2, dive-3 and 2 more. Home doesn't try it again as it is."
+      "Some scenes don't fit the frame: dive-2, beside-2, dive-3 and 2 more. Home doesn't try it again as it is."
     )
     expect(line({ scenes: ["dive-2"], sceneCount: 1 })).toBe(
-      "Doesn't fit the frame: dive-2. Home doesn't try it again as it is."
+      "dive-2 doesn't fit the frame. Home doesn't try it again as it is."
     )
     // No scene named is no refusal it can say.
     expect(line({ scenes: [], sceneCount: 3 })).toBe(
       "It couldn't be made this time. Home tries again in an hour, and keeps what it had finished."
     )
+  })
+
+  it("reads a board whose overflow fields it can't read, that row an ordinary failure", () => {
+    const board = readBoard({
+      status: 200,
+      body: JSON.stringify({
+        now: null,
+        waiting: [],
+        failed: [
+          {
+            feed: "call",
+            key: "a",
+            at: 0,
+            by: "recorder",
+            exit: 1,
+            reason: "overflow",
+            scenes: [""],
+            sceneCount: "many",
+          },
+          {
+            feed: "call",
+            key: "b",
+            at: 0,
+            by: "recorder",
+            exit: 1,
+            reason: "too-long",
+            minutes: 31.2,
+            capMinutes: 30,
+          },
+        ],
+        done: [],
+        coming: [],
+      }),
+    })
+    if (board.kind !== "read") throw new Error("the board did not read")
+    const [odd, refusedRow] = board.board.failed
+    expect(failedLine(odd)).toMatch(/Home tries again in an hour/)
+    expect(failedLine(refusedRow)).toMatch(/^Too long to make/)
   })
 
   it("never says a refused length at its cap, or a size at its cap as larger by a share", () => {

@@ -260,9 +260,11 @@ const REFUSAL_WORDS = {
   /** Scenes too full for their frame, by name, the rest counted. */
   overflow: (scenes: ReadonlyArray<string>, sceneCount: number): string => {
     const more = sceneCount - scenes.length
+    if (more <= 0 && scenes.length === 1)
+      return `${scenes.join("")} doesn't fit the frame. Home doesn't try it again as it is.`
     const named =
       more > 0 ? `${scenes.join(", ")} and ${more} more` : scenes.join(", ")
-    return `Doesn't fit the frame: ${named}. Home doesn't try it again as it is.`
+    return `Some scenes don't fit the frame: ${named}. Home doesn't try it again as it is.`
   },
 } as const
 

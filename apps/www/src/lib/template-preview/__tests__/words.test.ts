@@ -34,6 +34,7 @@ describe("PREVIEW_WORDS", () => {
     expect(PREVIEW_WORDS.failedWhy("no-sample")).toMatch(/no sample/)
     expect(PREVIEW_WORDS.failedWhy("too-long")).toMatch(/longer/)
     expect(PREVIEW_WORDS.failedWhy("too-large")).toMatch(/larger/)
+    expect(PREVIEW_WORDS.failedWhy("overflow")).toMatch(/don't fit the frame/)
     expect(PREVIEW_WORDS.failedWhy("overdue")).toMatch(/Make another/)
     expect(PREVIEW_WORDS.failedWhy("render")).toBeNull()
     expect(PREVIEW_WORDS.failedWhy(undefined)).toBeNull()

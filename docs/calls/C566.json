@@ -2,11 +2,8 @@
   "id": "C566",
   "made": "2026-11-18",
   "by": "claude",
-  "paths": [
-    "apps/www/src/lib/renders/conveyor.ts",
-    "apps/www/src/lib/renders/words.ts"
-  ],
-  "chose": "On Studio › Renders' conveyor, a render home refused because its scenes don't fit the frame (paulgsc/server#975) sits aside as \"Spilled over the pan\", beside C502's \"Too big for the oven\" and \"Too big for the box\", and its line names the scenes: \"Doesn't fit the frame: dive-2, beside-2, dive-3 and 2 more. Home doesn't try it again as it is.\"",
+  "paths": ["apps/www/src/lib/renders/conveyor.ts"],
+  "chose": "On Studio › Renders' conveyor, a render home refused because its scenes don't fit the frame (paulgsc/server#977) sits aside as \"Spilled over the pan\", beside C502's \"Too big for the oven\" and \"Too big for the box\".",
   "options": [
     "its own aside, \"Spilled over the pan\"",
     "\"Too big for the oven\", as a too-long render is",
@@ -14,5 +11,5 @@
   ],
   "gray": "The conveyor's pizza names are the owner's (#2876, C139); a render whose scenes overflow their frame was neither too long nor too large, and nothing went wrong while making it, so none of the names C502 chose says what happened.",
   "undo": "In conveyor.ts, have failedAside return \"tooBigForOven\" (or \"burnt\") for an overflow and drop the spilledOver aside.",
-  "refs": ["#2899", "server#975"]
+  "refs": ["#2899", "server#975", "server#977"]
 }
