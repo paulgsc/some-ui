@@ -61,6 +61,23 @@ describe("the read of the takes home keeps (ST32)", () => {
     expect(takesPath(null, "t 9")).toBe(
       "/voice-notes/takes?kind=all&after=t%209"
     )
+    // The kinds, topic and order picked, asked of home (TAKES20).
+    expect(
+      takesPath("rams", null, {
+        kinds: ["game"],
+        about: "game:401772",
+        sort: "oldest",
+      })
+    ).toBe(
+      "/voice-notes/takes?kind=game&about=game%3A401772&sort=oldest&q=rams"
+    )
+    expect(
+      takesPath(null, null, {
+        kinds: ["studio", "game"],
+        about: null,
+        sort: "newest",
+      })
+    ).toBe("/voice-notes/takes?kind=studio&kind=game")
   })
 
   it("hands back home's answer to one GET", async () => {

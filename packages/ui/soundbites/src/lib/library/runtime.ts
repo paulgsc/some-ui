@@ -23,11 +23,12 @@ import type {
   LibraryEvent,
   LibraryIntent,
   LibraryPhoneSnapshot,
+  LibraryQuery,
   LibraryRead,
   LibraryState,
   LibraryTake,
 } from "./model"
-import { INITIAL_LIBRARY, reachedHome, stepLibrary } from "./model"
+import { EVERY_KIND, INITIAL_LIBRARY, reachedHome, stepLibrary } from "./model"
 import { LIBRARY_WORDS } from "./words"
 
 /** Home, as Takes on home reads it. Every call resolves. */
@@ -41,7 +42,9 @@ export type TakesHome = {
     q: string | null,
     wanted: () => boolean,
     /** The take to read on from (TAKES20); null or absent, the first page. */
-    after?: string | null
+    after?: string | null,
+    /** The kinds, topic and order asked for (TAKES20); absent, every kind, newest first. */
+    query?: LibraryQuery
   ) => Promise<LibraryRead>
   /** Take `id`'s audio from home; null when home can't give it back now. */
   readonly audio: (id: string) => Promise<Blob | null>
@@ -151,8 +154,11 @@ export type LibraryRuntime = {
   readonly attach: () => () => void
 }
 
-export function createTakeLibrary(ports: LibraryPorts): LibraryRuntime {
-  let state = INITIAL_LIBRARY
+export function createTakeLibrary(
+  ports: LibraryPorts,
+  query: LibraryQuery = EVERY_KIND
+): LibraryRuntime {
+  let state: LibraryState = { ...INITIAL_LIBRARY, query }
   let attached = false
   let playback: Playback | null = null
   const listeners = new Set<() => void>()
@@ -209,21 +215,28 @@ export function createTakeLibrary(ports: LibraryPorts): LibraryRuntime {
       case "readTakes": {
         const { seq } = effect
         const wanted = (): boolean => attached && state.seq === seq
-        later(ports.home.takes(effect.q, wanted, effect.after), (read) => ({
-          type: "takesRead",
-          seq,
-          read,
-        }))
+        later(
+          ports.home.takes(effect.q, wanted, effect.after, effect.query),
+          (read) => ({
+            type: "takesRead",
+            seq,
+            read,
+          })
+        )
         return
       }
       case "readAudio": {
         const { play } = effect
         // One sound at a time: the phone's own take stops for home's.
         ports.phone?.pattern.stopPlaying()
-        // A take only on this phone plays from the phone (TAKES20).
-        const own = ports.onPhone
-          ?.getSnapshot()
-          .find((take) => take.id === effect.id)
+        // A take only on this phone plays from the phone (TAKES20); one
+        // home lists plays from home, whatever the phone still holds.
+        const listed =
+          state.read.kind === "read" &&
+          state.read.page.takes.some((take) => take.id === effect.id)
+        const own = listed
+          ? undefined
+          : ports.onPhone?.getSnapshot().find((take) => take.id === effect.id)
         const audio =
           own === undefined
             ? ports.home.audio(effect.id)

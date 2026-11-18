@@ -7,13 +7,13 @@
     "some-ui:packages/ui/soundbites/src/lib/library/model.ts",
     "some-ui:packages/ui/soundbites/src/components/take-library/index.tsx"
   ],
-  "chose": "Takes asks home for every kind at once (kind=all) and pages with \"Show older takes\" (after=); kinds, topics, statuses and order are filtered on the pages shown, not asked of home; a take home deleted for good or whose recording was let go still shows, with no Play, saying \"Deleted for good. Home keeps a receipt of what went.\" or \"Let go. Home keeps what it heard in it, without its audio.\", under Deleted and Let go chips.",
+  "chose": "Takes asks home for what the page shows: the compartment's kinds (kind=all in All), the topic picked (about=, as home keys it) and Newest or Oldest (sort=), keeping the takes shown while home answers, and pages with \"Show more takes\" (after=); by what it's about orders what home answered. A take home deleted for good or whose recording was let go still shows, with no Play, saying \"Deleted for good. Home keeps a receipt of what went.\" or \"Let go. Home keeps what it heard in it, without its audio.\", under Deleted and Let go chips.",
   "options": [
+    "each filter and order asked of home",
     "every kind at once, chips over the pages shown",
-    "each chip asks home again with kind/about/from/to/sort",
     "deleted and let-go takes left out of Takes, as before"
   ],
   "gray": "Whether deleted takes show among the rest, and whether a chip counts what is shown or all home keeps, is what the owner sees and no check settles it.",
-  "undo": "Filter status deleted and recording-let-go out in TakeLibrary's homeRows; pass chips to takesPath to ask home per chip.",
+  "undo": "Filter status deleted and recording-let-go out in TakeLibrary's homeRows; dispatch no query on a chip or order to filter only what's shown.",
   "refs": ["#3219", "#3029"]
 }

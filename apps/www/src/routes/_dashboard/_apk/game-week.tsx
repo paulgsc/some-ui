@@ -39,11 +39,15 @@ function gameWeekPorts(): GameWeekPorts {
  * The way to what was said here, in Studio's Takes (TAKES20): the bites'
  * compartment, filtered to the game picked.
  */
-const takesLink = (gameId: string | null, label: string): JSX.Element => (
+const takesLink = (
+  game: { readonly id: string; readonly label: string } | null,
+  label: string
+): JSX.Element => (
   <Link
     to="/journal/takes/$kind"
     params={{ kind: "bite" }}
-    search={gameId === null ? {} : { about: gameId }}
+    // As home keys a game's takes (`about.key`), and its name for the chip.
+    search={game === null ? {} : { about: `game:${game.id}`, name: game.label }}
     className="text-brand self-start text-sm font-semibold underline-offset-4 hover:underline"
   >
     {label}

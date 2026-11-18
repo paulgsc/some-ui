@@ -86,7 +86,7 @@ describe("what each kind's take is about, through its port (TAKES20)", () => {
     expect(line("leetype", "two-sum:screen-2")).toBe("two sum · screen 2")
     expect(line("lens", "I-ate-rice")).toBe("I ate rice")
     expect(line("jobs", "2026-11-12:acme_staff")).toBe(
-      "2026-11-12 · acme staff"
+      "acme staff · 2026-11-12"
     )
     expect(line("soundbite", "direct")).toBe("Recorded on Soundbites")
     expect(line("reflection", "s1")).toBe("")

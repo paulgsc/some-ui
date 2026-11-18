@@ -404,12 +404,22 @@ describe("Takes on home (ST32)", () => {
     })
     fireEvent.click(screen.getByRole("button", { name: W.search }))
     await settle()
-    expect(takes).toHaveBeenLastCalledWith("brand", expect.any(Function), null)
+    expect(takes).toHaveBeenLastCalledWith(
+      "brand",
+      expect.any(Function),
+      null,
+      expect.anything()
+    )
     expect(screen.getByText(W.shown("words", "brand", 1, 2, 1))).toBeTruthy()
     expect(screen.queryByText(W.notHeard)).toBeNull()
     fireEvent.click(screen.getByRole("button", { name: W.newest }))
     await settle()
-    expect(takes).toHaveBeenLastCalledWith(null, expect.any(Function), null)
+    expect(takes).toHaveBeenLastCalledWith(
+      null,
+      expect.any(Function),
+      null,
+      expect.anything()
+    )
     expect(screen.getByText(W.notHeard)).toBeTruthy()
   })
 
@@ -648,7 +658,9 @@ describe("one home for every take (TAKES20)", () => {
         ports={ports()}
         pair={null}
         compartment="bite"
-        initialChips={{ topic: "401772" }}
+        initialChips={{
+          topic: { key: "game:401772", label: "49ers vs Rams", asks: true },
+        }}
       />
     )
     await settle()
@@ -657,6 +669,7 @@ describe("one home for every take (TAKES20)", () => {
     // The other game's bite waits behind its own chip.
     expect(screen.queryByText(/^Q1 9:00/)).toBeNull()
     fireEvent.click(screen.getByRole("button", { name: /^49ers vs Rams/ }))
+    await settle()
     expect(screen.getByText(/^Q1 9:00/)).toBeTruthy()
   })
 
@@ -669,6 +682,7 @@ describe("one home for every take (TAKES20)", () => {
         .map((each) => each.textContent.split(" · ")[0] ?? "")
     expect(said()).toEqual(["Q3 4:12", "Q1 9:00"])
     fireEvent.click(screen.getByRole("button", { name: W.order.oldest }))
+    await settle()
     expect(said()).toEqual(["Q1 9:00", "Q3 4:12"])
   })
 
@@ -752,6 +766,41 @@ describe("one home for every take (TAKES20)", () => {
     // here, were it guessed.
     expect(count("scene")).toBe("0")
     expect(count("here")).toBe("0")
+  })
+
+  it("leaves a take home holds to home's own pages, on a home that lists every kind, and plays a take home lists from home", async () => {
+    const played: Array<Blob> = []
+    render(
+      <TakeLibrary
+        ports={ports({
+          onPhone: onPhone([
+            { ...OWN, home: true },
+            // Still on the phone too, and listed by home.
+            { ...OWN, id: "i1", of: "interview", ref: INTERVIEW.ref },
+          ]),
+          player: {
+            play: (audio: Blob) => {
+              played.push(audio)
+              return {
+                ended: new Promise<void>(() => undefined),
+                stop: (): void => undefined,
+              }
+            },
+          },
+        })}
+        pair={null}
+        compartment="all"
+      />
+    )
+    await settle()
+    expect(screen.queryByText(W.homeLater)).toBeNull()
+    expect(screen.queryByText(W.waitsHere)).toBeNull()
+    const [first] = screen.getAllByRole("button", { name: W.play })
+    fireEvent.click(first!)
+    await settle()
+    await settle()
+    // Home's copy ("take"), not the phone's ("own").
+    expect(played[0]?.size).toBe(4)
   })
 
   it("still shows the phone's takes on a home that lists Studio's alone, saying what waits on a newer one", async () => {

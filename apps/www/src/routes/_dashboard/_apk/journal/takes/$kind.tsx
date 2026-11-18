@@ -49,14 +49,15 @@ const toEpisode = (take: LibraryTake): JSX.Element | null => {
  * One compartment of Studio's Takes (TAKES3, #3069): its takes as cards,
  * each saying what it was said for (TAKES2, #3068), under chips for where
  * each is, its station, what it is about and how it stands, each with its
- * count, in the order picked (TAKES20, #3219). `?about=` opens it filtered
- * to one topic (a game, a week): a wing's own view of its takes is this
+ * count, in the order picked (TAKES20, #3219). `?about=` (as home keys it,
+ * `game:<id>`, with `?name=` for its chip) opens it filtered to one topic (a
+ * game, a week): a wing's own view of its takes is this
  * page, as Game day's way to a game's takes is. Phone-only
  * (`build.paths.ts`).
  */
 const KindPage = (): JSX.Element => {
   const { kind }: { kind: Compartment } = Route.useParams()
-  const { about }: { about?: string } = Route.useSearch()
+  const { about, name }: { about?: string; name?: string } = Route.useSearch()
   return (
     <StudioPage heading={LIBRARY_WORDS.compartmentHeading(kind)} back="takes">
       {PORTS !== null && (
@@ -66,7 +67,17 @@ const KindPage = (): JSX.Element => {
           pair={<PairHomeLink>{STUDIO_WORDS.pair.pair}</PairHomeLink>}
           compartment={kind}
           row={toEpisode}
-          initialChips={about === undefined ? undefined : { topic: about }}
+          initialChips={
+            about === undefined
+              ? undefined
+              : {
+                  topic: {
+                    key: about,
+                    label: name ?? LIBRARY_WORDS.picked,
+                    asks: true,
+                  },
+                }
+          }
         />
       )}
     </StudioPage>
@@ -83,9 +94,18 @@ export const Route = createFileRoute("/_dashboard/_apk/journal/takes/$kind")({
       kind,
     }),
   },
-  validateSearch: (search: Record<string, unknown>): { about?: string } =>
-    typeof search.about === "string" && search.about !== ""
-      ? { about: search.about }
-      : {},
+  validateSearch: (
+    search: Record<string, unknown>
+  ): { about?: string; name?: string } => {
+    const about =
+      typeof search.about === "string" && search.about !== ""
+        ? { about: search.about }
+        : {}
+    const name =
+      typeof search.name === "string" && search.name !== ""
+        ? { name: search.name }
+        : {}
+    return { ...about, ...name }
+  },
   component: KindPage,
 })

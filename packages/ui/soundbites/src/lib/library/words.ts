@@ -268,9 +268,12 @@ export const LIBRARY_WORDS = {
       ? "Deleted for good. Home keeps a receipt of what went."
       : "Let go. Home keeps what it heard in it, without its audio.",
   /** The next page, older than the takes shown (TAKES20). */
-  showOlder: "Show older takes",
-  olderReading: "Asking home for older takes…",
+  showOlder: "Show more takes",
+  olderReading: "Asking home for more takes…",
   olderUnread: "Home couldn't be reached just then. Try again in a moment.",
+  /** The list changed on home since it was read: only reading it again helps. */
+  listChanged:
+    "The list changed on home since it was read. Read it again to see more.",
   /** How a list is ordered (TAKES20). */
   order: {
     newest: "Newest",
@@ -298,6 +301,8 @@ export const LIBRARY_WORDS = {
     home: "On home",
   } satisfies Record<TakePlace, string>,
   onHomeSince: (storedAt: string): string => `On home since ${dayAt(storedAt)}`,
+  /** A topic opened by a link that didn't name it (TAKES20). */
+  picked: "What you picked",
   /** What a row of chips does, for a reader that can't see it. */
   chips: "Show only the takes",
   /** The way from a note's take to its episode, at the moment it was left. */

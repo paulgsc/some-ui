@@ -74,10 +74,15 @@ export type GameWeekProps = {
   outbox: OutboxPort
   /**
    * The app's way to what was said here, in Studio's Takes (TAKES20), for
-   * the game picked (its id) or every game (null), with its words; none
-   * without.
+   * the game picked (its id and name) or every game (null), with its words;
+   * none without.
    */
-  takesLink?: ((gameId: string | null, label: string) => ReactNode) | undefined
+  takesLink?:
+    | ((
+        game: { readonly id: string; readonly label: string } | null,
+        words: string
+      ) => ReactNode)
+    | undefined
 }
 
 type Panel = "none" | "legend" | "modes"
@@ -640,7 +645,10 @@ export const GameWeek = ({
         <p className="text-muted-foreground text-xs">{outboxWords}</p>
       )}
 
-      {takesLink?.(game?.id ?? null, WORDS.yourTakes(game !== null))}
+      {takesLink?.(
+        game === null ? null : { id: game.id, label: game.label },
+        WORDS.yourTakes(game !== null)
+      )}
 
       <Sheet
         open={panel !== "none"}

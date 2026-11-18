@@ -7,6 +7,7 @@ import {
   compartmentCounts,
   holdsWords,
   inCompartment,
+  kindsAsked,
   NO_CHIPS,
   ordered,
   toggled,
@@ -203,9 +204,9 @@ describe("one home for every take: its chips, its order and its search (TAKES20)
     const every: ReadonlyArray<Chips> = [
       NO_CHIPS,
       { ...NO_CHIPS, kind: "bite" },
-      { ...NO_CHIPS, topic: GAME.key },
+      { ...NO_CHIPS, topic: GAME },
       { ...NO_CHIPS, status: "waiting" },
-      { ...NO_CHIPS, place: "home", topic: WEEK.key },
+      { ...NO_CHIPS, place: "home", topic: WEEK },
     ]
     for (const compartment of ["all", "bite", "interview"] as const) {
       for (const chips of every) {
@@ -219,7 +220,7 @@ describe("one home for every take: its chips, its order and its search (TAKES20)
           expect(count).toBe(shown({ ...chips, kind: chip }))
         }
         for (const { chip, count } of groups.topics) {
-          expect(count).toBe(shown({ ...chips, topic: chip.key }))
+          expect(count).toBe(shown({ ...chips, topic: chip }))
         }
         for (const { chip, count } of groups.statuses) {
           expect(count).toBe(shown({ ...chips, status: chip }))
@@ -267,5 +268,32 @@ describe("one home for every take: its chips, its order and its search (TAKES20)
     })
     expect(topicOf({ kind: "here" })).toBeNull()
     expect(topicOf({ kind: "bite", topic: GAME, parts: [] })).toBe(GAME)
+  })
+})
+
+describe("what home is asked for, by compartment (TAKES20)", () => {
+  it("asks for Studio's kinds as one, each other kind as its own, and every kind in All", () => {
+    expect(kindsAsked("note", null)).toEqual(["studio"])
+    expect(kindsAsked("bite", null)).toEqual(["game"])
+    expect(kindsAsked("interview", null)).toEqual(["interview"])
+    expect(kindsAsked("round", null)).toEqual(["rust-round"])
+    expect(kindsAsked("all", null)).toBeNull()
+    expect(kindsAsked("all", "drama")).toEqual(["scene"])
+    expect(kindsAsked("other", null)).toBeNull()
+  })
+
+  it("keeps a picked topic's chip though no take read has it, so it can be let go", () => {
+    const picked = { key: "game:1", label: "NE @ CHI", asks: true }
+    const { topics } = chipCounts(
+      [],
+      "bite",
+      { ...NO_CHIPS, topic: picked },
+      []
+    )
+    expect(topics).toEqual([{ chip: picked, count: 0 }])
+    expect(
+      toggled({ ...NO_CHIPS, topic: picked }, { group: "topic", value: picked })
+        .topic
+    ).toBeNull()
   })
 })

@@ -7,6 +7,7 @@ import type {
   LibraryStep,
 } from "@soundbites/lib/library/model"
 import {
+  EVERY_KIND,
   INITIAL_LIBRARY,
   notYetHome,
   reachedHome,
@@ -58,7 +59,7 @@ describe("Takes on home (ST32)", () => {
     const opened = run([{ type: "entered" }])
     expect(opened.state.read).toEqual({ kind: "reading" })
     expect(opened.effects).toEqual([
-      { type: "readTakes", seq: 1, q: null, after: null },
+      { type: "readTakes", seq: 1, q: null, after: null, query: EVERY_KIND },
     ])
     const away = run(
       [
@@ -68,7 +69,7 @@ describe("Takes on home (ST32)", () => {
       opened.state
     )
     expect(away.effects).toEqual([
-      { type: "readTakes", seq: 2, q: null, after: null },
+      { type: "readTakes", seq: 2, q: null, after: null, query: EVERY_KIND },
     ])
   })
 
@@ -80,7 +81,13 @@ describe("Takes on home (ST32)", () => {
     expect(typed.effects).toEqual([])
     const searched = stepLibrary(typed.state, { type: "search" })
     expect(searched.effects).toEqual([
-      { type: "readTakes", seq: 2, q: "brand intro", after: null },
+      {
+        type: "readTakes",
+        seq: 2,
+        q: "brand intro",
+        after: null,
+        query: EVERY_KIND,
+      },
     ])
     expect(searched.state.asked).toBe("brand intro")
   })
@@ -115,7 +122,7 @@ describe("Takes on home (ST32)", () => {
       { type: "search" },
     ])
     expect(blank.effects).toEqual([
-      { type: "readTakes", seq: 2, q: null, after: null },
+      { type: "readTakes", seq: 2, q: null, after: null, query: EVERY_KIND },
     ])
     const long = run(
       [{ type: "typed", text: "a".repeat(SEARCH_MAX + 1) }, { type: "search" }],
@@ -128,7 +135,13 @@ describe("Takes on home (ST32)", () => {
       long.state
     )
     expect(fits.effects).toEqual([
-      { type: "readTakes", seq: 3, q: "a".repeat(SEARCH_MAX), after: null },
+      {
+        type: "readTakes",
+        seq: 3,
+        q: "a".repeat(SEARCH_MAX),
+        after: null,
+        query: EVERY_KIND,
+      },
     ])
     expect(fits.state.tooLong).toBe(false)
   })
@@ -143,7 +156,7 @@ describe("Takes on home (ST32)", () => {
     expect(back.state.asked).toBeNull()
     expect(back.state.draft).toBe("")
     expect(back.effects).toEqual([
-      { type: "readTakes", seq: 3, q: null, after: null },
+      { type: "readTakes", seq: 3, q: null, after: null, query: EVERY_KIND },
     ])
   })
 
@@ -201,7 +214,7 @@ describe("Takes on home (ST32)", () => {
     const searched = stepLibrary(playing.state, { type: "search" })
     expect(searched.effects).toEqual([
       { type: "stopPlayback" },
-      { type: "readTakes", seq: 2, q: "intro", after: null },
+      { type: "readTakes", seq: 2, q: "intro", after: null, query: EVERY_KIND },
     ])
     expect(searched.state.playback).toEqual({ kind: "quiet" })
     const loading = run(
@@ -210,7 +223,7 @@ describe("Takes on home (ST32)", () => {
     )
     expect(loading.effects).toEqual([
       { type: "stopPlayback" },
-      { type: "readTakes", seq: 3, q: null, after: null },
+      { type: "readTakes", seq: 3, q: null, after: null, query: EVERY_KIND },
     ])
     const late = stepLibrary(loading.state, {
       type: "audioRead",
@@ -317,7 +330,7 @@ describe("Takes on home (ST32)", () => {
       ])
       const now = stepLibrary(read.state, { type: "arrived" })
       expect(now.effects).toEqual([
-        { type: "readTakes", seq: 2, q: null, after: null },
+        { type: "readTakes", seq: 2, q: null, after: null, query: EVERY_KIND },
       ])
       expect(now.state.behind).toBe(false)
 
@@ -333,7 +346,7 @@ describe("Takes on home (ST32)", () => {
       expect(playing.state.behind).toBe(true)
       const ended = stepLibrary(playing.state, { type: "playEnded", play: 1 })
       expect(ended.effects).toEqual([
-        { type: "readTakes", seq: 2, q: null, after: null },
+        { type: "readTakes", seq: 2, q: null, after: null, query: EVERY_KIND },
       ])
       expect(ended.state.behind).toBe(false)
     })
@@ -381,6 +394,37 @@ describe("Takes on home (ST32)", () => {
 })
 
 describe("older takes, a page at a time (TAKES20)", () => {
+  it("asks home again for another kind, topic or order, keeping the takes shown until it answers", () => {
+    const opened = run([
+      { type: "entered" },
+      { type: "takesRead", seq: 1, read: { kind: "read", page: PAGE } },
+    ])
+    const query = { kinds: ["game"], about: "game:1", sort: "oldest" } as const
+    const asked = run([{ type: "query", query }], opened.state)
+    expect(asked.effects).toContainEqual({
+      type: "readTakes",
+      seq: 2,
+      q: null,
+      after: null,
+      query,
+    })
+    expect(asked.state.read).toEqual({ kind: "read", page: PAGE })
+    // The same again asks nothing.
+    expect(run([{ type: "query", query }], asked.state).effects).toEqual([])
+  })
+
+  it("says a list changed on home since, when home refuses the page asked", () => {
+    const paged: LibraryPage = { ...PAGE, next: "gone" }
+    const opened = run([
+      { type: "entered" },
+      { type: "takesRead", seq: 1, read: { kind: "read", page: paged } },
+      { type: "older" },
+      { type: "takesRead", seq: 2, read: { kind: "unreadable" } },
+    ])
+    expect(opened.state.older).toBe("changed")
+    expect(opened.state.read).toEqual({ kind: "read", page: paged })
+  })
+
   const first = PAGE.takes[0]!
   const paged: LibraryPage = { ...PAGE, total: 60, next: "t1" }
   const older: LibraryPage = {
@@ -397,7 +441,7 @@ describe("older takes, a page at a time (TAKES20)", () => {
   it("reads on from the last take shown, and adds what home answers below it", () => {
     const asked = run([{ type: "older" }], opened.state)
     expect(asked.effects).toEqual([
-      { type: "readTakes", seq: 2, q: null, after: "t1" },
+      { type: "readTakes", seq: 2, q: null, after: "t1", query: EVERY_KIND },
     ])
     // Asked twice while one is on its way, it asks once.
     expect(run([{ type: "older" }], asked.state).effects).toEqual([])
@@ -419,7 +463,7 @@ describe("older takes, a page at a time (TAKES20)", () => {
       [{ type: "takesRead", seq: 2, read: { kind: "away" } }],
       asked.state
     ).state
-    expect(away.older).toBe("unread")
+    expect(away.older).toBe("away")
     expect(away.read).toEqual({ kind: "read", page: paged })
     // A new search starts over from its first page.
     const searched = run(
@@ -432,6 +476,7 @@ describe("older takes, a page at a time (TAKES20)", () => {
       seq: 3,
       q: "brand",
       after: null,
+      query: EVERY_KIND,
     })
   })
 })

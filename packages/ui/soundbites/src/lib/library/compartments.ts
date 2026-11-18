@@ -16,7 +16,8 @@ import { assertNever } from "@some-ui/core-utils"
 import { parseAskId } from "@some-ui/video-render"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 
-import type { PortAbout, PortKind, TakeTopic } from "./kinds"
+import type { PortAbout, PortKind, TakeOf, TakeTopic } from "./kinds"
+import { KIND_OF, TAKE_OFS } from "./kinds"
 
 /** Studio's own kinds of take, split by what each was said for. */
 export const STUDIO_KINDS = ["note", "scene", "idea", "ask", "here"] as const
@@ -221,8 +222,8 @@ export type Chips = {
   readonly station: string | null
   /** A kind, picked in All (TAKES20). */
   readonly kind?: TakeKind | null | undefined
-  /** A topic's key: a game, a week (TAKES20). */
-  readonly topic?: string | null | undefined
+  /** A topic: a game, a week (TAKES20). */
+  readonly topic?: TakeTopic | null | undefined
   readonly status?: TakeStatus | null | undefined
 }
 
@@ -253,7 +254,7 @@ export const underChips = (take: Sorted, chips: Chips): boolean =>
   (chips.place === null || take.place === chips.place) &&
   (chips.station === null || take.station === chips.station) &&
   ((chips.kind ?? null) === null || take.kind === chips.kind) &&
-  ((chips.topic ?? null) === null || take.topic?.key === chips.topic) &&
+  ((chips.topic ?? null) === null || take.topic?.key === chips.topic?.key) &&
   ((chips.status ?? null) === null || take.status === chips.status)
 
 /** How many takes each compartment holds. */
@@ -316,6 +317,8 @@ export function chipCounts(
     return n > 0 || picked ? [{ chip, count: n }] : []
   }
   const topics = new Map<string, TakeTopic>()
+  // A topic picked stays, to be let go, though no take read has it.
+  if (chips.topic != null) topics.set(chips.topic.key, chips.topic)
   for (const take of here) {
     if (take.topic != null && !topics.has(take.topic.key)) {
       topics.set(take.topic.key, take.topic)
@@ -351,10 +354,9 @@ export function chipCounts(
     topics: [...topics.values()].flatMap((topic) =>
       count(
         topic,
-        chips.topic === topic.key,
+        chips.topic?.key === topic.key,
         (take) =>
-          take.topic?.key === topic.key &&
-          underChips(take, { ...chips, topic: topic.key })
+          take.topic?.key === topic.key && underChips(take, { ...chips, topic })
       )
     ),
     statuses: TAKE_STATUSES.flatMap((status) =>
@@ -373,13 +375,35 @@ export type ChipPick =
   | { readonly group: "place"; readonly value: TakePlace }
   | { readonly group: "station"; readonly value: string }
   | { readonly group: "kind"; readonly value: TakeKind }
-  | { readonly group: "topic"; readonly value: string }
+  | { readonly group: "topic"; readonly value: TakeTopic }
   | { readonly group: "status"; readonly value: TakeStatus }
 
 /** Picks `chip` in its group, or lets it go when it was picked. */
 export function toggled(chips: Chips, chip: ChipPick): Chips {
+  if (chip.group === "topic") {
+    const picked = chips.topic?.key === chip.value.key
+    return { ...chips, topic: picked ? null : chip.value }
+  }
   const now = chips[chip.group] ?? null
   return { ...chips, [chip.group]: now === chip.value ? null : chip.value }
+}
+
+/**
+ * The kinds home is asked for, for a compartment and the kind picked in
+ * All (TAKES20): Studio's five are all home's `studio`; each other is its
+ * own; All, and a kind this phone doesn't know, ask for every kind.
+ */
+export function kindsAsked(
+  compartment: Compartment,
+  picked: TakeKind | null
+): ReadonlyArray<TakeOf> | null {
+  const kind = compartment === "all" ? picked : compartment
+  if (kind === null || kind === "other") return null
+  if (STUDIO_KINDS.some((studio) => studio === kind)) return ["studio"]
+  const of = TAKE_OFS.find(
+    (each) => each !== "studio" && KIND_OF[each] === kind
+  )
+  return of === undefined ? null : [of]
 }
 
 /** How a list of takes is ordered (TAKES20). */

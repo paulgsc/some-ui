@@ -60,10 +60,21 @@ export type PortKind = (typeof KIND_OF)[OtherOf] | "other"
 
 /**
  * What a take is about, that takes of its kind share and can be filtered
- * and sorted by (a game, a week, a session file): `key` is what home was
- * told, `label` says it in the person's words.
+ * and sorted by (a game, a week, a session file): `key` as home keys it
+ * (`about.key`, `game:<id>`), `label` in the person's words. `asks` says
+ * home filters by it (every port's); Studio's are the phone's alone.
  */
-export type TakeTopic = { readonly key: string; readonly label: string }
+export type TakeTopic = {
+  readonly key: string
+  readonly label: string
+  readonly asks?: boolean | undefined
+}
+
+const topicOf = (key: string, label: string): TakeTopic => ({
+  key,
+  label,
+  asks: true,
+})
 
 /**
  * What a take of a port's kind is about: its topic, if it has one, and the
@@ -117,12 +128,13 @@ export type AboutPort = (
 const WEEK = /^\d{4}-w(\d{1,2})$/
 
 function weekTopic(
+  of: "interview" | "rust-round",
   id: string | undefined,
   words: AboutPortWords
 ): TakeTopic | null {
   if (id === undefined) return null
   const n = WEEK.exec(id)?.[1]
-  return n === undefined ? null : { key: id, label: words.week(Number(n)) }
+  return n === undefined ? null : topicOf(`${of}:${id}`, words.week(Number(n)))
 }
 
 const present = (
@@ -154,8 +166,9 @@ export const ABOUT_PORTS: Readonly<Record<OtherOf, AboutPort>> = {
     const named = pick !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(day ?? "")
     return {
       kind: "jobs",
-      topic: named && day !== undefined ? { key: day, label: day } : null,
-      parts: present([named ? spoken(pick) : spoken(ref)]),
+      topic:
+        ref === "" ? null : topicOf(`jobs:${ref}`, spoken(named ? pick : ref)),
+      parts: present([named ? day : null]),
     }
   },
   scene: () => ({ kind: "drama", topic: null, parts: [] }),
@@ -171,7 +184,7 @@ export const ABOUT_PORTS: Readonly<Record<OtherOf, AboutPort>> = {
       fields.scenario === undefined ? null : names.scenario(fields.scenario)
     return {
       kind: "bite",
-      topic: { key: ref, label },
+      topic: ref === "" ? null : topicOf(`game:${ref}`, label),
       parts: present([clock, scenario]),
     }
   },
@@ -188,25 +201,28 @@ export const ABOUT_PORTS: Readonly<Record<OtherOf, AboutPort>> = {
       topic:
         file === undefined || file === ""
           ? null
-          : { key: file, label: spoken(file) },
+          : topicOf(`leetype:${file}`, spoken(file)),
       parts: present([screen === undefined ? null : spoken(screen)]),
     }
   },
   "rust-round": ({ ref }, _names, words) => {
     const [first, second] = ref.split(":")
-    const week = weekTopic(first, words)
+    const week = weekTopic("rust-round", first, words)
     if (week !== null) {
       return { kind: "round", topic: week, parts: present([second]) }
     }
     return {
       kind: "round",
-      topic: first === undefined ? null : { key: first, label: spoken(first) },
+      topic:
+        first === undefined || first === ""
+          ? null
+          : topicOf(`rust-round:${first}`, spoken(first)),
       parts: present([second === undefined ? null : spoken(second)]),
     }
   },
   interview: ({ ref }, names, words) => {
     const [week, second, third] = ref.split(":")
-    const topic = weekTopic(week, words)
+    const topic = weekTopic("interview", week, words)
     if (second === "read") {
       return {
         kind: "interview",

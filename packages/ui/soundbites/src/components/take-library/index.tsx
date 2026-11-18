@@ -42,6 +42,7 @@ import {
   compartmentCounts,
   holdsWords,
   inCompartment,
+  kindsAsked,
   NO_CHIPS,
   ordered,
   ORDERS,
@@ -56,6 +57,7 @@ import type {
   LibraryIntent,
   LibraryPage,
   LibraryPhoneSnapshot,
+  LibraryQuery,
   LibraryState,
   LibraryTake,
 } from "@soundbites/lib/library/model"
@@ -297,18 +299,22 @@ const HomeCard = ({
               {WORDS.letGone(gone)}
             </p>
           )}
-          <p
-            className={
-              heard.said
-                ? "text-sm break-words italic"
-                : "text-muted-foreground text-sm italic"
-            }
-          >
-            {heard.said ? `“${heard.text}”` : heard.text}
-          </p>
+          {gone !== "deleted" && (
+            <p
+              className={
+                heard.said
+                  ? "text-sm break-words italic"
+                  : "text-muted-foreground text-sm italic"
+              }
+            >
+              {heard.said ? `“${heard.text}”` : heard.text}
+            </p>
+          )}
           {/* Where it stands. TAKES4's "Filed as #n" joins these pills. */}
           <div className="mt-1 flex flex-wrap gap-1.5">
-            <Pill dot="home">{WORDS.onHomeSince(take.storedAt)}</Pill>
+            {gone !== "deleted" && (
+              <Pill dot="home">{WORDS.onHomeSince(take.storedAt)}</Pill>
+            )}
             {standing !== null && <Pill>{standing}</Pill>}
             {/* A take on the conveyor says Canned there; set aside is said
                 only of one on none (C423). */}
@@ -501,8 +507,24 @@ const Listed = ({
           {state.older === "reading" ? WORDS.olderReading : WORDS.showOlder}
         </Button>
       )}
-      {state.older === "unread" && (
+      {state.older === "away" && (
         <Notice tone="warning">{WORDS.olderUnread}</Notice>
+      )}
+      {state.older === "changed" && (
+        <Notice tone="warning">
+          <span className="flex flex-col gap-2">
+            {WORDS.listChanged}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="self-start"
+              onClick={() => dispatch({ type: "readAgain" })}
+            >
+              {WORDS.readAgain}
+            </Button>
+          </span>
+        </Notice>
       )}
     </div>
   )
@@ -716,10 +738,10 @@ const ChipBar = ({
       {topics.map(({ chip, count }) => (
         <Chip
           key={`topic:${chip.key}`}
-          picked={chips.topic === chip.key}
+          picked={chips.topic?.key === chip.key}
           count={count}
           dot={null}
-          onTap={tap({ group: "topic", value: chip.key })}
+          onTap={tap({ group: "topic", value: chip })}
         >
           {chip.label}
         </Chip>
@@ -823,6 +845,25 @@ function aboutWords(about: TakeAbout): ReadonlyArray<string> {
   ].filter((part) => part !== null)
 }
 
+/**
+ * What home is asked for (TAKES20): the compartment's kinds, or the kind
+ * picked in All; the topic picked, when home keys it; the order, but by
+ * what it's about, which is the phone's over what home answers.
+ */
+function queryOf(
+  compartment: Compartment | null,
+  chips: Chips,
+  order: Order
+): LibraryQuery {
+  const topic = chips.topic ?? null
+  return {
+    kinds:
+      compartment === null ? null : kindsAsked(compartment, chips.kind ?? null),
+    about: topic?.asks === true ? topic.key : null,
+    sort: order === "oldest" ? "oldest" : "newest",
+  }
+}
+
 /** Whether the phone's recorder belongs in `compartment`. */
 const records = (compartment: Compartment): boolean =>
   compartment === "here" || compartment === "all"
@@ -835,8 +876,14 @@ export const TakeLibrary = ({
   row,
   initialChips,
 }: TakeLibraryProps): JSX.Element => {
-  /* eslint-disable-next-line owner-guard/no-mount-snapshot -- the runtime is made once per mount, as Studio's screens' are */
-  const [library] = useState(() => createTakeLibrary(ports))
+  /* eslint-disable owner-guard/no-mount-snapshot -- the runtime is made once per mount, as Studio's screens' are; the first read asks for what the page opens on */
+  const [library] = useState(() =>
+    createTakeLibrary(
+      ports,
+      queryOf(compartment, { ...NO_CHIPS, ...initialChips }, "newest")
+    )
+  )
+  /* eslint-enable owner-guard/no-mount-snapshot */
   useEffect(() => library.attach(), [library])
   const state = useSyncExternalStore(library.subscribe, library.getSnapshot)
   const [chips, setChips] = useState<Chips>(() => ({
@@ -900,8 +947,16 @@ export const TakeLibrary = ({
     })
   // Recorded on Takes itself, they are listed by the recorder (`phone`).
   const recordedHere = new Set(phoneTakes.map(({ id }) => id))
+  // A take home holds is in its pages, on a home that lists every kind
+  // (TAKES20): only a home before it leaves those it holds unlisted.
+  const listsEvery = page?.covers === "every"
   const ownRows: ReadonlyArray<OwnRow> = ownTakes
-    .filter(({ id }) => !onHome.has(id) && !recordedHere.has(id))
+    .filter(
+      ({ id, home: held }) =>
+        !onHome.has(id) &&
+        !recordedHere.has(id) &&
+        !(listsEvery && held === true)
+    )
     .map((own) => {
       const said = aboutOf(own.id, own)
       return {
@@ -980,6 +1035,7 @@ export const TakeLibrary = ({
             dispatch({ type: "stop" })
           }
           setChips(next)
+          dispatch({ type: "query", query: queryOf(compartment, next, order) })
         }}
       />
       {recorder && (
@@ -1040,7 +1096,13 @@ export const TakeLibrary = ({
           )}
         </form>
       )}
-      <OrderBar order={order} onOrder={setOrder} />
+      <OrderBar
+        order={order}
+        onOrder={(next) => {
+          setOrder(next)
+          dispatch({ type: "query", query: queryOf(compartment, chips, next) })
+        }}
+      />
       <Unread state={state} dispatch={dispatch} pair={pair} />
       <Listed
         page={chips.place === "phone" ? null : page}

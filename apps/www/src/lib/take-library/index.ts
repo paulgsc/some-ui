@@ -31,8 +31,8 @@ import { askWhileBusy } from "@/lib/home-link/while-busy"
 import { phoneTakesOf, readTakes } from "./model"
 
 export const takesHome: TakesHome = {
-  async takes(q, wanted, after = null) {
-    const asked = await askWhileBusy(() => askTakes(q, after), wanted)
+  async takes(q, wanted, after = null, query) {
+    const asked = await askWhileBusy(() => askTakes(q, after, query), wanted)
     if (asked.kind === "answered") return readTakes(asked.answer)
     return asked.kind === "unreachable" ? { kind: "away" } : asked
   },
