@@ -41,6 +41,7 @@ import {
   notesAnswered,
 } from "@/lib/episode-feedback/home-query"
 import type { Feed } from "@/lib/feeds"
+import { FEEDS } from "@/lib/feeds"
 import { libraryTakes } from "@/lib/library-takes"
 import { phoneWasBusy } from "@/lib/phone-busy"
 import { FEED_FACTS } from "@/lib/studio-index"
@@ -265,7 +266,13 @@ export const FeedbackNotes = ({ none }: { none: string }): JSX.Element => {
   const storedAt =
     home.data?.kind === "read" ? home.data.storedAt : new Map<string, string>()
   const today = dayOf(new Date())
-  const notYet = home.data?.kind === "read" ? home.data.notYet : null
+  // A home that keeps notes on no feed yet: every note waits for it.
+  const notYet: ReadonlySet<Feed> | null =
+    home.data?.kind === "read"
+      ? home.data.notYet
+      : home.data?.kind === "older"
+        ? new Set(FEEDS)
+        : null
   const place: Place = ({ id, feed }) => {
     const at = storedAt.get(id)
     if (at !== undefined) return WORDS.onHome(at, today)
