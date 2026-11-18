@@ -3639,6 +3639,16 @@
               "class": "measured",
               "says": "Recorded locally on 2026-11-13 from the template's sample answer with the whole registry: 25 scenes at 1920x1080 with no overflow and a 3:57 report.mp4 with no voices; the template's preview gave the same bytes twice.",
               "ref": "some-ui#2700"
+            },
+            {
+              "class": "structural",
+              "says": "An ended week with engagement records is kept once and given to the render worker byte for byte; tested.",
+              "ref": "server:apps/servers/file_host/src/report_weeks.rs#an_ended_measured_week_is_kept_once_and_given_byte_for_byte"
+            },
+            {
+              "class": "structural",
+              "says": "A week still under way, or one with no records, is never written; tested.",
+              "ref": "server:apps/servers/file_host/src/report_weeks.rs#a_week_under_way_or_unmeasured_is_never_written"
             }
           ],
           "watch": {
@@ -6316,7 +6326,10 @@
           "name": "The report_weeks worker writes each ended week's answer for the render worker, once. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": ["server:apps/servers/file_host/src/report_weeks.rs"]
+          "paths": [
+            "server:apps/servers/file_host/src/report_weeks.rs",
+            "server:crates/db/app_event/src/report.rs"
+          ]
         },
         {
           "id": "speaker",
