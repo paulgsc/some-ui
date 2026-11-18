@@ -5,7 +5,7 @@ import type { ComponentRegistry } from "@some-ui/types"
 import { hasAudience } from "@/lib/build-profile"
 
 import type { BurnInsPreviewProps } from "./burn-ins/preview"
-import type { EssayStageProps } from "./call/essay-stage"
+import type { EssaySceneFrameProps, EssayStageProps } from "./call/essay-stage"
 import type { ReportStageProps } from "./call/report-stage"
 import type { CallStageProps } from "./call/stage"
 import type { LiveStageProps } from "./playoff-delta/stage"
@@ -116,6 +116,18 @@ export const EssayStage: ComponentType<EssayStageProps> =
   import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")
     ? lazyWithPreload(() => import("./call/essay-stage"), "EssayStagePage")
         .Component
+    : Nothing
+
+/**
+ * One scene of a Rust Rounds essay in the stage's frame, for an essay given
+ * whole (EF1's ui-fit page); nothing where the build has no web surface.
+ */
+export const EssaySceneFrame: ComponentType<EssaySceneFrameProps> =
+  import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")
+    ? lazyWithPreload<"EssaySceneFrame", EssaySceneFrameProps>(
+        () => import("./call/essay-stage"),
+        "EssaySceneFrame"
+      ).Component
     : Nothing
 
 /**

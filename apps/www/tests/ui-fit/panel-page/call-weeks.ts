@@ -8,42 +8,13 @@ import {
 } from "@some-ui/video-render"
 import type { CallWeek } from "@some-ui/video-render"
 
+import { edited as editedBy, grown as grownBy, prose } from "./grown"
+
 /**
  * The weeks `../call-fit.spec.ts` draws (CF1), beside the one it hands the
  * page: the template's sample, every list at its longest, and the sample with
  * each free text grown word by word to the longest the model accepts.
  */
-
-/** The words the generated weeks are written in: plain prose, wide letters first. */
-const WORDS = [
-  "Whenever",
-  "MOMENTUM",
-  "wandering",
-  "homework",
-  "WebView",
-  "Mandarin",
-  "mailbox",
-  "overwhelm",
-  "Monday",
-  "windows",
-  "Malformed",
-  "workflows",
-  "memory",
-  "Woodworking",
-  "shown",
-  "drawn",
-  "owner",
-  "week",
-  "home",
-  "wins",
-] as const
-
-/** `n` words of `WORDS`, from the `from`th. */
-const prose = (n: number, from = 0): string =>
-  Array.from(
-    { length: n },
-    (_, i) => WORDS[(from + i) % WORDS.length] ?? "word"
-  ).join(" ")
 
 export function sample(): CallWeek {
   const parsed = sampleCallWeek()
@@ -51,12 +22,8 @@ export function sample(): CallWeek {
   return parsed.value
 }
 
-/** A copy of `week` changed by `change`, read back against the schema. */
-function edited(week: CallWeek, change: (draft: CallWeek) => void): CallWeek {
-  const draft = structuredClone<CallWeek>(week)
-  change(draft)
-  return CallWeekSchema.parse(draft)
-}
+const edited = (week: CallWeek, change: (draft: CallWeek) => void): CallWeek =>
+  editedBy(week, change, (raw) => CallWeekSchema.parse(raw))
 
 /** Every list at the longest the schema allows, each item's words long. */
 export function longest(): CallWeek {
@@ -96,18 +63,14 @@ export function longest(): CallWeek {
  * `week` with the text `set` writes grown, a word at a time, to the most the
  * model accepts for its scene.
  */
-function grown(
+const grown = (
   week: CallWeek,
   set: (draft: CallWeek, words: string) => void
-): CallWeek {
-  let best = week
-  for (let n = 1; n < 400; n += 1) {
-    const next = edited(week, (w) => set(w, prose(n, n)))
-    if (!parseCallWeek(next).ok) break
-    best = next
-  }
-  return best
-}
+): CallWeek =>
+  grownBy(week, (w, n) => set(w, prose(n, n)), {
+    parse: (raw) => CallWeekSchema.parse(raw),
+    accepts: (w) => parseCallWeek(w).ok,
+  })
 
 /** Each free text of the sample's items, each grown to its limit. */
 export function atTheLimit(): ReadonlyArray<CallWeek> {

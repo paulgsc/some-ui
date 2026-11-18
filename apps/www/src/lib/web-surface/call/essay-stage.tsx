@@ -1,6 +1,7 @@
 import type { JSX } from "react"
 import { assertNever } from "@some-ui/core-utils"
 import {
+  ESSAY_POINT_COLUMN,
   essayFormat,
   hasCaptions,
   LEITNER,
@@ -16,6 +17,7 @@ import type {
   Essay,
   EssayScene,
   EssayTicket,
+  Voicing,
 } from "@some-ui/video-render"
 
 import { Call, Inline, MARK_CLASS } from "./essay-parts"
@@ -341,7 +343,11 @@ const Screen = ({
       const answer = view.ticket.answer
       return (
         <Call speaker={at.speaker} tag={`${view.ticket.id} · ${NAMES.beside}`}>
-          <table className="w-full text-left text-[0.8em]">
+          <table className="w-full table-fixed text-left text-[0.8em]">
+            <colgroup>
+              <col style={{ width: `${String(100 * ESSAY_POINT_COLUMN)}%` }} />
+              <col />
+            </colgroup>
             <thead className="text-muted-foreground text-[0.85em]">
               <tr>
                 <th className="pr-[1em] font-normal">{W.point}</th>
@@ -542,6 +548,34 @@ const RustEssayStage = ({
       />
     )
   const { essay, voicing } = state
+  return (
+    <EssaySceneFrame
+      essay={essay}
+      scene={scene}
+      voicing={voicing}
+      record={record}
+      onScene={onScene}
+    />
+  )
+}
+
+export type EssaySceneFrameProps = {
+  essay: Essay
+  /** The scene's id; the essay's first scene when it has none by that id. */
+  scene?: string | undefined
+  voicing?: Voicing
+  record: boolean
+  onScene?: ((scene: string) => void) | undefined
+}
+
+/** One scene of `essay` in the stage's frame. */
+export const EssaySceneFrame = ({
+  essay,
+  scene,
+  voicing = "owner",
+  record,
+  onScene,
+}: EssaySceneFrameProps): JSX.Element => {
   const at = essayAt(essay, scene, voicing)
   const format = essayFormat(essay.template.version)
   return (
