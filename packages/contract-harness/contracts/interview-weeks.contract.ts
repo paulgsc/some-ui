@@ -89,7 +89,12 @@ const RecordSchema = z.object({
   unread: z.array(Slug),
 })
 
-/** A week's send as the phone makes it. */
+/**
+ * A week's send as the phone makes it, an answer's rung included. It goes to
+ * a week no routine writes, which home refuses before it reads the body, so
+ * whether home takes the rung is held by the server's own tests
+ * (`an_answer_may_say_its_rung`), not here.
+ */
 const SENT = {
   week: ABSENT_WEEK,
   at: "1999-01-05T12:00:00.000Z",
