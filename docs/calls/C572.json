@@ -1,0 +1,20 @@
+{
+  "id": "C572",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/feeds.rs",
+    "server:apps/servers/file_host/src/feeds/videos.rs",
+    "server:crates/db/app_event/src/report_video.rs",
+    "server:migrations/20261118000200_create_report_video.up.sql"
+  ],
+  "chose": "Home keeps the engagement report's video for the phone and lets it go as a new feed, `report` (feeds::Feed::Report), over sibling tables report_video_link and report_video_deletion, subject-scoped in the essays' shape, served by the existing /feeds/:feed routes, rather than generalising call_video_* by template id.",
+  "options": [
+    "a new feed over sibling tables, the essays' shape",
+    "generalise call_video_link and call_video_deletion by template id",
+    "no video store yet: render only, and decide with step 5"
+  ],
+  "gray": "Generalising one table pair is fewer tables but migrates the call's append-only records and mixes a no-one's feed with a subject's; a new feed is two small tables and one more arm in each Feed method, the way every feed since the call was added. The phone (step 5) sees the feed's name and its keys. The owner said on 2026-11-13, of ENG12: \"Let's just go with the recommended.\"",
+  "undo": "Remove Feed::Report and the report_video_* tables (their down migration refuses while they hold a row), and fold the report into whatever general table replaces them, as a story.",
+  "refs": ["server#821", "#2700"]
+}

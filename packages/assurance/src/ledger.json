@@ -3615,7 +3615,8 @@
         "some-ui:packages/video-render/src/engagement-report-video.ts",
         "some-ui:apps/www/src/lib/web-surface/call",
         "some-ui:apps/www/tests/record/report.ts",
-        "some-ui:apps/www/tests/record/report-recording.ts"
+        "some-ui:apps/www/tests/record/report-recording.ts",
+        "server:apps/servers/file_host/src/report_weeks.rs"
       ],
       "modules": [],
       "objectives": [
@@ -5129,6 +5130,18 @@
       "class": "record",
       "growth": "One row per ended ISO week the owner has engagement records for (subject, week, the period read GET /app-events/weeks/:week answers as JSON, a few KB, when written): about one a week, written once a day after the week ends; append-only, triggers abort UPDATE, DELETE only once the account is gone; subject-scoped, it leaves with the account.",
       "family": "engagement-report-rendered"
+    },
+    {
+      "store": "server:report_video_link",
+      "class": "record",
+      "growth": "About one row per engagement report week whose YouTube link the owner records (subject, week, YouTube id, when), the newest standing; append-only, triggers abort UPDATE, DELETE only once the account is gone; subject-scoped, it leaves with the account.",
+      "family": "engagement-report-rendered"
+    },
+    {
+      "store": "server:report_video_deletion",
+      "class": "record",
+      "growth": "Per step of a report week let go (the video, then the rest), one receipt row (subject, week, step, YouTube id, bytes, when): at most two per week; append-only, subject-scoped, it leaves with the account.",
+      "family": "engagement-report-rendered"
     }
   ],
   "processes": [
@@ -6303,7 +6316,7 @@
           "name": "The report_weeks worker writes each ended week's answer for the render worker, once. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": []
+          "paths": ["server:apps/servers/file_host/src/report_weeks.rs"]
         },
         {
           "id": "speaker",
