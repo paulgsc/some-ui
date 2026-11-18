@@ -3,12 +3,12 @@
   "made": "2026-11-18",
   "by": "claude",
   "paths": ["docs/ui-studies/interview-cold-read.md"],
-  "chose": "A hedged or partly right answer scores 1, never 2, and two capture artifacts (a footer cut short by the capture's height, and the fixture's one-minute take limit) were named in the doc and discounted rather than the A arm being re-run.",
+  "chose": "Two capture artifacts (a footer cut short by the capture's height, and the fixture's one-minute take limit) were named in the doc and discounted rather than the A arm being re-run.",
   "options": [
-    "score hedges as 1 and discount the artifacts",
+    "discount the artifacts and name them",
     "re-run the A arm on fixed captures"
   ],
-  "gray": "Both artifacts touched only question 6, which is not scored; re-running would have cost readers whose context had already seen the screens.",
+  "gray": "The artifacts showed up in what readers found confusing, and once in A3's answer on where takes go, but the hidden line carries nothing a scored point needs; re-running would have meant new readers on the same screens.",
   "undo": "Fix the capture height and the fixture's limit, and re-run A1 to A3.",
   "refs": ["#2931", "#3197"]
 }

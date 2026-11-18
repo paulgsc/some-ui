@@ -17,25 +17,37 @@ themselves.
 
 | Arm       | Reader | Saw             | R1 purpose | R2 first action | R3 time | R4 where takes go | R5 essay | R6 history | Total /12 |
 | --------- | ------ | --------------- | ---------- | --------------- | ------- | ----------------- | -------- | ---------- | --------- |
-| Current   | A1     | every page      | 2          | 2               | 1       | 1                 | 0        | 0          | 6         |
-| Current   | A2     | every page      | 2          | 2               | 1       | 1                 | 0        | 0          | 6         |
+| Current   | A1     | every page      | 2          | 2               | 2       | 1                 | 0        | 0          | 7         |
+| Current   | A2     | every page      | 2          | 2               | 2       | 1                 | 0        | 0          | 7         |
 | Current   | A3     | first page only | 2          | 1               | 1       | 1                 | 0        | 0          | 5         |
-| Prototype | B1     | every page      | 2          | 2               | 2       | 2                 | 2        | 2          | 12        |
+| Prototype | B1     | every page      | 2          | 1               | 2       | 2                 | 2        | 2          | 11        |
 | Prototype | B2     | every page      | 2          | 2               | 2       | 1                 | 2        | 2          | 11        |
-| Prototype | B3     | first page only | 2          | 2               | 2       | 1                 | 2        | 2          | 11        |
+| Prototype | B3     | first page only | 2          | 2               | 2       | 0                 | 1        | 2          | 9         |
+
+Arm means: today's pages 6.3, the prototype 10.3. The first scores published on
+this PR's first head (6, 6, 5 against 12, 11, 11) applied the hedge rule
+unevenly, each slip in the prototype's favour; an independent review rescored
+them, and these are its scores, which I agree with.
 
 The readers of today's pages all understood that this is interview practice,
 and all started on today's question. None of them knew that a video essay comes
 of their takes, none could find last week, and none knew what "home" is:
 "'Home' is never explained, though everything turns on it" (A1). Each estimated
-the time themselves, and two said so: "the app never states a total" (A1).
+the time themselves by summing the per-item times, and said so: "the app never
+states a total" (A1).
 
 The readers of the prototype found the same three things the owner named. B3 saw
-only the first page and still answered where last week is, what the week costs
-and that an essay comes ("next Monday a video essay shows how I came across").
-Where takes go was the one thing the prototype's first page left to the next
-page: "The screen doesn't say where the takes are stored or who sees them. It
-only points me to 'How a week goes' for that" (B3).
+only the first page and still answered where last week is and what the week
+costs, and that an essay comes, though not for sure that it is made from the
+takes ("I'm guessing the essay is built from my recordings"). Where takes go was
+the thing the prototype's first page left to the next page: "The screen doesn't
+say where the takes are stored or who sees them. It only points me to 'How a
+week goes' for that" (B3). The first page should say it in a line.
+
+The first page the prototype arm read lists decision drills, which are not
+built (IW13, #3181), and every B reader counted the drill in the week's time.
+The prototype recommends that the phone list only built kinds (C624), so the
+page that would ship today differs from the one tested by that one row.
 
 **Read with care.** Three readers an arm is a small sample, and the readers are
 fresh-context model sessions, not people. I designed the prototype and fixed the
@@ -48,8 +60,10 @@ which is what the owner said "they'll stumble upon themselves".
 
 ## Method
 
-**What was rendered.** The interview pages live under `_apk` and render only
-with `VITE_DEVICE_BACKEND`, so the `lan` and `pages` profiles show none of them.
+**What was rendered.** The interview pages live under `_apk`, whose layout
+sends any profile without the `apk` audience to not-found (`requireAudience`),
+and render only with `VITE_DEVICE_BACKEND` besides, so the `lan` and `pages`
+profiles show none of them.
 They were rendered from the ui-fit phone page instead (`pnpm --filter www
 build:fit-phone`, the `mobile` profile, `tests/ui-fit/phone-page/interview.tsx`):
 the routine's week `/2` (`WEEK_2`, Tidewell) over the fixture's ports and the
@@ -160,7 +174,7 @@ Checked against the code on 2026-11-18 (`main` at 524d3f0):
 | Essay being made now                                     | Studio › Renders (`GET /renders`)                                                                                                        | Exists, generic per row                                                                                                                                                                                    |
 | Essay scheduled                                          | fixed words: made after the week closes, ready Monday                                                                                    | Words only; a planned time would be new                                                                                                                                                                    |
 | The door to Takes                                        | Studio › Takes, `/journal/takes/$kind`                                                                                                   | New: Takes has no interview kind (`TAKE_KINDS` in `packages/ui/soundbites/src/lib/library/compartments.ts`), and `aboutOfRef` would file `<week>:read:<card>` as a scene and `<week>:<question>` as "here" |
-| History across the study wings                           | each wing's own record: Rust Rounds' round log, TOPIK's routine runs, LeetType's session log, Bites' store, the interview's sent records | New page and one read over each; no new store. No cross-wing history exists in any build                                                                                                                   |
+| History across the study wings                           | each wing's own record: Rust Rounds' round log, TOPIK's routine runs, LeetType's session log, Bites' store, the interview's sent records | New page and one read over each; no new store. No history across the study wings exists in any build (desktop `/sessions` lists study sessions, not each wing's record)                                    |
 
 ## The answers, verbatim
 
