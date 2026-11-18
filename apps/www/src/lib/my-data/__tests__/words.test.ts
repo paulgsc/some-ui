@@ -17,6 +17,7 @@ import {
   homeLine,
   itemLine,
   itemName,
+  itemWent,
   itemWhere,
   KEPT_FOR_GOOD,
   keptLine,
@@ -25,11 +26,13 @@ import {
   kindLead,
   kindLine,
   MY_DATA,
+  onDay,
   receiptKind,
   receiptParts,
   RECEIPTS,
   receiptsLine,
   unreadLine,
+  wentAtClose,
   WHERE_WORDS,
   WORD_SETS,
 } from "@/lib/my-data/words"
@@ -93,6 +96,10 @@ describe("My data's words", () => {
       itemLine(AT, null),
       itemLine(AT, 42_000),
       itemWhere("home", 2_048),
+      itemWent(AT, false, false),
+      itemWent(AT, true, true),
+      RECEIPTS.closedLine(itemName(AT)),
+      RECEIPTS.stayedLine(receiptParts(["note", "words"])),
       ...(["home", "phone"] as const).flatMap((where) =>
         (
           [
@@ -200,6 +207,22 @@ describe("My data's words", () => {
     expect(CALL_DELETING.episode("playoff-delta", "2026-10-30")).toBe(
       "Playoff Delta"
     )
+  })
+
+  it("say when a week's middle take's recording went, what stayed, and where it still plays (IW14)", () => {
+    const at = "2026-11-23T08:00:00.000Z"
+    const went = `Its recording went when its week closed, on ${onDay(at)}. What home heard in it stays.`
+    expect(itemWent(at, false, false)).toBe(went)
+    expect(itemWent(at, true, true)).toBe(
+      `${went} You'd set it aside. It still plays from this phone.`
+    )
+  })
+
+  it("tell a week's closing from the owner's delete on a receipt, and name what stayed (IW14)", () => {
+    expect(wentAtClose({ stayed: ["note", "words"] })).toBe(true)
+    expect(wentAtClose({ stayed: ["drive copy"] })).toBe(false)
+    expect(wentAtClose({ stayed: [] })).toBe(false)
+    expect(receiptParts(["note", "words"])).not.toMatch(/something else/i)
   })
 
   it("say what went and stayed as a sentence", () => {
