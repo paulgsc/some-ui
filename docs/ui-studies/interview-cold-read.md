@@ -24,8 +24,7 @@ themselves.
 | Prototype | B2     | every page      | 2          | 2               | 2       | 1                 | 2        | 2          | 11        |
 | Prototype | B3     | first page only | 2          | 2               | 2       | 0                 | 1        | 2          | 9         |
 
-Arm means: today's pages 6.3, the prototype 10.3. The first scores published on
-this PR's first head (6, 6, 5 against 12, 11, 11) applied the hedge rule
+Arm means: today's pages 6.3, the prototype 10.3. The first scores published on #3221's first head (6, 6, 5 against 12, 11, 11) applied the hedge rule
 unevenly, each slip in the prototype's favour; an independent review rescored
 them, and these are its scores, which I agree with.
 
@@ -33,7 +32,7 @@ The readers of today's pages all understood that this is interview practice,
 and all started on today's question. None of them knew that a video essay comes
 of their takes, none could find last week, and none knew what "home" is:
 "'Home' is never explained, though everything turns on it" (A1). Each estimated
-the time themselves by summing the per-item times, and said so: "the app never
+the time themselves by summing the per-item times, and two said so: "the app never
 states a total" (A1).
 
 The readers of the prototype found the same three things the owner named. B3 saw
@@ -174,7 +173,7 @@ Checked against the code on 2026-11-18 (`main` at 524d3f0):
 | Essay being made now                                     | Studio › Renders (`GET /renders`)                                                                                                        | Exists, generic per row                                                                                                                                                                                    |
 | Essay scheduled                                          | fixed words: made after the week closes, ready Monday                                                                                    | Words only; a planned time would be new                                                                                                                                                                    |
 | The door to Takes                                        | Studio › Takes, `/journal/takes/$kind`                                                                                                   | New: Takes has no interview kind (`TAKE_KINDS` in `packages/ui/soundbites/src/lib/library/compartments.ts`), and `aboutOfRef` would file `<week>:read:<card>` as a scene and `<week>:<question>` as "here" |
-| History across the study wings                           | each wing's own record: Rust Rounds' round log, TOPIK's routine runs, LeetType's session log, Bites' store, the interview's sent records | New page and one read over each; no new store. No history across the study wings exists in any build (desktop `/sessions` lists study sessions, not each wing's record)                                    |
+| History across the study wings                           | each wing's own record: Rust Rounds' round log, TOPIK's routine runs, LeetType's session log, Bites' store, the interview's sent records | New page and one read over each; no new store. No history across the study wings exists in any build (`/sessions`, on the phone and the web, lists study sessions, not each wing's record)                 |
 
 ## The answers, verbatim
 
