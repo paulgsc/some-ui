@@ -16,6 +16,7 @@ import {
   interviewEssayScenes,
   interviewEssayTakeFiles,
   interviewTakeOf,
+  OPENING_TAKE,
   parseInterviewEssay,
   sampleInterviewEssay,
 } from "@video-render/interview-essay"
@@ -239,5 +240,56 @@ describe("a read home couldn't make out (HEARD2; EH1)", () => {
       ok: true,
       value: { "a-time-you": { audio: "a-time-you.m4a", words: null } },
     })
+  })
+})
+
+describe("the essay's opening in the owner's voice (IW10)", () => {
+  const essay = sample()
+  const opened: InterviewEssay = {
+    ...essay,
+    opening: {
+      transcript: "I'm paulgsc. This week I practise telling a decision.",
+    },
+  }
+
+  it("plays the owner's take first after the brand, and leaves an essay without one as it was", () => {
+    expect(problems(opened)).toEqual([])
+    const scenes = interviewEssayScenes(opened)
+    expect(scenes.map((s) => s.id).slice(0, 4)).toEqual([
+      "intro",
+      "brand-in",
+      "opening",
+      "open",
+    ])
+    expect(scenes[2]).toMatchObject({
+      speaker: "you",
+      said: opened.opening?.transcript,
+    })
+    expect(interviewTakeOf(scenes[2]!)).toBe(`read.${OPENING_TAKE}`)
+    expect(interviewEssayScenes(essay).map((s) => s.id)).not.toContain(
+      "opening"
+    )
+  })
+
+  it("holds the opening's take when it plays, and sets it aside when it doesn't", () => {
+    const names = [
+      "a-time-you.m4a",
+      "read.keep-it-first.webm",
+      "read.opening.m4a",
+    ]
+    const held = interviewEssayTakeFiles(opened, names)
+    expect(held.ok && held.value["read.opening"]).toEqual({
+      audio: "read.opening.m4a",
+      words: null,
+    })
+    const aside = interviewEssayTakeFiles(essay, names)
+    expect(aside.ok && Object.keys(aside.value).sort()).toEqual([
+      "a-time-you",
+      "read.keep-it-first",
+    ])
+    const missing = interviewEssayTakeFiles(opened, names.slice(0, 2))
+    expect(missing.ok ? [] : missing.problems).toEqual([
+      "read.opening: answered, and there is no take of it",
+    ])
   })
 })

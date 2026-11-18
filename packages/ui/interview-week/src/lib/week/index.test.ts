@@ -5,6 +5,8 @@ import {
   GROUND,
   INTERVIEW_WEEK_SCHEMA,
   INTERVIEW_WEEK_SCHEMA_V1,
+  isOpening,
+  OPENING_CARD,
   questionOfDay,
   readWeek,
   RESERVED_QUESTION_ID,
@@ -121,6 +123,43 @@ describe("the interview week's format", () => {
       `questions[2] ("conflict"): why-this-role's variants are why-this-role, why-this-company, why-now`,
       'questions[3] ("decision-c266"): a decision question names its call, and no other question names one',
       'cards[1] ("epic-2931"): its id is used twice',
+    ])
+  })
+
+  it("reads the essay's opening only as the week's first card, named for it, read in 10 to 40 seconds (IW10)", () => {
+    const opening = {
+      id: OPENING_CARD,
+      source: { kind: "opening" } as const,
+      situation: "The essay's opening.",
+      script: "I'm paulgsc. This week I practise telling a decision.",
+      targetSeconds: 20,
+    }
+    const base = week()
+    const withOpening = { ...base, cards: [opening, ...base.cards] }
+    expect(readWeek(withOpening).ok).toBe(true)
+    expect(readWeek(withOpening).ok && isOpening(withOpening.cards[0]!)).toBe(
+      true
+    )
+    const problems = (cards: InterviewWeek["cards"]): Array<string> => {
+      const read = readWeek({ ...base, cards })
+      return read.ok ? [] : read.problems
+    }
+    expect(problems([...base.cards, opening])).toEqual([
+      "cards[2] (\"opening\"): the essay's opening is the week's first card",
+    ])
+    expect(
+      problems([{ ...opening, targetSeconds: 60 }, base.cards[0]!])
+    ).toEqual(['cards[0] ("opening"): the opening is read in 10 to 40 seconds'])
+    expect(
+      problems([
+        { ...opening, id: "intro" },
+        { ...base.cards[0]!, id: OPENING_CARD },
+        { ...base.cards[1]!, targetSeconds: 30 },
+      ])
+    ).toEqual([
+      'cards[0] ("intro"): the card named "opening" is the essay\'s opening, and no other card is',
+      'cards[1] ("opening"): the card named "opening" is the essay\'s opening, and no other card is',
+      'cards[2] ("invariant-rs1"): a card is read in 60 to 120 seconds',
     ])
   })
 

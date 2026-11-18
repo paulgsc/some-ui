@@ -25,6 +25,13 @@
  * - **A score.** Nothing in a week grades the owner. Every object is strict,
  *   so a field like `score` is refused rather than ignored.
  *
+ * **The essay's opening** (IW10, #3177): a `/2` week may begin its cards with
+ * one card, `opening`, that presents the essay itself: the owner's moniker
+ * and what the week trains, read in the owner's voice so the essay opens on
+ * it. It is a card like any other to the phone, home and the send; the
+ * essay takes it out of the reads (`isOpening`, C618). A week without one
+ * reads as before.
+ *
  * **The second version** (`some-ui.interview-week/2`, IW8, #3175) adds to each
  * question its `ready` answer, the first rung of its ladder: a good answer in
  * parts, each with a note on why it works; another good answer in another
@@ -143,6 +150,14 @@ export const TAKE_MAX_SECONDS = 120
 /** A card's read runs 1 to 2 minutes (#2935). */
 export const CARD_MIN_SECONDS = 60
 
+/**
+ * The essay's opening (IW10, #3177): one card, named `opening` and first in
+ * the week's cards, the owner's name and what the week trains, read in about
+ * 10 to 40 seconds. No other card presents the essay.
+ */
+export const OPENING_CARD = "opening"
+export const OPENING_SECONDS = { min: 10, max: 40 } as const
+
 const QUESTIONS_MIN = 4
 const QUESTIONS_MAX = 6
 const CARDS_MIN = 2
@@ -170,8 +185,13 @@ const CallSourceSchema = z.strictObject({
   id: z.string().regex(/^C\d+$/, "a call's id, like C266"),
 })
 
-/** What a card presents: an epic, a doc, or a declared invariant (`**<ID>:` in a doc). */
+/**
+ * What a card presents: an epic, a doc, or a declared invariant (`**<ID>:` in
+ * a doc); or, for the one card `opening`, the week's interview essay itself,
+ * whose opening the owner reads in their own voice (IW10).
+ */
 const CardSourceSchema = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.literal("opening") }),
   z.strictObject({
     kind: z.literal("issue"),
     repo: RepoSchema,
@@ -306,9 +326,14 @@ const CardSchema = z.strictObject({
   situation: TextSchema,
   /** Read verbatim, first person; a line break where a breath belongs. */
   script: TextSchema,
-  targetSeconds: z.int().min(CARD_MIN_SECONDS).max(TAKE_MAX_SECONDS),
+  /** At least `CARD_MIN_SECONDS`, but for the opening's (`OPENING_SECONDS`, `readWeek`). */
+  targetSeconds: z.int().min(OPENING_SECONDS.min).max(TAKE_MAX_SECONDS),
 })
 export type Card = z.infer<typeof CardSchema>
+
+/** Whether `card` is the essay's opening (IW10). */
+export const isOpening = (card: Pick<Card, "source">): boolean =>
+  card.source.kind === "opening"
 
 const questionCount = `a week has ${QUESTIONS_MIN} to ${QUESTIONS_MAX} questions`
 const cardCount = `a week has ${CARDS_MIN} to ${CARDS_MAX} cards`
@@ -420,9 +445,26 @@ function relations(week: InterviewWeek): Array<string> {
   })
   const cards = new Set<string>()
   week.cards.forEach((card, i) => {
-    if (cards.has(card.id))
-      problems.push(`cards[${i}] ("${card.id}"): its id is used twice`)
+    const at = `cards[${i}] ("${card.id}")`
+    if (cards.has(card.id)) problems.push(`${at}: its id is used twice`)
     cards.add(card.id)
+    const opening = isOpening(card)
+    if (opening !== (card.id === OPENING_CARD)) {
+      problems.push(
+        `${at}: the card named "${OPENING_CARD}" is the essay's opening, and no other card is`
+      )
+    }
+    if (opening && i !== 0) {
+      problems.push(`${at}: the essay's opening is the week's first card`)
+    }
+    const [min, max] = opening
+      ? [OPENING_SECONDS.min, OPENING_SECONDS.max]
+      : [CARD_MIN_SECONDS, TAKE_MAX_SECONDS]
+    if (card.targetSeconds < min || card.targetSeconds > max) {
+      problems.push(
+        `${at}: ${opening ? "the opening" : "a card"} is read in ${min} to ${max} seconds`
+      )
+    }
   })
   return problems
 }

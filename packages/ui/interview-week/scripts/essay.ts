@@ -6,7 +6,7 @@
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
-import { ESSAY_FILE, prepareEssays } from "@interview-week/lib/essay/bundle"
+import { prepareEssays } from "@interview-week/lib/essay/bundle"
 import type { PreparedEssays } from "@interview-week/lib/essay/bundle"
 import { finishEssays } from "@interview-week/lib/essay/finish"
 import {
@@ -14,7 +14,7 @@ import {
   INTERVIEW_INDEX,
   notesNamed,
 } from "@interview-week/lib/essay/record"
-import { WEEK_FILE } from "@interview-week/lib/monday/bundle"
+import { ESSAY_FILE, WEEK_FILE } from "@interview-week/lib/monday/bundle"
 import {
   RESUME_DATA,
   resumeEmployers,

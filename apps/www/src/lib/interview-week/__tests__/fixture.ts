@@ -140,8 +140,24 @@ export const WEEK_2: InterviewWeek = {
   })),
 }
 
+/** The essay's opening (IW10): the card a `/2` week may open its cards on. */
+export const OPENING_CARD_OF_WEEK = {
+  id: "opening",
+  source: { kind: "opening" },
+  situation: "The opening of this week's interview essay, in your own voice.",
+  script:
+    "I'm paulgsc.\nThis week I'm practising how I explain a decision, one more week of it.",
+  targetSeconds: 20,
+} as const satisfies InterviewWeek["cards"][number]
+
+/** `WEEK_2` with the essay's opening first among its cards. */
+export const WEEK_2_OPENED: InterviewWeek = {
+  ...WEEK_2,
+  cards: [OPENING_CARD_OF_WEEK, ...WEEK_2.cards],
+}
+
 // The fixtures come in by the one door a week does.
-for (const week of [WEEK, WEEK_2]) {
+for (const week of [WEEK, WEEK_2, WEEK_2_OPENED]) {
   if (!readWeek(week).ok) throw new Error(`${week.schema} fixture doesn't read`)
 }
 

@@ -1,9 +1,12 @@
 import {
+  lastNext,
+  MONIKER,
+  OPENING_SITUATION,
   prepare,
   SITUATIONS,
   weekFileName,
 } from "@interview-week/lib/monday/bundle"
-import type { Bundle } from "@interview-week/lib/monday/bundle"
+import type { Bundle, MailboxFile } from "@interview-week/lib/monday/bundle"
 import { finish } from "@interview-week/lib/monday/finish"
 import { describe, expect, it } from "vitest"
 
@@ -83,16 +86,20 @@ describe("the interview week's choices", () => {
   it("draws a card from an epic, a doc and an invariant, each in its own situation, rotated", () => {
     const weeks = run(3).map((b) => b.next?.cards ?? [])
     expect(weeks.map((cs) => cs.map((c) => c.id))).toEqual([
-      ["epic-2931", "doc-asks", "invariant-rs1"],
-      ["epic-server-800", "doc-ui-fit-readme", "invariant-l3"],
-      ["epic-2931", "doc-asks", "invariant-rs1"],
+      ["opening", "epic-2931", "doc-asks", "invariant-rs1"],
+      ["opening", "epic-server-800", "doc-ui-fit-readme", "invariant-l3"],
+      ["opening", "epic-2931", "doc-asks", "invariant-rs1"],
     ])
-    for (const cards of weeks) {
+    for (const [opening, ...cards] of weeks) {
+      expect(opening).toMatchObject({
+        source: { kind: "opening" },
+        situation: OPENING_SITUATION,
+      })
       expect(new Set(cards.map((c) => c.situation)).size).toBe(cards.length)
       for (const c of cards)
         expect(Object.values(SITUATIONS)).toContain(c.situation)
     }
-    expect(weeks[1]?.[0]?.situation).toBe(SITUATIONS["recorded-update"])
+    expect(weeks[1]?.[1]?.situation).toBe(SITUATIONS["recorded-update"])
   })
 
   it("tops the cards up from another kind when one has none", () => {
@@ -103,10 +110,37 @@ describe("the interview week's choices", () => {
       corpus: { ...corpus, epics: [] },
     })
     expect(bundle.next?.cards.map((c) => c.id)).toEqual([
+      "opening",
       "doc-asks",
       "invariant-rs1",
       "doc-ui-fit-readme",
     ])
+  })
+
+  it("opens the cards on the essay's opening: the moniker, the week's questions, and what last week's essay pointed to next (IW10)", () => {
+    const essay = (week: string, said: string): MailboxFile => ({
+      name: `interview-essay-${week}.json`,
+      body: { next: { said, topics: [`${said} topic`] } },
+    })
+    const brief = [
+      essay("2026-w45", "Older."),
+      essay("2026-w46", "Fewer fillers in a story."),
+      essay("2026-w47", "This week's own, not yet."),
+      { name: "interview-essay-2026-w46-r2.json", body: { next: 3 } },
+    ]
+    expect(lastNext(brief, "2026-w47")).toEqual({
+      said: "Fewer fillers in a story.",
+      topics: ["Fewer fillers in a story. topic"],
+    })
+    expect(lastNext([], "2026-w47")).toBeNull()
+    const { bundle } = prepare({ commit: COMMIT, now: MONDAY, brief, corpus })
+    const opening = bundle.next?.cards[0]
+    expect(opening?.id).toBe("opening")
+    expect(opening?.material).toContain(MONIKER)
+    expect(opening?.material).toContain("Fewer fillers in a story.")
+    for (const q of bundle.next?.questions ?? []) {
+      expect(opening?.material).toContain(q.asks)
+    }
   })
 
   it("owes nothing when the mailbox holds the week, and names a file it can't read", () => {

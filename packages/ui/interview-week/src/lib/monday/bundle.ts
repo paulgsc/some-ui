@@ -4,6 +4,11 @@
  * question's family and variant, each decision question's call, and each
  * card's source and situation. Each choice rotates over the weeks, least
  * recently asked first. The words are the model's (`values.ts`).
+ *
+ * The week's cards begin with the essay's opening (IW10, #3177): the owner's
+ * moniker and what this week trains, drawn from the week's questions and
+ * what last week's essay pointed to next, for the owner to read in their own
+ * voice. No self-assessment and no finish line (owner, 2026-11-17).
  */
 import type {
   Call,
@@ -19,6 +24,7 @@ import type {
 import {
   FAMILIES,
   FAMILY_IDS,
+  OPENING_CARD,
   readWeek,
   SLUG_MAX,
   TARGET_SECONDS,
@@ -48,6 +54,16 @@ export const SITUATIONS: Readonly<Record<string, string>> = {
   "recorded-update":
     "You record a short update on this work for people who follow it.",
 }
+
+/** The owner's moniker, which the essay's opening says first (owner, 2026-11-17). */
+export const MONIKER = "paulgsc"
+
+/** The essay's opening runs 10 to 40 seconds: about 25 to 90 words. */
+export const OPENING_WORDS = { min: 25, max: 90 } as const
+
+/** Where the opening is read: the cue the owner reads after. */
+export const OPENING_SITUATION =
+  "The opening of this week's interview essay, in your own voice."
 
 /** A week in the mailbox's `brief`, by its name. */
 export type MailboxFile = { readonly name: string; readonly body: unknown }
@@ -155,6 +171,11 @@ function workOf(corpus: Corpus): Array<WorkEntry> {
   return entries.filter((e) => !seen.has(e.key) && seen.add(e.key))
 }
 
+/** An essay's name in `brief`: `interview-essay-<week>.json`, `-r2` on for a correction. */
+export const ESSAY_FILE = /^interview-essay-(\d{4}-w\d{2})(?:-r(\d+))?\.json$/
+export const essayFileName = (week: string): string =>
+  `interview-essay-${week}.json`
+
 export const WEEK_FILE = /^interview-week-(\d{4}-w\d{2})\.json$/
 
 /** `name` as a week's file in `brief`. */
@@ -217,9 +238,69 @@ function sourceKey(source: CardSource): string {
     case "invariant": {
       return `invariant:${source.id}`
     }
+    case "opening": {
+      return "opening"
+    }
     default: {
       return assertNever(source)
     }
+  }
+}
+
+/**
+ * What last week's essay said comes next (IW6's `next`), from the newest
+ * essay in `brief` for a week before `week`; null while there is none. Read
+ * leniently: an essay that doesn't say leaves the opening to the questions.
+ */
+export function lastNext(
+  brief: ReadonlyArray<MailboxFile>,
+  week: string
+): { readonly said: string; readonly topics: ReadonlyArray<string> } | null {
+  let newest: { name: string; body: unknown } | null = null
+  for (const file of brief) {
+    const of = ESSAY_FILE.exec(file.name)?.[1]
+    if (of === undefined || of >= week) continue
+    if (newest === null || file.name > newest.name) newest = file
+  }
+  if (newest === null) return null
+  const said = (value: unknown): string | null => {
+    if (typeof value === "string") return value
+    if (typeof value === "object" && value !== null && "text" in value) {
+      return typeof value.text === "string" ? value.text : null
+    }
+    return null
+  }
+  const body = newest.body
+  if (typeof body !== "object" || body === null || !("next" in body)) {
+    return null
+  }
+  const { next } = body
+  if (typeof next !== "object" || next === null) return null
+  const text = "said" in next ? said(next.said) : null
+  const topics =
+    "topics" in next && Array.isArray(next.topics)
+      ? next.topics.flatMap((t: unknown) => said(t) ?? [])
+      : []
+  return text === null ? null : { said: text, topics }
+}
+
+/** The essay's opening, the week's first card: its material is what the week trains. */
+function opening(
+  questions: ReadonlyArray<QuestionSlot>,
+  last: ReturnType<typeof lastNext>
+): CardSlot {
+  return {
+    id: OPENING_CARD,
+    source: { kind: "opening" },
+    situation: OPENING_SITUATION,
+    title: "The essay's opening, in your voice",
+    material: [
+      `Say "${MONIKER}" first, then what this week trains, in a sentence or two. No rating, no "how ready", no finish line: the practice goes on.`,
+      `This week asks: ${questions.map((q) => q.asks).join(" ")}`,
+      last === null
+        ? "There is no earlier essay yet."
+        : `Last week's essay pointed next to: ${[last.said, ...last.topics].join(" ")}`,
+    ].join("\n"),
   }
 }
 
@@ -346,6 +427,7 @@ export function prepare(input: {
   let next: Next | null = null
   if (!weeks.some((w) => w.id === around.id)) {
     const asked = askedIn(weeks)
+    const slots = questions(input.corpus.calls, asked)
     next = {
       id: around.id,
       commit: input.commit,
@@ -353,8 +435,11 @@ export function prepare(input: {
       opens: around.opens,
       due: around.due,
       earlierCompanies: [...new Set(weeks.map((w) => w.company.name))],
-      questions: questions(input.corpus.calls, asked),
-      cards: cards(input.corpus, asked),
+      questions: slots,
+      cards: [
+        opening(slots, lastNext(input.brief, around.id)),
+        ...cards(input.corpus, asked),
+      ],
     }
   }
   return {

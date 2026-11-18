@@ -10,7 +10,6 @@ import type {
   EssayOwed,
   QuestionOwed,
 } from "@interview-week/lib/essay/bundle"
-import { essayFileName } from "@interview-week/lib/essay/bundle"
 import type { EssayValues } from "@interview-week/lib/essay/values"
 import { EssaysValuesSchema } from "@interview-week/lib/essay/values"
 import { ANSWER_PAUSE_MS } from "@interview-week/lib/faults"
@@ -20,6 +19,7 @@ import type {
   JudgedPart,
   ReadFaults,
 } from "@interview-week/lib/faults"
+import { essayFileName } from "@interview-week/lib/monday/bundle"
 import { EMPLOYERS, employersIn } from "@interview-week/lib/monday/employers"
 import {
   INTERVIEW_ESSAY_ID,
@@ -366,6 +366,7 @@ function build(
     week: { id: owed.week, from: owed.from, to: owed.to },
     company: owed.company,
     role: owed.role,
+    ...(owed.opening === null ? {} : { opening: owed.opening }),
     open: { said: values.open },
     questions,
     reads,

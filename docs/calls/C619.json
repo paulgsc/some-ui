@@ -1,0 +1,15 @@
+{
+  "id": "C619",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": ["packages/ui/interview-week/src/lib/monday/finish.ts"],
+  "chose": "The opening runs 25 to 90 words (10 to 40 seconds) and says paulgsc in its first line. finish refuses any of score, rate, grade, assess, ready, readiness, pass, fail, level, finish line, the end of and graduate in it, as written, so it can say what the week trains and never how the owner did.",
+  "options": [
+    "a closed list of assessing words, refused by code",
+    "the rule in ROUTINE.md only, left to the model",
+    "a fixed script with only the week's topics filled in"
+  ],
+  "gray": "The owner ruled out self-assessment and a finish line (2026-11-17) without saying how to hold it. A list catches the plain cases and can refuse an innocent use, a \"level\" of detail, say.",
+  "undo": "Edit ASSESSING or OPENING_WORDS in finish.ts and bundle.ts.",
+  "refs": ["#3177"]
+}

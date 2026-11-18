@@ -16,7 +16,13 @@ import { takeButton } from "@some-ui/voice-capture/testing"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { fakePorts, WEEK, WEEK_2 } from "@/lib/interview-week/__tests__/fixture"
+import {
+  fakePorts,
+  OPENING_CARD_OF_WEEK,
+  WEEK,
+  WEEK_2,
+  WEEK_2_OPENED,
+} from "@/lib/interview-week/__tests__/fixture"
 import { CUE_SECONDS } from "@/lib/interview-week/cue"
 import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 import { RoutedInterview } from "@/components/jobs/interview/__tests__/routed"
@@ -177,6 +183,24 @@ describe("the interview week's pages on the phone (IW8)", () => {
     await settle()
     screen.getByText(WORDS.study.work)
     expect(screen.getAllByText("some-ui#3170").length).toBeGreaterThan(0)
+  })
+
+  it("lists the essay's opening first in Read aloud, and reads it as any card (IW10)", async () => {
+    open(WEEK_2_OPENED, "/jobs/interview/reads")
+    await settle()
+    const links = screen.getAllByRole("link").map((link) => link.textContent)
+    const first = links.findIndex((text) => text.startsWith(WORDS.opening))
+    const read = links.findIndex((text) =>
+      text.startsWith(WEEK_2.cards[0].situation)
+    )
+    expect(first).toBeGreaterThanOrEqual(0)
+    expect(first).toBeLessThan(read)
+    screen.getByText("I'm paulgsc.")
+    await follow(new RegExp(`^${WORDS.opening}`))
+    const script = document.querySelector(
+      `[data-script="${OPENING_CARD_OF_WEEK.id}"]`
+    )
+    expect(script?.textContent).toContain("one more week of it")
   })
 
   it("gives a week written before ready answers its cues from what to cover", async () => {

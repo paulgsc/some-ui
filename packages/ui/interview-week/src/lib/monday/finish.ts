@@ -5,6 +5,8 @@
  */
 import type { Bundle, WorkEntry } from "@interview-week/lib/monday/bundle"
 import {
+  MONIKER,
+  OPENING_WORDS,
   READ_WORDS_PER_MINUTE,
   SCRIPT_WORDS,
   weekFileName,
@@ -18,9 +20,13 @@ import { ValuesSchema } from "@interview-week/lib/monday/values"
 import type { WeekValues } from "@interview-week/lib/monday/values"
 import type { InterviewWeek, Ready, WorkSource } from "@interview-week/lib/week"
 import {
+  CARD_MIN_SECONDS,
   GROUND,
   INTERVIEW_WEEK_SCHEMA,
+  OPENING_CARD,
+  OPENING_SECONDS,
   readWeek,
+  TAKE_MAX_SECONDS,
   workSourceKey,
 } from "@interview-week/lib/week"
 
@@ -92,9 +98,25 @@ export type Finished =
   | { ok: true; files: Array<{ name: string; body: InterviewWeek }> }
   | { ok: false; problems: Array<string> }
 
-/** A card's target: its script's words at the read pace (150 to 300 words is 60 to 120 seconds). */
-const cardSeconds = (script: string): number =>
-  Math.round((wordCount(script) / READ_WORDS_PER_MINUTE) * 60)
+/**
+ * A card's target: its script's words at the read pace (150 to 300 words is
+ * 60 to 120 seconds; the opening's 25 to 90, 10 to 36), within its bounds.
+ */
+const cardSeconds = (script: string, opening: boolean): number => {
+  const [min, max] = opening
+    ? [OPENING_SECONDS.min, OPENING_SECONDS.max]
+    : [CARD_MIN_SECONDS, TAKE_MAX_SECONDS]
+  const seconds = Math.round((wordCount(script) / READ_WORDS_PER_MINUTE) * 60)
+  return Math.min(Math.max(seconds, min), max)
+}
+
+/**
+ * What the essay's opening never says (owner, 2026-11-17): no
+ * self-assessment, no rating, no "how ready", no end to the practice
+ * (C619).
+ */
+const ASSESSING =
+  /\b(?:score[ds]?|scoring|rat(?:e|ed|ing)|grade[ds]?|grading|assess\w*|ready|readiness|pass(?:ed)?|fail(?:ed)?|level|finish(?:ed)? line|the end of|graduat\w*)\b/giu
 
 function checkWords(
   values: WeekValues,
@@ -159,7 +181,18 @@ function checkWords(
   }
   values.cards.forEach((card, i) => {
     const at = `week.cards[${i}] ("${card.id}").script`
-    within(problems, at, card.script, SCRIPT_WORDS)
+    const opening = card.id === OPENING_CARD
+    within(problems, at, card.script, opening ? OPENING_WORDS : SCRIPT_WORDS)
+    if (opening) {
+      if (!(card.script.split("\n")[0] ?? "").includes(MONIKER)) {
+        problems.push(`${at}: the opening says "${MONIKER}" in its first line`)
+      }
+      for (const [word] of card.script.matchAll(ASSESSING)) {
+        problems.push(
+          `${at}: "${word}" assesses; the opening says what the week trains, with no rating and no finish line`
+        )
+      }
+    }
     card.script.split("\n").forEach((line, j) => {
       if (wordCount(line) > WORDS.line.max) {
         problems.push(
@@ -360,7 +393,7 @@ export function finish(input: {
       source: c.source,
       situation: c.situation,
       script: scripts(c.id),
-      targetSeconds: cardSeconds(scripts(c.id)),
+      targetSeconds: cardSeconds(scripts(c.id), c.source.kind === "opening"),
     })),
   }
   const read = readWeek(week)
