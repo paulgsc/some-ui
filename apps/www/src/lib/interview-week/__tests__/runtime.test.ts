@@ -424,6 +424,41 @@ describe("a question's ladder on the phone (IW8)", () => {
     expect(on.run.bundle.getSnapshot().screen).toBe("intro")
   })
 
+  it("keeps each answer's rung in the send, and never rewrites one kept before", async () => {
+    const storage = inMemoryStorage()
+    const on = phone(storage, { homeHolds: () => true })
+    const leave = on.run.focus("conflict")
+    const cues = on.run.dispatchOn("cues")
+    cues({ type: "tap", item: "conflict" })
+    await pass(2_000)
+    cues({ type: "tap", item: "conflict" })
+    await pass()
+    leave()
+    on.run.dispatch({ type: "go", index: 2 })
+    await answer(on, "why-now")
+    on.run.dispatch({ type: "review" })
+    on.run.dispatch({ type: "send" })
+    const [first] = interviewSent(storage).list() ?? []
+    expect(first.answers).toEqual([
+      expect.objectContaining({ question: "conflict", rung: "cues" }),
+      expect.not.objectContaining({ rung: expect.anything() }),
+    ])
+    const kept = JSON.stringify(first)
+
+    on.run.dispatch({ type: "back" })
+    await pass(60_000)
+    on.run.focus("why-now")
+    on.run.dispatchOn("own")({ type: "tap", item: "why-now" })
+    await pass(2_000)
+    on.run.dispatchOn("own")({ type: "tap", item: "why-now" })
+    await pass()
+    on.run.dispatch({ type: "review" })
+    on.run.dispatch({ type: "send" })
+    const [before, second] = interviewSent(storage).list() ?? []
+    expect(JSON.stringify(before)).toBe(kept)
+    expect(second.answers.map(({ rung }) => rung)).toEqual(["cues", "own"])
+  })
+
   it("stops and keeps a take under way when its page goes, then steps back", async () => {
     const on = phone(inMemoryStorage())
     const leave = on.run.focus("why-now")
