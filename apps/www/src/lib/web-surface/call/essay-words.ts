@@ -12,8 +12,8 @@ export const ESSAY_WORDS = {
   title: "Rust Rounds",
   sample: "Sample essay",
   chapter: (title: string): string => `Chapter: ${title}`,
-  tutor: "Tutor",
-  you: "You",
+  /** Each speaker's name under their bubble; the one asking the opening's questions (#3269) is someone new to Rust Rounds. */
+  speakers: { tutor: "Tutor", you: "You", asker: "Someone new" },
   /** A week by its id, "2026-w46", as the frame names it: "Week 46". */
   week: (id: string): string => `Week ${weekNumber(id)}`,
   sla: "The SLA",
@@ -21,8 +21,11 @@ export const ESSAY_WORDS = {
   speakTo: "Speak to",
   figures: "Figures the scenario gives",
   youSaid: "You said",
-  /** The essay's opening, in the owner's own voice (#3269). */
-  yourOpening: "In your own voice",
+  /** The opening conversation (#3269): a question, by its place, from 1. */
+  question: (n: number): string => `Question ${n}`,
+  theyAsk: "They ask",
+  /** The owner's answer to it, in their own voice. */
+  yourAnswer: "Your answer, in your own voice",
   noAnswer: "Nothing came for this one",
   /** A take that was sent and couldn't be made out (HEARD2): read as if unanswered. */
   unheard: ESSAY_STAGE_WORDS.unheard,

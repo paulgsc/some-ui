@@ -23,6 +23,66 @@
       "ms": 3000
     },
     {
+      "id": "ask-1",
+      "kind": "section",
+      "scene": "ask",
+      "name": "They ask",
+      "item": 1,
+      "by": "fill",
+      "said": "",
+      "ms": 4000
+    },
+    {
+      "id": "opening-1",
+      "kind": "section",
+      "scene": "opening",
+      "name": "You answer",
+      "item": 1,
+      "by": "fill",
+      "said": "",
+      "ms": 16000
+    },
+    {
+      "id": "ask-2",
+      "kind": "section",
+      "scene": "ask",
+      "name": "They ask",
+      "item": 2,
+      "by": "fill",
+      "said": "",
+      "ms": 3200
+    },
+    {
+      "id": "opening-2",
+      "kind": "section",
+      "scene": "opening",
+      "name": "You answer",
+      "item": 2,
+      "by": "fill",
+      "said": "",
+      "ms": 12800
+    },
+    {
+      "id": "ask-3",
+      "kind": "section",
+      "scene": "ask",
+      "name": "They ask",
+      "item": 3,
+      "by": "fill",
+      "said": "",
+      "ms": 4000
+    },
+    {
+      "id": "opening-3",
+      "kind": "section",
+      "scene": "opening",
+      "name": "You answer",
+      "item": 3,
+      "by": "fill",
+      "said": "",
+      "ms": 12000
+    },
+    {
       "id": "open",
       "kind": "section",
       "scene": "open",

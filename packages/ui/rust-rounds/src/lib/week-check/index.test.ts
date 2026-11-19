@@ -205,14 +205,28 @@ describe("readWeek, a /2 week", () => {
       ok: true,
       week: TALLOWBROOK_WEEK_FILE,
     })
-    const opening = { script: "paulgsc here. This is Rust Rounds." }
+    const exchange = { ask: "What is it?", script: "paulgsc here." }
+    const opening = { version: 1, exchanges: [exchange] }
     const opened = edited((week) => Object.assign(week, { opening }))
     expect(readWeek(opened)).toEqual({ ok: true, week: opened })
-    const blank = readWeek(
-      edited((week) => Object.assign(week, { opening: { script: " " } }))
-    )
-    expect(blank.ok ? [] : blank.problems).toEqual([
-      { at: "opening.script", why: "must not be empty" },
+    const refused = (value: unknown): unknown => {
+      const read = readWeek(
+        edited((week) => Object.assign(week, { opening: value }))
+      )
+      return read.ok ? [] : read.problems
+    }
+    expect(
+      refused({ version: 1, exchanges: [{ ...exchange, script: " " }] })
+    ).toEqual([{ at: "opening.exchanges[0].script", why: "must not be empty" }])
+    // Three questions at most (owner, 2026-11-19), and at least one.
+    expect(
+      refused({
+        version: 1,
+        exchanges: Array.from({ length: 4 }, () => exchange),
+      })
+    ).toMatchObject([{ at: "opening.exchanges" }])
+    expect(refused({ version: 1, exchanges: [] })).toMatchObject([
+      { at: "opening.exchanges" },
     ])
   })
 

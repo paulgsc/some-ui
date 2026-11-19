@@ -28,6 +28,25 @@
     "The Rust Reference",
     "The Ownership Inventory (Crichton, Gray & Krishnamurthi, OOPSLA 2023)"
   ],
+  "opening": {
+    "exchanges": [
+      {
+        "n": 1,
+        "ask": "What is Rust Rounds, in plain words?",
+        "transcript": "paulgsc here. Rust Rounds is a small Rust program from a company I make up, every week, and the decisions it asks for. I work each one at my desk, then say what I'd choose, and why."
+      },
+      {
+        "n": 2,
+        "ask": "Why do it every week?",
+        "transcript": "Because I make decisions all day without knowing every trade-off. This is where I practise that: pick, say why, and see what my picks say about how I think."
+      },
+      {
+        "n": 3,
+        "ask": "What should someone watching take from this?",
+        "transcript": "How a decision gets made, out loud, with the code on the screen. There is no last round: next week there's another company, and I'll be back."
+      }
+    ]
+  },
   "open": {
     "said": "Week 46 was Quillmoss, an invented company that watches freezers. Forty thousand sensor events a second, and every batch of a thousand has to be parsed and handed to the writer within two milliseconds, so an alarm fires before a freezer warms. Three tickets, all on that one budget. Two of them got an answer, and one got silence, which is an answer too."
   },

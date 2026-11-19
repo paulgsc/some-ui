@@ -116,8 +116,23 @@ const RecordSchema = z.object({
         .optional(),
     })
   ),
-  /** The owner's take of the week's opening (#3269); a home from before it says none. */
-  opening: z.object({ take: NoteId, recordedAt: When }).nullable().optional(),
+  /**
+   * The opening's answers the week's essay plays (#3269, C736): for each
+   * question n, the newest kept take of its answer under the week's opening
+   * version, from this week or an earlier one. A home from before it says
+   * none.
+   */
+  opening: z
+    .array(
+      z.object({
+        n: z.int().min(1).max(3),
+        take: NoteId,
+        recordedAt: When,
+        week: z.string(),
+        version: z.int().positive(),
+      })
+    )
+    .optional(),
   unanswered: z.array(Ticket),
   pastes: z.array(
     z.object({

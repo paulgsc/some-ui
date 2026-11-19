@@ -10,15 +10,32 @@
   "look": "calm",
   "scenes": [
     {
+      "id": "ask",
+      "name": "They ask",
+      "point": "A question someone who has never seen Rust Rounds would ask, in a second synthetic voice",
+      "picture": {
+        "kind": "capture",
+        "from": "the essay's ask view",
+        "cssWidth": 1920
+      },
+      "holdMs": 10000,
+      "repeat": {
+        "max": 3
+      }
+    },
+    {
       "id": "opening",
-      "name": "Your opening",
-      "point": "What Rust Rounds trains, in your own voice; left out when it went unread",
+      "name": "You answer",
+      "point": "Your newest take of the answer, in your own voice; left out when there is none to play",
       "picture": {
         "kind": "capture",
         "from": "the essay's opening view",
         "cssWidth": 1920
       },
-      "holdMs": 40000
+      "holdMs": 90000,
+      "repeat": {
+        "max": 3
+      }
     },
     {
       "id": "open",

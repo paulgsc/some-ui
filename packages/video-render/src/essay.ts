@@ -62,6 +62,7 @@ import { once, problemsOf } from "./cut-list"
 import type { CutList, Parsed } from "./cut-list"
 import { FORMAT_SCHEMA, repeatedId, versionRefusal, words } from "./format"
 import type { Format, Shape } from "./format"
+import { CONVERSATION_MOST } from "./opening"
 import { hasCaptions, stillFile, stillsCutList } from "./stills"
 import type { StillTake } from "./stills"
 import { boardSceneOf, storyboardOf } from "./storyboard"
@@ -105,18 +106,20 @@ export const ESSAY_POINT_VERSION = 3
 export const ESSAY_FORK_VERSION = 4
 
 /**
- * The first version that plays the owner's own opening (#3269, as IW10 for
- * the interview essay): their take of the week's opening, first after the
- * brand. An essay with none stays at its version.
+ * The first version that opens on a conversation (#3269, C738): first after
+ * the brand, a second voice asks each of the opening's questions, and the
+ * owner's own take of their answer plays. An essay with none stays at its
+ * version.
  */
 export const ESSAY_OPENING_VERSION = 5
 
 /**
- * The take an essay's opening plays, by its id in the folder home hands the
- * recorder: `opening.<ext>`, the take whose `ref` is `<week>:opening`. A
- * ticket's key is capitals, so it never names a ticket's take.
+ * The take that answers the opening's question `n` (from 1), by its id in
+ * the folder home hands the recorder: `opening.<n>.<ext>`, the newest kept
+ * take of that answer (C736), whatever week it was said in. A ticket's key
+ * is capitals, so it never names a ticket's take.
  */
-export const OPENING_TAKE_ID = "opening"
+export const openingTakeId = (n: number): string => `opening.${n}`
 
 /** The deep dives per ticket, on its biggest gaps: K (owner, 2026-11-07). */
 export const ESSAY_DIVES = 2
@@ -182,6 +185,7 @@ export const MARKS = ["covered", "partly", "missing"] as const
 export type Mark = (typeof MARKS)[number]
 
 type Section =
+  | "ask"
   | "opening"
   | "open"
   | "question"
@@ -193,7 +197,7 @@ type Section =
   | "weeks"
   | "next"
 
-type Repeated = Exclude<Section, "opening" | "open" | "weeks" | "next">
+type Repeated = Exclude<Section, "open" | "weeks" | "next">
 
 /** The scenes a shape adds: the locked intro, the brand intro and outro, and a chapter slide. */
 type Framing = "intro" | "brand-in" | "chapter" | "brand-out"
@@ -206,6 +210,8 @@ type Framing = "intro" | "brand-in" | "chapter" | "brand-out"
 const essayMost = (version: number): Readonly<Record<Repeated, number>> => {
   const points = version >= ESSAY_FORK_VERSION ? FORK_POINTS_MOST : POINTS_MOST
   return {
+    ask: CONVERSATION_MOST,
+    opening: CONVERSATION_MOST,
     question: TICKETS_MOST,
     answer:
       version >= ESSAY_POINT_VERSION
@@ -276,10 +282,17 @@ export function essayFormat(version: number = ESSAY_VERSION): Format {
         ? [
             scene(
               version,
+              "ask",
+              "They ask",
+              "A question someone who has never seen Rust Rounds would ask, in a second synthetic voice",
+              10_000
+            ),
+            scene(
+              version,
               "opening",
-              "Your opening",
-              "What Rust Rounds trains, in your own voice; left out when it went unread",
-              40_000
+              "You answer",
+              "Your newest take of the answer, in your own voice; left out when there is none to play",
+              90_000
             ),
           ]
         : []),
@@ -609,8 +622,26 @@ export const EssaySchema = z.strictObject({
   sla: z.array(z.strictObject({ what: words, target: words })).min(1),
   /** The references the week was checked against, by their full names. */
   references: z.array(words).min(1),
-  /** What home heard of the owner's take of the week's opening (#3269); absent when there is none to play. */
-  opening: z.strictObject({ transcript: words }).optional(),
+  /**
+   * The opening conversation (#3269, C738): each question asked and what
+   * home heard in the owner's newest take of its answer, by the question's
+   * place in the week's opening (from 1), in order. Absent when no answer
+   * has a take to play; a question whose answer has none is left out.
+   */
+  opening: z
+    .strictObject({
+      exchanges: z
+        .array(
+          z.strictObject({
+            n: z.int().min(1).max(CONVERSATION_MOST),
+            ask: words,
+            transcript: words,
+          })
+        )
+        .min(1)
+        .max(CONVERSATION_MOST),
+    })
+    .optional(),
   open: SaidSchema,
   tickets: z.array(TicketSchema).min(2).max(TICKETS_MOST),
   weeks: z.strictObject({
@@ -966,13 +997,17 @@ function essayProblems(essay: Essay): Array<string> {
     })
   }
   problems.push(...nextWeekProblems(essay.week.id, essay.next.week))
-  if (
-    essay.opening !== undefined &&
-    essay.template.version < ESSAY_OPENING_VERSION
-  )
-    problems.push(
-      `opening: the template plays the owner's opening from version ${ESSAY_OPENING_VERSION}`
-    )
+  if (essay.opening !== undefined) {
+    if (essay.template.version < ESSAY_OPENING_VERSION)
+      problems.push(
+        `opening: the template plays the owner's opening from version ${ESSAY_OPENING_VERSION}`
+      )
+    const ns = essay.opening.exchanges.map((e) => e.n)
+    if (ns.some((n, i) => i > 0 && n <= (ns[i - 1] ?? 0)))
+      problems.push(
+        `opening.exchanges: each question once, in the opening's order; got ${ns.join(", ")}`
+      )
+  }
   return once(problems)
 }
 
@@ -990,8 +1025,8 @@ export function parseEssay(raw: unknown): Parsed<Essay> {
 /** The template's sample essay: Quillmoss's week 46, two tickets answered and one not. */
 export const sampleEssay = (): Parsed<Essay> => parseEssay(sample)
 
-/** Who is speaking, and so whose bubble is lit. */
-export type Speaker = "tutor" | "you"
+/** Who is speaking, and so whose bubble is lit: the opening's questions are the asker's. */
+export type Speaker = "tutor" | "you" | "asker"
 
 /**
  * Whose voice says the owner's answers: their own takes, in an essay home
@@ -1001,10 +1036,16 @@ export type Speaker = "tutor" | "you"
  */
 export type Voicing = "owner" | "sample"
 
-/** Each speaker's Kokoro voice, as the call's `CALL_VOICES`; `you` only in the sample (`Voicing`). */
+/**
+ * Each speaker's Kokoro voice, as the call's `CALL_VOICES`; `you` only in
+ * the sample (`Voicing`). The asker's is neither the tutor's nor the
+ * sample's, so a listener hears the opening's questions come from someone
+ * else (owner, 2026-11-19).
+ */
 export const ESSAY_VOICES: Readonly<Record<Speaker, string>> = {
   tutor: "am_michael",
   you: "bm_george",
+  asker: "af_heart",
 }
 
 /** One scene of an essay: its section, its id in the video, who says it and what. */
@@ -1023,6 +1064,8 @@ export type EssayScene =
        * from 0.
        */
       readonly point?: number
+      /** For an opening's question or answer, the question's place in the opening, from 1. */
+      readonly exchange?: number
       readonly speaker: Speaker
       /** What is said over it; empty for a brand slide. */
       readonly said: string
@@ -1081,9 +1124,11 @@ export function essayIntro(
       },
       {
         label: "Voices",
-        says: sample
-          ? "Both are Kokoro, a synthetic speaker. In a sample, a second synthetic voice reads the answers"
-          : "The tutor is Kokoro, a synthetic speaker. The other voice is the owner's own, from their takes",
+        says: `${
+          sample
+            ? "Both are Kokoro, a synthetic speaker. In a sample, a second synthetic voice reads the answers"
+            : "The tutor is Kokoro, a synthetic speaker. The other voice is the owner's own, from their takes"
+        }${essay.opening === undefined ? "" : ". The opening's questions are asked in a third synthetic voice"}`,
       },
       { label: "Judged by", says: SOLO_SOURCE },
       { label: "Checked against", says: essay.references.join(" · ") },
@@ -1136,13 +1181,23 @@ export function essayScenes(
       speaker: "tutor",
       said: "",
     })
-  if (essay.opening !== undefined)
-    scenes.push({
-      section: "opening",
-      id: "opening",
-      speaker: "you",
-      said: essay.opening.transcript,
-    })
+  for (const { n, ask, transcript } of essay.opening?.exchanges ?? [])
+    scenes.push(
+      {
+        section: "ask",
+        id: repeatedId("ask", n),
+        exchange: n,
+        speaker: "asker",
+        said: ask,
+      },
+      {
+        section: "opening",
+        id: repeatedId("opening", n),
+        exchange: n,
+        speaker: "you",
+        said: transcript,
+      }
+    )
   scenes.push({
     section: "open",
     id: "open",
@@ -1374,13 +1429,13 @@ export function essayStoryboard(): Storyboard {
 
 /**
  * The take an essay's scene plays, by its id in the folder home hands the
- * recorder: the opening's (`OPENING_TAKE_ID`), a ticket's (`QM-311`) or, for
- * a point answered by a take of its own, the point's (`QM-311.2`,
- * `pointTakeId`); null for a scene the owner doesn't say.
+ * recorder: an opening answer's (`opening.2`, `openingTakeId`), a ticket's
+ * (`QM-311`) or, for a point answered by a take of its own, the point's
+ * (`QM-311.2`, `pointTakeId`); null for a scene the owner doesn't say.
  */
 export const essayTakeOf = (scene: EssayScene): string | null =>
-  scene.section === "opening"
-    ? OPENING_TAKE_ID
+  scene.section === "opening" && scene.exchange !== undefined
+    ? openingTakeId(scene.exchange)
     : scene.section === "answer" &&
         scene.speaker === "you" &&
         scene.ticket !== undefined
@@ -1425,17 +1480,22 @@ export function essayTakeFiles(
     keep: (answer: (typeof answers)[number]["answer"]) => boolean
   ): Array<string> =>
     answers.filter(({ answer }) => keep(answer)).map(({ id }) => id)
-  // The opening's take plays when the essay holds it; one home hands over
-  // that the essay leaves out (heard as nothing, or unheard) is set aside.
-  const plays = essay.opening !== undefined
+  // An opening answer's take plays when the essay holds it; one home hands
+  // over that the essay leaves out (heard as nothing, or unheard) is set
+  // aside.
+  const plays = new Set(essay.opening?.exchanges.map((e) => e.n) ?? [])
+  const opening = Array.from({ length: CONVERSATION_MOST }, (_, i) => i + 1)
   return takeFilesOf(
     {
       answered: [
-        ...(plays ? [OPENING_TAKE_ID] : []),
+        ...opening.filter((n) => plays.has(n)).map(openingTakeId),
         ...ids((answer) => answer.kind === "take"),
       ],
       silent: ids((answer) => answer.kind === "silence"),
-      unheard: [...(plays ? [] : [OPENING_TAKE_ID]), ...ids(isUnheard)],
+      unheard: [
+        ...opening.filter((n) => !plays.has(n)).map(openingTakeId),
+        ...ids(isUnheard),
+      ],
       noun: "ticket or point",
     },
     names

@@ -15,6 +15,7 @@ import {
   ESSAY_ID,
   ESSAY_POINT_VERSION,
   ESSAY_VERSION,
+  ESSAY_VOICES,
   essayChapterMarks,
   essayCutList,
   essayFormat,
@@ -25,7 +26,7 @@ import {
   essayVersionRefusal,
   isPast,
   markOf,
-  OPENING_TAKE_ID,
+  openingTakeId,
   parseEssay,
   pointAnsweredBy,
   sampleEssay,
@@ -44,10 +45,16 @@ import { describe, expect, it } from "vitest"
 
 const DIR = join(import.meta.dirname, "../templates", ESSAY_ID)
 
+/**
+ * The template's sample, without its opening conversation (#3269): the
+ * tests of a ticket's scenes and takes read the week alone, and lower its
+ * version, which draws no opening.
+ */
 function sample(): Essay {
   const parsed = sampleEssay()
   if (!parsed.ok) throw new Error(parsed.problems.join("; "))
-  return parsed.value
+  const { opening: _opening, ...week } = parsed.value
+  return week
 }
 
 /** `ticket`, left unanswered. */
@@ -77,9 +84,13 @@ const ticketIds = (n: number, d: number): Array<string> => [
   ...Array.from({ length: ESSAY_DIVES }, (_, k) => `dive-${d + k}`),
 ]
 
-/** An opening as the owner might read it (#3269). */
-const OPENING =
-  "paulgsc here. This is Rust Rounds: a small Rust program every week, and the decisions it asks for, worked at the desk first."
+/** An opening conversation as home might have heard it (#3269): the second answer had no take to play. */
+const OPENING = {
+  exchanges: [
+    { n: 1, ask: "What is Rust Rounds?", transcript: "paulgsc here." },
+    { n: 3, ask: "Why watch?", transcript: "To see a decision made." },
+  ],
+}
 
 describe("the essay's format", () => {
   it("every pinned version parses, and the newest is the code's", () => {
@@ -153,21 +164,23 @@ describe("the sample essay", () => {
         .filter((s) => s.section !== "answer")
         .every((s) => s.speaker === "tutor")
     ).toBe(true)
-    // The owner's opening (#3269) plays their own take of it, first after
-    // the brand; only from version 5.
-    const opened = { ...essay, opening: { transcript: OPENING } }
+    // The opening conversation (#3269, C738), first after the brand: the
+    // asker's voice asks each question, then the owner's take answers it;
+    // only from version 5.
+    const opened = { ...essay, opening: OPENING }
     expect(parseEssay(opened).ok).toBe(true)
     const scenes = essayScenes(opened)
-    expect(scenes.map((s) => s.id).slice(1, 4)).toEqual([
-      "brand-in",
-      "opening",
-      "open",
-    ])
     expect(
-      scenes
-        .filter((s) => s.section === "opening")
-        .map((s) => [s.speaker, s.said, essayTakeOf(s)])
-    ).toEqual([["you", OPENING, OPENING_TAKE_ID]])
+      scenes.slice(1, 7).map((s) => [s.id, s.speaker, s.said, essayTakeOf(s)])
+    ).toEqual([
+      ["brand-in", "tutor", "", null],
+      ["ask-1", "asker", "What is Rust Rounds?", null],
+      ["opening-1", "you", "paulgsc here.", openingTakeId(1)],
+      ["ask-3", "asker", "Why watch?", null],
+      ["opening-3", "you", "To see a decision made.", openingTakeId(3)],
+      ["open", "tutor", essay.open.said, null],
+    ])
+    expect(new Set(Object.values(ESSAY_VOICES)).size).toBe(3)
     const v4 = parseEssay({
       ...opened,
       template: { ...opened.template, version: 4 },
@@ -175,6 +188,22 @@ describe("the sample essay", () => {
     expect(v4.ok ? [] : v4.problems).toEqual([
       "opening: the template plays the owner's opening from version 5",
     ])
+    const backwards = parseEssay({
+      ...opened,
+      opening: { exchanges: [...OPENING.exchanges].reverse() },
+    })
+    expect(backwards.ok ? [] : backwards.problems).toEqual([
+      "opening.exchanges: each question once, in the opening's order; got 3, 1",
+    ])
+    // The template's own sample opens on three exchanges, so its storyboard
+    // shows the conversation.
+    const own = sampleEssay()
+    expect(
+      own.ok &&
+        essayScenes(own.value, "sample")
+          .filter((s) => s.speaker === "asker")
+          .map((s) => s.id)
+    ).toEqual(["ask-1", "ask-2", "ask-3"])
   })
 
   it("goes past the ticket only on a point the answer covered", () => {
@@ -453,23 +482,33 @@ describe("the takes home hands the recorder", () => {
         "QM-311.m4a",
         "QM-311.words.json",
         "QM-312.webm",
-        // An opening the essay leaves out (#3269) is set aside too.
-        "opening.m4a",
+        // An opening answer the essay leaves out (#3269) is set aside too.
+        "opening.1.m4a",
       ])
     ).toEqual({
       ok: true,
       value: { "QM-312": { audio: "QM-312.webm", words: null } },
     })
     // One the essay plays is its take, like a ticket's.
-    const opened = { ...unheard, opening: { transcript: OPENING } }
-    expect(essayTakeFiles(opened, ["QM-312.webm", "opening.m4a"])).toEqual({
+    const opened = { ...unheard, opening: OPENING }
+    expect(
+      essayTakeFiles(opened, [
+        "QM-312.webm",
+        "opening.1.m4a",
+        "opening.2.m4a",
+        "opening.3.ogg",
+      ])
+    ).toEqual({
       ok: true,
       value: {
-        opening: { audio: "opening.m4a", words: null },
+        "opening.1": { audio: "opening.1.m4a", words: null },
+        "opening.3": { audio: "opening.3.ogg", words: null },
         "QM-312": { audio: "QM-312.webm", words: null },
       },
     })
-    expect(essayTakeFiles(opened, ["QM-312.webm"]).ok).toBe(false)
+    expect(essayTakeFiles(opened, ["QM-312.webm", "opening.1.m4a"]).ok).toBe(
+      false
+    )
   })
 })
 

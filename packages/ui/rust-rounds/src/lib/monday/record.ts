@@ -10,12 +10,16 @@
  *   the owner sent (#2231, "The record is final only after `due`").
  * - A transcript is `some-ui.voice-transcript/1` (the mailbox's `transcript`
  *   folder). A take's `ref` is `<week>:<ticket>`, or `<week>:<ticket>:<n>`
- *   for its point n (RR24), or `<week>:opening` for the opening (#3269); a
- *   pasted error's note is
+ *   for its point n (RR24), or `<week>:opening:<n>` for the answer to the
+ *   opening's question n (#3269, C736); a pasted error's note is
  *   `<week>:PASTE:<at>` (paulgsc/server `voice_repo::is_rust_round_ref`).
  */
 import { WEEK_ID } from "@rust-rounds/lib/formats/week"
-import { hearingOf, transcriptName } from "@some-ui/video-render"
+import {
+  CONVERSATION_MOST,
+  hearingOf,
+  transcriptName,
+} from "@some-ui/video-render"
 import { z } from "zod"
 
 const Instant = z.iso.datetime({ offset: true })
@@ -60,14 +64,24 @@ export const WeekRecordSchema = z.object({
     .nullable(),
   tickets: z.array(TicketRecordSchema),
   /**
-   * The owner's take of the week's opening (#3269), when one was sent: its
-   * `ref` is `<week>:opening`. A home from before it, or a week with no
+   * The opening's answers this week's essay plays (#3269, C736), as home
+   * resolves them: for each question n, the newest kept take of its answer
+   * recorded under the week's opening `version`, from this week or an
+   * earlier one (`week`, its ref being `<week>:opening:<n>`). A question
+   * with no such take is absent. A home from before it, or a week with no
    * opening, says none.
    */
   opening: z
-    .object({ take: z.string().min(1), recordedAt: Instant })
-    .nullable()
-    .default(null),
+    .array(
+      z.object({
+        n: z.int().min(1).max(CONVERSATION_MOST),
+        take: z.string().min(1),
+        recordedAt: Instant,
+        week: z.string().regex(WEEK_ID),
+        version: z.int().positive(),
+      })
+    )
+    .default([]),
   unanswered: z.array(z.string()),
   pastes: z.array(PasteSchema),
 })
@@ -98,6 +112,17 @@ export function readFinalRecord(
         why: `${ticket.ticket} says answered and its take disagree`,
       }
     }
+  }
+  const answered = new Set<number>()
+  for (const { n, week } of record.opening) {
+    if (answered.has(n))
+      return { ok: false, why: `the opening's question ${n} has two takes` }
+    answered.add(n)
+    if (week > record.week)
+      return {
+        ok: false,
+        why: `the opening's question ${n} plays a take from ${week}, after the week`,
+      }
   }
   return { ok: true, record }
 }

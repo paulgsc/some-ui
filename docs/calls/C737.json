@@ -1,0 +1,20 @@
+{
+  "id": "C737",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/opening/index.ts",
+    "packages/ui/rust-rounds/src/lib/formats/week.ts",
+    "packages/video-render/src/opening.ts",
+    "packages/ui/rust-rounds/ROUTINE.md"
+  ],
+  "chose": "Rust Rounds' opening is a standing set checked into `@some-ui/rust-rounds` (`STANDING_OPENING`: a `version` and one to three `{ask, script}` exchanges), copied by code into each /2 week as it stands; the routine never writes or changes it. It changes only when the owner asks, by a change to that file that raises `version`, and a take plays only while its version is the week's. Its words hold to `conversationProblems`: one to three questions, the first answer saying \"paulgsc\" first, 340 to 510 words across all the answers (two to three minutes at 170 words a minute), each question 20 words at most, nothing that assesses.",
+  "options": [
+    "a checked-in set, changed only at the owner's ask",
+    "the routine writes the set once, when none exists, and copies it after",
+    "the owner edits the set on the phone"
+  ],
+  "gray": "The owner said the opening is a standing intro the routine doesn't rewrite weekly, and left how the set changes open; the coordinator agreed the checked-in set, and the owner approves its words.",
+  "undo": "Let the routine write the set when none exists and copy the last week's after, checked by `conversationProblems`; drop `STANDING_OPENING`.",
+  "refs": ["#3269", "#3272"]
+}

@@ -65,6 +65,7 @@ import {
   TextSchema,
   WhenSchema,
 } from "@rust-rounds/lib/formats"
+import { CONVERSATION_MOST } from "@some-ui/video-render"
 import { z } from "zod"
 
 import { WEEK_ID } from "./week-id"
@@ -339,13 +340,22 @@ export const WeekV1Schema = z.strictObject({
 export type WeekV1 = z.infer<typeof WeekV1Schema>
 
 /**
- * The essay's opening, in the owner's own voice (#3269, as IW10's for the
- * interview week): a script the owner reads before the tickets, saying
- * "paulgsc" and then what Rust Rounds trains. The routine will hold its
- * words to `@some-ui/video-render`'s `openingProblems` once it writes one
- * (C733); the essay plays the take.
+ * The essay's opening, a conversation (#3269, C738): one to three
+ * questions someone who has never seen Rust Rounds would ask, each with the
+ * answer the owner reads through the teleprompter. It is the standing set
+ * (`@rust-rounds/lib/opening`, C737), copied into the week as it stands:
+ * the routine never writes it. `version` is the set's, so a take recorded
+ * under one version answers that version's words, and plays only while the
+ * week's opening is the same version (C736).
  */
-const OpeningSchema = z.strictObject({ script: TextSchema })
+const OpeningSchema = z.strictObject({
+  version: z.int().positive(),
+  exchanges: z
+    .array(z.strictObject({ ask: TextSchema, script: TextSchema }))
+    .min(1)
+    .max(CONVERSATION_MOST),
+})
+export type Opening = z.infer<typeof OpeningSchema>
 
 /** A `/2` week. */
 export const WeekV2Schema = z.strictObject({

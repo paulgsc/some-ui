@@ -225,11 +225,28 @@ describe("the essay's stage", () => {
     expect(
       dive.section === "dive" && [dive.ticket.id, dive.n, dive.dive.title]
     ).toEqual(["QM-312", 2, "What `clear` and `push_str` do to the bytes"])
-    // The owner's opening (#3269), played first after the brand.
-    const opened = { ...essay(), opening: { transcript: "paulgsc here." } }
-    expect(essayAt(opened, "opening")).toMatchObject({
+    // The opening conversation (#3269), first after the brand: the one
+    // asking speaks each question, then the owner's take answers it.
+    const opened = {
+      ...essay(),
+      opening: {
+        exchanges: [
+          { n: 2, ask: "Why weekly?", transcript: "To practise deciding." },
+        ],
+      },
+    }
+    expect(essayAt(opened, "ask-2")).toMatchObject({
+      speaker: "asker",
+      view: { section: "ask", n: 2, ask: "Why weekly?" },
+    })
+    expect(essayAt(opened, "opening-2")).toMatchObject({
       speaker: "you",
-      view: { section: "opening", transcript: "paulgsc here." },
+      view: {
+        section: "opening",
+        n: 2,
+        ask: "Why weekly?",
+        transcript: "To practise deciding.",
+      },
     })
   })
 

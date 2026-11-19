@@ -81,11 +81,18 @@ export type EndedWeek = {
   readonly sla: Week["sla"]
   readonly references: ReadonlyArray<string>
   /**
-   * What home heard in the owner's take of the week's opening (#3269), when
-   * one was sent and something was said in it; absent otherwise, and the
-   * essay opens as before.
+   * The opening conversation (#3269, C738): each of the week's opening
+   * questions whose answer has a take home resolved (C736) and heard
+   * something in, with what it heard, in order. Absent when none has, and
+   * the essay opens as before.
    */
-  readonly opening?: { readonly transcript: string }
+  readonly opening?: {
+    readonly exchanges: ReadonlyArray<{
+      readonly n: number
+      readonly ask: string
+      readonly transcript: string
+    }>
+  }
   readonly tickets: ReadonlyArray<EndedTicket>
 }
 
@@ -239,6 +246,42 @@ function answerHeard(
   return { kind: "take", transcript: hearing.text }
 }
 
+/**
+ * The week's opening conversation as the essay plays it (#3269): for each
+ * of the week's opening questions, the take home resolved for its answer
+ * (C736) when it is of the week's opening version, and what home heard in
+ * it. A question with no take, or one home heard nothing in or couldn't make
+ * out, is left out; one whose take home hasn't heard yet holds the essay.
+ */
+export function openingOf(
+  week: Week,
+  record: WeekRecord,
+  heard: ReadonlyMap<string, Heard>
+):
+  | {
+      readonly ok: true
+      readonly exchanges: NonNullable<EndedWeek["opening"]>["exchanges"]
+    }
+  | { readonly ok: false; readonly why: string } {
+  const exchanges: Array<{ n: number; ask: string; transcript: string }> = []
+  for (const [i, { ask }] of (week.opening?.exchanges ?? []).entries()) {
+    const n = i + 1
+    const take = record.opening.find(
+      (t) => t.n === n && t.version === week.opening?.version
+    )
+    if (take === undefined) continue
+    const read = answerHeard(heard.get(take.take), 0)
+    if (read === null)
+      return {
+        ok: false,
+        why: `home hasn't heard the take on the opening's question ${n} yet`,
+      }
+    if (read.kind === "take")
+      exchanges.push({ n, ask, transcript: read.transcript })
+  }
+  return { ok: true, exchanges }
+}
+
 /** A week's tickets with their answers, or why the essay can't be written yet. */
 function answersOf(
   week: Week,
@@ -342,15 +385,9 @@ export function prepare({
       waiting.push({ week: week.id, why: answers.why })
       continue
     }
-    const opening =
-      record.opening === null
-        ? null
-        : answerHeard(heard.get(record.opening.take), 0)
-    if (record.opening !== null && opening === null) {
-      waiting.push({
-        week: week.id,
-        why: "home hasn't heard the take on the opening yet",
-      })
+    const opening = openingOf(week, record, heard)
+    if (!opening.ok) {
+      waiting.push({ week: week.id, why: opening.why })
       continue
     }
     ended.push({
@@ -361,8 +398,8 @@ export function prepare({
       story: week.story,
       sla: week.sla,
       references: fullNames(week.references),
-      ...(opening?.kind === "take"
-        ? { opening: { transcript: opening.transcript } }
+      ...(opening.exchanges.length > 0
+        ? { opening: { exchanges: opening.exchanges } }
         : {}),
       tickets: answers.tickets,
     })

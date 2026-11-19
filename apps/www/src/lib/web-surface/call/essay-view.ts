@@ -28,8 +28,17 @@ import { ESSAY_WORDS as W } from "./essay-words"
 
 export type EssayView =
   | { readonly section: "brand-in" | "brand-out" | "open" | "next" }
-  /** The owner's own opening (#3269): their take of it, played whole. */
-  | { readonly section: "opening"; readonly transcript: string }
+  /**
+   * The opening conversation (#3269): a question asked, by its place in the
+   * opening (from 1), or the owner's take of its answer, played whole.
+   */
+  | { readonly section: "ask"; readonly n: number; readonly ask: string }
+  | {
+      readonly section: "opening"
+      readonly n: number
+      readonly ask: string
+      readonly transcript: string
+    }
   | {
       readonly section: "intro"
       readonly rows: ReturnType<typeof essayIntro>["rows"]
@@ -151,8 +160,19 @@ function viewOf(essay: Essay, scene: EssayScene, voicing: Voicing): EssayView {
     case "intro": {
       return { section: "intro", rows: essayIntro(essay, voicing).rows }
     }
+    case "ask":
     case "opening": {
-      return { section: "opening", transcript: scene.said }
+      const n = scene.exchange ?? 0
+      const exchange = essay.opening?.exchanges.find((e) => e.n === n)
+      if (exchange === undefined) throw new Error(`no opening question ${n}`)
+      return scene.section === "ask"
+        ? { section: "ask", n, ask: exchange.ask }
+        : {
+            section: "opening",
+            n,
+            ask: exchange.ask,
+            transcript: exchange.transcript,
+          }
     }
     case "chapter": {
       const n = essay.tickets.findIndex((t) => t.id === scene.ticket)

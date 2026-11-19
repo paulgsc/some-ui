@@ -89,6 +89,7 @@ const labelOf = (scene: EssayScene, essay: Essay): string => {
     case "chapter": {
       return W.chapter(scene.title)
     }
+    case "ask":
     case "opening":
     case "open":
     case "weeks":
@@ -451,10 +452,19 @@ const Screen = ({
         />
       )
     }
+    case "ask": {
+      return (
+        <Call speaker={at.speaker} tag={W.question(view.n)} other="asker">
+          <p className="text-muted-foreground text-[0.8em]">{W.theyAsk}</p>
+          <Title>{view.ask}</Title>
+        </Call>
+      )
+    }
     case "opening": {
       return (
-        <Call speaker={at.speaker} tag={NAMES.opening}>
-          <Title>{W.yourOpening}</Title>
+        <Call speaker={at.speaker} tag={W.question(view.n)} other="asker">
+          <p className="text-muted-foreground text-[0.8em]">{view.ask}</p>
+          <p className="text-[0.8em] font-semibold">{W.yourAnswer}</p>
           <p className="text-[1em] leading-snug">{view.transcript}</p>
         </Call>
       )

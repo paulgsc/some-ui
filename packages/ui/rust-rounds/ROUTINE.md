@@ -93,9 +93,13 @@ public record, made to be rewatched: say what each thing is, in plain
 sentences, and assume nothing remembered.
 
 - `open`: the week's company, story and SLA, restated in a few sentences.
-  When the owner read the week's opening and home heard them say something,
-  code puts their take first, before `open`, as they said it: `open` still
-  restates the week, and never repeats or answers the opening.
+  When the week carries the opening conversation (#3269) and home holds a
+  take of any of its answers, code puts the conversation first, before
+  `open`: a second synthetic voice asks each question and the owner's take
+  answers it. Its questions and answers are the standing set
+  (`src/lib/opening`), which code copies into each `/2` week; never write
+  or change them. `open` still restates the week, and never repeats or
+  answers the opening.
 - `weeks`: what the chart shows. Code draws the chart and the role line from
   the decay record (RR19, #2695) and writes a sentence under it for each
   decay and fading, so say what the essays' SOLO levels show over the weeks,
