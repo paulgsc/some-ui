@@ -96,6 +96,11 @@ export type AphStore = {
   sent: (receipt: Receipt) => void
   /** Home's record, as read: shown from now on. False when it can't be. */
   pulled: (home: HomeHeld) => boolean
+  /**
+   * Moves with each send's receipt and each record read (AR1): a read that
+   * went out before it moved found a record older than one already shown.
+   */
+  exchanges: () => number
   /** Saves the draft: the entry it landed on, or null with nothing to save. */
   save: (draft: Draft, commit: Commit) => Entry | null
   /** Each of these is false, changing nothing, when it would break a rule. */
@@ -131,6 +136,7 @@ export function createAphStore(
   let pulled = false
   let hidden = 0
   let edits = 0
+  let exchanges = 0
   if (storage !== null && (home?.kind === "kept" || home?.kind === "moved")) {
     record =
       home.kind === "kept"
@@ -214,8 +220,10 @@ export function createAphStore(
       return true
     },
     outbox: () => (record === null ? null : outboxOf(record)),
+    exchanges: () => exchanges,
     sent: (receipt): void => {
       if (record === null) return
+      exchanges += 1
       const next = afterSend(record, receipt)
       // Unwritten, the phone keeps more than home needs: sent again, it is
       // answered unchanged. Never less.
@@ -225,6 +233,7 @@ export function createAphStore(
     },
     pulled: (held): boolean => {
       if (record === null) return false
+      exchanges += 1
       const view = shown(record, held)
       if (view === null) return false
       if (!sameSettings(view.settings, record.settings)) {

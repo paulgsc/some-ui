@@ -1,6 +1,5 @@
 import {
   lastNext,
-  MONIKER,
   OPENING_SITUATION,
   prepare,
   SITUATIONS,
@@ -8,7 +7,7 @@ import {
 } from "@interview-week/lib/monday/bundle"
 import type { Bundle, MailboxFile } from "@interview-week/lib/monday/bundle"
 import { finish } from "@interview-week/lib/monday/finish"
-import { sampleInterviewEssay } from "@some-ui/video-render"
+import { MONIKER, sampleInterviewEssay } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
 import { COMMIT, corpus, valuesFor } from "./fixture"

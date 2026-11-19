@@ -11,7 +11,9 @@
  * Hand-written against paulgsc/server's RR14 handlers, as RR14-home settled
  * them and paulgsc/server#770 (RR22) changed them: `RecordSchema` is the
  * week's record, its `sent` the draft standing before the deadline
- * (`draft: true`) or the final after it, and `LogListSchema` the list
+ * (`draft: true`) or the final after it, each ticket's `decisions` the
+ * decision at each of its forks that send carried (RR29, from contract
+ * epoch 24, paulgsc/server's RR29 change), and `LogListSchema` the list
  * of sittings by id, revision and the SHA-256 of the latest revision as sent.
  *
  * **Who may call.** A paired phone only (`subject::Paired`): no session is
@@ -47,7 +49,11 @@ const When = z.iso.datetime({ offset: true })
 const NoteId = z.string().regex(/^[A-Za-z0-9._:-]{1,64}$/)
 const Ticket = z.string().regex(/^[A-Z][A-Z0-9]{0,5}-\d{1,6}$/)
 
-/** A week's answers as the phone keeps them (`WeekSent`), which it sends exactly. */
+/**
+ * A week's answers as the phone keeps them (`WeekSent`), which it sends
+ * exactly; from contract epoch 24 with the decision at each fork (RR29,
+ * `verdicts`, each named `<week>:<ticket>:<n>:verdict`).
+ */
 const SENT = {
   week: ABSENT_WEEK,
   at: "1999-01-05T12:00:00.000Z",
@@ -55,7 +61,20 @@ const SENT = {
     { ticket: "QM-1", take: "take-1", recordedAt: "1999-01-05T11:59:00.000Z" },
   ],
   passed: [],
+  verdicts: [
+    {
+      ref: `${ABSENT_WEEK}:QM-1:1:verdict`,
+      decision: { kind: "option", option: "B" },
+    },
+  ],
 }
+
+/** A fork's decision as home keeps it (RR29): an option, the owner's own, or left alone. */
+const Decision = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("option"), option: z.string().regex(/^[A-F]$/) }),
+  z.object({ kind: z.literal("own") }),
+  z.object({ kind: z.literal("recommended-by-default") }),
+])
 
 const PASTE_AT = "1999-01-05T12:00:00.000Z"
 
@@ -86,8 +105,34 @@ const RecordSchema = z.object({
       take: NoteId.nullable(),
       recordedAt: When.nullable(),
       opens: z.number().int().nonnegative(),
+      /**
+       * The decision at each fork sent, by fork from 1 (RR29): a home
+       * before contract epoch 24 has none to say.
+       */
+      decisions: z
+        .array(
+          z.object({ fork: z.number().int().positive(), decision: Decision })
+        )
+        .optional(),
     })
   ),
+  /**
+   * The opening's answers the week's essay plays (#3269, C736): for each
+   * question n, the newest kept take of its answer under the week's opening
+   * version, from this week or an earlier one. A home from before it says
+   * none.
+   */
+  opening: z
+    .array(
+      z.object({
+        n: z.int().min(1).max(3),
+        take: NoteId,
+        recordedAt: When,
+        week: z.string(),
+        version: z.int().positive(),
+      })
+    )
+    .optional(),
   unanswered: z.array(Ticket),
   pastes: z.array(
     z.object({

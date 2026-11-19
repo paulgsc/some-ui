@@ -15,6 +15,7 @@ import type { RustWeekPorts } from "@rust-rounds/lib/week-play/runtime"
 import {
   weekMarks,
   weekPicks,
+  weeksSent,
   weekTicks,
 } from "@rust-rounds/lib/week-play/store"
 import { WEEK_WORDS } from "@rust-rounds/lib/week-play/words"
@@ -91,6 +92,7 @@ function ports(
     newId: () => "unused",
     engage: () => undefined,
     perPoint: false,
+    verdicts: false,
     onVisibility: (listener) => {
       listener(false)
       return (): void => undefined
@@ -254,18 +256,25 @@ describe("a week on the phone (RR13)", () => {
     open.unmount()
 
     const after = Date.parse(QUILLMOSS_WEEK.due) + 60_000
-    const closed = render(
-      <RustWeek
-        ports={ports(
-          storage,
-          simulated,
-          () => after,
-          () => false
-        )}
-      />
-    )
+    const closedWith = (
+      homeSent: RustWeekPorts["homeSent"]
+    ): ReturnType<typeof render> =>
+      render(
+        <RustWeek
+          ports={{
+            ...ports(
+              storage,
+              simulated,
+              () => after,
+              () => false
+            ),
+            homeSent,
+          }}
+        />
+      )
+    let closed = closedWith(() => Promise.resolve({ kind: "none" }))
     await settle()
-    // Home never had it: it didn't count, and it says so.
+    // Home's record says it never had it: it didn't count, and it says so.
     expect(screen.getByText(WORDS.sent.title(0, 3))).toBeInTheDocument()
     expect(
       screen.getByText(/didn't reach home before the deadline/)
@@ -273,7 +282,44 @@ describe("a week on the phone (RR13)", () => {
     expect(screen.getAllByText(WORDS.sent.notAnswered)).toHaveLength(3)
     closed.unmount()
 
-    // A span started before the deadline, still running after it.
+    // RR30, the S21's w46: the link's memory lost the send and home's
+    // record couldn't be read. Nothing is said of home: no count, no "late".
+    const unknown: RustWeekPorts["homeSent"] = () =>
+      Promise.resolve({ kind: "unknown" })
+    for (const homeSent of [undefined, unknown]) {
+      closed = closedWith(homeSent)
+      await settle()
+      expect(screen.queryByText(/didn't reach home/)).toBeNull()
+      expect(screen.queryByText(WORDS.sent.title(0, 3))).toBeNull()
+      expect(screen.getByText(/can't say what counted/)).toBeInTheDocument()
+      expect(screen.getAllByText(WORDS.sent.notAnswered)).toHaveLength(2)
+      closed.unmount()
+    }
+
+    // Home holds a send this phone didn't keep: named, nothing else claimed.
+    closed = closedWith(() =>
+      Promise.resolve({ kind: "sent", at: "2026-11-21T10:00:00.000Z" })
+    )
+    await settle()
+    expect(screen.getByText(/isn't on this phone/)).toHaveTextContent(
+      /Your send from .* is shown below/
+    )
+    expect(screen.queryByText(/didn't reach home/)).toBeNull()
+    closed.unmount()
+
+    // The link's memory lost it, and home's record says it holds that send.
+    const sentAt = weeksSent(storage).list()?.[0]?.at
+    expect(sentAt).toBeDefined()
+    closed = closedWith(() =>
+      Promise.resolve({ kind: "sent", at: sentAt ?? "" })
+    )
+    await settle()
+    expect(screen.queryByText(/didn't reach home/)).toBeNull()
+    expect(screen.getByText(WORDS.sent.title(1, 3))).toBeInTheDocument()
+    closed.unmount()
+
+    // A span started before the deadline, still running after it; and
+    // home's record and the link's memory agree on the send.
     const running = workPorts(after)
     running.tracker.start({
       week: QUILLMOSS_WEEK.id,
@@ -291,6 +337,7 @@ describe("a week on the phone (RR13)", () => {
             () => after,
             () => true
           ),
+          homeSent: () => Promise.resolve({ kind: "sent", at: sentAt ?? "" }),
           work: running,
         }}
       />

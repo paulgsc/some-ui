@@ -244,6 +244,10 @@ const KEEPERS = new Set([
   "lib/home-link/cards-essays.ts",
   "lib/home-link/clips.ts",
   "lib/home-link/episode-notes-read.ts",
+  // RR30: a closed Rust Rounds week's one read of home's record.
+  "lib/home-link/rust-week-record.ts",
+  // AR1: aph's read of home's record as its screens open.
+  "lib/home-link/aph.ts",
 ])
 
 /** LA8, #2843: whether home works with this build, its one ask through `look`. */
