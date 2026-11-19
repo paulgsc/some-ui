@@ -54,8 +54,8 @@ apply to any agent working here, not only Claude.
   family, a new ownership boundary with no segment, a live signal or check whose ref no
   longer does what it claims).
 - **New machinery comes after a reach.** A PR that starts machinery of its own (a new
-  record store, editor, player, annotation layer, sync path or service) with no reach linked
-  from it or its epic, and no reason given that none was owed, gets a non-blocking finding
+  record store, editor, player, annotation layer, sync path or service) with no reach call named
+  by it or its epic, and no reason given that none was owed, gets a non-blocking finding
   naming the machinery. Changes to an existing surface never do.
 
 Full text: `REVIEW.md`.

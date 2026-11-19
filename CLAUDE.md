@@ -367,8 +367,11 @@ user story, and whether each does it the owner's way. For each, it records:
 - its honest limits.
 
 It ends with a recommendation: use the tool as is, fold it in (embed or self-host on home),
-or build. Building then is a stated choice ("no tool does it your way because …"), not the
-default.
+or build. Building is one option among the others, chosen for a stated reason ("no tool does
+it your way because …"), never the default. The owner (2026-11-19, close paraphrase): "The
+key is that it's in the PR, meaning part of the commit and part of the history, and that
+we're making a conscious decision. Previously it was an implicit judgment that was never
+tracked."
 
 **When a reach is owed.** It is owed when the first design of a story would add one of these:
 
@@ -384,11 +387,17 @@ story whose point is the machinery itself, such as the owner wanting to learn by
 The reach comes before the first PR of that machinery, not after. #3035's reach came after
 SFEED6 had already built a note store, which is the timing to avoid.
 
-**Where it goes.** In the epic's body, under a "Reach" heading beside "Where we are"
-(below, "Multi-session relay work"), linking a private page when the comparison is long. The
-owner decides from it before the story is designed, so a reach is often an ask. Review
-treats a new subsystem whose epic carries no reach, and no stated reason it needs none, as a
-finding to raise, not a block: whether a reach was owed is a judgment, and no check holds it.
+**Where it goes.** A reach ends in a call (below, "A gray-area call keeps who made it"):
+`docs/calls/<ID>.json`, with each tool, and building, among its `options`, the verdict and
+its reasons in `chose`, the paths the story will touch in `paths`, and a link to the
+comparison when it is long (a private page). It is `by: claude` until the owner decides, then
+the owner's own call, or agreed. The commit that records it carries `Call: <ID>`, and the PR's
+"Calls I made" lists it, so the decision lives in git history through the existing record and
+`check:calls`. The epic's body names the call under a "Reach" heading beside "Where we are"
+(below, "Multi-session relay work"). The owner decides before the story is designed, so a
+reach waiting on them is an ask. C772 is the first, for #3035. Review treats new machinery
+whose PR and epic name no reach, and no stated reason none was owed, as a finding to raise,
+not a block: whether a reach was owed is a judgment, and no check holds it.
 
 **Policy limits move with the story** (owner, 2026-11-19, close paraphrase; C771): "Policy
 limits, like 'this type of video essay should only be of this length', should be policy, not
