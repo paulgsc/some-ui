@@ -1,0 +1,422 @@
+From 4487d79ac9865796f0379a2824e8aeedc6d2172c Mon Sep 17 00:00:00 2001
+From: Paul Gathondu <noreply@anthropic.com>
+Date: Thu, 19 Nov 2026 16:17:15 +0000
+Subject: [PATCH] feat(rust-rounds): keep the decision at each fork with a week
+ sent (RR29)
+
+paulgsc/some-ui#3257 (RR29), with the phone's send in some-ui's RR25 D2:
+a week sent may carry `verdicts`, the owner's decision at each fork of a
+/2 week, each named `<week>:<ticket>:<n>:verdict` beside the fork's take,
+`<week>:<ticket>:<n>`: a listed option by id, their own (which the fork's
+take says), or, for a fork left alone, the recommended by default (C693).
+Its shape is the essay's DecisionSchema, less an own option's words.
+
+- read_sent refuses a ref that names no fork of the week's tickets (fork
+  from 1, up to the ticket's points), one an earlier decision names, an
+  option id that isn't a capital A to F, and a decision of any other kind
+  or with keys it doesn't take. Home doesn't hold a fork's options: the
+  phone picks only among them.
+- The week's record (GET /rust-weeks/:id/record, and the mailbox's rust
+  index) gives each ticket's `decisions`, by fork; empty for a /1 week.
+- No table changes: the decisions are part of the send's body, stored as
+  the draft and the final already are. A phone from before sends none.
+- CONTRACT_EPOCH 23 -> 24, a payload change a client needs (23 is RR23's
+  diagnostics); the image's provides label follows.
+
+Change-Kind: story
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LDpdUGMMs4nPTTR4nWXSQT
+---
+ apps/servers/file_host/src/contract.rs        |   2 +-
+ .../file_host/src/handlers/rust_rounds.rs     |   6 +-
+ .../src/handlers/rust_week_record.rs          |  27 ++++
+ .../file_host/src/mailbox/index/rust.rs       |   6 +-
+ apps/servers/file_host/src/mailbox/pass.rs    |   7 +
+ apps/servers/file_host/src/rust_essays.rs     |   1 +
+ crates/db/rust_round/src/essay.rs             |   1 +
+ crates/db/rust_round/src/sent.rs              | 136 +++++++++++++++++-
+ docs/identity.md                              |   5 +-
+ infra/docker/Dockerfile.server                |   2 +-
+ 10 files changed, 182 insertions(+), 11 deletions(-)
+
+diff --git a/apps/servers/file_host/src/contract.rs b/apps/servers/file_host/src/contract.rs
+index 9354ca2..a205b73 100644
+--- a/apps/servers/file_host/src/contract.rs
++++ b/apps/servers/file_host/src/contract.rs
+@@ -28,7 +28,7 @@
+ //! fails until the Dockerfile says the same.
+ 
+ /// This build's contract epoch. See the module doc for when it moves.
+-pub const CONTRACT_EPOCH: u32 = 23;
++pub const CONTRACT_EPOCH: u32 = 24;
+ 
+ /// The lowest epoch this build still serves. Raised when a client-breaking
+ /// route change lands; at most [`CONTRACT_EPOCH`].
+diff --git a/apps/servers/file_host/src/handlers/rust_rounds.rs b/apps/servers/file_host/src/handlers/rust_rounds.rs
+index d453514..afbe018 100644
+--- a/apps/servers/file_host/src/handlers/rust_rounds.rs
++++ b/apps/servers/file_host/src/handlers/rust_rounds.rs
+@@ -1011,9 +1011,9 @@ mod tests {
+ 				"closed": true,
+ 				"sent": { "at": "2026-10-05T06:58:00.000Z", "receivedAt": "2026-10-05T06:58:01.000Z", "draft": false },
+ 				"tickets": [
+-					{ "ticket": "QM-1", "answered": true, "take": "2026-w40:QM-1", "recordedAt": "2026-10-01T18:00:00.000Z", "points": [], "opens": 2 },
+-					{ "ticket": "QM-2", "answered": false, "take": null, "recordedAt": null, "points": [], "opens": 0 },
+-					{ "ticket": "QM-3", "answered": false, "take": null, "recordedAt": null, "points": [], "opens": 1 },
++					{ "ticket": "QM-1", "answered": true, "take": "2026-w40:QM-1", "recordedAt": "2026-10-01T18:00:00.000Z", "points": [], "decisions": [], "opens": 2 },
++					{ "ticket": "QM-2", "answered": false, "take": null, "recordedAt": null, "points": [], "decisions": [], "opens": 0 },
++					{ "ticket": "QM-3", "answered": false, "take": null, "recordedAt": null, "points": [], "decisions": [], "opens": 1 },
+ 				],
+ 				"unanswered": ["QM-2", "QM-3"],
+ 				"pastes": [{ "at": "2026-10-02T09:00:00.000Z", "text": "error[E0502]: cannot borrow", "note": null, "receivedAt": record["pastes"][0]["receivedAt"] }],
+diff --git a/apps/servers/file_host/src/handlers/rust_week_record.rs b/apps/servers/file_host/src/handlers/rust_week_record.rs
+index 8b917c0..8a255f8 100644
+--- a/apps/servers/file_host/src/handlers/rust_week_record.rs
++++ b/apps/servers/file_host/src/handlers/rust_week_record.rs
+@@ -125,11 +125,24 @@ pub struct TicketRecord {
+ 	/// in the point's order; empty when none was. The point is the one the
+ 	/// take's `ref` names, never one inferred from what was said.
+ 	pub points: Vec<PointRecord>,
++	/// The decision at each of its forks the send carried (RR29,
++	/// paulgsc/some-ui#3257; contract epoch 24), by fork; empty for a `/1`
++	/// week and a phone from before it.
++	pub decisions: Vec<ForkDecision>,
+ 	/// How many times its card was opened between the week's opening and its
+ 	/// deadline.
+ 	pub opens: i64,
+ }
+ 
++/// One fork's decision, as the send named it (`<week>:<ticket>:<n>:verdict`).
++#[derive(Debug, Serialize)]
++#[serde(rename_all = "camelCase")]
++pub struct ForkDecision {
++	/// The fork, counted from 1.
++	pub fork: u8,
++	pub decision: rust_round_repo::sent::Decision,
++}
++
+ /// One speak-to point answered by a take of its own.
+ #[derive(Debug, Serialize)]
+ #[serde(rename_all = "camelCase")]
+@@ -378,6 +391,19 @@ pub(crate) async fn week_record(conn: &mut SqliteConnection, subject: &str, week
+ 			})
+ 			.collect();
+ 		points.sort_by_key(|each| each.point);
++		let mut decisions: Vec<ForkDecision> = sent
++			.as_ref()
++			.map_or(&[][..], |held| held.sent.verdicts.as_slice())
++			.iter()
++			.filter_map(|verdict| {
++				let (ticket, fork) = rust_round_repo::sent::verdict_of(&week.id, &verdict.of_ref)?;
++				(ticket == program.ticket).then(|| ForkDecision {
++					fork,
++					decision: verdict.decision.clone(),
++				})
++			})
++			.collect();
++		decisions.sort_by_key(|each| each.fork);
+ 		let answered = whole.is_some() || !points.is_empty();
+ 		if !answered {
+ 			unanswered.push(program.ticket.clone());
+@@ -388,6 +414,7 @@ pub(crate) async fn week_record(conn: &mut SqliteConnection, subject: &str, week
+ 			take: whole.map(|answer| answer.take.clone()),
+ 			recorded_at: whole.map(|answer| answer.recorded_at.clone()),
+ 			points,
++			decisions,
+ 			opens: opened,
+ 		});
+ 	}
+diff --git a/apps/servers/file_host/src/mailbox/index/rust.rs b/apps/servers/file_host/src/mailbox/index/rust.rs
+index 02a2552..fa93519 100644
+--- a/apps/servers/file_host/src/mailbox/index/rust.rs
++++ b/apps/servers/file_host/src/mailbox/index/rust.rs
+@@ -229,6 +229,7 @@ mod tests {
+ 						take: String::from("2026-w46:QM-1:2"),
+ 						recorded_at: String::from("2026-11-12T17:30:00.000Z"),
+ 					}],
++					decisions: Vec::new(),
+ 					opens: 2,
+ 				},
+ 				TicketRecord {
+@@ -237,6 +238,7 @@ mod tests {
+ 					take: None,
+ 					recorded_at: None,
+ 					points: Vec::new(),
++					decisions: Vec::new(),
+ 					opens: 0,
+ 				},
+ 			],
+@@ -271,8 +273,8 @@ mod tests {
+ 					"sent": { "at": "2026-11-12T18:00:00.000Z", "receivedAt": "2026-11-12T18:00:01.000Z", "draft": false },
+ 					"tickets": [
+ 						{ "ticket": "QM-1", "answered": true, "take": "2026-w46:QM-1", "recordedAt": "2026-11-12T17:00:00.000Z",
+-							"points": [{ "point": 2, "take": "2026-w46:QM-1:2", "recordedAt": "2026-11-12T17:30:00.000Z" }], "opens": 2 },
+-						{ "ticket": "QM-2", "answered": false, "take": null, "recordedAt": null, "points": [], "opens": 0 },
++							"points": [{ "point": 2, "take": "2026-w46:QM-1:2", "recordedAt": "2026-11-12T17:30:00.000Z" }], "decisions": [], "opens": 2 },
++						{ "ticket": "QM-2", "answered": false, "take": null, "recordedAt": null, "points": [], "decisions": [], "opens": 0 },
+ 					],
+ 					"unanswered": ["QM-2"],
+ 					"pastes": [{ "at": "2026-11-13T09:00:00.000Z", "text": "error[E0502]: cannot borrow", "note": null, "receivedAt": "2026-11-17T09:00:00.000Z" }],
+diff --git a/apps/servers/file_host/src/mailbox/pass.rs b/apps/servers/file_host/src/mailbox/pass.rs
+index dbdbc60..6bf11df 100644
+--- a/apps/servers/file_host/src/mailbox/pass.rs
++++ b/apps/servers/file_host/src/mailbox/pass.rs
+@@ -4126,6 +4126,8 @@ mod tests {
+ 			"week": "2026-w46", "at": "2026-11-12T18:00:00.000Z",
+ 			"answers": [{ "ticket": "QM-1", "take": "2026-w46:QM-1", "recordedAt": "2026-11-12T17:30:00.000Z" }],
+ 			"passed": ["QM-2"],
++			// RR29: the decision at a fork goes with the record, by fork.
++			"verdicts": [{ "ref": "2026-w46:QM-1:1:verdict", "decision": { "kind": "option", "option": "B" } }],
+ 		}))
+ 		.unwrap();
+ 		rust_round_repo::sent::put_draft(&mut pool.acquire().await.unwrap(), OWNER, &sent, "2026-11-12T18:00:01.000Z")
+@@ -4152,6 +4154,11 @@ mod tests {
+ 		assert_eq!(put[0]["weeks"], serde_json::json!([serde_json::to_value(&record).unwrap()]), "the record's own shape");
+ 		assert_eq!(put[0]["weeks"][0]["sent"]["draft"], serde_json::json!(false));
+ 		assert_eq!(put[0]["weeks"][0]["unanswered"], serde_json::json!(["QM-2"]));
++		assert_eq!(
++			put[0]["weeks"][0]["tickets"][0]["decisions"],
++			serde_json::json!([{ "fork": 1, "decision": { "kind": "option", "option": "B" } }])
++		);
++		assert_eq!(put[0]["weeks"][0]["tickets"][1]["decisions"], serde_json::json!([]));
+ 
+ 		// Nothing moved: nothing put.
+ 		assert!(pass_at(&pool, &fake, "2026-11-16T09:15:00.000Z").await.unwrap().indexed.is_empty());
+diff --git a/apps/servers/file_host/src/rust_essays.rs b/apps/servers/file_host/src/rust_essays.rs
+index 5dee415..2edc22d 100644
+--- a/apps/servers/file_host/src/rust_essays.rs
++++ b/apps/servers/file_host/src/rust_essays.rs
+@@ -1027,6 +1027,7 @@ mod tests {
+ 				recorded_at: String::from("2026-11-15T19:00:00.000Z"),
+ 			}],
+ 			passed: vec![String::from("QM-312")],
++			verdicts: Vec::new(),
+ 		};
+ 		let mut conn = pool.acquire().await.unwrap();
+ 		rust_round_repo::sent::put_draft(&mut conn, ME, &sent, BEFORE).await.unwrap();
+diff --git a/crates/db/rust_round/src/essay.rs b/crates/db/rust_round/src/essay.rs
+index 373f5c1..7721374 100644
+--- a/crates/db/rust_round/src/essay.rs
++++ b/crates/db/rust_round/src/essay.rs
+@@ -513,6 +513,7 @@ mod tests {
+ 				})
+ 				.collect(),
+ 			passed: Vec::new(),
++			verdicts: Vec::new(),
+ 		}
+ 	}
+ 
+diff --git a/crates/db/rust_round/src/sent.rs b/crates/db/rust_round/src/sent.rs
+index 2bc672c..d0e30ff 100644
+--- a/crates/db/rust_round/src/sent.rs
++++ b/crates/db/rust_round/src/sent.rs
+@@ -81,6 +81,45 @@ pub struct Answer {
+ 	pub recorded_at: String,
+ }
+ 
++/// The owner's decision at a fork of a `/2` week (RR29,
++/// paulgsc/some-ui#3257; the owner's call C693): a listed option, by id;
++/// their own, which the fork's take says; or, for a fork left alone, the
++/// recommended one by default, kept apart from a pick of it. The essay's
++/// `DecisionSchema` (paulgsc/some-ui `packages/video-render/src/essay.ts`),
++/// less an own option's words, which are the fork's take.
++#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
++#[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
++pub enum Decision {
++	/// A listed option, by its id, a capital `A` to `F`.
++	Option { option: String },
++	/// The owner's own option, said in the fork's take. Braced, as the next,
++	/// so `deny_unknown_fields` refuses a key it doesn't take (serde lets a
++	/// unit variant of a tagged enum through with any).
++	Own {},
++	/// A fork the owner left alone: the recommended option, by default.
++	RecommendedByDefault {},
++}
++
++/// One fork's decision as sent, named by its `ref`,
++/// `<week>:<ticket>:<n>:verdict`, beside the fork's take,
++/// `<week>:<ticket>:<n>` (RR24), whose words say why.
++#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
++#[serde(deny_unknown_fields)]
++pub struct Verdict {
++	#[serde(rename = "ref")]
++	pub of_ref: String,
++	pub decision: Decision,
++}
++
++/// What a verdict's `ref` names: its ticket and fork, from 1.
++#[must_use]
++pub fn verdict_of(week: &str, of_ref: &str) -> Option<(String, u8)> {
++	let rest = of_ref.strip_prefix(week)?.strip_prefix(':')?.strip_suffix(":verdict")?;
++	let (ticket, fork) = rest.rsplit_once(':')?;
++	let fork: u8 = fork.parse().ok()?;
++	(!ticket.is_empty() && !ticket.contains(':') && fork >= 1 && fork.to_string() == rest[ticket.len() + 1..]).then(|| (ticket.to_owned(), fork))
++}
++
+ /// A week's answers as sent: the phone's `WeekSent`
+ /// (paulgsc/some-ui `packages/ui/rust-rounds/src/lib/week-play/spec.ts`).
+ #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+@@ -94,6 +133,10 @@ pub struct Sent {
+ 	pub answers: Vec<Answer>,
+ 	/// The tickets not said, in the week's order.
+ 	pub passed: Vec<String>,
++	/// The decision at each fork with options (RR29, contract epoch 24): a
++	/// phone from before it, and a `/1` week, send none.
++	#[serde(default, skip_serializing_if = "Vec::is_empty")]
++	pub verdicts: Vec<Verdict>,
+ }
+ 
+ impl WeekSend for Sent {
+@@ -198,10 +241,14 @@ pub(crate) fn sent_in_window(at: &str, window: Option<&Window>, now: &str, probl
+ /// `passed`, or not at all; a ticket answered whole twice, or a point
+ /// answered twice or that its ticket does not have (RR24: a ticket is
+ /// answered whole, point by point, or both, at most once each); a take that
+-/// is not a note id; a `recordedAt` that is not an instant or is after `at`.
++/// is not a note id; a `recordedAt` that is not an instant or is after `at`;
++/// a decision (RR29) whose `ref` doesn't name a fork of the week's tickets,
++/// names one an earlier decision does, or picks an option id that isn't a
++/// capital `A` to `F`. Which options a fork lists home doesn't hold: the
++/// phone picks only among them.
+ pub fn read_sent(body: &[u8], week: &Week, now: &str) -> Result<Sent, Vec<Problem>> {
+ 	let value = json_object(body, SENT_CEILING, "is larger than 16 KiB")?;
+-	let sent: Sent = serde_json::from_value(value).map_err(|_| vec![(String::from("body"), "must be a week sent: week, at, answers and passed, and nothing else")])?;
++	let sent: Sent = serde_json::from_value(value).map_err(|_| vec![(String::from("body"), "must be a week sent: week, at, answers, passed and verdicts, and nothing else")])?;
+ 	let mut problems: Vec<Problem> = Vec::new();
+ 	if sent.week != week.id {
+ 		problems.push((String::from("week"), "must be the week in the path"));
+@@ -241,6 +288,26 @@ pub fn read_sent(body: &[u8], week: &Week, now: &str) -> Result<Sent, Vec<Proble
+ 			problems.push((at + ".point", "must be one of the ticket's speak-to points, counted from 1"));
+ 		}
+ 	}
++	for (index, verdict) in sent.verdicts.iter().enumerate() {
++		let at = |field: &str| String::from("verdicts[") + &index.to_string() + "]." + field;
++		match verdict_of(&sent.week, &verdict.of_ref) {
++			None => problems.push((at("ref"), "must name a fork of this week: <week>:<ticket>:<n>:verdict")),
++			Some((ticket, fork)) => {
++				let points = week.programs.iter().find(|program| program.ticket == ticket).map(|program| program.points);
++				if points.is_none_or(|points| usize::from(fork) > points) {
++					problems.push((at("ref"), "must name one of a ticket's forks, counted from 1"));
++				}
++				if sent.verdicts[..index].iter().any(|each| each.of_ref == verdict.of_ref) {
++					problems.push((at("ref"), "names a fork an earlier decision does"));
++				}
++			}
++		}
++		if let Decision::Option { option } = &verdict.decision {
++			if !(option.len() == 1 && option.bytes().all(|byte| byte.is_ascii_uppercase() && byte <= b'F')) {
++				problems.push((at("decision.option"), "must be an option's id, a capital A to F"));
++			}
++		}
++	}
+ 	for (index, answer) in sent.answers.iter().enumerate() {
+ 		let at = |field: &str| String::from("answers[") + &index.to_string() + "]." + field;
+ 		if !is_note_id(&answer.take) {
+@@ -429,7 +496,7 @@ pub async fn pastes(conn: &mut SqliteConnection, subject: &str, week: &str) -> R
+ 
+ #[cfg(test)]
+ mod tests {
+-	use super::{finalize, is_final, pastes, put_draft, put_paste, read_paste, read_sent, standing, take_refs, DraftChange, Sent};
++	use super::{finalize, is_final, pastes, put_draft, put_paste, read_paste, read_sent, standing, take_refs, verdict_of, Decision, DraftChange, Sent};
+ 	use crate::week::read;
+ 	use crate::{Change, RoundError};
+ 	use serde_json::{json, Value};
+@@ -486,6 +553,69 @@ mod tests {
+ 		fields
+ 	}
+ 
++	/// RR29 (paulgsc/some-ui#3257): a send may carry the decision at each
++	/// fork, named `<week>:<ticket>:<n>:verdict`, an option by id, the
++	/// owner's own, or the recommended by default; a phone from before it
++	/// sends none, and reads as before.
++	#[test]
++	fn a_send_carries_each_forks_decision() {
++		let week = week();
++		let mut body = sent_body("2026-11-16T07:58:00.000Z");
++		body["verdicts"] = json!([
++			{ "ref": "2026-w46:QM-311:1:verdict", "decision": { "kind": "option", "option": "B" } },
++			{ "ref": "2026-w46:QM-312:3:verdict", "decision": { "kind": "own" } },
++			{ "ref": "2026-w46:QM-313:2:verdict", "decision": { "kind": "recommended-by-default" } },
++		]);
++		let sent = read_sent(body.to_string().as_bytes(), &week, OPEN).unwrap();
++		assert_eq!(
++			sent.verdicts.iter().map(|each| each.decision.clone()).collect::<Vec<_>>(),
++			vec![Decision::Option { option: String::from("B") }, Decision::Own {}, Decision::RecommendedByDefault {}]
++		);
++		// Kept as sent, and read back the same.
++		assert_eq!(serde_json::to_value(&sent).unwrap()["verdicts"], body["verdicts"]);
++		let without = read_sent(sent_body("2026-11-16T07:58:00.000Z").to_string().as_bytes(), &week, OPEN).unwrap();
++		assert!(without.verdicts.is_empty());
++		assert!(serde_json::to_value(&without).unwrap().get("verdicts").is_none(), "none sent, none written");
++	}
++
++	/// Each refusal of a decision: a ref that names no fork of this week, one
++	/// named twice, an option id that isn't a capital A to F, and a decision
++	/// of no kind the phone makes.
++	#[test]
++	fn a_decision_names_a_fork_of_the_week_once() {
++		let week = week();
++		let refused = |verdicts: Value| {
++			let mut body = sent_body("2026-11-16T07:58:00.000Z");
++			body["verdicts"] = verdicts;
++			read_sent(body.to_string().as_bytes(), &week, OPEN).map_err(|problems| fields(&problems))
++		};
++		let rbd = json!({ "kind": "recommended-by-default" });
++		for of_ref in [
++			"2026-w45:QM-311:1:verdict",
++			"2026-w46:QM-999:1:verdict",
++			"2026-w46:QM-311:0:verdict",
++			"2026-w46:QM-311:4:verdict",
++			"2026-w46:QM-311:01:verdict",
++			"2026-w46:QM-311:1",
++			"2026-w46:QM-311:verdict",
++		] {
++			assert_eq!(refused(json!([{ "ref": of_ref, "decision": rbd }])), Err(vec![String::from("verdicts[0].ref")]), "{of_ref}");
++		}
++		let twice = json!({ "ref": "2026-w46:QM-311:1:verdict", "decision": rbd });
++		assert_eq!(refused(json!([twice, twice])), Err(vec![String::from("verdicts[1].ref")]));
++		for option in ["G", "a", "AB", ""] {
++			let picked = json!([{ "ref": "2026-w46:QM-311:1:verdict", "decision": { "kind": "option", "option": option } }]);
++			assert_eq!(refused(picked), Err(vec![String::from("verdicts[0].decision.option")]), "{option}");
++		}
++		for decision in [json!({ "kind": "verdict" }), json!({ "kind": "own", "decision": "mine" }), json!({ "kind": "option" })] {
++			assert_eq!(
++				refused(json!([{ "ref": "2026-w46:QM-311:1:verdict", "decision": decision }])),
++				Err(vec![String::from("body")])
++			);
++		}
++		assert_eq!(verdict_of("2026-w46", "2026-w46:QM-311:2:verdict"), Some((String::from("QM-311"), 2)));
++	}
++
+ 	/// The deadline is the week's, offset and all: a Send a minute before it
+ 	/// counts, a minute after does not, and one before the week opens or
+ 	/// ahead of home's clock is no Send.
+diff --git a/docs/identity.md b/docs/identity.md
+index 6f4bfdb..286ab5b 100644
+--- a/docs/identity.md
++++ b/docs/identity.md
+@@ -2001,7 +2001,10 @@ nowhere is marked as such and belongs to review.
+     What the owner did with a week (RR14, paulgsc/some-ui#2689) is theirs:
+     a week's send is the phone's `WeekSent` (each ticket answered, its take
+     named by voice-note id and when it was recorded, the tickets passed over,
+-    when Send was pressed and when it reached home). Until the week's
++    the decision at each fork of a `/2` week (RR29, paulgsc/some-ui#3257:
++    an option, the owner's own or the recommended by default, each named
++    `<week>:<ticket>:<n>:verdict`), when Send was pressed and when it reached
++    home). Until the week's
+     deadline it is a draft (`rust_week_draft`, `PUT /rust-weeks/:id/sent`): a
+     later send replaces it, an earlier one leaves it, and another body at its
+     moment is a `409`; it is not kept for good. Only what stands at the
+diff --git a/infra/docker/Dockerfile.server b/infra/docker/Dockerfile.server
+index bb6678a..85e9ff3 100644
+--- a/infra/docker/Dockerfile.server
++++ b/infra/docker/Dockerfile.server
+@@ -200,5 +200,5 @@ LABEL org.opencontainers.image.title="${APP_NAME}" \
+ # The numbers are apps/servers/file_host/src/contract.rs's (contract,
+ # render-folders), ws-events' NATS_SUBJECTS_EPOCH and rust_rounds_wire's
+ # protocol::EPOCH; contract.rs's own test holds them equal.
+-LABEL io.paulgsc.provides="contract=23,render-folders=2" \
++LABEL io.paulgsc.provides="contract=24,render-folders=2" \
+       io.paulgsc.requires="nats-subjects=1,rust-runner-protocol=1"
+-- 
+2.43.0
+
