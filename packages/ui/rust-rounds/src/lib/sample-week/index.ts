@@ -21,7 +21,7 @@ import { upgradeWeek, WEEK_SCHEMA } from "@rust-rounds/lib/formats/week"
 
 const program = (...lines: Array<string>): string => `${lines.join("\n")}\n`
 
-/** The sample week as its file holds it: `/1`, as the routine writes today. */
+/** The sample week as its file holds it (`/1`). */
 export const QUILLMOSS_WEEK_FILE: WeekV1 = {
   schema: WEEK_SCHEMA,
   id: "2026-w46",

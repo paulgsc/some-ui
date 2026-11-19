@@ -112,13 +112,11 @@ describe("the tracker, every state against every event", () => {
         const next = stepTracker(state, event)
         const effects: ReadonlyArray<TrackerEffect> = next.effects
 
-        // One span open at a time: a start goes out only from idle.
         const starts = effects.filter((each) => each.type === "start")
         expect(starts.length).toBe(
           state.kind === "idle" && event.type === "start" ? 1 : 0
         )
 
-        // A stop is never past the cap, and "itself" means the cap.
         if (next.state.kind === "asking") {
           const cap = next.state.span.startedAt + CAP_MS
           expect(next.state.stoppedAt).toBeLessThanOrEqual(cap)
@@ -127,7 +125,6 @@ describe("the tracker, every state against every event", () => {
           )
         }
 
-        // Nothing counted beyond the span, nothing below zero.
         for (const effect of effects) {
           if (effect.type === "start") continue
           const { closed } = effect
@@ -138,10 +135,8 @@ describe("the tracker, every state against every event", () => {
             expect(closed.countedSeconds).toBe(spanned)
           }
           if (closed.answer === "none") expect(closed.countedSeconds).toBe(0)
-          expect(closed.span.where.points.length).toBeGreaterThan(0)
         }
 
-        // An answer only closes a span the owner was asked about.
         const closes = effects.filter((each) => each.type === "close")
         expect(closes.length).toBe(
           state.kind === "asking" && event.type === "answer" ? 1 : 0

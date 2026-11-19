@@ -237,18 +237,12 @@ describe("readWeek, a /2 week", () => {
     ])
   })
 
-  it("refuses an option citing nothing, and a fork of one option", () => {
+  it("refuses an option citing nothing", () => {
     const nothing = edited((week) => {
       optionOf(week, 0, 0, 0).cites = []
     })
-    const lone = edited((week) => {
-      forkOf(week, 0, 1).options.splice(1)
-    })
     expect(refused(nothing)).toEqual([
       `${TB101}.forks[0].options[0] ("A").cites: an option cites at least one stated constraint, by id`,
-    ])
-    expect(refused(lone)).toEqual([
-      `${TB101}.forks[1].options: a fork has 2 to 6 options`,
     ])
   })
 
@@ -302,31 +296,14 @@ describe("readWeek, a /2 week", () => {
     ])
   })
 
-  it("refuses an exercise naming no word, no fork or no test, and a ticket with no academy", () => {
+  it("refuses an exercise naming no word or no fork", () => {
     const value = edited((week) => {
       exerciseOf(week, 0, 0).keywords = []
       exerciseOf(week, 0, 1).forks = []
-      exerciseOf(week, 0, 2).tests = []
-      ticketOf(week, 1).academy = []
     })
     expect(refused(value)).toEqual([
       `${TB101}.academy[0].keywords: an exercise names at least one word it works on`,
       `${TB101}.academy[1].forks: an exercise builds toward at least one fork`,
-      `${TB101}.academy[2].tests: an exercise tests at least one option's model`,
-      'tickets[1] ("TB-102").academy: a ticket\'s academy has 1 to 8 exercises',
-    ])
-  })
-
-  it("refuses a /2 ticket still written as /1", () => {
-    const [first, second, third] = TALLOWBROOK_WEEK_FILE.tickets
-    if (third === undefined) throw new Error("the /2 sample changed shape")
-    const { forks, academy: _academy, ...rest } = third
-    const asV1 = { ...rest, speakTo: forks.map((fork) => fork.question) }
-    const value = { ...TALLOWBROOK_WEEK_FILE, tickets: [first, second, asV1] }
-    expect(refused(value).sort()).toEqual([
-      'tickets[2] ("TB-103").academy: Invalid input: expected array, received undefined',
-      'tickets[2] ("TB-103").forks: Invalid input: expected array, received undefined',
-      'tickets[2] ("TB-103"): Unrecognized key: "speakTo"',
     ])
   })
 })

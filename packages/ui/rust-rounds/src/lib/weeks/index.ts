@@ -74,8 +74,7 @@ export type WeeksHeld = {
 const NO_WEEKS: WeeksHeld = { weeks: [], unread: [] }
 
 const HeldWeekSchema = z.object({
-  // A week kept before `/2` (RR25) was kept in its `/1` shape: it reads as
-  // the phone holds weeks now, so no week this phone kept is lost.
+  // A week kept in its `/1` shape reads by `upgradeWeek`.
   week: z.union([WeekSchema, WeekV1Schema.transform(upgradeWeek)]),
   sha256: z.string(),
   runs: z.record(z.string(), RustcRunSchema),
