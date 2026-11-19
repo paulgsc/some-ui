@@ -3,7 +3,7 @@ import { finish } from "@interview-week/lib/monday/finish"
 import { VALUES_SCHEMA } from "@interview-week/lib/monday/values"
 import { describe, expect, it } from "vitest"
 
-import { COMMIT, corpus, script, valuesFor } from "./fixture"
+import { COMMIT, corpus, OPENING, script, valuesFor } from "./fixture"
 
 const { bundle } = prepare({
   commit: COMMIT,
@@ -34,8 +34,16 @@ describe("the interview week's finish", () => {
       kind: "call",
       id: "C266",
     })
-    // 200 words at 150 a minute.
-    expect(file?.body.cards.map((c) => c.targetSeconds)).toEqual([80, 80, 80])
+    // The opening's words at 150 a minute, then 200 words at 150 a minute.
+    const [opening, ...cards] = file?.body.cards ?? []
+    expect(opening).toMatchObject({
+      id: "opening",
+      source: { kind: "opening" },
+    })
+    expect(opening?.targetSeconds).toBe(
+      Math.round((OPENING.split(/\s+/u).length / 150) * 60)
+    )
+    expect(cards.map((c) => c.targetSeconds)).toEqual([80, 80, 80])
   })
 
   it("asks for every slot once, and refuses one the bundle didn't ask for", () => {
@@ -50,7 +58,7 @@ describe("the interview week's finish", () => {
             ...week.questions.slice(1),
             { ...week.questions[1]!, id: "read" },
           ],
-          cards: [...week.cards, week.cards[0]!],
+          cards: [...week.cards, week.cards[1]!],
         },
       })
     ).toEqual([
@@ -64,14 +72,47 @@ describe("the interview week's finish", () => {
     const values = valuesFor(bundle)
     const week = values.week!
     const cards = [
-      { ...week.cards[0]!, script: script(5) },
-      { ...week.cards[1]!, script: script(20).replaceAll("\n", " ") },
-      week.cards[2]!,
+      week.cards[0]!,
+      { ...week.cards[1]!, script: script(5) },
+      { ...week.cards[2]!, script: script(20).replaceAll("\n", " ") },
+      week.cards[3]!,
     ]
     expect(problems({ ...values, week: { ...week, cards } })).toEqual([
-      'week.cards[0] ("epic-2931").script: 50 words; write 150 to 300',
-      'week.cards[1] ("doc-asks").script, line 1: 200 words; break a line where a breath belongs, at most 30 words',
+      'week.cards[1] ("epic-2931").script: 50 words; write 150 to 300',
+      'week.cards[2] ("doc-asks").script, line 1: 200 words; break a line where a breath belongs, at most 30 words',
     ])
+  })
+
+  it("holds the essay's opening to the moniker first, a short read, and no rating or finish line (IW10)", () => {
+    const values = valuesFor(bundle)
+    const week = values.week!
+    const opening = (text: string): ReadonlyArray<string> =>
+      problems({
+        ...values,
+        week: {
+          ...week,
+          cards: [{ ...week.cards[0]!, script: text }, ...week.cards.slice(1)],
+        },
+      })
+    expect(opening(OPENING)).toEqual([])
+    expect(
+      opening(
+        `This week I train decision stories, until I'm ready for the interview.\n${OPENING.split("\n").slice(1).join("\n")}\nThen I'll check my rating, and grade how I did.`
+      )
+    ).toEqual([
+      'week.cards[0] ("opening").script: the opening says "paulgsc" in its first line',
+      'week.cards[0] ("opening").script: "ready for the" assesses; the opening says what the week trains, with no rating and no finish line',
+      'week.cards[0] ("opening").script: "rating" assesses; the opening says what the week trains, with no rating and no finish line',
+      'week.cards[0] ("opening").script: "grade" assesses; the opening says what the week trains, with no rating and no finish line',
+    ])
+    expect(
+      opening(
+        `Paulgsc here.\n${OPENING.split("\n").slice(1).join("\n")}\nI'll tell a time a deploy failed, the tests that pass, a rate limit, a high level view, and how I assess a trade-off to finish the migration.`
+      )
+    ).toEqual([])
+    expect(opening(script(20))[0]).toBe(
+      'week.cards[0] ("opening").script: 200 words; write 25 to 90'
+    )
   })
 
   it("builds each question's ready answer, and refuses a source outside the body of work at the commit, a length off its target and an employer", () => {
@@ -190,11 +231,12 @@ describe("the interview week's finish", () => {
             ...week.questions.slice(1),
           ],
           cards: [
+            week.cards[0]!,
             {
-              ...week.cards[0]!,
+              ...week.cards[1]!,
               script: `${script(19)}\nIt runs on Cloudflare, unlike at Stripe.`,
             },
-            ...week.cards.slice(1),
+            ...week.cards.slice(2),
           ],
         },
       },
@@ -203,7 +245,7 @@ describe("the interview week's finish", () => {
     expect(named).toEqual([
       "week.company.name: names Google, a real employer; the interview is for an invented one",
       'week.questions[0] ("walk-me-through").prompt: names Harbour Works, a real employer; the interview is for an invented one',
-      'week.cards[0] ("epic-2931").script: names Stripe, a real employer',
+      'week.cards[1] ("epic-2931").script: names Stripe, a real employer',
     ])
     const earlier = {
       ...bundle,

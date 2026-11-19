@@ -15,6 +15,7 @@ import {
   useSyncExternalStore,
 } from "react"
 import type { InterviewWeek } from "@some-ui/interview-week"
+import { isOpening } from "@some-ui/interview-week"
 import { bundleConfirm, ConfirmSheet, useTakePattern } from "@some-ui/shared"
 import type {
   BundleTakes,
@@ -27,6 +28,7 @@ import { currentTakeOf, takeItemView } from "@some-ui/voice-capture"
 
 import type { Cue } from "@/lib/interview-week/cue"
 import type { Ladder } from "@/lib/interview-week/ladder"
+import type { Prompter } from "@/lib/interview-week/prompter"
 import type {
   InterviewWeekPorts,
   InterviewWeekRun,
@@ -46,6 +48,8 @@ export type Interview = {
   readonly atHome: InterviewAtHome
   readonly cue: Cue
   readonly ladder: Ladder
+  /** The band a script is read aloud through (IW9). */
+  readonly prompter: Prompter
 }
 
 const InterviewContext = createContext<Interview | null>(null)
@@ -86,9 +90,14 @@ export const playOnly = (row: TakeRowView): TakeRowView => ({
 /** A card's name in the look over: "Question 2", "Read 1". */
 export function labelOf(week: InterviewWeek, item: string): string {
   const card = cardOf(item)
-  return card === null
-    ? WORDS.questionLabel(week.questions.findIndex(({ id }) => id === item) + 1)
-    : WORDS.readLabel(week.cards.findIndex(({ id }) => id === card) + 1)
+  if (card === null)
+    return WORDS.questionLabel(
+      week.questions.findIndex(({ id }) => id === item) + 1
+    )
+  const found = week.cards.find(({ id }) => id === card)
+  if (found !== undefined && isOpening(found)) return WORDS.opening
+  const reads = week.cards.filter((read) => !isOpening(read))
+  return WORDS.readLabel(reads.findIndex(({ id }) => id === card) + 1)
 }
 
 export type InterviewWeekProps = {
@@ -123,11 +132,25 @@ export const InterviewWeekRuntime = ({
     run.ladder.subscribe,
     run.ladder.getSnapshot
   )
+  const prompter = useSyncExternalStore(
+    run.prompter.subscribe,
+    run.prompter.getSnapshot
+  )
   const snapshot = useTakePattern(takes.pattern)
   const { dispatch } = run
   return (
     <InterviewContext.Provider
-      value={{ run, week, takes, state, snapshot, atHome, cue, ladder }}
+      value={{
+        run,
+        week,
+        takes,
+        state,
+        snapshot,
+        atHome,
+        cue,
+        ladder,
+        prompter,
+      }}
     >
       {children}
       <ConfirmSheet

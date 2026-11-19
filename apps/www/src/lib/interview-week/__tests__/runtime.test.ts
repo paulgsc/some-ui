@@ -9,9 +9,12 @@
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { inMemoryStorage } from "@some-ui/core-utils"
 import type { SimulatedPattern } from "@some-ui/voice-capture/testing"
+import { SPEAKING } from "@some-ui/voice-capture/testing"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { CUE_SECONDS } from "@/lib/interview-week/cue"
+import type { Prompter } from "@/lib/interview-week/prompter"
+import { NO_PROMPTER } from "@/lib/interview-week/prompter"
 import type { InterviewWeekRun } from "@/lib/interview-week/runtime"
 import { createInterviewWeek } from "@/lib/interview-week/runtime"
 import type { InterviewSent } from "@/lib/interview-week/spec"
@@ -474,5 +477,33 @@ describe("a question's ladder on the phone (IW8)", () => {
     expect(lines(on)).toEqual(["2026-w47:why-now"])
     const [take] = on.simulated.store.getSnapshot()
     expect(on.run.ladder.getSnapshot().rungs).toEqual({ [take.id]: "own" })
+  })
+
+  it("moves a read's band on the recorder's own level, and starts each take from the top (IW9)", async () => {
+    const on = phone(inMemoryStorage())
+    const band = (): Prompter => on.run.prompter.getSnapshot()
+    const words = (): number => {
+      const now = band()
+      return now.kind === "reading" ? now.words : Number.NaN
+    }
+    on.simulated.mic.script(
+      { ...SPEAKING, finish: { kind: "after", ms: 0 } },
+      { ...SPEAKING, level: 0, finish: { kind: "after", ms: 0 } }
+    )
+    on.run.focus("read:epic-2931")
+    on.run.dispatch({ type: "tap", item: "read:epic-2931" })
+    await pass(CUE_SECONDS * 1000 + 200)
+    expect(band()).toMatchObject({ answers: "2026-w47:read:epic-2931" })
+    await pass(3_000)
+    // Spoken throughout: about the pace's words in three seconds.
+    expect(words()).toBeGreaterThan(5)
+    expect(words()).toBeLessThan(8)
+    on.run.dispatch({ type: "tap", item: "read:epic-2931" })
+    await pass()
+    expect(band()).toBe(NO_PROMPTER)
+    // A take that hears nothing never moves the band.
+    on.run.dispatch({ type: "tap", item: "read:epic-2931" })
+    await pass(CUE_SECONDS * 1000 + 3_000)
+    expect(words()).toBe(0)
   })
 })

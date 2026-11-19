@@ -239,7 +239,21 @@ export const INTERVIEW_WORDS = {
   cap: `A take stops at ${lengthOf(TAKE_MAX_SECONDS * 1000)}.`,
   guidelines: "What to cover",
   situation: "Where this is read",
+  /** The week's opening card (IW10): the essay's opening, read in the owner's voice. */
+  opening: "The essay's opening, in your voice",
   script: "Read this",
+  /** The band a script is read aloud through (IW9): what it does now, its button, and the take's time against the aim. */
+  band: {
+    ready: "Moves while you speak",
+    waiting: "Moves once it hears you. You can scroll it yourself too.",
+    moving: "Moves while you speak",
+    holding: "Holding while you pause",
+    paused: "Paused. Tap Go on to go on.",
+    pause: "Pause",
+    goOn: "Go on",
+    time: (elapsedMs: number, seconds: number): string =>
+      `${lengthOf(elapsedMs)} / about ${lengthOf(seconds * 1000)}`,
+  },
   /** Under the script while the cue counts; the button says how long is left. */
   cueLine: "Tap the button again to call it off.",
   /** The look over's names for a card. */

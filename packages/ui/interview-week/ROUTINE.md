@@ -4,7 +4,7 @@ A scheduled cloud session runs this every Monday (IW4, #2935). It writes the
 week of mock interview that opens that day (`some-ui.interview-week/2`): an
 invented company and role, five questions to answer by voice (four while
 `docs/calls/` holds no call to ask about), and three teleprompter cards
-to read. First, it writes the essay on each week that ended
+to read, after the essay's opening (IW10, #3177). First, it writes the essay on each week that ended
 (`some-ui.interview-essay/1`, IW6, #2937), the video home renders with the
 owner's own takes.
 
@@ -15,7 +15,8 @@ Code does everything a model needn't decide (LEVERS, #2162). It chooses:
 
 - each question's family and variant, rotated least recently asked first;
 - each decision question's recorded call (`docs/calls/<ID>.json`);
-- each card's source (an epic, a doc, an invariant) and situation.
+- each card's source (an epic, a doc, an invariant) and situation;
+- the essay's opening, always the week's first card, `opening`.
 
 It also fills the ids, dates and targets, reads the owner's body of work at
 the checkout's commit, checks the week and puts it. You write only the words:
@@ -43,7 +44,8 @@ folder outside the checkout as `<run>`.
 ## Steps
 
 1. **Pull:** `pnpm monday pull --to <run>`. It copies the mailbox's interview
-   weeks (`brief/interview-week-…`) and prints one more command.
+   weeks and essays (`brief/interview-week-…`, `brief/interview-essay-…`) and
+   prints one more command.
 2. **Facts:** run the command `pull` printed. It writes `<run>/facts.json`:
    the epics that moved in the last week, each with its "Why", and the pull
    requests that merged.
@@ -202,6 +204,22 @@ the kind that carries over to an ad read or a talk.
 - **Breaths:** a line break where a breath belongs, each line at most 30
   words. A blank line between parts is fine.
 
+### The essay's opening
+
+The week's first card, `opening`, is the opening of this week's interview
+essay, read in the owner's own voice (owner, 2026-11-17). The owner reads it
+on the phone like any card; the essay then opens on that take, after the
+brand. Left unread, the essay opens as it always has.
+
+- **Two parts.** First the owner's moniker, `paulgsc`, in the first line
+  ("I'm paulgsc."). Then what this week trains, in a sentence or two, from
+  the card's `material`: the week's questions, and what last week's essay
+  pointed to next.
+- **No assessment.** No rating, score or grade, no "how ready am I", no
+  pass or fail, and no finish line. The practice is ongoing: there's always
+  another week. `finish` refuses a script that assesses.
+- **Length:** 25 to 90 words, so about 10 to 35 seconds, a breath a line.
+
 ## The essay on the week that ended
 
 Run this before the week's steps, from `packages/ui/interview-week`, with
@@ -300,6 +318,10 @@ Each read is `{"id","card","answer"}`:
   faults and the change.
 - `answer`, for a card left unread: `{"guess"}`; for an `unheard` read,
   leave it out.
+
+The week's opening card (`opening`, IW10) is not a read: the bundle leaves
+it out of `reads`, and the essay plays the owner's take of it, as it is,
+first after the brand. Write nothing for it, and never count or judge it.
 
 ## When it runs
 
