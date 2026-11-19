@@ -1,6 +1,11 @@
 import type { JSX } from "react"
 import { useEffect, useState } from "react"
-import { APH_OFFERS, aphStore, exchangeWithHome } from "@some-ui/aph"
+import {
+  APH_OFFERS,
+  aphStore,
+  exchangeWithHome,
+  readFromHome,
+} from "@some-ui/aph"
 import type { Offer } from "@some-ui/engagement"
 import { pageVisit, watchVisit } from "@some-ui/engagement"
 import { useShelf } from "@some-ui/react-hooks"
@@ -33,6 +38,7 @@ const STRIP = Object.values(VIEW_OFFERS)
 const APH: AphKeeping = {
   store: aphStore,
   exchange: exchangeWithHome,
+  read: readFromHome,
 }
 
 const AphLayout = (): JSX.Element => {
