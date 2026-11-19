@@ -17,25 +17,29 @@
  */
 import type { JSX, ReactNode } from "react"
 import { useEffect, useId, useState, useSyncExternalStore } from "react"
+import { pointRecording, PointTakes } from "@rust-rounds/components/point-takes"
 import { RunView } from "@rust-rounds/components/rustc-run"
 import type { Ticket, Week } from "@rust-rounds/lib/formats/week"
 import type { PasteRuntime } from "@rust-rounds/lib/week-play/paste"
 import { PASTE_MAX, pasteLine } from "@rust-rounds/lib/week-play/paste"
+import { itemOf, pointItem } from "@rust-rounds/lib/week-play/points"
 import type {
   RustWeekPorts,
   WeekHeard,
 } from "@rust-rounds/lib/week-play/runtime"
 import { createRustWeek } from "@rust-rounds/lib/week-play/runtime"
 import type {
+  WeekAnswer,
   WeekAtHome,
   WeekKind,
+  WeekSent,
   WeekState,
 } from "@rust-rounds/lib/week-play/spec"
 import { isClosed, ticketLine } from "@rust-rounds/lib/week-play/spec"
 import type { TicketStanding } from "@rust-rounds/lib/week-play/words"
 import { WEEK_WORDS } from "@rust-rounds/lib/week-play/words"
 import type { HeldWeek } from "@rust-rounds/lib/weeks"
-import { assertNever } from "@some-ui/core-utils"
+import { assertNever, cn } from "@some-ui/core-utils"
 import {
   BundleCards,
   bundleConfirm,
@@ -48,6 +52,7 @@ import {
   TakeRow,
   Textarea,
   useConfirmSheet,
+  usePager,
   useTakePattern,
 } from "@some-ui/shared"
 import type {
@@ -145,7 +150,12 @@ const Brief = (
 ): JSX.Element => {
   const { machine, state, dispatch, held } = props
   const { week } = held
-  const said = machine.answeredCount(state)
+  // Tickets said, whole or by any point (RR24).
+  const said = new Set(
+    machine.spec.items
+      .filter((item) => machine.answered(state, item) !== null)
+      .map((item) => itemOf(item).ticket)
+  ).size
   const { holds, last } = props.atHome
   const of = week.tickets.length
   return (
@@ -155,8 +165,8 @@ const Brief = (
         <section className="bg-card flex flex-col gap-1 rounded-2xl p-3 text-sm">
           <p className="font-semibold">
             {holds?.at === last.at
-              ? WORDS.held(last.answers.length, of, last.at)
-              : WORDS.goesHome(last.answers.length, of, last.at)}
+              ? WORDS.held(ticketsAnswered(last), of, last.at)
+              : WORDS.goesHome(ticketsAnswered(last), of, last.at)}
           </p>
           <p className="text-muted-foreground">{WORDS.openUntil(week)}</p>
         </section>
@@ -168,7 +178,9 @@ const Brief = (
             key={ticket.id}
             variant="outline"
             className="h-auto flex-col items-start gap-0.5 rounded-2xl p-3 text-left whitespace-normal"
-            onClick={() => dispatch({ type: "go", index: i })}
+            onClick={() =>
+              dispatch({ type: "go", index: firstItemOf(machine, ticket, i) })
+            }
           >
             <span className="font-semibold">
               {WORDS.ticketLabel(ticket.id, ticket.title)}
@@ -314,11 +326,16 @@ const Review = (props: Parts & { held: HeldWeek }): JSX.Element => {
   // What the send would hold, tickets home holds from the last one included.
   const n = machine.bundleRecord(state, state.at).answers.length
   const notNear = state.reach === "near" ? null : WORDS.notNear[state.reach]
-  const label = (id: string): string =>
-    WORDS.ticketLabel(
-      id,
-      held.week.tickets.find((each) => each.id === id)?.title ?? ""
-    )
+  const label = (id: string): string => {
+    const { ticket, point } = itemOf(id)
+    const found = held.week.tickets.find((each) => each.id === ticket)
+    return point === null
+      ? WORDS.ticketLabel(ticket, found?.title ?? "")
+      : WORDS.points.label(ticket, point, found?.speakTo[point - 1] ?? "")
+  }
+  // A ticket's own take, from before takes went point by point (RR24), is
+  // listed only where one was said: nothing records one any more.
+  const perPoint = machine.spec.items.some((id) => itemOf(id).point !== null)
   return (
     <BundleReview
       {...props}
@@ -327,6 +344,7 @@ const Review = (props: Parts & { held: HeldWeek }): JSX.Element => {
         <p className="text-muted-foreground text-sm">{WORDS.review.kept}</p>
       }
       label={label}
+      shown={(id, said) => !perPoint || said || itemOf(id).point !== null}
       notSaid={() => WORDS.review.notSaid}
       beforeSend={
         notNear !== null && (
@@ -338,6 +356,50 @@ const Review = (props: Parts & { held: HeldWeek }): JSX.Element => {
     />
   )
 }
+
+/**
+ * Where a ticket's card opens: its first point, answered point by point
+ * (RR24), else the ticket's own item; `i`, the ticket's place, when neither
+ * is an item.
+ */
+const firstItemOf = (
+  machine: BundleMachine<WeekKind>,
+  ticket: Ticket,
+  i: number
+): number => {
+  const point = machine.spec.items.indexOf(pointItem(ticket.id, 1))
+  if (point !== -1) return point
+  const own = machine.spec.items.indexOf(ticket.id)
+  return own === -1 ? i : own
+}
+
+/** How many tickets a send answers, whole or by any point. */
+const ticketsAnswered = (sent: WeekSent): number =>
+  new Set(sent.answers.map(({ ticket }) => ticket)).size
+
+/** The item an answer sent answers: its ticket, or one of its points (RR24). */
+const answerItem = (answer: WeekAnswer): string =>
+  answer.point === undefined
+    ? answer.ticket
+    : pointItem(answer.ticket, answer.point)
+
+/** Which point a take sent answers, above it; nothing for the whole ticket. */
+const PointLine = ({
+  ticket,
+  answer,
+}: {
+  ticket: Ticket
+  answer: WeekAnswer
+}): JSX.Element | null =>
+  answer.point === undefined ? null : (
+    <p className="text-muted-foreground text-xs font-semibold">
+      {WORDS.points.label(
+        ticket.id,
+        answer.point,
+        ticket.speakTo[answer.point - 1] ?? ""
+      )}
+    </p>
+  )
 
 /** The row of the take `take`, current or superseded since, if this phone lists it. */
 const sentRow = (
@@ -376,39 +438,44 @@ const ReadBack = (
       </section>
       <ol className="flex flex-col gap-6">
         {week.tickets.map((ticket, i) => {
-          const answer = answered.find((each) => each.ticket === ticket.id)
-          const row = sentRow(
-            takeItemView(
-              snapshot,
-              state.takes,
-              machine.answersOf(state, ticket.id),
-              takes.pattern.options
-            ),
-            answer?.take ?? null
-          )
+          const mine = answered.filter((each) => each.ticket === ticket.id)
           return (
             <li key={ticket.id} className="flex flex-col gap-3">
               <TicketBody held={held} ticket={ticket} n={i + 1} />
-              {answer === undefined ? (
+              {mine.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
                   {WORDS.sent.notAnswered}
                 </p>
               ) : (
-                <>
-                  {row === undefined ? (
-                    <p className="text-muted-foreground text-sm">
-                      {WORDS.closed.unplayable}
-                    </p>
-                  ) : (
-                    <TakeRow
-                      row={{ ...row, canRedo: false, canLetGo: false }}
-                      onPlay={() =>
-                        dispatch({ type: "play", take: row.take.id })
-                      }
-                    />
-                  )}
-                  <HeardLine words={heard[answer.take]} />
-                </>
+                mine.map((answer) => {
+                  const row = sentRow(
+                    takeItemView(
+                      snapshot,
+                      state.takes,
+                      machine.answersOf(state, answerItem(answer)),
+                      takes.pattern.options
+                    ),
+                    answer.take
+                  )
+                  return (
+                    <div key={answer.take} className="flex flex-col gap-2">
+                      <PointLine ticket={ticket} answer={answer} />
+                      {row === undefined ? (
+                        <p className="text-muted-foreground text-sm">
+                          {WORDS.closed.unplayable}
+                        </p>
+                      ) : (
+                        <TakeRow
+                          row={{ ...row, canRedo: false, canLetGo: false }}
+                          onPlay={() =>
+                            dispatch({ type: "play", take: row.take.id })
+                          }
+                        />
+                      )}
+                      <HeardLine words={heard[answer.take]} />
+                    </div>
+                  )
+                })
               )}
             </li>
           )
@@ -442,38 +509,42 @@ const Sent = (
       </Button>
       <ol className="flex flex-col gap-3">
         {held.week.tickets.map((ticket) => {
-          const answer = answered.find((each) => each.ticket === ticket.id)
-          const row = sentRow(
-            takeItemView(
-              snapshot,
-              state.takes,
-              machine.answersOf(state, ticket.id),
-              takes.pattern.options
-            ),
-            answer?.take ?? null
-          )
-          const words = answer === undefined ? undefined : heard[answer.take]
+          const mine = answered.filter((each) => each.ticket === ticket.id)
           return (
             <li key={ticket.id} className="flex flex-col gap-2">
               <p className="text-sm font-semibold">
                 {WORDS.ticketLabel(ticket.id, ticket.title)}
               </p>
-              {answer === undefined ? (
+              {mine.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
                   {WORDS.sent.notAnswered}
                 </p>
               ) : (
-                <>
-                  {row !== undefined && (
-                    <TakeRow
-                      row={row}
-                      onPlay={() =>
-                        dispatch({ type: "play", take: row.take.id })
-                      }
-                    />
-                  )}
-                  <HeardLine words={words} />
-                </>
+                mine.map((answer) => {
+                  const row = sentRow(
+                    takeItemView(
+                      snapshot,
+                      state.takes,
+                      machine.answersOf(state, answerItem(answer)),
+                      takes.pattern.options
+                    ),
+                    answer.take
+                  )
+                  return (
+                    <div key={answer.take} className="flex flex-col gap-2">
+                      <PointLine ticket={ticket} answer={answer} />
+                      {row !== undefined && (
+                        <TakeRow
+                          row={row}
+                          onPlay={() =>
+                            dispatch({ type: "play", take: row.take.id })
+                          }
+                        />
+                      )}
+                      <HeardLine words={heard[answer.take]} />
+                    </div>
+                  )
+                })
               )}
             </li>
           )
@@ -568,7 +639,7 @@ const Screen = (
     atHome: WeekAtHome
   }
 ): JSX.Element => {
-  const { state, dispatch, held } = props
+  const { machine, state, dispatch, held } = props
   if (
     state.screen !== "loading" &&
     state.screen !== "unreadable" &&
@@ -600,6 +671,9 @@ const Screen = (
       return <Brief {...props} />
     }
     case "cards": {
+      if (machine.spec.items.some((item) => itemOf(item).point !== null)) {
+        return <TicketPages {...props} />
+      }
       return (
         <BundleCards
           {...props}
@@ -629,6 +703,98 @@ const Screen = (
       return assertNever(state.screen)
     }
   }
+}
+
+/**
+ * The week's tickets answered point by point (RR24): a page per ticket, its
+ * card above its points (`PointTakes`), stepped by the dots or a swipe
+ * (`usePager`); while a take records, only its point shows.
+ */
+const TicketPages = (
+  props: Parts & { held: HeldWeek; heard: WeekHeard }
+): JSX.Element | null => {
+  const { machine, state, dispatch, held } = props
+  const { tickets } = held.week
+  const on = itemOf(machine.spec.items[state.index] ?? "").ticket
+  const at = Math.max(
+    0,
+    tickets.findIndex((ticket) => ticket.id === on)
+  )
+  const goTicket = (n: number): void => {
+    const ticket = tickets[n]
+    if (ticket === undefined) return
+    const first =
+      ticket.speakTo.length > 0 ? pointItem(ticket.id, 1) : ticket.id
+    dispatch({ type: "go", index: machine.spec.items.indexOf(first) })
+  }
+  const { attach } = usePager({
+    canPrev: at > 0,
+    canNext: at < tickets.length - 1,
+    held: state.busy,
+    onPage: (to) => goTicket(to === "next" ? at + 1 : at - 1),
+  })
+  const ticket = tickets[at]
+  // A week holds two tickets at least (`WeekSchema`).
+  if (ticket === undefined) return null
+  const said = (each: Ticket): boolean =>
+    machine.answered(state, each.id) === "said" ||
+    each.speakTo.some(
+      (_, i) => machine.answered(state, pointItem(each.id, i + 1)) === "said"
+    )
+  return (
+    <div className="flex flex-col gap-3">
+      {!pointRecording(state) && (
+        <nav className="flex items-center justify-center gap-1">
+          {tickets.map((each, i) => (
+            <button
+              key={each.id}
+              type="button"
+              aria-label={WORDS.cardOf(i + 1, tickets.length)}
+              aria-current={i === at ? "step" : undefined}
+              onClick={() => goTicket(i)}
+              className="flex h-7 w-11 items-center justify-center"
+            >
+              <span
+                className={cn(
+                  "h-2.5 rounded-full border-2",
+                  i === at ? "w-6" : "w-2.5",
+                  said(each)
+                    ? "bg-brand border-brand"
+                    : "border-muted-foreground/60"
+                )}
+              />
+            </button>
+          ))}
+        </nav>
+      )}
+      <section
+        ref={attach}
+        data-swipe="tickets"
+        aria-label={WORDS.cardOf(at + 1, tickets.length)}
+        className="flex min-w-0 flex-col gap-3"
+      >
+        {!pointRecording(state) && (
+          <TicketHead
+            held={held}
+            ticket={ticket}
+            n={at + 1}
+            state={state}
+            heard={props.heard}
+          />
+        )}
+        <PointTakes {...props} ticket={ticket} />
+      </section>
+      {!pointRecording(state) && (
+        <Button
+          variant="outline"
+          size="lg"
+          onClick={() => dispatch({ type: "review" })}
+        >
+          {WORDS.toReview}
+        </Button>
+      )}
+    </div>
+  )
 }
 
 export const RustWeek = ({
@@ -665,11 +831,13 @@ export const RustWeek = ({
   const closed = isClosed(held.week, state.at)
   const backable =
     !closed && (state.screen === "cards" || state.screen === "review")
-  const label = (id: string): string =>
-    WORDS.ticketLabel(
-      id,
-      held.week.tickets.find((each) => each.id === id)?.title ?? ""
-    )
+  const label = (id: string): string => {
+    const { ticket, point } = itemOf(id)
+    const found = held.week.tickets.find((each) => each.id === ticket)
+    return point === null
+      ? WORDS.ticketLabel(ticket, found?.title ?? "")
+      : WORDS.points.label(ticket, point, found?.speakTo[point - 1] ?? "")
+  }
   return (
     <div className="flex flex-col gap-4">
       {backable && (

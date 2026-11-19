@@ -58,6 +58,12 @@ export type RustWeekPorts = {
   readonly onVisibility: (listener: (hidden: boolean) => void) => () => void
   /** Where each opening of a ticket is told (`./opens`): the app's engagement sink. */
   readonly engage: (event: EngagementEvent) => void
+  /**
+   * A take per speak-to point (RR24, `./points`), where this build's home
+   * serves them (contract epoch 21 on); else a take per ticket. Fixed for
+   * the week's opening.
+   */
+  readonly perPoint: boolean
 }
 
 export type RustWeek = {
@@ -87,7 +93,7 @@ export type WeekHeard = Readonly<Partial<Record<string, HeardAnswer>>>
 
 export function createRustWeek(ports: RustWeekPorts): RustWeek {
   const { week } = ports.week
-  const machine = weekMachine(week)
+  const machine = weekMachine(week, ports.perPoint)
   const bundle = bundleRuntime(machine, {
     takes: ports.takes,
     drafts: weekDrafts(ports.storage, week.id),

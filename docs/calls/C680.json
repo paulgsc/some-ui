@@ -1,0 +1,13 @@
+{
+  "id": "C680",
+  "made": "2026-11-19",
+  "by": "owner",
+  "paths": [
+    "packages/ui/rust-rounds/src/components/point-takes/index.tsx",
+    "packages/ui/rust-rounds/src/lib/week-play/points.ts",
+    "packages/ui/rust-rounds/src/lib/week-play/spec.ts"
+  ],
+  "chose": "A Rust Rounds week's ticket is answered a take per speak-to point (RR24), as the second round of the prototype shows: one point open at a time and every other point one quiet line, a quiet filter (all, unsaid, said; as asked or unsaid first) once a ticket has more than three points, the point being recorded all there is until it stops, an old take of the whole ticket kept and counted for every point, and Send as today (an unsaid point goes as not answered). Each take names its point in its ref, which home and the essay read, never splitting or guessing. Prototype: https://claude.ai/artifact/SpnxWvCzHr53wnoAHaH2aC. Owner, as relayed by the coordinator: \"Yeah, I approve the diagnostic UI prototype\", confirmed as \"Takes per point (RR24)\"; on Send: \"It's just the economics of making sure we answer each sub-question and do the accounting for it.\"",
+  "undo": "Build the week with `perPoint` false (`weekMachine`), which records a take per ticket as before; takes already kept per point stay kept.",
+  "refs": ["#3248", "#2231"]
+}

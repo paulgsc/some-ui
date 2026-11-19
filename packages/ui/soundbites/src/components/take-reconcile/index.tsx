@@ -11,12 +11,8 @@
 import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
-import { Button, Dot, Notice } from "@some-ui/shared"
-import {
-  Chip,
-  CHIP_BAR,
-  PlayButton,
-} from "@soundbites/components/take-library/parts"
+import { Button, Chip, CHIP_BAR, Dot, Notice } from "@some-ui/shared"
+import { PlayButton } from "@soundbites/components/take-library/parts"
 import { Unpaired } from "@soundbites/components/unpaired"
 import { aboutOfRef } from "@soundbites/lib/library/compartments"
 import { LIBRARY_WORDS } from "@soundbites/lib/library/words"

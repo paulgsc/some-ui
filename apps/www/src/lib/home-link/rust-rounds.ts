@@ -23,6 +23,7 @@ import { usePairing } from "./index"
 import type { Lane, LaneCounts } from "./lanes"
 import { exchangeRustRoundsLane, keptCounts } from "./rust-kept"
 import { fingerprintOf, sentUnder } from "./sent"
+import { servesNow } from "./serves-now"
 
 /** The counts as one value, so an unchanged record reads as the same snapshot. */
 function countsKey(): string {
@@ -37,9 +38,11 @@ export const rustRoundsLane: Lane = {
     fnv1a(
       [
         roundsTaken(phoneRounds().held()),
-        ...keptGoing(browserLocalStorage, Date.now()).map(
-          (item) => `${item.kind}/${item.id}@${fingerprintOf(item.wire)}`
-        ),
+        ...keptGoing(
+          browserLocalStorage,
+          Date.now(),
+          servesNow() === "fits"
+        ).map((item) => `${item.kind}/${item.id}@${fingerprintOf(item.wire)}`),
       ].join("|")
     ),
   subscribe: (listener) => phoneRounds().subscribe(listener),
@@ -49,7 +52,7 @@ export const rustRoundsLane: Lane = {
     const pairing = usePairing()
     const [onHome = 0, refused = 0, waiting = 0] = key.split("/").map(Number)
     const kept = keptCounts(
-      keptGoing(browserLocalStorage, Date.now()),
+      keptGoing(browserLocalStorage, Date.now(), servesNow() === "fits"),
       sentUnder(browserLocalStorage, pairing)
     )
     return {

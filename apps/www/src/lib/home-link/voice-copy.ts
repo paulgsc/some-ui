@@ -169,7 +169,12 @@ import {
   reflectionNotesKept,
 } from "@/lib/reflection-voice"
 import type { RustRoundTake } from "@/lib/rust-rounds"
-import { rustRoundRef, rustRoundsDesk, rustWeekDesk } from "@/lib/rust-rounds"
+import {
+  isPointLine,
+  rustRoundRef,
+  rustRoundsDesk,
+  rustWeekDesk,
+} from "@/lib/rust-rounds"
 import type { KeptSceneNote } from "@/lib/scene-voice"
 import { phoneSceneVoice, sceneNotes, sceneNotesKept } from "@/lib/scene-voice"
 import { reflections } from "@/lib/session-reflection"
@@ -206,6 +211,7 @@ import { lensEntriesHeld } from "./lens-record"
 import type { Pairing } from "./model"
 import { notesHeld } from "./notes"
 import { askOnDrive } from "./on-drive"
+import { servesNow } from "./serves-now"
 import { markSetAside } from "./set-aside"
 import { blockedOf, unanswered } from "./settle"
 import { sendStationMoves } from "./take-stations"
@@ -663,11 +669,18 @@ function listed(
         ]
   })
   // RR13: only the takes of a week sent; one still waiting is not listed.
-  const week = rustWeekDesk.kept().map((take) => ({
-    note: lineNote("rust-round")(take),
-    audio: (): Promise<Blob | null> => rustWeekDesk.audio(take.id),
-    aside: asideAt(take),
-  }))
+  // RR24: a take of one point waits too until home says it serves this
+  // build, since a home before the epoch refuses its ref, and a note
+  // refused is never sent again.
+  const pointsServed = servesNow() === "fits"
+  const week = rustWeekDesk
+    .kept()
+    .filter((take) => pointsServed || !isPointLine(take.line))
+    .map((take) => ({
+      note: lineNote("rust-round")(take),
+      audio: (): Promise<Blob | null> => rustWeekDesk.audio(take.id),
+      aside: asideAt(take),
+    }))
   // IW5: only the takes of a week sent; one still waiting is not listed.
   const interview = interviewDesk.kept().map((take) => ({
     note: lineNote("interview")(take),
