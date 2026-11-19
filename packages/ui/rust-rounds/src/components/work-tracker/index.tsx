@@ -9,8 +9,16 @@
  * over the screen, never a line in it (HS1); the sheet is the one place the
  * screen asks.
  */
-import type { JSX } from "react"
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
+import type { JSX, ReactNode } from "react"
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react"
+import type { Ticket, Week } from "@rust-rounds/lib/formats/week"
 import type { SpanWhere } from "@rust-rounds/lib/work-tracker"
 import { CAP_MS, spanSeconds } from "@rust-rounds/lib/work-tracker"
 import type {
@@ -375,4 +383,56 @@ export const WeekTimeChart = ({
       <p className="text-muted-foreground text-xs">{WORDS.week.yours}</p>
     </section>
   )
+}
+
+/** The work tracker's ports, where this build has them (RR26). */
+const WorkContext = createContext<WorkPorts | null>(null)
+
+/** Gives the week's screens the tracker, where this build has one. */
+export const WorkProvider = ({
+  work,
+  children,
+}: {
+  work: WorkPorts | null
+  children: ReactNode
+}): JSX.Element => (
+  <WorkContext.Provider value={work}>{children}</WorkContext.Provider>
+)
+
+/** A ticket's Read step as a span counts it: every point (C679). */
+function readWhere(week: Week, ticket: Ticket): SpanWhere | null {
+  const [first, ...rest] = ticket.forks.map((_, i) => i + 1)
+  return first === undefined
+    ? null
+    : {
+        week: week.id,
+        ticket: ticket.id,
+        step: "read",
+        exercise: null,
+        points: [first, ...rest],
+      }
+}
+
+/**
+ * The tracker's control where it is used (C724): on a ticket's Read view,
+ * counting toward every point, or, with no ticket, only while a span runs
+ * or asks (the week's brief).
+ */
+export const Tracker = ({
+  week,
+  ticket,
+}: {
+  week: Week
+  ticket?: Ticket
+}): JSX.Element | null => {
+  const work = useContext(WorkContext)
+  if (work === null) return null
+  const where = ticket === undefined ? null : readWhere(week, ticket)
+  return <WorkTrackerControl tracker={work.tracker} where={where} />
+}
+
+/** The week's tracked time, where this build has the tracker. */
+export const TrackedWeek = ({ week }: { week: Week }): JSX.Element | null => {
+  const work = useContext(WorkContext)
+  return work === null ? null : <WeekTimeChart ports={work} week={week} />
 }

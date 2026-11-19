@@ -16,19 +16,13 @@
  * (docs/monorepo-boundaries.md, "Inside a React package").
  */
 import type { JSX, ReactNode } from "react"
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useId,
-  useState,
-  useSyncExternalStore,
-} from "react"
+import { useEffect, useId, useState, useSyncExternalStore } from "react"
 import { pointRecording, PointTakes } from "@rust-rounds/components/point-takes"
 import { RunView } from "@rust-rounds/components/rustc-run"
 import {
-  WeekTimeChart,
-  WorkTrackerControl,
+  TrackedWeek,
+  Tracker,
+  WorkProvider,
 } from "@rust-rounds/components/work-tracker"
 import type { Ticket, Week } from "@rust-rounds/lib/formats/week"
 import type { PasteRuntime } from "@rust-rounds/lib/week-play/paste"
@@ -50,8 +44,6 @@ import { isClosed, ticketLine } from "@rust-rounds/lib/week-play/spec"
 import type { TicketStanding } from "@rust-rounds/lib/week-play/words"
 import { WEEK_WORDS } from "@rust-rounds/lib/week-play/words"
 import type { HeldWeek } from "@rust-rounds/lib/weeks"
-import type { SpanWhere } from "@rust-rounds/lib/work-tracker"
-import type { WorkPorts } from "@rust-rounds/lib/work-tracker/runtime"
 import { assertNever, cn } from "@some-ui/core-utils"
 import {
   BundleCards,
@@ -154,41 +146,6 @@ const Story = ({ week }: { week: Week }): JSX.Element => (
   </>
 )
 
-/** The work tracker's ports, where this build has them (RR26). */
-const WorkContext = createContext<WorkPorts | null>(null)
-
-/** The tracker's control, counting toward `where`, where this build has it. */
-const Tracker = ({
-  where,
-}: {
-  where: SpanWhere | null
-}): JSX.Element | null => {
-  const work = useContext(WorkContext)
-  return work === null ? null : (
-    <WorkTrackerControl tracker={work.tracker} where={where} />
-  )
-}
-
-/** The week's tracked time, where this build has the tracker. */
-const WeekTime = ({ week }: { week: Week }): JSX.Element | null => {
-  const work = useContext(WorkContext)
-  return work === null ? null : <WeekTimeChart ports={work} week={week} />
-}
-
-/** A ticket's Read step as a span counts it: every point (C679). */
-function readWhere(week: Week, ticket: Ticket): SpanWhere | null {
-  const [first, ...rest] = ticket.forks.map((_, i) => i + 1)
-  return first === undefined
-    ? null
-    : {
-        week: week.id,
-        ticket: ticket.id,
-        step: "read",
-        exercise: null,
-        points: [first, ...rest],
-      }
-}
-
 const Brief = (
   props: Parts & {
     held: HeldWeek
@@ -210,9 +167,9 @@ const Brief = (
   const of = week.tickets.length
   return (
     <div className="flex flex-col gap-4">
-      <Tracker where={null} />
+      <Tracker week={week} />
       <Story week={week} />
-      <WeekTime week={week} />
+      <TrackedWeek week={week} />
       {last !== null && (
         <section className="bg-card flex flex-col gap-1 rounded-2xl p-3 text-sm">
           <p className="font-semibold">
@@ -340,7 +297,7 @@ const TicketBody = ({
       <p className="text-muted-foreground text-xs font-semibold">
         {WORDS.ticketOf(ticket.id, n, held.week.tickets.length)}
       </p>
-      <Tracker where={readWhere(held.week, ticket)} />
+      <Tracker week={held.week} ticket={ticket} />
       <h2 className="text-2xl font-extrabold text-balance">{ticket.title}</h2>
       <p>{ticket.spec}</p>
       <section className="flex flex-col gap-1">
@@ -861,11 +818,7 @@ const TicketPages = (
   )
 }
 
-export const RustWeek = ({
-  ports,
-  back,
-  onRounds,
-}: RustWeekProps): JSX.Element => {
+const WeekScreens = ({ ports, back, onRounds }: RustWeekProps): JSX.Element => {
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime, and the week and takes it runs on, are made once per mount, as the idea bundle's are */
   const [{ week, desk, held }] = useState(() => ({
     week: createRustWeek(ports),
@@ -907,62 +860,67 @@ export const RustWeek = ({
         )
   }
   return (
-    <WorkContext.Provider value={ports.work ?? null}>
-      <div className="flex flex-col gap-4">
-        {backable && (
-          // Held while a take is under way (HS1).
-          <Button
-            variant="ghost"
-            size="sm"
-            className="self-start"
-            disabled={state.busy}
-            onClick={() => dispatch({ type: "back" })}
-          >
-            <ChevronLeft className="size-4" aria-hidden="true" />
-            {WORDS.back}
-          </Button>
-        )}
-        {pasting.showing && state.screen === "intro" && !closed ? (
-          <Paste
-            paste={week.paste}
-            state={state}
-            takes={desk}
-            snapshot={snapshot}
-          />
-        ) : (
-          <Screen
-            machine={week.machine}
-            state={state}
-            takes={desk}
-            snapshot={snapshot}
-            dispatch={dispatch}
-            held={held}
-            heard={heard}
-            atHome={atHome}
-            back={back}
-            paste={week.paste}
-            {...(onRounds === undefined ? {} : { onRounds })}
-          />
-        )}
-        {pasting.notice !== null && (
-          <Notice
-            key={pasting.notice}
-            onDismiss={() => week.paste.dispatch({ type: "noticeDismissed" })}
-          >
-            {WORDS.paste[pasting.notice]}
-          </Notice>
-        )}
-        <ConfirmSheet
-          request={bundleConfirm(
-            { machine: week.machine, state, dispatch, words: WORDS },
-            label
-          )}
-          open={state.confirm !== null}
-          onOpenChange={(open) => {
-            if (!open && state.confirm !== null) dispatch({ type: "keepIt" })
-          }}
+    <div className="flex flex-col gap-4">
+      {backable && (
+        // Held while a take is under way (HS1).
+        <Button
+          variant="ghost"
+          size="sm"
+          className="self-start"
+          disabled={state.busy}
+          onClick={() => dispatch({ type: "back" })}
+        >
+          <ChevronLeft className="size-4" aria-hidden="true" />
+          {WORDS.back}
+        </Button>
+      )}
+      {pasting.showing && state.screen === "intro" && !closed ? (
+        <Paste
+          paste={week.paste}
+          state={state}
+          takes={desk}
+          snapshot={snapshot}
         />
-      </div>
-    </WorkContext.Provider>
+      ) : (
+        <Screen
+          machine={week.machine}
+          state={state}
+          takes={desk}
+          snapshot={snapshot}
+          dispatch={dispatch}
+          held={held}
+          heard={heard}
+          atHome={atHome}
+          back={back}
+          paste={week.paste}
+          {...(onRounds === undefined ? {} : { onRounds })}
+        />
+      )}
+      {pasting.notice !== null && (
+        <Notice
+          key={pasting.notice}
+          onDismiss={() => week.paste.dispatch({ type: "noticeDismissed" })}
+        >
+          {WORDS.paste[pasting.notice]}
+        </Notice>
+      )}
+      <ConfirmSheet
+        request={bundleConfirm(
+          { machine: week.machine, state, dispatch, words: WORDS },
+          label
+        )}
+        open={state.confirm !== null}
+        onOpenChange={(open) => {
+          if (!open && state.confirm !== null) dispatch({ type: "keepIt" })
+        }}
+      />
+    </div>
   )
 }
+
+/** The week, with the work tracker where this build has one (RR26). */
+export const RustWeek = (props: RustWeekProps): JSX.Element => (
+  <WorkProvider work={props.ports.work ?? null}>
+    <WeekScreens {...props} />
+  </WorkProvider>
+)
