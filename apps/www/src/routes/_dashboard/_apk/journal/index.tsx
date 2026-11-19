@@ -7,7 +7,8 @@ import {
   STUDIO_INDEX_WORDS,
   STUDIO_KINDS,
 } from "@/lib/studio-index"
-import { StudioPage, TILE, TileBody } from "@/components/studio/layout"
+import { CardRoute } from "@/components/card-route"
+import { StudioPage, TileBody } from "@/components/studio/layout"
 import { RendersLine } from "@/components/studio/renders"
 
 const WORDS = STUDIO_INDEX_WORDS
@@ -25,12 +26,12 @@ const StudioIndex = (): JSX.Element => (
     <ul className="grid grid-cols-2 gap-2">
       {STUDIO_KINDS.map((kind) => (
         <li key={kind}>
-          <Link to={kindPath(kind)} className={TILE}>
+          <CardRoute to={kindPath(kind)} className="h-full">
             <TileBody
               title={KIND_WORDS[kind].name}
               line={KIND_WORDS[kind].line}
             />
-          </Link>
+          </CardRoute>
         </li>
       ))}
     </ul>

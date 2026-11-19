@@ -1,7 +1,7 @@
 import type { JSX } from "react"
 import { STUDIO_WORDS } from "@some-ui/soundbites"
 import { templateFormat } from "@some-ui/video-render"
-import { createFileRoute, Link, notFound } from "@tanstack/react-router"
+import { createFileRoute, notFound } from "@tanstack/react-router"
 
 import type { Feed } from "@/lib/feeds"
 import { FEED_TEMPLATES, isFeed } from "@/lib/feeds"
@@ -11,8 +11,9 @@ import {
   PLACES,
   STUDIO_INDEX_WORDS,
 } from "@/lib/studio-index"
+import { CardRoute } from "@/components/card-route"
 import { FeedEpisodes, FeedSizeOnHome } from "@/components/studio/feed-episodes"
-import { Part, StudioPage, TILE, TileBody } from "@/components/studio/layout"
+import { Part, StudioPage, TileBody } from "@/components/studio/layout"
 
 const WORDS = STUDIO_INDEX_WORDS.feeds
 
@@ -39,13 +40,12 @@ const FeedPage = (): JSX.Element => {
           <ul className="flex flex-col gap-2">
             {FEED_TEMPLATES[feed].map((template) => (
               <li key={template}>
-                <Link
+                <CardRoute
                   to="/journal/templates/$template"
                   params={{ template }}
-                  className={TILE}
                 >
                   <TileBody title={templateFormat(template).title} />
-                </Link>
+                </CardRoute>
               </li>
             ))}
           </ul>

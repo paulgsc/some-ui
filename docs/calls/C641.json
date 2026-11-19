@@ -1,0 +1,19 @@
+{
+  "id": "C641",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/components/jobs/interview/to.tsx",
+    "apps/www/src/components/card-route.tsx"
+  ],
+  "chose": "The interview's card links are drawn by CardRoute, as every other www card link is: To takes card (\"card\" or \"brand\") and draws a CardRoute instead of a Link, both from one routeOf table built with the router's linkOptions, which useOpenItem also reads. CardTo is deleted, and its fallback (plain words where the build carries no pages) stays in To.",
+  "options": [
+    "To draws CardRoute when asked for a card, from one route table",
+    "keep CardTo beside CardRoute",
+    "call sites name their routes and use CardRoute directly"
+  ],
+  "gray": "The coordinator ruled two card wrappers one too many (owner's rule: reuse, never a per-wing copy). Naming routes at each site would undo To being the one place the interview names its routes.",
+  "undo": "Restore CardTo in to.tsx over CardLink asChild around To, and To's switch of Links.",
+  "moves": "C631",
+  "refs": ["#3234", "#3236"]
+}

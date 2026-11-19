@@ -14,26 +14,26 @@ import { takesOf } from "@/lib/interview-week/spec"
 import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 
 import { BackTo } from "./ladder"
-import { CardTo } from "./to"
+import { To } from "./to"
 
 const Essay = ({ essay }: { essay: EssayStatus }): JSX.Element => {
   switch (essay.kind) {
     case "ready": {
       return (
-        <CardTo to={{ page: "essay", key: essay.key }} tone="brand">
+        <To to={{ page: "essay", key: essay.key }} card="brand">
           <span className="font-semibold">{WORDS.weeks.essay.watch}</span>
           <span className="text-xs opacity-85">{WORDS.weeks.essay.ready}</span>
-        </CardTo>
+        </To>
       )
     }
     case "failed": {
       return (
-        <CardTo to={{ page: "renders" }}>
+        <To to={{ page: "renders" }} card="card">
           <span className="font-semibold">{WORDS.weeks.essay.renders}</span>
           <span className="text-muted-foreground text-xs">
             {WORDS.weeks.essay.failed}
           </span>
-        </CardTo>
+        </To>
       )
     }
     case "making":
@@ -71,7 +71,8 @@ const Week = ({ past }: { past: PastWeek }): JSX.Element => {
           : WORDS.weeks.sent(takesOf(sent).length, sent.at)}
       </p>
       <Essay essay={essay} />
-      <CardTo
+      <To
+        card="card"
         to={{
           page: "takes",
           week: week.id,
@@ -82,7 +83,7 @@ const Week = ({ past }: { past: PastWeek }): JSX.Element => {
         <span className="text-muted-foreground text-xs">
           {WORDS.wayIn.takesLine}
         </span>
-      </CardTo>
+      </To>
     </section>
   )
 }
