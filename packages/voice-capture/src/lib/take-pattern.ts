@@ -572,7 +572,8 @@ export type TakePatternPorts = Omit<TakeKitPorts, "keep"> & {
   readonly player?: Player | undefined
   /**
    * Whether the page is hidden (VC4), watched only while the microphone
-   * opens or records, or a take's audio is being read; defaults to the page's own (`onPageVisibility`).
+   * opens or records, or a take's audio is being read; defaults to the
+   * page's own (`onPageVisibility`).
    */
   readonly page?: WatchPage | undefined
 }

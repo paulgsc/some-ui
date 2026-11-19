@@ -14,14 +14,17 @@ export type Playback = {
 
 export type Player = { play: (audio: Blob) => Playback }
 
-/** Whether the page is hidden, now and on each change; returns the unsubscribe. */
+/**
+ * Whether the page is hidden, now and on each change; returns the
+ * unsubscribe.
+ */
 export type WatchPage = (listener: (hidden: boolean) => void) => () => void
 
 /**
  * Plays through an `Audio` element. `ended` settles once, whichever comes
- * first: the audio ending, `play()` or the media failing, `stop()`, or the page being
- * hidden (VC4). The object URL is released then too, and the page is no
- * longer watched.
+ * first: the audio ending, `play()` or the media failing, `stop()`, or the
+ * page being hidden (VC4). The object URL is released then too, and the
+ * page is no longer watched.
  */
 export function elementPlayer(watchPage: WatchPage = onPageVisibility): Player {
   return {
