@@ -72,21 +72,14 @@ export function keyDay(feed: Feed, week: string): string | null {
       return isDay(week) ? week : null
     }
     case "interview-essay":
+    case "report":
     case "rust-essay": {
-      if (!WEEK_ID.test(week)) return null
+      // `2026-w46`, or the report's `2026-W46`: dated by its Monday.
+      if (!WEEK_ID.test(week.toLowerCase())) return null
       try {
         return isoWeekMonday(week.toUpperCase())
       } catch {
         // A week 53 in a year of 52: no day it names.
-        return null
-      }
-    }
-    case "report": {
-      // `2026-W46`: dated by its Monday, as the essays' weeks are.
-      if (!/^\d{4}-W\d{2}$/.test(week)) return null
-      try {
-        return isoWeekMonday(week)
-      } catch {
         return null
       }
     }

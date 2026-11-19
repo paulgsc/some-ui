@@ -26,6 +26,12 @@ import { refusalOf } from "./model"
 import type { Row, Subject } from "./subject"
 import { subjectOf } from "./subject"
 
+/** The board's rows that are no feed's, named as `kindName` names them. */
+const OWN_ROWS: Readonly<Partial<Record<string, string>>> = {
+  preview: "Preview",
+  "clip-walk": "A clip's walk-through",
+}
+
 /**
  * A feed's name: the phone's own for a feed it knows, else home's name for
  * it said as words (`new-feed` is "New feed"), so a row from a feed this
@@ -33,6 +39,8 @@ import { subjectOf } from "./subject"
  */
 export function feedName(feed: string): string {
   if (isFeed(feed)) return FEED_FACTS[feed].name
+  const own = OWN_ROWS[feed]
+  if (own !== undefined) return own
   const words = feed.replaceAll(/[-_]+/g, " ").trim()
   return words === ""
     ? "Something else"

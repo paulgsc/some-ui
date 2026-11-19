@@ -4,7 +4,7 @@
  * every feed's screen says is `VIDEOS_WORDS`; what differs by feed (its name,
  * what an episode is called, how one is labelled) is `FEED_WORDS`.
  */
-import { addDays } from "@some-ui/core-utils"
+import { addDays, isoWeeksIn } from "@some-ui/core-utils"
 import { WEEK_ID, weekNumber } from "@some-ui/rust-rounds/entry"
 
 import { essayName, isEssayKey } from "@/lib/cards-essay-key"
@@ -37,25 +37,17 @@ function playoffDeltaWeek(key: string): string | null {
 }
 
 /**
- * A week of Rust Rounds, or of the interview essay, by its year and number
- * (its key is `<year>-w<NN>`), or `null`.
+ * An ISO week by its year and number, or `null`: a week of Rust Rounds or
+ * of the interview essay (its key is `<year>-w<NN>`), or of the engagement
+ * report (`<year>-W<NN>`, as home keys it).
  */
-function rustWeek(key: string): string | null {
-  return WEEK_ID.test(key)
-    ? `${key.slice(0, 4)}, week ${String(weekNumber(key))}`
-    : null
-}
-
-/**
- * A week of the engagement report by its year and ISO week (its key is
- * `<year>-W<NN>`), or `null`.
- */
-function reportWeek(key: string): string | null {
-  const parts = /^(\d{4})-W(\d{2})$/.exec(key)
-  if (parts === null) return null
-  const [, year = "", week = ""] = parts
-  const n = Number(week)
-  return n >= 1 && n <= 53 ? `${year}, week ${String(n)}` : null
+function isoWeek(key: string): string | null {
+  const week = key.toLowerCase()
+  if (!WEEK_ID.test(week)) return null
+  const year = week.slice(0, 4)
+  const n = weekNumber(week)
+  // A week 53 in a year of 52 names no week, as `keyDay` reads it.
+  return n <= isoWeeksIn(Number(year)) ? `${year}, week ${String(n)}` : null
 }
 
 /**
@@ -145,13 +137,13 @@ export const FEED_WORDS = {
       "Home doesn't keep the Rust Rounds essays yet. Update home, then try again.",
     none: "Home hasn't made an essay yet. Each comes after its week has closed.",
     gone: "This essay isn't among home's essays. Home lists each once its week has closed and Claude has written it.",
-    week: rustWeek,
-    label: (key: string): string => rustWeek(key) ?? "This essay",
+    week: isoWeek,
+    label: (key: string): string => isoWeek(key) ?? "This essay",
     waiting: "Home is still making this week's essay.",
     linkSaved: "Saved. Home keeps the link with the week.",
     letGo: "You let home's copy go. The essay lives on YouTube.",
     shareTitle: (key: string): string => {
-      const week = rustWeek(key)
+      const week = isoWeek(key)
       return week === null ? "Rust Rounds" : `Rust Rounds, ${week}`
     },
     what: "the Rust Rounds essays",
@@ -167,13 +159,13 @@ export const FEED_WORDS = {
       "Home doesn't keep the interview essays yet. Update home, then try again.",
     none: "Home hasn't made an interview essay yet. Each comes once its week's deadline has passed.",
     gone: "This essay isn't among home's interview essays.",
-    week: rustWeek,
-    label: (key: string): string => rustWeek(key) ?? "This essay",
+    week: isoWeek,
+    label: (key: string): string => isoWeek(key) ?? "This essay",
     waiting: "Home is still making this week's essay.",
     linkSaved: "Saved. Home keeps the link with the week.",
     letGo: "You let home's copy go. The essay lives on YouTube.",
     shareTitle: (key: string): string => {
-      const week = rustWeek(key)
+      const week = isoWeek(key)
       return week === null
         ? "The interview essay"
         : `The interview essay, ${week}`
@@ -183,20 +175,20 @@ export const FEED_WORDS = {
   report: {
     heading: FEED_FACTS.report.name,
     intro:
-      "Home makes each week's report from what you used, once the week has ended. Watch it here, share it to YouTube, then save its link, and the week can be let go from My data.",
+      "Home makes each week's report from what you used, once the week has ended. Watch it here, share it to YouTube, then save its link, and home's copy can be let go from My data.",
     voice: null,
     unpaired: "Pair this phone with home to see your engagement reports.",
     older:
       "Home doesn't keep the engagement reports yet. Update home, then try again.",
     none: "Home hasn't made a report yet. Each comes after its week has ended.",
     gone: "This report isn't among home's reports. Home makes each once its week has ended, and only for a week this phone sent home what you used.",
-    week: reportWeek,
-    label: (key: string): string => reportWeek(key) ?? "This report",
-    waiting: "Home is still making this week's report.",
+    week: isoWeek,
+    label: (key: string): string => isoWeek(key) ?? "This report",
+    waiting: "Home is still making this report.",
     linkSaved: "Saved. Home keeps the link with the week.",
     letGo: "You let home's copy go. The report lives on YouTube.",
     shareTitle: (key: string): string => {
-      const week = reportWeek(key)
+      const week = isoWeek(key)
       return week === null
         ? "The engagement report"
         : `The engagement report, ${week}`

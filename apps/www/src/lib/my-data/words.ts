@@ -586,9 +586,17 @@ export const CALL_DELETING = {
   },
   goes: {
     video: (size: string): string => `The video home keeps of it, ${size}.`,
-    rest: (size: string): string => `Its takes, stills and cut list, ${size}.`,
+    /** A report holds no takes: its voice-over is home's speaker's. */
+    rest: (size: string, feed: Feed): string =>
+      feed === "report"
+        ? `Its stills, voice-over and cut list, ${size}.`
+        : `Its takes, stills and cut list, ${size}.`,
   },
-  stays: "Its words, its YouTube link, and a receipt of this delete.",
+  /** A report has no words of its own: the week's counts are what stay. */
+  stays: (feed: Feed): string =>
+    feed === "report"
+      ? "The week's counts, its YouTube link, and a receipt of this delete."
+      : "Its words, its YouTube link, and a receipt of this delete.",
   gone: (at: string): string => `Deleted ${at}. A receipt stays with it.`,
   kept: "Home kept it. A video goes only once its link is saved, and the rest only after the video.",
   notHeld: "Home doesn't hold this one.",

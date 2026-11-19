@@ -76,6 +76,21 @@ describe("FEED8: every feed the phone knows has a name and a page", () => {
     expect(renderName({ feed: "garden-log", key: "2026-W46" })).toBe(
       "Garden log: A video this phone can't open yet"
     )
-    expect(feedName("")).toBe("Something else")
+    // Home's name in words, whatever joins it; one with no words is
+    // "Something else", and the board's own rows keep their names.
+    for (const [feed, name] of [
+      ["garden_log", "Garden log"],
+      ["garden--log", "Garden log"],
+      ["-garden-", "Garden"],
+      ["", "Something else"],
+      ["-", "Something else"],
+      ["__", "Something else"],
+      ["clip-walk", "A clip's walk-through"],
+      ["preview", "Preview"],
+    ] as const)
+      expect(feedName(feed)).toBe(name)
+    expect(renderName({ feed: "clip-walk", key: "-after" })).toBe(
+      "A clip's walk-through: A video this phone can't open yet"
+    )
   })
 })

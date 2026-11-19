@@ -8,6 +8,7 @@
 import { describe, expect, it } from "vitest"
 
 import { dayOf } from "@/lib/cards-essay-key"
+import { FEEDS } from "@/lib/feeds"
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
 import type {
   Board,
@@ -339,14 +340,9 @@ describe("RENDERS_WORDS and what it says of each render", () => {
  * home), each read through the board's own reader.
  */
 describe("RNR1: a refusal says why, and an older home's row reads as before", () => {
-  const FEEDS = [
-    "call",
-    "cards-essay",
-    "interview-essay",
-    "playoff-delta",
-    "rust-essay",
-    "something-new",
-  ] as const
+  // Every feed the phone knows, so the next one is never missed, and one it
+  // doesn't (#3235).
+  const ROW_FEEDS = [...FEEDS, "something-new"] as const
   const REASONS = [
     "too-long",
     "too-large",
@@ -385,7 +381,7 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
     return failed
   }
 
-  const cases = FEEDS.flatMap((feed) =>
+  const cases = ROW_FEEDS.flatMap((feed) =>
     (["recorder", "home"] as const).flatMap((by) =>
       REASONS.flatMap((reason) => {
         const ownKey: Refused = refused(reason) ? reason : "too-long"
@@ -428,7 +424,7 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
   )
 
   it("covers the whole family", () => {
-    expect(cases).toHaveLength(FEEDS.length * 2 * REASONS.length * 6)
+    expect(cases).toHaveLength(ROW_FEEDS.length * 2 * REASONS.length * 6)
   })
 
   it("says a refusal with both its numbers, and today's line otherwise", () => {
