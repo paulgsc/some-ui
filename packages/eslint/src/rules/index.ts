@@ -24,6 +24,7 @@ export { noMountSnapshot } from "./no-mount-snapshot.js"
 export { noLocalPrimitive } from "./no-local-primitive.js"
 export { noLocalMicrophone } from "./no-local-microphone.js"
 export { noHandWrittenMicrophone } from "./no-hand-written-microphone.js"
+export { noLocalAudio } from "./no-local-audio.js"
 export { noLocalTakeWords } from "./no-local-take-words.js"
 export {
   noFixedStatusColor,

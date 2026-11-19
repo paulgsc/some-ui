@@ -4246,7 +4246,7 @@
     {
       "store": "phone:interview-week-takes",
       "class": "record",
-      "growth": "Per take on an interview week's question or read (IW5, up to two minutes at 32 kbps, ~480 KB): one current take a card, waiting on the phone until the week is sent (`send: on-confirm`), then going home as an interview voice note (IW1); a card said again after a send keeps the take sent, set apart, beside the new one, so a card can hold a few; a take let go before it is sent is deleted for good; no count of its own (max = +Infinity), so takes grow until the device's measured room (withRoom, the 25 MiB pool) refuses one; none is evicted to make room (`some-ui:interview-week.takes`, `some-ui.interview-week-takes`).",
+      "growth": "Per take on an interview week's question or read (IW5, up to three minutes at 32 kbps, ~720 KB; C735): one current take a card, waiting on the phone until the week is sent (`send: on-confirm`), then going home as an interview voice note (IW1); a card said again after a send keeps the take sent, set apart, beside the new one, so a card can hold a few; a take let go before it is sent is deleted for good; no count of its own (max = +Infinity), so takes grow until the device's measured room (withRoom, the 25 MiB pool) refuses one; none is evicted to make room (`some-ui:interview-week.takes`, `some-ui.interview-week-takes`).",
       "family": "what-is-kept"
     },
     {

@@ -1,0 +1,21 @@
+{
+  "id": "C770",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "CLAUDE.md",
+    "REVIEW.md",
+    "AGENTS.md",
+    ".claude/skills/coordinate/SKILL.md"
+  ],
+  "chose": "A reach is owed when a story's first design would add a new kind of record and its store, an editor, player, recorder or annotation layer, a sync, sharing or import path, a new deployable or service, or more than one PR before first use. It is not owed for changes to an existing surface, or for a story whose point is building the machinery. It comes before the first PR of the machinery and ends in a call whose options are the tools and building, named under 'Reach' in the epic's body. The session makes the call itself and builds on it; a verdict to use a tool that needs the owner to act or sends their data to a third party is also an ask. Review raises a missing reach as a non-blocking finding.",
+  "options": [
+    "threshold by kind of machinery, non-blocking review finding",
+    "a reach for every story",
+    "a size threshold (lines or PR count) only",
+    "a blocking review finding or a check"
+  ],
+  "gray": "#3291 asks Claude to propose the threshold; the owner would feel it in which stories stop for a reach first.",
+  "undo": "Edit the list under 'When a reach is owed' in CLAUDE.md, the REVIEW.md and AGENTS.md sections that point at it, and the coordinate skill's spawn-time line.",
+  "refs": ["#3291", "#3035", "#2722", "#3197"]
+}

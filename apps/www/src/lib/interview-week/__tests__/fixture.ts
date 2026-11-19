@@ -163,7 +163,7 @@ for (const week of [WEEK, WEEK_2, WEEK_2_OPENED]) {
 
 /**
  * The week's ports over the simulated microphone, recording as the phone does
- * (`../take`: up to 2 minutes, `send: "on-confirm"`), in
+ * (`../take`: up to 3 minutes, `send: "on-confirm"`), in
  * memory, home near and holding nothing, the cue's clock on timers; `over`
  * replaces any of them.
  */

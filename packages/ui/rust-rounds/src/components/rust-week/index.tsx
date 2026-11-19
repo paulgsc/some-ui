@@ -452,8 +452,10 @@ const ReadBack = (
 ): JSX.Element => {
   const { machine, state, snapshot, takes, dispatch, held, heard } = props
   const { week } = held
-  const { holds, last } = props.atHome
-  const answered = holds?.answers ?? []
+  const { holds, last, homeSaid, elsewhere } = props.atHome
+  // Without home's word (RR30): no count of what home holds and no send
+  // "late"; the takes shown are this phone's last send's.
+  const answered = homeSaid ? (holds?.answers ?? []) : (last?.answers ?? [])
   return (
     <div className="flex flex-col gap-4">
       {/*
@@ -467,8 +469,14 @@ const ReadBack = (
       <section className="bg-card flex flex-col gap-1 rounded-2xl p-3 text-sm">
         <p className="font-semibold">{WORDS.closed.title(week)}</p>
         <p className="text-muted-foreground">{WORDS.closed.line(week)}</p>
-        <p>{WORDS.sent.title(answered.length, week.tickets.length)}</p>
-        {last !== null && last.at !== holds?.at && (
+        {homeSaid ? (
+          <p>{WORDS.sent.title(answered.length, week.tickets.length)}</p>
+        ) : elsewhere !== null ? (
+          <p>{WORDS.closed.elsewhere(elsewhere, last?.at ?? null)}</p>
+        ) : last !== null ? (
+          <p>{WORDS.closed.unheard(last.at)}</p>
+        ) : null}
+        {homeSaid && last !== null && last.at !== holds?.at && (
           <p className="text-muted-foreground">{WORDS.closed.late(last.at)}</p>
         )}
       </section>
