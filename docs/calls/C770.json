@@ -17,5 +17,5 @@
   ],
   "gray": "#3291 asks Claude to propose the threshold; the owner would feel it in which stories stop for a reach first.",
   "undo": "Edit the list under 'When a reach is owed' in CLAUDE.md, the REVIEW.md and AGENTS.md sections that point at it, and the coordinate skill's spawn-time line.",
-  "refs": ["#3291", "#3035", "#2722"]
+  "refs": ["#3291", "#3035", "#2722", "#3197"]
 }

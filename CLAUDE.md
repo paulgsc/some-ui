@@ -386,7 +386,7 @@ The reach comes before the first PR of that machinery, not after.
 each tool and building among its `options`, the verdict and its reasons in `chose`, and a link
 to the comparison when it is long (a private page). The epic's body names the call under a
 "Reach" heading beside "Where we are". The session makes the call itself, `by: claude`, and
-builds on it; the owner said "if it comes down to build ourselves, we agree". When the verdict
+builds on it; the owner (2026-11-19, on #3197): "if it comes down to build ourselves, we agree". When the verdict
 is to use or fold in a tool that needs the owner to act (an account, a setup step on home) or
 sends their data to a third party, it is also an ask, and that tool waits on their answer.
 
@@ -401,8 +401,7 @@ outgrows it, move it or retire it in the same change, and record the move as a c
 
 This does not cover a guard that protects home or the record: memory and disk caps, the
 owner's history ("Never lose the record", above), and the assurance ledger's promises.
-Loosening one of those still needs the owner. Any other change to one (tightening it, or
-moving where it is kept) needs evidence, stated in the PR.
+Loosening one of those still needs the owner, and moving one needs evidence, stated in the PR.
 
 ## Deleting is in scope
 
