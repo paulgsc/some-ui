@@ -18,7 +18,7 @@
  */
 
 import { expect, test, type Page } from "@playwright/test"
-import { SESSION_THEMES } from "@some-ui/styles/theme"
+import { CONTRAST_FLOOR, SESSION_THEMES } from "@some-ui/styles/theme"
 
 import { servePhonePage } from "./harness"
 
@@ -116,6 +116,116 @@ test.describe("a card that opens something stands out in every theme", () => {
         failures.push(
           `${theme.id}: card link ${linked.toFixed(2)}:1, plain card ${flat.toFixed(2)}:1`
         )
+      }
+    }
+    expect(failures, failures.join("\n")).toEqual([])
+  })
+})
+
+/**
+ * The brand card's words over the brand card (#3236): under a dark theme the
+ * card link's own `dark:` tint once outranked the brand's stop and faded the
+ * card toward the page, leaving its last line hard to read. Each line of
+ * today's question must clear the text floor against the card's colour where
+ * that line sits (over the page, since a stop may be a tint), its own
+ * opacity counted.
+ */
+async function brandLines(
+  page: Page
+): Promise<ReadonlyArray<{ text: string; ink: Rgb; ground: Rgb }>> {
+  return page.evaluate(() => {
+    const canvas = document.createElement("canvas")
+    canvas.width = 1
+    canvas.height = 1
+    const ctx = canvas.getContext("2d", { willReadFrequently: true })
+    if (ctx === null) throw new Error("no canvas")
+    const paint = (
+      layers: ReadonlyArray<{ fill: string; alpha: number }>
+    ): [number, number, number] => {
+      ctx.clearRect(0, 0, 1, 1)
+      for (const { fill, alpha } of layers) {
+        ctx.globalAlpha = alpha
+        ctx.fillStyle = fill
+        ctx.fillRect(0, 0, 1, 1)
+      }
+      ctx.globalAlpha = 1
+      const [r = 0, g = 0, b = 0] = ctx.getImageData(0, 0, 1, 1).data
+      return [r, g, b]
+    }
+    const card = [...document.querySelectorAll("a")].find((a) =>
+      a.textContent.startsWith("Today's question")
+    )
+    if (card === undefined) throw new Error("no today's question")
+    // The gradient's stops, top to bottom: each line is read against the
+    // stop nearest it (the card is two stops, so the bottom line gets `to`).
+    const stops =
+      getComputedStyle(card).backgroundImage.match(
+        /(?:oklch|oklab|rgba?|color|lab|lch)\([^)]*\)/g
+      ) ?? []
+    const top = stops[0] ?? getComputedStyle(card).backgroundColor
+    const bottom = stops.at(-1) ?? top
+    // A stop may be a tint: it shows the page beneath it.
+    let page = "white"
+    for (let at = card.parentElement; at !== null; at = at.parentElement) {
+      const bg = getComputedStyle(at).backgroundColor
+      if (bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") {
+        page = bg
+        break
+      }
+    }
+    const box = card.getBoundingClientRect()
+    const lines = [...card.querySelectorAll("span")].filter(
+      (span) =>
+        span.children.length === 0 &&
+        span.textContent.trim() !== "" &&
+        span.closest("[aria-hidden]") === null
+    )
+    return lines.map((span) => {
+      const at = span.getBoundingClientRect()
+      const near =
+        (at.top + at.height / 2 - box.top) / box.height < 0.5 ? top : bottom
+      const style = getComputedStyle(span)
+      const ground = paint([
+        { fill: page, alpha: 1 },
+        { fill: near, alpha: 1 },
+      ])
+      return {
+        text: span.textContent.trim(),
+        ground,
+        ink: paint([
+          { fill: page, alpha: 1 },
+          { fill: near, alpha: 1 },
+          { fill: style.color, alpha: Number(style.opacity) },
+        ]),
+      }
+    })
+  })
+}
+
+test.describe("the brand card's words read in every theme", () => {
+  PAGE.skipUnbuilt()
+
+  test("each line of today's question clears the text floor", async ({
+    page,
+  }) => {
+    PAGE.expectBuilt()
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto(PAGE.url("interview"), { waitUntil: "load" })
+    await expect(
+      page.getByRole("link", { name: /^Today's question/ })
+    ).toBeVisible()
+    await page.mouse.move(0, 0)
+    const failures: Array<string> = []
+    for (const theme of SESSION_THEMES) {
+      await page.evaluate((classes) => {
+        document.documentElement.className = classes.join(" ")
+      }, theme.boundary.classNames)
+      await page.waitForTimeout(300)
+      for (const { text, ink, ground } of await brandLines(page)) {
+        const ratio = contrast(ink, ground)
+        if (ratio < CONTRAST_FLOOR.text) {
+          failures.push(`${theme.id}: "${text}" ${ratio.toFixed(2)}:1`)
+        }
       }
     }
     expect(failures, failures.join("\n")).toEqual([])

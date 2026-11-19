@@ -26,11 +26,13 @@ const CARD_LINK_CLASS =
 
 /**
  * A card link filled with the brand's colour, for the one a page leads with
- * (today's question): its chevron takes the brand's own pair, so it shows on
- * every theme, those whose brand is their primary included.
+ * (today's question): solid brand on every theme (its `dark:` stop overrides
+ * the card link's dark tint, which would fade it toward the page), and its
+ * chevron takes the brand's own pair, so it shows on every theme, those
+ * whose brand is their primary included.
  */
 const BRAND_CLASS =
-  "border-transparent from-brand to-brand text-brand-foreground rounded-3xl p-4"
+  "border-transparent from-brand to-brand dark:to-brand dark:shadow-brand/25 text-brand-foreground rounded-3xl p-4"
 const CHEVRON = {
   card: "bg-primary text-primary-foreground",
   brand: "bg-brand-foreground text-brand",
