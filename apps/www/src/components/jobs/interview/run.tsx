@@ -27,6 +27,7 @@ import { currentTakeOf, takeItemView } from "@some-ui/voice-capture"
 
 import type { Cue } from "@/lib/interview-week/cue"
 import type { Ladder } from "@/lib/interview-week/ladder"
+import type { Prompter } from "@/lib/interview-week/prompter"
 import type {
   InterviewWeekPorts,
   InterviewWeekRun,
@@ -46,6 +47,8 @@ export type Interview = {
   readonly atHome: InterviewAtHome
   readonly cue: Cue
   readonly ladder: Ladder
+  /** The band a script is read aloud through (IW9). */
+  readonly prompter: Prompter
 }
 
 const InterviewContext = createContext<Interview | null>(null)
@@ -123,11 +126,25 @@ export const InterviewWeekRuntime = ({
     run.ladder.subscribe,
     run.ladder.getSnapshot
   )
+  const prompter = useSyncExternalStore(
+    run.prompter.subscribe,
+    run.prompter.getSnapshot
+  )
   const snapshot = useTakePattern(takes.pattern)
   const { dispatch } = run
   return (
     <InterviewContext.Provider
-      value={{ run, week, takes, state, snapshot, atHome, cue, ladder }}
+      value={{
+        run,
+        week,
+        takes,
+        state,
+        snapshot,
+        atHome,
+        cue,
+        ladder,
+        prompter,
+      }}
     >
       {children}
       <ConfirmSheet
