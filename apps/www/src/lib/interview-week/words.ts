@@ -238,6 +238,7 @@ export const INTERVIEW_WORDS = {
   /** The band a script is read aloud through (IW9): what it does now, its button, and the take's time against the aim. */
   band: {
     ready: "Moves while you speak",
+    waiting: "Moves once it hears you. You can scroll it yourself too.",
     moving: "Moves while you speak",
     holding: "Holding while you pause",
     paused: "Paused. Tap Go on to go on.",

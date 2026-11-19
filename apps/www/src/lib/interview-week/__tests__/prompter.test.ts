@@ -9,7 +9,6 @@ import { describe, expect, it } from "vitest"
 import type { Prompter, PrompterEvent } from "@/lib/interview-week/prompter"
 import {
   bandOf,
-  GAP_MS,
   HOLD_MS,
   NO_PROMPTER,
   PACE_WPM,
@@ -49,8 +48,10 @@ describe("the teleprompter band's step (IW9)", () => {
     expect(wordsOf(state)).toBeCloseTo((1000 * PACE_WPM) / 60_000)
   })
 
-  it("never moves before the voice is first heard", () => {
-    expect(wordsOf(run(reads(0, 3000, QUIET)))).toBe(0)
+  it("never moves before the voice is first heard, and says it waits for it", () => {
+    const quiet = run(reads(0, 3000, QUIET))
+    expect(wordsOf(quiet)).toBe(0)
+    expect(bandOf(quiet, LINE, LINES).state).toBe("waiting")
   })
 
   it("holds once the voice has been quiet past the hold, and moves again when heard", () => {
@@ -72,8 +73,10 @@ describe("the teleprompter band's step (IW9)", () => {
   it("counts the level at the floor as heard, and below it as quiet", () => {
     const at = run([heard(0, HEARD_FLOOR), heard(200, HEARD_FLOOR)])
     expect(wordsOf(at)).toBeGreaterThan(0)
-    const below = run([heard(0, HEARD_FLOOR - 0.01), heard(200, LOUD)])
-    expect(wordsOf(below)).toBeGreaterThan(0)
+    // The quiet before a first word is never read through.
+    const first = run([heard(0, HEARD_FLOOR - 0.01), heard(200, LOUD)])
+    expect(wordsOf(first)).toBe(0)
+    expect(wordsOf(stepPrompter(first, heard(400, LOUD)))).toBeGreaterThan(0)
     expect(
       wordsOf(run([heard(0, HEARD_FLOOR - 0.01), heard(200, QUIET)]))
     ).toBe(0)
@@ -95,8 +98,8 @@ describe("the teleprompter band's step (IW9)", () => {
   })
 
   it("never jumps across a gap between reads", () => {
-    const state = run([heard(0), heard(60_000)])
-    expect(wordsOf(state)).toBeCloseTo((GAP_MS * PACE_WPM) / 60_000)
+    // A phone that slept a minute mid-take: the minute wasn't spoken through.
+    expect(wordsOf(run([heard(0), heard(60_000)]))).toBe(0)
     // A clock that runs back moves nothing.
     expect(wordsOf(run([heard(1000), heard(500)]))).toBe(0)
   })

@@ -314,7 +314,8 @@ export const Script = ({
   // render moves nothing.
   const text = lines.join("\n")
   // The lit line is scrolled to the band: a measure of laid-out lines, so it
-  // is read after layout, and again when the window changes size.
+  // is read after layout, again when the window changes size, and when a take
+  // starts, wherever a hand left the script during the cue.
   useLayoutEffect(() => {
     const view = windowRef.current
     if (view === null) return undefined
@@ -326,7 +327,7 @@ export const Script = ({
     place()
     window.addEventListener("resize", place)
     return (): void => window.removeEventListener("resize", place)
-  }, [band.line, text])
+  }, [band.line, text, reading])
   return (
     <section
       aria-label={WORDS.script}
@@ -380,10 +381,7 @@ export const Script = ({
             />
           ))}
         </span>
-        <p
-          aria-live="polite"
-          className="text-muted-foreground min-w-0 flex-1 text-sm"
-        >
+        <p className="text-muted-foreground min-w-0 flex-1 text-sm">
           {reading ? WORDS.band[band.state] : WORDS.band.ready}
         </p>
         {reading && (

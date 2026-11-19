@@ -2,7 +2,8 @@
  * The owner's rules for what the interview week's screen says (IW5): no score,
  * grade, verdict or "you said", nothing that calls a take good or bad, and no
  * status code or internal name. A card's target length and the 2-minute cap
- * are shown, as #2936 asks; nothing counts how long a take ran.
+ * are shown, as #2936 asks, and the reading band shows a take's time against
+ * its aim, as the agreed prototype does (C615).
  */
 import { describe, expect, it } from "vitest"
 

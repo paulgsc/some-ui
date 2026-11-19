@@ -144,7 +144,8 @@ describe("the interview week's pages on the phone (IW8)", () => {
     const lit = (): string | null | undefined =>
       script?.querySelector('[aria-current="true"]')?.getAttribute("data-line")
     expect(lit()).toBe("0")
-    await settle(3_000)
+    // The first line's eleven words take about 5 s at the band's pace.
+    await settle(6_000)
     expect(lit()).not.toBe("0")
     fireEvent.click(screen.getByRole("button", { name: WORDS.band.pause }))
     screen.getByText(WORDS.band.paused)

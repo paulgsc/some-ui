@@ -17,8 +17,9 @@
  *   it never runs on past you.
  * - **Each take starts from the top.** A take answering another line, or
  *   one starting after the last ended, reads from the first word.
- * - **A gap between reads never moves it.** The time since the last read
- *   counts only up to `GAP_MS`, so a phone that slept mid-take doesn't jump.
+ * - **Only time spoken through moves it.** The stretch since the last read
+ *   counts only when the voice was heard within `HOLD_MS` before its end, so
+ *   the quiet before a first word, or a phone that slept mid-take, never does.
  * - **It stops at the end**, and stays on the last line, holding.
  * - **A hand can always move the script.** The band scrolls an ordinary
  *   scroller, so a take whose level isn't measured (no Web Audio, or one
@@ -32,9 +33,6 @@ export const PACE_WPM = 140
 
 /** How long the band moves on after the voice was last heard (C616). */
 export const HOLD_MS = 1000
-
-/** The longest stretch between two reads that counts as reading. */
-export const GAP_MS = 1000
 
 /** Whether the voice was heard within `HOLD_MS` of `at`. */
 const heardLately = (heardAt: number | null, at: number): boolean =>
@@ -95,13 +93,13 @@ export function stepPrompter(state: Prompter, event: PrompterEvent): Prompter {
           paused: false,
         }
       }
-      const heardAt = heard ? at : state.heardAt
-      const elapsed = Math.min(Math.max(at - state.at, 0), GAP_MS)
-      const moving = !state.paused && heardLately(heardAt, at)
+      // Heard before this read, not at it: the stretch just ended was spoken.
+      const moving = !state.paused && heardLately(state.heardAt, at)
+      const elapsed = Math.max(at - state.at, 0)
       const words = moving
         ? Math.min(state.words + (elapsed * PACE_WPM) / 60_000, total)
         : state.words
-      return { ...state, words, at, heardAt }
+      return { ...state, words, at, heardAt: heard ? at : state.heardAt }
     }
     default: {
       return assertNever(event)
@@ -110,7 +108,7 @@ export function stepPrompter(state: Prompter, event: PrompterEvent): Prompter {
 }
 
 /** What the band says about itself, as its words name it. */
-type BandState = "moving" | "holding" | "paused"
+type BandState = "waiting" | "moving" | "holding" | "paused"
 
 export type Band = {
   /** The line read now: lit, at the band. */
@@ -153,6 +151,13 @@ export function bandOf(
     state.words < totalOf(lines) && heardLately(state.heardAt, state.at)
   return {
     line,
-    state: state.paused ? "paused" : moving ? "moving" : "holding",
+    state: state.paused
+      ? "paused"
+      : state.heardAt === null
+        ? // Nothing heard yet this take: a level that isn't measured stays here.
+          "waiting"
+        : moving
+          ? "moving"
+          : "holding",
   }
 }
