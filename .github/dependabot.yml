@@ -36,6 +36,22 @@ updates:
         patterns:
           - "vite*"
           - "@vitejs/*"
+      # Every Playwright pin moves as one: @playwright/test (the e2e suites)
+      # and playwright-core (packages/video-motion, which draws the
+      # compositions); "playwright" is not a direct dependency today and is
+      # listed so one added later joins them. A bump here is not complete
+      # until two pins outside npm move with it: the render image's
+      # mcr.microsoft.com/playwright:v<version>-noble digest in
+      # infra/render/Dockerfile, whose Chromium headless shell home renders
+      # with, and nixpkgs' playwright-driver (flake.lock, read by
+      # nix/playwright), whose Chromium CI's e2e runs. Then `motion prove`
+      # on home, since video-motion proves its frames byte-identical against
+      # that image (#3047 is what moving one pin alone looks like).
+      playwright:
+        patterns:
+          - "@playwright/*"
+          - "playwright"
+          - "playwright-core"
   # Rust / Cargo workspace
   - package-ecosystem: "cargo"
     directory: "/"
