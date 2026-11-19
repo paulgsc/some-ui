@@ -292,10 +292,13 @@ const TicketBody = ({
   held,
   ticket,
   n,
+  tracked = true,
 }: {
   held: HeldWeek
   ticket: Ticket
   n: number
+  /** Offers the work tracker: never once the week has closed. */
+  tracked?: boolean
 }): JSX.Element => {
   const run = held.runs[ticket.id] ?? null
   const span =
@@ -307,7 +310,7 @@ const TicketBody = ({
       <p className="text-muted-foreground text-xs font-semibold">
         {WORDS.ticketOf(ticket.id, n, held.week.tickets.length)}
       </p>
-      <Tracker week={held.week} ticket={ticket} />
+      {tracked && <Tracker week={held.week} ticket={ticket} />}
       <h2 className="text-2xl font-extrabold text-balance">{ticket.title}</h2>
       <p>{ticket.spec}</p>
       <section className="flex flex-col gap-1">
@@ -454,6 +457,8 @@ const ReadBack = (
   return (
     <div className="flex flex-col gap-4">
       <Story week={week} />
+      {/* The week's time stays to read; nothing starts once it closed. */}
+      <TrackedWeek week={week} />
       <section className="bg-card flex flex-col gap-1 rounded-2xl p-3 text-sm">
         <p className="font-semibold">{WORDS.closed.title(week)}</p>
         <p className="text-muted-foreground">{WORDS.closed.line(week)}</p>
@@ -467,7 +472,12 @@ const ReadBack = (
           const mine = answered.filter((each) => each.ticket === ticket.id)
           return (
             <li key={ticket.id} className="flex flex-col gap-3">
-              <TicketBody held={held} ticket={ticket} n={i + 1} />
+              <TicketBody
+                held={held}
+                ticket={ticket}
+                n={i + 1}
+                tracked={false}
+              />
               {mine.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
                   {WORDS.sent.notAnswered}

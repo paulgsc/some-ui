@@ -19,6 +19,10 @@ import {
 } from "@rust-rounds/lib/week-play/store"
 import { WEEK_WORDS } from "@rust-rounds/lib/week-play/words"
 import type { HeldWeek } from "@rust-rounds/lib/weeks"
+import { workSpans } from "@rust-rounds/lib/work-tracker/record"
+import type { WorkPorts } from "@rust-rounds/lib/work-tracker/runtime"
+import { createWorkTracker } from "@rust-rounds/lib/work-tracker/runtime"
+import { TRACKER_WORDS } from "@rust-rounds/lib/work-tracker/words"
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { inMemoryStorage } from "@some-ui/core-utils"
 import { ONE_TAKE } from "@some-ui/voice-capture"
@@ -91,6 +95,33 @@ function ports(
       listener(false)
       return (): void => undefined
     },
+  }
+}
+
+/** The work tracker's ports over memory, its clock at `at` (RR26). */
+function workPorts(at: number): WorkPorts {
+  const record = workSpans(inMemoryStorage())
+  const none = (): (() => void) => () => undefined
+  return {
+    tracker: createWorkTracker({
+      record,
+      homeOpen: () => undefined,
+      onHome: none,
+      atHome: (): "waiting" => "waiting",
+      send: () => undefined,
+      now: () => at,
+      newId: () => "11111111-1111-4111-8111-111111111111",
+      device: "Phone",
+      onVisibility: none,
+      after: none,
+    }),
+    spansOf: () => ({
+      phone: record.list() ?? [],
+      home: [],
+      refused: () => false,
+    }),
+    revision: () => 0,
+    onChange: none,
   }
 }
 
@@ -244,18 +275,26 @@ describe("a week on the phone (RR13)", () => {
 
     render(
       <RustWeek
-        ports={ports(
-          storage,
-          simulated,
-          () => after,
-          () => true
-        )}
+        ports={{
+          ...ports(
+            storage,
+            simulated,
+            () => after,
+            () => true
+          ),
+          work: workPorts(after),
+        }}
       />
     )
     await settle()
     expect(
       screen.getByText(WORDS.closed.title(QUILLMOSS_WEEK))
     ).toBeInTheDocument()
+    // The week's time stays to read; nothing starts once it closed (RR26).
+    expect(screen.getByText(TRACKER_WORDS.week.total(0, 0))).toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: TRACKER_WORDS.start })
+    ).toBeNull()
     expect(screen.queryByText(/didn't reach home/)).toBeNull()
     expect(screen.getByText(WORDS.sent.title(1, 3))).toBeInTheDocument()
     expect(screen.getAllByText(WORDS.sent.notAnswered)).toHaveLength(2)
