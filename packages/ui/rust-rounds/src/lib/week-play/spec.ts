@@ -374,7 +374,7 @@ function weekSpec(
     resends: true,
     closed: (_draft, at) => isClosed(week, at),
     // Every take of the opening's answers goes home (C783).
-    keepsEvery: (item) => openingOf(item) !== null,
+    keepsEvery: (line) => /:opening:[1-9]$/.test(line),
   }
 }
 

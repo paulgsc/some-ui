@@ -369,7 +369,7 @@ const CardBody = <K extends BundleKind>({
             onRedo={() => dispatch({ type: "tap", item })}
             onLetGo={
               // An item whose every take is kept offers none to let go (C783).
-              spec.keepsEvery?.(item) !== true &&
+              spec.keepsEvery?.(answers) !== true &&
               view.current.some((row) => row.unsent)
                 ? (): void => dispatch({ type: "askDelete", item })
                 : undefined
@@ -641,7 +641,14 @@ export const BundleReview = <K extends BundleKind>(
                   onPlay={(each) => dispatch({ type: "play", take: each })}
                   onRedo={() => dispatch({ type: "tap", item })}
                   canRedo={props.redoes?.(item) ?? true}
-                  onLetGo={() => dispatch({ type: "askDelete", item })}
+                  onLetGo={
+                    // An item whose every take is kept offers none to let go (C783).
+                    machine.spec.keepsEvery?.(
+                      machine.answersOf(state, item)
+                    ) === true
+                      ? undefined
+                      : (): void => dispatch({ type: "askDelete", item })
+                  }
                 />
               )}
               {how === "typed" && typed !== undefined && (

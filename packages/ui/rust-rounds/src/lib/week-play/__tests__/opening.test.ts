@@ -169,8 +169,9 @@ describe("a week sent with the opening's takes", () => {
     ])
     // Named, so neither is swept as a take nothing sends.
     expect(machine.spec.named(sent)).toEqual(["q1a", "q1b"])
-    expect(machine.spec.keepsEvery?.(openingItem(1))).toBe(true)
-    expect(machine.spec.keepsEvery?.("TB-101:1")).toBe(false)
+    // Whatever week's draft is open, last week's opening takes stay too.
+    expect(machine.spec.keepsEvery?.("2026-w46:opening:1")).toBe(true)
+    expect(machine.spec.keepsEvery?.("2026-w47:TB-101:1")).toBe(false)
   })
 
   it("sends again with every take the week said, an earlier send's included", () => {

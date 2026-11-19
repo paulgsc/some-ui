@@ -73,7 +73,7 @@ const BUNDLE: BundleWords = {
       `Your take on ${label} hasn't left this phone, so deleting it removes it for good. You can say it again.`,
     allTitle: "Delete every take this week?",
     allLine:
-      "None of them has left this phone, so every take this week is removed for good.",
+      "None of them has left this phone, so every take this week is removed for good. Any answer to your essay's opening stays: those are always kept.",
     yes: "Delete for good",
     keep: "Keep it",
   },

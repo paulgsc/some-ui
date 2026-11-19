@@ -395,9 +395,12 @@ const Review = (props: Parts & { held: HeldWeek }): JSX.Element => {
   const { machine, state, held } = props
   const needs = machine.missing(state)
   // What the send would hold, tickets home holds from the last one included.
-  // The opening's takes are answers too (#3269).
+  // Each question of the opening answered counts once, however many of
+  // its takes go (#3269, C783).
   const record = machine.bundleRecord(state, state.at)
-  const n = record.answers.length + (record.opening?.length ?? 0)
+  const n =
+    record.answers.length +
+    new Set((record.opening ?? []).map((each) => each.n)).size
   const notNear = state.reach === "near" ? null : WORDS.notNear[state.reach]
   const label = (id: string): string => itemLabel(held.week, id)
   // A ticket's own take, from before takes went point by point (RR24), is

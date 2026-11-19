@@ -248,9 +248,9 @@ const sentOne: Sent = {
 const t1Sent: PatternTake = { ...take("t1", "QM-1"), waits: undefined }
 
 describe("an item whose every take is kept (C783)", () => {
-  const KEEPS = bundleMachine({
+  const KEEPS = bundleMachine<Kind>({
     ...SPEC,
-    keepsEvery: (item) => item === "QM-1",
+    keepsEvery: (answers: string) => answers.endsWith(":QM-1"),
   })
   const step = (
     events: ReadonlyArray<BundleEvent<Kind>>,
@@ -297,6 +297,22 @@ describe("an item whose every take is kept (C783)", () => {
       said.state
     )
     expect(deleted.effects).toContainEqual({ type: "deleteAll", takes: ["t3"] })
+  })
+
+  it("keeps such a take of an earlier draft that its kept record doesn't name, where any other goes", () => {
+    const earlier = (id: string, item: Ticket): PatternTake => ({
+      ...take(id, item),
+      answers: `w45:${item}`,
+    })
+    const w45: Sent = { id: "w45", answers: [], passed: [], at: AT }
+    const opening = step(
+      [
+        { type: "entered", at: AT },
+        opened([earlier("old1", "QM-1"), earlier("old2", "QM-2")], [w45]),
+      ],
+      KEEPS.initial(null, "next", AT)
+    )
+    expect(opening.effects).toContainEqual({ type: "drop", takes: ["old2"] })
   })
 })
 

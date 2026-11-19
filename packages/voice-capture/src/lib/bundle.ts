@@ -207,12 +207,13 @@ export type BundleSpec<K extends BundleKind> = {
   /** Whether nothing more can be said, changed or sent in `draft` at `at`. */
   readonly closed: (draft: K["draft"], at: string) => boolean
   /**
-   * Whether every take of `item` is kept: none is deleted on this phone, by
-   * Redo, Delete or Delete all, so each goes with the record its spec makes
-   * (Rust Rounds' opening, the owner's call C783: "Nothing you said is
+   * Whether every take answering `answers` (`answersOf`'s line, of any
+   * draft) is kept: none is deleted on this phone, by Redo, Delete, Delete
+   * all or a later draft's clean-up, so each goes with the record its spec
+   * makes (Rust Rounds' opening, the owner's call C783: "Nothing you said is
    * lost"). Absent, none is.
    */
-  readonly keepsEvery?: (item: Item<K>) => boolean
+  readonly keepsEvery?: (answers: string) => boolean
 }
 
 /** How far a person is through a bundle. */
@@ -691,13 +692,12 @@ export function bundleMachine<K extends BundleKind>(
 
   /** Whether `take` never left the phone and no kept record names it: the only takes a delete reaches. */
   const deletable = (
-    state: Pick<State, "recorded" | "draft">,
+    state: Pick<State, "recorded">,
     take: PatternTake
-  ): boolean => {
-    if (take.waits !== true || state.recorded.includes(take.id)) return false
-    const item = itemOf(state.draft.id, take.answers)
-    return item === null || spec.keepsEvery?.(item) !== true
-  }
+  ): boolean =>
+    take.waits === true &&
+    !state.recorded.includes(take.id) &&
+    spec.keepsEvery?.(take.answers) !== true
 
   /** The takes of `item` a delete reaches (`deletable`). */
   const waitingOf = (
