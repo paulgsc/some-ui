@@ -12,7 +12,8 @@
  * (`./ideas`, held or refused), each note on an episode as home answered it
  * (`./episode-notes`, held or refused), each Studio video kept for home to make as
  * home answered it (`./videos`), each Rust Rounds week sent, paste and
- * card-log sitting as home answered or read it back (`./rust-kept`), the events of a log home took
+ * card-log sitting as home answered or read it back (`./rust-kept`), what home
+ * said of each work span event (`./rust-spans`), the events of a log home took
  * (`events`, `./leetype-log`'s `TakenEvents`), and the digests home refused, so the drain does not offer an unchanged refused item again
  * (it goes once its bytes change). Kept for one pairing (`pairing`, the
  * link's id for it): another pairing starts from nothing. Bookkeeping, not
@@ -57,6 +58,8 @@ export type Sent = {
   readonly interviewWeeks: Readonly<Record<string, string>>
   readonly rustPastes: Readonly<Record<string, string>>
   readonly roundLog: Readonly<Record<string, string>>
+  /** What home said of each work span event (RR26), `held` or `refused`. */
+  readonly rustSpans: Readonly<Record<string, string>>
   readonly events: Readonly<Record<string, string>>
 }
 
@@ -81,6 +84,7 @@ const emptyFor = (pairing: string): Sent => ({
   interviewWeeks: {},
   rustPastes: {},
   roundLog: {},
+  rustSpans: {},
   events: {},
 })
 
@@ -123,6 +127,7 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
   const interviewWeeks = stringsOf(parsed.interviewWeeks)
   const rustPastes = stringsOf(parsed.rustPastes)
   const roundLog = stringsOf(parsed.roundLog)
+  const rustSpans = stringsOf(parsed.rustSpans)
   const events = stringsOf(parsed.events)
   return {
     value: {
@@ -144,6 +149,7 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
       interviewWeeks: interviewWeeks.value,
       rustPastes: rustPastes.value,
       roundLog: roundLog.value,
+      rustSpans: rustSpans.value,
       events: events.value,
     },
     whole: [
@@ -164,6 +170,7 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
       interviewWeeks,
       rustPastes,
       roundLog,
+      rustSpans,
       events,
     ].every((kind) => kind.whole),
   }
@@ -256,6 +263,7 @@ export function rememberSent(
     interviewWeeks: { ...sent.interviewWeeks, ...more.interviewWeeks },
     rustPastes: { ...sent.rustPastes, ...more.rustPastes },
     roundLog: { ...sent.roundLog, ...more.roundLog },
+    rustSpans: { ...sent.rustSpans, ...more.rustSpans },
     events: keptOnly({ ...sent.events, ...more.events }, stays.events),
   }
   // Unwritten (full): the next send carries these again, and home says

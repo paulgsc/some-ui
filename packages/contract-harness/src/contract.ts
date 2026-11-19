@@ -135,12 +135,12 @@ export function defineContract<TResponse>(
 export function pairedPhoneOnly(
   module: string,
   id: string,
-  method: "GET" | "PUT",
+  method: "GET" | "PUT" | "POST",
   path: string,
   what: string,
   request: ContractRequest
 ): Array<Contract> {
-  const mutates = method === "PUT"
+  const mutates = method !== "GET"
   return [
     defineContract({
       id: `${id}_signed_out`,

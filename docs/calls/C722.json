@@ -1,0 +1,15 @@
+{
+  "id": "C722",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": ["apps/www/src/lib/home-link/rust-kept.ts"],
+  "chose": "Spans go home only once home says it serves this build (`servesNow() === \"fits\"`), as a week sent by points does (RR24, C681); until then they wait on the phone.",
+  "options": [
+    "wait for home to serve this build",
+    "send whenever home answers, and read 404 as not yet",
+    "a separate epoch check for spans"
+  ],
+  "gray": "Home serves the routes from epoch 21; a build at a newer snapshot waits until home is at least as new, which can hold spans back after a release.",
+  "undo": "Gate on home's epoch >= 21 for spans alone, through ./serves.",
+  "refs": ["#3250"]
+}

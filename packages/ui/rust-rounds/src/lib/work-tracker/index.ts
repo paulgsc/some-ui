@@ -18,8 +18,9 @@
  *   until home says it is kept; if it isn't, the question comes back, and
  *   the screen says the answer wasn't kept.
  * - **Home is the authority on what is open.** The runtime sends
- *   `homeSays` only once home has acknowledged every `start` it sent, so
- *   "nothing open" means the span was answered, here or on another device.
+ *   `homeSays` with home's word only once home has acknowledged every event
+ *   it kept; until then, and for a start home hasn't heard, the phone's own
+ *   record speaks (`./runtime`).
  * - **Every record names its points** (C679): a span carries the ticket,
  *   the step, the exercise if any, and the speak-to points of the screen it
  *   was started from.
@@ -29,10 +30,10 @@ import { assertNever } from "@some-ui/core-utils"
 /** The tracker stops itself after this long (C675). */
 export const CAP_MS = 2 * 60 * 60 * 1000
 
-type WorkStep = "read" | "academy" | "voice"
+export type WorkStep = "read" | "academy" | "voice"
 
 /** Where a span was started: what it counts toward. */
-type SpanWhere = {
+export type SpanWhere = {
   readonly week: string
   readonly ticket: string
   readonly step: WorkStep
@@ -51,13 +52,13 @@ export type OpenSpan = {
   readonly device: string
 }
 
-type Answer =
+export type Answer =
   | { readonly kind: "all" }
   | { readonly kind: "part"; readonly minutes: number }
   | { readonly kind: "none" }
 
 /** A span as home keeps it once it is answered. */
-type ClosedSpan = {
+export type ClosedSpan = {
   readonly span: OpenSpan
   /** Epoch milliseconds: when the owner came back, or the cap. */
   readonly stoppedAt: number
@@ -185,7 +186,9 @@ export function stepTracker(
       return same({
         kind: "asking",
         span: state.span,
-        stoppedAt: event.at,
+        // A clock that stepped back never stops a span before it started:
+        // home refuses such a close for good.
+        stoppedAt: Math.max(event.at, state.span.startedAt),
         stoppedBy: "you",
         notKept: false,
       })

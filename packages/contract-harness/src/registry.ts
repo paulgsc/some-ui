@@ -34,6 +34,7 @@ import { contracts as renderContracts } from "../contracts/renders.contract"
 import { contracts as routineContracts } from "../contracts/routine.contract"
 import { contracts as rustKeptContracts } from "../contracts/rust-kept.contract"
 import { contracts as rustRoundContracts } from "../contracts/rust-rounds.contract"
+import { contracts as rustWorkSpanContracts } from "../contracts/rust-work-spans.contract"
 import { contracts as sessionContracts } from "../contracts/sessions.contract"
 import { contracts as shelfContracts } from "../contracts/shelf.contract"
 import { contracts as studioVideoContracts } from "../contracts/studio-videos.contract"
@@ -67,6 +68,7 @@ export const allContracts: ReadonlyArray<Contract> = [
   ...renderContracts,
   ...routineContracts,
   ...rustKeptContracts,
+  ...rustWorkSpanContracts,
   ...rustRoundContracts,
   ...sessionContracts,
   ...shelfContracts,

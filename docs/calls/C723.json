@@ -1,0 +1,15 @@
+{
+  "id": "C723",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": ["apps/www/src/lib/rust-rounds/index.ts"],
+  "chose": "Spans this phone starts carry the device name \"Phone\". There is one phone today; another device names itself once the owner names devices.",
+  "options": [
+    "\"Phone\"",
+    "the Android model from the user agent",
+    "ask the owner for a name in Settings"
+  ],
+  "gray": "Home keeps a device name per span for a second device; nothing names devices yet.",
+  "undo": "Change DEVICE in lib/rust-rounds, or read a name from Settings.",
+  "refs": ["#3250"]
+}
