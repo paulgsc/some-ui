@@ -719,6 +719,10 @@ function listed(
 export type OnPhone = {
   readonly id: string
   readonly of: VoiceOut["of"]
+  /** What home is told it belongs to (`VoiceOut`'s `ref`); a note that can't go home yet, its line. */
+  readonly ref: string
+  /** A game bite's own fields; absent for every other kind. */
+  readonly fields?: VoiceOut["fields"]
   /** When it was recorded, ISO 8601. */
   readonly at: string
   readonly audio: () => Promise<Blob | null>
@@ -769,6 +773,7 @@ export async function recordingsOnPhone(): Promise<{
     .map((take) => ({
       id: take.id,
       of: "rust-round",
+      ref: take.line,
       at: new Date(take.takenAt).toISOString(),
       audio: (): Promise<Blob | null> => rustRoundsDesk.audio(take.id),
     }))
@@ -776,6 +781,8 @@ export async function recordingsOnPhone(): Promise<{
     ...listed(takes, bites).map(({ note, audio }) => ({
       id: note.id,
       of: note.of,
+      ref: note.ref,
+      ...(note.fields === undefined ? {} : { fields: note.fields }),
       at: note.at,
       audio,
     })),

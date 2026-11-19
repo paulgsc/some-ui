@@ -1,0 +1,17 @@
+{
+  "id": "C608",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": [
+    "server:crates/db/voice/src/takes.rs",
+    "server:crates/db/voice/src/meaning.rs"
+  ],
+  "chose": "The meaning index stays Studio-only. A search over a read that lists another kind's heard take searches by words, and the answer says `by: words`.",
+  "options": [
+    "keep the index Studio-only, with an honest fallback",
+    "index every kind's words in this change"
+  ],
+  "gray": "Indexing every kind would widen docs/identity.md invariant 35 and the transcriber's catch-up. TAKES20 asks for text search, which words already answers.",
+  "undo": "A later change widens voice_repo::meaning to every kind. The library then searches them by meaning with no change of its own.",
+  "refs": ["#3219"]
+}

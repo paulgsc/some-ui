@@ -1,0 +1,18 @@
+{
+  "id": "C610",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/ui/soundbites/src/lib/library/kinds.ts",
+    "some-ui:packages/ui/soundbites/src/lib/library/compartments.ts"
+  ],
+  "chose": "Every kind of take home keeps gets its own compartment in Studio › Takes, beside Studio's five (episode notes, scenes, ideas, asks, recorded here): Game day, Rust Rounds, Interview week, Reflections, Jobs, Drama, Soundbites, Grammar lens and LeetType, in that order; a kind the app doesn't know yet shows under Other takes, whose tile appears only while it holds any.",
+  "options": [
+    "a compartment per kind, Studio's split kept",
+    "one compartment per wing, Studio's five folded into one Studio tile",
+    "only the kinds the owner named (bites, Rust Rounds, interview) get compartments, the rest under Other"
+  ],
+  "gray": "How Takes is divided is what the owner sees first on the page, and no check or earlier decision orders the new kinds or says whether Studio's split stays.",
+  "undo": "Edit TAKE_KINDS in compartments.ts and KIND_OF in kinds.ts; nothing stores a compartment.",
+  "refs": ["#3219", "#3029"]
+}

@@ -9,7 +9,6 @@
  */
 import type { JSX, ReactNode } from "react"
 import { useEffect } from "react"
-import { cn } from "@some-ui/core-utils"
 import type { Question, WorkSource } from "@some-ui/interview-week"
 import { workSourceKey } from "@some-ui/interview-week"
 import { BundleTake, TakeRow } from "@some-ui/shared"
@@ -23,7 +22,7 @@ import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 import type { Interview } from "./run"
 import { currentOf, playOnly, useInterview, viewOf } from "./run"
 import type { Page } from "./to"
-import { CARD_LINK, To } from "./to"
+import { CardTo, To } from "./to"
 import { doneLine, Opening } from "./week"
 
 /** A page's way back: a link, so Android's back and this step the same way. */
@@ -116,16 +115,16 @@ const RungLink = ({
     </>
   )
   return (
-    <To
+    <CardTo
       to={
         step === "cues" || step === "own"
           ? { page: "say", question, rung: step }
           : { page: step, question }
       }
-      className={cn(CARD_LINK, "min-h-28 gap-1.5")}
+      className="min-h-28"
     >
       {inside}
-    </To>
+    </CardTo>
   )
 }
 

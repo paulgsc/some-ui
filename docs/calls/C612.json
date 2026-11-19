@@ -1,0 +1,18 @@
+{
+  "id": "C612",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/ui/soundbites/src/components/take-library/index.tsx",
+    "some-ui:apps/www/src/lib/take-library/on-phone.ts"
+  ],
+  "chose": "Takes still only on this phone, of any kind, join home's list in one row form with Play from the phone and the line \"Only on this phone so far\"; a take home holds that its list doesn't show (an older home) says \"Home keeps it. What home heard in it shows here once home runs a newer version.\", and a home that lists Studio's takes alone gets a line saying the rest show once it runs a newer version.",
+  "options": [
+    "merged into one list, ordered with home's",
+    "a separate \"on this phone\" section above home's list",
+    "phone takes only on My data, as before"
+  ],
+  "gray": "Where the phone's own takes sit on the page, and what the screen says while home is older, is visible to the owner and no check settles it.",
+  "undo": "In TakeLibrary, render ownRows in their own list instead of passing them to Listed; drop onPhone from takePorts to hide them.",
+  "refs": ["#3219", "#3029"]
+}
