@@ -36,8 +36,8 @@ import { stepOpens } from "./opens"
 import type { PasteRuntime } from "./paste"
 import { pasteRuntime } from "./paste"
 import { firstItemOf, itemOf, pointItem } from "./points"
-import type { WeekAtHome, WeekKind, WeekSent } from "./spec"
-import { weekAtHome, weekMachine } from "./spec"
+import type { HomeWeekSent, WeekAtHome, WeekKind, WeekSent } from "./spec"
+import { HOME_UNKNOWN, isClosed, weekAtHome, weekMachine } from "./spec"
 import {
   heardWords,
   ofWeek,
@@ -65,6 +65,12 @@ export type RustWeekPorts = {
   readonly homeHolds: (sent: WeekSent) => boolean
   /** Calls `listener` whenever what `homeHolds` answers may have changed. Returns the stop. */
   readonly onHomeHolds: (listener: () => void) => () => void
+  /**
+   * What home's own record says was sent of week `week` (RR30), asked once
+   * each time a closed week opens; never rejects. Without it, a closed week
+   * reads only what the link remembers.
+   */
+  readonly homeSent?: (week: string) => Promise<HomeWeekSent>
   /** Milliseconds since the epoch. */
   readonly now: () => number
   readonly newId: () => string
@@ -139,6 +145,8 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
     onVisibility: ports.onVisibility,
   })
   const sends = weeksSent(ports.storage)
+  // What home's own record said this opening (RR30).
+  let homeSaid: HomeWeekSent = HOME_UNKNOWN
   /**
    * Puts the takes on `ticket`, the flow's on screen, where they are on
    * another, and enters the cards from the brief.
@@ -172,7 +180,7 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
       })
     : null
   const readAtHome = (): WeekAtHome =>
-    weekAtHome(sends.list() ?? [], week, ports.homeHolds)
+    weekAtHome(sends.list() ?? [], week, ports.homeHolds, homeSaid)
   let atHome = readAtHome()
   let atHomeOf: WeekSent | null = null
   const homeListeners = new Set<() => void>()
@@ -184,7 +192,9 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
     const next = readAtHome()
     if (
       next.holds?.at === atHome.holds?.at &&
-      next.last?.at === atHome.last?.at
+      next.last?.at === atHome.last?.at &&
+      next.homeSaid === atHome.homeSaid &&
+      next.elsewhere === atHome.elsewhere
     ) {
       return
     }
@@ -292,7 +302,18 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
       lookHome(true)
       const stopHome = bundle.subscribe(() => lookHome())
       const stopHeld = ports.onHomeHolds(() => lookHome(true))
-      void askSent()
+      // A closed week reads home's own record once each opening (RR30): what
+      // counted is home's to say, not the link's memory of it. The words of
+      // the send it names are asked after.
+      const asking =
+        ports.homeSent !== undefined &&
+        isClosed(week, new Date(ports.now()).toISOString())
+          ? ports.homeSent(week.id).then((said) => {
+              homeSaid = said
+              lookHome(true)
+            })
+          : Promise.resolve()
+      void asking.then(askSent)
       // The flow and the takes on one ticket, and a take never moved:
       // - a take under way, or asked from the look over (Redo, "say it",
       //   which open the cards on another item), brings the flow to its

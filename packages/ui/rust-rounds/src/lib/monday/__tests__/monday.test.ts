@@ -1100,3 +1100,48 @@ describe("ROUTINE.md", () => {
     expect(ROUTINE).toContain(`${DIVE_WORDS_LEAST} to ${DIVE_WORDS_MOST} words`)
   })
 })
+
+describe("the transcripts monday pull fetches (PN1)", () => {
+  /** Every note a record names, found by walking it for its `take` and `note` strings. */
+  const named = (value: unknown): Array<string> =>
+    Array.isArray(value)
+      ? value.flatMap(named)
+      : isRecord(value)
+        ? Object.entries(value).flatMap(([key, held]) =>
+            (key === "take" || key === "note") && typeof held === "string"
+              ? [held]
+              : named(held)
+          )
+        : []
+
+  it("names every take and note a record holds: a ticket's, each point's own, a paste's", () => {
+    const held = record()
+    const [first, ...rest] = held.tickets
+    if (first === undefined) throw new Error("no ticket")
+    const pointed: WeekRecord = {
+      ...held,
+      tickets: [
+        {
+          ...first,
+          take: null,
+          points: [
+            {
+              point: 1,
+              take: "note-311-1",
+              recordedAt: "2026-11-14T20:10:00.000Z",
+            },
+            {
+              point: 2,
+              take: "note-311-2",
+              recordedAt: "2026-11-14T20:11:00.000Z",
+            },
+          ],
+        },
+        ...rest,
+      ],
+    }
+    for (const records of [[held], [pointed], [held, pointed]])
+      expect(notesNamed(records)).toEqual(new Set(records.flatMap(named)))
+    expect(notesNamed([pointed])).toContain("note-311-2")
+  })
+})

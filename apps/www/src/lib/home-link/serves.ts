@@ -4,11 +4,14 @@
  * time, and keeps what home said for the marks (`./lanes`' `useServes`).
  *
  * `watchServes` hears those moments: the phone found paired (the app's
- * start, or a new pairing), the app back in the foreground, and a request
- * answered not found other than as home's JSON error (a route home lacks);
+ * start, or a new pairing), the app back in the foreground, a request
+ * answered not found other than as home's JSON error (a route home lacks),
+ * and, while home last said it is updating, home heard again after a
+ * stretch it didn't answer, or that stretch's hold ending (`back`, HR1: the
+ * update's restart over, or worth another look);
  * `servesRefresher` hears a pull. Any ask the link turned away, a pull's
  * too, is asked once more at the link's next change.
- * Never on a timer.
+ * Never on a timer of its own.
  */
 import type { Refresher } from "@/lib/pull-refresh/refreshers"
 
@@ -103,13 +106,17 @@ export function watchServes(
   { link, doc }: ServesWatchPorts
 ): () => void {
   let pairing = pairingIn(link.getSnapshot())
-  const ask = (why: "start" | "front" | "missing"): void => {
+  let releases = link.getSnapshot().awayReleases
+  const ask = (why: "start" | "front" | "missing" | "back"): void => {
     if (pairing.kind !== "paired" || doc.visibilityState !== "visible") return
     void serves.ask(why)
   }
 
   const onLink = (): void => {
-    const now = pairingIn(link.getSnapshot())
+    const state = link.getSnapshot()
+    const now = pairingIn(state)
+    const released = state.awayReleases > releases
+    releases = state.awayReleases
     if (!samePairing(now, pairing)) {
       pairing = now
       // Reading or unpaired: nothing is asked, and nothing known is kept.
@@ -117,6 +124,8 @@ export function watchServes(
       else ask("start")
     } else if (serves.owes() && !serves.getSnapshot().asking) {
       ask("start")
+    } else if (released && serves.getSnapshot().serves === "updating") {
+      ask("back")
     }
   }
   const onFront = (): void => {
