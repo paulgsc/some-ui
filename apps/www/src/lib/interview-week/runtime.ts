@@ -21,6 +21,14 @@
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { weekOpenNow } from "@some-ui/core-utils"
+import type { Prompter } from "@some-ui/shared"
+import {
+  NO_PROMPTER,
+  paceOf,
+  stepPace,
+  stepPrompter,
+  totalOf,
+} from "@some-ui/shared"
 import type {
   BundleHome,
   BundleIntent,
@@ -31,6 +39,7 @@ import type {
 } from "@some-ui/voice-capture"
 import {
   bundleRuntime,
+  HEARD_FLOOR,
   HOME_UNKNOWN,
   sendsAtHomeSaid,
 } from "@some-ui/voice-capture"
@@ -39,14 +48,6 @@ import type { Cue, CueEvent } from "./cue"
 import { NO_CUE, stepCue } from "./cue"
 import type { Ladder, Rung } from "./ladder"
 import { ask, firsts, linesOf, markRung, takesFor, withRungs } from "./ladder"
-import type { Prompter } from "./prompter"
-import {
-  NO_PROMPTER,
-  paceOf,
-  stepPace,
-  stepPrompter,
-  totalOf,
-} from "./prompter"
 import type { InterviewAtHome, InterviewKind, InterviewSent } from "./spec"
 import { cardOf, interviewMachine, isClosed, takeLine } from "./spec"
 import type { HeldInterview } from "./store"
@@ -221,8 +222,9 @@ export function createInterviewWeek(
         take.kind === "recording" && answers !== null && total !== undefined
           ? {
               type: "heard",
-              answers,
+              script: answers,
               level: take.level,
+              floor: HEARD_FLOOR,
               at: ports.now(),
               total,
               pace: pace.getSnapshot(),

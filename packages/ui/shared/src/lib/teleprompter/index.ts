@@ -1,23 +1,25 @@
 /**
- * The teleprompter band for reading aloud (IW9, paulgsc/some-ui#3176), as a
- * pure state and `step`. The runtime (`./runtime`) feeds it the recorder's
- * own level as each take under way is measured, so there is no second
- * capture and no transcription; the reading page draws `bandOf`.
+ * A teleprompter band for reading a script aloud, as a pure state and
+ * `step`: generic, so any page that records a take of a read script uses
+ * the same band (the interview week's reads, IW9 #3176; Rust Rounds'
+ * opening, #3269). The caller's runtime feeds it each level its recorder
+ * measures of the take under way, so there is no second capture and no
+ * transcription; the page draws `bandOf` (`Teleprompter`).
  *
  * Built to the prototype the owner agreed on 2026-11-17 (page 4,
  * https://claude.ai/artifact/3qFe2qLVB2qabmdVcjBArp): one phrase a line in
  * large type, a band at about a third of the height, the line read lit and
  * the next dimmed; it moves while you speak, holds while you pause, and a
- * Pause / Go on button stops and restarts it (C615). The pace and the hold
- * are C616, the pace C734; the band has no drag to nudge (C617).
+ * Pause / Go on button stops and restarts it (C615). The hold is C616, the
+ * pace C734; the band has no drag to nudge (C617).
  *
- * - **Moves only while you speak.** A level at or over `HEARD_FLOOR` (the
- *   line a take must reach to count as heard) marks the voice heard; the
- *   band moves at the pace the reader set (`DEFAULT_PACE_WPM` until they
- *   set one, a step of `PACE_STEP_WPM` at a time within `PACE_RANGE`) until
- *   `HOLD_MS` passes with nothing heard, so it never runs on past you.
- * - **Each take starts from the top.** A take answering another line, or
- *   one starting after the last ended, reads from the first word.
+ * - **Moves only while you speak.** A level at or over the caller's `floor`
+ *   (the line its takes must reach to count as heard) marks the voice heard;
+ *   the band moves at the pace the reader set (`DEFAULT_PACE_WPM` until
+ *   they set one, a step of `PACE_STEP_WPM` at a time within `PACE_RANGE`)
+ *   until `HOLD_MS` passes with nothing heard, so it never runs on past you.
+ * - **Each take starts from the top.** A take of another script, or one
+ *   starting after the last ended, reads from the first word.
  * - **Only time spoken through moves it.** The stretch since the last read
  *   counts only when the voice was heard within `HOLD_MS` before its end, so
  *   the quiet before a first word, or a phone that slept mid-take, never does.
@@ -30,7 +32,6 @@
  *   that never started) still reads, by hand, as the script did before.
  */
 import { assertNever } from "@some-ui/core-utils"
-import { HEARD_FLOOR } from "@some-ui/voice-capture"
 
 /** Words a minute the band moves at until the reader sets a pace (C734). */
 export const DEFAULT_PACE_WPM = 170
@@ -70,8 +71,8 @@ export type Prompter =
   | { readonly kind: "idle" }
   | {
       readonly kind: "reading"
-      /** The take's line, as the recorder says what it answers. */
-      readonly answers: string
+      /** The script the take reads, by the caller's key for it. */
+      readonly script: string
       /** Words read so far, a fraction while the band is between them. */
       readonly words: number
       /** When the last read was, by the runtime's clock. */
@@ -84,7 +85,7 @@ export type Prompter =
   /** The take ended: the script stays where the band left it (PB1). */
   | {
       readonly kind: "held"
-      readonly answers: string
+      readonly script: string
       readonly words: number
     }
 
@@ -94,8 +95,11 @@ export type PrompterEvent =
   /** The recorder measured the take under way. */
   | {
       readonly type: "heard"
-      readonly answers: string
+      /** The script the take reads, by the caller's key for it. */
+      readonly script: string
       readonly level: number
+      /** The level a take must reach to count as heard. */
+      readonly floor: number
       readonly at: number
       /** The script's words: the band stops at the last. */
       readonly total: number
@@ -111,7 +115,7 @@ export function stepPrompter(state: Prompter, event: PrompterEvent): Prompter {
   switch (event.type) {
     case "ended": {
       return state.kind === "reading"
-        ? { kind: "held", answers: state.answers, words: state.words }
+        ? { kind: "held", script: state.script, words: state.words }
         : state
     }
     case "pause": {
@@ -120,13 +124,13 @@ export function stepPrompter(state: Prompter, event: PrompterEvent): Prompter {
         : state
     }
     case "heard": {
-      const { answers, level, at, total, pace } = event
-      const heard = level >= HEARD_FLOOR
+      const { script, level, floor, at, total, pace } = event
+      const heard = level >= floor
       // A new take, of this line or another, reads from the top.
-      if (state.kind !== "reading" || state.answers !== answers) {
+      if (state.kind !== "reading" || state.script !== script) {
         return {
           kind: "reading",
-          answers,
+          script,
           words: 0,
           at,
           heardAt: heard ? at : null,
@@ -148,7 +152,7 @@ export function stepPrompter(state: Prompter, event: PrompterEvent): Prompter {
 }
 
 /** What the band says about itself, as its words name it. */
-type BandState = "waiting" | "moving" | "holding" | "paused"
+export type BandState = "waiting" | "moving" | "holding" | "paused"
 
 export type Band = {
   /** The line read now: lit, at the band. */
@@ -179,16 +183,16 @@ function lineAt(lines: ReadonlyArray<string>, read: number): number {
 }
 
 /**
- * The band over `lines` for the take answering `answers`: where the last
+ * The band over `lines` for the take reading `script`: where the last
  * take of it left the band once it ended, and the first line while no take
  * of it has been read.
  */
 export function bandOf(
   state: Prompter,
-  answers: string,
+  script: string,
   lines: ReadonlyArray<string>
 ): Band {
-  if (state.kind === "idle" || state.answers !== answers) {
+  if (state.kind === "idle" || state.script !== script) {
     return { line: 0, state: "holding" }
   }
   const line = lineAt(lines, state.words)
