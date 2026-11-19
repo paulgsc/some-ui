@@ -12,8 +12,6 @@ import { rendersQuery } from "@/lib/renders"
 import { browserLocalStorage } from "@/lib/tenant/storage"
 import { PastWeeks } from "@/components/jobs/interview/past"
 
-const essays = feedVideos(ESSAY_FEED)
-
 /**
  * Past weeks (IW17): the weeks and sends this phone keeps, read once per
  * visit; the essays' feed, read on open and on a drag down as Studio's
@@ -26,12 +24,14 @@ const PhonePast = (): JSX.Element => {
     held: phoneInterviews().held().weeks,
     sent: interviewSent(browserLocalStorage).list() ?? [],
   }))
+  // Made here, not at the module's top, so a build without the phone drops it.
+  const essays = feedVideos(ESSAY_FEED)
   const { list } = useSyncExternalStore(essays.subscribe, essays.getSnapshot)
   // Read on open, and again on a drag down while on screen, as Episodes reads it.
   useEffect(() => {
     void essays.open()
     return screenRefreshers.register(videosRefresher(ESSAY_FEED))
-  }, [])
+  }, [essays])
   const renders = useQuery(rendersQuery)
   const board = renders.data?.kind === "read" ? renders.data.board : null
   const at = new Date().toISOString()

@@ -11,7 +11,6 @@ import { Link, linkOptions, useNavigate } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
 import type { SayRung } from "@/lib/interview-week/ladder"
-import { ESSAY_FEED } from "@/lib/interview-week/past"
 import { CardRoute } from "@/components/card-route"
 
 /** A page of the week. */
@@ -62,7 +61,8 @@ function routeOf(to: Page): LinkOptions {
     case "essay": {
       return linkOptions({
         to: "/journal/episodes/$feed/$key",
-        params: { feed: ESSAY_FEED, key: to.key },
+        // `lib/interview-week/past`'s ESSAY_FEED; named here, since that module is the phone's alone.
+        params: { feed: "interview-essay", key: to.key },
       })
     }
     case "renders": {
