@@ -158,6 +158,11 @@ describe("the interview week's pages on the phone (IW8)", () => {
     await settle()
     for (const { name } of WORDS.how.steps) screen.getByText(name)
     screen.getByText(/Home is your own computer/)
+    // The week's takes, in Studio's one Takes (TAKES20), filtered to this week.
+    const takes = screen.getByRole("link", { name: /^Hear your takes/ })
+    expect(takes.getAttribute("href")).toContain(
+      "/journal/takes/interview?about=interview%3A2026-w47"
+    )
     await follow(WORDS.toInterview)
     screen.getByText(WORDS.wayIn.title)
   })

@@ -13,7 +13,7 @@ import { BackTo } from "./ladder"
 import type { Interview } from "./run"
 import { useInterview } from "./run"
 import { CardTo } from "./to"
-import { doneLine, Opening } from "./week"
+import { doneLine, Opening, TakesLink } from "./week"
 
 const Questions = ({ held }: { held: Interview }): JSX.Element => {
   const { week, state } = held
@@ -78,6 +78,7 @@ export const QuestionsPage = (): JSX.Element => {
 
 /** How a week goes: what happens to what you say, home named once. */
 export const HowPage = (): JSX.Element => {
+  const { week } = useInterview()
   return (
     <div className="flex flex-col gap-4">
       <BackTo to={{ page: "interview" }}>{WORDS.toInterview}</BackTo>
@@ -100,6 +101,7 @@ export const HowPage = (): JSX.Element => {
           </li>
         ))}
       </ol>
+      <TakesLink week={week} />
     </div>
   )
 }

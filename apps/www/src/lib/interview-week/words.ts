@@ -155,6 +155,11 @@ export const INTERVIEW_WORDS = {
         `${n === 1 ? "1 script" : `${n} scripts`} · about ${lengthOf(seconds * 1000)} each`,
     },
     how: "How a week goes",
+    takes: "Hear your takes",
+    takesLine: "In Studio's Takes, with your other recordings",
+    /** The week's name on Takes' chip: "Week 47". */
+    weekName: (week: Pick<InterviewWeek, "id">): string =>
+      `Week ${weekNumber(week.id)}`,
     howLine: "Where your takes go, and when the essay comes",
     /** A week under way (IW16): what was done, each take where it is. */
     soFar: "So far this week",

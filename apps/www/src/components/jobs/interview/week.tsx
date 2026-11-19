@@ -98,6 +98,15 @@ const Kind = ({
   </CardTo>
 )
 
+/** The way to this week's takes, in Studio's one Takes. */
+export const TakesLink = ({ week }: { week: InterviewWeek }): JSX.Element => (
+  <Kind
+    to={{ page: "takes", week: week.id, name: WORDS.wayIn.weekName(week) }}
+    name={WORDS.wayIn.takes}
+    lines={[WORDS.wayIn.takesLine]}
+  />
+)
+
 /** The way to How a week goes. */
 const HowLink = (): JSX.Element => (
   <Kind
@@ -230,6 +239,7 @@ const UnderWay = ({ held }: { held: Interview }): JSX.Element => {
       <Button size="lg" onClick={() => run.dispatch({ type: "review" })}>
         {WORDS.toReview}
       </Button>
+      <TakesLink week={week} />
       <HowLink />
     </div>
   )
