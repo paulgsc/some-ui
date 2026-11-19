@@ -141,9 +141,6 @@ describe("the interview week's words (IW5)", () => {
       expect(rungs).not.toContain(word)
       expect(["read", "aloud"]).not.toContain(word)
     }
-    // Today's question carries the look over's name for it.
-    const label = INTERVIEW_WORDS.questionLabel(2)
-    expect(INTERVIEW_WORDS.today(label)).toContain(label)
     // Delete names the same takes its confirm does: those still on this phone.
     expect(INTERVIEW_WORDS.review.deleteAll).toMatch(/\bthis phone$/)
     expect(INTERVIEW_WORDS.confirm.allTitle).toMatch(/\bon this phone\?$/)

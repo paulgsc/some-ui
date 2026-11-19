@@ -312,21 +312,14 @@ export const CueLine = ({
 }): JSX.Element => {
   const { cue } = held
   return (
-    <p
-      aria-live="assertive"
-      className="text-muted-foreground min-h-6 text-center text-sm"
-    >
-      {cue.kind === "counting" && cue.item === item ? (
-        <>
-          {/* The count is on the button; said here too as it changes, for a screen reader. */}
-          <span className="sr-only">
-            {TAKE_WORDS.button.counting(cue.left)}.{" "}
-          </span>
-          {WORDS.cueLine}
-        </>
-      ) : (
-        WORDS.cap
-      )}
+    <p className="text-muted-foreground min-h-6 text-center text-sm">
+      {/* The count is on the button; only it is said as it changes, for a screen reader. */}
+      <span aria-live="assertive" className="sr-only">
+        {cue.kind === "counting" && cue.item === item
+          ? TAKE_WORDS.button.counting(cue.left)
+          : ""}
+      </span>
+      {cue.kind === "counting" && cue.item === item ? WORDS.cueLine : WORDS.cap}
     </p>
   )
 }
