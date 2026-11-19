@@ -1921,7 +1921,10 @@ export function step(state: StudioState, event: StudioEvent): Step {
     }
 
     case "hidden": {
-      return finishRecording({ ...state, visible: false })
+      // VC4: a take whose audio is still being read never starts on return.
+      const hidden = { ...state, visible: false }
+      if (state.activity.kind === "playing") return stopPlay(hidden)
+      return finishRecording(hidden)
     }
 
     case "shown": {
