@@ -247,6 +247,59 @@ const sentOne: Sent = {
 /** `t1` let go home with `sentOne`; `waits` gone. */
 const t1Sent: PatternTake = { ...take("t1", "QM-1"), waits: undefined }
 
+describe("an item whose every take is kept (C783)", () => {
+  const KEEPS = bundleMachine({
+    ...SPEC,
+    keepsEvery: (item) => item === "QM-1",
+  })
+  const step = (
+    events: ReadonlyArray<BundleEvent<Kind>>,
+    start: BundleState<Kind>
+  ): { state: BundleState<Kind>; effects: ReadonlyArray<unknown> } => {
+    let state = start
+    const effects: Array<unknown> = []
+    for (const event of events) {
+      const next = KEEPS.stepBundle(state, event)
+      state = next.state
+      effects.push(...next.effects)
+    }
+    return { state, effects }
+  }
+
+  it("drops no take a Redo replaced, and deletes none, while the other items' go as before", () => {
+    const first = take("t1", "QM-1")
+    const open = step(
+      [
+        { type: "entered", at: AT },
+        opened([first]),
+        { type: "go", index: 0, at: AT },
+      ],
+      KEEPS.initial(null, "next", AT)
+    ).state
+    const redo = { ...take("t2", "QM-1"), recordedAt: LATER }
+    const said = step(
+      [{ type: "takes", takes: [{ ...first, standing: "earlier" }, redo] }],
+      open
+    )
+    expect(said.effects).not.toContainEqual(
+      expect.objectContaining({ type: "drop" })
+    )
+    const other = take("t3", "QM-2")
+    const deleted = step(
+      [
+        {
+          type: "takes",
+          takes: [{ ...first, standing: "earlier" }, redo, other],
+        },
+        { type: "askDeleteAll", at: LATER },
+        { type: "confirmed", at: LATER },
+      ],
+      said.state
+    )
+    expect(deleted.effects).toContainEqual({ type: "deleteAll", takes: ["t3"] })
+  })
+})
+
 describe("a spec that resends, until it closes (RR22)", () => {
   it("opens a week sent on the screen before the cards, beside its last send, its draft kept", () => {
     const draft = { id: "w46", at: AT, typed: {}, later: ["QM-2" as const] }

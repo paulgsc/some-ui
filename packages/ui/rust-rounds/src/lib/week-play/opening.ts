@@ -19,7 +19,7 @@
 import type { PatternTake } from "@some-ui/voice-capture"
 import { currentTakeOf } from "@some-ui/voice-capture"
 
-import type { HomeWeekSent } from "./spec"
+import type { HomeWeekSent, OpeningSent } from "./spec"
 
 /** One question's take as home's record names it. */
 export type OpeningAtHome = {
@@ -61,14 +61,21 @@ export type OpeningHere = {
 }
 
 /**
- * How long take `id` among `takes` runs, in ms, as this phone measured it:
- * the length its page and home's record say (the owner's ask, 2026-11-19:
- * "from when and how long"); null for a take this phone doesn't list.
+ * Take `take` of question `n` as a week sent carries it (C783), with how
+ * long it runs in whole milliseconds, as home keeps it: the length its page
+ * says too (the owner's ask, 2026-11-19: "from when and how long").
  */
-export const takeMs = (
-  takes: ReadonlyArray<PatternTake>,
-  id: string
-): number | null => takes.find((take) => take.id === id)?.durationMs ?? null
+export const openingTakeSent = (
+  n: number,
+  take: PatternTake,
+  version: number
+): OpeningSent => ({
+  n,
+  take: take.id,
+  recordedAt: take.recordedAt,
+  version,
+  ms: Math.max(0, Math.round(take.durationMs)),
+})
 
 /** The take answering `line` now among `takes`, said this week; null for none. */
 export function hereTake(

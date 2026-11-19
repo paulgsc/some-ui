@@ -18,7 +18,7 @@ import {
 import { openingItem } from "@rust-rounds/lib/week-play/points"
 import type { WeekSent } from "@rust-rounds/lib/week-play/spec"
 import { weekMachine } from "@rust-rounds/lib/week-play/spec"
-import type { BundleAnswer } from "@some-ui/voice-capture"
+import type { BundleAnswer, PatternTake } from "@some-ui/voice-capture"
 import { describe, expect, it } from "vitest"
 
 const LAST_WEEK: OpeningAtHome = {
@@ -85,10 +85,25 @@ describe("where a question's take stands", () => {
 
 describe("a week sent with the opening's takes", () => {
   const week = { ...TALLOWBROOK_WEEK_FILE, opening: openingOfWeek() }
+  const onPhone = (
+    id: string,
+    n: number,
+    recordedAt: string,
+    standing: PatternTake["standing"] = "current"
+  ): PatternTake => ({
+    id,
+    answers: `2026-w47:${openingItem(n)}`,
+    durationMs: 24_000.4,
+    recordedAt,
+    standing,
+    kept: { place: "phone" },
+    waits: true,
+  })
+  let phone: ReadonlyArray<PatternTake> = []
   const machine = weekMachine(week, {
     perPoint: true,
     opening: { version: 1, count: 3 },
-    msOf: (id) => (id === "q1" ? 24_000.4 : null),
+    takesOf: (line) => phone.filter((take) => take.answers === line),
   })
   const draft = {
     id: "2026-w47",
@@ -103,6 +118,7 @@ describe("a week sent with the opening's takes", () => {
   })
 
   it("puts the questions first, and their takes under the opening, never among the tickets", () => {
+    phone = [onPhone("q1", 1, "2026-11-18T08:00:00Z")]
     expect(machine.spec.items.slice(0, 3)).toEqual([
       openingItem(1),
       openingItem(2),
@@ -135,7 +151,30 @@ describe("a week sent with the opening's takes", () => {
     expect(machine.spec.named(sent)).toEqual(["t1", "q1"])
   })
 
+  it("sends every take of a question said this week, the one Record again replaced included (C783)", () => {
+    phone = [
+      onPhone("q1a", 1, "2026-11-18T08:00:00Z", "earlier"),
+      onPhone("q1b", 1, "2026-11-18T09:00:00Z"),
+    ]
+    const sent = machine.spec.record(
+      draft,
+      [answer(openingItem(1), "q1b", "2026-11-18T09:00:00Z")],
+      [],
+      "2026-11-18T10:00:00Z",
+      null
+    )
+    expect(sent.opening?.map(({ n, take }) => [n, take])).toEqual([
+      [1, "q1a"],
+      [1, "q1b"],
+    ])
+    // Named, so neither is swept as a take nothing sends.
+    expect(machine.spec.named(sent)).toEqual(["q1a", "q1b"])
+    expect(machine.spec.keepsEvery?.(openingItem(1))).toBe(true)
+    expect(machine.spec.keepsEvery?.("TB-101:1")).toBe(false)
+  })
+
   it("sends again with every take the week said, an earlier send's included", () => {
+    phone = [onPhone("q1", 1, "2026-11-18T11:00:00Z")]
     const first: WeekSent = {
       week: "2026-w47",
       at: "2026-11-18T10:00:00Z",

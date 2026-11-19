@@ -43,8 +43,10 @@
  */
 import type { Decision, DecisionsSent } from "@rust-rounds/lib/decisions"
 import type { Week } from "@rust-rounds/lib/formats/week"
+import { openingTakeSent } from "@rust-rounds/lib/week-play/opening"
 import {
   itemOf,
+  openingItem,
   openingOf,
   pointItem,
   weekItems,
@@ -54,6 +56,7 @@ import type {
   BundleMachine,
   BundleSpec,
   BundleState,
+  PatternTake,
   SendsAtHome,
 } from "@some-ui/voice-capture"
 import {
@@ -274,8 +277,8 @@ export type WeekSpecOptions = {
    * and this build's home keeps them; null otherwise.
    */
   readonly opening?: OpeningSpec | null
-  /** How long take `id` runs, in ms, as this phone measured it; null when unknown. */
-  readonly msOf?: (id: string) => number | null
+  /** The takes on this phone answering `line`, whatever their standing. */
+  readonly takesOf?: (line: string) => ReadonlyArray<PatternTake>
 }
 
 /**
@@ -291,7 +294,7 @@ function weekSpec(
     perPoint = false,
     decisions = null,
     opening = null,
-    msOf = (): null => null,
+    takesOf = (): ReadonlyArray<PatternTake> => [],
   }: WeekSpecOptions
 ): BundleSpec<WeekKind> {
   return {
@@ -307,25 +310,27 @@ function weekSpec(
       isClosed(week, at) ? "closed" : said === 0 ? "nothing" : null,
     resumesOnCards: () => false,
     record: (draft, answers, _passed, at, last): WeekSent => {
-      // The opening's takes said now, then those sent before and not said
-      // since, so a send again holds every take the week said.
-      const opened = new Map<number, OpeningSent>()
-      for (const { item, take } of answers) {
-        const n = openingOf(item)
-        if (n === null || take === null || opening === null) continue
-        opened.set(n, {
-          n,
-          take: take.id,
-          recordedAt: take.at,
-          version: opening.version,
-          // Home keeps whole milliseconds.
-          ms: Math.max(0, Math.round(msOf(take.id) ?? 0)),
-        })
+      // Every take of each question said this week (the owner's call,
+      // C783: "Every take you record goes home with the send, and only the
+      // newest is used"), and those an earlier send named, each once.
+      const opened = new Map<string, OpeningSent>()
+      for (const earlier of last?.opening ?? [])
+        opened.set(earlier.take, earlier)
+      for (let n = 1; n <= (opening?.count ?? 0); n += 1) {
+        for (const take of takesOf(ticketLine(draft.id, openingItem(n)))) {
+          if (opening === null || opened.has(take.id)) continue
+          opened.set(take.id, openingTakeSent(n, take, opening.version))
+        }
       }
-      for (const earlier of last?.opening ?? []) {
-        if (!opened.has(earlier.n)) opened.set(earlier.n, earlier)
-      }
-      const openingSent = [...opened.values()].sort((a, b) => a.n - b.n)
+      const openingSent = [...opened.values()].sort(
+        (a, b) =>
+          a.n - b.n ||
+          (a.recordedAt < b.recordedAt
+            ? -1
+            : a.recordedAt > b.recordedAt
+              ? 1
+              : 0)
+      )
       const said = new Map<string, WeekAnswer>(
         answers.flatMap(({ item, take }) => {
           if (take === null || openingOf(item) !== null) return []
@@ -368,6 +373,8 @@ function weekSpec(
     carries: verdictLines,
     resends: true,
     closed: (_draft, at) => isClosed(week, at),
+    // Every take of the opening's answers goes home (C783).
+    keepsEvery: (item) => openingOf(item) !== null,
   }
 }
 

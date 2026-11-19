@@ -4511,7 +4511,7 @@
     {
       "store": "phone:rust-rounds-week-sent",
       "class": "record",
-      "growth": "Per send of a week from the phone (RR13; RR22, #2832): when, each ticket's take id, the tickets not said and, where home keeps them (RR29, #3257; contract epoch 24), the decision at each fork with options, named <week>:<ticket>:<n>:verdict, and, where home keeps them (#3269; contract epoch 25), the takes of the essay's opening said that week, one per question (at most three), each with its question, the opening's version and how long it runs; only grows (a change that drops or rewrites one is refused); a week stays open until its deadline and can be sent again, so a few a week, no cap; the phone keeps every send, and only each week's latest goes home (RR14, `lib/kept-home`), none once the week has closed (`some-ui:rust-rounds.week-sent`).",
+      "growth": "Per send of a week from the phone (RR13; RR22, #2832): when, each ticket's take id, the tickets not said and, where home keeps them (RR29, #3257; contract epoch 24), the decision at each fork with options, named <week>:<ticket>:<n>:verdict, and, where home keeps them (#3269; contract epoch 25), every take of the essay's opening said that week (C783: each goes home, and home plays the newest), each with its question, the opening's version and how long it runs; only grows (a change that drops or rewrites one is refused); a week stays open until its deadline and can be sent again, so a few a week, no cap; the phone keeps every send, and only each week's latest goes home (RR14, `lib/kept-home`), none once the week has closed (`some-ui:rust-rounds.week-sent`).",
       "family": "what-is-kept"
     },
     {

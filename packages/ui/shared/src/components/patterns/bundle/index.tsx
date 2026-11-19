@@ -368,6 +368,8 @@ const CardBody = <K extends BundleKind>({
             onPlay={(take) => dispatch({ type: "play", take })}
             onRedo={() => dispatch({ type: "tap", item })}
             onLetGo={
+              // An item whose every take is kept offers none to let go (C783).
+              spec.keepsEvery?.(item) !== true &&
               view.current.some((row) => row.unsent)
                 ? (): void => dispatch({ type: "askDelete", item })
                 : undefined

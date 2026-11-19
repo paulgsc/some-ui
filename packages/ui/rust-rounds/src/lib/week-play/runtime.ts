@@ -52,13 +52,7 @@ import {
 import type { FlowRuntime } from "./flow-runtime"
 import { createFlow } from "./flow-runtime"
 import type { HomeOpening, HomeWeekRecord } from "./opening"
-import {
-  hereTake,
-  inPlace,
-  OPENING_UNKNOWN,
-  openingPlace,
-  takeMs,
-} from "./opening"
+import { hereTake, inPlace, OPENING_UNKNOWN, openingPlace } from "./opening"
 import type { OnScreen, Open } from "./opens"
 import { stepOpens } from "./opens"
 import type { PasteRuntime } from "./paste"
@@ -235,7 +229,8 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
       ? (): DecisionsSent => atSend(week, ofWeek(picks.list() ?? [], week.id))
       : null,
     opening: openingSpec,
-    msOf: (id) => takeMs(ports.takes.takes.getSnapshot(), id),
+    takesOf: (line) =>
+      ports.takes.takes.getSnapshot().filter((take) => take.answers === line),
   })
   const bundle = bundleRuntime(machine, {
     takes: ports.takes,
@@ -554,7 +549,7 @@ function openingRuntime(
   let playing: (() => void) | null = null
   /** Puts a step of the home play in place, and runs what it asks. */
   const run = (step: PlayStep<PlaySlice>): void => {
-    set({ ...view, play: step.state })
+    if (step.state !== view.play) set({ ...view, play: step.state })
     for (const effect of step.effects) {
       switch (effect.type) {
         case "readAudio": {
