@@ -17,6 +17,7 @@ import {
 import type { InterviewWeek } from "@some-ui/interview-week"
 import { isOpening } from "@some-ui/interview-week"
 import { bundleConfirm, ConfirmSheet, useTakePattern } from "@some-ui/shared"
+import type { Prompter } from "@some-ui/shared"
 import type {
   BundleTakes,
   PatternTake,
@@ -28,7 +29,6 @@ import { currentTakeOf, takeItemView } from "@some-ui/voice-capture"
 
 import type { Cue } from "@/lib/interview-week/cue"
 import type { Ladder } from "@/lib/interview-week/ladder"
-import type { Prompter } from "@/lib/interview-week/prompter"
 import type {
   InterviewWeekPorts,
   InterviewWeekRun,

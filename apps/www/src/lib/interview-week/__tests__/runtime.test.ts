@@ -8,14 +8,14 @@
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { inMemoryStorage } from "@some-ui/core-utils"
+import type { Prompter } from "@some-ui/shared"
+import { DEFAULT_PACE_WPM } from "@some-ui/shared"
 import type { HomeSent } from "@some-ui/voice-capture"
 import type { SimulatedPattern } from "@some-ui/voice-capture/testing"
 import { SPEAKING } from "@some-ui/voice-capture/testing"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { CUE_SECONDS } from "@/lib/interview-week/cue"
-import type { Prompter } from "@/lib/interview-week/prompter"
-import { DEFAULT_PACE_WPM } from "@/lib/interview-week/prompter"
 import type {
   InterviewWeekPorts,
   InterviewWeekRun,
@@ -498,7 +498,7 @@ describe("a question's ladder on the phone (IW8)", () => {
     on.run.focus("read:epic-2931")
     on.run.dispatch({ type: "tap", item: "read:epic-2931" })
     await pass(CUE_SECONDS * 1000 + 200)
-    expect(band()).toMatchObject({ answers: "2026-w47:read:epic-2931" })
+    expect(band()).toMatchObject({ script: "2026-w47:read:epic-2931" })
     await pass(3_000)
     // Spoken throughout: about the pace's words in three seconds.
     const paced = (3 * DEFAULT_PACE_WPM) / 60
@@ -510,7 +510,7 @@ describe("a question's ladder on the phone (IW8)", () => {
     // The take ended: the band stays where it left the script (PB1).
     expect(band()).toMatchObject({
       kind: "held",
-      answers: "2026-w47:read:epic-2931",
+      script: "2026-w47:read:epic-2931",
       words: read,
     })
     // A take that hears nothing never moves the band.
