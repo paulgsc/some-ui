@@ -4,6 +4,10 @@
  * verdict, "you said", level, streak, duration, timer or "done", and no
  * status code or internal name. And nowhere in the package's own source is
  * there a duration, a timer or a completion to show.
+ *
+ * The work tracker (RR26, #3250) is the one place that says how long, as the
+ * owner asked: its words are its own table (`lib/work-tracker/words`), held
+ * by its own test, and these never include them.
  */
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"

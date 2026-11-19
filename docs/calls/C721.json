@@ -1,0 +1,18 @@
+{
+  "id": "C721",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/work-tracker/home.ts",
+    "packages/ui/rust-rounds/src/lib/work-tracker/week-time.ts"
+  ],
+  "chose": "A start home refuses for good (a 409 with no open span: it began before the latest close home holds, or home holds another event under it) is kept on the phone, never sent again, and its close is held back with it; the week's time counts it apart (\"stays on this phone and out of the total\"), never in the total. Every other refusal (a 409 carrying an open span, 404, 422, a fault) is sent again with the next run.",
+  "options": [
+    "keep on the phone, out of the total",
+    "count it anyway",
+    "let it go"
+  ],
+  "gray": "The owner's record is append-only, but counting overlapping time twice would misstate the week; which wins was not decided.",
+  "undo": "Count refused spans in weekTime, or show them in their own bar segment.",
+  "refs": ["#3250"]
+}

@@ -47,6 +47,7 @@ import { IntentFailureFixture } from "./intent-failure"
 import { JobsStatusFixture } from "./jobs-status"
 import { RustRoundsFixture } from "./rust-rounds"
 import { TakePatternFixture } from "./take-pattern"
+import { WorkTrackerFixture } from "./work-tracker"
 
 type QuizPanelProps = ComponentProps<typeof QuizPanel>
 type Question = QuizPanelProps["questions"][number]
@@ -582,6 +583,8 @@ export const PANEL_FIXTURES = {
   "intent-failure": IntentFailureFixture,
 
   "rust-rounds": RustRoundsFixture,
+
+  "work-tracker": WorkTrackerFixture,
 
   "take-pattern": TakePatternFixture,
 
