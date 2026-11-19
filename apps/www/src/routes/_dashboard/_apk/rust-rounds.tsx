@@ -12,7 +12,7 @@ import {
   spanEventAtHome,
   spansOpenAtHome,
 } from "@/lib/home-link/rust-spans"
-import { askWeekRecord } from "@/lib/home-link/rust-week-record"
+import { askWeekRecord } from "@/lib/home-link/week-record"
 import { ideaHome } from "@/lib/idea-hearing"
 import {
   phoneRustRoundsPorts,
@@ -54,7 +54,7 @@ const PhoneRustRounds = (): JSX.Element => {
         homeWeek: homeWeekSpans,
         atHome: spanEventAtHome,
       }),
-      homeSent: askWeekRecord,
+      homeSent: (week) => askWeekRecord("rust-weeks", week),
     }),
   }))
   const [rounds, setRounds] = useState(false)

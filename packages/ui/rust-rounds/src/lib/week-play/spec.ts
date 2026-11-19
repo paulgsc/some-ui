@@ -47,13 +47,15 @@ import type {
   BundleMachine,
   BundleSpec,
   BundleState,
-  SendsAtHome,
+  HomeSent,
+  SendsAtHomeSaid,
 } from "@some-ui/voice-capture"
 import {
   bundleMachine,
+  HOME_UNKNOWN,
   isPastDue,
   latestSend,
-  sendsAtHome,
+  sendsAtHomeSaid,
   weekSendKey,
 } from "@some-ui/voice-capture"
 
@@ -160,77 +162,26 @@ export const isClosed = (week: Pick<Week, "due">, at: string): boolean =>
 /** The shared week-send helpers, by the names this week's modules use. */
 export { latestSend, weekSendKey }
 
-/**
- * What home's own record of a week says was sent (`GET /rust-weeks/:id/record`'s
- * `sent`, RR30): a send at `at`; none; or nothing heard from home on it
- * (not asked, no answer, or an answer this phone can't read).
- */
-export type HomeWeekSent =
-  | { readonly kind: "sent"; readonly at: string }
-  | { readonly kind: "none" }
-  | { readonly kind: "unknown" }
-
-export const HOME_UNKNOWN: HomeWeekSent = { kind: "unknown" }
+/** What home's own record of a week says was sent (RR30). */
+export type HomeWeekSent = HomeSent
 
 /**
  * A week's sends as home has them, as far as this phone knows, and whether
- * home's own record said so (`homeSaid`): only then may a screen say a send
- * didn't reach home (RR30).
+ * home's own record said so (`homeSaid`, RR30).
  */
-export type WeekAtHome = SendsAtHome<WeekSent> & {
-  readonly homeSaid: boolean
-  /** When home's record names a send this phone didn't keep, its `at`. */
-  readonly elsewhere: string | null
-}
+export type WeekAtHome = SendsAtHomeSaid<WeekSent>
 
 /**
  * What home holds of `week` (the owner's call, C56): of the sends kept on
- * this phone, the latest by `at` home holds, and the latest made. Home's own
- * record (`home`, RR30) settles it where it has spoken: the send it names,
- * when this phone kept that send, or none. Otherwise what the link
- * remembers home took (`held`), which says nothing of a send it doesn't
- * remember, since that memory can be lost (a new pairing, say); with
- * `homeSaid` false, a screen shows no count of it and no send "late", and
- * it only names the takes whose words are asked for.
+ * this phone, the latest by `at` home holds, and the latest made, settled by
+ * home's own record where it spoke (`sendsAtHomeSaid`, RR30).
  */
 export const weekAtHome = (
   kept: ReadonlyArray<WeekSent>,
   week: Pick<Week, "id">,
   held: (sent: WeekSent) => boolean,
   home: HomeWeekSent = HOME_UNKNOWN
-): WeekAtHome => {
-  const remembered = sendsAtHome(kept, week.id, held)
-  if (home.kind === "none") {
-    return {
-      holds: null,
-      last: remembered.last,
-      homeSaid: true,
-      elsewhere: null,
-    }
-  }
-  if (home.kind === "sent") {
-    const named = kept.find(
-      (sent) => sent.week === week.id && sent.at === home.at
-    )
-    if (named !== undefined) {
-      return {
-        holds: named,
-        last: remembered.last,
-        homeSaid: true,
-        elsewhere: null,
-      }
-    }
-    // Home named another send: the link's memory of an older one is not
-    // what counted.
-    return {
-      holds: null,
-      last: remembered.last,
-      homeSaid: false,
-      elsewhere: home.at,
-    }
-  }
-  return { ...remembered, homeSaid: false, elsewhere: null }
-}
+): WeekAtHome => sendsAtHomeSaid(kept, week.id, held, home)
 
 /**
  * The week's spec. `decisions`, where home keeps them, reads the decision

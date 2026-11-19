@@ -26,6 +26,7 @@ import {
 } from "@/lib/interview-week/__tests__/fixture"
 import { CUE_SECONDS } from "@/lib/interview-week/cue"
 import { pastWeeks } from "@/lib/interview-week/past"
+import type { InterviewWeekPorts } from "@/lib/interview-week/runtime"
 import { readItem } from "@/lib/interview-week/spec"
 import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 import { RoutedInterview } from "@/components/jobs/interview/__tests__/routed"
@@ -74,12 +75,23 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-function open(week = WEEK_2, path?: string, past?: PastWeeksProps): void {
+function open(
+  week = WEEK_2,
+  path?: string,
+  past?: PastWeeksProps,
+  homeSent?: InterviewWeekPorts["homeSent"]
+): void {
   const { ports } = fakePorts({
     storage: inMemoryStorage(),
     week: { week, sha256: "a".repeat(64) },
   })
-  render(<RoutedInterview ports={() => ports} path={path} past={past} />)
+  render(
+    <RoutedInterview
+      ports={() => ({ ...ports, homeSent })}
+      path={path}
+      past={past}
+    />
+  )
 }
 
 const conflict = WEEK_2.questions[1]
@@ -320,10 +332,23 @@ describe("the interview week's pages on the phone (IW8)", () => {
 
   it("reads a closed week back, saying when home had no send (IWC1)", async () => {
     vi.setSystemTime(new Date("2026-11-23T12:00:00Z"))
-    open()
+    open(WEEK_2, undefined, undefined, () =>
+      Promise.resolve({ kind: "none" as const })
+    )
     await settle()
     screen.getByText(WORDS.closed.title(WEEK_2))
     screen.getByText(WORDS.closed.line(WEEK_2))
     screen.getByText(WORDS.closed.noSend)
+  })
+
+  it("says nothing of what home had when its record can't be read (RR30)", async () => {
+    // A reinstalled phone keeps no send of its own: only home can say.
+    vi.setSystemTime(new Date("2026-11-23T12:00:00Z"))
+    open(WEEK_2, undefined, undefined, () =>
+      Promise.resolve({ kind: "unknown" as const })
+    )
+    await settle()
+    screen.getByText(WORDS.closed.title(WEEK_2))
+    expect(screen.queryByText(WORDS.closed.noSend)).toBeNull()
   })
 })

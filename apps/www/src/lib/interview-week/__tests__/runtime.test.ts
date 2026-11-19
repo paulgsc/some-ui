@@ -8,6 +8,7 @@
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { inMemoryStorage } from "@some-ui/core-utils"
+import type { HomeSent } from "@some-ui/voice-capture"
 import type { SimulatedPattern } from "@some-ui/voice-capture/testing"
 import { SPEAKING } from "@some-ui/voice-capture/testing"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -15,9 +16,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { CUE_SECONDS } from "@/lib/interview-week/cue"
 import type { Prompter } from "@/lib/interview-week/prompter"
 import { NO_PROMPTER } from "@/lib/interview-week/prompter"
-import type { InterviewWeekRun } from "@/lib/interview-week/runtime"
+import type {
+  InterviewWeekPorts,
+  InterviewWeekRun,
+} from "@/lib/interview-week/runtime"
 import { createInterviewWeek } from "@/lib/interview-week/runtime"
-import type { InterviewSent } from "@/lib/interview-week/spec"
+import type { InterviewAtHome, InterviewSent } from "@/lib/interview-week/spec"
 import { interviewLadder, interviewSent } from "@/lib/interview-week/store"
 
 import { fakePorts } from "./fixture"
@@ -47,6 +51,7 @@ function phone(
   over: {
     now?: () => number
     homeHolds?: (sent: InterviewSent) => boolean
+    homeSent?: InterviewWeekPorts["homeSent"]
   } = {}
 ): Phone {
   const seen = new Set<(hidden: boolean) => void>()
@@ -505,5 +510,74 @@ describe("a question's ladder on the phone (IW8)", () => {
     on.run.dispatch({ type: "tap", item: "read:epic-2931" })
     await pass(CUE_SECONDS * 1000 + 3_000)
     expect(words()).toBe(0)
+  })
+})
+
+/**
+ * **RR30** (the interview's half; the claim is declared in
+ * `packages/ui/rust-rounds/src/lib/week-play/__tests__/runtime.test.ts`): a
+ * closed week says what home had only from home's own record of it.
+ */
+describe("a closed week reads home's own record (RR30)", () => {
+  /** A week sent, then opened closed with the link's memory lost, home saying `said`. */
+  async function closedWith(
+    said: (sentAt: string) => HomeSent | null
+  ): Promise<InterviewAtHome> {
+    const storage = inMemoryStorage()
+    const open = phone(storage)
+    open.run.dispatch({ type: "go", index: 0 })
+    await answer(open, "walk-me-through")
+    open.run.dispatch({ type: "review" })
+    open.run.dispatch({ type: "send" })
+    const at = interviewSent(storage).list()?.[0]?.at ?? ""
+    vi.setSystemTime(new Date("2026-11-23T09:00:00Z"))
+    const home = said(at)
+    const on = phone(storage, {
+      homeHolds: () => false,
+      homeSent:
+        home === null
+          ? undefined
+          : (): Promise<HomeSent> => Promise.resolve(home),
+    })
+    await pass()
+    return on.run.atHome.getSnapshot()
+  }
+
+  it("holds the send home's record names, though the link's memory lost it", async () => {
+    const atHome = await closedWith((at) => ({ kind: "sent", at }))
+    expect(atHome.homeSaid).toBe(true)
+    expect(atHome.holds).not.toBeNull()
+    expect(atHome.holds?.at).toBe(atHome.last?.at)
+  })
+
+  it("says home had none only on home's word", async () => {
+    const atHome = await closedWith(() => ({ kind: "none" }))
+    expect(atHome).toMatchObject({ holds: null, homeSaid: true })
+    expect(atHome.last).not.toBeNull()
+  })
+
+  it("names a send home holds that this phone didn't keep, and counts none", async () => {
+    const atHome = await closedWith(() => ({
+      kind: "sent",
+      at: "2026-11-21T23:59:00.000Z",
+    }))
+    expect(atHome).toMatchObject({
+      holds: null,
+      homeSaid: false,
+      elsewhere: "2026-11-21T23:59:00.000Z",
+    })
+    expect(atHome.last).not.toBeNull()
+  })
+
+  it("says nothing of home unheard, or with no port", async () => {
+    const unknown = (): HomeSent => ({ kind: "unknown" })
+    for (const said of [unknown, (): null => null]) {
+      const atHome = await closedWith(said)
+      expect(atHome).toMatchObject({
+        holds: null,
+        homeSaid: false,
+        elsewhere: null,
+      })
+    }
   })
 })
