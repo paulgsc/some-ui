@@ -304,8 +304,7 @@ export const INTERVIEW_WORDS = {
         "Its essay is written. Its video isn't made, and Renders shows what home is making.",
       failed: "Home couldn't finish its essay's video. Renders says why.",
       renders: "Open Renders",
-      expected:
-        "Home has no essay of it. An essay is written once its week has closed.",
+      expected: "Home lists no essay of it.",
     },
     tryAgain: "Ask home again",
   },

@@ -19,7 +19,7 @@
  *   names it nowhere (or couldn't be read). Home may never make that video
  *   (an essay it refused), so nothing is promised;
  * - **expected**: closed, and home lists no essay of it (none written yet,
- *   or one withdrawn). Home promises no
+ *   or one withdrawn, which home keeps but no longer lists). Home promises no
  *   day for an interview essay (paulgsc/server `feeds/renders.rs`, `coming`),
  *   so none is said.
  */

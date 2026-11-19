@@ -3,10 +3,11 @@ import { useEffect, useState, useSyncExternalStore } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 
-import { feedVideos } from "@/lib/call-videos"
+import { feedVideos, videosRefresher } from "@/lib/call-videos"
 import { phoneInterviews } from "@/lib/interview-week"
 import { ESSAY_FEED, pastWeeks } from "@/lib/interview-week/past"
 import { interviewSent } from "@/lib/interview-week/store"
+import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import { rendersQuery } from "@/lib/renders"
 import { browserLocalStorage } from "@/lib/tenant/storage"
 import { PastWeeks } from "@/components/jobs/interview/past"
@@ -25,8 +26,10 @@ const PhonePast = (): JSX.Element => {
     sent: interviewSent(browserLocalStorage).list() ?? [],
   }))
   const { list } = useSyncExternalStore(essays.subscribe, essays.getSnapshot)
+  // Read on open, and again on a drag down while on screen, as Episodes reads it.
   useEffect(() => {
     void essays.open()
+    return screenRefreshers.register(videosRefresher(ESSAY_FEED))
   }, [])
   const renders = useQuery(rendersQuery)
   const board = renders.data?.kind === "read" ? renders.data.board : null
