@@ -12,7 +12,10 @@ import { TALLOWBROOK_WEEK_FILE } from "@rust-rounds/lib/sample-week/tallowbrook"
 import {
   describeWeekProblem,
   isoWeekId,
+  oversizeWeek,
   readWeek,
+  WEEK_V1_MAX_BYTES,
+  WEEK_V2_MAX_BYTES,
 } from "@rust-rounds/lib/week-check"
 import { describe, expect, it } from "vitest"
 
@@ -311,5 +314,36 @@ describe("readWeek, a /2 week", () => {
       `${TB101}.academy[0].keywords: an exercise names at least one word it works on`,
       `${TB101}.academy[1].forks: an exercise builds toward at least one fork`,
     ])
+  })
+})
+
+/** What home keeps of a week file, by its bytes as the routine writes them (C700). */
+describe("oversizeWeek", () => {
+  /** `file` with its story padded so the whole file is `bytes` long. */
+  const sized = <T extends { story: string }>(file: T, bytes: number): T => {
+    const now = new TextEncoder().encode(
+      `${JSON.stringify(file, null, 2)}\n`
+    ).length
+    return { ...file, story: file.story + "x".repeat(bytes - now) }
+  }
+
+  it("keeps a /1 week up to 32 KiB and a /2 week up to 128 KiB", () => {
+    expect(
+      oversizeWeek(sized(QUILLMOSS_WEEK_FILE, WEEK_V1_MAX_BYTES))
+    ).toBeNull()
+    expect(
+      oversizeWeek(sized(TALLOWBROOK_WEEK_FILE, WEEK_V2_MAX_BYTES))
+    ).toBeNull()
+  })
+
+  it("refuses a byte more, saying the size and the ceiling", () => {
+    expect(
+      oversizeWeek(sized(QUILLMOSS_WEEK_FILE, WEEK_V1_MAX_BYTES + 1))?.why
+    ).toBe(
+      `the week's file is ${WEEK_V1_MAX_BYTES + 1} bytes; home keeps a some-ui.rust-week/1 week of at most ${WEEK_V1_MAX_BYTES}, so cut prose or exercises`
+    )
+    expect(
+      oversizeWeek(sized(TALLOWBROOK_WEEK_FILE, WEEK_V2_MAX_BYTES + 1))
+    ).not.toBeNull()
   })
 })

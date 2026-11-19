@@ -48,7 +48,11 @@ import type {
   Values,
 } from "@rust-rounds/lib/monday/values"
 import { ValuesSchema } from "@rust-rounds/lib/monday/values"
-import { describeWeekProblem, readWeek } from "@rust-rounds/lib/week-check"
+import {
+  describeWeekProblem,
+  oversizeWeek,
+  readWeek,
+} from "@rust-rounds/lib/week-check"
 import { assertNever, pacificDay } from "@some-ui/core-utils"
 import type { Essay, EssayFork, EssayPointAnswer } from "@some-ui/video-render"
 import {
@@ -550,9 +554,10 @@ function buildWeek(
       )
     }
   }
-  return problems.length > before
-    ? null
-    : { file: WeekV1Schema.parse(week), held: read.week }
+  const file = WeekV1Schema.parse(week)
+  const oversize = oversizeWeek(file)
+  if (oversize !== null) problems.push(`week: ${describeWeekProblem(oversize)}`)
+  return problems.length > before ? null : { file, held: read.week }
 }
 
 function describeRun(run: RustcRun): string {

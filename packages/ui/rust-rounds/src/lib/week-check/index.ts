@@ -314,6 +314,35 @@ export function readWeek(input: unknown): WeekReading {
   return problems.length === 0 ? { ok: true, week } : { ok: false, problems }
 }
 
+/** The most bytes home keeps of a `/1` week file (paulgsc/server `WEEK_CEILING`). */
+export const WEEK_V1_MAX_BYTES = 32 * 1024
+
+/** The most bytes home keeps of a `/2` week file (paulgsc/server `WEEK_V2_CEILING`; C700). */
+export const WEEK_V2_MAX_BYTES = 128 * 1024
+
+/**
+ * Why home would drop `file` for its size, or null: its bytes as the
+ * routine writes them (two-space indent, one trailing newline), against
+ * home's ceiling for its schema. Checked where the routine writes a week,
+ * not in `readWeek`, which also reads weeks home already kept, whose bytes
+ * as received are not their re-serialized ones.
+ */
+export function oversizeWeek(file: {
+  readonly schema: string
+}): WeekProblem | null {
+  const bytes = new TextEncoder().encode(
+    `${JSON.stringify(file, null, 2)}\n`
+  ).length
+  const most =
+    file.schema === WEEK_SCHEMA_V2 ? WEEK_V2_MAX_BYTES : WEEK_V1_MAX_BYTES
+  return bytes > most
+    ? {
+        at: "",
+        why: `the week's file is ${bytes} bytes; home keeps a ${file.schema} week of at most ${most}, so cut prose or exercises`,
+      }
+    : null
+}
+
 /** A problem as a line for the tutor. */
 export function describeWeekProblem(problem: WeekProblem): string {
   return problem.at === "" ? problem.why : `${problem.at}: ${problem.why}`
