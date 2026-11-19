@@ -1,4 +1,5 @@
 import type { JSX } from "react"
+import { useEffect } from "react"
 import { scenarioName } from "@some-ui/game-week"
 import type { Compartment, LibraryTake, TakeNames } from "@some-ui/soundbites"
 import {
@@ -6,11 +7,13 @@ import {
   keptIdeaStore,
   LIBRARY_WORDS,
   phoneProjectStore,
+  phoneSoundbiteKeeping,
   STUDIO_WORDS,
   TakeLibrary,
 } from "@some-ui/soundbites"
 import { createFileRoute, Link, notFound } from "@tanstack/react-router"
 
+import { keepSoundbites } from "@/lib/soundbite-keeping"
 import { noteOfTake } from "@/lib/take-about"
 import type { AboutStores } from "@/lib/take-about"
 import { takePorts } from "@/lib/take-library/ports"
@@ -72,6 +75,11 @@ const toEpisode = (take: LibraryTake): JSX.Element | null => {
 const KindPage = (): JSX.Element => {
   const { kind }: { kind: Compartment } = Route.useParams()
   const { about, name }: { about?: string; name?: string } = Route.useSearch()
+  // Soundbites not on home yet are among the takes: their store, which the
+  // soundbites' own page may not have handed in yet in this run.
+  useEffect(() => {
+    if (PORTS !== null) keepSoundbites(phoneSoundbiteKeeping())
+  }, [])
   return (
     <StudioPage heading={LIBRARY_WORDS.compartmentHeading(kind)} back="takes">
       {PORTS !== null && (

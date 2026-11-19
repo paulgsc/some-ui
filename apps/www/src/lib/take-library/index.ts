@@ -8,7 +8,8 @@
  *
  * And this phone's takes of every kind, as Takes reads them (TAKES20,
  * #3219): `LibraryOnPhone` over the recordings still here
- * (`recordingsOnPhone`, the same list My data reads) and the game bites home
+ * (`recordingsOnPhone`, the same list My data reads; the soundbites once
+ * Takes' route hands their store in) and the game bites home
  * holds (`lib/game-bites`), merged by `./model`'s `phoneTakesOf`, a bite
  * whose audio has left playing from home. Read again after each copy pass,
  * each change to the bites, and once the pairing record is read; a read
@@ -27,6 +28,7 @@ import {
   whenPlacesKnown,
 } from "@/lib/home-link/voice-copy"
 import { askWhileBusy } from "@/lib/home-link/while-busy"
+import { onSoundbitesKept } from "@/lib/soundbite-keeping"
 
 import { phoneTakesOf, readTakes } from "./model"
 
@@ -75,6 +77,8 @@ export function phoneOnlyTakes(): LibraryOnPhone {
           copyPasses.subscribe(read),
           phoneGameBites().subscribe(read),
           whenPlacesKnown(read),
+          // The soundbites' store, once a page hands it in.
+          onSoundbitesKept(read),
         ]
         read()
       }
