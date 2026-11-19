@@ -1,7 +1,7 @@
 /**
  * The teleprompter band's step (IW9, #3176) over its whole family: each
  * ordering of heard, quiet, paused and ended reads, and every gap between
- * reads, against the pace and the hold (C615, C616).
+ * reads, against the pace the reader set and the hold (C615, C616, C734).
  *
  * PB1 (promise): the band never moves the script back by itself. Family:
  * every place in the script a take can end at (each word read, a line
@@ -16,9 +16,12 @@ import { describe, expect, it } from "vitest"
 import type { Prompter, PrompterEvent } from "@/lib/interview-week/prompter"
 import {
   bandOf,
+  DEFAULT_PACE_WPM,
   HOLD_MS,
   NO_PROMPTER,
-  PACE_WPM,
+  PACE_RANGE,
+  PACE_STEP_WPM,
+  stepPace,
   stepPrompter,
   totalOf,
 } from "@/lib/interview-week/prompter"
@@ -29,12 +32,18 @@ const TOTAL = totalOf(LINES)
 const LOUD = 0.3
 const QUIET = 0.01
 
-const heard = (at: number, level = LOUD, answers = LINE): PrompterEvent => ({
+const heard = (
+  at: number,
+  level = LOUD,
+  answers = LINE,
+  pace = DEFAULT_PACE_WPM
+): PrompterEvent => ({
   type: "heard",
   answers,
   level,
   at,
   total: TOTAL,
+  pace,
 })
 
 const run = (events: ReadonlyArray<PrompterEvent>): Prompter =>
@@ -50,9 +59,23 @@ const reads = (from: number, to: number, level: number): Array<PrompterEvent> =>
   )
 
 describe("the teleprompter band's step (IW9)", () => {
-  it("moves at the pace while you speak", () => {
+  it("moves at the pace the reader set while you speak", () => {
     const state = run(reads(0, 1000, LOUD))
-    expect(wordsOf(state)).toBeCloseTo((1000 * PACE_WPM) / 60_000)
+    expect(wordsOf(state)).toBeCloseTo((1000 * DEFAULT_PACE_WPM) / 60_000)
+    const slow = PACE_RANGE.least
+    const set = run([heard(0, LOUD, LINE, slow), heard(200, LOUD, LINE, slow)])
+    expect(wordsOf(set)).toBeCloseTo((200 * slow) / 60_000)
+  })
+
+  it("steps the pace a step at a time, within its range (C734)", () => {
+    expect(stepPace(DEFAULT_PACE_WPM, "faster")).toBe(
+      DEFAULT_PACE_WPM + PACE_STEP_WPM
+    )
+    expect(stepPace(DEFAULT_PACE_WPM, "slower")).toBe(
+      DEFAULT_PACE_WPM - PACE_STEP_WPM
+    )
+    expect(stepPace(PACE_RANGE.most, "faster")).toBe(PACE_RANGE.most)
+    expect(stepPace(PACE_RANGE.least, "slower")).toBe(PACE_RANGE.least)
   })
 
   it("never moves before the voice is first heard, and says it waits for it", () => {

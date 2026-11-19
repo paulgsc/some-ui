@@ -18,7 +18,7 @@ import { ChevronLeft } from "lucide-react"
 
 import type { Rung, SayRung, Step } from "@/lib/interview-week/ladder"
 import { linesOf, stepsOf } from "@/lib/interview-week/ladder"
-import { bandOf } from "@/lib/interview-week/prompter"
+import { bandOf, PACE_RANGE } from "@/lib/interview-week/prompter"
 import {
   cardOf,
   isClosed,
@@ -304,7 +304,7 @@ export const Script = ({
   item: string
   seconds: number
 }): JSX.Element => {
-  const { prompter, snapshot, run, week } = held
+  const { prompter, snapshot, run, week, pace } = held
   const lines = linesOf(week, item)
   const answers = takeLine(week.id, item)
   const band = bandOf(prompter, answers, lines)
@@ -392,6 +392,31 @@ export const Script = ({
           </Button>
         )}
       </div>
+      {reading && (
+        <div className="flex items-center gap-2 px-4">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={pace <= PACE_RANGE.least}
+            onClick={() => run.setPace("slower")}
+          >
+            {WORDS.band.slower}
+          </Button>
+          <p className="text-muted-foreground min-w-0 flex-1 text-center text-xs">
+            {WORDS.band.pace(pace)}
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={pace >= PACE_RANGE.most}
+            onClick={() => run.setPace("faster")}
+          >
+            {WORDS.band.faster}
+          </Button>
+        </div>
+      )}
     </section>
   )
 }

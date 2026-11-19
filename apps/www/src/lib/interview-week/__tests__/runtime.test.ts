@@ -14,6 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { CUE_SECONDS } from "@/lib/interview-week/cue"
 import type { Prompter } from "@/lib/interview-week/prompter"
+import { DEFAULT_PACE_WPM } from "@/lib/interview-week/prompter"
 import type { InterviewWeekRun } from "@/lib/interview-week/runtime"
 import { createInterviewWeek } from "@/lib/interview-week/runtime"
 import type { InterviewSent } from "@/lib/interview-week/spec"
@@ -495,8 +496,9 @@ describe("a question's ladder on the phone (IW8)", () => {
     expect(band()).toMatchObject({ answers: "2026-w47:read:epic-2931" })
     await pass(3_000)
     // Spoken throughout: about the pace's words in three seconds.
-    expect(words()).toBeGreaterThan(5)
-    expect(words()).toBeLessThan(8)
+    const paced = (3 * DEFAULT_PACE_WPM) / 60
+    expect(words()).toBeGreaterThan(paced - 3)
+    expect(words()).toBeLessThan(paced + 1)
     on.run.dispatch({ type: "tap", item: "read:epic-2931" })
     await pass()
     // The take ended: the band stays where it left the script (PB1).
