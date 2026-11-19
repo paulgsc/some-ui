@@ -1,7 +1,6 @@
 import type { JSX } from "react"
-import { BrandMark } from "@some-ui/shared"
+import { BrandMark, CardLink, CardLinkBody } from "@some-ui/shared"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { ChevronRight } from "lucide-react"
 
 import { isOnMobileSurface } from "@/lib/app-surface"
 import { WINGS } from "@/lib/wings"
@@ -44,25 +43,19 @@ const Wings = (): JSX.Element => {
         {wings.map((wing) => {
           const Glyph = WING_GLYPHS[wing.id]
           return (
-            <Link
-              key={wing.id}
-              to={wing.home}
-              className="bg-card border-border/50 hover:bg-accent flex items-center gap-4 rounded-2xl border p-4 shadow-sm"
-            >
-              <span className="bg-brand/30 text-brand-foreground dark:text-brand flex size-12 shrink-0 items-center justify-center rounded-2xl">
-                {Glyph && <Glyph aria-hidden className="size-6" />}
-              </span>
-              <span className="flex min-w-0 flex-1 flex-col">
-                <span className="font-bold">{wing.name}</span>
-                <span className="text-muted-foreground text-sm">
-                  {wing.job}
+            <CardLink key={wing.id} asChild className="gap-4 p-4">
+              <Link to={wing.home}>
+                <span className="bg-brand/30 text-brand-foreground dark:text-brand flex size-12 shrink-0 items-center justify-center rounded-2xl">
+                  {Glyph && <Glyph aria-hidden className="size-6" />}
                 </span>
-              </span>
-              <ChevronRight
-                aria-hidden
-                className="text-muted-foreground size-5"
-              />
-            </Link>
+                <CardLinkBody className="gap-0">
+                  <span className="font-bold">{wing.name}</span>
+                  <span className="text-muted-foreground text-sm">
+                    {wing.job}
+                  </span>
+                </CardLinkBody>
+              </Link>
+            </CardLink>
           )
         })}
       </nav>

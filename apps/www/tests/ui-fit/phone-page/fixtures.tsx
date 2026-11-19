@@ -66,6 +66,7 @@ import { hearsOnStop, SOUNDBITES_FIXTURES } from "./soundbites"
 import { FIT_CUTS, FIT_PRIMER_TEXT } from "./studio-seed"
 import { TAKES_FIXTURES } from "./takes"
 import { TOPIK_FIXTURES } from "./topik"
+import { WINGS_FIXTURES } from "./wings"
 import { WWW_FIXTURES } from "./www"
 
 const AT = "2026-10-30T09:00:00.000Z"
@@ -407,6 +408,8 @@ export const PHONE_FIXTURES = {
   ...EPISODES_FIXTURES,
   /** Studio's index (`./journal`, `../journal-fit.spec.ts`). */
   ...JOURNAL_FIXTURES,
+  /** The foyer's wings and Practice Home (`./wings`, `../wings-fit.spec.ts`). */
+  ...WINGS_FIXTURES,
   /** Studio's Takes, its tiles and a compartment (`./takes`, `../takes-fit.spec.ts`). */
   ...TAKES_FIXTURES,
   /** Takes › Needs your attention (`./attention`, `../attention-fit.spec.ts`). */
