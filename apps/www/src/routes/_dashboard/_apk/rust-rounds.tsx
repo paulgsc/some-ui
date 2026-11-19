@@ -12,8 +12,8 @@ import {
   spanEventAtHome,
   spansOpenAtHome,
 } from "@/lib/home-link/rust-spans"
-import { askWeekRecord } from "@/lib/home-link/rust-week-record"
 import { askAudio } from "@/lib/home-link/voice-audio"
+import { askRustWeekRecord } from "@/lib/home-link/week-record"
 import { ideaHome } from "@/lib/idea-hearing"
 import {
   phoneRustRoundsPorts,
@@ -36,7 +36,7 @@ import {
  * whether home holds a send of the week, from what the link last heard
  * (`homeHoldsWeekSend`, RR22), never asking home, and what home last said
  * of the work tracker's spans (`lib/home-link/rust-spans`, RR26), home's
- * own record of the week (`askWeekRecord`, RR30, #3269) and a take of the
+ * own record of the week (`askRustWeekRecord`, RR30, #3269) and a take of the
  * opening's audio from home (`askAudio`, MD8's read). They are handed in here, not by `lib/rust-rounds`:
  * `lib/home-link`'s voice lane imports that module, so it can't import the
  * link back.
@@ -56,7 +56,7 @@ const PhoneRustRounds = (): JSX.Element => {
         homeWeek: homeWeekSpans,
         atHome: spanEventAtHome,
       }),
-      homeRecord: askWeekRecord,
+      homeRecord: askRustWeekRecord,
       homeAudio: askAudio,
     }),
   }))

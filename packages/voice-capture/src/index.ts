@@ -183,13 +183,15 @@ export type {
   BundleTakes,
 } from "./lib/bundle-runtime"
 export { bundleRuntime, NO_HOME } from "./lib/bundle-runtime"
-export type { SendsAtHome } from "./lib/bundle-store"
+export type { HomeSent, SendsAtHome, SendsAtHomeSaid } from "./lib/bundle-store"
 export {
   isPastDue,
   keptDrafts,
   keptRecords,
   latestSend,
+  HOME_UNKNOWN,
   sendsAtHome,
+  sendsAtHomeSaid,
   weekSendKey,
 } from "./lib/bundle-store"
 export type { HeardAnswer } from "./lib/heard"

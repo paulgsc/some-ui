@@ -54,7 +54,10 @@ export function phoneInterviews(): InterviewsStore {
  * null while it holds none; how home is reached is handed in by the route.
  */
 export function phoneInterviewPorts(
-  reach: Pick<InterviewWeekPorts, "home" | "homeHolds" | "onHomeHolds">
+  reach: Pick<
+    InterviewWeekPorts,
+    "home" | "homeHolds" | "onHomeHolds" | "homeSent"
+  >
 ): InterviewWeekPorts | null {
   const week = currentInterview(phoneInterviews().held().weeks, Date.now())
   return week === null

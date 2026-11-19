@@ -4,6 +4,7 @@ import { createFileRoute, Outlet } from "@tanstack/react-router"
 
 import { homeHoldsInterviewSend } from "@/lib/home-link/interview"
 import { onHomeHeard } from "@/lib/home-link/rust-kept"
+import { askWeekRecord } from "@/lib/home-link/week-record"
 import { ideaHome } from "@/lib/idea-hearing"
 import { phoneInterviewPorts } from "@/lib/interview-week"
 import {
@@ -19,8 +20,9 @@ import {
  *
  * Its ports reach home in one way only: whether home is in reach, read from
  * the voice lane's last run (`ideaHome`). Whether home holds a send is read
- * from what the link last heard (`homeHoldsInterviewSend`), never asked of
- * home. The Jobs lane brings the weeks and takes the sends
+ * from what the link last heard (`homeHoldsInterviewSend`), and a closed
+ * week asks home's own record what was sent (`askWeekRecord`, RR30), once
+ * each opening. The Jobs lane brings the weeks and takes the sends
  * (`lib/home-link/interview`).
  */
 const PhoneInterview = (): JSX.Element => {
@@ -30,6 +32,7 @@ const PhoneInterview = (): JSX.Element => {
       home: ideaHome,
       homeHolds: homeHoldsInterviewSend,
       onHomeHolds: onHomeHeard,
+      homeSent: (week) => askWeekRecord("interview-weeks", week),
     })
   )
   return ports === null ? (

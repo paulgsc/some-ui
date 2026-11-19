@@ -1,23 +1,29 @@
 /**
- * RR30: a closed week reads what home's own record says was sent
- * (`GET /rust-weeks/:id/record`), and says nothing of home it didn't hear.
- * #3269: a week with an opening reads which take each question plays.
+ * RR30: a closed week (Rust Rounds', the interview's) reads what home's own record says was sent
+ * (`GET /rust-weeks/:id/record`, `GET /interview-weeks/:id/record`), and says nothing of home it didn't hear.
+ * #3269: a Rust Rounds week with an opening reads which take each question plays.
  */
 import { describe, expect, it } from "vitest"
 
 import {
+  readOpening,
   readWeekRecord,
   weekRecordPath,
-} from "@/lib/home-link/rust-week-record"
+} from "@/lib/home-link/week-record"
 
 const ok = (body: unknown): { status: number; body: string } => ({
   status: 200,
   body: JSON.stringify(body),
 })
 
-describe("home's record of a Rust Rounds week (RR30)", () => {
+describe("home's record of a week (RR30)", () => {
   it("asks the week's record by its id", () => {
-    expect(weekRecordPath("2026-w46")).toBe("/rust-weeks/2026-w46/record")
+    expect(weekRecordPath("rust-weeks", "2026-w46")).toBe(
+      "/rust-weeks/2026-w46/record"
+    )
+    expect(weekRecordPath("interview-weeks", "2026-w47")).toBe(
+      "/interview-weeks/2026-w47/record"
+    )
   })
 
   it("reads the send home holds, or none", () => {
@@ -35,12 +41,8 @@ describe("home's record of a Rust Rounds week (RR30)", () => {
           tickets: [],
         })
       )
-    ).toEqual({
-      sent: { kind: "sent", at: "2026-11-14T19:59:07.012Z" },
-      // A home before the opening says nothing of it.
-      opening: { kind: "unknown" },
-    })
-    expect(readWeekRecord(ok({ closed: true, sent: null })).sent).toEqual({
+    ).toEqual({ kind: "sent", at: "2026-11-14T19:59:07.012Z" })
+    expect(readWeekRecord(ok({ closed: true, sent: null }))).toEqual({
       kind: "none",
     })
   })
@@ -54,7 +56,7 @@ describe("home's record of a Rust Rounds week (RR30)", () => {
       version: 1,
     }
     expect(
-      readWeekRecord(
+      readOpening(
         ok({
           sent: null,
           opening: [
@@ -63,7 +65,7 @@ describe("home's record of a Rust Rounds week (RR30)", () => {
             { ...take, n: 3, take: "note-q3", ms: null },
           ],
         })
-      ).opening
+      )
     ).toEqual({
       kind: "known",
       takes: [
@@ -73,14 +75,16 @@ describe("home's record of a Rust Rounds week (RR30)", () => {
       ],
     })
     // A home at the opening's epoch with no take of any question.
-    expect(readWeekRecord(ok({ sent: null, opening: [] })).opening).toEqual({
+    expect(readOpening(ok({ sent: null, opening: [] }))).toEqual({
       kind: "known",
       takes: [],
     })
-    // An opening that doesn't read is unheard; what was sent still reads.
-    expect(readWeekRecord(ok({ sent: null, opening: [{ n: "one" }] }))).toEqual(
-      { sent: { kind: "none" }, opening: { kind: "unknown" } }
-    )
+    // A home before the opening says nothing of it; one that doesn't read
+    // is unheard, and what was sent still reads.
+    const unread = ok({ sent: null, opening: [{ n: "one" }] })
+    expect(readOpening(ok({ sent: null }))).toEqual({ kind: "unknown" })
+    expect(readOpening(unread)).toEqual({ kind: "unknown" })
+    expect(readWeekRecord(unread)).toEqual({ kind: "none" })
   })
 
   it("hears nothing from any other answer, never none", () => {
@@ -92,10 +96,8 @@ describe("home's record of a Rust Rounds week (RR30)", () => {
       ok({}),
       ok({ sent: { at: 7 } }),
     ]) {
-      expect(readWeekRecord(odd)).toEqual({
-        sent: { kind: "unknown" },
-        opening: { kind: "unknown" },
-      })
+      expect(readWeekRecord(odd)).toEqual({ kind: "unknown" })
+      expect(readOpening(odd)).toEqual({ kind: "unknown" })
     }
   })
 })

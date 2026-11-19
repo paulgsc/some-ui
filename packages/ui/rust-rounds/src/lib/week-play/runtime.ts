@@ -43,6 +43,7 @@ import type {
 import {
   audioRead,
   bundleRuntime,
+  HOME_UNKNOWN,
   played,
   playEnded,
   QUIET_PLAY,
@@ -71,13 +72,7 @@ import type {
   WeekKind,
   WeekSent,
 } from "./spec"
-import {
-  HOME_UNKNOWN,
-  isClosed,
-  ticketLine,
-  weekAtHome,
-  weekMachine,
-} from "./spec"
+import { isClosed, ticketLine, weekAtHome, weekMachine } from "./spec"
 import {
   heardWords,
   ofWeek,
