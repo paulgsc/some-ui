@@ -1,5 +1,6 @@
 import {
   noHandWrittenMicrophone,
+  noLocalAudio,
   noLocalMicrophone,
   noLocalPrimitive,
   noLocalTakeWords,
@@ -15,7 +16,9 @@ import { defineConfig } from "eslint/config"
  * Outside it these flag the ways in ordinary code takes: opening the
  * microphone or running a take of its own (`no-local-microphone`), a
  * microphone written by hand in a test (`no-hand-written-microphone`), and a
- * screen's own copy of how a take ended (`no-local-take-words`). Code written
+ * screen's own copy of how a take ended (`no-local-take-words`), and audio
+ * played other than through the kit's player, which stops it when the page
+ * is hidden (`no-local-audio`, VC4). Code written
  * to get past them (`Reflect.get`, an aliased namespace or `vi`) is not.
  */
 export const oneOwnerPlugin = {
@@ -25,6 +28,7 @@ export const oneOwnerPlugin = {
     "no-local-microphone": noLocalMicrophone,
     "no-hand-written-microphone": noHandWrittenMicrophone,
     "no-local-take-words": noLocalTakeWords,
+    "no-local-audio": noLocalAudio,
   },
 }
 
@@ -100,6 +104,7 @@ export default defineConfig([
         "error",
         { owner: microphoneOwner.owner, leads: takeEndingLeads },
       ],
+      "one-owner/no-local-audio": ["error", { owner: microphoneOwner.owner }],
     },
   },
   {

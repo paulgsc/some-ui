@@ -59,6 +59,7 @@ export const useGameAudio = ({
 
     // Looping over a strongly typed tuple means 'event' is inherently an AudioEvent
     AUDIO_EVENTS.forEach((event) => {
+      // eslint-disable-next-line one-owner/no-local-audio -- the desktop web's game sounds (honeycomb is `web` only), short effects paused in this effect's cleanup; no recording plays here
       const audio = new Audio(AUDIO_FILES[event])
       audio.preload = "auto"
       map.set(event, audio)
