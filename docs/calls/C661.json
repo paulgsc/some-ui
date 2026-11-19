@@ -1,0 +1,15 @@
+{
+  "id": "C661",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": ["apps/www/src/lib/interview-week/past.ts"],
+  "chose": "An essay counts as ready once every part has its video, on home or out on YouTube; as being made while the feed lists it without a video or home's render board is making it or has it waiting; as couldn't finish when the board says so, opening Renders; and otherwise as expected, naming the day home's board gives for the next interview essay when that day falls after the week's deadline, else \"after the week closes, usually the Monday after\". While the feed is being read, can't be read until pairing, or got no answer, the page says only that.",
+  "options": [
+    "the feed decides ready and being made; the board adds being made, couldn't finish and the day it is expected",
+    "the board alone, as Renders shows it",
+    "fixed words for every week not yet ready"
+  ],
+  "gray": "What the owner is told about when an essay is coming; the board's day is for the feed's next essay, not a promise about this week's.",
+  "undo": "Change essayOf in past.ts and its words under INTERVIEW_WORDS.weeks.essay.",
+  "refs": ["#3226"]
+}
