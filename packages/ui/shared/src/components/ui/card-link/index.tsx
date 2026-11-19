@@ -1,5 +1,5 @@
 import type { ForwardedRef, HTMLAttributes, JSX, ReactNode } from "react"
-import { forwardRef } from "react"
+import { forwardRef, useCallback } from "react"
 import { Slot, Slottable } from "@radix-ui/react-slot"
 import { ChevronRight } from "lucide-react"
 
@@ -60,6 +60,11 @@ function setRef(
 /** A card that opens something: its words, then a chevron. */
 export const CardLink = forwardRef<HTMLElement, CardLinkProps>(
   ({ asChild = false, tone = "card", className, children, ...props }, ref) => {
+    // One callback for the `<a>`, so its ref isn't cleared on each render.
+    const own = useCallback(
+      (node: HTMLElement | null) => setRef(ref, node),
+      [ref]
+    )
     const look = cn(CARD_LINK_CLASS, tone === "brand" && BRAND_CLASS, className)
     const chevron = (
       <span
@@ -79,7 +84,7 @@ export const CardLink = forwardRef<HTMLElement, CardLinkProps>(
         {chevron}
       </Slot>
     ) : (
-      <a ref={(node) => setRef(ref, node)} className={look} {...props}>
+      <a ref={own} className={look} {...props}>
         {children}
         {chevron}
       </a>

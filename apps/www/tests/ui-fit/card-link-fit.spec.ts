@@ -3,10 +3,13 @@
  * theme? (#3234.) The owner: "if a card is a button that goes somewhere, it
  * should look like a button." On a question's page of the interview week
  * (the phone page's `interview` fixture), each rung is a `CardLink` and
- * "What to cover" is a plain card. Under each session theme, the card link's
- * outline, laid over the page, must stand off the page by `OUTLINE` and by
- * `MARGIN` more than the plain card's does, so it never reads as the same
- * card with a chevron.
+ * "What to cover" is a plain card. Under each session theme, each outline is
+ * laid over what it is painted on (the page, then the card's own top colour,
+ * `bg-card` for both: the link's gradient starts there), and the card link's
+ * must stand off the page by `OUTLINE`, and by `MARGIN` more than the plain
+ * card's, so it never reads as the same card with a chevron. The two numbers
+ * are where the first look (an outline at 25%) failed four of six themes and
+ * this one passes all six (C633).
  *
  * Run against a built phone page:
  *
@@ -69,16 +72,19 @@ async function outlines(
       }
       return "white"
     }
-    const link = document.querySelector("nav a.border-2")
+    // The rungs' nav holds only the rung links.
+    const link = document.querySelector("nav a")
     const plain = [...document.querySelectorAll("section")].find((s) =>
       s.textContent.startsWith("What to cover")
     )
     if (!link || !plain) throw new Error("no card link or plain card")
     const ground = groundOf(link.parentElement)
+    // A border is painted over its element's own background: the card's.
+    const card = getComputedStyle(plain).backgroundColor
     return {
       ground: paint([ground]),
-      link: paint([ground, getComputedStyle(link).borderTopColor]),
-      plain: paint([ground, getComputedStyle(plain).borderTopColor]),
+      link: paint([ground, card, getComputedStyle(link).borderTopColor]),
+      plain: paint([ground, card, getComputedStyle(plain).borderTopColor]),
     }
   })
 }
@@ -94,6 +100,8 @@ test.describe("a card that opens something stands out in every theme", () => {
     await page.goto(PAGE.url("interview"), { waitUntil: "load" })
     await page.getByRole("link", { name: /^Today's question/ }).click()
     await expect(page.getByText("What to cover")).toBeVisible()
+    // Off every card, so no rung is measured hovered.
+    await page.mouse.move(0, 0)
     const failures: Array<string> = []
     for (const theme of SESSION_THEMES) {
       // As the session controller does: the theme's classes on the root.

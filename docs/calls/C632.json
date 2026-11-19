@@ -9,7 +9,7 @@
     "rename it CardTap",
     "a second part for buttons"
   ],
-  "gray": "The owner ruled out a per-kind copy; whether the name should say link or tap is a naming call no check settles.",
+  "gray": "The owner ruled out a per-kind copy (2026-11-18, relayed on #3234: \"reuse, never a per-wing copy\"); whether the name should say link or tap is a naming call no check settles.",
   "undo": "Narrow CardLinkProps to anchors again, or rename the export.",
   "refs": ["#3234", "#3236"]
 }
