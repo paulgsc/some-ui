@@ -31,14 +31,33 @@ function frame(ink: string, ground: string, x: number): Buffer {
   return out
 }
 
-function ffmpeg(args: ReadonlyArray<string>, input: Buffer): Buffer {
-  const ran = spawnSync("ffmpeg", ["-v", "error", ...args], {
+// Bound (VP1): `spawnSync` blocks the event loop, so vitest's timeout below
+// is only read once a process returns and cannot end a hung one. Each
+// process is killed at this bound instead, and the case then fails. One
+// process takes about 50 ms idle.
+const PROCESS_TIMEOUT_MS = 5_000
+
+/** Runs `command`, failing the case if it errs, exits non-zero or outlives its bound. */
+function run(
+  command: string,
+  args: ReadonlyArray<string>,
+  input: Buffer
+): Buffer {
+  const ran = spawnSync(command, args, {
     input,
     maxBuffer: 1 << 24,
+    timeout: PROCESS_TIMEOUT_MS,
   })
-  if (ran.status !== 0) throw new Error(ran.stderr.toString())
+  if (ran.error) throw ran.error
+  if (ran.status !== 0)
+    throw new Error(
+      `${command} exited ${String(ran.status ?? ran.signal)}: ${ran.stderr.toString()}`
+    )
   return ran.stdout
 }
+
+const ffmpeg = (args: ReadonlyArray<string>, input: Buffer): Buffer =>
+  run("ffmpeg", ["-v", "error", ...args], input)
 
 /** The frame as the renderer encodes it, then as a player decodes it. */
 function roundTrip(raw: Buffer): { pixels: Buffer; tags: string } {
@@ -55,16 +74,16 @@ function roundTrip(raw: Buffer): { pixels: Buffer; tags: string } {
     ["-i", "-", "-vf", "format=rgb24", "-f", "rawvideo", "-"],
     encoded
   )
-  const probed = spawnSync(
+  const probed = run(
     "ffprobe",
     [
       ...["-v", "error", "-select_streams", "v:0", "-of", "csv=p=0"],
       ...["-show_entries", "stream=color_space,color_primaries,color_transfer"],
       "-",
     ],
-    { input: encoded }
+    encoded
   )
-  return { pixels, tags: probed.stdout.toString().trim() }
+  return { pixels, tags: probed.toString().trim() }
 }
 
 const pixelLuminance = (pixels: Buffer, x: number, y: number): number => {
@@ -93,7 +112,7 @@ const P = MOCHI_NIGHT
 // synchronous child processes (an x264 encode at `-preset medium`, a decode,
 // an ffprobe). The accent case runs 4 accents, so 24 processes: 1.06-1.13 s
 // on an idle machine, 5.3 s on a CI runner running every package's tests at
-// once (#3222, twice). The 30 s bound leaves about 25 times the idle cost,
+// once (#3222, twice). The 30 s bound leaves about 27 times the idle cost,
 // against the 5x a loaded runner has been seen to take.
 const ENCODE_TIMEOUT_MS = 30_000
 
