@@ -57,8 +57,10 @@ describe("pointsFit", () => {
     expect([...refused].sort()).toEqual(["beside", "best"])
   })
 
-  it("leaves two questions that wrap and one that doesn't their room, not three that wrap", () => {
+  it("leaves ROUTINE.md's budget its room: five one-line questions, or two that wrap with one that doesn't", () => {
     expect(pointsFit("TB-101", [WRAPS, WRAPS, SHORT])).toEqual([])
+    expect(pointsFit("TB-101", Array(5).fill(SHORT))).toEqual([])
+    expect(pointsFit("TB-101", Array(6).fill(SHORT))).not.toEqual([])
     expect(pointsFit("TB-101", Array(3).fill(WRAPS))).not.toEqual([])
   })
 })

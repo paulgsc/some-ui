@@ -229,7 +229,7 @@ deliberation screens). Both were in place before this section reached
   scenes, so `finish` refuses a ticket whose questions alone would run past
   the frame. The essay's point column holds about 30 characters a line, and
   a ticket's questions together about five such lines: five one-line
-  questions, or two that wrap with one that doesn't. Each is
+  questions, or two that wrap onto a second line with one that doesn't. Each is
   `{"question","options"}`: the question, and 2 to 6 options as an agent
   would recommend them, each
   `{"id","recommended","decision","why","model","cites"}`:
