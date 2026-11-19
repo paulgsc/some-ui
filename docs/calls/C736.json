@@ -1,0 +1,21 @@
+{
+  "id": "C736",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/monday/record.ts",
+    "packages/ui/rust-rounds/src/lib/monday/bundle.ts",
+    "packages/contract-harness/contracts/rust-kept.contract.ts",
+    "server:crates/db/rust_round/src/sent.rs",
+    "server:apps/servers/file_host/src/handlers/rust_week_record.rs",
+    "server:apps/servers/file_host/src/rust_essays.rs"
+  ],
+  "chose": "Each answer of Rust Rounds' opening is a voice note whose ref is `<week>:opening:<n>` (n 1 to 3), the week it was said in; a week's send names only the takes said that week, each with the opening version it was read under. Home resolves reuse once, when it writes the week's record: for each n, the newest kept take from that week or an earlier one whose version is the week's opening version, as `opening: [{n, take, recordedAt, week, version}]`. The essay's bundle and home's hand-over to the recorder both read that list, so a week with no new takes still opens on the whole conversation, and deleting a take falls back to the next older one.",
+  "options": [
+    "per-week refs, with home resolving the newest take of each answer",
+    "a standing ref (`opening:<n>`) shared by every week's take"
+  ],
+  "gray": "The owner asked that a recording be reused until re-recorded; no check or earlier decision settles whether that reuse is named in the ref or resolved by home. Per-week refs keep each take where it was said and keep the send's rule that a week sends only its own takes, at the cost of one resolver; the coordinator agreed.",
+  "undo": "Give the opening a standing ref, let a send carry a take from any week, and drop the resolver: the record's `opening` becomes the send's own list.",
+  "refs": ["#3269", "#2231"]
+}
