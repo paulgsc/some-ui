@@ -33,6 +33,7 @@
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*",
+    "@tanstack/react-router": "^1.170.16",
     "@types/react": "^19.0.4"
   },
   "repository": {

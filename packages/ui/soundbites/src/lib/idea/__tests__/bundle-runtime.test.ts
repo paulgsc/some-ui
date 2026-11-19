@@ -11,7 +11,11 @@ import { inMemoryStorage } from "@some-ui/core-utils"
 import type { BundleRuntime } from "@some-ui/voice-capture"
 import { ONE_TAKE } from "@some-ui/voice-capture"
 import type { SimulatedPattern } from "@some-ui/voice-capture/testing"
-import { simulatedPattern, SPEAKING } from "@some-ui/voice-capture/testing"
+import {
+  simulatedPage,
+  simulatedPattern,
+  SPEAKING,
+} from "@some-ui/voice-capture/testing"
 import { bundleTakesOf } from "@soundbites/fixtures"
 import type { IdeaBundleKind } from "@soundbites/lib/idea/bundle"
 import { bundleIdea, cardView } from "@soundbites/lib/idea/bundle"
@@ -64,7 +68,7 @@ function phone(
   const ideas = keptIdeaStore(() => storage)
   const takes = bundleTakesOf(simulated)
   const release = vi.fn(takes.release)
-  const watching = new Set<(hidden: boolean) => void>()
+  const visible = simulatedPage()
   const bundle = createIdeaBundle({
     takes: { ...takes, release },
     drafts,
@@ -73,18 +77,11 @@ function phone(
     home: { reach: () => "near", subscribe: () => (): void => undefined },
     now: Date.now,
     newId: (): string => `idea-${(ids += 1)}`,
-    onVisibility: (listener) => {
-      watching.add(listener)
-      listener(false)
-      return (): void => {
-        watching.delete(listener)
-      }
-    },
+    onVisibility: visible.watch,
   })
   const detach = bundle.attach()
-  const page = (hidden: boolean): void => {
-    for (const listener of watching) listener(hidden)
-  }
+  const page = (hidden: boolean): void =>
+    hidden ? visible.hide() : visible.show()
   return { bundle, simulated, drafts, ideas, release, page, detach }
 }
 
