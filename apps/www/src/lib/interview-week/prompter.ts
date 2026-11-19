@@ -110,7 +110,7 @@ export function stepPrompter(state: Prompter, event: PrompterEvent): Prompter {
 }
 
 /** What the band says about itself, as its words name it. */
-export type BandState = "moving" | "holding" | "paused"
+type BandState = "moving" | "holding" | "paused"
 
 export type Band = {
   /** The line read now: lit, at the band. */
@@ -119,7 +119,7 @@ export type Band = {
 }
 
 /** The number of words in `line`, as the band counts them. */
-export const wordsIn = (line: string): number =>
+const wordsIn = (line: string): number =>
   line.split(/\s+/u).filter((word) => word !== "").length
 
 /** Every word of `lines`. */
