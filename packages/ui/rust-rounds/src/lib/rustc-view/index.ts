@@ -473,3 +473,22 @@ export const RUSTC_GLYPHS = {
   spanless: "=",
   inserted: "+",
 } as const
+
+/** A message in stretches, each `ticked` one a backticked name kept with its ticks. */
+type TickedRun = { readonly text: string; readonly ticked: boolean }
+
+/**
+ * rustc's message as it printed it, split at its backticked names
+ * (`Vec<Ride>`) so they can be coloured; joining the runs gives `text` back.
+ * Not video-render's `codeSpans`: that lives with the essay's frame model,
+ * which the phone's build leaves out (`check:bundle-paths`, mobile).
+ */
+export function tickedRuns(text: string): ReadonlyArray<TickedRun> {
+  return text
+    .split(/(`[^`]+`)/)
+    .filter((piece) => piece !== "")
+    .map((piece) => ({
+      text: piece,
+      ticked: piece.length > 2 && piece.startsWith("`") && piece.endsWith("`"),
+    }))
+}

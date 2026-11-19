@@ -22,12 +22,12 @@ import {
   isWhole,
   printedLines,
   RUSTC_GLYPHS,
+  tickedRuns,
   toneOfLevel,
 } from "@rust-rounds/lib/rustc-view"
 import { cn } from "@some-ui/core-utils"
 import { CodeCard, codeSurface } from "@some-ui/shared"
 import type { Appearance } from "@some-ui/styles/theme"
-import { codeSpans } from "@some-ui/video-render"
 
 /** Printed text under its label. */
 const Labelled = ({
@@ -113,14 +113,14 @@ const Printout = ({
 /** rustc's words, its backticked names in the code colour, ticks kept. */
 const Said = ({ text }: { text: string }): JSX.Element => (
   <>
-    {codeSpans(text).map((span, at) =>
-      span.code ? (
+    {tickedRuns(text).map((run, at) =>
+      run.ticked ? (
         // eslint-disable-next-line react/no-array-index-key
         <span key={at} className="text-accent">
-          `{span.text}`
+          {run.text}
         </span>
       ) : (
-        span.text
+        run.text
       )
     )}
   </>

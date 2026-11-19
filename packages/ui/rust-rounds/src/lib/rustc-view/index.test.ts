@@ -10,6 +10,7 @@ import {
   diagnosticView,
   isWhole,
   printedLines,
+  tickedRuns,
 } from "@rust-rounds/lib/rustc-view"
 import {
   E0061,
@@ -367,5 +368,22 @@ describe("isWhole", () => {
       isWhole(diagnostics, `thread 'rustc' panicked\n${E0507.stderr}`)
     ).toBe(false)
     expect(isWhole(diagnostics.slice(0, 1), E0507.stderr)).toBe(false)
+  })
+})
+
+describe("tickedRuns", () => {
+  it("splits at backticked names and gives the message back whole", () => {
+    expect(tickedRuns("cannot move out of index of `Vec<Ride>` here")).toEqual([
+      { text: "cannot move out of index of ", ticked: false },
+      { text: "`Vec<Ride>`", ticked: true },
+      { text: " here", ticked: false },
+    ])
+    for (const text of ["`a` and `b`", "a lone ` tick", "``", "```"]) {
+      expect(
+        tickedRuns(text)
+          .map((run) => run.text)
+          .join("")
+      ).toBe(text)
+    }
   })
 })
