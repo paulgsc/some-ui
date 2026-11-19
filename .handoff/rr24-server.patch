@@ -1,0 +1,844 @@
+From 862864503e410cbd144955142d19a31330762a5c Mon Sep 17 00:00:00 2001
+From: claude <noreply@anthropic.com>
+Date: Thu, 19 Nov 2026 03:47:43 +0000
+Subject: [PATCH] feat(rust-rounds): keep a take per speak-to point, and judge
+ it by its point (RR24)
+
+A week's ticket is answered point by point (paulgsc/some-ui#3248, the
+owner's approval of the RR24 prototype, 2026-11-19): each speak-to point
+gets a take of its own, recorded, redone and let go on its own. The point
+is read from the take's ref, `<week>:<ticket>:<n>` from 1, never split
+from a take or guessed. A take of the whole ticket (`<week>:<ticket>`)
+stays valid for good and answers every point, judged as before.
+
+- voice: `is_rust_round_ref` takes `<week>:<ticket>:<n>` (n 1-99, no
+  leading zero); `about` names the point (`Detail::RustRound.point`).
+- week: each ticket's speak-to count (`TicketProgram.points`), read from
+  `speakTo`'s length, nothing tied to 3.
+- sent: `Answer.point`, optional, and absent from a phone before RR24; a
+  ticket is answered whole, point by point or both, each at most once, and
+  a point must be one of its ticket's.
+- record and the routine's index: `TicketRecord.points`, each point
+  answered on its own; `take` stays the whole ticket's.
+- essay: a point answered on its own is the essay's item `<ticket>.<n>`
+  (`tickets[i].points[j].answer`), played as `takes/<ticket>.<n>.<ext>`;
+  `against` holds it to the final as it does a ticket.
+- CONTRACT_EPOCH 19 -> 20 (the phone records per point only from it);
+  RENDER_FOLDERS_EPOCH 1 -> 2 (point takes in `takes/`).
+
+Refs paulgsc/some-ui#3248
+
+Change-Kind: story
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LDpdUK3j3unNMyPEirBokY
+---
+ apps/servers/file_host/src/contract.rs        |   8 +-
+ .../file_host/src/handlers/rust_rounds.rs     |   6 +-
+ .../src/handlers/rust_week_record.rs          |  46 ++++++-
+ .../file_host/src/mailbox/index/rust.rs       |  14 +-
+ apps/servers/file_host/src/rust_essays.rs     |   6 +-
+ crates/db/rust_round/src/essay.rs             | 129 ++++++++++++++++--
+ crates/db/rust_round/src/sent.rs              | 104 ++++++++++++--
+ crates/db/rust_round/src/week.rs              |  17 ++-
+ crates/db/voice/src/about.rs                  |  42 ++++--
+ crates/db/voice/src/lib.rs                    |  29 +++-
+ infra/docker/Dockerfile.server                |   2 +-
+ 11 files changed, 351 insertions(+), 52 deletions(-)
+
+diff --git a/apps/servers/file_host/src/contract.rs b/apps/servers/file_host/src/contract.rs
+index 82635d9..cd737ce 100644
+--- a/apps/servers/file_host/src/contract.rs
++++ b/apps/servers/file_host/src/contract.rs
+@@ -28,7 +28,7 @@
+ //! fails until the Dockerfile says the same.
+ 
+ /// This build's contract epoch. See the module doc for when it moves.
+-pub const CONTRACT_EPOCH: u32 = 19;
++pub const CONTRACT_EPOCH: u32 = 20;
+ 
+ /// The lowest epoch this build still serves. Raised when a client-breaking
+ /// route change lands; at most [`CONTRACT_EPOCH`].
+@@ -53,7 +53,11 @@ pub const OLDEST_SUPPORTED: u32 = 1;
+ /// Raise it by one whenever a folder, a file's name or a file's shape there
+ /// changes in a way render must know, and raise render's `requires` with
+ /// the render change that reads it.
+-pub const RENDER_FOLDERS_EPOCH: u32 = 1;
++///
++/// 2 (RR24, paulgsc/some-ui#3248): a Rust Rounds essay's `takes/` may hold a
++/// take of one speak-to point, `<ticket>.<n>.<ext>` (`rust_round_repo::essay::point_key`),
++/// beside a ticket's `<ticket>.<ext>`.
++pub const RENDER_FOLDERS_EPOCH: u32 = 2;
+ 
+ /// The route surface [`CONTRACT_EPOCH`] was last set for.
+ ///
+diff --git a/apps/servers/file_host/src/handlers/rust_rounds.rs b/apps/servers/file_host/src/handlers/rust_rounds.rs
+index 7ced77a..8942caa 100644
+--- a/apps/servers/file_host/src/handlers/rust_rounds.rs
++++ b/apps/servers/file_host/src/handlers/rust_rounds.rs
+@@ -907,9 +907,9 @@ mod tests {
+ 				"closed": true,
+ 				"sent": { "at": "2026-10-05T06:58:00.000Z", "receivedAt": "2026-10-05T06:58:01.000Z", "draft": false },
+ 				"tickets": [
+-					{ "ticket": "QM-1", "answered": true, "take": "2026-w40:QM-1", "recordedAt": "2026-10-01T18:00:00.000Z", "opens": 2 },
+-					{ "ticket": "QM-2", "answered": false, "take": null, "recordedAt": null, "opens": 0 },
+-					{ "ticket": "QM-3", "answered": false, "take": null, "recordedAt": null, "opens": 1 },
++					{ "ticket": "QM-1", "answered": true, "take": "2026-w40:QM-1", "recordedAt": "2026-10-01T18:00:00.000Z", "points": [], "opens": 2 },
++					{ "ticket": "QM-2", "answered": false, "take": null, "recordedAt": null, "points": [], "opens": 0 },
++					{ "ticket": "QM-3", "answered": false, "take": null, "recordedAt": null, "points": [], "opens": 1 },
+ 				],
+ 				"unanswered": ["QM-2", "QM-3"],
+ 				"pastes": [{ "at": "2026-10-02T09:00:00.000Z", "text": "error[E0502]: cannot borrow", "note": null, "receivedAt": record["pastes"][0]["receivedAt"] }],
+diff --git a/apps/servers/file_host/src/handlers/rust_week_record.rs b/apps/servers/file_host/src/handlers/rust_week_record.rs
+index 916c766..4d7c6d0 100644
+--- a/apps/servers/file_host/src/handlers/rust_week_record.rs
++++ b/apps/servers/file_host/src/handlers/rust_week_record.rs
+@@ -114,16 +114,34 @@ pub struct SentAt {
+ #[serde(rename_all = "camelCase")]
+ pub struct TicketRecord {
+ 	pub ticket: String,
++	/// Answered whole or by any of its points.
+ 	pub answered: bool,
+-	/// The take's voice-note id, when answered.
++	/// The take of the whole ticket's voice-note id, when one was sent: it
++	/// answers every point (a phone from before RR24 sends only these).
+ 	pub take: Option<String>,
+-	/// When the take was recorded, when answered.
++	/// When that take was recorded.
+ 	pub recorded_at: Option<String>,
++	/// Each point answered by a take of its own (RR24, paulgsc/some-ui#3248),
++	/// in the point's order; empty when none was. The point is the one the
++	/// take's `ref` names, never one inferred from what was said.
++	pub points: Vec<PointRecord>,
+ 	/// How many times its card was opened between the week's opening and its
+ 	/// deadline.
+ 	pub opens: i64,
+ }
+ 
++/// One speak-to point answered by a take of its own.
++#[derive(Debug, Serialize)]
++#[serde(rename_all = "camelCase")]
++pub struct PointRecord {
++	/// The point, counted from 1.
++	pub point: u8,
++	/// The take's voice-note id.
++	pub take: String,
++	/// When it was recorded.
++	pub recorded_at: String,
++}
++
+ /// `PUT /rust-round-log/sessions/:id`.
+ #[derive(Debug, Serialize)]
+ pub struct SessionWritten {
+@@ -335,15 +353,29 @@ pub(crate) async fn week_record(conn: &mut SqliteConnection, subject: &str, week
+ 	for (index, program) in week.programs.iter().enumerate() {
+ 		let place = ticket_place(index + 1);
+ 		let opened = opens.iter().find(|each| each.place == place).map_or(0, |each| each.left);
+-		let answer = answers.iter().find(|answer| answer.ticket == program.ticket);
+-		if answer.is_none() {
++		let whole = answers.iter().find(|answer| answer.ticket == program.ticket && answer.point.is_none());
++		let mut points: Vec<PointRecord> = answers
++			.iter()
++			.filter(|answer| answer.ticket == program.ticket)
++			.filter_map(|answer| {
++				answer.point.map(|point| PointRecord {
++					point,
++					take: answer.take.clone(),
++					recorded_at: answer.recorded_at.clone(),
++				})
++			})
++			.collect();
++		points.sort_by_key(|each| each.point);
++		let answered = whole.is_some() || !points.is_empty();
++		if !answered {
+ 			unanswered.push(program.ticket.clone());
+ 		}
+ 		tickets.push(TicketRecord {
+ 			ticket: program.ticket.clone(),
+-			answered: answer.is_some(),
+-			take: answer.map(|answer| answer.take.clone()),
+-			recorded_at: answer.map(|answer| answer.recorded_at.clone()),
++			answered,
++			take: whole.map(|answer| answer.take.clone()),
++			recorded_at: whole.map(|answer| answer.recorded_at.clone()),
++			points,
+ 			opens: opened,
+ 		});
+ 	}
+diff --git a/apps/servers/file_host/src/mailbox/index/rust.rs b/apps/servers/file_host/src/mailbox/index/rust.rs
+index 5ddd056..02a2552 100644
+--- a/apps/servers/file_host/src/mailbox/index/rust.rs
++++ b/apps/servers/file_host/src/mailbox/index/rust.rs
+@@ -6,6 +6,7 @@
+ //! `brief`), and home refuses one whose take or silence per ticket disagrees
+ //! with the week's final ([`rust_round_repo::essay::against`]). The routine
+ //! reads the final here: which take counted for each ticket at the deadline,
++//! and for each of its points answered on its own (RR24),
+ //! and the errors pasted in the week, which the next week is seeded from
+ //! (paulgsc/some-ui#2685).
+ //!
+@@ -201,7 +202,7 @@ pub(in crate::mailbox) async fn put_rust_index<T: MailboxTransport>(
+ #[cfg(test)]
+ mod tests {
+ 	use super::{fitted, rust_index};
+-	use crate::handlers::rust_week_record::{SentAt, TicketRecord, WeekRecord};
++	use crate::handlers::rust_week_record::{PointRecord, SentAt, TicketRecord, WeekRecord};
+ 	use crate::mailbox::pass::MAILBOX_BODY_CEILING;
+ 	use rust_round_repo::sent::StoredPaste;
+ 	use serde_json::{json, Value};
+@@ -223,6 +224,11 @@ mod tests {
+ 					answered: true,
+ 					take: Some(String::from("2026-w46:QM-1")),
+ 					recorded_at: Some(String::from("2026-11-12T17:00:00.000Z")),
++					points: vec![PointRecord {
++						point: 2,
++						take: String::from("2026-w46:QM-1:2"),
++						recorded_at: String::from("2026-11-12T17:30:00.000Z"),
++					}],
+ 					opens: 2,
+ 				},
+ 				TicketRecord {
+@@ -230,6 +236,7 @@ mod tests {
+ 					answered: false,
+ 					take: None,
+ 					recorded_at: None,
++					points: Vec::new(),
+ 					opens: 0,
+ 				},
+ 			],
+@@ -263,8 +270,9 @@ mod tests {
+ 					"closed": true,
+ 					"sent": { "at": "2026-11-12T18:00:00.000Z", "receivedAt": "2026-11-12T18:00:01.000Z", "draft": false },
+ 					"tickets": [
+-						{ "ticket": "QM-1", "answered": true, "take": "2026-w46:QM-1", "recordedAt": "2026-11-12T17:00:00.000Z", "opens": 2 },
+-						{ "ticket": "QM-2", "answered": false, "take": null, "recordedAt": null, "opens": 0 },
++						{ "ticket": "QM-1", "answered": true, "take": "2026-w46:QM-1", "recordedAt": "2026-11-12T17:00:00.000Z",
++							"points": [{ "point": 2, "take": "2026-w46:QM-1:2", "recordedAt": "2026-11-12T17:30:00.000Z" }], "opens": 2 },
++						{ "ticket": "QM-2", "answered": false, "take": null, "recordedAt": null, "points": [], "opens": 0 },
+ 					],
+ 					"unanswered": ["QM-2"],
+ 					"pastes": [{ "at": "2026-11-13T09:00:00.000Z", "text": "error[E0502]: cannot borrow", "note": null, "receivedAt": "2026-11-17T09:00:00.000Z" }],
+diff --git a/apps/servers/file_host/src/rust_essays.rs b/apps/servers/file_host/src/rust_essays.rs
+index bacaa3f..5dee415 100644
+--- a/apps/servers/file_host/src/rust_essays.rs
++++ b/apps/servers/file_host/src/rust_essays.rs
+@@ -290,7 +290,8 @@ async fn tidy_tick(db: &SqlitePool, kind: Kind, configured: Option<&str>) -> Res
+ /// given, once its week is final and the essay is that final's.
+ ///
+ /// Beside the essay go the takes it plays
+-/// (`<week>/takes/<ticket>.<webm|ogg|m4a>` and, when home heard its words,
++/// (`<week>/takes/<ticket>.<webm|ogg|m4a>`, or `<ticket>.<n>.<ext>` for a
++/// take of a ticket's point n (RR24), and, when home heard its words,
+ /// `<ticket>.words.json`).
+ ///
+ /// An essay refused is kept as `<week>.refused.log` in the status folder,
+@@ -521,7 +522,7 @@ async fn standing(conn: &mut sqlx::SqliteConnection, kind: Kind, subject: &str,
+ 	Ok(match kind {
+ 		Kind::RustRounds => rust_round_repo::sent::standing(conn, subject, week).await?.map(|stored| Standing {
+ 			draft: stored.draft,
+-			answers: stored.sent.answers.into_iter().map(|answer| (answer.ticket, answer.take)).collect(),
++			answers: rust_round_repo::essay::rust_answers(Some(&stored.sent)),
+ 			reads: Vec::new(),
+ 		}),
+ 		Kind::Interview => rust_round_repo::draft::standing::<rust_round_repo::interview::Sent>(conn, subject, week)
+@@ -1021,6 +1022,7 @@ mod tests {
+ 			at: String::from("2026-11-15T19:30:00.000Z"),
+ 			answers: vec![Answer {
+ 				ticket: String::from("QM-311"),
++				point: None,
+ 				take: String::from(TAKE),
+ 				recorded_at: String::from("2026-11-15T19:00:00.000Z"),
+ 			}],
+diff --git a/crates/db/rust_round/src/essay.rs b/crates/db/rust_round/src/essay.rs
+index 4947029..6d5cf6a 100644
+--- a/crates/db/rust_round/src/essay.rs
++++ b/crates/db/rust_round/src/essay.rs
+@@ -228,7 +228,13 @@ pub fn read_of(kind: Kind, body: &[u8]) -> Result<Essay, Vec<Problem>> {
+ 		problems.push((String::from("week.id"), words.week_why));
+ 	}
+ 	let tickets = match essay.get(words.items.field).and_then(Value::as_array) {
+-		Some(held) if !held.is_empty() => items(held, &words.items, &mut problems),
++		Some(held) if !held.is_empty() => {
++			let mut tickets = items(held, &words.items, &mut problems);
++			if kind == Kind::RustRounds {
++				tickets.extend(point_items(held, &mut problems));
++			}
++			tickets
++		}
+ 		_ => {
+ 			problems.push((String::from(words.items.field), words.no_items));
+ 			Vec::new()
+@@ -279,6 +285,47 @@ fn items(held: &[Value], list: &List, problems: &mut Vec<Problem>) -> Vec<(Strin
+ 	items
+ }
+ 
++/// Each speak-to point of a Rust Rounds essay's tickets that answers on its
++/// own (RR24, paulgsc/some-ui#3248): `tickets[i].points[j].answer.kind`, a
++/// `take` or a `silence`, as the item `<ticket>.<j+1>`. A point with no
++/// `answer` is judged within its ticket's, as before RR24.
++///
++/// The point is the one the take's `ref` names (`<week>:<ticket>:<n>`), as
++/// the week's final keeps it ([`rust_final`]): never one split from a take
++/// of the whole ticket.
++fn point_items(held: &[Value], problems: &mut Vec<Problem>) -> Vec<(String, Answered)> {
++	let mut items = Vec::new();
++	for (index, ticket) in held.iter().enumerate() {
++		let Some(key) = ticket.get("id").and_then(Value::as_str).filter(|key| is_ticket_key(key)) else {
++			continue;
++		};
++		let points = ticket.get("points").and_then(Value::as_array).map_or(&[][..], Vec::as_slice);
++		for (j, point) in points.iter().enumerate() {
++			let Some(answer) = point.get("answer") else {
++				continue;
++			};
++			let answered = match answer.get("kind").and_then(Value::as_str) {
++				Some("take") => Answered::Take,
++				Some("silence") => Answered::Silence,
++				_ => {
++					let at = String::from("tickets[") + &index.to_string() + "].points[" + &j.to_string() + "].answer.kind";
++					problems.push((at, "must be \"take\" or \"silence\""));
++					continue;
++				}
++			};
++			items.push((point_key(key, j + 1), answered));
++		}
++	}
++	items
++}
++
++/// A point's item and its take's name in the render's `takes/`, less its
++/// extension: `QM-311.2`.
++#[must_use]
++pub fn point_key(ticket: &str, point: usize) -> String {
++	String::from(ticket) + "." + &point.to_string()
++}
++
+ /// One take the essay plays: its item (a ticket, a question, a card read)
+ /// and the voice note that answers it.
+ #[derive(Debug, Clone, PartialEq, Eq)]
+@@ -359,11 +406,29 @@ fn check(items: &[(String, Answered)], sent: &[(&str, &str)], unheard: &[&str],
+ 	}
+ }
+ 
+-/// A Rust Rounds week's final, as [`against`] takes it.
++/// A Rust Rounds week's final answers, each keyed as an essay's item: the
++/// ticket for a take of the whole ticket, [`point_key`] for one of a point
++/// (RR24). [`Final::answers`] borrows them.
++#[must_use]
++pub fn rust_answers(sent: Option<&crate::sent::Sent>) -> Vec<(String, String)> {
++	sent.map_or_else(Vec::new, |sent| {
++		sent
++			.answers
++			.iter()
++			.map(|answer| {
++				let key = answer.point.map_or_else(|| answer.ticket.clone(), |point| point_key(&answer.ticket, usize::from(point)));
++				(key, answer.take.clone())
++			})
++			.collect()
++	})
++}
++
++/// A Rust Rounds week's final, as [`against`] takes it, from its keyed
++/// answers ([`rust_answers`]).
+ #[must_use]
+-pub fn rust_final(sent: Option<&crate::sent::Sent>) -> Final<'_> {
++pub fn rust_final(answers: &[(String, String)]) -> Final<'_> {
+ 	Final {
+-		answers: sent.map_or_else(Vec::new, |sent| sent.answers.iter().map(|answer| (answer.ticket.as_str(), answer.take.as_str())).collect()),
++		answers: answers.iter().map(|(item, take)| (item.as_str(), take.as_str())).collect(),
+ 		reads: Vec::new(),
+ 		unheard: Vec::new(),
+ 	}
+@@ -384,7 +449,7 @@ pub fn interview_final(sent: Option<&crate::interview::Sent>) -> Final<'_> {
+ 
+ #[cfg(test)]
+ mod tests {
+-	use super::{against, interview_final, mailbox_name, parse_name, parse_name_of, read, read_of, rust_final, Answered, Essay, Final, Played};
++	use super::{against, interview_final, mailbox_name, parse_name, parse_name_of, read, read_of, rust_answers, rust_final, Answered, Essay, Final, Played};
+ 	use crate::draft::Kind;
+ 	use crate::sent::{Answer, Sent};
+ 	use serde_json::json;
+@@ -412,6 +477,7 @@ mod tests {
+ 				.iter()
+ 				.map(|(ticket, take)| Answer {
+ 					ticket: (*ticket).to_owned(),
++					point: None,
+ 					take: (*take).to_owned(),
+ 					recorded_at: String::from("2026-11-15T19:00:00.000Z"),
+ 				})
+@@ -420,6 +486,51 @@ mod tests {
+ 		}
+ 	}
+ 
++	/// RR24 (paulgsc/some-ui#3248): a point answered by a take of its own is an
++	/// item of the essay, `<ticket>.<n>`, played as `takes/QM-311.2`, beside
++	/// the ticket's own answer; the essay must play every point take the final
++	/// names, and only those, as it does a ticket's.
++	#[test]
++	fn a_point_answered_on_its_own_is_played_as_its_own_take() {
++		let essay = json!({
++			"schema": "some-ui.rust-essay/1",
++			"week": { "id": "2026-w46" },
++			"tickets": [
++				{ "id": "QM-311", "answer": { "kind": "silence" },
++					"points": [{ "to": "why" }, { "to": "what", "answer": { "kind": "take" } }, { "to": "when", "answer": { "kind": "silence" } }] },
++				{ "id": "QM-312", "answer": { "kind": "take" }, "points": [{ "to": "a" }, { "to": "b" }] },
++			],
++		});
++		let read_essay = read(&body(&essay)).unwrap();
++		let mut week = sent(&[("QM-311", "point-2"), ("QM-312", "whole")]);
++		week.answers[0].point = Some(2);
++		let answers = rust_answers(Some(&week));
++		assert_eq!(answers[0], (String::from("QM-311.2"), String::from("point-2")));
++		assert_eq!(
++			against(&read_essay, &rust_final(&answers)).unwrap(),
++			[
++				Played {
++					ticket: String::from("QM-312"),
++					take: String::from("whole")
++				},
++				Played {
++					ticket: String::from("QM-311.2"),
++					take: String::from("point-2")
++				},
++			]
++		);
++		// An essay that leaves the point's take out, or calls it a silence, is refused.
++		let mut unplayed = essay.clone();
++		unplayed["tickets"][0]["points"][1].as_object_mut().unwrap().remove("answer");
++		assert_eq!(against(&read(&body(&unplayed)).unwrap(), &rust_final(&answers)).unwrap_err()[0].0, "tickets[QM-311.2]");
++		let mut silent = essay.clone();
++		silent["tickets"][0]["points"][1]["answer"]["kind"] = json!("silence");
++		assert!(against(&read(&body(&silent)).unwrap(), &rust_final(&answers)).is_err());
++		let mut bad = essay;
++		bad["tickets"][0]["points"][1]["answer"]["kind"] = json!("maybe");
++		assert_eq!(read(&body(&bad)).unwrap_err()[0].0, "tickets[0].points[1].answer.kind");
++	}
++
+ 	#[test]
+ 	fn an_essay_is_named_and_read_for_its_week_and_each_tickets_answer() {
+ 		assert_eq!(mailbox_name("2026-w46"), "rust-essay-2026-w46.json");
+@@ -460,13 +571,13 @@ mod tests {
+ 	fn an_essay_plays_exactly_the_takes_the_weeks_final_record_names() {
+ 		let essay = read(&body(&essay())).unwrap();
+ 		assert_eq!(
+-			against(&essay, &rust_final(Some(&sent(&[("QM-311", "note-1")])))).unwrap(),
++			against(&essay, &rust_final(&rust_answers(Some(&sent(&[("QM-311", "note-1")]))))).unwrap(),
+ 			[Played {
+ 				ticket: String::from("QM-311"),
+ 				take: String::from("note-1"),
+ 			}]
+ 		);
+-		let fields = |sent: Option<&Sent>| -> Vec<String> { against(&essay, &rust_final(sent)).unwrap_err().into_iter().map(|(field, _)| field).collect() };
++		let fields = |sent: Option<&Sent>| -> Vec<String> { against(&essay, &rust_final(&rust_answers(sent))).unwrap_err().into_iter().map(|(field, _)| field).collect() };
+ 		assert_eq!(fields(None), ["tickets[0].answer.kind"], "nothing sent: a take it plays is none of the owner's");
+ 		assert_eq!(
+ 			fields(Some(&sent(&[("QM-311", "n1"), ("QM-312", "n2")]))),
+@@ -485,10 +596,10 @@ mod tests {
+ 	#[test]
+ 	fn a_take_home_could_not_hear_may_be_a_silence() {
+ 		let essay = read(&body(&essay())).unwrap();
+-		let week = sent(&[("QM-311", "n1"), ("QM-312", "n2")]);
++		let week = rust_answers(Some(&sent(&[("QM-311", "n1"), ("QM-312", "n2")])));
+ 		let unheard = |takes: &[&'static str]| Final {
+ 			unheard: takes.to_vec(),
+-			..rust_final(Some(&week))
++			..rust_final(&week)
+ 		};
+ 		assert_eq!(
+ 			against(&essay, &unheard(&["n2"])).unwrap(),
+diff --git a/crates/db/rust_round/src/sent.rs b/crates/db/rust_round/src/sent.rs
+index 052a444..12e58e7 100644
+--- a/crates/db/rust_round/src/sent.rs
++++ b/crates/db/rust_round/src/sent.rs
+@@ -63,12 +63,18 @@ pub const SENT_TWICE: &str = "home holds another send of this week at this momen
+ /// [`RoundError::Rewritten`]'s words for a paste, for the `409`.
+ pub const PASTED_TWICE: &str = "home holds another paste at this moment of this week; a paste is kept as it was";
+ 
+-/// One ticket answered, as Send kept it.
++/// One ticket, or one of its speak-to points, answered, as Send kept it.
+ #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+ #[serde(rename_all = "camelCase", deny_unknown_fields)]
+ pub struct Answer {
+ 	/// The ticket's key, `QM-311`.
+ 	pub ticket: String,
++	/// The speak-to point the take answers, from 1 (RR24,
++	/// paulgsc/some-ui#3248), as the take's `ref` names it
++	/// (`<week>:<ticket>:<n>`); none for a take of the whole ticket, which
++	/// answers every point. A phone from before RR24 never sends it.
++	#[serde(default, skip_serializing_if = "Option::is_none")]
++	pub point: Option<u8>,
+ 	/// The take's voice-note id.
+ 	pub take: String,
+ 	/// When the take was recorded.
+@@ -84,7 +90,7 @@ pub struct Sent {
+ 	pub week: String,
+ 	/// When Send was pressed.
+ 	pub at: String,
+-	/// Each ticket said, in the week's order.
++	/// Each ticket, or point of one, said, in the week's order.
+ 	pub answers: Vec<Answer>,
+ 	/// The tickets not said, in the week's order.
+ 	pub passed: Vec<String>,
+@@ -188,8 +194,11 @@ pub(crate) fn sent_in_window(at: &str, window: Option<&Window>, now: &str, probl
+ /// not the format's shape (an unknown key included); a `week` that is not
+ /// `week`'s id, or is final (`now` is past its deadline); an `at` that is not an instant, is before the week opens,
+ /// after its deadline or ahead of `now`; no answer; a ticket the week
+-/// does not name, or named twice, or not named at all; a take that is not
+-/// a note id; a `recordedAt` that is not an instant or is after `at`.
++/// does not name, or named in both the answers and `passed`, twice in
++/// `passed`, or not at all; a ticket answered whole twice, or a point
++/// answered twice or that its ticket does not have (RR24: a ticket is
++/// answered whole, point by point, or both, at most once each); a take that
++/// is not a note id; a `recordedAt` that is not an instant or is after `at`.
+ pub fn read_sent(body: &[u8], week: &Week, now: &str) -> Result<Sent, Vec<Problem>> {
+ 	let value = json_object(body, SENT_CEILING, "is larger than 16 KiB")?;
+ 	let sent: Sent = serde_json::from_value(value).map_err(|_| vec![(String::from("body"), "must be a week sent: week, at, answers and passed, and nothing else")])?;
+@@ -202,18 +211,36 @@ pub fn read_sent(body: &[u8], week: &Week, now: &str) -> Result<Sent, Vec<Proble
+ 		problems.push((String::from("answers"), "must hold at least one ticket answered"));
+ 	}
+ 	let tickets: Vec<&str> = week.programs.iter().map(|program| program.ticket.as_str()).collect();
+-	let named: Vec<&str> = sent
++	if sent
+ 		.answers
+ 		.iter()
+ 		.map(|answer| answer.ticket.as_str())
+ 		.chain(sent.passed.iter().map(String::as_str))
+-		.collect();
+-	if named.iter().any(|ticket| !tickets.contains(ticket)) {
++		.any(|ticket| !tickets.contains(&ticket))
++	{
+ 		problems.push((String::from("answers"), "names a ticket the week does not have"));
+ 	}
+-	if tickets.iter().any(|ticket| named.iter().filter(|each| *each == ticket).count() != 1) {
++	// Each ticket is named once: passed, or answered (whole, by points, or
++	// both). An answer per point is one entry, so a ticket counts once.
++	let named_once = |ticket: &&str| {
++		let answered = sent.answers.iter().any(|answer| answer.ticket == *ticket);
++		let passed = sent.passed.iter().filter(|each| each.as_str() == *ticket).count();
++		usize::from(answered) + passed == 1
++	};
++	if !tickets.iter().all(named_once) {
+ 		problems.push((String::from("passed"), "with the answers, must name each of the week's tickets once"));
+ 	}
++	for (index, answer) in sent.answers.iter().enumerate() {
++		let at = String::from("answers[") + &index.to_string() + "]";
++		let earlier = sent.answers[..index].iter().any(|each| each.ticket == answer.ticket && each.point == answer.point);
++		if earlier {
++			problems.push((at.clone(), "answers a ticket, or a point of one, that an earlier answer does"));
++		}
++		let points = week.programs.iter().find(|program| program.ticket == answer.ticket).map_or(0, |program| program.points);
++		if answer.point.is_some_and(|point| point == 0 || usize::from(point) > points) {
++			problems.push((at + ".point", "must be one of the ticket's speak-to points, counted from 1"));
++		}
++	}
+ 	for (index, answer) in sent.answers.iter().enumerate() {
+ 		let at = |field: &str| String::from("answers[") + &index.to_string() + "]." + field;
+ 		if !is_note_id(&answer.take) {
+@@ -399,7 +426,7 @@ mod tests {
+ 	}
+ 
+ 	fn week() -> crate::week::Week {
+-		let ticket = |id: &str| json!({ "id": id, "program": "fn main() {}\n" });
++		let ticket = |id: &str| json!({ "id": id, "program": "fn main() {}\n", "speakTo": ["why", "what if", "when"] });
+ 		let body = json!({
+ 			"schema": "some-ui.rust-week/1", "id": "2026-w46",
+ 			"opens": "2026-11-09T00:00:00-08:00", "due": "2026-11-15T23:59:00-08:00",
+@@ -488,6 +515,65 @@ mod tests {
+ 		assert_eq!(refused(extra_in_answer), ["body"]);
+ 	}
+ 
++	/// RR24 (paulgsc/some-ui#3248): a ticket is answered whole, point by point
++	/// or both, each at most once, and a point is one of the ticket's own,
++	/// counted from 1. A send from before RR24, with no points, reads as it
++	/// always did, and a point is kept as sent.
++	#[test]
++	fn a_ticket_is_answered_whole_or_point_by_point() {
++		let week = week();
++		let at = "2026-11-15T20:00:00.000Z";
++		let answer = |ticket: &str, point: Option<u8>, take: &str| {
++			let mut answer = json!({ "ticket": ticket, "take": take, "recordedAt": "2026-11-12T20:00:00.000Z" });
++			if let Some(point) = point {
++				answer["point"] = json!(point);
++			}
++			answer
++		};
++		let body = |answers: Vec<Value>, passed: &[&str]| json!({ "week": "2026-w46", "at": at, "answers": answers, "passed": passed });
++		let read = |body: Value| read_sent(body.to_string().as_bytes(), &week, OPEN);
++		let mixed = read(body(
++			vec![
++				answer("QM-311", None, "whole-1"),
++				answer("QM-311", Some(2), "point-1-2"),
++				answer("QM-313", Some(1), "point-3-1"),
++				answer("QM-313", Some(3), "point-3-3"),
++			],
++			&["QM-312"],
++		))
++		.unwrap();
++		assert_eq!(
++			mixed.answers.iter().map(|each| (each.ticket.as_str(), each.point)).collect::<Vec<_>>(),
++			[("QM-311", None), ("QM-311", Some(2)), ("QM-313", Some(1)), ("QM-313", Some(3)),]
++		);
++		let kept = serde_json::to_value(&mixed).unwrap();
++		assert_eq!(kept["answers"][0].get("point"), None, "a take of the whole ticket keeps the old shape");
++		assert_eq!(kept["answers"][1]["point"], json!(2));
++		let refused = |body: Value| fields(&read(body).unwrap_err());
++		assert_eq!(
++			refused(body(vec![answer("QM-311", Some(2), "a"), answer("QM-311", Some(2), "b")], &["QM-312", "QM-313"])),
++			["answers[1]"],
++			"one take per point"
++		);
++		assert_eq!(
++			refused(body(vec![answer("QM-311", None, "a"), answer("QM-311", None, "b")], &["QM-312", "QM-313"])),
++			["answers[1]"],
++			"one take for the whole ticket"
++		);
++		for point in [0, 4] {
++			assert_eq!(
++				refused(body(vec![answer("QM-311", Some(point), "a")], &["QM-312", "QM-313"])),
++				["answers[0].point"],
++				"point {point} of three"
++			);
++		}
++		assert_eq!(
++			refused(body(vec![answer("QM-311", Some(1), "a")], &["QM-311", "QM-312", "QM-313"])),
++			["passed"],
++			"answered and passed"
++		);
++	}
++
+ 	/// Before the deadline a send replaces the draft when it is later, leaves
+ 	/// it when it is earlier, and is the same send at the draft's moment only
+ 	/// as the same value; each subject drafts its own.
+diff --git a/crates/db/rust_round/src/week.rs b/crates/db/rust_round/src/week.rs
+index 4f30dbf..1e60ef2 100644
+--- a/crates/db/rust_round/src/week.rs
++++ b/crates/db/rust_round/src/week.rs
+@@ -11,12 +11,15 @@
+ //! - its `schema` tag;
+ //! - its `id`, the ISO week it opens (`2026-w46`), which names it for good;
+ //! - its tickets' ids and every ticket's `program`, the bytes it records;
++//! - how many speak-to points each ticket has (`speakTo`'s length; RR24,
++//!   paulgsc/some-ui#3248), so a take of one point can be checked against
++//!   them. The points' words are never read here;
+ //! - its `opens` and `due`, when they are RFC 3339 instants, for the week's
+ //!   record (RR14, paulgsc/some-ui#2689). A week without them is still kept
+ //!   and recorded, and has no record.
+ //!
+-//! Anything else (the company, the story, the speak-to points, the tutor's
+-//! guess) is kept as it came and never read here.
++//! Anything else (the company, the story, the speak-to points' words, the
++//! tutor's guess) is kept as it came and never read here.
+ 
+ use crate::round::Problem;
+ use serde_json::Value;
+@@ -38,6 +41,9 @@ pub struct TicketProgram {
+ 	pub ticket: String,
+ 	/// `main.rs`, exactly.
+ 	pub source: String,
++	/// How many speak-to points the ticket has; 0 when it lists none, so no
++	/// take of a point can name one of its points.
++	pub points: usize,
+ }
+ 
+ /// A week home can keep: its id and its tickets' programs, in ticket order.
+@@ -119,6 +125,7 @@ pub fn read(body: &[u8]) -> Result<Week, Vec<Problem>> {
+ 				programs.push(TicketProgram {
+ 					ticket: key.to_owned(),
+ 					source: source.to_owned(),
++					points: ticket.get("speakTo").and_then(Value::as_array).map_or(0, Vec::len),
+ 				});
+ 			}
+ 		}
+@@ -196,11 +203,13 @@ mod tests {
+ 			vec![
+ 				TicketProgram {
+ 					ticket: String::from("QM-311"),
+-					source: String::from("fn main() {}\n")
++					source: String::from("fn main() {}\n"),
++					points: 2,
+ 				},
+ 				TicketProgram {
+ 					ticket: String::from("QM-312"),
+-					source: String::from("fn main() { x }\n")
++					source: String::from("fn main() { x }\n"),
++					points: 0,
+ 				},
+ 			]
+ 		);
+diff --git a/crates/db/voice/src/about.rs b/crates/db/voice/src/about.rs
+index d7bf816..06d97be 100644
+--- a/crates/db/voice/src/about.rs
++++ b/crates/db/voice/src/about.rs
+@@ -15,7 +15,7 @@
+ //! it was matched to, an interview answer's rung) is read for the page the
+ //! library answers ([`with_game`], [`with_rung`]).
+ 
+-use crate::{bite_match::Method, is_interview_ref, How, Mode, Of, VoiceError};
++use crate::{bite_match::Method, is_interview_ref, is_point, How, Mode, Of, VoiceError};
+ use rust_round_repo::{
+ 	interview::{Rung, Sent},
+ 	week::{is_ticket_key, is_week_id},
+@@ -70,6 +70,9 @@ pub enum Detail {
+ 	RustRound {
+ 		week: Option<String>,
+ 		ticket: Option<String>,
++		/// The speak-to point a ticket's take answers, from 1 (RR24); none
++		/// for a take of the whole ticket, a card or a paste.
++		point: Option<u8>,
+ 		round: Option<String>,
+ 		card: Option<String>,
+ 		pasted_at: Option<String>,
+@@ -249,27 +252,29 @@ fn studio(of_ref: &str, idea: Option<(String, String)>) -> About {
+ 	}
+ }
+ 
+-/// A Rust Rounds note: a week's ticket (`<week>:<ticket>`), a pasted error
+-/// (`<week>:PASTE:<at>`), or a card (`<round>:<card>[:<note>]`), as
+-/// [`crate::is_rust_round_ref`] reads them. Keyed by the week, or by the
+-/// round for a card.
++/// A Rust Rounds note: a week's ticket (`<week>:<ticket>`) or one of its
++/// points (`<week>:<ticket>:<n>`), a pasted error (`<week>:PASTE:<at>`), or a
++/// card (`<round>:<card>[:<note>]`), as [`crate::is_rust_round_ref`] reads
++/// them. Keyed by the week, or by the round for a card.
+ fn rust_round(of_ref: &str) -> About {
+ 	let mut parts = of_ref.splitn(3, ':');
+ 	let first = parts.next().unwrap_or_default();
+ 	let second = parts.next();
+ 	let rest = parts.next();
+ 	let owned = |part: &str| Some(part.to_owned());
+-	let (week, ticket, round, card, pasted_at) = match (is_week_id(first), second, rest) {
+-		(true, Some(PASTE), Some(at)) => (owned(first), None, None, None, owned(at)),
+-		(true, Some(ticket), None) if is_ticket_key(ticket) => (owned(first), owned(ticket), None, None, None),
+-		(_, Some(card), _) => (None, None, owned(first), owned(card), None),
+-		(_, None, _) => (None, None, None, None, None),
++	let (week, ticket, point, round, card, pasted_at) = match (is_week_id(first), second, rest) {
++		(true, Some(PASTE), Some(at)) => (owned(first), None, None, None, None, owned(at)),
++		(true, Some(ticket), None) if is_ticket_key(ticket) => (owned(first), owned(ticket), None, None, None, None),
++		(true, Some(ticket), Some(n)) if is_ticket_key(ticket) && is_point(n) => (owned(first), owned(ticket), n.parse().ok(), None, None, None),
++		(_, Some(card), _) => (None, None, None, owned(first), owned(card), None),
++		(_, None, _) => (None, None, None, None, None, None),
+ 	};
+ 	About {
+ 		key: key(Of::RustRound.as_str(), first),
+ 		detail: Detail::RustRound {
+ 			week,
+ 			ticket,
++			point,
+ 			round,
+ 			card,
+ 			pasted_at,
+@@ -479,11 +484,28 @@ mod tests {
+ 			Detail::RustRound {
+ 				week: Some("2026-w47".into()),
+ 				ticket: None,
++				point: None,
+ 				round: None,
+ 				card: None,
+ 				pasted_at: Some("2026-11-17T10:00:00.000Z".into())
+ 			}
+ 		);
++		// RR24: a take of one point names its ticket and point, read from the
++		// `ref`; a take of the whole ticket names no point.
++		for (of_ref, point) in [("2026-w47:QM-312:2", Some(2)), ("2026-w47:QM-312", None)] {
++			assert_eq!(
++				about(Of::RustRound, of_ref, None).detail,
++				Detail::RustRound {
++					week: Some("2026-w47".into()),
++					ticket: Some("QM-312".into()),
++					point,
++					round: None,
++					card: None,
++					pasted_at: None
++				},
++				"{of_ref}"
++			);
++		}
+ 		assert_eq!(
+ 			about(Of::Interview, "2026-w47:about-you", None).detail,
+ 			Detail::Interview {
+diff --git a/crates/db/voice/src/lib.rs b/crates/db/voice/src/lib.rs
+index b2412a4..ced9b9f 100644
+--- a/crates/db/voice/src/lib.rs
++++ b/crates/db/voice/src/lib.rs
+@@ -468,6 +468,11 @@ pub fn is_note_id(id: &str) -> bool {
+ ///   `2026-w46:QM-311`, the week's id and the ticket's key as a week has them
+ ///   (`rust_round_repo::week::is_week_id`, `is_ticket_key`). A ticket's key
+ ///   holds a capital and a slug never does, so no ref reads as both.
++/// - **A point of a ticket** (RR24, paulgsc/some-ui#3248): `<week>:<ticket>:<n>`,
++///   like `2026-w46:QM-311:2`, the take for the ticket's second speak-to
++///   point, counted from 1 ([`is_point`]). The point is read from the `ref`,
++///   never from what was said; `<week>:<ticket>` stays the take for the whole
++///   ticket.
+ /// - **An error pasted from the owner's own code** (RR13, paulgsc/some-ui#2504):
+ ///   `<week>:PASTE:<at>`, like `2026-w46:PASTE:2026-11-09T17:04:00.000Z`, the
+ ///   week it was pasted in and when, as an instant to the millisecond in UTC
+@@ -483,11 +488,21 @@ pub fn is_rust_round_ref(of_ref: &str) -> bool {
+ 	};
+ 	let rest = parts.next();
+ 	let card = is_slug(first) && is_slug(second) && rest.is_none_or(is_note_id);
+-	let ticket = is_week_id(first) && is_ticket_key(second) && rest.is_none();
++	let ticket = is_week_id(first) && is_ticket_key(second) && rest.is_none_or(is_point);
+ 	let paste = is_week_id(first) && second == PASTE && rest.is_some_and(|at| instant(at).as_deref() == Some(at));
+ 	card || ticket || paste
+ }
+ 
++/// A speak-to point's number in a ticket's `ref`: 1 to 99, no leading zero.
++///
++/// RR24. A week caps a ticket's points (`SPEAK_TO_MAX` in paulgsc/some-ui's
++/// week format); this is only the shape, which the week's send checks
++/// against the ticket's own count.
++#[must_use]
++pub fn is_point(part: &str) -> bool {
++	part.parse::<u8>().is_ok_and(|n| (1..=99).contains(&n)) && !part.starts_with('0') && part.bytes().all(|byte| byte.is_ascii_digit())
++}
++
+ /// Whether `of_ref` names what an [`Of::Interview`] take was said for
+ /// (paulgsc/some-ui#2932, IW1): a question of a week, or a teleprompter card
+ /// of a week read aloud (paulgsc/some-ui#2936).
+@@ -1987,7 +2002,8 @@ mod tests {
+ 
+ 	/// RR6 (paulgsc/some-ui#2237): a Rust Rounds note names its card, and on
+ 	/// a refine card the earlier note too; RR13 (#2688): or a week's ticket,
+-	/// or an error pasted in a week, by when (#2504).
++	/// or an error pasted in a week, by when (#2504); RR24 (#3248): or one
++	/// speak-to point of a ticket, by its number from 1.
+ 	/// Any other `ref` is refused for it, and its rule binds no other kind.
+ 	#[test]
+ 	fn a_rust_round_note_names_its_card_and_what_it_refines() {
+@@ -1998,6 +2014,9 @@ mod tests {
+ 			"2026-w46:QM-311",
+ 			"2026-w01:A-1",
+ 			"2026-w46:PASTE:2026-11-09T17:04:00.000Z",
++			"2026-w46:QM-311:1",
++			"2026-w46:QM-311:8",
++			"2026-w46:QM-311:99",
+ 		] {
+ 			assert!(is_rust_round_ref(good), "{good}");
+ 			let note = describe("r1", said_take("rust-round", good), b"said").unwrap();
+@@ -2014,6 +2033,12 @@ mod tests {
+ 			"r/c",
+ 			"2026-w54:QM-311",
+ 			"2026-w46:QM-311:note",
++			"2026-w46:QM-311:0",
++			"2026-w46:QM-311:01",
++			"2026-w46:QM-311:100",
++			"2026-w46:QM-311:+1",
++			"2026-w46:QM-311:1:2",
++			"2026-w46:QM-311:",
+ 			"2026-w46:QM311",
+ 			"w46:QM-311",
+ 			"2026-w46:PASTE",
+diff --git a/infra/docker/Dockerfile.server b/infra/docker/Dockerfile.server
+index 356a77d..1a821b3 100644
+--- a/infra/docker/Dockerfile.server
++++ b/infra/docker/Dockerfile.server
+@@ -200,5 +200,5 @@ LABEL org.opencontainers.image.title="${APP_NAME}" \
+ # The numbers are apps/servers/file_host/src/contract.rs's (contract,
+ # render-folders), ws-events' NATS_SUBJECTS_EPOCH and rust_rounds_wire's
+ # protocol::EPOCH; contract.rs's own test holds them equal.
+-LABEL io.paulgsc.provides="contract=19,render-folders=1" \
++LABEL io.paulgsc.provides="contract=20,render-folders=2" \
+       io.paulgsc.requires="nats-subjects=1,rust-runner-protocol=1"
+-- 
+2.43.0
+
