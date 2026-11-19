@@ -113,6 +113,12 @@ describe("the flow runtime", () => {
     refused.dispatch({ type: "leave", how: "onward" })
     expect(refused.getSnapshot()).toMatchObject({ at: 0, notice: "notKept" })
     refused.dispatch({ type: "noticeDismissed" })
+    // The look over opens all the same: the mark never gates it.
+    const review = flowOn(full)
+    const looks = createFlow({ ...review.ports, storage: full })
+    looks.dispatch({ type: "review" })
+    expect(review.ports.onReview).toHaveBeenCalledOnce()
+    expect(looks.getSnapshot().notice).toBe("notKept")
     refused.dispatch({ type: "pick", fork: 1, pick: { kind: "own" } })
     expect(refused.getSnapshot()).toMatchObject({
       picks: [],

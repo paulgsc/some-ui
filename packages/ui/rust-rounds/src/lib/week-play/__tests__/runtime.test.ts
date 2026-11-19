@@ -11,7 +11,7 @@ import type { RustWeek } from "@rust-rounds/lib/week-play/runtime"
 import { createRustWeek } from "@rust-rounds/lib/week-play/runtime"
 import type { WeekSent } from "@rust-rounds/lib/week-play/spec"
 import { weekAtHome } from "@rust-rounds/lib/week-play/spec"
-import { weeksSent } from "@rust-rounds/lib/week-play/store"
+import { weekMarks, weeksSent } from "@rust-rounds/lib/week-play/store"
 import type { HeldWeek } from "@rust-rounds/lib/weeks"
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { inMemoryStorage } from "@some-ui/core-utils"
@@ -298,25 +298,24 @@ describe("the week's openings (RR14)", () => {
     ])
   })
 
-  it("tells a ticket opened once, whichever of its points is on screen (RR24)", async () => {
+  it("tells a ticket opened once, whichever of its steps or points is on screen (RR24, RR25)", async () => {
     const on = phone(inMemoryStorage(), onConfirm(), { perPoint: true })
     const items = on.week.machine.spec.items
+    const flow = on.week.flow
     const [first, second] = QUILLMOSS_WEEK.tickets
-    if (first === undefined || second === undefined) throw new Error("tickets")
-    on.week.bundle.dispatch({
-      type: "go",
-      index: items.indexOf(`${first.id}:1`),
-    })
+    if (first === undefined || second === undefined || flow === null) {
+      throw new Error("tickets, and a flow")
+    }
+    // The flow moves the takes (RR25): its read, then its voice's points.
+    flow.dispatch({ type: "openTicket", ticket: first.id })
     await pass(5_000)
+    flow.dispatch({ type: "go", index: 1 })
     on.week.bundle.dispatch({
       type: "go",
       index: items.indexOf(`${first.id}:2`),
     })
     await pass(5_000)
-    on.week.bundle.dispatch({
-      type: "go",
-      index: items.indexOf(`${second.id}:1`),
-    })
+    flow.dispatch({ type: "go", index: 2 })
     await pass(5_000)
     on.week.bundle.dispatch({ type: "back" })
     on.detach()
@@ -516,5 +515,40 @@ describe("a take per point (RR24)", () => {
         .filter((answer) => answer.ticket === ticket)
         .map((answer) => answer.point ?? "whole")
     ).toEqual(["whole", 2])
+  })
+})
+
+/**
+ * The flow leads the takes (RR25): on the cards, the takes are on the
+ * ticket the flow shows, however the cards were entered, so a take and
+ * each opening told name that ticket.
+ */
+describe("the takes follow the flow", () => {
+  it("brings the takes back to the flow's ticket after the look over", async () => {
+    const storage = inMemoryStorage()
+    const first = QUILLMOSS_WEEK.tickets[0]?.id ?? ""
+    const second = QUILLMOSS_WEEK.tickets[1]?.id ?? ""
+    // The first ticket gone through: the week opens on the second.
+    weekMarks(storage).keep(() =>
+      (["read", "voice"] as const).map((step) => ({
+        week: QUILLMOSS_WEEK.id,
+        ticket: first,
+        step,
+        mark: "done" as const,
+        at: "2026-11-10T09:00:00Z",
+      }))
+    )
+    const on = phone(storage, onConfirm(), { perPoint: true })
+    await pass()
+    const flow = on.week.flow
+    if (flow === null) throw new Error("a flow where takes go by point")
+    const { steps, at } = flow.getSnapshot()
+    expect(steps[at]?.ticket).toBe(second)
+    on.week.bundle.dispatch({ type: "review" })
+    on.week.bundle.dispatch({ type: "back" })
+    const state = on.week.bundle.getSnapshot()
+    expect(state.screen).toBe("cards")
+    expect(on.week.machine.spec.items[state.index]).toBe(`${second}:1`)
+    on.detach()
   })
 })

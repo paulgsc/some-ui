@@ -441,12 +441,12 @@ describe("a ticket's flow (RR25, RR29)", () => {
     const voice = screen.getByRole("region", {
       name: `${first.id} · ${FLOW.steps.voice}`,
     })
-    const fork1 = within(voice).getByRole("radiogroup", {
+    const fork1 = within(voice).getByRole("group", {
       name: first.forks[0]?.question ?? "",
     })
-    fireEvent.click(within(fork1).getAllByRole("radio")[1]!)
-    expect(within(fork1).getAllByRole("radio")[1]).toHaveAttribute(
-      "aria-checked",
+    fireEvent.click(within(fork1).getAllByRole("button")[1]!)
+    expect(within(fork1).getAllByRole("button")[1]).toHaveAttribute(
+      "aria-pressed",
       "true"
     )
     expect(

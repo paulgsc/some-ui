@@ -69,13 +69,13 @@ export type FlowPagesProps = {
 }
 
 /** "1 · 2", the forks an exercise builds toward. */
-const forksOf = (exercise: Exercise): string => exercise.forks.join(" · ")
+const forksOf = (exercise: Exercise): string => exercise.forks.join(FLOW.dot)
 
 /** The options an exercise tests, said: "fork 1's option B and fork 2's option A". */
 const testsOf = (exercise: Exercise): string =>
   exercise.tests
     .map(({ fork, option }) => FLOW.academy.option(fork, option))
-    .join(" and ")
+    .join(FLOW.academy.and)
 
 /** The week's words, each backticked name drawn as code, without its ticks. */
 const Ticked = ({ text }: { text: string }): JSX.Element => (
@@ -175,7 +175,8 @@ const Forks = ({ ticket }: { ticket: Ticket }): JSX.Element => (
                     {FLOW.read.recommended}
                   </span>
                 )}
-                <span aria-label={FLOW.read.cites}>
+                <span>
+                  <span className="sr-only">{FLOW.read.cites} </span>
                   <Ids ids={option.cites} />
                 </span>
               </p>
@@ -344,7 +345,10 @@ const ExercisePage = ({
         {FLOW.exercise.back}
       </Button>
       <p className="text-muted-foreground text-xs font-semibold">
-        {`${FLOW.exercise.head(ticket.id, n, ticket.academy.length)} · ${FLOW.exercise.toward(forksOf(exercise))}`}
+        {[
+          FLOW.exercise.head(ticket.id, n, ticket.academy.length),
+          FLOW.exercise.toward(forksOf(exercise)),
+        ].join(FLOW.dot)}
       </p>
       <h3 className="text-xl font-extrabold text-balance">
         <Ticked text={exercise.title} />
@@ -461,7 +465,7 @@ const VoicePage = (
         : picked.kind === "own"
           ? FLOW.voice.ownPick
           : FLOW.voice.pick(picked.option)
-    return `${head} · ${said(n) ? FLOW.voice.said : FLOW.voice.notSaid}`
+    return [head, said(n) ? FLOW.voice.said : FLOW.voice.notSaid].join(FLOW.dot)
   }
   const mine = ticket.forks.filter(
     (fork, i) =>
@@ -625,7 +629,7 @@ export const FlowPages = (props: FlowPagesProps): JSX.Element | null => {
           />
         )}
       </section>
-      {!recording && (
+      {!recording && view.exercise === null && (
         <PageControls
           page={at}
           pageCount={steps.length}

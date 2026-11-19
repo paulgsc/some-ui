@@ -183,9 +183,10 @@ export function createFlow(ports: FlowPorts): FlowRuntime {
         return
       }
       case "review": {
+        // The look over opens whether or not the mark could be kept: the
+        // mark is the record of leaving, never a gate on it.
         const left = leaving("onward")
-        if (left === null) return
-        set({ ...state, marks: left.marks })
+        if (left !== null) set({ ...state, marks: left.marks })
         ports.onReview()
         return
       }

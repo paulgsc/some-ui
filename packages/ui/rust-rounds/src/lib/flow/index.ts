@@ -165,7 +165,8 @@ export type Worked = {
  * and the line moves on.
  *
  * - **Read**, onward: read is done, on to the next step. `toVoice` passes
- *   the academy by too (skipped), straight to the ticket's voice.
+ *   the academy by too (skipped), straight to the ticket's voice, unless it
+ *   was worked (an exercise ticked) or marked already.
  * - **Academy**: done with any exercise ticked, else skipped; on to voice.
  * - **Voice**: done with any take said, else skipped; on to where the next
  *   ticket opens, or nowhere after the last.
@@ -197,7 +198,14 @@ export function leave(
     case "read": {
       const read = put(marks, "read", "done")
       if (how === "toVoice" && voice !== -1) {
-        return { marks: put(read, "academy", "skipped"), to: voice }
+        // An academy already worked, or marked, keeps what it has.
+        const academy = { ticket: step.ticket, step: "academy" as const }
+        const untouched =
+          worked.ticked === 0 && stepStanding(read, academy) === "open"
+        return {
+          marks: untouched ? put(read, "academy", "skipped") : read,
+          to: voice,
+        }
       }
       return { marks: read, to: Math.min(from + 1, steps.length - 1) }
     }

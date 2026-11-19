@@ -138,6 +138,17 @@ describe("leaving a step", () => {
     expect(plain.to).toBe(1)
   })
 
+  it("leaves an academy worked or marked as it is when the read skips to voice", () => {
+    const worked = leave(steps, [], 0, "toVoice", some, AT)
+    expect(kinds(worked.marks)).toEqual(["TB-101:read:done"])
+    expect(worked.to).toBe(2)
+    const gone = [at({ ticket: "TB-101", step: "academy" }, "done")]
+    expect(kinds(leave(steps, gone, 0, "toVoice", none, AT).marks)).toEqual([
+      "TB-101:academy:done",
+      "TB-101:read:done",
+    ])
+  })
+
   it("marks the academy by whether an exercise was ticked", () => {
     expect(kinds(leave(steps, [], 1, "onward", none, AT).marks)).toEqual([
       "TB-101:academy:skipped",

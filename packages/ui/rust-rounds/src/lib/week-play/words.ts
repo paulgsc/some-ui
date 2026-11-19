@@ -253,6 +253,8 @@ export const WEEK_WORDS = {
   flow: {
     /** What PageControls pages, for assistive tech. */
     paged: "steps",
+    /** Between the parts of one line: "Exercise 1 · builds toward forks 1 · 2". */
+    dot: " · ",
     /** The step row. */
     steps: {
       read: "Read",
@@ -277,7 +279,7 @@ export const WEEK_WORDS = {
         `${k} options. Not every option is listed, and the recommended one isn't always best.`,
       recommended: "Recommended",
       restsOn: "Rests on:",
-      cites: "Trades on",
+      cites: "Trades on:",
       toAcademy: "On to the academy",
       toDecisions: "On to your decisions",
       toVoice: "On to voice",
@@ -291,6 +293,8 @@ export const WEEK_WORDS = {
       /** One option an exercise tests: "fork 1's option B". */
       option: (fork: number, option: string): string =>
         `fork ${fork}'s option ${option}`,
+      /** Between the options an exercise tests. */
+      and: " and ",
       atDesk: "Worked at your desk",
       notYet: "Not yet",
       onward: "On to your decisions",

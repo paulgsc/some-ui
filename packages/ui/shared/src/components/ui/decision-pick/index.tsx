@@ -13,7 +13,8 @@ import { cn } from "../../../lib/utils"
  * Shared with Interview week's decision drills (IW13, #3181), which check a
  * pick at once against what main chose; Rust Rounds checks it after the
  * deadline against the week's best fit. The host holds the pick as data and
- * passes it back in: this draws it and forwards taps, nothing more.
+ * passes it back in: this draws it and forwards taps, nothing more. Each
+ * option is a button, pressed while picked, in a group named for the fork.
  */
 
 /** An option as listed: its id ("A"), what it would do, and whether it is the recommended one. */
@@ -80,7 +81,7 @@ export const DecisionPick = ({
 }: DecisionPickProps): JSX.Element => (
   <div className="flex flex-col gap-2">
     <div
-      role="radiogroup"
+      role="group"
       aria-label={words.label}
       className="flex flex-col gap-1.5"
     >
@@ -90,8 +91,7 @@ export const DecisionPick = ({
           <button
             key={option.id}
             type="button"
-            role="radio"
-            aria-checked={on}
+            aria-pressed={on}
             disabled={disabled}
             onClick={() => onPick({ kind: "option", option: option.id })}
             className={rowClass(on)}
@@ -110,8 +110,7 @@ export const DecisionPick = ({
       })}
       <button
         type="button"
-        role="radio"
-        aria-checked={isPicked(picked, null)}
+        aria-pressed={isPicked(picked, null)}
         disabled={disabled}
         onClick={() => onPick({ kind: "own" })}
         className={rowClass(isPicked(picked, null))}

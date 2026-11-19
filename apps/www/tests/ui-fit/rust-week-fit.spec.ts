@@ -78,9 +78,10 @@ test.describe("a week's flow fits, step by step", () => {
       await page.getByRole("button", { name: "On to your decisions" }).click()
       const voice = page.getByRole("region", { name: "TB-101 · Voice" })
       await expect(voice).toBeVisible()
-      await voice.getByRole("radio").nth(1).click()
-      await expect(voice.getByRole("radio").nth(1)).toHaveAttribute(
-        "aria-checked",
+      const fork = voice.getByRole("group").first()
+      await fork.getByRole("button").nth(1).click()
+      await expect(fork.getByRole("button").nth(1)).toHaveAttribute(
+        "aria-pressed",
         "true"
       )
       await expectFitsPhone(page, "voice, a fork picked")

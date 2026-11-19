@@ -119,6 +119,18 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
     const point = machine.spec.items.indexOf(pointItem(ticket, 1))
     return point === -1 ? machine.spec.items.indexOf(ticket) : point
   }
+  /**
+   * Puts the takes on `ticket` (the flow's, on screen) where they are on
+   * another, and enters the cards from the brief. The flow leads: the
+   * takes never move it.
+   */
+  const follow = (ticket: string): void => {
+    const state = bundle.getSnapshot()
+    const on = itemOf(machine.spec.items[state.index] ?? "").ticket
+    if (on === ticket && state.screen === "cards") return
+    const index = firstItem(ticket)
+    if (index !== -1) bundle.dispatch({ type: "go", index })
+  }
   const flow = ports.perPoint
     ? createFlow({
         week,
@@ -136,13 +148,7 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
           ].some((item) => machine.answered(state, item) === "said")
         },
         // The takes follow the ticket on screen, so its voice opens on it.
-        onTicket: (ticket) => {
-          const state = bundle.getSnapshot()
-          const on = itemOf(machine.spec.items[state.index] ?? "").ticket
-          if (on === ticket && state.screen === "cards") return
-          const index = firstItem(ticket)
-          if (index !== -1) bundle.dispatch({ type: "go", index })
-        },
+        onTicket: (ticket) => follow(ticket),
         onReview: () => bundle.dispatch({ type: "review" }),
       })
     : null
@@ -269,7 +275,16 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
       const stopHeld = ports.onHomeHolds(() => lookHome(true))
       void askSent()
       const stopOpens = watchOpens()
+      // On the cards, the takes stay on the flow's ticket: back from the
+      // look over, or a take's Later that moved them on, comes back to it.
+      const stopFollow = bundle.subscribe(() => {
+        if (flow === null || bundle.getSnapshot().screen !== "cards") return
+        const { steps, at } = flow.getSnapshot()
+        const ticket = steps[at]?.ticket
+        if (ticket !== undefined) follow(ticket)
+      })
       return (): void => {
+        stopFollow()
         stopOpens()
         stopHeld()
         stopHome()
