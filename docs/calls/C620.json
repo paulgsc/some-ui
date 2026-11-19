@@ -1,0 +1,15 @@
+{
+  "id": "C620",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": ["docs/ui-studies/interview-cold-read.md"],
+  "chose": "The cold read runs three fresh-context readers an arm, two shown every page and one shown the first page alone, all given the same six questions and scored against a rubric fixed before any answer was read.",
+  "options": [
+    "three readers an arm: two every page, one first page only",
+    "two readers an arm, every page",
+    "four or more an arm"
+  ],
+  "gray": "The owner asked for at least four blind readers as an A/B; how to split them, and whether to test the first page alone, no earlier decision sets.",
+  "undo": "Run more readers against the same screens and questions, and rescore.",
+  "refs": ["#2931", "#3197"]
+}
