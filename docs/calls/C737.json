@@ -14,8 +14,7 @@
     "the routine writes the set once, when none exists, and copies it after",
     "the owner edits the set on the phone"
   ],
-  "gray": "The owner said the opening is a standing intro the routine doesn't rewrite weekly, and left how the set changes open; the coordinator agreed the checked-in set, and the owner approves its words. It moves C733's last step: the routine no longer writes an opening, it only carries the standing set; C733's split into two parts stands.",
+  "gray": "The owner said the opening is a standing intro the routine doesn't rewrite weekly, and left how the set changes open; the coordinator agreed the checked-in set, and the owner approves its words.",
   "undo": "Let the routine write the set when none exists and copy the last week's after, checked by `conversationProblems`; drop `STANDING_OPENING`.",
-  "refs": ["#3269", "#3272"],
-  "moves": "C733"
+  "refs": ["#3269", "#3272"]
 }

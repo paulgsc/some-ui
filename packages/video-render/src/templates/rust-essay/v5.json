@@ -26,7 +26,7 @@
     {
       "id": "opening",
       "name": "You answer",
-      "point": "Your newest take of the answer, in your own voice; left out when there is none to play",
+      "point": "The newest take of the answer, played whole; left out when there is none to play",
       "picture": {
         "kind": "capture",
         "from": "the essay's opening view",

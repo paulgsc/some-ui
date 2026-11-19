@@ -8,7 +8,7 @@
     "packages/ui/rust-rounds/src/lib/monday/finish.ts",
     "packages/ui/rust-rounds/ROUTINE.md"
   ],
-  "chose": "#3269 lands in two parts. First, with no UI: the week format's optional opening, home's record of its take, the essay playing it, the shared opening checks, and home's change. Second, after D2's flow screens are on main: the phone's opening page, from a prototype the owner approves, and its take sent as WeekSent's opening; then the routine writes an opening, held until an APK that shows it is installed. Until both, no week carries an opening and every essay opens as before.",
+  "chose": "#3269 lands in two parts. First, with no UI: the week format's optional opening, home's record of its take, the essay playing it, the shared opening checks, and home's change. Second, after D2's flow screens are on main: the phone's opening page, from a prototype the owner approves, and its take sent as WeekSent's opening; then the routine carries the standing opening (C737) into each /2 week, held until an APK that shows it is installed. Until both, no week carries an opening and every essay opens as before.",
   "options": [
     "two parts: format, home and essay now; the phone page and the routine after D2",
     "one PR with the phone page built now, before a prototype",

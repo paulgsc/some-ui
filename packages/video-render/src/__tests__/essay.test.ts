@@ -202,6 +202,7 @@ describe("the sample essay", () => {
       expect([voices, intro.said].join(" ")).toContain(
         "the opening's questions"
       )
+      expect(intro.said).toContain("asking the opening's questions")
       expect(voices).not.toContain("Both")
       expect(intro.said).not.toContain("both")
     }

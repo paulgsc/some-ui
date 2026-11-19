@@ -291,7 +291,7 @@ export function essayFormat(version: number = ESSAY_VERSION): Format {
               version,
               "opening",
               "You answer",
-              "Your newest take of the answer, in your own voice; left out when there is none to play",
+              "The newest take of the answer, played whole; left out when there is none to play",
               90_000
             ),
           ]
@@ -1136,7 +1136,7 @@ export function essayIntro(
       sample
         ? essay.opening === undefined
           ? "This is a sample: both voices are synthetic, and the second reads made-up answers."
-          : "This is a sample: every voice is synthetic, and one reads made-up answers."
+          : "This is a sample: every voice is synthetic, the one asking the opening's questions too, and one reads made-up answers."
         : essay.opening === undefined
           ? "The tutor's voice is synthetic; the other voice is the owner's own."
           : "The tutor's voice and the one asking the opening's questions are synthetic; the answers are the owner's own.",

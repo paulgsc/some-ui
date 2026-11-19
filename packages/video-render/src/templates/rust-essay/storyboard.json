@@ -11,8 +11,8 @@
       "kind": "intro",
       "name": "The Rust Rounds essay",
       "by": "code",
-      "said": "This is the Rust Rounds essay for 2026-w46, November 9 to November 15. Claude wrote the tutor's words, and code drew every frame. This is a sample: every voice is synthetic, and one reads made-up answers. Its answers cover 2 of 3 tickets.",
-      "ms": 18400
+      "said": "This is the Rust Rounds essay for 2026-w46, November 9 to November 15. Claude wrote the tutor's words, and code drew every frame. This is a sample: every voice is synthetic, the one asking the opening's questions too, and one reads made-up answers. Its answers cover 2 of 3 tickets.",
+      "ms": 21200
     },
     {
       "id": "brand-in",
