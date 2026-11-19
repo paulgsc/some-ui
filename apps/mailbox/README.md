@@ -349,7 +349,8 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   newest four home holds that is past its deadline, newest first, each exactly as
   `GET /rust-weeks/:id/record` gives it (paulgsc/server `handlers/rust_week_record.rs`), its
   final send (or `null` when nothing was sent by the deadline), each ticket answered or not with
-  its take's note id, and the errors pasted that week; `asOf`, the latest moment among those
+  its take's note id and, from RR24 (#3248), each speak-to point answered by a take of its own
+  (`points`), and the errors pasted that week; `asOf`, the latest moment among those
   weeks' deadlines and what reached home of them, or `null` with no week. The Monday routine
   writes each week's essay from this record, never from a draft
   (`packages/ui/rust-rounds/ROUTINE.md`). The Worker holds it to an `asOf` that is an instant

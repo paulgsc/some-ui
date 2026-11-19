@@ -23,7 +23,7 @@ export const ESSAY_WORDS = {
   youSaid: "You said",
   noAnswer: "Nothing came for this one",
   /** A take that was sent and couldn't be made out (HEARD2): read as if unanswered. */
-  unheard: "Said, but it couldn't be made out",
+  unheard: ESSAY_STAGE_WORDS.unheard,
   opened: (n: number): string =>
     n === 0
       ? "Not opened"
@@ -31,7 +31,11 @@ export const ESSAY_WORDS = {
         ? "Opened once, nothing sent"
         : `Opened ${n} times, nothing sent`,
   point: "Point",
+  /** A speak-to point by its place, from 1. */
+  pointN: (n: number): string => `Point ${n}`,
   yours: "Yours",
+  /** Under the SOLO scale of a ticket answered only point by point. */
+  perPoint: "Each point's own take is placed on its own row",
   mark: {
     covered: "Covered",
     partly: "Partly",
@@ -39,7 +43,7 @@ export const ESSAY_WORDS = {
   } satisfies Record<Mark, string>,
   unanswered: "No answer",
   solo: "SOLO",
-  level: (n: number, name: string): string => `${n}. ${name}`,
+  level: ESSAY_STAGE_WORDS.level,
   notJudged: "No answer to place on the scale",
   dive: (n: number): string => `Deep dive ${n}`,
   past: "One step past the ticket",

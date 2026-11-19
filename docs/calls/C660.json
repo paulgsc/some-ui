@@ -1,0 +1,18 @@
+{
+  "id": "C660",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/interview-week/past.ts",
+    "apps/www/src/components/jobs/interview/past.tsx"
+  ],
+  "chose": "Past weeks lists only the weeks that have closed, newest first, each in place on one page (its role, the send made from this phone, its essay and a way to its takes), with no page of its own per week. The week open now stays on the first page, which links to Past weeks in every state.",
+  "options": [
+    "closed weeks on one page, each in place",
+    "every week held, the open one included, saying it is open",
+    "a list that opens a read-only page per week, its questions and what was sent"
+  ],
+  "gray": "Which weeks the owner sees there and how deep a past week goes; a page per week would repeat what Studio's Takes and the essay already show.",
+  "undo": "Drop the isClosed filter in pastWeeks, or add a /jobs/interview/past/$week route.",
+  "refs": ["#3226"]
+}

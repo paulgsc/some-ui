@@ -106,6 +106,11 @@ test.describe("the interview week fits the phone", () => {
       await expectFitsPhone(page, "how a week goes")
 
       await page.getByRole("link", { name: "Interview" }).click()
+      await page.getByRole("link", { name: /^Past weeks/ }).click()
+      await expect(page.locator("[data-past-week]")).toHaveCount(4)
+      await expectFitsPhone(page, "past weeks, each essay where it is")
+
+      await page.getByRole("link", { name: "Interview" }).click()
       await page
         .getByRole("button", { name: "Look it over before sending" })
         .click()

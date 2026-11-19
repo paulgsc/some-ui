@@ -16,8 +16,10 @@
  * on `/essay?kind=interview`) is answered from it alone. `--takes` is the folder of the owner's takes, as home hands them
  * over: one audio file `<TICKET>.<ext>` (any audio ffmpeg reads) for each
  * ticket the owner answered, the take of their last send before the
- * deadline, and beside it, where home kept them, its word times
- * (`<TICKET>.words.json`, `[{ text, startMs, endMs }]`); with none, the
+ * deadline, and `<TICKET>.<n>.<ext>` for each speak-to point n (from 1)
+ * answered by a take of its own (RR24, #3248), and beside each, where home
+ * kept them, its word times (`<id>.words.json`,
+ * `[{ text, startMs, endMs }]`); with none, the
  * captions spread the transcript over the take. An interview essay's folder
  * holds the same for each answered question, `<question>.<ext>`, and each
  * answered read, `read.<card>.<ext>` (`interviewEssayTakeFiles`). A take

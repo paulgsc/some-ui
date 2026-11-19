@@ -25,6 +25,7 @@ import { TAKE_MAX_SECONDS, workSourceKey } from "@some-ui/interview-week"
 import type { BundleWords } from "@some-ui/shared"
 import { TAKE_WORDS } from "@some-ui/voice-capture"
 
+import { FEED_WORDS } from "@/lib/call-videos/words"
 import { lengthOf } from "@/lib/format"
 
 import type { Rung, Step } from "./ladder"
@@ -292,6 +293,34 @@ export const INTERVIEW_WORDS = {
     title: (n: number): string => `Sent home: ${takes(n)}.`,
     line: "Home keeps your takes and writes down the words it hears in them. Nothing answers now. The essay comes after the deadline, and covers every card, said or not.",
     notSaid: "Not said.",
+  },
+  /** Past weeks (IW17): each closed week on this phone, and where its essay is. */
+  weeks: {
+    title: "Past weeks",
+    line: "Each week on this phone that has closed, and where its essay is.",
+    entryLine: "Each closed week, and where its essay is",
+    none: "No week on this phone has closed yet. Once one does, it shows here with its essay.",
+    sent: (n: number, at: string): string =>
+      `You sent it ${weekday(at)} ${clock(at)}: ${takes(n)}.`,
+    noSend: "No send from this phone.",
+    essay: {
+      asking: "Asking home about its essay…",
+      unpaired: "Pair this phone with home to see where its essay is.",
+      older: FEED_WORDS["interview-essay"].older,
+      unknown:
+        "Home couldn't be asked just now, so where its essay is can't be said here.",
+      ready: "Its essay is ready.",
+      watch: "Watch its essay",
+      making: "Home is making its essay's video now.",
+      waiting:
+        "Its essay is written, and its video waits at home for its turn.",
+      written:
+        "Its essay is written. Its video isn't made, and Renders shows what home is making.",
+      failed: "Home couldn't finish its essay's video. Renders says why.",
+      renders: "Open Renders",
+      expected: "Home lists no essay of it.",
+    },
+    tryAgain: "Ask home again",
   },
   /** The week read back once it closed: nothing records or sends. */
   closed: {

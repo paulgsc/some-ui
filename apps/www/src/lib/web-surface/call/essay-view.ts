@@ -38,8 +38,14 @@ export type EssayView =
       readonly ticket?: { readonly n: number; readonly of: number }
     }
   | {
-      readonly section: "question" | "answer" | "best" | "beside"
+      readonly section: "question" | "best" | "beside"
       readonly ticket: EssayTicket
+    }
+  | {
+      readonly section: "answer"
+      readonly ticket: EssayTicket
+      /** For a point answered by a take of its own (RR24), the point, from 0. */
+      readonly point?: number
     }
   | {
       readonly section: "dive"
@@ -144,10 +150,16 @@ function viewOf(essay: Essay, scene: EssayScene, voicing: Voicing): EssayView {
       }
     }
     case "question":
-    case "answer":
     case "best":
     case "beside": {
       return { section: scene.section, ticket: ticketOf(essay, scene.ticket) }
+    }
+    case "answer": {
+      return {
+        section: "answer",
+        ticket: ticketOf(essay, scene.ticket),
+        ...(scene.point === undefined ? {} : { point: scene.point }),
+      }
     }
     case "dive": {
       const ticket = ticketOf(essay, scene.ticket)
