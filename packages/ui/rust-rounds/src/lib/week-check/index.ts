@@ -29,6 +29,7 @@ import { describeProgramFinding, measureProgram } from "@rust-rounds/lib/lint"
 import {
   addDays,
   isoWeekOf,
+  isRecord,
   PACIFIC_TIME_ZONE,
   pacificDay,
   pacificMinutes,
@@ -164,14 +165,12 @@ function checkStated(week: WeekV2, problems: Array<WeekProblem>): void {
 /** What one `/2` fork's options say of each other and of what is stated. */
 function checkFork(
   week: WeekV2,
+  fork: WeekV2["tickets"][number]["forks"][number],
   where: ReadonlyArray<PropertyKey>,
   stated: ReadonlySet<string>,
   models: Map<string, string>,
   problems: Array<WeekProblem>
 ): void {
-  const [, t, , f] = where
-  const fork = week.tickets[Number(t)]?.forks[Number(f)]
-  if (fork === undefined) return
   const at = pathOf(where, week)
   const recommended = fork.options.filter((option) => option.recommended)
   if (recommended.length !== 1) {
@@ -233,7 +232,9 @@ function checkExercise(
         at: testAt,
         why: `${ticket.id} has ${of} forks; there is no fork ${fork}`,
       })
-    } else if (!options.some((each) => each.id === option)) {
+      return
+    }
+    if (!options.some((each) => each.id === option)) {
       problems.push({
         at: testAt,
         why: `fork ${fork} has no option "${option}"`,
@@ -258,8 +259,15 @@ function checkForks(week: WeekV2, problems: Array<WeekProblem>): void {
       ...slaIds,
       ...ticket.figures.map((figure) => figure.id),
     ])
-    ticket.forks.forEach((_, f) =>
-      checkFork(week, ["tickets", t, "forks", f], stated, models, problems)
+    ticket.forks.forEach((fork, f) =>
+      checkFork(
+        week,
+        fork,
+        ["tickets", t, "forks", f],
+        stated,
+        models,
+        problems
+      )
     )
     ticket.academy.forEach((exercise, e) =>
       checkExercise(ticket, exercise, `${at}.academy[${e}]`, problems)
@@ -283,9 +291,7 @@ function refused(
 
 /** Whether `input` says it is a `/2` week. */
 const isV2 = (input: unknown): boolean =>
-  typeof input === "object" &&
-  input !== null &&
-  Reflect.get(input, "schema") === WEEK_SCHEMA_V2
+  isRecord(input) && input.schema === WEEK_SCHEMA_V2
 
 /** A week, or every reason it is refused, in the shape the phone holds. */
 export function readWeek(input: unknown): WeekReading {

@@ -48,9 +48,7 @@
  *
  * Three shapes, one door:
  *
- * - `WeekV1Schema` and `WeekV2Schema` are the files as the routine writes
- *   them. Home reads `/1` alone until it reads `/2` too, so the routine
- *   still writes `/1` (`WEEK_SCHEMA`).
+ * - `WeekV1Schema` and `WeekV2Schema` are the two files.
  * - `WeekSchema` is a week as the phone holds it: `/2`'s shape, which a `/1`
  *   week fits by `upgradeWeek` (generated ids, forks with no options, no
  *   academy), so every week the phone or home already holds still reads.
@@ -73,7 +71,7 @@ import { WEEK_ID } from "./week-id"
 
 export { WEEK_ID } from "./week-id"
 
-/** The schema the routine writes, until home reads `/2` too. */
+/** The schema the routine writes: home reads `/1` alone until it reads `/2` too. */
 export const WEEK_SCHEMA = "some-ui.rust-week/1"
 
 /** The week with forks and an academy (RR25, RR29). */
@@ -86,11 +84,14 @@ export const WEEK_SCHEMA_V2 = "some-ui.rust-week/2"
  */
 export const TICKET_KEY = /^[A-Z][A-Z0-9]{0,5}-\d{1,6}$/
 
-/** A stated constraint's id: `S1` for an SLA row, `F1` for a figure (C696). */
-const CONSTRAINT_ID = /^[SF][1-9]\d?$/
+/** A stated constraint's id with the given prefix: `S1`, `F2`. */
+const constraintId = (prefix: string): RegExp =>
+  new RegExp(`^${prefix}[1-9]\\d*$`)
 
 /** An option's id within its fork: `A` to `F`. */
-const OPTION_ID = /^[A-F]$/
+const OptionIdSchema = z
+  .string()
+  .regex(/^[A-F]$/, "an option's id is a capital, A to F")
 
 /** The references a week draws on, the known space "right" is checked against. */
 export const ReferenceSchema = z.enum([
@@ -149,7 +150,7 @@ const conceptsOf = z
 
 const speakToCount = `a ticket has ${SPEAK_TO_MIN} or ${SPEAK_TO_MAX} speak-to points`
 
-/** A `/1` ticket, as the routine writes it today. */
+/** A `/1` ticket. */
 export const TicketV1Schema = z.strictObject({
   id: KeySchema,
   title: TextSchema,
@@ -171,26 +172,26 @@ export const TicketV1Schema = z.strictObject({
 const ConstraintIdSchema = z
   .string()
   .regex(
-    CONSTRAINT_ID,
+    constraintId("[SF]"),
     "a constraint's id is S1 for an SLA row or F1 for a figure"
   )
 
 /** An SLA row, with the id options and judgements cite it by. */
 const SlaRowSchema = z.strictObject({
-  id: z.string().regex(/^S[1-9]\d?$/, "an SLA row's id is S1, S2, …"),
+  id: z.string().regex(constraintId("S"), "an SLA row's id is S1, S2, …"),
   what: TextSchema,
   target: TextSchema,
 })
 
 /** A figure the scenario states as given, never measured, with its id. */
 const FigureSchema = z.strictObject({
-  id: z.string().regex(/^F[1-9]\d?$/, "a figure's id is F1, F2, …"),
+  id: z.string().regex(constraintId("F"), "a figure's id is F1, F2, …"),
   text: TextSchema,
 })
 
 /** One option at a fork, as an agent recommends it (RR29, C692). */
 const OptionSchema = z.strictObject({
-  id: z.string().regex(OPTION_ID, "an option's id is a capital, A to F"),
+  id: OptionIdSchema,
   /** Exactly one option of a fork is the agent's recommendation. */
   recommended: z.boolean(),
   /** What the agent would do. */
@@ -239,9 +240,7 @@ const ExerciseSchema = z.strictObject({
     .array(
       z.strictObject({
         fork: ForkNumberSchema,
-        option: z
-          .string()
-          .regex(OPTION_ID, "an option's id is a capital, A to F"),
+        option: OptionIdSchema,
       })
     )
     .min(1, "an exercise tests at least one option's model"),
@@ -265,7 +264,7 @@ export type Exercise = z.infer<typeof ExerciseSchema>
 const forkCount = `a ticket has ${FORKS_MIN} to ${FORKS_MAX} forks`
 const academyCount = `a ticket's academy has ${ACADEMY_MIN} to ${ACADEMY_MAX} exercises`
 
-/** A `/2` ticket, as the routine will write it. */
+/** A `/2` ticket. */
 const TicketV2Schema = z.strictObject({
   id: KeySchema,
   title: TextSchema,
@@ -325,7 +324,7 @@ const weekFields = {
   rubric: RubricSchema,
 }
 
-/** A `/1` week, as the routine writes it today. */
+/** A `/1` week. */
 export const WeekV1Schema = z.strictObject({
   schema: z.literal(WEEK_SCHEMA),
   ...weekFields,
@@ -339,7 +338,7 @@ export const WeekV1Schema = z.strictObject({
 })
 export type WeekV1 = z.infer<typeof WeekV1Schema>
 
-/** A `/2` week, as the routine will write it once home reads it. */
+/** A `/2` week. */
 export const WeekV2Schema = z.strictObject({
   schema: z.literal(WEEK_SCHEMA_V2),
   ...weekFields,

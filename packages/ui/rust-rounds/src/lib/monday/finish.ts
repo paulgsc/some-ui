@@ -555,7 +555,6 @@ function buildWeek(
       )
     }
   }
-  // The file as written, `/1`: home reads no other yet.
   return problems.length > before
     ? null
     : { file: WeekV1Schema.parse(week), held: read.week }
