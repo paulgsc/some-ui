@@ -72,8 +72,12 @@ export function keyDay(feed: Feed, week: string): string | null {
       return isDay(week) ? week : null
     }
     case "interview-essay":
+    case "report":
     case "rust-essay": {
-      if (!WEEK_ID.test(week)) return null
+      // `2026-w46`, or the report's `2026-W46`, each in its own spelling:
+      // dated by its Monday.
+      if (week.charAt(5) !== (feed === "report" ? "W" : "w")) return null
+      if (!WEEK_ID.test(week.toLowerCase())) return null
       try {
         return isoWeekMonday(week.toUpperCase())
       } catch {
@@ -183,6 +187,7 @@ export function feedView(lists: FeedLists, chip: Chip): FeedView {
     "cards-essay": 0,
     "interview-essay": 0,
     "playoff-delta": 0,
+    report: 0,
     "rust-essay": 0,
   }
   const rows: Array<Row> = []

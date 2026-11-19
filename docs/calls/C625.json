@@ -1,0 +1,14 @@
+{
+  "id": "C625",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": ["apps/www/src/lib/interview-week/words.ts"],
+  "chose": "The interview week's words say that the send home has by the deadline is what counts, and that a question's first take goes home on its own and is kept for good but counts only if sent. Before, they said what home has at the deadline is what counts.",
+  "options": [
+    "change the words to match the record: the send counts, the first take is a copy",
+    "make home's record count an unsent question's first take as its answer (a server change)"
+  ],
+  "gray": "The words and the record disagreed, and either could move. The Nov 17 retake ruling (keep the first take's audio for good, the first goes home on its own) is about keeping the audio, and it says nothing on whether a first take answers the question unsent.",
+  "undo": "Restore KEPT, openUntil, closed.line and closed.held in words.ts (and closed.noSend's use in week.tsx), and drop the IWC1 cases from words.test.ts; or change home's week_record to answer from the first take.",
+  "refs": ["#3229", "#3221", "#2931", "#3175"]
+}

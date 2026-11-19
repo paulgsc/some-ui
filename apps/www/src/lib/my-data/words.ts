@@ -557,7 +557,8 @@ export function receiptsLine(home: ReceiptsReading["kind"]): string | null {
 
 /**
  * My data's page for each feed's videos (ST38, #2661; FEED4): an episode's
- * video, a week of the call, of Playoff Delta or of Rust Rounds, and then the rest of its
+ * video, a week of the call, of Playoff Delta, of Rust Rounds or of the
+ * engagement report, and then the rest of its
  * folder are let go of home once its YouTube link is saved, each asked once,
  * "Keep it" first. Each feed's own words (its heading, an episode's label,
  * "still making") are `FEED_WORDS`', as Studio says them.
@@ -567,7 +568,7 @@ export const CALL_DELETING = {
   row: "The videos home makes",
   rowLine: "Let home's copy go once a video is on YouTube",
   title: "The videos home makes",
-  lead: "Home keeps each video, the weekly call's, Playoff Delta's and each Rust Rounds essay's, until it's on YouTube. Once its link is saved in Studio, let home's copy go: the video first, then the rest.",
+  lead: "Home keeps each video, the weekly call's, Playoff Delta's, each Rust Rounds essay's and each engagement report's, until it's on YouTube. Once its link is saved in Studio, let home's copy go: the video first, then the rest.",
   /** An episode, named with its feed, as the sheet says it. */
   episode: (feed: Feed, key: string): string => {
     const { heading, week } = FEED_WORDS[feed]
@@ -585,9 +586,17 @@ export const CALL_DELETING = {
   },
   goes: {
     video: (size: string): string => `The video home keeps of it, ${size}.`,
-    rest: (size: string): string => `Its takes, stills and cut list, ${size}.`,
+    /** A report holds no takes: its voice-over is home's speaker's. */
+    rest: (size: string, feed: Feed): string =>
+      feed === "report"
+        ? `Its stills, voice-over and cut list, ${size}.`
+        : `Its takes, stills and cut list, ${size}.`,
   },
-  stays: "Its words, its YouTube link, and a receipt of this delete.",
+  /** A report has no words of its own: the week's counts are what stay. */
+  stays: (feed: Feed): string =>
+    feed === "report"
+      ? "The week's counts, its YouTube link, and a receipt of this delete."
+      : "Its words, its YouTube link, and a receipt of this delete.",
   gone: (at: string): string => `Deleted ${at}. A receipt stays with it.`,
   kept: "Home kept it. A video goes only once its link is saved, and the rest only after the video.",
   notHeld: "Home doesn't hold this one.",

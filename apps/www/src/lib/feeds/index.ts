@@ -13,26 +13,11 @@ export const FEEDS = [
   "cards-essay",
   "interview-essay",
   "playoff-delta",
+  "report",
   "rust-essay",
 ] as const
 
 export type Feed = (typeof FEEDS)[number]
-
-/**
- * The feeds whose episodes take a note (SFEED6): home keeps none on an
- * interview essay or a Rust Rounds essay (`GET /feeds/rust-essay/notes` is its `404`), whose week was
- * already answered by voice, nor on a cards essay (its `404` too).
- */
-export const NOTED_FEEDS = [
-  "call",
-  "playoff-delta",
-] as const satisfies ReadonlyArray<Feed>
-
-export type NotedFeed = (typeof NOTED_FEEDS)[number]
-
-/** Whether `feed`'s episodes take a note. */
-export const isNoted = (feed: Feed): feed is NotedFeed =>
-  NOTED_FEEDS.some((noted) => noted === feed)
 
 /**
  * The feeds whose episodes take a YouTube link (SFEED8): pasted on an
@@ -43,6 +28,7 @@ export const LINKED_FEEDS = [
   "cards-essay",
   "interview-essay",
   "playoff-delta",
+  "report",
   "rust-essay",
 ] as const satisfies ReadonlyArray<Feed>
 
@@ -59,6 +45,7 @@ export const isLinked = (feed: Feed): boolean =>
 export const LET_GO_FEEDS = [
   "call",
   "playoff-delta",
+  "report",
   "rust-essay",
 ] as const satisfies ReadonlyArray<(typeof LINKED_FEEDS)[number]>
 
@@ -81,5 +68,6 @@ export const FEED_TEMPLATES: Readonly<Record<Feed, ReadonlyArray<TemplateId>>> =
     // Templates doesn't list yet.
     "interview-essay": [],
     "playoff-delta": ["playoff-delta-legend", "playoff-delta-week"],
+    report: ["engagement-report"],
     "rust-essay": ["rust-essay"],
   }

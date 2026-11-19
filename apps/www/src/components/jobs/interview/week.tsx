@@ -32,7 +32,7 @@ import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 
 import type { Interview } from "./run"
 import { currentOf, labelOf, playOnly, useInterview, viewOf } from "./run"
-import { CARD_LINK, To, useOpenItem } from "./to"
+import { CardTo, To, useOpenItem } from "./to"
 
 const Role = ({ week }: { week: InterviewWeek }): JSX.Element => (
   <header className="space-y-1">
@@ -68,26 +68,19 @@ const Home = ({ held }: { held: Interview }): JSX.Element => {
   const entry = (id: string, prompt: string): JSX.Element => {
     const done = doneLine(held, id)
     return (
-      <To
-        key={id}
-        to={{ page: "question", question: id }}
-        className={CARD_LINK}
-      >
+      <CardTo key={id} to={{ page: "question", question: id }}>
         <span className="font-semibold">{prompt}</span>
         {done !== null && (
           <span className="text-muted-foreground text-xs">{done}</span>
         )}
-      </To>
+      </CardTo>
     )
   }
   return (
     <div className="flex flex-col gap-4">
       <Role week={week} />
       {today !== null && (
-        <To
-          to={{ page: "question", question: today.id }}
-          className="bg-brand text-brand-foreground flex flex-col gap-1.5 rounded-3xl p-4 text-left"
-        >
+        <CardTo to={{ page: "question", question: today.id }} tone="brand">
           <span className="text-xs font-semibold opacity-85">
             {WORDS.today}
           </span>
@@ -97,7 +90,7 @@ const Home = ({ held }: { held: Interview }): JSX.Element => {
           <span className="text-xs font-semibold opacity-85">
             {doneLine(held, today.id) ?? WORDS.todayLine}
           </span>
-        </To>
+        </CardTo>
       )}
       <section className="bg-card flex flex-col gap-2 rounded-2xl border p-3">
         <p className="text-sm">{WORDS.readsEntry}</p>
@@ -258,7 +251,11 @@ const ReadBack = ({ held }: { held: Interview }): JSX.Element => {
       <section className="bg-card flex flex-col gap-1 rounded-2xl p-3 text-sm">
         <p className="font-semibold">{WORDS.closed.title(week)}</p>
         <p className="text-muted-foreground">{WORDS.closed.line(week)}</p>
-        <p>{WORDS.closed.held(holds === null ? 0 : takesOf(holds).length)}</p>
+        <p>
+          {holds === null
+            ? WORDS.closed.noSend
+            : WORDS.closed.held(takesOf(holds).length)}
+        </p>
         {last !== null && last.at !== holds?.at && (
           <p className="text-muted-foreground">{WORDS.closed.late(last.at)}</p>
         )}

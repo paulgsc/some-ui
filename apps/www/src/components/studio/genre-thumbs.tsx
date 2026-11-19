@@ -14,12 +14,13 @@ import { FEED_FACTS } from "@/lib/studio-index"
 
 type Paint = { readonly hue: string; readonly ground: string }
 
-/** Each genre's hue on its ground: honey, sand, lavender, lime and rose. */
+/** Each genre's hue on its ground: honey, sand, lavender, lime, coral and rose. */
 const GENRE_PAINT = {
   call: { hue: "#e8a93c", ground: "#2e2416" },
   "cards-essay": { hue: "#e3d2ab", ground: "#29241a" },
   "interview-essay": { hue: "#b5a6ec", ground: "#201b33" },
   "playoff-delta": { hue: "#c9d46a", ground: "#252914" },
+  report: { hue: "#ef8a6b", ground: "#2e1a14" },
   "rust-essay": { hue: "#e58fb6", ground: "#2d1724" },
 } as const satisfies Record<Feed, Paint>
 
@@ -202,6 +203,34 @@ const Interview = ({
   </>
 )
 
+/** Each wing's pair of bars: last week's, dim, then this week's, lit. */
+const REPORT_PAIRS = [
+  [44, 62],
+  [70, 52],
+  [30, 48],
+  [56, 84],
+].map(([last = 0, now = 0], i) => ({ last, now, x: 74 + i * 46 }))
+
+/** A statement's bars over its baseline: this week beside last. */
+const Report = ({ hue, dim }: { hue: string; dim: string }): JSX.Element => (
+  <>
+    <rect x={62} y={132} width={196} height={3} rx={1.5} fill={hue} />
+    {REPORT_PAIRS.map(({ last, now, x }) => (
+      <g key={x}>
+        <rect x={x} y={130 - last} width={14} height={last} rx={3} fill={dim} />
+        <rect
+          x={x + 17}
+          y={130 - now}
+          width={14}
+          height={now}
+          rx={3}
+          fill={hue}
+        />
+      </g>
+    ))}
+  </>
+)
+
 const RUST_BARS = [14, 30, 22, 44, 34, 52, 28, 40, 18, 32, 12].map((h, i) => ({
   h,
   x: 194 + i * 9,
@@ -277,6 +306,7 @@ export const GenreThumb = ({ feed }: { feed: Feed }): JSX.Element => {
       {feed === "cards-essay" && <Cards hue={hue} dim={dim} ground={ground} />}
       {feed === "interview-essay" && <Interview hue={hue} ground={ground} />}
       {feed === "playoff-delta" && <Delta hue={hue} dim={dim} />}
+      {feed === "report" && <Report hue={hue} dim={dim} />}
       {feed === "rust-essay" && <Rust hue={hue} dim={dim} ground={ground} />}
     </svg>
   )

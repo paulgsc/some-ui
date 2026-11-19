@@ -1,0 +1,15 @@
+{
+  "id": "C576",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": ["server:apps/servers/file_host/src/handlers/episode_notes.rs"],
+  "chose": "Home keeps a note on every feed's episodes, but files for the mailbox's feedback folder only notes on the weekly call and Playoff Delta, as before; a note on any other feed stays on home (server#985, files_for_the_mailbox).",
+  "options": [
+    "file every feed's note for feedback",
+    "widen the mailbox Worker and the routine to every feed",
+    "keep notes on every feed on home, and file for feedback only the call's and Playoff Delta's, as today"
+  ],
+  "gray": "The Jobs mailbox refuses a feedback note on another feed (apps/mailbox/src/core.ts), so filing one would only be refused and retried; and the owner's direction on #3029 (2026-11-18) is that no routine files notes from now on, home's own issue (TAKES4) replacing the path, so widening a path being retired is waste. Whether a Rust essay's note reaches the old routine is something the owner would notice.",
+  "undo": "Widen files_for_the_mailbox in apps/servers/file_host/src/handlers/episode_notes.rs after the mailbox Worker accepts the feed; notes held in between are not back-filed.",
+  "refs": ["server#983", "server#985", "#3029", "#3035"]
+}

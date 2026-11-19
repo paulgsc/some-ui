@@ -1,0 +1,11 @@
+{
+  "id": "C638",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": ["some-ui:apps/www/src/components/studio/genre-thumbs.tsx"],
+  "chose": "The report's stock thumbnail is coral on a dark ground: four pairs of bars on a baseline, last week's dim beside this week's lit.",
+  "options": ["coral paired bars", "a statement table of rows", "a line chart"],
+  "gray": "The owner asked for stock art per genre (#3030) but drew none for the report; it is what the owner sees on every report's row.",
+  "undo": "Change `GENRE_PAINT.report` and the `Report` drawing in `genre-thumbs.tsx`.",
+  "refs": ["#3235", "#3067"]
+}

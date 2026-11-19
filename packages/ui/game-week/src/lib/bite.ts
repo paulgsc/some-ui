@@ -9,7 +9,11 @@
  * to know what a bite is.
  */
 import type { ScenarioId } from "@some-ui/game-scenarios"
-import { CATALOG_VERSION } from "@some-ui/game-scenarios"
+import {
+  CATALOG_VERSION,
+  isScenarioId,
+  scenarioOf,
+} from "@some-ui/game-scenarios"
 
 import type { ModeId } from "./modes"
 
@@ -124,4 +128,12 @@ export function pickedAfter(
   startedAt: number
 ): Record<string, string> {
   return { ...biteFields(picked, moment, startedAt), how: "said-first" }
+}
+
+/**
+ * A bite's scenario by name, as the bite's `scenario` field names it
+ * (Takes' about line, TAKES20); null for an id this catalog lacks.
+ */
+export function scenarioName(id: string): string | null {
+  return isScenarioId(id) ? scenarioOf(id).name : null
 }

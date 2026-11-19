@@ -120,11 +120,11 @@ const Asking = ({
       </SheetHeader>
       <div className="space-y-1">
         <p className="text-sm font-medium">{DELETING.goesTitle}</p>
-        <p className="text-sm">{WORDS.goes[ask.step](size)}</p>
+        <p className="text-sm">{WORDS.goes[ask.step](size, ask.feed)}</p>
       </div>
       <div className="space-y-1">
         <p className="text-sm font-medium">{DELETING.staysTitle}</p>
-        <p className="text-sm">{WORDS.stays}</p>
+        <p className="text-sm">{WORDS.stays(ask.feed)}</p>
       </div>
       <div className="flex flex-col gap-2.5">
         <Button size="lg" className={BIG} onClick={onClose} disabled={deleting}>
