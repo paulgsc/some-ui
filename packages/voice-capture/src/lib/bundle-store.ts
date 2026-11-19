@@ -160,3 +160,71 @@ export function sendsAtHome<R extends WeekSend>(
   const sends = kept.filter((sent) => sent.week === week)
   return { holds: latestSend(sends.filter(held)), last: latestSend(sends) }
 }
+
+/**
+ * What home's own record of a week says was sent (its `GET …/:id/record`'s
+ * `sent`, RR30): a send at `at`; none; or nothing heard from home on it (not
+ * asked, no answer, or an answer this phone can't read).
+ */
+export type HomeSent =
+  | { readonly kind: "sent"; readonly at: string }
+  | { readonly kind: "none" }
+  | { readonly kind: "unknown" }
+
+export const HOME_UNKNOWN: HomeSent = { kind: "unknown" }
+
+/**
+ * A week's sends as home has them, and whether home's own record said so
+ * (`homeSaid`): only then may a screen count what home had or say a send
+ * didn't reach home (RR30). `elsewhere` is the `at` of a send home's record
+ * names that this phone didn't keep.
+ */
+export type SendsAtHomeSaid<R> = SendsAtHome<R> & {
+  readonly homeSaid: boolean
+  readonly elsewhere: string | null
+}
+
+/**
+ * `sendsAtHome`, settled by home's own record (`home`, RR30) where it has
+ * spoken: the send it names, when this phone kept that send, or none.
+ * Otherwise what the link remembers home took (`held`), which says nothing
+ * of a send it doesn't remember, since that memory can be lost (a new
+ * pairing, say); with `homeSaid` false, a screen shows no count and no send
+ * "late".
+ */
+export function sendsAtHomeSaid<R extends WeekSend>(
+  kept: ReadonlyArray<R>,
+  week: string,
+  held: (sent: R) => boolean,
+  home: HomeSent = HOME_UNKNOWN
+): SendsAtHomeSaid<R> {
+  const remembered = sendsAtHome(kept, week, held)
+  if (home.kind === "none") {
+    return {
+      holds: null,
+      last: remembered.last,
+      homeSaid: true,
+      elsewhere: null,
+    }
+  }
+  if (home.kind === "sent") {
+    const named = kept.find((sent) => sent.week === week && sent.at === home.at)
+    if (named !== undefined) {
+      return {
+        holds: named,
+        last: remembered.last,
+        homeSaid: true,
+        elsewhere: null,
+      }
+    }
+    // Home named another send: the link's memory of an older one is not
+    // what counted.
+    return {
+      holds: null,
+      last: remembered.last,
+      homeSaid: false,
+      elsewhere: home.at,
+    }
+  }
+  return { ...remembered, homeSaid: false, elsewhere: null }
+}

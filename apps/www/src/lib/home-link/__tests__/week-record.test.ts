@@ -1,22 +1,24 @@
 /**
- * RR30: a closed week reads what home's own record says was sent
- * (`GET /rust-weeks/:id/record`), and says nothing of home it didn't hear.
+ * RR30: a closed week (Rust Rounds', the interview's) reads what home's own record says was sent
+ * (`GET /rust-weeks/:id/record`, `GET /interview-weeks/:id/record`), and says nothing of home it didn't hear.
  */
 import { describe, expect, it } from "vitest"
 
-import {
-  readWeekRecord,
-  weekRecordPath,
-} from "@/lib/home-link/rust-week-record"
+import { readWeekRecord, weekRecordPath } from "@/lib/home-link/week-record"
 
 const ok = (body: unknown): { status: number; body: string } => ({
   status: 200,
   body: JSON.stringify(body),
 })
 
-describe("home's record of a Rust Rounds week (RR30)", () => {
+describe("home's record of a week (RR30)", () => {
   it("asks the week's record by its id", () => {
-    expect(weekRecordPath("2026-w46")).toBe("/rust-weeks/2026-w46/record")
+    expect(weekRecordPath("rust-weeks", "2026-w46")).toBe(
+      "/rust-weeks/2026-w46/record"
+    )
+    expect(weekRecordPath("interview-weeks", "2026-w47")).toBe(
+      "/interview-weeks/2026-w47/record"
+    )
   })
 
   it("reads the send home holds, or none", () => {

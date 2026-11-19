@@ -375,15 +375,19 @@ describe("what home has of a week (RR22, C56)", () => {
   /**
    * **RR30: a closed week says a send didn't reach home only on home's word.**
    *
-   * - _Claim:_ in `week-play` and the read-back (`components/rust-week`), a
-   *   closed week counts what home holds and says a send was late only from
-   *   home's own record of the week; without it, it shows this phone's last
-   *   send and says nothing of what home holds.
+   * - _Claim:_ in `week-play` and the read-back (`components/rust-week`), and
+   *   in www's interview week (`lib/interview-week`,
+   *   `components/jobs/interview/week.tsx`), both over voice-capture's
+   *   `sendsAtHomeSaid`, a closed week counts what home holds and says a send
+   *   was late only from home's own record of the week; without it, it shows
+   *   this phone's last send and says nothing of what home holds.
    * - _Family:_ the link's memory (held, lost, never written) × home's
    *   record (names the phone's send, names another, none, unheard, no port).
    * - _Proof:_ this test over `weekAtHome`; `components/rust-week/index.test.tsx`
    *   ("reads back what home had at the deadline") over the screen; www's
-   *   `rust-week-record.test.ts` over home's answer.
+   *   `week-record.test.ts` over home's answer, and for the interview week
+   *   `lib/interview-week/__tests__/runtime.test.ts` and
+   *   `components/jobs/interview/__tests__/interview.test.tsx`.
    * - _Tolerance:_ a send home holds that this phone didn't keep (another
    *   device's) is named but its takes aren't shown; the phone's clock decides
    *   the week has closed, so with it ahead of home's past the deadline, home

@@ -27,7 +27,10 @@ import {
 import { CUE_SECONDS } from "@/lib/interview-week/cue"
 import { pastWeeks } from "@/lib/interview-week/past"
 import { DEFAULT_PACE_WPM, PACE_STEP_WPM } from "@/lib/interview-week/prompter"
+import type { InterviewWeekPorts } from "@/lib/interview-week/runtime"
+import type { InterviewSent } from "@/lib/interview-week/spec"
 import { readItem } from "@/lib/interview-week/spec"
+import { interviewSent } from "@/lib/interview-week/store"
 import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 import { RoutedInterview } from "@/components/jobs/interview/__tests__/routed"
 import type { PastWeeksProps } from "@/components/jobs/interview/past"
@@ -75,12 +78,23 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-function open(week = WEEK_2, path?: string, past?: PastWeeksProps): void {
+function open(
+  week = WEEK_2,
+  path?: string,
+  past?: PastWeeksProps,
+  homeSent?: InterviewWeekPorts["homeSent"]
+): void {
   const { ports } = fakePorts({
     storage: inMemoryStorage(),
     week: { week, sha256: "a".repeat(64) },
   })
-  render(<RoutedInterview ports={() => ports} path={path} past={past} />)
+  render(
+    <RoutedInterview
+      ports={() => ({ ...ports, homeSent })}
+      path={path}
+      past={past}
+    />
+  )
 }
 
 const conflict = WEEK_2.questions[1]
@@ -336,10 +350,103 @@ describe("the interview week's pages on the phone (IW8)", () => {
 
   it("reads a closed week back, saying when home had no send (IWC1)", async () => {
     vi.setSystemTime(new Date("2026-11-23T12:00:00Z"))
-    open()
+    open(WEEK_2, undefined, undefined, () =>
+      Promise.resolve({ kind: "none" as const })
+    )
     await settle()
     screen.getByText(WORDS.closed.title(WEEK_2))
     screen.getByText(WORDS.closed.line(WEEK_2))
     screen.getByText(WORDS.closed.noSend)
   })
+
+  it("says nothing of what home had when its record can't be read (RR30)", async () => {
+    // A reinstalled phone keeps no send of its own: only home can say.
+    vi.setSystemTime(new Date("2026-11-23T12:00:00Z"))
+    open(WEEK_2, undefined, undefined, () =>
+      Promise.resolve({ kind: "unknown" as const })
+    )
+    await settle()
+    screen.getByText(WORDS.closed.title(WEEK_2))
+    expect(screen.queryByText(WORDS.closed.noSend)).toBeNull()
+  })
+})
+
+/**
+ * RR30's family on the interview's read-back: the link's memory (held,
+ * lost) × home's record (names the phone's send, names another, none,
+ * unheard), with sends kept on this phone.
+ */
+describe("a closed interview week reads back on home's word (RR30)", () => {
+  const sentAt = (at: string): InterviewSent => ({
+    week: WEEK_2.id,
+    at,
+    answers: [
+      {
+        question: WEEK_2.questions[0].id,
+        take: `take-${at}`,
+        recordedAt: at,
+      },
+    ],
+    reads: [],
+    passed: WEEK_2.questions.slice(1).map(({ id }) => id),
+    passedReads: [],
+  })
+  // Saturday's send, then one after it, both before the deadline.
+  const SAT = "2026-11-21T19:00:00.000Z"
+  const SUN = "2026-11-22T20:00:00.000Z"
+  const ELSEWHERE = "2026-11-22T21:00:00.000Z"
+
+  function openClosed(
+    remembers: boolean,
+    said: Awaited<ReturnType<NonNullable<InterviewWeekPorts["homeSent"]>>>
+  ): void {
+    vi.setSystemTime(new Date("2026-11-23T12:00:00Z"))
+    const storage = inMemoryStorage()
+    interviewSent(storage).keep(() => [sentAt(SAT), sentAt(SUN)])
+    const { ports } = fakePorts({
+      storage,
+      week: { week: WEEK_2, sha256: "a".repeat(64) },
+      // The link's memory: it held Saturday's send, or forgot both.
+      homeHolds: (sent) => remembers && sent.at === SAT,
+      homeSent: () => Promise.resolve(said),
+    })
+    render(<RoutedInterview ports={() => ports} />)
+  }
+
+  const text = (): string => document.body.textContent
+
+  for (const remembers of [true, false]) {
+    const memory = remembers ? "held" : "lost"
+
+    it(`counts the send home names, and says a later one was late (memory ${memory})`, async () => {
+      openClosed(remembers, { kind: "sent", at: SAT })
+      await settle()
+      screen.getByText(WORDS.closed.held(1))
+      screen.getByText(WORDS.closed.late(SUN))
+    })
+
+    it(`says home had none on home's word, over the memory (memory ${memory})`, async () => {
+      openClosed(remembers, { kind: "none" })
+      await settle()
+      screen.getByText(WORDS.closed.noSend)
+      screen.getByText(WORDS.closed.late(SUN))
+    })
+
+    it(`names a send home holds that isn't on this phone, and counts none (memory ${memory})`, async () => {
+      openClosed(remembers, { kind: "sent", at: ELSEWHERE })
+      await settle()
+      screen.getByText(WORDS.closed.elsewhere(ELSEWHERE, SUN))
+      expect(text()).not.toContain(WORDS.closed.held(1))
+      expect(text()).not.toContain(WORDS.closed.late(SUN))
+    })
+
+    it(`says nothing of what home had when unheard (memory ${memory})`, async () => {
+      openClosed(remembers, { kind: "unknown" })
+      await settle()
+      screen.getByText(WORDS.closed.unheard(SUN))
+      expect(text()).not.toContain(WORDS.closed.held(1))
+      expect(text()).not.toContain(WORDS.closed.noSend)
+      expect(text()).not.toContain(WORDS.closed.late(SUN))
+    })
+  }
 })
