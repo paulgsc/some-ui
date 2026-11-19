@@ -1,0 +1,13 @@
+{
+  "id": "C690",
+  "made": "2026-11-19",
+  "by": "owner",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/work-tracker",
+    "packages/ui/rust-rounds/src/lib/study-prompt",
+    "packages/ui/rust-rounds/src/components/rust-week"
+  ],
+  "chose": "Owner, on the RR25 + RR26 flow prototype (https://claude.ai/artifact/Vr62shg5cGsHBp5ZMJiFNu): \"I really like the Academy prototype… I'm agreeing with the current prototype design.\" A ticket is a flow (read, an academy of scratchpad exercises, then voice; skipping ahead allowed and recorded; copy-to-chatbot as an extra), with a work tracker the owner starts on the phone that stops itself and asks on return how much of the span was work. In the same breath the owner moved the story to a deliberation (RR29 #3257), which changes what the steps hold, not the flow.",
+  "undo": "Nothing is built from it yet but the tracker's pure step machine and the study prompt's template; revert those and redraw the flow.",
+  "refs": ["#3249", "#3250", "#3257"]
+}
