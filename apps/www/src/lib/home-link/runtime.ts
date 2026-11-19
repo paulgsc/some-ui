@@ -39,6 +39,10 @@
  *   send's `send` takes a path, and the base is the one stored with the
  *   token.
  *
+ * HR1 (`__tests__/home-restart.test.ts`): a `502` or `504`, home's door
+ * answering for a server restarting, is held as a silence and said as
+ * itself (`fromHomesDoor`), so the hold's tries ask again until home is back.
+ *
  * AW1 (`./away`): a stretch away is told to `report` once; while its hold
  * lasts, a drain, `keep`'s `onItsOwn` and `look` send nothing
  * (`HomeAwayError`); sync, send, `keep`, pairing and Unpair still go;
@@ -211,6 +215,30 @@ function thrownFailureOf(error: unknown): PairFailure {
 const BLOCKED_SUMMARY: Readonly<Record<HomeBlockedReason, string>> = {
   name: "This phone couldn't find home's name on this network.",
   trust: "This phone doesn't trust home's certificate.",
+  door: "Home's address answered, but home's server didn't.",
+}
+
+/**
+ * Whether `answer` came from what stands in front of home's server rather
+ * than from it (HR1): a `502` or a `504`, which paulgsc/server's file host
+ * never sends itself, so its proxy answered for a server that was down or
+ * didn't answer in time, as while home restarts to update (#2843).
+ */
+export function fromHomesDoor(answer: Pick<HomeAnswer, "status">): boolean {
+  return answer.status === 502 || answer.status === 504
+}
+
+/** What a request answered at home's door throws (HR1): no answer from home. */
+function doorError(): HomeBlockedError {
+  return new HomeBlockedError(
+    {
+      kind: "unreachable",
+      retryable: true,
+      summary: BLOCKED_SUMMARY.door,
+      cause: null,
+    },
+    "door"
+  )
 }
 
 /** `send`, and whether home answered any of it as busy (`429`). */
@@ -439,8 +467,13 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     base: string
   ): void => {
     // One lesson a busy stretch: requests already out when it began come
-    // back busy too, and say nothing more of home's rate.
-    const learning = !((state.busyHomes[base] ?? 0) > ports.now())
+    // back busy too, and say nothing more of home's rate. Only a `429` is
+    // home's limiter: an overload's `Retry-After` (`503`, HERD2) is how long
+    // home has no room, as while it starts after a restart, and says nothing
+    // of how fast its bucket refills, so the pace learns nothing from it
+    // (HR2), and kept across page loads it would slow every request for a day.
+    const learning =
+      answer.status === 429 && !((state.busyHomes[base] ?? 0) > ports.now())
     pace.spend(learning ? retryAfterMs(answer.retryAfter) : null)
     dispatch({
       type: "homeBusy",
@@ -519,11 +552,20 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
   }
   /**
    * `request` as sent, its answer or silence told to the away state (AW1),
-   * and a failure before home could answer told as itself (NA1).
+   * and a failure before home could answer told as itself (NA1). An answer
+   * from home's door, not home (`fromHomesDoor`, HR1), is held as a silence
+   * and said as itself, as a name not found is: the hold's tries then ask
+   * again what found home restarting, until home answers.
    */
   const heard = (request: Promise<HomeAnswer>): Promise<HomeAnswer> =>
     request.then(
       (answer) => {
+        if (fromHomesDoor(answer)) {
+          const error = doorError()
+          reached(false, error, BLOCKED_SUMMARY.door)
+          dispatch({ type: "blocked", reason: "door", at: ports.now() })
+          throw error
+        }
         reached(true)
         if (state.blocked !== null) dispatch({ type: "unblocked" })
         return answer
@@ -541,6 +583,13 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
         throw error
       }
     )
+  /**
+   * What a request held by the hold away is turned away with: home's door
+   * again while the stretch is one home's door began (HR1), so a screen's
+   * read asks again as it did on the door's answer; otherwise away (AW1).
+   */
+  const heldError = (): HomeAwayError | HomeBlockedError =>
+    state.blocked?.reason === "door" ? doorError() : new HomeAwayError()
   const lookAgain = (fresh: boolean): void => {
     cancelLapse?.()
     cancelLapse = null
@@ -563,11 +612,11 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     onSent?: (at: number) => void
   ): Promise<HomeAnswer> => {
     const away = (): boolean => !tapped && awayNow()
-    if (away()) throw new HomeAwayError()
+    if (away()) throw heldError()
     if (homeBusyNow(base)) return HOME_BUSY
     const went = await pace.turn(side === "person")
     if (!went || stopped(side)) throw new SyncStoppedError()
-    if (away()) throw new HomeAwayError()
+    if (away()) throw heldError()
     if (homeBusyNow(base)) return HOME_BUSY
     onSent?.(ports.now())
     const answer = await track(side, heard(ports.request(call)))
@@ -607,8 +656,9 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     // a pairing or an Unpair still goes during one, so it never waits on it.
     if (answer.status === 429 || overloaded(answer)) heardBusy(answer, base)
     // An answer ends a stretch away; a silence here is a pairing's or an
-    // Unpair's own to say, and starts none (AW1).
-    reached(true)
+    // Unpair's own to say, and starts none (AW1). Home's door answering for
+    // it (HR1) is no answer from home, so it ends nothing either.
+    if (!fromHomesDoor(answer)) reached(true)
     return answer
   }
 
@@ -922,12 +972,12 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       if ((await known()).kind !== "paired") return refused("unpaired")
       const pairing = await readPairing()
       if (pairing === null) return refused("gone")
-      if (awayNow()) throw new HomeAwayError()
+      if (awayNow()) throw heldError()
       if (homeBusyNow()) return { kind: "done", value: HOME_BUSY }
       // Its turn let go: the app went to the background while it waited.
       if (!(await pace.turn(false))) return { kind: "stopped" }
       // Home may have asked to be left alone while this waited its turn.
-      if (awayNow()) throw new HomeAwayError()
+      if (awayNow()) throw heldError()
       if (homeBusyNow()) return { kind: "done", value: HOME_BUSY }
       const answer = await heard(
         ports.request({

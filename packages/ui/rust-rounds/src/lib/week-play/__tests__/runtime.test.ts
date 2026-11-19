@@ -353,26 +353,107 @@ describe("what home has of a week (RR22, C56)", () => {
     expect(weekAtHome(kept, { id: "2026-w46" }, () => true)).toEqual({
       holds: second,
       last: second,
+      homeSaid: false,
+      elsewhere: null,
     })
     expect(
       weekAtHome(kept, { id: "2026-w46" }, (sent) => sent === first)
-    ).toEqual({ holds: first, last: second })
+    ).toEqual({
+      holds: first,
+      last: second,
+      homeSaid: false,
+      elsewhere: null,
+    })
     expect(weekAtHome(kept, { id: "2026-w48" }, () => true)).toEqual({
       holds: null,
       last: null,
+      homeSaid: false,
+      elsewhere: null,
     })
+  })
+
+  /**
+   * **RR30: a closed week says a send didn't reach home only on home's word.**
+   *
+   * - _Claim:_ in `week-play` and the read-back (`components/rust-week`), a
+   *   closed week counts what home holds and says a send was late only from
+   *   home's own record of the week; without it, it shows this phone's last
+   *   send and says nothing of what home holds.
+   * - _Family:_ the link's memory (held, lost, never written) × home's
+   *   record (names the phone's send, names another, none, unheard, no port).
+   * - _Proof:_ this test over `weekAtHome`; `components/rust-week/index.test.tsx`
+   *   ("reads back what home had at the deadline") over the screen; www's
+   *   `rust-week-record.test.ts` over home's answer.
+   * - _Tolerance:_ a send home holds that this phone didn't keep (another
+   *   device's) is named but its takes aren't shown; the phone's clock decides
+   *   the week has closed, so with it ahead of home's past the deadline, home
+   *   answers its standing draft, which still names what was sent.
+   */
+  it("lets home's own record settle it where it spoke, over the link's memory (RR30)", () => {
+    const kept = [second, other, first]
+    const forgot = (): boolean => false
+    // Home names a send this phone kept: that one, whatever the memory says.
+    expect(
+      weekAtHome(kept, { id: "2026-w46" }, forgot, {
+        kind: "sent",
+        at: first.at,
+      })
+    ).toEqual({
+      holds: first,
+      last: second,
+      homeSaid: true,
+      elsewhere: null,
+    })
+    // Home holds none.
+    expect(
+      weekAtHome(kept, { id: "2026-w46" }, () => true, { kind: "none" })
+    ).toEqual({
+      holds: null,
+      last: second,
+      homeSaid: true,
+      elsewhere: null,
+    })
+    // A send this phone didn't keep (another device's): named, not shown,
+    // whatever the link's memory holds.
+    for (const held of [forgot, (): boolean => true]) {
+      expect(
+        weekAtHome(kept, { id: "2026-w46" }, held, {
+          kind: "sent",
+          at: "2026-11-10T00:00:00.000Z",
+        })
+      ).toEqual({
+        holds: null,
+        last: second,
+        homeSaid: false,
+        elsewhere: "2026-11-10T00:00:00.000Z",
+      })
+    }
+    // No word: the memory's, and home hasn't said.
+    expect(
+      weekAtHome(kept, { id: "2026-w46" }, forgot, { kind: "unknown" })
+    ).toEqual({ holds: null, last: second, homeSaid: false, elsewhere: null })
   })
 
   it("reads again once a Send lands, from the link's word", async () => {
     const storage = inMemoryStorage()
     const on = phone(storage, onConfirm(), { homeHolds: () => true })
-    expect(on.week.atHome.getSnapshot()).toEqual({ holds: null, last: null })
+    expect(on.week.atHome.getSnapshot()).toEqual({
+      holds: null,
+      last: null,
+      homeSaid: false,
+      elsewhere: null,
+    })
     on.week.bundle.dispatch({ type: "go", index: 0 })
     await say(on, "QM-311")
     on.week.bundle.dispatch({ type: "review" })
     on.week.bundle.dispatch({ type: "send" })
     const [sent] = weeksSent(storage).list() ?? []
-    expect(on.week.atHome.getSnapshot()).toEqual({ holds: sent, last: sent })
+    expect(on.week.atHome.getSnapshot()).toEqual({
+      holds: sent,
+      last: sent,
+      homeSaid: false,
+      elsewhere: null,
+    })
   })
 
   it("reads again when the link hears home has a send, with no new Send", async () => {
