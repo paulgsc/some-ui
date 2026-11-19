@@ -68,6 +68,7 @@ const jobs: Pipeline = {
         "/jobs/interview",
         "/jobs/interview/questions",
         "/jobs/interview/how",
+        "/jobs/interview/past",
         "/jobs/interview/q/$question",
         "/jobs/interview/q/$question/study",
         "/jobs/interview/q/$question/aloud",

@@ -124,6 +124,15 @@ export const TakesLink = ({ week }: { week: InterviewWeek }): JSX.Element => (
   />
 )
 
+/** The way to Past weeks (IW17). */
+const PastLink = (): JSX.Element => (
+  <Kind
+    to={{ page: "past" }}
+    name={WORDS.weeks.title}
+    lines={[WORDS.weeks.entryLine]}
+  />
+)
+
 /** The way to How a week goes. */
 const HowLink = (): JSX.Element => (
   <Kind
@@ -184,6 +193,7 @@ const Fresh = ({ week }: { week: InterviewWeek }): JSX.Element => {
         <p className="text-muted-foreground text-sm">{WORDS.wayIn.anyOrder}</p>
       </section>
       <HowLink />
+      <PastLink />
     </div>
   )
 }
@@ -271,6 +281,7 @@ const UnderWay = ({ held }: { held: Interview }): JSX.Element => {
       </Button>
       <TakesLink week={week} />
       <HowLink />
+      <PastLink />
     </div>
   )
 }
@@ -415,6 +426,7 @@ const ReadBack = ({ held }: { held: Interview }): JSX.Element => {
         )}
       </section>
       <SentList held={held} sent={holds} readOnly />
+      <PastLink />
     </div>
   )
 }
