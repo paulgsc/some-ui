@@ -9,7 +9,8 @@
  *   `closed`, and a send that is not a draft, or none. A draft is never what
  *   the owner sent (#2231, "The record is final only after `due`").
  * - A transcript is `some-ui.voice-transcript/1` (the mailbox's `transcript`
- *   folder). A take's `ref` is `<week>:<ticket>`; a pasted error's note is
+ *   folder). A take's `ref` is `<week>:<ticket>`, or `<week>:<ticket>:<n>`
+ *   for its point n (RR24); a pasted error's note is
  *   `<week>:PASTE:<at>` (paulgsc/server `voice_repo::is_rust_round_ref`).
  */
 import { WEEK_ID } from "@rust-rounds/lib/formats/week"
@@ -29,6 +30,20 @@ const TicketRecordSchema = z.object({
   answered: z.boolean(),
   take: z.string().min(1).nullable(),
   recordedAt: Instant.nullable(),
+  /**
+   * Each point answered by a take of its own (RR24), its point read from the
+   * take's `ref`; `take` above is the whole ticket's, which answers every
+   * point. A home from before RR24 says none.
+   */
+  points: z
+    .array(
+      z.object({
+        point: z.int().positive(),
+        take: z.string().min(1),
+        recordedAt: Instant,
+      })
+    )
+    .default([]),
   opens: z.int().nonnegative(),
 })
 
