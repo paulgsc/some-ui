@@ -1,0 +1,18 @@
+{
+  "id": "C712",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/week-play/store.ts",
+    "packages/ui/rust-rounds/src/lib/flow/index.ts"
+  ],
+  "chose": "An exercise ticked as worked at the desk (C673) is kept on the phone in its own list that only grows, once per exercise and never taken back; it stays on the phone until the tracker's story (RR26) sends academy ticks home.",
+  "options": [
+    "a phone list that only grows, no untick",
+    "a toggle the owner can undo",
+    "send each tick home now"
+  ],
+  "gray": "The prototype shows the tick and its standing but not whether it can be taken back or where it goes; never losing the record favours append-only, and home's half belongs to RR26.",
+  "undo": "Add an untick record to lib/flow's tick and a lane in lib/kept-home.",
+  "refs": ["#3249", "#3250"]
+}
