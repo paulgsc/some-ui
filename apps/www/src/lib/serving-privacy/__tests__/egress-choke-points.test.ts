@@ -173,7 +173,9 @@ const HOME_LINK_CALLERS = new Set([
   "lib/idea-home/index.ts",
   // LA8 (ST32): Studio's Takes on home, which asks home for the takes it
   // keeps as the screen opens and on Try again, a search (a blank one reads
-  // the newest) or Show the newest, and for one take's audio on each Play.
+  // the newest) or Show the newest, and for one take's audio on each Play;
+  // and reads the recordings the voice lane lists and where each
+  // is kept, as My data does, asking home nothing of its own.
   "lib/take-library/index.ts",
   // LA8 (HEARD3): Studio's Takes › Needs your attention, which asks home for
   // the takes it couldn't hear well as the page opens and on Try again, for
@@ -289,7 +291,7 @@ const KEPT_SENDS = [
 
 /** LA8, ST32: the read of the takes home keeps, and the one request it may send. */
 const TAKES_READ = "lib/home-link/takes-read.ts"
-const TAKES_SENDS = [['"GET"', "takesPath(q)"]]
+const TAKES_SENDS = [['"GET"', "takesPath(q, after, query)"]]
 
 /**
  * LA8, HEARD3: the read of the takes home couldn't hear well, and the act

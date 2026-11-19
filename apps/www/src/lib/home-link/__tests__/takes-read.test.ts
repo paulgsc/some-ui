@@ -53,8 +53,34 @@ beforeEach(() => {
 
 describe("the read of the takes home keeps (ST32)", () => {
   it("asks for the newest, or for the takes whose words hold a search's", () => {
-    expect(takesPath(null)).toBe("/voice-notes/takes")
-    expect(takesPath("brand intro")).toBe("/voice-notes/takes?q=brand%20intro")
+    // Every kind, from epoch 19; a home before it ignores `kind`.
+    expect(takesPath(null)).toBe("/voice-notes/takes?kind=all")
+    expect(takesPath("brand intro")).toBe(
+      "/voice-notes/takes?kind=all&q=brand%20intro"
+    )
+    // `next` goes back as home gave it, an opaque cursor, URL-encoded.
+    expect(
+      takesPath(null, "2026-11-03T09:00:00.000Z|2026-11-03T09:01:00.000Z|t1")
+    ).toBe(
+      "/voice-notes/takes?kind=all&after=2026-11-03T09%3A00%3A00.000Z%7C2026-11-03T09%3A01%3A00.000Z%7Ct1"
+    )
+    // The kinds, topic and order picked, asked of home.
+    expect(
+      takesPath("rams", null, {
+        kinds: ["game"],
+        about: "game:401772",
+        sort: "oldest",
+      })
+    ).toBe(
+      "/voice-notes/takes?kind=game&about=game%3A401772&sort=oldest&q=rams"
+    )
+    expect(
+      takesPath(null, null, {
+        kinds: ["studio", "game"],
+        about: null,
+        sort: "newest",
+      })
+    ).toBe("/voice-notes/takes?kind=studio&kind=game")
   })
 
   it("hands back home's answer to one GET", async () => {
@@ -62,7 +88,7 @@ describe("the read of the takes home keeps (ST32)", () => {
       kind: "answered",
       answer,
     })
-    expect(asked).toEqual([["GET", "/voice-notes/takes?q=brand"]])
+    expect(asked).toEqual([["GET", "/voice-notes/takes?kind=all&q=brand"]])
   })
 
   it("asks nothing while unpaired", async () => {
