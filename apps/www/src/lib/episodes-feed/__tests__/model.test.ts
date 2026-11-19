@@ -43,6 +43,7 @@ const LISTS: FeedLists = {
   "cards-essay": read(episode("zfs-2026-11-12")),
   "playoff-delta": read(episode("2026-SF-10"), episode("2026-SF-09")),
   "interview-essay": read(),
+  report: read(),
   "rust-essay": read(episode("2026-w45")),
 }
 
@@ -52,6 +53,7 @@ describe("keyDay", () => {
     expect(keyDay("rust-essay", "2026-w45")).toBe("2026-11-02")
     expect(keyDay("interview-essay", "2026-w46")).toBe("2026-11-09")
     expect(keyDay("cards-essay", "zfs-2026-11-12")).toBe("2026-11-12")
+    expect(keyDay("report", "2026-W46")).toBe("2026-11-09")
     expect(keyDay("playoff-delta", "2026-SF-10")).toBeNull()
   })
 
@@ -60,6 +62,10 @@ describe("keyDay", () => {
     expect(keyDay("call", "week-44")).toBeNull()
     expect(keyDay("rust-essay", "2027-w53")).toBeNull()
     expect(keyDay("cards-essay", "zfs")).toBeNull()
+    expect(keyDay("report", "2027-W53")).toBeNull()
+    // Each in its own spelling only.
+    expect(keyDay("report", "2026-w46")).toBeNull()
+    expect(keyDay("rust-essay", "2026-W46")).toBeNull()
   })
 })
 
@@ -173,6 +179,7 @@ describe("feedView", () => {
       "cards-essay": 1,
       "interview-essay": 0,
       "playoff-delta": 2,
+      report: 0,
       "rust-essay": 1,
     }
     for (const chip of ["all", "call", "rust-essay"] as const) {

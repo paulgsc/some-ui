@@ -1,0 +1,18 @@
+{
+  "id": "C607",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": [
+    "server:crates/db/voice/src/about.rs",
+    "server:crates/nfl_feed/src/summary.rs"
+  ],
+  "chose": "Each take's `about` is `{ key, ...per kind }`, from one exhaustive match on Of. The keys are game:<game>, interview:<week>, rust-round:<week or round>, studio:<project>, idea:<idea>, leetype:<file> (the ref up to its last ':'), and <kind>:<ref> for the rest. A game's about holds the game's label ('NE @ CHI', from the newest summary home fetched of the game), a nested `bite` and a nested `match` with the play's latest version. An interview answer carries the rung its week's standing send gives it.",
+  "options": [
+    "one key per take, nested game detail",
+    "flat game fields on about",
+    "several filterable keys per take"
+  ],
+  "gray": "The owner named examples (game, rust-round week and ticket, interview week/question/rung, studio project and shot, or idea) but no key grammar. One key per take keeps the filter a single equality.",
+  "undo": "Edit voice_repo::about. Nothing is stored.",
+  "refs": ["#3219"]
+}

@@ -22,7 +22,11 @@ export type Subject =
   | { readonly kind: "walk"; readonly clip: string; readonly side: ClipSide }
   /** Opens the essay's page, where its video plays (CARDS7, #2979). */
   | { readonly kind: "essay"; readonly key: string }
-  | { readonly kind: "other" }
+  /**
+   * Opens nothing: a feed this phone doesn't know yet, or a key it can't
+   * read. Its `feed` is home's, so the row can still say which (#3235).
+   */
+  | { readonly kind: "other"; readonly feed: string }
 
 /** A row as home's board gives it. */
 export type Row = {
@@ -54,7 +58,7 @@ export function subjectOf(row: Row): Subject {
   if (row.feed === "cards-essay")
     return isEssayKey(row.key)
       ? { kind: "essay", key: row.key }
-      : { kind: "other" }
+      : { kind: "other", feed: row.feed }
   if (isFeed(row.feed)) return { kind: "episode", feed: row.feed, key: row.key }
   if (row.feed === "preview") {
     if (row.template !== undefined)
@@ -72,5 +76,5 @@ export function subjectOf(row: Row): Subject {
       if (clip !== "") return { kind: "walk", clip, side }
     }
   }
-  return { kind: "other" }
+  return { kind: "other", feed: row.feed }
 }

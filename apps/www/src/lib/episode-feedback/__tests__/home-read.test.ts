@@ -63,6 +63,7 @@ describe("the read of every feed's notes (#3035)", () => {
       "cards-essay-1",
       "interview-essay-1",
       "playoff-delta-1",
+      "report-1",
       "rust-essay-1",
     ])
     expect(read.kind === "read" && read.notYet.size).toBe(0)
@@ -83,6 +84,7 @@ describe("the read of every feed's notes (#3035)", () => {
     expect(read.kind === "read" && [...read.storedAt.keys()]).toEqual([
       "call-1",
       "playoff-delta-1",
+      "report-1",
     ])
   })
 
@@ -92,6 +94,7 @@ describe("the read of every feed's notes (#3035)", () => {
       "cards-essay": 404,
       "interview-essay": 404,
       "playoff-delta": 404,
+      report: 404,
       "rust-essay": 404,
     }
     expect(await readHomeNotes()).toEqual({ kind: "older" })

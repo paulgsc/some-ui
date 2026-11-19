@@ -1,0 +1,14 @@
+{
+  "id": "C637",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": ["some-ui:apps/www/src/lib/feeds/index.ts"],
+  "chose": "One defect PR teaches the phone the report feed whole: Renders opens it, Studio › Episodes lists it as its own genre, its page takes a YouTube link, and My data lets home's copy go (home lets a report go, `feeds::Feed::Report`). Step 5's Episodes genre comes with it, since every per-feed table is typed over `FEEDS`.",
+  "options": [
+    "one PR: the report in FEEDS with every table it needs, link and let go included",
+    "a defect PR for Renders only, then a story PR for Episodes, link and let go"
+  ],
+  "gray": "CLAUDE.md asks for two PRs when a change is both a story and a defect, but every table keyed by `Feed` must name the report once it is a feed, so Episodes cannot be held back without a second list of feeds, which the owner's rule (one feed module) forbids.",
+  "undo": "Drop `report` from `LINKED_FEEDS` or `LET_GO_FEEDS` to withhold the link or the let go.",
+  "refs": ["#3235", "#2700"]
+}
