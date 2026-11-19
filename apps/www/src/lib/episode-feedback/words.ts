@@ -3,7 +3,7 @@
  * table, in the person's terms, held by its test to no machinery. The
  * categories are decision 7's fixed set (#2670), as the owner wrote them.
  */
-import { counted, dayWords, formatTimecode } from "@some-ui/core-utils"
+import { counted, dayWords, formatTimecode, listed } from "@some-ui/core-utils"
 
 import type { Category, Destination } from "./model"
 
@@ -29,6 +29,9 @@ export const DESTINATION_WORDS = {
   template: "Changes how the feed's episodes look and sound",
   defect: "A slide to fix",
 } as const satisfies Record<Destination, string>
+
+/** A feed's name as it reads mid-sentence. */
+const inSentence = (name: string): string => name.replace(/^The /, "the ")
 
 export const FEEDBACK_WORDS = {
   /** On an episode's page, under its video. */
@@ -62,6 +65,8 @@ export const FEEDBACK_WORDS = {
   /** Home read it back when it was sent; its list wasn't read just now. */
   onHomeSent: "On home",
   onPhone: "On this phone; it goes home on its own while paired",
+  /** Its feed's notes home doesn't keep yet. */
+  waits: "On this phone; it goes home once home runs a newer version",
   notTaken: "Home didn't take this note, so it stays on this phone",
   /** While the phone is still reading whether it's paired with home. */
   notKnown: "On this phone; whether home has it too isn't known yet",
@@ -70,6 +75,12 @@ export const FEEDBACK_WORDS = {
     unpaired: "This phone isn't paired with home, so the notes are only here.",
     older:
       "Home doesn't keep notes on episodes yet, so they wait on this phone.",
+    /**
+     * Home keeps some feeds' notes and not yet these (`names`, each a feed's
+     * name, which may start "The").
+     */
+    notYet: (names: ReadonlyArray<string>): string =>
+      `Home doesn't keep notes on ${listed(names.map(inSentence))} yet, so those wait on this phone until home runs a newer version.`,
     away: "Home didn't answer, so this is what the phone knows of it.",
     busy: "This phone was busy with home just then, so this is what the phone knows of it. Drag down to try again.",
   },
