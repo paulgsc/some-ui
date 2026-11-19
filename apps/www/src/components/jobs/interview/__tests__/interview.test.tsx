@@ -174,11 +174,16 @@ describe("the interview week's pages on the phone (IW8)", () => {
     expect(lit()).toBe(held)
     fireEvent.click(screen.getByRole("button", { name: WORDS.band.goOn }))
     screen.getByRole("button", { name: WORDS.band.pause })
-    // Ending the take leaves the script where the band left it (PB1).
+    // Ending the take leaves the script where the band left it, and where a
+    // hand scrolled it ahead of the band (PB1).
     const read = lit()
+    const view = script?.querySelector("[data-scroll-intent]")
+    if (!(view instanceof HTMLElement)) throw new Error("no script window")
+    view.scrollTop = 500
     fireEvent.click(takeButton(card))
     await settle()
     expect(lit()).toBe(read)
+    expect(view.scrollTop).toBe(500)
 
     await follow(WORDS.reads)
     screen.getByText(
