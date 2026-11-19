@@ -15,7 +15,7 @@ import {
   pacificDay,
   TRACKS,
 } from "@some-ui/job-desk"
-import { Badge, Button, Textarea } from "@some-ui/shared"
+import { Badge, Button, CardLink, Textarea } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 import { Check } from "lucide-react"
 
@@ -75,29 +75,42 @@ import { postingLine, sectionHeading } from "@/components/job-reading"
 import { MorningCard } from "./morning-card"
 import { OpenDigest, Problem, useJourneyContext } from "./parts"
 
-/** A pick's place in Jobs: a link on the phone, plain elsewhere. */
+/**
+ * A pick's place in Jobs: a link on the phone, plain elsewhere. With `card`,
+ * the link is a card that opens it (`CardLink`, #3234); `className` is then
+ * the plain card's look, for a build where nothing opens.
+ */
 const ToPick = ({
   day,
   pick,
+  card = false,
   className,
   children,
 }: {
   day: string
   pick: Pick
+  card?: boolean
   className: string
   children: ReactNode
-}): JSX.Element =>
-  hasAudience("apk") ? (
+}): JSX.Element => {
+  if (!hasAudience("apk")) return <div className={className}>{children}</div>
+  const link = (
     <Link
       to="/jobs/pick/$day/$pickId"
       params={{ day, pickId: pick.id }}
-      className={className}
+      className={card ? undefined : className}
     >
       {children}
     </Link>
-  ) : (
-    <div className={className}>{children}</div>
   )
+  return card ? (
+    <CardLink asChild className="flex-col items-stretch gap-1">
+      {link}
+    </CardLink>
+  ) : (
+    link
+  )
+}
 
 /**
  * What is ready for the company's form, only what truly is: the résumé once
@@ -211,7 +224,8 @@ const PickCard = ({
     <ToPick
       day={day}
       pick={pick}
-      className="bg-card hover:border-primary flex flex-col gap-1 rounded-xl border p-3"
+      card
+      className="bg-card flex flex-col gap-1 rounded-xl border p-3"
     >
       <div className="flex items-baseline justify-between gap-2">
         <span className="leading-tight font-semibold">
