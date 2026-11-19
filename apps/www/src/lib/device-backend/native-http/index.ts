@@ -85,6 +85,7 @@ class InsecureHomeError extends Error {
 const BLOCKED: Readonly<Record<HomeBlockedReason, string>> = {
   name: "This phone can't find home's name on this network.",
   trust: "This phone doesn't trust home's certificate.",
+  door: "Home's address answered, but home's server didn't.",
 }
 
 function classify(error: unknown): ForeignVerdict {
