@@ -78,8 +78,10 @@ const BUNDLE: BundleWords = {
     kept: KEPT,
     playAll: "Play all, in order",
     stopAll: "Stop",
-    deleteAll: "Delete all",
-    notSaid: "Not said. Sent as it is, it goes as passed over.",
+    // Only what is still on this phone goes; "all" read as the takes kept for good too.
+    deleteAll: "Delete from this phone",
+    notSaid:
+      "Not said. Send the week without it and home has it as passed over.",
     typed: "",
     sayIt: "Say it",
     delete: "Delete",
@@ -134,7 +136,8 @@ export const INTERVIEW_WORDS = {
   invented:
     "The company and the role are invented. Answer as you would for this role.",
   questions: "Questions",
-  reads: "Read aloud",
+  // Its own name, apart from the ladder's "Read it aloud" and the phone's Read aloud.
+  reads: "Scripts",
   readsLine:
     "Short scripts about why a piece of this work exists, read as written, the way you'd open a talk.",
   /** The Interview page, the way in (IW15): what this is, each kind and its time. */
@@ -190,7 +193,8 @@ export const INTERVIEW_WORDS = {
   /** The Questions page (IW15): the week's questions, today's first. */
   questionsLine:
     "The questions an interviewer asks about you, answered for this role. Each has steps: read a ready answer, read it aloud, say it from cues, say it your way.",
-  today: "Today's question",
+  /** Today's question, by the number the look over gives it: "Today's question · Question 2". */
+  today: (label: string): string => `Today's question · ${label}`,
   todayLine: "A minute or two, at whatever step you like",
   others: "The rest of the week's questions",
   toQuestions: "Questions",
@@ -247,12 +251,11 @@ export const INTERVIEW_WORDS = {
     time: (elapsedMs: number, seconds: number): string =>
       `${lengthOf(elapsedMs)} / about ${lengthOf(seconds * 1000)}`,
   },
-  /** The count before a read records. */
-  cue: (left: number): string => `Recording in ${left}`,
+  /** Under the script while the cue counts; the button says how long is left. */
   cueLine: "Tap the button again to call it off.",
   /** The look over's names for a card. */
   questionLabel: (n: number): string => `Question ${n}`,
-  readLabel: (n: number): string => `Read ${n}`,
+  readLabel: (n: number): string => `Script ${n}`,
   send: (n: number): string => `Send to home · ${takes(n)}`,
   sendAgain: (n: number): string => `Send again · ${takes(n)}`,
   needs: {
