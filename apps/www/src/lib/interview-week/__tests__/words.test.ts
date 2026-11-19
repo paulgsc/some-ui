@@ -129,6 +129,26 @@ describe("the interview week's words (IW5)", () => {
     )
   })
 
+  // The study's readers (#3228) stumbled on names that collide.
+  it("keep each name apart from the ones beside it (IW18)", () => {
+    const words = (name: string): Array<string> =>
+      name.toLowerCase().match(/[a-z]+/g) ?? []
+    const rungs = Object.values(INTERVIEW_WORDS.step).flatMap(({ name }) =>
+      words(name)
+    )
+    // The kind shares no word with the ladder's rungs, nor the phone's Read aloud.
+    for (const word of words(INTERVIEW_WORDS.reads)) {
+      expect(rungs).not.toContain(word)
+      expect(["read", "aloud"]).not.toContain(word)
+    }
+    // Today's question carries the look over's name for it.
+    const label = INTERVIEW_WORDS.questionLabel(2)
+    expect(INTERVIEW_WORDS.today(label)).toContain(label)
+    // Delete names what the kept line beside it says stays on this phone.
+    expect(INTERVIEW_WORDS.review.deleteAll).toBe("Delete the rest")
+    expect(INTERVIEW_WORDS.review.kept).toContain("The rest stay on this phone")
+  })
+
   it("say the brief's week on the owner's clock", () => {
     expect(INTERVIEW_WORDS.heading(WEEK)).toBe("Week 47 · due Sunday 23:59")
   })

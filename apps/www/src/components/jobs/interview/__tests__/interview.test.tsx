@@ -12,6 +12,7 @@
  * or says what wasn't done.
  */
 import { inMemoryStorage } from "@some-ui/core-utils"
+import { TAKE_WORDS } from "@some-ui/voice-capture"
 import { takeButton } from "@some-ui/voice-capture/testing"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -90,7 +91,9 @@ describe("the interview week's pages on the phone (IW8)", () => {
     screen.getByText(WEEK.company.about)
     screen.getByText(WEEK.role.about)
     screen.getByText(WORDS.invented)
-    await follow(new RegExp(`^${WORDS.today}`))
+    // Today's question carries the number the look over gives it.
+    const todayIs = WORDS.questionLabel(2)
+    await follow(new RegExp(`^${WORDS.today(todayIs)}`))
 
     // Its page: the four rungs at equal weight.
     for (const step of ["study", "aloud", "cues", "own"] as const) {
@@ -136,7 +139,11 @@ describe("the interview week's pages on the phone (IW8)", () => {
     const card = document.querySelector<HTMLElement>("[data-card]")
     if (card === null) throw new Error("no take on the read's page")
     fireEvent.click(takeButton(card))
-    expect(card.textContent).toContain(WORDS.cue(CUE_SECONDS))
+    // The button it starts from counts in, so the two never disagree.
+    expect(takeButton(card).textContent).toBe(
+      TAKE_WORDS.button.counting(CUE_SECONDS)
+    )
+    expect(card.textContent).toContain(WORDS.cueLine)
     await settle(CUE_SECONDS * 1000)
     await settle(2_000)
     expect(document.querySelector('[data-script="epic-2931"]')).toBe(script)
@@ -149,6 +156,9 @@ describe("the interview week's pages on the phone (IW8)", () => {
     )
     await follow(WORDS.toInterview)
     await press(WORDS.toReview)
+    // The look over names today's question as its card did, and the read by its kind.
+    screen.getByText(todayIs)
+    screen.getByText(WORDS.readLabel(1))
     await press(WORDS.send(2))
     screen.getByText(WORDS.sent.title(2))
 

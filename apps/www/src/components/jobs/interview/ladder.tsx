@@ -301,7 +301,7 @@ export const Script = ({
   </section>
 )
 
-/** Under a read's script: the count before it records, holding its place (HS1). */
+/** Under a read's script: the cap, or how to call the count-in off while it runs, holding its place (HS1). */
 export const CueLine = ({
   held,
   item,
@@ -315,9 +315,7 @@ export const CueLine = ({
       aria-live="assertive"
       className="text-muted-foreground min-h-6 text-center text-sm"
     >
-      {cue.kind === "counting" && cue.item === item
-        ? WORDS.cue(cue.left)
-        : WORDS.cap}
+      {cue.kind === "counting" && cue.item === item ? WORDS.cueLine : WORDS.cap}
     </p>
   )
 }
@@ -353,7 +351,7 @@ export const TakeOn = ({
   rung: Rung | null
   head: ReactNode
 }): JSX.Element => {
-  const { run, state, takes, snapshot, week } = held
+  const { run, state, takes, snapshot, week, cue } = held
   if (isClosed(week, state.at)) {
     return (
       <>
@@ -373,6 +371,7 @@ export const TakeOn = ({
       dispatch={rung === null ? run.dispatch : run.dispatchOn(rung)}
       words={WORDS}
       item={item}
+      counting={cue.kind === "counting" && cue.item === item ? cue.left : null}
       head={
         <>
           {head}
