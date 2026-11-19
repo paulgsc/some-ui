@@ -17,6 +17,14 @@ import type {
 } from "@soundbites/lib/library/runtime"
 import { LIBRARY_WORDS } from "@soundbites/lib/library/words"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+  RouterProvider,
+} from "@tanstack/react-router"
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 
@@ -490,6 +498,36 @@ describe("Takes on home (ST32)", () => {
         expect(screen.getAllByRole("button", { name: W.play })).toHaveLength(2)
     }
   )
+
+  it("stops a take playing when the person goes to another page of the app (VC4)", async () => {
+    const player = simulatedPlayer()
+    const root = createRootRoute({ component: Outlet })
+    const router = createRouter({
+      routeTree: root.addChildren([
+        createRoute({
+          getParentRoute: () => root,
+          path: "/takes",
+          component: () => (
+            <TakeLibrary ports={{ home: home(), player }} pair={null} />
+          ),
+        }),
+        createRoute({
+          getParentRoute: () => root,
+          path: "/elsewhere",
+          component: () => <p>Elsewhere</p>,
+        }),
+      ]),
+      history: createMemoryHistory({ initialEntries: ["/takes"] }),
+    })
+    render(<RouterProvider router={router} />)
+    const [play] = await screen.findAllByRole("button", { name: W.play })
+    fireEvent.click(play!)
+    await settle()
+    expect(player.playing()).toBe(1)
+    await act(() => router.navigate({ to: "/elsewhere" }))
+    expect(await screen.findByText("Elsewhere")).toBeTruthy()
+    expect(player.playing()).toBe(0)
+  })
 
   it("says why there is nothing, offering Try again only where it can help", async () => {
     const takes = vi.fn(() => Promise.resolve({ kind: "away" as const }))

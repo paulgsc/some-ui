@@ -53,7 +53,7 @@
  *   audio being read, the microphone opening and a take recording; and
  *   VC2/VC3's generated family with each screen watching the page itself);
  *   Studio's (`studio.test.ts`) and Takes' (`take-library`) own tests, hidden
- *   and gone mid-play. That every playback passes through the kit's player
+ *   and gone mid-play, Takes' through a route change on the real router. That every playback passes through the kit's player
  *   is the lint rule `one-owner/no-local-audio`.
  * - _Tolerance:_ a screen that stays mounted on a visible page keeps
  *   playing: moving between the pages of one layout (Interview week's) is
