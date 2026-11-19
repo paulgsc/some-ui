@@ -70,6 +70,38 @@ const RoundListSchema = z.object({
 
 const TextSchema = z.string().refine((text) => text.trim() !== "")
 
+/**
+ * rustc's `--error-format=json` diagnostics as home records them
+ * (`rust_rounds_wire::Diagnostic`, RR23 #3243), copied from RR1's
+ * `DiagnosticSchema`. Optional on a compile error: a home older than RR23
+ * sends none.
+ */
+const DiagnosticSpanSchema = z.strictObject({
+  file: z.string(),
+  lineStart: z.int().nonnegative(),
+  lineEnd: z.int().nonnegative(),
+  columnStart: z.int().nonnegative(),
+  columnEnd: z.int().nonnegative(),
+  isPrimary: z.boolean(),
+  label: z.string().nullable(),
+  suggestedReplacement: z.string().nullable(),
+})
+
+const DiagnosticSchema = z.strictObject({
+  level: z.string(),
+  code: z.string().nullable(),
+  message: z.string(),
+  spans: z.array(DiagnosticSpanSchema),
+  children: z.array(
+    z.strictObject({
+      level: z.string(),
+      message: z.string(),
+      spans: z.array(DiagnosticSpanSchema),
+    })
+  ),
+  rendered: z.string().nullable(),
+})
+
 const RustcRunSchema = z.discriminatedUnion("outcome", [
   z.strictObject({
     outcome: z.literal("compile-error"),
@@ -87,6 +119,7 @@ const RustcRunSchema = z.discriminatedUnion("outcome", [
         columnEnd: z.int().positive(),
       })
       .nullable(),
+    diagnostics: z.array(DiagnosticSchema).optional(),
   }),
   z.strictObject({
     outcome: z.literal("prints"),

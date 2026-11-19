@@ -22,7 +22,7 @@ import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 import type { Interview } from "./run"
 import { currentOf, playOnly, useInterview, viewOf } from "./run"
 import type { Page } from "./to"
-import { CardTo, To } from "./to"
+import { To } from "./to"
 import { doneLine, Opening } from "./week"
 
 /** A page's way back: a link, so Android's back and this step the same way. */
@@ -62,7 +62,7 @@ const WithQuestion = ({
     <div className="flex flex-col gap-4">
       {question === undefined ? (
         <>
-          <BackTo to={{ page: "interview" }}>{WORDS.toInterview}</BackTo>
+          <BackTo to={{ page: "questions" }}>{WORDS.toQuestions}</BackTo>
           <p className="text-muted-foreground">{WORDS.notInWeek}</p>
         </>
       ) : (
@@ -115,7 +115,8 @@ const RungLink = ({
     </>
   )
   return (
-    <CardTo
+    <To
+      card="card"
       to={
         step === "cues" || step === "own"
           ? { page: "say", question, rung: step }
@@ -124,7 +125,7 @@ const RungLink = ({
       className="min-h-28"
     >
       {inside}
-    </CardTo>
+    </To>
   )
 }
 
@@ -159,7 +160,7 @@ export const QuestionPage = ({ id }: { id: string }): JSX.Element => (
   <WithQuestion id={id}>
     {(question, held) => (
       <>
-        <BackTo to={{ page: "interview" }}>{WORDS.toInterview}</BackTo>
+        <BackTo to={{ page: "questions" }}>{WORDS.toQuestions}</BackTo>
         <Head question={question} eyebrow={WORDS.aim(question.targetSeconds)} />
         <nav className="grid grid-cols-2 gap-2.5">
           {stepsOf(question).map((step, i) => (

@@ -18,6 +18,7 @@ import {
 } from "@/components/jobs/interview/ladder"
 import { ReadPage, ReadsPage } from "@/components/jobs/interview/reads"
 import { InterviewWeekRuntime } from "@/components/jobs/interview/run"
+import { HowPage, QuestionsPage } from "@/components/jobs/interview/way-in"
 import { InterviewPage } from "@/components/jobs/interview/week"
 
 // The tree's type is the router's to infer: written out, it is every route's.
@@ -67,6 +68,8 @@ function interviewTree(ports: InterviewWeekPorts) {
   return root.addChildren([
     layout.addChildren([
       page("/", InterviewPage),
+      page("/questions", QuestionsPage),
+      page("/how", HowPage),
       question.addChildren([
         step("/", () => {
           return <QuestionPage id={question.useParams().question} />
