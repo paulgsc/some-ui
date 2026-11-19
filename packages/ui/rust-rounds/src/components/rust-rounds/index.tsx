@@ -301,6 +301,8 @@ const CardScreen = ({
           <Program round={round} card={card} run={run} />
           <RunView
             run={run}
+            program={resolvePrograms(round).get(card.id) ?? null}
+            appearance="code"
             none={
               NO_RUN_WORDS[
                 whyNoRun(

@@ -9,6 +9,12 @@
  * granted rect, and that nothing is wider than the phone: code and rustc's
  * output scroll sideways inside their own boxes and never wrap.
  *
+ * And at the largest text size (RR23, #3243): Android's largest font scale
+ * doubles the text, so the root font size is set to 200% and card a, which
+ * rustc refused, is measured laid out and with its printout open. Nothing
+ * scrolls sideways there but a code region: the program's card, a
+ * suggestion's card and rustc's printout.
+ *
  * Run against a built panel page:
  *
  *   pnpm --filter www build:fit
@@ -99,6 +105,68 @@ test.describe("Rust Rounds fits the phone, screen by screen", () => {
         page.getByRole("button", { name: "Copy for a tutor" })
       ).toBeVisible()
       await expectFits(page, "the tutor's page")
+    })
+  }
+})
+
+/** Android's largest font scale: text at twice its size, layout in px unchanged. */
+const LARGEST_TEXT = "html { font-size: 200% !important; }"
+
+/**
+ * Everything that scrolls sideways, or is wider than the page, outside a
+ * code region (`data-scroll-intent="code-display"`), named for the report.
+ */
+async function sidewaysOutsideCode(page: Page): Promise<Array<string>> {
+  return page.evaluate(() => {
+    const scroller = document.querySelector<HTMLElement>(
+      "[data-rust-rounds-page]"
+    )!
+    const right = scroller.getBoundingClientRect().right
+    return Array.from(scroller.querySelectorAll<HTMLElement>("*")).flatMap(
+      (element) => {
+        if (element.closest('[data-scroll-intent="code-display"]')) return []
+        const scrolls = element.scrollWidth > element.clientWidth + 1
+        const overflowX = getComputedStyle(element).overflowX
+        const sideways =
+          scrolls && (overflowX === "auto" || overflowX === "scroll")
+        const past = element.getBoundingClientRect().right > right + 1
+        if (!sideways && !past) return []
+        const text = element.textContent.trim().slice(0, 40)
+        return [`<${element.tagName.toLowerCase()}> "${text}"`]
+      }
+    )
+  })
+}
+
+test.describe("rustc's result fits the phone at the largest text size", () => {
+  PAGE.skipUnbuilt()
+
+  for (const phone of PHONE_VIEWPORTS) {
+    test(`at ${phone.name} (${phone.width}x${phone.height})`, async ({
+      page,
+    }) => {
+      PAGE.expectBuilt()
+      await page.setViewportSize({ width: phone.width, height: phone.height })
+      await page.goto(PAGE.url(RUST_ROUNDS_FIXTURE), { waitUntil: "load" })
+      await page.addStyleTag({ content: LARGEST_TEXT })
+      await page.getByRole("button", { name: "Start" }).click()
+
+      // Card a: rustc's E0277, laid out from its JSON.
+      const said = page.getByRole("figure", { name: "What rustc said" })
+      await expect(said).toBeVisible()
+      await expect(said).toContainText("error[E0277]:")
+      expect(await sidewaysOutsideCode(page), "laid out").toEqual([])
+
+      await page.getByText("What rustc printed", { exact: true }).click()
+      await expect(page.locator("details pre")).toBeVisible()
+      expect(await sidewaysOutsideCode(page), "printout open").toEqual([])
+
+      const { violations } = await findViolations(page)
+      expect(
+        violations.map((violation) =>
+          describeViolation("card a, largest text", violation)
+        )
+      ).toEqual([])
     })
   }
 })

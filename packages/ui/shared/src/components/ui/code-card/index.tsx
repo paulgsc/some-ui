@@ -29,7 +29,13 @@ type CodeCardProps = {
   code: string
   /** Its grammar; Rust unless said otherwise. */
   language?: CodeLanguage
-  /** Lines a variant changed, numbered from 1: each gets a `+` in the gutter. */
+  /**
+   * The first line's number, 1 unless the code is an excerpt (rustc's
+   * suggested line 9 alone). `changedLines`, `spans` and `inserted` count
+   * lines the same way.
+   */
+  firstLine?: number
+  /** Lines a variant or a suggestion changed: each gets a `+` in the gutter. */
   changedLines?: ReadonlyArray<number>
   /**
    * rustc's spans for a diagnostic, as its JSON gives them: each is
@@ -37,6 +43,8 @@ type CodeCardProps = {
    * message, notes and help are the host's to lay out.
    */
   spans?: ReadonlyArray<CodeSpan>
+  /** Stretches a suggestion inserted (rustc's `+ &`): tinted as new text. */
+  inserted?: ReadonlyArray<CodeSpan>
   /** Names the code for assistive tech ("The program", "Variant 2"). */
   label: string
   /**
@@ -49,7 +57,8 @@ type CodeCardProps = {
 
 /**
  * A program on the phone: a line-number gutter, `+` on a variant's changed
- * lines, and a diagnostic's span underlined on its highlighted line.
+ * lines, a diagnostic's span underlined on its highlighted line, and a
+ * suggestion's inserted text tinted.
  *
  * Code never wraps here. A long line scrolls sideways inside the code region,
  * and the gutter stays put beside it; the card itself is as wide as its host
@@ -59,13 +68,20 @@ type CodeCardProps = {
 export const CodeCard = ({
   code,
   language = "rust",
+  firstLine,
   changedLines,
   spans,
+  inserted,
   label,
   appearance = "inherit",
   className,
 }: CodeCardProps): JSX.Element => {
-  const lines = codeLines(code, language, { changedLines, spans })
+  const lines = codeLines(code, language, {
+    firstLine,
+    changedLines,
+    spans,
+    inserted,
+  })
 
   return (
     <figure
@@ -119,7 +135,18 @@ export const CodeCard = ({
                 {line.runs.length === 0
                   ? " "
                   : line.runs.map((run) =>
-                      run.marked ? (
+                      run.inserted ? (
+                        <ins
+                          key={run.column}
+                          data-code-inserted=""
+                          className={cn(
+                            "bg-primary/25 rounded-sm no-underline",
+                            TONE_CLASS[run.tone]
+                          )}
+                        >
+                          {run.text}
+                        </ins>
+                      ) : run.marked ? (
                         <mark
                           key={run.column}
                           data-code-span=""
