@@ -1003,6 +1003,31 @@ describe("a sitting stopped after any take resumes on the same scene", () => {
     }
   )
 
+  it("when the page is hidden while a take's audio is read, and shown again before it answers: nothing plays (VC4)", async () => {
+    const page = simulatedPage()
+    const player = simulatedPlayer(page.watch)
+    const memory = memoryProjectStore()
+    const runtime = studio(memory, speaking(), "t", undefined, undefined, {
+      onVisibility: page.watch,
+      player,
+    })
+    await until(runtime, (state) => state.shelf.kind === "read")
+    runtime.dispatch({ type: "primerPicked", file: new Blob([PRIMER_TEXT]) })
+    await until(
+      runtime,
+      (state) => projectOf(state) !== null && settledWrites(state)
+    )
+    runtime.dispatch({ type: "recordChosen" })
+    await recordOne(runtime)
+    runtime.dispatch({ type: "playPressed" })
+    // Hidden and back within the same turn as Play: the read is still out.
+    page.hide()
+    page.show()
+    expect(runtime.getSnapshot().activity.kind).toBe("idle")
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(player.playing()).toBe(0)
+  })
+
   it("when the screen goes away mid-take: the take is kept after it", async () => {
     const memory = memoryProjectStore()
     const first = await opened(memory)

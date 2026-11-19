@@ -485,10 +485,14 @@ describe("VC4: leaving the screen, or hiding the page, stops what it plays and e
       pattern.play("t1")
       if (how === "leave") pattern.leave()
       else page.hide()
+      await vi.advanceTimersByTimeAsync(0)
+      // Back before the read answers: it still plays nothing.
+      page.show()
       answer(take.blob)
       await vi.advanceTimersByTimeAsync(0)
       expect(player.playing()).toBe(0)
       expect(pattern.getSnapshot().playback).toEqual({ kind: "quiet" })
+      expect(page.watchers()).toBe(0)
     })
 
     it(`${how}: a take recording ends kept, and the microphone closes`, async () => {

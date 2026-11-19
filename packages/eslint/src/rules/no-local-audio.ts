@@ -11,8 +11,8 @@ import { isGlobal, PAGE_LIFETIME_TARGETS } from "./require-scoped-lifetime.js"
  * files (`owner`, a path fragment) this reports the ways ordinary code
  * plays audio of its own, each of which would play on behind a hidden page:
  *
- *   - `new Audio(…)`, the global or read off `window`, `globalThis` or
- *     `self`; a local binding named `Audio` is not the global;
+ *   - `new Audio(…)`, the global or read off a page global (`window`,
+ *     `globalThis`, `self`); a local binding named `Audio` is not the global;
  *   - `createElement("audio")` on anything, the name a string or a
  *     template with no `${}`;
  *   - an `<audio>` element in JSX.

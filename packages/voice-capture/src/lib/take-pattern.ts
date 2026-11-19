@@ -59,7 +59,9 @@
  *   `one-owner/no-local-audio`.
  * - _Tolerance:_ a screen that stays mounted on a visible page keeps
  *   playing: moving between the pages of one layout (Interview week's) is
- *   not leaving it.
+ *   not leaving it. On the screens that read a take's audio themselves,
+ *   outside a pattern (Takes, Kept, Needs your attention, My data), a read
+ *   that answers after the page was hidden and shown again plays (#3283).
  */
 import { assertNever } from "@some-ui/core-utils"
 
@@ -570,7 +572,7 @@ export type TakePatternPorts = Omit<TakeKitPorts, "keep"> & {
   readonly player?: Player | undefined
   /**
    * Whether the page is hidden (VC4), watched only while the microphone
-   * opens or records; defaults to the page's own (`onPageVisibility`).
+   * opens or records, or a take's audio is being read; defaults to the page's own (`onPageVisibility`).
    */
   readonly page?: WatchPage | undefined
 }
@@ -647,9 +649,13 @@ export function takePattern(
   const watchPage = ports.page ?? onPageVisibility
   let unwatchPage: (() => void) | null = null
   const watchWhileTaking = (): void => {
-    // Keeping waits on the store, where leaving changes nothing.
+    // Keeping waits on the store, where leaving changes nothing; a take's
+    // audio being read would otherwise play on return.
     const { kind } = snapshot.take
-    const taking = kind === "opening" || kind === "recording"
+    const taking =
+      kind === "opening" ||
+      kind === "recording" ||
+      snapshot.playback.kind === "loading"
     if (taking && unwatchPage === null) {
       unwatchPage = watchPage((hidden) => {
         // After the run of effects that started the take, never within it.
