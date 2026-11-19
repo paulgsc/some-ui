@@ -52,7 +52,7 @@ export type ChildView = {
   readonly spanless: boolean
   readonly location: string | null
   readonly marks: ReadonlyArray<Mark>
-  /** One card per suggestion rustc gave as an alternative; one for a multipart one. */
+  /** One card per choice rustc gave, a multipart one's parts applied together. */
   readonly fixes: ReadonlyArray<Fix>
   readonly loose: ReadonlyArray<LooseSuggestion>
 }
@@ -217,37 +217,47 @@ export function applySuggestions(
   }
 }
 
+/** Whether two suggestions collide: they start at one place, or overlap. */
+function collide(a: DiagnosticSpan, b: DiagnosticSpan): boolean {
+  const [first, second] =
+    a.lineStart < b.lineStart ||
+    (a.lineStart === b.lineStart && a.columnStart <= b.columnStart)
+      ? [a, b]
+      : [b, a]
+  const sameStart =
+    first.lineStart === second.lineStart &&
+    first.columnStart === second.columnStart
+  const startsInside =
+    second.lineStart < first.lineEnd ||
+    (second.lineStart === first.lineEnd && second.columnStart < first.columnEnd)
+  return sameStart || startsInside
+}
+
 /**
- * Whether a child's suggestions are alternatives ("consider importing one of
- * these"): two at one place, or overlapping. rustc's JSON doesn't say, so
- * suggestions that don't collide are taken as one multipart suggestion.
+ * A child's suggestions as rustc's choices, in its order: a choice's parts
+ * come together in the JSON (`Ok(` then `)`), and the next choice starts
+ * where a part would collide with one already in the current choice
+ * (`Err(` at `Ok(`'s place, or a second import at the first's). rustc's
+ * JSON doesn't mark the boundary, so parts that never collide are taken as
+ * one multipart suggestion.
  */
-function areAlternatives(suggestions: ReadonlyArray<DiagnosticSpan>): boolean {
-  const sorted = [...suggestions].sort(
-    (a, b) => a.lineStart - b.lineStart || a.columnStart - b.columnStart
-  )
-  return sorted.some((span, index) => {
-    const previous = sorted[index - 1]
-    if (previous === undefined) return false
-    const sameStart =
-      span.lineStart === previous.lineStart &&
-      span.columnStart === previous.columnStart
-    const startsInside =
-      span.lineStart < previous.lineEnd ||
-      (span.lineStart === previous.lineEnd &&
-        span.columnStart < previous.columnEnd)
-    return sameStart || startsInside
-  })
+function choicesOf(
+  suggestions: ReadonlyArray<DiagnosticSpan>
+): ReadonlyArray<ReadonlyArray<DiagnosticSpan>> {
+  const choices: Array<Array<DiagnosticSpan>> = []
+  for (const span of suggestions) {
+    const current = choices.at(-1)
+    if (current?.every((part) => !collide(part, span))) current.push(span)
+    else choices.push([span])
+  }
+  return choices
 }
 
 function childView(child: DiagnosticChild, program: string | null): ChildView {
   const suggestions = child.spans.filter(isSuggestion)
-  const groups = areAlternatives(suggestions)
-    ? suggestions.map((span) => [span])
-    : [suggestions].filter((group) => group.length > 0)
   const fixes: Array<Fix> = []
   const loose: Array<LooseSuggestion> = []
-  for (const group of groups) {
+  for (const group of choicesOf(suggestions)) {
     const fix = program === null ? null : applySuggestions(program, group)
     if (fix === null) {
       loose.push(
@@ -416,8 +426,9 @@ function printedLine(line: string): ReadonlyArray<PrintedRun> {
     const [, bar = "", number = "", rest = ""] = gutter
     const head: PrintedRun = { text: bar, tone: "gutter" }
     // A numbered row is the program's own line, kept plain. An unnumbered
-    // one is rustc's: markers and their labels, or a label alone under a
-    // `|` that joins it to its span (a secondary one's).
+    // one is rustc's: markers and their labels, or a multi-line span's
+    // `|____^` and its label, or a label alone under the `|` joining it to
+    // its span; primary where a `^` is, as rustc colours it.
     if (number !== "") return [head, { text: rest, tone: "plain" }]
     const markers = markerRuns(rest)
     if (markers !== null) return [head, ...markers]
@@ -425,7 +436,10 @@ function printedLine(line: string): ReadonlyArray<PrintedRun> {
     return [
       head,
       { text: rest.slice(0, indent), tone: "plain" },
-      { text: rest.slice(indent), tone: "secondary" },
+      {
+        text: rest.slice(indent),
+        tone: rest.includes("^") ? "primary" : "secondary",
+      },
     ]
   }
   return [{ text: line, tone: "plain" }]

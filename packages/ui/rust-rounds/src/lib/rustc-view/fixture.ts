@@ -5,7 +5,8 @@
  * with its `Clone` note and a suggestion to borrow; E0382 has spans out of
  * line order, a note with two of its own and a suggestion to clone. E0061
  * has an unlabelled primary span and a note pointing into the toolchain's
- * sources; E0433 offers two imports as alternatives at one place.
+ * sources; E0433 offers two imports as alternatives at one place; E0308
+ * offers `Ok(…)` or `Err(…)`, each a suggestion in two parts.
  */
 import type { RustcRun } from "@rust-rounds/lib/formats"
 
@@ -391,6 +392,120 @@ export const E0433: RustcRun & { outcome: "compile-error" } = {
       children: [],
       rendered:
         "For more information about this error, try `rustc --explain E0433`.\n",
+    },
+  ],
+}
+export const E0308_PROGRAM =
+  "fn f() -> Result<i32, i32> {\n    5\n}\n\nfn main() {\n    let _ = f();\n}\n"
+
+export const E0308: RustcRun & { outcome: "compile-error" } = {
+  outcome: "compile-error",
+  toolchain: "1.97.0",
+  code: "E0308",
+  stderr:
+    "error[E0308]: mismatched types\n --> main.rs:2:5\n  |\n1 | fn f() -> Result<i32, i32> {\n  |           ---------------- expected `Result<i32, i32>` because of return type\n2 |     5\n  |     ^ expected `Result<i32, i32>`, found integer\n  |\n  = note: expected enum `Result<i32, i32>`\n             found type `{integer}`\nhelp: try wrapping the expression in a variant of `Result`\n  |\n2 |     Ok(5)\n  |     +++ +\n2 |     Err(5)\n  |     ++++ +\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0308`.\n",
+  span: { lineStart: 2, columnStart: 5, lineEnd: 2, columnEnd: 6 },
+  diagnostics: [
+    {
+      level: "error",
+      code: "E0308",
+      message: "mismatched types",
+      spans: [
+        {
+          file: "main.rs",
+          lineStart: 2,
+          lineEnd: 2,
+          columnStart: 5,
+          columnEnd: 6,
+          isPrimary: true,
+          label: "expected `Result<i32, i32>`, found integer",
+          suggestedReplacement: null,
+        },
+        {
+          file: "main.rs",
+          lineStart: 1,
+          lineEnd: 1,
+          columnStart: 11,
+          columnEnd: 27,
+          isPrimary: false,
+          label: "expected `Result<i32, i32>` because of return type",
+          suggestedReplacement: null,
+        },
+      ],
+      children: [
+        {
+          level: "note",
+          message:
+            "expected enum `Result<i32, i32>`\n   found type `{integer}`",
+          spans: [],
+        },
+        {
+          level: "help",
+          message: "try wrapping the expression in a variant of `Result`",
+          spans: [
+            {
+              file: "main.rs",
+              lineStart: 2,
+              lineEnd: 2,
+              columnStart: 5,
+              columnEnd: 5,
+              isPrimary: true,
+              label: null,
+              suggestedReplacement: "Ok(",
+            },
+            {
+              file: "main.rs",
+              lineStart: 2,
+              lineEnd: 2,
+              columnStart: 6,
+              columnEnd: 6,
+              isPrimary: true,
+              label: null,
+              suggestedReplacement: ")",
+            },
+            {
+              file: "main.rs",
+              lineStart: 2,
+              lineEnd: 2,
+              columnStart: 5,
+              columnEnd: 5,
+              isPrimary: true,
+              label: null,
+              suggestedReplacement: "Err(",
+            },
+            {
+              file: "main.rs",
+              lineStart: 2,
+              lineEnd: 2,
+              columnStart: 6,
+              columnEnd: 6,
+              isPrimary: true,
+              label: null,
+              suggestedReplacement: ")",
+            },
+          ],
+        },
+      ],
+      rendered:
+        "error[E0308]: mismatched types\n --> main.rs:2:5\n  |\n1 | fn f() -> Result<i32, i32> {\n  |           ---------------- expected `Result<i32, i32>` because of return type\n2 |     5\n  |     ^ expected `Result<i32, i32>`, found integer\n  |\n  = note: expected enum `Result<i32, i32>`\n             found type `{integer}`\nhelp: try wrapping the expression in a variant of `Result`\n  |\n2 |     Ok(5)\n  |     +++ +\n2 |     Err(5)\n  |     ++++ +\n\n",
+    },
+    {
+      level: "error",
+      code: null,
+      message: "aborting due to 1 previous error",
+      spans: [],
+      children: [],
+      rendered: "error: aborting due to 1 previous error\n\n",
+    },
+    {
+      level: "failure-note",
+      code: null,
+      message:
+        "For more information about this error, try `rustc --explain E0308`.",
+      spans: [],
+      children: [],
+      rendered:
+        "For more information about this error, try `rustc --explain E0308`.\n",
     },
   ],
 }

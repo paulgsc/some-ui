@@ -14,6 +14,8 @@ import {
 import {
   E0061,
   E0061_PROGRAM,
+  E0308,
+  E0308_PROGRAM,
   E0382,
   E0382_PROGRAM,
   E0433,
@@ -29,7 +31,7 @@ if (E0277?.outcome !== "compile-error" || E0277.diagnostics === undefined) {
   throw new Error("the worked example's card a is rustc's E0277, with its JSON")
 }
 
-const RUNS = { E0277, E0507, E0382, E0061, E0433 }
+const RUNS = { E0277, E0507, E0382, E0061, E0433, E0308 }
 
 const suggestion = (
   lineStart: number,
@@ -163,6 +165,17 @@ describe("diagnosticView", () => {
       ["use std::cmp::Ordering;", [1, 2]],
       ["use std::sync::atomic::Ordering;", [1, 2]],
     ])
+  })
+
+  it("keeps a choice's parts together: `Ok(…)` or `Err(…)`, never half of one", () => {
+    const [first] = diagnosticView(E0308.diagnostics ?? [], E0308_PROGRAM)
+    if (first?.kind !== "diagnostic") throw new Error("a diagnostic first")
+    const wrap = first.children[1]
+    expect(wrap?.fixes.map((fix) => fix.code)).toEqual([
+      "    Ok(5)",
+      "    Err(5)",
+    ])
+    expect(wrap?.loose).toEqual([])
   })
 
   it("brackets an error's code in its heading, never a lint's name", () => {
@@ -332,6 +345,17 @@ describe("printedLines", () => {
       ["help", "help:"],
       ["plain", "the trait `SliceIndex<str>` is not implemented for `usize`"],
     ])
+  })
+})
+
+describe("printedLines, a multi-line span", () => {
+  it("colours its `|____^` and label as rustc does: primary where the `^` is", () => {
+    // rustc 1.97's E0317, an `if` without `else` in a function returning i32.
+    const [closing, under] = printedLines(
+      "  | |_____^ expected `i32`, found `()`\n  |       expected due to this"
+    )
+    expect(closing?.at(-1)?.tone).toBe("primary")
+    expect(under?.at(-1)?.tone).toBe("secondary")
   })
 })
 
