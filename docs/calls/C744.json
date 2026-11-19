@@ -1,0 +1,11 @@
+{
+  "id": "C744",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": ["server:infra/compose/www.yml"],
+  "chose": "On home the www container is named www (some-ui's compose named it some-ui-www) and resume-render keeps its name, which www's nginx resolves. The owner stops some-ui's root stack before the first make home-deploy, since it holds port 5172 and the name resume-render.",
+  "options": ["www", "keep some-ui-www"],
+  "gray": "A name an operator typed for the old container (docker logs some-ui-www) no longer finds it.",
+  "undo": "Rename container_name in infra/compose/www.yml and its inventory entry.",
+  "refs": ["server#853"]
+}
