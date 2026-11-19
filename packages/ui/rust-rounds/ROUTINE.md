@@ -206,6 +206,11 @@ one of `earlierCompanies`. Code adds the id, the dates, the references and
 the rubric. The file `finish` writes is at most 128 KiB (C700); cut prose or
 exercises if it says otherwise.
 
+The routine writes `/2` because home records each starter (paulgsc/server
+#1001) and the phone shows each fork's options and the academy (RR25's
+deliberation screens). Both were in place before this section reached
+`main` (C731).
+
 - `sla`: each row `{"id","what","target"}`, its `id` `S1`, `S2`, … in order.
 
 `tickets` holds 2 to 4 tickets. Each is
