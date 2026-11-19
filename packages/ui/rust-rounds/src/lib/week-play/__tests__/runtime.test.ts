@@ -431,7 +431,10 @@ describe("a take per point (RR24)", () => {
         i === 0
           ? {
               ...ticket,
-              speakTo: Array.from({ length: k }, (_, n) => `point ${n + 1}`),
+              forks: Array.from({ length: k }, (_, n) => ({
+                question: `point ${n + 1}`,
+                options: [],
+              })),
             }
           : ticket
       ),

@@ -83,6 +83,13 @@ const NOT_SHOWN: Readonly<Record<string, string>> = {
   "packages/ui/rust-rounds/src/lib/formats/index.ts#MAX_ID_CHARS": ONE_ITEM,
   "packages/ui/rust-rounds/src/lib/formats/week.ts#SPEAK_TO_MAX": ONE_ITEM,
   "packages/ui/rust-rounds/src/lib/formats/week.ts#TICKETS_MAX": ONE_ITEM,
+  "packages/ui/rust-rounds/src/lib/formats/week.ts#FORKS_MAX": ONE_ITEM,
+  "packages/ui/rust-rounds/src/lib/formats/week.ts#OPTIONS_MAX": ONE_ITEM,
+  "packages/ui/rust-rounds/src/lib/formats/week.ts#ACADEMY_MAX": ONE_ITEM,
+  "packages/ui/rust-rounds/src/lib/week-check/index.ts#WEEK_V1_MAX_BYTES":
+    ONE_ITEM,
+  "packages/ui/rust-rounds/src/lib/week-check/index.ts#WEEK_V2_MAX_BYTES":
+    ONE_ITEM,
   "packages/ui/rust-rounds/src/lib/week-play/paste.ts#PASTE_MAX": ONE_ITEM,
   "packages/ui/soundbites/src/lib/idea/model.ts#TITLE_MAX": ONE_ITEM,
   "packages/ui/soundbites/src/lib/idea/model.ts#TYPED_MAX": ONE_ITEM,

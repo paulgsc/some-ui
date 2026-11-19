@@ -1,0 +1,12 @@
+{
+  "id": "C676",
+  "made": "2026-11-19",
+  "by": "claude",
+  "agreed": "2026-11-19",
+  "paths": ["packages/ui/rust-rounds/src/components/rust-week/index.tsx"],
+  "chose": "A visit is a step screen opened (Read, Academy, Voice), in ENGAGE's words: offered when shown, taken when an exercise is ticked or a take said, passed-over for a skipped academy, left when the owner goes. Watching the week's essay is a visit too.",
+  "options": ["a step screen opened", "the week opened", "a ticket opened"],
+  "gray": "#3250 left what a visit is open; finer visits say more and cost more events.",
+  "undo": "Count visits by ticket or by week; the affordances in packages/engagement follow.",
+  "refs": ["#3250", "#2537"]
+}

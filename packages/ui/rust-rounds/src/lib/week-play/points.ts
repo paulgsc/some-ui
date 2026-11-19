@@ -39,16 +39,13 @@ export function itemOf(item: string): ItemOf {
 export function weekItems(
   tickets: ReadonlyArray<{
     readonly id: string
-    readonly speakTo: ReadonlyArray<string>
+    readonly forks: ReadonlyArray<{ readonly question: string }>
   }>,
   perPoint: boolean
 ): ReadonlyArray<string> {
   return tickets.flatMap((ticket) =>
     perPoint
-      ? [
-          ticket.id,
-          ...ticket.speakTo.map((_, i) => pointItem(ticket.id, i + 1)),
-        ]
+      ? [ticket.id, ...ticket.forks.map((_, i) => pointItem(ticket.id, i + 1))]
       : [ticket.id]
   )
 }
@@ -74,11 +71,15 @@ export type PointShown = {
  * every point it has, so each counts as answered.
  */
 export function ticketPoints(
-  speakTo: ReadonlyArray<string>,
+  questions: ReadonlyArray<string>,
   own: (n: number) => boolean,
   whole: boolean
 ): ReadonlyArray<PointShown> {
-  return speakTo.map((to, i) => ({ n: i + 1, to, taken: whole || own(i + 1) }))
+  return questions.map((to, i) => ({
+    n: i + 1,
+    to,
+    taken: whole || own(i + 1),
+  }))
 }
 
 /** How many points each filter shows. */

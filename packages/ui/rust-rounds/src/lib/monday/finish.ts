@@ -26,8 +26,12 @@ import type { Judged } from "@rust-rounds/lib/decay"
 import { chartOf, recordOf, roleAt } from "@rust-rounds/lib/decay"
 import type { RustcRun } from "@rust-rounds/lib/formats"
 import { expectMatches } from "@rust-rounds/lib/formats"
-import { ReferenceSchema, WEEK_SCHEMA } from "@rust-rounds/lib/formats/week"
-import type { Reference, Week } from "@rust-rounds/lib/formats/week"
+import {
+  ReferenceSchema,
+  WEEK_SCHEMA,
+  WeekV1Schema,
+} from "@rust-rounds/lib/formats/week"
+import type { Reference, Week, WeekV1 } from "@rust-rounds/lib/formats/week"
 import type {
   Bundle,
   EndedTicket,
@@ -43,7 +47,11 @@ import type {
   Values,
 } from "@rust-rounds/lib/monday/values"
 import { ValuesSchema } from "@rust-rounds/lib/monday/values"
-import { describeWeekProblem, readWeek } from "@rust-rounds/lib/week-check"
+import {
+  describeWeekProblem,
+  oversizeWeek,
+  readWeek,
+} from "@rust-rounds/lib/week-check"
 import { assertNever, pacificDay } from "@some-ui/core-utils"
 import type { Essay, EssayPointAnswer } from "@some-ui/video-render"
 import {
@@ -169,9 +177,9 @@ function essayTicket(
   problems: Array<string>
 ): Essay["tickets"][number] | null {
   const at = `${ticket.id}`
-  if (values.bests.length !== ticket.speakTo.length) {
+  if (values.bests.length !== ticket.forks.length) {
     problems.push(
-      `${at}: ${values.bests.length} best fits for ${ticket.speakTo.length} speak-to points`
+      `${at}: ${values.bests.length} best fits for ${ticket.forks.length} speak-to points`
     )
   }
   const reading = values.answer
@@ -220,7 +228,7 @@ function essayTicket(
       break
     }
     case "by-points": {
-      const every = ticket.points.length === ticket.speakTo.length
+      const every = ticket.points.length === ticket.forks.length
       if (every && reading === undefined) {
         answer = { kind: "silence", opened: ticket.answer.opened }
       } else if (!every && reading !== undefined && "guess" in reading) {
@@ -256,9 +264,9 @@ function essayTicket(
     id: ticket.id,
     title: ticket.title,
     spec: ticket.spec,
-    figures: ticket.figures,
+    figures: ticket.figures.map((figure) => figure.text),
     program: ticket.program,
-    points: ticket.speakTo.map((to, i) => {
+    points: ticket.forks.map(({ question: to }, i) => {
       const answered = own.get(i + 1)
       return {
         to,
@@ -327,7 +335,7 @@ function buildEssay(
     week: { id: ended.week, from: ended.from, to: ended.to },
     company: ended.company,
     story: ended.story,
-    sla: ended.sla,
+    sla: ended.sla.map(({ what, target }) => ({ what, target })),
     references: ended.references,
     open: { said: values.open },
     tickets,
@@ -356,7 +364,7 @@ function buildWeek(
   values: Values,
   runs: Readonly<Record<string, RustcRun>>,
   problems: Array<string>
-): Week | null {
+): { file: WeekV1; held: Week } | null {
   const next = bundle.next
   if (next === null) {
     if (values.week !== null)
@@ -452,7 +460,10 @@ function buildWeek(
       )
     }
   }
-  return problems.length > before ? null : read.week
+  const file = WeekV1Schema.parse(week)
+  const oversize = oversizeWeek(file)
+  if (oversize !== null) problems.push(`week: ${describeWeekProblem(oversize)}`)
+  return problems.length > before ? null : { file, held: read.week }
 }
 
 function describeRun(run: RustcRun): string {
@@ -499,7 +510,8 @@ export function finish({
   }
   const values = parsed.data
   const problems: Array<string> = []
-  const week = buildWeek(bundle, values, runs, problems)
+  const built = buildWeek(bundle, values, runs, problems)
+  const week = built?.held ?? null
 
   const owed = new Set(bundle.essays.map((e) => e.week))
   for (const given of values.essays)
@@ -536,7 +548,7 @@ export function finish({
       })),
       ...(week === null
         ? []
-        : [{ name: `rust-week-${week.id}.json`, body: week }]),
+        : [{ name: `rust-week-${week.id}.json`, body: built?.file }]),
     ],
   }
 }

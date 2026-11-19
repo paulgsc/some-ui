@@ -194,7 +194,7 @@ const Brief = (
                   {[
                     WORDS.standing[standing(props, ticket.id)],
                     shape(held, ticket),
-                    WORDS.speakToCount(ticket.speakTo.length),
+                    WORDS.speakToCount(ticket.forks.length),
                   ]
                     .filter((part) => part !== null)
                     .join(" · ")}
@@ -295,8 +295,8 @@ const TicketBody = ({
       <section className="flex flex-col gap-1">
         <h3 className="text-sm font-semibold">{WORDS.speakTo}</h3>
         <ol className="list-decimal space-y-1 pl-5 text-sm">
-          {ticket.speakTo.map((point) => (
-            <li key={point}>{point}</li>
+          {ticket.forks.map(({ question }) => (
+            <li key={question}>{question}</li>
           ))}
         </ol>
       </section>
@@ -320,7 +320,7 @@ const TicketBody = ({
           </h3>
           <ul className="list-disc space-y-1 pl-5 text-sm">
             {ticket.figures.map((figure) => (
-              <li key={figure}>{figure}</li>
+              <li key={figure.id}>{figure.text}</li>
             ))}
           </ul>
         </section>
@@ -340,7 +340,11 @@ const Review = (props: Parts & { held: HeldWeek }): JSX.Element => {
     const found = held.week.tickets.find((each) => each.id === ticket)
     return point === null
       ? WORDS.ticketLabel(ticket, found?.title ?? "")
-      : WORDS.points.label(ticket, point, found?.speakTo[point - 1] ?? "")
+      : WORDS.points.label(
+          ticket,
+          point,
+          found?.forks[point - 1]?.question ?? ""
+        )
   }
   // A ticket's own take, from before takes went point by point (RR24), is
   // listed only where one was said: nothing records one any more.
@@ -406,7 +410,7 @@ const PointLine = ({
       {WORDS.points.label(
         ticket.id,
         answer.point,
-        ticket.speakTo[answer.point - 1] ?? ""
+        ticket.forks[answer.point - 1]?.question ?? ""
       )}
     </p>
   )
@@ -733,8 +737,7 @@ const TicketPages = (
   const goTicket = (n: number): void => {
     const ticket = tickets[n]
     if (ticket === undefined) return
-    const first =
-      ticket.speakTo.length > 0 ? pointItem(ticket.id, 1) : ticket.id
+    const first = ticket.forks.length > 0 ? pointItem(ticket.id, 1) : ticket.id
     dispatch({ type: "go", index: machine.spec.items.indexOf(first) })
   }
   const { attach } = usePager({
@@ -748,7 +751,7 @@ const TicketPages = (
   if (ticket === undefined) return null
   const said = (each: Ticket): boolean =>
     machine.answered(state, each.id) === "said" ||
-    each.speakTo.some(
+    each.forks.some(
       (_, i) => machine.answered(state, pointItem(each.id, i + 1)) === "said"
     )
   return (
@@ -846,7 +849,11 @@ export const RustWeek = ({
     const found = held.week.tickets.find((each) => each.id === ticket)
     return point === null
       ? WORDS.ticketLabel(ticket, found?.title ?? "")
-      : WORDS.points.label(ticket, point, found?.speakTo[point - 1] ?? "")
+      : WORDS.points.label(
+          ticket,
+          point,
+          found?.forks[point - 1]?.question ?? ""
+        )
   }
   return (
     <div className="flex flex-col gap-4">

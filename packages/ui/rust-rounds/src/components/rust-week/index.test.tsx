@@ -107,7 +107,7 @@ describe("a week on the phone (RR13)", () => {
     // A ticket: its speak-to points, its program, and rustc's result.
     press(new RegExp(`^${WORDS.ticketLabel(first.id, first.title)}`))
     const card = screen.getByRole("region", { name: WORDS.cardOf(1, 3) })
-    for (const point of first.speakTo) {
+    for (const { question: point } of first.forks) {
       expect(card).toHaveTextContent(point)
     }
     expect(card).toHaveTextContent(WORDS.rustcSilent)
@@ -252,7 +252,7 @@ describe("a week on the phone (RR13)", () => {
     expect(screen.getByText(WORDS.sent.title(1, 3))).toBeInTheDocument()
     expect(screen.getAllByText(WORDS.sent.notAnswered)).toHaveLength(2)
     for (const ticket of QUILLMOSS_WEEK.tickets) {
-      for (const point of ticket.speakTo) {
+      for (const { question: point } of ticket.forks) {
         expect(screen.getAllByText(point).length).toBeGreaterThan(0)
       }
     }
@@ -302,7 +302,10 @@ describe("a take per point (RR24)", () => {
         i === 0
           ? {
               ...ticket,
-              speakTo: Array.from({ length: k }, (_, n) => `point ${n + 1}`),
+              forks: Array.from({ length: k }, (_, n) => ({
+                question: `point ${n + 1}`,
+                options: [],
+              })),
             }
           : ticket
       ),

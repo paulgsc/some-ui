@@ -16,12 +16,13 @@
  *
  * Tests and the viewer's sample week (RR21) read it.
  */
-import type { Week } from "@rust-rounds/lib/formats/week"
-import { WEEK_SCHEMA } from "@rust-rounds/lib/formats/week"
+import type { Week, WeekV1 } from "@rust-rounds/lib/formats/week"
+import { upgradeWeek, WEEK_SCHEMA } from "@rust-rounds/lib/formats/week"
 
 const program = (...lines: Array<string>): string => `${lines.join("\n")}\n`
 
-export const QUILLMOSS_WEEK: Week = {
+/** The sample week as its file holds it (`/1`). */
+export const QUILLMOSS_WEEK_FILE: WeekV1 = {
   schema: WEEK_SCHEMA,
   id: "2026-w46",
   by: "claude-routine",
@@ -147,3 +148,6 @@ export const QUILLMOSS_WEEK: Week = {
   references: ["rust-reference", "ownership-inventory"],
   rubric: "solo",
 }
+
+/** The sample week as the phone holds it (`upgradeWeek`). */
+export const QUILLMOSS_WEEK: Week = upgradeWeek(QUILLMOSS_WEEK_FILE)

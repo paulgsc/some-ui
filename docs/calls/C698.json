@@ -1,0 +1,13 @@
+{
+  "id": "C698",
+  "made": "2026-11-19",
+  "by": "owner",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/formats/week.ts",
+    "packages/ui/rust-rounds/src/lib/week-check/index.ts",
+    "packages/ui/rust-rounds/src/components/rust-week/index.tsx"
+  ],
+  "chose": "Owner, verbatim: \"I approve the deliberation screens.\" (RR29, about 04:14 UTC, on https://claude.ai/artifact/Vr62shg5cGsHBp5ZMJiFNu). Each speak-to point is a fork of honest options, one recommended, citing the week's stated constraints; the academy tests the options' models; the owner elects an option, says their own, or leaves the fork to the recommended, and says why; the essay names the best, listed or not, and judges the judge. The steps and forks swipe on the APK through the shared pager, and the essay's table is a scene of the rendered essay.",
+  "undo": "Nothing built from it is live yet but the /2 format and its check; revert those to keep /1 alone.",
+  "refs": ["#3257", "#3249", "#3253"]
+}

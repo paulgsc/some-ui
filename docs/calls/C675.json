@@ -1,0 +1,16 @@
+{
+  "id": "C675",
+  "made": "2026-11-19",
+  "by": "claude",
+  "agreed": "2026-11-19",
+  "paths": ["packages/ui/rust-rounds/src/lib/work-tracker/index.ts"],
+  "chose": "The work tracker stops itself after 2 hours; on return the owner answers all of it, part of it (in 15-minute steps, at most the span) or none; one span is open at a time across devices, and a reload or another device takes up the open span.",
+  "options": [
+    "2 h cap, 15-minute steps, one open span",
+    "no cap, free minutes",
+    "a cap per step"
+  ],
+  "gray": "The owner asked for a timer that stops itself and asks on return; the cap's length and the step's size are guesses at a working session, not facts.",
+  "undo": "Change CAP_MS in lib/work-tracker and the sheet's step.",
+  "refs": ["#3250"]
+}

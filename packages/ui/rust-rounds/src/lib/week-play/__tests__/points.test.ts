@@ -14,8 +14,8 @@ import {
 import { describe, expect, it } from "vitest"
 
 const TICKETS = [
-  { id: "QM-1", speakTo: ["a", "b", "c"] },
-  { id: "QM-2", speakTo: ["d", "e"] },
+  { id: "QM-1", forks: ["a", "b", "c"].map((question) => ({ question })) },
+  { id: "QM-2", forks: ["d", "e"].map((question) => ({ question })) },
 ]
 
 describe("a ticket's points", () => {

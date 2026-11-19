@@ -44,7 +44,7 @@ const ESSAY_NAME = /^rust-essay-(\d{4}-w\d{2})(?:-r(\d+))?\.json$/
 
 /** What home heard in a take of one speak-to point (RR24): its words, nothing said, or nothing made out. */
 type EndedPoint = {
-  /** The point, by its place in `speakTo`, from 1. */
+  /** The point, by its place in `forks`, from 1. */
   readonly point: number
   readonly answer:
     | { readonly kind: "take"; readonly transcript: string }
@@ -247,10 +247,10 @@ function answersOf(
     }
     const points: Array<EndedPoint> = []
     for (const own of held.points) {
-      if (own.point > ticket.speakTo.length) {
+      if (own.point > ticket.forks.length) {
         return {
           ok: false,
-          why: `home's record answers point ${own.point} of ${ticket.id}, which has ${ticket.speakTo.length}`,
+          why: `home's record answers point ${own.point} of ${ticket.id}, which has ${ticket.forks.length}`,
         }
       }
       const read = answerHeard(heard.get(own.take), held.opens)

@@ -2,6 +2,7 @@ import ROUTINE from "@rust-rounds-root/ROUTINE.md?raw"
 import { recordOf } from "@rust-rounds/lib/decay"
 import type { RustcRun } from "@rust-rounds/lib/formats"
 import { RustcRunSchema } from "@rust-rounds/lib/formats"
+import { WeekV1Schema } from "@rust-rounds/lib/formats/week"
 import type { MailboxFile, Prepared } from "@rust-rounds/lib/monday/bundle"
 import {
   ESSAYS_MOST,
@@ -29,8 +30,8 @@ import {
 import sampleRuns from "@rust-rounds/lib/monday/sample/runs.json"
 import type { Values } from "@rust-rounds/lib/monday/values"
 import { ValuesSchema } from "@rust-rounds/lib/monday/values"
-import { QUILLMOSS_WEEK } from "@rust-rounds/lib/sample-week"
-import { readWeek } from "@rust-rounds/lib/week-check"
+import { QUILLMOSS_WEEK_FILE } from "@rust-rounds/lib/sample-week"
+import { readWeek, WEEK_V1_MAX_BYTES } from "@rust-rounds/lib/week-check"
 import { isRecord } from "@some-ui/core-utils"
 import { parseEssay } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
@@ -115,6 +116,20 @@ describe("the Monday routine, on the sample week", () => {
       /^Every field becomes its own String/
     )
   })
+
+  it("writes no week home would drop for its size (C700)", () => {
+    const { bundle, history } = samplePrepared()
+    const big = values()
+    if (big.week === null) throw new Error("the sample writes a next week")
+    big.week.story = `${big.week.story} ${"x".repeat(WEEK_V1_MAX_BYTES)}`
+    const done = finish({ bundle, history, values: big, runs: RUNS })
+    expect(done.ok).toBe(false)
+    expect(done.ok ? [] : done.problems).toContainEqual(
+      expect.stringMatching(
+        /^week: the week's file is \d+ bytes; home keeps a some-ui\.rust-week\/1 week of at most 32768/
+      )
+    )
+  })
 })
 
 describe("the next Monday, after the sample run (RR19)", () => {
@@ -154,15 +169,15 @@ describe("a week that ended without an essay", () => {
     // Week 47 asks 'static and threads again, and home never makes it final.
     const brief = done.files.map((file) => {
       if (file.name !== "rust-week-2026-w47.json") return file
-      const week = readWeek(file.body)
-      if (!week.ok) throw new Error("week 47 isn't readable")
-      const [first, ...rest] = week.week.tickets
+      // The file as written (`/1`), edited as a routine would write it.
+      const week = WeekV1Schema.parse(file.body)
+      const [first, ...rest] = week.tickets
       if (first === undefined) throw new Error("week 47 has no tickets")
       const again = { id: "static-and-threads", name: "'static and threads" }
       return {
         ...file,
         body: {
-          ...week.week,
+          ...week,
           tickets: [
             { ...first, concepts: [...first.concepts, again] },
             ...rest,
@@ -266,7 +281,7 @@ describe("prepare", () => {
 
   it("writes no next week the mailbox already holds", () => {
     const w47 = {
-      ...QUILLMOSS_WEEK,
+      ...QUILLMOSS_WEEK_FILE,
       id: "2026-w47",
       opens: "2026-11-16T00:00:00-08:00",
       due: "2026-11-22T23:59:00-08:00",
@@ -284,7 +299,7 @@ describe("prepare", () => {
       due: string
     ): { name: string; body: unknown } => ({
       name: `rust-week-${id}.json`,
-      body: { ...QUILLMOSS_WEEK, id, opens, due },
+      body: { ...QUILLMOSS_WEEK_FILE, id, opens, due },
     })
     const { bundle } = samplePrepared({
       now: new Date("2026-11-30T12:00:00Z"),

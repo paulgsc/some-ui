@@ -14,7 +14,7 @@
  * `points`.
  */
 import { TextSchema } from "@rust-rounds/lib/formats"
-import { TicketSchema, WEEK_ID } from "@rust-rounds/lib/formats/week"
+import { TicketV1Schema, WEEK_ID } from "@rust-rounds/lib/formats/week"
 import { MARKS, SOLO_LEVELS } from "@some-ui/video-render"
 import { z } from "zod"
 
@@ -86,7 +86,7 @@ const EssayValuesSchema = z.strictObject({
 })
 export type EssayValues = z.infer<typeof EssayValuesSchema>
 
-const WeekTicketValuesSchema = TicketSchema.extend({
+const WeekTicketValuesSchema = TicketV1Schema.extend({
   /** The pasted error it was built from, by its `at`, as the bundle's seeds name them. */
   seed: z.string().optional(),
 })

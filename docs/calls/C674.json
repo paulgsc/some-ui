@@ -1,0 +1,12 @@
+{
+  "id": "C674",
+  "made": "2026-11-19",
+  "by": "claude",
+  "agreed": "2026-11-19",
+  "paths": ["packages/ui/rust-rounds/src/components/rust-week/index.tsx"],
+  "chose": "Copy-to-chatbot stays as an extra in the academy: one outline button that copies a fixed template filled from the week, telling any chatbot to give examples and exercises, never the answer. Once the week carries an academy, the prompt carries its exercises too.",
+  "options": ["an extra in the academy", "on the ticket card", "dropped"],
+  "gray": "The owner kept it \"as an affordance beside the academy\"; where it sits and what it carries are layout and wording choices.",
+  "undo": "Move the button, or drop the template.",
+  "refs": ["#3249"]
+}

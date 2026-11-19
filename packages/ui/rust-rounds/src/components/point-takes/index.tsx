@@ -81,7 +81,7 @@ function openPoint(
 ): number {
   const on = itemOf(machine.spec.items[state.index] ?? "")
   if (on.ticket === ticket.id && on.point !== null) return on.point
-  const unsaid = ticket.speakTo.findIndex(
+  const unsaid = ticket.forks.findIndex(
     (_, i) => machine.answered(state, pointItem(ticket.id, i + 1)) === null
   )
   return unsaid === -1 ? 1 : unsaid + 1
@@ -98,7 +98,11 @@ export const PointTakes = (props: PointTakesProps): JSX.Element => {
   // counted and listed as answered, and says it is in the whole take.
   const own = (n: number): boolean =>
     machine.answered(state, pointItem(ticket.id, n)) === "said"
-  const points = ticketPoints(ticket.speakTo, own, whole)
+  const points = ticketPoints(
+    ticket.forks.map((fork) => fork.question),
+    own,
+    whole
+  )
   const go = (n: number): void => {
     const index = machine.spec.items.indexOf(pointItem(ticket.id, n))
     if (index !== -1) dispatch({ type: "go", index })
@@ -123,7 +127,7 @@ export const PointTakes = (props: PointTakesProps): JSX.Element => {
           {WORDS.points.pointOf(open, points.length)}
         </p>
         <p className="text-xl font-bold [overflow-wrap:anywhere]">
-          {ticket.speakTo[open - 1]}
+          {ticket.forks[open - 1]?.question}
         </p>
         {openTake}
         <p className="text-muted-foreground border-border flex justify-between gap-2 border-t pt-2 text-xs">

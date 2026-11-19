@@ -5,7 +5,11 @@
  * in, and nothing else of the phone's changes.
  */
 import type { RustcRun } from "@rust-rounds/lib/formats"
-import { QUILLMOSS_WEEK } from "@rust-rounds/lib/sample-week"
+import { WEEKS_KEY } from "@rust-rounds/lib/play/keys"
+import {
+  QUILLMOSS_WEEK,
+  QUILLMOSS_WEEK_FILE,
+} from "@rust-rounds/lib/sample-week"
 import {
   exchangeWeeks,
   heldWeek,
@@ -82,11 +86,20 @@ function home(served: Array<Served>): {
 const week46 = (runs: Record<string, Array<Run>> = {}): Served => ({
   id: QUILLMOSS_WEEK.id,
   sha256: SHA,
-  week: QUILLMOSS_WEEK,
+  week: QUILLMOSS_WEEK_FILE,
   runs,
 })
 
 describe("the weeks from home (RR13)", () => {
+  it("reads a week this phone kept in its /1 shape, before /2 (RR25)", () => {
+    const storage = inMemoryStorage()
+    const kept = { week: QUILLMOSS_WEEK_FILE, sha256: "a", runs: {}, ended: [] }
+    storage.setItem(WEEKS_KEY, JSON.stringify({ weeks: [kept], unread: [] }))
+    expect(keptWeeks(storage).held().weeks).toEqual([
+      { ...kept, week: QUILLMOSS_WEEK },
+    ])
+  })
+
   it("keeps a week it lacks, whole, with each ticket's first recorded run", async () => {
     const store = keptWeeks(inMemoryStorage())
     const { send } = home([
@@ -132,7 +145,7 @@ describe("the weeks from home (RR13)", () => {
     const other = {
       ...week46({ "QM-311": [{ ended: "recorded", rustc: PRINTS }] }),
       sha256: "b".repeat(64),
-      week: { ...QUILLMOSS_WEEK, story: "Another story." },
+      week: { ...QUILLMOSS_WEEK_FILE, story: "Another story." },
     }
     const again = home([other])
     await exchangeWeeks(store, again.send)
@@ -144,7 +157,10 @@ describe("the weeks from home (RR13)", () => {
 
   it("notes a week it can't read and doesn't read it again", async () => {
     const store = keptWeeks(inMemoryStorage())
-    const broken = { ...week46(), week: { ...QUILLMOSS_WEEK, tickets: [] } }
+    const broken = {
+      ...week46(),
+      week: { ...QUILLMOSS_WEEK_FILE, tickets: [] },
+    }
     await exchangeWeeks(store, home([broken]).send)
     expect(store.held()).toEqual({ weeks: [], unread: [`2026-w46@${SHA}`] })
     const again = home([broken])

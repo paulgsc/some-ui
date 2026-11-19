@@ -1,0 +1,19 @@
+{
+  "id": "C679",
+  "made": "2026-11-19",
+  "by": "claude",
+  "agreed": "2026-11-19",
+  "paths": [
+    "packages/ui/rust-rounds/src/components/rust-week/index.tsx",
+    "packages/ui/rust-rounds/src/lib/work-tracker/index.ts"
+  ],
+  "chose": "Every record names the speak-to points it touches: a visit to Read, Academy or Voice and a skipped academy name every point; an exercise its own; a tracked span the points of the screen it was started from, with the exercise; a take its one point; watching the essay every point. Time naming several points counts in full on each and once in the week's total; nothing is split by guess.",
+  "options": [
+    "name the points touched, count in full on each",
+    "split time evenly across points",
+    "record per ticket only"
+  ],
+  "gray": "The essay (RR28) reads the record per point; how shared time divides among points has no right answer, only an honest one.",
+  "undo": "Split shared time evenly instead; the record keeps the points either way.",
+  "refs": ["#3250", "#3253"]
+}
