@@ -196,7 +196,7 @@ export function sentUnder(storage: Store, pairing: Pairing): Sent | null {
 }
 
 /** Where each pairing's scope is noted, as the link reads or makes it (MP1). */
-export const SCOPE_KEY = "some-ui.home.pairing-scope.v1"
+const SCOPE_KEY = "some-ui.home.pairing-scope.v1"
 
 /**
  * A pairing's scope: home's address and the account home named at pairing
