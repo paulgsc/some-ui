@@ -126,6 +126,33 @@ export const WEEK_WORDS = {
     `${id} · ticket ${n} of ${of}`,
   speakTo: "Speak to",
   guideOn: (id: string): string => `Guide on ${id}`,
+  /** A ticket answered point by point (RR24): its card's own words. */
+  points: {
+    heading: "Speak to each point",
+    /** The filter's label, for assistive tech. */
+    filter: "Points",
+    all: "All",
+    unsaid: "Unsaid",
+    said: "Said",
+    asked: "As asked",
+    unsaidFirst: "Unsaid first",
+    /** A point with no take; RR29 (#3257) words it "Going with the recommended". */
+    notSaid: "Not said",
+    inWhole: "In the whole take",
+    /** A point's line, folded: its number, for assistive tech. */
+    open: (n: number, to: string): string => `Point ${n}: ${to}`,
+    whole: "One take for the whole ticket",
+    wholeLine:
+      "Recorded before takes went point by point. Home weighs it as one take for the whole ticket, as before.",
+    count: (said: number, of: number): string =>
+      `${said} of ${of} ${of === 1 ? "point" : "points"} said · all on this phone until you send`,
+    pointOf: (n: number, of: number): string => `Point ${n} of ${of}`,
+    others: (n: number): string => `${n} other ${n === 1 ? "point" : "points"}`,
+    opensAgain: "Opens again when you stop",
+    /** A point's name in the look over and once sent. */
+    label: (ticket: string, n: number, to: string): string =>
+      `${ticket} · ${n}. ${to}`,
+  },
   figures: "The scenario's figures, given, not measured",
   rustcSilent: "rustc had nothing to say.",
   printed: "It printed",

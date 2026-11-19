@@ -39,7 +39,7 @@ describe("keptGoing", () => {
       { kind: "pin", ref: { round: "indexing-01", card: "a" } }
     )
 
-    const going = keptGoing(storage, MID)
+    const going = keptGoing(storage, MID, false)
     expect(going.map(({ kind, path }) => [kind, path])).toEqual([
       ["rustWeeks", "/rust-weeks/2026-w46/sent"],
       [
@@ -60,6 +60,20 @@ describe("keptGoing", () => {
     })
   })
 
+  it("holds a week sent point by point until home serves points (RR24)", () => {
+    const storage = inMemoryStorage()
+    const byPoint: WeekSent = {
+      ...SENT,
+      answers: [{ ticket: "QM-311", point: 2, take: "p", recordedAt: SENT.at }],
+    }
+    weeksSent(storage).keep((kept) => [...kept, byPoint])
+    const weeks = (served: boolean): number =>
+      keptGoing(storage, MID, served).filter(({ kind }) => kind === "rustWeeks")
+        .length
+    expect(weeks(false)).toBe(0)
+    expect(weeks(true)).toBe(1)
+  })
+
   it("sends only a week's latest send, and nothing once the week has closed (RR22)", () => {
     const storage = inMemoryStorage()
     const again: WeekSent = {
@@ -73,7 +87,7 @@ describe("keptGoing", () => {
     }
     weeksSent(storage).keep((kept) => [...kept, SENT, again])
     const weeksAt = (at: number): Array<[string, unknown]> =>
-      keptGoing(storage, at)
+      keptGoing(storage, at, false)
         .filter(({ kind }) => kind === "rustWeeks")
         .map(({ id, wire }) => [id, wire])
     expect(weeksAt(MID)).toEqual([["2026-w46/2026-11-13T20:00:00.000Z", again]])

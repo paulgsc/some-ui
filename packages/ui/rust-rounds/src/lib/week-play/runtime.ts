@@ -30,6 +30,7 @@ import type { OnScreen, Open } from "./opens"
 import { stepOpens } from "./opens"
 import type { PasteRuntime } from "./paste"
 import { pasteRuntime } from "./paste"
+import { itemOf } from "./points"
 import type { WeekAtHome, WeekKind, WeekSent } from "./spec"
 import { weekAtHome, weekMachine } from "./spec"
 import { heardWords, pasteStores, weekDrafts, weeksSent } from "./store"
@@ -58,6 +59,12 @@ export type RustWeekPorts = {
   readonly onVisibility: (listener: (hidden: boolean) => void) => () => void
   /** Where each opening of a ticket is told (`./opens`): the app's engagement sink. */
   readonly engage: (event: EngagementEvent) => void
+  /**
+   * A take per speak-to point (RR24, `./points`), where this build's home
+   * serves them (contract epoch 20 on); else a take per ticket. Fixed for
+   * the week's opening.
+   */
+  readonly perPoint: boolean
 }
 
 export type RustWeek = {
@@ -87,7 +94,7 @@ export type WeekHeard = Readonly<Partial<Record<string, HeardAnswer>>>
 
 export function createRustWeek(ports: RustWeekPorts): RustWeek {
   const { week } = ports.week
-  const machine = weekMachine(week)
+  const machine = weekMachine(week, ports.perPoint)
   const bundle = bundleRuntime(machine, {
     takes: ports.takes,
     drafts: weekDrafts(ports.storage, week.id),
@@ -166,7 +173,10 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
     }
     const look = (): void => {
       const state = bundle.getSnapshot()
-      move(!hidden && state.screen === "cards" ? state.index : null)
+      // A place is the ticket's, whichever of its points is on screen (RR24).
+      const ticket = itemOf(machine.spec.items[state.index] ?? "").ticket
+      const place = week.tickets.findIndex(({ id }) => id === ticket)
+      move(!hidden && state.screen === "cards" && place !== -1 ? place : null)
     }
     const stopState = bundle.subscribe(look)
     const stopSeen = ports.onVisibility((now) => {

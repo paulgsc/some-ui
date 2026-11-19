@@ -49,7 +49,12 @@ const SentSchema: z.ZodType<WeekSent> = z.object({
   week: z.string(),
   at: z.string(),
   answers: z.array(
-    z.object({ ticket: z.string(), take: z.string(), recordedAt: z.string() })
+    z.object({
+      ticket: z.string(),
+      point: z.number().int().positive().optional(),
+      take: z.string(),
+      recordedAt: z.string(),
+    })
   ),
   passed: z.array(z.string()),
 })
