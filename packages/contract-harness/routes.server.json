@@ -2,7 +2,7 @@
   "schema_version": 1,
   "api_base_path": "/api/v1",
   "server_version": "0.0.0",
-  "contract_epoch": 20,
+  "contract_epoch": 22,
   "oldest_supported": 1,
   "routes": [
     {
@@ -779,6 +779,27 @@
       "method": "PUT",
       "path": "/rust-weeks/:id/sent",
       "full_path": "/api/v1/rust-weeks/:id/sent",
+      "versioned": true,
+      "module": "rust_rounds"
+    },
+    {
+      "method": "GET",
+      "path": "/rust-work-spans",
+      "full_path": "/api/v1/rust-work-spans",
+      "versioned": true,
+      "module": "rust_rounds"
+    },
+    {
+      "method": "POST",
+      "path": "/rust-work-spans/close",
+      "full_path": "/api/v1/rust-work-spans/close",
+      "versioned": true,
+      "module": "rust_rounds"
+    },
+    {
+      "method": "POST",
+      "path": "/rust-work-spans/start",
+      "full_path": "/api/v1/rust-work-spans/start",
       "versioned": true,
       "module": "rust_rounds"
     },
