@@ -19,22 +19,6 @@ export const FEEDS = [
 export type Feed = (typeof FEEDS)[number]
 
 /**
- * The feeds whose episodes take a note (SFEED6): home keeps none on an
- * interview essay or a Rust Rounds essay (`GET /feeds/rust-essay/notes` is its `404`), whose week was
- * already answered by voice, nor on a cards essay (its `404` too).
- */
-export const NOTED_FEEDS = [
-  "call",
-  "playoff-delta",
-] as const satisfies ReadonlyArray<Feed>
-
-export type NotedFeed = (typeof NOTED_FEEDS)[number]
-
-/** Whether `feed`'s episodes take a note. */
-export const isNoted = (feed: Feed): feed is NotedFeed =>
-  NOTED_FEEDS.some((noted) => noted === feed)
-
-/**
  * The feeds whose episodes take a YouTube link (SFEED8): pasted on an
  * episode's page once it is up, and kept on home with the episode.
  */
