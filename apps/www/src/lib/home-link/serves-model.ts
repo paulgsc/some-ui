@@ -11,8 +11,11 @@
  * (`start`, also a new pairing), the app coming back to the foreground
  * (`front`), the person pulling the screen down (`pull`), and a route this
  * build calls answered not found other than as home's JSON error, which
- * means home lacks the route (`missing`), at most once a `MISSING_GAP`.
- * Never on a timer.
+ * means home lacks the route (`missing`), at most once a `MISSING_GAP`;
+ * and, while home said it is updating, home heard again after a stretch it
+ * didn't answer, or that stretch's hold ending (`back`, HR1), which the
+ * link's away hold (AW1) already spaces 30 s doubling to 10 minutes.
+ * Never on a timer of its own.
  */
 import { assertNever, isRecord } from "@some-ui/core-utils"
 
@@ -35,7 +38,7 @@ export type ServesState = {
 export type ServesEvent =
   | {
       readonly type: "ask"
-      readonly why: "start" | "front" | "pull" | "missing"
+      readonly why: "start" | "front" | "pull" | "missing" | "back"
       readonly at: number
     }
   /** Home answered, and what it said, or null when it said nothing readable. */
