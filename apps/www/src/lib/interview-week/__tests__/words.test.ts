@@ -85,7 +85,7 @@ describe("the interview week's words (IW5)", () => {
   it("show a target length as a person reads one", () => {
     expect(INTERVIEW_WORDS.aim(90)).toBe("Aim for about 1 min 30 s")
     expect(INTERVIEW_WORDS.aim(120)).toBe("Aim for about 2 min")
-    expect(INTERVIEW_WORDS.cap).toBe("A take stops at 2 min.")
+    expect(INTERVIEW_WORDS.cap).toBe("A take stops at 3 min.")
   })
 
   // IWC1: what counts for the week is the send home has by the deadline.

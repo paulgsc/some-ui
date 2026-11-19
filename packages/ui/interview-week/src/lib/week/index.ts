@@ -4,8 +4,8 @@
  *
  * A week sets an invented company and role. It holds two flows (#2931):
  *
- * - **Questions** the owner answers in their own words, one take each, at most
- *   2 minutes. A question names its family and variant from the closed list
+ * - **Questions** the owner answers in their own words, one take each, aimed
+ *   at 2 minutes at most and stopping at 3. A question names its family and variant from the closed list
  *   below. A decision question also names the recorded call it draws on
  *   (`source`).
  * - **Teleprompter cards** the owner reads verbatim after a cue. Each card's
@@ -145,8 +145,14 @@ export const TARGET_SECONDS: Record<Family, number> = {
   decision: 120,
 }
 
-/** A take's cap (#2931): no target runs past it. */
-export const TAKE_MAX_SECONDS = 120
+/**
+ * A take's cap: 3 minutes (owner, 2026-11-19, C735), a minute past the
+ * longest target, so a slower read of a full script never stops short.
+ */
+export const TAKE_MAX_SECONDS = 180
+
+/** The longest a question's answer or a card's read is aimed at (#2931, #2935). */
+const TARGET_MAX_SECONDS = 120
 /** A card's read runs 1 to 2 minutes (#2935). */
 export const CARD_MIN_SECONDS = 60
 
@@ -295,7 +301,7 @@ const QuestionSchema = z.strictObject({
   /** The question as the interviewer asks it. */
   prompt: TextSchema,
   /** How long a good answer runs; running past it is a fault (rambling). */
-  targetSeconds: z.int().positive().max(TAKE_MAX_SECONDS),
+  targetSeconds: z.int().positive().max(TARGET_MAX_SECONDS),
   /** What a good answer covers, for the invented role; the essay reads the answer against them. */
   guidelines: z.array(TextSchema).min(2).max(5),
   /** A decision question's call; absent on every other question. */
@@ -319,7 +325,7 @@ const CardSchema = z.strictObject({
   /** Read verbatim, first person; a line break where a breath belongs. */
   script: TextSchema,
   /** Within `cardBounds`, which `readWeek` holds. */
-  targetSeconds: z.int().min(OPENING_SECONDS.min).max(TAKE_MAX_SECONDS),
+  targetSeconds: z.int().min(OPENING_SECONDS.min).max(TARGET_MAX_SECONDS),
 })
 export type Card = z.infer<typeof CardSchema>
 
@@ -333,7 +339,7 @@ export const cardBounds = (
 ): { readonly min: number; readonly max: number } =>
   isOpening(card)
     ? OPENING_SECONDS
-    : { min: CARD_MIN_SECONDS, max: TAKE_MAX_SECONDS }
+    : { min: CARD_MIN_SECONDS, max: TARGET_MAX_SECONDS }
 
 const questionCount = `a week has ${QUESTIONS_MIN} to ${QUESTIONS_MAX} questions`
 const cardCount = `a week has ${CARDS_MIN} to ${CARDS_MAX} cards`
