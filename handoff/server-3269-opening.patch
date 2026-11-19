@@ -1,0 +1,1735 @@
+From 497aa36adf94bf7c94196511338580bbf81b60d7 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 19 Nov 2026 21:31:20 +0000
+Subject: [PATCH] feat(rust-rounds): the opening's takes carry over, newest
+ kept per answer (epoch 25)
+
+paulgsc/some-ui#3269, C736. Rust Rounds' essay opens on a standing
+conversation of up to three questions, each answered by a take of its own,
+`<week>:opening:<n>`. A week with no new take reuses the last one.
+
+- A week may carry an `opening` (`/1` or `/2`): home reads its version and
+  how many questions it asks, never its words.
+- A voice note's `ref` may be `<week>:opening:<n>`, n 1 to 3
+  (`voice_repo::is_rust_round_ref`), read as the week's, never a card's.
+- A week's send may name the opening takes said that week, each
+  `{n, take, recordedAt, version, ms?}`, under the week's version, one per
+  question, each held as said for `<week>:opening:<n>`. They answer no
+  ticket. A send without them reads and keeps as before.
+- The week's record (and the rust index) says `opening`: for each
+  question, the newest take a send of that week or an earlier one names
+  under the week's version that was not deleted, with the week it was said
+  in and its length when the phone measured it. Deleting one gives way to
+  the next older; a later week's take never reaches an earlier week.
+- An essay's opening names each take it plays. Home gives it only when each
+  is the one the record resolves now, as `opening.<n>.<ext>` beside the
+  tickets', and refuses it otherwise, so its words are always the take's.
+  Deleting a take the given essay plays withdraws the week.
+
+Contract epoch 25. No migration: sends are stored as JSON, and an old body
+has no opening.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LDpdUGSzTFLdkQoVUCJy2x
+---
+ apps/servers/file_host/src/contract.rs        |   2 +-
+ .../file_host/src/handlers/rust_rounds.rs     | 146 +++++++-
+ .../src/handlers/rust_week_record.rs          | 104 +++++-
+ .../file_host/src/mailbox/index/rust.rs       |  15 +-
+ apps/servers/file_host/src/rust_essays.rs     | 156 ++++++++-
+ crates/db/rust_round/src/essay.rs             | 164 ++++++++-
+ crates/db/rust_round/src/sent.rs              | 330 +++++++++++++++++-
+ crates/db/rust_round/src/week.rs              |  81 ++++-
+ crates/db/voice/src/about.rs                  |  20 +-
+ crates/db/voice/src/lib.rs                    |  27 +-
+ docs/identity.md                              |  16 +-
+ infra/docker/Dockerfile.server                |   2 +-
+ infra/render/render-calls.sh                  |   5 +-
+ 13 files changed, 1025 insertions(+), 43 deletions(-)
+
+diff --git a/apps/servers/file_host/src/contract.rs b/apps/servers/file_host/src/contract.rs
+index a205b73..8fd7bc4 100644
+--- a/apps/servers/file_host/src/contract.rs
++++ b/apps/servers/file_host/src/contract.rs
+@@ -28,7 +28,7 @@
+ //! fails until the Dockerfile says the same.
+ 
+ /// This build's contract epoch. See the module doc for when it moves.
+-pub const CONTRACT_EPOCH: u32 = 24;
++pub const CONTRACT_EPOCH: u32 = 25;
+ 
+ /// The lowest epoch this build still serves. Raised when a client-breaking
+ /// route change lands; at most [`CONTRACT_EPOCH`].
+diff --git a/apps/servers/file_host/src/handlers/rust_rounds.rs b/apps/servers/file_host/src/handlers/rust_rounds.rs
+index afbe018..1367313 100644
+--- a/apps/servers/file_host/src/handlers/rust_rounds.rs
++++ b/apps/servers/file_host/src/handlers/rust_rounds.rs
+@@ -901,11 +901,25 @@ mod tests {
+ 	/// A week with its window, as the routine writes one: tickets `QM-1`,
+ 	/// `QM-2` and `QM-3`.
+ 	async fn hold_dated_week(pool: &SqlitePool, subject: &str, seq: i64, id: &str, opens: &str, due: &str) {
++		hold_week_of(pool, subject, seq, id, opens, due, None).await;
++	}
++
++	/// A week with an opening of two questions at version 1
++	/// (paulgsc/some-ui#3269).
++	async fn hold_opening_week(pool: &SqlitePool, subject: &str, seq: i64, id: &str, opens: &str, due: &str) {
++		let exchange = json!({ "ask": "Why?", "script": "paulgsc here." });
++		hold_week_of(pool, subject, seq, id, opens, due, Some(json!({ "version": 1, "exchanges": [exchange, exchange] }))).await;
++	}
++
++	async fn hold_week_of(pool: &SqlitePool, subject: &str, seq: i64, id: &str, opens: &str, due: &str, opening: Option<Value>) {
+ 		let ticket = |key: &str| json!({ "id": key, "program": "fn main() {}\n" });
+-		let week = json!({
++		let mut week = json!({
+ 			"schema": "some-ui.rust-week/1", "id": id, "opens": opens, "due": due,
+ 			"tickets": [ticket("QM-1"), ticket("QM-2"), ticket("QM-3")],
+ 		});
++		if let Some(opening) = opening {
++			week["opening"] = opening;
++		}
+ 		let body = week.to_string();
+ 		hold_file(pool, subject, seq, &rust_round_repo::week::mailbox_name(id), &body).await;
+ 		let read = rust_round_repo::week::read(body.as_bytes()).unwrap();
+@@ -1015,6 +1029,7 @@ mod tests {
+ 					{ "ticket": "QM-2", "answered": false, "take": null, "recordedAt": null, "points": [], "decisions": [], "opens": 0 },
+ 					{ "ticket": "QM-3", "answered": false, "take": null, "recordedAt": null, "points": [], "decisions": [], "opens": 1 },
+ 				],
++				"opening": [],
+ 				"unanswered": ["QM-2", "QM-3"],
+ 				"pastes": [{ "at": "2026-10-02T09:00:00.000Z", "text": "error[E0502]: cannot borrow", "note": null, "receivedAt": record["pastes"][0]["receivedAt"] }],
+ 			}),
+@@ -1034,6 +1049,135 @@ mod tests {
+ 		);
+ 	}
+ 
++	/// paulgsc/some-ui#3269, C736: a week's record plays, for each question
++	/// of its opening, the newest kept take of its answer from that week or
++	/// an earlier one: a question not said again this week reuses the last
++	/// take, and deleting a take gives way to the next older. A send's
++	/// opening take held as said for anything but its question is refused.
++	#[tokio::test]
++	async fn a_weeks_record_plays_the_newest_kept_take_of_each_opening_answer() {
++		const SENT: &str = "/rust-weeks/2026-w53/sent";
++		const RECORD: &str = "/rust-weeks/2026-w53/record";
++		let state = state().await;
++		let pool = state.pool.clone();
++		let phone = session(&state, A, Carrier::Bearer).await;
++		let app = module().into_table_router().with_state(state);
++		hold_opening_week(&pool, A, 1, "2026-w52", "2026-10-05T00:00:00-07:00", "2026-10-11T23:59:00-07:00").await;
++		hold_opening_week(&pool, A, 2, "2026-w53", "2026-10-12T00:00:00-07:00", "2099-12-31T23:59:00-08:00").await;
++		let take = |n: u8, take: &str, at: &str| json!({ "n": n, "take": take, "recordedAt": at, "version": 1, "ms": 24_000 });
++		// Last week's final said both answers.
++		let w52 = json!({ "week": "2026-w52", "at": "2026-10-07T09:00:00.000Z", "passed": ["QM-2", "QM-3"],
++			"answers": [{ "ticket": "QM-1", "take": "w52-qm1", "recordedAt": "2026-10-07T08:00:00.000Z" }],
++			"opening": [take(1, "w52-1", "2026-10-06T09:00:00.000Z"), take(2, "w52-2", "2026-10-06T09:05:00.000Z")] });
++		sqlx::query("INSERT INTO rust_week_final (subject_id, week_id, sent_at, body, received_at) VALUES (?1, '2026-w52', 'then', ?2, 'then')")
++			.bind(A)
++			.bind(w52.to_string())
++			.execute(&pool)
++			.await
++			.unwrap();
++		for (note, of_ref) in [("w52-1", "2026-w52:opening:1"), ("w53-1", "2026-w53:opening:1"), ("take-2", "2026-w53:QM-2")] {
++			hold_note(&pool, A, note, of_ref).await;
++		}
++		let send = |at: &str, opening: Value| {
++			json!({
++				"week": "2026-w53", "at": at,
++				"answers": [{ "ticket": "QM-1", "take": "w53-qm1", "recordedAt": "2026-10-13T18:00:00.000Z" }],
++				"passed": ["QM-2", "QM-3"], "opening": opening,
++			})
++			.to_string()
++			.into_bytes()
++		};
++
++		let (_, _, before) = call(&app, Method::GET, RECORD, Some(&phone), None, b"").await;
++		assert_eq!(
++			before["opening"],
++			json!([
++				{ "n": 1, "take": "w52-1", "recordedAt": "2026-10-06T09:00:00.000Z", "week": "2026-w52", "version": 1, "ms": 24_000 },
++				{ "n": 2, "take": "w52-2", "recordedAt": "2026-10-06T09:05:00.000Z", "week": "2026-w52", "version": 1, "ms": 24_000 },
++			]),
++			"nothing sent this week yet: last week's takes, one not yet held at home among them"
++		);
++		let (status, _, refused) = call(
++			&app,
++			Method::PUT,
++			SENT,
++			Some(&phone),
++			None,
++			&send("2026-10-14T09:00:00.000Z", json!([take(2, "take-2", "2026-10-13T17:00:00.000Z")])),
++		)
++		.await;
++		assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "take-2 was said for QM-2");
++		assert!(refused["error"]["details"]["opening[0].take"].is_array(), "{refused}");
++		let (status, _, _) = call(
++			&app,
++			Method::PUT,
++			SENT,
++			Some(&phone),
++			None,
++			&send("2026-10-14T09:01:00.000Z", json!([take(1, "w53-1", "2026-10-13T17:00:00.000Z")])),
++		)
++		.await;
++		assert_eq!(status, StatusCode::CREATED);
++		let (_, _, record) = call(&app, Method::GET, RECORD, Some(&phone), None, b"").await;
++		let plays = |record: &Value| -> Vec<(Value, Value)> {
++			record["opening"]
++				.as_array()
++				.unwrap()
++				.iter()
++				.map(|take| (take["take"].clone(), take["week"].clone()))
++				.collect()
++		};
++		assert_eq!(
++			plays(&record),
++			[(json!("w53-1"), json!("2026-w53")), (json!("w52-2"), json!("2026-w52"))],
++			"question 1 said again, question 2 reused"
++		);
++
++		let (_, _, earlier) = call(&app, Method::GET, "/rust-weeks/2026-w52/record", Some(&phone), None, b"").await;
++		assert_eq!(plays(&earlier).len(), 2, "a later week's take never reaches an earlier week");
++		assert_eq!(plays(&earlier)[0].0, json!("w52-1"));
++		delete_note(&pool, A, "w53-1").await;
++		let (_, _, record) = call(&app, Method::GET, RECORD, Some(&phone), None, b"").await;
++		assert_eq!(
++			plays(&record),
++			[(json!("w52-1"), json!("2026-w52")), (json!("w52-2"), json!("2026-w52"))],
++			"deleted: the next older take"
++		);
++	}
++
++	/// A Rust Rounds voice note home holds, said for `of_ref`.
++	async fn hold_note(pool: &SqlitePool, subject: &str, note: &str, of_ref: &str) {
++		sqlx::query(
++			"INSERT INTO voice_note (subject_id, note_id, of_kind, of_ref, recorded_at, content_type, size, sha256, stored_at)
++			 VALUES (?1, ?2, 'rust-round', ?3, 'then', 'audio/ogg', 4, 's', 'now')",
++		)
++		.bind(subject)
++		.bind(note)
++		.bind(of_ref)
++		.execute(pool)
++		.await
++		.unwrap();
++	}
++
++	/// `note` deleted from My data: gone, with its receipt.
++	async fn delete_note(pool: &SqlitePool, subject: &str, note: &str) {
++		sqlx::query("DELETE FROM voice_note WHERE subject_id = ?1 AND note_id = ?2")
++			.bind(subject)
++			.bind(note)
++			.execute(pool)
++			.await
++			.unwrap();
++		sqlx::query(
++			"INSERT INTO voice_note_deletion (subject_id, note_id, of_kind, recorded_at, size, stored_at, deleted_at, went, stayed)
++			 VALUES (?1, ?2, 'rust-round', 'then', 4, 'then', 'now', '[]', '[]')",
++		)
++		.bind(subject)
++		.bind(note)
++		.execute(pool)
++		.await
++		.unwrap();
++	}
++
+ 	/// RR24: an answer's ticket and point are its take's own `ref`. A send
+ 	/// naming a held take for another ticket is refused; one naming a take
+ 	/// home does not hold yet, or the take's own ticket, is kept.
+diff --git a/apps/servers/file_host/src/handlers/rust_week_record.rs b/apps/servers/file_host/src/handlers/rust_week_record.rs
+index f248673..203df33 100644
+--- a/apps/servers/file_host/src/handlers/rust_week_record.rs
++++ b/apps/servers/file_host/src/handlers/rust_week_record.rs
+@@ -8,7 +8,9 @@
+ //!
+ //! **A week's record is read, never stored whole.** It is the week (the
+ //! routine's, in the mailbox), what the owner sent of it (the draft before
+-//! the deadline, the final after it), the errors pasted
++//! the deadline, the final after it), the takes of the week's opening it
++//! plays (paulgsc/some-ui#3269, C736: for each question, the newest kept
++//! take of its answer from that week or an earlier one), the errors pasted
+ //! in it, and how often each ticket was opened, read from the phone's
+ //! engagement events in `app_event` (CK2, ENG4) rather than a counter of
+ //! its own. A ticket no take answered by the deadline is a silence, and the
+@@ -89,6 +91,13 @@ pub struct WeekRecord {
+ 	pub sent: Option<SentAt>,
+ 	/// Each ticket, in the week's order.
+ 	pub tickets: Vec<TicketRecord>,
++	/// The takes of the week's opening it plays, by question
++	/// (paulgsc/some-ui#3269, C736): for each, the newest kept take of its
++	/// answer any send of this week or an earlier one names under the week's
++	/// opening version, so a week with no new take reuses the last, and
++	/// deleting one gives way to the next older. A question with none is
++	/// absent; a week with no opening has none.
++	pub opening: Vec<OpeningRecord>,
+ 	/// The tickets no take answered, in the week's order: every one when
+ 	/// nothing was sent.
+ 	pub unanswered: Vec<String>,
+@@ -136,6 +145,28 @@ pub struct TicketRecord {
+ 	pub opens: i64,
+ }
+ 
++/// The take of one opening question's answer a week plays
++/// ([`WeekRecord::opening`]).
++#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
++#[serde(rename_all = "camelCase")]
++pub struct OpeningRecord {
++	/// The question, from 1.
++	pub n: u8,
++	/// The take's voice-note id.
++	pub take: String,
++	/// When it was recorded.
++	pub recorded_at: String,
++	/// The week it was said in, whose send names it: this week or an
++	/// earlier one.
++	pub week: String,
++	/// The opening's version it was read under: the week's.
++	pub version: u32,
++	/// How long it runs, in milliseconds, as the phone measured it; absent
++	/// when it didn't say.
++	#[serde(skip_serializing_if = "Option::is_none")]
++	pub ms: Option<u64>,
++}
++
+ /// One fork's decision, as the send named it (`<week>:<ticket>:<n>:verdict`).
+ #[derive(Debug, Serialize)]
+ #[serde(rename_all = "camelCase")]
+@@ -214,7 +245,9 @@ fn stored_instant(at: &str) -> Option<String> {
+ /// 401 without a session, 403 for a browser's or from an untrusted origin,
+ /// 404 for a week the caller's subject does not hold, 422 naming each
+ /// refused field (`at` after the deadline, `week` once home's clock is
+-/// past it, and a take held as said for another ticket or point, among them), 409 for another body at the draft's moment, 500 for
++/// past it, a take held as said for another ticket or point, and an opening
++/// take held as said for anything but its question of this week's opening,
++/// among them), 409 for another body at the draft's moment, 500 for
+ /// a storage failure.
+ #[axum::debug_handler(state = crate::AppState)]
+ #[instrument(name = "rust_week_sent_put", skip_all, fields(otel.kind = "server"))]
+@@ -239,11 +272,17 @@ pub async fn put_sent(paired: Paired, State(db): State<SqlitePool>, Path(id): Pa
+ 			return Err(FileHostError::unprocessable_entity(problems));
+ 		}
+ 	};
+-	// RR24: each answer's ticket and point are its take's own `ref`.
++	// RR24: each answer's ticket and point are its take's own `ref`, and
++	// each opening take's question too (paulgsc/some-ui#3269).
+ 	let mut held = Vec::new();
+-	for answer in &sent.answers {
+-		if let Some(of_ref) = voice_repo::ref_of(&mut tx, paired.subject.as_str(), &answer.take, voice_repo::Of::RustRound).await? {
+-			held.push((answer.take.as_str(), of_ref));
++	let takes = sent
++		.answers
++		.iter()
++		.map(|answer| answer.take.as_str())
++		.chain(sent.opening.iter().map(|take| take.take.as_str()));
++	for take in takes {
++		if let Some(of_ref) = voice_repo::ref_of(&mut tx, paired.subject.as_str(), take, voice_repo::Of::RustRound).await? {
++			held.push((take, of_ref));
+ 		}
+ 	}
+ 	let held: Vec<(&str, Option<&str>)> = held.iter().map(|(take, of_ref)| (*take, of_ref.as_deref())).collect();
+@@ -420,6 +459,7 @@ pub(crate) async fn week_record(conn: &mut SqliteConnection, subject: &str, week
+ 			opens: opened,
+ 		});
+ 	}
++	let opening = opening(&mut *conn, subject, &week).await?;
+ 	Ok(Some(WeekRecord {
+ 		week: week.id,
+ 		opens: window.opens,
+@@ -431,11 +471,63 @@ pub(crate) async fn week_record(conn: &mut SqliteConnection, subject: &str, week
+ 			draft: held.draft,
+ 		}),
+ 		tickets,
++		opening,
+ 		unanswered,
+ 		pastes,
+ 	}))
+ }
+ 
++/// The takes of `week`'s opening it plays for `subject`
++/// ([`WeekRecord::opening`], paulgsc/some-ui#3269, C736): for each question,
++/// the newest take of its answer that a send of `week` or an earlier one
++/// names under the week's opening version
++/// (`rust_round_repo::sent::opening_takes`) and that is still kept. A take
++/// deleted from My data is not kept, nor one home holds as said for
++/// anything but that question of the week its send names; one home does not
++/// hold yet is, since a take and the send reach home on their own. None for
++/// a week with no opening.
++///
++/// # Errors
++/// Any `sqlx` failure, or a stored send that no longer reads.
++pub(crate) async fn opening(conn: &mut SqliteConnection, subject: &str, week: &Week) -> Result<Vec<OpeningRecord>, sqlx::Error> {
++	let Some(set) = week.opening else {
++		return Ok(Vec::new());
++	};
++	let candidates = rust_round_repo::sent::opening_takes(&mut *conn, subject, &week.id, set.version).await?;
++	let mut opening = Vec::new();
++	for n in 1..=set.questions {
++		for candidate in candidates.iter().filter(|candidate| candidate.take.n == n) {
++			let take = &candidate.take.take;
++			if voice_repo::delete::receipt(&mut *conn, subject, take).await.map_err(voice_storage)?.is_some() {
++				continue;
++			}
++			let of_ref = voice_repo::ref_of(&mut *conn, subject, take, voice_repo::Of::RustRound).await?;
++			if of_ref.is_some_and(|of_ref| of_ref.as_deref() != Some(rust_round_repo::sent::opening_ref(&candidate.week, n).as_str())) {
++				continue;
++			}
++			opening.push(OpeningRecord {
++				n,
++				take: take.clone(),
++				recorded_at: candidate.take.recorded_at.clone(),
++				week: candidate.week.clone(),
++				version: candidate.take.version,
++				ms: candidate.take.ms,
++			});
++			break;
++		}
++	}
++	Ok(opening)
++}
++
++/// A voice store failure as the `sqlx` one it is; any other as a protocol
++/// error, since a receipt that doesn't read is a broken store.
++fn voice_storage(err: voice_repo::VoiceError) -> sqlx::Error {
++	match err {
++		voice_repo::VoiceError::Storage(err) => err,
++		other @ (voice_repo::VoiceError::Rewritten | voice_repo::VoiceError::Unreadable) => sqlx::Error::Protocol(other.to_string()),
++	}
++}
++
+ /// `PUT /rust-round-log/sessions/:id`, the body being one session of the
+ /// phone's card-era log, as it holds it.
+ ///
+diff --git a/apps/servers/file_host/src/mailbox/index/rust.rs b/apps/servers/file_host/src/mailbox/index/rust.rs
+index bea7d69..0ed7263 100644
+--- a/apps/servers/file_host/src/mailbox/index/rust.rs
++++ b/apps/servers/file_host/src/mailbox/index/rust.rs
+@@ -6,7 +6,8 @@
+ //! `brief`), and home refuses one whose take or silence per ticket disagrees
+ //! with the week's final ([`rust_round_repo::essay::against`]). The routine
+ //! reads the final here: which take counted for each ticket at the deadline,
+-//! and for each of its points answered on its own (RR24), the owner's
++//! and for each of its points answered on its own (RR24), the takes of the
++//! week's opening it plays (paulgsc/some-ui#3269), the owner's
+ //! decision at each fork the send carried (RR29, paulgsc/some-ui#3257),
+ //! and the errors pasted in the week, which the next week is seeded from
+ //! (paulgsc/some-ui#2685).
+@@ -203,7 +204,7 @@ pub(in crate::mailbox) async fn put_rust_index<T: MailboxTransport>(
+ #[cfg(test)]
+ mod tests {
+ 	use super::{fitted, rust_index};
+-	use crate::handlers::rust_week_record::{PointRecord, SentAt, TicketRecord, WeekRecord};
++	use crate::handlers::rust_week_record::{OpeningRecord, PointRecord, SentAt, TicketRecord, WeekRecord};
+ 	use crate::mailbox::pass::MAILBOX_BODY_CEILING;
+ 	use rust_round_repo::sent::StoredPaste;
+ 	use serde_json::{json, Value};
+@@ -243,6 +244,14 @@ mod tests {
+ 					opens: 0,
+ 				},
+ 			],
++			opening: vec![OpeningRecord {
++				n: 1,
++				take: String::from("2026-w45:opening:1"),
++				recorded_at: String::from("2026-11-04T16:00:00.000Z"),
++				week: String::from("2026-w45"),
++				version: 1,
++				ms: Some(24_000),
++			}],
+ 			unanswered: vec![String::from("QM-2")],
+ 			pastes: paste
+ 				.map(|text| StoredPaste {
+@@ -277,6 +286,8 @@ mod tests {
+ 							"points": [{ "point": 2, "take": "2026-w46:QM-1:2", "recordedAt": "2026-11-12T17:30:00.000Z" }], "decisions": [], "opens": 2 },
+ 						{ "ticket": "QM-2", "answered": false, "take": null, "recordedAt": null, "points": [], "decisions": [], "opens": 0 },
+ 					],
++					// paulgsc/some-ui#3269: the opening's takes it plays, from any week up to it.
++					"opening": [{ "n": 1, "take": "2026-w45:opening:1", "recordedAt": "2026-11-04T16:00:00.000Z", "week": "2026-w45", "version": 1, "ms": 24_000 }],
+ 					"unanswered": ["QM-2"],
+ 					"pastes": [{ "at": "2026-11-13T09:00:00.000Z", "text": "error[E0502]: cannot borrow", "note": null, "receivedAt": "2026-11-17T09:00:00.000Z" }],
+ 				}],
+diff --git a/apps/servers/file_host/src/rust_essays.rs b/apps/servers/file_host/src/rust_essays.rs
+index 2edc22d..a43da5f 100644
+--- a/apps/servers/file_host/src/rust_essays.rs
++++ b/apps/servers/file_host/src/rust_essays.rs
+@@ -36,7 +36,10 @@
+ //! waits. Past it, the pass makes the week final as any read of it does
+ //! (`rust_round_repo::sent::finalize`), and checks the essay against that
+ //! final (`rust_round_repo::essay::against`): an essay plays exactly the takes
+-//! the final names, and a ticket nothing answered is a silence. An essay that
++//! the final names, and a ticket nothing answered is a silence. The owner's
++//! opening (paulgsc/some-ui#3269, C736) is checked against the week's
++//! record instead: each answer the essay plays names its take, which must be
++//! the newest kept one of that answer, whatever week it was said in. An essay that
+ //! contradicts the final is never given to the worker; it is refused, and the
+ //! refusal is kept in [`STATUS_FOLDER`] as `<week>.refused.log` (the fields
+ //! and why, nothing the essay says), for the `RustEssayRefused` alert.
+@@ -291,7 +294,9 @@ async fn tidy_tick(db: &SqlitePool, kind: Kind, configured: Option<&str>) -> Res
+ ///
+ /// Beside the essay go the takes it plays
+ /// (`<week>/takes/<ticket>.<webm|ogg|m4a>`, or `<ticket>.<n>.<ext>` for a
+-/// take of a ticket's point n (RR24), and, when home heard its words,
++/// take of a ticket's point n (RR24), or `opening.<n>.<ext>` for the answer
++/// to the opening's question n the essay plays (paulgsc/some-ui#3269), and,
++/// when home heard its words,
+ /// `<ticket>.words.json`).
+ ///
+ /// An essay refused is kept as `<week>.refused.log` in the status folder,
+@@ -457,6 +462,13 @@ async fn given(db: &SqlitePool, kind: Kind, subject: &str, week: &str, held: &ma
+ 		Kind::Interview => crate::handlers::interview_weeks::finalize_at(&mut tx, subject, &essay.week, &due, now).await?,
+ 	}
+ 	let standing = standing(&mut tx, kind, subject, &essay.week).await?;
++	let opening = match kind {
++		Kind::RustRounds => match held_rust_week(&mut tx, subject, &essay.week).await? {
++			Some(week) => crate::handlers::rust_week_record::opening(&mut tx, subject, &week).await?,
++			None => Vec::new(),
++		},
++		Kind::Interview => Vec::new(),
++	};
+ 	let unheard = match &standing {
+ 		Some(standing) => unheard(&mut tx, kind, subject, standing).await?,
+ 		None => Vec::new(),
+@@ -470,8 +482,13 @@ async fn given(db: &SqlitePool, kind: Kind, subject: &str, week: &str, held: &ma
+ 	let sent = standing.as_ref().map_or_else(essay::Final::default, |standing| essay::Final {
+ 		answers: pairs(&standing.answers),
+ 		reads: pairs(&standing.reads),
++		opening: Vec::new(),
+ 		unheard: unheard.iter().map(String::as_str).collect(),
+ 	});
++	let sent = essay::Final {
++		opening: opening.iter().map(|take| (take.n, take.take.as_str())).collect(),
++		..sent
++	};
+ 	Ok(match essay::against(&essay, &sent) {
+ 		Ok(played) => Given::Final(played),
+ 		Err(problems) => Given::Refused(problems),
+@@ -539,12 +556,7 @@ async fn standing(conn: &mut sqlx::SqliteConnection, kind: Kind, subject: &str,
+ /// with a window.
+ async fn due_of(conn: &mut sqlx::SqliteConnection, kind: Kind, subject: &str, week: &str) -> Result<Option<String>, sqlx::Error> {
+ 	let window = match kind {
+-		Kind::RustRounds => {
+-			let file = mailbox_repo::rust_week(conn, subject, &rust_round_repo::week::mailbox_name(week)).await.map_err(storage)?;
+-			file
+-				.and_then(|file| crate::handlers::rust_rounds::reads_as_named(week, &file.body))
+-				.and_then(|week| week.window)
+-		}
++		Kind::RustRounds => held_rust_week(conn, subject, week).await?.and_then(|week| week.window),
+ 		Kind::Interview => {
+ 			let file = mailbox_repo::rust_week(conn, subject, &rust_round_repo::interview::mailbox_name(week))
+ 				.await
+@@ -557,6 +569,12 @@ async fn due_of(conn: &mut sqlx::SqliteConnection, kind: Kind, subject: &str, we
+ 	Ok(window.map(|window| window.due))
+ }
+ 
++/// The Rust Rounds week `subject` holds as `week`, when it reads as one.
++async fn held_rust_week(conn: &mut sqlx::SqliteConnection, subject: &str, week: &str) -> Result<Option<rust_round_repo::week::Week>, sqlx::Error> {
++	let file = mailbox_repo::rust_week(conn, subject, &rust_round_repo::week::mailbox_name(week)).await.map_err(storage)?;
++	Ok(file.and_then(|file| crate::handlers::rust_rounds::reads_as_named(week, &file.body)))
++}
++
+ /// The takes an essay plays, as home holds them.
+ enum Takes {
+ 	/// Each take's file name in `takes/` and its bytes, and its words beside it.
+@@ -719,8 +737,27 @@ pub async fn tidy(db: &SqlitePool, kind: Kind, subject: Option<&str>, folders: &
+ /// owner's reconciliation of an unheard one may (paulgsc/server#912,
+ /// HEARD3), withdraws nothing. A revision that does not read counts as
+ /// playing it.
++///
++/// An answer of the owner's opening (paulgsc/some-ui#3269) names its take in
++/// the essay, which may be another week's: a deleted one withdraws the week
++/// when the revision given to the render plays it. One only a revision not
++/// yet given plays withdraws nothing: [`essay::against`] refuses that
++/// revision when it is given, so one playing the next older take can follow.
+ async fn deleted_take(db: &SqlitePool, kind: Kind, subject: &str, week: &str, given: Option<u32>) -> Result<Option<String>, sqlx::Error> {
+ 	let mut conn = db.acquire().await?;
++	if let Some(given) = given.filter(|_| kind == Kind::RustRounds) {
++		let given_opening = held_essays(&mut conn, kind, subject)
++			.await?
++			.into_iter()
++			.filter(|file| essay::parse_name_of(kind, &file.name) == Some((week.to_owned(), given)))
++			.filter_map(|file| essay::read_of(kind, &file.body).ok())
++			.flat_map(|essay| essay.opening);
++		for (_, take) in given_opening {
++			if voice_repo::delete::receipt(&mut conn, subject, &take).await.map_err(voice)?.is_some() {
++				return Ok(Some(take));
++			}
++		}
++	}
+ 	let Some(standing) = standing(&mut conn, kind, subject, week).await? else {
+ 		return Ok(None);
+ 	};
+@@ -952,7 +989,7 @@ fn log_pass(kind: Kind, result: &Result<Exported, sqlx::Error>) {
+ #[cfg(test)]
+ mod tests {
+ 	use super::*;
+-	use rust_round_repo::sent::{Answer, Sent};
++	use rust_round_repo::sent::{Answer, OpeningTake, Sent};
+ 	use serde_json::json;
+ 	use sqlx::sqlite::SqlitePoolOptions;
+ 
+@@ -1017,6 +1054,12 @@ mod tests {
+ 	}
+ 
+ 	async fn send(pool: &SqlitePool, id: &str) {
++		send_opening(pool, id, Vec::new()).await;
++	}
++
++	/// The week's send, with the takes of its opening said that week
++	/// (paulgsc/some-ui#3269).
++	async fn send_opening(pool: &SqlitePool, id: &str, opening: Vec<OpeningTake>) {
+ 		let sent = Sent {
+ 			week: id.to_owned(),
+ 			at: String::from("2026-11-15T19:30:00.000Z"),
+@@ -1028,6 +1071,7 @@ mod tests {
+ 			}],
+ 			passed: vec![String::from("QM-312")],
+ 			verdicts: Vec::new(),
++			opening,
+ 		};
+ 		let mut conn = pool.acquire().await.unwrap();
+ 		rust_round_repo::sent::put_draft(&mut conn, ME, &sent, BEFORE).await.unwrap();
+@@ -1320,6 +1364,100 @@ mod tests {
+ 		assert!(!folders.essays.join("2026-w46").exists(), "and tidy leaves none");
+ 	}
+ 
++	/// paulgsc/some-ui#3269, C736: an essay plays each opening answer's
++	/// newest kept take, whatever week said it, handed over as
++	/// `opening.<n>.<ext>`; one naming a take a newer one replaced is refused;
++	/// and deleting a take the given essay plays withdraws the week.
++	#[tokio::test]
++	async fn an_essay_plays_the_newest_kept_take_of_each_opening_answer() {
++		let opening = |n: u8, take: &str, recorded: &str| OpeningTake {
++			n,
++			take: take.to_owned(),
++			recorded_at: recorded.to_owned(),
++			version: 1,
++			ms: Some(20_000),
++		};
++		let (pool, dir) = (pool().await, tempfile::tempdir().unwrap());
++		let folders = folders(dir.path());
++		let week = json!({
++			"schema": "some-ui.rust-week/1", "id": "2026-w46", "opens": "2026-11-09T00:00:00.000-08:00", "due": DUE,
++			"opening": { "version": 1, "exchanges": [{ "ask": "Why?", "script": "paulgsc here." }, { "ask": "And?", "script": "Then." }] },
++			"tickets": [{ "id": "QM-311", "program": "fn main() {}\n" }, { "id": "QM-312", "program": "fn main() {}\n" }],
++		});
++		hold(&pool, 1, &rust_round_repo::week::mailbox_name("2026-w46"), &week.to_string()).await;
++		// Question 1 said again this week; question 2 last said in w45, reused.
++		send_opening(&pool, "2026-w46", vec![opening(1, "note-o1", "2026-11-14T10:00:00.000Z")]).await;
++		let w45 = json!({ "week": "2026-w45", "at": "2026-11-08T10:00:00.000Z", "answers": [], "passed": [], "opening": [
++			opening_json(1, "note-o1-old", "2026-11-07T10:00:00.000Z"),
++			opening_json(2, "note-o2", "2026-11-07T10:05:00.000Z"),
++		] });
++		sqlx::query("INSERT INTO rust_week_final (subject_id, week_id, sent_at, body, received_at) VALUES (?1, '2026-w45', 'then', ?2, 'then')")
++			.bind(ME)
++			.bind(w45.to_string())
++			.execute(&pool)
++			.await
++			.unwrap();
++		hold_take(&pool).await;
++		for (note, of_ref) in [("note-o1", "2026-w46:opening:1"), ("note-o1-old", "2026-w45:opening:1"), ("note-o2", "2026-w45:opening:2")] {
++			sqlx::query(
++				"INSERT INTO voice_note (subject_id, note_id, of_kind, of_ref, recorded_at, content_type, size, sha256, stored_at)
++				 VALUES (?1, ?2, 'rust-round', ?3, 'then', 'audio/ogg', 4, 's', 'now')",
++			)
++			.bind(ME)
++			.bind(note)
++			.bind(of_ref)
++			.execute(&pool)
++			.await
++			.unwrap();
++			sqlx::query("INSERT INTO voice_note_audio (subject_id, note_id, body) VALUES (?1, ?2, x'4f676753')")
++				.bind(ME)
++				.bind(note)
++				.execute(&pool)
++				.await
++				.unwrap();
++		}
++		let with_opening = |takes: [&str; 2]| {
++			let mut body: serde_json::Value = serde_json::from_str(&essay("2026-w46", ["take", "silence"])).unwrap();
++			body["opening"] = json!({ "exchanges": [
++				{ "n": 1, "ask": "Why?", "transcript": "paulgsc here", "take": takes[0] },
++				{ "n": 2, "ask": "And?", "transcript": "then", "take": takes[1] },
++			] });
++			body.to_string()
++		};
++
++		// The older take of question 1 is not the one home holds as its newest.
++		hold(&pool, 2, &essay::mailbox_name("2026-w46"), &with_opening(["note-o1-old", "note-o2"])).await;
++		assert_eq!(export(&pool, Kind::RustRounds, ME, &folders, AFTER).await.unwrap().refused, 1);
++		assert_eq!(
++			std::fs::read_to_string(folders.status.join("2026-w46.refused.log")).unwrap(),
++			"opening.exchanges[0].take: is not the take home holds as the newest of this answer\n"
++		);
++
++		hold(&pool, 3, "rust-essay-2026-w46-r2.json", &with_opening(["note-o1", "note-o2"])).await;
++		assert_eq!(export(&pool, Kind::RustRounds, ME, &folders, AFTER).await.unwrap().written, 1);
++		let mut names: Vec<_> = std::fs::read_dir(folders.essays.join("2026-w46").join("takes"))
++			.unwrap()
++			.map(|entry| entry.unwrap().file_name().into_string().unwrap())
++			.collect();
++		names.sort();
++		assert_eq!(names, ["QM-311.ogg", "QM-311.words.json", "opening.1.ogg", "opening.2.ogg"]);
++
++		// Deleting w45's take of question 2, which the given essay plays.
++		for statement in [
++			"DELETE FROM voice_note_audio WHERE subject_id = ?1 AND note_id = 'note-o2'",
++			"DELETE FROM voice_note WHERE subject_id = ?1 AND note_id = 'note-o2'",
++			"INSERT INTO voice_note_deletion (subject_id, note_id, of_kind, recorded_at, size, stored_at, deleted_at, went, stayed)
++			 VALUES (?1, 'note-o2', 'rust-round', 'then', 4, 'then', 'now', '[]', '[]')",
++		] {
++			sqlx::query(statement).bind(ME).execute(&pool).await.unwrap();
++		}
++		assert_eq!(tidy(&pool, Kind::RustRounds, Some(ME), &folders, AFTER).await.unwrap().withdrawn, 1);
++	}
++
++	fn opening_json(n: u8, take: &str, recorded: &str) -> serde_json::Value {
++		json!({ "n": n, "take": take, "recordedAt": recorded, "version": 1 })
++	}
++
+ 	/// HEARD3 (paulgsc/server#912): a take home could not hear that the
+ 	/// essay answers as a silence is never played, so the owner deleting it
+ 	/// (paulgsc/some-ui#3076) withdraws nothing: a made video stays, and a
+diff --git a/crates/db/rust_round/src/essay.rs b/crates/db/rust_round/src/essay.rs
+index 7721374..0b070f0 100644
+--- a/crates/db/rust_round/src/essay.rs
++++ b/crates/db/rust_round/src/essay.rs
+@@ -13,12 +13,17 @@
+ //! its schema, its week and each ticket's answer kind ([`read`]), and checks
+ //! those against what the owner sent of the week by its deadline ([`against`]):
+ //! an essay may play only takes the week's final record names, and must
+-//! play every one of them. Nothing the essay says is read past that, and
+-//! nothing of it reaches a log line.
++//! play every one of them. The owner's opening (paulgsc/some-ui#3269,
++//! template version 5) is read the same way: each answer an essay plays
++//! names its take, which must be the one home holds as the newest of that
++//! answer ([`Final::opening`]), and an essay may leave out an answer home
++//! heard nothing in. Nothing the essay says is read past that, and nothing
++//! of it reaches a log line.
+ 
+ use crate::draft::Kind;
+ use crate::round::{is_slug, Problem};
+-use crate::week::{is_ticket_key, is_week_id};
++use crate::sent::is_note_id;
++use crate::week::{is_ticket_key, is_week_id, OPENING_MOST};
+ use serde_json::Value;
+ 
+ /// The essay's format, as `essay.ts` writes it (`ESSAY_SCHEMA`).
+@@ -191,6 +196,11 @@ pub struct Essay {
+ 	/// as [`PointAnswer`]; none for a mock interview's.
+ 	pub points: Vec<PointAnswer>,
+ 	pub reads: Vec<(String, Answered)>,
++	/// Each answer of the owner's opening a Rust Rounds essay plays
++	/// (paulgsc/some-ui#3269), in its order: the question, from 1, and the
++	/// take it names. None for a mock interview's, whose `opening` home does
++	/// not read.
++	pub opening: Vec<(u8, String)>,
+ }
+ 
+ /// A speak-to point an essay answers on its own (RR24,
+@@ -220,7 +230,9 @@ pub fn read(body: &[u8]) -> Result<Essay, Vec<Problem>> {
+ /// JSON object; another `schema`; a `week.id` that is not an ISO week; no
+ /// items; an item whose id is not the kind's (a ticket's key, a question's
+ /// slug) or is used twice, or whose `answer.kind` is neither `take` nor
+-/// `silence`.
++/// `silence`; a Rust Rounds essay's `opening` with no `exchanges` list, or
++/// an exchange whose `n` is not a question from 1 to 3 or is used twice, or
++/// whose `take` is not a note id.
+ pub fn read_of(kind: Kind, body: &[u8]) -> Result<Essay, Vec<Problem>> {
+ 	let words = words(kind);
+ 	let problem = |field: &str, why| vec![(field.to_owned(), why)];
+@@ -260,6 +272,10 @@ pub fn read_of(kind: Kind, body: &[u8]) -> Result<Essay, Vec<Problem>> {
+ 		}
+ 		Some((_, None)) | None => Vec::new(),
+ 	};
++	let opening = match essay.get("opening") {
++		Some(opening) if kind == Kind::RustRounds => opening_exchanges(opening, &mut problems),
++		_ => Vec::new(),
++	};
+ 	match week {
+ 		Some(week) if problems.is_empty() => Ok(Essay {
+ 			kind,
+@@ -267,11 +283,52 @@ pub fn read_of(kind: Kind, body: &[u8]) -> Result<Essay, Vec<Problem>> {
+ 			tickets,
+ 			points,
+ 			reads,
++			opening,
+ 		}),
+ 		_ => Err(problems),
+ 	}
+ }
+ 
++/// Each answer a Rust Rounds essay's `opening` plays: `exchanges[i]`'s `n`
++/// and `take`, with each problem found.
++fn opening_exchanges(opening: &Value, problems: &mut Vec<Problem>) -> Vec<(u8, String)> {
++	let Some(exchanges) = opening.get("exchanges").and_then(Value::as_array) else {
++		problems.push((String::from("opening.exchanges"), "must list the opening's questions asked and answered"));
++		return Vec::new();
++	};
++	let mut played: Vec<(u8, String)> = Vec::new();
++	for (index, exchange) in exchanges.iter().enumerate() {
++		let at = |field: &str| String::from("opening.exchanges[") + &index.to_string() + "]." + field;
++		let n = exchange
++			.get("n")
++			.and_then(Value::as_u64)
++			.and_then(|n| u8::try_from(n).ok())
++			.filter(|n| (1..=OPENING_MOST).contains(n));
++		let take = exchange.get("take").and_then(Value::as_str).filter(|take| is_note_id(take));
++		match n {
++			None => problems.push((at("n"), "must be one of the opening's questions, 1 to 3")),
++			Some(n) if played.iter().any(|(held, _)| *held == n) => problems.push((at("n"), "is a question an earlier exchange plays")),
++			Some(_) => {}
++		}
++		if take.is_none() {
++			problems.push((at("take"), "must name the take it plays, by its voice note's id"));
++		}
++		if let (Some(n), Some(take)) = (n, take) {
++			played.push((n, take.to_owned()));
++		}
++	}
++	played
++}
++
++/// The take's name in the render's `takes/` for the opening's question `n`.
++///
++/// Less its extension, as paulgsc/some-ui's `openingTakeId` names it:
++/// `opening.2`. A ticket's key is capitals, so it never names a ticket's.
++#[must_use]
++pub fn opening_take_id(n: u8) -> String {
++	String::from("opening.") + &n.to_string()
++}
++
+ /// Each item of `held`, a `list` of an essay, with each problem found.
+ fn items(held: &[Value], list: &List, problems: &mut Vec<Problem>) -> Vec<(String, Answered)> {
+ 	let mut items: Vec<(String, Answered)> = Vec::new();
+@@ -349,7 +406,8 @@ pub fn point_key(ticket: &str, point: usize) -> String {
+ #[derive(Debug, Clone, PartialEq, Eq)]
+ pub struct Played {
+ 	/// The take's name in the render's `takes/`, less its extension: the
+-	/// ticket's or question's id, or `read.<card>` for a card read.
++	/// ticket's or question's id, `read.<card>` for a card read, or
++	/// [`opening_take_id`] for an answer of the owner's opening.
+ 	pub ticket: String,
+ 	/// The take's voice-note id, as the week's final record names it.
+ 	pub take: String,
+@@ -364,6 +422,10 @@ pub struct Played {
+ pub struct Final<'a> {
+ 	pub answers: Vec<(&'a str, &'a str)>,
+ 	pub reads: Vec<(&'a str, &'a str)>,
++	/// For each question of a Rust Rounds week's opening, the take home
++	/// holds as the newest kept one of its answer under the week's opening
++	/// version (paulgsc/some-ui#3269, C736); none for a mock interview's.
++	pub opening: Vec<(u8, &'a str)>,
+ 	/// The takes among them an essay may call a silence: home's verdict on
+ 	/// the transcript the routine reads of each is garbled, failed or
+ 	/// nothing said (paulgsc/server#908, HEARD1). An essay may treat one as
+@@ -372,8 +434,8 @@ pub struct Final<'a> {
+ }
+ 
+ /// Check `essay` against what the owner sent of its week by the deadline.
+-/// Each take the essay plays, in the essay's order: its items', then its
+-/// reads'.
++/// Each take the essay plays, in the essay's order: its opening's, then its
++/// items', then its reads'.
+ ///
+ /// An essay may play only the takes the final names, and must play each one:
+ /// an item the final answers is a `take`, every other item a `silence`, and
+@@ -382,6 +444,13 @@ pub struct Final<'a> {
+ /// ([`Final::unheard`]) may be a silence too: the routines treat it as
+ /// unanswered (HEARD2), and the essay then plays nothing for it.
+ ///
++/// Each answer of the opening the essay plays names its take, which must be
++/// the one home holds for that question ([`Final::opening`]): a take since
++/// deleted, or one a newer take has replaced, is refused, so the essay is
++/// never given with words that aren't the take's. An essay may leave out a
++/// question home holds a take of, since home may have heard nothing said in
++/// it.
++///
+ /// # Errors
+ /// Each [`Problem`], naming the item by its place in the essay or, for one
+ /// the essay lacks, by its id.
+@@ -389,6 +458,17 @@ pub fn against(essay: &Essay, sent: &Final<'_>) -> Result<Vec<Played>, Vec<Probl
+ 	let words = words(essay.kind);
+ 	let mut problems = Vec::new();
+ 	let mut played = Vec::new();
++	for (index, (n, take)) in essay.opening.iter().enumerate() {
++		if sent.opening.iter().any(|(held, held_take)| held == n && held_take == take) {
++			played.push(Played {
++				ticket: opening_take_id(*n),
++				take: take.clone(),
++			});
++		} else {
++			let at = String::from("opening.exchanges[") + &index.to_string() + "].take";
++			problems.push((at, "is not the take home holds as the newest of this answer"));
++		}
++	}
+ 	let at_fields = |list: &List, held: &[(String, Answered)]| -> Vec<(String, Answered, String)> {
+ 		held
+ 			.iter()
+@@ -460,6 +540,7 @@ pub fn rust_final(answers: &[(String, String)]) -> Final<'_> {
+ 	Final {
+ 		answers: answers.iter().map(|(item, take)| (item.as_str(), take.as_str())).collect(),
+ 		reads: Vec::new(),
++		opening: Vec::new(),
+ 		unheard: Vec::new(),
+ 	}
+ }
+@@ -473,6 +554,7 @@ pub fn interview_final(sent: Option<&crate::interview::Sent>) -> Final<'_> {
+ 			sent.answers.iter().map(|answer| (answer.question.as_str(), answer.take.as_str())).collect()
+ 		}),
+ 		reads: sent.map_or_else(Vec::new, |sent| sent.reads.iter().map(|read| (read.card.as_str(), read.take.as_str())).collect()),
++		opening: Vec::new(),
+ 		unheard: Vec::new(),
+ 	}
+ }
+@@ -514,6 +596,7 @@ mod tests {
+ 				.collect(),
+ 			passed: Vec::new(),
+ 			verdicts: Vec::new(),
++			opening: Vec::new(),
+ 		}
+ 	}
+ 
+@@ -590,6 +673,7 @@ mod tests {
+ 				tickets: vec![(String::from("QM-311"), Answered::Take), (String::from("QM-312"), Answered::Silence)],
+ 				points: Vec::new(),
+ 				reads: Vec::new(),
++				opening: Vec::new(),
+ 			}
+ 		);
+ 		let mut wrong = essay();
+@@ -603,6 +687,71 @@ mod tests {
+ 		assert!(read(&vec![b' '; super::ESSAY_CEILING + 1]).is_err());
+ 	}
+ 
++	/// paulgsc/some-ui#3269: each answer of the owner's opening an essay
++	/// plays names its question and take; an interview essay's opening is
++	/// not read.
++	#[test]
++	fn an_essay_names_each_opening_take_it_plays() {
++		let mut opening = essay();
++		opening["opening"] = json!({ "exchanges": [
++			{ "n": 1, "ask": "Why?", "transcript": "paulgsc here", "take": "note-a" },
++			{ "n": 3, "ask": "And?", "transcript": "then", "take": "note-c" },
++		] });
++		assert_eq!(read(&body(&opening)).unwrap().opening, [(1, String::from("note-a")), (3, String::from("note-c"))]);
++		opening["opening"] = json!({ "exchanges": [
++			{ "n": 0, "take": "note-a" },
++			{ "n": 2, "take": "a take/with a slash" },
++			{ "n": 2, "take": "note-b" },
++			{ "n": 4 },
++		] });
++		let fields: Vec<_> = read(&body(&opening)).unwrap_err().into_iter().map(|(field, _)| field).collect();
++		assert_eq!(
++			fields,
++			["opening.exchanges[0].n", "opening.exchanges[1].take", "opening.exchanges[3].n", "opening.exchanges[3].take"],
++			"the second exchange of question 2 counts only once the first reads"
++		);
++		opening["opening"] = json!("paulgsc here");
++		assert_eq!(read(&body(&opening)).unwrap_err()[0].0, "opening.exchanges");
++		let mut interview = interview_essay();
++		interview["opening"] = json!("anything");
++		assert_eq!(read_of(Kind::Interview, &body(&interview)).unwrap().opening, [], "an interview essay's opening is not read");
++	}
++
++	/// paulgsc/some-ui#3269: an essay plays each opening answer's take only
++	/// when it is the one home holds as the newest of that answer, first,
++	/// and may leave out an answer home holds a take of.
++	#[test]
++	fn an_essay_plays_the_newest_take_of_each_opening_answer() {
++		let answers = rust_answers(Some(&sent(&[("QM-311", "note-1")])));
++		let holds = |opening: Vec<(u8, &'static str)>| Final { opening, ..rust_final(&answers) };
++		let mut body_of = essay();
++		body_of["opening"] = json!({ "exchanges": [{ "n": 2, "take": "note-b" }] });
++		let essay = read(&body(&body_of)).unwrap();
++		assert_eq!(
++			against(&essay, &holds(vec![(1, "note-a"), (2, "note-b")])).unwrap(),
++			[
++				Played {
++					ticket: String::from("opening.2"),
++					take: String::from("note-b"),
++				},
++				Played {
++					ticket: String::from("QM-311"),
++					take: String::from("note-1"),
++				},
++			],
++			"the opening first; question 1 left out, as home heard nothing in it"
++		);
++		for held in [vec![(2, "note-newer")], vec![(1, "note-b")], vec![]] {
++			let refused: Vec<_> = against(&essay, &holds(held.clone())).unwrap_err().into_iter().map(|(field, _)| field).collect();
++			assert_eq!(refused, ["opening.exchanges[0].take"], "{held:?}");
++		}
++		assert_eq!(
++			against(&read(&body(&self::essay())).unwrap(), &holds(vec![(1, "note-a")])).unwrap().len(),
++			1,
++			"an essay without an opening"
++		);
++	}
++
+ 	#[test]
+ 	fn an_essay_plays_exactly_the_takes_the_weeks_final_record_names() {
+ 		let essay = read(&body(&essay())).unwrap();
+@@ -702,6 +851,7 @@ mod tests {
+ 				tickets: vec![(String::from("about-you"), Answered::Take), (String::from("a-conflict"), Answered::Silence)],
+ 				points: Vec::new(),
+ 				reads: vec![(String::from("intro"), Answered::Take)],
++				opening: Vec::new(),
+ 			}
+ 		);
+ 		assert!(read_of(Kind::RustRounds, &body(&interview_essay())).is_err(), "not a Rust Rounds essay");
+diff --git a/crates/db/rust_round/src/sent.rs b/crates/db/rust_round/src/sent.rs
+index 8ed23b0..aa48a97 100644
+--- a/crates/db/rust_round/src/sent.rs
++++ b/crates/db/rust_round/src/sent.rs
+@@ -8,7 +8,9 @@
+ //!   every ticket of the week once, answered with a take or passed over, at
+ //!   least one answered, sent no later than the week's `due` and no earlier
+ //!   than it `opens`, and reaching home no later than `due` either. A take not sent by the deadline doesn't count (owner,
+-//!   2026-11-07), so a later `at` is refused, not kept as late.
++//!   2026-11-07), so a later `at` is refused, not kept as late. A send may
++//!   also name the takes of the week's opening said that week
++//!   (paulgsc/some-ui#3269, C736), which answer no ticket.
+ //! - **A draft until the deadline, final at it** (RR22,
+ //!   paulgsc/some-ui#2832; `migrations/20261110000100_create_rust_week_draft_final.up.sql`):
+ //!   before the week's `due`, each send replaces the last as the week's draft
+@@ -28,11 +30,15 @@
+ //! - **A paste is the owner's own code's error, as pasted** ([`read_paste`],
+ //!   [`put_paste`]): kept once per week and moment, and never refused for
+ //!   the deadline: a paste is not a take.
++//! - **The opening's takes carry over** (C736): a week's record plays, for
++//!   each of its opening's questions, the newest take of its answer that
++//!   any send of that week or an earlier one names under the week's opening
++//!   version ([`opening_takes`]); a week with no new take reuses the last.
+ //! - **Per subject.** Every query takes the subject and filters on it.
+ 
+ use crate::draft::{self, Kind, Stored, WeekSend};
+ use crate::round::Problem;
+-use crate::week::{Week, Window};
++use crate::week::{OpeningSet, Week, Window};
+ use crate::{instant_order, Change, RoundError};
+ use serde::{Deserialize, Serialize};
+ use serde_json::Value;
+@@ -121,6 +127,27 @@ pub fn verdict_of(week: &str, of_ref: &str) -> Option<(String, u8)> {
+ 	(!ticket.is_empty() && !ticket.contains(':') && fork >= 1 && fork.to_string() == rest[ticket.len() + 1..]).then(|| (ticket.to_owned(), fork))
+ }
+ 
++/// A take of the answer to one of the week's opening questions, as Send
++/// kept it (paulgsc/some-ui#3269, C736): its take's `ref` is
++/// `<week>:opening:<n>` ([`opening_ref`]), the week it was said in.
++#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
++#[serde(rename_all = "camelCase", deny_unknown_fields)]
++pub struct OpeningTake {
++	/// The question it answers, from 1.
++	pub n: u8,
++	/// The take's voice-note id.
++	pub take: String,
++	/// When the take was recorded.
++	pub recorded_at: String,
++	/// The opening's version it was read under: it plays only in a week of
++	/// the same version.
++	pub version: u32,
++	/// How long the take runs, in whole milliseconds, as the phone measured
++	/// it; absent when it didn't.
++	#[serde(default, skip_serializing_if = "Option::is_none")]
++	pub ms: Option<u64>,
++}
++
+ /// A week's answers as sent: the phone's `WeekSent`
+ /// (paulgsc/some-ui `packages/ui/rust-rounds/src/lib/week-play/spec.ts`).
+ #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+@@ -140,6 +167,12 @@ pub struct Sent {
+ 	/// the ticket's points, not the week's format, which home doesn't hold.
+ 	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+ 	pub verdicts: Vec<Verdict>,
++	/// The takes of the week's opening said this week (paulgsc/some-ui#3269,
++	/// contract epoch 25), one per question at most. They answer no ticket,
++	/// so they never count as one answered. A phone from before it sends
++	/// none, and a send without them is kept without the key.
++	#[serde(default, skip_serializing_if = "Vec::is_empty")]
++	pub opening: Vec<OpeningTake>,
+ }
+ 
+ impl WeekSend for Sent {
+@@ -248,10 +281,20 @@ pub(crate) fn sent_in_window(at: &str, window: Option<&Window>, now: &str, probl
+ /// a decision (RR29) whose `ref` doesn't name a fork of the week's tickets,
+ /// names one an earlier decision does, or picks an option id that isn't a
+ /// capital `A` to `F`. Which options a fork lists home doesn't hold: the
+-/// phone picks only among them.
++/// phone picks only among them. And of the opening's takes
++/// (paulgsc/some-ui#3269): one in a week whose opening asks nothing, one of
++/// a question the week's opening doesn't ask or an earlier take answers,
++/// one read under another version than the week's, and the same two of its
++/// take and `recordedAt` as an answer's. The opening is no answer: a send of
++/// it alone, every ticket passed, has none.
+ pub fn read_sent(body: &[u8], week: &Week, now: &str) -> Result<Sent, Vec<Problem>> {
+ 	let value = json_object(body, SENT_CEILING, "is larger than 16 KiB")?;
+-	let sent: Sent = serde_json::from_value(value).map_err(|_| vec![(String::from("body"), "must be a week sent: week, at, answers, passed and verdicts, and nothing else")])?;
++	let sent: Sent = serde_json::from_value(value).map_err(|_| {
++		vec![(
++			String::from("body"),
++			"must be a week sent: week, at, answers, passed, verdicts and opening, and nothing else",
++		)]
++	})?;
+ 	let mut problems: Vec<Problem> = Vec::new();
+ 	if sent.week != week.id {
+ 		problems.push((String::from("week"), "must be the week in the path"));
+@@ -322,6 +365,7 @@ pub fn read_sent(body: &[u8], week: &Week, now: &str) -> Result<Sent, Vec<Proble
+ 			problems.push((at("recordedAt"), "must not be after the week was sent"));
+ 		}
+ 	}
++	opening_problems(&sent, week.opening, &mut problems);
+ 	if problems.is_empty() {
+ 		Ok(sent)
+ 	} else {
+@@ -329,16 +373,59 @@ pub fn read_sent(body: &[u8], week: &Week, now: &str) -> Result<Sent, Vec<Proble
+ 	}
+ }
+ 
++/// The problems with `sent`'s opening takes, of a week whose opening is
++/// `opening`, onto `problems` ([`read_sent`]).
++fn opening_problems(sent: &Sent, opening: Option<OpeningSet>, problems: &mut Vec<Problem>) {
++	for (index, take) in sent.opening.iter().enumerate() {
++		let at = |field: &str| String::from("opening[") + &index.to_string() + "]." + field;
++		match opening {
++			None => problems.push((at("n"), "answers an opening this week doesn't have")),
++			Some(asked) => {
++				if take.n == 0 || take.n > asked.questions {
++					problems.push((at("n"), "must be one of the week's opening questions, counted from 1"));
++				} else if sent.opening[..index].iter().any(|each| each.n == take.n) {
++					problems.push((at("n"), "answers a question an earlier take does"));
++				}
++				if take.version != asked.version {
++					problems.push((at("version"), "must be the week's opening version"));
++				}
++			}
++		}
++		if !is_note_id(&take.take) {
++			problems.push((at("take"), "must be a voice note's id"));
++		}
++		if !is_instant(&take.recorded_at) {
++			problems.push((at("recordedAt"), "must be an RFC 3339 instant"));
++		} else if instant_order(&take.recorded_at, &sent.at) == Some(Ordering::Greater) {
++			problems.push((at("recordedAt"), "must not be after the week was sent"));
++		}
++	}
++}
++
+ /// What [`take_refs`] says of an answer whose take is said for another
+ /// ticket or point, for the `422`.
+ pub const TAKE_ELSEWHERE: &str = "is a take said for another ticket, or another point of one, than the answer names";
+ 
++/// What [`take_refs`] says of an opening take said for anything but its
++/// question of this week's opening, for the `422`.
++pub const OPENING_ELSEWHERE: &str = "is a take said for something other than this question of this week's opening: <week>:opening:<n>";
++
++/// The `ref` of a take of the answer to `week`'s opening question `n`
++/// (paulgsc/some-ui#3269, C736): `<week>:opening:<n>`, such as
++/// `2026-w47:opening:2`.
++#[must_use]
++pub fn opening_ref(week: &str, n: u8) -> String {
++	String::from(week) + ":opening:" + &n.to_string()
++}
++
+ /// Each answer of `sent` whose take home holds as said for another ticket,
+ /// or point, than the answer names (RR24, paulgsc/some-ui#3248).
+ ///
+ /// A take of the whole ticket's `ref` is `<week>:<ticket>`, a point's
+ /// `<week>:<ticket>:<n>`, so an answer's `ticket` and `point` must be what
+ /// its take's own `ref` says, never something the phone could get out of step.
++/// Likewise each opening take's question: its `ref` is this week's
++/// [`opening_ref`] (paulgsc/some-ui#3269).
+ ///
+ /// `held` gives, for each take home holds, its id and its `ref` when it is a
+ /// Rust Rounds note, `None` when it is another kind's. A take home does not
+@@ -359,9 +446,74 @@ pub fn take_refs(sent: &Sent, held: &[(&str, Option<&str>)]) -> Vec<Problem> {
+ 			problems.push((String::from("answers[") + &index.to_string() + "].take", TAKE_ELSEWHERE));
+ 		}
+ 	}
++	for (index, opening) in sent.opening.iter().enumerate() {
++		let Some((_, of_ref)) = held.iter().find(|(take, _)| *take == opening.take) else {
++			continue;
++		};
++		if *of_ref != Some(opening_ref(&sent.week, opening.n).as_str()) {
++			problems.push((String::from("opening[") + &index.to_string() + "].take", OPENING_ELSEWHERE));
++		}
++	}
+ 	problems
+ }
+ 
++/// An opening take a send names, with the week whose send names it.
++#[derive(Debug, Clone, PartialEq, Eq)]
++pub struct OpeningCandidate {
++	/// The week it was said in, as its `ref` names it.
++	pub week: String,
++	pub take: OpeningTake,
++}
++
++/// Every opening take `subject`'s sends of `week` and earlier weeks name
++/// under `version` (paulgsc/some-ui#3269, C736), newest first.
++///
++/// Newest by `recordedAt` as an instant, then the later week, then the
++/// take's id, so the order never depends on how rows come back. Whether each is still kept is the caller's to ask
++/// (`voice_repo::delete::receipt`), since a deleted take gives way to the
++/// next older one. Each send standing is read, its final or else its draft,
++/// as [`standing`] reads one: a row per week, by the tables' key.
++///
++/// A stored send that no longer reads offers none, so it never breaks a
++/// later week's record.
++///
++/// # Errors
++/// Any `sqlx` failure.
++pub async fn opening_takes(conn: &mut SqliteConnection, subject: &str, week: &str, version: u32) -> Result<Vec<OpeningCandidate>, sqlx::Error> {
++	let bodies = sqlx::query!(
++		r#"SELECT week_id AS "week!", body AS "body!" FROM rust_week_final WHERE subject_id = ?1 AND week_id <= ?2
++		   UNION ALL
++		   SELECT week_id AS "week!", body AS "body!" FROM rust_week_draft AS draft WHERE subject_id = ?1 AND week_id <= ?2
++		     AND NOT EXISTS (SELECT 1 FROM rust_week_final AS final WHERE final.subject_id = draft.subject_id AND final.week_id = draft.week_id)"#,
++		subject,
++		week
++	)
++	.fetch_all(&mut *conn)
++	.await?;
++	let mut takes = Vec::new();
++	for row in bodies {
++		// A send that no longer reads fails only its own week's record, as
++		// before; here it offers no take, so later weeks still read.
++		let Ok(sent) = serde_json::from_str::<Sent>(&row.body) else {
++			continue;
++		};
++		takes.extend(
++			sent
++				.opening
++				.into_iter()
++				.filter(|take| take.version == version)
++				.map(|take| OpeningCandidate { week: row.week.clone(), take }),
++		);
++	}
++	takes.sort_by(|a, b| {
++		instant_order(&b.take.recorded_at, &a.take.recorded_at)
++			.unwrap_or(Ordering::Equal)
++			.then_with(|| b.week.cmp(&a.week))
++			.then_with(|| b.take.take.cmp(&a.take.take))
++	});
++	Ok(takes)
++}
++
+ /// Keep `sent` as `subject`'s draft of its week ([`draft::put_draft`]).
+ ///
+ /// `sent` is read by [`read_sent`] with home's clock no later than the
+@@ -499,7 +651,7 @@ pub async fn pastes(conn: &mut SqliteConnection, subject: &str, week: &str) -> R
+ 
+ #[cfg(test)]
+ mod tests {
+-	use super::{finalize, is_final, pastes, put_draft, put_paste, read_paste, read_sent, standing, take_refs, verdict_of, Decision, DraftChange, Sent};
++	use super::{finalize, is_final, opening_takes, pastes, put_draft, put_paste, read_paste, read_sent, standing, take_refs, verdict_of, Decision, DraftChange, Sent};
+ 	use crate::week::read;
+ 	use crate::{Change, RoundError};
+ 	use serde_json::{json, Value};
+@@ -538,6 +690,20 @@ mod tests {
+ 		read(body.to_string().as_bytes()).unwrap()
+ 	}
+ 
++	/// [`week`] with an opening of `questions` questions at `version`
++	/// (paulgsc/some-ui#3269), as `id`.
++	fn opening_week(id: &str, version: u32, questions: usize) -> crate::week::Week {
++		let ticket = |id: &str| json!({ "id": id, "program": "fn main() {}\n", "speakTo": ["why", "what if", "when"] });
++		let exchange = json!({ "ask": "Why?", "script": "paulgsc here." });
++		let body = json!({
++			"schema": "some-ui.rust-week/1", "id": id,
++			"opens": "2026-11-09T00:00:00-08:00", "due": "2026-11-15T23:59:00-08:00",
++			"opening": { "version": version, "exchanges": vec![exchange; questions] },
++			"tickets": [ticket("QM-311"), ticket("QM-312"), ticket("QM-313")],
++		});
++		read(body.to_string().as_bytes()).unwrap()
++	}
++
+ 	fn sent_body(at: &str) -> Value {
+ 		json!({
+ 			"week": "2026-w46", "at": at,
+@@ -681,6 +847,160 @@ mod tests {
+ 		assert_eq!(refused(extra_in_answer), ["body"]);
+ 	}
+ 
++	/// paulgsc/some-ui#3269: a send may name the takes of the week's opening
++	/// said that week, one per question, under the week's opening version;
++	/// they answer no ticket, and a send without them reads and keeps as it
++	/// always did.
++	#[test]
++	fn a_send_names_its_weeks_opening_takes_under_the_weeks_version() {
++		let (plain, week) = (week(), opening_week("2026-w46", 2, 2));
++		let at = "2026-11-15T20:00:00.000Z";
++		let take = |n: u8, version: u32| json!({ "n": n, "take": "take-opening", "recordedAt": "2026-11-12T19:00:00.000Z", "version": version, "ms": 24_000 });
++		let old = read_sent(sent_body(at).to_string().as_bytes(), &week, OPEN).unwrap();
++		assert!(old.opening.is_empty());
++		assert_eq!(serde_json::to_value(&old).unwrap().get("opening"), None, "none sent, none written");
++		let mut with_opening = sent_body(at);
++		with_opening["opening"] = json!([take(2, 2)]);
++		let kept = read_sent(with_opening.to_string().as_bytes(), &week, OPEN).unwrap();
++		assert_eq!((kept.opening[0].n, kept.opening[0].version, kept.opening[0].ms), (2, 2, Some(24_000)));
++		assert_eq!(serde_json::to_value(&kept).unwrap()["opening"], with_opening["opening"], "kept as sent");
++		let mut no_ms = take(1, 2);
++		no_ms.as_object_mut().unwrap().remove("ms");
++		with_opening["opening"] = json!([no_ms]);
++		assert_eq!(
++			read_sent(with_opening.to_string().as_bytes(), &week, OPEN).unwrap().opening[0].ms,
++			None,
++			"a length the phone didn't measure"
++		);
++
++		let refused = |week: &crate::week::Week, opening: Value| {
++			let mut body = sent_body(at);
++			body["opening"] = opening;
++			fields(&read_sent(body.to_string().as_bytes(), week, OPEN).unwrap_err())
++		};
++		assert_eq!(refused(&plain, json!([take(1, 2)])), ["opening[0].n"], "a week with no opening");
++		assert_eq!(refused(&week, json!([take(3, 2)])), ["opening[0].n"], "a question the opening doesn't ask");
++		assert_eq!(refused(&week, json!([take(0, 2)])), ["opening[0].n"]);
++		assert_eq!(refused(&week, json!([take(1, 2), take(1, 2)])), ["opening[1].n"], "one take per question");
++		assert_eq!(refused(&week, json!([take(1, 1)])), ["opening[0].version"], "read under another version");
++		let mut bad = take(1, 2);
++		bad["take"] = json!("a take/with a slash");
++		bad["recordedAt"] = json!("2026-11-15T21:00:00.000Z");
++		assert_eq!(refused(&week, json!([bad])), ["opening[0].recordedAt", "opening[0].take"]);
++		let mut extra = take(1, 2);
++		extra["script"] = json!("hello");
++		assert_eq!(refused(&week, json!([extra])), ["body"]);
++		let mut fractional = take(1, 2);
++		fractional["ms"] = json!(1.5);
++		assert_eq!(refused(&week, json!([fractional])), ["body"], "whole milliseconds");
++		let alone = json!({ "week": "2026-w46", "at": at, "answers": [], "passed": ["QM-311", "QM-312", "QM-313"], "opening": [take(1, 2)] });
++		assert_eq!(
++			fields(&read_sent(alone.to_string().as_bytes(), &week, OPEN).unwrap_err()),
++			["answers"],
++			"the opening answers no ticket"
++		);
++	}
++
++	/// paulgsc/some-ui#3269, C736: an opening take's question is its `ref`'s,
++	/// this week's `<week>:opening:<n>`, and one home does not hold yet is not
++	/// refused.
++	#[test]
++	fn an_opening_take_names_what_it_was_said_for() {
++		let week = opening_week("2026-w46", 1, 3);
++		let mut body = sent_body("2026-11-15T20:00:00.000Z");
++		body["opening"] = json!([
++			{ "n": 2, "take": "second", "recordedAt": "2026-11-12T19:00:00.000Z", "version": 1 },
++			{ "n": 3, "take": "later", "recordedAt": "2026-11-12T19:00:00.000Z", "version": 1 },
++		]);
++		let sent = read_sent(body.to_string().as_bytes(), &week, OPEN).unwrap();
++		let fields = |held: &[(&str, Option<&str>)]| -> Vec<String> { take_refs(&sent, held).into_iter().map(|(field, _)| field).collect() };
++		assert!(fields(&[("second", Some("2026-w46:opening:2"))]).is_empty(), "`later` not held yet");
++		for of_ref in [
++			Some("2026-w46:opening:1"),
++			Some("2026-w45:opening:2"),
++			Some("2026-w46:opening"),
++			Some("2026-w46:QM-311"),
++			None,
++		] {
++			assert_eq!(fields(&[("second", of_ref)]), ["opening[0].take"], "{of_ref:?}");
++		}
++	}
++
++	/// paulgsc/some-ui#3269, C736: the takes a week's opening may play are
++	/// those the sends of that week and every earlier one name under its
++	/// version, newest first, each week's send read once, its final over a
++	/// draft; a later week's, another version's and another subject's are
++	/// not among them.
++	#[tokio::test]
++	async fn a_weeks_opening_takes_are_this_and_earlier_weeks_newest_first() {
++		let pool = pool().await;
++		let mut conn = pool.acquire().await.unwrap();
++		let send = |id: &str, opening: Value| -> String {
++			let mut body = sent_body("2026-11-01T00:00:00.000Z");
++			body["week"] = json!(id);
++			body["opening"] = opening;
++			serde_json::from_value::<Sent>(body.clone()).unwrap();
++			body.to_string()
++		};
++		let take = |n: u8, take: &str, recorded: &str, version: u32| json!({ "n": n, "take": take, "recordedAt": recorded, "version": version });
++		for (subject, id, opening) in [
++			(
++				A,
++				"2026-w44",
++				json!([take(1, "w44-1", "2026-10-28T10:00:00.000Z", 1), take(2, "w44-2", "2026-10-28T10:05:00.000Z", 1)]),
++			),
++			(
++				A,
++				"2026-w45",
++				json!([take(1, "w45-1", "2026-11-04T10:00:00.000Z", 1), take(2, "w45-2-v2", "2026-11-04T10:05:00.000Z", 2)]),
++			),
++			(A, "2026-w47", json!([take(1, "w47-1", "2026-11-18T10:00:00.000Z", 1)])),
++			(B, "2026-w46", json!([take(1, "b-1", "2026-11-12T10:00:00.000Z", 1)])),
++		] {
++			let table = if id == "2026-w44" { "rust_week_final" } else { "rust_week_draft" };
++			sqlx::query(&(String::from("INSERT INTO ") + table + " (subject_id, week_id, sent_at, body, received_at) VALUES (?1, ?2, 'then', ?3, 'then')"))
++				.bind(subject)
++				.bind(id)
++				.bind(send(id, opening))
++				.execute(&mut *conn)
++				.await
++				.unwrap();
++		}
++		// w44 is final, and a draft beside it, were one ever there, is not read.
++		sqlx::query("INSERT INTO rust_week_draft (subject_id, week_id, sent_at, body, received_at) VALUES (?1, '2026-w44', 'then', ?2, 'then')")
++			.bind(A)
++			.bind(send("2026-w44", json!([take(1, "stray", "2026-11-14T10:00:00.000Z", 1)])))
++			.execute(&mut *conn)
++			.await
++			.unwrap();
++		let names = |takes: Vec<super::OpeningCandidate>| -> Vec<(String, String)> { takes.into_iter().map(|each| (each.week, each.take.take)).collect() };
++		assert_eq!(
++			names(opening_takes(&mut conn, A, "2026-w46", 1).await.unwrap()),
++			[
++				(String::from("2026-w45"), String::from("w45-1")),
++				(String::from("2026-w44"), String::from("w44-2")),
++				(String::from("2026-w44"), String::from("w44-1")),
++			]
++		);
++		assert_eq!(
++			names(opening_takes(&mut conn, A, "2026-w46", 2).await.unwrap()),
++			[(String::from("2026-w45"), String::from("w45-2-v2"))]
++		);
++		assert_eq!(names(opening_takes(&mut conn, A, "2026-w44", 1).await.unwrap()).len(), 2, "a week's own send counts");
++		assert!(opening_takes(&mut conn, A, "2026-w43", 1).await.unwrap().is_empty());
++		// A send that no longer reads offers no take, and never breaks a later week.
++		sqlx::query("INSERT INTO rust_week_final (subject_id, week_id, sent_at, body, received_at) VALUES (?1, '2026-w43', 'then', '{\"old\": true}', 'then')")
++			.bind(A)
++			.execute(&mut *conn)
++			.await
++			.unwrap();
++		assert_eq!(opening_takes(&mut conn, A, "2026-w46", 1).await.unwrap().len(), 3);
++		assert_eq!(
++			names(opening_takes(&mut conn, B, "2026-w47", 1).await.unwrap()),
++			[(String::from("2026-w46"), String::from("b-1"))]
++		);
++	}
++
+ 	/// RR24 (paulgsc/some-ui#3248): a ticket is answered whole, point by point
+ 	/// or both, each at most once, and a point is one of the ticket's own,
+ 	/// counted from 1. A send from before RR24, with no points, reads as it
+diff --git a/crates/db/rust_round/src/week.rs b/crates/db/rust_round/src/week.rs
+index 601259a..825d1a0 100644
+--- a/crates/db/rust_round/src/week.rs
++++ b/crates/db/rust_round/src/week.rs
+@@ -20,6 +20,11 @@
+ //! - in a `/2` week, each ticket's `academy`: 1 to [`ACADEMY_MAX`]
+ //!   exercises, and each exercise's `starter`, which it records too, under
+ //!   [`academy_key`] (`TB-101/academy/1`);
++//! - its `opening`, when it carries one (paulgsc/some-ui#3269, C736): the
++//!   standing set's `version` and how many questions it asks, 1 to
++//!   [`OPENING_MOST`], so a take of an answer can be checked against them
++//!   and the week's record can name the newest take of each. The questions'
++//!   and answers' words are never read here;
+ //! - its `opens` and `due`, when they are RFC 3339 instants, for the week's
+ //!   record (RR14, paulgsc/some-ui#2689). A week without them is still kept
+ //!   and recorded, and has no record.
+@@ -68,6 +73,21 @@ pub const WEEK_V2_CEILING: usize = 128 * 1024;
+ /// The most exercises a ticket's academy holds, as the format bounds it.
+ pub const ACADEMY_MAX: usize = 8;
+ 
++/// The most questions a week's opening asks (paulgsc/some-ui
++/// `CONVERSATION_MOST`, C738).
++pub const OPENING_MOST: u8 = 3;
++
++/// What home reads of a week's opening (paulgsc/some-ui#3269): the standing
++/// set's version and how many questions it asks.
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++pub struct OpeningSet {
++	/// The set's version, from 1: a take recorded under one version answers
++	/// that version's words, and plays only in a week of the same version.
++	pub version: u32,
++	/// How many questions it asks, 1 to [`OPENING_MOST`].
++	pub questions: u8,
++}
++
+ /// One ticket's program.
+ #[derive(Debug, Clone, PartialEq, Eq)]
+ pub struct TicketProgram {
+@@ -104,6 +124,9 @@ pub struct Week {
+ 	/// When the week opens and its deadline, when both are RFC 3339
+ 	/// instants and the deadline comes after the opening; `None` otherwise.
+ 	pub window: Option<Window>,
++	/// The week's opening conversation, when it carries one
++	/// (paulgsc/some-ui#3269); `None` otherwise.
++	pub opening: Option<OpeningSet>,
+ }
+ 
+ /// When a week opens and when its deadline passes, as the week writes them.
+@@ -165,7 +188,9 @@ fn points_field(schema: Option<Schema>) -> &'static str {
+ /// missing or other `schema`; an `id` that is not an ISO week; no
+ /// `tickets`; a ticket whose id is not a key or is used twice, or that has
+ /// no `program`; in a `/2` week, a ticket whose `academy` does not hold 1 to
+-/// [`ACADEMY_MAX`] exercises, or an exercise with no `starter`.
++/// [`ACADEMY_MAX`] exercises, or an exercise with no `starter`; an `opening`
++/// whose `version` is not a whole number from 1 or whose `exchanges` do not
++/// hold 1 to [`OPENING_MOST`] questions.
+ pub fn read(body: &[u8]) -> Result<Week, Vec<Problem>> {
+ 	let problem = |field: &str, why| vec![(field.to_owned(), why)];
+ 	if body.len() > WEEK_V2_CEILING {
+@@ -236,17 +261,44 @@ pub fn read(body: &[u8]) -> Result<Week, Vec<Problem>> {
+ 		(Some(opens), Some(due)) if crate::instant_order(&opens, &due) == Some(std::cmp::Ordering::Less) => Some(Window { opens, due }),
+ 		_ => None,
+ 	};
++	let opening = week.get("opening").and_then(|opening| read_opening(opening, &mut problems));
+ 	match id {
+ 		Some(id) if problems.is_empty() => Ok(Week {
+ 			id: id.to_owned(),
+ 			programs,
+ 			academy,
+ 			window,
++			opening,
+ 		}),
+ 		_ => Err(problems),
+ 	}
+ }
+ 
++/// A week's `opening` as home reads it ([`OpeningSet`]), or the problems
++/// with it onto `problems`.
++fn read_opening(opening: &Value, problems: &mut Vec<Problem>) -> Option<OpeningSet> {
++	let version = opening
++		.get("version")
++		.and_then(Value::as_u64)
++		.and_then(|version| u32::try_from(version).ok())
++		.filter(|version| *version >= 1);
++	if version.is_none() {
++		problems.push((String::from("opening.version"), "must be the opening's version, a whole number from 1"));
++	}
++	let questions = opening
++		.get("exchanges")
++		.and_then(Value::as_array)
++		.and_then(|exchanges| u8::try_from(exchanges.len()).ok())
++		.filter(|questions| (1..=OPENING_MOST).contains(questions));
++	if questions.is_none() {
++		problems.push((String::from("opening.exchanges"), "must hold 1 to 3 questions"));
++	}
++	Some(OpeningSet {
++		version: version?,
++		questions: questions?,
++	})
++}
++
+ /// Each starter of `ticket`'s academy (`key`), onto `academy`, or the
+ /// problems with it onto `problems`.
+ fn read_academy(ticket: &Value, key: &str, at: &impl Fn(&str) -> String, academy: &mut Vec<Starter>, problems: &mut Vec<Problem>) {
+@@ -301,7 +353,7 @@ pub fn is_ticket_key(key: &str) -> bool {
+ 
+ #[cfg(test)]
+ mod tests {
+-	use super::{academy_key, is_ticket_key, is_week_id, mailbox_name, read, Starter, TicketProgram, WEEK_CEILING, WEEK_V2_CEILING};
++	use super::{academy_key, is_ticket_key, is_week_id, mailbox_name, read, OpeningSet, Starter, TicketProgram, WEEK_CEILING, WEEK_V2_CEILING};
+ 	use serde_json::{json, Value};
+ 
+ 	/// paulgsc/some-ui's sample `/2` week, Tallowbrook
+@@ -464,6 +516,31 @@ mod tests {
+ 		assert_eq!(read(&grown(unknown, WEEK_CEILING)).unwrap_err()[0].0, "body");
+ 	}
+ 
++	/// paulgsc/some-ui#3269: a week's opening is its version and how many
++	/// questions it asks; its words are never read, and a week without one
++	/// reads as before.
++	#[test]
++	fn a_weeks_opening_is_its_version_and_how_many_questions_it_asks() {
++		assert_eq!(read(TALLOWBROOK.as_bytes()).unwrap().opening, None);
++		let mut week = tallowbrook();
++		week["opening"] = json!({ "version": 2, "exchanges": [
++			{ "ask": "Why Rust Rounds?", "script": "paulgsc here." },
++			{ "ask": "And then?", "script": "Then this." },
++		] });
++		assert_eq!(read(week.to_string().as_bytes()).unwrap().opening, Some(OpeningSet { version: 2, questions: 2 }));
++		let refused = |opening: Value| -> Vec<String> {
++			let mut week = tallowbrook();
++			week["opening"] = opening;
++			read(week.to_string().as_bytes()).unwrap_err().into_iter().map(|(field, _)| field).collect()
++		};
++		let one = json!({ "ask": "Why?", "script": "Because." });
++		assert_eq!(refused(json!({ "version": 0, "exchanges": [one] })), ["opening.version"]);
++		assert_eq!(refused(json!({ "version": 1.5, "exchanges": [one] })), ["opening.version"]);
++		assert_eq!(refused(json!({ "version": 1, "exchanges": [] })), ["opening.exchanges"]);
++		assert_eq!(refused(json!({ "version": 1, "exchanges": [one, one, one, one] })), ["opening.exchanges"]);
++		assert_eq!(refused(json!("paulgsc here")), ["opening.version", "opening.exchanges"]);
++	}
++
+ 	/// No starter's key is ever a ticket's, whatever ticket or exercise.
+ 	#[test]
+ 	fn a_starter_key_is_never_a_ticket_key() {
+diff --git a/crates/db/voice/src/about.rs b/crates/db/voice/src/about.rs
+index 06d97be..fa57283 100644
+--- a/crates/db/voice/src/about.rs
++++ b/crates/db/voice/src/about.rs
+@@ -15,7 +15,7 @@
+ //! it was matched to, an interview answer's rung) is read for the page the
+ //! library answers ([`with_game`], [`with_rung`]).
+ 
+-use crate::{bite_match::Method, is_interview_ref, is_point, How, Mode, Of, VoiceError};
++use crate::{bite_match::Method, is_interview_ref, is_opening_question, is_point, How, Mode, Of, VoiceError, OPENING};
+ use rust_round_repo::{
+ 	interview::{Rung, Sent},
+ 	week::{is_ticket_key, is_week_id},
+@@ -253,8 +253,9 @@ fn studio(of_ref: &str, idea: Option<(String, String)>) -> About {
+ }
+ 
+ /// A Rust Rounds note: a week's ticket (`<week>:<ticket>`) or one of its
+-/// points (`<week>:<ticket>:<n>`), a pasted error (`<week>:PASTE:<at>`), or a
+-/// card (`<round>:<card>[:<note>]`), as [`crate::is_rust_round_ref`] reads
++/// points (`<week>:<ticket>:<n>`), a pasted error (`<week>:PASTE:<at>`), an
++/// answer to the week's opening question n (`<week>:opening:<n>`,
++/// paulgsc/some-ui#3269: the week's, with no ticket), or a card (`<round>:<card>[:<note>]`), as [`crate::is_rust_round_ref`] reads
+ /// them. Keyed by the week, or by the round for a card.
+ fn rust_round(of_ref: &str) -> About {
+ 	let mut parts = of_ref.splitn(3, ':');
+@@ -264,6 +265,7 @@ fn rust_round(of_ref: &str) -> About {
+ 	let owned = |part: &str| Some(part.to_owned());
+ 	let (week, ticket, point, round, card, pasted_at) = match (is_week_id(first), second, rest) {
+ 		(true, Some(PASTE), Some(at)) => (owned(first), None, None, None, None, owned(at)),
++		(true, Some(OPENING), Some(n)) if is_opening_question(n) => (owned(first), None, None, None, None, None),
+ 		(true, Some(ticket), None) if is_ticket_key(ticket) => (owned(first), owned(ticket), None, None, None, None),
+ 		(true, Some(ticket), Some(n)) if is_ticket_key(ticket) && is_point(n) => (owned(first), owned(ticket), n.parse().ok(), None, None, None),
+ 		(_, Some(card), _) => (None, None, None, owned(first), owned(card), None),
+@@ -490,6 +492,18 @@ mod tests {
+ 				pasted_at: Some("2026-11-17T10:00:00.000Z".into())
+ 			}
+ 		);
++		assert_eq!(
++			about(Of::RustRound, "2026-w47:opening:2", None).detail,
++			Detail::RustRound {
++				week: Some("2026-w47".into()),
++				ticket: None,
++				point: None,
++				round: None,
++				card: None,
++				pasted_at: None
++			},
++			"an opening answer is the week's, never a card's (paulgsc/some-ui#3269)"
++		);
+ 		// RR24: a take of one point names its ticket and point, read from the
+ 		// `ref`; a take of the whole ticket names no point.
+ 		for (of_ref, point) in [("2026-w47:QM-312:2", Some(2)), ("2026-w47:QM-312", None)] {
+diff --git a/crates/db/voice/src/lib.rs b/crates/db/voice/src/lib.rs
+index a1321f8..7756549 100644
+--- a/crates/db/voice/src/lib.rs
++++ b/crates/db/voice/src/lib.rs
+@@ -479,6 +479,11 @@ pub fn is_note_id(id: &str) -> bool {
+ ///   (the form [`instant`] gives). `PASTE` is neither a slug nor a ticket's
+ ///   key, so it reads as neither.
+ ///
++/// - **An answer to a week's opening question** (paulgsc/some-ui#3269, C736):
++///   `<week>:opening:<n>`, like `2026-w47:opening:2`, n from 1 to 3, the
++///   week it was said in. A card's ref never reads as one: a round named
++///   like a week with a card named `opening` is refused.
++///
+ /// Both sit within the rule every `ref` meets, which [`describe`] checks too.
+ #[must_use]
+ pub fn is_rust_round_ref(of_ref: &str) -> bool {
+@@ -487,10 +492,21 @@ pub fn is_rust_round_ref(of_ref: &str) -> bool {
+ 		return false;
+ 	};
+ 	let rest = parts.next();
+-	let card = is_slug(first) && is_slug(second) && rest.is_none_or(is_note_id);
++	let opening = is_week_id(first) && second == OPENING;
++	let card = !opening && is_slug(first) && is_slug(second) && rest.is_none_or(is_note_id);
+ 	let ticket = is_week_id(first) && is_ticket_key(second) && rest.is_none_or(is_point);
+ 	let paste = is_week_id(first) && second == PASTE && rest.is_some_and(|at| instant(at).as_deref() == Some(at));
+-	card || ticket || paste
++	let answer = opening && rest.is_some_and(is_opening_question);
++	card || ticket || paste || answer
++}
++
++/// The second part of an opening answer's `ref` ([`is_rust_round_ref`]).
++pub const OPENING: &str = "opening";
++
++/// An opening question's number in an answer's `ref`: `1`, `2` or `3`.
++#[must_use]
++pub fn is_opening_question(part: &str) -> bool {
++	matches!(part, "1" | "2" | "3")
+ }
+ 
+ /// A speak-to point's number in a ticket's `ref`: 1 to 99, no leading zero.
+@@ -2031,6 +2047,8 @@ mod tests {
+ 			"2026-w46:QM-311:1",
+ 			"2026-w46:QM-311:8",
+ 			"2026-w46:QM-311:99",
++			"2026-w46:opening:1",
++			"2026-w46:opening:3",
+ 		] {
+ 			assert!(is_rust_round_ref(good), "{good}");
+ 			let note = describe("r1", said_take("rust-round", good), b"said").unwrap();
+@@ -2061,6 +2079,11 @@ mod tests {
+ 			"2026-w46:PASTE:2026-11-09T17:04:00Z",
+ 			"2026-w46:PASTE:2026-11-09T09:04:00.000-08:00",
+ 			"2026-w54:PASTE:2026-11-09T17:04:00.000Z",
++			"2026-w46:opening",
++			"2026-w46:opening:0",
++			"2026-w46:opening:4",
++			"2026-w46:opening:01",
++			"2026-w46:opening:note-1",
+ 		] {
+ 			assert!(!is_rust_round_ref(bad), "{bad}");
+ 			let refused = describe("r1", said_take("rust-round", bad), b"said").unwrap_err();
+diff --git a/docs/identity.md b/docs/identity.md
+index 286ab5b..1d08bea 100644
+--- a/docs/identity.md
++++ b/docs/identity.md
+@@ -1289,7 +1289,9 @@ nowhere is marked as such and belongs to review.
+     `<round>:<card>`, or on a refine card `<round>:<card>:<note>`, naming the
+     earlier note it brings back, so the pair is home's record; or, for a
+     week's ticket (RR13, paulgsc/some-ui#2688), `<week>:<ticket>` such as
+-    `2026-w46:QM-311`, which no card's ref can read as
++    `2026-w46:QM-311`, which no card's ref can read as, or for the answer to
++    a week's opening question n (paulgsc/some-ui#3269, C736),
++    `<week>:opening:<n>`, the week it was said in
+     (`voice_repo::is_rust_round_ref`; any other `ref` is a `422`). It
+     carries nothing beside it (`20261102000100_add_rust_round_to_voice_note`),
+     is heard by the transcriber like every note, and has its transcript
+@@ -2003,7 +2005,11 @@ nowhere is marked as such and belongs to review.
+     named by voice-note id and when it was recorded, the tickets passed over,
+     the decision at each fork of a `/2` week (RR29, paulgsc/some-ui#3257:
+     an option, the owner's own or the recommended by default, each named
+-    `<week>:<ticket>:<n>:verdict`), when Send was pressed and when it reached
++    `<week>:<ticket>:<n>:verdict`), the takes of the week's opening said that
++    week (paulgsc/some-ui#3269: each its question, take, when it was
++    recorded, the opening's version it was read under and, when the phone
++    measured it, how long it runs; each held as said for
++    `<week>:opening:<n>`), when Send was pressed and when it reached
+     home). Until the week's
+     deadline it is a draft (`rust_week_draft`, `PUT /rust-weeks/:id/sent`): a
+     later send replaces it, an earlier one leaves it, and another body at its
+@@ -2031,7 +2037,11 @@ nowhere is marked as such and belongs to review.
+     never updated, and deleted only with the account, by the triggers and
+     the sweep; a draft alone is also replaced, and deleted once its week is
+     final. A week's record is read, never stored whole: the week, its draft
+-    before the deadline or its final after it, its pastes, and
++    before the deadline or its final after it, the takes of its opening it
++    plays (for each question, the newest take of its answer that this week's
++    send or an earlier week's names under the week's opening version and
++    that was not deleted, so a week with no new take reuses the last, C736),
++    its pastes, and
+     how often each ticket was opened, which is the phone's engagement events
+     (`left` at the ticket's place, invariant 34) counted in the week's window,
+     so there is no second counter. A ticket no take answered is listed as
+diff --git a/infra/docker/Dockerfile.server b/infra/docker/Dockerfile.server
+index 85e9ff3..db01086 100644
+--- a/infra/docker/Dockerfile.server
++++ b/infra/docker/Dockerfile.server
+@@ -200,5 +200,5 @@ LABEL org.opencontainers.image.title="${APP_NAME}" \
+ # The numbers are apps/servers/file_host/src/contract.rs's (contract,
+ # render-folders), ws-events' NATS_SUBJECTS_EPOCH and rust_rounds_wire's
+ # protocol::EPOCH; contract.rs's own test holds them equal.
+-LABEL io.paulgsc.provides="contract=24,render-folders=2" \
++LABEL io.paulgsc.provides="contract=25,render-folders=2" \
+       io.paulgsc.requires="nats-subjects=1,rust-runner-protocol=1"
+diff --git a/infra/render/render-calls.sh b/infra/render/render-calls.sh
+index 5cfcc60..dc32489 100755
+--- a/infra/render/render-calls.sh
++++ b/infra/render/render-calls.sh
+@@ -58,7 +58,10 @@
+ # exactly the takes the week's final record names (`rust_essays`): the
+ # worker reads no record and no draft. The tutor's lines are said by home's
+ # speaker as every job's; each answer scene is the owner's take, played
+-# whole by the recorder.
++# whole by the recorder. An essay that opens on the owner's conversation
++# (paulgsc/some-ui#3269) is given each answer's take it plays as
++# opening.<n>.<ext> beside the tickets', the newest kept one of that answer,
++# whatever week it was said in.
+ # A week of mock interview's essay is the same, by the same file_host
+ # export over its kind (`rust_essays`): keyed by its week, given once the
+ # interview week is final and only when it plays exactly the answers the
+-- 
+2.43.0
+
