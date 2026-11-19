@@ -264,12 +264,9 @@ export function openingOf(
       readonly exchanges: NonNullable<EndedWeek["opening"]>["exchanges"]
     }
   | { readonly ok: false; readonly why: string } {
-  const exchanges: Array<{
-    n: number
-    ask: string
-    transcript: string
-    take: string
-  }> = []
+  const exchanges: Array<
+    NonNullable<EndedWeek["opening"]>["exchanges"][number]
+  > = []
   for (const [i, { ask }] of (week.opening?.exchanges ?? []).entries()) {
     const n = i + 1
     const take = record.opening.find(

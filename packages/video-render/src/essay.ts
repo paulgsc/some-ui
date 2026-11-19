@@ -626,10 +626,8 @@ export const EssaySchema = z.strictObject({
    * The opening conversation (#3269, C738): each question asked and what
    * home heard in the owner's newest take of its answer, by the question's
    * place in the week's opening (from 1), in order, with that take's voice
-   * note id, so home plays exactly the take these words are of and refuses
-   * the essay once a newer take or a deletion replaces it (C736). Absent
-   * when no answer has a take to play; a question whose answer has none is
-   * left out.
+   * note id (C736). Absent when no answer has a take to play; a question
+   * whose answer has none is left out.
    */
   opening: z
     .strictObject({

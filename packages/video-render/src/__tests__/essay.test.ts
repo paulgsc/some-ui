@@ -205,14 +205,13 @@ describe("the sample essay", () => {
     expect(backwards.ok ? [] : backwards.problems).toEqual([
       "opening.exchanges: each question once, in the opening's order; got 3, 1",
     ])
-    // Each answer names the take its words are of, so home plays that one (C736).
-    const untaken = parseEssay({
+    const badTake = parseEssay({
       ...opened,
       opening: {
-        exchanges: OPENING.exchanges.map(({ take: _take, ...rest }) => rest),
+        exchanges: OPENING.exchanges.map((e) => ({ ...e, take: "a/take" })),
       },
     })
-    expect(untaken.ok).toBe(false)
+    expect(badTake.ok).toBe(false)
     // The intro names the voice asking, and never says "both" of three.
     for (const voicing of ["owner", "sample"] as const) {
       const intro = essayIntro(opened, voicing)

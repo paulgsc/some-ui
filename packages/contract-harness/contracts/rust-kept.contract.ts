@@ -53,9 +53,8 @@ const Ticket = z.string().regex(/^[A-Z][A-Z0-9]{0,5}-\d{1,6}$/)
  * A week's answers as the phone keeps them (`WeekSent`), which it sends
  * exactly; from contract epoch 24 with the decision at each fork (RR29,
  * `verdicts`, each named `<week>:<ticket>:<n>:verdict`), and from epoch 25
- * with the takes of the week's opening said that week (#3269, C736: each
- * its question, take, when recorded, the opening's version and how long it
- * runs, its take's ref `<week>:opening:<n>`).
+ * the week's opening takes (#3269, C736), ref `<week>:opening:<n>`, which
+ * the phone's `WeekSent` gains with its opening pages.
  */
 const SENT = {
   week: ABSENT_WEEK,
