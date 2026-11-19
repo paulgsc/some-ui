@@ -69,6 +69,18 @@ const SentSchema: z.ZodType<WeekSent> = z.object({
     })
   ),
   passed: z.array(z.string()),
+  verdicts: z
+    .array(
+      z.object({
+        ref: z.string(),
+        decision: z.discriminatedUnion("kind", [
+          z.object({ kind: z.literal("option"), option: z.string() }),
+          z.object({ kind: z.literal("own") }),
+          z.object({ kind: z.literal("recommended-by-default") }),
+        ]),
+      })
+    )
+    .optional(),
 })
 
 /** The weeks sent from this phone, in `storage`, which only grow. */

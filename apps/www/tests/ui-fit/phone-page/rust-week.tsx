@@ -71,6 +71,7 @@ function fixturePorts(): RustWeekPorts {
     },
     engage: () => undefined,
     perPoint: true,
+    verdicts: false,
   }
 }
 

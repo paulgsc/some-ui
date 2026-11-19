@@ -194,6 +194,12 @@ export type BundleSpec<K extends BundleKind> = {
   /** The takes a record names. */
   readonly named: (record: K["record"]) => ReadonlyArray<string>
   /**
+   * What else a record carries beside its takes, each as one string, so a
+   * change to it alone counts as changed when sending again (a week's
+   * decisions at its forks, RR29); none when left out.
+   */
+  readonly carries?: (record: K["record"]) => ReadonlyArray<string>
+  /**
    * Whether a draft stays open after Send, to be sent again under its id
    * until it is `closed` (a week, RR22); false sends each draft once.
    */
@@ -634,9 +640,13 @@ export function bundleMachine<K extends BundleKind>(
     const last = lastOf(state)
     if (last === null) return null
     const next = bundleRecord(state, state.at)
-    const had = new Set(spec.named(last))
-    const has = spec.named(next)
-    return has.length === had.size && has.every((take) => had.has(take))
+    const said = (record: K["record"]): ReadonlyArray<string> => [
+      ...spec.named(record),
+      ...(spec.carries?.(record) ?? []),
+    ]
+    const had = new Set(said(last))
+    const has = said(next)
+    return has.length === had.size && has.every((each) => had.has(each))
       ? "unchanged"
       : null
   }
