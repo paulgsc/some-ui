@@ -1,0 +1,20 @@
+{
+  "id": "C751",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/home-link/sent.ts",
+    "apps/www/src/lib/home-link/runtime.ts",
+    "server:apps/servers/file_host/src/handlers/auth.rs"
+  ],
+  "chose": "A pairing to the same home (base address) and the same account keeps the phone's memory of what home holds (`some-ui.home.sent.v1`); another home, another account, or a home that names no account starts fresh. Home names the account at pairing as `account`, the base64url of 16 random bytes stored on the account row (`pairing_scope`), never derived from the subject id.",
+  "options": [
+    "keep the memory across a pairing to the same home and account, named by a random per-account scope home answers at pairing (chosen)",
+    "the same, with the account named by a salted hash of the subject id",
+    "keep the memory across any pairing to the same home address",
+    "leave it: every pairing starts fresh and re-sends everything, which home answers unchanged"
+  ],
+  "gray": "No check or earlier call says whether what a phone knew home held survives a new pairing; the owner notices it after a reinstall (Android's backup restores the memory but not the pairing) as a long re-send and screens waiting behind it (#3197). The coordinator put the rule in these words; the random scope over a salted hash follows phoneId's precedent (C496).",
+  "undo": "Drop `notePairingScope` and the scope branch of `readSent` in sent.ts, and the `account` read in runtime.ts's finishPairing; home's `account` field can stay, unread.",
+  "refs": ["#3197", "#3281", "#3285"]
+}

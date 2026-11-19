@@ -16,7 +16,11 @@
  * said of each work span event (`./rust-spans`), the events of a log home took
  * (`events`, `./leetype-log`'s `TakenEvents`), and the digests home refused, so the drain does not offer an unchanged refused item again
  * (it goes once its bytes change). Kept for one pairing (`pairing`, the
- * link's id for it): another pairing starts from nothing. Bookkeeping, not
+ * link's id for it), and for its scope (`scope`, home's address and the
+ * account home names at pairing, C751): another pairing starts from
+ * nothing, unless it is to the same home and account (`readSent`, MP1), as
+ * after a reinstall whose backup restores this record but not the pairing.
+ * Bookkeeping, not
  * the record: lost, it only means sending again, which home answers as
  * unchanged, and keeping the written reflections home holds until then.
  */
@@ -41,6 +45,8 @@ export const SENT_KEY = "some-ui.home.sent.v1"
 
 export type Sent = {
   readonly pairing: string
+  /** Home's address and the account home named at pairing (C751); absent when home named none. */
+  readonly scope?: string
   readonly sessions: Readonly<Record<string, string>>
   readonly shelf: Readonly<Record<string, string>>
   readonly refused: Readonly<Record<string, string>>
@@ -65,8 +71,9 @@ export type Sent = {
 
 type Store = KeyedStorage | null
 
-const emptyFor = (pairing: string): Sent => ({
+const emptyFor = (pairing: string, scope: string | null): Sent => ({
   pairing,
+  ...(scope === null ? {} : { scope }),
   sessions: {},
   shelf: {},
   refused: {},
@@ -132,6 +139,9 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
   return {
     value: {
       pairing: parsed.pairing,
+      ...(typeof parsed.scope === "string" && parsed.scope !== ""
+        ? { scope: parsed.scope }
+        : {}),
       sessions: sessions.value,
       shelf: shelf.value,
       refused: refused.value,
@@ -185,10 +195,66 @@ export function sentUnder(storage: Store, pairing: Pairing): Sent | null {
   return pairing.kind === "paired" ? readSent(storage, pairing.id) : null
 }
 
-/** What this phone knows home holds under `pairing`; nothing, for another. */
+/** Where each pairing's scope is noted, as the link reads or makes it (MP1). */
+export const SCOPE_KEY = "some-ui.home.pairing-scope.v1"
+
+/**
+ * A pairing's scope: home's address and the account home named at pairing
+ * (C751), or null when home named none.
+ */
+export const scopeOf = (base: string, account: string | null): string | null =>
+  account === null ? null : `${base}#${account}`
+
+/**
+ * Notes `scope` for pairing `id` (MP1): the link's, as it reads the phone's
+ * record or pairs. One pairing at a time is this phone's.
+ */
+export function notePairingScope(
+  storage: Store,
+  id: string,
+  scope: string | null
+): void {
+  if (storage === null) return
+  const now = JSON.stringify({ id, scope })
+  try {
+    if (storage.getItem(SCOPE_KEY) !== now) storage.setItem(SCOPE_KEY, now)
+  } catch {
+    // Ignored: unwritten, the memory stays this pairing's alone, as every
+    // memory was before MP1; nothing is lost but the carry-over.
+  }
+}
+
+/** The scope noted for pairing `id`, or null. */
+function scopeOfPairing(storage: Store, id: string): string | null {
+  if (storage === null) return null
+  let raw: string | null
+  try {
+    raw = storage.getItem(SCOPE_KEY)
+  } catch {
+    return null
+  }
+  const noted = jsonOf(raw ?? "null")
+  return isRecord(noted) && noted.id === id && typeof noted.scope === "string"
+    ? noted.scope
+    : null
+}
+
+/**
+ * What this phone knows home holds under `pairing`; nothing, for another,
+ * unless it is to the same home and account (MP1): the memory a reinstall's
+ * backup restored, kept by another pairing of the same scope, is this one's.
+ */
 export function readSent(storage: Store, pairing: string): Sent {
   const sent = openKept<Sent | null>(storage, SENT_KEY, readSentRecord, null)
-  return sent.value?.pairing === pairing ? sent.value : emptyFor(pairing)
+  const scope = scopeOfPairing(storage, pairing)
+  const value = sent.value
+  if (value?.pairing === pairing) {
+    return scope === null || value.scope === scope ? value : { ...value, scope }
+  }
+  if (value !== null && scope !== null && value.scope === scope) {
+    return { ...value, pairing }
+  }
+  return emptyFor(pairing, scope)
 }
 
 /**
@@ -246,6 +312,7 @@ export function rememberSent(
 ): Sent {
   const next: Sent = {
     pairing: sent.pairing,
+    ...(sent.scope === undefined ? {} : { scope: sent.scope }),
     sessions: { ...sent.sessions, ...more.sessions },
     shelf: { ...without(sent.shelf, more.refused), ...more.shelf },
     refused: { ...without(sent.refused, more.shelf), ...more.refused },

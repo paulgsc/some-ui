@@ -83,6 +83,7 @@ import {
 } from "./model"
 import type { PaceMemory } from "./pace"
 import { createPace } from "./pace"
+import { scopeOf } from "./sent"
 import type { PairingRecord } from "./settle"
 import { blockedOf, parsePairing, settleRead, unanswered } from "./settle"
 
@@ -113,6 +114,11 @@ export type HomeLinkPorts = {
   onNetwork?: (listener: () => void) => () => void
   /** Where the pace is kept between page loads (HERD1, `./pace`). */
   paceMemory?: PaceMemory | null
+  /**
+   * Told each pairing's scope (MP1, `./sent`'s `notePairingScope`): as the
+   * phone's record is read, and as a pairing is made.
+   */
+  noteScope?: (id: string, scope: string | null) => void
 }
 
 /** How long home's busy lasts when its `Retry-After` can't be read. */
@@ -336,6 +342,10 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
   const load = (): Promise<void> => {
     loading ??= ports.credential.read().then(
       ({ record, lost }) => {
+        const found = record === null ? null : parsePairing(record)
+        if (found !== null) {
+          ports.noteScope?.(found.id, scopeOf(found.base, found.account))
+        }
         dispatch({
           type: "read",
           found: settleRead({ kind: "read", record, lost }),
@@ -707,6 +717,8 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     if (token === null) return "other"
     // Home's id for this phone, from a home that gives one (C496).
     const phoneId = stringFieldOf(answer.body, "phoneId")
+    // Home's name for the account, the same for each phone it pairs (C751).
+    const account = stringFieldOf(answer.body, "account")
     try {
       await ports.credential.write(
         JSON.stringify({
@@ -715,9 +727,11 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
           id,
           pairedAt,
           phoneId,
+          account,
           name: name ?? null,
         })
       )
+      ports.noteScope?.(id, scopeOf(base, account))
     } catch {
       // Home made a session this phone cannot keep: end it, in the same
       // tap, rather than leave it to expire.
