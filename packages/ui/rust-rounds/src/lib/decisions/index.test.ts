@@ -34,6 +34,8 @@ describe("decisions at a week's forks", () => {
       made(1, { kind: "option", option: "F" }, 2),
       made(3, { kind: "own" }, 2),
       made(1, { kind: "own" }, 2, "TB-999"),
+      made(0, { kind: "own" }, 2),
+      made(-1, { kind: "own" }, 2),
     ]) {
       expect(pick(week, once, again)).toBe(once)
     }
@@ -48,6 +50,8 @@ describe("decisions at a week's forks", () => {
       (kept, each) => pick(week, kept, each),
       []
     )
+    // Going back to an earlier pick is a pick too, kept beside the others.
+    expect(picks).toHaveLength(3)
     expect(atSend(week, picks)).toEqual([
       {
         ticket: "TB-101",

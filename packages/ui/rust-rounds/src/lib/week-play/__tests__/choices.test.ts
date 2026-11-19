@@ -7,7 +7,7 @@ import { pick } from "@rust-rounds/lib/decisions"
 import { flowSteps, mark } from "@rust-rounds/lib/flow"
 import { TALLOWBROOK_WEEK_FILE } from "@rust-rounds/lib/sample-week/tallowbrook"
 import { readWeek } from "@rust-rounds/lib/week-check"
-import { weekMarks, weekPicks } from "@rust-rounds/lib/week-play/store"
+import { ofWeek, weekMarks, weekPicks } from "@rust-rounds/lib/week-play/store"
 import { inMemoryStorage } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
@@ -66,8 +66,8 @@ describe("the marks kept", () => {
     ])
     const second = marks.keep((all) => [
       ...all,
-      ...mark(steps, all, done)
-        .slice(all.length)
+      ...mark(steps, ofWeek(all, WEEK.id), done)
+        .slice(ofWeek(all, WEEK.id).length)
         .map((each) => ({ ...each, week: WEEK.id })),
     ])
     expect(first).toHaveLength(1)
@@ -76,5 +76,26 @@ describe("the marks kept", () => {
       { ...done, week: WEEK.id },
     ])
     expect(marks.keep((all) => all.slice(1))).toBeNull()
+  })
+
+  it("reads one week's marks, apart from another week's with the same ticket", () => {
+    const steps = flowSteps(WEEK)
+    const kept = [
+      {
+        week: "2026-w46",
+        ticket: "TB-101",
+        step: "read",
+        mark: "done",
+        at: AT,
+      },
+    ] as const
+    expect(ofWeek(kept, WEEK.id)).toEqual([])
+    const made = {
+      ticket: "TB-101",
+      step: "read",
+      mark: "done",
+      at: AT,
+    } as const
+    expect(mark(steps, ofWeek(kept, WEEK.id), made)).toEqual([made])
   })
 })

@@ -4516,13 +4516,13 @@
     {
       "store": "phone:rust-rounds-week-picks",
       "class": "record",
-      "growth": "Per pick the owner makes at a fork of a /2 week (RR29, #3257): the week, ticket, fork, the option picked or their own, and when; only grows (a change that drops or rewrites one is refused), so a decision the academy moved keeps its first pick too; a few a fork, at most six forks a ticket, so tens a week, no cap (`some-ui:rust-rounds.week-picks`).",
+      "growth": "Per pick the owner makes at a fork of a /2 week (RR29, #3257): the week, ticket, fork, the option picked or their own, and when; only grows (a change that drops or rewrites one is refused), so a decision the academy moved keeps its first pick too, and the screens add a pick only when it changes the fork's decision (`lib/decisions`' `pick`); a few a fork, at most six forks a ticket, so tens a week, no cap (`some-ui:rust-rounds.week-picks`).",
       "family": "what-is-kept"
     },
     {
       "store": "phone:rust-rounds-week-marks",
       "class": "record",
-      "growth": "Per step of a week's ticket the owner marks done or skipped (RR25, #3249): the week, ticket, step (read, academy, voice) and when; only grows, and a mark that repeats a step's standing is not kept; a few a step, three steps a ticket, so tens a week, no cap (`some-ui:rust-rounds.week-marks`).",
+      "growth": "Per step of a week's ticket the owner marks done or skipped (RR25, #3249): the week, ticket, step (read, academy, voice) and when; only grows, and the screens add a mark only when it changes a step's standing (`lib/flow`'s `mark`); a few a step, three steps a ticket, so tens a week, no cap (`some-ui:rust-rounds.week-marks`).",
       "family": "what-is-kept"
     },
     {

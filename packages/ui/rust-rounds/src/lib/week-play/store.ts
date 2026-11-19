@@ -208,6 +208,15 @@ export function pasteStores(storage: KeyedStorage | null): PasteStores {
 /** A kept record of week `week`'s. */
 type OfWeek<R> = R & { readonly week: string }
 
+/**
+ * Week `week`'s records among every week's kept: what `lib/decisions` and
+ * `lib/flow` read, since a ticket's id names it within its week only.
+ */
+export const ofWeek = <R>(
+  records: ReadonlyArray<OfWeek<R>>,
+  week: string
+): ReadonlyArray<OfWeek<R>> => records.filter((each) => each.week === week)
+
 const PickSchema: z.ZodType<OfWeek<PickMade>> = z.object({
   week: z.string(),
   ticket: z.string(),

@@ -14,6 +14,9 @@
  *   one that repeats the step's standing, changes nothing (`mark`).
  * - **Where to open** (`openAt`): the first step not done or skipped, or the
  *   last step once every one is.
+ * - **One week's marks.** A ticket's id names it within its week only, so
+ *   these read the marks of one week: `ofWeek(kept, week.id)`
+ *   (`lib/week-play/store`), never every week's.
  */
 import type { Week } from "@rust-rounds/lib/formats/week"
 

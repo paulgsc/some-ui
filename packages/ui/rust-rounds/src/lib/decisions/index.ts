@@ -13,6 +13,9 @@
  * - **Only what the week offers.** A pick naming an option its fork doesn't
  *   list, or a fork the ticket doesn't have, changes nothing. A `/1` week's
  *   points are forks with no options: nothing to pick, nothing sent.
+ * - **One week's picks.** Every function here reads the picks of the week
+ *   it is given, and a ticket's id names it within its week only: give it
+ *   `ofWeek(kept, week.id)` (`lib/week-play/store`), never every week's.
  */
 import type { Week } from "@rust-rounds/lib/formats/week"
 
