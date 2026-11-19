@@ -7,11 +7,13 @@
  * a week past its deadline records and sends nothing.
  */
 import { QUILLMOSS_WEEK } from "@rust-rounds/lib/sample-week"
+import { TALLOWBROOK_WEEK_FILE } from "@rust-rounds/lib/sample-week/tallowbrook"
+import { readWeek } from "@rust-rounds/lib/week-check"
 import type { RustWeek } from "@rust-rounds/lib/week-play/runtime"
 import { createRustWeek } from "@rust-rounds/lib/week-play/runtime"
 import type { WeekSent } from "@rust-rounds/lib/week-play/spec"
 import { weekAtHome } from "@rust-rounds/lib/week-play/spec"
-import { weeksSent } from "@rust-rounds/lib/week-play/store"
+import { weekMarks, weeksSent } from "@rust-rounds/lib/week-play/store"
 import type { HeldWeek } from "@rust-rounds/lib/weeks"
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { inMemoryStorage } from "@some-ui/core-utils"
@@ -62,6 +64,7 @@ function phone(
     heard?: (take: string) => Promise<HeardAnswer>
     homeHolds?: (sent: WeekSent) => boolean
     perPoint?: boolean
+    verdicts?: boolean
     held?: HeldWeek
   } = {}
 ): Phone {
@@ -97,6 +100,7 @@ function phone(
     newId: () => "unused",
     engage: (event) => engaged.push(event),
     perPoint,
+    verdicts: over.verdicts ?? false,
     onVisibility: (listener) => {
       listener(false)
       return (): void => undefined
@@ -298,25 +302,24 @@ describe("the week's openings (RR14)", () => {
     ])
   })
 
-  it("tells a ticket opened once, whichever of its points is on screen (RR24)", async () => {
+  it("tells a ticket opened once, whichever of its steps or points is on screen (RR24, RR25)", async () => {
     const on = phone(inMemoryStorage(), onConfirm(), { perPoint: true })
     const items = on.week.machine.spec.items
-    const [first, second] = QUILLMOSS_WEEK.tickets
-    if (first === undefined || second === undefined) throw new Error("tickets")
-    on.week.bundle.dispatch({
-      type: "go",
-      index: items.indexOf(`${first.id}:1`),
-    })
+    const flow = on.week.flow
+    const [first] = QUILLMOSS_WEEK.tickets
+    if (first === undefined || flow === null) {
+      throw new Error("tickets, and a flow")
+    }
+    // The flow moves the takes (RR25): its read, then its voice's points.
+    flow.dispatch({ type: "openTicket", ticket: first.id })
     await pass(5_000)
+    flow.dispatch({ type: "go", index: 1 })
     on.week.bundle.dispatch({
       type: "go",
       index: items.indexOf(`${first.id}:2`),
     })
     await pass(5_000)
-    on.week.bundle.dispatch({
-      type: "go",
-      index: items.indexOf(`${second.id}:1`),
-    })
+    flow.dispatch({ type: "go", index: 2 })
     await pass(5_000)
     on.week.bundle.dispatch({ type: "back" })
     on.detach()
@@ -516,5 +519,173 @@ describe("a take per point (RR24)", () => {
         .filter((answer) => answer.ticket === ticket)
         .map((answer) => answer.point ?? "whole")
     ).toEqual(["whole", 2])
+  })
+})
+
+/**
+ * The flow and the takes stay on one ticket (RR25), and a take is never
+ * moved: the flow moves the takes; a take asked from the look over brings
+ * the flow to its ticket's voice; Back from the look over, or a take's
+ * Later, brings the takes back to where the flow is.
+ */
+describe("the flow and the takes on one ticket", () => {
+  const [first = "", second = ""] = QUILLMOSS_WEEK.tickets.map(({ id }) => id)
+  const onScreen = (on: Phone): { flow: string; takes: string | undefined } => {
+    const flow = on.week.flow?.getSnapshot()
+    const step = flow?.steps[flow.at]
+    const state = on.week.bundle.getSnapshot()
+    return {
+      flow: `${step?.ticket ?? ""} ${step?.step ?? ""}`,
+      takes: on.week.machine.spec.items[state.index],
+    }
+  }
+  /** The first ticket gone through: the week opens on the second's read. */
+  const openedOnSecond = (): KeyedStorage => {
+    const storage = inMemoryStorage()
+    weekMarks(storage).keep(() =>
+      (["read", "voice"] as const).map((step) => ({
+        week: QUILLMOSS_WEEK.id,
+        ticket: first,
+        step,
+        mark: "done" as const,
+        at: "2026-11-10T09:00:00Z",
+      }))
+    )
+    return storage
+  }
+
+  it("brings the takes to the flow's ticket, back from a look over opened on the brief", async () => {
+    const on = phone(openedOnSecond(), onConfirm(), { perPoint: true })
+    await pass()
+    expect(onScreen(on).flow).toBe(`${second} read`)
+    on.week.bundle.dispatch({ type: "review" })
+    on.week.bundle.dispatch({ type: "back" })
+    expect(on.week.bundle.getSnapshot().screen).toBe("cards")
+    expect(onScreen(on)).toEqual({
+      flow: `${second} read`,
+      takes: `${second}:1`,
+    })
+    on.detach()
+  })
+
+  it("records a take asked from the look over where it was asked, the flow at its voice", async () => {
+    for (const [from, item] of [
+      [first, `${second}:2`],
+      [second, `${second}:2`],
+    ] as const) {
+      const on = phone(inMemoryStorage(), onConfirm(), { perPoint: true })
+      // The flow on its read; the look over opened from the cards.
+      on.week.flow?.dispatch({ type: "openTicket", ticket: from })
+      on.week.bundle.dispatch({ type: "review" })
+      on.week.bundle.dispatch({ type: "tap", item })
+      await pass(2_000)
+      expect(on.week.bundle.getSnapshot().busy).toBe(true)
+      expect(onScreen(on)).toEqual({ flow: `${second} voice`, takes: item })
+      on.week.bundle.dispatch({ type: "tap", item })
+      await pass()
+      on.detach()
+    }
+  })
+
+  it("keeps the takes on the flow's ticket after a Later at its last point", () => {
+    const on = phone(inMemoryStorage(), onConfirm(), { perPoint: true })
+    const last = `${first}:${QUILLMOSS_WEEK.tickets[0]?.forks.length ?? 0}`
+    on.week.flow?.dispatch({ type: "openTicket", ticket: first })
+    on.week.flow?.dispatch({ type: "go", index: 1 })
+    on.week.bundle.dispatch({
+      type: "go",
+      index: on.week.machine.spec.items.indexOf(last),
+    })
+    on.week.bundle.dispatch({ type: "later", item: last })
+    expect(onScreen(on)).toEqual({ flow: `${first} voice`, takes: last })
+    on.detach()
+  })
+})
+
+/**
+ * The decision at each fork goes home with the week sent (RR29, C693):
+ * every fork with options, named `<week>:<ticket>:<n>:verdict`, a pick as
+ * picked and a fork left alone as the recommended by default; a decision
+ * changed alone is something to send again; and none goes where home
+ * doesn't keep them.
+ */
+describe("the decisions sent (RR29)", () => {
+  const read = readWeek(TALLOWBROOK_WEEK_FILE)
+  if (!read.ok) throw new Error("the /2 sample reads")
+  const TB: HeldWeek = { ...HELD, week: read.week, runs: {} }
+  const forks = read.week.tickets.flatMap((ticket) =>
+    ticket.forks.map((_, i) => `2026-w47:${ticket.id}:${i + 1}:verdict`)
+  )
+
+  it("sends each fork's decision, and sends again for a decision changed alone", async () => {
+    vi.setSystemTime(new Date("2026-11-19T18:00:00Z"))
+    const storage = inMemoryStorage()
+    const on = phone(storage, onConfirm(), {
+      perPoint: true,
+      verdicts: true,
+      held: TB,
+    })
+    const flow = on.week.flow
+    if (flow === null) throw new Error("a flow")
+    flow.dispatch({ type: "openTicket", ticket: "TB-101" })
+    flow.dispatch({
+      type: "pick",
+      fork: 1,
+      pick: { kind: "option", option: "B" },
+    })
+    await say(on, "TB-101:1")
+    on.week.bundle.dispatch({ type: "review" })
+    on.week.bundle.dispatch({ type: "send" })
+    await pass()
+
+    const [first] = weeksSent(storage).list() ?? []
+    expect(first?.verdicts?.map(({ ref }) => ref)).toEqual(forks)
+    expect(first?.verdicts?.slice(0, 2)).toEqual([
+      {
+        ref: "2026-w47:TB-101:1:verdict",
+        decision: { kind: "option", option: "B" },
+      },
+      {
+        ref: "2026-w47:TB-101:2:verdict",
+        decision: { kind: "recommended-by-default" },
+      },
+    ])
+
+    // Back to the week: nothing changed, nothing to send again.
+    on.week.bundle.dispatch({ type: "back" })
+    on.week.bundle.dispatch({ type: "review" })
+    expect(on.week.machine.missing(on.week.bundle.getSnapshot())).toBe(
+      "unchanged"
+    )
+    // A decision changed alone is something to send.
+    flow.dispatch({ type: "pick", fork: 2, pick: { kind: "own" } })
+    expect(on.week.machine.missing(on.week.bundle.getSnapshot())).toBeNull()
+    on.week.bundle.dispatch({ type: "send" })
+    await pass()
+    const kept = weeksSent(storage).list() ?? []
+    expect(kept).toHaveLength(2)
+    expect(kept[1]?.verdicts?.[1]).toEqual({
+      ref: "2026-w47:TB-101:2:verdict",
+      decision: { kind: "own" },
+    })
+    // The takes sent are the same ones: only the decision moved.
+    expect(kept[1]?.answers).toEqual(first?.answers)
+    on.detach()
+  })
+
+  it("sends no decisions where home doesn't keep them", async () => {
+    vi.setSystemTime(new Date("2026-11-19T18:00:00Z"))
+    const storage = inMemoryStorage()
+    const on = phone(storage, onConfirm(), { perPoint: true, held: TB })
+    on.week.flow?.dispatch({ type: "openTicket", ticket: "TB-101" })
+    on.week.flow?.dispatch({ type: "pick", fork: 1, pick: { kind: "own" } })
+    await say(on, "TB-101:1")
+    on.week.bundle.dispatch({ type: "review" })
+    on.week.bundle.dispatch({ type: "send" })
+    await pass()
+    const [sent] = weeksSent(storage).list() ?? []
+    expect(sent).toBeDefined()
+    expect(sent).not.toHaveProperty("verdicts")
+    on.detach()
   })
 })

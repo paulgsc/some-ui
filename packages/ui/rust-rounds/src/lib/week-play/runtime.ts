@@ -13,6 +13,8 @@
  * answer that comes after the screen went is still kept: it can only add
  * words home heard, never change any.
  */
+import type { DecisionsSent } from "@rust-rounds/lib/decisions"
+import { atSend } from "@rust-rounds/lib/decisions"
 import type { HeldWeek } from "@rust-rounds/lib/weeks"
 import type { WorkPorts } from "@rust-rounds/lib/work-tracker/runtime"
 import type { KeyedStorage } from "@some-ui/core-utils"
@@ -27,14 +29,23 @@ import type {
 } from "@some-ui/voice-capture"
 import { bundleRuntime } from "@some-ui/voice-capture"
 
+import type { FlowRuntime } from "./flow-runtime"
+import { createFlow } from "./flow-runtime"
 import type { OnScreen, Open } from "./opens"
 import { stepOpens } from "./opens"
 import type { PasteRuntime } from "./paste"
 import { pasteRuntime } from "./paste"
-import { itemOf } from "./points"
+import { firstItemOf, itemOf, pointItem } from "./points"
 import type { WeekAtHome, WeekKind, WeekSent } from "./spec"
 import { weekAtHome, weekMachine } from "./spec"
-import { heardWords, pasteStores, weekDrafts, weeksSent } from "./store"
+import {
+  heardWords,
+  ofWeek,
+  pasteStores,
+  weekDrafts,
+  weekPicks,
+  weeksSent,
+} from "./store"
 
 export type RustWeekPorts = {
   /** The week to play: the one this phone holds that is open now. */
@@ -68,6 +79,12 @@ export type RustWeekPorts = {
   readonly perPoint: boolean
   /** The work tracker and the week's time (RR26), where this build has them. */
   readonly work?: WorkPorts
+  /**
+   * The decision at each fork goes home with the week sent (RR29), where
+   * this build's home keeps them (contract epoch 24 on). Fixed for the
+   * week's opening.
+   */
+  readonly verdicts: boolean
 }
 
 export type RustWeek = {
@@ -88,6 +105,12 @@ export type RustWeek = {
   }
   /** An error pasted from the owner's own code, with a note (`./paste`). */
   readonly paste: PasteRuntime
+  /**
+   * The week's flow (RR25, `./flow-runtime`): read, academy and voice per
+   * ticket on one line. Null where takes go by ticket (`perPoint` off), which
+   * keeps the card per ticket.
+   */
+  readonly flow: FlowRuntime | null
   /** The screen is showing. Returns the detach. */
   readonly attach: () => () => void
 }
@@ -97,7 +120,14 @@ export type WeekHeard = Readonly<Partial<Record<string, HeardAnswer>>>
 
 export function createRustWeek(ports: RustWeekPorts): RustWeek {
   const { week } = ports.week
-  const machine = weekMachine(week, ports.perPoint)
+  const picks = weekPicks(ports.storage)
+  const machine = weekMachine(
+    week,
+    ports.perPoint,
+    ports.verdicts
+      ? (): DecisionsSent => atSend(week, ofWeek(picks.list() ?? [], week.id))
+      : null
+  )
   const bundle = bundleRuntime(machine, {
     takes: ports.takes,
     drafts: weekDrafts(ports.storage, week.id),
@@ -109,6 +139,38 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
     onVisibility: ports.onVisibility,
   })
   const sends = weeksSent(ports.storage)
+  /**
+   * Puts the takes on `ticket`, the flow's on screen, where they are on
+   * another, and enters the cards from the brief.
+   */
+  const follow = (ticket: string): void => {
+    const state = bundle.getSnapshot()
+    const on = itemOf(machine.spec.items[state.index] ?? "").ticket
+    if (on === ticket && state.screen === "cards") return
+    const index = firstItemOf(machine.spec.items, ticket)
+    if (index !== -1) bundle.dispatch({ type: "go", index })
+  }
+  const flow = ports.perPoint
+    ? createFlow({
+        week,
+        storage: ports.storage,
+        now: ports.now,
+        said: (ticket) => {
+          const state = bundle.getSnapshot()
+          const forks =
+            week.tickets.find(({ id }) => id === ticket)?.forks.length ?? 0
+          return [
+            ticket,
+            ...Array.from({ length: forks }, (_, i) =>
+              pointItem(ticket, i + 1)
+            ),
+          ].some((item) => machine.answered(state, item) === "said")
+        },
+        // The takes follow the ticket on screen, so its voice opens on it.
+        onTicket: (ticket) => follow(ticket),
+        onReview: () => bundle.dispatch({ type: "review" }),
+      })
+    : null
   const readAtHome = (): WeekAtHome =>
     weekAtHome(sends.list() ?? [], week, ports.homeHolds)
   let atHome = readAtHome()
@@ -197,6 +259,7 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
   return {
     machine,
     bundle,
+    flow,
     paste: pasteRuntime(
       ports.takes,
       pasteStores(ports.storage),
@@ -230,8 +293,50 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
       const stopHome = bundle.subscribe(() => lookHome())
       const stopHeld = ports.onHomeHolds(() => lookHome(true))
       void askSent()
+      // The flow and the takes on one ticket, and a take never moved:
+      // - a take under way, or asked from the look over (Redo, "say it",
+      //   which open the cards on another item), brings the flow to its
+      //   ticket's voice;
+      // - Back from the look over, or a take's Later that moved the takes
+      //   to another ticket, brings the takes back to the item the flow's
+      //   ticket was on, else its first.
+      let before = bundle.getSnapshot()
+      const stopFollow = bundle.subscribe(() => {
+        const was = before
+        const state = bundle.getSnapshot()
+        before = state
+        if (flow === null || state.screen !== "cards") return
+        const { steps, at } = flow.getSnapshot()
+        const step = steps[at]
+        if (step === undefined) return
+        const ticket = itemOf(machine.spec.items[state.index] ?? "").ticket
+        // A take under way is on screen at its voice, wherever it was asked.
+        const asked =
+          state.busy || (was.screen === "review" && was.index !== state.index)
+        if (asked) {
+          if (step.ticket === ticket && step.step === "voice") return
+          const voice = steps.findIndex(
+            (each) => each.ticket === ticket && each.step === "voice"
+          )
+          if (voice !== -1) flow.dispatch({ type: "go", index: voice })
+          return
+        }
+        if (step.ticket === ticket) return
+        // A tap from the look over on the item it already stood on (index
+        // unchanged, not busy yet) would land here too, but can't be made:
+        // the look over stands on another ticket than the flow's only at
+        // the opening index, a ticket's own item, and offers no Redo on one
+        // where takes go point by point (`index.tsx`, `redoes`).
+        const left = itemOf(machine.spec.items[was.index] ?? "").ticket
+        if (was.screen === "cards" && left === step.ticket) {
+          bundle.dispatch({ type: "go", index: was.index })
+        } else {
+          follow(step.ticket)
+        }
+      })
       const stopOpens = watchOpens()
       return (): void => {
+        stopFollow()
         stopOpens()
         stopHeld()
         stopHome()
