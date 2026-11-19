@@ -150,4 +150,13 @@ describe("the interview week's pages on the phone (IW8)", () => {
     await settle()
     for (const line of WEEK.questions[1].guidelines) screen.getByText(line)
   })
+
+  it("reads a closed week back, saying when home had no send (IWC1)", async () => {
+    vi.setSystemTime(new Date("2026-11-23T12:00:00Z"))
+    open()
+    await settle()
+    screen.getByText(WORDS.closed.title(WEEK_2))
+    screen.getByText(WORDS.closed.line(WEEK_2))
+    screen.getByText(WORDS.closed.noSend)
+  })
 })

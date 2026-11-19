@@ -15,7 +15,7 @@ import type { AboutStores } from "@/lib/take-about"
 import { takeAbout } from "@/lib/take-about"
 import { libraryStations } from "@/lib/take-conveyor"
 
-import { takesHome } from "./index"
+import { phoneOnlyTakes, takesHome } from "./index"
 
 type Ports = ComponentProps<typeof TakeLibrary>["ports"]
 
@@ -29,6 +29,7 @@ export function takePorts(stores: AboutStores): Ports {
     phone: libraryTakes(),
     stations: libraryStations(),
     about: takeAbout(stores),
+    onPhone: phoneOnlyTakes(),
     refresh: screenRefreshers.register,
   }
   return ports
