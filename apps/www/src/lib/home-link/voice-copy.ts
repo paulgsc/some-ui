@@ -211,7 +211,7 @@ import { lensEntriesHeld } from "./lens-record"
 import type { Pairing } from "./model"
 import { notesHeld } from "./notes"
 import { askOnDrive } from "./on-drive"
-import { servesNow } from "./serves-now"
+import { onServes, servesNow } from "./serves-now"
 import { markSetAside } from "./set-aside"
 import { blockedOf, unanswered } from "./settle"
 import { sendStationMoves } from "./take-stations"
@@ -1391,7 +1391,9 @@ export function watchVoiceNotes(): () => void {
         rustWeekDesk.phone().takes.subscribe(copySoon),
         // An interview week's takes go once it is sent (IW5).
         interviewDesk.phone().takes.subscribe(copySoon),
-        libraryTakesDesk.phone().takes.subscribe(copySoon)
+        libraryTakesDesk.phone().takes.subscribe(copySoon),
+        // A point's note waits for home to serve this build (RR24, C681).
+        onServes(copySoon)
       )
     }
     // A kept take is a write to its project, once Studio has handed it in.

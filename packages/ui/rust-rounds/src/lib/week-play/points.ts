@@ -9,8 +9,11 @@
  * was before RR24) stays an item too, so a take recorded that way still
  * shows, counts for every point, and is sent; nothing records one any more.
  *
- * The points of a ticket shown on its card: all, the unsaid or the said,
- * as asked or the unsaid first (`pointsShown`), with their counts.
+ * The points of a ticket shown on its card: all, those with a take or
+ * those with none, as asked or those with none first (`pointsShown`), with
+ * their counts. A point with no take is named neutrally (`none`): today it
+ * reads as not said, and under RR29 (#3257) as going with the recommended;
+ * only the words say which.
  */
 
 /** The bundle item of `ticket`'s point `n` (from 1): `QM-312:2`. */
@@ -50,11 +53,11 @@ export function weekItems(
   )
 }
 
-/** Which of a ticket's points its card lists. */
-export type PointFilter = "all" | "unsaid" | "said"
+/** Which of a ticket's points its card lists: all, with a take, or with none. */
+export type PointFilter = "all" | "taken" | "none"
 
-/** In what order: as the ticket asks them, or the unsaid first. */
-export type PointOrder = "asked" | "unsaid-first"
+/** In what order: as the ticket asks them, or those with no take first. */
+export type PointOrder = "asked" | "none-first"
 
 /** One point, as its card lists it. */
 export type PointShown = {
@@ -62,32 +65,39 @@ export type PointShown = {
   readonly n: number
   readonly to: string
   /** It has a take of its own. */
-  readonly said: boolean
+  readonly taken: boolean
 }
 
 /** How many points each filter shows. */
 export type PointCounts = Readonly<Record<PointFilter, number>>
 
 export function pointCounts(points: ReadonlyArray<PointShown>): PointCounts {
-  const said = points.filter((point) => point.said).length
-  return { all: points.length, said, unsaid: points.length - said }
+  const taken = points.filter((point) => point.taken).length
+  return { all: points.length, taken, none: points.length - taken }
 }
 
-/** The points `filter` shows, in `order`; a stable order within each. */
+/**
+ * The points `filter` shows, in `order`; a stable order within each. The
+ * open point, `open`, is always shown, so a filter never hides the take
+ * being made or its redo and let go.
+ */
 export function pointsShown(
   points: ReadonlyArray<PointShown>,
   filter: PointFilter,
-  order: PointOrder
+  order: PointOrder,
+  open: number
 ): ReadonlyArray<PointShown> {
   const kept = points.filter(
     (point) =>
-      filter === "all" || (filter === "said" ? point.said : !point.said)
+      point.n === open ||
+      filter === "all" ||
+      (filter === "taken" ? point.taken : !point.taken)
   )
   return order === "asked"
     ? kept
     : [
-        ...kept.filter((point) => !point.said),
-        ...kept.filter((point) => point.said),
+        ...kept.filter((point) => !point.taken),
+        ...kept.filter((point) => point.taken),
       ]
 }
 

@@ -782,7 +782,7 @@ const TicketPages = (
             heard={props.heard}
           />
         )}
-        <PointTakes {...props} ticket={ticket} />
+        <PointTakes key={ticket.id} {...props} ticket={ticket} />
       </section>
       {!pointRecording(state) && (
         <Button

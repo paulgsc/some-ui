@@ -12,10 +12,12 @@
  * shown above the points, kept and counted for every point it answers.
  *
  * Self-contained, so a flow can host it (RR25's Voice step): it reads the
- * week's bundle and dispatches to it, and `pointRecording` says when a host
- * should recede too.
+ * week's bundle and dispatches to it, takes a `heading` and what goes
+ * `before` the points (both recede while a take records), and
+ * `pointRecording` says when a host should recede too. Keyed by its ticket
+ * where it is hosted, so a filter picked on one ticket isn't another's.
  */
-import type { JSX } from "react"
+import type { JSX, ReactNode } from "react"
 import { useState } from "react"
 import type { Ticket } from "@rust-rounds/lib/formats/week"
 import type { PointFilter, PointOrder } from "@rust-rounds/lib/week-play/points"
@@ -47,6 +49,16 @@ export type PointTakesProps = {
   readonly snapshot: TakePatternSnapshot
   readonly dispatch: (intent: BundleIntent<WeekKind>) => void
   readonly ticket: Ticket
+  /**
+   * The card's heading; the points' own words when left out. A flow that
+   * reads the points as something else (RR29's justification, RR25) says so.
+   */
+  readonly heading?: string
+  /**
+   * What a host shows above the points (RR25's verdict pick): it recedes
+   * with them while a take records.
+   */
+  readonly before?: ReactNode
 }
 
 /** Whether a take is recording or being kept: the card is all there is, and a host recedes too. */
@@ -67,7 +79,7 @@ function openPoint(
 }
 
 export const PointTakes = (props: PointTakesProps): JSX.Element => {
-  const { machine, state, takes, snapshot, dispatch, ticket } = props
+  const { machine, state, takes, snapshot, dispatch, ticket, before } = props
   const [filter, setFilter] = useState<PointFilter>("all")
   const [order, setOrder] = useState<PointOrder>("asked")
   const open = openPoint(machine, state, ticket)
@@ -76,7 +88,7 @@ export const PointTakes = (props: PointTakesProps): JSX.Element => {
   const points = ticket.speakTo.map((to, i) => ({
     n: i + 1,
     to,
-    said: machine.answered(state, pointItem(ticket.id, i + 1)) === "said",
+    taken: machine.answered(state, pointItem(ticket.id, i + 1)) === "said",
   }))
   const go = (n: number): void => {
     const index = machine.spec.items.indexOf(pointItem(ticket.id, n))
@@ -114,10 +126,13 @@ export const PointTakes = (props: PointTakesProps): JSX.Element => {
   }
 
   const counts = pointCounts(points)
-  const shown = pointsShown(points, filter, order)
+  const shown = pointsShown(points, filter, order, open)
   return (
     <section data-point-takes="" className="flex flex-col gap-3">
-      <h3 className="text-sm font-semibold">{WORDS.points.heading}</h3>
+      {before}
+      <h3 className="text-sm font-semibold">
+        {props.heading ?? WORDS.points.heading}
+      </h3>
       {whole && (
         <div className="border-border flex flex-col gap-2 rounded-2xl border border-dashed p-2">
           <p className="text-muted-foreground text-xs font-semibold">
@@ -142,22 +157,26 @@ export const PointTakes = (props: PointTakesProps): JSX.Element => {
       )}
       {points.length >= FILTER_FROM && (
         <nav aria-label={WORDS.points.filter} className={CHIP_BAR}>
-          {(["all", "unsaid", "said"] as const).map((each) => (
+          {(
+            [
+              ["all", WORDS.points.all],
+              ["none", WORDS.points.unsaid],
+              ["taken", WORDS.points.said],
+            ] as const
+          ).map(([each, words]) => (
             <Chip
               key={each}
               picked={filter === each}
               count={counts[each]}
               onTap={() => setFilter(each)}
             >
-              {WORDS.points[each]}
+              {words}
             </Chip>
           ))}
           <button
             type="button"
             className="text-muted-foreground ml-auto h-9 shrink-0 px-1 text-sm"
-            onClick={() =>
-              setOrder(order === "asked" ? "unsaid-first" : "asked")
-            }
+            onClick={() => setOrder(order === "asked" ? "none-first" : "asked")}
           >
             {order === "asked" ? WORDS.points.asked : WORDS.points.unsaidFirst}
           </button>
@@ -196,12 +215,12 @@ export const PointTakes = (props: PointTakesProps): JSX.Element => {
                     aria-hidden="true"
                     className={cn(
                       "size-2 rounded-full border-2",
-                      point.said
+                      point.taken
                         ? "bg-brand border-brand"
                         : "border-muted-foreground/60"
                     )}
                   />
-                  {point.said
+                  {point.taken
                     ? WORDS.points.said
                     : whole
                       ? WORDS.points.inWhole
@@ -213,7 +232,7 @@ export const PointTakes = (props: PointTakesProps): JSX.Element => {
         )}
       </ol>
       <p className="text-muted-foreground text-xs">
-        {WORDS.points.count(counts.said, counts.all)}
+        {WORDS.points.count(counts.taken, counts.all)}
       </p>
     </section>
   )

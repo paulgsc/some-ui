@@ -13,14 +13,32 @@ import { createServes } from "./serves"
 import type { Serves } from "./serves-model"
 
 let serves: ServesRun | null = null
+const listeners = new Set<() => void>()
 
 /** The ask, made once. */
 export function servesRun(): ServesRun {
-  serves ??= createServes({
-    read: () => askCompat(SERVER_CONTRACT_EPOCH),
-    now: LINK_CLOCK.now,
-  })
+  if (serves === null) {
+    serves = createServes({
+      read: () => askCompat(SERVER_CONTRACT_EPOCH),
+      now: LINK_CLOCK.now,
+    })
+    serves.subscribe(() => {
+      for (const listener of listeners) listener()
+    })
+  }
   return serves
+}
+
+/**
+ * Calls `listener` each time what home says of this build may have changed,
+ * whether or not the ask has been made yet: a lane holding what home must
+ * serve first (RR24) moves as soon as home says it does. Never asks.
+ */
+export function onServes(listener: () => void): () => void {
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+  }
 }
 
 /**

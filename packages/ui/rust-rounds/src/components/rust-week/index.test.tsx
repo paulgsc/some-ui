@@ -362,6 +362,11 @@ describe("a take per point (RR24)", () => {
     })
     expect(filter).toHaveTextContent(`${WORDS.points.unsaid}8`)
     fireEvent.click(screen.getByRole("button", { name: /^Said/ }))
-    expect(document.querySelectorAll("[data-point]")).toHaveLength(0)
+    // Nothing said yet, but the open point stays: its take is never hidden.
+    expect(
+      [...document.querySelectorAll("[data-point]")].map((li) =>
+        li.getAttribute("data-point")
+      )
+    ).toEqual(["1"])
   })
 })

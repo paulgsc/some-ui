@@ -60,7 +60,7 @@ export type RustWeekPorts = {
   readonly engage: (event: EngagementEvent) => void
   /**
    * A take per speak-to point (RR24, `./points`), where this build's home
-   * serves them (contract epoch 21 on); else a take per ticket. Fixed for
+   * serves them (contract epoch 20 on); else a take per ticket. Fixed for
    * the week's opening.
    */
   readonly perPoint: boolean

@@ -33,18 +33,23 @@ describe("a ticket's points", () => {
     expect(itemOf("QM-1")).toEqual({ ticket: "QM-1", point: null })
   })
 
-  it("are shown all, unsaid or said, as asked or the unsaid first", () => {
+  it("are shown all, with a take or with none, as asked or those with none first, the open one always", () => {
     const points = [1, 2, 3, 4].map((n) => ({
       n,
       to: `p${n}`,
-      said: n % 2 === 0,
+      taken: n % 2 === 0,
     }))
-    const ns = (filter: PointFilter, order: PointOrder): Array<number> =>
-      pointsShown(points, filter, order).map(({ n }) => n)
+    const ns = (
+      filter: PointFilter,
+      order: PointOrder,
+      open = 1
+    ): Array<number> =>
+      pointsShown(points, filter, order, open).map(({ n }) => n)
     expect(ns("all", "asked")).toEqual([1, 2, 3, 4])
-    expect(ns("all", "unsaid-first")).toEqual([1, 3, 2, 4])
-    expect(ns("unsaid", "asked")).toEqual([1, 3])
-    expect(ns("said", "asked")).toEqual([2, 4])
-    expect(pointCounts(points)).toEqual({ all: 4, said: 2, unsaid: 2 })
+    expect(ns("all", "none-first")).toEqual([1, 3, 2, 4])
+    expect(ns("none", "asked")).toEqual([1, 3])
+    expect(ns("taken", "asked")).toEqual([1, 2, 4])
+    expect(ns("none", "asked", 2)).toEqual([1, 2, 3])
+    expect(pointCounts(points)).toEqual({ all: 4, taken: 2, none: 2 })
   })
 })

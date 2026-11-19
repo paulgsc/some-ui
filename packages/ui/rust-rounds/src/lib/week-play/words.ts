@@ -136,6 +136,7 @@ export const WEEK_WORDS = {
     said: "Said",
     asked: "As asked",
     unsaidFirst: "Unsaid first",
+    /** A point with no take; RR29 (#3257) words it "Going with the recommended". */
     notSaid: "Not said",
     inWhole: "In the whole take",
     /** A point's line, folded: its number, for assistive tech. */

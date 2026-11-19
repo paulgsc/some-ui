@@ -23,7 +23,7 @@ import { usePairing } from "./index"
 import type { Lane, LaneCounts } from "./lanes"
 import { exchangeRustRoundsLane, keptCounts } from "./rust-kept"
 import { fingerprintOf, sentUnder } from "./sent"
-import { servesNow } from "./serves-now"
+import { onServes, servesNow } from "./serves-now"
 
 /** The counts as one value, so an unchanged record reads as the same snapshot. */
 function countsKey(): string {
@@ -45,7 +45,15 @@ export const rustRoundsLane: Lane = {
         ).map((item) => `${item.kind}/${item.id}@${fingerprintOf(item.wire)}`),
       ].join("|")
     ),
-  subscribe: (listener) => phoneRounds().subscribe(listener),
+  // A week sent by points waits for home to serve this build (RR24, C681).
+  subscribe: (listener) => {
+    const rounds = phoneRounds().subscribe(listener)
+    const serves = onServes(listener)
+    return () => {
+      rounds()
+      serves()
+    }
+  },
   useCounts: (): LaneCounts => {
     const key = useSyncExternalStore(phoneRounds().subscribe, countsKey)
     // Read again whenever a run ends, which is when home's answers land.
