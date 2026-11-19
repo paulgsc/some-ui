@@ -20,7 +20,15 @@ import {
   useSyncExternalStore,
 } from "react"
 import { cn } from "@some-ui/core-utils"
-import { Button, Notice, TakeButton, TakeRow, usePager } from "@some-ui/shared"
+import {
+  Button,
+  CardLink,
+  CardLinkBody,
+  Notice,
+  TakeButton,
+  TakeRow,
+  usePager,
+} from "@some-ui/shared"
 import { LOOKS, VOICES } from "@some-ui/video-render"
 import { FilePick } from "@soundbites/components/file-pick"
 import { phoneStudioPorts } from "@soundbites/lib/phone"
@@ -64,10 +72,6 @@ import { SITTING_KINDS, STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { Mic, Square } from "lucide-react"
 
 const WORDS = STUDIO_WORDS
-
-/** A row of a list that opens what it names: a show, or an episode of one. */
-const LIST_ROW =
-  "border-border/60 focus-visible:ring-ring flex w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left focus-visible:ring-2 focus-visible:outline-none"
 
 export type StudioShare = (props: {
   project: Project
@@ -337,29 +341,30 @@ const Start = ({
           {view.sittings.map((row) => (
             <li key={row.kind}>
               {row.open ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    dispatch({
-                      type: CHOSEN[row.kind],
-                    })
-                  }
-                  className="bg-card border-brand focus-visible:ring-ring flex w-full items-center gap-3 rounded-2xl border-2 px-4 py-3 text-left focus-visible:ring-2 focus-visible:outline-none"
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-base font-extrabold">
-                      {WORDS.start.sittings[row.kind]}
-                    </span>
-                    <span className="text-muted-foreground block text-sm">
-                      {row.status}
-                    </span>
-                  </span>
-                  {row.startHere && (
-                    <span className="bg-brand text-brand-foreground shrink-0 rounded-full px-2.5 py-1 text-xs font-bold">
-                      {WORDS.start.startHere}
-                    </span>
-                  )}
-                </button>
+                <CardLink asChild>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      dispatch({
+                        type: CHOSEN[row.kind],
+                      })
+                    }
+                  >
+                    <CardLinkBody className="gap-0">
+                      <span className="text-base font-extrabold">
+                        {WORDS.start.sittings[row.kind]}
+                      </span>
+                      <span className="text-muted-foreground text-sm">
+                        {row.status}
+                      </span>
+                    </CardLinkBody>
+                    {row.startHere && (
+                      <span className="bg-brand text-brand-foreground shrink-0 rounded-full px-2.5 py-1 text-xs font-bold">
+                        {WORDS.start.startHere}
+                      </span>
+                    )}
+                  </button>
+                </CardLink>
               ) : (
                 <div className="border-border/60 rounded-2xl border px-4 py-2.5 opacity-70">
                   <span className="block text-sm font-bold">
@@ -417,25 +422,26 @@ const Start = ({
           <ul className="flex flex-col gap-2">
             {shows.map((row) => (
               <li key={row.show}>
-                <button
-                  type="button"
-                  onClick={() =>
-                    dispatch({ type: "showChosen", show: row.show })
-                  }
-                  className={LIST_ROW}
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-bold">
-                      {row.show}
+                <CardLink asChild>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      dispatch({ type: "showChosen", show: row.show })
+                    }
+                  >
+                    <CardLinkBody className="gap-0">
+                      <span className="w-full truncate text-sm font-bold">
+                        {row.show}
+                      </span>
+                      <span className="text-muted-foreground text-xs">
+                        {row.line}
+                      </span>
+                    </CardLinkBody>
+                    <span className="bg-muted shrink-0 rounded-full px-2.5 py-1 text-xs font-bold">
+                      {row.standing}
                     </span>
-                    <span className="text-muted-foreground block text-xs">
-                      {row.line}
-                    </span>
-                  </span>
-                  <span className="bg-muted shrink-0 rounded-full px-2.5 py-1 text-xs font-bold">
-                    {row.standing}
-                  </span>
-                </button>
+                  </button>
+                </CardLink>
               </li>
             ))}
           </ul>
@@ -965,20 +971,21 @@ const Show = ({
       <ul className="flex flex-col gap-2">
         {view.episodes.map((episode) => (
           <li key={episode.id}>
-            <button
-              type="button"
-              onClick={() =>
-                dispatch({ type: "projectOpened", project: episode.id })
-              }
-              className={LIST_ROW}
-            >
-              <span className="min-w-0 flex-1 text-sm font-bold">
-                {episode.period}
-              </span>
-              <span className="bg-muted shrink-0 rounded-full px-2.5 py-1 text-xs font-bold">
-                {episode.standing}
-              </span>
-            </button>
+            <CardLink asChild>
+              <button
+                type="button"
+                onClick={() =>
+                  dispatch({ type: "projectOpened", project: episode.id })
+                }
+              >
+                <span className="min-w-0 flex-1 text-sm font-bold">
+                  {episode.period}
+                </span>
+                <span className="bg-muted shrink-0 rounded-full px-2.5 py-1 text-xs font-bold">
+                  {episode.standing}
+                </span>
+              </button>
+            </CardLink>
           </li>
         ))}
       </ul>
@@ -1287,7 +1294,7 @@ const NoteAbout = ({
             key={about}
             type="button"
             onClick={() => dispatch({ type: "aboutChosen", about })}
-            className={LIST_ROW}
+            className="border-border/60 focus-visible:ring-ring flex w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left focus-visible:ring-2 focus-visible:outline-none"
           >
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-bold">{words[about]}</span>

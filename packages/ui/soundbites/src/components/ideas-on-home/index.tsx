@@ -13,6 +13,8 @@ import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever } from "@some-ui/core-utils"
 import {
   Button,
+  CardLink,
+  CardLinkBody,
   ConfirmSheet,
   Input,
   Notice,
@@ -228,28 +230,31 @@ const IdeaList = ({
           <ul className="flex flex-col gap-2">
             {group.ideas.map((idea) => (
               <li key={idea.id}>
-                <button
-                  type="button"
-                  className="bg-card border-border/60 focus-visible:ring-ring flex w-full flex-col items-start gap-1 rounded-2xl border px-4 py-3 text-left focus-visible:ring-2 focus-visible:outline-none"
-                  onClick={() => dispatch({ type: "open", id: idea.id })}
-                >
-                  <span className="flex flex-wrap items-center gap-2 font-bold">
-                    {idea.title}
-                    {idea.furnishing && (
-                      <span className="text-muted-foreground border-border rounded-full border px-2 text-xs font-medium">
-                        {WORDS.furnishingMark}
+                <CardLink asChild>
+                  <button
+                    type="button"
+                    onClick={() => dispatch({ type: "open", id: idea.id })}
+                  >
+                    <CardLinkBody>
+                      <span className="flex flex-wrap items-center gap-2 font-bold">
+                        {idea.title}
+                        {idea.furnishing && (
+                          <span className="text-muted-foreground border-border rounded-full border px-2 text-xs font-medium">
+                            {WORDS.furnishingMark}
+                          </span>
+                        )}
                       </span>
-                    )}
-                  </span>
-                  <span className="text-muted-foreground text-xs">
-                    {metaOf(idea)}
-                  </span>
-                  {idea.keywords.length > 0 && (
-                    <span className="text-muted-foreground text-xs">
-                      {idea.keywords.join(" · ")}
-                    </span>
-                  )}
-                </button>
+                      <span className="text-muted-foreground text-xs">
+                        {metaOf(idea)}
+                      </span>
+                      {idea.keywords.length > 0 && (
+                        <span className="text-muted-foreground text-xs">
+                          {idea.keywords.join(" · ")}
+                        </span>
+                      )}
+                    </CardLinkBody>
+                  </button>
+                </CardLink>
               </li>
             ))}
           </ul>

@@ -11,6 +11,10 @@
  * cue off first. A tap while a take is under way (to stop it) goes straight
  * through.
  *
+ * The band a script is read aloud through (IW9, #3176; `./prompter`) moves
+ * on the recorder's own level for the take under way, read as the takes'
+ * pattern publishes it: no second capture.
+ *
  * A page of a question's ladder (IW8, #3175) shows one item (`focus`); once
  * it goes, the bundle steps back to the screen before the cards, a take
  * under way stopped and kept first.
@@ -29,9 +33,11 @@ import { bundleRuntime, sendsAtHome } from "@some-ui/voice-capture"
 import type { Cue, CueEvent } from "./cue"
 import { NO_CUE, stepCue } from "./cue"
 import type { Ladder, Rung } from "./ladder"
-import { ask, firsts, markRung, takesFor, withRungs } from "./ladder"
+import { ask, firsts, linesOf, markRung, takesFor, withRungs } from "./ladder"
+import type { Prompter } from "./prompter"
+import { NO_PROMPTER, stepPrompter, totalOf } from "./prompter"
 import type { InterviewAtHome, InterviewKind, InterviewSent } from "./spec"
-import { cardOf, interviewMachine, isClosed } from "./spec"
+import { cardOf, interviewMachine, isClosed, takeLine } from "./spec"
 import type { HeldInterview } from "./store"
 import { interviewDrafts, interviewLadder, interviewSent } from "./store"
 
@@ -77,6 +83,10 @@ export type InterviewWeekRun = {
   /** What home holds of the week and what this phone last sent. */
   readonly atHome: Readable<InterviewAtHome>
   readonly cue: Readable<Cue>
+  /** The band a script is read aloud through, for the take under way. */
+  readonly prompter: Readable<Prompter>
+  /** The band's Pause / Go on: the take records on either way. */
+  readonly pause: () => void
   /** The screen is showing. Returns the detach. */
   readonly attach: () => () => void
 }
@@ -155,6 +165,35 @@ export function createInterviewWeek(
     cue.set(next.cue)
     if (next.cue.kind === "idle") stopTicking()
     if (next.go !== null) bundle.dispatch({ type: "tap", item: next.go })
+  }
+
+  const prompter = cell<Prompter>(NO_PROMPTER)
+  const pattern = ports.takes.pattern
+  // Each item's script in words, counted once: a read's, or a ready answer's.
+  const totals = new Map(
+    machine.spec.items.map((item) => [
+      takeLine(week.id, item),
+      totalOf(linesOf(week, item)),
+    ])
+  )
+  /** Moves the band on what the recorder last measured. */
+  const listen = (): void => {
+    const { take, answers } = pattern.getSnapshot()
+    const total = answers === null ? undefined : totals.get(answers)
+    prompter.set(
+      stepPrompter(
+        prompter.getSnapshot(),
+        take.kind === "recording" && answers !== null && total !== undefined
+          ? {
+              type: "heard",
+              answers,
+              level: take.level,
+              at: ports.now(),
+              total,
+            }
+          : { type: "ended" }
+      )
+    )
   }
 
   /** Puts `item`'s card on screen, from the look over or the screen before the cards too. */
@@ -278,8 +317,12 @@ export function createInterviewWeek(
     ladder,
     atHome,
     cue,
+    prompter,
+    pause: () =>
+      prompter.set(stepPrompter(prompter.getSnapshot(), { type: "pause" })),
     attach(): () => void {
       const detach = bundle.attach()
+      const stopListening = pattern.subscribe(listen)
       lookHome()
       climb()
       const stopHome = bundle.subscribe(lookHome)
@@ -291,6 +334,8 @@ export function createInterviewWeek(
       })
       return (): void => {
         moveCue({ type: "cancel" })
+        stopListening()
+        prompter.set(stepPrompter(prompter.getSnapshot(), { type: "ended" }))
         stopSeen()
         stopHeld()
         stopFocus()

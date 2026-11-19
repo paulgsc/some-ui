@@ -3,7 +3,7 @@ import { useId, useMemo, useState } from "react"
 import { cn } from "@some-ui/core-utils"
 import type { Visit } from "@some-ui/engagement"
 import { useShelf } from "@some-ui/react-hooks"
-import { Button, Input, Notice } from "@some-ui/shared"
+import { Button, CardLink, CardLinkBody, Input, Notice } from "@some-ui/shared"
 import { FeedThumb, FeedTile } from "@topik/components/topik/handheld/feed-tile"
 import { PortionMark } from "@topik/components/topik/handheld/portion-menu"
 import type { TopikMetadata } from "@topik/lib/topik"
@@ -32,7 +32,6 @@ import {
 } from "@topik/lib/topik/read-aloud/content"
 import {
   BookOpenText,
-  ChevronRight,
   FolderOpen,
   Loader2,
   Play,
@@ -221,51 +220,56 @@ const OpenFromStorage = ({
         ? note
         : null
   return (
-    <label className="bg-card border-border focus-within:ring-ring relative flex min-h-16 shrink-0 cursor-pointer items-center gap-3 rounded-2xl border p-4 text-left focus-within:ring-2">
-      <FolderOpen className="text-primary size-6 shrink-0" />
-      <span className="min-w-0 flex-1">
-        <span id={name} className="block font-semibold">
-          {title}
-        </span>
-        <span id={about} className="text-muted-foreground block text-sm">
-          {offer}
-        </span>
-        {hint && (
-          <span id={where} className="text-muted-foreground block text-xs">
-            {hint}
+    <CardLink
+      asChild
+      className="focus-within:ring-ring relative min-h-16 shrink-0 cursor-pointer p-4 focus-within:ring-2"
+    >
+      <label>
+        <FolderOpen className="text-primary size-6 shrink-0" />
+        <CardLinkBody className="gap-0">
+          <span id={name} className="block font-semibold">
+            {title}
           </span>
+          <span id={about} className="text-muted-foreground block text-sm">
+            {offer}
+          </span>
+          {hint && (
+            <span id={where} className="text-muted-foreground block text-xs">
+              {hint}
+            </span>
+          )}
+        </CardLinkBody>
+        {state.kind === "reading" && (
+          <Notice>
+            <span className="flex items-center gap-2">
+              <Loader2 className="size-4 animate-spin" /> Opening...
+            </span>
+          </Notice>
         )}
-      </span>
-      {state.kind === "reading" && (
-        <Notice>
-          <span className="flex items-center gap-2">
-            <Loader2 className="size-4 animate-spin" /> Opening...
-          </span>
-        </Notice>
-      )}
-      {told !== null && (
-        <Notice
-          key={told.text}
-          tone={told.tone === "problem" ? "danger" : "neutral"}
-          dismissible
-        >
-          {told.text}
-        </Notice>
-      )}
-      <input
-        type="file"
-        // Named by the title alone; the hint describes where to look.
-        aria-labelledby={name}
-        aria-describedby={hint ? `${about} ${where}` : about}
-        className="sr-only"
-        onChange={(event) => {
-          const file = event.currentTarget.files?.[0]
-          // The same file again is a new pick.
-          event.currentTarget.value = ""
-          if (file) open(file, onText)
-        }}
-      />
-    </label>
+        {told !== null && (
+          <Notice
+            key={told.text}
+            tone={told.tone === "problem" ? "danger" : "neutral"}
+            dismissible
+          >
+            {told.text}
+          </Notice>
+        )}
+        <input
+          type="file"
+          // Named by the title alone; the hint describes where to look.
+          aria-labelledby={name}
+          aria-describedby={hint ? `${about} ${where}` : about}
+          className="sr-only"
+          onChange={(event) => {
+            const file = event.currentTarget.files?.[0]
+            // The same file again is a new pick.
+            event.currentTarget.value = ""
+            if (file) open(file, onText)
+          }}
+        />
+      </label>
+    </CardLink>
   )
 }
 
@@ -429,41 +433,38 @@ const ReadyCardButton = ({
   onOpen: (id: string) => void
 }): JSX.Element => (
   <li>
-    <button
-      type="button"
-      onClick={() => onOpen(card.id)}
-      className="bg-primary/10 border-primary/30 flex min-h-16 w-full items-center gap-3 rounded-2xl border p-4 text-left"
-    >
-      <BookOpenText className="text-primary size-6 shrink-0" />
-      <span className="min-w-0 flex-1">
-        <span className="block font-semibold">
-          {setSize(card.practice, card.words, card.lines)}
-          <span className="text-primary ml-2 text-xs font-bold tracking-wider uppercase">
-            New
+    <CardLink asChild className="min-h-16 p-4">
+      <button type="button" onClick={() => onOpen(card.id)}>
+        <BookOpenText className="text-primary size-6 shrink-0" />
+        <CardLinkBody className="gap-0">
+          <span className="block font-semibold">
+            {setSize(card.practice, card.words, card.lines)}
+            <span className="text-primary ml-2 text-xs font-bold tracking-wider uppercase">
+              New
+            </span>
           </span>
-        </span>
-        <span className="text-muted-foreground block text-sm">
-          {setLineOf(card)}
-        </span>
-        {card.context && (
-          <span
-            data-slot="ready-set-premise"
-            className="text-muted-foreground block text-xs"
-          >
-            {card.context.premise}
+          <span className="text-muted-foreground block text-sm">
+            {setLineOf(card)}
           </span>
-        )}
-        {card.from && (
-          <span
-            data-slot="ready-set-from"
-            className="text-muted-foreground block text-xs"
-          >
-            {`From ${card.from}`}
-          </span>
-        )}
-      </span>
-      <ChevronRight className="text-muted-foreground size-5 shrink-0" />
-    </button>
+          {card.context && (
+            <span
+              data-slot="ready-set-premise"
+              className="text-muted-foreground block text-xs"
+            >
+              {card.context.premise}
+            </span>
+          )}
+          {card.from && (
+            <span
+              data-slot="ready-set-from"
+              className="text-muted-foreground block text-xs"
+            >
+              {`From ${card.from}`}
+            </span>
+          )}
+        </CardLinkBody>
+      </button>
+    </CardLink>
   </li>
 )
 
@@ -652,24 +653,20 @@ export const MaterialList = ({
       {routineStatus}
 
       {onOrder && (
-        <button
-          type="button"
-          data-slot="portion-entry"
-          onClick={onOrder}
-          className="bg-card border-border flex min-h-16 shrink-0 items-center gap-3 rounded-2xl border p-4 text-left"
-        >
-          <PortionMark
-            portion="meal"
-            className="text-primary size-7 shrink-0"
-          />
-          <span className="min-w-0 flex-1">
-            <span className="block font-semibold">{PORTION_WORDS.title}</span>
-            <span className="text-muted-foreground block text-sm">
-              {PORTION_WORDS.entryDetails}
-            </span>
-          </span>
-          <ChevronRight className="text-muted-foreground size-5 shrink-0" />
-        </button>
+        <CardLink asChild className="min-h-16 shrink-0 p-4">
+          <button type="button" data-slot="portion-entry" onClick={onOrder}>
+            <PortionMark
+              portion="meal"
+              className="text-primary size-7 shrink-0"
+            />
+            <CardLinkBody className="gap-0">
+              <span className="block font-semibold">{PORTION_WORDS.title}</span>
+              <span className="text-muted-foreground block text-sm">
+                {PORTION_WORDS.entryDetails}
+              </span>
+            </CardLinkBody>
+          </button>
+        </CardLink>
       )}
 
       {onOpenRoutine && routineShown.length > 0 && (
@@ -703,24 +700,23 @@ export const MaterialList = ({
       )}
 
       {onCreate && (
-        <button
-          type="button"
-          onClick={onCreate}
-          className="bg-muted/40 flex min-h-16 shrink-0 items-center gap-3 rounded-2xl p-4 text-left"
-        >
-          <Sparkles className="text-muted-foreground size-5 shrink-0" />
-          <span className="min-w-0 flex-1">
-            <span className="block font-semibold">
-              {draftNotes > 0 ? "Continue your scene" : "Write your own drama"}
-            </span>
-            <span className="text-muted-foreground block text-sm">
-              {draftNotes > 0
-                ? `${draftNotes} voice note${draftNotes === 1 ? "" : "s"} so far. Share them with the prompt, or let the scene go, to start another.`
-                : "Your model writes it from the app's prompt, and the app checks it. It lasts this session."}
-            </span>
-          </span>
-          <ChevronRight className="text-muted-foreground size-5 shrink-0" />
-        </button>
+        <CardLink asChild className="min-h-16 shrink-0 p-4">
+          <button type="button" onClick={onCreate}>
+            <Sparkles className="text-muted-foreground size-5 shrink-0" />
+            <CardLinkBody className="gap-0">
+              <span className="block font-semibold">
+                {draftNotes > 0
+                  ? "Continue your scene"
+                  : "Write your own drama"}
+              </span>
+              <span className="text-muted-foreground block text-sm">
+                {draftNotes > 0
+                  ? `${draftNotes} voice note${draftNotes === 1 ? "" : "s"} so far. Share them with the prompt, or let the scene go, to start another.`
+                  : "Your model writes it from the app's prompt, and the app checks it. It lasts this session."}
+              </span>
+            </CardLinkBody>
+          </button>
+        </CardLink>
       )}
 
       {onReadAloud && addedSets === 0 && (
@@ -739,29 +735,27 @@ export const MaterialList = ({
       )}
 
       {onReadAloud && addedSets > 0 && (
-        <button
-          type="button"
-          onClick={onReadAloud}
-          className="bg-card border-border flex min-h-16 shrink-0 items-center gap-3 rounded-2xl border p-4 text-left"
-        >
-          <BookOpenText className="text-primary size-6 shrink-0" />
-          <span className="min-w-0 flex-1">
-            <span className="block font-semibold">Read aloud</span>
-            <span className="text-muted-foreground block text-sm">
-              Read words and sentences aloud, then hear them. It runs by itself.
-            </span>
-            <span
-              data-slot="read-aloud-card-level"
-              className="text-muted-foreground mt-1 block text-xs"
-            >
-              {level > readAloudLevelFor(level)
-                ? `TOPIK ${readAloudLevelFor(level)}, the highest it reads`
-                : `TOPIK ${level}`}
-              {` · ${addedSets} word set${addedSets === 1 ? "" : "s"}`}
-            </span>
-          </span>
-          <ChevronRight className="text-muted-foreground size-5 shrink-0" />
-        </button>
+        <CardLink asChild className="min-h-16 shrink-0 p-4">
+          <button type="button" onClick={onReadAloud}>
+            <BookOpenText className="text-primary size-6 shrink-0" />
+            <CardLinkBody className="gap-0">
+              <span className="block font-semibold">Read aloud</span>
+              <span className="text-muted-foreground block text-sm">
+                Read words and sentences aloud, then hear them. It runs by
+                itself.
+              </span>
+              <span
+                data-slot="read-aloud-card-level"
+                className="text-muted-foreground mt-1 block text-xs"
+              >
+                {level > readAloudLevelFor(level)
+                  ? `TOPIK ${readAloudLevelFor(level)}, the highest it reads`
+                  : `TOPIK ${level}`}
+                {` · ${addedSets} word set${addedSets === 1 ? "" : "s"}`}
+              </span>
+            </CardLinkBody>
+          </button>
+        </CardLink>
       )}
 
       {pastedTree && (

@@ -25,6 +25,7 @@ type InterviewEssayView =
       readonly rows: ReturnType<typeof interviewEssayIntro>["rows"]
     }
   | { readonly section: "chapter"; readonly title: string }
+  | { readonly section: "opening"; readonly transcript: string }
   | {
       readonly section: "question" | "answer" | "faults" | "model" | "beside"
       readonly question: InterviewQuestion
@@ -63,6 +64,9 @@ function viewOf(
     }
     case "chapter": {
       return { section: "chapter", title: scene.title }
+    }
+    case "opening": {
+      return { section: "opening", transcript: scene.said }
     }
     case "question":
     case "answer":

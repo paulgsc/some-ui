@@ -27,12 +27,11 @@
 import type { JSX } from "react"
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { cn, formatSize } from "@some-ui/core-utils"
-import { Button, Notice } from "@some-ui/shared"
+import { Button, CardLink, CardLinkBody, Notice } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 import {
   Check,
   ChevronLeft,
-  ChevronRight,
   LoaderCircle,
   Lock,
   Pause,
@@ -154,20 +153,14 @@ const KindRow = ({ kind }: { kind: KindLineOf }): JSX.Element => {
       <span className="text-muted-foreground text-xs tabular-nums">
         {formatSize(kind.bytes)}
       </span>
-      <ChevronRight
-        className="text-muted-foreground size-4 shrink-0"
-        aria-hidden
-      />
     </>
   )
   return hasAudience("apk") ? (
-    <Link
-      to="/settings/data/$kind"
-      params={{ kind: kind.of }}
-      className={`hover:bg-accent ${ROW}`}
-    >
-      {content}
-    </Link>
+    <CardLink asChild className="min-h-12 px-4 py-2">
+      <Link to="/settings/data/$kind" params={{ kind: kind.of }}>
+        {content}
+      </Link>
+    </CardLink>
   ) : (
     <div className={ROW}>{content}</div>
   )
@@ -266,7 +259,14 @@ export const MyDataOverview = ({
         {overview.kinds.length === 0 ? (
           <p className="text-muted-foreground text-sm">{MY_DATA.none}</p>
         ) : (
-          <ul className="bg-card divide-y rounded-xl border">
+          <ul
+            className={
+              // Each kind opens its list: a stack of card links (C647).
+              hasAudience("apk")
+                ? "flex flex-col gap-2"
+                : "bg-card divide-y rounded-xl border"
+            }
+          >
             {overview.kinds.map((kind) => (
               <li key={kind.of}>
                 <KindRow kind={kind} />
@@ -597,19 +597,14 @@ const PageRow = ({
   line: string
 }): JSX.Element | null =>
   hasAudience("apk") ? (
-    <Link
-      to={to}
-      className={`hover:bg-accent bg-card rounded-xl border ${ROW}`}
-    >
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-medium">{title}</span>
-        <span className="text-muted-foreground block text-xs">{line}</span>
-      </span>
-      <ChevronRight
-        className="text-muted-foreground size-4 shrink-0"
-        aria-hidden
-      />
-    </Link>
+    <CardLink asChild className="min-h-12 px-4 py-2">
+      <Link to={to}>
+        <CardLinkBody className="gap-0">
+          <span className="text-sm font-medium">{title}</span>
+          <span className="text-muted-foreground text-xs">{line}</span>
+        </CardLinkBody>
+      </Link>
+    </CardLink>
   ) : null
 
 /** A My data page's heading: its title, and the way back to My data. */
