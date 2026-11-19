@@ -852,6 +852,35 @@
             "by": "none"
           },
           "amendments": []
+        },
+        {
+          "id": "VH6",
+          "kind": "OA2",
+          "property": "outcome",
+          "claim": "Home answers every take I record, of any kind, from one library I can filter, sort and search, and a deleted one still shows its receipt.",
+          "requirement": "GET /voice-notes/takes with `kind=all` lists every voice_note kind of the caller's own subject (a named kind lists that kind). Each take has an `about` from one exhaustive match on Of, so a new kind does not compile without one, and takes deleted for good appear by their receipts when a kind is asked. The read is read-only. Without `kind` it answers the Studio list as before.",
+          "verdict": "holds",
+          "conclusion": "Tested in server CI (server#988). Home's read holds; the phone reads every kind once #3239 (TAKES20's phone half, #3219) lands.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "Asked with a kind, the library lists every voice_note kind of the caller's own subject once, and takes deleted for good by their receipts.",
+              "ref": "server:crates/db/voice/src/takes.rs"
+            },
+            {
+              "class": "structural",
+              "says": "Each take's about comes from one exhaustive match on Of, so a new kind does not compile without one.",
+              "ref": "server:crates/db/voice/src/about.rs"
+            }
+          ],
+          "proof": [
+            "server:crates/db/voice/src/takes.rs#every_kind_is_listed_once_a_kind_is_asked",
+            "server:crates/db/voice/src/about.rs#every_kind_says_what_its_takes_are_about"
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
         }
       ]
     },

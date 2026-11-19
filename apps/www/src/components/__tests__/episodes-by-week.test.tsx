@@ -74,6 +74,7 @@ const LISTS: FeedLists = {
   },
   "interview-essay": { kind: "read", episodes: [episode("2026-w46")] },
   "playoff-delta": { kind: "read", episodes: [episode("2026-SF-10")] },
+  report: { kind: "read", episodes: [] },
   "rust-essay": { kind: "read", episodes: [] },
 }
 
@@ -135,6 +136,7 @@ describe("Studio's Episodes, by week", () => {
     expect(chips.map((chip) => chip.getAttribute("aria-label"))).toEqual([
       "All, 5 episodes",
       "Cards essays, 2 episodes",
+      "Engagement, 0 episodes",
       "Interview essays, 1 episode",
       "Playoff Delta, 1 episode",
       "Rust Rounds, 0 episodes",

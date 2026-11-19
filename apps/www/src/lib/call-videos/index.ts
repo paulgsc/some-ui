@@ -137,6 +137,7 @@ function everyList(): EveryFeedList {
     "cards-essay": list("cards-essay"),
     "interview-essay": list("interview-essay"),
     "playoff-delta": list("playoff-delta"),
+    report: list("report"),
     "rust-essay": list("rust-essay"),
   }
   if (

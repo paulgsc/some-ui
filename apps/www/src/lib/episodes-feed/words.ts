@@ -27,6 +27,7 @@ export const EPISODES_FEED_WORDS = {
     "cards-essay": "Cards essays",
     "interview-essay": "Interview essays",
     "playoff-delta": "Playoff Delta",
+    report: "Engagement",
     "rust-essay": "Rust Rounds",
   } satisfies Record<Feed, string>,
   /** A chip as a screen reader says it, with its count. */
