@@ -4909,7 +4909,7 @@
     {
       "store": "server:rust_round_source",
       "class": "record",
-      "growth": "Per distinct program any round holds (a read card's, or a variant card's as built), once by its SHA-256 and shared by every round and subject that holds it; each within its round's 32 KiB; names no subject; append-only, kept for good. Once the rounds that held a program are gone with their account, this is its only copy and nothing can rebuild it.",
+      "growth": "Per distinct program any round or week holds (a read card's, a variant card's as built, a week ticket's program, or a /2 week's academy starter, paulgsc/server#1001), once by its SHA-256 and shared by every round, week and subject that holds it; each within its round's 32 KiB or its week's 128 KiB (/1 weeks 32 KiB); names no subject; append-only, kept for good. Once the rounds that held a program are gone with their account, this is its only copy and nothing can rebuild it.",
       "family": "rust-rounds-recorded"
     },
     {

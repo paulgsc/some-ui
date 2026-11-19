@@ -164,6 +164,22 @@ const RoundWithRunsSchema = z.object({
       runs: z.array(RunKeptSchema),
     })
   ),
+  /**
+   * A `/2` week's academy starters, each recorded as a ticket's program is
+   * (RR25, paulgsc/server#1001): only on a `/2` week, so a `/1` answer is
+   * unchanged.
+   */
+  academy: z
+    .array(
+      z.object({
+        key: z.string().regex(/^[A-Z][A-Z0-9]{0,5}-\d{1,6}\/academy\/[1-8]$/),
+        ticket: z.string().regex(/^[A-Z][A-Z0-9]{0,5}-\d{1,6}$/),
+        exercise: z.number().int().min(1).max(8),
+        sourceHash: HashSchema,
+        runs: z.array(RunKeptSchema),
+      })
+    )
+    .optional(),
 })
 
 /** `handlers::rust_rounds::WeekEntry`: a week by its ISO week. */
