@@ -173,7 +173,17 @@ export function phoneTakesOf(
       fields: note.fields,
       recordedAt: note.at,
       home: held(note.id),
-      audio: note.audio,
+      // A note home holds may have let its audio go here (LG1): home's plays.
+      audio: held(note.id)
+        ? (): Promise<Blob | null> =>
+            note
+              .audio()
+              .catch(() => {
+                // Ignored: audio this phone can't read back is asked of home.
+                return null
+              })
+              .then((here) => here ?? audio.home(note.id))
+        : note.audio,
     })
   )
   const listed = new Set(here.map(({ id }) => id))

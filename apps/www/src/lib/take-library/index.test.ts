@@ -351,5 +351,8 @@ describe("one home for every take", () => {
     await takes[3]?.audio()
     expect(fromHome).toEqual(["b2"])
     expect(fromHere).toEqual(["b3"])
+    // r1 is on home and its audio left this phone: it plays from home.
+    await takes[0]?.audio()
+    expect(fromHome).toEqual(["b2", "r1"])
   })
 })
