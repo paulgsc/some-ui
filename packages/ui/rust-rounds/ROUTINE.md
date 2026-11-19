@@ -227,7 +227,9 @@ deliberation screens). Both were in place before this section reached
 - `forks`: 1 to 6, the decisions the ticket asks for, in order. Their
   questions are said again, as written, in the essay's best and beside
   scenes, so `finish` refuses a ticket whose questions alone would run past
-  the frame: keep each to a line, and most tickets to 2 to 4 forks. Each is
+  the frame. The essay's point column holds about 30 characters a line, and
+  a ticket's questions together about five such lines: five one-line
+  questions, or two or three that wrap. Each is
   `{"question","options"}`: the question, and 2 to 6 options as an agent
   would recommend them, each
   `{"id","recommended","decision","why","model","cites"}`:

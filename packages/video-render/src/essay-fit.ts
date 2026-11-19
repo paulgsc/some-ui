@@ -351,22 +351,22 @@ export function essayFit(essay: Essay): {
  * before the routine writes a word of the essay: each point (a `/2` week's
  * fork question) is restated in both as the week wrote it, and nothing
  * after the deadline can shorten it. Measured with every other text at its
- * least (no best fit, no note, a one-line SOLO why) and each point judged
- * from the longer of RR24's two cites (`wholeTake`), since how the owner answers isn't
- * known yet. Each scene that runs past the frame even so is a problem
- * naming the ticket.
+ * least: no best fit, no note, a one-line SOLO why and no cite (RR24's
+ * cite is set only when a point was answered on its own, which isn't known
+ * yet). So whatever it refuses, `essayFit` refuses for any essay of those
+ * points. Each scene that runs past the frame even so is a problem naming
+ * the ticket.
  */
 export function pointsFit(
   ticket: string,
   points: ReadonlyArray<string>
 ): ReadonlyArray<string> {
-  const cite = ESSAY_STAGE_WORDS.wholeTake
   const scenes = [
     ["best", bestOf(points.map((to) => ({ to, best: "" })))],
     [
       "beside",
       besideOf(
-        points.map((to) => ({ to, cite, note: undefined })),
+        points.map((to) => ({ to, cite: null, note: undefined })),
         null
       ),
     ],
