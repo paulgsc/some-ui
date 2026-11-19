@@ -300,7 +300,9 @@ describe("a week on the phone (RR13)", () => {
       Promise.resolve({ kind: "sent", at: "2026-11-21T10:00:00.000Z" })
     )
     await settle()
-    expect(screen.getByText(/isn't on this phone/)).toBeInTheDocument()
+    expect(screen.getByText(/isn't on this phone/)).toHaveTextContent(
+      /Your send from .* is shown below/
+    )
     expect(screen.queryByText(/didn't reach home/)).toBeNull()
     closed.unmount()
 

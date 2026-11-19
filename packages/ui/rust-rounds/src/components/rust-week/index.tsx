@@ -472,7 +472,7 @@ const ReadBack = (
         {homeSaid ? (
           <p>{WORDS.sent.title(answered.length, week.tickets.length)}</p>
         ) : elsewhere !== null ? (
-          <p>{WORDS.closed.elsewhere(elsewhere)}</p>
+          <p>{WORDS.closed.elsewhere(elsewhere, last?.at ?? null)}</p>
         ) : last !== null ? (
           <p>{WORDS.closed.unheard(last.at)}</p>
         ) : null}

@@ -146,7 +146,9 @@ export type WeekAtHome = SendsAtHome<WeekSent> & {
  * record (`home`, RR30) settles it where it has spoken: the send it names,
  * when this phone kept that send, or none. Otherwise what the link
  * remembers home took (`held`), which says nothing of a send it doesn't
- * remember, since that memory can be lost (a new pairing, say).
+ * remember, since that memory can be lost (a new pairing, say); with
+ * `homeSaid` false, a screen shows no count of it and no send "late", and
+ * it only names the takes whose words are asked for.
  */
 export const weekAtHome = (
   kept: ReadonlyArray<WeekSent>,

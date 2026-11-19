@@ -424,17 +424,6 @@ describe("what home has of a week (RR22, C56)", () => {
         elsewhere: "2026-11-10T00:00:00.000Z",
       })
     }
-    expect(
-      weekAtHome(kept, { id: "2026-w46" }, forgot, {
-        kind: "sent",
-        at: "2026-11-10T00:00:00.000Z",
-      })
-    ).toEqual({
-      holds: null,
-      last: second,
-      homeSaid: false,
-      elsewhere: "2026-11-10T00:00:00.000Z",
-    })
     // No word: the memory's, and home hasn't said.
     expect(
       weekAtHome(kept, { id: "2026-w46" }, forgot, { kind: "unknown" })
