@@ -120,9 +120,8 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
     return point === -1 ? machine.spec.items.indexOf(ticket) : point
   }
   /**
-   * Puts the takes on `ticket` (the flow's, on screen) where they are on
-   * another, and enters the cards from the brief. The flow leads: the
-   * takes never move it.
+   * Puts the takes on `ticket`, the flow's on screen, where they are on
+   * another, and enters the cards from the brief.
    */
   const follow = (ticket: string): void => {
     const state = bundle.getSnapshot()
@@ -274,15 +273,22 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
       const stopHome = bundle.subscribe(() => lookHome())
       const stopHeld = ports.onHomeHolds(() => lookHome(true))
       void askSent()
-      const stopOpens = watchOpens()
-      // On the cards, the takes stay on the flow's ticket: back from the
-      // look over, or a take's Later that moved them on, comes back to it.
+      // Where the takes land on the cards on a ticket the flow isn't on
+      // (a Redo or "say it" from the look over, Back from it, a take's
+      // Later), the flow goes to that ticket's voice: the take under way is
+      // never moved. Before the openings are told, so they read one ticket.
       const stopFollow = bundle.subscribe(() => {
-        if (flow === null || bundle.getSnapshot().screen !== "cards") return
+        const state = bundle.getSnapshot()
+        if (flow === null || state.screen !== "cards") return
+        const ticket = itemOf(machine.spec.items[state.index] ?? "").ticket
         const { steps, at } = flow.getSnapshot()
-        const ticket = steps[at]?.ticket
-        if (ticket !== undefined) follow(ticket)
+        if (steps[at]?.ticket === ticket) return
+        const voice = steps.findIndex(
+          (each) => each.ticket === ticket && each.step === "voice"
+        )
+        if (voice !== -1) flow.dispatch({ type: "go", index: voice })
       })
+      const stopOpens = watchOpens()
       return (): void => {
         stopFollow()
         stopOpens()
