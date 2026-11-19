@@ -17,8 +17,9 @@
  *
  * It renders `lib/week-play/flow-runtime`'s state and forwards taps; every
  * word is `lib/week-play/words`' `flow`. A change the phone couldn't keep is
- * said by the week's screen (`RustWeek`), which outlasts these pages. Only the step's own buttons mark a
- * step (`lib/flow`'s `leave`); a swipe or a tap on the step row only moves.
+ * said by the week's screen (`RustWeek`), which outlasts these pages. Only
+ * the step's own buttons mark a step (`lib/flow`'s `leave`); a swipe or a
+ * tap on the step row only moves.
  */
 import type { JSX, ReactNode } from "react"
 import { useSyncExternalStore } from "react"
