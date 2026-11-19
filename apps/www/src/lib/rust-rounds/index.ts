@@ -32,6 +32,7 @@ import {
   keptWeeks,
   WEEK_TAKES_KEY,
 } from "@some-ui/rust-rounds"
+import { SERVER_CONTRACT_EPOCH } from "@some-ui/server-routes"
 import { ONE_TAKE, onPageVisibility } from "@some-ui/voice-capture"
 
 import { copyText } from "@/lib/clipboard"
@@ -135,6 +136,28 @@ export function phoneWeeks(): WeeksStore {
 }
 
 /**
+ * The contract epoch from which home keeps a take per speak-to point (RR24,
+ * paulgsc/some-ui#3248): `<week>:<ticket>:<n>` notes and a week sent with
+ * `point`s. A home before it refuses both, and a note refused is never sent
+ * again, so a build records per point only once its route snapshot says
+ * home serves this epoch: this build asks home for its own epoch
+ * (`home-link/serves`) and is served only by a home at least as new.
+ */
+const POINT_TAKES_EPOCH = 20
+
+/**
+ * Whether a week's take names one speak-to point, `<week>:<ticket>:<n>`
+ * (RR24), not a whole ticket, `<week>:<ticket>`.
+ */
+export const isPointLine = (line: string): boolean =>
+  /^[^:]+:[^:]+:[1-9]\d?$/.test(line)
+
+/** Whether this build records a take per point: its snapshot's epoch is new enough. */
+// Widened from the snapshot's literal, which moves with each sync.
+const SNAPSHOT_EPOCH: number = SERVER_CONTRACT_EPOCH
+const RECORDS_PER_POINT = SNAPSHOT_EPOCH >= POINT_TAKES_EPOCH
+
+/**
  * The week's ports (RR13), with the week open now among those this phone
  * holds, or null while it holds none; `home` and `heard` are handed in by
  * the route, which may reach home.
@@ -154,6 +177,7 @@ export function phoneRustWeekPorts(
         newId: () => crypto.randomUUID(),
         onVisibility: onPageVisibility,
         engage,
+        perPoint: RECORDS_PER_POINT,
       }
 }
 

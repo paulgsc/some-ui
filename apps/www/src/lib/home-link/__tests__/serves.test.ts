@@ -284,3 +284,27 @@ describe("when the phone asks", () => {
     stop()
   })
 })
+
+describe("what waits on home's answer hears it (RR24, C681)", () => {
+  it("tells a lane subscribed before the ask, once home says it serves this build", async () => {
+    vi.resetModules()
+    vi.doMock("@/lib/home-link/compat-read", () => ({
+      askCompat: (): Promise<CompatAsked> =>
+        Promise.resolve(answer({ supported: true })),
+    }))
+    const { onServes, servesNow, servesRun } = await import(
+      "@/lib/home-link/serves-now"
+    )
+    const heard = vi.fn()
+    const stop = onServes(heard)
+    expect(servesNow()).toBeNull()
+    await servesRun().ask("start")
+    expect(servesNow()).toBe("fits")
+    expect(heard).toHaveBeenCalled()
+    stop()
+    heard.mockClear()
+    servesRun().forget()
+    expect(heard).not.toHaveBeenCalled()
+    vi.doUnmock("@/lib/home-link/compat-read")
+  })
+})
