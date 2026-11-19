@@ -346,6 +346,50 @@ it now sits one level deeper and can pass having scanned nothing.
 
 Held by: `pnpm check:test-layout`
 
+## Reach before you build
+
+The owner (2026-11-19, #3291, close paraphrase): "My user story is a morphism: it can morph
+into anything. … That creates a real risk of trying to invent the world. … Rather than
+building, sometimes you should look for existing tools, mostly open source or freemium, that
+let us do it without building anything. This isn't for everything, only for things where we
+need the user story but implementing the machinery costs a lot of overhead." HYPER (#2722)
+said it first for motion graphics: "reach for a polished open-source framework and only
+reinvent when you have to".
+
+So before a story's design commits to machinery of its own, the session does a **reach**:
+which existing tools (open source and self-hostable first, then freemium) already deliver the
+user story, and whether each does it the owner's way. For each, it records:
+
+- where the data would live, in the two mandates' terms (home, the owner's devices, or a
+  third party);
+- what the owner would have to do (an account, a setup step on home);
+- how the work would reach an issue or a session;
+- its honest limits.
+
+It ends with a recommendation: use the tool as is, fold it in (embed or self-host on home),
+or build. Building then is a stated choice ("no tool does it your way because …"), not the
+default.
+
+**When a reach is owed.** It is owed when the first design of a story would add one of these:
+
+- a new kind of record and the place that keeps it;
+- an editor, player, recorder or annotation layer;
+- a sync, sharing or import path;
+- a new deployable or service;
+- work the story needs before its first use can land in one PR.
+
+It is not owed for changes to a surface that already exists: words, layout, a field on a
+record already kept, a fix, a new screen over data already held. It is not owed either for a
+story whose point is the machinery itself, such as the owner wanting to learn by building it.
+The reach comes before the first PR of that machinery, not after. #3035's reach came after
+SFEED6 had already built a note store, which is the timing to avoid.
+
+**Where it goes.** In the epic's body, under a "Reach" heading beside "Where we are"
+(below, "Multi-session relay work"), linking a private page when the comparison is long. The
+owner decides from it before the story is designed, so a reach is often an ask. Review
+treats a new subsystem whose epic carries no reach, and no stated reason it needs none, as a
+finding to raise, not a block: whether a reach was owed is a judgment, and no check holds it.
+
 ## Deleting is in scope
 
 Removing code, tests and docs that your change made unreachable or redundant is part of the
@@ -802,7 +846,8 @@ handoff document (owner, 2026-10-25). It lives in two places, for two readers:
   `[EPIC][<TAG>] …`, labelled `epic`, whose sub-issues are its stories (`[<TAG>] <ID>: …`), each
   closed by the PR that lands it. The epic opens with a `**Search words:**` line (the plain
   words someone might use to ask for it, the paths it touches, the tag) and a "Where we are"
-  section (what landed, what is next, what waits on the owner). An issue says everything a cold
+  section (what landed, what is next, what waits on the owner). An epic whose story builds
+  machinery of its own also carries a "Reach" section (above, "Reach before you build"). An issue says everything a cold
   session needs: why, what is decided and by whom, the files, what done means. What a handoff
   used to carry goes there too: the gaps a PR disclosed and left, and what a session working on
   the story should know (a fixture's quirk, a check that misleads). Keep them current while you
