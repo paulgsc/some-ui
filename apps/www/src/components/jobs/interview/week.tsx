@@ -34,7 +34,7 @@ import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 import type { Interview } from "./run"
 import { currentOf, labelOf, playOnly, useInterview, viewOf } from "./run"
 import type { Page } from "./to"
-import { CardTo, useOpenItem } from "./to"
+import { To, useOpenItem } from "./to"
 
 /** What the invented company does, what the job is, and that both are invented. */
 export const RoleAbout = ({ week }: { week: InterviewWeek }): JSX.Element => (
@@ -95,14 +95,14 @@ const Kind = ({
   name: string
   lines: ReadonlyArray<string>
 }): JSX.Element => (
-  <CardTo to={to}>
+  <To card="card" to={to}>
     <span className="font-bold">{name}</span>
     {lines.map((line) => (
       <span key={line} className="text-muted-foreground text-sm">
         {line}
       </span>
     ))}
-  </CardTo>
+  </To>
 )
 
 /** The way to this week's takes, in Studio's one Takes. */

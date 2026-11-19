@@ -15,6 +15,18 @@ export function withPlainLink(
     Link: (({ children, ...props }: { children?: ReactNode }) => (
       <a {...props}>{children}</a>
     )) as typeof ReactRouterModule.Link,
+    // A link made with `createLink` (`CardRoute`) draws its component the
+    // same way: the props as given, `to` included, and no router.
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- as for Link: createLink's real return is generic over the whole route tree.
+    createLink: ((Comp: (props: object) => ReactNode) => {
+      const PlainLink = ({
+        children,
+        ...props
+      }: {
+        children?: ReactNode
+      }): JSX.Element => <Comp {...props}>{children}</Comp>
+      return PlainLink
+    }) as unknown as typeof ReactRouterModule.createLink,
   }
 }
 

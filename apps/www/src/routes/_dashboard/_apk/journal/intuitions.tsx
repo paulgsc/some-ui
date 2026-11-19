@@ -8,7 +8,8 @@ import {
   KIND_WORDS,
   STUDIO_INDEX_WORDS,
 } from "@/lib/studio-index"
-import { Part, StudioPage, TILE, TileBody } from "@/components/studio/layout"
+import { CardRoute } from "@/components/card-route"
+import { Part, StudioPage, TileBody } from "@/components/studio/layout"
 
 const WORDS = STUDIO_INDEX_WORDS.intuitions
 
@@ -29,27 +30,23 @@ const Intuitions = (): JSX.Element => {
         <ul className="flex flex-col gap-2">
           {FEEDS_A_TO_Z.map((feed) => (
             <li key={feed}>
-              <Link
-                to="/journal/feeds/$feed"
-                params={{ feed }}
-                className={TILE}
-              >
+              <CardRoute to="/journal/feeds/$feed" params={{ feed }}>
                 <TileBody
                   title={`“${FEED_FACTS[feed].intuition}”`}
                   line={WORDS.fed(FEED_FACTS[feed].name)}
                 />
-              </Link>
+              </CardRoute>
             </li>
           ))}
         </ul>
       </Part>
       <Part label={WORDS.ideas}>
-        <Link to="/journal/ideas" className={TILE}>
+        <CardRoute to="/journal/ideas">
           <TileBody
             title={WORDS.openIdeas}
             line={WORDS.onPhone(ideas === null ? null : ideas.length)}
           />
-        </Link>
+        </CardRoute>
         <Link
           to="/journal/idea"
           className="text-muted-foreground self-start text-sm underline underline-offset-4"

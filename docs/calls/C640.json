@@ -1,0 +1,18 @@
+{
+  "id": "C640",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/components/card-route.tsx",
+    "apps/www/src/components/studio/layout.tsx"
+  ],
+  "chose": "www draws a card that opens one of its own pages with CardRoute: the router's createLink over CardLink, so a call site writes <CardRoute to=… params=…>words</CardRoute> and keeps the router's typed path. Studio's linked tiles move to it (Takes' after TAKES20 lands), and Studio's TILE stays only for a tile that opens nothing.",
+  "options": [
+    "one www CardRoute made with the router's createLink",
+    "CardLink asChild around each Link and CardLinkBody inside it, at every site",
+    "a Studio-only TileLink wrapper"
+  ],
+  "gray": "All three draw the same look. The first keeps each site to one element and serves every wing in www; the second repeats three layers at about 30 sites; the third would be a per-wing copy, which the owner ruled out.",
+  "undo": "Replace each CardRoute with CardLink asChild around a Link, and delete card-route.tsx.",
+  "refs": ["#3234"]
+}
