@@ -350,11 +350,13 @@ function printedLine(line: string): ReadonlyArray<PrintedRun> {
       { text, tone: "plain" },
     ]
   }
-  const arrow = /^(\s*-->)(.*)$/.exec(line)
-  if (arrow !== null) {
+  // `  --> main.rs:9:16`, matched as text: rustc's arrow, not markup.
+  const indent = line.length - line.trimStart().length
+  if (line.startsWith(RUSTC_GLYPHS.arrow, indent)) {
+    const end = indent + RUSTC_GLYPHS.arrow.length
     return [
-      { text: arrow[1] ?? "", tone: "gutter" },
-      { text: arrow[2] ?? "", tone: "dim" },
+      { text: line.slice(0, end), tone: "gutter" },
+      { text: line.slice(end), tone: "dim" },
     ]
   }
   if (/^\s*\.\.\.\s*$/.test(line)) return [{ text: line, tone: "gutter" }]
