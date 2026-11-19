@@ -449,6 +449,7 @@ function aphStore(onPhone = false, entries = 0): AphStore & { moved: number } {
     outbox: () => null,
     sent: () => undefined,
     pulled: () => false,
+    exchanges: () => 0,
     save: () => null,
     review: () => false,
     editEntry: () => false,
@@ -461,7 +462,10 @@ function aphStore(onPhone = false, entries = 0): AphStore & { moved: number } {
   return store
 }
 
-async function mountAph(store: AphStore): Promise<void> {
+async function mountAph(
+  store: AphStore,
+  read: AphKeeping["read"] = () => Promise.resolve({ kind: "synced" })
+): Promise<void> {
   // aph's own exchange is its package's to test: here, one request.
   const aph: AphKeeping = {
     store,
@@ -469,6 +473,8 @@ async function mountAph(store: AphStore): Promise<void> {
       await send("PUT", "/aph/entries/1", "{}")
       return { kind: "synced" }
     },
+    // How the read goes beside the drain is `aph-read.test.ts`'s.
+    read,
   }
   const { DeviceAphLane } = await import("@/components/aph/device-aph-lane")
   const { DeviceHomeGlyph, HomeLanes } = await import(
@@ -512,6 +518,24 @@ describe("aph's mark", () => {
         "Until home answers, this shows only what this phone hasn't sent yet."
       )
     ).toBeTruthy()
+  })
+
+  it("reads home's record once as aph's screens open, kept on home (AR1)", async () => {
+    const read = vi.fn<AphKeeping["read"]>(() =>
+      Promise.resolve({ kind: "synced" })
+    )
+    await mountAph(aphStore(), read)
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(1))
+  })
+
+  it("reads nothing as aph opens before it is kept on home (AR1)", async () => {
+    home.answer = silentOnly("/aph")
+    const read = vi.fn<AphKeeping["read"]>(() =>
+      Promise.resolve({ kind: "synced" })
+    )
+    await mountAph(aphStore(true, 2), read)
+    await act(() => Promise.resolve())
+    expect(read).not.toHaveBeenCalled()
   })
 
   it("says home was busy, not a failure, when home is busy", async () => {

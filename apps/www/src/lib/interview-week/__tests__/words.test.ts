@@ -1,7 +1,7 @@
 /**
  * The owner's rules for what the interview week's screen says (IW5): no score,
  * grade, verdict or "you said", nothing that calls a take good or bad, and no
- * status code or internal name. A card's target length and the 2-minute cap
+ * status code or internal name. A card's target length and the 3-minute cap
  * are shown, as #2936 asks, and the reading band shows a take's time against
  * its aim, as the agreed prototype does (C615).
  */
@@ -85,7 +85,7 @@ describe("the interview week's words (IW5)", () => {
   it("show a target length as a person reads one", () => {
     expect(INTERVIEW_WORDS.aim(90)).toBe("Aim for about 1 min 30 s")
     expect(INTERVIEW_WORDS.aim(120)).toBe("Aim for about 2 min")
-    expect(INTERVIEW_WORDS.cap).toBe("A take stops at 2 min.")
+    expect(INTERVIEW_WORDS.cap).toBe("A take stops at 3 min.")
   })
 
   // IWC1: what counts for the week is the send home has by the deadline.
