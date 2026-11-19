@@ -8,10 +8,10 @@ import type { AphSettings, Entry } from "@aph/lib/model"
 import type { AphStore } from "@aph/lib/store"
 import { createAphStore } from "@aph/lib/store"
 import { EntrySchema, SettingsSchema } from "@aph/lib/stored"
-import { exchangeWithHome } from "@aph/lib/sync"
+import { exchangeWithHome, readFromHome } from "@aph/lib/sync"
 import type { HomeCall } from "@some-ui/core-utils"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 const SETTINGS: AphSettings = {
   checkpoints: [
@@ -206,6 +206,148 @@ describe("an exchange with home", () => {
     )
     const home = fakeHome()
     expect(await exchangeWithHome(store, home.send)).toEqual({ kind: "synced" })
+    expect(home.requests).toEqual([])
+  })
+})
+
+/**
+ * **AR1: aph's screens show home's record while the drain waits.**
+ *
+ * - _Claim:_ aph's read as its screens open (`readFromHome`, through
+ *   www's `readAphOnOpen` and the link's `keep`, beside the drain) sends
+ *   nothing, lays what this phone holds unsent over home's record, and
+ *   drops a record it read before a send's receipt or another read reached
+ *   the store; so home's history shows before the lane's own exchange has
+ *   run, and never over a newer record.
+ * - _Family:_ the outbox (empty, entries waiting, settings waiting) ×
+ *   home's record (many entries, none) × aph kept on home or not yet × the
+ *   link's drain idle or held by another lane's run × the read's answer
+ *   landing before, between or after aph's own exchange's receipt and read,
+ *   that exchange whole or ending part way.
+ * - _Proof:_ this describe over the store (the late answer over an
+ *   exchange, with entries and with settings waiting); apps/www
+ *   `lib/home-link/__tests__/aph-read.test.ts` for the read going beside a
+ *   drain run that is held; `components/__tests__/device-home-glyph.test.tsx`
+ *   for aph's screens asking it once as they mount.
+ * - _Tolerance:_ one read each opening, asked again only while the link is
+ *   busy with the person's own run; one home answers busy, or that finds no
+ *   answer, leaves the outbox alone shown until the lane's run or the next
+ *   opening; so does a read dropped because aph's own exchange ended part
+ *   way after its receipt (a stop, no answer), until that lane's next run.
+ */
+describe("aph's read of home as its screens open (AR1)", () => {
+  it("shows home's history with what waits laid over it, sending nothing", async () => {
+    const home = fakeHome()
+    // Home holds a's and b's day already; this phone kept c unsent.
+    await exchangeWithHome(keptOnHome(), home.send)
+    home.held.delete("c")
+    const store = createAphStore(
+      { settings: SETTINGS, entries: [] },
+      memoryStorage()
+    )
+    expect(store.keepOnHome()).toBe(true)
+    const before = home.requests.length
+    expect(await readFromHome(store, home.send)).toEqual({ kind: "synced" })
+    expect(home.requests.slice(before)).toEqual(["GET /aph"])
+    expect(store.where()).toMatchObject({ pulled: true })
+    expect(store.get().entries.map(({ id }) => id)).toEqual(["a", "b"])
+  })
+
+  it("lays the outbox over home's record", async () => {
+    const home = fakeHome()
+    const store = keptOnHome()
+    home.held.set("z", entry("z", "2026-09-16"))
+    await readFromHome(store, home.send)
+    expect(
+      store
+        .get()
+        .entries.map(({ id }) => id)
+        .sort()
+    ).toEqual(["a", "b", "c", "z"])
+    // Still waiting: nothing was sent.
+    expect(store.outbox()?.entries.map(({ id }) => id)).toEqual(["a", "b", "c"])
+  })
+
+  /**
+   * The read's `GET /aph` answered before the lane's exchange, its answer
+   * landing after the exchange's own receipt and read (the review of
+   * c8f18c62): what it found is older than what shows, and is dropped.
+   */
+  async function lateRead(
+    store: AphStore,
+    home = fakeHome()
+  ): Promise<ReturnType<typeof fakeHome>> {
+    const held: { release: (() => void) | null } = { release: null }
+    const late: HomeCall = async (method, path, body) => {
+      const answer = await home.send(method, path, body)
+      await new Promise<void>((resolve) => {
+        held.release = resolve
+      })
+      return answer
+    }
+    const landed = readFromHome(store, late)
+    // Home answered the read before anything was sent.
+    await vi.waitFor(() => expect(held.release).not.toBeNull())
+    expect(await exchangeWithHome(store, home.send)).toEqual({ kind: "synced" })
+    held.release?.()
+    await landed
+    return home
+  }
+
+  it("drops a record read before the exchange and landing after it: no entry vanishes", async () => {
+    const store = keptOnHome()
+    await lateRead(store)
+    expect(store.get().entries.map(({ id }) => id)).toEqual(["a", "b", "c"])
+    expect(store.where()).toMatchObject({ pulled: true, unsent: 0 })
+  })
+
+  it("drops it too when the settings changed: home's new settings stand", async () => {
+    const store = keptOnHome()
+    // A first exchange, so home holds the settings; then one changed here.
+    const home = fakeHome()
+    await exchangeWithHome(store, home.send)
+    expect(store.editSettings({ tolerance: 200 })).toBe(true)
+    await lateRead(store, home)
+    expect(home.settings()?.tolerance).toBe(200)
+    expect(store.get().settings.tolerance).toBe(200)
+    expect(store.outbox()?.settings ?? null).toBeNull()
+  })
+
+  it("with nothing waiting, shows home's record and takes home's settings", async () => {
+    const home = fakeHome()
+    const store = keptOnHome()
+    // An exchange empties the outbox; home's settings then change elsewhere.
+    await exchangeWithHome(store, home.send)
+    expect(store.outbox()).toEqual({ settings: null, entries: [] })
+    const elsewhere = { ...SETTINGS, tolerance: 300 }
+    await home.send("PUT", "/aph/settings", JSON.stringify(elsewhere))
+    home.held.set("z", entry("z", "2026-09-16"))
+    expect(await readFromHome(store, home.send)).toEqual({ kind: "synced" })
+    expect(store.get().settings.tolerance).toBe(300)
+    expect(
+      store
+        .get()
+        .entries.map(({ id }) => id)
+        .sort()
+    ).toEqual(["a", "b", "c", "z"])
+  })
+
+  it("with home holding nothing, shows only what waits here", async () => {
+    const home = fakeHome()
+    const store = keptOnHome()
+    expect(await readFromHome(store, home.send)).toEqual({ kind: "synced" })
+    expect(store.where()).toMatchObject({ pulled: true })
+    expect(store.get().entries.map(({ id }) => id)).toEqual(["a", "b", "c"])
+    expect(store.get().settings).toEqual(SETTINGS)
+  })
+
+  it("reads nothing before aph is kept on home", async () => {
+    const home = fakeHome()
+    const store = createAphStore(
+      { settings: SETTINGS, entries: ENTRIES },
+      memoryStorage()
+    )
+    expect(await readFromHome(store, home.send)).toEqual({ kind: "synced" })
     expect(home.requests).toEqual([])
   })
 })
