@@ -1,0 +1,15 @@
+{
+  "id": "C606",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": ["server:crates/db/voice/src/takes.rs"],
+  "chose": "The library pages by an opaque cursor `after` (the answer's `next`, `<recordedAt>|<storedAt>|<id>` of the page's last take), 50 a page; a sorted read starts past that place even if the take has left the list; a search ranked by meaning starts after the take and is a 422 if no longer found.",
+  "options": [
+    "an opaque position cursor in the read's own order",
+    "an offset",
+    "a keyset on (recordedAt, storedAt, id)"
+  ],
+  "gray": "A keyset can't page a search ranked by meaning. An offset shifts when a take arrives while the owner pages newest-first. The read already walks the subject's rows in memory (docs/take-library.md, Cost).",
+  "undo": "Replace `after`/`next` in takes::Ask and Library. Nothing is stored.",
+  "refs": ["#3219"]
+}

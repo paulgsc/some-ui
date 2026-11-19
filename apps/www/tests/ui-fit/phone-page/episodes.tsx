@@ -64,6 +64,12 @@ const LISTS: FeedLists = {
     kind: "read",
     episodes: [episode("2026-SF-10", { link: LINK }), episode("2026-SF-00")],
   },
+  report: {
+    kind: "read",
+    episodes: [
+      episode("2026-W45", { date: "2026-11-02", durationMs: 312_000 }),
+    ],
+  },
   "rust-essay": {
     kind: "read",
     episodes: [episode("2026-w45", { durationMs: 845_000 })],
