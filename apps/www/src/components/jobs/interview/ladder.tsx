@@ -332,8 +332,13 @@ export const Script = ({
       view.scrollTop = line.offsetTop - view.clientHeight * BAND_AT
     }
     if (!ended) place()
-    window.addEventListener("resize", place)
-    return (): void => window.removeEventListener("resize", place)
+    // A resize re-places the window only while a take reads it, so turning
+    // the phone after a take never snaps a hand-scrolled script back (PB1).
+    const onResize = (): void => {
+      if (reading) place()
+    }
+    window.addEventListener("resize", onResize)
+    return (): void => window.removeEventListener("resize", onResize)
   }, [band.line, text, reading])
   return (
     <section
