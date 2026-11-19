@@ -74,6 +74,69 @@ export function byPoints(): Essay {
   return essay
 }
 
+/**
+ * The sample with QM-311's first point as a fork (RR29): three listed
+ * options, a hidden best, and the owner's decision judged and placed.
+ */
+export function withForks(): Essay {
+  const essay = structuredClone(sample())
+  const first = essay.tickets.at(0)
+  const point = first?.points.at(0)
+  if (first === undefined || point === undefined)
+    throw new Error("the sample changed shape")
+  first.stated = [
+    { id: "S1", says: "p99 under 2 ms per record" },
+    { id: "F1", says: "40,000 records a second" },
+    { id: "F2", says: "one core" },
+  ]
+  point.fork = {
+    options: [
+      {
+        id: "A",
+        recommended: true,
+        decision: "Clone each field into its own `String`.",
+        model: { id: "owned-is-safe", name: "Owning is always safe" },
+        meets: ["F2"],
+        breaks: ["S1"],
+      },
+      {
+        id: "B",
+        recommended: false,
+        decision: "Borrow `&str` slices of the buffer.",
+        model: { id: "borrow", name: "Borrow, then reuse" },
+        meets: ["S1"],
+        breaks: ["F1"],
+      },
+      {
+        id: "C",
+        recommended: false,
+        decision: "Wrap the buffer in an `Arc` and share it.",
+        model: { id: "share", name: "Share instead of copy" },
+        meets: [],
+        breaks: ["S1", "F2"],
+      },
+    ],
+    best: {
+      kind: "hidden",
+      decision: "Parse in place, one arena per batch, reset between batches.",
+      why: "It allocates once per batch, so it meets the rate on one core.",
+      model: { id: "arena", name: "An arena per batch" },
+      meets: ["S1", "F1", "F2"],
+      breaks: [],
+    },
+    said: "The agent listed three options. None meets all three constraints.",
+    judged: {
+      decision: { kind: "recommended-by-default" },
+      verdict: {
+        kind: "off",
+        why: "A breaks S1: a `String` per field allocates on every record.",
+      },
+      placement: "trusted",
+    },
+  }
+  return essay
+}
+
 /** Each text of the sample's best, beside and dive scenes, each grown to its limit. */
 export function atTheLimit(): ReadonlyArray<Essay> {
   const base = sample()

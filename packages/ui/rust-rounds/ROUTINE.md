@@ -133,6 +133,26 @@ with one ticket for each of the week's, by its id:
   out when the bundle lists none. The point's own take decides its mark on
   screen; `answer`'s marks still give one per point, judged from the take of
   the whole ticket.
+- `forks`, for each fork of a `some-ui.rust-week/2` ticket that lists
+  options (RR29), with `"schema":"some-ui.rust-monday-values/2"`: the best
+  fit, written only now, after the deadline. Each entry is
+  `{"fork","best","options","said"}`. `fork` is its place from 1.
+  - `best` is the best decision: `{"option"}`, a listed option by its id, or
+    `{"hidden"}`, one the agent didn't list:
+    `{"decision","why","model","meets","breaks"}`, with `model` as
+    `{"id","name"}`. The best may be the recommended option, another, or
+    hidden; vary it week to week so trusting the agent is never always
+    right, and never always wrong.
+  - `options`: every listed option, once, as `{"id","meets","breaks"}`:
+    the stated constraints it meets and breaks, by the ids the week gave
+    them (`S1` for an SLA row, `F1` for one of the ticket's figures). Name
+    no constraint the week didn't state, and none as both.
+  - A hidden best must meet, for each listed option, a stated constraint
+    that option misses: its advantage rests on what the week stated,
+    never on a constraint it didn't. `finish` refuses any other.
+  - `said`: what is said over the fork's scene, which sets every option and
+    the best against the stated constraints. Argue only from those ids, and
+    explain a wrong option by the model it rests on, never as a trap.
 - `answer`, for a ticket `by-points`: leave it out when every point has a
   take of its own; otherwise `{"guess"}` for why the rest were left. Either
   way the essay gives the ticket's own answer as a silence, since no take of

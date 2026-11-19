@@ -265,6 +265,58 @@ describe("the essay's stage", () => {
     })
   })
 
+  it("draws a fork scene with its ticket, point and fork (RR29)", () => {
+    const sample = essay()
+    const first = sample.tickets.at(0)
+    const point = first?.points.at(1)
+    if (first === undefined || point === undefined) throw new Error("shape")
+    const fork = {
+      options: [
+        {
+          id: "A",
+          recommended: true,
+          decision: "Clone it.",
+          model: { id: "own", name: "Own it" },
+          meets: [],
+          breaks: ["S1"],
+        },
+        {
+          id: "B",
+          recommended: false,
+          decision: "Borrow it.",
+          model: { id: "borrow", name: "Borrow it" },
+          meets: ["S1"],
+          breaks: [],
+        },
+      ],
+      best: { kind: "option" as const, option: "B" },
+      said: "B meets S1.",
+    }
+    const forked = {
+      ...sample,
+      template: { ...sample.template, version: 4 },
+      tickets: [
+        {
+          ...first,
+          stated: [{ id: "S1", says: "p99 under 2 ms" }],
+          points: first.points.map((each, i) =>
+            i === 1 ? { ...each, fork } : each
+          ),
+        },
+        ...sample.tickets.slice(1),
+      ],
+    }
+    const at = essayAt(forked, "fork-1")
+    expect(at.speaker).toBe("tutor")
+    expect(
+      at.view.section === "fork" && [
+        at.view.ticket.id,
+        at.view.point,
+        at.view.fork,
+      ]
+    ).toEqual(["QM-311", 1, fork])
+  })
+
   it("numbers each ticket's chapter", () => {
     expect(essayAt(essay(), "chapter-question-2").view).toEqual({
       section: "chapter",

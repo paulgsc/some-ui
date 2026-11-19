@@ -2,6 +2,7 @@ import ROUTINE from "@rust-rounds-root/ROUTINE.md?raw"
 import { recordOf } from "@rust-rounds/lib/decay"
 import type { RustcRun } from "@rust-rounds/lib/formats"
 import { RustcRunSchema } from "@rust-rounds/lib/formats"
+import type { ForkOption } from "@rust-rounds/lib/formats/week"
 import { WeekV1Schema } from "@rust-rounds/lib/formats/week"
 import type { MailboxFile, Prepared } from "@rust-rounds/lib/monday/bundle"
 import {
@@ -811,6 +812,130 @@ describe("a week answered point by point (RR24)", () => {
       "QM-312 point 3: home couldn't make out its own take, so leave it out of points",
       "QM-313: some points were left unanswered, so it takes a guess at why, not nothing",
     ])
+  })
+})
+
+/**
+ * RR29 (#3257): the after-deadline best fit of a `/2` week's forks
+ * (`some-ui.rust-monday-values/2`). Each listed option is set against the
+ * week's stated constraints by id, the best is named, listed or hidden,
+ * and nothing rests on a constraint the week didn't state.
+ */
+describe("a fork's best fit (RR29)", () => {
+  /** The sample with QM-311's first point a fork of two options, A recommended. */
+  function forked(): Prepared {
+    const prepared = structuredClone(samplePrepared())
+    const ticket = prepared.bundle.essays[0]?.tickets[0]
+    const fork = ticket?.forks[0]
+    if (ticket === undefined || fork === undefined) throw new Error("shape")
+    const option = (
+      id: string,
+      recommended: boolean,
+      decision: string
+    ): ForkOption => ({
+      id,
+      recommended,
+      decision,
+      why: "It is argued honestly.",
+      model: { id: `model-${id.toLowerCase()}`, name: `Model ${id}` },
+      cites: ["S1"],
+    })
+    Object.assign(fork, {
+      options: [
+        option("A", true, "Clone each field into a String."),
+        option("B", false, "Borrow slices and reuse the buffer."),
+      ],
+    })
+    return prepared
+  }
+  const figure = (): string => {
+    const id = forked().bundle.essays[0]?.tickets[0]?.figures[0]?.id
+    if (id === undefined) throw new Error("the sample states a figure")
+    return id
+  }
+  function forkValues(
+    best: unknown = { option: "B" }
+  ): Record<string, unknown> {
+    const given = values()
+    const first = given.essays[0]?.tickets[0]
+    if (first === undefined) throw new Error("shape")
+    return {
+      ...given,
+      schema: "some-ui.rust-monday-values/2",
+      essays: [
+        {
+          ...given.essays[0],
+          tickets: [
+            {
+              ...first,
+              forks: [
+                {
+                  fork: 1,
+                  best,
+                  options: [
+                    { id: "A", meets: [figure()], breaks: ["S1"] },
+                    { id: "B", meets: ["S1"], breaks: [] },
+                  ],
+                  said: "B meets the SLA; A breaks it.",
+                },
+              ],
+            },
+            ...(given.essays[0]?.tickets.slice(1) ?? []),
+          ],
+        },
+      ],
+    }
+  }
+  const problemsOf = (given: unknown): ReadonlyArray<string> => {
+    const done = finish({ ...forked(), values: given, runs: RUNS })
+    return done.ok ? [] : done.problems
+  }
+
+  it("writes the fork into an essay of version 4, against the week's stated ids", () => {
+    const done = finish({ ...forked(), values: forkValues(), runs: RUNS })
+    if (!done.ok) throw new Error(done.problems.join("\n"))
+    const essay = parseEssay(done.files[0]?.body)
+    if (!essay.ok) throw new Error(essay.problems.join("\n"))
+    expect(essay.value.template.version).toBe(4)
+    const [first] = essay.value.tickets
+    expect(first?.points[0]?.fork?.best).toEqual({
+      kind: "option",
+      option: "B",
+    })
+    expect(
+      first?.points[0]?.fork?.options.map((o) => [o.id, o.meets, o.breaks])
+    ).toEqual([
+      ["A", [figure()], ["S1"]],
+      ["B", ["S1"], []],
+    ])
+    expect(first?.stated?.map((row) => row.id)).toContain("S1")
+    expect(first?.stated?.map((row) => row.id)).toContain(figure())
+  })
+
+  it("refuses a best fit that moves a goalpost, or names no best", () => {
+    const hidden = (meets: Array<string>): unknown => ({
+      hidden: {
+        decision: "Parse in place with an arena per batch.",
+        why: "It meets every stated constraint.",
+        model: { id: "arena", name: "An arena per batch" },
+        meets,
+        breaks: [],
+      },
+    })
+    expect(problemsOf(forkValues(hidden(["S1", figure()])))).toEqual([])
+    expect(problemsOf(forkValues(hidden(["S1"])))).toEqual([
+      "2026-w46 essay: QM-311 fork 1: the hidden best meets no stated constraint that B misses, so its advantage over B isn't stated",
+    ])
+    expect(problemsOf(forkValues(hidden(["S1", "F99"])))).toEqual([
+      "2026-w46 essay: QM-311 fork 1: the hidden best names F99, which the week doesn't state",
+    ])
+    expect(problemsOf(forkValues(null))).not.toEqual([])
+    expect(problemsOf(values())).toEqual([
+      "QM-311 fork 1: it lists options, so it takes a best fit: the best decision and each option's trade",
+    ])
+    expect(
+      problemsOf({ ...forkValues(), schema: "some-ui.rust-monday-values/1" })
+    ).not.toEqual([])
   })
 })
 

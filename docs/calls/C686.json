@@ -1,0 +1,19 @@
+{
+  "id": "C686",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/monday/values.ts",
+    "packages/ui/rust-rounds/src/lib/monday/finish.ts",
+    "packages/ui/rust-rounds/ROUTINE.md"
+  ],
+  "chose": "The after-deadline best fit is the Monday values file's `/2`: per fork that lists options, `best` ({option} or {hidden: decision, why, model, meets, breaks}), every listed option once as {id, meets, breaks} by stated id, and `said`. A hidden best is refused unless, for each listed option, it meets a stated constraint that option misses: its advantage over each rests on what the week stated.",
+  "options": [
+    "per listed option, a stated constraint it misses",
+    "a stated constraint every listed option misses",
+    "the hidden best meets every stated constraint"
+  ],
+  "gray": "The owner asked that a hidden best's advantage never rest on an unstated constraint; which test makes that falsifiable is a design choice. The middle option refuses a hidden best that beats each option on a different constraint; the last refuses one that wins on priorities.",
+  "undo": "Change the hidden-best loop in video-render's forkProblems.",
+  "refs": ["#3257", "#3253"]
+}

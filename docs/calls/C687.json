@@ -1,0 +1,19 @@
+{
+  "id": "C687",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/essay.ts",
+    "packages/video-render/src/templates/rust-essay/v4.json",
+    "apps/www/src/lib/web-surface/call/essay-stage.tsx"
+  ],
+  "chose": "Essay template version 4 draws each fork in a `fork` scene of its own after the beside scene: a table of every listed option and a hidden best (★, \"Not listed\"), against the ticket's stated constraints by id (✓ meets, ✗ breaks), with Recommended, Best and Yours tagged, the ids' words under it, and, once the owner's decision is on record, the A→A′ axis and the verdict (best, close or off). The judgement is optional until the record carries the decision (RR28).",
+  "options": [
+    "a scene per fork after the beside scene",
+    "one table per ticket",
+    "the table inside the beside scene"
+  ],
+  "gray": "The owner confirmed the table is a scene of the rendered essay; where it sits and what it shows of the judgement is design.",
+  "undo": "Move the fork scenes in essayScenes; drop `judged` from ForkSchema.",
+  "refs": ["#3257", "#3253"]
+}

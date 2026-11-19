@@ -1,0 +1,18 @@
+{
+  "id": "C688",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/essay.ts",
+    "apps/www/src/lib/web-surface/call/essay-words.ts"
+  ],
+  "chose": "A→A′ is five steps: trusted (the recommended, by default or picked), reasoned (the recommended, picked with reasons), departed (another listed option), own (an option of their own), astute (saw the list fall short). Each placement must agree with the decision's kind, and a listed decision's verdict is `best` exactly when it is the best.",
+  "options": [
+    "five steps from the owner's list",
+    "a 0–1 score",
+    "A or A′ only"
+  ],
+  "gray": "The owner named the cases; whether they form one ordered axis, and how its steps are named on screen, is a judgement the owner would see in the video.",
+  "undo": "Edit FORK_PLACEMENTS and its fits in forkProblems, and the words in essay-words.ts.",
+  "refs": ["#3257", "#3253"]
+}

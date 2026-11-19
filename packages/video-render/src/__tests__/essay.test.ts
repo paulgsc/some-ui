@@ -29,7 +29,12 @@ import {
   pointAnsweredBy,
   sampleEssay,
 } from "@video-render/essay"
-import type { Essay, EssayPointAnswer, EssayTicket } from "@video-render/essay"
+import type {
+  Essay,
+  EssayFork,
+  EssayPointAnswer,
+  EssayTicket,
+} from "@video-render/essay"
 import { parseFormat } from "@video-render/format"
 import { versionOfFile } from "@video-render/series"
 import { spreadWords } from "@video-render/stills"
@@ -669,5 +674,178 @@ describe("a point answered by a take of its own (RR24)", () => {
     expect(short.ok ? [] : short.problems).toEqual([
       "QM-312: its silence carries no guess at why, and a point has no answer of its own",
     ])
+  })
+})
+
+/**
+ * RR29 (#3257): a point as a fork. Every option, and a hidden best, set
+ * against the week's stated constraints by id; a judgement placed between A
+ * and A′. Each way a fork can move a goalpost is refused.
+ */
+describe("a point as a fork (RR29)", () => {
+  const stated = [
+    { id: "S1", says: "p99 under 2 ms per record" },
+    { id: "F1", says: "40,000 records a second" },
+    { id: "F2", says: "one core" },
+  ]
+  const fork = (): EssayFork => ({
+    options: [
+      {
+        id: "A",
+        recommended: true,
+        decision: "Clone each field into a String.",
+        model: { id: "owned-is-safe", name: "Owning is always safe" },
+        meets: ["F2"],
+        breaks: ["S1"],
+      },
+      {
+        id: "B",
+        recommended: false,
+        decision: "Borrow slices of the buffer and reuse it.",
+        model: { id: "borrow-reuse", name: "Borrow, then reuse" },
+        meets: ["S1", "F1"],
+        breaks: [],
+      },
+    ],
+    best: { kind: "option", option: "B" },
+    said: "Two options; the second meets the SLA.",
+  })
+  const withFork = (each: unknown, version = 4): unknown => {
+    const essay = sample()
+    const [first, ...rest] = essay.tickets
+    if (first === undefined) throw new Error("a ticket")
+    return {
+      ...essay,
+      template: { ...essay.template, version },
+      tickets: [
+        {
+          ...first,
+          stated,
+          points: first.points.map((point, i) =>
+            i === 0 ? { ...point, fork: each } : point
+          ),
+        },
+        ...rest,
+      ],
+    }
+  }
+  const problems = (raw: unknown): ReadonlyArray<string> => {
+    const read = parseEssay(raw)
+    return read.ok ? [] : read.problems
+  }
+
+  it("is drawn in a fork scene after the beside scene, from version 4", () => {
+    const read = parseEssay(withFork(fork()))
+    if (!read.ok) throw new Error(read.problems.join("; "))
+    const ids = essayScenes(read.value).map((s) => s.id)
+    expect(
+      ids.slice(ids.indexOf("beside-1"), ids.indexOf("beside-1") + 3)
+    ).toEqual(["beside-1", "fork-1", "dive-1"])
+    expect(problems(withFork(fork(), 3))).toEqual([
+      "QM-311: a fork, or 1 to 6 points, is drawn from version 4 of the template",
+    ])
+  })
+
+  it("takes a hidden best whose advantage is a stated constraint", () => {
+    const hidden: EssayFork = {
+      ...fork(),
+      best: {
+        kind: "hidden",
+        decision: "Parse in place with an arena per batch.",
+        why: "It meets the rate on one core too.",
+        model: { id: "arena", name: "An arena per batch" },
+        meets: ["S1", "F1", "F2"],
+        breaks: [],
+      },
+    }
+    expect(problems(withFork(hidden))).toEqual([])
+  })
+
+  it("refuses every way a fork moves a goalpost", () => {
+    const [a, b] = fork().options
+    if (!a || !b) throw new Error("two options")
+    const cases: ReadonlyArray<[EssayFork, string]> = [
+      [
+        { ...fork(), options: [{ ...a, meets: ["S9"] }, b] },
+        "QM-311 fork 1: A names S9, which the week doesn't state",
+      ],
+      [
+        { ...fork(), options: [a, { ...b, recommended: true }] },
+        "QM-311 fork 1: 2 options are recommended; exactly one is",
+      ],
+      [
+        { ...fork(), options: [{ ...a, breaks: ["F2"] }, b] },
+        "QM-311 fork 1: A both meets and breaks a constraint",
+      ],
+      [
+        { ...fork(), best: { kind: "option", option: "C" } },
+        "QM-311 fork 1: the best is C, which isn't listed",
+      ],
+      [
+        {
+          ...fork(),
+          best: {
+            kind: "hidden",
+            decision: "Something nobody listed.",
+            why: "It is faster, somehow.",
+            model: { id: "x", name: "X" },
+            meets: ["S1"],
+            breaks: [],
+          },
+        },
+        "QM-311 fork 1: the hidden best meets no stated constraint that B misses, so its advantage over B isn't stated",
+      ],
+      [
+        {
+          ...fork(),
+          judged: {
+            decision: { kind: "recommended-by-default" },
+            verdict: { kind: "off", why: "A breaks the SLA." },
+            placement: "reasoned",
+          },
+        },
+        "QM-311 fork 1: a recommended-by-default decision isn't placed reasoned",
+      ],
+      [
+        {
+          ...fork(),
+          judged: {
+            decision: { kind: "option", option: "B" },
+            verdict: { kind: "close", why: "Near." },
+            placement: "departed",
+          },
+        },
+        "QM-311 fork 1: the verdict says close, and the decision is the best",
+      ],
+    ]
+    for (const [each, why] of cases)
+      expect(problems(withFork(each))).toEqual([why])
+    const { best: _, ...nameless } = fork()
+    expect(problems(withFork(nameless))).not.toEqual([])
+    const read = parseEssay(withFork(fork()))
+    if (!read.ok) throw new Error("the fork reads")
+    const [first] = read.value.tickets
+    if (first === undefined) throw new Error("a ticket")
+    const { stated: __, ...unstated } = first
+    expect(
+      problems({
+        ...read.value,
+        tickets: [unstated, ...read.value.tickets.slice(1)],
+      })
+    ).toContain(
+      "QM-311: its forks trade on stated constraints, and it names none"
+    )
+  })
+
+  it("takes a judgement whose decision, verdict and place agree", () => {
+    const judged: EssayFork = {
+      ...fork(),
+      judged: {
+        decision: { kind: "recommended-by-default" },
+        verdict: { kind: "off", why: "A breaks S1." },
+        placement: "trusted",
+      },
+    }
+    expect(problems(withFork(judged))).toEqual([])
   })
 })

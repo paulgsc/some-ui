@@ -20,6 +20,42 @@ import { z } from "zod"
 
 const VALUES_SCHEMA = "some-ui.rust-monday-values/1"
 
+/** `/2` (RR29): an essay ticket may carry the best fit of each fork (`forks`). */
+const VALUES_SCHEMA_V2 = "some-ui.rust-monday-values/2"
+
+/** A stated constraint, by id: `S1` for an SLA row, `F1` for a figure. */
+const StatedIdSchema = z.string().regex(/^[SF][1-9]\d?$/)
+
+/** Which stated constraints a decision meets, and which it breaks. */
+const TradeSchema = {
+  meets: z.array(StatedIdSchema),
+  breaks: z.array(StatedIdSchema),
+}
+
+/**
+ * The after-deadline best fit of one fork (RR29, #3257), by its place from
+ * 1: the best decision, a listed option by id or a hidden one not on the
+ * list, and every listed option against the stated constraints, by id. What
+ * is said over the fork's scene, too.
+ */
+const ForkValuesSchema = z.strictObject({
+  fork: z.int().min(1),
+  best: z.union([
+    z.strictObject({ option: z.string() }),
+    z.strictObject({
+      hidden: z.strictObject({
+        decision: TextSchema,
+        why: TextSchema,
+        model: z.strictObject({ id: z.string().min(1), name: TextSchema }),
+        ...TradeSchema,
+      }),
+    }),
+  ]),
+  options: z.array(z.strictObject({ id: z.string(), ...TradeSchema })),
+  said: TextSchema,
+})
+export type ForkValues = z.infer<typeof ForkValuesSchema>
+
 const DiveValuesSchema = z.strictObject({
   /** The speak-to point it goes into, from 0. */
   point: z.int().nonnegative(),
@@ -73,6 +109,8 @@ const EssayTicketValuesSchema = z.strictObject({
   answer: z.union([ReadingSchema, GuessSchema]).optional(),
   /** Each point the bundle says was answered by a take of its own (RR24), read on its own. */
   points: z.array(PointValuesSchema).optional(),
+  /** Each fork's best fit (`/2`), for a ticket whose forks list options. */
+  forks: z.array(ForkValuesSchema).optional(),
   dives: z.array(DiveValuesSchema),
 })
 export type EssayTicketValues = z.infer<typeof EssayTicketValuesSchema>
@@ -100,10 +138,19 @@ const WeekValuesSchema = z.strictObject({
   tickets: z.array(WeekTicketValuesSchema),
 })
 
-export const ValuesSchema = z.strictObject({
-  schema: z.literal(VALUES_SCHEMA),
-  essays: z.array(EssayValuesSchema),
-  /** Next week's content; null when the bundle has no `next`. */
-  week: WeekValuesSchema.nullable(),
-})
+export const ValuesSchema = z
+  .strictObject({
+    schema: z.enum([VALUES_SCHEMA, VALUES_SCHEMA_V2]),
+    essays: z.array(EssayValuesSchema),
+    /** Next week's content; null when the bundle has no `next`. */
+    week: WeekValuesSchema.nullable(),
+  })
+  .refine(
+    (values) =>
+      values.schema === VALUES_SCHEMA_V2 ||
+      values.essays.every((essay) =>
+        essay.tickets.every((ticket) => ticket.forks === undefined)
+      ),
+    { message: `a fork's best fit is ${VALUES_SCHEMA_V2}'s`, path: ["schema"] }
+  )
 export type Values = z.infer<typeof ValuesSchema>

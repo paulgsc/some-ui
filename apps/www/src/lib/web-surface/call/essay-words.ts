@@ -1,5 +1,5 @@
 import { ESSAY_STAGE_WORDS } from "@some-ui/video-render"
-import type { Mark } from "@some-ui/video-render"
+import type { ForkPlacement, ForkVerdict, Mark } from "@some-ui/video-render"
 
 /** A week's number within its year, from its id: "46" from "2026-w46". */
 export const weekNumber = (id: string): string => id.slice(id.indexOf("w") + 1)
@@ -46,6 +46,33 @@ export const ESSAY_WORDS = {
   level: ESSAY_STAGE_WORDS.level,
   notJudged: "No answer to place on the scale",
   dive: (n: number): string => `Deep dive ${n}`,
+  /** The fork scene (RR29): the options against the stated constraints. */
+  fork: {
+    option: "Option",
+    decision: "Decision",
+    recommended: "Recommended",
+    best: "Best",
+    hidden: "Not listed",
+    yours: "Yours",
+    meets: "Meets",
+    breaks: "Breaks",
+    /** A decision of the owner's own, under the table. */
+    own: (decision: string): string => `Yours, not listed: ${decision}`,
+    byDefault: "You left it: the recommended, by default",
+    axis: "From A to A′",
+    place: {
+      trusted: "A: trusted it",
+      reasoned: "Took it, with reasons",
+      departed: "Chose another",
+      own: "Said your own",
+      astute: "A′: saw past the list",
+    } satisfies Record<ForkPlacement, string>,
+    verdict: {
+      best: "The best decision",
+      close: "Close to the best",
+      off: "Not the best",
+    } satisfies Record<ForkVerdict, string>,
+  },
   past: "One step past the ticket",
   into: ESSAY_STAGE_WORDS.into,
   ticketOf: (n: number, of: number): string => `Ticket ${n} of ${of}`,
