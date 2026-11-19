@@ -13,8 +13,7 @@
  * No set-aside marks: a take here is let go only by the week's Delete, Redo
  * or clean-up before Send, for good, and only while it waits.
  */
-import { TAKE_MAX_SECONDS } from "@some-ui/interview-week"
-import { ONE_TAKE, onPageVisibility } from "@some-ui/voice-capture"
+import { onPageVisibility } from "@some-ui/voice-capture"
 
 import { patternDesk } from "@/lib/takes-desk"
 import { browserLocalStorage } from "@/lib/tenant/storage"
@@ -23,17 +22,15 @@ import type { InterviewWeekPorts } from "./runtime"
 import { currentInterview } from "./runtime"
 import type { InterviewsStore } from "./store"
 import { heldWeeks, TAKES_KEY } from "./store"
+import { INTERVIEW_TAKE_LIMITS, INTERVIEW_TAKE_SHAPE } from "./take"
 
 const desk = patternDesk({
   key: TAKES_KEY,
   screen: "interview-week",
   from: null,
   dbName: "some-ui.interview-week-takes",
-  limits: {
-    max: Number.POSITIVE_INFINITY,
-    maxMs: TAKE_MAX_SECONDS * 1000,
-  },
-  shape: { ...ONE_TAKE, send: "on-confirm" },
+  limits: INTERVIEW_TAKE_LIMITS,
+  shape: INTERVIEW_TAKE_SHAPE,
 })
 
 /** The week's desk, for the copy home (`lib/home-link/voice-copy`). */

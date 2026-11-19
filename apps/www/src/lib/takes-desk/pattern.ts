@@ -151,7 +151,8 @@ const takenAt = (take: Take): number => take.takenAt
  */
 export type DeskShape = Pick<TakePatternOptions, "takes" | "play" | "send">
 
-function deskPatternOptions(
+/** The pattern options a desk records under: its shape, and its cap on a take. */
+export function deskPatternOptions(
   limits: TakeLimits,
   shape: DeskShape
 ): TakePatternOptions {

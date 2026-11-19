@@ -18,6 +18,7 @@ export type TakeWords = {
   readonly button: {
     readonly ready: string
     readonly again: string
+    readonly counting: (left: number) => string
     readonly opening: string
     readonly recording: string
     readonly keeping: string
@@ -28,6 +29,7 @@ export type TakeWords = {
   readonly buttonLabel: {
     readonly ready: string
     readonly again: string
+    readonly counting: (left: number) => string
     readonly opening: string
     readonly recording: string
     readonly keeping: string
@@ -88,6 +90,7 @@ export const TAKE_WORDS: TakeWords = {
   button: {
     ready: "Tap to talk",
     again: "Tap to record again",
+    counting: (left) => `Recording in ${left}`,
     opening: "Opening the microphone…",
     recording: "Tap to stop",
     keeping: "Keeping it…",
@@ -97,6 +100,7 @@ export const TAKE_WORDS: TakeWords = {
   buttonLabel: {
     ready: "Start talking",
     again: "Record it again",
+    counting: (left) => `Recording in ${left}. Tap to call it off`,
     opening: "Opening the microphone. Tap to stop",
     recording: "Stop, and keep it",
     keeping: "Keeping it",
@@ -162,6 +166,9 @@ export function buttonSaid(words: TakeWords, view: TakeButtonView): string {
     case "recording": {
       return words.button.recording
     }
+    case "counting": {
+      return words.button.counting(view.left)
+    }
     case "full": {
       return words.button.full(view.max)
     }
@@ -181,6 +188,7 @@ export function buttonLabel(words: TakeWords, view: TakeButtonView): string {
   if (view.kind === "ready") {
     return view.again ? words.buttonLabel.again : words.buttonLabel.ready
   }
+  if (view.kind === "counting") return words.buttonLabel.counting(view.left)
   return words.buttonLabel[view.kind]
 }
 

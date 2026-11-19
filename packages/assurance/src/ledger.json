@@ -4957,6 +4957,12 @@
       "family": "what-is-kept"
     },
     {
+      "store": "server:rust_work_span_event",
+      "class": "record",
+      "growth": "Per span of the Rust Rounds work tracker a paired phone sends (RR26, paulgsc/server#1008): two rows per span (started: week, ticket, step, exercise, points <= 64, device <= 64 chars; closed: stoppedBy, answer, countedSeconds), one row per (subject, span, kind), never updated; a few a day; append-only; leaves with the account.",
+      "family": "what-is-kept"
+    },
+    {
       "store": "server:sessions",
       "class": "record",
       "growth": "Per study session composed by the owner or provisioned by the waker: one row each, scalars plus JSON activities/scenes/layout (no stated size; small JSON); rows are mutable (upsert).",

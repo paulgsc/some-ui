@@ -24,6 +24,12 @@ export const NEARLY_UP_MS = 10_000
 export type TakeButtonView =
   /** A tap starts a take; `again` when it would supersede the item's take (D2). */
   | { readonly kind: "ready"; readonly again: boolean }
+  /**
+   * A screen's own lead-in before the take starts (the interview's cue, C397):
+   * `left` seconds to go, and a tap calls it off. The pattern never makes
+   * this; a screen that counts in shows it over `ready`.
+   */
+  | { readonly kind: "counting"; readonly left: number }
   /** Still tappable: a tap now lets the take go before it starts. */
   | { readonly kind: "opening" }
   | {

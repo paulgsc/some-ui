@@ -1,0 +1,20 @@
+{
+  "id": "C615",
+  "made": "2026-11-17",
+  "by": "claude",
+  "agreed": "2026-11-17",
+  "paths": [
+    "apps/www/src/lib/interview-week/prompter.ts",
+    "apps/www/src/components/jobs/interview/ladder.tsx",
+    "apps/www/src/components/jobs/interview/reads.tsx"
+  ],
+  "chose": "A script read aloud (a ready answer's Read it aloud rung, and each read card) goes through a teleprompter band paced by the voice, as page 4 of the agreed ladder prototype draws it: one phrase a line in large type, a band about a third of the way down with the line read lit and the next dimmed, moving while the microphone hears you and holding while you pause, with level bars, a Pause / Go on button, and the take's time against its aim in the head.",
+  "options": [
+    "paced by the voice's level, no transcription",
+    "paced by a clock only",
+    "following the words live with the phone's speech recognizer"
+  ],
+  "gray": "#3176 offered three ways to pace a read, and the owner agreed the prototype that draws the first rather than naming one.",
+  "undo": "Render the script as the plain scrollable list again (Script in ladder.tsx), and drop prompter.ts and the runtime's prompter.",
+  "refs": ["#3176", "#3175"]
+}

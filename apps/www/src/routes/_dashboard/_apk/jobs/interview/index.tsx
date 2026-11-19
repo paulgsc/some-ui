@@ -10,7 +10,7 @@ import { InterviewPage } from "@/components/jobs/interview/week"
 const Interview = (): JSX.Element | null =>
   import.meta.env.VITE_DEVICE_BACKEND === "true" ? <InterviewPage /> : null
 
-/** The interview week's own page (IW8): today's question, Read aloud, the rest, and the send. */
+/** The interview week's own page (IW8): today's question, Scripts, the rest, and the send. */
 export const Route = createFileRoute("/_dashboard/_apk/jobs/interview/")({
   component: Interview,
 })

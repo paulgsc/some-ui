@@ -1,0 +1,15 @@
+{
+  "id": "C617",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": ["apps/www/src/components/jobs/interview/ladder.tsx"],
+  "chose": "The band has no drag to nudge it ahead or back: Pause / Go on is its only control, as the agreed prototype draws it.",
+  "options": [
+    "no nudge",
+    "a swipe up or down a line through the shared pager, beside two visible buttons",
+    "two visible buttons only"
+  ],
+  "gray": "#3176's option 1 lists a drag to nudge, and the agreed prototype leaves it out. The shared pager pages nothing while a take is under way, so a nudge would mean either changing that rule for one deck or adding buttons nobody agreed.",
+  "undo": "Put the band's window on usePager (orientation vertical, held false) with visible back and ahead buttons, and add a nudge event to stepPrompter.",
+  "refs": ["#3176"]
+}

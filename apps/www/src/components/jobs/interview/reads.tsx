@@ -1,10 +1,12 @@
 /**
- * Read aloud, a section of its own (IW8, paulgsc/some-ui#3175): the week's
- * short scripts, each opening its own reading page, which counts down and
- * records while the script stays on screen (IW5's read). A read's take
+ * Scripts, a section of its own (IW8, paulgsc/some-ui#3175): the week's
+ * short scripts, the essay's opening first where the week has one (IW10),
+ * each opening its own reading page, which counts down and records while
+ * the script moves through the reading band (IW9). A read's take
  * waits on this phone until the week is sent.
  */
 import type { JSX } from "react"
+import { isOpening } from "@some-ui/interview-week"
 
 import { readItem } from "@/lib/interview-week/spec"
 import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
@@ -30,10 +32,17 @@ export const ReadsPage = (): JSX.Element => {
         const done = doneLine(held, readItem(card.id))
         return (
           <To card="card" key={card.id} to={{ page: "read", card: card.id }}>
-            <span className="font-semibold">{card.situation}</span>
+            <span className="font-semibold">
+              {isOpening(card) ? WORDS.opening : card.situation}
+            </span>
             <span className="text-muted-foreground text-xs">
               {done ?? WORDS.aim(card.targetSeconds)}
             </span>
+            {isOpening(card) && (
+              <span className="text-muted-foreground text-xs italic">
+                {card.script.split("\n")[0]}
+              </span>
+            )}
           </To>
         )
       })}
@@ -61,7 +70,7 @@ const ReadTake = ({
             {WORDS.situation} · {WORDS.aim(card.targetSeconds)}
           </p>
           <p className="text-sm">{card.situation}</p>
-          <Script lines={card.script.split("\n")} id={card.id} />
+          <Script held={held} item={item} seconds={card.targetSeconds} />
           <CueLine held={held} item={item} />
         </>
       }
