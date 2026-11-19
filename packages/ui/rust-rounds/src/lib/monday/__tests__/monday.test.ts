@@ -31,7 +31,7 @@ import sampleRuns from "@rust-rounds/lib/monday/sample/runs.json"
 import type { Values } from "@rust-rounds/lib/monday/values"
 import { ValuesSchema } from "@rust-rounds/lib/monday/values"
 import { QUILLMOSS_WEEK_FILE } from "@rust-rounds/lib/sample-week"
-import { readWeek } from "@rust-rounds/lib/week-check"
+import { readWeek, WEEK_V1_MAX_BYTES } from "@rust-rounds/lib/week-check"
 import { isRecord } from "@some-ui/core-utils"
 import { parseEssay } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
@@ -114,6 +114,20 @@ describe("the Monday routine, on the sample week", () => {
     const take = essay.ok ? essay.value.tickets[0]?.answer : undefined
     expect(take?.kind === "take" && take.transcript).toMatch(
       /^Every field becomes its own String/
+    )
+  })
+
+  it("writes no week home would drop for its size (C700)", () => {
+    const { bundle, history } = samplePrepared()
+    const big = values()
+    if (big.week === null) throw new Error("the sample writes a next week")
+    big.week.story = `${big.week.story} ${"x".repeat(WEEK_V1_MAX_BYTES)}`
+    const done = finish({ bundle, history, values: big, runs: RUNS })
+    expect(done.ok).toBe(false)
+    expect(done.ok ? [] : done.problems).toContainEqual(
+      expect.stringMatching(
+        /^week: the week's file is \d+ bytes; home keeps a some-ui\.rust-week\/1 week of at most 32768/
+      )
     )
   })
 })
