@@ -24,11 +24,11 @@ type MarkAt =
   | { readonly kind: "line"; readonly line: number }
   | { readonly kind: "elsewhere"; readonly location: string }
 
-/** A labelled span: its place, whether it is primary (`^`) or not (`-`), its label. */
+/** A span: its place, whether it is primary (`^`) or not (`-`), its label if any. */
 export type Mark = {
   readonly at: MarkAt
   readonly primary: boolean
-  readonly label: string
+  readonly label: string | null
 }
 
 /** A suggestion applied to the program's lines, for a code card. */
@@ -52,14 +52,15 @@ export type ChildView = {
   readonly spanless: boolean
   readonly location: string | null
   readonly marks: ReadonlyArray<Mark>
-  readonly fix: Fix | null
+  /** One card per suggestion rustc gave as an alternative; one for a multipart one. */
+  readonly fixes: ReadonlyArray<Fix>
   readonly loose: ReadonlyArray<LooseSuggestion>
 }
 
 export type DiagnosticView =
   | {
       readonly kind: "diagnostic"
-      /** As rustc heads it: `error[E0507]`, `error`, `warning[unused_variables]`. */
+      /** As rustc heads it: `error[E0507]`, `error`, `warning` (a lint's name stays out). */
       readonly head: string
       readonly level: string
       readonly message: string
@@ -77,29 +78,33 @@ const isSuggestion = (span: DiagnosticSpan): boolean =>
   span.suggestedReplacement !== null
 
 /**
- * `-->` and where it points: the first primary span in the program. One in
- * another file is told by its own mark instead, as rustc does.
+ * The span `-->` points at: the first primary one in the program that isn't a
+ * suggestion. One in another file is told by its own mark, as rustc does.
  */
-function locationLine(spans: ReadonlyArray<DiagnosticSpan>): string | null {
-  const primary = spans.find(
-    (span) => span.isPrimary && span.file === PROGRAM_FILE
+const locatedSpan = (
+  spans: ReadonlyArray<DiagnosticSpan>
+): DiagnosticSpan | undefined =>
+  spans.find(
+    (span) =>
+      span.isPrimary && span.file === PROGRAM_FILE && !isSuggestion(span)
   )
-  return primary === undefined ? null : locationOf(primary)
-}
 
 /**
- * Every labelled span that isn't a suggestion: the program's by line and
- * column, as rustc draws them, then the rest in the JSON's order.
+ * Every span that isn't a suggestion, but the located one when `-->` alone
+ * says all it holds (it has no label): the program's by line and column, as
+ * rustc draws them, then the rest in the JSON's order.
  */
-function marksOf(spans: ReadonlyArray<DiagnosticSpan>): ReadonlyArray<Mark> {
-  const labelled = spans.filter(
-    (span): span is DiagnosticSpan & { label: string } =>
-      span.label !== null && !isSuggestion(span)
+function marksOf(
+  spans: ReadonlyArray<DiagnosticSpan>,
+  located: DiagnosticSpan | undefined
+): ReadonlyArray<Mark> {
+  const shown = spans.filter(
+    (span) => !isSuggestion(span) && !(span === located && span.label === null)
   )
-  const inProgram = labelled
+  const inProgram = shown
     .filter((span) => span.file === PROGRAM_FILE)
     .sort((a, b) => a.lineStart - b.lineStart || a.columnStart - b.columnStart)
-  const elsewhere = labelled.filter((span) => span.file !== PROGRAM_FILE)
+  const elsewhere = shown.filter((span) => span.file !== PROGRAM_FILE)
   return [
     ...inProgram.map(
       (span): Mark => ({
@@ -156,7 +161,8 @@ export function applySuggestions(
   }
   edits.sort((a, b) => a.from - b.from)
   for (let index = 1; index < edits.length; index += 1) {
-    if (edits[index]!.from < edits[index - 1]!.to) return null
+    const [previous, edit] = [edits[index - 1]!, edits[index]!]
+    if (edit.from < previous.to || edit.from === previous.from) return null
   }
 
   const source = excerpt.map((row) => row.join("")).join("\n")
@@ -191,7 +197,9 @@ export function applySuggestions(
   for (const range of newRanges) {
     const start = placeOf(range.from)
     const end = placeOf(range.to)
-    for (let line = start.line; line <= end.line; line += 1) changed.add(line)
+    // The line of the last new character: a new `\n` ends its own line.
+    const lastLine = placeOf(Math.max(range.from, range.to - 1)).line
+    for (let line = start.line; line <= lastLine; line += 1) changed.add(line)
     if (range.to > range.from) {
       inserted.push({
         lineStart: start.line,
@@ -209,25 +217,75 @@ export function applySuggestions(
   }
 }
 
+/**
+ * Whether a child's suggestions are alternatives ("consider importing one of
+ * these"): two at one place, or overlapping. rustc's JSON doesn't say, so
+ * suggestions that don't collide are taken as one multipart suggestion.
+ */
+function areAlternatives(suggestions: ReadonlyArray<DiagnosticSpan>): boolean {
+  const sorted = [...suggestions].sort(
+    (a, b) => a.lineStart - b.lineStart || a.columnStart - b.columnStart
+  )
+  return sorted.some((span, index) => {
+    const previous = sorted[index - 1]
+    if (previous === undefined) return false
+    const sameStart =
+      span.lineStart === previous.lineStart &&
+      span.columnStart === previous.columnStart
+    const startsInside =
+      span.lineStart < previous.lineEnd ||
+      (span.lineStart === previous.lineEnd &&
+        span.columnStart < previous.columnEnd)
+    return sameStart || startsInside
+  })
+}
+
 function childView(child: DiagnosticChild, program: string | null): ChildView {
   const suggestions = child.spans.filter(isSuggestion)
-  const fix = program === null ? null : applySuggestions(program, suggestions)
+  const groups = areAlternatives(suggestions)
+    ? suggestions.map((span) => [span])
+    : [suggestions].filter((group) => group.length > 0)
+  const fixes: Array<Fix> = []
+  const loose: Array<LooseSuggestion> = []
+  for (const group of groups) {
+    const fix = program === null ? null : applySuggestions(program, group)
+    if (fix === null) {
+      loose.push(
+        ...group.map((span) => ({
+          location: locationOf(span),
+          replacement: span.suggestedReplacement ?? "",
+        }))
+      )
+    } else {
+      fixes.push(fix)
+    }
+  }
+  const located = locatedSpan(child.spans)
   return {
     level: child.level,
     message: child.message,
     spanless: child.spans.length === 0,
-    location: locationLine(child.spans),
-    marks: marksOf(child.spans),
-    fix,
-    loose:
-      fix === null
-        ? suggestions.map((span) => ({
-            location: locationOf(span),
-            replacement: span.suggestedReplacement ?? "",
-          }))
-        : [],
+    location: located === undefined ? null : locationOf(located),
+    marks: marksOf(child.spans, located),
+    fixes,
+    loose,
   }
 }
+
+/** rustc brackets an error's `E` code in its heading, never a lint's name. */
+const ERROR_CODE = /^E\d{4}$/
+
+/**
+ * Whether the diagnostics are all rustc printed: each one's `rendered` joins
+ * to the printout. Not when rustc printed something else too (a compiler
+ * panic's backtrace) or home kept only part of it.
+ */
+export const isWhole = (
+  diagnostics: ReadonlyArray<Diagnostic>,
+  printed: string
+): boolean =>
+  diagnostics.map((diagnostic) => diagnostic.rendered ?? "").join("") ===
+  printed
 
 /**
  * Every diagnostic of a compile, in rustc's order, as the phone lays it out.
@@ -242,16 +300,17 @@ export function diagnosticView(
     if (diagnostic.level === "failure-note") {
       return { kind: "bare", message: diagnostic.message }
     }
+    const located = locatedSpan(diagnostic.spans)
     return {
       kind: "diagnostic",
       head:
-        diagnostic.code === null
-          ? diagnostic.level
-          : `${diagnostic.level}[${diagnostic.code}]`,
+        diagnostic.code !== null && ERROR_CODE.test(diagnostic.code)
+          ? `${diagnostic.level}[${diagnostic.code}]`
+          : diagnostic.level,
       level: diagnostic.level,
       message: diagnostic.message,
-      location: locationLine(diagnostic.spans),
-      marks: marksOf(diagnostic.spans),
+      location: located === undefined ? null : locationOf(located),
+      marks: marksOf(diagnostic.spans, located),
       children: diagnostic.children.map((child) => childView(child, program)),
     }
   })
@@ -356,9 +415,18 @@ function printedLine(line: string): ReadonlyArray<PrintedRun> {
   if (gutter !== null) {
     const [, bar = "", number = "", rest = ""] = gutter
     const head: PrintedRun = { text: bar, tone: "gutter" }
-    // A numbered row is the program's own line, kept plain.
-    const markers = number === "" ? markerRuns(rest) : null
-    return [head, ...(markers ?? [{ text: rest, tone: "plain" as const }])]
+    // A numbered row is the program's own line, kept plain. An unnumbered
+    // one is rustc's: markers and their labels, or a label alone under a
+    // `|` that joins it to its span (a secondary one's).
+    if (number !== "") return [head, { text: rest, tone: "plain" }]
+    const markers = markerRuns(rest)
+    if (markers !== null) return [head, ...markers]
+    const indent = rest.length - rest.trimStart().length
+    return [
+      head,
+      { text: rest.slice(0, indent), tone: "plain" },
+      { text: rest.slice(indent), tone: "secondary" },
+    ]
   }
   return [{ text: line, tone: "plain" }]
 }

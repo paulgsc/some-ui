@@ -92,6 +92,25 @@ describe("RunView, a compile error", () => {
     expect(details?.querySelector("pre")?.textContent).toBe(E0507.stderr)
   })
 
+  it("opens the printout when it holds more than the laid-out view", () => {
+    const panicked = {
+      ...E0507,
+      stderr: `thread 'rustc' panicked at compiler/x.rs\n${E0507.stderr}`,
+    }
+    const { container } = render(
+      <RunView run={panicked} program={E0507_PROGRAM} none="" />
+    )
+    expect(container.querySelector("details")?.open).toBe(true)
+  })
+
+  it("shows a run with no diagnostics read as printed, and nothing laid out", () => {
+    const { container } = render(
+      <RunView run={{ ...E0507, diagnostics: [] }} none="" />
+    )
+    expect(screen.queryByRole("figure", { name: WORDS.rustcSaid })).toBeNull()
+    expect(container.querySelector("pre")?.textContent).toBe(E0507.stderr)
+  })
+
   it("shows a run from a home older than RR23 as printed, whole, and nothing laid out", () => {
     const { diagnostics: _, ...older } = E0507
     const { container } = render(

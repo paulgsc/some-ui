@@ -12,8 +12,9 @@
  * And at the largest text size (RR23, #3243): Android's largest font scale
  * doubles the text, so the root font size is set to 200% and card a, which
  * rustc refused, is measured laid out and with its printout open. Nothing
- * scrolls sideways there but a code region: the program's card, a
- * suggestion's card and rustc's printout.
+ * scrolls sideways there but a code region: the program's card and rustc's
+ * printout. (Card a's E0277 has no suggestion, so no suggestion's card is
+ * measured here; it is a CodeCard, which code-card-fit measures.)
  *
  * Run against a built panel page:
  *

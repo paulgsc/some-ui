@@ -19,6 +19,7 @@ import type {
 } from "@rust-rounds/lib/rustc-view"
 import {
   diagnosticView,
+  isWhole,
   printedLines,
   RUSTC_GLYPHS,
   toneOfLevel,
@@ -170,7 +171,7 @@ const Marks = ({ marks }: { marks: ReadonlyArray<Mark> }): JSX.Element => (
               {mark.primary ? RUSTC_GLYPHS.primary : RUSTC_GLYPHS.secondary}
             </span>
             <span className={cn(tone, "min-w-0 [overflow-wrap:anywhere]")}>
-              <Said text={mark.label} />
+              {mark.label !== null && <Said text={mark.label} />}
             </span>
           </div>
         </div>
@@ -196,17 +197,19 @@ const Child = ({
     </Line>
     {child.location !== null && <Location location={child.location} />}
     <Marks marks={child.marks} />
-    {child.fix !== null && (
+    {child.fixes.map((fix, at) => (
       <CodeCard
-        code={child.fix.code}
-        firstLine={child.fix.firstLine}
-        changedLines={child.fix.changedLines}
-        inserted={child.fix.inserted}
+        // eslint-disable-next-line react/no-array-index-key
+        key={at}
+        code={fix.code}
+        firstLine={fix.firstLine}
+        changedLines={fix.changedLines}
+        inserted={fix.inserted}
         label={WORDS.rustcSuggested}
         appearance={appearance}
         className="mt-1"
       />
-    )}
+    ))}
     {child.loose.map((loose, at) => (
       // eslint-disable-next-line react/no-array-index-key
       <div key={at} className="flex min-w-0 flex-col">
@@ -296,7 +299,7 @@ const CompileError = ({
   program: string | null
   appearance: Appearance
 }): JSX.Element =>
-  run.diagnostics === undefined ? (
+  run.diagnostics === undefined || run.diagnostics.length === 0 ? (
     <PrintoutSection
       label={WORDS.rustcPrinted}
       text={run.stderr}
@@ -309,8 +312,9 @@ const CompileError = ({
         program={program}
         appearance={appearance}
       />
-      <details className="group min-w-0">
-        <summary className="text-muted-foreground flex min-h-11 cursor-pointer items-center gap-1 text-xs font-semibold">
+      {/* Open when the laid-out view isn't all rustc printed. */}
+      <details className="min-w-0" open={!isWhole(run.diagnostics, run.stderr)}>
+        <summary className="text-muted-foreground min-h-11 cursor-pointer py-3 text-xs font-semibold">
           {WORDS.rustcPrinted}
         </summary>
         <Printout text={run.stderr} appearance={appearance} />
