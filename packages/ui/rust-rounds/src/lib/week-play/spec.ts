@@ -32,11 +32,14 @@
  * - **No typing.** A ticket's answer is spoken; when voice doesn't come
  *   through, the card offers to try again or come back later.
  * - **What Send keeps** is the week sent (`WeekSent`): when, each ticket's
- *   take, and the tickets passed over, on this phone (`./store`). The takes
+ *   take, the tickets passed over and, where home keeps them, the decision
+ *   at each fork (`verdicts`, RR29), on this phone (`./store`). A decision
+ *   changed since the last Send counts as a change to send again. The takes
  *   go home as voice notes (apps/www `lib/home-link/voice-copy`), and the week
  *   sent goes home as it is kept (`lib/kept-home`, RR14), where home makes
  *   the week's record from it.
  */
+import type { Decision, DecisionsSent } from "@rust-rounds/lib/decisions"
 import type { Week } from "@rust-rounds/lib/formats/week"
 import { itemOf, pointItem, weekItems } from "@rust-rounds/lib/week-play/points"
 import type {
@@ -67,7 +70,47 @@ export type WeekSent = {
   readonly answers: ReadonlyArray<WeekAnswer>
   /** The tickets not said, in the week's order. */
   readonly passed: ReadonlyArray<string>
+  /**
+   * The decision at every fork with options (RR29, C693), by ticket and
+   * fork, where this build's home keeps them (contract epoch 24 on); absent
+   * otherwise, and for a `/1` week, whose forks offer nothing to pick.
+   */
+  readonly verdicts?: ReadonlyArray<WeekVerdict>
 }
+
+/**
+ * One fork's decision as sent: named `<week>:<ticket>:<n>:verdict`, beside
+ * the fork's take, `<week>:<ticket>:<n>` (RR24), whose words say why. Its
+ * shape is the essay's `DecisionSchema` (video-render, RR29), less an own
+ * option's words, which are the fork's take.
+ */
+type WeekVerdict = {
+  readonly ref: string
+  readonly decision: Decision
+}
+
+/** The ref a fork's decision is sent under: `2026-w47:TB-101:1:verdict`. */
+const verdictRef = (week: string, ticket: string, fork: number): string =>
+  `${ticketLine(week, pointItem(ticket, fork))}:verdict`
+
+/** The decisions of `sent` as `<ref>=<decision>` lines, to tell a change. */
+const verdictLines = (sent: WeekSent): ReadonlyArray<string> =>
+  (sent.verdicts ?? []).map(
+    ({ ref, decision }) =>
+      `${ref}=${decision.kind === "option" ? decision.option : decision.kind}`
+  )
+
+/** `decisions` as they go home with a week sent. */
+const weekVerdicts = (
+  week: string,
+  decisions: DecisionsSent
+): ReadonlyArray<WeekVerdict> =>
+  decisions.flatMap(({ ticket, forks }) =>
+    forks.map(({ fork, decision }) => ({
+      ref: verdictRef(week, ticket, fork),
+      decision,
+    }))
+  )
 
 /** One take sent: of a whole ticket, or of one of its points (`point`, from 1). */
 export type WeekAnswer = {
@@ -189,7 +232,16 @@ export const weekAtHome = (
   return { ...remembered, homeSaid: false, elsewhere: null }
 }
 
-function weekSpec(week: Week, perPoint: boolean): BundleSpec<WeekKind> {
+/**
+ * The week's spec. `decisions`, where home keeps them, reads the decision
+ * at each fork when Send makes the record: they live in their own list
+ * (`./store`'s `weekPicks`), not the draft.
+ */
+function weekSpec(
+  week: Week,
+  perPoint: boolean,
+  decisions: (() => DecisionsSent) | null
+): BundleSpec<WeekKind> {
   return {
     items: weekItems(week.tickets, perPoint),
     answersOf: ticketLine,
@@ -224,6 +276,8 @@ function weekSpec(week: Week, perPoint: boolean): BundleSpec<WeekKind> {
         (a, b) => answerOrder(week, a) - answerOrder(week, b)
       )
       const answered = new Set(sent.map(({ ticket }) => ticket))
+      const verdicts =
+        decisions === null ? [] : weekVerdicts(draft.id, decisions())
       return {
         week: draft.id,
         at,
@@ -231,10 +285,12 @@ function weekSpec(week: Week, perPoint: boolean): BundleSpec<WeekKind> {
         passed: week.tickets
           .map(({ id }) => id)
           .filter((ticket) => !answered.has(ticket)),
+        ...(verdicts.length === 0 ? {} : { verdicts }),
       }
     },
     idOf: (sent) => sent.week,
     named: (sent) => sent.answers.map(({ take }) => take),
+    carries: verdictLines,
     resends: true,
     closed: (_draft, at) => isClosed(week, at),
   }
@@ -246,5 +302,6 @@ function weekSpec(week: Week, perPoint: boolean): BundleSpec<WeekKind> {
  */
 export const weekMachine = (
   week: Week,
-  perPoint = false
-): BundleMachine<WeekKind> => bundleMachine(weekSpec(week, perPoint))
+  perPoint = false,
+  decisions: (() => DecisionsSent) | null = null
+): BundleMachine<WeekKind> => bundleMachine(weekSpec(week, perPoint, decisions))

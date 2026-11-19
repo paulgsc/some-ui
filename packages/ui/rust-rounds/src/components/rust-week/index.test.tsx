@@ -92,6 +92,7 @@ function ports(
     newId: () => "unused",
     engage: () => undefined,
     perPoint: false,
+    verdicts: false,
     onVisibility: (listener) => {
       listener(false)
       return (): void => undefined

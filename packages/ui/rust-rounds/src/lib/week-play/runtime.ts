@@ -13,6 +13,8 @@
  * answer that comes after the screen went is still kept: it can only add
  * words home heard, never change any.
  */
+import type { DecisionsSent } from "@rust-rounds/lib/decisions"
+import { atSend } from "@rust-rounds/lib/decisions"
 import type { HeldWeek } from "@rust-rounds/lib/weeks"
 import type { WorkPorts } from "@rust-rounds/lib/work-tracker/runtime"
 import type { KeyedStorage } from "@some-ui/core-utils"
@@ -36,7 +38,14 @@ import { pasteRuntime } from "./paste"
 import { firstItemOf, itemOf, pointItem } from "./points"
 import type { HomeWeekSent, WeekAtHome, WeekKind, WeekSent } from "./spec"
 import { HOME_UNKNOWN, isClosed, weekAtHome, weekMachine } from "./spec"
-import { heardWords, pasteStores, weekDrafts, weeksSent } from "./store"
+import {
+  heardWords,
+  ofWeek,
+  pasteStores,
+  weekDrafts,
+  weekPicks,
+  weeksSent,
+} from "./store"
 
 export type RustWeekPorts = {
   /** The week to play: the one this phone holds that is open now. */
@@ -76,6 +85,12 @@ export type RustWeekPorts = {
   readonly perPoint: boolean
   /** The work tracker and the week's time (RR26), where this build has them. */
   readonly work?: WorkPorts
+  /**
+   * The decision at each fork goes home with the week sent (RR29), where
+   * this build's home keeps them (contract epoch 24 on). Fixed for the
+   * week's opening.
+   */
+  readonly verdicts: boolean
 }
 
 export type RustWeek = {
@@ -111,7 +126,14 @@ export type WeekHeard = Readonly<Partial<Record<string, HeardAnswer>>>
 
 export function createRustWeek(ports: RustWeekPorts): RustWeek {
   const { week } = ports.week
-  const machine = weekMachine(week, ports.perPoint)
+  const picks = weekPicks(ports.storage)
+  const machine = weekMachine(
+    week,
+    ports.perPoint,
+    ports.verdicts
+      ? (): DecisionsSent => atSend(week, ofWeek(picks.list() ?? [], week.id))
+      : null
+  )
   const bundle = bundleRuntime(machine, {
     takes: ports.takes,
     drafts: weekDrafts(ports.storage, week.id),

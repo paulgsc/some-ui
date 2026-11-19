@@ -7,6 +7,8 @@
  * a week past its deadline records and sends nothing.
  */
 import { QUILLMOSS_WEEK } from "@rust-rounds/lib/sample-week"
+import { TALLOWBROOK_WEEK_FILE } from "@rust-rounds/lib/sample-week/tallowbrook"
+import { readWeek } from "@rust-rounds/lib/week-check"
 import type { RustWeek } from "@rust-rounds/lib/week-play/runtime"
 import { createRustWeek } from "@rust-rounds/lib/week-play/runtime"
 import type { WeekSent } from "@rust-rounds/lib/week-play/spec"
@@ -62,6 +64,7 @@ function phone(
     heard?: (take: string) => Promise<HeardAnswer>
     homeHolds?: (sent: WeekSent) => boolean
     perPoint?: boolean
+    verdicts?: boolean
     held?: HeldWeek
   } = {}
 ): Phone {
@@ -97,6 +100,7 @@ function phone(
     newId: () => "unused",
     engage: (event) => engaged.push(event),
     perPoint,
+    verdicts: over.verdicts ?? false,
     onVisibility: (listener) => {
       listener(false)
       return (): void => undefined
@@ -675,6 +679,94 @@ describe("the flow and the takes on one ticket", () => {
     })
     on.week.bundle.dispatch({ type: "later", item: last })
     expect(onScreen(on)).toEqual({ flow: `${first} voice`, takes: last })
+    on.detach()
+  })
+})
+
+/**
+ * The decision at each fork goes home with the week sent (RR29, C693):
+ * every fork with options, named `<week>:<ticket>:<n>:verdict`, a pick as
+ * picked and a fork left alone as the recommended by default; a decision
+ * changed alone is something to send again; and none goes where home
+ * doesn't keep them.
+ */
+describe("the decisions sent (RR29)", () => {
+  const read = readWeek(TALLOWBROOK_WEEK_FILE)
+  if (!read.ok) throw new Error("the /2 sample reads")
+  const TB: HeldWeek = { ...HELD, week: read.week, runs: {} }
+  const forks = read.week.tickets.flatMap((ticket) =>
+    ticket.forks.map((_, i) => `2026-w47:${ticket.id}:${i + 1}:verdict`)
+  )
+
+  it("sends each fork's decision, and sends again for a decision changed alone", async () => {
+    vi.setSystemTime(new Date("2026-11-19T18:00:00Z"))
+    const storage = inMemoryStorage()
+    const on = phone(storage, onConfirm(), {
+      perPoint: true,
+      verdicts: true,
+      held: TB,
+    })
+    const flow = on.week.flow
+    if (flow === null) throw new Error("a flow")
+    flow.dispatch({ type: "openTicket", ticket: "TB-101" })
+    flow.dispatch({
+      type: "pick",
+      fork: 1,
+      pick: { kind: "option", option: "B" },
+    })
+    await say(on, "TB-101:1")
+    on.week.bundle.dispatch({ type: "review" })
+    on.week.bundle.dispatch({ type: "send" })
+    await pass()
+
+    const [first] = weeksSent(storage).list() ?? []
+    expect(first?.verdicts?.map(({ ref }) => ref)).toEqual(forks)
+    expect(first?.verdicts?.slice(0, 2)).toEqual([
+      {
+        ref: "2026-w47:TB-101:1:verdict",
+        decision: { kind: "option", option: "B" },
+      },
+      {
+        ref: "2026-w47:TB-101:2:verdict",
+        decision: { kind: "recommended-by-default" },
+      },
+    ])
+
+    // Back to the week: nothing changed, nothing to send again.
+    on.week.bundle.dispatch({ type: "back" })
+    on.week.bundle.dispatch({ type: "review" })
+    expect(on.week.machine.missing(on.week.bundle.getSnapshot())).toBe(
+      "unchanged"
+    )
+    // A decision changed alone is something to send.
+    flow.dispatch({ type: "pick", fork: 2, pick: { kind: "own" } })
+    expect(on.week.machine.missing(on.week.bundle.getSnapshot())).toBeNull()
+    on.week.bundle.dispatch({ type: "send" })
+    await pass()
+    const kept = weeksSent(storage).list() ?? []
+    expect(kept).toHaveLength(2)
+    expect(kept[1]?.verdicts?.[1]).toEqual({
+      ref: "2026-w47:TB-101:2:verdict",
+      decision: { kind: "own" },
+    })
+    // The takes sent are the same ones: only the decision moved.
+    expect(kept[1]?.answers).toEqual(first?.answers)
+    on.detach()
+  })
+
+  it("sends no decisions where home doesn't keep them", async () => {
+    vi.setSystemTime(new Date("2026-11-19T18:00:00Z"))
+    const storage = inMemoryStorage()
+    const on = phone(storage, onConfirm(), { perPoint: true, held: TB })
+    on.week.flow?.dispatch({ type: "openTicket", ticket: "TB-101" })
+    on.week.flow?.dispatch({ type: "pick", fork: 1, pick: { kind: "own" } })
+    await say(on, "TB-101:1")
+    on.week.bundle.dispatch({ type: "review" })
+    on.week.bundle.dispatch({ type: "send" })
+    await pass()
+    const [sent] = weeksSent(storage).list() ?? []
+    expect(sent).toBeDefined()
+    expect(sent).not.toHaveProperty("verdicts")
     on.detach()
   })
 })

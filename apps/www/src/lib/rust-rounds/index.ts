@@ -164,6 +164,19 @@ const SNAPSHOT_EPOCH: number = SERVER_CONTRACT_EPOCH
 const RECORDS_PER_POINT = SNAPSHOT_EPOCH >= POINT_TAKES_EPOCH
 
 /**
+ * The contract epoch from which home keeps the decision at each fork with
+ * a week sent (RR29, paulgsc/some-ui#3257): `verdicts`, each named
+ * `<week>:<ticket>:<n>:verdict`. A home before it refuses a send that
+ * carries them, so a build sends them only once its route snapshot says
+ * home serves this epoch, and a send holding them waits on the phone until
+ * home says it serves this build (`lib/kept-home`).
+ */
+const VERDICTS_EPOCH = 24
+
+/** Whether this build sends the decisions: its snapshot's epoch is new enough. */
+const SENDS_VERDICTS = SNAPSHOT_EPOCH >= VERDICTS_EPOCH
+
+/**
  * The week's ports (RR13), with the week open now among those this phone
  * holds, or null while it holds none; `home` and `heard` are handed in by
  * the route, which may reach home.
@@ -187,6 +200,7 @@ export function phoneRustWeekPorts(
         onVisibility: onPageVisibility,
         engage,
         perPoint: RECORDS_PER_POINT,
+        verdicts: SENDS_VERDICTS,
       }
 }
 
