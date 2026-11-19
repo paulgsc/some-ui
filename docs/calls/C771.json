@@ -1,0 +1,9 @@
+{
+  "id": "C771",
+  "made": "2026-11-19",
+  "by": "owner",
+  "paths": ["CLAUDE.md"],
+  "chose": "Limits that state a preference about content or its shape (a length, a count, a word bound) are policy in code, not environment variables, and an agent may move or retire one when a story outgrows it, recording the move as a call that moves the one before. Guards that protect home or the record (memory and disk caps, the owner's history, the assurance ledger's promises) are not covered: loosening one still needs the owner.",
+  "undo": "Remove the 'Policy limits move with the story' section from CLAUDE.md; content limits then need the owner again.",
+  "refs": ["#3291", "#3197"]
+}
