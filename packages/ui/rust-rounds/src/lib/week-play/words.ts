@@ -10,6 +10,7 @@
  * (`@some-ui/shared`'s `BundleWords`), filled in here; a take's own are the
  * take pattern's.
  */
+import type { FlowStepKind, Standing } from "@rust-rounds/lib/flow"
 import type { Week } from "@rust-rounds/lib/formats/week"
 import type { BundleWords } from "@some-ui/shared"
 import { TAKE_WORDS } from "@some-ui/voice-capture"
@@ -251,6 +252,96 @@ export const WEEK_WORDS = {
       "This phone couldn't keep the paste, so nothing went. It's all still here.",
     draftNotKept:
       "This phone couldn't keep that change to the paste, so it would be lost if you left now.",
+  },
+  /**
+   * A ticket's flow (RR25, #3249; RR29, #3257; the owner's approved
+   * prototype, C690): read, the academy, then voice, each a page of one
+   * pager over the week. The owner's rule holds here too (C711, the
+   * owner's): a step worked through is ticked "✓" beside its name, never
+   * "done".
+   */
+  flow: {
+    /** What PageControls pages, for assistive tech. */
+    paged: "steps",
+    /** Between the parts of one line: "Exercise 1 · builds toward forks 1 · 2". */
+    dot: " · ",
+    /** The step row. */
+    steps: {
+      read: "Read",
+      academy: "Academy",
+      voice: "Voice",
+    } satisfies Record<FlowStepKind, string>,
+    stepsOf: (ticket: string): string => `Steps of ${ticket}`,
+    standing: {
+      /** Beside the step's name: "Read ✓". */
+      done: "✓",
+      skipped: "Skipped",
+      open: "",
+    } satisfies Record<Standing, string>,
+    /** What a screen reader says for the tick. */
+    doneSaid: "worked through",
+    /** The academy's standing in the step row: exercises worked at the desk. */
+    atDesk: (n: number, of: number): string => `${n} of ${of} worked`,
+    notKept:
+      "This phone couldn't keep that, so it would be lost if you left now.",
+    read: {
+      meet: "What it has to meet",
+      forks: "The agent's recommendations",
+      forkOf: (n: number, of: number): string => `Fork ${n} of ${of}`,
+      notAll: (k: number): string =>
+        `${k} options. Not every option is listed, and the recommended one isn't always best.`,
+      recommended: "Recommended",
+      restsOn: "Rests on:",
+      cites: "Trades on:",
+      toAcademy: "On to the academy",
+      toDecisions: "On to your decisions",
+      toVoice: "On to voice",
+      skip: "Skip to your decisions",
+    },
+    academy: {
+      line: "Before you decide, test the models the options rest on, at your desk. Stumbling here is the point.",
+      head: (n: number, forks: string): string =>
+        `Exercise ${n} · builds toward forks ${forks}`,
+      tests: (which: string): string => `Tests ${which}`,
+      /** One option an exercise tests: "fork 1's option B". */
+      option: (fork: number, option: string): string =>
+        `fork ${fork}'s option ${option}`,
+      /** Between the options an exercise tests. */
+      and: " and ",
+      atDesk: "Worked at your desk",
+      notYet: "Not yet",
+      onward: "On to your decisions",
+      skip: "Skip to your decisions",
+    },
+    exercise: {
+      back: "The academy",
+      head: (ticket: string, n: number, of: number): string =>
+        `${ticket} · Exercise ${n} of ${of}`,
+      toward: (forks: string): string => `builds toward forks ${forks}`,
+      tests: (fork: number, option: string): string =>
+        `Tests the model behind fork ${fork}'s option ${option}`,
+      words: "Words it works on",
+      then: "Then",
+      clarity: "Questions to have clarity on",
+      tick: "I did this at my desk",
+      ticked: "Worked at your desk",
+    },
+    voice: {
+      line: 'At each fork, pick an option or say your own, then say why. "I\'m trusting the agent" is a reason too. A fork you leave alone goes with the recommended.',
+      heading: "Your decisions",
+      recommended: "Recommended",
+      own: "Something else: say it",
+      none: "Going with the recommended",
+      pick: (option: string): string => `Your pick: ${option}`,
+      ownPick: "Your own option",
+      byDefault: (option: string): string =>
+        `Going with the recommended · ${option}`,
+      said: "said",
+      notSaid: "not said yet",
+      mine: (n: number, of: number): string =>
+        `${n} of ${of} ${of === 1 ? "fork" : "forks"} decided by you · the rest go with the recommended · all on this phone until you send`,
+      next: (ticket: string): string => `On to ${ticket}`,
+    },
   },
   /** The cards from before the weeks, until RR20 retires them. */
   rounds: "The rounds from before",

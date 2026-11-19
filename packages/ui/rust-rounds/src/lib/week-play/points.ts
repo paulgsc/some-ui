@@ -19,6 +19,18 @@
 /** The bundle item of `ticket`'s point `n` (from 1): `QM-312:2`. */
 export const pointItem = (ticket: string, n: number): string => `${ticket}:${n}`
 
+/**
+ * Where `ticket` opens among a week's `items`: its first point, answered
+ * point by point (RR24), else its own item; -1 when it has neither.
+ */
+export function firstItemOf(
+  items: ReadonlyArray<string>,
+  ticket: string
+): number {
+  const point = items.indexOf(pointItem(ticket, 1))
+  return point === -1 ? items.indexOf(ticket) : point
+}
+
 /** What a week's item is: a whole ticket, or one point of one. */
 export type ItemOf = { readonly ticket: string; readonly point: number | null }
 

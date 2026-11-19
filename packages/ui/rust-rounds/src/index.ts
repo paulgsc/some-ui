@@ -37,6 +37,7 @@ export {
   WeekSchema,
 } from "./lib/formats/week"
 export { QUILLMOSS_WEEK } from "./lib/sample-week"
+export { TALLOWBROOK_WEEK_FILE } from "./lib/sample-week/tallowbrook"
 export type { WeekProblem, WeekReading } from "./lib/week-check"
 export { describeWeekProblem, readWeek } from "./lib/week-check"
 export type { ReplyIntake } from "./lib/intake"
