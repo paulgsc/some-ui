@@ -469,6 +469,8 @@ async function mountAph(store: AphStore): Promise<void> {
       await send("PUT", "/aph/entries/1", "{}")
       return { kind: "synced" }
     },
+    // The read as the screens open (AR1) is `aph-read.test.ts`'s.
+    read: () => Promise.resolve({ kind: "synced" }),
   }
   const { DeviceAphLane } = await import("@/components/aph/device-aph-lane")
   const { DeviceHomeGlyph, HomeLanes } = await import(

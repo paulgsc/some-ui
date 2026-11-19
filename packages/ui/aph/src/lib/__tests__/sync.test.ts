@@ -8,7 +8,7 @@ import type { AphSettings, Entry } from "@aph/lib/model"
 import type { AphStore } from "@aph/lib/store"
 import { createAphStore } from "@aph/lib/store"
 import { EntrySchema, SettingsSchema } from "@aph/lib/stored"
-import { exchangeWithHome } from "@aph/lib/sync"
+import { exchangeWithHome, readFromHome } from "@aph/lib/sync"
 import type { HomeCall } from "@some-ui/core-utils"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { describe, expect, it } from "vitest"
@@ -206,6 +206,66 @@ describe("an exchange with home", () => {
     )
     const home = fakeHome()
     expect(await exchangeWithHome(store, home.send)).toEqual({ kind: "synced" })
+    expect(home.requests).toEqual([])
+  })
+})
+
+/**
+ * **AR1: aph's screens show home's record however long the drain waits.**
+ *
+ * - _Claim:_ aph's read as its screens open (`readFromHome`, through
+ *   www's `readAphOnOpen` and the link's `keep`) sends nothing and lays what
+ *   this phone holds unsent over home's record, so home's history shows
+ *   before the lane's own exchange has run.
+ * - _Family:_ the outbox (empty, entries waiting, settings waiting) × home's
+ *   record (many entries, none) × aph kept on home or not yet × the link's
+ *   drain idle or held by another lane's run.
+ * - _Proof:_ this describe over the store; apps/www
+ *   `lib/home-link/__tests__/aph-read.test.ts` for the read going beside a
+ *   drain run that is held.
+ * - _Tolerance:_ one read each opening; one that finds no answer leaves
+ *   the outbox alone shown until the lane's run or the next opening.
+ */
+describe("aph's read of home as its screens open (AR1)", () => {
+  it("shows home's history with what waits laid over it, sending nothing", async () => {
+    const home = fakeHome()
+    // Home holds a's and b's day already; this phone kept c unsent.
+    await exchangeWithHome(keptOnHome(), home.send)
+    home.held.delete("c")
+    const store = createAphStore(
+      { settings: SETTINGS, entries: [] },
+      memoryStorage()
+    )
+    expect(store.keepOnHome()).toBe(true)
+    const before = home.requests.length
+    expect(await readFromHome(store, home.send)).toEqual({ kind: "synced" })
+    expect(home.requests.slice(before)).toEqual(["GET /aph"])
+    expect(store.where()).toMatchObject({ pulled: true })
+    expect(store.get().entries.map(({ id }) => id)).toEqual(["a", "b"])
+  })
+
+  it("lays the outbox over home's record", async () => {
+    const home = fakeHome()
+    const store = keptOnHome()
+    home.held.set("z", entry("z", "2026-09-16"))
+    await readFromHome(store, home.send)
+    expect(
+      store
+        .get()
+        .entries.map(({ id }) => id)
+        .sort()
+    ).toEqual(["a", "b", "c", "z"])
+    // Still waiting: nothing was sent.
+    expect(store.outbox()?.entries.map(({ id }) => id)).toEqual(["a", "b", "c"])
+  })
+
+  it("reads nothing before aph is kept on home", async () => {
+    const home = fakeHome()
+    const store = createAphStore(
+      { settings: SETTINGS, entries: ENTRIES },
+      memoryStorage()
+    )
+    expect(await readFromHome(store, home.send)).toEqual({ kind: "synced" })
     expect(home.requests).toEqual([])
   })
 })
