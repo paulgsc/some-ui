@@ -4,11 +4,18 @@
  * writes a week whose essay can't fit, and never refuses one whose could.
  */
 import type { Essay } from "@some-ui/video-render"
-import { essayFit, pointsFit, sampleEssay } from "@some-ui/video-render"
+import {
+  essayFit,
+  parseEssay,
+  pointsFit,
+  sampleEssay,
+} from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
 const SHORT = "Borrow, clone or take the address?"
 const WRAPS = "How should print and reprint share the log?"
+const LONG =
+  "How should print and reprint share the log, given a jam can reprint any order while the first print still holds its borrow of it?"
 
 /** The sample's silent ticket asking `points`, every other text at its least. */
 function leastEssayOf(points: ReadonlyArray<string>): {
@@ -21,28 +28,37 @@ function leastEssayOf(points: ReadonlyArray<string>): {
   const silent = essay.tickets.find((t) => t.answer.kind === "silence")
   if (silent === undefined) throw new Error("the sample has a silence")
   silent.points = points.map((to) => ({ to, best: "." }))
-  silent.dives = silent.dives.slice(0, 1).map((dive) => ({ ...dive, point: 0 }))
+  // A dive on each of its first two points, as a ticket of two or more takes.
+  silent.dives = silent.dives
+    .slice(0, Math.min(2, points.length))
+    .map((dive, k) => ({ ...dive, point: k }))
+  if (!parseEssay(essay).ok) throw new Error("the least essay must parse")
   return { essay, id: silent.id }
 }
 
 describe("pointsFit", () => {
   it("refuses exactly where essayFit refuses the least essay of those points", () => {
-    for (const question of [SHORT, WRAPS])
+    const scenes = (problems: ReadonlyArray<string>): Array<string> =>
+      problems.flatMap((p) => /\b(best|beside)\b/.exec(p)?.[1] ?? [])
+    const refused = new Set<string>()
+    for (const question of [SHORT, WRAPS, LONG])
       for (let n = 1; n <= 6; n += 1) {
         const points = Array.from({ length: n }, () => question)
         const { essay, id } = leastEssayOf(points)
-        const later = essayFit(essay).problems.filter(
-          (p) => p.startsWith(`${id} best`) || p.startsWith(`${id} beside`)
+        const later = scenes(
+          essayFit(essay).problems.filter((p) => p.startsWith(`${id} `))
         )
-        expect(pointsFit(id, points).length, `${n} × "${question}"`).toBe(
-          later.length
+        expect(scenes(pointsFit(id, points)), `${n} × "${question}"`).toEqual(
+          later
         )
+        for (const scene of later) refused.add(scene)
       }
+    // Both scenes are refused somewhere, so neither half is vacuous.
+    expect([...refused].sort()).toEqual(["beside", "best"])
   })
 
-  it("leaves four short questions, or two that wrap, their room", () => {
-    expect(pointsFit("TB-101", Array(4).fill(SHORT))).toEqual([])
-    expect(pointsFit("TB-101", Array(2).fill(WRAPS))).toEqual([])
+  it("leaves two questions that wrap and one that doesn't their room, not three that wrap", () => {
+    expect(pointsFit("TB-101", [WRAPS, WRAPS, SHORT])).toEqual([])
     expect(pointsFit("TB-101", Array(3).fill(WRAPS))).not.toEqual([])
   })
 })
