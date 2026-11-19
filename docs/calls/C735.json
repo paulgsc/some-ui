@@ -1,0 +1,18 @@
+{
+  "id": "C735",
+  "made": "2026-11-19",
+  "by": "owner",
+  "paths": [
+    "packages/ui/interview-week/src/lib/week/index.ts",
+    "apps/www/src/lib/interview-week/take.ts"
+  ],
+  "chose": "Allow 3-minute takes: an interview take stops at 3 minutes instead of 2, and scripts stay as they are (150 to 300 words, aimed at 1 to 2 minutes). A question's or card's target still runs to 2 minutes at most.",
+  "options": [
+    "allow 3-minute takes, scripts unchanged",
+    "keep 2-minute takes and write scripts of at most about 260 words",
+    "keep both as they are"
+  ],
+  "gray": "A full 300-word script read at its 150-a-minute pace is exactly the 2-minute cap, so any slower read was stopped before its end; no check settles which side gives.",
+  "undo": "Set TAKE_MAX_SECONDS back to 120 in packages/ui/interview-week/src/lib/week/index.ts.",
+  "refs": ["#3176", "#2931"]
+}

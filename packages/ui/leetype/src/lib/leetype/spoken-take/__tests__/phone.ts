@@ -24,7 +24,7 @@ export function phoneTakes(
     notesFull: false,
   }
 ): PhoneTakes {
-  const { pattern, mic, player, store } = simulatedPattern()
+  const { pattern, mic, player, page, store } = simulatedPattern()
   let snapshot: SpokenTakeSnapshot = { takes: store.getSnapshot(), ...room }
   return {
     pattern,
@@ -37,6 +37,7 @@ export function phoneTakes(
     note: vi.fn<SpokenTakes["note"]>(() => true),
     mic,
     player,
+    page,
     store,
   }
 }

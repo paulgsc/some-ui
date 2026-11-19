@@ -11,17 +11,43 @@
  * exchange in (`AphKeeping`), and this module names its types alone. The
  * lane is handed to the app shell while aph's screens are mounted
  * (`useHandLane`), so aph drains while it is open.
+ *
+ * AR1: as aph's screens open they also read home's record once
+ * (`readAphOnOpen`), through the link's `keep`, which goes beside the
+ * drain's run: what home holds shows however long the lanes' sends take
+ * (a reinstalled phone re-sending everything, #3197).
  */
 import { useSyncExternalStore } from "react"
 import type { AphStore, AphWhere } from "@some-ui/aph"
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 
+import { homeLink } from "./index"
 import type { Lane, LaneCounts } from "./lanes"
+import { answered, askWhileBusy } from "./while-busy"
 
-/** aph's store, and its exchange with home over it. */
+/** aph's store, its exchange with home over it, and its read of home's record. */
 export type AphKeeping = {
   store: AphStore
   exchange: (store: AphStore, send: HomeCall) => Promise<HomeExchanged>
+  read: (store: AphStore, send: HomeCall) => Promise<HomeExchanged>
+}
+
+/**
+ * Reads home's aph record into the store once (AR1), as aph's screens
+ * open; never rejects. Paired and kept on home only: otherwise the store
+ * has nothing home holds to show. A screen's read on its own (`onItsOwn`):
+ * held while away (AW1), asked again while the link is busy with the
+ * person's own run (`askWhileBusy`). How it went is the lane's mark's to
+ * say at its next run; a read that found nothing leaves the store as it was.
+ */
+export function readAphOnOpen({ store, read }: AphKeeping): void {
+  if (store.where().kind !== "home") return
+  void askWhileBusy(() =>
+    answered(
+      () => homeLink().keep((send) => read(store, send), { onItsOwn: true }),
+      (ended) => ({ kind: "answered" as const, ended })
+    )
+  )
 }
 
 function editsOf(where: AphWhere): number {
