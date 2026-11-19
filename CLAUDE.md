@@ -348,13 +348,10 @@ Held by: `pnpm check:test-layout`
 
 ## Reach before you build
 
-The owner (2026-11-19, #3291, close paraphrase): "My user story is a morphism: it can morph
-into anything. … That creates a real risk of trying to invent the world. … Rather than
-building, sometimes you should look for existing tools, mostly open source or freemium, that
-let us do it without building anything. This isn't for everything, only for things where we
-need the user story but implementing the machinery costs a lot of overhead." HYPER (#2722)
-said it first for motion graphics: "reach for a polished open-source framework and only
-reinvent when you have to".
+The owner (2026-11-19, #3291, close paraphrase): "My user story is a morphism … That creates a
+real risk of trying to invent the world. … Rather than building, sometimes you should look for
+existing tools, mostly open source or freemium, that let us do it without building anything."
+#2722 (HYPER) said the same for motion graphics.
 
 So before a story's design commits to machinery of its own, the session does a **reach**:
 which existing tools (open source and self-hostable first, then freemium) already deliver the
@@ -368,10 +365,9 @@ user story, and whether each does it the owner's way. For each, it records:
 
 It ends with a recommendation: use the tool as is, fold it in (embed or self-host on home),
 or build. Building is one option among the others, chosen for a stated reason ("no tool does
-it your way because …"), never the default. The owner (2026-11-19, close paraphrase): "The
-key is that it's in the PR, meaning part of the commit and part of the history, and that
-we're making a conscious decision. Previously it was an implicit judgment that was never
-tracked."
+it your way because …"), never the default. The owner (2026-11-19, on #3197): "The key is that
+it's in the PR, meaning part of the commit and part of the history, and that we're making a
+conscious decision."
 
 **When a reach is owed.** It is owed when the first design of a story would add one of these:
 
@@ -384,33 +380,29 @@ tracked."
 It is not owed for changes to a surface that already exists: words, layout, a field on a
 record already kept, a fix, a new screen over data already held. It is not owed either for a
 story whose point is the machinery itself, such as the owner wanting to learn by building it.
-The reach comes before the first PR of that machinery, not after. #3035's reach came after
-SFEED6 had already built a note store, which is the timing to avoid.
+The reach comes before the first PR of that machinery, not after.
 
-**Where it goes.** A reach ends in a call (below, "A gray-area call keeps who made it"):
-`docs/calls/<ID>.json`, with each tool, and building, among its `options`, the verdict and
-its reasons in `chose`, the paths the story will touch in `paths`, and a link to the
-comparison when it is long (a private page). It is `by: claude` until the owner decides, then
-the owner's own call, or agreed. The commit that records it carries `Call: <ID>`, and the PR's
-"Calls I made" lists it, so the decision lives in git history through the existing record and
-`check:calls`. The epic's body names the call under a "Reach" heading beside "Where we are"
-(below, "Multi-session relay work"). The owner decides before the story is designed, so a
-reach waiting on them is an ask. C772 is the first, for #3035. Review treats new machinery
-whose PR and epic name no reach, and no stated reason none was owed, as a finding to raise,
-not a block: whether a reach was owed is a judgment, and no check holds it.
+**Where it goes.** A reach ends in a call (below, "A gray-area call keeps who made it"), with
+each tool and building among its `options`, the verdict and its reasons in `chose`, and a link
+to the comparison when it is long (a private page). The epic's body names the call under a
+"Reach" heading beside "Where we are". The session makes the call itself, `by: claude`, and
+builds on it; the owner said "if it comes down to build ourselves, we agree". When the verdict
+is to use or fold in a tool that needs the owner to act (an account, a setup step on home) or
+sends their data to a third party, it is also an ask, and that tool waits on their answer.
 
-**Policy limits move with the story** (owner, 2026-11-19, close paraphrase; C771): "Policy
-limits, like 'this type of video essay should only be of this length', should be policy, not
-environment variables. … You have full authority to nudge and update them to meet a moved
-user story. If the new interview collides with some contrived policy limit of duration, just
-update the limit or retire it altogether. We view them as suggestions more than anything."
-This covers a limit that states a preference about content or its shape: a length, a count,
-a word bound. Keep such a limit in code as policy, and when a story outgrows it, move it or
-retire it in the same change, recording the move as a call that `moves` the call before it,
-so the history stays. It does not cover a guard that protects home or the record: memory and
-disk caps, the owner's history and "Never lose the record" (above), and the assurance
-ledger's promises. Loosening one of those still needs the owner, and moving one needs
-evidence, stated in the PR.
+## Policy limits move with the story
+
+The owner (2026-11-19, on #3197; C771): "Policy limits, like 'this type of video essay should
+only be of this length', should be policy, not environment variables. … You have full authority
+to nudge and update them to meet a moved user story." A limit that states a preference about
+content or its shape (a length, a count, a word bound) is kept in code as policy. When a story
+outgrows it, move it or retire it in the same change, and record the move as a call that
+`moves` the call before it, so the history stays.
+
+This does not cover a guard that protects home or the record: memory and disk caps, the
+owner's history ("Never lose the record", above), and the assurance ledger's promises.
+Loosening one of those still needs the owner. Any other change to one (tightening it, or
+moving where it is kept) needs evidence, stated in the PR.
 
 ## Deleting is in scope
 

@@ -6,7 +6,7 @@
     "apps/www/src/lib/episode-feedback",
     "apps/www/src/components/studio/episode-feedback.tsx"
   ],
-  "chose": "Reach for #3035, the two kinds of note on an episode: build. Extend the app's own notes with a kind on each note and a page that steps scene by scene. No tool compared keeps the two kinds apart, takes a spoken part, or works from the phone with notes on home. YouTube and Frame.io would put content notes with a third party, YouTube in public. Moments, storage on home, takes, every feed and Bring to a session already exist, so a tool would add a second note store. If desk review with drawings is ever wanted, Clapshot self-hosted on home is the one to try, as its own story. Comparison: https://claude.ai/artifact/LPm4eb7tHgseoNb93yAhMH",
+  "chose": "Reach for #3035, chosen from the comparison presented to the owner, the two kinds of note on an episode: build. Extend the app's own notes with a kind on each note and a page that steps scene by scene. No tool compared keeps the two kinds apart, takes a spoken part, or works from the phone with notes on home. YouTube and Frame.io would put content notes with a third party, YouTube in public. Moments, storage on home, takes, every feed and Bring to a session already exist, so a tool would add a second note store. If desk review with drawings is ever wanted, Clapshot self-hosted on home is the one to try, as its own story. Comparison: https://claude.ai/artifact/LPm4eb7tHgseoNb93yAhMH",
   "options": [
     "YouTube timestamped comments or Viewer Notes, as is",
     "Clapshot, self-hosted on home",
@@ -18,5 +18,5 @@
     "build: a kind on each note and a scene-by-scene page"
   ],
   "undo": "Choose another option in a new call that moves this one, before #3035's page is built.",
-  "refs": ["#3035", "#3291"]
+  "refs": ["#3035", "#3291", "#3197"]
 }

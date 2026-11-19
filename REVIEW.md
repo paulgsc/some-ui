@@ -141,9 +141,8 @@ Each of the following is a **blocking** finding:
 
 ## New machinery comes after a reach
 
-A story that builds machinery of its own (a new kind of record and its store, an editor,
-player, recorder or annotation layer, a sync, sharing or import path, a new deployable or
-service) is owed a reach first: which existing tools already deliver the story, and why the
+A story that builds machinery of its own (the list under "When a reach is owed" in
+`CLAUDE.md`) is owed a reach first: which existing tools already deliver the story, and why the
 change builds anyway (`CLAUDE.md`, "Reach before you build"). When a PR starts such machinery
 and neither the PR nor its epic names a reach call (`docs/calls/`) or says why none was owed, raise it as a
 **non-blocking** finding that names the machinery. Whether a reach was owed is a judgment, so
