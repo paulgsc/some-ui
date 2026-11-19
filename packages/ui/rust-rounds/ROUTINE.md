@@ -134,7 +134,9 @@ with one ticket for each of the week's, by its id:
   screen; `answer`'s marks still give one per point, judged from the take of
   the whole ticket.
 - `answer`, for a ticket `by-points`: leave it out when every point has a
-  take of its own; otherwise `{"guess"}` for why the rest were left.
+  take of its own; otherwise `{"guess"}` for why the rest were left. Either
+  way the essay gives the ticket's own answer as a silence, since no take of
+  the whole ticket was sent and home refuses an essay that plays one.
 - `beside`, for a ticket with points answered on their own: say which take
   each point was judged from, its own or the whole ticket's.
 - `dives`: two deep dives on the ticket's biggest gaps. A gap is `missing`
