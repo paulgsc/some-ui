@@ -90,11 +90,8 @@ type WeekVerdict = {
 }
 
 /** The ref a fork's decision is sent under: `2026-w47:TB-101:1:verdict`. */
-const verdictRef = (
-  week: string,
-  ticket: string,
-  fork: number
-): string => `${ticketLine(week, pointItem(ticket, fork))}:verdict`
+const verdictRef = (week: string, ticket: string, fork: number): string =>
+  `${ticketLine(week, pointItem(ticket, fork))}:verdict`
 
 /** The decisions of `sent` as `<ref>=<decision>` lines, to tell a change. */
 const verdictLines = (sent: WeekSent): ReadonlyArray<string> =>
