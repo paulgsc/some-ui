@@ -175,7 +175,14 @@ export const weekAtHome = (
         elsewhere: null,
       }
     }
-    return { ...remembered, homeSaid: false, elsewhere: home.at }
+    // Home named another send: the link's memory of an older one is not
+    // what counted.
+    return {
+      holds: null,
+      last: remembered.last,
+      homeSaid: false,
+      elsewhere: home.at,
+    }
   }
   return { ...remembered, homeSaid: false, elsewhere: null }
 }

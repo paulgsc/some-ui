@@ -410,7 +410,21 @@ describe("what home has of a week (RR22, C56)", () => {
       homeSaid: true,
       elsewhere: null,
     })
-    // A send this phone didn't keep (another device's): named, not shown.
+    // A send this phone didn't keep (another device's): named, not shown,
+    // whatever the link's memory holds.
+    for (const held of [forgot, (): boolean => true]) {
+      expect(
+        weekAtHome(kept, { id: "2026-w46" }, held, {
+          kind: "sent",
+          at: "2026-11-10T00:00:00.000Z",
+        })
+      ).toEqual({
+        holds: null,
+        last: second,
+        homeSaid: false,
+        elsewhere: "2026-11-10T00:00:00.000Z",
+      })
+    }
     expect(
       weekAtHome(kept, { id: "2026-w46" }, forgot, {
         kind: "sent",
