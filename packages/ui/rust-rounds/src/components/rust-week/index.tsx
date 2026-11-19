@@ -175,7 +175,7 @@ const Brief = (
                 <span className="font-semibold">
                   {WORDS.ticketLabel(ticket.id, ticket.title)}
                 </span>
-                <span className="text-muted-foreground text-xs font-normal">
+                <span className="text-muted-foreground text-xs">
                   {[
                     WORDS.standing[standing(props, ticket.id)],
                     shape(held, ticket),

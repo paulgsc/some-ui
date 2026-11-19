@@ -13,6 +13,7 @@ import { cn, dayOf } from "@some-ui/core-utils"
 import {
   Button,
   CardLink,
+  CardLinkBody,
   MarkLegend,
   Sheet,
   SheetContent,
@@ -268,7 +269,7 @@ export const RoutineStatus = ({
             shape={view.shape}
             voice={view.voice.map(({ shape }) => shape)}
           />
-          <span className="min-w-0 flex-1">
+          <CardLinkBody className="gap-0">
             <span
               className={cn("block text-sm font-semibold", TONE[view.shape])}
             >
@@ -277,7 +278,7 @@ export const RoutineStatus = ({
             <span className="text-muted-foreground line-clamp-2 block text-xs">
               {view.line}
             </span>
-          </span>
+          </CardLinkBody>
         </button>
       </CardLink>
       <Sheet open={open} onOpenChange={setOpen}>

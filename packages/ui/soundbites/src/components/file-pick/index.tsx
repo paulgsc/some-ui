@@ -6,7 +6,7 @@
  */
 import type { JSX } from "react"
 import { useId } from "react"
-import { CardLink, Notice } from "@some-ui/shared"
+import { CardLink, CardLinkBody, Notice } from "@some-ui/shared"
 import { FolderOpen } from "lucide-react"
 
 export const FilePick = ({
@@ -34,19 +34,19 @@ export const FilePick = ({
     <>
       <CardLink
         asChild
-        className="focus-within:ring-ring relative cursor-pointer focus-within:ring-2"
+        className="focus-within:ring-ring relative cursor-pointer focus-within:ring-2 has-[:disabled]:pointer-events-none has-[:disabled]:opacity-50"
       >
         <label>
           <FolderOpen
             className="text-primary size-5 shrink-0"
             aria-hidden="true"
           />
-          <span className="min-w-0">
+          <CardLinkBody className="gap-0">
             <span className="block text-sm font-semibold">{label}</span>
             <span id={hint} className="text-muted-foreground block text-xs">
               {told}
             </span>
-          </span>
+          </CardLinkBody>
           <input
             type="file"
             accept=".json,application/json"

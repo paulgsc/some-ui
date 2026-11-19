@@ -54,6 +54,7 @@ import {
 import {
   Button,
   CardLink,
+  CardLinkBody,
   Notice,
   Sheet,
   SheetContent,
@@ -158,13 +159,13 @@ const Card = ({
   large: boolean
   onSay: () => void
 }): JSX.Element => (
-  <CardLink asChild className={large ? "p-4" : "p-3"}>
+  <CardLink asChild className={large ? "p-4" : undefined}>
     <button type="button" onClick={onSay}>
       <ScenarioIcon
         id={card.scenario}
         className={cn("text-brand", large ? "size-10" : "size-6")}
       />
-      <span className="min-w-0">
+      <CardLinkBody className="gap-0">
         <span
           className={cn(
             "block font-bold uppercase tracking-wide",
@@ -176,7 +177,7 @@ const Card = ({
         <span className="text-muted-foreground block truncate text-xs">
           {card.context}
         </span>
-      </span>
+      </CardLinkBody>
     </button>
   </CardLink>
 )

@@ -3,7 +3,7 @@ import { useId, useMemo, useState } from "react"
 import { cn } from "@some-ui/core-utils"
 import type { Visit } from "@some-ui/engagement"
 import { useShelf } from "@some-ui/react-hooks"
-import { Button, CardLink, Input, Notice } from "@some-ui/shared"
+import { Button, CardLink, CardLinkBody, Input, Notice } from "@some-ui/shared"
 import { FeedThumb, FeedTile } from "@topik/components/topik/handheld/feed-tile"
 import { PortionMark } from "@topik/components/topik/handheld/portion-menu"
 import type { TopikMetadata } from "@topik/lib/topik"
@@ -226,7 +226,7 @@ const OpenFromStorage = ({
     >
       <label>
         <FolderOpen className="text-primary size-6 shrink-0" />
-        <span className="min-w-0 flex-1">
+        <CardLinkBody className="gap-0">
           <span id={name} className="block font-semibold">
             {title}
           </span>
@@ -238,7 +238,7 @@ const OpenFromStorage = ({
               {hint}
             </span>
           )}
-        </span>
+        </CardLinkBody>
         {state.kind === "reading" && (
           <Notice>
             <span className="flex items-center gap-2">
@@ -436,7 +436,7 @@ const ReadyCardButton = ({
     <CardLink asChild className="min-h-16 p-4">
       <button type="button" onClick={() => onOpen(card.id)}>
         <BookOpenText className="text-primary size-6 shrink-0" />
-        <span className="min-w-0 flex-1">
+        <CardLinkBody className="gap-0">
           <span className="block font-semibold">
             {setSize(card.practice, card.words, card.lines)}
             <span className="text-primary ml-2 text-xs font-bold tracking-wider uppercase">
@@ -462,7 +462,7 @@ const ReadyCardButton = ({
               {`From ${card.from}`}
             </span>
           )}
-        </span>
+        </CardLinkBody>
       </button>
     </CardLink>
   </li>
@@ -659,12 +659,12 @@ export const MaterialList = ({
               portion="meal"
               className="text-primary size-7 shrink-0"
             />
-            <span className="min-w-0 flex-1">
+            <CardLinkBody className="gap-0">
               <span className="block font-semibold">{PORTION_WORDS.title}</span>
               <span className="text-muted-foreground block text-sm">
                 {PORTION_WORDS.entryDetails}
               </span>
-            </span>
+            </CardLinkBody>
           </button>
         </CardLink>
       )}
@@ -703,7 +703,7 @@ export const MaterialList = ({
         <CardLink asChild className="min-h-16 shrink-0 p-4">
           <button type="button" onClick={onCreate}>
             <Sparkles className="text-muted-foreground size-5 shrink-0" />
-            <span className="min-w-0 flex-1">
+            <CardLinkBody className="gap-0">
               <span className="block font-semibold">
                 {draftNotes > 0
                   ? "Continue your scene"
@@ -714,7 +714,7 @@ export const MaterialList = ({
                   ? `${draftNotes} voice note${draftNotes === 1 ? "" : "s"} so far. Share them with the prompt, or let the scene go, to start another.`
                   : "Your model writes it from the app's prompt, and the app checks it. It lasts this session."}
               </span>
-            </span>
+            </CardLinkBody>
           </button>
         </CardLink>
       )}
@@ -738,7 +738,7 @@ export const MaterialList = ({
         <CardLink asChild className="min-h-16 shrink-0 p-4">
           <button type="button" onClick={onReadAloud}>
             <BookOpenText className="text-primary size-6 shrink-0" />
-            <span className="min-w-0 flex-1">
+            <CardLinkBody className="gap-0">
               <span className="block font-semibold">Read aloud</span>
               <span className="text-muted-foreground block text-sm">
                 Read words and sentences aloud, then hear them. It runs by
@@ -753,7 +753,7 @@ export const MaterialList = ({
                   : `TOPIK ${level}`}
                 {` · ${addedSets} word set${addedSets === 1 ? "" : "s"}`}
               </span>
-            </span>
+            </CardLinkBody>
           </button>
         </CardLink>
       )}
