@@ -174,7 +174,7 @@ const Card = ({
         >
           {scenarioOf(card.scenario).name}
         </span>
-        <span className="text-muted-foreground block truncate text-xs">
+        <span className="text-muted-foreground block w-full truncate text-xs">
           {card.context}
         </span>
       </CardLinkBody>
