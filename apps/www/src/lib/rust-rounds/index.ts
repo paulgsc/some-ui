@@ -171,7 +171,7 @@ const RECORDS_PER_POINT = SNAPSHOT_EPOCH >= POINT_TAKES_EPOCH
 export function phoneRustWeekPorts(
   reach: Pick<
     RustWeekPorts,
-    "home" | "heard" | "homeHolds" | "onHomeHolds" | "work"
+    "home" | "heard" | "homeHolds" | "onHomeHolds" | "work" | "homeSent"
   >
 ): RustWeekPorts | null {
   const week = currentWeek(phoneWeeks().held().weeks, Date.now())

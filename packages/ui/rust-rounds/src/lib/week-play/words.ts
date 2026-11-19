@@ -215,7 +215,16 @@ export const WEEK_WORDS = {
       `Week ${weekNumber(week.id)} has closed.`,
     line: (week: Pick<Week, "due">): string =>
       `It closed ${weekday(week.due)} ${clock(week.due)}. What home had then is what counts, kept for good, and the essay comes from home. Nothing more can be said or sent here.`,
-    /** A send made on this phone that home didn't have by the deadline. */
+    /**
+     * A send made on this phone that home's record hasn't spoken of this
+     * opening (RR30): home couldn't be asked, or didn't answer.
+     */
+    unheard: (at: string): string =>
+      `Your send from ${weekday(at)} ${clock(at)} is shown below. This phone couldn't read home's record of the week just now, so it can't say what counted. Open the week again to look.`,
+    /** Home's record names a send this phone didn't keep (another device's). */
+    elsewhere: (at: string): string =>
+      `Home holds a send from ${weekday(at)} ${clock(at)} that isn't on this phone, so its takes can't be shown here.`,
+    /** A send made on this phone that home's record says it didn't have by the deadline. */
     late: (at: string): string =>
       `Your send from ${weekday(at)} ${clock(at)} didn't reach home before the deadline, so it doesn't count. It stays on this phone.`,
     unplayable: "This take isn't on this phone to play.",
