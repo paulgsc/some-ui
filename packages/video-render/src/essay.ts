@@ -83,7 +83,7 @@ export const ESSAY_SCHEMA = "some-ui.rust-essay/1"
 export const ESSAY_ID = "rust-essay"
 
 /** The newest version `essayFormat` gives, pinned as `v<n>.json` under `templates/`. */
-export const ESSAY_VERSION = 4
+export const ESSAY_VERSION = 5
 
 /**
  * The first version whose chart draws the decay record's two later cells
@@ -103,6 +103,20 @@ export const ESSAY_POINT_VERSION = 3
 
 /** The first version that draws a point as a fork (`ForkSchema`) and takes 1 to 6 points. */
 export const ESSAY_FORK_VERSION = 4
+
+/**
+ * The first version that plays the owner's own opening (#3269, as IW10 for
+ * the interview essay): their take of the week's opening, first after the
+ * brand. An essay with none stays at its version.
+ */
+export const ESSAY_OPENING_VERSION = 5
+
+/**
+ * The take an essay's opening plays, by its id in the folder home hands the
+ * recorder: `opening.<ext>`, the take whose `ref` is `<week>:opening`. A
+ * ticket's key is capitals, so it never names a ticket's take.
+ */
+export const OPENING_TAKE_ID = "opening"
 
 /** The deep dives per ticket, on its biggest gaps: K (owner, 2026-11-07). */
 export const ESSAY_DIVES = 2
@@ -168,6 +182,7 @@ export const MARKS = ["covered", "partly", "missing"] as const
 export type Mark = (typeof MARKS)[number]
 
 type Section =
+  | "opening"
   | "open"
   | "question"
   | "answer"
@@ -178,7 +193,7 @@ type Section =
   | "weeks"
   | "next"
 
-type Repeated = Exclude<Section, "open" | "weeks" | "next">
+type Repeated = Exclude<Section, "opening" | "open" | "weeks" | "next">
 
 /** The scenes a shape adds: the locked intro, the brand intro and outro, and a chapter slide. */
 type Framing = "intro" | "brand-in" | "chapter" | "brand-out"
@@ -257,6 +272,17 @@ export function essayFormat(version: number = ESSAY_VERSION): Format {
     series: { id: CALL_ID, version: 2 },
     look: "calm",
     scenes: [
+      ...(version >= ESSAY_OPENING_VERSION
+        ? [
+            scene(
+              version,
+              "opening",
+              "Your opening",
+              "What Rust Rounds trains, in your own voice; left out when it went unread",
+              40_000
+            ),
+          ]
+        : []),
       scene(
         version,
         "open",
@@ -583,6 +609,8 @@ export const EssaySchema = z.strictObject({
   sla: z.array(z.strictObject({ what: words, target: words })).min(1),
   /** The references the week was checked against, by their full names. */
   references: z.array(words).min(1),
+  /** What home heard of the owner's take of the week's opening (#3269); absent when there is none to play. */
+  opening: z.strictObject({ transcript: words }).optional(),
   open: SaidSchema,
   tickets: z.array(TicketSchema).min(2).max(TICKETS_MOST),
   weeks: z.strictObject({
@@ -938,6 +966,13 @@ function essayProblems(essay: Essay): Array<string> {
     })
   }
   problems.push(...nextWeekProblems(essay.week.id, essay.next.week))
+  if (
+    essay.opening !== undefined &&
+    essay.template.version < ESSAY_OPENING_VERSION
+  )
+    problems.push(
+      `opening: the template plays the owner's opening from version ${ESSAY_OPENING_VERSION}`
+    )
   return once(problems)
 }
 
@@ -1100,6 +1135,13 @@ export function essayScenes(
       id: "brand-in",
       speaker: "tutor",
       said: "",
+    })
+  if (essay.opening !== undefined)
+    scenes.push({
+      section: "opening",
+      id: "opening",
+      speaker: "you",
+      said: essay.opening.transcript,
     })
   scenes.push({
     section: "open",
@@ -1332,18 +1374,20 @@ export function essayStoryboard(): Storyboard {
 
 /**
  * The take an essay's scene plays, by its id in the folder home hands the
- * recorder: a ticket's (`QM-311`) or, for a point answered by a take of its
- * own, the point's (`QM-311.2`, `pointTakeId`); null for a scene the owner
- * doesn't say.
+ * recorder: the opening's (`OPENING_TAKE_ID`), a ticket's (`QM-311`) or, for
+ * a point answered by a take of its own, the point's (`QM-311.2`,
+ * `pointTakeId`); null for a scene the owner doesn't say.
  */
 export const essayTakeOf = (scene: EssayScene): string | null =>
-  scene.section === "answer" &&
-  scene.speaker === "you" &&
-  scene.ticket !== undefined
-    ? scene.point === undefined
-      ? scene.ticket
-      : pointTakeId(scene.ticket, scene.point + 1)
-    : null
+  scene.section === "opening"
+    ? OPENING_TAKE_ID
+    : scene.section === "answer" &&
+        scene.speaker === "you" &&
+        scene.ticket !== undefined
+      ? scene.point === undefined
+        ? scene.ticket
+        : pointTakeId(scene.ticket, scene.point + 1)
+      : null
 
 /**
  * Each answer of the essay by its take's id (`essayTakeOf`): every
@@ -1381,11 +1425,17 @@ export function essayTakeFiles(
     keep: (answer: (typeof answers)[number]["answer"]) => boolean
   ): Array<string> =>
     answers.filter(({ answer }) => keep(answer)).map(({ id }) => id)
+  // The opening's take plays when the essay holds it; one home hands over
+  // that the essay leaves out (heard as nothing, or unheard) is set aside.
+  const plays = essay.opening !== undefined
   return takeFilesOf(
     {
-      answered: ids((answer) => answer.kind === "take"),
+      answered: [
+        ...(plays ? [OPENING_TAKE_ID] : []),
+        ...ids((answer) => answer.kind === "take"),
+      ],
       silent: ids((answer) => answer.kind === "silence"),
-      unheard: ids(isUnheard),
+      unheard: [...(plays ? [] : [OPENING_TAKE_ID]), ...ids(isUnheard)],
       noun: "ticket or point",
     },
     names

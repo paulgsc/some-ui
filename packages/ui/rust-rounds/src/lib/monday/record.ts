@@ -10,7 +10,8 @@
  *   the owner sent (#2231, "The record is final only after `due`").
  * - A transcript is `some-ui.voice-transcript/1` (the mailbox's `transcript`
  *   folder). A take's `ref` is `<week>:<ticket>`, or `<week>:<ticket>:<n>`
- *   for its point n (RR24); a pasted error's note is
+ *   for its point n (RR24), or `<week>:opening` for the opening (#3269); a
+ *   pasted error's note is
  *   `<week>:PASTE:<at>` (paulgsc/server `voice_repo::is_rust_round_ref`).
  */
 import { WEEK_ID } from "@rust-rounds/lib/formats/week"
@@ -58,6 +59,15 @@ export const WeekRecordSchema = z.object({
     .object({ at: Instant, receivedAt: Instant, draft: z.boolean() })
     .nullable(),
   tickets: z.array(TicketRecordSchema),
+  /**
+   * The owner's take of the week's opening (#3269), when one was sent: its
+   * `ref` is `<week>:opening`. A home from before it, or a week with no
+   * opening, says none.
+   */
+  opening: z
+    .object({ take: z.string().min(1), recordedAt: Instant })
+    .nullable()
+    .default(null),
   unanswered: z.array(z.string()),
   pastes: z.array(PasteSchema),
 })

@@ -89,6 +89,7 @@ const labelOf = (scene: EssayScene, essay: Essay): string => {
     case "chapter": {
       return W.chapter(scene.title)
     }
+    case "opening":
     case "open":
     case "weeks":
     case "next": {
@@ -448,6 +449,14 @@ const Screen = ({
               : W.ticketOf(view.ticket.n, view.ticket.of)
           }
         />
+      )
+    }
+    case "opening": {
+      return (
+        <Call speaker={at.speaker} tag={NAMES.opening}>
+          <Title>{W.yourOpening}</Title>
+          <p className="text-[1em] leading-snug">{view.transcript}</p>
+        </Call>
       )
     }
     case "open": {

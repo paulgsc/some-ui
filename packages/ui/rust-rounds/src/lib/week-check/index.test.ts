@@ -200,11 +200,20 @@ describe("readWeek, a /2 week", () => {
     must(ticketOf(week, t).academy[e])
   const TB101 = 'tickets[0] ("TB-101")'
 
-  it("reads the sample, held as written", () => {
+  it("reads the sample, held as written, with its opening or without (#3269)", () => {
     expect(readWeek(TALLOWBROOK_WEEK_FILE)).toEqual({
       ok: true,
       week: TALLOWBROOK_WEEK_FILE,
     })
+    const opening = { script: "paulgsc here. This is Rust Rounds." }
+    const opened = edited((week) => Object.assign(week, { opening }))
+    expect(readWeek(opened)).toEqual({ ok: true, week: opened })
+    const blank = readWeek(
+      edited((week) => Object.assign(week, { opening: { script: " " } }))
+    )
+    expect(blank.ok ? [] : blank.problems).toEqual([
+      { at: "opening.script", why: "must not be empty" },
+    ])
   })
 
   it("refuses a fork with no option recommended, or two", () => {

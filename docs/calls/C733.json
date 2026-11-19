@@ -1,0 +1,20 @@
+{
+  "id": "C733",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/ui/rust-rounds/src/components/rust-week/index.tsx",
+    "packages/ui/rust-rounds/src/lib/week-play/spec.ts",
+    "packages/ui/rust-rounds/src/lib/monday/finish.ts",
+    "packages/ui/rust-rounds/ROUTINE.md"
+  ],
+  "chose": "#3269 lands in two parts. First, with no UI: the week format's optional opening, home's record of its take, the essay playing it, the shared opening checks, and home's change. Second, after D2's flow screens are on main: the phone's opening page, from a prototype the owner approves, and its take sent as WeekSent's opening; then the routine writes an opening, held until an APK that shows it is installed. Until both, no week carries an opening and every essay opens as before.",
+  "options": [
+    "two parts: format, home and essay now; the phone page and the routine after D2",
+    "one PR with the phone page built now, before a prototype",
+    "wait for D2 before any of it"
+  ],
+  "gray": "Rust Rounds had no screen for the opening, so it needs a new page on the screen D2 reworks, and the owner's standing rule asks for a prototype before UI code; no check settles how to sequence it.",
+  "undo": "Fold the second part into the first PR once the prototype is approved.",
+  "refs": ["#3269", "#3249", "#3257"]
+}

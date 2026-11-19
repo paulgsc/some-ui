@@ -101,9 +101,9 @@ describe("the interview week's finish", () => {
       )
     ).toEqual([
       'week.cards[0] ("opening").script: the opening says "paulgsc" in its first line',
-      'week.cards[0] ("opening").script: "ready for the" assesses; the opening says what the week trains, with no rating and no finish line',
-      'week.cards[0] ("opening").script: "rating" assesses; the opening says what the week trains, with no rating and no finish line',
-      'week.cards[0] ("opening").script: "grade" assesses; the opening says what the week trains, with no rating and no finish line',
+      'week.cards[0] ("opening").script: "ready for the" assesses; the opening says what the practice trains, with no rating and no finish line',
+      'week.cards[0] ("opening").script: "rating" assesses; the opening says what the practice trains, with no rating and no finish line',
+      'week.cards[0] ("opening").script: "grade" assesses; the opening says what the practice trains, with no rating and no finish line',
     ])
     expect(
       opening(

@@ -25,6 +25,7 @@ import {
   essayVersionRefusal,
   isPast,
   markOf,
+  OPENING_TAKE_ID,
   parseEssay,
   pointAnsweredBy,
   sampleEssay,
@@ -75,6 +76,10 @@ const ticketIds = (n: number, d: number): Array<string> => [
   `beside-${n}`,
   ...Array.from({ length: ESSAY_DIVES }, (_, k) => `dive-${d + k}`),
 ]
+
+/** An opening as the owner might read it (#3269). */
+const OPENING =
+  "paulgsc here. This is Rust Rounds: a small Rust program every week, and the decisions it asks for, worked at the desk first."
 
 describe("the essay's format", () => {
   it("every pinned version parses, and the newest is the code's", () => {
@@ -148,6 +153,28 @@ describe("the sample essay", () => {
         .filter((s) => s.section !== "answer")
         .every((s) => s.speaker === "tutor")
     ).toBe(true)
+    // The owner's opening (#3269) plays their own take of it, first after
+    // the brand; only from version 5.
+    const opened = { ...essay, opening: { transcript: OPENING } }
+    expect(parseEssay(opened).ok).toBe(true)
+    const scenes = essayScenes(opened)
+    expect(scenes.map((s) => s.id).slice(1, 4)).toEqual([
+      "brand-in",
+      "opening",
+      "open",
+    ])
+    expect(
+      scenes
+        .filter((s) => s.section === "opening")
+        .map((s) => [s.speaker, s.said, essayTakeOf(s)])
+    ).toEqual([["you", OPENING, OPENING_TAKE_ID]])
+    const v4 = parseEssay({
+      ...opened,
+      template: { ...opened.template, version: 4 },
+    })
+    expect(v4.ok ? [] : v4.problems).toEqual([
+      "opening: the template plays the owner's opening from version 5",
+    ])
   })
 
   it("goes past the ticket only on a point the answer covered", () => {
@@ -426,11 +453,23 @@ describe("the takes home hands the recorder", () => {
         "QM-311.m4a",
         "QM-311.words.json",
         "QM-312.webm",
+        // An opening the essay leaves out (#3269) is set aside too.
+        "opening.m4a",
       ])
     ).toEqual({
       ok: true,
       value: { "QM-312": { audio: "QM-312.webm", words: null } },
     })
+    // One the essay plays is its take, like a ticket's.
+    const opened = { ...unheard, opening: { transcript: OPENING } }
+    expect(essayTakeFiles(opened, ["QM-312.webm", "opening.m4a"])).toEqual({
+      ok: true,
+      value: {
+        opening: { audio: "opening.m4a", words: null },
+        "QM-312": { audio: "QM-312.webm", words: null },
+      },
+    })
+    expect(essayTakeFiles(opened, ["QM-312.webm"]).ok).toBe(false)
   })
 })
 

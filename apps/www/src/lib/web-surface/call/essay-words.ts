@@ -21,6 +21,8 @@ export const ESSAY_WORDS = {
   speakTo: "Speak to",
   figures: "Figures the scenario gives",
   youSaid: "You said",
+  /** The essay's opening, in the owner's own voice (#3269). */
+  yourOpening: "In your own voice",
   noAnswer: "Nothing came for this one",
   /** A take that was sent and couldn't be made out (HEARD2): read as if unanswered. */
   unheard: ESSAY_STAGE_WORDS.unheard,

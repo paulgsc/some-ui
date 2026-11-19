@@ -80,6 +80,12 @@ export type EndedWeek = {
   readonly story: string
   readonly sla: Week["sla"]
   readonly references: ReadonlyArray<string>
+  /**
+   * What home heard in the owner's take of the week's opening (#3269), when
+   * one was sent and something was said in it; absent otherwise, and the
+   * essay opens as before.
+   */
+  readonly opening?: { readonly transcript: string }
   readonly tickets: ReadonlyArray<EndedTicket>
 }
 
@@ -336,6 +342,17 @@ export function prepare({
       waiting.push({ week: week.id, why: answers.why })
       continue
     }
+    const opening =
+      record.opening === null
+        ? null
+        : answerHeard(heard.get(record.opening.take), 0)
+    if (record.opening !== null && opening === null) {
+      waiting.push({
+        week: week.id,
+        why: "home hasn't heard the take on the opening yet",
+      })
+      continue
+    }
     ended.push({
       week: week.id,
       from: pacificDay(new Date(week.opens)),
@@ -344,6 +361,9 @@ export function prepare({
       story: week.story,
       sla: week.sla,
       references: fullNames(week.references),
+      ...(opening?.kind === "take"
+        ? { opening: { transcript: opening.transcript } }
+        : {}),
       tickets: answers.tickets,
     })
     for (const paste of record.pastes) {

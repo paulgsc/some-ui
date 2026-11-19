@@ -28,6 +28,8 @@ import { ESSAY_WORDS as W } from "./essay-words"
 
 export type EssayView =
   | { readonly section: "brand-in" | "brand-out" | "open" | "next" }
+  /** The owner's own opening (#3269): their take of it, played whole. */
+  | { readonly section: "opening"; readonly transcript: string }
   | {
       readonly section: "intro"
       readonly rows: ReturnType<typeof essayIntro>["rows"]
@@ -148,6 +150,9 @@ function viewOf(essay: Essay, scene: EssayScene, voicing: Voicing): EssayView {
     }
     case "intro": {
       return { section: "intro", rows: essayIntro(essay, voicing).rows }
+    }
+    case "opening": {
+      return { section: "opening", transcript: scene.said }
     }
     case "chapter": {
       const n = essay.tickets.findIndex((t) => t.id === scene.ticket)

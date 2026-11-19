@@ -338,10 +338,20 @@ export const WeekV1Schema = z.strictObject({
 })
 export type WeekV1 = z.infer<typeof WeekV1Schema>
 
+/**
+ * The essay's opening, in the owner's own voice (#3269, as IW10's for the
+ * interview week): a script the owner reads before the tickets, saying
+ * "paulgsc" and then what Rust Rounds trains. The routine holds its words
+ * (`@some-ui/video-render`'s `openingProblems`); the essay plays the take.
+ */
+const OpeningSchema = z.strictObject({ script: TextSchema })
+
 /** A `/2` week. */
 export const WeekV2Schema = z.strictObject({
   schema: z.literal(WEEK_SCHEMA_V2),
   ...weekFields,
+  /** Optional: a week with none opens on its tickets, and its essay as before. */
+  opening: OpeningSchema.optional(),
   sla: z.array(SlaRowSchema).min(1, "a week states at least one SLA row"),
   tickets: z
     .array(TicketV2Schema)
@@ -355,6 +365,7 @@ export const WeekSchema = z.strictObject({
   /** The schema it came in; a `/1` week's forks have no options and it has no academy. */
   schema: z.enum([WEEK_SCHEMA, WEEK_SCHEMA_V2]),
   ...weekFields,
+  opening: OpeningSchema.optional(),
   sla: z.array(SlaRowSchema).min(1, "a week states at least one SLA row"),
   tickets: z
     .array(TicketSchema)

@@ -25,7 +25,7 @@ import {
   TARGET_SECONDS,
 } from "@interview-week/lib/week"
 import { assertNever, weekAround } from "@some-ui/core-utils"
-import { parseInterviewEssay } from "@some-ui/video-render"
+import { MONIKER, parseInterviewEssay } from "@some-ui/video-render"
 import type { InterviewEssay } from "@some-ui/video-render"
 
 const BUNDLE_SCHEMA = "some-ui.interview-monday-bundle/2"
@@ -51,12 +51,6 @@ export const SITUATIONS: Readonly<Record<string, string>> = {
   "recorded-update":
     "You record a short update on this work for people who follow it.",
 }
-
-/** The owner's moniker, which the essay's opening says first (owner, 2026-11-17). */
-export const MONIKER = "paulgsc"
-
-/** The essay's opening's words: within `OPENING_SECONDS` at the read pace. */
-export const OPENING_WORDS = { min: 25, max: 90 } as const
 
 /** Where the opening is read: the cue the owner reads after. */
 export const OPENING_SITUATION =

@@ -1,0 +1,21 @@
+{
+  "id": "C732",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/formats/week.ts",
+    "packages/ui/rust-rounds/src/lib/monday/bundle.ts",
+    "packages/ui/rust-rounds/src/lib/monday/record.ts",
+    "packages/video-render/src/essay.ts",
+    "packages/video-render/src/opening.ts"
+  ],
+  "chose": "Rust Rounds' opening rides as an optional top-level `opening: {script}` on a some-ui.rust-week/2 week, not a /3 and not a ticket-like item; its take is the voice note with ref `<week>:opening`, sent as a top-level `opening` beside the answers and kept in home's record as `opening`, and the Rust essay's template version 5 plays it first after the brand, as `opening.<ext>` among the takes. The moniker, the 25 to 90 words and C619's words that assess live once in @some-ui/video-render (`openingProblems`), for both essays. The routine writes an opening only once an APK whose week format reads it is installed, and home takes its take.",
+  "options": [
+    "an optional top-level opening on /2, with a hold",
+    "a new /3 week format",
+    "the opening as a ticket-like item among the tickets"
+  ],
+  "gray": "Rust Rounds has no card list for the opening to join as the interview week's did, and no /2 week had been written yet, so no check settles whether one optional field or a new format costs less; the coordinator chose the optional field for one format.",
+  "undo": "Drop `opening` from WeekV2Schema and WeekSchema, the record and the bundle, and pin the Rust essay back to version 4.",
+  "refs": ["#3269", "#3256", "#3177"]
+}

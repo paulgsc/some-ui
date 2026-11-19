@@ -225,6 +225,12 @@ describe("the essay's stage", () => {
     expect(
       dive.section === "dive" && [dive.ticket.id, dive.n, dive.dive.title]
     ).toEqual(["QM-312", 2, "What `clear` and `push_str` do to the bytes"])
+    // The owner's opening (#3269), played first after the brand.
+    const opened = { ...essay(), opening: { transcript: "paulgsc here." } }
+    expect(essayAt(opened, "opening")).toMatchObject({
+      speaker: "you",
+      view: { section: "opening", transcript: "paulgsc here." },
+    })
   })
 
   it("draws a point answered by a take of its own as its own answer scene (RR24)", () => {

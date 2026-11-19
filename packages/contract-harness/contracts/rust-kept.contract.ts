@@ -88,6 +88,8 @@ const RecordSchema = z.object({
       opens: z.number().int().nonnegative(),
     })
   ),
+  /** The owner's take of the week's opening (#3269); a home from before it says none. */
+  opening: z.object({ take: NoteId, recordedAt: When }).nullable().optional(),
   unanswered: z.array(Ticket),
   pastes: z.array(
     z.object({
