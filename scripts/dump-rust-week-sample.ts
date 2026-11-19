@@ -9,9 +9,9 @@
  *
  * The server keeps its copy in
  * `paulgsc/server@crates/db/rust_round/testdata/rust-week-2026-w47.json`
- * (paulgsc/server#1001), and `scripts/check_client_fixtures.py` there can
- * compare the two, so home's reading of `/2` is tested against the week this
- * repo writes, not a hand transcription.
+ * (paulgsc/server#1001). A later server PR pairs the two in its
+ * `scripts/check_client_fixtures.py`, so home's reading of `/2` is tested
+ * against the week this repo writes, not a hand transcription.
  */
 import { TALLOWBROOK_WEEK_FILE } from "../packages/ui/rust-rounds/src/lib/sample-week/tallowbrook.ts"
 

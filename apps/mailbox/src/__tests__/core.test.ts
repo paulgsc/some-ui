@@ -443,7 +443,13 @@ describe("a week of Rust Rounds rides brief (MB2, RR12)", () => {
     const v2 = JSON.stringify({
       schema: "some-ui.rust-week/2",
       id: "2026-w47",
-      tickets: [{ id: "TB-101", program: "fn main() {}\n", academy: [] }],
+      tickets: [
+        {
+          id: "TB-101",
+          program: "fn main() {}\n",
+          academy: [{ starter: "fn main() {}\n" }],
+        },
+      ],
     })
     const name = "rust-week-2026-w47.json"
     expect((await put(d, "brief", name, { body: v2 })).status).toBe(201)
