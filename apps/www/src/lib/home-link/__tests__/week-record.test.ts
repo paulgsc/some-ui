@@ -1,6 +1,6 @@
 /**
  * RR30: a closed week (Rust Rounds', the interview's) reads what home's own record says was sent
- * (`GET /rust-weeks/:id/record`), and says nothing of home it didn't hear.
+ * (`GET /rust-weeks/:id/record`, `GET /interview-weeks/:id/record`), and says nothing of home it didn't hear.
  */
 import { describe, expect, it } from "vitest"
 
