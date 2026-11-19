@@ -1124,11 +1124,7 @@ export function essayIntro(
       },
       {
         label: "Voices",
-        says: `${
-          sample
-            ? "Both are Kokoro, a synthetic speaker. In a sample, a second synthetic voice reads the answers"
-            : "The tutor is Kokoro, a synthetic speaker. The other voice is the owner's own, from their takes"
-        }${essay.opening === undefined ? "" : ". The opening's questions are asked in a third synthetic voice"}`,
+        says: essayVoices(sample, essay.opening !== undefined),
       },
       { label: "Judged by", says: SOLO_SOURCE },
       { label: "Checked against", says: essay.references.join(" · ") },
@@ -1138,11 +1134,32 @@ export function essayIntro(
       `This is the Rust Rounds essay for ${essay.week.id}, ${sayDay(essay.week.from)} to ${sayDay(essay.week.to)}.`,
       "Claude wrote the tutor's words, and code drew every frame.",
       sample
-        ? "This is a sample: both voices are synthetic, and the second reads made-up answers."
-        : "The tutor's voice is synthetic; the other voice is the owner's own.",
+        ? essay.opening === undefined
+          ? "This is a sample: both voices are synthetic, and the second reads made-up answers."
+          : "This is a sample: every voice is synthetic, and one reads made-up answers."
+        : essay.opening === undefined
+          ? "The tutor's voice is synthetic; the other voice is the owner's own."
+          : "The tutor's voice and the one asking the opening's questions are synthetic; the answers are the owner's own.",
       sample ? `Its answers cover ${of}.` : `The owner answered ${of}.`,
     ].join(" "),
   }
+}
+
+/**
+ * The intro's "Voices" row: who says what, for the sample (every voice
+ * synthetic) or an essay home renders, with the opening's asker when it
+ * opens on the conversation (#3269).
+ */
+function essayVoices(sample: boolean, opened: boolean): string {
+  if (!opened)
+    return sample
+      ? "Both are Kokoro, a synthetic speaker. In a sample, a second synthetic voice reads the answers"
+      : "The tutor is Kokoro, a synthetic speaker. The other voice is the owner's own, from their takes"
+  return `The tutor is Kokoro, a synthetic speaker, and so is the one asking the opening's questions, in a voice of its own. ${
+    sample
+      ? "In a sample, a third synthetic voice reads the answers"
+      : "The answers are the owner's own voice, from their takes"
+  }`
 }
 
 /** An answer scene's words and voice: a take's transcript in the owner's, a silence's in the tutor's. */

@@ -195,6 +195,16 @@ describe("the sample essay", () => {
     expect(backwards.ok ? [] : backwards.problems).toEqual([
       "opening.exchanges: each question once, in the opening's order; got 3, 1",
     ])
+    // The intro names the voice asking, and never says "both" of three.
+    for (const voicing of ["owner", "sample"] as const) {
+      const intro = essayIntro(opened, voicing)
+      const voices = intro.rows.find((r) => r.label === "Voices")?.says ?? ""
+      expect([voices, intro.said].join(" ")).toContain(
+        "the opening's questions"
+      )
+      expect(voices).not.toContain("Both")
+      expect(intro.said).not.toContain("both")
+    }
     // The template's own sample opens on three exchanges, so its storyboard
     // shows the conversation.
     const own = sampleEssay()

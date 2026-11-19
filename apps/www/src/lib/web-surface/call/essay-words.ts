@@ -24,8 +24,8 @@ export const ESSAY_WORDS = {
   /** The opening conversation (#3269): a question, by its place, from 1. */
   question: (n: number): string => `Question ${n}`,
   theyAsk: "They ask",
-  /** The owner's answer to it, in their own voice. */
-  yourAnswer: "Your answer, in your own voice",
+  /** The owner's answer to it: their own take, or in the sample a synthetic voice reading one. */
+  yourAnswer: "Your answer",
   noAnswer: "Nothing came for this one",
   /** A take that was sent and couldn't be made out (HEARD2): read as if unanswered. */
   unheard: ESSAY_STAGE_WORDS.unheard,

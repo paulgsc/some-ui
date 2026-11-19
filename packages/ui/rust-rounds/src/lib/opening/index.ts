@@ -2,9 +2,10 @@
  * Rust Rounds' opening, the standing set (#3269, C737): up to three
  * questions someone who has never seen Rust Rounds would ask, and the
  * answers the owner reads to them through the teleprompter. It carries over
- * week to week. The routine never writes it: code copies it into each `/2`
- * week as it stands (`openingOfWeek`), and it changes only when the owner
- * asks, by a change to this file that raises `version`.
+ * week to week. The routine never writes its words: once the routine writes
+ * `/2` weeks (#3272), code copies it into each as it stands
+ * (`openingOfWeek`); until then no week carries one. It changes only when
+ * the owner asks, by a change to this file that raises `version`.
  *
  * A take answers the version it was recorded under. The essay reuses the
  * newest kept take of each answer while the week's opening is that version
