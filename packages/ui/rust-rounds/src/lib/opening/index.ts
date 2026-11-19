@@ -33,7 +33,7 @@ export const STANDING_OPENING: Opening = {
         "and a few tickets that ask me to change it.",
         "I read each ticket on my phone, work the code at my desk,",
         "and then I say out loud what I would choose, and why.",
-        "Some tickets fork: two reasonable ways to go,",
+        "Some tickets split: two reasonable ways to go,",
         "and I pick one and say what it costs.",
         "On Monday, Claude writes an essay from what I said",
         "and sets it beside the references,",
