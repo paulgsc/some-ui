@@ -89,25 +89,39 @@ function kept(ink: string, ground: string): number {
 
 const P = MOCHI_NIGHT
 
-describe("Mochi Night through the renderer's encode", () => {
-  it("is tagged BT.709, as YouTube reads HD", () => {
-    expect(roundTrip(frame(P.ink, P.background, 47)).tags).toBe(
-      "bt709,bt709,bt709"
-    )
-  })
+// Cost (VP1): each `kept` is 2 round trips (x = 47 and 48), each three
+// synchronous child processes (an x264 encode at `-preset medium`, a decode,
+// an ffprobe). The accent case runs 4 accents, so 24 processes: 1.06-1.13 s
+// on an idle machine, 5.3 s on a CI runner running every package's tests at
+// once (#3222, twice). The 30 s bound leaves about 25 times the idle cost,
+// against the 5x a loaded runner has been seen to take.
+const ENCODE_TIMEOUT_MS = 30_000
 
-  it("keeps 90% of a 1 px stroke's contrast in ink and muted ink", () => {
-    expect(kept(P.ink, P.background)).toBeGreaterThanOrEqual(0.9)
-    expect(kept(P.mutedInk, P.background)).toBeGreaterThanOrEqual(0.9)
-  })
+describe(
+  "Mochi Night through the renderer's encode",
+  {
+    timeout: ENCODE_TIMEOUT_MS,
+  },
+  () => {
+    it("is tagged BT.709, as YouTube reads HD", () => {
+      expect(roundTrip(frame(P.ink, P.background, 47)).tags).toBe(
+        "bt709,bt709,bt709"
+      )
+    })
 
-  it("keeps 80% of an accent's at an edge, for large text", () => {
-    for (const accent of [P.honey, P.sky, P.warning, P.success])
-      expect(kept(accent, P.background)).toBeGreaterThanOrEqual(0.8)
-  })
+    it("keeps 90% of a 1 px stroke's contrast in ink and muted ink", () => {
+      expect(kept(P.ink, P.background)).toBeGreaterThanOrEqual(0.9)
+      expect(kept(P.mutedInk, P.background)).toBeGreaterThanOrEqual(0.9)
+    })
 
-  it("catches what the research measured: pure red and blue on black lose most", () => {
-    expect(kept("#ff0000", "#000000")).toBeLessThan(0.5)
-    expect(kept("#0000ff", "#000000")).toBeLessThan(0.5)
-  })
-})
+    it("keeps 80% of an accent's at an edge, for large text", () => {
+      for (const accent of [P.honey, P.sky, P.warning, P.success])
+        expect(kept(accent, P.background)).toBeGreaterThanOrEqual(0.8)
+    })
+
+    it("catches what the research measured: pure red and blue on black lose most", () => {
+      expect(kept("#ff0000", "#000000")).toBeLessThan(0.5)
+      expect(kept("#0000ff", "#000000")).toBeLessThan(0.5)
+    })
+  }
+)
