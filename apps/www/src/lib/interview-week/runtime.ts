@@ -27,8 +27,13 @@ import type {
   BundleMachine,
   BundleRuntime,
   BundleTakes,
+  HomeSent,
 } from "@some-ui/voice-capture"
-import { bundleRuntime, sendsAtHome } from "@some-ui/voice-capture"
+import {
+  bundleRuntime,
+  HOME_UNKNOWN,
+  sendsAtHomeSaid,
+} from "@some-ui/voice-capture"
 
 import type { Cue, CueEvent } from "./cue"
 import { NO_CUE, stepCue } from "./cue"
@@ -64,6 +69,12 @@ export type InterviewWeekPorts = {
   readonly homeHolds: (sent: InterviewSent) => boolean
   /** Calls `listener` whenever what `homeHolds` answers may have changed. Returns the stop. */
   readonly onHomeHolds: (listener: () => void) => () => void
+  /**
+   * What home's own record says was sent of week `week` (RR30), asked once
+   * each time a closed week opens; never rejects. Without it, a closed week
+   * reads only what the link remembers.
+   */
+  readonly homeSent?: (week: string) => Promise<HomeSent>
   /** Milliseconds since the epoch. */
   readonly now: () => number
   readonly newId: () => string
@@ -157,13 +168,20 @@ export function createInterviewWeek(
     onVisibility: ports.onVisibility,
   })
 
+  // What home's own record said this opening (RR30).
+  let homeSaid: HomeSent = HOME_UNKNOWN
   const readAtHome = (): InterviewAtHome =>
-    sendsAtHome(sends.list() ?? [], week.id, ports.homeHolds)
+    sendsAtHomeSaid(sends.list() ?? [], week.id, ports.homeHolds, homeSaid)
   const atHome = cell(readAtHome())
   const lookHome = (): void => {
     const next = readAtHome()
     const now = atHome.getSnapshot()
-    if (next.holds?.at === now.holds?.at && next.last?.at === now.last?.at) {
+    if (
+      next.holds?.at === now.holds?.at &&
+      next.last?.at === now.last?.at &&
+      next.homeSaid === now.homeSaid &&
+      next.elsewhere === now.elsewhere
+    ) {
       return
     }
     atHome.set(next)
@@ -353,6 +371,16 @@ export function createInterviewWeek(
       const stopClimb = bundle.subscribe(climb)
       const stopFocus = bundle.subscribe(settleFocus)
       const stopHeld = ports.onHomeHolds(lookHome)
+      // A closed week reads home's own record once each opening (RR30).
+      if (
+        ports.homeSent !== undefined &&
+        isClosed(week, new Date(ports.now()).toISOString())
+      ) {
+        void ports.homeSent(week.id).then((said) => {
+          homeSaid = said
+          lookHome()
+        })
+      }
       const stopSeen = ports.onVisibility((hidden) => {
         if (hidden) moveCue({ type: "cancel" })
       })

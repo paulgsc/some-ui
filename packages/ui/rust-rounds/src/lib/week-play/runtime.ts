@@ -27,7 +27,7 @@ import type {
   BundleTakes,
   HeardAnswer,
 } from "@some-ui/voice-capture"
-import { bundleRuntime } from "@some-ui/voice-capture"
+import { bundleRuntime, HOME_UNKNOWN } from "@some-ui/voice-capture"
 
 import type { FlowRuntime } from "./flow-runtime"
 import { createFlow } from "./flow-runtime"
@@ -37,7 +37,7 @@ import type { PasteRuntime } from "./paste"
 import { pasteRuntime } from "./paste"
 import { firstItemOf, itemOf, pointItem } from "./points"
 import type { HomeWeekSent, WeekAtHome, WeekKind, WeekSent } from "./spec"
-import { HOME_UNKNOWN, isClosed, weekAtHome, weekMachine } from "./spec"
+import { isClosed, weekAtHome, weekMachine } from "./spec"
 import {
   heardWords,
   ofWeek,
