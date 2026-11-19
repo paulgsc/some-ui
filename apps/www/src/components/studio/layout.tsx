@@ -18,14 +18,6 @@ import type { StudioKind } from "@/lib/studio-index"
 import { kindPath, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
 
 /**
- * A tile that opens nothing: a card the size of its neighbours. A tile that
- * opens a page is a `CardRoute` (`@/components/card-route`, #3234), so the
- * two never look alike.
- */
-export const TILE =
-  "bg-card border-border/60 focus-visible:ring-ring flex h-full flex-col gap-1 rounded-2xl border px-4 py-3 focus-visible:ring-2 focus-visible:outline-none"
-
-/**
  * The quiet way back to a kind's list, or to the index: Studio's pages are
  * the phone's ("apk"), so a build without them draws nothing (A3).
  */

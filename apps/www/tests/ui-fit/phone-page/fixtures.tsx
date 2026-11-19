@@ -405,7 +405,7 @@ export const PHONE_FIXTURES = {
   ...MY_DATA_FIXTURES,
   /** Studio's Episodes, by week (`./episodes`, `../episodes-fit.spec.ts`). */
   ...EPISODES_FIXTURES,
-  /** Studio's index, Takes' ways on and the templates (`./journal`, `../journal-fit.spec.ts`). */
+  /** Studio's index (`./journal`, `../journal-fit.spec.ts`). */
   ...JOURNAL_FIXTURES,
   /** Studio's Takes, its tiles and a compartment (`./takes`, `../takes-fit.spec.ts`). */
   ...TAKES_FIXTURES,

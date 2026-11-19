@@ -7,7 +7,6 @@
  * the tiles' links, since the page has no router.
  */
 import type { JSX, ReactNode } from "react"
-import { CardLink, CardLinkBody } from "@some-ui/shared"
 import type {
   Compartment,
   LibraryAbout,
@@ -22,6 +21,8 @@ import { TakeLibrary } from "@some-ui/soundbites"
 import type { PatternTake, Player } from "@some-ui/voice-capture"
 import { ONE_TAKE } from "@some-ui/voice-capture"
 import { simulatedPattern } from "@some-ui/voice-capture/testing"
+
+import { CardAnchor } from "@/components/card-route"
 
 const AT = "2026-11-14T09:00:00.000Z"
 
@@ -179,11 +180,8 @@ const phone: LibraryPhone = {
   subscribe: nothingChanges,
 }
 
-/** The route's tile (`CardRoute`, a card that opens something), as an anchor. */
 const tile = (compartment: Compartment, body: ReactNode): JSX.Element => (
-  <CardLink href={`#${compartment}`}>
-    <CardLinkBody>{body}</CardLinkBody>
-  </CardLink>
+  <CardAnchor href={`#${compartment}`}>{body}</CardAnchor>
 )
 
 const shown = (
