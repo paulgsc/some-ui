@@ -390,6 +390,19 @@ owner decides from it before the story is designed, so a reach is often an ask. 
 treats a new subsystem whose epic carries no reach, and no stated reason it needs none, as a
 finding to raise, not a block: whether a reach was owed is a judgment, and no check holds it.
 
+**Policy limits move with the story** (owner, 2026-11-19, close paraphrase; C771): "Policy
+limits, like 'this type of video essay should only be of this length', should be policy, not
+environment variables. … You have full authority to nudge and update them to meet a moved
+user story. If the new interview collides with some contrived policy limit of duration, just
+update the limit or retire it altogether. We view them as suggestions more than anything."
+This covers a limit that states a preference about content or its shape: a length, a count,
+a word bound. Keep such a limit in code as policy, and when a story outgrows it, move it or
+retire it in the same change, recording the move as a call that `moves` the call before it,
+so the history stays. It does not cover a guard that protects home or the record: memory and
+disk caps, the owner's history and "Never lose the record" (above), and the assurance
+ledger's promises. Loosening one of those still needs the owner, and moving one needs
+evidence, stated in the PR.
+
 ## Deleting is in scope
 
 Removing code, tests and docs that your change made unreachable or redundant is part of the
