@@ -570,7 +570,7 @@ describe("the flow and the takes on one ticket", () => {
       [second, `${second}:2`],
     ] as const) {
       const on = phone(inMemoryStorage(), onConfirm(), { perPoint: true })
-      // On the flow's read, from the brief.
+      // The flow on its read; the look over opened from the cards.
       on.week.flow?.dispatch({ type: "openTicket", ticket: from })
       on.week.bundle.dispatch({ type: "review" })
       on.week.bundle.dispatch({ type: "tap", item })

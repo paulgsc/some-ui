@@ -302,6 +302,11 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
           return
         }
         if (step.ticket === ticket) return
+        // A tap from the look over on the item it already stood on (index
+        // unchanged, not busy yet) would land here too, but can't be made:
+        // the look over stands on another ticket than the flow's only at
+        // the opening index, a ticket's own item, and offers no Redo on one
+        // where takes go point by point (`index.tsx`, `redoes`).
         const left = itemOf(machine.spec.items[was.index] ?? "").ticket
         if (was.screen === "cards" && left === step.ticket) {
           bundle.dispatch({ type: "go", index: was.index })

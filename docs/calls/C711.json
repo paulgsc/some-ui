@@ -3,7 +3,7 @@
   "made": "2026-11-19",
   "by": "owner",
   "paths": ["packages/ui/rust-rounds/src/lib/week-play/words.ts"],
-  "chose": "The flow keeps Rust Rounds' rule of no 'done', 'wrong' or 'verdict' on screen, with the words test unchanged: the exercise button is 'I did this at my desk', an exercise's standing 'Worked at your desk' or 'Not yet', a step worked through '✓' beside its name ('Read ✓'), the academy's step row 'n of m worked', and the academy's line 'Stumbling here is the point' for the prototype's 'Being wrong here is the point'. A passed step reads 'Skipped': the owner's 'Passed by' trips the unchanged test's ban on 'pass'.",
+  "chose": "The flow keeps Rust Rounds' rule of no 'done', 'wrong' or 'verdict' on screen, with the words test unchanged: the exercise button is 'I did this at my desk', an exercise's standing 'Worked at your desk' or 'Not yet', a step worked through ticked '✓' beside its name ('Read ✓', read aloud 'worked through'), the academy's step row 'n of m worked', and the academy's line 'Stumbling here is the point' for the prototype's 'Being wrong here is the point'. A passed step reads 'Skipped': the owner's 'Passed by' trips the unchanged test's ban on 'pass'.",
   "options": [
     "keep the words rule and reword the prototype's 'Done'",
     "exempt the flow's words from the rule, matching the prototype exactly"

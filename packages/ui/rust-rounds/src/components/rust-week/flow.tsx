@@ -536,13 +536,17 @@ const StepRow = ({
     {steps.flatMap((step, index) => {
       if (step.ticket !== ticket.id) return []
       const standing = stepStanding(view.marks, step)
+      // A step worked through is ticked beside its name ("Read ✓", C711);
+      // the line below says the academy's count, or a step skipped.
       const line =
         step.step === "academy" && standing !== "skipped"
           ? FLOW.atDesk(
               ticked(view.ticks, ticket.id).size,
               ticket.academy.length
             )
-          : FLOW.standing[standing]
+          : standing === "skipped"
+            ? FLOW.standing.skipped
+            : ""
       return [
         <button
           key={step.step}
@@ -556,7 +560,15 @@ const StepRow = ({
               : "border-border bg-card"
           )}
         >
-          <span className="text-sm font-semibold">{FLOW.steps[step.step]}</span>
+          <span className="text-sm font-semibold">
+            {FLOW.steps[step.step]}
+            {standing === "done" && (
+              <>
+                <span aria-hidden="true"> {FLOW.standing.done}</span>
+                <span className="sr-only">, {FLOW.doneSaid}</span>
+              </>
+            )}
+          </span>
           {line !== "" && (
             <span className="text-muted-foreground w-full truncate text-xs">
               {line}

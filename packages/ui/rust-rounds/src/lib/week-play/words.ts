@@ -248,7 +248,8 @@ export const WEEK_WORDS = {
    * A ticket's flow (RR25, #3249; RR29, #3257; the owner's approved
    * prototype, C690): read, the academy, then voice, each a page of one
    * pager over the week. The owner's rule holds here too (C711, the
-   * owner's): a step worked through is ticked "✓", never "done".
+   * owner's): a step worked through is ticked "✓" beside its name, never
+   * "done".
    */
   flow: {
     /** What PageControls pages, for assistive tech. */
@@ -263,10 +264,13 @@ export const WEEK_WORDS = {
     } satisfies Record<FlowStepKind, string>,
     stepsOf: (ticket: string): string => `Steps of ${ticket}`,
     standing: {
+      /** Beside the step's name: "Read ✓". */
       done: "✓",
       skipped: "Skipped",
       open: "",
     } satisfies Record<Standing, string>,
+    /** What a screen reader says for the tick. */
+    doneSaid: "worked through",
     /** The academy's standing in the step row: exercises worked at the desk. */
     atDesk: (n: number, of: number): string => `${n} of ${of} worked`,
     notKept:

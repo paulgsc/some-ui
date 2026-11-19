@@ -472,7 +472,15 @@ describe("a ticket's flow (RR25, RR29)", () => {
         ?.map(({ pick }) => pick)
     ).toEqual([{ kind: "option", option: "B" }])
 
-    // On to the next ticket: this voice is marked passed by, unsaid.
+    // Read and the academy gone through: ticked beside their names.
+    const row = screen.getByRole("navigation", { name: FLOW.stepsOf(first.id) })
+    expect(
+      within(row).getByRole("button", {
+        name: new RegExp(`^${FLOW.steps.read}\\s*, ${FLOW.doneSaid}$`),
+      })
+    ).toBeInTheDocument()
+
+    // On to the next ticket: this voice is marked skipped, unsaid.
     press(FLOW.voice.next(second.id))
     expect(
       screen.getByRole("region", { name: `${second.id} · ${FLOW.steps.read}` })
