@@ -22,6 +22,8 @@ import type { PatternTake, Player } from "@some-ui/voice-capture"
 import { ONE_TAKE } from "@some-ui/voice-capture"
 import { simulatedPattern } from "@some-ui/voice-capture/testing"
 
+import { CardAnchor } from "@/components/card-route"
+
 const AT = "2026-11-14T09:00:00.000Z"
 
 const take = (
@@ -179,12 +181,7 @@ const phone: LibraryPhone = {
 }
 
 const tile = (compartment: Compartment, body: ReactNode): JSX.Element => (
-  <a
-    href={`#${compartment}`}
-    className="bg-card border-border/60 flex h-full flex-col gap-1 rounded-2xl border px-4 py-3"
-  >
-    {body}
-  </a>
+  <CardAnchor href={`#${compartment}`}>{body}</CardAnchor>
 )
 
 const shown = (

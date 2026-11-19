@@ -8,21 +8,29 @@
  * its way back, and Android's back steps through them too.
  */
 import type { JSX, ReactNode } from "react"
-import { useEffect } from "react"
+import { useEffect, useLayoutEffect, useRef } from "react"
+import { cn } from "@some-ui/core-utils"
 import type { Question, WorkSource } from "@some-ui/interview-week"
 import { workSourceKey } from "@some-ui/interview-week"
-import { BundleTake, TakeRow } from "@some-ui/shared"
+import { BundleTake, Button, TakeRow } from "@some-ui/shared"
+import { TAKE_WORDS } from "@some-ui/voice-capture"
 import { ChevronLeft } from "lucide-react"
 
 import type { Rung, SayRung, Step } from "@/lib/interview-week/ladder"
-import { scriptOf, stepsOf } from "@/lib/interview-week/ladder"
-import { isClosed, sentTakeOf } from "@/lib/interview-week/spec"
+import { linesOf, stepsOf } from "@/lib/interview-week/ladder"
+import { bandOf } from "@/lib/interview-week/prompter"
+import {
+  cardOf,
+  isClosed,
+  sentTakeOf,
+  takeLine,
+} from "@/lib/interview-week/spec"
 import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 
 import type { Interview } from "./run"
 import { currentOf, playOnly, useInterview, viewOf } from "./run"
 import type { Page } from "./to"
-import { CardTo, To } from "./to"
+import { To } from "./to"
 import { doneLine, Opening } from "./week"
 
 /** A page's way back: a link, so Android's back and this step the same way. */
@@ -115,7 +123,8 @@ const RungLink = ({
     </>
   )
   return (
-    <CardTo
+    <To
+      card="card"
       to={
         step === "cues" || step === "own"
           ? { page: "say", question, rung: step }
@@ -124,7 +133,7 @@ const RungLink = ({
       className="min-h-28"
     >
       {inside}
-    </CardTo>
+    </To>
   )
 }
 
@@ -276,32 +285,121 @@ export const StudyPage = ({ id }: { id: string }): JSX.Element => (
   </WithQuestion>
 )
 
-/** A script read aloud, a phrase a line, large and scrollable while the take records under it. */
-export const Script = ({
-  lines,
-  id,
-}: {
-  lines: ReadonlyArray<string>
-  id: string
-}): JSX.Element => (
-  <section
-    aria-label={WORDS.script}
-    data-script={id}
-    data-scroll-intent
-    className={
-      /* scroll-intent: a teleprompter's script scrolls as it is read, while the take records under it (#2936) */
-      "bg-card flex max-h-[45vh] flex-col gap-2 overflow-y-auto rounded-2xl p-4 text-2xl leading-snug font-semibold"
-    }
-  >
-    {lines.map((line, i) => (
-      // A script can say a phrase twice; its place is its key.
-      // eslint-disable-next-line react/no-array-index-key
-      <p key={i}>{line}</p>
-    ))}
-  </section>
-)
+/** Bars standing for the microphone's level, as the band's foot shows it. */
+const LEVEL_BARS = [0.1, 0.25, 0.4, 0.55, 0.7] as const
 
-/** Under a read's script: the count before it records, holding its place (HS1). */
+/**
+ * A script read aloud through the teleprompter band (IW9, #3176): a phrase a
+ * line in large type, the line read lit at a third of the way down and the
+ * next dimmed, moving while the take under way hears you and holding while
+ * it doesn't (`@/lib/interview-week/prompter`). The window is an ordinary
+ * scroller, so a hand can move it too, whether or not the level is measured.
+ */
+export const Script = ({
+  held,
+  item,
+  seconds,
+}: {
+  held: Interview
+  item: string
+  seconds: number
+}): JSX.Element => {
+  const { prompter, snapshot, run, week } = held
+  const lines = linesOf(week, item)
+  const answers = takeLine(week.id, item)
+  const band = bandOf(prompter, answers, lines)
+  const { take } = snapshot
+  const reading = take.kind === "recording" && snapshot.answers === answers
+  const level = reading ? take.level : 0
+  const windowRef = useRef<HTMLDivElement>(null)
+  // What the lines say, for the effect: a new array of the same lines each
+  // render moves nothing.
+  const text = lines.join("\n")
+  // The lit line is scrolled to the band: a measure of laid-out lines, so it
+  // is read after layout, again when the window changes size, and when a take
+  // starts, wherever a hand left the script during the cue.
+  useLayoutEffect(() => {
+    const view = windowRef.current
+    if (view === null) return undefined
+    const place = (): void => {
+      const line = view.querySelector(`[data-line="${band.line}"]`)
+      if (!(line instanceof HTMLElement)) return
+      view.scrollTop = line.offsetTop - view.clientHeight * BAND_AT
+    }
+    place()
+    window.addEventListener("resize", place)
+    return (): void => window.removeEventListener("resize", place)
+  }, [band.line, text, reading])
+  return (
+    <section
+      aria-label={WORDS.script}
+      data-script={cardOf(item) ?? item}
+      className="bg-card flex flex-col gap-2 rounded-2xl py-3"
+    >
+      <p className="text-muted-foreground flex justify-between px-4 text-xs font-semibold">
+        <span>{WORDS.script}</span>
+        {reading && <span>{WORDS.band.time(take.elapsedMs, seconds)}</span>}
+      </p>
+      <div
+        ref={windowRef}
+        data-scroll-intent
+        className={
+          /* scroll-intent: the band scrolls the script as it is read, and a hand can scroll it too, while the take records under it (#2936, IW9) */
+          "relative flex h-[45vh] scroll-smooth flex-col gap-3.5 overflow-y-auto px-5 motion-reduce:scroll-auto"
+        }
+      >
+        {/* Room above the first line and below the last, so each can sit at the band. */}
+        <div aria-hidden className="h-[30%] shrink-0" />
+        {lines.map((line, i) => (
+          <p
+            // A script can say a phrase twice; its place is its key.
+            // eslint-disable-next-line react/no-array-index-key
+            key={i}
+            data-line={i}
+            aria-current={i === band.line ? "true" : undefined}
+            className={cn(
+              "-mx-3 rounded-2xl px-3 py-1 text-2xl leading-snug font-bold transition-[opacity,background-color] duration-300 motion-reduce:transition-none",
+              i === band.line
+                ? "bg-brand/20 opacity-100"
+                : i === band.line + 1
+                  ? "opacity-45"
+                  : "opacity-20"
+            )}
+          >
+            {line}
+          </p>
+        ))}
+        <div aria-hidden className="h-[70%] shrink-0" />
+      </div>
+      <div className="flex min-h-11 items-center gap-3 px-4">
+        <span aria-hidden className="flex h-6 items-end gap-0.5">
+          {LEVEL_BARS.map((bar) => (
+            <i
+              key={bar}
+              className={cn(
+                "w-1.5 rounded-sm transition-[height] duration-150 motion-reduce:transition-none",
+                level >= bar ? "bg-foreground h-6" : "bg-muted-foreground h-1"
+              )}
+            />
+          ))}
+        </span>
+        <p className="text-muted-foreground min-w-0 flex-1 text-sm">
+          {reading ? WORDS.band[band.state] : WORDS.band.ready}
+        </p>
+        {reading && (
+          <Button type="button" variant="outline" onClick={run.pause}>
+            {band.state === "paused" ? WORDS.band.goOn : WORDS.band.pause}
+          </Button>
+        )}
+      </div>
+    </section>
+  )
+}
+
+/** Where the band sits, from the window's top: about a third of the way. */
+const BAND_AT = 0.3
+
+/** Under a read's script: the cap, or how to call the count-in off while it runs, holding its place (HS1). */
 export const CueLine = ({
   held,
   item,
@@ -310,14 +408,18 @@ export const CueLine = ({
   item: string
 }): JSX.Element => {
   const { cue } = held
+  const counting = cue.kind === "counting" && cue.item === item
   return (
-    <p
-      aria-live="assertive"
-      className="text-muted-foreground min-h-6 text-center text-sm"
-    >
-      {cue.kind === "counting" && cue.item === item
-        ? WORDS.cue(cue.left)
-        : WORDS.cap}
+    <p className="text-muted-foreground min-h-6 text-center text-sm">
+      {/*
+        The count shows here as well as on the button, which a take that
+        didn't come through replaces with its retry; only the count is in
+        the live region, so a screen reader hears it once a second.
+      */}
+      <span aria-live="assertive">
+        {counting ? TAKE_WORDS.button.counting(cue.left) : ""}
+      </span>
+      {counting ? `. ${WORDS.cueLine}` : WORDS.cap}
     </p>
   )
 }
@@ -353,7 +455,7 @@ export const TakeOn = ({
   rung: Rung | null
   head: ReactNode
 }): JSX.Element => {
-  const { run, state, takes, snapshot, week } = held
+  const { run, state, takes, snapshot, week, cue } = held
   if (isClosed(week, state.at)) {
     return (
       <>
@@ -373,6 +475,7 @@ export const TakeOn = ({
       dispatch={rung === null ? run.dispatch : run.dispatchOn(rung)}
       words={WORDS}
       item={item}
+      counting={cue.kind === "counting" && cue.item === item ? cue.left : null}
       head={
         <>
           {head}
@@ -403,7 +506,11 @@ const AloudTake = ({
             {WORDS.step.aloud.name} · {WORDS.aim(question.targetSeconds)}
           </p>
           {ready !== undefined && (
-            <Script lines={scriptOf(ready)} id={question.id} />
+            <Script
+              held={held}
+              item={question.id}
+              seconds={question.targetSeconds}
+            />
           )}
           <CueLine held={held} item={question.id} />
         </>

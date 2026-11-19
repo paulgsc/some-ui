@@ -301,6 +301,8 @@ const TicketBody = ({
       />
       <RunView
         run={run}
+        program={ticket.program}
+        appearance="code"
         none={held.ended.includes(ticket.id) ? WORDS.noRun : WORDS.noRunYet}
         silent={WORDS.rustcSilent}
       />

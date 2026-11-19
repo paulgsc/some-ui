@@ -11,8 +11,8 @@ import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 
 import { BackTo } from "./ladder"
 import type { Interview } from "./run"
-import { useInterview } from "./run"
-import { CardTo } from "./to"
+import { labelOf, useInterview } from "./run"
+import { To } from "./to"
 import { doneLine, Opening, RoleAbout, TakesLink } from "./week"
 
 const Questions = ({ held }: { held: Interview }): JSX.Element => {
@@ -39,9 +39,9 @@ const Questions = ({ held }: { held: Interview }): JSX.Element => {
         <RoleAbout week={week} />
       </section>
       {today !== null && (
-        <CardTo to={{ page: "question", question: today.id }} tone="brand">
+        <To to={{ page: "question", question: today.id }} card="brand">
           <span className="text-xs font-semibold opacity-85">
-            {WORDS.today}
+            {WORDS.today(labelOf(week, today.id))}
           </span>
           <span className="text-xl leading-tight font-extrabold text-balance">
             {today.prompt}
@@ -49,7 +49,7 @@ const Questions = ({ held }: { held: Interview }): JSX.Element => {
           <span className="text-xs font-semibold opacity-85">
             {doneLine(held, today.id) ?? WORDS.todayLine}
           </span>
-        </CardTo>
+        </To>
       )}
       {others.length > 0 && (
         <section className="flex flex-col gap-2">
@@ -59,12 +59,15 @@ const Questions = ({ held }: { held: Interview }): JSX.Element => {
           {others.map(({ id, prompt }) => {
             const done = doneLine(held, id)
             return (
-              <CardTo key={id} to={{ page: "question", question: id }}>
+              <To card="card" key={id} to={{ page: "question", question: id }}>
+                <span className="text-muted-foreground text-xs font-semibold">
+                  {labelOf(week, id)}
+                </span>
                 <span className="font-semibold">{prompt}</span>
                 {done !== null && (
                   <span className="text-muted-foreground text-xs">{done}</span>
                 )}
-              </CardTo>
+              </To>
             )
           })}
         </section>

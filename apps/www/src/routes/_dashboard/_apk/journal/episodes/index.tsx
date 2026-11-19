@@ -1,12 +1,13 @@
 import type { JSX } from "react"
 import { STUDIO_WORDS } from "@some-ui/soundbites"
-import { createFileRoute, Link } from "@tanstack/react-router"
+import { createFileRoute } from "@tanstack/react-router"
 
 import type { Feed } from "@/lib/feeds"
 import { isFeed } from "@/lib/feeds"
 import { KIND_WORDS, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
+import { CardRoute } from "@/components/card-route"
 import { FeedEpisodes } from "@/components/studio/feed-episodes"
-import { StudioPage, TILE, TileBody } from "@/components/studio/layout"
+import { StudioPage, TileBody } from "@/components/studio/layout"
 
 const WORDS = STUDIO_INDEX_WORDS.episodes
 
@@ -39,9 +40,9 @@ const Episodes = (): JSX.Element => {
         chips
         pairWords={STUDIO_WORDS.pair.pair}
         top={
-          <Link to="/journal/episodes/making" className={TILE}>
+          <CardRoute to="/journal/episodes/making">
             <TileBody title={WORDS.making} line={WORDS.makingLine} />
-          </Link>
+          </CardRoute>
         }
       />
     </StudioPage>

@@ -285,6 +285,8 @@ type BodyProps<K extends BundleKind> = Parts<K> & {
   item: K["item"]
   /** Its card is the one on screen: only that one says why a take failed. */
   active: boolean
+  /** Seconds left of the screen's own count-in before the take starts, if one runs. */
+  counting?: number | null
 }
 
 /** What a card offers under its head: its take, or what to do when one didn't come through. */
@@ -297,18 +299,24 @@ const CardBody = <K extends BundleKind>({
   words,
   item,
   active,
+  counting = null,
 }: BodyProps<K>): JSX.Element => {
   const { spec } = machine
   const answers = machine.answersOf(state, item)
   const recording =
     snapshot.take.kind !== "idle" && snapshot.answers === answers
   const card = machine.cardView(state, item, recording)
-  const view = takeItemView(
+  const taken = takeItemView(
     snapshot,
     state.takes,
     answers,
     takes.pattern.options
   )
+  // A count-in shows on the button it starts from, so the two never disagree.
+  const view =
+    counting !== null && taken.button.kind === "ready"
+      ? { ...taken, button: { kind: "counting" as const, left: counting } }
+      : taken
   return (
     <>
       {card.kind === "failed" && (
@@ -424,6 +432,8 @@ export type BundleTakeProps<K extends BundleKind> = Parts<K> & {
   item: K["item"]
   /** What the page says of its item, above its take. */
   head: ReactNode
+  /** Seconds left of the page's count-in before the take starts (the interview's cue), if one runs. */
+  counting?: number | null
 }
 
 /**

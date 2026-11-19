@@ -10,7 +10,7 @@ import { ReadsPage } from "@/components/jobs/interview/reads"
 const Reads = (): JSX.Element | null =>
   import.meta.env.VITE_DEVICE_BACKEND === "true" ? <ReadsPage /> : null
 
-/** Read aloud, the week's own section (IW8). */
+/** Scripts, the week's own section (IW8). */
 export const Route = createFileRoute("/_dashboard/_apk/jobs/interview/reads/")({
   component: Reads,
 })
