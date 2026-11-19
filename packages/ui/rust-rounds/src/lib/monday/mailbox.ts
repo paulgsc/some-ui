@@ -4,9 +4,10 @@
  * `@some-ui/video-render/node`'s, which the interview week's routine shares.
  *
  * PN1: `notesNamed` names every note a record names, a ticket's take, each
- * of its points' own takes (RR24) and each paste's note, so `monday pull`
- * fetches every transcript the bundle reads. Held by monday.test.ts, which
- * walks a record for every `take` and `note` it holds.
+ * of its points' own takes (RR24), each opening answer's take whatever week
+ * it was said in (#3269) and each paste's note, so `monday pull` fetches
+ * every transcript the bundle reads. Held by monday.test.ts, which walks a
+ * record for every `take` and `note` it holds.
  */
 import type { WeekRecord } from "@rust-rounds/lib/monday/record"
 
@@ -18,6 +19,7 @@ export function notesNamed(records: ReadonlyArray<WeekRecord>): Set<string> {
       if (ticket.take !== null) notes.add(ticket.take)
       for (const point of ticket.points) notes.add(point.take)
     }
+    for (const answer of record.opening) notes.add(answer.take)
     for (const paste of record.pastes)
       if (paste.note !== null) notes.add(paste.note)
   }

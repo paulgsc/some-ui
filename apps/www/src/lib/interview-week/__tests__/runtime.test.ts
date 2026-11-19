@@ -15,7 +15,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { CUE_SECONDS } from "@/lib/interview-week/cue"
 import type { Prompter } from "@/lib/interview-week/prompter"
-import { NO_PROMPTER } from "@/lib/interview-week/prompter"
 import type {
   InterviewWeekPorts,
   InterviewWeekRun,
@@ -503,9 +502,15 @@ describe("a question's ladder on the phone (IW8)", () => {
     // Spoken throughout: about the pace's words in three seconds.
     expect(words()).toBeGreaterThan(5)
     expect(words()).toBeLessThan(8)
+    const read = words()
     on.run.dispatch({ type: "tap", item: "read:epic-2931" })
     await pass()
-    expect(band()).toBe(NO_PROMPTER)
+    // The take ended: the band stays where it left the script (PB1).
+    expect(band()).toMatchObject({
+      kind: "held",
+      answers: "2026-w47:read:epic-2931",
+      words: read,
+    })
     // A take that hears nothing never moves the band.
     on.run.dispatch({ type: "tap", item: "read:epic-2931" })
     await pass(CUE_SECONDS * 1000 + 3_000)

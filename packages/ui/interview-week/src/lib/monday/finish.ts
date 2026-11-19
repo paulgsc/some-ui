@@ -5,8 +5,6 @@
  */
 import type { Bundle, WorkEntry } from "@interview-week/lib/monday/bundle"
 import {
-  MONIKER,
-  OPENING_WORDS,
   READ_WORDS_PER_MINUTE,
   SCRIPT_WORDS,
   weekFileName,
@@ -32,6 +30,7 @@ import {
   readWeek,
   workSourceKey,
 } from "@interview-week/lib/week"
+import { openingProblems } from "@some-ui/video-render"
 
 /** Which routine wrote the week. */
 const BY = "claude-routine"
@@ -108,14 +107,6 @@ const cardSeconds = (card: Pick<Card, "source">, script: string): number => {
   return Math.min(Math.max(seconds, min), max)
 }
 
-/**
- * What the essay's opening never says (owner, 2026-11-17): no
- * self-assessment, no rating, no "how ready", no end to the practice
- * (C619).
- */
-const ASSESSING =
-  /\b(?:scor(?:e|es|ed|ing)|ratings?|rated|grad(?:e|es|ed|ing)|self-assess\w*|assessments?|readiness|how ready|ready for (?:it|the|an?)\b|pass or fail|finish(?:ed)? line|graduat\w*|levell?ed up|level up)\b/giu
-
 function checkWords(
   values: WeekValues,
   problems: Array<string>,
@@ -179,19 +170,9 @@ function checkWords(
   }
   values.cards.forEach((card, i) => {
     const at = `week.cards[${i}] ("${card.id}").script`
-    const opening = card.id === OPENING_CARD
-    within(problems, at, card.script, opening ? OPENING_WORDS : SCRIPT_WORDS)
-    if (opening) {
-      const first = (card.script.split("\n")[0] ?? "").toLowerCase()
-      if (!first.includes(MONIKER)) {
-        problems.push(`${at}: the opening says "${MONIKER}" in its first line`)
-      }
-      for (const [word] of card.script.matchAll(ASSESSING)) {
-        problems.push(
-          `${at}: "${word}" assesses; the opening says what the week trains, with no rating and no finish line`
-        )
-      }
-    }
+    if (card.id === OPENING_CARD)
+      problems.push(...openingProblems(card.script, at))
+    else within(problems, at, card.script, SCRIPT_WORDS)
     card.script.split("\n").forEach((line, j) => {
       if (wordCount(line) > WORDS.line.max) {
         problems.push(

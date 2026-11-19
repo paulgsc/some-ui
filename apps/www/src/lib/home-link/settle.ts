@@ -39,6 +39,8 @@ export type PairingRecord = {
   id: string
   since: number | null
   phoneId: string | null
+  /** The account home named at pairing (C751), or null from a home before it. */
+  account: string | null
   name: string | null
 }
 
@@ -62,6 +64,7 @@ export function parsePairing(record: string): PairingRecord | null {
               ? parsed.pairedAt
               : null,
           phoneId: textOrNull(parsed.phoneId),
+          account: textOrNull(parsed.account),
           name: textOrNull(parsed.name),
         }
       : null
