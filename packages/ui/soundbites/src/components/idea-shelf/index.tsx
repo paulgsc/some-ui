@@ -9,7 +9,7 @@
 import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
-import { Button, Notice } from "@some-ui/shared"
+import { Button, CardLink, CardLinkBody, Notice } from "@some-ui/shared"
 import { FilePick } from "@soundbites/components/file-pick"
 import { IdeaCapture } from "@soundbites/components/idea"
 import type { Idea, IdeaStage } from "@soundbites/lib/idea/model"
@@ -92,18 +92,21 @@ const List = ({
       <ul className="flex flex-col gap-2">
         {ideas.map((idea) => (
           <li key={idea.id}>
-            <button
-              type="button"
-              onClick={() => dispatch({ type: "opened", id: idea.id })}
-              className="bg-card border-border/60 focus-visible:ring-ring flex w-full flex-col gap-1 rounded-2xl border px-4 py-3 text-left focus-visible:ring-2 focus-visible:outline-none"
-            >
-              <span className="line-clamp-2 text-base font-bold">
-                {ideaName(idea)}
-              </span>
-              <span className="text-muted-foreground text-xs font-semibold">
-                {stageLine(idea, stageOf(idea, videos))}
-              </span>
-            </button>
+            <CardLink asChild>
+              <button
+                type="button"
+                onClick={() => dispatch({ type: "opened", id: idea.id })}
+              >
+                <CardLinkBody>
+                  <span className="line-clamp-2 text-base font-bold">
+                    {ideaName(idea)}
+                  </span>
+                  <span className="text-muted-foreground text-xs font-semibold">
+                    {stageLine(idea, stageOf(idea, videos))}
+                  </span>
+                </CardLinkBody>
+              </button>
+            </CardLink>
           </li>
         ))}
       </ul>

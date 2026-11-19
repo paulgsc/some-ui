@@ -1,0 +1,17 @@
+{
+  "id": "C646",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/ui/soundbites/src/components/file-pick/index.tsx",
+    "packages/ui/topik/src/components/topik/handheld/material-list/index.tsx"
+  ],
+  "chose": "A card-styled label that opens the file picker (Studio's FilePick, TOPIK's open from storage) is a card that opens something, so it takes CardLink through asChild on the label, its file input kept inside. The owner's story is a card-shaped thing \"I'm looking at a card and thinking it's just a blob of text, and then I'm surprised, oh, I can click on that\" (C643); a label that opens the picker is exactly that.",
+  "options": [
+    "a file pick is a card that opens something: CardLink on the label",
+    "leave file picks as plain cards, since they open the system's picker, not a page"
+  ],
+  "gray": "Whether opening the system's file picker counts as opening something is a reading of the owner's story; the coordinator ruled it in.",
+  "undo": "Put the label's own card classes back in place of CardLink in both files.",
+  "refs": ["#3234"]
+}

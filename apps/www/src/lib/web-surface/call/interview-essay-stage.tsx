@@ -65,6 +65,7 @@ const labelOf = (scene: InterviewEssayScene): string => {
     case "chapter": {
       return EW.chapter(scene.title)
     }
+    case "opening":
     case "open":
     case "weeks":
     case "next": {
@@ -180,6 +181,17 @@ const Screen = ({
     }
     case "chapter": {
       return <ChapterSlide title={view.title} holds={undefined} />
+    }
+    case "opening": {
+      return (
+        <Played
+          speaker={at.speaker}
+          answer={{ kind: "take", transcript: view.transcript }}
+          took={W.yourOpening}
+          tag={NAMES.opening}
+          left=""
+        />
+      )
     }
     case "open": {
       return (

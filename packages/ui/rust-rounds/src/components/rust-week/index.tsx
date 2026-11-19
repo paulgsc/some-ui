@@ -41,6 +41,8 @@ import {
   bundleConfirm,
   BundleReview,
   Button,
+  CardLink,
+  CardLinkBody,
   CodeCard,
   ConfirmSheet,
   Notice,
@@ -164,25 +166,27 @@ const Brief = (
       <section className="flex flex-col gap-2">
         <h3 className="text-sm font-semibold">{WORDS.tickets}</h3>
         {week.tickets.map((ticket, i) => (
-          <Button
-            key={ticket.id}
-            variant="outline"
-            className="h-auto flex-col items-start gap-0.5 rounded-2xl p-3 text-left whitespace-normal"
-            onClick={() => dispatch({ type: "go", index: i })}
-          >
-            <span className="font-semibold">
-              {WORDS.ticketLabel(ticket.id, ticket.title)}
-            </span>
-            <span className="text-muted-foreground text-xs font-normal">
-              {[
-                WORDS.standing[standing(props, ticket.id)],
-                shape(held, ticket),
-                WORDS.speakToCount(ticket.speakTo.length),
-              ]
-                .filter((part) => part !== null)
-                .join(" · ")}
-            </span>
-          </Button>
+          <CardLink key={ticket.id} asChild>
+            <button
+              type="button"
+              onClick={() => dispatch({ type: "go", index: i })}
+            >
+              <CardLinkBody className="gap-0.5">
+                <span className="font-semibold">
+                  {WORDS.ticketLabel(ticket.id, ticket.title)}
+                </span>
+                <span className="text-muted-foreground text-xs">
+                  {[
+                    WORDS.standing[standing(props, ticket.id)],
+                    shape(held, ticket),
+                    WORDS.speakToCount(ticket.speakTo.length),
+                  ]
+                    .filter((part) => part !== null)
+                    .join(" · ")}
+                </span>
+              </CardLinkBody>
+            </button>
+          </CardLink>
         ))}
       </section>
       <Button
@@ -289,6 +293,8 @@ const TicketBody = ({
       />
       <RunView
         run={run}
+        program={ticket.program}
+        appearance="code"
         none={held.ended.includes(ticket.id) ? WORDS.noRun : WORDS.noRunYet}
         silent={WORDS.rustcSilent}
       />

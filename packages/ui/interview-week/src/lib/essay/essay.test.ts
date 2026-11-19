@@ -21,6 +21,7 @@ import { prepare } from "@interview-week/lib/monday/bundle"
 import { finish } from "@interview-week/lib/monday/finish"
 import type { InterviewWeek } from "@interview-week/lib/week"
 import { isRecord } from "@some-ui/core-utils"
+import { OPENING_TAKE } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
 /** The week the Monday routine writes from the fixture on Monday `now`. */
@@ -43,8 +44,14 @@ function week(now = "2026-11-16T11:41:00Z"): InterviewWeek {
 
 const W = week()
 const [Q1, Q2] = W.questions
-const [C1] = W.cards
-if (Q1 === undefined || Q2 === undefined || C1 === undefined)
+// The week opens its cards on the essay's opening (IW10); the first read is the next.
+const [OPENING, C1] = W.cards
+if (
+  Q1 === undefined ||
+  Q2 === undefined ||
+  OPENING === undefined ||
+  C1 === undefined
+)
   throw new Error("the fixture's week changed")
 
 /** Words said one a third of a second apart, an "um" among them. */
@@ -102,12 +109,12 @@ const record = (
       })),
       cards: W.cards.map((c, i) => ({
         card: c.id,
-        read: i === 0,
-        take: i === 0 ? "note-2" : null,
-        recordedAt: i === 0 ? "2026-11-21T20:20:00.000Z" : null,
+        read: i === 1,
+        take: i === 1 ? "note-2" : null,
+        recordedAt: i === 1 ? "2026-11-21T20:20:00.000Z" : null,
       })),
       unanswered: W.questions.slice(1).map((q) => q.id),
-      unread: W.cards.slice(1).map((c) => c.id),
+      unread: W.cards.filter((_, i) => i !== 1).map((c) => c.id),
       ...overrides,
     },
   ],
@@ -361,6 +368,71 @@ describe("a take home couldn't make out (HEARD2; EH1)", () => {
     ])
     expect(bundle.waiting).toEqual([])
     expect(bundle.essays[0]?.questions[0]?.answer).toEqual({ kind: "silence" })
+  })
+})
+
+describe("the essay's opening (IW10)", () => {
+  const OPENED = "I'm paulgsc. This week I practise telling a decision."
+  const opened = (text: string | null, words?: unknown): EssayBundle =>
+    prepareEssays({
+      now: new Date("2026-11-23T11:41:00Z"),
+      brief: [{ name: `interview-week-${W.id}.json`, body: W }],
+      index: record({
+        cards: W.cards.map((c, i) => ({
+          card: c.id,
+          read: i <= 1,
+          take: i === 0 ? "note-3" : i === 1 ? "note-2" : null,
+          recordedAt: i <= 1 ? "2026-11-21T20:20:00.000Z" : null,
+        })),
+        unread: W.cards.slice(2).map((c) => c.id),
+      }),
+      transcripts: [
+        transcript("note-1", ANSWER),
+        transcript("note-2", C1.script.replaceAll("\n", " ")),
+        ...(text === null
+          ? []
+          : [
+              words === undefined
+                ? transcript("note-3", text)
+                : transcript("note-3", text, "whisper+verbatim-1", words),
+            ]),
+      ],
+    }).bundle
+
+  it("is no read: the essay plays the owner's take first, uncounted, and leaves it out when it went unread", () => {
+    const [essay] = opened(OPENED).essays
+    expect(essay?.opening).toEqual({ transcript: OPENED })
+    expect(essay?.reads.map((r) => r.id)).not.toContain(OPENING.id)
+    expect(essay?.reads[0]?.id).toBe(C1.id)
+    const done = finishEssays({
+      bundle: opened(OPENED),
+      values: valuesFor_(opened(OPENED)),
+      resumeEmployers: [],
+    })
+    if (!done.ok) throw new Error(done.problems.join("\n"))
+    expect(done.files[0]?.body.opening).toEqual({ transcript: OPENED })
+    expect(done.files[0]?.body.template.version).toBe(2)
+
+    expect(prepared().essays[0]?.opening).toBeNull()
+    const plain = finishEssays({
+      bundle: prepared(),
+      values: valuesFor_(prepared()),
+      resumeEmployers: [],
+    })
+    if (!plain.ok) throw new Error(plain.problems.join("\n"))
+    expect("opening" in (plain.files[0]?.body ?? {})).toBe(false)
+    // With no opening it stays version 1, which every stage draws.
+    expect(plain.files[0]?.body.template.version).toBe(1)
+  })
+
+  it("never waits on the opening's word times: it is played, never measured", () => {
+    const bundle = opened(OPENED, [])
+    expect(bundle.waiting).toEqual([])
+    expect(bundle.essays[0]?.opening).toEqual({ transcript: OPENED })
+  })
+
+  it("names the card the essay plays its take by", () => {
+    expect(OPENING.id).toBe(OPENING_TAKE)
   })
 })
 
