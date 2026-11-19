@@ -227,6 +227,44 @@ describe("the essay's stage", () => {
     ).toEqual(["QM-312", 2, "What `clear` and `push_str` do to the bytes"])
   })
 
+  it("draws a point answered by a take of its own as its own answer scene (RR24)", () => {
+    const sample = essay()
+    const first = sample.tickets.at(0)
+    if (first === undefined) throw new Error("a ticket")
+    const rest = sample.tickets.slice(1)
+    const own = {
+      ...sample,
+      tickets: [
+        {
+          ...first,
+          points: first.points.map((point, i) =>
+            i === 1
+              ? {
+                  ...point,
+                  answer: {
+                    kind: "take" as const,
+                    transcript: "Point two, said alone.",
+                    mark: { mark: "covered" as const },
+                    solo: { level: 4, why: "One reason." },
+                  },
+                }
+              : point
+          ),
+        },
+        ...rest,
+      ],
+    }
+    const at = essayAt(own, "answer-2")
+    expect(at.speaker).toBe("you")
+    expect(
+      at.view.section === "answer" && [at.view.ticket.id, at.view.point]
+    ).toEqual(["QM-311", 1])
+    expect(essayAt(own, "answer-3").view).toMatchObject({
+      section: "answer",
+      ticket: { id: "QM-312" },
+    })
+  })
+
   it("numbers each ticket's chapter", () => {
     expect(essayAt(essay(), "chapter-question-2").view).toEqual({
       section: "chapter",

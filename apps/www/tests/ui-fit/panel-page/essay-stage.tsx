@@ -5,7 +5,7 @@ import type { Essay } from "@some-ui/video-render"
 
 import { EssaySceneFrame } from "@/lib/web-surface"
 
-import { accepted, atTheLimit, sample } from "./essays"
+import { accepted, atTheLimit, byPoints, sample } from "./essays"
 
 /**
  * Every best, beside and deep dive scene of the essay `?essay=` names
@@ -16,6 +16,7 @@ import { accepted, atTheLimit, sample } from "./essays"
 
 function essayNamed(name: string | null): Essay | null {
   if (name === "sample") return sample()
+  if (name === "by-points") return byPoints()
   const limit = /^limit-(\d+)$/.exec(name ?? "")
   return limit ? (atTheLimit()[Number(limit[1]) - 1] ?? null) : null
 }

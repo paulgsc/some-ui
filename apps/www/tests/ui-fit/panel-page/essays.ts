@@ -4,7 +4,7 @@ import {
   parseEssay,
   sampleEssay,
 } from "@some-ui/video-render"
-import type { Essay } from "@some-ui/video-render"
+import type { Essay, EssayPointAnswer } from "@some-ui/video-render"
 
 import { grown as grownBy, prose as words, WORDS_WITH_CODE } from "./grown"
 
@@ -40,6 +40,40 @@ const grown = (essay: Essay, set: (draft: Essay, n: number) => void): Essay =>
     accepts: accepted,
   })
 
+/**
+ * The sample with points answered by takes of their own (RR24): QM-311's
+ * whole take beside point 1's own, QM-312 answered only point by point, and
+ * QM-313's silence beside point 2's own, so the beside table cites a take
+ * under every kind of row.
+ */
+export function byPoints(): Essay {
+  const essay = structuredClone(sample())
+  const own = (mark: "covered" | "partly" | "missing"): EssayPointAnswer => ({
+    kind: "take",
+    transcript: "Said on its own.",
+    mark: mark === "covered" ? { mark } : { mark, note: "What it left out." },
+    solo: { level: 3, why: "One reason." },
+  })
+  const answer = (
+    ticket: number,
+    point: number,
+    of: EssayPointAnswer
+  ): void => {
+    const at = essay.tickets.at(ticket)?.points.at(point)
+    if (at === undefined) throw new Error("the sample changed shape")
+    at.answer = of
+  }
+  answer(0, 0, own("covered"))
+  const second = essay.tickets.at(1)
+  if (second === undefined) throw new Error("the sample changed shape")
+  second.answer = { kind: "silence", opened: 1 }
+  answer(1, 0, own("partly"))
+  answer(1, 1, own("partly"))
+  answer(1, 2, own("missing"))
+  answer(2, 1, own("covered"))
+  return essay
+}
+
 /** Each text of the sample's best, beside and dive scenes, each grown to its limit. */
 export function atTheLimit(): ReadonlyArray<Essay> {
   const base = sample()
@@ -67,6 +101,13 @@ export function atTheLimit(): ReadonlyArray<Essay> {
     grown(base, (e, n) => {
       for (const ticket of e.tickets)
         if (ticket.answer.kind === "take") ticket.answer.solo.why = prose(n, n)
+    }),
+    // Each point's own take's note (RR24), under its cite.
+    grown(byPoints(), (e, n) => {
+      for (const ticket of e.tickets)
+        for (const point of ticket.points)
+          if (point.answer?.kind === "take")
+            point.answer.mark.note = prose(n, n)
     }),
     grown(base, (e, n) => {
       dives(e, (dive) => {
