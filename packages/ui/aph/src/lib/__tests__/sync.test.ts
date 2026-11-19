@@ -313,6 +313,34 @@ describe("aph's read of home as its screens open (AR1)", () => {
     expect(store.outbox()?.settings ?? null).toBeNull()
   })
 
+  it("with nothing waiting, shows home's record and takes home's settings", async () => {
+    const home = fakeHome()
+    const store = keptOnHome()
+    // An exchange empties the outbox; home's settings then change elsewhere.
+    await exchangeWithHome(store, home.send)
+    expect(store.outbox()).toEqual({ settings: null, entries: [] })
+    const elsewhere = { ...SETTINGS, tolerance: 300 }
+    await home.send("PUT", "/aph/settings", JSON.stringify(elsewhere))
+    home.held.set("z", entry("z", "2026-09-16"))
+    expect(await readFromHome(store, home.send)).toEqual({ kind: "synced" })
+    expect(store.get().settings.tolerance).toBe(300)
+    expect(
+      store
+        .get()
+        .entries.map(({ id }) => id)
+        .sort()
+    ).toEqual(["a", "b", "c", "z"])
+  })
+
+  it("with home holding nothing, shows only what waits here", async () => {
+    const home = fakeHome()
+    const store = keptOnHome()
+    expect(await readFromHome(store, home.send)).toEqual({ kind: "synced" })
+    expect(store.where()).toMatchObject({ pulled: true })
+    expect(store.get().entries.map(({ id }) => id)).toEqual(["a", "b", "c"])
+    expect(store.get().settings).toEqual(SETTINGS)
+  })
+
   it("reads nothing before aph is kept on home", async () => {
     const home = fakeHome()
     const store = createAphStore(
