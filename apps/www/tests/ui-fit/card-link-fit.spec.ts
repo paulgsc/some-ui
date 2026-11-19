@@ -8,7 +8,7 @@
  * `bg-card` for both: the link's gradient starts there), and the card link's
  * must stand off the page by `OUTLINE`, and by `MARGIN` more than the plain
  * card's, so it never reads as the same card with a chevron. The two numbers
- * are where the first look (an outline at 25%) failed four of six themes and
+ * are where the first look (an outline at 25%) failed three of six themes and
  * this one passes all six (C633).
  *
  * Run against a built phone page:

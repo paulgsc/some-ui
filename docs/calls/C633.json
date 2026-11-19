@@ -9,7 +9,7 @@
   "chose": "A card link's outline is primary at 60% (full on hover), its shadow larger and stronger on dark themes, and its tint toward the primary on dark themes; card-link-fit holds that in every session theme the outline stands at least 1.6:1 off the page and 0.4 more than a plain card's.",
   "options": [
     "the sweep worker's variant B, held by those two numbers",
-    "the first look (primary at 25%), which fails four of six themes",
+    "the first look (primary at 25%), which fails three of six themes",
     "a filled card"
   ],
   "gray": "How much a tappable card should stand out is a look the owner sees on every screen; the numbers are where the first look failed and variant B passes.",
