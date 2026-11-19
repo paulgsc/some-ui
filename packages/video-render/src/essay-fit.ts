@@ -13,13 +13,14 @@
  * Family: every text the routine writes on those scenes (best fits, notes,
  * SOLO's why, a dive's title and shows) at any length and wrap, with code
  * spans, including a span touching the punctuation after it; two or three
- * speak-to points, at any length, each judged from the ticket's take or its
- * own (RR24, cited on its beside row); a dive's code at any number of lines and
- * columns, tabs included; and the host that records it, whose sans face the
+ * speak-to points, at any length, each judged from the ticket's take or
+ * from its own (RR24, cited on its beside row); a dive's code at any number
+ * of lines and columns, tabs included; and the host that records it, whose sans face the
  * frame draws in (`./frame-text`'s `SANS`): a cloud session's Inter, and
  * home's render image's WenQuanYi Zen Hei.
  *
- * Proof: `apps/www/tests/ui-fit/essay-fit.spec.ts` draws the sample and
+ * Proof: `apps/www/tests/ui-fit/essay-fit.spec.ts` draws the sample, an
+ * essay with points answered by takes of their own (`by-points`), and
  * essays with each of those texts, and the code by lines, columns and tabs,
  * grown to the most this accepts, on the real stage, and fails where this
  * says a scene is shorter than drawn or an accepted scene overflows or clips
