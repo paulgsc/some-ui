@@ -78,8 +78,8 @@ const BUNDLE: BundleWords = {
     kept: KEPT,
     playAll: "Play all, in order",
     stopAll: "Stop",
-    // The rest, as `kept` above it says: "all" read as the takes kept for good too.
-    deleteAll: "Delete the rest",
+    // Only what is still on this phone goes; "all" read as the takes kept for good too.
+    deleteAll: "Delete from this phone",
     notSaid:
       "Not said. Send the week without it and home has it as passed over.",
     typed: "",

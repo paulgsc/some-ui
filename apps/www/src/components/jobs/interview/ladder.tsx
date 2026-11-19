@@ -12,6 +12,7 @@ import { useEffect } from "react"
 import type { Question, WorkSource } from "@some-ui/interview-week"
 import { workSourceKey } from "@some-ui/interview-week"
 import { BundleTake, TakeRow } from "@some-ui/shared"
+import { TAKE_WORDS } from "@some-ui/voice-capture"
 import { ChevronLeft } from "lucide-react"
 
 import type { Rung, SayRung, Step } from "@/lib/interview-week/ladder"
@@ -315,7 +316,17 @@ export const CueLine = ({
       aria-live="assertive"
       className="text-muted-foreground min-h-6 text-center text-sm"
     >
-      {cue.kind === "counting" && cue.item === item ? WORDS.cueLine : WORDS.cap}
+      {cue.kind === "counting" && cue.item === item ? (
+        <>
+          {/* The count is on the button; said here too as it changes, for a screen reader. */}
+          <span className="sr-only">
+            {TAKE_WORDS.button.counting(cue.left)}.{" "}
+          </span>
+          {WORDS.cueLine}
+        </>
+      ) : (
+        WORDS.cap
+      )}
     </p>
   )
 }

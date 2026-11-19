@@ -144,9 +144,10 @@ describe("the interview week's words (IW5)", () => {
     // Today's question carries the look over's name for it.
     const label = INTERVIEW_WORDS.questionLabel(2)
     expect(INTERVIEW_WORDS.today(label)).toContain(label)
-    // Delete names what the kept line beside it says stays on this phone.
-    expect(INTERVIEW_WORDS.review.deleteAll).toBe("Delete the rest")
-    expect(INTERVIEW_WORDS.review.kept).toContain("The rest stay on this phone")
+    // Delete names the same takes its confirm does: those still on this phone.
+    expect(INTERVIEW_WORDS.review.deleteAll).toMatch(/\bthis phone$/)
+    expect(INTERVIEW_WORDS.confirm.allTitle).toMatch(/\bon this phone\?$/)
+    expect(INTERVIEW_WORDS.review.deleteAll).not.toMatch(/\ball\b/i)
   })
 
   it("say the brief's week on the owner's clock", () => {

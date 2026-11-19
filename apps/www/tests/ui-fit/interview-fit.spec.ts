@@ -59,7 +59,7 @@ test.describe("the interview week fits the phone", () => {
       const aloud = page.locator("[data-card]")
       await expect(aloud.locator("[data-script]")).toBeVisible()
       await aloud.getByRole("button", { name: "Start talking" }).click()
-      await expect(aloud.getByText("Recording in 3")).toBeVisible()
+      await expect(aloud.getByRole("button", { name: /^Recording in 3/ })).toBeVisible()
       await expectFitsPhone(page, "the answer read aloud, its cue counting")
       await aloud.getByRole("button", { name: /Tap to call it off/ }).click()
 
