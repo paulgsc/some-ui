@@ -147,16 +147,21 @@ export function readTakes(answer: HomeAnswer): LibraryRead {
 
 /**
  * This phone's takes of every kind, for Takes: each recording still
- * here (`recordingsOnPhone`), saying whether home holds it (`held`), and each
+ * here (`recordingsOnPhone`), saying whether home holds it (`held`), each
  * game bite home holds whose audio has left this phone, which plays from
- * home (`homeAudio`). Studio's takes are listed too; Takes leaves out those
+ * home, and each bite still held back for Undo, which plays from here. Studio's takes are listed too; Takes leaves out those
  * home lists and those its recorder shows.
  */
 export function phoneTakesOf(
   notes: ReadonlyArray<OnPhone>,
   bites: ReadonlyArray<PhoneBite>,
   held: (id: string) => boolean,
-  homeAudio: (id: string) => Promise<Blob | null>
+  audio: {
+    /** A bite's audio on this phone. */
+    readonly bite: (id: string) => Promise<Blob | null>
+    /** A take's audio from home. */
+    readonly home: (id: string) => Promise<Blob | null>
+  }
 ): ReadonlyArray<PhoneTake> {
   const here = notes.map(
     (note): PhoneTake => ({
@@ -170,18 +175,21 @@ export function phoneTakesOf(
     })
   )
   const listed = new Set(here.map(({ id }) => id))
-  const gone = bites
+  // A bite not listed is one home holds (its audio gone from here), or one
+  // still held back for Undo, not sent yet, whose audio is still here.
+  const rest = bites
     .filter(({ id }) => !listed.has(id))
-    .map(
-      (bite): PhoneTake => ({
+    .map((bite): PhoneTake => {
+      const onHome = bite.homeSince !== undefined
+      return {
         id: bite.id,
         of: "game",
         ref: bite.gameId,
         fields: bite.fields,
         recordedAt: bite.at,
-        home: true,
-        audio: () => homeAudio(bite.id),
-      })
-    )
-  return [...here, ...gone]
+        home: onHome,
+        audio: () => (onHome ? audio.home(bite.id) : audio.bite(bite.id)),
+      }
+    })
+  return [...here, ...rest]
 }

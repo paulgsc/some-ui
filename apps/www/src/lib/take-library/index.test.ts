@@ -311,7 +311,7 @@ describe("one home for every take", () => {
     expect(last.kind === "read" && last.page.covers).toBe("every")
   })
 
-  it("lists the phone's takes of every kind, and the bites home holds whose audio left, from home", async () => {
+  it("lists the phone's takes of every kind, the bites home holds whose audio left from home, and a bite held back for Undo from here", async () => {
     const audio = (): Promise<Blob | null> => Promise.resolve(null)
     const notes: ReadonlyArray<OnPhone> = [
       {
@@ -341,22 +341,33 @@ describe("one home for every take", () => {
       ...(homeSince === undefined ? {} : { homeSince }),
     })
     const fromHome: Array<string> = []
+    const fromHere: Array<string> = []
     const takes = phoneTakesOf(
       notes,
-      [bite("b1"), bite("b2", 1)],
+      // b3 is still held back for Undo: not listed to go, not on home.
+      [bite("b1"), bite("b2", 1), bite("b3")],
       (id) => id === "r1",
-      (id) => {
-        fromHome.push(id)
-        return Promise.resolve(null)
+      {
+        bite: (id) => {
+          fromHere.push(id)
+          return Promise.resolve(null)
+        },
+        home: (id) => {
+          fromHome.push(id)
+          return Promise.resolve(null)
+        },
       }
     )
     expect(takes.map(({ id, of, home }) => [id, of, home])).toEqual([
       ["r1", "rust-round", true],
       ["b1", "game", false],
       ["b2", "game", true],
+      ["b3", "game", false],
     ])
     expect(takes[2]?.fields).toEqual({ strip: "Q2 1:00" })
     await takes[2]?.audio()
+    await takes[3]?.audio()
     expect(fromHome).toEqual(["b2"])
+    expect(fromHere).toEqual(["b3"])
   })
 })

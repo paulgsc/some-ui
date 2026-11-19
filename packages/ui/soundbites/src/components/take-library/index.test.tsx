@@ -809,6 +809,50 @@ describe("one home for every take", () => {
     expect(played[0]?.size).toBe(4)
   })
 
+  it("applies every chip picked to the takes recorded here, as to the rest", async () => {
+    const takeHere: PatternTake = {
+      id: "h1",
+      answers: "here",
+      durationMs: 3_000,
+      recordedAt: "2026-11-18T07:00:00.000Z",
+      standing: "current",
+      kept: { place: "phone" },
+    }
+    const { pattern } = simulatedPattern({
+      options: {
+        ...ONE_TAKE,
+        takes: { per: "many", max: 40, full: "make-room" },
+      },
+      seed: [takeHere],
+    })
+    const recordedSnapshot = { takes: [takeHere], full: false }
+    render(
+      <TakeLibrary
+        ports={ports({
+          phone: {
+            pattern,
+            line: "here",
+            getSnapshot: () => recordedSnapshot,
+            subscribe: (): (() => void) => () => undefined,
+          },
+        })}
+        pair={null}
+        compartment="all"
+      />
+    )
+    await settle()
+    // The take recorded here, in the recorder's own list.
+    const recorded = (): boolean =>
+      screen
+        .getByRole("heading", { name: W.record })
+        .closest("section")
+        ?.textContent.includes("0:03") ?? false
+    expect(recorded()).toBe(true)
+    fireEvent.click(screen.getByRole("button", { name: /^Game day/ }))
+    await settle()
+    expect(recorded()).toBe(false)
+  })
+
   it("still shows the phone's takes on a home that lists Studio's alone, saying what waits on a newer one", async () => {
     render(
       <TakeLibrary

@@ -60,7 +60,7 @@ export function phoneOnlyTakes(): LibraryOnPhone {
           notes,
           phoneGameBites().getSnapshot(),
           (id) => voiceKept(id).place === "home",
-          askAudio
+          { bite: (id) => phoneGameBites().audio(id), home: askAudio }
         )
         for (const listener of listeners) listener()
       })

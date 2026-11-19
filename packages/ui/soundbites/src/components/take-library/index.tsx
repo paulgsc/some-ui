@@ -1049,11 +1049,11 @@ export const TakeLibrary = ({
       {recorder && (
         <PhoneTakes
           phone={phone}
-          shows={(take) =>
-            listsPhone &&
-            !onHome.has(take.id) &&
-            inCompartment(aboutOf(take.id, { ref: null }), compartment)
-          }
+          shows={(take) => {
+            // Every chip picked applies, as it does to the rows below.
+            const each = phoneRows.find((one) => one.take.id === take.id)
+            return listsPhone && each !== undefined && shows(each)
+          }}
         />
       )}
       {!recorder && phoneShown.length > 0 && (
