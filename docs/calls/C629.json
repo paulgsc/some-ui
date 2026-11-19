@@ -1,0 +1,11 @@
+{
+  "id": "C629",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": ["apps/www/src/components/jobs/interview/ladder.tsx"],
+  "chose": "A question's page goes back to Questions, the page that lists it, rather than to the first page.",
+  "options": ["back to Questions", "back to the first page, as before"],
+  "gray": "It moves a control the owner taps every day, inside the ladder the owner agreed on Nov 17.",
+  "undo": "Point the two BackTo links in ladder.tsx at the interview page again.",
+  "refs": ["#3224"]
+}

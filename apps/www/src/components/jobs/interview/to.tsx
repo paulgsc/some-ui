@@ -14,7 +14,9 @@ import type { SayRung } from "@/lib/interview-week/ladder"
 
 /** A page of the week. */
 export type Page =
-  | { readonly page: "interview" | "reads" }
+  | { readonly page: "interview" | "questions" | "how" | "reads" }
+  /** The week's takes in Studio's one Takes (TAKES20): its interview kind, this week's. */
+  | { readonly page: "takes"; readonly week: string; readonly name: string }
   | { readonly page: "read"; readonly card: string }
   | {
       readonly page: "question" | "study" | "aloud"
@@ -41,6 +43,23 @@ export const To = ({
   switch (to.page) {
     case "interview": {
       return <Link to="/jobs/interview" {...link} />
+    }
+    case "questions": {
+      return <Link to="/jobs/interview/questions" {...link} />
+    }
+    case "takes": {
+      return (
+        <Link
+          to="/journal/takes/$kind"
+          params={{ kind: "interview" }}
+          // As home keys a week's interview takes (`about.key`), and its name for the chip.
+          search={{ about: `interview:${to.week}`, name: to.name }}
+          {...link}
+        />
+      )
+    }
+    case "how": {
+      return <Link to="/jobs/interview/how" {...link} />
     }
     case "reads": {
       return <Link to="/jobs/interview/reads" {...link} />

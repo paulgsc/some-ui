@@ -98,6 +98,8 @@ test.describe("a card that opens something stands out in every theme", () => {
     PAGE.expectBuilt()
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto(PAGE.url("interview"), { waitUntil: "load" })
+    // The way in, then Questions, then today's question and its rungs (IW15).
+    await page.getByRole("link", { name: /^Questions/ }).click()
     await page.getByRole("link", { name: /^Today's question/ }).click()
     await expect(page.getByText("What to cover")).toBeVisible()
     // Off every card, so no rung is measured hovered.
@@ -221,6 +223,8 @@ test.describe("the brand card's words read in every theme", () => {
     PAGE.expectBuilt()
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto(PAGE.url("interview"), { waitUntil: "load" })
+    // Today's question leads the Questions page (IW15).
+    await page.getByRole("link", { name: /^Questions/ }).click()
     await expect(
       page.getByRole("link", { name: /^Today's question/ })
     ).toBeVisible()
