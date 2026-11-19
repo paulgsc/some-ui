@@ -10,7 +10,6 @@ import type {
   EssayOwed,
   QuestionOwed,
 } from "@interview-week/lib/essay/bundle"
-import { essayFileName } from "@interview-week/lib/essay/bundle"
 import type { EssayValues } from "@interview-week/lib/essay/values"
 import { EssaysValuesSchema } from "@interview-week/lib/essay/values"
 import { ANSWER_PAUSE_MS } from "@interview-week/lib/faults"
@@ -20,6 +19,7 @@ import type {
   JudgedPart,
   ReadFaults,
 } from "@interview-week/lib/faults"
+import { essayFileName } from "@interview-week/lib/monday/bundle"
 import { EMPLOYERS, employersIn } from "@interview-week/lib/monday/employers"
 import {
   INTERVIEW_ESSAY_ID,
@@ -362,10 +362,15 @@ function build(
         problems.push(`${at}.${list}: "${id}" is not one the bundle asks for`)
   return {
     schema: INTERVIEW_ESSAY_SCHEMA,
-    template: { id: INTERVIEW_ESSAY_ID, version: INTERVIEW_ESSAY_VERSION },
+    // An essay with no opening stays version 1, which every stage draws.
+    template: {
+      id: INTERVIEW_ESSAY_ID,
+      version: owed.opening === null ? 1 : INTERVIEW_ESSAY_VERSION,
+    },
     week: { id: owed.week, from: owed.from, to: owed.to },
     company: owed.company,
     role: owed.role,
+    ...(owed.opening === null ? {} : { opening: owed.opening }),
     open: { said: values.open },
     questions,
     reads,

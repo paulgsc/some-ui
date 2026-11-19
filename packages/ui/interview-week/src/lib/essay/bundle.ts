@@ -15,11 +15,14 @@ import { heardByNote, indexWeeks } from "@interview-week/lib/essay/record"
 import { measureAnswer, measureRead } from "@interview-week/lib/faults"
 import type { AnswerFaults, ReadFaults } from "@interview-week/lib/faults"
 import type { MailboxFile } from "@interview-week/lib/monday/bundle"
-import { WEEK_FILE } from "@interview-week/lib/monday/bundle"
+import {
+  ESSAY_FILE,
+  essaysIn,
+  WEEK_FILE,
+} from "@interview-week/lib/monday/bundle"
 import type { Family, InterviewWeek } from "@interview-week/lib/week"
-import { readWeek } from "@interview-week/lib/week"
+import { isOpening, readWeek } from "@interview-week/lib/week"
 import { weekAround } from "@some-ui/core-utils"
-import { parseInterviewEssay } from "@some-ui/video-render"
 import type { InterviewEssay } from "@some-ui/video-render"
 
 const ESSAY_BUNDLE_SCHEMA = "some-ui.interview-essay-bundle/1"
@@ -29,11 +32,6 @@ const ESSAYS_PER_RUN = 2
 
 /** The most weeks the chart shows (`INTERVIEW_WEEKS_MOST`). */
 const CHART_WEEKS = 12
-
-/** An essay's name in `brief`: `interview-essay-<week>.json`, `-r2` on for a correction. */
-export const ESSAY_FILE = /^interview-essay-(\d{4}-w\d{2})(?:-r(\d+))?\.json$/
-export const essayFileName = (week: string): string =>
-  `interview-essay-${week}.json`
 
 export type QuestionOwed = {
   readonly id: string
@@ -75,6 +73,8 @@ export type EssayOwed = {
   readonly role: InterviewWeek["role"]
   readonly questions: ReadonlyArray<QuestionOwed>
   readonly reads: ReadonlyArray<ReadOwed>
+  /** What home heard of the week's opening card (IW10), which no read counts; null when there is none to play. */
+  readonly opening: { readonly transcript: string } | null
   /** The faults chart, drawn by code: the earlier essays' weeks, then this one. */
   readonly chart: {
     readonly weeks: ReadonlyArray<string>
@@ -229,22 +229,6 @@ function chartOf(
   }
 }
 
-/** The newest essay of each week `brief` holds: a correction's over the first. */
-function essaysIn(brief: ReadonlyArray<MailboxFile>): Array<InterviewEssay> {
-  const best = new Map<string, { r: number; essay: InterviewEssay }>()
-  for (const file of brief) {
-    const [, week, r] = ESSAY_FILE.exec(file.name) ?? []
-    if (week === undefined) continue
-    const parsed = parseInterviewEssay(file.body)
-    if (!parsed.ok) continue
-    const n = r === undefined ? 1 : Number(r)
-    const held = best.get(week)
-    if (held === undefined || n > held.r)
-      best.set(week, { r: n, essay: parsed.value })
-  }
-  return [...best.values()].map((b) => b.essay)
-}
-
 type Owed = { ok: true; essay: EssayOwed } | { ok: false; why: string }
 
 function owed(
@@ -257,7 +241,9 @@ function owed(
     return { ok: false, why: "brief holds no readable week file for it" }
   const heardOf = (
     take: string | null,
-    what: string
+    what: string,
+    // The opening is played, never measured, so it needs no word times.
+    measured = true
   ): { ok: true; heard: Heard } | { ok: false; why: string } => {
     const got: Heard | undefined =
       take === null ? { hearing: "silent" } : heard.get(take)
@@ -265,7 +251,7 @@ function owed(
       return { ok: true, heard: got }
     if (got === undefined || got.text.trim() === "")
       return { ok: false, why: `home hasn't heard ${what}'s take yet` }
-    if (got.words === null || got.words.length === 0)
+    if (measured && (got.words === null || got.words.length === 0))
       return {
         ok: false,
         why: `home heard ${what}'s take without its words, which the measures count from`,
@@ -303,10 +289,21 @@ function owed(
     })
   }
   const reads: Array<ReadOwed> = []
+  let opening: EssayOwed["opening"] = null
   for (const card of week.cards) {
     const held = record.cards.find((c) => c.card === card.id)
-    const got = heardOf(held?.take ?? null, `the read of ${card.id}`)
+    const got = heardOf(
+      held?.take ?? null,
+      `the read of ${card.id}`,
+      !isOpening(card)
+    )
     if (!got.ok) return got
+    if (isOpening(card)) {
+      if (got.heard.hearing === "heard") {
+        opening = { transcript: got.heard.text }
+      }
+      continue
+    }
     reads.push({
       id: card.id,
       situation: card.situation,
@@ -334,6 +331,7 @@ function owed(
       role: week.role,
       questions,
       reads,
+      opening,
       chart: chartOf(week.id, weekCells(questions, reads), earlier),
       // A minute past Sunday 23:59 is the next week's Monday.
       next: weekAround(new Date(new Date(week.due).getTime() + 60_000)).id,
