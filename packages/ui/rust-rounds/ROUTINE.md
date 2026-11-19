@@ -148,8 +148,8 @@ with one ticket for each of the week's, by its id:
     them (`S1` for an SLA row, `F1` for one of the ticket's figures). Name
     no constraint the week didn't state, and none as both. An option (or
     the hidden best) whose program rustc refuses takes
-    `"refused":{"code","why"}`, rustc's code and why, and meets and breaks
-    nothing.
+    `"refused":{"code","why"}`, rustc's code and why, with `meets` and
+    `breaks` empty (`[]`).
   - A hidden best must be better than each listed option on a stated
     constraint: it builds where the option doesn't, meets one the option
     doesn't, or avoids one the option breaks. Its advantage rests on what

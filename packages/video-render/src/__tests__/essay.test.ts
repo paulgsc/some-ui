@@ -873,6 +873,70 @@ describe("a point as a fork (RR29)", () => {
     expect(problems(withFork(refused))).toEqual([])
   })
 
+  it("holds a hidden best and a judgement to the rest of RR29's rules", () => {
+    const [a, b] = fork().options
+    if (!a || !b) throw new Error("two options")
+    const hidden = {
+      kind: "hidden" as const,
+      decision: "Borrow, and keep the buffer.",
+      why: "It breaks nothing.",
+      model: { id: "borrow", name: "Borrow" },
+      meets: ["S1", "F1"],
+      breaks: [],
+    }
+    // B meets the same ids but breaks F2: avoiding it is a stated advantage.
+    const avoids: EssayFork = {
+      ...fork(),
+      options: [a, { ...b, breaks: ["F2"] }],
+      best: { ...hidden, meets: ["S1", "F1", "F2"] },
+    }
+    expect(problems(withFork(avoids))).toEqual([])
+    const breaksLess: EssayFork = {
+      ...fork(),
+      options: [
+        { ...a, meets: [] },
+        { ...b, breaks: ["F2"] },
+      ],
+      best: hidden,
+    }
+    expect(problems(withFork(breaksLess))).toEqual([])
+    const refusedBest: EssayFork = {
+      ...avoids,
+      best: {
+        ...hidden,
+        meets: [],
+        refused: { code: "E0505", why: "It moves the buffer." },
+      },
+    }
+    expect(problems(withFork(refusedBest))).toContain(
+      "QM-311 fork 1: the hidden best is no better than A on any stated constraint, so its advantage over A isn't stated"
+    )
+    const judged = (
+      decision: unknown,
+      verdict: string,
+      placement: string
+    ): ReadonlyArray<string> =>
+      problems(
+        withFork({
+          ...fork(),
+          judged: {
+            decision,
+            verdict: { kind: verdict, why: "Why." },
+            placement,
+          },
+        })
+      )
+    expect(judged({ kind: "option", option: "A" }, "off", "trusted")).toEqual([
+      "QM-311 fork 1: a option decision isn't placed trusted",
+    ])
+    expect(judged({ kind: "option", option: "A" }, "off", "reasoned")).toEqual(
+      []
+    )
+    expect(judged({ kind: "own", decision: "Mine." }, "best", "own")).toEqual([
+      "QM-311 fork 1: the verdict says best, and the best is the listed B, not their own",
+    ])
+  })
+
   it("takes a judgement whose decision, verdict and place agree", () => {
     const judged: EssayFork = {
       ...fork(),
