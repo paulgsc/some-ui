@@ -75,7 +75,7 @@ function routeOf(to: Page): LinkOptions {
 
 /**
  * A link to `to`, carrying `className`. With `card`, it is a card that opens
- * something (`CardRoute`, #3234), its words stacked and then the chevron;
+ * something (`CardRoute`, #3234), its words stacked;
  * `"brand"` for the card a page leads with. Where the build carries no pages
  * to open, the words stay plain: a card that opens nothing never takes the
  * card link's look (C630).

@@ -1,0 +1,19 @@
+{
+  "id": "C642",
+  "made": "2026-11-19",
+  "by": "owner",
+  "paths": [
+    "packages/ui/shared/src/components/ui/card-link/index.tsx",
+    "apps/www/tests/ui-fit/card-link-fit.spec.ts"
+  ],
+  "chose": "A card that opens something carries no glyph. The chevron in a filled circle, and the brand tone's chevron colours, are gone. The look is a shadow in the theme's colour (stronger under a dark theme, where it reads as a soft glow), a subtle 1px outline at 35% of the theme's colour, a light tint, and a press that gives a pixel. The owner (2026-11-19, relayed by the coordinator): the arrow communicates, but \"it's just terrible\" when every card in a list carries it; \"good use of shadows, good use of subtle outlines… We don't want that arrow thingy.\" If there were ever a glyph, it would be the brand's honeycomb hexagon, smaller, and they doubt they want one at all.",
+  "options": [
+    "no glyph: shadow and a subtle outline carry it",
+    "a smaller honeycomb hexagon",
+    "the chevron in a filled circle (C630)"
+  ],
+  "gray": "How a tappable card announces itself is a look the owner sees on every screen.",
+  "undo": "Restore the chevron span and its colour pair in card-link/index.tsx, and the border-2 outline at 60%.",
+  "moves": "C630",
+  "refs": ["#3234", "#3244"]
+}
