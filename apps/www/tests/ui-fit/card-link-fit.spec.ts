@@ -67,7 +67,8 @@ async function outlines(page: Page): Promise<{
   plain: Rgb
   surface: Rgb
   words: ReadonlyArray<Rgb>
-  hue: number
+  /** Its shadow's furthest stray from grey, or null when no colour was read. */
+  hue: number | null
 }> {
   return page.evaluate(() => {
     const canvas = document.createElement("canvas")
@@ -120,7 +121,7 @@ async function outlines(page: Page): Promise<{
       words: [...link.querySelectorAll("span")]
         .filter((span) => span.children.length === 0 && span.textContent.trim())
         .map((span) => paint([...surface, getComputedStyle(span).color])),
-      hue: Math.max(0, ...hues),
+      hue: hues.length === 0 ? null : Math.max(...hues),
     }
   })
 }
@@ -172,6 +173,11 @@ test.describe("a card that opens something stands out in every theme", () => {
       await page.waitForTimeout(300)
       const { ground, link, surface, words, hue } = await outlines(page)
       const outline = contrast(link, ground)
+      // Nothing read is no pass: the measure would hold of anything.
+      if (hue === null || words.length === 0) {
+        failures.push(`${theme.id}: no shadow colour or no words read`)
+        continue
+      }
       const faintest = Math.min(...words.map((ink) => contrast(ink, surface)))
       if (hue > NEUTRAL) failures.push(`${theme.id}: its shadow is coloured`)
       if (outline >= faintest) {
