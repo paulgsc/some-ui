@@ -4186,8 +4186,15 @@
     {
       "store": "phone:home-sent",
       "class": "cache",
-      "growth": "Per finished session, kept shelf item, LeetType session, Studio sitting, written reflection, ask for the next scene, Studio idea sent whole (ST26), Studio video kept for home to make (ST33), and Rust Rounds week sent, paste kept and card-log sitting (RR14) home holds or refused (one digest, fingerprint or updatedAt each; for a video whose takes home lacks, also those takes' ids), for one pairing; no cap (`some-ui.home.sent.v1`).",
-      "horizon": "a new pairing starts it over (the next write replaces the old pairing's record); a refused digest leaves when home later holds the item, and refused digests of items no longer kept are dropped (home-link/standing.ts)",
+      "growth": "Per finished session, kept shelf item, LeetType session, Studio sitting, written reflection, ask for the next scene, Studio idea sent whole (ST26), Studio video kept for home to make (ST33), and Rust Rounds week sent, paste kept and card-log sitting (RR14) home holds or refused (one digest, fingerprint or updatedAt each; for a video whose takes home lacks, also those takes' ids), for one pairing and its scope (home's address and the account home named at pairing, MP1, C751); no cap (`some-ui.home.sent.v1`).",
+      "horizon": "a new pairing to another home or account, or with a home that names no account, starts it over (the next write replaces the old pairing's record); a new pairing to the same home and account, as after a reinstall whose backup restores this record but not the pairing, keeps it (MP1); a refused digest leaves when home later holds the item, and refused digests of items no longer kept are dropped (home-link/standing.ts)",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:pairing-scope",
+      "class": "cache",
+      "growth": "One record: the pairing this phone holds now and its scope, home's address and the account home named at pairing, or none (MP1, C751); written as the pairing record is read or a pairing is made, replacing the last (`some-ui.home.pairing-scope.v1`).",
+      "horizon": "replaced by the next pairing's; never more than one",
       "family": "what-is-kept"
     },
     {
