@@ -1,0 +1,20 @@
+{
+  "id": "C634",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/interview-week/words.ts",
+    "apps/www/src/components/jobs/interview/way-in.tsx",
+    "packages/voice-capture/src/lib/take-words.ts"
+  ],
+  "chose": "From the cold read's stumbles (#3228): the interview's read-aloud kind is named \"Scripts\" (a read is \"Script 1\"), leaving the ladder's agreed \"Read it aloud\" (C564) and the phone's own Read aloud as they are; each question keeps its number from the week's order wherever it is listed (the Questions page still puts today's first), and today's question and each other question show that number (\"Today's question · Question 2\"), so the look over's names match; the read's count-in shows on its take button (\"Recording in 2\"), with \"Tap the button again to call it off.\" under the script; the look over's \"Delete all\" reads \"Delete from this phone\", as its confirm says; and an unsaid card says \"Send the week without it and home has it as passed over.\"",
+  "options": [
+    "Name the kind Scripts; number each question by the week's order; count on the button; Delete from this phone",
+    "Rename the ladder's rung instead of the kind (moves the owner's agreed C564)",
+    "Renumber the look over to put today's question first (a take's name would change each day)",
+    "Keep the count on the line under the script and leave the button saying Tap to talk"
+  ],
+  "gray": "Names the owner reads every day on the interview pages, and a section's name the owner saw in the prototype as Read aloud.",
+  "undo": "Restore reads, today, readLabel, review.deleteAll and review.notSaid in words.ts; drop the labels in way-in.tsx; stop passing counting from TakeOn in ladder.tsx, and remove the counting button view it alone uses (take-view.ts, take-words.ts, take-button.tsx, the bundle's counting prop).",
+  "refs": ["#3228", "#3221"]
+}

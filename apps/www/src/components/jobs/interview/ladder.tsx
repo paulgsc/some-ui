@@ -12,6 +12,7 @@ import { useEffect } from "react"
 import type { Question, WorkSource } from "@some-ui/interview-week"
 import { workSourceKey } from "@some-ui/interview-week"
 import { BundleTake, TakeRow } from "@some-ui/shared"
+import { TAKE_WORDS } from "@some-ui/voice-capture"
 import { ChevronLeft } from "lucide-react"
 
 import type { Rung, SayRung, Step } from "@/lib/interview-week/ladder"
@@ -302,7 +303,7 @@ export const Script = ({
   </section>
 )
 
-/** Under a read's script: the count before it records, holding its place (HS1). */
+/** Under a read's script: the cap, or how to call the count-in off while it runs, holding its place (HS1). */
 export const CueLine = ({
   held,
   item,
@@ -311,14 +312,18 @@ export const CueLine = ({
   item: string
 }): JSX.Element => {
   const { cue } = held
+  const counting = cue.kind === "counting" && cue.item === item
   return (
-    <p
-      aria-live="assertive"
-      className="text-muted-foreground min-h-6 text-center text-sm"
-    >
-      {cue.kind === "counting" && cue.item === item
-        ? WORDS.cue(cue.left)
-        : WORDS.cap}
+    <p className="text-muted-foreground min-h-6 text-center text-sm">
+      {/*
+        The count shows here as well as on the button, which a take that
+        didn't come through replaces with its retry; only the count is in
+        the live region, so a screen reader hears it once a second.
+      */}
+      <span aria-live="assertive">
+        {counting ? TAKE_WORDS.button.counting(cue.left) : ""}
+      </span>
+      {counting ? `. ${WORDS.cueLine}` : WORDS.cap}
     </p>
   )
 }
@@ -354,7 +359,7 @@ export const TakeOn = ({
   rung: Rung | null
   head: ReactNode
 }): JSX.Element => {
-  const { run, state, takes, snapshot, week } = held
+  const { run, state, takes, snapshot, week, cue } = held
   if (isClosed(week, state.at)) {
     return (
       <>
@@ -374,6 +379,7 @@ export const TakeOn = ({
       dispatch={rung === null ? run.dispatch : run.dispatchOn(rung)}
       words={WORDS}
       item={item}
+      counting={cue.kind === "counting" && cue.item === item ? cue.left : null}
       head={
         <>
           {head}
