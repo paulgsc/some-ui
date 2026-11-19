@@ -126,16 +126,20 @@ export async function exchangeWithHome(
 /**
  * Home's whole record read into the store, nothing sent (AR1): what aph's
  * screens ask as they open, beside the lane's exchange, so home's history
- * shows however long the drain waits. Before aph is kept on home, there is
- * nothing to read. Throws what `send` throws.
+ * shows while the drain waits. Before aph is kept on home, there is nothing
+ * to read. A record that comes back after a send's receipt or another read
+ * reached the store is older than what it shows, and is dropped. Throws
+ * what `send` throws.
  */
 export async function readFromHome(
   store: AphStore,
   send: HomeCall
 ): Promise<HomeExchanged> {
   if (store.where().kind !== "home") return { kind: "synced" }
+  const before = store.exchanges()
   const record = await readHome(send)
   if ("kind" in record) return record
+  if (store.exchanges() !== before) return { kind: "synced" }
   if (!store.pulled(record)) {
     return { kind: "failed", why: "home's record breaks one of aph's rules" }
   }

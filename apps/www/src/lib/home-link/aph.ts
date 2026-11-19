@@ -23,7 +23,7 @@ import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 
 import { homeLink } from "./index"
 import type { Lane, LaneCounts } from "./lanes"
-import { answered } from "./while-busy"
+import { answered, askWhileBusy } from "./while-busy"
 
 /** aph's store, its exchange with home over it, and its read of home's record. */
 export type AphKeeping = {
@@ -35,14 +35,18 @@ export type AphKeeping = {
 /**
  * Reads home's aph record into the store once (AR1), as aph's screens
  * open; never rejects. Paired and kept on home only: otherwise the store
- * has nothing home holds to show. How it went is the lane's mark's to say
- * at its next run; a read that found nothing leaves the store as it was.
+ * has nothing home holds to show. A screen's read on its own (`onItsOwn`):
+ * held while away (AW1), asked again while the link is busy with the
+ * person's own run (`askWhileBusy`). How it went is the lane's mark's to
+ * say at its next run; a read that found nothing leaves the store as it was.
  */
 export function readAphOnOpen({ store, read }: AphKeeping): void {
   if (store.where().kind !== "home") return
-  void answered(
-    () => homeLink().keep((send) => read(store, send)),
-    (ended) => ended
+  void askWhileBusy(() =>
+    answered(
+      () => homeLink().keep((send) => read(store, send), { onItsOwn: true }),
+      (ended) => ({ kind: "answered" as const, ended })
+    )
   )
 }
 

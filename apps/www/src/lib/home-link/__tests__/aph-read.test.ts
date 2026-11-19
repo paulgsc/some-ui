@@ -121,6 +121,7 @@ function storeOf(kept: boolean): AphStore {
     outbox: () => null,
     sent: () => undefined,
     pulled: () => true,
+    exchanges: () => 0,
     save: () => null,
     review: () => false,
     editEntry: () => false,
