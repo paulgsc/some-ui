@@ -4,9 +4,9 @@
   "by": "claude",
   "moves": "C616",
   "paths": [
-    "apps/www/src/lib/interview-week/prompter.ts",
-    "apps/www/src/lib/interview-week/store.ts",
-    "apps/www/src/components/jobs/interview/ladder.tsx"
+    "packages/ui/shared/src/lib/teleprompter/index.ts",
+    "packages/ui/shared/src/components/patterns/teleprompter/index.tsx",
+    "apps/www/src/lib/interview-week/store.ts"
   ],
   "chose": "The teleprompter band moves at 170 words a minute until the reader sets a pace. Slower and Faster, in a row under the band that is always there, step it by 20, from 110 to 230, and the pace is kept on this phone across weeks. It moves C616's 140, which the owner found too slow.",
   "options": [
@@ -16,6 +16,6 @@
     "a pace slider in Settings"
   ],
   "gray": "The owner said 140 was too slow and asked for a faster default and a simple way to adjust it; no check settles the number, the step or where the control sits, and the owner feels each one while reading.",
-  "undo": "Change DEFAULT_PACE_WPM, PACE_STEP_WPM or PACE_RANGE in prompter.ts; remove the Slower and Faster buttons in ladder.tsx and the pace store in store.ts to go back to a fixed pace.",
+  "undo": "Change DEFAULT_PACE_WPM, PACE_STEP_WPM or PACE_RANGE in packages/ui/shared/src/lib/teleprompter; remove the Slower and Faster row in the shared Teleprompter and the pace store in apps/www/src/lib/interview-week/store.ts to go back to a fixed pace.",
   "refs": ["#3176"]
 }

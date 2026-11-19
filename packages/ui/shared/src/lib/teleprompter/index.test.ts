@@ -8,9 +8,10 @@
  * read through, the last word), every way it ends (Stop, the take's cap,
  * leaving the page: each the runtime's `ended`), paused or not, and where a
  * hand left the script's window. Proof: "never moves the script back when
- * a take ends", below, over every half word of the script; and the read's
- * page in `apps/www/src/components/jobs/interview/__tests__/interview.test.tsx`, whose
- * window, scrolled by hand, stays where it was when the take stops.
+ * a take ends", below, over every half word of the script; and
+ * `Teleprompter`'s test (`components/patterns/teleprompter`), whose window,
+ * scrolled by hand, stays where it was when the take ends, paused or not,
+ * and through a resize after it.
  */
 import { describe, expect, it } from "vitest"
 
@@ -28,11 +29,11 @@ import {
   totalOf,
 } from "./index"
 
-const LINE = "2026-w47:conflict"
+const LINE = "script-1"
 const LINES = ["On my phone app,", "a dozen screens ask home,", "and wait."]
 const TOTAL = totalOf(LINES)
 /** The level a take must reach to count as heard, as a caller sets it. */
-const HEARD_FLOOR = 0.05
+const TEST_FLOOR = 0.05
 const LOUD = 0.3
 const QUIET = 0.01
 
@@ -45,7 +46,7 @@ const heard = (
   type: "heard",
   script,
   level,
-  floor: HEARD_FLOOR,
+  floor: TEST_FLOOR,
   at,
   total: TOTAL,
   pace,
@@ -63,7 +64,7 @@ const reads = (from: number, to: number, level: number): Array<PrompterEvent> =>
     heard(from + i * 200, level)
   )
 
-describe("the teleprompter band's step (IW9)", () => {
+describe("the teleprompter band's step", () => {
   it("moves at the pace the reader set while you speak", () => {
     const state = run(reads(0, 1000, LOUD))
     expect(wordsOf(state)).toBeCloseTo((1000 * DEFAULT_PACE_WPM) / 60_000)
@@ -114,15 +115,15 @@ describe("the teleprompter band's step (IW9)", () => {
   })
 
   it("counts the level at the floor as heard, and below it as quiet", () => {
-    const at = run([heard(0, HEARD_FLOOR), heard(200, HEARD_FLOOR)])
+    const at = run([heard(0, TEST_FLOOR), heard(200, TEST_FLOOR)])
     expect(wordsOf(at)).toBeGreaterThan(0)
     // The quiet before a first word is never read through.
-    const first = run([heard(0, HEARD_FLOOR - 0.01), heard(200, LOUD)])
+    const first = run([heard(0, TEST_FLOOR - 0.01), heard(200, LOUD)])
     expect(wordsOf(first)).toBe(0)
     expect(wordsOf(stepPrompter(first, heard(400, LOUD)))).toBeGreaterThan(0)
-    expect(
-      wordsOf(run([heard(0, HEARD_FLOOR - 0.01), heard(200, QUIET)]))
-    ).toBe(0)
+    expect(wordsOf(run([heard(0, TEST_FLOOR - 0.01), heard(200, QUIET)]))).toBe(
+      0
+    )
   })
 
   it("holds while paused, the take still heard, and goes on from where it was", () => {
@@ -158,9 +159,7 @@ describe("the teleprompter band's step (IW9)", () => {
 
   it("starts each take from the top: another line, or a new take after one ended", () => {
     const spoke = run(reads(0, 2000, LOUD))
-    expect(
-      wordsOf(stepPrompter(spoke, heard(2200, LOUD, "2026-w47:other")))
-    ).toBe(0)
+    expect(wordsOf(stepPrompter(spoke, heard(2200, LOUD, "script-2")))).toBe(0)
     expect(
       wordsOf(
         [{ type: "ended" } as const, heard(2400)].reduce(stepPrompter, spoke)
@@ -218,6 +217,6 @@ describe("the teleprompter band's step (IW9)", () => {
       line: 0,
       state: "holding",
     })
-    expect(bandOf(run([heard(0)]), "2026-w47:other", LINES).line).toBe(0)
+    expect(bandOf(run([heard(0)]), "script-2", LINES).line).toBe(0)
   })
 })
