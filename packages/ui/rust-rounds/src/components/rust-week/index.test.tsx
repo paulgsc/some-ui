@@ -273,6 +273,15 @@ describe("a week on the phone (RR13)", () => {
     expect(screen.getAllByText(WORDS.sent.notAnswered)).toHaveLength(3)
     closed.unmount()
 
+    // A span started before the deadline, still running after it.
+    const running = workPorts(after)
+    running.tracker.start({
+      week: QUILLMOSS_WEEK.id,
+      ticket: QUILLMOSS_WEEK.tickets[0]?.id ?? "",
+      step: "read",
+      exercise: null,
+      points: [1],
+    })
     render(
       <RustWeek
         ports={{
@@ -282,7 +291,7 @@ describe("a week on the phone (RR13)", () => {
             () => after,
             () => true
           ),
-          work: workPorts(after),
+          work: running,
         }}
       />
     )
@@ -290,11 +299,15 @@ describe("a week on the phone (RR13)", () => {
     expect(
       screen.getByText(WORDS.closed.title(QUILLMOSS_WEEK))
     ).toBeInTheDocument()
-    // The week's time stays to read; nothing starts once it closed (RR26).
+    // The week's time stays to read; nothing starts once it closed, but a
+    // span still running is there to stop (RR26).
     expect(screen.getByText(TRACKER_WORDS.week.total(0, 0))).toBeInTheDocument()
     expect(
       screen.queryByRole("button", { name: TRACKER_WORDS.start })
     ).toBeNull()
+    expect(
+      screen.getByRole("button", { name: TRACKER_WORDS.back })
+    ).toBeInTheDocument()
     expect(screen.queryByText(/didn't reach home/)).toBeNull()
     expect(screen.getByText(WORDS.sent.title(1, 3))).toBeInTheDocument()
     expect(screen.getAllByText(WORDS.sent.notAnswered)).toHaveLength(2)

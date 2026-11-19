@@ -456,8 +456,13 @@ const ReadBack = (
   const answered = holds?.answers ?? []
   return (
     <div className="flex flex-col gap-4">
+      {/*
+       * Nothing starts once the week has closed, but a span still running,
+       * or asking, is shown and answered here, as on the brief (RR26).
+       */}
+      <Tracker week={week} />
       <Story week={week} />
-      {/* The week's time stays to read; nothing starts once it closed. */}
+      {/* The week's time stays to read. */}
       <TrackedWeek week={week} />
       <section className="bg-card flex flex-col gap-1 rounded-2xl p-3 text-sm">
         <p className="font-semibold">{WORDS.closed.title(week)}</p>
