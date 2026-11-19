@@ -6,6 +6,7 @@
  * (www's ui-fit phone page) mounts the same pages the routes do.
  */
 import type { JSX, ReactNode } from "react"
+import { CardLink, CardLinkBody } from "@some-ui/shared"
 import type { IdeaBundleProps } from "@soundbites/components/idea-bundle"
 import { IdeaBundle } from "@soundbites/components/idea-bundle"
 import type { StudioProps } from "@soundbites/components/studio"
@@ -17,7 +18,7 @@ const WORDS = STUDIO_WORDS
 
 /** A link the app draws to another of the wing's pages, styled as given. */
 export type WingLink = (props: {
-  className: string
+  className?: string
   children: ReactNode
 }) => ReactNode
 
@@ -51,17 +52,19 @@ export const StudioHome = ({
       {...studio}
       newIdea={{
         big: (
-          <IdeaLink className="bg-card border-brand focus-visible:ring-ring flex items-center gap-3 rounded-2xl border-2 px-4 py-3 focus-visible:ring-2 focus-visible:outline-none">
-            <Lightbulb aria-hidden className="text-brand size-6 shrink-0" />
-            <span className="min-w-0">
-              <span className="block text-base font-extrabold">
-                {WORDS.idea.newIdea}
-              </span>
-              <span className="text-muted-foreground block text-sm">
-                {WORDS.idea.newIdeaLine}
-              </span>
-            </span>
-          </IdeaLink>
+          <CardLink asChild>
+            <IdeaLink>
+              <Lightbulb aria-hidden className="text-brand size-6 shrink-0" />
+              <CardLinkBody>
+                <span className="text-base font-extrabold">
+                  {WORDS.idea.newIdea}
+                </span>
+                <span className="text-muted-foreground text-sm">
+                  {WORDS.idea.newIdeaLine}
+                </span>
+              </CardLinkBody>
+            </IdeaLink>
+          </CardLink>
         ),
         quiet: (
           <IdeaLink className="text-muted-foreground underline">
@@ -71,14 +74,18 @@ export const StudioHome = ({
       }}
       ideas={{
         step: (
-          <IdeasLink className="bg-card border-border/60 focus-visible:ring-ring rounded-2xl border px-4 py-3 focus-visible:ring-2 focus-visible:outline-none">
-            <span className="block text-base font-extrabold">
-              {WORDS.shelf.open}
-            </span>
-            <span className="text-muted-foreground block text-sm">
-              {WORDS.shelf.openLine}
-            </span>
-          </IdeasLink>
+          <CardLink asChild>
+            <IdeasLink>
+              <CardLinkBody>
+                <span className="text-base font-extrabold">
+                  {WORDS.shelf.open}
+                </span>
+                <span className="text-muted-foreground text-sm">
+                  {WORDS.shelf.openLine}
+                </span>
+              </CardLinkBody>
+            </IdeasLink>
+          </CardLink>
         ),
         quiet: (
           <IdeasLink className="text-muted-foreground underline">
