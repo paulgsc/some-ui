@@ -25,7 +25,7 @@ import { TAKE_MAX_SECONDS, workSourceKey } from "@some-ui/interview-week"
 import type { BundleWords } from "@some-ui/shared"
 import { TAKE_WORDS } from "@some-ui/voice-capture"
 
-import { dayOf } from "@/lib/cards-essay-key"
+import { FEED_WORDS } from "@/lib/call-videos/words"
 import { lengthOf } from "@/lib/format"
 
 import type { Rung, Step } from "./ladder"
@@ -292,16 +292,18 @@ export const INTERVIEW_WORDS = {
     essay: {
       asking: "Asking home about its essay…",
       unpaired: "Pair this phone with home to see where its essay is.",
-      unknown: "Home didn't answer, so where its essay is can't be said here.",
+      older: FEED_WORDS["interview-essay"].older,
+      unknown:
+        "Home couldn't be asked just now, so where its essay is can't be said here.",
       ready: "Its essay is ready.",
       watch: "Watch its essay",
-      making: "Home is making its essay now.",
-      failed: "Home couldn't finish its essay. Renders says why.",
+      making: "Home is making its essay's video now.",
+      waiting: "Its essay is written, and its video waits its turn at home.",
+      written: "Its essay is written. Home makes its video when it has room.",
+      failed: "Home couldn't finish its essay's video. Renders says why.",
       renders: "Open Renders",
-      expected: (on: string | null): string =>
-        on === null
-          ? "Home makes its essay after the week closes, usually the Monday after."
-          : `Home expects to make its essay ${dayOf(on)}.`,
+      expected:
+        "Home hasn't written its essay yet. Each is written after its week closes.",
     },
     tryAgain: "Ask home again",
   },

@@ -53,7 +53,7 @@ const PAST: PastWeeksProps = {
       essay: { kind: "ready", key: "2026-w45" },
     },
     { week: weekOf(44), sent: null, essay: { kind: "failed" } },
-    { week: weekOf(43), sent: null, essay: { kind: "expected", on: null } },
+    { week: weekOf(43), sent: null, essay: { kind: "expected" } },
   ],
   askAgain: null,
 }

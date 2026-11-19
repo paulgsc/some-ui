@@ -214,7 +214,7 @@ describe("the interview week's pages on the phone (IW8)", () => {
         {
           week: week(43),
           sent: null,
-          essay: { kind: "expected", on: "2026-11-23" },
+          essay: { kind: "expected" },
         },
         { week: week(42), sent: null, essay: { kind: "unknown" } },
       ],
@@ -231,7 +231,7 @@ describe("the interview week's pages on the phone (IW8)", () => {
     const renders = screen.getByRole("link", { name: /^Open Renders/ })
     expect(renders.getAttribute("href")).toBe("/journal/renders")
     screen.getByText(WORDS.weeks.essay.making)
-    screen.getByText("Home expects to make its essay Monday, November 23.")
+    screen.getByText(WORDS.weeks.essay.expected)
     screen.getByText(WORDS.weeks.essay.unknown)
     expect(screen.getAllByText(WORDS.weeks.noSend)).toHaveLength(4)
     // Each week's takes, in Studio's one Takes.

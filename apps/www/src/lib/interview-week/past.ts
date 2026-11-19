@@ -6,20 +6,25 @@
  * says what the page shows, so every status is held by its test.
  *
  * Where an essay stands, in order:
- * - **asking**, **unpaired** or **unknown**: the feed is being read, can't
- *   be read until this phone is paired, or couldn't be read; nothing more
- *   is said of the essay;
- * - **ready**: the feed has its video (on home, or out on YouTube);
- * - **making**: the feed lists it without a video yet, or the board is
- *   making it or has it waiting its turn;
- * - **failed**: the board says home couldn't finish it;
- * - **expected**: closed, and nothing made yet. When the board says the
- *   next interview essay is coming on a day after the deadline, that day.
+ * - **asking**, **unpaired**, **older** or **unknown**: the feed is being
+ *   read, can't be read until this phone is paired, is one this home doesn't
+ *   keep yet, or couldn't be read; nothing more is said of the essay;
+ * - **ready**: Studio's Episodes shows its video, on home or out on YouTube
+ *   (`lib/episodes-feed`'s `rowStatus`, as it stands);
+ * - **failed**: home's render board says it couldn't finish it;
+ * - **making**: the board is making it now;
+ * - **waiting**: the board has it waiting its turn;
+ * - **written**: the feed lists it, without its video yet, and the board
+ *   names it nowhere (or couldn't be read);
+ * - **expected**: closed, and home has no essay of it yet. Home promises no
+ *   day for an interview essay (paulgsc/server `feeds/renders.rs`, `coming`),
+ *   so none is said.
  */
+import { assertNever } from "@some-ui/core-utils"
 import type { InterviewWeek } from "@some-ui/interview-week"
 
-import type { Episode, ListState } from "@/lib/call-videos/model"
-import { standing } from "@/lib/call-videos/model"
+import type { ListState } from "@/lib/call-videos/model"
+import { rowsOf, rowStatus } from "@/lib/episodes-feed"
 import type { Board } from "@/lib/renders/model"
 
 import type { InterviewSent } from "./spec"
@@ -30,13 +35,20 @@ import type { HeldInterview } from "./store"
 export const ESSAY_FEED = "interview-essay"
 
 export type EssayStatus =
-  | { readonly kind: "asking" | "unpaired" | "unknown" }
+  | {
+      readonly kind:
+        | "asking"
+        | "unpaired"
+        | "older"
+        | "unknown"
+        | "failed"
+        | "making"
+        | "waiting"
+        | "written"
+        | "expected"
+    }
   /** Its page in Studio, by the key the feed names it. */
   | { readonly kind: "ready"; readonly key: string }
-  | { readonly kind: "making" }
-  | { readonly kind: "failed" }
-  /** `on`: the day home expects to make it, `YYYY-MM-DD`, where it says. */
-  | { readonly kind: "expected"; readonly on: string | null }
 
 /** One week on the page. */
 export type PastWeek = {
@@ -45,10 +57,6 @@ export type PastWeek = {
   readonly sent: InterviewSent | null
   readonly essay: EssayStatus
 }
-
-/** The episodes the feed lists, or null while it hasn't been read. */
-const episodesOf = (list: ListState): ReadonlyArray<Episode> | null =>
-  list.kind === "read" ? list.episodes : null
 
 type BoardRow = { readonly feed: string; readonly key: string }
 
@@ -60,36 +68,42 @@ const names =
 
 /** Where a closed week's essay stands. */
 export function essayOf(
-  week: Pick<InterviewWeek, "id" | "due">,
+  week: Pick<InterviewWeek, "id">,
   list: ListState,
   board: Board | null
 ): EssayStatus {
-  if (list.kind === "reading") return { kind: "asking" }
-  if (list.kind === "unpaired") return { kind: "unpaired" }
-  const episodes = episodesOf(list)
-  if (episodes === null) return { kind: "unknown" }
-  const parts = episodes.filter(
-    (episode) => (episode.week ?? episode.key) === week.id
-  )
-  const first = parts.at(0)
-  if (
-    first !== undefined &&
-    parts.every((part) => standing(part) !== "waiting")
-  )
-    return { kind: "ready", key: first.key }
-  const on = names(week.id)
-  if (
-    first !== undefined ||
-    (board !== null &&
-      ((board.now !== null && on(board.now)) || board.waiting.some(on)))
-  )
-    return { kind: "making" }
-  if (board?.failed.some(on) === true) return { kind: "failed" }
-  const coming = board?.coming.find(({ feed }) => feed === ESSAY_FEED)?.on
-  return {
-    kind: "expected",
-    on: coming !== undefined && coming >= week.due.slice(0, 10) ? coming : null,
+  switch (list.kind) {
+    case "reading": {
+      return { kind: "asking" }
+    }
+    case "unpaired":
+    case "older": {
+      return { kind: list.kind }
+    }
+    case "away":
+    case "busy":
+    case "unreadable": {
+      return { kind: "unknown" }
+    }
+    case "read": {
+      break
+    }
+    default: {
+      return assertNever(list)
+    }
   }
+  const row = rowsOf(ESSAY_FEED, list.episodes).find(
+    (each) => each.week === week.id
+  )
+  if (row === undefined) return { kind: "expected" }
+  if (rowStatus(row) !== "making")
+    return { kind: "ready", key: row.parts[0].key }
+  const on = names(week.id)
+  if (board?.failed.some(on) === true) return { kind: "failed" }
+  const now = board?.now ?? null
+  if (now !== null && on(now)) return { kind: "making" }
+  if (board?.waiting.some(on) === true) return { kind: "waiting" }
+  return { kind: "written" }
 }
 
 /** Every week held that closed by `at`, newest first, each with its last send and its essay. */

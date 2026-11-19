@@ -37,13 +37,14 @@ const Essay = ({ essay }: { essay: EssayStatus }): JSX.Element => {
       )
     }
     case "making":
+    case "waiting":
+    case "written":
+    case "expected":
     case "asking":
     case "unpaired":
+    case "older":
     case "unknown": {
       return <p className="text-sm">{WORDS.weeks.essay[essay.kind]}</p>
-    }
-    case "expected": {
-      return <p className="text-sm">{WORDS.weeks.essay.expected(essay.on)}</p>
     }
     default: {
       return assertNever(essay)

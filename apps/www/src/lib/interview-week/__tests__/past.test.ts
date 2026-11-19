@@ -85,15 +85,17 @@ describe("past weeks (IW17)", () => {
     expect(weeks[1]?.sent).toBeNull()
   })
 
-  it("says nothing of an essay while the feed isn't read", () => {
-    expect(essayOf(W46, { kind: "reading" }, BOARD)).toEqual({ kind: "asking" })
+  it("says only how home's list stands while it isn't read", () => {
+    expect(essayOf(W46, { kind: "reading" }, BOARD)).toEqual({
+      kind: "asking",
+    })
     expect(essayOf(W46, { kind: "unpaired" }, BOARD)).toEqual({
       kind: "unpaired",
     })
+    expect(essayOf(W46, { kind: "older" }, BOARD)).toEqual({ kind: "older" })
     const unread: Array<ListState> = [
       { kind: "away" },
       { kind: "busy" },
-      { kind: "older" },
       { kind: "unreadable" },
     ]
     for (const list of unread) {
@@ -101,7 +103,18 @@ describe("past weeks (IW17)", () => {
     }
   })
 
-  it("is ready once every part has its video, on home or out", () => {
+  // Home lists an essay once it is written, its video null until made
+  // (paulgsc/server feeds/videos.rs), one part per week.
+  const written = episode({ videoBytes: null })
+
+  it("is expected while home lists no essay of the week", () => {
+    expect(essayOf(W46, read(), BOARD)).toEqual({ kind: "expected" })
+    expect(essayOf(W46, read(episode({ key: W45.id })), null)).toEqual({
+      kind: "expected",
+    })
+  })
+
+  it("is ready once Episodes shows its video, on home or out", () => {
     expect(essayOf(W46, read(episode({})), null)).toEqual({
       kind: "ready",
       key: W46.id,
@@ -112,22 +125,15 @@ describe("past weeks (IW17)", () => {
         { key: W46.id, step: "video", url: "file", size: 1, deletedAt: AT },
       ],
     })
-    expect(essayOf(W46, read(out), null)).toEqual({
+    expect(essayOf(W46, read(out), BOARD)).toEqual({
       kind: "ready",
       key: W46.id,
     })
-    // A week of parts is ready only once the last part is.
-    const parts = [
-      episode({ key: `${W46.id}-1`, week: W46.id, part: 1 }),
-      episode({ key: `${W46.id}-2`, week: W46.id, part: 2, videoBytes: null }),
-    ]
-    expect(essayOf(W46, read(...parts), null)).toEqual({ kind: "making" })
   })
 
-  it("is being made when the feed waits on its video, or the board makes it or holds it", () => {
-    expect(essayOf(W46, read(episode({ videoBytes: null })), null)).toEqual({
-      kind: "making",
-    })
+  it("is written, waiting, being made or failed, as the board says of its video", () => {
+    expect(essayOf(W46, read(written), null)).toEqual({ kind: "written" })
+    expect(essayOf(W46, read(written), BOARD)).toEqual({ kind: "written" })
     const now: NonNullable<Board["now"]> = {
       feed: row.feed,
       key: row.key,
@@ -139,46 +145,24 @@ describe("past weeks (IW17)", () => {
       stuck: false,
       estimate: null,
     }
-    expect(essayOf(W46, read(), { ...BOARD, now })).toEqual({ kind: "making" })
-    expect(essayOf(W46, read(), { ...BOARD, waiting: [row] })).toEqual({
+    expect(essayOf(W46, read(written), { ...BOARD, now })).toEqual({
       kind: "making",
     })
-    // Another week's render says nothing of this one.
-    expect(
-      essayOf(W46, read(), { ...BOARD, waiting: [{ ...row, key: W45.id }] })
-    ).toEqual({
-      kind: "expected",
-      on: null,
+    expect(essayOf(W46, read(written), { ...BOARD, waiting: [row] })).toEqual({
+      kind: "waiting",
     })
-  })
-
-  it("says when home couldn't finish it", () => {
-    const failed = { ...row, by: "home", exit: 1 } as const
-    expect(essayOf(W46, read(), { ...BOARD, failed: [failed] })).toEqual({
-      kind: "failed",
-    })
-  })
-
-  it("expects it, on the day home names when that falls after the deadline", () => {
-    expect(essayOf(W46, read(), null)).toEqual({ kind: "expected", on: null })
-    const coming = (on: string): Board => ({
+    const failed = { ...row, by: "home", exit: 1, reason: "too-long" } as const
+    // A failed render still leaves the essay listed without its video.
+    expect(essayOf(W46, read(written), { ...BOARD, failed: [failed] })).toEqual(
+      { kind: "failed" }
+    )
+    // Another week's row, or another feed's, says nothing of this one.
+    const other: Board = {
       ...BOARD,
-      coming: [{ feed: "interview-essay", on }],
-    })
-    expect(essayOf(W46, read(), coming("2026-11-23"))).toEqual({
-      kind: "expected",
-      on: "2026-11-23",
-    })
-    // A day before the week's deadline is another week's essay.
-    expect(essayOf(W46, read(), coming("2026-11-09"))).toEqual({
-      kind: "expected",
-      on: null,
-    })
-    expect(
-      essayOf(W46, read(), {
-        ...BOARD,
-        coming: [{ feed: "rust-essay", on: "2026-11-23" }],
-      })
-    ).toEqual({ kind: "expected", on: null })
+      now: { ...now, key: W45.id },
+      waiting: [{ ...row, feed: "rust-essay" }],
+      failed: [{ ...failed, key: W45.id }],
+    }
+    expect(essayOf(W46, read(written), other)).toEqual({ kind: "written" })
   })
 })
