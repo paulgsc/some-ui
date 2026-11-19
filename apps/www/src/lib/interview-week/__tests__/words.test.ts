@@ -2,7 +2,8 @@
  * The owner's rules for what the interview week's screen says (IW5): no score,
  * grade, verdict or "you said", nothing that calls a take good or bad, and no
  * status code or internal name. A card's target length and the 2-minute cap
- * are shown, as #2936 asks; nothing counts how long a take ran.
+ * are shown, as #2936 asks, and the reading band shows a take's time against
+ * its aim, as the agreed prototype does (C615).
  */
 import { describe, expect, it } from "vitest"
 
@@ -127,6 +128,24 @@ describe("the interview week's words (IW5)", () => {
     expect(INTERVIEW_WORDS.closed.line(WEEK)).toBe(
       "It closed Sunday 23:59. The send home had then is what counts, kept for good, and the essay comes from home. Nothing more can be said or sent here."
     )
+  })
+
+  // The study's readers (#3228) stumbled on names that collide.
+  it("keep each name apart from the ones beside it (IW18)", () => {
+    const words = (name: string): Array<string> =>
+      name.toLowerCase().match(/[a-z]+/g) ?? []
+    const rungs = Object.values(INTERVIEW_WORDS.step).flatMap(({ name }) =>
+      words(name)
+    )
+    // The kind shares no word with the ladder's rungs, nor the phone's Read aloud.
+    for (const word of words(INTERVIEW_WORDS.reads)) {
+      expect(rungs).not.toContain(word)
+      expect(["read", "aloud"]).not.toContain(word)
+    }
+    // Delete names the same takes its confirm does: those still on this phone.
+    expect(INTERVIEW_WORDS.review.deleteAll).toMatch(/\bthis phone$/)
+    expect(INTERVIEW_WORDS.confirm.allTitle).toMatch(/\bon this phone\?$/)
+    expect(INTERVIEW_WORDS.review.deleteAll).not.toMatch(/\ball\b/i)
   })
 
   it("say the brief's week on the owner's clock", () => {

@@ -11,7 +11,7 @@ import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 
 import { BackTo } from "./ladder"
 import type { Interview } from "./run"
-import { useInterview } from "./run"
+import { labelOf, useInterview } from "./run"
 import { To } from "./to"
 import { doneLine, Opening, RoleAbout, TakesLink } from "./week"
 
@@ -41,7 +41,7 @@ const Questions = ({ held }: { held: Interview }): JSX.Element => {
       {today !== null && (
         <To to={{ page: "question", question: today.id }} card="brand">
           <span className="text-xs font-semibold opacity-85">
-            {WORDS.today}
+            {WORDS.today(labelOf(week, today.id))}
           </span>
           <span className="text-xl leading-tight font-extrabold text-balance">
             {today.prompt}
@@ -60,6 +60,9 @@ const Questions = ({ held }: { held: Interview }): JSX.Element => {
             const done = doneLine(held, id)
             return (
               <To card="card" key={id} to={{ page: "question", question: id }}>
+                <span className="text-muted-foreground text-xs font-semibold">
+                  {labelOf(week, id)}
+                </span>
                 <span className="font-semibold">{prompt}</span>
                 {done !== null && (
                   <span className="text-muted-foreground text-xs">{done}</span>

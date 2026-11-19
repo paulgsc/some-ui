@@ -12,6 +12,7 @@
  * or says what wasn't done.
  */
 import { inMemoryStorage } from "@some-ui/core-utils"
+import { TAKE_WORDS } from "@some-ui/voice-capture"
 import { takeButton } from "@some-ui/voice-capture/testing"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -90,7 +91,9 @@ describe("the interview week's pages on the phone (IW8)", () => {
     screen.getByText(WEEK.company.about)
     screen.getByText(WEEK.role.about)
     screen.getByText(WORDS.invented)
-    await follow(new RegExp(`^${WORDS.today}`))
+    // Today's question carries the number the look over gives it.
+    const todayIs = WORDS.questionLabel(2)
+    await follow(new RegExp(`^${WORDS.today(todayIs)}`))
 
     // Its page: the four rungs at equal weight.
     for (const step of ["study", "aloud", "cues", "own"] as const) {
@@ -136,10 +139,31 @@ describe("the interview week's pages on the phone (IW8)", () => {
     const card = document.querySelector<HTMLElement>("[data-card]")
     if (card === null) throw new Error("no take on the read's page")
     fireEvent.click(takeButton(card))
-    expect(card.textContent).toContain(WORDS.cue(CUE_SECONDS))
+    // The button it starts from counts in, so the two never disagree.
+    expect(takeButton(card).textContent).toBe(
+      TAKE_WORDS.button.counting(CUE_SECONDS)
+    )
+    // The line under the script shows it too, where a retry replaces the button.
+    expect(card.textContent).toContain(
+      `${TAKE_WORDS.button.counting(CUE_SECONDS)}. ${WORDS.cueLine}`
+    )
     await settle(CUE_SECONDS * 1000)
     await settle(2_000)
     expect(document.querySelector('[data-script="epic-2931"]')).toBe(script)
+    // The band moves while the take hears you, and Pause holds it (IW9).
+    const lit = (): string | null | undefined =>
+      script?.querySelector('[aria-current="true"]')?.getAttribute("data-line")
+    expect(lit()).toBe("0")
+    // The first line's eleven words take about 5 s at the band's pace.
+    await settle(6_000)
+    expect(lit()).not.toBe("0")
+    fireEvent.click(screen.getByRole("button", { name: WORDS.band.pause }))
+    screen.getByText(WORDS.band.paused)
+    const held = lit()
+    await settle(3_000)
+    expect(lit()).toBe(held)
+    fireEvent.click(screen.getByRole("button", { name: WORDS.band.goOn }))
+    screen.getByRole("button", { name: WORDS.band.pause })
     fireEvent.click(takeButton(card))
     await settle()
 
@@ -149,6 +173,9 @@ describe("the interview week's pages on the phone (IW8)", () => {
     )
     await follow(WORDS.toInterview)
     await press(WORDS.toReview)
+    // The look over names today's question as its card did, and the read by its kind.
+    screen.getByText(todayIs)
+    screen.getByText(WORDS.readLabel(1))
     await press(WORDS.send(2))
     screen.getByText(WORDS.sent.title(2))
 
