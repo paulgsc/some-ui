@@ -9,7 +9,7 @@ import {
   readHome,
   storedPrefs,
 } from "@some-ui/game-week"
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Link } from "@tanstack/react-router"
 
 import { phoneBitePorts } from "@/lib/game-bites"
 import { gameDayFeed } from "@/lib/home-link/live"
@@ -35,11 +35,30 @@ function gameWeekPorts(): GameWeekPorts {
   }
 }
 
+/**
+ * The way to what was said here, in Studio's Takes: the bites'
+ * compartment, filtered to the game picked.
+ */
+const takesLink = (
+  game: { readonly id: string; readonly label: string } | null,
+  label: string
+): JSX.Element => (
+  <Link
+    to="/journal/takes/$kind"
+    params={{ kind: "bite" }}
+    // As home keys a game's takes (`about.key`), and its name for the chip.
+    search={game === null ? {} : { about: `game:${game.id}`, name: game.label }}
+    className="text-brand self-start text-sm font-semibold underline-offset-4 hover:underline"
+  >
+    {label}
+  </Link>
+)
+
 /** The recorder, with the ports it owns for as long as it shows. */
 const PhoneGameWeek = (): JSX.Element => {
   // Made once per mount: the recorder reads them once.
   const [ports] = useState(() => gameWeekPorts())
-  return <GameWeek ports={ports} outbox={gameOutbox} />
+  return <GameWeek ports={ports} outbox={gameOutbox} takesLink={takesLink} />
 }
 
 /**
