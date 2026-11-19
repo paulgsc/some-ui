@@ -23,6 +23,7 @@ import { cn } from "@some-ui/core-utils"
 import {
   Button,
   CardLink,
+  CardLinkBody,
   Notice,
   TakeButton,
   TakeRow,
@@ -71,10 +72,6 @@ import { SITTING_KINDS, STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { Mic, Square } from "lucide-react"
 
 const WORDS = STUDIO_WORDS
-
-/** A row of a choice that answers a question here (what a take is about). */
-const LIST_ROW =
-  "border-border/60 focus-visible:ring-ring flex w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left focus-visible:ring-2 focus-visible:outline-none"
 
 export type StudioShare = (props: {
   project: Project
@@ -353,14 +350,14 @@ const Start = ({
                       })
                     }
                   >
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-base font-extrabold">
+                    <CardLinkBody className="gap-0">
+                      <span className="text-base font-extrabold">
                         {WORDS.start.sittings[row.kind]}
                       </span>
-                      <span className="text-muted-foreground block text-sm">
+                      <span className="text-muted-foreground text-sm">
                         {row.status}
                       </span>
-                    </span>
+                    </CardLinkBody>
                     {row.startHere && (
                       <span className="bg-brand text-brand-foreground shrink-0 rounded-full px-2.5 py-1 text-xs font-bold">
                         {WORDS.start.startHere}
@@ -432,14 +429,14 @@ const Start = ({
                       dispatch({ type: "showChosen", show: row.show })
                     }
                   >
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-bold">
+                    <CardLinkBody className="gap-0">
+                      <span className="w-full truncate text-sm font-bold">
                         {row.show}
                       </span>
-                      <span className="text-muted-foreground block text-xs">
+                      <span className="text-muted-foreground text-xs">
                         {row.line}
                       </span>
-                    </span>
+                    </CardLinkBody>
                     <span className="bg-muted shrink-0 rounded-full px-2.5 py-1 text-xs font-bold">
                       {row.standing}
                     </span>
@@ -1297,7 +1294,7 @@ const NoteAbout = ({
             key={about}
             type="button"
             onClick={() => dispatch({ type: "aboutChosen", about })}
-            className={LIST_ROW}
+            className="border-border/60 focus-visible:ring-ring flex w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left focus-visible:ring-2 focus-visible:outline-none"
           >
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-bold">{words[about]}</span>

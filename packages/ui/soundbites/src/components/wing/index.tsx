@@ -18,7 +18,7 @@ const WORDS = STUDIO_WORDS
 
 /** A link the app draws to another of the wing's pages, styled as given. */
 export type WingLink = (props: {
-  className: string
+  className?: string
   children: ReactNode
 }) => ReactNode
 
@@ -53,7 +53,7 @@ export const StudioHome = ({
       newIdea={{
         big: (
           <CardLink asChild>
-            <IdeaLink className="">
+            <IdeaLink>
               <Lightbulb aria-hidden className="text-brand size-6 shrink-0" />
               <CardLinkBody>
                 <span className="text-base font-extrabold">
@@ -75,7 +75,7 @@ export const StudioHome = ({
       ideas={{
         step: (
           <CardLink asChild>
-            <IdeasLink className="">
+            <IdeasLink>
               <CardLinkBody>
                 <span className="text-base font-extrabold">
                   {WORDS.shelf.open}
