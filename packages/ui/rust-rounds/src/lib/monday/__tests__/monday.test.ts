@@ -923,13 +923,13 @@ describe("a fork's best fit (RR29)", () => {
       },
     })
     expect(problemsOf(forkValues(hidden(["S1", figure()])))).toEqual([])
-    expect(problemsOf(forkValues(hidden(["S1"])))).toEqual([
-      "2026-w46 essay: QM-311 fork 1: the hidden best meets no stated constraint that B misses, so its advantage over B isn't stated",
-    ])
-    expect(problemsOf(forkValues(hidden(["S1", "F99"])))).toEqual([
-      "2026-w46 essay: QM-311 fork 1: the hidden best names F99, which the week doesn't state",
-    ])
     expect(problemsOf(forkValues(null))).not.toEqual([])
+    // A /2 week's ticket may have 1 to 6 forks, so 1 to 6 best fits.
+    const four = structuredClone(values())
+    const first = four.essays[0]?.tickets[0]
+    if (first === undefined) throw new Error("shape")
+    first.bests = ["One.", "Two.", "Three.", "Four."]
+    expect(ValuesSchema.safeParse(four).success).toBe(true)
     expect(problemsOf(values())).toEqual([
       "QM-311 fork 1: it lists options, so it takes a best fit: the best decision and each option's trade",
     ])

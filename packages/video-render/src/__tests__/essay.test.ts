@@ -778,6 +778,16 @@ describe("a point as a fork (RR29)", () => {
         "QM-311 fork 1: A both meets and breaks a constraint",
       ],
       [
+        {
+          ...fork(),
+          options: [
+            { ...a, refused: { code: "E0204", why: "Label holds a String." } },
+            b,
+          ],
+        },
+        "QM-311 fork 1: A doesn't build, so it meets and breaks nothing",
+      ],
+      [
         { ...fork(), best: { kind: "option", option: "C" } },
         "QM-311 fork 1: the best is C, which isn't listed",
       ],
@@ -793,7 +803,7 @@ describe("a point as a fork (RR29)", () => {
             breaks: [],
           },
         },
-        "QM-311 fork 1: the hidden best meets no stated constraint that B misses, so its advantage over B isn't stated",
+        "QM-311 fork 1: the hidden best is no better than B on any stated constraint, so its advantage over B isn't stated",
       ],
       [
         {
@@ -835,6 +845,32 @@ describe("a point as a fork (RR29)", () => {
     ).toContain(
       "QM-311: its forks trade on stated constraints, and it names none"
     )
+  })
+
+  it("takes an option that doesn't build as one, which a hidden best beats", () => {
+    const [a, b] = fork().options
+    if (!a || !b) throw new Error("two options")
+    const refused: EssayFork = {
+      ...fork(),
+      options: [
+        {
+          ...a,
+          meets: [],
+          breaks: [],
+          refused: { code: "E0204", why: "Label holds a String." },
+        },
+        b,
+      ],
+      best: {
+        kind: "hidden",
+        decision: "Borrow, and keep the buffer.",
+        why: "It meets the rate too.",
+        model: { id: "borrow", name: "Borrow" },
+        meets: ["S1", "F1", "F2"],
+        breaks: [],
+      },
+    }
+    expect(problems(withFork(refused))).toEqual([])
   })
 
   it("takes a judgement whose decision, verdict and place agree", () => {

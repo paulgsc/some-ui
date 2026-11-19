@@ -100,14 +100,7 @@ export const ESSAY_DECAY_VERSION = 2
  */
 export const ESSAY_POINT_VERSION = 3
 
-/**
- * The first version that draws a point as a fork (RR29, #3257; C697): the
- * options an agent listed, the best decision (listed, or hidden and not on
- * the list), each against the week's stated constraints by id, and, once
- * the owner's decision is on record, the verdict and its place between A and
- * A′, in a `fork` scene of its own. It also takes 1 to 6 points, as a
- * `/2` week's forks.
- */
+/** The first version that draws a point as a fork (`ForkSchema`) and takes 1 to 6 points. */
 export const ESSAY_FORK_VERSION = 4
 
 /** The deep dives per ticket, on its biggest gaps: K (owner, 2026-11-07). */
@@ -124,7 +117,7 @@ const POINTS_MOST = 3
 const FORK_POINTS_LEAST = 1
 const FORK_POINTS_MOST = 6
 
-/** The most options an agent lists at a fork (`some-ui.rust-week/2`). */
+/** The most options an agent lists at a fork: `some-ui.rust-week/2`'s `OPTIONS_MAX`, which this package can't import. */
 const OPTIONS_MOST = 6
 
 /** The most weeks the chart shows, newest last. */
@@ -424,16 +417,26 @@ const DiveSchema = z.strictObject({
 /** A stated constraint's id, as `some-ui.rust-week/2` writes it: `S1` for an SLA row, `F1` for a figure (C696). */
 const constraintId = z
   .string()
-  .regex(/^[SF][1-9]\d?$/, "a stated constraint's id is like S1 or F2")
+  .regex(/^[SF][1-9]\d*$/, "a stated constraint's id is like S1 or F2")
 
-/** The model of Rust an option rests on. */
 const ModelSchema = z.strictObject({ id: words, name: words })
 
-/** Which stated constraints a decision meets and which it breaks, by id. */
+/**
+ * Which stated constraints a decision meets and which it breaks, by id; or,
+ * for one whose program rustc refuses, that it doesn't build, with rustc's
+ * code and why, and nothing met or broken.
+ */
 const TradeFields = {
   meets: z.array(constraintId),
   breaks: z.array(constraintId),
+  refused: z.strictObject({ code: words, why: words }).optional(),
 }
+
+/** A listed option, by its id. */
+const OptionPickSchema = z.strictObject({
+  kind: z.literal("option"),
+  option: z.string(),
+})
 
 /**
  * Where a decision sits between A, the naive judge whose only rational
@@ -460,17 +463,18 @@ export type ForkVerdict = (typeof FORK_VERDICTS)[number]
  * default, kept apart from a pick of it.
  */
 const DecisionSchema = z.discriminatedUnion("kind", [
-  z.strictObject({ kind: z.literal("option"), option: z.string() }),
+  OptionPickSchema,
   z.strictObject({ kind: z.literal("own"), decision: words }),
   z.strictObject({ kind: z.literal("recommended-by-default") }),
 ])
 
 /**
- * A point as a fork (version 4, RR29): the options an agent listed, each
- * against the stated constraints; the best decision, a listed option or a
- * hidden one, as the after-deadline best fit names it; what is said over
- * its scene; and, once the owner's decision is on record (RR28), the
- * decision, the verdict on it and its place between A and A′.
+ * A point as a fork (version 4, RR29, #3257; C697): the options an agent
+ * listed, each against the week's stated constraints by id; the best
+ * decision, a listed option or a hidden one not on the list, as the
+ * after-deadline best fit names it; what is said over its `fork` scene;
+ * and, once the owner's decision is on record (RR28), the decision, the
+ * verdict on it and its place between A and A′.
  */
 const ForkSchema = z.strictObject({
   options: z
@@ -486,7 +490,7 @@ const ForkSchema = z.strictObject({
     .min(2)
     .max(OPTIONS_MOST),
   best: z.discriminatedUnion("kind", [
-    z.strictObject({ kind: z.literal("option"), option: z.string() }),
+    OptionPickSchema,
     z.strictObject({
       kind: z.literal("hidden"),
       decision: words,
@@ -522,7 +526,6 @@ const TicketSchema = z.strictObject({
         to: words,
         best: words,
         answer: PointAnswerSchema.optional(),
-        /** The point as a fork (version 4, RR29). */
         fork: ForkSchema.optional(),
       })
     )
@@ -702,26 +705,47 @@ const gapOf = (ticket: EssayTicket, point: number): number => {
 export const isPast = (ticket: EssayTicket, dive: EssayDive): boolean =>
   gapOf(ticket, dive.point) === 0
 
-/** The ids of every decision at `fork`: each listed option's, and the hidden best's as `hidden`. */
-const tradesOf = (
-  fork: EssayFork
-): Array<{
+type Trade = {
   readonly id: string
   readonly meets: ReadonlyArray<string>
   readonly breaks: ReadonlyArray<string>
-}> => [
+  readonly refused?: unknown
+}
+
+/** Every decision's trade at `fork`: each listed option's, and the hidden best's, as `hidden`. */
+const tradesOf = (fork: EssayFork): Array<Trade> => [
   ...fork.options,
   ...(fork.best.kind === "hidden" ? [{ ...fork.best, id: "hidden" }] : []),
 ]
 
 /**
- * Why fork `at` contradicts itself or what the week stated (`stated`, the
- * ids it gave): one recommended option, ids each once, every id stated and
- * none both met and broken, a best that is listed or, hidden, meets for
- * each listed option a stated constraint that option misses (its advantage
- * never rests on one the week didn't state), and a judgement whose decision, verdict and
- * place between A and A′ agree.
+ * Whether `hidden` is better than `option` on what the week stated: it
+ * builds where `option` doesn't, meets an id `option` doesn't meet, or
+ * avoids an id `option` breaks.
  */
+const betterOnStated = (hidden: Trade, option: Trade): boolean =>
+  hidden.refused === undefined &&
+  (option.refused !== undefined ||
+    hidden.meets.some((id) => !option.meets.includes(id)) ||
+    option.breaks.some((id) => !hidden.breaks.includes(id)))
+
+/**
+ * The listed option the owner's decision at `fork` picked: by id, or the
+ * recommended one for a fork left alone; none for their own, or before the
+ * decision is on record.
+ */
+export function pickedOf(
+  fork: EssayFork
+): EssayFork["options"][number] | undefined {
+  const decision = fork.judged?.decision
+  return decision?.kind === "option"
+    ? fork.options.find((option) => option.id === decision.option)
+    : decision?.kind === "recommended-by-default"
+      ? fork.options.find((option) => option.recommended)
+      : undefined
+}
+
+/** Why fork `at` contradicts itself or what the week stated (`stated`, the ids it gave). */
 export function forkProblems(
   fork: EssayFork,
   stated: ReadonlySet<string>,
@@ -745,31 +769,33 @@ export function forkProblems(
         )
     if (trade.meets.some((id) => trade.breaks.includes(id)))
       problems.push(`${at}: ${named} both meets and breaks a constraint`)
+    if (
+      trade.refused !== undefined &&
+      trade.meets.length + trade.breaks.length > 0
+    )
+      problems.push(
+        `${at}: ${named} doesn't build, so it meets and breaks nothing`
+      )
   }
   const best = fork.best
   if (best.kind === "option" && !ids.includes(best.option))
     problems.push(`${at}: the best is ${best.option}, which isn't listed`)
   if (best.kind === "hidden")
     for (const option of fork.options)
-      if (!best.meets.some((id) => !option.meets.includes(id)))
+      if (!betterOnStated({ ...best, id: "hidden" }, option))
         problems.push(
-          `${at}: the hidden best meets no stated constraint that ${option.id} misses, so its advantage over ${option.id} isn't stated`
+          `${at}: the hidden best is no better than ${option.id} on any stated constraint, so its advantage over ${option.id} isn't stated`
         )
   const judged = fork.judged
   if (judged === undefined) return problems
   const { decision, verdict, placement } = judged
-  const picked =
-    decision.kind === "option"
-      ? fork.options.find((option) => option.id === decision.option)
-      : decision.kind === "recommended-by-default"
-        ? recommended[0]
-        : undefined
+  const picked = pickedOf(fork)
   if (decision.kind === "option" && picked === undefined)
     problems.push(
       `${at}: the decision is ${decision.option}, which isn't listed`
     )
   const fits: Readonly<Record<ForkPlacement, boolean>> = {
-    trusted: picked?.recommended === true,
+    trusted: decision.kind === "recommended-by-default",
     reasoned: decision.kind === "option" && picked?.recommended === true,
     departed: decision.kind === "option" && picked?.recommended === false,
     own: decision.kind === "own",
@@ -778,6 +804,14 @@ export function forkProblems(
   if (!fits[placement])
     problems.push(
       `${at}: a ${decision.kind} decision isn't placed ${placement}`
+    )
+  if (
+    decision.kind === "own" &&
+    best.kind === "option" &&
+    verdict.kind === "best"
+  )
+    problems.push(
+      `${at}: the verdict says best, and the best is the listed ${best.option}, not their own`
     )
   if (picked !== undefined) {
     const isBest = best.kind === "option" && best.option === picked.id
@@ -789,16 +823,19 @@ export function forkProblems(
   return problems
 }
 
+/** Whether `ticket` is drawn only from version 4: a fork, or a point count outside 2 to 3. */
+export const needsForkVersion = (ticket: EssayTicket): boolean =>
+  ticket.points.some((point) => point.fork !== undefined) ||
+  ticket.points.length < POINTS_LEAST ||
+  ticket.points.length > POINTS_MOST
+
 function ticketProblems(ticket: EssayTicket, version: number): Array<string> {
   const problems: Array<string> = []
   const points = ticket.points.length
   const forks = ticket.points.flatMap((point, j) =>
     point.fork === undefined ? [] : [{ fork: point.fork, n: j + 1 }]
   )
-  if (
-    version < ESSAY_FORK_VERSION &&
-    (forks.length > 0 || points < POINTS_LEAST || points > POINTS_MOST)
-  )
+  if (version < ESSAY_FORK_VERSION && needsForkVersion(ticket))
     problems.push(
       `${ticket.id}: a fork, or ${FORK_POINTS_LEAST} to ${FORK_POINTS_MOST} points, is drawn from version ${ESSAY_FORK_VERSION} of the template`
     )

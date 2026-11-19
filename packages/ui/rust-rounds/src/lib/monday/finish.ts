@@ -50,7 +50,7 @@ import type {
 import { ValuesSchema } from "@rust-rounds/lib/monday/values"
 import { describeWeekProblem, readWeek } from "@rust-rounds/lib/week-check"
 import { assertNever, pacificDay } from "@some-ui/core-utils"
-import type { Essay, EssayPointAnswer } from "@some-ui/video-render"
+import type { Essay, EssayFork, EssayPointAnswer } from "@some-ui/video-render"
 import {
   ESSAY_CHART_ROWS,
   ESSAY_DECAY_VERSION,
@@ -62,6 +62,7 @@ import {
   essayFit,
   hasPointAnswers,
   needsDecayVersion,
+  needsForkVersion,
   parseEssay,
 } from "@some-ui/video-render"
 
@@ -169,8 +170,6 @@ function pointAnswers(
   return answers
 }
 
-type EssayFork = NonNullable<Essay["tickets"][number]["points"][number]["fork"]>
-
 /**
  * Each fork of `ticket` that lists options (`/2`, RR29), by its place from
  * 1, built from the week's options and the after-deadline best fit the
@@ -224,6 +223,7 @@ function forksOf(
           model: option.model,
           meets: one.meets,
           breaks: one.breaks,
+          ...(one.refused === undefined ? {} : { refused: one.refused }),
         },
       ]
     })
@@ -408,13 +408,7 @@ function buildEssay(
     { weeks: ESSAY_WEEKS_MOST, concepts: ESSAY_CHART_ROWS }
   )
   // The lowest version that draws it (C270).
-  const forked = tickets.some(
-    (t) =>
-      t.points.some((point) => point.fork !== undefined) ||
-      t.points.length < 2 ||
-      t.points.length > 3
-  )
-  const version = forked
+  const version = tickets.some(needsForkVersion)
     ? ESSAY_FORK_VERSION
     : tickets.some(hasPointAnswers)
       ? ESSAY_POINT_VERSION

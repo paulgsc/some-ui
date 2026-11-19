@@ -10,6 +10,7 @@ import {
   markOf,
   markThemeOf,
   parseEssay,
+  pickedOf,
   pointAnsweredBy,
   pointCite,
   sampleEssay,
@@ -163,12 +164,8 @@ const ForkPanel = ({
   stated: ReadonlyArray<{ id: string; says: string }>
 }): JSX.Element => {
   const judged = fork.judged
-  const picked =
-    judged?.decision.kind === "option"
-      ? judged.decision.option
-      : judged?.decision.kind === "recommended-by-default"
-        ? fork.options.find((option) => option.recommended)?.id
-        : undefined
+  const picked = pickedOf(fork)?.id
+  const recommended = fork.options.find((option) => option.recommended)?.id
   const rows = [
     ...fork.options.map((option) => ({
       ...option,
@@ -193,6 +190,15 @@ const ForkPanel = ({
   ]
   return (
     <div className="space-y-[0.5em]">
+      {judged !== undefined && (
+        <p className="text-[0.7em]">
+          {W.fork.summary(
+            judged.decision,
+            recommended ?? "",
+            fork.best.kind === "hidden" ? null : fork.best.option
+          )}
+        </p>
+      )}
       <table className="w-full text-left text-[0.7em]">
         <thead className="text-muted-foreground">
           <tr>
@@ -218,14 +224,23 @@ const ForkPanel = ({
               <td className="py-[0.25em] pr-[1em] align-top">
                 <Inline text={row.decision} />
                 {row.tags.length > 0 && (
-                  <span className="text-muted-foreground block text-[0.85em]">
-                    {row.tags.join(" · ")}
+                  <span className="text-muted-foreground text-[0.85em]">
+                    {` · ${row.tags.join(" · ")}`}
                   </span>
                 )}
               </td>
-              {stated.map((col) => (
-                <TradeCell key={col.id} trade={row} id={col.id} />
-              ))}
+              {row.refused === undefined ? (
+                stated.map((col) => (
+                  <TradeCell key={col.id} trade={row} id={col.id} />
+                ))
+              ) : (
+                <td
+                  colSpan={stated.length}
+                  className="text-destructive py-[0.25em] text-[0.85em]"
+                >
+                  {W.fork.refused(row.refused.code, row.refused.why)}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
@@ -233,15 +248,18 @@ const ForkPanel = ({
       <p className="text-muted-foreground text-[0.55em]">
         {stated.map((row) => `${row.id}: ${row.says}`).join(" · ")}
       </p>
+      {fork.best.kind === "hidden" && (
+        <p className="text-[0.65em]">
+          <span className="font-semibold">{W.fork.astute}</span>{" "}
+          <Inline text={fork.best.why} />
+        </p>
+      )}
       {judged !== undefined && (
         <Field label={W.fork.axis}>
           {judged.decision.kind === "own" && (
             <p className="text-[0.7em]">
               <Inline text={W.fork.own(judged.decision.decision)} />
             </p>
-          )}
-          {judged.decision.kind === "recommended-by-default" && (
-            <p className="text-[0.7em]">{W.fork.byDefault}</p>
           )}
           <ol className="flex gap-[0.4em] text-[0.55em] whitespace-nowrap">
             {FORK_PLACEMENTS.map((place) => (

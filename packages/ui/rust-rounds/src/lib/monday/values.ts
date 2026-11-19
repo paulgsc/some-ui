@@ -23,21 +23,17 @@ const VALUES_SCHEMA = "some-ui.rust-monday-values/1"
 /** `/2` (RR29): an essay ticket may carry the best fit of each fork (`forks`). */
 const VALUES_SCHEMA_V2 = "some-ui.rust-monday-values/2"
 
-/** A stated constraint, by id: `S1` for an SLA row, `F1` for a figure. */
-const StatedIdSchema = z.string().regex(/^[SF][1-9]\d?$/)
+/** As `formats/week`'s private `ConstraintIdSchema`. */
+const StatedIdSchema = z.string().regex(/^[SF][1-9]\d*$/)
 
-/** Which stated constraints a decision meets, and which it breaks. */
 const TradeSchema = {
   meets: z.array(StatedIdSchema),
   breaks: z.array(StatedIdSchema),
+  /** Its program doesn't build: rustc's code, and why. */
+  refused: z.strictObject({ code: TextSchema, why: TextSchema }).optional(),
 }
 
-/**
- * The after-deadline best fit of one fork (RR29, #3257), by its place from
- * 1: the best decision, a listed option by id or a hidden one not on the
- * list, and every listed option against the stated constraints, by id. What
- * is said over the fork's scene, too.
- */
+/** A fork's after-deadline best fit (RR29): ROUTINE.md's `forks`. */
 const ForkValuesSchema = z.strictObject({
   fork: z.int().min(1),
   best: z.union([
@@ -98,7 +94,7 @@ export type PointValues = z.infer<typeof PointValuesSchema>
 const EssayTicketValuesSchema = z.strictObject({
   id: z.string(),
   /** A best fit for each speak-to point, in order, made apart from the answer. */
-  bests: z.array(TextSchema).min(2).max(3),
+  bests: z.array(TextSchema).min(1).max(6),
   question: TextSchema,
   best: TextSchema,
   beside: TextSchema,

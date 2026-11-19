@@ -7,13 +7,13 @@
     "packages/ui/rust-rounds/src/lib/monday/finish.ts",
     "packages/ui/rust-rounds/ROUTINE.md"
   ],
-  "chose": "The after-deadline best fit is the Monday values file's `/2`: per fork that lists options, `best` ({option} or {hidden: decision, why, model, meets, breaks}), every listed option once as {id, meets, breaks} by stated id, and `said`. A hidden best is refused unless, for each listed option, it meets a stated constraint that option misses: its advantage over each rests on what the week stated.",
+  "chose": "The after-deadline best fit is the Monday values file's `/2`: per fork that lists options, `best` ({option} or {hidden: decision, why, model, meets, breaks}), every listed option once as {id, meets, breaks} by stated id, an optional `refused` {code, why} for one whose program rustc refuses (it then meets and breaks nothing), and `said`. A hidden best is refused unless it is better than each listed option on a stated constraint: it builds where the option doesn't, meets an id the option doesn't, or avoids an id the option breaks.",
   "options": [
-    "per listed option, a stated constraint it misses",
-    "a stated constraint every listed option misses",
-    "the hidden best meets every stated constraint"
+    "better than each listed option on a stated constraint",
+    "meets something the recommended breaks",
+    "meets every stated constraint"
   ],
-  "gray": "The owner asked that a hidden best's advantage never rest on an unstated constraint; which test makes that falsifiable is a design choice. The middle option refuses a hidden best that beats each option on a different constraint; the last refuses one that wins on priorities.",
+  "gray": "The owner asked that a hidden best's advantage never rest on an unstated constraint; which test makes that falsifiable is a design choice. Against the recommended alone, a listed option as good as the hidden best would leave its edge unstated; meeting everything refuses a best that wins on priorities.",
   "undo": "Change the hidden-best loop in video-render's forkProblems.",
   "refs": ["#3257", "#3253"]
 }

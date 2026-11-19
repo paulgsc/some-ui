@@ -58,14 +58,37 @@ export const ESSAY_WORDS = {
     breaks: "Breaks",
     /** A decision of the owner's own, under the table. */
     own: (decision: string): string => `Yours, not listed: ${decision}`,
-    byDefault: "You left it: the recommended, by default",
+    refused: (code: string, why: string): string =>
+      `Doesn't build: ${why} (${code})`,
+    /** D4's opening line: what you chose, what the agent recommended, and the best. */
+    summary: (
+      decision:
+        | { readonly kind: "option"; readonly option: string }
+        | {
+            readonly kind: "own" | "recommended-by-default"
+          },
+      recommended: string,
+      best: string | null
+    ): string =>
+      [
+        decision.kind === "option"
+          ? `You chose ${decision.option}.`
+          : decision.kind === "own"
+            ? "You said your own."
+            : "You left it, so the recommended stood.",
+        `The agent recommended ${recommended}.`,
+        best === null
+          ? "The best wasn't on the list (★)."
+          : `The best was ${best}.`,
+      ].join(" "),
+    astute: "What an astute observer would have called out:",
     axis: "From A to A′",
     place: {
-      trusted: "A: trusted it",
-      reasoned: "Took it, with reasons",
-      departed: "Chose another",
+      trusted: "A: followed blind",
+      reasoned: "Followed, with reasons",
+      departed: "Chose another listed",
       own: "Said your own",
-      astute: "A′: saw past the list",
+      astute: "A′: called out the list",
     } satisfies Record<ForkPlacement, string>,
     verdict: {
       best: "The best decision",
