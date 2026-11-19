@@ -1,5 +1,5 @@
 /**
- * Read aloud, a section of its own (IW8, paulgsc/some-ui#3175): the week's
+ * Scripts, a section of its own (IW8, paulgsc/some-ui#3175): the week's
  * short scripts, each opening its own reading page, which counts down and
  * records while the script stays on screen (IW5's read). A read's take
  * waits on this phone until the week is sent.

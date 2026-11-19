@@ -6,11 +6,11 @@ import {
   INTERVIEW_WEEK_SCHEMA_V1,
   readWeek,
 } from "@some-ui/interview-week"
-import { ONE_TAKE } from "@some-ui/voice-capture"
 import type { SimulatedPattern } from "@some-ui/voice-capture/testing"
 import { simulatedPattern } from "@some-ui/voice-capture/testing"
 
 import type { InterviewWeekPorts } from "@/lib/interview-week/runtime"
+import { INTERVIEW_TAKE } from "@/lib/interview-week/take"
 
 const guidelines = [
   "Says what the situation was.",
@@ -146,7 +146,8 @@ for (const week of [WEEK, WEEK_2]) {
 }
 
 /**
- * The week's ports over the simulated microphone (`send: "on-confirm"`), in
+ * The week's ports over the simulated microphone, recording as the phone does
+ * (`../take`: up to 2 minutes, `send: "on-confirm"`), in
  * memory, home near and holding nothing, the cue's clock on timers; `over`
  * replaces any of them.
  */
@@ -155,7 +156,7 @@ export function fakePorts(over: Partial<InterviewWeekPorts> = {}): {
   readonly simulated: SimulatedPattern
 } {
   const simulated = simulatedPattern({
-    options: { ...ONE_TAKE, send: "on-confirm" },
+    options: INTERVIEW_TAKE,
   })
   const { pattern, store } = simulated
   return {

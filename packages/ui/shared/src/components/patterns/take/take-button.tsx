@@ -51,6 +51,7 @@ export type TakeButtonProps = {
 
 function toneOf(view: TakeButtonView): "rest" | "live" | "quiet" {
   switch (view.kind) {
+    case "counting":
     case "opening":
     case "recording":
     case "keeping": {
@@ -92,6 +93,7 @@ export const TakeButton = ({
     : 0
   const tappable =
     (view.kind === "ready" && canStart) ||
+    view.kind === "counting" ||
     view.kind === "opening" ||
     view.kind === "recording"
   const large = size === "large"
@@ -101,7 +103,11 @@ export const TakeButton = ({
       onClick={onTap}
       disabled={!tappable}
       aria-label={buttonLabel(words, view)}
-      aria-pressed={view.kind === "opening" || view.kind === "recording"}
+      aria-pressed={
+        view.kind === "counting" ||
+        view.kind === "opening" ||
+        view.kind === "recording"
+      }
       data-take={view.kind}
       className={cn(
         takeButtonVariants({
@@ -166,7 +172,9 @@ export const TakeButton = ({
           <TalkGlyph
             className={cn(
               large ? "size-10" : "size-5 shrink-0",
-              (view.kind === "opening" || view.kind === "keeping") &&
+              (view.kind === "counting" ||
+                view.kind === "opening" ||
+                view.kind === "keeping") &&
                 "motion-safe:animate-pulse"
             )}
           />
