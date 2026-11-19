@@ -6,9 +6,11 @@
  * good (`./rust-kept`, RR14 #2689), through the one wiring (`./lanes`).
  *
  * Its record moves with each round taken on this phone, never with one taken
- * from home, and with each week sent, paste kept or card-log sitting. Only a
- * write to the rounds' store asks for a run at once: a week sent or a paste
- * kept goes at the lane's next run (the app coming to the front, or a pull).
+ * from home, and with each week sent, paste kept or card-log sitting. A
+ * write to the rounds' store asks for a run at once, and so does home saying
+ * it serves this build when that lets a week sent by points go (RR24, C681);
+ * otherwise a week sent or a paste kept goes at the lane's next run (the app
+ * coming to the front, or a pull).
  * The lane has no wing mark: Settings' readout says where the rounds are
  * kept.
  */

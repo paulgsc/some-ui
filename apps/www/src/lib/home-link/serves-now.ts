@@ -22,7 +22,12 @@ export function servesRun(): ServesRun {
       read: () => askCompat(SERVER_CONTRACT_EPOCH),
       now: LINK_CLOCK.now,
     })
+    // Only what home says matters to a listener, never the ask's own steps.
+    let said = serves.getSnapshot().serves
     serves.subscribe(() => {
+      const now = serves?.getSnapshot().serves ?? null
+      if (now === said) return
+      said = now
       for (const listener of listeners) listener()
     })
   }
@@ -30,7 +35,7 @@ export function servesRun(): ServesRun {
 }
 
 /**
- * Calls `listener` each time what home says of this build may have changed,
+ * Calls `listener` each time what home says of this build changes,
  * whether or not the ask has been made yet: a lane holding what home must
  * serve first (RR24) moves as soon as home says it does. Never asks.
  */

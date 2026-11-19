@@ -12,8 +12,9 @@
  * shown above the points, kept and counted for every point it answers.
  *
  * Self-contained, so a flow can host it (RR25's Voice step): it reads the
- * week's bundle and dispatches to it, takes a `heading` and what goes
- * `before` the points (both recede while a take records), and
+ * week's bundle and dispatches to it, takes a `heading`, what goes `before`
+ * the points, what goes at the head of the open point (`pointHead`) and a
+ * folded point's line (`pointSummary`) (all recede while a take records), and
  * `pointRecording` says when a host should recede too. Keyed by its ticket
  * where it is hosted, so a filter picked on one ticket isn't another's.
  */
@@ -27,6 +28,7 @@ import {
   pointCounts,
   pointItem,
   pointsShown,
+  ticketPoints,
 } from "@rust-rounds/lib/week-play/points"
 import type { WeekKind, WeekState } from "@rust-rounds/lib/week-play/spec"
 import { WEEK_WORDS } from "@rust-rounds/lib/week-play/words"
@@ -59,6 +61,13 @@ export type PointTakesProps = {
    * with them while a take records.
    */
   readonly before?: ReactNode
+  /**
+   * What a host shows inside the open point, above its take (RR25's pick of
+   * that point's options); it recedes while a take records.
+   */
+  readonly pointHead?: (n: number) => ReactNode
+  /** A folded point's one-line state, when the host says more than said or not. */
+  readonly pointSummary?: (n: number) => string | null
 }
 
 /** Whether a take is recording or being kept: the card is all there is, and a host recedes too. */
@@ -85,11 +94,11 @@ export const PointTakes = (props: PointTakesProps): JSX.Element => {
   const open = openPoint(machine, state, ticket)
   const recording = pointRecording(state)
   const whole = machine.answered(state, ticket.id) === "said"
-  const points = ticket.speakTo.map((to, i) => ({
-    n: i + 1,
-    to,
-    taken: machine.answered(state, pointItem(ticket.id, i + 1)) === "said",
-  }))
+  // A take of the whole ticket answers every point it has (RR24): each is
+  // counted and listed as answered, and says it is in the whole take.
+  const own = (n: number): boolean =>
+    machine.answered(state, pointItem(ticket.id, n)) === "said"
+  const points = ticketPoints(ticket.speakTo, own, whole)
   const go = (n: number): void => {
     const index = machine.spec.items.indexOf(pointItem(ticket.id, n))
     if (index !== -1) dispatch({ type: "go", index })
@@ -196,6 +205,7 @@ export const PointTakes = (props: PointTakesProps): JSX.Element => {
                 </span>
                 {point.to}
               </p>
+              {props.pointHead?.(point.n)}
               {openTake}
             </li>
           ) : (
@@ -220,11 +230,12 @@ export const PointTakes = (props: PointTakesProps): JSX.Element => {
                         : "border-muted-foreground/60"
                     )}
                   />
-                  {point.taken
-                    ? WORDS.points.said
-                    : whole
-                      ? WORDS.points.inWhole
-                      : WORDS.points.notSaid}
+                  {props.pointSummary?.(point.n) ??
+                    (own(point.n)
+                      ? WORDS.points.said
+                      : whole
+                        ? WORDS.points.inWhole
+                        : WORDS.points.notSaid)}
                 </span>
               </button>
             </li>

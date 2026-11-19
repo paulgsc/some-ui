@@ -297,6 +297,41 @@ describe("the week's openings (RR14)", () => {
       ["left", "ticket-2"],
     ])
   })
+
+  it("tells a ticket opened once, whichever of its points is on screen (RR24)", async () => {
+    const on = phone(inMemoryStorage(), onConfirm(), { perPoint: true })
+    const items = on.week.machine.spec.items
+    const [first, second] = QUILLMOSS_WEEK.tickets
+    if (first === undefined || second === undefined) throw new Error("tickets")
+    on.week.bundle.dispatch({
+      type: "go",
+      index: items.indexOf(`${first.id}:1`),
+    })
+    await pass(5_000)
+    on.week.bundle.dispatch({
+      type: "go",
+      index: items.indexOf(`${first.id}:2`),
+    })
+    await pass(5_000)
+    on.week.bundle.dispatch({
+      type: "go",
+      index: items.indexOf(`${second.id}:1`),
+    })
+    await pass(5_000)
+    on.week.bundle.dispatch({ type: "back" })
+    on.detach()
+    expect(
+      on.engaged.map((event) => [
+        event.kind,
+        event.kind === "left" ? event.place : null,
+      ])
+    ).toEqual([
+      ["taken", null],
+      ["left", "ticket-1"],
+      ["taken", null],
+      ["left", "ticket-2"],
+    ])
+  })
 })
 
 describe("what home has of a week (RR22, C56)", () => {

@@ -64,8 +64,21 @@ export type PointShown = {
   /** From 1. */
   readonly n: number
   readonly to: string
-  /** It has a take of its own. */
+  /** It is answered: by a take of its own, or one of its whole ticket. */
   readonly taken: boolean
+}
+
+/**
+ * A ticket's points as its card lists them: `own(n)` says whether point `n`
+ * has a take of its own, and a take of the whole ticket (`whole`) answers
+ * every point it has, so each counts as answered.
+ */
+export function ticketPoints(
+  speakTo: ReadonlyArray<string>,
+  own: (n: number) => boolean,
+  whole: boolean
+): ReadonlyArray<PointShown> {
+  return speakTo.map((to, i) => ({ n: i + 1, to, taken: whole || own(i + 1) }))
 }
 
 /** How many points each filter shows. */

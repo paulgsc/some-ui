@@ -345,6 +345,7 @@ const Review = (props: Parts & { held: HeldWeek }): JSX.Element => {
       }
       label={label}
       shown={(id, said) => !perPoint || said || itemOf(id).point !== null}
+      redoes={(id) => !perPoint || itemOf(id).point !== null}
       notSaid={() => WORDS.review.notSaid}
       beforeSend={
         notNear !== null && (

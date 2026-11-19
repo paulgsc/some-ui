@@ -8,6 +8,7 @@ import {
   pointCounts,
   pointItem,
   pointsShown,
+  ticketPoints,
   weekItems,
 } from "@rust-rounds/lib/week-play/points"
 import { describe, expect, it } from "vitest"
@@ -51,5 +52,17 @@ describe("a ticket's points", () => {
     expect(ns("taken", "asked")).toEqual([1, 2, 4])
     expect(ns("none", "asked", 2)).toEqual([1, 2, 3])
     expect(pointCounts(points)).toEqual({ all: 4, taken: 2, none: 2 })
+  })
+
+  it("count each point answered by a take of the whole ticket", () => {
+    const own = (n: number): boolean => n === 2
+    expect(
+      ticketPoints(["a", "b", "c"], own, false).map(({ taken }) => taken)
+    ).toEqual([false, true, false])
+    expect(pointCounts(ticketPoints(["a", "b", "c"], own, true))).toEqual({
+      all: 3,
+      taken: 3,
+      none: 0,
+    })
   })
 })

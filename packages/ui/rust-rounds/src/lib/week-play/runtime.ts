@@ -30,6 +30,7 @@ import type { OnScreen, Open } from "./opens"
 import { stepOpens } from "./opens"
 import type { PasteRuntime } from "./paste"
 import { pasteRuntime } from "./paste"
+import { itemOf } from "./points"
 import type { WeekAtHome, WeekKind, WeekSent } from "./spec"
 import { weekAtHome, weekMachine } from "./spec"
 import { heardWords, pasteStores, weekDrafts, weeksSent } from "./store"
@@ -172,7 +173,10 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
     }
     const look = (): void => {
       const state = bundle.getSnapshot()
-      move(!hidden && state.screen === "cards" ? state.index : null)
+      // A place is the ticket's, whichever of its points is on screen (RR24).
+      const ticket = itemOf(machine.spec.items[state.index] ?? "").ticket
+      const place = week.tickets.findIndex(({ id }) => id === ticket)
+      move(!hidden && state.screen === "cards" && place !== -1 ? place : null)
     }
     const stopState = bundle.subscribe(look)
     const stopSeen = ports.onVisibility((now) => {
