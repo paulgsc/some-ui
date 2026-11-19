@@ -30,6 +30,7 @@ const KEYS: Record<Feed, ReadonlyArray<string>> = {
   "cards-essay": ["zfs-2026-11-02", "rust-scratchpad-2026-11-14"],
   "interview-essay": ["2026-w46", "2027-w01"],
   "playoff-delta": ["2026-SF-08", "2026-SF-00", "2026-SF-17"],
+  report: ["2026-W46", "2027-W01", "2026-W53"],
   "rust-essay": ["2026-w46", "2027-w01"],
 }
 
@@ -39,6 +40,7 @@ const UNREAD: Record<Feed, ReadonlyArray<string>> = {
   "cards-essay": ["2026-w46", "zfs-2026-02-31", "zfs", ""],
   "interview-essay": ["2026-10-30", "2026-w4", "2026-w00", ""],
   "playoff-delta": ["2026-10-30", "2026-SF-8", ""],
+  report: ["2026-10-30", "2026-w46", "2026-W4", "2026-W00", "2026-W54", ""],
   "rust-essay": ["2026-10-30", "2026-w4", "2026-w00", ""],
 }
 

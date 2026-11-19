@@ -26,9 +26,17 @@ import { refusalOf } from "./model"
 import type { Row, Subject } from "./subject"
 import { subjectOf } from "./subject"
 
-/** A feed's name, or what a render of another kind is. */
+/**
+ * A feed's name: the phone's own for a feed it knows, else home's name for
+ * it said as words (`new-feed` is "New feed"), so a row from a feed this
+ * phone doesn't know yet still says which it is (#3235).
+ */
 export function feedName(feed: string): string {
-  return isFeed(feed) ? FEED_FACTS[feed].name : "Something else"
+  if (isFeed(feed)) return FEED_FACTS[feed].name
+  const words = feed.replaceAll(/[-_]+/g, " ").trim()
+  return words === ""
+    ? "Something else"
+    : words.charAt(0).toUpperCase() + words.slice(1)
 }
 
 /** What kind of thing a row is: its feed's name, a preview, a clip's walk. */
@@ -47,7 +55,7 @@ export function kindName(subject: Subject): string {
       return "Cards essay"
     }
     case "other": {
-      return "Something else"
+      return feedName(subject.feed)
     }
     default: {
       return assertNever(subject)
@@ -73,7 +81,7 @@ export function thingName(subject: Subject): string {
       return essayName(subject.key)
     }
     case "other": {
-      return "A video"
+      return "A video this phone can't open yet"
     }
     default: {
       return assertNever(subject)
@@ -210,6 +218,7 @@ const FEED_VIDEOS = {
   "cards-essay": "cards essays",
   "interview-essay": "interview essays",
   "playoff-delta": "Playoff Delta videos",
+  report: "engagement reports",
   "rust-essay": "Rust Rounds essays",
 } as const satisfies Record<Feed, string>
 

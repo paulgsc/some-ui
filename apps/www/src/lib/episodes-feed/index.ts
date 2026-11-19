@@ -81,6 +81,15 @@ export function keyDay(feed: Feed, week: string): string | null {
         return null
       }
     }
+    case "report": {
+      // `2026-W46`: dated by its Monday, as the essays' weeks are.
+      if (!/^\d{4}-W\d{2}$/.test(week)) return null
+      try {
+        return isoWeekMonday(week)
+      } catch {
+        return null
+      }
+    }
     case "cards-essay": {
       return isEssayKey(week) ? week.slice(-10) : null
     }
@@ -183,6 +192,7 @@ export function feedView(lists: FeedLists, chip: Chip): FeedView {
     "cards-essay": 0,
     "interview-essay": 0,
     "playoff-delta": 0,
+    report: 0,
     "rust-essay": 0,
   }
   const rows: Array<Row> = []

@@ -277,6 +277,7 @@ describe("RENDERS_WORDS and what it says of each render", () => {
     })
     expect(subjectOf({ feed: "clip-walk", key: "-after" })).toEqual({
       kind: "other",
+      feed: "clip-walk",
     })
     expect(
       subjectOf({ feed: "cards-essay", key: "rust-scratchpad-2026-11-14" })
@@ -286,11 +287,12 @@ describe("RENDERS_WORDS and what it says of each render", () => {
     for (const key of ["x", "x-2026-02-31", `${"a".repeat(120)}-2026-11-14`])
       expect(subjectOf({ feed: "cards-essay", key })).toEqual({
         kind: "other",
+        feed: "cards-essay",
       })
     expect(
       thingName({ kind: "essay", key: "rust-scratchpad-2026-11-14" })
     ).toBe("Rust scratchpad, as of Saturday, November 14")
-    expect(openWords({ kind: "other" })).toBeNull()
+    expect(openWords({ kind: "other", feed: "new-feed" })).toBeNull()
     expect(openWords({ kind: "preview", template: null })).toBeNull()
     expect(
       openWords({ kind: "preview", template: "rust-essay" })

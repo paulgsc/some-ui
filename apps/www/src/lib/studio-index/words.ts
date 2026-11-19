@@ -90,6 +90,12 @@ export const FEED_FACTS = {
       "How did this week's results move my team's paths to the playoffs?",
     cadence: "Every Tuesday in season",
   },
+  report: {
+    name: "The engagement report",
+    intuition:
+      "What each app put in front of me this week and what I took, against last week, a quarter ago and a year ago.",
+    cadence: "Every week, once the week has ended",
+  },
   "rust-essay": {
     name: "The Rust Rounds essay",
     intuition:
@@ -178,6 +184,19 @@ export const FEED_KEPT = {
     },
     testing: {
       what: "Nothing. An essay holds your voice, so it stays on home until you share it.",
+      letGo: "Nothing to let go.",
+    },
+    drive: NOTHING_IN_DRIVE,
+  },
+  report: {
+    home: {
+      what: "Every week's counts of what each app offered and what you took, read from what this phone sent home, and each report's video and what it was made from.",
+      letGo:
+        "Once a report's YouTube link is saved, Settings › My data lets its video go, then what it was made from, and home keeps a note of each. The week's counts stay.",
+    },
+    phone: ON_THE_PHONE,
+    testing: {
+      what: "Nothing. A report is made on home from your own records.",
       letGo: "Nothing to let go.",
     },
     drive: NOTHING_IN_DRIVE,

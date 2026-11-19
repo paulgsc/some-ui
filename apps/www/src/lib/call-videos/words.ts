@@ -47,6 +47,18 @@ function rustWeek(key: string): string | null {
 }
 
 /**
+ * A week of the engagement report by its year and ISO week (its key is
+ * `<year>-W<NN>`), or `null`.
+ */
+function reportWeek(key: string): string | null {
+  const parts = /^(\d{4})-W(\d{2})$/.exec(key)
+  if (parts === null) return null
+  const [, year = "", week = ""] = parts
+  const n = Number(week)
+  return n >= 1 && n <= 53 ? `${year}, week ${String(n)}` : null
+}
+
+/**
  * A cards essay by its subject and the day it was checked (its key is
  * `<slug>-<YYYY-MM-DD>`; C356), or `null`.
  */
@@ -167,6 +179,29 @@ export const FEED_WORDS = {
         : `The interview essay, ${week}`
     },
     what: "the interview essays",
+  },
+  report: {
+    heading: FEED_FACTS.report.name,
+    intro:
+      "Home makes each week's report from what you used, once the week has ended. Watch it here, share it to YouTube, then save its link, and the week can be let go from My data.",
+    voice: null,
+    unpaired: "Pair this phone with home to see your engagement reports.",
+    older:
+      "Home doesn't keep the engagement reports yet. Update home, then try again.",
+    none: "Home hasn't made a report yet. Each comes after its week has ended.",
+    gone: "This report isn't among home's reports. Home makes each once its week has ended, and only for a week this phone sent home what you used.",
+    week: reportWeek,
+    label: (key: string): string => reportWeek(key) ?? "This report",
+    waiting: "Home is still making this week's report.",
+    linkSaved: "Saved. Home keeps the link with the week.",
+    letGo: "You let home's copy go. The report lives on YouTube.",
+    shareTitle: (key: string): string => {
+      const week = reportWeek(key)
+      return week === null
+        ? "The engagement report"
+        : `The engagement report, ${week}`
+    },
+    what: "your engagement reports",
   },
   "cards-essay": {
     heading: FEED_FACTS["cards-essay"].name,
