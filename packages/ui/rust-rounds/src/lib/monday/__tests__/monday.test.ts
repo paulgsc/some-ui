@@ -559,6 +559,30 @@ describe("finish", () => {
     ])
   })
 
+  it("refuses forks whose questions alone run past the essay's frame", () => {
+    const given = values()
+    const ticket = given.week?.tickets[1]
+    const [fork] = ticket?.forks ?? []
+    if (ticket === undefined || fork === undefined) throw new Error("shape")
+    const question =
+      "How should print and reprint share the log, given a jam can reprint any order while the first print still holds its borrow of it?"
+    ticket.forks = Array.from({ length: 6 }, () => ({ ...fork, question }))
+    expect(
+      problemsOf(given).map((p) => p.replace(/about \d+ px/, "about N px"))
+    ).toEqual(
+      ["best", "beside"].map(
+        (scene) =>
+          `week: TB-102: its 6 speak-to points alone run about N px past the essay's ${scene} scene: shorten them, or ask fewer`
+      )
+    )
+    // Four one-line questions leave the essay its room.
+    ticket.forks = Array.from({ length: 4 }, () => ({
+      ...fork,
+      question: "Borrow, clone or take the address?",
+    }))
+    expect(problemsOf(given)).toEqual([])
+  })
+
   it("refuses next week on readWeek's /2 rules", () => {
     const given = values()
     const fork = given.week?.tickets[0]?.forks[0]

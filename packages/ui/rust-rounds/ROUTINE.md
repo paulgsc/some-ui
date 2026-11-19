@@ -219,7 +219,10 @@ exercises if it says otherwise.
 - `figures`: facts the scenario states as given, such as a latency or a
   rate, each `{"id","text"}`. Nothing measures them. Count their ids across
   the week, `F1`, `F2`, …, so each names one figure.
-- `forks`: 1 to 6, the decisions the ticket asks for, in order. Each is
+- `forks`: 1 to 6, the decisions the ticket asks for, in order. Their
+  questions are said again, as written, in the essay's best and beside
+  scenes, so `finish` refuses a ticket whose questions alone would run past
+  the frame: keep each to a line, and most tickets to 2 to 4 forks. Each is
   `{"question","options"}`: the question, and 2 to 6 options as an agent
   would recommend them, each
   `{"id","recommended","decision","why","model","cites"}`:

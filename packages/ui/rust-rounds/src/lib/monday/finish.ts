@@ -68,6 +68,7 @@ import {
   needsDecayVersion,
   needsForkVersion,
   parseEssay,
+  pointsFit,
 } from "@some-ui/video-render"
 
 /**
@@ -575,6 +576,14 @@ function buildWeek(
   }
   for (const { key, what, expect } of programsOf(read.week.tickets))
     checkRun(what, expect, runs[key], problems)
+  // Its essay restates each fork's question as written, so the week holds
+  // the room it takes there.
+  for (const ticket of read.week.tickets)
+    for (const unfit of pointsFit(
+      ticket.id,
+      ticket.forks.map((fork) => fork.question)
+    ))
+      problems.push(`week: ${unfit}`)
   const file = WeekV2Schema.parse(week)
   const oversize = oversizeWeek(file)
   if (oversize !== null) problems.push(`week: ${describeWeekProblem(oversize)}`)
