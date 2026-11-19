@@ -33,6 +33,8 @@ function everyWord(value: unknown): Array<string> {
               ["indexing", 3],
               ["indexing", 1],
               ["QM-1", "Parse the batch"],
+              // A send home names, and this phone's own (RR30).
+              ["2026-11-14T19:59:07.012Z", "2026-11-15T10:00:00.000Z"],
             ]
           : [[1], [12], ["1.97.0"], [QUILLMOSS_WEEK], [true], [false]]
     // A sample meant for another word may throw; a word no sample can say

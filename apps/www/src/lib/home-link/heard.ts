@@ -11,9 +11,10 @@
  * - `200` `{ "heard": { "text", "heardAt" } }`: what home heard, other
  *   fields ignored.
  *
- * A link already busy with another run (or stopped by the page going), and
- * home saying it is busy (`429`, as the link reads it) or that a gateway
- * before it is (`502`, `503`, `504`), is `busy`: the screen asks again on
+ * A link already busy with another run (or stopped by the page going),
+ * home saying it is busy (`429`, as the link reads it, or `503`), and home's
+ * door answering for it (`502`, `504`, which the link holds as home
+ * restarting, HR1, read here alone as busy) are `busy`: the screen asks again on
  * its next poll. Anything else, an unreadable body, or no answer, is
  * `unreachable`: home can't give the words now, and the screen stops
  * waiting for them.
@@ -24,6 +25,7 @@ import type { HeardAnswer } from "@some-ui/voice-capture"
 import { z } from "zod"
 
 import { homeLink } from "./index"
+import { blockedOf } from "./settle"
 import { answered } from "./while-busy"
 
 const Heard = z.object({
@@ -37,7 +39,7 @@ export function heardPath(id: string): string {
 }
 
 /** Statuses that say home, or what is before it, is busy for now. */
-const BUSY = new Set([429, 502, 503, 504])
+const BUSY = new Set([429, 503])
 
 /** What home's answer says of the note's words. */
 export function readHeard(answer: HomeAnswer): HeardAnswer {
@@ -53,13 +55,20 @@ export function readHeard(answer: HomeAnswer): HeardAnswer {
 
 /** Home's words for note `id`, asked once; never rejects. */
 export async function askHeard(id: string): Promise<HeardAnswer> {
-  const said = await answered(
-    () =>
-      homeLink().keep((send) => send("GET", heardPath(id)), {
+  // Home's door answering for it, or the hold it began (HR1): home is
+  // restarting, so the screen polls again, as it did on a `502`.
+  const met = { door: false }
+  const said = await answered(async () => {
+    try {
+      return await homeLink().keep((send) => send("GET", heardPath(id)), {
         onItsOwn: true,
-      }),
-    readHeard
-  )
+      })
+    } catch (error) {
+      met.door = blockedOf(error) === "door"
+      throw error
+    }
+  }, readHeard)
+  if (met.door) return { kind: "busy" }
   // Unpaired, home can't give the words: the screen stops waiting for them.
   return said.kind === "unpaired" ? { kind: "unreachable" } : said
 }
