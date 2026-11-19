@@ -108,6 +108,16 @@ describe("the week's time", () => {
     expect(time).toMatchObject({ seconds: 0, spans: 0, refused: 1 })
   })
 
+  it("counts nothing for a close home refused", () => {
+    const time = weekTime(
+      week,
+      [start("a", "TB-101", "read"), close("a", 600)],
+      [],
+      (key) => key === "a/close"
+    )
+    expect(time).toMatchObject({ seconds: 0, spans: 0, refused: 0 })
+  })
+
   it("leaves out other weeks' spans", () => {
     const other = { ...start("a", "TB-101", "read"), week: "2026-w46" }
     expect(weekTime(week, [other, close("a", 60)], [], () => false).spans).toBe(

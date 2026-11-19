@@ -48,7 +48,8 @@ type Counted = {
 function weekSpans(
   week: string,
   phone: ReadonlyArray<SpanEvent>,
-  home: ReadonlyArray<HomeSpan>
+  home: ReadonlyArray<HomeSpan>,
+  refused: (key: string) => boolean
 ): Map<string, Counted> {
   const spans = new Map<string, Counted>()
   const starts = new Map(
@@ -65,7 +66,8 @@ function weekSpans(
     })
   }
   for (const close of phone) {
-    if (close.kind !== "close") continue
+    // A close home refused (another device answered first) counts nothing.
+    if (close.kind !== "close" || refused(`${close.id}/close`)) continue
     const span = spans.get(close.id)
     if (span !== undefined) {
       spans.set(close.id, { ...span, seconds: close.countedSeconds })
@@ -100,7 +102,7 @@ export function weekTime(
   let seconds = 0
   let spans = 0
   let refusedSpans = 0
-  for (const [id, span] of weekSpans(week.id, phone, home)) {
+  for (const [id, span] of weekSpans(week.id, phone, home, refused)) {
     if (refused(`${id}/start`)) {
       refusedSpans += 1
       continue

@@ -49,6 +49,8 @@ export type TrackerPorts = {
   readonly homeOpen: () => OpenSpan | null | undefined
   /** Calls `listener` whenever `homeOpen` may have changed. Returns the stop. */
   readonly onHome: (listener: () => void) => () => void
+  /** Whether home refused an event for good, by `<id>/<kind>`. */
+  readonly refused: (key: string) => boolean
   /** Asks the lane to send what was kept. */
   readonly send: () => void
   /** Milliseconds since the epoch. */
@@ -149,9 +151,18 @@ export function createWorkTracker(ports: TrackerPorts): WorkTracker {
 
   /** What is open: home's word once it has one, else this phone's record. */
   const hear = (): void => {
+    const events = ports.record.list() ?? []
     const home = ports.homeOpen()
-    const open =
-      home === undefined ? openOnPhone(ports.record.list() ?? []) : home
+    // A span this phone already answered is never asked again, whatever a
+    // read that began before the answer says.
+    const answered = (span: OpenSpan | null): OpenSpan | null =>
+      span !== null &&
+      events.some((each) => each.kind === "close" && each.id === span.id)
+        ? null
+        : span
+    const open = answered(
+      home === undefined ? openOnPhone(events, ports.refused) : home
+    )
     dispatch({ type: "homeSays", open, at: ports.now() })
   }
   hear()
@@ -192,6 +203,8 @@ export function createWorkTracker(ports: TrackerPorts): WorkTracker {
     attach: (): (() => void) => {
       attached += 1
       const home = ports.onHome(hear)
+      // What a run heard while no screen showed the tracker.
+      hear()
       const visibility = ports.onVisibility((hidden) => {
         if (!hidden) dispatch({ type: "seen", at: ports.now() })
       })

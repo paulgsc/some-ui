@@ -38,6 +38,7 @@ function setUp(): { ports: WorkPorts; advance: (ms: number) => void } {
     record,
     homeOpen: () => undefined,
     onHome: none,
+    refused: (): boolean => false,
     send: () => {
       revision += 1
       for (const listener of changed) listener()

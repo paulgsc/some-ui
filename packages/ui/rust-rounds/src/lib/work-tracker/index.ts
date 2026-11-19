@@ -185,7 +185,9 @@ export function stepTracker(
       return same({
         kind: "asking",
         span: state.span,
-        stoppedAt: event.at,
+        // A clock that stepped back never stops a span before it started:
+        // home refuses such a close for good.
+        stoppedAt: Math.max(event.at, state.span.startedAt),
         stoppedBy: "you",
         notKept: false,
       })

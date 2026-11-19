@@ -253,6 +253,7 @@ export function phoneWork(reach: WorkReach): WorkPorts {
     record,
     homeOpen: reach.homeOpen,
     onHome: reach.onHome,
+    refused: reach.refused,
     send: (): void => {
       change()
       for (const listener of spansKept) listener()

@@ -57,6 +57,7 @@ function setUp(
   const ports: TrackerPorts = {
     record,
     homeOpen: () => w.home,
+    refused: () => false,
     onHome: (listener) => {
       w.homeListeners.add(listener)
       return () => w.homeListeners.delete(listener)
@@ -230,5 +231,58 @@ describe("the tracker's runtime", () => {
     room = true
     tracker.answer({ kind: "none" })
     expect(tracker.getSnapshot().state.kind).toBe("idle")
+  })
+
+  it("never asks again about a span it answered while home still holds it open", () => {
+    const record = workSpans(inMemoryStorage())
+    const { tracker, world, advance } = setUp(record)
+    tracker.attach()
+    tracker.start(where)
+    advance(20 * MIN)
+    tracker.back()
+    tracker.answer({ kind: "all" })
+    expect(tracker.getSnapshot().state.kind).toBe("idle")
+    // A read that began before the close reached home.
+    const [start] = record.list() ?? []
+    world.home = {
+      id: start?.id ?? "",
+      where,
+      startedAt: T0,
+      device: "Pixel 8",
+    }
+    for (const listener of world.homeListeners) listener()
+    expect(tracker.getSnapshot().state.kind).toBe("idle")
+    expect(record.list()?.filter((each) => each.kind === "close")).toHaveLength(
+      1
+    )
+  })
+
+  it("stops no earlier than it started, whatever the clock says", () => {
+    const record = workSpans(inMemoryStorage())
+    const { tracker, world } = setUp(record)
+    tracker.attach()
+    tracker.start(where)
+    world.clock = T0 - 5 * MIN
+    tracker.back()
+    expect(tracker.getSnapshot().state).toMatchObject({
+      kind: "asking",
+      stoppedAt: T0,
+    })
+  })
+
+  it("hears what a run said while no screen showed the tracker", () => {
+    const { tracker, world } = setUp(workSpans(inMemoryStorage()))
+    const theirs: OpenSpan = {
+      id: "theirs",
+      where,
+      startedAt: T0 - 10 * MIN,
+      device: "Tablet",
+    }
+    world.home = theirs
+    tracker.attach()
+    expect(tracker.getSnapshot().state).toMatchObject({
+      kind: "running",
+      span: { id: "theirs" },
+    })
   })
 })

@@ -42,8 +42,6 @@ const STEP_NAMES: Readonly<Record<WorkStep, string>> = {
 export const TRACKER_WORDS = {
   idle: "Away from the phone? Track it.",
   start: "Start working",
-  /** While home hasn't said whether you're working somewhere else. */
-  unknown: "Checking whether you're working on another device…",
   running: (since: number, seconds: number): string =>
     `Working since ${atClock(since)} · ${runningClock(seconds)}`,
   back: "I'm back",

@@ -105,6 +105,7 @@ function fixturePorts(): WorkPorts {
     record,
     homeOpen: () => undefined,
     onHome: none,
+    refused: (): boolean => false,
     send: (): void => undefined,
     // Back after the cap: the tracker stopped itself, and asks.
     now: (): number => T0 + 150 * MIN,

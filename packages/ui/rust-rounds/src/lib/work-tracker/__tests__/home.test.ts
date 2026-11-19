@@ -267,6 +267,18 @@ describe("the exchange", () => {
     expect(done.open).toEqual({ ...span, device: "Tablet" })
   })
 
+  it("says nothing of what is open while a close is still on its way", async () => {
+    const { send } = scripted([answer(500, {}), week(homeSpan(false), [])])
+    const done = await exchangeWorkSpans(
+      send,
+      [start, close],
+      (key) => (key === eventKey(start) ? "held" : "waiting"),
+      ["2026-w47"]
+    )
+    expect(done.said).toEqual({ [eventKey(close)]: "again" })
+    expect(done.open).toBeUndefined()
+  })
+
   it("ends at a 401 as forgotten", async () => {
     const { send } = scripted([answer(401, {})])
     const done = await exchangeWorkSpans(send, [start], nothing, ["2026-w47"])

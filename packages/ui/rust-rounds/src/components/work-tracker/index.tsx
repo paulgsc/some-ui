@@ -201,7 +201,9 @@ export const WorkTrackerControl = ({
     tracker.getSnapshot
   )
   const running = state.kind === "running"
-  if (where === null && (state.kind === "idle" || state.kind === "unknown")) {
+  // Before the tracker has heard anything (it hears the phone's own record
+  // at once, C720), and where nothing starts, there is nothing to show.
+  if (state.kind === "unknown" || (where === null && state.kind === "idle")) {
     return <TrackerNotice tracker={tracker} />
   }
   return (
@@ -235,8 +237,6 @@ export const WorkTrackerControl = ({
             {WORDS.back}
           </Button>
         </>
-      ) : state.kind === "unknown" ? (
-        <span className="text-muted-foreground text-sm">{WORDS.unknown}</span>
       ) : (
         // Keyed by the span, so a new question opens with its own part.
         <AskSheet

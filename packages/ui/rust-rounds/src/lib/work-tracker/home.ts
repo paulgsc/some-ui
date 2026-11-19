@@ -17,9 +17,10 @@
  * - **Again**, with the next run, for anything else: a start while another
  *   span is open (a `409` carrying it), a close of a start home doesn't
  *   hold yet (`404`), an `at` ahead of home's clock (`422`), a fault.
- * - **What is open** is told only once every start this phone kept is held
+ * - **What is open** is told only once every event this phone kept is held
  *   or refused (the step's rule, `stepTracker`'s `homeSays`): until then, a
- *   start still on its way would read as nothing open.
+ *   start on its way would read as nothing open, and a close on its way as
+ *   the span still open.
  */
 import type { OpenSpan } from "@rust-rounds/lib/work-tracker"
 import type {
@@ -125,10 +126,18 @@ export async function exchangeWorkSpans(
   weeks: ReadonlyArray<string>
 ): Promise<SpansExchanged> {
   const said: Record<string, SpanSaid> = {}
-  const now = (key: string): EventAtHome => {
+  const heard = (key: string): EventAtHome => {
     const answer = said[key]
     if (answer === "held" || answer === "refused") return answer
     return atHome(key)
+  }
+  // A close goes nowhere once its start is refused: it is refused with it.
+  const now = (key: string): EventAtHome => {
+    const [id = "", kind] = key.split("/")
+    if (kind === "close" && heard(`${id}/start`) === "refused") {
+      return "refused"
+    }
+    return heard(key)
   }
   const result = (
     exchanged: HomeExchanged,
@@ -173,8 +182,7 @@ export async function exchangeWorkSpans(
     read[week] = spans.spans
     open = spans.open === null ? null : openOfHome(spans.open)
   }
-  const waits = events.some(
-    (event) => event.kind === "start" && now(eventKey(event)) === "waiting"
-  )
+  // A close on its way too: home still holds its span open.
+  const waits = events.some((event) => now(eventKey(event)) === "waiting")
   return result({ kind: "synced" }, read, waits ? undefined : open)
 }
