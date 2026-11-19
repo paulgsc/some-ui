@@ -3,7 +3,7 @@
   "made": "2026-11-18",
   "by": "claude",
   "paths": ["apps/www/src/lib/interview-week/prompter.ts"],
-  "chose": "The band moves at 140 words a minute while the voice is heard (the take's level at or over HEARD_FLOOR, the line a take must reach to count as heard), holds once a second passes with nothing heard, and counts at most a second between two of the recorder's reads, so a phone that slept never jumps it.",
+  "chose": "The band moves at 140 words a minute while the voice is heard (the take's level at or over HEARD_FLOOR, the line a take must reach to count as heard), and holds once a second passes with nothing heard. The stretch since the recorder's last read counts only when the voice was heard within that second before it ended, so the quiet before a first word, or a phone that slept, never moves it.",
   "options": [
     "140 a minute, held after 1 s quiet",
     "the read card's own target pace (its words over its target seconds)",
