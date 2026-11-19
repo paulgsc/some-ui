@@ -291,6 +291,12 @@ describe("readWeek, a /2 week", () => {
     expect(refused(noOption)).toEqual([
       `${TB101}.academy[0].tests[0]: fork 1 has no option "D"`,
     ])
+    const beyond = edited((week) => {
+      exerciseOf(week, 0, 2).tests = [{ fork: 3, option: "A" }]
+    })
+    expect(refused(beyond)).toEqual([
+      `${TB101}.academy[2].tests[0]: TB-101 has 2 forks; there is no fork 3`,
+    ])
     expect(refused(unnamed)).toEqual([
       `${TB101}.academy[2].tests[0]: it tests fork 2, so name fork 2 among the forks it builds toward`,
     ])

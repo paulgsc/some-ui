@@ -125,8 +125,8 @@ function countedSeconds(answer: Answer, spanned: number): number {
       return 0
     }
     case "part": {
-      // Minutes that aren't a number count as none.
-      const minutes = Number.isFinite(answer.minutes) ? answer.minutes : 0
+      // Minutes that aren't a number count as none; any number is clamped.
+      const minutes = Number.isNaN(answer.minutes) ? 0 : answer.minutes
       const asked = Math.floor(minutes) * 60
       return Math.min(spanned, Math.max(0, asked))
     }

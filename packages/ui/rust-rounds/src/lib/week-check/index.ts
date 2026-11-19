@@ -226,9 +226,15 @@ function checkExercise(
   })
   exercise.tests.forEach(({ fork, option }, i) => {
     const testAt = `${at}.tests[${i}]`
-    // A fork the ticket lacks is said once, where the exercise names it.
-    const options = ticket.forks[fork - 1]?.options ?? []
-    if (fork <= of && !options.some((each) => each.id === option)) {
+    const options = ticket.forks[fork - 1]?.options
+    if (options === undefined) {
+      problems.push({
+        at: testAt,
+        why: `${ticket.id} has ${of} forks; there is no fork ${fork}`,
+      })
+      return
+    }
+    if (!options.some((each) => each.id === option)) {
       problems.push({
         at: testAt,
         why: `fork ${fork} has no option "${option}"`,

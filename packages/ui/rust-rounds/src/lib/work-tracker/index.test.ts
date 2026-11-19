@@ -90,6 +90,13 @@ const EVENTS: ReadonlyArray<[string, TrackerEvent]> = [
     { type: "answer", answer: { kind: "part", minutes: 10_000 } },
   ],
   [
+    "answer part, without end",
+    {
+      type: "answer",
+      answer: { kind: "part", minutes: Number.POSITIVE_INFINITY },
+    },
+  ],
+  [
     "answer part, not a number",
     { type: "answer", answer: { kind: "part", minutes: Number.NaN } },
   ],
@@ -147,9 +154,14 @@ describe("the tracker, every state against every event", () => {
           state.kind === "asking" && event.type === "answer" ? 1 : 0
         )
 
+        // Home alone knows what is open: what it says is held, unless an
+        // answer is on its way to it.
+        if (event.type === "homeSays" && state.kind !== "keeping") {
+          expect(openIn(next.state)?.id).toBe(event.open?.id)
+        }
+
         // A span in hand is never dropped unanswered or swapped for
-        // another, except as home says (it alone knows what is open) or
-        // once it is kept.
+        // another, except as home says or once it is kept.
         const held = openIn(state)
         if (
           held !== null &&
