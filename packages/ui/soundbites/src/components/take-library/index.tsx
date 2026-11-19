@@ -709,10 +709,13 @@ const ChipBar = ({
   groups,
   chips,
   onChips,
+  lead,
 }: {
   groups: ChipGroups
   chips: Chips
   onChips: (chips: Chips) => void
+  /** What leads the bar, before the chips: the order (TAKES20). */
+  lead?: ReactNode
 }): JSX.Element | null => {
   const { places, stations, kinds, topics, statuses } = groups
   const tap = (pick: ChipPick) => (): void => {
@@ -725,64 +728,70 @@ const ChipBar = ({
     topics.length +
     statuses.length
   // A lone chip, not picked, would filter nothing (the conveyor's page).
-  if (many < 2 && !anyPicked(chips)) return null
+  const filters = many >= 2 || anyPicked(chips)
+  if (!filters && lead === undefined) return null
   return (
     <nav aria-label={WORDS.chips} className={CHIP_BAR}>
-      {places.map(({ chip, count }) => (
-        <Chip
-          key={`place:${chip}`}
-          picked={chips.place === chip}
-          count={count}
-          dot={chip}
-          onTap={tap({ group: "place", value: chip })}
-        >
-          {WORDS.place[chip]}
-        </Chip>
-      ))}
-      {kinds.map(({ chip, count }) => (
-        <Chip
-          key={`kind:${chip}`}
-          picked={chips.kind === chip}
-          count={count}
-          dot={null}
-          onTap={tap({ group: "kind", value: chip })}
-        >
-          {WORDS.kinds[chip].many}
-        </Chip>
-      ))}
-      {topics.map(({ chip, count }) => (
-        <Chip
-          key={`topic:${chip.key}`}
-          picked={chips.topic?.key === chip.key}
-          count={count}
-          dot={null}
-          onTap={tap({ group: "topic", value: chip })}
-        >
-          {chip.label}
-        </Chip>
-      ))}
-      {statuses.map(({ chip, count }) => (
-        <Chip
-          key={`status:${chip}`}
-          picked={chips.status === chip}
-          count={count}
-          dot={null}
-          onTap={tap({ group: "status", value: chip })}
-        >
-          {WORDS.status[chip]}
-        </Chip>
-      ))}
-      {stations.map(({ chip, count }) => (
-        <Chip
-          key={`station:${chip}`}
-          picked={chips.station === chip}
-          count={count}
-          dot={null}
-          onTap={tap({ group: "station", value: chip })}
-        >
-          {chip}
-        </Chip>
-      ))}
+      {lead}
+      {filters && (
+        <>
+          {places.map(({ chip, count }) => (
+            <Chip
+              key={`place:${chip}`}
+              picked={chips.place === chip}
+              count={count}
+              dot={chip}
+              onTap={tap({ group: "place", value: chip })}
+            >
+              {WORDS.place[chip]}
+            </Chip>
+          ))}
+          {kinds.map(({ chip, count }) => (
+            <Chip
+              key={`kind:${chip}`}
+              picked={chips.kind === chip}
+              count={count}
+              dot={null}
+              onTap={tap({ group: "kind", value: chip })}
+            >
+              {WORDS.kinds[chip].many}
+            </Chip>
+          ))}
+          {topics.map(({ chip, count }) => (
+            <Chip
+              key={`topic:${chip.key}`}
+              picked={chips.topic?.key === chip.key}
+              count={count}
+              dot={null}
+              onTap={tap({ group: "topic", value: chip })}
+            >
+              {chip.label}
+            </Chip>
+          ))}
+          {statuses.map(({ chip, count }) => (
+            <Chip
+              key={`status:${chip}`}
+              picked={chips.status === chip}
+              count={count}
+              dot={null}
+              onTap={tap({ group: "status", value: chip })}
+            >
+              {WORDS.status[chip]}
+            </Chip>
+          ))}
+          {stations.map(({ chip, count }) => (
+            <Chip
+              key={`station:${chip}`}
+              picked={chips.station === chip}
+              count={count}
+              dot={null}
+              onTap={tap({ group: "station", value: chip })}
+            >
+              {chip}
+            </Chip>
+          ))}
+        </>
+      )}
     </nav>
   )
 }
@@ -795,18 +804,24 @@ const OrderBar = ({
   order: Order
   onOrder: (order: Order) => void
 }): JSX.Element => (
-  <div role="group" aria-label={WORDS.orderLabel} className="flex gap-2">
+  <div
+    role="group"
+    aria-label={WORDS.orderLabel}
+    className="border-border flex shrink-0 gap-1 border-r pr-2"
+  >
     {ORDERS.map((each) => (
-      <Button
+      <button
         key={each}
         type="button"
-        size="sm"
-        variant={each === order ? "default" : "outline"}
         aria-pressed={each === order}
         onClick={() => onOrder(each)}
+        className={cn(
+          "h-9 shrink-0 rounded-full px-3 text-sm",
+          each === order ? "bg-foreground text-background" : "bg-card"
+        )}
       >
         {WORDS.order[each]}
-      </Button>
+      </button>
     ))}
   </div>
 )
@@ -1029,6 +1044,18 @@ export const TakeLibrary = ({
       <ChipBar
         groups={groups}
         chips={chips}
+        lead={
+          <OrderBar
+            order={order}
+            onOrder={(next) => {
+              setOrder(next)
+              dispatch({
+                type: "query",
+                query: queryOf(compartment, chips, next),
+              })
+            }}
+          />
+        }
         onChips={(next) => {
           // A take playing stops if its row leaves with its Stop.
           const { playback } = state
@@ -1104,13 +1131,6 @@ export const TakeLibrary = ({
           )}
         </form>
       )}
-      <OrderBar
-        order={order}
-        onOrder={(next) => {
-          setOrder(next)
-          dispatch({ type: "query", query: queryOf(compartment, chips, next) })
-        }}
-      />
       <Unread state={state} dispatch={dispatch} pair={pair} />
       <Listed
         page={chips.place === "phone" ? null : page}
