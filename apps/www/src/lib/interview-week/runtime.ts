@@ -40,11 +40,22 @@ import { NO_CUE, stepCue } from "./cue"
 import type { Ladder, Rung } from "./ladder"
 import { ask, firsts, linesOf, markRung, takesFor, withRungs } from "./ladder"
 import type { Prompter } from "./prompter"
-import { NO_PROMPTER, stepPrompter, totalOf } from "./prompter"
+import {
+  NO_PROMPTER,
+  paceOf,
+  stepPace,
+  stepPrompter,
+  totalOf,
+} from "./prompter"
 import type { InterviewAtHome, InterviewKind, InterviewSent } from "./spec"
 import { cardOf, interviewMachine, isClosed, takeLine } from "./spec"
 import type { HeldInterview } from "./store"
-import { interviewDrafts, interviewLadder, interviewSent } from "./store"
+import {
+  bandPace,
+  interviewDrafts,
+  interviewLadder,
+  interviewSent,
+} from "./store"
 
 export type InterviewWeekPorts = {
   /** The week to play: the one this phone holds that is open now. */
@@ -98,6 +109,10 @@ export type InterviewWeekRun = {
   readonly prompter: Readable<Prompter>
   /** The band's Pause / Go on: the take records on either way. */
   readonly pause: () => void
+  /** The pace the band moves at, in words a minute, as the reader set it (C734). */
+  readonly pace: Readable<number>
+  /** The band's Slower / Faster: a step of the pace, kept on this phone. */
+  readonly setPace: (to: "slower" | "faster") => void
   /** The screen is showing. Returns the detach. */
   readonly attach: () => () => void
 }
@@ -186,6 +201,8 @@ export function createInterviewWeek(
   }
 
   const prompter = cell<Prompter>(NO_PROMPTER)
+  const paces = bandPace(ports.storage)
+  const pace = cell(paceOf(paces.read()))
   const pattern = ports.takes.pattern
   // Each item's script in words, counted once: a read's, or a ready answer's.
   const totals = new Map(
@@ -208,6 +225,7 @@ export function createInterviewWeek(
               level: take.level,
               at: ports.now(),
               total,
+              pace: pace.getSnapshot(),
             }
           : { type: "ended" }
       )
@@ -338,6 +356,12 @@ export function createInterviewWeek(
     prompter,
     pause: () =>
       prompter.set(stepPrompter(prompter.getSnapshot(), { type: "pause" })),
+    pace,
+    setPace: (to): void => {
+      const next = stepPace(pace.getSnapshot(), to)
+      pace.set(next)
+      paces.write(next)
+    },
     attach(): () => void {
       const detach = bundle.attach()
       const stopListening = pattern.subscribe(listen)

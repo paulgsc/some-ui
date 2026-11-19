@@ -251,6 +251,10 @@ export const INTERVIEW_WORDS = {
     paused: "Paused. Tap Go on to go on.",
     pause: "Pause",
     goOn: "Go on",
+    slower: "Slower",
+    faster: "Faster",
+    /** The band's pace, as the reader set it (C734). */
+    pace: (wpm: number): string => `About ${wpm} words a minute`,
     time: (elapsedMs: number, seconds: number): string =>
       `${lengthOf(elapsedMs)} / about ${lengthOf(seconds * 1000)}`,
   },

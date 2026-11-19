@@ -26,6 +26,7 @@ import {
 } from "@/lib/interview-week/__tests__/fixture"
 import { CUE_SECONDS } from "@/lib/interview-week/cue"
 import { pastWeeks } from "@/lib/interview-week/past"
+import { DEFAULT_PACE_WPM, PACE_STEP_WPM } from "@/lib/interview-week/prompter"
 import type { InterviewWeekPorts } from "@/lib/interview-week/runtime"
 import type { InterviewSent } from "@/lib/interview-week/spec"
 import { readItem } from "@/lib/interview-week/spec"
@@ -178,7 +179,7 @@ describe("the interview week's pages on the phone (IW8)", () => {
     const lit = (): string | null | undefined =>
       script?.querySelector('[aria-current="true"]')?.getAttribute("data-line")
     expect(lit()).toBe("0")
-    // The first line's eleven words take about 5 s at the band's pace.
+    // The first line's eleven words take about 4 s at the band's pace.
     await settle(6_000)
     expect(lit()).not.toBe("0")
     fireEvent.click(screen.getByRole("button", { name: WORDS.band.pause }))
@@ -188,6 +189,10 @@ describe("the interview week's pages on the phone (IW8)", () => {
     expect(lit()).toBe(held)
     fireEvent.click(screen.getByRole("button", { name: WORDS.band.goOn }))
     screen.getByRole("button", { name: WORDS.band.pause })
+    // Faster sets the band's pace a step up, and says it (C734).
+    screen.getByText(WORDS.band.pace(DEFAULT_PACE_WPM))
+    fireEvent.click(screen.getByRole("button", { name: WORDS.band.faster }))
+    screen.getByText(WORDS.band.pace(DEFAULT_PACE_WPM + PACE_STEP_WPM))
     // Ending the take leaves the script where the band left it, and where a
     // hand scrolled it ahead of the band (PB1).
     const read = lit()

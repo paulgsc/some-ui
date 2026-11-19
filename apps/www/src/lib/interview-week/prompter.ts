@@ -9,12 +9,13 @@
  * large type, a band at about a third of the height, the line read lit and
  * the next dimmed; it moves while you speak, holds while you pause, and a
  * Pause / Go on button stops and restarts it (C615). The pace and the hold
- * are C616; the band has no drag to nudge (C617).
+ * are C616, the pace C734; the band has no drag to nudge (C617).
  *
  * - **Moves only while you speak.** A level at or over `HEARD_FLOOR` (the
  *   line a take must reach to count as heard) marks the voice heard; the
- *   band moves at `PACE_WPM` until `HOLD_MS` passes with nothing heard, so
- *   it never runs on past you.
+ *   band moves at the pace the reader set (`DEFAULT_PACE_WPM` until they
+ *   set one, a step of `PACE_STEP_WPM` at a time within `PACE_RANGE`) until
+ *   `HOLD_MS` passes with nothing heard, so it never runs on past you.
  * - **Each take starts from the top.** A take answering another line, or
  *   one starting after the last ended, reads from the first word.
  * - **Only time spoken through moves it.** The stretch since the last read
@@ -31,8 +32,31 @@
 import { assertNever } from "@some-ui/core-utils"
 import { HEARD_FLOOR } from "@some-ui/voice-capture"
 
-/** Words a minute the band moves at while you speak (C616). */
-export const PACE_WPM = 140
+/** Words a minute the band moves at until the reader sets a pace (C734). */
+export const DEFAULT_PACE_WPM = 170
+
+/** How far Slower or Faster moves the pace, in words a minute (C734). */
+export const PACE_STEP_WPM = 20
+
+/** The slowest and fastest the reader can set the band (C734). */
+export const PACE_RANGE = { least: 110, most: 230 } as const
+
+/**
+ * A kept pace as the band uses it: within `PACE_RANGE`, on a step from its
+ * slowest, so one kept by an older build, or edited, lines up with the
+ * steps again.
+ */
+export function paceOf(kept: number): number {
+  const steps = Math.round((kept - PACE_RANGE.least) / PACE_STEP_WPM)
+  const on = PACE_RANGE.least + steps * PACE_STEP_WPM
+  return Math.min(Math.max(on, PACE_RANGE.least), PACE_RANGE.most)
+}
+
+/** `pace` a step `slower` or `faster`, kept within `PACE_RANGE`. */
+export function stepPace(pace: number, to: "slower" | "faster"): number {
+  const next = pace + (to === "faster" ? PACE_STEP_WPM : -PACE_STEP_WPM)
+  return Math.min(Math.max(next, PACE_RANGE.least), PACE_RANGE.most)
+}
 
 /** How long the band moves on after the voice was last heard (C616). */
 export const HOLD_MS = 1000
@@ -75,6 +99,8 @@ export type PrompterEvent =
       readonly at: number
       /** The script's words: the band stops at the last. */
       readonly total: number
+      /** The pace the reader set, in words a minute. */
+      readonly pace: number
     }
   /** No take is under way. */
   | { readonly type: "ended" }
@@ -94,7 +120,7 @@ export function stepPrompter(state: Prompter, event: PrompterEvent): Prompter {
         : state
     }
     case "heard": {
-      const { answers, level, at, total } = event
+      const { answers, level, at, total, pace } = event
       const heard = level >= HEARD_FLOOR
       // A new take, of this line or another, reads from the top.
       if (state.kind !== "reading" || state.answers !== answers) {
@@ -111,7 +137,7 @@ export function stepPrompter(state: Prompter, event: PrompterEvent): Prompter {
       const moving = !state.paused && heardLately(state.heardAt, at)
       const elapsed = Math.max(at - state.at, 0)
       const words = moving
-        ? Math.min(state.words + (elapsed * PACE_WPM) / 60_000, total)
+        ? Math.min(state.words + (elapsed * pace) / 60_000, total)
         : state.words
       return { ...state, words, at, heardAt: heard ? at : state.heardAt }
     }
