@@ -499,12 +499,14 @@ describe("a question's ladder on the phone (IW8)", () => {
     const paced = (3 * DEFAULT_PACE_WPM) / 60
     expect(words()).toBeGreaterThan(paced - 3)
     expect(words()).toBeLessThan(paced + 1)
+    const read = words()
     on.run.dispatch({ type: "tap", item: "read:epic-2931" })
     await pass()
     // The take ended: the band stays where it left the script (PB1).
     expect(band()).toMatchObject({
       kind: "held",
       answers: "2026-w47:read:epic-2931",
+      words: read,
     })
     // A take that hears nothing never moves the band.
     on.run.dispatch({ type: "tap", item: "read:epic-2931" })
