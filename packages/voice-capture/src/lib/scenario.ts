@@ -493,6 +493,8 @@ export async function assertTakeProperties(
     readonly now: () => number
     readonly reset?: (() => void) | undefined
     readonly bounds?: ScenarioBounds | undefined
+    /** As `runTakeScenario`'s; `reset` shows it again. */
+    readonly page?: ScenarioPage | undefined
   },
   options: {
     readonly numRuns?: number | undefined

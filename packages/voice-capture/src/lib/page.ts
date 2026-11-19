@@ -6,11 +6,16 @@
 
 /**
  * Calls `listener` at once with whether the page is hidden now, then on
- * each change. Returns the unsubscribe.
+ * each change. Returns the unsubscribe. Where there is no `document`, it
+ * answers "shown" once and watches nothing.
  */
 export function onPageVisibility(
   listener: (hidden: boolean) => void
 ): () => void {
+  if (typeof document === "undefined") {
+    listener(false)
+    return () => undefined
+  }
   const onChange = (): void => listener(document.visibilityState === "hidden")
   document.addEventListener("visibilitychange", onChange)
   // Now, not only on the next change: a page can mount already hidden.

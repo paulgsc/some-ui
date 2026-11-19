@@ -1,0 +1,18 @@
+{
+  "id": "C760",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/voice-capture/src/lib/player.ts",
+    "packages/voice-capture/src/lib/take-pattern.ts"
+  ],
+  "chose": "Leaving the app (back at a wing's root, Home, another app) stops a take playing as Stop does, and it does not pick up again on return: the row shows Play. A take recording ends and is kept, as Soundbites, Studio and the bundles already did on a hidden page. It is held in the kit's player and the take pattern, not on each screen, so it holds wherever the kit plays: a take playing on the desktop web stops when its tab is hidden too.",
+  "options": [
+    "stop on hide, nothing resumes on return",
+    "pause on hide, resume where it was on return",
+    "stop on each screen's own hide handling"
+  ],
+  "gray": "The owner asked that leaving the page stop playback \"the same as pausing it\"; the take row has Play and Stop and no position, so a resume would be a new behaviour, and nothing settles whether coming back should play on.",
+  "undo": "Drop the page watch in elementPlayer (player.ts) and takePattern's watchWhileTaking, and give screens a resume instead.",
+  "refs": ["#3197"]
+}
