@@ -37,7 +37,7 @@ import { ask, firsts, linesOf, markRung, takesFor, withRungs } from "./ladder"
 import type { Prompter } from "./prompter"
 import {
   NO_PROMPTER,
-  PACE_RANGE,
+  paceOf,
   stepPace,
   stepPrompter,
   totalOf,
@@ -184,10 +184,7 @@ export function createInterviewWeek(
 
   const prompter = cell<Prompter>(NO_PROMPTER)
   const paces = bandPace(ports.storage)
-  // A pace kept by an older build may lie outside the range: held to it.
-  const pace = cell(
-    Math.min(Math.max(paces.read(), PACE_RANGE.least), PACE_RANGE.most)
-  )
+  const pace = cell(paceOf(paces.read()))
   const pattern = ports.takes.pattern
   // Each item's script in words, counted once: a read's, or a ready answer's.
   const totals = new Map(

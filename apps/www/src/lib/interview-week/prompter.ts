@@ -41,6 +41,17 @@ export const PACE_STEP_WPM = 20
 /** The slowest and fastest the reader can set the band (C734). */
 export const PACE_RANGE = { least: 110, most: 230 } as const
 
+/**
+ * A kept pace as the band uses it: within `PACE_RANGE`, on a step from its
+ * slowest, so one kept by an older build, or edited, lines up with the
+ * steps again.
+ */
+export function paceOf(kept: number): number {
+  const steps = Math.round((kept - PACE_RANGE.least) / PACE_STEP_WPM)
+  const on = PACE_RANGE.least + steps * PACE_STEP_WPM
+  return Math.min(Math.max(on, PACE_RANGE.least), PACE_RANGE.most)
+}
+
 /** `pace` a step `slower` or `faster`, kept within `PACE_RANGE`. */
 export function stepPace(pace: number, to: "slower" | "faster"): number {
   const next = pace + (to === "faster" ? PACE_STEP_WPM : -PACE_STEP_WPM)

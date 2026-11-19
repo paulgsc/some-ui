@@ -397,31 +397,30 @@ export const Script = ({
           </Button>
         )}
       </div>
-      {reading && (
-        <div className="flex items-center gap-2 px-4">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={pace <= PACE_RANGE.least}
-            onClick={() => run.setPace("slower")}
-          >
-            {WORDS.band.slower}
-          </Button>
-          <p className="text-muted-foreground min-w-0 flex-1 text-center text-xs">
-            {WORDS.band.pace(pace)}
-          </p>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={pace >= PACE_RANGE.most}
-            onClick={() => run.setPace("faster")}
-          >
-            {WORDS.band.faster}
-          </Button>
-        </div>
-      )}
+      {/* Always there, so a take starting moves nothing under the thumb (HS1). */}
+      <div className="flex items-center gap-2 px-4">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={pace <= PACE_RANGE.least}
+          onClick={() => run.setPace("slower")}
+        >
+          {WORDS.band.slower}
+        </Button>
+        <p className="text-muted-foreground min-w-0 flex-1 text-center text-xs">
+          {WORDS.band.pace(pace)}
+        </p>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={pace >= PACE_RANGE.most}
+          onClick={() => run.setPace("faster")}
+        >
+          {WORDS.band.faster}
+        </Button>
+      </div>
     </section>
   )
 }

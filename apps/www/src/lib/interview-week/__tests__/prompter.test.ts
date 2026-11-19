@@ -21,6 +21,7 @@ import {
   NO_PROMPTER,
   PACE_RANGE,
   PACE_STEP_WPM,
+  paceOf,
   stepPace,
   stepPrompter,
   totalOf,
@@ -76,6 +77,14 @@ describe("the teleprompter band's step (IW9)", () => {
     )
     expect(stepPace(PACE_RANGE.most, "faster")).toBe(PACE_RANGE.most)
     expect(stepPace(PACE_RANGE.least, "slower")).toBe(PACE_RANGE.least)
+    // A kept pace off the steps, or out of range, lines up again.
+    expect([175, 170.5, 40, 900, DEFAULT_PACE_WPM].map(paceOf)).toEqual([
+      170,
+      170,
+      PACE_RANGE.least,
+      PACE_RANGE.most,
+      DEFAULT_PACE_WPM,
+    ])
   })
 
   it("never moves before the voice is first heard, and says it waits for it", () => {

@@ -2,6 +2,7 @@
   "id": "C734",
   "made": "2026-11-19",
   "by": "claude",
+  "moves": "C616",
   "paths": [
     "apps/www/src/lib/interview-week/prompter.ts",
     "apps/www/src/lib/interview-week/store.ts",
