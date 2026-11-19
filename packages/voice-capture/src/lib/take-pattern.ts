@@ -34,10 +34,39 @@
  *
  * Playing and recording never overlap: a tap that starts a take stops what
  * plays, and Play does nothing while a take is under way.
+ *
+ * **VC4: leaving a screen, or hiding the page, stops what it plays and
+ * ends what it records.**
+ *
+ * - _Claim:_ on a phone screen that plays or records through the take kit
+ *   (a `takePattern`, or `audioPlayer` directly), a playback is stopped,
+ *   its `Audio` paused and its object URL revoked, and a take under way
+ *   ends (kept, its tracks stopped; discarded while the microphone is still
+ *   opening), when the screen unmounts and when the page is hidden.
+ * - _Family:_ when it goes (unmount, the page hidden, hidden and shown
+ *   again), what is under way (nothing, a take's audio being read, a take
+ *   playing, the microphone opening, a take recording), the owner (each
+ *   family of screens that owns a pattern or a player), and the host (a
+ *   page, or none: a runtime under node is never hidden).
+ * - _Proof:_ `__tests__/player.test.ts` (the `Audio` paused and its URL
+ *   revoked on a hidden page, and nothing played on one already hidden);
+ *   `take-pattern.test.ts` ("VC4": leave and hide, over a take playing, its
+ *   audio being read, the microphone opening and a take recording; and
+ *   VC2/VC3's generated family with each screen watching the page itself);
+ *   Studio's (`studio.test.ts`) and Takes' (`take-library`) own tests, hidden
+ *   and gone mid-play, Takes' through a route change on the real router.
+ *   That no `Audio` or `<audio>` is made outside the kit is the lint rule
+ *   `one-owner/no-local-audio`.
+ * - _Tolerance:_ a screen that stays mounted on a visible page keeps
+ *   playing: moving between the pages of one layout (Interview week's) is
+ *   not leaving it. On the screens that read a take's audio themselves,
+ *   outside a pattern (Takes, Kept, Needs your attention, My data), a read
+ *   that answers after the page was hidden and shown again plays (#3283).
  */
 import { assertNever } from "@some-ui/core-utils"
 
-import type { Player } from "./player"
+import { onPageVisibility } from "./page"
+import type { Player, WatchPage } from "./player"
 import { audioPlayer } from "./player"
 import type { RecordingFailure, Take } from "./recorder"
 import type { TakeLimits, TakeSignal } from "./take"
@@ -541,6 +570,12 @@ export type TakePatternPorts = Omit<TakeKitPorts, "keep"> & {
   readonly audio: (id: string) => Promise<Blob | null>
   /** Defaults to the kit's `audioPlayer`. */
   readonly player?: Player | undefined
+  /**
+   * Whether the page is hidden (VC4), watched only while the microphone
+   * opens or records, or a take's audio is being read; defaults to the
+   * page's own (`onPageVisibility`).
+   */
+  readonly page?: WatchPage | undefined
 }
 
 /** The pattern's playback effects. */
@@ -612,6 +647,27 @@ export function takePattern(
   const listeners = new Set<() => void>()
   let snapshot = takePatternSnapshot(state, options)
 
+  const watchPage = ports.page ?? onPageVisibility
+  let unwatchPage: (() => void) | null = null
+  const watchWhileTaking = (): void => {
+    // Keeping waits on the store, where leaving changes nothing; a take's
+    // audio being read would otherwise play on return.
+    const { kind } = snapshot.take
+    const taking =
+      kind === "opening" ||
+      kind === "recording" ||
+      snapshot.playback.kind === "loading"
+    if (taking && unwatchPage === null) {
+      unwatchPage = watchPage((hidden) => {
+        // After the run of effects that started the take, never within it.
+        if (hidden) queueMicrotask(() => dispatch({ type: "left" }))
+      })
+    } else if (!taking && unwatchPage !== null) {
+      unwatchPage()
+      unwatchPage = null
+    }
+  }
+
   const dispatch = (event: TakePatternEvent): void => {
     const next = stepTakePattern(state, event, options)
     if (next.state !== state) {
@@ -621,6 +677,7 @@ export function takePattern(
       for (const listener of listeners) listener()
     }
     for (const effect of next.effects) run(effect)
+    watchWhileTaking()
   }
 
   const runner = takeRunner(

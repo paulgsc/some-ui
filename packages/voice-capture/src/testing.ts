@@ -36,12 +36,14 @@ export {
 } from "./lib/scenario"
 export type {
   MemoryTakes,
+  SimulatedPage,
   SimulatedPattern,
   SimulatedPlayer,
 } from "./lib/pattern-testing"
 export {
   memoryShelf,
   memoryTakes,
+  simulatedPage,
   simulatedPattern,
   simulatedPlayer,
   takeButton,
