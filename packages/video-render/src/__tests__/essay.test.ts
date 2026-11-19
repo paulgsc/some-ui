@@ -885,3 +885,33 @@ describe("a point as a fork (RR29)", () => {
     expect(problems(withFork(judged))).toEqual([])
   })
 })
+
+describe("a ticket of one point (version 4)", () => {
+  it("takes one deep dive, not two", () => {
+    const essay = sample()
+    const [first, ...rest] = essay.tickets
+    if (first === undefined) throw new Error("a ticket")
+    const one = (dives: EssayTicket["dives"]): unknown => ({
+      ...essay,
+      template: { ...essay.template, version: 4 },
+      tickets: [
+        {
+          ...first,
+          points: first.points.slice(0, 1),
+          answer:
+            first.answer.kind === "take"
+              ? { ...first.answer, marks: first.answer.marks.slice(0, 1) }
+              : first.answer,
+          dives,
+        },
+        ...rest,
+      ],
+    })
+    const dive = { ...first.dives[0]!, point: 0 }
+    expect(parseEssay(one([dive])).ok).toBe(true)
+    const two = parseEssay(one([dive, dive]))
+    expect(two.ok ? [] : two.problems).toContain(
+      "QM-311: it has 2 deep dives; its points take 1"
+    )
+  })
+})

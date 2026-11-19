@@ -540,7 +540,8 @@ const TicketSchema = z.strictObject({
   question: SaidSchema,
   best: SaidSchema,
   beside: SaidSchema,
-  dives: z.array(DiveSchema).length(ESSAY_DIVES),
+  /** `ESSAY_DIVES`, or one for a ticket of one point (version 4). */
+  dives: z.array(DiveSchema).min(1).max(ESSAY_DIVES),
 })
 
 const soloLevel = z.number().int().min(1).max(SOLO_LEVELS.length)
@@ -859,6 +860,11 @@ function ticketProblems(ticket: EssayTicket, version: number): Array<string> {
   if (ticket.answer.kind === "take" && ticket.answer.marks.length !== points)
     problems.push(
       `${ticket.id}: its answer marks ${ticket.answer.marks.length} points, and it has ${points}`
+    )
+  const dives = Math.min(ESSAY_DIVES, points)
+  if (ticket.dives.length !== dives)
+    problems.push(
+      `${ticket.id}: it has ${ticket.dives.length} deep dives; its points take ${dives}`
     )
   const dived = ticket.dives.map((dive) => dive.point)
   if (dived.some((point) => point >= points))

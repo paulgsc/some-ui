@@ -164,7 +164,8 @@ with one ticket for each of the week's, by its id:
   the whole ticket was sent and home refuses an essay that plays one.
 - `beside`, for a ticket with points answered on their own: say which take
   each point was judged from, its own or the whole ticket's.
-- `dives`: two deep dives on the ticket's biggest gaps. A gap is `missing`
+- `dives`: two deep dives on the ticket's biggest gaps (one, for a ticket
+  of a single fork). A gap is `missing`
   over `partly` over `covered`, and every point of a silence is a gap. A
   point answered by a take of its own has the gap its own mark says. Each
   dive is `{"point","title","shows","code","said"}`: the point it goes into
