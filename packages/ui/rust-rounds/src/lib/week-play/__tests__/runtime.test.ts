@@ -583,7 +583,7 @@ describe("the flow and the takes on one ticket", () => {
     }
   })
 
-  it("keeps the takes on the flow's ticket after a Later at its last point", async () => {
+  it("keeps the takes on the flow's ticket after a Later at its last point", () => {
     const on = phone(inMemoryStorage(), onConfirm(), { perPoint: true })
     const last = `${first}:${QUILLMOSS_WEEK.tickets[0]?.forks.length ?? 0}`
     on.week.flow?.dispatch({ type: "openTicket", ticket: first })
