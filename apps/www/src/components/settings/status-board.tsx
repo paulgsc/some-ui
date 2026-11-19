@@ -10,7 +10,7 @@
 import type { JSX } from "react"
 import { useEffect } from "react"
 import { cn } from "@some-ui/core-utils"
-import { MarkLegend } from "@some-ui/shared"
+import { CardLink, MarkLegend } from "@some-ui/shared"
 // Only the status route imports this module, and route splitting makes that
 // route its own lazy chunk, so this static edge costs no host anything eagerly.
 // eslint-disable-next-line lazy-registry/no-eager-registry-import
@@ -22,7 +22,7 @@ import {
 } from "@some-ui/topik"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
-import { ChevronRight, Clapperboard } from "lucide-react"
+import { Clapperboard } from "lucide-react"
 
 import { hasAudience } from "@/lib/build-profile"
 import { useMinuteClock } from "@/lib/clock"
@@ -177,7 +177,13 @@ const LINKED = hasAudience("apk")
 
 const ROW = "flex items-start gap-3 rounded-lg p-3"
 
-const Row = ({ row }: { row: BoardRow }): JSX.Element => {
+const Row = ({
+  row,
+  urgent,
+}: {
+  row: BoardRow
+  urgent: boolean
+}): JSX.Element => {
   const body = (
     <>
       <span className="mt-0.5 flex w-8 shrink-0 justify-center">
@@ -205,19 +211,12 @@ const Row = ({ row }: { row: BoardRow }): JSX.Element => {
   return (
     <li>
       {LINKED ? (
-        <Link
-          to={PAGES[row.page]}
-          className={cn(
-            ROW,
-            "hover:bg-accent focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none"
-          )}
+        <CardLink
+          asChild
+          className={cn("items-start", urgent && "border-destructive/40")}
         >
-          {body}
-          <ChevronRight
-            aria-hidden
-            className="text-muted-foreground mt-0.5 size-4 shrink-0"
-          />
-        </Link>
+          <Link to={PAGES[row.page]}>{body}</Link>
+        </CardLink>
       ) : (
         <div className={ROW}>{body}</div>
       )}
@@ -244,13 +243,15 @@ const Group = ({
       {title}
     </h2>
     <ul
-      className={cn(
-        "divide-y rounded-xl border",
-        urgent && "border-destructive/40"
-      )}
+      className={
+        // Each row opens its page: a stack of card links (C647).
+        LINKED
+          ? "flex flex-col gap-2"
+          : cn("divide-y rounded-xl border", urgent && "border-destructive/40")
+      }
     >
       {rows.map((row) => (
-        <Row key={row.id} row={row} />
+        <Row key={row.id} row={row} urgent={urgent} />
       ))}
     </ul>
   </section>

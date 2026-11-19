@@ -32,7 +32,6 @@ import { Link } from "@tanstack/react-router"
 import {
   Check,
   ChevronLeft,
-  ChevronRight,
   LoaderCircle,
   Lock,
   Pause,
@@ -154,20 +153,14 @@ const KindRow = ({ kind }: { kind: KindLineOf }): JSX.Element => {
       <span className="text-muted-foreground text-xs tabular-nums">
         {formatSize(kind.bytes)}
       </span>
-      <ChevronRight
-        className="text-muted-foreground size-4 shrink-0"
-        aria-hidden
-      />
     </>
   )
   return hasAudience("apk") ? (
-    <Link
-      to="/settings/data/$kind"
-      params={{ kind: kind.of }}
-      className={`hover:bg-accent ${ROW}`}
-    >
-      {content}
-    </Link>
+    <CardLink asChild className="min-h-12 px-4 py-2">
+      <Link to="/settings/data/$kind" params={{ kind: kind.of }}>
+        {content}
+      </Link>
+    </CardLink>
   ) : (
     <div className={ROW}>{content}</div>
   )
@@ -266,7 +259,14 @@ export const MyDataOverview = ({
         {overview.kinds.length === 0 ? (
           <p className="text-muted-foreground text-sm">{MY_DATA.none}</p>
         ) : (
-          <ul className="bg-card divide-y rounded-xl border">
+          <ul
+            className={
+              // Each kind opens its list: a stack of card links (C647).
+              hasAudience("apk")
+                ? "flex flex-col gap-2"
+                : "bg-card divide-y rounded-xl border"
+            }
+          >
             {overview.kinds.map((kind) => (
               <li key={kind.of}>
                 <KindRow kind={kind} />
