@@ -1,0 +1,18 @@
+{
+  "id": "C682",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/essay.ts",
+    "packages/video-render/src/templates/rust-essay/v3.json",
+    "packages/ui/rust-rounds/src/lib/monday/finish.ts"
+  ],
+  "chose": "Point answers are drawn from version 3 of the essay's template (ESSAY_POINT_VERSION): v3 allows 16 answer scenes (4 tickets, each its whole answer and up to 3 points), and the routine pins 3 only when a ticket has a point answered on its own. A v1 or v2 essay, and a v3 essay of whole takes, render exactly as before.",
+  "options": [
+    "a new template version",
+    "no version: an older stage refuses the unknown key anyway"
+  ],
+  "gray": "Either refuses an essay an older stage can't draw; the version says why in the owner's terms (\"publish a newer stage first\") and keeps the pinned formats honest about the answer scene's repeat count.",
+  "undo": "Fold the change into version 2's format; essays written at 3 would then need re-pinning.",
+  "refs": ["#3248"]
+}

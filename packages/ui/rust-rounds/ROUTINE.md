@@ -44,7 +44,10 @@ outside the checkout as `<run>`.
      a silence and how often the ticket was opened (a take in which home
      heard nothing said is one too), or `unheard`: a take home couldn't
      make out (garbled, or home failed to hear it). The essay goes on as if
-     that ticket was left unanswered, and code says so.
+     that ticket was left unanswered, and code says so. A ticket's `points`
+     list each speak-to point answered by a take of its own (RR24), by its
+     place from 1, with what home heard in that take. A ticket answered only
+     point by point has the answer `by-points`: no take of the whole ticket.
    - `waiting`: weeks owed an essay that can't be written yet, and why: home
      hasn't made the record final, or hasn't heard a take yet. A later Monday
      writes them. Never write an essay from a draft or a guess at a take. A
@@ -98,7 +101,7 @@ sentences, and assume nothing remembered.
 - `next`: what next week comes back to, from the bundle's `next`.
 
 Each ticket is
-`{"id","bests":[…],"question","best","beside","answer":…,"dives":[…]}`,
+`{"id","bests":[…],"question","best","beside","answer":…,"points":[…],"dives":[…]}`,
 with one ticket for each of the week's, by its id:
 
 - `bests`: a best fit for each speak-to point, in order. Write it apart from
@@ -120,10 +123,25 @@ with one ticket for each of the week's, by its id:
   was said and couldn't be made out. Write `beside` and `dives` as for a
   silence: every point is a gap. Never read anything into a take home
   couldn't make out, and never call it a weak answer.
+- `points`, for each point the bundle's ticket lists in its `points`: the
+  point answered by a take of its own (RR24). Judge it from that take alone,
+  never from the ticket's take or another point's. Its entry is
+  `{"point","mark","note","solo"}` for a take: `point` is its place from 1,
+  `mark` and `note` as a mark above, and `solo` that take's own level and
+  why. For a take in which home heard nothing said it is `{"point","guess"}`.
+  Leave out a point whose take home couldn't make out, and leave `points`
+  out when the bundle lists none. The point's own take decides its mark on
+  screen; `answer`'s marks still give one per point, judged from the take of
+  the whole ticket.
+- `answer`, for a ticket `by-points`: leave it out when every point has a
+  take of its own; otherwise `{"guess"}` for why the rest were left.
+- `beside`, for a ticket with points answered on their own: say which take
+  each point was judged from, its own or the whole ticket's.
 - `dives`: two deep dives on the ticket's biggest gaps. A gap is `missing`
-  over `partly` over `covered`, and every point of a silence is a gap. Each
+  over `partly` over `covered`, and every point of a silence is a gap. A
+  point answered by a take of its own has the gap its own mark says. Each
   dive is `{"point","title","shows","code","said"}`: the point it goes into
-  (from 0), a title, one to five lines the frame lists while it is said, an
+  (from 0, unlike `points`' place from 1), a title, one to five lines the frame lists while it is said, an
   optional snippet, and `said`. `said` takes 2 to 5 minutes, 300 to 750 words,
   and `finish` counts them. The title, the lines and the snippet share one
   frame: four one-line `shows` leave room for about five lines of code. Dive into a covered point only when no

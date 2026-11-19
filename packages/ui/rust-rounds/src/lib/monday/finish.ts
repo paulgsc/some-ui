@@ -39,6 +39,7 @@ import { AREAS } from "@rust-rounds/lib/monday/topics"
 import type {
   EssayTicketValues,
   EssayValues,
+  PointValues,
   Values,
 } from "@rust-rounds/lib/monday/values"
 import { ValuesSchema } from "@rust-rounds/lib/monday/values"
@@ -49,9 +50,11 @@ import {
   ESSAY_CHART_ROWS,
   ESSAY_DECAY_VERSION,
   ESSAY_ID,
+  ESSAY_POINT_VERSION,
   ESSAY_SCHEMA,
   ESSAY_WEEKS_MOST,
   essayFit,
+  hasPointAnswers,
   needsDecayVersion,
   parseEssay,
 } from "@some-ui/video-render"
@@ -81,6 +84,87 @@ const wordCount = (text: string): number =>
 /** The sentence a seed ticket's spec ends with: where it came from. */
 export function seedLine(at: string): string {
   return `It comes from an error you pasted on ${pacificDay(new Date(at))}.`
+}
+
+type PointAnswer = NonNullable<
+  Essay["tickets"][number]["points"][number]["answer"]
+>
+
+/**
+ * Each point of `ticket` answered by a take of its own (RR24), by its place
+ * from 1, from what home heard (the bundle) and the model's reading of it:
+ * a take takes a mark and a SOLO level, a take with nothing said a guess, and
+ * one home couldn't make out nothing.
+ */
+function pointAnswers(
+  ticket: EndedTicket,
+  values: ReadonlyArray<PointValues>,
+  problems: Array<string>
+): Map<number, PointAnswer> {
+  const answers = new Map<number, PointAnswer>()
+  for (const read of values)
+    if (!ticket.points.some((p) => p.point === read.point))
+      problems.push(
+        `${ticket.id}: point ${read.point} wasn't answered by a take of its own, so leave it out of points`
+      )
+  for (const { point, answer } of ticket.points) {
+    const at = `${ticket.id} point ${point}`
+    const read = values.filter((v) => v.point === point)
+    const [only] = read
+    if (read.length > 1) {
+      problems.push(`${at}: read ${read.length} times; read it once`)
+      continue
+    }
+    switch (answer.kind) {
+      case "take": {
+        if (only === undefined || "guess" in only)
+          problems.push(
+            `${at}: answered by its own take, so it takes a mark and a SOLO level, not ${only === undefined ? "nothing" : "a guess"}`
+          )
+        else
+          answers.set(point, {
+            kind: "take",
+            transcript: answer.transcript,
+            mark: {
+              mark: only.mark,
+              ...(only.note === undefined ? {} : { note: only.note }),
+            },
+            solo: only.solo,
+          })
+        break
+      }
+      case "silence": {
+        if (only !== undefined && "guess" in only)
+          answers.set(point, {
+            kind: "silence",
+            opened: answer.opened,
+            guess: only.guess,
+          })
+        else
+          problems.push(
+            `${at}: its own take said nothing, so it takes a guess at why, not ${only === undefined ? "nothing" : "a mark"}`
+          )
+        break
+      }
+      case "unheard": {
+        if (only === undefined)
+          answers.set(point, {
+            kind: "silence",
+            opened: answer.opened,
+            unheard: true,
+          })
+        else
+          problems.push(
+            `${at}: home couldn't make out its own take, so leave it out of points`
+          )
+        break
+      }
+      default: {
+        assertNever(answer)
+      }
+    }
+  }
+  return answers
 }
 
 function essayTicket(
@@ -139,6 +223,28 @@ function essayTicket(
       }
       break
     }
+    case "by-points": {
+      // No take of the whole ticket (RR24): with every point answered on its
+      // own nothing is said for the ticket; otherwise a guess at why the
+      // rest were left.
+      const every = ticket.points.length === ticket.speakTo.length
+      if (every && reading === undefined) {
+        answer = { kind: "silence", opened: ticket.answer.opened }
+      } else if (!every && reading !== undefined && "guess" in reading) {
+        answer = {
+          kind: "silence",
+          opened: ticket.answer.opened,
+          guess: reading.guess,
+        }
+      } else {
+        problems.push(
+          every
+            ? `${at}: every point was answered by a take of its own, so leave answer out`
+            : `${at}: some points were left unanswered, so it takes a guess at why, not ${reading === undefined ? "nothing" : "marks"}`
+        )
+      }
+      break
+    }
     default: {
       assertNever(ticket.answer)
     }
@@ -151,6 +257,7 @@ function essayTicket(
       )
     }
   })
+  const own = pointAnswers(ticket, values.points ?? [], problems)
   if (answer === null) return null
   return {
     id: ticket.id,
@@ -158,10 +265,14 @@ function essayTicket(
     spec: ticket.spec,
     figures: ticket.figures,
     program: ticket.program,
-    points: ticket.speakTo.map((to, i) => ({
-      to,
-      best: values.bests[i] ?? "",
-    })),
+    points: ticket.speakTo.map((to, i) => {
+      const answered = own.get(i + 1)
+      return {
+        to,
+        best: values.bests[i] ?? "",
+        ...(answered === undefined ? {} : { answer: answered }),
+      }
+    }),
     answer,
     question: { said: values.question },
     best: { said: values.best },
@@ -208,9 +319,13 @@ function buildEssay(
     ended.tickets.flatMap((t) => t.concepts),
     { weeks: ESSAY_WEEKS_MOST, concepts: ESSAY_CHART_ROWS }
   )
-  const version = chart.concepts.some((c) => c.cells.some(needsDecayVersion))
-    ? ESSAY_DECAY_VERSION
-    : 1
+  // The lowest version that draws it (C270): 3 for a point answered on its
+  // own (RR24), 2 for decay or fading.
+  const version = tickets.some(hasPointAnswers)
+    ? ESSAY_POINT_VERSION
+    : chart.concepts.some((c) => c.cells.some(needsDecayVersion))
+      ? ESSAY_DECAY_VERSION
+      : 1
   const topics = [
     ...new Set(following.tickets.flatMap((t) => t.concepts.map((c) => c.name))),
   ]

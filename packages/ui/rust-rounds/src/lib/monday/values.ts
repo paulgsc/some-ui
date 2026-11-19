@@ -9,7 +9,9 @@
  * over the question, the best fit and the comparison, the answer's reading
  * (each point covered, partly or missing, and its SOLO level) or, for a
  * silence, the guess at why, and two deep dives. A take home couldn't make
- * out takes no answer at all: no reading and no guess (HEARD2, #3072).
+ * out takes no answer at all: no reading and no guess (HEARD2, #3072). A
+ * point answered by a take of its own (RR24) takes its own reading in
+ * `points`.
  */
 import { TextSchema } from "@rust-rounds/lib/formats"
 import { TicketSchema, WEEK_ID } from "@rust-rounds/lib/formats/week"
@@ -39,6 +41,23 @@ const ReadingSchema = z.strictObject({
 
 const GuessSchema = z.strictObject({ guess: TextSchema })
 
+/**
+ * A speak-to point answered by a take of its own (RR24, #3248), by its place
+ * from 1: its take's reading, one mark and its SOLO level; or, for a take in
+ * which home heard nothing said, a guess at why. A point whose take home
+ * couldn't make out takes none: leave it out.
+ */
+const PointValuesSchema = z.union([
+  z.strictObject({
+    point: z.int().min(1),
+    mark: z.enum(MARKS),
+    note: TextSchema.optional(),
+    solo: ReadingSchema.shape.solo,
+  }),
+  GuessSchema.extend({ point: z.int().min(1) }),
+])
+export type PointValues = z.infer<typeof PointValuesSchema>
+
 const EssayTicketValuesSchema = z.strictObject({
   id: z.string(),
   /** A best fit for each speak-to point, in order, made apart from the answer. */
@@ -51,6 +70,8 @@ const EssayTicketValuesSchema = z.strictObject({
    * couldn't make out (HEARD2): code says what is said over it.
    */
   answer: z.union([ReadingSchema, GuessSchema]).optional(),
+  /** Each point the bundle says was answered by a take of its own (RR24), read on its own. */
+  points: z.array(PointValuesSchema).optional(),
   dives: z.array(DiveValuesSchema),
 })
 export type EssayTicketValues = z.infer<typeof EssayTicketValuesSchema>

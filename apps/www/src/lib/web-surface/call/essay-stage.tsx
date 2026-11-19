@@ -1,12 +1,17 @@
 import type { JSX } from "react"
 import { assertNever } from "@some-ui/core-utils"
 import {
+  citeOf,
+  citeWords,
   ESSAY_POINT_COLUMN,
   essayFormat,
   hasCaptions,
+  hasPointAnswers,
   LEITNER,
+  markOf,
   markThemeOf,
   parseEssay,
+  pointAnsweredBy,
   sampleEssay,
   silenceSaid,
   SOLO_LEVELS,
@@ -92,13 +97,21 @@ const labelOf = (scene: EssayScene, essay: Essay): string => {
     case "beside":
     case "dive": {
       const ticket = essay.tickets.find((t) => t.id === scene.ticket)
+      const answer =
+        ticket === undefined
+          ? undefined
+          : scene.point === undefined
+            ? ticket.answer
+            : pointAnsweredBy(ticket, scene.point).answer
       const name =
-        scene.section === "answer" && ticket?.answer.kind === "silence"
-          ? leftOf(ticket.answer)
+        scene.section === "answer" && answer?.kind === "silence"
+          ? leftOf(answer)
           : scene.section === "dive"
             ? W.dive((scene.dive ?? 0) + 1)
             : (NAMES[scene.section] ?? "")
-      return `${scene.ticket ?? ""} · ${name}`
+      const point =
+        scene.point === undefined ? "" : ` · ${W.pointN(scene.point + 1)}`
+      return `${scene.ticket ?? ""}${point} · ${name}`
     }
     default: {
       return assertNever(scene)
@@ -298,12 +311,25 @@ const Screen = ({
       )
     }
     case "answer": {
-      const answer = view.ticket.answer
+      // A point answered by a take of its own (RR24) is its own scene.
+      const point =
+        view.point === undefined ? undefined : view.ticket.points[view.point]
+      const answer =
+        view.point === undefined
+          ? view.ticket.answer
+          : pointAnsweredBy(view.ticket, view.point).answer
+      const which =
+        view.point === undefined ? "" : ` · ${W.pointN(view.point + 1)}`
       return (
         <Call
           speaker={at.speaker}
-          tag={`${view.ticket.id} · ${answer.kind === "take" ? NAMES.answer : leftOf(answer)}`}
+          tag={`${view.ticket.id}${which} · ${answer.kind === "take" ? NAMES.answer : leftOf(answer)}`}
         >
+          {point !== undefined && (
+            <p className="text-muted-foreground text-[0.75em]">
+              <Inline text={point.to} />
+            </p>
+          )}
           {answer.kind === "take" ? (
             <>
               <Title>{W.youSaid}</Title>
@@ -341,6 +367,7 @@ const Screen = ({
     }
     case "beside": {
       const answer = view.ticket.answer
+      const byPoint = hasPointAnswers(view.ticket)
       return (
         <Call speaker={at.speaker} tag={`${view.ticket.id} · ${NAMES.beside}`}>
           <table className="w-full table-fixed text-left text-[0.8em]">
@@ -356,8 +383,14 @@ const Screen = ({
             </thead>
             <tbody>
               {view.ticket.points.map((point, i) => {
-                const mark =
-                  answer.kind === "take" ? answer.marks[i] : undefined
+                const mark = markOf(view.ticket, i)
+                const answered = pointAnsweredBy(view.ticket, i)
+                const cite = citeWords(
+                  citeOf(view.ticket, i),
+                  answered.by === "own" && answered.answer.kind === "take"
+                    ? answered.answer.solo.level
+                    : undefined
+                )
                 return (
                   <tr key={point.to} className="border-border border-t">
                     <td className="py-[0.3em] pr-[1em] align-top">
@@ -366,19 +399,24 @@ const Screen = ({
                     <td className="py-[0.3em] align-top">
                       {mark === undefined ? (
                         <span className="text-muted-foreground">
-                          {W.unanswered}
+                          {answered.answer.kind === "silence"
+                            ? leftOf(answered.answer, W.unanswered)
+                            : W.unanswered}
                         </span>
                       ) : (
-                        <>
-                          <span className={MARK_CLASS[mark.mark]}>
-                            {W.mark[mark.mark]}
-                          </span>
-                          {mark.note !== undefined && (
-                            <span className="text-muted-foreground block text-[0.9em]">
-                              <Inline text={mark.note} />
-                            </span>
-                          )}
-                        </>
+                        <span className={MARK_CLASS[mark.mark]}>
+                          {W.mark[mark.mark]}
+                        </span>
+                      )}
+                      {cite !== null && (
+                        <span data-cite className="text-muted-foreground">
+                          {` · ${cite}`}
+                        </span>
+                      )}
+                      {mark?.note !== undefined && (
+                        <span className="text-muted-foreground block text-[0.9em]">
+                          <Inline text={mark.note} />
+                        </span>
                       )}
                     </td>
                   </tr>
@@ -392,6 +430,8 @@ const Screen = ({
           <p className="text-[0.8em]">
             {answer.kind === "take" ? (
               <Inline text={answer.solo.why} />
+            ) : byPoint ? (
+              W.perPoint
             ) : (
               W.notJudged
             )}

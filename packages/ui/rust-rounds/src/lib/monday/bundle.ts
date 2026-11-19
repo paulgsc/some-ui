@@ -42,11 +42,33 @@ export type MailboxFile = { readonly name: string; readonly body: unknown }
 const WEEK_NAME = /^rust-week-(\d{4}-w\d{2})\.json$/
 const ESSAY_NAME = /^rust-essay-(\d{4}-w\d{2})(?:-r(\d+))?\.json$/
 
-/** One ticket of a week that ended, as the essay restates it, with its answer. */
+/** What home heard in a take of one speak-to point (RR24): its words, nothing said, or nothing made out. */
+type EndedPoint = {
+  /** The point, by its place in `speakTo`, from 1. */
+  readonly point: number
+  readonly answer:
+    | { readonly kind: "take"; readonly transcript: string }
+    | {
+        readonly kind: "silence" | "unheard"
+        /** How often its ticket was opened. */
+        readonly opened: number
+      }
+}
+
+/**
+ * One ticket of a week that ended, as the essay restates it, with its
+ * answer: a take of the whole ticket, a silence, a take home couldn't make
+ * out, or `by-points`, no take of the whole ticket and some of its points
+ * answered by takes of their own (RR24). `points` lists those, in order.
+ */
 export type EndedTicket = Ticket & {
   readonly answer:
     | { readonly kind: "take"; readonly transcript: string }
-    | { readonly kind: "silence" | "unheard"; readonly opened: number }
+    | {
+        readonly kind: "silence" | "unheard" | "by-points"
+        readonly opened: number
+      }
+  readonly points: ReadonlyArray<EndedPoint>
 }
 
 /** A week owed its essay, ready to write. */
@@ -106,23 +128,34 @@ export type Prepared = { readonly bundle: Bundle; readonly history: History }
  * level in `answers` (an essay's tickets), or null for a silence. A take
  * home couldn't make out (HEARD2, #3072) is no check at all: it shows
  * nothing, isn't a silence and can't decay, so its ticket is left out (C431).
+ * A ticket with no take of the whole ticket and points answered by takes of
+ * their own (RR24) is at the lowest of their levels (C685): a concept is
+ * shown as far as every point said of it shows it.
  */
 export function judgedWeek(
   week: string,
   tickets: ReadonlyArray<Pick<Ticket, "id" | "concepts">>,
-  answers: ReadonlyArray<Pick<Essay["tickets"][number], "id" | "answer">>
+  answers: ReadonlyArray<
+    Pick<Essay["tickets"][number], "id" | "answer" | "points">
+  >
 ): Judged {
   return {
     week,
     tickets: tickets.flatMap((ticket) => {
-      const answer = answers.find((t) => t.id === ticket.id)?.answer
-      if (answer?.kind === "silence" && answer.unheard === true) return []
-      return [
-        {
-          concepts: ticket.concepts,
-          level: answer?.kind === "take" ? answer.solo.level : null,
-        },
-      ]
+      const held = answers.find((t) => t.id === ticket.id)
+      const answer = held?.answer
+      const own = (held?.points ?? []).flatMap((point) =>
+        point.answer?.kind === "take" ? [point.answer.solo.level] : []
+      )
+      const level =
+        answer?.kind === "take"
+          ? answer.solo.level
+          : own.length > 0
+            ? Math.min(...own)
+            : null
+      if (level === null && answer?.kind === "silence" && answer.unheard)
+        return []
+      return [{ concepts: ticket.concepts, level }]
     }),
   }
 }
@@ -182,11 +215,50 @@ function answersOf(
     if (held === undefined) {
       return { ok: false, why: `home's record has no ${ticket.id}` }
     }
+    const points: Array<EndedPoint> = []
+    for (const own of held.points) {
+      if (own.point > ticket.speakTo.length) {
+        return {
+          ok: false,
+          why: `home's record answers point ${own.point} of ${ticket.id}, which has ${ticket.speakTo.length}`,
+        }
+      }
+      const heardPoint = heard.get(own.take)
+      if (
+        heardPoint?.hearing === "silent" ||
+        heardPoint?.hearing === "unheard"
+      ) {
+        const kind = heardPoint.hearing === "silent" ? "silence" : "unheard"
+        points.push({
+          point: own.point,
+          answer: { kind, opened: held.opens },
+        })
+        continue
+      }
+      if (heardPoint === undefined || heardPoint.text.trim() === "") {
+        return {
+          ok: false,
+          why: `home hasn't heard the take on point ${own.point} of ${ticket.id} yet`,
+        }
+      }
+      points.push({
+        point: own.point,
+        answer: { kind: "take", transcript: heardPoint.text },
+      })
+    }
+    if (held.take === null && points.length > 0) {
+      tickets.push({
+        ...ticket,
+        answer: { kind: "by-points", opened: held.opens },
+        points,
+      })
+      continue
+    }
     const hearing: Heard | undefined =
       held.take === null ? { hearing: "silent" } : heard.get(held.take)
     if (hearing?.hearing === "silent" || hearing?.hearing === "unheard") {
       const kind = hearing.hearing === "silent" ? "silence" : "unheard"
-      tickets.push({ ...ticket, answer: { kind, opened: held.opens } })
+      tickets.push({ ...ticket, answer: { kind, opened: held.opens }, points })
       continue
     }
     if (hearing === undefined || hearing.text.trim() === "") {
@@ -198,6 +270,7 @@ function answersOf(
     tickets.push({
       ...ticket,
       answer: { kind: "take", transcript: hearing.text },
+      points,
     })
   }
   return { ok: true, tickets }

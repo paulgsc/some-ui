@@ -96,6 +96,12 @@ test.describe("EF1: the essay's model holds the frame the stage draws", () => {
     expect(await expectHeld(page, "sample")).toBe(true)
   })
 
+  test("points answered by takes of their own, each cited (RR24)", async ({
+    page,
+  }) => {
+    expect(await expectHeld(page, "by-points")).toBe(true)
+  })
+
   test("every text and the code at the most the model accepts", async ({
     page,
   }) => {

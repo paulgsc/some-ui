@@ -71,9 +71,10 @@ LABEL org.opencontainers.image.source="https://github.com/paulgsc/some-ui" \
 #   reads (call-weeks, playoff-delta-episodes, preview-requests, rust-essays),
 #   RENDER_FOLDERS_EPOCH in server's apps/servers/file_host/src/contract.rs.
 #   Raise it here in the same change that makes the recorders read a new
-#   layout.
+#   layout. 2 (RR24, #3248): an essay's takes/ may hold a take of one
+#   speak-to point, `<ticket>.<n>.<ext>`, beside a ticket's.
 LABEL io.paulgsc.provides="" \
-      io.paulgsc.requires="render-folders=1"
+      io.paulgsc.requires="render-folders=2"
 
 # The root is read-only at run time (call-render.yml); tsx and the renderer
 # write only under /tmp.

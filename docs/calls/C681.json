@@ -1,0 +1,15 @@
+{
+  "id": "C681",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": ["packages/video-render/src/essay.ts"],
+  "chose": "A point answered by a take of its own is `tickets[i].points[j].answer`: a take carries its transcript, one `mark` ({mark, note?}, the same shape as a whole take's `marks[i]`) and its own SOLO level; or a silence (a guess, or unheard). No `verdict` field yet: each point object is strict, so RR29's optional `verdict` is an additive field in a later version.",
+  "options": [
+    "one `mark` per point take",
+    "`marks` of length one, sharing the whole take's schema",
+    "a separate per-point list beside `points`"
+  ],
+  "gray": "The server reads only `points[j].answer.kind`; how the reading inside is shaped is the essay's. A one-item `marks` would read the same on screen but invite a length check that means nothing.",
+  "undo": "Rename `mark` to `marks` in PointAnswerSchema and values.ts's PointValuesSchema; essays already written would need a new template version.",
+  "refs": ["#3248"]
+}

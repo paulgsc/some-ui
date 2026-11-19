@@ -1,0 +1,18 @@
+{
+  "id": "C683",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/essay.ts",
+    "apps/www/src/lib/web-surface/call/essay-stage.tsx"
+  ],
+  "chose": "A ticket's answer scenes: the whole ticket's (a take, a silence, or an unheard take), then one per point answered by a take of its own, in point order, numbered across the essay as deep dives are. A ticket answered only point by point carries a silence with neither guess nor unheard, which is said nowhere and has no scene; it is allowed only when every point has its own answer.",
+  "options": [
+    "whole answer first, then each point's",
+    "each point's in place of the whole answer, one scene per point always",
+    "one answer scene playing the takes one after another"
+  ],
+  "gray": "The server requires every ticket to have `answer.kind` take or silence, so a ticket with no whole take needs a silence; whether to show it, and where point takes go, is a choice the owner would see in the video.",
+  "undo": "Reorder in essayScenes; ids are counted, so scene ids of mixed essays would change.",
+  "refs": ["#3248"]
+}

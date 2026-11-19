@@ -1,0 +1,15 @@
+{
+  "id": "C685",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": ["packages/ui/rust-rounds/src/lib/monday/bundle.ts"],
+  "chose": "In the decay record, a ticket with no take of the whole ticket and points answered by takes of their own is at the lowest of those takes' SOLO levels; a whole take's level still wins where there is one, and a ticket with neither is a silence (or, unheard, no check) as before.",
+  "options": [
+    "the lowest point level",
+    "the highest",
+    "the mean, rounded down"
+  ],
+  "gray": "The record keeps one level per ticket while the points are judged apart; which one stands for the ticket's concepts is a judgement about what \"shown\" means.",
+  "undo": "Change `judgedWeek`'s Math.min to the chosen rule; essays already written keep their charts.",
+  "refs": ["#3248"]
+}

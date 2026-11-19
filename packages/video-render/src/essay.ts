@@ -17,7 +17,10 @@
  *    - `answer`: the owner's take, played whole and captioned with its
  *      transcript; for a ticket left unanswered, the silence and the guess
  *      at why; for a take home couldn't make out, a silence that says so
- *      (`./verdict`);
+ *      (`./verdict`). From version 3 (`ESSAY_POINT_VERSION`, RR24) a
+ *      speak-to point answered by a take of its own has an `answer` scene
+ *      of its own after the ticket's (`points[j].answer`), and a ticket
+ *      answered only point by point has none of the ticket's;
  *    - `best`: a best fit, an independent answer to each speak-to point,
  *      never called "correct";
  *    - `beside`: the best fit beside the owner's answer, each point covered,
@@ -79,7 +82,7 @@ export const ESSAY_SCHEMA = "some-ui.rust-essay/1"
 export const ESSAY_ID = "rust-essay"
 
 /** The newest version `essayFormat` gives, pinned as `v<n>.json` under `templates/`. */
-export const ESSAY_VERSION = 2
+export const ESSAY_VERSION = 3
 
 /**
  * The first version whose chart draws the decay record's two later cells
@@ -89,11 +92,23 @@ export const ESSAY_VERSION = 2
  */
 export const ESSAY_DECAY_VERSION = 2
 
+/**
+ * The first version that draws a speak-to point answered by a take of its
+ * own (RR24, #3248): `points[j].answer`, played in an answer scene of its
+ * own. An essay with none stays at its version, so a stage built before
+ * them still draws it.
+ */
+export const ESSAY_POINT_VERSION = 3
+
 /** The deep dives per ticket, on its biggest gaps: K (owner, 2026-11-07). */
 export const ESSAY_DIVES = 2
 
 /** The most tickets a week has (`some-ui.rust-week/1`). */
 const TICKETS_MOST = 4
+
+/** The fewest and most speak-to points a ticket has (`some-ui.rust-week/1`'s `speakTo`). */
+const POINTS_LEAST = 2
+const POINTS_MOST = 3
 
 /** The most weeks the chart shows, newest last. */
 export const ESSAY_WEEKS_MOST = 12
@@ -156,19 +171,27 @@ type Repeated = Exclude<Section, "open" | "weeks" | "next">
 /** The scenes a shape adds: the locked intro, the brand intro and outro, and a chapter slide. */
 type Framing = "intro" | "brand-in" | "chapter" | "brand-out"
 
-/** How many of each repeated scene an essay can have. */
-const ESSAY_MOST: Readonly<Record<Repeated, number>> = {
+/**
+ * How many of each repeated scene an essay of template `version` can have:
+ * from version 3 a ticket's answer scenes are its own and one per point
+ * answered on its own (`ESSAY_POINT_VERSION`).
+ */
+const essayMost = (version: number): Readonly<Record<Repeated, number>> => ({
   question: TICKETS_MOST,
-  answer: TICKETS_MOST,
+  answer:
+    version >= ESSAY_POINT_VERSION
+      ? TICKETS_MOST * (1 + POINTS_MOST)
+      : TICKETS_MOST,
   best: TICKETS_MOST,
   beside: TICKETS_MOST,
   dive: TICKETS_MOST * ESSAY_DIVES,
-}
+})
 
 const isRepeated = (section: Section): section is Repeated =>
-  section in ESSAY_MOST
+  section in essayMost(ESSAY_VERSION)
 
 const scene = (
+  version: number,
   id: Section,
   name: string,
   point: string,
@@ -183,7 +206,7 @@ const scene = (
     cssWidth: CALL_STAGE_WIDTH,
   },
   holdMs,
-  ...(isRepeated(id) ? { repeat: { max: ESSAY_MOST[id] } } : {}),
+  ...(isRepeated(id) ? { repeat: { max: essayMost(version)[id] } } : {}),
 })
 
 /**
@@ -219,42 +242,51 @@ export function essayFormat(version: number = ESSAY_VERSION): Format {
     look: "calm",
     scenes: [
       scene(
+        version,
         "open",
         "The week",
         "The company, its story and the SLA the tickets answer to",
         40_000
       ),
       scene(
+        version,
         "question",
         "The question",
         "What the ticket asked, and what to speak to",
         40_000
       ),
       scene(
+        version,
         "answer",
         "Your answer",
-        "Your take, played whole; or the silence, and a guess at why",
+        version >= ESSAY_POINT_VERSION
+          ? "Your take, played whole, or a point's own take; or the silence, and a guess at why"
+          : "Your take, played whole; or the silence, and a guess at why",
         45_000
       ),
       scene(
+        version,
         "best",
         "A best fit",
         "An answer to each speak-to point, made apart from yours",
         60_000
       ),
       scene(
+        version,
         "beside",
         "The best fit beside yours",
         "Each point covered, partly or missing, and where that sits on SOLO",
         50_000
       ),
       scene(
+        version,
         "dive",
         "A deep dive",
         "One of the biggest gaps, from the ground up, or one step past the ticket",
         180_000
       ),
       scene(
+        version,
         "weeks",
         "Over the weeks",
         version >= ESSAY_DECAY_VERSION
@@ -262,7 +294,13 @@ export function essayFormat(version: number = ESSAY_VERSION): Format {
           : "Each concept across the weeks, never known apart from decayed, and the role it fits",
         70_000
       ),
-      scene("next", "Next week", "What next week comes back to", 20_000),
+      scene(
+        version,
+        "next",
+        "Next week",
+        "What next week comes back to",
+        20_000
+      ),
     ],
     shape: ESSAY_SHAPE,
   }
@@ -288,24 +326,56 @@ const SoloSchema = z.strictObject({
   why: words,
 })
 
+/** How a speak-to point of a take stands beside the best fit. */
+const PointMarkSchema = z.strictObject({
+  mark: z.enum(MARKS),
+  note: words.optional(),
+})
+
+const SilenceSchema = z.strictObject({
+  ...SILENCE_FIELDS,
+  /** How many times the ticket was opened and nothing sent. */
+  opened: z.number().int().nonnegative(),
+})
+
+/**
+ * A ticket's answer: a take of the whole ticket, or a silence. A ticket
+ * answered only point by point (RR24) has no take of the whole ticket, so
+ * its answer is a silence with neither a guess nor `unheard`: nothing is
+ * said over it, and it has no scene (`byPointsOnly`; `ticketProblems`
+ * holds that every point then has an answer of its own).
+ */
 const AnswerSchema = z.discriminatedUnion("kind", [
   z.strictObject({
     kind: z.literal("take"),
     /** What the owner said, as home heard it: the answer scene's caption. */
     transcript: words,
     /** Each speak-to point, in order, as it stands beside the best fit. */
-    marks: z.array(
-      z.strictObject({ mark: z.enum(MARKS), note: words.optional() })
-    ),
+    marks: z.array(PointMarkSchema),
     solo: SoloSchema,
   }),
-  z
-    .strictObject({
-      ...SILENCE_FIELDS,
-      /** How many times the ticket was opened and nothing sent. */
-      opened: z.number().int().nonnegative(),
-    })
-    .refine(isSilenceShape, SILENCE_SHAPE),
+  SilenceSchema.refine(
+    (silence) => !(silence.unheard === true && silence.guess !== undefined),
+    SILENCE_SHAPE
+  ),
+])
+
+/**
+ * A speak-to point's answer by a take of its own (RR24, #3248), its ref
+ * `<week>:<ticket>:<n>` and its file `<ticket>.<n>.<ext>` (`pointTakeId`):
+ * the take, its transcript, its one mark and its SOLO level; or, for a take
+ * in which home heard nothing said or couldn't make out, a silence. It
+ * answers its point in place of the ticket's.
+ */
+const PointAnswerSchema = z.discriminatedUnion("kind", [
+  z.strictObject({
+    kind: z.literal("take"),
+    transcript: words,
+    /** The point, as it stands beside the best fit. */
+    mark: PointMarkSchema,
+    solo: SoloSchema,
+  }),
+  SilenceSchema.refine(isSilenceShape, SILENCE_SHAPE),
 ])
 
 const DiveSchema = z.strictObject({
@@ -325,11 +395,20 @@ const TicketSchema = z.strictObject({
   /** The figures the scenario stated as given; never measured. */
   figures: z.array(words),
   program: code,
-  /** The speak-to points in order, each with the best fit's answer to it. */
+  /**
+   * The speak-to points in order, each with the best fit's answer to it, and
+   * its own answer when a take of its own answered it (version 3).
+   */
   points: z
-    .array(z.strictObject({ to: words, best: words }))
-    .min(2)
-    .max(3),
+    .array(
+      z.strictObject({
+        to: words,
+        best: words,
+        answer: PointAnswerSchema.optional(),
+      })
+    )
+    .min(POINTS_LEAST)
+    .max(POINTS_MOST),
   answer: AnswerSchema,
   question: SaidSchema,
   best: SaidSchema,
@@ -406,25 +485,109 @@ export type Essay = z.infer<typeof EssaySchema>
 export type EssayTicket = Essay["tickets"][number]
 export type EssayDive = EssayTicket["dives"][number]
 export type EssayCell = Essay["weeks"]["concepts"][number]["cells"][number]
+export type EssayPointAnswer = NonNullable<
+  EssayTicket["points"][number]["answer"]
+>
+
+/**
+ * A point's take's id in the folder home hands the recorder, less its
+ * extension: `QM-311.2` for point 2 (from 1), as home names it
+ * (paulgsc/server `essay::point_key`, RR24).
+ */
+export const pointTakeId = (ticket: string, point: number): string =>
+  `${ticket}.${point}`
+
+/** Whether `ticket` was answered only point by point: no take or silence of the whole ticket is said. */
+export const byPointsOnly = (ticket: EssayTicket): boolean =>
+  ticket.answer.kind === "silence" &&
+  ticket.answer.guess === undefined &&
+  ticket.answer.unheard !== true
+
+/** Whether any of `ticket`'s points was answered by a take of its own. */
+export const hasPointAnswers = (ticket: EssayTicket): boolean =>
+  ticket.points.some((point) => point.answer !== undefined)
+
+/**
+ * What answers point `point` (from 0) of `ticket`: its own answer, where a
+ * take of its own answered it (`own`), or else the ticket's (`whole`), and
+ * the mark it stands at beside the best fit, if one was given.
+ */
+export function pointAnsweredBy(
+  ticket: EssayTicket,
+  point: number
+):
+  | { readonly by: "own"; readonly answer: EssayPointAnswer }
+  | { readonly by: "whole"; readonly answer: EssayTicket["answer"] } {
+  const own = ticket.points[point]?.answer
+  return own === undefined
+    ? { by: "whole", answer: ticket.answer }
+    : { by: "own", answer: own }
+}
+
+/**
+ * Which take the beside table cites under point `point` (from 0) of
+ * `ticket` (RR24): `own` for a point answered by a take of its own, `whole`
+ * for one the ticket's take answers; null when the ticket has no point
+ * answered on its own, so its table reads as before, and for a point left
+ * to the ticket's silence.
+ */
+export function citeOf(
+  ticket: EssayTicket,
+  point: number
+): "own" | "whole" | null {
+  if (!hasPointAnswers(ticket)) return null
+  const answered = pointAnsweredBy(ticket, point)
+  return answered.by === "own"
+    ? "own"
+    : answered.answer.kind === "take"
+      ? "whole"
+      : null
+}
+
+/** The mark point `point` (from 0) of `ticket` stands at, from what answers it; none for a silence. */
+export function markOf(
+  ticket: EssayTicket,
+  point: number
+): z.infer<typeof PointMarkSchema> | undefined {
+  const answered = pointAnsweredBy(ticket, point)
+  if (answered.answer.kind === "silence") return undefined
+  return answered.by === "own"
+    ? answered.answer.mark
+    : answered.answer.marks[point]
+}
 
 /** Whether `cell` is one only version 2 of the template draws (`ESSAY_DECAY_VERSION`). */
 export const needsDecayVersion = (cell: EssayCell): boolean =>
   cell === "faded" || typeof cell === "object"
 
-/** How big a point's gap is: missing, partly, covered; every point of a silence is missing. */
+/**
+ * How big a point's gap is: missing, partly, covered, from what answers it
+ * (`pointAnsweredBy`); every point of a silence is missing.
+ */
 const gapOf = (ticket: EssayTicket, point: number): number => {
-  if (ticket.answer.kind === "silence") return 2
-  const mark = ticket.answer.marks[point]?.mark
-  return mark === "missing" ? 2 : mark === "partly" ? 1 : 0
+  const mark = markOf(ticket, point)?.mark
+  return mark === undefined || mark === "missing"
+    ? 2
+    : mark === "partly"
+      ? 1
+      : 0
 }
 
 /** Whether dive `dive` of `ticket` goes past it: into a point the answer covered. */
 export const isPast = (ticket: EssayTicket, dive: EssayDive): boolean =>
   gapOf(ticket, dive.point) === 0
 
-function ticketProblems(ticket: EssayTicket): Array<string> {
+function ticketProblems(ticket: EssayTicket, version: number): Array<string> {
   const problems: Array<string> = []
   const points = ticket.points.length
+  if (hasPointAnswers(ticket) && version < ESSAY_POINT_VERSION)
+    problems.push(
+      `${ticket.id}: a point answered by a take of its own is drawn from version ${ESSAY_POINT_VERSION} of the template`
+    )
+  if (byPointsOnly(ticket) && !ticket.points.every((p) => p.answer))
+    problems.push(
+      `${ticket.id}: its silence carries no guess at why, and a point has no answer of its own`
+    )
   if (ticket.answer.kind === "take" && ticket.answer.marks.length !== points)
     problems.push(
       `${ticket.id}: its answer marks ${ticket.answer.marks.length} points, and it has ${points}`
@@ -472,7 +635,8 @@ function essayProblems(essay: Essay): Array<string> {
   const ids = essay.tickets.map((ticket) => ticket.id)
   if (new Set(ids).size !== ids.length)
     problems.push("tickets: two share an id")
-  for (const ticket of essay.tickets) problems.push(...ticketProblems(ticket))
+  for (const ticket of essay.tickets)
+    problems.push(...ticketProblems(ticket, essay.template.version))
   const { weeks, concepts } = essay.weeks
   problems.push(...chartWeeksProblems(essay.week.id, weeks))
   for (const concept of concepts) {
@@ -538,6 +702,11 @@ export type EssayScene =
       readonly ticket?: string
       /** The deep dive it is, by its place in the ticket's, from 0. */
       readonly dive?: number
+      /**
+       * For an answer scene of a point answered by a take of its own (RR24),
+       * the point, by its place in the ticket's, from 0.
+       */
+      readonly point?: number
       readonly speaker: Speaker
       /** What is said over it; empty for a brand slide. */
       readonly said: string
@@ -561,9 +730,13 @@ export const ESSAY_CHAPTERS: Readonly<Record<"weeks" | "next", string>> = {
   next: "Next week",
 }
 
-/** How many of the essay's tickets the owner answered. */
+/** How many of the essay's tickets the owner answered: whole, or any point by a take of its own. */
 export const answeredOf = (essay: Essay): number =>
-  essay.tickets.filter((ticket) => ticket.answer.kind === "take").length
+  essay.tickets.filter(
+    (ticket) =>
+      ticket.answer.kind === "take" ||
+      ticket.points.some((point) => point.answer?.kind === "take")
+  ).length
 
 /**
  * The locked intro (SFEED2), as the call's is: who wrote the essay, what
@@ -611,10 +784,21 @@ export function essayIntro(
   }
 }
 
+/** An answer scene's words and voice: a take's transcript in the owner's, a silence's in the tutor's. */
+const answerSaid = (
+  answer: EssayTicket["answer"] | EssayPointAnswer
+): { readonly speaker: Speaker; readonly said: string } =>
+  answer.kind === "take"
+    ? { speaker: "you", said: answer.transcript }
+    : { speaker: "tutor", said: silenceSaid(answer) }
+
 /**
  * The essay's scenes in the order said. In each ticket: its chapter slide,
- * the question, the answer, a best fit, the two beside each other, then its
- * deep dives. The locked intro and the brand intro open it, a chapter slide
+ * the question, the answer (the whole ticket's, unless it was answered only
+ * point by point, then each point's answered by a take of its own, in
+ * order), a best fit, the two beside each other, then its deep dives. Answer
+ * scenes are numbered across the essay, as deep dives are, so an essay with
+ * no point's own answer numbers them as before version 3. The locked intro and the brand intro open it, a chapter slide
  * opens each ticket and the close's sections, and the brand outro ends it.
  */
 export function essayScenes(
@@ -644,6 +828,7 @@ export function essayScenes(
     said: essay.open.said,
   })
   let dives = 0
+  let answers = 0
   for (const [i, ticket] of essay.tickets.entries()) {
     const n = i + 1
     const id = (section: Repeated): string => repeatedId(section, n)
@@ -659,29 +844,34 @@ export function essayScenes(
         said: `${title}.`,
       })
     const of = { ticket: ticket.id }
-    scenes.push(
-      {
-        section: "question",
-        id: id("question"),
+    scenes.push({
+      section: "question",
+      id: id("question"),
+      ...of,
+      speaker: "tutor",
+      said: ticket.question.said,
+    })
+    if (!byPointsOnly(ticket)) {
+      answers += 1
+      scenes.push({
+        section: "answer",
+        id: repeatedId("answer", answers),
         ...of,
-        speaker: "tutor",
-        said: ticket.question.said,
-      },
-      ticket.answer.kind === "take"
-        ? {
-            section: "answer",
-            id: id("answer"),
-            ...of,
-            speaker: "you",
-            said: ticket.answer.transcript,
-          }
-        : {
-            section: "answer",
-            id: id("answer"),
-            ...of,
-            speaker: "tutor",
-            said: silenceSaid(ticket.answer),
-          },
+        ...answerSaid(ticket.answer),
+      })
+    }
+    for (const [point, { answer }] of ticket.points.entries()) {
+      if (answer === undefined) continue
+      answers += 1
+      scenes.push({
+        section: "answer",
+        id: repeatedId("answer", answers),
+        ...of,
+        point,
+        ...answerSaid(answer),
+      })
+    }
+    scenes.push(
       {
         section: "best",
         id: id("best"),
@@ -848,27 +1038,63 @@ export function essayStoryboard(): Storyboard {
 }
 
 /**
- * Which of `names`, the files in the folder home hands the recorder, is each
- * answered ticket's take (RR16): exactly one audio file `<TICKET>.<ext>` for
- * each ticket the owner answered, and its word times `<TICKET>.words.json`
- * where home kept them (`takeFilesOf`, which says what it refuses).
+ * The take an essay's scene plays, by its id in the folder home hands the
+ * recorder: a ticket's (`QM-311`) or, for a point answered by a take of its
+ * own, the point's (`QM-311.2`, `pointTakeId`); null for a scene the owner
+ * doesn't say.
  */
-export const essayTakeFiles = (
+export const essayTakeOf = (scene: EssayScene): string | null =>
+  scene.section === "answer" &&
+  scene.speaker === "you" &&
+  scene.ticket !== undefined
+    ? scene.point === undefined
+      ? scene.ticket
+      : pointTakeId(scene.ticket, scene.point + 1)
+    : null
+
+/**
+ * Each answer of the essay by its take's id (`essayTakeOf`): every
+ * ticket's, then every point's answered by a take of its own.
+ */
+const answersById = (
+  essay: Essay
+): Array<{
+  readonly id: string
+  readonly answer: EssayTicket["answer"] | EssayPointAnswer
+}> =>
+  essay.tickets.flatMap((ticket) => [
+    { id: ticket.id, answer: ticket.answer },
+    ...ticket.points.flatMap((point, j) =>
+      point.answer === undefined
+        ? []
+        : [{ id: pointTakeId(ticket.id, j + 1), answer: point.answer }]
+    ),
+  ])
+
+/**
+ * Which of `names`, the files in the folder home hands the recorder, is each
+ * answered take (RR16): exactly one audio file `<TICKET>.<ext>` for each
+ * ticket the owner answered whole, and `<TICKET>.<n>.<ext>` for each point
+ * n (from 1) answered by a take of its own (RR24), each with its word times
+ * `<id>.words.json` where home kept them (`takeFilesOf`, which says what it
+ * refuses).
+ */
+export function essayTakeFiles(
   essay: Essay,
   names: ReadonlyArray<string>
-): Parsed<Readonly<Record<string, TakeFiles>>> =>
-  takeFilesOf(
+): Parsed<Readonly<Record<string, TakeFiles>>> {
+  const answers = answersById(essay)
+  const ids = (
+    keep: (answer: (typeof answers)[number]["answer"]) => boolean
+  ): Array<string> =>
+    answers.filter(({ answer }) => keep(answer)).map(({ id }) => id)
+  return takeFilesOf(
     {
-      answered: essay.tickets
-        .filter((ticket) => ticket.answer.kind === "take")
-        .map((ticket) => ticket.id),
-      silent: essay.tickets
-        .filter((ticket) => ticket.answer.kind === "silence")
-        .map((ticket) => ticket.id),
-      unheard: essay.tickets
-        .filter((ticket) => isUnheard(ticket.answer))
-        .map((ticket) => ticket.id),
-      noun: "ticket",
+      answered: ids((answer) => answer.kind === "take"),
+      silent: ids((answer) => answer.kind === "silence"),
+      unheard: ids(isUnheard),
+      noun: "ticket or point",
     },
     names
   )
+}
