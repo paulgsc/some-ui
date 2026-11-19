@@ -12,6 +12,7 @@ import { useMemo, useState, useSyncExternalStore } from "react"
 import { cn, dayOf } from "@some-ui/core-utils"
 import {
   Button,
+  CardLink,
   MarkLegend,
   Sheet,
   SheetContent,
@@ -256,26 +257,29 @@ export const RoutineStatus = ({
   const [open, setOpen] = useState(false)
   return (
     <>
-      <button
-        type="button"
-        data-slot="routine-status"
-        aria-label={ROUTINE_WORDS.open(view)}
-        onClick={() => setOpen(true)}
-        className="bg-card border-border flex min-h-12 shrink-0 items-center gap-3 rounded-2xl border px-4 py-2.5 text-left"
-      >
-        <RoutineMarks
-          shape={view.shape}
-          voice={view.voice.map(({ shape }) => shape)}
-        />
-        <span className="min-w-0 flex-1">
-          <span className={cn("block text-sm font-semibold", TONE[view.shape])}>
-            {view.word}
+      <CardLink asChild className="min-h-12 shrink-0 px-4 py-2.5">
+        <button
+          type="button"
+          data-slot="routine-status"
+          aria-label={ROUTINE_WORDS.open(view)}
+          onClick={() => setOpen(true)}
+        >
+          <RoutineMarks
+            shape={view.shape}
+            voice={view.voice.map(({ shape }) => shape)}
+          />
+          <span className="min-w-0 flex-1">
+            <span
+              className={cn("block text-sm font-semibold", TONE[view.shape])}
+            >
+              {view.word}
+            </span>
+            <span className="text-muted-foreground line-clamp-2 block text-xs">
+              {view.line}
+            </span>
           </span>
-          <span className="text-muted-foreground line-clamp-2 block text-xs">
-            {view.line}
-          </span>
-        </span>
-      </button>
+        </button>
+      </CardLink>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
           side="bottom"
