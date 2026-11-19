@@ -12,6 +12,7 @@
  * or says what wasn't done.
  */
 import { inMemoryStorage } from "@some-ui/core-utils"
+import { DEFAULT_PACE_WPM, PACE_STEP_WPM } from "@some-ui/shared"
 import { TAKE_WORDS } from "@some-ui/voice-capture"
 import { takeButton } from "@some-ui/voice-capture/testing"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
@@ -26,7 +27,6 @@ import {
 } from "@/lib/interview-week/__tests__/fixture"
 import { CUE_SECONDS } from "@/lib/interview-week/cue"
 import { pastWeeks } from "@/lib/interview-week/past"
-import { DEFAULT_PACE_WPM, PACE_STEP_WPM } from "@/lib/interview-week/prompter"
 import { readItem } from "@/lib/interview-week/spec"
 import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 import { RoutedInterview } from "@/components/jobs/interview/__tests__/routed"

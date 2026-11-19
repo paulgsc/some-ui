@@ -1,5 +1,5 @@
 /**
- * The teleprompter band's step (IW9, #3176) over its whole family: each
+ * The teleprompter band's step (IW9 #3176, shared with #3269) over its whole family: each
  * ordering of heard, quiet, paused and ended reads, and every gap between
  * reads, against the pace the reader set and the hold (C615, C616, C734).
  *
@@ -10,10 +10,9 @@
  * "never moves the script back when a take ends", below, over every half
  * word of the script.
  */
-import { HEARD_FLOOR } from "@some-ui/voice-capture"
 import { describe, expect, it } from "vitest"
 
-import type { Prompter, PrompterEvent } from "@/lib/interview-week/prompter"
+import type { Prompter, PrompterEvent } from "./index"
 import {
   bandOf,
   DEFAULT_PACE_WPM,
@@ -25,23 +24,26 @@ import {
   stepPace,
   stepPrompter,
   totalOf,
-} from "@/lib/interview-week/prompter"
+} from "./index"
 
 const LINE = "2026-w47:conflict"
 const LINES = ["On my phone app,", "a dozen screens ask home,", "and wait."]
 const TOTAL = totalOf(LINES)
+/** The level a take must reach to count as heard, as a caller sets it. */
+const HEARD_FLOOR = 0.05
 const LOUD = 0.3
 const QUIET = 0.01
 
 const heard = (
   at: number,
   level = LOUD,
-  answers = LINE,
+  script = LINE,
   pace = DEFAULT_PACE_WPM
 ): PrompterEvent => ({
   type: "heard",
-  answers,
+  script,
   level,
+  floor: HEARD_FLOOR,
   at,
   total: TOTAL,
   pace,
@@ -172,7 +174,7 @@ describe("the teleprompter band's step (IW9)", () => {
       for (const paused of [false, true]) {
         const reading: Prompter = {
           kind: "reading",
-          answers: LINE,
+          script: LINE,
           words,
           at: 0,
           heardAt: 0,
@@ -199,7 +201,7 @@ describe("the teleprompter band's step (IW9)", () => {
       bandOf(
         {
           kind: "reading",
-          answers: LINE,
+          script: LINE,
           words,
           at: 0,
           heardAt: 0,

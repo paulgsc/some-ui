@@ -13,3 +13,5 @@ export {
   BundleTake,
 } from "./bundle"
 export { Dot } from "./dot"
+export type { TeleprompterWords } from "./teleprompter"
+export { Teleprompter } from "./teleprompter"

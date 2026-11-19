@@ -9,6 +9,7 @@ import type { KeyedStorage } from "@some-ui/core-utils"
 import { openKept, readJson, writeKept } from "@some-ui/core-utils"
 import type { InterviewWeek } from "@some-ui/interview-week"
 import { InterviewWeekSchema } from "@some-ui/interview-week"
+import { DEFAULT_PACE_WPM } from "@some-ui/shared"
 import type {
   BundleDraft,
   BundleDrafts,
@@ -19,7 +20,6 @@ import { z } from "zod"
 
 import type { Ladder } from "./ladder"
 import { NO_LADDER, RUNGS } from "./ladder"
-import { DEFAULT_PACE_WPM } from "./prompter"
 import type { InterviewSent } from "./spec"
 
 const WEEKS_KEY = "some-ui:interview-week.weeks"
