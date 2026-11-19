@@ -8,14 +8,14 @@
  * The read is the query's (`studioAsksQuery`); this only draws its outcome.
  */
 import type { JSX, ReactNode } from "react"
-import { Link } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
 import type { StudioAsk } from "@/lib/studio-asks"
 import { questionOf, studioAsksQuery } from "@/lib/studio-asks"
 import { STUDIO_INDEX_WORDS } from "@/lib/studio-index"
+import { CardRoute } from "@/components/card-route"
 
-import { OutLink, Part, ReadList, TILE } from "./layout"
+import { OutLink, Part, ReadList } from "./layout"
 
 const WORDS = STUDIO_INDEX_WORDS.asks
 
@@ -40,16 +40,12 @@ export const AsksList = (): JSX.Element => (
         <ul className="flex flex-col gap-2">
           {asks.map((ask) => (
             <li key={ask.id}>
-              <Link
-                to="/journal/asks/$ask"
-                params={{ ask: ask.id }}
-                className={TILE}
-              >
+              <CardRoute to="/journal/asks/$ask" params={{ ask: ask.id }}>
                 <span className="text-base font-bold">{questionOf(ask)}</span>
                 <span className="text-muted-foreground text-sm">
                   {WORDS.from[ask.repo]}
                 </span>
-              </Link>
+              </CardRoute>
             </li>
           ))}
         </ul>

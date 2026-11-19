@@ -35,7 +35,7 @@ import {
   thingName,
 } from "@/lib/renders"
 
-import { Part, ReadList, StudioPage, TILE } from "./layout"
+import { Part, ReadList, StudioPage } from "./layout"
 
 const WORDS = RENDERS_WORDS
 
@@ -184,7 +184,9 @@ const RowTile = ({
   return (
     <li>
       {!opens(subject) ? (
-        <div className={TILE}>{body}</div>
+        <div className="bg-card border-border/60 flex h-full flex-col gap-1 rounded-2xl border px-4 py-3">
+          {body}
+        </div>
       ) : (
         <CardLink asChild>
           <ToPage subject={subject} className="">
