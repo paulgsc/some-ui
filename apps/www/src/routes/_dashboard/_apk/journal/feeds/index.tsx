@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { createFileRoute, Link } from "@tanstack/react-router"
+import { createFileRoute } from "@tanstack/react-router"
 
 import {
   FEED_FACTS,
@@ -7,7 +7,8 @@ import {
   KIND_WORDS,
   STUDIO_INDEX_WORDS,
 } from "@/lib/studio-index"
-import { StudioPage, TILE, TileBody } from "@/components/studio/layout"
+import { CardRoute } from "@/components/card-route"
+import { StudioPage, TileBody } from "@/components/studio/layout"
 
 const WORDS = STUDIO_INDEX_WORDS.feeds
 
@@ -17,12 +18,12 @@ const Feeds = (): JSX.Element => (
     <ul className="flex flex-col gap-2">
       {FEEDS_A_TO_Z.map((feed) => (
         <li key={feed}>
-          <Link to="/journal/feeds/$feed" params={{ feed }} className={TILE}>
+          <CardRoute to="/journal/feeds/$feed" params={{ feed }}>
             <TileBody
               title={FEED_FACTS[feed].name}
               line={`“${FEED_FACTS[feed].intuition}” ${FEED_FACTS[feed].cadence}.`}
             />
-          </Link>
+          </CardRoute>
         </li>
       ))}
     </ul>

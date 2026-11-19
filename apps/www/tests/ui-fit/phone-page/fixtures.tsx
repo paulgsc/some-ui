@@ -56,6 +56,7 @@ import { APH_FIXTURES } from "./aph"
 import { ATTENTION_FIXTURES } from "./attention"
 import { EPISODES_FIXTURES } from "./episodes"
 import { INTERVIEW_FIXTURES } from "./interview"
+import { JOURNAL_FIXTURES } from "./journal"
 import { MY_DATA_FIXTURES } from "./my-data"
 import { PULL_FIXTURES } from "./pull"
 import { ROUNDS_FIXTURES } from "./rounds"
@@ -404,6 +405,8 @@ export const PHONE_FIXTURES = {
   ...MY_DATA_FIXTURES,
   /** Studio's Episodes, by week (`./episodes`, `../episodes-fit.spec.ts`). */
   ...EPISODES_FIXTURES,
+  /** Studio's index, Takes' ways on and the templates (`./journal`, `../journal-fit.spec.ts`). */
+  ...JOURNAL_FIXTURES,
   /** Studio's Takes, its tiles and a compartment (`./takes`, `../takes-fit.spec.ts`). */
   ...TAKES_FIXTURES,
   /** Takes › Needs your attention (`./attention`, `../attention-fit.spec.ts`). */

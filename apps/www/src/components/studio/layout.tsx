@@ -17,7 +17,11 @@ import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import type { StudioKind } from "@/lib/studio-index"
 import { kindPath, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
 
-/** A tile's link: a card the size of its neighbours. */
+/**
+ * A tile that opens nothing: a card the size of its neighbours. A tile that
+ * opens a page is a `CardRoute` (`@/components/card-route`, #3234), so the
+ * two never look alike.
+ */
 export const TILE =
   "bg-card border-border/60 focus-visible:ring-ring flex h-full flex-col gap-1 rounded-2xl border px-4 py-3 focus-visible:ring-2 focus-visible:outline-none"
 
