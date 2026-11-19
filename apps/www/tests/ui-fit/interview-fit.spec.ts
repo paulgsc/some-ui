@@ -58,7 +58,15 @@ test.describe("the interview week fits the phone", () => {
       await page.getByRole("link", { name: "Read it aloud" }).click()
       const aloud = page.locator("[data-card]")
       await expect(aloud.locator("[data-script]")).toBeVisible()
+      // The line under the script holds its place as the count starts (HS1).
+      const line = aloud.locator("p", { hasText: /^A take stops at/ })
+      const before = await line.boundingBox()
       await aloud.getByRole("button", { name: "Start talking" }).click()
+      const after = await aloud
+        .locator("p", { hasText: /call it off/ })
+        .boundingBox()
+      expect(before).not.toBeNull()
+      expect(after?.height).toBe(before?.height)
       await expect(
         aloud.getByRole("button", { name: /^Recording in 3/ })
       ).toBeVisible()
