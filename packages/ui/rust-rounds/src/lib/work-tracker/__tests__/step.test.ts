@@ -2,15 +2,14 @@
  * The tracker's family (RR26): every state against every event, with the
  * rules that must hold on each step, then the owner's paths through it.
  */
-import { describe, expect, it } from "vitest"
-
 import type {
   OpenSpan,
   TrackerEffect,
   TrackerEvent,
   TrackerState,
-} from "./index"
-import { CAP_MS, spanSeconds, stepTracker } from "./index"
+} from "@rust-rounds/lib/work-tracker"
+import { CAP_MS, spanSeconds, stepTracker } from "@rust-rounds/lib/work-tracker"
+import { describe, expect, it } from "vitest"
 
 const T0 = Date.parse("2026-11-19T09:40:00Z")
 const MIN = 60_000

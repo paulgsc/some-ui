@@ -29,10 +29,10 @@ import { assertNever } from "@some-ui/core-utils"
 /** The tracker stops itself after this long (C675). */
 export const CAP_MS = 2 * 60 * 60 * 1000
 
-type WorkStep = "read" | "academy" | "voice"
+export type WorkStep = "read" | "academy" | "voice"
 
 /** Where a span was started: what it counts toward. */
-type SpanWhere = {
+export type SpanWhere = {
   readonly week: string
   readonly ticket: string
   readonly step: WorkStep
@@ -51,13 +51,13 @@ export type OpenSpan = {
   readonly device: string
 }
 
-type Answer =
+export type Answer =
   | { readonly kind: "all" }
   | { readonly kind: "part"; readonly minutes: number }
   | { readonly kind: "none" }
 
 /** A span as home keeps it once it is answered. */
-type ClosedSpan = {
+export type ClosedSpan = {
   readonly span: OpenSpan
   /** Epoch milliseconds: when the owner came back, or the cap. */
   readonly stoppedAt: number

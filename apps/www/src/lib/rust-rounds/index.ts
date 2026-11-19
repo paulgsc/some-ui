@@ -19,18 +19,23 @@
  */
 import { engage } from "@some-ui/engagement"
 import type {
+  HomeSpan,
   NotesPort,
+  OpenSpan,
   RoundsStore,
   RustRoundsPorts,
   RustWeekPorts,
   WeeksStore,
+  WorkPorts,
 } from "@some-ui/rust-rounds"
 import {
+  createWorkTracker,
   currentWeek,
   homeRef,
   keptRounds,
   keptWeeks,
   WEEK_TAKES_KEY,
+  workSpans,
 } from "@some-ui/rust-rounds"
 import { SERVER_CONTRACT_EPOCH } from "@some-ui/server-routes"
 import { ONE_TAKE, onPageVisibility } from "@some-ui/voice-capture"
@@ -163,7 +168,10 @@ const RECORDS_PER_POINT = SNAPSHOT_EPOCH >= POINT_TAKES_EPOCH
  * the route, which may reach home.
  */
 export function phoneRustWeekPorts(
-  reach: Pick<RustWeekPorts, "home" | "heard" | "homeHolds" | "onHomeHolds">
+  reach: Pick<
+    RustWeekPorts,
+    "home" | "heard" | "homeHolds" | "onHomeHolds" | "work"
+  >
 ): RustWeekPorts | null {
   const week = currentWeek(phoneWeeks().held().weeks, Date.now())
   return week === null
@@ -192,4 +200,86 @@ export function phoneRustRoundsPorts(): RustRoundsPorts {
     onVisibility: onPageVisibility,
     home: true,
   }
+}
+
+const spansKept = new Set<() => void>()
+
+/**
+ * Calls `listener` each time the work tracker keeps a start or a close on
+ * this phone (RR26): the Rust Rounds lane's ask for a run. Returns the stop.
+ */
+export function onSpansKept(listener: () => void): () => void {
+  spansKept.add(listener)
+  return () => {
+    spansKept.delete(listener)
+  }
+}
+
+/**
+ * What the tracker hears of home, handed in by the route from the Rust
+ * Rounds lane (`lib/home-link/rust-spans`), which imports this module.
+ */
+export type WorkReach = {
+  readonly homeOpen: () => OpenSpan | null | undefined
+  readonly onHome: (listener: () => void) => () => void
+  readonly homeWeek: (week: string) => ReadonlyArray<HomeSpan>
+  readonly refused: (key: string) => boolean
+}
+
+/**
+ * The device's name on the spans it starts. One phone today; a second
+ * device names itself once the owner names devices.
+ */
+const DEVICE = "Phone"
+
+let work: WorkPorts | null = null
+
+/**
+ * The work tracker and the week's time on this phone (RR26): one tracker
+ * per page load, whichever screen shows it, since one span is open at a
+ * time. Its spans are kept in this device's storage before they go home.
+ */
+export function phoneWork(reach: WorkReach): WorkPorts {
+  if (work !== null) return work
+  const record = workSpans(browserLocalStorage)
+  let revision = 0
+  const changed = new Set<() => void>()
+  const change = (): void => {
+    revision += 1
+    for (const listener of changed) listener()
+  }
+  reach.onHome(change)
+  const tracker = createWorkTracker({
+    record,
+    homeOpen: reach.homeOpen,
+    onHome: reach.onHome,
+    send: (): void => {
+      change()
+      for (const listener of spansKept) listener()
+    },
+    now: () => Date.now(),
+    newId: () => crypto.randomUUID(),
+    device: DEVICE,
+    onVisibility: onPageVisibility,
+    after: (ms, run): (() => void) => {
+      const handle = setTimeout(run, ms)
+      return () => clearTimeout(handle)
+    },
+  })
+  work = {
+    tracker,
+    spansOf: (week): ReturnType<WorkPorts["spansOf"]> => ({
+      phone: record.list() ?? [],
+      home: reach.homeWeek(week),
+      refused: reach.refused,
+    }),
+    revision: (): number => revision,
+    onChange: (listener): (() => void) => {
+      changed.add(listener)
+      return () => {
+        changed.delete(listener)
+      }
+    },
+  }
+  return work
 }
