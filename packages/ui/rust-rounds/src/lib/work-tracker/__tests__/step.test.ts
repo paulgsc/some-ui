@@ -78,6 +78,7 @@ const EVENTS: ReadonlyArray<[string, TrackerEvent]> = [
   ["home: another span", { type: "homeSays", open: other, at: before }],
   ["start", { type: "start", span: other }],
   ["back, early", { type: "back", at: before }],
+  ["back, before it started", { type: "back", at: T0 - 5 * MIN }],
   ["back, late", { type: "back", at: after }],
   ["seen, early", { type: "seen", at: before }],
   ["seen, late", { type: "seen", at: after }],
@@ -130,6 +131,9 @@ describe("the tracker, every state against every event", () => {
         if (next.state.kind === "asking") {
           const cap = next.state.span.startedAt + CAP_MS
           expect(next.state.stoppedAt).toBeLessThanOrEqual(cap)
+          expect(next.state.stoppedAt).toBeGreaterThanOrEqual(
+            next.state.span.startedAt
+          )
           expect(next.state.stoppedBy === "itself").toBe(
             next.state.stoppedAt === cap
           )

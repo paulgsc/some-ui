@@ -12,8 +12,10 @@
  * - **Home, once it is the authority.** Until home has said what is open,
  *   the phone's own record says it (`openOnPhone`): a span started with no
  *   home in reach keeps running after a reload. What home says (`homeOpen`)
- *   is fed in whenever it changes; the lane leaves it undefined while a
- *   start this phone kept hasn't reached home.
+ *   is fed in whenever it changes; the lane leaves it undefined while any
+ *   event this phone kept hasn't reached home, and a start home hasn't
+ *   heard always outranks what home last said, as does a close of a span
+ *   this phone answered.
  * - **It stops itself.** While a span runs, a wake-up at its cap and the app
  *   coming to the front each tell the step the time (`seen`), so a span past
  *   two hours asks when the owner is back.
@@ -28,7 +30,10 @@ import type {
 } from "@rust-rounds/lib/work-tracker"
 import { CAP_MS, stepTracker } from "@rust-rounds/lib/work-tracker"
 import type { HomeSpan } from "@rust-rounds/lib/work-tracker/home"
-import type { SpanEvent } from "@rust-rounds/lib/work-tracker/record"
+import type {
+  EventAtHome,
+  SpanEvent,
+} from "@rust-rounds/lib/work-tracker/record"
 import {
   closeOf,
   openOnPhone,
@@ -49,8 +54,8 @@ export type TrackerPorts = {
   readonly homeOpen: () => OpenSpan | null | undefined
   /** Calls `listener` whenever `homeOpen` may have changed. Returns the stop. */
   readonly onHome: (listener: () => void) => () => void
-  /** Whether home refused an event for good, by `<id>/<kind>`. */
-  readonly refused: (key: string) => boolean
+  /** What home last said of an event, by `<id>/<kind>`. */
+  readonly atHome: (key: string) => EventAtHome
   /** Asks the lane to send what was kept. */
   readonly send: () => void
   /** Milliseconds since the epoch. */
@@ -153,6 +158,7 @@ export function createWorkTracker(ports: TrackerPorts): WorkTracker {
   const hear = (): void => {
     const events = ports.record.list() ?? []
     const home = ports.homeOpen()
+    const refused = (key: string): boolean => ports.atHome(key) === "refused"
     // A span this phone already answered is never asked again, whatever a
     // read that began before the answer says.
     const answered = (span: OpenSpan | null): OpenSpan | null =>
@@ -160,9 +166,13 @@ export function createWorkTracker(ports: TrackerPorts): WorkTracker {
       events.some((each) => each.kind === "close" && each.id === span.id)
         ? null
         : span
-    const open = answered(
-      home === undefined ? openOnPhone(events, ports.refused) : home
-    )
+    // A start home hasn't heard yet is this phone's to say, whatever home
+    // last said: that answer, or a read that began before the start, can't
+    // know of it.
+    const mine = openOnPhone(events, refused)
+    const unheard =
+      mine !== null && ports.atHome(`${mine.id}/start`) === "waiting"
+    const open = answered(home === undefined || unheard ? mine : home)
     dispatch({ type: "homeSays", open, at: ports.now() })
   }
   hear()

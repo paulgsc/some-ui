@@ -19,6 +19,7 @@
  */
 import { engage } from "@some-ui/engagement"
 import type {
+  EventAtHome,
   HomeSpan,
   NotesPort,
   OpenSpan,
@@ -223,7 +224,7 @@ export type WorkReach = {
   readonly homeOpen: () => OpenSpan | null | undefined
   readonly onHome: (listener: () => void) => () => void
   readonly homeWeek: (week: string) => ReadonlyArray<HomeSpan>
-  readonly refused: (key: string) => boolean
+  readonly atHome: (key: string) => EventAtHome
 }
 
 /**
@@ -253,7 +254,7 @@ export function phoneWork(reach: WorkReach): WorkPorts {
     record,
     homeOpen: reach.homeOpen,
     onHome: reach.onHome,
-    refused: reach.refused,
+    atHome: reach.atHome,
     send: (): void => {
       change()
       for (const listener of spansKept) listener()
@@ -272,7 +273,7 @@ export function phoneWork(reach: WorkReach): WorkPorts {
     spansOf: (week): ReturnType<WorkPorts["spansOf"]> => ({
       phone: record.list() ?? [],
       home: reach.homeWeek(week),
-      refused: reach.refused,
+      refused: (key): boolean => reach.atHome(key) === "refused",
     }),
     revision: (): number => revision,
     onChange: (listener): (() => void) => {

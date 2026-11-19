@@ -9,7 +9,7 @@ import { homeHoldsWeekSend, onHomeHeard } from "@/lib/home-link/rust-kept"
 import {
   homeWeekSpans,
   onSpansHeard,
-  spanRefused,
+  spanEventAtHome,
   spansOpenAtHome,
 } from "@/lib/home-link/rust-spans"
 import { ideaHome } from "@/lib/idea-hearing"
@@ -49,7 +49,7 @@ const PhoneRustRounds = (): JSX.Element => {
         homeOpen: spansOpenAtHome,
         onHome: onSpansHeard,
         homeWeek: homeWeekSpans,
-        refused: spanRefused,
+        atHome: spanEventAtHome,
       }),
     }),
   }))

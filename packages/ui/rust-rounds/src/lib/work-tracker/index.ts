@@ -18,8 +18,9 @@
  *   until home says it is kept; if it isn't, the question comes back, and
  *   the screen says the answer wasn't kept.
  * - **Home is the authority on what is open.** The runtime sends
- *   `homeSays` only once home has acknowledged every `start` it sent, so
- *   "nothing open" means the span was answered, here or on another device.
+ *   `homeSays` with home's word only once home has acknowledged every event
+ *   it kept; until then, and for a start home hasn't heard, the phone's own
+ *   record speaks (`./runtime`).
  * - **Every record names its points** (C679): a span carries the ticket,
  *   the step, the exercise if any, and the speak-to points of the screen it
  *   was started from.

@@ -5,7 +5,10 @@
  */
 import type { OpenSpan, SpanWhere } from "@rust-rounds/lib/work-tracker"
 import { CAP_MS } from "@rust-rounds/lib/work-tracker"
-import type { SpanEvent } from "@rust-rounds/lib/work-tracker/record"
+import type {
+  EventAtHome,
+  SpanEvent,
+} from "@rust-rounds/lib/work-tracker/record"
 import { workSpans } from "@rust-rounds/lib/work-tracker/record"
 import type {
   TrackerPorts,
@@ -31,6 +34,7 @@ type World = {
   clock: number
   home: OpenSpan | null | undefined
   sends: number
+  readonly said: Record<string, EventAtHome>
   readonly wakeUps: Array<{ at: number; run: () => void; gone: boolean }>
   readonly homeListeners: Set<() => void>
   readonly visibility: Set<(hidden: boolean) => void>
@@ -48,6 +52,7 @@ function setUp(
     clock: T0,
     home: undefined,
     sends: 0,
+    said: {},
     wakeUps: [],
     homeListeners: new Set(),
     visibility: new Set(),
@@ -57,7 +62,7 @@ function setUp(
   const ports: TrackerPorts = {
     record,
     homeOpen: () => w.home,
-    refused: () => false,
+    atHome: (key) => w.said[key] ?? "waiting",
     onHome: (listener) => {
       w.homeListeners.add(listener)
       return () => w.homeListeners.delete(listener)
@@ -284,5 +289,23 @@ describe("the tracker's runtime", () => {
       kind: "running",
       span: { id: "theirs" },
     })
+  })
+
+  it("keeps a start home hasn't heard over what home last said, on every screen", () => {
+    const record = workSpans(inMemoryStorage())
+    const { tracker, world } = setUp(record, { home: null })
+    const detach = tracker.attach()
+    tracker.start(where)
+    detach()
+    tracker.attach()
+    for (const listener of world.homeListeners) listener()
+    expect(tracker.getSnapshot().state).toMatchObject({
+      kind: "running",
+      span: { id: "span-1" },
+    })
+    // Once home holds it, home's word stands: answered on another device.
+    world.said["span-1/start"] = "held"
+    for (const listener of world.homeListeners) listener()
+    expect(tracker.getSnapshot().state.kind).toBe("idle")
   })
 })

@@ -71,9 +71,9 @@ export function spanAtHome(memory: Sent | null): (key: string) => EventAtHome {
   }
 }
 
-/** Whether home refused the event for good, under the pairing held now. */
-export const spanRefused = (key: string): boolean =>
-  spanAtHome(sentUnder(browserLocalStorage, pairing()))(key) === "refused"
+/** What home said of the event, under the pairing held now. */
+export const spanEventAtHome = (key: string): EventAtHome =>
+  spanAtHome(sentUnder(browserLocalStorage, pairing()))(key)
 
 /** Each event's key and what home holds of it: the lane's revision. */
 export const spansRevision = (): string => {
