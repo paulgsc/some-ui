@@ -23,7 +23,10 @@ import type { KeyedStorage } from "@some-ui/core-utils"
 import { weekOpenNow } from "@some-ui/core-utils"
 import type { Prompter } from "@some-ui/shared"
 import {
+<<<<<<< HEAD
   heardOf,
+=======
+>>>>>>> origin/main
   NO_PROMPTER,
   paceOf,
   stepPace,
@@ -40,6 +43,7 @@ import type {
 } from "@some-ui/voice-capture"
 import {
   bundleRuntime,
+  HEARD_FLOOR,
   HOME_UNKNOWN,
   sendsAtHomeSaid,
 } from "@some-ui/voice-capture"
@@ -217,7 +221,21 @@ export function createInterviewWeek(
     prompter.set(
       stepPrompter(
         prompter.getSnapshot(),
+<<<<<<< HEAD
         heardOf(pattern.getSnapshot(), totals, ports.now(), pace.getSnapshot())
+=======
+        take.kind === "recording" && answers !== null && total !== undefined
+          ? {
+              type: "heard",
+              script: answers,
+              level: take.level,
+              floor: HEARD_FLOOR,
+              at: ports.now(),
+              total,
+              pace: pace.getSnapshot(),
+            }
+          : { type: "ended" }
+>>>>>>> origin/main
       )
     )
   }

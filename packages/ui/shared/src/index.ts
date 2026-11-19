@@ -13,7 +13,10 @@ export type { Prompter, PrompterEvent } from "./lib/teleprompter"
 export {
   bandOf,
   DEFAULT_PACE_WPM,
+<<<<<<< HEAD
   heardOf,
+=======
+>>>>>>> origin/main
   NO_PROMPTER,
   PACE_STEP_WPM,
   paceOf,
