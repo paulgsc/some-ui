@@ -731,7 +731,6 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
           name: name ?? null,
         })
       )
-      ports.noteScope?.(id, scopeOf(base, account))
     } catch {
       // Home made a session this phone cannot keep: end it, in the same
       // tap, rather than leave it to expire.
@@ -744,6 +743,8 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
         .catch(() => undefined)
       return "not-kept"
     }
+    // Outside the credential's try: the pairing is kept whatever the note does.
+    ports.noteScope?.(id, scopeOf(base, account))
     return null
   }
 

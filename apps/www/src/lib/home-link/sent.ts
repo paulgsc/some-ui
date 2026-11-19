@@ -203,7 +203,8 @@ export const SCOPE_KEY = "some-ui.home.pairing-scope.v1"
  * (C751), or null when home named none.
  */
 export const scopeOf = (base: string, account: string | null): string | null =>
-  account === null ? null : `${base}#${account}`
+  // An empty account names no account: never one scope two accounts share.
+  account === null || account.trim() === "" ? null : `${base}#${account}`
 
 /**
  * Notes `scope` for pairing `id` (MP1): the link's, as it reads the phone's

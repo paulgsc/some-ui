@@ -15,7 +15,14 @@
  * - _Proof:_ this file, over the real link's pairing and record read, and
  *   `./sent`'s `readSent` and `rememberSent`.
  * - _Tolerance:_ a memory from before MP1 has no scope, so the first
- *   pairing after it starts from nothing once more.
+ *   pairing after it starts from nothing once more. The memory is trusted
+ *   as home's word, and a written reflection it says home holds is let go
+ *   on the phone (`./going`'s `letGoHeldReflections`): carried over, that
+ *   word holds while home keeps what it holds per account, which a home
+ *   restored from an older backup with the same account row would not.
+ *   Voice notes keep their own memory per pairing (HP1, `lib/voice-home`),
+ *   which a new pairing still starts over: their copies are sent again and
+ *   home answers them unchanged.
  */
 import { fakeClock } from "@/test-support/fake-clock"
 import type { HomeAnswer, KeyedStorage } from "@some-ui/core-utils"
@@ -112,17 +119,26 @@ describe("MP1: the memory of what home holds, across pairings", () => {
     expect(held(storage, await paired(link))).toBe("held")
   })
 
-  it("is kept once the next page load reads the pairing record back", async () => {
+  it("is kept by a reinstall whose pairing the next page load reads back", async () => {
     account = "acct-A"
     const storage = inMemoryStorage()
+    remember(storage, await paired(await install(storage)))
+    // Reinstalled and paired again, then the app opened afresh: the scope
+    // noted at pairing is gone (another pairing's noted since, say), and
+    // only the pairing record's read notes it again.
     const credential: { record: string | null } = { record: null }
-    const id = await paired(await install(storage, credential))
-    remember(storage, id)
-    // The scope noted is forgotten (another pairing's noted since, say);
-    // the record's read notes it again.
+    const again = await paired(await install(storage, credential))
     notePairingScope(storage, "someone-else", null)
+    expect(held(storage, again)).toBe(null)
     await install(storage, credential)
-    expect(held(storage, id)).toBe("held")
+    expect(held(storage, again)).toBe("held")
+  })
+
+  it("names no account with an empty one: two accounts never share a scope", async () => {
+    account = ""
+    const storage = inMemoryStorage()
+    remember(storage, await paired(await install(storage)))
+    expect(held(storage, await paired(await install(storage)))).toBe(null)
   })
 
   for (const [what, then] of [

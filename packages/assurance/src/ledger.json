@@ -4194,7 +4194,7 @@
       "store": "phone:pairing-scope",
       "class": "cache",
       "growth": "One record: the pairing this phone holds now and its scope, home's address and the account home named at pairing, or none (MP1, C751); written as the pairing record is read or a pairing is made, replacing the last (`some-ui.home.pairing-scope.v1`).",
-      "horizon": "replaced by the next pairing's; never more than one",
+      "horizon": "replaced by the next pairing's, and kept through an Unpair until then; never more than one",
       "family": "what-is-kept"
     },
     {

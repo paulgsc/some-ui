@@ -7,7 +7,7 @@
     "apps/www/src/lib/home-link/runtime.ts",
     "server:apps/servers/file_host/src/handlers/auth.rs"
   ],
-  "chose": "A pairing to the same home (base address) and the same account keeps the phone's memory of what home holds (`some-ui.home.sent.v1`); another home, another account, or a home that names no account starts fresh. Home names the account at pairing as `account`, the base64url of 16 random bytes stored on the account row (`pairing_scope`), never derived from the subject id.",
+  "chose": "A pairing to the same home (base address) and the same account keeps the phone's memory of what home holds (`some-ui.home.sent.v1`); another home, another account, or a home that names no account starts fresh. Home names the account at pairing as `account`, the base64url of 16 random bytes stored on the account row (`pairing_scope`), never derived from the subject id. Only that memory carries over: voice notes' own per-pairing memory (HP1) still starts over. The memory is trusted as home's word for letting written reflections go on the phone, which holds while home keeps what it holds per account.",
   "options": [
     "keep the memory across a pairing to the same home and account, named by a random per-account scope home answers at pairing (chosen)",
     "the same, with the account named by a salted hash of the subject id",
