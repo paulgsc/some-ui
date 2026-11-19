@@ -23,7 +23,11 @@ import type { Ticket, Week } from "@rust-rounds/lib/formats/week"
 import type { FlowRuntime } from "@rust-rounds/lib/week-play/flow-runtime"
 import type { PasteRuntime } from "@rust-rounds/lib/week-play/paste"
 import { PASTE_MAX, pasteLine } from "@rust-rounds/lib/week-play/paste"
-import { itemOf, pointItem } from "@rust-rounds/lib/week-play/points"
+import {
+  firstItemOf,
+  itemOf,
+  pointItem,
+} from "@rust-rounds/lib/week-play/points"
 import type {
   RustWeekPorts,
   WeekHeard,
@@ -184,7 +188,7 @@ const Brief = (
                 props.flow === null
                   ? dispatch({
                       type: "go",
-                      index: firstItemOf(machine, ticket, i),
+                      index: opensAt(machine, ticket.id, i),
                     })
                   : props.flow.dispatch({
                       type: "openTicket",
@@ -377,20 +381,14 @@ const Review = (props: Parts & { held: HeldWeek }): JSX.Element => {
   )
 }
 
-/**
- * Where a ticket's card opens: its first point, answered point by point
- * (RR24), else the ticket's own item; `i`, the ticket's place, when neither
- * is an item.
- */
-const firstItemOf = (
+/** Where ticket `i` (`ticket`) opens on the cards: its first item, else `i`. */
+const opensAt = (
   machine: BundleMachine<WeekKind>,
-  ticket: Ticket,
+  ticket: string,
   i: number
 ): number => {
-  const point = machine.spec.items.indexOf(pointItem(ticket.id, 1))
-  if (point !== -1) return point
-  const own = machine.spec.items.indexOf(ticket.id)
-  return own === -1 ? i : own
+  const at = firstItemOf(machine.spec.items, ticket)
+  return at === -1 ? i : at
 }
 
 /** How many tickets a send answers, whole or by any point. */
@@ -724,6 +722,9 @@ const Screen = (
   }
 }
 
+/** No flow to hear, where takes go by ticket. */
+const noFlow = (): (() => void) => () => undefined
+
 export const RustWeek = ({
   ports,
   back,
@@ -752,6 +753,10 @@ export const RustWeek = ({
   const pasting = useSyncExternalStore(
     week.paste.subscribe,
     week.paste.getSnapshot
+  )
+  const flowNotice = useSyncExternalStore(
+    week.flow?.subscribe ?? noFlow,
+    () => week.flow?.getSnapshot().notice ?? null
   )
   const snapshot = useTakePattern(desk.pattern)
   const { dispatch } = week.bundle
@@ -806,6 +811,16 @@ export const RustWeek = ({
           flow={week.flow}
           {...(onRounds === undefined ? {} : { onRounds })}
         />
+      )}
+      {flowNotice !== null && (
+        // Said over whatever screen is up, the look over included, which
+        // the flow's step that couldn't keep its mark gave way to (HS1).
+        <Notice
+          tone="danger"
+          onDismiss={() => week.flow?.dispatch({ type: "noticeDismissed" })}
+        >
+          {WORDS.flow.notKept}
+        </Notice>
       )}
       {pasting.notice !== null && (
         <Notice

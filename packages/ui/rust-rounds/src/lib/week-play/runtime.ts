@@ -32,7 +32,7 @@ import type { OnScreen, Open } from "./opens"
 import { stepOpens } from "./opens"
 import type { PasteRuntime } from "./paste"
 import { pasteRuntime } from "./paste"
-import { itemOf, pointItem } from "./points"
+import { firstItemOf, itemOf, pointItem } from "./points"
 import type { WeekAtHome, WeekKind, WeekSent } from "./spec"
 import { weekAtHome, weekMachine } from "./spec"
 import { heardWords, pasteStores, weekDrafts, weeksSent } from "./store"
@@ -114,11 +114,6 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
     onVisibility: ports.onVisibility,
   })
   const sends = weeksSent(ports.storage)
-  /** The bundle's item that opens `ticket`: its first point, else its own. */
-  const firstItem = (ticket: string): number => {
-    const point = machine.spec.items.indexOf(pointItem(ticket, 1))
-    return point === -1 ? machine.spec.items.indexOf(ticket) : point
-  }
   /**
    * Puts the takes on `ticket`, the flow's on screen, where they are on
    * another, and enters the cards from the brief.
@@ -127,7 +122,7 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
     const state = bundle.getSnapshot()
     const on = itemOf(machine.spec.items[state.index] ?? "").ticket
     if (on === ticket && state.screen === "cards") return
-    const index = firstItem(ticket)
+    const index = firstItemOf(machine.spec.items, ticket)
     if (index !== -1) bundle.dispatch({ type: "go", index })
   }
   const flow = ports.perPoint

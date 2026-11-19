@@ -16,7 +16,8 @@
  *   with the recommended, and says so.
  *
  * It renders `lib/week-play/flow-runtime`'s state and forwards taps; every
- * word is `lib/week-play/words`' `flow`. Only the step's own buttons mark a
+ * word is `lib/week-play/words`' `flow`. A change the phone couldn't keep is
+ * said by the week's screen (`RustWeek`), which outlasts these pages. Only the step's own buttons mark a
  * step (`lib/flow`'s `leave`); a swipe or a tap on the step row only moves.
  */
 import type { JSX, ReactNode } from "react"
@@ -43,7 +44,6 @@ import {
   CardLinkBody,
   CodeCard,
   DecisionPick,
-  Notice,
   PageControls,
   usePager,
 } from "@some-ui/shared"
@@ -649,14 +649,6 @@ export const FlowPages = (props: FlowPagesProps): JSX.Element | null => {
           onNext={() => go(at + 1)}
           label={FLOW.paged}
         />
-      )}
-      {view.notice !== null && (
-        <Notice
-          tone="danger"
-          onDismiss={() => flow.dispatch({ type: "noticeDismissed" })}
-        >
-          {FLOW.notKept}
-        </Notice>
       )}
     </div>
   )

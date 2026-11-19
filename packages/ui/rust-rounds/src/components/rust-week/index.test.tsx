@@ -19,6 +19,7 @@ import {
 } from "@rust-rounds/lib/week-play/store"
 import { WEEK_WORDS } from "@rust-rounds/lib/week-play/words"
 import type { HeldWeek } from "@rust-rounds/lib/weeks"
+import type { KeyedStorage } from "@some-ui/core-utils"
 import { inMemoryStorage } from "@some-ui/core-utils"
 import { ONE_TAKE } from "@some-ui/voice-capture"
 import { simulatedPattern, takeButton } from "@some-ui/voice-capture/testing"
@@ -501,6 +502,32 @@ describe("a ticket's flow (RR25, RR29)", () => {
         name: `${first.id} · ${FLOW.steps.academy}`,
       })
     ).toBeInTheDocument()
+  })
+
+  it("says a mark it couldn't keep over the look over it opens", async () => {
+    vi.setSystemTime(new Date("2026-11-19T18:00:00Z"))
+    const kept = inMemoryStorage()
+    let refuse = false
+    const storage: KeyedStorage = {
+      ...kept,
+      getItem: (key) => kept.getItem(key),
+      removeItem: (key) => kept.removeItem(key),
+      setItem: (key, value) => {
+        if (refuse && key.endsWith("week-marks")) throw new Error("full")
+        kept.setItem(key, value)
+      },
+    }
+    render(
+      <RustWeek ports={{ ...ports(), storage, week: FLOWED, perPoint: true }} />
+    )
+    await settle()
+    press(new RegExp(`^${WORDS.ticketLabel(first.id, first.title)}`))
+    press(FLOW.read.skip)
+    refuse = true
+    press(WORDS.toReview)
+    // The look over opens, and the mark that wasn't kept is said over it.
+    expect(screen.getByText(WORDS.review.kept)).toBeInTheDocument()
+    expect(screen.getByText(FLOW.notKept)).toBeInTheDocument()
   })
 
   it("passes the academy by from the read, and says so in the step row", async () => {
