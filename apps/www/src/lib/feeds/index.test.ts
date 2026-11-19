@@ -11,7 +11,8 @@
  * sends that `FEEDS` lacks. Tolerance: home's own list of feeds (paulgsc/server
  * `feeds.rs`, `Feed::parse`) is in no file this repo receives, so a feed home
  * adds before the phone does reads as its name in words and opens nothing
- * until it is added here.
+ * until it is added here. paulgsc/server#989 puts home's feeds in the route
+ * snapshot, so this test can walk them.
  */
 import { describe, expect, it } from "vitest"
 
