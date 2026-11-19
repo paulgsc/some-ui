@@ -23,7 +23,7 @@ export type Pick =
   | { readonly kind: "own" }
 
 /** A fork's decision as it goes home with the week sent. */
-export type Decision = Pick | { readonly kind: "recommended-by-default" }
+type Decision = Pick | { readonly kind: "recommended-by-default" }
 
 /** One pick, as kept. */
 export type PickMade = {

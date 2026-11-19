@@ -4514,6 +4514,18 @@
       "family": "what-is-kept"
     },
     {
+      "store": "phone:rust-rounds-week-picks",
+      "class": "record",
+      "growth": "Per pick the owner makes at a fork of a /2 week (RR29, #3257): the week, ticket, fork, the option picked or their own, and when; only grows (a change that drops or rewrites one is refused), so a decision the academy moved keeps its first pick too; a few a fork, at most six forks a ticket, so tens a week, no cap (`some-ui:rust-rounds.week-picks`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:rust-rounds-week-marks",
+      "class": "record",
+      "growth": "Per step of a week's ticket the owner marks done or skipped (RR25, #3249): the week, ticket, step (read, academy, voice) and when; only grows, and a mark that repeats a step's standing is not kept; a few a step, three steps a ticket, so tens a week, no cap (`some-ui:rust-rounds.week-marks`).",
+      "family": "what-is-kept"
+    },
+    {
       "store": "phone:rust-rounds-week-takes",
       "class": "record",
       "growth": "Per take on a week's ticket (RR13, up to three minutes at 32 kbps, ~720 KB): one current take a ticket, and one a pasted error's note, waiting on the phone until the week is sent or the paste kept (`send: on-confirm`), then going home as a Rust Rounds voice note; a ticket said again after a send (RR22) keeps the take sent, set apart, beside the new one, so a ticket can hold a few; a take let go before it is sent is deleted for good; no count of its own (max = +Infinity), so takes grow until the device's measured room (withRoom, the 25 MiB pool) refuses one; none is evicted to make room (`some-ui:rust-rounds.week-takes`, `some-ui.rust-week-takes`).",
