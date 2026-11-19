@@ -1,0 +1,13 @@
+{
+  "id": "C650",
+  "made": "2026-11-19",
+  "by": "owner",
+  "paths": [
+    "packages/ui/rust-rounds/src/components/rustc-run/index.tsx",
+    "packages/ui/rust-rounds/src/lib/rustc-view/index.ts",
+    "packages/ui/shared/src/components/ui/code-card/index.tsx"
+  ],
+  "chose": "rustc's compile error on a Rust Rounds card or ticket is laid out from its JSON in rustc's own words, order and colours, wrapping to the phone: `error[E0507]: …`, `--> main.rs:9:16`, each labelled span by its line (`^` primary, `-` secondary), each `note:` and `help:` verbatim, a suggestion as a small code card with its line marked `+` and its new text tinted, and rustc's closing lines; nothing rustc said is filtered, and its full printout, coloured as a terminal colours it, is folded under \"What rustc printed\". Layout (b′) of the RR23 prototype, https://claude.ai/artifact/YZPef7MprBvZfuhcYSNKYc. Owner, verbatim: \"I approve the current one now for the last round, so I approve B prime.\"",
+  "undo": "Render `run.stderr` alone in `rustc-run` (its fallback for a run without `diagnostics`), and drop the laid-out view in `lib/rustc-view`.",
+  "refs": ["#3243", "#2231"]
+}

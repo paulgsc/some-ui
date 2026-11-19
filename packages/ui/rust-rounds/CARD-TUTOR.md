@@ -221,7 +221,13 @@ and an `outcome`:
   rustc printed as `stderr`, and the `span` of the first error's primary
   span (or null), with `lineStart`, `columnStart`, `lineEnd` and
   `columnEnd`: rustc's own fields, counted from 1, columns in characters, the
-  end column just past the span;
+  end column just past the span. From a home that records them, it also has
+  `diagnostics`: every diagnostic of rustc's `--error-format=json`, in order,
+  each with its `level`, `code` (or null), `message`, `spans`, `children` (each
+  with its `level`, `message` and `spans`) and `rendered`, the text rustc
+  printed for it (or null). A span has its `file`, `lineStart`, `lineEnd`,
+  `columnStart`, `columnEnd`, whether it `isPrimary`, its `label` (or null)
+  and a suggestion's `suggestedReplacement` (or null);
 - `prints`: it ran and exited normally, with its `stdout`;
 - `panics`: it panicked, with its `stdout` and `stderr`;
 - `stopped`: the sandbox stopped it, or it exited some other way, with
