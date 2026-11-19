@@ -223,6 +223,7 @@ function forksOf(
           model: option.model,
           meets: one.meets,
           breaks: one.breaks,
+          ...(one.because === undefined ? {} : { because: one.because }),
           ...(one.refused === undefined ? {} : { refused: one.refused }),
         },
       ]

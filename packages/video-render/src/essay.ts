@@ -25,8 +25,9 @@
  *      never called "correct";
  *    - `beside`: the best fit beside the owner's answer, each point covered,
  *      partly or missing, with the SOLO level and the whole scale;
- *    - `dive`, twice (K = `ESSAY_DIVES`): the biggest gaps, 2 to 5 minutes
- *      each; a point with no gap goes one step past the ticket.
+ *    - `dive`, twice (K = `ESSAY_DIVES`; once for a ticket of one point):
+ *      the biggest gaps, 2 to 5 minutes each; a point with no gap goes one
+ *      step past the ticket.
  * 3. `weeks`: over the weeks, each concept's SOLO level per week, decay and
  *    fading, and the role line (#2694), all the decay record's derivation
  *    (RR19, `@some-ui/rust-rounds`' `lib/decay`).
@@ -241,7 +242,7 @@ export const essayVersionRefusal = (version: number): string | null =>
 
 /**
  * The essay's format at `version`: its scenes in the order a ticket's are
- * said, each repeated scene once per ticket (`dive` twice). Throws for a
+ * said, each repeated scene once per ticket (`dive` up to twice). Throws for a
  * version this build doesn't know (`essayVersionRefusal`).
  */
 export function essayFormat(version: number = ESSAY_VERSION): Format {
@@ -429,6 +430,8 @@ const ModelSchema = z.strictObject({ id: words, name: words })
 const TradeFields = {
   meets: z.array(constraintId),
   breaks: z.array(constraintId),
+  /** Why, in a few words, as the table's last column says it; a refused one's is rustc's. */
+  because: words.optional(),
   refused: z.strictObject({ code: words, why: words }).optional(),
 }
 
@@ -710,6 +713,7 @@ type Trade = {
   readonly id: string
   readonly meets: ReadonlyArray<string>
   readonly breaks: ReadonlyArray<string>
+  readonly because?: string
   readonly refused?: unknown
 }
 
@@ -770,6 +774,8 @@ export function forkProblems(
         )
     if (trade.meets.some((id) => trade.breaks.includes(id)))
       problems.push(`${at}: ${named} both meets and breaks a constraint`)
+    if (trade.refused === undefined && trade.because === undefined)
+      problems.push(`${at}: ${named} says nothing of why, in a few words`)
     if (
       trade.refused !== undefined &&
       trade.meets.length + trade.breaks.length > 0

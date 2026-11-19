@@ -98,6 +98,7 @@ export function withForks(): Essay {
         model: { id: "owned-is-safe", name: "Owning is always safe" },
         meets: ["F2"],
         breaks: ["S1"],
+        because: "one allocation per field, in the loop",
       },
       {
         id: "B",
@@ -106,6 +107,7 @@ export function withForks(): Essay {
         model: { id: "borrow", name: "Borrow, then reuse" },
         meets: ["S1"],
         breaks: ["F1"],
+        because: "no allocation, but the rate needs a copy",
       },
       {
         id: "C",
@@ -114,6 +116,7 @@ export function withForks(): Essay {
         model: { id: "share", name: "Share instead of copy" },
         meets: [],
         breaks: ["S1", "F2"],
+        because: "a refcount bump per record, and no reuse",
       },
     ],
     best: {
@@ -123,6 +126,7 @@ export function withForks(): Essay {
       model: { id: "arena", name: "An arena per batch" },
       meets: ["S1", "F1", "F2"],
       breaks: [],
+      because: "one allocation per batch, and the rate holds",
     },
     said: "The agent listed three options. None meets all three constraints.",
     judged: {

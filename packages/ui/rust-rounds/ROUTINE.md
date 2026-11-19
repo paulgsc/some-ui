@@ -143,10 +143,13 @@ with one ticket for each of the week's, by its id:
     `{"id","name"}`. The best may be the recommended option, another, or
     hidden; vary it week to week so trusting the agent is never always
     right, and never always wrong.
-  - `options`: every listed option, once, as `{"id","meets","breaks"}`:
+  - `options`: every listed option, once, as
+    `{"id","meets","breaks","because"}`:
     the stated constraints it meets and breaks, by the ids the week gave
     them (`S1` for an SLA row, `F1` for one of the ticket's figures). Name
-    no constraint the week didn't state, and none as both. An option (or
+    no constraint the week didn't state, and none as both. `because` says
+    why in a few words ("one allocation per label, in the loop"); the
+    hidden best takes one too. An option (or
     the hidden best) whose program rustc refuses takes
     `"refused":{"code","why"}`, rustc's code and why, with `meets` and
     `breaks` empty (`[]`).
@@ -164,8 +167,7 @@ with one ticket for each of the week's, by its id:
   the whole ticket was sent and home refuses an essay that plays one.
 - `beside`, for a ticket with points answered on their own: say which take
   each point was judged from, its own or the whole ticket's.
-- `dives`: two deep dives on the ticket's biggest gaps (one, for a ticket
-  of a single fork). A gap is `missing`
+- `dives`: two deep dives on the ticket's biggest gaps (one, for a ticket of a single point). A gap is `missing`
   over `partly` over `covered`, and every point of a silence is a gap. A
   point answered by a take of its own has the gap its own mark says. Each
   dive is `{"point","title","shows","code","said"}`: the point it goes into

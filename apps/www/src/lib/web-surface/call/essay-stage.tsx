@@ -137,18 +137,18 @@ const TradeCell = ({
   id: string
 }): JSX.Element =>
   trade.meets.includes(id) ? (
-    <td className="text-primary py-[0.25em] text-center" title={W.fork.meets}>
+    <td className="text-primary py-[0.12em] text-center" title={W.fork.meets}>
       ✓
     </td>
   ) : trade.breaks.includes(id) ? (
     <td
-      className="text-destructive py-[0.25em] text-center"
+      className="text-destructive py-[0.12em] text-center"
       title={W.fork.breaks}
     >
       ✗
     </td>
   ) : (
-    <td className="py-[0.25em]" />
+    <td className="py-[0.12em]" />
   )
 
 /**
@@ -189,7 +189,7 @@ const ForkPanel = ({
       : []),
   ]
   return (
-    <div className="space-y-[0.5em]">
+    <div className="space-y-[0.35em]">
       {judged !== undefined && (
         <p className="text-[0.7em]">
           {W.fork.summary(
@@ -213,15 +213,16 @@ const ForkPanel = ({
                 {row.id}
               </th>
             ))}
+            <th className="w-[30%] pl-[1em] font-normal">{W.fork.why}</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
             <tr key={row.label} className="border-border border-t">
-              <td className="py-[0.25em] align-top font-semibold">
+              <td className="py-[0.12em] align-top font-semibold">
                 {row.label}
               </td>
-              <td className="py-[0.25em] pr-[1em] align-top">
+              <td className="py-[0.12em] pr-[1em] align-top">
                 <Inline text={row.decision} />
                 {row.tags.length > 0 && (
                   <span className="text-muted-foreground text-[0.85em]">
@@ -229,18 +230,18 @@ const ForkPanel = ({
                   </span>
                 )}
               </td>
-              {row.refused === undefined ? (
-                stated.map((col) => (
-                  <TradeCell key={col.id} trade={row} id={col.id} />
-                ))
-              ) : (
-                <td
-                  colSpan={stated.length}
-                  className="text-destructive py-[0.25em] text-[0.85em]"
-                >
-                  {W.fork.refused(row.refused.code, row.refused.why)}
-                </td>
-              )}
+              {stated.map((col) => (
+                <TradeCell key={col.id} trade={row} id={col.id} />
+              ))}
+              <td
+                className={`py-[0.12em] pl-[1em] align-top text-[0.85em] ${row.refused === undefined ? "text-muted-foreground" : "text-destructive"}`}
+              >
+                {row.refused === undefined ? (
+                  <Inline text={row.because ?? ""} />
+                ) : (
+                  W.fork.refused(row.refused.code, row.refused.why)
+                )}
+              </td>
             </tr>
           ))}
         </tbody>

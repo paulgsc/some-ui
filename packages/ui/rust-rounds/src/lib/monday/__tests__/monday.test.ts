@@ -873,8 +873,18 @@ describe("a fork's best fit (RR29)", () => {
                   fork: 1,
                   best,
                   options: [
-                    { id: "A", meets: [figure()], breaks: ["S1"] },
-                    { id: "B", meets: ["S1"], breaks: [] },
+                    {
+                      id: "A",
+                      meets: [figure()],
+                      breaks: ["S1"],
+                      because: "In a few words.",
+                    },
+                    {
+                      id: "B",
+                      meets: ["S1"],
+                      breaks: [],
+                      because: "In a few words.",
+                    },
                   ],
                   said: "B meets the SLA; A breaks it.",
                 },
@@ -920,6 +930,7 @@ describe("a fork's best fit (RR29)", () => {
         model: { id: "arena", name: "An arena per batch" },
         meets,
         breaks: [],
+        because: "In a few words.",
       },
     })
     expect(problemsOf(forkValues(hidden(["S1", figure()])))).toEqual([])

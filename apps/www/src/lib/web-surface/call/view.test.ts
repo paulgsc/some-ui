@@ -279,6 +279,7 @@ describe("the essay's stage", () => {
           model: { id: "own", name: "Own it" },
           meets: [],
           breaks: ["S1"],
+          because: "In a few words.",
         },
         {
           id: "B",
@@ -287,6 +288,7 @@ describe("the essay's stage", () => {
           model: { id: "borrow", name: "Borrow it" },
           meets: ["S1"],
           breaks: [],
+          because: "In a few words.",
         },
       ],
       best: { kind: "option" as const, option: "B" },

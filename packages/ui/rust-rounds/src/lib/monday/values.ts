@@ -8,7 +8,7 @@
  * Per essay ticket: a best fit for each speak-to point (`bests`), what is said
  * over the question, the best fit and the comparison, the answer's reading
  * (each point covered, partly or missing, and its SOLO level) or, for a
- * silence, the guess at why, and two deep dives. A take home couldn't make
+ * silence, the guess at why, and its deep dives. A take home couldn't make
  * out takes no answer at all: no reading and no guess (HEARD2, #3072). A
  * point answered by a take of its own (RR24) takes its own reading in
  * `points`.
@@ -29,6 +29,8 @@ const StatedIdSchema = z.string().regex(/^[SF][1-9]\d*$/)
 const TradeSchema = {
   meets: z.array(StatedIdSchema),
   breaks: z.array(StatedIdSchema),
+  /** Why, in a few words: the fork scene's last column. */
+  because: TextSchema.optional(),
   /** Its program doesn't build: rustc's code, and why. */
   refused: z.strictObject({ code: TextSchema, why: TextSchema }).optional(),
 }

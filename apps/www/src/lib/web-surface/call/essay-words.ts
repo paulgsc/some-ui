@@ -50,6 +50,7 @@ export const ESSAY_WORDS = {
   fork: {
     option: "Option",
     decision: "Decision",
+    why: "Why",
     recommended: "Recommended",
     best: "Best",
     hidden: "Not listed",

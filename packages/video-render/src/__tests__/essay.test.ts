@@ -697,6 +697,7 @@ describe("a point as a fork (RR29)", () => {
         model: { id: "owned-is-safe", name: "Owning is always safe" },
         meets: ["F2"],
         breaks: ["S1"],
+        because: "In a few words.",
       },
       {
         id: "B",
@@ -705,6 +706,7 @@ describe("a point as a fork (RR29)", () => {
         model: { id: "borrow-reuse", name: "Borrow, then reuse" },
         meets: ["S1", "F1"],
         breaks: [],
+        because: "In a few words.",
       },
     ],
     best: { kind: "option", option: "B" },
@@ -756,6 +758,7 @@ describe("a point as a fork (RR29)", () => {
         model: { id: "arena", name: "An arena per batch" },
         meets: ["S1", "F1", "F2"],
         breaks: [],
+        because: "In a few words.",
       },
     }
     expect(problems(withFork(hidden))).toEqual([])
@@ -801,6 +804,7 @@ describe("a point as a fork (RR29)", () => {
             model: { id: "x", name: "X" },
             meets: ["S1"],
             breaks: [],
+            because: "In a few words.",
           },
         },
         "QM-311 fork 1: the hidden best is no better than B on any stated constraint, so its advantage over B isn't stated",
@@ -857,6 +861,7 @@ describe("a point as a fork (RR29)", () => {
           ...a,
           meets: [],
           breaks: [],
+          because: "In a few words.",
           refused: { code: "E0204", why: "Label holds a String." },
         },
         b,
@@ -868,6 +873,7 @@ describe("a point as a fork (RR29)", () => {
         model: { id: "borrow", name: "Borrow" },
         meets: ["S1", "F1", "F2"],
         breaks: [],
+        because: "In a few words.",
       },
     }
     expect(problems(withFork(refused))).toEqual([])
@@ -883,6 +889,7 @@ describe("a point as a fork (RR29)", () => {
       model: { id: "borrow", name: "Borrow" },
       meets: ["S1", "F1"],
       breaks: [],
+      because: "In a few words.",
     }
     // B meets the same ids but breaks F2: avoiding it is a stated advantage.
     const avoids: EssayFork = {
@@ -973,6 +980,15 @@ describe("a ticket of one point (version 4)", () => {
     })
     const dive = { ...first.dives[0]!, point: 0 }
     expect(parseEssay(one([dive])).ok).toBe(true)
+    // Two points or more still take two, at version 4 too.
+    const short = parseEssay({
+      ...essay,
+      template: { ...essay.template, version: 4 },
+      tickets: [{ ...first, dives: first.dives.slice(0, 1) }, ...rest],
+    })
+    expect(short.ok ? [] : short.problems).toContain(
+      "QM-311: it has 1 deep dives; its points take 2"
+    )
     const two = parseEssay(one([dive, dive]))
     expect(two.ok ? [] : two.problems).toContain(
       "QM-311: it has 2 deep dives; its points take 1"

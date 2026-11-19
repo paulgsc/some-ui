@@ -7,7 +7,7 @@
     "packages/video-render/src/templates/rust-essay/v4.json",
     "apps/www/src/lib/web-surface/call/essay-stage.tsx"
   ],
-  "chose": "Essay template version 4 draws each fork in a `fork` scene of its own after the beside scene (D4): once the decision is on record, a line saying what you chose, what the agent recommended and the best; a table of every listed option and a hidden best (★, \"Not listed\") against the ticket's stated ids (✓ meets, ✗ breaks, or one row \"Doesn't build\" with rustc's code), tagged Recommended, Best and Yours; the ids' words; for a hidden best, \"What an astute observer would have called out\" and its why; and the A→A′ axis with the verdict (best, close or off). The judgement is optional until the record carries the decision (RR28).",
+  "chose": "Essay template version 4 draws each fork in a `fork` scene of its own after the beside scene (D4): once the decision is on record, a line saying what you chose, what the agent recommended and the best; a table of every listed option and a hidden best (★, \"Not listed\") against the ticket's stated ids (✓ meets, ✗ breaks, or one row \"Doesn't build\" with rustc's code), tagged Recommended, Best and Yours, with each row's few-word `because` (or rustc's reason for one that doesn't build) in a last \"Why\" column, as D4 shows; the ids' words; for a hidden best, \"What an astute observer would have called out\" and its why; and the A→A′ axis with the verdict (best, close or off). The judgement is optional until the record carries the decision (RR28).",
   "options": [
     "a scene per fork after the beside scene",
     "one table per ticket",
