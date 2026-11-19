@@ -1,0 +1,19 @@
+{
+  "id": "C635",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/studio-index/words.ts",
+    "some-ui:apps/www/src/lib/call-videos/words.ts",
+    "some-ui:apps/www/src/lib/episodes-feed/words.ts"
+  ],
+  "chose": "The report feed is named \"The engagement report\" everywhere (Studio, Renders, its episode pages, My data), its chip under Episodes is \"Engagement\", and an episode is named by its year and ISO week (\"2026, week 46\").",
+  "options": [
+    "\"The engagement report\", the owner's own words on #2700",
+    "\"Your week in practice\"",
+    "\"The weekly report\""
+  ],
+  "gray": "The owner asked what the video was and named it \"my engagement report for the week\" on #2700, but no screen name was decided; the name is what the owner reads on every Studio screen.",
+  "undo": "Change `FEED_FACTS.report.name` and the Episodes chip in `EPISODES_FEED_WORDS.genre`; every screen reads them.",
+  "refs": ["#3235", "#2700"]
+}

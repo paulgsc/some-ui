@@ -70,6 +70,7 @@ const PREFIX: Record<VideoOwner, string> = {
   "essay-page": "cards-essay-",
   "interview-essay": "interview-essay-",
   "playoff-delta": "playoff-delta-",
+  report: "report-",
   "rust-essay": "rust-essay-",
   preview: "preview-",
 }

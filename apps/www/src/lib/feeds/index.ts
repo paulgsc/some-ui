@@ -13,6 +13,7 @@ export const FEEDS = [
   "cards-essay",
   "interview-essay",
   "playoff-delta",
+  "report",
   "rust-essay",
 ] as const
 
@@ -27,6 +28,7 @@ export const LINKED_FEEDS = [
   "cards-essay",
   "interview-essay",
   "playoff-delta",
+  "report",
   "rust-essay",
 ] as const satisfies ReadonlyArray<Feed>
 
@@ -43,6 +45,7 @@ export const isLinked = (feed: Feed): boolean =>
 export const LET_GO_FEEDS = [
   "call",
   "playoff-delta",
+  "report",
   "rust-essay",
 ] as const satisfies ReadonlyArray<(typeof LINKED_FEEDS)[number]>
 
@@ -65,5 +68,6 @@ export const FEED_TEMPLATES: Readonly<Record<Feed, ReadonlyArray<TemplateId>>> =
     // Templates doesn't list yet.
     "interview-essay": [],
     "playoff-delta": ["playoff-delta-legend", "playoff-delta-week"],
+    report: ["engagement-report"],
     "rust-essay": ["rust-essay"],
   }

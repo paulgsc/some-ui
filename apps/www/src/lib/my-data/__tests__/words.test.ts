@@ -6,6 +6,7 @@
  */
 import { describe, expect, it } from "vitest"
 
+import { LET_GO_FEEDS } from "@/lib/feeds"
 import { lengthOf } from "@/lib/format"
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
 import { KINDS } from "@/lib/my-data/model"
@@ -199,7 +200,11 @@ describe("My data's words", () => {
       CALL_DELETING.video("95 MB"),
       CALL_DELETING.rest("1.2 GB"),
       CALL_DELETING.goes.video("95 MB"),
-      CALL_DELETING.goes.rest("1.2 GB"),
+      ...LET_GO_FEEDS.flatMap((feed) => [
+        CALL_DELETING.goes.rest("1.2 GB", feed),
+        CALL_DELETING.stays(feed),
+        CALL_DELETING.episode(feed, "2026-W46"),
+      ]),
       CALL_DELETING.gone(itemName(AT)),
     ]
     expect(said.filter((text) => MACHINERY.test(text))).toEqual([])
