@@ -1,0 +1,16 @@
+{
+  "id": "C780",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": ["server:infra/render/render-calls.sh"],
+  "chose": "The rust-essay and interview-essay jobs share one length cap, 60 minutes, set by ESSAY_MAX_VIDEO_MINUTES; the interview essay no longer keeps 15. The owner (2026-11-19, relayed by the coordinator): \"If the new interview collides with some contrived policy limit of duration, just update the duration limit or retire it altogether. We view them as suggestions.\" At the measured rates an hour is about 280 MB finished and 990 MB of segments, under the size and step-cache caps.",
+  "options": [
+    "both essays share 60 minutes",
+    "rust-essay 30, interview-essay 15 (C500)",
+    "retire the length cap and keep only the size caps"
+  ],
+  "gray": "The owner treats duration limits as suggestions to move with the story but named no number; a single shared cap with room for the interview's longer opening is one reading.",
+  "undo": "In render-calls.sh `max_minutes`, take interview-essay out of the essay case and set ESSAY_MAX_VIDEO_MINUTES back to 30.",
+  "moves": "C500",
+  "refs": ["#3197", "#3269", "server#930"]
+}
