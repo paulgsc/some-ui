@@ -108,6 +108,85 @@ const E0277: RustcRun = {
   stderr:
     "error[E0277]: the type `str` cannot be indexed by `usize`\n --> main.rs:4:15\n  |\n4 |     let c = s[r];\n  |               ^ string indices are ranges of `usize`\n  |\n  = help: the trait `SliceIndex<str>` is not implemented for `usize`\nhelp: `usize` implements trait `SliceIndex<T>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/slice/index.rs:214:0\n  |\n  = note: `SliceIndex<[T]>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/bstr/traits.rs:197:0\n  |\n  = note: `SliceIndex<ByteStr>`\n  = note: required for `str` to implement `Index<usize>`\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0277`.\n",
   span: { lineStart: 4, columnStart: 15, lineEnd: 4, columnEnd: 16 },
+  // rustc 1.97.0's `--error-format=json` for the same compile, as home
+  // records it (RR23): each diagnostic's `rendered` joins to `stderr`.
+  diagnostics: [
+    {
+      level: "error",
+      code: "E0277",
+      message: "the type `str` cannot be indexed by `usize`",
+      spans: [
+        {
+          file: "main.rs",
+          lineStart: 4,
+          lineEnd: 4,
+          columnStart: 15,
+          columnEnd: 16,
+          isPrimary: true,
+          label: "string indices are ranges of `usize`",
+          suggestedReplacement: null,
+        },
+      ],
+      children: [
+        {
+          level: "help",
+          message: "the trait `SliceIndex<str>` is not implemented for `usize`",
+          spans: [],
+        },
+        {
+          level: "help",
+          message: "`usize` implements trait `SliceIndex<T>`",
+          spans: [
+            {
+              file: "/rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/bstr/traits.rs",
+              lineStart: 197,
+              lineEnd: 197,
+              columnStart: 1,
+              columnEnd: 42,
+              isPrimary: true,
+              label: "`SliceIndex<ByteStr>`",
+              suggestedReplacement: null,
+            },
+            {
+              file: "/rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/slice/index.rs",
+              lineStart: 214,
+              lineEnd: 214,
+              columnStart: 1,
+              columnEnd: 47,
+              isPrimary: true,
+              label: "`SliceIndex<[T]>`",
+              suggestedReplacement: null,
+            },
+          ],
+        },
+        {
+          level: "note",
+          message: "required for `str` to implement `Index<usize>`",
+          spans: [],
+        },
+      ],
+      rendered:
+        "error[E0277]: the type `str` cannot be indexed by `usize`\n --> main.rs:4:15\n  |\n4 |     let c = s[r];\n  |               ^ string indices are ranges of `usize`\n  |\n  = help: the trait `SliceIndex<str>` is not implemented for `usize`\nhelp: `usize` implements trait `SliceIndex<T>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/slice/index.rs:214:0\n  |\n  = note: `SliceIndex<[T]>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/bstr/traits.rs:197:0\n  |\n  = note: `SliceIndex<ByteStr>`\n  = note: required for `str` to implement `Index<usize>`\n\n",
+    },
+    {
+      level: "error",
+      code: null,
+      message: "aborting due to 1 previous error",
+      spans: [],
+      children: [],
+      rendered: "error: aborting due to 1 previous error\n\n",
+    },
+    {
+      level: "failure-note",
+      code: null,
+      message:
+        "For more information about this error, try `rustc --explain E0277`.",
+      spans: [],
+      children: [],
+      rendered:
+        "For more information about this error, try `rustc --explain E0277`.\n",
+    },
+  ],
 }
 
 const PANIC: RustcRun = {
