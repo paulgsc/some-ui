@@ -34,7 +34,7 @@ import type {
   VideosState,
 } from "@/lib/call-videos/model"
 import { homeBytes, listedEpisode, standing } from "@/lib/call-videos/model"
-import { isLinked, isNoted } from "@/lib/feeds"
+import { isLinked } from "@/lib/feeds"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import { CopyButton } from "@/components/copy-button"
 import { EpisodeNote } from "@/components/studio/episode-feedback"
@@ -78,9 +78,7 @@ const Watching = ({
         <Button size="sm" onClick={() => void videos.share(episode.key)}>
           {WORDS.share}
         </Button>
-        {isNoted(feed) && (
-          <EpisodeNote feed={feed} episode={episode.key} video={video} />
-        )}
+        <EpisodeNote feed={feed} episode={episode.key} video={video} />
       </div>
     )
   }

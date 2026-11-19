@@ -1,0 +1,15 @@
+{
+  "id": "C624",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": ["docs/ui-studies/interview-cold-read.md"],
+  "chose": "The prototype draws decision drills as a third kind and a History page across the study wings, and recommends the first page list only the kinds that are built.",
+  "options": [
+    "draw both, and list only built kinds on the phone",
+    "draw the drills only once IW13 is designed",
+    "leave History out of the interview's prototype"
+  ],
+  "gray": "Neither IW13's screens nor a History page has been designed, and the owner asked for both in their own words.",
+  "undo": "Drop the drill and History phones from the prototype.",
+  "refs": ["#2931", "#3197"]
+}

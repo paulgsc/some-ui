@@ -1,0 +1,15 @@
+{
+  "id": "C621",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": ["docs/ui-studies/interview-cold-read.md"],
+  "chose": "The interview pages were rendered from the ui-fit phone page under the mobile profile (WEEK_2 over the fixture's ports), with two scratch fixtures left uncommitted, since the lan and pages profiles render none of the _apk pages.",
+  "options": [
+    "the ui-fit phone page under the mobile profile",
+    "the lan or pages build, mocking build-profile and the device backend",
+    "a real APK on an emulator"
+  ],
+  "gray": "The brief named the lan or pages profile, which cannot render these pages; which stand-in to use was open.",
+  "undo": "Re-render on an emulator's APK and re-run the readers.",
+  "refs": ["#2931", "#3197"]
+}

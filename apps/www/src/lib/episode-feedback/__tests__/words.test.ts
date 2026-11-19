@@ -28,6 +28,7 @@ const all = [
   ...[1, 2].map(FEEDBACK_WORDS.onThis),
   FEEDBACK_WORDS.onHome("2026-11-14T03:01:00.000Z", "2026-11-14"),
   FEEDBACK_WORDS.onHome("2025-11-14T03:01:00.000Z", "2026-11-14"),
+  FEEDBACK_WORDS.home.notYet(["Cards essays", "The Rust Rounds essay"]),
 ]
 
 describe("feedback's words", () => {
@@ -38,6 +39,12 @@ describe("feedback's words", () => {
 
   it("names no machinery, in any line it can say", () => {
     expect(all.filter((line) => MACHINERY.test(line))).toEqual([])
+  })
+
+  it("names the feeds whose notes wait mid-sentence", () => {
+    expect(FEEDBACK_WORDS.home.notYet(["The interview essay"])).toContain(
+      "notes on the interview essay yet"
+    )
   })
 
   it("says a moment the way the player's clock reads", () => {

@@ -1,0 +1,19 @@
+{
+  "id": "C631",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": [
+    "packages/ui/shared/src/components/ui/card-link/index.tsx",
+    "apps/www/src/components/jobs/interview/to.tsx",
+    "apps/www/src/components/studio/renders.tsx"
+  ],
+  "chose": "CardLink draws a link through its child (asChild, as Button does), so each caller's router link keeps its typed path; the card's words go in CardLinkBody and the chevron is the part's. The interview's CARD_LINK class is replaced by CardTo, its one wrapper, and deleted.",
+  "options": [
+    "asChild over the caller's link",
+    "a CardLink that takes a router path itself",
+    "a class string only, with each caller adding the chevron"
+  ],
+  "gray": "Shared code can't name www's router, and a class alone lets each wing draw its own chevron, which the owner ruled out (reuse, never a per-wing copy).",
+  "undo": "Inline the look back into each caller; restore CARD_LINK in to.tsx.",
+  "refs": ["#3234"]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "C613",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/ui/soundbites/src/lib/library/compartments.ts",
+    "some-ui:packages/ui/game-week/src/components/game-week/index.tsx",
+    "some-ui:apps/www/src/routes/_dashboard/_apk/game-week.tsx"
+  ],
+  "chose": "Filters are counted chips in one bar: where it's kept, kind (in All), what it's about, how it stands (Heard, Not heard yet, No words heard, Set aside) and the conveyor's stations; order is Newest, Oldest or By what it's about; Game day links \"Your takes from this game\" to Game day's compartment opened on that game's chip (?about=), and with no game picked to the compartment unfiltered.",
+  "options": [
+    "these chips, order buttons and a Game day link",
+    "a separate \"Your bites\" page on Game day",
+    "filters in a sheet behind one button"
+  ],
+  "gray": "The filter set, the status names and Game day's way in are what the owner uses to find a take, and no check or earlier decision names them.",
+  "undo": "Edit chipCounts and LIBRARY_WORDS.status/order; remove takesLink from the game-week route.",
+  "refs": ["#3219", "#3029"]
+}

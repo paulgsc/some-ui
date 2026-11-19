@@ -1,8 +1,9 @@
 /** @vitest-environment node */
 import type { TakeAbout } from "@soundbites/lib/library/compartments"
 import { COMPARTMENTS, TAKE_KINDS } from "@soundbites/lib/library/compartments"
+import { ABOUT_PORTS, NO_NAMES } from "@soundbites/lib/library/kinds"
 import type { LibraryBy } from "@soundbites/lib/library/model"
-import { LIBRARY_WORDS } from "@soundbites/lib/library/words"
+import { ABOUT_WORDS, LIBRARY_WORDS } from "@soundbites/lib/library/words"
 import { describe, expect, it } from "vitest"
 
 /**
@@ -36,6 +37,23 @@ const ABOUTS: ReadonlyArray<TakeAbout> = [
   { kind: "ask", ask: null, number: 2876 },
   { kind: "ask", ask: null, number: null },
   { kind: "here" },
+  // TAKES20: every other kind, as its port says it from what home was told.
+  ABOUT_PORTS.game(
+    {
+      ref: "401772",
+      fields: {
+        strip: "Q3 8:42 · SF 17, SEA 13",
+        scenario: "fourth-down",
+        started: AT,
+      },
+    },
+    NO_NAMES,
+    ABOUT_WORDS
+  ),
+  ABOUT_PORTS.interview({ ref: "2026-w47:read:intro" }, NO_NAMES, ABOUT_WORDS),
+  ABOUT_PORTS.soundbite({ ref: "direct" }, NO_NAMES, ABOUT_WORDS),
+  ABOUT_PORTS.soundbite({ ref: "lesson" }, NO_NAMES, ABOUT_WORDS),
+  ABOUT_PORTS.scene({ ref: "next-scene" }, NO_NAMES, ABOUT_WORDS),
 ]
 
 /** Every word the table says: each fixed one, and each a maker makes. */
@@ -54,6 +72,10 @@ function everyWord(): Array<string> {
     place,
     onHomeSince,
     openEpisode,
+    status,
+    order,
+    letGone,
+    countedSoFar,
     ...fixed
   } = LIBRARY_WORDS
   const counts: ReadonlyArray<[number, number, number | null]> = [
@@ -67,6 +89,22 @@ function everyWord(): Array<string> {
   ]
   return [
     ...Object.values(fixed),
+    ...Object.values(status),
+    ...Object.values(order),
+    letGone("let-go"),
+    letGone("deleted"),
+    countedSoFar(50, 120),
+    ...BY.flatMap((by) =>
+      (["oldest", "topic"] as const).flatMap((order) => [
+        shown(by, "brand", 3, 120, 3, order, true),
+        shown(by, null, 50, 120, null, order, true),
+        shown(by, null, 1, 1, null, order),
+      ])
+    ),
+    ABOUT_WORDS.week(47),
+    ABOUT_WORDS.read,
+    ABOUT_WORDS.gameOn("Nov 16"),
+    ABOUT_WORDS.aGame,
     ...TAKE_KINDS.flatMap((kind) => Object.values(kinds[kind])),
     ...COMPARTMENTS.flatMap((each) => [compartmentHeading(each), empty(each)]),
     countedFrom(50, 120),
@@ -132,6 +170,15 @@ describe("Takes on home's words (ST32)", () => {
     expect(LIBRARY_WORDS.subject(ask!)).toBe("Should a canned take show?")
     expect(LIBRARY_WORDS.subject(askBare!)).toBe("The ask #2876")
     expect(LIBRARY_WORDS.subject({ kind: "here" })).toBeNull()
+  })
+
+  it("say what every other kind is about, through its port", () => {
+    const bite = ABOUTS.find((about) => about.kind === "bite")!
+    expect(LIBRARY_WORDS.subject(bite)).toMatch(/^A game on /)
+    expect(LIBRARY_WORDS.detail(bite)).toBe("Q3 8:42")
+    const read = ABOUTS.find((about) => about.kind === "interview")!
+    expect(LIBRARY_WORDS.subject(read)).toBe("Week 47")
+    expect(LIBRARY_WORDS.detail(read)).toBe("Read aloud · intro")
   })
 
   it("say how many home keeps, and that the newest come first", () => {
