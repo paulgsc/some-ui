@@ -428,7 +428,9 @@ function printedLine(line: string): ReadonlyArray<PrintedRun> {
     // A numbered row is the program's own line, kept plain. An unnumbered
     // one is rustc's: markers and their labels, or a multi-line span's
     // `|____^` and its label, or a label alone under the `|` joining it to
-    // its span; primary where a `^` is, as rustc colours it.
+    // its span. Such a row is one colour: primary if it holds a `^`, else
+    // secondary, which leaves a primary label pushed under its `|` coloured
+    // secondary (rustc colours it primary; the text is unchanged).
     if (number !== "") return [head, { text: rest, tone: "plain" }]
     const markers = markerRuns(rest)
     if (markers !== null) return [head, ...markers]
