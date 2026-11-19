@@ -519,12 +519,14 @@ export const happens = (action: string, does: string, arg?: unknown): Tap => ({
 
 /**
  * Each of `fixtures` on the phone page at each of `PHONE_VIEWPORTS`, one
- * test apiece: it loads without an error, shows a paragraph, and fits the
+ * test apiece: it loads without an error, shows what `ready` names (a
+ * paragraph, unless a screen says everything in its links), and fits the
  * phone (`expectFitsPhone`).
  */
 export function fitsEachPhone(
   title: string,
-  fixtures: ReadonlyArray<string>
+  fixtures: ReadonlyArray<string>,
+  ready: "p" | "a" = "p"
 ): void {
   test.describe(title, () => {
     const PAGE = servePhonePage()
@@ -542,7 +544,9 @@ export function fitsEachPhone(
           const errors: Array<string> = []
           page.on("pageerror", (error) => errors.push(error.message))
           await page.goto(PAGE.url(fixture), { waitUntil: "load" })
-          await expect(page.locator("[data-fit-slot] p").first()).toBeVisible()
+          await expect(
+            page.locator(`[data-fit-slot] ${ready}`).first()
+          ).toBeVisible()
           expect(errors, errors.join("\n")).toEqual([])
           await expectFitsPhone(page, fixture)
         })
