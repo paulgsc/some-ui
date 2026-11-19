@@ -33,17 +33,20 @@
       {
         "n": 1,
         "ask": "What is Rust Rounds, in plain words?",
-        "transcript": "paulgsc here. Rust Rounds is a small Rust program from a company I make up, every week, and the decisions it asks for. I work each one at my desk, then say what I'd choose, and why."
+        "transcript": "paulgsc here. Rust Rounds is a small Rust program from a company I make up, every week, and the decisions it asks for. I work each one at my desk, then say what I'd choose, and why.",
+        "take": "sample-opening-1"
       },
       {
         "n": 2,
         "ask": "Why do it every week?",
-        "transcript": "Because I make decisions all day without knowing every trade-off. This is where I practise that: pick, say why, and see what my picks say about how I think."
+        "transcript": "Because I make decisions all day without knowing every trade-off. This is where I practise that: pick, say why, and see what my picks say about how I think.",
+        "take": "sample-opening-2"
       },
       {
         "n": 3,
         "ask": "What should someone watching take from this?",
-        "transcript": "How a decision gets made, out loud, with the code on the screen. There is no last round: next week there's another company, and I'll be back."
+        "transcript": "How a decision gets made, out loud, with the code on the screen. There is no last round: next week there's another company, and I'll be back.",
+        "take": "sample-opening-3"
       }
     ]
   },

@@ -625,8 +625,11 @@ export const EssaySchema = z.strictObject({
   /**
    * The opening conversation (#3269, C738): each question asked and what
    * home heard in the owner's newest take of its answer, by the question's
-   * place in the week's opening (from 1), in order. Absent when no answer
-   * has a take to play; a question whose answer has none is left out.
+   * place in the week's opening (from 1), in order, with that take's voice
+   * note id, so home plays exactly the take these words are of and refuses
+   * the essay once a newer take or a deletion replaces it (C736). Absent
+   * when no answer has a take to play; a question whose answer has none is
+   * left out.
    */
   opening: z
     .strictObject({
@@ -636,6 +639,7 @@ export const EssaySchema = z.strictObject({
             n: z.int().min(1).max(CONVERSATION_MOST),
             ask: words,
             transcript: words,
+            take: z.string().regex(/^[A-Za-z0-9._:-]{1,64}$/),
           })
         )
         .min(1)
