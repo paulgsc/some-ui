@@ -72,8 +72,12 @@ const SHOWN = [
 const BANNED: ReadonlyArray<[string, RegExp]> = [
   [
     "a score or verdict",
-    /\b(score|points?|correct|incorrect|wrong|right answer|verdict|grade|pass|fail(ed)?\b)/i,
+    /\b(score|correct|incorrect|wrong|right answer|verdict|grade|pass|fail(ed)?\b)/i,
   ],
+  // A ticket's speak-to points are named (RR24, the owner's approved words:
+  // "Speak to each point", "Point 2 of 8"); points counted as a score never
+  // are. A count of points is only ever of points said.
+  ["points scored", /\b\d+\s*points?\b(?! said)/i],
   ["what you said, judged", /\byou said\b/i],
   ["a level, streak or XP", /\b(level|streak|xp)\b/i],
   [

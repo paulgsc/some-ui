@@ -897,7 +897,13 @@ describe("LA8: the phone reaches home through one module", () => {
       .filter((f) =>
         /import \{[^}]*\} from "[^"]*compat-read(\.ts)?"/.test(read(f))
       )
-    expect(askers).toEqual(["lib/home-link/lanes.ts"])
+    // The one ask lives in `serves-now` (RR24), which others read without
+    // asking; only the marks' wiring makes it.
+    expect(askers).toEqual(["lib/home-link/serves-now.ts"])
+    const runners = sourceFiles()
+      .filter((f) => !isTestFile(f) && f !== "lib/home-link/serves-now.ts")
+      .filter((f) => /\bservesRun\(/.test(read(f)))
+    expect(runners).toEqual(["lib/home-link/lanes.ts"])
   })
 
   it("sends nothing from the read of what home deleted but one GET of /voice-notes/deleted, and only My data reads it (MD3)", () => {

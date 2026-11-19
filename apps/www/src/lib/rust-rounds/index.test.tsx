@@ -23,7 +23,7 @@ import {
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { notesPort } from "@/lib/rust-rounds"
+import { isPointLine, notesPort } from "@/lib/rust-rounds"
 import type { TestDesk } from "@/lib/takes-desk/__tests__/desk"
 import { testDesk } from "@/lib/takes-desk/__tests__/desk"
 
@@ -151,5 +151,24 @@ describe("Rust Rounds on the simulated microphone", () => {
         name: TAKE_WORDS.rowLabel(TAKE_WORDS.redo, 3_000),
       })
     ).toBeTruthy()
+  })
+})
+
+/**
+ * RR24: a week's take of one speak-to point waits on this phone until home
+ * says it serves points (`home-link/voice-copy`); this is how one is told
+ * from a take of a whole ticket, which goes as ever.
+ */
+describe("a take of one point (RR24)", () => {
+  it("is told by the point its line names", () => {
+    for (const line of ["2026-w46:QM-311:1", "2026-w46:QM-311:12"])
+      expect(isPointLine(line)).toBe(true)
+    for (const line of [
+      "2026-w46:QM-311",
+      "2026-w46:PASTE:2026-11-09T17:04:00.000Z",
+      "2026-w46:QM-311:0",
+      "2026-w46:QM-311:100",
+    ])
+      expect(isPointLine(line)).toBe(false)
   })
 })
