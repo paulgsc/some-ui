@@ -10,7 +10,8 @@
  * hand left the script's window. Proof: "never moves the script back when
  * a take ends", below, over every half word of the script; and the read's
  * page in `components/jobs/interview/__tests__/interview.test.tsx`, whose
- * window, scrolled by hand, stays where it was when the take stops.
+ * window, scrolled by hand, stays where it was when the take stops and
+ * through a resize after it.
  */
 import { HEARD_FLOOR } from "@some-ui/voice-capture"
 import { describe, expect, it } from "vitest"

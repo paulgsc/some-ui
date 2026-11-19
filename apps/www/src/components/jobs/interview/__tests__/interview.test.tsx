@@ -184,6 +184,9 @@ describe("the interview week's pages on the phone (IW8)", () => {
     await settle()
     expect(lit()).toBe(read)
     expect(view.scrollTop).toBe(500)
+    // Nor does turning the phone after it.
+    fireEvent(window, new Event("resize"))
+    expect(view.scrollTop).toBe(500)
 
     await follow(WORDS.reads)
     screen.getByText(
