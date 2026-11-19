@@ -151,7 +151,7 @@ const conceptsOf = z
 const speakToCount = `a ticket has ${SPEAK_TO_MIN} or ${SPEAK_TO_MAX} speak-to points`
 
 /** A `/1` ticket. */
-export const TicketV1Schema = z.strictObject({
+const TicketV1Schema = z.strictObject({
   id: KeySchema,
   title: TextSchema,
   /** What the ticket asks, in the scenario's terms. */
