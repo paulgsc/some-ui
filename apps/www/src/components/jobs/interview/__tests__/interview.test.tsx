@@ -17,10 +17,18 @@ import { takeButton } from "@some-ui/voice-capture/testing"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { fakePorts, WEEK, WEEK_2 } from "@/lib/interview-week/__tests__/fixture"
+import {
+  fakePorts,
+  OPENING_CARD_OF_WEEK,
+  WEEK,
+  WEEK_2,
+  WEEK_2_OPENED,
+} from "@/lib/interview-week/__tests__/fixture"
 import { CUE_SECONDS } from "@/lib/interview-week/cue"
+import { readItem } from "@/lib/interview-week/spec"
 import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 import { RoutedInterview } from "@/components/jobs/interview/__tests__/routed"
+import { labelOf } from "@/components/jobs/interview/run"
 
 // The pages are the Android app's alone (AUDIENCES.md A3); tests run another profile.
 vi.mock("@/lib/build-profile", () => ({ hasAudience: (): boolean => true }))
@@ -150,6 +158,20 @@ describe("the interview week's pages on the phone (IW8)", () => {
     await settle(CUE_SECONDS * 1000)
     await settle(2_000)
     expect(document.querySelector('[data-script="epic-2931"]')).toBe(script)
+    // The band moves while the take hears you, and Pause holds it (IW9).
+    const lit = (): string | null | undefined =>
+      script?.querySelector('[aria-current="true"]')?.getAttribute("data-line")
+    expect(lit()).toBe("0")
+    // The first line's eleven words take about 5 s at the band's pace.
+    await settle(6_000)
+    expect(lit()).not.toBe("0")
+    fireEvent.click(screen.getByRole("button", { name: WORDS.band.pause }))
+    screen.getByText(WORDS.band.paused)
+    const held = lit()
+    await settle(3_000)
+    expect(lit()).toBe(held)
+    fireEvent.click(screen.getByRole("button", { name: WORDS.band.goOn }))
+    screen.getByRole("button", { name: WORDS.band.pause })
     fireEvent.click(takeButton(card))
     await settle()
 
@@ -190,6 +212,30 @@ describe("the interview week's pages on the phone (IW8)", () => {
     await settle()
     screen.getByText(WORDS.study.work)
     expect(screen.getAllByText("some-ui#3170").length).toBeGreaterThan(0)
+  })
+
+  it("lists the essay's opening first in Read aloud, and reads it as any card (IW10)", async () => {
+    open(WEEK_2_OPENED, "/jobs/interview/reads")
+    await settle()
+    const links = screen.getAllByRole("link").map((link) => link.textContent)
+    const first = links.findIndex((text) => text.startsWith(WORDS.opening))
+    const read = links.findIndex((text) =>
+      text.startsWith(WEEK_2.cards[0].situation)
+    )
+    expect(first).toBeGreaterThanOrEqual(0)
+    expect(first).toBeLessThan(read)
+    screen.getByText("I'm paulgsc.")
+    await follow(new RegExp(`^${WORDS.opening}`))
+    const script = document.querySelector(
+      `[data-script="${OPENING_CARD_OF_WEEK.id}"]`
+    )
+    expect(script?.textContent).toContain("one more week of it")
+    expect(labelOf(WEEK_2_OPENED, readItem(OPENING_CARD_OF_WEEK.id))).toBe(
+      WORDS.opening
+    )
+    expect(labelOf(WEEK_2_OPENED, readItem(WEEK_2.cards[0].id))).toBe(
+      WORDS.readLabel(1)
+    )
   })
 
   it("gives a week written before ready answers its cues from what to cover", async () => {

@@ -7,7 +7,11 @@ import { execFileSync } from "node:child_process"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import type { Prepared } from "@interview-week/lib/monday/bundle"
-import { prepare, WEEK_FILE } from "@interview-week/lib/monday/bundle"
+import {
+  ESSAY_FILE,
+  prepare,
+  WEEK_FILE,
+} from "@interview-week/lib/monday/bundle"
 import type { Doc } from "@interview-week/lib/monday/corpus"
 import {
   callsOf,
@@ -37,13 +41,16 @@ import { z } from "zod"
 
 import { remadeBundle, root, routineCommand, writeOut } from "./routine"
 
-/** `brief`'s interview weeks, and the command that reads the last week's epics. */
+/**
+ * `brief`'s interview weeks and essays (an essay's `next` feeds the week's
+ * opening, IW10), and the command that reads the last week's epics.
+ */
 async function pull(dir: string): Promise<void> {
   const mailbox = mailboxFromEnv()
   await mkdir(join(dir, "brief"), { recursive: true })
   let count = 0
   for (const item of await list(mailbox, "brief")) {
-    if (!WEEK_FILE.test(item.name)) continue
+    if (!WEEK_FILE.test(item.name) && !ESSAY_FILE.test(item.name)) continue
     await writeFile(
       join(dir, "brief", item.name),
       jsonText(await get(mailbox, "brief", item))
@@ -53,7 +60,7 @@ async function pull(dir: string): Promise<void> {
   const { from, to } = factsWindow(pacificDay(new Date()))
   console.log(
     [
-      `pulled ${count} interview weeks`,
+      `pulled ${count} interview weeks and essays`,
       "now read the epics that moved and the pull requests merged in the last week:",
       `pnpm --filter @some-ui/video-render render call-facts --from ${from} --to ${to} > ${join(dir, "facts.json")}`,
     ].join("\n")

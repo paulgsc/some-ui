@@ -1,11 +1,12 @@
 /**
- * The quiet file pick that opens what a session sent (Studio's scenes or
- * version, an idea's reply): a label, a hint, and the picked file handed on.
+ * The file pick that opens what a session sent (Studio's scenes or
+ * version, an idea's reply): a card that opens the file picker (`CardLink`,
+ * #3234), its label and hint, and the picked file handed on.
  * The same file picked again is a new pick.
  */
 import type { JSX } from "react"
 import { useId } from "react"
-import { Notice } from "@some-ui/shared"
+import { CardLink, CardLinkBody, Notice } from "@some-ui/shared"
 import { FolderOpen } from "lucide-react"
 
 export const FilePick = ({
@@ -31,30 +32,35 @@ export const FilePick = ({
   const hint = useId()
   return (
     <>
-      <label className="bg-background border-border/60 focus-within:ring-ring relative flex cursor-pointer items-center gap-3 rounded-2xl border p-3 focus-within:ring-2">
-        <FolderOpen
-          className="text-primary size-5 shrink-0"
-          aria-hidden="true"
-        />
-        <span className="min-w-0">
-          <span className="block text-sm font-semibold">{label}</span>
-          <span id={hint} className="text-muted-foreground block text-xs">
-            {told}
-          </span>
-        </span>
-        <input
-          type="file"
-          accept=".json,application/json"
-          aria-describedby={hint}
-          className="sr-only"
-          disabled={disabled}
-          onChange={(event) => {
-            const file = event.currentTarget.files?.[0]
-            event.currentTarget.value = ""
-            if (file) onPick(file)
-          }}
-        />
-      </label>
+      <CardLink
+        asChild
+        className="focus-within:ring-ring relative cursor-pointer focus-within:ring-2 has-[:disabled]:pointer-events-none has-[:disabled]:opacity-50"
+      >
+        <label>
+          <FolderOpen
+            className="text-primary size-5 shrink-0"
+            aria-hidden="true"
+          />
+          <CardLinkBody className="gap-0">
+            <span className="block text-sm font-semibold">{label}</span>
+            <span id={hint} className="text-muted-foreground block text-xs">
+              {told}
+            </span>
+          </CardLinkBody>
+          <input
+            type="file"
+            accept=".json,application/json"
+            aria-describedby={hint}
+            className="sr-only"
+            disabled={disabled}
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0]
+              event.currentTarget.value = ""
+              if (file) onPick(file)
+            }}
+          />
+        </label>
+      </CardLink>
       {problem !== null && (
         <Notice
           key={problem}

@@ -13,6 +13,8 @@ import {
 import {
   BrandMark,
   Button,
+  CardLink,
+  CardLinkBody,
   Notice,
   Skeleton,
   StudyGlyph,
@@ -302,19 +304,20 @@ const RustRoundsCard = ({ visit }: { visit: Visit }): JSX.Element => {
   useShelf(visit, "rust-rounds", RUST_ROUNDS)
   return (
     <div className="flex flex-col gap-2">
-      <Link
-        to="/rust-rounds"
-        onClick={() => visit.take(HOME_OFFERS.rustRounds)}
-        className="bg-card border-border/50 flex items-center gap-3 rounded-2xl border p-4 shadow-sm"
-      >
-        <span className="bg-brand/30 text-brand-foreground dark:text-brand flex size-12 shrink-0 items-center justify-center rounded-2xl">
-          <SquareTerminal aria-hidden className="size-6" />
-        </span>
-        <span className="flex min-w-0 flex-1 flex-col">
-          <span className="font-bold">{RUST_ROUNDS_TITLE}</span>
-          <span className="text-muted-foreground text-sm">{line}</span>
-        </span>
-      </Link>
+      <CardLink asChild className="p-4">
+        <Link
+          to="/rust-rounds"
+          onClick={() => visit.take(HOME_OFFERS.rustRounds)}
+        >
+          <span className="bg-brand/30 text-brand-foreground dark:text-brand flex size-12 shrink-0 items-center justify-center rounded-2xl">
+            <SquareTerminal aria-hidden className="size-6" />
+          </span>
+          <CardLinkBody className="gap-0">
+            <span className="font-bold">{RUST_ROUNDS_TITLE}</span>
+            <span className="text-muted-foreground text-sm">{line}</span>
+          </CardLinkBody>
+        </Link>
+      </CardLink>
       {essay !== null && (
         <Link
           to="/journal/episodes/$feed/$key"

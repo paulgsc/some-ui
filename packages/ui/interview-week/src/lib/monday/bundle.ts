@@ -19,11 +19,14 @@ import type {
 import {
   FAMILIES,
   FAMILY_IDS,
+  OPENING_CARD,
   readWeek,
   SLUG_MAX,
   TARGET_SECONDS,
 } from "@interview-week/lib/week"
 import { assertNever, weekAround } from "@some-ui/core-utils"
+import { parseInterviewEssay } from "@some-ui/video-render"
+import type { InterviewEssay } from "@some-ui/video-render"
 
 const BUNDLE_SCHEMA = "some-ui.interview-monday-bundle/2"
 
@@ -48,6 +51,16 @@ export const SITUATIONS: Readonly<Record<string, string>> = {
   "recorded-update":
     "You record a short update on this work for people who follow it.",
 }
+
+/** The owner's moniker, which the essay's opening says first (owner, 2026-11-17). */
+export const MONIKER = "paulgsc"
+
+/** The essay's opening's words: within `OPENING_SECONDS` at the read pace. */
+export const OPENING_WORDS = { min: 25, max: 90 } as const
+
+/** Where the opening is read: the cue the owner reads after. */
+export const OPENING_SITUATION =
+  "The opening of this week's interview essay, in your own voice."
 
 /** A week in the mailbox's `brief`, by its name. */
 export type MailboxFile = { readonly name: string; readonly body: unknown }
@@ -155,6 +168,20 @@ function workOf(corpus: Corpus): Array<WorkEntry> {
   return entries.filter((e) => !seen.has(e.key) && seen.add(e.key))
 }
 
+/** An essay's name in `brief`: `interview-essay-<week>.json`, `-r2` on for a correction. */
+export const ESSAY_FILE = /^interview-essay-(\d{4}-w\d{2})(?:-r(\d+))?\.json$/
+export const essayFileName = (week: string): string =>
+  `interview-essay-${week}.json`
+
+/** The week an essay's file `name` is of, and its revision (1 for the first); null for another file. */
+function essayRevision(
+  name: string
+): { readonly week: string; readonly r: number } | null {
+  const [, week, r] = ESSAY_FILE.exec(name) ?? []
+  if (week === undefined) return null
+  return { week, r: r === undefined ? 1 : Number(r) }
+}
+
 export const WEEK_FILE = /^interview-week-(\d{4}-w\d{2})\.json$/
 
 /** `name` as a week's file in `brief`. */
@@ -217,9 +244,61 @@ function sourceKey(source: CardSource): string {
     case "invariant": {
       return `invariant:${source.id}`
     }
+    case "opening": {
+      return "opening"
+    }
     default: {
       return assertNever(source)
     }
+  }
+}
+
+/** The newest essay of each week `brief` holds: a correction's over the first. */
+export function essaysIn(
+  brief: ReadonlyArray<MailboxFile>
+): Array<InterviewEssay> {
+  const best = new Map<string, { r: number; essay: InterviewEssay }>()
+  for (const file of brief) {
+    const of = essayRevision(file.name)
+    if (of === null) continue
+    const parsed = parseInterviewEssay(file.body)
+    if (!parsed.ok) continue
+    const held = best.get(of.week)
+    if (held === undefined || of.r > held.r)
+      best.set(of.week, { r: of.r, essay: parsed.value })
+  }
+  return [...best.values()].map((b) => b.essay)
+}
+
+/**
+ * What last week's essay said comes next (IW6's `next`): the essay in `brief`
+ * whose `next` is `week`; null while there is none, as when last week's essay
+ * still waits on a take.
+ */
+export function lastNext(
+  brief: ReadonlyArray<MailboxFile>,
+  week: string
+): InterviewEssay["next"] | null {
+  return essaysIn(brief).find((essay) => essay.next.week === week)?.next ?? null
+}
+
+/** The essay's opening, the week's first card: its material is what the week trains. */
+function opening(
+  questions: ReadonlyArray<QuestionSlot>,
+  last: ReturnType<typeof lastNext>
+): CardSlot {
+  return {
+    id: OPENING_CARD,
+    source: { kind: "opening" },
+    situation: OPENING_SITUATION,
+    title: "The essay's opening, in your voice",
+    material: [
+      `Say "${MONIKER}" first, then what this week trains, in a sentence or two. No rating, no "how ready", no finish line: the practice goes on.`,
+      `This week asks: ${questions.map((q) => q.asks).join(" ")}`,
+      last === null
+        ? "There is no earlier essay yet."
+        : `Last week's essay pointed next to: ${[last.said, ...last.topics].join(" ")}`,
+    ].join("\n"),
   }
 }
 
@@ -346,6 +425,7 @@ export function prepare(input: {
   let next: Next | null = null
   if (!weeks.some((w) => w.id === around.id)) {
     const asked = askedIn(weeks)
+    const slots = questions(input.corpus.calls, asked)
     next = {
       id: around.id,
       commit: input.commit,
@@ -353,8 +433,11 @@ export function prepare(input: {
       opens: around.opens,
       due: around.due,
       earlierCompanies: [...new Set(weeks.map((w) => w.company.name))],
-      questions: questions(input.corpus.calls, asked),
-      cards: cards(input.corpus, asked),
+      questions: slots,
+      cards: [
+        opening(slots, lastNext(input.brief, around.id)),
+        ...cards(input.corpus, asked),
+      ],
     }
   }
   return {

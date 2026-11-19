@@ -53,6 +53,8 @@ import {
 } from "@some-ui/game-scenarios"
 import {
   Button,
+  CardLink,
+  CardLinkBody,
   Notice,
   Sheet,
   SheetContent,
@@ -157,32 +159,27 @@ const Card = ({
   large: boolean
   onSay: () => void
 }): JSX.Element => (
-  <button
-    type="button"
-    onClick={onSay}
-    className={cn(
-      "bg-card border-border/50 flex w-full items-center gap-3 rounded-2xl border text-left shadow-sm active:scale-[0.98]",
-      large ? "p-4" : "p-3"
-    )}
-  >
-    <ScenarioIcon
-      id={card.scenario}
-      className={cn("text-brand", large ? "size-10" : "size-6")}
-    />
-    <span className="min-w-0">
-      <span
-        className={cn(
-          "block font-bold uppercase tracking-wide",
-          large ? "text-lg" : "text-sm"
-        )}
-      >
-        {scenarioOf(card.scenario).name}
-      </span>
-      <span className="text-muted-foreground block truncate text-xs">
-        {card.context}
-      </span>
-    </span>
-  </button>
+  <CardLink asChild className={large ? "p-4" : undefined}>
+    <button type="button" onClick={onSay}>
+      <ScenarioIcon
+        id={card.scenario}
+        className={cn("text-brand", large ? "size-10" : "size-6")}
+      />
+      <CardLinkBody className="gap-0">
+        <span
+          className={cn(
+            "block font-bold uppercase tracking-wide",
+            large ? "text-lg" : "text-sm"
+          )}
+        >
+          {scenarioOf(card.scenario).name}
+        </span>
+        <span className="text-muted-foreground block w-full truncate text-xs">
+          {card.context}
+        </span>
+      </CardLinkBody>
+    </button>
+  </CardLink>
 )
 
 const JustHappenedRow = ({
