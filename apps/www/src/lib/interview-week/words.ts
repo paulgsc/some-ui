@@ -175,7 +175,7 @@ export const INTERVIEW_WORDS = {
       },
       {
         name: "You speak, on this phone",
-        line: `Tap to record and tap again to stop. A take stops at ${lengthOf(TAKE_MAX_SECONDS * 1000)}. Say one again whenever you like; the new take takes its place.`,
+        line: `Tap to record and tap again to stop. A take stops at ${lengthOf(TAKE_MAX_SECONDS * 1000)}. Say one again whenever you like; the newest is the one you send.`,
       },
       {
         name: "Your takes go home",

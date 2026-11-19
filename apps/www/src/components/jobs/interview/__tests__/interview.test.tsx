@@ -85,6 +85,10 @@ describe("the interview week's pages on the phone (IW8)", () => {
     expect(screen.queryByText(WORDS.wayIn.soFar)).toBeNull()
     expect(document.body.textContent).not.toMatch(/not said/i)
     await follow(new RegExp(`^${WORDS.questions}`))
+    // Questions says the invented role every answer is for.
+    screen.getByText(WORDS.role(WEEK.role.title, WEEK.company.name))
+    screen.getByText(new RegExp(WEEK.company.about))
+    screen.getByText(WORDS.invented)
     await follow(new RegExp(`^${WORDS.today}`))
 
     // Its page: the four rungs at equal weight.

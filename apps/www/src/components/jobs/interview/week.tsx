@@ -179,9 +179,17 @@ const UnderWay = ({ held }: { held: Interview }): JSX.Element => {
     const row = take === null ? null : rowOf(viewOf(held, item), take.id)
     return row === null ? [] : [{ item, row }]
   })
-  const lastRead = week.cards
-    .map(({ id }) => doneLine(held, readItem(id)))
-    .find((line) => line !== null)
+  // The read said most recently, in the past tense.
+  const latestRead = week.cards
+    .map(({ id }) => readItem(id))
+    .flatMap((item) => {
+      const take = currentOf(held, item)
+      return take === null ? [] : [{ item, at: take.recordedAt }]
+    })
+    .sort((a, b) => b.at.localeCompare(a.at))
+    .at(0)
+  const lastRead =
+    latestRead === undefined ? null : doneLine(held, latestRead.item)
   return (
     <div className="flex flex-col gap-4">
       <header className="space-y-1">
