@@ -13,6 +13,7 @@ import type { HomeCall, HomeExchanged, KeyedStorage } from "@some-ui/core-utils"
 import { canonicalJson, isRecord, jsonOf } from "@some-ui/core-utils"
 import type { KeptItem, WeekSent } from "@some-ui/rust-rounds"
 import {
+  currentWeek,
   exchangeRustRounds,
   keptGoing,
   weekSendKey,
@@ -24,6 +25,7 @@ import { browserLocalStorage } from "@/lib/tenant/storage"
 import { homeLink, pairing } from "./index"
 import type { EachSent } from "./leetype-log"
 import { emptyLogReport, sendEach, sentOutcome } from "./leetype-log"
+import { sendRustSpans } from "./rust-spans"
 import type { Sent } from "./sent"
 import { fingerprintOf, readSent, rememberSent, sentUnder } from "./sent"
 import { servesNow } from "./serves-now"
@@ -121,7 +123,9 @@ export async function sendRustKept(
 /**
  * The Rust Rounds lane's run (`./rust-rounds`): the rounds and the weeks
  * (`exchangeRustRounds`), then, once they are synced, what goes home for
- * good, under `pairing`.
+ * good, under `pairing`, then the work tracker's spans (`./rust-spans`,
+ * RR26), once home serves this build: a home before them has no route for
+ * them.
  */
 export async function exchangeRustRoundsLane(
   send: HomeCall,
@@ -129,10 +133,19 @@ export async function exchangeRustRoundsLane(
 ): Promise<HomeExchanged> {
   const done = await exchangeRustRounds(phoneRounds(), phoneWeeks(), send)
   if (done.kind !== "synced") return done
-  return sendRustKept(
+  const serves = servesNow() === "fits"
+  const kept = await sendRustKept(
     send,
-    keptGoing(browserLocalStorage, Date.now(), servesNow() === "fits"),
+    keptGoing(browserLocalStorage, Date.now(), serves),
     browserLocalStorage,
     pairing
+  )
+  if (kept.kind !== "synced" || !serves) return kept
+  const week = currentWeek(phoneWeeks().held().weeks, Date.now())
+  return sendRustSpans(
+    send,
+    browserLocalStorage,
+    pairing,
+    week?.week.id ?? null
   )
 }

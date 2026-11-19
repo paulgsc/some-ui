@@ -37,6 +37,7 @@ export {
   WeekSchema,
 } from "./lib/formats/week"
 export { QUILLMOSS_WEEK } from "./lib/sample-week"
+export { TALLOWBROOK_WEEK_FILE } from "./lib/sample-week/tallowbrook"
 export type { WeekProblem, WeekReading } from "./lib/week-check"
 export { describeWeekProblem, readWeek } from "./lib/week-check"
 export type { ReplyIntake } from "./lib/intake"
@@ -75,3 +76,16 @@ export { homeRef } from "./lib/play/home-ref"
 export type { NotesPort, RustRoundsPorts } from "./lib/play/runtime"
 export type { RoundsStore } from "./lib/play/store"
 export { keptRounds } from "./lib/play/store"
+export type { OpenSpan, SpanWhere } from "./lib/work-tracker"
+export type { HomeSpan, SpansExchanged } from "./lib/work-tracker/home"
+export { exchangeWorkSpans } from "./lib/work-tracker/home"
+export type { EventAtHome, SpanEvent } from "./lib/work-tracker/record"
+export { eventKey, workSpans } from "./lib/work-tracker/record"
+export type {
+  TrackerPorts,
+  WeekSpansKnown,
+  WorkPorts,
+  WorkTracker,
+} from "./lib/work-tracker/runtime"
+export { createWorkTracker } from "./lib/work-tracker/runtime"
+export { WeekTimeChart, WorkTrackerControl } from "./components/work-tracker"

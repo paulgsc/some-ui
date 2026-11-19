@@ -10,7 +10,8 @@
  * write to the rounds' store asks for a run at once, and so does home saying
  * it serves this build when that lets a week sent by points go (RR24, C681);
  * otherwise a week sent or a paste kept goes at the lane's next run (the app
- * coming to the front, or a pull).
+ * coming to the front, or a pull). The work tracker keeping a start or a
+ * close asks for a run at once too (RR26, `./rust-spans`).
  * The lane has no wing mark: Settings' readout says where the rounds are
  * kept.
  */
@@ -18,12 +19,13 @@ import { useSyncExternalStore } from "react"
 import { fnv1a } from "@some-ui/core-utils"
 import { keptGoing, roundsCounts, roundsTaken } from "@some-ui/rust-rounds"
 
-import { phoneRounds } from "@/lib/rust-rounds"
+import { onSpansKept, phoneRounds } from "@/lib/rust-rounds"
 import { browserLocalStorage } from "@/lib/tenant/storage"
 
 import { usePairing } from "./index"
 import type { Lane, LaneCounts } from "./lanes"
 import { exchangeRustRoundsLane, keptCounts } from "./rust-kept"
+import { spansRevision } from "./rust-spans"
 import { fingerprintOf, sentUnder } from "./sent"
 import { onServes, servesNow } from "./serves-now"
 
@@ -45,15 +47,19 @@ export const rustRoundsLane: Lane = {
           Date.now(),
           servesNow() === "fits"
         ).map((item) => `${item.kind}/${item.id}@${fingerprintOf(item.wire)}`),
+        spansRevision(),
       ].join("|")
     ),
   // A week sent by points waits for home to serve this build (RR24, C681).
   subscribe: (listener) => {
     const rounds = phoneRounds().subscribe(listener)
     const serves = onServes(listener)
+    // The tracker keeping a start or a close asks for a run at once (RR26).
+    const spans = onSpansKept(listener)
     return () => {
       rounds()
       serves()
+      spans()
     }
   },
   useCounts: (): LaneCounts => {

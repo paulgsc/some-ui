@@ -1,0 +1,18 @@
+{
+  "id": "C724",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/ui/rust-rounds/src/components/rust-week/index.tsx",
+    "packages/ui/rust-rounds/src/components/work-tracker/index.tsx"
+  ],
+  "chose": "Until RR25 D2's step screens land, the tracker's control sits on each ticket's Read view (counting toward every point) and, only while a span runs or asks, on the week's brief; the week's time sits on the brief under the story, a bar per ticket split by the step a span started from in the theme's chart-1..3, with a table view. Visits (C676), visits by day and time on the phone come with D2's screens.",
+  "options": [
+    "Read view and brief now, step screens with D2",
+    "wait for D2 and ship nothing on screen",
+    "a tracker of its own on the brief only"
+  ],
+  "gray": "C677 places the visual on the brief and the control on every step; D2's step screens don't exist yet.",
+  "undo": "Move <Tracker> onto D2's step screens and drop it from TicketBody.",
+  "refs": ["#3250"]
+}
