@@ -1,0 +1,1209 @@
+From a71413e2cf243337ed04b7753787888a5dbaa2e6 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 19 Nov 2026 04:48:44 +0000
+Subject: [PATCH] feat(rust-rounds): read some-ui.rust-week/2 and record each
+ academy starter (RR25, RR29)
+
+paulgsc/some-ui#3249, #3257. A week may now be `some-ui.rust-week/2`: each
+ticket keeps `id` and `program` as in `/1` and gains forks and an academy of
+1 to 8 exercises, each with a whole `main.rs` starter. Home reads of `/2` only
+what it needs (schema, id, each ticket's id and program, each academy's
+starters, opens and due); the rest is kept byte for byte and never read.
+
+- `week::read` takes `/1` and `/2`. A `/1` week reads as before (an
+  `academy` on one of its tickets is not read) and keeps its 32 KiB ceiling;
+  a `/2` week may be up to `WEEK_V2_CEILING` = 128 KiB, the arithmetic in its
+  doc (4 tickets x 8 starters of ~1.5 KB plus prose is ~106 KB).
+- Each starter is queued in `rust_round_source` after the week's ticket
+  programs, in the transaction that keeps the week, and recorded by the same
+  pass under the runner's unchanged 64 KiB request. No new table: programs
+  are content-addressed, so a starter is one more program.
+- A starter is named `<ticket>/academy/<n>` (`week::academy_key`, n from 1),
+  which no ticket key can match.
+- GET /rust-weeks/:id adds `academy: [{ key, ticket, exercise, sourceHash,
+  runs }]` for a `/2` week; a `/1` week's answer leaves it out and is byte
+  for byte as before.
+- CONTRACT_EPOCH 19 -> 22 by hand for the payload change (20 and 21 are
+  taken by open PRs; renumber on landing). No route changed.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LDpdUGXJuEz3pCcQdq58b2
+---
+ .../file_host/docs/leetype-execution.md       |   2 +-
+ apps/servers/file_host/src/contract.rs        |   2 +-
+ .../file_host/src/handlers/rust_rounds.rs     | 105 +++-
+ apps/servers/file_host/src/mailbox/pass.rs    |  32 +-
+ .../file_host/src/routes/rust_rounds.rs       |  10 +-
+ crates/db/rust_round/src/lib.rs               |  19 +-
+ crates/db/rust_round/src/week.rs              | 249 +++++++++-
+ .../testdata/rust-week-2026-w47.json          | 466 ++++++++++++++++++
+ docs/identity.md                              |   3 +-
+ infra/docker/Dockerfile.server                |   2 +-
+ 10 files changed, 857 insertions(+), 33 deletions(-)
+ create mode 100644 crates/db/rust_round/testdata/rust-week-2026-w47.json
+
+diff --git a/apps/servers/file_host/docs/leetype-execution.md b/apps/servers/file_host/docs/leetype-execution.md
+index 01eb847..a89216a 100644
+--- a/apps/servers/file_host/docs/leetype-execution.md
++++ b/apps/servers/file_host/docs/leetype-execution.md
+@@ -565,7 +565,7 @@ asked to record, and "the programs' uid" is 10101 (and gid 10101).
+ | --- | --- |
+ | `PUT /api/v1/rust-rounds/:id` (`routes::rust_rounds`, `handlers::rust_rounds`) | A paired phone puts a round as the tutor wrote it (`some-ui.rust-round/2`, or `/1` from before its cards lost their choices). Home checks what it needs (`rust_round_repo::round::read`: at most 32 KiB, the tag, the id, each card's kind and id, and every program: a read card's, and a variant card's built as the format builds it) and, in one transaction, keeps the round and queues each program it does not hold yet. `201` new, `200` the same bytes again, `409` another body under an id the subject holds, `422` naming each field, `413` for a body past one byte over the ceiling, before it is buffered. |
+ | `GET /api/v1/rust-rounds`, `GET /api/v1/rust-rounds/:id` | The caller's subject's newest rounds; one of its rounds, byte for byte, with each read and variant card's program and every run kept for it (`toolchain`, `ended`, `refusal`, and `rustc`, some-ui's `RustcRunSchema`; never when it was kept, since a run is shared across subjects). The `ETag` is the body's hash, so it moves when a run is kept; `If-None-Match` answers `304`. Another subject's id is a `404`. |
+-| `GET /api/v1/rust-weeks`, `GET /api/v1/rust-weeks/:id` (RR12, paulgsc/some-ui#2687) | The weeks the routine put in the mailbox (`some-ui.rust-week/1`, riding `brief` as `rust-week-<id>.json`), newest first; one week, byte for byte, with each ticket's program and every run kept for it, shaped and tagged as a round's. `mailbox::pass` keeps a week and queues each ticket's program it does not hold yet in one transaction (`rust_round_repo::week::read`, `queue_week`), so the same pass records it. There is no `PUT`. |
++| `GET /api/v1/rust-weeks`, `GET /api/v1/rust-weeks/:id` (RR12, paulgsc/some-ui#2687) | The weeks the routine put in the mailbox (`some-ui.rust-week/1` up to 32 KiB, or `/2` up to 128 KiB, riding `brief` as `rust-week-<id>.json`), newest first; one week, byte for byte, with each ticket's program and every run kept for it, shaped and tagged as a round's, and for a `/2` week (RR25, paulgsc/some-ui#3249) `academy`: each exercise's starter under its key `<ticket>/academy/<n>`, with its runs. `mailbox::pass` keeps a week and queues each ticket's program, then each starter, it does not hold yet in one transaction (`rust_round_repo::week::read`, `queue_week`), so the same pass records them; each goes to the runner alone, under its 64 KiB request. There is no `PUT`. |
+ | `rust_round`, `rust_round_source`, `rust_round_run`, `rust_round_drop` (`migrations/20261031000100_create_rust_round.up.sql`, `crates/db/rust_round`) | The rounds; each distinct program once, in arrival order (the queue); one run per program and toolchain (`recorded`, `refused` or `runner-lost`, RP3); and each time the runner was lost holding a program. None is ever updated. `rust_round` is subject-scoped, read only by its subject and deleted only with its account; the other three name no subject, are never deleted, and are shared by every round holding the program (docs/identity.md invariant 28). |
+ | `rust_rounds` (`src/rust_rounds.rs`, `src/rust_rounds/pass.rs`) | The background pass, every `rust_rounds::INTERVAL`: asks the runner its toolchain, reads what waits under it, and hands each program over the socket (`rust_rounds_wire::protocol::exchange`), keeping how it ended. Always runs; each pass reads the operator's `rust-rounds` setting first and asks nothing while it is paused. |
+ 
+diff --git a/apps/servers/file_host/src/contract.rs b/apps/servers/file_host/src/contract.rs
+index 82635d9..ce95d4c 100644
+--- a/apps/servers/file_host/src/contract.rs
++++ b/apps/servers/file_host/src/contract.rs
+@@ -28,7 +28,7 @@
+ //! fails until the Dockerfile says the same.
+ 
+ /// This build's contract epoch. See the module doc for when it moves.
+-pub const CONTRACT_EPOCH: u32 = 19;
++pub const CONTRACT_EPOCH: u32 = 22;
+ 
+ /// The lowest epoch this build still serves. Raised when a client-breaking
+ /// route change lands; at most [`CONTRACT_EPOCH`].
+diff --git a/apps/servers/file_host/src/handlers/rust_rounds.rs b/apps/servers/file_host/src/handlers/rust_rounds.rs
+index 7ced77a..fe4f8b9 100644
+--- a/apps/servers/file_host/src/handlers/rust_rounds.rs
++++ b/apps/servers/file_host/src/handlers/rust_rounds.rs
+@@ -168,7 +168,8 @@ pub async fn get_round(paired: Paired, State(db): State<SqlitePool>, headers: He
+ }
+ 
+ /// The hash of `source` and every run kept for it, under any toolchain, in
+-/// the order kept: what a round's card and a week's ticket both show.
++/// the order kept: what a round's card, a week's ticket and an academy's
++/// starter each show.
+ async fn runs_of(conn: &mut sqlx::SqliteConnection, source: &str) -> Result<(String, Vec<RunKept>), FileHostError> {
+ 	let source_hash = content_hash(source.as_bytes());
+ 	let runs = rust_round_repo::runs(conn, &source_hash)
+@@ -231,6 +232,11 @@ pub struct WeekWithRuns {
+ 	pub week: Box<RawValue>,
+ 	/// Each ticket's program, in ticket order, and every run kept for it.
+ 	pub tickets: Vec<TicketRuns>,
++	/// A `/2` week's academy (RR25, paulgsc/some-ui#3249): each exercise's
++	/// starter, ticket by ticket in exercise order, and every run kept for
++	/// it. Left out of a `/1` week's answer, which is as it was.
++	#[serde(skip_serializing_if = "Vec::is_empty")]
++	pub academy: Vec<StarterRuns>,
+ }
+ 
+ /// One ticket's program and its runs.
+@@ -246,6 +252,24 @@ pub struct TicketRuns {
+ 	pub runs: Vec<RunKept>,
+ }
+ 
++/// One academy exercise's starter and its runs.
++#[derive(Debug, Serialize)]
++#[serde(rename_all = "camelCase")]
++pub struct StarterRuns {
++	/// `<ticket>/academy/<n>`, `TB-101/academy/1`: never a ticket's key, so
++	/// one map of runs by key holds a week's tickets and its exercises.
++	pub key: String,
++	/// The ticket whose academy holds it, `TB-101`.
++	pub ticket: String,
++	/// Its place in that academy, from 1.
++	pub exercise: usize,
++	/// The hex SHA-256 of the starter as the runner is sent it.
++	pub source_hash: String,
++	/// Every run kept for these bytes, under any toolchain, in the order
++	/// kept; empty until the pass records it.
++	pub runs: Vec<RunKept>,
++}
++
+ /// `GET /rust-weeks`: the weeks the routine put in the mailbox and home
+ /// read, under the caller's subject, newest first.
+ ///
+@@ -285,7 +309,9 @@ pub(crate) fn reads_as_named(id: &str, body: &[u8]) -> Option<rust_round_repo::w
+ }
+ 
+ /// `GET /rust-weeks/:id`: the week as home keeps it, and every run kept
+-/// for each ticket's program. The `ETag` is the hash of the body, so it
++/// for each of its programs.
++///
++/// Each ticket's program and, in a `/2` week, each academy starter. The `ETag` is the hash of the body, so it
+ /// changes when a run is kept; `If-None-Match` answers `304`.
+ ///
+ /// # Errors
+@@ -313,6 +339,17 @@ pub async fn get_week(paired: Paired, State(db): State<SqlitePool>, headers: Hea
+ 			runs,
+ 		});
+ 	}
++	let mut academy = Vec::with_capacity(read.academy.len());
++	for starter in read.academy {
++		let (source_hash, runs) = runs_of(&mut conn, &starter.source).await?;
++		academy.push(StarterRuns {
++			key: starter.key,
++			ticket: starter.ticket,
++			exercise: starter.exercise,
++			source_hash,
++			runs,
++		});
++	}
+ 	let text = String::from_utf8(held.body).map_err(|_| unreadable())?;
+ 	let week = WeekWithRuns {
+ 		id: read.id,
+@@ -320,6 +357,7 @@ pub async fn get_week(paired: Paired, State(db): State<SqlitePool>, headers: Hea
+ 		received_at: held.pulled_at,
+ 		week: RawValue::from_string(text).map_err(|_| unreadable())?,
+ 		tickets,
++		academy,
+ 	};
+ 	// Disallowed for tracing; this is the response body itself, hashed for
+ 	// its tag.
+@@ -717,6 +755,7 @@ mod tests {
+ 		let tickets: Vec<&str> = got["tickets"].as_array().unwrap().iter().map(|ticket| ticket["ticket"].as_str().unwrap()).collect();
+ 		assert_eq!(tickets, ["QM-310", "QM-311"]);
+ 		assert!(got["tickets"].as_array().unwrap().iter().all(|ticket| ticket["runs"] == json!([])));
++		assert!(got.get("academy").is_none(), "a /1 week's answer is as it was: no academy");
+ 
+ 		let done = crate::rust_rounds::pass::run_once(
+ 			&pool,
+@@ -745,6 +784,68 @@ mod tests {
+ 		}
+ 	}
+ 
++	/// A `/2` week reads back with each ticket's program and runs, as a `/1`
++	/// week does, and each academy starter under its key, recorded by the
++	/// same pass after the tickets' programs (RR25, paulgsc/some-ui#3249).
++	#[tokio::test]
++	async fn a_v2_week_reads_back_with_each_starters_runs_under_its_key() {
++		let state = state().await;
++		let pool = state.pool.clone();
++		let phone = session(&state, A, Carrier::Bearer).await;
++		let app = module().into_table_router().with_state(state);
++		let exercise = |starter: &str| json!({ "title": "t", "starter": starter, "expect": { "outcome": "prints" } });
++		let week = json!({ "schema": "some-ui.rust-week/2", "id": "2026-w46", "tickets": [
++			{ "id": "TB-101", "program": "fn main() {}\n", "forks": [], "academy": [exercise("fn main() { 1; }\n"), exercise("fn main() { 2; }\n")] },
++			// A starter that is the other ticket's program is that one program.
++			{ "id": "TB-102", "program": "fn main() { 3; }\n", "academy": [exercise("fn main() {}\n")] },
++		] });
++		let body = week.to_string();
++		hold_file(&pool, A, 1, "rust-week-2026-w46.json", &body).await;
++		let read = rust_round_repo::week::read(body.as_bytes()).unwrap();
++		rust_round_repo::queue_week(&mut pool.acquire().await.unwrap(), &read, "2026-11-09T08:00:00.000Z")
++			.await
++			.unwrap();
++
++		let (status, _, got) = call(&app, Method::GET, WEEK, Some(&phone), None, b"").await;
++		assert_eq!(status, StatusCode::OK);
++		assert_eq!(got["week"], week);
++		let tickets: Vec<&str> = got["tickets"].as_array().unwrap().iter().map(|ticket| ticket["ticket"].as_str().unwrap()).collect();
++		assert_eq!(tickets, ["TB-101", "TB-102"], "the tickets as a /1 week's");
++		let academy: Vec<(&str, &str, u64)> = got["academy"]
++			.as_array()
++			.unwrap()
++			.iter()
++			.map(|starter| (starter["key"].as_str().unwrap(), starter["ticket"].as_str().unwrap(), starter["exercise"].as_u64().unwrap()))
++			.collect();
++		assert_eq!(
++			academy,
++			[("TB-101/academy/1", "TB-101", 1), ("TB-101/academy/2", "TB-101", 2), ("TB-102/academy/1", "TB-102", 1)]
++		);
++		assert_eq!(got["academy"][0]["sourceHash"], rust_round_repo::content_hash(b"fn main() { 1; }\n"));
++		assert_eq!(got["academy"][2]["sourceHash"], got["tickets"][0]["sourceHash"]);
++		assert!(got["academy"].as_array().unwrap().iter().all(|starter| starter["runs"] == json!([])));
++
++		let done = crate::rust_rounds::pass::run_once(
++			&pool,
++			&Arc::new(Prints),
++			Duration::from_secs(600),
++			crate::rust_rounds::pass::Waits::SERVER,
++			&mut crate::contention::fake::guard(crate::contention::fake::State::Calm).0,
++			&CancellationToken::new(),
++			&|| String::from("now"),
++		)
++		.await
++		.unwrap();
++		assert_eq!(done.recorded, 4, "two tickets' programs and two starters of their own");
++
++		let (_, _, got) = call(&app, Method::GET, WEEK, Some(&phone), None, b"").await;
++		for starter in got["academy"].as_array().unwrap() {
++			assert_eq!(starter["runs"][0]["ended"], "recorded", "{starter}");
++			assert_eq!(starter["runs"][0]["rustc"]["stdout"], "ok\n");
++		}
++		assert_eq!(got["tickets"][1]["runs"][0]["ended"], "recorded");
++	}
++
+ 	/// A round is its putter's: another subject lists none of it, reads its
+ 	/// id as a `404`, and puts its own round under the same id; deleting an
+ 	/// account takes its rounds and leaves the other's, with the run they
+diff --git a/apps/servers/file_host/src/mailbox/pass.rs b/apps/servers/file_host/src/mailbox/pass.rs
+index 287a687..c35b214 100644
+--- a/apps/servers/file_host/src/mailbox/pass.rs
++++ b/apps/servers/file_host/src/mailbox/pass.rs
+@@ -1057,8 +1057,9 @@ async fn cursor(db: &SqlitePool, subject: &str, folder: Folder) -> Result<i64, s
+ /// (paulgsc/some-ui `apps/mailbox`, `some-ui.drive-takes/1`), has its takes
+ /// home holds recorded as on Drive in the same transaction
+ /// (`voice_repo::on_drive`, paulgsc/some-ui#2401). A week of Rust Rounds,
+-/// new in `brief` as `rust-week-<id>.json` (`some-ui.rust-week/1`,
+-/// paulgsc/some-ui#2687), has each ticket's program queued for the recorder
++/// new in `brief` as `rust-week-<id>.json` (`some-ui.rust-week/1` or `/2`,
++/// paulgsc/some-ui#2687, #3249), has each ticket's program and each academy
++/// starter queued for the recorder
+ /// in the same transaction (`rust_round_repo::queue_week`), so home never
+ /// holds a week whose programs go unrecorded. The routine's answer to a
+ /// pickup, new in `picked` (`some-ui.take-picked/1`, paulgsc/some-ui#2875),
+@@ -1572,6 +1573,33 @@ mod tests {
+ 		assert_eq!(held(&pool).await, ["rust-week-2026-w46.json", "rust-week-2026-w47.json", "rust-week-2026-w49.json"]);
+ 	}
+ 
++	/// A `/2` week is kept as a `/1` week is, with each ticket's program and
++	/// then each academy's starter queued in the same transaction, a program
++	/// home holds already once (RR25, paulgsc/some-ui#3249). One whose
++	/// academy home cannot read is kept and queues nothing, not even its
++	/// tickets' programs.
++	#[tokio::test]
++	async fn a_v2_week_is_kept_with_its_programs_and_starters_queued() {
++		let (pool, fake) = (pool().await, Fake::default());
++		let exercise = |starter: &str| serde_json::json!({ "title": "t", "starter": starter });
++		let week = serde_json::json!({ "schema": "some-ui.rust-week/2", "id": "2026-w47", "tickets": [
++			{ "id": "TB-101", "program": "fn main() {}\n", "academy": [exercise("fn main() { 11; }\n"), exercise("fn main() {}\n")] },
++			{ "id": "TB-102", "program": "fn main() { 2; }\n", "academy": [exercise("fn main() { 21; }\n")] },
++		] });
++		fake.add(1, "rust-week-2026-w47.json", &week.to_string());
++		let mut unread = week.clone();
++		unread["id"] = serde_json::json!("2026-w48");
++		unread["tickets"][1]["academy"] = serde_json::json!([]);
++		fake.add(2, "rust-week-2026-w48.json", &unread.to_string());
++		assert_eq!(pass(&pool, &fake).await.unwrap().kept, 2);
++		assert_eq!(
++			queued(&pool).await,
++			["fn main() {}\n", "fn main() { 2; }\n", "fn main() { 11; }\n", "fn main() { 21; }\n"],
++			"the tickets' programs first, then the starters, each distinct program once"
++		);
++		assert_eq!(held(&pool).await, ["rust-week-2026-w47.json", "rust-week-2026-w48.json"]);
++	}
++
+ 	/// A file under the list's name that does not read as one is kept as
+ 	/// any `brief` file is, and records nothing.
+ 	#[tokio::test]
+diff --git a/apps/servers/file_host/src/routes/rust_rounds.rs b/apps/servers/file_host/src/routes/rust_rounds.rs
+index b5fa351..75e9ac4 100644
+--- a/apps/servers/file_host/src/routes/rust_rounds.rs
++++ b/apps/servers/file_host/src/routes/rust_rounds.rs
+@@ -3,14 +3,18 @@
+ //! programs (paulgsc/some-ui#2234, RR3; #2687, RR12).
+ //!
+ //! A week is the routine's: it arrives through the mailbox (`mailbox::pass`
+-//! keeps it in `brief` as `rust-week-<id>.json` and queues its programs), so
++//! keeps it in `brief` as `rust-week-<id>.json` and queues its programs, a
++//! `/2` week's academy starters included), so
+ //! there is no `PUT` for one, and these routes only read it.
+ //!
+ //! ```text
+ //! GET /rust-weeks        → { weeks: [{ id, sha256, receivedAt }] }: the caller's, newest week first
+ //! GET /rust-weeks/:id    → { id, sha256, receivedAt, week, tickets: [{ ticket, sourceHash,
+-//!                            runs: [{ toolchain, ended, refusal, rustc: RustcRun }] }] },
+-//!                          with an ETag, `304` on `If-None-Match`, or a JSON 404
++//!                            runs: [{ toolchain, ended, refusal, rustc: RustcRun }] }],
++//!                            academy?: [{ key, ticket, exercise, sourceHash, runs }] },
++//!                          with an ETag, `304` on `If-None-Match`, or a JSON 404;
++//!                          `academy` only for a `/2` week (RR25), its exercises'
++//!                          starters keyed `<ticket>/academy/<n>`
+ //! GET /rust-rounds       → { rounds: [{ id, contentHash, receivedAt }] }: the caller's, newest first
+ //! GET /rust-rounds/:id   → { id, contentHash, receivedAt, round, programs: [{ card, sourceHash,
+ //!                            runs: [{ toolchain, ended, refusal, rustc: RustcRun }] }] },
+diff --git a/crates/db/rust_round/src/lib.rs b/crates/db/rust_round/src/lib.rs
+index f3cefff..d40988b 100644
+--- a/crates/db/rust_round/src/lib.rs
++++ b/crates/db/rust_round/src/lib.rs
+@@ -19,7 +19,8 @@
+ //!   its tag, its id, and every program to run.
+ //! - **One row per distinct program** (`rust_round_source`), stored with the
+ //!   round or the week ([`queue_week`], RR12) that first holds it, in the
+-//!   same transaction. It is the recording pass's queue, in the order
++//!   same transaction. A `/2` week's academy starters (RR25) are programs
++//!   too, queued after its tickets'. It is the recording pass's queue, in the order
+ //!   programs arrived.
+ //! - **Runs are keyed to the bytes and the toolchain** (EX2, RX4):
+ //!   `rust_round_run` holds one row per program and toolchain, written only
+@@ -268,16 +269,26 @@ async fn queue(conn: &mut SqliteConnection, source: &str, now: &str) -> Result<(
+ 
+ /// Queue each of `week`'s programs home does not hold yet, received `now`.
+ ///
++/// Every ticket's program, in ticket order, then (for a `/2` week) every
++/// academy's starter, ticket by ticket in exercise order (RR25,
++/// paulgsc/some-ui#3249), so a week's tickets are recorded before its
++/// exercises.
++///
+ /// RR12, paulgsc/some-ui#2687. The week itself is kept by the mailbox pass,
+ /// as the routine's files are (`mailbox_repo`'s `rust-week` folder); call
+ /// this in the transaction that keeps it, so a week is never held with its
+-/// programs unqueued.
++/// programs unqueued. A starter is a program like any other: one row per
++/// distinct source, recorded and read by its bytes, so a starter that is
++/// also a ticket's program (or another week's) is one program, recorded
++/// once. Its key (`week::academy_key`) is what the week's read names it by,
++/// never stored.
+ ///
+ /// # Errors
+ /// Any `sqlx` failure.
+ pub async fn queue_week(conn: &mut SqliteConnection, week: &week::Week, now: &str) -> Result<(), sqlx::Error> {
+-	for program in &week.programs {
+-		queue(conn, &program.source, now).await?;
++	let starters = week.academy.iter().map(|starter| &starter.source);
++	for source in week.programs.iter().map(|program| &program.source).chain(starters) {
++		queue(conn, source, now).await?;
+ 	}
+ 	Ok(())
+ }
+diff --git a/crates/db/rust_round/src/week.rs b/crates/db/rust_round/src/week.rs
+index 4f30dbf..283ec33 100644
+--- a/crates/db/rust_round/src/week.rs
++++ b/crates/db/rust_round/src/week.rs
+@@ -1,36 +1,69 @@
+ //! What home reads of a week of Rust Rounds: the least it needs to keep it
+-//! and to record its programs (paulgsc/some-ui#2687, RR12).
++//! and to record its programs (paulgsc/some-ui#2687, RR12; `/2`: #3249 RR25,
++//! #3257 RR29).
+ //!
+-//! The format is paulgsc/some-ui's `some-ui.rust-week/1`
++//! The format is paulgsc/some-ui's `some-ui.rust-week/1` and `/2`
+ //! (`packages/ui/rust-rounds/src/lib/formats/week.ts`, RR11), and the
+ //! routine holds a week to all of it (`readWeek`) before it puts one in the
+ //! mailbox, as `rust-week-<id>.json` in `brief` ([`MAILBOX_PREFIX`]). Home
+ //! checks only:
+ //!
+-//! - its size ([`WEEK_CEILING`]), its encoding and that it is one JSON object;
+-//! - its `schema` tag;
++//! - its size ([`WEEK_CEILING`] for `/1`, [`WEEK_V2_CEILING`] for `/2`), its
++//!   encoding and that it is one JSON object;
++//! - its `schema` tag, [`WEEK_SCHEMA`] or [`WEEK_SCHEMA_V2`];
+ //! - its `id`, the ISO week it opens (`2026-w46`), which names it for good;
+ //! - its tickets' ids and every ticket's `program`, the bytes it records;
++//! - in a `/2` week, each ticket's `academy`: 1 to [`ACADEMY_MAX`]
++//!   exercises, and each exercise's `starter`, which it records too, under
++//!   [`academy_key`] (`TB-101/academy/1`);
+ //! - its `opens` and `due`, when they are RFC 3339 instants, for the week's
+ //!   record (RR14, paulgsc/some-ui#2689). A week without them is still kept
+ //!   and recorded, and has no record.
+ //!
+-//! Anything else (the company, the story, the speak-to points, the tutor's
+-//! guess) is kept as it came and never read here.
++//! Anything else (the company, the story, the speak-to points or forks, an
++//! exercise's prose and `expect`, the tutor's guess) is kept as it came and
++//! never read here. A `/1` week reads exactly as it did before `/2`: an
++//! `academy` on one of its tickets is not read.
+ 
+ use crate::round::Problem;
+ use serde_json::Value;
+ 
+-/// The format's tag.
++/// The first format's tag.
+ pub const WEEK_SCHEMA: &str = "some-ui.rust-week/1";
+ 
+-/// The most bytes a week may hold: a round's ceiling.
++/// The format with forks and an academy (RR25, RR29).
++pub const WEEK_SCHEMA_V2: &str = "some-ui.rust-week/2";
++
++/// The most bytes a `/1` week may hold: a round's ceiling.
+ ///
+ /// A week is two to four tickets, each program at most 25 lines of 40
+ /// columns, and their prose: a few KiB, so each program fits the runner's
+ /// request with room.
+ pub const WEEK_CEILING: usize = crate::round::ROUND_CEILING;
+ 
++/// The most bytes a `/2` week may hold: 128 KiB.
++///
++/// The most a `/2` week can need, as the format bounds it: 4 tickets of 8
++/// exercises is 32 starters, each a whole `main.rs` of about 1.5 KB, so
++/// 32 × 1.5 KB = 48 KB, about 56 KB once JSON escapes its newlines and
++/// quotes (≈ +15%). Each exercise's prose (title, why, tries, clarity,
++/// keywords, tests, expect) is about 1 KB more: 32 KB. Each ticket's forks
++/// (up to 6 questions of 2 to 6 options, each a decision, its case and the
++/// model it rests on), program and spec are about 4 KB: 16 KB. The week's
++/// own prose (company, story, SLA, references) is about 2 KB. In all
++/// 56 + 32 + 16 + 2 = 106 KB, under 128 KiB with a fifth to spare. The
++/// sample `/2` week, Tallowbrook (3 tickets, 5 exercises), is 11.5 KB.
++///
++/// Each program a week holds still goes to the runner alone, one request
++/// each, under the runner's own `REQUEST_CEILING` (64 KiB,
++/// `rust_rounds_wire::protocol`), which this does not change: a starter
++/// past it is kept, and recorded as `refused`, `too-large`, as any program
++/// is. The mailbox takes up to 1 MiB a file (`MAILBOX_BODY_CEILING`).
++pub const WEEK_V2_CEILING: usize = 128 * 1024;
++
++/// The most exercises a ticket's academy holds, as the format bounds it.
++pub const ACADEMY_MAX: usize = 8;
++
+ /// One ticket's program.
+ #[derive(Debug, Clone, PartialEq, Eq)]
+ pub struct TicketProgram {
+@@ -40,11 +73,27 @@ pub struct TicketProgram {
+ 	pub source: String,
+ }
+ 
+-/// A week home can keep: its id and its tickets' programs, in ticket order.
++/// One exercise's starter, in a `/2` week's academy.
++#[derive(Debug, Clone, PartialEq, Eq)]
++pub struct Starter {
++	/// Its key, [`academy_key`]: `TB-101/academy/1`. Never a ticket's key.
++	pub key: String,
++	/// The ticket whose academy holds it, `TB-101`.
++	pub ticket: String,
++	/// Its place in that academy, from 1.
++	pub exercise: usize,
++	/// `main.rs`, exactly.
++	pub source: String,
++}
++
++/// A week home can keep: its id, its tickets' programs in ticket order, and
++/// (for `/2`) its academies' starters, ticket by ticket in exercise order.
+ #[derive(Debug, Clone, PartialEq, Eq)]
+ pub struct Week {
+ 	pub id: String,
+ 	pub programs: Vec<TicketProgram>,
++	/// Empty for a `/1` week.
++	pub academy: Vec<Starter>,
+ 	/// When the week opens and its deadline, when both are RFC 3339
+ 	/// instants and the deadline comes after the opening; `None` otherwise.
+ 	pub window: Option<Window>,
+@@ -72,17 +121,36 @@ pub fn mailbox_name(id: &str) -> String {
+ 	String::from(MAILBOX_PREFIX) + id + ".json"
+ }
+ 
++/// The key an academy's exercise is recorded under: `<ticket>/academy/<n>`,
++/// `n` from 1, as `TB-101/academy/1`.
++///
++/// It holds a `/`, which no ticket's key can ([`is_ticket_key`]), so a
++/// starter's key never names a ticket.
++#[must_use]
++pub fn academy_key(ticket: &str, exercise: usize) -> String {
++	String::from(ticket) + "/academy/" + &exercise.to_string()
++}
++
++/// Which format a week says it is.
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++enum Schema {
++	V1,
++	V2,
++}
++
+ /// Read `body` as a week, or say every problem found.
+ ///
+ /// # Errors
+-/// Each [`Problem`]: a body past [`WEEK_CEILING`], not UTF-8 or not one JSON
+-/// object; a missing or other `schema`; an `id` that is not an ISO week; no
++/// Each [`Problem`]: a body past [`WEEK_V2_CEILING`], or a `/1` (or
++/// unknown) week past [`WEEK_CEILING`]; not UTF-8 or not one JSON object; a
++/// missing or other `schema`; an `id` that is not an ISO week; no
+ /// `tickets`; a ticket whose id is not a key or is used twice, or that has
+-/// no `program`.
++/// no `program`; in a `/2` week, a ticket whose `academy` does not hold 1 to
++/// [`ACADEMY_MAX`] exercises, or an exercise with no `starter`.
+ pub fn read(body: &[u8]) -> Result<Week, Vec<Problem>> {
+ 	let problem = |field: &str, why| vec![(field.to_owned(), why)];
+-	if body.len() > WEEK_CEILING {
+-		return Err(problem("body", "is larger than 32 KiB"));
++	if body.len() > WEEK_V2_CEILING {
++		return Err(problem("body", "is larger than 128 KiB"));
+ 	}
+ 	let Ok(text) = std::str::from_utf8(body) else {
+ 		return Err(problem("body", "is not UTF-8"));
+@@ -90,15 +158,25 @@ pub fn read(body: &[u8]) -> Result<Week, Vec<Problem>> {
+ 	let Ok(Value::Object(week)) = serde_json::from_str::<Value>(text) else {
+ 		return Err(problem("body", "is not one JSON object"));
+ 	};
++	let schema = match week.get("schema").and_then(Value::as_str) {
++		Some(WEEK_SCHEMA) => Some(Schema::V1),
++		Some(WEEK_SCHEMA_V2) => Some(Schema::V2),
++		_ => None,
++	};
++	// Only a `/2` week may be larger than a `/1`'s ceiling.
++	if schema != Some(Schema::V2) && body.len() > WEEK_CEILING {
++		return Err(problem("body", "is larger than 32 KiB"));
++	}
+ 	let mut problems = Vec::new();
+-	if week.get("schema").and_then(Value::as_str) != Some(WEEK_SCHEMA) {
+-		problems.push((String::from("schema"), "must be \"some-ui.rust-week/1\""));
++	if schema.is_none() {
++		problems.push((String::from("schema"), "must be \"some-ui.rust-week/1\" or \"some-ui.rust-week/2\""));
+ 	}
+ 	let id = week.get("id").and_then(Value::as_str).filter(|id| is_week_id(id));
+ 	if id.is_none() {
+ 		problems.push((String::from("id"), "must be an ISO year and week, like 2026-w46"));
+ 	}
+ 	let mut programs = Vec::new();
++	let mut academy = Vec::new();
+ 	match week.get("tickets").and_then(Value::as_array) {
+ 		Some(tickets) if !tickets.is_empty() => {
+ 			for (index, ticket) in tickets.iter().enumerate() {
+@@ -120,6 +198,9 @@ pub fn read(body: &[u8]) -> Result<Week, Vec<Problem>> {
+ 					ticket: key.to_owned(),
+ 					source: source.to_owned(),
+ 				});
++				if schema == Some(Schema::V2) {
++					read_academy(ticket, key, &at, &mut academy, &mut problems);
++				}
+ 			}
+ 		}
+ 		_ => problems.push((String::from("tickets"), "must hold at least one ticket")),
+@@ -139,12 +220,38 @@ pub fn read(body: &[u8]) -> Result<Week, Vec<Problem>> {
+ 		Some(id) if problems.is_empty() => Ok(Week {
+ 			id: id.to_owned(),
+ 			programs,
++			academy,
+ 			window,
+ 		}),
+ 		_ => Err(problems),
+ 	}
+ }
+ 
++/// Each starter of `ticket`'s academy (`key`), onto `academy`, or the
++/// problems with it onto `problems`.
++fn read_academy(ticket: &Value, key: &str, at: &impl Fn(&str) -> String, academy: &mut Vec<Starter>, problems: &mut Vec<Problem>) {
++	let exercises = ticket
++		.get("academy")
++		.and_then(Value::as_array)
++		.filter(|exercises| (1..=ACADEMY_MAX).contains(&exercises.len()));
++	let Some(exercises) = exercises else {
++		problems.push((at(".academy"), "must hold 1 to 8 exercises"));
++		return;
++	};
++	for (index, exercise) in exercises.iter().enumerate() {
++		let Some(source) = exercise.get("starter").and_then(Value::as_str) else {
++			problems.push((at(&(String::from(".academy[") + &index.to_string() + "].starter")), "must be the starter, as text"));
++			continue;
++		};
++		academy.push(Starter {
++			key: academy_key(key, index + 1),
++			ticket: key.to_owned(),
++			exercise: index + 1,
++			source: source.to_owned(),
++		});
++	}
++}
++
+ /// `YYYY-wNN`, the week 01 to 53.
+ #[must_use]
+ pub fn is_week_id(id: &str) -> bool {
+@@ -174,8 +281,27 @@ pub fn is_ticket_key(key: &str) -> bool {
+ 
+ #[cfg(test)]
+ mod tests {
+-	use super::{is_ticket_key, is_week_id, mailbox_name, read, TicketProgram};
+-	use serde_json::json;
++	use super::{academy_key, is_ticket_key, is_week_id, mailbox_name, read, Starter, TicketProgram, WEEK_CEILING, WEEK_V2_CEILING};
++	use serde_json::{json, Value};
++
++	/// paulgsc/some-ui's sample `/2` week, Tallowbrook
++	/// (`packages/ui/rust-rounds/src/lib/sample-week/tallowbrook.ts`), as JSON.
++	const TALLOWBROOK: &str = include_str!("../testdata/rust-week-2026-w47.json");
++
++	fn tallowbrook() -> Value {
++		serde_json::from_str(TALLOWBROOK).unwrap()
++	}
++
++	/// `week` grown to `size` + 1 bytes by its company's prose, which home
++	/// never reads.
++	fn grown(mut week: Value, size: usize) -> Vec<u8> {
++		week["company"]["about"] = json!("");
++		let short = week.to_string().len();
++		week["company"]["about"] = json!("x".repeat(size + 1 - short));
++		let body = week.to_string().into_bytes();
++		assert_eq!(body.len(), size + 1);
++		body
++	}
+ 
+ 	fn week(tickets: &serde_json::Value) -> Vec<u8> {
+ 		json!({ "schema": "some-ui.rust-week/1", "id": "2026-w46", "company": { "name": "Quillmoss" }, "tickets": tickets })
+@@ -227,6 +353,93 @@ mod tests {
+ 		assert_eq!(read(b"[1]").unwrap_err()[0].0, "body");
+ 	}
+ 
++	/// A `/2` week gives each ticket's program, as `/1` does, and each
++	/// exercise's starter under its key, ticket by ticket in exercise order.
++	#[test]
++	fn a_v2_week_gives_each_tickets_program_and_its_academys_starters() {
++		let file = tallowbrook();
++		let read = read(TALLOWBROOK.as_bytes()).unwrap();
++		assert_eq!(read.id, "2026-w47");
++		let tickets: Vec<&str> = read.programs.iter().map(|program| program.ticket.as_str()).collect();
++		assert_eq!(tickets, ["TB-101", "TB-102", "TB-103"]);
++		assert_eq!(read.programs[0].source, file["tickets"][0]["program"].as_str().unwrap());
++		let keys: Vec<&str> = read.academy.iter().map(|starter| starter.key.as_str()).collect();
++		assert_eq!(keys, ["TB-101/academy/1", "TB-101/academy/2", "TB-101/academy/3", "TB-102/academy/1", "TB-103/academy/1"]);
++		assert_eq!(
++			read.academy[2],
++			Starter {
++				key: String::from("TB-101/academy/3"),
++				ticket: String::from("TB-101"),
++				exercise: 3,
++				source: file["tickets"][0]["academy"][2]["starter"].as_str().unwrap().to_owned(),
++			}
++		);
++		assert!(read.window.is_some());
++	}
++
++	/// A `/1` week reads as it always did: an academy on one of its tickets
++	/// is not read, and it holds no starters.
++	#[test]
++	fn a_v1_week_reads_no_academy() {
++		let body = week(&json!([{ "id": "QM-311", "program": "fn main() {}\n", "academy": [{ "starter": "fn main() {}\n" }] }]));
++		assert!(read(&body).unwrap().academy.is_empty());
++		let body = week(&json!([{ "id": "QM-311", "program": "fn main() {}\n", "academy": "anything" }]));
++		assert!(read(&body).is_ok());
++	}
++
++	/// A `/2` ticket's academy holds 1 to 8 exercises, each with a starter.
++	#[test]
++	fn a_v2_week_home_cannot_record_says_every_problem() {
++		let mut file = tallowbrook();
++		file["tickets"][0]["academy"] = json!([]);
++		file["tickets"][1]["academy"][0].as_object_mut().unwrap().remove("starter");
++		file["tickets"][2]["academy"] = json!(vec![json!({ "starter": "fn main() {}\n" }); 9]);
++		let fields: Vec<String> = read(file.to_string().as_bytes()).unwrap_err().into_iter().map(|(field, _)| field).collect();
++		assert_eq!(fields, ["tickets[0].academy", "tickets[1].academy[0].starter", "tickets[2].academy"]);
++
++		let mut file = tallowbrook();
++		file["tickets"][0].as_object_mut().unwrap().remove("academy");
++		file["tickets"][1]["academy"] = json!(vec![json!({ "starter": "fn main() {}\n" }); 8]);
++		let fields: Vec<String> = read(file.to_string().as_bytes()).unwrap_err().into_iter().map(|(field, _)| field).collect();
++		assert_eq!(fields, ["tickets[0].academy"], "eight is the most, and allowed");
++	}
++
++	/// A `/2` week may be larger than a `/1` week's ceiling, up to its own;
++	/// a `/1` week, or one of no known schema, may not.
++	#[test]
++	fn a_v2_week_has_its_own_ceiling() {
++		let v2 = grown(tallowbrook(), WEEK_CEILING);
++		assert!(read(&v2).is_ok(), "a /2 week past 32 KiB and under 128 KiB is kept");
++		let at_most = grown(tallowbrook(), WEEK_V2_CEILING - 1);
++		assert_eq!(at_most.len(), WEEK_V2_CEILING);
++		assert!(read(&at_most).is_ok(), "128 KiB exactly is kept");
++		assert_eq!(
++			read(&grown(tallowbrook(), WEEK_V2_CEILING)).unwrap_err(),
++			[(String::from("body"), "is larger than 128 KiB")]
++		);
++
++		let mut v1 = tallowbrook();
++		v1["schema"] = json!("some-ui.rust-week/1");
++		assert_eq!(read(&grown(v1, WEEK_CEILING)).unwrap_err(), [(String::from("body"), "is larger than 32 KiB")]);
++		let mut unknown = tallowbrook();
++		unknown["schema"] = json!("some-ui.rust-week/3");
++		assert_eq!(read(&grown(unknown, WEEK_CEILING)).unwrap_err()[0].0, "body");
++	}
++
++	/// No starter's key is ever a ticket's, whatever ticket or exercise.
++	#[test]
++	fn a_starter_key_is_never_a_ticket_key() {
++		for ticket in ["TB-101", "Q2RUST-1", "A-123456", "QM-311"] {
++			assert!(is_ticket_key(ticket));
++			for exercise in 1..=super::ACADEMY_MAX {
++				let key = academy_key(ticket, exercise);
++				assert!(!is_ticket_key(&key), "{key}");
++				assert!(key.starts_with(ticket) && key.contains('/'), "{key}");
++			}
++		}
++		assert_eq!(academy_key("TB-101", 1), "TB-101/academy/1");
++	}
++
+ 	#[test]
+ 	fn ids_and_keys() {
+ 		assert!(is_week_id("2026-w46") && is_week_id("2026-w01") && is_week_id("2026-w53"));
+diff --git a/crates/db/rust_round/testdata/rust-week-2026-w47.json b/crates/db/rust_round/testdata/rust-week-2026-w47.json
+new file mode 100644
+index 0000000..36e755e
+--- /dev/null
++++ b/crates/db/rust_round/testdata/rust-week-2026-w47.json
+@@ -0,0 +1,466 @@
++{
++  "schema": "some-ui.rust-week/2",
++  "id": "2026-w47",
++  "by": "claude-routine",
++  "family": "performance-task",
++  "opens": "2026-11-16T00:00:00-08:00",
++  "due": "2026-11-22T23:59:00-08:00",
++  "company": {
++    "name": "Tallowbrook",
++    "about": "Shipping labels for warehouses: each order's label is rendered and sent to a thermal printer, about 12,000 labels a minute at peak."
++  },
++  "role": "An engineer on Tallowbrook's label pipeline.",
++  "audience": "The pipeline team, and the warehouse leads who wait on the printers.",
++  "story": "As a warehouse lead, I need every order's label rendered and at the printer within 50 ms, so packers never stand at an empty printer.",
++  "sla": [
++    {
++      "id": "S1",
++      "what": "Render one label and hand it to the printer",
++      "target": "50 ms, p99"
++    },
++    {
++      "id": "S2",
++      "what": "Peak load",
++      "target": "12,000 labels a minute"
++    },
++    {
++      "id": "S3",
++      "what": "Allocations in the print loop",
++      "target": "None: the printer box's allocator stalls at peak"
++    }
++  ],
++  "tickets": [
++    {
++      "id": "TB-101",
++      "title": "Print each queued label's address",
++      "spec": "The print loop reads each label from the queue by index. rustc refuses it.",
++      "figures": [
++        {
++          "id": "F1",
++          "text": "The queue holds up to 2,000 labels at peak."
++        },
++        {
++          "id": "F2",
++          "text": "A jammed label is reprinted from the queue."
++        }
++      ],
++      "forks": [
++        {
++          "question": "How should the print loop get each label's address?",
++          "options": [
++            {
++              "id": "A",
++              "recommended": true,
++              "decision": "Clone it: `queue[i].address.clone()`",
++              "why": "rustc's own help offers it. 2,000 short clones cost far less than 50 ms, and it's the smallest change.",
++              "model": {
++                "id": "clone-is-cheap",
++                "name": "A clone is cheap enough to ignore at this size"
++              },
++              "cites": [
++                "S1",
++                "F1"
++              ]
++            },
++            {
++              "id": "B",
++              "recommended": false,
++              "decision": "Derive `Copy` on `Label`",
++              "why": "Label is two fields. Make it Copy and indexing just works, with no `.clone()` in the loop.",
++              "model": {
++                "id": "copy-is-free",
++                "name": "Copy is a free opt-in for any small struct"
++              },
++              "cites": [
++                "S1"
++              ]
++            },
++            {
++              "id": "C",
++              "recommended": false,
++              "decision": "Loop by value: `for l in queue`",
++              "why": "Take each label out of the queue as you go: no clone, no borrow, no allocation.",
++              "model": {
++                "id": "moving-out-is-free",
++                "name": "Moving out is free once you own the collection"
++              },
++              "cites": [
++                "S3",
++                "F2"
++              ]
++            }
++          ]
++        },
++        {
++          "question": "How should a Label hold its address?",
++          "options": [
++            {
++              "id": "A",
++              "recommended": true,
++              "decision": "Keep an owned `String`",
++              "why": "Addresses come from each order at run time, so each label owns its own.",
++              "model": {
++                "id": "owned-string",
++                "name": "An owned String per label is the plain choice"
++              },
++              "cites": [
++                "S2"
++              ]
++            },
++            {
++              "id": "B",
++              "recommended": false,
++              "decision": "Share it as `Rc<str>`",
++              "why": "The preview shows the same address. Share one copy instead of two.",
++              "model": {
++                "id": "sharing-saves-copies",
++                "name": "Sharing saves the copies"
++              },
++              "cites": [
++                "S1",
++                "S2"
++              ]
++            }
++          ]
++        }
++      ],
++      "program": "struct Label {\n    order: u32,\n    address: String,\n}\n\nfn label(order: u32, a: &str) -> Label {\n    Label { order, address: a.into() }\n}\n\nfn main() {\n    let queue = vec![\n        label(7, \"1 Elm St\"),\n        label(8, \"9 Oak Ave\"),\n    ];\n    for i in 0..queue.len() {\n        let to = queue[i].address;\n        let n = queue[i].order;\n        println!(\"{n} -> {to}\");\n    }\n}\n",
++      "expect": {
++        "outcome": "compile-error",
++        "code": "E0507"
++      },
++      "concepts": [
++        {
++          "id": "moves-out-of-collections",
++          "name": "Moves out of collections"
++        }
++      ],
++      "academy": [
++        {
++          "title": "A struct of plain fields still moves",
++          "why": "Before Label, a struct with nothing on the heap: a bool and a u32. Every field copies bit for bit, so it seems it should copy too.",
++          "forks": [
++            1,
++            2
++          ],
++          "tests": [
++            {
++              "fork": 1,
++              "option": "B"
++            }
++          ],
++          "keywords": [
++            "Copy",
++            "Clone",
++            "move",
++            "#[derive]",
++            "index"
++          ],
++          "starter": "#[derive(Debug)]\nstruct Foo {\n    ready: bool,\n    count: u32,\n}\n\nimpl Foo {\n    fn new(count: u32) -> Foo {\n        Foo { ready: true, count }\n    }\n}\n\nfn first(foos: &Vec<Foo>) -> Foo {\n    foos[0]\n}\n\nfn main() {\n    let foos = vec![Foo::new(1), Foo::new(2)];\n    let f = first(&foos);\n    println!(\"{f:?} {}\", foos.len());\n}\n",
++          "tries": [
++            "Run it and read what rustc says.",
++            "Add Clone and Copy to the derive. Predict what happens, then run it."
++          ],
++          "clarity": [
++            "Every field is copied bit for bit. Why do you still have to derive Copy and Clone?",
++            "Why doesn't the compiler derive them for you?"
++          ],
++          "expect": {
++            "outcome": "compile-error",
++            "code": "E0507"
++          }
++        },
++        {
++          "title": "A String field can't be Copy",
++          "why": "Give the same struct a String. What a String owns lives on the heap, and freeing it is a destructor's job.",
++          "forks": [
++            1,
++            2
++          ],
++          "tests": [
++            {
++              "fork": 1,
++              "option": "B"
++            },
++            {
++              "fork": 2,
++              "option": "A"
++            }
++          ],
++          "keywords": [
++            "Copy",
++            "Drop",
++            "String",
++            "heap",
++            "E0204"
++          ],
++          "starter": "#[derive(Debug, Clone, Copy)]\nstruct Foo {\n    ready: bool,\n    count: u32,\n    name: String,\n}\n\nfn main() {\n    let a = Foo {\n        ready: true,\n        count: 1,\n        name: String::from(\"a\"),\n    };\n    let b = a;\n    println!(\"{a:?} {b:?}\");\n}\n",
++          "tries": [
++            "Predict whether it compiles, then run it.",
++            "Take Copy out of the derive and keep Clone. What does `let b = a;` do to `a` now?"
++          ],
++          "clarity": [
++            "What would go wrong if two copies of a String both ran its destructor?",
++            "What does Clone do for a String that Copy couldn't?"
++          ],
++          "expect": {
++            "outcome": "compile-error",
++            "code": "E0204"
++          }
++        },
++        {
++          "title": "Count what a clone costs",
++          "why": "An allocator that counts. Read 1,000 names, cloning each one, and see what it costs.",
++          "forks": [
++            1
++          ],
++          "tests": [
++            {
++              "fork": 1,
++              "option": "A"
++            },
++            {
++              "fork": 1,
++              "option": "C"
++            }
++          ],
++          "keywords": [
++            "clone",
++            "&",
++            "allocation",
++            "GlobalAlloc"
++          ],
++          "starter": "use std::alloc::{GlobalAlloc, Layout, System};\nuse std::sync::atomic::{AtomicUsize, Ordering};\n\nstruct Counting;\nstatic ALLOCS: AtomicUsize = AtomicUsize::new(0);\n\nunsafe impl GlobalAlloc for Counting {\n    unsafe fn alloc(&self, l: Layout) -> *mut u8 {\n        ALLOCS.fetch_add(1, Ordering::Relaxed);\n        unsafe { System.alloc(l) }\n    }\n    unsafe fn dealloc(&self, p: *mut u8, l: Layout) {\n        unsafe { System.dealloc(p, l) }\n    }\n}\n\n#[global_allocator]\nstatic A: Counting = Counting;\n\nstruct Foo {\n    name: String,\n}\n\nfn main() {\n    let foos: Vec<Foo> = (0..1000)\n        .map(|i| Foo { name: format!(\"f{i}\") })\n        .collect();\n    let before = ALLOCS.load(Ordering::Relaxed);\n    let mut total = 0;\n    for i in 0..foos.len() {\n        let name = foos[i].name.clone();\n        total += name.len();\n    }\n    let after = ALLOCS.load(Ordering::Relaxed);\n    println!(\"{total} bytes read, {} allocations\", after - before);\n}\n",
++          "tries": [
++            "Run it and note the count.",
++            "Change `.clone()` to a borrow. Predict the count, then run it.",
++            "Try `std::mem::take` on a `mut` vector. What does it leave behind?"
++          ],
++          "clarity": [
++            "Where does each allocation in a clone come from?",
++            "What does a borrow ask of the code around it that a clone doesn't?"
++          ],
++          "expect": {
++            "outcome": "prints",
++            "stdout": "3890 bytes read, 1000 allocations\n"
++          }
++        }
++      ]
++    },
++    {
++      "id": "TB-102",
++      "title": "Reprint a label without losing the log",
++      "spec": "The printer keeps a log of orders sent. A reprint removes the order before it is sent again. It compiles, and works until an order is printed twice.",
++      "figures": [
++        {
++          "id": "F3",
++          "text": "About one label in 200 is reprinted after a jam."
++        }
++      ],
++      "forks": [
++        {
++          "question": "How should print and reprint share the log?",
++          "options": [
++            {
++              "id": "A",
++              "recommended": true,
++              "decision": "End `print`'s borrow before it calls `reprint`",
++              "why": "The panic is two borrows at once. Scope the first so it ends, then reprint.",
++              "model": {
++                "id": "guard-lifetime",
++                "name": "A RefCell borrow lasts until its guard drops"
++              },
++              "cites": [
++                "S1",
++                "F3"
++              ]
++            },
++            {
++              "id": "B",
++              "recommended": false,
++              "decision": "Make the log a `Mutex<Vec<u32>>`",
++              "why": "A Mutex is built for shared state. Swap it in and the borrow checks go away.",
++              "model": {
++                "id": "mutex-is-refcell",
++                "name": "A Mutex is a RefCell that tolerates a second lock"
++              },
++              "cites": [
++                "S1"
++              ]
++            },
++            {
++              "id": "C",
++              "recommended": false,
++              "decision": "Pass `&mut Vec<u32>` and drop the RefCell",
++              "why": "Let the compiler check the borrows. Then a second one can't happen at run time.",
++              "model": {
++                "id": "static-borrows",
++                "name": "Borrows checked at compile time can't overlap"
++              },
++              "cites": [
++                "S1",
++                "F3"
++              ]
++            }
++          ]
++        }
++      ],
++      "program": "use std::cell::RefCell;\n\ntype Log = RefCell<Vec<u32>>;\n\nfn reprint(log: &Log, order: u32) {\n    let mut sent = log.borrow_mut();\n    sent.retain(|o| *o != order);\n}\n\nfn print(log: &Log, order: u32) {\n    let mut sent = log.borrow_mut();\n    if sent.contains(&order) {\n        reprint(log, order);\n    }\n    sent.push(order);\n}\n\nfn main() {\n    let log = RefCell::new(Vec::new());\n    print(&log, 7);\n    print(&log, 8);\n    print(&log, 7);\n    println!(\"{:?}\", log.borrow());\n}\n",
++      "expect": {
++        "outcome": "panics"
++      },
++      "concepts": [
++        {
++          "id": "aliasing-and-mutation",
++          "name": "Aliasing and mutation"
++        }
++      ],
++      "academy": [
++        {
++          "title": "Two borrows of one RefCell",
++          "why": "A RefCell checks its borrows while the program runs. Hold one guard and ask for another.",
++          "forks": [
++            1
++          ],
++          "tests": [
++            {
++              "fork": 1,
++              "option": "A"
++            },
++            {
++              "fork": 1,
++              "option": "B"
++            }
++          ],
++          "keywords": [
++            "RefCell",
++            "borrow_mut",
++            "guard",
++            "Drop",
++            "panic"
++          ],
++          "starter": "use std::cell::RefCell;\n\nfn main() {\n    let log = RefCell::new(vec![1, 2]);\n    let first = log.borrow_mut();\n    log.borrow_mut().push(3);\n    println!(\"{first:?}\");\n}\n",
++          "tries": [
++            "Predict whether it compiles, and what happens when it runs. Then run it.",
++            "Move the `println!` above the push. What changes, and why?"
++          ],
++          "clarity": [
++            "When does a RefCell's borrow end?",
++            "What would a Mutex do in the same place?"
++          ],
++          "expect": {
++            "outcome": "panics"
++          }
++        }
++      ]
++    },
++    {
++      "id": "TB-103",
++      "title": "Render the page on a worker thread",
++      "spec": "The page is shared with the preview, so it sits in an Rc, and the renderer moves a copy to a worker thread. rustc refuses it.",
++      "figures": [],
++      "forks": [
++        {
++          "question": "What should the renderer share the page with the worker as?",
++          "options": [
++            {
++              "id": "A",
++              "recommended": true,
++              "decision": "An `Arc<Vec<u8>>`",
++              "why": "Same shape as Rc, and it crosses threads. The preview and the worker share one page.",
++              "model": {
++                "id": "arc-is-thread-safe-rc",
++                "name": "Arc is the thread-safe Rc"
++              },
++              "cites": [
++                "S1"
++              ]
++            },
++            {
++              "id": "B",
++              "recommended": false,
++              "decision": "A copy of the page for the worker",
++              "why": "The page is 64 bytes. Copying it per label costs nothing against 50 ms.",
++              "model": {
++                "id": "copy-is-cheap-page",
++                "name": "A copy per label is cheap at this size"
++              },
++              "cites": [
++                "S1",
++                "S2"
++              ]
++            },
++            {
++              "id": "C",
++              "recommended": false,
++              "decision": "Keep the `Rc` and wrap it in a `Mutex`",
++              "why": "A Mutex makes shared state safe, so wrap the Rc and move on.",
++              "model": {
++                "id": "mutex-makes-send",
++                "name": "A Mutex makes anything safe to send"
++              },
++              "cites": [
++                "S1"
++              ]
++            }
++          ]
++        }
++      ],
++      "program": "use std::rc::Rc;\nuse std::thread;\n\nfn main() {\n    let page = Rc::new(vec![0u8; 64]);\n    let copy = Rc::clone(&page);\n    let h = thread::spawn(move || {\n        copy.len()\n    });\n    println!(\"{}\", h.join().unwrap());\n    println!(\"{}\", page.len());\n}\n",
++      "expect": {
++        "outcome": "compile-error",
++        "code": "E0277"
++      },
++      "concepts": [
++        {
++          "id": "send-and-sync",
++          "name": "Send and Sync"
++        }
++      ],
++      "academy": [
++        {
++          "title": "What may cross a thread",
++          "why": "`thread::spawn` takes only what is Send. Ask the compiler which of two pointers is.",
++          "forks": [
++            1
++          ],
++          "tests": [
++            {
++              "fork": 1,
++              "option": "A"
++            },
++            {
++              "fork": 1,
++              "option": "C"
++            }
++          ],
++          "keywords": [
++            "Send",
++            "Rc",
++            "Arc",
++            "thread::spawn",
++            "E0277"
++          ],
++          "starter": "use std::rc::Rc;\nuse std::sync::Arc;\n\nfn needs_send<T: Send>(_: T) {}\n\nfn main() {\n    needs_send(Arc::new(1));\n    needs_send(Rc::new(1));\n}\n",
++          "tries": [
++            "Predict which call rustc refuses, then build it.",
++            "Wrap the Rc in a Mutex and ask again."
++          ],
++          "clarity": [
++            "What does Rc do on clone that makes it unsafe to send?",
++            "What does Arc do differently?"
++          ],
++          "expect": {
++            "outcome": "compile-error",
++            "code": "E0277"
++          }
++        }
++      ]
++    }
++  ],
++  "references": [
++    "rust-reference",
++    "ownership-inventory"
++  ],
++  "rubric": "solo"
++}
+diff --git a/docs/identity.md b/docs/identity.md
+index 2d34959..3d35864 100644
+--- a/docs/identity.md
++++ b/docs/identity.md
+@@ -1990,7 +1990,8 @@ nowhere is marked as such and belongs to review.
+     the mailbox and is kept as every routine file is, in `mailbox_item` under
+     the mailbox's subject (invariant 19), listed and read only by that
+     subject (`GET /rust-weeks` and `GET /rust-weeks/:id`; another subject's
+-    week is a `404`). Its programs join `rust_round_source` in the
++    week is a `404`). Its programs (each ticket's, and in a `/2` week each
++    academy exercise's starter, RR25) join `rust_round_source` in the
+     transaction that keeps it, and are as nobody's as a round's. What those
+     three tables keep past an account's deletion, their times included, is
+     under "What deleting an account erases", "What stays of Rust Rounds".
+diff --git a/infra/docker/Dockerfile.server b/infra/docker/Dockerfile.server
+index 356a77d..a865062 100644
+--- a/infra/docker/Dockerfile.server
++++ b/infra/docker/Dockerfile.server
+@@ -200,5 +200,5 @@ LABEL org.opencontainers.image.title="${APP_NAME}" \
+ # The numbers are apps/servers/file_host/src/contract.rs's (contract,
+ # render-folders), ws-events' NATS_SUBJECTS_EPOCH and rust_rounds_wire's
+ # protocol::EPOCH; contract.rs's own test holds them equal.
+-LABEL io.paulgsc.provides="contract=19,render-folders=1" \
++LABEL io.paulgsc.provides="contract=22,render-folders=1" \
+       io.paulgsc.requires="nats-subjects=1,rust-runner-protocol=1"
+-- 
+2.43.0
+
