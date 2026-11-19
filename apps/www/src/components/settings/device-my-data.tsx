@@ -27,7 +27,7 @@
 import type { JSX } from "react"
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { cn, formatSize } from "@some-ui/core-utils"
-import { Button, Notice } from "@some-ui/shared"
+import { Button, CardLink, CardLinkBody, Notice } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 import {
   Check,
@@ -597,19 +597,14 @@ const PageRow = ({
   line: string
 }): JSX.Element | null =>
   hasAudience("apk") ? (
-    <Link
-      to={to}
-      className={`hover:bg-accent bg-card rounded-xl border ${ROW}`}
-    >
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-medium">{title}</span>
-        <span className="text-muted-foreground block text-xs">{line}</span>
-      </span>
-      <ChevronRight
-        className="text-muted-foreground size-4 shrink-0"
-        aria-hidden
-      />
-    </Link>
+    <CardLink asChild className="min-h-12 px-4 py-2">
+      <Link to={to}>
+        <CardLinkBody className="gap-0">
+          <span className="text-sm font-medium">{title}</span>
+          <span className="text-muted-foreground text-xs">{line}</span>
+        </CardLinkBody>
+      </Link>
+    </CardLink>
   ) : null
 
 /** A My data page's heading: its title, and the way back to My data. */
