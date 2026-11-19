@@ -19,6 +19,11 @@ import type { JSX, ReactNode } from "react"
 import { useEffect, useId, useState, useSyncExternalStore } from "react"
 import { FlowPages } from "@rust-rounds/components/rust-week/flow"
 import { RunView } from "@rust-rounds/components/rustc-run"
+import {
+  TrackedWeek,
+  Tracker,
+  WorkProvider,
+} from "@rust-rounds/components/work-tracker"
 import type { Ticket, Week } from "@rust-rounds/lib/formats/week"
 import type { FlowRuntime } from "@rust-rounds/lib/week-play/flow-runtime"
 import type { PasteRuntime } from "@rust-rounds/lib/week-play/paste"
@@ -167,7 +172,9 @@ const Brief = (
   const of = week.tickets.length
   return (
     <div className="flex flex-col gap-4">
+      <Tracker week={week} />
       <Story week={week} />
+      <TrackedWeek week={week} />
       {last !== null && (
         <section className="bg-card flex flex-col gap-1 rounded-2xl p-3 text-sm">
           <p className="font-semibold">
@@ -300,6 +307,7 @@ const TicketBody = ({
       <p className="text-muted-foreground text-xs font-semibold">
         {WORDS.ticketOf(ticket.id, n, held.week.tickets.length)}
       </p>
+      <Tracker week={held.week} ticket={ticket} />
       <h2 className="text-2xl font-extrabold text-balance">{ticket.title}</h2>
       <p>{ticket.spec}</p>
       <section className="flex flex-col gap-1">
@@ -725,11 +733,7 @@ const Screen = (
 /** No flow to hear, where takes go by ticket. */
 const noFlow = (): (() => void) => () => undefined
 
-export const RustWeek = ({
-  ports,
-  back,
-  onRounds,
-}: RustWeekProps): JSX.Element => {
+const WeekScreens = ({ ports, back, onRounds }: RustWeekProps): JSX.Element => {
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime, and the week and takes it runs on, are made once per mount, as the idea bundle's are */
   const [{ week, desk, held }] = useState(() => ({
     week: createRustWeek(ports),
@@ -843,3 +847,10 @@ export const RustWeek = ({
     </div>
   )
 }
+
+/** The week, with the work tracker where this build has one (RR26). */
+export const RustWeek = (props: RustWeekProps): JSX.Element => (
+  <WorkProvider work={props.ports.work ?? null}>
+    <WeekScreens {...props} />
+  </WorkProvider>
+)

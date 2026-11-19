@@ -14,6 +14,7 @@
  * words home heard, never change any.
  */
 import type { HeldWeek } from "@rust-rounds/lib/weeks"
+import type { WorkPorts } from "@rust-rounds/lib/work-tracker/runtime"
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { weekOpenNow } from "@some-ui/core-utils"
 import type { EngagementEvent } from "@some-ui/engagement"
@@ -67,6 +68,8 @@ export type RustWeekPorts = {
    * the week's opening.
    */
   readonly perPoint: boolean
+  /** The work tracker and the week's time (RR26), where this build has them. */
+  readonly work?: WorkPorts
 }
 
 export type RustWeek = {
