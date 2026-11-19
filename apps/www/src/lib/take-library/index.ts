@@ -29,6 +29,7 @@ import {
 } from "@/lib/home-link/voice-copy"
 import { askWhileBusy } from "@/lib/home-link/while-busy"
 import { onSoundbitesKept } from "@/lib/soundbite-keeping"
+import { onStudioKept } from "@/lib/studio-keeping"
 
 import { phoneTakesOf, readTakes } from "./model"
 
@@ -77,7 +78,9 @@ export function phoneOnlyTakes(): LibraryOnPhone {
           copyPasses.subscribe(read),
           phoneGameBites().subscribe(read),
           whenPlacesKnown(read),
-          // The soundbites' store, once a page hands it in.
+          // Studio's and the soundbites' stores, once a page hands each in:
+          // Studio's route hands its own in after Takes first reads.
+          onStudioKept(read),
           onSoundbitesKept(read),
         ]
         read()
