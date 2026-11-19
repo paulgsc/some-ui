@@ -126,13 +126,17 @@ test.describe("a card that opens something stands out in every theme", () => {
  * The brand card's words over the brand card (#3236): under a dark theme the
  * card link's own `dark:` tint once outranked the brand's stop and faded the
  * card toward the page, leaving its last line hard to read. Each line of
- * today's question must clear the text floor against the card's colour where
- * that line sits (over the page, since a stop may be a tint), its own
- * opacity counted.
+ * today's question must clear the text floor against both of the card's
+ * stops (a line between them sits on a mix of the two), each laid over the
+ * page since a stop may be a tint, with every opacity from the line up to the
+ * card counted.
  */
-async function brandLines(
-  page: Page
-): Promise<ReadonlyArray<{ text: string; ink: Rgb; ground: Rgb }>> {
+async function brandLines(page: Page): Promise<
+  ReadonlyArray<{
+    text: string
+    pairs: ReadonlyArray<{ ink: Rgb; ground: Rgb }>
+  }>
+> {
   return page.evaluate(() => {
     const canvas = document.createElement("canvas")
     canvas.width = 1
@@ -156,8 +160,7 @@ async function brandLines(
       a.textContent.startsWith("Today's question")
     )
     if (card === undefined) throw new Error("no today's question")
-    // The gradient's stops, top to bottom: each line is read against the
-    // stop nearest it (the card is two stops, so the bottom line gets `to`).
+    // The gradient's stops, top and bottom.
     const stops =
       getComputedStyle(card).backgroundImage.match(
         /(?:oklch|oklab|rgba?|color|lab|lch)\([^)]*\)/g
@@ -173,7 +176,6 @@ async function brandLines(
         break
       }
     }
-    const box = card.getBoundingClientRect()
     const lines = [...card.querySelectorAll("span")].filter(
       (span) =>
         span.children.length === 0 &&
@@ -181,22 +183,30 @@ async function brandLines(
         span.closest("[aria-hidden]") === null
     )
     return lines.map((span) => {
-      const at = span.getBoundingClientRect()
-      const near =
-        (at.top + at.height / 2 - box.top) / box.height < 0.5 ? top : bottom
-      const style = getComputedStyle(span)
-      const ground = paint([
-        { fill: page, alpha: 1 },
-        { fill: near, alpha: 1 },
-      ])
+      // Its own opacity and every one above it inside the card.
+      let alpha = 1
+      for (
+        let at: Element | null = span;
+        at !== null && at !== card;
+        at = at.parentElement
+      ) {
+        alpha *= Number(getComputedStyle(at).opacity)
+      }
+      const color = getComputedStyle(span).color
+      // Read against both stops: a line between them sits on a mix of the two.
       return {
         text: span.textContent.trim(),
-        ground,
-        ink: paint([
-          { fill: page, alpha: 1 },
-          { fill: near, alpha: 1 },
-          { fill: style.color, alpha: Number(style.opacity) },
-        ]),
+        pairs: [top, bottom].map((stop) => ({
+          ground: paint([
+            { fill: page, alpha: 1 },
+            { fill: stop, alpha: 1 },
+          ]),
+          ink: paint([
+            { fill: page, alpha: 1 },
+            { fill: stop, alpha: 1 },
+            { fill: color, alpha },
+          ]),
+        })),
       }
     })
   })
@@ -221,8 +231,10 @@ test.describe("the brand card's words read in every theme", () => {
         document.documentElement.className = classes.join(" ")
       }, theme.boundary.classNames)
       await page.waitForTimeout(300)
-      for (const { text, ink, ground } of await brandLines(page)) {
-        const ratio = contrast(ink, ground)
+      for (const { text, pairs } of await brandLines(page)) {
+        const ratio = Math.min(
+          ...pairs.map(({ ink, ground }) => contrast(ink, ground))
+        )
         if (ratio < CONTRAST_FLOOR.text) {
           failures.push(`${theme.id}: "${text}" ${ratio.toFixed(2)}:1`)
         }
