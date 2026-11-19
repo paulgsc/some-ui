@@ -179,11 +179,16 @@ describe("the interview week's pages on the phone (IW8)", () => {
     screen.getByText(WORDS.band.pace(DEFAULT_PACE_WPM))
     fireEvent.click(screen.getByRole("button", { name: WORDS.band.faster }))
     screen.getByText(WORDS.band.pace(DEFAULT_PACE_WPM + PACE_STEP_WPM))
-    // Ending the take leaves the script where the band left it (PB1).
+    // Ending the take leaves the script where the band left it, and where a
+    // hand scrolled it ahead of the band (PB1).
     const read = lit()
+    const view = script?.querySelector("[data-scroll-intent]")
+    if (!(view instanceof HTMLElement)) throw new Error("no script window")
+    view.scrollTop = 500
     fireEvent.click(takeButton(card))
     await settle()
     expect(lit()).toBe(read)
+    expect(view.scrollTop).toBe(500)
 
     await follow(WORDS.reads)
     screen.getByText(

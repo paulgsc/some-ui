@@ -5,10 +5,12 @@
  *
  * PB1 (promise): the band never moves the script back by itself. Family:
  * every place in the script a take can end at (each word read, a line
- * read through, the last word), and every way it ends (Stop, the take's
- * cap, leaving the page: each the runtime's `ended`), paused or not. Proof:
- * "never moves the script back when a take ends", below, over every half
- * word of the script.
+ * read through, the last word), every way it ends (Stop, the take's cap,
+ * leaving the page: each the runtime's `ended`), paused or not, and where a
+ * hand left the script's window. Proof: "never moves the script back when
+ * a take ends", below, over every half word of the script; and the read's
+ * page in `components/jobs/interview/__tests__/interview.test.tsx`, whose
+ * window, scrolled by hand, stays where it was when the take stops.
  */
 import { HEARD_FLOOR } from "@some-ui/voice-capture"
 import { describe, expect, it } from "vitest"
