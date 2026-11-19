@@ -430,7 +430,7 @@ const ModelSchema = z.strictObject({ id: words, name: words })
 const TradeFields = {
   meets: z.array(constraintId),
   breaks: z.array(constraintId),
-  /** Why, in a few words, as the table's last column says it; a refused one's is rustc's. */
+  /** Why, in a few words, as the table's last column says it; a refused one shows `refused.why` there instead. */
   because: words.optional(),
   refused: z.strictObject({ code: words, why: words }).optional(),
 }

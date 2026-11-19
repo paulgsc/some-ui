@@ -944,6 +944,33 @@ describe("a point as a fork (RR29)", () => {
     ])
   })
 
+  it("asks why of every row, in a few words, but one that doesn't build", () => {
+    const [a, b] = fork().options
+    if (!a || !b) throw new Error("two options")
+    const { because: _, ...mute } = a
+    expect(problems(withFork({ ...fork(), options: [mute, b] }))).toEqual([
+      "QM-311 fork 1: A says nothing of why, in a few words",
+    ])
+    const hidden = {
+      kind: "hidden" as const,
+      decision: "Borrow, and keep the buffer.",
+      why: "It breaks nothing.",
+      model: { id: "borrow", name: "Borrow" },
+      meets: ["S1", "F1", "F2"],
+      breaks: [],
+    }
+    expect(problems(withFork({ ...fork(), best: hidden }))).toEqual([
+      "QM-311 fork 1: the hidden best says nothing of why, in a few words",
+    ])
+    const refused = {
+      ...mute,
+      meets: [],
+      breaks: [],
+      refused: { code: "E0204", why: "Label holds a String." },
+    }
+    expect(problems(withFork({ ...fork(), options: [refused, b] }))).toEqual([])
+  })
+
   it("takes a judgement whose decision, verdict and place agree", () => {
     const judged: EssayFork = {
       ...fork(),
