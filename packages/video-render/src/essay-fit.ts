@@ -31,7 +31,10 @@
  * Tolerance: CF1's. The other scenes are outside the Family: the answer
  * scene shows the owner's transcript, which no length bounds and the routine
  * can't shorten (#3187), and the open, question, weeks and next scenes
- * restate what earlier files hold. The recorder's `data-overflow` refusal
+ * restate what earlier files hold. The fork scene (RR29) is outside it too
+ * until a model of it lands: `essay-fit.spec.ts` draws one fork and holds
+ * that it fits. So is a ticket of 1, or 4 to 6, points (version 4), which
+ * the spec doesn't draw yet. The recorder's `data-overflow` refusal
  * stays the guard there, so no video is cut off.
  */
 

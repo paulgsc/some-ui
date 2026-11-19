@@ -43,6 +43,7 @@ import { AREAS } from "@rust-rounds/lib/monday/topics"
 import type {
   EssayTicketValues,
   EssayValues,
+  ForkValues,
   PointValues,
   Values,
 } from "@rust-rounds/lib/monday/values"
@@ -53,10 +54,11 @@ import {
   readWeek,
 } from "@rust-rounds/lib/week-check"
 import { assertNever, pacificDay } from "@some-ui/core-utils"
-import type { Essay, EssayPointAnswer } from "@some-ui/video-render"
+import type { Essay, EssayFork, EssayPointAnswer } from "@some-ui/video-render"
 import {
   ESSAY_CHART_ROWS,
   ESSAY_DECAY_VERSION,
+  ESSAY_FORK_VERSION,
   ESSAY_ID,
   ESSAY_POINT_VERSION,
   ESSAY_SCHEMA,
@@ -64,6 +66,7 @@ import {
   essayFit,
   hasPointAnswers,
   needsDecayVersion,
+  needsForkVersion,
   parseEssay,
 } from "@some-ui/video-render"
 
@@ -171,8 +174,80 @@ function pointAnswers(
   return answers
 }
 
+/**
+ * Each fork of `ticket` that lists options (`/2`, RR29), by its place from
+ * 1, built from the week's options and the after-deadline best fit the
+ * model wrote of it (`values`): one best fit per such fork, each listed
+ * option set against the stated constraints once. Whether an id is stated
+ * and a hidden best's advantage is stated, `parseEssay` holds
+ * (`forkProblems`).
+ */
+function forksOf(
+  ticket: EndedTicket,
+  values: ReadonlyArray<ForkValues>,
+  problems: Array<string>
+): Map<number, EssayFork> {
+  const forks = new Map<number, EssayFork>()
+  for (const read of values)
+    if ((ticket.forks[read.fork - 1]?.options.length ?? 0) === 0)
+      problems.push(
+        `${ticket.id}: fork ${read.fork} lists no options, so leave it out of forks`
+      )
+  for (const [i, { options }] of ticket.forks.entries()) {
+    if (options.length === 0) continue
+    const at = `${ticket.id} fork ${i + 1}`
+    const read = values.filter((v) => v.fork === i + 1)
+    const [only] = read
+    if (only === undefined || read.length > 1) {
+      problems.push(
+        only === undefined
+          ? `${at}: it lists options, so it takes a best fit: the best decision and each option's trade`
+          : `${at}: its best fit is written ${read.length} times; write it once`
+      )
+      continue
+    }
+    const traded = only.options.map((option) => option.id)
+    for (const id of traded)
+      if (!options.some((option) => option.id === id))
+        problems.push(`${at}: ${id} isn't one of its options`)
+    const built = options.flatMap((option) => {
+      const trade = only.options.filter((each) => each.id === option.id)
+      const [one] = trade
+      if (one === undefined || trade.length > 1) {
+        problems.push(
+          `${at}: ${option.id} is set against the stated constraints ${trade.length} times; once`
+        )
+        return []
+      }
+      return [
+        {
+          id: option.id,
+          recommended: option.recommended,
+          decision: option.decision,
+          model: option.model,
+          meets: one.meets,
+          breaks: one.breaks,
+          ...(one.because === undefined ? {} : { because: one.because }),
+          ...(one.refused === undefined ? {} : { refused: one.refused }),
+        },
+      ]
+    })
+    if (built.length !== options.length) continue
+    forks.set(i + 1, {
+      options: built,
+      best:
+        "option" in only.best
+          ? { kind: "option", option: only.best.option }
+          : { kind: "hidden", ...only.best.hidden },
+      said: only.said,
+    })
+  }
+  return forks
+}
+
 function essayTicket(
   ticket: EndedTicket,
+  sla: EndedWeek["sla"],
   values: EssayTicketValues,
   problems: Array<string>
 ): Essay["tickets"][number] | null {
@@ -259,6 +334,7 @@ function essayTicket(
     }
   })
   const own = pointAnswers(ticket, values.points ?? [], problems)
+  const forks = forksOf(ticket, values.forks ?? [], problems)
   if (answer === null) return null
   return {
     id: ticket.id,
@@ -268,12 +344,28 @@ function essayTicket(
     program: ticket.program,
     points: ticket.forks.map(({ question: to }, i) => {
       const answered = own.get(i + 1)
+      const fork = forks.get(i + 1)
       return {
         to,
         best: values.bests[i] ?? "",
         ...(answered === undefined ? {} : { answer: answered }),
+        ...(fork === undefined ? {} : { fork }),
       }
     }),
+    ...(forks.size === 0
+      ? {}
+      : {
+          stated: [
+            ...sla.map((row) => ({
+              id: row.id,
+              says: `${row.what}: ${row.target}`,
+            })),
+            ...ticket.figures.map((figure) => ({
+              id: figure.id,
+              says: figure.text,
+            })),
+          ],
+        }),
     answer,
     question: { said: values.question },
     best: { said: values.best },
@@ -300,7 +392,7 @@ function buildEssay(
       problems.push(`${ended.week}: ${ticket.id} has no values`)
       return []
     }
-    const built = essayTicket(ticket, held, problems)
+    const built = essayTicket(ticket, ended.sla, held, problems)
     return built === null ? [] : [built]
   })
   if (following === undefined) {
@@ -321,11 +413,13 @@ function buildEssay(
     { weeks: ESSAY_WEEKS_MOST, concepts: ESSAY_CHART_ROWS }
   )
   // The lowest version that draws it (C270).
-  const version = tickets.some(hasPointAnswers)
-    ? ESSAY_POINT_VERSION
-    : chart.concepts.some((c) => c.cells.some(needsDecayVersion))
-      ? ESSAY_DECAY_VERSION
-      : 1
+  const version = tickets.some(needsForkVersion)
+    ? ESSAY_FORK_VERSION
+    : tickets.some(hasPointAnswers)
+      ? ESSAY_POINT_VERSION
+      : chart.concepts.some((c) => c.cells.some(needsDecayVersion))
+        ? ESSAY_DECAY_VERSION
+        : 1
   const topics = [
     ...new Set(following.tickets.flatMap((t) => t.concepts.map((c) => c.name))),
   ]

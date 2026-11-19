@@ -1,0 +1,18 @@
+{
+  "id": "C689",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/essay.ts",
+    "packages/video-render/src/essay-fit.ts"
+  ],
+  "chose": "Version 4 takes 1 to 6 points per ticket, as a `/2` week's forks, where earlier versions take 2 or 3. EF1's model still measures the best and beside scenes at any count, so finish refuses one that overflows. The fork scene is outside EF1's Family until its own model lands; the fit spec draws one fork and holds that it fits.",
+  "options": [
+    "1 to 6 points from version 4",
+    "keep 2 to 3 and refuse longer weeks",
+    "raise the count in every version"
+  ],
+  "gray": "The week format allows 1 to 6 forks while the essay took 2 to 3, and the owner said to design for k points; whether the essay follows now is a choice.",
+  "undo": "Set FORK_POINTS_LEAST and FORK_POINTS_MOST back to 2 and 3.",
+  "refs": ["#3257", "#3253"]
+}

@@ -133,13 +133,41 @@ with one ticket for each of the week's, by its id:
   out when the bundle lists none. The point's own take decides its mark on
   screen; `answer`'s marks still give one per point, judged from the take of
   the whole ticket.
+- `forks`, for each fork of a `some-ui.rust-week/2` ticket that lists
+  options (RR29), with `"schema":"some-ui.rust-monday-values/2"`: the best
+  fit, written only now, after the deadline. Each entry is
+  `{"fork","best","options","said"}`. `fork` is its place from 1.
+  - `best` is the best decision: `{"option"}`, a listed option by its id, or
+    `{"hidden"}`, one the agent didn't list:
+    `{"decision","why","model","meets","breaks"}`, with `model` as
+    `{"id","name"}`. The best may be the recommended option, another, or
+    hidden; vary it week to week so trusting the agent is never always
+    right, and never always wrong.
+  - `options`: every listed option, once, as
+    `{"id","meets","breaks","because"}`:
+    the stated constraints it meets and breaks, by the ids the week gave
+    them (`S1` for an SLA row, `F1` for one of the ticket's figures). Name
+    no constraint the week didn't state, and none as both. `because` says
+    why in a few words ("one allocation per label, in the loop"); the
+    hidden best takes one too. An option (or
+    the hidden best) whose program rustc refuses takes
+    `"refused":{"code","why"}`, rustc's code and why, with `meets` and
+    `breaks` empty (`[]`).
+  - A hidden best must be better than each listed option on a stated
+    constraint: it builds where the option doesn't, meets one the option
+    doesn't, or avoids one the option breaks. Its advantage rests on what
+    the week stated, never on a constraint it didn't; `finish` refuses any
+    other.
+  - `said`: what is said over the fork's scene, which sets every option and
+    the best against the stated constraints. Argue only from those ids, and
+    explain a wrong option by the model it rests on, never as a trap.
 - `answer`, for a ticket `by-points`: leave it out when every point has a
   take of its own; otherwise `{"guess"}` for why the rest were left. Either
   way the essay gives the ticket's own answer as a silence, since no take of
   the whole ticket was sent and home refuses an essay that plays one.
 - `beside`, for a ticket with points answered on their own: say which take
   each point was judged from, its own or the whole ticket's.
-- `dives`: two deep dives on the ticket's biggest gaps. A gap is `missing`
+- `dives`: two deep dives on the ticket's biggest gaps (one, for a ticket of a single point). A gap is `missing`
   over `partly` over `covered`, and every point of a silence is a gap. A
   point answered by a take of its own has the gap its own mark says. Each
   dive is `{"point","title","shows","code","said"}`: the point it goes into

@@ -1,0 +1,18 @@
+{
+  "id": "C688",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/essay.ts",
+    "apps/www/src/lib/web-surface/call/essay-words.ts"
+  ],
+  "chose": "A→A′ is five stops, labelled \"A: followed blind\", \"Followed, with reasons\", \"Chose another listed\", \"Said your own\" and \"A′: called out the list\": trusted is a fork left alone (recommended-by-default), reasoned an explicit pick of the recommended, departed another listed option, own and astute a decision of their own. A listed decision's verdict is `best` exactly when it is the best, and an own decision is never `best` when the best is listed.",
+  "options": [
+    "five steps from the owner's list",
+    "a 0–1 score",
+    "A or A′ only"
+  ],
+  "gray": "The owner named the cases; whether they form one ordered axis, and how its steps are named on screen, is a judgement the owner would see in the video.",
+  "undo": "Edit FORK_PLACEMENTS and its fits in forkProblems, and the words in essay-words.ts.",
+  "refs": ["#3257", "#3253"]
+}
