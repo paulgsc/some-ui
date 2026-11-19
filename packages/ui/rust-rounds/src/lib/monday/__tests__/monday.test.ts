@@ -586,6 +586,248 @@ function keysIn(schema: unknown, names: Set<string>): Set<string> {
   return names
 }
 
+/**
+ * RR24 (#3248): a week answered point by point. QM-311 keeps one old take of
+ * the whole ticket; QM-312 has none, and every point a take of its own (point
+ * 3's home couldn't make out); QM-313 has none, and point 2 alone a take of
+ * its own. Each point's take is restated from what home heard in it, and the
+ * essay judges each point from the take named for it.
+ */
+describe("a week answered point by point (RR24)", () => {
+  const heard = (
+    note: string,
+    text: string,
+    verdict?: unknown
+  ): MailboxFile => ({
+    name: `transcript-${note}-1.json`,
+    body: {
+      ...TranscriptSchema.parse(SAMPLE_TRANSCRIPTS[0]?.body),
+      note,
+      ref: null,
+      text,
+      ...(verdict === undefined ? {} : { verdict }),
+    },
+  })
+  const point = (
+    n: number,
+    take: string
+  ): WeekRecord["tickets"][number]["points"][number] => ({
+    point: n,
+    take,
+    recordedAt: "2026-11-14T20:30:00.000Z",
+  })
+  function byPoints(): Prepared {
+    const base = record()
+    const [first, second, third] = base.tickets
+    if (!first || !second || !third) throw new Error("three tickets")
+    return samplePrepared({
+      records: [
+        {
+          ...base,
+          tickets: [
+            first,
+            {
+              ...second,
+              take: null,
+              recordedAt: null,
+              points: [
+                point(1, "note-312-1"),
+                point(2, "note-312-2"),
+                point(3, "note-312-3"),
+              ],
+            },
+            { ...third, answered: true, points: [point(2, "note-313-2")] },
+          ],
+          unanswered: [],
+        },
+      ],
+      transcripts: [
+        ...SAMPLE_TRANSCRIPTS,
+        heard("note-312-1", "The parse borrows buf, so clear can't run."),
+        heard("note-312-2", "An arena keeps the bytes alive."),
+        heard("note-312-3", GARBLE, { kind: "garbled" }),
+        heard("note-313-2", "scope joins every thread before it returns."),
+      ],
+    })
+  }
+  const solo = { level: 3, why: "One reason, joined to the bytes." }
+  function pointValues(): Values {
+    const given = values()
+    const [, second, third] = given.essays[0]?.tickets ?? []
+    if (!second || !third) throw new Error("the sample changed shape")
+    delete second.answer
+    second.points = [
+      {
+        point: 1,
+        mark: "partly",
+        note: "Named the borrow, not the clear.",
+        solo,
+      },
+      { point: 2, mark: "partly", solo },
+    ]
+    third.points = [{ point: 2, mark: "covered", solo: { ...solo, level: 4 } }]
+    return given
+  }
+
+  it("restates each point's take from what home heard in it", () => {
+    const { bundle } = byPoints()
+    expect(bundle.waiting).toEqual([])
+    const tickets = bundle.essays[0]?.tickets ?? []
+    expect(tickets.map((t) => [t.id, t.answer.kind])).toEqual([
+      ["QM-311", "take"],
+      ["QM-312", "by-points"],
+      ["QM-313", "by-points"],
+    ])
+    expect(tickets[1]?.points).toEqual([
+      {
+        point: 1,
+        answer: {
+          kind: "take",
+          transcript: "The parse borrows buf, so clear can't run.",
+        },
+      },
+      {
+        point: 2,
+        answer: { kind: "take", transcript: "An arena keeps the bytes alive." },
+      },
+      { point: 3, answer: { kind: "unheard", opened: 2 } },
+    ])
+    expect(JSON.stringify(bundle)).not.toContain(GARBLE)
+  })
+
+  it("waits on a point's take home hasn't heard yet", () => {
+    const prepared = byPoints()
+    const { bundle } = samplePrepared({
+      records: [
+        WeekRecordSchema.parse({
+          ...record(),
+          tickets: record().tickets.map((t, i) =>
+            i === 2
+              ? { ...t, answered: true, points: [point(1, "note-unheard-yet")] }
+              : t
+          ),
+          unanswered: [],
+        }),
+      ],
+    })
+    expect(prepared.bundle.waiting).toEqual([])
+    expect(bundle.waiting).toEqual([
+      {
+        week: "2026-w46",
+        why: "home hasn't heard the take on point 1 of QM-313 yet",
+      },
+    ])
+  })
+
+  it("writes an essay of version 3 that judges each point from its own take", () => {
+    const done = finish({ ...byPoints(), values: pointValues(), runs: RUNS })
+    if (!done.ok) throw new Error(done.problems.join("\n"))
+    const essay = parseEssay(done.files[0]?.body)
+    if (!essay.ok) throw new Error(essay.problems.join("\n"))
+    expect(essay.value.template.version).toBe(3)
+    const [first, second, third] = essay.value.tickets
+    expect(first?.answer.kind).toBe("take")
+    expect(first?.points.some((p) => p.answer)).toBe(false)
+    expect(second?.answer).toEqual({ kind: "silence", opened: 2 })
+    expect(second?.points.map((p) => p.answer)).toEqual([
+      {
+        kind: "take",
+        transcript: "The parse borrows buf, so clear can't run.",
+        mark: { mark: "partly", note: "Named the borrow, not the clear." },
+        solo,
+      },
+      {
+        kind: "take",
+        transcript: "An arena keeps the bytes alive.",
+        mark: { mark: "partly" },
+        solo,
+      },
+      { kind: "silence", opened: 2, unheard: true },
+    ])
+    expect(third?.answer.kind === "silence" && third.answer.guess).toBeTruthy()
+    expect(third?.points.map((p) => p.answer?.kind)).toEqual([
+      undefined,
+      "take",
+    ])
+    // QM-312's concepts at the lowest of its points' levels; QM-313's at point 2's (C685).
+    expect(essay.value.weeks.concepts.map((c) => c.cells)).toEqual([
+      [4],
+      [4],
+      [3],
+      [4],
+    ])
+  })
+
+  it("counts a ticket whose every point take home couldn't make out as no check (C431)", () => {
+    const silence = { kind: "silence" as const, opened: 1 }
+    const unheard = { ...silence, unheard: true as const }
+    const guessed = { ...silence, guess: "A guess." }
+    const ticket = { id: "QM-1", concepts: [{ id: "a", name: "A" }] }
+    const judged = (
+      answer: typeof silence | typeof unheard | typeof guessed,
+      points: ReadonlyArray<typeof unheard | undefined>
+    ): ReadonlyArray<unknown> =>
+      judgedWeek(
+        "2026-w46",
+        [ticket],
+        [
+          {
+            id: "QM-1",
+            answer,
+            points: points.map((own) => ({
+              to: "x",
+              best: "y",
+              ...(own === undefined ? {} : { answer: own }),
+            })),
+          },
+        ]
+      ).tickets
+    expect(judged(silence, [unheard, unheard])).toEqual([])
+    expect(judged(unheard, [unheard, undefined])).toEqual([])
+    // A point left with no take of its own is a silence, not an unheard take.
+    expect(judged(guessed, [unheard, undefined])).toHaveLength(1)
+  })
+
+  it("refuses a reading that doesn't fit each point's take", () => {
+    const problemsOf = (
+      change: (given: Values) => void
+    ): ReadonlyArray<string> => {
+      const given = pointValues()
+      change(given)
+      const done = finish({ ...byPoints(), values: given, runs: RUNS })
+      return done.ok ? [] : done.problems
+    }
+    const ticket = (
+      given: Values,
+      i: number
+    ): Values["essays"][number]["tickets"][number] => {
+      const found = given.essays[0]?.tickets[i]
+      if (!found) throw new Error("shape")
+      return found
+    }
+    expect(
+      problemsOf((given) => {
+        ticket(given, 1).answer = { guess: "A guess." }
+        ticket(given, 2).points = []
+      })
+    ).toEqual([
+      "QM-312: every point was answered by a take of its own, so leave answer out",
+      "QM-313 point 2: answered by its own take, so it takes a mark and a SOLO level, not nothing",
+    ])
+    expect(
+      problemsOf((given) => {
+        ticket(given, 1).points?.push({ point: 3, guess: "A guess." })
+        ticket(given, 0).points = [{ point: 1, guess: "A guess." }]
+        delete ticket(given, 2).answer
+      })
+    ).toEqual([
+      "QM-311: point 1 wasn't answered by a take of its own, so leave it out of points",
+      "QM-312 point 3: home couldn't make out its own take, so leave it out of points",
+      "QM-313: some points were left unanswered, so it takes a guess at why, not nothing",
+    ])
+  })
+})
+
 describe("ROUTINE.md", () => {
   it("names every field the values file has", () => {
     const names = keysIn(

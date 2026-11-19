@@ -27,7 +27,9 @@ const PasteSchema = z.object({
 
 const TicketRecordSchema = z.object({
   ticket: z.string().min(1),
+  /** Answered whole, or by any of its points. */
   answered: z.boolean(),
+  /** The take of the whole ticket, when one was sent: it answers every point. */
   take: z.string().min(1).nullable(),
   recordedAt: Instant.nullable(),
   /**
@@ -78,7 +80,9 @@ export function readFinalRecord(
     return { ok: false, why: "home hasn't made it final yet" }
   }
   for (const ticket of record.tickets) {
-    if (ticket.answered !== (ticket.take !== null)) {
+    if (
+      ticket.answered !== (ticket.take !== null || ticket.points.length > 0)
+    ) {
       return {
         ok: false,
         why: `${ticket.ticket} says answered and its take disagree`,

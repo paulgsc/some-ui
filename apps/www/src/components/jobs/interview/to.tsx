@@ -15,7 +15,13 @@ import { CardRoute } from "@/components/card-route"
 
 /** A page of the week. */
 export type Page =
-  | { readonly page: "interview" | "questions" | "how" | "reads" }
+  | {
+      readonly page: "interview" | "questions" | "how" | "reads" | "past"
+    }
+  /** A week's essay in Studio's Episodes, by the key its feed names it (IW17). */
+  | { readonly page: "essay"; readonly key: string }
+  /** Studio › Renders, which says why a render couldn't finish. */
+  | { readonly page: "renders" }
   /** The week's takes in Studio's one Takes (TAKES20): its interview kind, this week's. */
   | { readonly page: "takes"; readonly week: string; readonly name: string }
   | { readonly page: "read"; readonly card: string }
@@ -48,6 +54,19 @@ function routeOf(to: Page): LinkOptions {
     }
     case "how": {
       return linkOptions({ to: "/jobs/interview/how" })
+    }
+    case "past": {
+      return linkOptions({ to: "/jobs/interview/past" })
+    }
+    case "essay": {
+      return linkOptions({
+        to: "/journal/episodes/$feed/$key",
+        // `lib/interview-week/past`'s ESSAY_FEED; named here, since that module is the phone's alone.
+        params: { feed: "interview-essay", key: to.key },
+      })
+    }
+    case "renders": {
+      return linkOptions({ to: "/journal/renders" })
     }
     case "reads": {
       return linkOptions({ to: "/jobs/interview/reads" })
