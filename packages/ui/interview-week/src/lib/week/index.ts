@@ -136,7 +136,7 @@ export const GROUND: Record<Family, Ground> = {
   decision: "work",
 }
 
-/** How long an answer in each family should run, in seconds. A take is capped at 120 (#2931). */
+/** How long an answer in each family should run, in seconds: at most `TARGET_MAX_SECONDS` (#2931). */
 export const TARGET_SECONDS: Record<Family, number> = {
   "about-yourself": 90,
   "a-time-you": 120,
