@@ -2,6 +2,7 @@ import type { Bundle, Corpus } from "@interview-week/lib/monday/bundle"
 import { SAY_WORDS_PER_MINUTE } from "@interview-week/lib/monday/finish"
 import type { Values } from "@interview-week/lib/monday/values"
 import { VALUES_SCHEMA } from "@interview-week/lib/monday/values"
+import { OPENING_CARD } from "@interview-week/lib/week"
 import type { Ready } from "@interview-week/lib/week"
 
 const call = (id: string, made: string): Corpus["calls"][number] => ({
@@ -127,6 +128,14 @@ export function readyFor(targetSeconds: number): Ready {
   }
 }
 
+/** An opening that passes `finish`: the moniker first, what the week trains, and no rating. */
+export const OPENING = [
+  "I'm paulgsc.",
+  "This week I'm practising how I talk about why I chose one way over another,",
+  "and how I tell a story about my work so someone new can follow it.",
+  "It's one more week of practice, and there's always a next one.",
+].join("\n")
+
 /** Words that fill every slot of `bundle`'s next week and pass `finish`. */
 export function valuesFor(bundle: Bundle): Values {
   const next = bundle.next
@@ -153,7 +162,10 @@ export function valuesFor(bundle: Bundle): Values {
         ],
         ready: readyFor(q.targetSeconds),
       })),
-      cards: next.cards.map((c) => ({ id: c.id, script: script(20) })),
+      cards: next.cards.map((c) => ({
+        id: c.id,
+        script: c.id === OPENING_CARD ? OPENING : script(20),
+      })),
     },
   }
 }

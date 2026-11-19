@@ -15,6 +15,7 @@ import {
   useSyncExternalStore,
 } from "react"
 import type { InterviewWeek } from "@some-ui/interview-week"
+import { isOpening } from "@some-ui/interview-week"
 import { bundleConfirm, ConfirmSheet, useTakePattern } from "@some-ui/shared"
 import type {
   BundleTakes,
@@ -89,9 +90,14 @@ export const playOnly = (row: TakeRowView): TakeRowView => ({
 /** A card's name in the look over: "Question 2", "Read 1". */
 export function labelOf(week: InterviewWeek, item: string): string {
   const card = cardOf(item)
-  return card === null
-    ? WORDS.questionLabel(week.questions.findIndex(({ id }) => id === item) + 1)
-    : WORDS.readLabel(week.cards.findIndex(({ id }) => id === card) + 1)
+  if (card === null)
+    return WORDS.questionLabel(
+      week.questions.findIndex(({ id }) => id === item) + 1
+    )
+  const found = week.cards.find(({ id }) => id === card)
+  if (found !== undefined && isOpening(found)) return WORDS.opening
+  const reads = week.cards.filter((read) => !isOpening(read))
+  return WORDS.readLabel(reads.findIndex(({ id }) => id === card) + 1)
 }
 
 export type InterviewWeekProps = {
