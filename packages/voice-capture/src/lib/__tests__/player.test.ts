@@ -10,12 +10,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 class FakeAudio {
   static made: Array<FakeAudio> = []
+  static refuse = false
   playing = false
   onended: (() => void) | null = null
+  onerror: (() => void) | null = null
   constructor(readonly src: string) {
     FakeAudio.made.push(this)
   }
   play(): Promise<void> {
+    if (FakeAudio.refuse) return Promise.reject(new Error("NotAllowedError"))
     this.playing = true
     return Promise.resolve()
   }
@@ -28,6 +31,7 @@ describe("the kit's player (VC4)", () => {
   const revoked: Array<string> = []
   beforeEach(() => {
     FakeAudio.made = []
+    FakeAudio.refuse = false
     revoked.length = 0
     let n = 0
     vi.stubGlobal("Audio", FakeAudio)
@@ -76,4 +80,17 @@ describe("the kit's player (VC4)", () => {
     page.hide()
     expect(revoked).toEqual(["blob:1", "blob:2"])
   })
+
+  it.each(["play() is refused", "the media fails"] as const)(
+    "ends, revoked and unwatched, when %s",
+    async (how) => {
+      const page = simulatedPage()
+      FakeAudio.refuse = how === "play() is refused"
+      const playback = elementPlayer(page.watch).play(new Blob(["a"]))
+      if (how === "the media fails") FakeAudio.made[0]?.onerror?.()
+      await expect(playback.ended).resolves.toBeUndefined()
+      expect(revoked).toEqual(["blob:1"])
+      expect(page.watchers()).toBe(0)
+    }
+  )
 })

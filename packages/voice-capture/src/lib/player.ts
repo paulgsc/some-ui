@@ -1,11 +1,6 @@
 /**
- * Plays a recording's audio, one `Audio` element a playback.
- *
- * VC4 (`./take-pattern`): a playback ends when the page is hidden, as Stop
- * ends it. A phone screen that goes to the background (back at a wing's
- * root, Home, another app) is not unmounted, so the screen's own `leave()`
- * never runs; the player is the one place every playback passes through,
- * so it stops here.
+ * Plays a recording's audio, one `Audio` element a playback. VC4
+ * (`./take-pattern`): a playback ends when the page is hidden.
  */
 import { onPageVisibility } from "./page"
 
@@ -24,7 +19,7 @@ export type WatchPage = (listener: (hidden: boolean) => void) => () => void
 
 /**
  * Plays through an `Audio` element. `ended` settles once, whichever comes
- * first: the audio ending, `play()` failing, `stop()`, or the page being
+ * first: the audio ending, `play()` or the media failing, `stop()`, or the page being
  * hidden (VC4). The object URL is released then too, and the page is no
  * longer watched.
  */
@@ -51,6 +46,7 @@ export function elementPlayer(watchPage: WatchPage = onPageVisibility): Player {
         settle()
       }
       element.onended = stop
+      element.onerror = stop
       // Answers at once: a page already hidden plays nothing.
       const watching = watchPage((hidden) => {
         if (hidden) stop()

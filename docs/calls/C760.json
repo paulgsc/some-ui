@@ -6,7 +6,7 @@
     "packages/voice-capture/src/lib/player.ts",
     "packages/voice-capture/src/lib/take-pattern.ts"
   ],
-  "chose": "Leaving the app (back at a wing's root, Home, another app) stops a take playing as Stop does, and it does not pick up again on return: the row shows Play. A take recording ends and is kept, as Soundbites, Studio and the bundles already did on a hidden page. It is held in the kit's player and the take pattern, not on each screen.",
+  "chose": "Leaving the app (back at a wing's root, Home, another app) stops a take playing as Stop does, and it does not pick up again on return: the row shows Play. A take recording ends and is kept, as Soundbites, Studio and the bundles already did on a hidden page. It is held in the kit's player and the take pattern, not on each screen, so it holds wherever the kit plays: a take playing on the desktop web stops when its tab is hidden too.",
   "options": [
     "stop on hide, nothing resumes on return",
     "pause on hide, resume where it was on return",

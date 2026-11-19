@@ -45,16 +45,18 @@
  *   opening), when the screen unmounts and when the page is hidden.
  * - _Family:_ when it goes (unmount, the page hidden, hidden and shown
  *   again), what is under way (nothing, a take's audio being read, a take
- *   playing, the microphone opening, a take recording), and the owner
- *   (each family of screens that owns a pattern or a player).
+ *   playing, the microphone opening, a take recording), the owner (each
+ *   family of screens that owns a pattern or a player), and the host (a
+ *   page, or none: a runtime under node is never hidden).
  * - _Proof:_ `__tests__/player.test.ts` (the `Audio` paused and its URL
  *   revoked on a hidden page, and nothing played on one already hidden);
  *   `take-pattern.test.ts` ("VC4": leave and hide, over a take playing, its
  *   audio being read, the microphone opening and a take recording; and
  *   VC2/VC3's generated family with each screen watching the page itself);
  *   Studio's (`studio.test.ts`) and Takes' (`take-library`) own tests, hidden
- *   and gone mid-play, Takes' through a route change on the real router. That every playback passes through the kit's player
- *   is the lint rule `one-owner/no-local-audio`.
+ *   and gone mid-play, Takes' through a route change on the real router.
+ *   That no `Audio` or `<audio>` is made outside the kit is the lint rule
+ *   `one-owner/no-local-audio`.
  * - _Tolerance:_ a screen that stays mounted on a visible page keeps
  *   playing: moving between the pages of one layout (Interview week's) is
  *   not leaving it.
@@ -567,8 +569,8 @@ export type TakePatternPorts = Omit<TakeKitPorts, "keep"> & {
   /** Defaults to the kit's `audioPlayer`. */
   readonly player?: Player | undefined
   /**
-   * Whether the page is hidden (VC4), watched only while a take is under
-   * way; defaults to the page's own (`onPageVisibility`).
+   * Whether the page is hidden (VC4), watched only while the microphone
+   * opens or records; defaults to the page's own (`onPageVisibility`).
    */
   readonly page?: WatchPage | undefined
 }
@@ -643,10 +645,11 @@ export function takePattern(
   let snapshot = takePatternSnapshot(state, options)
 
   const watchPage = ports.page ?? onPageVisibility
-  // VC4: the page, watched while a take is under way, and only then.
   let unwatchPage: (() => void) | null = null
   const watchWhileTaking = (): void => {
-    const taking = snapshot.take.kind !== "idle"
+    // Keeping waits on the store, where leaving changes nothing.
+    const { kind } = snapshot.take
+    const taking = kind === "opening" || kind === "recording"
     if (taking && unwatchPage === null) {
       unwatchPage = watchPage((hidden) => {
         // After the run of effects that started the take, never within it.

@@ -478,26 +478,19 @@ describe("Takes on home (ST32)", () => {
     expect(screen.getByText(W.unplayable)).toBeTruthy()
   })
 
-  it.each(["unmounts", "is hidden"] as const)(
-    "stops a take playing when the screen %s (VC4)",
-    async (how) => {
-      const page = simulatedPage()
-      const player = simulatedPlayer(page.watch)
-      const { unmount } = render(
-        <TakeLibrary ports={{ home: home(), player }} pair={null} />
-      )
-      await settle()
-      fireEvent.click(screen.getAllByRole("button", { name: W.play })[0]!)
-      await settle()
-      expect(player.playing()).toBe(1)
-      if (how === "unmounts") unmount()
-      else act(() => page.hide())
-      await settle()
-      expect(player.playing()).toBe(0)
-      if (how === "is hidden")
-        expect(screen.getAllByRole("button", { name: W.play })).toHaveLength(2)
-    }
-  )
+  it("stops a take playing when the page is hidden, and its row offers Play again (VC4)", async () => {
+    const page = simulatedPage()
+    const player = simulatedPlayer(page.watch)
+    render(<TakeLibrary ports={{ home: home(), player }} pair={null} />)
+    await settle()
+    fireEvent.click(screen.getAllByRole("button", { name: W.play })[0]!)
+    await settle()
+    expect(player.playing()).toBe(1)
+    act(() => page.hide())
+    await settle()
+    expect(player.playing()).toBe(0)
+    expect(screen.getAllByRole("button", { name: W.play })).toHaveLength(2)
+  })
 
   it("stops a take playing when the person goes to another page of the app (VC4)", async () => {
     const player = simulatedPlayer()

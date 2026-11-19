@@ -12,7 +12,6 @@
 export function onPageVisibility(
   listener: (hidden: boolean) => void
 ): () => void {
-  // No page at all (a runtime run under node): it is never hidden.
   if (typeof document === "undefined") {
     listener(false)
     return () => undefined

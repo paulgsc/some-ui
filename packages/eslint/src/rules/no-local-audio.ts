@@ -1,7 +1,8 @@
 import type { Rule } from "eslint"
 import type * as ESTree from "estree"
 
-const GLOBALS = new Set(["window", "globalThis", "self"])
+import { staticText } from "./ast-names.js"
+import { isGlobal, PAGE_LIFETIME_TARGETS } from "./require-scoped-lifetime.js"
 
 /**
  * VC4 (`@some-ui/voice-capture`, `lib/take-pattern.ts`): a recording plays
@@ -12,11 +13,13 @@ const GLOBALS = new Set(["window", "globalThis", "self"])
  *
  *   - `new Audio(…)`, the global or read off `window`, `globalThis` or
  *     `self`; a local binding named `Audio` is not the global;
- *   - `createElement("audio")` on anything;
+ *   - `createElement("audio")` on anything, the name a string or a
+ *     template with no `${}`;
  *   - an `<audio>` element in JSX.
  *
  * `AudioContext` is not reported: the recorder's level meter reads one, and
- * it plays nothing.
+ * it plays nothing. Code bent on getting past it (`window["Audio"]`, an
+ * alias of the global) is out of its scope, as for the microphone's rule.
  */
 export const noLocalAudio: Rule.RuleModule = {
   meta: {
@@ -44,29 +47,20 @@ export const noLocalAudio: Rule.RuleModule = {
     const filename = context.filename.replaceAll("\\", "/")
     if (filename.includes(owner)) return {}
 
-    /** `Audio` resolving to no binding of the file's own. */
-    function globalAudio(node: ESTree.Identifier): boolean {
-      if (node.name !== "Audio") return false
-      let scope: ReturnType<typeof context.sourceCode.getScope> | null =
-        context.sourceCode.getScope(node)
-      while (scope !== null) {
-        const variable = scope.set.get("Audio")
-        if (variable !== undefined && variable.defs.length > 0) return false
-        scope = scope.upper
-      }
-      return true
-    }
+    const global = (node: ESTree.Identifier, name: string): boolean =>
+      node.name === name && isGlobal(name, context.sourceCode.getScope(node))
 
     return {
       NewExpression(node): void {
         const { callee } = node
         const audio =
           callee.type === "Identifier"
-            ? globalAudio(callee)
+            ? global(callee, "Audio")
             : callee.type === "MemberExpression" &&
               !callee.computed &&
               callee.object.type === "Identifier" &&
-              GLOBALS.has(callee.object.name) &&
+              PAGE_LIFETIME_TARGETS.has(callee.object.name) &&
+              global(callee.object, callee.object.name) &&
               callee.property.type === "Identifier" &&
               callee.property.name === "Audio"
         if (audio) context.report({ node, messageId: "audio" })
@@ -78,9 +72,14 @@ export const noLocalAudio: Rule.RuleModule = {
           callee.type === "MemberExpression" &&
           callee.property.type === "Identifier" &&
           callee.property.name === "createElement" &&
-          first?.type === "Literal" &&
-          typeof first.value === "string" &&
-          first.value.toLowerCase() === "audio"
+          (first?.type === "Literal"
+            ? typeof first.value === "string"
+              ? first.value
+              : null
+            : first?.type === "TemplateLiteral"
+              ? staticText(first)
+              : null
+          )?.toLowerCase() === "audio"
         )
           context.report({ node, messageId: "audio" })
       },

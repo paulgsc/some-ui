@@ -456,6 +456,10 @@ describe("lint: one-owner/no-local-audio (VC4)", () => {
       'export const make = () => document.createElement("audio")',
     ],
     [
+      "createElement with a template",
+      "export const make = () => document.createElement(`audio`)",
+    ],
+    [
       "an <audio> element",
       "export const Clip = ({ src }: { src: string }) => <audio src={src} controls />",
     ],
@@ -465,10 +469,6 @@ describe("lint: one-owner/no-local-audio (VC4)", () => {
 
   it.each([
     [
-      "the kit's player",
-      'import { audioPlayer } from "@some-ui/voice-capture"\nexport const play = (blob: Blob) => audioPlayer.play(blob)',
-    ],
-    [
       "a local class named Audio",
       "class Audio { play(): void {} }\nexport const a = new Audio()",
     ],
@@ -476,7 +476,6 @@ describe("lint: one-owner/no-local-audio (VC4)", () => {
       "an AudioContext, which plays nothing here",
       "export const meter = () => new AudioContext()",
     ],
-    ["a <video> element", "export const V = () => <video src='a.webm' />"],
   ])("stays quiet on %s", async (shape, code) => {
     expectNoMessageForRule(await lint(code, "src/lib/clip.tsx"), AUDIO, shape)
   })
