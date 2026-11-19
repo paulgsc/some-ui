@@ -12,5 +12,5 @@
   "gray": "The owner treats duration limits as suggestions to move with the story but named no number; a single shared cap with room for the interview's 3-minute takes is one reading.",
   "undo": "In render-calls.sh `max_minutes`, take interview-essay out of the rust-essay case and set ESSAY_MAX_VIDEO_MINUTES back to 30.",
   "moves": "C500",
-  "refs": ["#3197", "#3289", "server#930"]
+  "refs": ["#3197", "#3289", "server#930", "server#1024"]
 }
