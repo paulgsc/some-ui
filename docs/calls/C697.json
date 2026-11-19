@@ -1,0 +1,16 @@
+{
+  "id": "C697",
+  "made": "2026-11-19",
+  "by": "claude",
+  "agreed": "2026-11-19",
+  "paths": ["packages/ui/rust-rounds/src/lib/formats/week.ts"],
+  "chose": "The after-deadline file may name a best decision that wasn't listed; the essay presents it as what an astute observer would have called out, sets every option against the stated ids, and places each decision between A and A′. It is a scene of the rendered essay, not a phone screen.",
+  "options": [
+    "a best that may be unlisted, in the essay",
+    "a best always among the options",
+    "no best named"
+  ],
+  "gray": "The owner said the best may be hidden; how the essay shows it is a design choice.",
+  "undo": "Keep the best among the listed options.",
+  "refs": ["#3257", "#3253"]
+}

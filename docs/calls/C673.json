@@ -1,0 +1,16 @@
+{
+  "id": "C673",
+  "made": "2026-11-19",
+  "by": "claude",
+  "agreed": "2026-11-19",
+  "paths": ["packages/ui/rust-rounds/src/components/rust-week/index.tsx"],
+  "chose": "An exercise done at the desk is marked by the owner's own tick (\"I did this at my desk\"); pasting what rustc printed is optional and reuses the week's paste from your desk.",
+  "options": [
+    "tick it yourself, paste optional",
+    "paste required",
+    "no record of done"
+  ],
+  "gray": "#3249 asked how done reads for work the phone can't see; a tick trusts the owner, a required paste proves it at the cost of friction.",
+  "undo": "Require the paste before the tick.",
+  "refs": ["#3249"]
+}

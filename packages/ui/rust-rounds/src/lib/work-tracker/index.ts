@@ -29,13 +29,10 @@ import { assertNever } from "@some-ui/core-utils"
 /** The tracker stops itself after this long (C675). */
 export const CAP_MS = 2 * 60 * 60 * 1000
 
-/** "Part of it" moves in steps this long (C675). */
-export const PART_STEP_MINUTES = 15
-
-export type WorkStep = "read" | "academy" | "voice"
+type WorkStep = "read" | "academy" | "voice"
 
 /** Where a span was started: what it counts toward. */
-export type SpanWhere = {
+type SpanWhere = {
   readonly week: string
   readonly ticket: string
   readonly step: WorkStep
@@ -54,13 +51,13 @@ export type OpenSpan = {
   readonly device: string
 }
 
-export type Answer =
+type Answer =
   | { readonly kind: "all" }
   | { readonly kind: "part"; readonly minutes: number }
   | { readonly kind: "none" }
 
 /** A span as home keeps it once it is answered. */
-export type ClosedSpan = {
+type ClosedSpan = {
   readonly span: OpenSpan
   /** Epoch milliseconds: when the owner came back, or the cap. */
   readonly stoppedAt: number
@@ -119,7 +116,7 @@ export const spanSeconds = (span: OpenSpan, stoppedAt: number): number =>
   Math.max(0, Math.floor((stoppedAt - span.startedAt) / 1000))
 
 /** What an answer counts, clamped to the span. */
-export function countedSeconds(answer: Answer, spanned: number): number {
+function countedSeconds(answer: Answer, spanned: number): number {
   switch (answer.kind) {
     case "all": {
       return spanned

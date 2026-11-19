@@ -1,0 +1,16 @@
+{
+  "id": "C695",
+  "made": "2026-11-19",
+  "by": "claude",
+  "agreed": "2026-11-19",
+  "paths": ["packages/ui/rust-rounds/src/components/rust-week/index.tsx"],
+  "chose": "Read shows the week's constraints with their ids, the program and rustc's result, then each fork with its options; the verdict waits for Voice.",
+  "options": [
+    "constraints, program, then forks",
+    "forks first",
+    "forks only at Voice"
+  ],
+  "gray": "An order of reading on one screen; no check settles it.",
+  "undo": "Reorder the Read step's sections.",
+  "refs": ["#3257"]
+}

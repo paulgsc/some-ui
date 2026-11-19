@@ -1,0 +1,16 @@
+{
+  "id": "C693",
+  "made": "2026-11-19",
+  "by": "claude",
+  "agreed": "2026-11-19",
+  "paths": ["packages/ui/rust-rounds/src/lib/formats/week.ts"],
+  "chose": "A decision is an option, the owner's own (voiced: \"Something else: say it\"), or, for a fork left alone, `recommended-by-default`, recorded explicitly at send and kept apart from an explicit pick of the recommended. It can change until sent, every change kept. One shared `DecisionPick` serves Rust Rounds and Interview week's decision drills.",
+  "options": [
+    "option | own | recommended-by-default",
+    "option | none",
+    "a verdict per ticket"
+  ],
+  "gray": "The owner said silence is going with the recommended; whether the record tells silence from an explicit pick is the format's choice, and the essay reads them differently.",
+  "undo": "Fold recommended-by-default into the recommended option's id.",
+  "refs": ["#3257", "#3181"]
+}

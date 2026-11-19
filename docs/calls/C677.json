@@ -1,0 +1,16 @@
+{
+  "id": "C677",
+  "made": "2026-11-19",
+  "by": "claude",
+  "agreed": "2026-11-19",
+  "paths": ["packages/ui/rust-rounds/src/components/rust-week/index.tsx"],
+  "chose": "The week's visual sits on the week's brief: a bar per ticket split by step (reading, academy on the phone, at the desk, voice), plus visits by day, with a table view. It is the owner's only, never on the public site.",
+  "options": [
+    "stacked bar per ticket, visits by day",
+    "a timeline per day",
+    "numbers only"
+  ],
+  "gray": "#3250 asked for it shown visually without a form; the chart's form is a design choice.",
+  "undo": "Swap the chart; the data per ticket and step stays.",
+  "refs": ["#3250"]
+}

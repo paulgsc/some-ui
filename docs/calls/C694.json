@@ -1,0 +1,19 @@
+{
+  "id": "C694",
+  "made": "2026-11-19",
+  "by": "claude",
+  "agreed": "2026-11-19",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/formats/week.ts",
+    "packages/ui/rust-rounds/src/lib/week-check/index.ts"
+  ],
+  "chose": "An exercise names the options whose models it tests (`tests: {fork, option}`), and the forks it builds toward; it never says whether a model is right.",
+  "options": [
+    "tests options by fork and id",
+    "tests models by model id",
+    "no link"
+  ],
+  "gray": "#3257 asked academy exercises to test the models the proposals rest on; naming the option keeps the link checkable.",
+  "undo": "Name model ids instead; readWeek then checks the ids exist.",
+  "refs": ["#3257"]
+}

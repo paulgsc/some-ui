@@ -1,0 +1,19 @@
+{
+  "id": "C692",
+  "made": "2026-11-19",
+  "by": "claude",
+  "agreed": "2026-11-19",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/formats/week.ts",
+    "packages/ui/rust-rounds/src/lib/week-check/index.ts"
+  ],
+  "chose": "A fork has 2 to 6 options, exactly one recommended as an agent marks it; each has a decision, a why, a named model, and the stated constraint ids it cites (at least one).",
+  "options": [
+    "2 to 6, one recommended, cites required",
+    "any count, recommended optional",
+    "options without citations"
+  ],
+  "gray": "The owner set one recommended and options not exhaustive; the bounds and the required citation are the format's choice.",
+  "undo": "Loosen the bounds in TicketV2Schema; readWeek's checks follow.",
+  "refs": ["#3257"]
+}

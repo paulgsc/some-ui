@@ -1,0 +1,19 @@
+{
+  "id": "C696",
+  "made": "2026-11-19",
+  "by": "claude",
+  "agreed": "2026-11-19",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/formats/week.ts",
+    "packages/ui/rust-rounds/src/lib/week-check/index.ts"
+  ],
+  "chose": "SLA rows get ids S1… and figures F1…, unique in the week; every option cites the ids it trades on, and readWeek refuses an id the week doesn't state for that ticket (the SLA's rows or the ticket's own figures). A /1 week's rows and figures get ids in the order written.",
+  "options": [
+    "ids on SLA rows and figures, cited by options",
+    "free-text constraints",
+    "constraints per fork"
+  ],
+  "gray": "The owner asked judgements be falsifiable against the stated constraints; the id scheme and the scope of a citation are the format's choice.",
+  "undo": "Let options cite any ticket's figures; drop the per-ticket scope in checkFork.",
+  "refs": ["#3257"]
+}

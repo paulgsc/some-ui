@@ -177,7 +177,7 @@ const Brief = (
               {[
                 WORDS.standing[standing(props, ticket.id)],
                 shape(held, ticket),
-                WORDS.speakToCount(ticket.speakTo.length),
+                WORDS.speakToCount(ticket.forks.length),
               ]
                 .filter((part) => part !== null)
                 .join(" · ")}
@@ -276,8 +276,8 @@ const TicketBody = ({
       <section className="flex flex-col gap-1">
         <h3 className="text-sm font-semibold">{WORDS.speakTo}</h3>
         <ol className="list-decimal space-y-1 pl-5 text-sm">
-          {ticket.speakTo.map((point) => (
-            <li key={point}>{point}</li>
+          {ticket.forks.map(({ question }) => (
+            <li key={question}>{question}</li>
           ))}
         </ol>
       </section>
@@ -301,7 +301,7 @@ const TicketBody = ({
           </h3>
           <ul className="list-disc space-y-1 pl-5 text-sm">
             {ticket.figures.map((figure) => (
-              <li key={figure}>{figure}</li>
+              <li key={figure.id}>{figure.text}</li>
             ))}
           </ul>
         </section>

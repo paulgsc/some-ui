@@ -2,10 +2,28 @@
  * The week's check (RR11, paulgsc/some-ui#2686), beside the round's `lint`.
  * Unlike `lint`, it refuses: every reason comes back at once, so a tutor
  * fixes them in one pass.
+ *
+ * It reads a `/1` week and a `/2` one (RR25, RR29), and answers either in
+ * the shape the phone holds (`WeekSchema`; a `/1` week by `upgradeWeek`).
+ * A `/2` week is also refused when (C692, C694, C696):
+ *
+ * - a stated constraint's id (`S1`, `F1`) is used twice;
+ * - a fork has no option, or more than one, marked recommended, or two
+ *   options under one id;
+ * - an option cites an id the week doesn't state: the SLA's rows, or the
+ *   figures of its own ticket;
+ * - a model's id is named two ways in the week;
+ * - an exercise builds toward a fork the ticket doesn't have, or tests an
+ *   option that isn't there or a fork it doesn't name.
  */
 import { programLines } from "@rust-rounds/lib/formats"
-import type { Week } from "@rust-rounds/lib/formats/week"
-import { WeekSchema } from "@rust-rounds/lib/formats/week"
+import type { Week, WeekV2 } from "@rust-rounds/lib/formats/week"
+import {
+  upgradeWeek,
+  WEEK_SCHEMA_V2,
+  WeekV1Schema,
+  WeekV2Schema,
+} from "@rust-rounds/lib/formats/week"
 import { pathOf } from "@rust-rounds/lib/intake"
 import { describeProgramFinding, measureProgram } from "@rust-rounds/lib/lint"
 import {
@@ -41,7 +59,7 @@ function onTheClock(at: Date): string {
   return `${pacificDay(at)} ${hh}:${mm}`
 }
 
-function checkDates(week: Week, problems: Array<WeekProblem>): void {
+function checkDates(week: Week | WeekV2, problems: Array<WeekProblem>): void {
   const opens = new Date(week.opens)
   const due = new Date(week.due)
   const opensDay = pacificDay(opens)
@@ -79,7 +97,7 @@ function checkDates(week: Week, problems: Array<WeekProblem>): void {
   }
 }
 
-function checkTickets(week: Week, problems: Array<WeekProblem>): void {
+function checkTickets(week: Week | WeekV2, problems: Array<WeekProblem>): void {
   const ticketIds = new Set<string>()
   const conceptNames = new Map<string, string>()
   week.tickets.forEach((ticket, index) => {
@@ -123,20 +141,168 @@ function checkTickets(week: Week, problems: Array<WeekProblem>): void {
   })
 }
 
-/** A week, or every reason it is refused. */
-export function readWeek(input: unknown): WeekReading {
-  const parsed = WeekSchema.safeParse(input)
-  if (!parsed.success) {
-    return {
-      ok: false,
-      problems: parsed.error.issues.map((issue) => ({
-        at: pathOf(issue.path, input),
-        why: issue.message,
-      })),
+/** The ids a week states: its SLA rows', then each ticket's figures'. */
+function checkStated(week: WeekV2, problems: Array<WeekProblem>): void {
+  const seen = new Set<string>()
+  const once = (id: string, at: string): void => {
+    if (seen.has(id)) {
+      problems.push({
+        at,
+        why: `"${id}" names another constraint too; each id names one`,
+      })
     }
+    seen.add(id)
   }
-  const week = parsed.data
+  week.sla.forEach((row, i) => once(row.id, pathOf(["sla", i, "id"], week)))
+  week.tickets.forEach((ticket, t) => {
+    ticket.figures.forEach((figure, i) =>
+      once(figure.id, pathOf(["tickets", t, "figures", i, "id"], week))
+    )
+  })
+}
+
+/** What one `/2` fork's options say of each other and of what is stated. */
+function checkFork(
+  week: WeekV2,
+  where: ReadonlyArray<PropertyKey>,
+  stated: ReadonlySet<string>,
+  models: Map<string, string>,
+  problems: Array<WeekProblem>
+): void {
+  const [, t, , f] = where
+  const fork = week.tickets[Number(t)]?.forks[Number(f)]
+  if (fork === undefined) return
+  const at = pathOf(where, week)
+  const recommended = fork.options.filter((option) => option.recommended)
+  if (recommended.length !== 1) {
+    problems.push({
+      at,
+      why: `exactly one option is recommended, as an agent marks it; this fork has ${recommended.length}`,
+    })
+  }
+  const ids = new Set<string>()
+  fork.options.forEach((option, o) => {
+    const optionAt = pathOf([...where, "options", o], week)
+    if (ids.has(option.id)) {
+      problems.push({
+        at: `${optionAt}.id`,
+        why: `option "${option.id}" is used twice in this fork`,
+      })
+    }
+    ids.add(option.id)
+    option.cites.forEach((id, c) => {
+      if (!stated.has(id)) {
+        problems.push({
+          at: `${optionAt}.cites[${c}]`,
+          why: `"${id}" is not a constraint this week states for this ticket: cite the SLA's rows or the ticket's own figures`,
+        })
+      }
+    })
+    const named = models.get(option.model.id)
+    if (named !== undefined && named !== option.model.name) {
+      problems.push({
+        at: `${optionAt}.model.name`,
+        why: `model "${option.model.id}" is named "${named}" elsewhere in the week; one id, one name`,
+      })
+    }
+    models.set(option.model.id, named ?? option.model.name)
+  })
+}
+
+/** What one exercise names of its ticket's forks and options. */
+function checkExercise(
+  ticket: WeekV2["tickets"][number],
+  exercise: WeekV2["tickets"][number]["academy"][number],
+  at: string,
+  problems: Array<WeekProblem>
+): void {
+  const of = ticket.forks.length
+  exercise.forks.forEach((n, i) => {
+    if (n > of) {
+      problems.push({
+        at: `${at}.forks[${i}]`,
+        why: `${ticket.id} has ${of} forks; there is no fork ${n}`,
+      })
+    }
+  })
+  exercise.tests.forEach(({ fork, option }, i) => {
+    const testAt = `${at}.tests[${i}]`
+    const options = ticket.forks[fork - 1]?.options
+    if (options === undefined) {
+      problems.push({
+        at: testAt,
+        why: `${ticket.id} has ${of} forks; there is no fork ${fork}`,
+      })
+    } else if (!options.some((each) => each.id === option)) {
+      problems.push({
+        at: testAt,
+        why: `fork ${fork} has no option "${option}"`,
+      })
+    }
+    if (!exercise.forks.includes(fork)) {
+      problems.push({
+        at: testAt,
+        why: `it tests fork ${fork}, so name fork ${fork} among the forks it builds toward`,
+      })
+    }
+  })
+}
+
+/** What a `/2` week's forks and academies say of each other and the week. */
+function checkForks(week: WeekV2, problems: Array<WeekProblem>): void {
+  const slaIds = week.sla.map((row) => row.id)
+  const models = new Map<string, string>()
+  week.tickets.forEach((ticket, t) => {
+    const at = pathOf(["tickets", t], week)
+    const stated = new Set([
+      ...slaIds,
+      ...ticket.figures.map((figure) => figure.id),
+    ])
+    ticket.forks.forEach((_, f) =>
+      checkFork(week, ["tickets", t, "forks", f], stated, models, problems)
+    )
+    ticket.academy.forEach((exercise, e) =>
+      checkExercise(ticket, exercise, `${at}.academy[${e}]`, problems)
+    )
+  })
+}
+
+/** The schema's own refusals, each where it lies. */
+function refused(
+  issues: ReadonlyArray<{ path: ReadonlyArray<PropertyKey>; message: string }>,
+  input: unknown
+): WeekReading {
+  return {
+    ok: false,
+    problems: issues.map((issue) => ({
+      at: pathOf(issue.path, input),
+      why: issue.message,
+    })),
+  }
+}
+
+/** Whether `input` says it is a `/2` week. */
+const isV2 = (input: unknown): boolean =>
+  typeof input === "object" &&
+  input !== null &&
+  Reflect.get(input, "schema") === WEEK_SCHEMA_V2
+
+/** A week, or every reason it is refused, in the shape the phone holds. */
+export function readWeek(input: unknown): WeekReading {
   const problems: Array<WeekProblem> = []
+  if (isV2(input)) {
+    const parsed = WeekV2Schema.safeParse(input)
+    if (!parsed.success) return refused(parsed.error.issues, input)
+    const week = parsed.data
+    checkDates(week, problems)
+    checkTickets(week, problems)
+    checkStated(week, problems)
+    checkForks(week, problems)
+    return problems.length === 0 ? { ok: true, week } : { ok: false, problems }
+  }
+  const parsed = WeekV1Schema.safeParse(input)
+  if (!parsed.success) return refused(parsed.error.issues, input)
+  const week = upgradeWeek(parsed.data)
   checkDates(week, problems)
   checkTickets(week, problems)
   return problems.length === 0 ? { ok: true, week } : { ok: false, problems }

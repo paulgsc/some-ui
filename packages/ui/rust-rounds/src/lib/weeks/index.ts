@@ -26,7 +26,11 @@
 import type { RustcRun } from "@rust-rounds/lib/formats"
 import { RustcRunSchema } from "@rust-rounds/lib/formats"
 import type { Week } from "@rust-rounds/lib/formats/week"
-import { WeekSchema } from "@rust-rounds/lib/formats/week"
+import {
+  upgradeWeek,
+  WeekSchema,
+  WeekV1Schema,
+} from "@rust-rounds/lib/formats/week"
 import type { RoundsHomePort } from "@rust-rounds/lib/home"
 import { exchangeRounds } from "@rust-rounds/lib/home"
 import { WEEKS_KEY } from "@rust-rounds/lib/play/keys"
@@ -70,7 +74,9 @@ export type WeeksHeld = {
 const NO_WEEKS: WeeksHeld = { weeks: [], unread: [] }
 
 const HeldWeekSchema = z.object({
-  week: WeekSchema,
+  // A week kept before `/2` (RR25) was kept in its `/1` shape: it reads as
+  // the phone holds weeks now, so no week this phone kept is lost.
+  week: z.union([WeekSchema, WeekV1Schema.transform(upgradeWeek)]),
   sha256: z.string(),
   runs: z.record(z.string(), RustcRunSchema),
   ended: z.array(z.string()),
