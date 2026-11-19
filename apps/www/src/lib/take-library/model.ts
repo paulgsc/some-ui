@@ -13,7 +13,7 @@
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { readAs } from "@some-ui/core-utils"
 import type { LibraryPage, LibraryRead, PhoneTake } from "@some-ui/soundbites"
-import { isTakeOf } from "@some-ui/soundbites"
+import { TAKE_OFS } from "@some-ui/soundbites/contract"
 import { z } from "zod"
 
 import type { PhoneBite } from "@/lib/game-bites"
@@ -28,7 +28,9 @@ const TakeSchema = z.object({
   kind: z
     .unknown()
     .transform((value) =>
-      value === undefined ? undefined : isTakeOf(value) ? value : "unknown"
+      value === undefined
+        ? undefined
+        : (TAKE_OFS.find((of) => of === value) ?? "unknown")
     )
     .optional(),
   // How home keeps it; one this phone doesn't know reads as none said.

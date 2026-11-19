@@ -3,7 +3,6 @@ import { TAKE_KINDS } from "@soundbites/lib/library/compartments"
 import type { TakeNames } from "@soundbites/lib/library/kinds"
 import {
   ABOUT_PORTS,
-  isTakeOf,
   KIND_OF,
   NO_NAMES,
   portAbout,
@@ -45,7 +44,6 @@ describe("every kind of take home keeps has its place", () => {
   })
 
   it("shows a kind this phone doesn't know yet, as another kind", () => {
-    expect(isTakeOf("dream")).toBe(false)
     expect(portAbout("unknown", { ref: "x" }, NAMES, ABOUT_WORDS)?.kind).toBe(
       "other"
     )

@@ -15,27 +15,11 @@
  */
 import { dayOf, formatDay, weekNumber } from "@some-ui/core-utils"
 
-/**
- * What home calls a voice note's kind, in home's order (paulgsc/server
- * `voice_repo::Of`). www's `VOICE_OFS` is held to it by a test.
- */
-export const TAKE_OFS = [
-  "reflection",
-  "jobs",
-  "scene",
-  "game",
-  "studio",
-  "soundbite",
-  "lens",
-  "leetype",
-  "rust-round",
-  "interview",
-] as const
+import { TAKE_OFS } from "./take-ofs"
+
+export { TAKE_OFS }
 
 export type TakeOf = (typeof TAKE_OFS)[number]
-
-export const isTakeOf = (value: unknown): value is TakeOf =>
-  TAKE_OFS.some((of) => of === value)
 
 /** The kinds a port names, each its own compartment: every kind but Studio's. */
 export type OtherOf = Exclude<TakeOf, "studio">
@@ -239,7 +223,7 @@ export const ABOUT_PORTS: Readonly<Record<OtherOf, AboutPort>> = {
 }
 
 /** What a take of a kind this phone doesn't know is about: nothing more than its kind. */
-export const OTHER_ABOUT: PortAbout = { kind: "other", topic: null, parts: [] }
+const OTHER_ABOUT: PortAbout = { kind: "other", topic: null, parts: [] }
 
 /**
  * What a take is about, from what home was told of it: Studio's by its ref

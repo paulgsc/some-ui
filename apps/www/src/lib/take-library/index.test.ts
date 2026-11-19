@@ -6,6 +6,7 @@
  * again only while the read is still wanted.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
+import { TAKE_OFS } from "@some-ui/soundbites/contract"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { PhoneBite } from "@/lib/game-bites"
@@ -30,25 +31,6 @@ vi.mock("@/lib/home-link/takes-read", () => ({
     return Promise.resolve(asked.answers.shift() ?? { kind: "unreachable" })
   },
 }))
-
-/**
- * Soundbites' kinds, from its source: vitest runs the `lan` profile, which
- * stubs `@some-ui/soundbites` (an `apk` workspace) by its name, and the
- * reads here call its `isTakeOf`.
- */
-const KINDS_SOURCE = vi.hoisted(
-  () =>
-    new URL(
-      "../../../../../packages/ui/soundbites/src/lib/library/kinds.ts",
-      import.meta.url
-    ).pathname
-)
-
-vi.mock("@some-ui/soundbites", () => import(KINDS_SOURCE))
-
-const { TAKE_OFS }: { readonly TAKE_OFS: ReadonlyArray<string> } = await import(
-  KINDS_SOURCE
-)
 
 // The phone's own takes are read by `phoneOnlyTakes`, not here.
 vi.mock("@/lib/home-link/voice-copy", () => ({}))

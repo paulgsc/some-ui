@@ -42,7 +42,7 @@ export type {
   TakesHome,
 } from "./lib/library/runtime"
 export type { TakeNames, TakeOf } from "./lib/library/kinds"
-export { isTakeOf, TAKE_OFS } from "./lib/library/kinds"
+export { TAKE_OFS } from "./lib/library/kinds"
 export type {
   Chips,
   Compartment,

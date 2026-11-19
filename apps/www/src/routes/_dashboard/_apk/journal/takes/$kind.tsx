@@ -1,5 +1,6 @@
 import type { JSX } from "react"
-import type { Compartment, LibraryTake } from "@some-ui/soundbites"
+import { scenarioName } from "@some-ui/game-week"
+import type { Compartment, LibraryTake, TakeNames } from "@some-ui/soundbites"
 import {
   isCompartment,
   keptIdeaStore,
@@ -22,9 +23,22 @@ const STORES: AboutStores = {
   videos: () => phoneProjectStore().list(),
 }
 
+/**
+ * What this phone can name that a take's ref only points at: a game bite's
+ * scenario, by the catalog the phone plays. A game is named by home's read,
+ * or else the day it was played; an interview question by its id.
+ */
+const NAMES: TakeNames = {
+  game: () => null,
+  scenario: scenarioName,
+  question: () => null,
+}
+
 /** Takes' ports, in the Android app alone (`build.paths.ts`). */
 const PORTS =
-  import.meta.env.VITE_DEVICE_BACKEND === "true" ? takePorts(STORES) : null
+  import.meta.env.VITE_DEVICE_BACKEND === "true"
+    ? { ...takePorts(STORES), names: NAMES }
+    : null
 
 /**
  * Under a note's take, the way to its episode at the moment the note was
