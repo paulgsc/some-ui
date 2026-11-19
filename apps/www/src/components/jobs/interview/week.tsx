@@ -1,14 +1,14 @@
 /**
- * The interview week's own page (IW5, IW8; paulgsc/some-ui#2936, #3175): the
- * invented role, today's question as one tap, Read aloud's way in, the
- * week's other questions, and the look over and send. Each question, its
- * ready answer, its read aloud and each take are pages of their own
- * (`./ladder`, `./reads`); this one only links to them. It says what was
- * done, in the past tense, and nothing about what wasn't. The look over,
- * the sent page and the week read back once closed are IW5's, a step on
- * this page's bundle screen; a take started from the look over opens its
- * item's page instead.
- */
+ * The interview week's first page (IW5, IW8, IW15, IW16; paulgsc/some-ui#2936,
+ * #3175, #3224, #3225), its look over and send. Before anything is said this
+ * week it is the way in: what this is, the kinds of practice and what each
+ * costs, and how a week goes (`./way-in`). Once something is said or sent it
+ * lists what was done, each take where it is, and the send. Each kind, each
+ * question and each take is a page of its own (`./way-in`, `./ladder`,
+ * `./reads`); this one only links to them. It says what was done, in the
+ * past tense, and nothing about what wasn't. The look over, the sent page
+ * and the week read back once closed are IW5's, a step on this page's bundle
+ * screen; a take started from the look over opens its item's page instead. */
 import type { JSX, ReactNode } from "react"
 import { assertNever, pacificDay } from "@some-ui/core-utils"
 import type { InterviewWeek } from "@some-ui/interview-week"
@@ -25,6 +25,7 @@ import {
   cardOf,
   isClosed,
   itemsOf,
+  readItem,
   sentTakeOf,
   takesOf,
 } from "@/lib/interview-week/spec"
@@ -32,7 +33,17 @@ import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 
 import type { Interview } from "./run"
 import { currentOf, labelOf, playOnly, useInterview, viewOf } from "./run"
+import type { Page } from "./to"
 import { To, useOpenItem } from "./to"
+
+/** What the invented company does, what the job is, and that both are invented. */
+export const RoleAbout = ({ week }: { week: InterviewWeek }): JSX.Element => (
+  <>
+    <p className="text-muted-foreground">{week.company.about}</p>
+    <p>{week.role.about}</p>
+    <p className="bg-card rounded-2xl p-3 text-sm italic">{WORDS.invented}</p>
+  </>
+)
 
 const Role = ({ week }: { week: InterviewWeek }): JSX.Element => (
   <header className="space-y-1">
@@ -42,9 +53,7 @@ const Role = ({ week }: { week: InterviewWeek }): JSX.Element => (
     <h2 className="text-3xl font-extrabold text-balance">
       {WORDS.role(week.role.title, week.company.name)}
     </h2>
-    <p className="text-muted-foreground">{week.company.about}</p>
-    <p>{week.role.about}</p>
-    <p className="bg-card rounded-2xl p-3 text-sm italic">{WORDS.invented}</p>
+    <RoleAbout week={week} />
   </header>
 )
 
@@ -61,49 +70,159 @@ export function doneLine(
   return WORDS.done(WORDS.past[did], take.recordedAt)
 }
 
-const Home = ({ held }: { held: Interview }): JSX.Element => {
-  const { week, state, atHome, run } = held
-  const today = questionOfDay(week, pacificDay(new Date(state.at)))
-  const others = week.questions.filter(({ id }) => id !== today?.id)
-  const entry = (id: string, prompt: string): JSX.Element => {
-    const done = doneLine(held, id)
-    return (
-      <To card="card" key={id} to={{ page: "question", question: id }}>
-        <span className="font-semibold">{prompt}</span>
-        {done !== null && (
-          <span className="text-muted-foreground text-xs">{done}</span>
-        )}
-      </To>
-    )
-  }
+/** A typical length for `seconds`, to the half minute: what each kind costs. */
+const typical = (seconds: ReadonlyArray<number>): number =>
+  Math.max(
+    30,
+    Math.round(seconds.reduce((a, b) => a + b, 0) / seconds.length / 30) * 30
+  )
+
+/** What a question or a read is called on the first page. */
+const nameOf = (week: InterviewWeek, item: string): string => {
+  const card = cardOf(item)
+  return card === null
+    ? (week.questions.find(({ id }) => id === item)?.prompt ?? item)
+    : (week.cards.find(({ id }) => id === card)?.situation ?? item)
+}
+
+/** A kind of practice, as a link to its page. */
+const Kind = ({
+  to,
+  name,
+  lines,
+}: {
+  to: Page
+  name: string
+  lines: ReadonlyArray<string>
+}): JSX.Element => (
+  <To card="card" to={to}>
+    <span className="font-bold">{name}</span>
+    {lines.map((line) => (
+      <span key={line} className="text-muted-foreground text-sm">
+        {line}
+      </span>
+    ))}
+  </To>
+)
+
+/** The way to this week's takes, in Studio's one Takes. */
+export const TakesLink = ({ week }: { week: InterviewWeek }): JSX.Element => (
+  <Kind
+    to={{ page: "takes", week: week.id, name: WORDS.wayIn.weekName(week) }}
+    name={WORDS.wayIn.takes}
+    lines={[WORDS.wayIn.takesLine]}
+  />
+)
+
+/** The way to How a week goes. */
+const HowLink = (): JSX.Element => (
+  <Kind
+    to={{ page: "how" }}
+    name={WORDS.wayIn.how}
+    lines={[WORDS.wayIn.howLine]}
+  />
+)
+
+/**
+ * The first page before anything was said this week (IW15): what this is,
+ * the kinds of practice and what each costs, and how a week goes.
+ */
+const Fresh = ({ week }: { week: InterviewWeek }): JSX.Element => {
+  const { questions, cards } = week
   return (
     <div className="flex flex-col gap-4">
-      <Role week={week} />
-      {today !== null && (
-        <To to={{ page: "question", question: today.id }} card="brand">
-          <span className="text-xs font-semibold opacity-85">
-            {WORDS.today}
-          </span>
-          <span className="text-xl leading-tight font-extrabold text-balance">
-            {today.prompt}
-          </span>
-          <span className="text-xs font-semibold opacity-85">
-            {doneLine(held, today.id) ?? WORDS.todayLine}
-          </span>
-        </To>
-      )}
-      <section className="bg-card flex flex-col gap-2 rounded-2xl border p-3">
-        <p className="text-sm">{WORDS.readsEntry}</p>
-        <Button asChild variant="outline" className="self-start">
-          <To to={{ page: "reads" }}>{WORDS.reads}</To>
-        </Button>
+      <header className="space-y-1">
+        <p className="text-muted-foreground text-xs font-semibold">
+          {WORDS.heading(week)}
+        </p>
+        <h2 className="text-3xl font-extrabold text-balance">
+          {WORDS.wayIn.title}
+        </h2>
+        <p className="text-muted-foreground">
+          {WORDS.wayIn.line(week.role.title, week.company.name)}
+        </p>
+      </header>
+      <section className="flex flex-col gap-2">
+        <h3 className="text-sm font-semibold">{WORDS.wayIn.kinds}</h3>
+        <Kind
+          to={{ page: "questions" }}
+          name={WORDS.questions}
+          lines={[
+            WORDS.wayIn.questions.what,
+            WORDS.wayIn.questions.cost(
+              questions.length,
+              typical(questions.map(({ targetSeconds }) => targetSeconds))
+            ),
+          ]}
+        />
+        <Kind
+          to={{ page: "reads" }}
+          name={WORDS.reads}
+          lines={[
+            WORDS.wayIn.reads.what,
+            WORDS.wayIn.reads.cost(
+              cards.length,
+              typical(cards.map(({ targetSeconds }) => targetSeconds))
+            ),
+          ]}
+        />
+        <p className="text-muted-foreground text-sm">{WORDS.wayIn.anyOrder}</p>
       </section>
-      {others.length > 0 && (
-        <section className="flex flex-col gap-2">
-          <h3 className="text-sm font-semibold">
-            {today === null ? WORDS.questions : WORDS.others}
-          </h3>
-          {others.map(({ id, prompt }) => entry(id, prompt))}
+      <HowLink />
+    </div>
+  )
+}
+
+/**
+ * The first page once something was said or sent this week (IW16): what was
+ * done, each take where it is, the kinds, and the send. Nothing counts what
+ * wasn't done.
+ */
+const UnderWay = ({ held }: { held: Interview }): JSX.Element => {
+  const { week, state, atHome, run } = held
+  const today = questionOfDay(week, pacificDay(new Date(state.at)))
+  const said = itemsOf(week).flatMap((item) => {
+    const take = currentOf(held, item)
+    const row = take === null ? null : rowOf(viewOf(held, item), take.id)
+    return row === null ? [] : [{ item, row }]
+  })
+  // The read said most recently, in the past tense.
+  const latestRead = week.cards
+    .map(({ id }) => readItem(id))
+    .flatMap((item) => {
+      const take = currentOf(held, item)
+      return take === null ? [] : [{ item, at: take.recordedAt }]
+    })
+    .sort((a, b) => b.at.localeCompare(a.at))
+    .at(0)
+  const lastRead =
+    latestRead === undefined ? null : doneLine(held, latestRead.item)
+  return (
+    <div className="flex flex-col gap-4">
+      <header className="space-y-1">
+        <p className="text-muted-foreground text-xs font-semibold">
+          {WORDS.heading(week)}
+        </p>
+        <h2 className="text-3xl font-extrabold text-balance">
+          {WORDS.role(week.role.title, week.company.name)}
+        </h2>
+      </header>
+      {said.length > 0 && (
+        <section className="bg-card flex flex-col gap-3 rounded-2xl border p-3">
+          <h3 className="text-sm font-semibold">{WORDS.wayIn.soFar}</h3>
+          <ol className="flex flex-col gap-3">
+            {said.map(({ item, row }) => (
+              <li key={item} className="flex flex-col gap-1">
+                <p className="text-sm font-semibold">{nameOf(week, item)}</p>
+                <TakeRow
+                  row={playOnly(row)}
+                  onPlay={() =>
+                    run.dispatch({ type: "play", take: row.take.id })
+                  }
+                />
+              </li>
+            ))}
+          </ol>
         </section>
       )}
       {atHome.last !== null && (
@@ -113,21 +232,41 @@ const Home = ({ held }: { held: Interview }): JSX.Element => {
               ? WORDS.held(takesOf(atHome.last).length, atHome.last.at)
               : WORDS.goesHome(takesOf(atHome.last).length, atHome.last.at)}
           </p>
+          <p className="text-muted-foreground">{WORDS.openUntil(week)}</p>
         </section>
       )}
-      <Button
-        size="lg"
-        variant="outline"
-        onClick={() => run.dispatch({ type: "review" })}
-      >
+      <section className="flex flex-col gap-2">
+        <Kind
+          to={{ page: "questions" }}
+          name={WORDS.questions}
+          lines={[
+            today === null
+              ? WORDS.wayIn.questions.what
+              : WORDS.wayIn.todayIs(today.prompt),
+          ]}
+        />
+        <Kind
+          to={{ page: "reads" }}
+          name={WORDS.reads}
+          lines={[lastRead ?? WORDS.wayIn.reads.what]}
+        />
+      </section>
+      <Button size="lg" onClick={() => run.dispatch({ type: "review" })}>
         {WORDS.toReview}
       </Button>
-      <p className="text-muted-foreground text-sm">
-        {WORDS.kept} {WORDS.openUntil(week)}
-      </p>
+      <TakesLink week={week} />
+      <HowLink />
     </div>
   )
 }
+
+/** Whether anything was said or sent this week. */
+const isUnderWay = (held: Interview): boolean =>
+  held.atHome.last !== null ||
+  itemsOf(held.week).some((item) => currentOf(held, item) !== null)
+
+const Home = ({ held }: { held: Interview }): JSX.Element =>
+  isUnderWay(held) ? <UnderWay held={held} /> : <Fresh week={held.week} />
 
 const Review = ({ held }: { held: Interview }): JSX.Element => {
   const { run, state, week, takes, snapshot } = held

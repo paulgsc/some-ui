@@ -15,7 +15,9 @@ import { CardRoute } from "@/components/card-route"
 
 /** A page of the week. */
 export type Page =
-  | { readonly page: "interview" | "reads" }
+  | { readonly page: "interview" | "questions" | "how" | "reads" }
+  /** The week's takes in Studio's one Takes (TAKES20): its interview kind, this week's. */
+  | { readonly page: "takes"; readonly week: string; readonly name: string }
   | { readonly page: "read"; readonly card: string }
   | {
       readonly page: "question" | "study" | "aloud"
@@ -32,6 +34,20 @@ function routeOf(to: Page): LinkOptions {
   switch (to.page) {
     case "interview": {
       return linkOptions({ to: "/jobs/interview" })
+    }
+    case "questions": {
+      return linkOptions({ to: "/jobs/interview/questions" })
+    }
+    case "takes": {
+      return linkOptions({
+        to: "/journal/takes/$kind",
+        params: { kind: "interview" },
+        // As home keys a week's interview takes (`about.key`), and its name for the chip.
+        search: { about: `interview:${to.week}`, name: to.name },
+      })
+    }
+    case "how": {
+      return linkOptions({ to: "/jobs/interview/how" })
     }
     case "reads": {
       return linkOptions({ to: "/jobs/interview/reads" })
