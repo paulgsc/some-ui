@@ -147,7 +147,7 @@ export type RustWeekPorts = {
 }
 
 /** The opening's pages' state (#3269): home's record, a take playing from home, the band. */
-export type OpeningView = {
+type OpeningView = {
   readonly home: HomeOpening
   /** A take of home's playing, asked for, or that home couldn't give. */
   readonly play: PlaySlice
