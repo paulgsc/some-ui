@@ -9,7 +9,9 @@
  *   take (`take:<id>`), so only the note store can say it is a note's.
  * - **A chip counts what it would show.** Each count is of the takes in the
  *   compartment with the other group's chip applied, so tapping a chip
- *   shows exactly as many takes as it said.
+ *   shows as many of the takes read as it said. Home keeps more than one
+ *   page can hold: past the first, a tap that asks home (a kind, a topic)
+ *   can show more, and the page says the counts are of those read so far.
  */
 
 import { assertNever } from "@some-ui/core-utils"
@@ -24,7 +26,7 @@ export const STUDIO_KINDS = ["note", "scene", "idea", "ask", "here"] as const
 
 /**
  * What a take was said for, in the order Takes shows the kinds: Studio's
- * own, then every other kind home keeps (TAKES20, `./kinds`), then one this
+ * own, then every other kind home keeps (`./kinds`), then one this
  * phone doesn't know yet, whose tile shows only while it holds any.
  */
 export const TAKE_KINDS = [
@@ -92,7 +94,7 @@ export type TakeAbout =
   | PortAbout
 
 /**
- * What a take is about that others of its kind may share (TAKES20): a
+ * What a take is about that others of its kind may share: a
  * note's episode, a scene's video, an idea, an ask, a bite's game, a week;
  * null for one about nothing more than its kind.
  */
@@ -188,7 +190,7 @@ export type TakePlace = "phone" | "home"
 const TAKE_PLACES: ReadonlyArray<TakePlace> = ["phone", "home"]
 
 /**
- * How a take stands (TAKES20): home heard words in it, it waits to be heard
+ * How a take stands: home heard words in it, it waits to be heard
  * (on this phone, or on home not heard yet), home heard no words in it, it
  * was set aside, its recording was let go (the record stays), or it was
  * deleted for good, with a receipt.
@@ -220,9 +222,9 @@ export type Sorted = {
 export type Chips = {
   readonly place: TakePlace | null
   readonly station: string | null
-  /** A kind, picked in All (TAKES20). */
+  /** A kind, picked in All. */
   readonly kind?: TakeKind | null | undefined
-  /** A topic: a game, a week (TAKES20). */
+  /** A topic: a game, a week. */
   readonly topic?: TakeTopic | null | undefined
   readonly status?: TakeStatus | null | undefined
 }
@@ -390,7 +392,7 @@ export function toggled(chips: Chips, chip: ChipPick): Chips {
 
 /**
  * The kinds home is asked for, for a compartment and the kind picked in
- * All (TAKES20): Studio's five are all home's `studio`; each other is its
+ * All: Studio's five are all home's `studio`; each other is its
  * own; All, and a kind this phone doesn't know, ask for every kind.
  */
 export function kindsAsked(
@@ -406,7 +408,7 @@ export function kindsAsked(
   return of === undefined ? null : [of]
 }
 
-/** How a list of takes is ordered (TAKES20). */
+/** How a list of takes is ordered. */
 export const ORDERS = ["newest", "oldest", "topic"] as const
 
 export type Order = (typeof ORDERS)[number]
@@ -451,7 +453,7 @@ export function ordered<
 
 /**
  * Whether a take's words hold every word of `q`, in lowercase: what home
- * heard and what it is about (TAKES20). Blank `q` holds for every take.
+ * heard and what it is about. Blank `q` holds for every take.
  */
 export function holdsWords(words: ReadonlyArray<string>, q: string): boolean {
   const terms = q

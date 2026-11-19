@@ -73,7 +73,7 @@ export type GameWeekProps = {
   /** What of the kept bites is still only on this phone. */
   outbox: OutboxPort
   /**
-   * The app's way to what was said here, in Studio's Takes (TAKES20), for
+   * The app's way to what was said here, in Studio's Takes, for
    * the game picked (its id and name) or every game (null), with its words;
    * none without.
    */

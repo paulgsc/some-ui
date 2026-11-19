@@ -53,7 +53,7 @@ beforeEach(() => {
 
 describe("the read of the takes home keeps (ST32)", () => {
   it("asks for the newest, or for the takes whose words hold a search's", () => {
-    // Every kind, from epoch 19; a home before it ignores `kind` (TAKES20).
+    // Every kind, from epoch 19; a home before it ignores `kind`.
     expect(takesPath(null)).toBe("/voice-notes/takes?kind=all")
     expect(takesPath("brand intro")).toBe(
       "/voice-notes/takes?kind=all&q=brand%20intro"
@@ -64,7 +64,7 @@ describe("the read of the takes home keeps (ST32)", () => {
     ).toBe(
       "/voice-notes/takes?kind=all&after=2026-11-03T09%3A00%3A00.000Z%7C2026-11-03T09%3A01%3A00.000Z%7Ct1"
     )
-    // The kinds, topic and order picked, asked of home (TAKES20).
+    // The kinds, topic and order picked, asked of home.
     expect(
       takesPath("rams", null, {
         kinds: ["game"],

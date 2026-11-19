@@ -79,17 +79,24 @@ describe("what the build knows over what the ref says (TAKES2)", () => {
 
 describe("the compartments and their chips (TAKES3)", () => {
   it("counts each compartment, and all of them", () => {
-    expect(compartmentCounts(TAKES)).toMatchObject({
+    expect(compartmentCounts(TAKES)).toEqual({
       note: 3,
       scene: 1,
       idea: 1,
       ask: 0,
       here: 2,
+      bite: 0,
+      round: 0,
+      interview: 0,
+      reflection: 0,
+      jobs: 0,
+      drama: 0,
+      soundbite: 0,
+      lens: 0,
+      leetype: 0,
+      other: 0,
       all: 7,
     })
-    // Every other kind has its compartment, empty here (TAKES20).
-    expect(compartmentCounts(TAKES).bite).toBe(0)
-    expect(compartmentCounts(TAKES).other).toBe(0)
   })
 
   it("leaves out a chip that would show nothing, and orders stations along the conveyor", () => {
@@ -156,7 +163,7 @@ describe("the compartments and their chips (TAKES3)", () => {
   })
 })
 
-describe("one home for every take: its chips, its order and its search (TAKES20)", () => {
+describe("one home for every take: its chips, its order and its search", () => {
   const GAME = { key: "401772", label: "49ers vs Rams" }
   const WEEK = { key: "2026-w47", label: "Week 47" }
   const EVERY: ReadonlyArray<Sorted & { readonly at: string }> = [
@@ -271,7 +278,7 @@ describe("one home for every take: its chips, its order and its search (TAKES20)
   })
 })
 
-describe("what home is asked for, by compartment (TAKES20)", () => {
+describe("what home is asked for, by compartment", () => {
   it("asks for Studio's kinds as one, each other kind as its own, and every kind in All", () => {
     expect(kindsAsked("note", null)).toEqual(["studio"])
     expect(kindsAsked("bite", null)).toEqual(["game"])

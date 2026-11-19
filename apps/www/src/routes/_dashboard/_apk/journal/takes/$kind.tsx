@@ -49,7 +49,7 @@ const toEpisode = (take: LibraryTake): JSX.Element | null => {
  * One compartment of Studio's Takes (TAKES3, #3069): its takes as cards,
  * each saying what it was said for (TAKES2, #3068), under chips for where
  * each is, its station, what it is about and how it stands, each with its
- * count, in the order picked (TAKES20, #3219). `?about=` (as home keys it,
+ * count, in the order picked (#3219). `?about=` (as home keys it,
  * `game:<id>`, with `?name=` for its chip) opens it filtered to one topic (a
  * game, a week): a wing's own view of its takes is this
  * page, as Game day's way to a game's takes is. Phone-only

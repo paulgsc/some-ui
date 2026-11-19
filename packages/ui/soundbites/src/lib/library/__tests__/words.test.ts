@@ -75,6 +75,7 @@ function everyWord(): Array<string> {
     status,
     order,
     letGone,
+    countedSoFar,
     ...fixed
   } = LIBRARY_WORDS
   const counts: ReadonlyArray<[number, number, number | null]> = [
@@ -92,6 +93,14 @@ function everyWord(): Array<string> {
     ...Object.values(order),
     letGone("let-go"),
     letGone("deleted"),
+    countedSoFar(50, 120),
+    ...BY.flatMap((by) =>
+      (["oldest", "topic"] as const).flatMap((order) => [
+        shown(by, "brand", 3, 120, 3, order, true),
+        shown(by, null, 50, 120, null, order, true),
+        shown(by, null, 1, 1, null, order),
+      ])
+    ),
     ABOUT_WORDS.week(47),
     ABOUT_WORDS.read,
     ABOUT_WORDS.gameOn("Nov 16"),
@@ -163,7 +172,7 @@ describe("Takes on home's words (ST32)", () => {
     expect(LIBRARY_WORDS.subject({ kind: "here" })).toBeNull()
   })
 
-  it("say what every other kind is about, through its port (TAKES20)", () => {
+  it("say what every other kind is about, through its port", () => {
     const bite = ABOUTS.find((about) => about.kind === "bite")!
     expect(LIBRARY_WORDS.subject(bite)).toMatch(/^A game on /)
     expect(LIBRARY_WORDS.detail(bite)).toBe("Q3 8:42")

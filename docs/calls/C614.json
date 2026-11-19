@@ -7,7 +7,7 @@
     "some-ui:packages/ui/soundbites/src/lib/library/model.ts",
     "some-ui:packages/ui/soundbites/src/components/take-library/index.tsx"
   ],
-  "chose": "Takes asks home for what the page shows: the compartment's kinds (kind=all in All), the topic picked (about=, as home keys it) and Newest or Oldest (sort=), keeping the takes shown while home answers, and pages with \"Show more takes\" (after=); by what it's about orders what home answered. A take home deleted for good or whose recording was let go still shows, with no Play, saying \"Deleted for good. Home keeps a receipt of what went.\" or \"Let go. Home keeps what it heard in it, without its audio.\", under Deleted and Let go chips.",
+  "chose": "Takes asks home for what the page shows: the compartment's kinds (kind=all in All), the topic picked (about=, as home keys it) and Newest or Oldest (sort=), keeping the takes shown while home answers, and pages with \"Show more takes\" (after=); by what it's about orders what home answered. A take home deleted for good or whose recording was let go still shows, with no Play, saying \"Deleted for good. Home keeps a receipt of what went.\" or \"Its audio was deleted. Home keeps what it heard in it.\", under Deleted and Audio deleted chips; Show more is not offered while a filter's read is on its way.",
   "options": [
     "each filter and order asked of home",
     "every kind at once, chips over the pages shown",

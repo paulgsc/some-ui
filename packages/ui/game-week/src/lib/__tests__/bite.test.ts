@@ -120,7 +120,7 @@ describe("biteFields (GW4)", () => {
   })
 })
 
-describe("a bite's scenario by name (TAKES20)", () => {
+describe("a bite's scenario by name", () => {
   it("names each scenario of the catalog, and none it lacks", () => {
     for (const scenario of SCENARIOS) {
       expect(scenarioName(scenario.id)).toBe(scenario.name)

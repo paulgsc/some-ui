@@ -36,7 +36,7 @@ function gameWeekPorts(): GameWeekPorts {
 }
 
 /**
- * The way to what was said here, in Studio's Takes (TAKES20): the bites'
+ * The way to what was said here, in Studio's Takes: the bites'
  * compartment, filtered to the game picked.
  */
 const takesLink = (

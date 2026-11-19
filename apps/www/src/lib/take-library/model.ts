@@ -23,7 +23,7 @@ import { isTakeStation } from "@/lib/take-conveyor/model"
 /** One take, as the route serves it; fields home adds are dropped. */
 const TakeSchema = z.object({
   id: z.string().min(1),
-  // Its kind (TAKES20): a home before it says none, and lists Studio's
+  // Its kind: a home before it says none, and lists Studio's
   // alone; a kind this phone doesn't know still shows, as another kind.
   kind: z
     .unknown()
@@ -93,7 +93,7 @@ const TakesSchema = z.object({
   matched: z.number().int().nonnegative().nullable(),
   // "meaning" is home's once its index of meaning lands; read it already.
   by: z.enum(["newest", "words", "meaning"]),
-  // Where the next page starts (TAKES20); a home before it says nothing.
+  // Where the next page starts; a home before it says nothing.
   next: z.string().min(1).nullable().optional(),
 })
 
@@ -135,8 +135,6 @@ export function readTakes(answer: HomeAnswer): LibraryRead {
   if (answer.status !== 200) return { kind: "unreadable" }
   const page = readAs(TakesSchema, answer.body)
   if (page === null) return { kind: "unreadable" }
-  // A home at epoch 19 always says where the next page starts, even with
-  // none; one before it never does, and lists Studio's alone.
   return {
     kind: "read",
     page: {
@@ -148,7 +146,7 @@ export function readTakes(answer: HomeAnswer): LibraryRead {
 }
 
 /**
- * This phone's takes of every kind, for Takes (TAKES20): each recording still
+ * This phone's takes of every kind, for Takes: each recording still
  * here (`recordingsOnPhone`), saying whether home holds it (`held`), and each
  * game bite home holds whose audio has left this phone, which plays from
  * home (`homeAudio`). Studio's takes are listed too; Takes leaves out those

@@ -46,6 +46,7 @@ import {
   NO_CHIPS,
   ordered,
   ORDERS,
+  STUDIO_KINDS,
   TAKE_KINDS,
   toggled,
   topicOf,
@@ -116,7 +117,7 @@ export type TakeLibraryProps = {
    */
   row?: ((take: LibraryTake) => ReactNode) | undefined
   /**
-   * The chips picked when the page opens (TAKES20): a wing's own view is
+   * The chips picked when the page opens: a wing's own view is
    * this home filtered, as Game day's way to a game's takes is. Read once.
    */
   initialChips?: Partial<Chips> | undefined
@@ -178,7 +179,7 @@ type PhoneRow = Sorted & {
   readonly about: TakeAbout
 }
 
-/** One of the phone's takes of another kind that home doesn't list (TAKES20). */
+/** One of the phone's takes of another kind that home doesn't list. */
 type OwnRow = Sorted & {
   readonly own: PhoneTake
   readonly about: TakeAbout
@@ -259,7 +260,7 @@ const AboutTake = ({
 }
 
 const HomeCard = ({
-  item: { take, about },
+  item,
   state,
   stations,
   row,
@@ -271,16 +272,13 @@ const HomeCard = ({
   row: TakeLibraryProps["row"]
   dispatch: Dispatch
 }): JSX.Element => {
+  const { take, about } = item
   const { playback } = state
   const here = playback.kind !== "quiet" && playback.id === take.id
   const heard = heardOf(take)
   const standing = stations?.standing(take) ?? null
   const gone =
-    take.status === "deleted"
-      ? "deleted"
-      : take.status === "recording-let-go"
-        ? "let-go"
-        : null
+    item.status === "deleted" || item.status === "let-go" ? item.status : null
   return (
     <li className="bg-card border-border/50 flex flex-col gap-2 rounded-2xl border p-3">
       <div className="flex min-w-0 items-start gap-3">
@@ -357,16 +355,19 @@ const PhoneCard = ({
 )
 
 /**
- * One of the phone's takes of another kind that home doesn't list yet
- * (TAKES20): what it is about, that it is on this phone alone, and Play,
+ * One of the phone's takes of another kind that home doesn't list yet:
+ * what it is about, that it is on this phone alone, and Play,
  * from the phone.
  */
 const OwnCard = ({
   item: { own, about },
+  covers,
   state,
   dispatch,
 }: {
   item: OwnRow
+  /** What home's list covers, for what a take home holds says. */
+  covers: LibraryPage["covers"]
   state: LibraryState
   dispatch: Dispatch
 }): JSX.Element => {
@@ -384,7 +385,11 @@ const OwnCard = ({
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <AboutTake about={about} recordedAt={own.recordedAt} />
           <p className="text-muted-foreground text-sm italic">
-            {own.home === true ? WORDS.homeLater : WORDS.waitsHere}
+            {own.home !== true
+              ? WORDS.waitsHere
+              : covers === "every"
+                ? WORDS.homeHasIt
+                : WORDS.homeLater}
           </p>
           <div className="mt-1 flex flex-wrap gap-1.5">
             {own.home === true ? (
@@ -413,11 +418,13 @@ const Listed = ({
   others,
   compartment,
   chips,
+  order,
   state,
   stations,
   row,
   dispatch,
 }: {
+  order: Order
   /** Home's answer; null while there is none, so only the phone's show. */
   page: LibraryPage | null
   /** The takes in the compartment, under the chips picked, in order. */
@@ -439,6 +446,7 @@ const Listed = ({
       <OwnCard
         key={each.own.id}
         item={each}
+        covers={page?.covers}
         state={state}
         dispatch={dispatch}
       />
@@ -469,12 +477,19 @@ const Listed = ({
             state.asked,
             page.takes.length,
             page.total,
-            page.matched
+            page.matched,
+            order,
+            STUDIO_KINDS.some((kind) => kind === compartment)
           )}
         </p>
       )}
       {page?.covers === "studio" && (
         <p className="text-muted-foreground text-sm">{WORDS.studioOnly}</p>
+      )}
+      {page !== null && (page.next ?? null) !== null && (
+        <p className="text-muted-foreground text-sm">
+          {WORDS.countedSoFar(page.takes.length, page.total)}
+        </p>
       )}
       {rows.length === 0 &&
         others === 0 &&
@@ -501,7 +516,7 @@ const Listed = ({
           type="button"
           variant="outline"
           className="self-start"
-          disabled={state.older === "reading"}
+          disabled={state.older === "reading" || state.refreshing}
           onClick={() => dispatch({ type: "older" })}
         >
           {state.older === "reading" ? WORDS.olderReading : WORDS.showOlder}
@@ -772,7 +787,7 @@ const ChipBar = ({
   )
 }
 
-/** How the list is ordered (TAKES20): newest, oldest, or by what it's about. */
+/** How the list is ordered: newest, oldest, or by what it's about. */
 const OrderBar = ({
   order,
   onOrder,
@@ -798,7 +813,7 @@ const OrderBar = ({
 
 /**
  * What a take was said for: Studio's by the build's word over its ref's;
- * every other kind through its port (TAKES20).
+ * every other kind through its port.
  */
 const aboutWith =
   (about: LibraryAbout | undefined, names: TakeNames) =>
@@ -827,7 +842,7 @@ const aboutWith =
     )
   }
 
-/** How a take of home's stands (TAKES20). */
+/** How a take of home's stands. */
 function statusOf(take: LibraryTake): TakeStatus {
   if (take.status === "deleted") return "deleted"
   if (take.status === "recording-let-go") return "let-go"
@@ -836,7 +851,7 @@ function statusOf(take: LibraryTake): TakeStatus {
   return take.heard.text.trim() === "" ? "silent" : "heard"
 }
 
-/** What a take's card says it is about, for a search (TAKES20). */
+/** What a take's card says it is about, for a search. */
 function aboutWords(about: TakeAbout): ReadonlyArray<string> {
   return [
     WORDS.kinds[about.kind].one,
@@ -846,7 +861,7 @@ function aboutWords(about: TakeAbout): ReadonlyArray<string> {
 }
 
 /**
- * What home is asked for (TAKES20): the compartment's kinds, or the kind
+ * What home is asked for: the compartment's kinds, or the kind
  * picked in All; the topic picked, when home keys it; the order, but by
  * what it's about, which is the phone's over what home answers.
  */
@@ -947,16 +962,9 @@ export const TakeLibrary = ({
     })
   // Recorded on Takes itself, they are listed by the recorder (`phone`).
   const recordedHere = new Set(phoneTakes.map(({ id }) => id))
-  // A take home holds is in its pages, on a home that lists every kind
-  // (TAKES20): only a home before it leaves those it holds unlisted.
-  const listsEvery = page?.covers === "every"
+  // One home holds stays, saying so, until a read of home lists it.
   const ownRows: ReadonlyArray<OwnRow> = ownTakes
-    .filter(
-      ({ id, home: held }) =>
-        !onHome.has(id) &&
-        !recordedHere.has(id) &&
-        !(listsEvery && held === true)
-    )
+    .filter(({ id }) => !onHome.has(id) && !recordedHere.has(id))
     .map((own) => {
       const said = aboutOf(own.id, own)
       return {
@@ -1003,7 +1011,7 @@ export const TakeLibrary = ({
     (listsPhone || state.phone !== "quiet")
   const searchable = state.read.kind !== "unpaired"
   // Home searched what it heard; the phone's own are searched by what
-  // they are about, here (TAKES20).
+  // they are about, here.
   const ownShown = ownRows.filter(
     (each) =>
       shows(each) &&
@@ -1110,6 +1118,7 @@ export const TakeLibrary = ({
         others={phoneShown.length}
         compartment={compartment}
         chips={chips}
+        order={order}
         state={state}
         stations={stations}
         row={row}

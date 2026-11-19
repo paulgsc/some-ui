@@ -31,7 +31,7 @@ const line = (
     .join(" · ")
 }
 
-describe("every kind of take home keeps has its place (TAKES20)", () => {
+describe("every kind of take home keeps has its place", () => {
   it("gives each kind but Studio's a compartment of its own and a port", () => {
     for (const of of TAKE_OFS) {
       if (of === "studio") continue
@@ -52,7 +52,7 @@ describe("every kind of take home keeps has its place (TAKES20)", () => {
   })
 })
 
-describe("what each kind's take is about, through its port (TAKES20)", () => {
+describe("what each kind's take is about, through its port", () => {
   it("says a bite's game, its moment and its scenario", () => {
     const fields = {
       strip: "Q3 4:12 · SF 17, LAR 13 · 4th & 2 at the LAR 38",

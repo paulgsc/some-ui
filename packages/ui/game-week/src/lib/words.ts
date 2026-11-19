@@ -15,7 +15,7 @@ export const WORDS = {
   team: "SF",
   /**
    * The way to Studio's Takes, filtered to the game picked, or to every
-   * game when none is (TAKES20): what was said, found again.
+   * game when none is: what was said, found again.
    */
   yourTakes: (picked: boolean): string =>
     picked ? "Your takes from this game" : "Your takes from game day",

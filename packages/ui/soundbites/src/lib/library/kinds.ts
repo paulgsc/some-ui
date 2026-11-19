@@ -7,15 +7,13 @@
  *
  * - **Every kind home keeps has a compartment and an about port.** Both are
  *   `Record`s over `TAKE_OFS`, so a kind added there without one fails the
- *   typecheck; www's `lib/take-library` test holds `TAKE_OFS` to the phone's
- *   own `VOICE_OFS` (home's `voice_repo::Of`), so a kind home gains fails
- *   there until it is placed here.
+ *   typecheck.
  * - **A kind this phone doesn't know still shows** (`other`): in All, with
  *   its day, never dropped.
  * - **Studio's takes keep their own split** (`./compartments`' `aboutOfRef`):
  *   an episode note, a scene, an idea, an ask or one recorded on Takes.
  */
-import { dayOf, formatDay } from "@some-ui/core-utils"
+import { dayOf, formatDay, weekNumber } from "@some-ui/core-utils"
 
 /**
  * What home calls a voice note's kind, in home's order (paulgsc/server
@@ -124,17 +122,16 @@ export type AboutPort = (
   words: AboutPortWords
 ) => PortAbout
 
-/** A week's id as the weeks name it (`2026-w46`), or null. */
-const WEEK = /^\d{4}-w(\d{1,2})$/
+/** A week's id as the weeks name it: `2026-w46`. */
+const WEEK = /^\d{4}-w\d{1,2}$/
 
 function weekTopic(
   of: "interview" | "rust-round",
   id: string | undefined,
   words: AboutPortWords
 ): TakeTopic | null {
-  if (id === undefined) return null
-  const n = WEEK.exec(id)?.[1]
-  return n === undefined ? null : topicOf(`${of}:${id}`, words.week(Number(n)))
+  if (id === undefined || !WEEK.test(id)) return null
+  return topicOf(`${of}:${id}`, words.week(weekNumber(id)))
 }
 
 const present = (

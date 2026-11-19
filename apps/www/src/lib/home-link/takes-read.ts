@@ -12,21 +12,13 @@
  * is `lib/take-library`'s, its one caller.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
+import type { LibraryQuery } from "@some-ui/soundbites"
 
 import { homeLink } from "./index"
 import { asked } from "./while-busy"
 
-/** What a read asks besides a search (`@some-ui/soundbites`' `LibraryQuery`). */
-export type TakesQuery = {
-  readonly kinds: ReadonlyArray<string> | null
-  readonly about: string | null
-  readonly sort: "newest" | "oldest"
-}
-
-const EVERY: TakesQuery = { kinds: null, about: null, sort: "newest" }
-
 /**
- * The read of the newest takes (TAKES20): of the kinds asked, every kind
+ * The read of the newest takes: of the kinds asked, every kind
  * (`kind=all`) when none are, about the topic picked, oldest first when
  * asked, those whose words hold `q`'s, from after take `after` when a page
  * past the first is asked for. Any `kind` asks a home at contract epoch 19
@@ -36,16 +28,17 @@ const EVERY: TakesQuery = { kinds: null, about: null, sort: "newest" }
 export function takesPath(
   q: string | null,
   after: string | null = null,
-  query: TakesQuery = EVERY
+  /** Every kind, newest first, when absent. */
+  query?: LibraryQuery
 ): string {
   const pair = (key: string, value: string): string =>
     `${key}=${encodeURIComponent(value)}`
   const pairs = [
-    ...(query.kinds === null || query.kinds.length === 0
+    ...(query === undefined || query.kinds === null || query.kinds.length === 0
       ? [pair("kind", "all")]
       : query.kinds.map((kind) => pair("kind", kind))),
-    ...(query.about === null ? [] : [pair("about", query.about)]),
-    ...(query.sort === "oldest" ? [pair("sort", "oldest")] : []),
+    ...(query?.about == null ? [] : [pair("about", query.about)]),
+    ...(query?.sort === "oldest" ? [pair("sort", "oldest")] : []),
     ...(q === null ? [] : [pair("q", q)]),
     ...(after === null ? [] : [pair("after", after)]),
   ]
@@ -67,7 +60,7 @@ export type TakesAsked =
 export async function askTakes(
   q: string | null,
   after: string | null = null,
-  query: TakesQuery = EVERY
+  query?: LibraryQuery
 ): Promise<TakesAsked> {
   return asked(() =>
     homeLink().keep((send) => send("GET", takesPath(q, after, query)))

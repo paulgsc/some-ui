@@ -46,7 +46,7 @@ type LibraryHeard = {
 }
 
 /**
- * One take as home keeps it, of whatever kind (TAKES20, #3219): what it is
+ * One take as home keeps it, of whatever kind (#3219): what it is
  * (`of`, when, how long, what home heard, where it's kept), what it is about
  * (`ref` and `fields`, read by its kind's port, `./kinds`), and how it stands.
  */
@@ -67,7 +67,7 @@ export type LibraryTake = {
   /** When the owner set it aside; null while nothing has. */
   readonly setAsideAt: string | null
   /**
-   * How home keeps it (TAKES20): kept, set aside, its recording let go (the
+   * How home keeps it: kept, set aside, its recording let go (the
    * record stays), or deleted for good with a receipt. Absent from a home
    * before TAKES20: kept, or set aside by `setAsideAt`.
    */
@@ -103,7 +103,7 @@ export type LibraryPage = {
   readonly matched: number | null
   readonly by: LibraryBy
   /**
-   * Whether home listed every kind of take (TAKES20), or Studio's alone,
+   * Whether home listed every kind of take, or Studio's alone,
    * as a home before it does: then what waits on a newer home is said.
    */
   readonly covers?: "every" | "studio" | undefined
@@ -126,7 +126,7 @@ export type LibraryRead =
   | { readonly kind: "unreadable" }
 
 /**
- * What a read asks home for besides a search (TAKES20): the kinds (none
+ * What a read asks home for besides a search: the kinds (none
  * named: every kind), the one topic picked, as home keys it, and the order.
  * Home filters and orders what it keeps, so a filter or order sees every
  * take, not only those read so far.
@@ -196,7 +196,7 @@ export type LibraryState = PlaySlice & {
   readonly draft: string
   /** The search the list shows; null for the newest. */
   readonly asked: string | null
-  /** What else the list was asked for (TAKES20). */
+  /** What else the list was asked for. */
   readonly query: LibraryQuery
   readonly read: { readonly kind: "reading" } | LibraryRead
   /** The latest read asked for; an answer to an earlier one is stale. */
@@ -208,13 +208,18 @@ export type LibraryState = PlaySlice & {
   /** What the phone's own takes do: nothing, play one, or record one. */
   readonly phone: PhoneSound
   /**
-   * The next page (TAKES20): being read; unanswered (home out of reach or
+   * The next page: being read; unanswered (home out of reach or
    * busy: ask again); or refused because the list changed on home since
    * (only a fresh read helps); null otherwise. The takes shown stay.
    */
   readonly older: "reading" | "away" | "changed" | null
   /** More than the first page is shown: a take reaching home waits for a fresh read. */
   readonly paged: boolean
+  /**
+   * A read for another kind, topic or order is on its way, the takes shown
+   * kept meanwhile: their next page is not asked for, being of the old list.
+   */
+  readonly refreshing: boolean
 }
 
 export type LibraryIntent =
@@ -222,9 +227,9 @@ export type LibraryIntent =
   | { readonly type: "search" }
   | { readonly type: "newest" }
   | { readonly type: "readAgain" }
-  /** Show the next page, after the takes shown (TAKES20). */
+  /** Show the next page, after the takes shown. */
   | { readonly type: "older" }
-  /** Ask home for other kinds, another topic or the other order (TAKES20). */
+  /** Ask home for other kinds, another topic or the other order. */
   | { readonly type: "query"; readonly query: LibraryQuery }
   | { readonly type: "play"; readonly id: string }
   /** What plays stops: its row is about to leave the screen (a chip, TAKES3). */
@@ -282,6 +287,7 @@ export const INITIAL_LIBRARY: LibraryState = {
   phone: "quiet",
   older: null,
   paged: false,
+  refreshing: false,
 }
 
 const same = (state: LibraryState): LibraryStep => ({ state, effects: [] })
@@ -311,6 +317,7 @@ function readFor(
       behind: false,
       older: null,
       paged: false,
+      refreshing: keep && stop.state.read.kind === "read",
     },
     effects: [
       ...stop.effects,
@@ -376,7 +383,9 @@ function step(state: LibraryState, event: LibraryEvent): LibraryStep {
     case "older": {
       const { read } = state
       const next = read.kind === "read" ? (read.page.next ?? null) : null
-      if (next === null || state.older === "reading") return same(state)
+      if (next === null || state.older === "reading" || state.refreshing) {
+        return same(state)
+      }
       const seq = state.seq + 1
       return {
         state: { ...state, seq, older: "reading" },
@@ -394,7 +403,7 @@ function step(state: LibraryState, event: LibraryEvent): LibraryStep {
     case "takesRead": {
       if (event.seq !== state.seq) return same(state)
       if (state.older !== "reading") {
-        return same({ ...state, read: event.read })
+        return same({ ...state, read: event.read, refreshing: false })
       }
       // A page of older takes joins those shown; one unanswered leaves them.
       const { read } = state

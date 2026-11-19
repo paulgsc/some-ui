@@ -46,13 +46,9 @@ const KINDS_SOURCE = vi.hoisted(
 
 vi.mock("@some-ui/soundbites", () => import(KINDS_SOURCE))
 
-const {
-  KIND_OF,
-  TAKE_OFS,
-}: {
-  readonly KIND_OF: Readonly<Record<string, string>>
-  readonly TAKE_OFS: ReadonlyArray<string>
-} = await import(KINDS_SOURCE)
+const { TAKE_OFS }: { readonly TAKE_OFS: ReadonlyArray<string> } = await import(
+  KINDS_SOURCE
+)
 
 // The phone's own takes are read by `phoneOnlyTakes`, not here.
 vi.mock("@/lib/home-link/voice-copy", () => ({}))
@@ -224,16 +220,12 @@ describe("Takes on home's reads of home (ST32)", () => {
   })
 })
 
-describe("one home for every take (TAKES20)", () => {
+describe("one home for every take", () => {
   // The check: a kind of voice note home takes (`VOICE_OFS`, home's
   // `voice_repo::Of`) that Takes has no compartment or about port for
-  // fails here, so a recording can't again go somewhere Takes doesn't show.
+  // fails here, so a take can't go somewhere Takes doesn't show.
   it("covers every kind of take the phone sends home, in home's order", () => {
     expect([...TAKE_OFS]).toEqual([...VOICE_OFS])
-    // Each but Studio's (split by its ref) has a compartment of its own.
-    expect(Object.keys(KIND_OF).sort()).toEqual(
-      VOICE_OFS.filter((of) => of !== "studio").sort()
-    )
   })
 
   it("reads each take's kind, how home keeps it and home's name for a game, and where the next page starts (epoch 19)", () => {

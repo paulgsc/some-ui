@@ -41,9 +41,9 @@ export type TakesHome = {
   readonly takes: (
     q: string | null,
     wanted: () => boolean,
-    /** Where to read on from, as home marked it (TAKES20); null or absent, the first page. */
+    /** Where to read on from, as home marked it; null or absent, the first page. */
     after?: string | null,
-    /** The kinds, topic and order asked for (TAKES20); absent, every kind, newest first. */
+    /** The kinds, topic and order asked for; absent, every kind, newest first. */
     query?: LibraryQuery
   ) => Promise<LibraryRead>
   /** Take `id`'s audio from home; null when home can't give it back now. */
@@ -64,7 +64,7 @@ export type LibraryPhone = {
 }
 
 /**
- * One of the phone's takes of any kind (TAKES20): what home is told of it
+ * One of the phone's takes of any kind: what home is told of it
  * and its audio, for those home doesn't list yet. Studio's takes with no
  * scene come through `LibraryPhone` instead, where they are recorded.
  */
@@ -99,9 +99,9 @@ export type LibraryPorts = {
   readonly stations?: LibraryStations | undefined
   /** What each take was said for, as the phone knows it (TAKES2); absent, its ref says. */
   readonly about?: LibraryAbout | undefined
-  /** The phone's takes of every kind (TAKES20); absent, none but `phone`'s. */
+  /** The phone's takes of every kind; absent, none but `phone`'s. */
   readonly onPhone?: LibraryOnPhone | undefined
-  /** What the build can name that a ref only points at (TAKES20); absent, none. */
+  /** What the build can name that a ref only points at; absent, none. */
   readonly names?: TakeNames | undefined
   /** The shell's refresh port: a pull reads the takes again (HERD2); absent, none. */
   readonly refresh?: Refresh | undefined
@@ -210,6 +210,31 @@ export function createTakeLibrary(
     ]
   }
 
+  /**
+   * Tells the machine when one of the phone's takes of any kind reaches
+   * home, so home's list is read again and shows it there.
+   */
+  function watchOnPhone(): ReadonlyArray<() => void> {
+    const { onPhone } = ports
+    if (onPhone === undefined) return []
+    const heldOf = (): ReadonlySet<string> =>
+      new Set(
+        onPhone
+          .getSnapshot()
+          .filter((take) => take.home === true)
+          .map(({ id }) => id)
+      )
+    let held = heldOf()
+    return [
+      onPhone.subscribe(() => {
+        const now = heldOf()
+        const arrived = [...now].some((id) => !held.has(id))
+        held = now
+        if (arrived) send({ type: "arrived" })
+      }),
+    ]
+  }
+
   function run(effect: LibraryEffect): void {
     switch (effect.type) {
       case "readTakes": {
@@ -229,7 +254,7 @@ export function createTakeLibrary(
         const { play } = effect
         // One sound at a time: the phone's own take stops for home's.
         ports.phone?.pattern.stopPlaying()
-        // A take only on this phone plays from the phone (TAKES20); one
+        // A take only on this phone plays from the phone; one
         // home lists plays from home, whatever the phone still holds.
         const listed =
           state.read.kind === "read" &&
@@ -287,6 +312,7 @@ export function createTakeLibrary(
       attached = true
       const stops = [
         ...watchPhone(),
+        ...watchOnPhone(),
         ports.refresh?.({
           what: LIBRARY_WORDS.pullWhat,
           checkAgain: checkAgainOf({

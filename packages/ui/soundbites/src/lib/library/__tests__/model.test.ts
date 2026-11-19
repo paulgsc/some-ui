@@ -393,7 +393,7 @@ describe("Takes on home (ST32)", () => {
   })
 })
 
-describe("older takes, a page at a time (TAKES20)", () => {
+describe("older takes, a page at a time", () => {
   it("asks home again for another kind, topic or order, keeping the takes shown until it answers", () => {
     const opened = run([
       { type: "entered" },
@@ -411,6 +411,25 @@ describe("older takes, a page at a time (TAKES20)", () => {
     expect(asked.state.read).toEqual({ kind: "read", page: PAGE })
     // The same again asks nothing.
     expect(run([{ type: "query", query }], asked.state).effects).toEqual([])
+    // The kept list's next page is of the old list: not asked meanwhile.
+    const paging = run(
+      [
+        {
+          type: "takesRead",
+          seq: 1,
+          read: { kind: "read", page: { ...PAGE, next: "c" } },
+        },
+      ],
+      run([{ type: "entered" }]).state
+    ).state
+    const refreshing = run([{ type: "query", query }], paging)
+    expect(refreshing.state.refreshing).toBe(true)
+    expect(run([{ type: "older" }], refreshing.state).effects).toEqual([])
+    const answered = run(
+      [{ type: "takesRead", seq: 2, read: { kind: "read", page: PAGE } }],
+      refreshing.state
+    ).state
+    expect(answered.refreshing).toBe(false)
   })
 
   it("says a list changed on home since, when home refuses the page asked", () => {

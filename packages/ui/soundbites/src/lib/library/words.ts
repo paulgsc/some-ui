@@ -27,7 +27,7 @@ import { SEARCH_MAX } from "./model"
 const takes = (n: number): string => counted(n, "take")
 
 /**
- * What the kinds' ports say that isn't data (TAKES20, `./kinds`): a week, a
+ * What the kinds' ports say that isn't data (`./kinds`): a week, a
  * teleprompter read, a game named only by its day, a soundbite's start.
  */
 export const ABOUT_WORDS: AboutPortWords = {
@@ -69,12 +69,26 @@ export const LIBRARY_WORDS = {
     q: string | null,
     listed: number,
     total: number,
-    matched: number | null
+    matched: number | null,
+    /** The order the list is in; newest first when absent. */
+    order: Order = "newest",
+    /** One of Studio's compartments, whose count is all of Studio's takes. */
+    studio = false
   ): string => {
+    const keeps = studio ? "home keeps from Studio" : "home keeps"
+    const first =
+      order === "oldest"
+        ? "oldest first"
+        : order === "topic"
+          ? "by what each is about"
+          : "newest first"
     if (by === "newest" || q === null) {
-      return listed < total
-        ? `The newest ${listed} of the ${takes(total)} home keeps.`
-        : `The ${takes(total)} home keeps, newest first.`
+      if (listed >= total) return `The ${takes(total)} ${keeps}, ${first}.`
+      return order === "oldest"
+        ? `The oldest ${listed} of the ${takes(total)} ${keeps}.`
+        : order === "topic"
+          ? `${listed} of the ${takes(total)} ${keeps}, by what each is about.`
+          : `The newest ${listed} of the ${takes(total)} ${keeps}.`
     }
     const found = matched ?? listed
     if (found === 0) {
@@ -88,7 +102,7 @@ export const LIBRARY_WORDS = {
         : `whose words hold “${q}”`
     return listed < found
       ? `The newest ${listed} of ${takes(found)} ${how}.`
-      : `${takes(found)} ${how}, newest first.`
+      : `${takes(found)} ${how}, ${first}.`
   },
   notHeard: "Home hasn't heard this take yet.",
   silent: "Home heard no words in this take.",
@@ -253,46 +267,52 @@ export const LIBRARY_WORDS = {
       }
     }
   },
-  /** How a take stands, on its chip (TAKES20). */
+  /** How a take stands, on its chip. */
   status: {
     heard: "Heard",
     waiting: "Not heard yet",
     silent: "No words heard",
     aside: "Set aside",
-    "let-go": "Let go",
+    "let-go": "Audio deleted",
     deleted: "Deleted",
   } satisfies Record<TakeStatus, string>,
-  /** A take whose recording is gone: what its card says instead of Play (TAKES20). */
+  /** A take whose recording is gone: what its card says instead of Play. */
   letGone: (status: "let-go" | "deleted"): string =>
     status === "deleted"
       ? "Deleted for good. Home keeps a receipt of what went."
-      : "Let go. Home keeps what it heard in it, without its audio.",
-  /** The next page, older than the takes shown (TAKES20). */
+      : "Its audio was deleted. Home keeps what it heard in it.",
+  /** The next page, older than the takes shown. */
   showOlder: "Show more takes",
   olderReading: "Asking home for more takes…",
   olderUnread: "Home couldn't be reached just then. Try again in a moment.",
   /** The list changed on home since it was read: only reading it again helps. */
   listChanged:
     "The list changed on home since it was read. Read it again to see more.",
-  /** How a list is ordered (TAKES20). */
+  /** How a list is ordered. */
   order: {
     newest: "Newest",
     oldest: "Oldest",
     topic: "By what it's about",
   } satisfies Record<Order, string>,
   orderLabel: "Order the takes",
-  /** The phone's own takes, of any kind, that home doesn't list (TAKES20). */
+  /** The phone's own takes, of any kind, that home doesn't list. */
   waitsHere: "Only on this phone so far. It shows from home once home has it.",
+  /** One home now holds, not in the list read before it went: it joins on a fresh read. */
+  homeHasIt:
+    "Home has it now. It joins home's list when the list is read again.",
+  /** Counts on the chips are of what was read; home keeps more. */
+  countedSoFar: (listed: number, total: number): string =>
+    `Counted from the ${String(listed)} read so far of the ${takes(total)} home keeps. Show more to count the rest.`,
   /** One home holds that its list doesn't show yet: what waits on a newer home. */
   homeLater:
     "Home keeps it. What home heard in it shows here once home runs a newer version.",
   /**
    * A home that lists only Studio's takes: what waits on a newer one
-   * (TAKES20). The phone's own still show.
+   *. The phone's own still show.
    */
   studioOnly:
     "Home lists only Studio's takes until it runs a newer version. Your other takes show here once it does, and those still on this phone show here now.",
-  /** A take's moment in a game, said beside it (TAKES20): its game's page. */
+  /** A take's moment in a game, said beside it: its game's page. */
   openGame: "Open its game",
   said: (recordedAt: string): string => `Said ${dayAt(recordedAt)}`,
   /** Where a take is, on its card and its chip. */
@@ -301,7 +321,7 @@ export const LIBRARY_WORDS = {
     home: "On home",
   } satisfies Record<TakePlace, string>,
   onHomeSince: (storedAt: string): string => `On home since ${dayAt(storedAt)}`,
-  /** A topic opened by a link that didn't name it (TAKES20). */
+  /** A topic opened by a link that didn't name it. */
   picked: "What you picked",
   /** What a row of chips does, for a reader that can't see it. */
   chips: "Show only the takes",

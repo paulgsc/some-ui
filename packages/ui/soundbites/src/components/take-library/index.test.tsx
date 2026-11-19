@@ -284,7 +284,7 @@ describe("Takes on home (ST32)", () => {
     it("says what a note's take was said for, from what the phone knows", async () => {
       render(<TakeLibrary ports={ports} pair={null} compartment="note" />)
       await settle()
-      // On its card, and as the chip of what it's about (TAKES20).
+      // On its card, and as the chip of what it's about.
       expect(
         screen
           .getAllByText("The weekly call · Week of Nov 6")
@@ -567,7 +567,7 @@ describe("Takes on home (ST32)", () => {
   })
 })
 
-describe("one home for every take (TAKES20)", () => {
+describe("one home for every take", () => {
   const BITE: LibraryTake = {
     ...TAKE,
     id: "b1",
@@ -768,7 +768,7 @@ describe("one home for every take (TAKES20)", () => {
     expect(count("here")).toBe("0")
   })
 
-  it("leaves a take home holds to home's own pages, on a home that lists every kind, and plays a take home lists from home", async () => {
+  it("keeps a take that reached home showing until home's list has it, and plays a take home lists from home", async () => {
     const played: Array<Blob> = []
     render(
       <TakeLibrary
@@ -793,10 +793,16 @@ describe("one home for every take (TAKES20)", () => {
       />
     )
     await settle()
+    // It reached home after the list was read: it stays, saying so.
+    expect(screen.getByText(W.homeHasIt)).toBeTruthy()
     expect(screen.queryByText(W.homeLater)).toBeNull()
-    expect(screen.queryByText(W.waitsHere)).toBeNull()
-    const [first] = screen.getAllByRole("button", { name: W.play })
-    fireEvent.click(first!)
+    // The interview take home lists, the newest on home's list.
+    const listed = screen
+      .getAllByText(/^Week 47/)
+      .find((each) => each.tagName === "P")
+      ?.closest("li")
+      ?.querySelector("button")
+    fireEvent.click(listed!)
     await settle()
     await settle()
     // Home's copy ("take"), not the phone's ("own").

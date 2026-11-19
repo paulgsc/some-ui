@@ -7,7 +7,11 @@ import type {
   LibraryPhoneSnapshot,
   LibraryRead,
 } from "@soundbites/lib/library/model"
-import type { LibraryPhone, TakesHome } from "@soundbites/lib/library/runtime"
+import type {
+  LibraryPhone,
+  PhoneTake,
+  TakesHome,
+} from "@soundbites/lib/library/runtime"
 import { createTakeLibrary } from "@soundbites/lib/library/runtime"
 import { describe, expect, it, vi } from "vitest"
 
@@ -280,5 +284,51 @@ describe("Takes on home's runtime (ST32)", () => {
     expect(library.getSnapshot().read).toEqual(page("newest", "t2"))
     detach()
     expect(dropped).toBe(1)
+  })
+})
+
+describe("the phone's takes of every kind reaching home", () => {
+  it("reads home's newest again once one of them reaches home, and not for one already there", async () => {
+    const takes = vi.fn(() => Promise.resolve(page("newest", "t1")))
+    const listeners = new Set<() => void>()
+    const own = (home: boolean): PhoneTake => ({
+      id: "b1",
+      of: "game",
+      ref: "401772",
+      recordedAt: "2026-11-16T21:00:00.000Z",
+      home,
+      audio: () => Promise.resolve(null),
+    })
+    let snapshot: ReadonlyArray<PhoneTake> = [
+      own(false),
+      { ...own(true), id: "b0" },
+    ]
+    const library = createTakeLibrary({
+      home: { takes, audio: () => Promise.resolve(null) },
+      player: player().player,
+      onPhone: {
+        subscribe: (listener) => {
+          listeners.add(listener)
+          return (): void => {
+            listeners.delete(listener)
+          }
+        },
+        getSnapshot: () => snapshot,
+      },
+    })
+    const detach = library.attach()
+    await settle()
+    expect(takes).toHaveBeenCalledTimes(1)
+    const tell = (): void => {
+      for (const listener of listeners) listener()
+    }
+    tell()
+    await settle()
+    expect(takes).toHaveBeenCalledTimes(1)
+    snapshot = [own(true), { ...own(true), id: "b0" }]
+    tell()
+    await settle()
+    expect(takes).toHaveBeenCalledTimes(2)
+    detach()
   })
 })
