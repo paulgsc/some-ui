@@ -86,7 +86,7 @@ export const TICKET_KEY = /^[A-Z][A-Z0-9]{0,5}-\d{1,6}$/
 
 /** A stated constraint's id with the given prefix: `S1`, `F2`. */
 const constraintId = (prefix: string): RegExp =>
-  new RegExp(`^${prefix}[1-9]\\d?$`)
+  new RegExp(`^${prefix}[1-9]\\d*$`)
 
 /** An option's id within its fork: `A` to `F`. */
 const OptionIdSchema = z

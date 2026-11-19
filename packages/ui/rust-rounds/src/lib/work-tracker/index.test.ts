@@ -15,10 +15,10 @@ import { CAP_MS, spanSeconds, stepTracker } from "./index"
 const T0 = Date.parse("2026-11-19T09:40:00Z")
 const MIN = 60_000
 
-const where = {
+const where: OpenSpan["where"] = {
   week: "2026-w47",
   ticket: "TB-101",
-  step: "academy" as const,
+  step: "academy",
   exercise: 1,
   points: [1, 2],
 }
@@ -90,6 +90,10 @@ const EVENTS: ReadonlyArray<[string, TrackerEvent]> = [
     { type: "answer", answer: { kind: "part", minutes: 10_000 } },
   ],
   [
+    "answer part, not a number",
+    { type: "answer", answer: { kind: "part", minutes: Number.NaN } },
+  ],
+  [
     "answer part, below zero",
     { type: "answer", answer: { kind: "part", minutes: -5 } },
   ],
@@ -129,6 +133,7 @@ describe("the tracker, every state against every event", () => {
           if (effect.type === "start") continue
           const { closed } = effect
           const spanned = spanSeconds(closed.span, closed.stoppedAt)
+          expect(Number.isInteger(closed.countedSeconds)).toBe(true)
           expect(closed.countedSeconds).toBeGreaterThanOrEqual(0)
           expect(closed.countedSeconds).toBeLessThanOrEqual(spanned)
           if (closed.answer === "all") {
@@ -142,13 +147,14 @@ describe("the tracker, every state against every event", () => {
           state.kind === "asking" && event.type === "answer" ? 1 : 0
         )
 
-        // A span in hand is never dropped unanswered, except when home says
-        // nothing is open (answered on another device) or it was kept.
+        // A span in hand is never dropped unanswered or swapped for
+        // another, except as home says (it alone knows what is open) or
+        // once it is kept.
         const held = openIn(state)
         if (
           held !== null &&
-          openIn(next.state) === null &&
-          !(event.type === "homeSays" && event.open === null)
+          openIn(next.state)?.id !== held.id &&
+          event.type !== "homeSays"
         ) {
           expect(state.kind).toBe("keeping")
           expect(event).toEqual({ type: "kept", kept: true })

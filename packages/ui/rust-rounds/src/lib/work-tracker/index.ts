@@ -39,7 +39,7 @@ type SpanWhere = {
   /** The exercise, 1-based, when started from one; null otherwise. */
   readonly exercise: number | null
   /** The speak-to points it counts toward, 1-based; never empty. */
-  readonly points: ReadonlyArray<number>
+  readonly points: readonly [number, ...Array<number>]
 }
 
 export type OpenSpan = {
@@ -125,7 +125,9 @@ function countedSeconds(answer: Answer, spanned: number): number {
       return 0
     }
     case "part": {
-      const asked = Math.floor(answer.minutes) * 60
+      // Minutes that aren't a number count as none.
+      const minutes = Number.isFinite(answer.minutes) ? answer.minutes : 0
+      const asked = Math.floor(minutes) * 60
       return Math.min(spanned, Math.max(0, asked))
     }
     default: {
