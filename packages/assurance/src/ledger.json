@@ -3432,7 +3432,7 @@
           "kind": "OA2",
           "property": "outcome",
           "claim": "Every essay home holds becomes a video within the render policy's caps, each answer playing exactly its take, whole, and a week that hasn't is tried again.",
-          "requirement": "Once home's lane admits it, the render worker's rust-essay job records the pinned stage's /essay with the tutor said by home's Kokoro speaker and each answer scene playing its take whole (its length the scene's), renders it within the render policy's caps (30 minutes, the owner's 2026-11-17 on server#927, server#930, where the interview-essay job keeps 15; 500 MB; a 2,048 MB step cache), and moves the finished folder into renders/rust-essay/<week>/ on the database's drive, whole; the recorder checks the takes again and refuses a missing, doubled or stray one before anything is drawn, setting aside unplayed a take of an answer the essay marks as one home couldn't make out; a failed week is left without a folder, keeps its finished steps and is tried again no sooner than an hour later, or, refused by the render policy (too long or too large), once what it is made with changes (its input, its caps, the render image, the speaker's image, the worker script or the brand files; RF1, server#937).",
+          "requirement": "Once home's lane admits it, the render worker's rust-essay job records the pinned stage's /essay with the tutor said by home's Kokoro speaker and each answer scene playing its take whole (its length the scene's), renders it within the render policy's caps (60 minutes, shared with the interview-essay job, C780, server#1024; 500 MB; a 2,048 MB step cache), and moves the finished folder into renders/rust-essay/<week>/ on the database's drive, whole; the recorder checks the takes again and refuses a missing, doubled or stray one before anything is drawn, setting aside unplayed a take of an answer the essay marks as one home couldn't make out; a failed week is left without a folder, keeps its finished steps and is tried again no sooner than an hour later, or, refused by the render policy (too long or too large), once what it is made with changes (its input, its caps, the render image, the speaker's image, the worker script or the brand files; RF1, server#937).",
           "verdict": "unproven",
           "conclusion": "Structural and measured: the recorder is tested in paulgsc/some-ui and rendered once locally, and the worker's essay job with a fake recorder in CI; no essay has yet been rendered on home, which only home can show.",
           "tracked": "some-ui#2691",
@@ -3484,6 +3484,12 @@
               "change": "A video the render policy refuses (too long or too large) is no longer tried again every hour: it waits until what it is made with changes (its input, its caps, the render image, the speaker's image, the worker script or the brand files), then is tried at once (RF1, server#937). Every other failure keeps the hourly retry.",
               "why": "Week 46's essay was refused at 24.4 minutes against the 15-minute cap and retried hourly with the same input, cap and image, the same refusal each time; a too-large one rendered in full each hour to be refused again (C501).",
               "decision": "https://github.com/paulgsc/some-ui/pull/3136#issuecomment-6955373765"
+            },
+            {
+              "on": "2026-11-19",
+              "change": "Both essays, Rust Rounds and the mock interview, may run 60 minutes, one cap shared (C780, moving C500; server#1024); the size and step-cache caps are unchanged.",
+              "why": "Interview takes now stop at 3 minutes (C735, #3289), so a full week of 10 takes runs about 45 minutes with its scenes, past the 15 minutes C500 kept for it. The owner ruled that duration limits are suggestions to move with the story: \"just update the duration limit or retire it altogether.\" At the measured rates an hour is about 280 MB finished and 990 MB of segments, under every cap.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3197#issuecomment-7017379818"
             }
           ]
         },
