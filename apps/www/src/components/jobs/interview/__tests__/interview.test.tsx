@@ -174,8 +174,11 @@ describe("the interview week's pages on the phone (IW8)", () => {
     expect(lit()).toBe(held)
     fireEvent.click(screen.getByRole("button", { name: WORDS.band.goOn }))
     screen.getByRole("button", { name: WORDS.band.pause })
+    // Ending the take leaves the script where the band left it (PB1).
+    const read = lit()
     fireEvent.click(takeButton(card))
     await settle()
+    expect(lit()).toBe(read)
 
     await follow(WORDS.reads)
     screen.getByText(

@@ -2,6 +2,13 @@
  * The teleprompter band's step (IW9, #3176) over its whole family: each
  * ordering of heard, quiet, paused and ended reads, and every gap between
  * reads, against the pace and the hold (C615, C616).
+ *
+ * PB1 (promise): the band never moves the script back by itself. Family:
+ * every place in the script a take can end at (each word read, a line
+ * read through, the last word), and every way it ends (Stop, the take's
+ * cap, leaving the page: each the runtime's `ended`), paused or not. Proof:
+ * "never moves the script back when a take ends", below, over every half
+ * word of the script.
  */
 import { HEARD_FLOOR } from "@some-ui/voice-capture"
 import { describe, expect, it } from "vitest"
@@ -113,12 +120,11 @@ describe("the teleprompter band's step (IW9)", () => {
     })
   })
 
-  it("starts each take from the top: another line, or after one ended", () => {
+  it("starts each take from the top: another line, or a new take after one ended", () => {
     const spoke = run(reads(0, 2000, LOUD))
     expect(
       wordsOf(stepPrompter(spoke, heard(2200, LOUD, "2026-w47:other")))
     ).toBe(0)
-    expect(stepPrompter(spoke, { type: "ended" })).toBe(NO_PROMPTER)
     expect(
       wordsOf(
         [{ type: "ended" } as const, heard(2400)].reduce(stepPrompter, spoke)
@@ -127,6 +133,33 @@ describe("the teleprompter band's step (IW9)", () => {
     // Nothing to pause or end while no take is under way.
     expect(stepPrompter(NO_PROMPTER, { type: "pause" })).toBe(NO_PROMPTER)
     expect(stepPrompter(NO_PROMPTER, { type: "ended" })).toBe(NO_PROMPTER)
+  })
+
+  it("never moves the script back when a take ends, wherever it ends (PB1)", () => {
+    for (let words = 0; words <= TOTAL; words += 0.5)
+      for (const paused of [false, true]) {
+        const reading: Prompter = {
+          kind: "reading",
+          answers: LINE,
+          words,
+          at: 0,
+          heardAt: 0,
+          paused,
+        }
+        const ended = stepPrompter(reading, { type: "ended" })
+        const at = `${words} words${paused ? ", paused" : ""}`
+        expect(bandOf(ended, LINE, LINES).line, at).toBe(
+          bandOf(reading, LINE, LINES).line
+        )
+        // It stays there as the runtime keeps saying no take is under way,
+        // and a pause tapped then changes nothing.
+        const later = [
+          { type: "ended" } as const,
+          { type: "pause" } as const,
+        ].reduce(stepPrompter, ended)
+        expect(later, at).toBe(ended)
+        expect(bandOf(later, LINE, LINES).state).toBe("holding")
+      }
   })
 
   it("lights the line whose words the band is among", () => {
