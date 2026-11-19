@@ -222,7 +222,8 @@ describe("an exchange with home", () => {
  * - _Family:_ the outbox (empty, entries waiting, settings waiting) ×
  *   home's record (many entries, none) × aph kept on home or not yet × the
  *   link's drain idle or held by another lane's run × the read's answer
- *   landing before, between or after aph's own exchange's receipt and read.
+ *   landing before, between or after aph's own exchange's receipt and read,
+ *   that exchange whole or ending part way.
  * - _Proof:_ this describe over the store (the late answer over an
  *   exchange, with entries and with settings waiting); apps/www
  *   `lib/home-link/__tests__/aph-read.test.ts` for the read going beside a
@@ -231,7 +232,8 @@ describe("an exchange with home", () => {
  * - _Tolerance:_ one read each opening, asked again only while the link is
  *   busy with the person's own run; one home answers busy, or that finds no
  *   answer, leaves the outbox alone shown until the lane's run or the next
- *   opening.
+ *   opening; so does a read dropped because aph's own exchange ended part
+ *   way after its receipt (a stop, no answer), until that lane's next run.
  */
 describe("aph's read of home as its screens open (AR1)", () => {
   it("shows home's history with what waits laid over it, sending nothing", async () => {
