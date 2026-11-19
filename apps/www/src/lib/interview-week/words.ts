@@ -298,12 +298,14 @@ export const INTERVIEW_WORDS = {
       ready: "Its essay is ready.",
       watch: "Watch its essay",
       making: "Home is making its essay's video now.",
-      waiting: "Its essay is written, and its video waits its turn at home.",
-      written: "Its essay is written. Home makes its video when it has room.",
+      waiting:
+        "Its essay is written, and its video waits at home for its turn.",
+      written:
+        "Its essay is written. Its video isn't made, and Renders shows what home is making.",
       failed: "Home couldn't finish its essay's video. Renders says why.",
       renders: "Open Renders",
       expected:
-        "Home hasn't written its essay yet. Each is written after its week closes.",
+        "Home has no essay of it. An essay is written once its week has closed.",
     },
     tryAgain: "Ask home again",
   },

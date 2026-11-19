@@ -3,7 +3,7 @@
   "made": "2026-11-19",
   "by": "claude",
   "paths": ["apps/www/src/lib/interview-week/past.ts"],
-  "chose": "An essay's status comes from Studio's own episode status (lib/episodes-feed's rowsOf and rowStatus, as they stand): ready once Episodes shows its video, on home or out. Until then, home's render board says what its video is doing: couldn't finish (opening Renders), being made now, or waiting its turn, and otherwise it is written with its video to come. With no essay listed it is expected, and no day is named, since home promises none for an interview essay. While the feed is being read, can't be read until pairing, is one an older home doesn't keep, or got no answer, the page says only that.",
+  "chose": "An essay's status comes from Studio's own episode status (lib/episodes-feed's rowsOf and rowStatus, as they stand): ready once Episodes shows its video, on home or out. Until then, home's render board says what its video is doing: couldn't finish (opening Renders), being made while its job is on the line, or waiting while it is queued, waiting for room or set aside, as Renders' conveyor reads a job. Otherwise the essay is written and its video isn't made, with no promise that it will be, since home may have refused it. With no essay listed, home has none of it, written or withdrawn, and no day is named, since home promises none for an interview essay. While the feed is being read, can't be read until pairing, is one an older home doesn't keep, or got no answer, the page says only that.",
   "options": [
     "Studio's episode status, with the board saying what the video is doing",
     "the board alone, as Renders shows it",

@@ -12,11 +12,14 @@
  * - **ready**: Studio's Episodes shows its video, on home or out on YouTube
  *   (`lib/episodes-feed`'s `rowStatus`, as it stands);
  * - **failed**: home's render board says it couldn't finish it;
- * - **making**: the board is making it now;
- * - **waiting**: the board has it waiting its turn;
+ * - **making**: the board's job for it is on the line now;
+ * - **waiting**: the board has it waiting its turn, waiting for room, or
+ *   set aside;
  * - **written**: the feed lists it, without its video yet, and the board
- *   names it nowhere (or couldn't be read);
- * - **expected**: closed, and home has no essay of it yet. Home promises no
+ *   names it nowhere (or couldn't be read). Home may never make that video
+ *   (an essay it refused), so nothing is promised;
+ * - **expected**: closed, and home lists no essay of it (none written yet,
+ *   or one withdrawn). Home promises no
  *   day for an interview essay (paulgsc/server `feeds/renders.rs`, `coming`),
  *   so none is said.
  */
@@ -101,7 +104,11 @@ export function essayOf(
   const on = names(week.id)
   if (board?.failed.some(on) === true) return { kind: "failed" }
   const now = board?.now ?? null
-  if (now !== null && on(now)) return { kind: "making" }
+  // Only a job on the line is being made; one waiting for room or set aside waits (Renders' conveyor).
+  if (now !== null && on(now))
+    return now.state === "rendering" || now.state === "finishing"
+      ? { kind: "making" }
+      : { kind: "waiting" }
   if (board?.waiting.some(on) === true) return { kind: "waiting" }
   return { kind: "written" }
 }

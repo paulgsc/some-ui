@@ -19,6 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { fakePorts, WEEK, WEEK_2 } from "@/lib/interview-week/__tests__/fixture"
 import { CUE_SECONDS } from "@/lib/interview-week/cue"
+import { pastWeeks } from "@/lib/interview-week/past"
 import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 import { RoutedInterview } from "@/components/jobs/interview/__tests__/routed"
 import type { PastWeeksProps } from "@/components/jobs/interview/past"
@@ -244,7 +245,16 @@ describe("the interview week's pages on the phone (IW8)", () => {
   })
 
   it("says so when no week has closed yet (IW17)", async () => {
-    open(WEEK_2, "/jobs/interview/past")
+    // The week open now is no past week.
+    const weeks = pastWeeks(
+      [{ week: WEEK_2, sha256: "a" }],
+      [],
+      "2026-11-17T18:00:00Z",
+      { kind: "read", episodes: [] },
+      null
+    )
+    expect(weeks).toEqual([])
+    open(WEEK_2, "/jobs/interview/past", { weeks, askAgain: null })
     await settle()
     screen.getByText(WORDS.weeks.none)
   })

@@ -148,6 +148,18 @@ describe("past weeks (IW17)", () => {
     expect(essayOf(W46, read(written), { ...BOARD, now })).toEqual({
       kind: "making",
     })
+    // A job waiting for room on the line, or set aside, isn't being made.
+    for (const state of ["waiting", "paused"] as const) {
+      expect(
+        essayOf(W46, read(written), { ...BOARD, now: { ...now, state } })
+      ).toEqual({ kind: "waiting" })
+    }
+    expect(
+      essayOf(W46, read(written), {
+        ...BOARD,
+        now: { ...now, state: "finishing" },
+      })
+    ).toEqual({ kind: "making" })
     expect(essayOf(W46, read(written), { ...BOARD, waiting: [row] })).toEqual({
       kind: "waiting",
     })

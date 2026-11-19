@@ -11,6 +11,7 @@ import { Link, useNavigate } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
 import type { SayRung } from "@/lib/interview-week/ladder"
+import { ESSAY_FEED } from "@/lib/interview-week/past"
 
 /** A page of the week. */
 export type Page =
@@ -74,7 +75,7 @@ export const To = ({
       return (
         <Link
           to="/journal/episodes/$feed/$key"
-          params={{ feed: "interview-essay", key: to.key }}
+          params={{ feed: ESSAY_FEED, key: to.key }}
           {...link}
         />
       )
