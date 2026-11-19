@@ -11,7 +11,7 @@ import { parseArgs } from "node:util"
 import type { RustcRun } from "@rust-rounds/lib/formats"
 import type { Prepared } from "@rust-rounds/lib/monday/bundle"
 import { prepare } from "@rust-rounds/lib/monday/bundle"
-import { finish } from "@rust-rounds/lib/monday/finish"
+import { finish, starterKey } from "@rust-rounds/lib/monday/finish"
 import { notesNamed } from "@rust-rounds/lib/monday/mailbox"
 import { indexWeeks, WeekRecordSchema } from "@rust-rounds/lib/monday/record"
 import type { Ran } from "@rust-rounds/lib/monday/rustc"
@@ -120,7 +120,10 @@ async function prepareIn(dir: string, now: Date): Promise<void> {
   )
 }
 
-/** Each of the values' week's programs, compiled and run as home records them. */
+/**
+ * Each of the values' week's programs and academy starters, compiled and run
+ * as home records them, by the keys `finish` reads them by.
+ */
 async function runPrograms(values: unknown): Promise<Record<string, RustcRun>> {
   const parsed = ValuesSchema.safeParse(values)
   if (!parsed.success || parsed.data.week === null) return {}
@@ -129,10 +132,17 @@ async function runPrograms(values: unknown): Promise<Record<string, RustcRun>> {
     fail(["rustc isn't installed: install a current stable rustc"])
   const toolchain = toolchainOf(version.stdout)
   const runs: Record<string, RustcRun> = {}
-  for (const ticket of parsed.data.week.tickets) {
+  const programs = parsed.data.week.tickets.flatMap((ticket) => [
+    { key: ticket.id, program: ticket.program },
+    ...ticket.academy.map((exercise, i) => ({
+      key: starterKey(ticket.id, i + 1),
+      program: exercise.starter,
+    })),
+  ])
+  for (const { key, program } of programs) {
     const dir = await mkdtemp(join(tmpdir(), "rust-monday-"))
     try {
-      await writeFile(join(dir, "main.rs"), ticket.program)
+      await writeFile(join(dir, "main.rs"), program)
       const compile = spawnSync(
         "rustc",
         ["main.rs", ...RUSTC_FLAGS, "-o", "main"],
@@ -158,7 +168,7 @@ async function runPrograms(values: unknown): Promise<Record<string, RustcRun>> {
           stderr: ran.stderr,
         }
       }
-      runs[ticket.id] = recorded({
+      runs[key] = recorded({
         toolchain,
         compile: { status: compile.status, stderr: compile.stderr },
         run,

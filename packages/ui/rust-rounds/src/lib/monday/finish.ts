@@ -3,13 +3,13 @@
  * and the model's values become the files the routine puts, each checked by
  * the app's own parser before it can leave: an essay (`some-ui.rust-essay/1`,
  * `parseEssay`) for each week the bundle owes one, and next week
- * (`some-ui.rust-week/1`, `readWeek`), every program run with a real rustc
- * and matching its `expect`.
+ * (`some-ui.rust-week/2`, `readWeek`; C730), every program and every
+ * academy starter run with a real rustc and matching its `expect`.
  *
  * What code writes, never the model:
  *
  * - every restated field (the week, its company, story, SLA, tickets,
- *   speak-to points, programs, the owner's transcripts and the silences'
+ *   forks, options, programs, the owner's transcripts and the silences'
  *   counts), and next week's id, dates, references, rubric and family;
  * - **the chart and the role line**, both the decay record's (RR19, #2695,
  *   `@rust-rounds/lib/decay`), read over every week the mailbox holds an
@@ -21,6 +21,12 @@
  * (C103), every best, beside and deep dive scene within the essay's frame
  * (EF1, `essayFit`), every topic and seed covered by a ticket, and each
  * topic's concept named as the area table names it.
+ *
+ * A `/2` week's forks are held by `readWeek` (exactly one recommended
+ * option, every cite stated) and by the essay's own fork rules
+ * (`forkProblems`) when its best fit is written: an option's id and its
+ * recommendation are restated from the week into the essay, so a week
+ * `readWeek` accepts is one whose forks those rules can accept.
  */
 import type { Judged } from "@rust-rounds/lib/decay"
 import { chartOf, recordOf, roleAt } from "@rust-rounds/lib/decay"
@@ -29,9 +35,9 @@ import { expectMatches } from "@rust-rounds/lib/formats"
 import {
   ReferenceSchema,
   WEEK_SCHEMA,
-  WeekV1Schema,
+  WeekV2Schema,
 } from "@rust-rounds/lib/formats/week"
-import type { Reference, Week, WeekV1 } from "@rust-rounds/lib/formats/week"
+import type { Reference, Week, WeekV2 } from "@rust-rounds/lib/formats/week"
 import type {
   Bundle,
   EndedTicket,
@@ -81,6 +87,14 @@ export const DIVE_WORDS_MOST = 5 * WORDS_A_MINUTE
 
 /** Who writes the weeks the routine puts. */
 const ROUTINE_BY = "claude-routine"
+
+/**
+ * The key of exercise `n` (from 1) of ticket `ticket`'s academy among the
+ * runs `finish` is given: `TB-101/academy/1`. A ticket's own program is
+ * keyed by its id alone, which never holds a `/`.
+ */
+export const starterKey = (ticket: string, n: number): string =>
+  `${ticket}/academy/${n}`
 
 /** A file to put in the mailbox's `brief` folder. */
 type BriefFile = { readonly name: string; readonly body: unknown }
@@ -458,7 +472,7 @@ function buildWeek(
   values: Values,
   runs: Readonly<Record<string, RustcRun>>,
   problems: Array<string>
-): { file: WeekV1; held: Week } | null {
+): { file: WeekV2; held: Week } | null {
   const next = bundle.next
   if (next === null) {
     if (values.week !== null)
@@ -541,23 +555,40 @@ function buildWeek(
     return null
   }
   for (const ticket of read.week.tickets) {
-    const run = runs[ticket.id]
-    if (run === undefined) {
-      problems.push(`week: ${ticket.id}'s program hasn't been run with rustc`)
-    } else if (run.outcome === "stopped") {
-      problems.push(
-        `week: ${ticket.id}'s program was stopped (${run.why}); a program finishes at once`
+    checkRun(`${ticket.id}'s program`, ticket.expect, runs[ticket.id], problems)
+    ticket.academy.forEach((exercise, i) =>
+      checkRun(
+        `${ticket.id}'s exercise ${i + 1} ("${exercise.title}")`,
+        exercise.expect,
+        runs[starterKey(ticket.id, i + 1)],
+        problems
       )
-    } else if (!expectMatches(ticket.expect, run)) {
-      problems.push(
-        `week: ${ticket.id} expects ${JSON.stringify(ticket.expect)}, and rustc ${run.toolchain} gave ${describeRun(run)}`
-      )
-    }
+    )
   }
-  const file = WeekV1Schema.parse(week)
+  const file = WeekV2Schema.parse(week)
   const oversize = oversizeWeek(file)
   if (oversize !== null) problems.push(`week: ${describeWeekProblem(oversize)}`)
   return problems.length > before ? null : { file, held: read.week }
+}
+
+/** Whether rustc did with `what` what its `expect` says, as home records it. */
+function checkRun(
+  what: string,
+  expect: Week["tickets"][number]["expect"],
+  run: RustcRun | undefined,
+  problems: Array<string>
+): void {
+  if (run === undefined) {
+    problems.push(`week: ${what} hasn't been run with rustc`)
+  } else if (run.outcome === "stopped") {
+    problems.push(
+      `week: ${what} was stopped (${run.why}); a program finishes at once`
+    )
+  } else if (!expectMatches(expect, run)) {
+    problems.push(
+      `week: ${what} expects ${JSON.stringify(expect)}, and rustc ${run.toolchain} gave ${describeRun(run)}`
+    )
+  }
 }
 
 function describeRun(run: RustcRun): string {
@@ -590,7 +621,10 @@ export function finish({
   readonly bundle: Bundle
   readonly history: History
   readonly values: unknown
-  /** Each of next week's tickets' programs, run with rustc, by ticket id. */
+  /**
+   * Each of next week's tickets' programs, run with rustc, by ticket id,
+   * and each academy starter, by `starterKey`.
+   */
   readonly runs: Readonly<Record<string, RustcRun>>
 }): Finished {
   const parsed = ValuesSchema.safeParse(input)

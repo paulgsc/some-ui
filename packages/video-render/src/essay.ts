@@ -107,7 +107,7 @@ export const ESSAY_FORK_VERSION = 4
 /** The deep dives per ticket, on its biggest gaps: K (owner, 2026-11-07). */
 export const ESSAY_DIVES = 2
 
-/** The most tickets a week has (`some-ui.rust-week/1`). */
+/** The most tickets a week has (`some-ui.rust-week/1` and `/2`). */
 const TICKETS_MOST = 4
 
 /** The fewest and most speak-to points a ticket has (`some-ui.rust-week/1`'s `speakTo`). */
@@ -333,12 +333,12 @@ export function essayFormat(version: number = ESSAY_VERSION): Format {
   }
 }
 
-/** A week's id, as `some-ui.rust-week/1` writes it (`@some-ui/rust-rounds`' `WEEK_ID`); the interview essay's too. */
+/** A week's id, as `some-ui.rust-week/1` and `/2` write it (`@some-ui/rust-rounds`' `WEEK_ID`); the interview essay's too. */
 export const weekId = z
   .string()
   .regex(/^\d{4}-w(?:0[1-9]|[1-4]\d|5[0-3])$/, "a week's id is like 2026-w46")
 
-/** A ticket's key, as `some-ui.rust-week/1` writes it (`TICKET_KEY`). */
+/** A ticket's key, as `some-ui.rust-week/1` and `/2` write it (`TICKET_KEY`). */
 const ticketKey = z
   .string()
   .regex(/^[A-Z][A-Z0-9]{0,5}-\d{1,6}$/, "a ticket's id is a key like QM-311")

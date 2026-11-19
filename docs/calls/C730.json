@@ -1,0 +1,19 @@
+{
+  "id": "C730",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/monday/values.ts",
+    "packages/ui/rust-rounds/src/lib/monday/finish.ts",
+    "packages/ui/rust-rounds/ROUTINE.md"
+  ],
+  "chose": "The Monday routine writes only some-ui.rust-week/2 weeks, from one values schema, some-ui.rust-monday-values/2, whose week is a /2 week (SLA rows and figures with ids, forks, academy). Values /1 is refused, and /2 no longer takes a /1-shaped week. Each academy starter is run with rustc beside the ticket's program, keyed TICKET/academy/N, and must match its expect. The phone and home still read /1 weeks they already hold.",
+  "options": [
+    "one values schema, /2, writing only /2 weeks",
+    "keep values /1 for /1 weeks and /2 for /2 weeks, the model choosing",
+    "a new values /3 for /2 weeks"
+  ],
+  "gray": "A values file lives only for its run and #3262's /2 had not yet been used by a run, so no check settles whether to keep the /1 path or bump the version; keeping a choice the model makes each Monday would let it write a week with no forks or academy.",
+  "undo": "Restore TicketV1Schema in values.ts's week and the /1 branch in finish's buildWeek, and ROUTINE.md's /1 section.",
+  "refs": ["#3249", "#3257", "#3262"]
+}

@@ -3,7 +3,7 @@ import { recordOf } from "@rust-rounds/lib/decay"
 import type { RustcRun } from "@rust-rounds/lib/formats"
 import { RustcRunSchema } from "@rust-rounds/lib/formats"
 import type { ForkOption } from "@rust-rounds/lib/formats/week"
-import { WeekV1Schema } from "@rust-rounds/lib/formats/week"
+import { WeekV2Schema } from "@rust-rounds/lib/formats/week"
 import type { MailboxFile, Prepared } from "@rust-rounds/lib/monday/bundle"
 import {
   ESSAYS_MOST,
@@ -15,6 +15,7 @@ import {
   DIVE_WORDS_MOST,
   finish,
   seedLine,
+  starterKey,
 } from "@rust-rounds/lib/monday/finish"
 import {
   TranscriptSchema,
@@ -32,7 +33,7 @@ import sampleRuns from "@rust-rounds/lib/monday/sample/runs.json"
 import type { Values } from "@rust-rounds/lib/monday/values"
 import { ValuesSchema } from "@rust-rounds/lib/monday/values"
 import { QUILLMOSS_WEEK_FILE } from "@rust-rounds/lib/sample-week"
-import { readWeek, WEEK_V1_MAX_BYTES } from "@rust-rounds/lib/week-check"
+import { readWeek, WEEK_V2_MAX_BYTES } from "@rust-rounds/lib/week-check"
 import { isRecord } from "@some-ui/core-utils"
 import { parseEssay } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
@@ -105,6 +106,21 @@ describe("the Monday routine, on the sample week", () => {
     expect(week.week.tickets[2]?.spec).toContain(
       seedLine("2026-11-12T17:04:00.000Z")
     )
+    // Next week is a /2 week (RR25, RR29; C730): forks of options, each
+    // citing what the week states, and an academy for every ticket.
+    expect(week.week.schema).toBe("some-ui.rust-week/2")
+    expect(week.week.sla.map((row) => row.id)).toEqual(["S1", "S2", "S3"])
+    expect(
+      week.week.tickets.map((t) => [
+        t.id,
+        t.forks.map((f) => f.options.filter((o) => o.recommended).length),
+        t.academy.length,
+      ])
+    ).toEqual([
+      ["TB-101", [1, 1], 3],
+      ["TB-102", [1], 1],
+      ["TB-103", [1], 1],
+    ])
   })
 
   it("restates what home heard, never words the model wrote, in each answer", () => {
@@ -122,12 +138,12 @@ describe("the Monday routine, on the sample week", () => {
     const { bundle, history } = samplePrepared()
     const big = values()
     if (big.week === null) throw new Error("the sample writes a next week")
-    big.week.story = `${big.week.story} ${"x".repeat(WEEK_V1_MAX_BYTES)}`
+    big.week.story = `${big.week.story} ${"x".repeat(WEEK_V2_MAX_BYTES)}`
     const done = finish({ bundle, history, values: big, runs: RUNS })
     expect(done.ok).toBe(false)
     expect(done.ok ? [] : done.problems).toContainEqual(
       expect.stringMatching(
-        /^week: the week's file is \d+ bytes; home keeps a some-ui\.rust-week\/1 week of at most 32768/
+        /^week: the week's file is \d+ bytes; home keeps a some-ui\.rust-week\/2 week of at most 131072/
       )
     )
   })
@@ -170,8 +186,8 @@ describe("a week that ended without an essay", () => {
     // Week 47 asks 'static and threads again, and home never makes it final.
     const brief = done.files.map((file) => {
       if (file.name !== "rust-week-2026-w47.json") return file
-      // The file as written (`/1`), edited as a routine would write it.
-      const week = WeekV1Schema.parse(file.body)
+      // The file as written (`/2`), edited as a routine would write it.
+      const week = WeekV2Schema.parse(file.body)
       const [first, ...rest] = week.tickets
       if (first === undefined) throw new Error("week 47 has no tickets")
       const again = { id: "static-and-threads", name: "'static and threads" }
@@ -531,16 +547,73 @@ describe("finish", () => {
     if (ticket === undefined) throw new Error("shape")
     ticket.expect = { outcome: "prints", stdout: "[8, 7]\n" }
     expect(problemsOf(given)).toEqual([
-      'week: TB-102 expects {"outcome":"prints","stdout":"[8, 7]\\n"}, and rustc 1.97.0 gave a panic',
+      'week: TB-102\'s program expects {"outcome":"prints","stdout":"[8, 7]\\n"}, and rustc 1.97.0 gave a panic',
     ])
   })
 
-  it("refuses a week whose programs weren't run", () => {
+  it("refuses a week whose programs or starters weren't run", () => {
     expect(problemsOf(SAMPLE_VALUES, {})).toEqual([
       "week: TB-101's program hasn't been run with rustc",
+      "week: TB-101's exercise 1 (\"A struct of plain fields still moves\") hasn't been run with rustc",
+      "week: TB-101's exercise 2 (\"A String field can't be Copy\") hasn't been run with rustc",
+      "week: TB-101's exercise 3 (\"Count what a clone costs\") hasn't been run with rustc",
       "week: TB-102's program hasn't been run with rustc",
+      "week: TB-102's exercise 1 (\"Two borrows of one RefCell\") hasn't been run with rustc",
       "week: TB-103's program hasn't been run with rustc",
+      "week: TB-103's exercise 1 (\"What may cross a thread\") hasn't been run with rustc",
     ])
+  })
+
+  it("refuses a starter whose expect isn't what rustc did (#3249)", () => {
+    const given = values()
+    const exercise = given.week?.tickets[0]?.academy[2]
+    if (exercise === undefined) throw new Error("shape")
+    exercise.expect = { outcome: "compile-error", code: "E0382" }
+    expect(problemsOf(given)).toEqual([
+      'week: TB-101\'s exercise 3 ("Count what a clone costs") expects {"outcome":"compile-error","code":"E0382"}, and rustc 1.97.0 gave a run printing "3890 bytes read, 1000 allocations\\n"',
+    ])
+    // Each starter is read by its own key, never another ticket's.
+    const runs = { ...RUNS }
+    delete runs[starterKey("TB-103", 1)]
+    expect(problemsOf(values(), runs)).toEqual([
+      "week: TB-103's exercise 1 (\"What may cross a thread\") hasn't been run with rustc",
+    ])
+  })
+
+  it("holds next week to every rule readWeek holds a /2 week to", () => {
+    const given = values()
+    const [first] = given.week?.tickets ?? []
+    const fork = first?.forks[0]
+    const exercise = first?.academy[0]
+    if (fork === undefined || exercise === undefined) throw new Error("shape")
+    for (const option of fork.options) option.recommended = true
+    fork.options[1]?.cites.push("F3")
+    exercise.tests.push({ fork: 2, option: "F" })
+    expect(problemsOf(given)).toEqual([
+      'week: tickets[0] ("TB-101").forks[0]: exactly one option is recommended, as an agent marks it; this fork has 3',
+      'week: tickets[0] ("TB-101").forks[0].options[1] ("B").cites[1]: "F3" is not a constraint this week states for this ticket: cite the SLA\'s rows or the ticket\'s own figures',
+      'week: tickets[0] ("TB-101").academy[0].tests[1]: fork 2 has no option "F"',
+    ])
+  })
+
+  it("takes no /1 week: speak-to points, no forks and no academy", () => {
+    const given = values()
+    const first = given.week?.tickets[0]
+    if (first === undefined) throw new Error("shape")
+    const { forks, academy, ...rest } = first
+    expect(forks.length + academy.length).toBeGreaterThan(0)
+    const v1 = {
+      ...given,
+      week: {
+        ...given.week,
+        tickets: [{ ...rest, speakTo: ["One.", "Two."] }],
+      },
+    }
+    expect(problemsOf(v1)).toEqual(
+      expect.arrayContaining([
+        'values.week.tickets.0: Unrecognized key: "speakTo"',
+      ])
+    )
   })
 
   it("holds every seed and topic to a ticket", () => {
