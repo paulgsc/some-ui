@@ -1,0 +1,18 @@
+{
+  "id": "C684",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/web-surface/call/essay-stage.tsx",
+    "packages/video-render/src/essay-fit.ts"
+  ],
+  "chose": "C575's beside table cites, after each point's mark on the same line, the take it was judged from: \"Its own take · <SOLO level>\" or \"One take for the whole ticket\". Only in a ticket with any point answered on its own, so an essay of whole takes reads as before. Under the SOLO scale of a ticket with no whole take: \"Each point's own take is placed on its own row\".",
+  "options": [
+    "inline after the mark",
+    "a line of its own under the mark",
+    "a separate column"
+  ],
+  "gray": "A line of its own pushed the sample's beside scenes 130 px past the frame (EF1), and a column would narrow the notes; inline costs no height at the frame's widths.",
+  "undo": "Move the cite span in essay-stage.tsx and its measure in essay-fit.ts.",
+  "refs": ["#3248"]
+}

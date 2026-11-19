@@ -13,12 +13,14 @@
  * Family: every text the routine writes on those scenes (best fits, notes,
  * SOLO's why, a dive's title and shows) at any length and wrap, with code
  * spans, including a span touching the punctuation after it; two or three
- * speak-to points, at any length; a dive's code at any number of lines and
- * columns, tabs included; and the host that records it, whose sans face the
+ * speak-to points, at any length, each judged from the ticket's take or
+ * from its own (RR24, cited on its beside row); a dive's code at any number
+ * of lines and columns, tabs included; and the host that records it, whose sans face the
  * frame draws in (`./frame-text`'s `SANS`): a cloud session's Inter, and
  * home's render image's WenQuanYi Zen Hei.
  *
- * Proof: `apps/www/tests/ui-fit/essay-fit.spec.ts` draws the sample and
+ * Proof: `apps/www/tests/ui-fit/essay-fit.spec.ts` draws the sample, an
+ * essay with points answered by takes of their own (`by-points`), and
  * essays with each of those texts, and the code by lines, columns and tabs,
  * grown to the most this accepts, on the real stage, and fails where this
  * says a scene is shorter than drawn or an accepted scene overflows or clips
@@ -34,7 +36,13 @@
  */
 
 import type { Essay, EssayTicket } from "./essay"
-import { essayScenes } from "./essay"
+import {
+  citeOf,
+  essayScenes,
+  markOf,
+  pointAnsweredBy,
+  SOLO_LEVELS,
+} from "./essay"
 import { lineOf, linesOf, px, stack, widthOf } from "./frame-text"
 import type { Part, Run } from "./frame-text"
 
@@ -46,7 +54,35 @@ import type { Part, Run } from "./frame-text"
 const CARD = { width: 1416, height: 514 } as const
 
 /** The words the stage sets beside the essay's own that this model measures. */
-export const ESSAY_STAGE_WORDS = { into: "Into" } as const
+export const ESSAY_STAGE_WORDS = {
+  into: "Into",
+  /** A take that was sent and couldn't be made out (HEARD2): the longest a beside row's mark reads. */
+  unheard: "Said, but it couldn't be made out",
+  /** Beside a point's mark (RR24, `citeOf`): which take it was judged from. */
+  ownTake: "Its own take",
+  wholeTake: "One take for the whole ticket",
+  /** A SOLO level as the stage writes it: "3. Multistructural". */
+  level: (n: number, name: string): string => `${n}. ${name}`,
+} as const
+
+/**
+ * Which take point `point` (from 0) of `ticket` was judged from (RR24,
+ * `citeOf`), as the stage sets it after the beside row's mark on its line:
+ * an own take's with its SOLO level. Null for a row with no cite.
+ */
+export function pointCite(ticket: EssayTicket, point: number): string | null {
+  const cite = citeOf(ticket, point)
+  if (cite === null) return null
+  const own = pointAnsweredBy(ticket, point)
+  const level =
+    own.by === "own" && own.answer.kind === "take"
+      ? own.answer.solo.level
+      : undefined
+  if (cite === "whole") return ESSAY_STAGE_WORDS.wholeTake
+  return level === undefined
+    ? ESSAY_STAGE_WORDS.ownTake
+    : `${ESSAY_STAGE_WORDS.ownTake} · ${ESSAY_STAGE_WORDS.level(level, SOLO_LEVELS[level - 1] ?? "")}`
+}
 
 /** The point column's share of the beside table (`table-fixed`, C575). */
 export const ESSAY_POINT_COLUMN = 0.3
@@ -175,9 +211,15 @@ function beside(ticket: EssayTicket): number {
   const yoursWidth = CARD.width * (1 - ESSAY_POINT_COLUMN)
   const rows = ticket.points.reduce(
     (sum, point, i) => {
-      const mark = answer.kind === "take" ? answer.marks[i] : undefined
+      const mark = markOf(ticket, i)
+      // The mark line with its cite (RR24), measured at its longest mark.
+      const cite = pointCite(ticket, i)
+      const line =
+        cite === null
+          ? ESSAY_STAGE_WORDS.unheard
+          : `${ESSAY_STAGE_WORDS.unheard} · ${cite}`
       const yours =
-        lineOf(em) +
+        lines(inline(line, em), yoursWidth, em) +
         (mark?.note === undefined
           ? 0
           : lines(inline(mark.note, em * 0.9), yoursWidth, em * 0.9))

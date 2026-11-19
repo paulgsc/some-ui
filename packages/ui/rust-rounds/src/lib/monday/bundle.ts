@@ -42,11 +42,33 @@ export type MailboxFile = { readonly name: string; readonly body: unknown }
 const WEEK_NAME = /^rust-week-(\d{4}-w\d{2})\.json$/
 const ESSAY_NAME = /^rust-essay-(\d{4}-w\d{2})(?:-r(\d+))?\.json$/
 
-/** One ticket of a week that ended, as the essay restates it, with its answer. */
+/** What home heard in a take of one speak-to point (RR24): its words, nothing said, or nothing made out. */
+type EndedPoint = {
+  /** The point, by its place in `speakTo`, from 1. */
+  readonly point: number
+  readonly answer:
+    | { readonly kind: "take"; readonly transcript: string }
+    | {
+        readonly kind: "silence" | "unheard"
+        /** How often its ticket was opened. */
+        readonly opened: number
+      }
+}
+
+/**
+ * One ticket of a week that ended, as the essay restates it, with its
+ * answer: a take of the whole ticket, a silence, a take home couldn't make
+ * out, or `by-points`, no take of the whole ticket and some of its points
+ * answered by takes of their own (RR24). `points` lists those, in order.
+ */
 export type EndedTicket = Ticket & {
   readonly answer:
     | { readonly kind: "take"; readonly transcript: string }
-    | { readonly kind: "silence" | "unheard"; readonly opened: number }
+    | {
+        readonly kind: "silence" | "unheard" | "by-points"
+        readonly opened: number
+      }
+  readonly points: ReadonlyArray<EndedPoint>
 }
 
 /** A week owed its essay, ready to write. */
@@ -106,23 +128,43 @@ export type Prepared = { readonly bundle: Bundle; readonly history: History }
  * level in `answers` (an essay's tickets), or null for a silence. A take
  * home couldn't make out (HEARD2, #3072) is no check at all: it shows
  * nothing, isn't a silence and can't decay, so its ticket is left out (C431).
+ * A ticket with no take of the whole ticket and points answered by takes of
+ * their own (RR24) is at the lowest of their levels (C685): a concept is
+ * shown as far as every point said of it shows it. A ticket whose every
+ * point is answered only by takes home couldn't make out is left out too.
  */
 export function judgedWeek(
   week: string,
   tickets: ReadonlyArray<Pick<Ticket, "id" | "concepts">>,
-  answers: ReadonlyArray<Pick<Essay["tickets"][number], "id" | "answer">>
+  answers: ReadonlyArray<
+    Pick<Essay["tickets"][number], "id" | "answer" | "points">
+  >
 ): Judged {
   return {
     week,
     tickets: tickets.flatMap((ticket) => {
-      const answer = answers.find((t) => t.id === ticket.id)?.answer
-      if (answer?.kind === "silence" && answer.unheard === true) return []
-      return [
-        {
-          concepts: ticket.concepts,
-          level: answer?.kind === "take" ? answer.solo.level : null,
-        },
-      ]
+      const held = answers.find((t) => t.id === ticket.id)
+      const answer = held?.answer
+      const own = (held?.points ?? []).flatMap((point) =>
+        point.answer?.kind === "take" ? [point.answer.solo.level] : []
+      )
+      const level =
+        answer?.kind === "take"
+          ? answer.solo.level
+          : own.length > 0
+            ? Math.min(...own)
+            : null
+      // No check at all when every point's answer is a take home couldn't
+      // make out, the ticket's or a point's own (C431).
+      const unheard = (a: { readonly kind: string } | undefined): boolean =>
+        a?.kind === "silence" && "unheard" in a && a.unheard === true
+      if (
+        level === null &&
+        held?.points.every((point) => unheard(point.answer ?? held.answer)) ===
+          true
+      )
+        return []
+      return [{ concepts: ticket.concepts, level }]
     }),
   }
 }
@@ -170,6 +212,27 @@ function readBrief(brief: ReadonlyArray<MailboxFile>): {
   return { weeks, essays, essayNames, unread }
 }
 
+/**
+ * A take's answer from what home heard in it: its words, a silence when
+ * nothing was said, `unheard` when nothing was made out; null while home
+ * hasn't heard it yet.
+ */
+function answerHeard(
+  hearing: Heard | undefined,
+  opened: number
+):
+  | { readonly kind: "take"; readonly transcript: string }
+  | { readonly kind: "silence" | "unheard"; readonly opened: number }
+  | null {
+  if (hearing?.hearing === "silent" || hearing?.hearing === "unheard")
+    return {
+      kind: hearing.hearing === "silent" ? "silence" : "unheard",
+      opened,
+    }
+  if (hearing === undefined || hearing.text.trim() === "") return null
+  return { kind: "take", transcript: hearing.text }
+}
+
 /** A week's tickets with their answers, or why the essay can't be written yet. */
 function answersOf(
   week: Week,
@@ -182,23 +245,42 @@ function answersOf(
     if (held === undefined) {
       return { ok: false, why: `home's record has no ${ticket.id}` }
     }
-    const hearing: Heard | undefined =
-      held.take === null ? { hearing: "silent" } : heard.get(held.take)
-    if (hearing?.hearing === "silent" || hearing?.hearing === "unheard") {
-      const kind = hearing.hearing === "silent" ? "silence" : "unheard"
-      tickets.push({ ...ticket, answer: { kind, opened: held.opens } })
+    const points: Array<EndedPoint> = []
+    for (const own of held.points) {
+      if (own.point > ticket.speakTo.length) {
+        return {
+          ok: false,
+          why: `home's record answers point ${own.point} of ${ticket.id}, which has ${ticket.speakTo.length}`,
+        }
+      }
+      const read = answerHeard(heard.get(own.take), held.opens)
+      if (read === null) {
+        return {
+          ok: false,
+          why: `home hasn't heard the take on point ${own.point} of ${ticket.id} yet`,
+        }
+      }
+      points.push({ point: own.point, answer: read })
+    }
+    if (held.take === null && points.length > 0) {
+      tickets.push({
+        ...ticket,
+        answer: { kind: "by-points", opened: held.opens },
+        points,
+      })
       continue
     }
-    if (hearing === undefined || hearing.text.trim() === "") {
+    const read = answerHeard(
+      held.take === null ? { hearing: "silent" } : heard.get(held.take),
+      held.opens
+    )
+    if (read === null) {
       return {
         ok: false,
         why: `home hasn't heard the take on ${ticket.id} yet`,
       }
     }
-    tickets.push({
-      ...ticket,
-      answer: { kind: "take", transcript: hearing.text },
-    })
+    tickets.push({ ...ticket, answer: read, points })
   }
   return { ok: true, tickets }
 }

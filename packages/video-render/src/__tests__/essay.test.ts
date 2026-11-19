@@ -10,8 +10,10 @@ import { join } from "node:path"
 import { parseCutList } from "@video-render/cut-list"
 import {
   cellsOf,
+  citeOf,
   ESSAY_DIVES,
   ESSAY_ID,
+  ESSAY_POINT_VERSION,
   ESSAY_VERSION,
   essayChapterMarks,
   essayCutList,
@@ -19,12 +21,15 @@ import {
   essayIntro,
   essayScenes,
   essayTakeFiles,
+  essayTakeOf,
   essayVersionRefusal,
   isPast,
+  markOf,
   parseEssay,
+  pointAnsweredBy,
   sampleEssay,
 } from "@video-render/essay"
-import type { Essay, EssayTicket } from "@video-render/essay"
+import type { Essay, EssayPointAnswer, EssayTicket } from "@video-render/essay"
 import { parseFormat } from "@video-render/format"
 import { versionOfFile } from "@video-render/series"
 import { spreadWords } from "@video-render/stills"
@@ -398,7 +403,7 @@ describe("the takes home hands the recorder", () => {
         "QM-311: 2 takes (QM-311.m4a, QM-311.wav); one plays",
         "QM-312: answered, and there is no take of it",
         "QM-313.m4a: QM-313 was left silent",
-        "QM-399.m4a: names no ticket the essay answers",
+        "QM-399.m4a: names no ticket or point the essay answers",
         "QM-400.words.json: word times with no take",
       ],
     })
@@ -472,5 +477,197 @@ describe("home's verdict on a transcript (HEARD1)", () => {
   it("reads as heard when the transcript carries none, as before HEARD1", () => {
     expect(hearingOf({ text: "words" })).toBe("heard")
     expect(hearingOf({ verdict: null })).toBe("heard")
+  })
+})
+
+/**
+ * RR24 (#3248): a speak-to point answered by a take of its own. A week of
+ * whole-ticket takes renders as before; a mixed week cites each point's own
+ * take where there is one; a point's take with no file is refused.
+ */
+describe("a point answered by a take of its own (RR24)", () => {
+  const v3 = (essay: Essay): Essay => ({
+    ...essay,
+    template: { ...essay.template, version: ESSAY_POINT_VERSION },
+  })
+
+  /** The sample at version 3: QM-311 one old whole take, QM-312 answered only point by point, QM-313 a silence with point 2 its own take. */
+  function mixed(): unknown {
+    const essay = v3(sample())
+    const [first, second, third] = essay.tickets
+    if (!first || !second || !third) throw new Error("three tickets")
+    const take = (
+      mark: "covered" | "partly",
+      level: number
+    ): EssayPointAnswer => ({
+      kind: "take" as const,
+      transcript: `Point said at ${mark}.`,
+      mark: { mark },
+      solo: { level, why: "One reason." },
+    })
+    return {
+      ...essay,
+      tickets: [
+        first,
+        {
+          ...second,
+          answer: { kind: "silence", opened: 2 },
+          points: [
+            { ...second.points[0]!, answer: take("partly", 3) },
+            { ...second.points[1]!, answer: take("partly", 2) },
+            {
+              ...second.points[2]!,
+              answer: { kind: "silence", opened: 2, unheard: true },
+            },
+          ],
+        },
+        {
+          ...third,
+          points: [
+            third.points[0]!,
+            { ...third.points[1]!, answer: take("covered", 4) },
+          ],
+        },
+      ],
+    }
+  }
+
+  function parsed(raw: unknown): Essay {
+    const read = parseEssay(raw)
+    if (!read.ok) throw new Error(read.problems.join("; "))
+    return read.value
+  }
+
+  it("leaves a week of whole-ticket takes as it was, at any version", () => {
+    const essay = sample()
+    for (const each of [essay, v3(essay)]) {
+      const scenes = essayScenes(each)
+      expect(scenes.map((s) => s.id)).toEqual(
+        essayScenes(essay).map((s) => s.id)
+      )
+      expect(scenes.map(essayTakeOf).filter(Boolean)).toEqual([
+        "QM-311",
+        "QM-312",
+      ])
+    }
+  })
+
+  it("plays each point's own take after the ticket's, citing the right take per point", () => {
+    const essay = parsed(mixed())
+    const answers = essayScenes(essay).filter((s) => s.section === "answer")
+    expect(
+      answers.map((s) => [
+        s.id,
+        s.ticket,
+        "point" in s ? s.point : undefined,
+        s.speaker,
+        essayTakeOf(s),
+      ])
+    ).toEqual([
+      ["answer-1", "QM-311", undefined, "you", "QM-311"],
+      ["answer-2", "QM-312", 0, "you", "QM-312.1"],
+      ["answer-3", "QM-312", 1, "you", "QM-312.2"],
+      ["answer-4", "QM-312", 2, "tutor", null],
+      ["answer-5", "QM-313", undefined, "tutor", null],
+      ["answer-6", "QM-313", 1, "you", "QM-313.2"],
+    ])
+    expect(answers[3]?.said).toBe(UNHEARD_SAID)
+    const [first, second, third] = essay.tickets
+    if (!first || !second || !third) throw new Error("three tickets")
+    expect([0, 1, 2].map((i) => pointAnsweredBy(first, i).by)).toEqual([
+      "whole",
+      "whole",
+      "whole",
+    ])
+    expect([0, 1, 2].map((i) => markOf(second, i)?.mark)).toEqual([
+      "partly",
+      "partly",
+      undefined,
+    ])
+    expect([0, 1].map((i) => pointAnsweredBy(third, i).by)).toEqual([
+      "whole",
+      "own",
+    ])
+    expect(essayIntro(essay).rows.at(-1)?.says).toBe("3 of 3 tickets")
+    // The beside table cites the take each point was judged from.
+    expect([0, 1, 2].map((i) => citeOf(first, i))).toEqual([null, null, null])
+    expect([0, 1, 2].map((i) => citeOf(second, i))).toEqual([
+      "own",
+      "own",
+      "own",
+    ])
+    expect([0, 1].map((i) => citeOf(third, i))).toEqual([null, "own"])
+    expect(
+      essayTakeFiles(essay, [
+        "QM-311.m4a",
+        "QM-312.1.webm",
+        "QM-312.1.words.json",
+        "QM-312.2.ogg",
+        "QM-312.3.m4a",
+        "QM-313.2.m4a",
+      ])
+    ).toEqual({
+      ok: true,
+      value: {
+        "QM-311": { audio: "QM-311.m4a", words: null },
+        "QM-312.1": {
+          audio: "QM-312.1.webm",
+          words: "QM-312.1.words.json",
+        },
+        "QM-312.2": { audio: "QM-312.2.ogg", words: null },
+        "QM-313.2": { audio: "QM-313.2.m4a", words: null },
+      },
+    })
+  })
+
+  it("refuses a point's take with no file, and a take of a point that answers nothing on its own", () => {
+    expect(
+      essayTakeFiles(parsed(mixed()), [
+        "QM-311.m4a",
+        "QM-311.2.m4a",
+        "QM-312.1.webm",
+        "QM-313.m4a",
+        "QM-313.2.m4a",
+      ])
+    ).toEqual({
+      ok: false,
+      problems: [
+        "QM-312.2: answered, and there is no take of it",
+        "QM-311.2.m4a: names no ticket or point the essay answers",
+        "QM-313.m4a: QM-313 was left silent",
+      ],
+    })
+  })
+
+  it("is drawn from version 3, and a ticket answered only by points answers every point", () => {
+    const raw = parsed(mixed())
+    const old = parseEssay({
+      ...raw,
+      template: { ...raw.template, version: 2 },
+    })
+    expect(old.ok ? [] : old.problems).toEqual([
+      "QM-312: a point answered by a take of its own is drawn from version 3 of the template",
+      "QM-313: a point answered by a take of its own is drawn from version 3 of the template",
+    ])
+    const [first, second, third] = raw.tickets
+    if (!first || !second || !third) throw new Error("three tickets")
+    const short = parseEssay({
+      ...raw,
+      tickets: [
+        first,
+        {
+          ...second,
+          points: [
+            second.points[0]!,
+            second.points[1]!,
+            { to: "x", best: "y" },
+          ],
+        },
+        third,
+      ],
+    })
+    expect(short.ok ? [] : short.problems).toEqual([
+      "QM-312: its silence carries no guess at why, and a point has no answer of its own",
+    ])
   })
 })

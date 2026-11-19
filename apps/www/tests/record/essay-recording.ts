@@ -16,6 +16,7 @@ import {
   essayFormat,
   essayScenes,
   essayTakeFiles,
+  essayTakeOf,
   hasCaptions,
   INTERVIEW_ESSAY_SCHEMA,
   interviewEssayChapterMarks,
@@ -104,10 +105,7 @@ const RUST: EssayKind<Essay> = {
   scenes: (essay, voicing) =>
     essayScenes(essay, voicing).map((scene) => ({
       ...scene,
-      take:
-        scene.section === "answer" && scene.speaker === "you"
-          ? (scene.ticket ?? null)
-          : null,
+      take: essayTakeOf(scene),
     })),
   format: (essay) => essayFormat(essay.template.version),
   cutList: essayCutList,
