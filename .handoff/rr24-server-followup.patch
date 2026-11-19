@@ -1,0 +1,390 @@
+From ba6f8a2b92c08b7605fd0242c61a6e7a5c819870 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 19 Nov 2026 04:10:16 +0000
+Subject: [PATCH] fix(rust-rounds): name a point's refusal by its field, and
+ match a send to its takes' refs (RR24)
+
+Two findings from server#998's review:
+
+- essay: a point an essay answers on its own is refused at
+  `tickets[i].points[j].answer.kind`, its own field, not by its place
+  among the combined items (`Essay.points`, `PointAnswer`).
+- sent: a send's answer must name the ticket, and point, its take's own
+  `ref` says (`sent::take_refs`, `voice_repo::ref_of`); a take held as
+  said for another ticket, point or kind is a 422 at `answers[i].take`.
+  A take home does not hold yet is not refused, as before.
+
+Change-Kind: story
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LDpdUK3j3unNMyPEirBokY
+---
+ .../file_host/src/handlers/rust_rounds.rs     | 35 +++++++++
+ .../src/handlers/rust_week_record.rs          | 16 +++-
+ crates/db/rust_round/src/essay.rs             | 68 +++++++++++++----
+ crates/db/rust_round/src/sent.rs              | 73 ++++++++++++++++++-
+ crates/db/voice/src/lib.rs                    | 14 ++++
+ 5 files changed, 187 insertions(+), 19 deletions(-)
+
+diff --git a/apps/servers/file_host/src/handlers/rust_rounds.rs b/apps/servers/file_host/src/handlers/rust_rounds.rs
+index 8942caa..18cf093 100644
+--- a/apps/servers/file_host/src/handlers/rust_rounds.rs
++++ b/apps/servers/file_host/src/handlers/rust_rounds.rs
+@@ -930,6 +930,41 @@ mod tests {
+ 		);
+ 	}
+ 
++	/// RR24: an answer's ticket and point are its take's own `ref`. A send
++	/// naming a held take for another ticket is refused; one naming a take
++	/// home does not hold yet, or the take's own ticket, is kept.
++	#[tokio::test]
++	async fn a_send_names_the_ticket_its_take_was_said_for() {
++		const SENT: &str = "/rust-weeks/2026-w53/sent";
++		let state = state().await;
++		let pool = state.pool.clone();
++		let phone = session(&state, A, Carrier::Bearer).await;
++		let app = module().into_table_router().with_state(state);
++		hold_dated_week(&pool, A, 3, "2026-w53", "2026-10-12T00:00:00-07:00", "2099-12-31T23:59:00-08:00").await;
++		sqlx::query(
++			"INSERT INTO voice_note (subject_id, note_id, of_kind, of_ref, recorded_at, content_type, size, sha256, stored_at)
++			 VALUES (?1, 'take-2', 'rust-round', '2026-w53:QM-2', 'then', 'audio/ogg', 4, 's', 'now')",
++		)
++		.bind(A)
++		.execute(&pool)
++		.await
++		.unwrap();
++		let send = |at: &str, take: &str| {
++			json!({
++				"week": "2026-w53", "at": at,
++				"answers": [{ "ticket": "QM-1", "take": take, "recordedAt": "2026-10-13T18:00:00.000Z" }],
++				"passed": ["QM-2", "QM-3"],
++			})
++			.to_string()
++			.into_bytes()
++		};
++		let (status, _, refused) = call(&app, Method::PUT, SENT, Some(&phone), None, &send("2026-10-14T09:00:00.000Z", "take-2")).await;
++		assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "take-2 was said for QM-2");
++		assert!(refused["error"]["details"]["answers[0].take"].is_array(), "{refused}");
++		let (status, _, _) = call(&app, Method::PUT, SENT, Some(&phone), None, &send("2026-10-14T09:01:00.000Z", "not-yet")).await;
++		assert_eq!(status, StatusCode::CREATED, "a take home does not hold yet is not refused");
++	}
++
+ 	/// Before the deadline every send is a draft: a later one replaces it, an
+ 	/// earlier one leaves it, the same value again is no change, another body
+ 	/// at its moment is a `409`, and the record reads the draft as one.
+diff --git a/apps/servers/file_host/src/handlers/rust_week_record.rs b/apps/servers/file_host/src/handlers/rust_week_record.rs
+index 4d7c6d0..8b917c0 100644
+--- a/apps/servers/file_host/src/handlers/rust_week_record.rs
++++ b/apps/servers/file_host/src/handlers/rust_week_record.rs
+@@ -198,8 +198,8 @@ fn stored_instant(at: &str) -> Option<String> {
+ /// # Errors
+ /// 401 without a session, 403 for a browser's or from an untrusted origin,
+ /// 404 for a week the caller's subject does not hold, 422 naming each
+-/// refused field (`at` after the deadline, and `week` once home's clock is
+-/// past it, among them), 409 for another body at the draft's moment, 500 for
++/// refused field (`at` after the deadline, `week` once home's clock is
++/// past it, and a take held as said for another ticket or point, among them), 409 for another body at the draft's moment, 500 for
+ /// a storage failure.
+ #[axum::debug_handler(state = crate::AppState)]
+ #[instrument(name = "rust_week_sent_put", skip_all, fields(otel.kind = "server"))]
+@@ -224,6 +224,18 @@ pub async fn put_sent(paired: Paired, State(db): State<SqlitePool>, Path(id): Pa
+ 			return Err(FileHostError::unprocessable_entity(problems));
+ 		}
+ 	};
++	// RR24: each answer's ticket and point are its take's own `ref`.
++	let mut held = Vec::new();
++	for answer in &sent.answers {
++		if let Some(of_ref) = voice_repo::ref_of(&mut tx, paired.subject.as_str(), &answer.take, voice_repo::Of::RustRound).await? {
++			held.push((answer.take.as_str(), of_ref));
++		}
++	}
++	let held: Vec<(&str, Option<&str>)> = held.iter().map(|(take, of_ref)| (*take, of_ref.as_deref())).collect();
++	let elsewhere = rust_round_repo::sent::take_refs(&sent, &held);
++	if !elsewhere.is_empty() {
++		return Err(FileHostError::unprocessable_entity(elsewhere));
++	}
+ 	let (change, sent) = rust_round_repo::sent::put_draft(&mut tx, paired.subject.as_str(), &sent, &now)
+ 		.await
+ 		.map_err(|err| refused(err, SENT_TWICE))?;
+diff --git a/crates/db/rust_round/src/essay.rs b/crates/db/rust_round/src/essay.rs
+index 6d5cf6a..373f5c1 100644
+--- a/crates/db/rust_round/src/essay.rs
++++ b/crates/db/rust_round/src/essay.rs
+@@ -187,9 +187,23 @@ pub struct Essay {
+ 	pub kind: Kind,
+ 	pub week: String,
+ 	pub tickets: Vec<(String, Answered)>,
++	/// Each speak-to point a Rust Rounds essay answers on its own (RR24),
++	/// as [`PointAnswer`]; none for a mock interview's.
++	pub points: Vec<PointAnswer>,
+ 	pub reads: Vec<(String, Answered)>,
+ }
+ 
++/// A speak-to point an essay answers on its own (RR24,
++/// paulgsc/some-ui#3248): its item, [`point_key`], its answer, and where it
++/// sits, `tickets[ticket].points[point]`, which is the field a refusal names.
++#[derive(Debug, Clone, PartialEq, Eq)]
++pub struct PointAnswer {
++	pub item: String,
++	pub answered: Answered,
++	pub ticket: usize,
++	pub point: usize,
++}
++
+ /// Read `body` as a Rust Rounds essay ([`read_of`]).
+ ///
+ /// # Errors
+@@ -227,17 +241,15 @@ pub fn read_of(kind: Kind, body: &[u8]) -> Result<Essay, Vec<Problem>> {
+ 	if week.is_none() {
+ 		problems.push((String::from("week.id"), words.week_why));
+ 	}
+-	let tickets = match essay.get(words.items.field).and_then(Value::as_array) {
++	let (tickets, points) = match essay.get(words.items.field).and_then(Value::as_array) {
+ 		Some(held) if !held.is_empty() => {
+-			let mut tickets = items(held, &words.items, &mut problems);
+-			if kind == Kind::RustRounds {
+-				tickets.extend(point_items(held, &mut problems));
+-			}
+-			tickets
++			let tickets = items(held, &words.items, &mut problems);
++			let points = if kind == Kind::RustRounds { point_items(held, &mut problems) } else { Vec::new() };
++			(tickets, points)
+ 		}
+ 		_ => {
+ 			problems.push((String::from(words.items.field), words.no_items));
+-			Vec::new()
++			(Vec::new(), Vec::new())
+ 		}
+ 	};
+ 	let reads = match words.more.as_ref().map(|more| (more, essay.get(more.field))) {
+@@ -253,6 +265,7 @@ pub fn read_of(kind: Kind, body: &[u8]) -> Result<Essay, Vec<Problem>> {
+ 			kind,
+ 			week: week.to_owned(),
+ 			tickets,
++			points,
+ 			reads,
+ 		}),
+ 		_ => Err(problems),
+@@ -293,7 +306,7 @@ fn items(held: &[Value], list: &List, problems: &mut Vec<Problem>) -> Vec<(Strin
+ /// The point is the one the take's `ref` names (`<week>:<ticket>:<n>`), as
+ /// the week's final keeps it ([`rust_final`]): never one split from a take
+ /// of the whole ticket.
+-fn point_items(held: &[Value], problems: &mut Vec<Problem>) -> Vec<(String, Answered)> {
++fn point_items(held: &[Value], problems: &mut Vec<Problem>) -> Vec<PointAnswer> {
+ 	let mut items = Vec::new();
+ 	for (index, ticket) in held.iter().enumerate() {
+ 		let Some(key) = ticket.get("id").and_then(Value::as_str).filter(|key| is_ticket_key(key)) else {
+@@ -313,7 +326,12 @@ fn point_items(held: &[Value], problems: &mut Vec<Problem>) -> Vec<(String, Answ
+ 					continue;
+ 				}
+ 			};
+-			items.push((point_key(key, j + 1), answered));
++			items.push(PointAnswer {
++				item: point_key(key, j + 1),
++				answered,
++				ticket: index,
++				point: j,
++			});
+ 		}
+ 	}
+ 	items
+@@ -371,9 +389,21 @@ pub fn against(essay: &Essay, sent: &Final<'_>) -> Result<Vec<Played>, Vec<Probl
+ 	let words = words(essay.kind);
+ 	let mut problems = Vec::new();
+ 	let mut played = Vec::new();
+-	check(&essay.tickets, &sent.answers, &sent.unheard, &words.items, &mut played, &mut problems);
++	let at_fields = |list: &List, held: &[(String, Answered)]| -> Vec<(String, Answered, String)> {
++		held
++			.iter()
++			.enumerate()
++			.map(|(index, (item, answered))| (item.clone(), *answered, String::from(list.field) + "[" + &index.to_string() + "].answer.kind"))
++			.collect()
++	};
++	// A point is named by its own field, never by its place among the items.
++	let tickets = at_fields(&words.items, &essay.tickets).into_iter().chain(essay.points.iter().map(|point| {
++		let at = String::from(words.items.field) + "[" + &point.ticket.to_string() + "].points[" + &point.point.to_string() + "].answer.kind";
++		(point.item.clone(), point.answered, at)
++	}));
++	check(&tickets.collect::<Vec<_>>(), &sent.answers, &sent.unheard, &words.items, &mut played, &mut problems);
+ 	if let Some(more) = &words.more {
+-		check(&essay.reads, &sent.reads, &sent.unheard, more, &mut played, &mut problems);
++		check(&at_fields(more, &essay.reads), &sent.reads, &sent.unheard, more, &mut played, &mut problems);
+ 	}
+ 	if problems.is_empty() {
+ 		Ok(played)
+@@ -384,9 +414,9 @@ pub fn against(essay: &Essay, sent: &Final<'_>) -> Result<Vec<Played>, Vec<Probl
+ 
+ /// [`against`] for one list: the essay's `items` against what the final sent
+ /// of them.
+-fn check(items: &[(String, Answered)], sent: &[(&str, &str)], unheard: &[&str], list: &List, played: &mut Vec<Played>, problems: &mut Vec<Problem>) {
+-	for (index, (ticket, answered)) in items.iter().enumerate() {
+-		let at = String::from(list.field) + "[" + &index.to_string() + "].answer.kind";
++fn check(items: &[(String, Answered, String)], sent: &[(&str, &str)], unheard: &[&str], list: &List, played: &mut Vec<Played>, problems: &mut Vec<Problem>) {
++	for (ticket, answered, at) in items {
++		let at = at.clone();
+ 		let take = sent.iter().find(|(answered, _)| answered == ticket);
+ 		match (answered, take) {
+ 			(Answered::Take, Some((_, take))) => played.push(Played {
+@@ -400,7 +430,7 @@ fn check(items: &[(String, Answered)], sent: &[(&str, &str)], unheard: &[&str],
+ 		}
+ 	}
+ 	for (answered, _) in sent {
+-		if !items.iter().any(|(ticket, _)| ticket == answered) {
++		if !items.iter().any(|(ticket, _, _)| ticket == answered) {
+ 			problems.push((String::from(list.field) + "[" + answered + "]", "was answered by the deadline, and the essay leaves it out"));
+ 		}
+ 	}
+@@ -525,7 +555,11 @@ mod tests {
+ 		assert_eq!(against(&read(&body(&unplayed)).unwrap(), &rust_final(&answers)).unwrap_err()[0].0, "tickets[QM-311.2]");
+ 		let mut silent = essay.clone();
+ 		silent["tickets"][0]["points"][1]["answer"]["kind"] = json!("silence");
+-		assert!(against(&read(&body(&silent)).unwrap(), &rust_final(&answers)).is_err());
++		assert_eq!(
++			against(&read(&body(&silent)).unwrap(), &rust_final(&answers)).unwrap_err()[0].0,
++			"tickets[0].points[1].answer.kind",
++			"a point's refusal names its own field, not its place among the items"
++		);
+ 		let mut bad = essay;
+ 		bad["tickets"][0]["points"][1]["answer"]["kind"] = json!("maybe");
+ 		assert_eq!(read(&body(&bad)).unwrap_err()[0].0, "tickets[0].points[1].answer.kind");
+@@ -553,6 +587,7 @@ mod tests {
+ 				kind: Kind::RustRounds,
+ 				week: String::from("2026-w46"),
+ 				tickets: vec![(String::from("QM-311"), Answered::Take), (String::from("QM-312"), Answered::Silence)],
++				points: Vec::new(),
+ 				reads: Vec::new(),
+ 			}
+ 		);
+@@ -664,6 +699,7 @@ mod tests {
+ 				kind: Kind::Interview,
+ 				week: String::from("2026-w47"),
+ 				tickets: vec![(String::from("about-you"), Answered::Take), (String::from("a-conflict"), Answered::Silence)],
++				points: Vec::new(),
+ 				reads: vec![(String::from("intro"), Answered::Take)],
+ 			}
+ 		);
+diff --git a/crates/db/rust_round/src/sent.rs b/crates/db/rust_round/src/sent.rs
+index 12e58e7..34d8590 100644
+--- a/crates/db/rust_round/src/sent.rs
++++ b/crates/db/rust_round/src/sent.rs
+@@ -259,6 +259,39 @@ pub fn read_sent(body: &[u8], week: &Week, now: &str) -> Result<Sent, Vec<Proble
+ 	}
+ }
+ 
++/// What [`take_refs`] says of an answer whose take is said for another
++/// ticket or point, for the `422`.
++pub const TAKE_ELSEWHERE: &str = "is a take said for another ticket, or another point of one, than the answer names";
++
++/// Each answer of `sent` whose take home holds as said for another ticket,
++/// or point, than the answer names (RR24, paulgsc/some-ui#3248).
++///
++/// A take of the whole ticket's `ref` is `<week>:<ticket>`, a point's
++/// `<week>:<ticket>:<n>`, so an answer's `ticket` and `point` must be what
++/// its take's own `ref` says, never something the phone could get out of step.
++///
++/// `held` gives, for each take home holds, its id and its `ref` when it is a
++/// Rust Rounds note, `None` when it is another kind's. A take home does not
++/// hold yet is not refused: a note and the week's send reach home on their
++/// own, as before RR24.
++#[must_use]
++pub fn take_refs(sent: &Sent, held: &[(&str, Option<&str>)]) -> Vec<Problem> {
++	let mut problems = Vec::new();
++	for (index, answer) in sent.answers.iter().enumerate() {
++		let Some((_, of_ref)) = held.iter().find(|(take, _)| *take == answer.take) else {
++			continue;
++		};
++		let names = answer.point.map_or_else(
++			|| sent.week.clone() + ":" + &answer.ticket,
++			|point| sent.week.clone() + ":" + &answer.ticket + ":" + &point.to_string(),
++		);
++		if *of_ref != Some(names.as_str()) {
++			problems.push((String::from("answers[") + &index.to_string() + "].take", TAKE_ELSEWHERE));
++		}
++	}
++	problems
++}
++
+ /// Keep `sent` as `subject`'s draft of its week ([`draft::put_draft`]).
+ ///
+ /// `sent` is read by [`read_sent`] with home's clock no later than the
+@@ -396,7 +429,7 @@ pub async fn pastes(conn: &mut SqliteConnection, subject: &str, week: &str) -> R
+ 
+ #[cfg(test)]
+ mod tests {
+-	use super::{finalize, is_final, pastes, put_draft, put_paste, read_paste, read_sent, standing, DraftChange, Sent};
++	use super::{finalize, is_final, pastes, put_draft, put_paste, read_paste, read_sent, standing, take_refs, DraftChange, Sent};
+ 	use crate::week::read;
+ 	use crate::{Change, RoundError};
+ 	use serde_json::{json, Value};
+@@ -574,6 +607,44 @@ mod tests {
+ 		);
+ 	}
+ 
++	/// RR24: an answer's ticket and point are its take's own `ref`; a take
++	/// said for another ticket, another point, the whole ticket or another
++	/// kind is refused, and one home does not hold yet is not.
++	#[test]
++	fn an_answer_names_what_its_take_was_said_for() {
++		let week = week();
++		let answer = |ticket: &str, point: Option<u8>, take: &str| {
++			let mut answer = json!({ "ticket": ticket, "take": take, "recordedAt": "2026-11-12T20:00:00.000Z" });
++			if let Some(point) = point {
++				answer["point"] = json!(point);
++			}
++			answer
++		};
++		let sent = read_sent(
++			json!({
++				"week": "2026-w46", "at": "2026-11-15T20:00:00.000Z",
++				"answers": [answer("QM-311", None, "whole"), answer("QM-312", Some(2), "point"), answer("QM-313", Some(1), "later")],
++				"passed": [],
++			})
++			.to_string()
++			.as_bytes(),
++			&week,
++			OPEN,
++		)
++		.unwrap();
++		let fields = |held: &[(&str, Option<&str>)]| -> Vec<String> { take_refs(&sent, held).into_iter().map(|(field, _)| field).collect() };
++		let matching = [("whole", Some("2026-w46:QM-311")), ("point", Some("2026-w46:QM-312:2"))];
++		assert!(fields(&matching).is_empty(), "each take said for what its answer names; `later` not held yet");
++		for (whole, point) in [
++			(Some("2026-w46:QM-311:1"), Some("2026-w46:QM-312")),
++			(Some("2026-w46:QM-312"), Some("2026-w46:QM-312:3")),
++			(Some("2026-w45:QM-311"), Some("2026-w46:QM-311:2")),
++			(None, None),
++		] {
++			assert_eq!(fields(&[("whole", whole), ("point", point)]), ["answers[0].take", "answers[1].take"], "{whole:?} {point:?}");
++		}
++	}
++
+ 	/// Before the deadline a send replaces the draft when it is later, leaves
+ 	/// it when it is earlier, and is the same send at the draft's moment only
+ 	/// as the same value; each subject drafts its own.
+diff --git a/crates/db/voice/src/lib.rs b/crates/db/voice/src/lib.rs
+index ced9b9f..a1321f8 100644
+--- a/crates/db/voice/src/lib.rs
++++ b/crates/db/voice/src/lib.rs
+@@ -778,6 +778,20 @@ pub async fn holds(conn: &mut SqliteConnection, subject: &str, note_id: &str) ->
+ 	.await
+ }
+ 
++/// The `ref` of `subject`'s note `note_id`, when home holds it.
++///
++/// `Some(None)` when it is said for another kind than `of`, `None` when home
++/// does not hold it. Read it in the transaction that acts on the answer.
++///
++/// # Errors
++/// Any `sqlx` failure.
++pub async fn ref_of(conn: &mut SqliteConnection, subject: &str, note_id: &str, of: Of) -> Result<Option<Option<String>>, sqlx::Error> {
++	let row = sqlx::query!("SELECT of_kind, of_ref FROM voice_note WHERE subject_id = ?1 AND note_id = ?2", subject, note_id)
++		.fetch_optional(&mut *conn)
++		.await?;
++	Ok(row.map(|row| (row.of_kind == of.as_str()).then_some(row.of_ref)))
++}
++
+ /// What [`VoiceError::Rewritten`] says.
+ pub const REWRITTEN: &str = "this note id already holds a different note: voice notes are append-only";
+ 
+-- 
+2.43.0
+
