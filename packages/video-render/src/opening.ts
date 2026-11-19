@@ -24,8 +24,9 @@ export const OPENING_WORDS = { min: 25, max: 90 } as const
 const ASSESSING =
   /\b(?:scor(?:e|es|ed|ing)|ratings?|rated|grad(?:e|es|ed|ing)|self-assess\w*|assessments?|readiness|how ready|ready for (?:it|the|an?)\b|pass or fail|finish(?:ed)? line|graduat\w*|levell?ed up|level up)\b/giu
 
+/** The words of `text`, as a reader counts them: a dash alone is none. */
 const wordCount = (text: string): number =>
-  text.trim().split(/\s+/).filter(Boolean).length
+  text.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length
 
 /** Every reason `script`, at `at`, isn't an opening, as lines for the routine. */
 export function openingProblems(script: string, at: string): Array<string> {

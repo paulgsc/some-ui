@@ -341,8 +341,9 @@ export type WeekV1 = z.infer<typeof WeekV1Schema>
 /**
  * The essay's opening, in the owner's own voice (#3269, as IW10's for the
  * interview week): a script the owner reads before the tickets, saying
- * "paulgsc" and then what Rust Rounds trains. The routine holds its words
- * (`@some-ui/video-render`'s `openingProblems`); the essay plays the take.
+ * "paulgsc" and then what Rust Rounds trains. The routine will hold its
+ * words to `@some-ui/video-render`'s `openingProblems` once it writes one
+ * (C733); the essay plays the take.
  */
 const OpeningSchema = z.strictObject({ script: TextSchema })
 

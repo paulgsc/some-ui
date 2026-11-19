@@ -258,13 +258,14 @@ describe("prepare", () => {
     }
     const said =
       "paulgsc here. This is Rust Rounds: a small Rust program every week, worked at the desk first."
-    const heardOpening = (text: string): MailboxFile => ({
+    const heardOpening = (text: string, verdict?: unknown): MailboxFile => ({
       name: "transcript-note-open-1.json",
       body: {
         ...TranscriptSchema.parse(SAMPLE_TRANSCRIPTS[0]?.body),
         note: "note-open",
         ref: "2026-w46:opening",
         text,
+        ...(verdict === undefined ? {} : { verdict }),
       },
     })
     expect(
@@ -281,12 +282,16 @@ describe("prepare", () => {
     if (!essay.ok) throw new Error(essay.problems.join("\n"))
     expect(essay.value.template.version).toBe(5)
     expect(essay.value.opening).toEqual({ transcript: said })
-    // Nothing said in it: the essay opens as before.
-    const quiet = samplePrepared({
-      records: [opened],
-      transcripts: [...SAMPLE_TRANSCRIPTS, heardOpening("")],
-    })
-    expect(quiet.bundle.essays[0]?.opening).toBeUndefined()
+    // Nothing said in it, or nothing made out: the essay opens as before.
+    for (const kind of ["nothing_said", "garbled"]) {
+      const quiet = samplePrepared({
+        records: [opened],
+        transcripts: [...SAMPLE_TRANSCRIPTS, heardOpening("", { kind })],
+      })
+      expect(quiet.bundle.essays.map((e) => [e.week, e.opening])).toEqual([
+        ["2026-w46", undefined],
+      ])
+    }
   })
 
   it("reads the newest transcript of a note", () => {
