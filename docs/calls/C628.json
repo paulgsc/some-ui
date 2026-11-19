@@ -1,0 +1,18 @@
+{
+  "id": "C628",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/interview-week/words.ts",
+    "apps/www/src/components/jobs/interview/week.tsx"
+  ],
+  "chose": "Each kind's time on the first page is the mean of its items' target lengths, rounded to the half minute and never under 30 seconds: \"4 questions · about 1 min 30 s each\".",
+  "options": [
+    "the mean, to the half minute",
+    "the range, shortest to longest",
+    "the week's total"
+  ],
+  "gray": "How to say a cost that varies by item is a wording choice the owner reads every day.",
+  "undo": "Change typical in week.tsx, or the cost words in words.ts.",
+  "refs": ["#3224"]
+}

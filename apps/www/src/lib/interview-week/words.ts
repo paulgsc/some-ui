@@ -137,13 +137,63 @@ export const INTERVIEW_WORDS = {
   reads: "Read aloud",
   readsLine:
     "Short scripts about why a piece of this work exists, read as written, the way you'd open a talk.",
-  readsEntry:
-    "Read aloud has its own page: short scripts about the work, read as written.",
-  /** The Interview page (IW8). */
+  /** The Interview page, the way in (IW15): what this is, each kind and its time. */
+  wayIn: {
+    title: "A practice interview, once a week",
+    line: (title: string, company: string): string =>
+      `For an invented job: ${title} at ${company}. You answer aloud, your takes go to home, your own computer, and once the week closes home makes a video essay of how you came across.`,
+    kinds: "Two kinds of practice",
+    anyOrder: "Do one kind or both, in any order, on any day this week.",
+    questions: {
+      what: "Answer in your own words",
+      cost: (n: number, seconds: number): string =>
+        `${n === 1 ? "1 question" : `${n} questions`} · about ${lengthOf(seconds * 1000)} each`,
+    },
+    reads: {
+      what: "Read a short script as written",
+      cost: (n: number, seconds: number): string =>
+        `${n === 1 ? "1 script" : `${n} scripts`} · about ${lengthOf(seconds * 1000)} each`,
+    },
+    how: "How a week goes",
+    takes: "Hear your takes",
+    takesLine: "In Studio's Takes, with your other recordings",
+    /** The week's name on Takes' chip: "Week 47". */
+    weekName: (week: Pick<InterviewWeek, "id">): string =>
+      `Week ${weekNumber(week.id)}`,
+    howLine: "Where your takes go, and when the essay comes",
+    /** A week under way (IW16): what was done, each take where it is. */
+    soFar: "So far this week",
+    todayIs: (prompt: string): string => `Today: ${prompt}`,
+  },
+  /** How a week goes (IW15): home named once, as the owner's own computer. */
+  how: {
+    title: "How a week goes",
+    steps: [
+      {
+        name: "Each Monday, a new week",
+        line: "An invented company and job, a few questions and a few short scripts. No real employer is named.",
+      },
+      {
+        name: "You speak, on this phone",
+        line: `Tap to record and tap again to stop. A take stops at ${lengthOf(TAKE_MAX_SECONDS * 1000)}. Say one again whenever you like; the newest is the one you send.`,
+      },
+      {
+        name: "Your takes go home",
+        line: `Home is your own computer. ${KEPT}`,
+      },
+      {
+        name: "Then, a video essay",
+        line: "Once the week closes, home makes a video of how you came across: how each answer was built, the ums, the long pauses.",
+      },
+    ],
+  },
+  /** The Questions page (IW15): the week's questions, today's first. */
+  questionsLine:
+    "The questions an interviewer asks about you, answered for this role. Each has steps: read a ready answer, read it aloud, say it from cues, say it your way.",
   today: "Today's question",
   todayLine: "A minute or two, at whatever step you like",
-  others: "The week's other questions",
-  kept: KEPT,
+  others: "The rest of the week's questions",
+  toQuestions: "Questions",
   /** What was done on each rung, and on a take said before rungs were kept. */
   past: {
     aloud: "Read aloud",

@@ -118,7 +118,7 @@ describe("the interview week's words (IW5)", () => {
   })
 
   it("say what counts in these words (IWC1)", () => {
-    expect(INTERVIEW_WORDS.kept).toBe(
+    expect(INTERVIEW_WORDS.review.kept).toBe(
       "Your first take of each question goes home on its own and is kept for good, but counts only if you send it. The rest stay on this phone until you send the week."
     )
     expect(INTERVIEW_WORDS.openUntil(WEEK)).toBe(

@@ -9,15 +9,16 @@ import {
   STUDIO_WORDS,
   TakeLibrary,
 } from "@some-ui/soundbites"
-import { createFileRoute, Link } from "@tanstack/react-router"
+import { createFileRoute } from "@tanstack/react-router"
 
 import { keepSoundbites } from "@/lib/soundbite-keeping"
 import { KIND_WORDS, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
 import type { AboutStores } from "@/lib/take-about"
 import { takePorts } from "@/lib/take-library/ports"
 import { reconcilePorts } from "@/lib/take-reconcile/ports"
+import { CardRoute } from "@/components/card-route"
 import { PairHomeLink } from "@/components/pair-home-link"
-import { StudioPage, TILE, TileBody } from "@/components/studio/layout"
+import { StudioPage, TileBody } from "@/components/studio/layout"
 
 /** The page's ports, in the Android app alone (`build.paths.ts`). */
 const ATTENTION =
@@ -36,20 +37,14 @@ const PORTS =
   import.meta.env.VITE_DEVICE_BACKEND === "true" ? takePorts(STORES) : null
 
 const attentionTile = (body: ReactNode): JSX.Element => (
-  <Link to="/journal/takes/attention" className={TILE}>
-    {body}
-  </Link>
+  <CardRoute to="/journal/takes/attention">{body}</CardRoute>
 )
 
 /** A compartment's tile: the way to its page (`./$kind`). */
 const kindTile = (compartment: Compartment, body: ReactNode): JSX.Element => (
-  <Link
-    to="/journal/takes/$kind"
-    params={{ kind: compartment }}
-    className={TILE}
-  >
+  <CardRoute to="/journal/takes/$kind" params={{ kind: compartment }}>
     {body}
-  </Link>
+  </CardRoute>
 )
 
 /**
@@ -78,12 +73,12 @@ const Takes = (): JSX.Element => {
           tile={kindTile}
         />
       )}
-      <Link to="/journal/takes/conveyor" className={TILE}>
+      <CardRoute to="/journal/takes/conveyor">
         <TileBody title={WORDS.conveyor} line={WORDS.conveyorLine} />
-      </Link>
-      <Link to="/journal/takes/kept" className={TILE}>
+      </CardRoute>
+      <CardRoute to="/journal/takes/kept">
         <TileBody title={STUDIO_WORDS.records.open} line={WORDS.keptLine} />
-      </Link>
+      </CardRoute>
       {/* Last, so nothing above moves when it appears (HS1). */}
       {ATTENTION !== null && (
         <AttentionWayIn ports={ATTENTION} wayIn={attentionTile} />

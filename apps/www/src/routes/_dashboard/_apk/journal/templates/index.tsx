@@ -1,9 +1,10 @@
 import type { JSX } from "react"
 import { TEMPLATE_IDS, templateFormat } from "@some-ui/video-render"
-import { createFileRoute, Link } from "@tanstack/react-router"
+import { createFileRoute } from "@tanstack/react-router"
 
 import { KIND_WORDS, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
-import { StudioPage, TILE, TileBody } from "@/components/studio/layout"
+import { CardRoute } from "@/components/card-route"
+import { StudioPage, TileBody } from "@/components/studio/layout"
 
 const WORDS = STUDIO_INDEX_WORDS.templates
 
@@ -27,22 +28,21 @@ const Templates = (): JSX.Element => (
     <ul className="flex flex-col gap-2">
       {TEMPLATES.map(({ id, format }) => (
         <li key={id}>
-          <Link
+          <CardRoute
             to="/journal/templates/$template"
             params={{ template: id }}
-            className={TILE}
           >
             <TileBody
               title={format.title}
               line={WORDS.version(format.version)}
             />
-          </Link>
+          </CardRoute>
         </li>
       ))}
       <li>
-        <Link to="/journal/templates/release-promo" className={TILE}>
+        <CardRoute to="/journal/templates/release-promo">
           <TileBody title={WORDS.promo.name} line={WORDS.promo.line} />
-        </Link>
+        </CardRoute>
       </li>
     </ul>
   </StudioPage>
