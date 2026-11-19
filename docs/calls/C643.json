@@ -1,0 +1,19 @@
+{
+  "id": "C643",
+  "made": "2026-11-19",
+  "by": "owner",
+  "paths": [
+    "packages/ui/shared/src/components/ui/card-link/index.tsx",
+    "apps/www/tests/ui-fit/card-link-fit.spec.ts"
+  ],
+  "chose": "A tappable card is discoverable at a glance and never the loudest thing on the screen; the cue is a convention, not a decoration. The owner (2026-11-19, relayed by the coordinator): \"We are overusing the shadow effect… like someone who just learned how to do a shadow box and has to exaggerate it… why so much shadow?\" State A, plain HTML, is tappable with no cue (\"I'm looking at a card and thinking it's just a blob of text, and then I'm surprised, oh, I can click on that\"); A′, the goal, is a visible cue that doesn't scream; B, the theme-coloured glow, is obviously tappable but arrests the eye because it is out of place. \"We solved A, but instead of A′ we went to B.\" The owner has no UI grammar and doesn't steer the design: their words are the story, not a spec.",
+  "options": [
+    "A′: a conventional cue that never outshouts the page",
+    "B: the theme-coloured glow and tint (C642)",
+    "A: no cue"
+  ],
+  "gray": "How loud the tap cue may be is a look the owner sees on every screen.",
+  "undo": "Restore C642's look in card-link/index.tsx and drop the ceiling test in card-link-fit.",
+  "moves": "C642",
+  "refs": ["#3234", "#3244"]
+}
