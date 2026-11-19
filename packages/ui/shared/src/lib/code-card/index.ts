@@ -36,6 +36,8 @@ type CodeRun = {
   readonly text: string
   readonly tone: CodeTone
   readonly marked: boolean
+  /** A suggestion inserted these characters: painted as new text. */
+  readonly inserted: boolean
 }
 
 type CodeLine = {
@@ -140,10 +142,18 @@ function marksNothing(span: CodeSpan, lineLength: number): boolean {
 }
 
 type CodeLinesOptions = {
-  /** Lines a variant changed, numbered from 1. */
+  /**
+   * The number of the code's first line, 1 unless the code is an excerpt
+   * (rustc's suggested line 9 alone starts at 9). Every other option counts
+   * lines the same way.
+   */
+  readonly firstLine?: number
+  /** Lines a variant changed. */
   readonly changedLines?: ReadonlyArray<number>
   /** Diagnostic spans to underline; each line they touch is highlighted. */
   readonly spans?: ReadonlyArray<CodeSpan>
+  /** Stretches a suggestion inserted, painted as new text and never underlined. */
+  readonly inserted?: ReadonlyArray<CodeSpan>
 }
 
 type Cell = { char: string; tone: CodeTone }
@@ -160,7 +170,12 @@ type Cell = { char: string; tone: CodeTone }
 export function codeLines(
   source: string,
   language: string,
-  { changedLines = [], spans = [] }: CodeLinesOptions = {}
+  {
+    firstLine = 1,
+    changedLines = [],
+    spans = [],
+    inserted = [],
+  }: CodeLinesOptions = {}
 ): ReadonlyArray<CodeLine> {
   const code = source.replaceAll("\r\n", "\n")
   const changed = new Set(changedLines)
@@ -174,7 +189,7 @@ export function codeLines(
   if (cells.length > 1 && code.endsWith("\n")) cells.pop()
 
   return cells.map((line, index) => {
-    const number = index + 1
+    const number = firstLine + index
     const oneCell = new Set<number>()
     for (const span of spans) {
       if (span.lineStart === number && marksNothing(span, line.length)) {
@@ -184,11 +199,16 @@ export function codeLines(
     const runs: Array<CodeRun> = []
     const push = (column: number, char: string, tone: CodeTone): void => {
       const marked = oneCell.has(column) || spanMarks(spans, number, column)
+      const isInserted = spanMarks(inserted, number, column)
       const last = runs[runs.length - 1]
-      if (last?.tone === tone && last.marked === marked) {
+      if (
+        last?.tone === tone &&
+        last.marked === marked &&
+        last.inserted === isInserted
+      ) {
         runs[runs.length - 1] = { ...last, text: last.text + char }
       } else {
-        runs.push({ column, text: char, tone, marked })
+        runs.push({ column, text: char, tone, marked, inserted: isInserted })
       }
     }
     line.forEach((cell, at) => push(at + 1, cell.char, cell.tone))
