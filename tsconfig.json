@@ -13,7 +13,15 @@
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true,
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+    // A workspace's own alias, for a source a script imports that uses it.
+    // Only type imports may cross it: tsx and Node do not read `paths`, so
+    // a value import through one fails at run time
+    // (`dump-rust-week-sample.ts` reads the /2 sample, whose one alias
+    // import is its `WeekV2` type).
+    "paths": {
+      "@rust-rounds/*": ["./packages/ui/rust-rounds/src/*"]
+    }
   },
   "include": ["scripts/**/*.ts"]
 }

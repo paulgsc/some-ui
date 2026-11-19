@@ -1142,11 +1142,13 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
         refuses: driveTakesRefusal,
       },
       // A week of Rust Rounds the Monday routine writes, for home to keep
-      // and record its programs (RR12, paulgsc/some-ui#2687).
+      // and record its programs (RR12, paulgsc/some-ui#2687). The second
+      // version carries each ticket's forks and academy (RR25, RR29); home
+      // reads it from paulgsc/server#1001.
       {
         folder: "brief",
         name: /^rust-week-\d{4}-w\d{2}\.json$/,
-        schema: "some-ui.rust-week/1",
+        schema: ["some-ui.rust-week/2", "some-ui.rust-week/1"],
         refuses: rustWeekRefusal,
       },
       // A week of mock interview the interview week's routine writes, for

@@ -438,6 +438,27 @@ describe("a week of Rust Rounds rides brief (MB2, RR12)", () => {
     })
   })
 
+  it("takes a /2 week, with its forks and academy, as it takes a /1 (RR25)", async () => {
+    const d = deps()
+    const v2 = JSON.stringify({
+      schema: "some-ui.rust-week/2",
+      id: "2026-w47",
+      tickets: [
+        {
+          id: "TB-101",
+          program: "fn main() {}\n",
+          academy: [{ starter: "fn main() {}\n" }],
+        },
+      ],
+    })
+    const name = "rust-week-2026-w47.json"
+    expect((await put(d, "brief", name, { body: v2 })).status).toBe(201)
+    const read = await send(d, "GET", `/v1/brief/items/${name}`, {
+      token: HOME,
+    })
+    expect(await read.text()).toBe(v2)
+  })
+
   it("refuses a week whose name is not its id's, or another schema", async () => {
     const d = deps()
     const misnamed = await put(d, "brief", "rust-week-2026-w47.json", {
@@ -454,7 +475,8 @@ describe("a week of Rust Rounds rides brief (MB2, RR12)", () => {
     })
     const wrong = await put(d, "brief", NAME, { body: DIGEST })
     expect(await json(wrong)).toEqual({
-      error: "the body's schema must be some-ui.rust-week/1",
+      error:
+        "the body's schema must be some-ui.rust-week/2 or some-ui.rust-week/1",
     })
     expect(
       (await put(d, "brief", "rust-week-2026-46.json", { body: WEEK })).status
