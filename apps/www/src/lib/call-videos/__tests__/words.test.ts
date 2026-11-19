@@ -40,8 +40,16 @@ const UNREAD: Record<Feed, ReadonlyArray<string>> = {
   "cards-essay": ["2026-w46", "zfs-2026-02-31", "zfs", ""],
   "interview-essay": ["2026-10-30", "2026-w4", "2026-w00", ""],
   "playoff-delta": ["2026-10-30", "2026-SF-8", ""],
-  report: ["2026-10-30", "2026-W4", "2026-W00", "2026-W54", "2027-W53", ""],
-  "rust-essay": ["2026-10-30", "2026-w4", "2026-w00", ""],
+  report: [
+    "2026-10-30",
+    "2026-w46",
+    "2026-W4",
+    "2026-W00",
+    "2026-W54",
+    "2027-W53",
+    "",
+  ],
+  "rust-essay": ["2026-10-30", "2026-W46", "2026-w4", "2026-w00", ""],
 }
 
 /** All a feed says of an episode by its key. */
@@ -69,6 +77,23 @@ describe("VIDEOS_WORDS and FEED_WORDS", () => {
     expect(FEED_WORDS.call.shareTitle("2026-10-30")).toBe(
       "The weekly call, the week of 2026-10-30"
     )
+  })
+
+  it("names an essay's and a report's ISO week, each in its own spelling, and no week 53 a year lacks", () => {
+    expect(FEED_WORDS.report.label("2026-W46")).toBe("2026, week 46")
+    expect(FEED_WORDS["rust-essay"].label("2026-w46")).toBe("2026, week 46")
+    expect(FEED_WORDS["interview-essay"].label("2026-w46")).toBe(
+      "2026, week 46"
+    )
+    expect(FEED_WORDS.report.label("2026-W53")).toBe("2026, week 53")
+    // 2027 has 52 weeks.
+    expect(FEED_WORDS.report.week("2027-W53")).toBeNull()
+    expect(FEED_WORDS.report.label("2027-W53")).toBe("This report")
+    expect(FEED_WORDS["rust-essay"].week("2027-w53")).toBeNull()
+    expect(FEED_WORDS["rust-essay"].label("2027-w53")).toBe("This essay")
+    // Each feed reads only its own spelling, as home keys it.
+    expect(FEED_WORDS.report.week("2026-w46")).toBeNull()
+    expect(FEED_WORDS["rust-essay"].week("2026-W46")).toBeNull()
   })
 
   it("names a week of Playoff Delta by its season and week, the legend for week 00, and no team code", () => {

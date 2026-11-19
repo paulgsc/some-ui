@@ -74,7 +74,9 @@ export function keyDay(feed: Feed, week: string): string | null {
     case "interview-essay":
     case "report":
     case "rust-essay": {
-      // `2026-w46`, or the report's `2026-W46`: dated by its Monday.
+      // `2026-w46`, or the report's `2026-W46`, each in its own spelling:
+      // dated by its Monday.
+      if (week.charAt(5) !== (feed === "report" ? "W" : "w")) return null
       if (!WEEK_ID.test(week.toLowerCase())) return null
       try {
         return isoWeekMonday(week.toUpperCase())

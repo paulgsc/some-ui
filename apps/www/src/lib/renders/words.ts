@@ -26,11 +26,14 @@ import { refusalOf } from "./model"
 import type { Row, Subject } from "./subject"
 import { subjectOf } from "./subject"
 
-/** The board's rows that are no feed's, named as `kindName` names them. */
-const OWN_ROWS: Readonly<Partial<Record<string, string>>> = {
+/** The board's rows that are no feed's: what `kindName` and `feedName` call them. */
+const OWN_ROWS = {
   preview: "Preview",
   "clip-walk": "A clip's walk-through",
-}
+} as const
+
+const isOwnRow = (feed: string): feed is keyof typeof OWN_ROWS =>
+  Object.hasOwn(OWN_ROWS, feed)
 
 /**
  * A feed's name: the phone's own for a feed it knows, else home's name for
@@ -39,8 +42,7 @@ const OWN_ROWS: Readonly<Partial<Record<string, string>>> = {
  */
 export function feedName(feed: string): string {
   if (isFeed(feed)) return FEED_FACTS[feed].name
-  const own = OWN_ROWS[feed]
-  if (own !== undefined) return own
+  if (isOwnRow(feed)) return OWN_ROWS[feed]
   const words = feed.replaceAll(/[-_]+/g, " ").trim()
   return words === ""
     ? "Something else"
@@ -54,10 +56,10 @@ export function kindName(subject: Subject): string {
       return FEED_FACTS[subject.feed].name
     }
     case "preview": {
-      return "Preview"
+      return OWN_ROWS.preview
     }
     case "walk": {
-      return "A clip's walk-through"
+      return OWN_ROWS["clip-walk"]
     }
     case "essay": {
       return "Cards essay"

@@ -62,6 +62,10 @@ describe("keyDay", () => {
     expect(keyDay("call", "week-44")).toBeNull()
     expect(keyDay("rust-essay", "2027-w53")).toBeNull()
     expect(keyDay("cards-essay", "zfs")).toBeNull()
+    expect(keyDay("report", "2027-W53")).toBeNull()
+    // Each in its own spelling only.
+    expect(keyDay("report", "2026-w46")).toBeNull()
+    expect(keyDay("rust-essay", "2026-W46")).toBeNull()
   })
 })
 
