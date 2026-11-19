@@ -311,15 +311,18 @@ export const CueLine = ({
   item: string
 }): JSX.Element => {
   const { cue } = held
+  const counting = cue.kind === "counting" && cue.item === item
   return (
     <p className="text-muted-foreground min-h-6 text-center text-sm">
-      {/* The count is on the button; only it is said as it changes, for a screen reader. */}
-      <span aria-live="assertive" className="sr-only">
-        {cue.kind === "counting" && cue.item === item
-          ? TAKE_WORDS.button.counting(cue.left)
-          : ""}
+      {/*
+        The count shows here as well as on the button, which a take that
+        didn't come through replaces with its retry; only the count is in
+        the live region, so a screen reader hears it once a second.
+      */}
+      <span aria-live="assertive">
+        {counting ? TAKE_WORDS.button.counting(cue.left) : ""}
       </span>
-      {cue.kind === "counting" && cue.item === item ? WORDS.cueLine : WORDS.cap}
+      {counting ? `. ${WORDS.cueLine}` : WORDS.cap}
     </p>
   )
 }

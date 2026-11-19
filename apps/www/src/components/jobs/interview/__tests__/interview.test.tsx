@@ -143,7 +143,10 @@ describe("the interview week's pages on the phone (IW8)", () => {
     expect(takeButton(card).textContent).toBe(
       TAKE_WORDS.button.counting(CUE_SECONDS)
     )
-    expect(card.textContent).toContain(WORDS.cueLine)
+    // The line under the script shows it too, where a retry replaces the button.
+    expect(card.textContent).toContain(
+      `${TAKE_WORDS.button.counting(CUE_SECONDS)}. ${WORDS.cueLine}`
+    )
     await settle(CUE_SECONDS * 1000)
     await settle(2_000)
     expect(document.querySelector('[data-script="epic-2931"]')).toBe(script)
