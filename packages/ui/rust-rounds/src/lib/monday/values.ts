@@ -13,13 +13,11 @@
  * point answered by a take of its own (RR24) takes its own reading in
  * `points`.
  *
- * Next week is a `some-ui.rust-week/2` week (RR25, RR29; C730): each ticket's
- * forks, each with its options and the constraints they cite, and its
- * academy. Only `some-ui.rust-monday-values/2` is read: the routine writes
- * no `/1` week now, and a values file lives only for its run.
+ * Next week is a `some-ui.rust-week/2` week (C730).
  */
 import { TextSchema } from "@rust-rounds/lib/formats"
 import {
+  ConstraintIdSchema,
   SlaRowSchema,
   TicketV2Schema,
   WEEK_ID,
@@ -27,18 +25,11 @@ import {
 import { MARKS, SOLO_LEVELS } from "@some-ui/video-render"
 import { z } from "zod"
 
-/**
- * `/2` (RR29): an essay ticket may carry the best fit of each fork
- * (`forks`), and next week is a `/2` week.
- */
 const VALUES_SCHEMA = "some-ui.rust-monday-values/2"
 
-/** As `formats/week`'s private `ConstraintIdSchema`. */
-const StatedIdSchema = z.string().regex(/^[SF][1-9]\d*$/)
-
 const TradeSchema = {
-  meets: z.array(StatedIdSchema),
-  breaks: z.array(StatedIdSchema),
+  meets: z.array(ConstraintIdSchema),
+  breaks: z.array(ConstraintIdSchema),
   /** Why, in a few words: the fork scene's last column. */
   because: TextSchema.optional(),
   /** Its program doesn't build: rustc's code, and why. */

@@ -21,16 +21,10 @@
  * (C103), every best, beside and deep dive scene within the essay's frame
  * (EF1, `essayFit`), every topic and seed covered by a ticket, and each
  * topic's concept named as the area table names it.
- *
- * A `/2` week's forks are held by `readWeek` (exactly one recommended
- * option, every cite stated) and by the essay's own fork rules
- * (`forkProblems`) when its best fit is written: an option's id and its
- * recommendation are restated from the week into the essay, so a week
- * `readWeek` accepts is one whose forks those rules can accept.
  */
 import type { Judged } from "@rust-rounds/lib/decay"
 import { chartOf, recordOf, roleAt } from "@rust-rounds/lib/decay"
-import type { RustcRun } from "@rust-rounds/lib/formats"
+import type { Expect, RustcRun } from "@rust-rounds/lib/formats"
 import { expectMatches } from "@rust-rounds/lib/formats"
 import {
   ReferenceSchema,
@@ -89,12 +83,37 @@ export const DIVE_WORDS_MOST = 5 * WORDS_A_MINUTE
 const ROUTINE_BY = "claude-routine"
 
 /**
- * The key of exercise `n` (from 1) of ticket `ticket`'s academy among the
- * runs `finish` is given: `TB-101/academy/1`. A ticket's own program is
- * keyed by its id alone, which never holds a `/`.
+ * Every program of a week's tickets that rustc runs, by the key `finish`
+ * reads its run by: a ticket's program by its id, and exercise n (from 1)
+ * of its academy's starter by `TB-101/academy/n`, as home records them.
  */
-export const starterKey = (ticket: string, n: number): string =>
-  `${ticket}/academy/${n}`
+export function programsOf(
+  tickets: ReadonlyArray<{
+    readonly id: string
+    readonly program: string
+    readonly expect: Expect
+    readonly academy: ReadonlyArray<{
+      readonly title: string
+      readonly starter: string
+      readonly expect: Expect
+    }>
+  }>
+): Array<{ key: string; what: string; program: string; expect: Expect }> {
+  return tickets.flatMap((ticket) => [
+    {
+      key: ticket.id,
+      what: `${ticket.id}'s program`,
+      program: ticket.program,
+      expect: ticket.expect,
+    },
+    ...ticket.academy.map((exercise, i) => ({
+      key: `${ticket.id}/academy/${i + 1}`,
+      what: `${ticket.id}'s exercise ${i + 1} ("${exercise.title}")`,
+      program: exercise.starter,
+      expect: exercise.expect,
+    })),
+  ])
+}
 
 /** A file to put in the mailbox's `brief` folder. */
 type BriefFile = { readonly name: string; readonly body: unknown }
@@ -554,17 +573,8 @@ function buildWeek(
     )
     return null
   }
-  for (const ticket of read.week.tickets) {
-    checkRun(`${ticket.id}'s program`, ticket.expect, runs[ticket.id], problems)
-    ticket.academy.forEach((exercise, i) =>
-      checkRun(
-        `${ticket.id}'s exercise ${i + 1} ("${exercise.title}")`,
-        exercise.expect,
-        runs[starterKey(ticket.id, i + 1)],
-        problems
-      )
-    )
-  }
+  for (const { key, what, expect } of programsOf(read.week.tickets))
+    checkRun(what, expect, runs[key], problems)
   const file = WeekV2Schema.parse(week)
   const oversize = oversizeWeek(file)
   if (oversize !== null) problems.push(`week: ${describeWeekProblem(oversize)}`)
@@ -574,7 +584,7 @@ function buildWeek(
 /** Whether rustc did with `what` what its `expect` says, as home records it. */
 function checkRun(
   what: string,
-  expect: Week["tickets"][number]["expect"],
+  expect: Expect,
   run: RustcRun | undefined,
   problems: Array<string>
 ): void {
@@ -622,8 +632,8 @@ export function finish({
   readonly history: History
   readonly values: unknown
   /**
-   * Each of next week's tickets' programs, run with rustc, by ticket id,
-   * and each academy starter, by `starterKey`.
+   * Each of next week's programs and academy starters, run with rustc, by
+   * `programsOf`'s keys.
    */
   readonly runs: Readonly<Record<string, RustcRun>>
 }): Finished {

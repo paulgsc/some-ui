@@ -74,7 +74,7 @@ export { WEEK_ID } from "./week-id"
 /** The week the routine writes: forks and an academy (RR25, RR29). */
 export const WEEK_SCHEMA = "some-ui.rust-week/2"
 
-/** The first week, of speak-to points, which the phone and home still read. */
+/** The first week, of speak-to points, which the phone and home read too. */
 export const WEEK_SCHEMA_V1 = "some-ui.rust-week/1"
 
 /**
@@ -169,7 +169,7 @@ export const TicketV1Schema = z.strictObject({
   concepts: conceptsOf,
 })
 
-const ConstraintIdSchema = z
+export const ConstraintIdSchema = z
   .string()
   .regex(
     constraintId("[SF]"),

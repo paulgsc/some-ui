@@ -136,9 +136,7 @@ with one ticket for each of the week's, by its id:
   screen; `answer`'s marks still give one per point, judged from the take of
   the whole ticket.
 - `forks`, for each fork of a `some-ui.rust-week/2` ticket that lists
-  options (RR29): the best fit, written only now, after the deadline. A
-  `some-ui.rust-week/1` ticket's speak-to points list none, so it takes no
-  `forks`. Each entry is
+  options (RR29): the best fit, written only now, after the deadline. Each entry is
   `{"fork","best","options","said"}`. `fork` is its place from 1.
   - `best` is the best decision: `{"option"}`, a listed option by its id, or
     `{"hidden"}`, one the agent didn't list:

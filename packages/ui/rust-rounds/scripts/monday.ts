@@ -11,7 +11,7 @@ import { parseArgs } from "node:util"
 import type { RustcRun } from "@rust-rounds/lib/formats"
 import type { Prepared } from "@rust-rounds/lib/monday/bundle"
 import { prepare } from "@rust-rounds/lib/monday/bundle"
-import { finish, starterKey } from "@rust-rounds/lib/monday/finish"
+import { finish, programsOf } from "@rust-rounds/lib/monday/finish"
 import { notesNamed } from "@rust-rounds/lib/monday/mailbox"
 import { indexWeeks, WeekRecordSchema } from "@rust-rounds/lib/monday/record"
 import type { Ran } from "@rust-rounds/lib/monday/rustc"
@@ -132,14 +132,7 @@ async function runPrograms(values: unknown): Promise<Record<string, RustcRun>> {
     fail(["rustc isn't installed: install a current stable rustc"])
   const toolchain = toolchainOf(version.stdout)
   const runs: Record<string, RustcRun> = {}
-  const programs = parsed.data.week.tickets.flatMap((ticket) => [
-    { key: ticket.id, program: ticket.program },
-    ...ticket.academy.map((exercise, i) => ({
-      key: starterKey(ticket.id, i + 1),
-      program: exercise.starter,
-    })),
-  ])
-  for (const { key, program } of programs) {
+  for (const { key, program } of programsOf(parsed.data.week.tickets)) {
     const dir = await mkdtemp(join(tmpdir(), "rust-monday-"))
     try {
       await writeFile(join(dir, "main.rs"), program)
