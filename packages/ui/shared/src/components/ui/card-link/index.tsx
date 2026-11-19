@@ -8,11 +8,11 @@ import { cn } from "../../../lib/utils"
  * A card that opens something (paulgsc/some-ui#3234): the one look every
  * card link on the phone takes, so a card you can tap looks like it can be
  * tapped (owner, 2026-11-18: "if a card is a button that goes somewhere, it
- * should look like a button"). It is raised, with a shadow in the theme's
- * colour, a subtle outline and a light tint, and it gives under a press; it
- * carries no glyph (owner, 2026-11-19: "good use of shadows, good use of
- * subtle outlines… We don't want that arrow thingy"). A card that opens
- * nothing keeps the plain `Card` look and none of this.
+ * should look like a button"), and never the loudest thing on the screen
+ * (owner, 2026-11-19: "why so much shadow?"). It is Material's elevated card:
+ * a hairline in the theme's ink, a low neutral shadow, and a state layer
+ * under a press; no glyph and no colour of its own (C643, C644). A card that
+ * opens nothing keeps the plain `Card` look and none of this.
  *
  * It draws through its child (`asChild`, as `Button` does): the router's own
  * link, with its typed path, or a `<button>` that opens a screen or sheet in
@@ -22,15 +22,15 @@ import { cn } from "../../../lib/utils"
 
 /** The look; only `CardLink` draws it. */
 const CARD_LINK_CLASS =
-  "flex w-full items-center gap-3 rounded-2xl border border-primary/35 bg-linear-to-b from-card to-brand/10 dark:to-primary/10 p-3 text-left text-card-foreground shadow-lg shadow-primary/20 dark:shadow-xl dark:shadow-primary/30 ring-1 ring-inset ring-white/10 transition-[translate,box-shadow,border-color] hover:border-primary/60 active:translate-y-px active:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none motion-reduce:active:translate-y-0"
+  "flex w-full items-center gap-3 rounded-2xl border border-foreground/30 bg-card p-3 text-left text-card-foreground shadow-sm shadow-black/10 transition-[background-color,box-shadow] active:bg-muted active:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none dark:shadow-black/40"
 
 /**
  * A card link filled with the brand's colour, for the one a page leads with
- * (today's question): solid brand on every theme (its `dark:` stop overrides
- * the card link's dark tint, which would fade it toward the page).
+ * (today's question): its fill is its emphasis, under the same neutral
+ * shadow as the rest.
  */
 const BRAND_CLASS =
-  "border-transparent from-brand to-brand dark:to-brand dark:shadow-brand/25 text-brand-foreground rounded-3xl p-4"
+  "border-transparent bg-brand text-brand-foreground active:bg-brand/90 rounded-3xl p-4"
 
 export type CardLinkProps = {
   /** Render through the one child, a link, merging the look onto it. */

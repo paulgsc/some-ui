@@ -9,9 +9,13 @@
  * must stand off the page by `OUTLINE`, and by `MARGIN` more than the plain
  * card's, so it never reads as the same card. The two numbers are where the
  * first look (an outline at 25%) failed three of six themes and the second
- * passed all six (C633). The look with no glyph (C642) keeps them with a
- * subtle 1px outline at 35%: Mochi, the closest, stands at 1.78:1 against a
+ * passed all six (C633). The quiet look (C644, a hairline at 30% of the
+ * theme's ink) keeps them: Mochi, the closest, stands at 1.69:1 against a
  * plain card's 1.23:1.
+ *
+ * And a ceiling (C643, C644), so the cue never becomes the loudest thing on
+ * the card: the card link's shadow carries no hue, and its outline stands
+ * off the page by less than its faintest words stand off the card.
  *
  * Run against a built phone page:
  *
@@ -30,6 +34,12 @@ const PAGE = servePhonePage()
 const OUTLINE = 1.6
 /** How much further it stands off than a plain card's outline. */
 const MARGIN = 0.4
+/**
+ * The ceiling (C643): how far a shadow's channels may differ, out of 255,
+ * and still count as neutral. A theme-coloured shadow is the glow the owner
+ * called loud.
+ */
+const NEUTRAL = 8
 
 type Rgb = readonly [number, number, number]
 
@@ -46,10 +56,19 @@ function contrast(a: Rgb, b: Rgb): number {
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
 }
 
-/** The page's ground, the card link's outline and a plain card's, as painted. */
-async function outlines(
-  page: Page
-): Promise<{ ground: Rgb; link: Rgb; plain: Rgb }> {
+/**
+ * The page's ground, the card link's outline and a plain card's, as painted;
+ * the card link's own surface, every line of its words on it, and how far
+ * its shadow's colour strays from grey.
+ */
+async function outlines(page: Page): Promise<{
+  ground: Rgb
+  link: Rgb
+  plain: Rgb
+  surface: Rgb
+  words: ReadonlyArray<Rgb>
+  hue: number
+}> {
   return page.evaluate(() => {
     const canvas = document.createElement("canvas")
     canvas.width = 1
@@ -83,10 +102,25 @@ async function outlines(
     const ground = groundOf(link.parentElement)
     // A border is painted over its element's own background: the card's.
     const card = getComputedStyle(plain).backgroundColor
+    const own = getComputedStyle(link).backgroundColor
+    const surface = [ground, card, own]
+    const hues = (
+      getComputedStyle(link).boxShadow.match(
+        /(?:oklch|oklab|rgba?|color|lab|lch)\([^)]*\)/g
+      ) ?? []
+    ).map((color) => {
+      const [r, g, b] = paint([color])
+      return Math.max(r, g, b) - Math.min(r, g, b)
+    })
     return {
       ground: paint([ground]),
       link: paint([ground, card, getComputedStyle(link).borderTopColor]),
       plain: paint([ground, card, getComputedStyle(plain).borderTopColor]),
+      surface: paint(surface),
+      words: [...link.querySelectorAll("span")]
+        .filter((span) => span.children.length === 0 && span.textContent.trim())
+        .map((span) => paint([...surface, getComputedStyle(span).color])),
+      hue: Math.max(0, ...hues),
     }
   })
 }
@@ -117,6 +151,32 @@ test.describe("a card that opens something stands out in every theme", () => {
       if (linked < OUTLINE || linked < flat + MARGIN) {
         failures.push(
           `${theme.id}: card link ${linked.toFixed(2)}:1, plain card ${flat.toFixed(2)}:1`
+        )
+      }
+    }
+    expect(failures, failures.join("\n")).toEqual([])
+  })
+
+  test("and it is never the loudest thing on the card", async ({ page }) => {
+    PAGE.expectBuilt()
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto(PAGE.url("interview"), { waitUntil: "load" })
+    await page.getByRole("link", { name: /^Today's question/ }).click()
+    await expect(page.getByText("What to cover")).toBeVisible()
+    await page.mouse.move(0, 0)
+    const failures: Array<string> = []
+    for (const theme of SESSION_THEMES) {
+      await page.evaluate((classes) => {
+        document.documentElement.className = classes.join(" ")
+      }, theme.boundary.classNames)
+      await page.waitForTimeout(300)
+      const { ground, link, surface, words, hue } = await outlines(page)
+      const outline = contrast(link, ground)
+      const faintest = Math.min(...words.map((ink) => contrast(ink, surface)))
+      if (hue > NEUTRAL) failures.push(`${theme.id}: its shadow is coloured`)
+      if (outline >= faintest) {
+        failures.push(
+          `${theme.id}: outline ${outline.toFixed(2)}:1, its faintest words ${faintest.toFixed(2)}:1`
         )
       }
     }

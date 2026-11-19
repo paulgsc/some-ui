@@ -22,7 +22,7 @@ describe("CardLink", () => {
     const link = screen.getByRole("link", { name: /^Questions/ })
     expect(link.getAttribute("href")).toBe("/questions")
     expect(link.querySelector("svg")).toBeNull()
-    expect(link.className).toContain("shadow-primary/20")
+    expect(link.className).toContain("border-foreground/30")
   })
 
   it("renders through its child, keeping the child's own link", () => {
@@ -38,7 +38,7 @@ describe("CardLink", () => {
     const [link] = links
     expect(link?.getAttribute("href")).toBe("/how")
     expect(link?.hasAttribute("data-router")).toBe(true)
-    expect(link?.className).toContain("shadow-primary/20")
+    expect(link?.className).toContain("border-foreground/30")
     expect(link?.className).toContain("mt-2")
     expect(link?.textContent).toBe("How a week goes")
   })
@@ -50,7 +50,7 @@ describe("CardLink", () => {
       </CardLink>
     )
     const link = screen.getByRole("link")
-    expect(link.className).toContain("from-brand")
+    expect(link.className).toContain("bg-brand")
     expect(link.className).toContain("text-brand-foreground")
   })
 
@@ -64,7 +64,7 @@ describe("CardLink", () => {
       </CardLink>
     )
     const button = screen.getByRole("button", { name: "Materials" })
-    expect(button.className).toContain("shadow-primary/20")
+    expect(button.className).toContain("border-foreground/30")
     button.click()
     expect(opened).toBe(true)
   })

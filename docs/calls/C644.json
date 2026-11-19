@@ -1,0 +1,18 @@
+{
+  "id": "C644",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/ui/shared/src/components/ui/card-link/index.tsx",
+    "apps/www/tests/ui-fit/card-link-fit.spec.ts"
+  ],
+  "chose": "Material 3's elevated card, the look three blind judges ranked first: a 1px hairline at 30% of the theme's ink (foreground, never primary), the card surface, a neutral level-1 shadow (black at 10%, 40% under a dark theme), and a state layer under a press. The brand card is a plain brand fill under the same shadow. card-link-fit keeps its floor (the outline at least 1.6:1 against the page and 0.4 over a plain card; Mochi is closest at 1.69:1 against 1.23:1) and gains a ceiling: the card link's shadow carries no hue (channels within 8/255), and its outline stands off the page by less than its faintest words stand off the card. The ceiling fails the glow it replaces in four of six themes.",
+  "options": [
+    "elevated: hairline and a neutral level-1 shadow",
+    "outlined: hairline only",
+    "tonal: hairline on the muted surface"
+  ],
+  "gray": "Each variant meets the floor and the ceiling; which reads best is a judgement. Three fresh-context judges, given only screenshots and the story, ranked elevated first (outlined a close second, too flat in dark rose; tonal muddy on the cream theme), and all three ranked the glow last.",
+  "undo": "Swap CARD_LINK_CLASS for the outlined or tonal variant; the floor and ceiling hold for either at a 30% hairline.",
+  "refs": ["#3234", "#3244"]
+}
