@@ -315,10 +315,15 @@ export const Script = ({
   // What the lines say, for the effect: a new array of the same lines each
   // render moves nothing.
   const text = lines.join("\n")
+  // Whether a take was being read at the last layout, so its end is seen.
+  const wasReading = useRef(reading)
   // The lit line is scrolled to the band: a measure of laid-out lines, so it
   // is read after layout, again when the window changes size, and when a take
-  // starts, wherever a hand left the script during the cue.
+  // starts, wherever a hand left the script during the cue. A take ending
+  // moves nothing (PB1): the script stays where the band, or a hand, left it.
   useLayoutEffect(() => {
+    const ended = wasReading.current && !reading
+    wasReading.current = reading
     const view = windowRef.current
     if (view === null) return undefined
     const place = (): void => {
@@ -326,7 +331,7 @@ export const Script = ({
       if (!(line instanceof HTMLElement)) return
       view.scrollTop = line.offsetTop - view.clientHeight * BAND_AT
     }
-    place()
+    if (!ended) place()
     window.addEventListener("resize", place)
     return (): void => window.removeEventListener("resize", place)
   }, [band.line, text, reading])
