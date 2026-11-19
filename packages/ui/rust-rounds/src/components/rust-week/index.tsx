@@ -194,7 +194,6 @@ const Brief = (
         </section>
       )}
       {flow !== null && props.opening !== null && (
-        // The opening comes first in the flow (#3269), so it is first here.
         <CardLink asChild>
           <button
             type="button"
@@ -396,7 +395,9 @@ const Review = (props: Parts & { held: HeldWeek }): JSX.Element => {
   const { machine, state, held } = props
   const needs = machine.missing(state)
   // What the send would hold, tickets home holds from the last one included.
-  const n = machine.bundleRecord(state, state.at).answers.length
+  // The opening's takes are answers too (#3269).
+  const record = machine.bundleRecord(state, state.at)
+  const n = record.answers.length + (record.opening?.length ?? 0)
   const notNear = state.reach === "near" ? null : WORDS.notNear[state.reach]
   const label = (id: string): string => itemLabel(held.week, id)
   // A ticket's own take, from before takes went point by point (RR24), is

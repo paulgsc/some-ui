@@ -5,7 +5,6 @@
 import type { PointFilter, PointOrder } from "@rust-rounds/lib/week-play/points"
 import {
   itemOf,
-  openingItem,
   openingOf,
   pointCounts,
   pointItem,
@@ -27,7 +26,6 @@ describe("the opening's questions (#3269)", () => {
       "opening:2",
       "QM-1",
     ])
-    expect(openingItem(3)).toBe("opening:3")
     expect(openingOf("opening:2")).toBe(2)
     for (const other of ["QM-1", "QM-1:2", "opening:0", "opening:12"]) {
       expect(openingOf(other)).toBeNull()

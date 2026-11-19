@@ -1,7 +1,7 @@
 /**
  * The week's opening on the phone (#3269): which take of each question is
- * in place, whatever home has said and whatever was said here; a take from
- * home playing; and the takes a week sent carries.
+ * in place, whatever home has said and whatever was said here, and the
+ * takes a week sent carries.
  */
 import { openingOfWeek } from "@rust-rounds/lib/opening"
 import { TALLOWBROOK_WEEK_FILE } from "@rust-rounds/lib/sample-week/tallowbrook"
@@ -9,15 +9,11 @@ import type {
   HomeOpening,
   OpeningAtHome,
   OpeningHere,
-  Playback,
-  PlaybackEvent,
 } from "@rust-rounds/lib/week-play/opening"
 import {
   inPlace,
-  NOT_PLAYING,
   OPENING_UNKNOWN,
   openingPlace,
-  stepPlayback,
 } from "@rust-rounds/lib/week-play/opening"
 import { openingItem } from "@rust-rounds/lib/week-play/points"
 import type { WeekSent } from "@rust-rounds/lib/week-play/spec"
@@ -84,50 +80,6 @@ describe("where a question's take stands", () => {
     // Home names a newer take than the one here: home's.
     const newer = { ...LAST_WEEK, recordedAt: "2026-11-19T08:00:00.000Z" }
     expect(openingPlace(1, 1, known(newer), HERE).kind).toBe("home")
-  })
-})
-
-describe("a take playing from home", () => {
-  const events: ReadonlyArray<PlaybackEvent> = [
-    { type: "play", take: "a" },
-    { type: "play", take: "b" },
-    { type: "answered", take: "a", found: true },
-    { type: "answered", take: "a", found: false },
-    { type: "answered", take: "b", found: true },
-    { type: "answered", take: "b", found: false },
-    { type: "ended", take: "a" },
-    { type: "ended", take: "b" },
-    { type: "stop" },
-  ]
-  const states: ReadonlyArray<Playback> = [
-    NOT_PLAYING,
-    { kind: "asking", take: "a" },
-    { kind: "playing", take: "a" },
-    { kind: "missed", take: "a" },
-  ]
-
-  it("never plays an answer to an ask no longer waiting, whatever came before", () => {
-    for (const state of states) {
-      for (const event of events) {
-        const next = stepPlayback(state, event)
-        if (event.type === "answered") {
-          const waiting = state.kind === "asking" && state.take === event.take
-          expect(next).toEqual(
-            waiting
-              ? { kind: event.found ? "playing" : "missed", take: event.take }
-              : state
-          )
-        }
-        if (event.type === "ended" && next !== state) {
-          expect(state).toEqual({ kind: "playing", take: event.take })
-          expect(next).toEqual(NOT_PLAYING)
-        }
-        if (event.type === "play") {
-          expect(next).toEqual({ kind: "asking", take: event.take })
-        }
-        if (event.type === "stop") expect(next).toEqual(NOT_PLAYING)
-      }
-    }
   })
 })
 

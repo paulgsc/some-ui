@@ -73,14 +73,12 @@ const HomeTake = ({
   place: Extract<OpeningPlace, { kind: "home" }>
   opening: OpeningRuntime
 }): JSX.Element => {
-  const { playback } = useSyncExternalStore(
-    opening.subscribe,
-    opening.getSnapshot
-  )
-  const mine = playback.kind !== "idle" && playback.take === place.take
+  const { play } = useSyncExternalStore(opening.subscribe, opening.getSnapshot)
+  const { playback } = play
+  const mine = playback.kind !== "quiet" && playback.id === place.take
   const playing = mine && playback.kind === "playing"
-  const asking = mine && playback.kind === "asking"
-  const missed = mine && playback.kind === "missed"
+  const asking = mine && playback.kind === "loading"
+  const missed = play.unplayable === place.take
   return (
     <section
       data-opening-take="home"
@@ -115,7 +113,7 @@ const HomeTake = ({
             label: OPENING.playAgain,
             onClick: () => opening.play(place.take),
           }}
-          onDismiss={opening.stop}
+          onDismiss={opening.forget}
         >
           {OPENING.missed}
         </Notice>
@@ -168,29 +166,22 @@ export const OpeningPage = (props: OpeningPageProps): JSX.Element => {
         onPause={opening.pause}
         onPace={opening.setPace}
       />
-      {!recording && place.kind === "home" && (
-        <HomeTake place={place} opening={opening} />
-      )}
-      {!recording && place.kind === "unknown" && (
-        <p
-          data-opening-take="unknown"
-          className="text-muted-foreground text-sm"
-        >
-          {OPENING.unknown}
-        </p>
-      )}
-      {!recording && place.kind === "none" && (
-        <p data-opening-take="none" className="text-muted-foreground text-sm">
-          {OPENING.none}
-        </p>
-      )}
-      {!recording && using && (
-        <Button
-          size="lg"
-          onClick={() => flow.dispatch({ type: "leave", how: "onward" })}
-        >
-          {OPENING.use}
-        </Button>
+      {!recording && (
+        // Room for home's take before home answers, so its arrival moves
+        // nothing below it (HS1).
+        <div className="flex min-h-28 flex-col justify-center">
+          {place.kind === "home" && (
+            <HomeTake place={place} opening={opening} />
+          )}
+          {(place.kind === "unknown" || place.kind === "none") && (
+            <p
+              data-opening-take={place.kind}
+              className="text-muted-foreground text-sm"
+            >
+              {place.kind === "unknown" ? OPENING.unknown : OPENING.none}
+            </p>
+          )}
+        </div>
       )}
       <BundleTake
         machine={machine}
@@ -205,10 +196,7 @@ export const OpeningPage = (props: OpeningPageProps): JSX.Element => {
           place.kind === "home"
             ? {
                 ...OPENING_TAKE_WORDS,
-                button: {
-                  ...OPENING_TAKE_WORDS.button,
-                  ready: OPENING.again,
-                },
+                button: { ...OPENING_TAKE_WORDS.button, ready: OPENING.again },
               }
             : OPENING_TAKE_WORDS
         }
@@ -219,12 +207,14 @@ export const OpeningPage = (props: OpeningPageProps): JSX.Element => {
       {!recording && place.kind === "here" && (
         <p className="text-muted-foreground text-xs">{OPENING.here}</p>
       )}
-      {!recording && !using && (
+      {!recording && (
+        // One way on, in one place: its words follow whether a take is in place.
         <Button
-          variant="ghost"
+          size="lg"
+          variant={using ? "default" : "ghost"}
           onClick={() => flow.dispatch({ type: "leave", how: "onward" })}
         >
-          {OPENING.notThisWeek}
+          {using ? OPENING.use : OPENING.notThisWeek}
         </Button>
       )}
     </>

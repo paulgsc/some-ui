@@ -15,11 +15,7 @@
  *   resolver plays it. One home's record already names is home's.
  * - **Nothing is let go here.** "Use this one" leaves home's take where it
  *   is; "Record again" adds a take, and the earlier stays on home.
- * - **One take plays at a time** (`stepPlayback`): asked of home, then
- *   playing, or missed when home couldn't give it now; a late answer to an
- *   earlier ask plays nothing.
  */
-import { assertNever } from "@some-ui/core-utils"
 import type { PatternTake } from "@some-ui/voice-capture"
 import { currentTakeOf } from "@some-ui/voice-capture"
 
@@ -126,53 +122,3 @@ export function openingPlace(
 /** Whether question `n`'s page has a take in place to use. */
 export const inPlace = (place: OpeningPlace): boolean =>
   place.kind === "here" || place.kind === "home"
-
-/** The take from home playing, or being asked for. */
-export type Playback =
-  | { readonly kind: "idle" }
-  | { readonly kind: "asking"; readonly take: string }
-  | { readonly kind: "playing"; readonly take: string }
-  /** Home couldn't give it now: the page says so, and offers Play again. */
-  | { readonly kind: "missed"; readonly take: string }
-
-export const NOT_PLAYING: Playback = { kind: "idle" }
-
-export type PlaybackEvent =
-  | { readonly type: "play"; readonly take: string }
-  /** Home answered the ask for `take`: its audio, or none. */
-  | {
-      readonly type: "answered"
-      readonly take: string
-      readonly found: boolean
-    }
-  | { readonly type: "ended"; readonly take: string }
-  | { readonly type: "stop" }
-
-/**
- * The next playback. An answer or an end for a take no longer asked for or
- * playing changes nothing, so a late one never plays over a newer ask.
- */
-export function stepPlayback(state: Playback, event: PlaybackEvent): Playback {
-  switch (event.type) {
-    case "play": {
-      return { kind: "asking", take: event.take }
-    }
-    case "answered": {
-      if (state.kind !== "asking" || state.take !== event.take) return state
-      return event.found
-        ? { kind: "playing", take: event.take }
-        : { kind: "missed", take: event.take }
-    }
-    case "ended": {
-      return state.kind === "playing" && state.take === event.take
-        ? NOT_PLAYING
-        : state
-    }
-    case "stop": {
-      return NOT_PLAYING
-    }
-    default: {
-      return assertNever(event)
-    }
-  }
-}

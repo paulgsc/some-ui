@@ -37,8 +37,8 @@ describe("home's record of a Rust Rounds week (RR30)", () => {
       )
     ).toEqual({
       sent: { kind: "sent", at: "2026-11-14T19:59:07.012Z" },
-      // A home before the opening plays none.
-      opening: { kind: "known", takes: [] },
+      // A home before the opening says nothing of it.
+      opening: { kind: "unknown" },
     })
     expect(readWeekRecord(ok({ closed: true, sent: null })).sent).toEqual({
       kind: "none",
@@ -60,6 +60,7 @@ describe("home's record of a Rust Rounds week (RR30)", () => {
           opening: [
             { ...take, ms: 24_000 },
             { ...take, n: 2, take: "note-q2" },
+            { ...take, n: 3, take: "note-q3", ms: null },
           ],
         })
       ).opening
@@ -68,7 +69,13 @@ describe("home's record of a Rust Rounds week (RR30)", () => {
       takes: [
         { ...take, ms: 24_000 },
         { ...take, n: 2, take: "note-q2", ms: null },
+        { ...take, n: 3, take: "note-q3", ms: null },
       ],
+    })
+    // A home at the opening's epoch with no take of any question.
+    expect(readWeekRecord(ok({ sent: null, opening: [] })).opening).toEqual({
+      kind: "known",
+      takes: [],
     })
     // An opening that doesn't read is unheard; what was sent still reads.
     expect(readWeekRecord(ok({ sent: null, opening: [{ n: "one" }] }))).toEqual(

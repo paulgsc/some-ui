@@ -18,11 +18,12 @@ import { atSend } from "@rust-rounds/lib/decisions"
 import type { HeldWeek } from "@rust-rounds/lib/weeks"
 import type { WorkPorts } from "@rust-rounds/lib/work-tracker/runtime"
 import type { KeyedStorage } from "@some-ui/core-utils"
-import { weekOpenNow } from "@some-ui/core-utils"
+import { assertNever, weekOpenNow } from "@some-ui/core-utils"
 import type { EngagementEvent } from "@some-ui/engagement"
 import type { Prompter } from "@some-ui/shared"
 import {
   DEFAULT_PACE_WPM,
+  heardOf,
   NO_PROMPTER,
   paceOf,
   stepPace,
@@ -36,13 +37,28 @@ import type {
   BundleTakes,
   HeardAnswer,
   Player,
+  PlaySlice,
+  PlayStep,
 } from "@some-ui/voice-capture"
-import { bundleRuntime, HEARD_FLOOR } from "@some-ui/voice-capture"
+import {
+  audioRead,
+  bundleRuntime,
+  played,
+  playEnded,
+  QUIET_PLAY,
+  stopped,
+} from "@some-ui/voice-capture"
 
 import type { FlowRuntime } from "./flow-runtime"
 import { createFlow } from "./flow-runtime"
-import type { HomeOpening, HomeWeekRecord, Playback } from "./opening"
-import { NOT_PLAYING, OPENING_UNKNOWN, stepPlayback, takeMs } from "./opening"
+import type { HomeOpening, HomeWeekRecord } from "./opening"
+import {
+  hereTake,
+  inPlace,
+  OPENING_UNKNOWN,
+  openingPlace,
+  takeMs,
+} from "./opening"
 import type { OnScreen, Open } from "./opens"
 import { stepOpens } from "./opens"
 import type { PasteRuntime } from "./paste"
@@ -96,11 +112,8 @@ export type RustWeekPorts = {
   /** Calls `listener` whenever what `homeHolds` answers may have changed. Returns the stop. */
   readonly onHomeHolds: (listener: () => void) => () => void
   /**
-   * What home's own record says of week `week` (RR30, #3269): what was sent,
-   * asked once each time a closed week opens, and the opening's takes home
-   * plays, asked once each time a week with an opening opens; never
-   * rejects. Without it, a closed week reads only what the link remembers,
-   * and the opening's questions say their take isn't known yet.
+   * Home's own record of week `week` (RR30; #3269, `./opening`), asked once
+   * each time a closed week, or one with an opening, opens; never rejects.
    */
   readonly homeRecord?: (week: string) => Promise<HomeWeekRecord>
   /** Milliseconds since the epoch. */
@@ -147,7 +160,8 @@ export type RustWeekPorts = {
 /** The opening's pages' state (#3269): home's record, a take playing from home, the band. */
 export type OpeningView = {
   readonly home: HomeOpening
-  readonly playback: Playback
+  /** A take of home's playing, asked for, or that home couldn't give. */
+  readonly play: PlaySlice
   /** The teleprompter band over the answer being read (`@some-ui/shared`). */
   readonly prompter: Prompter
   /** Words a minute the band moves at, as the owner set it. */
@@ -162,8 +176,10 @@ export type OpeningRuntime = {
   readonly subscribe: (listener: () => void) => () => void
   /** Plays take `take` from home, or stops it when it is playing. */
   readonly play: (take: string) => void
-  /** Stops what plays, and lets go of what home couldn't give. */
+  /** Stops what plays. */
   readonly stop: () => void
+  /** Lets go of the word that home couldn't give a take. */
+  readonly forget: () => void
   /** The band's Pause / Go on. */
   readonly pause: () => void
   /** The band's Slower / Faster, kept on this phone. */
@@ -261,8 +277,18 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
           const n = openingOf(ticket)
           if (n !== null) {
             return (
-              machine.answered(state, ticket) === "said" ||
-              opening?.homeHas(n) === true
+              opening !== null &&
+              inPlace(
+                openingPlace(
+                  n,
+                  opening.spec.version,
+                  opening.getSnapshot().home,
+                  hereTake(
+                    ports.takes.takes.getSnapshot(),
+                    ticketLine(week.id, ticket)
+                  )
+                )
+              )
             )
           }
           const forks =
@@ -420,6 +446,17 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
           : Promise.resolve()
       void asking.then(askSent)
       const stopOpening = opening?.attach() ?? ((): void => undefined)
+      // Leaving a question, by Use this one or a swipe, stops what plays.
+      let at = flow?.getSnapshot().at
+      const stopPaging =
+        flow === null || opening === null
+          ? (): void => undefined
+          : flow.subscribe(() => {
+              const now = flow.getSnapshot().at
+              if (now === at) return
+              at = now
+              opening.stop()
+            })
       // The flow and the takes on one ticket, and a take never moved:
       // - a take under way, or asked from the look over (Redo, "say it",
       //   which open the cards on another item), brings the flow to its
@@ -463,6 +500,7 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
       })
       const stopOpens = watchOpens()
       return (): void => {
+        stopPaging()
         stopOpening()
         stopFollow()
         stopOpens()
@@ -475,8 +513,6 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
 }
 
 type OpeningInner = OpeningRuntime & {
-  /** Whether home's record names a take for question `n`. */
-  readonly homeHas: (n: number) => boolean
   /** Home's record answered. */
   readonly heardHome: (home: HomeOpening) => void
   /** The screen is showing: the band follows the take under way. Returns the detach. */
@@ -485,9 +521,10 @@ type OpeningInner = OpeningRuntime & {
 
 /**
  * The opening's runtime: home's record of it, a take from home playing
- * (`./opening`'s `stepPlayback`), and the band over the answer read (the
- * shared teleprompter's `stepPrompter`, fed the level of the take under
- * way, as the interview week's is).
+ * (`@some-ui/voice-capture`'s home play), and the band over the answer read
+ * (the shared teleprompter, fed the level of the take under way). What
+ * plays from home stops once a take starts, so the old answer never plays
+ * into the new one.
  */
 function openingRuntime(
   spec: OpeningSpec,
@@ -497,7 +534,7 @@ function openingRuntime(
 ): OpeningInner {
   let view: OpeningView = {
     home: OPENING_UNKNOWN,
-    playback: NOT_PLAYING,
+    play: QUIET_PLAY,
     prompter: NO_PROMPTER,
     pace: paceOf(ports.pace?.read() ?? DEFAULT_PACE_WPM),
   }
@@ -514,68 +551,59 @@ function openingRuntime(
       totalOf(script.split("\n")),
     ])
   )
+  let playing: (() => void) | null = null
+  /** Puts a step of the home play in place, and runs what it asks. */
+  const run = (step: PlayStep<PlaySlice>): void => {
+    set({ ...view, play: step.state })
+    for (const effect of step.effects) {
+      switch (effect.type) {
+        case "readAudio": {
+          const asked =
+            ports.homeAudio === undefined || ports.player === undefined
+              ? Promise.resolve(null)
+              : ports.homeAudio(effect.id).catch(
+                  () =>
+                    // Ignored: audio home can't give now is missed, which the page says.
+                    null
+                )
+          void asked.then((audio) =>
+            run(audioRead(view.play, effect.play, audio))
+          )
+          break
+        }
+        case "startPlayback": {
+          if (ports.player === undefined) break
+          const started = ports.player.play(effect.audio)
+          playing = started.stop
+          void started.ended.then(() => {
+            if (playing === started.stop) playing = null
+            run(playEnded(view.play, effect.play))
+          })
+          break
+        }
+        case "stopPlayback": {
+          const stop = playing
+          playing = null
+          stop?.()
+          break
+        }
+        default: {
+          assertNever(effect)
+        }
+      }
+    }
+  }
+  const stop = (): void => run(stopped(view.play))
   const pattern = ports.takes.pattern
-  /** Moves the band on what the recorder last measured. */
+  /** Moves the band on what the recorder last measured; a take starting stops what plays. */
   const listen = (): void => {
-    const { take, answers } = pattern.getSnapshot()
-    const total = answers === null ? undefined : totals.get(answers)
+    const now = pattern.getSnapshot()
+    if (now.take.kind !== "idle") stop()
     const prompter = stepPrompter(
       view.prompter,
-      take.kind === "recording" && answers !== null && total !== undefined
-        ? {
-            type: "heard",
-            script: answers,
-            level: take.level,
-            floor: HEARD_FLOOR,
-            at: ports.now(),
-            total,
-            pace: view.pace,
-          }
-        : { type: "ended" }
+      heardOf(now, totals, ports.now(), view.pace)
     )
     if (prompter !== view.prompter) set({ ...view, prompter })
-  }
-  let playing: (() => void) | null = null
-  const stopPlaying = (): void => {
-    const stop = playing
-    playing = null
-    stop?.()
-  }
-  const move = (event: Parameters<typeof stepPlayback>[1]): void => {
-    const playback = stepPlayback(view.playback, event)
-    if (playback !== view.playback) set({ ...view, playback })
-  }
-  const play = async (take: string): Promise<void> => {
-    const now = view.playback
-    stopPlaying()
-    if (
-      (now.kind === "asking" || now.kind === "playing") &&
-      now.take === take
-    ) {
-      move({ type: "stop" })
-      return
-    }
-    move({ type: "play", take })
-    const audio =
-      ports.homeAudio === undefined || ports.player === undefined
-        ? null
-        : await ports.homeAudio(take).catch(
-            () =>
-              // Ignored: audio home can't give now is missed, which the page says.
-              null
-          )
-    const asked = view.playback
-    if (asked.kind !== "asking" || asked.take !== take) return
-    if (audio === null || ports.player === undefined) {
-      move({ type: "answered", take, found: false })
-      return
-    }
-    const started = ports.player.play(audio)
-    playing = started.stop
-    move({ type: "answered", take, found: true })
-    await started.ended
-    if (playing === started.stop) playing = null
-    move({ type: "ended", take })
   }
   return {
     spec,
@@ -587,11 +615,13 @@ function openingRuntime(
       }
     },
     play(take): void {
-      void play(take)
+      run(played(view.play, take))
     },
-    stop(): void {
-      stopPlaying()
-      move({ type: "stop" })
+    stop,
+    forget(): void {
+      if (view.play.unplayable !== null) {
+        set({ ...view, play: { ...view.play, unplayable: null } })
+      }
     },
     pause(): void {
       const prompter = stepPrompter(view.prompter, { type: "pause" })
@@ -602,20 +632,14 @@ function openingRuntime(
       ports.pace?.write(pace)
       set({ ...view, pace })
     },
-    homeHas: (n) =>
-      view.home.kind === "known" &&
-      view.home.takes.some(
-        (each) => each.n === n && each.version === spec.version
-      ),
     heardHome(home): void {
       set({ ...view, home })
     },
     attach(): () => void {
-      const stop = pattern.subscribe(listen)
+      const stopListening = pattern.subscribe(listen)
       return (): void => {
+        stopListening()
         stop()
-        stopPlaying()
-        move({ type: "stop" })
         set({
           ...view,
           prompter: stepPrompter(view.prompter, { type: "ended" }),

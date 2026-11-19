@@ -365,7 +365,6 @@ function weekSpec(
       ...sent.answers.map(({ take }) => take),
       ...(sent.opening ?? []).map(({ take }) => take),
     ],
-    // An opening take is named, so a new one alone is a change to send.
     carries: verdictLines,
     resends: true,
     closed: (_draft, at) => isClosed(week, at),

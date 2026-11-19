@@ -44,8 +44,6 @@ describe("the line of steps", () => {
       { ticket: "opening:3", step: "opening" },
       { ticket: "TB-101", step: "read" },
     ])
-    // The week opens on the first question until it is left.
-    expect(openAt(steps, [])).toBe(0)
   })
 
   it("has no academy step for a ticket with none, as a /1 week's", () => {

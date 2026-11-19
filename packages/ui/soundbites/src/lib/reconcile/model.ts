@@ -11,7 +11,7 @@
  * Rules that hold by structure:
  *
  * - **A read answers only the read asked last,** and a play only the play
- *   asked last (`../library/play`).
+ *   asked last (`@some-ui/voice-capture`'s home play).
  * - **One act at a time.** While home is told of one, no other is sent, so
  *   two taps can't race; its answer counts only for the act asked last.
  * - **A take leaves the list only once home kept the act,** said it has
@@ -19,14 +19,14 @@
  *   an act home didn't take leaves the take where it was, and says so. What plays stops when its take leaves.
  */
 import { assertNever } from "@some-ui/core-utils"
-import type { PlayEffect, PlaySlice } from "@soundbites/lib/library/play"
+import type { PlayEffect, PlaySlice } from "@some-ui/voice-capture"
 import {
   audioRead,
   played,
   playEnded,
-  QUIET,
+  QUIET_PLAY,
   stopped,
-} from "@soundbites/lib/library/play"
+} from "@some-ui/voice-capture"
 
 import type { TakeVerdict } from "./codes"
 
@@ -148,7 +148,7 @@ export type ReconcileStep = {
 export const INITIAL_RECONCILE: ReconcileState = {
   read: { kind: "reading" },
   seq: 0,
-  ...QUIET,
+  ...QUIET_PLAY,
   acting: null,
   acts: 0,
   said: null,

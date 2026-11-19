@@ -35,11 +35,9 @@ import {
  * without words, each time the week opens already sent). They also read
  * whether home holds a send of the week, from what the link last heard
  * (`homeHoldsWeekSend`, RR22), never asking home, and what home last said
- * of the work tracker's spans (`lib/home-link/rust-spans`, RR26). A closed
- * week asks home's own record what was sent (`askWeekRecord`, RR30), and a
- * week with an opening which take each question plays (#3269), once each
- * opening; a take of the opening home holds plays from home (`askAudio`,
- * MD8's read). They are handed in here, not by `lib/rust-rounds`:
+ * of the work tracker's spans (`lib/home-link/rust-spans`, RR26), home's
+ * own record of the week (`askWeekRecord`, RR30, #3269) and a take of the
+ * opening's audio from home (`askAudio`, MD8's read). They are handed in here, not by `lib/rust-rounds`:
  * `lib/home-link`'s voice lane imports that module, so it can't import the
  * link back.
  */

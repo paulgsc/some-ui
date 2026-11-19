@@ -707,10 +707,11 @@ describe("the week's opening (#3269)", () => {
     const homeAudio = vi.fn(() =>
       Promise.resolve(new Blob(["a"], { type: "audio/webm" }))
     )
+    const stopped = vi.fn()
     const play = vi.fn(
       (): Playback => ({
         ended: new Promise<void>(() => undefined),
-        stop: () => undefined,
+        stop: stopped,
       })
     )
     const phone: RustWeekPorts = {
@@ -754,7 +755,14 @@ describe("the week's opening (#3269)", () => {
       screen.getByRole("button", { name: OPENING.stop })
     ).toBeInTheDocument()
 
-    // Use this one: on to the next question, with nothing recorded.
+    // Recording again stops it first, so the old answer never plays into
+    // the new take; the take is let go, and nothing else changes.
+    fireEvent.click(takeButton(page()))
+    expect(stopped).toHaveBeenCalledTimes(1)
+    fireEvent.click(takeButton(page()))
+    await settle()
+
+    // Use this one: on to the next question.
     press(OPENING.use)
     expect(
       screen.getByRole("region", { name: OPENING.questionOf(2, 3) })

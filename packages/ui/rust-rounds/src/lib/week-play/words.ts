@@ -412,16 +412,15 @@ export const WEEK_WORDS = {
 } as const
 
 /**
- * A take of the opening's answer, said its way (#3269): the button records
- * "Record your answer" and ends with "Stop", and a take's Redo records it
- * again, keeping the earlier one.
+ * The take button of the opening's answer, said its way (#3269): it
+ * records "Record your answer" and ends with "Stop".
  */
 export const OPENING_TAKE_WORDS: TakeWords = {
   ...TAKE_WORDS,
   button: {
     ...TAKE_WORDS.button,
     ready: "Record your answer",
-    again: "Record again",
+    again: WEEK_WORDS.flow.opening.again,
     recording: "Stop",
   },
   buttonLabel: {
@@ -430,5 +429,4 @@ export const OPENING_TAKE_WORDS: TakeWords = {
     again: "Record your answer again",
     recording: "Stop, and keep it",
   },
-  redo: "Record again",
 }

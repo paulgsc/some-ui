@@ -23,6 +23,7 @@ import type { KeyedStorage } from "@some-ui/core-utils"
 import { weekOpenNow } from "@some-ui/core-utils"
 import type { Prompter } from "@some-ui/shared"
 import {
+  heardOf,
   NO_PROMPTER,
   paceOf,
   stepPace,
@@ -36,7 +37,7 @@ import type {
   BundleRuntime,
   BundleTakes,
 } from "@some-ui/voice-capture"
-import { bundleRuntime, HEARD_FLOOR, sendsAtHome } from "@some-ui/voice-capture"
+import { bundleRuntime, sendsAtHome } from "@some-ui/voice-capture"
 
 import type { Cue, CueEvent } from "./cue"
 import { NO_CUE, stepCue } from "./cue"
@@ -195,22 +196,10 @@ export function createInterviewWeek(
   )
   /** Moves the band on what the recorder last measured. */
   const listen = (): void => {
-    const { take, answers } = pattern.getSnapshot()
-    const total = answers === null ? undefined : totals.get(answers)
     prompter.set(
       stepPrompter(
         prompter.getSnapshot(),
-        take.kind === "recording" && answers !== null && total !== undefined
-          ? {
-              type: "heard",
-              script: answers,
-              level: take.level,
-              floor: HEARD_FLOOR,
-              at: ports.now(),
-              total,
-              pace: pace.getSnapshot(),
-            }
-          : { type: "ended" }
+        heardOf(pattern.getSnapshot(), totals, ports.now(), pace.getSnapshot())
       )
     )
   }

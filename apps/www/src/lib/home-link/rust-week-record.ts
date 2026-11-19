@@ -1,27 +1,20 @@
 /**
  * What home's own record of a Rust Rounds week says (paulgsc/server
- * `GET /rust-weeks/:id/record`), asked once each time a closed week opens
- * (RR30, the S21's w46: home held the week as final while the phone said its
- * send "didn't reach home") and each time a week with an opening opens
- * (#3269), through the link's `keep` (LA8), sending nothing of the phone's
- * but the week's id. What counted, and which take each of the opening's
- * questions plays, are home's to say: the link's memory of what home took
- * (`./sent`) is lost with a new pairing, as a phone's memory of its takes is
- * with a reinstall (#3281).
+ * `GET /rust-weeks/:id/record`): what was sent (RR30) and which take each of
+ * the opening's questions plays (#3269), asked through the link's `keep`
+ * (LA8), sending nothing of the phone's but the week's id. Why it is home's
+ * to say is `@some-ui/rust-rounds`' `lib/week-play/opening`.
  *
  * - `sent`: `{ at }`, home holds a send at `at`; `null`, none;
- * - `opening`: for each question, the take home plays, from this week or an
- *   earlier one; absent from a home before it, which plays none;
+ * - `opening`: for each question, the take home plays; a home before
+ *   contract epoch 25 sends none, and says nothing of it;
  * - anything else, an unreadable body, busy or no answer: nothing heard of
  *   either. An `opening` that doesn't read leaves only it unheard.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { readAs } from "@some-ui/core-utils"
-import type {
-  HomeOpening,
-  HomeWeekRecord,
-  HomeWeekSent,
-} from "@some-ui/rust-rounds"
+import type { HomeWeekRecord } from "@some-ui/rust-rounds"
+import { HOME_UNKNOWN, OPENING_UNKNOWN } from "@some-ui/rust-rounds"
 import { z } from "zod"
 
 import { homeLink } from "./index"
@@ -41,18 +34,13 @@ const Opening = z.object({
         recordedAt: z.string(),
         week: z.string(),
         version: z.number().int().positive(),
-        ms: z.number().nonnegative().optional(),
+        ms: z.number().nonnegative().nullish(),
       })
     )
     .optional(),
 })
 
-const SENT_UNKNOWN: HomeWeekSent = { kind: "unknown" }
-const OPENING_UNKNOWN: HomeOpening = { kind: "unknown" }
-const UNKNOWN: HomeWeekRecord = {
-  sent: SENT_UNKNOWN,
-  opening: OPENING_UNKNOWN,
-}
+const UNKNOWN: HomeWeekRecord = { sent: HOME_UNKNOWN, opening: OPENING_UNKNOWN }
 
 /** The read of week `week`'s record, as home takes it. */
 export const weekRecordPath = (week: string): string =>
@@ -70,16 +58,12 @@ export function readWeekRecord(answer: HomeAnswer): HomeWeekRecord {
         ? { kind: "none" }
         : { kind: "sent", at: read.sent.at },
     opening:
-      opening === null
+      opening?.opening === undefined
         ? OPENING_UNKNOWN
         : {
             kind: "known",
-            takes: (opening.opening ?? []).map((each) => ({
-              n: each.n,
-              take: each.take,
-              recordedAt: each.recordedAt,
-              week: each.week,
-              version: each.version,
+            takes: opening.opening.map((each) => ({
+              ...each,
               ms: each.ms ?? null,
             })),
           },

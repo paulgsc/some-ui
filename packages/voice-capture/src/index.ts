@@ -8,6 +8,14 @@ export type { StorageRoom } from "./lib/room"
 export type { TakeOutcome } from "./lib/take-outcomes"
 export { setTakeOutcomes } from "./lib/take-outcomes"
 export { claimedRoom, setStorageRoom, withRoom } from "./lib/room"
+export type { PlayEffect, PlaySlice, PlayStep } from "./lib/home-play"
+export {
+  audioRead,
+  played,
+  playEnded,
+  QUIET_PLAY,
+  stopped,
+} from "./lib/home-play"
 export type { Playback, Player, WatchPage } from "./lib/player"
 export { audioPlayer, elementPlayer } from "./lib/player"
 export type {
