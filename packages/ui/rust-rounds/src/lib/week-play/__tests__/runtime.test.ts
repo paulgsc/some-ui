@@ -519,27 +519,25 @@ describe("a take per point (RR24)", () => {
 })
 
 /**
- * The flow and the takes stay on one ticket (RR25): the flow moves the
- * takes, and where the takes land on another ticket from the look over,
- * the flow goes to that ticket's voice, so a take under way is never
- * moved and each opening told names the ticket on screen.
+ * The flow and the takes stay on one ticket (RR25), and a take is never
+ * moved: the flow moves the takes; a take asked from the look over brings
+ * the flow to its ticket's voice; Back from the look over, or a take's
+ * Later, brings the takes back to where the flow is.
  */
 describe("the flow and the takes on one ticket", () => {
   const [first = "", second = ""] = QUILLMOSS_WEEK.tickets.map(({ id }) => id)
-  const onScreen = (
-    on: Phone
-  ): { flow: string | undefined; takes: string | undefined } => {
+  const onScreen = (on: Phone): { flow: string; takes: string | undefined } => {
     const flow = on.week.flow?.getSnapshot()
+    const step = flow?.steps[flow.at]
     const state = on.week.bundle.getSnapshot()
     return {
-      flow: flow?.steps[flow.at]?.ticket,
+      flow: `${step?.ticket ?? ""} ${step?.step ?? ""}`,
       takes: on.week.machine.spec.items[state.index],
     }
   }
-
-  it("brings the flow to the takes' ticket, back from the look over", async () => {
+  /** The first ticket gone through: the week opens on the second's read. */
+  const openedOnSecond = (): KeyedStorage => {
     const storage = inMemoryStorage()
-    // The first ticket gone through: the week opens on the second.
     weekMarks(storage).keep(() =>
       (["read", "voice"] as const).map((step) => ({
         week: QUILLMOSS_WEEK.id,
@@ -549,31 +547,53 @@ describe("the flow and the takes on one ticket", () => {
         at: "2026-11-10T09:00:00Z",
       }))
     )
-    const on = phone(storage, onConfirm(), { perPoint: true })
+    return storage
+  }
+
+  it("brings the takes to the flow's ticket, back from a look over opened on the brief", async () => {
+    const on = phone(openedOnSecond(), onConfirm(), { perPoint: true })
     await pass()
-    expect(onScreen(on).flow).toBe(second)
+    expect(onScreen(on).flow).toBe(`${second} read`)
     on.week.bundle.dispatch({ type: "review" })
     on.week.bundle.dispatch({ type: "back" })
     expect(on.week.bundle.getSnapshot().screen).toBe("cards")
-    // The takes where the look over left them, the ticket's own item,
-    // which opens its first point not said; the flow on that ticket.
-    expect(onScreen(on)).toEqual({ flow: first, takes: first })
+    expect(onScreen(on)).toEqual({
+      flow: `${second} read`,
+      takes: `${second}:1`,
+    })
     on.detach()
   })
 
-  it("records a Redo from the look over where it was asked, the flow beside it", async () => {
+  it("records a take asked from the look over where it was asked, the flow at its voice", async () => {
+    for (const [from, item] of [
+      [first, `${second}:2`],
+      [second, `${second}:2`],
+    ] as const) {
+      const on = phone(inMemoryStorage(), onConfirm(), { perPoint: true })
+      // On the flow's read, from the brief.
+      on.week.flow?.dispatch({ type: "openTicket", ticket: from })
+      on.week.bundle.dispatch({ type: "review" })
+      on.week.bundle.dispatch({ type: "tap", item })
+      await pass(2_000)
+      expect(on.week.bundle.getSnapshot().busy).toBe(true)
+      expect(onScreen(on)).toEqual({ flow: `${second} voice`, takes: item })
+      on.week.bundle.dispatch({ type: "tap", item })
+      await pass()
+      on.detach()
+    }
+  })
+
+  it("keeps the takes on the flow's ticket after a Later at its last point", async () => {
     const on = phone(inMemoryStorage(), onConfirm(), { perPoint: true })
+    const last = `${first}:${QUILLMOSS_WEEK.tickets[0]?.forks.length ?? 0}`
     on.week.flow?.dispatch({ type: "openTicket", ticket: first })
-    await say(on, `${second}:2`)
-    expect(onScreen(on)).toEqual({ flow: second, takes: `${second}:2` })
-    on.week.flow?.dispatch({ type: "openTicket", ticket: first })
-    on.week.bundle.dispatch({ type: "review" })
-    on.week.bundle.dispatch({ type: "tap", item: `${second}:2` })
-    await pass(2_000)
-    expect(on.week.bundle.getSnapshot().busy).toBe(true)
-    expect(onScreen(on)).toEqual({ flow: second, takes: `${second}:2` })
-    on.week.bundle.dispatch({ type: "tap", item: `${second}:2` })
-    await pass()
+    on.week.flow?.dispatch({ type: "go", index: 1 })
+    on.week.bundle.dispatch({
+      type: "go",
+      index: on.week.machine.spec.items.indexOf(last),
+    })
+    on.week.bundle.dispatch({ type: "later", item: last })
+    expect(onScreen(on)).toEqual({ flow: `${first} voice`, takes: last })
     on.detach()
   })
 })

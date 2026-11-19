@@ -273,20 +273,41 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
       const stopHome = bundle.subscribe(() => lookHome())
       const stopHeld = ports.onHomeHolds(() => lookHome(true))
       void askSent()
-      // Where the takes land on the cards on a ticket the flow isn't on
-      // (a Redo or "say it" from the look over, Back from it, a take's
-      // Later), the flow goes to that ticket's voice: the take under way is
-      // never moved. Before the openings are told, so they read one ticket.
+      // The flow and the takes on one ticket, and a take never moved:
+      // - a take under way, or asked from the look over (Redo, "say it",
+      //   which open the cards on another item), brings the flow to its
+      //   ticket's voice;
+      // - Back from the look over, or a take's Later that moved the takes
+      //   to another ticket, brings the takes back to the item the flow's
+      //   ticket was on, else its first.
+      let before = bundle.getSnapshot()
       const stopFollow = bundle.subscribe(() => {
+        const was = before
         const state = bundle.getSnapshot()
+        before = state
         if (flow === null || state.screen !== "cards") return
-        const ticket = itemOf(machine.spec.items[state.index] ?? "").ticket
         const { steps, at } = flow.getSnapshot()
-        if (steps[at]?.ticket === ticket) return
-        const voice = steps.findIndex(
-          (each) => each.ticket === ticket && each.step === "voice"
-        )
-        if (voice !== -1) flow.dispatch({ type: "go", index: voice })
+        const step = steps[at]
+        if (step === undefined) return
+        const ticket = itemOf(machine.spec.items[state.index] ?? "").ticket
+        // A take under way is on screen at its voice, wherever it was asked.
+        const asked =
+          state.busy || (was.screen === "review" && was.index !== state.index)
+        if (asked) {
+          if (step.ticket === ticket && step.step === "voice") return
+          const voice = steps.findIndex(
+            (each) => each.ticket === ticket && each.step === "voice"
+          )
+          if (voice !== -1) flow.dispatch({ type: "go", index: voice })
+          return
+        }
+        if (step.ticket === ticket) return
+        const left = itemOf(machine.spec.items[was.index] ?? "").ticket
+        if (was.screen === "cards" && left === step.ticket) {
+          bundle.dispatch({ type: "go", index: was.index })
+        } else {
+          follow(step.ticket)
+        }
       })
       const stopOpens = watchOpens()
       return (): void => {
