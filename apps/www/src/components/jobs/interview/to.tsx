@@ -6,11 +6,12 @@
  */
 import type { JSX, ReactNode } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import { CardLink, CardLinkBody } from "@some-ui/shared"
-import { Link, useNavigate } from "@tanstack/react-router"
+import type { LinkOptions } from "@tanstack/react-router"
+import { Link, linkOptions, useNavigate } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
 import type { SayRung } from "@/lib/interview-week/ladder"
+import { CardRoute } from "@/components/card-route"
 
 /** A page of the week. */
 export type Page =
@@ -26,75 +27,80 @@ export type Page =
       readonly rung: SayRung
     }
 
-/** A link to `to`, carrying `className`. */
-export const To = ({
-  to,
-  className,
-  children,
-}: {
-  to: Page
-  className?: string
-  children: ReactNode
-}): JSX.Element => {
-  if (!hasAudience("apk")) return <span className={className}>{children}</span>
-  const link = { className, children }
+/** Where a page of the week is: the one place its route is named. */
+function routeOf(to: Page): LinkOptions {
   switch (to.page) {
     case "interview": {
-      return <Link to="/jobs/interview" {...link} />
+      return linkOptions({ to: "/jobs/interview" })
     }
     case "reads": {
-      return <Link to="/jobs/interview/reads" {...link} />
+      return linkOptions({ to: "/jobs/interview/reads" })
     }
     case "read": {
-      return (
-        <Link
-          to="/jobs/interview/reads/$card"
-          params={{ card: to.card }}
-          {...link}
-        />
-      )
+      return linkOptions({
+        to: "/jobs/interview/reads/$card",
+        params: { card: to.card },
+      })
     }
     case "question": {
-      return (
-        <Link
-          to="/jobs/interview/q/$question"
-          params={{ question: to.question }}
-          {...link}
-        />
-      )
+      return linkOptions({
+        to: "/jobs/interview/q/$question",
+        params: { question: to.question },
+      })
     }
     case "study": {
-      return (
-        <Link
-          to="/jobs/interview/q/$question/study"
-          params={{ question: to.question }}
-          {...link}
-        />
-      )
+      return linkOptions({
+        to: "/jobs/interview/q/$question/study",
+        params: { question: to.question },
+      })
     }
     case "aloud": {
-      return (
-        <Link
-          to="/jobs/interview/q/$question/aloud"
-          params={{ question: to.question }}
-          {...link}
-        />
-      )
+      return linkOptions({
+        to: "/jobs/interview/q/$question/aloud",
+        params: { question: to.question },
+      })
     }
     case "say": {
-      return (
-        <Link
-          to="/jobs/interview/q/$question/say"
-          params={{ question: to.question }}
-          search={{ rung: to.rung }}
-          {...link}
-        />
-      )
+      return linkOptions({
+        to: "/jobs/interview/q/$question/say",
+        params: { question: to.question },
+        search: { rung: to.rung },
+      })
     }
     default: {
       return assertNever(to)
     }
   }
+}
+
+/**
+ * A link to `to`, carrying `className`. With `card`, it is a card that opens
+ * something (`CardRoute`, #3234), its words stacked and then the chevron;
+ * `"brand"` for the card a page leads with. Where the build carries no pages
+ * to open, the words stay plain: a card that opens nothing never takes the
+ * card link's look (C630).
+ */
+export const To = ({
+  to,
+  card,
+  className,
+  children,
+}: {
+  to: Page
+  card?: "card" | "brand"
+  className?: string
+  children: ReactNode
+}): JSX.Element => {
+  if (!hasAudience("apk")) return <span className={className}>{children}</span>
+  return card === undefined ? (
+    <Link {...routeOf(to)} className={className}>
+      {children}
+    </Link>
+  ) : (
+    <CardRoute {...routeOf(to)} tone={card} className={className}>
+      {children}
+    </CardRoute>
+  )
 }
 
 /** Opens a question's page, or a read's. */
@@ -104,41 +110,6 @@ export function useOpenItem(): (
   const navigate = useNavigate()
   return (to) => {
     if (!hasAudience("apk")) return
-    void (to.page === "question"
-      ? navigate({
-          to: "/jobs/interview/q/$question",
-          params: { question: to.question },
-        })
-      : navigate({
-          to: "/jobs/interview/reads/$card",
-          params: { card: to.card },
-        }))
+    void navigate(routeOf(to))
   }
 }
-
-/**
- * A link to a page of the week, a question or a read, as a card that opens
- * something (`CardLink`, #3234): its words stacked, then the chevron.
- */
-export const CardTo = ({
-  to,
-  tone,
-  className,
-  children,
-}: {
-  to: Page
-  tone?: "card" | "brand"
-  className?: string
-  children: ReactNode
-}): JSX.Element =>
-  // Where the build carries no pages to open, the words stay plain: a card
-  // that opens nothing never takes the card link's look (C630).
-  hasAudience("apk") ? (
-    <CardLink asChild tone={tone} className={className}>
-      <To to={to}>
-        <CardLinkBody>{children}</CardLinkBody>
-      </To>
-    </CardLink>
-  ) : (
-    <span className={className}>{children}</span>
-  )

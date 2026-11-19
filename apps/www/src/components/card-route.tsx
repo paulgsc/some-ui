@@ -1,5 +1,6 @@
 import type { AnchorHTMLAttributes } from "react"
 import { forwardRef } from "react"
+import type { CardLinkProps } from "@some-ui/shared"
 import { CardLink, CardLinkBody } from "@some-ui/shared"
 import { createLink } from "@tanstack/react-router"
 
@@ -12,7 +13,7 @@ import { createLink } from "@tanstack/react-router"
  */
 const CardAnchor = forwardRef<
   HTMLAnchorElement,
-  AnchorHTMLAttributes<HTMLAnchorElement>
+  AnchorHTMLAttributes<HTMLAnchorElement> & Pick<CardLinkProps, "tone">
 >(({ children, ...props }, ref) => (
   <CardLink ref={ref} {...props}>
     <CardLinkBody>{children}</CardLinkBody>
