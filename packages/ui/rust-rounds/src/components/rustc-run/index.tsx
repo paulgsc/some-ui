@@ -5,10 +5,8 @@
  * `silent` says a program that compiled with nothing from rustc, where a
  * screen says so.
  *
- * A compile error with rustc's JSON is laid out in rustc's own words, order
- * and colours, wrapping to the phone, with rustc's printout folded beneath
- * it (RR23, the owner's call C650); one from a home older than RR23 shows
- * the printout alone. `lib/rustc-view` decides what each shows.
+ * A compile error is laid out as the owner's call C650 says (RR23);
+ * `lib/rustc-view` decides what is shown.
  */
 import type { JSX, ReactNode } from "react"
 import type { Diagnostic, RustcRun } from "@rust-rounds/lib/formats"
@@ -23,12 +21,26 @@ import {
   diagnosticView,
   printedLines,
   RUSTC_GLYPHS,
-  tickedRuns,
+  toneOfLevel,
 } from "@rust-rounds/lib/rustc-view"
 import { cn } from "@some-ui/core-utils"
-import { CodeCard } from "@some-ui/shared"
+import { CodeCard, codeSurface } from "@some-ui/shared"
 import type { Appearance } from "@some-ui/styles/theme"
-import { appearanceClassName } from "@some-ui/styles/theme"
+import { codeSpans } from "@some-ui/video-render"
+
+/** Printed text under its label. */
+const Labelled = ({
+  label,
+  children,
+}: {
+  label: string
+  children: ReactNode
+}): JSX.Element => (
+  <section className="flex min-w-0 flex-col gap-1">
+    <h3 className="text-muted-foreground text-xs font-semibold">{label}</h3>
+    {children}
+  </section>
+)
 
 /** The program's output: kept whole, never wrapped, scrolled sideways. */
 const Printed = ({
@@ -38,15 +50,14 @@ const Printed = ({
   label: string
   text: string
 }): JSX.Element => (
-  <section className="flex min-w-0 flex-col gap-1">
-    <h3 className="text-muted-foreground text-xs font-semibold">{label}</h3>
+  <Labelled label={label}>
     <pre
       data-scroll-intent="code-display"
       className="bg-muted/40 m-0 min-w-0 overflow-x-auto rounded-md p-3 font-mono text-xs leading-relaxed whitespace-pre"
     >
       {text}
     </pre>
-  </section>
+  </Labelled>
 )
 
 /** A terminal's colours, in the semantic tokens (the `code` appearance's, on the cards). */
@@ -64,20 +75,9 @@ const PRINTED_TONE: Readonly<Record<PrintedTone, string | undefined>> = {
   plain: undefined,
 }
 
-/** The colour of a level's word, as rustc colours it. */
-const LEVEL_CLASS: Readonly<Record<string, string>> = {
-  error: "text-destructive",
-  warning: "text-accent",
-  note: "text-accent",
-  help: "text-primary",
-}
-
-/** The surface rustc's own text shares with the program's card, in the host's appearance. */
-const surface = (appearance: Appearance): string =>
-  cn(
-    appearanceClassName(appearance),
-    "border-border bg-background text-foreground m-0 min-w-0 rounded-md border font-mono"
-  )
+/** The colour of a level's word (`error`, `note:`), as rustc colours it. */
+const levelClass = (level: string): string | undefined =>
+  PRINTED_TONE[toneOfLevel(level)]
 
 /** rustc's printout exactly as printed, coloured as a terminal colours it. */
 const Printout = ({
@@ -87,7 +87,7 @@ const Printout = ({
   text: string
   appearance: Appearance
 }): JSX.Element => (
-  <figure className={cn(surface(appearance), "overflow-hidden")}>
+  <figure className={cn(codeSurface(appearance), "overflow-hidden")}>
     <pre
       data-scroll-intent="code-display"
       className="m-0 overflow-x-auto p-3 text-xs leading-relaxed whitespace-pre"
@@ -112,14 +112,14 @@ const Printout = ({
 /** rustc's words, its backticked names in the code colour, ticks kept. */
 const Said = ({ text }: { text: string }): JSX.Element => (
   <>
-    {tickedRuns(text).map((run, at) =>
-      run.ticked ? (
+    {codeSpans(text).map((span, at) =>
+      span.code ? (
         // eslint-disable-next-line react/no-array-index-key
         <span key={at} className="text-accent">
-          {run.text}
+          `{span.text}`
         </span>
       ) : (
-        run.text
+        span.text
       )
     )}
   </>
@@ -153,7 +153,7 @@ const Location = ({ location }: { location: string }): JSX.Element => (
 const Marks = ({ marks }: { marks: ReadonlyArray<Mark> }): JSX.Element => (
   <>
     {marks.map((mark, at) => {
-      const tone = mark.primary ? "text-destructive" : "text-primary"
+      const tone = PRINTED_TONE[mark.primary ? "primary" : "secondary"]
       return (
         // eslint-disable-next-line react/no-array-index-key
         <div key={at} data-rustc-mark="" className="flex min-w-0 flex-col">
@@ -191,9 +191,7 @@ const Child = ({
       {child.spanless && (
         <span className="text-muted-foreground">{RUSTC_GLYPHS.spanless} </span>
       )}
-      <span className={cn("font-bold", LEVEL_CLASS[child.level])}>
-        {child.level}:
-      </span>{" "}
+      <span className={levelClass(child.level)}>{child.level}:</span>{" "}
       <Said text={child.message} />
     </Line>
     {child.location !== null && <Location location={child.location} />}
@@ -213,7 +211,7 @@ const Child = ({
       // eslint-disable-next-line react/no-array-index-key
       <div key={at} className="flex min-w-0 flex-col">
         <Location location={loose.location} />
-        <Line className="text-primary">
+        <Line className={PRINTED_TONE.suggestion}>
           {RUSTC_GLYPHS.inserted} {loose.replacement}
         </Line>
       </div>
@@ -238,7 +236,7 @@ const OneDiagnostic = ({
   return (
     <section data-rustc-diagnostic="" className="flex min-w-0 flex-col gap-0.5">
       <Line className="font-bold">
-        <span className={LEVEL_CLASS[view.level]}>{view.head}</span>:{" "}
+        <span className={levelClass(view.level)}>{view.head}</span>:{" "}
         <Said text={view.message} />
       </Line>
       {view.location !== null && <Location location={view.location} />}
@@ -264,7 +262,7 @@ const Diagnostics = ({
   <figure
     aria-label={WORDS.rustcSaid}
     className={cn(
-      surface(appearance),
+      codeSurface(appearance),
       "flex flex-col gap-3 p-3 text-[0.8125rem] leading-normal"
     )}
   >
@@ -284,10 +282,9 @@ const PrintoutSection = ({
   text: string
   appearance: Appearance
 }): JSX.Element => (
-  <section className="flex min-w-0 flex-col gap-1">
-    <h3 className="text-muted-foreground text-xs font-semibold">{label}</h3>
+  <Labelled label={label}>
     <Printout text={text} appearance={appearance} />
-  </section>
+  </Labelled>
 )
 
 const CompileError = ({

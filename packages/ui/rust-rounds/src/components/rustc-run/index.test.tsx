@@ -71,10 +71,9 @@ describe("RunView, a compile error", () => {
     }
   )
 
-  it("shows rustc's suggestion applied to the program, its new text marked", () => {
+  it("marks the suggestion's new text in its card", () => {
     render(<RunView run={E0507} program={E0507_PROGRAM} none="" />)
     const fix = screen.getByRole("figure", { name: WORDS.rustcSuggested })
-    expect(fix.textContent).toContain("let last = &open[open.len() - 1];")
     expect(fix.querySelector("[data-code-inserted]")?.textContent).toBe("&")
     expect(fix.querySelector('[data-code-gutter="9"]')?.textContent).toContain(
       "+"

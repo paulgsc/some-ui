@@ -9,7 +9,6 @@ import {
   applySuggestions,
   diagnosticView,
   printedLines,
-  tickedRuns,
 } from "@rust-rounds/lib/rustc-view"
 import {
   E0382,
@@ -134,9 +133,7 @@ describe("diagnosticView", () => {
       expect(view).toHaveLength(diagnostics.length)
       view.forEach((one, at) => {
         const diagnostic = diagnostics[at]!
-        expect(one.kind === "bare" ? one.message : one.message).toBe(
-          diagnostic.message
-        )
+        expect(one.message).toBe(diagnostic.message)
         if (one.kind === "bare") return
         const labels = (spans: ReadonlyArray<DiagnosticSpan>): Array<string> =>
           spans
@@ -211,6 +208,15 @@ describe("applySuggestions", () => {
 
 describe("printedLines", () => {
   it.each(Object.entries(RUNS))(
+    "%s's diagnostics join to its printout, as home records them",
+    (_, run) => {
+      expect(
+        (run.diagnostics ?? []).map((one) => one.rendered ?? "").join("")
+      ).toBe(run.stderr)
+    }
+  )
+
+  it.each(Object.entries(RUNS))(
     "keeps %s's printout whole, character for character",
     (_, run) => {
       const joined = printedLines(run.stderr)
@@ -258,21 +264,5 @@ describe("printedLines", () => {
       ["help", "help:"],
       ["plain", "the trait `SliceIndex<str>` is not implemented for `usize`"],
     ])
-  })
-})
-
-describe("tickedRuns", () => {
-  it("splits at backticked names and gives the message back whole", () => {
-    const message = "cannot move out of index of `Vec<Ride>` here"
-    expect(tickedRuns(message)).toEqual([
-      { text: "cannot move out of index of ", ticked: false },
-      { text: "`Vec<Ride>`", ticked: true },
-      { text: " here", ticked: false },
-    ])
-    expect(
-      tickedRuns("`a` and `b`")
-        .map((run) => run.text)
-        .join("")
-    ).toBe("`a` and `b`")
   })
 })

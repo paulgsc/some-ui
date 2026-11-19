@@ -3,20 +3,11 @@
  * `components/rustc-run` only paints this, so what it shows is decided and
  * tested here without a DOM.
  *
- * Two readings of one compile error, both in rustc's own words:
- *
- * - `diagnosticView`: every diagnostic of rustc's JSON, in its order, laid
- *   out to wrap on a phone (the owner's call, `docs/calls/C650.json`). Each
- *   keeps rustc's heading (`error[E0507]: …`), its `-->` location, every
- *   labelled span by its line (`^` primary, `-` secondary), every child as
- *   `note:` or `help:` (`= note:` with no span), and a suggestion as the
- *   program's own lines with the suggestion applied. Nothing is reworded or
- *   left out: `diagnosticView`'s tests hold that every child and labelled
- *   span of the JSON is in the view.
- * - `printedLines`: rustc's printout, unchanged, in runs a terminal would
- *   colour: the level words, the gutter, the markers under a span and their
- *   labels. Source lines inside it stay plain: the program's own code card
- *   is the one highlighter.
+ * Two readings of one compile error, both in rustc's words (the owner's call
+ * C650): `diagnosticView`, every diagnostic of rustc's JSON in its order,
+ * laid out to wrap, nothing left out; and `printedLines`, rustc's printout
+ * unchanged, in runs a terminal would colour (its source lines stay plain:
+ * the program's code card is the one highlighter).
  */
 import type {
   Diagnostic,
@@ -200,7 +191,6 @@ export function applySuggestions(
   for (const range of newRanges) {
     const start = placeOf(range.from)
     const end = placeOf(range.to)
-    changed.add(start.line)
     for (let line = start.line; line <= end.line; line += 1) changed.add(line)
     if (range.to > range.from) {
       inserted.push({
@@ -306,7 +296,9 @@ const MARKER_TONE: Readonly<Record<string, PrintedTone>> = {
   "~": "suggestion",
 }
 
-const toneOfLevel = (level: string): PrintedTone => LEVEL_TONE[level] ?? "plain"
+/** The tone of a level's word: `error`, `note`, … */
+export const toneOfLevel = (level: string): PrintedTone =>
+  LEVEL_TONE[level] ?? "plain"
 
 /** The marker row under a source line: `^^^^ label`, `----- label`, `+`. */
 function markerRuns(rest: string): Array<PrintedRun> | null {
@@ -397,20 +389,3 @@ export const RUSTC_GLYPHS = {
   spanless: "=",
   inserted: "+",
 } as const
-
-/** A message in stretches, each `ticked` one a backticked name kept with its ticks. */
-export type TickedRun = { readonly text: string; readonly ticked: boolean }
-
-/**
- * rustc's message as it printed it, split at its backticked names (`Vec<Ride>`)
- * so they can be coloured. The ticks stay: joining the runs gives `text` back.
- */
-export function tickedRuns(text: string): ReadonlyArray<TickedRun> {
-  return text
-    .split(/(`[^`]+`)/)
-    .filter((piece) => piece !== "")
-    .map((piece) => ({
-      text: piece,
-      ticked: piece.length > 2 && piece.startsWith("`") && piece.endsWith("`"),
-    }))
-}

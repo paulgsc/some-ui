@@ -109,7 +109,6 @@ test.describe("Rust Rounds fits the phone, screen by screen", () => {
   }
 })
 
-/** Android's largest font scale: text at twice its size, layout in px unchanged. */
 const LARGEST_TEXT = "html { font-size: 200% !important; }"
 
 /**

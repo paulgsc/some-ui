@@ -73,9 +73,7 @@ export const WORDS = {
   } satisfies Readonly<Record<Aim, string>>,
   rustcVersion: (toolchain: string): string => `rustc ${toolchain}`,
   rustcPrinted: "What rustc printed",
-  /** Names rustc's laid-out result for assistive tech. */
   rustcSaid: "What rustc said",
-  /** Names a suggestion's code card for assistive tech. */
   rustcSuggested: "rustc's suggested change",
   noRun:
     "No run of this program is on this phone yet. It shows here once home has run it and this phone has been near home.",

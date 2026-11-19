@@ -29,11 +29,7 @@ type CodeCardProps = {
   code: string
   /** Its grammar; Rust unless said otherwise. */
   language?: CodeLanguage
-  /**
-   * The first line's number, 1 unless the code is an excerpt (rustc's
-   * suggested line 9 alone). `changedLines`, `spans` and `inserted` count
-   * lines the same way.
-   */
+  /** The first line's number (`codeLines`' `firstLine`). */
   firstLine?: number
   /** Lines a variant or a suggestion changed: each gets a `+` in the gutter. */
   changedLines?: ReadonlyArray<number>
@@ -54,6 +50,13 @@ type CodeCardProps = {
   appearance?: Appearance
   className?: string
 }
+
+/** The code card's surface, for other code-coloured text beside it. */
+export const codeSurface = (appearance: Appearance = "inherit"): string =>
+  cn(
+    appearanceClassName(appearance),
+    "m-0 min-w-0 rounded-md border border-border bg-background font-mono text-foreground"
+  )
 
 /**
  * A program on the phone: a line-number gutter, `+` on a variant's changed
@@ -87,8 +90,8 @@ export const CodeCard = ({
     <figure
       aria-label={label}
       className={cn(
-        appearanceClassName(appearance),
-        "m-0 flex min-w-0 overflow-hidden rounded-md border border-border bg-background font-mono text-sm leading-relaxed text-foreground",
+        codeSurface(appearance),
+        "flex overflow-hidden text-sm leading-relaxed",
         className
       )}
     >
