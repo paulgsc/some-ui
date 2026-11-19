@@ -24,6 +24,7 @@ import { pairingIn } from "./model"
 import { storedPace } from "./pace"
 import type { HomeLink, HomeLinkPorts } from "./runtime"
 import { createHomeLink } from "./runtime"
+import { notePairingScope } from "./sent"
 import { onHidden } from "./visibility"
 
 export { hostOf, pairingAddress, typedCode } from "./address"
@@ -51,6 +52,8 @@ export function homeLink(): HomeLink {
       ...LINK_CLOCK,
       report: reportFailure,
       paceMemory: storedPace(localStorageOrNull()),
+      noteScope: (id, scope) =>
+        notePairingScope(localStorageOrNull(), id, scope),
       onNetwork: (listener) => {
         window.addEventListener("online", listener)
         return (): void => {

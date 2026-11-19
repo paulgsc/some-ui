@@ -21,6 +21,9 @@
  *   counts only when the voice was heard within `HOLD_MS` before its end, so
  *   the quiet before a first word, or a phone that slept mid-take, never does.
  * - **It stops at the end**, and stays on the last line, holding.
+ * - **It never moves the script back by itself (PB1).** A take that ends,
+ *   by Stop, at the take's cap or by leaving the page, leaves the band
+ *   where it was (`held`); only a new take starts again from the top.
  * - **A hand can always move the script.** The band scrolls an ordinary
  *   scroller, so a take whose level isn't measured (no Web Audio, or one
  *   that never started) still reads, by hand, as the script did before.
@@ -54,6 +57,12 @@ export type Prompter =
       /** Paused by the button: the take records, the band holds. */
       readonly paused: boolean
     }
+  /** The take ended: the script stays where the band left it (PB1). */
+  | {
+      readonly kind: "held"
+      readonly answers: string
+      readonly words: number
+    }
 
 export const NO_PROMPTER: Prompter = { kind: "idle" }
 
@@ -75,15 +84,20 @@ export type PrompterEvent =
 export function stepPrompter(state: Prompter, event: PrompterEvent): Prompter {
   switch (event.type) {
     case "ended": {
-      return state.kind === "idle" ? state : NO_PROMPTER
+      return state.kind === "reading"
+        ? { kind: "held", answers: state.answers, words: state.words }
+        : state
     }
     case "pause": {
-      return state.kind === "idle" ? state : { ...state, paused: !state.paused }
+      return state.kind === "reading"
+        ? { ...state, paused: !state.paused }
+        : state
     }
     case "heard": {
       const { answers, level, at, total } = event
       const heard = level >= HEARD_FLOOR
-      if (state.kind === "idle" || state.answers !== answers) {
+      // A new take, of this line or another, reads from the top.
+      if (state.kind !== "reading" || state.answers !== answers) {
         return {
           kind: "reading",
           answers,
@@ -124,9 +138,24 @@ const wordsIn = (line: string): number =>
 export const totalOf = (lines: ReadonlyArray<string>): number =>
   lines.reduce((sum, line) => sum + wordsIn(line), 0)
 
+/** The line whose words the band is among, after `read` words of `lines`. */
+function lineAt(lines: ReadonlyArray<string>, read: number): number {
+  let line = 0
+  let before = 0
+  for (const [index, text] of lines.entries()) {
+    const words = wordsIn(text)
+    // A line read through hands on to the next, and the last stays.
+    line = index
+    if (read < before + words) break
+    before += words
+  }
+  return line
+}
+
 /**
- * The band over `lines` for the take answering `answers`: the first line
- * and holding while that take isn't the one being read.
+ * The band over `lines` for the take answering `answers`: where the last
+ * take of it left the band once it ended, and the first line while no take
+ * of it has been read.
  */
 export function bandOf(
   state: Prompter,
@@ -136,16 +165,8 @@ export function bandOf(
   if (state.kind === "idle" || state.answers !== answers) {
     return { line: 0, state: "holding" }
   }
-  let line = 0
-  let before = 0
-  for (const [index, text] of lines.entries()) {
-    const words = wordsIn(text)
-    // The line whose words the band is among; a line read through hands on
-    // to the next, and the last stays.
-    line = index
-    if (state.words < before + words) break
-    before += words
-  }
+  const line = lineAt(lines, state.words)
+  if (state.kind === "held") return { line, state: "holding" }
   // At the last word there is nowhere to move: the band holds.
   const moving =
     state.words < totalOf(lines) && heardLately(state.heardAt, state.at)
