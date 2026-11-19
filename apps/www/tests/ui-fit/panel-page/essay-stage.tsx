@@ -1,11 +1,11 @@
 import { Suspense } from "react"
 import type { JSX } from "react"
-import { essayFit } from "@some-ui/video-render"
+import { essayFit, essayScenes } from "@some-ui/video-render"
 import type { Essay } from "@some-ui/video-render"
 
 import { EssaySceneFrame } from "@/lib/web-surface"
 
-import { accepted, atTheLimit, byPoints, sample } from "./essays"
+import { accepted, atTheLimit, byPoints, sample, withForks } from "./essays"
 
 /**
  * Every best, beside and deep dive scene of the essay `?essay=` names
@@ -17,6 +17,7 @@ import { accepted, atTheLimit, byPoints, sample } from "./essays"
 function essayNamed(name: string | null): Essay | null {
   if (name === "sample") return sample()
   if (name === "by-points") return byPoints()
+  if (name === "forks") return withForks()
   const limit = /^limit-(\d+)$/.exec(name ?? "")
   return limit ? (atTheLimit()[Number(limit[1]) - 1] ?? null) : null
 }
@@ -36,6 +37,14 @@ export const EssayStageFixture = (): JSX.Element => {
             <EssaySceneFrame essay={essay} scene={scene.id} record />
           </div>
         ))}
+        {/* Fork scenes (RR29) are outside EF1's model: drawn for the overflow check alone. */}
+        {essayScenes(essay)
+          .filter((scene) => scene.section === "fork")
+          .map((scene) => (
+            <div key={scene.id} data-fork>
+              <EssaySceneFrame essay={essay} scene={scene.id} record />
+            </div>
+          ))}
       </div>
     </Suspense>
   )

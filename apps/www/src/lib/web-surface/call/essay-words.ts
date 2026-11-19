@@ -1,5 +1,5 @@
 import { ESSAY_STAGE_WORDS } from "@some-ui/video-render"
-import type { Mark } from "@some-ui/video-render"
+import type { ForkPlacement, ForkVerdict, Mark } from "@some-ui/video-render"
 
 /** A week's number within its year, from its id: "46" from "2026-w46". */
 export const weekNumber = (id: string): string => id.slice(id.indexOf("w") + 1)
@@ -46,6 +46,57 @@ export const ESSAY_WORDS = {
   level: ESSAY_STAGE_WORDS.level,
   notJudged: "No answer to place on the scale",
   dive: (n: number): string => `Deep dive ${n}`,
+  /** The fork scene (RR29): the options against the stated constraints. */
+  fork: {
+    option: "Option",
+    decision: "Decision",
+    why: "Why",
+    recommended: "Recommended",
+    best: "Best",
+    hidden: "Not listed",
+    yours: "Yours",
+    meets: "Meets",
+    breaks: "Breaks",
+    /** A decision of the owner's own, under the table. */
+    own: (decision: string): string => `Yours, not listed: ${decision}`,
+    refused: (code: string, why: string): string =>
+      `Doesn't build: ${why} (${code})`,
+    /** D4's opening line: what you chose, what the agent recommended, and the best. */
+    summary: (
+      decision:
+        | { readonly kind: "option"; readonly option: string }
+        | {
+            readonly kind: "own" | "recommended-by-default"
+          },
+      recommended: string,
+      best: string | null
+    ): string =>
+      [
+        decision.kind === "option"
+          ? `You chose ${decision.option}.`
+          : decision.kind === "own"
+            ? "You said your own."
+            : "You left it, so the recommended stood.",
+        `The agent recommended ${recommended}.`,
+        best === null
+          ? "The best wasn't on the list (★)."
+          : `The best was ${best}.`,
+      ].join(" "),
+    astute: "What an astute observer would have called out:",
+    axis: "From A to A′",
+    place: {
+      trusted: "A: followed blind",
+      reasoned: "Followed, with reasons",
+      departed: "Chose another listed",
+      own: "Said your own",
+      astute: "A′: called out the list",
+    } satisfies Record<ForkPlacement, string>,
+    verdict: {
+      best: "The best decision",
+      close: "Close to the best",
+      off: "Not the best",
+    } satisfies Record<ForkVerdict, string>,
+  },
   past: "One step past the ticket",
   into: ESSAY_STAGE_WORDS.into,
   ticketOf: (n: number, of: number): string => `Ticket ${n} of ${of}`,

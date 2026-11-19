@@ -3,12 +3,14 @@ import { assertNever } from "@some-ui/core-utils"
 import {
   ESSAY_POINT_COLUMN,
   essayFormat,
+  FORK_PLACEMENTS,
   hasCaptions,
   hasPointAnswers,
   LEITNER,
   markOf,
   markThemeOf,
   parseEssay,
+  pickedOf,
   pointAnsweredBy,
   pointCite,
   sampleEssay,
@@ -19,6 +21,7 @@ import {
 import type {
   CellView,
   Essay,
+  EssayFork,
   EssayPointAnswer,
   EssayScene,
   EssayTicket,
@@ -95,6 +98,7 @@ const labelOf = (scene: EssayScene, essay: Essay): string => {
     case "answer":
     case "best":
     case "beside":
+    case "fork":
     case "dive": {
       const ticket = essay.tickets.find((t) => t.id === scene.ticket)
       const answer =
@@ -123,6 +127,168 @@ const answerAt = (
 /** A point answer scene's place in its tag: " · Point 2". */
 const pointTag = (point: number | undefined): string =>
   point === undefined ? "" : ` · ${W.pointN(point + 1)}`
+
+/** A cell of the fork's table: whether a decision meets or breaks one stated constraint. */
+const TradeCell = ({
+  trade,
+  id,
+}: {
+  trade: { meets: ReadonlyArray<string>; breaks: ReadonlyArray<string> }
+  id: string
+}): JSX.Element =>
+  trade.meets.includes(id) ? (
+    <td className="text-primary py-[0.12em] text-center" title={W.fork.meets}>
+      ✓
+    </td>
+  ) : trade.breaks.includes(id) ? (
+    <td
+      className="text-destructive py-[0.12em] text-center"
+      title={W.fork.breaks}
+    >
+      ✗
+    </td>
+  ) : (
+    <td className="py-[0.12em]" />
+  )
+
+/**
+ * The fork (RR29, C697): every option an agent listed, and the best one if
+ * it wasn't listed, against each stated constraint by id; the owner's
+ * decision, and its place between A and A′ once it is on record.
+ */
+const ForkPanel = ({
+  fork,
+  stated,
+}: {
+  fork: EssayFork
+  stated: ReadonlyArray<{ id: string; says: string }>
+}): JSX.Element => {
+  const judged = fork.judged
+  const picked = pickedOf(fork)?.id
+  const recommended = fork.options.find((option) => option.recommended)?.id
+  const rows = [
+    ...fork.options.map((option) => ({
+      ...option,
+      label: option.id,
+      tags: [
+        ...(option.recommended ? [W.fork.recommended] : []),
+        ...(fork.best.kind === "option" && fork.best.option === option.id
+          ? [W.fork.best]
+          : []),
+        ...(picked === option.id ? [W.fork.yours] : []),
+      ],
+    })),
+    ...(fork.best.kind === "hidden"
+      ? [
+          {
+            ...fork.best,
+            label: "★",
+            tags: [W.fork.hidden, W.fork.best],
+          },
+        ]
+      : []),
+  ]
+  return (
+    <div className="space-y-[0.35em]">
+      {judged !== undefined && (
+        <p className="text-[0.7em]">
+          {W.fork.summary(
+            judged.decision,
+            recommended ?? "",
+            fork.best.kind === "hidden" ? null : fork.best.option
+          )}
+        </p>
+      )}
+      <table className="w-full text-left text-[0.7em]">
+        <thead className="text-muted-foreground">
+          <tr>
+            <th className="w-[4em] font-normal">{W.fork.option}</th>
+            <th className="font-normal">{W.fork.decision}</th>
+            {stated.map((row) => (
+              <th
+                key={row.id}
+                title={row.says}
+                className="w-[3em] text-center font-normal"
+              >
+                {row.id}
+              </th>
+            ))}
+            <th className="w-[30%] pl-[1em] font-normal">{W.fork.why}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.label} className="border-border border-t">
+              <td className="py-[0.12em] align-top font-semibold">
+                {row.label}
+              </td>
+              <td className="py-[0.12em] pr-[1em] align-top">
+                <Inline text={row.decision} />
+                {row.tags.length > 0 && (
+                  <span className="text-muted-foreground text-[0.85em]">
+                    {` · ${row.tags.join(" · ")}`}
+                  </span>
+                )}
+              </td>
+              {stated.map((col) => (
+                <TradeCell key={col.id} trade={row} id={col.id} />
+              ))}
+              <td
+                className={`py-[0.12em] pl-[1em] align-top text-[0.85em] ${row.refused === undefined ? "text-muted-foreground" : "text-destructive"}`}
+              >
+                {row.refused === undefined ? (
+                  <Inline text={row.because ?? ""} />
+                ) : (
+                  W.fork.refused(row.refused.code, row.refused.why)
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="text-muted-foreground text-[0.55em]">
+        {stated.map((row) => `${row.id}: ${row.says}`).join(" · ")}
+      </p>
+      {fork.best.kind === "hidden" && (
+        <p className="text-[0.65em]">
+          <span className="font-semibold">{W.fork.astute}</span>{" "}
+          <Inline text={fork.best.why} />
+        </p>
+      )}
+      {judged !== undefined && (
+        <Field label={W.fork.axis}>
+          {judged.decision.kind === "own" && (
+            <p className="text-[0.7em]">
+              <Inline text={W.fork.own(judged.decision.decision)} />
+            </p>
+          )}
+          <ol className="flex gap-[0.4em] text-[0.55em] whitespace-nowrap">
+            {FORK_PLACEMENTS.map((place) => (
+              <li
+                key={place}
+                aria-current={place === judged.placement ? "true" : undefined}
+                className={
+                  place === judged.placement
+                    ? "bg-primary text-primary-foreground min-w-0 flex-1 rounded-[0.3em] px-[0.5em] py-[0.2em] font-semibold"
+                    : "border-border text-muted-foreground min-w-0 flex-1 rounded-[0.3em] border px-[0.5em] py-[0.2em]"
+                }
+              >
+                {W.fork.place[place]}
+              </li>
+            ))}
+          </ol>
+          <p className="mt-[0.3em] text-[0.7em]">
+            <span className="font-semibold">
+              {W.fork.verdict[judged.verdict.kind]}
+            </span>
+            {": "}
+            <Inline text={judged.verdict.why} />
+          </p>
+        </Field>
+      )}
+    </div>
+  )
+}
 
 const Code = ({ code }: { code: string }): JSX.Element => (
   <pre className="bg-background border-border overflow-hidden rounded-[0.4em] border px-[0.8em] py-[0.5em] font-mono text-[0.62em] leading-snug [overflow-wrap:normal] whitespace-pre">
@@ -431,6 +597,19 @@ const Screen = ({
               W.notJudged
             )}
           </p>
+        </Call>
+      )
+    }
+    case "fork": {
+      return (
+        <Call
+          speaker={at.speaker}
+          tag={`${view.ticket.id}${pointTag(view.point)} · ${NAMES.fork}`}
+        >
+          <p className="text-[0.85em] font-semibold">
+            <Inline text={view.ticket.points[view.point]?.to ?? ""} />
+          </p>
+          <ForkPanel fork={view.fork} stated={view.ticket.stated ?? []} />
         </Call>
       )
     }

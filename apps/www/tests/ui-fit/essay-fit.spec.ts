@@ -102,6 +102,19 @@ test.describe("EF1: the essay's model holds the frame the stage draws", () => {
     expect(await expectHeld(page, "by-points")).toBe(true)
   })
 
+  test("a fork scene holds its table and its place between A and A′ (RR29)", async ({
+    page,
+  }) => {
+    await page.goto(`${PAGE.url(ESSAY_STAGE_FIXTURE)}&essay=forks`, {
+      waitUntil: "load",
+    })
+    const frame = page.locator("[data-fork] [data-scene]")
+    await frame.first().waitFor()
+    await page.evaluate(() => document.fonts.ready)
+    expect(await frame.count()).toBe(1)
+    expect(await frame.first().getAttribute("data-overflow")).not.toBe("true")
+  })
+
   test("every text and the code at the most the model accepts", async ({
     page,
   }) => {

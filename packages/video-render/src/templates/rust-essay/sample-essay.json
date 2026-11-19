@@ -2,7 +2,7 @@
   "schema": "some-ui.rust-essay/1",
   "template": {
     "id": "rust-essay",
-    "version": 3
+    "version": 4
   },
   "week": {
     "id": "2026-w46",
