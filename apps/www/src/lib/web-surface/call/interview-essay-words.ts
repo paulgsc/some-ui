@@ -9,6 +9,8 @@ export const INTERVIEW_ESSAY_WORDS = {
   role: "The role",
   guidelines: "A good answer covers",
   youRead: "You read",
+  /** The essay's opening, in the owner's own voice (IW10). */
+  yourOpening: "In your own voice",
   noRead: "Not read",
   counted: "Counted",
   judged: "Judged against the guidelines",

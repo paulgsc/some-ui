@@ -238,6 +238,8 @@ export const INTERVIEW_WORDS = {
   cap: `A take stops at ${lengthOf(TAKE_MAX_SECONDS * 1000)}.`,
   guidelines: "What to cover",
   situation: "Where this is read",
+  /** The week's opening card (IW10): the essay's opening, read in the owner's voice. */
+  opening: "The essay's opening, in your voice",
   script: "Read this",
   /** The band a script is read aloud through (IW9): what it does now, its button, and the take's time against the aim. */
   band: {

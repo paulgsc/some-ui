@@ -1,10 +1,14 @@
 import {
+  lastNext,
+  MONIKER,
+  OPENING_SITUATION,
   prepare,
   SITUATIONS,
   weekFileName,
 } from "@interview-week/lib/monday/bundle"
-import type { Bundle } from "@interview-week/lib/monday/bundle"
+import type { Bundle, MailboxFile } from "@interview-week/lib/monday/bundle"
 import { finish } from "@interview-week/lib/monday/finish"
+import { sampleInterviewEssay } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
 import { COMMIT, corpus, valuesFor } from "./fixture"
@@ -83,16 +87,20 @@ describe("the interview week's choices", () => {
   it("draws a card from an epic, a doc and an invariant, each in its own situation, rotated", () => {
     const weeks = run(3).map((b) => b.next?.cards ?? [])
     expect(weeks.map((cs) => cs.map((c) => c.id))).toEqual([
-      ["epic-2931", "doc-asks", "invariant-rs1"],
-      ["epic-server-800", "doc-ui-fit-readme", "invariant-l3"],
-      ["epic-2931", "doc-asks", "invariant-rs1"],
+      ["opening", "epic-2931", "doc-asks", "invariant-rs1"],
+      ["opening", "epic-server-800", "doc-ui-fit-readme", "invariant-l3"],
+      ["opening", "epic-2931", "doc-asks", "invariant-rs1"],
     ])
-    for (const cards of weeks) {
+    for (const [opening, ...cards] of weeks) {
+      expect(opening).toMatchObject({
+        source: { kind: "opening" },
+        situation: OPENING_SITUATION,
+      })
       expect(new Set(cards.map((c) => c.situation)).size).toBe(cards.length)
       for (const c of cards)
         expect(Object.values(SITUATIONS)).toContain(c.situation)
     }
-    expect(weeks[1]?.[0]?.situation).toBe(SITUATIONS["recorded-update"])
+    expect(weeks[1]?.[1]?.situation).toBe(SITUATIONS["recorded-update"])
   })
 
   it("tops the cards up from another kind when one has none", () => {
@@ -103,10 +111,75 @@ describe("the interview week's choices", () => {
       corpus: { ...corpus, epics: [] },
     })
     expect(bundle.next?.cards.map((c) => c.id)).toEqual([
+      "opening",
       "doc-asks",
       "invariant-rs1",
       "doc-ui-fit-readme",
     ])
+  })
+
+  it("opens the cards on the essay's opening: the moniker, the week's questions, and what last week's essay pointed to next (IW10)", () => {
+    const sample = sampleInterviewEssay()
+    if (!sample.ok) throw new Error(sample.problems.join("; "))
+    const after: Record<string, string> = {
+      "2026-w45": "2026-w46",
+      "2026-w46": "2026-w47",
+      "2026-w47": "2026-w48",
+    }
+    const essay = (week: string, said: string, r = ""): MailboxFile => ({
+      name: `interview-essay-${week}${r}.json`,
+      body: {
+        ...sample.value,
+        week: { ...sample.value.week, id: week },
+        weeks: {
+          ...sample.value.weeks,
+          weeks: [week],
+          rows: sample.value.weeks.rows.map((row) => ({
+            ...row,
+            cells: row.cells.slice(-1),
+          })),
+        },
+        next: { said, week: after[week], topics: [`${said} topic`] },
+      },
+    })
+    const brief = [
+      essay("2026-w45", "Older."),
+      essay("2026-w46", "Fewer fillers in a story."),
+      essay("2026-w47", "This week's own, not yet."),
+    ]
+    expect(lastNext(brief, "2026-w47")).toEqual({
+      said: "Fewer fillers in a story.",
+      week: "2026-w47",
+      topics: ["Fewer fillers in a story. topic"],
+    })
+    // A correction's over the first, by its number, not its name's order.
+    const corrected = [
+      ...brief,
+      essay("2026-w46", "Corrected again.", "-r10"),
+      essay("2026-w46", "Corrected.", "-r2"),
+    ]
+    expect(lastNext(corrected, "2026-w47")?.said).toBe("Corrected again.")
+    // A correction that doesn't read leaves the essay it would correct.
+    expect(
+      lastNext(
+        [
+          ...brief,
+          { name: "interview-essay-2026-w46-r3.json", body: { next: 3 } },
+        ],
+        "2026-w47"
+      )?.said
+    ).toBe("Fewer fillers in a story.")
+    expect(lastNext([], "2026-w47")).toBeNull()
+    // Last week's essay still waiting: the one before spoke to another week.
+    expect(lastNext([brief[0]!], "2026-w47")).toBeNull()
+    const { bundle } = prepare({ commit: COMMIT, now: MONDAY, brief, corpus })
+    const opening = bundle.next?.cards[0]
+    expect(opening?.id).toBe("opening")
+    expect(opening?.material).toContain(MONIKER)
+    expect(opening?.material).toContain("Fewer fillers in a story.")
+    for (const q of bundle.next?.questions ?? []) {
+      expect(opening?.material).toContain(q.asks)
+    }
   })
 
   it("owes nothing when the mailbox holds the week, and names a file it can't read", () => {
