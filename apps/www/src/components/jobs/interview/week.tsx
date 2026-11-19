@@ -36,6 +36,15 @@ import { currentOf, labelOf, playOnly, useInterview, viewOf } from "./run"
 import type { Page } from "./to"
 import { CardTo, useOpenItem } from "./to"
 
+/** What the invented company does, what the job is, and that both are invented. */
+export const RoleAbout = ({ week }: { week: InterviewWeek }): JSX.Element => (
+  <>
+    <p className="text-muted-foreground">{week.company.about}</p>
+    <p>{week.role.about}</p>
+    <p className="bg-card rounded-2xl p-3 text-sm italic">{WORDS.invented}</p>
+  </>
+)
+
 const Role = ({ week }: { week: InterviewWeek }): JSX.Element => (
   <header className="space-y-1">
     <p className="text-muted-foreground text-xs font-semibold">
@@ -44,9 +53,7 @@ const Role = ({ week }: { week: InterviewWeek }): JSX.Element => (
     <h2 className="text-3xl font-extrabold text-balance">
       {WORDS.role(week.role.title, week.company.name)}
     </h2>
-    <p className="text-muted-foreground">{week.company.about}</p>
-    <p>{week.role.about}</p>
-    <p className="bg-card rounded-2xl p-3 text-sm italic">{WORDS.invented}</p>
+    <RoleAbout week={week} />
   </header>
 )
 

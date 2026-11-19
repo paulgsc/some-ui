@@ -13,7 +13,7 @@ import { BackTo } from "./ladder"
 import type { Interview } from "./run"
 import { useInterview } from "./run"
 import { CardTo } from "./to"
-import { doneLine, Opening, TakesLink } from "./week"
+import { doneLine, Opening, RoleAbout, TakesLink } from "./week"
 
 const Questions = ({ held }: { held: Interview }): JSX.Element => {
   const { week, state } = held
@@ -31,15 +31,12 @@ const Questions = ({ held }: { held: Interview }): JSX.Element => {
         </h2>
         <p className="text-muted-foreground text-sm">{WORDS.questionsLine}</p>
       </header>
-      {/* The role every answer is for: what the invented company does and what the job is. */}
-      <section className="bg-card flex flex-col gap-1 rounded-2xl border p-3 text-sm">
-        <p className="font-semibold">
+      {/* The role every answer is for. */}
+      <section className="space-y-1">
+        <h3 className="font-semibold">
           {WORDS.role(week.role.title, week.company.name)}
-        </p>
-        <p className="text-muted-foreground">
-          {week.company.about} {week.role.about}
-        </p>
-        <p className="italic">{WORDS.invented}</p>
+        </h3>
+        <RoleAbout week={week} />
       </section>
       {today !== null && (
         <CardTo to={{ page: "question", question: today.id }} tone="brand">

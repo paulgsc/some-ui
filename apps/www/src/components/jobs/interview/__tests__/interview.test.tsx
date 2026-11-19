@@ -87,7 +87,8 @@ describe("the interview week's pages on the phone (IW8)", () => {
     await follow(new RegExp(`^${WORDS.questions}`))
     // Questions says the invented role every answer is for.
     screen.getByText(WORDS.role(WEEK.role.title, WEEK.company.name))
-    screen.getByText(new RegExp(WEEK.company.about))
+    screen.getByText(WEEK.company.about)
+    screen.getByText(WEEK.role.about)
     screen.getByText(WORDS.invented)
     await follow(new RegExp(`^${WORDS.today}`))
 
