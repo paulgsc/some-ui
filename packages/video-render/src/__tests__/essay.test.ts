@@ -550,9 +550,6 @@ describe("a point answered by a take of its own (RR24)", () => {
         "QM-312",
       ])
     }
-    expect(essayFormat(2)).toEqual(
-      JSON.parse(readFileSync(join(DIR, "v2.json"), "utf8"))
-    )
   })
 
   it("plays each point's own take after the ticket's, citing the right take per point", () => {

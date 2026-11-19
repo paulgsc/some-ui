@@ -743,6 +743,36 @@ describe("a week answered point by point (RR24)", () => {
     ])
   })
 
+  it("counts a ticket whose every point take home couldn't make out as no check (C431)", () => {
+    const silence = { kind: "silence" as const, opened: 1 }
+    const unheard = { ...silence, unheard: true as const }
+    const guessed = { ...silence, guess: "A guess." }
+    const ticket = { id: "QM-1", concepts: [{ id: "a", name: "A" }] }
+    const judged = (
+      answer: typeof silence | typeof unheard | typeof guessed,
+      points: ReadonlyArray<typeof unheard | undefined>
+    ): ReadonlyArray<unknown> =>
+      judgedWeek(
+        "2026-w46",
+        [ticket],
+        [
+          {
+            id: "QM-1",
+            answer,
+            points: points.map((own) => ({
+              to: "x",
+              best: "y",
+              ...(own === undefined ? {} : { answer: own }),
+            })),
+          },
+        ]
+      ).tickets
+    expect(judged(silence, [unheard, unheard])).toEqual([])
+    expect(judged(unheard, [unheard, undefined])).toEqual([])
+    // A point left with no take of its own is a silence, not an unheard take.
+    expect(judged(guessed, [unheard, undefined])).toHaveLength(1)
+  })
+
   it("refuses a reading that doesn't fit each point's take", () => {
     const problemsOf = (
       change: (given: Values) => void

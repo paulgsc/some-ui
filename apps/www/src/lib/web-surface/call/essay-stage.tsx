@@ -1,8 +1,6 @@
 import type { JSX } from "react"
 import { assertNever } from "@some-ui/core-utils"
 import {
-  citeOf,
-  citeWords,
   ESSAY_POINT_COLUMN,
   essayFormat,
   hasCaptions,
@@ -12,6 +10,7 @@ import {
   markThemeOf,
   parseEssay,
   pointAnsweredBy,
+  pointCite,
   sampleEssay,
   silenceSaid,
   SOLO_LEVELS,
@@ -20,6 +19,7 @@ import {
 import type {
   CellView,
   Essay,
+  EssayPointAnswer,
   EssayScene,
   EssayTicket,
   Voicing,
@@ -98,26 +98,31 @@ const labelOf = (scene: EssayScene, essay: Essay): string => {
     case "dive": {
       const ticket = essay.tickets.find((t) => t.id === scene.ticket)
       const answer =
-        ticket === undefined
-          ? undefined
-          : scene.point === undefined
-            ? ticket.answer
-            : pointAnsweredBy(ticket, scene.point).answer
+        ticket === undefined ? undefined : answerAt(ticket, scene.point)
       const name =
         scene.section === "answer" && answer?.kind === "silence"
           ? leftOf(answer)
           : scene.section === "dive"
             ? W.dive((scene.dive ?? 0) + 1)
             : (NAMES[scene.section] ?? "")
-      const point =
-        scene.point === undefined ? "" : ` · ${W.pointN(scene.point + 1)}`
-      return `${scene.ticket ?? ""}${point} · ${name}`
+      return `${scene.ticket ?? ""}${pointTag(scene.point)} · ${name}`
     }
     default: {
       return assertNever(scene)
     }
   }
 }
+
+/** What an answer scene plays: the ticket's answer, or point `point`'s (from 0, RR24). */
+const answerAt = (
+  ticket: EssayTicket,
+  point: number | undefined
+): EssayTicket["answer"] | EssayPointAnswer =>
+  point === undefined ? ticket.answer : pointAnsweredBy(ticket, point).answer
+
+/** A point answer scene's place in its tag: " · Point 2". */
+const pointTag = (point: number | undefined): string =>
+  point === undefined ? "" : ` · ${W.pointN(point + 1)}`
 
 const Code = ({ code }: { code: string }): JSX.Element => (
   <pre className="bg-background border-border overflow-hidden rounded-[0.4em] border px-[0.8em] py-[0.5em] font-mono text-[0.62em] leading-snug [overflow-wrap:normal] whitespace-pre">
@@ -311,19 +316,13 @@ const Screen = ({
       )
     }
     case "answer": {
-      // A point answered by a take of its own (RR24) is its own scene.
       const point =
         view.point === undefined ? undefined : view.ticket.points[view.point]
-      const answer =
-        view.point === undefined
-          ? view.ticket.answer
-          : pointAnsweredBy(view.ticket, view.point).answer
-      const which =
-        view.point === undefined ? "" : ` · ${W.pointN(view.point + 1)}`
+      const answer = answerAt(view.ticket, view.point)
       return (
         <Call
           speaker={at.speaker}
-          tag={`${view.ticket.id}${which} · ${answer.kind === "take" ? NAMES.answer : leftOf(answer)}`}
+          tag={`${view.ticket.id}${pointTag(view.point)} · ${answer.kind === "take" ? NAMES.answer : leftOf(answer)}`}
         >
           {point !== undefined && (
             <p className="text-muted-foreground text-[0.75em]">
@@ -385,12 +384,7 @@ const Screen = ({
               {view.ticket.points.map((point, i) => {
                 const mark = markOf(view.ticket, i)
                 const answered = pointAnsweredBy(view.ticket, i)
-                const cite = citeWords(
-                  citeOf(view.ticket, i),
-                  answered.by === "own" && answered.answer.kind === "take"
-                    ? answered.answer.solo.level
-                    : undefined
-                )
+                const cite = pointCite(view.ticket, i)
                 return (
                   <tr key={point.to} className="border-border border-t">
                     <td className="py-[0.3em] pr-[1em] align-top">
@@ -399,7 +393,8 @@ const Screen = ({
                     <td className="py-[0.3em] align-top">
                       {mark === undefined ? (
                         <span className="text-muted-foreground">
-                          {answered.answer.kind === "silence"
+                          {answered.by === "own" &&
+                          answered.answer.kind === "silence"
                             ? leftOf(answered.answer, W.unanswered)
                             : W.unanswered}
                         </span>

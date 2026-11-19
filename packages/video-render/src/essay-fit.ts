@@ -13,8 +13,8 @@
  * Family: every text the routine writes on those scenes (best fits, notes,
  * SOLO's why, a dive's title and shows) at any length and wrap, with code
  * spans, including a span touching the punctuation after it; two or three
- * speak-to points, at any length, each judged from the ticket's take or
- * from a take of its own (RR24), its beside row then citing which; a dive's code at any number of lines and
+ * speak-to points, at any length, each judged from the ticket's take or its
+ * own (RR24, cited on its beside row); a dive's code at any number of lines and
  * columns, tabs included; and the host that records it, whose sans face the
  * frame draws in (`./frame-text`'s `SANS`): a cloud session's Inter, and
  * home's render image's WenQuanYi Zen Hei.
@@ -65,15 +65,18 @@ export const ESSAY_STAGE_WORDS = {
 } as const
 
 /**
- * Which take a beside row's mark was judged from (RR24, `citeOf`), as the
- * stage sets it after the mark on its line: an own take's with its SOLO
- * level. Null for a row with no cite.
+ * Which take point `point` (from 0) of `ticket` was judged from (RR24,
+ * `citeOf`), as the stage sets it after the beside row's mark on its line:
+ * an own take's with its SOLO level. Null for a row with no cite.
  */
-export function citeWords(
-  cite: "own" | "whole" | null,
-  level: number | undefined
-): string | null {
+export function pointCite(ticket: EssayTicket, point: number): string | null {
+  const cite = citeOf(ticket, point)
   if (cite === null) return null
+  const own = pointAnsweredBy(ticket, point)
+  const level =
+    own.by === "own" && own.answer.kind === "take"
+      ? own.answer.solo.level
+      : undefined
   if (cite === "whole") return ESSAY_STAGE_WORDS.wholeTake
   return level === undefined
     ? ESSAY_STAGE_WORDS.ownTake
@@ -208,14 +211,8 @@ function beside(ticket: EssayTicket): number {
   const rows = ticket.points.reduce(
     (sum, point, i) => {
       const mark = markOf(ticket, i)
-      const own = pointAnsweredBy(ticket, i)
       // The mark line with its cite (RR24), measured at its longest mark.
-      const cite = citeWords(
-        citeOf(ticket, i),
-        own.by === "own" && own.answer.kind === "take"
-          ? own.answer.solo.level
-          : undefined
-      )
+      const cite = pointCite(ticket, i)
       const line =
         cite === null
           ? ESSAY_STAGE_WORDS.unheard

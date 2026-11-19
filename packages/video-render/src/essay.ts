@@ -797,8 +797,7 @@ const answerSaid = (
  * the question, the answer (the whole ticket's, unless it was answered only
  * point by point, then each point's answered by a take of its own, in
  * order), a best fit, the two beside each other, then its deep dives. Answer
- * scenes are numbered across the essay, as deep dives are, so an essay with
- * no point's own answer numbers them as before version 3. The locked intro and the brand intro open it, a chapter slide
+ * scenes are numbered across the essay, as deep dives are. The locked intro and the brand intro open it, a chapter slide
  * opens each ticket and the close's sections, and the brand outro ends it.
  */
 export function essayScenes(

@@ -45,7 +45,7 @@ import type {
 import { ValuesSchema } from "@rust-rounds/lib/monday/values"
 import { describeWeekProblem, readWeek } from "@rust-rounds/lib/week-check"
 import { assertNever, pacificDay } from "@some-ui/core-utils"
-import type { Essay } from "@some-ui/video-render"
+import type { Essay, EssayPointAnswer } from "@some-ui/video-render"
 import {
   ESSAY_CHART_ROWS,
   ESSAY_DECAY_VERSION,
@@ -86,10 +86,6 @@ export function seedLine(at: string): string {
   return `It comes from an error you pasted on ${pacificDay(new Date(at))}.`
 }
 
-type PointAnswer = NonNullable<
-  Essay["tickets"][number]["points"][number]["answer"]
->
-
 /**
  * Each point of `ticket` answered by a take of its own (RR24), by its place
  * from 1, from what home heard (the bundle) and the model's reading of it:
@@ -100,8 +96,8 @@ function pointAnswers(
   ticket: EndedTicket,
   values: ReadonlyArray<PointValues>,
   problems: Array<string>
-): Map<number, PointAnswer> {
-  const answers = new Map<number, PointAnswer>()
+): Map<number, EssayPointAnswer> {
+  const answers = new Map<number, EssayPointAnswer>()
   for (const read of values)
     if (!ticket.points.some((p) => p.point === read.point))
       problems.push(
@@ -224,9 +220,6 @@ function essayTicket(
       break
     }
     case "by-points": {
-      // No take of the whole ticket (RR24): with every point answered on its
-      // own nothing is said for the ticket; otherwise a guess at why the
-      // rest were left.
       const every = ticket.points.length === ticket.speakTo.length
       if (every && reading === undefined) {
         answer = { kind: "silence", opened: ticket.answer.opened }
@@ -319,8 +312,7 @@ function buildEssay(
     ended.tickets.flatMap((t) => t.concepts),
     { weeks: ESSAY_WEEKS_MOST, concepts: ESSAY_CHART_ROWS }
   )
-  // The lowest version that draws it (C270): 3 for a point answered on its
-  // own (RR24), 2 for decay or fading.
+  // The lowest version that draws it (C270).
   const version = tickets.some(hasPointAnswers)
     ? ESSAY_POINT_VERSION
     : chart.concepts.some((c) => c.cells.some(needsDecayVersion))

@@ -3,7 +3,7 @@
   "made": "2026-11-19",
   "by": "claude",
   "paths": ["packages/ui/rust-rounds/src/lib/monday/bundle.ts"],
-  "chose": "In the decay record, a ticket with no take of the whole ticket and points answered by takes of their own is at the lowest of those takes' SOLO levels; a whole take's level still wins where there is one, and a ticket with neither is a silence (or, unheard, no check) as before.",
+  "chose": "In the decay record, a ticket with no take of the whole ticket and points answered by takes of their own is at the lowest of those takes' SOLO levels; a whole take's level still wins where there is one, and a ticket with neither is a silence (or, unheard, no check) as before. A ticket whose every point is answered only by takes home couldn't make out is no check at all, as C431 has it.",
   "options": [
     "the lowest point level",
     "the highest",

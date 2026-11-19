@@ -29,10 +29,13 @@ const DiveValuesSchema = z.strictObject({
   said: TextSchema,
 })
 
+const MarkSchema = z.strictObject({
+  mark: z.enum(MARKS),
+  note: TextSchema.optional(),
+})
+
 const ReadingSchema = z.strictObject({
-  marks: z.array(
-    z.strictObject({ mark: z.enum(MARKS), note: TextSchema.optional() })
-  ),
+  marks: z.array(MarkSchema),
   solo: z.strictObject({
     level: z.int().min(1).max(SOLO_LEVELS.length),
     why: TextSchema,
@@ -48,10 +51,8 @@ const GuessSchema = z.strictObject({ guess: TextSchema })
  * couldn't make out takes none: leave it out.
  */
 const PointValuesSchema = z.union([
-  z.strictObject({
+  MarkSchema.extend({
     point: z.int().min(1),
-    mark: z.enum(MARKS),
-    note: TextSchema.optional(),
     solo: ReadingSchema.shape.solo,
   }),
   GuessSchema.extend({ point: z.int().min(1) }),
