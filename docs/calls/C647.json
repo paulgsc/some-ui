@@ -1,0 +1,18 @@
+{
+  "id": "C647",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/components/settings/device-my-data.tsx",
+    "apps/www/src/components/settings/status-board.tsx"
+  ],
+  "chose": "On the phone, each row of a grouped list that opens a page (My data's kinds, the status board's rows) becomes its own card link (CardLink) in a stack two apart, its own chevron gone (C642); a list whose rows open nothing (a build without the pages) keeps its grouped, divided look. A row of the status board's urgent group keeps its red-tinted edge on its own card. The owner's story (C643): a row with neither cue nor chevron is state A, \"a blob of text… surprised I can click\"; one card link for every tappable thing is the convention, not a second cue for lists.",
+  "options": [
+    "each linked row its own card link, in a stack",
+    "keep the grouped list, with a quieter list-item cue on its rows",
+    "keep the rows and their chevrons, as list rows rather than cards"
+  ],
+  "gray": "A list of rows that each open something sits between a list and a set of cards; the coordinator ruled the stack, and the owner asked not to be leaned on for the design.",
+  "undo": "Restore the grouped ul and the rows' own Link with its ChevronRight in both files.",
+  "refs": ["#3234"]
+}

@@ -16,6 +16,8 @@ import {
   SayPage,
   StudyPage,
 } from "@/components/jobs/interview/ladder"
+import type { PastWeeksProps } from "@/components/jobs/interview/past"
+import { PastWeeks } from "@/components/jobs/interview/past"
 import { ReadPage, ReadsPage } from "@/components/jobs/interview/reads"
 import { InterviewWeekRuntime } from "@/components/jobs/interview/run"
 import { HowPage, QuestionsPage } from "@/components/jobs/interview/way-in"
@@ -23,7 +25,7 @@ import { InterviewPage } from "@/components/jobs/interview/week"
 
 // The tree's type is the router's to infer: written out, it is every route's.
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-function interviewTree(ports: InterviewWeekPorts) {
+function interviewTree(ports: InterviewWeekPorts, past: PastWeeksProps) {
   const root = createRootRoute()
   const layout = createRoute({
     getParentRoute: () => root,
@@ -70,6 +72,7 @@ function interviewTree(ports: InterviewWeekPorts) {
       page("/", InterviewPage),
       page("/questions", QuestionsPage),
       page("/how", HowPage),
+      page("/past", () => <PastWeeks {...past} />),
       question.addChildren([
         step("/", () => {
           return <QuestionPage id={question.useParams().question} />
@@ -98,12 +101,18 @@ export type RoutedInterviewProps = {
   /** Made once, on mount. */
   ports: () => InterviewWeekPorts
   path?: string
+  /** What Past weeks shows; its route reads it from the phone and home. */
+  past?: PastWeeksProps
 }
 
 /** The week's pages opened at `path`. */
 export const RoutedInterview = ({
   ports,
   path = "/jobs/interview",
+  past = { weeks: [], askAgain: null },
 }: RoutedInterviewProps): JSX.Element => (
-  <MemoryRouted initialTree={() => interviewTree(ports())} initialPath={path} />
+  <MemoryRouted
+    initialTree={() => interviewTree(ports(), past)}
+    initialPath={path}
+  />
 )

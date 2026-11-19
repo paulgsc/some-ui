@@ -1,0 +1,21 @@
+{
+  "id": "C681",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/rust-rounds/index.ts",
+    "apps/www/src/lib/home-link/serves-now.ts",
+    "apps/www/src/lib/home-link/voice-copy.ts",
+    "packages/ui/rust-rounds/src/lib/kept-home/index.ts",
+    "packages/ui/rust-rounds/src/lib/play/__tests__/words.test.ts"
+  ],
+  "chose": "A build records per point only once its route snapshot's contract epoch reaches 20 (`RECORDS_PER_POINT`), and holds each point's note and any week sent by points on the phone until home says it serves this build (`/compat`'s fits); the words test bans a number of points as a score, not the word point, which names a speak-to point.",
+  "options": [
+    "gate recording on the snapshot epoch and hold sends until home serves it",
+    "gate recording on home's live /compat answer, switching a week mid-way",
+    "no gate: rely on the server merging first"
+  ],
+  "gray": "A note home refuses is never sent again, and a week sent only per point to an old home is lost at the deadline; how cautiously to roll a payload change out to phones is the owner's to notice, and no rule names it.",
+  "undo": "Drop the `servesNow` filter in voice-copy and the `pointsServed` argument of `keptGoing`, and set `perPoint` from anything else in `phoneRustWeekPorts`.",
+  "refs": ["#3248"]
+}

@@ -75,7 +75,7 @@ export const ACCOUNT_ERASES = {
     },
     {
       label: "Rust Rounds' rounds",
-      text: "Each round sent home, as the tutor wrote it: its cards, which of your voice notes a card answered, and the tutor's nudges.",
+      text: "Each round sent home, as the tutor wrote it: its cards, which of your voice notes a card answered, and the tutor's nudges; and the time your phone tracked you working on a week: when it started and stopped, the ticket, step and points, the name your phone gave itself, and how much of it you said was work.",
     },
     {
       label: "How each recording ended",

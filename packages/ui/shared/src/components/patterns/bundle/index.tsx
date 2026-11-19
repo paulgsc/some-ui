@@ -285,6 +285,8 @@ type BodyProps<K extends BundleKind> = Parts<K> & {
   item: K["item"]
   /** Its card is the one on screen: only that one says why a take failed. */
   active: boolean
+  /** Seconds left of the screen's own count-in before the take starts, if one runs. */
+  counting?: number | null
 }
 
 /** What a card offers under its head: its take, or what to do when one didn't come through. */
@@ -297,18 +299,24 @@ const CardBody = <K extends BundleKind>({
   words,
   item,
   active,
+  counting = null,
 }: BodyProps<K>): JSX.Element => {
   const { spec } = machine
   const answers = machine.answersOf(state, item)
   const recording =
     snapshot.take.kind !== "idle" && snapshot.answers === answers
   const card = machine.cardView(state, item, recording)
-  const view = takeItemView(
+  const taken = takeItemView(
     snapshot,
     state.takes,
     answers,
     takes.pattern.options
   )
+  // A count-in shows on the button it starts from, so the two never disagree.
+  const view =
+    counting !== null && taken.button.kind === "ready"
+      ? { ...taken, button: { kind: "counting" as const, left: counting } }
+      : taken
   return (
     <>
       {card.kind === "failed" && (
@@ -424,6 +432,8 @@ export type BundleTakeProps<K extends BundleKind> = Parts<K> & {
   item: K["item"]
   /** What the page says of its item, above its take. */
   head: ReactNode
+  /** Seconds left of the page's count-in before the take starts (the interview's cue), if one runs. */
+  counting?: number | null
 }
 
 /**
@@ -544,6 +554,18 @@ export type BundleReviewProps<K extends BundleKind> = Parts<K> & {
   label: (item: K["item"]) => ReactNode
   /** What an unsaid item's row says, when the surface says more than "Not said yet". */
   notSaid?: (item: K["item"]) => ReactNode
+  /**
+   * Whether an item is listed; every item when absent. A surface with items
+   * nothing records any more (a Rust Rounds ticket's own, once its points
+   * are answered on their own, RR24) lists them only when said.
+   */
+  shown?: (item: K["item"], said: boolean) => boolean
+  /**
+   * Whether an item's take may be said again here; every item when absent.
+   * One nothing records any more (that same ticket's own take) is kept or
+   * let go, never redone.
+   */
+  redoes?: (item: K["item"]) => boolean
   /** Under the answers, above Send: where home is, the way to pairing. */
   beforeSend?: ReactNode
   /** Send's label. */
@@ -592,6 +614,7 @@ export const BundleReview = <K extends BundleKind>(
       <ol className="flex flex-col gap-3">
         {machine.spec.items.map((item) => {
           const how = machine.answered(state, item)
+          if (props.shown?.(item, how !== null) === false) return null
           const typed = state.draft.typed[item]
           // Words typed beside a take kept unheard show with that take (ST34).
           const take = how === "said" || machine.standsBeside(state, item)
@@ -608,6 +631,7 @@ export const BundleReview = <K extends BundleKind>(
                   )}
                   onPlay={(each) => dispatch({ type: "play", take: each })}
                   onRedo={() => dispatch({ type: "tap", item })}
+                  canRedo={props.redoes?.(item) ?? true}
                   onLetGo={() => dispatch({ type: "askDelete", item })}
                 />
               )}

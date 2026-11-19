@@ -12,7 +12,7 @@
 import type { JSX, ReactNode } from "react"
 import { assertNever, pacificDay } from "@some-ui/core-utils"
 import type { InterviewWeek } from "@some-ui/interview-week"
-import { questionOfDay } from "@some-ui/interview-week"
+import { isOpening, questionOfDay } from "@some-ui/interview-week"
 import { BundleReview, Button, Notice, TakeRow } from "@some-ui/shared"
 import type {
   BundleIntent,
@@ -82,8 +82,18 @@ const nameOf = (week: InterviewWeek, item: string): string => {
   const card = cardOf(item)
   return card === null
     ? (week.questions.find(({ id }) => id === item)?.prompt ?? item)
-    : (week.cards.find(({ id }) => id === card)?.situation ?? item)
+    : nameOfCard(
+        week.cards.find(({ id }) => id === card),
+        item
+      )
 }
+
+/** A read's name: the essay's opening by what it is, any other by where it's read. */
+const nameOfCard = (
+  card: InterviewWeek["cards"][number] | undefined,
+  item: string
+): string =>
+  card === undefined ? item : isOpening(card) ? WORDS.opening : card.situation
 
 /** A kind of practice, as a link to its page. */
 const Kind = ({
@@ -111,6 +121,15 @@ export const TakesLink = ({ week }: { week: InterviewWeek }): JSX.Element => (
     to={{ page: "takes", week: week.id, name: WORDS.wayIn.weekName(week) }}
     name={WORDS.wayIn.takes}
     lines={[WORDS.wayIn.takesLine]}
+  />
+)
+
+/** The way to Past weeks (IW17). */
+const PastLink = (): JSX.Element => (
+  <Kind
+    to={{ page: "past" }}
+    name={WORDS.weeks.title}
+    lines={[WORDS.weeks.entryLine]}
   />
 )
 
@@ -162,13 +181,19 @@ const Fresh = ({ week }: { week: InterviewWeek }): JSX.Element => {
             WORDS.wayIn.reads.what,
             WORDS.wayIn.reads.cost(
               cards.length,
-              typical(cards.map(({ targetSeconds }) => targetSeconds))
+              // The short opening would pull the reads' typical length down.
+              typical(
+                cards
+                  .filter((card) => !isOpening(card))
+                  .map(({ targetSeconds }) => targetSeconds)
+              )
             ),
           ]}
         />
         <p className="text-muted-foreground text-sm">{WORDS.wayIn.anyOrder}</p>
       </section>
       <HowLink />
+      <PastLink />
     </div>
   )
 }
@@ -256,6 +281,7 @@ const UnderWay = ({ held }: { held: Interview }): JSX.Element => {
       </Button>
       <TakesLink week={week} />
       <HowLink />
+      <PastLink />
     </div>
   )
 }
@@ -400,6 +426,7 @@ const ReadBack = ({ held }: { held: Interview }): JSX.Element => {
         )}
       </section>
       <SentList held={held} sent={holds} readOnly />
+      <PastLink />
     </div>
   )
 }

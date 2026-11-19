@@ -1,0 +1,19 @@
+{
+  "id": "C618",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": [
+    "packages/ui/interview-week/src/lib/week/index.ts",
+    "packages/ui/interview-week/src/lib/monday/bundle.ts",
+    "packages/ui/interview-week/src/lib/essay/bundle.ts"
+  ],
+  "chose": "The essay's opening is a card in the week's cards, named opening and first, with a source of its own kind: the phone reads it on the Read aloud page like any card, the send and home's record carry its take unchanged, and the essay takes it out of the reads and plays it first after the brand, uncounted.",
+  "options": [
+    "a card, first among the week's cards",
+    "a field of its own on the week, with its own take line",
+    "written by the essay routine at render time, read the next week"
+  ],
+  "gray": "#3177 says the owner reads it as an ordinary read card, not where it is kept. A card needs no change on home or the mailbox, but it means every reader of the cards has to know that this one is no read.",
+  "undo": "Move the opening to its own field on the week and its own take line, and drop OPENING_CARD.",
+  "refs": ["#3177"]
+}

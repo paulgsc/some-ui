@@ -8,7 +8,11 @@
  *
  * - **A take names its week and ticket**: `<week>:<ticket>`, like
  *   `2026-w46:QM-311`, which is also its voice note's `ref` on home
- *   (paulgsc/server `voice_repo::is_rust_round_ref`, #723).
+ *   (paulgsc/server `voice_repo::is_rust_round_ref`, #723). With a take per
+ *   point (RR24, #3248, `./points`), each speak-to point is an item of its
+ *   own and its take names it: `<week>:<ticket>:<n>`, from 1. A take of the
+ *   whole ticket, recorded before, stays its ticket's item: it still shows,
+ *   counts for every point and is sent, and nothing records one any more.
  * - **The draft is the week's**, named by the week's id, so a week sent
  *   opens on what was sent, and one week's takes never answer another's.
  * - **No ticket must be said**: a ticket left unsaid goes as not answered,
@@ -34,6 +38,7 @@
  *   the week's record from it.
  */
 import type { Week } from "@rust-rounds/lib/formats/week"
+import { itemOf, pointItem, weekItems } from "@rust-rounds/lib/week-play/points"
 import type {
   BundleDraft,
   BundleMachine,
@@ -55,15 +60,23 @@ export type WeekSent = {
   readonly week: string
   /** When it was sent, ISO. */
   readonly at: string
-  /** Each ticket said, in the week's order, with its take. */
-  readonly answers: ReadonlyArray<{
-    readonly ticket: string
-    readonly take: string
-    /** When the take was recorded, ISO. */
-    readonly recordedAt: string
-  }>
+  /**
+   * Each ticket said, in the week's order, with its take: of the whole
+   * ticket, then of each point said on its own, by point.
+   */
+  readonly answers: ReadonlyArray<WeekAnswer>
   /** The tickets not said, in the week's order. */
   readonly passed: ReadonlyArray<string>
+}
+
+/** One take sent: of a whole ticket, or of one of its points (`point`, from 1). */
+export type WeekAnswer = {
+  readonly ticket: string
+  /** The speak-to point it answers, from 1; absent for the whole ticket. */
+  readonly point?: number
+  readonly take: string
+  /** When the take was recorded, ISO. */
+  readonly recordedAt: string
 }
 
 /** What Send still needs, besides nothing: a take, or a week still open. */
@@ -80,9 +93,22 @@ export type WeekKind = {
 
 export type WeekState = BundleState<WeekKind>
 
-/** What a take of `week`'s `ticket` answers: its voice note's `ref` too. */
-export const ticketLine = (week: string, ticket: string): string =>
-  `${week}:${ticket}`
+/**
+ * What a take of `week`'s item answers, a ticket or one of its points
+ * (`./points`): its voice note's `ref` too.
+ */
+export const ticketLine = (week: string, item: string): string =>
+  `${week}:${item}`
+
+/** The order answers go in: by ticket, the whole ticket's first, then by point. */
+const answerOrder = (week: Week, answer: WeekAnswer): number =>
+  week.tickets.findIndex(({ id }) => id === answer.ticket) * 1_000 +
+  (answer.point ?? 0)
+
+const answerKey = (answer: Pick<WeekAnswer, "ticket" | "point">): string =>
+  answer.point === undefined
+    ? answer.ticket
+    : pointItem(answer.ticket, answer.point)
 
 /** Whether `at` is past the week's deadline. */
 export const isClosed = (week: Pick<Week, "due">, at: string): boolean =>
@@ -105,9 +131,9 @@ export const weekAtHome = (
   held: (sent: WeekSent) => boolean
 ): WeekAtHome => sendsAtHome(kept, week.id, held)
 
-function weekSpec(week: Week): BundleSpec<WeekKind> {
+function weekSpec(week: Week, perPoint: boolean): BundleSpec<WeekKind> {
   return {
-    items: week.tickets.map(({ id }) => id),
+    items: weekItems(week.tickets, perPoint),
     answersOf: ticketLine,
     required: () => false,
     typing: false,
@@ -118,27 +144,35 @@ function weekSpec(week: Week): BundleSpec<WeekKind> {
     missing: (_draft, at, said) =>
       isClosed(week, at) ? "closed" : said === 0 ? "nothing" : null,
     resumesOnCards: () => false,
-    record: (draft, answers, passed, at, last): WeekSent => {
-      const said = new Map(
-        answers.flatMap(({ item, take }) =>
-          take === null
-            ? []
-            : [[item, { ticket: item, take: take.id, recordedAt: take.at }]]
-        )
+    record: (draft, answers, _passed, at, last): WeekSent => {
+      const said = new Map<string, WeekAnswer>(
+        answers.flatMap(({ item, take }) => {
+          if (take === null) return []
+          const { ticket, point } = itemOf(item)
+          const answer: WeekAnswer =
+            point === null
+              ? { ticket, take: take.id, recordedAt: take.at }
+              : { ticket, point, take: take.id, recordedAt: take.at }
+          return [[item, answer]]
+        })
       )
-      // A ticket sent before and not said since goes again as home holds it.
+      // A ticket, or point, sent before and not said since goes again as
+      // home holds it.
       for (const earlier of last?.answers ?? []) {
-        if (!said.has(earlier.ticket)) said.set(earlier.ticket, earlier)
+        const key = answerKey(earlier)
+        if (!said.has(key)) said.set(key, earlier)
       }
-      const order = week.tickets.map(({ id }) => id)
+      const sent = [...said.values()].sort(
+        (a, b) => answerOrder(week, a) - answerOrder(week, b)
+      )
+      const answered = new Set(sent.map(({ ticket }) => ticket))
       return {
         week: draft.id,
         at,
-        answers: order.flatMap((ticket) => {
-          const answer = said.get(ticket)
-          return answer === undefined ? [] : [answer]
-        }),
-        passed: passed.filter((ticket) => !said.has(ticket)),
+        answers: sent,
+        passed: week.tickets
+          .map(({ id }) => id)
+          .filter((ticket) => !answered.has(ticket)),
       }
     },
     idOf: (sent) => sent.week,
@@ -148,6 +182,11 @@ function weekSpec(week: Week): BundleSpec<WeekKind> {
   }
 }
 
-/** The week's bundle: the shared machine over its spec. */
-export const weekMachine = (week: Week): BundleMachine<WeekKind> =>
-  bundleMachine(weekSpec(week))
+/**
+ * The week's bundle: the shared machine over its spec, a take per point
+ * where `perPoint` (home serves them; `./points`), else a take per ticket.
+ */
+export const weekMachine = (
+  week: Week,
+  perPoint = false
+): BundleMachine<WeekKind> => bundleMachine(weekSpec(week, perPoint))

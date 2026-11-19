@@ -11,6 +11,9 @@
  * (`interviewEssayFormat`); a question's scenes, and a read's, repeat as a
  * group, one group per question or read, in the week's order:
  *
+ * 0. `opening`, when the owner read the week's opening card (IW10, #3177):
+ *    their own take, played whole, first after the brand. Left unread, the
+ *    essay opens as it always has.
  * 1. `open`: the invented company and role.
  * 2. For each question:
  *    - `question`: the question, and what a good answer covers;
@@ -76,7 +79,10 @@ export const INTERVIEW_ESSAY_SCHEMA = "some-ui.interview-essay/1"
 export const INTERVIEW_ESSAY_ID = "interview-essay"
 
 /** The newest version `interviewEssayFormat` gives, pinned as `v<n>.json` under `templates/`. */
-export const INTERVIEW_ESSAY_VERSION = 1
+export const INTERVIEW_ESSAY_VERSION = 2
+
+/** The first version with the owner's own opening (IW10): an essay before it holds none. */
+const OPENING_SINCE = 2
 
 /** The most questions and cards a week has (`some-ui.interview-week/1` and `/2`). */
 const QUESTIONS_MOST = 6
@@ -90,6 +96,7 @@ const INTERVIEW_WEEKS_MOST = 12
 const INTERVIEW_ROWS_MOST = 8
 
 type Section =
+  | "opening"
   | "open"
   | "question"
   | "answer"
@@ -102,7 +109,7 @@ type Section =
   | "weeks"
   | "next"
 
-type Repeated = Exclude<Section, "open" | "weeks" | "next">
+type Repeated = Exclude<Section, "opening" | "open" | "weeks" | "next">
 
 type Framing = "intro" | "brand-in" | "chapter" | "brand-out"
 
@@ -166,6 +173,16 @@ export function interviewEssayFormat(
     series: { id: CALL_ID, version: 2 },
     look: "calm",
     scenes: [
+      ...(version >= OPENING_SINCE
+        ? [
+            scene(
+              "opening",
+              "Your opening",
+              "The essay's opening, in your own voice; left out when it went unread",
+              40_000
+            ),
+          ]
+        : []),
       scene("open", "The week", "The invented company and role", 30_000),
       scene(
         "question",
@@ -324,6 +341,8 @@ export const InterviewEssaySchema = z.strictObject({
   /** Invented: never a real employer. */
   company: z.strictObject({ name: words, about: words }),
   role: z.strictObject({ title: words, about: words }),
+  /** What home heard of the week's opening card (IW10); absent when there is none to play. */
+  opening: z.strictObject({ transcript: words }).optional(),
   open: said,
   questions: z.array(QuestionSchema).min(1).max(QUESTIONS_MOST),
   reads: z.array(ReadSchema).max(READS_MOST),
@@ -357,6 +376,10 @@ function problemsOfEssay(essay: InterviewEssay): Array<string> {
   const problems: Array<string> = []
   if (essay.week.to < essay.week.from)
     problems.push("week: it ends before it starts")
+  if (essay.opening !== undefined && essay.template.version < OPENING_SINCE)
+    problems.push(
+      `opening: the template draws the owner's opening from version ${String(OPENING_SINCE)}`
+    )
   for (const [list, ids] of [
     ["questions", essay.questions.map((q) => q.id)],
     ["reads", essay.reads.map((r) => r.id)],
@@ -527,6 +550,13 @@ export function interviewEssayScenes(
       speaker: "tutor",
       said: "",
     })
+  if (essay.opening !== undefined)
+    scenes.push({
+      section: "opening",
+      id: "opening",
+      speaker: "you",
+      said: essay.opening.transcript,
+    })
   scenes.push({
     section: "open",
     id: "open",
@@ -694,6 +724,12 @@ export const interviewEssayChapterMarks = (
     interviewEssayScenes(essay).filter((s) => s.section === "chapter")
   )
 
+/**
+ * The card a week names its essay's opening by (`some-ui.interview-week/2`'s
+ * `opening`, IW10): its take is the read of that card.
+ */
+export const OPENING_TAKE = "opening"
+
 /** The file name a read's take has in the takes folder: `read.<card>`. */
 export const readTakeId = (card: string): string => `read.${card}`
 
@@ -707,15 +743,25 @@ export const interviewEssayTakeFiles = (
   essay: InterviewEssay,
   names: ReadonlyArray<string>
 ): Parsed<Readonly<Record<string, TakeFiles>>> => {
+  // The opening's take plays when the essay holds it; any other of its
+  // takes home hands over (unread, or unheard) is set aside.
+  const opening = readTakeId(OPENING_TAKE)
   const items = [
     ...essay.questions.map((q) => ({ id: q.id, answer: q.answer })),
     ...essay.reads.map((r) => ({ id: readTakeId(r.id), answer: r.answer })),
   ]
+  const plays = essay.opening !== undefined
   return takeFilesOf(
     {
-      answered: items.filter((i) => i.answer.kind === "take").map((i) => i.id),
+      answered: [
+        ...(plays ? [opening] : []),
+        ...items.filter((i) => i.answer.kind === "take").map((i) => i.id),
+      ],
       silent: items.filter((i) => i.answer.kind === "silence").map((i) => i.id),
-      unheard: items.filter((i) => isUnheard(i.answer)).map((i) => i.id),
+      unheard: [
+        ...(plays ? [] : [opening]),
+        ...items.filter((i) => isUnheard(i.answer)).map((i) => i.id),
+      ],
       noun: "question or read",
     },
     names
@@ -726,6 +772,7 @@ export const interviewEssayTakeFiles = (
 export const interviewTakeOf = (scene: InterviewEssayScene): string | null => {
   if (scene.speaker !== "you" || scene.section === "chapter") return null
   if (scene.section === "answer") return scene.question ?? null
+  if (scene.section === "opening") return readTakeId(OPENING_TAKE)
   if (scene.section === "reading" && scene.read !== undefined)
     return readTakeId(scene.read)
   return null

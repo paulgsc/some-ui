@@ -13,11 +13,9 @@
  */
 import { useEffect, useSyncExternalStore } from "react"
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
-import { SERVER_CONTRACT_EPOCH } from "@some-ui/server-routes"
 
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 
-import { askCompat } from "./compat-read"
 import { homeLink, LINK_CLOCK, pairing, useHomeLink } from "./index"
 import type { KeptRun, KeptState } from "./kept-model"
 import type { Kept, KeptPorts } from "./kept-runtime"
@@ -28,9 +26,9 @@ import type { HomeLinkState, Pairing } from "./model"
 import { drainStopping, homeBusy } from "./model"
 import type { HomeRefresher } from "./pull"
 import { homeRefresher } from "./pull"
-import type { ServesRun } from "./serves"
-import { createServes, servesRefresher, watchServes } from "./serves"
+import { servesRefresher, watchServes } from "./serves"
 import type { Serves } from "./serves-model"
+import { servesRun } from "./serves-now"
 import type { LaneView } from "./words"
 import { laneView, WORDS } from "./words"
 
@@ -257,17 +255,6 @@ export function useLaneView(lane: Lane): LaneReading {
     useHomeLink(),
     useServes()
   )
-}
-
-let serves: ServesRun | null = null
-
-/** One ask of whether home works with this build, per page load. */
-function servesRun(): ServesRun {
-  serves ??= createServes({
-    read: () => askCompat(SERVER_CONTRACT_EPOCH),
-    now: LINK_CLOCK.now,
-  })
-  return serves
 }
 
 /**

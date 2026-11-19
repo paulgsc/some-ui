@@ -15,11 +15,11 @@
  *   latest" even when a later take replaces it before Send. Only a
  *   question's: a read's takes wait for Send as before.
  */
-import type { Question, Ready } from "@some-ui/interview-week"
+import type { InterviewWeek, Question, Ready } from "@some-ui/interview-week"
 import type { PatternTake } from "@some-ui/voice-capture"
 
 import type { InterviewSent } from "./spec"
-import { takeLine } from "./spec"
+import { cardOf, takeLine } from "./spec"
 
 /** The rungs a take is said on: read aloud, from cues, in your own words. */
 export const RUNGS = ["aloud", "cues", "own"] as const
@@ -39,17 +39,34 @@ export const stepsOf = (
 /** The rungs said without the answer on screen: the take page's. */
 export type SayRung = Exclude<Rung, "aloud">
 
-/**
- * The ready answer as read aloud: its parts' texts in order, a phrase a
- * line, broken after each clause's punctuation.
- */
+/** `text` a phrase a line, broken after each clause's punctuation. */
+const phrasesOf = (text: string): ReadonlyArray<string> =>
+  text
+    .split(/(?<=[.,;:?!])\s+/u)
+    .map((phrase) => phrase.trim())
+    .filter((phrase) => phrase !== "")
+
+/** The ready answer as read aloud: its parts' texts in order, a phrase a line. */
 export const scriptOf = (ready: Pick<Ready, "answer">): ReadonlyArray<string> =>
-  ready.answer.flatMap(({ text }) =>
-    text
-      .split(/(?<=[.,;:?!])\s+/u)
-      .map((phrase) => phrase.trim())
-      .filter((phrase) => phrase !== "")
-  )
+  ready.answer.flatMap(({ text }) => phrasesOf(text))
+
+/**
+ * What `item` of `week` reads aloud, a phrase a line: a question's ready
+ * answer, or a read's script, each of its lines broken the same way (IW9);
+ * none for a question without a ready answer, or an item not in the week.
+ */
+export function linesOf(
+  week: Pick<InterviewWeek, "questions" | "cards">,
+  item: string
+): ReadonlyArray<string> {
+  const card = cardOf(item)
+  if (card === null) {
+    const ready = week.questions.find(({ id }) => id === item)?.ready
+    return ready === undefined ? [] : scriptOf(ready)
+  }
+  const script = week.cards.find(({ id }) => id === card)?.script ?? ""
+  return script.split("\n").flatMap(phrasesOf)
+}
 
 /**
  * `sent` with each answer's rung as `ladder` marked its take, for an answer

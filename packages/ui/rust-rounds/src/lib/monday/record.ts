@@ -10,8 +10,8 @@
  *   the owner sent (#2231, "The record is final only after `due`").
  * - A transcript is `some-ui.voice-transcript/1` (the mailbox's `transcript`
  *   folder). A take's `ref` is `<week>:<ticket>`, or `<week>:<ticket>:<n>`
- *   for a take of speak-to point n alone (RR24, #3248); a pasted error's note
- *   is `<week>:PASTE:<at>` (paulgsc/server `voice_repo::is_rust_round_ref`).
+ *   for its point n (RR24); a pasted error's note is
+ *   `<week>:PASTE:<at>` (paulgsc/server `voice_repo::is_rust_round_ref`).
  */
 import { WEEK_ID } from "@rust-rounds/lib/formats/week"
 import { hearingOf, transcriptName } from "@some-ui/video-render"
@@ -25,13 +25,6 @@ const PasteSchema = z.object({
   note: z.string().min(1).nullable(),
 })
 
-/** A speak-to point answered by a take of its own (RR24): its place from 1, and the take. */
-const PointRecordSchema = z.object({
-  point: z.int().min(1).max(99),
-  take: z.string().min(1),
-  recordedAt: Instant,
-})
-
 const TicketRecordSchema = z.object({
   ticket: z.string().min(1),
   /** Answered whole, or by any of its points. */
@@ -39,8 +32,20 @@ const TicketRecordSchema = z.object({
   /** The take of the whole ticket, when one was sent: it answers every point. */
   take: z.string().min(1).nullable(),
   recordedAt: Instant.nullable(),
-  /** Each point answered by a take of its own, in order; none from a home before RR24. */
-  points: z.array(PointRecordSchema).default([]),
+  /**
+   * Each point answered by a take of its own (RR24), its point read from the
+   * take's `ref`; `take` above is the whole ticket's, which answers every
+   * point. A home from before RR24 says none.
+   */
+  points: z
+    .array(
+      z.object({
+        point: z.int().positive(),
+        take: z.string().min(1),
+        recordedAt: Instant,
+      })
+    )
+    .default([]),
   opens: z.int().nonnegative(),
 })
 

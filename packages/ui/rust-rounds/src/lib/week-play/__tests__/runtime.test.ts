@@ -61,8 +61,11 @@ function phone(
     now?: () => number
     heard?: (take: string) => Promise<HeardAnswer>
     homeHolds?: (sent: WeekSent) => boolean
+    perPoint?: boolean
+    held?: HeldWeek
   } = {}
 ): Phone {
+  const perPoint = over.perPoint ?? false
   const { pattern, store } = simulated
   const takes: BundleTakes = {
     pattern,
@@ -78,7 +81,7 @@ function phone(
   const engaged: Array<EngagementEvent> = []
   const held = new Set<() => void>()
   const week = createRustWeek({
-    week: HELD,
+    week: over.held ?? HELD,
     takes: { ...takes, release },
     storage,
     home: { reach: () => "near", subscribe: () => (): void => undefined },
@@ -93,6 +96,7 @@ function phone(
     now: over.now ?? Date.now,
     newId: () => "unused",
     engage: (event) => engaged.push(event),
+    perPoint,
     onVisibility: (listener) => {
       listener(false)
       return (): void => undefined
@@ -293,6 +297,41 @@ describe("the week's openings (RR14)", () => {
       ["left", "ticket-2"],
     ])
   })
+
+  it("tells a ticket opened once, whichever of its points is on screen (RR24)", async () => {
+    const on = phone(inMemoryStorage(), onConfirm(), { perPoint: true })
+    const items = on.week.machine.spec.items
+    const [first, second] = QUILLMOSS_WEEK.tickets
+    if (first === undefined || second === undefined) throw new Error("tickets")
+    on.week.bundle.dispatch({
+      type: "go",
+      index: items.indexOf(`${first.id}:1`),
+    })
+    await pass(5_000)
+    on.week.bundle.dispatch({
+      type: "go",
+      index: items.indexOf(`${first.id}:2`),
+    })
+    await pass(5_000)
+    on.week.bundle.dispatch({
+      type: "go",
+      index: items.indexOf(`${second.id}:1`),
+    })
+    await pass(5_000)
+    on.week.bundle.dispatch({ type: "back" })
+    on.detach()
+    expect(
+      on.engaged.map((event) => [
+        event.kind,
+        event.kind === "left" ? event.place : null,
+      ])
+    ).toEqual([
+      ["taken", null],
+      ["left", "ticket-1"],
+      ["taken", null],
+      ["left", "ticket-2"],
+    ])
+  })
 })
 
 describe("what home has of a week (RR22, C56)", () => {
@@ -374,5 +413,108 @@ describe("what home has of a week (RR22, C56)", () => {
     )
     expect(asked).toContain(held?.answers[0]?.take)
     expect(asked).toContain(last?.answers[0]?.take)
+  })
+})
+
+/**
+ * RR24 (#3248): a take per speak-to point. Across a ticket of k points, each
+ * point records, is redone and is let go on its own, and the others stay as
+ * they were; the week sent names each point's take by its point, read from
+ * the take's `ref` (`<week>:<ticket>:<n>`), never by splitting one.
+ */
+describe("a take per point (RR24)", () => {
+  const withPoints = (k: number): HeldWeek => ({
+    ...HELD,
+    week: {
+      ...QUILLMOSS_WEEK,
+      tickets: QUILLMOSS_WEEK.tickets.map((ticket, i) =>
+        i === 0
+          ? {
+              ...ticket,
+              forks: Array.from({ length: k }, (_, n) => ({
+                question: `point ${n + 1}`,
+                options: [],
+              })),
+            }
+          : ticket
+      ),
+    },
+  })
+
+  it.each([2, 3, 8])(
+    "records, redoes and lets go each of %i points on its own",
+    async (k) => {
+      const storage = inMemoryStorage()
+      const on = phone(storage, onConfirm(), {
+        perPoint: true,
+        held: withPoints(k),
+      })
+      const ticket = QUILLMOSS_WEEK.tickets[0]!.id
+      const items = on.week.machine.spec.items.filter((item) =>
+        item.startsWith(`${ticket}:`)
+      )
+      expect(items).toEqual(
+        Array.from({ length: k }, (_, n) => `${ticket}:${n + 1}`)
+      )
+      on.week.bundle.dispatch({ type: "go", index: 0 })
+      for (const item of items) await say(on, item)
+      const answers = (): Array<string> =>
+        on.simulated.store
+          .getSnapshot()
+          .map((take) => take.answers)
+          .sort()
+      const lines = items.map((item) => `2026-w46:${item}`).sort()
+      expect(answers()).toEqual(lines)
+      const idOf = (line: string): string | undefined =>
+        on.simulated.store
+          .getSnapshot()
+          .filter((take) => take.answers === line)
+          .at(-1)?.id
+
+      // Redo point 2: a new take of point 2 only; every other point keeps its own.
+      const before = items.map((item) => idOf(`2026-w46:${item}`))
+      await say(on, items[1]!)
+      const after = items.map((item) => idOf(`2026-w46:${item}`))
+      expect(after.filter((id, n) => id !== before[n])).toHaveLength(1)
+      expect(after[1]).not.toBe(before[1])
+
+      // Let point 1 go: deleted before Send (it never left), the others stay.
+      on.week.bundle.dispatch({ type: "askDelete", item: items[0]! })
+      on.week.bundle.dispatch({ type: "confirmed" })
+      await pass()
+      expect(idOf(`2026-w46:${items[0]!}`)).toBeUndefined()
+      for (const n of items.keys())
+        if (n > 0) expect(idOf(`2026-w46:${items[n]!}`)).toBe(after[n])
+
+      on.week.bundle.dispatch({ type: "review" })
+      on.week.bundle.dispatch({ type: "send" })
+      const [sent] = weeksSent(storage).list() ?? []
+      const points = (sent?.answers ?? [])
+        .filter((answer) => answer.ticket === ticket)
+        .map((answer) => answer.point)
+      expect(points).toEqual(Array.from({ length: k - 1 }, (_, n) => n + 2))
+      expect(sent?.passed).not.toContain(ticket)
+    }
+  )
+
+  it("keeps a take of the whole ticket, sent before points, as its ticket's", async () => {
+    const storage = inMemoryStorage()
+    const on = phone(storage, onConfirm(), {
+      perPoint: true,
+      held: withPoints(3),
+    })
+    const ticket = QUILLMOSS_WEEK.tickets[0]!.id
+    on.week.bundle.dispatch({ type: "go", index: 0 })
+    // A take of the whole ticket, as a phone before RR24 recorded one.
+    await say(on, ticket)
+    await say(on, `${ticket}:2`)
+    on.week.bundle.dispatch({ type: "review" })
+    on.week.bundle.dispatch({ type: "send" })
+    const [sent] = weeksSent(storage).list() ?? []
+    expect(
+      sent?.answers
+        .filter((answer) => answer.ticket === ticket)
+        .map((answer) => answer.point ?? "whole")
+    ).toEqual(["whole", 2])
   })
 })

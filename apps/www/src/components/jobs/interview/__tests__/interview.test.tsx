@@ -12,14 +12,25 @@
  * or says what wasn't done.
  */
 import { inMemoryStorage } from "@some-ui/core-utils"
+import { TAKE_WORDS } from "@some-ui/voice-capture"
 import { takeButton } from "@some-ui/voice-capture/testing"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { fakePorts, WEEK, WEEK_2 } from "@/lib/interview-week/__tests__/fixture"
+import {
+  fakePorts,
+  OPENING_CARD_OF_WEEK,
+  WEEK,
+  WEEK_2,
+  WEEK_2_OPENED,
+} from "@/lib/interview-week/__tests__/fixture"
 import { CUE_SECONDS } from "@/lib/interview-week/cue"
+import { pastWeeks } from "@/lib/interview-week/past"
+import { readItem } from "@/lib/interview-week/spec"
 import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 import { RoutedInterview } from "@/components/jobs/interview/__tests__/routed"
+import type { PastWeeksProps } from "@/components/jobs/interview/past"
+import { labelOf } from "@/components/jobs/interview/run"
 
 // The pages are the Android app's alone (AUDIENCES.md A3); tests run another profile.
 vi.mock("@/lib/build-profile", () => ({ hasAudience: (): boolean => true }))
@@ -63,12 +74,12 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-function open(week = WEEK_2, path?: string): void {
+function open(week = WEEK_2, path?: string, past?: PastWeeksProps): void {
   const { ports } = fakePorts({
     storage: inMemoryStorage(),
     week: { week, sha256: "a".repeat(64) },
   })
-  render(<RoutedInterview ports={() => ports} path={path} />)
+  render(<RoutedInterview ports={() => ports} path={path} past={past} />)
 }
 
 const conflict = WEEK_2.questions[1]
@@ -90,7 +101,9 @@ describe("the interview week's pages on the phone (IW8)", () => {
     screen.getByText(WEEK.company.about)
     screen.getByText(WEEK.role.about)
     screen.getByText(WORDS.invented)
-    await follow(new RegExp(`^${WORDS.today}`))
+    // Today's question carries the number the look over gives it.
+    const todayIs = WORDS.questionLabel(2)
+    await follow(new RegExp(`^${WORDS.today(todayIs)}`))
 
     // Its page: the four rungs at equal weight.
     for (const step of ["study", "aloud", "cues", "own"] as const) {
@@ -136,10 +149,31 @@ describe("the interview week's pages on the phone (IW8)", () => {
     const card = document.querySelector<HTMLElement>("[data-card]")
     if (card === null) throw new Error("no take on the read's page")
     fireEvent.click(takeButton(card))
-    expect(card.textContent).toContain(WORDS.cue(CUE_SECONDS))
+    // The button it starts from counts in, so the two never disagree.
+    expect(takeButton(card).textContent).toBe(
+      TAKE_WORDS.button.counting(CUE_SECONDS)
+    )
+    // The line under the script shows it too, where a retry replaces the button.
+    expect(card.textContent).toContain(
+      `${TAKE_WORDS.button.counting(CUE_SECONDS)}. ${WORDS.cueLine}`
+    )
     await settle(CUE_SECONDS * 1000)
     await settle(2_000)
     expect(document.querySelector('[data-script="epic-2931"]')).toBe(script)
+    // The band moves while the take hears you, and Pause holds it (IW9).
+    const lit = (): string | null | undefined =>
+      script?.querySelector('[aria-current="true"]')?.getAttribute("data-line")
+    expect(lit()).toBe("0")
+    // The first line's eleven words take about 5 s at the band's pace.
+    await settle(6_000)
+    expect(lit()).not.toBe("0")
+    fireEvent.click(screen.getByRole("button", { name: WORDS.band.pause }))
+    screen.getByText(WORDS.band.paused)
+    const held = lit()
+    await settle(3_000)
+    expect(lit()).toBe(held)
+    fireEvent.click(screen.getByRole("button", { name: WORDS.band.goOn }))
+    screen.getByRole("button", { name: WORDS.band.pause })
     fireEvent.click(takeButton(card))
     await settle()
 
@@ -149,6 +183,9 @@ describe("the interview week's pages on the phone (IW8)", () => {
     )
     await follow(WORDS.toInterview)
     await press(WORDS.toReview)
+    // The look over names today's question as its card did, and the read by its kind.
+    screen.getByText(todayIs)
+    screen.getByText(WORDS.readLabel(1))
     await press(WORDS.send(2))
     screen.getByText(WORDS.sent.title(2))
 
@@ -172,11 +209,107 @@ describe("the interview week's pages on the phone (IW8)", () => {
     screen.getByText(WORDS.wayIn.title)
   })
 
+  it("lists past weeks with where each essay is (IW17)", async () => {
+    const week = (n: number): typeof WEEK => ({ ...WEEK, id: `2026-w${n}` })
+    const askAgain = vi.fn()
+    open(WEEK_2, "/jobs/interview", {
+      weeks: [
+        {
+          week: week(46),
+          sent: {
+            week: "2026-w46",
+            at: "2026-11-14T18:00:00Z",
+            answers: [
+              {
+                question: "conflict",
+                take: "t1",
+                recordedAt: "2026-11-14T18:00:00Z",
+              },
+            ],
+            reads: [],
+            passed: [],
+            passedReads: [],
+          },
+          essay: { kind: "ready", key: "2026-w46" },
+        },
+        { week: week(45), sent: null, essay: { kind: "failed" } },
+        { week: week(44), sent: null, essay: { kind: "making" } },
+        {
+          week: week(43),
+          sent: null,
+          essay: { kind: "expected" },
+        },
+        { week: week(42), sent: null, essay: { kind: "unknown" } },
+      ],
+      askAgain,
+    })
+    await settle()
+    // The first page, before anything is said, opens Past weeks.
+    await follow(new RegExp(`^${WORDS.weeks.title}`))
+    screen.getByText(WORDS.weeks.sent(1, "2026-11-14T18:00:00Z"))
+    const watch = screen.getByRole("link", { name: /^Watch its essay/ })
+    expect(watch.getAttribute("href")).toBe(
+      "/journal/episodes/interview-essay/2026-w46"
+    )
+    const renders = screen.getByRole("link", { name: /^Open Renders/ })
+    expect(renders.getAttribute("href")).toBe("/journal/renders")
+    screen.getByText(WORDS.weeks.essay.making)
+    screen.getByText(WORDS.weeks.essay.expected)
+    screen.getByText(WORDS.weeks.essay.unknown)
+    expect(screen.getAllByText(WORDS.weeks.noSend)).toHaveLength(4)
+    // Each week's takes, in Studio's one Takes.
+    const takes = screen.getAllByRole("link", { name: /^Hear your takes/ })
+    expect(takes[1]?.getAttribute("href")).toContain(
+      "about=interview%3A2026-w45"
+    )
+    await press(WORDS.weeks.tryAgain)
+    expect(askAgain).toHaveBeenCalledOnce()
+  })
+
+  it("says so when no week has closed yet (IW17)", async () => {
+    // The week open now is no past week.
+    const weeks = pastWeeks(
+      [{ week: WEEK_2, sha256: "a" }],
+      [],
+      "2026-11-17T18:00:00Z",
+      { kind: "read", episodes: [] },
+      null
+    )
+    expect(weeks).toEqual([])
+    open(WEEK_2, "/jobs/interview/past", { weeks, askAgain: null })
+    await settle()
+    screen.getByText(WORDS.weeks.none)
+  })
+
   it("cites the body of work on a question about it", async () => {
     open(WEEK_2, "/jobs/interview/q/decision-c266/study")
     await settle()
     screen.getByText(WORDS.study.work)
     expect(screen.getAllByText("some-ui#3170").length).toBeGreaterThan(0)
+  })
+
+  it("lists the essay's opening first in Read aloud, and reads it as any card (IW10)", async () => {
+    open(WEEK_2_OPENED, "/jobs/interview/reads")
+    await settle()
+    const links = screen.getAllByRole("link").map((link) => link.textContent)
+    const first = links.findIndex((text) => text.startsWith(WORDS.opening))
+    const read = links.findIndex((text) =>
+      text.startsWith(WEEK_2.cards[0].situation)
+    )
+    expect(first).toBeGreaterThanOrEqual(0)
+    expect(first).toBeLessThan(read)
+    screen.getByText("I'm paulgsc.")
+    await follow(new RegExp(`^${WORDS.opening}`))
+    const script = document.querySelector(
+      `[data-script="${OPENING_CARD_OF_WEEK.id}"]`
+    )
+    expect(script?.textContent).toContain("one more week of it")
+    expect(labelOf(WEEK_2_OPENED, readItem(OPENING_CARD_OF_WEEK.id))).toBe(
+      WORDS.opening
+    )
+    expect(labelOf(WEEK_2_OPENED, readItem(WEEK_2.cards[0].id))).toBe(
+      WORDS.readLabel(1)
+    )
   })
 
   it("gives a week written before ready answers its cues from what to cover", async () => {

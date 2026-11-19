@@ -48,11 +48,14 @@ const week = (id: string): string => `/rust-weeks/${encodeURIComponent(id)}`
 
 /**
  * Everything Rust Rounds keeps that goes home at `at` (milliseconds since
- * the epoch), in the order it goes.
+ * the epoch), in the order it goes. A week sent with takes of single points
+ * (RR24) waits until `pointsServed`, home saying it serves them, since a
+ * home before them refuses the send.
  */
 export function keptGoing(
   storage: KeyedStorage | null,
-  at: number
+  at: number,
+  pointsServed: boolean
 ): Array<KeptItem> {
   const sends = weeksSent(storage).list() ?? []
   const held = keptWeeks(storage).held()
@@ -66,6 +69,10 @@ export function keptGoing(
       const of = heldWeek(held, sent.week)
       return of === null || !isClosed(of.week, now)
     })
+    .filter(
+      (sent) =>
+        pointsServed || sent.answers.every(({ point }) => point === undefined)
+    )
     .map(
       (sent): KeptItem => ({
         kind: "rustWeeks",
