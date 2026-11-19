@@ -14,7 +14,13 @@ import type { SayRung } from "@/lib/interview-week/ladder"
 
 /** A page of the week. */
 export type Page =
-  | { readonly page: "interview" | "questions" | "how" | "reads" }
+  | {
+      readonly page: "interview" | "questions" | "how" | "reads" | "past"
+    }
+  /** A week's essay in Studio's Episodes, by the key its feed names it (IW17). */
+  | { readonly page: "essay"; readonly key: string }
+  /** Studio › Renders, which says why a render couldn't finish. */
+  | { readonly page: "renders" }
   /** The week's takes in Studio's one Takes (TAKES20): its interview kind, this week's. */
   | { readonly page: "takes"; readonly week: string; readonly name: string }
   | { readonly page: "read"; readonly card: string }
@@ -60,6 +66,21 @@ export const To = ({
     }
     case "how": {
       return <Link to="/jobs/interview/how" {...link} />
+    }
+    case "past": {
+      return <Link to="/jobs/interview/past" {...link} />
+    }
+    case "essay": {
+      return (
+        <Link
+          to="/journal/episodes/$feed/$key"
+          params={{ feed: "interview-essay", key: to.key }}
+          {...link}
+        />
+      )
+    }
+    case "renders": {
+      return <Link to="/journal/renders" {...link} />
     }
     case "reads": {
       return <Link to="/jobs/interview/reads" {...link} />

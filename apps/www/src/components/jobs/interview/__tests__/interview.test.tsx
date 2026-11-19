@@ -21,6 +21,7 @@ import { fakePorts, WEEK, WEEK_2 } from "@/lib/interview-week/__tests__/fixture"
 import { CUE_SECONDS } from "@/lib/interview-week/cue"
 import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 import { RoutedInterview } from "@/components/jobs/interview/__tests__/routed"
+import type { PastWeeksProps } from "@/components/jobs/interview/past"
 
 // The pages are the Android app's alone (AUDIENCES.md A3); tests run another profile.
 vi.mock("@/lib/build-profile", () => ({ hasAudience: (): boolean => true }))
@@ -64,12 +65,12 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-function open(week = WEEK_2, path?: string): void {
+function open(week = WEEK_2, path?: string, past?: PastWeeksProps): void {
   const { ports } = fakePorts({
     storage: inMemoryStorage(),
     week: { week, sha256: "a".repeat(64) },
   })
-  render(<RoutedInterview ports={() => ports} path={path} />)
+  render(<RoutedInterview ports={() => ports} path={path} past={past} />)
 }
 
 const conflict = WEEK_2.questions[1]
@@ -183,6 +184,69 @@ describe("the interview week's pages on the phone (IW8)", () => {
     )
     await follow(WORDS.toInterview)
     screen.getByText(WORDS.wayIn.title)
+  })
+
+  it("lists past weeks with where each essay is (IW17)", async () => {
+    const week = (n: number): typeof WEEK => ({ ...WEEK, id: `2026-w${n}` })
+    const askAgain = vi.fn()
+    open(WEEK_2, "/jobs/interview", {
+      weeks: [
+        {
+          week: week(46),
+          sent: {
+            week: "2026-w46",
+            at: "2026-11-14T18:00:00Z",
+            answers: [
+              {
+                question: "conflict",
+                take: "t1",
+                recordedAt: "2026-11-14T18:00:00Z",
+              },
+            ],
+            reads: [],
+            passed: [],
+            passedReads: [],
+          },
+          essay: { kind: "ready", key: "2026-w46" },
+        },
+        { week: week(45), sent: null, essay: { kind: "failed" } },
+        { week: week(44), sent: null, essay: { kind: "making" } },
+        {
+          week: week(43),
+          sent: null,
+          essay: { kind: "expected", on: "2026-11-23" },
+        },
+        { week: week(42), sent: null, essay: { kind: "unknown" } },
+      ],
+      askAgain,
+    })
+    await settle()
+    // The first page, before anything is said, opens Past weeks.
+    await follow(new RegExp(`^${WORDS.weeks.title}`))
+    screen.getByText(WORDS.weeks.sent(1, "2026-11-14T18:00:00Z"))
+    const watch = screen.getByRole("link", { name: /^Watch its essay/ })
+    expect(watch.getAttribute("href")).toBe(
+      "/journal/episodes/interview-essay/2026-w46"
+    )
+    const renders = screen.getByRole("link", { name: /^Open Renders/ })
+    expect(renders.getAttribute("href")).toBe("/journal/renders")
+    screen.getByText(WORDS.weeks.essay.making)
+    screen.getByText("Home expects to make its essay Monday, November 23.")
+    screen.getByText(WORDS.weeks.essay.unknown)
+    expect(screen.getAllByText(WORDS.weeks.noSend)).toHaveLength(4)
+    // Each week's takes, in Studio's one Takes.
+    const takes = screen.getAllByRole("link", { name: /^Hear your takes/ })
+    expect(takes[1]?.getAttribute("href")).toContain(
+      "about=interview%3A2026-w45"
+    )
+    await press(WORDS.weeks.tryAgain)
+    expect(askAgain).toHaveBeenCalledOnce()
+  })
+
+  it("says so when no week has closed yet (IW17)", async () => {
+    open(WEEK_2, "/jobs/interview/past")
+    await settle()
+    screen.getByText(WORDS.weeks.none)
   })
 
   it("cites the body of work on a question about it", async () => {

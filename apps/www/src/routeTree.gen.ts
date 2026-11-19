@@ -66,6 +66,7 @@ import { Route as DashboardApkSettingsPhoneRouteImport } from './routes/_dashboa
 import { Route as DashboardApkSettingsStatusRouteImport } from './routes/_dashboard/_apk/settings/status'
 import { Route as DashboardApkJobsInterviewIndexRouteImport } from './routes/_dashboard/_apk/jobs/interview/index'
 import { Route as DashboardApkJobsInterviewHowRouteImport } from './routes/_dashboard/_apk/jobs/interview/how'
+import { Route as DashboardApkJobsInterviewPastRouteImport } from './routes/_dashboard/_apk/jobs/interview/past'
 import { Route as DashboardApkJobsInterviewQuestionsRouteImport } from './routes/_dashboard/_apk/jobs/interview/questions'
 import { Route as DashboardApkJournalAsksIndexRouteImport } from './routes/_dashboard/_apk/journal/asks/index'
 import { Route as DashboardApkJournalAsksAskRouteImport } from './routes/_dashboard/_apk/journal/asks/$ask'
@@ -398,6 +399,12 @@ const DashboardApkJobsInterviewHowRoute =
     path: '/how',
     getParentRoute: () => DashboardApkJobsInterviewRoute,
   } as any)
+const DashboardApkJobsInterviewPastRoute =
+  DashboardApkJobsInterviewPastRouteImport.update({
+    id: '/past',
+    path: '/past',
+    getParentRoute: () => DashboardApkJobsInterviewRoute,
+  } as any)
 const DashboardApkJobsInterviewQuestionsRoute =
   DashboardApkJobsInterviewQuestionsRouteImport.update({
     id: '/questions',
@@ -639,6 +646,7 @@ export interface FileRoutesByFullPath {
   '/journal/': typeof DashboardApkJournalIndexRoute
   '/practice/': typeof DashboardApkPracticeIndexRoute
   '/jobs/interview/how': typeof DashboardApkJobsInterviewHowRoute
+  '/jobs/interview/past': typeof DashboardApkJobsInterviewPastRoute
   '/jobs/interview/questions': typeof DashboardApkJobsInterviewQuestionsRoute
   '/journal/asks/$ask': typeof DashboardApkJournalAsksAskRoute
   '/journal/cards/$key': typeof DashboardApkJournalCardsKeyRoute
@@ -722,6 +730,7 @@ export interface FileRoutesByTo {
   '/journal': typeof DashboardApkJournalIndexRoute
   '/practice': typeof DashboardApkPracticeIndexRoute
   '/jobs/interview/how': typeof DashboardApkJobsInterviewHowRoute
+  '/jobs/interview/past': typeof DashboardApkJobsInterviewPastRoute
   '/jobs/interview/questions': typeof DashboardApkJobsInterviewQuestionsRoute
   '/journal/asks/$ask': typeof DashboardApkJournalAsksAskRoute
   '/journal/cards/$key': typeof DashboardApkJournalCardsKeyRoute
@@ -813,6 +822,7 @@ export interface FileRoutesById {
   '/_dashboard/_apk/journal/': typeof DashboardApkJournalIndexRoute
   '/_dashboard/_apk/practice/': typeof DashboardApkPracticeIndexRoute
   '/_dashboard/_apk/jobs/interview/how': typeof DashboardApkJobsInterviewHowRoute
+  '/_dashboard/_apk/jobs/interview/past': typeof DashboardApkJobsInterviewPastRoute
   '/_dashboard/_apk/jobs/interview/questions': typeof DashboardApkJobsInterviewQuestionsRoute
   '/_dashboard/_apk/journal/asks/$ask': typeof DashboardApkJournalAsksAskRoute
   '/_dashboard/_apk/journal/cards/$key': typeof DashboardApkJournalCardsKeyRoute
@@ -902,6 +912,7 @@ export interface FileRouteTypes {
     | '/journal/'
     | '/practice/'
     | '/jobs/interview/how'
+    | '/jobs/interview/past'
     | '/jobs/interview/questions'
     | '/journal/asks/$ask'
     | '/journal/cards/$key'
@@ -985,6 +996,7 @@ export interface FileRouteTypes {
     | '/journal'
     | '/practice'
     | '/jobs/interview/how'
+    | '/jobs/interview/past'
     | '/jobs/interview/questions'
     | '/journal/asks/$ask'
     | '/journal/cards/$key'
@@ -1075,6 +1087,7 @@ export interface FileRouteTypes {
     | '/_dashboard/_apk/journal/'
     | '/_dashboard/_apk/practice/'
     | '/_dashboard/_apk/jobs/interview/how'
+    | '/_dashboard/_apk/jobs/interview/past'
     | '/_dashboard/_apk/jobs/interview/questions'
     | '/_dashboard/_apk/journal/asks/$ask'
     | '/_dashboard/_apk/journal/cards/$key'
@@ -1526,6 +1539,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardApkJobsInterviewHowRouteImport
       parentRoute: typeof DashboardApkJobsInterviewRoute
     }
+    '/_dashboard/_apk/jobs/interview/past': {
+      id: '/_dashboard/_apk/jobs/interview/past'
+      path: '/past'
+      fullPath: '/jobs/interview/past'
+      preLoaderRoute: typeof DashboardApkJobsInterviewPastRouteImport
+      parentRoute: typeof DashboardApkJobsInterviewRoute
+    }
     '/_dashboard/_apk/jobs/interview/questions': {
       id: '/_dashboard/_apk/jobs/interview/questions'
       path: '/questions'
@@ -1766,6 +1786,7 @@ const DashboardApkAphRouteWithChildren = DashboardApkAphRoute._addFileChildren(
 
 interface DashboardApkJobsInterviewRouteChildren {
   DashboardApkJobsInterviewHowRoute: typeof DashboardApkJobsInterviewHowRoute
+  DashboardApkJobsInterviewPastRoute: typeof DashboardApkJobsInterviewPastRoute
   DashboardApkJobsInterviewQuestionsRoute: typeof DashboardApkJobsInterviewQuestionsRoute
   DashboardApkJobsInterviewIndexRoute: typeof DashboardApkJobsInterviewIndexRoute
   DashboardApkJobsInterviewReadsCardRoute: typeof DashboardApkJobsInterviewReadsCardRoute
@@ -1779,6 +1800,7 @@ interface DashboardApkJobsInterviewRouteChildren {
 const DashboardApkJobsInterviewRouteChildren: DashboardApkJobsInterviewRouteChildren =
   {
     DashboardApkJobsInterviewHowRoute: DashboardApkJobsInterviewHowRoute,
+    DashboardApkJobsInterviewPastRoute: DashboardApkJobsInterviewPastRoute,
     DashboardApkJobsInterviewQuestionsRoute:
       DashboardApkJobsInterviewQuestionsRoute,
     DashboardApkJobsInterviewIndexRoute: DashboardApkJobsInterviewIndexRoute,

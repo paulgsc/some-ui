@@ -25,6 +25,7 @@ import { TAKE_MAX_SECONDS, workSourceKey } from "@some-ui/interview-week"
 import type { BundleWords } from "@some-ui/shared"
 import { TAKE_WORDS } from "@some-ui/voice-capture"
 
+import { dayOf } from "@/lib/cards-essay-key"
 import { lengthOf } from "@/lib/format"
 
 import type { Rung, Step } from "./ladder"
@@ -278,6 +279,31 @@ export const INTERVIEW_WORDS = {
     title: (n: number): string => `Sent home: ${takes(n)}.`,
     line: "Home keeps your takes and writes down the words it hears in them. Nothing answers now. The essay comes after the deadline, and covers every card, said or not.",
     notSaid: "Not said.",
+  },
+  /** Past weeks (IW17): each closed week on this phone, and where its essay is. */
+  weeks: {
+    title: "Past weeks",
+    line: "Each week on this phone that has closed, and where its essay is.",
+    entryLine: "Each closed week, and where its essay is",
+    none: "No week on this phone has closed yet. Once one does, it shows here with its essay.",
+    sent: (n: number, at: string): string =>
+      `You sent it ${weekday(at)} ${clock(at)}: ${takes(n)}.`,
+    noSend: "No send from this phone.",
+    essay: {
+      asking: "Asking home about its essay…",
+      unpaired: "Pair this phone with home to see where its essay is.",
+      unknown: "Home didn't answer, so where its essay is can't be said here.",
+      ready: "Its essay is ready.",
+      watch: "Watch its essay",
+      making: "Home is making its essay now.",
+      failed: "Home couldn't finish its essay. Renders says why.",
+      renders: "Open Renders",
+      expected: (on: string | null): string =>
+        on === null
+          ? "Home makes its essay after the week closes, usually the Monday after."
+          : `Home expects to make its essay ${dayOf(on)}.`,
+    },
+    tryAgain: "Ask home again",
   },
   /** The week read back once it closed: nothing records or sends. */
   closed: {
