@@ -43,4 +43,17 @@ describe("CardLink", () => {
     expect(link?.querySelector("svg")).not.toBeNull()
     expect(link?.textContent).toBe("How a week goes")
   })
+
+  it("gives a brand card's chevron the brand's own pair", () => {
+    render(
+      <CardLink href="/q" tone="brand">
+        <CardLinkBody>Today&apos;s question</CardLinkBody>
+      </CardLink>
+    )
+    const link = screen.getByRole("link")
+    expect(link.className).toContain("from-brand")
+    expect(link.querySelector("[aria-hidden]")?.className).toContain(
+      "bg-brand-foreground"
+    )
+  })
 })

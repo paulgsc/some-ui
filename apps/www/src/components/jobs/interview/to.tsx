@@ -122,17 +122,19 @@ export function useOpenItem(): (
  */
 export const CardTo = ({
   to,
+  tone,
   className,
   children,
 }: {
   to: Page
+  tone?: "card" | "brand"
   className?: string
   children: ReactNode
 }): JSX.Element =>
   // Where the build carries no pages to open, the words stay plain: a card
   // that opens nothing never takes the card link's look (C630).
   hasAudience("apk") ? (
-    <CardLink asChild className={className}>
+    <CardLink asChild tone={tone} className={className}>
       <To to={to}>
         <CardLinkBody>{children}</CardLinkBody>
       </To>

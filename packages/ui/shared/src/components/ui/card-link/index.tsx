@@ -24,23 +24,48 @@ import { cn } from "../../../lib/utils"
 const CARD_LINK_CLASS =
   "group/card-link flex w-full items-center gap-3 rounded-2xl border-2 border-primary/25 bg-linear-to-b from-card to-brand/15 p-3 text-left text-card-foreground shadow-md shadow-primary/10 ring-1 ring-inset ring-card transition-[translate,box-shadow,border-color] hover:border-primary/50 active:translate-y-px active:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none motion-reduce:active:translate-y-0"
 
+/**
+ * A card link filled with the brand's colour, for the one a page leads with
+ * (today's question): its chevron takes the brand's own pair, so it shows on
+ * every theme, those whose brand is their primary included.
+ */
+const BRAND_CLASS =
+  "border-transparent from-brand to-brand text-brand-foreground rounded-3xl p-4"
+const CHEVRON = {
+  card: "bg-primary text-primary-foreground",
+  brand: "bg-brand-foreground text-brand",
+} as const
+
 export type CardLinkProps = {
   /** Render through the one child, a link, merging the look onto it. */
   asChild?: boolean
+  /** `brand` for the card a page leads with; `card` otherwise. */
+  tone?: keyof typeof CHEVRON
   className?: string
   children: ReactNode
 } & AnchorHTMLAttributes<HTMLAnchorElement>
 
 /** A card that opens something: its words, then a chevron. */
 export const CardLink = forwardRef<HTMLAnchorElement, CardLinkProps>(
-  ({ asChild = false, className, children, ...props }, ref) => {
+  ({ asChild = false, tone = "card", className, children, ...props }, ref) => {
     const Comp = asChild ? Slot : "a"
     return (
-      <Comp ref={ref} className={cn(CARD_LINK_CLASS, className)} {...props}>
+      <Comp
+        ref={ref}
+        className={cn(
+          CARD_LINK_CLASS,
+          tone === "brand" && BRAND_CLASS,
+          className
+        )}
+        {...props}
+      >
         <Slottable>{children}</Slottable>
         <span
           aria-hidden="true"
-          className="bg-primary text-primary-foreground grid size-7 shrink-0 place-items-center rounded-full shadow-sm transition-transform group-hover/card-link:translate-x-0.5 motion-reduce:transition-none"
+          className={cn(
+            CHEVRON[tone],
+            "grid size-7 shrink-0 place-items-center rounded-full shadow-sm transition-transform group-hover/card-link:translate-x-0.5 motion-reduce:transition-none"
+          )}
         >
           <ChevronRight className="size-4" />
         </span>
