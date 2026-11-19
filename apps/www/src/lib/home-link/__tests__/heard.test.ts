@@ -61,8 +61,10 @@ describe("home's words for a take (MIC10, GET /voice-notes/:id/heard)", () => {
     ).toEqual({ kind: "heard", text: "" })
   })
 
-  it("reads home, or a gateway before it, saying it is busy as busy", () => {
-    for (const status of [429, 502, 503, 504]) {
+  // A gateway's 502 or 504 never reaches here: the link holds it as home
+  // restarting (HR1, `./home-restart.test.ts` polls it through the link).
+  it("reads home saying it is busy as busy", () => {
+    for (const status of [429, 503]) {
       expect(readHeard({ status, body: "" })).toEqual({ kind: "busy" })
     }
   })

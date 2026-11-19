@@ -6,7 +6,9 @@
  *   certificate, is said as that, never as away and never as a fault on the
  *   phone, though it is held as a silence is (AW1, C476); a refused
  *   connection, a timeout, a TLS connection dropped or timed out, or a name
- *   failing on no network at all stays home's silence. A pairing 503 is
+ *   failing on no network at all stays home's silence. Home's door
+ *   answering for its server (`502`, `504`) is a third reason, `door`, held
+ *   and said the same way (HR1, `./home-restart.test.ts`). A pairing 503 is
  *   read by its code: `service_overloaded` is home busy (or its cap on
  *   tries, with no `Retry-After`), anything else is pairing not set up.
  * - Family: the kind of failure (a name not found, an untrusted
