@@ -247,8 +247,8 @@ export const WEEK_WORDS = {
   /**
    * A ticket's flow (RR25, #3249; RR29, #3257; the owner's approved
    * prototype, C690): read, the academy, then voice, each a page of one
-   * pager over the week. The owner's rule holds here too: a step worked
-   * through is "Gone through", never done (C711).
+   * pager over the week. The owner's rule holds here too (C711, the
+   * owner's): a step worked through is ticked "✓", never "done".
    */
   flow: {
     /** What PageControls pages, for assistive tech. */
@@ -263,7 +263,7 @@ export const WEEK_WORDS = {
     } satisfies Record<FlowStepKind, string>,
     stepsOf: (ticket: string): string => `Steps of ${ticket}`,
     standing: {
-      done: "Gone through",
+      done: "✓",
       skipped: "Skipped",
       open: "",
     } satisfies Record<Standing, string>,
