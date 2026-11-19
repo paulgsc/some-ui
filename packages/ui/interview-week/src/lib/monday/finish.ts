@@ -114,7 +114,7 @@ const cardSeconds = (card: Pick<Card, "source">, script: string): number => {
  * (C619).
  */
 const ASSESSING =
-  /\b(?:scor(?:e|es|ed|ing)|ratings?|rated|grad(?:e|es|ed|ing)|assess\w*|readiness|how ready|ready for (?:it|the|an?)\b|pass or fail|finish(?:ed)? line|finish(?:es|ed)? (?:it|the)\b|graduat\w*|levell?ed up|level up)\b/giu
+  /\b(?:scor(?:e|es|ed|ing)|ratings?|rated|grad(?:e|es|ed|ing)|self-assess\w*|assessments?|readiness|how ready|ready for (?:it|the|an?)\b|pass or fail|finish(?:ed)? line|graduat\w*|levell?ed up|level up)\b/giu
 
 function checkWords(
   values: WeekValues,

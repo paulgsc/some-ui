@@ -107,7 +107,7 @@ describe("the interview week's finish", () => {
     ])
     expect(
       opening(
-        `Paulgsc here.\n${OPENING.split("\n").slice(1).join("\n")}\nI'll tell a time a deploy failed, the tests that pass, a rate limit, and a high level view.`
+        `Paulgsc here.\n${OPENING.split("\n").slice(1).join("\n")}\nI'll tell a time a deploy failed, the tests that pass, a rate limit, a high level view, and how I assess a trade-off to finish the migration.`
       )
     ).toEqual([])
     expect(opening(script(20))[0]).toBe(

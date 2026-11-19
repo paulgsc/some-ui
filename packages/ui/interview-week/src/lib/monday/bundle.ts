@@ -271,17 +271,15 @@ export function essaysIn(
 }
 
 /**
- * What last week's essay said comes next (IW6's `next`): the newest essay in
- * `brief` for a week before `week`; null while there is none.
+ * What last week's essay said comes next (IW6's `next`): the essay in `brief`
+ * whose `next` is `week`; null while there is none, as when last week's essay
+ * still waits on a take.
  */
 export function lastNext(
   brief: ReadonlyArray<MailboxFile>,
   week: string
 ): InterviewEssay["next"] | null {
-  const before = essaysIn(brief)
-    .filter((essay) => essay.week.id < week)
-    .sort((a, b) => a.week.id.localeCompare(b.week.id))
-  return before.at(-1)?.next ?? null
+  return essaysIn(brief).find((essay) => essay.next.week === week)?.next ?? null
 }
 
 /** The essay's opening, the week's first card: its material is what the week trains. */

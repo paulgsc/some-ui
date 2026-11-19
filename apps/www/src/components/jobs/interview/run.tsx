@@ -91,9 +91,10 @@ export function labelOf(week: InterviewWeek, item: string): string {
     return WORDS.questionLabel(
       week.questions.findIndex(({ id }) => id === item) + 1
     )
+  const found = week.cards.find(({ id }) => id === card)
+  if (found !== undefined && isOpening(found)) return WORDS.opening
   const reads = week.cards.filter((read) => !isOpening(read))
-  const n = reads.findIndex(({ id }) => id === card)
-  return n < 0 ? WORDS.opening : WORDS.readLabel(n + 1)
+  return WORDS.readLabel(reads.findIndex(({ id }) => id === card) + 1)
 }
 
 export type InterviewWeekProps = {

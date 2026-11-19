@@ -170,6 +170,8 @@ describe("the interview week's choices", () => {
       )?.said
     ).toBe("Fewer fillers in a story.")
     expect(lastNext([], "2026-w47")).toBeNull()
+    // Last week's essay still waiting: the one before spoke to another week.
+    expect(lastNext([brief[0]!], "2026-w47")).toBeNull()
     const { bundle } = prepare({ commit: COMMIT, now: MONDAY, brief, corpus })
     const opening = bundle.next?.cards[0]
     expect(opening?.id).toBe("opening")

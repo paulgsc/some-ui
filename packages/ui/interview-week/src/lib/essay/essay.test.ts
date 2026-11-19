@@ -411,6 +411,7 @@ describe("the essay's opening (IW10)", () => {
     })
     if (!done.ok) throw new Error(done.problems.join("\n"))
     expect(done.files[0]?.body.opening).toEqual({ transcript: OPENED })
+    expect(done.files[0]?.body.template.version).toBe(2)
 
     expect(prepared().essays[0]?.opening).toBeNull()
     const plain = finishEssays({
@@ -420,6 +421,8 @@ describe("the essay's opening (IW10)", () => {
     })
     if (!plain.ok) throw new Error(plain.problems.join("\n"))
     expect("opening" in (plain.files[0]?.body ?? {})).toBe(false)
+    // With no opening it stays version 1, which every stage draws.
+    expect(plain.files[0]?.body.template.version).toBe(1)
   })
 
   it("never waits on the opening's word times: it is played, never measured", () => {

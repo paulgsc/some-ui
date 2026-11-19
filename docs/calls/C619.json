@@ -3,7 +3,7 @@
   "made": "2026-11-18",
   "by": "claude",
   "paths": ["packages/ui/interview-week/src/lib/monday/finish.ts"],
-  "chose": "The opening runs 25 to 90 words (about 10 to 35 seconds) and says paulgsc in its first line, in any case. finish refuses the words that assess as written: score, rating, grade, assess, readiness, how ready, ready for the…, pass or fail, finish line, finished it, graduate, level up. The work's own words (a rate limit, a high level, tests that pass, a time something failed) pass, so it can say what the week trains and never how the owner did.",
+  "chose": "The opening runs 25 to 90 words (about 10 to 35 seconds) and says paulgsc in its first line, in any case. finish refuses the words that assess as written: score, rating, grade, self-assess, assessment, readiness, how ready, ready for the…, pass or fail, finish line, graduate, level up. The work's own words (a rate limit, a high level, tests that pass, how I assess a trade-off, finishing a migration) pass, so it can say what the week trains and never how the owner did.",
   "options": [
     "a closed list of assessing words, refused by code",
     "the rule in ROUTINE.md only, left to the model",

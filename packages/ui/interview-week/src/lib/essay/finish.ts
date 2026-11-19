@@ -362,7 +362,11 @@ function build(
         problems.push(`${at}.${list}: "${id}" is not one the bundle asks for`)
   return {
     schema: INTERVIEW_ESSAY_SCHEMA,
-    template: { id: INTERVIEW_ESSAY_ID, version: INTERVIEW_ESSAY_VERSION },
+    // An essay with no opening stays version 1, which every stage draws.
+    template: {
+      id: INTERVIEW_ESSAY_ID,
+      version: owed.opening === null ? 1 : INTERVIEW_ESSAY_VERSION,
+    },
     week: { id: owed.week, from: owed.from, to: owed.to },
     company: owed.company,
     role: owed.role,
