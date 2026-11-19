@@ -16,7 +16,8 @@ const essays = feedVideos(ESSAY_FEED)
 
 /**
  * Past weeks (IW17): the weeks and sends this phone keeps, read once per
- * visit; the essays' feed, read on open as Studio's Episodes reads it; and
+ * visit; the essays' feed, read on open and on a drag down as Studio's
+ * Episodes reads it; and
  * home's render board, as Studio › Renders reads it.
  */
 const PhonePast = (): JSX.Element => {
