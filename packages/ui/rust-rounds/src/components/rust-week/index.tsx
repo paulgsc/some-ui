@@ -17,7 +17,7 @@
  */
 import type { JSX, ReactNode } from "react"
 import { useEffect, useId, useState, useSyncExternalStore } from "react"
-import { pointRecording, PointTakes } from "@rust-rounds/components/point-takes"
+import { FlowPages } from "@rust-rounds/components/rust-week/flow"
 import { RunView } from "@rust-rounds/components/rustc-run"
 import {
   TrackedWeek,
@@ -25,9 +25,14 @@ import {
   WorkProvider,
 } from "@rust-rounds/components/work-tracker"
 import type { Ticket, Week } from "@rust-rounds/lib/formats/week"
+import type { FlowRuntime } from "@rust-rounds/lib/week-play/flow-runtime"
 import type { PasteRuntime } from "@rust-rounds/lib/week-play/paste"
 import { PASTE_MAX, pasteLine } from "@rust-rounds/lib/week-play/paste"
-import { itemOf, pointItem } from "@rust-rounds/lib/week-play/points"
+import {
+  firstItemOf,
+  itemOf,
+  pointItem,
+} from "@rust-rounds/lib/week-play/points"
 import type {
   RustWeekPorts,
   WeekHeard,
@@ -44,7 +49,7 @@ import { isClosed, ticketLine } from "@rust-rounds/lib/week-play/spec"
 import type { TicketStanding } from "@rust-rounds/lib/week-play/words"
 import { WEEK_WORDS } from "@rust-rounds/lib/week-play/words"
 import type { HeldWeek } from "@rust-rounds/lib/weeks"
-import { assertNever, cn } from "@some-ui/core-utils"
+import { assertNever } from "@some-ui/core-utils"
 import {
   BundleCards,
   bundleConfirm,
@@ -59,7 +64,6 @@ import {
   TakeRow,
   Textarea,
   useConfirmSheet,
-  usePager,
   useTakePattern,
 } from "@some-ui/shared"
 import type {
@@ -153,6 +157,7 @@ const Brief = (
     onRounds?: () => void
     paste: PasteRuntime
     atHome: WeekAtHome
+    flow: FlowRuntime | null
   }
 ): JSX.Element => {
   const { machine, state, dispatch, held } = props
@@ -187,10 +192,15 @@ const Brief = (
             <button
               type="button"
               onClick={() =>
-                dispatch({
-                  type: "go",
-                  index: firstItemOf(machine, ticket, i),
-                })
+                props.flow === null
+                  ? dispatch({
+                      type: "go",
+                      index: opensAt(machine, ticket.id, i),
+                    })
+                  : props.flow.dispatch({
+                      type: "openTicket",
+                      ticket: ticket.id,
+                    })
               }
             >
               <CardLinkBody className="gap-0.5">
@@ -282,10 +292,13 @@ const TicketBody = ({
   held,
   ticket,
   n,
+  tracked = true,
 }: {
   held: HeldWeek
   ticket: Ticket
   n: number
+  /** Offers the work tracker: never once the week has closed. */
+  tracked?: boolean
 }): JSX.Element => {
   const run = held.runs[ticket.id] ?? null
   const span =
@@ -297,7 +310,7 @@ const TicketBody = ({
       <p className="text-muted-foreground text-xs font-semibold">
         {WORDS.ticketOf(ticket.id, n, held.week.tickets.length)}
       </p>
-      <Tracker week={held.week} ticket={ticket} />
+      {tracked && <Tracker week={held.week} ticket={ticket} />}
       <h2 className="text-2xl font-extrabold text-balance">{ticket.title}</h2>
       <p>{ticket.spec}</p>
       <section className="flex flex-col gap-1">
@@ -379,20 +392,14 @@ const Review = (props: Parts & { held: HeldWeek }): JSX.Element => {
   )
 }
 
-/**
- * Where a ticket's card opens: its first point, answered point by point
- * (RR24), else the ticket's own item; `i`, the ticket's place, when neither
- * is an item.
- */
-const firstItemOf = (
+/** Where ticket `i` (`ticket`) opens on the cards: its first item, else `i`. */
+const opensAt = (
   machine: BundleMachine<WeekKind>,
-  ticket: Ticket,
+  ticket: string,
   i: number
 ): number => {
-  const point = machine.spec.items.indexOf(pointItem(ticket.id, 1))
-  if (point !== -1) return point
-  const own = machine.spec.items.indexOf(ticket.id)
-  return own === -1 ? i : own
+  const at = firstItemOf(machine.spec.items, ticket)
+  return at === -1 ? i : at
 }
 
 /** How many tickets a send answers, whole or by any point. */
@@ -449,7 +456,14 @@ const ReadBack = (
   const answered = holds?.answers ?? []
   return (
     <div className="flex flex-col gap-4">
+      {/*
+       * Nothing starts once the week has closed, but a span still running,
+       * or asking, is shown and answered here, as on the brief (RR26).
+       */}
+      <Tracker week={week} />
       <Story week={week} />
+      {/* The week's time stays to read. */}
+      <TrackedWeek week={week} />
       <section className="bg-card flex flex-col gap-1 rounded-2xl p-3 text-sm">
         <p className="font-semibold">{WORDS.closed.title(week)}</p>
         <p className="text-muted-foreground">{WORDS.closed.line(week)}</p>
@@ -463,7 +477,12 @@ const ReadBack = (
           const mine = answered.filter((each) => each.ticket === ticket.id)
           return (
             <li key={ticket.id} className="flex flex-col gap-3">
-              <TicketBody held={held} ticket={ticket} n={i + 1} />
+              <TicketBody
+                held={held}
+                ticket={ticket}
+                n={i + 1}
+                tracked={false}
+              />
               {mine.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
                   {WORDS.sent.notAnswered}
@@ -659,9 +678,10 @@ const Screen = (
     onRounds?: () => void
     paste: PasteRuntime
     atHome: WeekAtHome
+    flow: FlowRuntime | null
   }
 ): JSX.Element => {
-  const { machine, state, dispatch, held } = props
+  const { state, dispatch, held } = props
   if (
     state.screen !== "loading" &&
     state.screen !== "unreadable" &&
@@ -693,9 +713,7 @@ const Screen = (
       return <Brief {...props} />
     }
     case "cards": {
-      if (machine.spec.items.some((item) => itemOf(item).point !== null)) {
-        return <TicketPages {...props} />
-      }
+      if (props.flow !== null) return <FlowPages {...props} flow={props.flow} />
       return (
         <BundleCards
           {...props}
@@ -727,96 +745,8 @@ const Screen = (
   }
 }
 
-/**
- * The week's tickets answered point by point (RR24): a page per ticket, its
- * card above its points (`PointTakes`), stepped by the dots or a swipe
- * (`usePager`); while a take records, only its point shows.
- */
-const TicketPages = (
-  props: Parts & { held: HeldWeek; heard: WeekHeard }
-): JSX.Element | null => {
-  const { machine, state, dispatch, held } = props
-  const { tickets } = held.week
-  const on = itemOf(machine.spec.items[state.index] ?? "").ticket
-  const at = Math.max(
-    0,
-    tickets.findIndex((ticket) => ticket.id === on)
-  )
-  const goTicket = (n: number): void => {
-    const ticket = tickets[n]
-    if (ticket === undefined) return
-    const first = ticket.forks.length > 0 ? pointItem(ticket.id, 1) : ticket.id
-    dispatch({ type: "go", index: machine.spec.items.indexOf(first) })
-  }
-  const { attach } = usePager({
-    canPrev: at > 0,
-    canNext: at < tickets.length - 1,
-    held: state.busy,
-    onPage: (to) => goTicket(to === "next" ? at + 1 : at - 1),
-  })
-  const ticket = tickets[at]
-  // A week holds two tickets at least (`WeekSchema`).
-  if (ticket === undefined) return null
-  const said = (each: Ticket): boolean =>
-    machine.answered(state, each.id) === "said" ||
-    each.forks.some(
-      (_, i) => machine.answered(state, pointItem(each.id, i + 1)) === "said"
-    )
-  return (
-    <div className="flex flex-col gap-3">
-      {!pointRecording(state) && (
-        <nav className="flex items-center justify-center gap-1">
-          {tickets.map((each, i) => (
-            <button
-              key={each.id}
-              type="button"
-              aria-label={WORDS.cardOf(i + 1, tickets.length)}
-              aria-current={i === at ? "step" : undefined}
-              onClick={() => goTicket(i)}
-              className="flex h-7 w-11 items-center justify-center"
-            >
-              <span
-                className={cn(
-                  "h-2.5 rounded-full border-2",
-                  i === at ? "w-6" : "w-2.5",
-                  said(each)
-                    ? "bg-brand border-brand"
-                    : "border-muted-foreground/60"
-                )}
-              />
-            </button>
-          ))}
-        </nav>
-      )}
-      <section
-        ref={attach}
-        data-swipe="tickets"
-        aria-label={WORDS.cardOf(at + 1, tickets.length)}
-        className="flex min-w-0 flex-col gap-3"
-      >
-        {!pointRecording(state) && (
-          <TicketHead
-            held={held}
-            ticket={ticket}
-            n={at + 1}
-            state={state}
-            heard={props.heard}
-          />
-        )}
-        <PointTakes key={ticket.id} {...props} ticket={ticket} />
-      </section>
-      {!pointRecording(state) && (
-        <Button
-          variant="outline"
-          size="lg"
-          onClick={() => dispatch({ type: "review" })}
-        >
-          {WORDS.toReview}
-        </Button>
-      )}
-    </div>
-  )
-}
+/** No flow to hear, where takes go by ticket. */
+const noFlow = (): (() => void) => () => undefined
 
 const WeekScreens = ({ ports, back, onRounds }: RustWeekProps): JSX.Element => {
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime, and the week and takes it runs on, are made once per mount, as the idea bundle's are */
@@ -842,6 +772,10 @@ const WeekScreens = ({ ports, back, onRounds }: RustWeekProps): JSX.Element => {
   const pasting = useSyncExternalStore(
     week.paste.subscribe,
     week.paste.getSnapshot
+  )
+  const flowNotice = useSyncExternalStore(
+    week.flow?.subscribe ?? noFlow,
+    () => week.flow?.getSnapshot().notice ?? null
   )
   const snapshot = useTakePattern(desk.pattern)
   const { dispatch } = week.bundle
@@ -893,8 +827,19 @@ const WeekScreens = ({ ports, back, onRounds }: RustWeekProps): JSX.Element => {
           atHome={atHome}
           back={back}
           paste={week.paste}
+          flow={week.flow}
           {...(onRounds === undefined ? {} : { onRounds })}
         />
+      )}
+      {flowNotice !== null && (
+        // Said over whatever screen is up, the look over included, which
+        // the flow's step that couldn't keep its mark gave way to (HS1).
+        <Notice
+          tone="danger"
+          onDismiss={() => week.flow?.dispatch({ type: "noticeDismissed" })}
+        >
+          {WORDS.flow.notKept}
+        </Notice>
       )}
       {pasting.notice !== null && (
         <Notice

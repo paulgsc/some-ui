@@ -60,6 +60,7 @@ import { JOURNAL_FIXTURES } from "./journal"
 import { MY_DATA_FIXTURES } from "./my-data"
 import { PULL_FIXTURES } from "./pull"
 import { ROUNDS_FIXTURES } from "./rounds"
+import { RustWeekFixture } from "./rust-week"
 import { SettingsBar } from "./settings-bar"
 import { SIGN_IN_FIXTURES } from "./sign-in-header"
 import { hearsOnStop, SOUNDBITES_FIXTURES } from "./soundbites"
@@ -420,6 +421,8 @@ export const PHONE_FIXTURES = {
   ...APH_FIXTURES,
   /** The rounds wing's screens (`./rounds`, `../stays-put-rounds.spec.ts`). */
   ...ROUNDS_FIXTURES,
+  /** A week of Rust Rounds and its flow (`./rust-week`, `../rust-week-fit.spec.ts`). */
+  "rust-week": RustWeekFixture,
   /** The handheld lesson (`./topik`, `../stays-put-topik.spec.ts`). */
   ...TOPIK_FIXTURES,
   /** www's screens and shared parts (`./www`, `../stays-put-www.spec.ts`). */

@@ -19,7 +19,7 @@ import {
   useSyncExternalStore,
 } from "react"
 import type { Ticket, Week } from "@rust-rounds/lib/formats/week"
-import type { SpanWhere } from "@rust-rounds/lib/work-tracker"
+import type { SpanWhere, WorkStep } from "@rust-rounds/lib/work-tracker"
 import { CAP_MS, spanSeconds } from "@rust-rounds/lib/work-tracker"
 import type {
   WorkPorts,
@@ -399,35 +399,55 @@ export const WorkProvider = ({
   <WorkContext.Provider value={work}>{children}</WorkContext.Provider>
 )
 
-/** A ticket's Read step as a span counts it: every point (C679). */
-function readWhere(week: Week, ticket: Ticket): SpanWhere | null {
-  const [first, ...rest] = ticket.forks.map((_, i) => i + 1)
+/**
+ * Where a span started from `step` of `ticket` counts (C679): an
+ * exercise's own forks when started from one, else every point of the
+ * ticket. Null where there is nothing to count toward.
+ */
+function whereOf(
+  week: Week,
+  ticket: Ticket,
+  step: WorkStep,
+  exercise: number | null
+): SpanWhere | null {
+  const points =
+    exercise === null
+      ? ticket.forks.map((_, i) => i + 1)
+      : (ticket.academy[exercise - 1]?.forks ?? [])
+  const [first, ...rest] = points
   return first === undefined
     ? null
     : {
         week: week.id,
         ticket: ticket.id,
-        step: "read",
-        exercise: null,
+        step,
+        exercise,
         points: [first, ...rest],
       }
 }
 
 /**
- * The tracker's control where it is used (C724): on a ticket's Read view,
- * counting toward every point, or, with no ticket, only while a span runs
- * or asks (the week's brief).
+ * The tracker's control where it is used (C724): on a ticket's step (RR25:
+ * its Read, its Academy or an exercise there, its Voice), counting toward
+ * what that step shows, or, with no ticket, only while a span runs or asks
+ * (the week's brief).
  */
 export const Tracker = ({
   week,
   ticket,
+  step = "read",
+  exercise = null,
 }: {
   week: Week
   ticket?: Ticket
+  step?: WorkStep
+  /** The exercise open, from 1; null for the step itself. */
+  exercise?: number | null
 }): JSX.Element | null => {
   const work = useContext(WorkContext)
   if (work === null) return null
-  const where = ticket === undefined ? null : readWhere(week, ticket)
+  const where =
+    ticket === undefined ? null : whereOf(week, ticket, step, exercise)
   return <WorkTrackerControl tracker={work.tracker} where={where} />
 }
 

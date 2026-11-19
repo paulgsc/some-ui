@@ -3,6 +3,8 @@
  * answers, what was counted said over the screen, and the week's time as
  * bars or a table.
  */
+import { TALLOWBROOK_WEEK_FILE } from "@rust-rounds/lib/sample-week/tallowbrook"
+import { readWeek } from "@rust-rounds/lib/week-check"
 import type { SpanWhere } from "@rust-rounds/lib/work-tracker"
 import { workSpans } from "@rust-rounds/lib/work-tracker/record"
 import type { WorkPorts } from "@rust-rounds/lib/work-tracker/runtime"
@@ -12,7 +14,13 @@ import { inMemoryStorage } from "@some-ui/core-utils"
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 
-import { firstPart, WeekTimeChart, WorkTrackerControl } from "./index"
+import {
+  firstPart,
+  Tracker,
+  WeekTimeChart,
+  WorkProvider,
+  WorkTrackerControl,
+} from "./index"
 
 const T0 = Date.parse("2026-11-19T17:40:00.000Z")
 const MIN = 60_000
@@ -70,6 +78,41 @@ function setUp(): { ports: WorkPorts; advance: (ms: number) => void } {
 }
 
 describe("the work tracker on screen", () => {
+  it("counts a span toward what its step shows: an exercise's forks, else every point (RR25)", () => {
+    const read = readWeek(TALLOWBROOK_WEEK_FILE)
+    if (!read.ok) throw new Error("the /2 sample reads")
+    const ticket = read.week.tickets[0]
+    const exercise = ticket?.academy[2]
+    if (ticket === undefined || exercise === undefined) {
+      throw new Error("TB-101's third exercise")
+    }
+    const { ports } = setUp()
+    const { rerender } = render(
+      <WorkProvider work={ports}>
+        <Tracker week={read.week} ticket={ticket} step="academy" exercise={3} />
+      </WorkProvider>
+    )
+    fireEvent.click(screen.getByRole("button", { name: TRACKER_WORDS.start }))
+    // Kept as started: the exercise and the forks it builds toward.
+    expect(ports.spansOf("2026-w47").phone).toMatchObject([
+      {
+        kind: "start",
+        ticket: "TB-101",
+        step: "academy",
+        exercise: 3,
+        points: exercise.forks,
+      },
+    ])
+    rerender(
+      <WorkProvider work={ports}>
+        <Tracker week={read.week} ticket={ticket} step="voice" />
+      </WorkProvider>
+    )
+    expect(
+      screen.getByRole("button", { name: TRACKER_WORDS.back })
+    ).toBeTruthy()
+  })
+
   it("starts, comes back, counts part of it and says so over the screen", () => {
     const { ports, advance } = setUp()
     render(

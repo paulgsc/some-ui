@@ -19,9 +19,12 @@
  *   marked done or skipped** (`weekMarks`, RR25), every week's in one list
  *   each, which only grow: a pick or a mark is appended, never written over
  *   (`lib/decisions`, `lib/flow`).
+ * - **Each academy exercise ticked** as worked at the desk (`weekTicks`,
+ *   RR25, C673), every week's in one list, which only grows (`lib/flow`'s
+ *   `tick`).
  */
 import type { PickMade } from "@rust-rounds/lib/decisions"
-import type { StepMark } from "@rust-rounds/lib/flow"
+import type { ExerciseTick, StepMark } from "@rust-rounds/lib/flow"
 import { WEEK_SENT_KEY } from "@rust-rounds/lib/play/keys"
 import type { KeyedStorage } from "@some-ui/core-utils"
 import {
@@ -46,6 +49,7 @@ const PASTE_DRAFTS_KEY = "some-ui:rust-rounds.week-paste-drafts"
 const PASTES_KEY = "some-ui:rust-rounds.week-pastes"
 const PICKS_KEY = "some-ui:rust-rounds.week-picks"
 const MARKS_KEY = "some-ui:rust-rounds.week-marks"
+const TICKS_KEY = "some-ui:rust-rounds.week-ticks"
 
 /** The draft of week `week`, among every week's in `storage`. */
 export const weekDrafts = (
@@ -251,5 +255,21 @@ export const weekMarks = (
 ): BundleRecords<OfWeek<StepMark>> =>
   keptRecords(storage, MARKS_KEY, (value) => {
     const parsed = z.array(MarkSchema).safeParse(value)
+    return parsed.success ? parsed.data : null
+  })
+
+const TickSchema: z.ZodType<OfWeek<ExerciseTick>> = z.object({
+  week: z.string(),
+  ticket: z.string(),
+  exercise: z.number().int().positive(),
+  at: z.string(),
+})
+
+/** Every academy exercise ticked on this phone, each week's, which only grow. */
+export const weekTicks = (
+  storage: KeyedStorage | null
+): BundleRecords<OfWeek<ExerciseTick>> =>
+  keptRecords(storage, TICKS_KEY, (value) => {
+    const parsed = z.array(TickSchema).safeParse(value)
     return parsed.success ? parsed.data : null
   })
