@@ -1,0 +1,15 @@
+{
+  "id": "C630",
+  "made": "2026-11-18",
+  "by": "claude",
+  "paths": ["packages/ui/shared/src/components/ui/card-link/index.tsx"],
+  "chose": "A card that opens something is raised (a shadow tinted with the theme), has a 2px outline in the theme's colour, a light gradient from the card to the brand colour, and a chevron in a filled circle of the primary colour at its end; it gives a pixel under a press. A card that opens nothing keeps the flat card look.",
+  "options": [
+    "raised, tinted, outlined, with a filled chevron",
+    "the flat card plus a chevron only",
+    "a filled brand-coloured card, like today's question"
+  ],
+  "gray": "The owner named the direction (glassier, a stronger theme, a more pronounced outline); the exact look is a choice they see on every screen.",
+  "undo": "Change CARD_LINK_CLASS and the chevron's span in card-link/index.tsx.",
+  "refs": ["#3234"]
+}
