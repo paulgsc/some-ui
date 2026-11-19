@@ -27,6 +27,7 @@
     "@some-ui/core-utils": "workspace:*",
     "@some-ui/engagement": "workspace:*",
     "@some-ui/shared": "workspace:*",
+    "@some-ui/styles": "workspace:*",
     "@some-ui/video-render": "workspace:*",
     "@some-ui/voice-capture": "workspace:*",
     "lucide-react": "catalog:",
