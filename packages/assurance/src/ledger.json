@@ -857,10 +857,10 @@
           "id": "VH6",
           "kind": "OA2",
           "property": "outcome",
-          "claim": "Every take I record, of any kind, appears in one library on home where I can filter, sort and find it, and a deleted one still shows its receipt.",
-          "requirement": "GET /voice-notes/takes with `kind` lists every voice_note kind of the caller's own subject. Each take has an `about` from one exhaustive match on Of, so a new kind does not compile without one, and takes deleted for good appear by their receipts. The read is read-only. Without `kind` it answers the Studio list as before.",
+          "claim": "Home answers every take I record, of any kind, from one library I can filter, sort and search, and a deleted one still shows its receipt.",
+          "requirement": "GET /voice-notes/takes with `kind=all` lists every voice_note kind of the caller's own subject (a named kind lists that kind). Each take has an `about` from one exhaustive match on Of, so a new kind does not compile without one, and takes deleted for good appear by their receipts when a kind is asked. The read is read-only. Without `kind` it answers the Studio list as before.",
           "verdict": "holds",
-          "conclusion": "Tested in server CI (server#988, some-ui#3219).",
+          "conclusion": "Tested in server CI (server#988). Home's read holds; the phone reads every kind once #3239 (TAKES20's phone half, #3219) lands.",
           "evidence": [
             {
               "class": "measured",

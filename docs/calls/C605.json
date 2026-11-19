@@ -7,7 +7,7 @@
     "server:apps/servers/file_host/src/handlers/voice.rs",
     "server:apps/servers/file_host/src/contract.rs"
   ],
-  "chose": "Every kind is read on the existing GET /voice-notes/takes, widened additively. Without `kind` it answers today's Studio list, with every field today's phone reads and the new fields beside them, and no deleted take. With `kind` (a kind or `all`) it answers every kind, and takes deleted for good appear by their receipts (status deleted, ref null, about null). CONTRACT_EPOCH rises by hand to 19 for the payload change.",
+  "chose": "Every kind is read on the existing GET /voice-notes/takes, widened additively. Without `kind` it answers today's Studio list, with every field today's phone reads and the new fields beside them, and no deleted take. With `kind` (a kind, or `all` for every kind) it answers those kinds, and takes deleted for good appear by their receipts (status deleted, ref null, about null). CONTRACT_EPOCH rises by hand to 19 for the payload change.",
   "options": [
     "widen the same route additively, opt-in by `kind`, receipts only when a kind is asked, epoch raised",
     "a new route such as /voice-notes/library, retiring /takes later",
