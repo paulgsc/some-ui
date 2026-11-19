@@ -8,6 +8,7 @@ import {
 } from "@interview-week/lib/monday/bundle"
 import type { Bundle, MailboxFile } from "@interview-week/lib/monday/bundle"
 import { finish } from "@interview-week/lib/monday/finish"
+import { sampleInterviewEssay } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
 import { COMMIT, corpus, valuesFor } from "./fixture"
@@ -118,9 +119,28 @@ describe("the interview week's choices", () => {
   })
 
   it("opens the cards on the essay's opening: the moniker, the week's questions, and what last week's essay pointed to next (IW10)", () => {
-    const essay = (week: string, said: string): MailboxFile => ({
-      name: `interview-essay-${week}.json`,
-      body: { next: { said, topics: [`${said} topic`] } },
+    const sample = sampleInterviewEssay()
+    if (!sample.ok) throw new Error(sample.problems.join("; "))
+    const after: Record<string, string> = {
+      "2026-w45": "2026-w46",
+      "2026-w46": "2026-w47",
+      "2026-w47": "2026-w48",
+    }
+    const essay = (week: string, said: string, r = ""): MailboxFile => ({
+      name: `interview-essay-${week}${r}.json`,
+      body: {
+        ...sample.value,
+        week: { ...sample.value.week, id: week },
+        weeks: {
+          ...sample.value.weeks,
+          weeks: [week],
+          rows: sample.value.weeks.rows.map((row) => ({
+            ...row,
+            cells: row.cells.slice(-1),
+          })),
+        },
+        next: { said, week: after[week], topics: [`${said} topic`] },
+      },
     })
     const brief = [
       essay("2026-w45", "Older."),
@@ -129,22 +149,17 @@ describe("the interview week's choices", () => {
     ]
     expect(lastNext(brief, "2026-w47")).toEqual({
       said: "Fewer fillers in a story.",
+      week: "2026-w47",
       topics: ["Fewer fillers in a story. topic"],
     })
     // A correction's over the first, by its number, not its name's order.
     const corrected = [
       ...brief,
-      {
-        name: "interview-essay-2026-w46-r10.json",
-        body: { next: { said: "Corrected again.", topics: [] } },
-      },
-      {
-        name: "interview-essay-2026-w46-r2.json",
-        body: { next: { said: "Corrected.", topics: [] } },
-      },
+      essay("2026-w46", "Corrected again.", "-r10"),
+      essay("2026-w46", "Corrected.", "-r2"),
     ]
     expect(lastNext(corrected, "2026-w47")?.said).toBe("Corrected again.")
-    // A latest essay that says no next leaves the opening to the questions.
+    // A correction that doesn't read leaves the essay it would correct.
     expect(
       lastNext(
         [
@@ -152,8 +167,8 @@ describe("the interview week's choices", () => {
           { name: "interview-essay-2026-w46-r3.json", body: { next: 3 } },
         ],
         "2026-w47"
-      )
-    ).toBeNull()
+      )?.said
+    ).toBe("Fewer fillers in a story.")
     expect(lastNext([], "2026-w47")).toBeNull()
     const { bundle } = prepare({ commit: COMMIT, now: MONDAY, brief, corpus })
     const opening = bundle.next?.cards[0]

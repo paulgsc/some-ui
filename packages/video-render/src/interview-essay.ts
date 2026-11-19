@@ -341,11 +341,7 @@ export const InterviewEssaySchema = z.strictObject({
   /** Invented: never a real employer. */
   company: z.strictObject({ name: words, about: words }),
   role: z.strictObject({ title: words, about: words }),
-  /**
-   * The essay's opening in the owner's own voice (IW10): what home heard of
-   * the week's opening card. Absent when it went unread, or home couldn't
-   * make it out, and the essay opens as it always has.
-   */
+  /** What home heard of the week's opening card (IW10); absent when there is none to play. */
   opening: z.strictObject({ transcript: words }).optional(),
   open: said,
   questions: z.array(QuestionSchema).min(1).max(QUESTIONS_MOST),

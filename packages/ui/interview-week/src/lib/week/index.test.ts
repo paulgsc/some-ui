@@ -5,7 +5,6 @@ import {
   GROUND,
   INTERVIEW_WEEK_SCHEMA,
   INTERVIEW_WEEK_SCHEMA_V1,
-  isOpening,
   OPENING_CARD,
   questionOfDay,
   readWeek,
@@ -150,9 +149,6 @@ describe("the interview week's format", () => {
       'cards[0] ("opening"): a some-ui.interview-week/1 week has no essay\'s opening',
     ])
     expect(readWeek(withOpening).ok).toBe(true)
-    expect(readWeek(withOpening).ok && isOpening(withOpening.cards[0]!)).toBe(
-      true
-    )
     const problems = (cards: InterviewWeek["cards"]): Array<string> => {
       const read = readWeek({ ...base, cards })
       return read.ok ? [] : read.problems

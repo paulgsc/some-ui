@@ -18,15 +18,18 @@ import {
 } from "@interview-week/lib/monday/employers"
 import { ValuesSchema } from "@interview-week/lib/monday/values"
 import type { WeekValues } from "@interview-week/lib/monday/values"
-import type { InterviewWeek, Ready, WorkSource } from "@interview-week/lib/week"
+import type {
+  Card,
+  InterviewWeek,
+  Ready,
+  WorkSource,
+} from "@interview-week/lib/week"
 import {
-  CARD_MIN_SECONDS,
+  cardBounds,
   GROUND,
   INTERVIEW_WEEK_SCHEMA,
   OPENING_CARD,
-  OPENING_SECONDS,
   readWeek,
-  TAKE_MAX_SECONDS,
   workSourceKey,
 } from "@interview-week/lib/week"
 
@@ -98,14 +101,9 @@ export type Finished =
   | { ok: true; files: Array<{ name: string; body: InterviewWeek }> }
   | { ok: false; problems: Array<string> }
 
-/**
- * A card's target: its script's words at the read pace (150 to 300 words is
- * 60 to 120 seconds; the opening's 25 to 90, 10 to 36), within its bounds.
- */
-const cardSeconds = (script: string, opening: boolean): number => {
-  const [min, max] = opening
-    ? [OPENING_SECONDS.min, OPENING_SECONDS.max]
-    : [CARD_MIN_SECONDS, TAKE_MAX_SECONDS]
+/** A card's target: its script's words at the read pace, within its bounds (`cardBounds`). */
+const cardSeconds = (card: Pick<Card, "source">, script: string): number => {
+  const { min, max } = cardBounds(card)
   const seconds = Math.round((wordCount(script) / READ_WORDS_PER_MINUTE) * 60)
   return Math.min(Math.max(seconds, min), max)
 }
@@ -394,7 +392,7 @@ export function finish(input: {
       source: c.source,
       situation: c.situation,
       script: scripts(c.id),
-      targetSeconds: cardSeconds(scripts(c.id), c.source.kind === "opening"),
+      targetSeconds: cardSeconds(c, scripts(c.id)),
     })),
   }
   const read = readWeek(week)

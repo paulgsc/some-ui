@@ -17,13 +17,12 @@ import type { AnswerFaults, ReadFaults } from "@interview-week/lib/faults"
 import type { MailboxFile } from "@interview-week/lib/monday/bundle"
 import {
   ESSAY_FILE,
-  essayRevision,
+  essaysIn,
   WEEK_FILE,
 } from "@interview-week/lib/monday/bundle"
 import type { Family, InterviewWeek } from "@interview-week/lib/week"
 import { isOpening, readWeek } from "@interview-week/lib/week"
 import { weekAround } from "@some-ui/core-utils"
-import { parseInterviewEssay } from "@some-ui/video-render"
 import type { InterviewEssay } from "@some-ui/video-render"
 
 const ESSAY_BUNDLE_SCHEMA = "some-ui.interview-essay-bundle/1"
@@ -74,12 +73,7 @@ export type EssayOwed = {
   readonly role: InterviewWeek["role"]
   readonly questions: ReadonlyArray<QuestionOwed>
   readonly reads: ReadonlyArray<ReadOwed>
-  /**
-   * What home heard of the week's opening card (IW10): the owner's own
-   * opening, which the essay plays first after the brand; null when it went
-   * unread, home couldn't make it out, or the week had none. It is not one
-   * of the reads, and nothing counts its faults.
-   */
+  /** What home heard of the week's opening card (IW10), which no read counts; null when there is none to play. */
   readonly opening: { readonly transcript: string } | null
   /** The faults chart, drawn by code: the earlier essays' weeks, then this one. */
   readonly chart: {
@@ -233,21 +227,6 @@ function chartOf(
       cells: [...before.map((c) => valueIn(c, cell.name, cell.of)), cell.value],
     })),
   }
-}
-
-/** The newest essay of each week `brief` holds: a correction's over the first. */
-function essaysIn(brief: ReadonlyArray<MailboxFile>): Array<InterviewEssay> {
-  const best = new Map<string, { r: number; essay: InterviewEssay }>()
-  for (const file of brief) {
-    const of = essayRevision(file.name)
-    if (of === null) continue
-    const parsed = parseInterviewEssay(file.body)
-    if (!parsed.ok) continue
-    const held = best.get(of.week)
-    if (held === undefined || of.r > held.r)
-      best.set(of.week, { r: of.r, essay: parsed.value })
-  }
-  return [...best.values()].map((b) => b.essay)
 }
 
 type Owed = { ok: true; essay: EssayOwed } | { ok: false; why: string }

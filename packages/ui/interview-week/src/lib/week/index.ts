@@ -150,11 +150,7 @@ export const TAKE_MAX_SECONDS = 120
 /** A card's read runs 1 to 2 minutes (#2935). */
 export const CARD_MIN_SECONDS = 60
 
-/**
- * The essay's opening (IW10, #3177): one card, named `opening` and first in
- * the week's cards, the owner's name and what the week trains, read in about
- * 10 to 40 seconds. No other card presents the essay.
- */
+/** The essay's opening's card, read in `OPENING_SECONDS` (IW10). */
 export const OPENING_CARD = "opening"
 export const OPENING_SECONDS = { min: 10, max: 40 } as const
 
@@ -185,11 +181,7 @@ const CallSourceSchema = z.strictObject({
   id: z.string().regex(/^C\d+$/, "a call's id, like C266"),
 })
 
-/**
- * What a card presents: an epic, a doc, or a declared invariant (`**<ID>:` in
- * a doc); or, for the one card `opening`, the week's interview essay itself,
- * whose opening the owner reads in their own voice (IW10).
- */
+/** What a card presents: an epic, a doc, a declared invariant (`**<ID>:` in a doc), or the essay's opening. */
 const CardSourceSchema = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("opening") }),
   z.strictObject({
@@ -326,7 +318,7 @@ const CardSchema = z.strictObject({
   situation: TextSchema,
   /** Read verbatim, first person; a line break where a breath belongs. */
   script: TextSchema,
-  /** At least `CARD_MIN_SECONDS`, but for the opening's (`OPENING_SECONDS`, `readWeek`). */
+  /** Within `cardBounds`, which `readWeek` holds. */
   targetSeconds: z.int().min(OPENING_SECONDS.min).max(TAKE_MAX_SECONDS),
 })
 export type Card = z.infer<typeof CardSchema>
@@ -334,6 +326,14 @@ export type Card = z.infer<typeof CardSchema>
 /** Whether `card` is the essay's opening (IW10). */
 export const isOpening = (card: Pick<Card, "source">): boolean =>
   card.source.kind === "opening"
+
+/** How long `card` may be read, in seconds: the opening's bounds, or any other card's. */
+export const cardBounds = (
+  card: Pick<Card, "source">
+): { readonly min: number; readonly max: number } =>
+  isOpening(card)
+    ? OPENING_SECONDS
+    : { min: CARD_MIN_SECONDS, max: TAKE_MAX_SECONDS }
 
 const questionCount = `a week has ${QUESTIONS_MIN} to ${QUESTIONS_MAX} questions`
 const cardCount = `a week has ${CARDS_MIN} to ${CARDS_MAX} cards`
@@ -462,9 +462,7 @@ function relations(week: InterviewWeek): Array<string> {
     if (opening && i !== 0) {
       problems.push(`${at}: the essay's opening is the week's first card`)
     }
-    const [min, max] = opening
-      ? [OPENING_SECONDS.min, OPENING_SECONDS.max]
-      : [CARD_MIN_SECONDS, TAKE_MAX_SECONDS]
+    const { min, max } = cardBounds(card)
     if (card.targetSeconds < min || card.targetSeconds > max) {
       problems.push(
         `${at}: ${opening ? "the opening" : "a card"} is read in ${min} to ${max} seconds`

@@ -203,7 +203,6 @@ describe("the interview week's pages on the phone (IW8)", () => {
       `[data-script="${OPENING_CARD_OF_WEEK.id}"]`
     )
     expect(script?.textContent).toContain("one more week of it")
-    // The look over names it for what it is, and counts the reads without it.
     expect(labelOf(WEEK_2_OPENED, readItem(OPENING_CARD_OF_WEEK.id))).toBe(
       WORDS.opening
     )

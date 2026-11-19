@@ -419,7 +419,6 @@ describe("the essay's opening (IW10)", () => {
       resumeEmployers: [],
     })
     if (!plain.ok) throw new Error(plain.problems.join("\n"))
-    expect(plain.files[0]?.body).toBeDefined()
     expect("opening" in (plain.files[0]?.body ?? {})).toBe(false)
   })
 

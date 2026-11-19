@@ -105,7 +105,6 @@ describe("the interview week's finish", () => {
       'week.cards[0] ("opening").script: "rating" assesses; the opening says what the week trains, with no rating and no finish line',
       'week.cards[0] ("opening").script: "grade" assesses; the opening says what the week trains, with no rating and no finish line',
     ])
-    // The work's own words pass: a rate limit, a high level, tests that pass or fail, a time something failed.
     expect(
       opening(
         `Paulgsc here.\n${OPENING.split("\n").slice(1).join("\n")}\nI'll tell a time a deploy failed, the tests that pass, a rate limit, and a high level view.`

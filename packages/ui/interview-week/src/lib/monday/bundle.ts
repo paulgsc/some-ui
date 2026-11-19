@@ -4,11 +4,6 @@
  * question's family and variant, each decision question's call, and each
  * card's source and situation. Each choice rotates over the weeks, least
  * recently asked first. The words are the model's (`values.ts`).
- *
- * The week's cards begin with the essay's opening (IW10, #3177): the owner's
- * moniker and what this week trains, drawn from the week's questions and
- * what last week's essay pointed to next, for the owner to read in their own
- * voice. No self-assessment and no finish line (owner, 2026-11-17).
  */
 import type {
   Call,
@@ -30,6 +25,8 @@ import {
   TARGET_SECONDS,
 } from "@interview-week/lib/week"
 import { assertNever, weekAround } from "@some-ui/core-utils"
+import { parseInterviewEssay } from "@some-ui/video-render"
+import type { InterviewEssay } from "@some-ui/video-render"
 
 const BUNDLE_SCHEMA = "some-ui.interview-monday-bundle/2"
 
@@ -58,7 +55,7 @@ export const SITUATIONS: Readonly<Record<string, string>> = {
 /** The owner's moniker, which the essay's opening says first (owner, 2026-11-17). */
 export const MONIKER = "paulgsc"
 
-/** The essay's opening runs 10 to 40 seconds: about 25 to 90 words. */
+/** The essay's opening's words: within `OPENING_SECONDS` at the read pace. */
 export const OPENING_WORDS = { min: 25, max: 90 } as const
 
 /** Where the opening is read: the cue the owner reads after. */
@@ -177,7 +174,7 @@ export const essayFileName = (week: string): string =>
   `interview-essay-${week}.json`
 
 /** The week an essay's file `name` is of, and its revision (1 for the first); null for another file. */
-export function essayRevision(
+function essayRevision(
   name: string
 ): { readonly week: string; readonly r: number } | null {
   const [, week, r] = ESSAY_FILE.exec(name) ?? []
@@ -256,48 +253,35 @@ function sourceKey(source: CardSource): string {
   }
 }
 
+/** The newest essay of each week `brief` holds: a correction's over the first. */
+export function essaysIn(
+  brief: ReadonlyArray<MailboxFile>
+): Array<InterviewEssay> {
+  const best = new Map<string, { r: number; essay: InterviewEssay }>()
+  for (const file of brief) {
+    const of = essayRevision(file.name)
+    if (of === null) continue
+    const parsed = parseInterviewEssay(file.body)
+    if (!parsed.ok) continue
+    const held = best.get(of.week)
+    if (held === undefined || of.r > held.r)
+      best.set(of.week, { r: of.r, essay: parsed.value })
+  }
+  return [...best.values()].map((b) => b.essay)
+}
+
 /**
- * What last week's essay said comes next (IW6's `next`), from the newest
- * essay in `brief` for a week before `week`; null while there is none. Read
- * leniently: an essay that doesn't say leaves the opening to the questions.
+ * What last week's essay said comes next (IW6's `next`): the newest essay in
+ * `brief` for a week before `week`; null while there is none.
  */
 export function lastNext(
   brief: ReadonlyArray<MailboxFile>,
   week: string
-): { readonly said: string; readonly topics: ReadonlyArray<string> } | null {
-  // The latest week before `week`, and of it the highest revision: a
-  // correction's over the first (`essayRevision`).
-  let newest: { week: string; r: number; body: unknown } | null = null
-  for (const file of brief) {
-    const of = essayRevision(file.name)
-    if (of === null || of.week >= week) continue
-    if (
-      newest === null ||
-      of.week > newest.week ||
-      (of.week === newest.week && of.r > newest.r)
-    )
-      newest = { ...of, body: file.body }
-  }
-  if (newest === null) return null
-  const said = (value: unknown): string | null => {
-    if (typeof value === "string") return value
-    if (typeof value === "object" && value !== null && "text" in value) {
-      return typeof value.text === "string" ? value.text : null
-    }
-    return null
-  }
-  const body = newest.body
-  if (typeof body !== "object" || body === null || !("next" in body)) {
-    return null
-  }
-  const { next } = body
-  if (typeof next !== "object" || next === null) return null
-  const text = "said" in next ? said(next.said) : null
-  const topics =
-    "topics" in next && Array.isArray(next.topics)
-      ? next.topics.flatMap((t: unknown) => said(t) ?? [])
-      : []
-  return text === null ? null : { said: text, topics }
+): InterviewEssay["next"] | null {
+  const before = essaysIn(brief)
+    .filter((essay) => essay.week.id < week)
+    .sort((a, b) => a.week.id.localeCompare(b.week.id))
+  return before.at(-1)?.next ?? null
 }
 
 /** The essay's opening, the week's first card: its material is what the week trains. */
