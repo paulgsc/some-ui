@@ -12,7 +12,12 @@ import type {
   TakeDeadlines,
   TurnListener,
 } from "@some-ui/voice-capture"
-import { simulatedMicrophone, SPEAKING } from "@some-ui/voice-capture/testing"
+import {
+  simulatedMicrophone,
+  simulatedPage,
+  simulatedPlayer,
+  SPEAKING,
+} from "@some-ui/voice-capture/testing"
 import { episodeProjectOf } from "@soundbites/fixtures"
 import {
   run,
@@ -970,6 +975,33 @@ describe("a sitting stopped after any take resumes on the same scene", () => {
     expect(projectIn(runtime).takes.map((take) => take.shot)).toEqual(["miss"])
     expect(await resumedOn(memory)).toEqual({ kind: "record", shot: "miss" })
   })
+
+  it.each(["the page is hidden", "the screen goes away"] as const)(
+    "when %s mid-play: the take stops playing (VC4)",
+    async (how) => {
+      const page = simulatedPage()
+      const player = simulatedPlayer(page.watch)
+      const memory = memoryProjectStore()
+      const runtime = studio(memory, speaking(), "t", undefined, undefined, {
+        onVisibility: page.watch,
+        player,
+      })
+      await until(runtime, (state) => state.shelf.kind === "read")
+      runtime.dispatch({ type: "primerPicked", file: new Blob([PRIMER_TEXT]) })
+      await until(
+        runtime,
+        (state) => projectOf(state) !== null && settledWrites(state)
+      )
+      runtime.dispatch({ type: "recordChosen" })
+      await recordOne(runtime)
+      runtime.dispatch({ type: "playPressed" })
+      await until(runtime, () => player.playing() === 1)
+      if (how === "the page is hidden") page.hide()
+      else runtime.detach()
+      expect(player.playing()).toBe(0)
+      await until(runtime, (state) => state.activity.kind === "idle")
+    }
+  )
 
   it("when the screen goes away mid-take: the take is kept after it", async () => {
     const memory = memoryProjectStore()

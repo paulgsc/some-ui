@@ -493,6 +493,12 @@ export async function assertTakeProperties(
     readonly now: () => number
     readonly reset?: (() => void) | undefined
     readonly bounds?: ScenarioBounds | undefined
+    /**
+     * The page each run hides and shows, which the screens `build` makes
+     * watch themselves (VC4); `reset` shows it again. Absent, a `hide`
+     * makes every screen leave.
+     */
+    readonly page?: ScenarioPage | undefined
   },
   options: {
     readonly numRuns?: number | undefined

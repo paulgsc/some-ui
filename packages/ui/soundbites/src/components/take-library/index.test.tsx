@@ -1,6 +1,10 @@
 import type { PatternTake, Player } from "@some-ui/voice-capture"
 import { ONE_TAKE, TAKE_WORDS } from "@some-ui/voice-capture"
-import { simulatedPattern } from "@some-ui/voice-capture/testing"
+import {
+  simulatedPage,
+  simulatedPattern,
+  simulatedPlayer,
+} from "@some-ui/voice-capture/testing"
 import { TakeLibrary } from "@soundbites/components/take-library"
 import type { LibraryRead, LibraryTake } from "@soundbites/lib/library/model"
 import type {
@@ -465,6 +469,27 @@ describe("Takes on home (ST32)", () => {
     expect(audio).toHaveBeenCalledWith("t2")
     expect(screen.getByText(W.unplayable)).toBeTruthy()
   })
+
+  it.each(["unmounts", "is hidden"] as const)(
+    "stops a take playing when the screen %s (VC4)",
+    async (how) => {
+      const page = simulatedPage()
+      const player = simulatedPlayer(page.watch)
+      const { unmount } = render(
+        <TakeLibrary ports={{ home: home(), player }} pair={null} />
+      )
+      await settle()
+      fireEvent.click(screen.getAllByRole("button", { name: W.play })[0]!)
+      await settle()
+      expect(player.playing()).toBe(1)
+      if (how === "unmounts") unmount()
+      else act(() => page.hide())
+      await settle()
+      expect(player.playing()).toBe(0)
+      if (how === "is hidden")
+        expect(screen.getAllByRole("button", { name: W.play })).toHaveLength(2)
+    }
+  )
 
   it("says why there is nothing, offering Try again only where it can help", async () => {
     const takes = vi.fn(() => Promise.resolve({ kind: "away" as const }))

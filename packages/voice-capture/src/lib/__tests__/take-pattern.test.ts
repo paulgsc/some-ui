@@ -8,7 +8,12 @@
  * property over every order of its events.
  */
 import { microphoneOwner } from "@voice-capture/lib/owner"
-import { simulatedPlayer } from "@voice-capture/lib/pattern-testing"
+import {
+  simulatedPage,
+  simulatedPattern,
+  simulatedPlayer,
+} from "@voice-capture/lib/pattern-testing"
+import { elementPlayer } from "@voice-capture/lib/player"
 import type { ObservedEnding } from "@voice-capture/lib/properties"
 import type {
   ScenarioBuild,
@@ -418,6 +423,177 @@ describe("the take pattern's runtime, on the simulated microphone", () => {
   })
 })
 
+describe("VC4: leaving the screen, or hiding the page, stops what it plays and ends what it records", () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  /** The kit's own player on a fake `Audio`: what it pauses and revokes. */
+  function realPlayer(page: ReturnType<typeof simulatedPage>): {
+    readonly player: ReturnType<typeof elementPlayer>
+    readonly playing: () => number
+    readonly revoked: ReadonlyArray<string>
+  } {
+    const made: Array<{ playing: boolean }> = []
+    vi.stubGlobal(
+      "Audio",
+      class {
+        playing = false
+        onended: (() => void) | null = null
+        constructor() {
+          made.push(this)
+        }
+        play(): Promise<void> {
+          this.playing = true
+          return Promise.resolve()
+        }
+        pause(): void {
+          this.playing = false
+        }
+      }
+    )
+    const revoked: Array<string> = []
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:take")
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation((url) => {
+      revoked.push(url)
+    })
+    return {
+      player: elementPlayer(page.watch),
+      playing: () => made.filter((audio) => audio.playing).length,
+      revoked,
+    }
+  }
+
+  function patternOn(
+    page: ReturnType<typeof simulatedPage>,
+    player: ReturnType<typeof elementPlayer>,
+    audio: () => Promise<Blob | null> = () => Promise.resolve(take.blob)
+  ): { pattern: TakePattern; mic: ReturnType<typeof simulatedMicrophone> } {
+    const mic = simulatedMicrophone({ now: Date.now })
+    const pattern = takePattern(
+      {
+        screen: "test",
+        startRecording: mic.startRecording,
+        now: Date.now,
+        owner: microphoneOwner(),
+        keep: (_take, _answers, _supersedes, done) =>
+          done({ outcome: "kept", id: "t2" }),
+        setAside: vi.fn(),
+        audio,
+        player,
+        page: page.watch,
+      },
+      OPTIONS
+    )
+    return { pattern, mic }
+  }
+
+  for (const how of ["leave", "hide"] as const) {
+    it(`${how}: a take playing stops, its Audio paused and its URL revoked`, async () => {
+      const page = simulatedPage()
+      const real = realPlayer(page)
+      const { pattern } = patternOn(page, real.player)
+      pattern.play("t1")
+      await vi.advanceTimersByTimeAsync(0)
+      expect(real.playing()).toBe(1)
+      if (how === "leave") pattern.leave()
+      else page.hide()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(real.playing()).toBe(0)
+      expect(real.revoked).toEqual(["blob:take"])
+      expect(pattern.getSnapshot().playback).toEqual({ kind: "quiet" })
+      expect(page.watchers()).toBe(0)
+    })
+
+    it(`${how}: a take whose audio is still being read never plays`, async () => {
+      const page = simulatedPage()
+      const real = realPlayer(page)
+      let answer: (blob: Blob) => void = () => undefined
+      const { pattern } = patternOn(
+        page,
+        real.player,
+        () =>
+          new Promise<Blob>((resolve) => {
+            answer = resolve
+          })
+      )
+      pattern.play("t1")
+      if (how === "leave") pattern.leave()
+      else page.hide()
+      answer(take.blob)
+      await vi.advanceTimersByTimeAsync(0)
+      expect(real.playing()).toBe(0)
+      expect(pattern.getSnapshot().playback).toEqual({ kind: "quiet" })
+    })
+
+    it(`${how}: a take recording ends kept, and the microphone closes`, async () => {
+      const page = simulatedPage()
+      const { pattern, mic } = patternOn(page, simulatedPlayer(page.watch))
+      pattern.tap("card-1")
+      await vi.advanceTimersByTimeAsync(2_000)
+      expect(pattern.getSnapshot().take.kind).toBe("recording")
+      expect(mic.open()).toBe(1)
+      expect(page.watchers()).toBe(1)
+      if (how === "leave") pattern.leave()
+      else page.hide()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(mic.open()).toBe(0)
+      expect(pattern.getSnapshot().take.kind).toBe("idle")
+      expect(pattern.getSnapshot().ended).toMatchObject({ ending: "kept" })
+      expect(page.watchers()).toBe(0)
+    })
+
+    it(`${how}: a microphone still opening is let go, and closes when it opens`, async () => {
+      const page = simulatedPage()
+      const { pattern, mic } = patternOn(page, simulatedPlayer(page.watch))
+      mic.script({ ...SPEAKING, open: { kind: "cue" } })
+      pattern.tap("card-1")
+      await vi.advanceTimersByTimeAsync(0)
+      expect(pattern.getSnapshot().take.kind).toBe("opening")
+      if (how === "leave") pattern.leave()
+      else page.hide()
+      await vi.advanceTimersByTimeAsync(0)
+      mic.answer("open")
+      await vi.advanceTimersByTimeAsync(0)
+      expect(mic.open()).toBe(0)
+      expect(pattern.getSnapshot().take.kind).toBe("idle")
+      expect(page.watchers()).toBe(0)
+    })
+  }
+
+  it("watches the page only while a take is under way", async () => {
+    const page = simulatedPage()
+    const { pattern } = patternOn(page, simulatedPlayer(page.watch))
+    expect(page.watchers()).toBe(0)
+    pattern.tap("card-1")
+    expect(page.watchers()).toBe(1)
+    await vi.advanceTimersByTimeAsync(2_000)
+    pattern.tap("card-1")
+    await vi.advanceTimersByTimeAsync(0)
+    expect(page.watchers()).toBe(0)
+  })
+
+  it("the simulated pattern hides as the phone's does", async () => {
+    const { pattern, page, player, mic } = simulatedPattern()
+    pattern.tap("card-1")
+    await vi.advanceTimersByTimeAsync(2_000)
+    page.hide()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(mic.open()).toBe(0)
+    page.show()
+    pattern.play(pattern.getSnapshot().ended?.id ?? "")
+    await vi.advanceTimersByTimeAsync(0)
+    expect(player.playing()).toBe(1)
+    page.hide()
+    expect(player.playing()).toBe(0)
+  })
+})
+
 /** A pattern as a scenario screen, each tap on its item's take button. */
 function patternScreen(pattern: TakePattern, answers: string): ScenarioScreen {
   return {
@@ -439,7 +615,8 @@ function patternScreen(pattern: TakePattern, answers: string): ScenarioScreen {
 }
 
 function patternScreens(
-  count: number
+  count: number,
+  page?: ReturnType<typeof simulatedPage>
 ): (phone: ScenarioPhone) => ScenarioBuild {
   return (phone) => {
     const kept = memoryKeep(phone.keeps)
@@ -457,7 +634,8 @@ function patternScreens(
               kept.keep(recorded, answers, done),
             setAside: () => undefined,
             audio: () => Promise.resolve(null),
-            player: simulatedPlayer(),
+            player: simulatedPlayer(page?.watch),
+            page: page?.watch,
           },
           { ...OPTIONS, limits: phone.bounds.limits }
         ),
@@ -486,6 +664,23 @@ describe("VC2, VC3: every trace of the family keeps every property on pattern sc
         advance: (ms) => vi.advanceTimersByTimeAsync(ms),
         now: Date.now,
         reset: () => vi.clearAllTimers(),
+      },
+      { numRuns: 100 }
+    )
+  })
+
+  it("holds on every generated trace where each screen watches the page itself (VC4)", async () => {
+    const page = simulatedPage()
+    await assertTakeProperties(
+      {
+        build: (count) => patternScreens(count, page),
+        advance: (ms) => vi.advanceTimersByTimeAsync(ms),
+        now: Date.now,
+        reset: () => {
+          vi.clearAllTimers()
+          page.show()
+        },
+        page,
       },
       { numRuns: 100 }
     )

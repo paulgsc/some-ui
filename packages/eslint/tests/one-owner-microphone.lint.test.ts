@@ -26,6 +26,7 @@ import {
 const MIC = "one-owner/no-local-microphone"
 const FAKE = "one-owner/no-hand-written-microphone"
 const WORDS = "one-owner/no-local-take-words"
+const AUDIO = "one-owner/no-local-audio"
 
 const KIT_FILE = "fixtures/packages/voice-capture/src/lib/take-kit.ts"
 
@@ -440,6 +441,55 @@ export function opened(mic: StartRecording = speaking()): StartRecording { retur
   it("stays quiet in the kit's own files", async () => {
     const code = `${types}export function recording(): Recording { return { level: () => 0, finish: () => Promise.resolve({} as Take), discard: () => undefined } }`
     expectNoMessageForRule(await lint(code, KIT_FILE), FAKE, "the kit")
+  })
+})
+
+describe("lint: one-owner/no-local-audio (VC4)", () => {
+  it.each([
+    ["new Audio", "export const play = (url: string) => new Audio(url).play()"],
+    [
+      "new window.Audio",
+      "export const play = (url: string) => new window.Audio(url).play()",
+    ],
+    [
+      "createElement('audio')",
+      'export const make = () => document.createElement("audio")',
+    ],
+    [
+      "an <audio> element",
+      "export const Clip = ({ src }: { src: string }) => <audio src={src} controls />",
+    ],
+  ])("fires on %s", async (shape, code) => {
+    expectMessageForRule(await lint(code, "src/lib/clip.tsx"), AUDIO, shape)
+  })
+
+  it.each([
+    [
+      "the kit's player",
+      'import { audioPlayer } from "@some-ui/voice-capture"\nexport const play = (blob: Blob) => audioPlayer.play(blob)',
+    ],
+    [
+      "a local class named Audio",
+      "class Audio { play(): void {} }\nexport const a = new Audio()",
+    ],
+    [
+      "an AudioContext, which plays nothing here",
+      "export const meter = () => new AudioContext()",
+    ],
+    ["a <video> element", "export const V = () => <video src='a.webm' />"],
+  ])("stays quiet on %s", async (shape, code) => {
+    expectNoMessageForRule(await lint(code, "src/lib/clip.tsx"), AUDIO, shape)
+  })
+
+  it("stays quiet in the player's own files", async () => {
+    expectNoMessageForRule(
+      await lint(
+        "export const element = (url: string) => new Audio(url)",
+        "fixtures/packages/voice-capture/src/lib/player.ts"
+      ),
+      AUDIO,
+      "the player"
+    )
   })
 })
 
