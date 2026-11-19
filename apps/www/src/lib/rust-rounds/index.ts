@@ -39,9 +39,10 @@ import {
   workSpans,
 } from "@some-ui/rust-rounds"
 import { SERVER_CONTRACT_EPOCH } from "@some-ui/server-routes"
-import { ONE_TAKE, onPageVisibility } from "@some-ui/voice-capture"
+import { audioPlayer, ONE_TAKE, onPageVisibility } from "@some-ui/voice-capture"
 
 import { copyText } from "@/lib/clipboard"
+import { bandPace } from "@/lib/interview-week/store"
 import type { PatternDesk } from "@/lib/takes-desk"
 import { patternDesk } from "@/lib/takes-desk"
 import { browserLocalStorage } from "@/lib/tenant/storage"
@@ -177,6 +178,19 @@ const VERDICTS_EPOCH = 24
 const SENDS_VERDICTS = SNAPSHOT_EPOCH >= VERDICTS_EPOCH
 
 /**
+ * The contract epoch from which home keeps the takes of the essay's opening
+ * (#3269, C736): notes named `<week>:opening:<n>` and a week sent with
+ * `opening`. A home before it refuses both (422), so a build reads and
+ * records the opening only once its route snapshot says home serves this
+ * epoch, and its takes and a send holding them wait on the phone until home
+ * says it serves this build (`lib/home-link/voice-copy`, `lib/kept-home`).
+ */
+const OPENING_EPOCH = 25
+
+/** Whether this build reads and records the opening: its snapshot's epoch is new enough. */
+const RECORDS_OPENING = SNAPSHOT_EPOCH >= OPENING_EPOCH
+
+/**
  * The week's ports (RR13), with the week open now among those this phone
  * holds, or null while it holds none; `home` and `heard` are handed in by
  * the route, which may reach home.
@@ -184,7 +198,13 @@ const SENDS_VERDICTS = SNAPSHOT_EPOCH >= VERDICTS_EPOCH
 export function phoneRustWeekPorts(
   reach: Pick<
     RustWeekPorts,
-    "home" | "heard" | "homeHolds" | "onHomeHolds" | "work" | "homeSent"
+    | "home"
+    | "heard"
+    | "homeHolds"
+    | "onHomeHolds"
+    | "work"
+    | "homeRecord"
+    | "homeAudio"
   >
 ): RustWeekPorts | null {
   const week = currentWeek(phoneWeeks().held().weeks, Date.now())
@@ -201,6 +221,10 @@ export function phoneRustWeekPorts(
         engage,
         perPoint: RECORDS_PER_POINT,
         verdicts: SENDS_VERDICTS,
+        opening: RECORDS_OPENING,
+        player: audioPlayer,
+        // The interview week's pace (C734): the owner sets it once.
+        pace: bandPace(browserLocalStorage),
       }
 }
 

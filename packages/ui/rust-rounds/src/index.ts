@@ -63,6 +63,11 @@ export { RustWeek } from "./components/rust-week"
 export type { RustWeekPorts } from "./lib/week-play/runtime"
 export { currentWeek } from "./lib/week-play/runtime"
 export type { HomeWeekSent, WeekSent } from "./lib/week-play/spec"
+export type {
+  HomeOpening,
+  HomeWeekRecord,
+  OpeningAtHome,
+} from "./lib/week-play/opening"
 export { ticketLine, weekSendKey } from "./lib/week-play/spec"
 export { WEEK_WORDS } from "./lib/week-play/words"
 export { WEEK_TAKES_KEY } from "./lib/play/keys"

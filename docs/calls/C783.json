@@ -1,0 +1,17 @@
+{
+  "id": "C783",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/ui/rust-rounds/src/components/rust-week/opening.tsx",
+    "packages/ui/rust-rounds/src/lib/week-play/spec.ts"
+  ],
+  "chose": "Record again never touches a take home holds, from an earlier week or from this week's earlier send: it adds a take, and home plays the newest. A second Record again in the same week, over a take that has not yet left the phone, replaces it at Send as every bundle's Redo before Send does (owner, 2026-11-01, #2453 decision 4: it never left the phone).",
+  "options": [
+    "keep home's takes; a take not yet sent is replaced at Send, as the bundle does",
+    "send every take said this week, each kept on home"
+  ],
+  "gray": "The owner's rule for this story is that re-recording never discards the earlier take; whether a take recorded minutes ago and never sent counts as \"the earlier take\" is their reading to make. The bundle rule it follows is the owner's own, for takes of the same kind.",
+  "undo": "In weekSpec, keep a superseded opening take named by the week sent (send every take of the question said this week), so none is swept at Send.",
+  "refs": ["#3269", "#2453", "#2265"]
+}

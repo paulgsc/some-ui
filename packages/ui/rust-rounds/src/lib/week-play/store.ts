@@ -81,6 +81,17 @@ const SentSchema: z.ZodType<WeekSent> = z.object({
       })
     )
     .optional(),
+  opening: z
+    .array(
+      z.object({
+        n: z.number().int().positive(),
+        take: z.string(),
+        recordedAt: z.string(),
+        version: z.number().int().positive(),
+        ms: z.number().int().nonnegative(),
+      })
+    )
+    .optional(),
 })
 
 /** The weeks sent from this phone, in `storage`, which only grow. */
@@ -256,7 +267,7 @@ export const weekPicks = (
 const MarkSchema: z.ZodType<OfWeek<StepMark>> = z.object({
   week: z.string(),
   ticket: z.string(),
-  step: z.enum(["read", "academy", "voice"]),
+  step: z.enum(["read", "academy", "voice", "opening"]),
   mark: z.enum(["done", "skipped"]),
   at: z.string(),
 })

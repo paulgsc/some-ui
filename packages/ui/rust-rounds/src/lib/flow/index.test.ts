@@ -36,6 +36,18 @@ describe("the line of steps", () => {
     ])
   })
 
+  it("opens on the opening's questions, one step each, before the tickets (#3269)", () => {
+    const steps = flowSteps(TALLOWBROOK_WEEK_FILE, 3)
+    expect(steps.slice(0, 4)).toEqual([
+      { ticket: "opening:1", step: "opening" },
+      { ticket: "opening:2", step: "opening" },
+      { ticket: "opening:3", step: "opening" },
+      { ticket: "TB-101", step: "read" },
+    ])
+    // The week opens on the first question until it is left.
+    expect(openAt(steps, [])).toBe(0)
+  })
+
   it("has no academy step for a ticket with none, as a /1 week's", () => {
     const steps = flowSteps(QUILLMOSS_WEEK)
     expect(steps).toHaveLength(QUILLMOSS_WEEK.tickets.length * 2)
@@ -169,6 +181,16 @@ describe("leaving a step", () => {
     // After the last ticket's voice there is nowhere on: it stays.
     const last = steps.length - 1
     expect(leave(steps, [], last, "onward", none, AT).to).toBe(last)
+  })
+
+  it("marks a question of the opening by whether a take is in place, and moves on (#3269)", () => {
+    const opened = flowSteps(TALLOWBROOK_WEEK_FILE, 2)
+    const used = leave(opened, [], 0, "onward", some, AT)
+    expect(kinds(used.marks)).toEqual(["opening:1:opening:done"])
+    expect(used.to).toBe(1)
+    const passed = leave(opened, [], 1, "onward", none, AT)
+    expect(kinds(passed.marks)).toEqual(["opening:2:opening:skipped"])
+    expect(opened[passed.to]).toEqual({ ticket: "TB-101", step: "read" })
   })
 
   it("adds nothing for a standing already held, or a step off the line", () => {

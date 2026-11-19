@@ -20,24 +20,54 @@ import type { WorkPorts } from "@rust-rounds/lib/work-tracker/runtime"
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { weekOpenNow } from "@some-ui/core-utils"
 import type { EngagementEvent } from "@some-ui/engagement"
+import type { Prompter } from "@some-ui/shared"
+import {
+  DEFAULT_PACE_WPM,
+  NO_PROMPTER,
+  paceOf,
+  stepPace,
+  stepPrompter,
+  totalOf,
+} from "@some-ui/shared"
 import type {
   BundleHome,
   BundleMachine,
   BundleRuntime,
   BundleTakes,
   HeardAnswer,
+  Player,
 } from "@some-ui/voice-capture"
-import { bundleRuntime } from "@some-ui/voice-capture"
+import { bundleRuntime, HEARD_FLOOR } from "@some-ui/voice-capture"
 
 import type { FlowRuntime } from "./flow-runtime"
 import { createFlow } from "./flow-runtime"
+import type { HomeOpening, HomeWeekRecord, Playback } from "./opening"
+import { NOT_PLAYING, OPENING_UNKNOWN, stepPlayback, takeMs } from "./opening"
 import type { OnScreen, Open } from "./opens"
 import { stepOpens } from "./opens"
 import type { PasteRuntime } from "./paste"
 import { pasteRuntime } from "./paste"
-import { firstItemOf, itemOf, pointItem } from "./points"
-import type { HomeWeekSent, WeekAtHome, WeekKind, WeekSent } from "./spec"
-import { HOME_UNKNOWN, isClosed, weekAtHome, weekMachine } from "./spec"
+import {
+  firstItemOf,
+  itemOf,
+  openingItem,
+  openingOf,
+  pointItem,
+} from "./points"
+import type {
+  HomeWeekSent,
+  OpeningSpec,
+  WeekAtHome,
+  WeekKind,
+  WeekSent,
+} from "./spec"
+import {
+  HOME_UNKNOWN,
+  isClosed,
+  ticketLine,
+  weekAtHome,
+  weekMachine,
+} from "./spec"
 import {
   heardWords,
   ofWeek,
@@ -66,11 +96,13 @@ export type RustWeekPorts = {
   /** Calls `listener` whenever what `homeHolds` answers may have changed. Returns the stop. */
   readonly onHomeHolds: (listener: () => void) => () => void
   /**
-   * What home's own record says was sent of week `week` (RR30), asked once
-   * each time a closed week opens; never rejects. Without it, a closed week
-   * reads only what the link remembers.
+   * What home's own record says of week `week` (RR30, #3269): what was sent,
+   * asked once each time a closed week opens, and the opening's takes home
+   * plays, asked once each time a week with an opening opens; never
+   * rejects. Without it, a closed week reads only what the link remembers,
+   * and the opening's questions say their take isn't known yet.
    */
-  readonly homeSent?: (week: string) => Promise<HomeWeekSent>
+  readonly homeRecord?: (week: string) => Promise<HomeWeekRecord>
   /** Milliseconds since the epoch. */
   readonly now: () => number
   readonly newId: () => string
@@ -91,6 +123,51 @@ export type RustWeekPorts = {
    * week's opening.
    */
   readonly verdicts: boolean
+  /**
+   * The week's opening is read and recorded first in its flow (#3269), where
+   * the week carries one and this build's home keeps its takes (contract
+   * epoch 25 on); absent or false, the week opens on its tickets. Fixed for
+   * the week's opening.
+   */
+  readonly opening?: boolean
+  /** Note `take`'s audio from home (MD8's read), asked once; never rejects. */
+  readonly homeAudio?: (take: string) => Promise<Blob | null>
+  /** What plays a take from home. */
+  readonly player?: Player
+  /**
+   * The teleprompter's pace, kept on this phone (C734): the same the
+   * interview week's band reads, so the owner sets it once.
+   */
+  readonly pace?: {
+    readonly read: () => number
+    readonly write: (pace: number) => unknown
+  }
+}
+
+/** The opening's pages' state (#3269): home's record, a take playing from home, the band. */
+export type OpeningView = {
+  readonly home: HomeOpening
+  readonly playback: Playback
+  /** The teleprompter band over the answer being read (`@some-ui/shared`). */
+  readonly prompter: Prompter
+  /** Words a minute the band moves at, as the owner set it. */
+  readonly pace: number
+}
+
+/** The week's opening, where it is read and recorded (`RustWeekPorts`' `opening`). */
+export type OpeningRuntime = {
+  /** Its version and how many questions it asks. */
+  readonly spec: OpeningSpec
+  readonly getSnapshot: () => OpeningView
+  readonly subscribe: (listener: () => void) => () => void
+  /** Plays take `take` from home, or stops it when it is playing. */
+  readonly play: (take: string) => void
+  /** Stops what plays, and lets go of what home couldn't give. */
+  readonly stop: () => void
+  /** The band's Pause / Go on. */
+  readonly pause: () => void
+  /** The band's Slower / Faster, kept on this phone. */
+  readonly setPace: (to: "slower" | "faster") => void
 }
 
 export type RustWeek = {
@@ -117,6 +194,8 @@ export type RustWeek = {
    * keeps the card per ticket.
    */
   readonly flow: FlowRuntime | null
+  /** The week's opening (#3269), where it is read and recorded; else null. */
+  readonly opening: OpeningRuntime | null
   /** The screen is showing. Returns the detach. */
   readonly attach: () => () => void
 }
@@ -127,13 +206,21 @@ export type WeekHeard = Readonly<Partial<Record<string, HeardAnswer>>>
 export function createRustWeek(ports: RustWeekPorts): RustWeek {
   const { week } = ports.week
   const picks = weekPicks(ports.storage)
-  const machine = weekMachine(
-    week,
-    ports.perPoint,
-    ports.verdicts
-      ? (): DecisionsSent => atSend(week, ofWeek(picks.list() ?? [], week.id))
+  const openingSpec: OpeningSpec | null =
+    ports.opening === true && week.opening !== undefined
+      ? {
+          version: week.opening.version,
+          count: week.opening.exchanges.length,
+        }
       : null
-  )
+  const machine = weekMachine(week, {
+    perPoint: ports.perPoint,
+    decisions: ports.verdicts
+      ? (): DecisionsSent => atSend(week, ofWeek(picks.list() ?? [], week.id))
+      : null,
+    opening: openingSpec,
+    msOf: (id) => takeMs(ports.takes.takes.getSnapshot(), id),
+  })
   const bundle = bundleRuntime(machine, {
     takes: ports.takes,
     drafts: weekDrafts(ports.storage, week.id),
@@ -158,13 +245,26 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
     const index = firstItemOf(machine.spec.items, ticket)
     if (index !== -1) bundle.dispatch({ type: "go", index })
   }
+  const opening =
+    openingSpec === null || week.opening === undefined
+      ? null
+      : openingRuntime(openingSpec, week.opening.exchanges, week.id, ports)
   const flow = ports.perPoint
     ? createFlow({
         week,
+        openings: openingSpec?.count ?? 0,
         storage: ports.storage,
         now: ports.now,
         said: (ticket) => {
           const state = bundle.getSnapshot()
+          // An opening's question: a take said now, or one home plays.
+          const n = openingOf(ticket)
+          if (n !== null) {
+            return (
+              machine.answered(state, ticket) === "said" ||
+              opening?.homeHas(n) === true
+            )
+          }
           const forks =
             week.tickets.find(({ id }) => id === ticket)?.forks.length ?? 0
           return [
@@ -270,6 +370,7 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
     machine,
     bundle,
     flow,
+    opening,
     paste: pasteRuntime(
       ports.takes,
       pasteStores(ports.storage),
@@ -304,16 +405,21 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
       const stopHeld = ports.onHomeHolds(() => lookHome(true))
       // A closed week reads home's own record once each opening (RR30): what
       // counted is home's to say, not the link's memory of it. The words of
-      // the send it names are asked after.
+      // the send it names are asked after. A week with an opening reads it
+      // too, open or closed (#3269): which take each question plays is
+      // home's to say, never this phone's memory of it.
+      const closed = isClosed(week, new Date(ports.now()).toISOString())
       const asking =
-        ports.homeSent !== undefined &&
-        isClosed(week, new Date(ports.now()).toISOString())
-          ? ports.homeSent(week.id).then((said) => {
-              homeSaid = said
+        ports.homeRecord !== undefined && (closed || opening !== null)
+          ? ports.homeRecord(week.id).then((said) => {
+              opening?.heardHome(said.opening)
+              if (!closed) return
+              homeSaid = said.sent
               lookHome(true)
             })
           : Promise.resolve()
       void asking.then(askSent)
+      const stopOpening = opening?.attach() ?? ((): void => undefined)
       // The flow and the takes on one ticket, and a take never moved:
       // - a take under way, or asked from the look over (Redo, "say it",
       //   which open the cards on another item), brings the flow to its
@@ -357,11 +463,163 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
       })
       const stopOpens = watchOpens()
       return (): void => {
+        stopOpening()
         stopFollow()
         stopOpens()
         stopHeld()
         stopHome()
         detach()
+      }
+    },
+  }
+}
+
+type OpeningInner = OpeningRuntime & {
+  /** Whether home's record names a take for question `n`. */
+  readonly homeHas: (n: number) => boolean
+  /** Home's record answered. */
+  readonly heardHome: (home: HomeOpening) => void
+  /** The screen is showing: the band follows the take under way. Returns the detach. */
+  readonly attach: () => () => void
+}
+
+/**
+ * The opening's runtime: home's record of it, a take from home playing
+ * (`./opening`'s `stepPlayback`), and the band over the answer read (the
+ * shared teleprompter's `stepPrompter`, fed the level of the take under
+ * way, as the interview week's is).
+ */
+function openingRuntime(
+  spec: OpeningSpec,
+  exchanges: ReadonlyArray<{ readonly script: string }>,
+  week: string,
+  ports: RustWeekPorts
+): OpeningInner {
+  let view: OpeningView = {
+    home: OPENING_UNKNOWN,
+    playback: NOT_PLAYING,
+    prompter: NO_PROMPTER,
+    pace: paceOf(ports.pace?.read() ?? DEFAULT_PACE_WPM),
+  }
+  const listeners = new Set<() => void>()
+  const set = (next: OpeningView): void => {
+    if (next === view) return
+    view = next
+    for (const listener of listeners) listener()
+  }
+  // Each answer's words, counted once, by the line its takes answer.
+  const totals = new Map(
+    exchanges.map(({ script }, i) => [
+      ticketLine(week, openingItem(i + 1)),
+      totalOf(script.split("\n")),
+    ])
+  )
+  const pattern = ports.takes.pattern
+  /** Moves the band on what the recorder last measured. */
+  const listen = (): void => {
+    const { take, answers } = pattern.getSnapshot()
+    const total = answers === null ? undefined : totals.get(answers)
+    const prompter = stepPrompter(
+      view.prompter,
+      take.kind === "recording" && answers !== null && total !== undefined
+        ? {
+            type: "heard",
+            script: answers,
+            level: take.level,
+            floor: HEARD_FLOOR,
+            at: ports.now(),
+            total,
+            pace: view.pace,
+          }
+        : { type: "ended" }
+    )
+    if (prompter !== view.prompter) set({ ...view, prompter })
+  }
+  let playing: (() => void) | null = null
+  const stopPlaying = (): void => {
+    const stop = playing
+    playing = null
+    stop?.()
+  }
+  const move = (event: Parameters<typeof stepPlayback>[1]): void => {
+    const playback = stepPlayback(view.playback, event)
+    if (playback !== view.playback) set({ ...view, playback })
+  }
+  const play = async (take: string): Promise<void> => {
+    const now = view.playback
+    stopPlaying()
+    if (
+      (now.kind === "asking" || now.kind === "playing") &&
+      now.take === take
+    ) {
+      move({ type: "stop" })
+      return
+    }
+    move({ type: "play", take })
+    const audio =
+      ports.homeAudio === undefined || ports.player === undefined
+        ? null
+        : await ports.homeAudio(take).catch(
+            () =>
+              // Ignored: audio home can't give now is missed, which the page says.
+              null
+          )
+    const asked = view.playback
+    if (asked.kind !== "asking" || asked.take !== take) return
+    if (audio === null || ports.player === undefined) {
+      move({ type: "answered", take, found: false })
+      return
+    }
+    const started = ports.player.play(audio)
+    playing = started.stop
+    move({ type: "answered", take, found: true })
+    await started.ended
+    if (playing === started.stop) playing = null
+    move({ type: "ended", take })
+  }
+  return {
+    spec,
+    getSnapshot: () => view,
+    subscribe(listener): () => void {
+      listeners.add(listener)
+      return (): void => {
+        listeners.delete(listener)
+      }
+    },
+    play(take): void {
+      void play(take)
+    },
+    stop(): void {
+      stopPlaying()
+      move({ type: "stop" })
+    },
+    pause(): void {
+      const prompter = stepPrompter(view.prompter, { type: "pause" })
+      if (prompter !== view.prompter) set({ ...view, prompter })
+    },
+    setPace(to): void {
+      const pace = stepPace(view.pace, to)
+      ports.pace?.write(pace)
+      set({ ...view, pace })
+    },
+    homeHas: (n) =>
+      view.home.kind === "known" &&
+      view.home.takes.some(
+        (each) => each.n === n && each.version === spec.version
+      ),
+    heardHome(home): void {
+      set({ ...view, home })
+    },
+    attach(): () => void {
+      const stop = pattern.subscribe(listen)
+      return (): void => {
+        stop()
+        stopPlaying()
+        move({ type: "stop" })
+        set({
+          ...view,
+          prompter: stepPrompter(view.prompter, { type: "ended" }),
+        })
       }
     },
   }

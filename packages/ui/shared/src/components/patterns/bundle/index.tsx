@@ -20,6 +20,7 @@ import type {
   BundleState,
   BundleTakes,
   TakePatternSnapshot,
+  TakeWords,
 } from "@some-ui/voice-capture"
 import { takeItemView } from "@some-ui/voice-capture"
 import { Keyboard, MicOff } from "lucide-react"
@@ -287,6 +288,8 @@ type BodyProps<K extends BundleKind> = Parts<K> & {
   active: boolean
   /** Seconds left of the screen's own count-in before the take starts, if one runs. */
   counting?: number | null
+  /** The take's own words, where the page says them its way. */
+  takeWords?: TakeWords
 }
 
 /** What a card offers under its head: its take, or what to do when one didn't come through. */
@@ -300,6 +303,7 @@ const CardBody = <K extends BundleKind>({
   item,
   active,
   counting = null,
+  takeWords,
 }: BodyProps<K>): JSX.Element => {
   const { spec } = machine
   const answers = machine.answersOf(state, item)
@@ -359,6 +363,7 @@ const CardBody = <K extends BundleKind>({
           <TakeItem
             view={view}
             size="large"
+            buttonWords={takeWords}
             onTap={() => dispatch({ type: "tap", item })}
             onPlay={(take) => dispatch({ type: "play", take })}
             onRedo={() => dispatch({ type: "tap", item })}
@@ -434,6 +439,8 @@ export type BundleTakeProps<K extends BundleKind> = Parts<K> & {
   head: ReactNode
   /** Seconds left of the page's count-in before the take starts (the interview's cue), if one runs. */
   counting?: number | null
+  /** The take button's words, where the page says them its way: the pattern's otherwise. */
+  takeWords?: TakeWords
 }
 
 /**

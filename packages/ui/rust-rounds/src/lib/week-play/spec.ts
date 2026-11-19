@@ -13,6 +13,8 @@
  *   own and its take names it: `<week>:<ticket>:<n>`, from 1. A take of the
  *   whole ticket, recorded before, stays its ticket's item: it still shows,
  *   counts for every point and is sent, and nothing records one any more.
+ *   The opening's questions (#3269) come first, each an item, `opening:<n>`,
+ *   whose take names `<week>:opening:<n>` and goes in the send's `opening`.
  * - **The draft is the week's**, named by the week's id, so a week sent
  *   opens on what was sent, and one week's takes never answer another's.
  * - **No ticket must be said**: a ticket left unsaid goes as not answered,
@@ -41,7 +43,12 @@
  */
 import type { Decision, DecisionsSent } from "@rust-rounds/lib/decisions"
 import type { Week } from "@rust-rounds/lib/formats/week"
-import { itemOf, pointItem, weekItems } from "@rust-rounds/lib/week-play/points"
+import {
+  itemOf,
+  openingOf,
+  pointItem,
+  weekItems,
+} from "@rust-rounds/lib/week-play/points"
 import type {
   BundleDraft,
   BundleMachine,
@@ -76,7 +83,31 @@ export type WeekSent = {
    * otherwise, and for a `/1` week, whose forks offer nothing to pick.
    */
   readonly verdicts?: ReadonlyArray<WeekVerdict>
+  /**
+   * The takes of the opening's questions said this week (#3269, C736), by
+   * question, each under the version of the opening it answers, where this
+   * build's home keeps them (contract epoch 25 on); absent when none was
+   * said. Each goes home as a voice note named `<week>:opening:<n>`. Home
+   * plays the newest of each question's takes under the week's version,
+   * from this week or an earlier one, so a question not said again goes
+   * with the take it already holds.
+   */
+  readonly opening?: ReadonlyArray<OpeningSent>
 }
+
+/** One opening take as sent: its question, from 1, and how long it runs, in whole ms. */
+export type OpeningSent = {
+  readonly n: number
+  readonly take: string
+  /** When it was recorded, ISO. */
+  readonly recordedAt: string
+  /** The version of the opening its words answer. */
+  readonly version: number
+  readonly ms: number
+}
+
+/** The opening a week's spec records takes for: its version and how many questions. */
+export type OpeningSpec = { readonly version: number; readonly count: number }
 
 /**
  * One fork's decision as sent: named `<week>:<ticket>:<n>:verdict`, beside
@@ -232,18 +263,39 @@ export const weekAtHome = (
   return { ...remembered, homeSaid: false, elsewhere: null }
 }
 
+/** What the week's spec reads besides the week, each optional. */
+export type WeekSpecOptions = {
+  /** A take per speak-to point (RR24), else per ticket. */
+  readonly perPoint?: boolean
+  /** The decision at each fork, read at Send (RR29); null where home keeps none. */
+  readonly decisions?: (() => DecisionsSent) | null
+  /**
+   * The opening the week records takes for (#3269), where the week has one
+   * and this build's home keeps them; null otherwise.
+   */
+  readonly opening?: OpeningSpec | null
+  /** How long take `id` runs, in ms, as this phone measured it; null when unknown. */
+  readonly msOf?: (id: string) => number | null
+}
+
 /**
  * The week's spec. `decisions`, where home keeps them, reads the decision
  * at each fork when Send makes the record: they live in their own list
- * (`./store`'s `weekPicks`), not the draft.
+ * (`./store`'s `weekPicks`), not the draft. The opening's questions come
+ * first among the items (#3269), and their takes go in the record's
+ * `opening`, never among the tickets' answers.
  */
 function weekSpec(
   week: Week,
-  perPoint: boolean,
-  decisions: (() => DecisionsSent) | null
+  {
+    perPoint = false,
+    decisions = null,
+    opening = null,
+    msOf = (): null => null,
+  }: WeekSpecOptions
 ): BundleSpec<WeekKind> {
   return {
-    items: weekItems(week.tickets, perPoint),
+    items: weekItems(week.tickets, perPoint, opening?.count ?? 0),
     answersOf: ticketLine,
     required: () => false,
     typing: false,
@@ -255,9 +307,28 @@ function weekSpec(
       isClosed(week, at) ? "closed" : said === 0 ? "nothing" : null,
     resumesOnCards: () => false,
     record: (draft, answers, _passed, at, last): WeekSent => {
+      // The opening's takes said now, then those sent before and not said
+      // since, so a send again holds every take the week said.
+      const opened = new Map<number, OpeningSent>()
+      for (const { item, take } of answers) {
+        const n = openingOf(item)
+        if (n === null || take === null || opening === null) continue
+        opened.set(n, {
+          n,
+          take: take.id,
+          recordedAt: take.at,
+          version: opening.version,
+          // Home keeps whole milliseconds.
+          ms: Math.max(0, Math.round(msOf(take.id) ?? 0)),
+        })
+      }
+      for (const earlier of last?.opening ?? []) {
+        if (!opened.has(earlier.n)) opened.set(earlier.n, earlier)
+      }
+      const openingSent = [...opened.values()].sort((a, b) => a.n - b.n)
       const said = new Map<string, WeekAnswer>(
         answers.flatMap(({ item, take }) => {
-          if (take === null) return []
+          if (take === null || openingOf(item) !== null) return []
           const { ticket, point } = itemOf(item)
           const answer: WeekAnswer =
             point === null
@@ -286,10 +357,15 @@ function weekSpec(
           .map(({ id }) => id)
           .filter((ticket) => !answered.has(ticket)),
         ...(verdicts.length === 0 ? {} : { verdicts }),
+        ...(openingSent.length === 0 ? {} : { opening: openingSent }),
       }
     },
     idOf: (sent) => sent.week,
-    named: (sent) => sent.answers.map(({ take }) => take),
+    named: (sent) => [
+      ...sent.answers.map(({ take }) => take),
+      ...(sent.opening ?? []).map(({ take }) => take),
+    ],
+    // An opening take is named, so a new one alone is a change to send.
     carries: verdictLines,
     resends: true,
     closed: (_draft, at) => isClosed(week, at),
@@ -298,10 +374,10 @@ function weekSpec(
 
 /**
  * The week's bundle: the shared machine over its spec, a take per point
- * where `perPoint` (home serves them; `./points`), else a take per ticket.
+ * where `perPoint` (home serves them; `./points`), else a take per ticket,
+ * and the opening's questions first where `opening` is given.
  */
 export const weekMachine = (
   week: Week,
-  perPoint = false,
-  decisions: (() => DecisionsSent) | null = null
-): BundleMachine<WeekKind> => bundleMachine(weekSpec(week, perPoint, decisions))
+  options: WeekSpecOptions = {}
+): BundleMachine<WeekKind> => bundleMachine(weekSpec(week, options))

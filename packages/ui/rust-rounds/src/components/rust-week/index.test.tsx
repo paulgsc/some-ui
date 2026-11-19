@@ -8,10 +8,14 @@
  */
 import { RustWeek } from "@rust-rounds/components/rust-week"
 import type { RustcRun } from "@rust-rounds/lib/formats"
+import { openingOfWeek } from "@rust-rounds/lib/opening"
 import { QUILLMOSS_WEEK } from "@rust-rounds/lib/sample-week"
 import { TALLOWBROOK_WEEK_FILE } from "@rust-rounds/lib/sample-week/tallowbrook"
 import { readWeek } from "@rust-rounds/lib/week-check"
+import type { HomeWeekRecord } from "@rust-rounds/lib/week-play/opening"
+import { OPENING_UNKNOWN } from "@rust-rounds/lib/week-play/opening"
 import type { RustWeekPorts } from "@rust-rounds/lib/week-play/runtime"
+import type { HomeWeekSent } from "@rust-rounds/lib/week-play/spec"
 import {
   weekMarks,
   weekPicks,
@@ -26,6 +30,7 @@ import { createWorkTracker } from "@rust-rounds/lib/work-tracker/runtime"
 import { TRACKER_WORDS } from "@rust-rounds/lib/work-tracker/words"
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { inMemoryStorage } from "@some-ui/core-utils"
+import type { Playback } from "@some-ui/voice-capture"
 import { ONE_TAKE } from "@some-ui/voice-capture"
 import { simulatedPattern, takeButton } from "@some-ui/voice-capture/testing"
 import { act, fireEvent, render, screen, within } from "@testing-library/react"
@@ -99,6 +104,14 @@ function ports(
     },
   }
 }
+
+/** What home's record says was sent (RR30). */
+type SaysSent = () => Promise<HomeWeekSent>
+
+/** Home's record saying `sent` of the week, and nothing of its opening. */
+const recordSaying =
+  (sent: SaysSent): NonNullable<RustWeekPorts["homeRecord"]> =>
+  async () => ({ sent: await sent(), opening: OPENING_UNKNOWN })
 
 /** The work tracker's ports over memory, its clock at `at` (RR26). */
 function workPorts(at: number): WorkPorts {
@@ -257,7 +270,7 @@ describe("a week on the phone (RR13)", () => {
 
     const after = Date.parse(QUILLMOSS_WEEK.due) + 60_000
     const closedWith = (
-      homeSent: RustWeekPorts["homeSent"]
+      homeSent: SaysSent | undefined
     ): ReturnType<typeof render> =>
       render(
         <RustWeek
@@ -268,7 +281,9 @@ describe("a week on the phone (RR13)", () => {
               () => after,
               () => false
             ),
-            homeSent,
+            ...(homeSent === undefined
+              ? {}
+              : { homeRecord: recordSaying(homeSent) }),
           }}
         />
       )
@@ -284,8 +299,7 @@ describe("a week on the phone (RR13)", () => {
 
     // RR30, the S21's w46: the link's memory lost the send and home's
     // record couldn't be read. Nothing is said of home: no count, no "late".
-    const unknown: RustWeekPorts["homeSent"] = () =>
-      Promise.resolve({ kind: "unknown" })
+    const unknown: SaysSent = () => Promise.resolve({ kind: "unknown" })
     for (const homeSent of [undefined, unknown]) {
       closed = closedWith(homeSent)
       await settle()
@@ -337,7 +351,9 @@ describe("a week on the phone (RR13)", () => {
             () => after,
             () => true
           ),
-          homeSent: () => Promise.resolve({ kind: "sent", at: sentAt ?? "" }),
+          homeRecord: recordSaying(() =>
+            Promise.resolve({ kind: "sent", at: sentAt ?? "" })
+          ),
           work: running,
         }}
       />
@@ -653,5 +669,128 @@ describe("a ticket's flow (RR25, RR29)", () => {
       ["read", "done"],
       ["academy", "skipped"],
     ])
+  })
+})
+
+/**
+ * #3269, part 2: the opening first in the flow, one question a page. Which
+ * take is in place is home's to say: "not known yet" until home's record
+ * answers. With home's take, the page says when, which week and how long,
+ * plays it from home, and offers Use this one and Record again; a
+ * recording ends with Stop, and the earlier take stays on home.
+ */
+describe("the week's opening (#3269)", () => {
+  const read = readWeek(TALLOWBROOK_WEEK_FILE)
+  if (!read.ok) throw new Error("the /2 sample reads")
+  const OPENED: HeldWeek = {
+    ...HELD,
+    week: { ...read.week, opening: openingOfWeek() },
+    runs: {},
+  }
+  const OPENING = WORDS.flow.opening
+  const [ask1, ask2] = openingOfWeek().exchanges.map(({ ask }) => ask)
+  const LAST_WEEK = {
+    n: 1,
+    take: "note-w46",
+    recordedAt: "2026-11-12T21:40:00.000Z",
+    week: "2026-w46",
+    version: 1,
+    ms: 24_000,
+  }
+
+  it("says not known yet until home answers, then offers its take to use or record again", async () => {
+    vi.setSystemTime(new Date("2026-11-19T18:00:00Z"))
+    let answer: (record: HomeWeekRecord) => void = () => undefined
+    const asked = new Promise<HomeWeekRecord>((resolve) => {
+      answer = resolve
+    })
+    const homeAudio = vi.fn(() =>
+      Promise.resolve(new Blob(["a"], { type: "audio/webm" }))
+    )
+    const play = vi.fn(
+      (): Playback => ({
+        ended: new Promise<void>(() => undefined),
+        stop: () => undefined,
+      })
+    )
+    const phone: RustWeekPorts = {
+      ...ports(),
+      week: OPENED,
+      perPoint: true,
+      opening: true,
+      homeRecord: () => asked,
+      homeAudio,
+      player: { play },
+    }
+    render(<RustWeek ports={phone} />)
+    await settle()
+    press(new RegExp(`^${OPENING.title}`))
+    const page = (): HTMLElement =>
+      screen.getByRole("region", { name: OPENING.questionOf(1, 3) })
+    expect(page()).toHaveTextContent(ask1 ?? "")
+    expect(page()).toHaveTextContent(OPENING.unknown)
+    expect(screen.queryByRole("button", { name: OPENING.use })).toBeNull()
+
+    await act(async () => {
+      answer({
+        sent: { kind: "none" },
+        opening: { kind: "known", takes: [LAST_WEEK] },
+      })
+      await asked
+    })
+    expect(page()).toHaveTextContent("in week 46 · 0:24")
+    expect(page()).toHaveTextContent(OPENING.keepsEarlier)
+    expect(
+      screen.getByRole("button", { name: OPENING.use })
+    ).toBeInTheDocument()
+    expect(takeButton(page())).toHaveTextContent(OPENING.again)
+
+    // Played from home, by the take's id.
+    press(OPENING.play)
+    await settle()
+    expect(homeAudio).toHaveBeenCalledWith("note-w46")
+    expect(play).toHaveBeenCalledTimes(1)
+    expect(
+      screen.getByRole("button", { name: OPENING.stop })
+    ).toBeInTheDocument()
+
+    // Use this one: on to the next question, with nothing recorded.
+    press(OPENING.use)
+    expect(
+      screen.getByRole("region", { name: OPENING.questionOf(2, 3) })
+    ).toHaveTextContent(ask2 ?? "")
+  })
+
+  it("records an answer through the teleprompter and ends it with Stop", async () => {
+    vi.setSystemTime(new Date("2026-11-19T18:00:00Z"))
+    const phone: RustWeekPorts = {
+      ...ports(),
+      week: OPENED,
+      perPoint: true,
+      opening: true,
+      homeRecord: () =>
+        Promise.resolve({
+          sent: { kind: "none" },
+          opening: { kind: "known", takes: [] },
+        }),
+    }
+    render(<RustWeek ports={phone} />)
+    await settle()
+    press(new RegExp(`^${OPENING.title}`))
+    const page = screen.getByRole("region", { name: OPENING.questionOf(1, 3) })
+    expect(page).toHaveTextContent(OPENING.none)
+    expect(
+      within(page).getByRole("region", { name: OPENING.script })
+    ).toHaveTextContent("paulgsc here.")
+    fireEvent.click(takeButton(page))
+    await settle(2_000)
+    expect(takeButton(page)).toHaveTextContent("Stop")
+    fireEvent.click(takeButton(page))
+    await settle()
+    // Said this week: in place, to use; on this phone until the week is sent.
+    expect(page).toHaveTextContent(OPENING.here)
+    expect(
+      screen.getByRole("button", { name: OPENING.use })
+    ).toBeInTheDocument()
   })
 })
