@@ -1,0 +1,15 @@
+{
+  "id": "C632",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": ["packages/ui/shared/src/components/ui/card-link/index.tsx"],
+  "chose": "CardLink stays one part, under its name, for every card that opens something: it draws through any element (a router link, or a <button> that opens a screen or sheet in place), typed HTMLElement, so no CardButton exists beside it.",
+  "options": [
+    "one part, CardLink, over links and buttons",
+    "rename it CardTap",
+    "a second part for buttons"
+  ],
+  "gray": "The owner ruled out a per-kind copy; whether the name should say link or tap is a naming call no check settles.",
+  "undo": "Narrow CardLinkProps to anchors again, or rename the export.",
+  "refs": ["#3234", "#3236"]
+}

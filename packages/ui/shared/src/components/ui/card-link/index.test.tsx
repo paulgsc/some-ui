@@ -56,4 +56,20 @@ describe("CardLink", () => {
       "bg-brand-foreground"
     )
   })
+
+  it("draws through a button that opens something in place", () => {
+    let opened = false
+    render(
+      <CardLink asChild>
+        <button type="button" onClick={() => (opened = true)}>
+          <CardLinkBody>Materials</CardLinkBody>
+        </button>
+      </CardLink>
+    )
+    const button = screen.getByRole("button", { name: "Materials" })
+    expect(button.className).toContain("border-2")
+    expect(button.querySelector("svg")).not.toBeNull()
+    button.click()
+    expect(opened).toBe(true)
+  })
 })

@@ -1,4 +1,4 @@
-import type { AnchorHTMLAttributes, JSX, ReactNode } from "react"
+import type { ForwardedRef, HTMLAttributes, JSX, ReactNode } from "react"
 import { forwardRef } from "react"
 import { Slot, Slottable } from "@radix-ui/react-slot"
 import { ChevronRight } from "lucide-react"
@@ -14,15 +14,15 @@ import { cn } from "../../../lib/utils"
  * theme's colour at its end; it gives under a press. A card that opens
  * nothing keeps the plain `Card` look and none of this.
  *
- * It draws a link only by way of its child (`asChild`, as `Button` does), so
- * the router's own link, with its typed path, does the opening; without
- * `asChild` it is a plain `<a>`. Its children are the card's words, stacked;
+ * It draws through its child (`asChild`, as `Button` does): the router's own
+ * link, with its typed path, or a `<button>` that opens a screen or sheet in
+ * place. Without `asChild` it is a plain `<a>`. Its children are the card's words, stacked;
  * the chevron is the part's.
  */
 
 /** The look; only `CardLink` draws it, so every card link has the chevron too. */
 const CARD_LINK_CLASS =
-  "group/card-link flex w-full items-center gap-3 rounded-2xl border-2 border-primary/25 bg-linear-to-b from-card to-brand/15 p-3 text-left text-card-foreground shadow-md shadow-primary/10 ring-1 ring-inset ring-card transition-[translate,box-shadow,border-color] hover:border-primary/50 active:translate-y-px active:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none motion-reduce:active:translate-y-0"
+  "group/card-link flex w-full items-center gap-3 rounded-2xl border-2 border-primary/60 bg-linear-to-b from-card to-brand/15 dark:to-primary/15 p-3 text-left text-card-foreground shadow-md shadow-primary/10 dark:shadow-lg dark:shadow-primary/25 ring-1 ring-inset ring-card transition-[translate,box-shadow,border-color] hover:border-primary active:translate-y-px active:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none motion-reduce:active:translate-y-0"
 
 /**
  * A card link filled with the brand's colour, for the one a page leads with
@@ -43,33 +43,46 @@ export type CardLinkProps = {
   tone?: keyof typeof CHEVRON
   className?: string
   children: ReactNode
-} & AnchorHTMLAttributes<HTMLAnchorElement>
+} & HTMLAttributes<HTMLElement> & {
+    /** Where it opens, when it draws its own `<a>` (no `asChild`). */
+    href?: string
+  }
+
+/** Hands `node` to `ref`, whichever kind it is. */
+function setRef(
+  ref: ForwardedRef<HTMLElement>,
+  node: HTMLElement | null
+): void {
+  if (typeof ref === "function") ref(node)
+  else if (ref !== null) ref.current = node
+}
 
 /** A card that opens something: its words, then a chevron. */
-export const CardLink = forwardRef<HTMLAnchorElement, CardLinkProps>(
+export const CardLink = forwardRef<HTMLElement, CardLinkProps>(
   ({ asChild = false, tone = "card", className, children, ...props }, ref) => {
-    const Comp = asChild ? Slot : "a"
-    return (
-      <Comp
-        ref={ref}
+    const look = cn(CARD_LINK_CLASS, tone === "brand" && BRAND_CLASS, className)
+    const chevron = (
+      <span
+        aria-hidden="true"
         className={cn(
-          CARD_LINK_CLASS,
-          tone === "brand" && BRAND_CLASS,
-          className
+          CHEVRON[tone],
+          "grid size-7 shrink-0 place-items-center rounded-full shadow-sm transition-transform group-hover/card-link:translate-x-0.5 motion-reduce:transition-none"
         )}
-        {...props}
       >
+        <ChevronRight className="size-4" />
+      </span>
+    )
+    // Through the caller's own element (a router link, a button), or an `<a>`.
+    return asChild ? (
+      <Slot ref={ref} className={look} {...props}>
         <Slottable>{children}</Slottable>
-        <span
-          aria-hidden="true"
-          className={cn(
-            CHEVRON[tone],
-            "grid size-7 shrink-0 place-items-center rounded-full shadow-sm transition-transform group-hover/card-link:translate-x-0.5 motion-reduce:transition-none"
-          )}
-        >
-          <ChevronRight className="size-4" />
-        </span>
-      </Comp>
+        {chevron}
+      </Slot>
+    ) : (
+      <a ref={(node) => setRef(ref, node)} className={look} {...props}>
+        {children}
+        {chevron}
+      </a>
     )
   }
 )
