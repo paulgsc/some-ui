@@ -2,6 +2,7 @@
   "id": "C644",
   "made": "2026-11-19",
   "by": "claude",
+  "agreed": "2026-11-19",
   "paths": [
     "packages/ui/shared/src/components/ui/card-link/index.tsx",
     "apps/www/tests/ui-fit/card-link-fit.spec.ts"
