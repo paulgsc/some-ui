@@ -24,6 +24,7 @@ import type { JSX, ReactNode } from "react"
 import { useSyncExternalStore } from "react"
 import { pointRecording, PointTakes } from "@rust-rounds/components/point-takes"
 import { RunView } from "@rust-rounds/components/rustc-run"
+import { Tracker } from "@rust-rounds/components/work-tracker"
 import { currentPick } from "@rust-rounds/lib/decisions"
 import type { FlowStep } from "@rust-rounds/lib/flow"
 import { stepStanding, ticked } from "@rust-rounds/lib/flow"
@@ -609,6 +610,13 @@ export const FlowPages = (props: FlowPagesProps): JSX.Element | null => {
             {ticket.title}
           </h2>
           <StepRow steps={steps} view={view} ticket={ticket} flow={flow} />
+          {/* The tracker counts toward what this step shows (RR26, C679). */}
+          <Tracker
+            week={held.week}
+            ticket={ticket}
+            step={step.step}
+            exercise={step.step === "academy" ? view.exercise : null}
+          />
         </header>
       )}
       <section
