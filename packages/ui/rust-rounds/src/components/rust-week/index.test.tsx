@@ -9,13 +9,20 @@
 import { RustWeek } from "@rust-rounds/components/rust-week"
 import type { RustcRun } from "@rust-rounds/lib/formats"
 import { QUILLMOSS_WEEK } from "@rust-rounds/lib/sample-week"
+import { TALLOWBROOK_WEEK_FILE } from "@rust-rounds/lib/sample-week/tallowbrook"
+import { readWeek } from "@rust-rounds/lib/week-check"
 import type { RustWeekPorts } from "@rust-rounds/lib/week-play/runtime"
+import {
+  weekMarks,
+  weekPicks,
+  weekTicks,
+} from "@rust-rounds/lib/week-play/store"
 import { WEEK_WORDS } from "@rust-rounds/lib/week-play/words"
 import type { HeldWeek } from "@rust-rounds/lib/weeks"
 import { inMemoryStorage } from "@some-ui/core-utils"
 import { ONE_TAKE } from "@some-ui/voice-capture"
 import { simulatedPattern, takeButton } from "@some-ui/voice-capture/testing"
-import { act, fireEvent, render, screen } from "@testing-library/react"
+import { act, fireEvent, render, screen, within } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const WORDS = WEEK_WORDS
@@ -320,6 +327,8 @@ describe("a take per point (RR24)", () => {
     const [first] = QUILLMOSS_WEEK.tickets
     if (first === undefined) throw new Error("tickets")
     press(new RegExp(`^${WORDS.ticketLabel(first.id, first.title)}`))
+    // The ticket opens on its read (RR25); a /1 week has no academy.
+    press(WORDS.flow.read.toVoice)
     expect(screen.getByText(WORDS.points.heading)).toBeInTheDocument()
     // Three points: no filter; point 1 open, 2 and 3 a line each.
     expect(
@@ -331,7 +340,9 @@ describe("a take per point (RR24)", () => {
 
     // Point 2 opened by a tap, and said on its own.
     press(WORDS.points.open(2, "point 2"))
-    const card = screen.getByRole("region", { name: WORDS.cardOf(1, 3) })
+    const card = screen.getByRole("region", {
+      name: `${first.id} · ${WORDS.flow.steps.voice}`,
+    })
     fireEvent.click(takeButton(card))
     await settle(2_000)
     fireEvent.click(takeButton(card))
@@ -360,6 +371,7 @@ describe("a take per point (RR24)", () => {
     const [first] = QUILLMOSS_WEEK.tickets
     if (first === undefined) throw new Error("tickets")
     press(new RegExp(`^${WORDS.ticketLabel(first.id, first.title)}`))
+    press(WORDS.flow.read.toVoice)
     const filter = screen.getByRole("navigation", {
       name: WORDS.points.filter,
     })
@@ -371,5 +383,141 @@ describe("a take per point (RR24)", () => {
         li.getAttribute("data-point")
       )
     ).toEqual(["1"])
+  })
+})
+
+/**
+ * RR25 (#3249) and RR29 (#3257), as the owner approved the flow (C690): a
+ * /2 ticket read with its constraints and forks, its academy worked and an
+ * exercise ticked, then a pick at a fork beside its take. Each mark, tick
+ * and pick is kept, and the week opens again where it was left.
+ */
+describe("a ticket's flow (RR25, RR29)", () => {
+  const read = readWeek(TALLOWBROOK_WEEK_FILE)
+  if (!read.ok) throw new Error("the /2 sample reads")
+  const FLOWED: HeldWeek = { ...HELD, week: read.week, runs: {} }
+  const FLOW = WORDS.flow
+  const [first, second] = read.week.tickets
+  if (first === undefined || second === undefined) throw new Error("tickets")
+
+  it("reads, works the academy, picks at a fork, and keeps each step", async () => {
+    vi.setSystemTime(new Date("2026-11-19T18:00:00Z"))
+    const storage = inMemoryStorage()
+    const phone = { ...ports(storage), week: FLOWED, perPoint: true }
+    const { unmount } = render(<RustWeek ports={phone} />)
+    await settle()
+    press(new RegExp(`^${WORDS.ticketLabel(first.id, first.title)}`))
+
+    // Read: the constraints by id, each fork's options, one recommended.
+    const readPage = screen.getByRole("region", {
+      name: `${first.id} · ${FLOW.steps.read}`,
+    })
+    expect(readPage).toHaveTextContent("S3")
+    expect(readPage).toHaveTextContent("F2")
+    expect(readPage).toHaveTextContent(FLOW.read.forkOf(1, 2))
+    expect(readPage).toHaveTextContent(FLOW.read.notAll(3))
+    expect(within(readPage).getAllByText(FLOW.read.recommended)).toHaveLength(2)
+    press(FLOW.read.toAcademy)
+
+    // Academy: three exercises, none worked; one opens, is ticked, closes.
+    const academy = screen.getByRole("region", {
+      name: `${first.id} · ${FLOW.steps.academy}`,
+    })
+    expect(within(academy).getAllByText(FLOW.academy.notYet)).toHaveLength(3)
+    expect(
+      screen.getByRole("button", { name: FLOW.academy.skip })
+    ).toBeInTheDocument()
+    press(new RegExp(first.academy[0]?.title ?? "none"))
+    expect(screen.getByText(FLOW.exercise.tests(1, "B"))).toBeInTheDocument()
+    press(FLOW.exercise.tick)
+    expect(
+      screen.getByRole("button", { name: FLOW.exercise.ticked })
+    ).toBeDisabled()
+    press(FLOW.exercise.back)
+    expect(screen.getAllByText(FLOW.academy.atDesk)).toHaveLength(1)
+    press(FLOW.academy.onward)
+
+    // Voice: fork 1 picked; fork 2, left alone, goes with the recommended.
+    const voice = screen.getByRole("region", {
+      name: `${first.id} · ${FLOW.steps.voice}`,
+    })
+    const fork1 = within(voice).getByRole("radiogroup", {
+      name: first.forks[0]?.question ?? "",
+    })
+    fireEvent.click(within(fork1).getAllByRole("radio")[1]!)
+    expect(within(fork1).getAllByRole("radio")[1]).toHaveAttribute(
+      "aria-checked",
+      "true"
+    )
+    expect(
+      within(voice).getByRole("button", {
+        name: WORDS.points.open(2, first.forks[1]?.question ?? ""),
+      })
+    ).toHaveTextContent(`${FLOW.voice.byDefault("A")} · ${FLOW.voice.notSaid}`)
+    expect(voice).toHaveTextContent(FLOW.voice.mine(1, 2))
+
+    // Kept, every one: read and academy gone through, the tick, the pick.
+    expect(
+      weekMarks(storage)
+        .list()
+        ?.map(({ step, mark }) => [step, mark])
+    ).toEqual([
+      ["read", "done"],
+      ["academy", "done"],
+    ])
+    expect(weekTicks(storage).list()).toHaveLength(1)
+    expect(
+      weekPicks(storage)
+        .list()
+        ?.map(({ pick }) => pick)
+    ).toEqual([{ kind: "option", option: "B" }])
+
+    // On to the next ticket: this voice is marked passed by, unsaid.
+    press(FLOW.voice.next(second.id))
+    expect(
+      screen.getByRole("region", { name: `${second.id} · ${FLOW.steps.read}` })
+    ).toBeInTheDocument()
+    unmount()
+
+    // Opened again, the brief's ticket opens where it was left.
+    render(<RustWeek ports={phone} />)
+    await settle()
+    press(new RegExp(`^${WORDS.ticketLabel(first.id, first.title)}`))
+    expect(
+      screen.getByRole("region", { name: `${first.id} · ${FLOW.steps.read}` })
+    ).toBeInTheDocument()
+    // Every step of it marked, so it opens on its first; Next turns the line.
+    press(/^Next page of steps/)
+    expect(
+      screen.getByRole("region", {
+        name: `${first.id} · ${FLOW.steps.academy}`,
+      })
+    ).toBeInTheDocument()
+  })
+
+  it("passes the academy by from the read, and says so in the step row", async () => {
+    vi.setSystemTime(new Date("2026-11-19T18:00:00Z"))
+    const storage = inMemoryStorage()
+    render(
+      <RustWeek ports={{ ...ports(storage), week: FLOWED, perPoint: true }} />
+    )
+    await settle()
+    press(new RegExp(`^${WORDS.ticketLabel(second.id, second.title)}`))
+    press(FLOW.read.skip)
+    expect(
+      screen.getByRole("region", { name: `${second.id} · ${FLOW.steps.voice}` })
+    ).toBeInTheDocument()
+    const row = screen.getByRole("navigation", {
+      name: FLOW.stepsOf(second.id),
+    })
+    expect(row).toHaveTextContent(FLOW.standing.skipped)
+    expect(
+      weekMarks(storage)
+        .list()
+        ?.map(({ step, mark }) => [step, mark])
+    ).toEqual([
+      ["read", "done"],
+      ["academy", "skipped"],
+    ])
   })
 })

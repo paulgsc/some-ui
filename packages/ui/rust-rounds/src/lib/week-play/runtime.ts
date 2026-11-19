@@ -26,11 +26,13 @@ import type {
 } from "@some-ui/voice-capture"
 import { bundleRuntime } from "@some-ui/voice-capture"
 
+import type { FlowRuntime } from "./flow-runtime"
+import { createFlow } from "./flow-runtime"
 import type { OnScreen, Open } from "./opens"
 import { stepOpens } from "./opens"
 import type { PasteRuntime } from "./paste"
 import { pasteRuntime } from "./paste"
-import { itemOf } from "./points"
+import { itemOf, pointItem } from "./points"
 import type { WeekAtHome, WeekKind, WeekSent } from "./spec"
 import { weekAtHome, weekMachine } from "./spec"
 import { heardWords, pasteStores, weekDrafts, weeksSent } from "./store"
@@ -85,6 +87,12 @@ export type RustWeek = {
   }
   /** An error pasted from the owner's own code, with a note (`./paste`). */
   readonly paste: PasteRuntime
+  /**
+   * The week's flow (RR25, `./flow-runtime`): read, academy and voice per
+   * ticket on one line. Null where takes go by ticket (`perPoint` off), which
+   * keeps the card per ticket.
+   */
+  readonly flow: FlowRuntime | null
   /** The screen is showing. Returns the detach. */
   readonly attach: () => () => void
 }
@@ -106,6 +114,38 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
     onVisibility: ports.onVisibility,
   })
   const sends = weeksSent(ports.storage)
+  /** The bundle's item that opens `ticket`: its first point, else its own. */
+  const firstItem = (ticket: string): number => {
+    const point = machine.spec.items.indexOf(pointItem(ticket, 1))
+    return point === -1 ? machine.spec.items.indexOf(ticket) : point
+  }
+  const flow = ports.perPoint
+    ? createFlow({
+        week,
+        storage: ports.storage,
+        now: ports.now,
+        said: (ticket) => {
+          const state = bundle.getSnapshot()
+          const forks =
+            week.tickets.find(({ id }) => id === ticket)?.forks.length ?? 0
+          return [
+            ticket,
+            ...Array.from({ length: forks }, (_, i) =>
+              pointItem(ticket, i + 1)
+            ),
+          ].some((item) => machine.answered(state, item) === "said")
+        },
+        // The takes follow the ticket on screen, so its voice opens on it.
+        onTicket: (ticket) => {
+          const state = bundle.getSnapshot()
+          const on = itemOf(machine.spec.items[state.index] ?? "").ticket
+          if (on === ticket && state.screen === "cards") return
+          const index = firstItem(ticket)
+          if (index !== -1) bundle.dispatch({ type: "go", index })
+        },
+        onReview: () => bundle.dispatch({ type: "review" }),
+      })
+    : null
   const readAtHome = (): WeekAtHome =>
     weekAtHome(sends.list() ?? [], week, ports.homeHolds)
   let atHome = readAtHome()
@@ -194,6 +234,7 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
   return {
     machine,
     bundle,
+    flow,
     paste: pasteRuntime(
       ports.takes,
       pasteStores(ports.storage),

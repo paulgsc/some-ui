@@ -17,9 +17,10 @@
  */
 import type { JSX, ReactNode } from "react"
 import { useEffect, useId, useState, useSyncExternalStore } from "react"
-import { pointRecording, PointTakes } from "@rust-rounds/components/point-takes"
+import { FlowPages } from "@rust-rounds/components/rust-week/flow"
 import { RunView } from "@rust-rounds/components/rustc-run"
 import type { Ticket, Week } from "@rust-rounds/lib/formats/week"
+import type { FlowRuntime } from "@rust-rounds/lib/week-play/flow-runtime"
 import type { PasteRuntime } from "@rust-rounds/lib/week-play/paste"
 import { PASTE_MAX, pasteLine } from "@rust-rounds/lib/week-play/paste"
 import { itemOf, pointItem } from "@rust-rounds/lib/week-play/points"
@@ -39,7 +40,7 @@ import { isClosed, ticketLine } from "@rust-rounds/lib/week-play/spec"
 import type { TicketStanding } from "@rust-rounds/lib/week-play/words"
 import { WEEK_WORDS } from "@rust-rounds/lib/week-play/words"
 import type { HeldWeek } from "@rust-rounds/lib/weeks"
-import { assertNever, cn } from "@some-ui/core-utils"
+import { assertNever } from "@some-ui/core-utils"
 import {
   BundleCards,
   bundleConfirm,
@@ -54,7 +55,6 @@ import {
   TakeRow,
   Textarea,
   useConfirmSheet,
-  usePager,
   useTakePattern,
 } from "@some-ui/shared"
 import type {
@@ -148,6 +148,7 @@ const Brief = (
     onRounds?: () => void
     paste: PasteRuntime
     atHome: WeekAtHome
+    flow: FlowRuntime | null
   }
 ): JSX.Element => {
   const { machine, state, dispatch, held } = props
@@ -180,10 +181,15 @@ const Brief = (
             <button
               type="button"
               onClick={() =>
-                dispatch({
-                  type: "go",
-                  index: firstItemOf(machine, ticket, i),
-                })
+                props.flow === null
+                  ? dispatch({
+                      type: "go",
+                      index: firstItemOf(machine, ticket, i),
+                    })
+                  : props.flow.dispatch({
+                      type: "openTicket",
+                      ticket: ticket.id,
+                    })
               }
             >
               <CardLinkBody className="gap-0.5">
@@ -651,9 +657,10 @@ const Screen = (
     onRounds?: () => void
     paste: PasteRuntime
     atHome: WeekAtHome
+    flow: FlowRuntime | null
   }
 ): JSX.Element => {
-  const { machine, state, dispatch, held } = props
+  const { state, dispatch, held } = props
   if (
     state.screen !== "loading" &&
     state.screen !== "unreadable" &&
@@ -685,9 +692,7 @@ const Screen = (
       return <Brief {...props} />
     }
     case "cards": {
-      if (machine.spec.items.some((item) => itemOf(item).point !== null)) {
-        return <TicketPages {...props} />
-      }
+      if (props.flow !== null) return <FlowPages {...props} flow={props.flow} />
       return (
         <BundleCards
           {...props}
@@ -717,97 +722,6 @@ const Screen = (
       return assertNever(state.screen)
     }
   }
-}
-
-/**
- * The week's tickets answered point by point (RR24): a page per ticket, its
- * card above its points (`PointTakes`), stepped by the dots or a swipe
- * (`usePager`); while a take records, only its point shows.
- */
-const TicketPages = (
-  props: Parts & { held: HeldWeek; heard: WeekHeard }
-): JSX.Element | null => {
-  const { machine, state, dispatch, held } = props
-  const { tickets } = held.week
-  const on = itemOf(machine.spec.items[state.index] ?? "").ticket
-  const at = Math.max(
-    0,
-    tickets.findIndex((ticket) => ticket.id === on)
-  )
-  const goTicket = (n: number): void => {
-    const ticket = tickets[n]
-    if (ticket === undefined) return
-    const first = ticket.forks.length > 0 ? pointItem(ticket.id, 1) : ticket.id
-    dispatch({ type: "go", index: machine.spec.items.indexOf(first) })
-  }
-  const { attach } = usePager({
-    canPrev: at > 0,
-    canNext: at < tickets.length - 1,
-    held: state.busy,
-    onPage: (to) => goTicket(to === "next" ? at + 1 : at - 1),
-  })
-  const ticket = tickets[at]
-  // A week holds two tickets at least (`WeekSchema`).
-  if (ticket === undefined) return null
-  const said = (each: Ticket): boolean =>
-    machine.answered(state, each.id) === "said" ||
-    each.forks.some(
-      (_, i) => machine.answered(state, pointItem(each.id, i + 1)) === "said"
-    )
-  return (
-    <div className="flex flex-col gap-3">
-      {!pointRecording(state) && (
-        <nav className="flex items-center justify-center gap-1">
-          {tickets.map((each, i) => (
-            <button
-              key={each.id}
-              type="button"
-              aria-label={WORDS.cardOf(i + 1, tickets.length)}
-              aria-current={i === at ? "step" : undefined}
-              onClick={() => goTicket(i)}
-              className="flex h-7 w-11 items-center justify-center"
-            >
-              <span
-                className={cn(
-                  "h-2.5 rounded-full border-2",
-                  i === at ? "w-6" : "w-2.5",
-                  said(each)
-                    ? "bg-brand border-brand"
-                    : "border-muted-foreground/60"
-                )}
-              />
-            </button>
-          ))}
-        </nav>
-      )}
-      <section
-        ref={attach}
-        data-swipe="tickets"
-        aria-label={WORDS.cardOf(at + 1, tickets.length)}
-        className="flex min-w-0 flex-col gap-3"
-      >
-        {!pointRecording(state) && (
-          <TicketHead
-            held={held}
-            ticket={ticket}
-            n={at + 1}
-            state={state}
-            heard={props.heard}
-          />
-        )}
-        <PointTakes key={ticket.id} {...props} ticket={ticket} />
-      </section>
-      {!pointRecording(state) && (
-        <Button
-          variant="outline"
-          size="lg"
-          onClick={() => dispatch({ type: "review" })}
-        >
-          {WORDS.toReview}
-        </Button>
-      )}
-    </div>
-  )
 }
 
 export const RustWeek = ({
@@ -889,6 +803,7 @@ export const RustWeek = ({
           atHome={atHome}
           back={back}
           paste={week.paste}
+          flow={week.flow}
           {...(onRounds === undefined ? {} : { onRounds })}
         />
       )}
