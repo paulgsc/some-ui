@@ -7,6 +7,7 @@
  * the tiles' links, since the page has no router.
  */
 import type { JSX, ReactNode } from "react"
+import { CardLink, CardLinkBody } from "@some-ui/shared"
 import type {
   Compartment,
   LibraryAbout,
@@ -178,13 +179,11 @@ const phone: LibraryPhone = {
   subscribe: nothingChanges,
 }
 
+/** The route's tile (`CardRoute`, a card that opens something), as an anchor. */
 const tile = (compartment: Compartment, body: ReactNode): JSX.Element => (
-  <a
-    href={`#${compartment}`}
-    className="bg-card border-border/60 flex h-full flex-col gap-1 rounded-2xl border px-4 py-3"
-  >
-    {body}
-  </a>
+  <CardLink href={`#${compartment}`}>
+    <CardLinkBody>{body}</CardLinkBody>
+  </CardLink>
 )
 
 const shown = (
