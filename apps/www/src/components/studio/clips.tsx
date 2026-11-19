@@ -10,15 +10,15 @@
 import type { JSX, ReactNode } from "react"
 import type { Clip } from "@some-ui/video-render"
 import { refUrl } from "@some-ui/video-render"
-import { Link } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
 import { studioClipsQuery } from "@/lib/studio-clips"
 import { STUDIO_INDEX_WORDS } from "@/lib/studio-index"
+import { CardRoute } from "@/components/card-route"
 
 import { ClipFrames } from "./clip-frames"
 import { ClipParts, LabelList } from "./clip-parts"
-import { OutLink, ReadList, TILE } from "./layout"
+import { OutLink, ReadList } from "./layout"
 
 const WORDS = STUDIO_INDEX_WORDS.clips
 
@@ -43,16 +43,12 @@ export const ClipsList = (): JSX.Element => (
         <ul className="flex flex-col gap-2">
           {clips.map((clip) => (
             <li key={clip.id}>
-              <Link
-                to="/journal/clips/$clip"
-                params={{ clip: clip.id }}
-                className={TILE}
-              >
+              <CardRoute to="/journal/clips/$clip" params={{ clip: clip.id }}>
                 <span className="text-base font-bold">{clip.title}</span>
                 <span className="text-muted-foreground text-sm">
                   {WORDS.landed(clip.landed)}
                 </span>
-              </Link>
+              </CardRoute>
             </li>
           ))}
         </ul>

@@ -23,7 +23,7 @@ import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 import type { Interview } from "./run"
 import { currentOf, playOnly, useInterview, viewOf } from "./run"
 import type { Page } from "./to"
-import { CardTo, To } from "./to"
+import { To } from "./to"
 import { doneLine, Opening } from "./week"
 
 /** A page's way back: a link, so Android's back and this step the same way. */
@@ -116,7 +116,8 @@ const RungLink = ({
     </>
   )
   return (
-    <CardTo
+    <To
+      card="card"
       to={
         step === "cues" || step === "own"
           ? { page: "say", question, rung: step }
@@ -125,7 +126,7 @@ const RungLink = ({
       className="min-h-28"
     >
       {inside}
-    </CardTo>
+    </To>
   )
 }
 

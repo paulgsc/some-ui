@@ -641,7 +641,7 @@ const TileBody = ({
   compartment: Compartment
   count: number
 }): JSX.Element => (
-  <span className="flex flex-col gap-1.5">
+  <span className="flex w-full flex-col gap-1.5">
     <span className="flex items-center justify-between gap-2">
       <Mark kind={compartment} />
       <span
