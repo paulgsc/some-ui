@@ -6,7 +6,6 @@
  */
 import type { JSX } from "react"
 
-import { linesOf } from "@/lib/interview-week/ladder"
 import { readItem } from "@/lib/interview-week/spec"
 import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 
@@ -62,13 +61,7 @@ const ReadTake = ({
             {WORDS.situation} · {WORDS.aim(card.targetSeconds)}
           </p>
           <p className="text-sm">{card.situation}</p>
-          <Script
-            held={held}
-            item={item}
-            lines={linesOf(held.week, item)}
-            id={card.id}
-            seconds={card.targetSeconds}
-          />
+          <Script held={held} item={item} seconds={card.targetSeconds} />
           <CueLine held={held} item={item} />
         </>
       }

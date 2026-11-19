@@ -235,10 +235,7 @@ export const INTERVIEW_WORDS = {
   guidelines: "What to cover",
   situation: "Where this is read",
   script: "Read this",
-  /**
-   * The band a script is read aloud through (IW9), as the agreed prototype
-   * words it: what it does now, its button, and the take's time against the aim.
-   */
+  /** The band a script is read aloud through (IW9): what it does now, its button, and the take's time against the aim. */
   band: {
     ready: "Moves while you speak",
     moving: "Moves while you speak",

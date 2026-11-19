@@ -16,9 +16,14 @@ import { BundleTake, Button, TakeRow } from "@some-ui/shared"
 import { ChevronLeft } from "lucide-react"
 
 import type { Rung, SayRung, Step } from "@/lib/interview-week/ladder"
-import { scriptOf, stepsOf } from "@/lib/interview-week/ladder"
+import { linesOf, stepsOf } from "@/lib/interview-week/ladder"
 import { bandOf } from "@/lib/interview-week/prompter"
-import { isClosed, sentTakeOf, takeLine } from "@/lib/interview-week/spec"
+import {
+  cardOf,
+  isClosed,
+  sentTakeOf,
+  takeLine,
+} from "@/lib/interview-week/spec"
 import { INTERVIEW_WORDS as WORDS } from "@/lib/interview-week/words"
 
 import type { Interview } from "./run"
@@ -285,24 +290,20 @@ const LEVEL_BARS = [0.1, 0.25, 0.4, 0.55, 0.7] as const
  * A script read aloud through the teleprompter band (IW9, #3176): a phrase a
  * line in large type, the line read lit at a third of the way down and the
  * next dimmed, moving while the take under way hears you and holding while
- * it doesn't (`@/lib/interview-week/prompter`). Built to the prototype the
- * owner agreed (page 4); the band only keeps your place, and home's
- * transcript says the pace afterwards.
+ * it doesn't (`@/lib/interview-week/prompter`). The window is an ordinary
+ * scroller, so a hand can move it too, whether or not the level is measured.
  */
 export const Script = ({
   held,
   item,
-  lines,
-  id,
   seconds,
 }: {
   held: Interview
   item: string
-  lines: ReadonlyArray<string>
-  id: string
   seconds: number
 }): JSX.Element => {
   const { prompter, snapshot, run, week } = held
+  const lines = linesOf(week, item)
   const answers = takeLine(week.id, item)
   const band = bandOf(prompter, answers, lines)
   const { take } = snapshot
@@ -313,16 +314,13 @@ export const Script = ({
   // render moves nothing.
   const text = lines.join("\n")
   // The lit line is scrolled to the band: a measure of laid-out lines, so it
-  // is read after layout, and again when the window changes size. The window
-  // is an ordinary scroller, so a hand on the script can always move it too,
-  // whether or not the microphone's level is measured.
+  // is read after layout, and again when the window changes size.
   useLayoutEffect(() => {
     const view = windowRef.current
     if (view === null) return undefined
     const place = (): void => {
       const line = view.querySelector(`[data-line="${band.line}"]`)
       if (!(line instanceof HTMLElement)) return
-      // Eased by the scroller's own CSS, and not where motion is reduced.
       view.scrollTop = line.offsetTop - view.clientHeight * BAND_AT
     }
     place()
@@ -332,7 +330,7 @@ export const Script = ({
   return (
     <section
       aria-label={WORDS.script}
-      data-script={id}
+      data-script={cardOf(item) ?? item}
       className="bg-card flex flex-col gap-2 rounded-2xl py-3"
     >
       <p className="text-muted-foreground flex justify-between px-4 text-xs font-semibold">
@@ -506,8 +504,6 @@ const AloudTake = ({
             <Script
               held={held}
               item={question.id}
-              lines={scriptOf(ready)}
-              id={question.id}
               seconds={question.targetSeconds}
             />
           )}

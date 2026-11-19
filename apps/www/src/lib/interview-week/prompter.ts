@@ -36,6 +36,10 @@ export const HOLD_MS = 1000
 /** The longest stretch between two reads that counts as reading. */
 export const GAP_MS = 1000
 
+/** Whether the voice was heard within `HOLD_MS` of `at`. */
+const heardLately = (heardAt: number | null, at: number): boolean =>
+  heardAt !== null && at - heardAt <= HOLD_MS
+
 export type Prompter =
   /** No take under way. */
   | { readonly kind: "idle" }
@@ -93,8 +97,7 @@ export function stepPrompter(state: Prompter, event: PrompterEvent): Prompter {
       }
       const heardAt = heard ? at : state.heardAt
       const elapsed = Math.min(Math.max(at - state.at, 0), GAP_MS)
-      const moving =
-        !state.paused && heardAt !== null && at - heardAt <= HOLD_MS
+      const moving = !state.paused && heardLately(heardAt, at)
       const words = moving
         ? Math.min(state.words + (elapsed * PACE_WPM) / 60_000, total)
         : state.words
@@ -147,9 +150,7 @@ export function bandOf(
   }
   // At the last word there is nowhere to move: the band holds.
   const moving =
-    state.words < totalOf(lines) &&
-    state.heardAt !== null &&
-    state.at - state.heardAt <= HOLD_MS
+    state.words < totalOf(lines) && heardLately(state.heardAt, state.at)
   return {
     line,
     state: state.paused ? "paused" : moving ? "moving" : "holding",

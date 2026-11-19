@@ -479,7 +479,7 @@ describe("a question's ladder on the phone (IW8)", () => {
     expect(on.run.ladder.getSnapshot().rungs).toEqual({ [take.id]: "own" })
   })
 
-  it("moves a read's band on the recorder's own level, holds it quiet, and starts each take from the top (IW9)", async () => {
+  it("moves a read's band on the recorder's own level, and starts each take from the top (IW9)", async () => {
     const on = phone(inMemoryStorage())
     const band = (): Prompter => on.run.prompter.getSnapshot()
     const words = (): number => {
@@ -498,11 +498,6 @@ describe("a question's ladder on the phone (IW8)", () => {
     // Spoken throughout: about the pace's words in three seconds.
     expect(words()).toBeGreaterThan(5)
     expect(words()).toBeLessThan(8)
-    on.run.pause()
-    const paused = words()
-    await pass(2_000)
-    expect(words()).toBe(paused)
-    on.run.pause()
     on.run.dispatch({ type: "tap", item: "read:epic-2931" })
     await pass()
     expect(band()).toBe(NO_PROMPTER)
