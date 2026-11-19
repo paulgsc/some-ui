@@ -78,6 +78,7 @@ describe("codeLines", () => {
       text: " ",
       tone: "plain",
       marked: true,
+      inserted: false,
     })
     expect(line!.runs.filter((run) => run.marked)).toHaveLength(1)
 
@@ -149,13 +150,36 @@ describe("codeLines", () => {
   it("keeps a block comment's tone on every line it spans", () => {
     const lines = codeLines("/* one\ntwo */ fn", "rust")
     expect(lines[0]!.runs).toEqual([
-      { column: 1, text: "/* one", tone: "comment", marked: false },
+      {
+        column: 1,
+        text: "/* one",
+        tone: "comment",
+        marked: false,
+        inserted: false,
+      },
     ])
     expect(lines[1]!.runs[0]).toEqual({
       column: 1,
       text: "two */",
       tone: "comment",
       marked: false,
+      inserted: false,
     })
+  })
+
+  it("numbers an excerpt from its first line, and counts every option the same way", () => {
+    // rustc 1.97's help for E0507: insert `&` at 9:16 of the program, so its
+    // suggested line is line 9 alone with `&` new at column 16.
+    const lines = codeLines("    let last = &open[open.len() - 1];", "rust", {
+      firstLine: 9,
+      changedLines: [9],
+      inserted: [{ lineStart: 9, columnStart: 16, lineEnd: 9, columnEnd: 17 }],
+    })
+    expect(lines.map((line) => [line.number, line.changed])).toEqual([
+      [9, true],
+    ])
+    const inserted = lines[0]!.runs.filter((run) => run.inserted)
+    expect(inserted.map((run) => [run.column, run.text])).toEqual([[16, "&"]])
+    expect(lines[0]!.runs.some((run) => run.marked)).toBe(false)
   })
 })
