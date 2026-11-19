@@ -81,8 +81,8 @@ test.describe("the interview week fits the phone", () => {
       await expectFitsPhone(page, "a take said from cues")
       // A take, so the week is under way: no cue counts on this rung.
       await card.locator("[data-take]").click()
-      // The phone's own cap, as "A take stops at 2 min" says (IW18).
-      await expect(card.getByText(/ \/ 2:00$/)).toBeVisible()
+      // The phone's own cap, as "A take stops at 3 min" says (IW18, C735).
+      await expect(card.getByText(/ \/ 3:00$/)).toBeVisible()
       await page.waitForTimeout(1_500)
       await card.locator("[data-take]").click()
       await expect(card.getByText(/going home/)).toBeVisible()
