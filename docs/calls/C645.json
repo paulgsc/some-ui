@@ -1,0 +1,20 @@
+{
+  "id": "C645",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/ui/soundbites/src/components/wing/index.tsx",
+    "packages/ui/soundbites/src/components/studio/index.tsx",
+    "packages/ui/soundbites/src/components/idea-shelf/index.tsx",
+    "packages/ui/soundbites/src/components/ideas-on-home/index.tsx"
+  ],
+  "chose": "Studio's cards that open something (New idea, Your ideas, each open sitting, each show and episode, each idea on the shelf and on home) take the one card link look (CardLink). New idea and the open sittings lose the 2px brand border they had as emphasis; what leads is said by the lightbulb and the Start here pill inside the card. A closed sitting stays a plain, faded card, and a choice that answers a question here (what a take is about) keeps its plain row.",
+  "options": [
+    "the one card link look, emphasis carried inside the card",
+    "the card link look plus a brand border on the cards that lead",
+    "keep each card's own look"
+  ],
+  "gray": "Whether a card that leads keeps a louder edge is a look the owner sees in Studio, and the quiet-look story (C643) argues against a second, louder variant.",
+  "undo": "Pass a brand border class to the New idea and open-sitting CardLinks.",
+  "refs": ["#3234"]
+}

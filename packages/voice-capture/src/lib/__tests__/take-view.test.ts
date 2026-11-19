@@ -282,6 +282,7 @@ function everyLine(): Array<string> {
       nearlyUp: false,
       clock: "elapsed",
     },
+    { kind: "counting", left: 3 },
     { kind: "keeping" },
     { kind: "elsewhere" },
     { kind: "full", max: 5 },
