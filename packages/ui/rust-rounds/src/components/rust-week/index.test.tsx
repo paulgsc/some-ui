@@ -78,6 +78,7 @@ function ports(
     now,
     newId: () => "unused",
     engage: () => undefined,
+    perPoint: false,
     onVisibility: (listener) => {
       listener(false)
       return (): void => undefined
@@ -282,5 +283,90 @@ describe("a week on the phone (RR13)", () => {
     expect(screen.getByText(WORDS.paste.kept)).toBeInTheDocument()
     // Back on the brief.
     expect(screen.getByText(QUILLMOSS_WEEK.company.name)).toBeInTheDocument()
+  })
+})
+
+/**
+ * RR24 (#3248): a take per speak-to point, as the owner approved it (C680).
+ * The point being answered is open with its take; every other point is one
+ * line, opened by a tap; a point said shows as said, the others as not; a
+ * ticket of more points than fit at a glance shows its filter; and the look
+ * over names each point's take.
+ */
+describe("a take per point (RR24)", () => {
+  const withPoints = (k: number): HeldWeek => ({
+    ...HELD,
+    week: {
+      ...QUILLMOSS_WEEK,
+      tickets: QUILLMOSS_WEEK.tickets.map((ticket, i) =>
+        i === 0
+          ? {
+              ...ticket,
+              speakTo: Array.from({ length: k }, (_, n) => `point ${n + 1}`),
+            }
+          : ticket
+      ),
+    },
+  })
+
+  it("opens one point at a time, records it alone, and names it in the look over", async () => {
+    render(
+      <RustWeek ports={{ ...ports(), week: withPoints(3), perPoint: true }} />
+    )
+    await settle()
+    const [first] = QUILLMOSS_WEEK.tickets
+    if (first === undefined) throw new Error("tickets")
+    press(new RegExp(`^${WORDS.ticketLabel(first.id, first.title)}`))
+    expect(screen.getByText(WORDS.points.heading)).toBeInTheDocument()
+    // Three points: no filter; point 1 open, 2 and 3 a line each.
+    expect(
+      screen.queryByRole("navigation", { name: WORDS.points.filter })
+    ).toBeNull()
+    expect(
+      screen.getByRole("button", { name: WORDS.points.open(2, "point 2") })
+    ).toHaveTextContent(WORDS.points.notSaid)
+
+    // Point 2 opened by a tap, and said on its own.
+    press(WORDS.points.open(2, "point 2"))
+    const card = screen.getByRole("region", { name: WORDS.cardOf(1, 3) })
+    fireEvent.click(takeButton(card))
+    await settle(2_000)
+    fireEvent.click(takeButton(card))
+    await settle()
+    press(WORDS.points.open(1, "point 1"))
+    expect(
+      screen.getByRole("button", { name: WORDS.points.open(2, "point 2") })
+    ).toHaveTextContent(WORDS.points.said)
+    expect(screen.getByText(WORDS.points.count(1, 3))).toBeInTheDocument()
+
+    press(WORDS.toReview)
+    expect(
+      screen.getByText(WORDS.points.label(first.id, 2, "point 2"))
+    ).toBeInTheDocument()
+    // A ticket's own take, never said, is not listed beside its points.
+    expect(
+      screen.queryByText(WORDS.ticketLabel(first.id, first.title))
+    ).toBeNull()
+  })
+
+  it("shows the filter once a ticket has more points than fit at a glance", async () => {
+    render(
+      <RustWeek ports={{ ...ports(), week: withPoints(8), perPoint: true }} />
+    )
+    await settle()
+    const [first] = QUILLMOSS_WEEK.tickets
+    if (first === undefined) throw new Error("tickets")
+    press(new RegExp(`^${WORDS.ticketLabel(first.id, first.title)}`))
+    const filter = screen.getByRole("navigation", {
+      name: WORDS.points.filter,
+    })
+    expect(filter).toHaveTextContent(`${WORDS.points.unsaid}8`)
+    fireEvent.click(screen.getByRole("button", { name: /^Said/ }))
+    // Nothing said yet, but the open point stays: its take is never hidden.
+    expect(
+      [...document.querySelectorAll("[data-point]")].map((li) =>
+        li.getAttribute("data-point")
+      )
+    ).toEqual(["1"])
   })
 })

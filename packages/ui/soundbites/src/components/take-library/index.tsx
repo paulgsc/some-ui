@@ -19,7 +19,15 @@
 import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
-import { Button, Dot, Input, Notice, TakeList } from "@some-ui/shared"
+import {
+  Button,
+  Chip,
+  CHIP_BAR,
+  Dot,
+  Input,
+  Notice,
+  TakeList,
+} from "@some-ui/shared"
 import type { PatternTake } from "@some-ui/voice-capture"
 import { Unpaired } from "@soundbites/components/unpaired"
 import type {
@@ -92,7 +100,7 @@ import {
   Trophy,
 } from "lucide-react"
 
-import { Chip, CHIP_BAR, PlayButton } from "./parts"
+import { PlayButton } from "./parts"
 
 const WORDS = LIBRARY_WORDS
 

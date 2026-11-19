@@ -61,6 +61,7 @@ function phone(
     now: Date.now,
     newId: () => "unused",
     engage: () => undefined,
+    perPoint: false,
     onVisibility: (listener) => {
       listener(false)
       return (): void => undefined

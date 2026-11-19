@@ -1,11 +1,10 @@
 /**
  * The parts Takes on home and the takes needing attention (HEARD3) draw
- * alike: a take's Play, and a chip that filters a list.
+ * alike: a take's Play. A chip that filters a list is `@some-ui/shared`'s
+ * `Chip`.
  */
-import type { JSX, ReactNode } from "react"
-import { cn } from "@some-ui/core-utils"
-import type { DotMeaning } from "@some-ui/shared"
-import { Button, Dot } from "@some-ui/shared"
+import type { JSX } from "react"
+import { Button } from "@some-ui/shared"
 import { LIBRARY_WORDS } from "@soundbites/lib/library/words"
 import { LoaderCircle, Pause, Play } from "lucide-react"
 
@@ -39,36 +38,3 @@ export const PlayButton = ({
     )}
   </Button>
 )
-
-/** A chip: what it shows, its count, and whether it is picked. */
-export const Chip = ({
-  picked,
-  count,
-  dot,
-  onTap,
-  children,
-}: {
-  picked: boolean
-  count: number
-  dot: DotMeaning | null
-  onTap: () => void
-  children: ReactNode
-}): JSX.Element => (
-  <button
-    type="button"
-    aria-pressed={picked}
-    onClick={onTap}
-    className={cn(
-      "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm",
-      picked ? "bg-foreground text-background" : "bg-card"
-    )}
-  >
-    {dot !== null && <Dot meaning={dot} className="size-2" />}
-    {children}
-    <span className="tabular-nums opacity-75">{count}</span>
-  </button>
-)
-
-/** The bar the chips sit in, which scrolls sideways on its own. */
-export const CHIP_BAR =
-  "bg-background sticky top-0 z-10 flex gap-2 overflow-x-auto py-1"

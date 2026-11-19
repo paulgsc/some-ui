@@ -26,6 +26,7 @@ import type { EachSent } from "./leetype-log"
 import { emptyLogReport, sendEach, sentOutcome } from "./leetype-log"
 import type { Sent } from "./sent"
 import { fingerprintOf, readSent, rememberSent, sentUnder } from "./sent"
+import { servesNow } from "./serves-now"
 import { answerOrEnd } from "./shelf"
 
 /** Whether `sent` says home holds `item` as it is now. */
@@ -130,7 +131,7 @@ export async function exchangeRustRoundsLane(
   if (done.kind !== "synced") return done
   return sendRustKept(
     send,
-    keptGoing(browserLocalStorage, Date.now()),
+    keptGoing(browserLocalStorage, Date.now(), servesNow() === "fits"),
     browserLocalStorage,
     pairing
   )
