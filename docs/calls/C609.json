@@ -1,0 +1,15 @@
+{
+  "id": "C609",
+  "made": "2026-11-18",
+  "by": "owner",
+  "paths": ["server:docs/identity.md"],
+  "chose": "Privacy invariant 23 is amended (option a). The take library may answer the caller's own notes of every kind, with their words and a game bite's described fields, matched play and game label, and the receipts of deleted takes. It still answers no audio, no vector and no other subject's note, to a paired phone only, with a span that skips every argument.",
+  "options": [
+    "(a) amend invariant 23 to list every kind with the bite's fields",
+    "(b) keep the bite fields out of `about` and amend only the other-kind clause",
+    "(c) don't widen the library"
+  ],
+  "gray": "Invariant 23 said the take library answers no bite and no other kind's note, and TAKES20 asked for exactly that. Each field is already readable by the same subject's own paired phone through /heard, /kept and /deleted.",
+  "undo": "Revert the invariant's sentence and voice_repo::takes's `kind` branch. Nothing is stored.",
+  "refs": ["#3219"]
+}
