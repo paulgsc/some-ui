@@ -15,7 +15,13 @@
  * - **An error pasted** (`pasteStores`, `./paste`): the one being written in
  *   each week, kept as it is typed, and those kept, which only grow. Each
  *   one kept goes home (`lib/kept-home`, RR14), and stays here too.
+ * - **The owner's picks at each fork** (`weekPicks`, RR29) and **each step
+ *   marked done or skipped** (`weekMarks`, RR25), every week's in one list
+ *   each, which only grow: a pick or a mark is appended, never written over
+ *   (`lib/decisions`, `lib/flow`).
  */
+import type { PickMade } from "@rust-rounds/lib/decisions"
+import type { StepMark } from "@rust-rounds/lib/flow"
 import { WEEK_SENT_KEY } from "@rust-rounds/lib/play/keys"
 import type { KeyedStorage } from "@some-ui/core-utils"
 import {
@@ -38,6 +44,8 @@ const DRAFTS_KEY = "some-ui:rust-rounds.week-drafts"
 const HEARD_KEY = "some-ui:rust-rounds.week-heard"
 const PASTE_DRAFTS_KEY = "some-ui:rust-rounds.week-paste-drafts"
 const PASTES_KEY = "some-ui:rust-rounds.week-pastes"
+const PICKS_KEY = "some-ui:rust-rounds.week-picks"
+const MARKS_KEY = "some-ui:rust-rounds.week-marks"
 
 /** The draft of week `week`, among every week's in `storage`. */
 export const weekDrafts = (
@@ -196,3 +204,52 @@ export function pasteStores(storage: KeyedStorage | null): PasteStores {
     },
   }
 }
+
+/** A kept record of week `week`'s. */
+type OfWeek<R> = R & { readonly week: string }
+
+/**
+ * Week `week`'s records among every week's kept: what `lib/decisions` and
+ * `lib/flow` read, since a ticket's id names it within its week only.
+ */
+export const ofWeek = <R>(
+  records: ReadonlyArray<OfWeek<R>>,
+  week: string
+): ReadonlyArray<OfWeek<R>> => records.filter((each) => each.week === week)
+
+const PickSchema: z.ZodType<OfWeek<PickMade>> = z.object({
+  week: z.string(),
+  ticket: z.string(),
+  fork: z.number().int().positive(),
+  pick: z.discriminatedUnion("kind", [
+    z.object({ kind: z.literal("option"), option: z.string() }),
+    z.object({ kind: z.literal("own") }),
+  ]),
+  at: z.string(),
+})
+
+/** Every pick made at a fork on this phone, each week's, which only grow. */
+export const weekPicks = (
+  storage: KeyedStorage | null
+): BundleRecords<OfWeek<PickMade>> =>
+  keptRecords(storage, PICKS_KEY, (value) => {
+    const parsed = z.array(PickSchema).safeParse(value)
+    return parsed.success ? parsed.data : null
+  })
+
+const MarkSchema: z.ZodType<OfWeek<StepMark>> = z.object({
+  week: z.string(),
+  ticket: z.string(),
+  step: z.enum(["read", "academy", "voice"]),
+  mark: z.enum(["done", "skipped"]),
+  at: z.string(),
+})
+
+/** Every step marked done or skipped on this phone, each week's, which only grow. */
+export const weekMarks = (
+  storage: KeyedStorage | null
+): BundleRecords<OfWeek<StepMark>> =>
+  keptRecords(storage, MARKS_KEY, (value) => {
+    const parsed = z.array(MarkSchema).safeParse(value)
+    return parsed.success ? parsed.data : null
+  })

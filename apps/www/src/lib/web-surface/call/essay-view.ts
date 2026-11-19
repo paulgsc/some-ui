@@ -10,6 +10,7 @@ import type {
   CellView,
   Essay,
   EssayDive,
+  EssayFork,
   EssayScene,
   EssayTicket,
   Parsed,
@@ -40,6 +41,13 @@ export type EssayView =
   | {
       readonly section: "question" | "best" | "beside"
       readonly ticket: EssayTicket
+    }
+  | {
+      readonly section: "fork"
+      readonly ticket: EssayTicket
+      /** The point it is, from 0. */
+      readonly point: number
+      readonly fork: EssayFork
     }
   | {
       readonly section: "answer"
@@ -153,6 +161,13 @@ function viewOf(essay: Essay, scene: EssayScene, voicing: Voicing): EssayView {
     case "best":
     case "beside": {
       return { section: scene.section, ticket: ticketOf(essay, scene.ticket) }
+    }
+    case "fork": {
+      const ticket = ticketOf(essay, scene.ticket)
+      const point = scene.point ?? 0
+      const fork = ticket.points.at(point)?.fork
+      if (fork === undefined) throw new Error(`no fork ${scene.id}`)
+      return { section: "fork", ticket, point, fork }
     }
     case "answer": {
       return {
