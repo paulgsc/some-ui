@@ -9,7 +9,7 @@
  * leaving the page: each the runtime's `ended`), paused or not, and where a
  * hand left the script's window. Proof: "never moves the script back when
  * a take ends", below, over every half word of the script; and the read's
- * page in `components/jobs/interview/__tests__/interview.test.tsx`, whose
+ * page in `apps/www/src/components/jobs/interview/__tests__/interview.test.tsx`, whose
  * window, scrolled by hand, stays where it was when the take stops.
  */
 import { describe, expect, it } from "vitest"
