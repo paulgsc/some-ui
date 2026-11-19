@@ -184,7 +184,7 @@ const SENDS_VERDICTS = SNAPSHOT_EPOCH >= VERDICTS_EPOCH
 export function phoneRustWeekPorts(
   reach: Pick<
     RustWeekPorts,
-    "home" | "heard" | "homeHolds" | "onHomeHolds" | "work"
+    "home" | "heard" | "homeHolds" | "onHomeHolds" | "work" | "homeSent"
   >
 ): RustWeekPorts | null {
   const week = currentWeek(phoneWeeks().held().weeks, Date.now())
