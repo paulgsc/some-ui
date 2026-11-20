@@ -11,7 +11,8 @@
  *   answers, a question with no take said this week is "not known yet",
  *   never a guess from what this phone remembers.
  * - **A take said this week outranks an older record** (C784) until home
- *   holds it and has answered a read asked after: it is on this phone, and
+ *   holds it, as a note and named by a send, and has answered a read asked
+ *   after: it is on this phone, and
  *   the newest home can name. Once home has judged it, home's record has the
  *   last word, and passes over a take it couldn't hear (the owner's call
  *   C785, #3304).
@@ -45,9 +46,10 @@ export type HomeOpening =
       readonly kind: "known"
       readonly takes: ReadonlyArray<OpeningAtHome>
       /**
-       * The takes home held as this phone asked (`./runtime` adds them):
-       * its answer has judged each, so its record has the last word on
-       * them (C785). A take still on its way home is not among them.
+       * The takes home held as this phone asked, each as a note and named
+       * by a send home holds (`./runtime` adds them): its answer has judged
+       * each, so its record has the last word on them (C785). A take still
+       * on its way home, by either lane, is not among them.
        */
       readonly judged?: ReadonlyArray<string>
     }

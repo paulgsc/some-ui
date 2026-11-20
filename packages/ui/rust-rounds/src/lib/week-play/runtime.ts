@@ -425,11 +425,18 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
       // too, open or closed (#3269): which take each question plays is
       // home's to say, never this phone's memory of it.
       const closed = isClosed(week, new Date(ports.now()).toISOString())
-      // The takes home holds as the phone asks: home's answer has judged
-      // each of them, and no other (C785).
+      // The takes home holds as the phone asks, each both as a note and
+      // named by a send of the week home holds: only those can home's
+      // record name, so its answer has judged each of them, and no other
+      // (C785). The note and the send go home by separate lanes.
+      const named = new Set(
+        (sends.list() ?? [])
+          .filter((sent) => sent.week === week.id && ports.homeHolds(sent))
+          .flatMap((sent) => (sent.opening ?? []).map(({ take }) => take))
+      )
       const held = ports.takes.takes
         .getSnapshot()
-        .filter((take) => take.kept?.place === "home")
+        .filter((take) => take.kept?.place === "home" && named.has(take.id))
         .map((take) => take.id)
       const asking =
         ports.homeRecord !== undefined && (closed || opening !== null)

@@ -783,12 +783,12 @@ describe("the decisions sent (RR29)", () => {
 
 /**
  * C785 (#3304): home's record has the last word on a take of the opening
- * that home held when the phone asked, and on no other: a take sent but
- * not yet home, or recorded while home's answer was on its way, stays the
- * one in place.
+ * that home held when the phone asked, as a note and named by a send it
+ * holds, and on no other: a take not yet home either way, or recorded while
+ * home's answer was on its way, stays the one in place.
  */
 describe("the opening's takes home has judged (C785)", () => {
-  it("are those home held as the phone asked, not those only queued or said since", async () => {
+  it("are those home held as the phone asked, as a note and named by a send it holds, not those only queued or said since", async () => {
     const read = readWeek(TALLOWBROOK_WEEK_FILE)
     if (!read.ok) throw new Error("the /2 sample reads")
     const week = { ...read.week, opening: openingOfWeek() }
@@ -808,9 +808,31 @@ describe("the opening's takes home has judged (C785)", () => {
     })
     let list: ReadonlyArray<PatternTake> = [
       take("held", { place: "home", since: "2026-11-18T09:00:00.000Z" }),
+      // Its note is home, but no send home holds names it yet.
+      take("unsent", { place: "home", since: "2026-11-18T09:00:00.000Z" }),
       take("going", { place: "going" }),
       take("waiting", { place: "phone" }, true),
     ]
+    const storage = inMemoryStorage()
+    const opened = (at: string, takes: ReadonlyArray<string>): WeekSent => ({
+      week: week.id,
+      at,
+      answers: [],
+      passed: [],
+      opening: takes.map((id) => ({
+        n: 1,
+        take: id,
+        recordedAt: "2026-11-18T08:00:00.000Z",
+        version: 1,
+        ms: 20_000,
+      })),
+    })
+    const atHome = opened("2026-11-18T10:00:00.000Z", ["held", "going"])
+    weeksSent(storage).keep((kept) => [
+      ...kept,
+      atHome,
+      opened("2026-11-18T11:00:00.000Z", ["held", "going", "unsent"]),
+    ])
     const { pattern, store } = onConfirm()
     let answer: (record: HomeWeekRecord) => void = () => undefined
     const runtime = createRustWeek({
@@ -821,10 +843,10 @@ describe("the opening's takes home has judged (C785)", () => {
         discard: store.discard,
         release: store.release,
       },
-      storage: inMemoryStorage(),
+      storage,
       home: { reach: () => "near", subscribe: () => (): void => undefined },
       heard: () => Promise.resolve({ kind: "notYet" }),
-      homeHolds: () => false,
+      homeHolds: (sent) => sent.at === atHome.at,
       onHomeHolds: () => (): void => undefined,
       homeRecord: () =>
         new Promise((resolve) => {
