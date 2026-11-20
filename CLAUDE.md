@@ -398,13 +398,16 @@ prove that we've exhausted it and still have a pain point." So:
 - **Build only the gap.** At rung 3, build the part that is ours and keep the tool for the
   rest: a wrapper over it, not a replacement for it.
 
-**Spend last on hardware, behind a measured judgment** (owner, 2026-11-20, C789). While our
-judgment about hardware, and the software infrastructure around it (machines, GPUs, hosting,
-the services that run on them), is naive, nothing in that domain is paid for: no rental, no
-purchase, no paid tier. A story there puts every step that costs money last, after a judgment
-gate it defines and measures: the owner's predictions, made before seeing results, hold
-against real measurements (#3309). Spending outside that domain, such as a store's
-registration fee, is not covered. A free tier is not spending (Claude's reading, #3310).
+**Spend last on hardware, behind a measured judgment** (owner, 2026-11-20, C789). The owner,
+close paraphrase: "Stay away from anything that results in us paying for anything until we are
+confident in our judgment. The key is my ability to make decisions about hardware in general,
+and about the software infrastructure around the hardware. While we are naive, we should not
+be spending any money, so those steps always come last, gated behind real enlightenment, which
+we have to find a way to measure." So in such a story, each step that costs money comes last,
+after a judgment gate the story defines and measures: the owner's predictions, made before
+seeing results, hold against real measurements (#3309). Claude's reading (#3310): the rule
+covers machines, GPUs, and the hosting and serving that run on them. Other spending, such as a
+store's registration fee or a tool's paid plan, is outside it, and a free tier is not spending.
 
 **When a reach is owed.** It is owed when the first design of a story would add one of these:
 
