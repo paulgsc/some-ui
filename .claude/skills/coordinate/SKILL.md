@@ -77,6 +77,7 @@ every Residual Ledger `first_step` in those three parts, in that order (#2814, N
   "make a new X" verbatim as the story, and say which existing X it lands in (#3317).
 - Name the family the story is a case of, in the brief, and tell the worker to push back to you
   when its task as worded would overfit one case; relay that pushback to the owner (C830).
+  The worker carries on at the family's level meanwhile.
 
 ### Admission by free runners
 
