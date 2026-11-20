@@ -87,8 +87,18 @@ const ticketIds = (n: number, d: number): Array<string> => [
 /** An opening conversation as home might have heard it (#3269): the second answer had no take to play. */
 const OPENING = {
   exchanges: [
-    { n: 1, ask: "What is Rust Rounds?", transcript: "paulgsc here." },
-    { n: 3, ask: "Why watch?", transcript: "To see a decision made." },
+    {
+      n: 1,
+      ask: "What is Rust Rounds?",
+      transcript: "paulgsc here.",
+      take: "note-open-1",
+    },
+    {
+      n: 3,
+      ask: "Why watch?",
+      transcript: "To see a decision made.",
+      take: "note-open-3",
+    },
   ],
 }
 
@@ -195,6 +205,13 @@ describe("the sample essay", () => {
     expect(backwards.ok ? [] : backwards.problems).toEqual([
       "opening.exchanges: each question once, in the opening's order; got 3, 1",
     ])
+    const badTake = parseEssay({
+      ...opened,
+      opening: {
+        exchanges: OPENING.exchanges.map((e) => ({ ...e, take: "a/take" })),
+      },
+    })
+    expect(badTake.ok).toBe(false)
     // The intro names the voice asking, and never says "both" of three.
     for (const voicing of ["owner", "sample"] as const) {
       const intro = essayIntro(opened, voicing)

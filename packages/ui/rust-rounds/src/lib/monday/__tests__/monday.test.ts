@@ -318,8 +318,8 @@ describe("prepare", () => {
       why: "home hasn't heard the take on the opening's question 2 yet",
     })
     const exchanges = [
-      { n: 1, ask: asks[0], transcript: said[0] },
-      { n: 2, ask: asks[1], transcript: said[1] },
+      { n: 1, ask: asks[0], transcript: said[0], take: "note-open-1" },
+      { n: 2, ask: asks[1], transcript: said[1], take: "note-open-2" },
     ]
     const heard = [heardAnswer(1, said[0]), heardAnswer(2, said[1])]
     expect(of(heard)).toEqual({ ok: true, exchanges })

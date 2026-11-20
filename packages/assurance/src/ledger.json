@@ -4959,7 +4959,7 @@
     {
       "store": "server:rust_week_final",
       "class": "record",
-      "growth": "Per Rust Rounds week a paired phone sent a draft of (RR22): the draft standing at the week's due, as sent (each ticket's take id and when it was said, the tickets passed over, and from contract epoch 24 the decision at each fork, RR29), <= SENT_CEILING = 16 KiB; one row per (subject, week), written once at the first read after due, never updated; append-only; leaves with the account.",
+      "growth": "Per Rust Rounds week a paired phone sent a draft of (RR22): the draft standing at the week's due, as sent (each ticket's take id and when it was said, the tickets passed over, from contract epoch 24 the decision at each fork, RR29, and from epoch 25 the takes of the week's opening said that week, at most 3, #3269), <= SENT_CEILING = 16 KiB; one row per (subject, week), written once at the first read after due, never updated; append-only; leaves with the account.",
       "family": "what-is-kept"
     },
     {

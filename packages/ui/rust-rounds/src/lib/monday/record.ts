@@ -67,9 +67,9 @@ export const WeekRecordSchema = z.object({
    * The opening's answers this week's essay plays (#3269, C736), as home
    * resolves them: for each question n, the newest kept take of its answer
    * recorded under the week's opening `version`, from this week or an
-   * earlier one (`week`, its ref being `<week>:opening:<n>`). A question
-   * with no such take is absent. A home from before it, or a week with no
-   * opening, says none.
+   * earlier one (`week`, its ref being `<week>:opening:<n>`), and how long
+   * it runs (`ms`) when the phone measured it. A question with no such take
+   * is absent. A home from before it, or a week with no opening, says none.
    */
   opening: z
     .array(
@@ -79,6 +79,7 @@ export const WeekRecordSchema = z.object({
         recordedAt: Instant,
         week: z.string().regex(WEEK_ID),
         version: z.int().positive(),
+        ms: z.int().nonnegative().optional(),
       })
     )
     .default([]),
