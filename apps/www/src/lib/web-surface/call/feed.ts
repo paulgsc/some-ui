@@ -57,6 +57,9 @@ export const essaySource = besideStage("rust-essays")
  */
 export const interviewEssaySource = besideStage("interview-essays")
 
+/** A Rust Rounds week with its runs (`GET /rust-weeks/<id>`), answered by `record:essay --week-file`. */
+export const rustScreenSource = besideStage("rust-screens")
+
 /**
  * A spoken card of a cards essay, as home heard its takes (WALK7; parsed by
  * `parseHeardSpokenCard`, through `namedStageOf`), by the card's id: the recorder answers it from the

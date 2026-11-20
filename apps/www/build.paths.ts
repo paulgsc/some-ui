@@ -434,6 +434,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
     },
     {
       profile: "lan",
+      modules: ["apps/www/src/lib/web-surface/call/rust-screen-stage.tsx"],
+      why: "the Rust Rounds card's stage, photographed for the essay (RR31), renders through this; without it /rust-screen renders nothing",
+    },
+    {
+      profile: "lan",
       modules: ["apps/www/src/lib/web-surface/call/report-stage.tsx"],
       why: "the engagement report's stage renders through this; without it /report renders nothing",
     },
@@ -494,6 +499,7 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       "burn-ins.tsx*",
       "call.tsx*",
       "essay.tsx*",
+      "rust-screen.tsx*",
       "report.tsx*",
       "captions.tsx*",
       "authorship.tsx*",

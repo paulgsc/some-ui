@@ -1,4 +1,5 @@
 import { PIPELINES } from "@some-ui/engagement"
+import { QUILLMOSS_WEEK, TALLOWBROOK_WEEK_FILE } from "@some-ui/rust-rounds"
 import {
   CALL_INDEX_SCHEMA,
   CALL_STAGE_WORDS,
@@ -29,6 +30,7 @@ import { essayAt, essayStageOf, namedStageOf } from "./essay-view"
 import { ESSAY_WORDS as EW } from "./essay-words"
 import { interviewEssayAt } from "./interview-essay-view"
 import { reportAt, reportStageOf } from "./report-view"
+import { screenStageOf } from "./rust-screen-view"
 import { callAt, stageOf, weekFrom } from "./view"
 import { CALL_WORDS } from "./words"
 
@@ -681,5 +683,85 @@ describe("the stage's own words, as the call's model sets them (CF1)", () => {
         "prose"
       )
     ).toBe(true)
+  })
+})
+
+/** The week as home serves it (`GET /rust-weeks/<id>`). */
+const served = {
+  id: TALLOWBROOK_WEEK_FILE.id,
+  sha256: "a".repeat(64),
+  week: TALLOWBROOK_WEEK_FILE,
+  tickets: [],
+}
+
+const WEEK = TALLOWBROOK_WEEK_FILE.id
+
+type Read = { data: unknown; pending: boolean; failed: boolean }
+
+const read = (
+  data: unknown,
+  over: Partial<{ pending: boolean; failed: boolean }> = {}
+): Read => ({
+  data,
+  pending: false,
+  failed: false,
+  ...over,
+})
+
+const first = QUILLMOSS_WEEK.tickets[0]?.id
+const second = TALLOWBROOK_WEEK_FILE.tickets[1]?.id
+
+describe("the Rust Rounds screen stage (RR31)", () => {
+  it("draws the ticket asked for, from the week home handed over", () => {
+    const state = screenStageOf({
+      week: WEEK,
+      ticket: second,
+      viewer: false,
+      read: read(served),
+    })
+    expect(state.kind === "screen" && state.ticket.id).toBe(second)
+  })
+
+  it("draws the sample for a viewer, or with no week, whatever was read", () => {
+    for (const [week, viewer] of [
+      [undefined, false],
+      ["sample", false],
+      [WEEK, true],
+    ] as const) {
+      const state = screenStageOf({
+        week,
+        ticket: undefined,
+        viewer,
+        read: read(undefined, { failed: true }),
+      })
+      expect(state.kind === "screen" && state.ticket.id).toBe(first)
+    }
+  })
+
+  it("waits for the read, and refuses one that failed or holds another week", () => {
+    const at = (
+      r: Read,
+      week: string = WEEK
+    ): ReturnType<typeof screenStageOf> =>
+      screenStageOf({ week, ticket: undefined, viewer: false, read: r })
+    expect(at(read(undefined, { pending: true })).kind).toBe("waiting")
+    expect(at(read(undefined, { failed: true }))).toMatchObject({
+      kind: "none",
+    })
+    expect(at(read(served), "2026-w01")).toMatchObject({
+      kind: "none",
+      problems: [`the file holds the week of ${WEEK}, not 2026-w01`],
+    })
+  })
+
+  it("refuses a ticket the week doesn't have", () => {
+    expect(
+      screenStageOf({
+        week: WEEK,
+        ticket: "ZZ-1",
+        viewer: false,
+        read: read(served),
+      })
+    ).toMatchObject({ kind: "none" })
   })
 })

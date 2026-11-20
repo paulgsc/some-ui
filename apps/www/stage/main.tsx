@@ -1,7 +1,8 @@
 /**
- * The recording stage (`pnpm --filter www build:stage`): the five pages the
+ * The recording stage (`pnpm --filter www build:stage`): the six pages the
  * recorders capture (`tests/record`), `/call`, `/essay`, `/report`,
- * `/playoff-delta` and `/burn-ins`, and nothing else of the app
+ * `/playoff-delta`, `/burn-ins` and `/rust-screen` (the phone's Rust Rounds
+ * card, RR31), and nothing else of the app
  * (infra/render/Dockerfile). Held to the recorders by RI2
  * (`src/lib/render-image/__tests__/stage-routes.test.ts`).
  *
@@ -21,6 +22,7 @@ import { Route as CallRoute } from "@/routes/call"
 import { Route as EssayRoute } from "@/routes/essay"
 import { Route as PlayoffDeltaRoute } from "@/routes/playoff-delta"
 import { Route as ReportRoute } from "@/routes/report"
+import { Route as RustScreenRoute } from "@/routes/rust-screen"
 import {
   createRootRoute,
   createRouter,
@@ -52,6 +54,7 @@ const stageRoutes = [
   [ReportRoute, "/report"],
   [PlayoffDeltaRoute, "/playoff-delta"],
   [BurnInsRoute, "/burn-ins"],
+  [RustScreenRoute, "/rust-screen"],
 ] as const
 
 const routeTree = rootRoute.addChildren(
