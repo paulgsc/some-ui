@@ -3,12 +3,16 @@ import { createFileRoute } from "@tanstack/react-router"
 
 import { SpokenParts } from "@/components/studio/spoken"
 
+// Spoken is the Android app's alone (`build.paths.ts`): other builds drop it.
+const Parts =
+  import.meta.env.VITE_DEVICE_BACKEND === "true" ? SpokenParts : null
+
 /** A spoken card in its parts (W5), and the essay's copy. */
-const ScriptPage = (): JSX.Element => {
+const CardPage = (): JSX.Element | null => {
   const { card }: { card: string } = Route.useParams()
-  return <SpokenParts id={card} />
+  return Parts === null ? null : <Parts id={card} />
 }
 
 export const Route = createFileRoute("/_dashboard/_apk/journal/spoken/$card/")({
-  component: ScriptPage,
+  component: CardPage,
 })

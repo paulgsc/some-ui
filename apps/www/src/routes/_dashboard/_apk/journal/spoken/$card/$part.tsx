@@ -3,11 +3,15 @@ import { createFileRoute } from "@tanstack/react-router"
 
 import { SpokenPartPage } from "@/components/studio/spoken"
 
+// Spoken is the Android app's alone (`build.paths.ts`): other builds drop it.
+const Part =
+  import.meta.env.VITE_DEVICE_BACKEND === "true" ? SpokenPartPage : null
+
 /** A part of a spoken card (W5): read or said, recorded, and its takes; `part` counts from 1. */
-const PartPage = (): JSX.Element => {
+const PartPage = (): JSX.Element | null => {
   const { card, part }: { card: string; part: string } = Route.useParams()
   const n = /^\d{1,3}$/u.test(part) ? Number(part) - 1 : -1
-  return <SpokenPartPage id={card} n={n} />
+  return Part === null ? null : <Part id={card} n={n} />
 }
 
 export const Route = createFileRoute(
