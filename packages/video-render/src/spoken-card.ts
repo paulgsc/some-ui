@@ -107,8 +107,36 @@ export const spokenScenes = (
     },
   ])
 
+/**
+ * The most words of an answer its stage writes out beside the bubbles: about
+ * a minute at the teleprompter's 170 a minute, which fits the frame. A
+ * longer answer is said in the captions alone, so a long take never stops
+ * a render for a frame too full.
+ */
+export const SPOKEN_ANSWER_SHOWN_MOST = 170
+
+/** Whether a spoken card's stage writes `said` out beside the bubbles. */
+export const answerShown = (said: string): boolean =>
+  wordCount(said) <= SPOKEN_ANSWER_SHOWN_MOST
+
 /** The Kokoro voice that asks a spoken card's questions: the essays' asker. */
 export const SPOKEN_ASKER_VOICE = ESSAY_VOICES.asker
+
+/**
+ * A spoken card's id: a letter first, and none of JSON's words, so the
+ * stage's address reads it as a name (it reads `1` or `true` as a number or
+ * a boolean, which names no card); and never `sample`, the stage's own
+ * made-up card.
+ */
+const SPOKEN_CARD_ID = /^[A-Za-z][A-Za-z0-9_-]*$/
+
+/** Ids a spoken card can't take: the stage's sample and JSON's words. */
+const NOT_A_CARD_ID: ReadonlySet<string> = new Set([
+  "sample",
+  "true",
+  "false",
+  "null",
+])
 
 /** Every reason the spoken card `shot` can't be played, as lines for whoever wrote it. */
 export function spokenCardProblems(
@@ -116,6 +144,11 @@ export function spokenCardProblems(
   card: SpokenCard
 ): Array<string> {
   return [
+    ...(SPOKEN_CARD_ID.test(shot.id) && !NOT_A_CARD_ID.has(shot.id)
+      ? []
+      : [
+          `${shot.id}: a spoken card's id starts with a letter, and isn't "sample", "true", "false" or "null"`,
+        ]),
     ...(shot.id.length > SPOKEN_CARD_ID_MOST
       ? [
           `${shot.id}: a spoken card's id is at most ${SPOKEN_CARD_ID_MOST} characters`,
@@ -171,12 +204,12 @@ export function spokenTakeFilesOf(
 ): Parsed<Readonly<Record<string, SpokenTakeFiles>>> {
   const transcripts = new Set(
     names
-      .filter((name) => name.endsWith(TRANSCRIPT))
+      .filter((name) => !name.startsWith(".") && name.endsWith(TRANSCRIPT))
       .map((name) => name.slice(0, -TRANSCRIPT.length))
   )
   const files = takeFilesOf(
     { answered: takes, silent: [], unheard: [], noun: "take" },
-    names.filter((name) => !name.endsWith(TRANSCRIPT))
+    names.filter((name) => !name.startsWith(".") && !name.endsWith(TRANSCRIPT))
   )
   const problems = [
     ...(files.ok ? [] : files.problems),
@@ -265,49 +298,6 @@ export const sampleSpokenCard = (): Parsed<HeardSpokenCard> =>
       },
     ],
   })
-
-/** What a spoken card's stage shows: nothing yet, a refusal, or the card. */
-export type SpokenCardStage =
-  | { readonly kind: "waiting" }
-  | { readonly kind: "none"; readonly problems: ReadonlyArray<string> }
-  | {
-      readonly kind: "show"
-      readonly card: HeardSpokenCard
-      readonly sample: boolean
-    }
-
-/**
- * The stage of the card `card` names, from its read (`read`), or with none,
- * or `sample`, the sample (`sampleSpokenCard`). A read of another card than
- * the one named is refused, so a still is never drawn from the wrong voice.
- */
-export function spokenCardStageOf(input: {
-  readonly card: string | undefined
-  readonly read: {
-    readonly data: unknown
-    readonly pending: boolean
-    readonly failed: boolean
-  }
-}): SpokenCardStage {
-  const { card, read } = input
-  if (card === undefined || card === "sample") {
-    const sample = sampleSpokenCard()
-    return sample.ok
-      ? { kind: "show", card: sample.value, sample: true }
-      : { kind: "none", problems: sample.problems }
-  }
-  if (read.pending) return { kind: "waiting" }
-  if (read.failed || read.data === undefined)
-    return { kind: "none", problems: [`The spoken card ${card} wasn't read`] }
-  const parsed = parseHeardSpokenCard(read.data)
-  if (!parsed.ok) return { kind: "none", problems: parsed.problems }
-  if (parsed.value.card !== card)
-    return {
-      kind: "none",
-      problems: [`Asked for ${card}, and the read was ${parsed.value.card}`],
-    }
-  return { kind: "show", card: parsed.value, sample: false }
-}
 
 /**
  * Scene `id` of `card` (its first, for none or one it lacks), its place,

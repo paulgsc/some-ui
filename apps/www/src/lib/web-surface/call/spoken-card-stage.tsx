@@ -1,12 +1,15 @@
 import type { JSX } from "react"
 import {
+  answerShown,
+  parseHeardSpokenCard,
+  sampleSpokenCard,
   SPOKEN_CATEGORY_TITLES,
-  spokenCardStageOf,
   spokenSceneAt,
 } from "@some-ui/video-render"
 import type { HeardSpokenCard, SpokenScene } from "@some-ui/video-render"
 
 import { Call } from "./essay-parts"
+import { namedStageOf } from "./essay-view"
 import { ESSAY_WORDS as W } from "./essay-words"
 import { spokenCardSource } from "./feed"
 import { StageFrame, StageRefused, Title } from "./frame"
@@ -32,6 +35,8 @@ export type SpokenCardStageProps = {
   onScene?: (scene: string) => void
 }
 
+const SAMPLE = sampleSpokenCard()
+
 /** What a scene is called: its question's place, and whose turn it is. */
 const labelOf = (scene: SpokenScene): string =>
   scene.take === undefined
@@ -56,7 +61,11 @@ const Screen = ({
     <Call speaker="you" tag={tag} other="asker">
       <p className="text-muted-foreground text-[0.8em]">{ask}</p>
       <p className="text-[0.8em] font-semibold">{W.yourAnswer}</p>
-      <p className="text-[1em] leading-snug">{scene.said}</p>
+      {answerShown(scene.said) ? (
+        <p className="text-[1em] leading-snug">{scene.said}</p>
+      ) : (
+        <p className="text-muted-foreground text-[0.8em]">{W.saidBelow}</p>
+      )}
     </Call>
   )
 }
@@ -74,9 +83,12 @@ export const SpokenCardStagePage = ({
     undefined,
     { enabled: named, retry: false }
   )
-  const state = spokenCardStageOf({
-    card,
+  const state = namedStageOf({
+    week: card,
     read: { data: read.data, pending: read.isPending, failed: read.isError },
+    sample: SAMPLE,
+    parse: parseHeardSpokenCard,
+    idOf: (heard) => heard.card,
   })
   if (state.kind === "waiting") return null
   if (state.kind === "none")
@@ -86,16 +98,16 @@ export const SpokenCardStagePage = ({
         problems={state.problems}
       />
     )
-  const at = spokenSceneAt(state.card, scene)
+  const at = spokenSceneAt(state.essay, scene)
   const where = `${labelOf(at.scene)} · ${at.index + 1}/${at.scenes.length}`
   return (
     <StageFrame
       record={record}
       scene={at.scene.id}
-      measureKey={`spoken/${state.card.card}/${at.scene.id}`}
+      measureKey={`spoken/${state.essay.card}/${at.scene.id}`}
       theme={undefined}
       title={W.spokenCard}
-      where={state.sample ? `${where} · ${W.sampleCard}` : where}
+      where={state.voicing === "sample" ? `${where} · ${W.sampleCard}` : where}
       captioned={record}
       said={at.scene.said}
       nav={
@@ -107,7 +119,7 @@ export const SpokenCardStagePage = ({
             }
       }
     >
-      <Screen card={state.card} scene={at.scene} />
+      <Screen card={state.essay} scene={at.scene} />
     </StageFrame>
   )
 }

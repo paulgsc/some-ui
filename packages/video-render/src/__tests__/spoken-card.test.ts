@@ -14,10 +14,11 @@ import { ESSAY_VOICES } from "@video-render/essay"
 import { readSeries } from "@video-render/node"
 import type { Series } from "@video-render/series"
 import {
+  answerShown,
   heardSpokenCard,
   sampleSpokenCard,
+  SPOKEN_ANSWER_SHOWN_MOST,
   spokenCardsOf,
-  spokenCardStageOf,
   spokenSceneAt,
   spokenTakeFilesOf,
   spokenTakesOf,
@@ -143,6 +144,30 @@ describe("a spoken card in a cards essay (WALK7)", () => {
     expect(voiced.shots.find((s) => s.id === "C1")?.picture.kind).toBe("card")
   })
 
+  it("is refused for an id the stage can't name, or one a scene of it would repeat", async () => {
+    for (const id of ["sample", "1", "true", "null"])
+      expect(refusal(await withCard((s) => ({ ...s, id })))).toContain(
+        "starts with a letter"
+      )
+    const cut = await showcase("spoken-intro")
+    const [introduction, intro, c1, ...rest] = cut.shots
+    if (introduction === undefined || intro === undefined || c1 === undefined)
+      throw new Error("the sample has its scenes")
+    expect(
+      refusal({
+        ...cut,
+        shots: [
+          introduction,
+          intro,
+          { ...c1, id: "introduction-ask-1" },
+          ...rest,
+        ],
+      })
+    ).toContain(
+      "introduction-ask-1: the spoken card introduction plays a scene by this id"
+    )
+  })
+
   it("plays up to six exchanges, the owner's introduction's three to five (C813)", async () => {
     expect(
       refusal(
@@ -261,7 +286,13 @@ describe("the takes home hands a spoken card", () => {
   it("are refused for a take or transcript missing, and a file of no take the essay plays", () => {
     const files = spokenTakeFilesOf(
       ["t1", "t2"],
-      ["t1.ogg", "t2.transcript.json", "t3.ogg", "t3.transcript.json"]
+      [
+        "t1.ogg",
+        "._t1.transcript.json",
+        "t2.transcript.json",
+        "t3.ogg",
+        "t3.transcript.json",
+      ]
     )
     expect(files.ok ? [] : files.problems).toEqual([
       "t2: answered, and there is no take of it",
@@ -295,49 +326,23 @@ describe("the takes home hands a spoken card", () => {
   })
 })
 
-describe("a spoken card's stage", () => {
-  const read = (
-    data: unknown
-  ): { data: unknown; pending: boolean; failed: boolean } => ({
-    data,
-    pending: false,
-    failed: false,
+describe("a spoken card's scenes on its stage", () => {
+  it("write an answer out up to about a minute's words, and leave a longer one to the captions", () => {
+    expect(answerShown("word ".repeat(SPOKEN_ANSWER_SHOWN_MOST))).toBe(true)
+    expect(answerShown("word ".repeat(SPOKEN_ANSWER_SHOWN_MOST + 1))).toBe(
+      false
+    )
   })
 
-  it("shows the sample with no card named, and the named card as read", () => {
-    const shown = spokenCardStageOf({ card: undefined, read: read(undefined) })
-    expect(shown.kind === "show" && shown.sample).toBe(true)
+  it("are each question then its answer, the first for an id it lacks", () => {
     const sample = sampleSpokenCard()
     if (!sample.ok) throw new Error("no sample")
-    const card = { ...sample.value, card: "introduction" }
-    const named = spokenCardStageOf({ card: "introduction", read: read(card) })
-    expect(named).toEqual({ kind: "show", card, sample: false })
-    const at = spokenSceneAt(card, "take-2")
+    const at = spokenSceneAt(sample.value, "take-2")
     expect([at.index, at.scene.speaker, at.scenes.length]).toEqual([
       3,
       "you",
       4,
     ])
-    expect(spokenSceneAt(card, "nope").scene.id).toBe("ask-1")
-  })
-
-  it("refuses a card it couldn't read, or another card than the one named", () => {
-    const sample = sampleSpokenCard()
-    if (!sample.ok) throw new Error("no sample")
-    expect(
-      spokenCardStageOf({ card: "introduction", read: read(sample.value) }).kind
-    ).toBe("none")
-    expect(
-      spokenCardStageOf({
-        card: "introduction",
-        read: { data: undefined, pending: false, failed: true },
-      }).kind
-    ).toBe("none")
-    expect(
-      spokenCardStageOf({
-        card: "introduction",
-        read: { data: undefined, pending: true, failed: false },
-      }).kind
-    ).toBe("waiting")
+    expect(spokenSceneAt(sample.value, "nope").scene.id).toBe("ask-1")
   })
 })

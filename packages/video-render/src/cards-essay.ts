@@ -239,6 +239,13 @@ function spokenProblems(cut: CutList): Array<string> {
     if (role === "close" && i !== last)
       problems.push(`${s.id}: only the last scene is the close`)
   })
+  // A spoken card's scenes take ids of their own: none may be another's.
+  const ids = new Set(shots.map((s) => s.id))
+  for (const scene of cardsScenes(cut))
+    if (scene.spoken !== undefined && ids.has(scene.id))
+      problems.push(
+        `${scene.id}: the spoken card ${scene.spoken.card} plays a scene by this id, and another scene has it`
+      )
   const ms = estimatedCardsMs(cut)
   if (ms > CARDS_MOST_MS)
     problems.push(

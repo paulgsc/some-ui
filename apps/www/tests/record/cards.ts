@@ -208,8 +208,13 @@ async function spokenTakes(
   )
   const transcripts = new Map<string, unknown>()
   for (const [id, take] of Object.entries(owned)) {
-    const body: unknown = JSON.parse(await readFile(take.transcript, "utf8"))
-    transcripts.set(id, body)
+    const text = await readFile(take.transcript, "utf8")
+    try {
+      const body: unknown = JSON.parse(text)
+      transcripts.set(id, body)
+    } catch {
+      fail([`${take.transcript} isn't a transcript home wrote: it isn't JSON`])
+    }
   }
   const heard = new Map<string, HeardSpokenCard>()
   const problems: Array<string> = []

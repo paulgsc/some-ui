@@ -268,15 +268,14 @@ export type EssayStageState<E = Essay> =
   | { readonly kind: "none"; readonly problems: ReadonlyArray<string> }
 
 /**
- * What an essay's stage draws from its read (RR16), for either kind of
- * essay, read by `parse`: with a week named, that week's essay, as read, or
- * why it can't, never the sample in its place, so a recording of a week
- * fails instead of drawing someone else's; with none, or `sample`, the
- * template's sample, voiced as one.
+ * What an essay's stage draws from its read (RR16), for any kind of essay,
+ * read by `parse` and named by `idOf`: with one named, that essay, as read,
+ * or why it can't, never the sample in its place, so a recording fails
+ * instead of drawing someone else's; with none, or `sample`, the template's
+ * sample, voiced as one. A cards essay's spoken card (WALK7) is named by its
+ * card's id; the essays by their week.
  */
-export function essayStageOf<
-  E extends { readonly week: { readonly id: string } },
->(input: {
+export function namedStageOf<E>(input: {
   readonly week: string | undefined
   /** The named essay's file as read, parsed here. */
   readonly read: {
@@ -286,6 +285,7 @@ export function essayStageOf<
   }
   readonly sample: Parsed<E>
   readonly parse: (raw: unknown) => Parsed<E>
+  readonly idOf: (essay: E) => string
 }): EssayStageState<E> {
   const { week, read } = input
   if (week === undefined || week === "sample")
@@ -297,10 +297,15 @@ export function essayStageOf<
     return { kind: "none", problems: [W.unread(week)] }
   const parsed = input.parse(read.data)
   if (!parsed.ok) return { kind: "none", problems: parsed.problems }
-  if (parsed.value.week.id !== week)
-    return {
-      kind: "none",
-      problems: [W.otherWeek(week, parsed.value.week.id)],
-    }
+  const id = input.idOf(parsed.value)
+  if (id !== week) return { kind: "none", problems: [W.otherWeek(week, id)] }
   return { kind: "show", essay: parsed.value, voicing: "owner" }
 }
+
+/** `namedStageOf` for an essay named by its week: the Rust Rounds and the interview essay. */
+export const essayStageOf = <
+  E extends { readonly week: { readonly id: string } },
+>(
+  input: Omit<Parameters<typeof namedStageOf<E>>[0], "idOf">
+): EssayStageState<E> =>
+  namedStageOf({ ...input, idOf: (essay) => essay.week.id })

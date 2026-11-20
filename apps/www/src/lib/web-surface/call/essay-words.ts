@@ -27,6 +27,8 @@ export const ESSAY_WORDS = {
   /** A spoken card's stage (WALK7): its header, and its sample's. */
   spokenCard: "Spoken card",
   sampleCard: "Sample card, made-up takes",
+  /** A spoken card's answer too long to write out: its words are the captions'. */
+  saidBelow: "In the captions below, as it was said",
   /** The owner's answer to it: their own take, or in the sample a synthetic voice reading one. */
   yourAnswer: "Your answer",
   noAnswer: "Nothing came for this one",
