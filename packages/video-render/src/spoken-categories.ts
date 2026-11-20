@@ -1,6 +1,7 @@
 /**
- * The categories of spoken card (C830, #3319): one list, which Studio's
- * Spoken on the phone keeps a card under and an essay maps to its template.
+ * The categories of spoken card (C830, #3319): one list, with no imports,
+ * which Studio's Spoken on the phone keeps a card under (and, with WALK7,
+ * a cards essay's spoken scene maps to its template).
  * Today only `introduction`, where Kokoro asks and the owner's take answers,
  * each speaker lit while they speak. A new category is a new entry here.
  */

@@ -279,9 +279,9 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "the ref a spoken answer to an ask is kept under on home (`answerRef`, SFEED5): only the Android app's Studio records one (src/lib/ask-answer). The reflections routine reads the same module from the repo, outside any build",
     },
     {
-      modules: ["packages/video-render/src/spoken-card.ts"],
+      modules: ["packages/video-render/src/spoken-categories.ts"],
       profiles: [MOBILE_PROFILE],
-      why: "the categories of spoken card (C830): only the Android app's Studio keeps a spoken card (src/lib/studio-spoken). The essay render reads the same module on home, outside any build",
+      why: "the categories of spoken card (C830): today only the Android app's Studio reads them (src/lib/studio-spoken). Once the cards essay's spoken scene (WALK7, #3315) reads them on the web's stage too, this entry widens to every profile or goes",
     },
     {
       modules: ["packages/video-render/src/feedback.ts"],
