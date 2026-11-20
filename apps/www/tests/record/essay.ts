@@ -10,6 +10,7 @@
  *   pnpm --filter www build
  *   pnpm --filter www record:essay --essay-file essay.json --takes <dir> [--voices kokoro|none] [--speaker http://127.0.0.1:8880] [--out out/essay]
  *   pnpm --filter www record:essay --app http://call-stage --essay-file essay.json --takes <dir> --voices kokoro --brand /brand --out <dir>
+ *   pnpm --filter www record:essay --essay-file essay.json --takes <dir> --week-file week.json
  *
  * `--essay-file` is the essay's file as home keeps it: the stage's read of
  * the essay (`/rust-essays/<week>.json`, or `/interview-essays/<week>.json`
@@ -25,6 +26,11 @@
  * answered read, `read.<card>.<ext>` (`interviewEssayTakeFiles`). A take
  * missing, two for one answer, or one for an answer left silent is refused
  * before anything is drawn (`essayTakeFiles`).
+ *
+ * `--week-file`, a Rust Rounds essay's only, is its week as home serves it
+ * (`GET /rust-weeks/<id>`, with rustc's runs): each ticket's card is then
+ * photographed as the phone draws it into `<out>/<week>/screens/`
+ * (`./screens`, RR31, #3288), for the essay's scenes to zoom into.
  *
  * It writes `<out>/<week>/essay.mp4`, with `cut-list.json`, `essay.json` and
  * `description.txt` (its chapters) beside it. The rest is `record:call`'s
@@ -42,6 +48,7 @@ const { values } = parseArgs({
     out: { type: "string", default: "out/essay" },
     "essay-file": { type: "string" },
     takes: { type: "string" },
+    "week-file": { type: "string" },
     ...CALL_OPTIONS,
   },
 })

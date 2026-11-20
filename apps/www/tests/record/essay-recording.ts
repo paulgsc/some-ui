@@ -44,6 +44,7 @@ import type {
 import type { CallValues } from "./call-recording"
 import { FRAME, SERIES } from "./call-recording"
 import { fail, here, launchChromium } from "./command"
+import { captureScreens } from "./screens"
 import {
   placeBed,
   policyOf,
@@ -57,6 +58,12 @@ import {
 export type EssayValues = Omit<CallValues, "week" | "week-file"> & {
   readonly "essay-file"?: string
   readonly takes?: string
+  /**
+   * The essay's week as home serves it (`GET /rust-weeks/<id>`, with its
+   * rustc runs), from which the phone's own cards are photographed
+   * (`./screens`, RR31). A Rust Rounds essay's only; with none, none are.
+   */
+  readonly "week-file"?: string
 }
 
 /** A scene as the recorder reads it: its id, who says it and what. */
@@ -94,6 +101,8 @@ type EssayKind<E extends { readonly week: { readonly id: string } }> = {
     options: { readonly bed: boolean; readonly voicing: Voicing }
   ) => CutList
   readonly marks: (essay: E) => Array<ChapterMark>
+  /** Whether the phone's cards of its week can be photographed (`./screens`). */
+  readonly screens: boolean
 }
 
 const RUST: EssayKind<Essay> = {
@@ -110,6 +119,7 @@ const RUST: EssayKind<Essay> = {
   format: (essay) => essayFormat(essay.template.version),
   cutList: essayCutList,
   marks: essayChapterMarks,
+  screens: true,
 }
 
 const INTERVIEW: EssayKind<InterviewEssay> = {
@@ -126,6 +136,7 @@ const INTERVIEW: EssayKind<InterviewEssay> = {
   format: (essay) => interviewEssayFormat(essay.template.version),
   cutList: interviewEssayCutList,
   marks: interviewEssayChapterMarks,
+  screens: false,
 }
 
 /** An essay as home keeps it: its file's bytes, and its data. */
@@ -209,6 +220,9 @@ async function recordKind<E extends { readonly week: { readonly id: string } }>(
   policy: ReturnType<typeof policyOf>,
   preview: boolean
 ): Promise<void> {
+  const weekFile = values["week-file"]
+  if (weekFile !== undefined && (preview || !kind.screens))
+    fail([`--week-file is a Rust Rounds essay's, not ${kind.name}'s`])
   let kept: Kept<E> | null = null
   if (file !== null) {
     const parsed = kind.parse(file.raw)
@@ -255,6 +269,15 @@ async function recordKind<E extends { readonly week: { readonly id: string } }>(
     if (!preview) refuseLong(scenes, policy)
     const root = here(preview ? values.out : join(values.out, essay.week.id))
     const format = kind.format(essay)
+    // The phone's own cards of the week, before any still (RR31).
+    if (weekFile !== undefined)
+      await captureScreens({
+        browser,
+        origin: site.origin,
+        weekFile: here(weekFile),
+        week: essay.week.id,
+        root,
+      })
     const takes = await recordStills({
       page,
       root,

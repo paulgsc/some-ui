@@ -58,6 +58,14 @@ export const essaySource = besideStage("rust-essays")
 export const interviewEssaySource = besideStage("interview-essays")
 
 /**
+ * A Rust Rounds week with its rustc runs, by its week, as home serves it
+ * (`GET /rust-weeks/<id>`), for the phone screens an essay shows (RR31,
+ * #3288): beside the stage, never `paulgsc/testing`, since it is the
+ * owner's week; the recorder answers it from `record:essay --week-file`.
+ */
+export const rustScreenSource = besideStage("rust-screens")
+
+/**
  * An engagement report, by its ISO week (ENG12; `reportStageOf` parses it):
  * the recorder answers it with the report it writes from
  * `record:report --report-file`.

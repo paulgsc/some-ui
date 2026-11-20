@@ -6,9 +6,10 @@
  * and sent again, and read back once it closed (RR22). Nothing on any
  * screen answers.
  */
-import { RustWeek } from "@rust-rounds/components/rust-week"
+import { RustWeek, TicketScreen } from "@rust-rounds/components/rust-week"
 import type { RustcRun } from "@rust-rounds/lib/formats"
 import { openingOfWeek } from "@rust-rounds/lib/opening"
+import { E0507, E0507_PROGRAM } from "@rust-rounds/lib/rustc-view/fixture"
 import { QUILLMOSS_WEEK } from "@rust-rounds/lib/sample-week"
 import { TALLOWBROOK_WEEK_FILE } from "@rust-rounds/lib/sample-week/tallowbrook"
 import { readWeek } from "@rust-rounds/lib/week-check"
@@ -800,5 +801,64 @@ describe("the week's opening (#3269)", () => {
     expect(
       screen.getByRole("button", { name: OPENING.use })
     ).toBeInTheDocument()
+  })
+})
+
+describe("a ticket's screen for the essay (RR31)", () => {
+  const regions = (root: HTMLElement): Array<string> => [
+    ...new Set(
+      [...root.querySelectorAll("[data-region]")].map(
+        (each) => each.getAttribute("data-region") ?? ""
+      )
+    ),
+  ]
+
+  it("names the question, each point, the program, rustc's result and each diagnostic", () => {
+    const [ticket, ...rest] = QUILLMOSS_WEEK.tickets
+    if (ticket === undefined) throw new Error("the sample has a ticket")
+    const week = {
+      ...QUILLMOSS_WEEK,
+      tickets: [{ ...ticket, program: E0507_PROGRAM }, ...rest],
+    }
+    const held: HeldWeek = {
+      week,
+      sha256: "a",
+      runs: { [ticket.id]: E0507 },
+      ended: [],
+    }
+    const { container } = render(
+      <TicketScreen held={held} ticket={week.tickets[0] ?? ticket} />
+    )
+    const points = ticket.forks.map(
+      (_, at) => `${ticket.id}:point:${String(at + 1)}`
+    )
+    const diagnostics = (E0507.diagnostics ?? []).map(
+      (_, at) => `${ticket.id}:diagnostic:${String(at + 1)}`
+    )
+    expect(diagnostics.length).toBeGreaterThan(0)
+    expect(regions(container)).toEqual([
+      `${ticket.id}:question`,
+      ...points,
+      `${ticket.id}:program`,
+      `${ticket.id}:run`,
+      ...diagnostics,
+    ])
+    // The card is a picture: nothing on it to tap.
+    expect(screen.queryAllByRole("button")).toEqual([])
+  })
+
+  it("names no diagnostic before rustc has run", () => {
+    const ticket = QUILLMOSS_WEEK.tickets[0]
+    if (ticket === undefined) throw new Error("the sample has a ticket")
+    const { container } = render(
+      <TicketScreen
+        held={{ week: QUILLMOSS_WEEK, sha256: "a", runs: {}, ended: [] }}
+        ticket={ticket}
+      />
+    )
+    expect(regions(container)).not.toContain(`${ticket.id}:run`)
+    expect(regions(container).some((ref) => ref.includes("diagnostic"))).toBe(
+      false
+    )
   })
 })
