@@ -51,6 +51,15 @@ export const UNMEASURED: ReadonlyArray<Unmeasured> = [
     route: "/journal/renders",
     why: "What home is making and what's coming (SFEED13): a read of home's renders, with nothing to act on.",
   },
+  ...[
+    "/journal/spoken",
+    "/journal/spoken/paste",
+    "/journal/spoken/$card",
+    "/journal/spoken/$card/$part",
+  ].map((route) => ({
+    route,
+    why: "Studio's Spoken (W5): a spoken card pasted and read aloud, each take kept for an essay to play. What it offers back is measured once an essay plays the takes (WALK7).",
+  })),
   {
     route: "/journal/cards/$key",
     why: "A cards essay home made (CARDS7): its video to watch, with nothing offered back.",

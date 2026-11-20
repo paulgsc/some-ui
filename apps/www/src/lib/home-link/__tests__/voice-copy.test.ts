@@ -128,6 +128,12 @@ describe("what each voice note is told home as", () => {
       at: "2026-11-01T09:12:00.000Z",
       contentType: "audio/webm",
     })
+    // W5 (C807): a spoken card's part read on the same desk goes named by its
+    // part's line, two parts on `:`, so home keeps it as a take with no
+    // scene rather than reading it as a scene's (three parts).
+    expect(libraryNote({ ...free, line: "spoken:scabc12.3" }).ref).toBe(
+      "spoken:scabc12.3"
+    )
     expect(
       soundbiteNote({
         id: "b1",
