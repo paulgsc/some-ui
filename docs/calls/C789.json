@@ -1,0 +1,9 @@
+{
+  "id": "C789",
+  "made": "2026-11-20",
+  "by": "owner",
+  "paths": ["CLAUDE.md"],
+  "chose": "The owner, close paraphrase: stay away from anything that results in us paying for anything until we are confident in our judgment; the key is the owner's ability to make decisions about hardware in general and about the software infrastructure around the hardware. While that judgment is naive, no money is spent: steps that cost money always come last, gated behind real enlightenment, which the story has to find a way to measure and recognise (#3309).",
+  "undo": "A new owner call that moves this one, naming the gate that was met or the reason to spend before it.",
+  "refs": ["#3309", "#3197"]
+}
