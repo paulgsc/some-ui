@@ -238,7 +238,6 @@ export const partAt = (card: SpokenCard, n: number): SpokenPart | undefined =>
   Number.isInteger(n) && n >= 0 ? card.parts.at(n) : undefined
 
 /** `script` with part `n` said the other way; the same while it has a take (SCR2). */
-
 export function flip(script: SpokenCard, n: number): SpokenCard {
   const part = partAt(script, n)
   if (part === undefined || part.takes.length > 0) return script

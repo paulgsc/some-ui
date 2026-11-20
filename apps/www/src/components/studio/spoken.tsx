@@ -134,9 +134,11 @@ const PasteSpokenBody = ({
   const [text, setText] = useState("")
   const [notKept, setNotKept] = useState(false)
   const pasted = parseCard(text)
+  // What Keep keeps: the first PARTS_MOST parts.
+  const kept = pasted?.parts.slice(0, PARTS_MOST) ?? []
   const count = (kind: PartKind): number =>
-    pasted?.parts.filter((part) => part.kind === kind).length ?? 0
-  const asks = pasted?.parts.filter((part) => part.ask !== null).length ?? 0
+    kept.filter((part) => part.kind === kind).length
+  const asks = kept.filter((part) => part.ask !== null).length
   return (
     <StudioPage heading={WORDS.paste.heading}>
       <label htmlFor="spoken-paste" className="text-sm">

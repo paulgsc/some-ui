@@ -193,6 +193,10 @@ describe("Studio's Spoken", () => {
     expect(screen.queryByText(W.paste.most(40))).toBeNull()
     paste(41)
     expect(screen.getByText(W.paste.most(40))).toBeTruthy()
+    // The counts are of what Keep keeps.
+    expect(screen.getByTestId("spoken-split").textContent).toBe(
+      W.paste.split(40, 0, 0)
+    )
     fireEvent.click(screen.getByRole("button", { name: W.paste.keep }))
     expect(runtime.cards.getSnapshot()[0]?.parts).toHaveLength(40)
   })
@@ -208,6 +212,7 @@ describe("Studio's Spoken", () => {
     await say(sim, id, 0)
     const take = runtime.cards.getSnapshot()[0]?.parts[0]?.takes[0] ?? ""
     runtime.use(id, 0, take)
+    expect(runtime.cards.getSnapshot()[0]?.parts[0]?.using).toBe(take)
     render(<SpokenParts runtime={runtime} id={id} />)
     await pass()
     expect(document.querySelector("pre")?.textContent).not.toContain(

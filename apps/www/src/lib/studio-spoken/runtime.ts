@@ -250,8 +250,9 @@ export function createSpokenRuntime(ports: SpokenPorts): SpokenRuntime {
     heard,
     askHeard,
     attach(): () => void {
-      // Each pick is asked about as a page opens, so one home heard nothing
-      // in is let go before an essay copies it (SCR3).
+      // Each pick is asked about as a page opens, and one home heard nothing
+      // in is let go once home answers (SCR3); until then, and while home
+      // can't be reached, the pick stands, and the essay refuses it (HEARD).
       askHeard(
         cards
           .getSnapshot()
