@@ -3,7 +3,7 @@
   "made": "2026-11-20",
   "by": "claude",
   "paths": ["some-ui:packages/video-motion/compositions/screen-zoom"],
-  "chose": "The zoom's frame: a region is shown with a margin of 24 CSS px of the picture around it, centred in the frame above the captions' band (4% edge), never enlarged past 1.25 frame pixels to a pixel of the picture, so the code stays sharp; the picture is clipped above the band, which stays the ground for the captions.",
+  "chose": "The zoom's frame: a region is shown with a margin of 24 CSS px of the picture on every side, which keeps a speak-to point's list number in view (the card boxes a point's `li` only, its number 20 px to the left, W1), centred in the frame above the captions' band (4% edge), never enlarged past 1.25 frame pixels to a pixel of the picture, so the code stays sharp; the picture is clipped above the band, which stays the ground for the captions.",
   "options": [
     "margin 24 px, at most 1.25 frame px per picture px, clipped above the captions (chosen)",
     "fill the frame and let the captions draw over the picture",
