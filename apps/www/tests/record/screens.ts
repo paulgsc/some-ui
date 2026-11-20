@@ -90,7 +90,11 @@ export async function captureScreens({
       await page.evaluate(() => document.fonts.ready)
       screens.push(await photograph(page, card, ticket.id, out))
     }
-    const record = { schema: SCREENS_SCHEMA, week, screens }
+    const record = {
+      schema: SCREENS_SCHEMA,
+      source: { kind: "rust-week", id: week },
+      screens,
+    }
     const parsed = parseScreens(record)
     if (!parsed.ok)
       fail(["The screens captured don't make a record:", ...parsed.problems])

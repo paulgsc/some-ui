@@ -1,39 +1,56 @@
 /**
- * The phone's own screens, photographed for an essay (RR31, #3288; call
- * C790): one picture per Rust Rounds ticket, as the phone's card draws it
- * from the owner's week, and the parts of it the narration can point at,
- * each named and boxed, so a scene can zoom to one (W2's zoom scene).
+ * Screens photographed for an essay, and the parts of each a scene can point
+ * at, each named and boxed, so a scene can zoom to one (RR31, #3288; call
+ * C790). Generic: a Rust essay photographs the phone's ticket cards from the
+ * owner's week, and a cards essay (EXPLAIN, #2980) may photograph any screen
+ * that marks its parts with `data-region`, on sample data for a viewer.
  *
- * The capture (www's `record:essay --week-file`, `tests/record/screens.ts`)
- * writes `screens.json` (`some-ui.screens/1`) beside the pictures; this
- * module is its one reading.
+ * A capture writes `screens.json` (`some-ui.screens/1`) beside the
+ * pictures; this module is its one reading. www's `record:essay
+ * --week-file` (`tests/record/screens.ts`) is the first capture.
  *
- * A region is named in the essay's own keys (`RegionRef`), so a scene names
- * one from data it already holds:
- *
- * - `<TICKET>:question`: the ticket's title and spec;
- * - `<TICKET>:point:<n>`: speak-to point n, from 1, in the essay's order;
- * - `<TICKET>:program`: the program's code card;
- * - `<TICKET>:run`: rustc's whole result;
- * - `<TICKET>:diagnostic:<n>`: rustc's diagnostic n, from 1, in rustc's order.
- *
- * The card carries them as `data-region="<ref>"`. One ref on several
- * elements (a title and its spec) is one region, the box around them all
- * (`regionsOf`).
+ * A region's name (`RegionRef`) is namespaced by its screen:
+ * `<screen>:<name>`, the name one or more `:`-separated slugs. A screen's
+ * regions all start with its id. Each kind of screen may give its names a
+ * grammar of its own; the Rust Rounds card's is `parseRegionRef` and
+ * `regionRef`, below.
  */
 
 import { z } from "zod"
 
 import type { Parsed } from "./cut-list"
 import { problemsOf } from "./cut-list"
-import { weekId } from "./essay"
 
 export const SCREENS_SCHEMA = "some-ui.screens/1"
+
+/** A slug: a screen's id, or one segment of a region's name. */
+const SLUG = "[A-Za-z0-9][A-Za-z0-9._-]{0,63}"
+
+const SCREEN_ID = new RegExp(`^${SLUG}$`)
+
+const ANY_REF = new RegExp(`^(${SLUG})((?::${SLUG})+)$`)
+
+/** A region's name, `<screen>:<name>`: `QM-311:program`, `settings:theme-toggle`. */
+export type RegionRef = string
+
+/** The screen a region's name belongs to, or null when it is no region's name. */
+export function screenOfRef(ref: string): string | null {
+  return ANY_REF.exec(ref)?.[1] ?? null
+}
+
+// The Rust Rounds ticket card's names (RR31): a screen per ticket, its id
+// the ticket's key, and these regions, in the essay's own keys:
+//
+// - `<TICKET>:question`: the ticket's title and spec;
+// - `<TICKET>:point:<n>`: speak-to point n, from 1, in the essay's order;
+// - `<TICKET>:program`: the program's code card;
+// - `<TICKET>:run`: rustc's whole result;
+// - `<TICKET>:diagnostic:<n>`: rustc's diagnostic n, from 1, in rustc's order.
 
 /** A ticket's key, as the week writes it (`QM-311`). */
 const TICKET = "[A-Z][A-Z0-9]{0,5}-\\d{1,6}"
 
-/** What a region of a ticket's screen is. */
+/** What a region of a Rust Rounds ticket's card is. */
 export const REGION_KINDS = [
   "question",
   "point",
@@ -46,14 +63,11 @@ export type RegionKind = (typeof REGION_KINDS)[number]
 /** The kinds that come one of several, numbered from 1. */
 const NUMBERED: ReadonlySet<RegionKind> = new Set(["point", "diagnostic"])
 
-const REF = new RegExp(
+const RUST_REF = new RegExp(
   `^(${TICKET}):(question|program|run|(point|diagnostic):([1-9]\\d{0,2}))$`
 )
 
-/** A region's name: `QM-311:program`, `QM-311:diagnostic:2`. */
-export type RegionRef = string
-
-/** A region's name read into its parts. */
+/** A Rust Rounds card's region name read into its parts. */
 export type RegionName = {
   readonly ticket: string
   readonly kind: RegionKind
@@ -61,9 +75,9 @@ export type RegionName = {
   readonly n: number | null
 }
 
-/** `ref` read into its parts, or null when it names no region. */
+/** `ref` read as a Rust Rounds card's region, or null when it names none. */
 export function parseRegionRef(ref: string): RegionName | null {
-  const match = REF.exec(ref)
+  const match = RUST_REF.exec(ref)
   if (!match) return null
   const [, ticket, whole, numbered, n] = match
   if (ticket === undefined || whole === undefined) return null
@@ -72,7 +86,7 @@ export function parseRegionRef(ref: string): RegionName | null {
   return { ticket, kind, n: n === undefined ? null : Number(n) }
 }
 
-/** The name of a region of `ticket`'s screen. */
+/** The name of a region of a Rust Rounds `ticket`'s card. */
 export function regionRef(
   ticket: string,
   kind: RegionKind,
@@ -88,8 +102,8 @@ export function regionRef(
 const regionRefSchema = z
   .string()
   .refine(
-    (ref) => parseRegionRef(ref) !== null,
-    "a region is named like QM-311:program or QM-311:diagnostic:1"
+    (ref) => screenOfRef(ref) !== null,
+    "a region is named <screen>:<name>, like QM-311:program"
   )
 
 const px = z.number().nonnegative()
@@ -108,16 +122,18 @@ export type Region = z.infer<typeof RegionSchema>
 
 const ScreenSchema = z
   .strictObject({
-    /** The ticket's key. */
-    id: z.string().regex(new RegExp(`^${TICKET}$`), "a ticket's key"),
+    /** The screen's id, a slug; a Rust Rounds card's is its ticket's key. */
+    id: z.string().regex(SCREEN_ID, "a screen's id is a slug"),
     /** The picture, beside `screens.json`. */
-    file: z.string().regex(/^[A-Za-z0-9-]+\.png$/, "a PNG beside the record"),
-    /** The whole picture in CSS pixels: the card, taller than the phone when it scrolls. */
+    file: z
+      .string()
+      .regex(/^[A-Za-z0-9][A-Za-z0-9._-]*\.png$/, "a PNG beside the record"),
+    /** The whole picture in CSS pixels: taller than the viewport when the screen scrolls. */
     width: px.positive(),
     height: px.positive(),
     /** Device pixels per CSS pixel. */
     scale: z.number().int().min(1).max(4),
-    /** The phone it was drawn for, in CSS pixels. */
+    /** The window it was drawn in, in CSS pixels. */
     viewport: z.strictObject({ width: px.positive(), height: px.positive() }),
     regions: z.array(RegionSchema),
   })
@@ -131,7 +147,7 @@ const ScreenSchema = z
           message: `${ref} is named twice`,
         })
       seen.add(ref)
-      if (parseRegionRef(ref)?.ticket !== screen.id)
+      if (screenOfRef(ref) !== screen.id)
         ctx.addIssue({
           code: "custom",
           path: ["regions", i, "ref"],
@@ -153,7 +169,17 @@ export type Screen = z.infer<typeof ScreenSchema>
 const ScreensSchema = z
   .strictObject({
     schema: z.literal(SCREENS_SCHEMA),
-    week: weekId,
+    /**
+     * What the screens were drawn from, as a label: `{ kind: "rust-week",
+     * id: "2026-w46" }` for the owner's week, `{ kind: "sample", id }` for
+     * sample data.
+     */
+    source: z
+      .strictObject({
+        kind: z.string().regex(/^[a-z][a-z0-9-]{0,31}$/, "a kind is a slug"),
+        id: z.string().min(1),
+      })
+      .optional(),
     screens: z.array(ScreenSchema),
   })
   .superRefine((screens, ctx) => {
@@ -183,9 +209,9 @@ export function regionOf(
   screens: Screens,
   ref: RegionRef
 ): { readonly screen: Screen; readonly region: Region } | null {
-  const name = parseRegionRef(ref)
-  if (name === null) return null
-  const screen = screens.screens.find((each) => each.id === name.ticket)
+  const id = screenOfRef(ref)
+  if (id === null) return null
+  const screen = screens.screens.find((each) => each.id === id)
   const region = screen?.regions.find((each) => each.ref === ref)
   return screen && region ? { screen, region } : null
 }
@@ -202,7 +228,7 @@ export type Measured = { readonly ref: string; readonly box: Box }
 export function regionsOf(measured: ReadonlyArray<Measured>): Array<Region> {
   const boxes = new Map<string, Box>()
   for (const { ref, box } of measured) {
-    if (parseRegionRef(ref) === null) continue
+    if (screenOfRef(ref) === null) continue
     if (box.width <= 0 || box.height <= 0) continue
     const had = boxes.get(ref)
     boxes.set(ref, had ? around(had, box) : box)

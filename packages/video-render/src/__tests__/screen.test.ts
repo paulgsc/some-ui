@@ -4,6 +4,7 @@ import {
   regionOf,
   regionRef,
   regionsOf,
+  screenOfRef,
   SCREENS_SCHEMA,
 } from "@video-render/screen"
 import { describe, expect, it } from "vitest"
@@ -26,9 +27,13 @@ const screen = {
 
 const file = (
   screens: ReadonlyArray<unknown>
-): { schema: string; week: string; screens: ReadonlyArray<unknown> } => ({
+): {
+  schema: string
+  source: { kind: string; id: string }
+  screens: ReadonlyArray<unknown>
+} => ({
   schema: SCREENS_SCHEMA,
-  week: "2026-w46",
+  source: { kind: "rust-week", id: "2026-w46" },
   screens,
 })
 
@@ -37,7 +42,16 @@ const problems = (value: unknown): ReadonlyArray<string> => {
   return parsed.ok ? [] : parsed.problems
 }
 
-describe("a region's name", () => {
+describe("a region's name, any screen's", () => {
+  it("is <screen>:<name>, the name one or more slugs", () => {
+    expect(screenOfRef("QM-311:diagnostic:2")).toBe("QM-311")
+    expect(screenOfRef("settings:theme-toggle")).toBe("settings")
+    for (const ref of ["settings", "settings:", ":x", "a b:c", "x:y z"])
+      expect(screenOfRef(ref), ref).toBeNull()
+  })
+})
+
+describe("a Rust Rounds card's region name", () => {
   it("reads each kind, numbered ones from 1", () => {
     expect(parseRegionRef("QM-311:question")).toEqual({
       ticket: "QM-311",
@@ -100,6 +114,28 @@ describe("screens.json", () => {
       ],
     }
     expect(problems(file([outside])).join()).toContain("outside the picture")
+  })
+
+  it("reads any screen's regions, with or without a source", () => {
+    const cards = {
+      id: "settings",
+      file: "settings.png",
+      width: 412,
+      height: 900,
+      scale: 2,
+      viewport: { width: 412, height: 915 },
+      regions: [
+        {
+          ref: "settings:theme:toggle",
+          box: { x: 10, y: 10, width: 100, height: 40 },
+        },
+      ],
+    }
+    const parsed = parseScreens({ schema: SCREENS_SCHEMA, screens: [cards] })
+    if (!parsed.ok) throw new Error(parsed.problems.join("; "))
+    expect(regionOf(parsed.value, "settings:theme:toggle")?.screen.id).toBe(
+      "settings"
+    )
   })
 
   it("refuses two screens of one ticket, and another schema", () => {
