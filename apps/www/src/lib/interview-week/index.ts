@@ -8,8 +8,8 @@
  * A take waits on this phone until the week is sent (`send: "on-confirm"`),
  * then goes home as a voice note said `of=interview`, named by its line,
  * `<week>:<question>` or `<week>:read:<card>` (IW1;
- * `lib/home-link/voice-copy`). A take runs up to 2 minutes (owner,
- * 2026-11-13). No count of its own: only the device's room refuses a take.
+ * `lib/home-link/voice-copy`). A take runs up to 3 minutes (owner,
+ * 2026-11-19, C735). No count of its own: only the device's room refuses a take.
  * No set-aside marks: a take here is let go only by the week's Delete, Redo
  * or clean-up before Send, for good, and only while it waits.
  */
@@ -54,7 +54,10 @@ export function phoneInterviews(): InterviewsStore {
  * null while it holds none; how home is reached is handed in by the route.
  */
 export function phoneInterviewPorts(
-  reach: Pick<InterviewWeekPorts, "home" | "homeHolds" | "onHomeHolds">
+  reach: Pick<
+    InterviewWeekPorts,
+    "home" | "homeHolds" | "onHomeHolds" | "homeSent"
+  >
 ): InterviewWeekPorts | null {
   const week = currentInterview(phoneInterviews().held().weeks, Date.now())
   return week === null

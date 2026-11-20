@@ -4,6 +4,10 @@
  * verdict, "you said", level, streak, duration, timer or "done", and no
  * status code or internal name. And nowhere in the package's own source is
  * there a duration, a timer or a completion to show.
+ *
+ * The work tracker (RR26, #3250) is the one place that says how long, as the
+ * owner asked: its words are its own table (`lib/work-tracker/words`), held
+ * by its own test, and these never include them.
  */
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
@@ -23,12 +27,16 @@ function everyWord(value: unknown): Array<string> {
         ? [
             [QUILLMOSS_WEEK, 1, 3],
             ["QM-1", 2, 3],
+            // An opening's take on home: when, which week, how long (#3269).
+            ["12 Nov, 9:40 PM", "2026-w46", 24_000],
           ]
         : value.length === 2
           ? [
               ["indexing", 3],
               ["indexing", 1],
               ["QM-1", "Parse the batch"],
+              // A send home names, and this phone's own (RR30).
+              ["2026-11-14T19:59:07.012Z", "2026-11-15T10:00:00.000Z"],
             ]
           : [[1], [12], ["1.97.0"], [QUILLMOSS_WEEK], [true], [false]]
     // A sample meant for another word may throw; a word no sample can say
@@ -82,7 +90,9 @@ const BANNED: ReadonlyArray<[string, RegExp]> = [
   ["a level, streak or XP", /\b(level|streak|xp)\b/i],
   [
     "a duration or timer",
-    /\b(minutes?|seconds?|hours?|timer|duration|\d+\s?(s|min)\b)/i,
+    // The teleprompter's pace, "About 170 words a minute", is how fast the
+    // band moves (C734), not how long anything took.
+    /\b((?<!words a )minutes?|seconds?|hours?|timer|duration|\d+\s?(s|min)\b)/i,
   ],
   ["a completion", /\b(done|complete[ds]?|completion|finish(ed)?|the end)\b/i],
   ["a status code", /\b[1-5]\d\d\b/],
@@ -130,11 +140,19 @@ describe("the package", () => {
   it("has no duration, timer, portion or completion anywhere", () => {
     const pattern =
       /\b(duration\w*|timer|setTimeout|setInterval|portion|completed?|completion|endScreen|wind-?down)\b/i
+    // The one length the package reads: how long a take of the opening's
+    // answer runs, which its page says (the owner, 2026-11-19, #3269: "from
+    // when and how long"), as the shared take rows already do.
+    const takeLength = (file: string, line: string): boolean =>
+      file.endsWith(join("lib", "week-play", "opening.ts")) &&
+      /\.durationMs\b/.test(line)
     const found = files.flatMap((file) =>
       readFileSync(file, "utf8")
         .split("\n")
         .flatMap((line, index) =>
-          pattern.test(line) ? [`${file}:${index + 1}: ${line.trim()}`] : []
+          pattern.test(line) && !takeLength(file, line)
+            ? [`${file}:${index + 1}: ${line.trim()}`]
+            : []
         )
     )
     expect(found).toEqual([])

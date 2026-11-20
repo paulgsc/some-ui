@@ -60,6 +60,7 @@ import {
   ESSAY_DECAY_VERSION,
   ESSAY_FORK_VERSION,
   ESSAY_ID,
+  ESSAY_OPENING_VERSION,
   ESSAY_POINT_VERSION,
   ESSAY_SCHEMA,
   ESSAY_WEEKS_MOST,
@@ -447,13 +448,16 @@ function buildEssay(
     { weeks: ESSAY_WEEKS_MOST, concepts: ESSAY_CHART_ROWS }
   )
   // The lowest version that draws it (C270).
-  const version = tickets.some(needsForkVersion)
-    ? ESSAY_FORK_VERSION
-    : tickets.some(hasPointAnswers)
-      ? ESSAY_POINT_VERSION
-      : chart.concepts.some((c) => c.cells.some(needsDecayVersion))
-        ? ESSAY_DECAY_VERSION
-        : 1
+  const version =
+    ended.opening !== undefined
+      ? ESSAY_OPENING_VERSION
+      : tickets.some(needsForkVersion)
+        ? ESSAY_FORK_VERSION
+        : tickets.some(hasPointAnswers)
+          ? ESSAY_POINT_VERSION
+          : chart.concepts.some((c) => c.cells.some(needsDecayVersion))
+            ? ESSAY_DECAY_VERSION
+            : 1
   const topics = [
     ...new Set(following.tickets.flatMap((t) => t.concepts.map((c) => c.name))),
   ]
@@ -465,6 +469,7 @@ function buildEssay(
     story: ended.story,
     sla: ended.sla.map(({ what, target }) => ({ what, target })),
     references: ended.references,
+    ...(ended.opening === undefined ? {} : { opening: ended.opening }),
     open: { said: values.open },
     tickets,
     weeks: {

@@ -671,7 +671,8 @@ function listed(
   // RR13: only the takes of a week sent; one still waiting is not listed.
   // RR24: a take of one point waits too until home says it serves this
   // build, since a home before the epoch refuses its ref, and a note
-  // refused is never sent again.
+  // refused is never sent again. So does a take of the opening's answer,
+  // `<week>:opening:<n>` (#3269), which reads as a point's line.
   const pointsServed = servesNow() === "fits"
   const week = rustWeekDesk
     .kept()

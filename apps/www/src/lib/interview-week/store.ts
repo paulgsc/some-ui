@@ -9,6 +9,7 @@ import type { KeyedStorage } from "@some-ui/core-utils"
 import { openKept, readJson, writeKept } from "@some-ui/core-utils"
 import type { InterviewWeek } from "@some-ui/interview-week"
 import { InterviewWeekSchema } from "@some-ui/interview-week"
+import { DEFAULT_PACE_WPM } from "@some-ui/shared"
 import type {
   BundleDraft,
   BundleDrafts,
@@ -25,6 +26,7 @@ const WEEKS_KEY = "some-ui:interview-week.weeks"
 const DRAFTS_KEY = "some-ui:interview-week.drafts"
 const SENT_KEY = "some-ui:interview-week.sent"
 const LADDER_KEY = "some-ui:interview-week.ladder"
+const PACE_KEY = "some-ui:interview-week.band-pace"
 
 /** The desk of the week's takes (`./index`). */
 export const TAKES_KEY = "some-ui:interview-week.takes"
@@ -123,6 +125,26 @@ export type LadderStore = {
   readonly read: () => Ladder
   /** Keeps `ladder` as the week's, beside every other week's; false when not kept. */
   readonly write: (ladder: Ladder) => boolean
+}
+
+/** The pace the reader set the teleprompter band to (C734), in words a minute. */
+export type PaceStore = {
+  /** The pace kept, or the default when none is. */
+  readonly read: () => number
+  /** Keeps `pace`; false when not kept. */
+  readonly write: (pace: number) => boolean
+}
+
+const readPace = readJson((value) =>
+  typeof value === "number" && Number.isFinite(value) ? value : null
+)
+
+/** The band's pace, kept on this phone across weeks. */
+export function bandPace(storage: KeyedStorage | null): PaceStore {
+  return {
+    read: () => openKept(storage, PACE_KEY, readPace, DEFAULT_PACE_WPM).value,
+    write: (pace) => writeKept(storage, PACE_KEY, pace, readPace),
+  }
 }
 
 /** Week `week`'s ladder, among every week's in `storage`, which are never let go. */

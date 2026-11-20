@@ -101,9 +101,9 @@ describe("the interview week's finish", () => {
       )
     ).toEqual([
       'week.cards[0] ("opening").script: the opening says "paulgsc" in its first line',
-      'week.cards[0] ("opening").script: "ready for the" assesses; the opening says what the week trains, with no rating and no finish line',
-      'week.cards[0] ("opening").script: "rating" assesses; the opening says what the week trains, with no rating and no finish line',
-      'week.cards[0] ("opening").script: "grade" assesses; the opening says what the week trains, with no rating and no finish line',
+      'week.cards[0] ("opening").script: "ready for the" assesses; the opening says what the practice trains, with no rating and no finish line',
+      'week.cards[0] ("opening").script: "rating" assesses; the opening says what the practice trains, with no rating and no finish line',
+      'week.cards[0] ("opening").script: "grade" assesses; the opening says what the practice trains, with no rating and no finish line',
     ])
     expect(
       opening(
@@ -113,6 +113,8 @@ describe("the interview week's finish", () => {
     expect(opening(script(20))[0]).toBe(
       'week.cards[0] ("opening").script: 200 words; write 25 to 90'
     )
+    // A dash or an ampersand alone is no word, as a reader counts them.
+    expect(opening(`${OPENING} ${" —".repeat(80)} &`)).toEqual([])
   })
 
   it("builds each question's ready answer, and refuses a source outside the body of work at the commit, a length off its target and an employer", () => {

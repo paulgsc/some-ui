@@ -409,23 +409,32 @@ const Sent = ({ held }: { held: Interview }): JSX.Element => {
 /** The week read back once it closed: what home had at the deadline. Nothing records or sends. */
 const ReadBack = ({ held }: { held: Interview }): JSX.Element => {
   const { week, atHome } = held
-  const { holds, last } = atHome
+  const { holds, last, homeSaid, elsewhere } = atHome
+  // Without home's word (RR30): no count of what home had and no send
+  // "late"; the send shown is this phone's last.
+  const shown = homeSaid ? holds : last
   return (
     <div className="flex flex-col gap-4">
       <Role week={week} />
       <section className="bg-card flex flex-col gap-1 rounded-2xl p-3 text-sm">
         <p className="font-semibold">{WORDS.closed.title(week)}</p>
         <p className="text-muted-foreground">{WORDS.closed.line(week)}</p>
-        <p>
-          {holds === null
-            ? WORDS.closed.noSend
-            : WORDS.closed.held(takesOf(holds).length)}
-        </p>
-        {last !== null && last.at !== holds?.at && (
+        {homeSaid ? (
+          <p>
+            {holds === null
+              ? WORDS.closed.noSend
+              : WORDS.closed.held(takesOf(holds).length)}
+          </p>
+        ) : elsewhere !== null ? (
+          <p>{WORDS.closed.elsewhere(elsewhere, last?.at ?? null)}</p>
+        ) : last !== null ? (
+          <p>{WORDS.closed.unheard(last.at)}</p>
+        ) : null}
+        {homeSaid && last !== null && last.at !== holds?.at && (
           <p className="text-muted-foreground">{WORDS.closed.late(last.at)}</p>
         )}
       </section>
-      <SentList held={held} sent={holds} readOnly />
+      <SentList held={held} sent={shown} readOnly />
       <PastLink />
     </div>
   )

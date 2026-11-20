@@ -11,6 +11,7 @@ import type { KeepScript, MicScript } from "@some-ui/voice-capture/testing"
 import {
   memoryKeep,
   simulatedMicrophone,
+  simulatedPage,
   SPEAKING,
 } from "@some-ui/voice-capture/testing"
 import type { HearingState, IdeaTakes } from "@soundbites/lib/idea/hearing"
@@ -67,28 +68,6 @@ function kitTakes(
   }
 }
 
-/** A page whose visibility the test sets. */
-function page(): {
-  onVisibility: (listener: (hidden: boolean) => void) => () => void
-  hide: (hidden: boolean) => void
-} {
-  let hidden = false
-  const watchers = new Set<(hidden: boolean) => void>()
-  return {
-    onVisibility: (listener): (() => void) => {
-      watchers.add(listener)
-      listener(hidden)
-      return () => {
-        watchers.delete(listener)
-      }
-    },
-    hide: (next): void => {
-      hidden = next
-      for (const watcher of [...watchers]) watcher(next)
-    },
-  }
-}
-
 /**
  * New idea over the simulated microphone, kept in memory, with a fake home
  * that answers each ask with the next of `answers` (the last, once they run
@@ -132,7 +111,7 @@ function capture(options: {
   )
   const asked: Array<string> = []
   const queue = [...options.answers]
-  const visible = page()
+  const visible = simulatedPage()
   const homeHolds = new Set<string>()
   let voiceChecks = 0
   const hearing: TurnListener = homeHearing({
@@ -148,7 +127,7 @@ function capture(options: {
         : new Promise((resolve) => setTimeout(() => resolve(answer), answerMs))
     },
     now,
-    onVisibility: visible.onVisibility,
+    onVisibility: visible.watch,
   })
   const around = options.around?.(hearing) ?? hearing
   const listener: TurnListener = {
@@ -166,7 +145,7 @@ function capture(options: {
       store,
       listener,
       now,
-      onVisibility: visible.onVisibility,
+      onVisibility: visible.watch,
     },
     "idea-1"
   )
@@ -178,7 +157,7 @@ function capture(options: {
     dispatch: runtime.dispatch,
     asked: () => asked,
     kept: keep.audio,
-    hide: visible.hide,
+    hide: (hidden): void => (hidden ? visible.hide() : visible.show()),
     detach,
   }
 }
@@ -553,7 +532,7 @@ describe("SFEED5: an ask's answer, as home hears it", () => {
       },
       heard: () => Promise.resolve({ kind: "notYet" }),
       now,
-      onVisibility: page().onVisibility,
+      onVisibility: simulatedPage().watch,
     })
     const listening = hearing.listen(
       () => undefined,

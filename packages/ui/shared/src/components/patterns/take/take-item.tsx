@@ -46,6 +46,11 @@ export type TakeItemProps = {
    */
   words?: TakeWords
   /**
+   * The button's words, where a page says them its own way (Rust Rounds'
+   * opening, #3269); the pattern's otherwise.
+   */
+  buttonWords?: TakeWords | undefined
+  /**
    * The screen's own action on one of the item's current takes: the row's
    * named `extra` slot (`TakeRow`).
    */
@@ -132,6 +137,7 @@ export const TakeItem = ({
   label,
   describe,
   words = TAKE_WORDS,
+  buttonWords,
   extra,
   full,
   size,
@@ -148,6 +154,7 @@ export const TakeItem = ({
           size={size}
           onTap={onTap}
           canStart={full === undefined}
+          words={buttonWords}
         />
       </div>
       <TakeNotices view={view} words={words} full={full} />

@@ -1,0 +1,19 @@
+{
+  "id": "C740",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "server:scripts/release_lock.py",
+    "server:deploy/home/release.json",
+    "server:docs/release.md"
+  ],
+  "chose": "www and resume-render join home's release pinned by digest and held (release_lock.py's HELD), moved by a reviewed change, not followed in SOURCES, until their images write io.paulgsc.provides/requires. RL7 says a some-ui image joins SOURCES only with its requires labels, and neither published image has them.",
+  "options": [
+    "held until labelled, then followed",
+    "followed now, unlabelled",
+    "not in the release until labelled"
+  ],
+  "gray": "The brief asked for SOURCES now; that would break RL7 as written. Raised to the coordinator rather than built.",
+  "undo": "Once a labelled www and resume-render are published, move both from HELD to SOURCES (Hub, VERSION and COMMIT) in one server PR.",
+  "refs": ["server#853", "server#787"]
+}

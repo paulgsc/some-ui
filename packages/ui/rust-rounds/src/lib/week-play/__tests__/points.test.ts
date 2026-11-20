@@ -5,6 +5,7 @@
 import type { PointFilter, PointOrder } from "@rust-rounds/lib/week-play/points"
 import {
   itemOf,
+  openingOf,
   pointCounts,
   pointItem,
   pointsShown,
@@ -17,6 +18,22 @@ const TICKETS = [
   { id: "QM-1", forks: ["a", "b", "c"].map((question) => ({ question })) },
   { id: "QM-2", forks: ["d", "e"].map((question) => ({ question })) },
 ]
+
+describe("the opening's questions (#3269)", () => {
+  it("come first, each an item named for its question, standing on its own", () => {
+    expect(weekItems(TICKETS, true, 2).slice(0, 3)).toEqual([
+      "opening:1",
+      "opening:2",
+      "QM-1",
+    ])
+    expect(openingOf("opening:2")).toBe(2)
+    for (const other of ["QM-1", "QM-1:2", "opening:0", "opening:12"]) {
+      expect(openingOf(other)).toBeNull()
+    }
+    // Its place on the flow's line is the item itself, never a ticket's point.
+    expect(itemOf("opening:2")).toEqual({ ticket: "opening:2", point: null })
+  })
+})
 
 describe("a ticket's points", () => {
   it("are items of their own after their ticket's, and read back as ticket and point", () => {

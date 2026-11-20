@@ -346,6 +346,63 @@ it now sits one level deeper and can pass having scanned nothing.
 
 Held by: `pnpm check:test-layout`
 
+## Reach before you build
+
+The owner (2026-11-19, #3291, close paraphrase): "My user story is a morphism … That creates a
+real risk of trying to invent the world. … Rather than building, sometimes you should look for
+existing tools, mostly open source or freemium, that let us do it without building anything."
+#2722 (HYPER) said the same for motion graphics.
+
+So before a story's design commits to machinery of its own, the session does a **reach**:
+which existing tools (open source and self-hostable first, then freemium) already deliver the
+user story, and whether each does it the owner's way. For each, it records:
+
+- where the data would live, in the two mandates' terms (home, the owner's devices, or a
+  third party);
+- what the owner would have to do (an account, a setup step on home);
+- how the work would reach an issue or a session;
+- its honest limits.
+
+It ends with a recommendation: use the tool as is, fold it in (embed or self-host on home),
+or build. Building is one option among the others, chosen for a stated reason ("no tool does
+it your way because …"), never the default. The owner (2026-11-19, on #3197): "The key is that
+it's in the PR, meaning part of the commit and part of the history, and that we're making a
+conscious decision."
+
+**When a reach is owed.** It is owed when the first design of a story would add one of these:
+
+- a new kind of record and the place that keeps it;
+- an editor, player, recorder or annotation layer;
+- a sync, sharing or import path;
+- a new deployable or service;
+- work the story needs before its first use can land in one PR.
+
+It is not owed for changes to a surface that already exists: words, layout, a field on a
+record already kept, a fix, a new screen over data already held. It is not owed either for a
+story whose point is the machinery itself, such as the owner wanting to learn by building it.
+The reach comes before the first PR of that machinery, not after.
+
+**Where it goes.** A reach ends in a call (below, "A gray-area call keeps who made it"), with
+each tool and building among its `options`, the verdict and its reasons in `chose`, and a link
+to the comparison when it is long (a private page). The epic's body names the call under a
+"Reach" heading beside "Where we are". The session makes the call itself, `by: claude`, and
+builds on it; the owner (2026-11-19, on #3197): "if it comes down to build ourselves, we agree". When the verdict
+is to use or fold in a tool that needs the owner to act (an account, a setup step on home) or
+sends their data to a third party, it is also an ask, and that tool waits on their answer.
+
+## Policy limits move with the story
+
+The owner (2026-11-19, on #3197; C771): "Policy limits, like 'this type of video essay should
+only be of this length', should be policy, not environment variables. … You have full authority
+to nudge and update them to meet a moved user story." A limit that states a preference about
+content or its shape (a length, a count, a word bound) is kept in code as policy. When a story
+outgrows it, move it or retire it in the same change, and record the move as a call that
+`moves` the call before it, so the history stays.
+
+This does not cover a guard that protects home or the record: memory and disk caps, the
+owner's history ("Never lose the record", above), and the assurance ledger's promises.
+Loosening one of those still needs the owner, and moving one needs evidence, stated in the PR.
+
 ## Deleting is in scope
 
 Removing code, tests and docs that your change made unreachable or redundant is part of the
@@ -802,7 +859,8 @@ handoff document (owner, 2026-10-25). It lives in two places, for two readers:
   `[EPIC][<TAG>] …`, labelled `epic`, whose sub-issues are its stories (`[<TAG>] <ID>: …`), each
   closed by the PR that lands it. The epic opens with a `**Search words:**` line (the plain
   words someone might use to ask for it, the paths it touches, the tag) and a "Where we are"
-  section (what landed, what is next, what waits on the owner). An issue says everything a cold
+  section (what landed, what is next, what waits on the owner). An epic whose story builds
+  machinery of its own also carries a "Reach" section (above, "Reach before you build"). An issue says everything a cold
   session needs: why, what is decided and by whom, the files, what done means. What a handoff
   used to carry goes there too: the gaps a PR disclosed and left, and what a session working on
   the story should know (a fixture's quirk, a check that misleads). Keep them current while you

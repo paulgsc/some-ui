@@ -32,7 +32,7 @@ import type {
   BundleMachine,
   BundleSpec,
   BundleState,
-  SendsAtHome,
+  SendsAtHomeSaid,
 } from "@some-ui/voice-capture"
 import { bundleMachine, isPastDue } from "@some-ui/voice-capture"
 
@@ -101,8 +101,11 @@ export const isClosed = (
   at: string
 ): boolean => isPastDue(week.due, at)
 
-/** A week's sends as home has them: the latest it holds, and the latest made. */
-export type InterviewAtHome = SendsAtHome<InterviewSent>
+/**
+ * A week's sends as home has them: the latest it holds, the latest made, and
+ * whether home's own record said so (RR30).
+ */
+export type InterviewAtHome = SendsAtHomeSaid<InterviewSent>
 
 /** Every take a send names, answers then reads. */
 export const takesOf = (sent: InterviewSent): ReadonlyArray<string> => [

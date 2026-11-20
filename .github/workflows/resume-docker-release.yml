@@ -41,6 +41,27 @@ jobs:
             --label "org.opencontainers.image.revision=$GITHUB_SHA" \
             --tag resume-render:proof \
             packages/ui/resume
+      # The labels server's release check reads (paulgsc/server#853), in the
+      # form its scripts/check_release.py parses, so a malformed one is refused
+      # here rather than by the release.
+      - name: Check the release labels
+        run: |
+          set -euo pipefail
+          pair='[a-z0-9][a-z0-9-]*=([0-9]+|[0-9a-f]{40})'
+          edges=''
+          for key in io.paulgsc.provides io.paulgsc.requires; do
+            value=$(docker inspect --format "{{ index .Config.Labels \"$key\" }}" resume-render:proof)
+            echo "$key=$value"
+            if [ -n "$value" ] && ! [[ "$value" =~ ^$pair(,$pair)*$ ]]; then
+              echo "::error::$key is malformed: $value"
+              exit 1
+            fi
+            [ "$key" = io.paulgsc.provides ] && edges="$value"
+          done
+          if ! [[ ",$edges," =~ ,resume-api=[0-9]+, ]]; then
+            echo "::error::io.paulgsc.provides names no resume-api epoch"
+            exit 1
+          fi
       # The faux PII is the worst case `pnpm build` already proves every layout
       # with (scripts/fixtures/faux-pii.json). The request goes from inside the
       # container, since with no network nothing outside can reach its port.

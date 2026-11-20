@@ -17,13 +17,26 @@
  */
 import type { JSX, ReactNode } from "react"
 import { useEffect, useId, useState, useSyncExternalStore } from "react"
-import { pointRecording, PointTakes } from "@rust-rounds/components/point-takes"
+import { FlowPages } from "@rust-rounds/components/rust-week/flow"
 import { RunView } from "@rust-rounds/components/rustc-run"
+import {
+  TrackedWeek,
+  Tracker,
+  WorkProvider,
+} from "@rust-rounds/components/work-tracker"
 import type { Ticket, Week } from "@rust-rounds/lib/formats/week"
+import type { FlowRuntime } from "@rust-rounds/lib/week-play/flow-runtime"
 import type { PasteRuntime } from "@rust-rounds/lib/week-play/paste"
 import { PASTE_MAX, pasteLine } from "@rust-rounds/lib/week-play/paste"
-import { itemOf, pointItem } from "@rust-rounds/lib/week-play/points"
+import {
+  firstItemOf,
+  itemOf,
+  openingItem,
+  openingOf,
+  pointItem,
+} from "@rust-rounds/lib/week-play/points"
 import type {
+  OpeningRuntime,
   RustWeekPorts,
   WeekHeard,
 } from "@rust-rounds/lib/week-play/runtime"
@@ -39,7 +52,7 @@ import { isClosed, ticketLine } from "@rust-rounds/lib/week-play/spec"
 import type { TicketStanding } from "@rust-rounds/lib/week-play/words"
 import { WEEK_WORDS } from "@rust-rounds/lib/week-play/words"
 import type { HeldWeek } from "@rust-rounds/lib/weeks"
-import { assertNever, cn } from "@some-ui/core-utils"
+import { assertNever } from "@some-ui/core-utils"
 import {
   BundleCards,
   bundleConfirm,
@@ -54,7 +67,6 @@ import {
   TakeRow,
   Textarea,
   useConfirmSheet,
-  usePager,
   useTakePattern,
 } from "@some-ui/shared"
 import type {
@@ -148,21 +160,29 @@ const Brief = (
     onRounds?: () => void
     paste: PasteRuntime
     atHome: WeekAtHome
+    flow: FlowRuntime | null
+    opening: OpeningRuntime | null
   }
 ): JSX.Element => {
   const { machine, state, dispatch, held } = props
   const { week } = held
+  const { flow } = props
   // Tickets said, whole or by any point (RR24).
   const said = new Set(
     machine.spec.items
-      .filter((item) => machine.answered(state, item) !== null)
+      .filter(
+        (item) =>
+          openingOf(item) === null && machine.answered(state, item) !== null
+      )
       .map((item) => itemOf(item).ticket)
   ).size
   const { holds, last } = props.atHome
   const of = week.tickets.length
   return (
     <div className="flex flex-col gap-4">
+      <Tracker week={week} />
       <Story week={week} />
+      <TrackedWeek week={week} />
       {last !== null && (
         <section className="bg-card flex flex-col gap-1 rounded-2xl p-3 text-sm">
           <p className="font-semibold">
@@ -173,6 +193,23 @@ const Brief = (
           <p className="text-muted-foreground">{WORDS.openUntil(week)}</p>
         </section>
       )}
+      {flow !== null && props.opening !== null && (
+        <CardLink asChild>
+          <button
+            type="button"
+            onClick={() =>
+              flow.dispatch({ type: "openTicket", ticket: openingItem(1) })
+            }
+          >
+            <CardLinkBody className="gap-0.5">
+              <span className="font-semibold">{WORDS.flow.opening.title}</span>
+              <span className="text-muted-foreground text-xs">
+                {WORDS.flow.opening.questions(props.opening.spec.count)}
+              </span>
+            </CardLinkBody>
+          </button>
+        </CardLink>
+      )}
       <section className="flex flex-col gap-2">
         <h3 className="text-sm font-semibold">{WORDS.tickets}</h3>
         {week.tickets.map((ticket, i) => (
@@ -180,10 +217,15 @@ const Brief = (
             <button
               type="button"
               onClick={() =>
-                dispatch({
-                  type: "go",
-                  index: firstItemOf(machine, ticket, i),
-                })
+                props.flow === null
+                  ? dispatch({
+                      type: "go",
+                      index: opensAt(machine, ticket.id, i),
+                    })
+                  : props.flow.dispatch({
+                      type: "openTicket",
+                      ticket: ticket.id,
+                    })
               }
             >
               <CardLinkBody className="gap-0.5">
@@ -275,10 +317,13 @@ const TicketBody = ({
   held,
   ticket,
   n,
+  tracked = true,
 }: {
   held: HeldWeek
   ticket: Ticket
   n: number
+  /** Offers the work tracker: never once the week has closed. */
+  tracked?: boolean
 }): JSX.Element => {
   const run = held.runs[ticket.id] ?? null
   const span =
@@ -290,6 +335,7 @@ const TicketBody = ({
       <p className="text-muted-foreground text-xs font-semibold">
         {WORDS.ticketOf(ticket.id, n, held.week.tickets.length)}
       </p>
+      {tracked && <Tracker week={held.week} ticket={ticket} />}
       <h2 className="text-2xl font-extrabold text-balance">{ticket.title}</h2>
       <p>{ticket.spec}</p>
       <section className="flex flex-col gap-1">
@@ -329,23 +375,34 @@ const TicketBody = ({
   )
 }
 
+/** What the look over and the week's notices call an item: an opening's question, a ticket or a point. */
+function itemLabel(week: Week, id: string): string {
+  const question = openingOf(id)
+  if (question !== null) {
+    return WORDS.flow.opening.label(
+      question,
+      week.opening?.exchanges[question - 1]?.ask ?? ""
+    )
+  }
+  const { ticket, point } = itemOf(id)
+  const found = week.tickets.find((each) => each.id === ticket)
+  return point === null
+    ? WORDS.ticketLabel(ticket, found?.title ?? "")
+    : WORDS.points.label(ticket, point, found?.forks[point - 1]?.question ?? "")
+}
+
 const Review = (props: Parts & { held: HeldWeek }): JSX.Element => {
   const { machine, state, held } = props
   const needs = machine.missing(state)
   // What the send would hold, tickets home holds from the last one included.
-  const n = machine.bundleRecord(state, state.at).answers.length
+  // Each question of the opening answered counts once, however many of
+  // its takes go (#3269, C783).
+  const record = machine.bundleRecord(state, state.at)
+  const n =
+    record.answers.length +
+    new Set((record.opening ?? []).map((each) => each.n)).size
   const notNear = state.reach === "near" ? null : WORDS.notNear[state.reach]
-  const label = (id: string): string => {
-    const { ticket, point } = itemOf(id)
-    const found = held.week.tickets.find((each) => each.id === ticket)
-    return point === null
-      ? WORDS.ticketLabel(ticket, found?.title ?? "")
-      : WORDS.points.label(
-          ticket,
-          point,
-          found?.forks[point - 1]?.question ?? ""
-        )
-  }
+  const label = (id: string): string => itemLabel(held.week, id)
   // A ticket's own take, from before takes went point by point (RR24), is
   // listed only where one was said: nothing records one any more.
   const perPoint = machine.spec.items.some((id) => itemOf(id).point !== null)
@@ -371,20 +428,14 @@ const Review = (props: Parts & { held: HeldWeek }): JSX.Element => {
   )
 }
 
-/**
- * Where a ticket's card opens: its first point, answered point by point
- * (RR24), else the ticket's own item; `i`, the ticket's place, when neither
- * is an item.
- */
-const firstItemOf = (
+/** Where ticket `i` (`ticket`) opens on the cards: its first item, else `i`. */
+const opensAt = (
   machine: BundleMachine<WeekKind>,
-  ticket: Ticket,
+  ticket: string,
   i: number
 ): number => {
-  const point = machine.spec.items.indexOf(pointItem(ticket.id, 1))
-  if (point !== -1) return point
-  const own = machine.spec.items.indexOf(ticket.id)
-  return own === -1 ? i : own
+  const at = firstItemOf(machine.spec.items, ticket)
+  return at === -1 ? i : at
 }
 
 /** How many tickets a send answers, whole or by any point. */
@@ -437,16 +488,31 @@ const ReadBack = (
 ): JSX.Element => {
   const { machine, state, snapshot, takes, dispatch, held, heard } = props
   const { week } = held
-  const { holds, last } = props.atHome
-  const answered = holds?.answers ?? []
+  const { holds, last, homeSaid, elsewhere } = props.atHome
+  // Without home's word (RR30): no count of what home holds and no send
+  // "late"; the takes shown are this phone's last send's.
+  const answered = homeSaid ? (holds?.answers ?? []) : (last?.answers ?? [])
   return (
     <div className="flex flex-col gap-4">
+      {/*
+       * Nothing starts once the week has closed, but a span still running,
+       * or asking, is shown and answered here, as on the brief (RR26).
+       */}
+      <Tracker week={week} />
       <Story week={week} />
+      {/* The week's time stays to read. */}
+      <TrackedWeek week={week} />
       <section className="bg-card flex flex-col gap-1 rounded-2xl p-3 text-sm">
         <p className="font-semibold">{WORDS.closed.title(week)}</p>
         <p className="text-muted-foreground">{WORDS.closed.line(week)}</p>
-        <p>{WORDS.sent.title(answered.length, week.tickets.length)}</p>
-        {last !== null && last.at !== holds?.at && (
+        {homeSaid ? (
+          <p>{WORDS.sent.title(answered.length, week.tickets.length)}</p>
+        ) : elsewhere !== null ? (
+          <p>{WORDS.closed.elsewhere(elsewhere, last?.at ?? null)}</p>
+        ) : last !== null ? (
+          <p>{WORDS.closed.unheard(last.at)}</p>
+        ) : null}
+        {homeSaid && last !== null && last.at !== holds?.at && (
           <p className="text-muted-foreground">{WORDS.closed.late(last.at)}</p>
         )}
       </section>
@@ -455,7 +521,12 @@ const ReadBack = (
           const mine = answered.filter((each) => each.ticket === ticket.id)
           return (
             <li key={ticket.id} className="flex flex-col gap-3">
-              <TicketBody held={held} ticket={ticket} n={i + 1} />
+              <TicketBody
+                held={held}
+                ticket={ticket}
+                n={i + 1}
+                tracked={false}
+              />
               {mine.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
                   {WORDS.sent.notAnswered}
@@ -651,9 +722,11 @@ const Screen = (
     onRounds?: () => void
     paste: PasteRuntime
     atHome: WeekAtHome
+    flow: FlowRuntime | null
+    opening: OpeningRuntime | null
   }
 ): JSX.Element => {
-  const { machine, state, dispatch, held } = props
+  const { state, dispatch, held } = props
   if (
     state.screen !== "loading" &&
     state.screen !== "unreadable" &&
@@ -685,8 +758,10 @@ const Screen = (
       return <Brief {...props} />
     }
     case "cards": {
-      if (machine.spec.items.some((item) => itemOf(item).point !== null)) {
-        return <TicketPages {...props} />
+      if (props.flow !== null) {
+        return (
+          <FlowPages {...props} flow={props.flow} opening={props.opening} />
+        )
       }
       return (
         <BundleCards
@@ -719,102 +794,10 @@ const Screen = (
   }
 }
 
-/**
- * The week's tickets answered point by point (RR24): a page per ticket, its
- * card above its points (`PointTakes`), stepped by the dots or a swipe
- * (`usePager`); while a take records, only its point shows.
- */
-const TicketPages = (
-  props: Parts & { held: HeldWeek; heard: WeekHeard }
-): JSX.Element | null => {
-  const { machine, state, dispatch, held } = props
-  const { tickets } = held.week
-  const on = itemOf(machine.spec.items[state.index] ?? "").ticket
-  const at = Math.max(
-    0,
-    tickets.findIndex((ticket) => ticket.id === on)
-  )
-  const goTicket = (n: number): void => {
-    const ticket = tickets[n]
-    if (ticket === undefined) return
-    const first = ticket.forks.length > 0 ? pointItem(ticket.id, 1) : ticket.id
-    dispatch({ type: "go", index: machine.spec.items.indexOf(first) })
-  }
-  const { attach } = usePager({
-    canPrev: at > 0,
-    canNext: at < tickets.length - 1,
-    held: state.busy,
-    onPage: (to) => goTicket(to === "next" ? at + 1 : at - 1),
-  })
-  const ticket = tickets[at]
-  // A week holds two tickets at least (`WeekSchema`).
-  if (ticket === undefined) return null
-  const said = (each: Ticket): boolean =>
-    machine.answered(state, each.id) === "said" ||
-    each.forks.some(
-      (_, i) => machine.answered(state, pointItem(each.id, i + 1)) === "said"
-    )
-  return (
-    <div className="flex flex-col gap-3">
-      {!pointRecording(state) && (
-        <nav className="flex items-center justify-center gap-1">
-          {tickets.map((each, i) => (
-            <button
-              key={each.id}
-              type="button"
-              aria-label={WORDS.cardOf(i + 1, tickets.length)}
-              aria-current={i === at ? "step" : undefined}
-              onClick={() => goTicket(i)}
-              className="flex h-7 w-11 items-center justify-center"
-            >
-              <span
-                className={cn(
-                  "h-2.5 rounded-full border-2",
-                  i === at ? "w-6" : "w-2.5",
-                  said(each)
-                    ? "bg-brand border-brand"
-                    : "border-muted-foreground/60"
-                )}
-              />
-            </button>
-          ))}
-        </nav>
-      )}
-      <section
-        ref={attach}
-        data-swipe="tickets"
-        aria-label={WORDS.cardOf(at + 1, tickets.length)}
-        className="flex min-w-0 flex-col gap-3"
-      >
-        {!pointRecording(state) && (
-          <TicketHead
-            held={held}
-            ticket={ticket}
-            n={at + 1}
-            state={state}
-            heard={props.heard}
-          />
-        )}
-        <PointTakes key={ticket.id} {...props} ticket={ticket} />
-      </section>
-      {!pointRecording(state) && (
-        <Button
-          variant="outline"
-          size="lg"
-          onClick={() => dispatch({ type: "review" })}
-        >
-          {WORDS.toReview}
-        </Button>
-      )}
-    </div>
-  )
-}
+/** No flow to hear, where takes go by ticket. */
+const noFlow = (): (() => void) => () => undefined
 
-export const RustWeek = ({
-  ports,
-  back,
-  onRounds,
-}: RustWeekProps): JSX.Element => {
+const WeekScreens = ({ ports, back, onRounds }: RustWeekProps): JSX.Element => {
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime, and the week and takes it runs on, are made once per mount, as the idea bundle's are */
   const [{ week, desk, held }] = useState(() => ({
     week: createRustWeek(ports),
@@ -839,22 +822,16 @@ export const RustWeek = ({
     week.paste.subscribe,
     week.paste.getSnapshot
   )
+  const flowNotice = useSyncExternalStore(
+    week.flow?.subscribe ?? noFlow,
+    () => week.flow?.getSnapshot().notice ?? null
+  )
   const snapshot = useTakePattern(desk.pattern)
   const { dispatch } = week.bundle
   const closed = isClosed(held.week, state.at)
   const backable =
     !closed && (state.screen === "cards" || state.screen === "review")
-  const label = (id: string): string => {
-    const { ticket, point } = itemOf(id)
-    const found = held.week.tickets.find((each) => each.id === ticket)
-    return point === null
-      ? WORDS.ticketLabel(ticket, found?.title ?? "")
-      : WORDS.points.label(
-          ticket,
-          point,
-          found?.forks[point - 1]?.question ?? ""
-        )
-  }
+  const label = (id: string): string => itemLabel(held.week, id)
   return (
     <div className="flex flex-col gap-4">
       {backable && (
@@ -889,8 +866,20 @@ export const RustWeek = ({
           atHome={atHome}
           back={back}
           paste={week.paste}
+          flow={week.flow}
+          opening={week.opening}
           {...(onRounds === undefined ? {} : { onRounds })}
         />
+      )}
+      {flowNotice !== null && (
+        // Said over whatever screen is up, the look over included, which
+        // the flow's step that couldn't keep its mark gave way to (HS1).
+        <Notice
+          tone="danger"
+          onDismiss={() => week.flow?.dispatch({ type: "noticeDismissed" })}
+        >
+          {WORDS.flow.notKept}
+        </Notice>
       )}
       {pasting.notice !== null && (
         <Notice
@@ -913,3 +902,10 @@ export const RustWeek = ({
     </div>
   )
 }
+
+/** The week, with the work tracker where this build has one (RR26). */
+export const RustWeek = (props: RustWeekProps): JSX.Element => (
+  <WorkProvider work={props.ports.work ?? null}>
+    <WeekScreens {...props} />
+  </WorkProvider>
+)

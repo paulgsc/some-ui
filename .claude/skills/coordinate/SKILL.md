@@ -69,6 +69,9 @@ every Residual Ledger `first_step` in those three parts, in that order (#2814, N
 - Be the only writer of the ledger and of every epic body (#2823, #2833).
 - Copy session ids from the roster; never retype them (#2814, Nov 8).
 - Put the choir's protocol (below) in every brief.
+- Before briefing a story, check whether a reach is owed (`CLAUDE.md`, "When a reach is
+  owed"). If one is and its epic's "Reach" section names no call, make the reach the worker's
+  first task, recorded as a call before any of the machinery's code (#3291).
 
 ### Admission by free runners
 

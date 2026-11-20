@@ -2,15 +2,14 @@
  * The tracker's family (RR26): every state against every event, with the
  * rules that must hold on each step, then the owner's paths through it.
  */
-import { describe, expect, it } from "vitest"
-
 import type {
   OpenSpan,
   TrackerEffect,
   TrackerEvent,
   TrackerState,
-} from "./index"
-import { CAP_MS, spanSeconds, stepTracker } from "./index"
+} from "@rust-rounds/lib/work-tracker"
+import { CAP_MS, spanSeconds, stepTracker } from "@rust-rounds/lib/work-tracker"
+import { describe, expect, it } from "vitest"
 
 const T0 = Date.parse("2026-11-19T09:40:00Z")
 const MIN = 60_000
@@ -79,6 +78,7 @@ const EVENTS: ReadonlyArray<[string, TrackerEvent]> = [
   ["home: another span", { type: "homeSays", open: other, at: before }],
   ["start", { type: "start", span: other }],
   ["back, early", { type: "back", at: before }],
+  ["back, before it started", { type: "back", at: T0 - 5 * MIN }],
   ["back, late", { type: "back", at: after }],
   ["seen, early", { type: "seen", at: before }],
   ["seen, late", { type: "seen", at: after }],
@@ -131,6 +131,9 @@ describe("the tracker, every state against every event", () => {
         if (next.state.kind === "asking") {
           const cap = next.state.span.startedAt + CAP_MS
           expect(next.state.stoppedAt).toBeLessThanOrEqual(cap)
+          expect(next.state.stoppedAt).toBeGreaterThanOrEqual(
+            next.state.span.startedAt
+          )
           expect(next.state.stoppedBy === "itself").toBe(
             next.state.stoppedAt === cap
           )

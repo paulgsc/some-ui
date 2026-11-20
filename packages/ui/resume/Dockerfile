@@ -28,3 +28,13 @@ EXPOSE 3100
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD ["node", "-e", "fetch('http://127.0.0.1:3100/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
 CMD ["node", "scripts/serve.mjs"]
+
+# What paulgsc/server's release check reads (its scripts/check_release.py,
+# docs/release.md "Constraints"), last, so no layer depends on them.
+# - resume-api: what scripts/serve.mjs answers (`/health`, and `/render`
+#   taking `{variant, template, pii}`), which www's /api/resume/ proxy and
+#   its /resume-build page call. Raise it in the same change that breaks
+#   what an older www sends; home's release then refuses a www that requires
+#   more than the resume-render beside it provides.
+LABEL io.paulgsc.provides="resume-api=1" \
+      io.paulgsc.requires=""

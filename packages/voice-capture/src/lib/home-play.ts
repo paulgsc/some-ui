@@ -1,7 +1,7 @@
 /**
- * Playing one of home's takes, as Takes on home (`./model`) and the takes
- * needing attention (`../reconcile/model`) both do: pure steps over a
- * slice of their state. Plays are numbered, so a press on another take
+ * Playing one of home's takes by asking home for its audio, as Soundbites'
+ * Takes on home and the takes needing attention, and Rust Rounds' opening
+ * (#3269), each do: pure steps over a slice of their state. Plays are numbered, so a press on another take
  * stops the one playing, and audio that lands for a play since overtaken is
  * never played.
  */
@@ -35,7 +35,7 @@ export type PlayStep<S> = {
   readonly effects: ReadonlyArray<PlayEffect>
 }
 
-export const QUIET: PlaySlice = {
+export const QUIET_PLAY: PlaySlice = {
   playback: { kind: "quiet" },
   plays: 0,
   unplayable: null,

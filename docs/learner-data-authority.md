@@ -498,7 +498,18 @@ declared (checked by reading every call site and by the tests named).
   `lib/home-link/episode-notes-read`'s `keep`: one `GET /feeds/:feed/notes`
   per feed as the page opens and on a drag down, sending nothing of the
   phone's, asking again a second later while the link is busy, at most ten
-  times and not once the page has left it; SFEED6, #2745), and Studio's Finish
+  times and not once the page has left it; SFEED6, #2745), aph's screens
+  (`components/aph/device-aph-lane.tsx`, through `lib/home-link/aph`'s
+  `readAphOnOpen` and its `keep`, a read on its own, held while away: one
+  `GET /aph` (`@some-ui/aph`'s `readFromHome`) each time aph's layout mounts
+  with aph kept on home, sending nothing of the phone's, asking again a
+  second later while the link is busy, at most ten times; AR1, #3285), a
+  closed week's read-back (`@some-ui/rust-rounds`' week and
+  `lib/interview-week`, through `lib/home-link/week-record`'s `askWeekRecord`
+  and its `keep`, a read on its own: one `GET /rust-weeks/:id/record` or
+  `GET /interview-weeks/:id/record` each time a closed week opens, sending
+  nothing of the phone's but the week's id, never asked again in that
+  opening; RR30), and Studio's Finish
   (`routes/_dashboard/_apk/journal/episodes/making.tsx`, ST33), which hands the voice
   lane a video kept for home to make and hears what home answered and lists
   of it through `lib/home-link/studio-videos`, sending nothing of its own,
@@ -580,7 +591,9 @@ declared (checked by reading every call site and by the tests named).
   My data's "Delete for good".
   Nothing but the drain, Korean's look, the idea screen's ask for a
   take's words, My data's reads, Ideas on home's reads, Takes on home's
-  reads, Studio's feed videos' list and the marks' ask whether home works
+  reads, Studio's feed videos' list, aph's read of its record as its
+  screens mount (AR1), a closed week's read of its record (RR30) and the
+  marks' ask whether home works
   with this build is sent when the app or Settings
   opens, on resume, on a timer or on a network change: making the runtime
   and `load` read only the phone's own record. There is no retry; a sync, a
@@ -624,7 +637,15 @@ declared (checked by reading every call site and by the tests named).
   `lib/home-link/idea-reads.ts`, `lib/home-link/takes-read.ts`,
   `lib/home-link/attention.ts`,
   `lib/home-link/call-videos.ts`, `lib/home-link/renders.ts`,
-  `lib/home-link/previews.ts` and `lib/home-link/episode-notes-read.ts`; one
+  `lib/home-link/previews.ts`, `lib/home-link/episode-notes-read.ts`,
+  `lib/home-link/cards-essays.ts`, `lib/home-link/clips.ts`,
+  `lib/home-link/aph.ts` (AR1) and `lib/home-link/week-record.ts` (RR30);
+  one that has the `read` `aph.ts` hands its
+  `keep` send anything but one `GET /aph`, or lets anything but
+  `components/aph/device-aph-lane.tsx` call `readAphOnOpen`; one that has
+  `week-record.ts` send anything but one `GET` of `weekRecordPath(of, week)`,
+  or lets anything but the routes `_apk/rust-rounds.tsx` and
+  `_apk/jobs/interview.tsx` call `askWeekRecord`; one
   that calls its `look` from anywhere but `lib/home-link/compat-read.ts`,
   has `compat-read.ts` send anything but one `GET` of `compatPath(needs)`,
   lets anything but `lib/home-link/lanes.ts` call it, or has
@@ -653,8 +674,9 @@ declared (checked by reading every call site and by the tests named).
   video (`youtubeLink` (`@some-ui/core-utils`)); one that
   has `takes-read.ts` send anything but one `GET` of `takesPath(q)` per ask,
   lets anything but `lib/take-library` call it, lets anything but the voice
-  run (`voice-copy.ts`), My data (`lib/my-data`, MD8), `lib/take-library`
-  and `lib/take-reconcile` (HEARD3) read `lib/home-link/voice-audio.ts`, or has `@some-ui/soundbites`' `stepLibrary`
+  run (`voice-copy.ts`), My data (`lib/my-data`, MD8), `lib/take-library`,
+  `lib/take-reconcile` (HEARD3) and the Rust Rounds route (an opening's
+  take on Play, #3269) read `lib/home-link/voice-audio.ts`, or has `@some-ui/soundbites`' `stepLibrary`
   read but on the screen opening, Try again, a search (a blank one reads the
   newest), Show the newest, or once for the newest after one of the phone's
   takes reaches home (`arrived`) while no search is shown, or ask for audio
@@ -784,7 +806,8 @@ declared (checked by reading every call site and by the tests named).
   only the one asked last, one write goes at a time and setting an idea
   aside asks first), and Takes on home (`lib/take-library`, whose one
   request per read is the `GET` `takes-read.ts` sends, and only it calls
-  that module, and it and the voice run alone read `voice-audio.ts`;
+  that module, and it, the voice run, My data, Needs your attention and
+  the Rust Rounds route alone read `voice-audio.ts`;
   `lib/library/__tests__/model.test.ts` holds that a read answers only the
   one asked last, a search home would refuse is never asked, and audio is
   asked only on a Play, one at a time), and Studio's feed videos (`lib/call-videos`,

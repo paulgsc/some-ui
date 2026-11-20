@@ -6,8 +6,20 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 
 import { askHeard } from "@/lib/home-link/heard"
 import { homeHoldsWeekSend, onHomeHeard } from "@/lib/home-link/rust-kept"
+import {
+  homeWeekSpans,
+  onSpansHeard,
+  spanEventAtHome,
+  spansOpenAtHome,
+} from "@/lib/home-link/rust-spans"
+import { askAudio } from "@/lib/home-link/voice-audio"
+import { askRustWeekRecord } from "@/lib/home-link/week-record"
 import { ideaHome } from "@/lib/idea-hearing"
-import { phoneRustRoundsPorts, phoneRustWeekPorts } from "@/lib/rust-rounds"
+import {
+  phoneRustRoundsPorts,
+  phoneRustWeekPorts,
+  phoneWork,
+} from "@/lib/rust-rounds"
 
 /**
  * Rust Rounds (#2231). Opened from Practice Home's card, it lands on the
@@ -22,8 +34,12 @@ import { phoneRustRoundsPorts, phoneRustWeekPorts } from "@/lib/rust-rounds"
  * in a take sent (`askHeard`, one `GET /voice-notes/:id/heard` per take
  * without words, each time the week opens already sent). They also read
  * whether home holds a send of the week, from what the link last heard
- * (`homeHoldsWeekSend`, RR22), never asking home. They are handed in here, not by `lib/rust-rounds`: `lib/home-link`'s voice lane imports that
- * module, so it can't import the link back.
+ * (`homeHoldsWeekSend`, RR22), never asking home, and what home last said
+ * of the work tracker's spans (`lib/home-link/rust-spans`, RR26), home's
+ * own record of the week (`askRustWeekRecord`, RR30, #3269) and a take of the
+ * opening's audio from home (`askAudio`, RR6's read). They are handed in here, not by `lib/rust-rounds`:
+ * `lib/home-link`'s voice lane imports that module, so it can't import the
+ * link back.
  */
 const PhoneRustRounds = (): JSX.Element => {
   // Made once per mount: the session and the week read them once.
@@ -34,6 +50,14 @@ const PhoneRustRounds = (): JSX.Element => {
       heard: askHeard,
       homeHolds: homeHoldsWeekSend,
       onHomeHolds: onHomeHeard,
+      work: phoneWork({
+        homeOpen: spansOpenAtHome,
+        onHome: onSpansHeard,
+        homeWeek: homeWeekSpans,
+        atHome: spanEventAtHome,
+      }),
+      homeRecord: askRustWeekRecord,
+      homeAudio: askAudio,
     }),
   }))
   const [rounds, setRounds] = useState(false)

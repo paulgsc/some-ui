@@ -4,13 +4,14 @@
  * playbacks end when the test says, a screen's store of takes held in
  * memory that keeps D2 and D3 as a real store must (a redo supersedes the
  * earlier take in the same write; Let go sets a take aside, keeping it), a
- * shelf of audio held in memory, for a screen's own store under test, and
- * the real pattern over all of them (`simulatedPattern`).
+ * shelf of audio held in memory, for a screen's own store under test, a
+ * page to hide and show (VC4), and the real pattern over all of them
+ * (`simulatedPattern`).
  */
 import type { BlobShelf } from "./blob-shelf"
 import { ShelfFullError } from "./blob-shelf"
 import { microphoneOwner } from "./owner"
-import type { Playback, Player } from "./player"
+import type { Playback, Player, WatchPage } from "./player"
 import type { Take } from "./recorder"
 import type { SimulatedMicrophone } from "./simulated-microphone"
 import { simulatedMicrophone } from "./simulated-microphone"
@@ -31,7 +32,11 @@ export type SimulatedPlayer = Player & {
   readonly finish: () => void
 }
 
-export function simulatedPlayer(): SimulatedPlayer {
+/**
+ * A player whose playbacks end when the test says, and, given a page, when
+ * it is hidden, as the kit's own player does (VC4).
+ */
+export function simulatedPlayer(page?: WatchPage): SimulatedPlayer {
   const live = new Set<Playback>()
   return {
     play(): Playback {
@@ -39,20 +44,58 @@ export function simulatedPlayer(): SimulatedPlayer {
       const ended = new Promise<void>((resolve) => {
         settle = resolve
       })
+      let unwatch: (() => void) | null = null
       const playback: Playback = {
         ended,
         stop: (): void => {
           live.delete(playback)
+          unwatch?.()
+          unwatch = null
           settle()
         },
       }
       live.add(playback)
+      const watching = page?.((hidden) => {
+        if (hidden) playback.stop()
+      })
+      if (live.has(playback)) unwatch = watching ?? null
+      else watching?.()
       return playback
     },
     playing: () => live.size,
     finish: (): void => {
       for (const playback of [...live]) playback.stop()
     },
+  }
+}
+
+/** A page a test hides and shows, as the player and the pattern watch it (VC4). */
+export type SimulatedPage = {
+  readonly watch: WatchPage
+  readonly hide: () => void
+  readonly show: () => void
+  /** Listeners watching it now. */
+  readonly watchers: () => number
+}
+
+export function simulatedPage(hidden = false): SimulatedPage {
+  const listeners = new Set<(hidden: boolean) => void>()
+  let now = hidden
+  const tell = (to: boolean): void => {
+    now = to
+    for (const listener of [...listeners]) listener(to)
+  }
+  return {
+    watch: (listener): (() => void) => {
+      listeners.add(listener)
+      listener(now)
+      return (): void => {
+        listeners.delete(listener)
+      }
+    },
+    hide: () => tell(true),
+    show: () => tell(false),
+    watchers: () => listeners.size,
   }
 }
 
@@ -212,6 +255,8 @@ export type SimulatedPattern = {
   readonly pattern: TakePattern
   readonly mic: SimulatedMicrophone
   readonly player: SimulatedPlayer
+  /** The page the pattern and its player watch (VC4). */
+  readonly page: SimulatedPage
   readonly store: MemoryTakes
   /** How the store answers each take it is asked to keep from now on. */
   readonly keeping: (how: KeepResult["outcome"]) => void
@@ -231,7 +276,8 @@ export function simulatedPattern(
   } = {}
 ): SimulatedPattern {
   const mic = simulatedMicrophone({ now: Date.now })
-  const player = simulatedPlayer()
+  const page = simulatedPage()
+  const player = simulatedPlayer(page.watch)
   const store = memoryTakes({
     now: setup.recordedAt ?? Date.now,
     seed: setup.seed,
@@ -245,6 +291,7 @@ export function simulatedPattern(
       now: Date.now,
       owner: microphoneOwner(),
       player,
+      page: page.watch,
       ...store.ports,
       keep: (take, answers, supersedes, done) => {
         if (how === "kept") store.ports.keep(take, answers, supersedes, done)
@@ -257,6 +304,7 @@ export function simulatedPattern(
     pattern,
     mic,
     player,
+    page,
     store,
     keeping: (next): void => {
       how = next
