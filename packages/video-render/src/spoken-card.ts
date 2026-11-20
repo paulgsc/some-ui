@@ -72,8 +72,8 @@ export const HeardSpokenCardSchema = z.strictObject({
   schema: z.literal(SPOKEN_CARD_SCHEMA),
   card: z.string().min(1).max(SPOKEN_CARD_ID_MOST),
   category: z.enum(SPOKEN_CATEGORIES),
-  /** The app's theme its stage draws template A in: its series' (`CARDS_STAGE_THEME`). */
-  theme: ThemeIdSchema,
+  /** The app's theme its stage draws template A in: its series' (`Series.theme`, C816). */
+  theme: ThemeIdSchema.optional(),
   exchanges: z
     .array(
       z.strictObject({
@@ -245,7 +245,7 @@ export function spokenTakeFilesOf(
 
 /**
  * The spoken card `card`, shot `id`, as its stage draws it, in `theme` (its
- * series', `CARDS_STAGE_THEME`): each exchange
+ * series', `Series.theme`): each exchange
  * with what home heard in its take, `transcriptOf(take)` being the take's
  * `some-ui.voice-transcript/1` as home keeps it. Refuses, with every reason,
  * a take whose transcript is missing or has no text, and one home couldn't
@@ -256,7 +256,7 @@ export function heardSpokenCard(
   id: string,
   card: SpokenCard,
   transcriptOf: (take: string) => unknown,
-  theme: SessionThemeId
+  theme: SessionThemeId | undefined
 ): Parsed<HeardSpokenCard> {
   const problems: Array<string> = []
   const exchanges = card.exchanges.map(
@@ -288,7 +288,7 @@ export function heardSpokenCard(
     schema: SPOKEN_CARD_SCHEMA,
     card: id,
     category: card.category,
-    theme,
+    ...(theme === undefined ? {} : { theme }),
     exchanges,
   })
 }
@@ -299,7 +299,8 @@ export const sampleSpokenCard = (): Parsed<HeardSpokenCard> =>
     schema: SPOKEN_CARD_SCHEMA,
     card: "sample",
     category: "introduction",
-    // The cheat-sheet's (`CARDS_STAGE_THEME`): the sample is a cards essay's.
+    // cheat-sheet v3's (`Series.theme`): the sample is a cards essay's, and
+    // a test holds the two equal.
     theme: "dark",
     exchanges: [
       {

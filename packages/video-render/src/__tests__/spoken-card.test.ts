@@ -1,7 +1,6 @@
 import { join } from "node:path"
 import {
   CARDS_INDEX_SCHEMA,
-  CARDS_STAGE_THEME,
   cardsChapterMarks,
   cardsFolderProblems,
   cardsLines,
@@ -108,6 +107,14 @@ describe("a spoken card in a cards essay (WALK7)", () => {
     expect(scenes[1]?.said).toBe(sample.value.exchanges[0]?.transcript)
     expect(cardsChapterMarks(scenes).map((m) => m.title)).toContain(
       "Introduction"
+    )
+  })
+
+  it("is drawn in its series' theme, which the stage's sample shares (C816)", () => {
+    const sample = sampleSpokenCard()
+    expect(V3.ok ? V3.value.theme : null).toBe("dark")
+    expect(sample.ok ? sample.value.theme : null).toBe(
+      V3.ok ? V3.value.theme : undefined
     )
   })
 
@@ -324,7 +331,7 @@ describe("the takes home hands a spoken card", () => {
       "introduction",
       card,
       (take) => transcript(`What ${take} says.`, "heard"),
-      CARDS_STAGE_THEME["cheat-sheet"]
+      V3.ok ? V3.value.theme : undefined
     )
     expect(heard.ok && heard.value.theme).toBe("dark")
     expect(

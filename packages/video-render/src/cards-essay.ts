@@ -18,7 +18,6 @@
  * it names beside it.
  */
 
-import type { SessionThemeId } from "@some-ui/styles/theme/registry"
 import { z } from "zod"
 
 import { CALL_VOICES } from "./call"
@@ -47,25 +46,8 @@ import type { StillScene, StillTake } from "./stills"
 
 export const CARDS_INDEX_SCHEMA = "some-ui.cards-index/1"
 
-/** The series a cards essay may be drawn in: a closed set, known when built (C830). */
-export const CARDS_SERIES_IDS = ["cheat-sheet"] as const
-
-export type CardsSeriesId = (typeof CARDS_SERIES_IDS)[number]
-
-export const CARDS_SERIES: ReadonlySet<string> = new Set(CARDS_SERIES_IDS)
-
-/**
- * The app's theme a cards series' spoken card is drawn in (C816), so
- * template A matches the cards around it (owner, 2026-11-20: "match the dark
- * cards"): one entry for each series, which the compiler holds.
- */
-export const CARDS_STAGE_THEME: Readonly<
-  Record<CardsSeriesId, SessionThemeId>
-> = { "cheat-sheet": "dark" }
-
-/** Whether `id` is a cards series. */
-export const isCardsSeries = (id: string): id is CardsSeriesId =>
-  CARDS_SERIES_IDS.some((series) => series === id)
+/** The series a cards essay may be drawn in. */
+export const CARDS_SERIES: ReadonlySet<string> = new Set(["cheat-sheet"])
 
 /** The first version of a cards series whose essays are spoken (C371). */
 export const CARDS_SPOKEN_VERSION = 2

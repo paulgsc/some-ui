@@ -8,6 +8,7 @@
     "height": 1080,
     "fps": 30
   },
+  "theme": "dark",
   "ground": "#111821",
   "window": {
     "x": 0,

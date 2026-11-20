@@ -45,13 +45,11 @@ import { basename, join, resolve } from "node:path"
 import { parseArgs } from "node:util"
 import type { Page } from "@playwright/test"
 import {
-  CARDS_STAGE_THEME,
   cardsChapterMarks,
   cardsLines,
   cardsScenes,
   CHAPTER_GAP_MS,
   heardSpokenCard,
-  isCardsSeries,
   isSpokenEssay,
   joinedTake,
   parseCardsEssay,
@@ -69,7 +67,7 @@ import type {
   SpokenTakeFiles,
   StillTake,
 } from "@some-ui/video-render"
-import { nodePorts } from "@some-ui/video-render/node"
+import { nodePorts, readSeries } from "@some-ui/video-render/node"
 
 import { CALL_OPTIONS, FRAME } from "./call-recording"
 import { fail, here, launchChromium, runCommand } from "./command"
@@ -175,10 +173,12 @@ async function spokenTakes(
   readonly heard: ReadonlyMap<string, HeardSpokenCard>
 }> {
   const named = spokenTakesOf(essay)
-  // Template A is drawn in the theme of the cards around it (C816).
-  const { id: series } = essay.series
-  if (!isCardsSeries(series)) fail([`${series} isn't a cards series`])
-  const theme = CARDS_STAGE_THEME[series]
+  // Template A is drawn in its series' theme, as the cards around it (C816).
+  const { id: seriesId, version } = essay.series
+  const read = await readSeries(join(SERIES, seriesId), version)
+  if (!read.ok)
+    fail([`${seriesId} v${String(version)} can't be read:`, ...read.problems])
+  const { theme } = read.value
   if (dir === undefined) {
     if (named.length > 0)
       fail([
