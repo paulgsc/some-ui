@@ -72,9 +72,9 @@ every Residual Ledger `first_step` in those three parts, in that order (#2814, N
 - Before briefing a story, check whether a reach is owed (`CLAUDE.md`, "When a reach is
   owed"). If one is and its epic's "Reach" section names no call, make the reach the worker's
   first task, recorded as a call before any of the machinery's code (#3291).
-- Reach inward too (CLAUDE.md "Reach inward first", C820). Before briefing a new pipeline,
-  schema, scene kind or render job, name the existing one the worker extends. Never pass on the
-  owner's "make a new X" as a mechanism (#3317).
+- Before briefing a new pipeline, schema, scene kind, voice path or render job, name the
+  existing one the worker extends (`CLAUDE.md`, "Reach before you build", C820). Pass the owner's
+  "make a new X" verbatim as the story, and say which existing X it lands in (#3317).
 
 ### Admission by free runners
 

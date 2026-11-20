@@ -353,17 +353,6 @@ real risk of trying to invent the world. … Rather than building, sometimes you
 existing tools, mostly open source or freemium, that let us do it without building anything."
 #2722 (HYPER) said the same for motion graphics.
 
-**Reach inward first** (owner, 2026-11-20, C820). The owner, close paraphrase: "I don't have the
-capacity, like an agent, to keep a full working model of the application, so I can inadvertently
-guide and prompt for duplication. Before descending to a new pipeline, it's likely there's already
-one that should be uplifted to generic, or already is generic and could support the new story,
-and we aren't aware of it." So a reach starts in our own code. Before a story adds a pipeline, a
-schema, a scene kind, a voice path or a render job, the session names the existing one that
-already does the job, or that could be made generic to do it, and builds only the gap there. A
-request that reads like "make a new X" is the owner's story, not a choice of mechanism: deciding
-whether X already exists is the session's job. #3317 is the worked example: the video essays'
-recon, which found per-kind copies of the voice, take, exchange and framing nodes.
-
 So before a story's design commits to machinery of its own, the session does a **reach**:
 which existing tools (open source and self-hostable first, then freemium) already deliver the
 user story, and whether each does it the owner's way. For each, it records:
@@ -382,6 +371,19 @@ It ends with a recommendation on a ladder of three rungs, taken from the top:
 
 The owner (2026-11-19, on #3197): "The key is that it's in the PR, meaning part of the commit
 and part of the history, and that we're making a conscious decision."
+
+**Reach inward first** (owner, 2026-11-20, C820). The owner, close paraphrase: "I don't have the
+capacity, like an agent, to keep a full working model of the application, so I can inadvertently
+guide and prompt for duplication. Before descending to a new pipeline, it's likely there's already
+one that should be uplifted to generic, or already is generic and could support the new story,
+and we aren't aware of it." So before rung 1, the reach looks in our own code. Whenever a story
+would add a pipeline, a schema, a scene kind, a voice path or a render job, whether or not the
+outward reach is owed, the session names the existing one that already does the job or could be
+made generic to do it, records it beside the tools, and builds only the gap there. It is "Deleting
+is in scope"'s search for a module, made at the level of a pipeline. A request that reads like
+"make a new X" is the owner's story, not a choice of mechanism: whether X already exists is the
+session's to find out. #3317 is the worked example, the video essays' recon, which found per-kind
+copies of the voice, take, exchange and framing nodes.
 
 **Build only what is ours, and only on evidence** (owner, 2026-11-20, C787). The owner, close
 paraphrase: "We don't want to invent the world. We descend to a specific set of things, the
