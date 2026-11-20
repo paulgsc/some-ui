@@ -1,0 +1,325 @@
+/**
+ * A spoken card (WALK7, paulgsc/some-ui#3282): a scene of a cards essay that
+ * plays the owner's own voice from home, mapped to its category's template.
+ * An `introduction` is template A, the essays' call (`essay.ts`): the one
+ * asking and the owner, the one speaking lit. For each exchange the question
+ * is said in Kokoro, in the asker's voice (`ESSAY_VOICES.asker`), and then
+ * the owner's take plays whole, captioned from what home heard in it. Code
+ * lays every frame from the take's metadata; nothing is cut or edited (the
+ * owner, 2026-11-20: "me editing anything defeats the thing").
+ *
+ * The cut list names each take by its home id (`Spoken`'s `spoken` role).
+ * Home hands the recorder, for each id, its audio `<id>.<ext>`, its word
+ * times `<id>.words.json` where it kept them, and its transcript
+ * `<id>.transcript.json` (`some-ui.voice-transcript/1`, with its verdict):
+ * `spokenTakeFilesOf`. A take home couldn't make out, or heard nothing in,
+ * is refused before anything is drawn (`heardSpokenCard`, HEARD2), since a
+ * spoken card has no silence to play in its place.
+ */
+
+import { isRecord } from "@some-ui/core-utils"
+import { z } from "zod"
+
+import type { CutList, Parsed, Shot, SpokenCategory } from "./cut-list"
+import { problemsOf, SPOKEN_CATEGORIES, SPOKEN_TAKE_ID } from "./cut-list"
+import { ESSAY_VOICES } from "./essay"
+import type { Speaker } from "./essay"
+import { words } from "./format"
+import { ASK_WORDS_MOST, CONVERSATION_MOST, wordCount } from "./opening"
+import { takeFilesOf } from "./take-files"
+import type { TakeFiles } from "./take-files"
+import { hearingOf } from "./verdict"
+
+/** A spoken card's shot: its `spoken` is the `spoken` role. */
+export type SpokenCard = Extract<
+  NonNullable<Shot["spoken"]>,
+  { role: "spoken" }
+>
+
+/** Each category's title, on its scenes and as the chapter its card opens. */
+export const SPOKEN_CATEGORY_TITLES: Readonly<Record<SpokenCategory, string>> =
+  { introduction: "Introduction" }
+
+/** The longest a spoken card's id is, so each of its scenes' ids fits a cut list's (64). */
+export const SPOKEN_CARD_ID_MOST = 56
+
+export const SPOKEN_CARD_SCHEMA = "some-ui.spoken-card/1"
+
+/**
+ * A spoken card as its stage draws it: the card's id, its category, and
+ * each exchange with what home heard in its take. The recorder writes it
+ * from the cut list and home's transcripts (`heardSpokenCard`); the stage
+ * reads nothing else.
+ */
+export const HeardSpokenCardSchema = z.strictObject({
+  schema: z.literal(SPOKEN_CARD_SCHEMA),
+  card: z.string().min(1).max(SPOKEN_CARD_ID_MOST),
+  category: z.enum(SPOKEN_CATEGORIES),
+  exchanges: z
+    .array(
+      z.strictObject({
+        ask: words,
+        take: z.string().regex(SPOKEN_TAKE_ID),
+        transcript: words,
+      })
+    )
+    .min(1)
+    .max(CONVERSATION_MOST),
+})
+
+export type HeardSpokenCard = z.infer<typeof HeardSpokenCardSchema>
+
+export function parseHeardSpokenCard(raw: unknown): Parsed<HeardSpokenCard> {
+  const parsed = HeardSpokenCardSchema.safeParse(raw)
+  return parsed.success
+    ? { ok: true, value: parsed.data }
+    : { ok: false, problems: problemsOf(parsed.error, "spoken card") }
+}
+
+/** One scene of a spoken card: the question asked, or the owner's take of its answer. */
+export type SpokenScene = {
+  /** Its id on the card's stage: `ask-<n>` or `take-<n>`, from 1. */
+  readonly id: string
+  readonly exchange: number
+  readonly speaker: Extract<Speaker, "asker" | "you">
+  readonly said: string
+  /** The owner's take it plays, for the answer. */
+  readonly take?: string
+}
+
+/** A card's scenes in order: each exchange's question, then its answer. */
+export const spokenScenes = (
+  card: HeardSpokenCard
+): ReadonlyArray<SpokenScene> =>
+  card.exchanges.flatMap(({ ask, take, transcript }, i) => [
+    { id: `ask-${i + 1}`, exchange: i + 1, speaker: "asker", said: ask },
+    {
+      id: `take-${i + 1}`,
+      exchange: i + 1,
+      speaker: "you",
+      said: transcript,
+      take,
+    },
+  ])
+
+/** The Kokoro voice that asks a spoken card's questions: the essays' asker. */
+export const SPOKEN_ASKER_VOICE = ESSAY_VOICES.asker
+
+/** Every reason the spoken card `shot` can't be played, as lines for whoever wrote it. */
+export function spokenCardProblems(
+  shot: Shot,
+  card: SpokenCard
+): Array<string> {
+  return [
+    ...(shot.id.length > SPOKEN_CARD_ID_MOST
+      ? [
+          `${shot.id}: a spoken card's id is at most ${SPOKEN_CARD_ID_MOST} characters`,
+        ]
+      : []),
+    ...(shot.burnIns.length > 0
+      ? [
+          `${shot.id}: a spoken card is drawn by its category's template, and takes no burn-ins`,
+        ]
+      : []),
+    ...card.exchanges.flatMap(({ ask }, i) => {
+      const n = wordCount(ask)
+      return n > ASK_WORDS_MOST
+        ? [
+            `${shot.id}.exchanges[${i}].ask: ${n} words; ask in 1 to ${ASK_WORDS_MOST}`,
+          ]
+        : []
+    }),
+  ]
+}
+
+/** Each spoken card in `cut`, with its shot's id. */
+export const spokenCardsOf = (
+  cut: CutList
+): ReadonlyArray<{ readonly id: string; readonly card: SpokenCard }> =>
+  cut.shots.flatMap((shot) =>
+    shot.spoken?.role === "spoken" ? [{ id: shot.id, card: shot.spoken }] : []
+  )
+
+/** Every take `cut`'s spoken cards play, each once, in order. */
+export const spokenTakesOf = (cut: CutList): ReadonlyArray<string> => [
+  ...new Set(
+    spokenCardsOf(cut).flatMap(({ card }) => card.exchanges.map((e) => e.take))
+  ),
+]
+
+/** The suffix of a take's transcript beside its audio: `<id>.transcript.json`. */
+const TRANSCRIPT = ".transcript.json"
+
+/** A take home hands a spoken card: its audio, its word times, and its transcript. */
+export type SpokenTakeFiles = TakeFiles & { readonly transcript: string }
+
+/**
+ * Which of `names`, the folder home hands the recorder, is each of `takes`:
+ * its audio and word times as an essay's (`takeFilesOf`), and its
+ * transcript `<id>.transcript.json`. Refuses, with every reason, a take or
+ * its transcript missing, two takes for one id, and a file for a take the
+ * essay doesn't play.
+ */
+export function spokenTakeFilesOf(
+  takes: ReadonlyArray<string>,
+  names: ReadonlyArray<string>
+): Parsed<Readonly<Record<string, SpokenTakeFiles>>> {
+  const transcripts = new Set(
+    names
+      .filter((name) => name.endsWith(TRANSCRIPT))
+      .map((name) => name.slice(0, -TRANSCRIPT.length))
+  )
+  const files = takeFilesOf(
+    { answered: takes, silent: [], unheard: [], noun: "take" },
+    names.filter((name) => !name.endsWith(TRANSCRIPT))
+  )
+  const problems = [
+    ...(files.ok ? [] : files.problems),
+    ...takes
+      .filter((id) => !transcripts.has(id))
+      .map(
+        (id) => `${id}: home handed no transcript of it (${id}${TRANSCRIPT})`
+      ),
+    ...[...transcripts]
+      .filter((id) => !takes.includes(id))
+      .map((id) => `${id}${TRANSCRIPT}: names no take the essay plays`),
+  ]
+  if (!files.ok || problems.length > 0) return { ok: false, problems }
+  return {
+    ok: true,
+    value: Object.fromEntries(
+      Object.entries(files.value).map(([id, take]) => [
+        id,
+        { ...take, transcript: `${id}${TRANSCRIPT}` },
+      ])
+    ),
+  }
+}
+
+/**
+ * The spoken card `card`, shot `id`, as its stage draws it: each exchange
+ * with what home heard in its take, `transcriptOf(take)` being the take's
+ * `some-ui.voice-transcript/1` as home keeps it. Refuses, with every reason,
+ * a take whose transcript is missing or has no text, and one home couldn't
+ * make out or heard nothing in (HEARD2): a spoken card plays only a take
+ * home heard.
+ */
+export function heardSpokenCard(
+  id: string,
+  card: SpokenCard,
+  transcriptOf: (take: string) => unknown
+): Parsed<HeardSpokenCard> {
+  const problems: Array<string> = []
+  const exchanges = card.exchanges.map(({ ask, take }) => {
+    const body = transcriptOf(take)
+    const text = isRecord(body) ? body["text"] : undefined
+    const hearing = hearingOf(body)
+    if (body === undefined)
+      problems.push(`${id}: ${take} has no transcript, so nothing captions it`)
+    else if (hearing === "unheard")
+      problems.push(
+        `${id}: home couldn't make out ${take}; a spoken card plays only a take home heard`
+      )
+    else if (hearing === "silent")
+      problems.push(`${id}: home heard nothing said in ${take}`)
+    else if (typeof text !== "string" || text.trim() === "")
+      problems.push(`${id}: ${take}'s transcript has no text`)
+    return {
+      ask,
+      take,
+      transcript: typeof text === "string" ? text.trim() : "",
+    }
+  })
+  if (problems.length > 0) return { ok: false, problems }
+  return parseHeardSpokenCard({
+    schema: SPOKEN_CARD_SCHEMA,
+    card: id,
+    category: card.category,
+    exchanges,
+  })
+}
+
+/** The stage's sample: a mock introduction, its takes made up (mock data, never the owner's). */
+export const sampleSpokenCard = (): Parsed<HeardSpokenCard> =>
+  parseHeardSpokenCard({
+    schema: SPOKEN_CARD_SCHEMA,
+    card: "sample",
+    category: "introduction",
+    exchanges: [
+      {
+        ask: "What is this, and who made it?",
+        take: "sample-take-1",
+        transcript:
+          "This is a sample. A made-up person answers here, in a take home kept, played whole with nothing cut.",
+      },
+      {
+        ask: "Why make it with code?",
+        take: "sample-take-2",
+        transcript:
+          "So the video says only what was recorded: the template lays out each frame from who spoke, and when.",
+      },
+    ],
+  })
+
+/** What a spoken card's stage shows: nothing yet, a refusal, or the card. */
+export type SpokenCardStage =
+  | { readonly kind: "waiting" }
+  | { readonly kind: "none"; readonly problems: ReadonlyArray<string> }
+  | {
+      readonly kind: "show"
+      readonly card: HeardSpokenCard
+      readonly sample: boolean
+    }
+
+/**
+ * The stage of the card `card` names, from its read (`read`), or with none,
+ * or `sample`, the sample (`sampleSpokenCard`). A read of another card than
+ * the one named is refused, so a still is never drawn from the wrong voice.
+ */
+export function spokenCardStageOf(input: {
+  readonly card: string | undefined
+  readonly read: {
+    readonly data: unknown
+    readonly pending: boolean
+    readonly failed: boolean
+  }
+}): SpokenCardStage {
+  const { card, read } = input
+  if (card === undefined || card === "sample") {
+    const sample = sampleSpokenCard()
+    return sample.ok
+      ? { kind: "show", card: sample.value, sample: true }
+      : { kind: "none", problems: sample.problems }
+  }
+  if (read.pending) return { kind: "waiting" }
+  if (read.failed || read.data === undefined)
+    return { kind: "none", problems: [`The spoken card ${card} wasn't read`] }
+  const parsed = parseHeardSpokenCard(read.data)
+  if (!parsed.ok) return { kind: "none", problems: parsed.problems }
+  if (parsed.value.card !== card)
+    return {
+      kind: "none",
+      problems: [`Asked for ${card}, and the read was ${parsed.value.card}`],
+    }
+  return { kind: "show", card: parsed.value, sample: false }
+}
+
+/**
+ * Scene `id` of `card` (its first, for none or one it lacks), its place,
+ * and all its scenes, as the stage draws them.
+ */
+export function spokenSceneAt(
+  card: HeardSpokenCard,
+  id: string | undefined
+): {
+  readonly scene: SpokenScene
+  readonly index: number
+  readonly scenes: ReadonlyArray<SpokenScene>
+} {
+  const scenes = spokenScenes(card)
+  const found = scenes.findIndex((s) => s.id === id)
+  const index = found < 0 ? 0 : found
+  const scene = scenes[index]
+  if (scene === undefined) throw new Error("a spoken card has an exchange")
+  return { scene, index, scenes }
+}

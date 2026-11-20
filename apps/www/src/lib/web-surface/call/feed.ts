@@ -58,6 +58,13 @@ export const essaySource = besideStage("rust-essays")
 export const interviewEssaySource = besideStage("interview-essays")
 
 /**
+ * A spoken card of a cards essay, as home heard its takes (WALK7; parsed by
+ * `spokenCardStageOf`), by the card's id: the recorder answers it from the
+ * cut list and the transcripts home hands `record:cards --takes`.
+ */
+export const spokenCardSource = besideStage("spoken-cards")
+
+/**
  * An engagement report, by its ISO week (ENG12; `reportStageOf` parses it):
  * the recorder answers it with the report it writes from
  * `record:report --report-file`.

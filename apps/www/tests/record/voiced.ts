@@ -63,7 +63,7 @@ import { fail, here } from "./command"
  * `<file>.wav` in the video's folder (`ports`'), played whole: its length is the scene's. Its words
  * are the times home kept beside it, or with none, `said` spread over it.
  */
-async function ownTake({
+export async function ownTake({
   own,
   said: text,
   timed,

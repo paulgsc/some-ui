@@ -1,0 +1,22 @@
+{
+  "id": "C810",
+  "made": "2026-11-20",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/spoken-card.ts",
+    "some-ui:packages/video-render/src/cut-list.ts",
+    "some-ui:packages/video-render/src/cards-essay.ts",
+    "some-ui:apps/www/src/lib/web-surface/call/spoken-card-stage.tsx",
+    "some-ui:apps/www/tests/record/cards.ts"
+  ],
+  "chose": "Reach for WALK7 (the owner's voice in the general essay): rung 3, build only the gap. What is ours: the video is made by code from the owner's own takes kept on home, with nothing cut or edited (the owner, 2026-11-20: \"me editing anything defeats the thing and invalidates the claim we make in our own introduction\"), so no editor or hosted tool can stand in; path 1 of #3312 (a free editor, cutting by hand) is the tool the showcase uses meanwhile. The gap is built as a wrapper over what exists: a spoken card is a fourth `spoken` role in a cards essay's cut list, `{ role: \"spoken\", category, exchanges: [{ ask, take }] }`; its category maps to a template, and `introduction` is template A (the essays' `Call` bubbles, the Rust essay opening's asker in Kokoro then the owner's take, played whole, captioned from home's transcript), drawn on the existing `/essay` stage as `kind=spoken` and laid into the cards video as stills. No new look.",
+  "options": [
+    "this: a spoken role in the cards cut list, drawn by template A on the essays' stage",
+    "a new burn-in in @some-ui/burn-ins that redraws the bubbles on canvas (a second copy of template A's look)",
+    "an essay of its own kind beside the Rust and interview essays (a third template and schema for what is one scene)",
+    "cut the takes in a free editor (path 1 of #3312) and build nothing"
+  ],
+  "gray": "Where the owner's voice enters the general essay, and how a spoken card looks and is named in the cut list a session writes, is seen on screen and shapes every later category; no check or earlier decision settles it.",
+  "undo": "Remove the `spoken` role from SpokenSchema, spoken-card.ts and its stage, and the --takes flag of record:cards; no essay on main uses it but the sample `spoken-intro`.",
+  "refs": ["#3282", "#3312", "#3311", "#2980"]
+}

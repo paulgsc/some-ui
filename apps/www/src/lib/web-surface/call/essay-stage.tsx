@@ -46,6 +46,7 @@ import {
 } from "./frame"
 import { STAGE_WORDS as SW } from "./frame-words"
 import { InterviewEssayStagePage } from "./interview-essay-stage"
+import { SpokenCardStagePage } from "./spoken-card-stage"
 
 /**
  * The Rust Rounds essay's stage (`@some-ui/video-render`'s `essay.ts`, RR15):
@@ -60,7 +61,10 @@ import { InterviewEssayStagePage } from "./interview-essay-stage"
  */
 
 export type EssayStageProps = {
-  /** Which essay: `interview` for the interview essay's (IW6), the Rust Rounds essay's otherwise. */
+  /**
+   * Which essay: `interview` for the interview essay's (IW6), `spoken` for a
+   * cards essay's spoken card (WALK7), the Rust Rounds essay's otherwise.
+   */
   kind?: string
   /** The essay shown, by its week's id ("2026-w46"), or "sample". */
   week?: string
@@ -843,13 +847,24 @@ export const EssaySceneFrame = ({
   )
 }
 
-/** The stage of the essay `kind` names: the interview essay's, or the Rust Rounds essay's. */
+/**
+ * The stage of the essay `kind` names: the interview essay's, a cards
+ * essay's spoken card (`spoken`, WALK7: `week` names the card), or the Rust
+ * Rounds essay's.
+ */
 export const EssayStagePage = ({
   kind,
   ...props
 }: EssayStageProps): JSX.Element | null =>
   kind === "interview" ? (
     <InterviewEssayStagePage {...props} />
+  ) : kind === "spoken" ? (
+    <SpokenCardStagePage
+      card={props.week}
+      scene={props.scene}
+      record={props.record}
+      onScene={props.onScene}
+    />
   ) : (
     <RustEssayStage {...props} />
   )

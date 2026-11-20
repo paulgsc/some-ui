@@ -24,6 +24,9 @@ export const ESSAY_WORDS = {
   /** The opening conversation (#3269): a question, by its place, from 1. */
   question: (n: number): string => `Question ${n}`,
   theyAsk: "They ask",
+  /** A spoken card's stage (WALK7): its header, and its sample's. */
+  spokenCard: "Spoken card",
+  sampleCard: "Sample card, made-up takes",
   /** The owner's answer to it: their own take, or in the sample a synthetic voice reading one. */
   yourAnswer: "Your answer",
   noAnswer: "Nothing came for this one",

@@ -11,6 +11,7 @@
 import { z } from "zod"
 
 import { badgeProblems } from "./badges"
+import { CONVERSATION_MOST } from "./opening"
 import { LOOKS, VOICES } from "./plans"
 import { stampProblems } from "./stamp"
 import {
@@ -151,6 +152,19 @@ export const SayableSchema = z
   })
 
 /**
+ * The categories of spoken card, each its own template (owner, 2026-11-20):
+ * an introduction is template A's two bubbles, the one asking and the
+ * owner, as the Rust essay's opening plays them. A card plays at most an
+ * opening's exchanges (`CONVERSATION_MOST`).
+ */
+export const SPOKEN_CATEGORIES = ["introduction"] as const
+
+export type SpokenCategory = (typeof SPOKEN_CATEGORIES)[number]
+
+/** A take's id as home keeps it, as the Rust essay's opening names one. */
+export const SPOKEN_TAKE_ID = /^[A-Za-z0-9._:-]{1,64}$/
+
+/**
  * What a spoken cards essay says over a scene (EXPLAIN6, #3021): the essay's
  * intro, a scene's chapter line and then its narration, or the close. The
  * recorder has home's speaker say each (`cards-essay.ts`, `record:cards`).
@@ -166,6 +180,27 @@ export const SpokenSchema = z.discriminatedUnion("role", [
   }),
   /** What to do next, and where to look when it fails. */
   z.strictObject({ role: z.literal("close"), said: SayableSchema }),
+  /**
+   * A spoken card (WALK7, #3282): its category's template plays each
+   * exchange, the question in Kokoro and then the owner's own take from
+   * home, whole (`spoken-card.ts`). Nothing in it is cut or edited.
+   */
+  z.strictObject({
+    role: z.literal("spoken"),
+    category: z.enum(SPOKEN_CATEGORIES),
+    exchanges: z
+      .array(
+        z.strictObject({
+          ask: SayableSchema,
+          /** The home take that answers it, by its id (TAKES path A). */
+          take: z
+            .string()
+            .regex(SPOKEN_TAKE_ID, "it isn't a take's id, as home keeps it"),
+        })
+      )
+      .min(1)
+      .max(CONVERSATION_MOST),
+  }),
 ])
 
 export type Spoken = z.infer<typeof SpokenSchema>

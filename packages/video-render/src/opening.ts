@@ -28,7 +28,7 @@ const ASSESSING =
   /\b(?:scor(?:e|es|ed|ing)|ratings?|rated|grad(?:e|es|ed|ing)|self-assess\w*|assessments?|readiness|how ready|ready for (?:it|the|an?)\b|pass or fail|finish(?:ed)? line|graduat\w*|levell?ed up|level up)\b/giu
 
 /** The words of `text`, as a reader counts them: a dash alone is none. */
-const wordCount = (text: string): number =>
+export const wordCount = (text: string): number =>
   text.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length
 
 /** Whether `script`'s first line says the moniker. */

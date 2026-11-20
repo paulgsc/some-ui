@@ -12,7 +12,10 @@
  * no captures or takes for one: every scene is a card picture.
  *
  * From the cheat-sheet series' version 2 an essay is spoken (EXPLAIN6,
- * #3021, C370, C371: `Spoken`); one in version 1 is silent.
+ * #3021, C370, C371: `Spoken`); one in version 1 is silent. A spoken essay
+ * may hold spoken cards (WALK7, C810: `spoken-card.ts`), the owner's own
+ * takes from home in their category's template; then home hands the takes
+ * it names beside it.
  */
 
 import { z } from "zod"
@@ -25,6 +28,13 @@ import { isCaptions, parseCutList, problemsOf } from "./cut-list"
 import { resolve } from "./resolve"
 import type { Series } from "./series"
 import { withSeries } from "./series"
+import type { HeardSpokenCard, SpokenScene } from "./spoken-card"
+import {
+  SPOKEN_ASKER_VOICE,
+  SPOKEN_CATEGORY_TITLES,
+  spokenCardProblems,
+  spokenScenes,
+} from "./spoken-card"
 import { estimatedMs, heldFor, stillFile } from "./stills"
 import type { StillScene, StillTake } from "./stills"
 
@@ -35,6 +45,14 @@ export const CARDS_SERIES: ReadonlySet<string> = new Set(["cheat-sheet"])
 
 /** The first version of a cards series whose essays are spoken (C371). */
 export const CARDS_SPOKEN_VERSION = 2
+
+/**
+ * The first version of a cards series that plays spoken cards (WALK7,
+ * C811): its window is the whole frame, so a spoken card's still, drawn by
+ * its stage, fills it as the call's do. A cards essay before it has no
+ * still to place, so the window changes nothing drawn in an older version.
+ */
+export const CARDS_SPOKEN_CARD_VERSION = 3
 
 /** Whether `cut` is a spoken essay: drawn in a version that is (C371). */
 export const isSpokenEssay = (cut: CutList): boolean =>
@@ -170,6 +188,15 @@ function spokenProblems(cut: CutList): Array<string> {
   if (!shots.some((s) => s.spoken?.role === "scene"))
     problems.push("it has no scene with a chapter line and narration")
   shots.forEach((s, i) => {
+    if (s.spoken?.role === "spoken")
+      problems.push(
+        ...(cut.series.version < CARDS_SPOKEN_CARD_VERSION
+          ? [
+              `${s.id}: a spoken card plays from version ${CARDS_SPOKEN_CARD_VERSION} of ${cut.series.id}, and this essay pins ${cut.series.version}`,
+            ]
+          : []),
+        ...spokenCardProblems(s, s.spoken)
+      )
     const role = s.spoken?.role
     if (role === undefined)
       problems.push(
@@ -199,12 +226,14 @@ export type CardsLine = {
  * A scene of a spoken essay as the renderer draws it: the essay's scene
  * (`shot`), its files' name and all it says (`StillScene`), the takes it is
  * said in, one after another, and the chapter it opens, for the upload's
- * chapter marks.
+ * chapter marks. A spoken card's scene (`spoken`) is drawn by its stage, a
+ * still, and its answer is the owner's take, said in no line.
  */
 export type CardsScene = StillScene & {
   readonly shot: Shot
   readonly lines: ReadonlyArray<CardsLine>
   readonly mark?: string
+  readonly spoken?: { readonly card: string; readonly scene: SpokenScene }
 }
 
 /** The title of the close's chapter mark. */
@@ -218,48 +247,104 @@ const chapterTitle = (chapter: string): string =>
   withoutStop(chapter.replace(/^chapter\s+[\w-]+\s*[.:,]\s*/i, ""))
 
 /**
+ * A spoken card's scenes from its `n`th scene on: each exchange's question
+ * in the asker's voice, then the owner's take, said in no line. `heard` is
+ * the card as home heard its takes; without it (an estimate before the
+ * takes are read) an answer says nothing yet.
+ */
+function spokenCardScenes(
+  shot: Shot & { readonly spoken: { readonly role: "spoken" } },
+  n: number,
+  heard: HeardSpokenCard | undefined
+): Array<CardsScene> {
+  const card = heard ?? {
+    card: shot.id,
+    category: shot.spoken.category,
+    exchanges: shot.spoken.exchanges.map((e) => ({ ...e, transcript: "" })),
+  }
+  return spokenScenes({ schema: "some-ui.spoken-card/1", ...card }).map(
+    (scene, j) => {
+      const id = `${shot.id}-${scene.id}`
+      const file = stillFile(n + j, id)
+      return {
+        id,
+        file,
+        shot,
+        said: scene.said,
+        lines:
+          scene.take === undefined
+            ? [{ file, said: scene.said, voice: SPOKEN_ASKER_VOICE }]
+            : [],
+        spoken: { card: shot.id, scene },
+        ...(j === 0 ? { mark: SPOKEN_CATEGORY_TITLES[card.category] } : {}),
+      }
+    }
+  )
+}
+
+/**
  * What a spoken essay says, scene by scene: the intro, each scene's chapter
  * line in the host's voice then its narration in the narrator's, and the
  * close. A scene's two lines are two takes (C371), joined into one
- * (`joinedTake`), so the card is drawn once, under both. A scene with
+ * (`joinedTake`), so the card is drawn once, under both. A spoken card is a
+ * scene for each question and each answer (`spokenCardScenes`), with the
+ * card as home heard it from `heard`, by its shot's id. A scene with
  * nothing to say (which `parseCardsEssay` refuses) is left out.
  */
-export function cardsScenes(cut: CutList): Array<CardsScene> {
-  return cut.shots
-    .filter((shot) => shot.spoken !== undefined)
-    .map((shot, i) => {
-      const file = stillFile(i, shot.id)
-      const spoken = shot.spoken
-      if (spoken?.role === "scene")
-        return {
-          id: shot.id,
-          file,
-          shot,
-          said: `${spoken.chapter} ${spoken.narration}`,
-          lines: [
-            {
-              file: `${file}-chapter`,
-              said: spoken.chapter,
-              voice: CARDS_VOICES.host,
-            },
-            {
-              file: `${file}-narration`,
-              said: spoken.narration,
-              voice: CARDS_VOICES.narrator,
-            },
-          ],
-          mark: chapterTitle(spoken.chapter),
-        }
-      const said = spoken?.said ?? ""
-      return {
-        id: shot.id,
-        file,
-        shot,
-        said,
-        lines: [{ file, said, voice: CARDS_VOICES.host }],
-        ...(spoken?.role === "close" ? { mark: CLOSE_MARK } : {}),
-      }
-    })
+export function cardsScenes(
+  cut: CutList,
+  heard: ReadonlyMap<string, HeardSpokenCard> = new Map()
+): Array<CardsScene> {
+  const scenes: Array<CardsScene> = []
+  for (const shot of cut.shots) {
+    const spoken = shot.spoken
+    if (spoken?.role === "spoken")
+      scenes.push(
+        ...spokenCardScenes(
+          { ...shot, spoken },
+          scenes.length,
+          heard.get(shot.id)
+        )
+      )
+    else if (spoken !== undefined) scenes.push(cardScene(shot, scenes.length))
+  }
+  return scenes
+}
+
+/** A card's scene, the `i`th of the essay's: what it says, in whose voice. */
+function cardScene(shot: Shot, i: number): CardsScene {
+  const file = stillFile(i, shot.id)
+  const spoken = shot.spoken
+  if (spoken?.role === "scene")
+    return {
+      id: shot.id,
+      file,
+      shot,
+      said: `${spoken.chapter} ${spoken.narration}`,
+      lines: [
+        {
+          file: `${file}-chapter`,
+          said: spoken.chapter,
+          voice: CARDS_VOICES.host,
+        },
+        {
+          file: `${file}-narration`,
+          said: spoken.narration,
+          voice: CARDS_VOICES.narrator,
+        },
+      ],
+      mark: chapterTitle(spoken.chapter),
+    }
+  const said =
+    spoken?.role === "intro" || spoken?.role === "close" ? spoken.said : ""
+  return {
+    id: shot.id,
+    file,
+    shot,
+    said,
+    lines: [{ file, said, voice: CARDS_VOICES.host }],
+    ...(spoken?.role === "close" ? { mark: CLOSE_MARK } : {}),
+  }
 }
 
 /** Every take a spoken essay's scenes are said in, in order. */
@@ -317,7 +402,26 @@ export function voicedCardsCutList(
     ...cut,
     shots: scenes.map((scene, i) => {
       const { spoken: _spoken, ...shot } = scene.shot
-      return { ...shot, ...heldFor(scene, takes[i] ?? null) }
+      const held = heldFor(scene, takes[i] ?? null)
+      if (scene.spoken === undefined) return { ...shot, ...held }
+      // A spoken card's scene is its stage's still, held still as a voiced
+      // feed's are (CV1); the owner's answer cites the take it plays.
+      const take = scene.spoken.scene.take
+      return {
+        ...shot,
+        id: scene.id,
+        picture: { kind: "still" as const, source: `${scene.file}.png` },
+        ...held,
+        overrides: { motion: { kind: "still" as const } },
+        burnIns: [],
+        idea:
+          take === undefined
+            ? { origin: "agent" as const }
+            : {
+                origin: "you" as const,
+                from: { kind: "take" as const, id: take },
+              },
+      }
     }),
     burnIns: [
       ...cut.burnIns.filter((b) => !isCaptions(b)),
