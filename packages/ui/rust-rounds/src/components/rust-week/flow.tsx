@@ -14,6 +14,8 @@
  * - **Voice:** RR24's per-point takes (`PointTakes`), with a pick at each
  *   fork (`DecisionPick`) and its line when folded; a fork left alone goes
  *   with the recommended, and says so.
+ * - **The opening** (#3269), before the tickets: one page a question
+ *   (`./opening`'s `OpeningPage`).
  *
  * It renders `lib/week-play/flow-runtime`'s state and forwards taps; every
  * word is `lib/week-play/words`' `flow`. A change the phone couldn't keep is
@@ -24,6 +26,7 @@
 import type { JSX, ReactNode } from "react"
 import { useSyncExternalStore } from "react"
 import { pointRecording, PointTakes } from "@rust-rounds/components/point-takes"
+import { OpeningPage } from "@rust-rounds/components/rust-week/opening"
 import { RunView } from "@rust-rounds/components/rustc-run"
 import { Tracker } from "@rust-rounds/components/work-tracker"
 import { currentPick } from "@rust-rounds/lib/decisions"
@@ -35,7 +38,8 @@ import type {
   FlowRuntime,
   FlowState,
 } from "@rust-rounds/lib/week-play/flow-runtime"
-import { pointItem } from "@rust-rounds/lib/week-play/points"
+import { openingOf, pointItem } from "@rust-rounds/lib/week-play/points"
+import type { OpeningRuntime } from "@rust-rounds/lib/week-play/runtime"
 import type { WeekKind, WeekState } from "@rust-rounds/lib/week-play/spec"
 import { WEEK_WORDS } from "@rust-rounds/lib/week-play/words"
 import type { HeldWeek } from "@rust-rounds/lib/weeks"
@@ -68,6 +72,8 @@ export type FlowPagesProps = {
   readonly dispatch: (intent: BundleIntent<WeekKind>) => void
   readonly held: HeldWeek
   readonly flow: FlowRuntime
+  /** The week's opening, where it is read and recorded first (#3269). */
+  readonly opening: OpeningRuntime | null
 }
 
 /** "1 · 2", the forks an exercise builds toward. */
@@ -597,9 +603,63 @@ export const FlowPages = (props: FlowPagesProps): JSX.Element | null => {
   })
   const step = steps[at]
   const { tickets } = held.week
+  const controls = !recording && view.exercise === null && (
+    <PageControls
+      page={at}
+      pageCount={steps.length}
+      onPrevious={() => go(at - 1)}
+      onNext={() => go(at + 1)}
+      label={FLOW.paged}
+    />
+  )
+  const question = step === undefined ? null : openingOf(step.ticket)
+  const exchanges = held.week.opening?.exchanges ?? []
+  const exchange = question === null ? undefined : exchanges[question - 1]
+  if (
+    step !== undefined &&
+    question !== null &&
+    exchange !== undefined &&
+    props.opening !== null
+  ) {
+    return (
+      <div className="flex flex-col gap-3">
+        {!recording && (
+          <header className="flex flex-col gap-1">
+            <p className="text-muted-foreground text-xs font-semibold">
+              {[
+                FLOW.opening.kicker,
+                FLOW.opening.questionOf(question, exchanges.length),
+              ].join(FLOW.dot)}
+            </p>
+            <h2 className="text-2xl font-extrabold text-balance">
+              {FLOW.opening.title}
+            </h2>
+          </header>
+        )}
+        <section
+          ref={attach}
+          data-swipe="flow"
+          data-flow-step="opening"
+          aria-label={FLOW.opening.questionOf(question, exchanges.length)}
+          className="flex min-w-0 flex-col gap-3"
+        >
+          <OpeningPage
+            {...props}
+            opening={props.opening}
+            n={question}
+            ask={exchange.ask}
+            script={exchange.script}
+          />
+        </section>
+        {controls}
+      </div>
+    )
+  }
   const n = tickets.findIndex(({ id }) => id === step?.ticket)
   const ticket = tickets[n]
-  if (step === undefined || ticket === undefined) return null
+  if (step === undefined || ticket === undefined || step.step === "opening") {
+    return null
+  }
   return (
     <div className="flex flex-col gap-3">
       {!recording && (
@@ -650,15 +710,7 @@ export const FlowPages = (props: FlowPagesProps): JSX.Element | null => {
           />
         )}
       </section>
-      {!recording && view.exercise === null && (
-        <PageControls
-          page={at}
-          pageCount={steps.length}
-          onPrevious={() => go(at - 1)}
-          onNext={() => go(at + 1)}
-          label={FLOW.paged}
-        />
-      )}
+      {controls}
     </div>
   )
 }

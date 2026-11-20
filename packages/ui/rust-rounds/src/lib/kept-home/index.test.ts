@@ -95,6 +95,23 @@ describe("keptGoing", () => {
     expect(going(true)).toEqual([decided])
   })
 
+  it("holds a week sent with the opening's takes until home serves this build (#3269)", () => {
+    const storage = inMemoryStorage()
+    const opened: WeekSent = {
+      ...SENT,
+      opening: [
+        { n: 1, take: "o", recordedAt: SENT.at, version: 1, ms: 24_000 },
+      ],
+    }
+    weeksSent(storage).keep((kept) => [...kept, opened])
+    const going = (served: boolean): ReadonlyArray<unknown> =>
+      keptGoing(storage, MID, served)
+        .filter(({ kind }) => kind === "rustWeeks")
+        .map(({ wire }) => wire)
+    expect(going(false)).toEqual([])
+    expect(going(true)).toEqual([opened])
+  })
+
   it("sends only a week's latest send, and nothing once the week has closed (RR22)", () => {
     const storage = inMemoryStorage()
     const again: WeekSent = {

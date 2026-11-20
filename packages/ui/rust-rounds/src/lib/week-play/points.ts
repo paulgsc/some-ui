@@ -31,11 +31,29 @@ export function firstItemOf(
   return point === -1 ? items.indexOf(ticket) : point
 }
 
-/** What a week's item is: a whole ticket, or one point of one. */
+/**
+ * The bundle item of the opening's question `n` (#3269, from 1):
+ * `opening:2`, so its take's ref is `<week>:opening:<n>` (C736). A ticket's
+ * id is capitals, digits and a dash (`TB-101`), so it never reads as one.
+ */
+export const openingItem = (n: number): string => `opening:${n}`
+
+/** The opening's question an item answers, from 1; null for a ticket's item. */
+export function openingOf(item: string): number | null {
+  const found = /^opening:([1-9])$/.exec(item)
+  return found === null ? null : Number(found[1])
+}
+
+/**
+ * What a week's item is: a whole ticket, or one point of one. An opening's
+ * item stands on its own, as a whole ticket's does: its `ticket` is the
+ * item itself, `opening:<n>`, which is also its place on the flow's line.
+ */
 export type ItemOf = { readonly ticket: string; readonly point: number | null }
 
 /** The ticket and point an item names; a ticket's key never holds `:`. */
 export function itemOf(item: string): ItemOf {
+  if (openingOf(item) !== null) return { ticket: item, point: null }
   const at = item.lastIndexOf(":")
   if (at === -1) return { ticket: item, point: null }
   const point = Number(item.slice(at + 1))
@@ -45,21 +63,29 @@ export function itemOf(item: string): ItemOf {
 }
 
 /**
- * A week's items: each ticket, and with `perPoint` each of its points after
- * it, in the week's order.
+ * A week's items: the opening's questions first (`openings` of them, 0
+ * where the week has none or this build sends none), then each ticket, and
+ * with `perPoint` each of its points after it, in the week's order.
  */
 export function weekItems(
   tickets: ReadonlyArray<{
     readonly id: string
     readonly forks: ReadonlyArray<{ readonly question: string }>
   }>,
-  perPoint: boolean
+  perPoint: boolean,
+  openings = 0
 ): ReadonlyArray<string> {
-  return tickets.flatMap((ticket) =>
-    perPoint
-      ? [ticket.id, ...ticket.forks.map((_, i) => pointItem(ticket.id, i + 1))]
-      : [ticket.id]
-  )
+  return [
+    ...Array.from({ length: openings }, (_, i) => openingItem(i + 1)),
+    ...tickets.flatMap((ticket) =>
+      perPoint
+        ? [
+            ticket.id,
+            ...ticket.forks.map((_, i) => pointItem(ticket.id, i + 1)),
+          ]
+        : [ticket.id]
+    ),
+  ]
 }
 
 /** Which of a ticket's points its card lists: all, with a take, or with none. */

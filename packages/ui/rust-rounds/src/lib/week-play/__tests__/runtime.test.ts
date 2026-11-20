@@ -6,9 +6,11 @@
  * each take; it is said again and sent again, keeping every take and send;
  * a week past its deadline records and sends nothing.
  */
+import { openingOfWeek } from "@rust-rounds/lib/opening"
 import { QUILLMOSS_WEEK } from "@rust-rounds/lib/sample-week"
 import { TALLOWBROOK_WEEK_FILE } from "@rust-rounds/lib/sample-week/tallowbrook"
 import { readWeek } from "@rust-rounds/lib/week-check"
+import type { HomeWeekRecord } from "@rust-rounds/lib/week-play/opening"
 import type { RustWeek } from "@rust-rounds/lib/week-play/runtime"
 import { createRustWeek } from "@rust-rounds/lib/week-play/runtime"
 import type { WeekSent } from "@rust-rounds/lib/week-play/spec"
@@ -18,7 +20,11 @@ import type { HeldWeek } from "@rust-rounds/lib/weeks"
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { inMemoryStorage } from "@some-ui/core-utils"
 import type { EngagementEvent } from "@some-ui/engagement"
-import type { BundleTakes, HeardAnswer } from "@some-ui/voice-capture"
+import type {
+  BundleTakes,
+  HeardAnswer,
+  PatternTake,
+} from "@some-ui/voice-capture"
 import { ONE_TAKE } from "@some-ui/voice-capture"
 import type { SimulatedPattern } from "@some-ui/voice-capture/testing"
 import { simulatedPattern } from "@some-ui/voice-capture/testing"
@@ -772,5 +778,98 @@ describe("the decisions sent (RR29)", () => {
     expect(sent).toBeDefined()
     expect(sent).not.toHaveProperty("verdicts")
     on.detach()
+  })
+})
+
+/**
+ * C786 (after the owner's C785, #3304): home's record has the last word on a take of the opening
+ * that home held when the phone asked, as a note and named by a send it
+ * holds, and on no other: a take not yet home either way, or recorded while
+ * home's answer was on its way, stays the one in place.
+ */
+describe("the opening's takes home has judged (C786)", () => {
+  it("are those home held as the phone asked, as a note and named by a send it holds, not those only queued or said since", async () => {
+    const read = readWeek(TALLOWBROOK_WEEK_FILE)
+    if (!read.ok) throw new Error("the /2 sample reads")
+    const week = { ...read.week, opening: openingOfWeek() }
+    const line = `${week.id}:opening:1`
+    const take = (
+      id: string,
+      kept: PatternTake["kept"],
+      waits = false
+    ): PatternTake => ({
+      id,
+      answers: line,
+      durationMs: 20_000,
+      recordedAt: "2026-11-18T08:00:00.000Z",
+      standing: "earlier",
+      kept,
+      ...(waits ? { waits: true as const } : {}),
+    })
+    let list: ReadonlyArray<PatternTake> = [
+      take("held", { place: "home", since: "2026-11-18T09:00:00.000Z" }),
+      // Its note is home, but no send home holds names it yet.
+      take("unsent", { place: "home", since: "2026-11-18T09:00:00.000Z" }),
+      take("going", { place: "going" }),
+      take("waiting", { place: "phone" }, true),
+    ]
+    const storage = inMemoryStorage()
+    const opened = (at: string, takes: ReadonlyArray<string>): WeekSent => ({
+      week: week.id,
+      at,
+      answers: [],
+      passed: [],
+      opening: takes.map((id) => ({
+        n: 1,
+        take: id,
+        recordedAt: "2026-11-18T08:00:00.000Z",
+        version: 1,
+        ms: 20_000,
+      })),
+    })
+    const atHome = opened("2026-11-18T10:00:00.000Z", ["held", "going"])
+    weeksSent(storage).keep((kept) => [
+      ...kept,
+      atHome,
+      opened("2026-11-18T11:00:00.000Z", ["held", "going", "unsent"]),
+    ])
+    const { pattern, store } = onConfirm()
+    let answer: (record: HomeWeekRecord) => void = () => undefined
+    const runtime = createRustWeek({
+      week: { ...HELD, week },
+      takes: {
+        pattern,
+        takes: { getSnapshot: () => list, subscribe: store.subscribe },
+        discard: store.discard,
+        release: store.release,
+      },
+      storage,
+      home: { reach: () => "near", subscribe: () => (): void => undefined },
+      heard: () => Promise.resolve({ kind: "notYet" }),
+      homeHolds: (sent) => sent.at === atHome.at,
+      onHomeHolds: () => (): void => undefined,
+      homeRecord: () =>
+        new Promise((resolve) => {
+          answer = resolve
+        }),
+      now: Date.now,
+      newId: () => "unused",
+      engage: () => undefined,
+      perPoint: true,
+      verdicts: false,
+      opening: true,
+      onVisibility: () => (): void => undefined,
+    })
+    const detach = runtime.attach()
+    // Home answers after one more take went home: it wasn't asked of it.
+    list = [...list, take("later", { place: "home", since: "x" })]
+    answer({ sent: { kind: "none" }, opening: { kind: "known", takes: [] } })
+    await pass()
+    expect(runtime.opening?.getSnapshot().home).toEqual({
+      kind: "known",
+      takes: [],
+      judged: ["held"],
+    })
+    detach()
   })
 })

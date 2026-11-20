@@ -206,6 +206,14 @@ export type BundleSpec<K extends BundleKind> = {
   readonly resends: boolean
   /** Whether nothing more can be said, changed or sent in `draft` at `at`. */
   readonly closed: (draft: K["draft"], at: string) => boolean
+  /**
+   * Whether every take answering `answers` (`answersOf`'s line, of any
+   * draft) is kept: none is deleted on this phone, by Redo, Delete, Delete
+   * all or a later draft's clean-up, so each goes with the record its spec
+   * makes (Rust Rounds' opening, the owner's call C783: "Nothing you said is
+   * lost"). Absent, none is.
+   */
+  readonly keepsEvery?: (answers: string) => boolean
 }
 
 /** How far a person is through a bundle. */
@@ -686,7 +694,10 @@ export function bundleMachine<K extends BundleKind>(
   const deletable = (
     state: Pick<State, "recorded">,
     take: PatternTake
-  ): boolean => take.waits === true && !state.recorded.includes(take.id)
+  ): boolean =>
+    take.waits === true &&
+    !state.recorded.includes(take.id) &&
+    spec.keepsEvery?.(take.answers) !== true
 
   /** The takes of `item` a delete reaches (`deletable`). */
   const waitingOf = (

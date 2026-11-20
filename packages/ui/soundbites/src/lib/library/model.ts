@@ -31,11 +31,16 @@
  *   (`readAudio`) and plays home's.
  */
 import { assertNever } from "@some-ui/core-utils"
-import type { PatternTake } from "@some-ui/voice-capture"
+import type { PatternTake, PlayEffect, PlaySlice } from "@some-ui/voice-capture"
+import {
+  audioRead,
+  played,
+  playEnded,
+  QUIET_PLAY,
+  stopped,
+} from "@some-ui/voice-capture"
 
 import type { TakeOf } from "./kinds"
-import type { PlayEffect, PlaySlice } from "./play"
-import { audioRead, played, playEnded, QUIET, stopped } from "./play"
 
 /** What home heard in a take: empty `text` when it heard no words. */
 type LibraryHeard = {
@@ -281,7 +286,7 @@ export const INITIAL_LIBRARY: LibraryState = {
   query: EVERY_KIND,
   read: { kind: "reading" },
   seq: 0,
-  ...QUIET,
+  ...QUIET_PLAY,
   tooLong: false,
   behind: false,
   phone: "quiet",

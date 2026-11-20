@@ -31,9 +31,12 @@ import { PASTE_MAX, pasteLine } from "@rust-rounds/lib/week-play/paste"
 import {
   firstItemOf,
   itemOf,
+  openingItem,
+  openingOf,
   pointItem,
 } from "@rust-rounds/lib/week-play/points"
 import type {
+  OpeningRuntime,
   RustWeekPorts,
   WeekHeard,
 } from "@rust-rounds/lib/week-play/runtime"
@@ -158,14 +161,19 @@ const Brief = (
     paste: PasteRuntime
     atHome: WeekAtHome
     flow: FlowRuntime | null
+    opening: OpeningRuntime | null
   }
 ): JSX.Element => {
   const { machine, state, dispatch, held } = props
   const { week } = held
+  const { flow } = props
   // Tickets said, whole or by any point (RR24).
   const said = new Set(
     machine.spec.items
-      .filter((item) => machine.answered(state, item) !== null)
+      .filter(
+        (item) =>
+          openingOf(item) === null && machine.answered(state, item) !== null
+      )
       .map((item) => itemOf(item).ticket)
   ).size
   const { holds, last } = props.atHome
@@ -184,6 +192,23 @@ const Brief = (
           </p>
           <p className="text-muted-foreground">{WORDS.openUntil(week)}</p>
         </section>
+      )}
+      {flow !== null && props.opening !== null && (
+        <CardLink asChild>
+          <button
+            type="button"
+            onClick={() =>
+              flow.dispatch({ type: "openTicket", ticket: openingItem(1) })
+            }
+          >
+            <CardLinkBody className="gap-0.5">
+              <span className="font-semibold">{WORDS.flow.opening.title}</span>
+              <span className="text-muted-foreground text-xs">
+                {WORDS.flow.opening.questions(props.opening.spec.count)}
+              </span>
+            </CardLinkBody>
+          </button>
+        </CardLink>
       )}
       <section className="flex flex-col gap-2">
         <h3 className="text-sm font-semibold">{WORDS.tickets}</h3>
@@ -350,23 +375,34 @@ const TicketBody = ({
   )
 }
 
+/** What the look over and the week's notices call an item: an opening's question, a ticket or a point. */
+function itemLabel(week: Week, id: string): string {
+  const question = openingOf(id)
+  if (question !== null) {
+    return WORDS.flow.opening.label(
+      question,
+      week.opening?.exchanges[question - 1]?.ask ?? ""
+    )
+  }
+  const { ticket, point } = itemOf(id)
+  const found = week.tickets.find((each) => each.id === ticket)
+  return point === null
+    ? WORDS.ticketLabel(ticket, found?.title ?? "")
+    : WORDS.points.label(ticket, point, found?.forks[point - 1]?.question ?? "")
+}
+
 const Review = (props: Parts & { held: HeldWeek }): JSX.Element => {
   const { machine, state, held } = props
   const needs = machine.missing(state)
   // What the send would hold, tickets home holds from the last one included.
-  const n = machine.bundleRecord(state, state.at).answers.length
+  // Each question of the opening answered counts once, however many of
+  // its takes go (#3269, C783).
+  const record = machine.bundleRecord(state, state.at)
+  const n =
+    record.answers.length +
+    new Set((record.opening ?? []).map((each) => each.n)).size
   const notNear = state.reach === "near" ? null : WORDS.notNear[state.reach]
-  const label = (id: string): string => {
-    const { ticket, point } = itemOf(id)
-    const found = held.week.tickets.find((each) => each.id === ticket)
-    return point === null
-      ? WORDS.ticketLabel(ticket, found?.title ?? "")
-      : WORDS.points.label(
-          ticket,
-          point,
-          found?.forks[point - 1]?.question ?? ""
-        )
-  }
+  const label = (id: string): string => itemLabel(held.week, id)
   // A ticket's own take, from before takes went point by point (RR24), is
   // listed only where one was said: nothing records one any more.
   const perPoint = machine.spec.items.some((id) => itemOf(id).point !== null)
@@ -687,6 +723,7 @@ const Screen = (
     paste: PasteRuntime
     atHome: WeekAtHome
     flow: FlowRuntime | null
+    opening: OpeningRuntime | null
   }
 ): JSX.Element => {
   const { state, dispatch, held } = props
@@ -721,7 +758,11 @@ const Screen = (
       return <Brief {...props} />
     }
     case "cards": {
-      if (props.flow !== null) return <FlowPages {...props} flow={props.flow} />
+      if (props.flow !== null) {
+        return (
+          <FlowPages {...props} flow={props.flow} opening={props.opening} />
+        )
+      }
       return (
         <BundleCards
           {...props}
@@ -790,17 +831,7 @@ const WeekScreens = ({ ports, back, onRounds }: RustWeekProps): JSX.Element => {
   const closed = isClosed(held.week, state.at)
   const backable =
     !closed && (state.screen === "cards" || state.screen === "review")
-  const label = (id: string): string => {
-    const { ticket, point } = itemOf(id)
-    const found = held.week.tickets.find((each) => each.id === ticket)
-    return point === null
-      ? WORDS.ticketLabel(ticket, found?.title ?? "")
-      : WORDS.points.label(
-          ticket,
-          point,
-          found?.forks[point - 1]?.question ?? ""
-        )
-  }
+  const label = (id: string): string => itemLabel(held.week, id)
   return (
     <div className="flex flex-col gap-4">
       {backable && (
@@ -836,6 +867,7 @@ const WeekScreens = ({ ports, back, onRounds }: RustWeekProps): JSX.Element => {
           back={back}
           paste={week.paste}
           flow={week.flow}
+          opening={week.opening}
           {...(onRounds === undefined ? {} : { onRounds })}
         />
       )}

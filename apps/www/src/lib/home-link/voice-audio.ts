@@ -1,7 +1,7 @@
 /**
  * A note's audio back from home (paulgsc/server `GET /voice-notes/:id/audio`),
  * one `GET` per play, through the link's `keep` (LA8); it sends nothing of
- * the phone's but the note's id, and keeps nothing it gets. Three callers:
+ * the phone's but the note's id, and keeps nothing it gets. Its callers:
  *
  * - a Rust Rounds note (RR6 #2237, the owner's D4: home gives a note's audio
  *   back to the phone, for refine cards and replay), asked for by the voice
@@ -11,7 +11,10 @@
  * - a Studio take (ST32), asked for by Takes on home (`lib/take-library`)
  *   on each Play;
  * - any recording My data lists whose audio isn't on this phone (MD8,
- *   `lib/my-data`), on each Play, so the owner hears what they'd delete.
+ *   `lib/my-data`), on each Play, so the owner hears what they'd delete;
+ * - a take Needs your attention lists (HEARD3, `lib/take-reconcile`);
+ * - the take of an answer to Rust Rounds' opening that home plays (#3269),
+ *   handed in by the Rust Rounds route, on each Play.
  *
  * What home answers:
  *

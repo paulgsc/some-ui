@@ -674,8 +674,9 @@ declared (checked by reading every call site and by the tests named).
   video (`youtubeLink` (`@some-ui/core-utils`)); one that
   has `takes-read.ts` send anything but one `GET` of `takesPath(q)` per ask,
   lets anything but `lib/take-library` call it, lets anything but the voice
-  run (`voice-copy.ts`), My data (`lib/my-data`, MD8), `lib/take-library`
-  and `lib/take-reconcile` (HEARD3) read `lib/home-link/voice-audio.ts`, or has `@some-ui/soundbites`' `stepLibrary`
+  run (`voice-copy.ts`), My data (`lib/my-data`, MD8), `lib/take-library`,
+  `lib/take-reconcile` (HEARD3) and the Rust Rounds route (an opening's
+  take on Play, #3269) read `lib/home-link/voice-audio.ts`, or has `@some-ui/soundbites`' `stepLibrary`
   read but on the screen opening, Try again, a search (a blank one reads the
   newest), Show the newest, or once for the newest after one of the phone's
   takes reaches home (`arrived`) while no search is shown, or ask for audio
@@ -805,7 +806,8 @@ declared (checked by reading every call site and by the tests named).
   only the one asked last, one write goes at a time and setting an idea
   aside asks first), and Takes on home (`lib/take-library`, whose one
   request per read is the `GET` `takes-read.ts` sends, and only it calls
-  that module, and it and the voice run alone read `voice-audio.ts`;
+  that module, and it, the voice run, My data, Needs your attention and
+  the Rust Rounds route alone read `voice-audio.ts`;
   `lib/library/__tests__/model.test.ts` holds that a read answers only the
   one asked last, a search home would refuse is never asked, and audio is
   asked only on a Play, one at a time), and Studio's feed videos (`lib/call-videos`,

@@ -3,9 +3,12 @@
  * ticket is read, then worked in its academy, then voiced, and any step may
  * be skipped. The owner approved this flow (C690).
  *
- * - **One line of steps** (`flowSteps`): every ticket's steps in the week's
- *   order, so one pager turns through them all (GES5). A ticket with no
- *   academy (a `/1` week's, upgraded) has no academy step.
+ * - **One line of steps** (`flowSteps`): the opening's questions first, one
+ *   step each (#3269), then every ticket's steps in the week's order, so one
+ *   pager turns through them all (GES5). A ticket with no academy (a `/1`
+ *   week's, upgraded) has no academy step. An opening's step stands where a
+ *   ticket would, named by its item, `opening:<n>` (`lib/week-play/points`'
+ *   `openingItem`), which no ticket's id can be (C782).
  * - **A step's standing is its latest mark** (`stepStanding`): `done` or
  *   `skipped`, or `open` with none. Marks are appended, never written over
  *   (never lose the record), so a step skipped and later done says so in
@@ -19,12 +22,16 @@
  *   (`lib/week-play/store`), never every week's.
  */
 import type { Week } from "@rust-rounds/lib/formats/week"
+import { openingItem } from "@rust-rounds/lib/week-play/points"
 import { assertNever } from "@some-ui/core-utils"
 
-/** A step of a ticket's flow. */
-export type FlowStepKind = "read" | "academy" | "voice"
+/** A step of a ticket's flow, or one question of the week's opening. */
+export type FlowStepKind = "read" | "academy" | "voice" | "opening"
 
-/** One place on the week's line of steps. */
+/**
+ * One place on the week's line of steps: a ticket's step, or an opening's
+ * question, whose `ticket` is its item, `opening:<n>`.
+ */
 export type FlowStep = { readonly ticket: string; readonly step: FlowStepKind }
 
 /** What the owner did at a step: worked it through, or passed it by. */
@@ -46,13 +53,24 @@ type FlowTicket = Pick<Week["tickets"][number], "id" | "academy">
 const stepsOf = (ticket: FlowTicket): ReadonlyArray<FlowStepKind> =>
   ticket.academy.length > 0 ? ["read", "academy", "voice"] : ["read", "voice"]
 
-/** Every ticket's steps, in the week's order: the pager's line. */
-export function flowSteps(week: {
-  readonly tickets: ReadonlyArray<FlowTicket>
-}): ReadonlyArray<FlowStep> {
-  return week.tickets.flatMap((ticket) =>
-    stepsOf(ticket).map((step) => ({ ticket: ticket.id, step }))
-  )
+/**
+ * The opening's `openings` questions (0 where the week has none, or this
+ * build sends none), then every ticket's steps, in the week's order: the
+ * pager's line.
+ */
+export function flowSteps(
+  week: { readonly tickets: ReadonlyArray<FlowTicket> },
+  openings = 0
+): ReadonlyArray<FlowStep> {
+  return [
+    ...Array.from(
+      { length: openings },
+      (_, i): FlowStep => ({ ticket: openingItem(i + 1), step: "opening" })
+    ),
+    ...week.tickets.flatMap((ticket) =>
+      stepsOf(ticket).map((step) => ({ ticket: ticket.id, step }))
+    ),
+  ]
 }
 
 const sameStep = (a: FlowStep, b: FlowStep): boolean =>
@@ -156,7 +174,10 @@ export type Leave = "onward" | "toVoice"
 export type Worked = {
   /** Exercises of the ticket's academy ticked. */
   readonly ticked: number
-  /** Whether a take is said at any of the ticket's forks. */
+  /**
+   * Whether a take is said at any of the ticket's forks; for an opening's
+   * question, whether a take is in place for it.
+   */
   readonly said: boolean
 }
 
@@ -170,6 +191,9 @@ export type Worked = {
  * - **Academy**: done with any exercise ticked, else skipped; on to voice.
  * - **Voice**: done with any take said, else skipped; on to where the next
  *   ticket opens, or nowhere after the last.
+ * - **Opening** (#3269): done with a take in place for its question, one
+ *   said now or one home already plays ("Use this one"), else skipped; on
+ *   to the next step.
  *
  * A swipe or a tap on a step moves without marking anything: only these
  * buttons say what was done. Marks go through `mark`, so one repeating a
@@ -223,6 +247,12 @@ export function leave(
         .find((each) => each.ticket !== step.ticket)
       const to = next === undefined ? null : openFor(steps, kept, next.ticket)
       return { marks: kept, to: to ?? from }
+    }
+    case "opening": {
+      return {
+        marks: put(marks, "opening", worked.said ? "done" : "skipped"),
+        to: Math.min(from + 1, steps.length - 1),
+      }
     }
     default: {
       return assertNever(step.step)

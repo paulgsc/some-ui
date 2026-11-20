@@ -32,6 +32,8 @@
  *   that never started) still reads, by hand, as the script did before.
  */
 import { assertNever } from "@some-ui/core-utils"
+import type { TakePatternSnapshot } from "@some-ui/voice-capture"
+import { HEARD_FLOOR } from "@some-ui/voice-capture"
 
 /** Words a minute the band moves at until the reader sets a pace (C734). */
 export const DEFAULT_PACE_WPM = 170
@@ -211,4 +213,31 @@ export function bandOf(
           ? "moving"
           : "holding",
   }
+}
+
+/**
+ * What a take pattern measured, as the band hears it: `heard` while a take
+ * of a script in `totals` (its words, by the line its takes answer)
+ * records, at the level a take must reach to count as heard
+ * (`HEARD_FLOOR`); else `ended`. The caller's runtime feeds it on each
+ * change of the pattern, at its clock's `at` and the reader's `pace`.
+ */
+export function heardOf(
+  { take, answers }: Pick<TakePatternSnapshot, "take" | "answers">,
+  totals: ReadonlyMap<string, number>,
+  at: number,
+  pace: number
+): PrompterEvent {
+  const total = answers === null ? undefined : totals.get(answers)
+  return take.kind === "recording" && answers !== null && total !== undefined
+    ? {
+        type: "heard",
+        script: answers,
+        level: take.level,
+        floor: HEARD_FLOOR,
+        at,
+        total,
+        pace,
+      }
+    : { type: "ended" }
 }

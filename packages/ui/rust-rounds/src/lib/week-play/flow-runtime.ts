@@ -67,10 +67,15 @@ type FlowEvent =
 
 export type FlowPorts = {
   readonly week: Week
+  /** How many of the opening's questions come first on the line (#3269); 0 for none. */
+  readonly openings?: number
   readonly storage: KeyedStorage | null
   /** Milliseconds since the epoch. */
   readonly now: () => number
-  /** Whether a take is said at any of `ticket`'s forks. */
+  /**
+   * Whether a take is said at any of `ticket`'s forks; for an opening's
+   * question (`opening:<n>`), whether a take is in place for it.
+   */
   readonly said: (ticket: string) => boolean
   /** The ticket now on screen. */
   readonly onTicket: (ticket: string) => void
@@ -88,7 +93,7 @@ export function createFlow(ports: FlowPorts): FlowRuntime {
   const marksKept = weekMarks(ports.storage)
   const ticksKept = weekTicks(ports.storage)
   const picksKept = weekPicks(ports.storage)
-  const steps = flowSteps(week)
+  const steps = flowSteps(week, ports.openings ?? 0)
   const read = (): Pick<FlowState, "marks" | "ticks" | "picks"> => ({
     marks: ofWeek(marksKept.list() ?? [], week.id),
     ticks: ofWeek(ticksKept.list() ?? [], week.id),

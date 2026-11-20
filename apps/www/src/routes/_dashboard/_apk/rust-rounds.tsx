@@ -12,7 +12,8 @@ import {
   spanEventAtHome,
   spansOpenAtHome,
 } from "@/lib/home-link/rust-spans"
-import { askWeekRecord } from "@/lib/home-link/week-record"
+import { askAudio } from "@/lib/home-link/voice-audio"
+import { askRustWeekRecord } from "@/lib/home-link/week-record"
 import { ideaHome } from "@/lib/idea-hearing"
 import {
   phoneRustRoundsPorts,
@@ -34,10 +35,11 @@ import {
  * without words, each time the week opens already sent). They also read
  * whether home holds a send of the week, from what the link last heard
  * (`homeHoldsWeekSend`, RR22), never asking home, and what home last said
- * of the work tracker's spans (`lib/home-link/rust-spans`, RR26). They are handed in here, not by `lib/rust-rounds`: `lib/home-link`'s voice lane imports that
- * (`homeHoldsWeekSend`, RR22), and a closed week asks home's own record
- * what was sent (`askWeekRecord`, RR30), once each opening. They are handed in here, not by `lib/rust-rounds`: `lib/home-link`'s voice lane imports that
- * module, so it can't import the link back.
+ * of the work tracker's spans (`lib/home-link/rust-spans`, RR26), home's
+ * own record of the week (`askRustWeekRecord`, RR30, #3269) and a take of the
+ * opening's audio from home (`askAudio`, RR6's read). They are handed in here, not by `lib/rust-rounds`:
+ * `lib/home-link`'s voice lane imports that module, so it can't import the
+ * link back.
  */
 const PhoneRustRounds = (): JSX.Element => {
   // Made once per mount: the session and the week read them once.
@@ -54,7 +56,8 @@ const PhoneRustRounds = (): JSX.Element => {
         homeWeek: homeWeekSpans,
         atHome: spanEventAtHome,
       }),
-      homeSent: (week) => askWeekRecord("rust-weeks", week),
+      homeRecord: askRustWeekRecord,
+      homeAudio: askAudio,
     }),
   }))
   const [rounds, setRounds] = useState(false)

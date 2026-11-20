@@ -12,7 +12,9 @@
  */
 import type { FlowStepKind, Standing } from "@rust-rounds/lib/flow"
 import type { Week } from "@rust-rounds/lib/formats/week"
-import type { BundleWords } from "@some-ui/shared"
+import { formatTimecode } from "@some-ui/core-utils"
+import type { BundleWords, TeleprompterWords } from "@some-ui/shared"
+import type { TakeWords } from "@some-ui/voice-capture"
 import { TAKE_WORDS } from "@some-ui/voice-capture"
 
 import { CARD_WORDS, clock, weekday, weekNumber } from "./card-words"
@@ -71,7 +73,7 @@ const BUNDLE: BundleWords = {
       `Your take on ${label} hasn't left this phone, so deleting it removes it for good. You can say it again.`,
     allTitle: "Delete every take this week?",
     allLine:
-      "None of them has left this phone, so every take this week is removed for good.",
+      "None of them has left this phone, so every take this week is removed for good. Any answer to your essay's opening stays: those are always kept.",
     yes: "Delete for good",
     keep: "Keep it",
   },
@@ -273,6 +275,7 @@ export const WEEK_WORDS = {
       read: "Read",
       academy: "Academy",
       voice: "Voice",
+      opening: "Your opening",
     } satisfies Record<FlowStepKind, string>,
     stepsOf: (ticket: string): string => `Steps of ${ticket}`,
     standing: {
@@ -345,7 +348,85 @@ export const WEEK_WORDS = {
         `${n} of ${of} ${of === 1 ? "fork" : "forks"} decided by you · the rest go with the recommended · all on this phone until you send`,
       next: (ticket: string): string => `On to ${ticket}`,
     },
+    /**
+     * The essay's opening (#3269): someone new to Rust Rounds asks, the
+     * owner reads an answer through the teleprompter, one question a page.
+     * With a take in place the page says which, from when and how long,
+     * and offers to use it or record again (the owner, 2026-11-19). A
+     * recording ends with "Stop"; nothing here says a step is over.
+     */
+    opening: {
+      kicker: "Before the tickets",
+      /** On the brief, under the opening's name. */
+      questions: (n: number): string =>
+        `${n === 1 ? "1 question" : `${n} questions`} someone new asks you, before the tickets`,
+      /** In the look over: "Your opening, question 1: What is Rust Rounds…". */
+      label: (n: number, ask: string): string =>
+        `Your opening, question ${n}: ${ask}`,
+      title: "Your essay's opening",
+      questionOf: (n: number, of: number): string => `Question ${n} of ${of}`,
+      line: "Someone who has never heard of Rust Rounds asks you this. Read your answer aloud. Next Monday's essay opens on the conversation: their voice asks, yours answers.",
+      theyAsk: "They ask",
+      script: "Your answer",
+      /** Where the question's take stands. */
+      unknown:
+        "Not known yet: home hasn't said which take of this answer the essay plays. You can still record one.",
+      none: "No take of this answer yet. Read it aloud to record one.",
+      inPlace: "The take the essay plays",
+      /** Home's take: "Recorded 12 Nov, 9:40 PM, in week 46 · 0:24". */
+      fromHome: (when: string, week: string, ms: number | null): string =>
+        [
+          `Recorded ${when}, in week ${weekNumber(week)}`,
+          ...(ms === null ? [] : [formatTimecode(ms)]),
+        ].join(" · "),
+      onHome: "Kept on home",
+      /** A take said this week, under the take's own row. */
+      here: "Recorded this week. It stays on this phone until you send the week, then plays from home.",
+      play: "Play",
+      stop: "Stop",
+      asking: "Asking home for it…",
+      missed: "Home couldn't give it to this phone just now.",
+      playAgain: "Play again",
+      use: "Use this one",
+      again: "Record again",
+      keepsEarlier:
+        "Recording again keeps this one on home. The essay plays the newest.",
+      notThisWeek: "Not this week",
+      band: {
+        waiting: "Moves once it hears you. You can scroll it yourself too.",
+        moving: "Moves while you speak",
+        holding: "Holding until you speak",
+        paused: "Paused. The take is still recording.",
+      } satisfies TeleprompterWords["band"],
+      ready: "Read it aloud once you start recording.",
+      pause: "Pause",
+      goOn: "Go on",
+      slower: "Slower",
+      faster: "Faster",
+      pace: (wpm: number): string => `About ${wpm} words a minute`,
+      time: (ms: number): string => formatTimecode(ms),
+    },
   },
   /** The cards from before the weeks, until RR20 retires them. */
   rounds: "The rounds from before",
 } as const
+
+/**
+ * The take button of the opening's answer, said its way (#3269): it
+ * records "Record your answer" and ends with "Stop".
+ */
+export const OPENING_TAKE_WORDS: TakeWords = {
+  ...TAKE_WORDS,
+  button: {
+    ...TAKE_WORDS.button,
+    ready: "Record your answer",
+    again: WEEK_WORDS.flow.opening.again,
+    recording: "Stop",
+  },
+  buttonLabel: {
+    ...TAKE_WORDS.buttonLabel,
+    ready: "Record your answer",
+    again: "Record your answer again",
+    recording: "Stop, and keep it",
+  },
+}
