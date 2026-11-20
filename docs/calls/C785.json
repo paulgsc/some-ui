@@ -6,7 +6,7 @@
     "packages/ui/rust-rounds/src/lib/week-play/opening.ts",
     "server:apps/servers/file_host/src/handlers/rust_week_record.rs"
   ],
-  "chose": "Resolve each opening question to the newest take home heard (#3304, option a): an opening take home couldn't hear (garbled, or nothing said; HEARD #3070) never hides an older one it did, so an unheard re-recording never costs the week its opening answer, and it still shows under Takes › Needs your attention. On the phone, a take said this week shows as the one in place only until home has answered after it was sent; from then on the page takes home's record, which passes over an unheard take.",
+  "chose": "Resolve each opening question to the newest take home heard (#3304, option a): an opening take home couldn't hear (garbled, or nothing said; HEARD #3070) never hides an older one it did, so an unheard re-recording never costs the week its opening answer, and it still shows under Takes › Needs your attention. On the phone, a take said this week shows as the one in place only until home holds it and has answered a read asked after that; from then on the page takes home's record, which passes over an unheard take.",
   "options": [
     "(a) resolve to the newest heard take",
     "(b) newest wins, and an unheard newest drops the question until the owner records again"

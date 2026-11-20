@@ -425,10 +425,16 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
       // too, open or closed (#3269): which take each question plays is
       // home's to say, never this phone's memory of it.
       const closed = isClosed(week, new Date(ports.now()).toISOString())
+      // The takes home holds as the phone asks: home's answer has judged
+      // each of them, and no other (C785).
+      const held = ports.takes.takes
+        .getSnapshot()
+        .filter((take) => take.kept?.place === "home")
+        .map((take) => take.id)
       const asking =
         ports.homeRecord !== undefined && (closed || opening !== null)
           ? ports.homeRecord(week.id).then((said) => {
-              opening?.heardHome(said.opening)
+              opening?.heardHome(said.opening, held)
               if (!closed) return
               homeSaid = said.sent
               lookHome(true)
@@ -504,7 +510,7 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
 
 type OpeningInner = OpeningRuntime & {
   /** Home's record answered. */
-  readonly heardHome: (home: HomeOpening) => void
+  readonly heardHome: (home: HomeOpening, judged: ReadonlyArray<string>) => void
   /** The screen is showing: the band follows the take under way. Returns the detach. */
   readonly attach: () => () => void
 }
@@ -622,12 +628,7 @@ function openingRuntime(
       ports.pace?.write(pace)
       set({ ...view, pace })
     },
-    heardHome(home): void {
-      // The takes sent by the time home answered: home has judged them.
-      const judged = ports.takes.takes
-        .getSnapshot()
-        .filter((take) => take.waits !== true)
-        .map((take) => take.id)
+    heardHome(home, judged): void {
       set({
         ...view,
         home: home.kind === "known" ? { ...home, judged } : home,
