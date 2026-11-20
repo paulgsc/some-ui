@@ -363,11 +363,40 @@ user story, and whether each does it the owner's way. For each, it records:
 - how the work would reach an issue or a session;
 - its honest limits.
 
-It ends with a recommendation: use the tool as is, fold it in (embed or self-host on home),
-or build. Building is one option among the others, chosen for a stated reason ("no tool does
-it your way because …"), never the default. The owner (2026-11-19, on #3197): "The key is that
-it's in the PR, meaning part of the commit and part of the history, and that we're making a
-conscious decision."
+It ends with a recommendation on a ladder of three rungs, taken from the top:
+
+1. **Use** a tool as is, wherever it already runs: open source first, then freemium.
+2. **Fold it in:** run or embed the tool on home, and write only the wiring.
+3. **Build** what no tool does.
+
+The owner (2026-11-19, on #3197): "The key is that it's in the PR, meaning part of the commit
+and part of the history, and that we're making a conscious decision."
+
+**Build only what is ours, and only on evidence** (owner, 2026-11-20, C787). The owner, close
+paraphrase: "We don't want to invent the world. We descend to a specific set of things, the
+ones we are very opinionated on and that are idiosyncratic to ourselves. We don't create a
+pipeline for the sake of a pipeline. For a generic user story, stress an outsourced solution,
+freemium or open source, guided by real feedback and telemetry, not gut feeling, and truly
+prove that we've exhausted it and still have a pain point." So:
+
+- **Name what is ours.** A story is generic when someone who doesn't know this repo could ask
+  for it in the same words ("denoise any video and lay music under it"). A generic story stops
+  at rung 1 or 2. Rung 3 is for what is peculiar to this story and nobody else's: the owner's
+  record and where it lives, the mandates, an opinion the owner holds. The reach names that
+  part in one sentence. When it can't, the verdict is not to build.
+- **Descend a rung only on evidence of a pain point.** To pass a rung, the reach links what
+  real use of it showed: the owner's words on an issue or PR, a session note, a failure or
+  measure from telemetry or the assurance ledger, or a tool's limit hit on real work. A
+  guess, a "could" or a "nicer" is not evidence. A rung's candidates are exhausted when each
+  was tried on real work or ruled out for a stated reason. The mandates are such a reason: a
+  third party may not hold the owner's personal data, so a freemium service is ruled out for
+  it untried, and the reach moves to what is self-hosted on home.
+- **No evidence yet means try the tool.** When no candidate on a rung has met real use, the
+  verdict is that rung's best candidate. The story then waits on that use, as an ask when the
+  owner must act (an account, an upload). The pain point it leaves, if any, is what a later
+  reach descends on.
+- **Build only the gap.** At rung 3, build the part that is ours and keep the tool for the
+  rest: a wrapper over it, not a replacement for it.
 
 **When a reach is owed.** It is owed when the first design of a story would add one of these:
 
@@ -383,10 +412,12 @@ story whose point is the machinery itself, such as the owner wanting to learn by
 The reach comes before the first PR of that machinery, not after.
 
 **Where it goes.** A reach ends in a call (below, "A gray-area call keeps who made it"), with
-each tool and building among its `options`, the verdict and its reasons in `chose`, and a link
-to the comparison when it is long (a private page). The epic's body names the call under a
+each tool and building among its `options`. `chose` holds the verdict and its rung; for a
+descent, the part that is ours and the evidence it descends on, linked. A long comparison is
+linked too (a private page). The epic's body names the call under a
 "Reach" heading beside "Where we are". The session makes the call itself, `by: claude`, and
-builds on it; the owner (2026-11-19, on #3197): "if it comes down to build ourselves, we agree". When the verdict
+acts on it. When the ladder reaches building on evidence, the owner (2026-11-19, on #3197):
+"if it comes down to build ourselves, we agree". When the verdict
 is to use or fold in a tool that needs the owner to act (an account, a setup step on home) or
 sends their data to a third party, it is also an ask, and that tool waits on their answer.
 
