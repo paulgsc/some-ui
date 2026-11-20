@@ -6313,11 +6313,12 @@
         },
         {
           "id": "given",
-          "name": "The rust_essays worker checks the essay against the week's final record and writes it with the takes it plays to the week's folder. Ours, on home.",
+          "name": "The rust_essays worker checks the essay against the week's final record and writes it, the week as home serves it (week.json, for the phone's card pictures) and the takes it plays to the week's folder. Ours, on home.",
           "owner": "ours",
           "on": "home",
           "paths": [
             "server:apps/servers/file_host/src/rust_essays.rs",
+            "server:apps/servers/file_host/src/handlers/rust_rounds.rs",
             "server:crates/db/rust_round"
           ]
         },
