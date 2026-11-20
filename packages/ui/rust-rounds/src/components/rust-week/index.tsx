@@ -396,7 +396,7 @@ export type TicketScreenProps = {
 /**
  * One ticket's card as the phone draws it, with nothing to tap: what it
  * asks and what rustc did, each part named (`data-region`) for an essay's
- * capture (RR31, #3288). The week's closed screens draw the same body.
+ * capture (RR31, #3288).
  */
 export const TicketScreen = ({
   held,

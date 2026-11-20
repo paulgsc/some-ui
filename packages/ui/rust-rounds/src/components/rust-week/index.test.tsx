@@ -31,6 +31,7 @@ import { createWorkTracker } from "@rust-rounds/lib/work-tracker/runtime"
 import { TRACKER_WORDS } from "@rust-rounds/lib/work-tracker/words"
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { inMemoryStorage } from "@some-ui/core-utils"
+import { parseRegionRef } from "@some-ui/video-render"
 import type { Playback } from "@some-ui/voice-capture"
 import { ONE_TAKE } from "@some-ui/voice-capture"
 import { simulatedPattern, takeButton } from "@some-ui/voice-capture/testing"
@@ -836,6 +837,9 @@ describe("a ticket's screen for the essay (RR31)", () => {
       (_, at) => `${ticket.id}:diagnostic:${String(at + 1)}`
     )
     expect(diagnostics.length).toBeGreaterThan(0)
+    // The card's names are the essay's: each reads by video-render's grammar.
+    for (const ref of regions(container))
+      expect(parseRegionRef(ref)?.ticket, ref).toBe(ticket.id)
     expect(regions(container)).toEqual([
       `${ticket.id}:question`,
       ...points,

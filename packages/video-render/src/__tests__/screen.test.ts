@@ -138,9 +138,11 @@ describe("screens.json", () => {
     )
   })
 
-  it("refuses two screens of one ticket, and another schema", () => {
+  it("refuses two screens of one ticket", () => {
     expect(problems(file([screen, screen])).join()).toContain("two screens")
-    expect(problems({ ...file([]), schema: "x" })).not.toEqual([])
+    expect(
+      problems(file([screen, { ...screen, id: "QM-312", regions: [] }])).join()
+    ).toContain("two screens' picture")
   })
 })
 

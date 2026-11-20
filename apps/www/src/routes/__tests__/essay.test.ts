@@ -26,8 +26,10 @@ describe("/essay's search", () => {
     )
   })
 
-  it("drops what is not a week, a scene's id or the flag", () => {
-    expect(read({ week: 46, scene: 3, record: "yes", ticket: "x" })).toEqual({})
+  it("drops what is not a week, a scene's id, a ticket or the flag", () => {
+    expect(
+      read({ week: 46, scene: 3, record: "yes", ticket: 7, other: "x" })
+    ).toEqual({})
     expect(read({ week: "", scene: "" })).toEqual({})
   })
 })

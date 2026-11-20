@@ -131,10 +131,7 @@ export const EssaySceneFrame: ComponentType<EssaySceneFrameProps> =
       ).Component
     : Nothing
 
-/**
- * A Rust Rounds ticket's card at the phone's width, for an essay to show
- * (RR31); nothing where the build has no web surface.
- */
+/** `./call/rust-screen-stage`; nothing where the build has no web surface. */
 export const RustScreenStage: ComponentType<RustScreenStageProps> =
   import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")
     ? lazyWithPreload(

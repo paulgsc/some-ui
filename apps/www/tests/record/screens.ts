@@ -9,18 +9,22 @@
  * `--week-file` is the week as home serves it (`GET /rust-weeks/<id>`, with
  * its rustc runs). The stage reads it by the phone's own door
  * (`heldFromHome`) and refuses one the phone couldn't hold; the recorder
- * reads only its id and its tickets' keys, to know which cards to open. As in
- * `motion walk`'s sandbox, the page reaches nothing but the stage and that
- * file: every other request is refused, so the week goes nowhere.
+ * reads only its id and its tickets' keys, to know which cards to open
+ * (`@some-ui/rust-rounds` can't load in node: its entry carries CSS).
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import type { Browser, Page, Route } from "@playwright/test"
 import type { Measured, Screen, Screens } from "@some-ui/video-render"
-import { parseScreens, regionsOf, SCREENS_SCHEMA } from "@some-ui/video-render"
+import {
+  parseScreens,
+  regionsOf,
+  SCREENS_SCHEMA,
+  TICKET_KEY_PATTERN,
+} from "@some-ui/video-render"
 import { z } from "zod"
 
-import { fail } from "./command"
+import { answerFile, fail } from "./command"
 import { shownFrame } from "./voiced"
 
 /** The phone the cards are drawn for: the snips' phone (`lib/snips`' `WEB_VIEWPORTS`). */
@@ -33,7 +37,9 @@ const SCALE = 2
 const ServedSchema = z.object({
   id: z.string(),
   week: z.object({
-    tickets: z.array(z.object({ id: z.string().regex(/^[A-Z][A-Z0-9-]+$/) })),
+    tickets: z.array(
+      z.object({ id: z.string().regex(new RegExp(`^${TICKET_KEY_PATTERN}$`)) })
+    ),
   }),
 })
 
@@ -77,7 +83,7 @@ export async function captureScreens({
     // Registered first, so the read below answers before it: Playwright
     // tries the newest route first.
     await page.route("**/*", (route) => onlyTheStage(route, origin))
-    await page.route(READ, (route) => answer(route, bytes, week))
+    await page.route(READ, (route) => answerFile(route, bytes, week))
     const screens: Array<Screen> = []
     for (const ticket of served.data.week.tickets) {
       await page.goto(
@@ -87,8 +93,11 @@ export async function captureScreens({
         }).toString()}`
       )
       const card = await shownFrame(page, `[data-screen="${ticket.id}"]`)
+      const drawn = await page.locator("[data-week]").getAttribute("data-week")
+      if (drawn !== week)
+        fail([`the stage drew the week of ${drawn ?? "none"}, not ${week}`])
       await page.evaluate(() => document.fonts.ready)
-      screens.push(await photograph(page, card, ticket.id, out))
+      screens.push(await photograph(card, ticket.id, out))
     }
     const record = {
       schema: SCREENS_SCHEMA,
@@ -110,42 +119,26 @@ export async function captureScreens({
 
 /** One card, whole, and its named parts, measured from the card's top-left. */
 async function photograph(
-  page: Page,
   card: ReturnType<Page["locator"]>,
   id: string,
   out: string
 ): Promise<Screen> {
-  const at = await card.evaluate((element) => {
-    const r = element.getBoundingClientRect()
-    return {
-      x: r.x + window.scrollX,
-      y: r.y + window.scrollY,
-      width: r.width,
-      height: r.height,
-    }
-  })
-  const measured: Array<Measured> = await card.evaluate((element) =>
-    [...element.querySelectorAll<HTMLElement>("[data-region]")].map((part) => {
-      const r = part.getBoundingClientRect()
-      const c = element.getBoundingClientRect()
-      return {
-        ref: part.dataset.region ?? "",
-        box: {
-          x: r.x - c.x,
-          y: r.y - c.y,
-          width: r.width,
-          height: r.height,
-        },
+  const measured: Array<Measured> = await card.evaluate((element) => {
+    const c = element.getBoundingClientRect()
+    return [...element.querySelectorAll<HTMLElement>("[data-region]")].map(
+      (part) => {
+        const r = part.getBoundingClientRect()
+        return {
+          ref: part.dataset.region ?? "",
+          box: { x: r.x - c.x, y: r.y - c.y, width: r.width, height: r.height },
+        }
       }
-    })
-  )
-  const width = Math.ceil(at.width)
-  const height = Math.ceil(at.height)
-  const png = await page.screenshot({
-    fullPage: true,
-    clip: { x: at.x, y: at.y, width, height },
-    animations: "disabled",
+    )
   })
+  const png = await card.screenshot({ animations: "disabled" })
+  // The picture's own size (PNG's IHDR), in CSS pixels.
+  const width = png.readUInt32BE(16) / SCALE
+  const height = png.readUInt32BE(20) / SCALE
   const file = `${id}.png`
   await writeFile(join(out, file), png)
   return {
@@ -187,15 +180,4 @@ function onlyTheStage(route: Route, origin: string): Promise<void> {
   return new URL(route.request().url()).origin === origin
     ? route.fallback()
     : route.abort("blockedbyclient")
-}
-
-/** Answers the stage's read of the week from the file alone. */
-function answer(route: Route, bytes: Buffer, week: string): Promise<void> {
-  const name = new URL(route.request().url()).pathname.split("/").at(-1)
-  if (name !== `${week}.json`) return route.fulfill({ status: 404, body: "" })
-  return route.fulfill({
-    status: 200,
-    contentType: "application/json",
-    body: bytes,
-  })
 }

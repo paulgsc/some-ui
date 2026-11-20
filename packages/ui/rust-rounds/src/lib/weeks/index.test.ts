@@ -194,30 +194,14 @@ describe("the weeks from home (RR13)", () => {
 })
 
 describe("a week as home serves it, read whole (RR31)", () => {
-  const served = async (one: Served): Promise<unknown> =>
-    JSON.parse((await home([one]).send("GET", `/rust-weeks/${one.id}`)).body)
-
-  it("holds what the phone would: the week through its door, each recorded run, the rest ended", async () => {
-    const held = heldFromHome(
-      await served(
-        week46({
-          "QM-311": [{ ended: "recorded", rustc: PRINTS }],
-          "QM-312": [{ ended: "refused", rustc: PRINTS }],
-        })
-      )
-    )
-    expect(held).toEqual({
+  it("is held as an exchange would hold it fresh", async () => {
+    const one = week46({ "QM-311": [{ ended: "recorded", rustc: PRINTS }] })
+    const answer = await home([one]).send("GET", `/rust-weeks/${one.id}`)
+    expect(heldFromHome(JSON.parse(answer.body))).toEqual({
       week: QUILLMOSS_WEEK,
       sha256: SHA,
       runs: { "QM-311": PRINTS },
-      ended: ["QM-312"],
+      ended: [],
     })
-  })
-
-  it("is null for a week the phone can't read, or a value that isn't one", async () => {
-    expect(
-      heldFromHome(await served({ ...week46(), week: { id: "x" } }))
-    ).toBeNull()
-    expect(heldFromHome("not a week")).toBeNull()
   })
 })

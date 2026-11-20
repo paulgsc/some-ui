@@ -7,7 +7,6 @@
  */
 import { readdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
-import type { Route } from "@playwright/test"
 import {
   ESSAY_SCHEMA,
   ESSAY_VOICES,
@@ -43,7 +42,7 @@ import type {
 
 import type { CallValues } from "./call-recording"
 import { FRAME, SERIES } from "./call-recording"
-import { fail, here, launchChromium } from "./command"
+import { answerFile, fail, here, launchChromium } from "./command"
 import { captureScreens } from "./screens"
 import {
   placeBed,
@@ -163,17 +162,6 @@ async function takesIn<E extends { readonly week: { readonly id: string } }>(
   )
 }
 
-/** Answers the stage's read of the essay from the kept file alone. */
-function answer(route: Route, bytes: Buffer, week: string): Promise<void> {
-  const name = new URL(route.request().url()).pathname.split("/").at(-1)
-  if (name !== `${week}.json`) return route.fulfill({ status: 404, body: "" })
-  return route.fulfill({
-    status: 200,
-    contentType: "application/json",
-    body: bytes,
-  })
-}
-
 /**
  * Records and renders the essay of `values`, of either kind, into
  * `<out>/<week>/essay.mp4`; with `preview`, the Rust Rounds essay's sample
@@ -245,7 +233,7 @@ async function recordKind<E extends { readonly week: { readonly id: string } }>(
     })
     const bytes = kept?.bytes
     if (bytes !== undefined)
-      await page.route(kind.read, (route) => answer(route, bytes, week))
+      await page.route(kind.read, (route) => answerFile(route, bytes, week))
     const url = (scene: string): string =>
       `${site.origin}/essay?${new URLSearchParams({
         ...(kind.stage === null ? {} : { kind: kind.stage }),
@@ -269,7 +257,6 @@ async function recordKind<E extends { readonly week: { readonly id: string } }>(
     if (!preview) refuseLong(scenes, policy)
     const root = here(preview ? values.out : join(values.out, essay.week.id))
     const format = kind.format(essay)
-    // The phone's own cards of the week, before any still (RR31).
     if (weekFile !== undefined)
       await captureScreens({
         browser,

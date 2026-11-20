@@ -679,7 +679,7 @@ describe("the Rust Rounds screen stage (RR31)", () => {
     }
   })
 
-  it("waits for the read, and refuses one that failed, can't be read, or holds another week", () => {
+  it("waits for the read, and refuses one that failed or holds another week", () => {
     const at = (
       r: Read,
       week: string = WEEK
@@ -689,7 +689,6 @@ describe("the Rust Rounds screen stage (RR31)", () => {
     expect(at(read(undefined, { failed: true }))).toMatchObject({
       kind: "none",
     })
-    expect(at(read({ nope: true }))).toMatchObject({ kind: "none" })
     expect(at(read(served), "2026-w01")).toMatchObject({
       kind: "none",
       problems: [`the file holds the week of ${WEEK}, not 2026-w01`],

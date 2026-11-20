@@ -1,13 +1,8 @@
 /**
  * Screens photographed for an essay, and the parts of each a scene can point
  * at, each named and boxed, so a scene can zoom to one (RR31, #3288; call
- * C790). Generic: a Rust essay photographs the phone's ticket cards from the
- * owner's week, and a cards essay (EXPLAIN, #2980) may photograph any screen
- * that marks its parts with `data-region`, on sample data for a viewer.
- *
- * A capture writes `screens.json` (`some-ui.screens/1`) beside the
- * pictures; this module is its one reading. www's `record:essay
- * --week-file` (`tests/record/screens.ts`) is the first capture.
+ * C790). A capture writes `screens.json` (`some-ui.screens/1`) beside the
+ * pictures; this module is its one reading.
  *
  * A region's name (`RegionRef`) is namespaced by its screen:
  * `<screen>:<name>`, the name one or more `:`-separated slugs. A screen's
@@ -20,6 +15,7 @@ import { z } from "zod"
 
 import type { Parsed } from "./cut-list"
 import { problemsOf } from "./cut-list"
+import { TICKET_KEY_PATTERN } from "./essay"
 
 export const SCREENS_SCHEMA = "some-ui.screens/1"
 
@@ -47,9 +43,6 @@ export function screenOfRef(ref: string): string | null {
 // - `<TICKET>:run`: rustc's whole result;
 // - `<TICKET>:diagnostic:<n>`: rustc's diagnostic n, from 1, in rustc's order.
 
-/** A ticket's key, as the week writes it (`QM-311`). */
-const TICKET = "[A-Z][A-Z0-9]{0,5}-\\d{1,6}"
-
 /** What a region of a Rust Rounds ticket's card is. */
 export const REGION_KINDS = [
   "question",
@@ -64,7 +57,7 @@ export type RegionKind = (typeof REGION_KINDS)[number]
 const NUMBERED: ReadonlySet<RegionKind> = new Set(["point", "diagnostic"])
 
 const RUST_REF = new RegExp(
-  `^(${TICKET}):(question|program|run|(point|diagnostic):([1-9]\\d{0,2}))$`
+  `^(${TICKET_KEY_PATTERN}):(question|program|run|(point|diagnostic):([1-9]\\d{0,2}))$`
 )
 
 /** A Rust Rounds card's region name read into its parts. */
@@ -184,14 +177,22 @@ const ScreensSchema = z
   })
   .superRefine((screens, ctx) => {
     const seen = new Set<string>()
-    screens.screens.forEach(({ id }, i) => {
+    const files = new Set<string>()
+    screens.screens.forEach(({ id, file }, i) => {
       if (seen.has(id))
         ctx.addIssue({
           code: "custom",
           path: ["screens", i, "id"],
           message: `${id} has two screens`,
         })
+      if (files.has(file))
+        ctx.addIssue({
+          code: "custom",
+          path: ["screens", i, "file"],
+          message: `${file} is two screens' picture`,
+        })
       seen.add(id)
+      files.add(file)
     })
   })
 export type Screens = z.infer<typeof ScreensSchema>

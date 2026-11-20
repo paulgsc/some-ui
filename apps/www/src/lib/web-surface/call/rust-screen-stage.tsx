@@ -49,7 +49,10 @@ export const RustScreenStagePage = ({
       />
     )
   return (
-    <main className="bg-background text-foreground min-h-screen">
+    <main
+      data-week={state.held.week.id}
+      className="bg-background text-foreground min-h-screen"
+    >
       <TicketScreen held={state.held} ticket={state.ticket} />
     </main>
   )
