@@ -286,7 +286,13 @@ export function namedStageOf<E>(input: {
   readonly sample: Parsed<E>
   readonly parse: (raw: unknown) => Parsed<E>
   readonly idOf: (essay: E) => string
+  /** Why it draws none, in its own words: an essay's, unless given. */
+  readonly words?: {
+    readonly unread: (name: string) => string
+    readonly other: (asked: string, got: string) => string
+  }
 }): EssayStageState<E> {
+  const words = input.words ?? { unread: W.unread, other: W.otherWeek }
   const { week, read } = input
   if (week === undefined || week === "sample")
     return input.sample.ok
@@ -294,11 +300,11 @@ export function namedStageOf<E>(input: {
       : { kind: "none", problems: input.sample.problems }
   if (read.pending) return { kind: "waiting" }
   if (read.failed || read.data === undefined)
-    return { kind: "none", problems: [W.unread(week)] }
+    return { kind: "none", problems: [words.unread(week)] }
   const parsed = input.parse(read.data)
   if (!parsed.ok) return { kind: "none", problems: parsed.problems }
   const id = input.idOf(parsed.value)
-  if (id !== week) return { kind: "none", problems: [W.otherWeek(week, id)] }
+  if (id !== week) return { kind: "none", problems: [words.other(week, id)] }
   return { kind: "show", essay: parsed.value, voicing: "owner" }
 }
 

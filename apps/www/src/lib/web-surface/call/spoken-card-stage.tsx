@@ -89,6 +89,7 @@ export const SpokenCardStagePage = ({
     sample: SAMPLE,
     parse: parseHeardSpokenCard,
     idOf: (heard) => heard.card,
+    words: { unread: W.cardUnread, other: W.otherCard },
   })
   if (state.kind === "waiting") return null
   if (state.kind === "none")

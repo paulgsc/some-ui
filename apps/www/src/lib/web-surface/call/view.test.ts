@@ -26,6 +26,7 @@ import type {
 import { describe, expect, it } from "vitest"
 
 import { essayAt, essayStageOf, namedStageOf } from "./essay-view"
+import { ESSAY_WORDS as EW } from "./essay-words"
 import { interviewEssayAt } from "./interview-essay-view"
 import { reportAt, reportStageOf } from "./report-view"
 import { callAt, stageOf, weekFrom } from "./view"
@@ -468,6 +469,7 @@ describe("a spoken card's stage (WALK7)", () => {
       sample,
       parse: parseHeardSpokenCard,
       idOf: (heard) => heard.card,
+      words: { unread: EW.cardUnread, other: EW.otherCard },
     })
 
   it("is the sample with no card named, and the named card as read", () => {
@@ -489,7 +491,7 @@ describe("a spoken card's stage (WALK7)", () => {
     if (!sample.ok) throw new Error("no sample")
     expect(of("introduction", sample.value)).toEqual({
       kind: "none",
-      problems: ["The essay read is sample's, not introduction's"],
+      problems: ["The spoken card read is sample, not introduction"],
     })
   })
 })

@@ -59,7 +59,7 @@ export const interviewEssaySource = besideStage("interview-essays")
 
 /**
  * A spoken card of a cards essay, as home heard its takes (WALK7; parsed by
- * `spokenCardStageOf`), by the card's id: the recorder answers it from the
+ * `parseHeardSpokenCard`, through `namedStageOf`), by the card's id: the recorder answers it from the
  * cut list and the transcripts home hands `record:cards --takes`.
  */
 export const spokenCardSource = besideStage("spoken-cards")

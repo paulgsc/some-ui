@@ -159,8 +159,11 @@ export const SPOKEN_CATEGORIES = ["introduction"] as const
 
 export type SpokenCategory = (typeof SPOKEN_CATEGORIES)[number]
 
-/** A take's id as home keeps it, as the Rust essay's opening names one. */
-export const SPOKEN_TAKE_ID = /^[A-Za-z0-9._:-]{1,64}$/
+/**
+ * A take's id as home keeps it, as the Rust essay's opening names one, and
+ * never with a dot first, which the takes folder would read as hidden.
+ */
+export const SPOKEN_TAKE_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/
 
 /**
  * The most exchanges a spoken card plays (C813): the owner's introduction
