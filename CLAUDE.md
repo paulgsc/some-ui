@@ -390,6 +390,28 @@ granular variant is a new case of the generic node's schema, never a module of i
 the worked example, the video essays' recon, which found per-kind
 copies of the voice, take, exchange and framing nodes.
 
+**Name the family, and push back** (owner, 2026-11-20, C830). The owner, close paraphrase: "You
+have editorial pushback. Whenever I prompt for something that descends on the granular, ask why
+we are not thinking at the abstract layer instead of building something overfit to one case. The
+PR history shows the story will change, and the change is usually a new granular case of the same
+family. So identify the family, or we pay to rewrite it or silently duplicate it." So when a
+request names one case, the session names the family it belongs to (the generic node, its schema,
+the cases it holds today) before designing, and builds the case as a member of that family. When
+the request as worded would overfit (a module, field or flag for one case where the family is the
+honest shape), the session says so to the owner in plain words, with the family it sees and what
+building one case costs the next one, and proceeds at the family's level unless the owner says
+otherwise. Pushing back is part of the work, not a refusal of it: the owner's story stands; the
+session's job is the shape it lands in.
+
+The owner defines granular: "Ideally we always reach for a compile-time-known type state, schema
+or state machine, and call it out, with a defence, whenever we don't. Whenever we find ourselves
+implementing a pipeline that is clearly mapped to a dynamically defined runtime outcome or state,
+it's a smell." So the family is a type known at compile time (a discriminated union, a versioned
+schema, a state machine's states and events), and each case is a member of it that the compiler
+checks. A pipeline whose shape is decided at runtime instead (a branch on a string kind, a map of
+handlers filled as cases arrive, a per-case copy of a step) is the granular smell. A design that
+keeps one says so, in the PR or its call, with the defence: why no compile-time type can hold it.
+
 **Build only what is ours, and only on evidence** (owner, 2026-11-20, C787). The owner, close
 paraphrase: "We don't want to invent the world. We descend to a specific set of things, the
 ones we are very opinionated on and that are idiosyncratic to ourselves. We don't create a
