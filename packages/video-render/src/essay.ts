@@ -1464,7 +1464,8 @@ const ZOOM_DIAGNOSTICS = 2
 /**
  * The regions of the phone's card a scene zooms to, in order (C797): for a
  * question scene, its ticket's question, each speak-to point, the program
- * and rustc's first diagnostics; for any other, none.
+ * and rustc's first diagnostics; for any other, none: a deep dive's own
+ * code is a snippet the phone never draws (#3288).
  */
 export function essayZoomRefs(
   essay: Essay,

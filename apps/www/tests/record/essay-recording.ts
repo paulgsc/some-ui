@@ -7,7 +7,7 @@
  */
 import { readdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
-import { captionSpace } from "@some-ui/burn-ins"
+import { captionSpace, LANDSCAPE } from "@some-ui/burn-ins"
 import {
   ESSAY_SCHEMA,
   ESSAY_VOICES,
@@ -316,7 +316,7 @@ async function recordKind<E extends { readonly week: { readonly id: string } }>(
           : {
               screens,
               // A zoomed card stays above the band the stage keeps for captions.
-              foot: captionSpace(FRAME) / FRAME.height,
+              foot: captionSpace(LANDSCAPE) / LANDSCAPE.height,
             }),
       }),
       {

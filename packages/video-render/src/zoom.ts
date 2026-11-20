@@ -24,7 +24,8 @@ const FOOT_MOST = 0.5
  * The picture zooming into `refs` in order, on the screen they name, with
  * its file under `dir` in the video's folder: the first `ZOOM_STOPS_MOST`
  * that a screen in `screens` holds, the rest left out. Null when none is
- * held. Every ref held must be of one screen: a scene shows one picture.
+ * held. Every ref held, kept or not, must be of one screen: a scene shows
+ * one picture.
  */
 export function zoomPicture(
   screens: Screens,
@@ -46,20 +47,19 @@ export function zoomPicture(
     throw new Error(
       `a foot of ${String(foot)}: a zoom keeps 0 to ${String(FOOT_MOST)} of the frame for captions`
     )
-  const held = refs
-    .flatMap((ref) => {
-      const found = regionOf(screens, ref)
-      return found ? [found] : []
-    })
-    .slice(0, ZOOM_STOPS_MOST)
-  const [first] = held
+  const found = refs.flatMap((ref) => {
+    const region = regionOf(screens, ref)
+    return region ? [region] : []
+  })
+  const [first] = found
   if (first === undefined) return null
   const { screen } = first
-  const other = held.find((each) => each.screen.id !== screen.id)
+  const other = found.find((each) => each.screen.id !== screen.id)
   if (other !== undefined)
     throw new Error(
       `${other.region.ref} is not on ${screen.id}: a scene zooms into one screen`
     )
+  const held = found.slice(0, ZOOM_STOPS_MOST)
   const file = `${dir}/${screen.file}`
   return {
     kind: "composition",

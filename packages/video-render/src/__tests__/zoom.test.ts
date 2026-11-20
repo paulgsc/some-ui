@@ -153,6 +153,9 @@ describe("the Rust essay's scenes on the phone's own card (RR31)", () => {
     expect(zoomed.shots.map((shot) => shot.durationMs)).toEqual(
       plain.shots.map((shot) => shot.durationMs)
     )
+    expect(zoomed.shots.some((shot) => shot.id.startsWith("question-"))).toBe(
+      true
+    )
     zoomed.shots.forEach((shot, i) => {
       const before = plain.shots[i]
       if (shot.id.startsWith("question-")) {

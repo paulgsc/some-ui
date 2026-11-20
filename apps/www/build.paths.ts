@@ -286,6 +286,7 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
         "packages/video-render/src/frame-text.ts",
         "packages/video-render/src/essay.ts",
         "packages/video-render/src/essay-fit.ts",
+        "packages/video-render/src/screen.ts",
         "packages/video-render/src/interview-essay.ts",
         "packages/video-render/src/engagement-report.ts",
         "packages/video-render/src/engagement-report-video.ts",
@@ -293,7 +294,7 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
         "packages/video-render/src/verdict.ts",
       ],
       profiles: ["lan", "pages"],
-      why: "the weekly call's template and its sample week, the model of its frame that pages a long scene (call-fit), the Rust Rounds essay's and the model of what its frame holds (essay-fit), both setting text as frame-text does, and the interview essay's, each with its sample essay and what each says over a take home couldn't make out (verdict), and the engagement report's writer, template and sample report, which only their stages draw (src/lib/web-surface/call), and whether a format's shape draws captions (`hasCaptions`), which only Playoff Delta's stage reads (src/lib/web-surface/playoff-delta): desktop pages the Android app's build leaves out",
+      why: "the weekly call's template and its sample week, the model of its frame that pages a long scene (call-fit), the Rust Rounds essay's, the phone's photographed cards it zooms into (screen), and the model of what its frame holds (essay-fit), both setting text as frame-text does, and the interview essay's, each with its sample essay and what each says over a take home couldn't make out (verdict), and the engagement report's writer, template and sample report, which only their stages draw (src/lib/web-surface/call), and whether a format's shape draws captions (`hasCaptions`), which only Playoff Delta's stage reads (src/lib/web-surface/playoff-delta): desktop pages the Android app's build leaves out",
     },
     {
       modules: ["apps/www/src/lib/clipboard/**"],
