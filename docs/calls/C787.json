@@ -1,0 +1,9 @@
+{
+  "id": "C787",
+  "made": "2026-11-20",
+  "by": "owner",
+  "paths": ["CLAUDE.md", "REVIEW.md", "AGENTS.md"],
+  "chose": "A reach's verdict descends a ladder: use a tool as is (open source or self-hostable first, then freemium), fold it in on home, build. A generic story, one someone who doesn't know this repo could ask for in the same words, stops at use or fold in. Building is for the part peculiar to the owner's own story, named in one sentence, and only on linked evidence of a pain point that real use of the rungs above left (the owner's words, a session note, telemetry, a tool's limit hit on real work). With no such use yet, the verdict is to try the best tool, and the story waits on that use. A third party ruled out by the mandates (the owner's personal data) counts as exhausted untried. At rung 3, build only the gap and keep the tool for the rest.",
+  "undo": "Remove the ladder and the 'Build only what is ours, and only on evidence' paragraph from CLAUDE.md's 'Reach before you build', and the matching lines in REVIEW.md and AGENTS.md; a reach then chooses among use, fold in and build for any stated reason, as C770 left it.",
+  "refs": ["#3291", "#3197"]
+}

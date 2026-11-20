@@ -148,3 +148,7 @@ and neither the PR nor its epic names a reach call (`docs/calls/`) or says why n
 **non-blocking** finding that names the machinery. Whether a reach was owed is a judgment, so
 the finding asks the question and does not hold the merge. Changes to a surface that already
 exists never draw this finding.
+
+When the reach call chose to build (rung 3) and names no part that is the owner's own, or links
+no evidence of a pain point that use of the rungs above left, raise that too, non-blocking:
+"generic story, built without evidence" (`CLAUDE.md`, "Reach before you build").
