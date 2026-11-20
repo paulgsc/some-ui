@@ -1,0 +1,19 @@
+{
+  "id": "C786",
+  "made": "2026-11-20",
+  "by": "claude",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/week-play/opening.ts",
+    "packages/ui/rust-rounds/src/lib/week-play/runtime.ts"
+  ],
+  "chose": "Following the owner's call C785, a take of an opening question said this week shows as the one in place (C784) only until home has judged it: until home holds it as a note, holds a send of the week naming it, and has answered a read of its record asked after both. From then on the page shows what home's record plays, which passes over a take home couldn't hear. A take still on its way home, by either lane, or said while home's answer was coming, stays shown.",
+  "options": [
+    "defer to home once it holds the note and a send naming it, as of the read",
+    "defer to home once the take has left the phone",
+    "never defer: a take said this week outranks home's record until the week closes"
+  ],
+  "gray": "C785 settles what home plays; when the page should stop trusting the phone's newer take and show home's choice is the phone's, and each option shows the owner something different just after a Send.",
+  "undo": "Drop `judged` from HomeOpening and its capture in the runtime's attach, so a take said this week outranks home's record however home judged it (C784 as first written).",
+  "moves": "C784",
+  "refs": ["#3269", "#3304", "#3303"]
+}

@@ -8,6 +8,7 @@ import type { MailboxFile, Prepared } from "@rust-rounds/lib/monday/bundle"
 import {
   ESSAYS_MOST,
   judgedWeek,
+  openingOf,
   prepare,
 } from "@rust-rounds/lib/monday/bundle"
 import {
@@ -16,7 +17,9 @@ import {
   finish,
   seedLine,
 } from "@rust-rounds/lib/monday/finish"
+import { notesNamed } from "@rust-rounds/lib/monday/mailbox"
 import {
+  heardByNote,
   TranscriptSchema,
   WeekRecordSchema,
 } from "@rust-rounds/lib/monday/record"
@@ -31,7 +34,10 @@ import {
 import sampleRuns from "@rust-rounds/lib/monday/sample/runs.json"
 import type { Values } from "@rust-rounds/lib/monday/values"
 import { ValuesSchema } from "@rust-rounds/lib/monday/values"
-import { QUILLMOSS_WEEK_FILE } from "@rust-rounds/lib/sample-week"
+import {
+  QUILLMOSS_WEEK,
+  QUILLMOSS_WEEK_FILE,
+} from "@rust-rounds/lib/sample-week"
 import { readWeek, WEEK_V1_MAX_BYTES } from "@rust-rounds/lib/week-check"
 import { isRecord } from "@some-ui/core-utils"
 import { parseEssay } from "@some-ui/video-render"
@@ -249,6 +255,118 @@ describe("prepare", () => {
     // Next week still goes out, with no seed from a week not yet written up.
     expect(bundle.next?.id).toBe("2026-w47")
     expect(bundle.next?.seeds).toEqual([])
+  })
+
+  it("plays each opening answer home resolved and heard, of the week's version, and waits until then (#3269)", () => {
+    const asks: readonly [string, string, string] = [
+      "What is it?",
+      "Why weekly?",
+      "Why watch?",
+    ]
+    const week = {
+      ...QUILLMOSS_WEEK,
+      opening: {
+        version: 2,
+        exchanges: asks.map((ask) => ({ ask, script: "paulgsc here." })),
+      },
+    }
+    // Question 1's answer is a take from an earlier week, question 2's from
+    // this week, question 3's of the set's older version: it doesn't play.
+    const take = (
+      n: number,
+      from: string,
+      version = 2
+    ): WeekRecord["opening"][number] => ({
+      n,
+      take: `note-open-${n}`,
+      recordedAt: "2026-11-01T20:00:00.000Z",
+      week: from,
+      version,
+    })
+    const opened: WeekRecord = {
+      ...record(),
+      opening: [
+        take(1, "2026-w44"),
+        take(2, "2026-w46"),
+        take(3, "2026-w46", 1),
+      ],
+    }
+    const heardAnswer = (
+      n: number,
+      text: string,
+      verdict?: unknown
+    ): MailboxFile => ({
+      name: `transcript-note-open-${n}-1.json`,
+      body: {
+        ...TranscriptSchema.parse(SAMPLE_TRANSCRIPTS[0]?.body),
+        note: `note-open-${n}`,
+        ref: `2026-w46:opening:${n}`,
+        text,
+        ...(verdict === undefined ? {} : { verdict }),
+      },
+    })
+    const said: readonly [string, string] = [
+      "paulgsc here. It is a weekly Rust program.",
+      "To practise deciding.",
+    ]
+    const of = (
+      files: ReadonlyArray<MailboxFile>,
+      held: WeekRecord = opened
+    ): ReturnType<typeof openingOf> => openingOf(week, held, heardByNote(files))
+    expect(of([heardAnswer(1, said[0])])).toEqual({
+      ok: false,
+      why: "home hasn't heard the take on the opening's question 2 yet",
+    })
+    const exchanges = [
+      { n: 1, ask: asks[0], transcript: said[0], take: "note-open-1" },
+      { n: 2, ask: asks[1], transcript: said[1], take: "note-open-2" },
+    ]
+    const heard = [heardAnswer(1, said[0]), heardAnswer(2, said[1])]
+    expect(of(heard)).toEqual({ ok: true, exchanges })
+    // Nothing said in an answer, or nothing made out: it is left out.
+    for (const kind of ["nothing_said", "garbled"])
+      expect(
+        of([heardAnswer(2, "", { kind })], {
+          ...opened,
+          opening: [take(2, "2026-w46")],
+        })
+      ).toEqual({ ok: true, exchanges: [] })
+    // A week with no opening plays none, whatever home resolved.
+    expect(openingOf(QUILLMOSS_WEEK, opened, heardByNote(heard))).toEqual({
+      ok: true,
+      exchanges: [],
+    })
+    // The routine pulls every answer's transcript, from any week.
+    expect(notesNamed([opened])).toEqual(
+      new Set([
+        "note-311",
+        "note-312",
+        "note-p1",
+        "note-open-1",
+        "note-open-2",
+        "note-open-3",
+      ])
+    )
+    // With none to play the essay opens as before; with some, the essay is
+    // version 5 and opens on them.
+    expect(samplePrepared().bundle.essays[0]?.opening).toBeUndefined()
+    const prepared = samplePrepared()
+    const ended = prepared.bundle.essays[0]
+    if (ended === undefined) throw new Error("no essay owed")
+    const done = finish({
+      ...prepared,
+      bundle: {
+        ...prepared.bundle,
+        essays: [{ ...ended, opening: { exchanges } }],
+      },
+      values: SAMPLE_VALUES,
+      runs: RUNS,
+    })
+    if (!done.ok) throw new Error(done.problems.join("\n"))
+    const essay = parseEssay(done.files[0]?.body)
+    if (!essay.ok) throw new Error(essay.problems.join("\n"))
+    expect(essay.value.template.version).toBe(5)
+    expect(essay.value.opening).toEqual({ exchanges })
   })
 
   it("reads the newest transcript of a note", () => {
@@ -980,5 +1098,50 @@ describe("ROUTINE.md", () => {
 
   it("names the deep dive's bounds as finish holds them", () => {
     expect(ROUTINE).toContain(`${DIVE_WORDS_LEAST} to ${DIVE_WORDS_MOST} words`)
+  })
+})
+
+describe("the transcripts monday pull fetches (PN1)", () => {
+  /** Every note a record names, found by walking it for its `take` and `note` strings. */
+  const named = (value: unknown): Array<string> =>
+    Array.isArray(value)
+      ? value.flatMap(named)
+      : isRecord(value)
+        ? Object.entries(value).flatMap(([key, held]) =>
+            (key === "take" || key === "note") && typeof held === "string"
+              ? [held]
+              : named(held)
+          )
+        : []
+
+  it("names every take and note a record holds: a ticket's, each point's own, a paste's", () => {
+    const held = record()
+    const [first, ...rest] = held.tickets
+    if (first === undefined) throw new Error("no ticket")
+    const pointed: WeekRecord = {
+      ...held,
+      tickets: [
+        {
+          ...first,
+          take: null,
+          points: [
+            {
+              point: 1,
+              take: "note-311-1",
+              recordedAt: "2026-11-14T20:10:00.000Z",
+            },
+            {
+              point: 2,
+              take: "note-311-2",
+              recordedAt: "2026-11-14T20:11:00.000Z",
+            },
+          ],
+        },
+        ...rest,
+      ],
+    }
+    for (const records of [[held], [pointed], [held, pointed]])
+      expect(notesNamed(records)).toEqual(new Set(records.flatMap(named)))
+    expect(notesNamed([pointed])).toContain("note-311-2")
   })
 })

@@ -1,5 +1,5 @@
 /**
- * How the interview week records a take: up to 2 minutes (owner, 2026-11-13),
+ * How the interview week records a take: up to 3 minutes (owner, 2026-11-19, C735),
  * no count of its own, each waiting on this phone until the week is sent.
  * The phone's desk (`./index`) and the tests' simulated microphone
  * (`__tests__/fixture`) both record under these, so a page measured in a test

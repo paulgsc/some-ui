@@ -516,7 +516,7 @@ describe("away from home (AW1)", () => {
 
 describe("a request that couldn't reach home, though home may be there (NA1)", () => {
   it("is never said as away, even within the hold, and says which it was in the person's terms", () => {
-    const blocked = (reason: "name" | "trust"): LaneFacts =>
+    const blocked = (reason: "name" | "trust" | "door"): LaneFacts =>
       facts({
         paired: true,
         waiting: 2,
@@ -525,7 +525,7 @@ describe("a request that couldn't reach home, though home may be there (NA1)", (
         blocked: reason,
         away: { since: 1, now: 2 },
       })
-    const views = (["name", "trust"] as const).map((reason) =>
+    const views = (["name", "trust", "door"] as const).map((reason) =>
       laneView(WORDS.aph, blocked(reason))
     )
     for (const view of views) {
@@ -536,6 +536,7 @@ describe("a request that couldn't reach home, though home may be there (NA1)", (
     }
     expect(views[0]?.line).toMatch(/can't find home's name on this network/)
     expect(views[1]?.line).toMatch(/doesn't trust home's certificate/)
+    expect(views[2]?.line).toMatch(/home itself isn't answering/)
     // Once nothing is blocked, the same run is away again.
     expect(
       laneView(WORDS.aph, {

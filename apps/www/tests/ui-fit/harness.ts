@@ -169,6 +169,9 @@ export const INTENT_FAILURE_FIXTURE = "intent-failure"
 /** Rust Rounds' screens (RR4), walked by `./rust-rounds-fit.spec.ts`. */
 export const RUST_ROUNDS_FIXTURE = "rust-rounds"
 
+/** The work tracker asking on return, and the week's time (RR26). */
+export const WORK_TRACKER_FIXTURE = "work-tracker"
+
 /** Settings' bar of pages (MD1), measured by `./settings-bar-fit.spec.ts`. */
 export const SETTINGS_BAR_FIXTURE = "settings-bar"
 

@@ -21,25 +21,42 @@
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { weekOpenNow } from "@some-ui/core-utils"
+import type { Prompter } from "@some-ui/shared"
+import {
+  heardOf,
+  NO_PROMPTER,
+  paceOf,
+  stepPace,
+  stepPrompter,
+  totalOf,
+} from "@some-ui/shared"
 import type {
   BundleHome,
   BundleIntent,
   BundleMachine,
   BundleRuntime,
   BundleTakes,
+  HomeSent,
 } from "@some-ui/voice-capture"
-import { bundleRuntime, sendsAtHome } from "@some-ui/voice-capture"
+import {
+  bundleRuntime,
+  HOME_UNKNOWN,
+  sendsAtHomeSaid,
+} from "@some-ui/voice-capture"
 
 import type { Cue, CueEvent } from "./cue"
 import { NO_CUE, stepCue } from "./cue"
 import type { Ladder, Rung } from "./ladder"
 import { ask, firsts, linesOf, markRung, takesFor, withRungs } from "./ladder"
-import type { Prompter } from "./prompter"
-import { NO_PROMPTER, stepPrompter, totalOf } from "./prompter"
 import type { InterviewAtHome, InterviewKind, InterviewSent } from "./spec"
 import { cardOf, interviewMachine, isClosed, takeLine } from "./spec"
 import type { HeldInterview } from "./store"
-import { interviewDrafts, interviewLadder, interviewSent } from "./store"
+import {
+  bandPace,
+  interviewDrafts,
+  interviewLadder,
+  interviewSent,
+} from "./store"
 
 export type InterviewWeekPorts = {
   /** The week to play: the one this phone holds that is open now. */
@@ -53,6 +70,12 @@ export type InterviewWeekPorts = {
   readonly homeHolds: (sent: InterviewSent) => boolean
   /** Calls `listener` whenever what `homeHolds` answers may have changed. Returns the stop. */
   readonly onHomeHolds: (listener: () => void) => () => void
+  /**
+   * What home's own record says was sent of week `week` (RR30), asked once
+   * each time a closed week opens; never rejects. Without it, a closed week
+   * reads only what the link remembers.
+   */
+  readonly homeSent?: (week: string) => Promise<HomeSent>
   /** Milliseconds since the epoch. */
   readonly now: () => number
   readonly newId: () => string
@@ -87,6 +110,10 @@ export type InterviewWeekRun = {
   readonly prompter: Readable<Prompter>
   /** The band's Pause / Go on: the take records on either way. */
   readonly pause: () => void
+  /** The pace the band moves at, in words a minute, as the reader set it (C734). */
+  readonly pace: Readable<number>
+  /** The band's Slower / Faster: a step of the pace, kept on this phone. */
+  readonly setPace: (to: "slower" | "faster") => void
   /** The screen is showing. Returns the detach. */
   readonly attach: () => () => void
 }
@@ -142,13 +169,20 @@ export function createInterviewWeek(
     onVisibility: ports.onVisibility,
   })
 
+  // What home's own record said this opening (RR30).
+  let homeSaid: HomeSent = HOME_UNKNOWN
   const readAtHome = (): InterviewAtHome =>
-    sendsAtHome(sends.list() ?? [], week.id, ports.homeHolds)
+    sendsAtHomeSaid(sends.list() ?? [], week.id, ports.homeHolds, homeSaid)
   const atHome = cell(readAtHome())
   const lookHome = (): void => {
     const next = readAtHome()
     const now = atHome.getSnapshot()
-    if (next.holds?.at === now.holds?.at && next.last?.at === now.last?.at) {
+    if (
+      next.holds?.at === now.holds?.at &&
+      next.last?.at === now.last?.at &&
+      next.homeSaid === now.homeSaid &&
+      next.elsewhere === now.elsewhere
+    ) {
       return
     }
     atHome.set(next)
@@ -168,6 +202,8 @@ export function createInterviewWeek(
   }
 
   const prompter = cell<Prompter>(NO_PROMPTER)
+  const paces = bandPace(ports.storage)
+  const pace = cell(paceOf(paces.read()))
   const pattern = ports.takes.pattern
   // Each item's script in words, counted once: a read's, or a ready answer's.
   const totals = new Map(
@@ -178,20 +214,10 @@ export function createInterviewWeek(
   )
   /** Moves the band on what the recorder last measured. */
   const listen = (): void => {
-    const { take, answers } = pattern.getSnapshot()
-    const total = answers === null ? undefined : totals.get(answers)
     prompter.set(
       stepPrompter(
         prompter.getSnapshot(),
-        take.kind === "recording" && answers !== null && total !== undefined
-          ? {
-              type: "heard",
-              answers,
-              level: take.level,
-              at: ports.now(),
-              total,
-            }
-          : { type: "ended" }
+        heardOf(pattern.getSnapshot(), totals, ports.now(), pace.getSnapshot())
       )
     )
   }
@@ -320,6 +346,12 @@ export function createInterviewWeek(
     prompter,
     pause: () =>
       prompter.set(stepPrompter(prompter.getSnapshot(), { type: "pause" })),
+    pace,
+    setPace: (to): void => {
+      const next = stepPace(pace.getSnapshot(), to)
+      pace.set(next)
+      paces.write(next)
+    },
     attach(): () => void {
       const detach = bundle.attach()
       const stopListening = pattern.subscribe(listen)
@@ -329,6 +361,16 @@ export function createInterviewWeek(
       const stopClimb = bundle.subscribe(climb)
       const stopFocus = bundle.subscribe(settleFocus)
       const stopHeld = ports.onHomeHolds(lookHome)
+      // A closed week reads home's own record once each opening (RR30).
+      if (
+        ports.homeSent !== undefined &&
+        isClosed(week, new Date(ports.now()).toISOString())
+      ) {
+        void ports.homeSent(week.id).then((said) => {
+          homeSaid = said
+          lookHome()
+        })
+      }
       const stopSeen = ports.onVisibility((hidden) => {
         if (hidden) moveCue({ type: "cancel" })
       })

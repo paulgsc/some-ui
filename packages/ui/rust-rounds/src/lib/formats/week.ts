@@ -65,6 +65,7 @@ import {
   TextSchema,
   WhenSchema,
 } from "@rust-rounds/lib/formats"
+import { CONVERSATION_MOST } from "@some-ui/video-render"
 import { z } from "zod"
 
 import { WEEK_ID } from "./week-id"
@@ -338,10 +339,31 @@ export const WeekV1Schema = z.strictObject({
 })
 export type WeekV1 = z.infer<typeof WeekV1Schema>
 
+/**
+ * The essay's opening, a conversation (#3269, C738): one to three
+ * questions someone who has never seen Rust Rounds would ask, each with the
+ * answer the owner reads through the teleprompter. It is the standing set
+ * (`@rust-rounds/lib/opening`, C737), to be copied into the week as it
+ * stands by code once the routine writes `/2` weeks (#3272): the routine
+ * never writes its words. Until then no week carries one. `version` is the set's, so a take recorded
+ * under one version answers that version's words, and plays only while the
+ * week's opening is the same version (C736).
+ */
+const OpeningSchema = z.strictObject({
+  version: z.int().positive(),
+  exchanges: z
+    .array(z.strictObject({ ask: TextSchema, script: TextSchema }))
+    .min(1)
+    .max(CONVERSATION_MOST),
+})
+export type Opening = z.infer<typeof OpeningSchema>
+
 /** A `/2` week. */
 export const WeekV2Schema = z.strictObject({
   schema: z.literal(WEEK_SCHEMA_V2),
   ...weekFields,
+  /** Optional: a week with none opens on its tickets, and its essay as before. */
+  opening: OpeningSchema.optional(),
   sla: z.array(SlaRowSchema).min(1, "a week states at least one SLA row"),
   tickets: z
     .array(TicketV2Schema)
@@ -355,6 +377,7 @@ export const WeekSchema = z.strictObject({
   /** The schema it came in; a `/1` week's forks have no options and it has no academy. */
   schema: z.enum([WEEK_SCHEMA, WEEK_SCHEMA_V2]),
   ...weekFields,
+  opening: OpeningSchema.optional(),
   sla: z.array(SlaRowSchema).min(1, "a week states at least one SLA row"),
   tickets: z
     .array(TicketSchema)

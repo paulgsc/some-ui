@@ -1,0 +1,19 @@
+{
+  "id": "C750",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/home-link/runtime.ts",
+    "apps/www/src/lib/home-link/serves.ts",
+    "apps/www/src/lib/home-link/words.ts"
+  ],
+  "chose": "A 502 or 504, which home's file host never sends, is read as home's door answering for a server that is down or restarting: held as a silence under AW1's hold (one try each 30 s, doubling to 10 minutes), said as itself (\"Home's address answers, but home itself isn't answering just now. It may be restarting, as it does to update. This phone tries again on its own.\"), never as away, and a screen's read held by it asks again rather than giving up. While home last said it is updating, home answering again, or a hold ending, asks /compat once more. No timer of the phone's own is added; a restart no request met leaves \"Home updating\" until the app comes back to the front or a pull.",
+  "options": [
+    "502/504 held as a silence under AW1, compat asked again on the hold's releases (chosen)",
+    "home's /compat answers wanted/in_flight with a retry_after_s and the phone asks again when it passes (a server change and an epoch)",
+    "leave it: the app back in front or a pull catches up"
+  ],
+  "gray": "LA8 says no retry and nothing on a timer; AW1's bounded hold is the one sanctioned way the phone tries again on its own, and no check says whether a restart behind home's address belongs in it. The owner would notice it on the screen: history and sends catching up by themselves, or not.",
+  "undo": "Drop fromHomesDoor's branch in runtime.ts's heard, the door reason, and serves.ts's back ask; HR1's test goes with them.",
+  "refs": ["#3197", "#2843", "#2928", "#3099"]
+}

@@ -28,7 +28,8 @@
  *   `GET /voice-notes/:id/heard`) may call `lib/home-link`. The voice lane
  *   also hands Rust Rounds' notes a way to hear a note from home
  *   (`lib/home-link/voice-audio`, RR6, whose read sends one
- *   `GET /voice-notes/:id/audio` per play), read only by that lane. My data
+ *   `GET /voice-notes/:id/audio` per play), which My data, Takes on home,
+ *   Needs your attention and Rust Rounds' opening read too (below). My data
  *   (`lib/my-data`, MD2) asks home what it keeps
  *   (`lib/home-link/kept-read`, whose read sends one `GET /voice-notes/kept`
  *   per open or drag down, and on the overview one `GET /subjects/me/kept`
@@ -244,6 +245,10 @@ const KEEPERS = new Set([
   "lib/home-link/cards-essays.ts",
   "lib/home-link/clips.ts",
   "lib/home-link/episode-notes-read.ts",
+  // RR30: a closed week's one read of home's record.
+  "lib/home-link/week-record.ts",
+  // AR1: aph's read of home's record as its screens open.
+  "lib/home-link/aph.ts",
 ])
 
 /** LA8, #2843: whether home works with this build, its one ask through `look`. */
@@ -1050,7 +1055,7 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(callers).toEqual(["lib/idea-home/index.ts"])
   })
 
-  it("sends nothing from the read of a note's audio but one GET of /voice-notes/:id/audio, and only the voice lane, Takes on home, Needs your attention and My data read it (RR6, ST32, MD8, HEARD3)", () => {
+  it("sends nothing from the read of a note's audio but one GET of /voice-notes/:id/audio, and only the voice lane, Takes on home, Needs your attention, My data and Rust Rounds' opening read it (RR6, ST32, MD8, HEARD3, #3269)", () => {
     expect(sendCalls(AUDIO_READ, read(AUDIO_READ))).toEqual(AUDIO_SENDS)
     const readers = sourceFiles()
       .filter((f) => !isTestFile(f))
@@ -1064,6 +1069,7 @@ describe("LA8: the phone reaches home through one module", () => {
       "lib/my-data/index.ts",
       "lib/take-library/index.ts",
       "lib/take-reconcile/index.ts",
+      "routes/_dashboard/_apk/rust-rounds.tsx",
     ])
   })
 

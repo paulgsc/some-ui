@@ -1,0 +1,19 @@
+{
+  "id": "C720",
+  "made": "2026-11-19",
+  "by": "claude",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/work-tracker/record.ts",
+    "packages/ui/rust-rounds/src/lib/work-tracker/runtime.ts",
+    "apps/www/src/lib/home-link/rust-spans.ts"
+  ],
+  "chose": "Every start and close is kept on the phone first (an append-only outbox, some-ui:rust-rounds.work-spans) and sent from there by the Rust Rounds lane; a span runs only once its start is kept, and an answer counts only once its close is. Until home has said what is open, the phone's own record says it, so a span started with no home in reach runs, and survives a reload.",
+  "options": [
+    "keep on the phone first, send from the lane",
+    "send straight to home, start only when home answers",
+    "keep on the phone, but refuse to start offline"
+  ],
+  "gray": "#3250 asked for the tracker; whether a span may start with no home in reach, and what the phone trusts until home answers, was not settled.",
+  "undo": "Make start wait for home's 201 (the runtime's start port), and drop openOnPhone from the runtime's first hearing.",
+  "refs": ["#3250"]
+}

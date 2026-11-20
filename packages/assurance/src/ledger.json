@@ -3432,7 +3432,7 @@
           "kind": "OA2",
           "property": "outcome",
           "claim": "Every essay home holds becomes a video within the render policy's caps, each answer playing exactly its take, whole, and a week that hasn't is tried again.",
-          "requirement": "Once home's lane admits it, the render worker's rust-essay job records the pinned stage's /essay with the tutor said by home's Kokoro speaker and each answer scene playing its take whole (its length the scene's), renders it within the render policy's caps (30 minutes, the owner's 2026-11-17 on server#927, server#930, where the interview-essay job keeps 15; 500 MB; a 2,048 MB step cache), and moves the finished folder into renders/rust-essay/<week>/ on the database's drive, whole; the recorder checks the takes again and refuses a missing, doubled or stray one before anything is drawn, setting aside unplayed a take of an answer the essay marks as one home couldn't make out; a failed week is left without a folder, keeps its finished steps and is tried again no sooner than an hour later, or, refused by the render policy (too long or too large), once what it is made with changes (its input, its caps, the render image, the speaker's image, the worker script or the brand files; RF1, server#937).",
+          "requirement": "Once home's lane admits it, the render worker's rust-essay job records the pinned stage's /essay with the tutor said by home's Kokoro speaker and each answer scene playing its take whole (its length the scene's), renders it within the render policy's caps (60 minutes, shared with the interview-essay job, C780, server#1024; 500 MB; a 2,048 MB step cache), and moves the finished folder into renders/rust-essay/<week>/ on the database's drive, whole; the recorder checks the takes again and refuses a missing, doubled or stray one before anything is drawn, setting aside unplayed a take of an answer the essay marks as one home couldn't make out; a failed week is left without a folder, keeps its finished steps and is tried again no sooner than an hour later, or, refused by the render policy (too long or too large), once what it is made with changes (its input, its caps, the render image, the speaker's image, the worker script or the brand files; RF1, server#937).",
           "verdict": "unproven",
           "conclusion": "Structural and measured: the recorder is tested in paulgsc/some-ui and rendered once locally, and the worker's essay job with a fake recorder in CI; no essay has yet been rendered on home, which only home can show.",
           "tracked": "some-ui#2691",
@@ -3484,6 +3484,12 @@
               "change": "A video the render policy refuses (too long or too large) is no longer tried again every hour: it waits until what it is made with changes (its input, its caps, the render image, the speaker's image, the worker script or the brand files), then is tried at once (RF1, server#937). Every other failure keeps the hourly retry.",
               "why": "Week 46's essay was refused at 24.4 minutes against the 15-minute cap and retried hourly with the same input, cap and image, the same refusal each time; a too-large one rendered in full each hour to be refused again (C501).",
               "decision": "https://github.com/paulgsc/some-ui/pull/3136#issuecomment-6955373765"
+            },
+            {
+              "on": "2026-11-19",
+              "change": "Both essays, Rust Rounds and the mock interview, may run 60 minutes, one cap shared (C780, moving C500; server#1024); the size and step-cache caps are unchanged.",
+              "why": "Interview takes now stop at 3 minutes (C735, #3289), so a full week of 10 takes runs about 45 minutes with its scenes, past the 15 minutes C500 kept for it. The owner ruled that duration limits are suggestions to move with the story: \"just update the duration limit or retire it altogether.\" At the measured rates an hour is about 280 MB finished and 990 MB of segments, under every cap.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3197#issuecomment-7017379818"
             }
           ]
         },
@@ -4186,8 +4192,15 @@
     {
       "store": "phone:home-sent",
       "class": "cache",
-      "growth": "Per finished session, kept shelf item, LeetType session, Studio sitting, written reflection, ask for the next scene, Studio idea sent whole (ST26), Studio video kept for home to make (ST33), and Rust Rounds week sent, paste kept and card-log sitting (RR14) home holds or refused (one digest, fingerprint or updatedAt each; for a video whose takes home lacks, also those takes' ids), for one pairing; no cap (`some-ui.home.sent.v1`).",
-      "horizon": "a new pairing starts it over (the next write replaces the old pairing's record); a refused digest leaves when home later holds the item, and refused digests of items no longer kept are dropped (home-link/standing.ts)",
+      "growth": "Per finished session, kept shelf item, LeetType session, Studio sitting, written reflection, ask for the next scene, Studio idea sent whole (ST26), Studio video kept for home to make (ST33), and Rust Rounds week sent, paste kept and card-log sitting (RR14) home holds or refused (one digest, fingerprint or updatedAt each; for a video whose takes home lacks, also those takes' ids), for one pairing and its scope (home's address and the account home named at pairing, MP1, C751); no cap (`some-ui.home.sent.v1`).",
+      "horizon": "a new pairing to another home or account, or with a home that names no account, starts it over (the next write replaces the old pairing's record); a new pairing to the same home and account, as after a reinstall whose backup restores this record but not the pairing, keeps it (MP1); a refused digest leaves when home later holds the item, and refused digests of items no longer kept are dropped (home-link/standing.ts)",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:pairing-scope",
+      "class": "cache",
+      "growth": "One record: the pairing this phone holds now and its scope, home's address and the account home named at pairing, or none (MP1, C751); written as the pairing record is read or a pairing is made, replacing the last (`some-ui.home.pairing-scope.v1`).",
+      "horizon": "replaced by the next pairing's, and kept through an Unpair until then; never more than one",
       "family": "what-is-kept"
     },
     {
@@ -4240,7 +4253,7 @@
     {
       "store": "phone:interview-week-takes",
       "class": "record",
-      "growth": "Per take on an interview week's question or read (IW5, up to two minutes at 32 kbps, ~480 KB): one current take a card, waiting on the phone until the week is sent (`send: on-confirm`), then going home as an interview voice note (IW1); a card said again after a send keeps the take sent, set apart, beside the new one, so a card can hold a few; a take let go before it is sent is deleted for good; no count of its own (max = +Infinity), so takes grow until the device's measured room (withRoom, the 25 MiB pool) refuses one; none is evicted to make room (`some-ui:interview-week.takes`, `some-ui.interview-week-takes`).",
+      "growth": "Per take on an interview week's question or read (IW5, up to three minutes at 32 kbps, ~720 KB; C735): one current take a card, waiting on the phone until the week is sent (`send: on-confirm`), then going home as an interview voice note (IW1); a card said again after a send keeps the take sent, set apart, beside the new one, so a card can hold a few; a take let go before it is sent is deleted for good; no count of its own (max = +Infinity), so takes grow until the device's measured room (withRoom, the 25 MiB pool) refuses one; none is evicted to make room (`some-ui:interview-week.takes`, `some-ui.interview-week-takes`).",
       "family": "what-is-kept"
     },
     {
@@ -4498,7 +4511,7 @@
     {
       "store": "phone:rust-rounds-week-sent",
       "class": "record",
-      "growth": "Per send of a week from the phone (RR13; RR22, #2832): when, each ticket's take id and the tickets not said; only grows (a change that drops or rewrites one is refused); a week stays open until its deadline and can be sent again, so a few a week, no cap; the phone keeps every send, and only each week's latest goes home (RR14, `lib/kept-home`), none once the week has closed (`some-ui:rust-rounds.week-sent`).",
+      "growth": "Per send of a week from the phone (RR13; RR22, #2832): when, each ticket's take id, the tickets not said and, where home keeps them (RR29, #3257; contract epoch 24), the decision at each fork with options, named <week>:<ticket>:<n>:verdict, and, where home keeps them (#3269; contract epoch 25), every take of the essay's opening said that week (C783: each goes home, and home plays the newest), each with its question, the opening's version and how long it runs; only grows (a change that drops or rewrites one is refused); a week stays open until its deadline and can be sent again, so a few a week, no cap; the phone keeps every send, and only each week's latest goes home (RR14, `lib/kept-home`), none once the week has closed (`some-ui:rust-rounds.week-sent`).",
       "family": "what-is-kept"
     },
     {
@@ -4522,7 +4535,13 @@
     {
       "store": "phone:rust-rounds-week-marks",
       "class": "record",
-      "growth": "Per step of a week's ticket the owner marks done or skipped (RR25, #3249): the week, ticket, step (read, academy, voice) and when; only grows, and the screens add a mark only when it changes a step's standing (`lib/flow`'s `mark`); a few a step, three steps a ticket, so tens a week, no cap (`some-ui:rust-rounds.week-marks`).",
+      "growth": "Per step of a week's ticket, or question of its opening (#3269, named opening:<n>), the owner marks done or skipped (RR25, #3249): the week, ticket, step (read, academy, voice, opening) and when; only grows, and the screens add a mark only when it changes a step's standing (`lib/flow`'s `mark`); a few a step, three steps a ticket, so tens a week, no cap (`some-ui:rust-rounds.week-marks`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:rust-rounds-week-ticks",
+      "class": "record",
+      "growth": "Per academy exercise of a week's ticket the owner ticks as worked at the desk (RR25, #3249; C673): the week, ticket, exercise number and when; only grows, each exercise ticked once and never taken back (`lib/flow`'s `tick`); at most eight exercises a ticket, so tens a week, no cap (`some-ui:rust-rounds.week-ticks`).",
       "family": "what-is-kept"
     },
     {
@@ -4940,7 +4959,7 @@
     {
       "store": "server:rust_week_final",
       "class": "record",
-      "growth": "Per Rust Rounds week a paired phone sent a draft of (RR22): the draft standing at the week's due, as sent (each ticket's take id and when it was said, and the tickets passed over), <= SENT_CEILING = 16 KiB; one row per (subject, week), written once at the first read after due, never updated; append-only; leaves with the account.",
+      "growth": "Per Rust Rounds week a paired phone sent a draft of (RR22): the draft standing at the week's due, as sent (each ticket's take id and when it was said, the tickets passed over, from contract epoch 24 the decision at each fork, RR29, and from epoch 25 the takes of the week's opening said that week, at most 3, #3269), <= SENT_CEILING = 16 KiB; one row per (subject, week), written once at the first read after due, never updated; append-only; leaves with the account.",
       "family": "what-is-kept"
     },
     {

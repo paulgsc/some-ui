@@ -63,6 +63,7 @@ import {
   servePanelPage,
   TAKE_PATTERN_FIXTURE,
   VIEWPORTS,
+  WORK_TRACKER_FIXTURE,
   type Violation,
 } from "./harness"
 import type { PanelId } from "./panel-page/fixtures"
@@ -136,7 +137,8 @@ const PLANTED_OVERFLOW: PanelId = "planted-overflow"
  * Fixtures another sweep walks (`./incident-fit.spec.ts`,
  * `./jobs-status-fit.spec.ts`, `./code-card-fit.spec.ts`,
  * `./intent-failure-fit.spec.ts`, `./rust-rounds-fit.spec.ts`,
- * `./take-pattern-fit.spec.ts`, `./call-fit.spec.ts`, `./essay-fit.spec.ts`).
+ * `./take-pattern-fit.spec.ts`, `./call-fit.spec.ts`, `./essay-fit.spec.ts`,
+ * `./work-tracker-fit.spec.ts`).
  */
 const SWEPT_ELSEWHERE: ReadonlyArray<PanelId> = [
   CALL_STAGE_FIXTURE,
@@ -147,6 +149,7 @@ const SWEPT_ELSEWHERE: ReadonlyArray<PanelId> = [
   INTENT_FAILURE_FIXTURE,
   RUST_ROUNDS_FIXTURE,
   TAKE_PATTERN_FIXTURE,
+  WORK_TRACKER_FIXTURE,
 ]
 
 type SweptPanel = { label: string; panel: PanelId; debt: string | null }

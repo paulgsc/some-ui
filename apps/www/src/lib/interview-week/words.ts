@@ -251,6 +251,10 @@ export const INTERVIEW_WORDS = {
     paused: "Paused. Tap Go on to go on.",
     pause: "Pause",
     goOn: "Go on",
+    slower: "Slower",
+    faster: "Faster",
+    /** The band's pace, as the reader set it (C734). */
+    pace: (wpm: number): string => `About ${wpm} words a minute`,
     time: (elapsedMs: number, seconds: number): string =>
       `${lengthOf(elapsedMs)} / about ${lengthOf(seconds * 1000)}`,
   },
@@ -331,6 +335,19 @@ export const INTERVIEW_WORDS = {
     held: (n: number): string =>
       `The send home had at the deadline: ${takes(n)}.`,
     noSend: "Home had no send from you at the deadline.",
+    /**
+     * A send made on this phone that home's record hasn't spoken of this
+     * opening (RR30): home couldn't be asked, or didn't answer.
+     */
+    unheard: (at: string): string =>
+      `Your send from ${weekday(at)} ${clock(at)} is shown below. This phone hasn't read home's record of the week, so it can't say what counted.`,
+    /**
+     * Home's record names a send this phone didn't keep (another device's);
+     * `mine`, this phone's own last send, shown below, if it kept one.
+     */
+    elsewhere: (at: string, mine: string | null): string =>
+      `Home holds a send from ${weekday(at)} ${clock(at)} that isn't on this phone, so its takes can't be shown here.${mine === null ? "" : ` Your send from ${weekday(mine)} ${clock(mine)} is shown below.`}`,
+    /** A send made on this phone that home's record says it didn't have by the deadline. */
     late: (at: string): string =>
       `Your send from ${weekday(at)} ${clock(at)} didn't reach home before the deadline, so it doesn't count. It stays on this phone.`,
   },

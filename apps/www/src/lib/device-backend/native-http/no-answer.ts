@@ -35,10 +35,13 @@ export class HomeAwayError extends HomeNoAnswerError {
  * Why a request to home failed before home could answer, though home may
  * be right there (#3099, NA1): this phone couldn't find home's name on this
  * network (a router blocking a public name for a private address, say), or
- * it doesn't trust home's certificate. Neither is home's silence, so
- * neither is away (AW1).
+ * it doesn't trust home's certificate; or home's address answered for it
+ * that home itself didn't (`door`, HR1: a `502` or `504` from what stands
+ * in front of home's server, as while it restarts to update). None is
+ * home's silence, so none is away (AW1). Only `name` and `trust` come from
+ * a request failing (`blockedReason`); the link reads `door` off an answer.
  */
-export type HomeBlockedReason = "name" | "trust"
+export type HomeBlockedReason = "name" | "trust" | "door"
 
 /**
  * Which `HomeBlockedReason` an Android failure is, read from the

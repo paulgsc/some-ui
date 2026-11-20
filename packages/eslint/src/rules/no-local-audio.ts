@@ -1,0 +1,97 @@
+import type { Rule } from "eslint"
+import type * as ESTree from "estree"
+
+import { staticText } from "./ast-names.js"
+import { isGlobal, PAGE_LIFETIME_TARGETS } from "./require-scoped-lifetime.js"
+
+/**
+ * VC4 (`@some-ui/voice-capture`, `lib/take-pattern.ts`): a recording plays
+ * through the kit's player, which stops it when the page is hidden, as a
+ * screen's `leave()` stops it when the screen goes. Outside the owner's
+ * files (`owner`, a path fragment) this reports the ways ordinary code
+ * plays audio of its own, each of which would play on behind a hidden page:
+ *
+ *   - `new Audio(…)`, the global or read off a page global (`window`,
+ *     `globalThis`, `self`); a local binding named `Audio` is not the global;
+ *   - `createElement("audio")` on anything, the name a string or a
+ *     template with no `${}`;
+ *   - an `<audio>` element in JSX.
+ *
+ * `AudioContext` is not reported: the recorder's level meter reads one, and
+ * it plays nothing. Code bent on getting past it (`window["Audio"]`, an
+ * alias of the global) is out of its scope, as for the microphone's rule.
+ */
+export const noLocalAudio: Rule.RuleModule = {
+  meta: {
+    type: "problem",
+    docs: {
+      description:
+        "Forbid playing audio outside @some-ui/voice-capture's player (VC4)",
+    },
+    schema: [
+      {
+        type: "object",
+        properties: { owner: { type: "string" } },
+        required: ["owner"],
+        additionalProperties: false,
+      },
+    ],
+    messages: {
+      audio:
+        "Play a recording through @some-ui/voice-capture's player (`audioPlayer`, or a take pattern), which stops it when the page is hidden (VC4); an Audio of your own plays on behind it.",
+    },
+  },
+  create(context) {
+    const options: unknown = context.options[0]
+    const owner = String(Reflect.get(Object(options), "owner"))
+    const filename = context.filename.replaceAll("\\", "/")
+    if (filename.includes(owner)) return {}
+
+    const global = (node: ESTree.Identifier, name: string): boolean =>
+      node.name === name && isGlobal(name, context.sourceCode.getScope(node))
+
+    return {
+      NewExpression(node): void {
+        const { callee } = node
+        const audio =
+          callee.type === "Identifier"
+            ? global(callee, "Audio")
+            : callee.type === "MemberExpression" &&
+              !callee.computed &&
+              callee.object.type === "Identifier" &&
+              PAGE_LIFETIME_TARGETS.has(callee.object.name) &&
+              global(callee.object, callee.object.name) &&
+              callee.property.type === "Identifier" &&
+              callee.property.name === "Audio"
+        if (audio) context.report({ node, messageId: "audio" })
+      },
+      CallExpression(node): void {
+        const { callee } = node
+        const [first] = node.arguments
+        if (
+          callee.type === "MemberExpression" &&
+          callee.property.type === "Identifier" &&
+          callee.property.name === "createElement" &&
+          (first?.type === "Literal"
+            ? typeof first.value === "string"
+              ? first.value
+              : null
+            : first?.type === "TemplateLiteral"
+              ? staticText(first)
+              : null
+          )?.toLowerCase() === "audio"
+        )
+          context.report({ node, messageId: "audio" })
+      },
+      // JSX is outside ESTree's map.
+      JSXOpeningElement(node: Rule.Node): void {
+        const name: unknown = Reflect.get(node, "name")
+        if (
+          Reflect.get(Object(name), "type") === "JSXIdentifier" &&
+          Reflect.get(Object(name), "name") === "audio"
+        )
+          context.report({ node, messageId: "audio" })
+      },
+    }
+  },
+}

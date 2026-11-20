@@ -166,8 +166,10 @@ describe("the home link", () => {
       token: "phone-token",
       id: first,
       pairedAt: 0,
-      // A home that gives no id for the phone, and no name typed.
+      // A home that gives no id for the phone nor the account, and no
+      // name typed.
       phoneId: null,
+      account: null,
       name: null,
     })
 

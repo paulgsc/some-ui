@@ -74,6 +74,44 @@ describe("keptGoing", () => {
     expect(weeks(true)).toBe(1)
   })
 
+  it("holds a week sent with its decisions until home serves this build (RR29)", () => {
+    const storage = inMemoryStorage()
+    const decided: WeekSent = {
+      ...SENT,
+      verdicts: [
+        {
+          ref: "2026-w46:QM-311:1:verdict",
+          decision: { kind: "recommended-by-default" },
+        },
+      ],
+    }
+    weeksSent(storage).keep((kept) => [...kept, decided])
+    const going = (served: boolean): ReadonlyArray<unknown> =>
+      keptGoing(storage, MID, served)
+        .filter(({ kind }) => kind === "rustWeeks")
+        .map(({ wire }) => wire)
+    expect(going(false)).toEqual([])
+    // It goes as kept, its decisions with it.
+    expect(going(true)).toEqual([decided])
+  })
+
+  it("holds a week sent with the opening's takes until home serves this build (#3269)", () => {
+    const storage = inMemoryStorage()
+    const opened: WeekSent = {
+      ...SENT,
+      opening: [
+        { n: 1, take: "o", recordedAt: SENT.at, version: 1, ms: 24_000 },
+      ],
+    }
+    weeksSent(storage).keep((kept) => [...kept, opened])
+    const going = (served: boolean): ReadonlyArray<unknown> =>
+      keptGoing(storage, MID, served)
+        .filter(({ kind }) => kind === "rustWeeks")
+        .map(({ wire }) => wire)
+    expect(going(false)).toEqual([])
+    expect(going(true)).toEqual([opened])
+  })
+
   it("sends only a week's latest send, and nothing once the week has closed (RR22)", () => {
     const storage = inMemoryStorage()
     const again: WeekSent = {

@@ -1,0 +1,17 @@
+{
+  "id": "C783",
+  "made": "2026-11-19",
+  "by": "owner",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/week-play/spec.ts",
+    "packages/voice-capture/src/lib/bundle.ts"
+  ],
+  "chose": "Keep every take of the opening's answers. The owner (2026-11-19, relayed by the coordinator): \"Every take you record goes home with the send, and only the newest is used. Nothing you said is lost.\" Record again never deletes a take on the phone, sent or not, and the opening's takes offer no Let it go; a week sent carries every take of each question said that week, and home plays the newest under the week's version.",
+  "options": [
+    "keep every take: each goes home with the send, and the newest is used",
+    "keep home's takes, and replace a take not yet sent at Send, as every bundle's Redo before Send does (#2453 decision 4)"
+  ],
+  "gray": "The owner's rule for the opening was that re-recording never discards the earlier take; whether that covered a take recorded minutes ago that never left the phone, which the bundles' own Redo rule lets go, was theirs to read.",
+  "undo": "Drop `keepsEvery` from the week's spec, and send only each question's current take (`answers`) in weekSpec's record.",
+  "refs": ["#3269", "#2453", "#2265", "#3303"]
+}

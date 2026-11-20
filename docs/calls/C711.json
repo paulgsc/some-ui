@@ -1,0 +1,14 @@
+{
+  "id": "C711",
+  "made": "2026-11-19",
+  "by": "owner",
+  "paths": ["packages/ui/rust-rounds/src/lib/week-play/words.ts"],
+  "chose": "The flow keeps Rust Rounds' rule of no 'done', 'wrong' or 'verdict' on screen, with the words test unchanged: the exercise button is 'I did this at my desk', an exercise's standing 'Worked at your desk' or 'Not yet', a step worked through ticked '✓' beside its name ('Read ✓', read aloud 'worked through'), the academy's step row 'n of m worked', and the academy's line 'Stumbling here is the point' for the prototype's 'Being wrong here is the point'. A passed step reads 'Skipped': the owner's 'Passed by' trips the unchanged test's ban on 'pass'.",
+  "options": [
+    "keep the words rule and reword the prototype's 'Done'",
+    "exempt the flow's words from the rule, matching the prototype exactly"
+  ],
+  "gray": "The approved prototype says 'Done at the desk' and 'Being wrong here is the point'; the package's words test, the owner's earlier rule (#2231, #2235), bans both. The owner chose to keep the rule (option a, relayed by the coordinator, 2026-11-19).",
+  "undo": "Change the flow table in words.ts and narrow the words test for it.",
+  "refs": ["#3249", "#2231"]
+}
