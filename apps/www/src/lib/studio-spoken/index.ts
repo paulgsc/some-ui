@@ -15,9 +15,9 @@ import type { SpokenRuntime } from "./runtime"
 import { createSpokenRuntime } from "./runtime"
 import { spokenStore } from "./store"
 
-export type { Category, PartKind, SpokenCard, SpokenPart } from "./model"
+export type { PartKind, SpokenCard, SpokenPart } from "./model"
 export { lineOf, parseCard, partAt, PARTS_MOST } from "./model"
-export type { Heard, SpokenRuntime } from "./runtime"
+export type { SpokenRuntime } from "./runtime"
 export { essayBlock, SPOKEN_WORDS, titleOf } from "./words"
 
 let runtime: SpokenRuntime | null = null

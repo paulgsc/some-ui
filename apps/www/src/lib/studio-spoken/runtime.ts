@@ -50,7 +50,7 @@ import { cardId, flip, keptCard, lineOf, unuse, use, withSeen } from "./model"
 import type { SpokenStore } from "./store"
 
 /** What home heard in each take asked about, by id. */
-export type Heard = Readonly<Partial<Record<string, HeardAnswer>>>
+type Heard = Readonly<Partial<Record<string, HeardAnswer>>>
 
 export type SpokenPorts = {
   readonly store: SpokenStore
