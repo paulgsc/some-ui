@@ -126,7 +126,7 @@ export function essayBlock(
     `Category: ${card.category}`,
   ]
   const lines = parts.flatMap((part) => [
-    `Part ${part.n + 1}, ${part.kind === "read" ? "read" : "own words"}`,
+    `Part ${part.n + 1}${part.id === null ? "" : ` (${part.id})`}, ${part.kind === "read" ? "read" : "own words"}`,
     ...(part.ask === null ? [] : [`  Asks: ${part.ask}`]),
     part.take === null ? `  No take yet` : `  From take ${part.take}`,
   ])

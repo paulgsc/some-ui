@@ -6,7 +6,7 @@
  * renders it with: today only `introduction`, Kokoro asking and the owner
  * answering, each speaker lit while they speak. It is split into parts: a
  * part to read on the teleprompter, or one to say in your own words. A part
- * may carry the question Kokoro asks before it, as Rust Rounds' opening does
+ * may carry an id and the question Kokoro asks before it, as Rust Rounds' opening does
  * (`Exchange { ask, script }` in `@some-ui/video-render`'s `opening.ts`).
  *
  * Each take of a part is an ordinary Studio take on home (C807), named by
@@ -34,6 +34,8 @@ const isCategory = (value: string): value is Category =>
 export type PartKind = "read" | "own"
 
 export type SpokenPart = {
+  /** The id its paste gave it (`SCRIPT intro-who`); null for none. */
+  readonly id: string | null
   readonly kind: PartKind
   /** What Kokoro asks before it in an essay; null for none. */
   readonly ask: string | null
@@ -73,7 +75,8 @@ const CATEGORY = /^\s*CATEGORY\s*:?\s*(\S*)\s*$/u
  * category Studio doesn't know. A line `CATEGORY <name>` names its category
  * (`introduction` when none does). The first other line is its title when a
  * part follows it. A line `SCRIPT` starts a part to read, `OWN WORDS` one to
- * say in your own words, and `QUESTION <words>` inside a part is what Kokoro
+ * say in your own words, either with one word after it as the part's id
+ * (`SCRIPT intro-who`), and `QUESTION <words>` inside a part is what Kokoro
  * asks before it. With no such lines, each paragraph is a part to read.
  */
 export function parseCard(text: string): PastedCard | null {
@@ -92,14 +95,24 @@ export function parseCard(text: string): PastedCard | null {
   return card === null ? null : { ...card, category }
 }
 
-type Draft = { kind: PartKind; ask: string | null; text: Array<string> }
+type Draft = {
+  id: string | null
+  kind: PartKind
+  ask: string | null
+  text: Array<string>
+}
+
+/** A part's id after its keyword: one word of lowercase letters, digits and `-`. */
+const PART_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u
 
 const finish = (
   draft: Draft | null
 ): Omit<SpokenPart, "takes" | "using"> | null => {
   if (draft === null) return null
   const said = draft.text.join("\n").trim()
-  return said === "" ? null : { kind: draft.kind, ask: draft.ask, text: said }
+  return said === ""
+    ? null
+    : { id: draft.id, kind: draft.kind, ask: draft.ask, text: said }
 }
 
 function parseMarked(
@@ -113,10 +126,14 @@ function parseMarked(
     if (mark?.[1] === "SCRIPT" || mark?.[1] === "OWN WORDS") {
       const done = finish(draft)
       if (done !== null) parts.push(done)
+      // One word after the keyword is the part's id; more is its first words.
+      const rest = mark[2].trim()
+      const named = PART_ID.test(rest)
       draft = {
+        id: named ? rest : null,
         kind: mark[1] === "SCRIPT" ? "read" : "own",
         ask: null,
-        text: mark[2] === "" ? [] : [mark[2]],
+        text: named || rest === "" ? [] : [rest],
       }
       continue
     }
@@ -153,6 +170,7 @@ function parseParagraphs(
   return {
     title: titled.title,
     parts: titled.parts.slice(0, PARTS_MOST).map((text) => ({
+      id: null,
       kind: "read" as const,
       ask: null,
       text,
@@ -253,6 +271,7 @@ const replacePart = (
 /** What the essay copy says of each part, for `./words` to put in words. */
 export type EssayPart = {
   readonly n: number
+  readonly id: string | null
   readonly kind: PartKind
   readonly ask: string | null
   /** The take it uses; null when none is picked. */
@@ -263,6 +282,7 @@ export type EssayPart = {
 export const essayParts = (script: SpokenCard): ReadonlyArray<EssayPart> =>
   script.parts.map((part, n) => ({
     n,
+    id: part.id,
     kind: part.kind,
     ask: part.ask,
     take: part.using,

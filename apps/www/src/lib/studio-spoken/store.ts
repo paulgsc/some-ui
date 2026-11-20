@@ -14,6 +14,7 @@ import { CATEGORIES } from "./model"
 const SCRIPTS_KEY = "some-ui:studio-spoken"
 
 const PartSchema = z.object({
+  id: z.string().nullable(),
   kind: z.enum(["read", "own"]),
   ask: z.string().nullable(),
   text: z.string(),

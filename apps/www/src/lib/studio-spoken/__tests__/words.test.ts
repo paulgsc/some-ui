@@ -64,15 +64,21 @@ describe("the essay's copy", () => {
           category: "introduction",
         },
         [
-          { n: 0, kind: "read", ask: "What is Rust Rounds?", take: "tk1" },
-          { n: 1, kind: "own", ask: null, take: null },
+          {
+            n: 0,
+            id: "intro-who",
+            kind: "read",
+            ask: "What is Rust Rounds?",
+            take: "tk1",
+          },
+          { n: 1, id: null, kind: "own", ask: null, take: null },
         ]
       )
     ).toBe(
       [
         "Spoken card: How I built Rust Rounds (scabc12)",
         "Category: introduction",
-        "Part 1, read",
+        "Part 1 (intro-who), read",
         "  Asks: What is Rust Rounds?",
         "  From take tk1",
         "Part 2, own words",

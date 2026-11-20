@@ -45,18 +45,73 @@ describe("parseCard", () => {
       category: "introduction",
       parts: [
         {
+          id: null,
           kind: "read",
           ask: "What is Rust Rounds?",
           text: "Rust Rounds is a week of Rust on my phone.\nMonday a ticket, by Sunday an answer.",
         },
         {
+          id: null,
           kind: "own",
           ask: null,
           text: "Why I stopped writing Rust every day.",
         },
-        { kind: "read", ask: null, text: "Each ticket forks a question." },
+        {
+          id: null,
+          kind: "read",
+          ask: null,
+          text: "Each ticket forks a question.",
+        },
       ],
     })
+  })
+
+  it("takes one word after SCRIPT or OWN WORDS as the part's id, as the showcase writes it", () => {
+    const showcase = `CATEGORY introduction
+
+SCRIPT intro-who
+QUESTION Who are you, and what do you build?
+paulgsc here. That's the name on my GitHub repository.
+
+SCRIPT intro-why
+It started with a question I couldn't answer.
+
+OWN WORDS intro-adlib
+QUESTION Anything to add about why the usual ways didn't stick?
+Optional. In your own words: what didn't stick, and why.
+
+SCRIPT Read this line as it is.`
+    const card = parseCard(showcase)
+    expect(card?.category).toBe("introduction")
+    expect(
+      card?.parts.map(({ id, kind, ask, text }) => ({
+        id,
+        kind,
+        ask,
+        first: text.split("\n")[0],
+      }))
+    ).toEqual([
+      {
+        id: "intro-who",
+        kind: "read",
+        ask: "Who are you, and what do you build?",
+        first: "paulgsc here. That's the name on my GitHub repository.",
+      },
+      {
+        id: "intro-why",
+        kind: "read",
+        ask: null,
+        first: "It started with a question I couldn't answer.",
+      },
+      {
+        id: "intro-adlib",
+        kind: "own",
+        ask: "Anything to add about why the usual ways didn't stick?",
+        first: "Optional. In your own words: what didn't stick, and why.",
+      },
+      // More than one word after the keyword is the part's first words.
+      { id: null, kind: "read", ask: null, first: "Read this line as it is." },
+    ])
   })
 
   it("reads each paragraph as a part to read when nothing marks them", () => {
@@ -64,8 +119,8 @@ describe("parseCard", () => {
       title: "A title",
       category: "introduction",
       parts: [
-        { kind: "read", ask: null, text: "First part." },
-        { kind: "read", ask: null, text: "Second part." },
+        { id: null, kind: "read", ask: null, text: "First part." },
+        { id: null, kind: "read", ask: null, text: "Second part." },
       ],
     })
     expect(parseCard("Only one part.")?.parts).toHaveLength(1)
@@ -143,9 +198,9 @@ describe("SCR3: a part uses only one of its own takes", () => {
     expect(use(taken, 0, "t1").parts[0]?.using).toBe("t1")
     expect(use(taken, 0, "t3")).toBe(taken)
     expect(essayParts(use(taken, 0, "t1"))).toEqual([
-      { n: 0, kind: "read", ask: "What is Rust Rounds?", take: "t1" },
-      { n: 1, kind: "own", ask: null, take: null },
-      { n: 2, kind: "read", ask: null, take: null },
+      { n: 0, id: null, kind: "read", ask: "What is Rust Rounds?", take: "t1" },
+      { n: 1, id: null, kind: "own", ask: null, take: null },
+      { n: 2, id: null, kind: "read", ask: null, take: null },
     ])
   })
 })
