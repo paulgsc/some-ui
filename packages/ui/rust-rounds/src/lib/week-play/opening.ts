@@ -15,7 +15,7 @@
  *   after: it is on this phone, and
  *   the newest home can name. Once home has judged it, home's record has the
  *   last word, and passes over a take it couldn't hear (the owner's call
- *   C785, #3304).
+ *   C785, #3304; C786).
  * - **Nothing is let go here.** "Use this one" leaves home's take where it
  *   is; "Record again" adds a take, and the earlier stays on home.
  */
@@ -48,7 +48,7 @@ export type HomeOpening =
       /**
        * The takes home held as this phone asked, each as a note and named
        * by a send home holds (`./runtime` adds them): its answer has judged
-       * each, so its record has the last word on them (C785). A take still
+       * each, so its record has the last word on them (C786). A take still
        * on its way home, by either lane, is not among them.
        */
       readonly judged?: ReadonlyArray<string>
@@ -129,8 +129,8 @@ export function openingPlace(
         null)
       : null
   // Home held the take here when the phone asked: its record has the last
-  // word, and passes over a take it couldn't hear (the owner's call C785,
-  // #3304), so the page shows what it plays instead.
+  // word (C786), and passes over a take it couldn't hear (the owner's call
+  // C785, #3304), so the page shows what it plays instead.
   const judged =
     here !== null &&
     home.kind === "known" &&

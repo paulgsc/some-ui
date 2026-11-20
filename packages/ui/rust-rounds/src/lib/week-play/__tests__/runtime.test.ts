@@ -782,12 +782,12 @@ describe("the decisions sent (RR29)", () => {
 })
 
 /**
- * C785 (#3304): home's record has the last word on a take of the opening
+ * C786 (after the owner's C785, #3304): home's record has the last word on a take of the opening
  * that home held when the phone asked, as a note and named by a send it
  * holds, and on no other: a take not yet home either way, or recorded while
  * home's answer was on its way, stays the one in place.
  */
-describe("the opening's takes home has judged (C785)", () => {
+describe("the opening's takes home has judged (C786)", () => {
   it("are those home held as the phone asked, as a note and named by a send it holds, not those only queued or said since", async () => {
     const read = readWeek(TALLOWBROOK_WEEK_FILE)
     if (!read.ok) throw new Error("the /2 sample reads")

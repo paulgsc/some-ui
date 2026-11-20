@@ -428,7 +428,7 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
       // The takes home holds as the phone asks, each both as a note and
       // named by a send of the week home holds: only those can home's
       // record name, so its answer has judged each of them, and no other
-      // (C785). The note and the send go home by separate lanes.
+      // (C786). The note and the send go home by separate lanes.
       const named = new Set(
         (sends.list() ?? [])
           .filter((sent) => sent.week === week.id && ports.homeHolds(sent))

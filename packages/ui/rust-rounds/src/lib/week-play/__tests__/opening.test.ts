@@ -78,7 +78,7 @@ describe("where a question's take stands", () => {
     const sent = { ...LAST_WEEK, take: HERE.take, week: "2026-w47" }
     expect(openingPlace(1, 1, known(sent), HERE).kind).toBe("home")
     // Sent, and home answered after: home's word, which passed over a take
-    // it couldn't hear for the older one it did (C785, #3304).
+    // it couldn't hear for the older one it did (C785, #3304; C786).
     const judged: HomeOpening = {
       kind: "known",
       takes: [LAST_WEEK],
