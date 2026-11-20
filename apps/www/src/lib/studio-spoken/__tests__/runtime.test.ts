@@ -67,8 +67,12 @@ describe("Spoken's runtime", () => {
     const take = runtime.cards.getSnapshot().at(0)?.parts.at(0)?.takes.at(0)
     runtime.use(id, 0, take ?? "")
     expect(runtime.cards.getSnapshot().at(0)?.parts.at(0)?.using).toBe(take)
-    runtime.askHeard([take ?? ""])
+    // Opening a page asks about each pick.
+    runtime.attach()()
     await pass()
+    expect(runtime.cards.getSnapshot().at(0)?.parts.at(0)?.using).toBeNull()
+    // Once home has said so, the take can't be picked again.
+    runtime.use(id, 0, take ?? "")
     expect(runtime.cards.getSnapshot().at(0)?.parts.at(0)?.using).toBeNull()
   })
 
@@ -91,6 +95,12 @@ describe("Spoken's runtime", () => {
     none.runtime.toggle("t2")
     await pass()
     expect(none.runtime.play.getSnapshot().unplayable).toBe("t2")
+    const failed = spokenPhone({
+      audioFromHome: () => Promise.reject(new Error("no answer")),
+    })
+    failed.runtime.toggle("t3")
+    await pass()
+    expect(failed.runtime.play.getSnapshot().unplayable).toBe("t3")
   })
 
   it("asks home what it heard in each take, until it heard it", async () => {
@@ -106,5 +116,22 @@ describe("Spoken's runtime", () => {
     expect(Object.keys(runtime.heard.getSnapshot())).toHaveLength(2)
     runtime.askHeard(["t1"])
     expect(heard).toHaveBeenCalledTimes(2)
+  })
+
+  it("reads a failed ask of home as unreachable, and asks again later", async () => {
+    const heard = vi
+      .fn<() => Promise<HeardAnswer>>()
+      .mockRejectedValueOnce(new Error("no answer"))
+      .mockResolvedValue({ kind: "heard", text: "It is" })
+    const { runtime } = spokenPhone({ heard })
+    runtime.askHeard(["t1"])
+    await pass()
+    expect(runtime.heard.getSnapshot()["t1"]).toEqual({ kind: "unreachable" })
+    runtime.askHeard(["t1"])
+    await pass()
+    expect(runtime.heard.getSnapshot()["t1"]).toEqual({
+      kind: "heard",
+      text: "It is",
+    })
   })
 })

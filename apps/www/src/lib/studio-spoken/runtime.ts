@@ -88,7 +88,10 @@ export type SpokenRuntime = {
   readonly heard: Readable<Heard>
   /** Asks home what it heard in each of `ids` it hasn't said yet. */
   readonly askHeard: (ids: ReadonlyArray<string>) => void
-  /** A page is showing. Returns its leaving. */
+  /**
+   * A page is showing: its picks are asked about, and the band follows the
+   * take under way. Returns its leaving, which stops what plays.
+   */
   readonly attach: () => () => void
 }
 
@@ -226,7 +229,12 @@ export function createSpokenRuntime(ports: SpokenPorts): SpokenRuntime {
       return write([kept, ...cards.getSnapshot()]) ? id : null
     },
     flip: (id, n) => changeOne(id, (card) => flip(card, n)),
-    use: (id, n, take) => changeOne(id, (card) => use(card, n, take)),
+    use(id, n, take): void {
+      // A take home heard nothing in is no part's pick (SCR3).
+      const said = heard.getSnapshot()[take]
+      if (said?.kind === "heard" && said.text === "") return
+      changeOne(id, (card) => use(card, n, take))
+    },
     pattern: ports.pattern,
     prompter,
     pace,
@@ -242,6 +250,13 @@ export function createSpokenRuntime(ports: SpokenPorts): SpokenRuntime {
     heard,
     askHeard,
     attach(): () => void {
+      // Each pick is asked about as a page opens, so one home heard nothing
+      // in is let go before an essay copies it (SCR3).
+      askHeard(
+        cards
+          .getSnapshot()
+          .flatMap((card) => card.parts.flatMap((part) => part.using ?? []))
+      )
       const stopListening = ports.pattern.subscribe(listen)
       return (): void => {
         stopListening()

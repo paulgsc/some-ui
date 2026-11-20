@@ -48,7 +48,7 @@ const WORDS = SPOKEN_WORDS
 const useCards = (runtime: SpokenRuntime): ReadonlyArray<SpokenCard> =>
   useSyncExternalStore(runtime.cards.subscribe, runtime.cards.getSnapshot)
 
-/** The runtime's takes seen while a card's page shows. */
+/** A Spoken page is showing (`SpokenRuntime.attach`). */
 const useAttached = (runtime: SpokenRuntime): void => {
   useEffect(() => runtime.attach(), [runtime])
 }
@@ -154,7 +154,7 @@ const PasteSpokenBody = ({
           ? WORDS.paste.nothing
           : WORDS.paste.split(count("read"), count("own"), asks)}
       </p>
-      {pasted?.parts.length === PARTS_MOST && (
+      {pasted !== null && pasted.parts.length > PARTS_MOST && (
         <p className="text-sm">{WORDS.paste.most(PARTS_MOST)}</p>
       )}
       <p className="text-muted-foreground text-sm">{WORDS.paste.plain}</p>

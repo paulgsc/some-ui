@@ -63,7 +63,7 @@ export type PastedCard = {
   readonly parts: ReadonlyArray<Omit<SpokenPart, "takes" | "using">>
 }
 
-/** The longest card a paste keeps, in parts. */
+/** The longest card a paste keeps, in parts; `keptCard` drops the rest. */
 export const PARTS_MOST = 40
 
 const MARK = /^\s*(SCRIPT|OWN WORDS|QUESTION)(?=\s|:|$)\s*:?\s*(.*)$/u
@@ -148,7 +148,7 @@ function parseMarked(
   if (done !== null) parts.push(done)
   if (parts.length === 0) return null
   const title = before.map((line) => line.trim()).find((line) => line !== "")
-  return { title: title ?? "", parts: parts.slice(0, PARTS_MOST) }
+  return { title: title ?? "", parts }
 }
 
 function parseParagraphs(
@@ -168,7 +168,7 @@ function parseParagraphs(
       : { title: "", parts: paragraphs }
   return {
     title: titled.title,
-    parts: titled.parts.slice(0, PARTS_MOST).map((text) => ({
+    parts: titled.parts.map((text) => ({
       id: null,
       kind: "read" as const,
       ask: null,
@@ -187,7 +187,9 @@ export const keptCard = (
   title: pasted.title,
   category: pasted.category,
   pastedAt: at,
-  parts: pasted.parts.map((part) => ({ ...part, takes: [], using: null })),
+  parts: pasted.parts
+    .slice(0, PARTS_MOST)
+    .map((part) => ({ ...part, takes: [], using: null })),
 })
 
 /** A new script's id from its paste time and a few random letters. */
@@ -231,10 +233,11 @@ export function withSeen(
     : script
 }
 
-/** `script` with part `n` said the other way; the same while it has a take (SCR2). */
 /** Part `n` of `card`, from 0; undefined for a place it doesn't have. */
 export const partAt = (card: SpokenCard, n: number): SpokenPart | undefined =>
   Number.isInteger(n) && n >= 0 ? card.parts.at(n) : undefined
+
+/** `script` with part `n` said the other way; the same while it has a take (SCR2). */
 
 export function flip(script: SpokenCard, n: number): SpokenCard {
   const part = partAt(script, n)

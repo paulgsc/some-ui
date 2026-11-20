@@ -176,6 +176,45 @@ describe("Studio's Spoken", () => {
     expect(document.querySelector("pre")?.textContent).toBe(essayBlock(card))
   })
 
+  it("says a paste past forty parts keeps only forty, and nothing at forty", () => {
+    const { runtime } = spokenPhone()
+    render(<PasteSpoken runtime={runtime} />)
+    const paste = (parts: number): void => {
+      fireEvent.change(screen.getByLabelText(W.paste.label), {
+        target: {
+          value: Array.from(
+            { length: parts },
+            (_, n) => `SCRIPT\nLine ${n}.`
+          ).join("\n\n"),
+        },
+      })
+    }
+    paste(40)
+    expect(screen.queryByText(W.paste.most(40))).toBeNull()
+    paste(41)
+    expect(screen.getByText(W.paste.most(40))).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", { name: W.paste.keep }))
+    expect(runtime.cards.getSnapshot()[0]?.parts).toHaveLength(40)
+  })
+
+  it("copies no pick home heard nothing in from the card's page", async () => {
+    const { runtime, sim } = spokenPhone({
+      heard: () => Promise.resolve({ kind: "heard", text: "" }),
+    })
+    const id =
+      runtime.keep(
+        parseCard(PASTED) ?? { title: "", category: "introduction", parts: [] }
+      ) ?? ""
+    await say(sim, id, 0)
+    const take = runtime.cards.getSnapshot()[0]?.parts[0]?.takes[0] ?? ""
+    runtime.use(id, 0, take)
+    render(<SpokenParts runtime={runtime} id={id} />)
+    await pass()
+    expect(document.querySelector("pre")?.textContent).not.toContain(
+      `From take ${take}`
+    )
+  })
+
   it("says so when the card isn't on this phone", () => {
     const { runtime } = spokenPhone()
     render(<SpokenParts runtime={runtime} id="scnope" />)
