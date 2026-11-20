@@ -29,6 +29,14 @@ import { cn } from "@some-ui/core-utils"
 import { CodeCard, codeSurface } from "@some-ui/shared"
 import type { Appearance } from "@some-ui/styles/theme"
 
+/**
+ * A part's name for an essay's capture, `<ticket>:<part>` (RR31; the
+ * grammar is `@some-ui/video-render`'s `parseRegionRef`), or no attribute
+ * when no ticket names the run.
+ */
+const regionName = (region: string | null, part: string): string | undefined =>
+  region === null ? undefined : `${region}:${part}`
+
 /** Printed text under its label. */
 const Labelled = ({
   label,
@@ -257,10 +265,12 @@ const Diagnostics = ({
   diagnostics,
   program,
   appearance,
+  region,
 }: {
   diagnostics: ReadonlyArray<Diagnostic>
   program: string | null
   appearance: Appearance
+  region: string | null
 }): JSX.Element => (
   <figure
     aria-label={WORDS.rustcSaid}
@@ -270,8 +280,14 @@ const Diagnostics = ({
     )}
   >
     {diagnosticView(diagnostics, program).map((view, at) => (
-      // eslint-disable-next-line react/no-array-index-key
-      <OneDiagnostic key={at} view={view} appearance={appearance} />
+      <div
+        // eslint-disable-next-line react/no-array-index-key
+        key={at}
+        data-region={regionName(region, `diagnostic:${String(at + 1)}`)}
+        className="min-w-0"
+      >
+        <OneDiagnostic view={view} appearance={appearance} />
+      </div>
     ))}
   </figure>
 )
@@ -294,10 +310,12 @@ const CompileError = ({
   run,
   program,
   appearance,
+  region,
 }: {
   run: Extract<RustcRun, { outcome: "compile-error" }>
   program: string | null
   appearance: Appearance
+  region: string | null
 }): JSX.Element =>
   run.diagnostics === undefined || run.diagnostics.length === 0 ? (
     <PrintoutSection
@@ -311,6 +329,7 @@ const CompileError = ({
         diagnostics={run.diagnostics}
         program={program}
         appearance={appearance}
+        region={region}
       />
       {/* Open when the laid-out view isn't all rustc printed. */}
       <details className="min-w-0" open={!isWhole(run.diagnostics, run.stderr)}>
@@ -328,6 +347,7 @@ export const RunView = ({
   appearance = "inherit",
   none,
   silent,
+  region = null,
 }: {
   run: RustcRun | null
   /** The source rustc compiled, which a suggestion is shown applied to. */
@@ -341,12 +361,20 @@ export const RunView = ({
   none: string
   /** Said when the program compiled and rustc printed nothing while it did. */
   silent?: string
+  /**
+   * The ticket this run's parts are named for (`data-region`), so an essay's
+   * capture can point at the whole result and each diagnostic (RR31, #3288).
+   */
+  region?: string | null
 }): JSX.Element => {
   if (run === null) {
     return <p className="text-muted-foreground text-sm">{none}</p>
   }
   return (
-    <div className="flex min-w-0 flex-col gap-3">
+    <div
+      data-region={regionName(region, "run")}
+      className="flex min-w-0 flex-col gap-3"
+    >
       <p className="flex flex-wrap items-baseline justify-between gap-x-3">
         <span className="font-semibold">{runHeading(run)}</span>
         <span className="text-muted-foreground font-mono text-xs">
@@ -354,7 +382,12 @@ export const RunView = ({
         </span>
       </p>
       {run.outcome === "compile-error" ? (
-        <CompileError run={run} program={program} appearance={appearance} />
+        <CompileError
+          run={run}
+          program={program}
+          appearance={appearance}
+          region={region}
+        />
       ) : (
         <>
           {run.compileStderr === "" ? (

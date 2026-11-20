@@ -336,28 +336,41 @@ const TicketBody = ({
         {WORDS.ticketOf(ticket.id, n, held.week.tickets.length)}
       </p>
       {tracked && <Tracker week={held.week} ticket={ticket} />}
-      <h2 className="text-2xl font-extrabold text-balance">{ticket.title}</h2>
-      <p>{ticket.spec}</p>
+      <h2
+        data-region={`${ticket.id}:question`}
+        className="text-2xl font-extrabold text-balance"
+      >
+        {ticket.title}
+      </h2>
+      <p data-region={`${ticket.id}:question`}>{ticket.spec}</p>
       <section className="flex flex-col gap-1">
         <h3 className="text-sm font-semibold">{WORDS.speakTo}</h3>
         <ol className="list-decimal space-y-1 pl-5 text-sm">
-          {ticket.forks.map(({ question }) => (
-            <li key={question}>{question}</li>
+          {ticket.forks.map(({ question }, at) => (
+            <li
+              key={question}
+              data-region={`${ticket.id}:point:${String(at + 1)}`}
+            >
+              {question}
+            </li>
           ))}
         </ol>
       </section>
-      <CodeCard
-        code={ticket.program}
-        label={ticket.id}
-        spans={span}
-        appearance="code"
-      />
+      <div data-region={`${ticket.id}:program`} className="min-w-0">
+        <CodeCard
+          code={ticket.program}
+          label={ticket.id}
+          spans={span}
+          appearance="code"
+        />
+      </div>
       <RunView
         run={run}
         program={ticket.program}
         appearance="code"
         none={held.ended.includes(ticket.id) ? WORDS.noRun : WORDS.noRunYet}
         silent={WORDS.rustcSilent}
+        region={ticket.id}
       />
       {ticket.figures.length > 0 && (
         <section className="flex flex-col gap-1">
@@ -374,6 +387,30 @@ const TicketBody = ({
     </>
   )
 }
+
+export type TicketScreenProps = {
+  held: HeldWeek
+  ticket: Ticket
+}
+
+/**
+ * One ticket's card as the phone draws it, with nothing to tap: what it
+ * asks and what rustc did, each part named (`data-region`) for an essay's
+ * capture (RR31, #3288).
+ */
+export const TicketScreen = ({
+  held,
+  ticket,
+}: TicketScreenProps): JSX.Element => (
+  <section data-screen={ticket.id} className="flex min-w-0 flex-col gap-3 p-4">
+    <TicketBody
+      held={held}
+      ticket={ticket}
+      n={held.week.tickets.findIndex((each) => each.id === ticket.id) + 1}
+      tracked={false}
+    />
+  </section>
+)
 
 /** What the look over and the week's notices call an item: an opening's question, a ticket or a point. */
 function itemLabel(week: Week, id: string): string {

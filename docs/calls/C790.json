@@ -1,0 +1,23 @@
+{
+  "id": "C790",
+  "made": "2026-11-20",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/screen.ts",
+    "some-ui:apps/www/tests/record",
+    "some-ui:apps/www/src/routes/rust-screen.tsx",
+    "some-ui:packages/ui/rust-rounds/src/components/rust-week"
+  ],
+  "chose": "The reach for RR31 (#3288), rung 2, fold in: the essay's phone pictures are taken by Playwright's own element screenshot and bounding boxes, inside the recorder home already runs (www's `record:essay`, in home's render image), on the built app's own Rust Rounds ticket card (`@some-ui/rust-rounds`' components, so the code card and rustc's layout come as the phone draws them) at the phone's size, fed the week home holds and nothing else; HyperFrames through `@some-ui/video-motion` draws the zoom as is (HYPER, #2722). What is ours, in one sentence: the owner's own week, drawn by the owner's own phone screens and photographed where that week already lives, with each part the narration speaks of (the question, the program, each rustc diagnostic) named so a line can point at it. That part is built: a screen-and-regions record in `@some-ui/video-render` (`some-ui.screens/1`), `data-region` names on the card, a record-only stage that draws one ticket's card, and the capture step. Evidence for leaving the text cards: the owner watched the week's essay and found the question, code and compiler error a wall of text in the card theme (#3288, 2026-11-19).",
+  "options": [
+    "fold in: Playwright and the app's own card inside home's essay recorder, regions read from the page, HyperFrames for the zoom (chosen)",
+    "use Snips Capture (SNIPS, #3114) as is: ruled out untried for the real week, since it runs on GitHub's runners and keeps its bundle as a GitHub artifact, a third party the owner's week may not reach; its manifest also has no regions",
+    "use `motion walk` (SFEED7a, #2736) as is: its sandbox (built pages, one origin, every other request refused) suits, but it lives in `@some-ui/video-motion` apart from the essay's recorder, keeps whole viewports and taps rather than named parts, and would need the week fed through its stand-ins; its idea, refuse every request but the week's, is kept in the capture",
+    "wait on WALK1 (#3282), the APK walk driver on the emulator: nothing is built, it runs on sample data on the stand-in home, and home has no emulator; WALK can carry the same screen-and-regions record later",
+    "a third-party code renderer (Carbon, ray.so) or screen recorder (Screen Studio): draws code in its own theme, not the phone's, so it misses the story, and sends the week out",
+    "build a screen recorder of our own on the emulator: no evidence any rung above fails"
+  ],
+  "gray": "Which capture path the essay's pictures take, and so where the week travels and how faithful the picture is, is something the owner sees in every essay; no check or earlier decision settled it. The honest limit of the choice: the picture is the phone's own components drawn by Chromium at the phone's size, not a photograph of the Android WebView, so the app's header and wing bar are not in it and fonts are the build's.",
+  "undo": "Delete `packages/video-render/src/screen.ts` and its export, the `/rust-screen` stage, the `data-region` attributes and the capture step in `apps/www/tests/record`; the essay goes back to its text cards.",
+  "refs": ["#3288", "#3311", "#2231", "#2722", "#2736", "#3114", "#3282"]
+}

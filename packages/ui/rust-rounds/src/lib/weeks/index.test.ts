@@ -12,6 +12,7 @@ import {
 } from "@rust-rounds/lib/sample-week"
 import {
   exchangeWeeks,
+  heldFromHome,
   heldWeek,
   keptWeeks,
   WEEK_READS_PER_EXCHANGE,
@@ -189,5 +190,18 @@ describe("the weeks from home (RR13)", () => {
     const send: HomeCall = () => Promise.resolve({ status: 401, body: "" })
     expect(await exchangeWeeks(store, send)).toEqual({ kind: "forgotten" })
     expect(store.held()).toEqual({ weeks: [], unread: [] })
+  })
+})
+
+describe("a week as home serves it, read whole (RR31)", () => {
+  it("is held as an exchange would hold it fresh", async () => {
+    const one = week46({ "QM-311": [{ ended: "recorded", rustc: PRINTS }] })
+    const answer = await home([one]).send("GET", `/rust-weeks/${one.id}`)
+    expect(heldFromHome(JSON.parse(answer.body))).toEqual({
+      week: QUILLMOSS_WEEK,
+      sha256: SHA,
+      runs: { "QM-311": PRINTS },
+      ended: [],
+    })
   })
 })

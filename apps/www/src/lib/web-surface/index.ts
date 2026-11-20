@@ -7,6 +7,7 @@ import { hasAudience } from "@/lib/build-profile"
 import type { BurnInsPreviewProps } from "./burn-ins/preview"
 import type { EssaySceneFrameProps, EssayStageProps } from "./call/essay-stage"
 import type { ReportStageProps } from "./call/report-stage"
+import type { RustScreenStageProps } from "./call/rust-screen-stage"
 import type { CallStageProps } from "./call/stage"
 import type { LiveStageProps } from "./playoff-delta/stage"
 
@@ -127,6 +128,15 @@ export const EssaySceneFrame: ComponentType<EssaySceneFrameProps> =
     ? lazyWithPreload<"EssaySceneFrame", EssaySceneFrameProps>(
         () => import("./call/essay-stage"),
         "EssaySceneFrame"
+      ).Component
+    : Nothing
+
+/** `./call/rust-screen-stage`; nothing where the build has no web surface. */
+export const RustScreenStage: ComponentType<RustScreenStageProps> =
+  import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")
+    ? lazyWithPreload(
+        () => import("./call/rust-screen-stage"),
+        "RustScreenStagePage"
       ).Component
     : Nothing
 
