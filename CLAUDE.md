@@ -365,8 +365,8 @@ user story, and whether each does it the owner's way. For each, it records:
 
 It ends with a recommendation on a ladder of three rungs, taken from the top:
 
-1. **Use** a tool as is: open source or self-hostable first, then freemium.
-2. **Fold it in:** self-host or embed the tool on home, and write only the wiring.
+1. **Use** a tool as is, wherever it already runs: open source first, then freemium.
+2. **Fold it in:** run or embed the tool on home, and write only the wiring.
 3. **Build** what no tool does.
 
 The owner (2026-11-19, on #3197): "The key is that it's in the PR, meaning part of the commit
@@ -416,7 +416,8 @@ each tool and building among its `options`. `chose` holds the verdict and its ru
 descent, the part that is ours and the evidence it descends on, linked. A long comparison is
 linked too (a private page). The epic's body names the call under a
 "Reach" heading beside "Where we are". The session makes the call itself, `by: claude`, and
-acts on it; the owner (2026-11-19, on #3197): "if it comes down to build ourselves, we agree". When the verdict
+acts on it. When the ladder reaches building on evidence, the owner (2026-11-19, on #3197):
+"if it comes down to build ourselves, we agree". When the verdict
 is to use or fold in a tool that needs the owner to act (an account, a setup step on home) or
 sends their data to a third party, it is also an ask, and that tool waits on their answer.
 
