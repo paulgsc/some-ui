@@ -372,6 +372,24 @@ It ends with a recommendation on a ladder of three rungs, taken from the top:
 The owner (2026-11-19, on #3197): "The key is that it's in the PR, meaning part of the commit
 and part of the history, and that we're making a conscious decision."
 
+**Reach inward first** (owner, 2026-11-20, C820). The owner, close paraphrase: "I don't have the
+capacity, like an agent, to keep a full working model of the application, so I can inadvertently
+guide and prompt for duplication. Before descending to a new pipeline, it's likely there's already
+one that should be uplifted to generic, or already is generic and could support the new story,
+and we aren't aware of it." So before rung 1, the reach looks in our own code. Whenever a story
+would add a pipeline, a schema, a scene kind, a voice path or a render job, whether or not the
+outward reach is owed, the session names the existing one that already does the job or could be
+made generic to do it, records it beside the tools, and builds only the gap there. It is "Deleting
+is in scope"'s search for a module, made at the level of a pipeline. A request that reads like
+"make a new X" is the owner's story, not a choice of mechanism: whether X already exists is the
+session's to find out. The owner again: "My prompts tend to emphasise the granular over the
+abstract. If you eagerly build the granular, we get mini-me's, clones of the same thing: a drop
+zone for files, another for video, another that lifts a long text blob into a file. We just need
+to ask why the generic tool's compile-time schema didn't allow this shape, and refine that." So a
+granular variant is a new case of the generic node's schema, never a module of its own. #3317 is
+the worked example, the video essays' recon, which found per-kind
+copies of the voice, take, exchange and framing nodes.
+
 **Build only what is ours, and only on evidence** (owner, 2026-11-20, C787). The owner, close
 paraphrase: "We don't want to invent the world. We descend to a specific set of things, the
 ones we are very opinionated on and that are idiosyncratic to ourselves. We don't create a
