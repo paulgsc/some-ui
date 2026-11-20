@@ -54,6 +54,7 @@ import {
   joinedTake,
   parseCardsEssay,
   QUIET,
+  SPOKEN_ASKER_VOICE,
   spokenCardsOf,
   spokenTakeFilesOf,
   spokenTakesOf,
@@ -71,13 +72,12 @@ import { nodePorts } from "@some-ui/video-render/node"
 import { CALL_OPTIONS, FRAME } from "./call-recording"
 import { fail, here, launchChromium, runCommand } from "./command"
 import {
-  ownTake,
   placeBed,
   policyOf,
+  recordStills,
   refuseLong,
   renderCut,
   sayLines,
-  shownFrame,
   siteOf,
   speakerFlag,
 } from "./voiced"
@@ -98,8 +98,8 @@ const { values } = parseArgs({
 })
 
 /**
- * Each scene's take, from `said`, its lines' takes in order: a spoken
- * card's answer the owner's own take from `owned`; a line's own
+ * Each scene's take, from `said`, its cards' lines' takes in order: a
+ * spoken card's scene its own, from `spoken` by its id; a line's own
  * where it is the scene's only one, else its lines' audio joined into
  * `<file>.wav`, `CHAPTER_GAP_MS` of silence between (`joinedTake`). None
  * where nothing was said.
@@ -108,27 +108,15 @@ async function sceneTakes(
   root: string,
   scenes: ReadonlyArray<CardsScene>,
   said: ReadonlyArray<StillTake | null>,
-  owned: Readonly<Partial<Record<string, SpokenTakeFiles>>>
+  spoken: ReadonlyMap<string, StillTake | null>
 ): Promise<Array<StillTake | null>> {
   const ports = nodePorts(root)
   let next = 0
   const takes: Array<StillTake | null> = []
   for (const scene of scenes) {
-    // A spoken card's answer is the owner's take, played whole.
-    const answer = scene.spoken?.scene.take
-    if (answer !== undefined) {
-      const files = owned[answer]
-      takes.push(
-        files === undefined
-          ? null
-          : await ownTake({
-              own: files,
-              said: scene.said,
-              timed: true,
-              file: scene.file,
-              ports,
-            })
-      )
+    // A spoken card's scene was recorded with its still (`spokenStills`).
+    if (scene.spoken !== undefined) {
+      takes.push(spoken.get(scene.id) ?? null)
       continue
     }
     const own = said.slice(next, next + scene.lines.length)
@@ -229,17 +217,31 @@ async function spokenTakes(
 }
 
 /**
- * A still of each spoken card's scene into `root` (`<file>.png`), from the
+ * A still of each spoken card's scene into `root` (`<file>.png`) from the
  * built app's `/essay?kind=spoken`, its read of each card answered from
- * `heard` alone. Refuses a scene that doesn't fit the frame.
+ * `heard` alone, and its take: a question said in the asker's voice, an
+ * answer the owner's own take from `owned`, played whole. Recorded as every
+ * voiced stage's are (`recordStills`), by each scene's id.
  */
-async function spokenStills(
-  page: Page,
-  origin: string,
-  root: string,
-  scenes: ReadonlyArray<CardsScene>,
-  heard: ReadonlyMap<string, HeardSpokenCard>
-): Promise<void> {
+async function spokenStills({
+  page,
+  origin,
+  root,
+  scenes,
+  heard,
+  owned,
+  speaker,
+  policy,
+}: {
+  readonly page: Page
+  readonly origin: string
+  readonly root: string
+  readonly scenes: ReadonlyArray<CardsScene>
+  readonly heard: ReadonlyMap<string, HeardSpokenCard>
+  readonly owned: Readonly<Partial<Record<string, SpokenTakeFiles>>>
+  readonly speaker: string | null
+  readonly policy: ReturnType<typeof policyOf>
+}): Promise<ReadonlyMap<string, StillTake | null>> {
   await page.route(/\/spoken-cards\/[^/?#]+\.json$/, (route) => {
     const name = new URL(route.request().url()).pathname.split("/").at(-1)
     const card = heard.get(
@@ -253,35 +255,36 @@ async function spokenStills(
           body: JSON.stringify(card),
         })
   })
-  const overflowing: Array<string> = []
-  for (const scene of scenes) {
-    if (scene.spoken === undefined) continue
-    const id = scene.spoken.scene.id
-    await page.goto(
-      `${origin}/essay?${new URLSearchParams({
-        kind: "spoken",
-        week: scene.spoken.card,
-        scene: id,
-        record: "true",
-      }).toString()}`
-    )
-    const shown = await shownFrame(page, `[data-scene="${id}"]`)
-    await page.evaluate(async () => {
-      await document.fonts.ready
-    })
-    if ((await shown.getAttribute("data-overflow")) === "true")
-      overflowing.push(scene.id)
-    await page.screenshot({
-      path: join(root, `${scene.file}.png`),
-      animations: "disabled",
-      caret: "hide",
-    })
-  }
-  if (overflowing.length > 0)
-    fail([
-      "These scenes don't fit the frame, so the video would cut them off:",
-      ...overflowing,
-    ])
+  const spoken = scenes.flatMap((scene) =>
+    scene.spoken === undefined ? [] : [{ scene, spoken: scene.spoken }]
+  )
+  const stage = new Map(spoken.map((s) => [s.scene.id, s.spoken.scene.id]))
+  const takes = await recordStills({
+    page,
+    root,
+    shots: spoken.map(({ scene, spoken: { card, scene: on } }) => {
+      const own = on.take === undefined ? undefined : owned[on.take]
+      return {
+        id: scene.id,
+        file: scene.file,
+        url: `${origin}/essay?${new URLSearchParams({
+          kind: "spoken",
+          week: card,
+          scene: on.id,
+          record: "true",
+        }).toString()}`,
+        said: scene.said,
+        voice: SPOKEN_ASKER_VOICE,
+        ...(own === undefined ? {} : { own }),
+      }
+    }),
+    frame: (id) => `[data-scene="${stage.get(id) ?? id}"]`,
+    speaker,
+    timed: true,
+    policy,
+    announce: false,
+  })
+  return new Map(spoken.map(({ scene }, i) => [scene.id, takes[i] ?? null]))
 }
 
 async function main(): Promise<void> {
@@ -303,32 +306,43 @@ async function main(): Promise<void> {
   await mkdir(root, { recursive: true })
   await writeFile(join(root, "essay.json"), written)
 
-  const takes = spoken
-    ? await sceneTakes(
-        root,
-        scenes,
-        await sayLines({ root, lines: cardsLines(scenes), speaker, policy }),
-        owned
-      )
-    : []
-
   // The brand files the series names, from home's brand folder (`--brand`).
   const series = join(SERIES, essay.value.series.id)
   await placeBed(series, essay.value.series.version, values.brand, root)
   const site = await siteOf(values)
   const browser = await launchChromium()
   try {
-    if (scenes.some((scene) => scene.spoken !== undefined)) {
+    // Home's board counts every take and still once (#2899): the cards'
+    // lines, then each spoken card's scene.
+    const cards = scenes.filter((scene) => scene.spoken === undefined)
+    const lines = cardsLines(cards)
+    const spokenCount = scenes.length - cards.length
+    if (spoken) console.log(`scenes ${String(lines.length + spokenCount)}`)
+    const said = spoken
+      ? await sayLines({ root, lines, speaker, policy, announce: false })
+      : []
+    let recorded: ReadonlyMap<string, StillTake | null> = new Map()
+    if (spokenCount > 0) {
       const page = await browser.newPage({
         viewport: FRAME,
         deviceScaleFactor: 1,
       })
       try {
-        await spokenStills(page, site.origin, root, scenes, heard)
+        recorded = await spokenStills({
+          page,
+          origin: site.origin,
+          root,
+          scenes,
+          heard,
+          owned,
+          speaker,
+          policy,
+        })
       } finally {
         await page.close()
       }
     }
+    const takes = spoken ? await sceneTakes(root, scenes, said, recorded) : []
     await renderCut(
       root,
       series,

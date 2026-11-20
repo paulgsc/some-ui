@@ -63,7 +63,7 @@ import { fail, here } from "./command"
  * `<file>.wav` in the video's folder (`ports`'), played whole: its length is the scene's. Its words
  * are the times home kept beside it, or with none, `said` spread over it.
  */
-export async function ownTake({
+async function ownTake({
   own,
   said: text,
   timed,
@@ -346,6 +346,8 @@ export type Shot = {
   readonly voice: string
   /** Absolute paths. */
   readonly own?: TakeFiles
+  /** Its files' name, when not its place in `shots` (`stillFile`). */
+  readonly file?: string
 }
 
 /**
@@ -382,6 +384,7 @@ export async function recordStills({
   speaker,
   timed,
   policy,
+  announce = true,
 }: {
   readonly page: Page
   readonly root: string
@@ -391,6 +394,11 @@ export async function recordStills({
   readonly speaker: string | null
   readonly timed: boolean
   readonly policy: RenderPolicy
+  /**
+   * Whether it says `scenes <n>` itself; false when its caller counts these
+   * shots with others it records (a cards essay's cards and spoken scenes).
+   */
+  readonly announce?: boolean
 }): Promise<ReadonlyArray<StillTake | null>> {
   await mkdir(root, { recursive: true })
   const ports = nodePorts(root)
@@ -399,9 +407,9 @@ export async function recordStills({
   const overflowing: Array<string> = []
   // Home's board says "scene k of n" (#2899): `scenes <n>` once, before the
   // first `recorded <file>`, is the n (paulgsc/server's render worker reads it).
-  console.log(`scenes ${String(shots.length)}`)
+  if (announce) console.log(`scenes ${String(shots.length)}`)
   for (const [i, shot] of shots.entries()) {
-    const file = stillFile(i, shot.id)
+    const file = shot.file ?? stillFile(i, shot.id)
     await page.goto(shot.url)
     const shown = await shownFrame(page, frame(shot.id))
     await page.evaluate(async () => {
@@ -483,6 +491,7 @@ export async function sayLines({
   lines,
   speaker,
   policy,
+  announce = true,
 }: {
   readonly root: string
   readonly lines: ReadonlyArray<{
@@ -492,10 +501,12 @@ export async function sayLines({
   }>
   readonly speaker: string | null
   readonly policy: RenderPolicy
+  /** Whether it says `scenes <n>` itself, as `recordStills`' `announce`. */
+  readonly announce?: boolean
 }): Promise<Array<StillTake | null>> {
   const say = speaker === null ? null : await speakerOf(root, speaker, policy)
   const takes: Array<StillTake | null> = []
-  console.log(`scenes ${String(lines.length)}`)
+  if (announce) console.log(`scenes ${String(lines.length)}`)
   for (const line of lines) {
     takes.push(
       say === null

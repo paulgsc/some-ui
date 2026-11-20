@@ -30,7 +30,8 @@ import {
 import { ESSAY_VOICES } from "./essay"
 import type { Speaker } from "./essay"
 import { words } from "./format"
-import { ASK_WORDS_MOST, wordCount } from "./opening"
+import { askProblems, wordCount } from "./opening"
+import type { Exchange } from "./opening"
 import { takeFilesOf } from "./take-files"
 import type { TakeFiles } from "./take-files"
 import { hearingOf } from "./verdict"
@@ -40,6 +41,16 @@ export type SpokenCard = Extract<
   NonNullable<Shot["spoken"]>,
   { role: "spoken" }
 >
+
+/**
+ * A spoken card's exchange: the opening's (`Exchange`), answered by a take
+ * home keeps; and as its stage draws it, with what home heard in that take.
+ */
+export type SpokenExchange = Exchange<{ readonly take: string }>
+export type HeardExchange = Exchange<{
+  readonly take: string
+  readonly transcript: string
+}>
 
 /** Each category's title, on its scenes and as the chapter its card opens. */
 export const SPOKEN_CATEGORY_TITLES: Readonly<Record<SpokenCategory, string>> =
@@ -96,7 +107,7 @@ export type SpokenScene = {
 export const spokenScenes = (
   card: HeardSpokenCard
 ): ReadonlyArray<SpokenScene> =>
-  card.exchanges.flatMap(({ ask, take, transcript }, i) => [
+  card.exchanges.flatMap(({ ask, take, transcript }: HeardExchange, i) => [
     { id: `ask-${i + 1}`, exchange: i + 1, speaker: "asker", said: ask },
     {
       id: `take-${i + 1}`,
@@ -159,14 +170,9 @@ export function spokenCardProblems(
           `${shot.id}: a spoken card is drawn by its category's template, and takes no burn-ins`,
         ]
       : []),
-    ...card.exchanges.flatMap(({ ask }, i) => {
-      const n = wordCount(ask)
-      return n > ASK_WORDS_MOST
-        ? [
-            `${shot.id}.exchanges[${i}].ask: ${n} words; ask in 1 to ${ASK_WORDS_MOST}`,
-          ]
-        : []
-    }),
+    ...card.exchanges.flatMap(({ ask }, i) =>
+      askProblems(ask, `${shot.id}.exchanges[${i}].ask`)
+    ),
   ]
 }
 
@@ -248,26 +254,30 @@ export function heardSpokenCard(
   transcriptOf: (take: string) => unknown
 ): Parsed<HeardSpokenCard> {
   const problems: Array<string> = []
-  const exchanges = card.exchanges.map(({ ask, take }) => {
-    const body = transcriptOf(take)
-    const text = isRecord(body) ? body["text"] : undefined
-    const hearing = hearingOf(body)
-    if (body === undefined)
-      problems.push(`${id}: ${take} has no transcript, so nothing captions it`)
-    else if (hearing === "unheard")
-      problems.push(
-        `${id}: home couldn't make out ${take}; a spoken card plays only a take home heard`
-      )
-    else if (hearing === "silent")
-      problems.push(`${id}: home heard nothing said in ${take}`)
-    else if (typeof text !== "string" || text.trim() === "")
-      problems.push(`${id}: ${take}'s transcript has no text`)
-    return {
-      ask,
-      take,
-      transcript: typeof text === "string" ? text.trim() : "",
+  const exchanges = card.exchanges.map(
+    ({ ask, take }: SpokenExchange): HeardExchange => {
+      const body = transcriptOf(take)
+      const text = isRecord(body) ? body["text"] : undefined
+      const hearing = hearingOf(body)
+      if (body === undefined)
+        problems.push(
+          `${id}: ${take} has no transcript, so nothing captions it`
+        )
+      else if (hearing === "unheard")
+        problems.push(
+          `${id}: home couldn't make out ${take}; a spoken card plays only a take home heard`
+        )
+      else if (hearing === "silent")
+        problems.push(`${id}: home heard nothing said in ${take}`)
+      else if (typeof text !== "string" || text.trim() === "")
+        problems.push(`${id}: ${take}'s transcript has no text`)
+      return {
+        ask,
+        take,
+        transcript: typeof text === "string" ? text.trim() : "",
+      }
     }
-  })
+  )
   if (problems.length > 0) return { ok: false, problems }
   return parseHeardSpokenCard({
     schema: SPOKEN_CARD_SCHEMA,
