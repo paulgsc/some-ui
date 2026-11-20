@@ -1,9 +1,11 @@
+import { captionSpace, LANDSCAPE } from "@some-ui/burn-ins"
 import { PIPELINES } from "@some-ui/engagement"
 import { QUILLMOSS_WEEK, TALLOWBROOK_WEEK_FILE } from "@some-ui/rust-rounds"
 import {
   CALL_INDEX_SCHEMA,
   CALL_STAGE_WORDS,
   CALL_VERSION,
+  ESSAY_ZOOM_FOOT,
   essayIntro,
   fitsAllowance,
   parseEssay,
@@ -378,6 +380,12 @@ describe("the essay's stage", () => {
     expect(
       weeks.rows.map((row) => row.cells.map((cell) => cell.kind))
     ).toContainEqual(["level", "unmet", "faded", "faded", "faded", "level"])
+  })
+})
+
+describe("a zoomed card in the essay (RR31)", () => {
+  it("stays above the band the stage keeps for captions", () => {
+    expect(ESSAY_ZOOM_FOOT).toBe(captionSpace(LANDSCAPE) / LANDSCAPE.height)
   })
 })
 

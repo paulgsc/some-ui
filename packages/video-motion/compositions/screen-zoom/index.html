@@ -1,0 +1,194 @@
+<!doctype html>
+<!--
+  A screen, zoomed to its parts (RR31, #3288; calls C795, C796): one
+  photographed screen (`@some-ui/video-render`'s `some-ui.screens/1`, the
+  phone's own Rust Rounds card or any other), shown whole, then eased in to
+  each region in `stops` in turn, a margin around it and a ring on it, and
+  eased back out to the whole. The runner copies the picture in as
+  assets/<picture> and sets data-duration to the scene's length; every
+  stop's box is in the picture's CSS pixels, from its top-left.
+
+  It fits any frame (data-fit-frame) and keeps the frame's foot, `foot` of
+  its height, clear for the captions a stage leaves room for.
+-->
+<html
+  lang="en"
+  data-composition-variables='[
+    {"id":"picture","type":"string","label":"The picture, under assets/","default":"screen.png"},
+    {"id":"width","type":"number","label":"Its width in CSS px","default":412},
+    {"id":"height","type":"number","label":"Its height in CSS px","default":915},
+    {"id":"scale","type":"number","label":"Its device pixels per CSS px","default":2},
+    {"id":"stops","type":"string","label":"Each region to zoom to, in turn: a JSON list of {x, y, width, height} in CSS px","default":"[]"},
+    {"id":"margin","type":"number","label":"CSS px kept around a region","default":24},
+    {"id":"foot","type":"number","label":"Share of the frame height kept clear at its foot","default":0},
+    {"id":"theme","type":"enum","label":"Theme","default":"mochi-night",
+     "options":[{"value":"light","label":"Light"},{"value":"dark","label":"Dark"},
+       {"value":"mochi","label":"Mochi"},{"value":"rose-night","label":"Rosé Night"},
+       {"value":"harvest-sky","label":"Harvest Sky"},{"value":"mochi-night","label":"Mochi Night"}]},
+    {"id":"ground","type":"color","label":"Ground","default":"#241a13"},
+    {"id":"accent","type":"color","label":"The ring on a region","default":"#f5b75b"}
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body,
+      #root {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+      #root {
+        position: relative;
+        background: var(--ground);
+      }
+      #room {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        overflow: hidden;
+      }
+      #camera {
+        position: absolute;
+        left: 0;
+        top: 0;
+        transform-origin: 0 0;
+      }
+      #camera img {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        box-shadow: 0 0 0 1px color-mix(in srgb, white 12%, transparent);
+      }
+      .ring {
+        position: absolute;
+        border: solid var(--accent);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="8"
+      data-width="1920"
+      data-height="1080"
+      data-fps="30"
+      data-fit-frame
+      data-no-timeline
+    >
+      <div id="room">
+        <div id="camera"><img id="shot" alt="" /></div>
+      </div>
+    </div>
+    <script src="lib/motion.js"></script>
+    <script>
+      const { length: L, track, vars, $, make } = window.motion
+      const root = $("root")
+      const frameW = Number(root.getAttribute("data-width"))
+      const frameH = Number(root.getAttribute("data-height"))
+      const stops = JSON.parse(vars.stops)
+
+      // Drawn at the most it is ever shown, then only shrunk, so the picture
+      // is never enlarged from a smaller raster: at most 1.25 frame pixels
+      // to a pixel of the picture (C796), so the code stays sharp.
+      const MOST = vars.scale * 1.25
+      const camera = $("camera")
+      Object.assign(camera.style, {
+        width: `${vars.width * MOST}px`,
+        height: `${vars.height * MOST}px`,
+      })
+      $("shot").src = `assets/${vars.picture}`
+      // The corners in the picture's own CSS px.
+      $("shot").style.borderRadius = `${16 * MOST}px`
+
+      // Nothing is drawn in the foot, which the captions draw on.
+      $("room").style.height = `${frameH * (1 - vars.foot)}px`
+      // Where a box is shown: the room above the foot, less an edge.
+      const edge = Math.round(Math.min(frameW, frameH) * 0.04)
+      const room = {
+        x: edge,
+        y: edge,
+        width: frameW - 2 * edge,
+        height: frameH * (1 - vars.foot) - 2 * edge,
+      }
+      /** The camera's key showing `box` (CSS px of the picture) centred in the room. */
+      const view = (box) => {
+        const fit = Math.min(
+          room.width / box.width,
+          room.height / box.height,
+          MOST
+        )
+        return {
+          x: room.x + room.width / 2 - fit * (box.x + box.width / 2),
+          y: room.y + room.height / 2 - fit * (box.y + box.height / 2),
+          scale: fit / MOST,
+        }
+      }
+      const whole = view({ x: 0, y: 0, width: vars.width, height: vars.height })
+      const near = (box) =>
+        view({
+          x: box.x - vars.margin,
+          y: box.y - vars.margin,
+          width: box.width + 2 * vars.margin,
+          height: box.height + 2 * vars.margin,
+        })
+
+      // The timing (C795): the whole for a beat, a move of 1.2 s to each
+      // stop, held for the stop's even share of what is left, and a move
+      // back out to the whole, held to the end; shortened together, in
+      // proportion, when the scene is too short for them.
+      const n = stops.length
+      const ask = { lead: 1, move: 1.2, tail: 0.8, hold: 1.5 }
+      const wanted = ask.lead + ask.tail + (n + 1) * ask.move + n * ask.hold
+      const k = n === 0 ? 1 : Math.min(1, L / wanted)
+      const lead = ask.lead * k
+      const move = ask.move * k
+      const tail = ask.tail * k
+      const hold = n === 0 ? 0 : (L - lead - tail - (n + 1) * move) / n
+
+      // Each key eases to the next as it names.
+      const keys = [[0, whole, "linear"]]
+      let t = lead
+      if (n > 0) keys.push([t, whole, "inOut"])
+      stops.forEach((box) => {
+        const shown = near(box)
+        keys.push([t + move, shown, "linear"])
+        keys.push([t + move + hold, shown, "inOut"])
+        // A ring on the region while it is held, in the picture's own px.
+        const ring = make("div", "ring", camera)
+        const line = 3 * vars.scale
+        Object.assign(ring.style, {
+          left: `${(box.x - line) * MOST}px`,
+          top: `${(box.y - line) * MOST}px`,
+          width: `${(box.width + 2 * line) * MOST}px`,
+          height: `${(box.height + 2 * line) * MOST}px`,
+          borderWidth: `${line * MOST}px`,
+          borderRadius: `${8 * MOST}px`,
+        })
+        track(ring, [
+          [t + move * 0.6, { opacity: 0 }],
+          [t + move, { opacity: 0.9 }],
+          [t + move + hold - 0.2 * k, { opacity: 0.9 }],
+          [t + move + hold + 0.1 * k, { opacity: 0 }],
+        ])
+        t += move + hold
+      })
+      if (n > 0) {
+        keys.push([t + move, whole, "linear"])
+        keys.push([L, whole])
+      }
+      track(camera, keys)
+    </script>
+  </body>
+</html>

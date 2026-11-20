@@ -50,7 +50,21 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
   leaves and a ding as the close's mark comes in. So it needs `--brand`, whose `sounds/` holds
   the kit `render sounds --out <brand>/sounds` writes (`@some-ui/video-render`'s `cues.ts`).
 
-CI runs `prove`, `video` and `promo` on every change here (`pr.yml`, "HyperFrames renders the
+## A screen, zoomed to its parts
+
+`screen-zoom` (RR31, #3288; calls C795, C796) shows one photographed screen whole, eases in
+to each region it is given in turn, a ring on it, and back out. The screen and its regions
+come from a `some-ui.screens/1` record (`@some-ui/video-render`'s `screen.ts`): the Rust
+essay's capture photographs the phone's own ticket cards from the owner's week, and any
+other capture may photograph a screen whose parts carry `data-region`. `zoomPicture` in
+`@some-ui/video-render` turns a record and a list of region names into the composition
+picture any cut list can place, with the picture in its files. It fits any frame and keeps
+`foot` of the frame's height clear for captions.
+
+`sample/zoom` is one: a mock Rust Rounds card on sample data (not the app's own drawing),
+zoomed to its question, its code and rustc's error, in the vertical series.
+
+CI runs `prove`, `video` (on `sample/video` and `sample/zoom`) and `promo` on every change here (`pr.yml`, "HyperFrames renders the
 same bytes twice"). They need `ffmpeg` on `PATH` and Playwright's Chromium **headless shell**:
 found under `PLAYWRIGHT_BROWSERS_PATH` or Playwright's cache, or named with `--chrome`
 (`src/browser.ts`). The full Chrome is refused (see "The pins, and why").

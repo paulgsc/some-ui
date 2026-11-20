@@ -5,7 +5,9 @@
  * on a timeline the renderer draws.
  *
  * CV1 (promise, #2671): every scene shows the whole still the stage
- * recorded, held still (`__tests__/call-video.test.ts`). Captions draw only
+ * recorded, held still (`__tests__/call-video.test.ts`). A scene given a
+ * composition for its picture (the brand's open and close, a screen zoomed
+ * to its parts, `./zoom`) draws that instead, with its own motion. Captions draw only
  * in the band at the frame's foot, which a stage leaves empty for them
  * (`@some-ui/burn-ins`' `captionSpace`).
  */
@@ -92,6 +94,11 @@ export type StillScene = {
   readonly said: string
   /** How long it holds with nothing said, when not `unsaidMs`. */
   readonly holdMs?: number
+  /**
+   * A composition drawn in place of its still (`./zoom`'s screen zoom,
+   * RR31); the still is still recorded, and goes unused.
+   */
+  readonly picture?: Composition
 }
 
 /** The composition that draws the brand intro and outro, from HYPER5 (#2728). */
@@ -151,7 +158,8 @@ export function heldFor(
  * `unsaidMs`. With `captions`, each scene's are drawn from its take's words,
  * and the music bed plays under the voice once the series names one
  * (`bed`). The brand intro and outro are the composition `shape` names,
- * where it names one (`brandPicture`), and their stills go unused.
+ * where it names one (`brandPicture`), and their stills go unused, as a
+ * scene's do that names a `picture` of its own.
  */
 export function stillsCutList(
   feed: {
@@ -176,7 +184,7 @@ export function stillsCutList(
     ...(feed.bed ? {} : { music: "off" as const }),
     shots: scenes.map((scene, i) => {
       const take = takes[i] ?? null
-      const motion = brandPicture(feed.shape, scene.id)
+      const motion = brandPicture(feed.shape, scene.id) ?? scene.picture
       return {
         id: scene.id,
         picture: motion ?? { kind: "still", source: `${scene.file}.png` },

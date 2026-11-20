@@ -143,6 +143,14 @@ name, its inputs, and the files in the video's folder it reads. The renderer dra
 through the `compositions` port, just before the scene's segment, and lays the scene's
 captions over it; `@some-ui/video-motion`'s `motion video` fills the port.
 
+`src/zoom.ts`'s `zoomPicture` makes one from a `some-ui.screens/1` record (`src/screen.ts`):
+`screen-zoom` on one screen, zoomed to the regions named, in order (RR31, #3288). The Rust
+essay's question scenes use it once `record:essay --week-file` has photographed the week's
+cards: the ticket's question, each speak-to point, the program and rustc's first two
+diagnostics (`essayZoomRefs`, C797). Without the cards the essay renders as before. A cards
+essay may not place one yet: home keeps no screens for one (`parseCardsEssay` takes only
+cards).
+
 ## Captions, a scene at a time
 
 A video asks for captions with one burn-in over the whole video, kind

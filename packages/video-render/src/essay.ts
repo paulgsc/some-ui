@@ -60,9 +60,17 @@ import type { ChapterMark } from "./chapters"
 import { chapterSlides } from "./chapters"
 import { once, problemsOf } from "./cut-list"
 import type { CutList, Parsed } from "./cut-list"
-import { FORMAT_SCHEMA, repeatedId, versionRefusal, words } from "./format"
+import {
+  FORMAT_SCHEMA,
+  markThemeOf,
+  repeatedId,
+  versionRefusal,
+  words,
+} from "./format"
 import type { Format, Shape } from "./format"
 import { CONVERSATION_MOST } from "./opening"
+import type { RegionRef, Screens } from "./screen"
+import { regionRef } from "./screen"
 import { hasCaptions, stillFile, stillsCutList } from "./stills"
 import type { StillTake } from "./stills"
 import { boardSceneOf, storyboardOf } from "./storyboard"
@@ -77,6 +85,7 @@ import {
   SILENCE_SHAPE,
   silenceSaid,
 } from "./verdict"
+import { zoomPicture } from "./zoom"
 
 export const ESSAY_SCHEMA = "some-ui.rust-essay/1"
 
@@ -1406,9 +1415,20 @@ export function essayCutList(
   {
     bed = false,
     voicing = "owner",
-  }: { readonly bed?: boolean; readonly voicing?: Voicing } = {}
+    screens,
+  }: {
+    readonly bed?: boolean
+    readonly voicing?: Voicing
+    /**
+     * The phone's own cards of the week (RR31), in the video's `screens/`:
+     * with them, each question scene shows its ticket's card, zoomed to
+     * what is said (`essayZoomRefs`).
+     */
+    readonly screens?: Screens
+  } = {}
 ): CutList {
   const format = essayFormat(essay.template.version)
+  const theme = markThemeOf(format.shape)
   return stillsCutList(
     {
       title: `The Rust Rounds essay, ${essay.week.id}`,
@@ -1418,13 +1438,63 @@ export function essayCutList(
       bed,
       ...(format.shape ? { shape: format.shape } : {}),
     },
-    essayScenes(essay, voicing).map((scene, i) => ({
-      id: scene.id,
-      file: stillFile(i, scene.id),
-      said: scene.said,
-    })),
+    essayScenes(essay, voicing).map((scene, i) => {
+      const refs = essayZoomRefs(essay, scene)
+      const picture =
+        screens === undefined || refs.length === 0
+          ? null
+          : zoomPicture(screens, refs, {
+              foot: ESSAY_ZOOM_FOOT,
+              ...(theme === undefined ? {} : { theme }),
+            })
+      return {
+        id: scene.id,
+        file: stillFile(i, scene.id),
+        said: scene.said,
+        ...(picture === null ? {} : { picture }),
+      }
+    }),
     takes
   )
+}
+
+/**
+ * The share of the essay's 1920×1080 frame its stage keeps clear at the
+ * foot for captions (`@some-ui/burn-ins`' `captionSpace(LANDSCAPE)`, 372 px,
+ * which this package can't import; held equal by www's essay test), so a
+ * zoomed card stays above them.
+ */
+export const ESSAY_ZOOM_FOOT = 372 / 1080
+
+/** The most of rustc's diagnostics a question scene zooms to, in rustc's order. */
+const ZOOM_DIAGNOSTICS = 2
+
+/**
+ * The regions of the phone's card a scene zooms to, in order, by their
+ * names (`./screen`'s `regionRef`; C797): a question scene goes to its
+ * ticket's question, each speak-to point, the program and rustc's first
+ * diagnostics, as it says them. Any other scene shows its still: a deep
+ * dive's own code is a snippet the phone never draws (#3288), and the
+ * stage's other scenes show what no card does.
+ */
+export function essayZoomRefs(
+  essay: Essay,
+  scene: EssayScene
+): Array<RegionRef> {
+  if (scene.section !== "question" || scene.ticket === undefined) return []
+  const ticket = essay.tickets.find((each) => each.id === scene.ticket)
+  if (ticket === undefined) return []
+  const numbered = (
+    kind: "point" | "diagnostic",
+    most: number
+  ): Array<RegionRef> =>
+    Array.from({ length: most }, (_, j) => regionRef(ticket.id, kind, j + 1))
+  return [
+    regionRef(ticket.id, "question"),
+    ...numbered("point", ticket.points.length),
+    regionRef(ticket.id, "program"),
+    ...numbered("diagnostic", ZOOM_DIAGNOSTICS),
+  ]
 }
 
 /**
