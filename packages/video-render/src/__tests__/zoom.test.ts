@@ -75,6 +75,15 @@ describe("a screen zoomed to its parts (RR31)", () => {
     })
   })
 
+  it("refuses a foot past half the frame", () => {
+    expect(() =>
+      zoomPicture(screens, ["QM-311:question"], { foot: 0.6 })
+    ).toThrow(/foot/)
+    expect(() =>
+      zoomPicture(screens, ["QM-311:question"], { foot: -0.1 })
+    ).toThrow(/foot/)
+  })
+
   it("is nothing when no region asked for was captured", () => {
     expect(zoomPicture(screens, ["QM-313:question"])).toBeNull()
     expect(zoomPicture(screens, [])).toBeNull()

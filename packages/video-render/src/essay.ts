@@ -85,7 +85,7 @@ import {
   SILENCE_SHAPE,
   silenceSaid,
 } from "./verdict"
-import { zoomPicture } from "./zoom"
+import { ZOOM_STOPS_MOST, zoomPicture } from "./zoom"
 
 export const ESSAY_SCHEMA = "some-ui.rust-essay/1"
 
@@ -1473,7 +1473,8 @@ const ZOOM_DIAGNOSTICS = 2
  * The regions of the phone's card a scene zooms to, in order, by their
  * names (`./screen`'s `regionRef`; C797): a question scene goes to its
  * ticket's question, each speak-to point, the program and rustc's first
- * diagnostics, as it says them. Any other scene shows its still: a deep
+ * diagnostics, in that order, each held an even share of the scene
+ * (C795), the first `ZOOM_STOPS_MOST`. Any other scene shows its still: a deep
  * dive's own code is a snippet the phone never draws (#3288), and the
  * stage's other scenes show what no card does.
  */
@@ -1494,7 +1495,7 @@ export function essayZoomRefs(
     ...numbered("point", ticket.points.length),
     regionRef(ticket.id, "program"),
     ...numbered("diagnostic", ZOOM_DIAGNOSTICS),
-  ]
+  ].slice(0, ZOOM_STOPS_MOST)
 }
 
 /**

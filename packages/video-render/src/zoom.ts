@@ -17,6 +17,9 @@ export const SCREEN_ZOOM = "screen-zoom"
 /** The most regions one scene zooms to, so each holds long enough to read. */
 export const ZOOM_STOPS_MOST = 10
 
+/** The most of the frame's height a zoom keeps clear at its foot. */
+export const FOOT_MOST = 0.5
+
 /**
  * The picture zooming into `refs` in order, on the screen they name, with
  * its file under `dir` in the video's folder; refs no screen in `screens`
@@ -39,6 +42,10 @@ export function zoomPicture(
     readonly theme?: string
   } = {}
 ): Composition | null {
+  if (!(foot >= 0 && foot <= FOOT_MOST))
+    throw new Error(
+      `a foot of ${String(foot)}: a zoom keeps 0 to ${String(FOOT_MOST)} of the frame for captions`
+    )
   const held = refs.flatMap((ref) => {
     const found = regionOf(screens, ref)
     return found ? [found] : []

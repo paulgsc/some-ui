@@ -97,7 +97,7 @@
       const root = $("root")
       const frameW = Number(root.getAttribute("data-width"))
       const frameH = Number(root.getAttribute("data-height"))
-      const stops = JSON.parse(vars.stops)
+      const asked = JSON.parse(vars.stops)
 
       // Drawn at the most it is ever shown, then only shrunk, so the picture
       // is never enlarged from a smaller raster: at most 1.25 frame pixels
@@ -147,11 +147,18 @@
       // The timing (C795): the whole for a beat, a move of 1.2 s to each
       // stop, held for the stop's even share of what is left, and a move
       // back out to the whole, held to the end; shortened together, in
-      // proportion, when the scene is too short for them.
-      const n = stops.length
+      // proportion, down to 0.6 of that pace, past which the last stops are
+      // dropped.
       const ask = { lead: 1, move: 1.2, tail: 0.8, hold: 1.5 }
-      const wanted = ask.lead + ask.tail + (n + 1) * ask.move + n * ask.hold
-      const k = n === 0 ? 1 : Math.min(1, L / wanted)
+      const wantedFor = (m) =>
+        ask.lead + ask.tail + (m + 1) * ask.move + m * ask.hold
+      // Never faster than 0.6 of the asked pace: a scene too short for
+      // every stop keeps the first ones that fit, and drops the rest.
+      const SLOWEST = 0.6
+      let n = asked.length
+      while (n > 1 && L / wantedFor(n) < SLOWEST) n -= 1
+      const stops = asked.slice(0, n)
+      const k = n === 0 ? 1 : Math.min(1, L / wantedFor(n))
       const lead = ask.lead * k
       const move = ask.move * k
       const tail = ask.tail * k
@@ -165,7 +172,8 @@
         const shown = near(box)
         keys.push([t + move, shown, "linear"])
         keys.push([t + move + hold, shown, "inOut"])
-        // A ring on the region while it is held, in the picture's own px.
+        // A ring on the region while it is held, its line 3 × scale CSS px
+        // of the picture (6 at scale 2), thick enough to read zoomed out.
         const ring = make("div", "ring", camera)
         const line = 3 * vars.scale
         Object.assign(ring.style, {

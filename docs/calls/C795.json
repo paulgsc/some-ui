@@ -6,7 +6,7 @@
     "some-ui:packages/video-motion/compositions/screen-zoom",
     "some-ui:packages/video-render/src/zoom.ts"
   ],
-  "chose": "The zoom's timing: the whole screen for 1 s, a move of 1.2 s (ease in and out) to each region, held for an even share of what is left, then 1.2 s back out to the whole, held 0.8 s to the scene's end; a ring fades in on each region while it is held. When a scene is shorter than those ask, they shrink together in proportion. A scene zooms to at most 10 regions. The scene's length is the essay's as before: the zoom changes the picture, never the timing.",
+  "chose": "The zoom's timing: the whole screen for 1 s, a move of 1.2 s (ease in and out) to each region, held for an even share of what is left, then 1.2 s back out to the whole, held 0.8 s to the scene's end; a ring fades in on each region while it is held. When a scene is shorter than those ask, they shrink together in proportion, down to 0.6 of that pace; past that the last stops are dropped (the essay's are rustc's diagnostics), so nothing strobes. A scene zooms to at most 10 regions. The scene's length is the essay's as before: the zoom changes the picture, never the timing.",
   "options": [
     "even holds over the scene's take (chosen)",
     "holds timed to the narration's words, which needs cues from the routine (RR31's 'narration cues to regions', a contract change)",
