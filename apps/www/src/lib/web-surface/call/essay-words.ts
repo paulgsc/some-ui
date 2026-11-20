@@ -27,11 +27,11 @@ export const ESSAY_WORDS = {
   /** A spoken card's stage (WALK7): its header, and its sample's. */
   spokenCard: "Spoken card",
   sampleCard: "Sample card, made-up takes",
-  /** A spoken card's answer too long to write out: its words are the captions'. */
   /** Why a spoken card's stage draws none of the card it was asked for. */
   cardUnread: (card: string): string => `The spoken card ${card} wasn't read`,
   otherCard: (asked: string, got: string): string =>
     `The spoken card read is ${got}, not ${asked}`,
+  /** A spoken card's answer too long to write out: its words are the captions'. */
   saidBelow: "In the captions below, as it was said",
   /** The owner's answer to it: their own take, or in the sample a synthetic voice reading one. */
   yourAnswer: "Your answer",

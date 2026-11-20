@@ -489,6 +489,19 @@ describe("a spoken card's stage (WALK7)", () => {
 
   it("is never the sample in place of a card it read as another", () => {
     if (!sample.ok) throw new Error("no sample")
+    expect(
+      namedStageOf({
+        week: "introduction",
+        read: { data: undefined, pending: false, failed: true },
+        sample,
+        parse: parseHeardSpokenCard,
+        idOf: (heard) => heard.card,
+        words: { unread: EW.cardUnread, other: EW.otherCard },
+      })
+    ).toEqual({
+      kind: "none",
+      problems: ["The spoken card introduction wasn't read"],
+    })
     expect(of("introduction", sample.value)).toEqual({
       kind: "none",
       problems: ["The spoken card read is sample, not introduction"],
