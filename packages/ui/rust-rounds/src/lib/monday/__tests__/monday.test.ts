@@ -34,6 +34,7 @@ import {
 import sampleRuns from "@rust-rounds/lib/monday/sample/runs.json"
 import type { Values } from "@rust-rounds/lib/monday/values"
 import { ValuesSchema } from "@rust-rounds/lib/monday/values"
+import { STANDING_OPENING } from "@rust-rounds/lib/opening"
 import {
   QUILLMOSS_WEEK,
   QUILLMOSS_WEEK_FILE,
@@ -112,6 +113,8 @@ describe("the Monday routine, on the sample week", () => {
       seedLine("2026-11-12T17:04:00.000Z")
     )
     expect(week.week.schema).toBe("some-ui.rust-week/2")
+    // The standing set, copied as it stands (C737).
+    expect(week.week.opening).toEqual(STANDING_OPENING)
   })
 
   it("restates what home heard, never words the model wrote, in each answer", () => {
@@ -737,6 +740,18 @@ describe("finish", () => {
     }
     expect(problemsOf(given)).toEqual([
       'values.essays.0: Unrecognized key: "company"',
+    ])
+  })
+
+  it("leaves the opening to code: values that write one are refused (C737)", () => {
+    const sample = values()
+    if (sample.week === null) throw new Error("the sample writes a next week")
+    const given = {
+      ...sample,
+      week: { ...sample.week, opening: STANDING_OPENING },
+    }
+    expect(problemsOf(given)).toEqual([
+      'values.week: Unrecognized key: "opening"',
     ])
   })
 })

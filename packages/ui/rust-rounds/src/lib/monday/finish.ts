@@ -15,7 +15,10 @@
  *   `@rust-rounds/lib/decay`), read over every week the mailbox holds an
  *   essay for and this one; the essay pins version 2 of its template only
  *   when its chart draws decay or fading (C270);
- * - a seed ticket's source, as a sentence at the end of its spec (#2685).
+ * - a seed ticket's source, as a sentence at the end of its spec (#2685);
+ * - **the opening**, the standing set copied as it stands
+ *   (`@rust-rounds/lib/opening`, C737): a week whose opening isn't the set
+ *   is refused.
  *
  * What it holds beyond the parsers: each deep dive said in 2 to 5 minutes
  * (C103), every best, beside and deep dive scene within the essay's frame
@@ -48,6 +51,7 @@ import type {
   Values,
 } from "@rust-rounds/lib/monday/values"
 import { ValuesSchema } from "@rust-rounds/lib/monday/values"
+import { openingOfWeek, STANDING_OPENING } from "@rust-rounds/lib/opening"
 import {
   describeWeekProblem,
   oversizeWeek,
@@ -563,6 +567,7 @@ function buildWeek(
     role: given.role,
     audience: given.audience,
     story: given.story,
+    opening: openingOfWeek(),
     sla: given.sla,
     tickets: given.tickets.map(({ seed, ...ticket }) =>
       seed === undefined
@@ -590,6 +595,11 @@ function buildWeek(
     ))
       problems.push(`week: ${unfit}`)
   const file = WeekV2Schema.parse(week)
+  // The standing set reaches the week whole, or the week isn't put (C737).
+  if (JSON.stringify(file.opening) !== JSON.stringify(STANDING_OPENING))
+    problems.push(
+      `week: its opening isn't the standing set (version ${STANDING_OPENING.version}) as it stands; the routine never writes the opening`
+    )
   const oversize = oversizeWeek(file)
   if (oversize !== null) problems.push(`week: ${describeWeekProblem(oversize)}`)
   return problems.length > before ? null : { file, held: read.week }

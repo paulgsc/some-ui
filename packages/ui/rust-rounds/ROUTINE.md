@@ -99,9 +99,9 @@ sentences, and assume nothing remembered.
   take of any of its answers, code puts the conversation first, before
   `open`: a second synthetic voice asks each question and the owner's take
   answers it. Its questions and answers are the standing set
-  (`src/lib/opening`), which code copies into each `/2` week once this
-  routine writes `/2` weeks; never write or change them. `open` still restates the week, and never repeats or
-  answers the opening.
+  (`src/lib/opening`), which code copies into every week this routine
+  writes; never write or change them. `open` still restates the week, and
+  never repeats or answers the opening.
 - `weeks`: what the chart shows. Code draws the chart and the role line from
   the decay record (RR19, #2695) and writes a sentence under it for each
   decay and fading, so say what the essays' SOLO levels show over the weeks,
@@ -212,6 +212,11 @@ owner in a role on its team. The company is never a real one's name, and not
 one of `earlierCompanies`. Code adds the id, the dates, the references and
 the rubric. The file `finish` writes is at most 128 KiB (C700); cut prose or
 exercises if it says otherwise.
+
+Code also adds the week's `opening`: the standing set of questions and the
+owner's answers (`src/lib/opening`, C737), copied as it stands. Never write
+an `opening` in the values: `finish` refuses one, and refuses a week whose
+opening isn't the standing set. It changes only when the owner asks.
 
 The routine writes `/2` because home records each starter (paulgsc/server
 #1001) and the phone shows each fork's options and the academy (RR25's

@@ -343,11 +343,11 @@ export type WeekV1 = z.infer<typeof WeekV1Schema>
  * The essay's opening, a conversation (#3269, C738): one to three
  * questions someone who has never seen Rust Rounds would ask, each with the
  * answer the owner reads through the teleprompter. It is the standing set
- * (`@rust-rounds/lib/opening`, C737), to be copied into the week as it
- * stands by code once the routine writes `/2` weeks (#3272): the routine
- * never writes its words. Until then no week carries one. `version` is the set's, so a take recorded
- * under one version answers that version's words, and plays only while the
- * week's opening is the same version (C736).
+ * (`@rust-rounds/lib/opening`, C737), which `finish` copies into every
+ * `/2` week the routine writes (#3272): the routine never writes its words.
+ * `version` is the set's, so a take recorded under one version answers that
+ * version's words, and plays only while the week's opening is the same
+ * version (C736).
  */
 const OpeningSchema = z.strictObject({
   version: z.int().positive(),
