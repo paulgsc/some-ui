@@ -10,6 +10,7 @@ import {
   diagnosticView,
   isWhole,
   printedLines,
+  splitMarkers,
   tickedRuns,
 } from "@rust-rounds/lib/rustc-view"
 import {
@@ -385,5 +386,26 @@ describe("tickedRuns", () => {
           .join("")
       ).toBe(text)
     }
+  })
+})
+
+describe("printedLines, on a long hostile row", () => {
+  it("reads markers and their label, and refuses a row that is none", () => {
+    expect(splitMarkers("   ^^^ expected `u32`")).toEqual({
+      markers: "   ^^^",
+      label: " expected `u32`",
+    })
+    expect(splitMarkers("  - +")).toEqual({
+      markers: "  - +",
+      label: undefined,
+    })
+    expect(splitMarkers("  ^x")).toBeNull()
+  })
+
+  it("stays linear on the rows CodeQL named", () => {
+    const rows = [`   |+ ${"+\t".repeat(50_000)}x`, `${" ".repeat(100_000)}x`]
+    const started = performance.now()
+    for (const row of rows) printedLines(row)
+    expect(performance.now() - started).toBeLessThan(1_000)
   })
 })

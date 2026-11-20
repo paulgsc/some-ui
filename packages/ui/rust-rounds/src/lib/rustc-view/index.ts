@@ -369,11 +369,40 @@ const MARKER_TONE: Readonly<Record<string, PrintedTone>> = {
 export const toneOfLevel = (level: string): PrintedTone =>
   LEVEL_TONE[level] ?? "plain"
 
+/** A character a marker row draws with. */
+const isMarker = (c: string): boolean => "^-+~|".includes(c)
+
+/**
+ * A marker row split into its markers and its label: the longest run of
+ * markers and whitespace from the start that ends on a marker, followed by
+ * nothing or by whitespace and the label. Null when the row is no marker
+ * row. One pass, so a long row costs its length (a regular expression for
+ * it backtracks quadratically).
+ */
+export function splitMarkers(
+  rest: string
+): { readonly markers: string; readonly label: string | undefined } | null {
+  let end = -1
+  for (let i = 0; i < rest.length; i++) {
+    const c = rest.charAt(i)
+    if (isMarker(c)) {
+      const next = rest.charAt(i + 1)
+      if (next === "" || /\s/.test(next)) end = i
+    } else if (!/\s/.test(c)) break
+  }
+  if (end === -1) return null
+  const label = rest.slice(end + 1)
+  return {
+    markers: rest.slice(0, end + 1),
+    label: label === "" ? undefined : label,
+  }
+}
+
 /** The marker row under a source line: `^^^^ label`, `----- label`, `+`. */
 function markerRuns(rest: string): Array<PrintedRun> | null {
-  const match = /^([\s^\-+~|]*[\^\-+~|])(\s.*)?$/.exec(rest)
-  if (match === null) return null
-  const [, markers = "", label] = match
+  const split = splitMarkers(rest)
+  if (split === null) return null
+  const { markers, label } = split
   const runs: Array<PrintedRun> = []
   let last: PrintedTone = "plain"
   for (const piece of markers.match(/\s+|[\^]+|-+|\++|~+|\|/g) ?? []) {
@@ -421,7 +450,8 @@ function printedLine(line: string): ReadonlyArray<PrintedRun> {
     ]
   }
   if (/^\s*\.\.\.\s*$/.test(line)) return [{ text: line, tone: "gutter" }]
-  const gutter = /^(\s*(\d*)\s*\|)(.*)$/.exec(line)
+  // One way to read each space, so a long run of them stays linear.
+  const gutter = /^(\s*(?:(\d+)\s*)?\|)(.*)$/.exec(line)
   if (gutter !== null) {
     const [, bar = "", number = "", rest = ""] = gutter
     const head: PrintedRun = { text: bar, tone: "gutter" }
