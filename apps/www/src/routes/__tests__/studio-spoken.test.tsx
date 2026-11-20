@@ -149,7 +149,7 @@ describe("Studio's Spoken", () => {
     expect(within(first).getByText(/Take 1 · on home · Using/u)).toBeTruthy()
   })
 
-  it("lets no take home couldn't hear be the one an essay uses", async () => {
+  it("offers no Use this one on a take home couldn't hear", async () => {
     const { runtime, sim } = spokenPhone({
       heard: () => Promise.resolve({ kind: "heard", text: "" }),
     })

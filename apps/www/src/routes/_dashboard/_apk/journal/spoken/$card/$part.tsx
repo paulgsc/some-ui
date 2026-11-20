@@ -10,7 +10,7 @@ const Part =
 /** A part of a spoken card (W5): read or said, recorded, and its takes; `part` counts from 1. */
 const PartPage = (): JSX.Element | null => {
   const { card, part }: { card: string; part: string } = Route.useParams()
-  const n = /^\d{1,3}$/u.test(part) ? Number(part) - 1 : -1
+  const n = /^[1-9]\d{0,2}$/u.test(part) ? Number(part) - 1 : -1
   return Part === null ? null : <Part id={card} n={n} />
 }
 

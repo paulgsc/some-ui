@@ -26,6 +26,8 @@ export const SPOKEN_WORDS = {
     heading: "Paste a spoken card",
     label: "The spoken card",
     how: "A line saying CATEGORY names its kind: introduction, for now. A line saying SCRIPT starts words to read, and OWN WORDS something to say in your own words. A QUESTION line in a part is what Kokoro asks before it.",
+    most: (parts: number): string =>
+      `Only the first ${parts} parts are kept: paste the rest as another card.`,
     plain:
       "With no SCRIPT or OWN WORDS lines, each paragraph is a part to read. You can change a part's kind until it has a take.",
     keep: "Keep this card",
@@ -121,7 +123,11 @@ export function essayBlock(card: SpokenCard): string {
   const lines = card.parts.flatMap((part, n) => [
     `Part ${n + 1}${part.id === null ? "" : ` (${part.id})`}, ${part.kind === "read" ? "read" : "own words"}`,
     ...(part.ask === null ? [] : [`  Asks: ${part.ask}`]),
-    part.using === null ? `  No take yet` : `  From take ${part.using}`,
+    part.using !== null
+      ? `  From take ${part.using}`
+      : part.takes.length === 0
+        ? `  No take yet`
+        : `  ${counted(part.takes.length, "take")}, none picked yet`,
   ])
   return [...head, ...lines].join("\n")
 }

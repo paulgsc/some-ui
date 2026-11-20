@@ -22,11 +22,18 @@ import type { HeardAnswer } from "@some-ui/voice-capture"
 import { Link, useNavigate } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
-import type { PartKind, SpokenCard, SpokenRuntime } from "@/lib/studio-spoken"
+import type {
+  PartKind,
+  SpokenCard,
+  SpokenPart,
+  SpokenRuntime,
+} from "@/lib/studio-spoken"
 import {
   essayBlock,
   lineOf,
   parseCard,
+  partAt,
+  PARTS_MOST,
   phoneSpoken,
   SPOKEN_WORDS,
   titleOf,
@@ -147,6 +154,9 @@ const PasteSpokenBody = ({
           ? WORDS.paste.nothing
           : WORDS.paste.split(count("read"), count("own"), asks)}
       </p>
+      {pasted?.parts.length === PARTS_MOST && (
+        <p className="text-sm">{WORDS.paste.most(PARTS_MOST)}</p>
+      )}
       <p className="text-muted-foreground text-sm">{WORDS.paste.plain}</p>
       <div className="flex flex-wrap gap-2">
         <Button
@@ -269,13 +279,14 @@ const PartTakes = ({
   runtime,
   card,
   n,
+  part,
 }: {
   runtime: SpokenRuntime
-  card: SpokenCard
+  card: string
   n: number
+  part: SpokenPart
 }): JSX.Element | null => {
-  const part = card.parts.at(n)
-  const takes = part?.takes ?? []
+  const { takes } = part
   const heard = useSyncExternalStore(
     runtime.heard.subscribe,
     runtime.heard.getSnapshot
@@ -288,7 +299,7 @@ const PartTakes = ({
   useEffect(() => {
     runtime.askHeard(key === "" ? [] : key.split(","))
   }, [runtime, key])
-  if (part === undefined || takes.length === 0) return null
+  if (takes.length === 0) return null
   return (
     <section className="flex flex-col gap-2">
       <h2 className="text-sm font-semibold">{WORDS.takes(takes.length)}</h2>
@@ -338,7 +349,7 @@ const PartTakes = ({
                       variant="outline"
                       size="sm"
                       className="self-start"
-                      onClick={() => runtime.use(card.id, n, take)}
+                      onClick={() => runtime.use(card, n, take)}
                     >
                       {WORDS.useThis}
                     </Button>
@@ -427,7 +438,7 @@ const SpokenPartPageBody = ({
 }): JSX.Element => {
   useAttached(runtime)
   const card = useCards(runtime).find((each) => each.id === id)
-  const part = card?.parts.at(n)
+  const part = card === undefined ? undefined : partAt(card, n)
   if (card === undefined || part === undefined) return <Lost />
   const line = lineOf(card.id, n)
   return (
@@ -463,7 +474,7 @@ const SpokenPartPageBody = ({
           {WORDS.flip(part.kind === "read" ? "own" : "read")}
         </Button>
       )}
-      <PartTakes runtime={runtime} card={card} n={n} />
+      <PartTakes runtime={runtime} card={card.id} n={n} part={part} />
       <QuietLink card={card.id}>{titleOf(card)}</QuietLink>
     </div>
   )

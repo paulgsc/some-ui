@@ -79,6 +79,14 @@ describe("the essay's copy", () => {
             takes: [],
             using: null,
           },
+          {
+            id: null,
+            kind: "read",
+            ask: null,
+            text: "Then.",
+            takes: ["tk2", "tk3"],
+            using: null,
+          },
         ],
       })
     ).toBe(
@@ -90,6 +98,8 @@ describe("the essay's copy", () => {
         "  From take tk1",
         "Part 2, own words",
         "  No take yet",
+        "Part 3, read",
+        "  2 takes, none picked yet",
       ].join("\n")
     )
   })

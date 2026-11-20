@@ -12,7 +12,9 @@ import {
   keptCard,
   lineOf,
   parseCard,
+  partAt,
   partOfLine,
+  unuse,
   use,
   withSeen,
 } from "@/lib/studio-spoken/model"
@@ -134,6 +136,18 @@ SCRIPT Read this line as it is.`
     expect(parseCard(`CATEGORY trailer\n${PASTED}`)).toBeNull()
   })
 
+  it("reads a marker only as a word of its own", () => {
+    const card = parseCard("SCRIPT\nSCRIPTURE says so.\nQUESTIONS remain open.")
+    expect(card?.parts).toEqual([
+      {
+        id: null,
+        kind: "read",
+        ask: null,
+        text: "SCRIPTURE says so.\nQUESTIONS remain open.",
+      },
+    ])
+  })
+
   it("keeps nothing from nothing to say", () => {
     expect(parseCard("   \n\n ")).toBeNull()
     expect(parseCard("Title\nSCRIPT\n\n")).toBeNull()
@@ -177,6 +191,15 @@ describe("SCR1: a part's takes only grow", () => {
   })
 })
 
+describe("a part's place", () => {
+  it("names no part before the first, or past the last", () => {
+    expect(partAt(script, 0)?.kind).toBe("read")
+    expect(partAt(script, -1)).toBeUndefined()
+    expect(partAt(script, 3)).toBeUndefined()
+    expect(flip(script, -1)).toBe(script)
+  })
+})
+
 describe("SCR2: a part's kind changes only while it has no take", () => {
   it("flips a part with no take, and not one with a take", () => {
     expect(flip(script, 0).parts[0]?.kind).toBe("own")
@@ -193,5 +216,18 @@ describe("SCR3: a part uses only one of its own takes", () => {
     ])
     expect(use(taken, 0, "t1").parts[0]?.using).toBe("t1")
     expect(use(taken, 0, "t3")).toBe(taken)
+    expect(use(taken, -1, "t1")).toBe(taken)
+  })
+
+  it("lets go of a pick home heard nothing in, keeping the take", () => {
+    const picked = use(
+      withSeen(script, [{ id: "t1", line: lineOf("scabc12", 0) }]),
+      0,
+      "t1"
+    )
+    const unheard = unuse(picked, "t1")
+    expect(unheard.parts[0]?.using).toBeNull()
+    expect(unheard.parts[0]?.takes).toEqual(["t1"])
+    expect(unuse(unheard, "t1")).toBe(unheard)
   })
 })

@@ -18,7 +18,8 @@
  *
  * - **SCR1:** a part's takes only grow (`withSeen`).
  * - **SCR2:** a part's kind changes only while it has no take (`flip`).
- * - **SCR3:** a part uses only one of its own takes (`use`).
+ * - **SCR3:** a part uses only one of its own takes, and none home heard
+ *   nothing in (`use`, `unuse`).
  */
 /** Each category of spoken card, and the template an essay renders it with. */
 export const CATEGORIES = ["introduction"] as const
@@ -65,7 +66,7 @@ export type PastedCard = {
 /** The longest card a paste keeps, in parts. */
 export const PARTS_MOST = 40
 
-const MARK = /^\s*(SCRIPT|OWN WORDS|QUESTION)\s*:?\s*(.*)$/u
+const MARK = /^\s*(SCRIPT|OWN WORDS|QUESTION)(?=\s|:|$)\s*:?\s*(.*)$/u
 const CATEGORY = /^\s*CATEGORY\s*:?\s*(\S*)\s*$/u
 
 /**
@@ -231,8 +232,12 @@ export function withSeen(
 }
 
 /** `script` with part `n` said the other way; the same while it has a take (SCR2). */
+/** Part `n` of `card`, from 0; undefined for a place it doesn't have. */
+export const partAt = (card: SpokenCard, n: number): SpokenPart | undefined =>
+  Number.isInteger(n) && n >= 0 ? card.parts.at(n) : undefined
+
 export function flip(script: SpokenCard, n: number): SpokenCard {
-  const part = script.parts.at(n)
+  const part = partAt(script, n)
   if (part === undefined || part.takes.length > 0) return script
   return replacePart(script, n, {
     ...part,
@@ -242,10 +247,24 @@ export function flip(script: SpokenCard, n: number): SpokenCard {
 
 /** `script` with part `n` using take `take`; the same if the part never had it (SCR3). */
 export function use(script: SpokenCard, n: number, take: string): SpokenCard {
-  const part = script.parts.at(n)
+  const part = partAt(script, n)
   if (!part?.takes.includes(take)) return script
   if (part.using === take) return script
   return replacePart(script, n, { ...part, using: take })
+}
+
+/**
+ * `script` with no part using `take`: home heard nothing in it, so an essay
+ * can't use it (SCR3). The take stays the part's.
+ */
+export function unuse(script: SpokenCard, take: string): SpokenCard {
+  if (!script.parts.some((part) => part.using === take)) return script
+  return {
+    ...script,
+    parts: script.parts.map((part) =>
+      part.using === take ? { ...part, using: null } : part
+    ),
+  }
 }
 
 const replacePart = (

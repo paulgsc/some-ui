@@ -44,17 +44,32 @@ describe("Spoken's runtime", () => {
     expect(full.runtime.cards.getSnapshot()).toEqual([])
   })
 
-  it("adds a take only to the part whose line it answers (SCR1)", async () => {
+  it("adds a take only to the part whose line it answers, with no Spoken page open (SCR1)", async () => {
     const { runtime, sim } = spokenPhone()
     const id = runtime.keep(PASTED) ?? ""
-    const leave = runtime.attach()
     sim.pattern.tap(lineOf(id, 1), null)
     await pass(2_000)
     sim.pattern.tap(lineOf(id, 1), null)
     await pass()
     const parts = runtime.cards.getSnapshot().at(0)?.parts
     expect(parts?.map((part) => part.takes.length)).toEqual([0, 1])
-    leave()
+  })
+
+  it("lets go of a pick once home says it heard nothing in it (SCR3)", async () => {
+    const { runtime, sim } = spokenPhone({
+      heard: () => Promise.resolve({ kind: "heard", text: "" }),
+    })
+    const id = runtime.keep(PASTED) ?? ""
+    sim.pattern.tap(lineOf(id, 0), null)
+    await pass(2_000)
+    sim.pattern.tap(lineOf(id, 0), null)
+    await pass()
+    const take = runtime.cards.getSnapshot().at(0)?.parts.at(0)?.takes.at(0)
+    runtime.use(id, 0, take ?? "")
+    expect(runtime.cards.getSnapshot().at(0)?.parts.at(0)?.using).toBe(take)
+    runtime.askHeard([take ?? ""])
+    await pass()
+    expect(runtime.cards.getSnapshot().at(0)?.parts.at(0)?.using).toBeNull()
   })
 
   it("plays a take from home when this phone holds none, and says when neither can", async () => {
@@ -84,6 +99,8 @@ describe("Spoken's runtime", () => {
         Promise.resolve({ kind: "heard", text: "It is" })
     )
     const { runtime } = spokenPhone({ heard })
+    runtime.askHeard(["t1", "t2"])
+    // Asked again while home answers: no second ask.
     runtime.askHeard(["t1", "t2"])
     await pass()
     expect(Object.keys(runtime.heard.getSnapshot())).toHaveLength(2)

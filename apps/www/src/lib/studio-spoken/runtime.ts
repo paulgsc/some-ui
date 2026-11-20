@@ -6,7 +6,8 @@
  *
  * - **A part's takes are the Takes desk's,** under the part's line
  *   (`./model`). Each take the desk lists is added to its part as it is
- *   seen, so a take that later leaves the phone stays the part's (SCR1).
+ *   seen, for as long as the page load lasts, whichever page shows, so a
+ *   take that later leaves the phone stays the part's (SCR1).
  * - **The band moves on the recorder's own level** (`heardOf`), at the pace
  *   kept for every band on this phone.
  * - **A take plays from this phone, or else from home**, one at a time, on
@@ -45,7 +46,7 @@ import { cell } from "@/lib/cell"
 import type { PaceStore } from "@/lib/interview-week/store"
 
 import type { PastedCard, SpokenCard } from "./model"
-import { cardId, flip, keptCard, lineOf, use, withSeen } from "./model"
+import { cardId, flip, keptCard, lineOf, unuse, use, withSeen } from "./model"
 import type { SpokenStore } from "./store"
 
 /** What home heard in each take asked about, by id. */
@@ -117,6 +118,10 @@ export function createSpokenRuntime(ports: SpokenPorts): SpokenRuntime {
     change((card) => withSeen(card, takes))
   }
 
+  // Lifetime: the page load, which this runtime is made once for.
+  see()
+  ports.takes.subscribe(see)
+
   const prompter = cell<Prompter>(NO_PROMPTER)
   const pace = cell(paceOf(ports.pace.read()))
   /** Each read part's words, counted once per list of cards. */
@@ -170,6 +175,8 @@ export function createSpokenRuntime(ports: SpokenPorts): SpokenRuntime {
             // Ignored: audio this phone can't read back is asked of home instead.
             .catch(() => null)
             .then((here) => here ?? ports.audioFromHome(effect.id))
+            // Ignored: no audio from home is said as a take that can't play.
+            .catch(() => null)
             .then((audio) =>
               run(audioRead(play.getSnapshot(), effect.play, audio))
             )
@@ -191,12 +198,22 @@ export function createSpokenRuntime(ports: SpokenPorts): SpokenRuntime {
   }
 
   const heard = cell<Heard>({})
+  const asking = new Set<string>()
   const askHeard = (ids: ReadonlyArray<string>): void => {
     for (const id of ids) {
-      if (heard.getSnapshot()[id]?.kind === "heard") continue
-      void ports.heard(id).then((answer) => {
-        heard.set({ ...heard.getSnapshot(), [id]: answer })
-      })
+      if (heard.getSnapshot()[id]?.kind === "heard" || asking.has(id)) continue
+      asking.add(id)
+      void ports
+        .heard(id)
+        .catch((): HeardAnswer => ({ kind: "unreachable" }))
+        .then((answer) => {
+          asking.delete(id)
+          heard.set({ ...heard.getSnapshot(), [id]: answer })
+          // A take home heard nothing in is no part's pick (SCR3).
+          if (answer.kind === "heard" && answer.text === "") {
+            change((card) => unuse(card, id))
+          }
+        })
     }
   }
 
@@ -225,12 +242,9 @@ export function createSpokenRuntime(ports: SpokenPorts): SpokenRuntime {
     heard,
     askHeard,
     attach(): () => void {
-      see()
-      const stopSeeing = ports.takes.subscribe(see)
       const stopListening = ports.pattern.subscribe(listen)
       return (): void => {
         stopListening()
-        stopSeeing()
         run(stopped(play.getSnapshot()))
         prompter.set(stepPrompter(prompter.getSnapshot(), { type: "ended" }))
       }
