@@ -21,13 +21,8 @@
  * - **SCR3:** a part uses only one of its own takes, and none home heard
  *   nothing in (`use`, `unuse`).
  */
-/** Each category of spoken card, and the template an essay renders it with. */
-export const CATEGORIES = ["introduction"] as const
-
-export type Category = (typeof CATEGORIES)[number]
-
-const isCategory = (value: string): value is Category =>
-  CATEGORIES.some((category) => category === value)
+import type { SpokenCategory } from "@some-ui/video-render"
+import { isSpokenCategory } from "@some-ui/video-render"
 
 /** How a part is said: read on the band, or in your own words. */
 export type PartKind = "read" | "own"
@@ -50,7 +45,7 @@ export type SpokenCard = {
   /** Made on this phone when it was pasted: letters, digits and `-`. */
   readonly id: string
   readonly title: string
-  readonly category: Category
+  readonly category: SpokenCategory
   /** When it was pasted, as an ISO time. */
   readonly pastedAt: string
   readonly parts: ReadonlyArray<SpokenPart>
@@ -59,7 +54,7 @@ export type SpokenCard = {
 /** A spoken card as pasted, before it is kept. */
 export type PastedCard = {
   readonly title: string
-  readonly category: Category
+  readonly category: SpokenCategory
   readonly parts: ReadonlyArray<Omit<SpokenPart, "takes" | "using">>
 }
 
@@ -84,7 +79,7 @@ export function parseCard(text: string): PastedCard | null {
     .map((line) => CATEGORY.exec(line))
     .find((match) => match !== null)
   const category = named?.[1].toLowerCase() ?? "introduction"
-  if (!isCategory(category)) return null
+  if (!isSpokenCategory(category)) return null
   const lines = all.filter((line) => !CATEGORY.test(line))
   const marked = lines.some((line) => {
     const mark = MARK.exec(line)

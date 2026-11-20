@@ -6,10 +6,10 @@
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { openKept, readJson, writeKept } from "@some-ui/core-utils"
+import { SPOKEN_CATEGORIES } from "@some-ui/video-render"
 import { z } from "zod"
 
 import type { SpokenCard } from "./model"
-import { CATEGORIES } from "./model"
 
 const SCRIPTS_KEY = "some-ui:studio-spoken"
 
@@ -25,7 +25,7 @@ const PartSchema = z.object({
 const CardSchema = z.object({
   id: z.string(),
   title: z.string(),
-  category: z.enum(CATEGORIES),
+  category: z.enum(SPOKEN_CATEGORIES),
   pastedAt: z.string(),
   parts: z.array(PartSchema),
 })

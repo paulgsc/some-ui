@@ -5,16 +5,13 @@
  * card on this phone, every take on home.
  */
 import { counted, formatTimecode } from "@some-ui/core-utils"
+import { SPOKEN_CATEGORY_TITLES } from "@some-ui/video-render"
 
-import type { Category, PartKind, SpokenCard } from "./model"
+import type { PartKind, SpokenCard } from "./model"
 
 const KIND: Readonly<Record<PartKind, string>> = {
   read: "Read",
   own: "Own words",
-}
-
-const CATEGORY: Readonly<Record<Category, string>> = {
-  introduction: "Introduction",
 }
 
 export const SPOKEN_WORDS = {
@@ -46,7 +43,7 @@ export const SPOKEN_WORDS = {
   none: "No spoken cards yet. Paste one to read it on the teleprompter.",
   kept: "Each spoken card is kept on this phone. Every take of it is kept on home, with the card and part it reads.",
   untitled: "A spoken card with no title",
-  category: CATEGORY,
+  category: SPOKEN_CATEGORY_TITLES,
   pasted: (at: string): string =>
     `Pasted ${new Date(at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
   summary: (parts: number, takes: number): string =>
