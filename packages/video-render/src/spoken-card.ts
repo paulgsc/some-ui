@@ -21,11 +21,16 @@ import { isRecord } from "@some-ui/core-utils"
 import { z } from "zod"
 
 import type { CutList, Parsed, Shot, SpokenCategory } from "./cut-list"
-import { problemsOf, SPOKEN_CATEGORIES, SPOKEN_TAKE_ID } from "./cut-list"
+import {
+  problemsOf,
+  SPOKEN_CATEGORIES,
+  SPOKEN_EXCHANGES_MOST,
+  SPOKEN_TAKE_ID,
+} from "./cut-list"
 import { ESSAY_VOICES } from "./essay"
 import type { Speaker } from "./essay"
 import { words } from "./format"
-import { ASK_WORDS_MOST, CONVERSATION_MOST, wordCount } from "./opening"
+import { ASK_WORDS_MOST, wordCount } from "./opening"
 import { takeFilesOf } from "./take-files"
 import type { TakeFiles } from "./take-files"
 import { hearingOf } from "./verdict"
@@ -64,7 +69,7 @@ export const HeardSpokenCardSchema = z.strictObject({
       })
     )
     .min(1)
-    .max(CONVERSATION_MOST),
+    .max(SPOKEN_EXCHANGES_MOST),
 })
 
 export type HeardSpokenCard = z.infer<typeof HeardSpokenCardSchema>

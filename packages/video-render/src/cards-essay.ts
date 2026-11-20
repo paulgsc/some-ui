@@ -170,9 +170,16 @@ export function parseCardsEssay(key: string, raw: unknown): Parsed<CutList> {
   return problems.length > 0 ? { ok: false, problems } : cut
 }
 
+/** Whether `cut` opens on the owner's spoken introduction (C814). */
+const opensIntroduced = (cut: CutList): boolean => {
+  const first = cut.shots[0]?.spoken
+  return first?.role === "spoken" && first.category === "introduction"
+}
+
 /**
  * Every reason a spoken essay can't be said: a scene that says nothing, no
- * intro first, an intro or a close out of place, no scene that teaches,
+ * intro first (after the owner's spoken introduction, where the essay opens
+ * on one: C814), an intro, an introduction or a close out of place, no scene that teaches,
  * and words that run past `CARDS_MOST_MS`.
  * Whether each line is one the speaker can say is the cut list's own
  * (`SayableSchema`).
@@ -181,9 +188,14 @@ function spokenProblems(cut: CutList): Array<string> {
   const { shots } = cut
   const last = shots.length - 1
   const problems: Array<string> = []
-  if (shots[0]?.spoken?.role !== "intro")
+  // C814: the owner's spoken introduction opens the essay, before the intro.
+  const introduced = opensIntroduced(cut)
+  const intro = introduced ? 1 : 0
+  if (shots[intro]?.spoken?.role !== "intro")
     problems.push(
-      "it has no intro: its first scene's role is intro, saying why you'd reach for this and what you'll be able to do"
+      introduced
+        ? "it has no intro after the owner's introduction: its second scene's role is intro, saying why you'd reach for this and what you'll be able to do"
+        : "it has no intro: its first scene's role is intro, saying why you'd reach for this and what you'll be able to do"
     )
   if (!shots.some((s) => s.spoken?.role === "scene"))
     problems.push("it has no scene with a chapter line and narration")
@@ -202,8 +214,16 @@ function spokenProblems(cut: CutList): Array<string> {
       problems.push(
         `${s.id}: it says nothing, and every scene of a spoken essay has a chapter line and narration`
       )
-    if (role === "intro" && i !== 0)
-      problems.push(`${s.id}: only the first scene is the intro`)
+    if (role === "intro" && i !== intro)
+      problems.push(
+        introduced
+          ? `${s.id}: only the scene after the owner's introduction is the intro`
+          : `${s.id}: only the first scene is the intro`
+      )
+    if (role === "spoken" && s.spoken?.category === "introduction" && i !== 0)
+      problems.push(
+        `${s.id}: an introduction opens the essay, so only the first scene is one`
+      )
     if (role === "close" && i !== last)
       problems.push(`${s.id}: only the last scene is the close`)
   })

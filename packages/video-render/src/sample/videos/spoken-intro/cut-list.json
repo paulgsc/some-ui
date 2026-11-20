@@ -9,6 +9,27 @@
   "voice": "read",
   "shots": [
     {
+      "id": "introduction",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 1000,
+      "spoken": {
+        "role": "spoken",
+        "category": "introduction",
+        "exchanges": [
+          {
+            "ask": "What is this, and who made it?",
+            "take": "sample-take-1"
+          },
+          {
+            "ask": "Why make it with code?",
+            "take": "sample-take-2"
+          }
+        ]
+      }
+    },
+    {
       "id": "intro",
       "picture": {
         "kind": "card"
@@ -48,27 +69,6 @@
       "spoken": {
         "role": "intro",
         "said": "This is a spoken cheat sheet on the Rust scratchpad: a throwaway place to try a few lines of Rust without making a project. Reach for it when you want to test an idea, see how the compiler reacts, or run a small snippet, and you don't want a Cargo project left behind. By the end, you'll be able to open one with a single key binding, compile and lint as you write, and fix it when it opens the wrong editor or an old version. It is as of November fourteenth, twenty twenty-six, checked against two repositories: scratch, which holds the tool, and dotfiles, which binds it into tmux. Later commits may have moved things, and every card is stamped with the commits it was checked against."
-      }
-    },
-    {
-      "id": "introduction",
-      "picture": {
-        "kind": "card"
-      },
-      "durationMs": 1000,
-      "spoken": {
-        "role": "spoken",
-        "category": "introduction",
-        "exchanges": [
-          {
-            "ask": "What is this, and who made it?",
-            "take": "sample-take-1"
-          },
-          {
-            "ask": "Why make it with code?",
-            "take": "sample-take-2"
-          }
-        ]
       }
     },
     {

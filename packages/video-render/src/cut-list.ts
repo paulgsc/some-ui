@@ -11,7 +11,6 @@
 import { z } from "zod"
 
 import { badgeProblems } from "./badges"
-import { CONVERSATION_MOST } from "./opening"
 import { LOOKS, VOICES } from "./plans"
 import { stampProblems } from "./stamp"
 import {
@@ -154,8 +153,7 @@ export const SayableSchema = z
 /**
  * The categories of spoken card, each its own template (owner, 2026-11-20):
  * an introduction is template A's two bubbles, the one asking and the
- * owner, as the Rust essay's opening plays them. A card plays at most an
- * opening's exchanges (`CONVERSATION_MOST`).
+ * owner, as the Rust essay's opening plays them.
  */
 export const SPOKEN_CATEGORIES = ["introduction"] as const
 
@@ -163,6 +161,14 @@ export type SpokenCategory = (typeof SPOKEN_CATEGORIES)[number]
 
 /** A take's id as home keeps it, as the Rust essay's opening names one. */
 export const SPOKEN_TAKE_ID = /^[A-Za-z0-9._:-]{1,64}$/
+
+/**
+ * The most exchanges a spoken card plays (C813): the owner's introduction
+ * runs three to five (who I am, why synthetic voices, what AI-generated
+ * means here, why Rust Rounds, why on the phone), so six, past the
+ * opening's three. Policy, moved with the story (C771).
+ */
+export const SPOKEN_EXCHANGES_MOST = 6
 
 /**
  * What a spoken cards essay says over a scene (EXPLAIN6, #3021): the essay's
@@ -199,7 +205,7 @@ export const SpokenSchema = z.discriminatedUnion("role", [
         })
       )
       .min(1)
-      .max(CONVERSATION_MOST),
+      .max(SPOKEN_EXCHANGES_MOST),
   }),
 ])
 

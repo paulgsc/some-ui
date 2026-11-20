@@ -87,11 +87,11 @@ describe("a spoken card in a cards essay (WALK7)", () => {
     ])
     const scenes = cardsScenes(cut, heard)
     expect(scenes.map((s) => [s.id, s.file])).toEqual([
-      ["intro", "01-intro"],
-      ["introduction-ask-1", "02-introduction-ask-1"],
-      ["introduction-take-1", "03-introduction-take-1"],
-      ["introduction-ask-2", "04-introduction-ask-2"],
-      ["introduction-take-2", "05-introduction-take-2"],
+      ["introduction-ask-1", "01-introduction-ask-1"],
+      ["introduction-take-1", "02-introduction-take-1"],
+      ["introduction-ask-2", "03-introduction-ask-2"],
+      ["introduction-take-2", "04-introduction-take-2"],
+      ["intro", "05-intro"],
       ["C1", "06-C1"],
       ["close", "07-close"],
     ])
@@ -100,10 +100,10 @@ describe("a spoken card in a cards essay (WALK7)", () => {
         .filter((l) => l.file.includes("introduction"))
         .map((l) => [l.file, l.voice])
     ).toEqual([
-      ["02-introduction-ask-1", ESSAY_VOICES.asker],
-      ["04-introduction-ask-2", ESSAY_VOICES.asker],
+      ["01-introduction-ask-1", ESSAY_VOICES.asker],
+      ["03-introduction-ask-2", ESSAY_VOICES.asker],
     ])
-    expect(scenes[2]?.said).toBe(sample.value.exchanges[0]?.transcript)
+    expect(scenes[1]?.said).toBe(sample.value.exchanges[0]?.transcript)
     expect(cardsChapterMarks(scenes).map((m) => m.title)).toContain(
       "Introduction"
     )
@@ -131,7 +131,7 @@ describe("a spoken card in a cards essay (WALK7)", () => {
     const answer = voiced.shots.find((s) => s.id === "introduction-take-1")
     expect(answer?.picture).toEqual({
       kind: "still",
-      source: "03-introduction-take-1.png",
+      source: "02-introduction-take-1.png",
     })
     expect(answer?.speaker).toBeUndefined()
     expect(answer?.idea).toEqual({
@@ -141,6 +141,24 @@ describe("a spoken card in a cards essay (WALK7)", () => {
     const ask = voiced.shots.find((s) => s.id === "introduction-ask-1")
     expect(ask?.speaker).toBe("kokoro")
     expect(voiced.shots.find((s) => s.id === "C1")?.picture.kind).toBe("card")
+  })
+
+  it("plays up to six exchanges, the owner's introduction's three to five (C813)", async () => {
+    expect(
+      refusal(
+        await withCard((s) => ({
+          ...s,
+          spoken: {
+            role: "spoken",
+            category: "introduction",
+            exchanges: [1, 2, 3, 4, 5, 6].map((n) => ({
+              ask: "Why?",
+              take: `t${n}`,
+            })),
+          },
+        }))
+      )
+    ).toBe("")
   })
 
   it("is refused for a take that isn't an id, a long question, burn-ins, or too many exchanges", async () => {
@@ -183,7 +201,7 @@ describe("a spoken card in a cards essay (WALK7)", () => {
           spoken: {
             role: "spoken",
             category: "introduction",
-            exchanges: ["a", "b", "c", "d"].map((t) => ({
+            exchanges: ["a", "b", "c", "d", "e", "f", "g"].map((t) => ({
               ask: "Why?",
               take: t,
             })),
@@ -193,7 +211,7 @@ describe("a spoken card in a cards essay (WALK7)", () => {
     ).not.toBe("")
   })
 
-  it("is refused in a silent essay, before the version that plays one, and as the essay's first scene", async () => {
+  it("is refused in a silent essay, before the version that plays one, and as an introduction anywhere but first (C814)", async () => {
     const cut = await showcase("spoken-intro")
     expect(
       refusal({ ...cut, series: { ...cut.series, version: 2 } })
@@ -201,8 +219,16 @@ describe("a spoken card in a cards essay (WALK7)", () => {
     expect(
       refusal({ ...cut, series: { ...cut.series, version: 1 } })
     ).toContain("introduction: it says something")
-    expect(refusal({ ...cut, shots: cut.shots.slice(1) })).toContain(
-      "it has no intro"
+    const [introduction, intro, ...rest] = cut.shots
+    if (introduction === undefined || intro === undefined)
+      throw new Error("the sample opens on its introduction, then its intro")
+    expect(
+      refusal({ ...cut, shots: [intro, introduction, ...rest] })
+    ).toContain(
+      "introduction: an introduction opens the essay, so only the first scene is one"
+    )
+    expect(refusal({ ...cut, shots: [introduction, ...rest] })).toContain(
+      "it has no intro after the owner's introduction"
     )
   })
 })
