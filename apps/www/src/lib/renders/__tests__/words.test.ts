@@ -533,6 +533,27 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
     expect(failedLine(refusedRow)).toMatch(/^Too long to make/)
   })
 
+  it("says why a cards essay was set aside over a spoken card's recording (WALK7)", () => {
+    const row = (reason: string): RenderFailed => ({
+      feed: "cards-essay",
+      key: "rust-rounds-2026-11-20",
+      at: 0,
+      by: "home",
+      exit: null,
+      reason,
+    })
+    const missing = failedLine(row("take-missing"))
+    const unheard = failedLine(row("take-unheard"))
+    expect(missing).toMatch(/doesn't have, or one you deleted/)
+    expect(unheard).toMatch(/^Home couldn't make out a recording/)
+    for (const line of [missing, unheard])
+      expect(line, line).not.toMatch(MACHINERY)
+    // Only a cards essay's: another feed's unknown reason reads as before.
+    expect(failedLine({ ...row("take-missing"), feed: "call" })).toMatch(
+      /Home couldn't keep its files/
+    )
+  })
+
   it("never says a refused length at its cap, or a size at its cap as larger by a share", () => {
     const line = (row: Record<string, unknown>): string =>
       failedLine(

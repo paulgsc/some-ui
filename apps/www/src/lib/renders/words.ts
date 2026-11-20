@@ -304,6 +304,23 @@ function refusalLine(feed: string, refusal: Refusal): string {
   }
 }
 
+/**
+ * Why home set a cards essay aside over a spoken card's take (WALK7;
+ * paulgsc/server#1052), by home's word for each. A take home hasn't
+ * finished listening to is no refusal: the essay waits, unseen here, as a
+ * Rust Rounds essay waits for its takes.
+ */
+const TAKE_REFUSAL_WORDS: ReadonlyMap<string, string> = new Map([
+  [
+    "take-missing",
+    "A spoken card in it plays a recording home doesn't have, or one you deleted. It isn't made until the essay names one home keeps.",
+  ],
+  [
+    "take-unheard",
+    "Home couldn't make out a recording a spoken card in it plays. It isn't made until the essay names one home heard.",
+  ],
+])
+
 /** What stopped a render, in the person's terms. */
 export function failedLine(failed: RenderFailed): string {
   // A preview is made once a person asks, never again on its own.
@@ -311,6 +328,11 @@ export function failedLine(failed: RenderFailed): string {
     return (
       PREVIEW_WORDS.failedWhy(failed.reason) ?? PREVIEW_WORDS.standing.failed
     )
+  const take =
+    failed.feed === "cards-essay" && failed.reason !== undefined
+      ? TAKE_REFUSAL_WORDS.get(failed.reason)
+      : undefined
+  if (take !== undefined) return take
   const refusal = refusalOf(failed)
   if (refusal !== null) return refusalLine(failed.feed, refusal)
   return failed.by === "home"
