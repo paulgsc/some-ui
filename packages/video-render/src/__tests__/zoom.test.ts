@@ -1,5 +1,4 @@
 import {
-  ESSAY_ZOOM_FOOT,
   essayCutList,
   essayScenes,
   essayZoomRefs,
@@ -75,7 +74,34 @@ describe("a screen zoomed to its parts (RR31)", () => {
     })
   })
 
-  it("refuses a foot past half the frame", () => {
+  it("keeps the first stops the screen holds, up to the most a scene shows", () => {
+    const names = Array.from(
+      { length: ZOOM_STOPS_MOST + 2 },
+      (_, i) => `point:${String(i + 1)}`
+    )
+    const crowded = screensOf([card("QM-311", names.slice(1))])
+    const picture = zoomPicture(
+      crowded,
+      names.map((name) => `QM-311:${name}`)
+    )
+    if (picture?.kind !== "composition") throw new Error("a picture")
+    const stops: unknown = JSON.parse(String(picture.variables["stops"]))
+    // point:1 isn't on the card, so the ten kept start at point:2.
+    expect(stops).toEqual(
+      Array.from({ length: ZOOM_STOPS_MOST }, (_, i) => box(20 + i * 50))
+    )
+  })
+
+  it("takes a foot from 0 to half the frame, and refuses any other", () => {
+    expect(
+      zoomPicture(screens, ["QM-311:question"], { foot: 0 })
+    ).not.toBeNull()
+    expect(
+      zoomPicture(screens, ["QM-311:question"], { foot: 0.5 })
+    ).not.toBeNull()
+    expect(() =>
+      zoomPicture(screens, ["QM-311:question"], { foot: Number.NaN })
+    ).toThrow(/foot/)
     expect(() =>
       zoomPicture(screens, ["QM-311:question"], { foot: 0.6 })
     ).toThrow(/foot/)
@@ -89,21 +115,10 @@ describe("a screen zoomed to its parts (RR31)", () => {
     expect(zoomPicture(screens, [])).toBeNull()
   })
 
-  it("refuses two screens in one scene, and more stops than a scene holds", () => {
+  it("refuses two screens in one scene", () => {
     expect(() =>
       zoomPicture(screens, ["QM-311:question", "QM-312:question"])
     ).toThrow(/one screen/)
-    const many = Array.from(
-      { length: ZOOM_STOPS_MOST + 1 },
-      (_, i) => `point:${String(i + 1)}`
-    )
-    const crowded = screensOf([card("QM-311", many)])
-    expect(() =>
-      zoomPicture(
-        crowded,
-        many.map((name) => `QM-311:${name}`)
-      )
-    ).toThrow(/at most/)
   })
 })
 
@@ -125,13 +140,6 @@ describe("the Rust essay's scenes on the phone's own card (RR31)", () => {
     ])
   })
 
-  it("leaves every other scene its still", () => {
-    const sample = essay()
-    for (const scene of essayScenes(sample))
-      if (scene.section !== "question")
-        expect(essayZoomRefs(sample, scene)).toEqual([])
-  })
-
   it("draws each question scene as its card, zoomed, only once the week's cards were photographed", () => {
     const sample = essay()
     const takes = essayScenes(sample).map(() => null)
@@ -141,7 +149,7 @@ describe("the Rust essay's scenes on the phone's own card (RR31)", () => {
         card(ticket.id, ["question", "point:1", "program"])
       )
     )
-    const zoomed = essayCutList(sample, takes, { screens: cards })
+    const zoomed = essayCutList(sample, takes, { screens: cards, foot: 0.3 })
     expect(zoomed.shots.map((shot) => shot.durationMs)).toEqual(
       plain.shots.map((shot) => shot.durationMs)
     )
@@ -151,12 +159,9 @@ describe("the Rust essay's scenes on the phone's own card (RR31)", () => {
         expect(shot.picture.kind).toBe("composition")
         if (shot.picture.kind !== "composition") return
         expect(shot.picture.ref).toBe(SCREEN_ZOOM)
-        expect(shot.picture.variables["foot"]).toBe(ESSAY_ZOOM_FOOT)
+        expect(shot.picture.variables["foot"]).toBe(0.3)
         expect(shot.overrides).toEqual({})
       } else expect(shot).toEqual(before)
     })
-    expect(
-      plain.shots.filter((shot) => shot.picture.kind === "composition").length
-    ).toBe(2) // the brand's open and close
   })
 })

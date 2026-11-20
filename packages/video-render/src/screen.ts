@@ -18,11 +18,7 @@ import { problemsOf } from "./cut-list"
 
 export const SCREENS_SCHEMA = "some-ui.screens/1"
 
-/**
- * A ticket's key, as `some-ui.rust-week/1` and `/2` write it (`TICKET_KEY`),
- * unanchored. Here, not in `./essay`, which imports this module: the essay
- * reads it from here, so neither waits on the other to load.
- */
+/** A ticket's key, as `some-ui.rust-week/1` and `/2` write it (`TICKET_KEY`), unanchored. */
 export const TICKET_KEY_PATTERN = "[A-Z][A-Z0-9]{0,5}-\\d{1,6}"
 
 /** A slug: a screen's id, or one segment of a region's name. */

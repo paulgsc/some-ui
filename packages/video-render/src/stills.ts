@@ -94,10 +94,7 @@ export type StillScene = {
   readonly said: string
   /** How long it holds with nothing said, when not `unsaidMs`. */
   readonly holdMs?: number
-  /**
-   * A composition drawn in place of its still (`./zoom`'s screen zoom,
-   * RR31); the still is still recorded, and goes unused.
-   */
+  /** A composition drawn in place of its still (`./zoom`). */
   readonly picture?: Composition
 }
 
@@ -158,8 +155,7 @@ export function heldFor(
  * `unsaidMs`. With `captions`, each scene's are drawn from its take's words,
  * and the music bed plays under the voice once the series names one
  * (`bed`). The brand intro and outro are the composition `shape` names,
- * where it names one (`brandPicture`), and their stills go unused, as a
- * scene's do that names a `picture` of its own.
+ * where it names one (`brandPicture`), and their stills go unused.
  */
 export function stillsCutList(
   feed: {

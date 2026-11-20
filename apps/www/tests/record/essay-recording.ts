@@ -7,6 +7,7 @@
  */
 import { readdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
+import { captionSpace } from "@some-ui/burn-ins"
 import {
   ESSAY_SCHEMA,
   ESSAY_VOICES,
@@ -103,6 +104,8 @@ type EssayKind<E extends { readonly week: { readonly id: string } }> = {
       readonly voicing: Voicing
       /** The phone's cards of its week (`./screens`), for its scenes to zoom into. */
       readonly screens?: Screens
+      /** The share of the frame's height the stage keeps for captions. */
+      readonly foot?: number
     }
   ) => CutList
   readonly marks: (essay: E) => Array<ChapterMark>
@@ -308,7 +311,13 @@ async function recordKind<E extends { readonly week: { readonly id: string } }>(
       kind.cutList(essay, takes, {
         bed,
         voicing,
-        ...(screens === undefined ? {} : { screens }),
+        ...(screens === undefined
+          ? {}
+          : {
+              screens,
+              // A zoomed card stays above the band the stage keeps for captions.
+              foot: captionSpace(FRAME) / FRAME.height,
+            }),
       }),
       {
         preview,

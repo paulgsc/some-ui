@@ -85,7 +85,7 @@ import {
   SILENCE_SHAPE,
   silenceSaid,
 } from "./verdict"
-import { ZOOM_STOPS_MOST, zoomPicture } from "./zoom"
+import { zoomPicture } from "./zoom"
 
 export const ESSAY_SCHEMA = "some-ui.rust-essay/1"
 
@@ -1413,6 +1413,7 @@ export function essayCutList(
     bed = false,
     voicing = "owner",
     screens,
+    foot = 0,
   }: {
     readonly bed?: boolean
     readonly voicing?: Voicing
@@ -1422,6 +1423,8 @@ export function essayCutList(
      * what is said (`essayZoomRefs`).
      */
     readonly screens?: Screens
+    /** The share of the frame's height the stage keeps for captions, which a zoomed card stays above. */
+    readonly foot?: number
   } = {}
 ): CutList {
   const format = essayFormat(essay.template.version)
@@ -1441,7 +1444,7 @@ export function essayCutList(
         screens === undefined || refs.length === 0
           ? null
           : zoomPicture(screens, refs, {
-              foot: ESSAY_ZOOM_FOOT,
+              foot,
               ...(theme === undefined ? {} : { theme }),
             })
       return {
@@ -1455,25 +1458,13 @@ export function essayCutList(
   )
 }
 
-/**
- * The share of the essay's 1920×1080 frame its stage keeps clear at the
- * foot for captions (`@some-ui/burn-ins`' `captionSpace(LANDSCAPE)`, 372 px,
- * which this package can't import; held equal by www's essay test), so a
- * zoomed card stays above them.
- */
-export const ESSAY_ZOOM_FOOT = 372 / 1080
-
 /** The most of rustc's diagnostics a question scene zooms to, in rustc's order. */
 const ZOOM_DIAGNOSTICS = 2
 
 /**
- * The regions of the phone's card a scene zooms to, in order, by their
- * names (`./screen`'s `regionRef`; C797): a question scene goes to its
- * ticket's question, each speak-to point, the program and rustc's first
- * diagnostics, in that order, each held an even share of the scene
- * (C795), the first `ZOOM_STOPS_MOST`. Any other scene shows its still: a deep
- * dive's own code is a snippet the phone never draws (#3288), and the
- * stage's other scenes show what no card does.
+ * The regions of the phone's card a scene zooms to, in order (C797): for a
+ * question scene, its ticket's question, each speak-to point, the program
+ * and rustc's first diagnostics; for any other, none.
  */
 export function essayZoomRefs(
   essay: Essay,
@@ -1492,7 +1483,7 @@ export function essayZoomRefs(
     ...numbered("point", ticket.points.length),
     regionRef(ticket.id, "program"),
     ...numbered("diagnostic", ZOOM_DIAGNOSTICS),
-  ].slice(0, ZOOM_STOPS_MOST)
+  ]
 }
 
 /**

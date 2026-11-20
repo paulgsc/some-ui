@@ -109,7 +109,6 @@
         height: `${vars.height * MOST}px`,
       })
       $("shot").src = `assets/${vars.picture}`
-      // The corners in the picture's own CSS px.
       $("shot").style.borderRadius = `${16 * MOST}px`
 
       // Nothing is drawn in the foot, which the captions draw on.
@@ -148,12 +147,10 @@
       // stop, held for the stop's even share of what is left, and a move
       // back out to the whole, held to the end; shortened together, in
       // proportion, down to 0.6 of that pace, past which the last stops are
-      // dropped.
+      // dropped; a single stop is never dropped, and shrinks further.
       const ask = { lead: 1, move: 1.2, tail: 0.8, hold: 1.5 }
       const wantedFor = (m) =>
         ask.lead + ask.tail + (m + 1) * ask.move + m * ask.hold
-      // Never faster than 0.6 of the asked pace: a scene too short for
-      // every stop keeps the first ones that fit, and drops the rest.
       const SLOWEST = 0.6
       let n = asked.length
       while (n > 1 && L / wantedFor(n) < SLOWEST) n -= 1
@@ -164,7 +161,6 @@
       const tail = ask.tail * k
       const hold = n === 0 ? 0 : (L - lead - tail - (n + 1) * move) / n
 
-      // Each key eases to the next as it names.
       const keys = [[0, whole, "linear"]]
       let t = lead
       if (n > 0) keys.push([t, whole, "inOut"])
