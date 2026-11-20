@@ -70,7 +70,7 @@ import {
 import type { Format, Shape } from "./format"
 import { CONVERSATION_MOST } from "./opening"
 import type { RegionRef, Screens } from "./screen"
-import { regionRef } from "./screen"
+import { regionRef, TICKET_KEY_PATTERN } from "./screen"
 import { hasCaptions, stillFile, stillsCutList } from "./stills"
 import type { StillTake } from "./stills"
 import { boardSceneOf, storyboardOf } from "./storyboard"
@@ -385,9 +385,6 @@ export function essayFormat(version: number = ESSAY_VERSION): Format {
 export const weekId = z
   .string()
   .regex(/^\d{4}-w(?:0[1-9]|[1-4]\d|5[0-3])$/, "a week's id is like 2026-w46")
-
-/** A ticket's key, as `some-ui.rust-week/1` and `/2` write it (`TICKET_KEY`), unanchored. */
-export const TICKET_KEY_PATTERN = "[A-Z][A-Z0-9]{0,5}-\\d{1,6}"
 
 const ticketKey = z
   .string()

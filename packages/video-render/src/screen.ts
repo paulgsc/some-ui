@@ -15,9 +15,15 @@ import { z } from "zod"
 
 import type { Parsed } from "./cut-list"
 import { problemsOf } from "./cut-list"
-import { TICKET_KEY_PATTERN } from "./essay"
 
 export const SCREENS_SCHEMA = "some-ui.screens/1"
+
+/**
+ * A ticket's key, as `some-ui.rust-week/1` and `/2` write it (`TICKET_KEY`),
+ * unanchored. Here, not in `./essay`, which imports this module: the essay
+ * reads it from here, so neither waits on the other to load.
+ */
+export const TICKET_KEY_PATTERN = "[A-Z][A-Z0-9]{0,5}-\\d{1,6}"
 
 /** A slug: a screen's id, or one segment of a region's name. */
 const SLUG = "[A-Za-z0-9][A-Za-z0-9._-]{0,63}"
