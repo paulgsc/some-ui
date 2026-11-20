@@ -23,7 +23,13 @@ import { z } from "zod"
 import { CALL_VOICES } from "./call"
 import type { ChapterMark } from "./chapters"
 import { withoutStop } from "./chapters"
-import type { CutList, Parsed, Shot, TimedWord } from "./cut-list"
+import type {
+  CutList,
+  Parsed,
+  Shot,
+  SpokenCategory,
+  TimedWord,
+} from "./cut-list"
 import { isCaptions, parseCutList, problemsOf } from "./cut-list"
 import { resolve } from "./resolve"
 import type { Series } from "./series"
@@ -170,11 +176,17 @@ export function parseCardsEssay(key: string, raw: unknown): Parsed<CutList> {
   return problems.length > 0 ? { ok: false, problems } : cut
 }
 
+/** The spoken cards that open their essay, before its intro (C814). */
+const OPENING_CATEGORIES: ReadonlySet<SpokenCategory> = new Set([
+  "introduction",
+])
+
+/** Whether `spoken` is a spoken card that opens its essay (C814). */
+const opens = (spoken: Shot["spoken"]): boolean =>
+  spoken?.role === "spoken" && OPENING_CATEGORIES.has(spoken.category)
+
 /** Whether `cut` opens on the owner's spoken introduction (C814). */
-const opensIntroduced = (cut: CutList): boolean => {
-  const first = cut.shots[0]?.spoken
-  return first?.role === "spoken" && first.category === "introduction"
-}
+const opensIntroduced = (cut: CutList): boolean => opens(cut.shots[0]?.spoken)
 
 /**
  * Every reason a spoken essay can't be said: a scene that says nothing, no
@@ -220,7 +232,7 @@ function spokenProblems(cut: CutList): Array<string> {
           ? `${s.id}: only the scene after the owner's introduction is the intro`
           : `${s.id}: only the first scene is the intro`
       )
-    if (role === "spoken" && s.spoken?.category === "introduction" && i !== 0)
+    if (opens(s.spoken) && i !== 0)
       problems.push(
         `${s.id}: an introduction opens the essay, so only the first scene is one`
       )
