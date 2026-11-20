@@ -6350,7 +6350,8 @@
             "some-ui:apps/www/stage",
             "some-ui:packages/video-render/src/essay.ts",
             "some-ui:apps/www/tests/record/essay.ts",
-            "some-ui:apps/www/tests/record/essay-recording.ts"
+            "some-ui:apps/www/tests/record/essay-recording.ts",
+            "some-ui:apps/www/tests/record/screens.ts"
           ]
         },
         {
