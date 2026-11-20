@@ -77,6 +77,25 @@ describe("where a question's take stands", () => {
     // Home named this very take, once sent: it plays from home.
     const sent = { ...LAST_WEEK, take: HERE.take, week: "2026-w47" }
     expect(openingPlace(1, 1, known(sent), HERE).kind).toBe("home")
+    // Sent, and home answered after: home's word, which passed over a take
+    // it couldn't hear for the older one it did (C785, #3304).
+    const judged: HomeOpening = {
+      kind: "known",
+      takes: [LAST_WEEK],
+      judged: [HERE.take],
+    }
+    expect(openingPlace(1, 1, judged, HERE)).toEqual({
+      kind: "home",
+      ...LAST_WEEK,
+    })
+    expect(
+      openingPlace(
+        1,
+        1,
+        { kind: "known", takes: [], judged: [HERE.take] },
+        HERE
+      )
+    ).toEqual({ kind: "none" })
     // Home names a newer take than the one here: home's.
     const newer = { ...LAST_WEEK, recordedAt: "2026-11-19T08:00:00.000Z" }
     expect(openingPlace(1, 1, known(newer), HERE).kind).toBe("home")

@@ -10,9 +10,10 @@
  *   version, from this week or an earlier one (`HomeOpening`). Until home
  *   answers, a question with no take said this week is "not known yet",
  *   never a guess from what this phone remembers.
- * - **A take said this week outranks an older record** (C784): it is on
- *   this phone, and once sent it is the newest home can name, so home's
- *   resolver plays it. One home's record already names is home's.
+ * - **A take said this week outranks an older record** (C784) until home
+ *   has answered after it went: it is on this phone, and the newest home can
+ *   name. Once home has judged it, home's record has the last word, and
+ *   passes over a take it couldn't hear (the owner's call C785, #3304).
  * - **Nothing is let go here.** "Use this one" leaves home's take where it
  *   is; "Record again" adds a take, and the earlier stays on home.
  */
@@ -39,7 +40,16 @@ export type OpeningAtHome = {
 /** What home's record says of the week's opening, or nothing heard yet. */
 export type HomeOpening =
   | { readonly kind: "unknown" }
-  | { readonly kind: "known"; readonly takes: ReadonlyArray<OpeningAtHome> }
+  | {
+      readonly kind: "known"
+      readonly takes: ReadonlyArray<OpeningAtHome>
+      /**
+       * The takes this phone had sent when home answered (`./runtime` adds
+       * them): home has judged each, so its record has the last word on
+       * them (C785).
+       */
+      readonly judged?: ReadonlyArray<string>
+    }
 
 export const OPENING_UNKNOWN: HomeOpening = { kind: "unknown" }
 
@@ -115,8 +125,16 @@ export function openingPlace(
       ? (home.takes.find((each) => each.n === n && each.version === version) ??
         null)
       : null
+  // Home answered after the take here went: its record has the last
+  // word, and passes over a take it couldn't hear (the owner's call C785,
+  // #3304), so the page shows what it plays instead.
+  const judged =
+    here !== null &&
+    home.kind === "known" &&
+    (home.judged ?? []).includes(here.take)
   if (
     here !== null &&
+    !judged &&
     (atHome === null ||
       (atHome.take !== here.take && atHome.recordedAt < here.recordedAt))
   ) {

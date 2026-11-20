@@ -3,12 +3,12 @@
   "made": "2026-11-19",
   "by": "claude",
   "paths": ["packages/ui/rust-rounds/src/lib/week-play/opening.ts"],
-  "chose": "A question's page names the take in place from home's record, read once each time the week opens, and says \"not known yet\" until it answers. The one exception is a take said this week on this phone that is newer than what home's record names: the page shows that one, since once sent it is the newest home's resolver can name. Nothing about earlier weeks' takes is read from this phone's memory.",
+  "chose": "A question's page names the take in place from home's record, read once each time the week opens, and says \"not known yet\" until it answers. The one exception is a take said this week on this phone that is newer than what home's record names: the page shows that one, since once sent it is the newest home's resolver can name. Nothing about earlier weeks' takes is read from this phone's memory. Once home has answered after that take was sent, the page takes home's record instead (C785, the owner's call on #3304), so a take home couldn't hear never stays shown as the one in place.",
   "options": [
     "home's record, and this week's newer take said here",
     "home's record only, so a take said here shows only after a Send and a fresh read"
   ],
   "gray": "After the S21 reinstall (#3281, #3292) the coordinator ruled that what is current comes from home, never phone memory. A take recorded this week on this phone is not a memory of home, but whether the page should show it before home has it is a reading of that ruling.",
   "undo": "In openingPlace, ignore `here` unless home's record names it, and show the bundle's own take row under the page instead.",
-  "refs": ["#3269", "#3281", "#3292"]
+  "refs": ["#3269", "#3281", "#3292", "#3304"]
 }

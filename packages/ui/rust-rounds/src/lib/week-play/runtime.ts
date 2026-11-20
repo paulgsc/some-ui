@@ -623,7 +623,15 @@ function openingRuntime(
       set({ ...view, pace })
     },
     heardHome(home): void {
-      set({ ...view, home })
+      // The takes sent by the time home answered: home has judged them.
+      const judged = ports.takes.takes
+        .getSnapshot()
+        .filter((take) => take.waits !== true)
+        .map((take) => take.id)
+      set({
+        ...view,
+        home: home.kind === "known" ? { ...home, judged } : home,
+      })
     },
     attach(): () => void {
       const stopListening = pattern.subscribe(listen)

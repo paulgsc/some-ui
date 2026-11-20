@@ -1,0 +1,17 @@
+{
+  "id": "C785",
+  "made": "2026-11-20",
+  "by": "owner",
+  "paths": [
+    "packages/ui/rust-rounds/src/lib/week-play/opening.ts",
+    "server:apps/servers/file_host/src/handlers/rust_week_record.rs"
+  ],
+  "chose": "Resolve each opening question to the newest take home heard (#3304, option a): an opening take home couldn't hear (garbled, or nothing said; HEARD #3070) never hides an older one it did, so an unheard re-recording never costs the week its opening answer, and it still shows under Takes › Needs your attention. On the phone, a take said this week shows as the one in place only until home has answered after it was sent; from then on the page takes home's record, which passes over an unheard take.",
+  "options": [
+    "(a) resolve to the newest heard take",
+    "(b) newest wins, and an unheard newest drops the question until the owner records again"
+  ],
+  "gray": "Whether a garbled re-recording counts as \"a recording you meant to keep using\" is the owner's reading of their own rule that a week reuses the last recording unless they record again.",
+  "undo": "Server: let rust_week_record::opening take the newest candidate whatever its transcript verdict. Phone: drop `judged` from HomeOpening, so a take said this week outranks an older record however home judged it.",
+  "refs": ["#3304", "#3269", "#3070", "#3303"]
+}
