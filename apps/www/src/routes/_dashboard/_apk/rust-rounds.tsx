@@ -37,7 +37,7 @@ import {
  * (`homeHoldsWeekSend`, RR22), never asking home, and what home last said
  * of the work tracker's spans (`lib/home-link/rust-spans`, RR26), home's
  * own record of the week (`askRustWeekRecord`, RR30, #3269) and a take of the
- * opening's audio from home (`askAudio`, MD8's read). They are handed in here, not by `lib/rust-rounds`:
+ * opening's audio from home (`askAudio`, RR6's read). They are handed in here, not by `lib/rust-rounds`:
  * `lib/home-link`'s voice lane imports that module, so it can't import the
  * link back.
  */

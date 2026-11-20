@@ -28,7 +28,8 @@
  *   `GET /voice-notes/:id/heard`) may call `lib/home-link`. The voice lane
  *   also hands Rust Rounds' notes a way to hear a note from home
  *   (`lib/home-link/voice-audio`, RR6, whose read sends one
- *   `GET /voice-notes/:id/audio` per play), read only by that lane. My data
+ *   `GET /voice-notes/:id/audio` per play), which My data, Takes on home,
+ *   Needs your attention and Rust Rounds' opening read too (below). My data
  *   (`lib/my-data`, MD2) asks home what it keeps
  *   (`lib/home-link/kept-read`, whose read sends one `GET /voice-notes/kept`
  *   per open or drag down, and on the overview one `GET /subjects/me/kept`
