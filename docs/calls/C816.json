@@ -1,0 +1,19 @@
+{
+  "id": "C816",
+  "made": "2026-11-20",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/cards-essay.ts",
+    "some-ui:packages/video-render/src/spoken-card.ts",
+    "some-ui:apps/www/src/lib/web-surface/call/spoken-card-stage.tsx"
+  ],
+  "chose": "A spoken card's template A is drawn in the app theme its cards series names, CARDS_STAGE_THEME, a Record over the closed union CardsSeriesId that the compiler holds whole: cheat-sheet draws in \"dark\", matching the dark cards around it. The theme rides in the card the recorder hands the stage, and the stage passes it to its frame, so template A gains no second look; the Rust and interview essays keep their own theme. A spoken card's questions also keep the opening's rule that a question never assesses (C619).",
+  "options": [
+    "a theme per cards series, from a closed union",
+    "the light stage theme, as template A draws for the essays",
+    "a new dark variant of the Call component"
+  ],
+  "gray": "How the owner's spoken introduction looks beside the cards is on every frame of it; the owner settled the direction (\"match the dark cards\", relayed by the run's coordinator on 2026-11-20), and the mapping from a series to its theme is Claude's.",
+  "undo": "Set CARDS_STAGE_THEME[\"cheat-sheet\"] to another theme, or drop `theme` from the heard card so the stage draws its default.",
+  "refs": ["#3282", "#3315"]
+}

@@ -106,7 +106,7 @@ export const SpokenCardStagePage = ({
       record={record}
       scene={at.scene.id}
       measureKey={`spoken/${state.essay.card}/${at.scene.id}`}
-      theme={undefined}
+      theme={state.essay.theme}
       title={W.spokenCard}
       where={state.voicing === "sample" ? `${where} · ${W.sampleCard}` : where}
       captioned={record}

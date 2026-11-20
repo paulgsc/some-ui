@@ -45,11 +45,13 @@ import { basename, join, resolve } from "node:path"
 import { parseArgs } from "node:util"
 import type { Page } from "@playwright/test"
 import {
+  CARDS_STAGE_THEME,
   cardsChapterMarks,
   cardsLines,
   cardsScenes,
   CHAPTER_GAP_MS,
   heardSpokenCard,
+  isCardsSeries,
   isSpokenEssay,
   joinedTake,
   parseCardsEssay,
@@ -173,6 +175,10 @@ async function spokenTakes(
   readonly heard: ReadonlyMap<string, HeardSpokenCard>
 }> {
   const named = spokenTakesOf(essay)
+  // Template A is drawn in the theme of the cards around it (C816).
+  const { id: series } = essay.series
+  if (!isCardsSeries(series)) fail([`${series} isn't a cards series`])
+  const theme = CARDS_STAGE_THEME[series]
   if (dir === undefined) {
     if (named.length > 0)
       fail([
@@ -207,7 +213,12 @@ async function spokenTakes(
   const heard = new Map<string, HeardSpokenCard>()
   const problems: Array<string> = []
   for (const { id, card } of spokenCardsOf(essay)) {
-    const one = heardSpokenCard(id, card, (take) => transcripts.get(take))
+    const one = heardSpokenCard(
+      id,
+      card,
+      (take) => transcripts.get(take),
+      theme
+    )
     if (one.ok) heard.set(id, one.value)
     else problems.push(...one.problems)
   }
@@ -264,6 +275,10 @@ async function spokenStills({
     root,
     shots: spoken.map(({ scene, spoken: { card, scene: on } }) => {
       const own = on.take === undefined ? undefined : owned[on.take]
+      // `spokenTakes` refused a missing take before anything was drawn; an
+      // answer is never said by the speaker in its place.
+      if (on.take !== undefined && own === undefined)
+        fail([`${scene.id}: home handed no take ${on.take}`])
       return {
         id: scene.id,
         file: scene.file,

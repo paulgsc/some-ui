@@ -18,6 +18,7 @@
  */
 
 import { isRecord } from "@some-ui/core-utils"
+import type { SessionThemeId } from "@some-ui/styles/theme/registry"
 import { z } from "zod"
 
 import type { CutList, Parsed, Shot, SpokenCategory } from "./cut-list"
@@ -29,7 +30,7 @@ import {
 } from "./cut-list"
 import { ESSAY_VOICES } from "./essay"
 import type { Speaker } from "./essay"
-import { words } from "./format"
+import { ThemeIdSchema, words } from "./format"
 import { askProblems, wordCount } from "./opening"
 import type { Exchange } from "./opening"
 import { takeFilesOf } from "./take-files"
@@ -71,6 +72,8 @@ export const HeardSpokenCardSchema = z.strictObject({
   schema: z.literal(SPOKEN_CARD_SCHEMA),
   card: z.string().min(1).max(SPOKEN_CARD_ID_MOST),
   category: z.enum(SPOKEN_CATEGORIES),
+  /** The app's theme its stage draws template A in: its series' (`CARDS_STAGE_THEME`). */
+  theme: ThemeIdSchema,
   exchanges: z
     .array(
       z.strictObject({
@@ -105,7 +108,7 @@ export type SpokenScene = {
 
 /** A card's scenes in order: each exchange's question, then its answer. */
 export const spokenScenes = (
-  card: HeardSpokenCard
+  card: Pick<HeardSpokenCard, "exchanges">
 ): ReadonlyArray<SpokenScene> =>
   card.exchanges.flatMap(({ ask, take, transcript }: HeardExchange, i) => [
     { id: `ask-${i + 1}`, exchange: i + 1, speaker: "asker", said: ask },
@@ -241,7 +244,8 @@ export function spokenTakeFilesOf(
 }
 
 /**
- * The spoken card `card`, shot `id`, as its stage draws it: each exchange
+ * The spoken card `card`, shot `id`, as its stage draws it, in `theme` (its
+ * series', `CARDS_STAGE_THEME`): each exchange
  * with what home heard in its take, `transcriptOf(take)` being the take's
  * `some-ui.voice-transcript/1` as home keeps it. Refuses, with every reason,
  * a take whose transcript is missing or has no text, and one home couldn't
@@ -251,7 +255,8 @@ export function spokenTakeFilesOf(
 export function heardSpokenCard(
   id: string,
   card: SpokenCard,
-  transcriptOf: (take: string) => unknown
+  transcriptOf: (take: string) => unknown,
+  theme: SessionThemeId
 ): Parsed<HeardSpokenCard> {
   const problems: Array<string> = []
   const exchanges = card.exchanges.map(
@@ -283,6 +288,7 @@ export function heardSpokenCard(
     schema: SPOKEN_CARD_SCHEMA,
     card: id,
     category: card.category,
+    theme,
     exchanges,
   })
 }
@@ -293,6 +299,8 @@ export const sampleSpokenCard = (): Parsed<HeardSpokenCard> =>
     schema: SPOKEN_CARD_SCHEMA,
     card: "sample",
     category: "introduction",
+    // The cheat-sheet's (`CARDS_STAGE_THEME`): the sample is a cards essay's.
+    theme: "dark",
     exchanges: [
       {
         ask: "What is this, and who made it?",

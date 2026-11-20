@@ -1,6 +1,7 @@
 import { join } from "node:path"
 import {
   CARDS_INDEX_SCHEMA,
+  CARDS_STAGE_THEME,
   cardsChapterMarks,
   cardsFolderProblems,
   cardsLines,
@@ -168,6 +169,21 @@ describe("a spoken card in a cards essay (WALK7)", () => {
     )
   })
 
+  it("asks as an opening does: never a question that assesses (C619)", async () => {
+    expect(
+      refusal(
+        await withCard((s) => ({
+          ...s,
+          spoken: {
+            role: "spoken",
+            category: "introduction",
+            exchanges: [{ ask: "How would you score yourself?", take: "t1" }],
+          },
+        }))
+      )
+    ).toContain('"score" assesses')
+  })
+
   it("plays up to six exchanges, the owner's introduction's three to five (C813)", async () => {
     expect(
       refusal(
@@ -304,9 +320,13 @@ describe("the takes home hands a spoken card", () => {
 
   it("play only what home heard: a take it couldn't make out, or heard nothing in, is refused (HEARD)", async () => {
     const card = await sampleCard()
-    const heard = heardSpokenCard("introduction", card, (take) =>
-      transcript(`What ${take} says.`, "heard")
+    const heard = heardSpokenCard(
+      "introduction",
+      card,
+      (take) => transcript(`What ${take} says.`, "heard"),
+      CARDS_STAGE_THEME["cheat-sheet"]
     )
+    expect(heard.ok && heard.value.theme).toBe("dark")
     expect(
       heard.ok ? heard.value.exchanges.map((e) => e.transcript) : []
     ).toEqual(["What sample-take-1 says.", "What sample-take-2 says."])
@@ -314,14 +334,22 @@ describe("the takes home hands a spoken card", () => {
       "sample-take-1": "garbled",
       "sample-take-2": "nothing_said",
     }
-    const refused = heardSpokenCard("introduction", card, (take) =>
-      transcript("mm", kinds[take])
+    const refused = heardSpokenCard(
+      "introduction",
+      card,
+      (take) => transcript("mm", kinds[take]),
+      "dark"
     )
     expect(refused.ok ? [] : refused.problems).toEqual([
       "introduction: home couldn't make out sample-take-1; a spoken card plays only a take home heard",
       "introduction: home heard nothing said in sample-take-2",
     ])
-    const missing = heardSpokenCard("introduction", card, () => undefined)
+    const missing = heardSpokenCard(
+      "introduction",
+      card,
+      () => undefined,
+      "dark"
+    )
     expect(missing.ok).toBe(false)
   })
 })
