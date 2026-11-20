@@ -6,9 +6,7 @@
  * its own. Each goes home as a Studio voice note named by its own id
  * (`lib/home-link/voice-copy`'s `libraryNote`: `studio`, `take:<id>`), and
  * home lists it with every other take it keeps. Attaching one to a scene by
- * that id is ST30's. A spoken card's part is read onto this desk too
- * (`lib/studio-spoken`, W5), under its part's line, and goes home named by
- * it; the Takes page's own takes are those of `LIBRARY_LINE`.
+ * that id is ST30's.
  *
  * At most forty takes of at most three minutes; Let go owes home its
  * set-aside mark (`from: "studio"`). The pattern desk's own rules (HF5, LG1,

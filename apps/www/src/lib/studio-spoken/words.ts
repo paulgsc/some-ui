@@ -1,13 +1,12 @@
 /**
- * What Studio's Spoken says (W5; the owner's approved prototype of
- * 2026-11-20, renamed "spoken" the same day): every word in one pure table,
+ * What Studio's Spoken says (W5): every word in one pure table,
  * in the person's terms, held by its test to no machinery. A take is never
  * "a recording" (ST34), and what is kept where is said plainly: a spoken
  * card on this phone, every take on home.
  */
-import { counted } from "@some-ui/core-utils"
+import { counted, formatTimecode } from "@some-ui/core-utils"
 
-import type { Category, EssayPart, PartKind } from "./model"
+import type { Category, PartKind, SpokenCard } from "./model"
 
 const KIND: Readonly<Record<PartKind, string>> = {
   read: "Read",
@@ -105,30 +104,24 @@ export const SPOKEN_WORDS = {
     slower: "Slower",
     faster: "Faster",
     pace: (wpm: number): string => `${wpm} words a minute`,
-    time: (ms: number): string => {
-      const s = Math.floor(ms / 1000)
-      return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`
-    },
+    time: formatTimecode,
   },
 } as const
 
+/** A card's title, or what one with none is called. */
+export const titleOf = (card: Pick<SpokenCard, "title">): string =>
+  card.title === "" ? SPOKEN_WORDS.untitled : card.title
+
 /** The block "Copy for the essay" copies: the category, each question and its take. */
-export function essayBlock(
-  card: {
-    readonly title: string
-    readonly id: string
-    readonly category: Category
-  },
-  parts: ReadonlyArray<EssayPart>
-): string {
+export function essayBlock(card: SpokenCard): string {
   const head = [
-    `Spoken card: ${card.title === "" ? SPOKEN_WORDS.untitled : card.title} (${card.id})`,
+    `Spoken card: ${titleOf(card)} (${card.id})`,
     `Category: ${card.category}`,
   ]
-  const lines = parts.flatMap((part) => [
-    `Part ${part.n + 1}${part.id === null ? "" : ` (${part.id})`}, ${part.kind === "read" ? "read" : "own words"}`,
+  const lines = card.parts.flatMap((part, n) => [
+    `Part ${n + 1}${part.id === null ? "" : ` (${part.id})`}, ${part.kind === "read" ? "read" : "own words"}`,
     ...(part.ask === null ? [] : [`  Asks: ${part.ask}`]),
-    part.take === null ? `  No take yet` : `  From take ${part.take}`,
+    part.using === null ? `  No take yet` : `  From take ${part.using}`,
   ])
   return [...head, ...lines].join("\n")
 }

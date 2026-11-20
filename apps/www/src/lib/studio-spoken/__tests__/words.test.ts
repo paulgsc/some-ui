@@ -57,23 +57,30 @@ describe("Spoken's words", () => {
 describe("the essay's copy", () => {
   it("names the category, and each question with the take that answers it", () => {
     expect(
-      essayBlock(
-        {
-          title: "How I built Rust Rounds",
-          id: "scabc12",
-          category: "introduction",
-        },
-        [
+      essayBlock({
+        id: "scabc12",
+        title: "How I built Rust Rounds",
+        category: "introduction",
+        pastedAt: "2026-11-20T22:00:00.000Z",
+        parts: [
           {
-            n: 0,
             id: "intro-who",
             kind: "read",
             ask: "What is Rust Rounds?",
-            take: "tk1",
+            text: "A week of Rust.",
+            takes: ["tk0", "tk1"],
+            using: "tk1",
           },
-          { n: 1, id: null, kind: "own", ask: null, take: null },
-        ]
-      )
+          {
+            id: null,
+            kind: "own",
+            ask: null,
+            text: "Why?",
+            takes: [],
+            using: null,
+          },
+        ],
+      })
     ).toBe(
       [
         "Spoken card: How I built Rust Rounds (scabc12)",

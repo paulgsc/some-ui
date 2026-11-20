@@ -1,20 +1,19 @@
 /**
- * Studio's Spoken on the phone (W5, run #3311), built to the owner's
- * approved prototype of 2026-11-20
- * (https://claude.ai/artifact/R4t2EfwmGu2dGWpDk2Fxyr), renamed "spoken" the
- * same day: the spoken cards this phone keeps, pasting one, a card in its
- * parts, and a part read on the shared teleprompter (`Teleprompter`) or said
- * in your own words, with every take of it kept. It renders the runtime's snapshots and forwards taps
+ * Studio's Spoken on the phone (W5, C805): the spoken cards this phone
+ * keeps, pasting one, a card in its parts, and a part read on the shared
+ * teleprompter (`Teleprompter`) or said in your own words, with every take of
+ * it kept. It renders the runtime's snapshots and forwards taps
  * (`lib/studio-spoken`, which owns every wait); every word is its
  * `SPOKEN_WORDS`.
  */
-import type { JSX } from "react"
+import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { cn } from "@some-ui/core-utils"
 import {
   bandOf,
   Button,
   Notice,
+  phrasesOf,
   TakeList,
   Teleprompter,
   useTakePattern,
@@ -26,12 +25,11 @@ import { hasAudience } from "@/lib/build-profile"
 import type { PartKind, SpokenCard, SpokenRuntime } from "@/lib/studio-spoken"
 import {
   essayBlock,
-  essayParts,
   lineOf,
   parseCard,
   phoneSpoken,
-  phrasesOf,
   SPOKEN_WORDS,
+  titleOf,
 } from "@/lib/studio-spoken"
 import { CardRoute } from "@/components/card-route"
 import { CopyButton } from "@/components/copy-button"
@@ -40,16 +38,13 @@ import { StudioPage, TileBody } from "./layout"
 
 const WORDS = SPOKEN_WORDS
 
-const useScripts = (runtime: SpokenRuntime): ReadonlyArray<SpokenCard> =>
-  useSyncExternalStore(runtime.scripts.subscribe, runtime.scripts.getSnapshot)
+const useCards = (runtime: SpokenRuntime): ReadonlyArray<SpokenCard> =>
+  useSyncExternalStore(runtime.cards.subscribe, runtime.cards.getSnapshot)
 
-/** The runtime's takes seen while a script's page shows. */
+/** The runtime's takes seen while a card's page shows. */
 const useAttached = (runtime: SpokenRuntime): void => {
   useEffect(() => runtime.attach(), [runtime])
 }
-
-const titleOf = (script: SpokenCard): string =>
-  script.title === "" ? WORDS.untitled : script.title
 
 const KindChip = ({ kind }: { kind: PartKind }): JSX.Element => (
   <span
@@ -64,33 +59,53 @@ const KindChip = ({ kind }: { kind: PartKind }): JSX.Element => (
   </span>
 )
 
-/** Spoken: Paste a spoken card, and each card this phone keeps, newest first. */
+/** The quiet way back, to Spoken or to a card. */
+const QuietLink = ({
+  card,
+  children,
+}: {
+  card?: string
+  children: ReactNode
+}): JSX.Element => (
+  <Link
+    {...(card === undefined
+      ? { to: "/journal/spoken" }
+      : { to: "/journal/spoken/$card", params: { card } })}
+    className="text-muted-foreground self-start text-sm underline underline-offset-4"
+  >
+    {children}
+  </Link>
+)
+
+const KeptLine = (): JSX.Element => (
+  <p className="text-muted-foreground border-border border-t pt-3 text-xs">
+    {WORDS.kept}
+  </p>
+)
+
 const SpokenListBody = ({
   runtime = phoneSpoken(),
 }: {
   runtime?: SpokenRuntime
 }): JSX.Element => {
-  const scripts = useScripts(runtime)
+  const cards = useCards(runtime)
   return (
     <StudioPage heading={WORDS.heading} intro={WORDS.intro} back="index">
       <Button asChild>
         <Link to="/journal/spoken/paste">{WORDS.paste.open}</Link>
       </Button>
-      {scripts.length === 0 ? (
+      {cards.length === 0 ? (
         <p className="text-muted-foreground text-sm">{WORDS.none}</p>
       ) : (
         <ul className="flex flex-col gap-2">
-          {scripts.map((script) => (
-            <li key={script.id}>
-              <CardRoute
-                to="/journal/spoken/$card"
-                params={{ card: script.id }}
-              >
+          {cards.map((card) => (
+            <li key={card.id}>
+              <CardRoute to="/journal/spoken/$card" params={{ card: card.id }}>
                 <TileBody
-                  title={titleOf(script)}
-                  line={`${WORDS.category[script.category]} · ${WORDS.pasted(script.pastedAt)} · ${WORDS.summary(
-                    script.parts.length,
-                    script.parts.reduce((n, part) => n + part.takes.length, 0)
+                  title={titleOf(card)}
+                  line={`${WORDS.category[card.category]} · ${WORDS.pasted(card.pastedAt)} · ${WORDS.summary(
+                    card.parts.length,
+                    card.parts.reduce((n, part) => n + part.takes.length, 0)
                   )}`}
                 />
               </CardRoute>
@@ -98,14 +113,11 @@ const SpokenListBody = ({
           ))}
         </ul>
       )}
-      <p className="text-muted-foreground border-border border-t pt-3 text-xs">
-        {WORDS.kept}
-      </p>
+      <KeptLine />
     </StudioPage>
   )
 }
 
-/** Paste a spoken card: the words, how they split, and Keep. */
 const PasteSpokenBody = ({
   runtime = phoneSpoken(),
 }: {
@@ -120,17 +132,17 @@ const PasteSpokenBody = ({
   const asks = pasted?.parts.filter((part) => part.ask !== null).length ?? 0
   return (
     <StudioPage heading={WORDS.paste.heading}>
-      <label htmlFor="script-paste" className="text-sm">
+      <label htmlFor="spoken-paste" className="text-sm">
         {WORDS.paste.how}
       </label>
       <textarea
-        id="script-paste"
+        id="spoken-paste"
         value={text}
         onChange={(event) => setText(event.target.value)}
         aria-label={WORDS.paste.label}
         className="border-border bg-card min-h-56 w-full rounded-xl border p-3 font-mono text-sm"
       />
-      <p className="text-sm font-semibold" data-testid="script-split">
+      <p className="text-sm font-semibold" data-testid="spoken-split">
         {pasted === null
           ? WORDS.paste.nothing
           : WORDS.paste.split(count("read"), count("own"), asks)}
@@ -146,10 +158,7 @@ const PasteSpokenBody = ({
               setNotKept(true)
               return
             }
-            void navigate({
-              to: "/journal/spoken/$card",
-              params: { card: id },
-            })
+            void navigate({ to: "/journal/spoken/$card", params: { card: id } })
           }}
         >
           {WORDS.paste.keep}
@@ -159,7 +168,6 @@ const PasteSpokenBody = ({
         </Button>
       </div>
       {notKept && (
-        // Said over the screen, so the page holds still (HS1).
         <Notice onDismiss={() => setNotKept(false)}>
           {WORDS.paste.notKept}
         </Notice>
@@ -168,23 +176,13 @@ const PasteSpokenBody = ({
   )
 }
 
-const BackToSpoken = (): JSX.Element => (
-  <Link
-    to="/journal/spoken"
-    className="text-muted-foreground self-start text-sm underline underline-offset-4"
-  >
-    {WORDS.back}
-  </Link>
-)
-
 const Lost = (): JSX.Element => (
   <StudioPage heading={WORDS.heading}>
     <p className="text-sm">{WORDS.lost}</p>
-    <BackToSpoken />
+    <QuietLink>{WORDS.back}</QuietLink>
   </StudioPage>
 )
 
-/** A spoken card in its parts, and the essay's copy. */
 const SpokenPartsBody = ({
   id,
   runtime = phoneSpoken(),
@@ -193,23 +191,23 @@ const SpokenPartsBody = ({
   runtime?: SpokenRuntime
 }): JSX.Element => {
   useAttached(runtime)
-  const script = useScripts(runtime).find((each) => each.id === id)
-  if (script === undefined) return <Lost />
+  const card = useCards(runtime).find((each) => each.id === id)
+  if (card === undefined) return <Lost />
+  const block = essayBlock(card)
   return (
     <StudioPage
-      heading={titleOf(script)}
-      intro={`${WORDS.category[script.category]} · ${WORDS.pasted(script.pastedAt)}`}
+      heading={titleOf(card)}
+      intro={`${WORDS.category[card.category]} · ${WORDS.pasted(card.pastedAt)}`}
     >
       <ol className="flex flex-col gap-2">
-        {script.parts.map((part, n) => {
+        {card.parts.map((part, n) => {
           const pick = part.using === null ? -1 : part.takes.indexOf(part.using)
           return (
-            // A part is its place in the script, which never changes.
-            // eslint-disable-next-line react/no-array-index-key -- a part has no id but its place
+            // eslint-disable-next-line react/no-array-index-key -- a part has no id but its place in the card, which never changes
             <li key={n}>
               <CardRoute
                 to="/journal/spoken/$card/$part"
-                params={{ card: script.id, part: String(n + 1) }}
+                params={{ card: card.id, part: String(n + 1) }}
               >
                 <span className="flex w-full items-center justify-between gap-2">
                   <span className="text-muted-foreground text-xs font-bold">
@@ -238,17 +236,12 @@ const SpokenPartsBody = ({
         <h2 className="text-sm font-semibold">{WORDS.copy.heading}</h2>
         <p className="text-muted-foreground text-sm">{WORDS.copy.line}</p>
         <pre className="bg-card border-border rounded-xl border p-3 text-xs break-words whitespace-pre-wrap">
-          {essayBlock(script, essayParts(script))}
+          {block}
         </pre>
-        <CopyButton
-          text={essayBlock(script, essayParts(script))}
-          what={WORDS.copy.what}
-        />
+        <CopyButton text={block} what={WORDS.copy.what} />
       </section>
-      <p className="text-muted-foreground border-border border-t pt-3 text-xs">
-        {WORDS.kept}
-      </p>
-      <BackToSpoken />
+      <KeptLine />
+      <QuietLink>{WORDS.back}</QuietLink>
     </StudioPage>
   )
 }
@@ -274,22 +267,22 @@ const whereLine = (answer: HeardAnswer | undefined): string | null => {
 /** One part's takes, newest first: play and use; none ever let go here. */
 const PartTakes = ({
   runtime,
-  script,
+  card,
   n,
 }: {
   runtime: SpokenRuntime
-  script: SpokenCard
+  card: SpokenCard
   n: number
 }): JSX.Element | null => {
-  const part = script.parts.at(n)
+  const part = card.parts.at(n)
   const takes = part?.takes ?? []
   const heard = useSyncExternalStore(
     runtime.heard.subscribe,
     runtime.heard.getSnapshot
   )
-  const playing = useSyncExternalStore(
-    runtime.playing.subscribe,
-    runtime.playing.getSnapshot
+  const { playback, unplayable } = useSyncExternalStore(
+    runtime.play.subscribe,
+    runtime.play.getSnapshot
   )
   const key = takes.join(",")
   useEffect(() => {
@@ -305,14 +298,15 @@ const PartTakes = ({
           .reverse()
           .map(({ take, at }) => {
             const answer = heard[take]
+            const said = heardLine(answer)
+            const where = whereLine(answer)
             const unheard = answer?.kind === "heard" && answer.text === ""
             const using = part.using === take
-            const mine = playing.kind !== "quiet" && playing.id === take
-            const where = whereLine(answer)
+            const mine = playback.kind !== "quiet" && playback.id === take
             return (
               <li
                 key={take}
-                data-script-take={take}
+                data-spoken-take={take}
                 className={cn(
                   "bg-card flex items-start gap-3 rounded-2xl border p-3",
                   using ? "border-brand border-2" : "border-border"
@@ -321,10 +315,10 @@ const PartTakes = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  aria-pressed={mine && playing.kind === "playing"}
-                  onClick={() => runtime.play(take)}
+                  aria-pressed={mine && playback.kind === "playing"}
+                  onClick={() => runtime.toggle(take)}
                 >
-                  {mine && playing.kind !== "missed" ? WORDS.stop : WORDS.play}
+                  {mine ? WORDS.stop : WORDS.play}
                 </Button>
                 <div className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
                   <span className="font-semibold">
@@ -334,33 +328,31 @@ const PartTakes = ({
                       ...(using ? [WORDS.using] : []),
                     ].join(" · ")}
                   </span>
-                  {heardLine(answer) !== null && (
+                  {said !== null && (
                     <span className="text-muted-foreground text-xs italic [overflow-wrap:anywhere]">
-                      {heardLine(answer)}
+                      {said}
                     </span>
                   )}
-                  <span className="flex flex-wrap gap-2">
-                    {!using && !unheard && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => runtime.use(script.id, n, take)}
-                      >
-                        {WORDS.useThis}
-                      </Button>
-                    )}
-                  </span>
+                  {!using && !unheard && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="self-start"
+                      onClick={() => runtime.use(card.id, n, take)}
+                    >
+                      {WORDS.useThis}
+                    </Button>
+                  )}
                 </div>
               </li>
             )
           })}
       </ol>
-      {playing.kind === "missed" && takes.includes(playing.id) && (
-        // Said over the screen, so the page holds still (HS1).
+      {unplayable !== null && takes.includes(unplayable) && (
         <Notice
           action={{
             label: WORDS.play,
-            onClick: () => runtime.play(playing.id),
+            onClick: () => runtime.toggle(unplayable),
           }}
         >
           {WORDS.notPlayed}
@@ -370,17 +362,15 @@ const PartTakes = ({
   )
 }
 
-/** A read part's band: the question above, the words on the teleprompter. */
+/** A read part's words on the teleprompter band. */
 const ReadPart = ({
   runtime,
   line,
   text,
-  ask,
 }: {
   runtime: SpokenRuntime
   line: string
   text: string
-  ask: string | null
 }): JSX.Element => {
   const lines = phrasesOf(text)
   const prompter = useSyncExternalStore(
@@ -395,44 +385,24 @@ const ReadPart = ({
   const { take } = snapshot
   const reading = take.kind === "recording" && snapshot.answers === line
   return (
-    <>
-      {ask !== null && (
-        <section className="bg-muted flex flex-col gap-0.5 rounded-2xl px-3 py-2">
-          <p className="text-muted-foreground text-xs">{WORDS.theyAsk}</p>
-          <p className="font-semibold [overflow-wrap:anywhere]">{ask}</p>
-        </section>
-      )}
-      <Teleprompter
-        lines={lines}
-        band={bandOf(prompter, line, lines)}
-        reading={reading}
-        level={reading ? take.level : 0}
-        time={reading ? WORDS.band.time(take.elapsedMs) : null}
-        pace={pace}
-        words={WORDS.band}
-        dataScript={line}
-        onPause={runtime.pause}
-        onPace={runtime.setPace}
-      />
-    </>
+    <Teleprompter
+      lines={lines}
+      band={bandOf(prompter, line, lines)}
+      reading={reading}
+      level={reading ? take.level : 0}
+      time={reading ? WORDS.band.time(take.elapsedMs) : null}
+      pace={pace}
+      words={WORDS.band}
+      dataScript={line}
+      onPause={runtime.pause}
+      onPace={runtime.setPace}
+    />
   )
 }
 
 /** An own-words part: the prompt, and nothing that scrolls. */
-const OwnPart = ({
-  text,
-  ask,
-}: {
-  text: string
-  ask: string | null
-}): JSX.Element => (
+const OwnPart = ({ text }: { text: string }): JSX.Element => (
   <>
-    {ask !== null && (
-      <section className="bg-muted flex flex-col gap-0.5 rounded-2xl px-3 py-2">
-        <p className="text-muted-foreground text-xs">{WORDS.theyAsk}</p>
-        <p className="font-semibold [overflow-wrap:anywhere]">{ask}</p>
-      </section>
-    )}
     <section className="bg-card border-border rounded-2xl border-2 p-4">
       <p className="text-xl leading-snug font-extrabold [overflow-wrap:anywhere]">
         {text}
@@ -445,7 +415,6 @@ const OwnPart = ({
   </>
 )
 
-/** A part of a spoken card: read on the band or said, recorded, and its takes. */
 const SpokenPartPageBody = ({
   id,
   n,
@@ -457,24 +426,25 @@ const SpokenPartPageBody = ({
   runtime?: SpokenRuntime
 }): JSX.Element => {
   useAttached(runtime)
-  const script = useScripts(runtime).find((each) => each.id === id)
-  const part = script?.parts.at(n)
-  if (script === undefined || part === undefined) return <Lost />
-  const line = lineOf(script.id, n)
+  const card = useCards(runtime).find((each) => each.id === id)
+  const part = card?.parts.at(n)
+  if (card === undefined || part === undefined) return <Lost />
+  const line = lineOf(card.id, n)
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-4">
       <p className="text-muted-foreground text-xs font-semibold">
-        {`${WORDS.part(n, script.parts.length)} · ${WORDS.kind[part.kind]}`}
+        {`${WORDS.part(n, card.parts.length)} · ${WORDS.kind[part.kind]}`}
       </p>
+      {part.ask !== null && (
+        <section className="bg-muted flex flex-col gap-0.5 rounded-2xl px-3 py-2">
+          <p className="text-muted-foreground text-xs">{WORDS.theyAsk}</p>
+          <p className="font-semibold [overflow-wrap:anywhere]">{part.ask}</p>
+        </section>
+      )}
       {part.kind === "read" ? (
-        <ReadPart
-          runtime={runtime}
-          line={line}
-          text={part.text}
-          ask={part.ask}
-        />
+        <ReadPart runtime={runtime} line={line} text={part.text} />
       ) : (
-        <OwnPart text={part.text} ask={part.ask} />
+        <OwnPart text={part.text} />
       )}
       <TakeList
         pattern={runtime.pattern}
@@ -488,24 +458,18 @@ const SpokenPartPageBody = ({
           variant="outline"
           size="sm"
           className="self-start"
-          onClick={() => runtime.flip(script.id, n)}
+          onClick={() => runtime.flip(card.id, n)}
         >
           {WORDS.flip(part.kind === "read" ? "own" : "read")}
         </Button>
       )}
-      <PartTakes runtime={runtime} script={script} n={n} />
-      <Link
-        to="/journal/spoken/$card"
-        params={{ card: script.id }}
-        className="text-muted-foreground self-start text-sm underline underline-offset-4"
-      >
-        {titleOf(script)}
-      </Link>
+      <PartTakes runtime={runtime} card={card} n={n} />
+      <QuietLink card={card.id}>{titleOf(card)}</QuietLink>
     </div>
   )
 }
 
-/**
+/*
  * Spoken's pages are the phone's ("apk"): a build without them draws
  * nothing, so no link here reaches a page it doesn't ship (A3).
  */

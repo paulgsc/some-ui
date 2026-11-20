@@ -1,5 +1,5 @@
 /**
- * What Studio's index and its nine pages say (SFEED1, #2731): every word in
+ * What Studio's index and its pages say (SFEED1, #2731): every word in
  * one pure table, in the person's terms, held by its test to no machinery
  * and to ST34's names: Studio is never "Journal", a take never "a
  * recording" or "a bite", and no place is a bare "Your video". A feed's own

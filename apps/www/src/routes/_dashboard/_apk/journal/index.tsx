@@ -15,7 +15,7 @@ const WORDS = STUDIO_INDEX_WORDS
 
 /**
  * The Studio wing's Home (lib/wings), Studio's index (SFEED1, #2731; #2670's
- * decision 1): the nine kinds of thing Studio keeps, each a tile the size
+ * decision 1): the kinds of thing Studio keeps, each a tile the size
  * of the others, A to Z so the order ranks nothing, each opening its own
  * list. Deleting any of it stays in Settings › My data. One live line above
  * the tiles, and not one of them, says what home is making (SFEED13).

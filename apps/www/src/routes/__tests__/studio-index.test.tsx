@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  *
- * Studio's index on the phone (SFEED1, #2731): it opens on the nine kinds,
+ * Studio's index on the phone (SFEED1, #2731): it opens on the kinds,
  * A to Z, each a link to its own page, and with no video in the making
  * first; a template's page draws its storyboard; and Asks lists what the
  * open `ask` issues ask, opening each one's page.
@@ -68,7 +68,7 @@ afterEach(() => {
 })
 
 describe("Studio's index", () => {
-  it("opens on the nine kinds, A to Z, each linking to its page", () => {
+  it("opens on the kinds, A to Z, each linking to its page", () => {
     const Index = routeComponent(IndexRoute)
     render(<Index />)
     // The stand-in `Link` is an `<a>` with `to`, so it has no link role.

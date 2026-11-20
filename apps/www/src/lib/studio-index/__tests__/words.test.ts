@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  *
- * Studio's index (SFEED1): the nine kinds A to Z, and everything the index
+ * Studio's index (SFEED1): the kinds A to Z, and everything the index
  * and its pages say in the person's terms (CLAUDE.md, "State in the person's
  * terms"), under ST34's names.
  */
@@ -71,7 +71,7 @@ describe("Studio's index", () => {
     expect(promo.limit(2, 24)).toBe("Up to 2 lines of 24 characters")
   })
 
-  it("lists the nine kinds A to Z, so none comes first", () => {
+  it("lists the kinds A to Z, so none comes first", () => {
     const names = STUDIO_KINDS.map((kind) => KIND_WORDS[kind].name)
     expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, "en")))
   })

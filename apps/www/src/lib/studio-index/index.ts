@@ -4,7 +4,7 @@ import { FEEDS } from "@/lib/feeds"
 import { FEED_FACTS } from "./words"
 
 /**
- * Studio's index on the phone (SFEED1, #2731; #2670's decision 1): the nine
+ * Studio's index on the phone (SFEED1, #2731; #2670's decision 1): the
  * kinds of thing Studio keeps, each first-class, each with its own list
  * (`/journal/<kind>`) and, where an item has one, its own page. They are
  * listed A to Z, so their order ranks nothing; the test holds that order.

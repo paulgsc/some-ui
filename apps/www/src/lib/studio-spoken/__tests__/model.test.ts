@@ -8,13 +8,11 @@ import { describe, expect, it } from "vitest"
 
 import {
   cardId,
-  essayParts,
   flip,
   keptCard,
   lineOf,
   parseCard,
   partOfLine,
-  phrasesOf,
   use,
   withSeen,
 } from "@/lib/studio-spoken/model"
@@ -146,8 +144,6 @@ describe("a take's line", () => {
   it("names the script and part, in two parts on ':' so home keeps it as a take with no scene", () => {
     const line = lineOf("scabc12", 3)
     expect(line).toBe("spoken:scabc12.3")
-    expect(line.split(":")).toHaveLength(2)
-    expect(line.startsWith("idea:")).toBe(false)
     expect(partOfLine(line)).toEqual({ script: "scabc12", part: 3 })
     expect(partOfLine("library")).toBeNull()
     expect(partOfLine("spoken:a:b")).toBeNull()
@@ -197,18 +193,5 @@ describe("SCR3: a part uses only one of its own takes", () => {
     ])
     expect(use(taken, 0, "t1").parts[0]?.using).toBe("t1")
     expect(use(taken, 0, "t3")).toBe(taken)
-    expect(essayParts(use(taken, 0, "t1"))).toEqual([
-      { n: 0, id: null, kind: "read", ask: "What is Rust Rounds?", take: "t1" },
-      { n: 1, id: null, kind: "own", ask: null, take: null },
-      { n: 2, id: null, kind: "read", ask: null, take: null },
-    ])
-  })
-})
-
-describe("the band", () => {
-  it("shows one phrase a line", () => {
-    expect(
-      phrasesOf("Monday a ticket, by Sunday an answer. Then more")
-    ).toEqual(["Monday a ticket,", "by Sunday an answer.", "Then more"])
   })
 })

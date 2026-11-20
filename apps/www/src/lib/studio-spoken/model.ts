@@ -1,7 +1,5 @@
 /**
- * A spoken card in Studio (W5, run #3311; the owner's approved prototype of
- * 2026-11-20, https://claude.ai/artifact/R4t2EfwmGu2dGWpDk2Fxyr, renamed
- * "spoken" the same day): pure. A spoken card is pasted on this phone and
+ * A spoken card in Studio (W5, C805): pure. A spoken card is pasted on this phone and
  * kept here (C806). It has a category, which maps to the template an essay
  * renders it with: today only `introduction`, Kokoro asking and the owner
  * answering, each speaker lit while they speak. It is split into parts: a
@@ -209,15 +207,6 @@ export function partOfLine(
   return { script: named[1], part: Number(named[2]) }
 }
 
-/** The phrases a part's words show one a line on the band. */
-export function phrasesOf(text: string): ReadonlyArray<string> {
-  return text
-    .split("\n")
-    .flatMap((line) => line.split(/(?<=[.,;:?!])\s+/u))
-    .map((phrase) => phrase.trim())
-    .filter((phrase) => phrase !== "")
-}
-
 /**
  * `script` having seen `takes` on this phone, each with the line it answers:
  * every take of one of its parts that the part doesn't list yet is added,
@@ -267,23 +256,3 @@ const replacePart = (
   ...script,
   parts: script.parts.map((each, at) => (at === n ? part : each)),
 })
-
-/** What the essay copy says of each part, for `./words` to put in words. */
-export type EssayPart = {
-  readonly n: number
-  readonly id: string | null
-  readonly kind: PartKind
-  readonly ask: string | null
-  /** The take it uses; null when none is picked. */
-  readonly take: string | null
-}
-
-/** Each part of `script` as the essay is given it: its question and its take. */
-export const essayParts = (script: SpokenCard): ReadonlyArray<EssayPart> =>
-  script.parts.map((part, n) => ({
-    n,
-    id: part.id,
-    kind: part.kind,
-    ask: part.ask,
-    take: part.using,
-  }))
