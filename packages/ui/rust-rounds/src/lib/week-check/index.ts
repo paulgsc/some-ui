@@ -20,7 +20,7 @@ import { programLines } from "@rust-rounds/lib/formats"
 import type { Week, WeekV2 } from "@rust-rounds/lib/formats/week"
 import {
   upgradeWeek,
-  WEEK_SCHEMA_V2,
+  WEEK_SCHEMA,
   WeekV1Schema,
   WeekV2Schema,
 } from "@rust-rounds/lib/formats/week"
@@ -291,7 +291,7 @@ function refused(
 
 /** Whether `input` says it is a `/2` week. */
 const isV2 = (input: unknown): boolean =>
-  isRecord(input) && input.schema === WEEK_SCHEMA_V2
+  isRecord(input) && input.schema === WEEK_SCHEMA
 
 /** A week, or every reason it is refused, in the shape the phone holds. */
 export function readWeek(input: unknown): WeekReading {
@@ -334,7 +334,7 @@ export function oversizeWeek(file: {
     `${JSON.stringify(file, null, 2)}\n`
   ).length
   const most =
-    file.schema === WEEK_SCHEMA_V2 ? WEEK_V2_MAX_BYTES : WEEK_V1_MAX_BYTES
+    file.schema === WEEK_SCHEMA ? WEEK_V2_MAX_BYTES : WEEK_V1_MAX_BYTES
   return bytes > most
     ? {
         at: "",

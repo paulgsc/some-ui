@@ -72,11 +72,11 @@ import { WEEK_ID } from "./week-id"
 
 export { WEEK_ID } from "./week-id"
 
-/** The schema the routine writes: home reads `/1` alone until it reads `/2` too. */
-export const WEEK_SCHEMA = "some-ui.rust-week/1"
+/** The week the routine writes: forks and an academy (RR25, RR29). */
+export const WEEK_SCHEMA = "some-ui.rust-week/2"
 
-/** The week with forks and an academy (RR25, RR29). */
-export const WEEK_SCHEMA_V2 = "some-ui.rust-week/2"
+/** The first week, of speak-to points, which the phone and home read too. */
+export const WEEK_SCHEMA_V1 = "some-ui.rust-week/1"
 
 /**
  * A ticket's key, as a tracker writes one: `QM-311`. Upper case on purpose:
@@ -152,7 +152,7 @@ const conceptsOf = z
 const speakToCount = `a ticket has ${SPEAK_TO_MIN} or ${SPEAK_TO_MAX} speak-to points`
 
 /** A `/1` ticket. */
-export const TicketV1Schema = z.strictObject({
+const TicketV1Schema = z.strictObject({
   id: KeySchema,
   title: TextSchema,
   /** What the ticket asks, in the scenario's terms. */
@@ -170,7 +170,7 @@ export const TicketV1Schema = z.strictObject({
   concepts: conceptsOf,
 })
 
-const ConstraintIdSchema = z
+export const ConstraintIdSchema = z
   .string()
   .regex(
     constraintId("[SF]"),
@@ -178,7 +178,7 @@ const ConstraintIdSchema = z
   )
 
 /** An SLA row, with the id options and judgements cite it by. */
-const SlaRowSchema = z.strictObject({
+export const SlaRowSchema = z.strictObject({
   id: z.string().regex(constraintId("S"), "an SLA row's id is S1, S2, …"),
   what: TextSchema,
   target: TextSchema,
@@ -266,7 +266,7 @@ const forkCount = `a ticket has ${FORKS_MIN} to ${FORKS_MAX} forks`
 const academyCount = `a ticket's academy has ${ACADEMY_MIN} to ${ACADEMY_MAX} exercises`
 
 /** A `/2` ticket. */
-const TicketV2Schema = z.strictObject({
+export const TicketV2Schema = z.strictObject({
   id: KeySchema,
   title: TextSchema,
   spec: TextSchema,
@@ -327,7 +327,7 @@ const weekFields = {
 
 /** A `/1` week. */
 export const WeekV1Schema = z.strictObject({
-  schema: z.literal(WEEK_SCHEMA),
+  schema: z.literal(WEEK_SCHEMA_V1),
   ...weekFields,
   sla: z
     .array(z.strictObject({ what: TextSchema, target: TextSchema }))
@@ -343,11 +343,11 @@ export type WeekV1 = z.infer<typeof WeekV1Schema>
  * The essay's opening, a conversation (#3269, C738): one to three
  * questions someone who has never seen Rust Rounds would ask, each with the
  * answer the owner reads through the teleprompter. It is the standing set
- * (`@rust-rounds/lib/opening`, C737), to be copied into the week as it
- * stands by code once the routine writes `/2` weeks (#3272): the routine
- * never writes its words. Until then no week carries one. `version` is the set's, so a take recorded
- * under one version answers that version's words, and plays only while the
- * week's opening is the same version (C736).
+ * (`@rust-rounds/lib/opening`, C737), which `finish` copies into every
+ * `/2` week the routine writes (#3272): the routine never writes its words.
+ * `version` is the set's, so a take recorded under one version answers that
+ * version's words, and plays only while the week's opening is the same
+ * version (C736).
  */
 const OpeningSchema = z.strictObject({
   version: z.int().positive(),
@@ -360,7 +360,7 @@ export type Opening = z.infer<typeof OpeningSchema>
 
 /** A `/2` week. */
 export const WeekV2Schema = z.strictObject({
-  schema: z.literal(WEEK_SCHEMA_V2),
+  schema: z.literal(WEEK_SCHEMA),
   ...weekFields,
   /** Optional: a week with none opens on its tickets, and its essay as before. */
   opening: OpeningSchema.optional(),
@@ -375,7 +375,7 @@ export type WeekV2 = z.infer<typeof WeekV2Schema>
 /** A week as the phone holds it, whichever schema it came in. */
 export const WeekSchema = z.strictObject({
   /** The schema it came in; a `/1` week's forks have no options and it has no academy. */
-  schema: z.enum([WEEK_SCHEMA, WEEK_SCHEMA_V2]),
+  schema: z.enum([WEEK_SCHEMA_V1, WEEK_SCHEMA]),
   ...weekFields,
   opening: OpeningSchema.optional(),
   sla: z.array(SlaRowSchema).min(1, "a week states at least one SLA row"),

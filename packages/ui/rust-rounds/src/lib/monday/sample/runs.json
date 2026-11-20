@@ -6,18 +6,52 @@
     "stderr": "error[E0507]: cannot move out of index of `Vec<Label>`\n  --> main.rs:16:18\n   |\n16 |         let to = queue[i].address;\n   |                  ^^^^^^^^^^^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait\n   |\nhelp: consider borrowing here\n   |\n16 |         let to = &queue[i].address;\n   |                  +\nhelp: consider cloning the value if the performance cost is acceptable\n   |\n16 |         let to = queue[i].address.clone();\n   |                                  ++++++++\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0507`.\n",
     "span": null
   },
+  "TB-101/academy/1": {
+    "outcome": "compile-error",
+    "toolchain": "1.97.0",
+    "code": "E0507",
+    "stderr": "error[E0507]: cannot move out of index of `Vec<Foo>`\n  --> main.rs:14:5\n   |\n14 |     foos[0]\n   |     ^^^^^^^ move occurs because value has type `Foo`, which does not implement the `Copy` trait\n   |\nnote: if `Foo` implemented `Clone`, you could clone the value\n  --> main.rs:2:1\n   |\n 2 | struct Foo {\n   | ^^^^^^^^^^ consider implementing `Clone` for this type\n...\n14 |     foos[0]\n   |     ------- you could clone this value\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0507`.\n",
+    "span": null
+  },
+  "TB-101/academy/2": {
+    "outcome": "compile-error",
+    "toolchain": "1.97.0",
+    "code": "E0204",
+    "stderr": "error[E0204]: the trait `Copy` cannot be implemented for this type\n --> main.rs:2:8\n  |\n1 | #[derive(Debug, Clone, Copy)]\n  |                        ---- in this derive macro expansion\n2 | struct Foo {\n  |        ^^^\n...\n5 |     name: String,\n  |     ------------ this field does not implement `Copy`\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0204`.\n",
+    "span": null
+  },
+  "TB-101/academy/3": {
+    "outcome": "prints",
+    "toolchain": "1.97.0",
+    "compileStderr": "",
+    "stdout": "3890 bytes read, 1000 allocations\n"
+  },
   "TB-102": {
     "outcome": "panics",
     "toolchain": "1.97.0",
     "compileStderr": "",
     "stdout": "",
-    "stderr": "\nthread 'main' (6716) panicked at main.rs:6:24:\nRefCell already borrowed\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
+    "stderr": "\nthread 'main' (4703) panicked at main.rs:6:24:\nRefCell already borrowed\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
+  },
+  "TB-102/academy/1": {
+    "outcome": "panics",
+    "toolchain": "1.97.0",
+    "compileStderr": "",
+    "stdout": "",
+    "stderr": "\nthread 'main' (4722) panicked at main.rs:6:9:\nRefCell already borrowed\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
   },
   "TB-103": {
     "outcome": "compile-error",
     "toolchain": "1.97.0",
     "code": "E0277",
     "stderr": "error[E0277]: `Rc<Vec<u8>>` cannot be sent between threads safely\n --> main.rs:7:27\n  |\n7 |       let h = thread::spawn(move || {\n  |               ------------- ^------\n  |               |             |\n  |  _____________|_____________within this `{closure@main.rs:7:27: 7:34}`\n  | |             |\n  | |             required by a bound introduced by this call\n8 | |         copy.len()\n9 | |     });\n  | |_____^ `Rc<Vec<u8>>` cannot be sent between threads safely\n  |\n  = help: within `{closure@main.rs:7:27: 7:34}`, the trait `Send` is not implemented for `Rc<Vec<u8>>`\nnote: required because it's used within this closure\n --> main.rs:7:27\n  |\n7 |     let h = thread::spawn(move || {\n  |                           ^^^^^^^\nnote: required by a bound in `spawn`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/thread/functions.rs:125:0\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0277`.\n",
+    "span": null
+  },
+  "TB-103/academy/1": {
+    "outcome": "compile-error",
+    "toolchain": "1.97.0",
+    "code": "E0277",
+    "stderr": "error[E0277]: `Rc<{integer}>` cannot be sent between threads safely\n --> main.rs:8:16\n  |\n8 |     needs_send(Rc::new(1));\n  |     ---------- ^^^^^^^^^^ `Rc<{integer}>` cannot be sent between threads safely\n  |     |\n  |     required by a bound introduced by this call\n  |\n  = help: the trait `Send` is not implemented for `Rc<{integer}>`\nnote: required by a bound in `needs_send`\n --> main.rs:4:18\n  |\n4 | fn needs_send<T: Send>(_: T) {}\n  |                  ^^^^ required by this bound in `needs_send`\nhelp: consider dereferencing here\n  |\n8 |     needs_send(*Rc::new(1));\n  |                +\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0277`.\n",
     "span": null
   }
 }

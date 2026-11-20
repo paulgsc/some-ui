@@ -12,23 +12,24 @@
  * out takes no answer at all: no reading and no guess (HEARD2, #3072). A
  * point answered by a take of its own (RR24) takes its own reading in
  * `points`.
+ *
+ * Next week is a `some-ui.rust-week/2` week (C730).
  */
 import { TextSchema } from "@rust-rounds/lib/formats"
-import { TicketV1Schema, WEEK_ID } from "@rust-rounds/lib/formats/week"
+import {
+  ConstraintIdSchema,
+  SlaRowSchema,
+  TicketV2Schema,
+  WEEK_ID,
+} from "@rust-rounds/lib/formats/week"
 import { MARKS, SOLO_LEVELS } from "@some-ui/video-render"
 import { z } from "zod"
 
-const VALUES_SCHEMA = "some-ui.rust-monday-values/1"
-
-/** `/2` (RR29): an essay ticket may carry the best fit of each fork (`forks`). */
-const VALUES_SCHEMA_V2 = "some-ui.rust-monday-values/2"
-
-/** As `formats/week`'s private `ConstraintIdSchema`. */
-const StatedIdSchema = z.string().regex(/^[SF][1-9]\d*$/)
+const VALUES_SCHEMA = "some-ui.rust-monday-values/2"
 
 const TradeSchema = {
-  meets: z.array(StatedIdSchema),
-  breaks: z.array(StatedIdSchema),
+  meets: z.array(ConstraintIdSchema),
+  breaks: z.array(ConstraintIdSchema),
   /** Why, in a few words: the fork scene's last column. */
   because: TextSchema.optional(),
   /** Its program doesn't build: rustc's code, and why. */
@@ -122,7 +123,7 @@ const EssayValuesSchema = z.strictObject({
 })
 export type EssayValues = z.infer<typeof EssayValuesSchema>
 
-const WeekTicketValuesSchema = TicketV1Schema.extend({
+const WeekTicketValuesSchema = TicketV2Schema.extend({
   /** The pasted error it was built from, by its `at`, as the bundle's seeds name them. */
   seed: z.string().optional(),
 })
@@ -132,23 +133,14 @@ const WeekValuesSchema = z.strictObject({
   role: TextSchema,
   audience: TextSchema,
   story: TextSchema,
-  sla: z.array(z.strictObject({ what: TextSchema, target: TextSchema })),
+  sla: z.array(SlaRowSchema),
   tickets: z.array(WeekTicketValuesSchema),
 })
 
-export const ValuesSchema = z
-  .strictObject({
-    schema: z.enum([VALUES_SCHEMA, VALUES_SCHEMA_V2]),
-    essays: z.array(EssayValuesSchema),
-    /** Next week's content; null when the bundle has no `next`. */
-    week: WeekValuesSchema.nullable(),
-  })
-  .refine(
-    (values) =>
-      values.schema === VALUES_SCHEMA_V2 ||
-      values.essays.every((essay) =>
-        essay.tickets.every((ticket) => ticket.forks === undefined)
-      ),
-    { message: `a fork's best fit is ${VALUES_SCHEMA_V2}'s`, path: ["schema"] }
-  )
+export const ValuesSchema = z.strictObject({
+  schema: z.literal(VALUES_SCHEMA),
+  essays: z.array(EssayValuesSchema),
+  /** Next week's content; null when the bundle has no `next`. */
+  week: WeekValuesSchema.nullable(),
+})
 export type Values = z.infer<typeof ValuesSchema>

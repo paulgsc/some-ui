@@ -17,13 +17,13 @@
  * Tests and the viewer's sample week (RR21) read it.
  */
 import type { Week, WeekV1 } from "@rust-rounds/lib/formats/week"
-import { upgradeWeek, WEEK_SCHEMA } from "@rust-rounds/lib/formats/week"
+import { upgradeWeek, WEEK_SCHEMA_V1 } from "@rust-rounds/lib/formats/week"
 
 const program = (...lines: Array<string>): string => `${lines.join("\n")}\n`
 
 /** The sample week as its file holds it (`/1`). */
 export const QUILLMOSS_WEEK_FILE: WeekV1 = {
-  schema: WEEK_SCHEMA,
+  schema: WEEK_SCHEMA_V1,
   id: "2026-w46",
   by: "claude-routine",
   family: "performance-task",

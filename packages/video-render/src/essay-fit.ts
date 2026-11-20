@@ -36,6 +36,9 @@
  * that it fits. So is a ticket of 1, or 4 to 6, points (version 4), which
  * the spec doesn't draw yet. The recorder's `data-overflow` refusal
  * stays the guard there, so no video is cut off.
+ *
+ * `pointsFit` holds the part of the best and beside scenes the essay can't
+ * shorten, the points themselves, when the routine writes the week.
  */
 
 import type { Essay, EssayTicket } from "./essay"
@@ -181,10 +184,16 @@ function code(text: string): Part {
 }
 
 function best(ticket: EssayTicket): number {
+  return bestOf(ticket.points)
+}
+
+function bestOf(
+  points: ReadonlyArray<{ readonly to: string; readonly best: string }>
+): number {
   return stack([
     TAG,
     list(
-      ticket.points.map((point) => [
+      points.map((point) => [
         ...inline(`${point.to}.`, 0.85, "bold"),
         ...inline(point.best, 0.85),
       ]),
@@ -209,33 +218,48 @@ const SOLO: Part = {
 
 function beside(ticket: EssayTicket): number {
   const answer = ticket.answer
+  return besideOf(
+    ticket.points.map((point, i) => ({
+      to: point.to,
+      cite: pointCite(ticket, i),
+      note: markOf(ticket, i)?.note,
+    })),
+    answer.kind === "take" ? answer.solo.why : null
+  )
+}
+
+/** The beside scene of `rows`, under SOLO's `why` (null for a silence's one line). */
+function besideOf(
+  rows: ReadonlyArray<{
+    readonly to: string
+    readonly cite: string | null
+    readonly note: string | undefined
+  }>,
+  soloWhy: string | null
+): number {
   const em = 0.8
   const pointWidth = CARD.width * ESSAY_POINT_COLUMN - px(em)
   const yoursWidth = CARD.width * (1 - ESSAY_POINT_COLUMN)
-  const rows = ticket.points.reduce(
-    (sum, point, i) => {
-      const mark = markOf(ticket, i)
+  const h = rows.reduce(
+    (sum, { to, cite, note }) => {
       // The mark line with its cite (RR24), measured at its longest mark.
-      const cite = pointCite(ticket, i)
       const line =
         cite === null
           ? ESSAY_STAGE_WORDS.unheard
           : `${ESSAY_STAGE_WORDS.unheard} · ${cite}`
       const yours =
         lines(inline(line, em), yoursWidth, em) +
-        (mark?.note === undefined
+        (note === undefined
           ? 0
-          : lines(inline(mark.note, em * 0.9), yoursWidth, em * 0.9))
-      const to = lines(inline(point.to, em), pointWidth, em)
-      return sum + 1 + 2 * px(0.3 * em) + Math.max(to, yours)
+          : lines(inline(note, em * 0.9), yoursWidth, em * 0.9))
+      const point = lines(inline(to, em), pointWidth, em)
+      return sum + 1 + 2 * px(0.3 * em) + Math.max(point, yours)
     },
     lineOf(0.85 * em)
   )
   const why =
-    answer.kind === "take"
-      ? lines(inline(answer.solo.why, em), CARD.width, em)
-      : lineOf(em)
-  return stack([TAG, { h: rows, em }, SOLO, { h: why, em }])
+    soloWhy === null ? lineOf(em) : lines(inline(soloWhy, em), CARD.width, em)
+  return stack([TAG, { h, em }, SOLO, { h: why, em }])
 }
 
 function dive(ticket: EssayTicket, k: number): number {
@@ -320,4 +344,38 @@ export function essayFit(essay: Essay): {
       )
   }
   return { scenes, problems }
+}
+
+/**
+ * What a ticket's speak-to points leave of its best and beside scenes
+ * before the routine writes a word of the essay: each point (a `/2` week's
+ * fork question) is restated in both as the week wrote it, and nothing
+ * after the deadline can shorten it. Measured with every other text at its
+ * least: no best fit, no note, a one-line SOLO why and no cite (RR24's
+ * cite is set only when a point was answered on its own, which isn't known
+ * yet). So whatever it refuses, `essayFit` refuses for any essay of those
+ * points. Each scene that runs past the frame even so is a problem naming
+ * the ticket.
+ */
+export function pointsFit(
+  ticket: string,
+  points: ReadonlyArray<string>
+): ReadonlyArray<string> {
+  const scenes = [
+    ["best", bestOf(points.map((to) => ({ to, best: "" })))],
+    [
+      "beside",
+      besideOf(
+        points.map((to) => ({ to, cite: null, note: undefined })),
+        null
+      ),
+    ],
+  ] as const
+  return scenes.flatMap(([name, h]) =>
+    h > CARD.height
+      ? [
+          `${ticket}: its ${points.length} speak-to points alone run about ${Math.ceil(h - CARD.height)} px past the essay's ${name} scene: shorten them, or ask fewer`,
+        ]
+      : []
+  )
 }
