@@ -119,6 +119,21 @@ describe("a screen zoomed to its parts (RR31)", () => {
     expect(() =>
       zoomPicture(screens, ["QM-311:question", "QM-312:question"])
     ).toThrow(/one screen/)
+    // Past the stops a scene keeps, too.
+    const names = Array.from(
+      { length: ZOOM_STOPS_MOST },
+      (_, i) => `point:${String(i + 1)}`
+    )
+    const crowded = screensOf([
+      card("QM-311", names),
+      card("QM-312", ["question"]),
+    ])
+    expect(() =>
+      zoomPicture(crowded, [
+        ...names.map((name) => `QM-311:${name}`),
+        "QM-312:question",
+      ])
+    ).toThrow(/one screen/)
   })
 })
 
