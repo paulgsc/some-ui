@@ -397,6 +397,11 @@ prove that we've exhausted it and still have a pain point." So:
   reach descends on.
 - **Build only the gap.** At rung 3, build the part that is ours and keep the tool for the
   rest: a wrapper over it, not a replacement for it.
+- **Spend last, behind a measured judgment** (owner, 2026-11-20, C789). While our judgment
+  about hardware, and the software infrastructure around it, is naive, nothing is paid for:
+  no rental, no purchase, no paid tier. A step that costs money comes last in its story, after
+  a judgment gate the story defines and measures: the owner's predictions, made before seeing
+  results, hold against real measurements (#3309). A free tier is not spending.
 
 **When a reach is owed.** It is owed when the first design of a story would add one of these:
 

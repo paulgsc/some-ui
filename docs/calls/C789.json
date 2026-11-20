@@ -1,0 +1,9 @@
+{
+  "id": "C789",
+  "made": "2026-11-20",
+  "by": "owner",
+  "paths": ["CLAUDE.md"],
+  "chose": "While our judgment about hardware, and the software infrastructure around it, is naive, nothing is paid for: no rental, no purchase, no paid tier. Every step that costs money comes last in its story and is gated behind a measured judgment gate: the owner's own predictions, made before seeing results, hold against real measurements. Defining that measure and recognising when it is met is part of the story (#3309).",
+  "undo": "A new owner call that moves this one, naming the gate that was met or the reason to spend before it.",
+  "refs": ["#3309", "#3197"]
+}
