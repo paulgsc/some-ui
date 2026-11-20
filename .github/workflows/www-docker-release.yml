@@ -180,6 +180,27 @@ jobs:
           push: false
           cache-from: type=gha
           tags: www:serve-check
+      # The labels server's release check reads (paulgsc/server#853), in the
+      # form its scripts/check_release.py parses, so a malformed one is refused
+      # here rather than by the release.
+      - name: Check the release labels
+        run: |
+          set -euo pipefail
+          pair='[a-z0-9][a-z0-9-]*=([0-9]+|[0-9a-f]{40})'
+          edges=''
+          for key in io.paulgsc.provides io.paulgsc.requires; do
+            value=$(docker inspect --format "{{ index .Config.Labels \"$key\" }}" www:serve-check)
+            echo "$key=$value"
+            if [ -n "$value" ] && ! [[ "$value" =~ ^$pair(,$pair)*$ ]]; then
+              echo "::error::$key is malformed: $value"
+              exit 1
+            fi
+            [ "$key" = io.paulgsc.requires ] && edges="$value"
+          done
+          if ! [[ ",$edges," =~ ,resume-api=[0-9]+, ]]; then
+            echo "::error::io.paulgsc.requires names no resume-api epoch"
+            exit 1
+          fi
       - name: Serve the image bare (WI1)
         run: |
           docker run -d --name www-serve-check -p 8080:80 www:serve-check

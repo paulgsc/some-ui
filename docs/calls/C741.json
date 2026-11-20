@@ -1,0 +1,14 @@
+{
+  "id": "C741",
+  "made": "2026-11-19",
+  "by": "owner",
+  "paths": ["server:infra/compose/www.yml", "server:README.md"],
+  "chose": "On home, the www service mounts no asset folders: no sfx or hangul mount, no WWW_SFX_ASSETS_PATH or WWW_HANGUL_ASSETS_PATH, and the owner's switch is only stopping some-ui's root stack, then make home-deploy. The folders are legacy: the web app is now an admin dashboard rather than a place for exercises, the apps are mobile-first, and even Honeycomb (web only) won't rely on local assets (the owner, 2026-11-19, relayed by the coordinator, close paraphrase).",
+  "options": [
+    "no asset mounts",
+    "mount sfx and hangul from host paths, read-only"
+  ],
+  "gray": "Until #3273 removes the legacy paths, a web build that still asks for /sfx/ gets the SPA's index.html, not a sound.",
+  "undo": "Add the two read-only bind mounts back to infra/compose/www.yml and the copy step to the README's switch steps.",
+  "refs": ["server#853", "#3273"]
+}

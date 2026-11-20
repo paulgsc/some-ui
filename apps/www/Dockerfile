@@ -195,3 +195,13 @@ HEALTHCHECK --interval=30s \
     CMD wget --no-verbose --tries=1 --spider http://127.0.0.1/ || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]
+
+#
+# What paulgsc/server's release check reads (its scripts/check_release.py,
+# docs/release.md "Constraints"), last, so no layer depends on them.
+# - resume-api: the résumé service's API this build's /resume-build page
+#   calls through /api/resume/ (packages/ui/resume/Dockerfile provides it).
+# file_host's contract is not a label: the app asks home's /compat itself.
+#
+LABEL io.paulgsc.provides="" \
+      io.paulgsc.requires="resume-api=1"
