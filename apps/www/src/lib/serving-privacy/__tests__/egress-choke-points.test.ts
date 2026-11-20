@@ -1054,7 +1054,7 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(callers).toEqual(["lib/idea-home/index.ts"])
   })
 
-  it("sends nothing from the read of a note's audio but one GET of /voice-notes/:id/audio, and only the voice lane, Takes on home, Needs your attention and My data read it (RR6, ST32, MD8, HEARD3)", () => {
+  it("sends nothing from the read of a note's audio but one GET of /voice-notes/:id/audio, and only the voice lane, Takes on home, Needs your attention, My data and Rust Rounds' opening read it (RR6, ST32, MD8, HEARD3, #3269)", () => {
     expect(sendCalls(AUDIO_READ, read(AUDIO_READ))).toEqual(AUDIO_SENDS)
     const readers = sourceFiles()
       .filter((f) => !isTestFile(f))
@@ -1068,6 +1068,7 @@ describe("LA8: the phone reaches home through one module", () => {
       "lib/my-data/index.ts",
       "lib/take-library/index.ts",
       "lib/take-reconcile/index.ts",
+      "routes/_dashboard/_apk/rust-rounds.tsx",
     ])
   })
 
