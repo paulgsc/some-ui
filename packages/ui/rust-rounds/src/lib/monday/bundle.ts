@@ -83,14 +83,15 @@ export type EndedWeek = {
   /**
    * The opening conversation (#3269, C738): each of the week's opening
    * questions whose answer has a take home resolved (C736) and heard
-   * something in, with what it heard, in order. Absent when none has, and
-   * the essay opens as before.
+   * something in, with what it heard and that take's id, in order. Absent
+   * when none has, and the essay opens as before.
    */
   readonly opening?: {
     readonly exchanges: ReadonlyArray<{
       readonly n: number
       readonly ask: string
       readonly transcript: string
+      readonly take: string
     }>
   }
   readonly tickets: ReadonlyArray<EndedTicket>
@@ -263,7 +264,9 @@ export function openingOf(
       readonly exchanges: NonNullable<EndedWeek["opening"]>["exchanges"]
     }
   | { readonly ok: false; readonly why: string } {
-  const exchanges: Array<{ n: number; ask: string; transcript: string }> = []
+  const exchanges: Array<
+    NonNullable<EndedWeek["opening"]>["exchanges"][number]
+  > = []
   for (const [i, { ask }] of (week.opening?.exchanges ?? []).entries()) {
     const n = i + 1
     const take = record.opening.find(
@@ -277,7 +280,7 @@ export function openingOf(
         why: `home hasn't heard the take on the opening's question ${n} yet`,
       }
     if (read.kind === "take")
-      exchanges.push({ n, ask, transcript: read.transcript })
+      exchanges.push({ n, ask, transcript: read.transcript, take: take.take })
   }
   return { ok: true, exchanges }
 }

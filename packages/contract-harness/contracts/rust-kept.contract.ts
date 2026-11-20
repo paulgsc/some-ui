@@ -52,7 +52,9 @@ const Ticket = z.string().regex(/^[A-Z][A-Z0-9]{0,5}-\d{1,6}$/)
 /**
  * A week's answers as the phone keeps them (`WeekSent`), which it sends
  * exactly; from contract epoch 24 with the decision at each fork (RR29,
- * `verdicts`, each named `<week>:<ticket>:<n>:verdict`).
+ * `verdicts`, each named `<week>:<ticket>:<n>:verdict`), and from epoch 25
+ * the week's opening takes (#3269, C736), ref `<week>:opening:<n>`, which
+ * the phone's `WeekSent` gains with its opening pages.
  */
 const SENT = {
   week: ABSENT_WEEK,
@@ -65,6 +67,15 @@ const SENT = {
     {
       ref: `${ABSENT_WEEK}:QM-1:1:verdict`,
       decision: { kind: "option", option: "B" },
+    },
+  ],
+  opening: [
+    {
+      n: 1,
+      take: "take-opening-1",
+      recordedAt: "1999-01-05T11:58:00.000Z",
+      version: 1,
+      ms: 24_000,
     },
   ],
 }
@@ -119,8 +130,8 @@ const RecordSchema = z.object({
   /**
    * The opening's answers the week's essay plays (#3269, C736): for each
    * question n, the newest kept take of its answer under the week's opening
-   * version, from this week or an earlier one. A home from before it says
-   * none.
+   * version, from this week or an earlier one, with how long it runs when
+   * the phone said (epoch 25). A home from before it says none.
    */
   opening: z
     .array(
@@ -130,6 +141,7 @@ const RecordSchema = z.object({
         recordedAt: When,
         week: z.string(),
         version: z.int().positive(),
+        ms: z.int().nonnegative().optional(),
       })
     )
     .optional(),

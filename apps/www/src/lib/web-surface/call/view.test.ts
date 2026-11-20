@@ -231,7 +231,12 @@ describe("the essay's stage", () => {
       ...essay(),
       opening: {
         exchanges: [
-          { n: 2, ask: "Why weekly?", transcript: "To practise deciding." },
+          {
+            n: 2,
+            ask: "Why weekly?",
+            transcript: "To practise deciding.",
+            take: "note-open-2",
+          },
         ],
       },
     }
