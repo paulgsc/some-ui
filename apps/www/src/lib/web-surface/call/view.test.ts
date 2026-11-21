@@ -766,6 +766,6 @@ describe("template A's bubbles", () => {
         })
       )
     expect(characters(scene(6))).toEqual(["tin-owlet", "mochi"])
-    expect(characters(scene(4))).toEqual([])
+    expect(characters(scene(5))).toEqual([])
   })
 })

@@ -3,7 +3,7 @@
   "made": "2026-11-20",
   "by": "owner",
   "paths": ["some-ui:packages/some-styles/src/brand/cast.ts"],
-  "chose": "The owner (2026-11-20, close paraphrase, relayed by the coordinator on #3311): 'I like the owl, but let's not go with it. Register that I like that design; we may reach back to it another time. Go for Mochi, the honey cell, and the tin birds. Can the tin bird's wind-up key spin while it's speaking? And both should shake a little and have mouth movement while speaking. Not too much, just subtle enough to give the feel of it.' So the owner is the mochi (Y2) and the synthetic voices are tin birds (K2); the barn owl (Y1) is kept for later as a character the cast can take; speaking motion is step 2. The options page is a private artifact the owner holds.",
+  "chose": "The owner (2026-11-20, close paraphrase, relayed by the coordinator on #3311): 'I like the owl, but let's not go with it. Register that I like that design; we may reach back to it another time. Go for Mochi, the honey cell, and the tin birds. Can the tin bird's wind-up key spin while it's speaking? And both should shake a little and have mouth movement while speaking. Not too much, just subtle enough to give the feel of it.' So the owner is the mochi (option Y2 on the options page) and the synthetic voices are tin birds (option K2); the barn owl (option Y1) is kept for later as a character the cast can take; speaking motion is step 2. The options page is a private artifact the owner holds.",
   "undo": "Swap the characters `CASTS` maps each speaker to in `essay-parts.tsx`, or add a cast version with others.",
   "refs": ["#2883", "#3311"]
 }
