@@ -369,7 +369,7 @@ describe("prepare", () => {
     if (!done.ok) throw new Error(done.problems.join("\n"))
     const essay = parseEssay(done.files[0]?.body)
     if (!essay.ok) throw new Error(essay.problems.join("\n"))
-    expect(essay.value.template.version).toBe(5)
+    expect(essay.value.template.version).toBe(6)
     expect(essay.value.opening).toEqual({ exchanges })
   })
 

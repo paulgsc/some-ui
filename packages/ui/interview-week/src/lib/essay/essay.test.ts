@@ -411,7 +411,7 @@ describe("the essay's opening (IW10)", () => {
     })
     if (!done.ok) throw new Error(done.problems.join("\n"))
     expect(done.files[0]?.body.opening).toEqual({ transcript: OPENED })
-    expect(done.files[0]?.body.template.version).toBe(2)
+    expect(done.files[0]?.body.template.version).toBe(3)
 
     expect(prepared().essays[0]?.opening).toBeNull()
     const plain = finishEssays({

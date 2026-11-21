@@ -1,0 +1,20 @@
+{
+  "id": "C822",
+  "made": "2026-11-20",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/format.ts",
+    "some-ui:packages/video-render/src/essay.ts",
+    "some-ui:packages/video-render/src/interview-essay.ts",
+    "some-ui:packages/ui/rust-rounds/src/lib/monday/finish.ts"
+  ],
+  "chose": "The cast comes in through the template's shape (`cast: \"cast-v1\"`), as the brand's motion and theme do, so a version already pinned keeps the flat icons and a published essay's version never redraws. The Rust essay's version 6 and the interview essay's version 3 name it; each draws everything the version before it does. Rust Rounds writes version 6 where it wrote 5 (an essay with an opening), and the interview week writes 3 where it wrote 2; an essay with no opening stays at the lowest version that draws it (C270), and so keeps the flat icons.",
+  "options": [
+    "an opt-in shape field, new versions only (chosen)",
+    "draw the cast in every version: simpler, but an essay already published would redraw differently from what was released",
+    "always write the newest version: gives every essay the cast, but breaks C270, so a stage built before would refuse an essay it could draw"
+  ],
+  "gray": "Which essays show the characters is something the owner sees; no check settled it. The cost: an essay with no opening keeps the flat icons until its producer writes a cast version.",
+  "undo": "Drop `cast` from the essay versions' shapes and the schema, delete `rust-essay/v6.json`, and set ESSAY_VERSION back to 5 and INTERVIEW_ESSAY_VERSION to 2; essays written at 6 or 3 are then refused (VS1).",
+  "refs": ["#2883"]
+}

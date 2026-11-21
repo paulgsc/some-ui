@@ -28,7 +28,7 @@ import type {
   Voicing,
 } from "@some-ui/video-render"
 
-import { Call, Inline, MARK_CLASS } from "./essay-parts"
+import { Call, CastProvider, Inline, MARK_CLASS } from "./essay-parts"
 import type { EssayAt, EssayView } from "./essay-view"
 import { essayAt, essayStageOf } from "./essay-view"
 import { leftOf, ESSAY_WORDS as W, weekNumber } from "./essay-words"
@@ -838,7 +838,9 @@ export const EssaySceneFrame = ({
             }
       }
     >
-      <Screen essay={essay} at={at} />
+      <CastProvider cast={format.shape?.cast}>
+        <Screen essay={essay} at={at} />
+      </CastProvider>
     </StageFrame>
   )
 }

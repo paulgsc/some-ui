@@ -120,6 +120,13 @@ export const ShapeSchema = z.strictObject({
   chapters: z.array(sceneId),
   subtitles: z.enum(["off", "line", "word"]),
   theme: ThemeIdSchema.optional(),
+  /**
+   * The characters the speaking bubbles draw (PDA6, #2883; C822), by the
+   * cast's name: `cast-v1` is the mochi for the owner and tin birds for the
+   * synthetic voices (`@some-ui/styles`' `brand/cast`). Absent, a version
+   * from before them, the bubbles draw the flat icons.
+   */
+  cast: z.enum(["cast-v1"]).optional(),
   parts: z
     .strictObject({
       mostMs: z.number().int().positive(),

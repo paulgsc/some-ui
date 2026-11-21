@@ -1,6 +1,9 @@
 import type { JSX, ReactNode } from "react"
+import { createContext, createElement, useContext, useId } from "react"
+import { CAST_VIEW_BOX, castNodes } from "@some-ui/styles/brand/cast"
+import type { CastNode, Character } from "@some-ui/styles/brand/cast"
 import { codeSpans } from "@some-ui/video-render"
-import type { Speaker } from "@some-ui/video-render"
+import type { Shape, Speaker } from "@some-ui/video-render"
 
 import { ESSAY_WORDS as W } from "./essay-words"
 
@@ -10,6 +13,9 @@ import { ESSAY_WORDS as W } from "./essay-words"
  * A's two bubbles, the tutor and the owner, the one speaking lit, with the
  * scene's content beside them (in the Rust essay's opening, the one asking
  * stands where the tutor does); text with code spans; a mark.
+ *
+ * A bubble draws the template's cast (PDA6, #2883; C822) when its shape
+ * names one (`CastProvider`), else the flat icons below.
  */
 
 /** The tutor's icon: neutral, never any company's mark. */
@@ -56,7 +62,65 @@ const ICONS: Readonly<Record<Speaker, () => JSX.Element>> = {
   asker: AskerIcon,
 }
 
+/** The cast a template's shape names, if any. */
+type Cast = NonNullable<Shape["cast"]>
+
+/** Who stands for each voice, by cast: the owner is the mark, the synthetic voices tin birds. */
+const CASTS: Readonly<Record<Cast, Readonly<Record<Speaker, Character>>>> = {
+  "cast-v1": { you: "mochi", tutor: "tin-owlet", asker: "tin-sparrow" },
+}
+
+const CastContext = createContext<Cast | undefined>(undefined)
+
+/** Draws every bubble under it in `cast`; with none, the flat icons. */
+export const CastProvider = ({
+  cast,
+  children,
+}: {
+  cast: Cast | undefined
+  children: ReactNode
+}): JSX.Element => <CastContext value={cast}>{children}</CastContext>
+
+/** An SVG attribute in React's spelling: `stop-color` is `stopColor`; `data-*` stays. */
+const reactAttr = (name: string): string =>
+  name.startsWith("data-")
+    ? name
+    : name.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase())
+
+const drawNode = (node: CastNode, key: number): ReactNode =>
+  createElement(
+    node.tag,
+    {
+      key,
+      ...Object.fromEntries(
+        Object.entries(node.attrs).map(([name, value]) => [
+          reactAttr(name),
+          value,
+        ])
+      ),
+      // The ground is the theme's.
+      ...("data-ground" in node.attrs ? { className: "fill-muted" } : {}),
+    },
+    ...(node.children ?? []).map(drawNode)
+  )
+
+/** One character, its gradients named for this drawing alone. */
+const CastIcon = ({ who }: { who: Character }): JSX.Element => {
+  const prefix = useId().replace(/[^A-Za-z0-9]/g, "")
+  return (
+    <svg
+      viewBox={CAST_VIEW_BOX}
+      aria-hidden="true"
+      className="size-full"
+      data-character={who}
+    >
+      {castNodes(who, (name) => `${prefix}-${name}`).map(drawNode)}
+    </svg>
+  )
+}
+
 const Bubble = ({ who, lit }: { who: Speaker; lit: boolean }): JSX.Element => {
+  const cast = useContext(CastContext)
   const Icon = ICONS[who]
   return (
     <div
@@ -75,7 +139,7 @@ const Bubble = ({ who, lit }: { who: Speaker; lit: boolean }): JSX.Element => {
             : "size-[7em] overflow-hidden rounded-full"
         }
       >
-        <Icon />
+        {cast === undefined ? <Icon /> : <CastIcon who={CASTS[cast][who]} />}
       </div>
       <p className="text-[0.9em] font-semibold">{W.speakers[who]}</p>
     </div>
