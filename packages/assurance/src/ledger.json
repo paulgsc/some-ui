@@ -1299,7 +1299,7 @@
           "kind": "OA4",
           "property": "outcome",
           "claim": "Every bite home holds with a scenario is matched to a play or marked unmatched and kept, never dropped.",
-          "requirement": "Each pass over a game appends one bite_match row for each of its bites whose match changed, naming the play (same game, a play the scenario's rule accepts, found by BM5's direction: the snap to come for a bite on its offer, the nearest at or before the bite's start on home's clock for one from just happened or on a stale offer, the nearer either side for one tied to no offer; within reconcile::WINDOW) or why there was none (`unmatched`, `not-a-play`, `no-scenario`); bite_match refuses UPDATE and DELETE, and a reader takes each bite's newest row.",
+          "requirement": "Each pass over a game appends one bite_match row for each of its bites whose match changed, naming the play (same game, a play the scenario's rule accepts, found by BM5's direction: the snap to come for a bite on its offer; for a drive offer, the first accepted play of that possession from the snap on; for the coin toss, the opening kickoff; the nearest at or before the bite's start on home's clock for one from just happened, on an offer of a play already in the log (the try), or on a stale offer; the nearer either side for one tied to no offer. The snap to come, and any play found before or either side, lies within reconcile::WINDOW) or why there was none (`unmatched`, `not-a-play`, `no-scenario`); bite_match refuses UPDATE and DELETE, and a reader takes each bite's newest row.",
           "verdict": "holds",
           "conclusion": "The reconciler's test matches each bite to its play or marks it unmatched and keeps it, and the store refuses rewriting a match. Whether the match is the right play (8 in 10 on a real Sunday, #2081) is the owner's spot check, not this objective.",
           "evidence": [
@@ -1351,7 +1351,7 @@
           "id": "BM3",
           "kind": "RE7",
           "property": "work",
-          "claim": "A game already final is reconciled again only when it has new bites.",
+          "claim": "A game already final is reconciled again only when it has new bites or mappings, or a bite matched under an older engine.",
           "requirement": "Every reconcile::TICK (10 minutes) the task reconciles a final game once per start, and again only when a bite or mapping arrived since its last pass, or when a bite's newest match was made under an older ENGINE_VERSION (once per bump, whatever week the game was in); it runs whatever the game feed's switch says.",
           "verdict": "holds",
           "conclusion": "The worker's test passes over a final game once, then again only after a new bite; idle, a pass reads the newest scoreboard and the games it names and writes nothing.",
@@ -1378,7 +1378,7 @@
             },
             {
               "on": "2026-11-21",
-              "change": "A match made under an older ENGINE_VERSION is redone once, so a rule change reaches every bite matched before it.",
+              "change": "A match made under an older ENGINE_VERSION is redone once, so a rule change reaches every bite matched before it; the claim now names that, and the mappings the requirement already counted.",
               "why": "#3040 changed which play a bite is matched to; without a re-match, bites matched before the change kept the wrong play.",
               "decision": "https://github.com/paulgsc/some-ui/issues/3040#issuecomment-7057816904"
             }
@@ -1391,7 +1391,7 @@
           "claim": "What the reconciler keeps grows by bites, not by passes.",
           "requirement": "A pass appends a bite_match row only for a bite whose match changed, and a bite_mapping row only for an accepted proposal, so the rows grow by about one small row per bite (more only when a later pass finds a nearer play) and never by the 10-minute tick; neither is updated or deleted but with the account.",
           "verdict": "holds",
-          "conclusion": "Both tables refuse UPDATE and leave only with the account, and the worker's test writes nothing on a tick that changes no match; at a few hundred bites a season, the rows stay in the tens of kilobytes. Each ENGINE_VERSION bump also adds at most one small row per bite, when its match is redone (BM3).",
+          "conclusion": "Both tables refuse UPDATE and leave only with the account, and the worker's test writes nothing on a tick that changes no match; at a few hundred bites a season, the rows stay in the tens of kilobytes. Since server#1069, each ENGINE_VERSION bump also adds one small row per matched bite (BM3), which the bound above does not yet name; loosening it waits on the owner (#3356).",
           "evidence": [
             {
               "class": "structural",
@@ -1423,10 +1423,10 @@
           "id": "BM5",
           "kind": "OA4",
           "property": "outcome",
-          "claim": "Every bite said on an offer of the snap to come is matched to that snap when its scenario's rule accepts it, to none when it does not, and never to a play before it; every bite offered on a drive (first possession, red zone) to the play that ends that possession from the snap on; every bite offered on the coin toss to the opening kickoff; every bite from just happened, or on a stale offer, to the nearest play at or before it; and every bite tied to no offer (picked from the whole set, or said first and mapped) to the nearer in time of the plays either side.",
-          "requirement": "The engine reads each bite's moment for its direction (BeforeTheSnap, BeforeTheDrive, BeforeTheKickoff, After, or Either for a bite tied to no offer) and the reconciler matches by it; the offer's time is the bite's start, or reconcile::LAG (5 s) earlier when home had just stopped offering the scenario, and a stale offer only looks back.",
+          "claim": "Every bite said on an offer of the snap to come is matched to that snap when its scenario's rule accepts it and it came within reconcile::WINDOW of the bite's start, to none otherwise, and never to a play home had seen when the offer was on its screen; every bite offered on a drive (first possession, red zone) to the first play from that snap on, in the same possession, that its rule accepts (the snap within reconcile::WINDOW), or to none; every bite offered on the coin toss to the opening kickoff; every bite from just happened, or on a stale offer, to the nearest play at or before it within reconcile::WINDOW; and every bite tied to no offer (picked from the whole set, or said first and mapped) to the nearer in time of the plays either side within reconcile::WINDOW.",
+          "requirement": "The engine reads an offered bite's moment for its direction (BeforeTheSnap, BeforeTheDrive, BeforeTheKickoff or After); the reconciler sets After for a bite from just happened and Either for a bite tied to no offer, and matches by the direction; the offer's time is the bite's start, or reconcile::LAG (5 s) earlier when home had just stopped offering the scenario, and a stale offer only looks back.",
           "verdict": "holds",
-          "conclusion": "Tested over the family a bite is said in: every moment × how it was said (offered, just happened, every scenario, said first) × before or after its play × a flag that wipes the snap out between × a phone up to reconcile::LAG behind home × an offer home no longer showed. Within reconcile::LAG after home sees a snap, a scenario still on offer for the next one (a play call, a drive) is read as the newer offer; nothing the bite keeps says which the phone showed.",
+          "conclusion": "Tested over the family a bite is said in: every moment × how it was said (offered, just happened, every scenario; said first by the same path as every scenario) × before or after its play × a flag that wipes the snap out between × a phone behind home when its offer was still on at the bite's start minus reconcile::LAG × an offer home no longer showed. Within reconcile::LAG after home sees a snap, a scenario still on offer for the next one (a play call, a drive) is read as the newer offer; nothing the bite keeps says which the phone showed.",
           "evidence": [
             {
               "class": "measured",
