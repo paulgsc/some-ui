@@ -97,7 +97,8 @@ export function microphoneScript(microphone: Microphone): string {
   devices.getUserMedia = async (constraints) => {
     if (!constraints || !constraints.audio || constraints.video) return own(constraints)
     const context = new AudioContext()
-    await context.resume()
+    // Not awaited: with no audio device (the emulator's -noaudio) it may never settle.
+    void context.resume()
     const buffer = await context.decodeAudioData(bytes.slice().buffer)
     const source = context.createBufferSource()
     source.buffer = buffer

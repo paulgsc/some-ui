@@ -153,8 +153,11 @@ export async function openApkStage(spec: ApkStageSpec): Promise<Stage> {
         await page.goto(`${APP}${spec.path}`)
       },
       settle: (): Promise<void> => settlePage(page),
-      shoot: async (path): Promise<void> => {
-        await writeFile(path, await still(device))
+      shoot: async (path, moving): Promise<void> => {
+        await writeFile(
+          path,
+          moving ? await device.screenshot() : await still(device)
+        )
       },
       problems: (): ReadonlyArray<string> => errors,
       close: () => device.close(),

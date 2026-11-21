@@ -137,14 +137,15 @@
       $("headVersion").textContent = vars.version
 
       // The frame: the walk's screens at their own pixels, centred, made
-      // smaller only where they would not fit above the caption (a phone's
-      // whole screen, WALK4: three-quarter size, the caption below it).
+      // smaller only where they would not fit (a phone's whole screen,
+      // WALK4: about seven tenths of the frame's width, 1320 px tall, its
+      // caption just below it). A screen that fits keeps its caption at 1600.
       const { width, height } = walk.viewport
       const frameTop = 330
       const fit = Math.min(
         1,
         920 / (width * walk.viewport.scale),
-        1230 / (height * walk.viewport.scale)
+        1320 / (height * walk.viewport.scale)
       )
       const scale = walk.viewport.scale * fit
       const frame = $("frame")
@@ -168,6 +169,7 @@
         const text = captions[i]
         if (!text) return
         const caption = make("div", "caption", $("root"))
+        if (fit < 1) caption.style.top = `${frameTop + height * scale + 40}px`
         const end = walk.snips[i + 1] ? at(walk.snips[i + 1]) - 0.3 : leave
         lines(caption, text).forEach((line, k) =>
           track(line, [

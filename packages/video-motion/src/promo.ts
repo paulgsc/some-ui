@@ -75,7 +75,7 @@ export type Release = z.infer<typeof ReleaseSchema>
  * before its end, and the close's mark comes in from 0.2 s; the ding
  * strikes 0.1 s into that, as the dry run's did, and rings as it settles.
  */
-export const CUE_AT = {
+const CUE_AT = {
   hookLeaves: 550,
   frameOpens: 50,
   featureLeaves: 500,
@@ -165,20 +165,40 @@ export function featureShot(
   )
 }
 
-/** The promo as a cut list: three composition scenes, each cut to the next. */
-export function promoCutList(release: Release, walk: WalkFile): CutList {
-  const palette = release.palette ?? {}
-  const version = `v${release.version}`
+/** What the opening and the close say, the same for a promo and a walkthrough. */
+export type Bookends = {
+  readonly palette: Palette
+  /** As a viewer reads it: `v0.3.1`. */
+  readonly version: string
+  readonly title: string
+  readonly stage: string
+  readonly platform: string
+  readonly cta: string
+  readonly badges: readonly [string, string]
+}
+
+/** The app's name on one line, from its title's lines. */
+export const appNameOf = (title: string): string => title.split("|").join(" ")
+
+/**
+ * A cut list of composition scenes: the promo's opening (`promo-hook`),
+ * then `middle`, then its close (`promo-close`), each cut to the next.
+ */
+export function bookendedCutList(
+  title: string,
+  ends: Bookends,
+  middle: ReadonlyArray<Shot>
+): CutList {
   const scene = (
     id: string,
     seconds: number,
     variables: Record<string, unknown>,
     cues: (durationMs: number) => Array<SoundCue>
   ): Shot =>
-    compositionShot(palette, id, `promo-${id}`, seconds, variables, cues)
+    compositionShot(ends.palette, id, `promo-${id}`, seconds, variables, cues)
   return {
     schema: CUT_LIST_SCHEMA,
-    title: `${release.app} ${release.version}`,
+    title,
     series: { ...PROMO_SHAPE.series },
     look: "plain",
     voice: "ad-lib",
@@ -187,27 +207,21 @@ export function promoCutList(release: Release, walk: WalkFile): CutList {
         "hook",
         hook.seconds,
         {
-          title: release.fill.title,
-          stage: release.stage,
-          platform: release.platform,
-          version,
+          title: ends.title,
+          stage: ends.stage,
+          platform: ends.platform,
+          version: ends.version,
         },
         (ms) => [{ sound: "whoosh", atMs: ms - CUE_AT.hookLeaves }]
       ),
-      featureShot(
-        palette,
-        "feature",
-        { appName: release.fill.title.split("|").join(" "), version },
-        walk,
-        release.fill.captions
-      ),
+      ...middle,
       scene(
         "close",
         close.seconds,
         {
-          cta: release.fill.cta,
-          badge1: release.fill.badges[0],
-          badge2: release.fill.badges[1],
+          cta: ends.cta,
+          badge1: ends.badges[0],
+          badge2: ends.badges[1],
         },
         () => [{ sound: "ding", atMs: CUE_AT.closeComesIn }]
       ),
@@ -216,4 +230,31 @@ export function promoCutList(release: Release, walk: WalkFile): CutList {
     revisions: [],
     notes: [],
   }
+}
+
+/** The promo as a cut list: three composition scenes, each cut to the next. */
+export function promoCutList(release: Release, walk: WalkFile): CutList {
+  const palette = release.palette ?? {}
+  const version = `v${release.version}`
+  return bookendedCutList(
+    `${release.app} ${release.version}`,
+    {
+      palette,
+      version,
+      title: release.fill.title,
+      stage: release.stage,
+      platform: release.platform,
+      cta: release.fill.cta,
+      badges: release.fill.badges,
+    },
+    [
+      featureShot(
+        palette,
+        "feature",
+        { appName: appNameOf(release.fill.title), version },
+        walk,
+        release.fill.captions
+      ),
+    ]
+  )
 }

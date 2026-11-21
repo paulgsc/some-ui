@@ -52,7 +52,8 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
 
   `promo-feature` draws a walk's screens at their own pixels, made smaller only where
   they would not fit above the caption: a popup's walk at full size, an APK walk's whole
-  9:16 screen at about three-quarter size, the caption below it (the owner, 2026-11-21).
+  9:16 screen at 1320 px tall, about seven tenths of the frame's width, its caption just
+  below it (the owner, 2026-11-21: the phone at three-quarter size, the caption below).
 
 - `walkthrough <words.json> --walk <walk folder> --out <folder> [--brand <folder>] [--prove]`
   makes an app's walkthrough (WALK4, #3282): the promo with chapters. The words

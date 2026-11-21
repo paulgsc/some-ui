@@ -43,6 +43,8 @@ export type Step = {
   readonly action: Action
   /** A selector to see before the screen is taken: what the step is waiting for. */
   readonly until?: string
+  /** The screen moves by nature (a take recording, a level ring): take it as it is, without waiting for it to hold still. */
+  readonly moving?: true
   readonly holdMs: number
 }
 
@@ -80,8 +82,8 @@ export type Stage = {
   readonly open: (init: ReadonlyArray<string>) => Promise<void>
   /** The page held still, ready to be taken. */
   readonly settle: () => Promise<void>
-  /** The whole snip, written to `path`. */
-  readonly shoot: (path: string) => Promise<void>
+  /** The whole snip, written to `path`; once still, unless the screen is `moving`. */
+  readonly shoot: (path: string, moving: boolean) => Promise<void>
   /** Why the screen is not the app's, if it is not (a script error, a request refused). */
   readonly problems: () => ReadonlyArray<string>
   readonly close: () => Promise<void>
@@ -211,7 +213,7 @@ async function act(
  */
 async function leftAt(stage: Stage, out: string, label: string): Promise<void> {
   try {
-    await stage.shoot(join(out, "failed.png"))
+    await stage.shoot(join(out, "failed.png"), true)
     const words = String(
       await stage.page.evaluate("document.body ? document.body.innerText : ''")
     )
@@ -261,7 +263,7 @@ export async function runWalk(
           )
         }
         const file = `snips/${String(i + 1).padStart(2, "0")}.png`
-        await stage.shoot(join(out, file))
+        await stage.shoot(join(out, file), step.moving === true)
         snips.push({ file, label: step.label, atMs })
         atMs += step.holdMs
       } catch (e) {

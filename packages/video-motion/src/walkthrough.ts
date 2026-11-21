@@ -12,13 +12,14 @@
  * cut list with chapters, never a second pipeline.
  */
 
-import { CUT_LIST_SCHEMA, PROMO_SHAPE } from "@some-ui/video-render"
+import { PROMO_SHAPE } from "@some-ui/video-render"
 import type { CutList } from "@some-ui/video-render"
 import { z } from "zod"
 
 import {
+  appNameOf,
+  bookendedCutList,
   compositionShot,
-  CUE_AT,
   drawn,
   featureShot,
   PaletteSchema,
@@ -27,16 +28,13 @@ import type { WalkFile } from "./walk/run"
 
 const WALKTHROUGH_SCHEMA = "some-ui.walkthrough/1"
 
-const { hook, close, fill } = PROMO_SHAPE
+const { fill } = PROMO_SHAPE
 
 /** How long a chapter card holds, and how long its name may be. */
 const CHAPTER = {
   seconds: 1.6,
   title: { lines: 2, chars: 14 },
 } as const
-
-/** How long before a screen its tap lands (`TAP_LEAD_MS` in `./walk/run`). */
-const TAP_LEAD_MS = 400
 
 export const WalkthroughSchema = z.strictObject({
   schema: z.literal(WALKTHROUGH_SCHEMA),
@@ -95,7 +93,9 @@ export function walkthroughProblems(
 
 /**
  * The part of `walk` from screen `from` up to screen `to`, on its own
- * timeline from that screen: its taps are those that lead into its screens.
+ * timeline from that screen. A tap stays with the screen it lands on, which
+ * is the one before the screen it reaches (`TAP_LEAD_MS` in `./walk/run`), so the tap that
+ * leads into the next stop is the last of this one.
  */
 export function walkSlice(walk: WalkFile, from: number, to: number): WalkFile {
   const snips = walk.snips.slice(from, to)
@@ -105,9 +105,7 @@ export function walkSlice(walk: WalkFile, from: number, to: number): WalkFile {
     ...walk,
     snips: snips.map((s) => ({ ...s, atMs: s.atMs - start })),
     taps: walk.taps
-      .filter(
-        (t) => t.atMs + TAP_LEAD_MS >= start && t.atMs + TAP_LEAD_MS < end
-      )
+      .filter((t) => t.atMs >= start && t.atMs < end)
       .map((t) => ({ ...t, atMs: t.atMs - start })),
     lengthMs: end - start,
   }
@@ -140,48 +138,23 @@ export function walkthroughCutList(
       featureShot(
         palette,
         `stop-${n}`,
-        { appName: words.fill.title.split("|").join(" "), version },
+        { appName: appNameOf(words.fill.title), version },
         walkSlice(walk, chapter.from, to),
         captions.slice(chapter.from, to)
       ),
     ]
   })
-  return {
-    schema: CUT_LIST_SCHEMA,
-    title: `${words.app} walkthrough ${version}`,
-    series: { ...PROMO_SHAPE.series },
-    look: "plain",
-    voice: "ad-lib",
-    shots: [
-      compositionShot(
-        palette,
-        "hook",
-        "promo-hook",
-        hook.seconds,
-        {
-          title: words.fill.title,
-          stage: words.stage,
-          platform: words.platform,
-          version,
-        },
-        (ms) => [{ sound: "whoosh", atMs: ms - CUE_AT.hookLeaves }]
-      ),
-      ...stops,
-      compositionShot(
-        palette,
-        "close",
-        "promo-close",
-        close.seconds,
-        {
-          cta: words.fill.cta,
-          badge1: words.fill.badges[0],
-          badge2: words.fill.badges[1],
-        },
-        () => [{ sound: "ding", atMs: CUE_AT.closeComesIn }]
-      ),
-    ],
-    burnIns: [],
-    revisions: [],
-    notes: [],
-  }
+  return bookendedCutList(
+    `${words.app} walkthrough ${version}`,
+    {
+      palette,
+      version,
+      title: words.fill.title,
+      stage: words.stage,
+      platform: words.platform,
+      cta: words.fill.cta,
+      badges: words.fill.badges,
+    },
+    stops
+  )
 }

@@ -108,11 +108,13 @@ function walkOf(sample: Sample): Walk {
         label: "Recording",
         action: { kind: "tap", target: '[data-take="ready"]' },
         until: '[data-take="recording"]',
+        moving: true,
         holdMs: 1600,
       },
       {
         label: "Saying it",
         action: { kind: "dwell", ms: TAKE_MS },
+        moving: true,
         holdMs: 2000,
       },
       {
@@ -125,6 +127,7 @@ function walkOf(sample: Sample): Walk {
       {
         label: "Played back",
         action: { kind: "tap", target: 'button[aria-label^="Play"]' },
+        moving: true,
         holdMs: 2400,
       },
       {

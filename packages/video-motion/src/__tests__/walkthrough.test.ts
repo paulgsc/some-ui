@@ -81,8 +81,9 @@ describe("the walkthrough (WALK4)", () => {
       ["snips/03.png", 0],
       ["snips/04.png", 2000],
     ])
-    // The tap into its first screen lands before it, as in the whole walk.
-    expect(slice.taps.map((t) => t.atMs)).toEqual([-400, 1600])
+    // A tap stays with the screen it lands on: the one into screen 3 is the
+    // last stop's, and this stop's last tap leads into the next one.
+    expect(slice.taps.map((t) => t.atMs)).toEqual([1600, 3600])
     expect(slice.lengthMs).toBe(4000)
     expect(walkSlice(walkOf(5), 4, 5).lengthMs).toBe(2000)
   })

@@ -72,8 +72,10 @@ walk() {
     # capture-apk.sh set it before the snips, so the walk's screens say the
     # same day and time whatever the snips took. The page's own clock runs
     # on from there: a take needs time to pass.
-    adb shell date 110209302026.00 > /dev/null
-    if ! (cd "$repo" && pnpm --filter @some-ui/video-motion motion walk "$app" \
+    if ! adb shell date 110209302026.00 > /dev/null; then
+      echo "::error title=Walks::the device's clock could not be set for $app"
+      ok=no
+    elif ! (cd "$repo" && pnpm --filter @some-ui/video-motion motion walk "$app" \
       --sample "$sample" --out "$walks/$app"); then
       echo "::error title=Walks::the $app walk failed ($app/failed.png, $app/failed.txt)"
       ok=no
