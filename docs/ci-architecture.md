@@ -167,8 +167,12 @@ Its proof is `pnpm check:workflow-security`
 zizmor at the versions it pins, offline; the `guards` job runs it on every
 pull request. Its Tolerance: zizmor's online audits (impostor commits, known
 vulnerable action versions) do not run, medium and lower findings are only
-reported by a local `--all` run, and a tag in `uses:` is accepted until the
-owner decides on hash pins (#2116).
+reported by a local `--all` run. Every `uses:` names a commit, with its
+release in a trailing comment (`actions/checkout@<sha> # v7.0.1`), and a tag
+or branch ref fails (C953, the owner's go-ahead on #2116); Dependabot moves
+the hash and the comment together. That a pinned commit belongs to the
+action's own repository, and not a fork's, is the online audit's, so it is
+not checked.
 
 ## Decisions
 

@@ -20,8 +20,10 @@ set -euo pipefail
 #        Tolerance: zizmor's online audits (impostor commits, known-vulnerable
 #        action versions) do not run, so the result never depends on the
 #        network or on a new advisory; medium and lower findings are
-#        reported by a local run, not failed. A tag in `uses:` is accepted
-#        (.github/zizmor.yml says why).
+#        reported by a local run, not failed. Every `uses:` must name a
+#        commit (zizmor's `unpinned-uses` with the hash-pin policy, C953),
+#        but whether that commit belongs to the action's own repository
+#        (the online impostor-commit audit) is not checked.
 #
 # Pins: ACTIONLINT_VERSION below (built with `go install`, which checks the
 # module against Go's checksum database); zizmor and ShellCheck, with every

@@ -4,15 +4,15 @@
 # Every suppression below says why the finding cannot be exploited here. A
 # new one needs the same: a reason, not a count (#2116).
 rules:
-  # Tags, not commit hashes, for now. Every `uses:` names a tag
-  # (`actions/checkout@v7`) or a local action, and Dependabot's
-  # github-actions updates move the tags (.github/dependabot.yml). Pinning
-  # all of them to hashes is its own change across every workflow, so this
-  # holds the line at "a ref, never a branch" until that lands.
+  # Every `uses:` names a commit, with its release in a trailing comment
+  # (`actions/checkout@<sha> # v7.0.1`), so a moved or re-pushed tag cannot
+  # change what runs (#2116, C953). Dependabot's github-actions updates move
+  # the hash and the comment together (.github/dependabot.yml). A tag or
+  # branch ref fails.
   unpinned-uses:
     config:
       policies:
-        "*": ref-pin
+        "*": hash-pin
   dangerous-triggers:
     ignore:
       # workflow_run: it runs the default branch's own workflow and

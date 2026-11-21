@@ -1,0 +1,22 @@
+{
+  "id": "C953",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "some-ui:.github/workflows",
+    "some-ui:.github/actions",
+    "some-ui:.github/zizmor.yml",
+    "some-ui:.github/dependabot.yml",
+    "some-ui:packages/eslint/src/workflow-guards.ts"
+  ],
+  "chose": "Every `uses:` in .github names the commit its release tag points at, with the most specific release in a trailing comment (`actions/checkout@<sha> # v7.0.1`); zizmor's `unpinned-uses` runs with the hash-pin policy, so a tag or branch ref fails at high; Dependabot's github-actions updates read the composite actions too; CS1 reads a pinned changesets/action's version from that comment.",
+  "options": [
+    "hash-pin with a version comment, enforced by zizmor, kept current by Dependabot",
+    "keep tags (ref-pin), as C952 chose",
+    "hash-pin only third-party actions and keep tags for actions/*"
+  ],
+  "gray": "The owner, on #2116 (2026-11-21): \"I'm not following, so you can just go with your recommendation.\" Which actions to pin, and how to show the version, were left to Claude.",
+  "undo": "Set the `unpinned-uses` policy in .github/zizmor.yml back to `ref-pin`; the pinned lines keep working as they are, and Dependabot keeps moving them.",
+  "refs": ["#2116", "#2108"],
+  "moves": "C952"
+}
