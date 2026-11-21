@@ -34,6 +34,10 @@ describe("the teams followed live", () => {
 
   it("count as changed only for another list", () => {
     expect(teamsChanged(["SF"], ["SF"])).toBe(false)
+    // A chip pressed and pressed again leaves Save off.
+    expect(
+      teamsChanged(toggledTeam(toggledTeam(["SF"], "SEA"), "SEA"), ["SF"])
+    ).toBe(false)
     expect(teamsChanged(["SEA", "SF"], ["SF"])).toBe(true)
     expect(teamsChanged([], ["SF"])).toBe(true)
   })
