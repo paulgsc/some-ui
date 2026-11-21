@@ -132,6 +132,9 @@ export function pictureBox(
   if (p.kind === "composition") {
     throw new Error(`${shot.shot.id}: a composition is planned with its clip`)
   }
+  if (p.kind === "screen") {
+    throw new Error(`${shot.shot.id}: a screen is planned once it is resolved`)
+  }
   if (p.kind === "card") return win
   if (p.kind === "capture" && p.framing.mode === "crop") return win
   const f = facts.get(p.source)

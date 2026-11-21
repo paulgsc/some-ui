@@ -1,8 +1,9 @@
-import { readFileSync } from "node:fs"
+import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
+import { SNIP_ID, SnipRecordSchema } from "@some-ui/video-render/snip"
 import { expect, describe as group, it } from "vitest"
 
-import type { Part, SnipRecord } from "@/lib/snips"
+import type { BarNode, Part, SnipRecord } from "@/lib/snips"
 import {
   APK_VIEWPORT,
   checksumsOf,
@@ -16,6 +17,8 @@ import {
   routesFor,
   slugOf,
   snipId,
+  STAGE_ROUTES,
+  tabBar,
   WEB_VIEWPORTS,
   wingPath,
 } from "@/lib/snips"
@@ -52,6 +55,8 @@ group("the routes a capture visits", () => {
     expect(paths("apk")).toContain("/journal/takes/kept")
     expect(paths("web")).not.toContain("/journal/takes/kept")
     expect(paths("web")).toContain("/mission")
+    // RR31's card stage, whose parts (`data-region`) a snip's zoom names.
+    expect(paths("web")).toContain("/rust-screen")
     expect(paths("apk")).toContain("/mission")
   })
 
@@ -63,6 +68,19 @@ group("the routes a capture visits", () => {
 
   it("refuses a tree it cannot read", () => {
     expect(() => parseRouteTree("export const nothing = 1")).toThrow()
+  })
+})
+
+group("the recording stages, taken whole", () => {
+  it("are every route whose search is a stage's, and no other", () => {
+    const dir = join(import.meta.dirname, "../../../routes")
+    const stages = readdirSync(dir, { recursive: true })
+      .map(String)
+      .filter((file) => file.endsWith(".tsx"))
+      .map((file) => readFileSync(join(dir, file), "utf8"))
+      .filter((text) => /validateSearch:\s*stageSearch\b/.test(text))
+      .map((text) => /createFileRoute\("([^"]+)"\)/.exec(text)?.[1])
+    expect(new Set(stages)).toEqual(new Set(STAGE_ROUTES))
   })
 })
 
@@ -134,6 +152,8 @@ group("the bundle", () => {
     viewport: "desktop",
     width: 1440,
     height: 900,
+    scale: 1,
+    regions: [],
     appVersion: version,
     module: "Front page",
     shows: "Front page",
@@ -162,6 +182,18 @@ group("the bundle", () => {
     expect(manifest.schema).toBe("some-ui.snips/1")
   })
 
+  it("refuses an APK picture that isn't the emulator's size, as a default device draws", () => {
+    const small: SnipRecord = {
+      ...snip("apk:/journal:android:0.1.69:aaaaaaaaaaaa"),
+      surface: "apk",
+      width: 320,
+      height: 640,
+    }
+    expect(() => manifestOf([part([small])], run)).toThrow(
+      /is 320x640, not the emulator's 1080x1920/
+    )
+  })
+
   it("refuses two app versions, and two snips with one id", () => {
     expect(() =>
       manifestOf([part([snip("a")]), part([snip("b", "0.2.0")], "0.2.0")], run)
@@ -175,6 +207,8 @@ group("the bundle", () => {
     const debug = (sha: string, path: string): SnipRecord => ({
       ...snip(`apk:${path}:android:0.1.69:${sha}`),
       surface: "apk",
+      width: 1080,
+      height: 1920,
       build: "debug",
       route: path,
       path,
@@ -183,6 +217,8 @@ group("the bundle", () => {
     const release = (sha: string): SnipRecord => ({
       ...snip(`apk:${wingPath("Studio", "Takes")}:android:0.1.69:${sha}`),
       surface: "apk",
+      width: 1080,
+      height: 1920,
       build: "release",
       route: wingPath("Studio", "Takes"),
       path: wingPath("Studio", "Takes"),
@@ -209,5 +245,121 @@ group("the bundle", () => {
         { name: "manifest.json", sha256: "11" },
       ])
     ).toBe("11  manifest.json\n22  web/b.png\n")
+  })
+})
+
+group("every name the capture makes is one the record takes", () => {
+  const sha256 = "0123456789ab".padEnd(64, "f")
+  const paths = [
+    "/",
+    "/journal/takes/voice%20note",
+    "/journal/episodes/feed/key+1",
+    "/a/b@c",
+    "/%ED%95%9C",
+    "/jobs/a:b",
+    wingPath("app"),
+    wingPath("Studio", "Takes"),
+    wingPath("Topik", "단어"),
+  ]
+
+  it.each(paths)("%s", (path) => {
+    const id = snipId({
+      surface: "apk",
+      path,
+      viewport: APK_VIEWPORT.name,
+      appVersion: "0.1.69",
+      sha256,
+    })
+    expect(SNIP_ID.test(id)).toBe(true)
+    const parsed = SnipRecordSchema.safeParse({
+      id,
+      surface: "apk",
+      build: "release",
+      route: path,
+      path,
+      viewport: APK_VIEWPORT.name,
+      width: 1080,
+      height: 1920,
+      scale: 1,
+      regions: [],
+      appVersion: "0.1.69",
+      module: moduleOf(path),
+      shows: "",
+      description: "",
+      image: {
+        name: `apk/android/${slugOf(path)}-${sha256.slice(0, 12)}.png`,
+        kind: "png",
+        bytes: 1,
+        sha256,
+      },
+    })
+    expect(parsed.error?.issues ?? []).toEqual([])
+  })
+})
+
+group("the release APK's tab bar (#3137, option (b))", () => {
+  const node = (
+    label: string,
+    x: number,
+    over: Partial<{ y: number; bottom: number; selected: boolean }> = {}
+  ): BarNode => ({ label, x, y: 1770, bottom: 1820, selected: false, ...over })
+  // The shell's pill floats ~31 px above the app's foot (mobile-shell).
+  const at = {
+    appBottom: 1851,
+    screenHeight: 1920,
+    rowPx: 24,
+  }
+  const labels = (nodes: ReadonlyArray<{ label: string }>): Array<string> =>
+    nodes.map((n) => n.label)
+
+  it("is the floating row at the foot of what the app draws, however close its tabs", () => {
+    // Studio's bar: two tabs about 500 px apart on a 1080 px screen.
+    expect(
+      labels(tabBar([node("Game day", 790), node("Studio", 290)], at))
+    ).toEqual(["Studio", "Game day"])
+  })
+
+  it("is a row with a tab selected, wherever it sits", () => {
+    const raised = { y: 1650, bottom: 1690 }
+    expect(
+      labels(
+        tabBar(
+          [
+            node("Study", 300, { ...raised, selected: true }),
+            node("Bites", 700, raised),
+          ],
+          at
+        )
+      )
+    ).toEqual(["Study", "Bites"])
+  })
+
+  it("is not two buttons far above the foot, none chosen", () => {
+    const raised = { y: 1650, bottom: 1690 }
+    expect(
+      tabBar([node("Older", 200, raised), node("Newer", 880, raised)], at)
+    ).toEqual([])
+  })
+
+  it("is found with the page running on under the pill", () => {
+    // A list item shows in the gap below the floating bar; the walk passes
+    // only labelled controls in a row, so the bar is still the lowest row
+    // of two or more.
+    expect(
+      labels(
+        tabBar(
+          [
+            node("Studio", 290),
+            node("Game day", 790),
+            node("A take of 2 November", 540, { y: 1840, bottom: 1851 }),
+          ],
+          at
+        )
+      )
+    ).toEqual(["Studio", "Game day"])
+  })
+
+  it("is not one control alone", () => {
+    expect(tabBar([node("Studio", 540)], at)).toEqual([])
   })
 })

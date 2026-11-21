@@ -415,7 +415,8 @@ can see:
 The spec walks a screen tap by tap (`holdStill`,
 `apps/www/tests/layout-invariants/stays-put.ts`). Before and after each tap,
 once animations have ended, it reads every visible target's box in its
-scrolled content and fails on any that moved, and it fails on any element
+scrolled content (a target fixed to the window, where it sits on the window)
+and fails on any that moved, and it fails on any element
 with `role="alert"` or `role="status"` that takes room in the screen instead
 of being on the notice plane, an empty one held open included. A tap whose
 point is a new layout declares it with `reflows` and says why; a tap that

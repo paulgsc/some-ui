@@ -20,6 +20,7 @@
     ".": "./src/index.ts",
     "./cues": "./src/cues.ts",
     "./node": "./src/node.ts",
+    "./snip": "./src/snip.ts",
     "./testing": "./src/testing.ts"
   },
   "scripts": {
