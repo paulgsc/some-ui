@@ -288,29 +288,54 @@ describe("home's ranked list on the live socket", () => {
   const withRanked = (ranked: unknown): string =>
     JSON.stringify({ ...live, offer: { ...live.offer, ranked } })
 
+  it("reads home's example as the list it ranks", () => {
+    const read = readHome(JSON.stringify(live))
+    expect(read.kind === "offer" && read.offer?.ranked).toEqual([
+      {
+        scenario: "in.third-long",
+        tier: "now",
+        unit: { unit: "defense", side: "CHI" },
+      },
+      {
+        scenario: "in.play-call",
+        tier: "now",
+        unit: { unit: "defense", side: "CHI" },
+      },
+      { scenario: "pre.stakes", tier: "always", unit: null },
+      {
+        scenario: "in.fourth-down",
+        tier: "rest",
+        unit: { unit: "coaching", side: "NE" },
+      },
+      {
+        scenario: "in.halftime",
+        tier: "rest",
+        unit: { unit: "coaching", side: null },
+      },
+      { scenario: "pre.weather", tier: "rest", unit: null },
+    ])
+    // "Now" is exactly the cards, in their order.
+    if (read.kind !== "offer" || read.offer === null)
+      throw new Error("no offer")
+    expect(
+      read.offer.ranked
+        ?.filter((entry) => entry.tier === "now")
+        .map((entry) => entry.scenario)
+    ).toEqual(read.offer.cards.map((card) => card.scenario))
+  })
+
   it("reads each entry this build knows, and leaves the rest out", () => {
     const read = readHome(
       withRanked([
-        {
-          id: "in.third-long",
-          tier: "now",
-          unit: { unit: "defense", side: "CHI" },
-        },
-        { id: "you.caught-it", tier: "always", unit: null },
-        { id: "in.added-later", tier: "rest", unit: null },
-        { id: "in.sack", tier: "someday", unit: null },
-        {
-          id: "in.kick",
-          tier: "rest",
-          unit: { unit: "goalposts", side: null },
-        },
-        { id: "in.penalty", tier: "rest", unit: { unit: "coaching", side: 7 } },
-        { id: "in.injury", tier: "rest", unit: { unit: "defense", side: "" } },
-        {
-          id: "in.fourth-down",
-          tier: "rest",
-          unit: { unit: "coaching", side: null },
-        },
+        { id: "in.third-long", tier: "now", unit: "defense", unitSide: "CHI" },
+        { id: "you.caught-it", tier: "always", unit: null, unitSide: null },
+        { id: "in.added-later", tier: "rest", unit: null, unitSide: null },
+        { id: "in.sack", tier: "someday", unit: null, unitSide: null },
+        { id: "in.kick", tier: "rest", unit: "goalposts", unitSide: null },
+        { id: "in.penalty", tier: "rest", unit: "coaching", unitSide: 7 },
+        { id: "in.injury", tier: "rest", unit: "defense", unitSide: "" },
+        { id: "in.turnover", tier: "rest", unit: null, unitSide: "CHI" },
+        { id: "in.fourth-down", tier: "rest", unit: "coaching" },
       ])
     )
     expect(read.kind === "offer" && read.offer?.ranked).toEqual([
@@ -329,7 +354,9 @@ describe("home's ranked list on the live socket", () => {
   })
 
   it("reads an offer from a home before it ranks as one with no list", () => {
-    const read = readHome(JSON.stringify(live))
+    const older: Record<string, unknown> = { ...live.offer }
+    delete older.ranked
+    const read = readHome(JSON.stringify({ ...live, offer: older }))
     expect(read.kind === "offer" && read.offer).not.toHaveProperty("ranked")
   })
 })

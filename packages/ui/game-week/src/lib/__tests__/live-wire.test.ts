@@ -45,6 +45,8 @@ describe("what home sends", () => {
           { scenario: "in.third-long", context: "3rd and 8, down 6", rank: 1 },
           { scenario: "in.play-call", context: "NE on 3rd and 8", rank: 2 },
         ],
+        // Read entry by entry in ranked.test.ts.
+        ranked: expect.any(Array),
         justHappened: [
           {
             scenario: "in.sack",

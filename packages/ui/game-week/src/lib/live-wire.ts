@@ -93,27 +93,24 @@ function lineOf(value: unknown): Line | null {
 }
 
 /**
- * One entry of home's ranked list (#3049), or null for one this build
- * doesn't know (a newer catalog's scenario, tier or unit): left out, and
- * the scenario stays pickable at the end of the list (`rankedList`).
+ * One entry of home's ranked list (#3049), `{id, tier, unit, unitSide}`,
+ * or null for one this build doesn't know (a newer catalog's scenario, tier
+ * or unit): left out, and the scenario stays pickable at the end of the
+ * list (`rankedList`). A unit's side is a team's code, or null for none.
  */
 function rankedOf(value: unknown): RankedEntry | null {
   if (!isRecord(value) || !isString(value.id) || !isScenarioId(value.id))
     return null
   const tier = TIERS.find((each) => each === value.tier)
   if (tier === undefined) return null
-  const { unit } = value
-  if (unit === null || unit === undefined)
-    return { scenario: value.id, tier, unit: null }
-  if (!isRecord(unit)) return null
-  const named = UNITS.find((each) => each === unit.unit)
-  const side = unit.side ?? null
+  const unit = value.unit ?? null
+  const side = value.unitSide ?? null
   // A side is a team's code, never an empty one.
-  if (
-    named === undefined ||
-    !(side === null || (isString(side) && side !== ""))
-  )
-    return null
+  if (!(side === null || (isString(side) && side !== ""))) return null
+  if (unit === null)
+    return side === null ? { scenario: value.id, tier, unit: null } : null
+  const named = UNITS.find((each) => each === unit)
+  if (named === undefined) return null
   return { scenario: value.id, tier, unit: { unit: named, side } }
 }
 

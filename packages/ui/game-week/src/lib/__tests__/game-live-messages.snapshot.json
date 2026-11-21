@@ -66,6 +66,44 @@
             "playId": "4018730101210"
           }
         ],
+        "ranked": [
+          {
+            "id": "in.third-long",
+            "tier": "now",
+            "unit": "defense",
+            "unitSide": "CHI"
+          },
+          {
+            "id": "in.play-call",
+            "tier": "now",
+            "unit": "defense",
+            "unitSide": "CHI"
+          },
+          {
+            "id": "pre.stakes",
+            "tier": "always",
+            "unit": null,
+            "unitSide": null
+          },
+          {
+            "id": "in.fourth-down",
+            "tier": "rest",
+            "unit": "coaching",
+            "unitSide": "NE"
+          },
+          {
+            "id": "in.halftime",
+            "tier": "rest",
+            "unit": "coaching",
+            "unitSide": null
+          },
+          {
+            "id": "pre.weather",
+            "tier": "rest",
+            "unit": null,
+            "unitSide": null
+          }
+        ],
         "scenarios": [
           {
             "id": "in.third-long",
@@ -110,6 +148,7 @@
       "offer": {
         "gameId": "401873023",
         "justHappened": [],
+        "ranked": [],
         "scenarios": [],
         "strip": {
           "clock": "Kickoff in 2 h 10 min",

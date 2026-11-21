@@ -91,6 +91,7 @@ export type Catalog = {
   readonly scenarios: ReadonlyArray<CatalogEntry>
   readonly halves: ReadonlyArray<Half>
   readonly bigPlay: BigPlayAlgebra
+  readonly units: ReadonlyArray<Unit>
 }
 
 function oneOf<T extends string>(
@@ -121,7 +122,7 @@ function allOf<T extends string>(
   return read
 }
 
-/** Narrows the dump's JSON, failing on a phase, moment or dimension this code does not know. */
+/** Narrows the dump's JSON, failing on a phase, moment or dimension (half, size, kind, unit) this code does not know. */
 export function parseCatalog(raw: {
   version: number
   scenarios: ReadonlyArray<{
@@ -137,6 +138,7 @@ export function parseCatalog(raw: {
     sizes: ReadonlyArray<{ id: string; yards: number }>
     kinds: ReadonlyArray<{ id: string; least: string }>
   }
+  units: ReadonlyArray<string>
 }): Catalog {
   const sizes = allOf(
     BIG_PLAY_SIZES,
@@ -156,6 +158,7 @@ export function parseCatalog(raw: {
       moment: oneOf(MOMENTS, s.moment, `moment in ${s.id}`),
     })),
     halves: allOf(HALVES, raw.halves, "half"),
+    units: allOf(UNITS, raw.units, "unit"),
     bigPlay: {
       sizes: raw.big_play.sizes.map((size, i) => ({
         id: sizes[i]!,
