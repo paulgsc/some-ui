@@ -1,0 +1,18 @@
+{
+  "id": "C808",
+  "made": "2026-11-20",
+  "by": "owner",
+  "paths": [
+    "apps/www/src/lib/studio-spoken/words.ts",
+    "apps/www/src/components/studio/spoken.tsx"
+  ],
+  "chose": "None: a spoken card's takes are never shared out of the app. The render reads them on home by ID: Copy for the essay copies the card's category and each question with its take ID, which a session puts into the essay's cut list, and the essay plays each take as it was said. The owner, close paraphrase: \"There's no me cutting or editing anything. Me editing anything defeats the thing and invalidates the claim we make in our own introduction.\"",
+  "options": [
+    "none: the render reads the takes on home by ID",
+    "Share this take through Android's share sheet, for cutting by hand (the first design, withdrawn)",
+    "a download from home's web page for the desktop (a server change)"
+  ],
+  "gray": "The owner first delegated how takes are shared (\"I think you're the one who can best guide how best it should be shared\"), then ruled out hand editing; no check settles where a take goes.",
+  "undo": "A new call that moves this one, adding a way to share a take out of the app.",
+  "refs": ["#3312", "#3311"]
+}
