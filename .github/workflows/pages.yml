@@ -68,7 +68,7 @@ jobs:
     outputs:
       changed: ${{ steps.inputs.outputs.changed }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - id: inputs
@@ -109,7 +109,7 @@ jobs:
       group: pages-build-${{ github.ref }}
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # A re-run remains tied to that run's github.sha. A manual
           # rollback instead checks out the operator-selected known-good
@@ -125,7 +125,7 @@ jobs:
       # was actively harmful: editing any .rs file invalidated the *packages*
       # dist cache and forced a full JS rebuild for a change www cannot see.
       - name: Cache workspace build outputs
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: packages/*/dist
           key: workspace-dist-${{ runner.os }}-${{ hashFiles('packages/**/src/**') }}
@@ -204,7 +204,7 @@ jobs:
       # action's own default; it is spelled out so the retention check need
       # not know that.
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v5
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: apps/www/dist
           retention-days: 1
@@ -237,14 +237,14 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
       # deploy-pages waits for the deployment to go live, so the freshly
       # published tree is readable immediately - no polling/retry needed.
       # Only scripts/check-resume-deploy.mjs is needed here (it has no
       # dependencies of its own), so this checks out just that file rather
       # than the whole repo.
       - name: Check out résumé deploy check
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.rollback_sha || github.sha }}
           sparse-checkout: apps/www/scripts/check-resume-deploy.mjs

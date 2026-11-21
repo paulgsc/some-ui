@@ -617,7 +617,12 @@ export function findChangesetsPairingViolations(
     const anywhere = CHANGESETS_ANYWHERE.exec(line)
     if (!anywhere || line.trim().startsWith("#")) return []
     const ref = anywhere[1] ?? ""
-    const major = /^v(\d+)(?:\.\d+){0,2}$/.exec(ref)
+    // A commit pin (C953) names its version in the comment after it, the
+    // `# v2.1.2` Dependabot keeps beside the hash; a bare hash is unreadable.
+    const pinned = /^[0-9a-f]{40}$/.test(ref)
+      ? /\s#\s*(v\d+(?:\.\d+){0,2})\s*$/.exec(line)?.[1]
+      : ref
+    const major = /^v(\d+)(?:\.\d+){0,2}$/.exec(pinned ?? "")
     const paired =
       CHANGESETS_STEP.test(line) &&
       expected !== undefined &&
@@ -775,7 +780,7 @@ export function describeWorkflowViolation(v: WorkflowViolation): string {
       if (v.expected === null) {
         return `${v.file}:${v.line}: uses changesets/action@${v.ref}, but no changesets/action major is known to pair with Changesets CLI v${v.cliMajor}. Check the action's release notes, then add the pair to CHANGESETS_ACTION_MAJOR in packages/eslint/src/workflow-guards.ts (CS1).`
       }
-      return `${v.file}:${v.line}: uses changesets/action@${v.ref}, but the repo is on Changesets CLI v${v.cliMajor}, which pairs with changesets/action v${v.expected}. Pin a \`v${v.expected}.x.y\` tag in a block-style step, or move the CLI and the action together (CS1).`
+      return `${v.file}:${v.line}: uses changesets/action@${v.ref}, but the repo is on Changesets CLI v${v.cliMajor}, which pairs with changesets/action v${v.expected}. Pin a \`v${v.expected}.x.y\` release's commit, with that version in a trailing \`# v${v.expected}.x.y\` comment, in a block-style step, or move the CLI and the action together (CS1).`
     }
     default: {
       return assertNever(v)
