@@ -47,9 +47,9 @@ describe("the sample digest's postings", () => {
  * SD1: the sample digest carries no real person's contact details.
  * - Claim: every paste kit's Email, Location, GitHub and Portfolio field in
  *   `sample.digest.json` is the made-up person's below, and every email
- *   address and every web address on a common top-level domain, with or
- *   without a scheme, anywhere in the file, is on a name reserved for
- *   examples (RFC 2606, RFC 6761).
+ *   address and every web address on one of `ADDRESS`'s top-level domains,
+ *   with or without a scheme, in any string in the file, is on a name
+ *   reserved for examples (RFC 2606, RFC 6761).
  * - Family: every pick of the sample, every such field, every address in its
  *   text, and every build that shows it (each reads this file, `sample.ts`).
  * - Proof: the two tests below, over every pick and the whole parsed file.
@@ -87,10 +87,19 @@ describe("the sample digest's paste kits (SD1)", () => {
   })
 
   it("name only reserved domains, in any address anywhere in the file", () => {
-    // Parsed and written again, so an escaped `\/` or `\u0040` reads as itself.
-    const text = JSON.stringify(JSON.parse(SAMPLE))
-    for (const [found, host = ""] of text.matchAll(ADDRESS)) {
-      expect(reserved(host.toLowerCase()), found).toBe(true)
+    // Every string the file holds, parsed, so an escaped `\/` reads as itself.
+    const strings: Array<string> = []
+    const walk = (value: unknown): void => {
+      if (typeof value === "string") strings.push(value)
+      else if (value !== null && typeof value === "object") {
+        Object.values(value).forEach(walk)
+      }
+    }
+    walk(JSON.parse(SAMPLE))
+    const found = strings.flatMap((text) => [...text.matchAll(ADDRESS)])
+    expect(found.length).toBeGreaterThan(0)
+    for (const [address, host = ""] of found) {
+      expect(reserved(host.toLowerCase()), address).toBe(true)
     }
     for (const real of [
       "a@mail.io",
@@ -98,7 +107,9 @@ describe("the sample digest's paste kits (SD1)", () => {
       "github.com/someone",
       "www.someone.me",
     ]) {
-      expect([...real.matchAll(ADDRESS)].length, real).toBe(1)
+      const host = [...real.matchAll(ADDRESS)][0]?.[1]
+      expect(host, real).toBeDefined()
+      expect(reserved((host ?? "").toLowerCase()), real).toBe(false)
     }
   })
 })
