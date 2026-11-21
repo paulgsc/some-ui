@@ -187,7 +187,11 @@ export const SPOKEN_ANSWER_SHOWN_MOST = 170
 export const answerShown = (said: string): boolean =>
   wordCount(said) <= SPOKEN_ANSWER_SHOWN_MOST
 
-/** Kokoro's voice in a spoken card, asking or answering: the essays' asker's. */
+/**
+ * Kokoro's voice in a spoken card, asking or answering: the essays' asker's.
+ * Its bubble differs by its place (`TURN_SPEAKER`), so a cast draws it as a
+ * different character; the voice heard stays this one.
+ */
 export const SPOKEN_ASKER_VOICE = ESSAY_VOICES.asker
 
 /**
