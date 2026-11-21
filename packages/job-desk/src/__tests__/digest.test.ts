@@ -46,26 +46,29 @@ describe("the sample digest's postings", () => {
 /**
  * SD1: the sample digest carries no real person's contact details.
  * - Claim: every paste kit's Email, Location, GitHub and Portfolio field in
- *   `sample.digest.json` is the made-up person's below.
- * - Family: every pick of the sample, every one of those fields; every build
- *   that shows the sample (the Pages viewer's Jobs wing, the APK walks and
- *   walkthroughs that film it).
- * - Proof: this test, over every pick and every such field.
- * - Tolerance: free text (cover letters, drafted answers) is read by review,
- *   not by this test.
+ *   `sample.digest.json` is the made-up person's below, and every email
+ *   address and web address anywhere in the file is on a name reserved for
+ *   examples (RFC 2606, RFC 6761).
+ * - Family: every pick of the sample, every such field, and every address in
+ *   its text. Every build that shows the sample (the Pages viewer's Jobs wing,
+ *   the APK walks and walkthroughs that film it) reads this one file, so
+ *   holding the file holds them all.
+ * - Proof: the two tests below, over every pick and the whole file.
+ * - Tolerance: free text that names no address (cover letters, drafted
+ *   answers) is read by review, not by these tests.
  */
 describe("the sample digest's paste kits (SD1)", () => {
-  /**
-   * A made-up person, on names reserved for examples (RFC 2606): the web
-   * builds show the sample to anyone, and walkthroughs film it, so no kit may
-   * carry a real person's details.
-   */
+  /** A made-up person, on names reserved for examples. */
   const PERSON: Readonly<Record<string, string>> = {
     Email: "sam.rivera@example.com",
-    Location: "Oakland, CA",
-    GitHub: "https://github.com/example",
-    Portfolio: "https://example.com",
+    Location: "Springfield, IL",
+    GitHub: "https://github.example/sam-rivera",
+    Portfolio: "https://sam-rivera.example",
   }
+
+  /** A domain reserved for examples: example.com, .net, .org, or under .example. */
+  const reserved = (host: string): boolean =>
+    /(^|\.)example\.(com|net|org)$/.test(host) || host.endsWith(".example")
 
   it("give a made-up person's contact details, in every pick", () => {
     const contacts = sample().picks.flatMap((pick) =>
@@ -74,6 +77,15 @@ describe("the sample digest's paste kits (SD1)", () => {
     expect(contacts.length).toBeGreaterThan(0)
     for (const { label, value } of contacts) {
       expect(value, label).toBe(PERSON[label])
+    }
+  })
+
+  it("name only reserved domains, in any address anywhere in the file", () => {
+    const emails = [...SAMPLE.matchAll(/[\w.+-]+@([\w-]+(?:\.[\w-]+)+)/g)]
+    const urls = [...SAMPLE.matchAll(/https?:\/\/([^/"\s]+)/g)]
+    expect(emails.length + urls.length).toBeGreaterThan(0)
+    for (const [found, host = ""] of [...emails, ...urls]) {
+      expect(reserved(host), found).toBe(true)
     }
   })
 })

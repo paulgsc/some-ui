@@ -62,15 +62,15 @@
           },
           {
             "label": "Location",
-            "value": "Oakland, CA"
+            "value": "Springfield, IL"
           },
           {
             "label": "GitHub",
-            "value": "https://github.com/example"
+            "value": "https://github.example/sam-rivera"
           },
           {
             "label": "Portfolio",
-            "value": "https://example.com"
+            "value": "https://sam-rivera.example"
           }
         ],
         "answers": [
@@ -160,7 +160,7 @@
           },
           {
             "label": "GitHub",
-            "value": "https://github.com/example"
+            "value": "https://github.example/sam-rivera"
           }
         ],
         "answers": [],
