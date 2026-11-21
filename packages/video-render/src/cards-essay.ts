@@ -234,7 +234,20 @@ function spokenProblems(cut: CutList): Array<string> {
     )
   if (!shots.some((s) => s.spoken?.role === "scene"))
     problems.push("it has no scene with a chapter line and narration")
+  // C1027: a scene without a chapter line goes on in the chapter before it,
+  // so one must have opened.
+  const opened = shots.findIndex(
+    (s) => s.spoken?.role === "scene" && s.spoken.chapter !== undefined
+  )
   shots.forEach((s, i) => {
+    if (
+      s.spoken?.role === "scene" &&
+      s.spoken.chapter === undefined &&
+      (opened === -1 || i < opened)
+    )
+      problems.push(
+        `${s.id}: it has no chapter line, and no chapter has opened before it: a chapter's first scene says its chapter line`
+      )
     if (s.spoken?.role === "spoken")
       problems.push(
         ...(cut.series.version < CARDS_SPOKEN_CARD_VERSION
@@ -367,7 +380,8 @@ function spokenCardScenes(
 /**
  * What a spoken essay says, scene by scene: the intro, each scene's chapter
  * line in the host's voice then its narration in the narrator's, and the
- * close. A scene's two lines are two takes (C371), joined into one
+ * close. A chapter of several scenes says its line and takes its mark at
+ * its first scene only; the rest say their narration alone (C1027). A scene's two lines are two takes (C371), joined into one
  * (`joinedTake`), so the card is drawn once, under both. A spoken card is a
  * scene for each question and each answer (`spokenCardScenes`), with the
  * card as home heard it from `heard`, by its shot's id. A scene with
@@ -439,26 +453,28 @@ function voiced(
 function cardScene(shot: Shot, i: number): UnvoicedScene {
   const file = stillFile(i, shot.id)
   const spoken = shot.spoken
-  if (spoken?.role === "scene")
+  if (spoken?.role === "scene") {
+    const { chapter, narration } = spoken
+    const told = {
+      file: `${file}-narration`,
+      said: narration,
+      speaker: "narrator",
+    } as const
+    // C1027: a scene that goes on in its chapter says its narration alone.
+    if (chapter === undefined)
+      return { id: shot.id, file, shot, said: narration, lines: [told] }
     return {
       id: shot.id,
       file,
       shot,
-      said: `${spoken.chapter} ${spoken.narration}`,
+      said: `${chapter} ${narration}`,
       lines: [
-        {
-          file: `${file}-chapter`,
-          said: spoken.chapter,
-          speaker: "host",
-        },
-        {
-          file: `${file}-narration`,
-          said: spoken.narration,
-          speaker: "narrator",
-        },
+        { file: `${file}-chapter`, said: chapter, speaker: "host" },
+        told,
       ],
-      mark: chapterTitle(spoken.chapter),
+      mark: chapterTitle(chapter),
     }
+  }
   const said =
     spoken?.role === "intro" || spoken?.role === "close" ? spoken.said : ""
   return {

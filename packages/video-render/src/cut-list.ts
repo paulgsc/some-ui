@@ -226,10 +226,14 @@ export type SpokenTurn = z.infer<typeof SpokenTurnSchema>
 export const SpokenSchema = z.discriminatedUnion("role", [
   /** What the essay is for, what you'll be able to do, and what it is as of. */
   z.strictObject({ role: z.literal("intro"), said: SayableSchema }),
-  /** Where this step sits and why it matters, then what the card teaches. */
+  /**
+   * Where this step sits and why it matters, then what the card teaches.
+   * Only a chapter's first scene says its chapter line and marks it; a
+   * scene without one goes on in the chapter before it (C1027).
+   */
   z.strictObject({
     role: z.literal("scene"),
-    chapter: SayableSchema,
+    chapter: SayableSchema.optional(),
     narration: SayableSchema,
   }),
   /** What to do next, and where to look when it fails. */
