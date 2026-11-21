@@ -1,0 +1,17 @@
+{
+  "id": "C873",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:crates/scenario_engine/README.md",
+    "server:crates/game_scenarios"
+  ],
+  "chose": "A bite's unit (offense, defense, special teams or coaching, and whose) went into catalog v2 rather than a new catalog v3. A bite said under catalog 1 carries none. The coordinator agreed on 2026-11-21, on the premise that v2 was not yet released. That premise was not quite true: home's release set had already pinned commits carrying v2 without units (server#1080 pinned #1072's commit 16e2ae7, and server#1081 pinned #1076's eb33ab3, both carrying v2 without units) before #1083 landed, so a bite said under that v2, if home was deployed with it, carries no unit.",
+  "options": [
+    "Put units into catalog v2 (chosen): one version for one change set, at the risk that a v2 bite said before #1083 has no unit.",
+    "Cut catalog v3 for units: keeps 'a released version never changes' exactly, at the cost of a version no phone may ever have read as v2."
+  ],
+  "gray": "The catalog's rule is that a released version never changes. Whether a version pinned in a release set but perhaps never deployed counts as released was not settled by any check. The session treated it as unreleased; home's release set says otherwise.",
+  "undo": "Move units into a CATALOG_VERSION 3 in game_scenarios and some-ui's parseCatalog, leaving v2 without them.",
+  "refs": ["#3049", "#2074", "server#1083"]
+}

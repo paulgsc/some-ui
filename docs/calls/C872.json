@@ -1,0 +1,14 @@
+{
+  "id": "C872",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": ["server:crates/db/voice/src/about.rs"],
+  "chose": "A game take's half is not stored. It is worked out when the take is read (with_game in crates/db/voice/src/about.rs; period_seen_by serves the unmatched case): from its matched play's quarter, or, with no match, from the latest quarter home had seen when the bite was said. That is the latest quarter by then, not the newest row's, which can be a revision of an older play.",
+  "options": [
+    "Work out the half when the take is read (chosen): nothing is stored, and a later match or a better reading of the log moves it.",
+    "Store the half with the bite when it is taken: fixed once kept, and wrong whenever the match moves or the log is revised."
+  ],
+  "gray": "GWB17's outline (D10) asks for halves but not where the half lives. Both are consistent with the repo's conventions.",
+  "undo": "Add a stored half column, filled when the bite is taken, and read it in place of the derivation.",
+  "refs": ["#3048", "#2074", "server#1072"]
+}

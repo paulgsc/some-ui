@@ -65,8 +65,14 @@ every Residual Ledger `first_step` in those three parts, in that order (#2814, N
   - Server's steward counts only bot review. On server, that fallback holds only when the
     owner extends it for the run; write that grant in the epic as well (#2814, Nov 13).
 - Hand each worker a call-ID range for `docs/calls/`, and keep the next free ID on the
-  record issue (#2814, Nov 9).
-- Be the only writer of the ledger and of every epic body (#2823, #2833).
+  record issue (#2814, Nov 9). On taking over, first collect every range a running worker
+  already holds or has used: workers keep their ranges across coordinators, and a range
+  taken from `docs/calls/` alone collided twice on Nov 21 (#3361).
+- Be the only writer of the ledger and of every epic body (#2823, #2833). A large body
+  (#2074's is about 30 KB) is rewritten by a script that replaces whole sections, then
+  diffed to show nothing else moved and read back to confirm it matches. A worker sends its
+  "Where we are" lines to the coordinator (below, "Choir"), or, when it can reach the epic, leaves
+  them as a comment for the coordinator to fold in (#3197, #3361, Nov 21).
 - Copy session ids from the roster; never retype them (#2814, Nov 8).
 - Put the choir's protocol (below) in every brief.
 - Before briefing a story, check whether a reach is owed (`CLAUDE.md`, "When a reach is
@@ -123,6 +129,17 @@ default (owner, #2814 Nov 10; measurements on #2833).
   and update and arm the next only when it lands. Updating every ready PR at once costs about
   N²/2 CI runs, and two armed PRs race, so the loser pays for every run again (#2918, Nov 13;
   #2945 ran CI three times, #2918, Nov 14).
+- Workers update only on "your turn" (below, "Choir"): a CI round takes 25–35 minutes, so a
+  branch updated out of turn costs the queue a round (#3197, Nov 21).
+- Server's `automation/release` PR is re-cut after every merge to `main`, with auto-merge on,
+  and each release merge puts every open server PR behind. Disabling its auto-merge holds
+  only until the next re-cut, so disable it on the current release PR right before the PR
+  you need lands (#3197, Nov 21).
+- Two workers' migrations dated the same day took the same version twice (20261121000100,
+  then 000200). Before merging `main` into a branch with a migration, check its version
+  against `main`'s `migrations/` (#3197, Nov 21).
+- Merge a cross-repo pair's some-ui half first. The server PR's "Check some-ui against it"
+  stays red until it lands; then re-run that PR's failed jobs (#3197, Nov 21).
 - Before merging a server PR that adds a mailbox read or put, check every numeric bound the
   assurance ledger states for the mailbox pass (MI6's requests a day; MI5's 120 seconds and
   its request budget a pass). The server's `Assurance ledger` check reads stores, paths and
@@ -137,8 +154,9 @@ default (owner, #2814 Nov 10; measurements on #2833).
   (#2918, Nov 13).
 - A bot PR pushed with `GITHUB_TOKEN` runs no CI. To start it:
 
-  - approve its `action_required` runs (`actions_run_trigger` → `rerun_workflow_run`), again
-    after each regeneration of the www release PR;
+  - approve its `action_required` runs (`actions_run_trigger` → `rerun_workflow_run`, or
+    `gh api -X POST repos/paulgsc/some-ui/actions/runs/<id>/approve`), again after each
+    regeneration of the www release PR;
   - or, when it is behind, use Update branch as a person.
 
   Never push an empty commit, and never close and reopen (#2814, Nov 10; #2885).
@@ -201,6 +219,10 @@ default (owner, #2814 Nov 10; measurements on #2833).
   only on events (#2823).
 - Send a red check that isn't yours to the coordinator before any re-run (#2823).
 - Never merge. Send the coordinator `ready-to-merge <repo>#<n> <40-char sha>` (#2885).
+- Never arm auto-merge, and update your branch only when the coordinator says "your turn"
+  (#3197, Nov 21).
+- If the owner messages you directly, first tell them you aren't the coordinator and point them
+  to it, then pass what they said to the coordinator (the owner, #3361, Nov 21).
 - Never push to testing. Once the coordinator says merged, confirm, then send it your ledger
   lines, your "Where we are" lines and your session note's JSON (#2885, Nov 12).
 - Archive only once the coordinator confirms your note is in (SFEED9).
