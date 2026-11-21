@@ -222,8 +222,9 @@ role, and it is the owner's call, so it is not built.
   `pickup-<note>-<seq>.json` and `picked` takes `picked-<note>-<seq>.json`, named for the
   take's id (as a transcript's `<note>`) and the number of its ready-for-pickup move on home
   (from 1, no leading zero), so a take moved to ready again later goes under a new name and an
-  answer is named as the pickup it answers; and `snips` takes `snips-<commit>.json`, named for
-  the captured commit's 40 lower-case hex digits, which is its `commit`. `brief` also takes `drive-takes-YYYYMMDDTHHMMSSZ.json`
+  answer is named as the pickup it answers; and `snips` takes `snips-<commit>-<run>.json`, named
+  for the captured commit's 40 lower-case hex digits, which is its `commit`, and the id of the
+  run that captured it, which ends its `run`, so a second capture of a commit has a list of its own. `brief` also takes `drive-takes-YYYYMMDDTHHMMSSZ.json`
   (MB2, the owner's route a on paulgsc/some-ui#2401), named for when the build-journal session
   listed Drive's takes folder, in UTC to the second, so each list goes under a new name.
   `brief` also takes `rust-week-YYYY-wNN.json` (MB2, RR12 paulgsc/some-ui#2687), a week of Rust
@@ -441,18 +442,23 @@ Drive file: home keeps the audio`.
   ready for pickup, and otherwise skips it, as it skips any stale move. The Worker holds it to
   those keys and no other, a name that carries the body's `note` and `seq`, and an `issue` of
   that form.
-- **A snip list** is a capture's own `manifest.json`, byte for byte as home fetched it with
-  its bundle (`docs/snips.md` at the repo's root, "The bundle"):
+- **A snip list** is a capture's own `manifest.json`, as home fetched it with its bundle and
+  without its whitespace, which home leaves out (the bundle writes it indented) (`docs/snips.md` at the repo's root, "The bundle"):
   `{"schema":"some-ui.snips/1","appVersion","commit","run","frozenAt","data":"sample","snips":[…],"unreached":[…]}`.
   Home puts one for each bundle it fetches, so the routine can name a snip by its `id` and
-  `commit` in an essay (SNIPS2's fourth step, #3116; paulgsc/server#1082). The same commit's
-  bundle fetched again is the same bytes, so it adds nothing. A list carries records and never
+  `commit` in an essay (SNIPS2's fourth step, #3116; paulgsc/server#1082). The same run's
+  bundle fetched again is the same list, so it adds nothing. A run attempted again keeps its id;
+  if its second attempt's list differs, the put is `409` and home keeps the first. A list is
+  about 1 to 2 KB a snip without whitespace (a web snip names its parts' boxes), so the 1 MiB
+  cap holds about 500 snips; a capture past that is refused (`413`), and home says so. A list carries records and never
   a picture (owner, 2026-11-17, #3114: "the routine never sees images, only metadata"), and
-  the Worker holds that itself: only those keys, a name that carries the body's `commit`,
+  the Worker holds that itself: only those keys, a name that carries the body's `commit` and
+  the run its `run` names (`https://github.com/<owner>/<repo>/actions/runs/<id>`),
   `data` of `sample`, each snip once by its `id` with only its record's keys
   (`SnipRecordSchema` in `@some-ui/video-render`), and each `image` and `recording` only
-  `{"name","kind","bytes","sha256"}`, a `png`, `mp4` or `webm` named by its size and SHA-256.
-  A key that names a picture, a `data:` URI or a run of 256 or more base64 characters is
+  `{"name","kind","bytes","sha256"}`, the `image` a `png` and the `recording` an `mp4` or
+  `webm`, each with its size and SHA-256. A key beyond those that names a picture or its bytes,
+  at any level, a `data:` URI or a run of 256 or more base64 characters anywhere is
   refused with `a snip list carries no picture: a capture makes it again`. The owner's marks on
   a snip are not in it: they are home's, kept by the snip's id (SNIPS3).
 - **A list of the takes Drive holds** is
@@ -698,7 +704,7 @@ how each was checked when this workspace landed.
   `note`, `ref`, `heard`, `labels`, `readyAt` and `seq`, a `comment` included, against `C296`),
   loosens the `picked` name or `pickedRefusal` (a key beyond `schema`, `note`, `seq` and
   `issue`), loosens the `snips` name or `snipsRefusal` (a key beyond the manifest's, a
-  record's or a file's own, a name that does not carry `commit`, or a `data` other than
+  record's or a file's own, a name that does not carry `commit` and the run, or a `data` other than
   `sample`), or adds `snips` to `RECORDS`, `ASKED` or the archive role's `move`, loosens the `interview-week` name, `interviewWeekRefusal` or `takeIdsRefusal`,
   or removes `kindOf`'s reading of `also`; when the PR description does not name the owner's
   decision to do so.
@@ -818,7 +824,8 @@ how each was checked when this workspace landed.
   `ASKED` or `HOME_READS`, so nothing archives it, lists it as archived, asks it back or rings
   for it; `core.test.ts` pins that home puts a list once and the same bytes again add nothing,
   that the routine and the archive role read it and may not put it, that no role archives it,
-  lists it as archived or asks it back, that the name carries the commit, and that a body with
+  lists it as archived or asks it back, that the name carries the commit and the run, that a
+  manifest as the bundle writes it is taken, and that a body with
   a picture, a key beyond a record's or a file's own, or `data` other than `sample` is refused.
 
 **MB3: No token reaches the repo or a log.**

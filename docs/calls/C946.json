@@ -7,12 +7,13 @@
     "apps/mailbox/README.md",
     "docs/snips.md"
   ],
-  "chose": "The mailbox's snips folder takes one file per bundle home fetches, snips-<commit>.json, whose body is the capture's own manifest.json (some-ui.snips/1) byte for byte. Home puts it, the routine and the archive role read it, nothing rings for it, and it is never archived or asked back: the same commit's capture makes it again, and home keeps no copy of what a capture can make (owner, 2026-11-21). The Worker holds the shape itself: only the manifest's, a record's and a file's own keys, the name carrying the commit, data of sample, and no picture bytes by the transcript's tests.",
+  "chose": "The mailbox's snips folder takes one file per bundle home fetches, snips-<commit>-<run>.json, named for the commit and the run that captured it (a second capture of a commit has its own list), whose body is the capture's own manifest.json (some-ui.snips/1) without its whitespace. Home puts it, the routine and the archive role read it, nothing rings for it, and it is never archived or asked back: a capture makes it again, and home keeps no copy of what a capture can make (owner, 2026-11-21). The Worker holds the shape itself: only the manifest's, a record's and a file's own keys, the name carrying the commit and run, data of sample, and no picture bytes by the transcript's tests.",
   "options": [
-    "one file per bundle, the manifest verbatim, named for the commit",
+    "one file per run, the manifest, named for the commit and the run",
     "one file per snip record, named for its id",
     "one file per bundle in a schema of its own, the records reshaped",
-    "archive the lists like other records"
+    "archive the lists like other records",
+    "one file per commit, which refuses a second capture of that commit"
   ],
   "gray": "paulgsc/server#1082 left open whether home puts each record or one file per bundle. A file per record is about a hundred puts per capture and a snip id holds ':' and '@', which a name would have to re-encode; a reshaped list is a second schema for what the manifest already says. Archiving would have home keep the bytes on its drive, a copy of what CI can make again, against the owner's ruling.",
   "undo": "Add snips to RECORDS (and so ASKED and the archive role's move) to archive the lists; a per-record kind can be added beside this one under its own name.",

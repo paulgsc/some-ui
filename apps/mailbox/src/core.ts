@@ -483,7 +483,16 @@ const SNIP_FILE_KEYS: ReadonlySet<string> = new Set([
   "bytes",
   "sha256",
 ])
-const SNIP_FILE_KINDS: ReadonlySet<unknown> = new Set(["png", "mp4", "webm"])
+/** A snip's picture is a PNG; its recording, where the screen moved, an `mp4` or `webm`. */
+const SNIP_FILE_KINDS = {
+  image: new Set<unknown>(["png"]),
+  recording: new Set<unknown>(["mp4", "webm"]),
+} as const
+/** A key that names a picture's bytes, where any level of a snip list has one too many. */
+const PICTURE_KEY = /image|picture|png|pixel|frame|audio|bytes|base64|blob/i
+/** The capture's run, as its manifest names it: its id ends the address. */
+const RUN =
+  /^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/actions\/runs\/([1-9]\d{0,19})$/
 /** A capture's commit: its 40 hex digits, as the bundle's name carries them. */
 const COMMIT = /^[0-9a-f]{40}$/
 const NO_PICTURE = "a snip list carries no picture: a capture makes it again"
@@ -494,16 +503,23 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 /** Why one snip's file (`image` or `recording`) is refused, or `null`. */
-function snipFileRefusal(file: unknown, what: string): string | null {
+function snipFileRefusal(
+  file: unknown,
+  what: "image" | "recording"
+): string | null {
   if (!isPlainObject(file))
     return `${what} must be the file's name, kind, size and SHA-256`
   const extra = Object.keys(file).find((key) => !SNIP_FILE_KEYS.has(key))
-  if (extra !== undefined)
+  if (extra !== undefined) {
+    if (PICTURE_KEY.test(extra)) return NO_PICTURE
     return `${extra} is not part of a snip's file: only its name, kind, size and SHA-256`
+  }
   if (typeof file.name !== "string" || file.name === "")
     return `${what} must name its file`
-  if (!SNIP_FILE_KINDS.has(file.kind))
-    return `${what} must be a png, mp4 or webm`
+  if (!SNIP_FILE_KINDS[what].has(file.kind))
+    return what === "image"
+      ? "image must be a png"
+      : "recording must be an mp4 or webm"
   if (
     typeof file.bytes !== "number" ||
     !Number.isSafeInteger(file.bytes) ||
@@ -519,8 +535,8 @@ function snipFileRefusal(file: unknown, what: string): string | null {
 
 /**
  * README, "What a put must satisfy": a snip list is the capture's manifest,
- * named for its commit, every record its own keys and each file named by
- * its hash, never its picture (owner, 2026-11-17, #3114: "the routine never
+ * named for its commit and run, every record its own keys and each file
+ * by its name, size and hash, never its picture (owner, 2026-11-17, #3114: "the routine never
  * sees images, only metadata").
  */
 function snipsRefusal(
@@ -528,6 +544,12 @@ function snipsRefusal(
   text: string,
   name: string
 ): string | null {
+  if (
+    Object.keys(body).some(
+      (key) => !SNIPS_KEYS.has(key) && PICTURE_KEY.test(key)
+    )
+  )
+    return NO_PICTURE
   const shape = shapeRefusal(
     body,
     text,
@@ -540,8 +562,10 @@ function snipsRefusal(
   if (typeof body.commit !== "string" || !COMMIT.test(body.commit)) {
     return "commit must be the captured commit's 40 hex digits"
   }
-  if (name !== `snips-${body.commit}.json`)
-    return "the name must carry the commit"
+  const run = typeof body.run === "string" ? RUN.exec(body.run)?.[1] : undefined
+  if (run === undefined) return "run must be the capture's run on GitHub"
+  if (name !== `snips-${body.commit}-${run}.json`)
+    return "the name must carry the commit and the run"
   if (body.data !== "sample")
     return "data must be sample: a capture shows sample data only"
   if (!Array.isArray(body.unreached)) return "unreached must be a list"
@@ -551,8 +575,7 @@ function snipsRefusal(
     if (!isPlainObject(snip)) return "each snip must be a record"
     const extra = Object.keys(snip).find((key) => !SNIP_KEYS.has(key))
     if (extra !== undefined) {
-      if (AUDIO_KEY.test(extra) || /image|picture|png|pixels/i.test(extra))
-        return NO_PICTURE
+      if (PICTURE_KEY.test(extra)) return NO_PICTURE
       return `${extra} is not part of a snip's record`
     }
     if (typeof snip.id !== "string" || snip.id === "")
@@ -1408,9 +1431,9 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
   },
   {
     // A capture's list of snips, its manifest as home fetched it with the
-    // bundle, named for the commit: records, never a picture (SNIPS2, #3116).
+    // bundle, named for the commit and the run that captured it: records, never a picture (SNIPS2, #3116).
     folder: "snips",
-    name: /^snips-[0-9a-f]{40}\.json$/,
+    name: /^snips-[0-9a-f]{40}-[1-9]\d{0,19}\.json$/,
     schema: "some-ui.snips/1",
     refuses: snipsRefusal,
   },

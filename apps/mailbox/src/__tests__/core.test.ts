@@ -3419,7 +3419,8 @@ const MANIFEST = {
 }
 
 describe("a capture's snip list (SNIPS2, #3116)", () => {
-  const NAME = `snips-${COMMIT}.json`
+  const RUN = "44072396351"
+  const NAME = `snips-${COMMIT}-${RUN}.json`
   const LIST = JSON.stringify(MANIFEST)
   const asHome = (
     d: Deps,
@@ -3469,22 +3470,71 @@ describe("a capture's snip list (SNIPS2, #3116)", () => {
     }
   })
 
-  it("is named for its commit alone", async () => {
+  it("is named for its commit and run, so a second capture of a commit has its own list", async () => {
     const d = deps()
     for (const name of [
-      `snips-${COMMIT.slice(0, 12)}.json`,
-      `snips-${COMMIT.toUpperCase()}.json`,
-      `snips-${COMMIT}.png`,
-      `${COMMIT}.json`,
+      `snips-${COMMIT}.json`,
+      `snips-${COMMIT.slice(0, 12)}-${RUN}.json`,
+      `snips-${COMMIT.toUpperCase()}-${RUN}.json`,
+      `snips-${COMMIT}-${RUN}.png`,
+      `snips-${COMMIT}-0${RUN}.json`,
     ]) {
       expect((await asHome(d, name)).status).toBe(422)
     }
-    const other = "b".repeat(40)
-    const answer = await asHome(d, `snips-${other}.json`)
-    expect(answer.status).toBe(422)
-    expect(await json(answer)).toEqual({
-      error: "the name must carry the commit",
+    for (const name of [
+      `snips-${"b".repeat(40)}-${RUN}.json`,
+      `snips-${COMMIT}-1.json`,
+    ]) {
+      const answer = await asHome(d, name)
+      expect(answer.status).toBe(422)
+      expect(await json(answer)).toEqual({
+        error: "the name must carry the commit and the run",
+      })
+    }
+    const again = JSON.stringify({
+      ...MANIFEST,
+      run: "https://github.com/paulgsc/some-ui/actions/runs/44072399999",
     })
+    expect((await asHome(d)).status).toBe(201)
+    expect(
+      (await asHome(d, `snips-${COMMIT}-44072399999.json`, again)).status
+    ).toBe(201)
+    for (const run of ["https://example.com/runs/1", "44072396351", 7]) {
+      const answer = await asHome(d, NAME, JSON.stringify({ ...MANIFEST, run }))
+      expect(await json(answer)).toEqual({
+        error: "run must be the capture's run on GitHub",
+      })
+    }
+  })
+
+  it("takes a capture's manifest as the bundle writes it: pretty-printed, web parts boxed, a recording", async () => {
+    const d = deps()
+    const hash = "0123456789ab"
+    const web = {
+      ...SNIP,
+      id: `web:/rust/$week:phone:2.4.0:${hash}`,
+      surface: "web",
+      route: "/rust/$week",
+      path: "/rust/2026-w47?tab=cards",
+      viewport: "phone",
+      width: 824,
+      height: 1830,
+      scale: 2,
+      regions: Array.from({ length: 12 }, (_, i) => ({
+        ref: `card-${String(i)}`,
+        box: { x: 16, y: 120 * i, width: 380, height: 112 },
+      })),
+      shows: "Rust Rounds: the week's cards",
+      image: { ...SNIP.image, name: `web/phone/rust~$week-${hash}.png` },
+      recording: {
+        name: `web/phone/rust~$week-${hash}.webm`,
+        kind: "webm",
+        bytes: 913_201,
+        sha256: SHA,
+      },
+    }
+    const body = JSON.stringify({ ...MANIFEST, snips: [SNIP, web] }, null, 2)
+    expect((await asHome(d, NAME, body)).status).toBe(201)
   })
 
   it("carries records, never a picture", async () => {
@@ -3495,7 +3545,10 @@ describe("a capture's snip list (SNIPS2, #3116)", () => {
     })
     const shapes: Array<[unknown, string]> = [
       [{ ...MANIFEST, owner: "x" }, "owner is not part of a snip list"],
-      [{ ...MANIFEST, png: "x" }, "png is not part of a snip list"],
+      [
+        { ...MANIFEST, png: "x" },
+        "a snip list carries no picture: a capture makes it again",
+      ],
       [
         { ...MANIFEST, imageBytes: "x" },
         "a snip list carries no picture: a capture makes it again",
@@ -3521,15 +3574,26 @@ describe("a capture's snip list (SNIPS2, #3116)", () => {
         "data is not part of a snip's file: only its name, kind, size and SHA-256",
       ],
       [
+        withSnip({ ...SNIP, image: { ...SNIP.image, pixels: "x" } }),
+        "a snip list carries no picture: a capture makes it again",
+      ],
+      [
+        withSnip({ ...SNIP, image: { ...SNIP.image, kind: "mp4" } }),
+        "image must be a png",
+      ],
+      [
         withSnip({ ...SNIP, image: { ...SNIP.image, kind: "jpeg" } }),
-        "image must be a png, mp4 or webm",
+        "image must be a png",
       ],
       [
         withSnip({ ...SNIP, image: { ...SNIP.image, sha256: "ABC" } }),
         "image must carry its SHA-256, in lower-case hex",
       ],
       [
-        withSnip({ ...SNIP, recording: { ...SNIP.image, bytes: 0 } }),
+        withSnip({
+          ...SNIP,
+          recording: { ...SNIP.image, kind: "mp4", bytes: 0 },
+        }),
         "recording must say its size in bytes",
       ],
       [{ ...MANIFEST, snips: [SNIP, SNIP] }, "each snip is listed once"],
@@ -3553,5 +3617,12 @@ describe("a capture's snip list (SNIPS2, #3116)", () => {
       recording: { ...SNIP.image, name: "x.mp4", kind: "mp4" },
     })
     expect((await asHome(d, NAME, JSON.stringify(moved))).status).toBe(201)
+    const stillPicture = withSnip({
+      ...SNIP,
+      recording: { ...SNIP.image, name: "x.png", kind: "png" },
+    })
+    expect(
+      await json(await asHome(d, NAME, JSON.stringify(stillPicture)))
+    ).toEqual({ error: "recording must be an mp4 or webm" })
   })
 })
