@@ -2,7 +2,7 @@
   "schema": "some-ui.snips-given/1",
   "bundles": [
     {
-      "commit": "1bb5c76b20767ebfea9fde39035e439815916c6e",
+      "commit": "fb7c5def8acef0a9201fdce19ceff87f8aa30997",
       "snips": [
         {
           "id": "web:/rust-rounds-sample:phone:0.1.71:7da9fd68697e",

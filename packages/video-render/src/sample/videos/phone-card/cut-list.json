@@ -9,7 +9,7 @@
   "voice": "read",
   "burnIns": [],
   "stamp": {
-    "sources": ["paulgsc/some-ui@1bb5c76"],
+    "sources": ["paulgsc/some-ui@fb7c5de"],
     "date": "2026-11-21"
   },
   "shots": [
@@ -62,7 +62,7 @@
         "of": {
           "from": "snips",
           "id": "web:/rust-rounds-sample:phone:0.1.71:7da9fd68697e",
-          "commit": "1bb5c76b20767ebfea9fde39035e439815916c6e",
+          "commit": "fb7c5def8acef0a9201fdce19ceff87f8aa30997",
           "at": [
             "QM-311:question",
             "QM-311:point:1",
@@ -85,7 +85,7 @@
         "of": {
           "from": "snips",
           "id": "web:/rust-rounds-sample:phone:0.1.71:7da9fd68697e",
-          "commit": "1bb5c76b20767ebfea9fde39035e439815916c6e",
+          "commit": "fb7c5def8acef0a9201fdce19ceff87f8aa30997",
           "at": ["QM-311:program", "QM-311:diagnostic:1"]
         }
       },
@@ -103,7 +103,7 @@
         "of": {
           "from": "snips",
           "id": "web:/rust-rounds-sample:phone:0.1.71:7da9fd68697e",
-          "commit": "1bb5c76b20767ebfea9fde39035e439815916c6e",
+          "commit": "fb7c5def8acef0a9201fdce19ceff87f8aa30997",
           "at": []
         }
       },

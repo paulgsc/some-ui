@@ -15,6 +15,7 @@ import {
   clipFramesOf,
   isSnipId,
   parseSnipsGiven,
+  pngSize,
   resolveScreens,
   SNIPS_GIVEN_SCHEMA,
   snipScreen,
@@ -408,6 +409,10 @@ describe("the phone-card sample: a cards essay on a snip of the phone (#3311, C8
         snip.image.sha256
       )
       expect(bytes.length).toBe(snip.image.bytes)
+      expect(pngSize(new Uint8Array(bytes))).toEqual({
+        width: snip.width,
+        height: snip.height,
+      })
     }
   })
 
