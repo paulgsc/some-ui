@@ -83,7 +83,7 @@ export const INTERVIEW_ESSAY_VERSION = 4
 
 /**
  * The first version whose bubbles draw the cast (PDA6, #2883; C822), as the
- * Rust essay's version 6: what an essay with an opening is written at.
+ * Rust essay's version 6.
  */
 export const INTERVIEW_ESSAY_CAST_VERSION = 3
 

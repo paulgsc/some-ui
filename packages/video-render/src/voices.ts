@@ -96,16 +96,19 @@ export type VoiceRole = (typeof VOICE_ROLES)[number]
 export type Lane = readonly [KokoroVoice, KokoroVoice, ...Array<KokoroVoice>]
 
 /**
- * Each role's lane, by the lanes' id. Each lane opens on the voice the role
- * had before the lanes where that voice is still free, so a video's first
- * chapter sounds as it did. Disjoint, so no two roles share a voice.
+ * Each role's lane, by the lanes' id. Disjoint, so no two roles share a
+ * voice. Two keep the voice they had before the lanes where it is first
+ * heard: the host's opens on the call's host (chapter 0, the intro), and a
+ * cards essay's first card (chapter 1) is still narrated in af_heart. The
+ * others' voices before the lanes are taken by these two, so their lanes
+ * are new voices.
  */
 export const VOICE_LANES: Readonly<
   Record<VoicesId, Readonly<Record<VoiceRole, Lane>>>
 > = {
   "lanes-v1": {
     host: ["am_michael", "bm_george", "am_puck"],
-    narrator: ["af_heart", "bf_emma", "af_nicole"],
+    narrator: ["af_nicole", "af_heart", "bf_emma"],
     tutor: ["am_fenrir", "bm_fable", "am_onyx"],
     asker: ["af_bella", "af_aoede", "bf_isabella"],
     answerer: ["af_kore", "af_sarah", "bm_lewis"],

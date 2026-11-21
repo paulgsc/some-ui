@@ -100,16 +100,15 @@ export const ESSAY_VERSION = 7
 /**
  * The first version whose chart draws the decay record's two later cells
  * (RR19, #2695): a concept that may have faded, and an answer that came back
- * lower than an earlier week's. An essay with neither stays at version 1, so
- * a stage built before them still draws it (C270).
+ * lower than an earlier week's. Each later version draws everything an
+ * earlier one does; an essay is written at the newest (C841, moving C270).
  */
 export const ESSAY_DECAY_VERSION = 2
 
 /**
  * The first version that draws a speak-to point answered by a take of its
  * own (RR24, #3248): `points[j].answer`, played in an answer scene of its
- * own. An essay with none stays at its version, so a stage built before
- * them still draws it.
+ * own.
  */
 export const ESSAY_POINT_VERSION = 3
 
@@ -119,16 +118,14 @@ export const ESSAY_FORK_VERSION = 4
 /**
  * The first version that opens on a conversation (#3269, C738): first after
  * the brand, a second voice asks each of the opening's questions, and the
- * owner's own take of their answer plays. An essay with none stays at its
- * version.
+ * owner's own take of their answer plays.
  */
 export const ESSAY_OPENING_VERSION = 5
 
 /**
  * The first version whose bubbles draw the cast (PDA6, #2883; C822): the
  * mochi for the owner, tin birds for the synthetic voices, in place of the
- * flat icons. It draws everything version 5 does, so an essay with an
- * opening takes it.
+ * flat icons. It draws everything version 5 does.
  */
 export const ESSAY_CAST_VERSION = 6
 
@@ -785,7 +782,7 @@ export function markOf(
 }
 
 /** Whether `cell` is one only version 2 of the template draws (`ESSAY_DECAY_VERSION`). */
-export const needsDecayVersion = (cell: EssayCell): boolean =>
+const needsDecayVersion = (cell: EssayCell): boolean =>
   cell === "faded" || typeof cell === "object"
 
 /**
@@ -927,7 +924,7 @@ export function forkProblems(
 }
 
 /** Whether `ticket` is drawn only from version 4: a fork, or a point count outside 2 to 3. */
-export const needsForkVersion = (ticket: EssayTicket): boolean =>
+const needsForkVersion = (ticket: EssayTicket): boolean =>
   ticket.points.some((point) => point.fork !== undefined) ||
   ticket.points.length < POINTS_LEAST ||
   ticket.points.length > POINTS_MOST

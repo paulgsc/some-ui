@@ -29,8 +29,8 @@
  * kept them, and its transcript `<id>.transcript.json`
  * (`some-ui.voice-transcript/1`, its verdict with it). A take missing, or
  * one home couldn't make out or heard nothing in, is refused before
- * anything is drawn (HEARD2). Each question is said in the asker's voice and
- * each take played whole, under a still of the card's scene from the built
+ * anything is drawn (HEARD2). Each Kokoro turn is said in the voice the
+ * policy gives its place (C840) and each take played whole, under a still of the card's scene from the built
  * app's `/essay?kind=spoken` (template A). With no spoken card it takes no
  * `--takes`, and records as it always has.
  *
@@ -226,8 +226,8 @@ async function spokenTakes(
 /**
  * A still of each spoken card's scene into `root` (`<file>.png`) from the
  * built app's `/essay?kind=spoken`, its read of each card answered from
- * `heard` alone, and its take: a question said in the asker's voice, an
- * answer the owner's own take from `owned`, played whole. Recorded as every
+ * `heard` alone, and its take: a Kokoro turn said in its place's voice, an
+ * owner's turn their own take from `owned`, played whole. Recorded as every
  * voiced stage's are (`recordStills`), by each scene's id.
  */
 async function spokenStills({

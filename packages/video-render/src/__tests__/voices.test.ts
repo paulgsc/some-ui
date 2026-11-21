@@ -1,7 +1,8 @@
 /**
  * The voice policy (#3321, C840), over every kind of video essay. Each kind
- * is a case of `KINDS`, so a kind added to `VideoKind` fails to compile here
- * until it says how its lines are voiced. In the lanes, each kind's newest
+ * is a case of `KINDS`, keyed by `VideoKind`: a kind named there is a
+ * compile error here until it says how its lines are voiced (a new essay
+ * kind in src is added to `VideoKind` by hand). In the lanes, each kind's newest
  * version pins: one voice per speaker within a chapter, a change at each
  * chapter boundary, and the asker and the answerer of an exchange never in
  * the same voice. Every version before the lanes keeps the voices it had,
@@ -14,12 +15,17 @@ import {
   callVoices,
   sampleCallWeek,
 } from "@video-render/call"
-import { CARDS_VOICES, cardsScenes } from "@video-render/cards-essay"
+import {
+  CARDS_VOICES,
+  cardsChapterMarks,
+  cardsScenes,
+} from "@video-render/cards-essay"
 import type { Parsed } from "@video-render/cut-list"
 import {
   ESSAY_CAST_VERSION,
   ESSAY_VERSION,
   ESSAY_VOICES,
+  essayChapterMarks,
   essayFormat,
   essayScenes,
   essaySceneVoices,
@@ -309,7 +315,75 @@ describe.each(Object.entries(KINDS))("%s", (_kind, { lanes, pairs, lines }) => {
   )
 })
 
+describe("in the lanes, as a listener hears them", () => {
+  it("a cards essay's intro is the call's host, and each card has a narrator of its own", async () => {
+    const voices = await newestCardsVoices()
+    const scenes = cardsScenes(
+      await showcase("rust-scratchpad"),
+      new Map(),
+      voices
+    )
+    // A chapter for each mark the upload lists, and one before them.
+    const said = await cardsLines("rust-scratchpad", voices)
+    expect(new Set(said.map((l) => l.chapter)).size).toBe(
+      cardsChapterMarks(scenes).length + 1
+    )
+    expect(scenes.slice(0, 4).map((s) => s.lines.map((l) => l.voice))).toEqual([
+      ["am_michael"],
+      ["bm_george", "af_heart"],
+      ["am_puck", "bf_emma"],
+      ["am_michael", "af_nicole"],
+    ])
+  })
+
+  it("a Rust essay's tutor moves on at each chapter slide, and its opening keeps two voices", () => {
+    const essay = rustEssay(OPENING)
+    const scenes = essayScenes(essay, "sample")
+    const voices = essaySceneVoices(
+      essayFormat(essay.template.version).shape,
+      scenes
+    )
+    const at = (id: string): KokoroVoice | undefined =>
+      voices[scenes.findIndex((s) => s.id === id)]
+    expect([at("intro"), at("ask-1"), at("opening-1"), at("ask-2")]).toEqual([
+      "am_fenrir",
+      "af_bella",
+      "af_kore",
+      "af_bella",
+    ])
+    expect([at("chapter-question-1"), at("chapter-question-2")]).toEqual([
+      "bm_fable",
+      "am_onyx",
+    ])
+    expect(
+      new Set(chapterIndexes(scenes.map((s) => s.section === "chapter"))).size
+    ).toBe(essayChapterMarks(essay).length + 1)
+  })
+})
+
 describe("before the lanes", () => {
+  it("the fixed voices are the ones every pinned version said", () => {
+    expect(ESSAY_VOICES).toEqual({
+      tutor: "am_michael",
+      you: "bm_george",
+      asker: "af_heart",
+    })
+    expect(CALL_VOICES).toEqual({
+      intro: "am_michael",
+      "brand-in": "am_michael",
+      chapter: "am_michael",
+      "brand-out": "am_michael",
+      open: "am_michael",
+      board: "am_michael",
+      moved: "af_heart",
+      done: "am_fenrir",
+      gray: "af_bella",
+      mine: "bm_george",
+      asks: "af_nicole",
+      close: "am_michael",
+    })
+  })
+
   it("every pinned essay keeps one voice per speaker, as it had", () => {
     for (let version = 1; version < ESSAY_VERSION; version++) {
       const essay = unwrap(sampleEssay())
