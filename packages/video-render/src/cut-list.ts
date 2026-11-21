@@ -12,7 +12,7 @@ import { z } from "zod"
 
 import { badgeProblems } from "./badges"
 import { LOOKS, VOICES } from "./plans"
-import { COMMIT, PAGE_FILE, SNIP_ID } from "./snip-id"
+import { COMMIT, isPublicAddress, PAGE_FILE, SNIP_ID } from "./snip-id"
 import { SPOKEN_CATEGORIES } from "./spoken-categories"
 import { stampProblems } from "./stamp"
 import {
@@ -93,7 +93,12 @@ const PictureSchema = z.discriminatedUnion("kind", [
        */
       z.object({
         from: z.literal("pages"),
-        url: z.string().regex(/^https:\/\/\S+$/, "a public https address"),
+        url: z
+          .string()
+          .refine(
+            isPublicAddress,
+            "a public https address, with no user or password"
+          ),
         capturedAt: z.iso.datetime(),
         file: z
           .string()

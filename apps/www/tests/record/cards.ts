@@ -42,7 +42,7 @@
  * each picture under it by its bundle name. `--clips <dir>` (`<key>.clips/`)
  * holds each Clips Library frame it names at `<clip>/<side>/<file>`, and
  * `--pages <dir>` (`<key>.pages/`) holds `pages.json` (`some-ui.pages/1`)
- * beside each public page's picture (`tests/pages/capture.ts`). A screen
+ * beside each public page's picture (`./pages.ts`). A screen
  * home didn't hand, a picture not the one its record names, a page taken at
  * another moment than the scene says, or a frame that isn't a PNG is
  * refused before anything is drawn. With no screen it takes none of them.

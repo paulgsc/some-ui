@@ -394,7 +394,10 @@ export function resolveScreens(
       return null
     }
     // The scene says what it shows and as of when; the picture must be that.
-    if (page.url !== of.url || page.capturedAt !== of.capturedAt) {
+    if (
+      page.url !== of.url ||
+      Date.parse(page.capturedAt) !== Date.parse(of.capturedAt)
+    ) {
       problems.push(
         `${shotId}: it shows ${of.url} as of ${of.capturedAt}, and ${of.file} is ${page.url} as of ${page.capturedAt}`
       )

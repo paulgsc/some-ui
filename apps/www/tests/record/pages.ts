@@ -16,9 +16,10 @@
  * but what the public sees. Each record keeps the address and the moment
  * it was taken, the "as of" the essay tells its viewer.
  *
- * Refused, before anything is written: an address that isn't public https,
- * a page that answers an error, and a part its selector doesn't find on the
- * window or finds off it.
+ * Refused, before anything is written: an address that isn't public https
+ * or carries a user or password, a page that doesn't load, answers an
+ * error or sends the browser elsewhere (a sign-in wall), and a part its
+ * selector doesn't find wholly on the window.
  */
 import { createHash } from "node:crypto"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
@@ -26,6 +27,7 @@ import { join } from "node:path"
 import { parseArgs } from "node:util"
 import type { PageRecord } from "@some-ui/video-render"
 import {
+  isPublicAddress,
   PAGE_VIEWPORT,
   pageFile,
   PAGES_SCHEMA,
@@ -40,7 +42,12 @@ const ListSchema = z.strictObject({
   pages: z
     .array(
       z.strictObject({
-        url: z.string().regex(/^https:\/\/\S+$/, "a public https address"),
+        url: z
+          .string()
+          .refine(
+            isPublicAddress,
+            "a public https address, with no user or password"
+          ),
         parts: z
           .record(z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/), z.string())
           .default({}),
@@ -87,11 +94,30 @@ await runCommand(async () => {
     const page = await context.newPage()
     const problems: Array<string> = []
     for (const { url, parts } of list.data.pages) {
+      // A page that doesn't load, answers an error, or lands somewhere else
+      // (a sign-in wall) is refused: never a picture of another page under
+      // this address. Live pages (a run's checks) never go quiet, so this
+      // waits for the page's load, then a settle.
       const answer = await page
-        .goto(url, { waitUntil: "networkidle", timeout: LOAD_MS })
-        .catch(() => null)
-      if (answer !== null && answer.status() >= 400) {
+        .goto(url, { waitUntil: "load", timeout: LOAD_MS })
+        .catch((error: unknown) => (error instanceof Error ? error : null))
+      if (answer === null || answer instanceof Error) {
+        problems.push(
+          `${url} didn't load${answer instanceof Error ? `: ${answer.message.split("\n")[0] ?? ""}` : ""}`
+        )
+        continue
+      }
+      if (answer.status() >= 400) {
         problems.push(`${url} answered ${String(answer.status())}`)
+        continue
+      }
+      const landed = new URL(page.url())
+      const asked = new URL(url)
+      if (
+        landed.origin !== asked.origin ||
+        landed.pathname !== asked.pathname
+      ) {
+        problems.push(`${url} sent the browser to ${page.url()}`)
         continue
       }
       await page.waitForTimeout(SETTLE_MS)
@@ -102,23 +128,25 @@ await runCommand(async () => {
           .first()
           .boundingBox({ timeout: 5_000 })
           .catch(() => null)
-        const x = Math.max(0, box?.x ?? 0)
-        const y = Math.max(0, box?.y ?? 0)
-        const right = Math.min(
-          PAGE_VIEWPORT.width,
-          (box?.x ?? 0) + (box?.width ?? 0)
-        )
-        const bottom = Math.min(
-          PAGE_VIEWPORT.height,
-          (box?.y ?? 0) + (box?.height ?? 0)
-        )
-        if (box === null || right <= x || bottom <= y) {
-          problems.push(`${url}: ${name} (${selector}) isn't on the window`)
+        // A part is boxed whole or refused: a zoom to half of it would
+        // frame something the page doesn't show.
+        const whole =
+          box !== null &&
+          box.width > 0 &&
+          box.height > 0 &&
+          box.x >= 0 &&
+          box.y >= 0 &&
+          box.x + box.width <= PAGE_VIEWPORT.width &&
+          box.y + box.height <= PAGE_VIEWPORT.height
+        if (box === null || !whole) {
+          problems.push(
+            `${url}: ${name} (${selector}) isn't wholly on the window`
+          )
           continue
         }
         regions.push({
           name,
-          box: { x, y, width: right - x, height: bottom - y },
+          box: { x: box.x, y: box.y, width: box.width, height: box.height },
         })
       }
       const capturedAt = new Date().toISOString()

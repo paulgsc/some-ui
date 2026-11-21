@@ -6,7 +6,7 @@
  * any parts it names boxed, drawn by the screen-zoom composition. The
  * renderer gains nothing.
  *
- * - The capture (`apps/www/tests/pages/capture.ts`) opens each address in a
+ * - The capture (`apps/www/tests/record/pages.ts`) opens each address in a
  *   browser with no sign-in, at one fixed size, and writes `pages.json`
  *   (`some-ui.pages/1`) beside the pictures: each page's address, the
  *   moment it was taken, its size and the parts it was asked to box.
@@ -27,7 +27,9 @@ import type { CutList, Parsed, Picture } from "./cut-list"
 import { problemsOf } from "./cut-list"
 import type { Screen } from "./screen"
 import { BoxSchema } from "./screen"
-import { PAGE_FILE } from "./snip-id"
+import { isPublicAddress, PAGE_FILE } from "./snip-id"
+
+export { isPublicAddress } from "./snip-id"
 
 export const PAGES_SCHEMA = "some-ui.pages/1"
 
@@ -40,7 +42,12 @@ const PART = /^[a-z0-9][a-z0-9-]{0,63}$/
 const PageRecordSchema = z
   .strictObject({
     /** The address taken, as typed: public, https. */
-    url: z.string().regex(/^https:\/\/\S+$/, "a public https address"),
+    url: z
+      .string()
+      .refine(
+        isPublicAddress,
+        "a public https address, with no user or password"
+      ),
     /** When it was taken: what the page showed then, and maybe not now. */
     capturedAt: z.iso.datetime(),
     /** The page's own title, as the browser read it. */

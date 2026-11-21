@@ -1,6 +1,7 @@
 import { parseCardsEssay } from "@video-render/cards-essay"
 import type { CutList } from "@video-render/cut-list"
 import {
+  isPublicAddress,
   pageFile,
   PAGES_DIR,
   PAGES_SCHEMA,
@@ -149,6 +150,20 @@ describe("a public page as a screen", () => {
     expect(drawn.ok ? "" : drawn.problems.join("\n")).toContain(
       `C1: it shows ${URL_3376} as of ${later}, and ${FILE} is ${URL_3376} as of ${AT}`
     )
+  })
+
+  it("takes the same moment however it is written", async () => {
+    const cut = await showing([
+      page(undefined, { capturedAt: "2026-11-21T23:02:11Z" }),
+    ])
+    expect(resolveScreens(cut, handed([run()])).ok).toBe(true)
+  })
+
+  it("is only an address anyone can open: https, with no user or password", () => {
+    expect(isPublicAddress(URL_3376)).toBe(true)
+    expect(isPublicAddress("http://github.com/paulgsc")).toBe(false)
+    expect(isPublicAddress("https://me:token@github.com/paulgsc")).toBe(false)
+    expect(isPublicAddress("https://token@github.com/paulgsc")).toBe(false)
   })
 
   it("is refused for a part it doesn't name", async () => {

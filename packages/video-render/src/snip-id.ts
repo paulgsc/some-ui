@@ -19,3 +19,17 @@ export const COMMIT = /^[0-9a-f]{40}$/
  * of the PNG's SHA-256, so a page that changes gets a new name.
  */
 export const PAGE_FILE = /^[a-z0-9][a-z0-9-]{0,95}-[0-9a-f]{12}\.png$/
+
+/**
+ * Whether `url` is an address anyone can open: https, with no user or
+ * password in it, which a browser would send and a record would keep.
+ */
+export function isPublicAddress(url: string): boolean {
+  if (!/^https:\/\/\S+$/.test(url)) return false
+  try {
+    const { username, password } = new URL(url)
+    return username === "" && password === ""
+  } catch {
+    return false
+  }
+}
