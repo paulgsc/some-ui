@@ -1,0 +1,15 @@
+{
+  "id": "C846",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": ["testing:cards/rust-rounds-how-it-works-2026-11-20.json"],
+  "chose": "In the showcase's cut list, the host's intro follows the owner's spoken introduction, which C814 puts first. The intro is reworded to follow it (\"That was paulgsc, in their own voice. What follows is how Rust Rounds works…\") rather than announce it as the earlier draft from run #3311 did. That draft's stamp (some-ui@754c22e, server@1e1c2ba, 2026-11-20) and key are kept, since those are the commits its claims were checked against. The file reaches paulgsc/testing only when the coordinator pushes it, once the owner has recorded the takes.",
+  "options": [
+    "reword the intro to follow the introduction, keep the earlier stamp (taken)",
+    "reword it, and re-stamp at today's main without re-checking every claim",
+    "keep the intro's wording that announces the introduction"
+  ],
+  "gray": "The first words the viewer hears after the owner, and the day the essay says it is as of, are on the screen; C814 settles only that the introduction comes first.",
+  "undo": "Reword the intro shot's `said`, or re-stamp by re-checking each card's sources at a later commit; either is a new essay under a new key (C327), since home keeps each as first served. The order itself moves only with C814.",
+  "refs": ["#3312", "#3282", "#3311"]
+}
