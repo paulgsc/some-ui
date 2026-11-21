@@ -221,6 +221,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "job-desk's main entry: the Jobs wing's Drive files, which only the Android app's Jobs wing reads and writes (src/lib/jobs). The web builds take only its id rule (the résumé builder) and its sample entry (/job-run)",
     },
     {
+      modules: ["apps/www/src/lib/home-web/index.ts"],
+      profiles: [MOBILE_PROFILE],
+      why: "the home network's web pages the phone opens in its browser rather than carrying (the résumé builder, the teams home follows live): only the Android app links out to them; the web builds are those pages",
+    },
+    {
       modules: ["apps/www/src/lib/app-events/index.ts"],
       profiles: [MOBILE_PROFILE],
       why: "the notes of how each take on the phone ended, kept until home holds them (CK2): only the Android app records takes and sends them home",
