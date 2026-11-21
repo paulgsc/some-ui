@@ -15,6 +15,12 @@ export type {
 export { fixtureFeed } from "./lib/feed"
 export type { HomeMessage } from "./lib/live-wire"
 export { helloText, pingText, readHome } from "./lib/live-wire"
-export type { BiteStore, OutboxPort, OutboxView, PrefsPort } from "./lib/ports"
+export type {
+  BiteStore,
+  OutboxPort,
+  OutboxView,
+  PrefsPort,
+  StoredBite,
+} from "./lib/ports"
 export { storedPrefs } from "./lib/ports"
 export type { GameWeekPorts } from "./lib/runtime"

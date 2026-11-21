@@ -10,10 +10,10 @@
  * record says since when (`homeSince`), and `./runtime` lets its audio go.
  */
 import { assertNever, isRecord } from "@some-ui/core-utils"
-import type { KeptBite } from "@some-ui/game-week"
+import type { KeptBite, StoredBite } from "@some-ui/game-week"
 
 /** A bite as this phone keeps it: once home holds it, since when. */
-export type PhoneBite = KeptBite & { readonly homeSince?: number }
+export type PhoneBite = StoredBite
 
 export type GameBitesEvent =
   | { readonly kind: "kept"; readonly bite: KeptBite }

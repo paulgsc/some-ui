@@ -20,7 +20,7 @@ import {
 
 import type { ModeId } from "./modes"
 import type { BiteUnit } from "./ranked"
-import { unitLine } from "./words"
+import { unitLine, WORDS } from "./words"
 
 /**
  * The largest clock offset home keeps with a bite, either way (a day,
@@ -163,4 +163,23 @@ export function unitName(unit: string, side: string | null): string | null {
 export function halfName(half: string): string | null {
   const named = HALVES.find((each) => each === half)
   return named === undefined ? null : HALF_WORDS[named]
+}
+
+/**
+ * What a bite kept on this phone was about, in one line, from its fields:
+ * the clock the screen showed when it was said, its scenario (or that it was
+ * said first, none picked), and its unit. Takes says more once home has
+ * matched it to a play.
+ */
+export function biteAbout(fields: Readonly<Record<string, string>>): string {
+  const clock = fields.strip?.split(" · ")[0]?.trim() ?? ""
+  const scenario =
+    fields.scenario === undefined
+      ? WORDS.saidFirst
+      : (scenarioName(fields.scenario) ?? "")
+  const unit =
+    fields.unit === undefined
+      ? ""
+      : (unitName(fields.unit, fields.unitSide ?? null) ?? "")
+  return [clock, scenario, unit].filter((part) => part !== "").join(" · ")
 }

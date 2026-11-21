@@ -1,5 +1,6 @@
 import type { BiteMoment, Said } from "@game-week/lib/bite"
 import {
+  biteAbout,
   biteFields,
   halfName,
   line,
@@ -139,5 +140,31 @@ describe("a bite's unit and half by name, for Takes (#3049)", () => {
     expect(halfName("second")).toBe("2nd half")
     expect(halfName("overtime")).toBe("Overtime")
     expect(halfName("third")).toBeNull()
+  })
+})
+
+describe("what a bite on this phone was about, under the recorder (GWB14)", () => {
+  it("says the clock it was said at, its scenario and its unit", () => {
+    const fields = biteFields(
+      {
+        how: "offered",
+        scenario: "in.third-long",
+        context: "",
+        unit: { unit: "defense", side: "SEA" },
+      },
+      MOMENT,
+      0
+    )
+    expect(biteAbout(fields)).toBe("Q3 8:42 · Third and long · SEA defense")
+  })
+
+  it("says a bite said first was, and leaves out what it doesn't know", () => {
+    const fields = biteFields(
+      { how: "said-first" },
+      { ...MOMENT, strip: "" },
+      0
+    )
+    expect(biteAbout(fields)).toBe("Said first")
+    expect(biteAbout({ how: "offered", scenario: "not-a-scenario" })).toBe("")
   })
 })

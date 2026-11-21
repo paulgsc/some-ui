@@ -33,6 +33,10 @@ export const WORDS = {
   justHappened: "Just happened",
   sayItFirst: "Say it first",
   sayItFirstHint: "Talk now, say what it was about after.",
+  /** A bite said first that was never said to be about anything. */
+  saidFirst: "Said first",
+  /** Over the game's newest bites, under the recorder (GWB14). */
+  recentBites: "Said about this game",
   quietBar: "Stops when you go quiet",
   askTitle: "What was that about?",
   later: "Later: home works it out from what I said",

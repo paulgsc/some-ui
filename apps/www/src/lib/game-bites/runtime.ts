@@ -62,7 +62,6 @@ export type GameBitesPorts = {
 }
 
 export type GameBites = BiteStore & {
-  getSnapshot: () => ReadonlyArray<PhoneBite>
   /** The bites that may start on their way home now, and home doesn't hold. */
   ready: () => ReadonlyArray<KeptBite>
   /**
@@ -319,7 +318,6 @@ export function createGameBites(ports: GameBitesPorts): GameBites {
       }),
     unkept: () => held.length,
     isKept: (id) => bites.some((bite) => bite.id === id),
-    homeSince: (id) => bites.find((bite) => bite.id === id)?.homeSince ?? null,
     audio: (id) => shelf.get(id),
     keep: (bite, audio) =>
       inTurn(async () => {

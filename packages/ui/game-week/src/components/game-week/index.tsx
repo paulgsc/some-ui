@@ -7,8 +7,9 @@
  * The bite is a take of the take pattern (`@some-ui/voice-capture`): while
  * it records, the pattern's button (tap to stop, the time against the cap),
  * beside the screen's own level meter and quiet bar; once kept, the bite's
- * row (its length, where it is kept, Play), with Undo in the row's extra
- * slot while the bite's hold lasts.
+ * row (its length, where it is kept, Play) under the recorder, among the
+ * game's newest few (GWB14), with Undo over the screen while the bite's hold
+ * lasts.
  *
  * This component only renders and forwards taps. What happens and in what
  * order is `lib/machine.ts`; the microphone, the store and home's feed are
@@ -573,9 +574,9 @@ export const GameWeek = ({
   const undoOffered = state.undo !== null && !asking
   const blocked = activity.kind === "idle" ? state.blocked : null
   // The bite as the take pattern's parts show it: its button while it
-  // records, and the newest bite kept as a row.
+  // records, and the game's newest bites kept, as rows (GWB14).
   const bite = biteView(state)
-  const { row } = bite
+  const { recent } = bite
 
   return (
     // The page ends clear of the bubble that floats over its foot.
@@ -678,15 +679,26 @@ export const GameWeek = ({
         </Notice>
       )}
 
-      {row !== null && !asking && (
-        <ul>
-          <TakeRow
-            row={row}
-            onPlay={() => dispatch({ type: "play", id: row.take.id })}
-          >
-            {bite.unplayable ? TAKE_WORDS.unplayable : undefined}
-          </TakeRow>
-        </ul>
+      {recent.length > 0 && !asking && (
+        <section className="space-y-1">
+          <h2 className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
+            {WORDS.recentBites}
+          </h2>
+          <ul>
+            {recent.map(({ row, about, unplayable }) => (
+              <TakeRow
+                key={row.take.id}
+                row={row}
+                onPlay={() => dispatch({ type: "play", id: row.take.id })}
+              >
+                <span className="block">{about}</span>
+                {unplayable && (
+                  <span className="block">{TAKE_WORDS.unplayable}</span>
+                )}
+              </TakeRow>
+            ))}
+          </ul>
+        </section>
       )}
 
       {blocked !== null && (
