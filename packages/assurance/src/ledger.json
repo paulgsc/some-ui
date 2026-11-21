@@ -1299,7 +1299,7 @@
           "kind": "OA4",
           "property": "outcome",
           "claim": "Every bite home holds with a scenario is matched to a play or marked unmatched and kept, never dropped.",
-          "requirement": "Each pass over a game appends one bite_match row for each of its bites whose match changed, naming the play (same game, a play the scenario's rule accepts, at or before the bite's start on home's clock, within the broadcast-delay window, the nearest) or why there was none; bite_match refuses UPDATE and DELETE, and a reader takes each bite's newest row.",
+          "requirement": "Each pass over a game appends one bite_match row for each of its bites whose match changed, naming the play (same game, a play the scenario's rule accepts, found by BM5's direction: the snap to come for a bite on its offer, the nearest at or before the bite's start on home's clock for one from just happened or on a stale offer, the nearer either side for one tied to no offer; within reconcile::WINDOW) or why there was none (`unmatched`, `not-a-play`, `no-scenario`); bite_match refuses UPDATE and DELETE, and a reader takes each bite's newest row.",
           "verdict": "holds",
           "conclusion": "The reconciler's test matches each bite to its play or marks it unmatched and keeps it, and the store refuses rewriting a match. Whether the match is the right play (8 in 10 on a real Sunday, #2081) is the owner's spot check, not this objective.",
           "evidence": [
@@ -1315,7 +1315,14 @@
           "watch": {
             "by": "none"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-21",
+              "change": "A bite's play is found by when it was said (BM5): ahead for a bite on an offer of the snap to come (method `next`, a signed gap), behind for one from just happened, either side for one tied to no offer; it was always the nearest at or before.",
+              "why": "A bite said on a pre-snap offer was matched to the play before its snap, or none (#3040).",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3040#issuecomment-7057816904"
+            }
+          ]
         },
         {
           "id": "BM2",
@@ -1345,7 +1352,7 @@
           "kind": "RE7",
           "property": "work",
           "claim": "A game already final is reconciled again only when it has new bites.",
-          "requirement": "Every reconcile::TICK (10 minutes) the task reconciles a final game once per start, and again only when a bite or mapping arrived since its last pass; it runs whatever the game feed's switch says.",
+          "requirement": "Every reconcile::TICK (10 minutes) the task reconciles a final game once per start, and again only when a bite or mapping arrived since its last pass, or when a bite's newest match was made under an older ENGINE_VERSION (once per bump, whatever week the game was in); it runs whatever the game feed's switch says.",
           "verdict": "holds",
           "conclusion": "The worker's test passes over a final game once, then again only after a new bite; idle, a pass reads the newest scoreboard and the games it names and writes nothing.",
           "evidence": [
@@ -1356,7 +1363,8 @@
             }
           ],
           "proof": [
-            "server:apps/servers/file_host/src/reconcile.rs#the_worker_reconciles_a_final_game_again_only_when_it_has_new_bites"
+            "server:apps/servers/file_host/src/reconcile.rs#the_worker_reconciles_a_final_game_again_only_when_it_has_new_bites",
+            "server:apps/servers/file_host/src/reconcile.rs#a_bite_matched_under_an_older_engine_is_matched_again_once"
           ],
           "watch": {
             "by": "none"
@@ -1367,6 +1375,12 @@
               "change": "The reconciler always runs, a pass every reconcile::TICK, where it was spawned only while GAME_FEED_ENABLED was on and logged once and spawned nothing while it was off.",
               "why": "Whether home follows games became the owner's switch, read each wake, so it is no longer known when home starts; the reconciler runs regardless, and a pass still reconciles a final game again only when a bite arrived since its last pass. The requirement also no longer says a game in play is reconciled: the worker reconciles only final games.",
               "decision": "https://github.com/paulgsc/server/issues/617#issuecomment-6861136019"
+            },
+            {
+              "on": "2026-11-21",
+              "change": "A match made under an older ENGINE_VERSION is redone once, so a rule change reaches every bite matched before it.",
+              "why": "#3040 changed which play a bite is matched to; without a re-match, bites matched before the change kept the wrong play.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3040#issuecomment-7057816904"
             }
           ]
         },
@@ -1377,7 +1391,7 @@
           "claim": "What the reconciler keeps grows by bites, not by passes.",
           "requirement": "A pass appends a bite_match row only for a bite whose match changed, and a bite_mapping row only for an accepted proposal, so the rows grow by about one small row per bite (more only when a later pass finds a nearer play) and never by the 10-minute tick; neither is updated or deleted but with the account.",
           "verdict": "holds",
-          "conclusion": "Both tables refuse UPDATE and leave only with the account, and the worker's test writes nothing on a tick that changes no match; at a few hundred bites a season, the rows stay in the tens of kilobytes.",
+          "conclusion": "Both tables refuse UPDATE and leave only with the account, and the worker's test writes nothing on a tick that changes no match; at a few hundred bites a season, the rows stay in the tens of kilobytes. Each ENGINE_VERSION bump also adds at most one small row per bite, when its match is redone (BM3).",
           "evidence": [
             {
               "class": "structural",
@@ -1402,6 +1416,40 @@
           "watch": {
             "by": "dashboard",
             "ref": "server:infra/grafana/dashboards/storage.jsonnet"
+          },
+          "amendments": []
+        },
+        {
+          "id": "BM5",
+          "kind": "OA4",
+          "property": "outcome",
+          "claim": "Every bite said on an offer of the snap to come is matched to that snap when its scenario's rule accepts it, to none when it does not, and never to a play before it; every bite offered on a drive (first possession, red zone) to the play that ends that possession from the snap on; every bite offered on the coin toss to the opening kickoff; every bite from just happened, or on a stale offer, to the nearest play at or before it; and every bite tied to no offer (picked from the whole set, or said first and mapped) to the nearer in time of the plays either side.",
+          "requirement": "The engine reads each bite's moment for its direction (BeforeTheSnap, BeforeTheDrive, BeforeTheKickoff, After, or Either for a bite tied to no offer) and the reconciler matches by it; the offer's time is the bite's start, or reconcile::LAG (5 s) earlier when home had just stopped offering the scenario, and a stale offer only looks back.",
+          "verdict": "holds",
+          "conclusion": "Tested over the family a bite is said in: every moment × how it was said (offered, just happened, every scenario, said first) × before or after its play × a flag that wipes the snap out between × a phone up to reconcile::LAG behind home × an offer home no longer showed. Within reconcile::LAG after home sees a snap, a scenario still on offer for the next one (a play call, a drive) is read as the newer offer; nothing the bite keeps says which the phone showed.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A bite on the snap to come, the try, the coin toss, the opening drive before its kickoff, and one tied to no offer each take the play their moment points at, in the engine's own tests.",
+              "ref": "server:crates/scenario_engine/tests/its_play.rs"
+            },
+            {
+              "class": "measured",
+              "says": "The reconciler matches a bite on the snap to come to that snap (method next, a signed gap), and a bite on an offer home just moved on from to its snap.",
+              "ref": "server:apps/servers/file_host/src/reconcile.rs"
+            }
+          ],
+          "proof": [
+            "server:crates/scenario_engine/tests/its_play.rs#a_bite_on_the_snap_to_come_is_about_that_snap",
+            "server:crates/scenario_engine/tests/its_play.rs#a_bite_on_the_try_is_about_its_touchdown",
+            "server:crates/scenario_engine/tests/its_play.rs#a_bite_before_kickoff_is_about_the_opening_kickoff",
+            "server:crates/scenario_engine/tests/its_play.rs#a_bite_on_the_opening_drive_before_the_kickoff_is_about_that_drive",
+            "server:crates/scenario_engine/tests/its_play.rs#a_bite_not_tied_to_an_offer_takes_the_nearer_play",
+            "server:apps/servers/file_host/src/reconcile.rs#a_bite_on_the_snap_to_come_is_matched_to_that_snap",
+            "server:apps/servers/file_host/src/reconcile.rs#a_bite_on_an_offer_home_just_moved_on_from_is_about_its_snap"
+          ],
+          "watch": {
+            "by": "none"
           },
           "amendments": []
         }
