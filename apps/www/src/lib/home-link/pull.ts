@@ -15,9 +15,7 @@
  *
  * Each run ends in its lane's runtime (`./kept-runtime`), so the marks that
  * read it (the header's, Settings') show how the pull went, lane by lane;
- * the pull itself says only whether all of them got in step. A screen that
- * shows one lane hears that lane's end in the same pull (`ended`; Jobs'
- * morning run, PULL2) and names it in its own words.
+ * the pull itself says only whether all of them got in step.
  */
 import { CHECK_MS } from "@/lib/pull-refresh/model"
 import type { Refresher } from "@/lib/pull-refresh/refreshers"
@@ -60,16 +58,6 @@ function linkFree(): Promise<void> {
   })
 }
 
-/** Home as a pull reads it again, and each lane's end in that pull. */
-export type HomeRefresher = Refresher & {
-  /**
-   * How `lane`'s run in the pull under way ended, starting that pull if
-   * none is out (the refresher's own ask in the same pull joins it); null
-   * when the pull asked nothing of it.
-   */
-  readonly ended: (lane: Kept) => Promise<KeptRun | null>
-}
-
 /** Home as a pull reads it again: every lane `watched` names, one at a time. */
 export function homeRefresher({
   watched,
@@ -77,7 +65,7 @@ export function homeRefresher({
   free = linkFree,
   lookAgain = (): void => homeLink().lookAgain(),
   now = LINK_CLOCK.now,
-}: HomePullPorts): HomeRefresher {
+}: HomePullPorts): Refresher {
   /**
    * The run that already answers a pull sent at `since`: the lane's last,
    * if it got in step with home after the pull went out and none runs now
@@ -110,20 +98,20 @@ export function homeRefresher({
    * joins a run still under way rather than asking another (HERD1).
    */
   let out: {
-    readonly ends: ReadonlyMap<Kept, Promise<KeptRun | null>>
+    readonly ends: ReadonlyArray<Promise<KeptRun | null>>
     readonly at: number
   } | null = null
-  const pull = (): ReadonlyMap<Kept, Promise<KeptRun | null>> => {
+  const pull = (): ReadonlyArray<Promise<KeptRun | null>> => {
     if (out !== null && now() - out.at < CHECK_MS) return out.ends
     lookAgain()
     const since = now()
-    const ends = new Map<Kept, Promise<KeptRun | null>>()
+    const ends: Array<Promise<KeptRun | null>> = []
     let turn: Promise<void> = Promise.resolve()
     for (const lane of Array.from(watched())) {
       const end = turn.then(() =>
         watched().has(lane) ? pullLane(lane, since) : null
       )
-      ends.set(lane, end)
+      ends.push(end)
       turn = end.then(
         () => undefined,
         () => undefined
@@ -140,11 +128,10 @@ export function homeRefresher({
     what: PULL_HOME.what,
     before: lookAgain,
     checkAgain: async (): Promise<void> => {
-      const ends = await Promise.all(pull().values())
+      const ends = await Promise.all(pull())
       if (ends.some((end) => end !== null && !resynced(end))) {
         throw new Error("a lane did not get in step with home")
       }
     },
-    ended: (lane) => pull().get(lane) ?? Promise.resolve(null),
   }
 }
