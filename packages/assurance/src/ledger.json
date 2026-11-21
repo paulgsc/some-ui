@@ -5539,6 +5539,12 @@
       "class": "derived",
       "growth": "bounded: one row per item a waiter is waiting on right now (server crate::stage::Waiter, server#1091): which waiter (a closed set, cards_essays first), its key (an essay's key), which stage (transcriber), and the item (the subject's note id); no time is kept. Each waiter's pass rewrites its own rows in one transaction, under account deletion's hold, so its rows are whatever that waiter's last pass recorded, never more than it waits on at once; they also go when the note is deleted, and with the account. Derived: every row is recomputed from the waiter's own record (the essay's body) on its next pass, so losing the table loses no one's data.",
       "family": "voice-heard"
+    },
+    {
+      "store": "server:voice_note_fast_track",
+      "class": "record",
+      "growth": "Per act the owner takes putting one of their voice notes at the front of home's transcriber's line, or taking that back (server#1090, server#1091): one short row (the note's id, the act's number, fast or cancel, the attempts the note had at the act, when); append-only, a later act a new row, the same act again writing nothing; it goes with its note when the owner deletes it for good, and with the account. Grows with how often the owner fast-tracks notes, a handful a week.",
+      "family": "voice-heard"
     }
   ],
   "processes": [

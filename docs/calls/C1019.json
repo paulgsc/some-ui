@@ -1,0 +1,17 @@
+{
+  "id": "C1019",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/handlers/voice.rs",
+    "server:crates/db/voice/src/fast_track.rs"
+  ],
+  "chose": "POST /voice-notes/:id/fast-track {fast} answers 201 recorded, 200 unchanged, 404 not held, 409 already heard or not waiting (set aside, out of attempts, no audio), 422 bad body",
+  "options": [
+    "409 for a note home will never hear",
+    "record the mark anyway (201) and let it order nothing"
+  ],
+  "gray": "not-waiting uses the most attempts per model with no model key, so right after a model bump it may refuse a note the new model would hear; documented in fast_track::act; see C1016",
+  "undo": "drop the NotWaiting check; the mark records and orders nothing",
+  "refs": ["server#1090"]
+}

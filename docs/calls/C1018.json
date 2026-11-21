@@ -1,0 +1,17 @@
+{
+  "id": "C1018",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:crates/db/voice/src/transcript.rs",
+    "server:apps/servers/file_host/src/transcribe/pass.rs"
+  ],
+  "chose": "each waiting note carries transcript::Urgency { None < Wanted < FastTrack }, a closed ordered enum: FastTrack while its mark is live, Wanted while marked or something waits on it, else None; the pass reads it, and only FastTrack passes the give",
+  "options": [
+    "a closed ordered Urgency enum on Waiting",
+    "a raw score or the bare live/marked/wanted columns for the pass to interpret"
+  ],
+  "gray": "a new source of urgency is a new case or a new mapping, never a number tuned; urgency through more than one edge is not built yet; see C1017",
+  "undo": "drop the field; the pass gives way for every note",
+  "refs": ["server#1090", "server#1091"]
+}
