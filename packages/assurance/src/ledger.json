@@ -1125,9 +1125,9 @@
           "kind": "RE3",
           "property": "work",
           "claim": "Home fetches a game only while there is something to learn about it.",
-          "requirement": "A wake with nothing due fetches nothing; a game's summary is fetched every live cadence (15 s) from kickoff until a summary of it says final, then never again, a restart included; a completed game first seen late is still fetched until its final summary is kept; a game still called pre or postponed is fetched only within its grace (4 h after kickoff, and 8 h once over without completing).",
+          "requirement": "A wake with nothing due fetches nothing; the scoreboard is read every scoreboard cadence (600 s) only while a chosen game is live, past kickoff and not final, or within the margin (1 h) of its kickoff, and while any game was still live at its end read (kickoff plus 4 h), to at most 8 h after kickoff; and otherwise at the soonest of the next chosen kickoff less the margin, any listed game's end read, and a day after its last read; a chosen game's summary (a game is chosen when either side is a team the game-teams setting names, or always when it names none) is fetched every live cadence (15 s) from kickoff until a summary of it says final, then never again, a restart included; a game no team chose gets no live summaries, but once the scoreboard calls it completed its summary is fetched until one says final; a completed game first seen late is still fetched until its final summary is kept; a game still called pre or postponed is fetched only within its grace (4 h after kickoff, and 8 h once over without completing).",
           "verdict": "unproven",
-          "conclusion": "The pass tests follow a game from kickoff to its final fetch and then see no fetch, see a restart skip a game it holds final, and see a late-seen completed game and a postponed one handled. Not bounded: a game the scoreboard calls completed whose own summary never reads final is fetched for as long as that lasts (every 15 s while answers parse, every 900 s while they fail), and a response's bytes are read without a limit.",
+          "conclusion": "The pass tests follow a game from kickoff to its final fetch and then see no fetch, see a restart skip a game it holds final, and see a late-seen completed game and a postponed one handled. Not bounded: a game the scoreboard calls completed whose own summary never reads final is fetched for as long as that lasts (every 15 s while answers parse, every 900 s while they fail), and a response's bytes are read without a limit. A day with no chosen game near costs one scoreboard read. A game added, or moved sooner, to within a day of the last read is learnt only at the next daily read, so in the worst case it is missed live and fetched once as over. With teams named, a game no team chose is fetched once the scoreboard's read at its end (kickoff plus 4 h) sees it completed; a completed game whose summary never reads final is still fetched without a bound (server#534).",
           "tracked": "server#534",
           "evidence": [
             {
@@ -1144,20 +1144,50 @@
               "class": "measured",
               "says": "A postponed game is left after the post grace, and one still called pre past its grace waits for the scoreboard.",
               "ref": "server:apps/servers/file_host/src/game_feed/pass.rs"
+            },
+            {
+              "class": "measured",
+              "says": "A week of wakes every 5 minutes with no game reads the scoreboard 7 times; a game tomorrow wakes it an hour before kickoff; a flexed kickoff is learnt at the read before the old one or the daily read; a postponed game sleeps it until the daily read learns its new kickoff; a read that fails while asleep backs off as before.",
+              "ref": "server:apps/servers/file_host/src/game_feed/pass.rs"
+            },
+            {
+              "class": "measured",
+              "says": "With teams named, only a named team's game gets live summaries or wakes the scoreboard, a game no team chose is fetched once completed until final (the scoreboard reading at every listed game's end to see it), and a change of teams takes effect at the next pass.",
+              "ref": "server:apps/servers/file_host/src/game_feed/pass.rs"
             }
           ],
           "watch": {
             "by": "dashboard",
             "ref": "server:infra/grafana/dashboards/game-feed.jsonnet"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-21",
+              "change": "The scoreboard is read every 600 s only while a chosen game is near (or any game is still live at its end read), and otherwise sleeps until an hour before the next chosen kickoff, a listed game's end read, or a day after its last read; live summaries are fetched only for games of the teams the game-teams setting names (every game when it names none), and any other game's summary only once the scoreboard calls it completed, until one reads final.",
+              "why": "The owner (on #3329): there is no reason to ask ESPN all day, every day, when games happen on a few days in a few windows. Home fetched the scoreboard 144 times a day with no game near, and every game's summary on a full slate.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3329#issuecomment-7058452957"
+            }
+          ],
+          "proof": [
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_week_with_no_game_reads_the_scoreboard_once_a_day_and_nothing_else",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_game_tomorrow_wakes_the_scoreboard_an_hour_before_its_kickoff",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_flexed_kickoff_is_learnt_at_the_read_before_the_old_one_or_the_daily_read",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_postponed_game_sleeps_the_scoreboard_until_the_daily_read_learns_its_new_kickoff",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#only_a_chosen_teams_games_are_fetched_or_wake_the_scoreboard",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_failing_read_backs_off_as_before_while_asleep",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_game_called_off_before_its_kickoff_does_not_keep_the_feed_awake",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_completed_game_no_team_chose_is_fetched_until_its_summary_is_final",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_live_game_no_team_chose_is_not_fetched_and_dropped_once_it_leaves_the_scoreboard",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#the_scoreboard_reads_at_an_unchosen_games_end_so_its_final_summary_is_kept",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_game_live_past_its_end_read_keeps_the_scoreboard_awake_only_to_the_post_grace"
+          ]
         },
         {
           "id": "GA4",
           "kind": "OA6",
           "property": "outcome",
           "claim": "A game feed that has stopped reads as stopped, not as a quiet week.",
-          "requirement": "Every wake stamps game_feed_last_attempt_timestamp_seconds, whether or not anything is due, so a dashboard tells 'nothing to fetch' (a recent stamp) from 'not running' (an old one), and game_feed_enabled, the owner's switch as the last wake read it (1 following, 0 paused), tells 'switched off' from both; an alert tells the owner when the stamp goes stale.",
+          "requirement": "Every wake stamps game_feed_last_attempt_timestamp_seconds, whether or not anything is due and whether or not the scoreboard is asleep, so a dashboard tells 'nothing to fetch' (a recent stamp) from 'not running' (an old one), and game_feed_enabled, the owner's switch as the last wake read it (1 following, 0 paused), tells 'switched off' from both; game_feed_asleep and game_feed_next_fetch_timestamp_seconds say whether the scoreboard sleeps between games and until when; an alert tells the owner when the stamp goes stale.",
           "verdict": "holds",
           "conclusion": "The dashboard tells a quiet week from a stopped feed, and Slack tells you within about three minutes of its last wake once it stops, or through the server-down alert if home's server stops; a feed worker that has never woken since home started has no stamp and so no alert, and Grafana itself is not yet watched.",
           "evidence": [
@@ -1185,6 +1215,16 @@
               "class": "unknown",
               "says": "Nothing watches Grafana itself, the one thing that delivers home's alerts.",
               "ref": "some-ui#2289"
+            },
+            {
+              "class": "structural",
+              "says": "A feed asleep for 30 minutes whose wakes keep stamping does not fire GameFeedStale or GameFeedFailing; one asleep whose stamp stops does fire GameFeedStale; promtool tests both in CI.",
+              "ref": "server:infra/prometheus/rules/home.test.yml"
+            },
+            {
+              "class": "structural",
+              "says": "The GAME FEED dashboard's SCOREBOARD (AWAKE/ASLEEP), NEXT READ and TEAMS CHOSEN panels read game_feed_asleep, game_feed_next_fetch_timestamp_seconds and game_feed_teams_chosen.",
+              "ref": "server:infra/grafana/dashboards/lib/game-feed-panels.libsonnet"
             }
           ],
           "proof": [
@@ -1201,6 +1241,12 @@
               "change": "game_feed_enabled is the owner's switch on Home's switches (the game-feed setting, on by default), as each wake reads it before any fetch, in place of GAME_FEED_ENABLED read once at start.",
               "why": "The owner does not keep policy as an environment variable: whether home follows games is a switch set from the web app, as Rust Rounds recording is. The gauge still tells 'switched off' from a quiet week and from a stopped feed, so the claim holds as before.",
               "decision": "https://github.com/paulgsc/server/issues/617#issuecomment-6861136019"
+            },
+            {
+              "on": "2026-11-21",
+              "change": "The scoreboard may sleep between games (game_feed_asleep, game_feed_next_fetch_timestamp_seconds); the worker still wakes and stamps every 5 s while it does.",
+              "why": "Sleeping between games (#3329) must not read as a stopped feed: GameFeedStale still means the worker stopped, and the new gauges say when it next reads.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3329#issuecomment-7058452957"
             }
           ]
         },
