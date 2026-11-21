@@ -220,7 +220,8 @@ export type SpokenTurn = z.infer<typeof SpokenTurnSchema>
 
 /**
  * What a spoken cards essay says over a scene (EXPLAIN6, #3021): the essay's
- * intro, a scene's chapter line and then its narration, or the close. The
+ * intro, a scene's chapter line (its chapter's first scene only, C1027)
+ * and then its narration, or the close. The
  * recorder has home's speaker say each (`cards-essay.ts`, `record:cards`).
  */
 export const SpokenSchema = z.discriminatedUnion("role", [

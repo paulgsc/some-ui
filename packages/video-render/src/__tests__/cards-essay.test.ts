@@ -310,7 +310,7 @@ describe("a spoken essay (EXPLAIN6)", () => {
         shots: [intro, { ...first, spoken: unopened }, ...cut.shots.slice(2)],
       })
     ).toContain(
-      `${first.id}: it has no chapter line, and no chapter has opened before it`
+      `${first.id}: it has no chapter line, and no scene before it opened a chapter`
     )
   })
 
