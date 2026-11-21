@@ -1441,9 +1441,9 @@
           "kind": "RE9",
           "property": "work",
           "claim": "What the reconciler keeps grows by bites, not by passes.",
-          "requirement": "A pass appends a bite_match row only for a bite whose match changed, and a bite_mapping row only for an accepted proposal, so the rows grow by about one small row per bite (more only when a later pass finds a nearer play) and never by the 10-minute tick; neither is updated or deleted but with the account.",
+          "requirement": "A pass appends a bite_match row only for a bite whose match changed, and a bite_mapping row only for an accepted proposal, so the rows grow by about one small row per bite (more only when a later pass finds a nearer play, and one more per bite each time the matching rule changes, as ENGINE_VERSION is part of the match, BM3) and never by the 10-minute tick; neither is updated or deleted but with the account.",
           "verdict": "holds",
-          "conclusion": "Both tables refuse UPDATE and leave only with the account, and the worker's test writes nothing on a tick that changes no match; at a few hundred bites a season, the rows stay in the tens of kilobytes. Since server#1069, each ENGINE_VERSION bump also adds one small row per bite of a final game, matched or not, since the engine version is part of the match (BM3), which the bound above does not yet name; loosening it waits on the owner (#3356).",
+          "conclusion": "Both tables refuse UPDATE and leave only with the account, and the worker's test writes nothing on a tick that changes no match; at a few hundred bites a season and a handful of rule changes, the rows stay in the tens of kilobytes.",
           "evidence": [
             {
               "class": "structural",
@@ -1469,7 +1469,14 @@
             "by": "dashboard",
             "ref": "server:infra/grafana/dashboards/storage.jsonnet"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-21",
+              "change": "The bound also counts one more small bite_match row per bite each time the matching rule changes (an ENGINE_VERSION bump re-matches every bite home holds, once, since server#1069).",
+              "why": "Earlier bites get the new rule rather than keeping a match made under an older one; each row is tens of bytes and kept for good like every match, and bumps that land together in one release re-match once.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3356#issuecomment-7068142712"
+            }
+          ]
         },
         {
           "id": "BM5",
