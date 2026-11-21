@@ -21,24 +21,14 @@ import { isRecord } from "@some-ui/core-utils"
 import type { SessionThemeId } from "@some-ui/styles/theme/registry"
 import { z } from "zod"
 
-import type {
-  CutList,
-  Parsed,
-  Shot,
-  SpokenCategory,
-  SpokenTurn,
-} from "./cut-list"
-import {
-  problemsOf,
-  SPOKEN_CATEGORIES,
-  SPOKEN_EXCHANGES_MOST,
-  SPOKEN_TAKE_ID,
-} from "./cut-list"
+import type { CutList, Parsed, Shot, SpokenTurn } from "./cut-list"
+import { problemsOf, SPOKEN_EXCHANGES_MOST, SPOKEN_TAKE_ID } from "./cut-list"
 import { ESSAY_VOICES } from "./essay"
 import type { Speaker } from "./essay"
 import { ThemeIdSchema, words } from "./format"
 import { askProblems, wordCount } from "./opening"
 import type { Exchange } from "./opening"
+import { SPOKEN_CATEGORIES } from "./spoken-categories"
 import { takeFilesOf } from "./take-files"
 import type { TakeFiles } from "./take-files"
 import { hearingOf } from "./verdict"
@@ -103,10 +93,6 @@ export const kokoroSpeaker = (
 /** What a turn says, as a caption reads it: Kokoro's line, or what home heard the owner say. */
 export const turnSaid = (turn: HeardTurn): string =>
   turn.voice === "kokoro" ? turn.said : turn.transcript
-
-/** Each category's title, on its scenes and as the chapter its card opens. */
-export const SPOKEN_CATEGORY_TITLES: Readonly<Record<SpokenCategory, string>> =
-  { introduction: "Introduction" }
 
 /** The longest a spoken card's id is, so each of its scenes' ids fits a cut list's (64). */
 export const SPOKEN_CARD_ID_MOST = 55

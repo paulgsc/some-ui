@@ -181,6 +181,7 @@ import { reflections } from "@/lib/session-reflection"
 import type { Reflection } from "@/lib/session-reflection/policy"
 import { onSoundbitesKept, soundbiteKeeping } from "@/lib/soundbite-keeping"
 import { onStudioKept, studioKeeping } from "@/lib/studio-keeping"
+import { partOfLine } from "@/lib/studio-spoken/model"
 import { takeConveyor } from "@/lib/take-conveyor"
 import type { Take as DeskTake } from "@/lib/takes-desk"
 import { phoneVoiceHome } from "@/lib/voice-home"
@@ -413,13 +414,16 @@ export function ideaNote(take: IdeaTake): VoiceOut {
 /**
  * A take with no scene yet (ST32), as home is told it: a Studio note named
  * by its own id, so a scene can name it later (ST30). Home lists it as a
- * take (`GET /voice-notes/takes`) and deletes it from My data as one.
+ * take (`GET /voice-notes/takes`) and deletes it from My data as one. A
+ * spoken card's part read on the same desk (W5, `lib/studio-spoken`) is
+ * named by its part's line instead (`spoken:<card>.<part>`, C807), which
+ * home keeps as a take with no scene too.
  */
 export function libraryNote(take: LibraryTake): VoiceOut {
   return {
     id: take.id,
     of: "studio",
-    ref: refOf(`take:${take.id}`),
+    ref: refOf(partOfLine(take.line) === null ? `take:${take.id}` : take.line),
     at: new Date(take.takenAt).toISOString(),
     contentType: take.mimeType,
   }

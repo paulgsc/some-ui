@@ -12,6 +12,7 @@ import { z } from "zod"
 
 import { badgeProblems } from "./badges"
 import { LOOKS, VOICES } from "./plans"
+import { SPOKEN_CATEGORIES } from "./spoken-categories"
 import { stampProblems } from "./stamp"
 import {
   BackgroundSchema,
@@ -149,15 +150,6 @@ export const SayableSchema = z
   .refine((text) => /[\p{L}\p{N}]/u.test(text), {
     message: "it has no letter or digit, so the speaker has nothing to say",
   })
-
-/**
- * The categories of spoken card, each its own template (owner, 2026-11-20):
- * an introduction is template A's two bubbles, the one asking and the
- * owner, as the Rust essay's opening plays them.
- */
-export const SPOKEN_CATEGORIES = ["introduction"] as const
-
-export type SpokenCategory = (typeof SPOKEN_CATEGORIES)[number]
 
 /**
  * A take's id as home keeps it, as the Rust essay's opening names one, and

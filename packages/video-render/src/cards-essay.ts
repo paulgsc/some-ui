@@ -23,14 +23,7 @@ import { z } from "zod"
 import { CALL_VOICES } from "./call"
 import type { ChapterMark } from "./chapters"
 import { withoutStop } from "./chapters"
-import type {
-  CutList,
-  Parsed,
-  Shot,
-  SpokenCategory,
-  SpokenTurn,
-  TimedWord,
-} from "./cut-list"
+import type { CutList, Parsed, Shot, SpokenTurn, TimedWord } from "./cut-list"
 import { isCaptions, parseCutList, problemsOf } from "./cut-list"
 import { resolve } from "./resolve"
 import type { Series } from "./series"
@@ -38,10 +31,11 @@ import { withSeries } from "./series"
 import type { HeardSpokenCard, HeardTurn, SpokenScene } from "./spoken-card"
 import {
   SPOKEN_ASKER_VOICE,
-  SPOKEN_CATEGORY_TITLES,
   spokenCardProblems,
   spokenScenes,
 } from "./spoken-card"
+import { SPOKEN_CATEGORY_TITLES } from "./spoken-categories"
+import type { SpokenCategory } from "./spoken-categories"
 import { estimatedMs, heldFor, stillFile } from "./stills"
 import type { StillScene, StillTake } from "./stills"
 

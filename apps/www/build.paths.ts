@@ -141,6 +141,9 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/studio-clips/home.ts",
   "apps/www/src/lib/studio-clips/frames-read.ts",
   "apps/www/src/lib/studio-keeping/**",
+  "apps/www/src/lib/studio-spoken/**",
+  // A runtime's one-value store, used by the phone's runtimes alone today.
+  "apps/www/src/lib/cell/**",
   "apps/www/src/lib/take-about/**",
   "apps/www/src/lib/take-conveyor/**",
   "apps/www/src/lib/take-library/**",
@@ -167,6 +170,7 @@ const DEVICE_MODULES = [
   "apps/www/src/components/studio/episode-feedback.tsx",
   "apps/www/src/components/studio/template-preview.tsx",
   "apps/www/src/components/studio/cards-essay.tsx",
+  "apps/www/src/components/studio/spoken.tsx",
   "apps/www/src/components/copy-button.tsx",
   "apps/www/src/components/device-home-glyph.tsx",
   "apps/www/src/components/device-sign-in-mark.tsx",

@@ -44,6 +44,9 @@ import {
   sendsAtHomeSaid,
 } from "@some-ui/voice-capture"
 
+import type { Readable } from "@/lib/cell"
+import { cell } from "@/lib/cell"
+
 import type { Cue, CueEvent } from "./cue"
 import { NO_CUE, stepCue } from "./cue"
 import type { Ladder, Rung } from "./ladder"
@@ -85,11 +88,6 @@ export type InterviewWeekPorts = {
 }
 
 /** A store the screen reads: the same object while unchanged. */
-type Readable<T> = {
-  readonly getSnapshot: () => T
-  readonly subscribe: (listener: () => void) => () => void
-}
-
 export type InterviewWeekRun = {
   readonly machine: BundleMachine<InterviewKind>
   readonly bundle: BundleRuntime<InterviewKind>
@@ -116,26 +114,6 @@ export type InterviewWeekRun = {
   readonly setPace: (to: "slower" | "faster") => void
   /** The screen is showing. Returns the detach. */
   readonly attach: () => () => void
-}
-
-/** A store of one value, told to its listeners when it changes. */
-function cell<T>(first: T): Readable<T> & { set: (next: T) => void } {
-  let value = first
-  const listeners = new Set<() => void>()
-  return {
-    getSnapshot: () => value,
-    subscribe(listener): () => void {
-      listeners.add(listener)
-      return (): void => {
-        listeners.delete(listener)
-      }
-    },
-    set(next): void {
-      if (next === value) return
-      value = next
-      for (const listener of listeners) listener()
-    },
-  }
 }
 
 export function createInterviewWeek(
