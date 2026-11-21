@@ -38,6 +38,7 @@ export const HearAgainButton = ({
       type="button"
       variant="outline"
       size="sm"
+      className="self-start"
       disabled={busy || state.hearAgain.asking !== null || !askable(hearAgain)}
       onClick={onAsk}
     >

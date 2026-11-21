@@ -1,46 +1,66 @@
 /**
- * Home's answers on asking it to hear a take again (#3339), read as Takes
- * and Needs your attention mean them: whether home hears a take again, as
- * each read of a take carries it, and what came of an ask. Pure, so every
- * answer can be held by a test.
+ * Home's answers on asking it to hear a take again (#3339; paulgsc/server's
+ * `hear_again` act), read as Takes and Needs your attention mean them:
+ * whether home hears a take again, as each read of a take carries it, and
+ * what came of an ask. Pure, so every answer can be held by a test.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { readAs } from "@some-ui/core-utils"
 import type { HearAgain, HearAgainAnswer } from "@some-ui/soundbites"
 import { z } from "zod"
 
-/** A time home names, as an ISO time; anything else as none. */
-const AtSchema = z.iso.datetime({ offset: true }).nullable().catch(null)
+/** A time home names, as an ISO time with its offset. */
+const AtSchema = z.iso.datetime({ offset: true })
 
 /**
- * Whether home hears a take again on the owner's ask, and when it can next
- * be asked: absent or unreadable, as from a home before it, none.
+ * Whether home hears a take again on the owner's ask, as each take of a read
+ * says it: whether it can be asked now (`open`), whether home is hearing it
+ * again, when it was last asked, and when it can next be asked while home's
+ * snooze runs (`nextAt`). Absent, as from a home before it, or in a shape or
+ * with a time this phone can't read: none offered, never a take that reads
+ * as free to ask.
  */
 export const HearAgainSchema: z.ZodType<HearAgain | null> = z
-  .object({ askAgainAt: AtSchema, hearing: z.boolean() })
+  .object({
+    open: z.boolean(),
+    hearing: z.boolean(),
+    askedAt: AtSchema.nullable(),
+    nextAt: AtSchema.nullable(),
+  })
+  .transform(({ open, hearing, nextAt }) => ({
+    open,
+    hearing,
+    askAgainAt: nextAt,
+  }))
   .nullable()
   .optional()
   .catch(null)
   .transform((said) => said ?? null)
 
-const AskedSchema = z
-  .object({ askAgainAt: AtSchema })
-  .catch({ askAgainAt: null })
+/** Home's refusal while its snooze runs: when it can next be asked. */
+const SnoozedSchema = z.object({
+  error: z.object({ details: z.object({ nextAt: z.array(AtSchema).min(1) }) }),
+})
 
 /**
- * What came of an ask: `201`, or `200` for one home already took, asked;
- * `429` asked too recently, nothing written; each with when it can next be
- * asked. `404` a take home doesn't hold and `409` one it hears nothing more
- * in, both settled; anything else changed nothing.
+ * What came of an ask: `201`, or `200` for one home already took, asked.
+ * `409` naming `nextAt` asked too recently, nothing written; a `409` naming
+ * nothing, a take home hasn't heard a first time yet. `404` a take home
+ * doesn't hold. Anything else changed nothing.
  */
 export function readHearAgain(answer: HomeAnswer): HearAgainAnswer {
-  const ok = answer.status === 200 || answer.status === 201
-  if (ok || answer.status === 429) {
-    const { askAgainAt } = readAs(AskedSchema, answer.body) ?? {
-      askAgainAt: null,
-    }
-    return { kind: ok ? "asked" : "snoozed", askAgainAt }
+  if (answer.status === 200 || answer.status === 201) {
+    return { kind: "asked", askAgainAt: null }
   }
-  if (answer.status === 404 || answer.status === 409) return { kind: "settled" }
+  if (answer.status === 409) {
+    const snoozed = readAs(SnoozedSchema, answer.body)
+    return snoozed === null
+      ? { kind: "waiting" }
+      : {
+          kind: "snoozed",
+          askAgainAt: snoozed.error.details.nextAt[0] ?? null,
+        }
+  }
+  if (answer.status === 404) return { kind: "settled" }
   return { kind: "notTaken" }
 }

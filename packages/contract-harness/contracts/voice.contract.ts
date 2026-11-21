@@ -116,7 +116,12 @@ const AttentionSchema = z.object({
         signals: z.unknown(),
       }),
       hearAgain: z
-        .object({ askAgainAt: z.string().nullable(), hearing: z.boolean() })
+        .object({
+          open: z.boolean(),
+          hearing: z.boolean(),
+          askedAt: z.string().nullable(),
+          nextAt: z.string().nullable(),
+        })
         .nullable()
         .optional(),
     })
@@ -247,7 +252,12 @@ const TakesSchema = z.object({
       // Whether home hears it again on the owner's ask (some-ui#3339):
       // optional until the server serves it.
       hearAgain: z
-        .object({ askAgainAt: z.string().nullable(), hearing: z.boolean() })
+        .object({
+          open: z.boolean(),
+          hearing: z.boolean(),
+          askedAt: z.string().nullable(),
+          nextAt: z.string().nullable(),
+        })
         .nullable()
         .optional(),
     })

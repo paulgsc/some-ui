@@ -152,7 +152,7 @@ export const RECONCILE_WORDS = {
   actsLabel: "What to do with this take",
   /** The way back to what a take was said for, to say it again (#3339). */
   source: {
-    spoken: "Go back to its spoken card, to read it and record it again",
+    spoken: "Go back to its spoken card, to record it again",
     question: "Go to its question, to say it again",
     read: "Go to its card, to read it aloud again",
   } satisfies Record<TakeSource["kind"], string>,

@@ -45,7 +45,7 @@ const FAILED: AttentionTake = {
     rule: "heard-1",
     language: null,
   },
-  hearAgain: { askAgainAt: null, hearing: false },
+  hearAgain: { open: true, hearing: false, askAgainAt: null },
 }
 
 const listed = (takes: ReadonlyArray<AttentionTake>): AttentionRead => ({
@@ -173,7 +173,7 @@ describe("Takes › Needs your attention (HEARD3)", () => {
       />
     )
     await settle()
-    // Only the take home will hear again offers it; the other has its link back.
+    // Only the take home will hear again offers it, and carries its link back.
     const asks = screen.getAllByRole("button", { name: H.ask })
     expect(asks).toHaveLength(1)
     expect(screen.getAllByRole("link", { name: "Back to it" })).toHaveLength(1)
@@ -187,6 +187,25 @@ describe("Takes › Needs your attention (HEARD3)", () => {
       true
     )
     expect(screen.getByText(W.neverHeard)).toBeTruthy()
+  })
+
+  it("says why a take home no longer holds left the list when it was asked of again (#3339)", async () => {
+    render(
+      <TakeReconcile
+        ports={{
+          home: home(listed([FAILED, GARBLED]), undefined, () =>
+            Promise.resolve({ kind: "settled" })
+          ),
+          player: quietPlayer,
+        }}
+        pair={null}
+      />
+    )
+    await settle()
+    fireEvent.click(screen.getByRole("button", { name: H.ask }))
+    await settle()
+    expect(screen.queryByText(W.neverHeard)).toBeNull()
+    expect(screen.getByText(H.said.settled)).toBeTruthy()
   })
 
   it("drops a take the build's delete path deleted", async () => {

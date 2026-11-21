@@ -11,24 +11,28 @@ import {
 } from "@soundbites/lib/hear-again/model"
 import { describe, expect, it } from "vitest"
 
-const FREE = { askAgainAt: null, hearing: false } as const
+const OPEN = { open: true, hearing: false, askAgainAt: null } as const
 const LATER = "2026-11-21T15:00:00.000Z"
-const take = { id: "a", hearAgain: FREE }
+const take = { id: "a", hearAgain: OPEN }
 
 /** The slice after asking of `take` once. */
 const asking = (): HearAgainSlice =>
   askedToHearAgain(QUIET_HEAR_AGAIN, take).state
 
 describe("asking home to hear a take again (#3339)", () => {
-  it("asks only where home will hear it again, not while it hears it, nor until it says", () => {
+  it("asks only where home says it can be asked now", () => {
     expect(askable(null)).toBe(false)
-    expect(askable({ askAgainAt: LATER, hearing: false })).toBe(false)
-    expect(askable({ askAgainAt: null, hearing: true })).toBe(false)
-    expect(askable(FREE)).toBe(true)
+    expect(askable({ open: false, hearing: false, askAgainAt: LATER })).toBe(
+      false
+    )
+    expect(askable({ open: false, hearing: true, askAgainAt: null })).toBe(
+      false
+    )
+    expect(askable(OPEN)).toBe(true)
     for (const hearAgain of [
       null,
       undefined,
-      { askAgainAt: LATER, hearing: false },
+      { open: false, hearing: false, askAgainAt: LATER },
     ]) {
       const step = askedToHearAgain(QUIET_HEAR_AGAIN, { id: "a", hearAgain })
       expect(step.effects).toEqual([])
@@ -39,19 +43,21 @@ describe("asking home to hear a take again (#3339)", () => {
     ])
   })
 
-  it("asks one take at a time", () => {
-    const second = askedToHearAgain(asking(), { id: "b", hearAgain: FREE })
+  it("asks one take at a time, and not while another act is under way", () => {
+    const second = askedToHearAgain(asking(), { id: "b", hearAgain: OPEN })
     expect(second.effects).toEqual([])
+    expect(askedToHearAgain(QUIET_HEAR_AGAIN, take, true).effects).toEqual([])
   })
 
-  it("lays home's answer over the take asked of: hearing once asked, and when it can be asked again", () => {
+  it("lays home's answer over the take asked of", () => {
     const asked = hearAgainAnswered(asking(), 1, {
       kind: "asked",
-      askAgainAt: LATER,
+      askAgainAt: null,
     })
     expect(hearAgainOf(asked, take)).toEqual({
-      askAgainAt: LATER,
+      open: false,
       hearing: true,
+      askAgainAt: null,
     })
     expect(asked.hearAgain.said).toEqual({ id: "a", kind: "asked" })
     expect(asked.hearAgain.asking).toBeNull()
@@ -61,13 +67,19 @@ describe("asking home to hear a take again (#3339)", () => {
       askAgainAt: LATER,
     })
     expect(hearAgainOf(snoozed, take)).toEqual({
-      askAgainAt: LATER,
+      open: false,
       hearing: false,
+      askAgainAt: LATER,
     })
-    // Not taken: the take as the list read it.
-    const missed = hearAgainAnswered(asking(), 1, { kind: "notTaken" })
-    expect(hearAgainOf(missed, take)).toEqual(FREE)
-    expect(missed.hearAgain.said).toEqual({ id: "a", kind: "notTaken" })
+    // Home holds no such take: none to ask of it again.
+    const settled = hearAgainAnswered(asking(), 1, { kind: "settled" })
+    expect(hearAgainOf(settled, take)).toBeNull()
+    // Not taken, or not heard a first time yet: the take as the list read it.
+    for (const kind of ["notTaken", "waiting", "busy"] as const) {
+      const left = hearAgainAnswered(asking(), 1, { kind })
+      expect(hearAgainOf(left, take)).toEqual(OPEN)
+      expect(left.hearAgain.said).toEqual({ id: "a", kind })
+    }
   })
 
   it("counts an answer only for the ask made last", () => {
@@ -81,9 +93,9 @@ describe("asking home to hear a take again (#3339)", () => {
   it("takes a fresh read's word over what was laid on it, and closes what was said", () => {
     const asked = hearAgainAnswered(asking(), 1, {
       kind: "asked",
-      askAgainAt: LATER,
+      askAgainAt: null,
     })
-    expect(hearAgainOf(hearAgainRead(asked), take)).toEqual(FREE)
+    expect(hearAgainOf(hearAgainRead(asked), take)).toEqual(OPEN)
     expect(hearAgainDismissed(asked).hearAgain.said).toBeNull()
     expect(hearAgainRead(QUIET_HEAR_AGAIN)).toBe(QUIET_HEAR_AGAIN)
   })

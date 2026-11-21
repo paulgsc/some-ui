@@ -51,7 +51,7 @@ const listed: ReadonlyArray<ReconcileEvent> = [
 const ids = (state: ReconcileState): Array<string> =>
   state.read.kind === "read" ? state.read.page.takes.map(({ id }) => id) : []
 
-const FREE = { askAgainAt: null, hearing: false } as const
+const FREE = { open: true, hearing: false, askAgainAt: null } as const
 const LATER = "2026-11-21T15:00:00.000Z"
 
 /** The page with take `a` as home says it hears it again. */
@@ -87,9 +87,25 @@ describe("asking home to hear a take again, from the takes needing attention (#3
     expect(effects).toContain("sendHearAgain")
     expect(ids(state)).toEqual(["a", "b"])
     expect(state.hearAgain.changed.get("a")).toEqual({
-      askAgainAt: LATER,
+      open: false,
       hearing: true,
+      askAgainAt: null,
     })
+  })
+
+  it("sends no act while an ask is under way, and no ask while an act is", () => {
+    const asking = run([
+      ...listedWith(FREE),
+      { type: "hearAgain", id: "a" },
+      { type: "act", id: "a", act: "again" },
+    ])
+    expect(asking.effects).not.toContain("sendAct")
+    const acting = run([
+      ...listedWith(FREE),
+      { type: "act", id: "b", act: "keep" },
+      { type: "hearAgain", id: "a" },
+    ])
+    expect(acting.effects).not.toContain("sendHearAgain")
   })
 
   it("drops a take home holds nothing more to hear in, and a fresh read takes home's word over what was laid on it", () => {

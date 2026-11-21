@@ -243,7 +243,10 @@ export function stepReconcile(
       return playEnded(state, event.play)
     }
     case "act": {
-      if (state.acting !== null) return same(state)
+      // One request about takes at a time: no act while an ask is under way.
+      if (state.acting !== null || state.hearAgain.asking !== null) {
+        return same(state)
+      }
       const listed =
         state.read.kind === "read" &&
         state.read.page.takes.some(({ id }) => id === event.id)
@@ -286,7 +289,9 @@ export function stepReconcile(
         state.read.kind === "read"
           ? state.read.page.takes.find(({ id }) => id === event.id)
           : undefined
-      return take === undefined ? same(state) : askedToHearAgain(state, take)
+      return take === undefined
+        ? same(state)
+        : askedToHearAgain(state, take, state.acting !== null)
     }
     case "hearAgainAnswered": {
       const asked = state.hearAgain.asking

@@ -46,8 +46,12 @@ const take = (
   // and a take asked of lately says when it can be asked again.
   hearAgain:
     id === "n2"
-      ? { askAgainAt: "2026-11-21T15:00:00.000Z", hearing: false }
-      : { askAgainAt: null, hearing: false },
+      ? {
+          open: false,
+          hearing: false,
+          askAgainAt: "2026-11-21T15:00:00.000Z",
+        }
+      : { open: true, hearing: false, askAgainAt: null },
   ...over,
 })
 

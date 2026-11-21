@@ -20,6 +20,7 @@ import {
 } from "@soundbites/components/hear-again"
 import { PlayButton } from "@soundbites/components/take-library/parts"
 import { Unpaired } from "@soundbites/components/unpaired"
+import { HEAR_AGAIN_WORDS } from "@soundbites/lib/hear-again/words"
 import { aboutOfRef } from "@soundbites/lib/library/compartments"
 import { LIBRARY_WORDS } from "@soundbites/lib/library/words"
 import type { ProblemCode } from "@soundbites/lib/reconcile/codes"
@@ -94,7 +95,7 @@ const TakeCard = ({
   const codes = codesOfTake(take)
   const { language } = take.verdict
   const heard = take.heard ?? ""
-  const busy = acting !== null
+  const busy = acting !== null || state.hearAgain.asking !== null
   return (
     <li className="bg-card border-border/50 flex flex-col gap-2 rounded-2xl border p-3">
       <div className="flex min-w-0 items-start gap-3">
@@ -386,6 +387,12 @@ export const TakeReconcile = ({
           {WORDS.done[state.said.act]}
         </Notice>
       )}
+      {state.hearAgain.said?.kind === "settled" &&
+        !takes.some(({ id }) => id === state.hearAgain.said?.id) && (
+          <Notice onDismiss={() => dispatch({ type: "hearAgainDismissed" })}>
+            {HEAR_AGAIN_WORDS.said.settled}
+          </Notice>
+        )}
       {state.said?.kind === "settled" && (
         <Notice onDismiss={() => dispatch({ type: "noticeDismissed" })}>
           {WORDS.settled}

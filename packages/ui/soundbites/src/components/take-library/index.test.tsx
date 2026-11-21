@@ -108,7 +108,11 @@ describe("Takes on home (ST32)", () => {
                   takes: [
                     {
                       ...TAKE,
-                      hearAgain: { askAgainAt: null, hearing: false },
+                      hearAgain: {
+                        open: true,
+                        hearing: false,
+                        askAgainAt: null,
+                      },
                     },
                     UNHEARD,
                   ],

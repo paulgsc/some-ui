@@ -9,9 +9,10 @@
  * (`Exchange { ask, script }` in `@some-ui/video-render`'s `opening.ts`).
  *
  * Each take of a part is an ordinary Studio take on home (C807), named by
- * its line `spoken:<card>.<part>` (soundbites' `spokenLineOf`): two parts split on `:`, so home keeps it
- * as a take with no scene (paulgsc/server `voice/src/about.rs`, `studio`), and
- * never reads it as a scene's (three parts) or an idea's answer (`idea:`).
+ * its line `spoken:<card>.<part>` (`@some-ui/video-render`'s
+ * `spokenLineOf`): two parts split on `:`, so home keeps it as a take with
+ * no scene (paulgsc/server `voice/src/about.rs`, `studio`), and never reads
+ * it as a scene's (three parts) or an idea's answer (`idea:`).
  * The card keeps the id of every take each part has had, append-only: a
  * take said again is one more, and none is ever dropped (C783). Which take a
  * part uses is the owner's pick, and only a pick. An essay reads the takes on

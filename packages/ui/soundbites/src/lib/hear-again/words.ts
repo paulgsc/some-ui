@@ -20,7 +20,7 @@ export const HEAR_AGAIN_WORDS = {
   ask: "Ask home to try again",
   /** Under the ask, while home was asked too recently. */
   askAgainAt: (iso: string): string =>
-    `You can ask again ${dayAt(iso)} at ${timeAt(iso)}.`,
+    `You can ask again on ${dayAt(iso)} at ${timeAt(iso)}.`,
   /** Under a take home is hearing again, on the owner's ask. */
   hearing: "Home is hearing this take again.",
   asking: "Telling home…",
@@ -30,7 +30,10 @@ export const HEAR_AGAIN_WORDS = {
       "Home will try this take again. What it hears shows here once it has.",
     snoozed:
       "Home was asked to try this take again not long ago, so nothing changed. The time you can ask again is under it.",
-    settled: "Home has nothing more to hear in that take.",
+    settled:
+      "Home no longer holds that take, so there is nothing to try again.",
+    waiting:
+      "Home is still hearing this take for the first time, so nothing changed. Ask again once it has.",
     notTaken: "Home didn't take that just now, so nothing changed. Try again.",
     busy: "This phone was busy with home just then, so nothing changed. Try again in a moment.",
   } satisfies Record<HearAgainAnswer["kind"], string>,

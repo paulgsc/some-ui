@@ -423,7 +423,7 @@ export function toggled(chips: Chips, chip: ChipPick): Chips {
 
 /**
  * The kinds home is asked for, for a compartment and the kind picked in
- * All: Studio's five are all home's `studio`; each other is its
+ * All: Studio's six are all home's `studio`; each other is its
  * own; All, and a kind this phone doesn't know, ask for every kind.
  */
 export function kindsAsked(

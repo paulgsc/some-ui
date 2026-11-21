@@ -337,19 +337,19 @@ const HomeCard = ({
         </div>
       </div>
       {gone === null && (
-        <div className="flex flex-wrap gap-2">
+        <>
           <HearAgainButton
             take={take}
             state={state}
             onAsk={() => dispatch({ type: "hearAgain", id: take.id })}
           />
-        </div>
+          <HearAgainLines
+            take={take}
+            state={state}
+            onDismiss={() => dispatch({ type: "hearAgainDismissed" })}
+          />
+        </>
       )}
-      <HearAgainLines
-        take={take}
-        state={state}
-        onDismiss={() => dispatch({ type: "hearAgainDismissed" })}
-      />
       {row?.(take)}
       {here && playback.kind === "loading" && <Notice>{WORDS.loading}</Notice>}
       {state.unplayable === take.id && (

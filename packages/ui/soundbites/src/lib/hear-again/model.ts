@@ -9,27 +9,37 @@
  *
  * Rules that hold by structure:
  *
- * - **Asked only where home says it will hear it again,** and not while home
- *   is hearing it nor until the time home says it can be asked again
- *   (`askable`). Home holds the snooze; the phone only shows it.
+ * - **Asked only where home says it can be asked now** (`open`): not while
+ *   home is hearing it, nor while home's snooze runs (`askAgainAt`), nor of
+ *   a take home hasn't heard a first time. Home holds the snooze; the phone
+ *   only shows it.
  * - **One ask at a time,** and an answer counts only for the ask made last.
+ *   A screen with other acts on a take sends no ask while one is under way,
+ *   and no act while an ask is (`askedToHearAgain`'s `busy`).
  * - **What home says wins.** An answer changes only the take asked of, laid
  *   over the list as it was read (`changed`); a fresh read, home's own word
  *   on every take, clears what was laid over it.
  */
 
-/** Whether home hears a take again on the owner's ask: when it can next be asked (null: now), and whether it is hearing it. */
+/**
+ * Whether home hears a take again on the owner's ask, as home says it:
+ * whether it can be asked now (`open`), whether it is hearing it again, and
+ * when it can next be asked while home's snooze runs (null otherwise).
+ */
 export type HearAgain = {
-  readonly askAgainAt: string | null
+  readonly open: boolean
   readonly hearing: boolean
+  readonly askAgainAt: string | null
 }
 
 /** What came of an ask. */
 export type HearAgainAnswer =
   /** Home will hear it again (`asked`), or was asked too recently (`snoozed`): when it can next be asked. */
   | { readonly kind: "asked" | "snoozed"; readonly askAgainAt: string | null }
-  /** Home doesn't hold the take, or hears nothing more in it. */
+  /** Home doesn't hold the take. */
   | { readonly kind: "settled" }
+  /** Home hasn't heard the take a first time yet: nothing changed. */
+  | { readonly kind: "waiting" }
   /** Home didn't take it, or didn't answer: nothing changed. */
   | { readonly kind: "notTaken" }
   /** This phone stayed busy with home, so home wasn't told: nothing changed. */
@@ -48,8 +58,8 @@ export type HearAgainSlice = {
     /** Each ask's number: an answer to an earlier one changes nothing. */
     readonly asks: number
     readonly said: HearAgainSaid | null
-    /** What home said of a take since the list was read, by its id. */
-    readonly changed: ReadonlyMap<string, HearAgain>
+    /** What home said of a take since the list was read, by its id: null, none to ask. */
+    readonly changed: ReadonlyMap<string, HearAgain | null>
   }
 }
 
@@ -68,27 +78,32 @@ export const QUIET_HEAR_AGAIN: HearAgainSlice = {
   hearAgain: { asking: null, asks: 0, said: null, changed: new Map() },
 }
 
-/** Whether a take can be asked to be heard again now: home says so, and isn't hearing it. */
+/** Whether a take can be asked to be heard again now: home says so. */
 export const askable = (hearAgain: HearAgain | null): boolean =>
-  hearAgain !== null && !hearAgain.hearing && hearAgain.askAgainAt === null
+  hearAgain?.open === true
 
 /** A take's hear-again as the screen shows it: what home said since the read, else the read's. */
-export const hearAgainOf = (
+export function hearAgainOf(
   state: HearAgainSlice,
   take: { readonly id: string; readonly hearAgain?: HearAgain | null }
-): HearAgain | null =>
-  state.hearAgain.changed.get(take.id) ?? take.hearAgain ?? null
+): HearAgain | null {
+  const { changed } = state.hearAgain
+  return changed.has(take.id)
+    ? (changed.get(take.id) ?? null)
+    : (take.hearAgain ?? null)
+}
 
 /**
- * Asks home to hear take `take` again, if it can be asked now and no ask is
- * under way; otherwise nothing.
+ * Asks home to hear take `take` again, if it can be asked now and no ask,
+ * nor another act on the screen (`busy`), is under way; otherwise nothing.
  */
 export function askedToHearAgain<S extends HearAgainSlice>(
   state: S,
-  take: { readonly id: string; readonly hearAgain?: HearAgain | null }
+  take: { readonly id: string; readonly hearAgain?: HearAgain | null },
+  busy = false
 ): HearAgainStep<S> {
   const slice = state.hearAgain
-  if (slice.asking !== null || !askable(hearAgainOf(state, take))) {
+  if (busy || slice.asking !== null || !askable(hearAgainOf(state, take))) {
     return { state, effects: [] }
   }
   const seq = slice.asks + 1
@@ -111,13 +126,19 @@ export function hearAgainAnswered<S extends HearAgainSlice>(
   const id = slice.asking
   if (seq !== slice.asks || id === null) return state
   const changed = new Map(slice.changed)
-  if (answer.kind === "asked" || answer.kind === "snoozed") {
-    const before = changed.get(id)
+  if (answer.kind === "asked") {
+    changed.set(id, { open: false, hearing: true, askAgainAt: null })
+  }
+  if (answer.kind === "snoozed") {
+    const before = changed.has(id) ? changed.get(id) : undefined
     changed.set(id, {
+      open: false,
+      hearing: before?.hearing ?? false,
       askAgainAt: answer.askAgainAt,
-      hearing: answer.kind === "asked" || (before?.hearing ?? false),
     })
   }
+  // Home holds no such take: none to ask of it again.
+  if (answer.kind === "settled") changed.set(id, null)
   return {
     ...state,
     hearAgain: {

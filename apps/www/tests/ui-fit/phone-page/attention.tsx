@@ -42,7 +42,9 @@ const take = (
   verdict: judged,
   // Home hears again a take it never heard (#3339).
   hearAgain:
-    judged.kind === "failed" ? { askAgainAt: null, hearing: false } : null,
+    judged.kind === "failed"
+      ? { open: true, hearing: false, askAgainAt: null }
+      : null,
 })
 
 const TAKES: ReadonlyArray<AttentionTake> = [
