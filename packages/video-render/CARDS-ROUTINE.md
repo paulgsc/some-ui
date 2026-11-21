@@ -34,7 +34,9 @@ rendered once, and published it where home picks it up.
   narration, a line the speech model can't say (empty, punctuation alone,
   or over 4,000 characters), and an essay whose words run past ten minutes.
   It also refuses a malformed cut list, a card with no stamp, a series
-  version home doesn't hold, and anything that version lacks. Drawing
+  version home doesn't hold, and anything that version lacks. Given a clone
+  of each repository the stamp pins, it holds every line's sources to the
+  stamp's commit (below, "An essay is an authority"). Drawing
   refuses a line that doesn't fit a card or a character the font lacks.
 - **Home** reads `paulgsc/testing`'s `cards/` folder hourly and keeps each
   new essay as first served. Its render worker has Kokoro, the speech model
@@ -74,7 +76,39 @@ Each scene says something, in a `spoken` field:
 "…"}`. It says the one command or screen to start from next time, and
    where to look when it fails. Show the card that has that command.
 
-Rules for every line, since you, months later, are the listener:
+## An essay is an authority
+
+You, months later, can't check what an essay says without the context it
+saves you from rebuilding, so you believe it. A wrong line does harm. So
+every line is written from the code at the stamp's commits, and names it:
+
+- **Cite each scene's narration.** Give its `spoken` a `sources` list: each
+  `{"repo": "<owner>/<repo>", "path": "<file>", "lines": [<first>, <last>],
+"quote": "<a phrase from it>"}`, with `lines`, `quote` or both. The repository
+  is one the stamp pins, and the file is read at the stamp's commit. Cite
+  what the sentence rests on: the line that says the unit runs as root, not
+  the whole module. An intro or a close that says what a command does cites
+  it the same way.
+- **Quote rather than count** where you can: a short phrase survives a line
+  added above it, and `cards-stale` (below) then reports only a real change.
+- **Say what applies on home.** Where the owner's own setup differs from the
+  general case, say what happens on home, and cite where home's setup says
+  so. For example, "then run nixos-rebuild switch" is right in general, and
+  on home the dotfiles' nightly auto-upgrade applies the configuration:
+  say that, citing the dotfiles.
+- `cards-check` refuses a source that isn't at the stamp's commit: a file
+  that isn't there, lines past its end, or a quote not in them. It notes a
+  scene whose narration cites nothing, and an essay from before this rule
+  keeps its notes, since an essay already served is never rewritten.
+- **Finding a stale essay:** `pnpm --filter @some-ui/video-render render
+cards-stale <essay file> --repo <owner/repo>=<clone> …` follows each
+  source to each clone's `HEAD` (or `--at <commit>`) and lists every line
+  whose file is gone or no longer says what it cited. A listed line is the
+  reason for a new essay on the same subject.
+
+## Rules for every line
+
+Since you, months later, are the listener:
 
 - Say what a thing is before you name it: "the dotfiles repository, which
   holds this machine's whole configuration", never a bare repository name,
@@ -92,7 +126,8 @@ Rules for every line, since you, months later, are the listener:
 1. **Start from `main`** of `paulgsc/some-ui` and of `paulgsc/testing`, and
    install some-ui: `pnpm install --frozen-lockfile`.
 2. **Read the subject** at the commits the essay will be stamped with. Clone
-   each repository it explains read-only, and note each one's short commit.
+   each repository it explains read-only, with enough history to hold that
+   commit, and note each one's short commit. Keep the clones for step 7.
 3. **Write the cut list** in the cheat-sheet series, version 4, as
    `packages/video-render/src/sample/videos/*/cut-list.json` are. Read both,
    cards and words, before writing.
@@ -108,6 +143,8 @@ Rules for every line, since you, months later, are the listener:
      commit, ◧ `pr` for an open pull request, □ `next` for what is planned
      and not built, △ `gap` for a known gap, ✋ `you` for a step only the
      reader does. A claim you can't check gets no card, and isn't said.
+   - **Sources:** each scene's narration cites the code it describes
+     (above, "An essay is an authority").
    - **Stamp:** `{"sources": ["<owner>/<repo>@<short sha>", …], "date":
 "<YYYY-MM-DD>"}`, the commits you read and the day you checked them.
      Say no "now": the stamp dates what is said too.
@@ -133,8 +170,10 @@ Rules for every line, since you, months later, are the listener:
    order of the stamps' days, newest first. Never edit or remove an essay
    already there, since home keeps each as first served.
 7. **Check the folder:**
-   `pnpm --filter @some-ui/video-render render cards-check <paulgsc/testing>/cards`
-   until it says ready. The newest essay must be spoken.
+   `pnpm --filter @some-ui/video-render render cards-check <paulgsc/testing>/cards --repo <owner/repo>=<clone> …`,
+   a `--repo` for each repository your essay's stamp pins, until it says
+   ready. The newest essay must be spoken. Every note about your essay is
+   a scene to cite before you publish; notes about older essays stay.
 8. **Open a pull request** in `paulgsc/testing`. Before pushing, run
    `python3 scripts/guard.py --staged` there until it says ready. Title it
    `data(cards): <the essay's title>`. Its body names the key, the stamp's
@@ -152,6 +191,11 @@ Rules for every line, since you, months later, are the listener:
 - **`cards-check` refuses the essay:** each line names the scene and why.
   "it has no intro" means the first scene's `spoken` isn't the intro;
   "it says nothing" means a scene has no `spoken`.
+- **`cards-check` refuses a source:** the line names the scene, the file
+  and what it didn't find at the stamp's commit. Read the file there and
+  fix the source, or the sentence if the code says otherwise. "the clone
+  given doesn't hold that commit" means the clone is too shallow: fetch more
+  of its history.
 - **The render stops at a card:** a line doesn't fit the card, or the font
   lacks a character. Shorten the line on the card; what is said can stay.
 - **The speaker answers an error:** check `curl <speaker>/health`; a line
@@ -163,7 +207,7 @@ Rules for every line, since you, months later, are the listener:
 
 - Upload, attach or send a video anywhere. Home renders your copy.
 - Write or say a claim it didn't check against the stamp's commits, or a
-  card with no stamp.
+  card with no stamp. A scene's narration names the code it rests on.
 - Ask you to record your voice. Every line is said by home's speech model.
 - Delete an essay from `cards/`. The folder keeps every essay until it grows
   enough to need the call's leave rule (C327).

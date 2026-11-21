@@ -1,0 +1,18 @@
+{
+  "id": "C982",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/claims.ts",
+    "some-ui:packages/video-render/src/cut-list.ts"
+  ],
+  "chose": "A scene's narration is the claim every scene of a cards essay makes, so it is the line that owes a source. An intro or a close may cite sources, checked the same way, and is not reported without one; a chapter line orients and carries none; a spoken card's turns are an exchange with the owner, not claims, and carry none.",
+  "options": [
+    "narration owes a source; intro and close may carry one (this)",
+    "every said line owes one, intro, chapter and close included",
+    "only lines with a badge-worthy claim, marked by the author per line"
+  ],
+  "gray": "Which sentences of an essay count as claims decides what the owner can trust without checking; #3036 names it as a call, and no check or earlier decision settles it.",
+  "undo": "Change claimOf's owed flag in packages/video-render/src/claims.ts and the field's place in SpokenSchema; no stored essay depends on it.",
+  "refs": ["#3036", "#2980"]
+}

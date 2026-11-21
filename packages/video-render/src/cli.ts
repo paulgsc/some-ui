@@ -31,12 +31,20 @@
  * one job a part (`record:call --part <k>`). It refuses a week that can't
  * make a call, as call-check does.
  *
- *   pnpm --filter @some-ui/video-render render cards-check <cards folder>
+ *   pnpm --filter @some-ui/video-render render cards-check <cards folder> [--repo <owner/repo>=<clone> …]
  *
  * checks paulgsc/testing's `cards/` folder before it is published
  * (`cardsFolderProblems`, CARDS7): its index, every essay it lists as a
  * cards essay in a version of its series this checkout holds, and no essay
  * file it forgets. What only drawing finds is `record:cards`' to refuse.
+ * With a clone of each repository the essays' stamps pin, it also holds
+ * every line's sources to its stamp's commit (#3036, `claims.ts`), and
+ * notes a scene whose narration names none.
+ *
+ *   pnpm --filter @some-ui/video-render render cards-stale <essay file> --repo <owner/repo>=<clone> … [--at <commit>]
+ *
+ * lists the essay's lines whose source has moved since its stamp, at each
+ * clone's `HEAD` or `--at` (`staleClaims`, #3036).
  *
  *   pnpm --filter @some-ui/video-render render clip-check <clips folder>
  *
@@ -75,11 +83,11 @@
  * `pnpm --filter` runs this from the package; INIT_CWD is where it was typed.
  */
 
-import { execFile } from "node:child_process"
+import { execFile, execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { existsSync, readFileSync } from "node:fs"
 import { access, mkdir, readdir, writeFile } from "node:fs/promises"
-import { dirname, join, relative } from "node:path"
+import { basename, dirname, join, relative } from "node:path"
 import { parseArgs, promisify } from "node:util"
 import { callsAtCommit } from "@some-ui/eslint-kit/calls"
 import type { Call } from "@some-ui/eslint-kit/calls"
@@ -95,7 +103,14 @@ import {
   whyOf,
 } from "./call-facts"
 import type { CallFacts } from "./call-facts"
-import { CARDS_SERIES, cardsFolderProblems } from "./cards-essay"
+import {
+  CARDS_SERIES,
+  cardsFolderProblems,
+  cardsFolderSources,
+  parseCardsEssay,
+} from "./cards-essay"
+import type { ReadFile } from "./claims"
+import { SOURCE_REPO, sourceName, staleClaims } from "./claims"
 import { clipFolderProblems, parseClipIndex } from "./clip"
 import { CUES, cueWav } from "./cues"
 import { problemsOf } from "./cut-list"
@@ -140,6 +155,8 @@ async function main(): Promise<void> {
       "without-burn-ins": { type: "boolean", default: false },
       from: { type: "string" },
       to: { type: "string" },
+      repo: { type: "string", multiple: true, default: [] },
+      at: { type: "string" },
     },
   })
   const [first, second, third, fourth, fifth, sixth] = positionals
@@ -272,16 +289,54 @@ async function main(): Promise<void> {
           ])
         held.set(`${id}@${version}`, series.value)
       }
-    const problems = cardsFolderProblems(
-      files,
-      (id, version) => held.get(`${id}@${version}`) ?? null
-    )
+    const clones = reposOf(values.repo)
+    const sources = cardsFolderSources(files, readAt(clones))
+    const problems = [
+      ...cardsFolderProblems(
+        files,
+        (id, version) => held.get(`${id}@${version}`) ?? null
+      ),
+      ...sources.problems,
+    ]
+    for (const note of sources.notes) process.stderr.write(`note: ${note}\n`)
     if (problems.length > 0)
       fail([`${second} can't be published:`, ...problems])
     const essays = files.size - 1
     process.stdout.write(
       `${second}: ${essays} ${essays === 1 ? "essay" : "essays"}, ready\n`
     )
+    return
+  }
+  if (first === "cards-stale") {
+    if (!second || values.repo.length === 0)
+      fail([
+        "usage: render cards-stale <essay file> --repo <owner/repo>=<clone> … [--at <commit>]",
+      ])
+    const file = here(second)
+    const essay = parseCardsEssay(basename(file, ".json"), await readJson(file))
+    if (!essay.ok) fail([`${second} isn't a cards essay:`, ...essay.problems])
+    const clones = reposOf(values.repo)
+    const at = values.at ?? "HEAD"
+    const { stale, unfollowed } = staleClaims(
+      essay.value,
+      readAt(clones),
+      (repo) => {
+        const dir = clones.get(repo)
+        return dir === undefined
+          ? undefined
+          : gitOut(dir, ["rev-parse", "--verify", `${at}^{commit}`])
+      }
+    )
+    for (const claim of stale)
+      process.stdout.write(
+        `${claim.scene}: ${sourceName(claim.source)}: ${claim.why}\n  it says: ${claim.said}\n`
+      )
+    for (const line of unfollowed)
+      process.stderr.write(`not followed: ${line}\n`)
+    process.stdout.write(
+      `${second}: ${stale.length === 0 ? "no line's source has moved" : `${stale.length} ${stale.length === 1 ? "source has" : "sources have"} moved since its stamp`}${unfollowed.length === 0 ? "" : `, and ${unfollowed.length} couldn't be followed`}\n`
+    )
+    if (unfollowed.length > 0) process.exitCode = 1
     return
   }
   if (first === "clip-check") {
@@ -438,6 +493,54 @@ async function convert(
 }
 
 const run = promisify(execFile)
+
+/** Each `<owner/repo>=<clone>` given, by its repository. */
+function reposOf(given: ReadonlyArray<string>): ReadonlyMap<string, string> {
+  const clones = new Map<string, string>()
+  for (const pair of given) {
+    const at = pair.indexOf("=")
+    const repo = pair.slice(0, at)
+    if (at < 1 || !SOURCE_REPO.test(repo))
+      fail([`--repo ${pair}: it isn't <owner/repo>=<clone>`])
+    clones.set(repo, here(pair.slice(at + 1)))
+  }
+  return clones
+}
+
+/** What `git` prints in `dir`, or `undefined` when it refuses. */
+function gitOut(dir: string, args: ReadonlyArray<string>): string | undefined {
+  try {
+    return execFileSync("git", ["-C", dir, ...args], {
+      encoding: "utf8",
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim()
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * A file at a commit, read from the clone given for its repository: no
+ * clone, or a clone without that commit (a shallow one), reads nothing.
+ */
+function readAt(clones: ReadonlyMap<string, string>): ReadFile {
+  return (repo, commit, path) => {
+    const dir = clones.get(repo)
+    if (dir === undefined) return { kind: "no-clone" }
+    if (gitOut(dir, ["cat-file", "-e", `${commit}^{commit}`]) === undefined)
+      return { kind: "no-commit" }
+    // A folder, or nothing, at that path is no file to cite.
+    if (gitOut(dir, ["cat-file", "-t", `${commit}:${path}`]) !== "blob")
+      return { kind: "absent" }
+    // Not trimmed: a line count is the file's own.
+    const text = execFileSync("git", ["-C", dir, "show", `${commit}:${path}`], {
+      encoding: "utf8",
+      maxBuffer: 64 * 1024 * 1024,
+    })
+    return { kind: "file", text }
+  }
+}
 
 /** GitHub's search answers at most this many results to one query. */
 const SEARCH_MOST = 1000
