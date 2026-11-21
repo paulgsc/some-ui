@@ -15,9 +15,7 @@
  *
  * Each run ends in its lane's runtime (`./kept-runtime`), so the marks that
  * read it (the header's, Settings') show how the pull went, lane by lane;
- * the pull itself says only whether all of them got in step. A screen reads
- * what it shows of home as its own read, beside the drain, never by waiting
- * on a lane's run (Jobs' picks, `lib/jobs/pull`, JP1).
+ * the pull itself says only whether all of them got in step.
  */
 import { CHECK_MS } from "@/lib/pull-refresh/model"
 import type { Refresher } from "@/lib/pull-refresh/refreshers"

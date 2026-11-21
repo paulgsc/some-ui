@@ -100,7 +100,6 @@ describe("a pull on a Jobs screen", () => {
       value: { kind: "failed", why: "busy" },
     })
     expect(await screenRefreshers.checkAll()).toEqual([PULL_CHECKS])
-    // No answer from home.
     keep.mockRejectedValueOnce(
       new HomeNoAnswerError({
         kind: "unreachable",
