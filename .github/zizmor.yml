@@ -4,7 +4,7 @@
 # Every suppression below says why the finding cannot be exploited here. A
 # new one needs the same: a reason, not a count (#2116).
 rules:
-  # A tag or commit, never a branch (C952).
+  # Any ref, a branch included; only a bare action fails (C952).
   unpinned-uses:
     config:
       policies:

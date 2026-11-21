@@ -691,9 +691,10 @@ jobs:
       - name: Check workflows
         run: nix develop .#ci --command node scripts/check-workflows.ts
 
-      # WS2 (docs/ci-architecture.md). Outside Nix: the script installs its pinned tools with the runner's python3
-      # and go into the runner's temp directory, and saves no Actions cache,
-      # so no retention family is needed.
+      # WS2 (docs/ci-architecture.md). Outside Nix: the script installs its
+      # pinned tools with the runner's python3 and go into the runner's temp
+      # directory, and saves no Actions cache, so no retention family is
+      # needed.
       - name: Check workflow security
         env:
           WORKFLOW_SECURITY_TOOLS: ${{ runner.temp }}/workflow-security
