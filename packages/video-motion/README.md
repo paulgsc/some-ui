@@ -32,12 +32,24 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
   series' pin.
 
 - `walk <app> --sample <file> --out <folder>` replays an app's scripted walk (SFEED7a,
-  #2736) in a sandbox holding only the sample: the app's own built pages, served from
-  `http://sandbox.invalid` with every other request refused, driven step by step. It
-  writes each step's screen as a snip and `walk.json`: each snip's time and each tap's
-  place and time, on the walk's own timeline. Suspender Ledger's popup is the first
-  (`src/walk/suspender-ledger.ts`); its stand-ins answer the popup's four reads from the
-  sample.
+  #2736; WALK1, #3282) on a stage holding only the sample, driven step by step. It writes
+  each step's screen as a snip and `walk.json`: each snip's time and each tap's place and
+  time, on the walk's own timeline. A step is one of a closed set of actions (open, tap,
+  type, dwell), and a walk names its stage (C860, `src/walk/run.ts`):
+
+  - **sandbox** (`src/walk/stage-sandbox.ts`): the app's own built pages, served from
+    `http://sandbox.invalid` with every other request refused. Suspender Ledger's popup
+    walks here (`src/walk/suspender-ledger.ts`); its stand-ins answer the popup's four
+    reads from the sample.
+  - **apk** (`src/walk/stage-apk.ts`): the debug APK on a booted emulator, its WebView
+    driven by Playwright, each snip the whole screen. Jobs walks here
+    (`src/walk/jobs.ts`), against the stand-in home answering its story sample
+    (`apps/www/tests/walk/jobs-week.json`), run by `apps/mobile/walk/walk-apk.sh` inside
+    Snips Capture's emulator.
+
+  A walk can also be given a microphone (`src/walk/microphone.ts`, WALK3): the page's
+  audio `getUserMedia` answers a canned clip, so the app's own recorder records it.
+
 - `promo <release folder> --out <folder> [--brand <folder>] [--prove]` makes a release's promo (HYPER3,
   #2726): the folder's `release.json` (`some-ui.promo/1`, the words a session writes) and
   `sample.json` (the walk's), from paulgsc/testing's `promo/<app>/<version>/`. It walks
