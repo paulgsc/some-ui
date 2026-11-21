@@ -88,20 +88,20 @@ picture whose screen a release picture shows is dropped with its record.
 
 A snip record:
 
-| Field                 | What it is                                                                                                            |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `id`                  | `<surface>:<path>:<viewport>:<appVersion>:<hash12>`; `path` may be `@wing/tab`                                        |
-| `surface`, `viewport` | Where, and at which named size                                                                                        |
-| `width`, `height`     | The picture's own size, read from the PNG                                                                             |
+| Field                 | What it is                                                                                                                |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `id`                  | `<surface>:<path>:<viewport>:<appVersion>:<hash12>`; `path` may be `@wing/tab`                                            |
+| `surface`, `viewport` | Where, and at which named size                                                                                            |
+| `width`, `height`     | The picture's own size, read from the PNG                                                                                 |
 | `scale`               | Its pixels per CSS pixel: 2 for the web phone, 1 on the desktop; 1 by convention on the APK, whose device pixels it keeps |
-| `regions`             | Each part the page names (`data-region`), `{ref, box}`, the box in CSS pixels; none on the APK (below)                |
-| `build`               | `release` (the APK as it ships, or the Pages site) or `debug` (the APK's debug build, for a screen taps do not reach) |
-| `route`               | The route, `$param`s and all, or a release screen's `@wing/tab`                                                       |
-| `path`                | The address taken                                                                                                     |
-| `module`              | The part of the app (`moduleOf`), for grouping on the desk                                                            |
-| `shows`               | The screen's own heading, or else its module                                                                          |
-| `description`         | One plain line: "Studio: Takes, on the Android app, with sample data."                                                |
-| `image`, `recording?` | `{name, kind, bytes, sha256}`                                                                                         |
+| `regions`             | Each part the page names (`data-region`), `{ref, box}`, the box in CSS pixels; none on the APK (below)                    |
+| `build`               | `release` (the APK as it ships, or the Pages site) or `debug` (the APK's debug build, for a screen taps do not reach)     |
+| `route`               | The route, `$param`s and all, or a release screen's `@wing/tab`                                                           |
+| `path`                | The address taken                                                                                                         |
+| `module`              | The part of the app (`moduleOf`), for grouping on the desk                                                                |
+| `shows`               | The screen's own heading, or else its module                                                                              |
+| `description`         | One plain line: "Studio: Takes, on the Android app, with sample data."                                                    |
+| `image`, `recording?` | `{name, kind, bytes, sha256}`                                                                                             |
 
 `regions` are measured on the web walk, where the picture is the page's own
 window, and cut to it. The APK's pictures are the device's whole screen,
@@ -126,8 +126,10 @@ invariant 6). Each pass:
    bounded.
 2. downloads the `snips-bundle-<commit>` artifact, then checks the schema and
    `SHA256SUMS`. A mismatch refuses the whole bundle.
-3. files each snip by id, per app version, never deleting one an essay
-   names. A bundle delivered twice files nothing new.
+3. fetches the bundle an essay names, hands its pictures to the render, and
+   keeps only the owner's own marks and which snip each essay used. Nothing
+   CI can make again is kept twice: home keeps no picture library, and
+   drops its copies once the video is made (owner, 2026-11-21).
 4. puts each record, never an image, in the mailbox.
 
 The token is `SNIPS_GITHUB_TOKEN`, a fine-grained token with Actions: read

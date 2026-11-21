@@ -14,7 +14,8 @@
  * gains nothing.
  *
  * - The capture writes snip records (`apps/www/src/lib/snips`).
- * - Home keeps snips (SNIPS2) and clip frames (CL1). Beside an essay that
+ * - Home fetches the bundle an essay names (SNIPS2) and keeps clip frames
+ *   (CL1). Beside an essay that
  *   names some it hands them as it hands takes, each kind in its own
  *   folder: `<key>.snips/` with `snips.json` (`some-ui.snips-given/1`) and
  *   the pictures under their bundle names, and `<key>.clips/` with each
