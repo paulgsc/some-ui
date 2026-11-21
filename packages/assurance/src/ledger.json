@@ -881,6 +881,58 @@
             "by": "none"
           },
           "amendments": []
+        },
+        {
+          "id": "VH7",
+          "kind": "OA2",
+          "property": "outcome",
+          "claim": "A voice note is heard within 25 minutes of reaching home; if one waits longer, or the transcriber keeps trying and almost nothing gets heard, I am told, with what is waiting on it.",
+          "requirement": "The transcriber is a shared stage (server crate::stage::Stage::Transcriber). At the start of each pass and after each attempt it keeps, it reads every note still waiting (voice_repo::transcript::backlog, the queue's own predicate over the whole queue, never the batch) and exports when the oldest reached home (stage_oldest_waiting_since_timestamp_seconds, aged by Prometheus) and how many wait; it counts how each attempt ended (stage_attempts_total: done for heard or silent, refused for unreadable or too long, failed for a deadline or a failure). StageDegraded fires when the oldest note waiting is older than HEARD_WITHIN (1,500 s, a policy constant exported as stage_promise_seconds, compile-time asserted above a turn given to the renders, an interval and one deadline-long note) for 5 minutes; StageBroken fires when the last hour holds more attempts than one note gets (stage_attempts_per_item, 3) and under a tenth of them done or refused, for 5 minutes. Both reach the owner through home-alerts.yml. The file_host dashboard's SHARED STAGES row shows the stage as OK, SLOW or STUCK, its oldest waiting, and who waits on it: notes waiting, cards essays held for a take, and the share of the last hour the batch lane was held for notes and for Rust Rounds programs.",
+          "bound": {
+            "value": 1500,
+            "unit": "seconds",
+            "tighter": "lower"
+          },
+          "verdict": "holds",
+          "conclusion": "Tested in server CI (promtool and file_host's stage tests): a note waiting past 25 minutes, or an hour of attempts that almost never end, raises an alert, and one bad note failing its three attempts does not; whether 25 minutes is the right bound for the owner's notes is only shown by real use, and a pass that fails on storage leaves the last reading, which TranscriberFailing reports.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "StageDegraded fires once the oldest note has waited past its promise for 5 minutes and stays quiet while notes are picked up or nothing waits; StageBroken fires on an hour of deadlines and stays quiet while attempts end, for one bad note, and for refusals.",
+              "ref": "server:infra/prometheus/rules/home.test.yml"
+            },
+            {
+              "class": "structural",
+              "says": "Stage is a closed enum: each case names its promise, how its attempts end and who waits on it, and a test fails while a case has no alert test or no tile on the overview.",
+              "ref": "server:apps/servers/file_host/src/stage.rs"
+            },
+            {
+              "class": "measured",
+              "says": "The backlog is every note the queue would hear, past any batch and in any order: the oldest's arrival and the count, and nothing once all are heard or out of attempts.",
+              "ref": "server:crates/db/voice/src/transcript.rs"
+            },
+            {
+              "class": "structural",
+              "says": "The pass reads the backlog before anything else it can fail on and again after each attempt it keeps.",
+              "ref": "server:apps/servers/file_host/src/transcribe/pass.rs"
+            },
+            {
+              "class": "structural",
+              "says": "Grafana reads what Prometheus has firing from ALERTS and sends each alert to the Slack contact point.",
+              "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+            }
+          ],
+          "proof": [
+            "server:infra/prometheus/rules/home.test.yml#StageDegraded",
+            "server:infra/prometheus/rules/home.test.yml#StageBroken",
+            "server:apps/servers/file_host/src/stage.rs#every_stage_has_its_alerts_their_tests_and_its_tile",
+            "server:crates/db/voice/src/transcript.rs#the_backlog_is_every_note_waiting_and_its_oldest"
+          ],
+          "watch": {
+            "by": "alert",
+            "ref": "server:infra/prometheus/rules/home.yml"
+          },
+          "amendments": []
         }
       ]
     },
