@@ -65,6 +65,50 @@ describe("what each kind's take is about, through its port", () => {
     expect(line("game", "999", {})).toBe("A game")
   })
 
+  it("says the half a bite was in, and the unit it is about (#3049)", () => {
+    const named: TakeNames = {
+      ...NAMES,
+      unit: (unit, side) =>
+        unit === "defense" ? `${side ?? "No one's"} defense` : null,
+      half: (half) => (half === "second" ? "2nd half" : null),
+    }
+    const said = (fields: Record<string, string>): string => {
+      const about = portAbout(
+        "game",
+        { ref: "401772", fields },
+        named,
+        ABOUT_WORDS
+      )
+      return about === null
+        ? "studio"
+        : [LIBRARY_WORDS.subject(about), LIBRARY_WORDS.detail(about)]
+            .filter((part) => part !== null)
+            .join(" · ")
+    }
+    const fields = {
+      strip: "Q3 4:12 · SF 17, LAR 13",
+      scenario: "fourth-down",
+      unit: "defense",
+      unitSide: "LAR",
+      half: "second",
+    }
+    expect(said(fields)).toBe(
+      "49ers vs Rams · 2nd half · Q3 4:12 · Fourth down · LAR defense"
+    )
+    // A matched play's quarter says the half already.
+    expect(
+      said({ ...fields, matchedBy: "next", playPeriod: "3", playClock: "4:05" })
+    ).toBe("49ers vs Rams · Q3 4:05 · Fourth down · LAR defense")
+    // What this phone can't name is left out, never guessed.
+    expect(said({ ...fields, unit: "goalposts", half: "third" })).toBe(
+      "49ers vs Rams · Q3 4:12 · Fourth down"
+    )
+    // A build that names neither says neither.
+    expect(line("game", "401772", fields)).toBe(
+      "49ers vs Rams · Q3 4:12 · Fourth down"
+    )
+  })
+
   it("says the play home matched a bite to, or that it found none (GWB14)", () => {
     const fields = {
       strip: "Q3 4:12 · SF 17, LAR 13 · 4th & 2 at the LAR 38",

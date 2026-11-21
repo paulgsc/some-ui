@@ -1,10 +1,12 @@
 import type { BiteMoment, Said } from "@game-week/lib/bite"
 import {
   biteFields,
+  halfName,
   line,
   MAX_LINE_CHARS,
   pickedAfter,
   scenarioName,
+  unitName,
 } from "@game-week/lib/bite"
 import { CATALOG_VERSION, SCENARIOS } from "@some-ui/game-scenarios"
 import { describe, expect, it } from "vitest"
@@ -126,5 +128,16 @@ describe("a bite's scenario by name", () => {
       expect(scenarioName(scenario.id)).toBe(scenario.name)
     }
     expect(scenarioName("not-a-scenario")).toBeNull()
+  })
+})
+
+describe("a bite's unit and half by name, for Takes (#3049)", () => {
+  it("names what this catalog knows, and nothing else", () => {
+    expect(unitName("defense", "CHI")).toBe("CHI defense")
+    expect(unitName("coaching", null)).toBe("Coaching")
+    expect(unitName("goalposts", null)).toBeNull()
+    expect(halfName("second")).toBe("2nd half")
+    expect(halfName("overtime")).toBe("Overtime")
+    expect(halfName("third")).toBeNull()
   })
 })

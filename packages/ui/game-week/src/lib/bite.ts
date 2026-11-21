@@ -11,12 +11,16 @@
 import type { ScenarioId } from "@some-ui/game-scenarios"
 import {
   CATALOG_VERSION,
+  HALF_WORDS,
+  HALVES,
   isScenarioId,
   scenarioOf,
+  UNITS,
 } from "@some-ui/game-scenarios"
 
 import type { ModeId } from "./modes"
 import type { BiteUnit } from "./ranked"
+import { unitLine } from "./words"
 
 /**
  * The largest clock offset home keeps with a bite, either way (a day,
@@ -144,4 +148,19 @@ export function pickedAfter(
  */
 export function scenarioName(id: string): string | null {
   return isScenarioId(id) ? scenarioOf(id).name : null
+}
+
+/**
+ * A bite's unit by name, as its `unit` and `unitSide` fields name it
+ * ("CHI defense"); null for a unit this catalog lacks (#3049).
+ */
+export function unitName(unit: string, side: string | null): string | null {
+  const named = UNITS.find((each) => each === unit)
+  return named === undefined ? null : unitLine({ unit: named, side })
+}
+
+/** A bite's half by name ("2nd half"); null for one this catalog lacks. */
+export function halfName(half: string): string | null {
+  const named = HALVES.find((each) => each === half)
+  return named === undefined ? null : HALF_WORDS[named]
 }

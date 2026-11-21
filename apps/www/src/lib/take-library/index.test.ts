@@ -233,7 +233,10 @@ describe("one home for every take", () => {
                 how: "offered",
                 strip: "Q3 4:12",
                 started: "2026-11-16T21:00:00Z",
+                unit: "coaching",
+                unitSide: "CHI",
               },
+              half: "second",
               match: null,
             },
           },
@@ -364,6 +367,9 @@ describe("one home for every take", () => {
       scenario: "fourth-down",
       strip: "Q3 4:12",
       started: "2026-11-16T21:00:00Z",
+      unit: "coaching",
+      unitSide: "CHI",
+      half: "second",
     })
     expect(page?.takes[2]?.fields).toEqual({})
     expect(page?.takes[3]?.fields).toEqual({
