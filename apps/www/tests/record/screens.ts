@@ -18,6 +18,7 @@ import type { Browser, Page, Route } from "@playwright/test"
 import type { Measured, Screen, Screens } from "@some-ui/video-render"
 import {
   parseScreens,
+  pngSize,
   regionsOf,
   SCREENS_SCHEMA,
   TICKET_KEY_PATTERN,
@@ -137,8 +138,10 @@ async function photograph(
   })
   const png = await card.screenshot({ animations: "disabled" })
   // The picture's own size (PNG's IHDR), in CSS pixels.
-  const width = png.readUInt32BE(16) / SCALE
-  const height = png.readUInt32BE(20) / SCALE
+  const size = pngSize(png)
+  if (size === null) fail([`the card of ${id} was photographed as no PNG`])
+  const width = size.width / SCALE
+  const height = size.height / SCALE
   const file = `${id}.png`
   await writeFile(join(out, file), png)
   return {

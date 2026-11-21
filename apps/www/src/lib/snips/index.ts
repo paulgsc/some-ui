@@ -70,8 +70,9 @@ export const WEB_VIEWPORTS: ReadonlyArray<Viewport> = [
 ]
 
 /**
- * The emulator's screen, as the runner's default device draws it. Each
- * record carries the size read from its picture, whatever this says.
+ * The emulator's screen, as `capture-apk.sh` sets it (`wm size`, `wm
+ * density 420`). Each record carries the size read from its picture, and
+ * the bundle refuses an APK picture of another (`manifestOf`).
  */
 export const APK_VIEWPORT: Viewport = {
   name: "android",
@@ -128,6 +129,23 @@ export function routesFor(
       r.audience === "public" || (surface === "apk" && r.audience === "apk")
   )
 }
+
+/**
+ * The recording stages (`validateSearch: stageSearch`): pages drawn whole
+ * for a recorder, as `tests/record` photographs them, not screens a person
+ * scrolls. A snip of one is the whole page, so its named parts
+ * (`data-region`) are all in it: a card's foot falls below a phone's fold.
+ * The test holds this list to the route files.
+ */
+export const STAGE_ROUTES: ReadonlySet<string> = new Set([
+  "/call",
+  "/essay",
+  "/report",
+  "/rust-screen",
+])
+
+/** Whether a snip of `path` is the whole page: a recording stage's. */
+export const isStage = (path: string): boolean => STAGE_ROUTES.has(path)
 
 /** Whether an address has a `$param` to fill from the screens. */
 export function isPattern(path: string): boolean {
@@ -241,15 +259,79 @@ export function wingPath(wing: string, tab?: string): string {
   return tab === undefined ? `@${slug(wing)}` : `@${slug(wing)}/${slug(tab)}`
 }
 
+/** A labelled control near the bottom of the APK's screen, from its UI dump. */
+export type BarNode = {
+  readonly label: string
+  /** Its centre, in the screen's pixels. */
+  readonly x: number
+  readonly y: number
+  /** Its lower edge. */
+  readonly bottom: number
+  /** Whether the app marks it as the one chosen (`selected`). */
+  readonly selected: boolean
+}
+
+/**
+ * How far above the foot of what the app draws its bar may float, as a
+ * share of the screen's height: the shell's pill keeps a margin of
+ * max(0.75rem, the safe area's inset) below it (`mobile-shell`), about 31 px
+ * on the 1080×1920 emulator, more where the system's navigation bar is drawn
+ * over the app.
+ */
+const BAR_FOOT_SHARE = 0.08
+
+/**
+ * The tabs of the bar along the bottom of a release APK screen, left to
+ * right, each label once (#3137, option (b), the owner, 2026-11-21). It is
+ * the lowest row of two or more labelled controls, if that row either has a
+ * tab selected, or sits at the foot of what the app draws: its lower edge at
+ * most `BAR_FOOT_SHARE` of the screen above the app's lowest edge
+ * (`appBottom`). The page may run on under the shell's floating pill, so
+ * what can be tapped there says nothing. Studio's two tabs, about 500 px
+ * apart on a 1080 px screen, are a bar; two buttons mid-sheet are not. The
+ * limit: on a screen with no bar, two labelled buttons at its foot read as
+ * one. The walk's `ACTS` keeps out those that act.
+ */
+export function tabBar(
+  nodes: ReadonlyArray<BarNode>,
+  {
+    appBottom,
+    screenHeight,
+    rowPx,
+  }: {
+    readonly appBottom: number
+    readonly screenHeight: number
+    readonly rowPx: number
+  }
+): ReadonlyArray<BarNode> {
+  const rows: Array<Array<BarNode>> = []
+  for (const node of [...nodes].sort((a, b) => b.y - a.y)) {
+    const row = rows.find((r) => Math.abs((r[0]?.y ?? 0) - node.y) <= rowPx)
+    if (row) row.push(node)
+    else rows.push([node])
+  }
+  const row = rows.find((r) => new Set(r.map((n) => n.label)).size >= 2)
+  if (row === undefined) return []
+  const foot = Math.max(...row.map((n) => n.bottom))
+  const atFoot = foot >= appBottom - screenHeight * BAR_FOOT_SHARE
+  if (!atFoot && !row.some((n) => n.selected)) return []
+  const unique = new Map(row.map((n) => [n.label, n]))
+  return [...unique.values()].sort((a, b) => a.x - b.x)
+}
+
 /** A file name for an address: /settings/appearance -> settings~appearance. */
 export function slugOf(path: string): string {
   if (path === "/") return "front"
   // A filled `$param` comes from a link's href, percent-encoded and all:
   // anything a file name may not hold becomes a `-`.
-  return path
+  // It leads with a letter or digit, as every file the bundle names does
+  // (`SnipFileSchema`).
+  const slug = path
     .replace(/^[/@]/, "")
     .replace(/\//g, "~")
     .replace(/[^A-Za-z0-9._~-]/g, "-")
+    .replace(/^[^A-Za-z0-9]+/, "")
+  return slug === "" ? "page" : slug
 }
 
 /** A route a capture offered and could not show, with why, in plain words. */
@@ -329,6 +411,15 @@ export function manifestOf(
   for (const snip of snips) {
     if (ids.has(snip.id)) throw new Error(`two snips are ${snip.id}`)
     ids.add(snip.id)
+    // The emulator is set to APK_VIEWPORT's size (`capture-apk.sh`); a
+    // picture of another is a capture that lost it, and soft when zoomed.
+    if (
+      snip.surface === "apk" &&
+      (snip.width !== APK_VIEWPORT.width || snip.height !== APK_VIEWPORT.height)
+    )
+      throw new Error(
+        `${snip.id} is ${String(snip.width)}x${String(snip.height)}, not the emulator's ${String(APK_VIEWPORT.width)}x${String(APK_VIEWPORT.height)}`
+      )
   }
   return {
     schema: MANIFEST_SCHEMA,

@@ -62,6 +62,7 @@
         "of": {
           "from": "snips",
           "id": "web:/rust-rounds-sample:phone:0.1.71:7da9fd68697e",
+          "commit": "1bb5c76b20767ebfea9fde39035e439815916c6e",
           "at": [
             "QM-311:question",
             "QM-311:point:1",
@@ -84,6 +85,7 @@
         "of": {
           "from": "snips",
           "id": "web:/rust-rounds-sample:phone:0.1.71:7da9fd68697e",
+          "commit": "1bb5c76b20767ebfea9fde39035e439815916c6e",
           "at": ["QM-311:program", "QM-311:diagnostic:1"]
         }
       },
@@ -92,6 +94,24 @@
         "role": "scene",
         "chapter": "Chapter two. The program, and rustc's answer.",
         "narration": "Under the question sits the program written in answer. It copies the line into a new string, splits it, and returns pieces of that copy. rustc refuses it: the function returns a value that borrows a local it is about to drop. That error is the lesson the ticket was built to reach."
+      }
+    },
+    {
+      "id": "C3",
+      "picture": {
+        "kind": "screen",
+        "of": {
+          "from": "snips",
+          "id": "web:/rust-rounds-sample:phone:0.1.71:7da9fd68697e",
+          "commit": "1bb5c76b20767ebfea9fde39035e439815916c6e",
+          "at": []
+        }
+      },
+      "durationMs": 10000,
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter three. The whole card.",
+        "narration": "Step back, and the card reads top to bottom: the ticket and what it asks, the points to speak to, the program, and rustc's answer under it. That order is the order to read it in, on the phone or anywhere else."
       }
     },
     {

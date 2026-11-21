@@ -37,7 +37,8 @@
  * An essay may show screens of the app home keeps (SNIPS4,
  * `@some-ui/video-render`'s `snip.ts`), handed as its takes are, each kind
  * in its own folder. `--snips <dir>` (`<key>.snips/`) holds `snips.json`
- * (`some-ui.snips-given/1`), the records of the snips the essay names, with
+ * (`some-ui.snips-given/1`), the records of the snips the essay names by
+ * each bundle's commit, with
  * each picture under it by its bundle name. `--clips <dir>` (`<key>.clips/`)
  * holds each Clips Library frame it names at `<clip>/<side>/<file>`. A screen
  * home didn't hand, a picture not the one its record names, or a frame that
@@ -67,10 +68,11 @@ import {
   joinedTake,
   parseCardsEssay,
   parseSnipsGiven,
+  pngSize,
   QUIET,
   resolveScreens,
-  snipIdsOf,
   SNIPS_DIR,
+  snipsOf,
   SPOKEN_ASKER_VOICE,
   spokenCardsOf,
   spokenTakeFilesOf,
@@ -82,6 +84,7 @@ import type {
   CutList,
   Handed,
   HeardSpokenCard,
+  PictureSize,
   Series,
   SnipsGiven,
   SpokenTakeFiles,
@@ -338,7 +341,7 @@ async function handedScreens(
   snipsFlag: string | undefined,
   clipsFlag: string | undefined
 ): Promise<HandedScreens | null> {
-  const snips = snipIdsOf(cut)
+  const snips = snipsOf(cut)
   const clips = clipFramesOf(cut)
   if (snips.length === 0 && clips.length === 0) return null
   const problems: Array<string> = []
@@ -358,10 +361,10 @@ async function handedScreens(
     const read = await readFile(join(snipsDir, "snips.json"), "utf8").catch(
       () => fail([`${snipsDir} holds no snips.json`])
     )
-    const parsed = parseSnipsGiven(JSON.parse(read))
+    const parsed = parseSnipsGiven(jsonOr(read, `${snipsDir}/snips.json`))
     if (!parsed.ok) fail([`${snipsDir}/snips.json:`, ...parsed.problems])
     given = parsed.value
-    for (const snip of given.snips) {
+    for (const snip of given.bundles.flatMap((bundle) => bundle.snips)) {
       const bytes = await readFile(join(snipsDir, snip.image.name)).catch(
         () => null
       )
@@ -375,14 +378,15 @@ async function handedScreens(
         )
     }
   }
-  const frames = new Set<string>()
+  const frames = new Map<string, PictureSize>()
   if (clipsDir !== null)
     for (const frame of clips) {
       const bytes = await readFile(join(clipsDir, frame)).catch(() => null)
       if (bytes === null) continue // resolveScreens says it wasn't handed
-      if (!bytes.subarray(0, 8).equals(PNG_MAGIC))
+      const size = pngSize(bytes)
+      if (size === null)
         problems.push(`${frame}: home handed a frame that isn't a PNG`)
-      else frames.add(frame)
+      else frames.set(frame, size)
     }
   if (problems.length > 0) fail(problems)
   const handed = { snips: given, clips: frames }
@@ -391,16 +395,22 @@ async function handedScreens(
   return { handed, snipsDir, clipsDir }
 }
 
-/** A PNG's first eight bytes. */
-const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+/** `text` read as JSON, or refused, naming `path`. */
+function jsonOr(text: string, path: string): unknown {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return fail([`${path} is not JSON`])
+  }
+}
 
 /**
  * `cut` with its screens of the app drawn from what home handed, the
  * snips' pictures copied into `root/snips/` and the frames into `root/clips/`:
- * a zoom in `series`' own ground and theme, among its cards, and, in a
- * `spoken` essay, above its captions' band (`zoomFoot`; C818). A whole
- * screen (a snip with no parts named) or a clip frame is a still, drawn
- * in the series' window as any still is: the look is a zoom's alone.
+ * in a `spoken` essay, each held above the band the captions draw in, so a
+ * caption is never over the app's own screen (C869), and each drawn in
+ * `series`' own ground and theme, among its cards (C818). A silent essay
+ * has no captions and keeps the whole frame.
  */
 async function withScreens(
   cut: CutList,
@@ -413,13 +423,15 @@ async function withScreens(
   const copies = [
     ...(screens.snipsDir === null
       ? []
-      : (screens.handed.snips?.snips ?? []).map((snip) => ({
-          from: join(screens.snipsDir ?? "", snip.image.name),
-          to: join(root, SNIPS_DIR, snip.image.name),
-        }))),
+      : (screens.handed.snips?.bundles ?? [])
+          .flatMap((bundle) => bundle.snips)
+          .map((snip) => ({
+            from: join(screens.snipsDir ?? "", snip.image.name),
+            to: join(root, SNIPS_DIR, snip.image.name),
+          }))),
     ...(screens.clipsDir === null
       ? []
-      : [...(screens.handed.clips ?? [])].map((frame) => ({
+      : [...(screens.handed.clips?.keys() ?? [])].map((frame) => ({
           from: join(screens.clipsDir ?? "", frame),
           to: join(root, CLIPS_DIR, frame),
         }))),

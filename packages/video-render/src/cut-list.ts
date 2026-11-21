@@ -65,8 +65,9 @@ const PictureSchema = z.discriminatedUnion("kind", [
    * A screen of the app that home keeps (SNIPS4, #3114; C865): a snip of
    * the snip library by its id, or a frame of the Clips Library by its
    * clip, side and file. Home hands the ones an essay names, and
-   * `resolveScreens` (`./snip`) draws each as a still of the whole screen
-   * or, for a snip given `at`, zoomed to those named parts in turn.
+   * `resolveScreens` (`./snip`) draws each by the screen-zoom composition:
+   * the whole screen held above the captions or, for a snip given `at`,
+   * zoomed to those named parts in turn.
    * Unresolved, it refuses the render.
    */
   z.object({
@@ -75,6 +76,12 @@ const PictureSchema = z.discriminatedUnion("kind", [
       z.object({
         from: z.literal("snips"),
         id: z.string().regex(SNIP_ID, "it isn't a snip's id"),
+        /**
+         * The commit its bundle was captured at (`snips-bundle-<commit>`):
+         * which bundle home fetches, and how the snip is made again
+         * (SNIPS5, #3149; C868).
+         */
+        commit: z.string().regex(/^[0-9a-f]{40}$/, "a commit's 40 hex digits"),
         /** The parts to zoom to, in order, as the page names them (`data-region`). */
         at: z.array(z.string().min(1).max(200)).max(10).default([]),
       }),
@@ -423,10 +430,10 @@ function shotProblems(shots: ReadonlyArray<Shot>): Array<string> {
       say("a card has no picture to move")
     }
     const into = o.transitionIn ?? "cut"
-    if (isComposition(s)) {
+    if (drawsItself(s)) {
       if (o.motion || o.background) say("a composition draws its own picture")
       if (into !== "cut") say("a composition draws its own way in")
-    } else if (isComposition(shots[i - 1]) && into !== "cut") {
+    } else if (drawsItself(shots[i - 1]) && into !== "cut") {
       say("the composition before it draws its own way out")
     }
     const m = o.motion
@@ -462,6 +469,14 @@ const CAPTIONS = "captions"
 
 /** Whether a burn-in is the captions. */
 export const isCaptions = (b: BurnIn): boolean => b.kind === CAPTIONS
+
+/**
+ * Whether a scene draws its own picture and way in and out: a composition,
+ * or a screen of the app, which is drawn as one once home hands it
+ * (`resolveScreens`), so the essay is refused for it before anything is said.
+ */
+const drawsItself = (s: Shot | undefined): boolean =>
+  s?.picture.kind === "composition" || s?.picture.kind === "screen"
 
 /** Whether a scene's picture is a composition, which draws its own (HYPER2). */
 export const isComposition = (s: Shot | undefined): boolean =>

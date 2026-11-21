@@ -16,9 +16,9 @@ import {
   isSnipId,
   parseSnipsGiven,
   resolveScreens,
-  snipIdsOf,
   SNIPS_GIVEN_SCHEMA,
   snipScreen,
+  snipsOf,
 } from "@video-render/snip"
 import type { Handed, SnipRecord, SnipsGiven } from "@video-render/snip"
 import * as fixtures from "@video-render/testing"
@@ -78,22 +78,35 @@ const apk = (): SnipRecord => ({
   },
 })
 
+/** The commit the test's snips were captured at, and another. */
+const COMMIT = "c".repeat(40)
+const LATER = "e".repeat(40)
+
 const given = (
   snips: Array<SnipRecord>,
-  clips: Array<string> | null = null
+  clips: Array<string> | null = null,
+  commit = COMMIT
 ): Handed => {
-  const parsed = parseSnipsGiven({ schema: SNIPS_GIVEN_SCHEMA, snips })
+  const parsed = parseSnipsGiven({
+    schema: SNIPS_GIVEN_SCHEMA,
+    bundles: [{ commit, snips }],
+  })
   if (!parsed.ok) throw new Error(parsed.problems.join("; "))
-  return { snips: parsed.value, clips: clips && new Set(clips) }
+  return {
+    snips: parsed.value,
+    clips:
+      clips && new Map(clips.map((f) => [f, { width: 824, height: 1830 }])),
+  }
 }
 
 type Of =
-  | { from: "snips"; id: string; at?: Array<string> }
+  | { from: "snips"; id: string; commit: string; at?: Array<string> }
   | { from: "clips"; clip: string; side: "before" | "after"; file: string }
 
-const snip = (id: string, at?: Array<string>): Of => ({
+const snip = (id: string, at?: Array<string>, commit = COMMIT): Of => ({
   from: "snips",
   id,
+  commit,
   ...(at ? { at } : {}),
 })
 
@@ -160,19 +173,32 @@ describe("a snip is a photographed screen (C865)", () => {
 describe("an essay's screens of the app (SNIPS4)", () => {
   it("is a cards essay's scene, and names its snips once each", async () => {
     const cut = await withScreens([snip(APK), snip(PHONE), snip(APK)])
-    expect(snipIdsOf(cut)).toEqual([APK, PHONE])
+    expect(snipsOf(cut)).toEqual([
+      { commit: COMMIT, id: APK },
+      { commit: COMMIT, id: PHONE },
+    ])
   })
 
-  it("is drawn as a still of the whole screen, or zoomed to the parts it names", async () => {
+  it("is the whole phone held above the captions, or zoomed to the parts it names", async () => {
     const cut = await withScreens([
       snip(APK),
       snip(PHONE, ["QM-311:program", "QM-311:run"]),
     ])
-    const drawn = resolveScreens(cut, given([apk(), phone()]))
+    const drawn = resolveScreens(cut, given([apk(), phone()]), { foot: 0.25 })
     if (!drawn.ok) throw new Error(drawn.problems.join("; "))
+    // The owner (2026-11-21): not full-bleed, the caption below the screen.
     expect(drawn.value.shots[1]?.picture).toEqual({
-      kind: "still",
-      source: "snips/apk/android/release-studio~takes-dddddddddddd.png",
+      kind: "composition",
+      ref: SCREEN_ZOOM,
+      variables: {
+        picture: "snips/apk/android/release-studio~takes-dddddddddddd.png",
+        width: 1080,
+        height: 1920,
+        scale: 1,
+        stops: "[]",
+        foot: 0.25,
+      },
+      files: ["snips/apk/android/release-studio~takes-dddddddddddd.png"],
     })
     const zoom = drawn.value.shots[2]?.picture
     expect(zoom).toMatchObject({
@@ -189,7 +215,7 @@ describe("an essay's screens of the app (SNIPS4)", () => {
         ]),
       },
     })
-    expect(snipIdsOf(drawn.value)).toEqual([])
+    expect(snipsOf(drawn.value)).toEqual([])
     // What isn't a snip is drawn as written.
     expect(drawn.value.shots[0]).toEqual(cut.shots[0])
   })
@@ -205,7 +231,38 @@ describe("an essay's screens of the app (SNIPS4)", () => {
     expect(problems).toContain(`the snip ${PHONE} names no QM-311:question`)
   })
 
-  it("shows a Clips Library frame home handed as a still, and refuses one it didn't", async () => {
+  it("is refused when home handed the snip from another commit than the essay names (C868)", async () => {
+    const cut = await withScreens([snip(APK, undefined, LATER)])
+    const drawn = resolveScreens(cut, given([apk()]))
+    expect(drawn.ok ? "" : drawn.problems.join("\n")).toContain(
+      `C1: it shows the snip ${APK} of ${LATER}, and home handed it from ${COMMIT}`
+    )
+    const both = parseSnipsGiven({
+      schema: SNIPS_GIVEN_SCHEMA,
+      bundles: [
+        { commit: COMMIT, snips: [apk()] },
+        { commit: COMMIT, snips: [] },
+      ],
+    })
+    expect(both.ok).toBe(false)
+  })
+
+  it("draws a screen unchanged between two commits as one picture", async () => {
+    const cut = await withScreens([snip(APK), snip(APK, undefined, LATER)])
+    const parsed = parseSnipsGiven({
+      schema: SNIPS_GIVEN_SCHEMA,
+      bundles: [
+        { commit: COMMIT, snips: [apk()] },
+        { commit: LATER, snips: [apk()] },
+      ],
+    })
+    if (!parsed.ok) throw new Error(parsed.problems.join("; "))
+    const drawn = resolveScreens(cut, { snips: parsed.value, clips: null })
+    if (!drawn.ok) throw new Error(drawn.problems.join("; "))
+    expect(drawn.value.shots[1]?.picture).toEqual(drawn.value.shots[2]?.picture)
+  })
+
+  it("shows a Clips Library frame home handed whole, and refuses one it didn't", async () => {
     const frame: Of = {
       from: "clips",
       clip: "studio-release-promo",
@@ -221,9 +278,11 @@ describe("an essay's screens of the app (SNIPS4)", () => {
       given([apk()], ["studio-release-promo/after/02-release-promo.png"])
     )
     if (!drawn.ok) throw new Error(drawn.problems.join("; "))
-    expect(drawn.value.shots[1]?.picture).toEqual({
-      kind: "still",
-      source: "clips/studio-release-promo/after/02-release-promo.png",
+    expect(drawn.value.shots[1]?.picture).toMatchObject({
+      kind: "composition",
+      ref: SCREEN_ZOOM,
+      variables: { width: 824, height: 1830, scale: 1, stops: "[]" },
+      files: ["clips/studio-release-promo/after/02-release-promo.png"],
     })
     const refused = resolveScreens(cut, given([apk()]))
     expect(refused.ok ? "" : refused.problems.join("\n")).toContain(
@@ -235,7 +294,10 @@ describe("an essay's screens of the app (SNIPS4)", () => {
     const root = await mkdtemp(join(tmpdir(), "snip-"))
     const cut = fixtures.cutList([
       fixtures.shot("a", {
-        picture: { kind: "screen", of: { from: "snips", id: APK, at: [] } },
+        picture: {
+          kind: "screen",
+          of: { from: "snips", id: APK, commit: COMMIT, at: [] },
+        },
       }),
     ])
     const drawn = await render(cut, fixtures.series(), nodePorts(root), {
@@ -340,7 +402,7 @@ describe("the phone-card sample: a cards essay on a snip of the phone (#3311, C8
         id === "cheat-sheet" && version === 3 && v3.ok ? v3.value : null
       )
     ).toEqual([])
-    for (const snip of (await handed()).snips) {
+    for (const snip of (await handed()).bundles.flatMap((b) => b.snips)) {
       const bytes = await readFile(join(SNIPS, snip.image.name))
       expect(createHash("sha256").update(bytes).digest("hex")).toBe(
         snip.image.sha256
@@ -350,7 +412,7 @@ describe("the phone-card sample: a cards essay on a snip of the phone (#3311, C8
   })
 
   it("boxes each part of its snip apart from the others, inside the picture", async () => {
-    for (const snip of (await handed()).snips) {
+    for (const snip of (await handed()).bundles.flatMap((b) => b.snips)) {
       const width = snip.width / snip.scale
       const height = snip.height / snip.scale
       for (const { ref, box } of snip.regions) {
@@ -372,7 +434,7 @@ describe("the phone-card sample: a cards essay on a snip of the phone (#3311, C8
     }
   })
 
-  it("zooms each screen scene to the handed snip, in the look it is given", async () => {
+  it("draws each screen scene, zoomed or whole, from the handed snip in the look it is given", async () => {
     const look = { foot: 0.3, theme: "dark", ground: "#111821" }
     const drawn = resolveScreens(
       await showcase("phone-card"),
@@ -384,8 +446,14 @@ describe("the phone-card sample: a cards essay on a snip of the phone (#3311, C8
       "card",
       "composition",
       "composition",
+      "composition",
       "card",
     ])
+    // C3 shows the card whole: the same composition with no stops.
+    const whole = drawn.value.shots[3]?.picture
+    expect(
+      whole?.kind === "composition" ? whole.variables["stops"] : null
+    ).toBe("[]")
     for (const shot of drawn.value.shots)
       if (shot.picture.kind === "composition") {
         expect(shot.picture.variables).toMatchObject(look)

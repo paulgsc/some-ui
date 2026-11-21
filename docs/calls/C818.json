@@ -9,13 +9,13 @@
     "some-ui:apps/www/tests/record/voiced.ts",
     "some-ui:apps/www/tests/record/essay-recording.ts"
   ],
-  "chose": "A cards essay shows the phone's screens zoomed through SNIPS4's one `screen` member (`of: { from: \"snips\", id, at }`, C865), not a second member naming a screens/1 record's regions with a `cards/<key>.screens/` folder of its own: a snip and a screens/1 screen are one family, and the snip is the one that carries where it was taken and the hash home checks. What the cards half adds is the look: `zoomPicture` takes `ground`, `resolveScreens` passes on its look whole (`ZoomOptions`), and `record:cards` draws each zoomed snip in its series' ground and theme, so it sits among the cards, and in a spoken essay keeps the captions' band clear (`zoomFoot`, shared with the Rust essay's recorder); a silent essay, which has no captions, keeps the whole frame. The look is a zoom's alone: a whole screen (a snip with no parts named) or a clip frame is a still, drawn in the series' window as any still is.",
+  "chose": "A cards essay shows the phone's screens through SNIPS4's one `screen` member (`of: { from: \"snips\", id, commit, at }`, C865), not a second member naming a screens/1 record's regions with a `cards/<key>.screens/` folder of its own: a snip and a screens/1 screen are one family, and the snip is the one that carries where it was taken and the hash home checks. What the cards half adds is the look beyond C869's caption band: `record:cards` draws every screen screen-zoom draws, zoomed, whole or a clip frame, in its series' ground and theme, so it sits among the cards, passing one look through `resolveScreens`; the band C869 keeps clear in a spoken essay is measured once, by `zoomFoot(series.frame)`, shared with the Rust essay's recorder, and a silent essay, which has no captions, keeps the whole frame.",
   "options": [
     "zoom through SNIPS4's screen member, in the series' ground, above the captions when spoken (taken)",
     "a second picture member naming a screens/1 record's regions, with its own `<key>.screens/` folder and `--screens` (built first, then dropped)",
     "zoom snips in the composition's default ground, the foot at 0"
   ],
   "gray": "Which member a cards essay names a screen by, and how the zoom looks among its cards, is what the owner sees on screen; the snip family and the hand-off are W15's (C865, C866), and folding into it and the look are Claude's.",
-  "undo": "Pass `resolveScreens` no look in record:cards (the zoom then draws in the composition's own ground, under the captions), and drop `ground` from zoomPicture.",
+  "undo": "Pass `resolveScreens` only C869's foot in record:cards: every screen then draws in the composition's own ground and theme.",
   "refs": ["#3311", "#3316", "#3114"]
 }

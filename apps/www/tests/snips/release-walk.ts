@@ -20,9 +20,16 @@ import {
   moduleOf,
   slugOf,
   snipId,
+  tabBar,
   wingPath,
 } from "@/lib/snips"
-import type { Part, SnipRecord, Unreached, Viewport } from "@/lib/snips"
+import type {
+  BarNode,
+  Part,
+  SnipRecord,
+  Unreached,
+  Viewport,
+} from "@/lib/snips"
 
 import { hashOf, pngSize, recordScreen, save } from "./capture"
 
@@ -37,16 +44,10 @@ const ROW_PX = 24
  */
 const ACTS =
   /\b(sign out|unpair|delete|record|let go|remove|erase|forget|cancel|save|send|submit|share|clear|start|stop)\b/i
-/** A bar spans the screen: its tabs reach across at least this share of it. */
-const BAR_SPAN = 0.5
 /** How long a screen may take to hold still before it is taken anyway. */
 const SETTLE_TRIES = 10
 
-type Node = {
-  readonly label: string
-  readonly x: number
-  readonly y: number
-}
+type Node = Pick<BarNode, "label" | "x" | "y">
 
 export type ReleaseWalk = {
   readonly device: AndroidDevice
@@ -189,45 +190,42 @@ const attribute = (node: string, name: string): string =>
   new RegExp(`\\b${name}="([^"]*)"`).exec(node)?.[1] ?? ""
 
 /**
- * The tabs of the bar along the bottom, left to right: the app's own
- * labelled controls in the lowest row of two or more across the bottom of
- * the screen, reaching across at least half its width (a pair of buttons
- * side by side, such as Cancel and Save, does not). A lone button near the bottom, a row of digits (the Self
- * wing's rating, which proof run 44042604819 tapped) and any control that
- * acts (`ACTS`) are not tabs.
+ * The tabs of the bar along the bottom, left to right (`tabBar`): of the
+ * app's own labelled controls across the bottom of the screen. A row of
+ * digits (the Self wing's rating, which proof run 44042604819 tapped) and
+ * any control that acts (`ACTS`) are not tabs.
  */
 function bar(
   xml: string,
   pkg: string,
   screen: { readonly width: number; readonly height: number }
 ): ReadonlyArray<Node> {
-  const nodes: Array<Node> = []
+  const nodes: Array<BarNode> = []
+  let appBottom = 0
   for (const node of xml.match(/<node\b[^>]*>/g) ?? []) {
     if (attribute(node, "package") !== pkg) continue
-    if (attribute(node, "clickable") !== "true") continue
-    const label = attribute(node, "text") || attribute(node, "content-desc")
-    if (label === "" || /^\d+$/.test(label) || ACTS.test(label)) continue
     const bounds = (attribute(node, "bounds").match(/-?\d+/g) ?? []).map(Number)
     if (bounds.length !== 4) continue
     const [left = 0, top = 0, right = 0, bottom = 0] = bounds
+    if (bottom <= screen.height) appBottom = Math.max(appBottom, bottom)
+    if (attribute(node, "clickable") !== "true") continue
+    const label = attribute(node, "text") || attribute(node, "content-desc")
+    if (label === "" || /^\d+$/.test(label) || ACTS.test(label)) continue
     const y = Math.round((top + bottom) / 2)
     if (y < screen.height * BAR_FROM) continue
-    nodes.push({ label, x: Math.round((left + right) / 2), y })
+    nodes.push({
+      label,
+      x: Math.round((left + right) / 2),
+      y,
+      bottom,
+      selected: attribute(node, "selected") === "true",
+    })
   }
-  const rows: Array<Array<Node>> = []
-  for (const node of [...nodes].sort((a, b) => b.y - a.y)) {
-    const row = rows.find((r) => Math.abs((r[0]?.y ?? 0) - node.y) <= ROW_PX)
-    if (row) row.push(node)
-    else rows.push([node])
-  }
-  const spans = (r: ReadonlyArray<Node>): boolean => {
-    const xs = r.map((n) => n.x)
-    return Math.max(...xs) - Math.min(...xs) >= screen.width * BAR_SPAN
-  }
-  const tabs =
-    rows.find((r) => new Set(r.map((n) => n.label)).size >= 2 && spans(r)) ?? []
-  const unique = new Map(tabs.map((n) => [n.label, n]))
-  return [...unique.values()].sort((a, b) => a.x - b.x)
+  return tabBar(nodes, {
+    appBottom,
+    screenHeight: screen.height,
+    rowPx: ROW_PX,
+  })
 }
 
 /** Whether the app's own window is the one in front. */
