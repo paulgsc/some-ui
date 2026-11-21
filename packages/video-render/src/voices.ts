@@ -105,19 +105,20 @@ export type Lanes = Readonly<Record<Exclude<VoiceRole, "answerer">, Lane>> & {
 }
 
 /**
- * Each role's lane, by the lanes' id: Kokoro's better-graded English voices,
- * disjoint, so no two roles share one. The roles that meet in an exchange
- * differ by more than name: the asker's are women's voices, and the
- * answerer, the owner's stand-in, is the essays' sample voice before the
- * lanes, a British man's. The host's lane opens on the call's host and the
- * narrator's on the cards' narrator before the lanes, so a cards essay's
- * intro and first card sound as they did.
+ * Each role's lane, by the lanes' id: Kokoro's English voices graded C or
+ * better, disjoint, so no two roles share one. The roles that meet in an
+ * exchange differ by more than name: the asker's lane is American women's
+ * voices, the tutor's American men's, and the answerer, the owner's
+ * stand-in, holds a British man's, the essays' sample voice before the
+ * lanes. The host's lane opens on the call's host and the narrator's on the
+ * cards' narrator before the lanes, so a cards essay's intro and its first
+ * card's narration sound as they did.
  */
 export const VOICE_LANES: Readonly<Record<VoicesId, Lanes>> = {
   "lanes-v1": {
-    host: ["am_michael", "am_puck", "bf_isabella"],
+    host: ["am_michael", "bm_fable", "bf_isabella"],
     narrator: ["af_heart", "bf_emma", "af_nicole"],
-    tutor: ["am_fenrir", "bm_fable", "af_alloy"],
+    tutor: ["am_fenrir", "am_puck"],
     asker: ["af_bella", "af_aoede", "af_kore"],
     answerer: ["bm_george"],
   },
@@ -189,17 +190,31 @@ export function speakerTurns<S extends string>(
   lines: ReadonlyArray<VoicedLine<S>>
 ): Array<number> {
   const chapters = chapterIndexes(lines.map((line) => line.opens))
-  const last = new Map<S, { readonly chapter: number; readonly turn: number }>()
-  return lines.map((line, i) => {
-    const chapter = chapters[i] ?? 0
-    const before = last.get(line.speaker)
+  return turnsOf(
+    lines.map((line, i) => ({
+      speaker: line.speaker,
+      chapter: chapters[i] ?? 0,
+    }))
+  )
+}
+
+/** Each line's turn, as `speakerTurns`, for lines that already know their chapter. */
+export function turnsOf(
+  lines: ReadonlyArray<{ readonly speaker: string; readonly chapter: number }>
+): Array<number> {
+  const last = new Map<
+    string,
+    { readonly chapter: number; readonly turn: number }
+  >()
+  return lines.map(({ speaker, chapter }) => {
+    const before = last.get(speaker)
     const turn =
       before === undefined
         ? 0
         : before.chapter === chapter
           ? before.turn
           : before.turn + 1
-    last.set(line.speaker, { chapter, turn })
+    last.set(speaker, { chapter, turn })
     return turn
   })
 }

@@ -285,7 +285,9 @@ async function spokenStills({
           record: "true",
         }).toString()}`,
         said: scene.said,
-        voice,
+        // A Kokoro turn's voice; an owner's turn plays their take, said in none.
+        voice:
+          voice ?? (own === undefined ? fail([`${scene.id}: no voice`]) : ""),
         ...(own === undefined ? {} : { own }),
       }
     }),

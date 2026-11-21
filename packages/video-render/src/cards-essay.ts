@@ -35,7 +35,7 @@ import { SPOKEN_CATEGORY_TITLES } from "./spoken-categories"
 import type { SpokenCategory } from "./spoken-categories"
 import { estimatedMs, heldFor, stillFile } from "./stills"
 import type { StillScene, StillTake } from "./stills"
-import { chapterVoices, voicePolicyOf } from "./voices"
+import { chapterIndexes, turnsOf, voiceOf, voicePolicyOf } from "./voices"
 import type { KokoroVoice, VoiceRole, VoicesId } from "./voices"
 
 export const CARDS_INDEX_SCHEMA = "some-ui.cards-index/1"
@@ -292,19 +292,15 @@ export type CardsScene = StillScene & {
   readonly spoken?: {
     readonly card: string
     readonly scene: SpokenScene
-    /** Kokoro's voice for this turn's place, said in a Kokoro turn. */
-    readonly voice: KokoroVoice
+    /** Kokoro's voice for this turn, when Kokoro says it; an owner's turn is their take. */
+    readonly voice?: KokoroVoice
   }
 }
 
 /** A scene before its lines' voices are chosen. */
 type UnvoicedScene = Omit<CardsScene, "lines" | "spoken"> & {
   readonly lines: ReadonlyArray<SpokenLine>
-  readonly spoken?: {
-    readonly card: string
-    readonly scene: SpokenScene
-    readonly speaker: CardsSpeaker
-  }
+  readonly spoken?: { readonly card: string; readonly scene: SpokenScene }
 }
 
 /** The title of the close's chapter mark. */
@@ -357,7 +353,7 @@ function spokenCardScenes(
       said: scene.said,
       lines:
         scene.take === undefined ? [{ file, said: scene.said, speaker }] : [],
-      spoken: { card: shot.id, scene, speaker },
+      spoken: { card: shot.id, scene },
       ...(j === 0 ? { mark: SPOKEN_CATEGORY_TITLES[card.category] } : {}),
     }
   })
@@ -407,46 +403,41 @@ function voiced(
   voices: VoicesId | undefined
 ): Array<CardsScene> {
   const policy = voicePolicyOf(voices, CARDS_VOICES, CARDS_VOICE_ROLES)
-  // Each scene's speakers in order, its first opening a chapter where the
-  // scene has a mark; a spoken card's scene is its Kokoro turn's speaker,
-  // said or not, so its place is counted either way.
-  const speakers = scenes.map((scene) =>
-    scene.spoken === undefined
-      ? scene.lines.map((line) => line.speaker)
-      : [scene.spoken.speaker]
+  // A scene with a mark opens a chapter. A spoken card's owner turn says no
+  // line, so it is no speaker's turn: a role moves on only in the chapters
+  // Kokoro speaks in it.
+  const chapters = chapterIndexes(
+    scenes.map((scene) => scene.mark !== undefined)
   )
-  const said = chapterVoices(
-    policy,
-    speakers.flatMap((of, i) =>
-      of.map((speaker, k) => ({
-        speaker,
-        opens: k === 0 && scenes[i]?.mark !== undefined,
-      }))
-    )
+  const said = scenes.flatMap((scene, i) =>
+    scene.lines.map((line) => ({
+      speaker: line.speaker,
+      chapter: chapters[i] ?? 0,
+    }))
+  )
+  const turns = turnsOf(said)
+  const sayIn = said.map((line, k) =>
+    voiceOf(policy, line.speaker, turns[k] ?? 0)
   )
   let at = 0
-  return scenes.map((scene, i) => {
-    const mine = said.slice(at, at + (speakers[i]?.length ?? 0))
-    at += mine.length
-    const voiceOf = (k: number): KokoroVoice => {
-      const voice = mine[k]
-      if (voice === undefined) throw new Error(`${scene.id}: no voice`)
-      return voice
-    }
+  return scenes.map((scene) => {
     const { spoken, lines, ...rest } = scene
+    const voiced = lines.map(({ speaker: _speaker, ...line }) => {
+      const voice = sayIn[at++]
+      if (voice === undefined) throw new Error(`${scene.id}: no voice`)
+      return { ...line, voice }
+    })
+    const kokoro = voiced[0]?.voice
     return {
       ...rest,
-      lines: lines.map(({ speaker: _speaker, ...line }, k) => ({
-        ...line,
-        voice: voiceOf(spoken === undefined ? k : 0),
-      })),
+      lines: voiced,
       ...(spoken === undefined
         ? {}
         : {
             spoken: {
               card: spoken.card,
               scene: spoken.scene,
-              voice: voiceOf(0),
+              ...(kokoro === undefined ? {} : { voice: kokoro }),
             },
           }),
     }

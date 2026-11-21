@@ -151,7 +151,7 @@ const cardsLines = async (
         {
           speaker: spoken.scene.role === "ask" ? "asker" : "tutor",
           chapter,
-          voice: spoken.voice,
+          voice: spoken.voice ?? "af_heart",
           exchange: `${spoken.card}-${String(spoken.scene.exchange)}`,
         },
       ]
@@ -264,7 +264,8 @@ describe("the voice lanes", () => {
       const all = VOICE_ROLES.flatMap((role) => lanes[role])
       expect(new Set(all).size).toBe(all.length)
       for (const role of VOICE_ROLES)
-        expect(lanes[role].length).toBe(role === "answerer" ? 1 : 3)
+        if (role === "answerer") expect(lanes[role].length).toBe(1)
+        else expect(lanes[role].length).toBeGreaterThanOrEqual(2)
       for (const voice of all) expect(KOKORO_VOICES).toContain(voice)
     }
   })
@@ -286,9 +287,9 @@ describe("the voice lanes", () => {
     const policy = voicePolicyOf<"t">(
       "lanes-v1",
       { t: "af_heart" },
-      { t: "tutor" }
+      { t: "host" }
     )
-    const [a, b, c] = VOICE_LANES["lanes-v1"].tutor
+    const [a, b, c] = VOICE_LANES["lanes-v1"].host
     expect(
       [0, 1, 2, 3, 4].map((chapter) => voiceOf(policy, "t", chapter))
     ).toEqual([a, b, c, a, b])
@@ -362,7 +363,7 @@ describe("in the lanes, as a listener hears them", () => {
     )
     expect(scenes.slice(0, 4).map((s) => s.lines.map((l) => l.voice))).toEqual([
       ["am_michael"],
-      ["am_puck", "af_heart"],
+      ["bm_fable", "af_heart"],
       ["bf_isabella", "bf_emma"],
       ["am_michael", "af_nicole"],
     ])
@@ -384,12 +385,74 @@ describe("in the lanes, as a listener hears them", () => {
       "af_bella",
     ])
     expect([at("chapter-question-1"), at("chapter-question-2")]).toEqual([
-      "bm_fable",
-      "af_alloy",
+      "am_puck",
+      "am_fenrir",
     ])
     expect(
       new Set(chapterIndexes(scenes.map((s) => s.section === "chapter"))).size
     ).toBe(essayChapterMarks(essay).length + 1)
+  })
+})
+
+describe("in the lanes, across spoken cards", () => {
+  it("moves Kokoro on only in the cards it speaks in, the owner's turns counting for none", async () => {
+    const cut = await showcase("spoken-intro")
+    const card = cut.shots.find((s) => s.id === "introduction")
+    if (card === undefined) throw new Error("no spoken card")
+    const ids = ["a", "b", "c", "d"]
+    const many = {
+      ...cut,
+      shots: [...ids.map((id) => ({ ...card, id })), ...cut.shots.slice(1)],
+    }
+    const owner = (
+      take: string
+    ): { voice: "owner"; take: string; transcript: string } => ({
+      voice: "owner" as const,
+      take,
+      transcript: "Mine.",
+    })
+    const kokoro = (said: string): { voice: "kokoro"; said: string } => ({
+      voice: "kokoro",
+      said,
+    })
+    const sample = unwrap(sampleSpokenCard())
+    // a and d: the owner asks, Kokoro answers; b and c: Kokoro asks.
+    const heard = new Map(
+      ids.map((id) => [
+        id,
+        {
+          ...sample,
+          card: id,
+          exchanges:
+            id === "a" || id === "d"
+              ? [{ ask: owner(`${id}-take`), answer: kokoro("An answer.") }]
+              : [{ ask: kokoro("A question?"), answer: owner(`${id}-take`) }],
+        },
+      ])
+    )
+    const scenes = cardsScenes(many, heard, await newestCardsVoices())
+    const kokoroOf = (id: string): ReadonlyArray<KokoroVoice | undefined> =>
+      scenes.filter((s) => s.spoken?.card === id).map((s) => s.spoken?.voice)
+    const [t0, t1] = VOICE_LANES["lanes-v1"].tutor
+    const [a0, a1] = VOICE_LANES["lanes-v1"].asker
+    expect(ids.map(kokoroOf)).toEqual([
+      [undefined, t0],
+      [a0, undefined],
+      [a1, undefined],
+      [undefined, t1],
+    ])
+  })
+
+  it("keeps the roles that meet in an exchange apart by accent or by gender", () => {
+    const lanes = VOICE_LANES["lanes-v1"]
+    const kind = (voice: KokoroVoice): string => voice.slice(0, 2)
+    for (const [one, other] of [
+      ["asker", "answerer"],
+      ["tutor", "answerer"],
+      ["asker", "tutor"],
+    ] as const)
+      for (const a of lanes[one])
+        for (const b of lanes[other]) expect(kind(a)).not.toBe(kind(b))
   })
 })
 
