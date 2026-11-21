@@ -33,6 +33,14 @@ dependents, and `_detect-changes.yml` decides which of Rust, Node and Deny
 run. `trunk.yml` asks "is the whole repo healthy?" on every push to `main`,
 unfiltered.
 
+`_detect-changes.yml` keeps one promise, CD1: a flag is true only when a
+changed file matches one of its patterns, and `node` covers every workspace
+the Node jobs reach. Its proof is `packages/eslint/tests/detect-changes.test.ts`,
+which Repo guards runs on every PR. Under paths-filter's default
+`predicate-quantifier: some`, a leading-`!` pattern matches every file it does
+not name, so `pnpm check:workflows` fails one; a filter leaves files out with
+a positive extglob instead (`crates/**/!(*.md)`).
+
 Each has one aggregate check, judged by `re-actors/alls-green` (#1952):
 
 - **CI Gate** is the one check branch protection requires. Every job votes;

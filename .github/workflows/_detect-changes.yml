@@ -39,43 +39,64 @@ jobs:
       - name: Filter paths
         id: filter
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        # CD1 (docs/ci-architecture.md): a flag is true only for a file it
+        # names. No leading `!` under the default `some`, where it adds every
+        # file it doesn't name; write `x/**/!(*.md)` instead.
         with:
           filters: |
             rust:
-              - 'crates/**'
+              - 'crates/**/!(*.md)'
               - 'Cargo.toml'
               - 'Cargo.lock'
               - '.cargo/**'
+              # What clippy, rustfmt and cargo-deny read.
+              - 'clippy.toml'
+              - '.rustfmt.toml'
+              - 'deny.toml'
+              # The two boundary checks _rust-ci.yml runs, each with its list.
+              - 'scripts/check-wasm-bindgen-boundary.sh'
+              - 'scripts/check-mutation-boundary.sh'
               - 'flake.nix'
               - 'flake.lock'
-              - 'nix/**'
-              - '!**/*.md'
+              - 'nix/**/!(*.md)'
+            # Every file of every workspace the Node jobs reach: turbo's
+            # `...[HEAD^1]` selects a package for any file in it (a test
+            # fixture, an .mjs check, a .typ template, a prompt imported
+            # `?raw` from Markdown), so a narrower list would skip jobs turbo
+            # would have run. Extensions have their own CI and are left out,
+            # except those a workspace here depends on (video-motion renders
+            # Suspender Ledger's promo). detect-changes.test.ts derives the
+            # set from the workspace graph and fails a workspace left out.
             node:
-              - 'packages/**/*.{ts,tsx,js,jsx,css,json}'
-              - 'apps/**/*.{ts,tsx,js,jsx,css,json}'
+              - 'packages/**'
+              - 'apps/**'
+              - 'docs/canon/**'
+              - 'crates/**/!(*.md)'
+              - 'extensions/suspender-ledger/**'
+              - 'extensions/common/**'
+              # Root files turbo hashes for every task, or that the Node jobs'
+              # tools read: a change to one reaches every package.
               - 'package.json'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - 'eslint.config.js'
+              - 'prettier.config.cjs'
+              - '.prettierignore'
+              - '.stylelintrc.mjs'
+              - 'knip.json'
               # A transitive bump can break any build, and a Tailwind, Vite or
               # React bump changes what the panel-fit gate measures.
               - 'pnpm-lock.yaml'
               - '.nvmrc'
               - 'tsconfig*.json'
-              # The repo-level scripts, typechecked by the root tsconfig.json.
-              - 'scripts/**/*.ts'
+              # The repo-level scripts the Node jobs run (the catalog guardrail,
+              # the license audit, the release tests) or the root
+              # tsconfig.json typechecks.
+              - 'scripts/**/*.{ts,mjs}'
               - 'scripts/release/**'
-              # The panel-fit page's HTML entry, which the globs above miss.
-              - 'apps/www/tests/ui-fit/panel-page/**'
-              # Read by @some-ui/resume's check-claims.mjs, which fails on a
-              # stale route figure; without these a README-only edit would
-              # skip the build that runs it.
-              - 'packages/ui/resume/**'
-              - 'packages/contract-harness/README.md'
-              # The real-microphone suite's clips and page (MIC9), which the
-              # globs above miss: a clip changes what the real recorder hears.
-              - 'packages/voice-capture/tests/**'
               # The image the weekly call's frame is measured in (CF1): a
               # re-pinned base can change the face it draws.
               - 'infra/render/Dockerfile'
-              - '!**/*.md'
             extensions:
               - 'extensions/**'
               - 'crates/**'
