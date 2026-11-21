@@ -24,14 +24,14 @@ jobs:
     strategy:
       matrix: ${{ fromJSON(inputs.matrix) }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/node-ci-setup
         with:
           build: none
           resume-assets: "false"
       # Restore pre-built workspace packages produced by build-workspace.
       - name: Download workspace dist artifact
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: workspace-dist
           path: packages
@@ -108,7 +108,7 @@ jobs:
       # So this step normally uploads nothing. It stays so that a run which
       # does get a signed .xpi back keeps it, and for a day only: nothing in CI
       # reads it, and the signed build lives on its AMO version page.
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: signed-${{ matrix.extension_name }}
           path: artifacts/*.xpi
@@ -117,7 +117,7 @@ jobs:
       # For looking at what was just submitted, not for keeping: nothing in CI
       # reads it, AMO holds the copy it was sent, and package-source.sh at the
       # release commit rebuilds the same archive (`git archive HEAD`).
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: source-${{ matrix.extension_name }}

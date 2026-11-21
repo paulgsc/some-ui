@@ -21,7 +21,7 @@ jobs:
       matrix:
         level: [1, 2, 3, 4]
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/nix-setup
       - uses: ./.github/actions/cargo-cache
         with:
@@ -58,7 +58,7 @@ jobs:
     name: Pedagogy Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/nix-setup
       - uses: ./.github/actions/cargo-cache
         with:
@@ -79,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/nix-setup
       - uses: ./.github/actions/cargo-cache
         with:
@@ -94,7 +94,7 @@ jobs:
           fi
       - name: Comment benchmark results on PR
         if: hashFiles('benchmark_results.txt') != ''
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const fs = require('fs');
