@@ -1,6 +1,6 @@
 /**
  * Records and renders one cards essay (CARDS7 #2979, EXPLAIN6 #3021): its
- * cut list, every scene a card, drawn by the built app's burn-ins page
+ * cut list, each scene a card or a screen of the app, drawn by the built app's burn-ins page
  * (`./burn-ins`) and laid together by the renderer
  * (`@some-ui/video-render`).
  *
@@ -29,8 +29,8 @@
  * kept them, and its transcript `<id>.transcript.json`
  * (`some-ui.voice-transcript/1`, its verdict with it). A take missing, or
  * one home couldn't make out or heard nothing in, is refused before
- * anything is drawn (HEARD2). Each question is said in the asker's voice and
- * each take played whole, under a still of the card's scene from the built
+ * anything is drawn (HEARD2). Each Kokoro turn is said in the voice the
+ * policy gives its place (C840) and each take played whole, under a still of the card's scene from the built
  * app's `/essay?kind=spoken` (template A). With no spoken card it takes no
  * `--takes`, and records as it always has.
  *
@@ -55,7 +55,7 @@ import { copyFile, mkdir, readdir, readFile, writeFile } from "node:fs/promises"
 import { basename, dirname, join, resolve } from "node:path"
 import { parseArgs } from "node:util"
 import type { Page } from "@playwright/test"
-import { captionSpace, LANDSCAPE } from "@some-ui/burn-ins"
+import { captionShare } from "@some-ui/burn-ins"
 import { sha256Hex } from "@some-ui/core-utils"
 import {
   cardsChapterMarks,
@@ -74,7 +74,6 @@ import {
   resolveScreens,
   SNIPS_DIR,
   snipsOf,
-  SPOKEN_ASKER_VOICE,
   spokenCardsOf,
   spokenTakeFilesOf,
   spokenTakesOf,
@@ -86,6 +85,7 @@ import type {
   Handed,
   HeardSpokenCard,
   PictureSize,
+  Series,
   SnipsGiven,
   SpokenTakeFiles,
   StillTake,
@@ -192,7 +192,8 @@ async function sceneTakes(
 /** The takes `essay`'s spoken cards play, from `--takes`, each as home heard it. */
 async function spokenTakes(
   essay: CutList,
-  dir: string | undefined
+  dir: string | undefined,
+  look: Pick<Series, "theme" | "cast">
 ): Promise<{
   readonly owned: Readonly<Record<string, SpokenTakeFiles>>
   readonly heard: ReadonlyMap<string, HeardSpokenCard>
@@ -200,11 +201,7 @@ async function spokenTakes(
   const named = spokenTakesOf(essay)
   // Template A is drawn in its series' theme, as the cards around it (C816),
   // with its series' cast (C822).
-  const { id: seriesId, version } = essay.series
-  const read = await readSeries(join(SERIES, seriesId), version)
-  if (!read.ok)
-    fail([`${seriesId} v${String(version)} can't be read:`, ...read.problems])
-  const { theme, cast } = read.value
+  const { theme, cast } = look
   if (dir === undefined) {
     if (named.length > 0)
       fail([
@@ -254,8 +251,8 @@ async function spokenTakes(
 /**
  * A still of each spoken card's scene into `root` (`<file>.png`) from the
  * built app's `/essay?kind=spoken`, its read of each card answered from
- * `heard` alone, and its take: a question said in the asker's voice, an
- * answer the owner's own take from `owned`, played whole. Recorded as every
+ * `heard` alone, and its take: a Kokoro turn said in its place's voice, an
+ * owner's turn their own take from `owned`, played whole. Recorded as every
  * voiced stage's are (`recordStills`), by each scene's id.
  */
 async function spokenStills({
@@ -298,6 +295,7 @@ async function spokenStills({
     page,
     root,
     shots: spoken.map(({ scene, spoken: { card, scene: on } }) => {
+      const voice = scene.lines.at(0)?.voice
       const own = on.take === undefined ? undefined : owned[on.take]
       // `spokenTakes` refused a missing take before anything was drawn; an
       // answer is never said by the speaker in its place.
@@ -313,7 +311,9 @@ async function spokenStills({
           record: "true",
         }).toString()}`,
         said: scene.said,
-        voice: SPOKEN_ASKER_VOICE,
+        // A Kokoro turn's voice; an owner's turn plays their take, said in none.
+        voice:
+          voice ?? (own === undefined ? fail([`${scene.id}: no voice`]) : ""),
         ...(own === undefined ? {} : { own }),
       }
     }),
@@ -335,7 +335,7 @@ type HandedScreens = {
 
 /**
  * What home handed for `cut`'s screens of the app, checked before anything
- * is drawn: each snip's picture by its record's hash, each clip frame a PNG,
+ * is drawn: each snip's picture by its record's hash, bytes and size, each clip frame a PNG,
  * and every screen the essay names among them (`resolveScreens`). Null when
  * it names none.
  */
@@ -374,11 +374,20 @@ async function handedScreens(
       if (bytes === null)
         problems.push(`${snip.id}: ${snip.image.name} is missing`)
       else if (
+        bytes.length !== snip.image.bytes ||
         (await sha256Hex(new Uint8Array(bytes).buffer)) !== snip.image.sha256
       )
         problems.push(
           `${snip.id}: ${snip.image.name} is not the picture its record names`
         )
+      else {
+        // A record of another size would zoom to the wrong boxes.
+        const size = pngSize(bytes)
+        if (size?.width !== snip.width || size.height !== snip.height)
+          problems.push(
+            `${snip.id}: ${snip.image.name} isn't the size its record says`
+          )
+      }
     }
   }
   const frames = new Map<string, PictureSize>()
@@ -402,12 +411,14 @@ async function handedScreens(
  * `cut` with its screens of the app drawn from what home handed, the
  * snips' pictures copied into `root/snips/` and the frames into `root/clips/`:
  * in a `spoken` essay, each held above the band the captions draw in, so a
- * caption is never over the app's own screen (C869). A silent essay has no
- * captions and keeps the whole frame.
+ * caption is never over the app's own screen (C869), and each drawn in
+ * `series`' own ground and theme, among its cards (C818). A silent essay
+ * has no captions and keeps the whole frame.
  */
 async function withScreens(
   cut: CutList,
   screens: HandedScreens | null,
+  { frame, theme, ground }: Series,
   spoken: boolean,
   root: string
 ): Promise<CutList> {
@@ -433,7 +444,9 @@ async function withScreens(
     await copyFile(from, to)
   }
   const resolved = resolveScreens(cut, screens.handed, {
-    foot: spoken ? captionSpace(LANDSCAPE) / LANDSCAPE.height : 0,
+    foot: spoken ? captionShare(frame) : 0,
+    ground,
+    ...(theme === undefined ? {} : { theme }),
   })
   if (!resolved.ok) return fail(resolved.problems)
   return resolved.value
@@ -449,10 +462,16 @@ async function main(): Promise<void> {
   const policy = policyOf(values)
   const speaker = speakerFlag(values)
   const spoken = isSpokenEssay(essay.value)
+  const { id: seriesId, version } = essay.value.series
+  const read = await readSeries(join(SERIES, seriesId), version)
+  if (!read.ok)
+    fail([`${seriesId} v${String(version)} can't be read:`, ...read.problems])
   const { owned, heard } = spoken
-    ? await spokenTakes(essay.value, values.takes)
+    ? await spokenTakes(essay.value, values.takes, read.value)
     : { owned: {}, heard: new Map<string, HeardSpokenCard>() }
-  const scenes = spoken ? cardsScenes(essay.value, heard) : []
+  const scenes = spoken
+    ? cardsScenes(essay.value, heard, read.value.voices)
+    : []
   refuseLong(scenes, policy)
   const screens = await handedScreens(essay.value, values.snips, values.clips)
   const root = join(here(values.out), key)
@@ -460,8 +479,8 @@ async function main(): Promise<void> {
   await writeFile(join(root, "essay.json"), written)
 
   // The brand files the series names, from home's brand folder (`--brand`).
-  const series = join(SERIES, essay.value.series.id)
-  await placeBed(series, essay.value.series.version, values.brand, root)
+  const series = join(SERIES, seriesId)
+  await placeBed(series, version, values.brand, root)
   const site = await siteOf(values)
   const browser = await launchChromium()
   try {
@@ -502,6 +521,7 @@ async function main(): Promise<void> {
       await withScreens(
         spoken ? voicedCardsCutList(essay.value, scenes, takes) : essay.value,
         screens,
+        read.value,
         spoken,
         root
       ),

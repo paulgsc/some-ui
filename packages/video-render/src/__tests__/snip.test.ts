@@ -1,4 +1,5 @@
-import { mkdtemp } from "node:fs/promises"
+import { createHash } from "node:crypto"
+import { mkdtemp, readFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import {
@@ -13,6 +14,7 @@ import { render } from "@video-render/render"
 import {
   clipFramesOf,
   parseSnipsGiven,
+  pngSize,
   resolveScreens,
   SNIP_ID,
   SNIPS_GIVEN_SCHEMA,
@@ -24,7 +26,7 @@ import * as fixtures from "@video-render/testing"
 import { SCREEN_ZOOM } from "@video-render/zoom"
 import { describe, expect, it } from "vitest"
 
-import { showcase } from "./showcase"
+import { showcase, VIDEOS } from "./showcase"
 
 const SHA = "0123456789ab".padEnd(64, "c")
 const PHONE = `web:/rust-rounds-sample:phone:0.1.69:${SHA.slice(0, 12)}`
@@ -187,7 +189,11 @@ describe("an essay's screens of the app (SNIPS4)", () => {
       snip(APK),
       snip(PHONE, ["QM-311:program", "QM-311:run"]),
     ])
-    const drawn = resolveScreens(cut, given([apk(), phone()]), { foot: 0.25 })
+    const drawn = resolveScreens(cut, given([apk(), phone()]), {
+      foot: 0.25,
+      theme: "dark",
+      ground: "#111821",
+    })
     if (!drawn.ok) throw new Error(drawn.problems.join("; "))
     // The owner (2026-11-21): not full-bleed, the caption below the screen.
     expect(drawn.value.shots[1]?.picture).toEqual({
@@ -200,6 +206,8 @@ describe("an essay's screens of the app (SNIPS4)", () => {
         scale: 1,
         stops: "[]",
         foot: 0.25,
+        theme: "dark",
+        ground: "#111821",
       },
       files: ["snips/apk/android/release-studio~takes-dddddddddddd.png"],
     })
@@ -216,6 +224,9 @@ describe("an essay's screens of the app (SNIPS4)", () => {
           { x: 16, y: 200, width: 380, height: 300 },
           { x: 16, y: 520, width: 380, height: 120 },
         ]),
+        foot: 0.25,
+        theme: "dark",
+        ground: "#111821",
       },
     })
     expect(snipsOf(drawn.value)).toEqual([])
@@ -374,5 +385,56 @@ describe("an essay's screens of the app (SNIPS4)", () => {
     expect(parsed.ok ? "" : parsed.problems.join("\n")).toContain(
       "it isn't a snip's id"
     )
+  })
+})
+
+describe("the phone-card sample: a cards essay on a snip of the phone (#3311, C818)", () => {
+  it("is publishable, and every screen it shows is one its snips hold", async () => {
+    const KEY = "phone-card-2026-11-21"
+    const cut = await showcase("phone-card")
+    const v3 = await readSeries(
+      join(import.meta.dirname, "../sample/series/cheat-sheet"),
+      3
+    )
+    const files = new Map<string, unknown>([
+      ["index.json", { schema: CARDS_INDEX_SCHEMA, essays: [{ key: KEY }] }],
+      [`${KEY}.json`, cut],
+    ])
+    expect(
+      cardsFolderProblems(files, (id, version) =>
+        id === "cheat-sheet" && version === 3 && v3.ok ? v3.value : null
+      )
+    ).toEqual([])
+    const given = parseSnipsGiven(
+      JSON.parse(
+        await readFile(
+          join(VIDEOS, "phone-card", "snips", "snips.json"),
+          "utf8"
+        )
+      )
+    )
+    if (!given.ok) throw new Error(given.problems.join("; "))
+    expect(resolveScreens(cut, { snips: given.value, clips: null }).ok).toBe(
+      true
+    )
+    // record:cards checks these on home; nothing in CI runs it on the sample.
+    for (const snip of given.value.bundles.flatMap((b) => b.snips)) {
+      const bytes = await readFile(
+        join(VIDEOS, "phone-card", "snips", snip.image.name)
+      )
+      expect(createHash("sha256").update(bytes).digest("hex")).toBe(
+        snip.image.sha256
+      )
+      expect(pngSize(bytes)).toEqual({ width: snip.width, height: snip.height })
+      // Each part is one thing, so a zoom to it rings nothing else.
+      for (const [i, { box: a }] of snip.regions.entries())
+        for (const { box: b } of snip.regions.slice(i + 1))
+          expect(
+            a.x + a.width <= b.x ||
+              b.x + b.width <= a.x ||
+              a.y + a.height <= b.y ||
+              b.y + b.height <= a.y
+          ).toBe(true)
+    }
   })
 })

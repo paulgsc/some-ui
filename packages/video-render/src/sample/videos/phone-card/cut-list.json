@@ -1,0 +1,160 @@
+{
+  "schema": "some-ui.cut-list/2",
+  "title": "A Rust Rounds ticket on the phone (sample)",
+  "series": {
+    "id": "cheat-sheet",
+    "version": 3
+  },
+  "look": "plain",
+  "voice": "read",
+  "burnIns": [],
+  "stamp": {
+    "sources": ["paulgsc/some-ui@fb7c5de"],
+    "date": "2026-11-21"
+  },
+  "shots": [
+    {
+      "id": "intro",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 12000,
+      "burnIns": [
+        {
+          "kind": "flow",
+          "params": {
+            "kicker": "FLOW · ONE TICKET",
+            "title": "Read it, write it, let rustc answer",
+            "steps": [
+              {
+                "badge": "you",
+                "label": "The question",
+                "note": "A ticket's title and its spec, as the phone shows it."
+              },
+              {
+                "badge": "you",
+                "label": "Speak to",
+                "note": "The points the answer has to cover, in order."
+              },
+              {
+                "badge": "main",
+                "label": "The program",
+                "note": "What was written in answer, on the card itself."
+              },
+              {
+                "badge": "main",
+                "label": "rustc's answer",
+                "note": "The compiler's own words, first diagnostic first."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "intro",
+        "said": "This is a spoken cheat sheet on reading one Rust Rounds ticket on the phone, drawn from sample data. Reach for it when you want to see what a ticket asks, what was written in answer, and what the compiler said about it, all on one card. It is as of November twenty-first, twenty twenty-six, checked against some-ui."
+      }
+    },
+    {
+      "id": "C1",
+      "picture": {
+        "kind": "screen",
+        "of": {
+          "from": "snips",
+          "id": "web:/rust-rounds-sample:phone:0.1.71:7da9fd68697e",
+          "commit": "fb7c5def8acef0a9201fdce19ceff87f8aa30997",
+          "at": [
+            "QM-311:question",
+            "QM-311:point:1",
+            "QM-311:point:2",
+            "QM-311:point:3"
+          ]
+        }
+      },
+      "durationMs": 12000,
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter one. The question.",
+        "narration": "The card opens on the ticket: parse the batch without a copy per field. The spec says why it matters, a worker that misses its two millisecond target at peak. Below it, three points to speak to: where the time goes, what change removes it, and what that asks of the caller."
+      }
+    },
+    {
+      "id": "C2",
+      "picture": {
+        "kind": "screen",
+        "of": {
+          "from": "snips",
+          "id": "web:/rust-rounds-sample:phone:0.1.71:7da9fd68697e",
+          "commit": "fb7c5def8acef0a9201fdce19ceff87f8aa30997",
+          "at": ["QM-311:program", "QM-311:diagnostic:1"]
+        }
+      },
+      "durationMs": 12000,
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter two. The program, and rustc's answer.",
+        "narration": "Under the question sits the program written in answer. It copies the line into a new string, splits it, and returns pieces of that copy. rustc refuses it: the function returns a value that borrows a local it is about to drop. That error is the lesson the ticket was built to reach."
+      }
+    },
+    {
+      "id": "C3",
+      "picture": {
+        "kind": "screen",
+        "of": {
+          "from": "snips",
+          "id": "web:/rust-rounds-sample:phone:0.1.71:7da9fd68697e",
+          "commit": "fb7c5def8acef0a9201fdce19ceff87f8aa30997",
+          "at": []
+        }
+      },
+      "durationMs": 10000,
+      "spoken": {
+        "role": "scene",
+        "chapter": "Chapter three. The whole card.",
+        "narration": "Step back, and the card reads top to bottom: the ticket and what it asks, the points to speak to, the program, and rustc's answer under it. That order is the order to read it in, on the phone or anywhere else."
+      }
+    },
+    {
+      "id": "close",
+      "picture": {
+        "kind": "card"
+      },
+      "durationMs": 12000,
+      "burnIns": [
+        {
+          "kind": "flow",
+          "params": {
+            "kicker": "FLOW · ONE TICKET",
+            "title": "Read it, write it, let rustc answer",
+            "steps": [
+              {
+                "badge": "you",
+                "label": "The question",
+                "note": "A ticket's title and its spec, as the phone shows it."
+              },
+              {
+                "badge": "you",
+                "label": "Speak to",
+                "note": "The points the answer has to cover, in order."
+              },
+              {
+                "badge": "main",
+                "label": "The program",
+                "note": "What was written in answer, on the card itself."
+              },
+              {
+                "badge": "main",
+                "label": "rustc's answer",
+                "note": "The compiler's own words, first diagnostic first."
+              }
+            ]
+          }
+        }
+      ],
+      "spoken": {
+        "role": "close",
+        "said": "That's one ticket on the phone. Next time, read the question and its points first, then the program, then the first thing rustc says. This essay ran on sample data; the owner's own week is drawn the same way."
+      }
+    }
+  ]
+}
