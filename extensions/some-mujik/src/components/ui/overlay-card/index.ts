@@ -1,7 +1,7 @@
 import { formatTimecode } from "@some-extension/common/utils/timecode"
 
 // ─── Overlay Card UI ──────────────────────────────────────────────────────────
-// Pure DOM construction module. Its one import is the shared m:ss clock.
+// Pure DOM construction module.
 // Returns { root, update(song), destroy() }
 
 // ── Inlined color helpers (no shared import) ──────────────────────────────────
