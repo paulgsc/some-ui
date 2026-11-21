@@ -19,7 +19,7 @@ import { describe, expect, it } from "vitest"
 
 import { showcase } from "./showcase"
 
-/** The series home's image holds: cheat-sheet's versions 1 and 2. */
+/** Cheat-sheet's versions 1 and 2, the silent and the first spoken. */
 const CHEAT_SHEET = await Promise.all(
   [1, 2].map((v) =>
     readSeries(join(import.meta.dirname, "../sample/series/cheat-sheet"), v)
