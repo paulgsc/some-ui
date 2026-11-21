@@ -2,7 +2,7 @@
 // Guardrail over .github/: artifact retention and the retention families
 // (CLAUDE.md, "Workflow storage"), inline installs (node-ci-setup), PR
 // commits with the git hooks off (WR1), changesets/action paired with the
-// Changesets CLI's major (CS1), and the RS1 fingerprint and RS2
+// Changesets CLI's major (CS1), paths-filter negations (CD1), and the RS1 fingerprint and RS2
 // branch-name checks (CLAUDE.md, "Cross-repo coupling"). The rules live in
 // packages/eslint/src/workflow-guards.ts.
 //
@@ -27,6 +27,7 @@ import {
   findCacheViolations,
   findChangesetsPairingViolations,
   findInlineInstallViolations,
+  findPathsFilterViolations,
   findPrCommitHookViolations,
   findRetentionViolations,
   findRs2Violations,
@@ -59,6 +60,7 @@ for (const [file, text] of texts) {
   violations.push(...findPrCommitHookViolations(file, text))
   violations.push(...findChangesetsPairingViolations(file, text, cliMajor))
   violations.push(...findInlineInstallViolations(file, text))
+  violations.push(...findPathsFilterViolations(file, text))
 }
 const retentionPath = join(root, RETENTION_FILE)
 violations.push(
