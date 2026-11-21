@@ -1,0 +1,19 @@
+{
+  "id": "C898",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/transcribe.rs",
+    "server:apps/servers/file_host/src/transcribe/pass.rs",
+    "server:docs/identity.md"
+  ],
+  "chose": "The transcriber logs one line per attempt as it ends, with its kind, whether it was verbatim, how long it took, its audio and speech length, and how many detections and runs it made, plus whisper's build and thread count once at startup.",
+  "options": [
+    "a line per attempt with those fields",
+    "only the pass's summary line, as before",
+    "a line per attempt with its kind and time only"
+  ],
+  "gray": "What reaches home's logs about the owner's takes is bounded by invariant 23 (never text, audio, id or subject); within that, which signals to log is a choice the owner sees in the logs and no check fixed.",
+  "undo": "Remove transcribe::log_attempt and its two calls in transcribe::pass, and the 'transcriber loaded' line, and restore identity.md's 'a pass logs only how many attempts of each kind it kept'.",
+  "refs": ["server#1087"]
+}

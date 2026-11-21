@@ -1,0 +1,18 @@
+{
+  "id": "C900",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/transcribe.rs",
+    "server:apps/servers/file_host/src/stage.rs"
+  ],
+  "chose": "The transcriber's promise as a shared stage: a note is heard within 15 minutes of reaching home (transcribe::HEARD_WITHIN, VH7), compile-time asserted above an interval and one deadline-long note.",
+  "options": [
+    "15 minutes: an interval and one deadline-long note ahead fit with room to spare",
+    "5 minutes: one long note ahead breaks it on a healthy box",
+    "1 hour: rarely breached, but the 11-19 stall would read slow far too late"
+  ],
+  "gray": "Whether 15 minutes suits the owner's notes is only shown by real use.",
+  "undo": "Change HEARD_WITHIN; the alert reads it through stage_promise_seconds, so no rule changes, and amend VH7's bound.",
+  "refs": ["#3333", "server#1066"]
+}
