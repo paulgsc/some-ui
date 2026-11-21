@@ -185,7 +185,7 @@ describe("an essay's screens of the app (SNIPS4)", () => {
     ])
     const drawn = resolveScreens(cut, given([apk(), phone()]), { foot: 0.25 })
     if (!drawn.ok) throw new Error(drawn.problems.join("; "))
-    // The owner (2026-11-21): the phone at three quarters, the caption below.
+    // The owner (2026-11-21): not full-bleed, the caption below the screen.
     expect(drawn.value.shots[1]?.picture).toEqual({
       kind: "composition",
       ref: SCREEN_ZOOM,

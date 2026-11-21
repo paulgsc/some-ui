@@ -81,7 +81,8 @@ export function zoomPicture(
  * The whole of `screen` as a scene's picture (SNIPS4; the owner,
  * 2026-11-21): the screen-zoom composition with no stops, so the phone is
  * held whole in the room above the frame's foot, where the captions draw,
- * on the series' ground, at about three quarters of the frame's height.
+ * on the series' ground, as large as fits there: never full-bleed, and
+ * the caption never over the app's own screen.
  */
 export function wholePicture(
   screen: Screen,

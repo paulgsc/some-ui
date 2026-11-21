@@ -164,9 +164,9 @@ owner's one step. The workflow holds no mailbox secret.
 
   `record:cards --snips <dir> --clips <dir>` checks each snip picture's hash
   and that each frame is a PNG. `resolveScreens` then draws each scene. With
-  no `at`, it holds the whole screen as the owner chose (2026-11-21): the
-  phone at about three quarters of the frame's height, the caption below it,
-  on the series' ground (`screen-zoom` with no stops, C869). With `at`, a
+  no `at`, it holds the whole screen as the owner chose (2026-11-21): never
+  full-bleed, as large as fits above the captions, which sit below it and
+  never over the app's own screen, on the series' ground (`screen-zoom` with no stops, C869). With `at`, a
   snip zooms to those parts in turn, as the Rust essay's cards do. A scene
   naming a screen home didn't hand, a snip of another commit than its
   bundle, or a part its snip doesn't name is refused before anything is
