@@ -39,6 +39,10 @@ const study: Pipeline = {
   name: "Study sessions",
   wing: "practice",
   domain: "practice",
+  opened: {
+    kind: "not-measured",
+    why: "Only Practice's home cards for it are counted; its own screen is not, when shown.",
+  },
   affordances: [
     // Practice Home's study card: Start, or Another round once one is done.
     {
@@ -154,6 +158,10 @@ const bites: Pipeline = {
   name: "Bites",
   wing: "practice",
   domain: "reflection",
+  opened: {
+    kind: "not-measured",
+    why: "Only Practice's home card for it is counted; its own screen is not, when shown.",
+  },
   affordances: [
     // "Not today? Say why", beside the study card; it opens Bites listening.
     {
@@ -187,6 +195,10 @@ const topik: Pipeline = {
   name: "TOPIK",
   wing: "practice",
   domain: "korean",
+  opened: {
+    kind: "not-measured",
+    why: "A lesson counts what it lists, which can be nothing; nothing is counted each time it is shown.",
+  },
   affordances: [
     // Practice Home's Next lesson.
     {
@@ -354,6 +366,10 @@ const rustRounds: Pipeline = {
   name: "Rust Rounds",
   wing: "practice",
   domain: "rust",
+  opened: {
+    kind: "not-measured",
+    why: "A week's ticket is counted when one is on screen, and Practice's home card when listed; nothing is counted each time it is shown.",
+  },
   affordances: [
     // Practice Home's card: Continue where you left off, or Start.
     {
@@ -471,6 +487,10 @@ const leetype: Pipeline = {
   name: "LeetType",
   wing: "practice",
   domain: "algorithms",
+  opened: {
+    kind: "not-measured",
+    why: "A session is counted once a round is played; nothing is counted each time it is shown.",
+  },
   affordances: [
     {
       id: "session-file",
@@ -531,6 +551,7 @@ const honeycomb: Pipeline = {
   name: "Hangul Honeycomb",
   wing: "practice",
   domain: "korean",
+  opened: { kind: "not-measured", why: "Nothing of it is counted yet." },
   affordances: [
     {
       id: "game",

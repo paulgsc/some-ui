@@ -14,6 +14,7 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { phoneBitePorts } from "@/lib/game-bites"
 import { gameDayFeed } from "@/lib/home-link/live"
 import { gameOutbox } from "@/lib/home-link/voice"
+import { GAME_TEAMS_SWITCH } from "@/lib/home-web"
 import { browserLocalStorage } from "@/lib/tenant/storage"
 
 /**
@@ -54,11 +55,30 @@ const takesLink = (
   </Link>
 )
 
+/** The way to choose which teams home follows live (#3329). */
+const teamsLink = (label: string): JSX.Element => (
+  <a
+    href={GAME_TEAMS_SWITCH}
+    target="_blank"
+    rel="noreferrer"
+    className="text-brand self-start text-sm font-semibold underline-offset-4 hover:underline"
+  >
+    {label}
+  </a>
+)
+
 /** The recorder, with the ports it owns for as long as it shows. */
 const PhoneGameWeek = (): JSX.Element => {
   // Made once per mount: the recorder reads them once.
   const [ports] = useState(() => gameWeekPorts())
-  return <GameWeek ports={ports} outbox={gameOutbox} takesLink={takesLink} />
+  return (
+    <GameWeek
+      ports={ports}
+      outbox={gameOutbox}
+      takesLink={takesLink}
+      teamsLink={teamsLink}
+    />
+  )
 }
 
 /**

@@ -1,0 +1,20 @@
+{
+  "id": "C866",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/render.ts",
+    "some-ui:packages/video-render/src/snip.ts",
+    "some-ui:packages/video-render/src/cards-essay.ts",
+    "some-ui:apps/www/tests/record/cards.ts"
+  ],
+  "chose": "A screen of the app is drawn only from what home hands beside the essay, as it hands takes, each kind in its own folder: <key>.snips/ (snips.json, some-ui.snips-given/1, each bundle's commit with its records, and the pictures) and <key>.clips/ (each frame at <clip>/<side>/<file>). record:cards takes --snips and --clips, checks each snip picture's hash and that each frame is a PNG, and refuses before anything is drawn a screen it wasn't handed or a part its snip doesn't name. A cut list still naming one is refused by the render's input check, which every render passes through, and not by resolve(), so cards-check still passes an essay that names one; no frame is ever blank. A cards essay may show one in place of a card, and its card burn-ins still draw over it as the author wrote them.",
+  "options": [
+    "refuse before recording and in the render's input check; folders per kind, as takes are handed; a screen in place of a card",
+    "a separate resolved cut-list type the renderer reads, so the compiler refuses an unresolved screen",
+    "draw a placeholder for a missing screen"
+  ],
+  "gray": "Where an unresolved snip is caught is a design choice no check settles. A second cut-list type would make it a compile error, but it splits the one file the phone, home and the renderer share, and every reader would carry both. The owner decided that a missing snip refuses the render (#3114), not where that happens.",
+  "undo": "Drop the screen refusal from render.ts's input check and --snips and --clips from record:cards, and refuse screen pictures in parseCardsEssay again.",
+  "refs": ["#3114"]
+}

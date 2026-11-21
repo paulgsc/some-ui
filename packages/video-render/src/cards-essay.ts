@@ -9,7 +9,9 @@
  * The file is the cut list itself, as `sample/videos/<video>/cut-list.json`
  * is. Its key is a slug and its stamp's day (`nixos-upgrade-2026-11-14`),
  * so the same subject checked again on a later day is a new essay. Home has
- * no captures or takes for one: every scene is a card picture.
+ * no captures or takes for one: every scene is a card picture, or a screen
+ * of the app home keeps, a snip or a clip frame (SNIPS4, `./snip`), which
+ * home hands beside the essay.
  *
  * From the cheat-sheet series' version 2 an essay is spoken (EXPLAIN6,
  * #3021, C370, C371: `Spoken`); one in version 1 is silent. A spoken essay
@@ -131,8 +133,10 @@ export function parseCardsIndex(raw: unknown): Parsed<CardsIndex> {
 /**
  * The cut list `raw` as the essay `key`, or every reason home can't render
  * it: what any cut list is refused for (`parseCutList`), a key that isn't
- * its stamp's day, a series that isn't a cards series, a scene that isn't
- * a card, plays a take or a cue or stands on an image, and captions; in a
+ * its stamp's day, a series that isn't a cards series, a scene that is
+ * neither a card nor a screen of the app (`./snip`), a spoken card that
+ * shows a screen, a scene that plays a take or a cue or stands on an image,
+ * and captions; in a
  * spoken version, what `spokenProblems` finds, and in a silent one, a scene
  * that says something. What
  * only drawing finds (a line that doesn't fit, a character the font lacks)
@@ -177,8 +181,17 @@ export function parseCardsEssay(key: string, raw: unknown): Parsed<CutList> {
         ]
       : []),
     ...shots
-      .filter((s) => s.picture.kind !== "card")
-      .map((s) => `${s.id}: its picture is a ${s.picture.kind}, not a card`),
+      .filter((s) => s.picture.kind === "screen" && s.spoken?.role === "spoken")
+      .map(
+        (s) =>
+          `${s.id}: a spoken card is drawn by its stage, so it shows no screen of the app`
+      ),
+    ...shots
+      .filter((s) => s.picture.kind !== "card" && s.picture.kind !== "screen")
+      .map(
+        (s) =>
+          `${s.id}: its picture is a ${s.picture.kind}, not a card or a screen of the app`
+      ),
     ...(isSpokenEssay(cut.value)
       ? spokenProblems(cut.value)
       : shots

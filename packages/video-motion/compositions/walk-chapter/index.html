@@ -1,0 +1,83 @@
+<!doctype html>
+<!--
+  A walkthrough's chapter card (WALK4, #3282): the stop's number and name,
+  between the walk's screens, so a viewer knows where on the journey they
+  are. Drawn like the promo's opening and close (lib/promo.css).
+-->
+<html
+  lang="en"
+  data-composition-variables='[
+    {"id":"number","type":"string","label":"The stop’s number","default":"1"},
+    {"id":"title","type":"string","label":"The stop (| splits lines)","default":"This morning’s|picks"},
+    {"id":"ground","type":"color","label":"Ground","default":"#111821"},
+    {"id":"ink","type":"color","label":"Ink","default":"#f4efe6"},
+    {"id":"accent","type":"color","label":"Accent","default":"#f5b75b"},
+    {"id":"accentInk","type":"color","label":"Ink on accent","default":"#2a1a0c"}
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="lib/promo.css" />
+    <style>
+      #glow {
+        top: 300px;
+      }
+      #number {
+        position: absolute;
+        left: 0;
+        width: 1080px;
+        top: 620px;
+        font-size: 260px;
+        color: var(--accent);
+        text-align: center;
+      }
+      #title {
+        position: absolute;
+        left: 0;
+        width: 1080px;
+        top: 960px;
+        padding: 0 72px;
+        font-size: 140px;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="1.6"
+      data-width="1080"
+      data-height="1920"
+      data-fps="30"
+      data-no-timeline
+    >
+      <div id="glow" class="glow"></div>
+      <div id="number" class="display"></div>
+      <h2 id="title" class="display"></h2>
+    </div>
+    <script src="lib/motion.js"></script>
+    <script>
+      const { length: L, track, lines, vars, $ } = window.motion
+      $("number").textContent = vars.number
+      track($("glow"), [
+        [0, { opacity: 0, scale: 0.7 }],
+        [0.7, {}],
+      ])
+      track($("number"), [
+        [0.05, { opacity: 0, scale: 0.6 }, "back"],
+        [0.5, {}],
+        [L - 0.3, {}, "in"],
+        [L, { opacity: 0, y: -30 }],
+      ])
+      lines($("title"), vars.title).forEach((line, i) =>
+        track(line, [
+          [0.2 + i * 0.08, { yPct: 110 }],
+          [0.8 + i * 0.08, {}],
+          [L - 0.3 + i * 0.03, {}, "in"],
+          [L, { yPct: -110 }],
+        ])
+      )
+    </script>
+  </body>
+</html>

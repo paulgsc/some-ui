@@ -1857,6 +1857,9 @@ importers:
       '@some-extension/suspender-ledger':
         specifier: workspace:*
         version: link:../../extensions/suspender-ledger
+      '@some-ui/core-utils':
+        specifier: workspace:*
+        version: link:../core-utils
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../some-styles

@@ -13,11 +13,14 @@ import { mkdirSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import type { AndroidDevice, Page } from "@playwright/test"
 import { sha256Hex } from "@some-ui/core-utils"
+import type { Region } from "@some-ui/video-render"
+import { pngSize as readPngSize, regionsOf } from "@some-ui/video-render"
 
 import {
   describe,
   fillPattern,
   isPattern,
+  isStage,
   moduleOf,
   slugOf,
   snipId,
@@ -34,8 +37,17 @@ import type {
 } from "@/lib/snips"
 
 type Camera = {
-  /** The picture, as PNG bytes. */
-  readonly shoot: () => Promise<Buffer>
+  /**
+   * The picture, as PNG bytes: the whole page for a recording stage
+   * (`isStage`), else what the screen shows.
+   */
+  readonly shoot: (whole: boolean) => Promise<Buffer>
+  /**
+   * Each part the screen names (`data-region`), boxed in the picture's CSS
+   * pixels, where the picture is the page's own; none where it is the
+   * device's whole screen, which no page's layout maps onto.
+   */
+  readonly regions: (whole: boolean) => Promise<ReadonlyArray<Region>>
   /** A short recording of the screen, as its bytes and kind, or null where none is made. */
   readonly record: () => Promise<{
     readonly bytes: Buffer
@@ -92,7 +104,9 @@ export async function walk(w: Walk): Promise<Part> {
       })
       return
     }
-    const png = await w.camera.shoot()
+    const whole = isStage(route.path)
+    const png = await w.camera.shoot(whole)
+    const regions = await w.camera.regions(whole)
     const sha256 = await hashOf(png)
     const same = seen.get(sha256)
     if (same !== undefined) {
@@ -117,7 +131,7 @@ export async function walk(w: Walk): Promise<Part> {
     // A second picture a moment later: where the screen moved, a recording
     // shows what the still cannot.
     await w.page.waitForTimeout(1_000)
-    const again = await w.camera.shoot()
+    const again = await w.camera.shoot(whole)
     const moving = (await hashOf(again)) !== sha256
     const clip = moving ? await w.camera.record() : null
     const recording = clip
@@ -132,6 +146,8 @@ export async function walk(w: Walk): Promise<Part> {
       path,
       viewport: w.viewport.name,
       ...pngSize(png),
+      scale: w.viewport.scale,
+      regions: [...regions],
       appVersion: w.appVersion,
       module,
       shows: screen.shows || module,
@@ -167,7 +183,9 @@ export function writePart(out: string, part: Part, name: string): void {
 
 /** A PNG's own size, from its header: what was drawn, whatever was asked for. */
 export function pngSize(png: Buffer): { width: number; height: number } {
-  return { width: png.readUInt32BE(16), height: png.readUInt32BE(20) }
+  const size = readPngSize(png)
+  if (size === null) throw new Error("the camera gave no PNG")
+  return size
 }
 
 /** A file's SHA-256, as home hashes content (`sha256Hex`). */
@@ -198,6 +216,36 @@ export async function save(
   mkdirSync(dirname(file), { recursive: true })
   writeFileSync(file, bytes)
   return { name, kind, bytes: bytes.length, sha256: await hashOf(bytes) }
+}
+
+/**
+ * The parts the page names (`data-region`), each boxed around every element
+ * that carries it, within what the page's picture shows (`regionsOf`): the
+ * window, or the `whole` page from its top-left.
+ */
+export async function pageRegions(
+  page: Page,
+  whole: boolean
+): Promise<ReadonlyArray<Region>> {
+  const { measured, width, height } = await page.evaluate((whole) => {
+    const dx = whole ? window.scrollX : 0
+    const dy = whole ? window.scrollY : 0
+    const root = document.documentElement
+    return {
+      measured: [
+        ...document.querySelectorAll<HTMLElement>("[data-region]"),
+      ].map((part) => {
+        const r = part.getBoundingClientRect()
+        return {
+          ref: part.dataset.region ?? "",
+          box: { x: r.x + dx, y: r.y + dy, width: r.width, height: r.height },
+        }
+      }),
+      width: whole ? root.scrollWidth : window.innerWidth,
+      height: whole ? root.scrollHeight : window.innerHeight,
+    }
+  }, whole)
+  return regionsOf(measured, { width, height })
 }
 
 /** Waits for the network to go quiet and fonts to load, then a beat for late paints. */

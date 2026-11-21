@@ -34,26 +34,46 @@
  * app's `/essay?kind=spoken` (template A). With no spoken card it takes no
  * `--takes`, and records as it always has.
  *
+ * An essay may show screens of the app home keeps (SNIPS4,
+ * `@some-ui/video-render`'s `snip.ts`), handed as its takes are, each kind
+ * in its own folder. `--snips <dir>` (`<key>.snips/`) holds `snips.json`
+ * (`some-ui.snips-given/1`), the records of the snips the essay names by
+ * each bundle's commit, with
+ * each picture under it by its bundle name. `--clips <dir>` (`<key>.clips/`)
+ * holds each Clips Library frame it names at `<clip>/<side>/<file>`. A screen
+ * home didn't hand, a picture not the one its record names, or a frame that
+ * isn't a PNG is refused before anything is drawn. With no screen it takes
+ * neither.
+ *
  * It takes the flags every home recorder takes (`CALL_OPTIONS`). Policy, the
  * step cache (which keeps each take by its words, voice and model) and
  * `--brand` are the call's (`./call` says how). Needs `ffmpeg` and `ffprobe`
  * on `PATH`.
  */
 
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises"
-import { basename, join, resolve } from "node:path"
+import { copyFile, mkdir, readdir, readFile, writeFile } from "node:fs/promises"
+import { basename, dirname, join, resolve } from "node:path"
 import { parseArgs } from "node:util"
 import type { Page } from "@playwright/test"
+import { captionSpace, LANDSCAPE } from "@some-ui/burn-ins"
+import { sha256Hex } from "@some-ui/core-utils"
 import {
   cardsChapterMarks,
   cardsLines,
   cardsScenes,
   CHAPTER_GAP_MS,
+  clipFramesOf,
+  CLIPS_DIR,
   heardSpokenCard,
   isSpokenEssay,
   joinedTake,
   parseCardsEssay,
+  parseSnipsGiven,
+  pngSize,
   QUIET,
+  resolveScreens,
+  SNIPS_DIR,
+  snipsOf,
   spokenCardsOf,
   spokenTakeFilesOf,
   spokenTakesOf,
@@ -62,15 +82,18 @@ import {
 import type {
   CardsScene,
   CutList,
+  Handed,
   HeardSpokenCard,
+  PictureSize,
   Series,
+  SnipsGiven,
   SpokenTakeFiles,
   StillTake,
 } from "@some-ui/video-render"
 import { nodePorts, readSeries } from "@some-ui/video-render/node"
 
 import { CALL_OPTIONS, FRAME } from "./call-recording"
-import { fail, here, launchChromium, runCommand } from "./command"
+import { fail, here, jsonOr, launchChromium, runCommand } from "./command"
 import {
   placeBed,
   policyOf,
@@ -93,6 +116,8 @@ const { values } = parseArgs({
     "cut-list-file": { type: "string" },
     out: { type: "string", default: "out/cards" },
     takes: { type: "string" },
+    snips: { type: "string" },
+    clips: { type: "string" },
     ...CALL_OPTIONS,
   },
 })
@@ -301,6 +326,119 @@ async function spokenStills({
   return new Map(spoken.map(({ scene }, i) => [scene.id, takes[i] ?? null]))
 }
 
+/** What home handed for `cut`'s screens of the app, and the folders it is in. */
+type HandedScreens = {
+  readonly handed: Handed
+  readonly snipsDir: string | null
+  readonly clipsDir: string | null
+}
+
+/**
+ * What home handed for `cut`'s screens of the app, checked before anything
+ * is drawn: each snip's picture by its record's hash, each clip frame a PNG,
+ * and every screen the essay names among them (`resolveScreens`). Null when
+ * it names none.
+ */
+async function handedScreens(
+  cut: CutList,
+  snipsFlag: string | undefined,
+  clipsFlag: string | undefined
+): Promise<HandedScreens | null> {
+  const snips = snipsOf(cut)
+  const clips = clipFramesOf(cut)
+  if (snips.length === 0 && clips.length === 0) return null
+  const problems: Array<string> = []
+  if (snips.length > 0 && snipsFlag === undefined)
+    problems.push(
+      `it shows ${String(snips.length)} snips, and --snips names no folder home handed them in`
+    )
+  if (clips.length > 0 && clipsFlag === undefined)
+    problems.push(
+      `it shows ${String(clips.length)} clip frames, and --clips names no folder home handed them in`
+    )
+  if (problems.length > 0) fail(problems)
+  const snipsDir = snipsFlag === undefined ? null : here(snipsFlag)
+  const clipsDir = clipsFlag === undefined ? null : here(clipsFlag)
+  let given: SnipsGiven | null = null
+  if (snipsDir !== null) {
+    const read = await readFile(join(snipsDir, "snips.json"), "utf8").catch(
+      () => fail([`${snipsDir} holds no snips.json`])
+    )
+    const parsed = parseSnipsGiven(jsonOr(read, `${snipsDir}/snips.json`))
+    if (!parsed.ok) fail([`${snipsDir}/snips.json:`, ...parsed.problems])
+    given = parsed.value
+    for (const snip of given.bundles.flatMap((bundle) => bundle.snips)) {
+      const bytes = await readFile(join(snipsDir, snip.image.name)).catch(
+        () => null
+      )
+      if (bytes === null)
+        problems.push(`${snip.id}: ${snip.image.name} is missing`)
+      else if (
+        (await sha256Hex(new Uint8Array(bytes).buffer)) !== snip.image.sha256
+      )
+        problems.push(
+          `${snip.id}: ${snip.image.name} is not the picture its record names`
+        )
+    }
+  }
+  const frames = new Map<string, PictureSize>()
+  if (clipsDir !== null)
+    for (const frame of clips) {
+      const bytes = await readFile(join(clipsDir, frame)).catch(() => null)
+      if (bytes === null) continue // resolveScreens says it wasn't handed
+      const size = pngSize(bytes)
+      if (size === null)
+        problems.push(`${frame}: home handed a frame that isn't a PNG`)
+      else frames.set(frame, size)
+    }
+  if (problems.length > 0) fail(problems)
+  const handed = { snips: given, clips: frames }
+  const resolved = resolveScreens(cut, handed)
+  if (!resolved.ok) fail(resolved.problems)
+  return { handed, snipsDir, clipsDir }
+}
+
+/**
+ * `cut` with its screens of the app drawn from what home handed, the
+ * snips' pictures copied into `root/snips/` and the frames into `root/clips/`:
+ * in a `spoken` essay, each held above the band the captions draw in, so a
+ * caption is never over the app's own screen (C869). A silent essay has no
+ * captions and keeps the whole frame.
+ */
+async function withScreens(
+  cut: CutList,
+  screens: HandedScreens | null,
+  spoken: boolean,
+  root: string
+): Promise<CutList> {
+  if (screens === null) return cut
+  const copies = [
+    ...(screens.snipsDir === null
+      ? []
+      : (screens.handed.snips?.bundles ?? [])
+          .flatMap((bundle) => bundle.snips)
+          .map((snip) => ({
+            from: join(screens.snipsDir ?? "", snip.image.name),
+            to: join(root, SNIPS_DIR, snip.image.name),
+          }))),
+    ...(screens.clipsDir === null
+      ? []
+      : [...(screens.handed.clips?.keys() ?? [])].map((frame) => ({
+          from: join(screens.clipsDir ?? "", frame),
+          to: join(root, CLIPS_DIR, frame),
+        }))),
+  ]
+  for (const { from, to } of copies) {
+    await mkdir(dirname(to), { recursive: true })
+    await copyFile(from, to)
+  }
+  const resolved = resolveScreens(cut, screens.handed, {
+    foot: spoken ? captionSpace(LANDSCAPE) / LANDSCAPE.height : 0,
+  })
+  if (!resolved.ok) return fail(resolved.problems)
+  return resolved.value
+}
+
 async function main(): Promise<void> {
   const file = values["cut-list-file"]
   if (!file) fail(["usage: record:cards --cut-list-file <key>.json"])
@@ -322,6 +460,7 @@ async function main(): Promise<void> {
     ? cardsScenes(essay.value, heard, read.value.voices)
     : []
   refuseLong(scenes, policy)
+  const screens = await handedScreens(essay.value, values.snips, values.clips)
   const root = join(here(values.out), key)
   await mkdir(root, { recursive: true })
   await writeFile(join(root, "essay.json"), written)
@@ -366,7 +505,12 @@ async function main(): Promise<void> {
     await renderCut(
       root,
       series,
-      spoken ? voicedCardsCutList(essay.value, scenes, takes) : essay.value,
+      await withScreens(
+        spoken ? voicedCardsCutList(essay.value, scenes, takes) : essay.value,
+        screens,
+        spoken,
+        root
+      ),
       {
         preview: false,
         episode: "cards.mp4",
