@@ -9,6 +9,7 @@
 import type { KeyedStorage } from "@some-ui/core-utils"
 import {
   localStorageOrNull,
+  onJson,
   openKept,
   salvageList,
   writeKept,
@@ -84,7 +85,7 @@ function isIdea(value: unknown): value is Idea {
 }
 
 /** Reads the kept list entry by entry, keeping each idea it can read. */
-const readIdeas = salvageList(isIdea)
+const readIdeas = onJson(salvageList(isIdea))
 
 export type IdeaStore = {
   /** Every idea kept, oldest first; null when they can't be read. */

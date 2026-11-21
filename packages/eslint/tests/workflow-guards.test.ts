@@ -591,6 +591,16 @@ describe("findChangesetsPairingViolations", () => {
     ])
   })
 
+  it("reads a commit pin's version from the comment beside it (C953)", () => {
+    const sha = "e4f2a1b9c0d3e5f6a7b8c9d0e1f2a3b4c5d6e7f8"
+    expect(
+      findChangesetsPairingViolations(F, step(`${sha} # v2.1.2`), 3)
+    ).toEqual([])
+    expect(
+      findChangesetsPairingViolations(F, step(`${sha} # v1.9.0`), 3)
+    ).toEqual([violation(sha, 3, 2)])
+  })
+
   it("fails a CLI major with no known pair", () => {
     expect(findChangesetsPairingViolations(F, step("v3.0.0"), 4)).toEqual([
       violation("v3.0.0", 4, null),

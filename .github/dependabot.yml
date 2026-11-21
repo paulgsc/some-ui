@@ -58,9 +58,14 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-  # GitHub Actions — keep action versions current
+  # GitHub Actions — keep action versions current. Every `uses:` is pinned
+  # to a commit with its release in a trailing comment (C953); Dependabot
+  # moves both. `directory: "/"` reads only .github/workflows, so the
+  # composite actions under .github/actions are listed too.
   - package-ecosystem: "github-actions"
-    directory: "/"
+    directories:
+      - "/"
+      - "/.github/actions/*"
     schedule:
       interval: "weekly"
       day: "monday"

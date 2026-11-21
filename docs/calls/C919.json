@@ -1,0 +1,18 @@
+{
+  "id": "C919",
+  "made": "2026-11-21",
+  "by": "owner",
+  "paths": [
+    "server:infra/compose/file_host.yml",
+    "server:docs/home-compute.md"
+  ],
+  "chose": "file-host's CPU cap is 3.0 (was 2.0), so the voice-note transcriber hears on two threads (transcribe::default_threads: the cores less one).",
+  "options": [
+    "cpus 3.0: two whisper threads",
+    "keep cpus 2.0: one thread",
+    "set the transcriber's thread count apart from file-host's cap"
+  ],
+  "gray": "How much of home's four cores file-host may take is a resource split the owner notices in how fast takes are heard and how much room renders and the rest get; no check or earlier decision fixes it.",
+  "undo": "Set cpus and deploy.resources.limits.cpus back to 2.0 in infra/compose/file_host.yml, and drop the home-compute.md paragraph.",
+  "refs": ["server#1087", "server#705"]
+}
