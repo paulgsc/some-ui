@@ -600,8 +600,10 @@ export function cardsFolderProblems(
 
 /**
  * Every listed essay's sources held to its stamp's commits through `read`
- * (#3036, `sourceProblems`), each line naming its file. An essay the folder
- * check refuses is that check's to report, so it is passed over here.
+ * (#3036, `sourceProblems`), each line naming its file. The newest essay,
+ * the one being published, is held strictly: a commit its sources can't be
+ * read at refuses it. An essay the folder check refuses is that check's to
+ * report, so it is passed over here.
  */
 export function cardsFolderSources(
   files: ReadonlyMap<string, unknown>,
@@ -610,11 +612,11 @@ export function cardsFolderSources(
   const index = parseCardsIndex(files.get("index.json"))
   const problems: Array<string> = []
   const notes: Array<string> = []
-  for (const { key } of index.ok ? index.value.essays : []) {
+  for (const [i, { key }] of (index.ok ? index.value.essays : []).entries()) {
     const name = `${key}.json`
     const essay = parseCardsEssay(key, files.get(name))
     if (!essay.ok) continue
-    const check = sourceProblems(essay.value, read)
+    const check = sourceProblems(essay.value, read, i === 0)
     problems.push(...check.problems.map((p) => `${name}: ${p}`))
     notes.push(...check.notes.map((n) => `${name}: ${n}`))
   }

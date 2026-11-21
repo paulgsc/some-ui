@@ -109,9 +109,43 @@ describe("a line's sources", () => {
     )
   })
 
-  it("leave a cut list outside a cards essay as it was", async () => {
+  it("parse in any cut list, and only a cards essay holds them to its stamp", async () => {
     const cut = await showcase("nixos-upgrade")
-    expect(parseCutList(cut).ok).toBe(true)
+    const unpinned = {
+      ...cut,
+      shots: cut.shots.map((s) =>
+        s.id === "C1" && s.spoken !== undefined
+          ? {
+              ...s,
+              spoken: {
+                ...s.spoken,
+                sources: [
+                  { repo: "paulgsc/server", path: "a.nix", lines: [1, 1] },
+                ],
+              },
+            }
+          : s
+      ),
+    }
+    const parsed = parseCutList(unpinned)
+    expect(parsed.ok).toBe(true)
+    expect(parsed.ok && claimsOf(parsed.value)[1]?.sources).toHaveLength(1)
+    expect(parseCardsEssay(KEY, unpinned).ok).toBe(false)
+  })
+
+  it("are refused when the stamp pins their repository twice", async () => {
+    const cut = await cited([{ ...AUTO, lines: [1, 1] }])
+    const twice = {
+      ...cut,
+      stamp: {
+        sources: [`${DOTFILES}@${WAS}`, `${DOTFILES}@${IS}`],
+        date: "2026-11-14",
+      },
+    }
+    const parsed = parseCardsEssay(KEY, twice)
+    expect(parsed.ok ? [] : parsed.problems).toContain(
+      `its stamp pins ${DOTFILES} twice, so its sources can't say at which commit they are read`
+    )
   })
 })
 
@@ -124,7 +158,8 @@ describe("sourceProblems", () => {
         { ...AUTO, lines: [3, 4], quote: "autoUpgrade.dates" },
         { ...AUTO, quote: "system.autoUpgrade.enable\n = true" },
       ]),
-      reader(tree)
+      reader(tree),
+      true
     )
     expect(check.problems).toEqual([])
     expect(check.notes).toEqual([
@@ -140,7 +175,8 @@ describe("sourceProblems", () => {
         { ...AUTO, lines: [1, 2], quote: "autoUpgrade" },
         { ...AUTO, quote: "runs as root" },
       ]),
-      reader(tree)
+      reader(tree),
+      true
     )
     expect(check.problems).toEqual([
       `C1: ${DOTFILES} nixos/gone.nix:1: there is no such file at ${WAS}`,
@@ -150,49 +186,73 @@ describe("sourceProblems", () => {
     ])
   })
 
-  it("refuses a clone given without the stamp's commit, once for the commit", async () => {
+  it("refuses lines that are blank, which would hold whatever the file says", async () => {
+    const blank = { [WAS]: { [AUTO.path]: MODULE.replace("{\n", "{\n\n") } }
     const check = sourceProblems(
-      await cited([
-        { ...AUTO, lines: [1, 1] },
-        { ...AUTO, quote: "autoUpgrade" },
-      ]),
-      reader({})
+      await cited([{ ...AUTO, lines: [3, 3] }]),
+      reader(blank),
+      true
     )
     expect(check.problems).toEqual([
-      `${DOTFILES}@${WAS}: the clone given doesn't hold that commit: fetch it, or more of its history, and check again`,
+      `C1: ${DOTFILES} ${AUTO.path}:3 at ${WAS}: the lines it cites are blank`,
     ])
   })
 
-  it("notes, without refusing, a repository no clone was given for", async () => {
-    const check = sourceProblems(
-      await cited([{ ...AUTO, lines: [1, 1] }]),
-      () => ({ kind: "no-clone" })
-    )
-    expect(check.problems).toEqual([])
-    expect(check.notes).toContain(
-      `${DOTFILES}@${WAS}: no clone of it was given, so its sources weren't checked`
-    )
+  it("refuses, when strict, a commit no clone given holds, once for the commit", async () => {
+    const cut = await cited([
+      { ...AUTO, lines: [1, 1] },
+      { ...AUTO, quote: "autoUpgrade" },
+    ])
+    const shallow = `${DOTFILES}@${WAS}: the clone given doesn't hold that commit: fetch it, or more of its history, and check again`
+    const none = `${DOTFILES}@${WAS}: no clone of it was given, so its sources weren't checked`
+    expect(sourceProblems(cut, reader({}), true).problems).toEqual([shallow])
+    expect(
+      sourceProblems(cut, () => ({ kind: "no-clone" }), true).problems
+    ).toEqual([none])
+    // An older essay's commits are another session's: only noted.
+    const older = sourceProblems(cut, reader({}), false)
+    expect(older.problems).toEqual([])
+    expect(older.notes).toContain(shallow)
+    expect(
+      sourceProblems(cut, () => ({ kind: "no-clone" }), false).notes
+    ).toContain(none)
   })
 
   it("is the folder's, by each essay's file, passing over an essay the folder check refuses", async () => {
     const cut = await cited([{ ...AUTO, quote: "runs as root" }])
+    const older = await cited([{ ...AUTO, lines: [1, 1] }])
     const files = new Map<string, unknown>([
       [
         "index.json",
         {
           schema: "some-ui.cards-index/1",
-          essays: [{ key: KEY }, { key: "broken-2026-11-13" }],
+          essays: [
+            { key: KEY },
+            { key: "nixos-upgrade-old-2026-11-13" },
+            { key: "broken-2026-11-13" },
+          ],
         },
       ],
       [`${KEY}.json`, cut],
+      [
+        "nixos-upgrade-old-2026-11-13.json",
+        {
+          ...older,
+          stamp: { sources: [`${DOTFILES}@1234567`], date: "2026-11-13" },
+        },
+      ],
       ["broken-2026-11-13.json", { not: "an essay" }],
     ])
     const check = cardsFolderSources(files, reader(tree))
     expect(check.problems).toEqual([
       `${KEY}.json: C1: ${DOTFILES} ${AUTO.path} at ${WAS}: "runs as root" isn't said in it`,
     ])
+    // The newest is refused for its source; the older, whose commit no
+    // clone holds, is only noted.
     expect(check.notes).toEqual([
       `${KEY}.json: 4 of 5 scenes' narration names no source: C2, C3, C4, C5`,
+      "nixos-upgrade-old-2026-11-13.json: 4 of 5 scenes' narration names no source: C2, C3, C4, C5",
+      `nixos-upgrade-old-2026-11-13.json: ${DOTFILES}@1234567: the clone given doesn't hold that commit: fetch it, or more of its history, and check again`,
     ])
   })
 })

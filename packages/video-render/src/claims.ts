@@ -109,15 +109,34 @@ function stampCommits(cut: CutList): ReadonlyMap<string, string> {
  */
 export const unpinnedSources = (cut: CutList): Array<string> => {
   const pinned = stampCommits(cut)
-  return claimsOf(cut).flatMap((claim) =>
-    claim.sources
-      .filter((s) => !pinned.has(s.repo))
-      .map(
-        (s) =>
-          `${claim.scene}: it cites ${s.repo}, and the stamp pins ${[...pinned.keys()].join(", ") || "no repository"}`
-      )
+  const claims = claimsOf(cut)
+  const repos = (cut.stamp?.sources ?? []).map((s) =>
+    s.slice(0, s.lastIndexOf("@"))
   )
+  // Sources are read at one commit a repository, so a stamp that cites
+  // them pins each repository once. An essay citing none is as served.
+  const twice = claims.some((c) => c.sources.length > 0)
+    ? [...new Set(repos.filter((r, i) => repos.indexOf(r) !== i))].map(
+        (r) =>
+          `its stamp pins ${r} twice, so its sources can't say at which commit they are read`
+      )
+    : []
+  return [
+    ...twice,
+    ...claims.flatMap((claim) =>
+      claim.sources
+        .filter((s) => !pinned.has(s.repo))
+        .map(
+          (s) =>
+            `${claim.scene}: it cites ${s.repo}, and the stamp pins ${[...pinned.keys()].join(", ") || "no repository"}`
+        )
+    ),
+  ]
 }
+
+/** Each repository any line of `cut` cites. */
+export const citedRepos = (cut: CutList): Set<string> =>
+  new Set(claimsOf(cut).flatMap((c) => c.sources.map((s) => s.repo)))
 
 /**
  * A file in `repo` at `commit`, as a reader finds it: its text, no such file
@@ -171,6 +190,9 @@ function cited(
         why: `it has ${lines.length} lines, and the source cites up to line ${last}`,
       }
     span = lines.slice(first - 1, last).join("\n")
+    // Blank lines say nothing, so citing them alone would always hold.
+    if (s.quote === undefined && flat(span) === "")
+      return { ok: false, why: "the lines it cites are blank" }
   }
   if (s.quote !== undefined && !flat(span).includes(flat(s.quote)))
     return {
@@ -183,11 +205,11 @@ function cited(
 /** What checking an essay's sources at its stamp found. */
 export type SourceCheck = {
   /**
-   * Sources that don't hold at the stamp's commits, and commits a clone was
-   * given without: the essay is refused until each is fixed.
+   * Sources that don't hold at the stamp's commits, and, when strict,
+   * commits no clone given holds: the essay is refused until each is fixed.
    */
   readonly problems: ReadonlyArray<string>
-  /** Narration that names no source, and repositories no clone was given for. */
+  /** Narration that names no source, and, unless strict, commits unread. */
   readonly notes: ReadonlyArray<string>
 }
 
@@ -201,11 +223,17 @@ const unreadWhy = (file: SourceFile): string | null =>
 
 /**
  * Every source of `cut` held to its stamp's commit through `read`: a file
- * that isn't there, lines past its end, a quote not said in them, or a
- * clone without the commit is a problem; a narration with no source, or a
- * repository no clone was given for, is a note.
+ * that isn't there, lines past its end or blank, or a quote not said in them
+ * is a problem; a narration with no source is a note. A commit `read` can't
+ * reach (no clone of its repository, or a clone without it) is a problem
+ * when `strict` (the essay being published: its author has the clones) and
+ * a note otherwise (an older essay, whose commits are another session's).
  */
-export function sourceProblems(cut: CutList, read: ReadFile): SourceCheck {
+export function sourceProblems(
+  cut: CutList,
+  read: ReadFile,
+  strict: boolean
+): SourceCheck {
   const pinned = stampCommits(cut)
   const problems: Array<string> = []
   const unread = new Map<string, SourceFile>()
@@ -237,14 +265,21 @@ export function sourceProblems(cut: CutList, read: ReadFile): SourceCheck {
       .filter(([, file]) => file.kind === kind)
       .map(([at, file]) => `${at}: ${unreadWhy(file) ?? ""}`)
   return {
-    problems: [...problems, ...unreadLines("no-commit")],
+    problems: [
+      ...problems,
+      ...(strict
+        ? [...unreadLines("no-commit"), ...unreadLines("no-clone")]
+        : []),
+    ],
     notes: [
       ...(unsourced.length > 0
         ? [
             `${unsourced.length} of ${owed.length} scenes' narration names no source: ${unsourced.map((c) => c.scene).join(", ")}`,
           ]
         : []),
-      ...unreadLines("no-clone"),
+      ...(strict
+        ? []
+        : [...unreadLines("no-commit"), ...unreadLines("no-clone")]),
     ],
   }
 }

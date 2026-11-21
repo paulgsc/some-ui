@@ -102,8 +102,10 @@ every line is written from the code at the stamp's commits, and names it:
   keeps its notes, since an essay already served is never rewritten.
 - **Finding a stale essay:** `pnpm --filter @some-ui/video-render render
 cards-stale <essay file> --repo <owner/repo>=<clone> …` follows each
-  source to each clone's `HEAD` (or `--at <commit>`) and lists every line
-  whose file is gone or no longer says what it cited. A listed line is the
+  source to its clone's `HEAD` (or to `--at <owner/repo>=<commit>`, one per
+  repository) and lists every line whose file is gone or no longer says
+  what it cited, even where the passage only moved. It exits 1 when it
+  lists one, or when a source couldn't be followed. A listed line is the
   reason for a new essay on the same subject.
 
 ## Rules for every line
@@ -171,9 +173,11 @@ Since you, months later, are the listener:
    already there, since home keeps each as first served.
 7. **Check the folder:**
    `pnpm --filter @some-ui/video-render render cards-check <paulgsc/testing>/cards --repo <owner/repo>=<clone> …`,
-   a `--repo` for each repository your essay's stamp pins, until it says
-   ready. The newest essay must be spoken. Every note about your essay is
-   a scene to cite before you publish; notes about older essays stay.
+   a `--repo` for each repository your essay cites, until it says ready.
+   The newest essay must be spoken, and every source it names must be read
+   at its stamp: a clone it needs and isn't given, or one too shallow to
+   hold the commit, refuses it. Every note about your essay is a scene to
+   cite before you publish; notes about older essays stay.
 8. **Open a pull request** in `paulgsc/testing`. Before pushing, run
    `python3 scripts/guard.py --staged` there until it says ready. Title it
    `data(cards): <the essay's title>`. Its body names the key, the stamp's

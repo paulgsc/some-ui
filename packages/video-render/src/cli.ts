@@ -37,14 +37,16 @@
  * (`cardsFolderProblems`, CARDS7): its index, every essay it lists as a
  * cards essay in a version of its series this checkout holds, and no essay
  * file it forgets. What only drawing finds is `record:cards`' to refuse.
- * With a clone of each repository the essays' stamps pin, it also holds
- * every line's sources to its stamp's commit (#3036, `claims.ts`), and
- * notes a scene whose narration names none.
+ * With a clone of each repository the essays cite, it also holds every
+ * line's sources to its stamp's commit (#3036, `claims.ts`), and notes a
+ * scene whose narration names none; the newest essay's sources must all be
+ * read, so a clone it needs and isn't given refuses it.
  *
- *   pnpm --filter @some-ui/video-render render cards-stale <essay file> --repo <owner/repo>=<clone> … [--at <commit>]
+ *   pnpm --filter @some-ui/video-render render cards-stale <essay file> --repo <owner/repo>=<clone> … [--at <owner/repo>=<commit> …]
  *
  * lists the essay's lines whose source has moved since its stamp, at each
- * clone's `HEAD` or `--at` (`staleClaims`, #3036).
+ * clone's `HEAD` or the commit `--at` names for it (`staleClaims`, #3036),
+ * and exits 1 when one has, or couldn't be followed.
  *
  *   pnpm --filter @some-ui/video-render render clip-check <clips folder>
  *
@@ -110,7 +112,7 @@ import {
   parseCardsEssay,
 } from "./cards-essay"
 import type { ReadFile } from "./claims"
-import { SOURCE_REPO, sourceName, staleClaims } from "./claims"
+import { citedRepos, SOURCE_REPO, sourceName, staleClaims } from "./claims"
 import { clipFolderProblems, parseClipIndex } from "./clip"
 import { CUES, cueWav } from "./cues"
 import { problemsOf } from "./cut-list"
@@ -156,7 +158,7 @@ async function main(): Promise<void> {
       from: { type: "string" },
       to: { type: "string" },
       repo: { type: "string", multiple: true, default: [] },
-      at: { type: "string" },
+      at: { type: "string", multiple: true, default: [] },
     },
   })
   const [first, second, third, fourth, fifth, sixth] = positionals
@@ -289,8 +291,17 @@ async function main(): Promise<void> {
           ])
         held.set(`${id}@${version}`, series.value)
       }
-    const clones = reposOf(values.repo)
+    const clones = clonesOf(values.repo)
     const sources = cardsFolderSources(files, readAt(clones))
+    const cited = new Set<string>()
+    for (const name of files.keys()) {
+      const essay = parseCardsEssay(
+        name.replace(/\.json$/, ""),
+        files.get(name)
+      )
+      if (essay.ok) for (const repo of citedRepos(essay.value)) cited.add(repo)
+    }
+    unknownRepos(clones, cited, "no essay here cites it")
     const problems = [
       ...cardsFolderProblems(
         files,
@@ -310,13 +321,18 @@ async function main(): Promise<void> {
   if (first === "cards-stale") {
     if (!second || values.repo.length === 0)
       fail([
-        "usage: render cards-stale <essay file> --repo <owner/repo>=<clone> … [--at <commit>]",
+        "usage: render cards-stale <essay file> --repo <owner/repo>=<clone> … [--at <owner/repo>=<commit> …]",
       ])
     const file = here(second)
     const essay = parseCardsEssay(basename(file, ".json"), await readJson(file))
     if (!essay.ok) fail([`${second} isn't a cards essay:`, ...essay.problems])
-    const clones = reposOf(values.repo)
-    const at = values.at ?? "HEAD"
+    const clones = clonesOf(values.repo)
+    const cited = citedRepos(essay.value)
+    if (cited.size === 0)
+      fail([`${second}: it cites no source, so there is nothing to follow`])
+    unknownRepos(clones, cited, "the essay cites no file in it")
+    const ats = pairsOf("--at", values.at)
+    unknownRepos(ats, cited, "the essay cites no file in it")
     const { stale, unfollowed } = staleClaims(
       essay.value,
       readAt(clones),
@@ -324,7 +340,11 @@ async function main(): Promise<void> {
         const dir = clones.get(repo)
         return dir === undefined
           ? undefined
-          : gitOut(dir, ["rev-parse", "--verify", `${at}^{commit}`])
+          : gitOut(dir, [
+              "rev-parse",
+              "--verify",
+              `${ats.get(repo) ?? "HEAD"}^{commit}`,
+            ])
       }
     )
     for (const claim of stale)
@@ -336,7 +356,8 @@ async function main(): Promise<void> {
     process.stdout.write(
       `${second}: ${stale.length === 0 ? "no line's source has moved" : `${stale.length} ${stale.length === 1 ? "source has" : "sources have"} moved since its stamp`}${unfollowed.length === 0 ? "" : `, and ${unfollowed.length} couldn't be followed`}\n`
     )
-    if (unfollowed.length > 0) process.exitCode = 1
+    // Either is a finding: a stale line, or one that couldn't be checked.
+    if (stale.length > 0 || unfollowed.length > 0) process.exitCode = 1
     return
   }
   if (first === "clip-check") {
@@ -494,17 +515,53 @@ async function convert(
 
 const run = promisify(execFile)
 
-/** Each `<owner/repo>=<clone>` given, by its repository. */
-function reposOf(given: ReadonlyArray<string>): ReadonlyMap<string, string> {
-  const clones = new Map<string, string>()
+/** Each `<owner/repo>=<value>` given to `flag`, by its repository. */
+function pairsOf(
+  flag: string,
+  given: ReadonlyArray<string>
+): ReadonlyMap<string, string> {
+  const pairs = new Map<string, string>()
   for (const pair of given) {
     const at = pair.indexOf("=")
     const repo = pair.slice(0, at)
-    if (at < 1 || !SOURCE_REPO.test(repo))
-      fail([`--repo ${pair}: it isn't <owner/repo>=<clone>`])
-    clones.set(repo, here(pair.slice(at + 1)))
+    const value = pair.slice(at + 1)
+    if (at < 1 || !SOURCE_REPO.test(repo) || value === "")
+      fail([`${flag} ${pair}: it isn't <owner/repo>=<value>`])
+    if (pairs.has(repo)) fail([`${flag} names ${repo} twice`])
+    pairs.set(repo, value)
+  }
+  return pairs
+}
+
+/** Each `--repo <owner/repo>=<clone>`, refusing a folder that isn't one. */
+function clonesOf(given: ReadonlyArray<string>): ReadonlyMap<string, string> {
+  const clones = new Map<string, string>()
+  for (const [repo, path] of pairsOf("--repo", given)) {
+    const dir = here(path)
+    if (gitOut(dir, ["rev-parse", "--git-dir"]) === undefined)
+      fail([`--repo ${repo}=${path}: it isn't a clone`])
+    clones.set(repo, dir)
   }
   return clones
+}
+
+/**
+ * Refuses a repository given that nothing cites: a misspelt name would
+ * otherwise leave the repository it meant unchecked.
+ */
+function unknownRepos(
+  given: ReadonlyMap<string, string>,
+  cited: ReadonlySet<string>,
+  why: string
+): void {
+  const unknown = [...given.keys()].filter((repo) => !cited.has(repo))
+  if (unknown.length > 0)
+    fail(
+      unknown.map(
+        (repo) =>
+          `${repo}: ${why} (it cites ${[...cited].join(", ") || "nothing"})`
+      )
+    )
 }
 
 /** What `git` prints in `dir`, or `undefined` when it refuses. */
