@@ -87,7 +87,7 @@ export const OUTCOME_WORDS = {
   "you.dodged-it": WATCHING,
   "you.tuned-in-late": WATCHING,
   "in.halftime": { leading: "Leading", trailing: "Trailing", tied: "Tied" },
-  "in.onside-kick": { ours: "We got it back", theirs: "They got it back" },
+  "in.onside-kick": { ours: "We recovered it", theirs: "They recovered it" },
 } as const satisfies Record<string, Readonly<Record<string, string>>>
 
 /** Every scenario id this version of some-ui draws. */

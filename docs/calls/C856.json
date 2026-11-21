@@ -7,7 +7,7 @@
     "packages/game-scenarios/src/icons.ts",
     "packages/game-scenarios/src/catalog.ts"
   ],
-  "chose": "Catalog v2's phone words and icons (#3048): Halftime's outcomes read Leading, Trailing, Tied; the onside kick's read 'We got it back' and 'They got it back'; the halves read '1st half', '2nd half', 'Overtime'; the big-play sizes 'Big', 'Huge', 'One to remember'; its kinds 'Pass', 'Run', 'Kick return', 'Punt return', 'Interception return', 'Fumble return'. Halftime's icon is the field cut at midfield with an arrow to the half to come; the onside kick's a short kick bouncing once. The halves and the big-play algebra are unions the dump must name in full, so a value either side adds fails until the other has it.",
+  "chose": "Catalog v2's phone words and icons (#3048): Halftime's outcomes read Leading, Trailing, Tied; the onside kick's read 'We recovered it' and 'They recovered it' (whichever side kicked); the halves read '1st half', '2nd half', 'Overtime'; the big-play sizes 'Big', 'Huge', 'One to remember'; its kinds 'Pass', 'Run', 'Kick return', 'Punt return', 'Interception return', 'Fumble return'. Halftime's icon is the field cut at midfield with an arrow to the half to come; the onside kick's a short kick bouncing once. The halves and the big-play algebra are unions the dump must name in full, so a value either side adds fails until the other has it.",
   "options": [
     "these words and icons, with the dimensions as closed unions",
     "read the dimensions as plain strings and show the server's slugs",

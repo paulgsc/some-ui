@@ -110,6 +110,26 @@ describe("parseCatalog", () => {
         },
       })
     ).toThrow("unknown least size of pass: vast")
+    // Out of order, or one twice, is not the set.
+    expect(() =>
+      parseCatalog({
+        version: 2,
+        scenarios: [],
+        ...dimensions,
+        big_play: {
+          ...dimensions.big_play,
+          sizes: [...dimensions.big_play.sizes].reverse(),
+        },
+      })
+    ).toThrow("big-play size: memorable, huge, big is not big, huge, memorable")
+    expect(() =>
+      parseCatalog({
+        version: 2,
+        scenarios: [],
+        ...dimensions,
+        halves: ["first", "first", "second", "overtime"],
+      })
+    ).toThrow("half: first, first, second, overtime is not")
   })
 
   it("refuses a phase or moment this code does not know", () => {
