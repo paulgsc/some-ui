@@ -8,7 +8,7 @@ import type { Feed } from "@game-week/lib/feed"
 import { readHome } from "@game-week/lib/live-wire"
 import type { GameWeekState } from "@game-week/lib/machine"
 import { rankedNow, step } from "@game-week/lib/machine"
-import type { RankedEntry } from "@game-week/lib/ranked"
+import type { BiteUnit, RankedEntry } from "@game-week/lib/ranked"
 import { nextUnit, otherSide, rankedList, unitOf } from "@game-week/lib/ranked"
 import { unitLine } from "@game-week/lib/words"
 import { SCENARIOS, UNITS } from "@some-ui/game-scenarios"
@@ -243,6 +243,70 @@ describe("a bite's unit", () => {
     })
   })
 
+  describe("for a play that just happened", () => {
+    // The list names in.third-long for SEA's defense; the play names its own.
+    const played = (unit: BiteUnit | null): Feed => ({
+      ...RANKED_FEED,
+      offer:
+        RANKED_FEED.offer === null
+          ? null
+          : {
+              ...RANKED_FEED.offer,
+              justHappened: [
+                {
+                  scenario: "in.third-long",
+                  context: "SF stopped on 3rd and 9",
+                  at: new Date(T0).toISOString(),
+                  unit,
+                },
+              ],
+            },
+    })
+    const play = (unit: BiteUnit | null): Said => ({
+      how: "just-happened",
+      scenario: "in.third-long",
+      context: "SF stopped on 3rd and 9",
+      unit,
+    })
+
+    it("is the play's own, another team's than the list's", () => {
+      const sf: BiteUnit = { unit: "offense", side: "SF" }
+      expect(fieldsKept(saying(play(sf), played(sf)))).toMatchObject({
+        unit: "offense",
+        unitSide: "SF",
+      })
+    })
+
+    it("is none when the play is about no one team, whatever the list says", () => {
+      const fields = fieldsKept(saying(play(null), played(null)))
+      expect(fields).not.toHaveProperty("unit")
+    })
+
+    it("comes back to the play's team, not the list's, from none", () => {
+      let state = saying(play(null), played({ unit: "offense", side: "SF" }))
+      state = step(state, { type: "pickUnit" }).state
+      expect(
+        state.activity.kind === "taking" &&
+          state.activity.said.how !== "said-first" &&
+          state.activity.said.unit
+      ).toEqual({ unit: UNITS[0], side: "SF" })
+    })
+
+    it("is the play's own when it answers a bite said first", () => {
+      const sf: BiteUnit = { unit: "offense", side: "SF" }
+      const amend = run(
+        saying({ how: "said-first" }, played(sf)),
+        { type: "done" },
+        { type: "taken", take: take(), id: "b1", at: T0 + 5_000 },
+        { type: "answer", said: play(sf) }
+      ).all.find((effect) => effect.type === "amend")
+      expect(amend?.type === "amend" && amend.fields).toMatchObject({
+        unit: "offense",
+        unitSide: "SF",
+      })
+    })
+  })
+
   it("is none for a bite said first and left for later", () => {
     const later = run(
       saying({ how: "said-first" }),
@@ -339,7 +403,7 @@ describe("home's ranked list on the live socket", () => {
     expect(named.games[1]).toMatchObject({ teams: { home: "SF", away: "SEA" } })
   })
 
-  it("reads the unit home names on a play that just happened, or leaves it to the list", () => {
+  it("reads the unit home names on a play that just happened: none for one it can't read, the list's from a home before it", () => {
     const happened = (units: ReadonlyArray<Record<string, unknown>>): string =>
       JSON.stringify({
         ...live,
@@ -364,13 +428,7 @@ describe("home's ranked list on the live socket", () => {
     )
     expect(
       read.kind === "offer" && read.offer?.justHappened.map((each) => each.unit)
-    ).toEqual([
-      { unit: "offense", side: "NE" },
-      null,
-      undefined,
-      undefined,
-      undefined,
-    ])
+    ).toEqual([{ unit: "offense", side: "NE" }, null, undefined, null, null])
   })
 
   it("reads an offer from a home before it ranks as one with no list", () => {

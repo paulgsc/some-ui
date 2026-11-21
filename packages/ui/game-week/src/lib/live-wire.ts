@@ -145,7 +145,8 @@ function asOffer(seq: number, value: unknown): Offer | null {
           ...read,
           at: each.at,
           // A home before #3049's play units sends none: the list's is used.
-          unit: "unit" in each ? unitFrom(each) : undefined,
+          // One this build can't read is none, never the list's guess.
+          unit: "unit" in each ? (unitFrom(each) ?? null) : undefined,
         }
       : null
   })

@@ -71,8 +71,8 @@ export function unitOf(
 /**
  * The unit one tap moves a bite to: the next of `UNITS`, then none, then
  * the first again, so a stray tap can always be taken back. Whose it is
- * stays; from none it is `side`, the team the list names for the scenario,
- * or no one team.
+ * stays; from none it is `side`, the team the bite is about (the play's
+ * own, or the list's for the scenario), or no one team.
  */
 export function nextUnit(
   unit: BiteUnit | null,

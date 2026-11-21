@@ -357,6 +357,23 @@ function withUnit(list: ReadonlyArray<RankedEntry>, said: Said): Said {
   return { ...said, unit: unitOf(list, said.scenario) }
 }
 
+/**
+ * The team a bite is about when no unit is named on it: the play's own,
+ * when it just happened and home read one off it, else the list's.
+ */
+function teamOf(
+  state: GameWeekState,
+  said: Exclude<Said, { how: "said-first" }>
+): string | null {
+  if (said.how === "just-happened") {
+    const play = state.offer?.justHappened.find(
+      (each) => each.scenario === said.scenario && each.context === said.context
+    )
+    if (play?.unit !== undefined) return play.unit?.side ?? null
+  }
+  return unitOf(rankedNow(state), said.scenario)?.side ?? null
+}
+
 function withPrefs(state: GameWeekState, prefs: Prefs): Step {
   return {
     state: { ...state, prefs },
@@ -823,8 +840,10 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
       if (activity.kind !== "taking" || activity.said.how === "said-first")
         return stay(state)
       const { said: was } = activity
-      const side = unitOf(rankedNow(state), was.scenario)?.side ?? null
-      const said = { ...was, unit: nextUnit(was.unit ?? null, side) }
+      const said = {
+        ...was,
+        unit: nextUnit(was.unit ?? null, teamOf(state, was)),
+      }
       return stay({ ...state, activity: { ...activity, said } })
     }
 
