@@ -6,10 +6,14 @@
  *
  * Family: every filter × {only Markdown, only files no filter names, one file
  * the filter names}, and for `node` every workspace the Node jobs reach,
- * read from the workspace graph (turbo selects a package for any file in it). The matching is the action's own: dorny/paths-filter
- * v4.0.3 compiles each pattern with picomatch 2.3.1 (its lockfile's, pinned
- * here) under `{ dot: true }`, and under `predicate-quantifier: some`, its
- * default, a file counts when any pattern matches it (its src/filter.ts).
+ * read from the workspace graph (turbo selects a package for any file in
+ * it), and every node-e2e filter, read by its step in pr.yml.
+ *
+ * The matching is the action's own: dorny/paths-filter v4.0.3 compiles each
+ * pattern with picomatch 2.3.1 (its lockfile's, pinned here) under
+ * `{ dot: true }`, under the step's `predicate-quantifier` (`some` for the
+ * job flags, `some-with-excludes` for node-e2e's), as its src/filter.ts
+ * does.
  * `findPathsFilterViolations` in workflow-guards.ts is the lexical half: it
  * fails the leading `!` that broke this under `some`.
  */
@@ -45,44 +49,89 @@ function text(value: unknown, what: string): string {
   return value
 }
 
-function filterStepWith(): Readonly<Record<string, unknown>> {
+type FilterStep = {
+  readonly id: string
+  readonly quantifier: string
+  readonly filters: ReadonlyArray<readonly [string, ReadonlyArray<string>]>
+}
+
+function filterSteps(): ReadonlyArray<FilterStep> {
   const jobs = map(
     map(parse(readFileSync(WORKFLOW, "utf8")), "workflow").jobs,
     "jobs"
   )
+  const found: Array<FilterStep> = []
   for (const job of Object.values(jobs)) {
     for (const step of list(map(job, "job").steps, "steps")) {
       const fields = map(step, "step")
-      if (String(fields.uses).startsWith("dorny/paths-filter@")) {
-        return map(fields.with, "the step's with")
-      }
+      if (!String(fields.uses).startsWith("dorny/paths-filter@")) continue
+      const withMap = map(fields.with, "the step's with")
+      found.push({
+        id: text(fields.id, "the step's id"),
+        quantifier:
+          withMap["predicate-quantifier"] === undefined
+            ? "some"
+            : text(withMap["predicate-quantifier"], "predicate-quantifier"),
+        filters: Object.entries(
+          map(parse(text(withMap.filters, "filters")), "filters")
+        ).map(
+          ([name, patterns]) =>
+            [name, list(patterns, name).map((p) => text(p, name))] as const
+        ),
+      })
     }
   }
-  throw new Error("no paths-filter step in the workflow")
+  return found
 }
 
-const withMap = filterStepWith()
-const quantifier =
-  withMap["predicate-quantifier"] === undefined
-    ? "some"
-    : text(withMap["predicate-quantifier"], "predicate-quantifier")
-const filters = Object.entries(
-  map(parse(text(withMap.filters, "filters")), "filters")
-).map(
-  ([name, patterns]) =>
-    [name, list(patterns, name).map((p) => text(p, name))] as const
-)
+const steps = filterSteps()
 
-// dorny/paths-filter's `isMatch` for `some`, the only quantifier this
-// workflow may use until this test learns another.
-function flags(changed: ReadonlyArray<string>): Record<string, boolean> {
+// dorny/paths-filter's `isMatch` (src/filter.ts) for the two quantifiers
+// this workflow uses. Under `some` a file counts when any pattern matches
+// it; under `some-with-excludes` when a positive pattern matches it and no
+// negated one names it. picomatch inverts a negated pattern's matcher, so
+// "names it" is that matcher returning false.
+function matches(
+  quantifier: string,
+  patterns: ReadonlyArray<string>,
+  file: string
+): boolean {
+  const matchers = patterns.map((p) => ({
+    negated: p.startsWith("!"),
+    test: picomatch(p, { dot: true }),
+  }))
+  switch (quantifier) {
+    case "some": {
+      return matchers.some((m) => m.test(file))
+    }
+    case "some-with-excludes": {
+      if (matchers.some((m) => m.negated && !m.test(file))) return false
+      return matchers.some((m) => !m.negated && m.test(file))
+    }
+    default: {
+      throw new Error(`no matching for quantifier ${quantifier}`)
+    }
+  }
+}
+
+function stepFlags(
+  id: string,
+  changed: ReadonlyArray<string>
+): Record<string, boolean> {
+  const step = steps.find((s) => s.id === id)
+  if (!step) throw new Error(`no paths-filter step ${id}`)
   return Object.fromEntries(
-    filters.map(([name, patterns]) => {
-      const matchers = patterns.map((p) => picomatch(p, { dot: true }))
-      return [name, changed.some((file) => matchers.some((m) => m(file)))]
-    })
+    step.filters.map(([name, patterns]) => [
+      name,
+      changed.some((file) => matches(step.quantifier, patterns, file)),
+    ])
   )
 }
+
+const flags = (changed: ReadonlyArray<string>): Record<string, boolean> =>
+  stepFlags("filter", changed)
+const e2eFlags = (changed: ReadonlyArray<string>): Record<string, boolean> =>
+  stepFlags("e2e", changed)
 
 const NONE = {
   rust: false,
@@ -90,12 +139,25 @@ const NONE = {
   extensions: false,
   wasm: false,
   render: false,
+  lockfile: false,
   ci: false,
 }
+const E2E = [
+  "sw",
+  "ui_fit",
+  "csp",
+  "local_mode",
+  "session_viewport",
+  "composer",
+  "record",
+  "motion",
+  "mic",
+] as const
+const NO_E2E = Object.fromEntries(E2E.map((name) => [name, false]))
 
 // The workspaces the Node jobs reach: every workspace outside extensions/
-// (extension.yml verifies those), and every workspace one of them depends
-// on through `workspace:`, transitively.
+// (extension.yml verifies those), and every workspace one of them names as
+// a dependency, transitively.
 function reachedWorkspaces(): ReadonlyArray<string> {
   const globs = list(
     map(
@@ -137,25 +199,34 @@ function reachedWorkspaces(): ReadonlyArray<string> {
 }
 
 describe("CD1: a change-detection flag is true only for a file it names", () => {
-  it("reads the filters the workflow declares, under `some`", () => {
-    expect(quantifier).toBe("some")
-    expect(filters.map(([name]) => name).sort()).toEqual(
+  it("reads both filter steps the workflow declares, and their quantifiers", () => {
+    expect(steps.map((s) => [s.id, s.quantifier])).toEqual([
+      ["filter", "some"],
+      ["e2e", "some-with-excludes"],
+    ])
+    expect(steps[0]?.filters.map(([name]) => name).sort()).toEqual(
       Object.keys(NONE).sort()
+    )
+    expect(steps[1]?.filters.map(([name]) => name).sort()).toEqual(
+      [...E2E].sort()
     )
   })
 
   it("sets no flag for a change that is only Markdown outside every filter's trees", () => {
-    expect(
-      flags([
-        "CLAUDE.md",
-        "README.md",
-        "docs/ci-architecture.md",
-        ".claude/skills/coordinate/SKILL.md",
-      ])
-    ).toEqual(NONE)
+    const changed = [
+      "CLAUDE.md",
+      "README.md",
+      "docs/ci-architecture.md",
+      ".claude/skills/coordinate/SKILL.md",
+    ]
+    expect(e2eFlags(changed)).toEqual(NO_E2E)
+    expect(flags(changed)).toEqual(NONE)
   })
 
   it("sets no flag for files no filter names (#3376: calls and a doc's data)", () => {
+    expect(
+      e2eFlags(["docs/calls/C1021.json", ".github/workflows/pr.yml"])
+    ).toEqual(NO_E2E)
     expect(
       flags([
         "docs/calls/C1021.json",
@@ -192,6 +263,9 @@ describe("CD1: a change-detection flag is true only for a file it names", () => 
     ["scripts/check-mutation-boundary.sh", "rust"],
     ["turbo.json", "node"],
     ["pnpm-workspace.yaml", "node"],
+    ["pnpm-lock.yaml", "lockfile"],
+    ["packages/ui/topik/package.json", "lockfile"],
+    ["scripts/audit-node-licenses.mjs", "lockfile"],
     ["scripts/check-catalog-drift.mjs", "node"],
     ["extensions/some-filter/src/x.ts", "extensions"],
     ["crates/leetype-engine/Cargo.toml", "wasm"],
@@ -205,9 +279,65 @@ describe("CD1: a change-detection flag is true only for a file it names", () => 
   it.each(reachedWorkspaces())(
     "`node` covers every file of a workspace the Node jobs reach: %s",
     (dir) => {
-      for (const file of ["package.json", "src/x.ts", "fixtures/a.json"]) {
+      for (const file of [
+        "package.json",
+        "src/x.ts",
+        "fixtures/a.json",
+        "index.html",
+        "scripts/x.mjs",
+        "src/x.typ",
+      ]) {
         expect(flags([`${dir}/${file}`]).node).toBe(true)
       }
     }
   )
+})
+
+describe("CD1: each node-e2e step runs on its own flag", () => {
+  it.each([
+    ["apps/www/public/sw.js", "sw"],
+    ["packages/ui/topik/src/components/x.tsx", "ui_fit"],
+    // A `__tests__/` helper the phone page imports (tests/ui-fit/phone-page).
+    ["apps/www/src/lib/interview-week/__tests__/fixture.ts", "ui_fit"],
+    ["apps/www/nginx.security-headers.conf", "csp"],
+    ["packages/fetch-kit/src/x.ts", "local_mode"],
+    ["packages/activity-catalog/src/x.ts", "session_viewport"],
+    ["apps/www/src/components/composer/x.tsx", "composer"],
+    ["packages/ui/burn-ins/src/x.tsx", "record"],
+    ["extensions/suspender-ledger/src/x.ts", "motion"],
+    ["packages/voice-capture/tests/clips/a.wav", "mic"],
+  ])("a file it names sets its flag: %s → %s", (file, flag) => {
+    expect(e2eFlags([file])[flag]).toBe(true)
+  })
+
+  it("leaves a unit test out of ui-fit: no page it measures bundles one", () => {
+    expect(
+      e2eFlags([
+        "packages/ui/topik/src/lib/x/index.test.ts",
+        "apps/www/src/lib/home-link/__tests__/practice.test.ts",
+      ]).ui_fit
+    ).toBe(false)
+  })
+
+  // pr.yml's node-e2e steps read the `e2e` list by filter name: a step that
+  // names no filter, or a filter no step names, would run a suite on nothing
+  // or never.
+  it("is read by exactly one pr.yml step per filter, through the workflow's output", () => {
+    const detect = readFileSync(WORKFLOW, "utf8")
+    const pr = readFileSync(join(ROOT, ".github/workflows/pr.yml"), "utf8")
+    const job = pr.slice(
+      pr.indexOf("\n  node-e2e:\n"),
+      pr.indexOf("\n  render-stage:\n")
+    )
+    expect(job).toContain("    if: needs.changes.outputs.e2e != '[]'\n")
+    expect(detect).toContain("value: ${{ jobs.detect.outputs.e2e }}")
+    expect(detect).toContain("e2e: ${{ steps.e2e.outputs.changes }}")
+    const read = [
+      ...job.matchAll(
+        /^ {8}if: contains\(fromJSON\(needs\.changes\.outputs\.e2e\), '(\w+)'\)$/gm
+      ),
+    ].map((m) => m[1])
+    expect(read.sort()).toEqual([...E2E].sort())
+    expect(job.match(/^ {6}- name: /gm)?.length).toBe(E2E.length)
+  })
 })
