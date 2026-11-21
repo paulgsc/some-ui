@@ -254,6 +254,29 @@ describe("keeping a bite (GW3, GW4)", () => {
     expect(RECENT_BITES).toBe(3)
   })
 
+  it("keeps an undone row gone while the store answers, and brings it back if it couldn't", () => {
+    const kept = storing(
+      run(
+        stopped(),
+        { type: "taken", take: take(), id: "b1", at: T0 + 5_000 },
+        { type: "kept", id: "b1" }
+      ).state,
+      { id: "b1", at: T0 + 5_000 }
+    )
+    const undone = step(kept, { type: "undo" }).state
+    expect(biteView(undone).recent).toEqual([])
+    // The store speaks of something else before the undo is done.
+    const meanwhile = storing(undone, { id: "b1", at: T0 + 5_000 })
+    expect(biteView(meanwhile).recent).toEqual([])
+    // Too late: the bite is still kept, on its way home.
+    const failed = step(meanwhile, { type: "undoFailed", id: "b1" }).state
+    expect(biteView(failed).recent.map(({ row }) => row.take.id)).toEqual([
+      "b1",
+    ])
+    // Thrown away: the store's word clears it for good.
+    expect(storing(undone).undoing).toEqual([])
+  })
+
   it("says a bite home holds is on home, with nothing to play here", () => {
     const kept = step(stopped(), {
       type: "stored",
@@ -410,7 +433,7 @@ describe("Undo", () => {
   })
 
   it("says so when the bite had already gone", () => {
-    expect(step(kept(), { type: "undoFailed" }).state.notice).toBe(
+    expect(step(kept(), { type: "undoFailed", id: "b1" }).state.notice).toBe(
       NOTICES.tooLateToUndo
     )
   })

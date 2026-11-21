@@ -177,6 +177,12 @@ export type GameWeekState = {
    */
   readonly shelf: ReadonlyArray<StoredBite>
   /**
+   * Bites Undo was tapped on and the store hasn't answered for: their rows
+   * stay gone whatever the store says meanwhile, and come back if it
+   * couldn't throw them away.
+   */
+  readonly undoing: ReadonlyArray<string>
+  /**
    * Bites handed to the store and not yet kept, each with the hold the
    * store has for it (an answer given meanwhile moves it): Undo's end.
    * `held` once the store said it could not keep the bite yet and holds it
@@ -242,7 +248,7 @@ type GameWeekSignal =
       /** The bite was already on its way home, as it was. */
       readonly onItsWay: boolean
     }
-  | { readonly type: "undoFailed" }
+  | { readonly type: "undoFailed"; readonly id: string }
   /** What the store keeps now, after a change. */
   | { readonly type: "stored"; readonly bites: ReadonlyArray<StoredBite> }
   | Extract<TakePatternEvent, { type: "loaded" | "played" }>
@@ -282,6 +288,7 @@ export function initialState(prefs: Prefs, now: number): GameWeekState {
     takes: initialTakePattern,
     lastTaken: null,
     shelf: [],
+    undoing: [],
     keeping: [],
     undo: null,
     blocked: null,
@@ -441,7 +448,9 @@ export function biteView(state: GameWeekState): {
 } {
   const gameId = currentGame(state)?.id
   const recent = state.shelf
-    .filter((bite) => bite.gameId === gameId)
+    .filter(
+      (bite) => bite.gameId === gameId && !state.undoing.includes(bite.id)
+    )
     .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0))
     .slice(0, RECENT_BITES)
   const snapshot = takePatternSnapshot(state.takes, BITE_TAKES)
@@ -903,8 +912,8 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
               ? { kind: "idle" }
               : activity,
           lastTaken: state.lastTaken === undo.id ? null : state.lastTaken,
-          // Its row goes now; the store's next word says the same.
-          shelf: state.shelf.filter(({ id }) => id !== undo.id),
+          // Its row goes now, until the store says whether it could.
+          undoing: [...state.undoing, undo.id],
           notice: NOTICES.thrownAway,
         },
         effects: [...quiet.effects, { type: "undo", id: undo.id }],
@@ -921,11 +930,22 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
     }
 
     case "stored": {
-      return stay({ ...state, shelf: event.bites })
+      // A bite the store no longer keeps needs hiding no longer.
+      const kept = new Set(event.bites.map(({ id }) => id))
+      return stay({
+        ...state,
+        shelf: event.bites,
+        undoing: state.undoing.filter((id) => kept.has(id)),
+      })
     }
 
     case "undoFailed": {
-      return stay({ ...state, notice: NOTICES.tooLateToUndo })
+      // Still kept, and on its way home: its row comes back.
+      return stay({
+        ...state,
+        undoing: state.undoing.filter((id) => id !== event.id),
+        notice: NOTICES.tooLateToUndo,
+      })
     }
 
     case "pickGame": {

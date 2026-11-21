@@ -172,7 +172,7 @@ export function createGameWeek(ports: GameWeekPorts): GameWeekRuntime {
       case "undo": {
         ports.store
           .undo(effect.id)
-          .catch(() => dispatch({ type: "undoFailed" }))
+          .catch(() => dispatch({ type: "undoFailed", id: effect.id }))
         return
       }
       case "savePrefs": {

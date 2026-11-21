@@ -14,11 +14,11 @@
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { readAs } from "@some-ui/core-utils"
+import type { StoredBite } from "@some-ui/game-week"
 import type { LibraryPage, LibraryRead, PhoneTake } from "@some-ui/soundbites"
 import { MATCH_METHODS, TAKE_OFS } from "@some-ui/soundbites/contract"
 import { z } from "zod"
 
-import type { PhoneBite } from "@/lib/game-bites"
 import type { OnPhone } from "@/lib/home-link/voice-copy"
 import { isTakeStation } from "@/lib/take-conveyor/model"
 
@@ -196,7 +196,7 @@ export function readTakes(answer: HomeAnswer): LibraryRead {
  */
 export function phoneTakesOf(
   notes: ReadonlyArray<OnPhone>,
-  bites: ReadonlyArray<PhoneBite>,
+  bites: ReadonlyArray<StoredBite>,
   held: (id: string) => boolean,
   audio: {
     /** A bite's audio on this phone. */

@@ -691,7 +691,7 @@ export const GameWeek = ({
                 row={row}
                 onPlay={() => dispatch({ type: "play", id: row.take.id })}
               >
-                <span className="block">{about}</span>
+                {about !== "" && <span className="block">{about}</span>}
                 {unplayable && (
                   <span className="block">{TAKE_WORDS.unplayable}</span>
                 )}

@@ -31,11 +31,11 @@
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { openRecord, writeRecord } from "@some-ui/core-utils"
-import type { BiteStore, KeptBite } from "@some-ui/game-week"
+import type { BiteStore, KeptBite, StoredBite } from "@some-ui/game-week"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import type { BlobShelf } from "@some-ui/voice-capture"
 
-import type { GameBitesEvent, PhoneBite } from "./model"
+import type { GameBitesEvent } from "./model"
 import { isReady, parseGameBites, stepGameBites } from "./model"
 
 const STORAGE_KEY = "some-ui:game-bites"
@@ -94,7 +94,7 @@ export function createGameBites(ports: GameBitesPorts): GameBites {
     storage === null
       ? null
       : openRecord(storage, STORAGE_KEY, parseGameBites, QUARANTINE_PREFIX)
-  let bites: ReadonlyArray<PhoneBite> =
+  let bites: ReadonlyArray<StoredBite> =
     opened?.kind === "kept" ? opened.value : []
   // Storage that threw, or a record that could not be moved aside, is
   // written to by no one: a keep then fails, and the bite is held here.
@@ -136,7 +136,7 @@ export function createGameBites(ports: GameBitesPorts): GameBites {
     })
   }
 
-  function writeBites(next: ReadonlyArray<PhoneBite>): void {
+  function writeBites(next: ReadonlyArray<StoredBite>): void {
     if (
       !writable ||
       !writeRecord(storage, STORAGE_KEY, JSON.stringify(next), parseGameBites)

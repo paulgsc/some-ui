@@ -20,8 +20,6 @@ import { browserLocalStorage } from "@/lib/tenant/storage"
 import type { GameBites } from "./runtime"
 import { createGameBites } from "./runtime"
 
-export type { PhoneBite } from "./model"
-
 let bites: GameBites | null = null
 
 /** Made on first use, so importing this module reads nothing. */

@@ -6,10 +6,10 @@
  * again only while the read is still wanted.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
+import type { StoredBite } from "@some-ui/game-week"
 import { TAKE_OFS } from "@some-ui/soundbites/contract"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import type { PhoneBite } from "@/lib/game-bites"
 import type { TakesAsked } from "@/lib/home-link/takes-read"
 import type { OnPhone } from "@/lib/home-link/voice-copy"
 import { takesHome } from "@/lib/take-library"
@@ -419,7 +419,7 @@ describe("one home for every take", () => {
         audio,
       },
     ]
-    const bite = (id: string, homeSince?: number): PhoneBite => ({
+    const bite = (id: string, homeSince?: number): StoredBite => ({
       id,
       gameId: "401772",
       at: "2026-11-16T20:00:00Z",
