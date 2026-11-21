@@ -81,7 +81,7 @@ describe("a public page as a screen", () => {
       "github-com-paulgsc-some-ui-actions-runs-44944305421-a1b2c3d4e5f6.png"
     )
     expect(pageFile("https://docs.github.com/en/a/b?plan=free#x", SHA)).toBe(
-      "docs-github-com-en-a-b-plan-free-a1b2c3d4e5f6.png"
+      "docs-github-com-en-a-b-a1b2c3d4e5f6.png"
     )
   })
 

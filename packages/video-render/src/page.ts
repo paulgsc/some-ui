@@ -113,11 +113,13 @@ export function parsePages(value: unknown): Parsed<Pages> {
 
 /**
  * A page's picture's name: its host and path as a slug, then the first 12
- * hex digits of the picture's SHA-256.
+ * hex digits of the picture's SHA-256. The query is left out, so nothing
+ * passed in one reaches a published name; the hash keeps two queries of one
+ * path apart.
  */
 export function pageFile(url: string, sha256: string): string {
-  const { host, pathname, search } = new URL(url)
-  const slug = `${host}${pathname}${search}`
+  const { host, pathname } = new URL(url)
+  const slug = `${host}${pathname}`
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
