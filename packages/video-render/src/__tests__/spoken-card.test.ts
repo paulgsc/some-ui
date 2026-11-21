@@ -353,26 +353,20 @@ describe("a spoken card in a cards essay (WALK7)", () => {
     )
   })
 
-  it("sits anywhere as questions, the owner asking and Kokoro answering, inside the chapter before it", async () => {
+  it("sits anywhere as questions, inside the chapter before it, with no mark of its own (C831)", async () => {
     const cut = await showcase("spoken-intro")
-    const [, intro, c1, close] = cut.shots
-    if (intro === undefined || c1 === undefined || close === undefined)
+    const [introduction, intro, c1, close] = cut.shots
+    if (
+      introduction?.spoken?.role !== "spoken" ||
+      intro === undefined ||
+      c1 === undefined ||
+      close === undefined
+    )
       throw new Error("the sample is its introduction, intro, C1 and close")
     const questions = {
+      ...introduction,
       id: "questions",
-      picture: { kind: "card" },
-      durationMs: 1000,
-      burnIns: [],
-      spoken: {
-        role: "spoken",
-        category: "questions",
-        exchanges: [
-          {
-            ask: { voice: "owner", take: "sample-take-1" },
-            answer: { voice: "kokoro", said: "Because it is one file." },
-          },
-        ],
-      },
+      spoken: { ...introduction.spoken, category: "questions" },
     }
     const raw = { ...cut, shots: [intro, c1, questions, close] }
     const parsed = parseCardsEssay(KEY, raw)
@@ -383,6 +377,8 @@ describe("a spoken card in a cards essay (WALK7)", () => {
       "C1",
       "questions-ask-1",
       "questions-answer-1",
+      "questions-ask-2",
+      "questions-answer-2",
       "close",
     ])
     // C1's chapter holds the questions: they open no chapter of their own.
