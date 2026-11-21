@@ -1,0 +1,20 @@
+{
+  "id": "C952",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "some-ui:.github/zizmor.yml",
+    "some-ui:.github/actionlint.yaml",
+    "some-ui:scripts/check-workflow-security.sh"
+  ],
+  "chose": "The workflow security check fails on zizmor's high findings only, accepts a tag in `uses:` (ref-pin) until the owner decides on hash pins, suppresses the two dangerous triggers (retention.yml, server-route-snapshot.yml) with their reasons in config rather than editing either file, and ignores ShellCheck's SC2012 info in _extension-sign.yml rather than rewriting the step that submits to AMO.",
+  "options": [
+    "fail on high, ref-pin, suppress with reasons (this)",
+    "hash-pin every `uses:` in the same change",
+    "fail on medium too, after fixing the medium findings",
+    "rewrite the AMO step's `ls` fallback with `find`"
+  ],
+  "gray": "Whether to hash-pin is an open owner question on #2116; the AMO submit step is release machinery the owner releases; no check or earlier decision settles the severity line.",
+  "undo": "Change `min-severity` in scripts/check-workflow-security.sh, the `unpinned-uses` policy in .github/zizmor.yml, or drop an ignore; each is one line.",
+  "refs": ["#2116", "#2108"]
+}
