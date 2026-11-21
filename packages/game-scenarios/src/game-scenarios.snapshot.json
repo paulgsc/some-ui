@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 1,
   "scenarios": [
     {
       "id": "pre.weather",
@@ -226,65 +226,6 @@
       "covers": "You came in when it looked lost, and caught the best stretch instead.",
       "outcomes": ["result", "stretch"],
       "moment": "watching"
-    },
-    {
-      "id": "in.halftime",
-      "phase": "in",
-      "name": "Halftime",
-      "covers": "Where the first half left us, and what the second needs.",
-      "outcomes": ["leading", "trailing", "tied"],
-      "moment": "halftime"
-    },
-    {
-      "id": "in.onside-kick",
-      "phase": "in",
-      "name": "Onside kick",
-      "covers": "A kickoff the kicking team tried to get back.",
-      "outcomes": ["ours", "theirs"],
-      "moment": "onside-kick"
     }
-  ],
-  "halves": ["first", "second", "overtime"],
-  "big_play": {
-    "sizes": [
-      {
-        "id": "big",
-        "yards": 20
-      },
-      {
-        "id": "huge",
-        "yards": 40
-      },
-      {
-        "id": "memorable",
-        "yards": 60
-      }
-    ],
-    "kinds": [
-      {
-        "id": "pass",
-        "least": "big"
-      },
-      {
-        "id": "run",
-        "least": "big"
-      },
-      {
-        "id": "kick-return",
-        "least": "huge"
-      },
-      {
-        "id": "punt-return",
-        "least": "big"
-      },
-      {
-        "id": "interception-return",
-        "least": "big"
-      },
-      {
-        "id": "fumble-return",
-        "least": "big"
-      }
-    ]
-  }
+  ]
 }
