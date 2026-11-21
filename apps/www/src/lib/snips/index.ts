@@ -278,7 +278,7 @@ export type BarNode = {
  * on the 1080×1920 emulator, more where the system's navigation bar is drawn
  * over the app.
  */
-export const BAR_FOOT_SHARE = 0.08
+const BAR_FOOT_SHARE = 0.08
 
 /**
  * The tabs of the bar along the bottom of a release APK screen, left to
