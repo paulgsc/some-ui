@@ -30,7 +30,7 @@ import {
   MOCHI_CHEEK,
   MOCHI_FACE,
 } from "../../packages/some-styles/src/brand/mark"
-import { GENRES, SHAPES, type Genre } from "./genres"
+import { CASES, GENRES, SHAPES, type Genre } from "./genres"
 
 // Playwright as this sandbox installs it (globally; `require` honours NODE_PATH).
 const { chromium } = createRequire(import.meta.url)(
@@ -114,7 +114,8 @@ const birdGlyph = (size: number, colour: string): string =>
 
 // ── the directions ─────────────────────────────────────────────────────────
 
-type Input = { genre: Genre; title: string; variant: "short" | "long" }
+type Cast = ReadonlyArray<Character>
+type Input = { genre: Genre; title: string; cast: Cast }
 type Direction = {
   id: string
   name: string
@@ -122,14 +123,12 @@ type Direction = {
   body: (i: Input) => string
 }
 
-const castOf = (g: Genre): ReadonlyArray<Character> => GENRES[g].cast
-const hasOwner = (g: Genre): boolean => castOf(g).includes("mochi")
-const birds = (g: Genre): ReadonlyArray<Character> =>
-  castOf(g).filter((c) => c !== "mochi")
+const hasOwner = (cast: Cast): boolean => cast.includes("mochi")
+const birds = (cast: Cast): Cast => cast.filter((c) => c !== "mochi")
 
 /** Who speaks, in words: the badge's text, the same rule for every genre. */
-const voiceWords = (g: Genre): string =>
-  hasOwner(g) ? "My voice + a synthetic voice" : "Synthetic voice"
+const voiceWords = (cast: Cast): string =>
+  hasOwner(cast) ? "My voice + a synthetic voice" : "Synthetic voice"
 
 const shape = (g: Genre, { opacity = 1 } = {}): string => {
   const { hue, ground } = GENRES[g]
@@ -157,9 +156,8 @@ const DIRECTIONS: ReadonlyArray<Direction> = [
 .fit{max-height:470px}
 .genre{font-size:40px}
 `,
-    body: ({ genre, title }) => {
+    body: ({ genre, title, cast }) => {
       const { hue, ground } = GENRES[genre]
-      const cast = castOf(genre)
       const size = cast.length > 1 ? 250 : 340
       return `<div class="t" style="background:${ground}">
 <div class="glow" style="background:radial-gradient(closest-side, ${hue}33, ${hue}00)"></div>
@@ -188,13 +186,13 @@ const DIRECTIONS: ReadonlyArray<Direction> = [
 .genre{position:absolute;left:0;right:0;bottom:44px;text-align:center;font-size:38px}
 .rule{position:absolute;left:0;right:0;bottom:0;height:14px}
 `,
-    body: ({ genre, title }) => {
+    body: ({ genre, title, cast }) => {
       const { hue, ground } = GENRES[genre]
       return `<div class="t" style="background:radial-gradient(ellipse at 50% 30%, ${hue}26, ${ground} 62%) ${ground}">
-<div class="cast">${castOf(genre)
+<div class="cast">${cast
         .map((c, i) => character(c, `b${i}`, { size: 240 }))
         .join("")}</div>
-<div class="badge mono" style="background:#f6efe2;color:${ground}">${birdGlyph(56, ground)}<span>${esc(voiceWords(genre).toUpperCase())}</span></div>
+<div class="badge mono" style="background:#f6efe2;color:${ground}">${birdGlyph(56, ground)}<span>${esc(voiceWords(cast).toUpperCase())}</span></div>
 <div class="text"><div class="title fit" data-max="118" data-min="60" style="color:#f6efe2">${esc(title)}</div></div>
 <div class="label genre" style="color:${hue}">${esc(GENRES[genre].name)}</div>
 <div class="rule" style="background:${hue}"></div>
@@ -215,9 +213,9 @@ const DIRECTIONS: ReadonlyArray<Direction> = [
 .say b{display:block;font-size:28px;opacity:.75;font-weight:600}
 .owner{margin-left:auto;display:flex;align-items:flex-end;gap:12px;padding-bottom:18px}
 `,
-    body: ({ genre, title }) => {
+    body: ({ genre, title, cast }) => {
       const { hue, ground } = GENRES[genre]
-      const bird = birds(genre)
+      const bird = birds(cast)
       return `<div class="t" style="background:${ground}">
 <div class="shape">${shape(genre, { opacity: 0.55 })}</div>
 <div class="text">
@@ -227,7 +225,7 @@ const DIRECTIONS: ReadonlyArray<Direction> = [
 <div class="foot" style="background:linear-gradient(${ground}00, ${ground} 40%)">
 <div class="who">${bird.map((c, i) => character(c, `c${i}`, { size: 190 })).join("")}</div>
 <div class="say mono" style="color:${hue}"><b style="color:#f6efe2">VOICED BY</b>${bird.length > 1 ? "tin birds" : "a tin bird"} · synthetic</div>
-${hasOwner(genre) ? `<div class="owner">${character("mochi", "cm", { size: 150 })}<div class="say mono" style="color:#f6efe2;padding-bottom:30px"><b>AND</b>me</div></div>` : ""}
+${hasOwner(cast) ? `<div class="owner">${character("mochi", "cm", { size: 150 })}<div class="say mono" style="color:#f6efe2;padding-bottom:30px"><b>AND</b>me</div></div>` : ""}
 </div></div>`
     },
   },
@@ -244,17 +242,17 @@ ${hasOwner(genre) ? `<div class="owner">${character("mochi", "cm", { size: 150 }
 .words .g{font-size:64px;line-height:1}
 .words .v{font-size:38px}
 `,
-    body: ({ genre, title }) => {
+    body: ({ genre, title, cast }) => {
       const { hue, ground } = GENRES[genre]
       return `<div class="t" style="background:${ground}">
 <div class="text"><div class="title fit" data-max="140" data-min="64" style="color:#f6efe2">${esc(title)}</div></div>
 <div class="banner" style="background:${hue}">
-<div class="who">${castOf(genre)
+<div class="who">${cast
         .map((c, i) =>
           character(c, `d${i}`, { size: 230, ground: "transparent" })
         )
         .join("")}</div>
-<div class="words" style="color:${ground}"><div class="label g">${esc(GENRES[genre].name)}</div><div class="mono v">${esc(voiceWords(genre).toLowerCase())}</div></div>
+<div class="words" style="color:${ground}"><div class="label g">${esc(GENRES[genre].name)}</div><div class="mono v">${esc(voiceWords(cast).toLowerCase())}</div></div>
 <div class="icon" style="background:${ground}">${shape(genre)}</div>
 </div></div>`
     },
@@ -304,45 +302,120 @@ const main = async (): Promise<void> => {
     Array<{ full: string; small: string; label: string }>
   > = {}
 
-  for (const d of DIRECTIONS) {
+  type Shot = { full: string; small: string; label: string }
+
+  /** One thumbnail at 1280×720 and its 320×180 check, written and hashed. */
+  const shoot = async (
+    d: Direction,
+    input: Input,
+    name: string,
+    label: string
+  ): Promise<Shot> => {
     const dir = join(OUT, d.id)
     mkdirSync(dir, { recursive: true })
-    sheets[d.id] = []
-    for (const genre of Object.keys(GENRES) as Array<Genre>) {
-      for (const variant of ["short", "long"] as const) {
-        const title = GENRES[genre].titles[variant]
-        const html = page(d, { genre, title, variant })
-        await p.setViewportSize({ width: 1280, height: 720 })
-        await p.setContent(html, { waitUntil: "load" })
-        await p.evaluate(() => document.fonts.ready)
-        await p.evaluate(FIT)
-        if (
-          await p.evaluate(() => document.querySelector("[data-cut]") !== null)
-        )
-          cuts.push(`${d.id}/${genre}-${variant}`)
-        const full = await p.screenshot({ type: "png" })
-        const name = `${genre}-${variant}`
-        writeFileSync(join(dir, `${name}.png`), full)
-        hashes.push(`${sha(full)}  ${d.id}/${name}.png`)
+    await p.setViewportSize({ width: 1280, height: 720 })
+    await p.setContent(page(d, input), { waitUntil: "load" })
+    await p.evaluate(() => document.fonts.ready)
+    await p.evaluate(FIT)
+    if (await p.evaluate(() => document.querySelector("[data-cut]") !== null))
+      cuts.push(`${d.id}/${name}`)
+    const full = await p.screenshot({ type: "png" })
+    writeFileSync(join(dir, `${name}.png`), full)
+    hashes.push(`${sha(full)}  ${d.id}/${name}.png`)
 
-        // The small check: the full render scaled to 320×180 by the browser,
-        // as a phone's feed draws it.
-        const b64 = full.toString("base64")
-        await p.setViewportSize({ width: 320, height: 180 })
-        await p.setContent(
-          `<!DOCTYPE html><html><body style="margin:0"><img src="data:image/png;base64,${b64}" width="320" height="180" style="display:block"></body></html>`,
-          { waitUntil: "load" }
-        )
-        const small = await p.screenshot({ type: "png" })
-        writeFileSync(join(dir, `${name}.320.png`), small)
-        hashes.push(`${sha(small)}  ${d.id}/${name}.320.png`)
-        sheets[d.id]!.push({
-          full: b64,
-          small: small.toString("base64"),
-          label: `${GENRES[genre].name} · ${variant}`,
-        })
-      }
+    // The small check: the full render scaled to 320×180 by the browser,
+    // as a phone's feed draws it.
+    const b64 = full.toString("base64")
+    await p.setViewportSize({ width: 320, height: 180 })
+    await p.setContent(
+      `<!DOCTYPE html><html><body style="margin:0"><img src="data:image/png;base64,${b64}" width="320" height="180" style="display:block"></body></html>`,
+      { waitUntil: "load" }
+    )
+    const small = await p.screenshot({ type: "png" })
+    writeFileSync(join(dir, `${name}.320.png`), small)
+    hashes.push(`${sha(small)}  ${d.id}/${name}.320.png`)
+    return { full: b64, small: small.toString("base64"), label }
+  }
+
+  const sheetCss = `${FONT_CSS}
+body{margin:0;background:#141414;color:#ddd;font-family:"JetBrains Mono";padding:40px}
+h1{font-family:"Barlow Condensed";font-weight:800;font-size:56px;margin:0 0 8px}
+h2{font-family:"Barlow Condensed";font-weight:600;font-size:36px;margin:40px 0 16px;letter-spacing:.04em}
+p{margin:0 0 24px;font-size:20px;opacity:.7}
+figure{margin:0}figcaption{font-size:20px;opacity:.85;margin-top:8px}
+img{display:block}`
+
+  const snap = async (
+    html: string,
+    width: number,
+    file: string
+  ): Promise<void> => {
+    await p.setViewportSize({ width, height: 800 })
+    await p.setContent(html, { waitUntil: "load" })
+    await p.evaluate(() => document.fonts.ready)
+    const sheet = await p.screenshot({ type: "png", fullPage: true })
+    writeFileSync(join(OUT, file), sheet)
+    hashes.push(`${sha(sheet)}  ${file}`)
+  }
+
+  // First: the four cases the owner judges by (#3361), every direction,
+  // side by side at full size and at 320×180.
+  for (const d of DIRECTIONS) {
+    const shots: Record<"short" | "long", Array<Shot & { source: string }>> = {
+      short: [],
+      long: [],
     }
+    for (const c of CASES)
+      for (const variant of ["short", "long"] as const) {
+        const t = c.titles[variant]
+        const shot = await shoot(
+          d,
+          { genre: c.genre, title: t.title, cast: c.cast },
+          `case-${c.id}-${variant}`,
+          c.label
+        )
+        shots[variant].push({ ...shot, source: t.source })
+      }
+    const section = (variant: "short" | "long", heading: string): string => {
+      const row = shots[variant]
+      const fulls = row
+        .map(
+          (s) =>
+            `<figure><img src="data:image/png;base64,${s.full}" width="1280" height="720"><figcaption><b>${esc(s.label)}</b> · ${esc(s.source)}</figcaption></figure>`
+        )
+        .join("")
+      const smalls = row
+        .map(
+          (s) =>
+            `<figure><img src="data:image/png;base64,${s.small}" width="320" height="180"><figcaption>${esc(s.label)}</figcaption></figure>`
+        )
+        .join("")
+      return `<h2>${heading}: full size, 1280×720</h2><div style="display:grid;grid-template-columns:1280px 1280px;gap:32px">${fulls}</div><h2>${heading}: 320×180, true size</h2><div style="display:grid;grid-template-columns:repeat(4,320px);gap:32px">${smalls}</div>`
+    }
+    await snap(
+      `<!DOCTYPE html><html><head><style>${sheetCss}</style></head><body><h1>${esc(d.name)}</h1><p>The four cases: the weekly call, an explainer (cards essay), the weekly Rust Rounds essay, the interview essay. Each caption names where its title came from.</p>${section("short", "Titles as the episodes carry them")}${section("long", "The same four with a long title")}</body></html>`,
+      2672,
+      `four-${d.id}.png`
+    )
+  }
+
+  // Then every genre, as before.
+  for (const d of DIRECTIONS) {
+    sheets[d.id] = []
+    for (const genre of Object.keys(GENRES) as Array<Genre>)
+      for (const variant of ["short", "long"] as const)
+        sheets[d.id]!.push(
+          await shoot(
+            d,
+            {
+              genre,
+              title: GENRES[genre].titles[variant],
+              cast: GENRES[genre].cast,
+            },
+            `${genre}-${variant}`,
+            `${GENRES[genre].name} · ${variant}`
+          )
+        )
   }
 
   // One contact sheet per direction: every genre and title, full size at a

@@ -157,3 +157,94 @@ export const SHAPES: Readonly<Record<Genre, Draw>> = {
         `<rect x="${x}" y="${90 - h / 2}" width="5" height="${h}" rx="2.5" fill="${lit ? hue : dim}"/>`
     ).join("")}`,
 }
+
+type Title = { readonly title: string; readonly source: string }
+
+/**
+ * The four cases the owner judges the directions by (#3361, Nov 21): the
+ * weekly call, an explainer cards essay (EXPLAIN #2980's showcase), the
+ * weekly Rust Rounds essay and the interview essay. Each title names where
+ * it came from. The real episodes live on home, which this sandbox can't
+ * reach, so they come from the repo's own sample episodes; a long title is
+ * built from that episode's own words, to test the fit.
+ */
+export const CASES: ReadonlyArray<{
+  readonly id: string
+  readonly label: string
+  readonly genre: Genre
+  readonly cast: ReadonlyArray<Character>
+  readonly titles: { readonly short: Title; readonly long: Title }
+}> = [
+  {
+    id: "call",
+    label: "The weekly call",
+    genre: "call",
+    // Every section is a Kokoro voice (CALL_VOICES); the owner speaks in none.
+    cast: ["tin-owlet", "tin-sparrow"],
+    titles: {
+      short: {
+        title: "The weekly call: Oct 30 – Nov 5",
+        source: "conference-call v5's title + sample-week.json's week",
+      },
+      long: {
+        title:
+          "The weekly call, Oct 30 – Nov 5: twenty-two items open, and every one waits on me",
+        source: "built from sample-week.json's board line",
+      },
+    },
+  },
+  {
+    id: "explainer",
+    label: "Explainer (cards essay)",
+    genre: "cards-essay",
+    // The cut list's voice is "read": Kokoro throughout, no owner takes.
+    cast: ["tin-owlet"],
+    titles: {
+      short: {
+        title: "NixOS: how this machine upgrades itself",
+        source: "sample/videos/nixos-upgrade cut list (EXPLAIN #2980 showcase)",
+      },
+      long: {
+        title:
+          "NixOS: how this machine upgrades itself, what's left for me to do, and how to tell it worked",
+        source: "built from that cut list's opening line",
+      },
+    },
+  },
+  {
+    id: "rust",
+    label: "Rust Rounds essay",
+    genre: "rust-essay",
+    // cast-v1 in rust-essay v7: you (mochi) and the tutor (tin owlet).
+    cast: ["mochi", "tin-owlet"],
+    titles: {
+      short: {
+        title: "Week 46: parse the batch without a copy per field",
+        source: "rust-essay sample-essay.json, week 2026-w46, its first ticket",
+      },
+      long: {
+        title:
+          "Week 46: elision, the rule rustc applied without a word, and which to ship: scope, or owned rows down a channel",
+        source: "built from w46's ticket titles",
+      },
+    },
+  },
+  {
+    id: "interview",
+    label: "Interview essay",
+    genre: "interview-essay",
+    // The owner's answers, and the asker (tin sparrow) in cast-v1.
+    cast: ["mochi", "tin-sparrow"],
+    titles: {
+      short: {
+        title: "Full-stack engineer, driver tools",
+        source: "interview-essay sample-essay.json, week 2026-w47, its role",
+      },
+      long: {
+        title:
+          "Full-stack engineer, driver tools: the driver's phone app and the services behind it, from the first screen to the build that ships",
+        source: "built from that role's description",
+      },
+    },
+  },
+]

@@ -27,6 +27,18 @@ episode's speakers, not from the genre.
 Titles are fitted by stepping the size down 2px from a maximum until they fit their box, never
 below a minimum. No title in the set hit the minimum.
 
+## The four cases first (owner, Nov 21)
+
+`out/four-<direction>.png` puts the four cases the owner judges by side by side, at full size
+and at 320×180, with short titles and then long ones: the weekly call, an explainer (the cards
+essay "NixOS: how this machine upgrades itself", EXPLAIN #2980's showcase), the weekly Rust
+Rounds essay and the interview essay. The real episodes live on home, which this sandbox can't
+reach, so every short title comes from the repo's own sample episode for that kind and the
+long ones are built from that episode's words; each caption names its source (`CASES` in
+`genres.ts`). The cast follows each sample: the call and the explainer are Kokoro throughout
+(the cut list's voice is `read`), so only birds appear; the Rust essay (cast-v1: you and the
+tutor) and the interview essay (you and the asker) show the mochi too.
+
 ## A · Stage left: the cast speaks, nothing else says so
 
 The cast stands on the left over a soft hue glow, the genre's name and title on the right. The
