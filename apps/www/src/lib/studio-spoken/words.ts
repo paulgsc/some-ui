@@ -5,9 +5,15 @@
  * card on this phone, every take on home.
  */
 import { counted, formatTimecode } from "@some-ui/core-utils"
-import { SPOKEN_CATEGORY_TITLES } from "@some-ui/video-render"
+import {
+  SPOKEN_CATEGORIES,
+  SPOKEN_CATEGORY_TITLES,
+} from "@some-ui/video-render"
 
 import type { PartKind, SpokenCard } from "./model"
+
+/** The categories a pasted card may name, as its CATEGORY line spells them. */
+const NAMES = SPOKEN_CATEGORIES.join(" or ")
 
 const KIND: Readonly<Record<PartKind, string>> = {
   read: "Read",
@@ -22,15 +28,14 @@ export const SPOKEN_WORDS = {
     open: "Paste a spoken card",
     heading: "Paste a spoken card",
     label: "The spoken card",
-    how: "A line saying CATEGORY names its kind: introduction, for now. A line saying SCRIPT starts words to read, and OWN WORDS something to say in your own words. A QUESTION line in a part is what Kokoro asks before it.",
+    how: `A line saying CATEGORY names its kind: ${NAMES}. A line saying SCRIPT starts words to read, and OWN WORDS something to say in your own words. A QUESTION line in a part is what Kokoro asks before it.`,
     most: (parts: number): string =>
       `Only the first ${parts} parts are kept: paste the rest as another card.`,
     plain:
       "With no SCRIPT or OWN WORDS lines, each paragraph is a part to read. You can change a part's kind until it has a take.",
     keep: "Keep this card",
     cancel: "Not now",
-    nothing:
-      "Nothing to keep yet: paste the words to read, with a category Studio knows (introduction).",
+    nothing: `Nothing to keep yet: paste the words to read, with a category Studio knows (${NAMES}).`,
     notKept:
       "This phone couldn't keep the card. Free some room in Settings › My data, then keep it again.",
     split: (read: number, own: number, asks: number): string =>
@@ -84,7 +89,7 @@ export const SPOKEN_WORDS = {
   },
   copy: {
     heading: "Copy for the essay",
-    line: "Paste this into the session making the essay. It names the card's category and each question with the take that answers it: Kokoro asks, then your take plays. The essay plays your takes from home as you said them.",
+    line: "Paste this into the session making the essay. It names the card's category and each of your takes, with any question Kokoro asks before it. The essay plays your takes from home as you said them.",
     what: "the card's takes for the essay",
   },
   lost: "This spoken card isn't on this phone.",
