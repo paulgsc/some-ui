@@ -38,6 +38,9 @@ export const NFL_TEAMS = [
   "WSH",
 ] as const
 
+/** The most teams home follows at once. */
+export const TEAMS_MOST = 32
+
 /**
  * The chips to show: every team home can follow, then any team home holds
  * that the list lacks (set elsewhere, or renamed since), so each can still be
@@ -66,5 +69,6 @@ export function teamsChanged(
   held: ReadonlyArray<string>
 ): boolean {
   const kept = [...new Set(chosen)].sort()
-  return kept.length !== held.length || kept.some((team, i) => team !== held[i])
+  const home = [...new Set(held)].sort()
+  return kept.length !== home.length || kept.some((team, i) => team !== home[i])
 }

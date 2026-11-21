@@ -39,5 +39,6 @@ describe("the teams followed live", () => {
     expect(teamsChanged([], [])).toBe(false)
     expect(teamsChanged(["SEA", "SF"], ["SF"])).toBe(true)
     expect(teamsChanged([], ["SF"])).toBe(true)
+    expect(teamsChanged(["SEA", "SF"], ["SF", "SEA"])).toBe(false)
   })
 })

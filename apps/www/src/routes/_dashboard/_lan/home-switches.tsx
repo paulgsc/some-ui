@@ -13,7 +13,12 @@ import type {
 import { canSet, SWITCH_KEYS } from "@/lib/home-switches/model"
 import type { HomeSwitches } from "@/lib/home-switches/runtime"
 import { createHomeSwitches } from "@/lib/home-switches/runtime"
-import { teamChips, teamsChanged, toggledTeam } from "@/lib/home-switches/teams"
+import {
+  teamChips,
+  TEAMS_MOST,
+  teamsChanged,
+  toggledTeam,
+} from "@/lib/home-switches/teams"
 import {
   changeFailed,
   GAME_TEAMS,
@@ -129,7 +134,10 @@ const TeamsRow = (): JSX.Element => {
         options={teamChips(held).map((team) => [team, team] as const)}
         pressed={(team) => picked.includes(team)}
         onToggle={toggle}
-        disabled={() => !settable}
+        // Home follows at most TEAMS_MOST: past it, only a chosen one can go.
+        disabled={(team) =>
+          !settable || (!picked.includes(team) && picked.length >= TEAMS_MOST)
+        }
       />
       <Button
         size="sm"
