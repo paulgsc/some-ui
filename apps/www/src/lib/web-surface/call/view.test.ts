@@ -1,5 +1,5 @@
 import { PIPELINES } from "@some-ui/engagement"
-import { TALLOWBROOK_WEEK_FILE } from "@some-ui/rust-rounds"
+import { TALLOWBROOK_HELD, TALLOWBROOK_WEEK_FILE } from "@some-ui/rust-rounds"
 import {
   CALL_INDEX_SCHEMA,
   CALL_STAGE_WORDS,
@@ -740,10 +740,7 @@ describe("the Rust Rounds screen stage (RR31)", () => {
       })
       expect(state.kind === "screen" && state.ticket.id).toBe(first)
       expect(state.kind === "screen" && state.sample).toBe(true)
-      // The sample holds rustc's run, so the card names its result.
-      expect(state.kind === "screen" && state.held.runs[first]?.outcome).toBe(
-        "compile-error"
-      )
+      expect(state.kind === "screen" && state.held).toBe(TALLOWBROOK_HELD)
     }
   })
 

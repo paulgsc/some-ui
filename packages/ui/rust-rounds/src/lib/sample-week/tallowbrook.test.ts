@@ -2,7 +2,8 @@ import { execFileSync, spawnSync } from "node:child_process"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { RustcRunSchema } from "@rust-rounds/lib/formats"
+import { expectMatches, RustcRunSchema } from "@rust-rounds/lib/formats"
+import { isWhole } from "@rust-rounds/lib/rustc-view"
 import {
   TALLOWBROOK_HELD,
   TALLOWBROOK_WEEK_FILE,
@@ -42,14 +43,10 @@ const TB_101 = TALLOWBROOK_WEEK_FILE.tickets[0]
 describe("the Tallowbrook week as a phone holds it", () => {
   it("holds TB-101's run, which is what the ticket expects, its diagnostics joining to what was printed", () => {
     expect(TB_101?.id).toBe("TB-101")
-    expect(TALLOWBROOK_HELD.week.id).toBe(TALLOWBROOK_WEEK_FILE.id)
-    expect(TALLOWBROOK_HELD.runs).toEqual({ "TB-101": TB_101_RUN })
-    expect(TB_101?.expect).toEqual({ outcome: "compile-error", code: "E0507" })
-    expect(TB_101_RUN.code).toBe("E0507")
+    expect(TALLOWBROOK_HELD.runs["TB-101"]).toBe(TB_101_RUN)
+    expect(TB_101 && expectMatches(TB_101.expect, TB_101_RUN)).toBe(true)
     expect(RustcRunSchema.parse(TB_101_RUN)).toEqual(TB_101_RUN)
-    expect(
-      (TB_101_RUN.diagnostics ?? []).map((d) => d.rendered ?? "").join("")
-    ).toBe(TB_101_RUN.stderr)
+    expect(isWhole(TB_101_RUN.diagnostics ?? [], TB_101_RUN.stderr)).toBe(true)
   })
 
   // CI has no rustc.

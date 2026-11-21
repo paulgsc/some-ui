@@ -14,20 +14,9 @@ export type ScreenState =
       readonly kind: "screen"
       readonly held: HeldWeek
       readonly ticket: Ticket
-      /**
-       * Whether it is the sample rather than the week home handed over. The
-       * sample is the Tallowbrook week, so its id is a real week's: the
-       * stage marks it, and the recorder refuses a capture of it.
-       */
+      /** Whether it is the sample rather than the week home handed over. */
       readonly sample: boolean
     }
-
-/**
- * The sample week as the phone holds one once home has run rustc on it
- * (`TALLOWBROOK_HELD`), so a capture of the stage names every part: the
- * question, each point, the program, rustc's result and each diagnostic.
- */
-const SAMPLE: HeldWeek = TALLOWBROOK_HELD
 
 export function screenStageOf({
   week,
@@ -48,7 +37,7 @@ export function screenStageOf({
   }
 }): ScreenState {
   const sample = viewer || week === undefined || week === "sample"
-  let held: HeldWeek | null = SAMPLE
+  let held: HeldWeek | null = TALLOWBROOK_HELD
   if (!sample) {
     if (read.failed) return none(`there is no week of ${week}`)
     if (read.pending) return { kind: "waiting" }

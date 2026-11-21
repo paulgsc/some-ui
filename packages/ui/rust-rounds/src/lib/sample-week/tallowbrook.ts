@@ -10,8 +10,6 @@
  * `--edition 2024 -C opt-level=0`: it does what its `expect` says.
  *
  * Tests read it; the phone reads `/2` weeks once home serves them.
- * `TALLOWBROOK_HELD` is the week as a phone holds it after home has run
- * rustc on it: the one sample with a recorded run.
  */
 import type { RustcRun } from "@rust-rounds/lib/formats"
 import type { WeekV2 } from "@rust-rounds/lib/formats/week"
@@ -426,10 +424,8 @@ export const TALLOWBROOK_WEEK_FILE: WeekV2 = {
 }
 
 /**
- * rustc 1.97.0 (2d8144b78 2026-07-07) on TB-101's program, as home records
- * a run: `--edition 2024 -C opt-level=0`, the program saved as `main.rs`,
- * and `--error-format=json` for the diagnostics, each `rendered` joining
- * to `stderr` exactly as rustc printed it without the flag.
+ * TB-101's run as home records one, with `--error-format=json` for the
+ * diagnostics, each `rendered` joining to `stderr` as rustc printed it.
  */
 export const TB_101_RUN: RustcRun & { outcome: "compile-error" } = {
   outcome: "compile-error",
@@ -523,8 +519,7 @@ export const TB_101_RUN: RustcRun & { outcome: "compile-error" } = {
 /**
  * The Tallowbrook week as the phone holds it once home has run its programs
  * (RR31, #3288; WALK8): TB-101's compile error recorded, the other tickets
- * not run yet. The one sample week with a run, which the screen stage shows a
- * viewer (`/rust-screen`) and the ui-fit phone page plays.
+ * not run yet. The one sample week with a run.
  */
 export const TALLOWBROOK_HELD: HeldWeek = /* @__PURE__ */ (() => {
   const read = readWeek(TALLOWBROOK_WEEK_FILE)
