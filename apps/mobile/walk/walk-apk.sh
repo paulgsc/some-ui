@@ -52,6 +52,8 @@ walk() {
   done
   if [ "$up" != yes ]; then
     echo "::error title=Walks::the stand-in home never answered for $app (logs/stub-$app.log)"
+    kill "$stub_pid" 2>/dev/null || true
+    stub_pid=
     return 1
   fi
   local ok=yes
@@ -66,6 +68,11 @@ walk() {
     # The walk's microphone is the page's own (WALK3); granted so Android
     # never asks in front of a picture.
     adb shell pm grant "$pkg" android.permission.RECORD_AUDIO || true
+    # The device's clock back at FROZEN_AT (apps/www/src/lib/snips), as
+    # capture-apk.sh set it before the snips, so the walk's screens say the
+    # same day and time whatever the snips took. The page's own clock runs
+    # on from there: a take needs time to pass.
+    adb shell date 110209302026.00 > /dev/null
     if ! (cd "$repo" && pnpm --filter @some-ui/video-motion motion walk "$app" \
       --sample "$sample" --out "$walks/$app"); then
       echo "::error title=Walks::the $app walk failed ($app/failed.png, $app/failed.txt)"

@@ -57,7 +57,8 @@ function walkOf(sample: Sample): Walk {
       },
       {
         label: "One pick, read",
-        action: { kind: "tap", target: `a:has-text("Open it")` },
+        // "Read it": a pick not yet decided (`readIt`, components/jobs/today.tsx).
+        action: { kind: "tap", target: `a:has-text("Read it")` },
         until: "text=What they want",
         holdMs: 2600,
       },
@@ -85,8 +86,21 @@ function walkOf(sample: Sample): Walk {
         holdMs: 2600,
       },
       {
+        label: "The week's questions",
+        action: { kind: "tap", target: `a:has-text("Questions")` },
+        until: 'a[href*="/jobs/interview/q/"]',
+        holdMs: 2000,
+      },
+      {
         label: "Today's question",
-        action: { kind: "tap", target: "text=Say it your way" },
+        // The list opens on today's question (IW15).
+        action: { kind: "tap", target: 'a[href*="/jobs/interview/q/"]' },
+        until: 'a:has-text("Say it your way")',
+        holdMs: 2200,
+      },
+      {
+        label: "Said your way",
+        action: { kind: "tap", target: 'a:has-text("Say it your way")' },
         until: '[data-take="ready"]',
         holdMs: 2000,
       },
@@ -104,7 +118,8 @@ function walkOf(sample: Sample): Walk {
       {
         label: "The take, kept",
         action: { kind: "tap", target: '[data-take="recording"]' },
-        until: "text=Your take",
+        // The take's row ("Play the take of 0:04", the take kit's words).
+        until: 'button[aria-label^="Play"]',
         holdMs: 2400,
       },
       {

@@ -50,6 +50,9 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
   A walk can also be given a microphone (`src/walk/microphone.ts`, WALK3): the page's
   audio `getUserMedia` answers a canned clip, so the app's own recorder records it.
 
+  `promo-feature`'s frame is sized for the popup's walk: an APK walk's snips are the
+  whole 9:16 screen, and framing them is the walkthrough template's (WALK4, #3282).
+
 - `promo <release folder> --out <folder> [--brand <folder>] [--prove]` makes a release's promo (HYPER3,
   #2726): the folder's `release.json` (`some-ui.promo/1`, the words a session writes) and
   `sample.json` (the walk's), from paulgsc/testing's `promo/<app>/<version>/`. It walks
