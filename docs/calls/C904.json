@@ -1,0 +1,16 @@
+{
+  "id": "C904",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": ["server:apps/servers/file_host/src/transcribe.rs"],
+  "chose": "HEARD_WITHIN is 25 minutes: the worst a working transcriber does by design (a turn given to the renders, turn::GIVE 10 min, holding every note; an interval; one deadline-long note ahead) fits with room to spare, asserted at compile time.",
+  "options": [
+    "25 minutes, covering the give by design",
+    "15 minutes, which pages StageDegraded on every give that lands while a note waits",
+    "exempt the give in the alert, which hides a give that never ends"
+  ],
+  "gray": "Whether 25 minutes suits the owner's notes is only shown by real use; server#1088 asks the owner about gives.",
+  "undo": "Lower HEARD_WITHIN; its compile-time assert says what it no longer covers.",
+  "refs": ["#3333", "server#1066", "server#1087", "server#1088"],
+  "moves": "C900"
+}

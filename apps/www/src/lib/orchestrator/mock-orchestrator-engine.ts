@@ -35,7 +35,7 @@ function pad(n: number, len = 2): string {
   return n.toString().padStart(len, "0")
 }
 
-export function formatTimecode(ms: number): string {
+export function formatPreciseTimecode(ms: number): string {
   const totalMs = Math.max(0, Math.floor(ms))
   const hours = Math.floor(totalMs / 3_600_000)
   const minutes = Math.floor((totalMs % 3_600_000) / 60_000)
@@ -109,7 +109,7 @@ export function buildOrchestratorState(engine: EngineState): OrchestratorState {
     stream_status: {
       is_streaming: engine.mode === "Running",
       stream_time: currentTime,
-      timecode: formatTimecode(currentTime),
+      timecode: formatPreciseTimecode(currentTime),
     },
   }
 }

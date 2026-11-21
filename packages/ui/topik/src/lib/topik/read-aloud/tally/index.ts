@@ -20,7 +20,7 @@
  */
 
 import type { Salvaged } from "@some-ui/core-utils"
-import { fnv1a } from "@some-ui/core-utils"
+import { fnv1a, salvageEntries } from "@some-ui/core-utils"
 import type { PaceBook } from "@topik/lib/topik/read-aloud/records"
 import { own, paceOf } from "@topik/lib/topik/read-aloud/records"
 import type { SetItem } from "@topik/lib/topik/read-aloud/set-builder"
@@ -132,6 +132,11 @@ export function storedTally(tally: Tally): { version: 1; rows: Tally } | null {
   return tallySize(tally) === 0 ? null : { version: 1, rows: tally }
 }
 
+const readRows = salvageEntries((row) => {
+  const checked = RowSchema.safeParse(row)
+  return checked.success ? checked.data : null
+})
+
 /**
  * The rows of a stored tally that parse (`whole` when all did), or null for
  * a value that is not one; `null` itself is the empty tally `storedTally`
@@ -142,13 +147,5 @@ export function storedTally(tally: Tally): { version: 1; rows: Tally } | null {
 export function readTally(raw: unknown): Salvaged<Tally> | null {
   if (raw === null) return { value: emptyTally(), whole: true }
   const parsed = TallySchema.safeParse(raw)
-  if (!parsed.success) return null
-  const rows = Object.entries(parsed.data.rows)
-  const tally = Object.fromEntries(
-    rows.flatMap(([key, row]) => {
-      const checked = RowSchema.safeParse(row)
-      return checked.success ? [[key, checked.data] as const] : []
-    })
-  )
-  return { value: tally, whole: tallySize(tally) === rows.length }
+  return parsed.success ? readRows(parsed.data.rows) : null
 }

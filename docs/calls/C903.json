@@ -1,0 +1,19 @@
+{
+  "id": "C903",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:infra/prometheus/rules/home.yml",
+    "server:apps/servers/file_host/src/stage.rs",
+    "server:infra/grafana/dashboards/lib/stage-panels.libsonnet"
+  ],
+  "chose": "StageBroken (and the STUCK tile) needs more attempts in the last hour than one item gets (stage_attempts_per_item, plus a half for increase()'s extrapolation) and under a tenth of them done or refused; a refusal counts as the stage working.",
+  "options": [
+    "more than one item's worth of attempts",
+    "a fixed 3 attempts, which fires on one bad note",
+    "count ended items, which needs a series per item"
+  ],
+  "gray": "Two bad notes in a quiet hour still read as broken.",
+  "undo": "Change the comparison in StageBroken and in stage-panels' verdict.",
+  "refs": ["#3333", "server#1066"]
+}

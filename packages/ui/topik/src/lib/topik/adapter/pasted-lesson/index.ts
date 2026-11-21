@@ -25,9 +25,9 @@
 
 import type { KeyedStorage, Salvaged } from "@some-ui/core-utils"
 import {
-  jsonOf,
   localStorageOrNull,
   openKept,
+  readJson,
   sessionStorageOrNull,
 } from "@some-ui/core-utils"
 import type { DramaLesson } from "@topik/lib/topik/core/drama"
@@ -56,14 +56,17 @@ const TreeDocumentSchema = z.object({
 
 type TreeDocument = z.infer<typeof TreeDocumentSchema>
 
+const readDocument = readJson((value): TreeDocument | null => {
+  const parsed = TreeDocumentSchema.safeParse(value)
+  return parsed.success ? parsed.data : null
+})
+
 /**
  * The slot's document; an empty value is "nothing held". One that is not a
  * tree document is copied aside within the session (`openKept`).
  */
 function readSlot(raw: string): Salvaged<TreeDocument | null> | null {
-  if (raw === "") return { value: null, whole: true }
-  const parsed = TreeDocumentSchema.safeParse(jsonOf(raw))
-  return parsed.success ? { value: parsed.data, whole: true } : null
+  return raw === "" ? { value: null, whole: true } : readDocument(raw)
 }
 
 /** The held tree's id, read without the audits: it only keys the point. */

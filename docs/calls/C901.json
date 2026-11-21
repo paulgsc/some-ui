@@ -1,0 +1,17 @@
+{
+  "id": "C901",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/metrics/stage.rs",
+    "server:infra/prometheus/rules/home.yml"
+  ],
+  "chose": "A stage exports when its oldest waiting item arrived (stage_oldest_waiting_since_timestamp_seconds), and the recording rule stage:oldest_waiting:seconds ages it on every evaluation; never an age in seconds.",
+  "options": [
+    "a timestamp, aged by a recording rule",
+    "an age gauge set once per pass"
+  ],
+  "gray": "An age set per pass stands still for a whole pass, and a broken transcriber's pass lasts hours (20 notes at 600 s each), which is exactly when it must move.",
+  "undo": "Export the age as a gauge and drop the recording rule.",
+  "refs": ["#3333", "server#1066"]
+}
