@@ -136,11 +136,19 @@
       $("headName").textContent = vars.appName
       $("headVersion").textContent = vars.version
 
-      // The frame: the walk's screens at their own pixels, centred.
-      const { width, height, scale } = walk.viewport
+      // The frame: the walk's screens at their own pixels, centred, made
+      // smaller only where they would not fit above the caption (a phone's
+      // whole screen, WALK4: three-quarter size, the caption below it).
+      const { width, height } = walk.viewport
+      const frameTop = 330
+      const fit = Math.min(
+        1,
+        920 / (width * walk.viewport.scale),
+        1230 / (height * walk.viewport.scale)
+      )
+      const scale = walk.viewport.scale * fit
       const frame = $("frame")
       const frameLeft = (1080 - width * scale) / 2
-      const frameTop = 330
       Object.assign(frame.style, {
         left: `${frameLeft}px`,
         top: `${frameTop}px`,

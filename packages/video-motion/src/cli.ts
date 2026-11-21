@@ -1,6 +1,6 @@
-/** `motion render | prove | video | walk | promo`: the README says what each does. */
+/** `motion render | prove | video | walk | promo | walkthrough`: the README says what each does. */
 
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -22,9 +22,14 @@ import { HYPERFRAMES_VERSION } from "./pin"
 import { promoCutList, releaseProblems, ReleaseSchema } from "./promo"
 import { renderComposition } from "./render"
 import { jobs } from "./walk/jobs"
-import { runWalk } from "./walk/run"
+import { runWalk, WalkFileSchema } from "./walk/run"
 import type { Walk, WalkFile } from "./walk/run"
 import { suspenderLedger } from "./walk/suspender-ledger"
+import {
+  walkthroughCutList,
+  walkthroughProblems,
+  WalkthroughSchema,
+} from "./walkthrough"
 
 const USAGE = [
   "usage: motion render <composition> --out <clip.mkv> [--variables <file>]",
@@ -32,6 +37,7 @@ const USAGE = [
   "       motion video <video folder> [--series <folder>] [--brand <folder>] [--prove]",
   "       motion walk <app> --sample <file> --out <folder>",
   "       motion promo <release folder> --out <folder> [--brand <folder>] [--prove]",
+  "       motion walkthrough <words.json> --walk <walk folder> --out <folder> [--brand <folder>] [--prove]",
 ].join("\n")
 
 /** A walk of one app: its sample's schema and the steps it makes of one. */
@@ -79,6 +85,7 @@ const { positionals, values } = parseArgs({
     prove: { type: "boolean", default: false },
     runs: { type: "string", default: "2" },
     brand: { type: "string" },
+    walk: { type: "string" },
   },
 })
 
@@ -102,7 +109,7 @@ const say = (line: string): void => {
 }
 
 /** What `--name` was given, from where the command was typed. */
-function given(name: "out" | "sample" | "variables"): string {
+function given(name: "out" | "sample" | "variables" | "walk"): string {
   const value = values[name]
   if (value === undefined) throw new Refused(`--${name} is needed\n${USAGE}`)
   return here(value)
@@ -386,6 +393,33 @@ async function promo(folder: string): Promise<void> {
   await renderVideo(out, VERTICAL, values.prove)
 }
 
+/**
+ * An app's walkthrough (WALK4): its words (`some-ui.walkthrough/1`) over a
+ * walk already made (`--walk`, a folder with `walk.json` and its snips, as
+ * Snips Capture's walks artifact holds it: an APK walk needs the emulator),
+ * into `<out>` as a cut list, rendered there as `video.mp4` (with `--prove`,
+ * twice from nothing).
+ */
+async function walkthrough(file: string): Promise<void> {
+  const read = WalkthroughSchema.safeParse(await readJson(here(file)))
+  if (!read.success) throw new Refused(`the words: ${read.error.message}`)
+  const from = given("walk")
+  const walked = WalkFileSchema.safeParse(
+    await readJson(join(from, "walk.json"))
+  )
+  if (!walked.success) throw new Refused(`the walk: ${walked.error.message}`)
+  const problems = walkthroughProblems(read.data, walked.data)
+  if (problems.length > 0) throw new Refused(problems.join("\n"))
+  const out = given("out")
+  await mkdir(out, { recursive: true })
+  await cp(join(from, "snips"), join(out, "snips"), { recursive: true })
+  await writeFile(
+    join(out, "cut-list.json"),
+    `${JSON.stringify(walkthroughCutList(read.data, walked.data), null, 1)}\n`
+  )
+  await renderVideo(out, VERTICAL, values.prove)
+}
+
 async function main(): Promise<void> {
   const [command, name] = positionals
   if (!name) throw new Refused(USAGE)
@@ -401,6 +435,9 @@ async function main(): Promise<void> {
     }
     case "promo": {
       return promo(name)
+    }
+    case "walkthrough": {
+      return walkthrough(name)
     }
     case "video": {
       return renderVideo(

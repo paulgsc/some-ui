@@ -50,9 +50,18 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
   A walk can also be given a microphone (`src/walk/microphone.ts`, WALK3): the page's
   audio `getUserMedia` answers a canned clip, so the app's own recorder records it.
 
-  `promo-feature`'s frame is sized for the popup's walk: an APK walk's snips are the
-  whole 9:16 screen, and framing them is the walkthrough template's (WALK4, #3282).
+  `promo-feature` draws a walk's screens at their own pixels, made smaller only where
+  they would not fit above the caption: a popup's walk at full size, an APK walk's whole
+  9:16 screen at about three-quarter size, the caption below it (the owner, 2026-11-21).
 
+- `walkthrough <words.json> --walk <walk folder> --out <folder> [--brand <folder>] [--prove]`
+  makes an app's walkthrough (WALK4, #3282): the promo with chapters. The words
+  (`some-ui.walkthrough/1`, `src/walkthrough.ts`) give a caption per screen and the stops,
+  each from a screen of the walk; the cut list is the promo's opening, then per stop a
+  chapter card (`walk-chapter`) and that stop's screens in `promo-feature`, then the
+  promo's close. Captions only, no narration (the owner, 2026-11-21). It takes a walk
+  already made, since an APK walk needs the emulator: Snips Capture's `walks-<run>`
+  artifact holds `jobs/`. Jobs' words are `apps/www/tests/walk/jobs-walkthrough.json`.
 - `promo <release folder> --out <folder> [--brand <folder>] [--prove]` makes a release's promo (HYPER3,
   #2726): the folder's `release.json` (`some-ui.promo/1`, the words a session writes) and
   `sample.json` (the walk's), from paulgsc/testing's `promo/<app>/<version>/`. It walks

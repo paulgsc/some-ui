@@ -14,7 +14,7 @@ const PROMO_SCHEMA = "some-ui.promo/1"
  * fitted where they're drawn (`fit` in compositions/_lib/motion.js), since
  * only the font knows it.
  */
-const drawn = ({ lines, chars }: PromoWords): z.ZodString =>
+export const drawn = ({ lines, chars }: PromoWords): z.ZodString =>
   z
     .string()
     .trim()
@@ -31,6 +31,15 @@ const drawn = ({ lines, chars }: PromoWords): z.ZodString =>
     )
 
 const colour = z.string().regex(/^#[0-9a-f]{6}$/)
+
+/** The palette a promo or walkthrough may set its scenes in. */
+export const PaletteSchema = z.strictObject({
+  ground: colour,
+  ink: colour,
+  accent: colour,
+  accentInk: colour,
+})
+type Palette = Partial<z.infer<typeof PaletteSchema>>
 
 const { hook, feature, close, fill } = PROMO_SHAPE
 
@@ -54,14 +63,7 @@ export const ReleaseSchema = z.strictObject({
   /** The facts on the opening's chips. */
   platform: drawn(fill.platform),
   stage: drawn(fill.stage),
-  palette: z
-    .strictObject({
-      ground: colour,
-      ink: colour,
-      accent: colour,
-      accentInk: colour,
-    })
-    .optional(),
+  palette: PaletteSchema.optional(),
   fill: FillSchema,
 })
 export type Release = z.infer<typeof ReleaseSchema>
@@ -73,7 +75,7 @@ export type Release = z.infer<typeof ReleaseSchema>
  * before its end, and the close's mark comes in from 0.2 s; the ding
  * strikes 0.1 s into that, as the dry run's did, and rings as it settles.
  */
-const CUE_AT = {
+export const CUE_AT = {
   hookLeaves: 550,
   frameOpens: 50,
   featureLeaves: 500,
@@ -99,6 +101,70 @@ export function releaseProblems(
   return problems
 }
 
+type Shot = CutList["shots"][number]
+
+/** One composition scene, in `palette`, its sounds placed by `cues` on its length. */
+export function compositionShot(
+  palette: Palette,
+  id: string,
+  ref: string,
+  seconds: number,
+  variables: Record<string, unknown>,
+  cues: (durationMs: number) => Array<SoundCue>,
+  files: Array<string> = []
+): Shot {
+  const durationMs = Math.round(seconds * 1000)
+  return {
+    id,
+    picture: {
+      kind: "composition",
+      ref,
+      variables: { ...palette, ...variables },
+      files,
+    },
+    durationMs,
+    voiceInMs: 0,
+    overrides: { cues: cues(durationMs) },
+    burnIns: [],
+    idea: { origin: "agent" },
+  }
+}
+
+/**
+ * The walk's screens in `promo-feature`, a caption each, with the pop as the
+ * frame opens, a click on each tap and a whoosh as it leaves.
+ */
+export function featureShot(
+  palette: Palette,
+  id: string,
+  words: { readonly appName: string; readonly version: string },
+  walk: WalkFile,
+  captions: ReadonlyArray<string>
+): Shot {
+  return compositionShot(
+    palette,
+    id,
+    "promo-feature",
+    feature.before + walk.lengthMs / 1000 + feature.after,
+    {
+      appName: words.appName,
+      version: words.version,
+      walk: JSON.stringify(walk),
+      captions: JSON.stringify(captions),
+      walkStart: feature.before,
+    },
+    (ms) => [
+      { sound: "pop", atMs: CUE_AT.frameOpens },
+      ...walk.taps.map((tap) => ({
+        sound: "click" as const,
+        atMs: Math.round(feature.before * 1000 + tap.atMs),
+      })),
+      { sound: "whoosh", atMs: ms - CUE_AT.featureLeaves },
+    ],
+    walk.snips.map((s) => s.file)
+  )
+}
+
 /** The promo as a cut list: three composition scenes, each cut to the next. */
 export function promoCutList(release: Release, walk: WalkFile): CutList {
   const palette = release.palette ?? {}
@@ -107,22 +173,9 @@ export function promoCutList(release: Release, walk: WalkFile): CutList {
     id: string,
     seconds: number,
     variables: Record<string, unknown>,
-    cues: (durationMs: number) => Array<SoundCue>,
-    files: Array<string> = []
-  ): CutList["shots"][number] => ({
-    id,
-    picture: {
-      kind: "composition",
-      ref: `promo-${id}`,
-      variables: { ...palette, ...variables },
-      files,
-    },
-    durationMs: Math.round(seconds * 1000),
-    voiceInMs: 0,
-    overrides: { cues: cues(Math.round(seconds * 1000)) },
-    burnIns: [],
-    idea: { origin: "agent" },
-  })
+    cues: (durationMs: number) => Array<SoundCue>
+  ): Shot =>
+    compositionShot(palette, id, `promo-${id}`, seconds, variables, cues)
   return {
     schema: CUT_LIST_SCHEMA,
     title: `${release.app} ${release.version}`,
@@ -141,25 +194,12 @@ export function promoCutList(release: Release, walk: WalkFile): CutList {
         },
         (ms) => [{ sound: "whoosh", atMs: ms - CUE_AT.hookLeaves }]
       ),
-      scene(
+      featureShot(
+        palette,
         "feature",
-        feature.before + walk.lengthMs / 1000 + feature.after,
-        {
-          appName: release.fill.title.split("|").join(" "),
-          version,
-          walk: JSON.stringify(walk),
-          captions: JSON.stringify(release.fill.captions),
-          walkStart: feature.before,
-        },
-        (ms) => [
-          { sound: "pop", atMs: CUE_AT.frameOpens },
-          ...walk.taps.map((tap) => ({
-            sound: "click" as const,
-            atMs: Math.round(feature.before * 1000 + tap.atMs),
-          })),
-          { sound: "whoosh", atMs: ms - CUE_AT.featureLeaves },
-        ],
-        walk.snips.map((s) => s.file)
+        { appName: release.fill.title.split("|").join(" "), version },
+        walk,
+        release.fill.captions
       ),
       scene(
         "close",

@@ -1,0 +1,33 @@
+{
+  "schema": "some-ui.walkthrough/1",
+  "app": "jobs",
+  "platform": "Android",
+  "stage": "On made-up data",
+  "fill": {
+    "title": "Jobs",
+    "captions": [
+      "Picks wait|each morning",
+      "Why it fits,|and the gaps",
+      "Send it, or|say why not",
+      "A résumé built|for this one",
+      "The paste kit|stays on the phone",
+      "A practice week,|an invented company",
+      "This week’s|questions",
+      "Today’s question",
+      "Say it your way",
+      "Recording",
+      "Saying it out loud",
+      "The take is kept",
+      "Played back|before it goes",
+      "Every application,|kept"
+    ],
+    "chapters": [
+      { "title": "This morning’s|picks", "from": 0 },
+      { "title": "Applying", "from": 3 },
+      { "title": "The interview|week", "from": 5 },
+      { "title": "The record", "from": 13 }
+    ],
+    "cta": "Some UI|for Android",
+    "badges": ["Open source", "Data stays home"]
+  }
+}
