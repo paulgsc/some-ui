@@ -3,7 +3,7 @@
   "made": "2026-11-21",
   "by": "claude",
   "paths": [
-    "some-ui:packages/video-render/src/resolve.ts",
+    "some-ui:packages/video-render/src/render.ts",
     "some-ui:packages/video-render/src/snip.ts",
     "some-ui:packages/video-render/src/cards-essay.ts",
     "some-ui:apps/www/tests/record/cards.ts"
@@ -15,6 +15,6 @@
     "draw a placeholder for a missing screen"
   ],
   "gray": "Where an unresolved snip is caught is a design choice no check settles. A second cut-list type would make it a compile error, but it splits the one file the phone, home and the renderer share, and every reader would carry both. The owner decided that a missing snip refuses the render (#3114), not where that happens.",
-  "undo": "Drop the screen refusal from resolve() and --snips and --clips from record:cards, and refuse screen pictures in parseCardsEssay again.",
+  "undo": "Drop the screen refusal from render.ts's input check and --snips and --clips from record:cards, and refuse screen pictures in parseCardsEssay again.",
   "refs": ["#3114"]
 }

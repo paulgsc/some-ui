@@ -10,7 +10,7 @@
     "some-ui:apps/www/src/lib/snips/index.ts",
     "some-ui:apps/www/tests/snips/capture.ts",
     "some-ui:docs/snips.md",
-    "some-ui:packages/video-render/src/clip.ts"
+    "some-ui:packages/video-render/src/zoom.ts"
   ],
   "chose": "A snip, a Clips Library frame and a some-ui.screens/1 screen (RR31) are one family: a picture of a screen of the app, with any named parts boxed. The snip record moves into @some-ui/video-render beside the screen record. It gains the two facts a screen has that it lacked: its scale, and the parts the page names (data-region), measured on the web walk; the APK's device screenshots name none. A scene shows one by one new member of the cut list's picture union, {kind: screen, of}, where of is a closed union: {from: snips, id, commit, at} or {from: clips, clip, side, file}. resolveScreens draws it with what the renderer already has, the screen-zoom composition over the picture read as a screen (snipScreen): held whole, or, for a snip given parts, zoomed to them in turn (C869). There is no second scene kind, renderer path or screen schema.",
   "options": [

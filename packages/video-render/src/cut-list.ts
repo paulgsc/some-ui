@@ -430,10 +430,10 @@ function shotProblems(shots: ReadonlyArray<Shot>): Array<string> {
       say("a card has no picture to move")
     }
     const into = o.transitionIn ?? "cut"
-    if (isComposition(s)) {
+    if (drawsItself(s)) {
       if (o.motion || o.background) say("a composition draws its own picture")
       if (into !== "cut") say("a composition draws its own way in")
-    } else if (isComposition(shots[i - 1]) && into !== "cut") {
+    } else if (drawsItself(shots[i - 1]) && into !== "cut") {
       say("the composition before it draws its own way out")
     }
     const m = o.motion
@@ -469,6 +469,14 @@ const CAPTIONS = "captions"
 
 /** Whether a burn-in is the captions. */
 export const isCaptions = (b: BurnIn): boolean => b.kind === CAPTIONS
+
+/**
+ * Whether a scene draws its own picture and way in and out: a composition,
+ * or a screen of the app, which is drawn as one once home hands it
+ * (`resolveScreens`), so the essay is refused for it before anything is said.
+ */
+const drawsItself = (s: Shot | undefined): boolean =>
+  s?.picture.kind === "composition" || s?.picture.kind === "screen"
 
 /** Whether a scene's picture is a composition, which draws its own (HYPER2). */
 export const isComposition = (s: Shot | undefined): boolean =>

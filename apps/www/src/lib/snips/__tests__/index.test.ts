@@ -315,7 +315,6 @@ group("the release APK's tab bar (#3137, option (b))", () => {
   // The shell's pill floats ~31 px above the app's foot (mobile-shell).
   const at = {
     appBottom: 1851,
-    lowestClickable: 1820,
     screenHeight: 1920,
     rowPx: 24,
   }
@@ -344,17 +343,29 @@ group("the release APK's tab bar (#3137, option (b))", () => {
     ).toEqual(["Study", "Bites"])
   })
 
-  it("is not two buttons with a control below them, or far above the foot", () => {
+  it("is not two buttons far above the foot, none chosen", () => {
     const raised = { y: 1650, bottom: 1690 }
     expect(
       tabBar([node("Older", 200, raised), node("Newer", 880, raised)], at)
     ).toEqual([])
+  })
+
+  it("is found with the page running on under the pill", () => {
+    // A list item shows in the gap below the floating bar; the walk passes
+    // only labelled controls in a row, so the bar is still the lowest row
+    // of two or more.
     expect(
-      tabBar([node("Older", 200, raised), node("Newer", 880, raised)], {
-        ...at,
-        lowestClickable: 1690,
-      })
-    ).toEqual([])
+      labels(
+        tabBar(
+          [
+            node("Studio", 290),
+            node("Game day", 790),
+            node("A take of 2 November", 540, { y: 1840, bottom: 1851 }),
+          ],
+          at
+        )
+      )
+    ).toEqual(["Studio", "Game day"])
   })
 
   it("is not one control alone", () => {

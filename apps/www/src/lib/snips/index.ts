@@ -284,24 +284,22 @@ const BAR_FOOT_SHARE = 0.08
  * The tabs of the bar along the bottom of a release APK screen, left to
  * right, each label once (#3137, option (b), the owner, 2026-11-21). It is
  * the lowest row of two or more labelled controls, if that row either has a
- * tab selected, or sits at the foot of what the app draws: nothing the app
- * can tap lies below it (`lowestClickable`), and it floats at most
- * `BAR_FOOT_SHARE` of the screen above the app's lowest edge (`appBottom`).
- * Studio's two tabs, about 500 px apart on a 1080 px screen, are a bar.
- * Two buttons mid-sheet, or with a control below them, are not. The
- * limit: on a screen with no bar, two labelled buttons that are the lowest
- * thing on it read as one. The walk's `ACTS` keeps out those that act.
+ * tab selected, or sits at the foot of what the app draws: its lower edge at
+ * most `BAR_FOOT_SHARE` of the screen above the app's lowest edge
+ * (`appBottom`). The page may run on under the shell's floating pill, so
+ * what can be tapped there says nothing. Studio's two tabs, about 500 px
+ * apart on a 1080 px screen, are a bar; two buttons mid-sheet are not. The
+ * limit: on a screen with no bar, two labelled buttons at its foot read as
+ * one. The walk's `ACTS` keeps out those that act.
  */
 export function tabBar(
   nodes: ReadonlyArray<BarNode>,
   {
     appBottom,
-    lowestClickable,
     screenHeight,
     rowPx,
   }: {
     readonly appBottom: number
-    readonly lowestClickable: number
     readonly screenHeight: number
     readonly rowPx: number
   }
@@ -315,9 +313,7 @@ export function tabBar(
   const row = rows.find((r) => new Set(r.map((n) => n.label)).size >= 2)
   if (row === undefined) return []
   const foot = Math.max(...row.map((n) => n.bottom))
-  const atFoot =
-    foot >= lowestClickable - rowPx &&
-    foot >= appBottom - screenHeight * BAR_FOOT_SHARE
+  const atFoot = foot >= appBottom - screenHeight * BAR_FOOT_SHARE
   if (!atFoot && !row.some((n) => n.selected)) return []
   const unique = new Map(row.map((n) => [n.label, n]))
   return [...unique.values()].sort((a, b) => a.x - b.x)

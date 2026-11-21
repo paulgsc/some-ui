@@ -14,7 +14,7 @@ import { dirname, join } from "node:path"
 import type { AndroidDevice, Page } from "@playwright/test"
 import { sha256Hex } from "@some-ui/core-utils"
 import type { Measured, Region } from "@some-ui/video-render"
-import { regionsOf } from "@some-ui/video-render"
+import { pngSize as readPngSize, regionsOf } from "@some-ui/video-render"
 
 import {
   describe,
@@ -183,7 +183,9 @@ export function writePart(out: string, part: Part, name: string): void {
 
 /** A PNG's own size, from its header: what was drawn, whatever was asked for. */
 export function pngSize(png: Buffer): { width: number; height: number } {
-  return { width: png.readUInt32BE(16), height: png.readUInt32BE(20) }
+  const size = readPngSize(png)
+  if (size === null) throw new Error("the camera gave no PNG")
+  return size
 }
 
 /** A file's SHA-256, as home hashes content (`sha256Hex`). */

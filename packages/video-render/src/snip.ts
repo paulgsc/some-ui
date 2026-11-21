@@ -233,6 +233,22 @@ export function clipFramesOf(cut: CutList): Array<string> {
 /** A picture's own size in pixels, as its PNG says. */
 export type PictureSize = { readonly width: number; readonly height: number }
 
+const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
+
+/**
+ * A PNG's own size, from its header chunk (IHDR), or null for bytes that
+ * aren't a PNG with a size: the one reading of a picture's size, for the
+ * capture, the screens recorder and the frames home hands.
+ */
+export function pngSize(bytes: Uint8Array): PictureSize | null {
+  if (bytes.length < 24 || PNG_MAGIC.some((b, i) => bytes[i] !== b)) return null
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  const chunk = String.fromCharCode(...bytes.subarray(12, 16))
+  const width = view.getUint32(16)
+  const height = view.getUint32(20)
+  return chunk === "IHDR" && width > 0 && height > 0 ? { width, height } : null
+}
+
 /**
  * What home handed beside an essay, each in its own folder as its takes
  * are (`<key>.snips/`, `<key>.clips/`): the snips' records, and the clip
@@ -272,19 +288,27 @@ export function resolveScreens(
       commitsOf.set(snip.id, [...(commitsOf.get(snip.id) ?? []), bundle.commit])
   // Each snip a scene names is a screen, `snip-<n>` in the order named; each
   // clip frame, `clip-<n>`.
-  const snipIds = new Map(
-    snipsOf(cut).map((ref, n) => [refKey(ref), `snip-${String(n + 1)}`])
-  )
+  // One screen per picture: a screen unchanged between two commits the
+  // essay names is the same snip, with the same file.
+  const byPicture = new Map<string, { id: string; snip: SnipRecord }>()
+  const snipIds = new Map<string, string>()
+  for (const ref of snipsOf(cut)) {
+    const snip = given.get(refKey(ref))
+    if (snip === undefined) continue
+    const held = byPicture.get(snip.image.name) ?? {
+      id: `snip-${String(byPicture.size + 1)}`,
+      snip,
+    }
+    byPicture.set(snip.image.name, held)
+    snipIds.set(refKey(ref), held.id)
+  }
   const clipIds = new Map(
     clipFramesOf(cut).map((frame, n) => [frame, `clip-${String(n + 1)}`])
   )
   const record = parseScreens({
     schema: SCREENS_SCHEMA,
     screens: [
-      ...[...snipIds].flatMap(([key, id]) => {
-        const snip = given.get(key)
-        return snip ? [snipScreen(snip, id)] : []
-      }),
+      ...[...byPicture.values()].map(({ id, snip }) => snipScreen(snip, id)),
       ...[...clipIds].flatMap(([frame, id]) => {
         const size = handed.clips?.get(frame)
         return size ? [frameScreen(frame, size, id)] : []

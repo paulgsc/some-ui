@@ -69,6 +69,7 @@ import {
   joinedTake,
   parseCardsEssay,
   parseSnipsGiven,
+  pngSize,
   QUIET,
   resolveScreens,
   SNIPS_DIR,
@@ -84,6 +85,7 @@ import type {
   CutList,
   Handed,
   HeardSpokenCard,
+  PictureSize,
   SnipsGiven,
   SpokenTakeFiles,
   StillTake,
@@ -362,7 +364,7 @@ async function handedScreens(
     const read = await readFile(join(snipsDir, "snips.json"), "utf8").catch(
       () => fail([`${snipsDir} holds no snips.json`])
     )
-    const parsed = parseSnipsGiven(JSON.parse(read))
+    const parsed = parseSnipsGiven(jsonOr(read, `${snipsDir}/snips.json`))
     if (!parsed.ok) fail([`${snipsDir}/snips.json:`, ...parsed.problems])
     given = parsed.value
     for (const snip of given.bundles.flatMap((bundle) => bundle.snips)) {
@@ -379,25 +381,15 @@ async function handedScreens(
         )
     }
   }
-  const frames = new Map<string, { width: number; height: number }>()
+  const frames = new Map<string, PictureSize>()
   if (clipsDir !== null)
     for (const frame of clips) {
       const bytes = await readFile(join(clipsDir, frame)).catch(() => null)
       if (bytes === null) continue // resolveScreens says it wasn't handed
-      if (
-        bytes.length < 24 ||
-        !bytes.subarray(0, 8).equals(PNG_MAGIC) ||
-        bytes.toString("latin1", 12, 16) !== "IHDR" ||
-        bytes.readUInt32BE(16) === 0 ||
-        bytes.readUInt32BE(20) === 0
-      )
+      const size = pngSize(bytes)
+      if (size === null)
         problems.push(`${frame}: home handed a frame that isn't a PNG`)
-      // Its size, from the PNG's header (IHDR).
-      else
-        frames.set(frame, {
-          width: bytes.readUInt32BE(16),
-          height: bytes.readUInt32BE(20),
-        })
+      else frames.set(frame, size)
     }
   if (problems.length > 0) fail(problems)
   const handed = { snips: given, clips: frames }
@@ -406,8 +398,14 @@ async function handedScreens(
   return { handed, snipsDir, clipsDir }
 }
 
-/** A PNG's first eight bytes. */
-const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+/** `text` read as JSON, or refused, naming `path`. */
+function jsonOr(text: string, path: string): unknown {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return fail([`${path} is not JSON`])
+  }
+}
 
 /**
  * `cut` with its screens of the app drawn from what home handed, the

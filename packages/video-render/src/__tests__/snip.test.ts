@@ -246,6 +246,21 @@ describe("an essay's screens of the app (SNIPS4)", () => {
     expect(both.ok).toBe(false)
   })
 
+  it("draws a screen unchanged between two commits as one picture", async () => {
+    const cut = await withScreens([snip(APK), snip(APK, undefined, LATER)])
+    const parsed = parseSnipsGiven({
+      schema: SNIPS_GIVEN_SCHEMA,
+      bundles: [
+        { commit: COMMIT, snips: [apk()] },
+        { commit: LATER, snips: [apk()] },
+      ],
+    })
+    if (!parsed.ok) throw new Error(parsed.problems.join("; "))
+    const drawn = resolveScreens(cut, { snips: parsed.value, clips: null })
+    if (!drawn.ok) throw new Error(drawn.problems.join("; "))
+    expect(drawn.value.shots[1]?.picture).toEqual(drawn.value.shots[2]?.picture)
+  })
+
   it("shows a Clips Library frame home handed whole, and refuses one it didn't", async () => {
     const frame: Of = {
       from: "clips",
