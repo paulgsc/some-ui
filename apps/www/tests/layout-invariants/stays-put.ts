@@ -58,7 +58,8 @@ async function targetsOn(page: Page): Promise<Record<string, Target>> {
       }
       // A box fixed to the window (it, or a box it sits in, such as a sheet)
       // does not move with what scrolls outside it: only the scrolls inside
-      // it, its own included, count.
+      // it, its own included, count. A fixed box under a transformed one is
+      // laid out against that box instead, and is read here as on the window.
       let scrolledX = 0
       let scrolledY = 0
       let fixed = false

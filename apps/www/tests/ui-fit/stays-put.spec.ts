@@ -14,7 +14,8 @@
  *   drafts, a submit refused. A tap that declares `reflows` (Mine/Theirs) is
  *   outside it, and says why; one that declares `grows` ("N older") is in it
  *   for what is at and above it. A target fixed to the window is in it where
- *   it sits on the window, however the page under it scrolls.
+ *   it sits on the window, however the page under it scrolls (one under a
+ *   transformed box is laid out against that box, and none is walked).
  * - Proof: this spec, which takes every tap, compares every target's box
  *   before and after and finds every message in the layout
  *   (`../layout-invariants/stays-put.ts`), fails on the planted line if
@@ -32,7 +33,7 @@ import {
   type Tap,
 } from "@tests/layout-invariants/stays-put"
 
-import { open, walkEachPhone } from "./harness"
+import { open, PHONE_VIEWPORTS, walkEachPhone } from "./harness"
 
 const inSheet: Scope = (page) => page.getByRole("dialog")
 
@@ -157,20 +158,33 @@ walkEachPhone(
       ).toBe(true)
     })
 
-    test("the measure sees no move in a button fixed over a page that scrolls", async ({
-      page,
-    }) => {
-      PAGE.expectBuilt()
-      await open(page, PAGE.url("planted-fixed"))
-      const failures = await holdStill(
+    for (const phone of PHONE_VIEWPORTS) {
+      test(`the measure sees no move in a button fixed over a page that scrolls, at ${phone.name}`, async ({
         page,
-        [button("Shorten the page", "shortens the page")],
-        "planted"
-      )
-      expect(
-        failures.filter((f) => f.includes("Fixed target")),
-        `The page scrolls under "Fixed target"; on the screen it stays put.`
-      ).toEqual([])
-    })
+      }) => {
+        PAGE.expectBuilt()
+        await page.setViewportSize({ width: phone.width, height: phone.height })
+        await open(page, PAGE.url("planted-fixed"))
+        const failures = await holdStill(
+          page,
+          [button("Shorten the page", "shortens the page")],
+          "planted"
+        )
+        // The tap ran and the measure read the page: the button tapped sits
+        // at the foot of a page that shortens, so it moves in it.
+        expect(
+          failures.some((f) => f.includes("Shorten the page")),
+          `"Shorten the page" moves up its page. If this is not reported, ` +
+            `the tap or the measure did not run: ${failures.join("\n")}`
+        ).toBe(true)
+        await expect(
+          page.getByRole("button", { name: "Fixed target" })
+        ).toHaveAttribute("data-stays-put")
+        expect(
+          failures.filter((f) => f.includes("Fixed target")),
+          `The page scrolls under "Fixed target"; on the screen it stays put.`
+        ).toEqual([])
+      })
+    }
   }
 )
