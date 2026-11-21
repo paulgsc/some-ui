@@ -19,13 +19,26 @@
       "Saying it out loud",
       "The take is kept",
       "Played back|before it goes",
+      "The note is set aside",
       "Every application,|kept"
     ],
     "chapters": [
-      { "title": "This morning’s|picks", "from": 0 },
-      { "title": "Applying", "from": 3 },
-      { "title": "The interview|week", "from": 5 },
-      { "title": "The record", "from": 13 }
+      {
+        "title": "This morning’s|picks",
+        "from": 0
+      },
+      {
+        "title": "Applying",
+        "from": 3
+      },
+      {
+        "title": "The interview|week",
+        "from": 5
+      },
+      {
+        "title": "The record",
+        "from": 14
+      }
     ],
     "cta": "Some UI|for Android",
     "badges": ["Open source", "Data stays home"]

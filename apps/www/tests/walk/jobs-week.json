@@ -1,5 +1,5 @@
 {
-  "$comment": "The Jobs walk's story sample (WALK2, #3282): one made-up week on the phone, as the stand-in home (apps/mobile/compat/stub-home.mjs) answers it, layered over stub-routes.json. Mock values only: the digest is job-desk's sample moved to the snips' frozen day (FROZEN_AT, 2026-11-02), an earlier application is on the record, and the interview week is invented. src/lib/snips/__tests__/walk-sample.test.ts reads every answer with the app's own readers.",
+  "$comment": "The Jobs walk's story sample (WALK2, #3282): one made-up week on the phone, as the stand-in home (apps/mobile/compat/stub-home.mjs) answers it, layered over stub-routes.json. Mock values only: the digest is job-desk's sample moved to the snips' frozen day (FROZEN_AT, 2026-11-02), with a made-up person's details in its paste kits, an earlier application is on the record, and the interview week is invented. src/lib/snips/__tests__/walk-sample.test.ts reads every answer with the app's own readers.",
   "schema": "some-ui.walk-sample/jobs/1",
   "walk": {
     "pickId": "nor-0b77",
@@ -118,19 +118,19 @@
                     "fields": [
                       {
                         "label": "Email",
-                        "value": "paulgathondudev@gmail.com"
+                        "value": "sam.rivera@example.com"
                       },
                       {
                         "label": "Location",
-                        "value": "Berkeley, CA"
+                        "value": "Oakland, CA"
                       },
                       {
                         "label": "GitHub",
-                        "value": "https://github.com/paulgsc"
+                        "value": "https://github.com/example"
                       },
                       {
                         "label": "Portfolio",
-                        "value": "https://paulgsc.github.io/some-ui"
+                        "value": "https://example.com"
                       }
                     ],
                     "answers": [
@@ -216,11 +216,11 @@
                     "fields": [
                       {
                         "label": "Email",
-                        "value": "paulgathondudev@gmail.com"
+                        "value": "sam.rivera@example.com"
                       },
                       {
                         "label": "GitHub",
-                        "value": "https://github.com/paulgsc"
+                        "value": "https://github.com/example"
                       }
                     ],
                     "answers": [],
@@ -292,7 +292,7 @@
                     "fields": [
                       {
                         "label": "Email",
-                        "value": "paulgathondudev@gmail.com"
+                        "value": "sam.rivera@example.com"
                       }
                     ],
                     "answers": [],
@@ -363,7 +363,7 @@
                     "fields": [
                       {
                         "label": "Email",
-                        "value": "paulgathondudev@gmail.com"
+                        "value": "sam.rivera@example.com"
                       }
                     ],
                     "answers": [],

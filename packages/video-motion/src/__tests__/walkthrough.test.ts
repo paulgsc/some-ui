@@ -44,7 +44,7 @@ const walkOf = (n: number): WalkFile => ({
 
 describe("the walkthrough (WALK4)", () => {
   it("fits Jobs' walk: a caption a screen, the four stops in order", () => {
-    expect(walkthroughProblems(jobs, walkOf(14))).toEqual([])
+    expect(walkthroughProblems(jobs, walkOf(15))).toEqual([])
     expect(jobs.fill.chapters.map((c) => c.title)).toEqual([
       "This morning’s|picks",
       "Applying",
@@ -68,7 +68,7 @@ describe("the walkthrough (WALK4)", () => {
     }
     expect(walkthroughProblems(words, walkOf(3))).toEqual([
       "the walk is of jobs, the words of practice",
-      "the fill has 14 captions for the walk's 3 screens",
+      "the fill has 15 captions for the walk's 3 screens",
       "the first chapter starts at screen 0",
       "chapter 2 starts after the one before",
       "chapter 3 starts past the walk's last screen",
@@ -89,7 +89,7 @@ describe("the walkthrough (WALK4)", () => {
   })
 
   it("is the promo's scenes with a card before each stop", () => {
-    const cut = parseCutList(walkthroughCutList(jobs, walkOf(14)))
+    const cut = parseCutList(walkthroughCutList(jobs, walkOf(15)))
     expect(cut.ok).toBe(true)
     if (!cut.ok) return
     expect(cut.value.shots.map((s) => s.id)).toEqual([
@@ -114,7 +114,7 @@ describe("the walkthrough (WALK4)", () => {
     const files = cut.value.shots.flatMap((s) =>
       s.picture.kind === "composition" ? s.picture.files : []
     )
-    expect(files).toEqual(walkOf(14).snips.map((s) => s.file))
+    expect(files).toEqual(walkOf(15).snips.map((s) => s.file))
     expect(cut.value.title).toBe("jobs walkthrough v0.0.11")
   })
 })
