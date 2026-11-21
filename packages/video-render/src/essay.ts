@@ -85,6 +85,8 @@ import {
   SILENCE_SHAPE,
   silenceSaid,
 } from "./verdict"
+import { chapterVoices, voicePolicyOf } from "./voices"
+import type { KokoroVoice, VoiceRole } from "./voices"
 import { zoomPicture } from "./zoom"
 
 export const ESSAY_SCHEMA = "some-ui.rust-essay/1"
@@ -93,7 +95,7 @@ export const ESSAY_SCHEMA = "some-ui.rust-essay/1"
 export const ESSAY_ID = "rust-essay"
 
 /** The newest version `essayFormat` gives, pinned as `v<n>.json` under `templates/`. */
-export const ESSAY_VERSION = 6
+export const ESSAY_VERSION = 7
 
 /**
  * The first version whose chart draws the decay record's two later cells
@@ -129,6 +131,15 @@ export const ESSAY_OPENING_VERSION = 5
  * opening takes it.
  */
 export const ESSAY_CAST_VERSION = 6
+
+/**
+ * The first version whose voices move on at each chapter (#3321, C840): the
+ * tutor's voice changes at each chapter slide, through its lane
+ * (`VOICE_LANES`), and the one asking and the sample's answers keep theirs
+ * through the opening. It draws everything version 6 does, so every essay
+ * Rust Rounds writes takes it (C841).
+ */
+export const ESSAY_VOICES_VERSION = 7
 
 /**
  * The take that answers the opening's question `n` (from 1), by its id in
@@ -386,9 +397,11 @@ export function essayFormat(version: number = ESSAY_VERSION): Format {
       ),
     ],
     shape:
-      version >= ESSAY_CAST_VERSION
-        ? { ...ESSAY_SHAPE, cast: "cast-v1" }
-        : ESSAY_SHAPE,
+      version >= ESSAY_VOICES_VERSION
+        ? { ...ESSAY_SHAPE, cast: "cast-v1", voices: "lanes-v1" }
+        : version >= ESSAY_CAST_VERSION
+          ? { ...ESSAY_SHAPE, cast: "cast-v1" }
+          : ESSAY_SHAPE,
   }
 }
 
@@ -1061,16 +1074,49 @@ export type Speaker = "tutor" | "you" | "asker"
 export type Voicing = "owner" | "sample"
 
 /**
- * Each speaker's Kokoro voice, as the call's `CALL_VOICES`; `you` only in
- * the sample (`Voicing`). The asker's is neither the tutor's nor the
- * sample's, so a listener hears the opening's questions come from someone
- * else (owner, 2026-11-19).
+ * Each speaker's Kokoro voice in a version before the voice lanes, the
+ * essay's `fixed` case of the voice policy (C840): one for the whole essay,
+ * as the call's `CALL_VOICES`; `you` only in the sample (`Voicing`). The
+ * asker's is neither the tutor's nor the sample's, so a listener hears the
+ * opening's questions come from someone else (owner, 2026-11-19).
  */
-export const ESSAY_VOICES: Readonly<Record<Speaker, string>> = {
+export const ESSAY_VOICES: Readonly<Record<Speaker, KokoroVoice>> = {
   tutor: "am_michael",
   you: "bm_george",
   asker: "af_heart",
 }
+
+/**
+ * The role each speaker plays in the voice lanes (C840): the tutor teaches,
+ * the opening's asker asks, and `you`, said by Kokoro only in the sample,
+ * answers. The interview essay's speakers are the same.
+ */
+export const ESSAY_VOICE_ROLES: Readonly<Record<Speaker, VoiceRole>> = {
+  tutor: "tutor",
+  you: "answerer",
+  asker: "asker",
+}
+
+/**
+ * Each scene's Kokoro voice, in order, for an essay drawn in `shape`, the
+ * Rust essay's or the interview essay's: its speaker's under the shape's
+ * voice policy, a chapter slide opening each new chapter. The owner's own
+ * takes play in place of `you`'s voice outside the sample.
+ */
+export const essaySceneVoices = (
+  shape: Shape | undefined,
+  scenes: ReadonlyArray<{
+    readonly section: string
+    readonly speaker: Speaker
+  }>
+): Array<KokoroVoice> =>
+  chapterVoices(
+    voicePolicyOf(shape?.voices, ESSAY_VOICES, ESSAY_VOICE_ROLES),
+    scenes.map((scene) => ({
+      speaker: scene.speaker,
+      opens: scene.section === "chapter",
+    }))
+  )
 
 /** One scene of an essay: its section, its id in the video, who says it and what. */
 export type EssayScene =

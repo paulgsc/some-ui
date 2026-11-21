@@ -30,6 +30,7 @@ import { problemsOf } from "./cut-list"
 import type { Parsed } from "./cut-list"
 import { LOOKS } from "./plans"
 import { ms } from "./vocabulary"
+import { VoicesIdSchema } from "./voices"
 
 export const FORMAT_SCHEMA = "some-ui.show-format/1"
 
@@ -133,6 +134,12 @@ export const ShapeSchema = z.strictObject({
   theme: ThemeIdSchema.optional(),
   /** The cast its speaking bubbles draw (`CastIdSchema`); absent, the flat icons. */
   cast: CastIdSchema.optional(),
+  /**
+   * The voice lanes its lines are said in (`VoicesIdSchema`, C840): each
+   * speaker's voice moves on at each chapter. Absent, each speaker keeps one
+   * voice for the whole video, as every version before them did.
+   */
+  voices: VoicesIdSchema.optional(),
   parts: z
     .strictObject({
       mostMs: z.number().int().positive(),

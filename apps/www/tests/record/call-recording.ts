@@ -9,12 +9,12 @@ import { join, resolve } from "node:path"
 import type { Route } from "@playwright/test"
 import {
   CALL_INDEX_SCHEMA,
-  CALL_VOICES,
   callChapterMarks,
   callCutList,
   callFormat,
   callParts,
   callScenes,
+  callVoices,
   hasCaptions,
   parseCallWeek,
 } from "@some-ui/video-render"
@@ -178,14 +178,16 @@ export async function recordCall(
           ? join(values.out, week.week.from, `part-${String(part)}`)
           : join(values.out, week.week.from)
     )
+    // Each scene in its section's voice (C840).
+    const voices = callVoices(scenes)
     const takes = await recordStills({
       page,
       root,
-      shots: scenes.map((scene) => ({
+      shots: scenes.map((scene, i) => ({
         id: scene.id,
         url: url(scene.id),
         said: scene.said,
-        voice: CALL_VOICES[scene.section],
+        voice: voices[i] ?? fail([`${scene.id}: no voice for it`]),
       })),
       frame: (id) => `[data-scene="${id}"]`,
       speaker,

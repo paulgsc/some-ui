@@ -21,7 +21,10 @@ import { prepare } from "@interview-week/lib/monday/bundle"
 import { finish } from "@interview-week/lib/monday/finish"
 import type { InterviewWeek } from "@interview-week/lib/week"
 import { isRecord } from "@some-ui/core-utils"
-import { OPENING_TAKE } from "@some-ui/video-render"
+import {
+  INTERVIEW_ESSAY_VOICES_VERSION,
+  OPENING_TAKE,
+} from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
 /** The week the Monday routine writes from the fixture on Monday `now`. */
@@ -411,7 +414,9 @@ describe("the essay's opening (IW10)", () => {
     })
     if (!done.ok) throw new Error(done.problems.join("\n"))
     expect(done.files[0]?.body.opening).toEqual({ transcript: OPENED })
-    expect(done.files[0]?.body.template.version).toBe(3)
+    expect(done.files[0]?.body.template.version).toBe(
+      INTERVIEW_ESSAY_VOICES_VERSION
+    )
 
     expect(prepared().essays[0]?.opening).toBeNull()
     const plain = finishEssays({
@@ -421,8 +426,10 @@ describe("the essay's opening (IW10)", () => {
     })
     if (!plain.ok) throw new Error(plain.problems.join("\n"))
     expect("opening" in (plain.files[0]?.body ?? {})).toBe(false)
-    // With no opening it stays version 1, which every stage draws.
-    expect(plain.files[0]?.body.template.version).toBe(1)
+    // With no opening it takes the voices' version too (C841).
+    expect(plain.files[0]?.body.template.version).toBe(
+      INTERVIEW_ESSAY_VOICES_VERSION
+    )
   })
 
   it("never waits on the opening's word times: it is played, never measured", () => {

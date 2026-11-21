@@ -54,7 +54,6 @@ import {
   joinedTake,
   parseCardsEssay,
   QUIET,
-  SPOKEN_ASKER_VOICE,
   spokenCardsOf,
   spokenTakeFilesOf,
   spokenTakesOf,
@@ -64,6 +63,7 @@ import type {
   CardsScene,
   CutList,
   HeardSpokenCard,
+  Series,
   SpokenTakeFiles,
   StillTake,
 } from "@some-ui/video-render"
@@ -167,7 +167,8 @@ async function sceneTakes(
 /** The takes `essay`'s spoken cards play, from `--takes`, each as home heard it. */
 async function spokenTakes(
   essay: CutList,
-  dir: string | undefined
+  dir: string | undefined,
+  look: Pick<Series, "theme" | "cast">
 ): Promise<{
   readonly owned: Readonly<Record<string, SpokenTakeFiles>>
   readonly heard: ReadonlyMap<string, HeardSpokenCard>
@@ -175,11 +176,7 @@ async function spokenTakes(
   const named = spokenTakesOf(essay)
   // Template A is drawn in its series' theme, as the cards around it (C816),
   // with its series' cast (C822).
-  const { id: seriesId, version } = essay.series
-  const read = await readSeries(join(SERIES, seriesId), version)
-  if (!read.ok)
-    fail([`${seriesId} v${String(version)} can't be read:`, ...read.problems])
-  const { theme, cast } = read.value
+  const { theme, cast } = look
   if (dir === undefined) {
     if (named.length > 0)
       fail([
@@ -272,7 +269,7 @@ async function spokenStills({
   const takes = await recordStills({
     page,
     root,
-    shots: spoken.map(({ scene, spoken: { card, scene: on } }) => {
+    shots: spoken.map(({ scene, spoken: { card, scene: on, voice } }) => {
       const own = on.take === undefined ? undefined : owned[on.take]
       // `spokenTakes` refused a missing take before anything was drawn; an
       // answer is never said by the speaker in its place.
@@ -288,7 +285,7 @@ async function spokenStills({
           record: "true",
         }).toString()}`,
         said: scene.said,
-        voice: SPOKEN_ASKER_VOICE,
+        voice,
         ...(own === undefined ? {} : { own }),
       }
     }),
@@ -311,10 +308,17 @@ async function main(): Promise<void> {
   const policy = policyOf(values)
   const speaker = speakerFlag(values)
   const spoken = isSpokenEssay(essay.value)
+  const { id: seriesId, version } = essay.value.series
+  const read = await readSeries(join(SERIES, seriesId), version)
+  if (!read.ok)
+    fail([`${seriesId} v${String(version)} can't be read:`, ...read.problems])
   const { owned, heard } = spoken
-    ? await spokenTakes(essay.value, values.takes)
+    ? await spokenTakes(essay.value, values.takes, read.value)
     : { owned: {}, heard: new Map<string, HeardSpokenCard>() }
-  const scenes = spoken ? cardsScenes(essay.value, heard) : []
+  // Each line in its speaker's voice for its chapter, as the series says (C840).
+  const scenes = spoken
+    ? cardsScenes(essay.value, heard, read.value.voices)
+    : []
   refuseLong(scenes, policy)
   const root = join(here(values.out), key)
   await mkdir(root, { recursive: true })

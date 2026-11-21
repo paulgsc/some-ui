@@ -10,11 +10,11 @@ import { join } from "node:path"
 import { captionSpace, LANDSCAPE } from "@some-ui/burn-ins"
 import {
   ESSAY_SCHEMA,
-  ESSAY_VOICES,
   essayChapterMarks,
   essayCutList,
   essayFormat,
   essayScenes,
+  essaySceneVoices,
   essayTakeFiles,
   essayTakeOf,
   hasCaptions,
@@ -67,9 +67,13 @@ export type EssayValues = Omit<CallValues, "week" | "week-file"> & {
   readonly "week-file"?: string
 }
 
-/** A scene as the recorder reads it: its id, who says it and what. */
+/**
+ * A scene as the recorder reads it: its id, its section (a chapter slide
+ * opens a chapter, so its voices move on: C840), who says it and what.
+ */
 type Said = {
   readonly id: string
+  readonly section: string
   readonly speaker: Speaker
   readonly said: string
 }
@@ -277,16 +281,19 @@ async function recordKind<E extends { readonly week: { readonly id: string } }>(
             week: essay.week.id,
             root,
           })
+    // Each scene in its speaker's voice for its chapter, as the essay's
+    // version says (C840).
+    const voices = essaySceneVoices(format.shape, scenes)
     const takes = await recordStills({
       page,
       root,
-      shots: scenes.map((scene) => {
+      shots: scenes.map((scene, i) => {
         const own = scene.take === null ? undefined : owned[scene.take]
         return {
           id: scene.id,
           url: url(scene.id),
           said: scene.said,
-          voice: ESSAY_VOICES[scene.speaker],
+          voice: voices[i] ?? fail([`${scene.id}: no voice for it`]),
           ...(own ? { own } : {}),
         }
       }),

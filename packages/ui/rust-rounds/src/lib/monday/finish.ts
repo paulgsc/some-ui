@@ -13,8 +13,8 @@
  *   counts), and next week's id, dates, references, rubric and family;
  * - **the chart and the role line**, both the decay record's (RR19, #2695,
  *   `@rust-rounds/lib/decay`), read over every week the mailbox holds an
- *   essay for and this one; the essay pins version 2 of its template only
- *   when its chart draws decay or fading (C270);
+ *   essay for and this one; the essay pins its template's voices version,
+ *   which draws everything the versions before it do (C841);
  * - a seed ticket's source, as a sentence at the end of its spec (#2685);
  * - **the opening**, the standing set copied as it stands
  *   (`@rust-rounds/lib/opening`, C737): a week whose opening isn't the set
@@ -60,18 +60,12 @@ import {
 import { assertNever, pacificDay } from "@some-ui/core-utils"
 import type { Essay, EssayFork, EssayPointAnswer } from "@some-ui/video-render"
 import {
-  ESSAY_CAST_VERSION,
   ESSAY_CHART_ROWS,
-  ESSAY_DECAY_VERSION,
-  ESSAY_FORK_VERSION,
   ESSAY_ID,
-  ESSAY_POINT_VERSION,
   ESSAY_SCHEMA,
+  ESSAY_VOICES_VERSION,
   ESSAY_WEEKS_MOST,
   essayFit,
-  hasPointAnswers,
-  needsDecayVersion,
-  needsForkVersion,
   parseEssay,
   pointsFit,
 } from "@some-ui/video-render"
@@ -451,18 +445,10 @@ function buildEssay(
     ended.tickets.flatMap((t) => t.concepts),
     { weeks: ESSAY_WEEKS_MOST, concepts: ESSAY_CHART_ROWS }
   )
-  // The lowest version that draws it (C270); an opening takes the cast's,
-  // which draws everything the opening's does (C822).
-  const version =
-    ended.opening !== undefined
-      ? ESSAY_CAST_VERSION
-      : tickets.some(needsForkVersion)
-        ? ESSAY_FORK_VERSION
-        : tickets.some(hasPointAnswers)
-          ? ESSAY_POINT_VERSION
-          : chart.concepts.some((c) => c.cells.some(needsDecayVersion))
-            ? ESSAY_DECAY_VERSION
-            : 1
+  // Every essay takes the voices' version, which draws everything the
+  // versions before it do (C841, moving C270 and C822): a listener hears the
+  // tutor's voice move on at each chapter.
+  const version = ESSAY_VOICES_VERSION
   const topics = [
     ...new Set(following.tickets.flatMap((t) => t.concepts.map((c) => c.name))),
   ]

@@ -68,6 +68,8 @@ import type { StillTake } from "./stills"
 import { boardSceneOf, storyboardOf } from "./storyboard"
 import type { Storyboard } from "./storyboard"
 import sample from "./templates/conference-call/sample-week.json"
+import { chapterVoices } from "./voices"
+import type { KokoroVoice, VoicePolicy } from "./voices"
 
 export const CALL_WEEK_SCHEMA = "some-ui.call-week/1"
 
@@ -924,8 +926,14 @@ function pagedScenes(
  * board, the intro and the chapters, and closes, and one voice per kind of
  * report, so a listener hears who is speaking change with the section. The
  * `a` and `b` voices are American and British English.
+ *
+ * It is the call's case of the voice policy (`CALL_VOICE_POLICY`), `fixed`:
+ * a section is the call's chapter, and each already has a voice of its own,
+ * so the voice changes where the section does and nowhere else (C840). The
+ * lanes would rotate the host too, so they don't subsume it, and the call
+ * keeps these voices.
  */
-export const CALL_VOICES: Readonly<Record<Section | Framing, string>> = {
+export const CALL_VOICES: Readonly<Record<Section | Framing, KokoroVoice>> = {
   intro: "am_michael",
   "brand-in": "am_michael",
   chapter: "am_michael",
@@ -939,6 +947,24 @@ export const CALL_VOICES: Readonly<Record<Section | Framing, string>> = {
   asks: "af_nicole",
   close: "am_michael",
 }
+
+/** The call's voice policy: each section in its own voice (`CALL_VOICES`). */
+export const CALL_VOICE_POLICY: VoicePolicy<Section | Framing> = {
+  kind: "fixed",
+  voices: CALL_VOICES,
+}
+
+/** Each scene's voice, in order: its section's, under `CALL_VOICE_POLICY`. */
+export const callVoices = (
+  scenes: ReadonlyArray<{ readonly section: Section | Framing }>
+): Array<KokoroVoice> =>
+  chapterVoices(
+    CALL_VOICE_POLICY,
+    scenes.map((scene) => ({
+      speaker: scene.section,
+      opens: scene.section === "chapter",
+    }))
+  )
 
 /**
  * About how long a week's call runs, from its words alone, before any is

@@ -2,7 +2,7 @@
   "schema": "some-ui.storyboard/1",
   "template": {
     "id": "rust-essay",
-    "version": 6
+    "version": 7
   },
   "sample": "the sample essay, 2026-w46",
   "frames": [
