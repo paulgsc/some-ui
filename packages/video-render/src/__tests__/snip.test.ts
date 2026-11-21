@@ -349,7 +349,7 @@ describe("the phone-card sample: a cards essay on a snip of the phone (#3311, C8
     }
   })
 
-  it("zooms each screen scene in the series' ground and theme, above its captions", async () => {
+  it("zooms each screen scene to the handed snip, in the look it is given", async () => {
     const look = { foot: 0.3, theme: "dark", ground: "#111821" }
     const drawn = resolveScreens(
       await showcase("phone-card"),
@@ -364,7 +364,12 @@ describe("the phone-card sample: a cards essay on a snip of the phone (#3311, C8
       "card",
     ])
     for (const shot of drawn.value.shots)
-      if (shot.picture.kind === "composition")
+      if (shot.picture.kind === "composition") {
         expect(shot.picture.variables).toMatchObject(look)
+        // The look never moves the picture out of the handed folder.
+        expect(shot.picture.files).toEqual([
+          "snips/web/phone/rust-rounds-sample-7da9fd68697e.png",
+        ])
+      }
   })
 })
