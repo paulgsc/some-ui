@@ -1,0 +1,17 @@
+{
+  "id": "C1027",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/cards-essay.ts",
+    "packages/video-render/src/spoken-card.ts"
+  ],
+  "chose": "In a spoken cards essay, a chapter's title and chapter mark belong to its first scene only; later scenes of the same chapter carry no chapter line, so nothing says it twice and the chapter card stays silent.",
+  "options": [
+    "a chapter's first scene carries its title, the rest none",
+    "one scene per chapter"
+  ],
+  "gray": "The owner ruled that chapter cards are silent, while spoken cards had every scene's host say its chapter line, so a chapter spanning scenes was said twice and marked twice. One scene per chapter would bend the essay's shape to the schema.",
+  "undo": "Make chapter required on every scene again, or split essays one scene per chapter.",
+  "refs": ["#3387", "#2980"]
+}

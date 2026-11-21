@@ -1,0 +1,22 @@
+{
+  "id": "C1026",
+  "made": "2026-11-21",
+  "by": "owner",
+  "paths": [
+    "packages/video-render/src/templates",
+    "apps/www/src/components/studio/genre-thumbs.tsx",
+    "packages/some-styles/src/brand/cast.ts"
+  ],
+  "chose": "Every episode's thumbnail is one deterministic template, C2: the genre's shape behind the title and the genre name above it, over the genre's ground, and a footer band a fifth of the height in the genre's hue, carrying the tin birds and SYNTHETIC VOICE (voiced by a tin bird), and the mochi with + ME where the owner's voice is in the episode. Only the title and who speaks vary.",
+  "options": [
+    "C2 with the band in the genre's hue",
+    "C2 with one tin-steel band on every video",
+    "A: cast left, no words",
+    "B: centred cast and a constant badge",
+    "C: genre shape and a thin bird line",
+    "D: a big title over a full banner"
+  ],
+  "gray": "The owner, on the prototypes: D's footer band is the clear section an eye wanders to and reads that the voice is synthetic, but D is mostly a text blob; C keeps the picture. So C's upper area with D's band, in the genre's hue.",
+  "undo": "Only the owner can move this call.",
+  "refs": ["#3030", "#3361"]
+}
