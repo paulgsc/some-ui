@@ -1,0 +1,205 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        background: #1a1a19;
+        color: #f0efec;
+        font-family: Inter, system-ui, sans-serif;
+      }
+      .wrap {
+        padding: 90px 120px;
+      }
+      h1 {
+        font-size: 56px;
+        margin: 0 0 14px;
+        font-weight: 600;
+      }
+      .sub {
+        font-size: 30px;
+        color: #c3c2b7;
+        margin-bottom: 34px;
+      }
+      .leg {
+        font-size: 26px;
+        color: #c3c2b7;
+        margin-bottom: 24px;
+      }
+      .k {
+        margin-right: 40px;
+      }
+      .k i {
+        display: inline-block;
+        width: 22px;
+        height: 22px;
+        border-radius: 4px;
+        margin-right: 12px;
+        vertical-align: -3px;
+      }
+      .src {
+        position: absolute;
+        bottom: 60px;
+        left: 120px;
+        font-size: 22px;
+        color: #c3c2b7;
+        font-family: ui-monospace, monospace;
+      }
+      svg text {
+        font-family: Inter, system-ui, sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>A merge of main, then every PR runs again</h1>
+      <div class="sub">
+        PR runs on 2026-11-21, in minutes: some-ui 195 of 636 runs, server 105
+        of 900, were merges of main
+      </div>
+      <div class="leg">
+        <span class="k"
+          ><i style="background: #d95926"></i>update-branch rerun</span
+        ><span class="k"><i style="background: #3987e5"></i>content push</span>
+      </div>
+      <svg width="1780" height="280">
+        <line
+          x1="520.0"
+          x2="520.0"
+          y1="0"
+          y2="240"
+          stroke="#383835"
+          stroke-width="1"
+        />
+        <text
+          x="520.0"
+          y="272"
+          fill="#c3c2b7"
+          font-size="20"
+          text-anchor="middle"
+        >
+          0
+        </text>
+        <line
+          x1="795.0"
+          x2="795.0"
+          y1="0"
+          y2="240"
+          stroke="#383835"
+          stroke-width="1"
+        />
+        <text
+          x="795.0"
+          y="272"
+          fill="#c3c2b7"
+          font-size="20"
+          text-anchor="middle"
+        >
+          1,800
+        </text>
+        <line
+          x1="1070.0"
+          x2="1070.0"
+          y1="0"
+          y2="240"
+          stroke="#383835"
+          stroke-width="1"
+        />
+        <text
+          x="1070.0"
+          y="272"
+          fill="#c3c2b7"
+          font-size="20"
+          text-anchor="middle"
+        >
+          3,600
+        </text>
+        <line
+          x1="1345.0"
+          x2="1345.0"
+          y1="0"
+          y2="240"
+          stroke="#383835"
+          stroke-width="1"
+        />
+        <text
+          x="1345.0"
+          y="272"
+          fill="#c3c2b7"
+          font-size="20"
+          text-anchor="middle"
+        >
+          5,400
+        </text>
+        <line
+          x1="1620.0"
+          x2="1620.0"
+          y1="0"
+          y2="240"
+          stroke="#383835"
+          stroke-width="1"
+        />
+        <text
+          x="1620.0"
+          y="272"
+          fill="#c3c2b7"
+          font-size="20"
+          text-anchor="middle"
+        >
+          7,200
+        </text>
+        <text x="496" y="52" fill="#f0efec" font-size="28" text-anchor="end">
+          some-ui
+        </text>
+        <rect
+          x="520"
+          y="24"
+          width="402.40277777777777"
+          height="44"
+          rx="4"
+          fill="#d95926"
+        />
+        <rect
+          x="924.4027777777778"
+          y="24"
+          width="670.9861111111111"
+          height="44"
+          rx="4"
+          fill="#3987e5"
+        />
+        <text x="1615.388888888889" y="54" fill="#c3c2b7" font-size="24">
+          2,647 of 7,052
+        </text>
+        <text x="496" y="172" fill="#f0efec" font-size="28" text-anchor="end">
+          server
+        </text>
+        <rect
+          x="520"
+          y="144"
+          width="119.91666666666667"
+          height="44"
+          rx="4"
+          fill="#d95926"
+        />
+        <rect
+          x="641.9166666666666"
+          y="144"
+          width="623.625"
+          height="44"
+          rx="4"
+          fill="#3987e5"
+        />
+        <text x="1285.5416666666665" y="174" fill="#c3c2b7" font-size="24">
+          798 of 4,893
+        </text>
+      </svg>
+    </div>
+    <div class="src">
+      source: paulgsc/some-ui claude/ci-audit-data · prototypes/ci-audit · as of
+      2026-11-21
+    </div>
+  </body>
+</html>

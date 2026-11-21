@@ -1,0 +1,87 @@
+{
+  "schema": "prototype.pages/0",
+  "note": "Public GitHub pages, logged out. Each is as of its capturedAt.",
+  "pages": [
+    {
+      "id": "pr-3376-files",
+      "url": "https://github.com/paulgsc/some-ui/pull/3376/files",
+      "capturedAt": "2026-11-21T23:00:27.581Z",
+      "viewport": "1440x900@2",
+      "file": "pr-3376-files.png",
+      "title": "chore(assurance): place stage_want\u2019s store; record C1013\u2013C1015 (server#1098 pair) by paulgsc \u00b7 Pull Request #3376 \u00b7 paulgsc/some-ui \u00b7 GitHub",
+      "says": "four JSON files: three call records and one ledger line"
+    },
+    {
+      "id": "pr-3376-checks",
+      "url": "https://github.com/paulgsc/some-ui/pull/3376/checks",
+      "capturedAt": "2026-11-21T23:00:33.045Z",
+      "viewport": "1440x900@2",
+      "file": "pr-3376-checks.png",
+      "title": "chore(assurance): place stage_want\u2019s store; record C1013\u2013C1015 (server#1098 pair) by paulgsc \u00b7 Pull Request #3376 \u00b7 paulgsc/some-ui",
+      "says": "the checks a four-file PR ran"
+    },
+    {
+      "id": "job-3376-jobs",
+      "url": "https://github.com/paulgsc/some-ui/actions/runs/44944305421/job/136968109800",
+      "capturedAt": "2026-11-21T23:00:57.304Z",
+      "viewport": "1440x900@2",
+      "file": "job-3376-jobs.png",
+      "title": "chore(assurance): place stage_want\u2019s store; record C1013\u2013C1015 (server#1098 pair) \u00b7 paulgsc/some-ui@6eafd64 \u00b7 GitHub",
+      "says": "every job ran (Rust CI, Deny Checks) on a PR of four JSON files; its log says Sign in to view logs when logged out"
+    },
+    {
+      "id": "pr-3377-checks",
+      "url": "https://github.com/paulgsc/some-ui/pull/3377/checks",
+      "capturedAt": "2026-11-21T23:01:02.287Z",
+      "viewport": "1440x900@2",
+      "file": "pr-3377-checks.png",
+      "title": "test(game-week): live socket fixture at engine version 5 (server#1097 pair) by paulgsc \u00b7 Pull Request #3377 \u00b7 paulgsc/some-ui",
+      "says": "the checks a one-fixture PR ran"
+    },
+    {
+      "id": "actions-pr-runs",
+      "url": "https://github.com/paulgsc/some-ui/actions?query=event%3Apull_request",
+      "capturedAt": "2026-11-21T23:01:07.337Z",
+      "viewport": "1440x900@2",
+      "file": "actions-pr-runs.png",
+      "title": "All workflows \u00b7 GitHub",
+      "says": "the run list, update-branch merges among them"
+    },
+    {
+      "id": "docs-merge-queue",
+      "url": "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue",
+      "capturedAt": "2026-11-21T23:01:11.339Z",
+      "viewport": "1440x900@2",
+      "file": "docs-merge-queue.png",
+      "title": "Managing a merge queue - GitHub Docs",
+      "says": "who GitHub offers the merge queue to"
+    },
+    {
+      "id": "run-3376-graph",
+      "url": "https://github.com/paulgsc/some-ui/pull/3376/checks",
+      "capturedAt": "2026-11-21T23:01:37.281Z",
+      "viewport": "1440x900@2",
+      "file": "run-3376-graph.png",
+      "title": "chore(assurance): place stage_want\u2019s store; record C1013\u2013C1015 (server#1098 pair) \u00b7 paulgsc/some-ui@6eafd64 \u00b7 GitHub",
+      "says": "the run's job graph: 15m 39s, Rust CI and four Rust deny jobs green on four JSON files"
+    },
+    {
+      "id": "server-1098-checks",
+      "url": "https://github.com/paulgsc/server/pull/1098/checks",
+      "capturedAt": "2026-11-21T23:03:52.715Z",
+      "viewport": "1440x900@2",
+      "file": "server-1098-checks.png",
+      "title": "feat(stage): what waits on a note puts it first in the transcriber's queue by paulgsc \u00b7 Pull Request #1098 \u00b7 paulgsc/server",
+      "says": "the server half of the #3376 pair"
+    },
+    {
+      "id": "server-1098-conversation",
+      "url": "https://github.com/paulgsc/server/pull/1098",
+      "capturedAt": "2026-11-21T23:03:58.072Z",
+      "viewport": "1440x900@2",
+      "file": "server-1098-conversation.png",
+      "title": "feat(stage): what waits on a note puts it first in the transcriber's queue by paulgsc \u00b7 Pull Request #1098 \u00b7 paulgsc/server",
+      "says": "the server PR that waited on #3376"
+    }
+  ]
+}
