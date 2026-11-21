@@ -134,6 +134,8 @@ group("the bundle", () => {
     viewport: "desktop",
     width: 1440,
     height: 900,
+    scale: 1,
+    regions: [],
     appVersion: version,
     module: "Front page",
     shows: "Front page",

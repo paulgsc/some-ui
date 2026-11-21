@@ -5,22 +5,21 @@
  * (`tests/snips/*.spec.ts`) and the bundle script (`scripts/snips-bundle.ts`)
  * agree on every name, and a unit test holds them.
  *
- * Nothing in the app imports this: it describes the app from outside, and
- * only on sample data (the Pages viewer build, or the APK paired with the
+ * A snip's record is `@some-ui/video-render`'s (`snip.ts`), which reads one
+ * as a photographed screen for an essay (SNIPS4). Nothing in the app
+ * imports this: it describes the app from outside, and only on sample data (the Pages viewer build, or the APK paired with the
  * stand-in home).
  */
+import { SnipRecordSchema } from "@some-ui/video-render/snip"
+import type {
+  Build,
+  SnipFile,
+  SnipRecord,
+  Surface,
+} from "@some-ui/video-render/snip"
 import { z } from "zod"
 
-/** Where a snip was taken. */
-export type Surface = "apk" | "web"
-
-/**
- * Which build drew it. The release build is the app as it ships (the APK
- * the phone gets, the Pages site); the debug APK is the same JavaScript in
- * a WebView Playwright can open, used only for a screen the release build's
- * own navigation does not reach by taps.
- */
-export type Build = "release" | "debug"
+export type { Build, SnipFile, SnipRecord, Surface }
 
 /** The audience a route's layout gates it to (`routes/_dashboard/_apk.tsx`, `_lan.tsx`). */
 type RouteAudience = "public" | "apk" | "lan"
@@ -242,40 +241,6 @@ export function slugOf(path: string): string {
   return path.replace(/^[/@]/, "").replace(/\//g, "~")
 }
 
-/** One file of a snip, as the bundle carries it. */
-export type SnipFile = {
-  /** Relative to the bundle's root. */
-  readonly name: string
-  readonly kind: "png" | "webm" | "mp4"
-  readonly bytes: number
-  readonly sha256: string
-}
-
-/** One snip's record: everything the routine and the desk may know of it. */
-export type SnipRecord = {
-  readonly id: string
-  readonly surface: Surface
-  readonly build: Build
-  /**
-   * The route's address, `$param`s and all, or, for a release screen no
-   * debug picture matched, where the taps reached it (`wingPath`).
-   */
-  readonly route: string
-  /** The address captured, its params filled. */
-  readonly path: string
-  readonly viewport: string
-  readonly width: number
-  readonly height: number
-  readonly appVersion: string
-  readonly module: string
-  /** What the screen says it is: its heading, or else its module. */
-  readonly shows: string
-  readonly description: string
-  readonly image: SnipFile
-  /** A short recording, where the screen moved while it was looked at. */
-  readonly recording?: SnipFile
-}
-
 /** A route a capture offered and could not show, with why, in plain words. */
 export type Unreached = {
   readonly surface: Surface
@@ -283,34 +248,11 @@ export type Unreached = {
   readonly why: string
 }
 
-const fileSchema = z.object({
-  name: z.string(),
-  kind: z.enum(["png", "webm", "mp4"]),
-  bytes: z.number(),
-  sha256: z.string(),
-})
 const surfaceSchema = z.enum(["apk", "web"])
 const partSchema = z.object({
   surface: surfaceSchema,
   appVersion: z.string(),
-  snips: z.array(
-    z.object({
-      id: z.string(),
-      surface: surfaceSchema,
-      build: z.enum(["release", "debug"]),
-      route: z.string(),
-      path: z.string(),
-      viewport: z.string(),
-      width: z.number(),
-      height: z.number(),
-      appVersion: z.string(),
-      module: z.string(),
-      shows: z.string(),
-      description: z.string(),
-      image: fileSchema,
-      recording: fileSchema.optional(),
-    })
-  ),
+  snips: z.array(SnipRecordSchema),
   unreached: z.array(
     z.object({ surface: surfaceSchema, route: z.string(), why: z.string() })
   ),

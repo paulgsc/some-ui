@@ -93,6 +93,8 @@ A snip record:
 | `id`                  | `<surface>:<path>:<viewport>:<appVersion>:<hash12>`; `path` may be `@wing/tab`                                        |
 | `surface`, `viewport` | Where, and at which named size                                                                                        |
 | `width`, `height`     | The picture's own size, read from the PNG                                                                             |
+| `scale`               | Its pixels per CSS pixel: 2 for the web phone, 1 elsewhere                                                            |
+| `regions`             | Each part the page names (`data-region`), `{ref, box}`, the box in CSS pixels; none on the APK (below)                |
 | `build`               | `release` (the APK as it ships, or the Pages site) or `debug` (the APK's debug build, for a screen taps do not reach) |
 | `route`               | The route, `$param`s and all, or a release screen's `@wing/tab`                                                       |
 | `path`                | The address taken                                                                                                     |
@@ -100,6 +102,14 @@ A snip record:
 | `shows`               | The screen's own heading, or else its module                                                                          |
 | `description`         | One plain line: "Studio: Takes, on the Android app, with sample data."                                                |
 | `image`, `recording?` | `{name, kind, bytes, sha256}`                                                                                         |
+
+`regions` are measured on the web walk, where the picture is the page's own
+window, and cut to it. The APK's pictures are the device's whole screen,
+which no page's layout maps onto, so its records name none.
+
+The record's schema is `@some-ui/video-render`'s `SnipRecordSchema`
+(`packages/video-render/src/snip.ts`), which the capture writes and the
+renderer reads.
 
 `hash12` is the first 12 hex digits of the PNG's SHA-256. A screen that
 changes gets a new id. The same screen captured again keeps its id, so a
@@ -129,11 +139,28 @@ owner's one step. The workflow holds no mailbox secret.
 - **SNIPS3, the editorial desk**, groups by `module` and shows `image`
   (`recording` where present). The keep mark and note are home's own, keyed by
   `id`. They are not in this bundle.
-- **SNIPS4, the snip scene**, names an `id`. An essay is refused when the
-  index lacks one, and a render is refused when the file has gone missing.
-  Phone shots are 1080×1920 (APK) or 824×1830 (web phone, drawn at 2×), both portrait.
-  The owner chooses between a device frame and a full-bleed 9:16 once they see
-  them.
+- **SNIPS4, the snip scene** (C865, C866). A snip and a `some-ui.screens/1`
+  screen (RR31's phone cards) are one family: a photographed screen with
+  its named parts boxed. A scene shows one by the cut list's picture
+  `{"kind": "snip", "id": "<id>", "at": ["<part>", …]}`, in a cards essay
+  in place of a card. Beside an essay that names snips, home hands their
+  records as `snips/snips.json`:
+
+  ```json
+  { "schema": "some-ui.snips-given/1", "snips": [<record>, …] }
+  ```
+
+  Each picture comes with it under its bundle name. `record:cards --snips
+  <dir>` checks each picture's hash, and `resolveSnips` draws each scene. With
+  no `at`, it shows the whole screen as a still. With `at`, it zooms to those
+  parts in turn, as the Rust essay's cards do (`screen-zoom`). A scene naming
+  a snip home didn't hand, or a part its snip doesn't name, is refused before
+  anything is drawn. A cut list still naming a snip is refused by the render.
+  Never a blank frame. Phone shots are 1080×1920 (APK) or 824×1830 (web
+  phone, drawn at 2×), both portrait, and drawn today as any still is,
+  fitted into the frame. The owner chooses between a device frame and a
+  full-bleed 9:16 once they see them.
+
 - The APK's screens show what a fresh install paired with the stub shows. The
   stub answers few routes (`compat/stub-routes.json`), so many screens are
   their empty state. Richer sample fixtures for the stub are a follow-up.

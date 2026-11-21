@@ -130,6 +130,8 @@ test.describe("snips: apk", () => {
       },
       camera: {
         shoot: () => device.screenshot(),
+        // The device's whole screen: no page's layout maps onto it.
+        regions: () => Promise.resolve([]),
         record: () => recordScreen(device),
       },
     })

@@ -112,17 +112,23 @@ const BoxSchema = z.strictObject({
 })
 export type Box = z.infer<typeof BoxSchema>
 
-const RegionSchema = z.strictObject({ ref: regionRefSchema, box: BoxSchema })
+export const RegionSchema = z.strictObject({
+  ref: regionRefSchema,
+  box: BoxSchema,
+})
 export type Region = z.infer<typeof RegionSchema>
 
 const ScreenSchema = z
   .strictObject({
     /** The screen's id, a slug; a Rust Rounds card's is its ticket's key. */
     id: z.string().regex(SCREEN_ID, "a screen's id is a slug"),
-    /** The picture, beside `screens.json`. */
+    /** The picture, beside `screens.json` or under it: a snip's keeps the bundle's folders (`./snip`). */
     file: z
       .string()
-      .regex(/^[A-Za-z0-9][A-Za-z0-9._-]*\.png$/, "a PNG beside the record"),
+      .regex(
+        /^([A-Za-z0-9][A-Za-z0-9._~-]*\/)*[A-Za-z0-9][A-Za-z0-9._~-]*\.png$/,
+        "a PNG beside the record, or in a folder under it"
+      ),
     /** The whole picture in CSS pixels: taller than the viewport when the screen scrolls. */
     width: px.positive(),
     height: px.positive(),

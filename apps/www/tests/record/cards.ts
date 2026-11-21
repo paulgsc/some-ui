@@ -34,16 +34,24 @@
  * app's `/essay?kind=spoken` (template A). With no spoken card it takes no
  * `--takes`, and records as it always has.
  *
+ * An essay may show screens of the app from the snip library (SNIPS4,
+ * `@some-ui/video-render`'s `snip.ts`). Then `--snips <dir>` is the folder
+ * home hands over: `snips.json` (`some-ui.snips-given/1`), the records of
+ * the snips the essay names, with each picture under it by its bundle name.
+ * A snip home didn't hand, or a picture not the one its record names, is
+ * refused before anything is drawn. With no snip it takes no `--snips`.
+ *
  * It takes the flags every home recorder takes (`CALL_OPTIONS`). Policy, the
  * step cache (which keeps each take by its words, voice and model) and
  * `--brand` are the call's (`./call` says how). Needs `ffmpeg` and `ffprobe`
  * on `PATH`.
  */
 
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises"
-import { basename, join, resolve } from "node:path"
+import { copyFile, mkdir, readdir, readFile, writeFile } from "node:fs/promises"
+import { basename, dirname, join, resolve } from "node:path"
 import { parseArgs } from "node:util"
 import type { Page } from "@playwright/test"
+import { sha256Hex } from "@some-ui/core-utils"
 import {
   cardsChapterMarks,
   cardsLines,
@@ -53,7 +61,10 @@ import {
   isSpokenEssay,
   joinedTake,
   parseCardsEssay,
+  parseSnipsGiven,
   QUIET,
+  resolveSnips,
+  snipIdsOf,
   SPOKEN_ASKER_VOICE,
   spokenCardsOf,
   spokenTakeFilesOf,
@@ -64,6 +75,7 @@ import type {
   CardsScene,
   CutList,
   HeardSpokenCard,
+  SnipsGiven,
   SpokenTakeFiles,
   StillTake,
 } from "@some-ui/video-render"
@@ -93,6 +105,7 @@ const { values } = parseArgs({
     "cut-list-file": { type: "string" },
     out: { type: "string", default: "out/cards" },
     takes: { type: "string" },
+    snips: { type: "string" },
     ...CALL_OPTIONS,
   },
 })
@@ -301,6 +314,59 @@ async function spokenStills({
   return new Map(spoken.map(({ scene }, i) => [scene.id, takes[i] ?? null]))
 }
 
+/** The snips home handed in `dir` for `cut`, checked; null when it names none. */
+async function snipsGiven(
+  cut: CutList,
+  dir: string | undefined
+): Promise<{ readonly dir: string; readonly given: SnipsGiven } | null> {
+  const named = snipIdsOf(cut)
+  if (named.length === 0) return null
+  if (dir === undefined)
+    fail([
+      `it shows ${String(named.length)} snips, and --snips names no folder home handed them in`,
+    ])
+  const from = here(dir)
+  const read = await readFile(join(from, "snips.json"), "utf8").catch(() =>
+    fail([`${dir} holds no snips.json`])
+  )
+  const given = parseSnipsGiven(JSON.parse(read))
+  if (!given.ok) fail([`${dir}/snips.json:`, ...given.problems])
+  const problems: Array<string> = []
+  for (const snip of given.value.snips) {
+    const bytes = await readFile(join(from, snip.image.name)).catch(() => null)
+    if (bytes === null)
+      problems.push(`${snip.id}: ${snip.image.name} is missing`)
+    else if (
+      (await sha256Hex(new Uint8Array(bytes).buffer)) !== snip.image.sha256
+    )
+      problems.push(
+        `${snip.id}: ${snip.image.name} is not the picture its record names`
+      )
+  }
+  if (problems.length > 0) fail(problems)
+  // A snip it names that home didn't hand is refused here, before anything is drawn.
+  const resolved = resolveSnips(cut, given.value)
+  if (!resolved.ok) fail(resolved.problems)
+  return { dir: from, given: given.value }
+}
+
+/** `cut` with its snip scenes drawn from `snips`, their pictures copied into `root/snips/`. */
+async function withSnips(
+  cut: CutList,
+  snips: { readonly dir: string; readonly given: SnipsGiven } | null,
+  root: string
+): Promise<CutList> {
+  if (snips === null) return cut
+  for (const snip of snips.given.snips) {
+    const to = join(root, "snips", snip.image.name)
+    await mkdir(dirname(to), { recursive: true })
+    await copyFile(join(snips.dir, snip.image.name), to)
+  }
+  const resolved = resolveSnips(cut, snips.given)
+  if (!resolved.ok) return fail(resolved.problems)
+  return resolved.value
+}
+
 async function main(): Promise<void> {
   const file = values["cut-list-file"]
   if (!file) fail(["usage: record:cards --cut-list-file <key>.json"])
@@ -316,6 +382,7 @@ async function main(): Promise<void> {
     : { owned: {}, heard: new Map<string, HeardSpokenCard>() }
   const scenes = spoken ? cardsScenes(essay.value, heard) : []
   refuseLong(scenes, policy)
+  const given = await snipsGiven(essay.value, values.snips)
   const root = join(here(values.out), key)
   await mkdir(root, { recursive: true })
   await writeFile(join(root, "essay.json"), written)
@@ -360,7 +427,11 @@ async function main(): Promise<void> {
     await renderCut(
       root,
       series,
-      spoken ? voicedCardsCutList(essay.value, scenes, takes) : essay.value,
+      await withSnips(
+        spoken ? voicedCardsCutList(essay.value, scenes, takes) : essay.value,
+        given,
+        root
+      ),
       {
         preview: false,
         episode: "cards.mp4",

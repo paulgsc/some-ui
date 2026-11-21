@@ -29,7 +29,7 @@ import {
 } from "@/lib/snips"
 import type { Viewport } from "@/lib/snips"
 
-import { walk, writePart } from "./capture"
+import { pageRegions, walk, writePart } from "./capture"
 
 const OUT = process.env["SNIPS_OUT"]
 /** The Pages build's base path, as pages.yml and pr.yml build it. */
@@ -83,6 +83,7 @@ test.describe("snips: web", () => {
         camera: {
           shoot: () =>
             page.screenshot({ animations: "disabled", caret: "hide" }),
+          regions: () => pageRegions(page),
           // A browser's video is all or nothing per context; a still that
           // moved gets a second look in a context that records.
           record: async () => {

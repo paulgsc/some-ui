@@ -151,7 +151,7 @@ jobs:
       # src/lib/snips/__tests__/bundle-job.test.ts holds this list to the
       # script's imports).
       - name: Build what the bundle script imports
-        run: nix develop .#ci --command pnpm turbo build --filter=@some-ui/core-utils
+        run: nix develop .#ci --command pnpm turbo build --filter=@some-ui/core-utils --filter=@some-ui/video-render
       - name: Join the halves, check every file, write the manifest and checksums
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

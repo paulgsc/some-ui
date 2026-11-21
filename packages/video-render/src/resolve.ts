@@ -56,6 +56,12 @@ export function resolve(cutList: CutList, series: Series): Parsed<Resolved> {
     if (s.background.kind === "blurred" && s.shot.picture.kind === "card") {
       problems.push(`${s.shot.id}: a card has no picture to blur`)
     }
+    // C866: a snip is drawn only once home has handed it (`resolveSnips`).
+    if (s.shot.picture.kind === "snip") {
+      problems.push(
+        `${s.shot.id}: it shows the snip ${s.shot.picture.id}, which home has not handed yet`
+      )
+    }
   }
   for (const b of [
     ...cutList.burnIns,

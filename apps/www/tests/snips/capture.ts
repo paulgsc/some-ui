@@ -13,6 +13,8 @@ import { mkdirSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import type { AndroidDevice, Page } from "@playwright/test"
 import { sha256Hex } from "@some-ui/core-utils"
+import type { Measured, Region } from "@some-ui/video-render"
+import { regionsOf } from "@some-ui/video-render"
 
 import {
   describe,
@@ -36,6 +38,12 @@ import type {
 type Camera = {
   /** The picture, as PNG bytes. */
   readonly shoot: () => Promise<Buffer>
+  /**
+   * Each part the screen names (`data-region`), boxed in the picture's CSS
+   * pixels, where the picture is the page's own; none where it is the
+   * device's whole screen, which no page's layout maps onto.
+   */
+  readonly regions: () => Promise<ReadonlyArray<Region>>
   /** A short recording of the screen, as its bytes and kind, or null where none is made. */
   readonly record: () => Promise<{
     readonly bytes: Buffer
@@ -93,6 +101,7 @@ export async function walk(w: Walk): Promise<Part> {
       return
     }
     const png = await w.camera.shoot()
+    const regions = await w.camera.regions()
     const sha256 = await hashOf(png)
     const same = seen.get(sha256)
     if (same !== undefined) {
@@ -132,6 +141,8 @@ export async function walk(w: Walk): Promise<Part> {
       path,
       viewport: w.viewport.name,
       ...pngSize(png),
+      scale: w.viewport.scale,
+      regions: [...regions],
       appVersion: w.appVersion,
       module,
       shows: screen.shows || module,
@@ -198,6 +209,42 @@ export async function save(
   mkdirSync(dirname(file), { recursive: true })
   writeFileSync(file, bytes)
   return { name, kind, bytes: bytes.length, sha256: await hashOf(bytes) }
+}
+
+/**
+ * The parts the page names (`data-region`), each boxed around every element
+ * that carries it, within the window the page's picture shows (`regionsOf`).
+ */
+export async function pageRegions(page: Page): Promise<ReadonlyArray<Region>> {
+  const { measured, width, height } = await page.evaluate(() => ({
+    measured: [...document.querySelectorAll<HTMLElement>("[data-region]")].map(
+      (part) => {
+        const r = part.getBoundingClientRect()
+        return {
+          ref: part.dataset.region ?? "",
+          box: { x: r.x, y: r.y, width: r.width, height: r.height },
+        }
+      }
+    ),
+    width: window.innerWidth,
+    height: window.innerHeight,
+  }))
+  return regionsOf(measured.flatMap((part) => inWindow(part, width, height)))
+}
+
+/** A part's box cut to the window, or nothing when it lies outside it. */
+function inWindow(
+  part: Measured,
+  width: number,
+  height: number
+): Array<Measured> {
+  const x = Math.max(0, part.box.x)
+  const y = Math.max(0, part.box.y)
+  const right = Math.min(part.box.x + part.box.width, width)
+  const bottom = Math.min(part.box.y + part.box.height, height)
+  return right > x && bottom > y
+    ? [{ ref: part.ref, box: { x, y, width: right - x, height: bottom - y } }]
+    : []
 }
 
 /** Waits for the network to go quiet and fonts to load, then a beat for late paints. */

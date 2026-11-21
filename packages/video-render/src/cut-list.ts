@@ -12,6 +12,7 @@ import { z } from "zod"
 
 import { badgeProblems } from "./badges"
 import { LOOKS, VOICES } from "./plans"
+import { SNIP_ID } from "./snip-id"
 import { SPOKEN_CATEGORIES } from "./spoken-categories"
 import { stampProblems } from "./stamp"
 import {
@@ -60,6 +61,18 @@ const PictureSchema = z.discriminatedUnion("kind", [
       .refine(increasing, { message: "taps move forward in time" }),
   }),
   z.object({ kind: z.literal("still"), source: path }),
+  /**
+   * A screen of the app from the snip library (SNIPS4, #3114), by its id.
+   * Home hands the snips an essay names, and `resolveSnips` (`./snip`)
+   * draws each as a still of the whole screen or, with `at`, as the screen
+   * zoomed to those named parts in turn. Unresolved, it refuses the render.
+   */
+  z.object({
+    kind: z.literal("snip"),
+    id: z.string().regex(SNIP_ID, "it isn't a snip's id"),
+    /** The parts to zoom to, in order, as the page names them (`data-region`). */
+    at: z.array(z.string().min(1).max(200)).max(10).default([]),
+  }),
   /** The series' ground alone, for a card burn-in to draw on. */
   z.object({ kind: z.literal("card") }),
   /**

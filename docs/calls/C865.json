@@ -1,0 +1,23 @@
+{
+  "id": "C865",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/snip.ts",
+    "some-ui:packages/video-render/src/snip-id.ts",
+    "some-ui:packages/video-render/src/screen.ts",
+    "some-ui:packages/video-render/src/cut-list.ts",
+    "some-ui:apps/www/src/lib/snips/index.ts",
+    "some-ui:apps/www/tests/snips/capture.ts",
+    "some-ui:docs/snips.md"
+  ],
+  "chose": "A snip and a some-ui.screens/1 screen (RR31) are one family, a photographed screen of the app with its named parts boxed. The snip record moves into @some-ui/video-render beside the screen record and gains the two facts a screen has that it lacked: its scale, and the parts the page names (data-region), measured on the web walk and none on the APK's device screenshots. A scene shows a snip by one new member of the cut list's picture union, {kind: snip, id, at}, and resolveSnips draws it with what the renderer already has: a still of the whole screen, or the screen-zoom composition over the snip read as a screen (snipScreen). No second scene kind, renderer path or screen schema.",
+  "options": [
+    "one family: a snip resolves to a still or a zoom over a screen, the record beside screens/1",
+    "a snip scene kind of its own, drawn by its own renderer path",
+    "two records, snips/1 and screens/1, with no mapping between them"
+  ],
+  "gray": "The owner asked for a snip scene (SNIPS4) and, separately, for RR31's zoomed phone cards. Both are pictures of the app's screens. Whether they are one thing is a design reading (C820, C830), not settled by any check or earlier decision, and it decides what the owner sees when an essay points at a part of a snip.",
+  "undo": "Drop the snip member from the picture union and snip.ts, and move SnipRecord back into apps/www/src/lib/snips without scale and regions.",
+  "refs": ["#3114", "#3313", "#3316"]
+}
