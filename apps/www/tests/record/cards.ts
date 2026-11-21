@@ -55,6 +55,7 @@ import { copyFile, mkdir, readdir, readFile, writeFile } from "node:fs/promises"
 import { basename, dirname, join, resolve } from "node:path"
 import { parseArgs } from "node:util"
 import type { Page } from "@playwright/test"
+import { captionSpace, LANDSCAPE } from "@some-ui/burn-ins"
 import { sha256Hex } from "@some-ui/core-utils"
 import {
   cardsChapterMarks,
@@ -383,7 +384,13 @@ async function handedScreens(
     for (const frame of clips) {
       const bytes = await readFile(join(clipsDir, frame)).catch(() => null)
       if (bytes === null) continue // resolveScreens says it wasn't handed
-      if (!bytes.subarray(0, 8).equals(PNG_MAGIC))
+      if (
+        bytes.length < 24 ||
+        !bytes.subarray(0, 8).equals(PNG_MAGIC) ||
+        bytes.toString("latin1", 12, 16) !== "IHDR" ||
+        bytes.readUInt32BE(16) === 0 ||
+        bytes.readUInt32BE(20) === 0
+      )
         problems.push(`${frame}: home handed a frame that isn't a PNG`)
       // Its size, from the PNG's header (IHDR).
       else
@@ -404,11 +411,15 @@ const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 
 /**
  * `cut` with its screens of the app drawn from what home handed, the
- * snips' pictures copied into `root/snips/` and the frames into `root/clips/`.
+ * snips' pictures copied into `root/snips/` and the frames into `root/clips/`:
+ * in a `spoken` essay, each held above the band the captions draw in, so a
+ * caption is never over the app's own screen (C869). A silent essay has no
+ * captions and keeps the whole frame.
  */
 async function withScreens(
   cut: CutList,
   screens: HandedScreens | null,
+  spoken: boolean,
   root: string
 ): Promise<CutList> {
   if (screens === null) return cut
@@ -432,7 +443,9 @@ async function withScreens(
     await mkdir(dirname(to), { recursive: true })
     await copyFile(from, to)
   }
-  const resolved = resolveScreens(cut, screens.handed)
+  const resolved = resolveScreens(cut, screens.handed, {
+    foot: spoken ? captionSpace(LANDSCAPE) / LANDSCAPE.height : 0,
+  })
   if (!resolved.ok) return fail(resolved.problems)
   return resolved.value
 }
@@ -500,6 +513,7 @@ async function main(): Promise<void> {
       await withScreens(
         spoken ? voicedCardsCutList(essay.value, scenes, takes) : essay.value,
         screens,
+        spoken,
         root
       ),
       {

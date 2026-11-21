@@ -45,7 +45,7 @@ export const SnipFileSchema = z.object({
   name: z
     .string()
     .regex(
-      /^(apk|web)\/[a-z0-9-]+\/[A-Za-z0-9._~-]+\.(png|webm|mp4)$/,
+      /^(apk|web)\/[a-z0-9][a-z0-9-]*\/[A-Za-z0-9][A-Za-z0-9._~-]*\.(png|webm|mp4)$/,
       "a file under <surface>/<viewport>/"
     ),
   kind: z.enum(["png", "webm", "mp4"]),
@@ -105,6 +105,12 @@ export const SnipRecordSchema = z
     recording: SnipFileSchema.optional(),
   })
   .superRefine((snip, ctx) => {
+    if (snip.image.kind !== "png")
+      ctx.addIssue({
+        code: "custom",
+        path: ["image", "kind"],
+        message: "a snip's picture is a PNG",
+      })
     const hash = SNIP_ID.exec(snip.id)?.[5]
     if (hash !== undefined && !snip.image.sha256.startsWith(hash))
       ctx.addIssue({

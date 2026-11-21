@@ -202,6 +202,7 @@ function bar(
 ): ReadonlyArray<Node> {
   const nodes: Array<BarNode> = []
   let appBottom = 0
+  let lowestClickable = 0
   for (const node of xml.match(/<node\b[^>]*>/g) ?? []) {
     if (attribute(node, "package") !== pkg) continue
     const bounds = (attribute(node, "bounds").match(/-?\d+/g) ?? []).map(Number)
@@ -209,6 +210,8 @@ function bar(
     const [left = 0, top = 0, right = 0, bottom = 0] = bounds
     if (bottom <= screen.height) appBottom = Math.max(appBottom, bottom)
     if (attribute(node, "clickable") !== "true") continue
+    if (bottom <= screen.height)
+      lowestClickable = Math.max(lowestClickable, bottom)
     const label = attribute(node, "text") || attribute(node, "content-desc")
     if (label === "" || /^\d+$/.test(label) || ACTS.test(label)) continue
     const y = Math.round((top + bottom) / 2)
@@ -221,7 +224,12 @@ function bar(
       selected: attribute(node, "selected") === "true",
     })
   }
-  return tabBar(nodes, { appBottom, rowPx: ROW_PX })
+  return tabBar(nodes, {
+    appBottom,
+    lowestClickable,
+    screenHeight: screen.height,
+    rowPx: ROW_PX,
+  })
 }
 
 /** Whether the app's own window is the one in front. */

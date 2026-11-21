@@ -242,6 +242,7 @@ group("every name the capture makes is one the record takes", () => {
     "/journal/takes/voice%20note",
     "/journal/episodes/feed/key+1",
     "/a/b@c",
+    "/%ED%95%9C",
     "/jobs/a:b",
     wingPath("app"),
     wingPath("Studio", "Takes"),
@@ -294,35 +295,49 @@ group("the release APK's tab bar (#3137, option (b))", () => {
     y: number
     bottom: number
     selected: boolean
-  } => ({ label, x, y: 1800, bottom: 1850, selected: false, ...over })
-  const at = { appBottom: 1850, rowPx: 24 }
+  } => ({ label, x, y: 1770, bottom: 1820, selected: false, ...over })
+  // The shell's pill floats ~31 px above the app's foot (mobile-shell).
+  const at = {
+    appBottom: 1851,
+    lowestClickable: 1820,
+    screenHeight: 1920,
+    rowPx: 24,
+  }
+  const labels = (nodes: ReadonlyArray<{ label: string }>): Array<string> =>
+    nodes.map((n) => n.label)
 
-  it("is a row at the foot of what the app draws, however close its tabs", () => {
+  it("is the floating row at the foot of what the app draws, however close its tabs", () => {
     // Studio's bar: two tabs about 500 px apart on a 1080 px screen.
     expect(
-      tabBar([node("Game day", 790), node("Studio", 290)], at).map(
-        (n) => n.label
-      )
+      labels(tabBar([node("Game day", 790), node("Studio", 290)], at))
     ).toEqual(["Studio", "Game day"])
   })
 
   it("is a row with a tab selected, wherever it sits", () => {
-    const raised = { y: 1700, bottom: 1740 }
+    const raised = { y: 1650, bottom: 1690 }
     expect(
-      tabBar(
-        [
-          node("Study", 300, { ...raised, selected: true }),
-          node("Bites", 700, raised),
-        ],
-        at
-      ).map((n) => n.label)
+      labels(
+        tabBar(
+          [
+            node("Study", 300, { ...raised, selected: true }),
+            node("Bites", 700, raised),
+          ],
+          at
+        )
+      )
     ).toEqual(["Study", "Bites"])
   })
 
-  it("is not two buttons side by side above the foot, none chosen", () => {
-    const raised = { y: 1700, bottom: 1740 }
+  it("is not two buttons with a control below them, or far above the foot", () => {
+    const raised = { y: 1650, bottom: 1690 }
     expect(
       tabBar([node("Older", 200, raised), node("Newer", 880, raised)], at)
+    ).toEqual([])
+    expect(
+      tabBar([node("Older", 200, raised), node("Newer", 880, raised)], {
+        ...at,
+        lowestClickable: 1690,
+      })
     ).toEqual([])
   })
 

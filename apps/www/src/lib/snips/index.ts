@@ -271,17 +271,39 @@ export type BarNode = {
 }
 
 /**
+ * How far above the foot of what the app draws its bar may float, as a
+ * share of the screen's height: the shell's pill keeps a margin of
+ * max(0.75rem, the safe area's inset) below it (`mobile-shell`), about 31 px
+ * on the 1080×1920 emulator, more where the system's navigation bar is drawn
+ * over the app.
+ */
+export const BAR_FOOT_SHARE = 0.08
+
+/**
  * The tabs of the bar along the bottom of a release APK screen, left to
- * right, each label once: the lowest row of two or more labelled controls
- * that either sits at the foot of what the app draws (its lowest edge within
- * `rowPx` of `appBottom`) or has one tab selected (#3137, option (b), the
- * owner, 2026-11-21). A bar has both, and a pair of buttons side by side in
- * a page has neither, however far apart they sit: Studio's two tabs, about
- * 500 px apart on a 1080 px screen, are a bar; two buttons mid-sheet are not.
+ * right, each label once (#3137, option (b), the owner, 2026-11-21). It is
+ * the lowest row of two or more labelled controls, if that row either has a
+ * tab selected, or sits at the foot of what the app draws: nothing the app
+ * can tap lies below it (`lowestClickable`), and it floats at most
+ * `BAR_FOOT_SHARE` of the screen above the app's lowest edge (`appBottom`).
+ * Studio's two tabs, about 500 px apart on a 1080 px screen, are a bar.
+ * Two buttons mid-sheet, or with a control below them, are not. The
+ * limit: on a screen with no bar, two labelled buttons that are the lowest
+ * thing on it read as one. The walk's `ACTS` keeps out those that act.
  */
 export function tabBar(
   nodes: ReadonlyArray<BarNode>,
-  { appBottom, rowPx }: { readonly appBottom: number; readonly rowPx: number }
+  {
+    appBottom,
+    lowestClickable,
+    screenHeight,
+    rowPx,
+  }: {
+    readonly appBottom: number
+    readonly lowestClickable: number
+    readonly screenHeight: number
+    readonly rowPx: number
+  }
 ): ReadonlyArray<BarNode> {
   const rows: Array<Array<BarNode>> = []
   for (const node of [...nodes].sort((a, b) => b.y - a.y)) {
@@ -289,12 +311,14 @@ export function tabBar(
     if (row) row.push(node)
     else rows.push([node])
   }
-  const isBar = (row: ReadonlyArray<BarNode>): boolean =>
-    new Set(row.map((n) => n.label)).size >= 2 &&
-    (row.some((n) => n.selected) ||
-      Math.max(...row.map((n) => n.bottom)) >= appBottom - rowPx)
-  const tabs = rows.find(isBar) ?? []
-  const unique = new Map(tabs.map((n) => [n.label, n]))
+  const row = rows.find((r) => new Set(r.map((n) => n.label)).size >= 2)
+  if (row === undefined) return []
+  const foot = Math.max(...row.map((n) => n.bottom))
+  const atFoot =
+    foot >= lowestClickable - rowPx &&
+    foot >= appBottom - screenHeight * BAR_FOOT_SHARE
+  if (!atFoot && !row.some((n) => n.selected)) return []
+  const unique = new Map(row.map((n) => [n.label, n]))
   return [...unique.values()].sort((a, b) => a.x - b.x)
 }
 
@@ -303,10 +327,14 @@ export function slugOf(path: string): string {
   if (path === "/") return "front"
   // A filled `$param` comes from a link's href, percent-encoded and all:
   // anything a file name may not hold becomes a `-`.
-  return path
+  // It leads with a letter or digit, as every file the bundle names does
+  // (`SnipFileSchema`).
+  const slug = path
     .replace(/^[/@]/, "")
     .replace(/\//g, "~")
     .replace(/[^A-Za-z0-9._~-]/g, "-")
+    .replace(/^[^A-Za-z0-9]+/, "")
+  return slug === "" ? "page" : slug
 }
 
 /** A route a capture offered and could not show, with why, in plain words. */

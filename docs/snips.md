@@ -21,7 +21,9 @@ request, and CI Gate does not need it. It photographs two surfaces:
 
   - **release**, the app as it ships, reached only by its own taps
     (`apps/www/tests/snips/release-walk.ts`): each launcher icon's wing, then
-    each tab of the bar along the bottom of its screen;
+    each tab of the bar along the bottom of its screen (`tabBar`: the lowest
+    row of two or more labelled controls, with a tab selected or at the foot
+    of what the app draws, C869);
   - **debug**, the same JavaScript in a WebView Playwright opens, for every
     route by address (`apps/www/tests/snips/apk.spec.ts`), with the page's
     clock frozen and motion reduced.

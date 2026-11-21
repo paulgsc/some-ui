@@ -65,8 +65,9 @@ const PictureSchema = z.discriminatedUnion("kind", [
    * A screen of the app that home keeps (SNIPS4, #3114; C865): a snip of
    * the snip library by its id, or a frame of the Clips Library by its
    * clip, side and file. Home hands the ones an essay names, and
-   * `resolveScreens` (`./snip`) draws each as a still of the whole screen
-   * or, for a snip given `at`, zoomed to those named parts in turn.
+   * `resolveScreens` (`./snip`) draws each by the screen-zoom composition:
+   * the whole screen held above the captions or, for a snip given `at`,
+   * zoomed to those named parts in turn.
    * Unresolved, it refuses the render.
    */
   z.object({
