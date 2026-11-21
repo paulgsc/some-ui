@@ -81,5 +81,9 @@ export function zoomPicture(
   }
 }
 
-/** How a screen is zoomed: `zoomPicture`'s options, which every caller passes on whole. */
+/**
+ * How a screen is zoomed: `zoomPicture`'s options, as `resolveScreens`
+ * takes them. The Rust essay passes its own `foot` and `theme`, and no
+ * `ground`, so its zoom keeps its theme's ground.
+ */
 export type ZoomOptions = NonNullable<Parameters<typeof zoomPicture>[2]>

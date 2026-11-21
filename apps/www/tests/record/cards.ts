@@ -398,7 +398,9 @@ const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
  * `cut` with its screens of the app drawn from what home handed, the
  * snips' pictures copied into `root/snips/` and the frames into `root/clips/`:
  * a zoom in `series`' own ground and theme, among its cards, and, in a
- * `spoken` essay, above its captions' band (`zoomFoot`; C818).
+ * `spoken` essay, above its captions' band (`zoomFoot`; C818). A whole
+ * screen (a snip with no parts named) or a clip frame is a still, drawn
+ * in the series' window as any still is: the look is a zoom's alone.
  */
 async function withScreens(
   cut: CutList,
@@ -461,8 +463,8 @@ async function main(): Promise<void> {
   await writeFile(join(root, "essay.json"), written)
 
   // The brand files the series names, from home's brand folder (`--brand`).
-  const series = join(SERIES, essay.value.series.id)
-  await placeBed(series, essay.value.series.version, values.brand, root)
+  const series = join(SERIES, seriesId)
+  await placeBed(series, version, values.brand, root)
   const site = await siteOf(values)
   const browser = await launchChromium()
   try {

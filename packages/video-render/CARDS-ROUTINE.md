@@ -92,12 +92,14 @@ Rules for every line, since you, months later, are the listener:
 3. **Write the cut list** in the cheat-sheet series, version 2, as
    `packages/video-render/src/sample/videos/*/cut-list.json` are. Read both,
    cards and words, before writing.
-   - Every scene is a card picture (`{"kind": "card"}`) with its card as a
+   - A scene shows a card picture (`{"kind": "card"}`) with its card as a
      burn-in: a `terminal`, `cheat-sheet`, `legend`, `rule` or `flow`, and
      a `spoken` field as above. Write `durationMs` as about how long its
-     words take; the take sets the real length. The one other picture a
-     scene may show is a screen of the app home keeps, `{"kind": "screen"}`,
-     a snip or a clip frame (`docs/snips.md`).
+     words take; the take sets the real length.
+   - Or it shows a screen of the app that home keeps, `{"kind": "screen"}`:
+     a snip or a clip frame (`docs/snips.md`). Its `spoken` role is
+     `scene`, like a card's; a spoken card (`role: "spoken"`) is drawn by
+     its own stage and shows no screen.
    - **Badges:** ■ `main` for what is on a default branch at the stamp's
      commit, ◧ `pr` for an open pull request, □ `next` for what is planned
      and not built, △ `gap` for a known gap, ✋ `you` for a step only the

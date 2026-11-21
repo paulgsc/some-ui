@@ -349,6 +349,29 @@ describe("the phone-card sample: a cards essay on a snip of the phone (#3311, C8
     }
   })
 
+  it("boxes each part of its snip apart from the others, inside the picture", async () => {
+    for (const snip of (await handed()).snips) {
+      const width = snip.width / snip.scale
+      const height = snip.height / snip.scale
+      for (const { ref, box } of snip.regions) {
+        expect(box.x + box.width, ref).toBeLessThanOrEqual(width)
+        expect(box.y + box.height, ref).toBeLessThanOrEqual(height)
+      }
+      // A part names one thing: none overlaps another, so a zoom to one
+      // never rings its neighbour too.
+      snip.regions.forEach((a, i) =>
+        snip.regions.slice(i + 1).forEach((b) => {
+          const apart =
+            a.box.x + a.box.width <= b.box.x ||
+            b.box.x + b.box.width <= a.box.x ||
+            a.box.y + a.box.height <= b.box.y ||
+            b.box.y + b.box.height <= a.box.y
+          expect(apart, `${a.ref} and ${b.ref}`).toBe(true)
+        })
+      )
+    }
+  })
+
   it("zooms each screen scene to the handed snip, in the look it is given", async () => {
     const look = { foot: 0.3, theme: "dark", ground: "#111821" }
     const drawn = resolveScreens(
