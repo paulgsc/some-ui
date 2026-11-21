@@ -69,26 +69,36 @@ function walkOf(sample: Sample): Walk {
   const { root, version } = extension()
   return {
     app: "suspender-ledger",
-    version,
-    page: "popup.html",
-    root,
-    viewport: { width: 320, height: 600 },
-    sandbox: async (page: Page): Promise<void> => {
-      await page.addInitScript({
-        content: `(${STAND_INS})(${JSON.stringify(sample)})`,
-      })
+    stage: {
+      kind: "sandbox",
+      version,
+      page: "popup.html",
+      root,
+      viewport: { width: 320, height: 600 },
+      sandbox: async (page: Page): Promise<void> => {
+        await page.addInitScript({
+          content: `(${STAND_INS})(${JSON.stringify(sample)})`,
+        })
+      },
     },
     steps: [
-      { label: "The popup, on a tab left idle", holdMs: 2400 },
+      {
+        label: "The popup, on a tab left idle",
+        action: { kind: "open" },
+        holdMs: 2400,
+      },
       {
         label: "Never suspend this site",
-        tap: ".action-menu__toggle-track >> nth=0",
+        action: { kind: "tap", target: ".action-menu__toggle-track >> nth=0" },
         holdMs: 2400,
       },
       {
         label: "Suspend the tab",
-        tap: "button:has-text('Suspend tab')",
-        reopen: true,
+        action: {
+          kind: "tap",
+          target: "button:has-text('Suspend tab')",
+          reopen: true,
+        },
         holdMs: 2400,
       },
     ],
