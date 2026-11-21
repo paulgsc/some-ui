@@ -64,6 +64,8 @@ const TakeSchema = z.object({
           method: z.enum(MATCH_METHODS).optional().catch(undefined),
           play: z
             .object({
+              // ESPN's id for the play: a game's moments of it (GWB14 D15).
+              id: z.string().min(1).nullable().optional().catch(undefined),
               period: z
                 .number()
                 .int()
@@ -151,6 +153,7 @@ function gameFields(
     fields.matchedBy = method
     if (play?.period != null) fields.playPeriod = String(play.period)
     if (play?.clock != null) fields.playClock = play.clock
+    if (play?.id != null) fields.playId = play.id
   }
   return fields
 }

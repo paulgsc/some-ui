@@ -5,12 +5,11 @@
  * Pure. "Just happened" and the moments with no bite are two readings of
  * this one log.
  *
- * PROVISIONAL: home doesn't serve the log yet. `readMoments` reads the shape
- * proposed to paulgsc/server for `GET /games/:gameId/moments` (coordinator
- * run #3361), `{gameId, engineVersion, final, moments: [{id, playId, at,
- * line, unit, unitSide, bigPlay?, period, clock}]}` in game order, and
- * changes to the final shape, with a contract fixture copied from the
- * server's dump, once it lands.
+ * Home serves it as `GET /games/:id/moments` to a paired phone (paulgsc/server
+ * `handlers/games.rs`): `{gameId, engineVersion, catalogVersion, final,
+ * moments: [{id, playId, line, at, bigPlay?, unit, unitSide, period,
+ * clock}]}`, in game order, one entry per play and scenario, each entry the
+ * shape "just happened" sends.
  */
 import { isRecord } from "@some-ui/core-utils"
 import type { Moment, ScenarioId } from "@some-ui/game-scenarios"
@@ -23,10 +22,10 @@ import { momentEntryOf } from "./live-wire"
 export type GameMoment = JustHappened & {
   /** ESPN's id for the play it was read off. */
   readonly playId: string
-  /** The quarter: 1 to 4, 5 and on for overtime. */
-  readonly period: number
-  /** The game clock at the play, as ESPN words it ("8:42"). */
-  readonly clock: string
+  /** The quarter of its snap: 1 to 4, 5 and on for overtime; null when home had none. */
+  readonly period: number | null
+  /** The game clock at its snap, as ESPN words it ("8:42"); null when home had none. */
+  readonly clock: string | null
 }
 
 /** A game's moments, in game order, and whether the game is over. */
@@ -82,10 +81,11 @@ function momentOf(value: unknown): GameMoment | "unknown" | null {
   const { playId, period, clock } = value
   if (
     !isString(playId) ||
-    !isString(clock) ||
-    typeof period !== "number" ||
-    !Number.isSafeInteger(period) ||
-    period < 1
+    !(clock === null || isString(clock)) ||
+    !(
+      period === null ||
+      (typeof period === "number" && Number.isSafeInteger(period) && period > 0)
+    )
   )
     return null
   if (!isScenarioId(entry.id)) return "unknown"

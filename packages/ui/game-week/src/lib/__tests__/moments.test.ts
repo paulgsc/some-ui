@@ -1,7 +1,7 @@
 /**
- * A game's moment log (GWB14 D15), read from the shape proposed to home.
- * PROVISIONAL: `PROPOSED` stands in for the server's dump until
- * `GET /games/:gameId/moments` lands, and is replaced by a copy of it then.
+ * A game's moment log (GWB14 D15), as home's `GET /games/:id/moments`
+ * answers it (paulgsc/server `handlers/games.rs`; its sample entry is the
+ * big play below).
  */
 import {
   BIG_MOMENTS,
@@ -12,9 +12,10 @@ import {
 import { MOMENTS, SCENARIOS } from "@some-ui/game-scenarios"
 import { describe, expect, it } from "vitest"
 
-const PROPOSED = {
+const LOG = {
   gameId: "401873010",
   engineVersion: 4,
+  catalogVersion: 2,
   final: true,
   moments: [
     {
@@ -78,9 +79,9 @@ const PROPOSED = {
   ],
 }
 
-describe("a game's moments, read (provisional shape)", () => {
+describe("a game's moments, read", () => {
   it("reads each moment in game order, leaving out scenarios this build lacks", () => {
-    const read = readMoments(PROPOSED)
+    const read = readMoments(LOG)
     expect(read?.final).toBe(true)
     expect(read?.moments.map((moment) => moment.scenario)).toEqual([
       "in.third-long",
@@ -97,18 +98,28 @@ describe("a game's moments, read (provisional shape)", () => {
     })
   })
 
+  it("reads a moment home has no quarter or clock for", () => {
+    const [first] = LOG.moments
+    expect(
+      readMoments({
+        ...LOG,
+        moments: [{ ...first, period: null, clock: null }],
+      })?.moments[0]
+    ).toMatchObject({ period: null, clock: null })
+  })
+
   it("reads nothing it can't place in the game", () => {
-    const [first] = PROPOSED.moments
+    const [first] = LOG.moments
     for (const broken of [
       { ...first, period: 0 },
       { ...first, period: "1" },
-      { ...first, clock: null },
+      { ...first, clock: 4 },
       { ...first, playId: 7 },
       { ...first, at: undefined },
     ]) {
-      expect(readMoments({ ...PROPOSED, moments: [broken] })).toBeNull()
+      expect(readMoments({ ...LOG, moments: [broken] })).toBeNull()
     }
-    expect(readMoments({ ...PROPOSED, final: "yes" })).toBeNull()
+    expect(readMoments({ ...LOG, final: "yes" })).toBeNull()
     expect(readMoments(null)).toBeNull()
   })
 })
@@ -129,7 +140,7 @@ describe("the big moments with no bite (D15)", () => {
   })
 
   it("leaves out every moment of a play a bite was matched to", () => {
-    const read = readMoments(PROPOSED)
+    const read = readMoments(LOG)
     const moments = read?.moments ?? []
     expect(
       momentsWithNoBite(moments, new Set()).map((moment) => moment.scenario)
