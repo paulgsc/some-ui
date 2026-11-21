@@ -109,6 +109,11 @@ describe("the friction aggregate (WALK5, C861)", () => {
       stretchesLeft: 7,
       movedOn: "fewer-than-5",
     })
+    // 9 stretches, 5 moved on from: saying both would give away the 4 not.
+    expect(at("interview-week", "say")).toMatchObject({
+      stretchesLeft: 9,
+      movedOn: "no-data",
+    })
     expect(at("todays-pick", "ending")).toMatchObject({
       stretchesLeft: "fewer-than-5",
       movedOn: "no-data",

@@ -31,6 +31,10 @@ export const WALKTHROUGH_WORDS = {
     drawn: "Nothing kept yet",
     said: "Nothing of this step is kept yet.",
   },
+  tooMuch: {
+    drawn: "Too much to count",
+    said: "I used this step more than one read of it can count.",
+  },
   count: (n: Shown): string =>
     n === "fewer-than-5" ? "fewer than 5" : String(n),
   stretches: {
@@ -58,8 +62,8 @@ export const WALKTHROUGH_WORDS = {
         : `Felt ${String(median)} of 5 to apply`,
     said: (median: number | null, said: string): string =>
       median === null
-        ? `After each application I rate how hard it felt; I've rated ${said} so far.`
-        : `After each application I rate how hard it felt: about ${String(median)} out of 5.`,
+        ? `I rated how hard applying felt ${said} times in these four weeks.`
+        : `When I rate how hard an application felt, it comes to about ${String(median)} out of 5.`,
   },
   silence: {
     title: "Not opened|lately",
@@ -78,8 +82,8 @@ export const WALKTHROUGH_WORDS = {
       weeks === null
         ? { drawn: `${clipped(name)}: never`, said: `${name}, never` }
         : {
-            drawn: `${clipped(name)}: ${String(weeks)} weeks`,
-            said: `${name}, for ${String(weeks)} weeks`,
+            drawn: `${clipped(name)}: ${weeksOf(weeks)}`,
+            said: `${name}, for ${weeksOf(weeks)}`,
           },
     more: (n: number): string => `and ${String(n)} more`,
     lead: "Some of what I built, I haven't opened lately:",
@@ -93,6 +97,9 @@ export const WALKTHROUGH_WORDS = {
 
 const W = WALKTHROUGH_WORDS
 
+const weeksOf = (n: number): string =>
+  `${String(n)} ${n === 1 ? "week" : "weeks"}`
+
 /** `name` cut to fit a card's line. */
 function clipped(name: string): string {
   return name.length <= NAME_CHARS
@@ -105,7 +112,8 @@ const shown = (n: PublicCount): string | null =>
 
 /** What one measure shows, drawn and said; null where it shows nothing to say. */
 function wordsOf(
-  m: StopMeasure
+  m: StopMeasure,
+  partial: boolean
 ): { readonly drawn: ReadonlyArray<string>; readonly said: string } | null {
   switch (m.kind) {
     case "not-measured": {
@@ -114,10 +122,15 @@ function wordsOf(
     case "place": {
       const stretches = shown(m.counts.stretchesLeft)
       if (stretches === null)
-        return { drawn: [W.nothingKept.drawn], said: W.nothingKept.said }
+        return partial
+          ? { drawn: [W.tooMuch.drawn], said: W.tooMuch.said }
+          : { drawn: [W.nothingKept.drawn], said: W.nothingKept.said }
       const moved = shown(m.counts.movedOn)
       const { medianMs } = m.counts
-      const seconds = medianMs === null ? null : Math.round(medianMs / 1000)
+      const seconds =
+        medianMs === null || medianMs < 1000
+          ? null
+          : Math.round(medianMs / 1000)
       const said = [
         W.stretches.said(stretches),
         ...(moved === null ? [] : [W.movedOn.said(moved)]),
@@ -147,8 +160,11 @@ function wordsOf(
 }
 
 /** What real use shows of a stop, burned in on its card: "" where it shows nothing. */
-export function measureNotes(measures: ReadonlyArray<StopMeasure>): string {
-  const drawn = measures.flatMap((m) => wordsOf(m)?.drawn ?? [])
+export function measureNotes(
+  measures: ReadonlyArray<StopMeasure>,
+  partial = false
+): string {
+  const drawn = measures.flatMap((m) => wordsOf(m, partial)?.drawn ?? [])
   const measured = measures.some((m) => m.kind === "place")
   return drawn.length === 0
     ? ""
@@ -157,10 +173,11 @@ export function measureNotes(measures: ReadonlyArray<StopMeasure>): string {
 
 /** What real use shows of a stop, as lines said after its narration. */
 export function measureSaid(
-  measures: ReadonlyArray<StopMeasure>
+  measures: ReadonlyArray<StopMeasure>,
+  partial = false
 ): ReadonlyArray<string> {
   return measures.flatMap((m) => {
-    const words = wordsOf(m)
+    const words = wordsOf(m, partial)
     return words === null ? [] : [words.said]
   })
 }

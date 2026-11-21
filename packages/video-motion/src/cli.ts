@@ -406,6 +406,8 @@ async function promo(folder: string): Promise<void> {
 /** A line's take as home's speaker gave it: `<file>.json` beside `<file>.wav`. */
 const TakeFileSchema = z.strictObject({
   ms: z.int().positive(),
+  /** What the take says: refused where it isn't the line asked for, as a week's numbers move. */
+  said: z.string().optional(),
   words: z
     .array(
       z.strictObject({
@@ -420,15 +422,19 @@ const TakeFileSchema = z.strictObject({
 /** Every line's take in `dir`, by its file; refused where one is missing. */
 async function takesIn(
   dir: string,
-  files: ReadonlyArray<string>
+  lines: ReadonlyArray<{ readonly file: string; readonly said: string }>
 ): Promise<ReadonlyMap<string, StillTake>> {
   const takes = new Map<string, StillTake>()
-  for (const file of files) {
+  for (const { file, said } of lines) {
     const read = TakeFileSchema.safeParse(
       await readJson(join(dir, `${file}.json`))
     )
     if (!read.success)
       throw new Refused(`the take ${file}: ${read.error.message}`)
+    if (read.data.said !== undefined && read.data.said !== said)
+      throw new Refused(
+        `the take ${file} says "${read.data.said}", not "${said}": say lines.json again`
+      )
     const words: ReadonlyArray<TimedWord> | undefined = read.data.words
     takes.set(file, { ms: read.data.ms, ...(words ? { words } : {}) })
   }
@@ -478,7 +484,7 @@ async function layTakes(
  * `friction.json` beside the render: each stop then says what real use shows
  * of it, the last names the modules nobody opens, and a card shows them.
  * `--takes` is the folder home's speaker said `lines.json` into,
- * `<file>.wav` and `<file>.json` (`{ms, words}`) per line: each stop is then
+ * `<file>.wav` and `<file>.json` (`{ms, words, said}`) per line: each stop is then
  * voiced, its screens held for its lines (`voicedWalkthrough`). Or
  * `--speaker` is home's Kokoro speaker (as `http://kokoro:8880`), which says
  * `lines.json` itself into `<out>/takes`, each line kept in its step cache.
@@ -498,9 +504,13 @@ async function walkthrough(file: string): Promise<void> {
       typeof home === "object" && home !== null && "week" in home
         ? String(home.week)
         : ""
-    const asOf = /^\d{4}-W\d{2}$/.test(week)
-      ? addDays(isoWeekMonday(week), 6)
-      : ""
+    const asOf = ((): string => {
+      try {
+        return addDays(isoWeekMonday(week), 6)
+      } catch {
+        throw new Refused(`home's read is of ${week || "no week"}, no ISO week`)
+      }
+    })()
     const parsed = frictionOf(home, PIPELINES, asOf)
     if (!parsed.ok) throw new Refused(parsed.problems.join("\n"))
     friction = parsed.value
@@ -544,12 +554,7 @@ async function walkthrough(file: string): Promise<void> {
       })
     )
   } else if (values.takes !== undefined) {
-    takes = new Map(
-      await takesIn(
-        here(values.takes),
-        lines.map((l) => l.file)
-      )
-    )
+    takes = new Map(await takesIn(here(values.takes), lines))
   }
   const { cut, laid } = voicedWalkthrough(
     read.data,

@@ -232,7 +232,7 @@ describe("the walkthrough (WALK4)", () => {
     ])
     expect(extra(2)).toEqual([
       "In the last four weeks, I spent time on this step 7 times and moved on from it fewer than 5 times; a stretch here runs about 2 minutes.",
-      "After each application I rate how hard it felt; I've rated fewer than 5 so far.",
+      "I rated how hard applying felt fewer than 5 times in these four weeks.",
     ])
     expect(extra(4)).toEqual([
       WALKTHROUGH_WORDS.nothingKept.said,
@@ -252,6 +252,23 @@ describe("the walkthrough (WALK4)", () => {
       role: "walk",
       lines: jobs.fill.chapters[0]?.narration,
     })
+  })
+
+  it("says a step home couldn't count whole as too much, never as nothing kept", () => {
+    const counts = {
+      pipeline: "jobs",
+      affordance: "todays-pick",
+      place: "read",
+      stretchesLeft: "no-data" as const,
+      movedOn: "no-data" as const,
+      medianMs: null,
+    }
+    expect(measureSaid([{ kind: "place", counts }], true)).toEqual([
+      WALKTHROUGH_WORDS.tooMuch.said,
+    ])
+    expect(measureSaid([{ kind: "place", counts }])).toEqual([
+      WALKTHROUGH_WORDS.nothingKept.said,
+    ])
   })
 
   it("keeps an aggregate report:vestiges reads", () => {

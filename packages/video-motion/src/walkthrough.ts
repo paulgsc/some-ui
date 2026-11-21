@@ -335,7 +335,7 @@ export function voicedWalkthrough(
     const isLast = i === chapters.length - 1
     const lines = [
       ...chapter.narration,
-      ...measureSaid(measures),
+      ...measureSaid(measures, friction?.partial),
       ...(isLast && quiet !== null ? [silenceSaid(quiet)] : []),
     ]
     const own = captions.slice(chapter.from, to)
@@ -374,7 +374,10 @@ export function voicedWalkthrough(
         speaker: FEED_SPEAKER,
       }
     }
-    return [card(n, chapter.title, measureNotes(measures)), shot]
+    return [
+      card(n, chapter.title, measureNotes(measures, friction?.partial)),
+      shot,
+    ]
   })
   const silence =
     quiet === null

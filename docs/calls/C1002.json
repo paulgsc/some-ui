@@ -6,7 +6,7 @@
     "some-ui:packages/video-render/src/friction.ts",
     "some-ui:packages/video-render/src/engagement-report-video.ts"
   ],
-  "chose": "frictionOf maps home's weekly read onto the registry. A module is measured only by a root shown on screen: a root offered by notification, one home holds no seen row of (it may not have been sending yet), and one whose last showing home didn't keep are 'not measured', never silent. A root's days are bounded by its first day (of). Every place the registry offers is listed: no row is fewer than 5 where the affordance was seen, else no data; movedOn at an affordance's last place is no data, since finishing and leaving look the same there; and a partial read says no place's counts. A median is said only over 5 stretches. The hand-made sample friction.json is gone: the sample is the report's sample weekly read, with seen and friction added. The CLI takes --home <weekly.json> and keeps friction.json beside the render.",
+  "chose": "frictionOf maps home's weekly read onto the registry. A module is measured only by a root shown on screen: a root offered by notification, one home holds no seen row of (it may not have been sending yet), and one whose last showing home didn't keep are 'not measured', never silent. A root's days are bounded by its first day (of). Every place the registry offers is listed: no row is fewer than 5 where the affordance was seen, else no data; movedOn at an affordance's last place is no data, since finishing and leaving look the same there; and a partial read says no place's counts. A median is said only over 5 stretches. The hand-made sample friction.json is gone: the sample is the report's sample weekly read, with seen and friction added. The CLI takes --home <weekly.json> and keeps friction.json beside the render. A moved-on count is left unsaid where the stretches not moved on from would be under 5, and a partial read is said as too much to count, never as nothing kept.",
   "options": [
     "map home's weekly read on our side, against the registry (chosen)",
     "home writes the per-module aggregate itself",
@@ -14,5 +14,6 @@
   ],
   "gray": "Which modules may be called silent is a public claim about the owner's own use; reading 'never seen' as 'not measured' keeps a module whose root was deployed late from being called a graveyard, at the cost of never naming one that was truly never opened.",
   "undo": "Record a call that moves this one, and change frictionOf's rules and their tests.",
-  "refs": ["#3282", "#3337", "#3338"]
+  "refs": ["#3282", "#3337", "#3338"],
+  "moves": "C944"
 }

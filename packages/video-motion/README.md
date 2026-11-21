@@ -71,7 +71,7 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
   `frictionOf` and kept as `friction.json`), each stop then says what real use shows of it,
   its card shows the same, and the last stop names the modules nobody opens, with a card
   before the close (#3338). With `--takes` (the folder the lines were said into: `<file>.wav`
-  and `<file>.json`, `{ms, words}`), each stop's lines are laid back to back a breath apart
+  and `<file>.json`, `{ms, words, said}`; a take whose `said` is another line is refused), each stop's lines are laid back to back a breath apart
   into `<shot>.wav`, and its screens are stretched by one factor until they hold them (C1000).
   With `--speaker <url>` instead (home's Kokoro, as `http://kokoro:8880`), it says `lines.json`
   itself into `<out>/takes`, each take kept in that folder's step cache, as the recorders do

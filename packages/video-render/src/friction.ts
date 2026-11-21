@@ -73,6 +73,8 @@ export const FrictionSchema = z.strictObject({
       medianMs: z.int().min(0).nullable(),
     })
   ),
+  /** Home read only the newest of the window's stretches, so no place's counts are said. */
+  partial: z.boolean(),
   /** Applying's debrief: the friction the owner gave it, 1 to 5 (C861). */
   debrief: z.strictObject({
     said: CountSchema,
@@ -237,12 +239,19 @@ export function frictionOf(
           const counts = (n: number): PublicCount =>
             measures.partial || !wasSeen ? noData : publicCount(n)
           const left = counts(row?.left ?? 0)
+          const moved = isLast ? noData : counts(row?.movedOn ?? 0)
+          // Said beside the stretches, a moved-on count would give away
+          // the stretches not moved on from, under 5 (ask #2701).
+          const hides =
+            typeof left === "number" &&
+            typeof moved === "number" &&
+            left - moved < UNDER
           return {
             pipeline: pipeline.id,
             affordance: a.id,
             place: place.id,
             stretchesLeft: left,
-            movedOn: isLast ? noData : counts(row?.movedOn ?? 0),
+            movedOn: hides ? noData : moved,
             medianMs: typeof left === "number" ? (row?.medianMs ?? null) : null,
           }
         })
@@ -256,6 +265,7 @@ export function frictionOf(
     windowDays: FRICTION_WINDOW_DAYS,
     modules,
     places: placeRows,
+    partial: measures.partial,
     debrief: {
       said: debriefSaid,
       median: typeof debriefSaid === "number" ? median : null,
