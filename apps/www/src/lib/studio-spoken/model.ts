@@ -1,8 +1,9 @@
 /**
  * A spoken card in Studio (W5, C805): pure. A spoken card is pasted on this phone and
  * kept here (C806). It has a category, which maps to the template an essay
- * renders it with: today only `introduction`, Kokoro asking and the owner
- * answering, each speaker lit while they speak. It is split into parts: a
+ * renders it with (`SPOKEN_CATEGORIES`): an `introduction` opens its
+ * essay, and a `questions` card sits anywhere in it; each speaker is lit
+ * while they speak. It is split into parts: a
  * part to read on the teleprompter, or one to say in your own words. A part
  * may carry an id and the question Kokoro asks before it, as Rust Rounds' opening does
  * (`Exchange { ask, script }` in `@some-ui/video-render`'s `opening.ts`).

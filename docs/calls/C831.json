@@ -1,0 +1,18 @@
+{
+  "id": "C831",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/spoken-categories.ts",
+    "some-ui:packages/video-render/src/cards-essay.ts"
+  ],
+  "chose": "A second spoken category, `questions` (\"Questions\"), the inverse of `introduction`: the owner's takes ask and Kokoro answers. It may sit anywhere in a cards essay, and it opens no chapter mark of its own: it plays inside the chapter of the scene before it, so a Q&A essay keeps one chapter line and mark per chapter. `introduction` still opens its essay (C814). Made for the DB essay, home-database-safety-2026-11-21.",
+  "options": [
+    "a `questions` category that sits anywhere and opens no chapter (this)",
+    "an optional chapter title on every spoken card, marking its own chapter",
+    "the whole essay as one introduction card at the front, which C813's six exchanges and C814's placement refuse"
+  ],
+  "gray": "The category shows in Studio's Spoken on the owner's phone and as the stage's tag, and where a spoken card sits and which chapters an essay's upload lists are the owner's to see; no check or earlier decision names a second category.",
+  "undo": "Remove `questions` from SPOKEN_CATEGORIES and SPOKEN_CATEGORY_TITLES, and let every spoken card's first scene mark a chapter again.",
+  "refs": ["#3315", "#3319"]
+}
