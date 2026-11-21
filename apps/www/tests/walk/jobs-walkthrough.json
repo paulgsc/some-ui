@@ -25,19 +25,39 @@
     "chapters": [
       {
         "title": "This morning’s|picks",
-        "from": 0
+        "from": 0,
+        "place": {
+          "pipeline": "jobs",
+          "affordance": "todays-pick",
+          "place": "read"
+        }
       },
       {
         "title": "Applying",
-        "from": 3
+        "from": 3,
+        "place": {
+          "pipeline": "jobs",
+          "affordance": "todays-pick",
+          "place": "apply"
+        }
       },
       {
         "title": "The interview|week",
-        "from": 5
+        "from": 5,
+        "place": {
+          "pipeline": "jobs",
+          "affordance": "interview-week",
+          "place": "say"
+        }
       },
       {
         "title": "The record",
-        "from": 14
+        "from": 14,
+        "place": {
+          "pipeline": "jobs",
+          "affordance": "record",
+          "place": "record"
+        }
       }
     ],
     "cta": "Some UI|for Android",

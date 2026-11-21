@@ -55,14 +55,23 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
   9:16 screen at 1320 px tall, about seven tenths of the frame's width, its caption just
   below it (the owner, 2026-11-21: the phone at three-quarter size, the caption below).
 
-- `walkthrough <words.json> --walk <walk folder> --out <folder> [--brand <folder>] [--prove]`
+- `walkthrough <words.json> --walk <walk folder> --out <folder> [--friction <file>] [--takes <folder>] [--brand <folder>] [--prove]`
   makes an app's walkthrough (WALK4, #3282): the promo with chapters. The words
   (`some-ui.walkthrough/1`, `src/walkthrough.ts`) give a caption per screen and the stops,
   each from a screen of the walk; the cut list is the promo's opening, then per stop a
   chapter card (`walk-chapter`) and that stop's screens in `promo-feature`, then the
-  promo's close. Captions only, no narration (the owner, 2026-11-21). It takes a walk
-  already made, since an APK walk needs the emulator: Snips Capture's `walks-<run>`
-  artifact holds `jobs/`. Jobs' words are `apps/www/tests/walk/jobs-walkthrough.json`.
+  promo's close. It takes a walk already made, since an APK walk needs the emulator:
+  Snips Capture's `walks-<run>` artifact holds `jobs/`. Jobs' words are
+  `apps/www/tests/walk/jobs-walkthrough.json`.
+
+  Voiced (WALK5, #3337). It writes `lines.json`, every line home's Kokoro says: each stop
+  says its screens' captions, one line per screen. With `--friction` (home's
+  `some-ui.friction/1`; `../video-render/src/sample/friction.json` is a made-up sample),
+  each chapter card also says what real use shows of its stop, and a card before the close
+  names the modules nobody opens (#3338). With `--takes` (the folder the lines were said
+  into: `<file>.wav` and `<file>.json`, `{ms, words}`), each screen holds for at least its
+  line and a breath, and each shot's lines are laid into `<shot>.wav` at their screens.
+
 - `promo <release folder> --out <folder> [--brand <folder>] [--prove]` makes a release's promo (HYPER3,
   #2726): the folder's `release.json` (`some-ui.promo/1`, the words a session writes) and
   `sample.json` (the walk's), from paulgsc/testing's `promo/<app>/<version>/`. It walks

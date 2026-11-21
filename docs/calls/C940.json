@@ -1,0 +1,19 @@
+{
+  "id": "C940",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/cut-list.ts",
+    "some-ui:packages/video-render/src/cards-essay.ts",
+    "some-ui:packages/video-motion/src/walkthrough.ts"
+  ],
+  "chose": "A walkthrough's voiced shots say their lines as a new case of the cards essays' SpokenSchema, {role: \"walk\", lines: [...]}, one line per screen of a stop (its caption with the drawn line breaks run together) and one line for a chapter card. Each line is its own Kokoro take, and laidTake (the generalisation of joinedTake, which is now laidTake at fixed gaps) lays them at the starts the walkthrough gives, so each screen holds for its own line. A cards essay refuses the walk case.",
+  "options": [
+    "a walk case with one line per screen (chosen)",
+    "reuse the scene case: the chapter's name as its chapter line and the captions joined as its narration, one take",
+    "a voice field of the walkthrough's own, outside SpokenSchema"
+  ],
+  "gray": "The issue asks for the cards essays' path, not a new one, but its existing cases don't fit: the scene case forces the chapter's name to be said (the owner's open question), and one take for all captions can't hold each screen for its own caption. No check settles which shape the family should take.",
+  "undo": "Record a call that moves this one; replace the walk case with the chosen shape in cut-list.ts and walkthrough.ts, and drop the refusal in parseCardsEssay.",
+  "refs": ["#3282", "#3337", "#3338"]
+}

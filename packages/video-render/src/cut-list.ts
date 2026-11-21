@@ -235,6 +235,16 @@ export const SpokenSchema = z.discriminatedUnion("role", [
   /** What to do next, and where to look when it fails. */
   z.strictObject({ role: z.literal("close"), said: SayableSchema }),
   /**
+   * A walkthrough's stop (WALK5, #3337): one line per screen of the stop,
+   * its caption as said, in order. Each is said on its own, so its screen
+   * can be held for as long as it takes (`laidTake`); a cards essay has no
+   * screens to hold, so it refuses one (`parseCardsEssay`).
+   */
+  z.strictObject({
+    role: z.literal("walk"),
+    lines: z.array(SayableSchema).min(1),
+  }),
+  /**
    * A spoken card (WALK7, #3282): its category's template plays each
    * exchange, the question in Kokoro and then the owner's own take from
    * home, whole (`spoken-card.ts`). Nothing in it is cut or edited.
