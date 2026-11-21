@@ -1,0 +1,16 @@
+{
+  "id": "C897",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": ["server:apps/servers/file_host/src/transcribe/engine.rs"],
+  "chose": "A hearing detects the language of at most one cut plus four for every thirty seconds of speech, the longest cuts first, and each detection after the first only while the decode keeps four encoder passes a window of its deadline.",
+  "options": [
+    "one plus four a window, longest first, with the decode's reserve",
+    "a detection for every cut a second or longer, as ST23 had it",
+    "one detection a take",
+    "one plus two a window"
+  ],
+  "gray": "It narrows ST23 (server#578, server#594): in a take with more pauses than the budget, a short Korean phrase can be heard in the run's language, which the owner would notice in a transcript; the coordinator approved the narrowing, and no check fixed the budget.",
+  "undo": "Raise DETECTS_PER_WINDOW and DECODE_PASSES_PER_WINDOW in transcribe::engine, or remove detected_cuts and the afford gate from plan_runs.",
+  "refs": ["server#1087", "server#578", "server#594"]
+}

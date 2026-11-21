@@ -1,0 +1,20 @@
+{
+  "id": "C899",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/transcribe/turn.rs",
+    "server:apps/servers/file_host/src/call_weeks/lane.rs",
+    "server:docs/home-compute.md"
+  ],
+  "chose": "After twenty minutes of hearing in a row while a render is known to wait (a job named or an attempt's log seen), the transcriber hears nothing for ten minutes or until no render waits, checked before each note.",
+  "options": [
+    "a 20-minute turn, then a 10-minute give, only while a render is known to wait",
+    "no bound: interactive work never waits, as invariant 2 had it",
+    "yield between every note",
+    "a 10-minute turn, then a 10-minute give"
+  ],
+  "gray": "It amends home-compute invariant 2 (interactive work never waits behind batch work); the owner asked that renders not be starved and the coordinator confirmed the amendment, but the minutes were a choice no check fixed.",
+  "undo": "Change transcribe::turn::TURN and GIVE, or pass Turn::unbounded() in transcribe::spawn and revert invariant 2's amendment.",
+  "refs": ["server#1087", "server#1088", "server#1090", "server#705"]
+}
