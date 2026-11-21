@@ -1,0 +1,19 @@
+{
+  "id": "C847",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/ui/rust-rounds/src/lib/sample-week/tallowbrook.ts",
+    "some-ui:apps/www/src/lib/web-surface/call/rust-screen-view.ts",
+    "some-ui:apps/www/tests/ui-fit/phone-page/rust-week.tsx"
+  ],
+  "chose": "The Rust Rounds screen stage (`/rust-screen`) shows a viewer, or a capture of it with no week named, the Tallowbrook week as a phone holds it once home has run rustc (`TALLOWBROOK_HELD`): TB-101's E0507 recorded with rustc 1.97.0, `--edition 2024 -C opt-level=0`, its JSON diagnostics with it. It used to show the Quillmoss week before any run, which named no `run` or `diagnostic` parts. That held week is the one sample with a run, so the ui-fit phone page now plays it too, and its hand-copied E0507, which lacked rustc's two help lines, goes. The showcase essay's cards (#3312) speak of Tallowbrook and TB-101's E0507 at line 16, so a capture of the stage shows the same week the narrator describes. Since the sample's id is that real week's, the stage marks it (`data-sample`) and the essay recorder refuses a capture of it.",
+  "options": [
+    "Tallowbrook held with TB-101's recorded run, shared by the stage and the ui-fit page (taken)",
+    "Quillmoss with a run added, a second sample week with runs beside the ui-fit page's",
+    "Quillmoss with no run, as before, leaving the diagnostic out of every capture"
+  ],
+  "gray": "Which week a viewer and the snip capture see on the stage is on the screen, and it decides what the showcase can show; nothing settles which sample week that is.",
+  "undo": "Point `SAMPLE` in rust-screen-view.ts back at the Quillmoss week with no runs; `TALLOWBROOK_HELD` can stay for the ui-fit page.",
+  "refs": ["#3312", "#3288", "#3311"]
+}

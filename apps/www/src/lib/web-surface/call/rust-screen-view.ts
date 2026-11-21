@@ -5,7 +5,7 @@
  * viewer or with no week named; or why nothing can be drawn.
  */
 import type { HeldWeek, Ticket } from "@some-ui/rust-rounds"
-import { heldFromHome, QUILLMOSS_WEEK } from "@some-ui/rust-rounds"
+import { heldFromHome, TALLOWBROOK_HELD } from "@some-ui/rust-rounds"
 
 export type ScreenState =
   | { readonly kind: "waiting" }
@@ -14,15 +14,9 @@ export type ScreenState =
       readonly kind: "screen"
       readonly held: HeldWeek
       readonly ticket: Ticket
+      /** Whether it is the sample rather than the week home handed over. */
+      readonly sample: boolean
     }
-
-/** The sample week as the phone holds one before rustc has run. */
-const SAMPLE: HeldWeek = {
-  week: QUILLMOSS_WEEK,
-  sha256: "sample",
-  runs: {},
-  ended: [],
-}
 
 export function screenStageOf({
   week,
@@ -43,7 +37,7 @@ export function screenStageOf({
   }
 }): ScreenState {
   const sample = viewer || week === undefined || week === "sample"
-  let held: HeldWeek | null = SAMPLE
+  let held: HeldWeek | null = TALLOWBROOK_HELD
   if (!sample) {
     if (read.failed) return none(`there is no week of ${week}`)
     if (read.pending) return { kind: "waiting" }
@@ -58,7 +52,7 @@ export function screenStageOf({
       : held.week.tickets.find((each) => each.id === ticket)
   if (found === undefined)
     return none(`the week of ${held.week.id} has no ticket ${ticket ?? ""}`)
-  return { kind: "screen", held, ticket: found }
+  return { kind: "screen", held, ticket: found, sample }
 }
 
 const none = (problem: string): ScreenState => ({
