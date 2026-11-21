@@ -17,7 +17,7 @@ import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 
 import { homeLink, LINK_CLOCK, pairing, useHomeLink } from "./index"
-import type { KeptRun, KeptState } from "./kept-model"
+import type { KeptState } from "./kept-model"
 import type { Kept, KeptPorts } from "./kept-runtime"
 import { createKept, laneExchange } from "./kept-runtime"
 import type { KeptRecord } from "./kept-watch"
@@ -159,14 +159,6 @@ function homePullOf(): HomeRefresher {
  */
 export function useHomePull(): void {
   useEffect(() => screenRefreshers.register(homePullOf()), [])
-}
-
-/**
- * How `lane`'s run in the pull under way ended (`./pull`'s `ended`), for a
- * screen that names that lane in its own words (Jobs, PULL2).
- */
-export function pulledLane(lane: Lane): Promise<KeptRun | null> {
-  return homePullOf().ended(wire(lane).sending)
 }
 
 /**

@@ -12,18 +12,22 @@
  * home. A week sent moves the record; it goes at the lane's next run.
  */
 import { useSyncExternalStore } from "react"
+import type { HomeExchanged } from "@some-ui/core-utils"
 import { fnv1a } from "@some-ui/core-utils"
 
 import { interviewGoing } from "@/lib/interview-week/home"
 import { phoneJobs } from "@/lib/jobs"
+import { readDigests } from "@/lib/jobs/home"
 import { homeOutbox } from "@/lib/jobs/model"
 import { noticeFiling } from "@/lib/jobs/notice"
 import { browserLocalStorage } from "@/lib/tenant/storage"
 
-import { usePairing } from "./index"
+import { homeLink, usePairing } from "./index"
 import { exchangeJobsLane, interviewCounts } from "./interview"
 import type { Lane, LaneCounts } from "./lanes"
 import { fingerprintOf, sentUnder } from "./sent"
+import type { NotAnswered } from "./while-busy"
+import { answered, askWhileBusy } from "./while-busy"
 
 export const jobsLane: Lane = {
   id: "jobs",
@@ -65,4 +69,24 @@ export const jobsLane: Lane = {
       pulled: true,
     }
   },
+}
+
+/**
+ * This morning's picks and home's record of the runs, read as the person's
+ * own read of home (`keep`), beside the drain and ahead of its turns on the
+ * pace: a pull on a Jobs screen (`lib/jobs/pull`, JP1). Two `GET`s,
+ * `/jobs/runs` and `/jobs/digests` (`readDigests`), sending nothing of the
+ * phone's; asked again while the link is busy (`./while-busy`). `short` is
+ * how the read fell short, null once both were taken in.
+ */
+export function askJobsPicks(): Promise<
+  | { readonly kind: "answered"; readonly short: HomeExchanged | null }
+  | NotAnswered
+> {
+  return askWhileBusy(() =>
+    answered(
+      () => homeLink().keep((send) => readDigests(phoneJobs().keeping, send)),
+      (short) => ({ kind: "answered", short }) as const
+    )
+  )
 }
