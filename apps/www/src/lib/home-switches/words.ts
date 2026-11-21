@@ -10,10 +10,10 @@ import { assertNever } from "@some-ui/core-utils"
 
 import type {
   Refusal,
+  SetAt,
   SetBy,
   SettingKey,
   SettingValue,
-  Standing,
   SwitchesState,
 } from "./model"
 
@@ -157,7 +157,7 @@ function when(iso: string, timeZone?: string): string {
 /** How a setting stands, and since when. */
 export function standingLine<V>(
   words: SettingWords<V>,
-  standing: { readonly value: V; readonly set: Standing["set"] },
+  standing: { readonly value: V; readonly set: SetAt },
   timeZone?: string
 ): string {
   const now = words.now(standing.value)
@@ -177,7 +177,7 @@ function refusalLine(why: Refusal): string {
       return "Only the owner's account can see and change home's switches."
     }
     case "not-on-home": {
-      return "Home doesn't have this switch yet. It arrives with home's next update."
+      return "Home doesn't have this yet. It arrives with home's next update."
     }
     case "refused": {
       return "Home didn't take that change."

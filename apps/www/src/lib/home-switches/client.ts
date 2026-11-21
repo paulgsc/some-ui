@@ -24,7 +24,13 @@ import {
   requestJSON,
 } from "@/lib/file-host-config/client"
 
-import type { Refusal, SettingKey, SettingValue, Standing } from "./model"
+import type {
+  Refusal,
+  SetAt,
+  SettingKey,
+  SettingValue,
+  Standing,
+} from "./model"
 
 /** How one setting's value is read from home's answer and written back. */
 type Codec<V> = {
@@ -64,7 +70,7 @@ const StandingSchema = z.object({
 function standingOf<V>(
   codec: Codec<V>,
   answer: unknown
-): { readonly value: V; readonly set: Standing["set"] } {
+): { readonly value: V; readonly set: SetAt } {
   const read = StandingSchema.parse(answer)
   // Another setting's value (a different field) fails here, not as "off".
   const value = codec.read(read.value)
@@ -96,7 +102,7 @@ export function refusalOf(error: unknown): Refusal {
   return "failed"
 }
 
-export type SwitchesClient<K extends SettingKey = SettingKey> = {
+export type SwitchesClient<K extends SettingKey> = {
   /** The setting as home follows it now. */
   read: () => Promise<Standing<K>>
   /** Sets it, answering with how it now stands. */

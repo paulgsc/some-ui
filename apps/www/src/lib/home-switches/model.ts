@@ -37,10 +37,13 @@ export type SettingValue = {
 /** Who set a switch: the owner's account, or an operator home lists. */
 export type SetBy = "owner" | "operator"
 
-/** A setting as home follows it. `set` is null while nobody has set it. */
-export type Standing<K extends SettingKey = SettingKey> = {
+/** Who set a setting and when; null while nobody has set it. */
+export type SetAt = { readonly by: SetBy; readonly at: string } | null
+
+/** A setting as home follows it. */
+export type Standing<K extends SettingKey> = {
   readonly value: SettingValue[K]
-  readonly set: { readonly by: SetBy; readonly at: string } | null
+  readonly set: SetAt
 }
 
 /** Why home's answer did not come, in terms the words can say. */
@@ -54,7 +57,7 @@ export type Refusal =
   | "no-home"
   | "failed"
 
-export type SwitchesState<K extends SettingKey = SettingKey> =
+export type SwitchesState<K extends SettingKey> =
   | { readonly kind: "reading" }
   | { readonly kind: "unread"; readonly why: Refusal }
   | {
@@ -64,7 +67,7 @@ export type SwitchesState<K extends SettingKey = SettingKey> =
       readonly setting: SettingValue[K] | null
     }
 
-export type SwitchesEvent<K extends SettingKey = SettingKey> =
+export type SwitchesEvent<K extends SettingKey> =
   | { readonly type: "read-asked" }
   | { readonly type: "read"; readonly standing: Standing<K> }
   | { readonly type: "read-failed"; readonly why: Refusal }

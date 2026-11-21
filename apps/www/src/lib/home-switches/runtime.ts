@@ -20,13 +20,13 @@ import type {
 } from "./model"
 import { canSet, INITIAL_SWITCHES, stepSwitches } from "./model"
 
-export type SwitchesPorts<K extends SettingKey = SettingKey> = {
+export type SwitchesPorts<K extends SettingKey> = {
   readonly client: SwitchesClient<K>
   /** Says a set that did not land, over the screen. */
   readonly notify: (why: Refusal, value: SettingValue[K]) => void
 }
 
-export type HomeSwitches<K extends SettingKey = SettingKey> = {
+export type HomeSwitches<K extends SettingKey> = {
   getSnapshot: () => SwitchesState<K>
   subscribe: (listener: () => void) => () => void
   /** Reads its setting from home, again if asked again. */

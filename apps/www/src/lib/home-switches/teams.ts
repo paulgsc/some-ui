@@ -37,3 +37,34 @@ export const NFL_TEAMS = [
   "TEN",
   "WSH",
 ] as const
+
+/**
+ * The chips to show: every team home can follow, then any team home holds
+ * that the list lacks (set elsewhere, or renamed since), so each can still be
+ * taken off.
+ */
+export function teamChips(
+  held: ReadonlyArray<string> | null
+): ReadonlyArray<string> {
+  const known: ReadonlyArray<string> = NFL_TEAMS
+  return [...known, ...(held ?? []).filter((team) => !known.includes(team))]
+}
+
+/** `teams` with `team` taken off when it is there, or added in order. */
+export function toggledTeam(
+  teams: ReadonlyArray<string>,
+  team: string
+): ReadonlyArray<string> {
+  return teams.includes(team)
+    ? teams.filter((each) => each !== team)
+    : [...teams, team].sort()
+}
+
+/** Whether `chosen` differs from what home follows, as home keeps a list. */
+export function teamsChanged(
+  chosen: ReadonlyArray<string>,
+  held: ReadonlyArray<string>
+): boolean {
+  const kept = [...new Set(chosen)].sort()
+  return kept.length !== held.length || kept.some((team, i) => team !== held[i])
+}

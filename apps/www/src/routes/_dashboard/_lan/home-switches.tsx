@@ -13,7 +13,7 @@ import type {
 import { canSet, SWITCH_KEYS } from "@/lib/home-switches/model"
 import type { HomeSwitches } from "@/lib/home-switches/runtime"
 import { createHomeSwitches } from "@/lib/home-switches/runtime"
-import { NFL_TEAMS } from "@/lib/home-switches/teams"
+import { teamChips, teamsChanged, toggledTeam } from "@/lib/home-switches/teams"
 import {
   changeFailed,
   GAME_TEAMS,
@@ -107,19 +107,15 @@ const TeamsRow = (): JSX.Element => {
   const chosen = draft !== null && draft.from === held ? draft.teams : null
   const picked = chosen ?? held ?? []
   const toggle = (team: string): void => {
-    setDraft({
-      from: held,
-      teams: picked.includes(team)
-        ? picked.filter((each) => each !== team)
-        : [...picked, team].sort(),
-    })
+    setDraft({ from: held, teams: toggledTeam(picked, team) })
   }
+  const changed = chosen !== null && teamsChanged(chosen, held ?? [])
   const settable = canSet(state)
 
   return (
     <div id="game-teams" className="space-y-3 rounded-lg border p-4">
       <div className="space-y-1">
-        <Label>{GAME_TEAMS.label}</Label>
+        <h2 className="text-sm leading-none font-medium">{GAME_TEAMS.label}</h2>
         <p className="text-muted-foreground text-sm">{GAME_TEAMS.about}</p>
         <p className="text-sm" aria-live="polite">
           {statusLine(SWITCH_WORDS["game-teams"], state)}
@@ -130,14 +126,14 @@ const TeamsRow = (): JSX.Element => {
       </div>
       <Chips
         label={GAME_TEAMS.group}
-        options={NFL_TEAMS.map((team) => [team, team] as const)}
+        options={teamChips(held).map((team) => [team, team] as const)}
         pressed={(team) => picked.includes(team)}
         onToggle={toggle}
         disabled={() => !settable}
       />
       <Button
         size="sm"
-        disabled={!settable || chosen === null}
+        disabled={!settable || !changed}
         onClick={() => {
           if (chosen !== null) runtime.set(chosen)
         }}
