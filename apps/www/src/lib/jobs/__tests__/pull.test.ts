@@ -18,6 +18,7 @@
 import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { HomeNoAnswerError } from "@/lib/device-backend/native-http/no-answer"
 import type { Run } from "@/lib/home-link/model"
 import { PULL_HOME } from "@/lib/home-link/words"
 import type { JobsRecordPort } from "@/lib/jobs/home"
@@ -100,7 +101,14 @@ describe("a pull on a Jobs screen", () => {
     })
     expect(await screenRefreshers.checkAll()).toEqual([PULL_CHECKS])
     // No answer from home.
-    keep.mockRejectedValueOnce(new Error("no answer"))
+    keep.mockRejectedValueOnce(
+      new HomeNoAnswerError({
+        kind: "unreachable",
+        retryable: true,
+        summary: "Couldn't reach the home server.",
+        cause: null,
+      })
+    )
     expect(await screenRefreshers.checkAll()).toEqual([PULL_CHECKS])
     drop()
   })
