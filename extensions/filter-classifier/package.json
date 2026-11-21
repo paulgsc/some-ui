@@ -13,7 +13,7 @@
     "url": "https://github.com/paulgsc/some-ui"
   },
   "devDependencies": {
-    "@playwright/test": "1.62.1",
+    "@playwright/test": "1.65.1",
     "@some-extension/filter": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
     "esbuild": "^0.25.0",

@@ -22,7 +22,7 @@
     "fast-check": "^4.10.2"
   },
   "devDependencies": {
-    "@playwright/test": "1.62.1",
+    "@playwright/test": "1.65.1",
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*",
     "vite": "^8.3.8"

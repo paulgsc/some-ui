@@ -23,7 +23,7 @@
     "@some-extension/common": "workspace:*"
   },
   "devDependencies": {
-    "@playwright/test": "1.62.1",
+    "@playwright/test": "1.65.1",
     "@some-ui/tsconfig": "workspace:*",
     "@types/firefox-webext-browser": "143.0.1",
     "vite": "^8.3.8"
