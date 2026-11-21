@@ -311,19 +311,6 @@ function refusalLine(feed: string, refusal: Refusal): string {
  * to is no refusal: the essay waits, unseen here, as a Rust Rounds essay
  * waits for its takes.
  */
-const ESSAY_REFUSALS = [
-  "take-missing",
-  "take-unheard",
-  "snip-missing",
-  "snip-gone",
-  "clip-missing",
-] as const
-
-type EssayRefusal = (typeof ESSAY_REFUSALS)[number]
-
-const isEssayRefusal = (reason: string): reason is EssayRefusal =>
-  ESSAY_REFUSALS.some((known) => known === reason)
-
 const ESSAY_REFUSAL_WORDS = {
   "take-missing":
     "A spoken card in it plays a recording home doesn't have, or one you deleted. It isn't made until the essay names one home keeps.",
@@ -333,10 +320,15 @@ const ESSAY_REFUSAL_WORDS = {
     "It shows a picture of the app that home couldn't get. It isn't made until the essay names a picture its capture holds, and home can fetch it.",
   // C875: home never captures pictures itself; the owner runs it again.
   "snip-gone":
-    "It shows pictures of the app from a capture home can't get, gone or never made. Run Snips Capture again on a branch at the essay's version, and home makes it then.",
+    "It shows pictures of the app that home couldn't get from their capture. Re-run that Snips Capture, or run one for the commit the essay names, and home makes it then.",
   "clip-missing":
     "It shows a clip home doesn't have. It isn't made until the essay names a clip home keeps.",
-} as const satisfies Record<EssayRefusal, string>
+} as const
+
+type EssayRefusal = keyof typeof ESSAY_REFUSAL_WORDS
+
+const isEssayRefusal = (reason: string): reason is EssayRefusal =>
+  Object.hasOwn(ESSAY_REFUSAL_WORDS, reason)
 
 /** What stopped a render, in the person's terms. */
 export function failedLine(failed: RenderFailed): string {

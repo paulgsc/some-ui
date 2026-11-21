@@ -147,9 +147,9 @@ invariant 6). Each pass:
 **When a bundle can't be had** (C875). A bundle lives one day. When a
 commit has no successful run, its newest run's artifact has expired, or its
 bundle was refused, home marks the commit gone and refuses the essay
-(`snip-gone`). Studio › Renders then asks the owner to run Snips Capture
-again at that commit, and a newer run, or a newer attempt of the same run,
-clears the mark. Home never starts a run itself: its token can only read. A
+(`snip-gone`). Studio › Renders then asks the owner to re-run that capture
+(a newer attempt of the same run clears the mark) or to run one for the
+commit the essay names, which Snips Capture takes by branch or tag. Home never starts a run itself: its token can only read. A
 failure that may clear on its own (a timeout, home's drive) is only asked
 again next pass. Home's side of this is paulgsc/server's `docs/snips.md`.
 

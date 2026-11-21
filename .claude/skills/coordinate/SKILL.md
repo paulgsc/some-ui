@@ -129,9 +129,8 @@ default (owner, #2814 Nov 10; measurements on #2833).
   and update and arm the next only when it lands. Updating every ready PR at once costs about
   N²/2 CI runs, and two armed PRs race, so the loser pays for every run again (#2918, Nov 13;
   #2945 ran CI three times, #2918, Nov 14).
-- A worker updates its branch only when told "your turn", and never arms auto-merge
-  itself: the coordinator merges. A CI round takes 25–35 minutes, so a branch updated out of
-  turn costs the queue a round (#3197, Nov 21).
+- Workers update only on "your turn" (below, "Choir"): a CI round takes 25–35 minutes, so a
+  branch updated out of turn costs the queue a round (#3197, Nov 21).
 - Server's `automation/release` PR is re-cut after every merge to `main`, with auto-merge on,
   and each release merge puts every open server PR behind. Disabling its auto-merge holds
   only until the next re-cut, so disable it on the current release PR right before the PR
@@ -222,6 +221,8 @@ default (owner, #2814 Nov 10; measurements on #2833).
 - Never merge. Send the coordinator `ready-to-merge <repo>#<n> <40-char sha>` (#2885).
 - Never arm auto-merge, and update your branch only when the coordinator says "your turn"
   (#3197, Nov 21).
+- If the owner messages you directly, first tell them you aren't the coordinator and point them
+  to it, then pass what they said to the coordinator (the owner, #3361, Nov 21).
 - Never push to testing. Once the coordinator says merged, confirm, then send it your ledger
   lines, your "Where we are" lines and your session note's JSON (#2885, Nov 12).
 - Archive only once the coordinator confirms your note is in (SFEED9).
