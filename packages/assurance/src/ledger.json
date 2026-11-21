@@ -3995,6 +3995,96 @@
           "amendments": []
         }
       ]
+    },
+    {
+      "id": "home-outbound",
+      "name": "What home asks of the outside is counted and heard",
+      "why": "Every request file_host and its crates send to the outside goes through one constructor, crates/outbound, which counts it by the worker that sent it, the host it went to and how it ended; the OUTBOUND dashboard shows them and two alerts tell the owner when a host stops answering or the game feed is refused (some-ui#3330, server#1070).",
+      "paths": [
+        "server:crates/outbound",
+        "server:infra/grafana/dashboards/outbound.jsonnet"
+      ],
+      "modules": [],
+      "objectives": [
+        {
+          "id": "OB1",
+          "kind": "RE1",
+          "property": "work",
+          "claim": "Every request file_host and its crates send to the outside is counted once, by the worker that sent it and the host it went to, and no client is built any other way.",
+          "requirement": "Each request sent through outbound::Client adds 1 to outbound_requests_total{caller, host, outcome}, by closed sets, never a URL; clippy.toml and a test refuse a reqwest client built outside crates/outbound.",
+          "verdict": "holds",
+          "conclusion": "Every request is counted once by caller, host and outcome, and no other client builds, in crates/outbound's tests and clippy. Measuring ends at the answer's headers, and bytes received are the declared length (C892): a body that stalls after its headers counts as its status.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A request is counted once by its caller, its fixed host and its outcome, and nothing else is recorded.",
+              "ref": "server:crates/outbound/tests/records.rs"
+            },
+            {
+              "class": "structural",
+              "says": "No file outside crates/outbound names a reqwest client, and clippy refuses its constructors.",
+              "ref": "server:crates/outbound/tests/only_here.rs"
+            }
+          ],
+          "proof": [
+            "server:crates/outbound/tests/records.rs#a_request_is_counted_by_caller_host_and_outcome_and_nothing_else",
+            "server:crates/outbound/tests/only_here.rs#nothing_outside_this_crate_names_a_reqwest_client"
+          ],
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/outbound.jsonnet"
+          },
+          "amendments": []
+        },
+        {
+          "id": "OB2",
+          "kind": "OA6",
+          "property": "outcome",
+          "claim": "A host that stops answering one of home's workers is heard within 30 minutes of asking.",
+          "requirement": "Three requests or more by one caller to its host in 30 minutes, none answered (timeout or no connection), fires OutboundNoAnswer, naming the worker and the host.",
+          "verdict": "holds",
+          "conclusion": "Tested in CI with promtool. A worker asking fewer than three times in 30 minutes is not judged, and a refusal is an answer, so it does not fire this.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A caller whose host goes dark fires within the window and resolves when answers return; a caller answered between timeouts, a refusing host and a rare caller stay quiet.",
+              "ref": "server:infra/prometheus/rules/home.test.yml"
+            }
+          ],
+          "proof": [
+            "server:infra/prometheus/rules/home.test.yml#OutboundNoAnswer"
+          ],
+          "watch": {
+            "by": "alert",
+            "ref": "server:infra/prometheus/rules/home.yml"
+          },
+          "amendments": []
+        },
+        {
+          "id": "OB3",
+          "kind": "OA6",
+          "property": "outcome",
+          "claim": "If ESPN keeps refusing the game feed, the owner is told within 30 minutes.",
+          "requirement": "Three refusals (4xx or 5xx) or more by the game feed in 30 minutes, with no ok answer, fires OutboundRefused; a timeout among them does not clear it.",
+          "verdict": "holds",
+          "conclusion": "Tested in CI with promtool. Other workers' refusals are not alerted: the nudge's 410s are browsers that left, and the pollers' own failing alerts read theirs.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "ESPN refusing every request fires it, refusals mixed with timeouts fire it, one ok answer clears it, and the nudge's 410s never fire it.",
+              "ref": "server:infra/prometheus/rules/home.test.yml"
+            }
+          ],
+          "proof": [
+            "server:infra/prometheus/rules/home.test.yml#OutboundRefused"
+          ],
+          "watch": {
+            "by": "alert",
+            "ref": "server:infra/prometheus/rules/home.yml"
+          },
+          "amendments": []
+        }
+      ]
     }
   ],
   "synchronous": [
@@ -6613,6 +6703,10 @@
     {
       "family": "home-compute",
       "why": "How home's one machine is shared between every process on it, and how a kill for memory is heard, whichever process it hits."
+    },
+    {
+      "family": "home-outbound",
+      "why": "A rule every outbound request home makes keeps, whichever worker makes it: they all go through crates/outbound."
     }
   ]
 }
