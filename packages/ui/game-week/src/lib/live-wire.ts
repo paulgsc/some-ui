@@ -5,9 +5,8 @@
  * the socket and hands its frames here.
  *
  * `__tests__/game-live-messages.snapshot.json` is a copy of what the
- * server's `dump-game-live-messages` writes, taken by hand: no check compares
- * it with a fresh dump yet (the server's `check_client_fixtures.py` has no
- * pair for it), so refresh it whenever the socket's messages change. Then
+ * server's `dump-game-live-messages` writes (its `check_client_fixtures.py`
+ * compares the two, the "game live messages" pair, since #3048), and
  * `__tests__/live-wire.test.ts` reads every message
  * in it with `readHome` and writes every phone message with `helloText` and
  * `pingText`, so a change on either side the other cannot read fails a test.

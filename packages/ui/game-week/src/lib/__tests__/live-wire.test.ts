@@ -1,8 +1,8 @@
 /**
  * The recorder reads every message home's game day socket sends, and writes
  * every one it sends as home reads it: `game-live-messages.snapshot.json`
- * is paulgsc/server's `dump-game-live-messages`, kept here by hand (no check
- * compares this copy with a fresh dump yet; see `../live-wire.ts`).
+ * is paulgsc/server's `dump-game-live-messages`, kept here (the server's
+ * `check_client_fixtures.py` compares this copy with a fresh dump).
  */
 import { helloText, pingText, readHome } from "@game-week/lib/live-wire"
 import { describe, expect, it } from "vitest"
