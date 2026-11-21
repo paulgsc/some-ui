@@ -85,6 +85,13 @@ walk() {
   [ "$ok" = yes ]
 }
 
+# A phone's screen: 1080x1920 at 420 dpi, whatever the emulator image's own
+# size (Snips Capture's comes out 320x640), so a walk's screens are sharp at
+# the size a walkthrough draws them (promo-feature, WALK4). Set once, after
+# the snips; the emulator is thrown away with the job.
+adb shell wm size 1080x1920
+adb shell wm density 420
+
 failed=0
 walk jobs "$repo/apps/www/tests/walk/jobs-week.json" || failed=1
 exit "$failed"
