@@ -3,7 +3,12 @@
  * headings, and a label for each outcome home can fill in. The name and what
  * a scenario covers come from the catalog itself (`catalog.ts`).
  */
-import type { Phase } from "@game-scenarios/catalog"
+import type {
+  BigPlayKind,
+  BigPlaySize,
+  Half,
+  Phase,
+} from "@game-scenarios/catalog"
 
 export const PHASE_TITLES: Readonly<Record<Phase, string>> = {
   pre: "Before kickoff",
@@ -81,7 +86,30 @@ export const OUTCOME_WORDS = {
   "you.missed-it": WATCHING,
   "you.dodged-it": WATCHING,
   "you.tuned-in-late": WATCHING,
+  "in.halftime": { leading: "Leading", trailing: "Trailing", tied: "Tied" },
+  "in.onside-kick": { ours: "We recovered it", theirs: "They recovered it" },
 } as const satisfies Record<string, Readonly<Record<string, string>>>
 
 /** Every scenario id this version of some-ui draws. */
 export type ScenarioId = keyof typeof OUTCOME_WORDS
+
+export const HALF_WORDS: Readonly<Record<Half, string>> = {
+  first: "1st half",
+  second: "2nd half",
+  overtime: "Overtime",
+}
+
+export const BIG_PLAY_SIZE_WORDS: Readonly<Record<BigPlaySize, string>> = {
+  big: "Big",
+  huge: "Huge",
+  memorable: "One to remember",
+}
+
+export const BIG_PLAY_KIND_WORDS: Readonly<Record<BigPlayKind, string>> = {
+  pass: "Pass",
+  run: "Run",
+  "kick-return": "Kick return",
+  "punt-return": "Punt return",
+  "interception-return": "Interception return",
+  "fumble-return": "Fumble return",
+}
