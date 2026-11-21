@@ -12,3 +12,10 @@ export const SNIP_ID =
 
 /** A commit's id, as a snip's bundle is named by it (`snips-bundle-<commit>`). */
 export const COMMIT = /^[0-9a-f]{40}$/
+
+/**
+ * A public page's picture, as the pages capture names it (`./page`):
+ * where it is (its host and path, as a slug), then the first 12 hex digits
+ * of the PNG's SHA-256, so a page that changes gets a new name.
+ */
+export const PAGE_FILE = /^[a-z0-9][a-z0-9-]{0,95}-[0-9a-f]{12}\.png$/

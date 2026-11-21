@@ -104,6 +104,14 @@ Rules for every line, since you, months later, are the listener:
      a snip or a clip frame (`docs/snips.md`). Its `spoken` role is
      `scene`, like a card's; a spoken card (`role: "spoken"`) is drawn by
      its own stage and shows no screen.
+   - Or it shows a public page, photographed logged out, when the subject
+     lives outside the app (a pull request's checks, a run's log page, a
+     page of docs): `{"kind": "screen", "of": {"from": "pages", …}}`. Take
+     the pages with `pnpm --filter www record:pages` (`docs/snips.md`,
+     "Public pages"), name each by the address, `capturedAt` and file its
+     record gives, and put the folder beside the essay as
+     `cards/<key>.pages/`. Say in the narration what the page showed as of
+     when it was taken, since the page itself moves on.
    - **Badges:** ■ `main` for what is on a default branch at the stamp's
      commit, ◧ `pr` for an open pull request, □ `next` for what is planned
      and not built, △ `gap` for a known gap, ✋ `you` for a step only the
