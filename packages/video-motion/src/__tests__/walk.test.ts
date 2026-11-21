@@ -7,7 +7,11 @@ import {
 } from "@video-motion/walk/microphone"
 import type { Step } from "@video-motion/walk/run"
 import { stepProblems } from "@video-motion/walk/run"
-import { screenPlace, versionOf } from "@video-motion/walk/stage-apk"
+import {
+  screenPlace,
+  versionOf,
+  webviewBounds,
+} from "@video-motion/walk/stage-apk"
 import { describe, expect, it } from "vitest"
 
 /** Jobs' story sample (WALK2), which the stand-in home answers and the walk reads. */
@@ -69,6 +73,23 @@ describe("the APK stage's places (WALK1)", () => {
     // In snip px: 100 × 2.625 across; 63 + 200 × 2.625 down.
     expect(at.x * viewport.scale).toBeCloseTo(262.5, 3)
     expect(at.y * viewport.scale).toBeCloseTo(588, 3)
+  })
+
+  it("finds the app's WebView in a uiautomator dump", () => {
+    const xml =
+      '<hierarchy><node class="android.widget.FrameLayout" package="dev.paulgsc.someui" bounds="[0,0][1080,1920]">' +
+      '<node class="android.webkit.WebView" package="other.app" bounds="[0,0][10,10]" />' +
+      '<node index="0" class="android.webkit.WebView" package="dev.paulgsc.someui" bounds="[0,63][1080,1794]" />' +
+      "</node></hierarchy>"
+    expect(webviewBounds(xml, "dev.paulgsc.someui")).toEqual({
+      x: 0,
+      y: 63,
+      width: 1080,
+      height: 1731,
+    })
+    expect(() => webviewBounds("<hierarchy/>", "dev.paulgsc.someui")).toThrow(
+      "the app's WebView is not on screen"
+    )
   })
 
   it("refuses a WebView with no width", () => {

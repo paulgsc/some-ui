@@ -83,6 +83,29 @@ export function screenPlace(
   }
 }
 
+/** Where the app's WebView is on the screen, from a `uiautomator dump`, in device px. */
+export function webviewBounds(xml: string, pkg: string): Box {
+  for (const node of xml.match(/<node\b[^>]*>/g) ?? []) {
+    const attr = (name: string): string =>
+      new RegExp(`\\b${name}="([^"]*)"`).exec(node)?.[1] ?? ""
+    if (attr("class") !== "android.webkit.WebView") continue
+    if (attr("package") !== pkg) continue
+    const [left, top, right, bottom] = (
+      attr("bounds").match(/-?\d+/g) ?? []
+    ).map(Number)
+    if (
+      left === undefined ||
+      top === undefined ||
+      right === undefined ||
+      bottom === undefined
+    ) {
+      continue
+    }
+    return { x: left, y: top, width: right - left, height: bottom - top }
+  }
+  throw new Error("the app's WebView is not on screen")
+}
+
 /** The version the installed package says it is (`dumpsys package`). */
 export function versionOf(dumpsys: string): string {
   const name = /versionName=(\S+)/.exec(dumpsys)?.[1]
@@ -134,9 +157,13 @@ export async function openApkStage(spec: ApkStageSpec): Promise<Stage> {
       }
       await route.abort("internetdisconnected")
     })
-    const bounds = (
-      await device.info({ clazz: "android.webkit.WebView", pkg: spec.pkg })
-    ).bounds
+    // Read from the accessibility tree, as Snips Capture's release pass reads
+    // the screen: `device.info` needs Playwright's driver app on the device.
+    await device.shell("uiautomator dump /sdcard/walk-ui.xml")
+    const bounds = webviewBounds(
+      (await device.shell("cat /sdcard/walk-ui.xml")).toString("utf8"),
+      spec.pkg
+    )
     const innerWidth = Number(await page.evaluate("window.innerWidth"))
     const { viewport, place } = screenPlace(
       bounds,
