@@ -5,7 +5,9 @@ import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { parseArgs } from "node:util"
-import { parseFriction, QUIET } from "@some-ui/video-render"
+import { addDays, isoWeekMonday } from "@some-ui/core-utils"
+import { PIPELINES } from "@some-ui/engagement"
+import { frictionOf, QUIET } from "@some-ui/video-render"
 import type { Friction, StillTake, TimedWord } from "@some-ui/video-render"
 import {
   here,
@@ -41,7 +43,7 @@ const USAGE = [
   "       motion video <video folder> [--series <folder>] [--brand <folder>] [--prove]",
   "       motion walk <app> --sample <file> --out <folder>",
   "       motion promo <release folder> --out <folder> [--brand <folder>] [--prove]",
-  "       motion walkthrough <words.json> --walk <walk folder> --out <folder> [--friction <file>] [--takes <folder>] [--brand <folder>] [--prove]",
+  "       motion walkthrough <words.json> --walk <walk folder> --out <folder> [--home <weekly.json>] [--takes <folder>] [--brand <folder>] [--prove]",
 ].join("\n")
 
 /** A walk of one app: its sample's schema and the steps it makes of one. */
@@ -90,7 +92,7 @@ const { positionals, values } = parseArgs({
     runs: { type: "string", default: "2" },
     brand: { type: "string" },
     walk: { type: "string" },
-    friction: { type: "string" },
+    home: { type: "string" },
     takes: { type: "string" },
   },
 })
@@ -469,11 +471,13 @@ async function layTakes(
  * (with `--prove`, twice from nothing). It writes `lines.json` beside it,
  * every line home's speaker is asked to say (`walkthroughLines`).
  *
- * `--friction` is home's aggregate (`some-ui.friction/1`): each chapter card
- * then says what real use shows of its stop, and a card names the modules
- * nobody opens. `--takes` is the folder home's speaker said `lines.json`
- * into, `<file>.wav` and `<file>.json` (`{ms, words}`) per line: each shot
- * is then voiced, its screens held for its lines (`voicedWalkthrough`).
+ * `--home` is home's weekly read (`GET /app-events/weeks/:week`), mapped
+ * onto the registry as of its week's last day (`frictionOf`) and kept as
+ * `friction.json` beside the render: each stop then says what real use shows
+ * of it, the last names the modules nobody opens, and a card shows them.
+ * `--takes` is the folder home's speaker said `lines.json` into,
+ * `<file>.wav` and `<file>.json` (`{ms, words}`) per line: each stop is then
+ * voiced, its screens held for its lines (`voicedWalkthrough`).
  */
 async function walkthrough(file: string): Promise<void> {
   const read = WalkthroughSchema.safeParse(await readJson(here(file)))
@@ -483,16 +487,29 @@ async function walkthrough(file: string): Promise<void> {
     await readJson(join(from, "walk.json"))
   )
   if (!walked.success) throw new Refused(`the walk: ${walked.error.message}`)
-  const problems = walkthroughProblems(read.data, walked.data)
-  if (problems.length > 0) throw new Refused(problems.join("\n"))
   let friction: Friction | null = null
-  if (values.friction !== undefined) {
-    const parsed = parseFriction(await readJson(here(values.friction)))
+  if (values.home !== undefined) {
+    const home: unknown = await readJson(here(values.home))
+    const week =
+      typeof home === "object" && home !== null && "week" in home
+        ? String(home.week)
+        : ""
+    const asOf = /^\d{4}-W\d{2}$/.test(week)
+      ? addDays(isoWeekMonday(week), 6)
+      : ""
+    const parsed = frictionOf(home, PIPELINES, asOf)
     if (!parsed.ok) throw new Refused(parsed.problems.join("\n"))
     friction = parsed.value
   }
+  const problems = walkthroughProblems(read.data, walked.data, friction)
+  if (problems.length > 0) throw new Refused(problems.join("\n"))
   const out = given("out")
   await mkdir(out, { recursive: true })
+  if (friction !== null)
+    await writeFile(
+      join(out, "friction.json"),
+      `${JSON.stringify(friction, null, 1)}\n`
+    )
   await cp(join(from, "snips"), join(out, "snips"), { recursive: true })
   const lines = walkthroughLines(
     voicedWalkthrough(read.data, walked.data, friction).cut

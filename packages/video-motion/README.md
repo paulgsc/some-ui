@@ -55,7 +55,7 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
   9:16 screen at 1320 px tall, about seven tenths of the frame's width, its caption just
   below it (the owner, 2026-11-21: the phone at three-quarter size, the caption below).
 
-- `walkthrough <words.json> --walk <walk folder> --out <folder> [--friction <file>] [--takes <folder>] [--brand <folder>] [--prove]`
+- `walkthrough <words.json> --walk <walk folder> --out <folder> [--home <weekly.json>] [--takes <folder>] [--brand <folder>] [--prove]`
   makes an app's walkthrough (WALK4, #3282): the promo with chapters. The words
   (`some-ui.walkthrough/1`, `src/walkthrough.ts`) give a caption per screen and the stops,
   each from a screen of the walk; the cut list is the promo's opening, then per stop a
@@ -64,13 +64,15 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
   Snips Capture's `walks-<run>` artifact holds `jobs/`. Jobs' words are
   `apps/www/tests/walk/jobs-walkthrough.json`.
 
-  Voiced (WALK5, #3337). It writes `lines.json`, every line home's Kokoro says: each stop
-  says its screens' captions, one line per screen. With `--friction` (home's
-  `some-ui.friction/1`; `../video-render/src/sample/friction.json` is a made-up sample),
-  each chapter card also says what real use shows of its stop, and a card before the close
-  names the modules nobody opens (#3338). With `--takes` (the folder the lines were said
-  into: `<file>.wav` and `<file>.json`, `{ms, words}`), each screen holds for at least its
-  line and a breath, and each shot's lines are laid into `<shot>.wav` at their screens.
+  Voiced (WALK5, #3337; the owner's call C945). It writes `lines.json`, every line home's
+  Kokoro says: each stop says its own `narration` from the words (part promo, part mission:
+  what the screen can't show), never its captions, and the chapter cards stay silent. With
+  `--home` (home's weekly read, `GET /app-events/weeks/:week`; mapped onto the registry by
+  `frictionOf` and kept as `friction.json`), each stop then says what real use shows of it,
+  its card shows the same, and the last stop names the modules nobody opens, with a card
+  before the close (#3338). With `--takes` (the folder the lines were said into: `<file>.wav`
+  and `<file>.json`, `{ms, words}`), each stop's lines are laid back to back a breath apart
+  into `<shot>.wav`, and its screens are stretched by one factor until they hold them (C1000).
 
 - `promo <release folder> --out <folder> [--brand <folder>] [--prove]` makes a release's promo (HYPER3,
   #2726): the folder's `release.json` (`some-ui.promo/1`, the words a session writes) and

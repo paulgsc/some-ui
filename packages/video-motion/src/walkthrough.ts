@@ -6,21 +6,23 @@
  * the shape on the prototype (2026-11-21): the phone at three-quarter size
  * with the caption below it (`promo-feature`'s fit).
  *
- * Voiced (WALK5, #3337): each stop says its screens' captions, a line a
- * screen, and each chapter card says what real use shows of its stop (its
- * friction, home's aggregate: `@some-ui/video-render`'s `friction.ts`),
- * burned in on the card too. Every voiced shot carries the cards essays'
+ * Voiced (WALK5, #3337; the owner's call C945): each stop says its own
+ * narration, written for it as part promo and part mission (what the screen
+ * can't show: why the step exists), then what real use shows of it (its
+ * measures: home's friction aggregate, `@some-ui/video-render`'s
+ * `friction.ts`), and the last stop names the modules nobody opens (#3338).
+ * The captions are never read, and the chapter cards stay silent, carrying
+ * the same measures burned in. Every voiced stop carries the cards essays'
  * `spoken`, in its `walk` case (C830): home's Kokoro says each line
- * (`walkthroughLines`), and `voicedWalkthrough` holds each screen for at
- * least its line and a breath, the taps at the same offsets into it. Before
- * the close, a card names the modules nobody opens (#3338).
+ * (`walkthroughLines`), the lines laid back to back a breath apart, and
+ * `voicedWalkthrough` stretches the stop's screens by one factor until they
+ * hold them all (C1000).
  *
  * Same family as the promo (`./promo`): the same scenes, palette, sound kit
  * and series, and the walk's own `walk.json`. A walkthrough is the promo's
  * cut list with chapters, never a second pipeline.
  */
 
-import type { Silent } from "@some-ui/engagement"
 import { PIPELINES, silentModules } from "@some-ui/engagement"
 import {
   CARDS_VOICES,
@@ -28,8 +30,7 @@ import {
   FEED_SPEAKER,
   laidTake,
   PROMO_SHAPE,
-  TAIL_MS,
-  VOICE_IN_MS,
+  startsAfter,
 } from "@some-ui/video-render"
 import type {
   CutList,
@@ -48,9 +49,10 @@ import {
   PaletteSchema,
 } from "./promo"
 import type { WalkFile } from "./walk/run"
+import type { Quiet } from "./walkthrough-words"
 import {
-  frictionNotes,
-  frictionSaid,
+  measureNotes,
+  measureSaid,
   silenceNotes,
   silenceSaid,
   WALKTHROUGH_WORDS,
@@ -92,13 +94,25 @@ export const WalkthroughSchema = z.strictObject({
         z.strictObject({
           title: drawn(CHAPTER.title),
           from: z.int().min(0),
-          /** The place in the registry whose friction this stop says; none: not measured. */
-          place: z
-            .strictObject({
-              pipeline: slug,
-              affordance: slug,
-              place: slug,
-            })
+          /**
+           * What this stop says, line by line: part promo, part mission,
+           * what the screen can't show (C945). Never the captions.
+           */
+          narration: z.array(z.string().min(1).max(240)).min(1).max(4),
+          /** What real use shows of this stop, from home's aggregate; none: not measured. */
+          measures: z
+            .array(
+              z.discriminatedUnion("kind", [
+                z.strictObject({
+                  kind: z.literal("place"),
+                  pipeline: slug,
+                  affordance: slug,
+                  place: slug,
+                }),
+                z.strictObject({ kind: z.literal("debrief") }),
+              ])
+            )
+            .min(1)
             .optional(),
         })
       )
@@ -109,10 +123,11 @@ export const WalkthroughSchema = z.strictObject({
 })
 export type Walkthrough = z.infer<typeof WalkthroughSchema>
 
-/** Every reason `words` can't be drawn over `walk`. */
+/** Every reason `words` can't be drawn over `walk`, saying `friction` where given. */
 export function walkthroughProblems(
   words: Walkthrough,
-  walk: WalkFile
+  walk: WalkFile,
+  friction: Friction | null = null
 ): ReadonlyArray<string> {
   const problems: Array<string> = []
   if (words.app !== walk.app) {
@@ -135,6 +150,14 @@ export function walkthroughProblems(
       )
     }
   })
+  if (friction !== null)
+    words.fill.chapters.forEach((chapter, i) => {
+      for (const m of chapter.measures ?? [])
+        if (m.kind === "place" && placeIn(friction, m) === undefined)
+          problems.push(
+            `chapter ${String(i + 1)} names ${m.pipeline}/${m.affordance}/${m.place}, which home's aggregate doesn't hold`
+          )
+    })
   return problems
 }
 
@@ -216,13 +239,6 @@ export type LaidTake = {
   }>
 }
 
-/** A caption as it is said: its drawn lines run together. */
-const saidOf = (caption: string): string =>
-  caption
-    .split("|")
-    .map((part) => part.trim())
-    .join(" ")
-
 /** Line `k` of shot `shot`'s, as a file name. */
 const lineFile = (shot: string, k: number): string =>
   `${shot}-${String(k + 1).padStart(2, "0")}`
@@ -240,35 +256,48 @@ export function walkthroughLines(cut: CutList): Array<WalkthroughLine> {
   )
 }
 
-/** The silent modules' names and how long each has been quiet, from home's aggregate. */
-function silentOf(friction: Friction): {
-  readonly silent: ReadonlyArray<Silent & { readonly name: string }>
-  readonly notMeasured: number
-} {
+/** The silent modules' names and how long each has been quiet, and how many can't be told. */
+function quietOf(friction: Friction): Quiet {
   const names = new Map(PIPELINES.map((p) => [p.id, p.name]))
+  const notMeasured = friction.modules.filter(
+    (m) => m.opened.kind === "not-measured"
+  ).length
   return {
     silent: silentModules(friction.modules).map((s) => ({
       ...s,
       name: names.get(s.pipeline) ?? s.pipeline,
     })),
-    notMeasured: friction.modules.filter(
-      (m) => m.opened.kind === "not-measured"
-    ).length,
+    measured: friction.modules.length - notMeasured,
+    notMeasured,
   }
 }
 
 type Shot = CutList["shots"][number]
 
+/** `walk`'s screens each held `factor` times as long, the taps with them. */
+function stretched(walk: WalkFile, factor: number): WalkFile {
+  if (factor <= 1) return walk
+  return retimed(
+    walk,
+    walk.snips.map((s, i) =>
+      Math.ceil(((walk.snips[i + 1]?.atMs ?? walk.lengthMs) - s.atMs) * factor)
+    )
+  )
+}
+
 /**
- * The walkthrough as a cut list: the opening; for each stop, a card (with
- * what real use shows of it, where `friction` is given) and its screens,
- * each said; a card naming the silent modules (with `friction`); the close.
+ * The walkthrough as a cut list: the opening; for each stop, a silent card
+ * (with what real use shows of it burned in, where `friction` is given) and
+ * its screens, saying its narration, then what real use shows of it; with
+ * `friction`, the last stop also names the silent modules, and a card shows
+ * them; the close.
  *
- * Each line said is `walkthroughLines`' file. With every line of a shot in
- * `takes`, by its file, the shot is voiced: its lines laid on one take
- * (`laid`, which the recorder joins into `<shot>.wav`), a stop's screens
- * each held for its line and a breath (`retimed`), a card for its line. A
- * shot with a line not in `takes` stays silent, as first cut.
+ * Each line said is `walkthroughLines`' file. With every line of a stop in
+ * `takes`, by its file, the stop is voiced: its lines laid back to back, a
+ * breath apart, on one take (`laid`, which the recorder joins into
+ * `<shot>.wav`), and its screens stretched by one factor until they hold
+ * the lines and a breath (C1000). A stop with a line not in `takes` stays
+ * silent, as first cut.
  */
 export function voicedWalkthrough(
   words: Walkthrough,
@@ -286,117 +315,71 @@ export function voicedWalkthrough(
     )
     return got.every((t) => t !== undefined) ? got : null
   }
-  /** `shot` saying `lines`, voiced from `startsMs` where its takes are in. */
-  const said = (
-    shot: Shot,
-    lines: ReadonlyArray<string>,
-    lay: (heard: ReadonlyArray<StillTake>) => {
-      readonly startsMs: ReadonlyArray<number>
-      readonly shot: Shot
-    }
-  ): Shot => {
-    const spoken = { role: "walk" as const, lines: [...lines] }
-    const own = heard(shot.id, lines.length)
-    if (own === null) return { ...shot, spoken }
-    const { startsMs, shot: held } = lay(own)
-    const take = laidTake(own, startsMs)
-    laid.push({
-      file: `${shot.id}.wav`,
-      lines: startsMs.map((atMs, k) => ({
-        file: `${lineFile(shot.id, k)}.wav`,
-        atMs,
-      })),
-    })
-    return {
-      ...held,
-      spoken,
-      take: {
-        file: `${shot.id}.wav`,
-        inMs: 0,
-        outMs: take.ms,
-        ...(take.words ? { words: [...take.words] } : {}),
-      },
-      speaker: FEED_SPEAKER,
-    }
-  }
-  /** A card held for its base length, or its one line and a beat either side. */
-  const card = (shot: Shot, line: string | null): Shot =>
-    line === null
-      ? shot
-      : said(shot, [line], ([take]) => ({
-          startsMs: [0],
-          shot: {
-            ...shot,
-            voiceInMs: VOICE_IN_MS,
-            durationMs: Math.max(
-              shot.durationMs,
-              VOICE_IN_MS + (take?.ms ?? 0) + TAIL_MS
-            ),
-          },
-        }))
+  const quiet = friction === null ? null : quietOf(friction)
   const walkStartMs = Math.round(feature.before * 1000)
+  const card = (n: string, title: string, notes: string): Shot =>
+    compositionShot(
+      palette,
+      n === "" ? "silence" : `chapter-${n}`,
+      "walk-chapter",
+      notes === "" ? CHAPTER.seconds : CHAPTER.withNotes,
+      { number: n, title, notes },
+      () => []
+    )
   const stops = chapters.flatMap((chapter, i) => {
     const to = chapters[i + 1]?.from ?? walk.snips.length
     const n = String(i + 1)
-    const place = friction === null ? null : frictionOf(friction, chapter.place)
+    const id = `stop-${n}`
+    const measures =
+      friction === null ? [] : measuresOf(friction, chapter.measures)
+    const isLast = i === chapters.length - 1
+    const lines = [
+      ...chapter.narration,
+      ...measureSaid(measures),
+      ...(isLast && quiet !== null ? [silenceSaid(quiet)] : []),
+    ]
     const own = captions.slice(chapter.from, to)
     const slice = walkSlice(walk, chapter.from, to)
     const stop = (w: WalkFile): Shot => ({
       ...featureShot(
         palette,
-        `stop-${n}`,
+        id,
         { appName: appNameOf(words.fill.title), version },
         w,
         own
       ),
       voiceInMs: walkStartMs,
+      spoken: { role: "walk", lines },
     })
-    return [
-      card(
-        compositionShot(
-          palette,
-          `chapter-${n}`,
-          "walk-chapter",
-          place === null ? CHAPTER.seconds : CHAPTER.withNotes,
-          {
-            number: n,
-            title: chapter.title,
-            notes: place === null ? "" : frictionNotes(place),
-          },
-          () => []
-        ),
-        place === null ? null : frictionSaid(place)
-      ),
-      said(stop(slice), own.map(saidOf), (heardLines) => {
-        const w = retimed(
-          slice,
-          heardLines.map((t) => t.ms + BREATH_MS)
-        )
-        return { startsMs: w.snips.map((s) => s.atMs), shot: stop(w) }
-      }),
-    ]
+    const said = heard(id, lines.length)
+    let shot = stop(slice)
+    if (said !== null) {
+      const startsMs = startsAfter(said, BREATH_MS)
+      const take = laidTake(said, startsMs)
+      laid.push({
+        file: `${id}.wav`,
+        lines: startsMs.map((atMs, k) => ({
+          file: `${lineFile(id, k)}.wav`,
+          atMs,
+        })),
+      })
+      shot = {
+        ...stop(stretched(slice, (take.ms + BREATH_MS) / slice.lengthMs)),
+        take: {
+          file: `${id}.wav`,
+          inMs: 0,
+          outMs: take.ms,
+          ...(take.words ? { words: [...take.words] } : {}),
+        },
+        speaker: FEED_SPEAKER,
+      }
+    }
+    return [card(n, chapter.title, measureNotes(measures)), shot]
   })
-  const quiet = friction === null ? null : silentOf(friction)
   const silence =
     quiet === null
       ? []
-      : [
-          card(
-            compositionShot(
-              palette,
-              "silence",
-              "walk-chapter",
-              CHAPTER.withNotes,
-              {
-                number: "",
-                title: WALKTHROUGH_WORDS.silence.title,
-                notes: silenceNotes(quiet.silent, quiet.notMeasured),
-              },
-              () => []
-            ),
-            silenceSaid(quiet.silent, quiet.notMeasured)
-          ),
-        ]
+      : [card("", WALKTHROUGH_WORDS.silence.title, silenceNotes(quiet))]
   const cut = bookendedCutList(
     `${words.app} walkthrough ${version}`,
     {
@@ -414,27 +397,44 @@ export function voicedWalkthrough(
   return { cut: { ...cut, voice: "read" }, laid }
 }
 
-/** What home's aggregate holds for `place`: its counts, or "not measured" when the stop names none. */
-export type StopFriction =
-  | { readonly kind: "measured"; readonly counts: Friction["places"][number] }
+type Measure = NonNullable<
+  Walkthrough["fill"]["chapters"][number]["measures"]
+>[number]
+
+/** What home's aggregate holds for a measure of a stop. */
+export type StopMeasure =
+  | { readonly kind: "place"; readonly counts: Friction["places"][number] }
+  | ({ readonly kind: "debrief" } & Friction["debrief"])
   | { readonly kind: "not-measured" }
 
-function frictionOf(
+function placeIn(
   friction: Friction,
-  place: Walkthrough["fill"]["chapters"][number]["place"]
-): StopFriction {
-  const counts =
-    place === undefined
-      ? undefined
-      : friction.places.find(
-          (p) =>
-            p.pipeline === place.pipeline &&
-            p.affordance === place.affordance &&
-            p.place === place.place
-        )
-  return counts === undefined
-    ? { kind: "not-measured" }
-    : { kind: "measured", counts }
+  m: Extract<Measure, { kind: "place" }>
+): Friction["places"][number] | undefined {
+  return friction.places.find(
+    (p) =>
+      p.pipeline === m.pipeline &&
+      p.affordance === m.affordance &&
+      p.place === m.place
+  )
+}
+
+/** Each of a stop's measures as home's aggregate holds it; a stop that names none is not measured. */
+function measuresOf(
+  friction: Friction,
+  measures: ReadonlyArray<Measure> | undefined
+): ReadonlyArray<StopMeasure> {
+  if (measures === undefined) return [{ kind: "not-measured" }]
+  return measures.map((m): StopMeasure => {
+    if (m.kind === "debrief") return { kind: "debrief", ...friction.debrief }
+    const counts = placeIn(friction, m)
+    // `walkthroughProblems` refuses a place the aggregate doesn't hold.
+    if (counts === undefined)
+      throw new RangeError(
+        `${m.pipeline}/${m.affordance}/${m.place} isn't in home's aggregate`
+      )
+    return { kind: "place", counts }
+  })
 }
 
 /** The walkthrough as first cut, before anything is said: `voicedWalkthrough` with no takes. */

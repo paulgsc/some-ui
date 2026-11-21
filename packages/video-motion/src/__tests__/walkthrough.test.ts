@@ -1,6 +1,10 @@
 import { readFileSync } from "node:fs"
-import { PIPELINES } from "@some-ui/engagement"
-import { parseCutList, parseFriction } from "@some-ui/video-render"
+import { MODULE_OPENS_SCHEMA, PIPELINES } from "@some-ui/engagement"
+import {
+  FRICTION_SCHEMA,
+  frictionOf,
+  parseCutList,
+} from "@some-ui/video-render"
 import type { StillTake } from "@some-ui/video-render"
 import type { WalkFile } from "@video-motion/walk/run"
 import {
@@ -14,8 +18,10 @@ import {
   WalkthroughSchema,
 } from "@video-motion/walkthrough"
 import {
-  frictionNotes,
-  frictionSaid,
+  measureNotes,
+  measureSaid,
+  silenceNotes,
+  silenceSaid,
   WALKTHROUGH_WORDS,
 } from "@video-motion/walkthrough-words"
 import { describe, expect, it } from "vitest"
@@ -33,18 +39,17 @@ const jobs = WalkthroughSchema.parse(
   )
 )
 
-/** Home's friction aggregate, as the contract's sample holds it (WALK5). */
-const read = parseFriction(
-  JSON.parse(
-    readFileSync(
-      new URL(
-        "../../../video-render/src/sample/friction.json",
-        import.meta.url
-      ),
-      "utf8"
-    )
+/** Home's weekly read, as the report's sample holds it, on the registry (WALK5). */
+const sampleHome: unknown = JSON.parse(
+  readFileSync(
+    new URL(
+      "../../../video-render/src/templates/engagement-report/sample-weeks.json",
+      import.meta.url
+    ),
+    "utf8"
   )
 )
+const read = frictionOf(sampleHome, PIPELINES, "2026-11-15")
 if (!read.ok) throw new Error(read.problems.join("\n"))
 const friction = read.value
 
@@ -86,9 +91,9 @@ describe("the walkthrough (WALK4)", () => {
       fill: {
         ...jobs.fill,
         chapters: [
-          { title: "One", from: 1 },
-          { title: "Two", from: 1 },
-          { title: "Three", from: 20 },
+          { title: "One", from: 1, narration: ["One."] },
+          { title: "Two", from: 1, narration: ["Two."] },
+          { title: "Three", from: 20, narration: ["Three."] },
         ],
       },
     }
@@ -144,17 +149,17 @@ describe("the walkthrough (WALK4)", () => {
     expect(cut.value.title).toBe("jobs walkthrough v0.0.11")
   })
 
-  it("says each stop's captions, a line a screen, read as the cards essays are", () => {
+  it("says each stop's narration, never its captions, read as the cards essays are", () => {
     const cut = walkthroughCutList(jobs, walkOf(15))
     expect(cut.voice).toBe("read")
     const stop = cut.shots.find((s) => s.id === "stop-2")
     expect(stop?.spoken).toEqual({
       role: "walk",
-      lines: [
-        "A résumé built for this one",
-        "The paste kit stays on the phone",
-      ],
+      lines: jobs.fill.chapters[1]?.narration,
     })
+    const said = walkthroughLines(cut).map((l) => l.said)
+    for (const caption of jobs.fill.captions)
+      expect(said).not.toContain(caption.split("|").join(" "))
     // The take starts as the walk's first screen does.
     expect(stop?.voiceInMs).toBe(800)
     expect(
@@ -173,79 +178,138 @@ describe("the walkthrough (WALK4)", () => {
     expect(retimed(walk, [0, 0, 0])).toEqual(walk)
   })
 
-  it("lays each stop's lines at its screens, inside the scene, with the clicks moved", () => {
-    const words = jobs
+  it("lays a stop's lines back to back, its screens stretched by one factor to hold them", () => {
     const walk = walkOf(15)
-    const lines = walkthroughLines(walkthroughCutList(words, walk, friction))
+    const lines = walkthroughLines(walkthroughCutList(jobs, walk, friction))
     const takes = new Map<string, StillTake>(
       lines.map((l) => [
         l.file,
         { ms: 2500, words: [{ text: "Here", startMs: 0, endMs: 400 }] },
       ])
     )
-    const { cut, laid } = voicedWalkthrough(words, walk, friction, takes)
+    const { cut, laid } = voicedWalkthrough(jobs, walk, friction, takes)
     const parsed = parseCutList(cut)
     expect(parsed.ok ? [] : parsed.problems).toEqual([])
     const stop = cut.shots.find((s) => s.id === "stop-1")
-    const atMs = [0, 2500 + BREATH_MS, 2 * (2500 + BREATH_MS)]
+    const n = stop?.spoken?.role === "walk" ? stop.spoken.lines.length : 0
+    const atMs = Array.from({ length: n }, (_, k) => k * (2500 + BREATH_MS))
     expect(laid.find((l) => l.file === "stop-1.wav")?.lines).toEqual(
       atMs.map((at, k) => ({ file: `stop-1-0${String(k + 1)}.wav`, atMs: at }))
     )
     expect(stop?.take?.words?.map((w) => w.startMs)).toEqual(atMs)
     expect(stop?.speaker).toBe("kokoro")
-    // The tap into screen 2 still lands 0.4 s before it.
-    expect(stop?.overrides.cues?.filter((c) => c.sound === "click")[0]).toEqual(
-      { sound: "click", atMs: 800 + atMs[1]! - 400 }
-    )
-    // Every voiced shot is laid; a card holds for its line and a beat.
-    expect(laid.map((l) => l.file)).toContain("chapter-1.wav")
-    expect(laid.map((l) => l.file)).toContain("silence.wav")
+    // Three screens of 2 s, stretched alike to hold every line and a breath.
+    const said = n * 2500 + n * BREATH_MS
+    const factor = said / 6000
+    expect(stop?.overrides.cues?.filter((c) => c.sound === "click")).toEqual([
+      { sound: "click", atMs: 800 + Math.ceil(2000 * factor) - 400 },
+      { sound: "click", atMs: 800 + 2 * Math.ceil(2000 * factor) - 400 },
+      { sound: "click", atMs: 800 + 3 * Math.ceil(2000 * factor) - 400 },
+    ])
+    // Only the stops are voiced: the cards stay silent (C945).
+    expect(laid.map((l) => l.file)).toEqual([
+      "stop-1.wav",
+      "stop-2.wav",
+      "stop-3.wav",
+      "stop-4.wav",
+    ])
+    for (const shot of cut.shots)
+      if (shot.id.startsWith("chapter") || shot.id === "silence")
+        expect([shot.spoken, shot.take]).toEqual([undefined, undefined])
   })
 
-  it("says what real use shows of each stop, and names the modules nobody opens", () => {
+  it("says what real use shows of each stop after its narration, and names the modules nobody opens", () => {
     const cut = walkthroughCutList(jobs, walkOf(15), friction)
     const ids = cut.shots.map((s) => s.id)
     expect(ids.slice(-2)).toEqual(["silence", "close"])
-    const said = (id: string): string => {
-      const spoken = cut.shots.find((s) => s.id === id)?.spoken
-      return spoken?.role === "walk" ? spoken.lines.join(" ") : ""
+    const extra = (i: number): ReadonlyArray<string> => {
+      const spoken = cut.shots.find((s) => s.id === `stop-${String(i)}`)?.spoken
+      const lines = spoken?.role === "walk" ? spoken.lines : []
+      return lines.slice(jobs.fill.chapters[i - 1]?.narration.length)
     }
-    expect(said("chapter-1")).toBe(
-      "In the last four weeks, it was finished 14 times, left part-way 6 times, about 41 seconds a visit."
+    expect(extra(1)).toEqual([
+      "In the last four weeks, I spent time on this step 20 times and moved on from it 14 times; a stretch here runs about 41 seconds.",
+    ])
+    expect(extra(2)).toEqual([
+      "In the last four weeks, I spent time on this step 7 times and moved on from it fewer than 5 times; a stretch here runs about 2 minutes.",
+      "After each application I rate how hard it felt; I've rated fewer than 5 so far.",
+    ])
+    expect(extra(4)).toEqual([
+      WALKTHROUGH_WORDS.nothingKept.said,
+      "Some of what I built, I haven't opened lately: aph, for 6 weeks. How I use 11 other modules isn't measured yet.",
+    ])
+    const card = (id: string): unknown => {
+      const picture = cut.shots.find((s) => s.id === id)?.picture
+      return picture?.kind === "composition" ? picture.variables.notes : null
+    }
+    expect(card("chapter-1")).toBe(
+      "Last 4 weeks|Here 20 times|Moved on 14 times|About 41 s a stretch"
     )
-    expect(said("chapter-2")).toBe(
-      "In the last four weeks, it was finished fewer than 5 times, left part-way 7 times."
-    )
-    expect(said("chapter-4")).toBe(WALKTHROUGH_WORDS.nothingKept.said)
-    expect(said("silence")).toBe(
-      "Not opened in the last four weeks: aph, for 6 weeks. 11 more aren't measured, so they can't be called quiet."
-    )
-    // Without home's aggregate, the cards say nothing and there's no silence card.
-    expect(
-      walkthroughCutList(jobs, walkOf(15)).shots.map((s) => s.id)
-    ).not.toContain("silence")
+    // Without home's aggregate, nothing is measured and there's no silence card.
+    const bare = walkthroughCutList(jobs, walkOf(15))
+    expect(bare.shots.map((s) => s.id)).not.toContain("silence")
+    expect(bare.shots.find((s) => s.id === "stop-1")?.spoken).toEqual({
+      role: "walk",
+      lines: jobs.fill.chapters[0]?.narration,
+    })
   })
 
-  it("names only places the registry has, for Jobs' stops and the sample", () => {
-    const has = (p: {
-      pipeline: string
-      affordance: string
-      place: string
-    }): boolean =>
-      PIPELINES.find((x) => x.id === p.pipeline)
-        ?.affordances.find((a) => a.id === p.affordance)
-        ?.places?.some((c) => c.id === p.place) === true
-    for (const c of jobs.fill.chapters)
-      if (c.place) expect(has(c.place)).toBe(true)
-    for (const p of friction.places) expect(has(p)).toBe(true)
-    for (const m of friction.modules)
-      expect(PIPELINES.some((x) => x.id === m.pipeline)).toBe(true)
+  it("keeps an aggregate report:vestiges reads", () => {
+    expect(MODULE_OPENS_SCHEMA).toBe(FRICTION_SCHEMA)
+  })
+
+  it("refuses a stop's place home's aggregate doesn't hold", () => {
+    const words = {
+      ...jobs,
+      fill: {
+        ...jobs.fill,
+        chapters: jobs.fill.chapters.map((c, i) =>
+          i === 0
+            ? {
+                ...c,
+                measures: [
+                  {
+                    kind: "place" as const,
+                    pipeline: "jobs",
+                    affordance: "todays-pick",
+                    place: "nowhere",
+                  },
+                ],
+              }
+            : c
+        ),
+      },
+    }
+    expect(walkthroughProblems(words, walkOf(15), friction)).toEqual([
+      "chapter 1 names jobs/todays-pick/nowhere, which home's aggregate doesn't hold",
+    ])
+  })
+
+  it("never says every module was opened when none is measured, and keeps long names on the card", () => {
+    const none = { silent: [], measured: 0, notMeasured: 13 }
+    expect(silenceNotes(none)).toBe(
+      WALKTHROUGH_WORDS.silence.nothingMeasured.drawn
+    )
+    expect(silenceSaid(none)).toBe(
+      WALKTHROUGH_WORDS.silence.nothingMeasured.said
+    )
+    const long = {
+      silent: [
+        { pipeline: "x", name: "Playoff delta by the week", weeksQuiet: 5 },
+      ],
+      measured: 1,
+      notMeasured: 0,
+    }
+    expect(silenceNotes(long)).toBe("Playoff delta b…: 5 weeks")
+    expect(silenceSaid(long)).toContain(
+      "Playoff delta by the week, for 5 weeks"
+    )
   })
 
   it("says it in the viewer's terms, never the machinery's", () => {
     const all = [
-      frictionNotes({ kind: "not-measured" }),
-      frictionSaid({ kind: "not-measured" }),
+      measureNotes([{ kind: "not-measured" }]),
+      ...measureSaid([{ kind: "not-measured" }]),
       ...walkthroughLines(walkthroughCutList(jobs, walkOf(15), friction)).map(
         (l) => l.said
       ),

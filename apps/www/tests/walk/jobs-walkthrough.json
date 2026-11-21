@@ -26,38 +26,73 @@
       {
         "title": "This morning’s|picks",
         "from": 0,
-        "place": {
-          "pipeline": "jobs",
-          "affordance": "todays-pick",
-          "place": "read"
-        }
+        "narration": [
+          "I'm looking for work, and this is where my mornings start.",
+          "A few postings wait each day, weighed against my own résumé, so the search fits before the day does.",
+          "When I pass on one, I say why, and the reason stays with it."
+        ],
+        "measures": [
+          {
+            "kind": "place",
+            "pipeline": "jobs",
+            "affordance": "todays-pick",
+            "place": "read"
+          }
+        ]
       },
       {
         "title": "Applying",
         "from": 3,
-        "place": {
-          "pipeline": "jobs",
-          "affordance": "todays-pick",
-          "place": "apply"
-        }
+        "narration": [
+          "Applying is where a search usually stalls, so I made it small.",
+          "Each application gets a résumé made for that posting, from one copy I keep up to date.",
+          "All of it lives on my phone and on a server in my home."
+        ],
+        "measures": [
+          {
+            "kind": "place",
+            "pipeline": "jobs",
+            "affordance": "todays-pick",
+            "place": "apply"
+          },
+          {
+            "kind": "debrief"
+          }
+        ]
       },
       {
         "title": "The interview|week",
         "from": 5,
-        "place": {
-          "pipeline": "jobs",
-          "affordance": "interview-week",
-          "place": "say"
-        }
+        "narration": [
+          "Interviewing is a skill, so I practise it like one.",
+          "Each week, a made-up company sends a week of questions, and I answer them out loud, wherever I am.",
+          "Hearing myself back is the part that teaches."
+        ],
+        "measures": [
+          {
+            "kind": "place",
+            "pipeline": "jobs",
+            "affordance": "interview-week",
+            "place": "say"
+          }
+        ]
       },
       {
         "title": "The record",
         "from": 14,
-        "place": {
-          "pipeline": "jobs",
-          "affordance": "record",
-          "place": "record"
-        }
+        "narration": [
+          "Nothing here is thrown away.",
+          "Every application and every answer I've said is kept, so months from now I can see how far I've come.",
+          "I built this for my own search, and it's published as it is, for anyone to see how it works."
+        ],
+        "measures": [
+          {
+            "kind": "place",
+            "pipeline": "jobs",
+            "affordance": "record",
+            "place": "record"
+          }
+        ]
       }
     ],
     "cta": "Some UI|for Android",
