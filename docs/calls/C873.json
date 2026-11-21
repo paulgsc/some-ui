@@ -1,0 +1,17 @@
+{
+  "id": "C873",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:crates/scenario_engine/README.md",
+    "server:crates/game_scenarios"
+  ],
+  "chose": "A bite's unit (offense, defense, special teams or coaching, and whose) is part of catalog v2, which had not been released yet, not a new catalog v3. A bite said under catalog 1 carries no unit. The coordinator agreed on 2026-11-21.",
+  "options": [
+    "Put units into the unreleased catalog v2 (chosen): one version for one release, and no phone has read v2 yet.",
+    "Cut catalog v3 for units: a clean version per change, but a version no phone ever read only as v2."
+  ],
+  "gray": "The catalog's versioning rule says what a version must hold once released, not whether an unreleased version can still grow.",
+  "undo": "Move units into a CATALOG_VERSION 3 in game_scenarios and some-ui's parseCatalog, leaving v2 without them.",
+  "refs": ["#3049", "#2074", "server#1083"]
+}

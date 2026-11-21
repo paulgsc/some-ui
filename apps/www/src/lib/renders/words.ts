@@ -305,21 +305,38 @@ function refusalLine(feed: string, refusal: Refusal): string {
 }
 
 /**
- * Why home set a cards essay aside over a spoken card's take (WALK7;
- * paulgsc/server#1052), by home's word for each. A take home hasn't
- * finished listening to is no refusal: the essay waits, unseen here, as a
- * Rust Rounds essay waits for its takes.
+ * Why home set a cards essay aside before making it (WALK7,
+ * paulgsc/server#1052; SNIPS2, server#1076), by home's word for each: its
+ * `essay_media` refusals, a closed set. A take home hasn't finished listening
+ * to is no refusal: the essay waits, unseen here, as a Rust Rounds essay
+ * waits for its takes.
  */
-const TAKE_REFUSAL_WORDS: ReadonlyMap<string, string> = new Map([
-  [
-    "take-missing",
+const ESSAY_REFUSALS = [
+  "take-missing",
+  "take-unheard",
+  "snip-missing",
+  "snip-gone",
+  "clip-missing",
+] as const
+
+type EssayRefusal = (typeof ESSAY_REFUSALS)[number]
+
+const isEssayRefusal = (reason: string): reason is EssayRefusal =>
+  ESSAY_REFUSALS.some((known) => known === reason)
+
+const ESSAY_REFUSAL_WORDS = {
+  "take-missing":
     "A spoken card in it plays a recording home doesn't have, or one you deleted. It isn't made until the essay names one home keeps.",
-  ],
-  [
-    "take-unheard",
+  "take-unheard":
     "Home couldn't make out a recording a spoken card in it plays. It isn't made until the essay names one home heard.",
-  ],
-])
+  "snip-missing":
+    "It shows a picture of the app that home couldn't get. It isn't made until home can fetch that picture.",
+  // C875: home never captures pictures itself; the owner runs it again.
+  "snip-gone":
+    "It shows a picture of the app that GitHub no longer keeps. Run Snips Capture again at the same version, and home makes it then.",
+  "clip-missing":
+    "It shows a clip home doesn't have. It isn't made until the essay names a clip home keeps.",
+} as const satisfies Record<EssayRefusal, string>
 
 /** What stopped a render, in the person's terms. */
 export function failedLine(failed: RenderFailed): string {
@@ -328,11 +345,12 @@ export function failedLine(failed: RenderFailed): string {
     return (
       PREVIEW_WORDS.failedWhy(failed.reason) ?? PREVIEW_WORDS.standing.failed
     )
-  const take =
-    failed.feed === "cards-essay" && failed.reason !== undefined
-      ? TAKE_REFUSAL_WORDS.get(failed.reason)
-      : undefined
-  if (take !== undefined) return take
+  if (
+    failed.feed === "cards-essay" &&
+    failed.reason !== undefined &&
+    isEssayRefusal(failed.reason)
+  )
+    return ESSAY_REFUSAL_WORDS[failed.reason]
   const refusal = refusalOf(failed)
   if (refusal !== null) return refusalLine(failed.feed, refusal)
   return failed.by === "home"
