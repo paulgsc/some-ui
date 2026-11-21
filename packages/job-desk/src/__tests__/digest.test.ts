@@ -47,18 +47,16 @@ describe("the sample digest's postings", () => {
  * SD1: the sample digest carries no real person's contact details.
  * - Claim: every paste kit's Email, Location, GitHub and Portfolio field in
  *   `sample.digest.json` is the made-up person's below, and every email
- *   address and web address anywhere in the file is on a name reserved for
+ *   address and every web address on a common top-level domain, with or
+ *   without a scheme, anywhere in the file, is on a name reserved for
  *   examples (RFC 2606, RFC 6761).
- * - Family: every pick of the sample, every such field, and every address in
- *   its text. Every build that shows the sample (the Pages viewer's Jobs wing,
- *   the APK walks and walkthroughs that film it) reads this one file, so
- *   holding the file holds them all.
- * - Proof: the two tests below, over every pick and the whole file.
- * - Tolerance: free text that names no address (cover letters, drafted
+ * - Family: every pick of the sample, every such field, every address in its
+ *   text, and every build that shows it (each reads this file, `sample.ts`).
+ * - Proof: the two tests below, over every pick and the whole parsed file.
+ * - Tolerance: free text that names no such address (cover letters, drafted
  *   answers) is read by review, not by these tests.
  */
 describe("the sample digest's paste kits (SD1)", () => {
-  /** A made-up person, on names reserved for examples. */
   const PERSON: Readonly<Record<string, string>> = {
     Email: "sam.rivera@example.com",
     Location: "Springfield, IL",
@@ -66,9 +64,17 @@ describe("the sample digest's paste kits (SD1)", () => {
     Portfolio: "https://sam-rivera.example",
   }
 
-  /** A domain reserved for examples: example.com, .net, .org, or under .example. */
+  /** RFC 2606 and RFC 6761. */
   const reserved = (host: string): boolean =>
     /(^|\.)example\.(com|net|org)$/.test(host) || host.endsWith(".example")
+
+  /**
+   * An email address's domain, or a web address's host, scheme or not: on
+   * the top-level domains a person's address is likely on, so file names
+   * (`.json`, `.py`) and versions are not read as hosts.
+   */
+  const ADDRESS =
+    /(?:[\w.+-]+@|(?:https?:\/\/)?)((?:[a-z0-9-]+\.)+(?:com|org|net|io|dev|app|me|co|ai|us|edu|gov|info|example))(?![a-z0-9-])/gi
 
   it("give a made-up person's contact details, in every pick", () => {
     const contacts = sample().picks.flatMap((pick) =>
@@ -81,11 +87,18 @@ describe("the sample digest's paste kits (SD1)", () => {
   })
 
   it("name only reserved domains, in any address anywhere in the file", () => {
-    const emails = [...SAMPLE.matchAll(/[\w.+-]+@([\w-]+(?:\.[\w-]+)+)/g)]
-    const urls = [...SAMPLE.matchAll(/https?:\/\/([^/"\s]+)/g)]
-    expect(emails.length + urls.length).toBeGreaterThan(0)
-    for (const [found, host = ""] of [...emails, ...urls]) {
-      expect(reserved(host), found).toBe(true)
+    // Parsed and written again, so an escaped `\/` or `\u0040` reads as itself.
+    const text = JSON.stringify(JSON.parse(SAMPLE))
+    for (const [found, host = ""] of text.matchAll(ADDRESS)) {
+      expect(reserved(host.toLowerCase()), found).toBe(true)
+    }
+    for (const real of [
+      "a@mail.io",
+      "HTTPS://Site.dev/x",
+      "github.com/someone",
+      "www.someone.me",
+    ]) {
+      expect([...real.matchAll(ADDRESS)].length, real).toBe(1)
     }
   })
 })
