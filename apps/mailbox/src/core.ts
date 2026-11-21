@@ -442,6 +442,134 @@ function pickupRefusal(
 }
 
 /**
+ * The keys of a `some-ui.snips/1` body: a capture's own `manifest.json`, as
+ * home fetched it with its bundle (SNIPS2's fourth step, paulgsc/some-ui#3116;
+ * the bundle's contract is `docs/snips.md` at the repo's root). Any other is
+ * refused.
+ */
+const SNIPS_KEYS: ReadonlySet<string> = new Set([
+  "schema",
+  "appVersion",
+  "commit",
+  "run",
+  "frozenAt",
+  "data",
+  "snips",
+  "unreached",
+])
+/** The keys of one snip's record (`SnipRecordSchema` in `@some-ui/video-render`). */
+const SNIP_KEYS: ReadonlySet<string> = new Set([
+  "id",
+  "surface",
+  "build",
+  "route",
+  "path",
+  "viewport",
+  "width",
+  "height",
+  "scale",
+  "regions",
+  "appVersion",
+  "module",
+  "shows",
+  "description",
+  "image",
+  "recording",
+])
+/** The keys of a snip's file: its name in the bundle, kind, size and SHA-256, never its bytes. */
+const SNIP_FILE_KEYS: ReadonlySet<string> = new Set([
+  "name",
+  "kind",
+  "bytes",
+  "sha256",
+])
+const SNIP_FILE_KINDS: ReadonlySet<unknown> = new Set(["png", "mp4", "webm"])
+/** A capture's commit: its 40 hex digits, as the bundle's name carries them. */
+const COMMIT = /^[0-9a-f]{40}$/
+const NO_PICTURE = "a snip list carries no picture: a capture makes it again"
+const NO_DRIVE_SNIP = "a snip list names no Drive file"
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+/** Why one snip's file (`image` or `recording`) is refused, or `null`. */
+function snipFileRefusal(file: unknown, what: string): string | null {
+  if (!isPlainObject(file))
+    return `${what} must be the file's name, kind, size and SHA-256`
+  const extra = Object.keys(file).find((key) => !SNIP_FILE_KEYS.has(key))
+  if (extra !== undefined)
+    return `${extra} is not part of a snip's file: only its name, kind, size and SHA-256`
+  if (typeof file.name !== "string" || file.name === "")
+    return `${what} must name its file`
+  if (!SNIP_FILE_KINDS.has(file.kind))
+    return `${what} must be a png, mp4 or webm`
+  if (
+    typeof file.bytes !== "number" ||
+    !Number.isSafeInteger(file.bytes) ||
+    file.bytes < 1
+  ) {
+    return `${what} must say its size in bytes`
+  }
+  if (typeof file.sha256 !== "string" || !SHA256_HEX.test(file.sha256)) {
+    return `${what} must carry its SHA-256, in lower-case hex`
+  }
+  return null
+}
+
+/**
+ * README, "What a put must satisfy": a snip list is the capture's manifest,
+ * named for its commit, every record its own keys and each file named by
+ * its hash, never its picture (owner, 2026-11-17, #3114: "the routine never
+ * sees images, only metadata").
+ */
+function snipsRefusal(
+  body: Readonly<Record<string, unknown>>,
+  text: string,
+  name: string
+): string | null {
+  const shape = shapeRefusal(
+    body,
+    text,
+    SNIPS_KEYS,
+    NO_PICTURE,
+    NO_DRIVE_SNIP,
+    "snip list"
+  )
+  if (shape !== null) return shape
+  if (typeof body.commit !== "string" || !COMMIT.test(body.commit)) {
+    return "commit must be the captured commit's 40 hex digits"
+  }
+  if (name !== `snips-${body.commit}.json`)
+    return "the name must carry the commit"
+  if (body.data !== "sample")
+    return "data must be sample: a capture shows sample data only"
+  if (!Array.isArray(body.unreached)) return "unreached must be a list"
+  if (!Array.isArray(body.snips)) return "snips must be a list"
+  const seen = new Set<unknown>()
+  for (const snip of body.snips) {
+    if (!isPlainObject(snip)) return "each snip must be a record"
+    const extra = Object.keys(snip).find((key) => !SNIP_KEYS.has(key))
+    if (extra !== undefined) {
+      if (AUDIO_KEY.test(extra) || /image|picture|png|pixels/i.test(extra))
+        return NO_PICTURE
+      return `${extra} is not part of a snip's record`
+    }
+    if (typeof snip.id !== "string" || snip.id === "")
+      return "each snip must carry its id"
+    if (seen.has(snip.id)) return "each snip is listed once"
+    seen.add(snip.id)
+    const image = snipFileRefusal(snip.image, "image")
+    if (image !== null) return image
+    if (snip.recording !== undefined) {
+      const recording = snipFileRefusal(snip.recording, "recording")
+      if (recording !== null) return recording
+    }
+  }
+  return null
+}
+
+/**
  * README, "What a put must satisfy": the routine's answer to a pickup is the
  * take, the move it answers and the issue it filed, and nothing else.
  */
@@ -1278,6 +1406,14 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
     schema: "some-ui.take-picked/1",
     refuses: pickedRefusal,
   },
+  {
+    // A capture's list of snips, its manifest as home fetched it with the
+    // bundle, named for the commit: records, never a picture (SNIPS2, #3116).
+    folder: "snips",
+    name: /^snips-[0-9a-f]{40}\.json$/,
+    schema: "some-ui.snips/1",
+    refuses: snipsRefusal,
+  },
 ]
 
 /** The Worker secrets. An unset or empty one never authenticates anyone. */
@@ -1326,7 +1462,12 @@ const RECORDS: ReadonlyArray<Folder> = [
   "picked",
 ]
 
-const ALL: ReadonlyArray<Folder> = [...RECORDS, "index"]
+/**
+ * Every folder: the records, home's index, and `snips`, a capture's list,
+ * which nothing archives or asks back: home keeps no copy of what a capture
+ * can make again (owner, 2026-11-21, #3114; `docs/calls/C946.json`).
+ */
+const ALL: ReadonlyArray<Folder> = [...RECORDS, "index", "snips"]
 
 /** Every record but `reflection`, `prompt`, `feedback` and `pickup`, which the routine never asks back (README, "Who may do what"; MI6). */
 const ASKED: ReadonlyArray<Folder> = RECORDS.filter(
@@ -1378,6 +1519,7 @@ const ROLES: ReadonlyArray<Grant> = [
       "prompt",
       "feedback",
       "pickup",
+      "snips",
     ],
     ask: [],
     move: [],

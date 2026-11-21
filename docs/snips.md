@@ -139,7 +139,11 @@ invariant 6). Each pass:
    keeps only the owner's own marks and which snip each essay used. Nothing
    CI can make again is kept twice: home keeps no picture library, and
    drops its copies once the video is made (owner, 2026-11-21).
-4. puts each record, never an image, in the mailbox.
+4. puts the bundle's `manifest.json`, its records and never an image, in the
+   mailbox's `snips` folder as `snips-<commit>.json` (`apps/mailbox/README.md`,
+   C946), so the routine can name a snip by its id and commit. The same
+   bundle fetched again is the same bytes and adds nothing. The mailbox
+   never archives a list: the commit's capture makes it again.
 
 The token is `SNIPS_GITHUB_TOKEN`, a fine-grained token with Actions: read
 on paulgsc/some-ui only, in home's encrypted settings. Making it is the

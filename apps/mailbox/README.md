@@ -24,7 +24,9 @@ episode** (`feedback`), the moment and categories the owner picked (SFEED6), whi
 files as a pending issue. For Studio's conveyor: each **take ready for pickup** (`pickup`), its
 id, what home heard, its labels and that move's number, never its audio or the move's comment,
 and the routine's **answer** to each (`picked`), the issue it filed the take as, which home
-records as the take's pickup (CONVEYOR3, #2875). For the Build Journal:
+records as the take's pickup (CONVEYOR3, #2875). For the video essays: each **snip list**
+(`snips`), the manifest of a capture of the app's screens that home fetched (SNIPS2, #3116),
+so the routine can name a snip in an essay without ever seeing a picture. For the Build Journal:
 the build-journal session's **list of the Studio takes Drive holds** (`drive-takes-…` in
 `brief`), SHA-256s only, so home can tell the phone which takes Drive has too. Each side
 reaches it with its own token, so the files move between them without a hand-carried step.
@@ -47,6 +49,7 @@ cloud routine ◀──GET reflection── [ mailbox ] ◀──PUT reflection�
 cloud routine ◀──GET prompt── [ mailbox ] ◀──PUT prompt── home ◀── phone (Ask for the next scene)
 cloud routine ◀──GET pickup── [ mailbox ] ◀──PUT pickup── home ◀── phone (a take moved to ready for pickup)
 cloud routine ──PUT picked──▶ [ mailbox ] ◀──GET picked── home ──▶ phone (picked up, with its issue)
+cloud routine ◀──GET snips── [ mailbox ] ◀──PUT snips── home ◀── GitHub (a capture's bundle it fetched)
 build journal ──PUT brief (drive-takes)──▶ [ mailbox ] ◀──GET brief── home ──▶ phone (Drive has it)
                                            [ mailbox ] ──ring──▶ home (a socket home holds open)
 ```
@@ -92,7 +95,10 @@ Nothing is deleted for good: the bytes are home's before the mailbox lets them g
 A written reflection (`reflection`), a drama prompt (`prompt`), a note on an episode
 (`feedback`) and a take ready for pickup (`pickup`) are archived the same way, except that home lists each folder only once a file it
 put there is old enough, and the routine cannot ask for one back (see "Who may do what"). Home's index is not archived (above, "What it keeps"): home can compute
-the same bytes again from what it keeps.
+the same bytes again from what it keeps. Nor is a snip list (`snips`): it is a capture's
+manifest, which the same commit's capture makes again, and home keeps no copy of what a capture
+can make (owner, 2026-11-21, #3114; `docs/calls/C946.json`). Each list stays live, and no role
+lists it as archived or asks it back.
 
 ## API
 
@@ -112,7 +118,7 @@ Every request needs `Authorization: Bearer <token>`. Every answer is JSON, or th
 | anything else                                            | `404`; a method the path does not take is `405` with `Allow`. A missing or wrong token is `401`, a token that may not do this is `403`, and storage failing is `503`.                                                                                                                                                                                   |
 
 The folders are `brief`, `decisions`, `scout`, `scene`, `drama`, `run`, `opened`, `leetype`,
-`leetype-log`, `transcript`, `index`, `reflection`, `prompt`, `feedback`, `pickup` and `picked`. `brief` also holds the
+`leetype-log`, `transcript`, `index`, `reflection`, `prompt`, `feedback`, `pickup`, `picked` and `snips`. `brief` also holds the
 build-journal session's lists of the takes Drive holds (`drive-takes-…`) and the Monday
 routine's weeks of Rust Rounds (`rust-week-…`) and the essays that answer them
 (`rust-essay-…`), and the interview week's routine's weeks (`interview-week-…`), which home finds in the listing it makes of
@@ -151,11 +157,11 @@ WebSocket open on `GET /v1/bell`, and the mailbox rings it there (MBP1,
 
 ### Who may do what
 
-| Secret          | Role      | May                                                                                                                                                                                                          |
-| --------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ROUTINE_TOKEN` | `routine` | read every folder; put `brief`, `scene`, `drama`, `run`, `leetype` and `picked`; list what is archived and ask for it back, in every folder but `index`, `reflection`, `prompt`, `feedback` and `pickup`     |
-| `HOME_TOKEN`    | `home`    | read `brief`, `scene`, `drama`, `run`, `leetype` and `picked`; put `decisions`, `scout`, `opened`, `leetype-log`, `transcript`, `index`, `reflection`, `prompt`, `feedback` and `pickup`; listen on the bell |
-| `ARCHIVE_TOKEN` | `archive` | read every folder; archive a file, put an archived one back and list the open asks, in every folder but `index`                                                                                              |
+| Secret          | Role      | May                                                                                                                                                                                                                   |
+| --------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ROUTINE_TOKEN` | `routine` | read every folder; put `brief`, `scene`, `drama`, `run`, `leetype` and `picked`; list what is archived and ask for it back, in every folder but `index`, `reflection`, `prompt`, `feedback`, `pickup` and `snips`     |
+| `HOME_TOKEN`    | `home`    | read `brief`, `scene`, `drama`, `run`, `leetype` and `picked`; put `decisions`, `scout`, `opened`, `leetype-log`, `transcript`, `index`, `reflection`, `prompt`, `feedback`, `pickup` and `snips`; listen on the bell |
+| `ARCHIVE_TOKEN` | `archive` | read every folder; archive a file, put an archived one back and list the open asks, in every folder but `index` and `snips`                                                                                           |
 
 The routine role is every scheduled routine's: the Jobs digest, the study reflections and,
 once it is scheduled, the LeetType review each put to their own folders.
@@ -216,7 +222,8 @@ role, and it is the owner's call, so it is not built.
   `pickup-<note>-<seq>.json` and `picked` takes `picked-<note>-<seq>.json`, named for the
   take's id (as a transcript's `<note>`) and the number of its ready-for-pickup move on home
   (from 1, no leading zero), so a take moved to ready again later goes under a new name and an
-  answer is named as the pickup it answers. `brief` also takes `drive-takes-YYYYMMDDTHHMMSSZ.json`
+  answer is named as the pickup it answers; and `snips` takes `snips-<commit>.json`, named for
+  the captured commit's 40 lower-case hex digits, which is its `commit`. `brief` also takes `drive-takes-YYYYMMDDTHHMMSSZ.json`
   (MB2, the owner's route a on paulgsc/some-ui#2401), named for when the build-journal session
   listed Drive's takes folder, in UTC to the second, so each list goes under a new name.
   `brief` also takes `rust-week-YYYY-wNN.json` (MB2, RR12 paulgsc/some-ui#2687), a week of Rust
@@ -236,7 +243,7 @@ role, and it is the owner's call, so it is not built.
   must be UTF-8 JSON with no byte-order mark.
 - **Schema**: the top-level `schema` must be `some-ui.job-digest/1`, `some-ui.job-decisions/1`,
   `some-ui.job-scouts/1`, `some-ui.routine-scene/1`, `some-ui.routine-drama/1`, `some-ui.routine-run/1`,
-  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1`, `some-ui.reflection/1`, `some-ui.drama-prompt/1`, `some-ui.episode-note/1`, `some-ui.take-pickup/1` or `some-ui.take-picked/1` to match the folder (and `some-ui.drive-takes/1` for a list of Drive's takes in `brief`, `some-ui.rust-week/2` (or the earlier `/1`) for a week of Rust Rounds, `some-ui.rust-essay/1` for an essay's script, `some-ui.interview-week/2` (or the earlier `/1`) for a week of mock interview, `some-ui.interview-essay/1` for an interview essay's script). The Worker checks that and nothing deeper, except for a transcript, an index, a reflection, a prompt, a note on an episode, a take ready for pickup, an answer to one, a list of Drive's takes, a week's `id`, which must be the name's (below), and an interview week's question and card ids; the readers validate the full shape.
+  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1`, `some-ui.reflection/1`, `some-ui.drama-prompt/1`, `some-ui.episode-note/1`, `some-ui.take-pickup/1`, `some-ui.take-picked/1` or `some-ui.snips/1` to match the folder (and `some-ui.drive-takes/1` for a list of Drive's takes in `brief`, `some-ui.rust-week/2` (or the earlier `/1`) for a week of Rust Rounds, `some-ui.rust-essay/1` for an essay's script, `some-ui.interview-week/2` (or the earlier `/1`) for a week of mock interview, `some-ui.interview-essay/1` for an interview essay's script). The Worker checks that and nothing deeper, except for a transcript, an index, a reflection, a prompt, a note on an episode, a take ready for pickup, an answer to one, a snip list, a list of Drive's takes, a week's `id`, which must be the name's (below), and an interview week's question and card ids; the readers validate the full shape.
 - **A scene** is `{"schema":"some-ui.routine-scene/1","answers":"<reflection>","title":"<the
 scene folder's name>","decks":[<read-aloud deck>,<lens deck>]}`, each deck exactly as the
   phone's word set check takes it. **A drama** is `{"schema":"some-ui.routine-drama/1",
@@ -434,6 +441,20 @@ Drive file: home keeps the audio`.
   ready for pickup, and otherwise skips it, as it skips any stale move. The Worker holds it to
   those keys and no other, a name that carries the body's `note` and `seq`, and an `issue` of
   that form.
+- **A snip list** is a capture's own `manifest.json`, byte for byte as home fetched it with
+  its bundle (`docs/snips.md` at the repo's root, "The bundle"):
+  `{"schema":"some-ui.snips/1","appVersion","commit","run","frozenAt","data":"sample","snips":[…],"unreached":[…]}`.
+  Home puts one for each bundle it fetches, so the routine can name a snip by its `id` and
+  `commit` in an essay (SNIPS2's fourth step, #3116; paulgsc/server#1082). The same commit's
+  bundle fetched again is the same bytes, so it adds nothing. A list carries records and never
+  a picture (owner, 2026-11-17, #3114: "the routine never sees images, only metadata"), and
+  the Worker holds that itself: only those keys, a name that carries the body's `commit`,
+  `data` of `sample`, each snip once by its `id` with only its record's keys
+  (`SnipRecordSchema` in `@some-ui/video-render`), and each `image` and `recording` only
+  `{"name","kind","bytes","sha256"}`, a `png`, `mp4` or `webm` named by its size and SHA-256.
+  A key that names a picture, a `data:` URI or a run of 256 or more base64 characters is
+  refused with `a snip list carries no picture: a capture makes it again`. The owner's marks on
+  a snip are not in it: they are home's, kept by the snip's id (SNIPS3).
 - **A list of the takes Drive holds** is
   `{"schema":"some-ui.drive-takes/1","at","takes":[{"sha256"}]}`: when the build-journal
   session listed Drive's Build Journal takes folder (an instant, which the name carries to the
@@ -623,10 +644,10 @@ how each was checked when this workspace landed.
   [#2142](https://github.com/paulgsc/some-ui/issues/2142): "the bell is `home`'s only"), and
   it holds exactly three roles: `routine` (get every folder, put `brief`, `scene`,
   `drama`, `run`, `leetype` and `picked`, ask every folder but `index`, `reflection`, `prompt`,
-  `feedback` and `pickup`), `home`
+  `feedback`, `pickup` and `snips`), `home`
   (get `brief`, `scene`, `drama`, `run`, `leetype` and `picked`, put `decisions`, `scout`, `opened`,
-  `leetype-log`, `transcript`, `index`, `reflection`, `prompt`, `feedback` and `pickup`) and `archive` (get every folder, move
-  every folder but `index`; owner, 2026-10-23, and `scene` and `drama` the same day; `run` and
+  `leetype-log`, `transcript`, `index`, `reflection`, `prompt`, `feedback`, `pickup` and `snips`) and `archive` (get every folder, move
+  every folder but `index` and `snips`; owner, 2026-10-23, and `scene` and `drama` the same day; `run` and
   `opened` 2026-10-24; `leetype` and `leetype-log` 2026-10-24 too; `transcript` 2026-10-25;
   `index` 2026-10-31, paulgsc/server#509, and kept out of `ask` and `move` the same day, since
   it is a view and not a record; `reflection` 2026-10-26, paulgsc/some-ui#2174 decision D2, and
@@ -634,7 +655,10 @@ how each was checked when this workspace landed.
   and decision, paulgsc/some-ui#2179, kept out of `ask` for the same reason; `feedback`
   2026-11-07, SFEED decision 6 on paulgsc/some-ui#2670, "home writes down what I say … the
   existing daily reflections routine files each as a pending issue", kept out of `ask` for the
-  same reason; `pickup` and `picked` 2026-11-13, CONVEYOR3 #2875, the owner's decision that a take ready for pickup goes to the mailbox with its labels and its comment stays home (`C296`), `pickup` kept out of `ask` for the same reason).
+  same reason; `pickup` and `picked` 2026-11-13, CONVEYOR3 #2875, the owner's decision that a take ready for pickup goes to the mailbox with its labels and its comment stays home (`C296`), `pickup` kept out of `ask` for the same reason; `snips` 2026-11-21, SNIPS2 #3116, the owner's
+  decision of 2026-11-17 on #3114 that home publishes each snip's metadata, never an image, to the
+  mailbox for the routine, kept out of `ask` and `move` by the owner's ruling of 2026-11-21 that
+  home keeps no copy of what a capture can make again, `C946`).
   The routine's `brief` also takes its one-time backfill: a Jobs decisions or
   scouts file under its Drive name, only as the phone names one (`sharedDay`: a real calendar
   day, a decisions share number from 2 to 99, a scouts stamp at a real time) and only for a
@@ -673,7 +697,9 @@ how each was checked when this workspace landed.
   `essayRefusal`, loosens the `pickup` name or `pickupRefusal` (a key beyond `schema`,
   `note`, `ref`, `heard`, `labels`, `readyAt` and `seq`, a `comment` included, against `C296`),
   loosens the `picked` name or `pickedRefusal` (a key beyond `schema`, `note`, `seq` and
-  `issue`), loosens the `interview-week` name, `interviewWeekRefusal` or `takeIdsRefusal`,
+  `issue`), loosens the `snips` name or `snipsRefusal` (a key beyond the manifest's, a
+  record's or a file's own, a name that does not carry `commit`, or a `data` other than
+  `sample`), or adds `snips` to `RECORDS`, `ASKED` or the archive role's `move`, loosens the `interview-week` name, `interviewWeekRefusal` or `takeIdsRefusal`,
   or removes `kindOf`'s reading of `also`; when the PR description does not name the owner's
   decision to do so.
 - _Scope:_ `apps/mailbox/src/core.ts` and `wrangler.jsonc`.
@@ -784,6 +810,16 @@ how each was checked when this workspace landed.
   to `some-ui.interview-essay/1` and `essayRefusal("interview-essay")`, the Rust essay's check
   over its own name (an ISO week in `week.id`, the name's); `core.test.ts` pins that the routine
   puts one and home reads it, and that a misnamed essay and a non-week `week.id` are refused.
+  _Checked at the snips amendment (SNIPS2, [paulgsc/some-ui#3116](https://github.com/paulgsc/some-ui/issues/3116);
+  the owner's decision of 2026-11-17 on [paulgsc/some-ui#3114](https://github.com/paulgsc/some-ui/issues/3114),
+  "the routine never sees images, only metadata", and the ruling of 2026-11-21 that home keeps
+  no copy of what a capture can make again; `C946`):_ `ROLES` has three entries; `snips` is in
+  home's `put` and in `ALL`, so every role reads it but home, and is in none of `RECORDS`,
+  `ASKED` or `HOME_READS`, so nothing archives it, lists it as archived, asks it back or rings
+  for it; `core.test.ts` pins that home puts a list once and the same bytes again add nothing,
+  that the routine and the archive role read it and may not put it, that no role archives it,
+  lists it as archived or asks it back, that the name carries the commit, and that a body with
+  a picture, a key beyond a record's or a file's own, or `data` other than `sample` is refused.
 
 **MB3: No token reaches the repo or a log.**
 
