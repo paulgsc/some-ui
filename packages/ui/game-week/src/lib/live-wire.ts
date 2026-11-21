@@ -16,7 +16,7 @@ import { isScenarioId, UNITS } from "@some-ui/game-scenarios"
 
 import type { FeedChoice, Game, JustHappened, Offer, OfferCard } from "./feed"
 import type { RankedEntry } from "./ranked"
-import { TIERS } from "./ranked"
+import { isTeamCode, TIERS } from "./ranked"
 import { gameLabel, wantLine } from "./words"
 
 /** The one version of the messages this build speaks. */
@@ -79,8 +79,10 @@ function asGame(game: HomeGame): Game {
     label: gameLabel(game.home, game.away),
     want: wantLine(game.want),
     kickoff: game.kickoff,
-    home: game.home,
-    away: game.away,
+    // The teams a bite can be about, when home names them as it takes them.
+    ...(isTeamCode(game.home) && isTeamCode(game.away)
+      ? { home: game.home, away: game.away }
+      : {}),
   }
 }
 
@@ -105,8 +107,8 @@ function rankedOf(value: unknown): RankedEntry | null {
   if (tier === undefined) return null
   const unit = value.unit ?? null
   const side = value.unitSide ?? null
-  // A side is a team's code, never an empty one.
-  if (!(side === null || (isString(side) && side !== ""))) return null
+  // A side is a team's code, in the shape home takes back on a bite.
+  if (!(side === null || isTeamCode(side))) return null
   if (unit === null)
     return side === null ? { scenario: value.id, tier, unit: null } : null
   const named = UNITS.find((each) => each === unit)

@@ -286,6 +286,10 @@ describe("GameWeek", () => {
     expect(
       screen.getByRole("button", { name: WORDS.aboutTeam("SF") })
     ).toBeTruthy()
+    // Each control keeps its place as taps change it.
+    expect(screen.getByRole("button", { name: /^SEA defense/ })).toHaveClass(
+      "w-full"
+    )
     // A pick from the list would name nothing now: the bubble is away.
     expect(
       screen.queryByRole("button", { name: WORDS.everyScenario })
@@ -303,14 +307,15 @@ describe("GameWeek", () => {
     expect(text.indexOf(TIER_TITLES.always)).toBeLessThan(
       text.indexOf(TIER_TITLES.rest)
     )
-    expect(text).toContain("SEA defense")
+    expect(text).toContain(WORDS.legendLede(true))
+    expect(text).toContain("SF offense")
   })
 
   it("opens every scenario in a sheet over the screen, and closes it", () => {
     render(<GameWeek ports={ports(awayFeed)} outbox={outbox} />)
     fireEvent.click(screen.getByRole("button", { name: WORDS.everyScenario }))
     const sheet = screen.getByRole("dialog", { name: WORDS.legendTitle })
-    expect(sheet.textContent).toContain(WORDS.legendLede)
+    expect(sheet.textContent).toContain(WORDS.legendLede(false))
     // Away, every scenario is there, in the catalog's order, all in one tier.
     expect(sheet.textContent).toContain(TIER_TITLES.rest)
     expect(sheet.textContent).not.toContain(TIER_TITLES.now)

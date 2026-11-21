@@ -93,3 +93,11 @@ export function otherSide(
   const side = unit.side === teams.home ? teams.away : teams.home
   return { unit: unit.unit, side }
 }
+
+/**
+ * A team's code as home names it and takes it back on a bite: two to four
+ * capital letters ("SF", "JAX"), the shape home's voice upload accepts.
+ */
+export function isTeamCode(value: unknown): value is string {
+  return typeof value === "string" && /^[A-Z]{2,4}$/.test(value)
+}

@@ -36,12 +36,16 @@ export const WORDS = {
   undo: "Undo",
   settingsTitle: "How much to show",
   legendTitle: "Every scenario",
-  legendLede: "Most likely first. Tap one to talk about it.",
+  /** Whether home ranked it, or it is every scenario in the catalog's order. */
+  legendLede: (ranked: boolean): string =>
+    ranked
+      ? "Most likely first. Tap one to talk about it."
+      : "Tap one to talk about it.",
   /** The unit chip while a bite is said: one tap moves it on. */
-  unitChange: "Tap to change who it's about",
+  unitChange: "Tap for offense, defense, special teams or coaching",
   /** The team switch beside it: the other team, as its code. */
   aboutTeam: (team: string): string => `About ${team} instead`,
-  noUnit: "Who it's about",
+  noUnit: "Which side of the ball",
   recordingLabel: "Saying it",
   sayingFirst: "Saying it first",
 } as const

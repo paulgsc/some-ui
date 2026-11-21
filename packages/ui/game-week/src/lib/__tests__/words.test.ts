@@ -63,9 +63,11 @@ function everyPhrase(): Array<string> {
       )
     )
   )
-  const { yourTakes, aboutTeam, ...fixed } = WORDS
+  const { yourTakes, aboutTeam, legendLede, ...fixed } = WORDS
   return [
     ...Object.values(fixed),
+    legendLede(true),
+    legendLede(false),
     yourTakes(true),
     yourTakes(false),
     aboutTeam("CHI"),

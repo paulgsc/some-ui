@@ -34,7 +34,7 @@ import { MODE_RULES, MODES } from "@game-week/lib/modes"
 import type { OutboxPort } from "@game-week/lib/ports"
 import { quietFill } from "@game-week/lib/quiet"
 import type { RankedEntry } from "@game-week/lib/ranked"
-import { TIERS } from "@game-week/lib/ranked"
+import { otherSide, TIERS } from "@game-week/lib/ranked"
 import type { GameWeekPorts } from "@game-week/lib/runtime"
 import { createGameWeek } from "@game-week/lib/runtime"
 import {
@@ -224,11 +224,11 @@ const happened = (each: JustHappened): Said => ({
   context: each.context,
 })
 
+// Its unit is the machine's to give, from the list the bite answers to.
 const everyScenario = (entry: RankedEntry): Said => ({
   how: "every-scenario",
   scenario: entry.scenario,
   context: "",
-  unit: entry.unit,
 })
 
 /** The cards and what just happened, each starting (or naming) a bite. */
@@ -316,11 +316,7 @@ const Recording = ({
   const unitWords = unit === null ? WORDS.noUnit : unitLine(unit)
   // The team a tap on the switch makes it about.
   const other =
-    unit === null || teams === null
-      ? null
-      : unit.side === teams.home
-        ? teams.away
-        : teams.home
+    unit === null || teams === null ? null : otherSide(unit, teams).side
   return (
     <section
       aria-label={
@@ -344,22 +340,24 @@ const Recording = ({
           : scenarioOf(said.scenario).name}
       </p>
       {said.how !== "said-first" && (
-        <div className="flex items-center gap-2">
+        // Each control keeps its width and place as taps change what it
+        // says, so the next tap lands where the last one did (HS1).
+        <div className="grid grid-cols-[11rem_6rem] items-center gap-2">
           <Button
             variant="outline"
-            size="sm"
-            className="rounded-full"
+            className="min-h-12 w-full rounded-full"
             onClick={onUnit}
             // The name starts with what it shows, then says what a tap does.
             aria-label={`${unitWords}. ${WORDS.unitChange}`}
           >
             {unitWords}
           </Button>
-          {other !== null && (
+          {other === null ? (
+            <span aria-hidden className="min-h-12" />
+          ) : (
             <Button
               variant="ghost"
-              size="sm"
-              className="rounded-full"
+              className="min-h-12 w-full rounded-full"
               onClick={onSide}
               aria-label={WORDS.aboutTeam(other)}
             >
@@ -445,7 +443,9 @@ const Ranked = ({
   onPick: (entry: RankedEntry) => void
 }): JSX.Element => (
   <div className="space-y-4">
-    <p className="text-muted-foreground text-sm">{WORDS.legendLede}</p>
+    <p className="text-muted-foreground text-sm">
+      {WORDS.legendLede(list.some((entry) => entry.tier !== "rest"))}
+    </p>
     {TIERS.map((tier) => {
       const entries = list.filter((entry) => entry.tier === tier)
       if (entries.length === 0) return null
@@ -573,7 +573,8 @@ export const GameWeek = ({
   const { row } = bite
 
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-4 pb-8">
+    // The page ends clear of the bubble that floats over its foot.
+    <div className="mx-auto flex w-full max-w-md flex-col gap-4 pb-24">
       <header className="space-y-3">
         <div className="flex items-center gap-3">
           <SfBadge />
@@ -748,7 +749,11 @@ export const GameWeek = ({
                 onPick={(mode) => dispatch({ type: "pickMode", mode })}
               />
             ) : (
-              <Ranked list={rankedNow(state)} onPick={pickFromLegend} />
+              <Ranked
+                // Asking about a bite said first: the list as it stopped.
+                list={asking ? activity.ranked : rankedNow(state)}
+                onPick={pickFromLegend}
+              />
             )}
           </div>
         </SheetContent>

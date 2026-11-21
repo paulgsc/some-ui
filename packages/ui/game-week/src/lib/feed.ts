@@ -173,24 +173,25 @@ export function fixtureFeed(now: () => number = Date.now): FeedPort {
               rank: 6,
             },
           ],
-          // Ranked as a home that ranks would: SF with the ball.
+          // Ranked as home's engine would: every card now, in order, with
+          // SF wanted and SF with the ball.
           ranked: [
-            {
-              scenario: "in.third-long",
-              tier: "now",
-              unit: { unit: "offense", side: "SF" },
-            },
-            {
-              scenario: "in.play-call",
-              tier: "now",
-              unit: { unit: "offense", side: "SF" },
-            },
-            {
-              scenario: "in.sack",
-              tier: "now",
-              unit: { unit: "defense", side: "SEA" },
-            },
-            { scenario: "you.caught-it", tier: "always", unit: null },
+            ...(
+              [
+                "in.third-long",
+                "in.play-call",
+                "in.sack",
+                "in.penalty",
+                "in.big-play",
+                "in.red-zone",
+              ] as const
+            ).map((scenario) => ({
+              scenario,
+              tier: "now" as const,
+              unit: { unit: "offense" as const, side: "SF" },
+            })),
+            { scenario: "pre.stakes", tier: "always", unit: null },
+            { scenario: "post.pattern", tier: "always", unit: null },
           ],
           justHappened: [
             {

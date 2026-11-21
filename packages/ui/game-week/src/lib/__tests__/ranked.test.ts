@@ -246,6 +246,44 @@ describe("a bite's unit", () => {
     })
   })
 
+  it("for a bite said first, picked from the list, comes from the list as it stopped too", () => {
+    const asking = run(
+      saying({ how: "said-first" }),
+      { type: "done" },
+      { type: "taken", take: take(), id: "b1", at: T0 + 5_000 }
+    ).state
+    const reranked: Feed = {
+      ...RANKED_FEED,
+      offer:
+        RANKED_FEED.offer === null
+          ? null
+          : {
+              ...RANKED_FEED.offer,
+              seq: 42,
+              ranked: [
+                {
+                  scenario: "in.third-long",
+                  tier: "now",
+                  unit: { unit: "defense", side: "SF" },
+                },
+              ],
+            },
+    }
+    // As the sheet sends it: the scenario, its unit the machine's to give.
+    const picked = run(
+      asking,
+      { type: "fed", feed: reranked },
+      {
+        type: "answer",
+        said: { how: "every-scenario", scenario: "in.third-long", context: "" },
+      }
+    ).all.find((effect) => effect.type === "amend")
+    expect(picked?.type === "amend" && picked.fields).toMatchObject({
+      unit: "defense",
+      unitSide: "SEA",
+    })
+  })
+
   it("is none for a bite said first and left for later", () => {
     const later = run(
       saying({ how: "said-first" }),
@@ -334,6 +372,7 @@ describe("home's ranked list on the live socket", () => {
         { id: "in.kick", tier: "rest", unit: "goalposts", unitSide: null },
         { id: "in.penalty", tier: "rest", unit: "coaching", unitSide: 7 },
         { id: "in.injury", tier: "rest", unit: "defense", unitSide: "" },
+        { id: "in.sack", tier: "rest", unit: "defense", unitSide: "Bears" },
         { id: "in.turnover", tier: "rest", unit: null, unitSide: "CHI" },
         { id: "in.fourth-down", tier: "rest", unit: "coaching" },
       ])
@@ -351,6 +390,21 @@ describe("home's ranked list on the live socket", () => {
         unit: { unit: "coaching", side: null },
       },
     ])
+  })
+
+  it("keeps a game's teams only as codes home takes back on a bite", () => {
+    const named = readHome(
+      JSON.stringify({
+        ...live,
+        games: (live.games ?? []).map((game, i) =>
+          i === 0 ? { ...game, home: "Chicago" } : game
+        ),
+      })
+    )
+    if (named.kind !== "offer") throw new Error("not an offer")
+    expect(named.games[0]).not.toHaveProperty("home")
+    expect(named.games[0]).not.toHaveProperty("away")
+    expect(named.games[1]).toMatchObject({ home: "SF", away: "SEA" })
   })
 
   it("reads an offer from a home before it ranks as one with no list", () => {
