@@ -113,8 +113,10 @@ export function parseCardsIndex(raw: unknown): Parsed<CardsIndex> {
 /**
  * The cut list `raw` as the essay `key`, or every reason home can't render
  * it: what any cut list is refused for (`parseCutList`), a key that isn't
- * its stamp's day, a series that isn't a cards series, a scene that isn't
- * a card, plays a take or a cue or stands on an image, and captions; in a
+ * its stamp's day, a series that isn't a cards series, a scene that is
+ * neither a card nor a screen of the app (`./snip`), a spoken card that
+ * shows a screen, a scene that plays a take or a cue or stands on an image,
+ * and captions; in a
  * spoken version, what `spokenProblems` finds, and in a silent one, a scene
  * that says something. What
  * only drawing finds (a line that doesn't fit, a character the font lacks)

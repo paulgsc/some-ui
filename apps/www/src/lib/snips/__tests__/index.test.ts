@@ -185,6 +185,18 @@ group("the bundle", () => {
     expect(manifest.schema).toBe("some-ui.snips/1")
   })
 
+  it("refuses an APK picture that isn't the emulator's size, as a default device draws", () => {
+    const small: SnipRecord = {
+      ...snip("apk:/journal:android:0.1.69:aaaaaaaaaaaa"),
+      surface: "apk",
+      width: 320,
+      height: 640,
+    }
+    expect(() => manifestOf([part([small])], run)).toThrow(
+      /is 320x640, not the emulator's 1080x1920/
+    )
+  })
+
   it("refuses two app versions, and two snips with one id", () => {
     expect(() =>
       manifestOf([part([snip("a")]), part([snip("b", "0.2.0")], "0.2.0")], run)
@@ -198,6 +210,8 @@ group("the bundle", () => {
     const debug = (sha: string, path: string): SnipRecord => ({
       ...snip(`apk:${path}:android:0.1.69:${sha}`),
       surface: "apk",
+      width: 1080,
+      height: 1920,
       build: "debug",
       route: path,
       path,
@@ -206,6 +220,8 @@ group("the bundle", () => {
     const release = (sha: string): SnipRecord => ({
       ...snip(`apk:${wingPath("Studio", "Takes")}:android:0.1.69:${sha}`),
       surface: "apk",
+      width: 1080,
+      height: 1920,
       build: "release",
       route: wingPath("Studio", "Takes"),
       path: wingPath("Studio", "Takes"),

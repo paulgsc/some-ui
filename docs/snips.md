@@ -13,7 +13,9 @@ request, and CI Gate does not need it. It photographs two surfaces:
 
 - **`apk`:** the Android app on an emulator (API 34), installed clean and
   paired through its own screen with the stand-in home on the runner
-  (`apps/mobile/compat/stub-home.mjs`, COMPAT's rig), at 1080×1920. Each
+  (`apps/mobile/compat/stub-home.mjs`, COMPAT's rig), at 1080×1920, density
+  420, which the capture sets: the runner's default device draws 320×640. A
+  bundle with an APK picture of another size is refused. Each
   picture is the whole screen, with the status bar in demo mode. The
   device's clock is set to `FROZEN_AT` before each release picture, and the
   debug pass freezes the page's clock there. `apps/mobile/snips/capture-apk.sh` sets it up
@@ -168,7 +170,8 @@ owner's one step. The workflow holds no mailbox secret.
   and that each frame is a PNG. `resolveScreens` then draws each scene. With
   no `at`, it holds the whole screen as the owner chose (2026-11-21): never
   full-bleed, as large as fits above the captions, which sit below it and
-  never over the app's own screen, on the series' ground (`screen-zoom` with no stops, C869). With `at`, a
+  never over the app's own screen (`screen-zoom` with no stops, C869), on
+  the ground the recorder's look gives, or the composition's own. With `at`, a
   snip zooms to those parts in turn, as the Rust essay's cards do. A scene
   naming a screen home didn't hand, a snip of another commit than its
   bundle, or a part its snip doesn't name is refused before anything is

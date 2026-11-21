@@ -31,6 +31,7 @@ import { problemsOf } from "./cut-list"
 import type { Screen } from "./screen"
 import { parseScreens, RegionSchema, SCREENS_SCHEMA } from "./screen"
 import { SNIP_ID } from "./snip-id"
+import type { ZoomOptions } from "./zoom"
 import { wholePicture, zoomPicture } from "./zoom"
 
 export { isSnipId, SNIP_ID } from "./snip-id"
@@ -246,8 +247,7 @@ export type Handed = {
 /**
  * The cut list with each screen scene drawn from what home handed, the
  * snips' pictures under `snips/` and the clip frames under `clips/` in the
- * video's folder, by the screen-zoom composition on the series' ground
- * (`./zoom`): a scene with no parts named holds the whole screen above the
+ * video's folder, by the screen-zoom composition in `look` (`./zoom`): a scene with no parts named holds the whole screen above the
  * frame's foot, where the captions draw (`wholePicture`); a snip given parts
  * zooms to them in turn. Refused, with each reason, when a scene names a
  * screen home did not hand, a snip from another commit than home's bundle,
@@ -256,15 +256,7 @@ export type Handed = {
 export function resolveScreens(
   cut: CutList,
   handed: Handed,
-  {
-    foot = 0,
-    theme,
-  }: {
-    /** The share of the frame's height kept clear at its foot, for captions. */
-    readonly foot?: number
-    /** The app's theme a screen's ground is drawn in. */
-    readonly theme?: string
-  } = {}
+  look: Omit<ZoomOptions, "dir"> = {}
 ): Parsed<CutList> {
   const given = new Map(
     (handed.snips?.bundles ?? []).flatMap((bundle) =>
@@ -303,7 +295,6 @@ export function resolveScreens(
   const screens = record.value
   const screenOf = (id: string | undefined): Screen | undefined =>
     screens.screens.find((each) => each.id === id)
-  const look = { foot, ...(theme === undefined ? {} : { theme }) }
   const problems: Array<string> = []
   const fromSnips = (shotId: string, of: SnipOf): Picture | null => {
     const screen = screenOf(snipIds.get(refKey(of)))

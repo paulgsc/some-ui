@@ -70,8 +70,9 @@ export const WEB_VIEWPORTS: ReadonlyArray<Viewport> = [
 ]
 
 /**
- * The emulator's screen, as the runner's default device draws it. Each
- * record carries the size read from its picture, whatever this says.
+ * The emulator's screen, as `capture-apk.sh` sets it (`wm size`, `wm
+ * density 420`). Each record carries the size read from its picture, and
+ * the bundle refuses an APK picture of another (`manifestOf`).
  */
 export const APK_VIEWPORT: Viewport = {
   name: "android",
@@ -414,6 +415,15 @@ export function manifestOf(
   for (const snip of snips) {
     if (ids.has(snip.id)) throw new Error(`two snips are ${snip.id}`)
     ids.add(snip.id)
+    // The emulator is set to APK_VIEWPORT's size (`capture-apk.sh`); a
+    // picture of another is a capture that lost it, and soft when zoomed.
+    if (
+      snip.surface === "apk" &&
+      (snip.width !== APK_VIEWPORT.width || snip.height !== APK_VIEWPORT.height)
+    )
+      throw new Error(
+        `${snip.id} is ${String(snip.width)}x${String(snip.height)}, not the emulator's ${String(APK_VIEWPORT.width)}x${String(APK_VIEWPORT.height)}`
+      )
   }
   return {
     schema: MANIFEST_SCHEMA,

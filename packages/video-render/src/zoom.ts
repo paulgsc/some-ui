@@ -20,6 +20,29 @@ export const ZOOM_STOPS_MOST = 10
 /** The most of the frame's height a zoom keeps clear at its foot. */
 const FOOT_MOST = 0.5
 
+/** How a screen is drawn in a scene: the look the zoom and the whole screen share. */
+export type ZoomOptions = {
+  /** The record's folder in the video's folder. */
+  readonly dir?: string
+  /** The share of the frame's height kept clear at its foot, for captions. */
+  readonly foot?: number
+  /** The app's theme its ground is drawn in, as `brand-v1` takes it. */
+  readonly theme?: string
+  /** The colour around the screen; the composition's own when absent. */
+  readonly ground?: string
+}
+
+/** The look's variables, as screen-zoom declares them. */
+const lookOf = (
+  foot: number,
+  theme: string | undefined,
+  ground: string | undefined
+): Record<string, unknown> => ({
+  foot,
+  ...(theme === undefined ? {} : { theme }),
+  ...(ground === undefined ? {} : { ground }),
+})
+
 /**
  * The picture zooming into `refs` in order, on the screen they name, with
  * its file under `dir` in the video's folder: the first `ZOOM_STOPS_MOST`
@@ -30,18 +53,7 @@ const FOOT_MOST = 0.5
 export function zoomPicture(
   screens: Screens,
   refs: ReadonlyArray<RegionRef>,
-  {
-    dir = "screens",
-    foot = 0,
-    theme,
-  }: {
-    /** The record's folder in the video's folder. */
-    readonly dir?: string
-    /** The share of the frame's height kept clear at its foot, for captions. */
-    readonly foot?: number
-    /** The app's theme its ground is drawn in, as `brand-v1` takes it. */
-    readonly theme?: string
-  } = {}
+  { dir = "screens", foot = 0, theme, ground }: ZoomOptions = {}
 ): Composition | null {
   if (!(foot >= 0 && foot <= FOOT_MOST))
     throw new Error(
@@ -70,8 +82,7 @@ export function zoomPicture(
       height: screen.height,
       scale: screen.scale,
       stops: JSON.stringify(held.map(({ region }) => region.box)),
-      foot,
-      ...(theme === undefined ? {} : { theme }),
+      ...lookOf(foot, theme, ground),
     },
     files: [file],
   }
@@ -81,21 +92,13 @@ export function zoomPicture(
  * The whole of `screen` as a scene's picture (SNIPS4; the owner,
  * 2026-11-21): the screen-zoom composition with no stops, so the phone is
  * held whole in the room above the frame's foot, where the captions draw,
- * on the series' ground, as large as fits there: never full-bleed, and
- * the caption never over the app's own screen.
+ * as large as fits there: never full-bleed, and the caption never over the
+ * app's own screen. Its ground is `ground` where given, else the
+ * composition's own.
  */
 export function wholePicture(
   screen: Screen,
-  {
-    dir,
-    foot = 0,
-    theme,
-  }: {
-    /** The picture's folder in the video's folder. */
-    readonly dir: string
-    readonly foot?: number
-    readonly theme?: string
-  }
+  { dir = "screens", foot = 0, theme, ground }: ZoomOptions = {}
 ): Composition {
   if (!(foot >= 0 && foot <= FOOT_MOST))
     throw new Error(
@@ -111,8 +114,7 @@ export function wholePicture(
       height: screen.height,
       scale: screen.scale,
       stops: "[]",
-      foot,
-      ...(theme === undefined ? {} : { theme }),
+      ...lookOf(foot, theme, ground),
     },
     files: [file],
   }
