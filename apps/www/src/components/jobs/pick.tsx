@@ -75,6 +75,7 @@ import {
   whereIFit,
   whyNot,
 } from "@/lib/jobs/words"
+import { Chips } from "@/components/chips"
 import { CopyButton } from "@/components/copy-button"
 import {
   Gaps,
@@ -85,7 +86,6 @@ import {
 
 import {
   builderHref,
-  Chips,
   Problem,
   useJobs,
   useVoiceBusy,

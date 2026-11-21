@@ -4063,7 +4063,7 @@
     },
     {
       "module": "admin_settings",
-      "why": "The operator's levers (Rust Rounds recording, and whether home follows NFL games): each read answers with what home follows now, and each write with what it kept."
+      "why": "The operator's levers (Rust Rounds recording, whether home follows NFL games, and which teams' games it follows live): each read answers with what home follows now, and each write with what it kept."
     },
     {
       "module": "aph",
