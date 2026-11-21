@@ -1,0 +1,24 @@
+{
+  "id": "C928",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/ui/soundbites/src/lib/hear-again/model.ts",
+    "some-ui:packages/ui/soundbites/src/lib/hear-again/words.ts",
+    "some-ui:packages/ui/soundbites/src/components/hear-again/index.tsx",
+    "some-ui:packages/ui/soundbites/src/lib/reconcile/model.ts",
+    "some-ui:packages/ui/soundbites/src/lib/library/model.ts",
+    "some-ui:apps/www/src/lib/hear-again/index.ts",
+    "some-ui:apps/www/src/lib/hear-again/model.ts",
+    "some-ui:apps/www/src/lib/home-link/attention.ts"
+  ],
+  "chose": "Asking home to hear a take again (#3339) is one slice of state, `lib/hear-again`, that every screen showing takes composes, as they compose the play slice: Takes on home and Takes › Needs your attention today. It is offered on any take home says it will hear again (`hearAgain` on each take of both reads), heard ones included, as the owner widened it (a take marked heard can be mis-heard). It is disabled while home is hearing it or until the time home names, and that time is shown under it. Home holds the snooze; the phone only shows what home says, and a fresh read replaces what an answer laid over the take. One ask is under way at a time, and an answer counts only for the ask made last. On Needs your attention, a take home says holds nothing to hear leaves the list; any other answer keeps it listed. The button disables itself only on what home last said, not on this phone's clock, so a snooze that has run out lets the take be asked again on the next read (opening the page, a pull down).",
+  "options": [
+    "one shared slice, offered on any take home says it re-hears (chosen)",
+    "a third act in Needs your attention's own act union (`ReconcileAct`): the first shape, but Takes would need a second copy of the same state",
+    "a re-hear button that asks home blind, with no snooze shown: nothing would say why a second tap does nothing"
+  ],
+  "gray": "Where the ask is offered, what disables it and what it says are on the screen; no check settles them.",
+  "undo": "Drop the slice from the two machines and their screens, `hearAgain` from both reads and the ports, and `lib/hear-again` in soundbites and www.",
+  "refs": ["#3339"]
+}

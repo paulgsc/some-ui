@@ -23,6 +23,7 @@ const SOURCES: AboutSources = {
     ["i1", { title: "Typing rounds", asked: new Map([["ask-1", "Why now?"]]) }],
   ]),
   asks: new Map([["some-ui-2876", "Should a canned take show?"]]),
+  spoken: new Map([["scabc12", "How I built Rust Rounds"]]),
 }
 
 describe("what each take was said for, from what the phone keeps (TAKES2)", () => {
@@ -77,6 +78,19 @@ describe("what each take was said for, from what the phone keeps (TAKES2)", () =
       kind: "ask",
       ask: null,
       number: 2876,
+    })
+  })
+
+  it("names a spoken card's take by the card's title while this phone keeps it (#3339)", () => {
+    expect(aboutOf("x", "spoken:scabc12.1", SOURCES)).toEqual({
+      kind: "spoken",
+      card: "scabc12",
+      title: "How I built Rust Rounds",
+      part: 1,
+    })
+    expect(aboutOf("x", "spoken:scabc12.1", NO_SOURCES)).toMatchObject({
+      kind: "spoken",
+      title: null,
     })
   })
 

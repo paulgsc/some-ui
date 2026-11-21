@@ -9,6 +9,7 @@ import { counted } from "@some-ui/core-utils"
 import { dayAt } from "@soundbites/lib/library/words"
 
 import type { ProblemCode } from "./codes"
+import type { TakeSource } from "./source"
 
 const takes = (n: number): string => counted(n, "take")
 
@@ -46,7 +47,8 @@ export const RECONCILE_WORDS = {
   pullWhat: "the takes home couldn't hear well",
   /** The way in, on Takes' first page, with how many wait. */
   wayIn: (count: number): string => `${takes(count)} home couldn't hear well`,
-  wayInLine: "Hear each one, then keep it, record it again, or delete it.",
+  wayInLine:
+    "Hear each one, then keep it, record it again, ask home to try again, or delete it.",
   away: "Home can't be reached right now. Try again once you're back in reach.",
   busy: "This phone was busy with home just then. Try again in a moment.",
   older:
@@ -141,13 +143,19 @@ export const RECONCILE_WORDS = {
   of: (of: string): string => OF_WORDS[of] ?? "A take",
   /** What a row of chips does, for a reader that can't see it. */
   chips: "Show only the takes where",
-  /** The three acts, and what each keeps. */
+  /** The acts, and what each keeps. */
   acts: {
     keep: "Keep it",
     again: "Record it again",
     delete: "Delete…",
   },
   actsLabel: "What to do with this take",
+  /** The way back to what a take was said for, to say it again (#3339). */
+  source: {
+    spoken: "Go back to its spoken card, to read it and record it again",
+    question: "Go to its question, to say it again",
+    read: "Go to its card, to read it aloud again",
+  } satisfies Record<TakeSource["kind"], string>,
   keptForGood:
     "Home keeps this kind of take for good, so it can't be deleted here.",
   /** Said once an act is kept on home, as the take leaves the list. */

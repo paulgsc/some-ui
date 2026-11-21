@@ -146,6 +146,7 @@ import { assertNever, localStorageOrNull } from "@some-ui/core-utils"
 import type { KeptBite } from "@some-ui/game-week"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import type { Soundbite } from "@some-ui/soundbites"
+import { spokenPartOfLine } from "@some-ui/video-render"
 import type { TakeKept } from "@some-ui/voice-capture"
 import { ON_PHONE } from "@some-ui/voice-capture"
 
@@ -181,7 +182,6 @@ import { reflections } from "@/lib/session-reflection"
 import type { Reflection } from "@/lib/session-reflection/policy"
 import { onSoundbitesKept, soundbiteKeeping } from "@/lib/soundbite-keeping"
 import { onStudioKept, studioKeeping } from "@/lib/studio-keeping"
-import { partOfLine } from "@/lib/studio-spoken/model"
 import { takeConveyor } from "@/lib/take-conveyor"
 import type { Take as DeskTake } from "@/lib/takes-desk"
 import { phoneVoiceHome } from "@/lib/voice-home"
@@ -423,7 +423,9 @@ export function libraryNote(take: LibraryTake): VoiceOut {
   return {
     id: take.id,
     of: "studio",
-    ref: refOf(partOfLine(take.line) === null ? `take:${take.id}` : take.line),
+    ref: refOf(
+      spokenPartOfLine(take.line) === null ? `take:${take.id}` : take.line
+    ),
     at: new Date(take.takenAt).toISOString(),
     contentType: take.mimeType,
   }

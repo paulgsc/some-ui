@@ -2,8 +2,9 @@
  * What each of Studio's takes was said for (TAKES2, #3068), as Takes reads
  * it (`@some-ui/soundbites`' `LibraryAbout`): `./model`'s join over the
  * stores the phone keeps. The notes are read as they are; the ideas and the
- * videos (this phone's stores, which the route hands in, `AboutStores`)
- * each time a screen opens, since neither tells of a change; the open asks
+ * videos (this phone's stores, which the route hands in, `AboutStores`),
+ * and the spoken cards' titles (`lib/studio-spoken`), each time a screen
+ * opens, since neither tells of a change; the open asks
  * (GitHub's public list, as Studio's Asks reads it) once a page load. Each
  * screen is told when a read lands, and a read overtaken by a newer one is
  * dropped. A read that fails leaves the take saying what its ref says.
@@ -15,6 +16,9 @@ import type { LibraryAbout } from "@some-ui/soundbites"
 import type { Note } from "@/lib/episode-feedback"
 import { episodeFeedback } from "@/lib/episode-feedback"
 import { readStudioAsks } from "@/lib/studio-asks/read"
+import { spokenStore } from "@/lib/studio-spoken/store"
+import { titleOf } from "@/lib/studio-spoken/words"
+import { browserLocalStorage } from "@/lib/tenant/storage"
 
 import type { AboutSources, KnownIdea, KnownVideo } from "./model"
 import { aboutOf, NO_SOURCES } from "./model"
@@ -90,7 +94,14 @@ function videosOf(
 
 /** Reads the ideas and the videos again, and the asks once a page load. */
 function opened(stores: AboutStores): void {
-  told({ ideas: ideasOf(stores.ideas()) })
+  told({
+    ideas: ideasOf(stores.ideas()),
+    spoken: new Map(
+      spokenStore(browserLocalStorage)
+        .read()
+        .map((card) => [card.id, titleOf(card)])
+    ),
+  })
   videoReads += 1
   const mine = videoReads
   stores

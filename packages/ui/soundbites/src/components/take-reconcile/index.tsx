@@ -1,8 +1,10 @@
 /**
  * The takes needing attention (HEARD3, #3075): every take home couldn't
  * hear well, grouped by code (`lib/reconcile/codes`). Each plays, shows
- * what home heard, and offers keep it, record it again, or delete it, where
- * the build deletes that kind. Renders `lib/reconcile/model.ts`'s state and
+ * what home heard, and offers keep it, record it again, ask home to try it
+ * again where home will (`components/hear-again`, #3339), or delete it,
+ * where the build deletes that kind; and, where the build can open it, the
+ * way back to what it was said for (`source`). Renders `lib/reconcile/model.ts`'s state and
  * forwards taps; its words are `lib/reconcile/words.ts`'s.
  *
  * Delete is the build's: `onDelete` opens its delete path (My data's, LA19),
@@ -12,6 +14,10 @@ import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
 import { Button, Chip, CHIP_BAR, Dot, Notice } from "@some-ui/shared"
+import {
+  HearAgainButton,
+  HearAgainLines,
+} from "@soundbites/components/hear-again"
 import { PlayButton } from "@soundbites/components/take-library/parts"
 import { Unpaired } from "@soundbites/components/unpaired"
 import { aboutOfRef } from "@soundbites/lib/library/compartments"
@@ -44,6 +50,11 @@ export type TakeReconcileProps = {
   deletable?: ((take: AttentionTake) => boolean) | undefined
   /** "Delete…": opens the build's delete path on the take. */
   onDelete?: ((take: AttentionTake) => void) | undefined
+  /**
+   * The way back to what the take was said for, to say it again, as the
+   * build links it; null or absent for none.
+   */
+  source?: ((take: AttentionTake) => ReactNode) | undefined
 }
 
 const codesOfTake = (take: AttentionTake): ReadonlyArray<ProblemCode> =>
@@ -68,12 +79,14 @@ const TakeCard = ({
   state,
   deletable,
   onDelete,
+  source,
   dispatch,
 }: {
   take: AttentionTake
   state: ReconcileState
   deletable: boolean
   onDelete: TakeReconcileProps["onDelete"]
+  source: ReactNode
   dispatch: Dispatch
 }): JSX.Element => {
   const { playback, acting } = state
@@ -145,6 +158,12 @@ const TakeCard = ({
         >
           {WORDS.acts.again}
         </Button>
+        <HearAgainButton
+          take={take}
+          state={state}
+          busy={busy}
+          onAsk={() => dispatch({ type: "hearAgain", id: take.id })}
+        />
         {deletable && onDelete !== undefined && (
           <Button
             type="button"
@@ -157,6 +176,12 @@ const TakeCard = ({
           </Button>
         )}
       </div>
+      <HearAgainLines
+        take={take}
+        state={state}
+        onDismiss={() => dispatch({ type: "hearAgainDismissed" })}
+      />
+      {source}
       {!deletable && (
         <p className="text-muted-foreground text-xs">{WORDS.keptForGood}</p>
       )}
@@ -265,6 +290,7 @@ export const TakeReconcile = ({
   pair,
   deletable,
   onDelete,
+  source,
 }: TakeReconcileProps): JSX.Element => {
   /* eslint-disable-next-line owner-guard/no-mount-snapshot -- the runtime is made once per mount, as Studio's screens' are */
   const [runtime] = useState(() => createReconcile(ports))
@@ -284,6 +310,7 @@ export const TakeReconcile = ({
       state={state}
       deletable={deletable?.(take) ?? false}
       onDelete={onDelete}
+      source={source?.(take) ?? null}
       dispatch={dispatch}
     />
   )

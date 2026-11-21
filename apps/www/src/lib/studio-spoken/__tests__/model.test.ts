@@ -4,16 +4,15 @@
  * W5: a pasted script split into parts, its takes named by part, and the
  * part rules SCR1–SCR3.
  */
+import { spokenLineOf, spokenPartOfLine } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
 import {
   cardId,
   flip,
   keptCard,
-  lineOf,
   parseCard,
   partAt,
-  partOfLine,
   unuse,
   use,
   withSeen,
@@ -155,27 +154,19 @@ SCRIPT Read this line as it is.`
 })
 
 describe("a take's line", () => {
-  it("names the script and part, in two parts on ':' so home keeps it as a take with no scene", () => {
-    const line = lineOf("scabc12", 3)
-    expect(line).toBe("spoken:scabc12.3")
-    expect(partOfLine(line)).toEqual({ script: "scabc12", part: 3 })
-    expect(partOfLine("library")).toBeNull()
-    expect(partOfLine("spoken:a:b")).toBeNull()
-  })
-
   it("makes ids home takes in a ref", () => {
     const id = cardId(Date.UTC(2026, 10, 20), () => 0.5)
     expect(id).toMatch(/^[a-z0-9]{1,64}$/u)
-    expect(partOfLine(lineOf(id, 0))?.script).toBe(id)
+    expect(spokenPartOfLine(spokenLineOf(id, 0))?.card).toBe(id)
   })
 })
 
 describe("SCR1: a part's takes only grow", () => {
   it("adds each take seen under its part's line, once, oldest first", () => {
     const seen = withSeen(script, [
-      { id: "t1", line: lineOf("scabc12", 0) },
-      { id: "t2", line: lineOf("scabc12", 0) },
-      { id: "t3", line: lineOf("scabc12", 1) },
+      { id: "t1", line: spokenLineOf("scabc12", 0) },
+      { id: "t2", line: spokenLineOf("scabc12", 0) },
+      { id: "t3", line: spokenLineOf("scabc12", 1) },
       { id: "x", line: "library" },
     ])
     expect(seen.parts.map((part) => part.takes)).toEqual([
@@ -185,9 +176,9 @@ describe("SCR1: a part's takes only grow", () => {
     ])
     // A take that left the phone stays the part's.
     expect(withSeen(seen, []).parts[0]?.takes).toEqual(["t1", "t2"])
-    expect(withSeen(seen, [{ id: "t1", line: lineOf("scabc12", 0) }])).toBe(
-      seen
-    )
+    expect(
+      withSeen(seen, [{ id: "t1", line: spokenLineOf("scabc12", 0) }])
+    ).toBe(seen)
   })
 })
 
@@ -203,7 +194,9 @@ describe("a part's place", () => {
 describe("SCR2: a part's kind changes only while it has no take", () => {
   it("flips a part with no take, and not one with a take", () => {
     expect(flip(script, 0).parts[0]?.kind).toBe("own")
-    const taken = withSeen(script, [{ id: "t1", line: lineOf("scabc12", 0) }])
+    const taken = withSeen(script, [
+      { id: "t1", line: spokenLineOf("scabc12", 0) },
+    ])
     expect(flip(taken, 0)).toBe(taken)
   })
 })
@@ -211,8 +204,8 @@ describe("SCR2: a part's kind changes only while it has no take", () => {
 describe("SCR3: a part uses only one of its own takes", () => {
   it("picks a take of the part, and ignores any other", () => {
     const taken = withSeen(script, [
-      { id: "t1", line: lineOf("scabc12", 0) },
-      { id: "t3", line: lineOf("scabc12", 1) },
+      { id: "t1", line: spokenLineOf("scabc12", 0) },
+      { id: "t3", line: spokenLineOf("scabc12", 1) },
     ])
     expect(use(taken, 0, "t1").parts[0]?.using).toBe("t1")
     expect(use(taken, 0, "t3")).toBe(taken)
@@ -221,7 +214,7 @@ describe("SCR3: a part uses only one of its own takes", () => {
 
   it("lets go of a pick home heard nothing in, keeping the take", () => {
     const picked = use(
-      withSeen(script, [{ id: "t1", line: lineOf("scabc12", 0) }]),
+      withSeen(script, [{ id: "t1", line: spokenLineOf("scabc12", 0) }]),
       0,
       "t1"
     )

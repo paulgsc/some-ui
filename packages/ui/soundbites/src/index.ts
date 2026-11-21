@@ -59,9 +59,13 @@ export type {
   AttentionTake,
   ReconcileAct,
 } from "./lib/reconcile/model"
+export type { HearAgain, HearAgainAnswer } from "./lib/hear-again/model"
+export { HEAR_AGAIN_WORDS } from "./lib/hear-again/words"
 export type { ReconcileHome } from "./lib/reconcile/runtime"
 export type { TakeVerdict } from "./lib/reconcile/codes"
 export { RECONCILE_WORDS } from "./lib/reconcile/words"
+export type { TakeSource } from "./lib/reconcile/source"
+export { sourceOf } from "./lib/reconcile/source"
 export { Studio } from "./components/studio"
 export { StudioRecords } from "./components/studio-records"
 export type { StudioRecordsProps } from "./components/studio-records"

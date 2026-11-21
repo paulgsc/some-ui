@@ -18,6 +18,7 @@ import {
   Teleprompter,
   useTakePattern,
 } from "@some-ui/shared"
+import { spokenLineOf } from "@some-ui/video-render"
 import type { HeardAnswer } from "@some-ui/voice-capture"
 import { Link, useNavigate } from "@tanstack/react-router"
 
@@ -30,7 +31,6 @@ import type {
 } from "@/lib/studio-spoken"
 import {
   essayBlock,
-  lineOf,
   parseCard,
   partAt,
   PARTS_MOST,
@@ -442,7 +442,7 @@ const SpokenPartPageBody = ({
   const card = useCards(runtime).find((each) => each.id === id)
   const part = card === undefined ? undefined : partAt(card, n)
   if (card === undefined || part === undefined) return <Lost />
-  const line = lineOf(card.id, n)
+  const line = spokenLineOf(card.id, n)
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-4">
       <p className="text-muted-foreground text-xs font-semibold">

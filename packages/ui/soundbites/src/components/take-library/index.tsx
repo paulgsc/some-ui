@@ -29,6 +29,10 @@ import {
   TakeList,
 } from "@some-ui/shared"
 import type { PatternTake } from "@some-ui/voice-capture"
+import {
+  HearAgainButton,
+  HearAgainLines,
+} from "@soundbites/components/hear-again"
 import { Unpaired } from "@soundbites/components/unpaired"
 import type {
   ChipGroups,
@@ -94,6 +98,7 @@ import {
   Lightbulb,
   MessagesSquare,
   Mic,
+  MicVocal,
   MonitorPlay,
   NotebookPen,
   Shapes,
@@ -140,6 +145,7 @@ const MARKS: Readonly<Record<TakeKind, LucideIcon>> = {
   scene: Clapperboard,
   idea: Lightbulb,
   ask: CircleHelp,
+  spoken: MicVocal,
   here: Mic,
   bite: Trophy,
   round: Cog,
@@ -330,6 +336,20 @@ const HomeCard = ({
           </div>
         </div>
       </div>
+      {gone === null && (
+        <div className="flex flex-wrap gap-2">
+          <HearAgainButton
+            take={take}
+            state={state}
+            onAsk={() => dispatch({ type: "hearAgain", id: take.id })}
+          />
+        </div>
+      )}
+      <HearAgainLines
+        take={take}
+        state={state}
+        onDismiss={() => dispatch({ type: "hearAgainDismissed" })}
+      />
       {row?.(take)}
       {here && playback.kind === "loading" && <Notice>{WORDS.loading}</Notice>}
       {state.unplayable === take.id && (

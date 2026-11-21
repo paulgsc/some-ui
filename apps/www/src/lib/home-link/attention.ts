@@ -3,8 +3,9 @@
  * attention (HEARD3, #3075; paulgsc/server#912): one `GET
  * /voice-notes/attention` each time the page opens and on Try again, and one
  * `POST /voice-notes/:id/attention` per act the owner takes on a take (keep
- * it, or record it again), through the link's `keep` (LA8). It sends
- * nothing of the phone's but the take's id and the act's name. Home answers
+ * it, or record it again, or ask home to hear it again: #3339), through the
+ * link's `keep` (LA8). It sends nothing of the phone's but the take's id and
+ * the act's name. Home answers
  * the takes with what it heard and its verdict, never their audio, which
  * Play asks for one take at a time (`./voice-audio`).
  */
@@ -25,6 +26,18 @@ function actPath(id: string): string {
 /** Asks home once for the takes waiting; never rejects. */
 export function askAttention(): Promise<Asked> {
   return asked(() => homeLink().keep((send) => send("GET", ATTENTION_PATH)))
+}
+
+/**
+ * Asks home once to hear take `id` again (#3339), from Takes or from Needs
+ * your attention, whatever home made of it; never rejects.
+ */
+export function askHearAgain(id: string): Promise<Asked> {
+  return asked(() =>
+    homeLink().keep((send) =>
+      send("POST", actPath(id), JSON.stringify({ act: "hear-again" }))
+    )
+  )
 }
 
 /** Tells home once of the owner's act on take `id`; never rejects. */

@@ -8,7 +8,9 @@
  * page starts (`next`). A home before it answers Studio's alone, as before.
  * A game's `about` carries home's name for the game (`label`) and the
  * bite's moment, which may be left out (`bite: null`); the rest of a kind's
- * `about` is what its ref already says, which Takes' ports read.
+ * `about` is what its ref already says, which Takes' ports read. Each take
+ * may say whether home hears it again on the owner's ask (`hearAgain`,
+ * `lib/hear-again`, #3339).
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { readAs } from "@some-ui/core-utils"
@@ -17,6 +19,7 @@ import { TAKE_OFS } from "@some-ui/soundbites/contract"
 import { z } from "zod"
 
 import type { PhoneBite } from "@/lib/game-bites"
+import { HearAgainSchema } from "@/lib/hear-again/model"
 import type { OnPhone } from "@/lib/home-link/voice-copy"
 import { isTakeStation } from "@/lib/take-conveyor/model"
 
@@ -87,6 +90,7 @@ const TakeSchema = z.object({
     .nullable()
     .optional()
     .catch(undefined),
+  hearAgain: HearAgainSchema,
 })
 
 const TakesSchema = z.object({

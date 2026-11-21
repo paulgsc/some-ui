@@ -3,11 +3,11 @@
  * microphone: a pasted card kept, only a part's own takes seen as its, and
  * a take played from home, or said to be unplayable.
  */
+import { spokenLineOf } from "@some-ui/video-render"
 import type { HeardAnswer } from "@some-ui/voice-capture"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { PastedCard } from "@/lib/studio-spoken/model"
-import { lineOf } from "@/lib/studio-spoken/model"
 import { spokenStore } from "@/lib/studio-spoken/store"
 
 import { spokenPhone } from "./fixture"
@@ -47,9 +47,9 @@ describe("Spoken's runtime", () => {
   it("adds a take only to the part whose line it answers, with no Spoken page open (SCR1)", async () => {
     const { runtime, sim } = spokenPhone()
     const id = runtime.keep(PASTED) ?? ""
-    sim.pattern.tap(lineOf(id, 1), null)
+    sim.pattern.tap(spokenLineOf(id, 1), null)
     await pass(2_000)
-    sim.pattern.tap(lineOf(id, 1), null)
+    sim.pattern.tap(spokenLineOf(id, 1), null)
     await pass()
     const parts = runtime.cards.getSnapshot().at(0)?.parts
     expect(parts?.map((part) => part.takes.length)).toEqual([0, 1])
@@ -60,9 +60,9 @@ describe("Spoken's runtime", () => {
       heard: () => Promise.resolve({ kind: "heard", text: "" }),
     })
     const id = runtime.keep(PASTED) ?? ""
-    sim.pattern.tap(lineOf(id, 0), null)
+    sim.pattern.tap(spokenLineOf(id, 0), null)
     await pass(2_000)
-    sim.pattern.tap(lineOf(id, 0), null)
+    sim.pattern.tap(spokenLineOf(id, 0), null)
     await pass()
     const take = runtime.cards.getSnapshot().at(0)?.parts.at(0)?.takes.at(0)
     runtime.use(id, 0, take ?? "")

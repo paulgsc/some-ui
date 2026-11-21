@@ -2,14 +2,15 @@
  * What each of Studio's takes was said for (TAKES2, #3068; epic #3029),
  * joined from what the phone keeps: a note on an episode names its spoken
  * take (`lib/episode-feedback`, `take`), a video names its scenes, an idea
- * its questions, an ask its question. Pure; `./index` reads the stores.
+ * its questions, an ask its question, a spoken card its title (#3339).
+ * Pure; `./index` reads the stores.
  *
  * A note's take goes home as a plain take (`take:<id>`), so home keeps no
  * link back to its note: the join is the phone's alone, and a phone that
  * no longer holds the note says only that the take was recorded (C420).
  */
 import type { TakeAbout } from "@some-ui/soundbites"
-import { parseAskId } from "@some-ui/video-render"
+import { parseAskId, spokenPartOfLine } from "@some-ui/video-render"
 
 import { FEED_WORDS } from "@/lib/call-videos/words"
 import type { Note } from "@/lib/episode-feedback/model"
@@ -37,6 +38,8 @@ export type AboutSources = {
   readonly ideas: ReadonlyMap<string, KnownIdea>
   /** Each open ask's question, by its id (`askId`). */
   readonly asks: ReadonlyMap<string, string>
+  /** Each spoken card's title on this phone, by the card's id. */
+  readonly spoken: ReadonlyMap<string, string>
 }
 
 export const NO_SOURCES: AboutSources = {
@@ -44,6 +47,7 @@ export const NO_SOURCES: AboutSources = {
   videos: new Map(),
   ideas: new Map(),
   asks: new Map(),
+  spoken: new Map(),
 }
 
 /**
@@ -66,6 +70,15 @@ export function aboutOf(
     }
   }
   if (ref === null) return null
+  const spoken = spokenPartOfLine(ref)
+  if (spoken !== null) {
+    return {
+      kind: "spoken",
+      card: spoken.card,
+      title: sources.spoken.get(spoken.card) ?? null,
+      part: spoken.part,
+    }
+  }
   if (ref.startsWith("idea:")) {
     const [, idea = "", question = ""] = ref.split(":")
     const known = sources.ideas.get(idea)

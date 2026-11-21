@@ -13,6 +13,7 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { Playback, Player, TakePattern } from "@some-ui/voice-capture"
+import type { HearAgainAnswer } from "@soundbites/lib/hear-again/model"
 import type { Refresh } from "@soundbites/lib/refresh"
 import { checkAgainOf } from "@soundbites/lib/refresh"
 
@@ -48,6 +49,8 @@ export type TakesHome = {
   ) => Promise<LibraryRead>
   /** Take `id`'s audio from home; null when home can't give it back now. */
   readonly audio: (id: string) => Promise<Blob | null>
+  /** Asks home to hear take `id` again (#3339). */
+  readonly hearAgain: (id: string) => Promise<HearAgainAnswer>
 }
 
 /**
@@ -289,6 +292,15 @@ export function createTakeLibrary(
       case "stopPlayback": {
         playback?.stop()
         playback = null
+        return
+      }
+      case "sendHearAgain": {
+        const { seq } = effect
+        later(ports.home.hearAgain(effect.id), (answer) => ({
+          type: "hearAgainAnswered",
+          seq,
+          answer,
+        }))
         return
       }
       default: {

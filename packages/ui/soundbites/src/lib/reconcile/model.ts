@@ -2,8 +2,9 @@
  * The takes needing attention (HEARD3, #3075; epic #3070): every take home
  * couldn't hear well (paulgsc/server `GET /voice-notes/attention`), each
  * under the codes home judged it by (`./codes`), with Play, and the owner's
- * act on it: keep it, record it again, or delete it (My data's delete path,
- * which the build hands in). One state machine: `stepReconcile(state,
+ * act on it: keep it, record it again, ask home to hear it again
+ * (`lib/hear-again`, #3339), or delete it (My data's delete path, which
+ * the build hands in). One state machine: `stepReconcile(state,
  * event)` returns the next state and the effects to run and does nothing
  * else; `./runtime` runs them, and the component renders a state and turns
  * taps into events.
@@ -17,6 +18,9 @@
  * - **A take leaves the list only once home kept the act,** said it has
  *   nothing left to reconcile on it, or answered its delete with a receipt:
  *   an act home didn't take leaves the take where it was, and says so. What plays stops when its take leaves.
+ * - **Asking home to hear a take again leaves it listed,** unless home says
+ *   it holds nothing to hear: home hears it again, and it leaves once home
+ *   hears it well or the owner acts on it.
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { PlayEffect, PlaySlice } from "@some-ui/voice-capture"
@@ -27,6 +31,19 @@ import {
   QUIET_PLAY,
   stopped,
 } from "@some-ui/voice-capture"
+import type {
+  HearAgain,
+  HearAgainAnswer,
+  HearAgainEffect,
+  HearAgainSlice,
+} from "@soundbites/lib/hear-again/model"
+import {
+  askedToHearAgain,
+  hearAgainAnswered,
+  hearAgainDismissed,
+  hearAgainRead,
+  QUIET_HEAR_AGAIN,
+} from "@soundbites/lib/hear-again/model"
 
 import type { TakeVerdict } from "./codes"
 
@@ -41,6 +58,8 @@ export type AttentionTake = {
   /** The words home heard, when it heard any; null when none. */
   readonly heard: string | null
   readonly verdict: TakeVerdict
+  /** Whether home hears it again on the owner's ask; null when it won't, or an older home. */
+  readonly hearAgain: HearAgain | null
 }
 
 export type AttentionPage = {
@@ -77,24 +96,25 @@ export type ActAnswer =
   /** This phone stayed busy with home, so home wasn't told: nothing changed. */
   | "busy"
 
-export type ReconcileState = PlaySlice & {
-  readonly read: { readonly kind: "reading" } | AttentionRead
-  readonly seq: number
-  /** The act home is being told of; null while none is. */
-  readonly acting: {
-    readonly id: string
-    readonly act: ReconcileAct
-  } | null
-  /** Each act's number: an answer to an earlier one changes nothing. */
-  readonly acts: number
-  /** What the screen says of the last act: kept, or not taken. */
-  readonly said:
-    | { readonly kind: "kept"; readonly act: ReconcileAct }
-    | { readonly kind: "settled" }
-    | { readonly kind: "notTaken"; readonly id: string }
-    | { readonly kind: "busy"; readonly id: string }
-    | null
-}
+export type ReconcileState = PlaySlice &
+  HearAgainSlice & {
+    readonly read: { readonly kind: "reading" } | AttentionRead
+    readonly seq: number
+    /** The act home is being told of; null while none is. */
+    readonly acting: {
+      readonly id: string
+      readonly act: ReconcileAct
+    } | null
+    /** Each act's number: an answer to an earlier one changes nothing. */
+    readonly acts: number
+    /** What the screen says of the last act: kept, or not taken. */
+    readonly said:
+      | { readonly kind: "kept"; readonly act: ReconcileAct }
+      | { readonly kind: "settled" }
+      | { readonly kind: "notTaken"; readonly id: string }
+      | { readonly kind: "busy"; readonly id: string }
+      | null
+  }
 
 export type ReconcileIntent =
   | { readonly type: "readAgain" }
@@ -106,6 +126,10 @@ export type ReconcileIntent =
   | { readonly type: "noticeDismissed" }
   /** The person closed "home can't give that take back". */
   | { readonly type: "unplayableDismissed" }
+  /** Ask home to hear the take again (#3339). */
+  | { readonly type: "hearAgain"; readonly id: string }
+  /** The person closed what the screen said of the last ask. */
+  | { readonly type: "hearAgainDismissed" }
 
 export type ReconcileEvent =
   | ReconcileIntent
@@ -129,10 +153,16 @@ export type ReconcileEvent =
     }
   /** My data's delete path deleted these for good, with a receipt each. */
   | { readonly type: "deleted"; readonly ids: ReadonlyArray<string> }
+  | {
+      readonly type: "hearAgainAnswered"
+      readonly seq: number
+      readonly answer: HearAgainAnswer
+    }
 
 export type ReconcileEffect =
   | { readonly type: "readTakes"; readonly seq: number }
   | PlayEffect
+  | HearAgainEffect
   | {
       readonly type: "sendAct"
       readonly seq: number
@@ -149,6 +179,7 @@ export const INITIAL_RECONCILE: ReconcileState = {
   read: { kind: "reading" },
   seq: 0,
   ...QUIET_PLAY,
+  ...QUIET_HEAR_AGAIN,
   acting: null,
   acts: 0,
   said: null,
@@ -200,7 +231,7 @@ export function stepReconcile(
     }
     case "takesRead": {
       if (event.seq !== state.seq) return same(state)
-      return same({ ...state, read: event.read })
+      return same(hearAgainRead({ ...state, read: event.read }))
     }
     case "play": {
       return played(state, event.id)
@@ -249,6 +280,24 @@ export function stepReconcile(
     }
     case "unplayableDismissed": {
       return same({ ...state, unplayable: null })
+    }
+    case "hearAgain": {
+      const take =
+        state.read.kind === "read"
+          ? state.read.page.takes.find(({ id }) => id === event.id)
+          : undefined
+      return take === undefined ? same(state) : askedToHearAgain(state, take)
+    }
+    case "hearAgainAnswered": {
+      const asked = state.hearAgain.asking
+      const next = hearAgainAnswered(state, event.seq, event.answer)
+      // Home holds nothing to hear in it: it leaves the list.
+      return event.answer.kind === "settled" && asked !== null && next !== state
+        ? without(next, new Set([asked]))
+        : same(next)
+    }
+    case "hearAgainDismissed": {
+      return same(hearAgainDismissed(state))
     }
     default: {
       return assertNever(event)

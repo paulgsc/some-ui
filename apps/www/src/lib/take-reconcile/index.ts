@@ -2,13 +2,15 @@
  * Home, as Studio's Takes › Needs your attention reads it (HEARD3, #3075):
  * `@some-ui/soundbites`' `ReconcileHome` port over the link's one request
  * per read and per act (`lib/home-link/attention`, LA8), the answers read by
- * `./model`, and a take's audio for Play (`lib/home-link/voice-audio`).
+ * `./model`, a take's audio for Play (`lib/home-link/voice-audio`), and an
+ * ask to hear a take again (`lib/hear-again`).
  * Every call resolves. A busy link is asked again (`askWhileBusy`): a read
  * only while the page still wants it, an act until the link frees, so a tap
  * is never dropped for a drain under way. Phone-only (`build.paths.ts`).
  */
 import type { ReconcileHome } from "@some-ui/soundbites"
 
+import { hearAgainHome } from "@/lib/hear-again"
 import { askAct, askAttention } from "@/lib/home-link/attention"
 import { askAudio } from "@/lib/home-link/voice-audio"
 import { askWhileBusy } from "@/lib/home-link/while-busy"
@@ -27,4 +29,5 @@ export const reconcileHome: ReconcileHome = {
     if (asked.kind === "answered") return readAct(asked.answer)
     return asked.kind === "busy" ? "busy" : "notTaken"
   },
+  hearAgain: hearAgainHome,
 }

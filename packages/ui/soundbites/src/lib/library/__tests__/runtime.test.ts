@@ -2,6 +2,7 @@
 import type { PatternTake, Playback, Player } from "@some-ui/voice-capture"
 import { ONE_TAKE } from "@some-ui/voice-capture"
 import { simulatedPattern } from "@some-ui/voice-capture/testing"
+import type { HearAgainAnswer } from "@soundbites/lib/hear-again/model"
 import type {
   LibraryPage,
   LibraryPhoneSnapshot,
@@ -24,6 +25,9 @@ function later<T>(): { promise: Promise<T>; settle: (value: T) => void } {
   return { promise, settle }
 }
 
+/** Home, as a test that asks nothing of it again sees it. */
+const NO_HEAR_AGAIN = (): Promise<HearAgainAnswer> =>
+  Promise.resolve({ kind: "notTaken" })
 const page = (by: LibraryPage["by"], id: string): LibraryRead => ({
   kind: "read",
   page: {
@@ -79,6 +83,7 @@ describe("Takes on home's runtime (ST32)", () => {
         return new Promise(() => undefined)
       },
       audio: () => Promise.resolve(null),
+      hearAgain: NO_HEAR_AGAIN,
     }
     const library = createTakeLibrary({ home, player: player().player })
     library.attach()
@@ -100,6 +105,7 @@ describe("Takes on home's runtime (ST32)", () => {
         return takes.promise
       },
       audio: () => audio.promise,
+      hearAgain: NO_HEAR_AGAIN,
     }
     const played = player()
     const library = createTakeLibrary({ home, player: played.player })
@@ -124,6 +130,7 @@ describe("Takes on home's runtime (ST32)", () => {
     const home: TakesHome = {
       takes: () => Promise.resolve(page("newest", "t1")),
       audio,
+      hearAgain: NO_HEAR_AGAIN,
     }
     const played = player()
     const library = createTakeLibrary({ home, player: played.player })
@@ -191,7 +198,11 @@ describe("Takes on home's runtime (ST32)", () => {
       )
       const { phone, move } = phoneTakes()
       const library = createTakeLibrary({
-        home: { takes, audio: () => Promise.resolve(null) },
+        home: {
+          takes,
+          audio: () => Promise.resolve(null),
+          hearAgain: NO_HEAR_AGAIN,
+        },
         player: player().player,
         phone,
       })
@@ -221,6 +232,7 @@ describe("Takes on home's runtime (ST32)", () => {
         home: {
           takes: () => Promise.resolve(page("newest", "t1")),
           audio: () => Promise.resolve(new Blob(["take"])),
+          hearAgain: NO_HEAR_AGAIN,
         },
         player: played.player,
         phone,
@@ -260,6 +272,7 @@ describe("Takes on home's runtime (ST32)", () => {
         return Promise.resolve(answers.shift() ?? page("newest", "t3"))
       },
       audio: () => Promise.resolve(null),
+      hearAgain: NO_HEAR_AGAIN,
     }
     const registered: Array<() => Promise<void>> = []
     let dropped = 0
@@ -304,7 +317,11 @@ describe("the phone's takes of every kind reaching home", () => {
       { ...own(true), id: "b0" },
     ]
     const library = createTakeLibrary({
-      home: { takes, audio: () => Promise.resolve(null) },
+      home: {
+        takes,
+        audio: () => Promise.resolve(null),
+        hearAgain: NO_HEAR_AGAIN,
+      },
       player: player().player,
       onPhone: {
         subscribe: (listener) => {
