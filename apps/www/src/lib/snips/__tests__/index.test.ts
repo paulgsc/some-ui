@@ -53,6 +53,8 @@ group("the routes a capture visits", () => {
     expect(paths("apk")).toContain("/journal/takes/kept")
     expect(paths("web")).not.toContain("/journal/takes/kept")
     expect(paths("web")).toContain("/mission")
+    // RR31's card stage, whose parts (`data-region`) a snip's zoom names.
+    expect(paths("web")).toContain("/rust-screen")
     expect(paths("apk")).toContain("/mission")
   })
 
