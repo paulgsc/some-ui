@@ -3,7 +3,13 @@ import { fixtureFeed } from "@game-week/lib/feed"
 import type { OutboxPort } from "@game-week/lib/ports"
 import { storedPrefs } from "@game-week/lib/ports"
 import type { GameWeekPorts } from "@game-week/lib/runtime"
-import { noGamesLine, noOfferLine, NOTICES, WORDS } from "@game-week/lib/words"
+import {
+  noGamesLine,
+  noOfferLine,
+  NOTICES,
+  TIER_TITLES,
+  WORDS,
+} from "@game-week/lib/words"
 import {
   microphoneOwner,
   TAKE_ENDING_WORDS,
@@ -286,11 +292,62 @@ describe("GameWeek", () => {
     expect(screen.getByText(noGamesLine("away"))).toBeTruthy()
   })
 
+  it("names who a bite is about while it is said, and one tap moves it on (#3049)", async () => {
+    render(<GameWeek ports={ports()} outbox={outbox} />)
+    await sayTheCard()
+    const chip = screen.getByRole("button", { name: /^SF offense/ })
+    expect(chip).toHaveAccessibleName(`SF offense. ${WORDS.unitChange}`)
+    fireEvent.click(chip)
+    expect(screen.getByRole("button", { name: /^SF defense/ })).toBeTruthy()
+    fireEvent.click(
+      screen.getByRole("button", { name: WORDS.aboutTeam("SEA") })
+    )
+    expect(screen.getByRole("button", { name: /^SEA defense/ })).toBeTruthy()
+    expect(
+      screen.getByRole("button", { name: WORDS.aboutTeam("SF") })
+    ).toBeTruthy()
+    // Each control keeps its place as taps change it (HS1).
+    expect(screen.getByRole("button", { name: /^SEA defense/ })).toHaveClass(
+      "w-full"
+    )
+    // A pick from the list would name nothing now: the bubble is away.
+    expect(
+      screen.queryByRole("button", { name: WORDS.everyScenario })
+    ).toBeNull()
+  })
+
+  it("names a play that just happened by its own unit, not the list's", async () => {
+    render(<GameWeek ports={ports()} outbox={outbox} />)
+    fireEvent.click(screen.getByText("SEA corner down, now off"))
+    await screen.findByRole("button", {
+      name: TAKE_WORDS.buttonLabel.recording,
+    })
+    expect(screen.getByRole("button", { name: /^SEA defense/ })).toBeTruthy()
+  })
+
+  it("ranks the list most plausible first when home ranks it", () => {
+    render(<GameWeek ports={ports()} outbox={outbox} />)
+    fireEvent.click(screen.getByRole("button", { name: WORDS.everyScenario }))
+    const sheet = screen.getByRole("dialog", { name: WORDS.legendTitle })
+    const text = sheet.textContent
+    expect(text.indexOf(TIER_TITLES.now)).toBeLessThan(
+      text.indexOf(TIER_TITLES.always)
+    )
+    expect(text.indexOf(TIER_TITLES.always)).toBeLessThan(
+      text.indexOf(TIER_TITLES.rest)
+    )
+    expect(text).toContain(WORDS.legendLede(true))
+    expect(text).toContain("SF offense")
+  })
+
   it("opens every scenario in a sheet over the screen, and closes it", () => {
     render(<GameWeek ports={ports(awayFeed)} outbox={outbox} />)
     fireEvent.click(screen.getByRole("button", { name: WORDS.everyScenario }))
     const sheet = screen.getByRole("dialog", { name: WORDS.legendTitle })
-    expect(sheet.textContent).toContain(WORDS.legendLede)
+    expect(sheet.textContent).toContain(WORDS.legendLede(false))
+    // Away, every scenario is there, in the catalog's order, all in one tier.
+    expect(sheet.textContent).toContain(TIER_TITLES.rest)
+    expect(sheet.textContent).not.toContain(TIER_TITLES.now)
     fireEvent.keyDown(sheet, { key: "Escape" })
     expect(screen.queryByRole("dialog")).toBeNull()
   })

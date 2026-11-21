@@ -33,6 +33,18 @@ export type Moment = (typeof MOMENTS)[number]
 export const HALVES = ["first", "second", "overtime"] as const
 export type Half = (typeof HALVES)[number]
 
+/**
+ * Which unit a bite is about (#3049): who has the ball decides offense or
+ * defense, a kick special teams, a decision coaching first.
+ */
+export const UNITS = [
+  "offense",
+  "defense",
+  "special-teams",
+  "coaching",
+] as const
+export type Unit = (typeof UNITS)[number]
+
 /** How big a big play was, smallest first (#3048, D8). */
 export const BIG_PLAY_SIZES = ["big", "huge", "memorable"] as const
 export type BigPlaySize = (typeof BIG_PLAY_SIZES)[number]
@@ -79,6 +91,7 @@ export type Catalog = {
   readonly scenarios: ReadonlyArray<CatalogEntry>
   readonly halves: ReadonlyArray<Half>
   readonly bigPlay: BigPlayAlgebra
+  readonly units: ReadonlyArray<Unit>
 }
 
 function oneOf<T extends string>(
@@ -125,6 +138,7 @@ export function parseCatalog(raw: {
     sizes: ReadonlyArray<{ id: string; yards: number }>
     kinds: ReadonlyArray<{ id: string; least: string }>
   }
+  units: ReadonlyArray<string>
 }): Catalog {
   allOf(
     BIG_PLAY_SIZES,
@@ -144,6 +158,7 @@ export function parseCatalog(raw: {
       moment: oneOf(MOMENTS, s.moment, `moment in ${s.id}`),
     })),
     halves: allOf(HALVES, raw.halves, "half"),
+    units: allOf(UNITS, raw.units, "unit"),
     bigPlay: {
       sizes: raw.big_play.sizes.map((size) => ({
         id: oneOf(BIG_PLAY_SIZES, size.id, "big-play size"),

@@ -4,6 +4,7 @@ import {
   CATALOG,
   HALVES,
   parseCatalog,
+  UNITS,
 } from "@game-scenarios/catalog"
 import { PRIMITIVES } from "@game-scenarios/icons"
 import { isScenarioId, scenarioOf, SCENARIOS } from "@game-scenarios/scenarios"
@@ -60,13 +61,22 @@ describe("the dimensions a bite is read along (#3048)", () => {
 describe("parseCatalog", () => {
   const dimensions = {
     halves: [...HALVES],
+    units: [...UNITS],
     big_play: {
       sizes: BIG_PLAY_SIZES.map((id, i) => ({ id, yards: 20 * (i + 1) })),
       kinds: BIG_PLAY_KINDS.map((id) => ({ id, least: "big" })),
     },
   }
 
-  it("refuses a half, size or kind this code does not know, or one it lacks", () => {
+  it("refuses a half, size, kind or unit this code does not know, or one it lacks", () => {
+    expect(() =>
+      parseCatalog({
+        version: 2,
+        scenarios: [],
+        ...dimensions,
+        units: ["offense", "defense", "special-teams"],
+      })
+    ).toThrow("unit: offense, defense, special-teams is not")
     expect(() =>
       parseCatalog({
         version: 2,

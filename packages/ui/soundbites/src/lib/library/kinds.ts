@@ -77,6 +77,12 @@ export type TakeNames = {
   readonly scenario: (id: string) => string | null
   /** An interview week's question, by the week and the question's id. */
   readonly question: (week: string, question: string) => string | null
+  /** Which unit a bite is about, and whose: "CHI defense" (#3049). */
+  readonly unit?:
+    | ((unit: string, side: string | null) => string | null)
+    | undefined
+  /** The half a bite was in: "2nd half". */
+  readonly half?: ((half: string) => string | null) | undefined
 }
 
 export const NO_NAMES: TakeNames = {
@@ -179,7 +185,8 @@ function biteMoment(
 
 /**
  * Each kind's port. A bite: its game (by name, else the day it started),
- * its moment (`biteMoment`), and the scenario it was said on. A
+ * its half when no matched play says it, its moment (`biteMoment`), the
+ * scenario it was said on, and the unit it is about (#3049). A
  * week's take: its week and what it answers. The rest: what their ref says.
  */
 export const ABOUT_PORTS: Readonly<Record<OtherOf, AboutPort>> = {
@@ -204,10 +211,19 @@ export const ABOUT_PORTS: Readonly<Record<OtherOf, AboutPort>> = {
       (day === null ? words.aGame : words.gameOn(day))
     const scenario =
       fields.scenario === undefined ? null : names.scenario(fields.scenario)
+    const unit =
+      fields.unit === undefined
+        ? null
+        : (names.unit?.(fields.unit, fields.unitSide ?? null) ?? null)
+    // A matched play's quarter says its half already.
+    const half =
+      fields.half === undefined || fields.playPeriod !== undefined
+        ? null
+        : (names.half?.(fields.half) ?? null)
     return {
       kind: "bite",
       topic: ref === "" ? null : topicOf(`game:${ref}`, label),
-      parts: present([biteMoment(fields, words), scenario]),
+      parts: present([half, biteMoment(fields, words), scenario, unit]),
     }
   },
   soundbite: ({ ref }, _names, words) => ({

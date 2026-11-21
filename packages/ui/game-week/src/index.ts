@@ -1,7 +1,7 @@
 export { GameWeek } from "./components/game-week"
 export type { GameWeekProps } from "./components/game-week"
 export type { BiteHow, KeptBite } from "./lib/bite"
-export { scenarioName } from "./lib/bite"
+export { halfName, scenarioName, unitName } from "./lib/bite"
 export type {
   Feed,
   FeedChoice,

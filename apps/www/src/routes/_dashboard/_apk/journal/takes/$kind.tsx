@@ -1,6 +1,6 @@
 import type { JSX } from "react"
 import { useEffect } from "react"
-import { scenarioName } from "@some-ui/game-week"
+import { halfName, scenarioName, unitName } from "@some-ui/game-week"
 import type { Compartment, LibraryTake, TakeNames } from "@some-ui/soundbites"
 import {
   isCompartment,
@@ -28,13 +28,15 @@ const STORES: AboutStores = {
 
 /**
  * What this phone can name that a take's ref only points at: a game bite's
- * scenario, by the catalog the phone plays. A game is named by home's read,
+ * scenario, unit and half, by the catalog the phone plays. A game is named by home's read,
  * or else the day it was played; an interview question by its id.
  */
 const NAMES: TakeNames = {
   game: () => null,
   scenario: scenarioName,
   question: () => null,
+  unit: unitName,
+  half: halfName,
 }
 
 /** Takes' ports, in the Android app alone (`build.paths.ts`). */

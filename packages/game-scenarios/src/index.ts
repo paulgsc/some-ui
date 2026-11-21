@@ -6,6 +6,7 @@ export {
   HALVES,
   MOMENTS,
   PHASES,
+  UNITS,
   type BigPlayAlgebra,
   type BigPlayKind,
   type BigPlaySize,
@@ -14,6 +15,7 @@ export {
   type Half,
   type Moment,
   type Phase,
+  type Unit,
 } from "./catalog"
 export { ICONS, PRIMITIVES } from "./icons"
 export {
@@ -29,5 +31,6 @@ export {
   HALF_WORDS,
   OUTCOME_WORDS,
   PHASE_TITLES,
+  UNIT_WORDS,
   type ScenarioId,
 } from "./words"

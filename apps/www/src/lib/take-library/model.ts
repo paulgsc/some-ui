@@ -51,10 +51,14 @@ const TakeSchema = z.object({
           scenario: z.string().nullable().optional().catch(undefined),
           strip: z.string().nullable().optional().catch(undefined),
           started: z.string().nullable().optional().catch(undefined),
+          unit: z.string().min(1).nullable().optional().catch(undefined),
+          unitSide: z.string().min(1).nullable().optional().catch(undefined),
         })
         .nullable()
         .optional()
         .catch(undefined),
+      // The half it was in, from its matched play or the game's clock.
+      half: z.string().min(1).nullable().optional().catch(undefined),
       match: z
         .object({
           method: z.enum(MATCH_METHODS).optional().catch(undefined),
@@ -132,10 +136,16 @@ function gameFields(
   if (about == null) return undefined
   const fields: Record<string, string> = {}
   if (about.label != null) fields.label = about.label
-  const { scenario, strip, started } = about.bite ?? {}
+  const { scenario, strip, started, unit, unitSide } = about.bite ?? {}
   if (scenario != null) fields.scenario = scenario
   if (strip != null) fields.strip = strip
   if (started != null) fields.started = started
+  // By the names the phone sends a bite's unit by (`biteFields`).
+  if (unit != null) {
+    fields.unit = unit
+    if (unitSide != null) fields.unitSide = unitSide
+  }
+  if (about.half != null) fields.half = about.half
   const { method, play } = about.match ?? {}
   if (method != null) {
     fields.matchedBy = method

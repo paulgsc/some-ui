@@ -49,7 +49,9 @@
             "at": "2026-10-23T01:52:20Z",
             "id": "in.sack",
             "line": "NE sacked on 2nd and 5",
-            "playId": "4018730101234"
+            "playId": "4018730101234",
+            "unit": "offense",
+            "unitSide": "NE"
           },
           {
             "at": "2026-10-23T01:51:02Z",
@@ -63,7 +65,47 @@
             },
             "id": "in.big-play",
             "line": "CHI 45-yard interception return, touchdown",
-            "playId": "4018730101210"
+            "playId": "4018730101210",
+            "unit": "defense",
+            "unitSide": "CHI"
+          }
+        ],
+        "ranked": [
+          {
+            "id": "in.third-long",
+            "tier": "now",
+            "unit": "offense",
+            "unitSide": "NE"
+          },
+          {
+            "id": "in.play-call",
+            "tier": "now",
+            "unit": "offense",
+            "unitSide": "NE"
+          },
+          {
+            "id": "pre.stakes",
+            "tier": "always",
+            "unit": null,
+            "unitSide": null
+          },
+          {
+            "id": "in.fourth-down",
+            "tier": "rest",
+            "unit": "coaching",
+            "unitSide": "NE"
+          },
+          {
+            "id": "in.halftime",
+            "tier": "rest",
+            "unit": "coaching",
+            "unitSide": null
+          },
+          {
+            "id": "pre.weather",
+            "tier": "rest",
+            "unit": null,
+            "unitSide": null
           }
         ],
         "scenarios": [
@@ -110,6 +152,32 @@
       "offer": {
         "gameId": "401873023",
         "justHappened": [],
+        "ranked": [
+          {
+            "id": "pre.stakes",
+            "tier": "always",
+            "unit": null,
+            "unitSide": null
+          },
+          {
+            "id": "post.pattern",
+            "tier": "always",
+            "unit": null,
+            "unitSide": null
+          },
+          {
+            "id": "pre.weather",
+            "tier": "rest",
+            "unit": null,
+            "unitSide": null
+          },
+          {
+            "id": "in.fourth-down",
+            "tier": "rest",
+            "unit": null,
+            "unitSide": null
+          }
+        ],
         "scenarios": [],
         "strip": {
           "clock": "Kickoff in 2 h 10 min",

@@ -18,6 +18,7 @@ export const FEED: Feed = {
       id: "401772981",
       label: "SF vs SEA",
       want: "SF win",
+      teams: { home: "SF", away: "SEA" },
       kickoff: new Date(KICKOFF).toISOString(),
     },
     {

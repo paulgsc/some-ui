@@ -21,10 +21,11 @@ draws each scenario:
 `SCENARIOS` joins the three, in the catalog's order. `CATALOG_VERSION` is the
 version every bite and weekly bundle records.
 
-The dump also lists the closed dimensions a bite is
-read along: `halves` (`first`, `second`, `overtime`) and `big_play`, the
+The dump also lists the closed dimensions a bite is read along: `halves`
+(`first`, `second`, `overtime`), `units` (`offense`, `defense`,
+`special-teams`, `coaching`: what a bite is about) and `big_play`, the
 big-play algebra's sizes (the fewest yards each starts at) and kinds (the
-smallest size each counts from). Each is a union here (`HALVES`,
+smallest size each counts from). Each is a union here (`HALVES`, `UNITS`,
 `BIG_PLAY_SIZES`, `BIG_PLAY_KINDS`) with its words in `src/words.ts`.
 
 ## What keeps the two sides together
