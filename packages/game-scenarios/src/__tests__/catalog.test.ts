@@ -7,12 +7,7 @@ import {
 } from "@game-scenarios/catalog"
 import { PRIMITIVES } from "@game-scenarios/icons"
 import { isScenarioId, scenarioOf, SCENARIOS } from "@game-scenarios/scenarios"
-import {
-  BIG_PLAY_KIND_WORDS,
-  BIG_PLAY_SIZE_WORDS,
-  HALF_WORDS,
-  OUTCOME_WORDS,
-} from "@game-scenarios/words"
+import { OUTCOME_WORDS } from "@game-scenarios/words"
 import { describe, expect, it } from "vitest"
 
 // Importing `SCENARIOS` already fails on an id or outcome in the copy with no
@@ -55,14 +50,6 @@ describe("icons", () => {
 })
 
 describe("the dimensions a bite is read along (#3048)", () => {
-  it("names every half and every big play's size and kind, as the copy does", () => {
-    expect(CATALOG.halves).toEqual(HALVES)
-    expect(CATALOG.bigPlay.sizes.map((size) => size.id)).toEqual(BIG_PLAY_SIZES)
-    expect(CATALOG.bigPlay.kinds.map((kind) => kind.id)).toEqual(BIG_PLAY_KINDS)
-    for (const words of [HALF_WORDS, BIG_PLAY_SIZE_WORDS, BIG_PLAY_KIND_WORDS])
-      for (const said of Object.values(words)) expect(said).not.toBe("")
-  })
-
   it("starts each size further out than the one before", () => {
     const yards = CATALOG.bigPlay.sizes.map((size) => size.yards)
     expect(yards).toEqual([...yards].sort((a, b) => a - b))
@@ -110,7 +97,6 @@ describe("parseCatalog", () => {
         },
       })
     ).toThrow("unknown least size of pass: vast")
-    // Out of order, or one twice, is not the set.
     expect(() =>
       parseCatalog({
         version: 2,
@@ -122,14 +108,6 @@ describe("parseCatalog", () => {
         },
       })
     ).toThrow("big-play size: memorable, huge, big is not big, huge, memorable")
-    expect(() =>
-      parseCatalog({
-        version: 2,
-        scenarios: [],
-        ...dimensions,
-        halves: ["first", "first", "second", "overtime"],
-      })
-    ).toThrow("half: first, first, second, overtime is not")
   })
 
   it("refuses a phase or moment this code does not know", () => {

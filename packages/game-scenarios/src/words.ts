@@ -93,21 +93,18 @@ export const OUTCOME_WORDS = {
 /** Every scenario id this version of some-ui draws. */
 export type ScenarioId = keyof typeof OUTCOME_WORDS
 
-/** The half a bite was in. */
 export const HALF_WORDS: Readonly<Record<Half, string>> = {
   first: "1st half",
   second: "2nd half",
   overtime: "Overtime",
 }
 
-/** How big a big play was. */
 export const BIG_PLAY_SIZE_WORDS: Readonly<Record<BigPlaySize, string>> = {
   big: "Big",
   huge: "Huge",
   memorable: "One to remember",
 }
 
-/** What a big play was. */
 export const BIG_PLAY_KIND_WORDS: Readonly<Record<BigPlayKind, string>> = {
   pass: "Pass",
   run: "Run",
