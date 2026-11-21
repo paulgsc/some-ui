@@ -148,6 +148,47 @@ describe("the bars card", () => {
     ).toContain("row 1: its label doesn't fit")
   })
 
+  it("never lets a label run into the next row", () => {
+    const long = (n: number): { label: string; values: Array<number> } => ({
+      label: `A considerably longer label that has to wrap onto two lines ${String(n)}`,
+      values: [1, 1],
+    })
+    const crowded = { ...JOBS, rows: [1, 2, 3, 4, 5, 6].map(long) }
+    const p = bars(crowded)
+    if (p.ok) {
+      const rows = at(crowded, 60_000).rows
+      rows.slice(1).forEach((r, i) => {
+        const above = rows[i]?.label.box
+        if (above === undefined) throw new Error("a row above")
+        expect(above.y + above.height).toBeLessThanOrEqual(r.label.box.y)
+      })
+    } else expect(p.problems.join("\n")).toContain("its label doesn't fit")
+  })
+
+  it("ends its axis at the end it was given, with the unit, whatever the step", () => {
+    const f = at({ ...JOBS, max: 1250 }, 60_000)
+    const said = f.axis.blocks.map((b) => b.rows.join(" "))
+    expect(said.at(-1)).toBe("1,250 min")
+    // At 1,050 the step is 250, and the step at 1,000 is left out: it would
+    // sit too near the end's number.
+    const end = at({ ...JOBS, max: 1_050, rows: JOBS.rows.slice(0, 3) }, 60_000)
+    const ends = end.axis.blocks.map((b) => b.rows.join(" "))
+    expect(ends.at(-1)).toBe("1,050 min")
+    expect(ends).not.toContain("1,000")
+    expect(ends).toContain("750")
+  })
+
+  it("keeps a bar's whole length when its later parts are nothing", () => {
+    const f = at(
+      { ...JOBS, max: 100, rows: [{ label: "Half", values: [100, 0] }] },
+      60_000
+    )
+    const [part] = f.rows[0]?.parts ?? []
+    const end = f.axis.panels.at(-1)?.box
+    if (part === undefined || end === undefined) throw new Error("drawn")
+    expect(part.box.x + part.box.width).toBeCloseTo(end.x + end.width / 2)
+  })
+
   it("refuses more series than its palette holds", () => {
     expect(refused({ ...JOBS, series: ["a", "b", "c", "d", "e"] })).not.toBe("")
   })

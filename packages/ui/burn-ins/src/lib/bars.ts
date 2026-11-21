@@ -7,7 +7,7 @@
  *
  * Its marks follow the dataviz method: the parts take `BAR_COLOURS` in their
  * fixed order, never cycled; a 2 px gap of ground parts one from the next;
- * a bar's ends are rounded 4 px; the grid is the panels' edge colour, and
+ * each part's corners are rounded 4 px (a panel has one radius); the grid is the panels' edge colour, and
  * every word is in the cards' ink, never a part's colour. Its values come
  * from the cut list, which names their source in its stamp.
  *
@@ -230,7 +230,15 @@ export function drawBars(p: BarsParams, g: Geometry): Parsed<BarsDrawing> {
     blocks: [],
   }
   const gridHeight = rowHeight * p.rows.length
-  for (let n = 0; n <= end + step / 1e6; n += step) {
+  // A line at each step, and one at the end, which says the unit. A step
+  // closer to the end than half a step is left out, so no two numbers meet.
+  const ticks = [
+    ...Array.from({ length: Math.ceil(end / step) }, (_, k) => k * step).filter(
+      (n) => end - n >= step / 2
+    ),
+    end,
+  ]
+  ticks.forEach((n, k) => {
     const at = plotX + along(n)
     axis.panels.push(
       panel(
@@ -239,28 +247,36 @@ export function drawBars(p: BarsParams, g: Geometry): Parsed<BarsDrawing> {
         0
       )
     )
-    const said = `${tickText(n)}${n === end && p.unit !== "" ? ` ${p.unit}` : ""}`
+    const last = k === ticks.length - 1
+    const said = `${tickText(n)}${last && p.unit !== "" ? ` ${p.unit}` : ""}`
     const width = widthOf(said, TICK)
+    // Below the rows' rise, so a row coming in never crosses the numbers.
     const tick = setText(
       said,
       TICK,
-      { x: at - width / 2, y: rowsTop + gridHeight + 6, width: width + 1 },
+      {
+        x: at - width / 2,
+        y: rowsTop + gridHeight + ITEM.risePx,
+        width: width + 1,
+      },
       1
     )
     if (tick !== null) axis.blocks.push(tick)
-  }
+  })
 
   const times = itemTimes(p.rows.map((r) => r.atMs))
   const rows = p.rows.flatMap((r, i): Array<RowDrawing> => {
     const y = rowsTop + i * rowHeight
     const barY = y + (rowHeight - barHeight) / 2
+    // Two lines where a row has room for them, else one.
+    const lines = rowHeight >= 2 * LABEL.sizePx * LABEL.lineHeight ? 2 : 1
     const label = setText(
       r.label,
       LABEL,
       { x: box.x, y: 0, width: labelWidth - GUTTER },
-      2
+      lines
     )
-    if (label === null) {
+    if (label === null || label.box.height > rowHeight) {
       problems.push(`row ${i + 1}: its label doesn't fit`)
       return []
     }
@@ -269,8 +285,10 @@ export function drawBars(p: BarsParams, g: Geometry): Parsed<BarsDrawing> {
       const width = along(v)
       const from = start
       start += width
-      // The next part's gap is taken from this one, so the bar keeps its length.
-      const drawn = k < r.values.length - 1 ? width - PART_GAP : width
+      // The next part's gap is taken from this one, so the bar keeps its
+      // length; none is taken when nothing is drawn after it.
+      const followed = r.values.slice(k + 1).some((next) => along(next) >= 1)
+      const drawn = followed ? width - PART_GAP : width
       return drawn < 1
         ? []
         : [
