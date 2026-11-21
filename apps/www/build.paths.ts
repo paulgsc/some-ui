@@ -110,6 +110,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/agent-export/**",
   "apps/www/src/lib/ask-answer/**",
   "apps/www/src/lib/drive-filing/**",
+  "apps/www/src/lib/engagement-places/**",
   "apps/www/src/lib/episode-feedback/**",
   "apps/www/src/lib/game-bites/**",
   "apps/www/src/lib/handed-in/**",
