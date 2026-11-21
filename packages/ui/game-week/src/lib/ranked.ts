@@ -81,3 +81,15 @@ export function nextUnit(
   const next = UNITS[at + 1]
   return next === undefined ? null : { unit: next, side: unit.side }
 }
+
+/**
+ * The unit moved to the other team of the game, `home` or `away`: from
+ * one to the other, and from no one team to the home side.
+ */
+export function otherSide(
+  unit: BiteUnit,
+  teams: { readonly home: string; readonly away: string }
+): BiteUnit {
+  const side = unit.side === teams.home ? teams.away : teams.home
+  return { unit: unit.unit, side }
+}

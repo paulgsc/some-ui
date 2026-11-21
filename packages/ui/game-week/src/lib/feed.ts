@@ -23,6 +23,12 @@ export type Game = {
   readonly want: string
   /** Kickoff, ISO 8601. */
   readonly kickoff: string
+  /**
+   * The two teams' codes ("SEA", "SF"), as home names them; absent from a
+   * week kept before the phone read them.
+   */
+  readonly home?: string | undefined
+  readonly away?: string | undefined
 }
 
 /** A scenario that can be happening now, as the screen offers it. */
@@ -124,6 +130,8 @@ export function fixtureFeed(now: () => number = Date.now): FeedPort {
           id: "fixture-1",
           label: "SF vs SEA",
           want: "SF win",
+          home: "SF",
+          away: "SEA",
           kickoff: iso(at - 70 * MINUTE),
         },
         {

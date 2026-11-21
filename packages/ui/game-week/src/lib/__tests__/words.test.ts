@@ -63,11 +63,12 @@ function everyPhrase(): Array<string> {
       )
     )
   )
-  const { yourTakes, ...fixed } = WORDS
+  const { yourTakes, aboutTeam, ...fixed } = WORDS
   return [
     ...Object.values(fixed),
     yourTakes(true),
     yourTakes(false),
+    aboutTeam("CHI"),
     ...Object.values(NOTICES),
     ...MODES.flatMap((mode) => [
       MODE_WORDS[mode].name,

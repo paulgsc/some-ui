@@ -64,7 +64,7 @@ import {
 } from "@some-ui/shared"
 import type { TakeButtonView } from "@some-ui/voice-capture"
 import { RECORDING_FAILURE_COPY, TAKE_WORDS } from "@some-ui/voice-capture"
-import { Eye, EyeOff, List, Mic, Settings2 } from "lucide-react"
+import { ArrowLeftRight, Eye, EyeOff, List, Mic, Settings2 } from "lucide-react"
 
 import { ScenarioIcon } from "./scenario-icon"
 
@@ -291,6 +291,8 @@ const Recording = ({
   now,
   onDone,
   onUnit,
+  teams,
+  onSide,
 }: {
   activity: Extract<Activity, { kind: "taking" }>
   /** The take pattern's button for the bite: Done, the time against the cap. */
@@ -299,6 +301,10 @@ const Recording = ({
   onDone: () => void
   /** One tap moves the bite to the next unit (#3049). */
   onUnit: () => void
+  /** The game's two teams, when home named them. */
+  teams: { readonly home: string; readonly away: string } | null
+  /** One tap makes it about the other team. */
+  onSide: () => void
 }): JSX.Element => {
   const level = button.kind === "recording" ? button.level : 0
   const fill =
@@ -306,10 +312,15 @@ const Recording = ({
       ? quietFill(activity.quiet, now, MODE_RULES[activity.moment.mode].quietMs)
       : 0
   const { said } = activity
-  const unitWords =
-    said.how === "said-first" || said.unit == null
-      ? WORDS.noUnit
-      : unitLine(said.unit)
+  const unit = said.how === "said-first" ? null : (said.unit ?? null)
+  const unitWords = unit === null ? WORDS.noUnit : unitLine(unit)
+  // The team a tap on the switch makes it about.
+  const other =
+    unit === null || teams === null
+      ? null
+      : unit.side === teams.home
+        ? teams.away
+        : teams.home
   return (
     <section
       aria-label={
@@ -333,16 +344,29 @@ const Recording = ({
           : scenarioOf(said.scenario).name}
       </p>
       {said.how !== "said-first" && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="rounded-full"
-          onClick={onUnit}
-          // The name starts with what it shows, then says what a tap does.
-          aria-label={`${unitWords}. ${WORDS.unitChange}`}
-        >
-          {unitWords}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-full"
+            onClick={onUnit}
+            // The name starts with what it shows, then says what a tap does.
+            aria-label={`${unitWords}. ${WORDS.unitChange}`}
+          >
+            {unitWords}
+          </Button>
+          {other !== null && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="rounded-full"
+              onClick={onSide}
+              aria-label={WORDS.aboutTeam(other)}
+            >
+              <ArrowLeftRight className="size-4" aria-hidden /> {other}
+            </Button>
+          )}
+        </div>
       )}
       <div
         role="meter"
@@ -588,6 +612,12 @@ export const GameWeek = ({
           now={now}
           onDone={() => dispatch({ type: "done" })}
           onUnit={() => dispatch({ type: "pickUnit" })}
+          teams={
+            game?.home === undefined || game.away === undefined
+              ? null
+              : { home: game.home, away: game.away }
+          }
+          onSide={() => dispatch({ type: "switchSide" })}
         />
       ) : asking ? (
         <Asking

@@ -79,7 +79,7 @@ import type { Prefs } from "./ports"
 import type { Quiet } from "./quiet"
 import { hear, NOT_HEARD, quietEnough } from "./quiet"
 import type { RankedEntry } from "./ranked"
-import { nextUnit, rankedList, unitOf } from "./ranked"
+import { nextUnit, otherSide, rankedList, unitOf } from "./ranked"
 import { keptLine, NOTICES } from "./words"
 
 /** How long Undo stays offered after a bite is kept. */
@@ -196,6 +196,8 @@ export type GameWeekIntent =
   | { readonly type: "answer"; readonly said: Said | null }
   /** Moves the bite being said to the next unit (#3049). */
   | { readonly type: "pickUnit" }
+  /** Makes the bite being said about the game's other team (#3049). */
+  | { readonly type: "switchSide" }
   | { readonly type: "undo" }
   | { readonly type: "pickGame"; readonly gameId: string }
   | { readonly type: "toggleWatching"; readonly gameId: string }
@@ -829,6 +831,25 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
       const { said: was } = activity
       const side = unitOf(rankedNow(state), was.scenario)?.side ?? null
       const said = { ...was, unit: nextUnit(was.unit ?? null, side) }
+      return stay({ ...state, activity: { ...activity, said } })
+    }
+
+    case "switchSide": {
+      // As a unit: only while it is said, and only with a unit to be whose.
+      const game = currentGame(state)
+      if (
+        activity.kind !== "taking" ||
+        activity.said.how === "said-first" ||
+        activity.said.unit == null ||
+        game?.home === undefined ||
+        game.away === undefined
+      )
+        return stay(state)
+      const unit = otherSide(activity.said.unit, {
+        home: game.home,
+        away: game.away,
+      })
+      const said = { ...activity.said, unit }
       return stay({ ...state, activity: { ...activity, said } })
     }
 

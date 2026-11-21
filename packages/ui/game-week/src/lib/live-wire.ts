@@ -79,6 +79,8 @@ function asGame(game: HomeGame): Game {
     label: gameLabel(game.home, game.away),
     want: wantLine(game.want),
     kickoff: game.kickoff,
+    home: game.home,
+    away: game.away,
   }
 }
 

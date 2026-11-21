@@ -279,6 +279,13 @@ describe("GameWeek", () => {
     expect(chip).toHaveAccessibleName(`SF offense. ${WORDS.unitChange}`)
     fireEvent.click(chip)
     expect(screen.getByRole("button", { name: /^SF defense/ })).toBeTruthy()
+    fireEvent.click(
+      screen.getByRole("button", { name: WORDS.aboutTeam("SEA") })
+    )
+    expect(screen.getByRole("button", { name: /^SEA defense/ })).toBeTruthy()
+    expect(
+      screen.getByRole("button", { name: WORDS.aboutTeam("SF") })
+    ).toBeTruthy()
     // A pick from the list would name nothing now: the bubble is away.
     expect(
       screen.queryByRole("button", { name: WORDS.everyScenario })

@@ -10,7 +10,7 @@ import { readHome } from "@game-week/lib/live-wire"
 import type { GameWeekState } from "@game-week/lib/machine"
 import { rankedNow, step } from "@game-week/lib/machine"
 import type { RankedEntry } from "@game-week/lib/ranked"
-import { nextUnit, rankedList, unitOf } from "@game-week/lib/ranked"
+import { nextUnit, otherSide, rankedList, unitOf } from "@game-week/lib/ranked"
 import { TIER_TITLES, unitLine, WORDS } from "@game-week/lib/words"
 import { SCENARIOS, UNITS } from "@some-ui/game-scenarios"
 import { describe, expect, it } from "vitest"
@@ -162,6 +162,36 @@ describe("a bite's unit", () => {
     // Moved to none, nothing goes home.
     const none = step(back, { type: "pickUnit" }).state
     expect(fieldsKept(none)).not.toHaveProperty("unit")
+  })
+
+  it("switches to the game's other team with one tap, and back", () => {
+    const once = step(saying(THIRD), { type: "switchSide" }).state
+    const said = once.activity.kind === "taking" ? once.activity.said : null
+    expect(said?.how !== "said-first" && said?.unit).toEqual({
+      unit: "defense",
+      side: "SF",
+    })
+    expect(fieldsKept(once)).toMatchObject({ unit: "defense", unitSide: "SF" })
+    const twice = step(once, { type: "switchSide" }).state
+    expect(fieldsKept(twice)).toMatchObject({ unitSide: "SEA" })
+    // Of no one team, a switch makes it the home side's.
+    expect(
+      otherSide({ unit: "coaching", side: null }, { home: "SF", away: "SEA" })
+    ).toEqual({ unit: "coaching", side: "SF" })
+  })
+
+  it("switches nothing without a unit, or a game home named the teams of", () => {
+    const none = step(saying(THIRD), { type: "pickUnit" }).state
+    const cleared = step(step(none, { type: "pickUnit" }).state, {
+      type: "pickUnit",
+    }).state
+    expect(step(cleared, { type: "switchSide" }).state).toBe(cleared)
+    const unnamed: Feed = {
+      ...RANKED_FEED,
+      games: RANKED_FEED.games.map(({ home: _h, away: _a, ...game }) => game),
+    }
+    const kept = saying(THIRD, unnamed)
+    expect(step(kept, { type: "switchSide" }).state).toBe(kept)
   })
 
   it("can't be changed for a bite said first, or once it is kept", () => {

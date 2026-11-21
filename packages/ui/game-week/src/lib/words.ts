@@ -39,6 +39,8 @@ export const WORDS = {
   legendLede: "Most likely first. Tap one to talk about it.",
   /** The unit chip while a bite is said: one tap moves it on. */
   unitChange: "Tap to change who it's about",
+  /** The team switch beside it: the other team, as its code. */
+  aboutTeam: (team: string): string => `About ${team} instead`,
   noUnit: "Who it's about",
   recordingLabel: "Saying it",
   sayingFirst: "Saying it first",

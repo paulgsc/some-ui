@@ -24,12 +24,16 @@ describe("what home sends", () => {
           label: "NE at CHI",
           want: "",
           kickoff: "2026-10-23T00:15:00Z",
+          home: "CHI",
+          away: "NE",
         },
         {
           id: "401873023",
           label: "SEA at SF",
           want: "SF win",
           kickoff: "2026-10-26T20:25:00Z",
+          home: "SF",
+          away: "SEA",
         },
       ],
       offer: {
