@@ -117,7 +117,7 @@ const TeamsRow = (): JSX.Element => {
   const settable = canSet(state)
 
   return (
-    <div className="space-y-3 rounded-lg border p-4">
+    <div id="game-teams" className="space-y-3 rounded-lg border p-4">
       <div className="space-y-1">
         <Label>{GAME_TEAMS.label}</Label>
         <p className="text-muted-foreground text-sm">{GAME_TEAMS.about}</p>
@@ -152,8 +152,9 @@ const TeamsRow = (): JSX.Element => {
  * Home's switches: what home does while it runs, set from the desktop web
  * (the administration epic, #2357; never built into the APK, whose phone
  * opens it in the browser on the home network, as it does the résumé
- * builder): Rust Rounds recording, whether home follows NFL games, and
- * which teams' games it follows live (#3329). LAN-only and account-only (`_lan.tsx`);
+ * builder: Game Day links to `#game-teams`, through `lib/home-web`): Rust
+ * Rounds recording, whether home follows NFL games, and which teams' games
+ * it follows live (#3329). LAN-only and account-only (`_lan.tsx`);
  * home answers only its owner (or the subjects it lists as operators), 401
  * signed out and 403 otherwise, which the page says in
  * `lib/home-switches/words`. Each row reads its own runtime's snapshot, and

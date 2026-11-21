@@ -85,6 +85,12 @@ export type GameWeekProps = {
         words: string
       ) => ReactNode)
     | undefined
+  /**
+   * The app's way to choose which teams home follows live (#3329), with its
+   * words: a page of the web app the phone opens in its browser. None
+   * without.
+   */
+  teamsLink?: ((words: string) => ReactNode) | undefined
 }
 
 type Panel = "none" | "legend" | "modes"
@@ -479,6 +485,7 @@ export const GameWeek = ({
   ports,
   outbox,
   takesLink,
+  teamsLink,
 }: GameWeekProps): JSX.Element => {
   // The runtime owns the microphone, the store and home's feed for this
   // mount, so it is made once, from the ports it arrived with.
@@ -645,6 +652,15 @@ export const GameWeek = ({
       {takesLink?.(
         game === null ? null : { id: game.id, label: game.label },
         WORDS.yourTakes(game !== null)
+      )}
+
+      {teamsLink !== undefined && (
+        <div className="flex flex-col gap-1">
+          {teamsLink(WORDS.teamsFollowed)}
+          <p className="text-muted-foreground text-xs">
+            {WORDS.teamsFollowedHow}
+          </p>
+        </div>
       )}
 
       <Sheet

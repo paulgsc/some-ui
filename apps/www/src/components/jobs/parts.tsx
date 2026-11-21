@@ -15,6 +15,7 @@ import { Button, Notice, TakeList, useTakePattern } from "@some-ui/shared"
 import { FolderOpen } from "lucide-react"
 
 import type { Pairing } from "@/lib/home-link/model"
+import { RESUME_BUILDER } from "@/lib/home-web"
 import type { JobsSnapshot } from "@/lib/jobs"
 import { phoneJobs } from "@/lib/jobs"
 import type { JourneyContext } from "@/lib/jobs/journey"
@@ -37,14 +38,11 @@ export function useVoiceBusy(owner: string): boolean {
 }
 
 /**
- * The home network's résumé builder, a page of the lan build, as an
- * absolute URL: another deployable's, which Capacitor opens in the phone's
- * browser. The Android app bundles no résumé build and holds no
- * contact details.
+ * The home network's résumé builder with a composition and layout
+ * preselected, for pick or scout `id`: another deployable's page, which
+ * Capacitor opens in the phone's browser (`lib/home-web`). The Android app
+ * bundles no résumé build and holds no contact details.
  */
-const RESUME_BUILDER = "https://www.home.maishatu.com/resume-build"
-
-/** The builder with a composition and layout preselected, for pick or scout `id`. */
 export function builderHref(
   sends: { variant: string; template: string },
   id: string
