@@ -29,14 +29,17 @@ export type FrameRead = { readonly at: number; readonly shown: FrameShown }
  * Every frame of clip `id` in `frames`, from home, in their order, each as
  * home answers it; never throws. A frame not asked once `wanted` says no is
  * `away`; one whose ask stopped while the link was busy is `busy`, as
- * `askWhileBusy` ends an ask no longer wanted (#3155).
+ * `askWhileBusy` ends an ask no longer wanted (#3155). A frame `ask` says
+ * no to (one already settled) is neither asked nor handed on (#2895).
  */
 export async function* clipFrames(
   id: string,
   frames: ReadonlyArray<ClipFrameRef>,
-  wanted: () => boolean
+  wanted: () => boolean,
+  ask: (at: number) => boolean = () => true
 ): AsyncGenerator<FrameRead> {
   for (const [at, { side, file }] of frames.entries()) {
+    if (!ask(at)) continue
     if (!wanted()) {
       yield { at, shown: { kind: "away" } }
       continue

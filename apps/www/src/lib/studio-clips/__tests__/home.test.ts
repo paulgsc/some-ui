@@ -17,12 +17,20 @@ const visits = vi.hoisted(
   (): {
     answers: Array<ReadonlyArray<FrameShown>>
     gate: Promise<void> | null
-  } => ({ answers: [], gate: null })
+    asked: Array<number>
+  } => ({ answers: [], gate: null, asked: [] })
 )
 vi.mock("@/lib/studio-clips/frames-read", () => ({
-  clipFrames: vi.fn(async function* (): AsyncGenerator<FrameRead> {
+  clipFrames: vi.fn(async function* (
+    _id: string,
+    _frames: unknown,
+    _wanted: unknown,
+    ask: (at: number) => boolean
+  ): AsyncGenerator<FrameRead> {
     const answers = visits.answers.shift() ?? []
     for (const [at, shown] of answers.entries()) {
+      if (!ask(at)) continue
+      visits.asked.push(at)
       if (at === 1 && visits.gate !== null) await visits.gate
       yield { at, shown }
     }
@@ -110,5 +118,43 @@ describe("a clip's frames from home (HERD2, #2895)", () => {
     expect(observer.getCurrentResult().data).toEqual([FRAME, FRAME])
     stop()
     visits.gate = null
+  })
+
+  it("on a later visit asks only what isn't settled, keeps what showed meanwhile, and home away takes no frame away", async () => {
+    const client = appClient()
+    const two = [
+      { side: "after", file: "a.png", made: "walk" },
+      { side: "after", file: "b.png", made: "walk" },
+    ] as const
+    visits.answers.push([FRAME, { kind: "not-taken" }])
+    expect(await visit(client, two)).toEqual([FRAME, { kind: "not-taken" }])
+    // Home is away this time: the walk's frame stays not taken, and the
+    // first frame, settled, is not asked at all.
+    visits.asked.length = 0
+    let open = (): void => undefined
+    visits.gate = new Promise((resolve) => {
+      open = resolve
+    })
+    visits.answers.push([{ kind: "away" }, { kind: "away" }])
+    const observer = new QueryObserver(client, clipFramesQuery("c1", two))
+    const stop = observer.subscribe(() => undefined)
+    await vi.waitFor(() =>
+      expect(observer.getCurrentResult().isFetching).toBe(true)
+    )
+    expect(observer.getCurrentResult().data).toEqual([
+      FRAME,
+      { kind: "not-taken" },
+    ])
+    open()
+    await vi.waitFor(() =>
+      expect(observer.getCurrentResult().isFetching).toBe(false)
+    )
+    stop()
+    visits.gate = null
+    expect(visits.asked).toEqual([1])
+    expect(observer.getCurrentResult().data).toEqual([
+      FRAME,
+      { kind: "not-taken" },
+    ])
   })
 })

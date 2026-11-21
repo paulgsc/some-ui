@@ -62,12 +62,24 @@ export function settled(shown: FrameShown, made: ClipSide["made"]): boolean {
   }
 }
 
-/** `shown` with frame `at` as home answered it, the others as they were. */
+/** Whether home itself gave this answer, rather than not being reached. */
+const fromHome = (shown: FrameShown): boolean =>
+  shown.kind === "frame" ||
+  shown.kind === "not-taken" ||
+  shown.kind === "unreadable"
+
+/**
+ * `shown` with frame `at` as this read found it, the others as they were.
+ * Home not reached this time (away, busy, this phone unpaired) leaves what
+ * home last answered in place, so a frame that showed stays (HS1).
+ */
 export function placeFrame(
   shown: ReadonlyArray<FrameShown>,
   at: number,
   frame: FrameShown
 ): ReadonlyArray<FrameShown> {
+  const held = shown.at(at)
+  if (held !== undefined && fromHome(held) && !fromHome(frame)) return shown
   const next = [...shown]
   next[at] = frame
   return next

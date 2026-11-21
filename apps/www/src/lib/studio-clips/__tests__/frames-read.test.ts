@@ -59,6 +59,20 @@ describe("a clip's frames", () => {
     expect(shown.map((f) => f.kind)).toEqual(["frame", "frame", "frame"])
   })
 
+  it("leave out a frame already settled, asking only the rest", async () => {
+    vi.mocked(askClipFrame).mockResolvedValue(held)
+    const read: Array<number> = []
+    for await (const { at } of clipFrames(
+      "c",
+      frames,
+      always,
+      (at) => at !== 1
+    ))
+      read.push(at)
+    expect(read).toEqual([0, 2])
+    expect(askClipFrame).toHaveBeenCalledTimes(2)
+  })
+
   it("hand each frame on before the next is asked", async () => {
     vi.mocked(askClipFrame).mockResolvedValue(held)
     const reading = clipFrames("c", frames, always)

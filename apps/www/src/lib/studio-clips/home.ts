@@ -3,8 +3,9 @@
  * a clip's frames read one at a time through the paired link
  * (`./frames-read`), while the clip's page shows them, each shown as home
  * answers it (#2895), through TanStack's own `streamedQuery` (C947). A visit
- * after the first puts each new answer in its frame's place, so what showed
- * stays until home answers again. A clip whose every frame is settled
+ * after the first asks only for frames not settled, and puts each new
+ * answer in its frame's place (`placeFrame`), so what showed stays, and home
+ * not reached this time takes nothing away. A clip whose every frame is settled
  * (`settled`: a frame, or one a session took and home didn't keep) is kept
  * for the page load; one with any other is asked again on the next visit.
  * Phone-only (`build.paths.ts`).
@@ -24,7 +25,7 @@ const framesKey = (id: string, frames: ReadonlyArray<ClipFrameRef>) =>
     "studio",
     "clip-frames",
     id,
-    ...frames.map(({ side, file }) => `${side}:${file}`),
+    ...frames.map(({ side, file, made }) => `${made}:${side}:${file}`),
   ] as const
 
 type FramesQueryOptions = ReturnType<
@@ -65,7 +66,24 @@ export const clipFramesQuery = (
       ReadonlyArray<FrameShown>,
       ReturnType<typeof framesKey>
     >({
-      streamFn: ({ signal }) => clipFrames(id, frames, () => !signal.aborted),
+      // A frame already settled on an earlier visit isn't asked again.
+      streamFn: ({ client, queryKey, signal }) => {
+        const before = client.getQueryData<ReadonlyArray<FrameShown>>(queryKey)
+        return clipFrames(
+          id,
+          frames,
+          () => !signal.aborted,
+          (at) => {
+            const held = before?.at(at)
+            const frame = frames.at(at)
+            return (
+              held === undefined ||
+              frame === undefined ||
+              !settled(held, frame.made)
+            )
+          }
+        )
+      },
       // Each answer goes in its frame's place over the last visit's.
       refetchMode: "append",
       reducer: (shown, { at, shown: frame }) => placeFrame(shown, at, frame),
