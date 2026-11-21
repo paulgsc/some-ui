@@ -95,7 +95,9 @@ Rules for every line, since you, months later, are the listener:
    - Every scene is a card picture (`{"kind": "card"}`) with its card as a
      burn-in: a `terminal`, `cheat-sheet`, `legend`, `rule` or `flow`, and
      a `spoken` field as above. Write `durationMs` as about how long its
-     words take; the take sets the real length.
+     words take; the take sets the real length. The one other picture a
+     scene may show is a screen of the app home keeps, `{"kind": "screen"}`,
+     a snip or a clip frame (`docs/snips.md`).
    - **Badges:** ■ `main` for what is on a default branch at the stamp's
      commit, ◧ `pr` for an open pull request, □ `next` for what is planned
      and not built, △ `gap` for a known gap, ✋ `you` for a step only the

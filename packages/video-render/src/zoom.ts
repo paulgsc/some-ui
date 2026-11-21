@@ -34,6 +34,7 @@ export function zoomPicture(
     dir = "screens",
     foot = 0,
     theme,
+    ground,
   }: {
     /** The record's folder in the video's folder. */
     readonly dir?: string
@@ -41,6 +42,8 @@ export function zoomPicture(
     readonly foot?: number
     /** The app's theme its ground is drawn in, as `brand-v1` takes it. */
     readonly theme?: string
+    /** The colour around the screen, `#rrggbb`: its series' own ground, so a zoom sits among its cards. */
+    readonly ground?: string
   } = {}
 ): Composition | null {
   if (!(foot >= 0 && foot <= FOOT_MOST))
@@ -72,7 +75,11 @@ export function zoomPicture(
       stops: JSON.stringify(held.map(({ region }) => region.box)),
       foot,
       ...(theme === undefined ? {} : { theme }),
+      ...(ground === undefined ? {} : { ground }),
     },
     files: [file],
   }
 }
+
+/** How a screen is zoomed: `zoomPicture`'s options, which every caller passes on whole. */
+export type ZoomOptions = NonNullable<Parameters<typeof zoomPicture>[2]>

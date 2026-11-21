@@ -1,4 +1,5 @@
-import { mkdtemp } from "node:fs/promises"
+import { createHash } from "node:crypto"
+import { mkdtemp, readFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import {
@@ -19,12 +20,12 @@ import {
   SNIPS_GIVEN_SCHEMA,
   snipScreen,
 } from "@video-render/snip"
-import type { Handed, SnipRecord } from "@video-render/snip"
+import type { Handed, SnipRecord, SnipsGiven } from "@video-render/snip"
 import * as fixtures from "@video-render/testing"
 import { SCREEN_ZOOM } from "@video-render/zoom"
 import { describe, expect, it } from "vitest"
 
-import { showcase } from "./showcase"
+import { showcase, VIDEOS } from "./showcase"
 
 const SHA = "0123456789ab".padEnd(64, "c")
 const PHONE = `web:/rust-rounds-sample:phone:0.1.69:${SHA.slice(0, 12)}`
@@ -306,5 +307,64 @@ describe("an essay's screens of the app (SNIPS4)", () => {
       ],
     })
     expect(parsed.ok).toBe(false)
+  })
+})
+
+describe("the phone-card sample: a cards essay on a snip of the phone (#3311, C818)", () => {
+  const KEY = "phone-card-2026-11-21"
+  const SNIPS = join(VIDEOS, "phone-card", "snips")
+  const series = (version: number): ReturnType<typeof readSeries> =>
+    readSeries(
+      join(import.meta.dirname, "../sample/series/cheat-sheet"),
+      version
+    )
+
+  const handed = async (): Promise<SnipsGiven> => {
+    const parsed = parseSnipsGiven(
+      JSON.parse(await readFile(join(SNIPS, "snips.json"), "utf8"))
+    )
+    if (!parsed.ok) throw new Error(parsed.problems.join("; "))
+    return parsed.value
+  }
+
+  it("is a cards essay cards-check passes, whose snips are the pictures they name", async () => {
+    const cut = await showcase("phone-card")
+    expect(parseCardsEssay(KEY, cut).ok).toBe(true)
+    const v3 = await series(3)
+    const files = new Map<string, unknown>([
+      ["index.json", { schema: CARDS_INDEX_SCHEMA, essays: [{ key: KEY }] }],
+      [`${KEY}.json`, cut],
+    ])
+    expect(
+      cardsFolderProblems(files, (id, version) =>
+        id === "cheat-sheet" && version === 3 && v3.ok ? v3.value : null
+      )
+    ).toEqual([])
+    for (const snip of (await handed()).snips) {
+      const bytes = await readFile(join(SNIPS, snip.image.name))
+      expect(createHash("sha256").update(bytes).digest("hex")).toBe(
+        snip.image.sha256
+      )
+      expect(bytes.length).toBe(snip.image.bytes)
+    }
+  })
+
+  it("zooms each screen scene in the series' ground and theme, above its captions", async () => {
+    const look = { foot: 0.3, theme: "dark", ground: "#111821" }
+    const drawn = resolveScreens(
+      await showcase("phone-card"),
+      { snips: await handed(), clips: null },
+      look
+    )
+    if (!drawn.ok) throw new Error(drawn.problems.join("; "))
+    expect(drawn.value.shots.map((shot) => shot.picture.kind)).toEqual([
+      "card",
+      "composition",
+      "composition",
+      "card",
+    ])
+    for (const shot of drawn.value.shots)
+      if (shot.picture.kind === "composition")
+        expect(shot.picture.variables).toMatchObject(look)
   })
 })

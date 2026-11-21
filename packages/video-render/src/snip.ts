@@ -31,6 +31,7 @@ import type { Screen } from "./screen"
 import { parseScreens, RegionSchema, SCREENS_SCHEMA } from "./screen"
 import { SNIP_ID } from "./snip-id"
 import { zoomPicture } from "./zoom"
+import type { ZoomOptions } from "./zoom"
 
 export { isSnipId, SNIP_ID } from "./snip-id"
 
@@ -210,15 +211,8 @@ export type Handed = {
 export function resolveScreens(
   cut: CutList,
   handed: Handed,
-  {
-    foot = 0,
-    theme,
-  }: {
-    /** The share of the frame's height kept clear at its foot, for captions. */
-    readonly foot?: number
-    /** The app's theme a zoom's ground is drawn in. */
-    readonly theme?: string
-  } = {}
+  /** How a zoom looks (`zoomPicture`'s foot, theme and ground); its folder is `SNIPS_DIR`. */
+  look: Omit<ZoomOptions, "dir"> = {}
 ): Parsed<CutList> {
   const byId = new Map(
     (handed.snips?.snips ?? []).map((snip) => [snip.id, snip])
@@ -259,7 +253,7 @@ export function resolveScreens(
     const zoom: Composition | null = zoomPicture(
       screens,
       of.at.map((part) => `${screen}:${part}`),
-      { dir: SNIPS_DIR, foot, ...(theme === undefined ? {} : { theme }) }
+      { ...look, dir: SNIPS_DIR }
     )
     if (zoom === null)
       problems.push(`${shotId}: the snip ${of.id} has no part to zoom to`)

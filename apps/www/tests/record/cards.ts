@@ -82,6 +82,7 @@ import type {
   CutList,
   Handed,
   HeardSpokenCard,
+  Series,
   SnipsGiven,
   SpokenTakeFiles,
   StillTake,
@@ -99,6 +100,7 @@ import {
   sayLines,
   siteOf,
   speakerFlag,
+  zoomFoot,
 } from "./voiced"
 
 /** The series an essay may be drawn in, sampled in the renderer's workspace. */
@@ -188,6 +190,7 @@ async function sceneTakes(
 /** The takes `essay`'s spoken cards play, from `--takes`, each as home heard it. */
 async function spokenTakes(
   essay: CutList,
+  { theme, cast }: Series,
   dir: string | undefined
 ): Promise<{
   readonly owned: Readonly<Record<string, SpokenTakeFiles>>
@@ -196,11 +199,6 @@ async function spokenTakes(
   const named = spokenTakesOf(essay)
   // Template A is drawn in its series' theme, as the cards around it (C816),
   // with its series' cast (C822).
-  const { id: seriesId, version } = essay.series
-  const read = await readSeries(join(SERIES, seriesId), version)
-  if (!read.ok)
-    fail([`${seriesId} v${String(version)} can't be read:`, ...read.problems])
-  const { theme, cast } = read.value
   if (dir === undefined) {
     if (named.length > 0)
       fail([
@@ -398,11 +396,15 @@ const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 
 /**
  * `cut` with its screens of the app drawn from what home handed, the
- * snips' pictures copied into `root/snips/` and the frames into `root/clips/`.
+ * snips' pictures copied into `root/snips/` and the frames into `root/clips/`:
+ * a zoom in `series`' own ground and theme, among its cards, and, in a
+ * `spoken` essay, above its captions' band (`zoomFoot`; C818).
  */
 async function withScreens(
   cut: CutList,
   screens: HandedScreens | null,
+  { frame, theme, ground }: Series,
+  spoken: boolean,
   root: string
 ): Promise<CutList> {
   if (screens === null) return cut
@@ -424,7 +426,12 @@ async function withScreens(
     await mkdir(dirname(to), { recursive: true })
     await copyFile(from, to)
   }
-  const resolved = resolveScreens(cut, screens.handed)
+  const resolved = resolveScreens(cut, screens.handed, {
+    // Only a spoken essay is captioned; a silent one keeps the whole frame.
+    foot: spoken ? zoomFoot(frame) : 0,
+    ground,
+    ...(theme === undefined ? {} : { theme }),
+  })
   if (!resolved.ok) return fail(resolved.problems)
   return resolved.value
 }
@@ -439,8 +446,12 @@ async function main(): Promise<void> {
   const policy = policyOf(values)
   const speaker = speakerFlag(values)
   const spoken = isSpokenEssay(essay.value)
+  const { id: seriesId, version } = essay.value.series
+  const read = await readSeries(join(SERIES, seriesId), version)
+  if (!read.ok)
+    fail([`${seriesId} v${String(version)} can't be read:`, ...read.problems])
   const { owned, heard } = spoken
-    ? await spokenTakes(essay.value, values.takes)
+    ? await spokenTakes(essay.value, read.value, values.takes)
     : { owned: {}, heard: new Map<string, HeardSpokenCard>() }
   const scenes = spoken ? cardsScenes(essay.value, heard) : []
   refuseLong(scenes, policy)
@@ -492,6 +503,8 @@ async function main(): Promise<void> {
       await withScreens(
         spoken ? voicedCardsCutList(essay.value, scenes, takes) : essay.value,
         screens,
+        read.value,
+        spoken,
         root
       ),
       {

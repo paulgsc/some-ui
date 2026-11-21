@@ -15,6 +15,7 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { join, resolve } from "node:path"
 import type { Browser, Locator, Page } from "@playwright/test"
+import { captionSpace } from "@some-ui/burn-ins"
 import { installedCompositionPort } from "@some-ui/video-motion/node"
 import {
   chapterLines,
@@ -303,6 +304,16 @@ export async function placeBed(
   if (!placed.ok) fail(placed.problems)
   return placed.value.bed
 }
+
+/**
+ * The share of a `frame`'s height its captions are drawn in, which a
+ * zoomed screen keeps clear (`zoomPicture`'s `foot`): the Rust essay's
+ * question scenes and a cards essay's snips alike.
+ */
+export const zoomFoot = (frame: {
+  readonly width: number
+  readonly height: number
+}): number => captionSpace(frame) / frame.height
 
 /** The built app served from `dist`, or the one already served at `app`. */
 export function siteOf(values: {

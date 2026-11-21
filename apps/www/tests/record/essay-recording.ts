@@ -7,7 +7,7 @@
  */
 import { readdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
-import { captionSpace, LANDSCAPE } from "@some-ui/burn-ins"
+import { LANDSCAPE } from "@some-ui/burn-ins"
 import {
   ESSAY_SCHEMA,
   ESSAY_VOICES,
@@ -54,6 +54,7 @@ import {
   renderCut,
   shownFrame,
   siteOf,
+  zoomFoot,
 } from "./voiced"
 
 export type EssayValues = Omit<CallValues, "week" | "week-file"> & {
@@ -316,7 +317,7 @@ async function recordKind<E extends { readonly week: { readonly id: string } }>(
           : {
               screens,
               // A zoomed card stays above the band the stage keeps for captions.
-              foot: captionSpace(LANDSCAPE) / LANDSCAPE.height,
+              foot: zoomFoot(LANDSCAPE),
             }),
       }),
       {
