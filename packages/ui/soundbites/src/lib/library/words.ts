@@ -28,13 +28,17 @@ const takes = (n: number): string => counted(n, "take")
 
 /**
  * What the kinds' ports say that isn't data (`./kinds`): a week, a
- * teleprompter read, a game named only by its day, a soundbite's start.
+ * teleprompter read, a game named only by its day, the play a bite was
+ * matched to or that none was found, a soundbite's start.
  */
 export const ABOUT_WORDS: AboutPortWords = {
   week: (n) => `Week ${String(n)}`,
   read: "Read aloud",
   gameOn: (day) => `A game on ${day}`,
   aGame: "A game",
+  atPlay: (period, clock) =>
+    [period > 4 ? "OT" : `Q${String(period)}`, clock].filter(Boolean).join(" "),
+  noPlay: "Not matched to a play",
   soundbiteFrom: (source) =>
     source === "direct" ? "Recorded on Soundbites" : "Recorded from a lesson",
 }

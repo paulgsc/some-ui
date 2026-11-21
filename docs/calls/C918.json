@@ -1,0 +1,20 @@
+{
+  "id": "C918",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/home-web/index.ts",
+    "some-ui:apps/www/src/routes/_dashboard/_apk/game-week.tsx",
+    "some-ui:packages/ui/game-week/src/components/game-week/index.tsx",
+    "some-ui:packages/ui/game-week/src/lib/words.ts"
+  ],
+  "chose": "The phone reaches the teams followed live the way it reaches the résumé builder (the owner, on #3329: \"the same as the résumé builder, where we are navigated to the web app\"): Game Day ends with a quiet link, \"Teams home follows live\", and a line saying it opens home's switches in the browser on the home network with the passkey. The link is an absolute address of the lan build (`lib/home-web`, which now holds the résumé builder's address too), so the APK carries no copy of the switches page, which stays the web app's alone. The game-week package takes the link as a slot (`teamsLink`) beside its takes link, and the page it opens scrolls to the teams row (`#game-teams`).",
+  "options": [
+    "a link at the foot of Game Day, opening the web page in the browser (taken)",
+    "a link in the phone's Settings, Home tab",
+    "the setting built into the APK"
+  ],
+  "gray": "Where the owner finds the teams setting on the phone is on the screen; the owner named the résumé builder's way, and the coordinator chose Game Day's foot from the two places Claude offered.",
+  "undo": "Drop `teamsLink` from the Game Day route (the slot then renders nothing), or move the same link to Settings › Home.",
+  "refs": ["#3329", "#3311"]
+}

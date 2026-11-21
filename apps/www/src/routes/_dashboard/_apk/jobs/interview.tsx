@@ -1,12 +1,15 @@
 import type { JSX } from "react"
 import { useState } from "react"
-import { createFileRoute, Outlet } from "@tanstack/react-router"
+import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router"
 
+import { usePlace } from "@/lib/engagement-places"
 import { homeHoldsInterviewSend } from "@/lib/home-link/interview"
 import { onHomeHeard } from "@/lib/home-link/rust-kept"
 import { askWeekRecord } from "@/lib/home-link/week-record"
 import { ideaHome } from "@/lib/idea-hearing"
 import { phoneInterviewPorts } from "@/lib/interview-week"
+import { interviewPlaceOf } from "@/lib/interview-week/places"
+import { INTERVIEW_PLACES } from "@/lib/jobs/offers"
 import {
   InterviewWeekRuntime,
   NoInterviewWeek,
@@ -25,6 +28,13 @@ import {
  * each opening. The Jobs lane brings the weeks and takes the sends
  * (`lib/home-link/interview`).
  */
+/** Which of the week's pages is up, for ENGAGE (WALK5, C861), while a week is. */
+const WeekPlace = (): null => {
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
+  usePlace(INTERVIEW_PLACES, interviewPlaceOf(pathname))
+  return null
+}
+
 const PhoneInterview = (): JSX.Element => {
   // Made once per mount: the week is read once.
   const [ports] = useState(() =>
@@ -39,6 +49,7 @@ const PhoneInterview = (): JSX.Element => {
     <NoInterviewWeek />
   ) : (
     <InterviewWeekRuntime ports={ports}>
+      <WeekPlace />
       <Outlet />
     </InterviewWeekRuntime>
   )

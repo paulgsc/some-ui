@@ -54,8 +54,7 @@ import type { FlowRuntime } from "./flow-runtime"
 import { createFlow } from "./flow-runtime"
 import type { HomeOpening, HomeWeekRecord } from "./opening"
 import { hereTake, inPlace, OPENING_UNKNOWN, openingPlace } from "./opening"
-import type { OnScreen, Open } from "./opens"
-import { stepOpens } from "./opens"
+import { ticketOpens } from "./opens"
 import type { PasteRuntime } from "./paste"
 import { pasteRuntime } from "./paste"
 import {
@@ -355,30 +354,21 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
 
   /** Tells each ticket opened and left while the screen shows (`./opens`). */
   const watchOpens = (): (() => void) => {
-    let open: Open = null
-    let hidden = false
-    const move = (now: OnScreen): void => {
-      const next = stepOpens(open, now, new Date(ports.now()).toISOString())
-      open = next.open
-      for (const event of next.events) ports.engage(event)
-    }
+    const opens = ticketOpens(() => new Date(ports.now()), ports.engage)
     const look = (): void => {
       const state = bundle.getSnapshot()
       // A place is the ticket's, whichever of its points is on screen (RR24).
       const ticket = itemOf(machine.spec.items[state.index] ?? "").ticket
       const place = week.tickets.findIndex(({ id }) => id === ticket)
-      move(!hidden && state.screen === "cards" && place !== -1 ? place : null)
+      opens.at(state.screen === "cards" && place !== -1 ? place : null)
     }
     const stopState = bundle.subscribe(look)
-    const stopSeen = ports.onVisibility((now) => {
-      hidden = now
-      look()
-    })
+    const stopSeen = ports.onVisibility(opens.hidden)
     look()
     return (): void => {
       stopState()
       stopSeen()
-      move(null)
+      opens.at(null)
     }
   }
 

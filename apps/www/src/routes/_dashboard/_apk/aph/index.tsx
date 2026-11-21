@@ -3,8 +3,8 @@ import type { Side } from "@some-ui/aph"
 import { AphLog } from "@some-ui/aph"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
-import { useAphVisit } from "@/lib/aph-visit"
 import { useMinuteClock } from "@/lib/clock"
+import { useScreenVisit } from "@/lib/screen-visit"
 
 /**
  * `?side=theirs` opens the logger on their figure, and `?entry=` names the
@@ -18,7 +18,7 @@ const LogRoute = (): JSX.Element => {
   const { side, entry, day } = readSearch(Route.useSearch())
   const navigate = useNavigate()
   const now = useMinuteClock()
-  const visit = useAphVisit()
+  const visit = useScreenVisit()
 
   return (
     <AphLog
