@@ -2,8 +2,9 @@
 // Guardrail over .github/: artifact retention and the retention families
 // (CLAUDE.md, "Workflow storage"), inline installs (node-ci-setup), PR
 // commits with the git hooks off (WR1), changesets/action paired with the
-// Changesets CLI's major (CS1), and the RS1 fingerprint and RS2
-// branch-name checks (CLAUDE.md, "Cross-repo coupling"). The rules live in
+// Changesets CLI's major (CS1), the RS1 fingerprint and RS2
+// branch-name checks (CLAUDE.md, "Cross-repo coupling"), and AMO submissions
+// behind the owner's approval (AMO1). The rules live in
 // packages/eslint/src/workflow-guards.ts.
 //
 // Wired into the root `lint` script and into pr.yml's `guards` job, which runs
@@ -22,6 +23,7 @@ import {
   checkRetentionTriggers,
   checkRs1,
   describeWorkflowViolation,
+  findAmoViolations,
   findArtifactFamilyViolations,
   findBuildRecordViolations,
   findCacheViolations,
@@ -51,6 +53,7 @@ const violations: Array<WorkflowViolation> = []
 for (const [file, text] of texts) {
   violations.push(...findRetentionViolations(file, text))
   violations.push(...findRs2Violations(file, text))
+  violations.push(...findAmoViolations(file, text))
   violations.push(
     ...findArtifactFamilyViolations(file, text, producers.get(file) ?? [])
   )

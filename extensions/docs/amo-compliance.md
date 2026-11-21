@@ -143,8 +143,11 @@ path for an extension once a compliance audit confirms the build is clean.
 **Status:** `suspender-ledger` has passed AMO review twice: 0.2.1 (approved 2026-08-26) and
 0.3.0 (submitted 2026-10-11 by `extension-release.yml`, approved by Mozilla's add-on reviewers;
 the signed 0.3.0 is the build in daily use). It is the one extension currently opted into
-`extension-release.yml`'s automated release PR — see §10. Signing
-still requires a human to merge that PR; nothing publishes unreviewed. Every other extension in
+`extension-release.yml`'s automated release PR — see §10. Merging
+that PR does not submit it: the run it starts waits for the owner to approve the `amo-release`
+deployment (AMO1, §10 "Who approves a submission"). Until 2026-11-11 the merge was the
+approval, and an agent merging under the owner's login submitted 0.3.1 with no approval from
+the owner (#1788). Every other extension in
 this workspace remains manual-only (`extension-sign-manual.yml`, gated by the
 `compliance_confirmed` checkbox) until its own A+B footguns are resolved and it's added to that
 workflow's extension allowlist.
@@ -505,10 +508,11 @@ push to main / PR
             less the data_collection_permissions min-version pair)
 ```
 
-### Signing — two paths, both human-gated
+### Signing — two paths, both behind the owner's approval
 
 **Manual (`extension-sign-manual.yml`)** — any extension, `workflow_dispatch` only, hard-gated by
-the `compliance_confirmed` checkbox referencing epic #310 §11's pre-sign checklist.
+the `compliance_confirmed` checkbox referencing epic #310 §11's pre-sign checklist, then the
+owner's `amo-release` approval like every other run that signs (AMO1).
 
 **Automated release PR (`extension-release.yml`)** — opted-in extensions only (currently just
 `suspender-ledger`; see A4's Status note above for what "opted in" requires):
@@ -530,7 +534,8 @@ push to main that can change the extension's build
                     /amo-release-notes (a Claude Code skill) writes notes.md and
                     pushes it to the branch, which re-runs this job
 squash-merge of the release PR
-└── detect: release commit on main -> build-workspace + sign at that commit
+└── detect: release commit on main -> build-workspace, then _extension-sign.yml
+      ├── approve: waits for the owner to approve the `amo-release` deployment (AMO1)
       ├── amo-release.mjs sign: refuse unless every dist/ file matches release.json,
       │   then write amo-metadata.json from release.json's payload (nothing regenerated)
       ├── _extension-sign.yml: web-ext sign --amo-metadata ... --upload-source-code ...
@@ -543,8 +548,33 @@ built files against the last release. Every "unchanged" in it is computed from t
 never asserted. The stable reviewer facts (what the extension does, why each permission) live in
 the extension's `amo-notes.md`, which the source archive carries and the notes point to.
 
-The merge itself is the human confirmation that used to come from the manual workflow's
-`compliance_confirmed` checkbox — nothing reaches AMO without a person reviewing a diff first.
+### Who approves a submission
+
+The owner, and nobody else: "Extension releases to Mozilla … must only be approved by me"
+(owner, 2026-11-11). Merging a release PR is not that approval. Agents merge PRs under the
+owner's GitHub login, so a merge cannot say who decided; the 0.3.1 submission on 2026-11-04
+went out that way.
+
+**AMO1** (promise, held by `pnpm check:workflows`, rule `findAmoViolations` in
+`packages/eslint/src/workflow-guards.ts`):
+
+- _Claim:_ a run reaches addons.mozilla.org only after the owner approves its `amo-release`
+  deployment.
+- _Family:_ every trigger that can start a submission: a push of a release commit to `main`
+  (a merged release PR), a `publish_only` dispatch, `extension-sign-manual.yml`, and any
+  workflow or composite action added later that names the AMO credentials, `web-ext sign` or
+  every secret at once; inside `_extension-sign.yml`, every job that reaches a secret, with the
+  approval job missing, aimed at another environment, or not needed.
+- _Proof:_ `_extension-sign.yml` is the only file that may name `AMO_JWT_*`, `AMO_UPLOAD_*`,
+  `web-ext sign` or `toJSON(secrets)`, and each of its jobs that names a secret or `web-ext`
+  needs the job that calls `_environment-approval.yml` with `environment: amo-release`. That job
+  fails when the environment has no required reviewer, so a deleted or unprotected environment
+  stops the run instead of letting it through. The check's tests enumerate the family.
+- _Tolerance:_ who the required reviewer is lives in Settings → Environments → `amo-release`, a
+  repo setting no check here reads beyond "at least one". It must be the owner alone. The gate
+  also assumes no agent can approve a deployment. The GitHub tools agents have here cannot, but
+  the owner's token in another tool could; an agent never approves `amo-release`.
+
 A `publish_only` retry is dispatched on a branch at the release commit (never a tag) and refuses any other
 commit on `main`.
 
@@ -561,7 +591,9 @@ skips any extension without one, so this is opt-in per extension, not a workspac
 | `AMO_JWT_ISSUER` | AMO API key (issuer) |
 | `AMO_JWT_SECRET` | AMO API secret       |
 
-Never commit these to the repository. Rotate if leaked.
+Never commit these to the repository. Rotate if leaked. Keep them as secrets of the `amo-release`
+Environment rather than of the repository, so only a job running in that environment, after the
+owner's approval, can read them.
 
 ---
 

@@ -36,6 +36,13 @@
 // runs, and a `docker/build-push-action` step turns off its build-record
 // upload, which no family declares.
 //
+// AMO1 (extensions/docs/amo-compliance.md, "Who approves a submission"): a
+// submission to addons.mozilla.org waits on the owner. The AMO credentials,
+// `web-ext sign` and any whole-`secrets` dump are named only in
+// AMO_SIGN_FILE, and there every job that names a secret or `web-ext` needs
+// the job that calls `_environment-approval.yml` with `environment:
+// amo-release`. A missing approval job fails every such job.
+//
 // Deliberately lexical, like test-layout.ts: a YAML parser would need an
 // install for a check that otherwise runs on bare Node. So each rule accepts a
 // closed shape and fails the rest, rather than listing shapes it rejects.
@@ -51,6 +58,9 @@ const RS1_FINGERPRINT =
   "f1f668d5edd39995e1bf23e74c7aac9d21d9124c10110c9dfaffe3f93c7d2927"
 const SNAPSHOT_BRANCH = "bot/server-route-snapshot"
 export const RETENTION_FILE = ".github/workflows/retention.yml"
+export const AMO_SIGN_FILE = ".github/workflows/_extension-sign.yml"
+export const AMO_ENVIRONMENT = "amo-release"
+const APPROVAL_WORKFLOW = "./.github/workflows/_environment-approval.yml"
 
 export type WorkflowViolation =
   | {
@@ -81,6 +91,17 @@ export type WorkflowViolation =
       readonly actual: string | null
     }
   | { readonly kind: "rs2Named"; readonly file: string; readonly line: number }
+  | {
+      readonly kind: "amoOutsideSign"
+      readonly file: string
+      readonly line: number
+    }
+  | {
+      readonly kind: "amoUnapproved"
+      readonly file: string
+      readonly line: number
+      readonly job: string
+    }
   | {
       readonly kind: "artifactUndeclared"
       readonly file: string
@@ -707,6 +728,100 @@ export function findRs2Violations(
   return violations
 }
 
+// What can submit to AMO: its credentials, the CLI's submit command (or a
+// `web-ext` whose subcommand a line continuation hides), or every secret at
+// once. Case-insensitive because expressions are (`toJson`).
+const AMO_REACH =
+  /\bAMO_(?:JWT|UPLOAD)|web-ext\b(?:[\s\\]*sign\b|\s*\\\s*$)|to_?json\s*\(\s*secrets\s*\)/i
+// Inside AMO_SIGN_FILE, what makes a job need the owner's approval.
+const SIGN_JOB_REACH = /\bsecrets\b|web-ext/i
+const JOB_HEADER = /^ {2}([\w-]+):\s*(?:#.*)?$/
+
+type Job = {
+  readonly name: string
+  readonly line: number
+  readonly body: ReadonlyArray<string>
+}
+
+// The top-level jobs of a workflow written with two-space indentation, each
+// with its body (the lines up to the next job or top-level key).
+function jobsOf(lines: ReadonlyArray<string>): Array<Job> {
+  const start = lines.findIndex((line) => /^jobs:\s*(?:#.*)?$/.test(line))
+  if (start === -1) return []
+  const jobs: Array<{ name: string; line: number; body: Array<string> }> = []
+  for (let i = start + 1; i < lines.length; i += 1) {
+    const line = lines[i] ?? ""
+    if (/^\S/.test(line)) break
+    const header = JOB_HEADER.exec(line)
+    if (header) {
+      jobs.push({ name: header[1] ?? "", line: i + 1, body: [] })
+    } else {
+      jobs.at(-1)?.body.push(line)
+    }
+  }
+  return jobs
+}
+
+// The jobs a job's `needs:` names, inline (`needs: a`, `needs: [a, b]`) or as
+// a block list.
+function needsOf(body: ReadonlyArray<string>): Set<string> {
+  const names = new Set<string>()
+  const index = body.findIndex((line) => /^ {4}needs:/.test(line))
+  if (index === -1) return names
+  const inline = (body[index] ?? "")
+    .replace(/^ {4}needs:/, "")
+    .replace(/#.*/, "")
+  for (const name of inline.replaceAll(/[[\]"']/g, "").split(",")) {
+    if (name.trim() !== "") names.add(name.trim())
+  }
+  for (const line of body.slice(index + 1)) {
+    const item = /^ {6}-\s*["']?([\w-]+)/.exec(line)
+    if (!item) break
+    names.add(item[1] ?? "")
+  }
+  return names
+}
+
+function isAmoApproval(job: Job): boolean {
+  const code = job.body.filter((line) => !isBlankOrComment(line))
+  return (
+    code.some((line) => line.trim() === `uses: ${APPROVAL_WORKFLOW}`) &&
+    code.some((line) => line.trim() === `environment: ${AMO_ENVIRONMENT}`)
+  )
+}
+
+export function findAmoViolations(
+  file: string,
+  text: string
+): Array<WorkflowViolation> {
+  const lines = text.split(/\r?\n/)
+  if (file !== AMO_SIGN_FILE) {
+    const violations: Array<WorkflowViolation> = []
+    lines.forEach((line, index) => {
+      if (AMO_REACH.test(line)) {
+        violations.push({ kind: "amoOutsideSign", file, line: index + 1 })
+      }
+    })
+    return violations
+  }
+  const jobs = jobsOf(lines)
+  const approvals = new Set(jobs.filter(isAmoApproval).map((job) => job.name))
+  return jobs
+    .filter((job) => !approvals.has(job.name))
+    .filter((job) =>
+      job.body.some(
+        (line) => !isBlankOrComment(line) && SIGN_JOB_REACH.test(line)
+      )
+    )
+    .filter((job) => ![...needsOf(job.body)].some((n) => approvals.has(n)))
+    .map((job) => ({
+      kind: "amoUnapproved" as const,
+      file,
+      line: job.line,
+      job: job.name,
+    }))
+}
+
 export function isGuardedWorkflowPath(path: string): boolean {
   return (
     /^\.github\/workflows\/[^/]+\.ya?ml$/.test(path) ||
@@ -740,6 +855,12 @@ export function describeWorkflowViolation(v: WorkflowViolation): string {
     }
     case "rs2Named": {
       return `${v.file}:${v.line}: names ${SNAPSHOT_BRANCH}. Only ${RS1_FILE} may (RS2, CLAUDE.md, "Cross-repo coupling"); paulgsc/server's routes.yml is that PR's one writer.`
+    }
+    case "amoOutsideSign": {
+      return `${v.file}:${v.line}: names an AMO credential, \`web-ext sign\` or every secret at once. Only ${AMO_SIGN_FILE} may, behind the owner's \`${AMO_ENVIRONMENT}\` approval (AMO1, extensions/docs/amo-compliance.md): call that workflow instead.`
+    }
+    case "amoUnapproved": {
+      return `${v.file}:${v.line}: job "${v.job}" reaches a secret or web-ext without needing a job that calls ${APPROVAL_WORKFLOW} with \`environment: ${AMO_ENVIRONMENT}\`. Nothing goes to AMO before the owner approves it (AMO1).`
     }
     case "artifactUndeclared": {
       return `${v.file}:${v.line}: uploads "${v.name}", which no family in packages/eslint/src/retention.ts declares. Add it to ARTIFACT_FAMILIES with its keep, TTL and workflows (CLAUDE.md, "Workflow storage").`

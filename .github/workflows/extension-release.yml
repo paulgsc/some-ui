@@ -1,9 +1,11 @@
 name: Extension Release
 # Publish cadence for AMO extensions that have cleared compliance (epic
-# #310) and are explicitly opted in below. A person's only routine step is
-# to skim one release PR and squash-merge it: the version, the changelog, and
+# #310) and are explicitly opted in below. The version, the changelog, and
 # both AMO text fields ("Version notes" and "Notes for reviewers") arrive
-# already written and already checked against the build they describe.
+# already written and already checked against the build they describe. The
+# owner's routine steps are to skim the release PR, and then to approve the
+# `amo-release` deployment the merged run waits on: nothing reaches AMO
+# before that approval (AMO1).
 #
 # Flow:
 #   a push to main that can change the extension's build
@@ -32,9 +34,13 @@ name: Extension Release
 #        branch, which re-runs this job).
 #   the PR is squash-merged
 #     -> detect sees the release commit message on main: publish
-#     -> build-workspace + sign rebuild that commit, and _extension-sign.yml
-#        refuses unless every dist/ file matches release.json, then submits
-#        the xpi, the source archive and release.json's AMO payload together.
+#     -> build-workspace, then _extension-sign.yml waits for the owner to
+#        approve the `amo-release` Environment (AMO1). Merging is not the
+#        approval: anyone who can merge, an agent included, only starts a run
+#        that waits there.
+#     -> once approved, sign rebuilds that commit, refuses unless every dist/
+#        file matches release.json, then submits the xpi, the source archive
+#        and release.json's AMO payload together.
 #     -> tag marks the commit `suspender-ledger@<version>` once AMO took the
 #        upload: the next release's baseline. A release commit whose sign
 #        was refused (main moved under a ready PR) gets no tag, so the next
@@ -252,6 +258,10 @@ jobs:
     if: needs.detect.outputs.release_mode == 'publish'
     uses: ./.github/workflows/_extension-sign.yml
     secrets: inherit
+    # actions: read is for the owner's approval in _extension-sign.yml (AMO1).
+    permissions:
+      contents: read
+      actions: read
     with:
       matrix: ${{ needs.build-workspace.outputs.matrix }}
 

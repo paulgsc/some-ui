@@ -1,6 +1,16 @@
 name: Firefox Signing
 # Signs each changed extension and uploads the .xpi artifact.
 #
+# AMO1 (extensions/docs/amo-compliance.md, "Who approves a submission"): a
+# submission to AMO happens only after the owner approves it. The `approve`
+# job waits on the `amo-release` Environment's required reviewer, and fails
+# if that Environment has none; `sign`, the only job that holds the AMO
+# credentials, needs it. Merging a release PR, a publish_only dispatch or the
+# manual workflow only starts a run that waits here. Every caller grants
+# `actions: read` for the approval's settings check. `pnpm check:workflows`
+# fails an AMO credential named anywhere but this file, and a job here that
+# names one without needing `approve`.
+#
 # Workspace packages (packages/*/dist) are consumed from the workspace-dist
 # artifact produced by the build-workspace job in extension.yml.
 # This job does NOT rebuild shared packages — only the extension itself.
@@ -18,8 +28,17 @@ on:
       AMO_UPLOAD_KEY:
         required: false
 jobs:
+  approve:
+    name: Approve AMO submission
+    uses: ./.github/workflows/_environment-approval.yml
+    with:
+      environment: amo-release
+    permissions:
+      actions: read
+
   sign:
     name: Sign ${{ matrix.extension_name }}
+    needs: approve
     runs-on: ubuntu-latest
     strategy:
       matrix: ${{ fromJSON(inputs.matrix) }}

@@ -8,8 +8,10 @@ description: Write the AMO release notes for an extension's open release PR (sus
 You write one file, `extensions/<name>/release/notes.md`, and push it to the release
 branch. `extension-release.yml` does everything else: it rebuilds from `main`, checks your
 notes against the build, bumps the version, writes the changelog and `release.json`, and
-marks the PR ready. A person then skims the PR and squash-merges it, and the sign job
-submits exactly the text the PR showed.
+marks the PR ready. A person then skims the PR and squash-merges it. That submits nothing:
+the sign job waits for the owner to approve the `amo-release` deployment, then submits
+exactly the text the PR showed (AMO1, `extensions/docs/amo-compliance.md`). Never approve
+that deployment yourself, and never merge a release PR unless the owner asked you to.
 
 The goal is a reviewer at Mozilla who can approve without guessing. Extensions here have
 been disabled before over a reviewer's reading of the code (`extensions/docs/amo-compliance.md`

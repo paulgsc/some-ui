@@ -690,7 +690,7 @@ function prBody({ status, problems, ev, notes, payload }) {
   const { baseline, candidate, rows, other, delta, commits } = ev
   const version = status === "ready" ? notes.version : "next"
   const banner = {
-    ready: `✅ **Ready.** The notes below describe this exact build. Skim the two AMO fields and the surface table, then **squash-merge** to sign ${notes?.version} and submit it to AMO.`,
+    ready: `✅ **Ready.** The notes below describe this exact build. Skim the two AMO fields and the surface table, then **squash-merge**. Merging submits nothing: the run it starts signs ${notes?.version} and submits it to AMO only once the owner approves its \`amo-release\` deployment (AMO1).`,
     missing: `⛔ **Notes needed.** Nothing describes this build for AMO yet, so this PR is a draft and must not be merged.`,
     stale: `⛔ **Notes are stale or invalid.** This PR is a draft until they are fixed:\n${problems.map((p) => `- ${p}`).join("\n")}`,
   }[status]
