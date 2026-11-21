@@ -1,0 +1,15 @@
+{
+  "id": "C797",
+  "made": "2026-11-20",
+  "by": "claude",
+  "paths": ["some-ui:packages/video-render/src/essay.ts"],
+  "chose": "Which essay scenes zoom into the phone's card: each question scene, to its ticket's question, each speak-to point, the program and rustc's first two diagnostics, in that order, once the week's cards were photographed (`--week-file`); otherwise the essay renders as before. Every other scene keeps the stage's still: a deep dive's own code is a snippet the phone never draws (#3288's gap), and no field of a dive says it is about a compile error, so pointing a dive at a diagnostic would be a guess.",
+  "options": [
+    "question scenes only, question → points → program → diagnostics (chosen)",
+    "also send a dive with no code of its own to the ticket's diagnostics, replacing its title and list for its 2 to 5 minutes",
+    "a scene kind of its own per region, which changes the essay's format and timing"
+  ],
+  "gray": "Where the essay shows the phone's own card instead of its own stage is something the owner sees each week; the brief named the dive mapping but no field supports it.",
+  "undo": "Make `essayZoomRefs` in `packages/video-render/src/essay.ts` return other refs, or none.",
+  "refs": ["#3288", "#3311", "#2231"]
+}

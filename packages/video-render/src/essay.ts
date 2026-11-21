@@ -60,9 +60,17 @@ import type { ChapterMark } from "./chapters"
 import { chapterSlides } from "./chapters"
 import { once, problemsOf } from "./cut-list"
 import type { CutList, Parsed } from "./cut-list"
-import { FORMAT_SCHEMA, repeatedId, versionRefusal, words } from "./format"
+import {
+  FORMAT_SCHEMA,
+  markThemeOf,
+  repeatedId,
+  versionRefusal,
+  words,
+} from "./format"
 import type { Format, Shape } from "./format"
 import { CONVERSATION_MOST } from "./opening"
+import type { RegionRef, Screens } from "./screen"
+import { regionRef, TICKET_KEY_PATTERN } from "./screen"
 import { hasCaptions, stillFile, stillsCutList } from "./stills"
 import type { StillTake } from "./stills"
 import { boardSceneOf, storyboardOf } from "./storyboard"
@@ -77,6 +85,7 @@ import {
   SILENCE_SHAPE,
   silenceSaid,
 } from "./verdict"
+import { zoomPicture } from "./zoom"
 
 export const ESSAY_SCHEMA = "some-ui.rust-essay/1"
 
@@ -376,9 +385,6 @@ export function essayFormat(version: number = ESSAY_VERSION): Format {
 export const weekId = z
   .string()
   .regex(/^\d{4}-w(?:0[1-9]|[1-4]\d|5[0-3])$/, "a week's id is like 2026-w46")
-
-/** A ticket's key, as `some-ui.rust-week/1` and `/2` write it (`TICKET_KEY`), unanchored. */
-export const TICKET_KEY_PATTERN = "[A-Z][A-Z0-9]{0,5}-\\d{1,6}"
 
 const ticketKey = z
   .string()
@@ -1406,9 +1412,23 @@ export function essayCutList(
   {
     bed = false,
     voicing = "owner",
-  }: { readonly bed?: boolean; readonly voicing?: Voicing } = {}
+    screens,
+    foot = 0,
+  }: {
+    readonly bed?: boolean
+    readonly voicing?: Voicing
+    /**
+     * The phone's own cards of the week (RR31), in the video's `screens/`:
+     * with them, each question scene shows its ticket's card, zoomed to
+     * what is said (`essayZoomRefs`).
+     */
+    readonly screens?: Screens
+    /** The share of the frame's height the stage keeps for captions, which a zoomed card stays above. */
+    readonly foot?: number
+  } = {}
 ): CutList {
   const format = essayFormat(essay.template.version)
+  const theme = markThemeOf(format.shape)
   return stillsCutList(
     {
       title: `The Rust Rounds essay, ${essay.week.id}`,
@@ -1418,13 +1438,53 @@ export function essayCutList(
       bed,
       ...(format.shape ? { shape: format.shape } : {}),
     },
-    essayScenes(essay, voicing).map((scene, i) => ({
-      id: scene.id,
-      file: stillFile(i, scene.id),
-      said: scene.said,
-    })),
+    essayScenes(essay, voicing).map((scene, i) => {
+      const refs = essayZoomRefs(essay, scene)
+      const picture =
+        screens === undefined || refs.length === 0
+          ? null
+          : zoomPicture(screens, refs, {
+              foot,
+              ...(theme === undefined ? {} : { theme }),
+            })
+      return {
+        id: scene.id,
+        file: stillFile(i, scene.id),
+        said: scene.said,
+        ...(picture === null ? {} : { picture }),
+      }
+    }),
     takes
   )
+}
+
+/** The most of rustc's diagnostics a question scene zooms to, in rustc's order. */
+const ZOOM_DIAGNOSTICS = 2
+
+/**
+ * The regions of the phone's card a scene zooms to, in order (C797): for a
+ * question scene, its ticket's question, each speak-to point, the program
+ * and rustc's first diagnostics; for any other, none: a deep dive's own
+ * code is a snippet the phone never draws (#3288).
+ */
+export function essayZoomRefs(
+  essay: Essay,
+  scene: EssayScene
+): Array<RegionRef> {
+  if (scene.section !== "question" || scene.ticket === undefined) return []
+  const ticket = essay.tickets.find((each) => each.id === scene.ticket)
+  if (ticket === undefined) return []
+  const numbered = (
+    kind: "point" | "diagnostic",
+    most: number
+  ): Array<RegionRef> =>
+    Array.from({ length: most }, (_, j) => regionRef(ticket.id, kind, j + 1))
+  return [
+    regionRef(ticket.id, "question"),
+    ...numbered("point", ticket.points.length),
+    regionRef(ticket.id, "program"),
+    ...numbered("diagnostic", ZOOM_DIAGNOSTICS),
+  ]
 }
 
 /**
