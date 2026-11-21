@@ -151,26 +151,27 @@ owner's one step. The workflow holds no mailbox secret.
   picture of a screen of the app, its named parts boxed. A scene shows one
   by the cut list's picture `{"kind": "screen", "of": …}`, in a cards essay
   in place of a card, where `of` is
-  `{"from": "snips", "id": "<id>", "at": ["<part>", …]}` or
+  `{"from": "snips", "id": "<id>", "commit": "<40 hex>", "at": ["<part>", …]}` or
   `{"from": "clips", "clip": "<clip>", "side": "after", "file": "<frame>.png"}`.
   Home hands what an essay names as it hands takes, each kind in its own
   folder beside `<key>.json`:
 
   - `<key>.snips/`: `snips.json`, which is
-    `{ "schema": "some-ui.snips-given/1", "snips": [<record>, …] }`, and
+    `{ "schema": "some-ui.snips-given/1", "bundles": [{ "commit": "<40 hex>", "snips": [<record>, …] }, …] }`,
+    one bundle per commit the essay names (C868), and
     each picture under its bundle name;
   - `<key>.clips/`: each frame at `<clip>/<side>/<file>`.
 
   `record:cards --snips <dir> --clips <dir>` checks each snip picture's hash
   and that each frame is a PNG. `resolveScreens` then draws each scene. With
-  no `at`, it shows the whole screen as a still. With `at`, a snip zooms to
-  those parts in turn, as the Rust essay's cards do (`screen-zoom`). A scene
-  naming a screen home didn't hand, or a part its snip doesn't name, is
-  refused before anything is drawn, and a cut list still naming one is
-  refused by the render: never a blank frame. Phone shots are 1080×1920
-  (APK) or 824×1830 (web phone, drawn at 2×), both portrait, and today they
-  are drawn as any still is, fitted into the frame. The owner chooses
-  between a device frame and a full-bleed 9:16 once they see them.
+  no `at`, it holds the whole screen as the owner chose (2026-11-21): the
+  phone at about three quarters of the frame's height, the caption below it,
+  on the series' ground (`screen-zoom` with no stops, C869). With `at`, a
+  snip zooms to those parts in turn, as the Rust essay's cards do. A scene
+  naming a screen home didn't hand, a snip of another commit than its
+  bundle, or a part its snip doesn't name is refused before anything is
+  drawn, and a cut list still naming one is refused by the render: never a
+  blank frame.
 
 - The APK's screens show what a fresh install paired with the stub shows. The
   stub answers few routes (`compat/stub-routes.json`), so many screens are

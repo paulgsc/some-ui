@@ -8,10 +8,10 @@
  * family: a picture of a screen of the app, with any parts it names boxed.
  * A snip adds where it was taken (surface, build, route, app version) and
  * the hashes home checks its files by. So each is drawn as a screen is: a
- * scene's `{kind: "screen", of}` picture is drawn as a still of the whole
- * screen or, for a snip given parts, by the zoom the Rust essay's cards use
- * (`./zoom`), over the snip read as a screen (`snipScreen`). The renderer
- * gains nothing.
+ * scene's `{kind: "screen", of}` picture is drawn by the screen-zoom
+ * composition the Rust essay's cards use (`./zoom`): the whole screen held
+ * above the captions, or, for a snip given parts, zoomed to them in turn,
+ * over the snip read as a screen (`snipScreen`). The renderer gains nothing.
  *
  * - The capture writes snip records (`apps/www/src/lib/snips`).
  * - Home fetches the bundle an essay names (SNIPS2) and keeps clip frames
@@ -31,7 +31,7 @@ import { problemsOf } from "./cut-list"
 import type { Screen } from "./screen"
 import { parseScreens, RegionSchema, SCREENS_SCHEMA } from "./screen"
 import { SNIP_ID } from "./snip-id"
-import { zoomPicture } from "./zoom"
+import { wholePicture, zoomPicture } from "./zoom"
 
 export { isSnipId, SNIP_ID } from "./snip-id"
 
@@ -115,16 +115,39 @@ export const SnipRecordSchema = z
   })
 export type SnipRecord = z.infer<typeof SnipRecordSchema>
 
+const commit = z.string().regex(/^[0-9a-f]{40}$/, "a commit's 40 hex digits")
+
+/**
+ * What home handed: for each bundle it fetched, its commit and the records
+ * of the snips the essay names from it (C868). An essay may show the app at
+ * two commits, a before and an after, so there may be several.
+ */
 const GivenSchema = z
   .strictObject({
     schema: z.literal(SNIPS_GIVEN_SCHEMA),
-    snips: z.array(SnipRecordSchema),
+    bundles: z.array(
+      z.strictObject({ commit, snips: z.array(SnipRecordSchema) })
+    ),
   })
-  .refine(
-    (given) =>
-      new Set(given.snips.map((s) => s.id)).size === given.snips.length,
-    { message: "a snip is given twice", path: ["snips"] }
-  )
+  .superRefine((given, ctx) => {
+    const seen = new Set<string>()
+    given.bundles.forEach((bundle, i) => {
+      if (seen.has(bundle.commit))
+        ctx.addIssue({
+          code: "custom",
+          path: ["bundles", i, "commit"],
+          message: `the bundle of ${bundle.commit} is given twice`,
+        })
+      seen.add(bundle.commit)
+      const ids = bundle.snips.map((snip) => snip.id)
+      if (new Set(ids).size !== ids.length)
+        ctx.addIssue({
+          code: "custom",
+          path: ["bundles", i, "snips"],
+          message: "a snip is given twice",
+        })
+    })
+  })
 export type SnipsGiven = z.infer<typeof GivenSchema>
 
 /** `value` read as the snips home handed beside an essay, or each problem with it. */
@@ -168,13 +191,21 @@ const screensOf = (cut: CutList): Array<ScreenPicture["of"]> =>
     picture.kind === "screen" ? [picture.of] : []
   )
 
-/** Every snip a cut list's scenes name, each once, in the order first named. */
-export function snipIdsOf(cut: CutList): Array<string> {
-  return [
-    ...new Set(
-      screensOf(cut).flatMap((of) => (of.from === "snips" ? [of.id] : []))
-    ),
-  ]
+/** A snip as an essay names it: the commit its bundle was captured at, and its id. */
+export type SnipRef = { readonly commit: string; readonly id: string }
+
+const refKey = ({ commit, id }: SnipRef): string => `${commit} ${id}`
+
+/**
+ * Every snip a cut list's scenes name, each once, in the order first
+ * named: what home fetches, `snips-bundle-<commit>` for each commit.
+ */
+export function snipsOf(cut: CutList): Array<SnipRef> {
+  const named = new Map<string, SnipRef>()
+  for (const of of screensOf(cut))
+    if (of.from === "snips" && !named.has(refKey(of)))
+      named.set(refKey(of), { commit: of.commit, id: of.id })
+  return [...named.values()]
 }
 
 /** A Clips Library frame's place in the folder home hands: `<clip>/<side>/<file>`. */
@@ -192,23 +223,29 @@ export function clipFramesOf(cut: CutList): Array<string> {
   ]
 }
 
+/** A picture's own size in pixels, as its PNG says. */
+export type PictureSize = { readonly width: number; readonly height: number }
+
 /**
  * What home handed beside an essay, each in its own folder as its takes
  * are (`<key>.snips/`, `<key>.clips/`): the snips' records, and the clip
- * frames it holds, by `clipFramePath`. Null where it handed none.
+ * frames it holds, by `clipFramePath`, with each frame's size. Null where
+ * it handed none.
  */
 export type Handed = {
   readonly snips: SnipsGiven | null
-  readonly clips: ReadonlySet<string> | null
+  readonly clips: ReadonlyMap<string, PictureSize> | null
 }
 
 /**
  * The cut list with each screen scene drawn from what home handed, the
  * snips' pictures under `snips/` and the clip frames under `clips/` in the
- * video's folder: a scene with no parts named shows the whole screen as a
- * still; a snip given parts zooms to them in turn. Refused, with each
- * reason, when a scene names a screen home did not hand, or a part its snip
- * doesn't name.
+ * video's folder, by the screen-zoom composition on the series' ground
+ * (`./zoom`): a scene with no parts named holds the whole screen above the
+ * frame's foot, where the captions draw (`wholePicture`); a snip given parts
+ * zooms to them in turn. Refused, with each reason, when a scene names a
+ * screen home did not hand, a snip from another commit than home's bundle,
+ * or a part its snip doesn't name.
  */
 export function resolveScreens(
   cut: CutList,
@@ -219,40 +256,64 @@ export function resolveScreens(
   }: {
     /** The share of the frame's height kept clear at its foot, for captions. */
     readonly foot?: number
-    /** The app's theme a zoom's ground is drawn in. */
+    /** The app's theme a screen's ground is drawn in. */
     readonly theme?: string
   } = {}
 ): Parsed<CutList> {
-  const byId = new Map(
-    (handed.snips?.snips ?? []).map((snip) => [snip.id, snip])
+  const given = new Map(
+    (handed.snips?.bundles ?? []).flatMap((bundle) =>
+      bundle.snips.map(
+        (snip) =>
+          [refKey({ commit: bundle.commit, id: snip.id }), snip] as const
+      )
+    )
   )
-  // Each snip a scene names is a screen, `snip-<n>` in the order named.
-  const screenIds = new Map(
-    snipIdsOf(cut).map((snipId, n) => [snipId, `snip-${String(n + 1)}`])
+  const commitsOf = new Map<string, Array<string>>()
+  for (const bundle of handed.snips?.bundles ?? [])
+    for (const snip of bundle.snips)
+      commitsOf.set(snip.id, [...(commitsOf.get(snip.id) ?? []), bundle.commit])
+  // Each snip a scene names is a screen, `snip-<n>` in the order named; each
+  // clip frame, `clip-<n>`.
+  const snipIds = new Map(
+    snipsOf(cut).map((ref, n) => [refKey(ref), `snip-${String(n + 1)}`])
+  )
+  const clipIds = new Map(
+    clipFramesOf(cut).map((frame, n) => [frame, `clip-${String(n + 1)}`])
   )
   const record = parseScreens({
     schema: SCREENS_SCHEMA,
-    screens: [...screenIds].flatMap(([snipId, id]) => {
-      const snip = byId.get(snipId)
-      return snip ? [snipScreen(snip, id)] : []
-    }),
+    screens: [
+      ...[...snipIds].flatMap(([key, id]) => {
+        const snip = given.get(key)
+        return snip ? [snipScreen(snip, id)] : []
+      }),
+      ...[...clipIds].flatMap(([frame, id]) => {
+        const size = handed.clips?.get(frame)
+        return size ? [frameScreen(frame, size, id)] : []
+      }),
+    ],
   })
   if (!record.ok) return record
   const screens = record.value
+  const screenOf = (id: string | undefined): Screen | undefined =>
+    screens.screens.find((each) => each.id === id)
+  const look = { foot, ...(theme === undefined ? {} : { theme }) }
   const problems: Array<string> = []
   const fromSnips = (shotId: string, of: SnipOf): Picture | null => {
-    const snip = byId.get(of.id)
-    const screen = screenIds.get(of.id)
-    if (snip === undefined || screen === undefined) {
+    const screen = screenOf(snipIds.get(refKey(of)))
+    if (screen === undefined) {
+      const elsewhere = commitsOf.get(of.id)
       problems.push(
-        `${shotId}: it shows the snip ${of.id}, which home did not hand: it has gone from the library, or the essay names one it never held`
+        elsewhere === undefined
+          ? `${shotId}: it shows the snip ${of.id}, which home did not hand: it has gone from the library, or the essay names one it never held`
+          : `${shotId}: it shows the snip ${of.id} of ${of.commit}, and home handed it from ${elsewhere.join(", ")}`
       )
       return null
     }
     if (of.at.length === 0)
-      return { kind: "still", source: `${SNIPS_DIR}/${snip.image.name}` }
-    const named = new Set(snip.regions.map((r) => r.ref))
-    const missing = of.at.filter((part) => !named.has(part))
+      return wholePicture(screen, { dir: SNIPS_DIR, ...look })
+    const named = new Set(screen.regions.map((r) => r.ref))
+    const missing = of.at.filter((part) => !named.has(`${screen.id}:${part}`))
     if (missing.length > 0) {
       problems.push(
         `${shotId}: the snip ${of.id} names no ${missing.join(", ")}`
@@ -261,8 +322,8 @@ export function resolveScreens(
     }
     const zoom: Composition | null = zoomPicture(
       screens,
-      of.at.map((part) => `${screen}:${part}`),
-      { dir: SNIPS_DIR, foot, ...(theme === undefined ? {} : { theme }) }
+      of.at.map((part) => `${screen.id}:${part}`),
+      { dir: SNIPS_DIR, ...look }
     )
     if (zoom === null)
       problems.push(`${shotId}: the snip ${of.id} has no part to zoom to`)
@@ -270,13 +331,14 @@ export function resolveScreens(
   }
   const fromClips = (shotId: string, of: ClipOf): Picture | null => {
     const frame = clipFramePath(of)
-    if (handed.clips?.has(frame) !== true) {
+    const screen = screenOf(clipIds.get(frame))
+    if (screen === undefined) {
       problems.push(
         `${shotId}: it shows the clip frame ${frame}, which home did not hand`
       )
       return null
     }
-    return { kind: "still", source: `${CLIPS_DIR}/${frame}` }
+    return wholePicture(screen, { dir: CLIPS_DIR, ...look })
   }
   const shots = cut.shots.map((shot) => {
     const { picture } = shot
@@ -290,6 +352,23 @@ export function resolveScreens(
   return problems.length > 0
     ? { ok: false, problems }
     : { ok: true, value: { ...cut, shots } }
+}
+
+/**
+ * A Clips Library frame read as a screen, named `id`: a picture of the app
+ * with no parts named, drawn one pixel to a CSS pixel, as its index keeps
+ * no scale.
+ */
+function frameScreen(frame: string, size: PictureSize, id: string): Screen {
+  return {
+    id,
+    file: frame,
+    width: size.width,
+    height: size.height,
+    scale: 1,
+    viewport: { ...size },
+    regions: [],
+  }
 }
 
 /** Where the handed snips' pictures sit in the video's folder. */

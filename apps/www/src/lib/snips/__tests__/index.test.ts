@@ -19,6 +19,7 @@ import {
   slugOf,
   snipId,
   STAGE_ROUTES,
+  tabBar,
   WEB_VIEWPORTS,
   wingPath,
 } from "@/lib/snips"
@@ -279,5 +280,53 @@ group("every name the capture makes is one the record takes", () => {
       },
     })
     expect(parsed.error?.issues ?? []).toEqual([])
+  })
+})
+
+group("the release APK's tab bar (#3137, option (b))", () => {
+  const node = (
+    label: string,
+    x: number,
+    over: Partial<{ y: number; bottom: number; selected: boolean }> = {}
+  ): {
+    label: string
+    x: number
+    y: number
+    bottom: number
+    selected: boolean
+  } => ({ label, x, y: 1800, bottom: 1850, selected: false, ...over })
+  const at = { appBottom: 1850, rowPx: 24 }
+
+  it("is a row at the foot of what the app draws, however close its tabs", () => {
+    // Studio's bar: two tabs about 500 px apart on a 1080 px screen.
+    expect(
+      tabBar([node("Game day", 790), node("Studio", 290)], at).map(
+        (n) => n.label
+      )
+    ).toEqual(["Studio", "Game day"])
+  })
+
+  it("is a row with a tab selected, wherever it sits", () => {
+    const raised = { y: 1700, bottom: 1740 }
+    expect(
+      tabBar(
+        [
+          node("Study", 300, { ...raised, selected: true }),
+          node("Bites", 700, raised),
+        ],
+        at
+      ).map((n) => n.label)
+    ).toEqual(["Study", "Bites"])
+  })
+
+  it("is not two buttons side by side above the foot, none chosen", () => {
+    const raised = { y: 1700, bottom: 1740 }
+    expect(
+      tabBar([node("Older", 200, raised), node("Newer", 880, raised)], at)
+    ).toEqual([])
+  })
+
+  it("is not one control alone", () => {
+    expect(tabBar([node("Studio", 540)], at)).toEqual([])
   })
 })

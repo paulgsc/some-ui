@@ -1,0 +1,20 @@
+{
+  "id": "C869",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/snip.ts",
+    "some-ui:packages/video-render/src/zoom.ts",
+    "some-ui:apps/www/src/lib/snips/index.ts",
+    "some-ui:apps/www/tests/snips/release-walk.ts"
+  ],
+  "chose": "Two of the owner's rulings of 2026-11-21, as built. (1) A screen in an essay is the phone at three-quarter size with the caption below it. Every whole screen, a snip with no parts named or a clip frame, is drawn by the screen-zoom composition with no stops (wholePicture). It holds the phone in the room above the frame's foot, where the captions draw, on the series' ground, so a portrait phone stands about three quarters of the frame's height when the foot is a quarter. A clip frame is read as a screen of its PNG's own size, scale 1. (2) #3137, option (b): a row of the release APK's controls is its tab bar only when it sits at the foot of what the app draws (its lowest edge within ROW_PX of the app's lowest edge) or one of its tabs is selected. The width rule (BAR_SPAN) is gone. tabBar is pure, in lib/snips, and tested.",
+  "options": [
+    "whole screens through screen-zoom with no stops; the bar by its foot or a selected tab",
+    "whole screens as plain stills fitted into the frame; the bar by its span",
+    "a device-frame composition of its own"
+  ],
+  "gray": "The owner decided what is seen (three quarters, the caption below) and which signal finds a bar. How each lands in code is a choice: reusing screen-zoom rather than a still or a new composition, and reading 'the bottom edge' as the app's own lowest edge rather than the screen's.",
+  "undo": "Have resolveScreens return a still for a whole screen, and put BAR_SPAN back in release-walk.ts.",
+  "refs": ["#3114", "#3137"]
+}

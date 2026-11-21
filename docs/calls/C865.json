@@ -12,9 +12,9 @@
     "some-ui:docs/snips.md",
     "some-ui:packages/video-render/src/clip.ts"
   ],
-  "chose": "A snip, a Clips Library frame and a some-ui.screens/1 screen (RR31) are one family: a picture of a screen of the app, with any named parts boxed. The snip record moves into @some-ui/video-render beside the screen record. It gains the two facts a screen has that it lacked: its scale, and the parts the page names (data-region), measured on the web walk; the APK's device screenshots name none. A scene shows one by one new member of the cut list's picture union, {kind: screen, of}, where of is a closed union: {from: snips, id, at} or {from: clips, clip, side, file}. resolveScreens draws it with what the renderer already has: a still of the whole screen, or, for a snip given parts, the screen-zoom composition over the snip read as a screen (snipScreen). There is no second scene kind, renderer path or screen schema.",
+  "chose": "A snip, a Clips Library frame and a some-ui.screens/1 screen (RR31) are one family: a picture of a screen of the app, with any named parts boxed. The snip record moves into @some-ui/video-render beside the screen record. It gains the two facts a screen has that it lacked: its scale, and the parts the page names (data-region), measured on the web walk; the APK's device screenshots name none. A scene shows one by one new member of the cut list's picture union, {kind: screen, of}, where of is a closed union: {from: snips, id, commit, at} or {from: clips, clip, side, file}. resolveScreens draws it with what the renderer already has, the screen-zoom composition over the picture read as a screen (snipScreen): held whole, or, for a snip given parts, zoomed to them in turn (C869). There is no second scene kind, renderer path or screen schema.",
   "options": [
-    "one family: a screen picture whose source is a closed union of snips and clip frames, resolved to a still or a zoom, the record beside screens/1",
+    "one family: a screen picture whose source is a closed union of snips and clip frames, drawn whole or zoomed by screen-zoom, the record beside screens/1",
     "a snip scene kind of its own, and another for clip frames, each with its own renderer path",
     "two records, snips/1 and screens/1, with no mapping between them"
   ],

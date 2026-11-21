@@ -258,6 +258,46 @@ export function wingPath(wing: string, tab?: string): string {
   return tab === undefined ? `@${slug(wing)}` : `@${slug(wing)}/${slug(tab)}`
 }
 
+/** A labelled control near the bottom of the APK's screen, from its UI dump. */
+export type BarNode = {
+  readonly label: string
+  /** Its centre, in the screen's pixels. */
+  readonly x: number
+  readonly y: number
+  /** Its lower edge. */
+  readonly bottom: number
+  /** Whether the app marks it as the one chosen (`selected`). */
+  readonly selected: boolean
+}
+
+/**
+ * The tabs of the bar along the bottom of a release APK screen, left to
+ * right, each label once: the lowest row of two or more labelled controls
+ * that either sits at the foot of what the app draws (its lowest edge within
+ * `rowPx` of `appBottom`) or has one tab selected (#3137, option (b), the
+ * owner, 2026-11-21). A bar has both, and a pair of buttons side by side in
+ * a page has neither, however far apart they sit: Studio's two tabs, about
+ * 500 px apart on a 1080 px screen, are a bar; two buttons mid-sheet are not.
+ */
+export function tabBar(
+  nodes: ReadonlyArray<BarNode>,
+  { appBottom, rowPx }: { readonly appBottom: number; readonly rowPx: number }
+): ReadonlyArray<BarNode> {
+  const rows: Array<Array<BarNode>> = []
+  for (const node of [...nodes].sort((a, b) => b.y - a.y)) {
+    const row = rows.find((r) => Math.abs((r[0]?.y ?? 0) - node.y) <= rowPx)
+    if (row) row.push(node)
+    else rows.push([node])
+  }
+  const isBar = (row: ReadonlyArray<BarNode>): boolean =>
+    new Set(row.map((n) => n.label)).size >= 2 &&
+    (row.some((n) => n.selected) ||
+      Math.max(...row.map((n) => n.bottom)) >= appBottom - rowPx)
+  const tabs = rows.find(isBar) ?? []
+  const unique = new Map(tabs.map((n) => [n.label, n]))
+  return [...unique.values()].sort((a, b) => a.x - b.x)
+}
+
 /** A file name for an address: /settings/appearance -> settings~appearance. */
 export function slugOf(path: string): string {
   if (path === "/") return "front"

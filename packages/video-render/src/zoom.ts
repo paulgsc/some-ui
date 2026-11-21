@@ -8,7 +8,7 @@
  */
 
 import type { Composition } from "./cut-list"
-import type { RegionRef, Screens } from "./screen"
+import type { RegionRef, Screen, Screens } from "./screen"
 import { regionOf } from "./screen"
 
 /** The composition that zooms a screen (`@some-ui/video-motion`). */
@@ -70,6 +70,46 @@ export function zoomPicture(
       height: screen.height,
       scale: screen.scale,
       stops: JSON.stringify(held.map(({ region }) => region.box)),
+      foot,
+      ...(theme === undefined ? {} : { theme }),
+    },
+    files: [file],
+  }
+}
+
+/**
+ * The whole of `screen` as a scene's picture (SNIPS4; the owner,
+ * 2026-11-21): the screen-zoom composition with no stops, so the phone is
+ * held whole in the room above the frame's foot, where the captions draw,
+ * on the series' ground, at about three quarters of the frame's height.
+ */
+export function wholePicture(
+  screen: Screen,
+  {
+    dir,
+    foot = 0,
+    theme,
+  }: {
+    /** The picture's folder in the video's folder. */
+    readonly dir: string
+    readonly foot?: number
+    readonly theme?: string
+  }
+): Composition {
+  if (!(foot >= 0 && foot <= FOOT_MOST))
+    throw new Error(
+      `a foot of ${String(foot)}: a screen keeps 0 to ${String(FOOT_MOST)} of the frame for captions`
+    )
+  const file = `${dir}/${screen.file}`
+  return {
+    kind: "composition",
+    ref: SCREEN_ZOOM,
+    variables: {
+      picture: file,
+      width: screen.width,
+      height: screen.height,
+      scale: screen.scale,
+      stops: "[]",
       foot,
       ...(theme === undefined ? {} : { theme }),
     },

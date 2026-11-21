@@ -37,7 +37,8 @@
  * An essay may show screens of the app home keeps (SNIPS4,
  * `@some-ui/video-render`'s `snip.ts`), handed as its takes are, each kind
  * in its own folder. `--snips <dir>` (`<key>.snips/`) holds `snips.json`
- * (`some-ui.snips-given/1`), the records of the snips the essay names, with
+ * (`some-ui.snips-given/1`), the records of the snips the essay names by
+ * each bundle's commit, with
  * each picture under it by its bundle name. `--clips <dir>` (`<key>.clips/`)
  * holds each Clips Library frame it names at `<clip>/<side>/<file>`. A screen
  * home didn't hand, a picture not the one its record names, or a frame that
@@ -69,8 +70,8 @@ import {
   parseSnipsGiven,
   QUIET,
   resolveScreens,
-  snipIdsOf,
   SNIPS_DIR,
+  snipsOf,
   SPOKEN_ASKER_VOICE,
   spokenCardsOf,
   spokenTakeFilesOf,
@@ -340,7 +341,7 @@ async function handedScreens(
   snipsFlag: string | undefined,
   clipsFlag: string | undefined
 ): Promise<HandedScreens | null> {
-  const snips = snipIdsOf(cut)
+  const snips = snipsOf(cut)
   const clips = clipFramesOf(cut)
   if (snips.length === 0 && clips.length === 0) return null
   const problems: Array<string> = []
@@ -363,7 +364,7 @@ async function handedScreens(
     const parsed = parseSnipsGiven(JSON.parse(read))
     if (!parsed.ok) fail([`${snipsDir}/snips.json:`, ...parsed.problems])
     given = parsed.value
-    for (const snip of given.snips) {
+    for (const snip of given.bundles.flatMap((bundle) => bundle.snips)) {
       const bytes = await readFile(join(snipsDir, snip.image.name)).catch(
         () => null
       )
@@ -377,14 +378,19 @@ async function handedScreens(
         )
     }
   }
-  const frames = new Set<string>()
+  const frames = new Map<string, { width: number; height: number }>()
   if (clipsDir !== null)
     for (const frame of clips) {
       const bytes = await readFile(join(clipsDir, frame)).catch(() => null)
       if (bytes === null) continue // resolveScreens says it wasn't handed
       if (!bytes.subarray(0, 8).equals(PNG_MAGIC))
         problems.push(`${frame}: home handed a frame that isn't a PNG`)
-      else frames.add(frame)
+      // Its size, from the PNG's header (IHDR).
+      else
+        frames.set(frame, {
+          width: bytes.readUInt32BE(16),
+          height: bytes.readUInt32BE(20),
+        })
     }
   if (problems.length > 0) fail(problems)
   const handed = { snips: given, clips: frames }
@@ -409,13 +415,15 @@ async function withScreens(
   const copies = [
     ...(screens.snipsDir === null
       ? []
-      : (screens.handed.snips?.snips ?? []).map((snip) => ({
-          from: join(screens.snipsDir ?? "", snip.image.name),
-          to: join(root, SNIPS_DIR, snip.image.name),
-        }))),
+      : (screens.handed.snips?.bundles ?? [])
+          .flatMap((bundle) => bundle.snips)
+          .map((snip) => ({
+            from: join(screens.snipsDir ?? "", snip.image.name),
+            to: join(root, SNIPS_DIR, snip.image.name),
+          }))),
     ...(screens.clipsDir === null
       ? []
-      : [...(screens.handed.clips ?? [])].map((frame) => ({
+      : [...(screens.handed.clips?.keys() ?? [])].map((frame) => ({
           from: join(screens.clipsDir ?? "", frame),
           to: join(root, CLIPS_DIR, frame),
         }))),

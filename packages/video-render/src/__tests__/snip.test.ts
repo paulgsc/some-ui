@@ -15,9 +15,9 @@ import {
   isSnipId,
   parseSnipsGiven,
   resolveScreens,
-  snipIdsOf,
   SNIPS_GIVEN_SCHEMA,
   snipScreen,
+  snipsOf,
 } from "@video-render/snip"
 import type { Handed, SnipRecord } from "@video-render/snip"
 import * as fixtures from "@video-render/testing"
@@ -77,22 +77,35 @@ const apk = (): SnipRecord => ({
   },
 })
 
+/** The commit the test's snips were captured at, and another. */
+const COMMIT = "c".repeat(40)
+const LATER = "e".repeat(40)
+
 const given = (
   snips: Array<SnipRecord>,
-  clips: Array<string> | null = null
+  clips: Array<string> | null = null,
+  commit = COMMIT
 ): Handed => {
-  const parsed = parseSnipsGiven({ schema: SNIPS_GIVEN_SCHEMA, snips })
+  const parsed = parseSnipsGiven({
+    schema: SNIPS_GIVEN_SCHEMA,
+    bundles: [{ commit, snips }],
+  })
   if (!parsed.ok) throw new Error(parsed.problems.join("; "))
-  return { snips: parsed.value, clips: clips && new Set(clips) }
+  return {
+    snips: parsed.value,
+    clips:
+      clips && new Map(clips.map((f) => [f, { width: 824, height: 1830 }])),
+  }
 }
 
 type Of =
-  | { from: "snips"; id: string; at?: Array<string> }
+  | { from: "snips"; id: string; commit: string; at?: Array<string> }
   | { from: "clips"; clip: string; side: "before" | "after"; file: string }
 
-const snip = (id: string, at?: Array<string>): Of => ({
+const snip = (id: string, at?: Array<string>, commit = COMMIT): Of => ({
   from: "snips",
   id,
+  commit,
   ...(at ? { at } : {}),
 })
 
@@ -159,19 +172,32 @@ describe("a snip is a photographed screen (C865)", () => {
 describe("an essay's screens of the app (SNIPS4)", () => {
   it("is a cards essay's scene, and names its snips once each", async () => {
     const cut = await withScreens([snip(APK), snip(PHONE), snip(APK)])
-    expect(snipIdsOf(cut)).toEqual([APK, PHONE])
+    expect(snipsOf(cut)).toEqual([
+      { commit: COMMIT, id: APK },
+      { commit: COMMIT, id: PHONE },
+    ])
   })
 
-  it("is drawn as a still of the whole screen, or zoomed to the parts it names", async () => {
+  it("is the whole phone held above the captions, or zoomed to the parts it names", async () => {
     const cut = await withScreens([
       snip(APK),
       snip(PHONE, ["QM-311:program", "QM-311:run"]),
     ])
-    const drawn = resolveScreens(cut, given([apk(), phone()]))
+    const drawn = resolveScreens(cut, given([apk(), phone()]), { foot: 0.25 })
     if (!drawn.ok) throw new Error(drawn.problems.join("; "))
+    // The owner (2026-11-21): the phone at three quarters, the caption below.
     expect(drawn.value.shots[1]?.picture).toEqual({
-      kind: "still",
-      source: "snips/apk/android/release-studio~takes-dddddddddddd.png",
+      kind: "composition",
+      ref: SCREEN_ZOOM,
+      variables: {
+        picture: "snips/apk/android/release-studio~takes-dddddddddddd.png",
+        width: 1080,
+        height: 1920,
+        scale: 1,
+        stops: "[]",
+        foot: 0.25,
+      },
+      files: ["snips/apk/android/release-studio~takes-dddddddddddd.png"],
     })
     const zoom = drawn.value.shots[2]?.picture
     expect(zoom).toMatchObject({
@@ -188,7 +214,7 @@ describe("an essay's screens of the app (SNIPS4)", () => {
         ]),
       },
     })
-    expect(snipIdsOf(drawn.value)).toEqual([])
+    expect(snipsOf(drawn.value)).toEqual([])
     // What isn't a snip is drawn as written.
     expect(drawn.value.shots[0]).toEqual(cut.shots[0])
   })
@@ -204,7 +230,23 @@ describe("an essay's screens of the app (SNIPS4)", () => {
     expect(problems).toContain(`the snip ${PHONE} names no QM-311:question`)
   })
 
-  it("shows a Clips Library frame home handed as a still, and refuses one it didn't", async () => {
+  it("is refused when home handed the snip from another commit than the essay names (C868)", async () => {
+    const cut = await withScreens([snip(APK, undefined, LATER)])
+    const drawn = resolveScreens(cut, given([apk()]))
+    expect(drawn.ok ? "" : drawn.problems.join("\n")).toContain(
+      `C1: it shows the snip ${APK} of ${LATER}, and home handed it from ${COMMIT}`
+    )
+    const both = parseSnipsGiven({
+      schema: SNIPS_GIVEN_SCHEMA,
+      bundles: [
+        { commit: COMMIT, snips: [apk()] },
+        { commit: COMMIT, snips: [] },
+      ],
+    })
+    expect(both.ok).toBe(false)
+  })
+
+  it("shows a Clips Library frame home handed whole, and refuses one it didn't", async () => {
     const frame: Of = {
       from: "clips",
       clip: "studio-release-promo",
@@ -220,9 +262,11 @@ describe("an essay's screens of the app (SNIPS4)", () => {
       given([apk()], ["studio-release-promo/after/02-release-promo.png"])
     )
     if (!drawn.ok) throw new Error(drawn.problems.join("; "))
-    expect(drawn.value.shots[1]?.picture).toEqual({
-      kind: "still",
-      source: "clips/studio-release-promo/after/02-release-promo.png",
+    expect(drawn.value.shots[1]?.picture).toMatchObject({
+      kind: "composition",
+      ref: SCREEN_ZOOM,
+      variables: { width: 824, height: 1830, scale: 1, stops: "[]" },
+      files: ["clips/studio-release-promo/after/02-release-promo.png"],
     })
     const refused = resolveScreens(cut, given([apk()]))
     expect(refused.ok ? "" : refused.problems.join("\n")).toContain(
@@ -234,7 +278,10 @@ describe("an essay's screens of the app (SNIPS4)", () => {
     const root = await mkdtemp(join(tmpdir(), "snip-"))
     const cut = fixtures.cutList([
       fixtures.shot("a", {
-        picture: { kind: "screen", of: { from: "snips", id: APK, at: [] } },
+        picture: {
+          kind: "screen",
+          of: { from: "snips", id: APK, commit: COMMIT, at: [] },
+        },
       }),
     ])
     const drawn = await render(cut, fixtures.series(), nodePorts(root), {
