@@ -6,7 +6,7 @@
     "server:apps/servers/file_host/src/game_feed.rs",
     "server:apps/servers/file_host/src/game_feed/pass.rs"
   ],
-  "chose": "The game feed's scoreboard sleeps when no chosen game is live, past kickoff and not final, or within an hour of kickoff: it is next read an hour before the next chosen kickoff (CADENCE.margin, 3,600 s) or a day after its last read (CADENCE.refresh, 86,400 s), whichever is sooner, and never sooner than its 600 s awake cadence. Both are source policy constants with compile-time asserts (margin >= the scoreboard cadence and < refresh; refresh <= MAX_CADENCE). Backoff is unchanged.",
+  "chose": "The game feed's scoreboard sleeps when no chosen game is live, past kickoff and not final within its grace, or within an hour of kickoff: it is next read an hour before the next chosen kickoff (CADENCE.margin, 3,600 s) or a day after its last read (CADENCE.refresh, 86,400 s), whichever is sooner (C888 adds a third: any listed game's end read, kickoff plus 4 h, and stays awake while such a game is still live, to kickoff plus 8 h), and never sooner than its 600 s awake cadence. Both are source policy constants with compile-time asserts (margin >= the scoreboard cadence and < refresh; refresh <= MAX_CADENCE). Backoff is unchanged.",
   "options": [
     "margin 1 h, refresh 24 h",
     "margin 30 min (3 reads before kickoff), refresh 24 h",
