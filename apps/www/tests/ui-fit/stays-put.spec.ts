@@ -13,11 +13,13 @@
  *   a save refused, a label tapped off down to the last one; for History's
  *   drafts, a submit refused. A tap that declares `reflows` (Mine/Theirs) is
  *   outside it, and says why; one that declares `grows` ("N older") is in it
- *   for what is at and above it.
+ *   for what is at and above it. A target fixed to the window is in it where
+ *   it sits on the window, however the page under it scrolls.
  * - Proof: this spec, which takes every tap, compares every target's box
  *   before and after and finds every message in the layout
- *   (`../layout-invariants/stays-put.ts`), and fails on the planted line if
- *   the measure goes blind to either.
+ *   (`../layout-invariants/stays-put.ts`), fails on the planted line if
+ *   the measure goes blind to either, and on the planted fixed button if the
+ *   measure counts the page's scroll on it.
  * - Tolerance: a screen this spec does not walk.
  */
 
@@ -153,6 +155,22 @@ walkEachPhone(
             "\n"
           )}`
       ).toBe(true)
+    })
+
+    test("the measure sees no move in a button fixed over a page that scrolls", async ({
+      page,
+    }) => {
+      PAGE.expectBuilt()
+      await open(page, PAGE.url("planted-fixed"))
+      const failures = await holdStill(
+        page,
+        [button("Shorten the page", "shortens the page")],
+        "planted"
+      )
+      expect(
+        failures.filter((f) => f.includes("Fixed target")),
+        `The page scrolls under "Fixed target"; on the screen it stays put.`
+      ).toEqual([])
     })
   }
 )
