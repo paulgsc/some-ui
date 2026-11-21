@@ -444,10 +444,25 @@ export const DELETING = {
       : `Delete ${String(n)} ${DELETABLE_NAMES[of].many} for good?`,
   goesTitle: "Goes for good",
   staysTitle: "Stays",
+  /**
+   * What goes, the videos that play it included (paulgsc/server
+   * docs/identity.md's essay-render exception, rule (d); server#1055): a
+   * cards essay, or a Rust Rounds or interview week's essay, that plays a
+   * deleted take is withdrawn for good, its video on home with it. Home has
+   * no YouTube access, so a copy uploaded there stays (the owner, 2026-11-21).
+   */
   goes: (n: number): ReadonlyArray<string> =>
     n === 1
-      ? ["The recording, on home and on this phone", "Home's words for it"]
-      : ["The recordings, on home and on this phone", "Home's words for them"],
+      ? [
+          "The recording, on home and on this phone",
+          "Home's words for it",
+          "Any essay video on home that plays it, a cards essay's included. Home won't make that essay again. A copy you uploaded to YouTube is yours to take down.",
+        ]
+      : [
+          "The recordings, on home and on this phone",
+          "Home's words for them",
+          "Any essay video on home that plays one of them, a cards essay's included. Home won't make that essay again. A copy you uploaded to YouTube is yours to take down.",
+        ],
   stays: (of: DeletableKind, n: number): ReadonlyArray<string> =>
     n === 1
       ? [

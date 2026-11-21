@@ -308,12 +308,15 @@ function refusalLine(feed: string, refusal: Refusal): string {
  * Why home set a cards essay aside over a spoken card's take (WALK7;
  * paulgsc/server#1052), by home's word for each. A take home hasn't
  * finished listening to is no refusal: the essay waits, unseen here, as a
- * Rust Rounds essay waits for its takes.
+ * Rust Rounds essay waits for its takes. A take the owner deleted is no
+ * refusal either: home withdraws the essay for good, its video included,
+ * and it leaves every list (paulgsc/server#1055), so `take-missing` is only
+ * a take home never had.
  */
 const TAKE_REFUSAL_WORDS: ReadonlyMap<string, string> = new Map([
   [
     "take-missing",
-    "A spoken card in it plays a recording home doesn't have, or one you deleted. It isn't made until the essay names one home keeps.",
+    "A spoken card in it plays a recording home doesn't have. It isn't made until the essay names one home keeps.",
   ],
   [
     "take-unheard",
