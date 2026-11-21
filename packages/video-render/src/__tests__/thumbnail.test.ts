@@ -52,14 +52,19 @@ describe("thumbnailTitle", () => {
       "Full-stack engineer, driver tools",
     ],
     [
-      { genre: "playoff-delta", season: "2025 season", week: 12 },
-      "2025 season, week 12",
+      { genre: "playoff-delta", season: "2025", week: 12 },
+      "Week 12, 2025 season",
     ],
     [
-      { genre: "playoff-delta", season: "2025 season", week: "legend" },
+      { genre: "playoff-delta", season: "2025", week: "legend" },
       "The legend: how to read a week",
     ],
     [{ genre: "report", week: "2026-W47" }, "The week of Nov 16"],
+    [
+      { genre: "call", from: "2026-12-28", to: "2027-01-03", part: 1, of: 1 },
+      "The week of Dec 28 – Jan 3",
+    ],
+    [{ genre: "rust-essay", week: "2026-W05", firstTicket: "A" }, "Week 5: A"],
     [
       {
         genre: "rust-essay",
@@ -172,8 +177,10 @@ describe("the title's fit", () => {
 
   it("refuses a title in letters the font can't draw, at any size", () => {
     const fits = titleSizes().map((px) => ({ px, width: 10, height: 10 }))
-    expect(chooseTitleSize("한국어 주간", fits).ok).toBe(false)
-    expect(chooseTitleSize("Café – “quoted” … €5", fits).ok).toBe(true)
+    for (const title of ["한국어 주간", "Dvořák", "Łódź", "a\u0085b"])
+      expect(chooseTitleSize(title, fits).ok, title).toBe(false)
+    for (const title of ["Café – “quoted” … €5", "Œuvre™ − 2 ↑", "Ångström ñ"])
+      expect(chooseTitleSize(title, fits).ok, title).toBe(true)
   })
 
   it("refuses a fit only an unreadable size gives", () => {

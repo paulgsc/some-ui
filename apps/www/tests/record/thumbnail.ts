@@ -91,6 +91,14 @@ export async function drawThumbnail(
 }
 
 /**
+ * Removes `root`'s thumbnail, before its video is made again: a render that
+ * fails leaves no thumbnail of an earlier run beside it.
+ */
+export async function clearThumbnail(root: string): Promise<void> {
+  await rm(join(root, THUMBNAIL_FILE), { force: true })
+}
+
+/**
  * `input`'s thumbnail into `root`'s `thumbnail.png`, replacing any earlier
  * one; with a title that can't be drawn, none, and a line on stderr saying
  * why.
@@ -101,7 +109,7 @@ export async function writeThumbnail(
   input: ThumbnailInput
 ): Promise<void> {
   const file = join(root, THUMBNAIL_FILE)
-  await rm(file, { force: true })
+  await clearThumbnail(root)
   const drawn = await drawThumbnail(browser, input)
   if (!drawn.ok) {
     process.stderr.write(`no thumbnail: ${drawn.problems.join("; ")}\n`)

@@ -87,7 +87,7 @@ type FactsByGenre = {
   readonly "cards-essay": { readonly title: string }
   /** The role the interview week was for. */
   readonly "interview-essay": { readonly role: string }
-  /** The season's label, and the week, or the legend. */
+  /** The season's label ("2025"), and the week, or the legend. */
   readonly "playoff-delta": {
     readonly season: string
     readonly week: number | "legend"
@@ -149,7 +149,7 @@ const TITLES: {
   "playoff-delta": ({ season, week }) =>
     week === "legend"
       ? "The legend: how to read a week"
-      : `${season}, week ${String(week)}`,
+      : `Week ${String(week)}, ${season} season`,
   report: ({ week }) => `The week of ${dayName(isoWeekMonday(week))}`,
   "rust-essay": ({ week, firstTicket }) =>
     `Week ${String(weekNumber(week))}${firstTicket === null ? "" : `: ${firstTicket}`}`,
@@ -229,12 +229,14 @@ export type TitleMeasure = {
 }
 
 /**
- * What the pinned fonts draw (their latin subset): letters, digits and
- * punctuation of Latin-1 and Latin Extended-A, and general punctuation
- * (dashes, quotes, the ellipsis). Anything else would be drawn in whatever
- * font the host has, so a title holding it is refused.
+ * What the pinned fonts draw: the printable part of their latin subset's
+ * `unicode-range` (@fontsource's barlow-condensed latin files): Basic Latin
+ * and Latin-1 without control codes, ı, Œ and œ, general punctuation
+ * (dashes, quotes, the ellipsis), € ™ ↑ ↓ − ∕. Anything else would be drawn
+ * in whatever font the host has, so a title holding it is refused.
  */
-const DRAWN = /^[\u0020-\u017f\u2000-\u206f\u20ac]*$/u
+const DRAWN =
+  /^[\u0020-\u007e\u00a0-\u00ff\u0131\u0152\u0153\u2000-\u206f\u20ac\u2122\u2191\u2193\u2212\u2215]*$/u
 
 /**
  * The size to draw the title at: the largest of `measured` whose layout

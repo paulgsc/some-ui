@@ -59,7 +59,7 @@ import { z } from "zod"
 
 import { openRecorder, renderWithBurnIns } from "./burn-ins"
 import { fail, here } from "./command"
-import { writeThumbnail } from "./thumbnail"
+import { clearThumbnail, writeThumbnail } from "./thumbnail"
 
 /**
  * The owner's take of scene `file`, from `own` (any audio ffmpeg reads), as
@@ -567,6 +567,7 @@ export async function renderCut(
   const { preview } = options
   const cut = preview ? previewOf(whole) : { ok: true as const, value: whole }
   if (!cut.ok) fail(["The preview can't be cut:", ...cut.problems])
+  if (!preview) await clearThumbnail(root)
   await renderStills(root, series, cut.value, {
     out: preview ? "preview.mp4" : options.episode,
     policy: options.policy,
