@@ -137,7 +137,9 @@ export const ShapeSchema = z.strictObject({
   /**
    * The voice lanes its lines are said in (`VoicesIdSchema`, C840): each
    * speaker's voice moves on at each chapter. Absent, each speaker keeps one
-   * voice for the whole video, as every version before them did.
+   * voice for the whole video, as every version before them did. Read by
+   * the essays' formats; the weekly call's voices are `fixed` whatever its
+   * shape says (`CALL_VOICE_POLICY`, C840).
    */
   voices: VoicesIdSchema.optional(),
   parts: z

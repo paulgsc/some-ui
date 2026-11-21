@@ -44,6 +44,7 @@ import { sampleSpokenCard } from "@video-render/spoken-card"
 import {
   chapterIndexes,
   KOKORO_VOICES,
+  speakerTurns,
   VOICE_LANES,
   VOICE_ROLES,
   voiceOf,
@@ -79,6 +80,8 @@ type Case = {
   readonly lanes: boolean
   /** Whether Kokoro says both sides of an exchange in it (the sample's opening). */
   readonly pairs: boolean
+  /** Its speakers that hold one voice throughout: the owner's stand-in. */
+  readonly held: ReadonlyArray<string>
   /** Its newest version's lines, voiced. */
   readonly lines: () => Promise<ReadonlyArray<Voiced>>
 }
@@ -146,7 +149,7 @@ const cardsLines = async (
     if (spoken !== undefined)
       return [
         {
-          speaker: spoken.scene.role === "ask" ? "asker" : "answerer",
+          speaker: spoken.scene.role === "ask" ? "asker" : "tutor",
           chapter,
           voice: spoken.voice,
           exchange: `${spoken.card}-${String(spoken.scene.exchange)}`,
@@ -168,6 +171,7 @@ const KINDS: Readonly<Record<VideoKind, Case>> = {
   call: {
     lanes: false,
     pairs: false,
+    held: [],
     lines: () => {
       const week = unwrap(sampleCallWeek())
       const scenes = callScenes(week)
@@ -187,16 +191,19 @@ const KINDS: Readonly<Record<VideoKind, Case>> = {
   cards: {
     lanes: true,
     pairs: false,
+    held: [],
     lines: async () => cardsLines("rust-scratchpad", await newestCardsVoices()),
   },
   "spoken-card": {
     lanes: true,
     pairs: false,
+    held: [],
     lines: async () => cardsLines("spoken-intro", await newestCardsVoices()),
   },
   "rust-essay": {
     lanes: true,
     pairs: false,
+    held: ["you"],
     lines: () => {
       const essay = rustEssay()
       const scenes = essayScenes(essay, "sample")
@@ -209,6 +216,7 @@ const KINDS: Readonly<Record<VideoKind, Case>> = {
   "rust-opening": {
     lanes: true,
     pairs: true,
+    held: ["you"],
     lines: () => {
       const essay = rustEssay(OPENING)
       const scenes = essayScenes(essay, "sample")
@@ -221,6 +229,7 @@ const KINDS: Readonly<Record<VideoKind, Case>> = {
   "interview-essay": {
     lanes: true,
     pairs: false,
+    held: ["you"],
     lines: () => {
       const essay = unwrap(sampleInterviewEssay())
       expect(essay.template.version).toBe(INTERVIEW_ESSAY_VERSION)
@@ -250,14 +259,27 @@ const byChapter = (
 }
 
 describe("the voice lanes", () => {
-  it("are disjoint, each of two voices or more, every one a voice home's speaker has", () => {
+  it("are disjoint, each of two voices or more but the held answerer's, every one a voice home's speaker has", () => {
     for (const lanes of Object.values(VOICE_LANES)) {
       const all = VOICE_ROLES.flatMap((role) => lanes[role])
       expect(new Set(all).size).toBe(all.length)
       for (const role of VOICE_ROLES)
-        expect(lanes[role].length).toBeGreaterThanOrEqual(2)
+        expect(lanes[role].length).toBe(role === "answerer" ? 1 : 3)
       for (const voice of all) expect(KOKORO_VOICES).toContain(voice)
     }
+  })
+
+  it("move a speaker on once per chapter it speaks in, even after chapters it sat out", () => {
+    // a speaks in chapters 0, 1 and 4; b in 2 and 3.
+    const lines = [
+      { speaker: "a", opens: false },
+      { speaker: "a", opens: true },
+      { speaker: "b", opens: true },
+      { speaker: "b", opens: true },
+      { speaker: "a", opens: true },
+      { speaker: "a", opens: false },
+    ] as const
+    expect(speakerTurns(lines)).toEqual([0, 1, 0, 1, 2, 2])
   })
 
   it("give a role its lane's voices round robin by chapter", () => {
@@ -276,44 +298,54 @@ describe("the voice lanes", () => {
   })
 })
 
-describe.each(Object.entries(KINDS))("%s", (_kind, { lanes, pairs, lines }) => {
-  it("says every line of a speaker in one voice within a chapter", async () => {
-    for (const chapters of byChapter(await lines()).values())
-      for (const voices of chapters.values()) expect(voices.size).toBe(1)
-  })
+describe.each(Object.entries(KINDS))(
+  "%s",
+  (_kind, { lanes, pairs, held, lines }) => {
+    it("says every line of a speaker in one voice within a chapter", async () => {
+      for (const chapters of byChapter(await lines()).values())
+        for (const voices of chapters.values()) expect(voices.size).toBe(1)
+    })
 
-  it("keeps an exchange's asker and answerer in two voices", async () => {
-    const exchanges = new Map<string, Map<string, KokoroVoice>>()
-    for (const line of await lines()) {
-      if (line.exchange === undefined) continue
-      const sides =
-        exchanges.get(line.exchange) ?? new Map<string, KokoroVoice>()
-      sides.set(line.speaker, line.voice)
-      exchanges.set(line.exchange, sides)
-    }
-    for (const sides of exchanges.values())
-      expect(new Set(sides.values()).size).toBe(sides.size)
-    expect([...exchanges.values()].some((sides) => sides.size === 2)).toBe(
-      pairs
-    )
-  })
-
-  it.runIf(lanes)(
-    "moves a speaker's voice on at each chapter boundary",
-    async () => {
-      const said = await lines()
-      expect(new Set(said.map((l) => l.chapter)).size).toBeGreaterThan(1)
-      for (const chapters of byChapter(said).values()) {
-        const order = [...chapters.entries()].sort(([a], [b]) => a - b)
-        for (const [i, [chapter, voices]] of order.entries()) {
-          const before = order[i - 1]
-          if (before?.[0] !== chapter - 1) continue
-          expect([...voices]).not.toEqual([...before[1]])
-        }
+    it("keeps an exchange's asker and answerer in two voices", async () => {
+      const exchanges = new Map<string, Map<string, KokoroVoice>>()
+      for (const line of await lines()) {
+        if (line.exchange === undefined) continue
+        const sides =
+          exchanges.get(line.exchange) ?? new Map<string, KokoroVoice>()
+        sides.set(line.speaker, line.voice)
+        exchanges.set(line.exchange, sides)
       }
-    }
-  )
-})
+      for (const sides of exchanges.values())
+        expect(new Set(sides.values()).size).toBe(sides.size)
+      expect([...exchanges.values()].some((sides) => sides.size === 2)).toBe(
+        pairs
+      )
+    })
+
+    it.runIf(lanes)(
+      "moves a speaker's voice on each time it speaks in a new chapter, but the owner's stand-in",
+      async () => {
+        const said = await lines()
+        expect(new Set(said.map((l) => l.chapter)).size).toBeGreaterThan(1)
+        let moved = 0
+        for (const [speaker, chapters] of byChapter(said)) {
+          const order = [...chapters.entries()].sort(([a], [b]) => a - b)
+          for (const [i, [, voices]] of order.entries()) {
+            const before = order[i - 1]
+            if (before === undefined) continue
+            if (held.includes(speaker))
+              expect([...voices]).toEqual([...before[1]])
+            else {
+              expect([...voices]).not.toEqual([...before[1]])
+              moved += 1
+            }
+          }
+        }
+        expect(moved).toBeGreaterThan(0)
+      }
+    )
+  }
+)
 
 describe("in the lanes, as a listener hears them", () => {
   it("a cards essay's intro is the call's host, and each card has a narrator of its own", async () => {
@@ -330,8 +362,8 @@ describe("in the lanes, as a listener hears them", () => {
     )
     expect(scenes.slice(0, 4).map((s) => s.lines.map((l) => l.voice))).toEqual([
       ["am_michael"],
-      ["bm_george", "af_heart"],
-      ["am_puck", "bf_emma"],
+      ["am_puck", "af_heart"],
+      ["bf_isabella", "bf_emma"],
       ["am_michael", "af_nicole"],
     ])
   })
@@ -348,12 +380,12 @@ describe("in the lanes, as a listener hears them", () => {
     expect([at("intro"), at("ask-1"), at("opening-1"), at("ask-2")]).toEqual([
       "am_fenrir",
       "af_bella",
-      "af_kore",
+      "bm_george",
       "af_bella",
     ])
     expect([at("chapter-question-1"), at("chapter-question-2")]).toEqual([
       "bm_fable",
-      "am_onyx",
+      "af_alloy",
     ])
     expect(
       new Set(chapterIndexes(scenes.map((s) => s.section === "chapter"))).size
@@ -412,7 +444,7 @@ describe("before the lanes", () => {
       host: "am_michael",
       narrator: "af_heart",
       asker: "af_heart",
-      answerer: "af_heart",
+      tutor: "af_heart",
     })
   })
 

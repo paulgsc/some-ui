@@ -14,16 +14,20 @@
  *   essay renders the same takes; and it is the weekly call's, whose
  *   sections already each have a voice of their own (`CALL_VOICES`).
  * - `lanes`: each speaker plays a role (`VoiceRole`), each role has its own
- *   lane of voices (`VOICE_LANES`), and the role's voice in chapter `c` is its
- *   lane's `c`th, round robin. A template version or a series turns it on by
- *   naming the lanes in its `voices` field (`VoicesIdSchema`), as the cast
- *   is turned on (C822), so a version already pinned never changes voice.
+ *   lane of voices (`VOICE_LANES`), and the `n`th chapter a role speaks in
+ *   takes its lane's `n`th voice, round robin. A template version or a
+ *   series turns it on by naming the lanes in its `voices` field
+ *   (`VoicesIdSchema`), as the cast is turned on (C822), so a version
+ *   already pinned never changes voice.
  *
  * What a chapter is, each kind says by which of its lines opens one
  * (`chapterVoices`): a chapter slide in an essay, a chapter mark in a cards
  * essay. The lanes are disjoint, so two roles never share a voice, the
- * asker and the answerer of an exchange included, and each lane holds at
- * least two voices, so a role's voice changes at every chapter boundary.
+ * asker and the answerer of an exchange included. Each lane but the
+ * answerer's holds at least two voices, so a role's voice changes each time
+ * it speaks in a new chapter, even after chapters it sat out. The answerer
+ * stands in for the owner, in a sample with no takes, and the owner's own
+ * voice never changes, so its lane is one voice.
  *
  * Every name is one home's speaker loads (paulgsc/server
  * `infra/kokoro/say.py`, from Kokoro-FastAPI v0.9.2's `voices/v1_0`).
@@ -95,23 +99,27 @@ export type VoiceRole = (typeof VOICE_ROLES)[number]
 /** A role's voices, in the order its chapters take them: two at least. */
 export type Lane = readonly [KokoroVoice, KokoroVoice, ...Array<KokoroVoice>]
 
+/** Every role's lane: the answerer's one voice, held, and the others' rounds. */
+export type Lanes = Readonly<Record<Exclude<VoiceRole, "answerer">, Lane>> & {
+  readonly answerer: readonly [KokoroVoice]
+}
+
 /**
- * Each role's lane, by the lanes' id. Disjoint, so no two roles share a
- * voice. Two keep the voice they had before the lanes where it is first
- * heard: the host's opens on the call's host (chapter 0, the intro), and a
- * cards essay's first card (chapter 1) is still narrated in af_heart. The
- * others' voices before the lanes are taken by these two, so their lanes
- * are new voices.
+ * Each role's lane, by the lanes' id: Kokoro's better-graded English voices,
+ * disjoint, so no two roles share one. The roles that meet in an exchange
+ * differ by more than name: the asker's are women's voices, and the
+ * answerer, the owner's stand-in, is the essays' sample voice before the
+ * lanes, a British man's. The host's lane opens on the call's host and the
+ * narrator's on the cards' narrator before the lanes, so a cards essay's
+ * intro and first card sound as they did.
  */
-export const VOICE_LANES: Readonly<
-  Record<VoicesId, Readonly<Record<VoiceRole, Lane>>>
-> = {
+export const VOICE_LANES: Readonly<Record<VoicesId, Lanes>> = {
   "lanes-v1": {
-    host: ["am_michael", "bm_george", "am_puck"],
-    narrator: ["af_nicole", "af_heart", "bf_emma"],
-    tutor: ["am_fenrir", "bm_fable", "am_onyx"],
-    asker: ["af_bella", "af_aoede", "bf_isabella"],
-    answerer: ["af_kore", "af_sarah", "bm_lewis"],
+    host: ["am_michael", "am_puck", "bf_isabella"],
+    narrator: ["af_heart", "bf_emma", "af_nicole"],
+    tutor: ["am_fenrir", "bm_fable", "af_alloy"],
+    asker: ["af_bella", "af_aoede", "af_kore"],
+    answerer: ["bm_george"],
   },
 }
 
@@ -140,16 +148,18 @@ export const voicePolicyOf = <S extends string>(
     ? { kind: "fixed", voices: fixed }
     : { kind: "lanes", lanes: voices, roles }
 
-/** `speaker`'s voice in chapter `chapter` (from 0) under `policy`. */
+/** `speaker`'s voice the `turn`th chapter (from 0) it speaks in, under `policy`. */
 export function voiceOf<S extends string>(
   policy: VoicePolicy<S>,
   speaker: S,
-  chapter: number
+  turn: number
 ): KokoroVoice {
   if (policy.kind === "fixed") return policy.voices[speaker]
-  const lane = VOICE_LANES[policy.lanes][policy.roles[speaker]]
-  const at = Math.max(0, Math.trunc(chapter)) % lane.length
-  return lane[at] ?? lane[0]
+  const lane: ReadonlyArray<KokoroVoice> =
+    VOICE_LANES[policy.lanes][policy.roles[speaker]]
+  const voice = lane[Math.max(0, Math.trunc(turn)) % lane.length]
+  if (voice === undefined) throw new Error(`no voice for ${speaker}`)
+  return voice
 }
 
 /**
@@ -171,14 +181,38 @@ export type VoicedLine<S extends string> = {
 }
 
 /**
- * Each line's voice, in order: its speaker's in its chapter
- * (`chapterIndexes`), so every line of a chapter is said in its speaker's
- * voice for that chapter.
+ * Each line's turn, in order: how many earlier chapters its speaker spoke
+ * in, so a speaker's turn moves on once per chapter it speaks in, and holds
+ * within one.
+ */
+export function speakerTurns<S extends string>(
+  lines: ReadonlyArray<VoicedLine<S>>
+): Array<number> {
+  const chapters = chapterIndexes(lines.map((line) => line.opens))
+  const last = new Map<S, { readonly chapter: number; readonly turn: number }>()
+  return lines.map((line, i) => {
+    const chapter = chapters[i] ?? 0
+    const before = last.get(line.speaker)
+    const turn =
+      before === undefined
+        ? 0
+        : before.chapter === chapter
+          ? before.turn
+          : before.turn + 1
+    last.set(line.speaker, { chapter, turn })
+    return turn
+  })
+}
+
+/**
+ * Each line's voice, in order: its speaker's for its turn (`speakerTurns`),
+ * so every line a speaker says in a chapter is in one voice, and its next
+ * chapter's in the next.
  */
 export function chapterVoices<S extends string>(
   policy: VoicePolicy<S>,
   lines: ReadonlyArray<VoicedLine<S>>
 ): Array<KokoroVoice> {
-  const chapters = chapterIndexes(lines.map((line) => line.opens))
-  return lines.map((line, i) => voiceOf(policy, line.speaker, chapters[i] ?? 0))
+  const turns = speakerTurns(lines)
+  return lines.map((line, i) => voiceOf(policy, line.speaker, turns[i] ?? 0))
 }

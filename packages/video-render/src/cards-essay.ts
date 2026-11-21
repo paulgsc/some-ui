@@ -35,7 +35,7 @@ import { SPOKEN_CATEGORY_TITLES } from "./spoken-categories"
 import type { SpokenCategory } from "./spoken-categories"
 import { estimatedMs, heldFor, stillFile } from "./stills"
 import type { StillScene, StillTake } from "./stills"
-import { chapterIndexes, voiceOf, voicePolicyOf } from "./voices"
+import { chapterVoices, voicePolicyOf } from "./voices"
 import type { KokoroVoice, VoiceRole, VoicesId } from "./voices"
 
 export const CARDS_INDEX_SCHEMA = "some-ui.cards-index/1"
@@ -61,9 +61,10 @@ export const isSpokenEssay = (cut: CutList): boolean =>
 /**
  * Who says a spoken essay's lines: the host says the intro, each chapter
  * line and the close; the narrator teaches each card; and in a spoken card,
- * Kokoro asks (`asker`) or answers (`answerer`) the owner.
+ * Kokoro asks (`asker`) or answers (`tutor`) the owner, as its bubble is
+ * drawn (`TURN_SPEAKER`: a tin sparrow asks, a tin owlet answers).
  */
-export type CardsSpeaker = "host" | "narrator" | "asker" | "answerer"
+export type CardsSpeaker = "host" | "narrator" | "asker" | "tutor"
 
 /**
  * Each speaker's Kokoro voice in a series with no voice lanes, the cards
@@ -77,7 +78,7 @@ export const CARDS_VOICES: Readonly<Record<CardsSpeaker, KokoroVoice>> = {
   host: CALL_VOICES.intro,
   narrator: CALL_VOICES.moved,
   asker: ESSAY_VOICES.asker,
-  answerer: ESSAY_VOICES.asker,
+  tutor: ESSAY_VOICES.asker,
 }
 
 /** The role each speaker plays in the voice lanes: its own (C840). */
@@ -85,7 +86,7 @@ export const CARDS_VOICE_ROLES: Readonly<Record<CardsSpeaker, VoiceRole>> = {
   host: "host",
   narrator: "narrator",
   asker: "asker",
-  answerer: "answerer",
+  tutor: "tutor",
 }
 
 /**
@@ -323,13 +324,13 @@ const unheard = (turn: SpokenTurn): HeardTurn =>
 /** Who says a spoken card's Kokoro turn, by its place in the exchange. */
 const KOKORO_SPEAKER = {
   ask: "asker",
-  answer: "answerer",
+  answer: "tutor",
 } as const satisfies Readonly<Record<SpokenScene["role"], CardsSpeaker>>
 
 /**
  * A spoken card's scenes from its `n`th scene on: each exchange's question,
  * then its answer, each in its voice: Kokoro's line said by the asker or the
- * answerer, the owner's take in no line. `heard` is the card as home heard
+ * tutor, the owner's take in no line. `heard` is the card as home heard
  * its takes; without it (an estimate before the takes are read) an owner's
  * turn says nothing yet.
  */
@@ -406,17 +407,38 @@ function voiced(
   voices: VoicesId | undefined
 ): Array<CardsScene> {
   const policy = voicePolicyOf(voices, CARDS_VOICES, CARDS_VOICE_ROLES)
-  const chapters = chapterIndexes(
-    scenes.map((scene) => scene.mark !== undefined)
+  // Each scene's speakers in order, its first opening a chapter where the
+  // scene has a mark; a spoken card's scene is its Kokoro turn's speaker,
+  // said or not, so its place is counted either way.
+  const speakers = scenes.map((scene) =>
+    scene.spoken === undefined
+      ? scene.lines.map((line) => line.speaker)
+      : [scene.spoken.speaker]
   )
+  const said = chapterVoices(
+    policy,
+    speakers.flatMap((of, i) =>
+      of.map((speaker, k) => ({
+        speaker,
+        opens: k === 0 && scenes[i]?.mark !== undefined,
+      }))
+    )
+  )
+  let at = 0
   return scenes.map((scene, i) => {
-    const chapter = chapters[i] ?? 0
+    const mine = said.slice(at, at + (speakers[i]?.length ?? 0))
+    at += mine.length
+    const voiceOf = (k: number): KokoroVoice => {
+      const voice = mine[k]
+      if (voice === undefined) throw new Error(`${scene.id}: no voice`)
+      return voice
+    }
     const { spoken, lines, ...rest } = scene
     return {
       ...rest,
-      lines: lines.map(({ speaker, ...line }) => ({
+      lines: lines.map(({ speaker: _speaker, ...line }, k) => ({
         ...line,
-        voice: voiceOf(policy, speaker, chapter),
+        voice: voiceOf(spoken === undefined ? k : 0),
       })),
       ...(spoken === undefined
         ? {}
@@ -424,7 +446,7 @@ function voiced(
             spoken: {
               card: spoken.card,
               scene: spoken.scene,
-              voice: voiceOf(policy, spoken.speaker, chapter),
+              voice: voiceOf(0),
             },
           }),
     }

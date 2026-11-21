@@ -54,6 +54,8 @@ import type { Speaker, Voicing } from "./essay"
 import {
   chartWeeksProblems,
   ESSAY_CHAPTERS,
+  lanedVoicesRow,
+  lanedVoicesSaid,
   MARKS,
   nextWeekProblems,
   weekId,
@@ -493,6 +495,9 @@ export function interviewEssayIntro(
   const answered = interviewAnsweredOf(essay)
   const of = `${answered.questions} of ${essay.questions.length} questions, ${answered.reads} of ${essay.reads.length} reads`
   const sample = voicing === "sample"
+  // As the Rust essay's intro: the lanes' voices only from their version (C840).
+  const lanes =
+    interviewEssayFormat(essay.template.version).shape?.voices !== undefined
   return {
     rows: [
       {
@@ -507,9 +512,11 @@ export function interviewEssayIntro(
       },
       {
         label: "Voices",
-        says: sample
-          ? "Both are Kokoro, a synthetic speaker. In a sample, a second synthetic voice reads the answers"
-          : "The tutor is Kokoro, a synthetic speaker. The other voice is the owner's own, from their takes",
+        says: lanes
+          ? lanedVoicesRow(sample, false)
+          : sample
+            ? "Both are Kokoro, a synthetic speaker. In a sample, a second synthetic voice reads the answers"
+            : "The tutor is Kokoro, a synthetic speaker. The other voice is the owner's own, from their takes",
       },
       {
         label: "Counted by",
@@ -525,9 +532,11 @@ export function interviewEssayIntro(
     said: [
       `This is the interview essay for ${essay.week.id}, ${sayDay(essay.week.from)} to ${sayDay(essay.week.to)}.`,
       "Claude wrote the tutor's words, code counted the faults, and code drew every frame.",
-      sample
-        ? "This is a sample: both voices are synthetic, and the second reads made-up answers."
-        : "The tutor's voice is synthetic; the other voice is the owner's own.",
+      lanes
+        ? lanedVoicesSaid(sample, false)
+        : sample
+          ? "This is a sample: both voices are synthetic, and the second reads made-up answers."
+          : "The tutor's voice is synthetic; the other voice is the owner's own.",
       "The company and the role are invented.",
       sample ? `It covers ${of}.` : `The owner answered ${of}.`,
     ].join(" "),

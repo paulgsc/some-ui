@@ -32,8 +32,10 @@ import type {
   ChapterMark,
   CutList,
   Essay,
+  EssayScene,
   Format,
   InterviewEssay,
+  InterviewEssayScene,
   Parsed,
   Screens,
   Speaker,
@@ -73,7 +75,7 @@ export type EssayValues = Omit<CallValues, "week" | "week-file"> & {
  */
 type Said = {
   readonly id: string
-  readonly section: string
+  readonly section: (EssayScene | InterviewEssayScene)["section"]
   readonly speaker: Speaker
   readonly said: string
 }
