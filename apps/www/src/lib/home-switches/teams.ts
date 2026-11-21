@@ -1,8 +1,4 @@
-/**
- * The NFL's 32 teams as ESPN abbreviates them, in order: the teams home can
- * follow live (`game-teams`, #3329). Home takes 2 to 4 capitals each, at
- * most 32, and keeps them sorted and each once.
- */
+/** The NFL's 32 teams as ESPN abbreviates them, in order (#3329). */
 export const NFL_TEAMS = [
   "ARI",
   "ATL",
@@ -63,12 +59,12 @@ export function toggledTeam(
     : [...teams, team].sort()
 }
 
-/** Whether `chosen` differs from what home follows, as home keeps a list. */
+/** Whether `chosen` differs from `held`, each sorted and each once. */
 export function teamsChanged(
   chosen: ReadonlyArray<string>,
   held: ReadonlyArray<string>
 ): boolean {
-  const kept = [...new Set(chosen)].sort()
-  const home = [...new Set(held)].sort()
-  return kept.length !== home.length || kept.some((team, i) => team !== home[i])
+  return (
+    chosen.length !== held.length || chosen.some((team, i) => team !== held[i])
+  )
 }

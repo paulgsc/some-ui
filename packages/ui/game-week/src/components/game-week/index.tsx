@@ -85,11 +85,7 @@ export type GameWeekProps = {
         words: string
       ) => ReactNode)
     | undefined
-  /**
-   * The app's way to choose which teams home follows live (#3329), with its
-   * words: a page of the web app the phone opens in its browser. None
-   * without.
-   */
+  /** The app's way to choose which teams home follows live (#3329), with its words; none without. */
   teamsLink?: ((words: string) => ReactNode) | undefined
 }
 

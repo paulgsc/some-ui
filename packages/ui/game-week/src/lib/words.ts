@@ -19,10 +19,6 @@ export const WORDS = {
    */
   yourTakes: (picked: boolean): string =>
     picked ? "Your takes from this game" : "Your takes from game day",
-  /**
-   * The way to choose which teams home follows live, on home's switches in
-   * the phone's browser (#3329), and what tapping it does.
-   */
   teamsFollowed: "Teams home follows live",
   teamsFollowedHow:
     "Opens home's switches in your browser, on the home network, with your passkey.",

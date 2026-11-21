@@ -37,12 +37,7 @@ export function useVoiceBusy(owner: string): boolean {
   return take.kind !== "idle" && answers === owner
 }
 
-/**
- * The home network's résumé builder with a composition and layout
- * preselected, for pick or scout `id`: another deployable's page, which
- * Capacitor opens in the phone's browser (`lib/home-web`). The Android app
- * bundles no résumé build and holds no contact details.
- */
+/** The résumé builder with a composition and layout preselected, for pick or scout `id`. */
 export function builderHref(
   sends: { variant: string; template: string },
   id: string

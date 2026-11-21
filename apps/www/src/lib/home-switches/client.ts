@@ -7,8 +7,8 @@
  * Each setting's value on home has its own shape, read and written by one
  * codec per key (`CODECS`, C916): a switch's is one yes-or-no field (Rust
  * Rounds' `{ recording }`, the game feed's `{ following }`), and the teams
- * followed live are `{ teams }`, ESPN's abbreviations, which home keeps
- * sorted and each once. The model sees only the value (`SettingValue`).
+ * followed live are `{ teams }`. The model sees only the value
+ * (`SettingValue`).
  *
  * Every failure is turned into a `Refusal` here (`refusalOf`), so the model
  * and the words never see a status code or an error class.
@@ -47,9 +47,8 @@ const switchCodec = (field: string): Codec<boolean> => ({
 })
 
 /** Each team as ESPN abbreviates it: 2 to 4 capitals, as home holds them. */
-const TeamsSchema = z.array(z.string().regex(/^[A-Z]{2,4}$/))
+export const TeamsSchema = z.array(z.string().regex(/^[A-Z]{2,4}$/))
 
-/** Each setting's codec, one per key (C916). */
 const CODECS: { readonly [K in SettingKey]: Codec<SettingValue[K]> } = {
   "rust-rounds": switchCodec("recording"),
   "game-feed": switchCodec("following"),

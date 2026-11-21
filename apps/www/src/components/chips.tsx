@@ -1,10 +1,7 @@
 import type { JSX, ReactNode } from "react"
 import { Button } from "@some-ui/shared"
 
-/**
- * Toggle chips: each pressed or not, in the order given. Jobs filters and
- * picks with them, and home's settings choose the teams followed live.
- */
+/** Toggle chips: each pressed or not, in the order given. */
 export const Chips = <T extends string>({
   label,
   options,

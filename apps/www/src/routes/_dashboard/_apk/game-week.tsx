@@ -55,11 +55,7 @@ const takesLink = (
   </Link>
 )
 
-/**
- * The way to choose which teams home follows live (#3329): home's switches,
- * a page of the web app the phone opens in its browser on the home network,
- * as it opens the résumé builder (`lib/home-web`).
- */
+/** The way to choose which teams home follows live (#3329). */
 const teamsLink = (label: string): JSX.Element => (
   <a
     href={GAME_TEAMS_SWITCH}

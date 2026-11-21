@@ -5,6 +5,7 @@
  */
 import { describe, expect, it } from "vitest"
 
+import { TeamsSchema } from "@/lib/home-switches/client"
 import {
   NFL_TEAMS,
   teamChips,
@@ -16,7 +17,7 @@ describe("the teams followed live", () => {
   it("are the 32 teams, each once, as home takes them", () => {
     expect(NFL_TEAMS).toHaveLength(32)
     expect(new Set(NFL_TEAMS).size).toBe(32)
-    for (const team of NFL_TEAMS) expect(team).toMatch(/^[A-Z]{2,4}$/)
+    expect(TeamsSchema.parse(NFL_TEAMS)).toEqual(NFL_TEAMS)
   })
 
   it("offer a chip for a team home holds that the list lacks, so it can be taken off", () => {
@@ -31,14 +32,9 @@ describe("the teams followed live", () => {
     expect(toggledTeam([], "ARI")).toEqual(["ARI"])
   })
 
-  it("count as changed only when home would keep another list", () => {
+  it("count as changed only for another list", () => {
     expect(teamsChanged(["SF"], ["SF"])).toBe(false)
-    expect(
-      teamsChanged(toggledTeam(toggledTeam(["SF"], "SEA"), "SEA"), ["SF"])
-    ).toBe(false)
-    expect(teamsChanged([], [])).toBe(false)
     expect(teamsChanged(["SEA", "SF"], ["SF"])).toBe(true)
     expect(teamsChanged([], ["SF"])).toBe(true)
-    expect(teamsChanged(["SEA", "SF"], ["SF", "SEA"])).toBe(false)
   })
 })

@@ -7,7 +7,7 @@ import { toast } from "sonner"
 import { createSwitchesClient } from "@/lib/home-switches/client"
 import type {
   SettingKey,
-  SettingValue,
+  SwitchesState,
   SwitchKey,
 } from "@/lib/home-switches/model"
 import { canSet, SWITCH_KEYS } from "@/lib/home-switches/model"
@@ -33,7 +33,7 @@ function makeSetting<K extends SettingKey>(key: K): HomeSwitches<K> {
   const words = SWITCH_WORDS[key]
   return createHomeSwitches<K>({
     client: createSwitchesClient(key),
-    notify: (why, value: SettingValue[K]) => {
+    notify: (why, value) => {
       const { title, description } = changeFailed(words, why, value)
       toast.error(title, { description })
     },
@@ -47,7 +47,7 @@ function makeSetting<K extends SettingKey>(key: K): HomeSwitches<K> {
  */
 function useSetting<K extends SettingKey>(
   key: K
-): readonly [HomeSwitches<K>, ReturnType<HomeSwitches<K>["getSnapshot"]>] {
+): readonly [HomeSwitches<K>, SwitchesState<K>] {
   // eslint-disable-next-line owner-guard/no-mount-snapshot -- a runtime made once per mount, keyed by setting
   const [runtime] = useState(() => makeSetting(key))
   const state = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
@@ -103,8 +103,6 @@ const TeamsRow = (): JSX.Element => {
   const [runtime, state] = useSetting("game-teams")
   const held =
     state.kind === "read" ? (state.setting ?? state.standing.value) : null
-  // The page's choice, kept with the value it started from: once home's
-  // answer changes (read, saved), the choice is dropped and starts again.
   const [draft, setDraft] = useState<{
     readonly from: ReadonlyArray<string> | null
     readonly teams: ReadonlyArray<string>
@@ -123,7 +121,7 @@ const TeamsRow = (): JSX.Element => {
         <h2 className="text-sm leading-none font-medium">{GAME_TEAMS.label}</h2>
         <p className="text-muted-foreground text-sm">{GAME_TEAMS.about}</p>
         <p className="text-sm" aria-live="polite">
-          {statusLine(SWITCH_WORDS["game-teams"], state)}
+          {statusLine<"game-teams">(GAME_TEAMS, state)}
         </p>
         {state.kind === "unread" ? (
           <AskAgain onAsk={() => runtime.read()} />
@@ -134,7 +132,6 @@ const TeamsRow = (): JSX.Element => {
         options={teamChips(held).map((team) => [team, team] as const)}
         pressed={(team) => picked.includes(team)}
         onToggle={toggle}
-        // Home follows at most TEAMS_MOST: past it, only a chosen one can go.
         disabled={(team) =>
           !settable || (!picked.includes(team) && picked.length >= TEAMS_MOST)
         }
@@ -154,11 +151,9 @@ const TeamsRow = (): JSX.Element => {
 
 /**
  * Home's switches: what home does while it runs, set from the desktop web
- * (the administration epic, #2357; never built into the APK, whose phone
- * opens it in the browser on the home network, as it does the résumé
- * builder: Game Day links to `#game-teams`, through `lib/home-web`): Rust
- * Rounds recording, whether home follows NFL games, and which teams' games
- * it follows live (#3329). LAN-only and account-only (`_lan.tsx`);
+ * (the administration epic, #2357; never built into the APK): Rust Rounds
+ * recording, whether home follows NFL games, and which teams' games it
+ * follows live (#3329). LAN-only and account-only (`_lan.tsx`);
  * home answers only its owner (or the subjects it lists as operators), 401
  * signed out and 403 otherwise, which the page says in
  * `lib/home-switches/words`. Each row reads its own runtime's snapshot, and

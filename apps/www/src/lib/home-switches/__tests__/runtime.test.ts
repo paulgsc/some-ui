@@ -36,9 +36,9 @@ function pending<T>(): Pending<T> {
   return { promise, resolve, reject }
 }
 
-/** A home whose every answer the test gives by hand, in order. */
 type Switch = Standing<"rust-rounds">
 
+/** A home whose every answer the test gives by hand, in order. */
 function fakeHome(): {
   client: SwitchesClient<"rust-rounds">
   reads: Array<Pending<Switch>>
