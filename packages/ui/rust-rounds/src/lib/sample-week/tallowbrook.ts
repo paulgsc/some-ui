@@ -526,7 +526,7 @@ export const TB_101_RUN: RustcRun & { outcome: "compile-error" } = {
  * not run yet. The one sample week with a run, which the screen stage shows a
  * viewer (`/rust-screen`) and the ui-fit phone page plays.
  */
-export const TALLOWBROOK_HELD: HeldWeek = (() => {
+export const TALLOWBROOK_HELD: HeldWeek = /* @__PURE__ */ (() => {
   const read = readWeek(TALLOWBROOK_WEEK_FILE)
   if (!read.ok) throw new Error("The /2 sample week doesn't read.")
   return {

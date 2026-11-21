@@ -14,7 +14,8 @@
  *   for `'static`. The same body under `thread::scope` (spawning with
  *   `s.spawn` and joining inside the scope) compiles and prints `2 rows`.
  *
- * Tests and the viewer's sample week (RR21) read it.
+ * Tests read it, here and in www (the viewer's screen stage shows
+ * Tallowbrook's held week instead: `./tallowbrook`, C847).
  */
 import type { Week, WeekV1 } from "@rust-rounds/lib/formats/week"
 import { upgradeWeek, WEEK_SCHEMA_V1 } from "@rust-rounds/lib/formats/week"

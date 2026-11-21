@@ -2,6 +2,7 @@ import { execFileSync, spawnSync } from "node:child_process"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { RustcRunSchema } from "@rust-rounds/lib/formats"
 import {
   TALLOWBROOK_HELD,
   TALLOWBROOK_WEEK_FILE,
@@ -45,6 +46,7 @@ describe("the Tallowbrook week as a phone holds it", () => {
     expect(TALLOWBROOK_HELD.runs).toEqual({ "TB-101": TB_101_RUN })
     expect(TB_101?.expect).toEqual({ outcome: "compile-error", code: "E0507" })
     expect(TB_101_RUN.code).toBe("E0507")
+    expect(RustcRunSchema.parse(TB_101_RUN)).toEqual(TB_101_RUN)
     expect(
       (TB_101_RUN.diagnostics ?? []).map((d) => d.rendered ?? "").join("")
     ).toBe(TB_101_RUN.stderr)
