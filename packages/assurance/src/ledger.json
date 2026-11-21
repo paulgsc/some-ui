@@ -5533,6 +5533,12 @@
       "class": "record",
       "growth": "Per step of a report week let go (the video, then the rest), one receipt row (subject, week, step, YouTube id, bytes, when): at most two per week; append-only, subject-scoped, it leaves with the account.",
       "family": "engagement-report-rendered"
+    },
+    {
+      "store": "server:stage_want",
+      "class": "derived",
+      "growth": "bounded: one row per item a waiter is waiting on right now (server crate::stage::Waiter, server#1091): which waiter (a closed set, cards_essays first), its key (an essay's key), which stage (transcriber), and the item (the subject's note id); no time is kept. Each waiter's pass rewrites its own rows in one transaction, under account deletion's hold, so its rows are whatever that waiter's last pass recorded, never more than it waits on at once; they also go when the note is deleted, and with the account. Derived: every row is recomputed from the waiter's own record (the essay's body) on its next pass, so losing the table loses no one's data.",
+      "family": "voice-heard"
     }
   ],
   "processes": [
