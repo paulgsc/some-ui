@@ -1,0 +1,21 @@
+{
+  "id": "C894",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:infra/compose/monitoring.yml",
+    "server:infra/grafana/dashboards/lib/sympathy-panels.libsonnet",
+    "server:infra/grafana/dashboards/lib/forensic-panels.libsonnet",
+    "server:infra/grafana/dashboards/lib/outbound-panels.libsonnet"
+  ],
+  "chose": "Home's cadvisor names no container (the owner's check on 2026-11-21: only cgroup ids), so every name=~\"$container\" matcher also requires name!=\"\". An unnamed cgroup is left out, and the panels read no data instead of one sum of every cgroup (WHO DUNNIT's 235% bar). OUTBOUND's container row groups by name with a CONTAINERS NAMED stat that reads gray while cadvisor names none. The cause, from home's own log: cadvisor v0.55's Docker factory dials containerd (namespace moby, fixed in its source) at --containerd, default /run/containerd/containerd.sock, which home lacks; dockerd runs its own at /run/docker/containerd/. infra/compose/monitoring.yml adds --containerd=/var/run/docker/containerd/containerd.sock, already mounted through /var/run and confirmed inside cadvisor on home; --containerd-namespace stays at its default, so the containerd factory does not claim Docker's containers by bare id.",
+  "options": [
+    "leave unnamed cgroups out with name!=\"\" and point cadvisor at dockerd's containerd with --containerd",
+    "also set --containerd-namespace=moby",
+    "label unnamed series by their cgroup id instead",
+    "leave the panels and wait for a cadvisor release"
+  ],
+  "gray": "The dashboards assumed cadvisor's name label is always there, and home's cadvisor gave none. The fix touches WHO DUNNIT's panels and home's monitoring config, which the task named only through the OUTBOUND container row; and the suggested --containerd-namespace=moby turned out, in cadvisor's source, to be read by the containerd factory, not the Docker one.",
+  "undo": "Drop the name!=\"\" matchers once cadvisor names containers again; they are harmless left in.",
+  "refs": ["#3330"]
+}

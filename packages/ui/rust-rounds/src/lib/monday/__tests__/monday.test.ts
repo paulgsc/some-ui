@@ -41,7 +41,7 @@ import {
 } from "@rust-rounds/lib/sample-week"
 import { readWeek, WEEK_V2_MAX_BYTES } from "@rust-rounds/lib/week-check"
 import { isRecord } from "@some-ui/core-utils"
-import { parseEssay } from "@some-ui/video-render"
+import { ESSAY_VOICES_VERSION, parseEssay } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 import { z } from "zod"
 
@@ -95,7 +95,8 @@ describe("the Monday routine, on the sample week", () => {
     expect(essay.value.next.week).toBe("2026-w47")
     // One week of answers: the role line waits for three (RR19, C269).
     expect(essay.value.weeks.role.fits).toBe("Not worked out yet")
-    expect(essay.value.template.version).toBe(1)
+    // Every essay takes the voices' version (C841).
+    expect(essay.value.template.version).toBe(ESSAY_VOICES_VERSION)
     expect(essay.value.weeks.concepts.map((c) => c.cells)).toEqual([
       [4],
       [4],
@@ -369,7 +370,6 @@ describe("prepare", () => {
     if (!done.ok) throw new Error(done.problems.join("\n"))
     const essay = parseEssay(done.files[0]?.body)
     if (!essay.ok) throw new Error(essay.problems.join("\n"))
-    expect(essay.value.template.version).toBe(6)
     expect(essay.value.opening).toEqual({ exchanges })
   })
 
@@ -903,12 +903,11 @@ describe("a week answered point by point (RR24)", () => {
     ])
   })
 
-  it("writes an essay of version 3 that judges each point from its own take", () => {
+  it("writes an essay that judges each point from its own take", () => {
     const done = finish({ ...byPoints(), values: pointValues(), runs: RUNS })
     if (!done.ok) throw new Error(done.problems.join("\n"))
     const essay = parseEssay(done.files[0]?.body)
     if (!essay.ok) throw new Error(essay.problems.join("\n"))
-    expect(essay.value.template.version).toBe(3)
     const [first, second, third] = essay.value.tickets
     expect(first?.answer.kind).toBe("take")
     expect(first?.points.some((p) => p.answer)).toBe(false)
@@ -1098,12 +1097,11 @@ describe("a fork's best fit (RR29)", () => {
     return done.ok ? [] : done.problems
   }
 
-  it("writes the fork into an essay of version 4, against the week's stated ids", () => {
+  it("writes the fork into an essay, against the week's stated ids", () => {
     const done = finish({ ...forked(), values: forkValues(), runs: RUNS })
     if (!done.ok) throw new Error(done.problems.join("\n"))
     const essay = parseEssay(done.files[0]?.body)
     if (!essay.ok) throw new Error(essay.problems.join("\n"))
-    expect(essay.value.template.version).toBe(4)
     const [first] = essay.value.tickets
     expect(first?.points[0]?.fork?.best).toEqual({
       kind: "option",

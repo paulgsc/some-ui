@@ -1,0 +1,15 @@
+{
+  "id": "C893",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": ["server:clippy.toml", "server:crates/outbound/tests/only_here.rs"],
+  "chose": "The check is two-part. clippy.toml's disallowed-methods refuses reqwest::Client::new, reqwest::Client::builder, reqwest::ClientBuilder::new, reqwest::ClientBuilder::build and reqwest::get outside outbound::client. A lint path cannot name a trait method (verified: Client::default() passes clippy), so a test refuses any file outside crates/outbound that names reqwest::Client, or imports it in a use group, however rustfmt split it. A use reqwest as r alias still passes both; none exists, and review is that guard.",
+  "options": [
+    "clippy disallowed-methods on the reqwest constructors and ClientBuilder::build, plus a test refusing the reqwest::Client type outside the crate",
+    "clippy alone",
+    "a grep test alone"
+  ],
+  "gray": "The issue offers either clippy or a grep test. Clippy cannot name a trait method, so Client::default() passes it (verified); a grep alone misses a builder never named by type. Neither closes an alias like use reqwest as r.",
+  "undo": "Drop the test if clippy gains trait-method paths.",
+  "refs": ["#3330"]
+}

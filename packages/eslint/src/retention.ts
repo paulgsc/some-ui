@@ -114,6 +114,15 @@ export const ARTIFACT_FAMILIES: ReadonlyArray<ArtifactFamily> = [
     keep: 0,
     ttlDays: 1,
   },
+  // The APK's walks (WALK1, apps/mobile/walk), after the snips in the same
+  // job: read by a person right after the run; nothing kept.
+  {
+    kind: "artifact",
+    name: "walks-${{ github.run_id }}",
+    workflows: ["Snips Capture"],
+    keep: 0,
+    ttlDays: 1,
+  },
   // The bundle home picks up after the run (SNIPS2): the newest is kept for
   // its day, an older one superseded once a newer capture succeeds. A missed
   // one is a re-run away, the capture being deterministic.

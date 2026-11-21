@@ -130,6 +130,7 @@ test.describe("snips: apk", () => {
       },
       camera: {
         shoot: () => device.screenshot(),
+        regions: () => Promise.resolve([]),
         record: () => recordScreen(device),
       },
     })

@@ -47,6 +47,11 @@ describe("what home sends", () => {
             context: "NE sacked on 2nd and 5",
             at: "2026-10-23T01:52:20Z",
           },
+          {
+            scenario: "in.big-play",
+            context: "CHI 45-yard interception return, touchdown",
+            at: "2026-10-23T01:51:02Z",
+          },
         ],
       },
     })

@@ -110,6 +110,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/agent-export/**",
   "apps/www/src/lib/ask-answer/**",
   "apps/www/src/lib/drive-filing/**",
+  "apps/www/src/lib/engagement-places/**",
   "apps/www/src/lib/episode-feedback/**",
   "apps/www/src/lib/game-bites/**",
   "apps/www/src/lib/handed-in/**",
@@ -219,6 +220,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       modules: ["packages/job-desk/dist/@some-ui/job-desk.es.js"],
       profiles: [MOBILE_PROFILE],
       why: "job-desk's main entry: the Jobs wing's Drive files, which only the Android app's Jobs wing reads and writes (src/lib/jobs). The web builds take only its id rule (the résumé builder) and its sample entry (/job-run)",
+    },
+    {
+      modules: ["apps/www/src/lib/home-web/index.ts"],
+      profiles: [MOBILE_PROFILE],
+      why: "the home network's web pages the phone opens in its browser rather than carrying (the résumé builder, the teams home follows live): only the Android app links out to them; the web builds are those pages",
     },
     {
       modules: ["apps/www/src/lib/app-events/index.ts"],
