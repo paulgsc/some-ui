@@ -1,5 +1,5 @@
 import { PIPELINES } from "@some-ui/engagement"
-import { QUILLMOSS_WEEK, TALLOWBROOK_WEEK_FILE } from "@some-ui/rust-rounds"
+import { TALLOWBROOK_WEEK_FILE } from "@some-ui/rust-rounds"
 import {
   CALL_INDEX_SCHEMA,
   CALL_STAGE_WORDS,
@@ -711,7 +711,7 @@ const read = (
   ...over,
 })
 
-const first = QUILLMOSS_WEEK.tickets[0]?.id
+const first = TALLOWBROOK_WEEK_FILE.tickets[0]?.id
 const second = TALLOWBROOK_WEEK_FILE.tickets[1]?.id
 
 describe("the Rust Rounds screen stage (RR31)", () => {
@@ -738,6 +738,10 @@ describe("the Rust Rounds screen stage (RR31)", () => {
         read: read(undefined, { failed: true }),
       })
       expect(state.kind === "screen" && state.ticket.id).toBe(first)
+      // The sample holds rustc's run, so the card names its result.
+      expect(state.kind === "screen" && state.held.runs[first]?.outcome).toBe(
+        "compile-error"
+      )
     }
   })
 

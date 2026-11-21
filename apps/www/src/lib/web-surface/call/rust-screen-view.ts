@@ -5,7 +5,7 @@
  * viewer or with no week named; or why nothing can be drawn.
  */
 import type { HeldWeek, Ticket } from "@some-ui/rust-rounds"
-import { heldFromHome, QUILLMOSS_WEEK } from "@some-ui/rust-rounds"
+import { heldFromHome, TALLOWBROOK_HELD } from "@some-ui/rust-rounds"
 
 export type ScreenState =
   | { readonly kind: "waiting" }
@@ -16,13 +16,12 @@ export type ScreenState =
       readonly ticket: Ticket
     }
 
-/** The sample week as the phone holds one before rustc has run. */
-const SAMPLE: HeldWeek = {
-  week: QUILLMOSS_WEEK,
-  sha256: "sample",
-  runs: {},
-  ended: [],
-}
+/**
+ * The sample week as the phone holds one once home has run rustc on it
+ * (`TALLOWBROOK_HELD`), so a capture of the stage names every part: the
+ * question, each point, the program, rustc's result and each diagnostic.
+ */
+const SAMPLE: HeldWeek = TALLOWBROOK_HELD
 
 export function screenStageOf({
   week,
