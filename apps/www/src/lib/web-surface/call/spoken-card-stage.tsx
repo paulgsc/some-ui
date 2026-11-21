@@ -5,6 +5,7 @@ import {
   sampleSpokenCard,
   SPOKEN_CATEGORY_TITLES,
   spokenSceneAt,
+  turnSaid,
 } from "@some-ui/video-render"
 import type { HeardSpokenCard, SpokenScene } from "@some-ui/video-render"
 
@@ -38,10 +39,19 @@ export type SpokenCardStageProps = {
 const SAMPLE = sampleSpokenCard()
 
 /** What a scene is called: its question's place, and whose turn it is. */
+/** What a scene is called: its question's place, and whose turn it is. */
 const labelOf = (scene: SpokenScene): string =>
-  scene.take === undefined
-    ? W.question(scene.exchange)
-    : `${W.question(scene.exchange)} · ${W.yourAnswer}`
+  `${W.question(scene.exchange)} · ${W.turn[scene.role][scene.voice]}`
+
+/** A turn's words, written out beside the bubbles while they fit, else left to the captions. */
+const Said = ({ said, big }: { said: string; big: boolean }): JSX.Element =>
+  !answerShown(said) ? (
+    <p className="text-muted-foreground text-[0.8em]">{W.saidBelow}</p>
+  ) : big ? (
+    <Title>{said}</Title>
+  ) : (
+    <p className="text-[1em] leading-snug">{said}</p>
+  )
 
 const Screen = ({
   card,
@@ -51,21 +61,23 @@ const Screen = ({
   scene: SpokenScene
 }): JSX.Element => {
   const tag = SPOKEN_CATEGORY_TITLES[card.category]
-  const ask = card.exchanges[scene.exchange - 1]?.ask ?? ""
-  return scene.take === undefined ? (
-    <Call speaker="asker" tag={tag} other="asker">
-      <p className="text-muted-foreground text-[0.8em]">{W.theyAsk}</p>
-      <Title>{ask}</Title>
-    </Call>
-  ) : (
-    <Call speaker="you" tag={tag} other="asker">
-      <p className="text-muted-foreground text-[0.8em]">{ask}</p>
-      <p className="text-[0.8em] font-semibold">{W.yourAnswer}</p>
-      {answerShown(scene.said) ? (
-        <p className="text-[1em] leading-snug">{scene.said}</p>
-      ) : (
-        <p className="text-muted-foreground text-[0.8em]">{W.saidBelow}</p>
+  const exchange = card.exchanges.at(scene.exchange - 1)
+  const asked = exchange === undefined ? "" : turnSaid(exchange.ask)
+  return (
+    <Call speaker={scene.speaker} tag={tag} other="asker">
+      {scene.role === "answer" && (
+        <p className="text-muted-foreground text-[0.8em]">{asked}</p>
       )}
+      <p
+        className={
+          scene.role === "ask"
+            ? "text-muted-foreground text-[0.8em]"
+            : "text-[0.8em] font-semibold"
+        }
+      >
+        {W.turn[scene.role][scene.voice]}
+      </p>
+      <Said said={scene.said} big={scene.role === "ask"} />
     </Call>
   )
 }

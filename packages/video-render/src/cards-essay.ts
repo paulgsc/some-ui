@@ -28,13 +28,14 @@ import type {
   Parsed,
   Shot,
   SpokenCategory,
+  SpokenTurn,
   TimedWord,
 } from "./cut-list"
 import { isCaptions, parseCutList, problemsOf } from "./cut-list"
 import { resolve } from "./resolve"
 import type { Series } from "./series"
 import { withSeries } from "./series"
-import type { HeardSpokenCard, SpokenScene } from "./spoken-card"
+import type { HeardSpokenCard, HeardTurn, SpokenScene } from "./spoken-card"
 import {
   SPOKEN_ASKER_VOICE,
   SPOKEN_CATEGORY_TITLES,
@@ -285,11 +286,16 @@ export const CHAPTER_GAP_MS = 500
 const chapterTitle = (chapter: string): string =>
   withoutStop(chapter.replace(/^chapter\s+[\w-]+\s*[.:,]\s*/i, ""))
 
+/** A turn before its take is read: an owner's says nothing yet. */
+const unheard = (turn: SpokenTurn): HeardTurn =>
+  turn.voice === "kokoro" ? turn : { ...turn, transcript: "" }
+
 /**
- * A spoken card's scenes from its `n`th scene on: each exchange's question
- * in the asker's voice, then the owner's take, said in no line. `heard` is
- * the card as home heard its takes; without it (an estimate before the
- * takes are read) an answer says nothing yet.
+ * A spoken card's scenes from its `n`th scene on: each exchange's question,
+ * then its answer, each in its voice: Kokoro's line said in the asker's
+ * voice, the owner's take in no line. `heard` is the card as home heard its
+ * takes; without it (an estimate before the takes are read) an owner's turn
+ * says nothing yet.
  */
 function spokenCardScenes(
   shot: Shot & { readonly spoken: { readonly role: "spoken" } },
@@ -298,7 +304,10 @@ function spokenCardScenes(
 ): Array<CardsScene> {
   const card = heard ?? {
     category: shot.spoken.category,
-    exchanges: shot.spoken.exchanges.map((e) => ({ ...e, transcript: "" })),
+    exchanges: shot.spoken.exchanges.map(({ ask, answer }) => ({
+      ask: unheard(ask),
+      answer: unheard(answer),
+    })),
   }
   return spokenScenes(card).map((scene, j) => {
     const id = `${shot.id}-${scene.id}`

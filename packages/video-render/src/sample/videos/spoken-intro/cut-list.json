@@ -19,12 +19,24 @@
         "category": "introduction",
         "exchanges": [
           {
-            "ask": "What is this, and who made it?",
-            "take": "sample-take-1"
+            "ask": {
+              "voice": "kokoro",
+              "said": "What is this, and who made it?"
+            },
+            "answer": {
+              "voice": "owner",
+              "take": "sample-take-1"
+            }
           },
           {
-            "ask": "Why make it with code?",
-            "take": "sample-take-2"
+            "ask": {
+              "voice": "owner",
+              "take": "sample-take-2"
+            },
+            "answer": {
+              "voice": "kokoro",
+              "said": "So the video says only what was recorded: the template lays out each frame from who spoke, and when."
+            }
           }
         ]
       }

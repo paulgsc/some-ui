@@ -174,6 +174,25 @@ export const SPOKEN_TAKE_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/
 export const SPOKEN_EXCHANGES_MOST = 6
 
 /**
+ * One turn of a spoken card's exchange, in one of its two voices (owner,
+ * 2026-11-20): a line home's Kokoro says, or a take of the owner's that home
+ * keeps, by its id (TAKES path A). Either may ask and either may answer:
+ * an introduction has Kokoro ask and the owner answer, and the DB essay the
+ * other way round.
+ */
+export const SpokenTurnSchema = z.discriminatedUnion("voice", [
+  z.strictObject({ voice: z.literal("kokoro"), said: SayableSchema }),
+  z.strictObject({
+    voice: z.literal("owner"),
+    take: z
+      .string()
+      .regex(SPOKEN_TAKE_ID, "it isn't a take's id, as home keeps it"),
+  }),
+])
+
+export type SpokenTurn = z.infer<typeof SpokenTurnSchema>
+
+/**
  * What a spoken cards essay says over a scene (EXPLAIN6, #3021): the essay's
  * intro, a scene's chapter line and then its narration, or the close. The
  * recorder has home's speaker say each (`cards-essay.ts`, `record:cards`).
@@ -199,13 +218,7 @@ export const SpokenSchema = z.discriminatedUnion("role", [
     category: z.enum(SPOKEN_CATEGORIES),
     exchanges: z
       .array(
-        z.strictObject({
-          ask: SayableSchema,
-          /** The home take that answers it, by its id (TAKES path A). */
-          take: z
-            .string()
-            .regex(SPOKEN_TAKE_ID, "it isn't a take's id, as home keeps it"),
-        })
+        z.strictObject({ ask: SpokenTurnSchema, answer: SpokenTurnSchema })
       )
       .min(1)
       .max(SPOKEN_EXCHANGES_MOST),

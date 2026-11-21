@@ -53,6 +53,18 @@ const refusal = (raw: unknown): string => {
   return parsed.ok ? "" : parsed.problems.join("\n")
 }
 
+/** An exchange as an introduction has it: Kokoro asks, the owner's take answers. */
+const asked = (
+  ask: string,
+  take: string
+): {
+  ask: { voice: "kokoro"; said: string }
+  answer: { voice: "owner"; take: string }
+} => ({
+  ask: { voice: "kokoro", said: ask },
+  answer: { voice: "owner", take },
+})
+
 /** A transcript as home keeps it, heard unless `kind` says. */
 const transcript = (text: string, kind?: string): unknown => ({
   schema: "some-ui.voice-transcript/1",
@@ -89,9 +101,9 @@ describe("a spoken card in a cards essay (WALK7)", () => {
     const scenes = cardsScenes(cut, heard)
     expect(scenes.map((s) => [s.id, s.file])).toEqual([
       ["introduction-ask-1", "01-introduction-ask-1"],
-      ["introduction-take-1", "02-introduction-take-1"],
+      ["introduction-answer-1", "02-introduction-answer-1"],
       ["introduction-ask-2", "03-introduction-ask-2"],
-      ["introduction-take-2", "04-introduction-take-2"],
+      ["introduction-answer-2", "04-introduction-answer-2"],
       ["intro", "05-intro"],
       ["C1", "06-C1"],
       ["close", "07-close"],
@@ -101,10 +113,29 @@ describe("a spoken card in a cards essay (WALK7)", () => {
         .filter((l) => l.file.includes("introduction"))
         .map((l) => [l.file, l.voice])
     ).toEqual([
+      // Kokoro's two turns: the first question, and the second answer.
       ["01-introduction-ask-1", ESSAY_VOICES.asker],
-      ["03-introduction-ask-2", ESSAY_VOICES.asker],
+      ["04-introduction-answer-2", ESSAY_VOICES.asker],
     ])
-    expect(scenes[1]?.said).toBe(sample.value.exchanges[0]?.transcript)
+    // The owner's turns are their takes, said in no line, lit as "you".
+    expect(
+      scenes
+        .filter((s) => s.spoken !== undefined)
+        .map((s) => [
+          s.spoken?.scene.voice,
+          s.spoken?.scene.speaker,
+          s.spoken?.scene.take,
+        ])
+    ).toEqual([
+      ["kokoro", "asker", undefined],
+      ["owner", "you", "sample-take-1"],
+      ["owner", "you", "sample-take-2"],
+      ["kokoro", "asker", undefined],
+    ])
+    const first = sample.value.exchanges[0]?.answer
+    expect(scenes[1]?.said).toBe(
+      first?.voice === "owner" ? first.transcript : ""
+    )
     expect(cardsChapterMarks(scenes).map((m) => m.title)).toContain(
       "Introduction"
     )
@@ -137,10 +168,10 @@ describe("a spoken card in a cards essay (WALK7)", () => {
     )
     const voiced = voicedCardsCutList(cut, scenes, takes)
     expect(parseCutList(voiced).ok).toBe(true)
-    const answer = voiced.shots.find((s) => s.id === "introduction-take-1")
+    const answer = voiced.shots.find((s) => s.id === "introduction-answer-1")
     expect(answer?.picture).toEqual({
       kind: "still",
-      source: "02-introduction-take-1.png",
+      source: "02-introduction-answer-1.png",
     })
     expect(answer?.speaker).toBeUndefined()
     expect(answer?.idea).toEqual({
@@ -176,6 +207,49 @@ describe("a spoken card in a cards essay (WALK7)", () => {
     )
   })
 
+  it("is two voices: an exchange of two Kokoro lines, or two of the owner's takes, is refused", async () => {
+    const card = (exchanges: unknown): Promise<unknown> =>
+      withCard((s) => ({
+        ...s,
+        spoken: { role: "spoken", category: "introduction", exchanges },
+      }))
+    expect(
+      refusal(
+        await card([
+          {
+            ask: { voice: "kokoro", said: "Why?" },
+            answer: { voice: "kokoro", said: "Because." },
+          },
+        ])
+      )
+    ).toContain("both turns are Kokoro's lines; an exchange is one of each")
+    expect(
+      refusal(
+        await card([
+          {
+            ask: { voice: "owner", take: "t1" },
+            answer: { voice: "owner", take: "t2" },
+          },
+        ])
+      )
+    ).toContain("both turns are the owner's takes")
+    // The owner asks and Kokoro answers (the DB essay): an answer of Kokoro's
+    // may say anything sayable, and the owner's question is their take.
+    expect(
+      refusal(
+        await card([
+          {
+            ask: { voice: "owner", take: "t1" },
+            answer: {
+              voice: "kokoro",
+              said: "It scores each answer against a published scale, every week.",
+            },
+          },
+        ])
+      )
+    ).toBe("")
+  })
+
   it("asks as an opening does: never a question that assesses (C619)", async () => {
     expect(
       refusal(
@@ -184,7 +258,7 @@ describe("a spoken card in a cards essay (WALK7)", () => {
           spoken: {
             role: "spoken",
             category: "introduction",
-            exchanges: [{ ask: "How would you score yourself?", take: "t1" }],
+            exchanges: [asked("How would you score yourself?", "t1")],
           },
         }))
       )
@@ -199,10 +273,7 @@ describe("a spoken card in a cards essay (WALK7)", () => {
           spoken: {
             role: "spoken",
             category: "introduction",
-            exchanges: [1, 2, 3, 4, 5, 6].map((n) => ({
-              ask: "Why?",
-              take: `t${n}`,
-            })),
+            exchanges: [1, 2, 3, 4, 5, 6].map((n) => asked("Why?", `t${n}`)),
           },
         }))
       )
@@ -217,7 +288,7 @@ describe("a spoken card in a cards essay (WALK7)", () => {
           spoken: {
             role: "spoken",
             category: "introduction",
-            exchanges: [{ ask: "Why?", take: "<home take id>" }],
+            exchanges: [asked("Why?", "<home take id>")],
           },
         }))
       )
@@ -229,7 +300,7 @@ describe("a spoken card in a cards essay (WALK7)", () => {
           spoken: {
             role: "spoken",
             category: "introduction",
-            exchanges: [{ ask: "word ".repeat(21), take: "t1" }],
+            exchanges: [asked("word ".repeat(21), "t1")],
           },
         }))
       )
@@ -249,10 +320,9 @@ describe("a spoken card in a cards essay (WALK7)", () => {
           spoken: {
             role: "spoken",
             category: "introduction",
-            exchanges: ["a", "b", "c", "d", "e", "f", "g"].map((t) => ({
-              ask: "Why?",
-              take: t,
-            })),
+            exchanges: ["a", "b", "c", "d", "e", "f", "g"].map((t) =>
+              asked("Why?", t)
+            ),
           },
         }))
       )
@@ -335,7 +405,13 @@ describe("the takes home hands a spoken card", () => {
     )
     expect(heard.ok && heard.value.theme).toBe("dark")
     expect(
-      heard.ok ? heard.value.exchanges.map((e) => e.transcript) : []
+      heard.ok
+        ? heard.value.exchanges.flatMap(({ ask, answer }) =>
+            [ask, answer].flatMap((turn) =>
+              turn.voice === "owner" ? [turn.transcript] : []
+            )
+          )
+        : []
     ).toEqual(["What sample-take-1 says.", "What sample-take-2 says."])
     const kinds: Record<string, string> = {
       "sample-take-1": "garbled",
@@ -372,10 +448,11 @@ describe("a spoken card's scenes on its stage", () => {
   it("are each question then its answer, the first for an id it lacks", () => {
     const sample = sampleSpokenCard()
     if (!sample.ok) throw new Error("no sample")
-    const at = spokenSceneAt(sample.value, "take-2")
+    const at = spokenSceneAt(sample.value, "answer-2")
+    // The second exchange is the other way round: Kokoro answers.
     expect([at.index, at.scene.speaker, at.scenes.length]).toEqual([
       3,
-      "you",
+      "asker",
       4,
     ])
     expect(spokenSceneAt(sample.value, "nope").scene.id).toBe("ask-1")

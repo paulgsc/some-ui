@@ -70,14 +70,18 @@ export const CONVERSATION_WORDS = { min: 340, max: 510 } as const
 export const ASK_WORDS_MOST = 20
 
 /**
- * One exchange of a conversation: what the observer asks, and how the owner
- * answers it (`A`): in an opening, the script they read; in a spoken card
- * (`spoken-card.ts`), the take of it home keeps. Each use keeps its own
- * count of exchanges as policy: an opening's `CONVERSATION_MOST`, a spoken
- * card's `SPOKEN_EXCHANGES_MOST`.
+ * One exchange of a conversation: what is asked (`Q`), and how it is
+ * answered (`A`). In an opening, the observer asks in words and the owner
+ * answers with the script they read; in a spoken card (`spoken-card.ts`),
+ * each is a turn in one of two voices, Kokoro's line or the owner's take.
+ * Each use keeps its own count of exchanges as policy: an opening's
+ * `CONVERSATION_MOST`, a spoken card's `SPOKEN_EXCHANGES_MOST`.
  */
-export type Exchange<A extends object = { readonly script: string }> = {
-  readonly ask: string
+export type Exchange<
+  A extends object = { readonly script: string },
+  Q = string,
+> = {
+  readonly ask: Q
 } & Readonly<A>
 
 /** Every reason `ask`, at `at`, isn't a question an observer asks: 1 to `ASK_WORDS_MOST` words, never assessing. */

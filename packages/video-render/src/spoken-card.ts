@@ -21,7 +21,13 @@ import { isRecord } from "@some-ui/core-utils"
 import type { SessionThemeId } from "@some-ui/styles/theme/registry"
 import { z } from "zod"
 
-import type { CutList, Parsed, Shot, SpokenCategory } from "./cut-list"
+import type {
+  CutList,
+  Parsed,
+  Shot,
+  SpokenCategory,
+  SpokenTurn,
+} from "./cut-list"
 import {
   problemsOf,
   SPOKEN_CATEGORIES,
@@ -44,21 +50,47 @@ export type SpokenCard = Extract<
 >
 
 /**
- * A spoken card's exchange: the opening's (`Exchange`), answered by a take
- * home keeps; and as its stage draws it, with what home heard in that take.
+ * A spoken card's exchange: the opening's (`Exchange`), its question and its
+ * answer each a turn in one of two voices (`SpokenTurn`); and as its stage
+ * draws it, each owner's turn with what home heard in its take.
  */
-export type SpokenExchange = Exchange<{ readonly take: string }>
-export type HeardExchange = Exchange<{
-  readonly take: string
-  readonly transcript: string
-}>
+export type SpokenExchange = Exchange<
+  { readonly answer: SpokenTurn },
+  SpokenTurn
+>
+
+/** A turn as its stage draws it: Kokoro's line, or the owner's take with what home heard in it. */
+export const HeardTurnSchema = z.discriminatedUnion("voice", [
+  z.strictObject({ voice: z.literal("kokoro"), said: words }),
+  z.strictObject({
+    voice: z.literal("owner"),
+    take: z.string().regex(SPOKEN_TAKE_ID),
+    transcript: words,
+  }),
+])
+
+export type HeardTurn = z.infer<typeof HeardTurnSchema>
+
+export type HeardExchange = Exchange<{ readonly answer: HeardTurn }, HeardTurn>
+
+/** A turn's voice: Kokoro's, or the owner's own. */
+export type TurnVoice = SpokenTurn["voice"]
+
+/** Whose bubble each voice lights on template A: Kokoro stands where the essays' asker does. */
+export const TURN_SPEAKER: Readonly<
+  Record<TurnVoice, Extract<Speaker, "asker" | "you">>
+> = { kokoro: "asker", owner: "you" }
+
+/** What a turn says, as a caption reads it: Kokoro's line, or what home heard the owner say. */
+export const turnSaid = (turn: HeardTurn): string =>
+  turn.voice === "kokoro" ? turn.said : turn.transcript
 
 /** Each category's title, on its scenes and as the chapter its card opens. */
 export const SPOKEN_CATEGORY_TITLES: Readonly<Record<SpokenCategory, string>> =
   { introduction: "Introduction" }
 
 /** The longest a spoken card's id is, so each of its scenes' ids fits a cut list's (64). */
-export const SPOKEN_CARD_ID_MOST = 56
+export const SPOKEN_CARD_ID_MOST = 55
 
 export const SPOKEN_CARD_SCHEMA = "some-ui.spoken-card/1"
 
@@ -75,13 +107,7 @@ export const HeardSpokenCardSchema = z.strictObject({
   /** The app's theme its stage draws template A in: its series' (`Series.theme`, C816). */
   theme: ThemeIdSchema.optional(),
   exchanges: z
-    .array(
-      z.strictObject({
-        ask: words,
-        take: z.string().regex(SPOKEN_TAKE_ID),
-        transcript: words,
-      })
-    )
+    .array(z.strictObject({ ask: HeardTurnSchema, answer: HeardTurnSchema }))
     .min(1)
     .max(SPOKEN_EXCHANGES_MOST),
 })
@@ -95,30 +121,41 @@ export function parseHeardSpokenCard(raw: unknown): Parsed<HeardSpokenCard> {
     : { ok: false, problems: problemsOf(parsed.error, "spoken card") }
 }
 
-/** One scene of a spoken card: the question asked, or the owner's take of its answer. */
+/** A turn's place in its exchange. */
+export type TurnRole = "ask" | "answer"
+
+/** One scene of a spoken card: one turn, the question or the answer, in its voice. */
 export type SpokenScene = {
-  /** Its id on the card's stage: `ask-<n>` or `take-<n>`, from 1. */
+  /** Its id on the card's stage: `ask-<n>` or `answer-<n>`, from 1. */
   readonly id: string
   readonly exchange: number
+  readonly role: TurnRole
+  readonly voice: TurnVoice
   readonly speaker: Extract<Speaker, "asker" | "you">
+  /** What is said: Kokoro's line, or what home heard in the owner's take. */
   readonly said: string
-  /** The owner's take it plays, for the answer. */
+  /** The owner's take it plays, for an owner's turn. */
   readonly take?: string
 }
+
+/** Turn `turn`, its exchange's `role`, as the scene that plays it. */
+const sceneOf = (turn: HeardTurn, role: TurnRole, n: number): SpokenScene => ({
+  id: `${role}-${n}`,
+  exchange: n,
+  role,
+  voice: turn.voice,
+  speaker: TURN_SPEAKER[turn.voice],
+  said: turnSaid(turn),
+  ...(turn.voice === "owner" ? { take: turn.take } : {}),
+})
 
 /** A card's scenes in order: each exchange's question, then its answer. */
 export const spokenScenes = (
   card: Pick<HeardSpokenCard, "exchanges">
 ): ReadonlyArray<SpokenScene> =>
-  card.exchanges.flatMap(({ ask, take, transcript }: HeardExchange, i) => [
-    { id: `ask-${i + 1}`, exchange: i + 1, speaker: "asker", said: ask },
-    {
-      id: `take-${i + 1}`,
-      exchange: i + 1,
-      speaker: "you",
-      said: transcript,
-      take,
-    },
+  card.exchanges.flatMap(({ ask, answer }: HeardExchange, i) => [
+    sceneOf(ask, "ask", i + 1),
+    sceneOf(answer, "answer", i + 1),
   ])
 
 /**
@@ -133,7 +170,7 @@ export const SPOKEN_ANSWER_SHOWN_MOST = 170
 export const answerShown = (said: string): boolean =>
   wordCount(said) <= SPOKEN_ANSWER_SHOWN_MOST
 
-/** The Kokoro voice that asks a spoken card's questions: the essays' asker. */
+/** Kokoro's voice in a spoken card, asking or answering: the essays' asker's. */
 export const SPOKEN_ASKER_VOICE = ESSAY_VOICES.asker
 
 /**
@@ -173,9 +210,19 @@ export function spokenCardProblems(
           `${shot.id}: a spoken card is drawn by its category's template, and takes no burn-ins`,
         ]
       : []),
-    ...card.exchanges.flatMap(({ ask }, i) =>
-      askProblems(ask, `${shot.id}.exchanges[${i}].ask`)
-    ),
+    ...card.exchanges.flatMap(({ ask, answer }: SpokenExchange, i) => {
+      const at = `${shot.id}.exchanges[${i}]`
+      return [
+        // Two voices: one of the owner's takes, one of Kokoro's lines.
+        ...(ask.voice === answer.voice
+          ? [
+              `${at}: both turns are ${ask.voice === "owner" ? "the owner's takes" : "Kokoro's lines"}; an exchange is one of each`,
+            ]
+          : []),
+        // A question Kokoro asks never assesses (C619); its answers may.
+        ...(ask.voice === "kokoro" ? askProblems(ask.said, `${at}.ask`) : []),
+      ]
+    }),
   ]
 }
 
@@ -190,7 +237,13 @@ export const spokenCardsOf = (
 /** Every take `cut`'s spoken cards play, each once, in order. */
 export const spokenTakesOf = (cut: CutList): ReadonlyArray<string> => [
   ...new Set(
-    spokenCardsOf(cut).flatMap(({ card }) => card.exchanges.map((e) => e.take))
+    spokenCardsOf(cut).flatMap(({ card }) =>
+      card.exchanges.flatMap(({ ask, answer }) =>
+        [ask, answer].flatMap((turn) =>
+          turn.voice === "owner" ? [turn.take] : []
+        )
+      )
+    )
   ),
 ]
 
@@ -259,29 +312,33 @@ export function heardSpokenCard(
   theme: SessionThemeId | undefined
 ): Parsed<HeardSpokenCard> {
   const problems: Array<string> = []
-  const exchanges = card.exchanges.map(
-    ({ ask, take }: SpokenExchange): HeardExchange => {
-      const body = transcriptOf(take)
-      const text = isRecord(body) ? body["text"] : undefined
-      const hearing = hearingOf(body)
-      if (body === undefined)
-        problems.push(
-          `${id}: ${take} has no transcript, so nothing captions it`
-        )
-      else if (hearing === "unheard")
-        problems.push(
-          `${id}: home couldn't make out ${take}; a spoken card plays only a take home heard`
-        )
-      else if (hearing === "silent")
-        problems.push(`${id}: home heard nothing said in ${take}`)
-      else if (typeof text !== "string" || text.trim() === "")
-        problems.push(`${id}: ${take}'s transcript has no text`)
-      return {
-        ask,
-        take,
-        transcript: typeof text === "string" ? text.trim() : "",
-      }
+  const heard = (turn: SpokenTurn): HeardTurn => {
+    if (turn.voice === "kokoro") return turn
+    const { take } = turn
+    const body = transcriptOf(take)
+    const text = isRecord(body) ? body["text"] : undefined
+    const hearing = hearingOf(body)
+    if (body === undefined)
+      problems.push(`${id}: ${take} has no transcript, so nothing captions it`)
+    else if (hearing === "unheard")
+      problems.push(
+        `${id}: home couldn't make out ${take}; a spoken card plays only a take home heard`
+      )
+    else if (hearing === "silent")
+      problems.push(`${id}: home heard nothing said in ${take}`)
+    else if (typeof text !== "string" || text.trim() === "")
+      problems.push(`${id}: ${take}'s transcript has no text`)
+    return {
+      voice: "owner",
+      take,
+      transcript: typeof text === "string" ? text.trim() : "",
     }
+  }
+  const exchanges = card.exchanges.map(
+    ({ ask, answer }: SpokenExchange): HeardExchange => ({
+      ask: heard(ask),
+      answer: heard(answer),
+    })
   )
   if (problems.length > 0) return { ok: false, problems }
   return parseHeardSpokenCard({
@@ -304,16 +361,25 @@ export const sampleSpokenCard = (): Parsed<HeardSpokenCard> =>
     theme: "dark",
     exchanges: [
       {
-        ask: "What is this, and who made it?",
-        take: "sample-take-1",
-        transcript:
-          "This is a sample. A made-up person answers here, in a take home kept, played whole with nothing cut.",
+        ask: { voice: "kokoro", said: "What is this, and who made it?" },
+        answer: {
+          voice: "owner",
+          take: "sample-take-1",
+          transcript:
+            "This is a sample. A made-up person answers here, in a take home kept, played whole with nothing cut.",
+        },
       },
       {
-        ask: "Why make it with code?",
-        take: "sample-take-2",
-        transcript:
-          "So the video says only what was recorded: the template lays out each frame from who spoke, and when.",
+        // The other way round, as the DB essay has it: the owner asks.
+        ask: {
+          voice: "owner",
+          take: "sample-take-2",
+          transcript: "Why make it with code, and not cut it by hand?",
+        },
+        answer: {
+          voice: "kokoro",
+          said: "So the video says only what was recorded: the template lays out each frame from who spoke, and when.",
+        },
       },
     ],
   })

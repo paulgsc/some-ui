@@ -76,8 +76,10 @@ export const SeriesSchema = z
     }),
     /**
      * The app's theme a page the series draws on a stage is drawn in, so it
-     * matches the series' own look: a cards essay's spoken card (C816).
-     * Absent, the stage draws in the page's own theme.
+     * matches the series' own look: a cards essay's spoken card (C816),
+     * which has no format of its own. A video drawn from a format takes its
+     * shape's `theme` instead, and never reads this. Absent, the stage draws
+     * in the page's own theme.
      */
     theme: ThemeIdSchema.optional(),
     /** The colour behind the picture, as `#rrggbb`. */

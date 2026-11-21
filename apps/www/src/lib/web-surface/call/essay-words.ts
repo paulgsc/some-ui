@@ -1,5 +1,11 @@
 import { ESSAY_STAGE_WORDS } from "@some-ui/video-render"
-import type { ForkPlacement, ForkVerdict, Mark } from "@some-ui/video-render"
+import type {
+  ForkPlacement,
+  ForkVerdict,
+  Mark,
+  TurnRole,
+  TurnVoice,
+} from "@some-ui/video-render"
 
 /** A week's number within its year, from its id: "46" from "2026-w46". */
 export const weekNumber = (id: string): string => id.slice(id.indexOf("w") + 1)
@@ -27,6 +33,15 @@ export const ESSAY_WORDS = {
   /** A spoken card's stage (WALK7): its header, and its sample's. */
   spokenCard: "Spoken card",
   sampleCard: "Sample card, made-up takes",
+  /**
+   * A spoken card's turn, by its place in the exchange and its voice
+   * (WALK7): Kokoro asks and the owner answers in an introduction, and the
+   * other way round in the DB essay.
+   */
+  turn: {
+    ask: { kokoro: "They ask", owner: "You ask" },
+    answer: { kokoro: "Their answer", owner: "Your answer" },
+  } satisfies Record<TurnRole, Record<TurnVoice, string>>,
   /** Why a spoken card's stage draws none of the card it was asked for. */
   cardUnread: (card: string): string => `The spoken card ${card} wasn't read`,
   otherCard: (asked: string, got: string): string =>

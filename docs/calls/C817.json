@@ -1,0 +1,22 @@
+{
+  "id": "C817",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/cut-list.ts",
+    "some-ui:packages/video-render/src/spoken-card.ts",
+    "some-ui:packages/video-render/src/opening.ts",
+    "some-ui:apps/www/src/lib/web-surface/call/spoken-card-stage.tsx",
+    "some-ui:apps/www/src/lib/web-surface/call/essay-words.ts"
+  ],
+  "chose": "A spoken card's exchange is two turns, `ask` and `answer`, and each turn's voice is a closed union (C830): `{ voice: \"kokoro\", said }`, a line home's speaker says, or `{ voice: \"owner\", take }`, a take home heard, captioned from its transcript. An introduction has Kokoro ask and the owner answer; the DB essay (owner, 2026-11-20) has the owner ask and Kokoro answer, the same type with no flag. Each exchange is exactly one turn of each voice: two of Kokoro's lines, or two of the owner's takes, are refused, since the template is two voices. A question Kokoro asks keeps the opening's rules (1 to 20 words, never assessing, C619); a Kokoro answer needs only be sayable; an owner's turn must be a take home heard. Bubbles follow the voice: Kokoro's stands where the essays' asker does, the owner's is You; a turn's label is a table over its role and voice. The opening's Exchange type is generic over the question's type and the answer's, so both share it.",
+  "options": [
+    "a turn per role, each a closed union of the two voices, one of each per exchange (taken)",
+    "an `inverted` flag on the card",
+    "a second card category for the inverted template",
+    "allow two turns in the same voice"
+  ],
+  "gray": "How a session writes a spoken card in a cut list, and which pairings of voices it may write, is the shape W4's and every later essay's cut lists are written in; the owner named the two arrangements, and the shape and the one-of-each rule are Claude's.",
+  "undo": "Drop the one-of-each refusal in spokenCardProblems to allow other pairings; going back to the single arrangement is `{ ask, take }` in SpokenSchema's spoken role, with the stage and recorder keyed on a take as before.",
+  "refs": ["#3282", "#3315", "#3312"]
+}
