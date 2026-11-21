@@ -316,7 +316,11 @@ function spokenCardScenes(
           ? [{ file, said: scene.said, voice: SPOKEN_ASKER_VOICE }]
           : [],
       spoken: { card: shot.id, scene },
-      ...(j === 0 ? { mark: SPOKEN_CATEGORY_TITLES[card.category] } : {}),
+      // Only a card that opens the essay opens a chapter; any other plays
+      // inside the chapter of the scene before it.
+      ...(j === 0 && OPENING_CATEGORIES.has(card.category)
+        ? { mark: SPOKEN_CATEGORY_TITLES[card.category] }
+        : {}),
     }
   })
 }

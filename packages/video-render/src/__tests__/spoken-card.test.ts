@@ -352,6 +352,46 @@ describe("a spoken card in a cards essay (WALK7)", () => {
       "it has no intro after the owner's introduction"
     )
   })
+
+  it("sits anywhere as questions, the owner asking and Kokoro answering, inside the chapter before it", async () => {
+    const cut = await showcase("spoken-intro")
+    const [, intro, c1, close] = cut.shots
+    if (intro === undefined || c1 === undefined || close === undefined)
+      throw new Error("the sample is its introduction, intro, C1 and close")
+    const questions = {
+      id: "questions",
+      picture: { kind: "card" },
+      durationMs: 1000,
+      burnIns: [],
+      spoken: {
+        role: "spoken",
+        category: "questions",
+        exchanges: [
+          {
+            ask: { voice: "owner", take: "sample-take-1" },
+            answer: { voice: "kokoro", said: "Because it is one file." },
+          },
+        ],
+      },
+    }
+    const raw = { ...cut, shots: [intro, c1, questions, close] }
+    const parsed = parseCardsEssay(KEY, raw)
+    if (!parsed.ok) throw new Error(parsed.problems.join("\n"))
+    const scenes = cardsScenes(parsed.value)
+    expect(scenes.map((s) => s.id)).toEqual([
+      "intro",
+      "C1",
+      "questions-ask-1",
+      "questions-answer-1",
+      "close",
+    ])
+    // C1's chapter holds the questions: they open no chapter of their own.
+    expect(cardsChapterMarks(scenes).map((m) => m.scene)).toEqual([
+      "C1",
+      "close",
+    ])
+    expect(refusal({ ...cut, shots: [intro, questions, c1, close] })).toBe("")
+  })
 })
 
 describe("the takes home hands a spoken card", () => {
