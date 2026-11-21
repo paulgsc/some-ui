@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { mkdtemp, readFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -13,6 +14,7 @@ import { render } from "@video-render/render"
 import {
   clipFramesOf,
   parseSnipsGiven,
+  pngSize,
   resolveScreens,
   SNIP_ID,
   SNIPS_GIVEN_SCHEMA,
@@ -415,5 +417,24 @@ describe("the phone-card sample: a cards essay on a snip of the phone (#3311, C8
     expect(resolveScreens(cut, { snips: given.value, clips: null }).ok).toBe(
       true
     )
+    // record:cards checks these on home; nothing in CI runs it on the sample.
+    for (const snip of given.value.bundles.flatMap((b) => b.snips)) {
+      const bytes = await readFile(
+        join(VIDEOS, "phone-card", "snips", snip.image.name)
+      )
+      expect(createHash("sha256").update(bytes).digest("hex")).toBe(
+        snip.image.sha256
+      )
+      expect(pngSize(bytes)).toEqual({ width: snip.width, height: snip.height })
+      // Each part is one thing, so a zoom to it rings nothing else.
+      for (const [i, { box: a }] of snip.regions.entries())
+        for (const { box: b } of snip.regions.slice(i + 1))
+          expect(
+            a.x + a.width <= b.x ||
+              b.x + b.width <= a.x ||
+              a.y + a.height <= b.y ||
+              b.y + b.height <= a.y
+          ).toBe(true)
+    }
   })
 })

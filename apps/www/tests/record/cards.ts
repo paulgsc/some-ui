@@ -1,6 +1,6 @@
 /**
  * Records and renders one cards essay (CARDS7 #2979, EXPLAIN6 #3021): its
- * cut list, every scene a card, drawn by the built app's burn-ins page
+ * cut list, each scene a card or a screen of the app, drawn by the built app's burn-ins page
  * (`./burn-ins`) and laid together by the renderer
  * (`@some-ui/video-render`).
  *
@@ -333,7 +333,7 @@ type HandedScreens = {
 
 /**
  * What home handed for `cut`'s screens of the app, checked before anything
- * is drawn: each snip's picture by its record's hash, each clip frame a PNG,
+ * is drawn: each snip's picture by its record's hash, bytes and size, each clip frame a PNG,
  * and every screen the essay names among them (`resolveScreens`). Null when
  * it names none.
  */

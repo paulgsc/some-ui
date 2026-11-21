@@ -45,7 +45,8 @@ rendered once, and published it where home picks it up.
 
 ## The shape of a spoken essay
 
-The essay is a cut list: one JSON file, a list of scenes, each a card. A
+The essay is a cut list: one JSON file, a list of scenes, each a card or a
+screen of the app (step 3). A
 spoken essay pins version 2 of the cheat-sheet series (version 1 essays are
 silent, from before this routine; they still play, and are never rewritten).
 Each scene says something, in a `spoken` field:

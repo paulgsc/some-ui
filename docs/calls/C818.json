@@ -6,15 +6,14 @@
     "some-ui:packages/video-render/src/zoom.ts",
     "some-ui:packages/video-render/src/snip.ts",
     "some-ui:apps/www/tests/record/cards.ts",
-    "some-ui:apps/www/tests/record/voiced.ts",
     "some-ui:apps/www/tests/record/essay-recording.ts",
     "some-ui:packages/ui/burn-ins/src/lib/captions/space.ts"
   ],
-  "chose": "A cards essay shows the phone's screens through SNIPS4's one `screen` member (`of: { from: \"snips\", id, commit, at }`, C865), not a second member naming a screens/1 record's regions with a `cards/<key>.screens/` folder of its own: a snip and a screens/1 screen are one family, and the snip is the one that carries where it was taken and the hash home checks. What the cards half adds is the look beyond C869's caption band: `record:cards` draws every screen screen-zoom draws, zoomed, whole or a clip frame, in its series' ground and theme, so it sits among the cards, passing one look through `resolveScreens`; the band C869 keeps clear in a spoken essay is measured once, by `@some-ui/burn-ins`' `captionShare(series.frame)`, which the Rust essay's recorder and the playoff-delta stage share, and a silent essay, which has no captions, keeps the whole frame.",
+  "chose": "A cards essay shows the phone's screens through SNIPS4's one `screen` member (`of: { from: \"snips\", id, commit, at }`, C865, C868), not a second member naming a screens/1 record's regions with a `cards/<key>.screens/` folder of its own: a snip and a screens/1 screen are one family, and the snip is the one that carries where it was taken and the hash home checks. What the cards half adds is the look beyond C869's caption band: `record:cards` draws every screen screen-zoom draws, zoomed, whole or a clip frame, in its series' ground and theme, so it sits among the cards, passing one look through `resolveScreens`; the band C869 keeps clear in a spoken essay is measured once, by `@some-ui/burn-ins`' `captionShare(series.frame)` (the `zoomFoot` C869 names), which the Rust essay's recorder and the playoff-delta stage share, and a silent essay, which has no captions, keeps the whole frame.",
   "options": [
     "zoom through SNIPS4's screen member, in the series' ground, above the captions when spoken (taken)",
     "a second picture member naming a screens/1 record's regions, with its own `<key>.screens/` folder and `--screens` (built first, then dropped)",
-    "zoom snips in the composition's default ground, the foot at 0"
+    "draw screens in the composition's default ground and theme, with C869's caption band alone (main before this change)"
   ],
   "gray": "Which member a cards essay names a screen by, and how the zoom looks among its cards, is what the owner sees on screen; the snip family and the hand-off are W15's (C865, C866), and folding into it and the look are Claude's.",
   "undo": "Pass `resolveScreens` only C869's foot in record:cards: every screen then draws in the composition's own ground and theme.",
