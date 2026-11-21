@@ -10,6 +10,25 @@ const PICK_STEPS: ReadonlyArray<Choice> = [
   { id: "ending", name: "Ending" },
 ]
 
+/**
+ * The interview week's pages, each a place (WALK5's friction, C861): its way
+ * in, the questions, a question and its rungs, the reads, how a week goes,
+ * and past weeks (`apps/www/src/lib/interview-week/places.ts` maps a route
+ * to one).
+ */
+const INTERVIEW_PLACES: ReadonlyArray<Choice> = [
+  { id: "way-in", name: "The week" },
+  { id: "questions", name: "Questions" },
+  { id: "question", name: "A question" },
+  { id: "study", name: "Read the answer" },
+  { id: "aloud", name: "Read it aloud" },
+  { id: "say", name: "Say it" },
+  { id: "reads", name: "Scripts" },
+  { id: "read", name: "A script" },
+  { id: "how", name: "How a week goes" },
+  { id: "past", name: "Past weeks" },
+]
+
 const jobs: Pipeline = {
   id: "jobs",
   name: "Jobs",
@@ -55,8 +74,9 @@ const jobs: Pipeline = {
       name: "How each went",
       routes: ["/jobs/record"],
       offer: null,
-      emits: ["taken"],
+      emits: ["taken", "left"],
       touches: true,
+      places: [{ id: "record", name: "How each went" }],
     },
     // Interview: the week's mock interview and reads, said aloud (IW5), with
     // its way in: the questions and how a week goes (IW15).
@@ -77,8 +97,9 @@ const jobs: Pipeline = {
         "/jobs/interview/reads/$card",
       ],
       offer: null,
-      emits: ["taken"],
+      emits: ["taken", "left"],
       touches: true,
+      places: INTERVIEW_PLACES,
     },
     // The desktop: one morning's run, what it picked and why.
     {

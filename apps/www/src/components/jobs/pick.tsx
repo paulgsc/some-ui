@@ -22,6 +22,7 @@ import { Badge, Button, Input, Label, Notice, Textarea } from "@some-ui/shared"
 import { ExternalLink } from "lucide-react"
 
 import { useMinuteClock } from "@/lib/clock"
+import { usePlace } from "@/lib/engagement-places"
 import { phoneJobs } from "@/lib/jobs"
 import type { DebriefDraft, PassDraft } from "@/lib/jobs/drafts"
 import { draftOf } from "@/lib/jobs/drafts"
@@ -38,6 +39,7 @@ import {
   standingOf,
   timedMinutes,
 } from "@/lib/jobs/model"
+import { pickAffordanceOf, pickPlaceAt, pickPlaces } from "@/lib/jobs/offers"
 import {
   addHowItWent,
   archivedIt,
@@ -703,6 +705,31 @@ const Ending = ({
   )
 }
 
+/**
+ * Where on the pick's steps the owner is, for ENGAGE (WALK5, C861): the step
+ * shown is the place, of the offer the pick was when this visit opened it.
+ */
+const StepPlace = ({
+  initialState,
+  initialDay,
+  initialPickId,
+  shown,
+}: {
+  initialState: JobsState
+  initialDay: string
+  initialPickId: string
+  shown: number
+}): null => {
+  const today = pacificDay(useMinuteClock())
+  // Read once per mount (keyed by the pick): a visit's steps stay the
+  // affordance it opened as, though deciding moves Today on to another pick.
+  const [affordance] = useState(() =>
+    pickAffordanceOf(initialState, today, initialDay, initialPickId)
+  )
+  usePlace(pickPlaces(affordance), pickPlaceAt(shown))
+  return null
+}
+
 export const PickFlow = ({
   day,
   pickId,
@@ -735,6 +762,13 @@ export const PickFlow = ({
   const follow = (): void => setViewed(null)
   return (
     <div className="flex flex-col gap-4">
+      <StepPlace
+        key={`${day}/${pickId}`}
+        initialState={state}
+        initialDay={day}
+        initialPickId={pickId}
+        shown={shown}
+      />
       <header className="flex flex-col gap-1">
         <h2 className="text-xl leading-tight font-bold">
           {pick.posting.title}

@@ -5,8 +5,10 @@
  * words are `lib/jobs/words`.
  */
 import type { JSX, ReactNode } from "react"
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { dayOf } from "@some-ui/core-utils"
+import type { Offer } from "@some-ui/engagement"
+import { pageVisit, watchVisit } from "@some-ui/engagement"
 import type { Digest, Pick } from "@some-ui/job-desk"
 import {
   digestFindings,
@@ -15,6 +17,7 @@ import {
   pacificDay,
   TRACKS,
 } from "@some-ui/job-desk"
+import { useShelf } from "@some-ui/react-hooks"
 import { Badge, Button, CardLink, Textarea } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 import { Check } from "lucide-react"
@@ -35,6 +38,8 @@ import {
   standingOf,
 } from "@/lib/jobs/model"
 import { morningOf, offersDrive } from "@/lib/jobs/morning"
+import { pickOffer } from "@/lib/jobs/offers"
+import type { PickAffordance } from "@/lib/jobs/offers"
 import { doneOn, nextPick } from "@/lib/jobs/today"
 import {
   answersDrafted,
@@ -70,6 +75,7 @@ import {
   whyItFits,
   wouldHavePicked,
 } from "@/lib/jobs/words"
+import { ScreenVisitContext, useScreenVisit } from "@/lib/screen-visit"
 import { postingLine, sectionHeading } from "@/components/job-reading"
 
 import { MorningCard } from "./morning-card"
@@ -80,6 +86,25 @@ import { OpenDigest, Problem, useJourneyContext } from "./parts"
  * the link is a card that opens it (`CardLink`, #3234); `className` is then
  * the plain card's look, for a build where nothing opens.
  */
+/**
+ * `affordance`'s offer of a pick, shown on the screen's visit while the
+ * calling part is mounted (ENGAGE, WALK5's friction, C861).
+ */
+function useOfferOf(
+  affordance: PickAffordance,
+  day: string,
+  pickId: string
+): Offer {
+  const visit = useScreenVisit()
+  const offer = useMemo(
+    () => pickOffer(affordance, day, pickId),
+    [affordance, day, pickId]
+  )
+  const shelf = useMemo(() => [offer], [offer])
+  useShelf(visit, offer.key, shelf)
+  return offer
+}
+
 const ToPick = ({
   day,
   pick,
@@ -93,12 +118,15 @@ const ToPick = ({
   className: string
   children: ReactNode
 }): JSX.Element => {
+  const visit = useScreenVisit()
+  const offer = useOfferOf("other-pick", day, pick.id)
   if (!hasAudience("apk")) return <div className={className}>{children}</div>
   const link = (
     <Link
       to="/jobs/pick/$day/$pickId"
       params={{ day, pickId: pick.id }}
       className={card ? undefined : className}
+      onClick={() => visit?.take(offer)}
     >
       {children}
     </Link>
@@ -153,9 +181,12 @@ const NextPick = ({
   const { ready, resume } = readiness(state, day, pick)
   const untouched = decisionOf(state, day, pick.id) === null
   const pickRef = { day, pickId: pick.id, fingerprint: pick.fingerprint }
+  const visit = useScreenVisit()
+  const offer = useOfferOf("todays-pick", day, pick.id)
   const link = {
     to: "/jobs/pick/$day/$pickId",
     params: { day, pickId: pick.id },
+    onClick: (): void => visit?.take(offer),
   } as const
   return (
     <section className="bg-card flex flex-col gap-3 rounded-xl border p-4">
@@ -193,6 +224,7 @@ const NextPick = ({
               <Link
                 {...link}
                 onClick={() => {
+                  visit?.take(offer)
                   phoneJobs().record({ type: "taken", ...pickRef })
                 }}
               >
@@ -525,6 +557,18 @@ const HowPicked = ({
 }
 
 export const JobsToday = (): JSX.Element => {
+  // Today's visit (ENGAGE): the picks it lists are offered on it, and the one
+  // opened is taken (WALK5, C861).
+  const [visit] = useState(() => pageVisit(document))
+  useEffect(() => watchVisit(visit, document), [visit])
+  return (
+    <ScreenVisitContext.Provider value={visit}>
+      <Today />
+    </ScreenVisitContext.Provider>
+  )
+}
+
+const Today = (): JSX.Element => {
   const { state, pairing } = useJourneyContext()
   const now = useMinuteClock()
   const today = pacificDay(now)
