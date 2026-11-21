@@ -34,7 +34,7 @@ import { ms } from "./vocabulary"
 export const FORMAT_SCHEMA = "some-ui.show-format/1"
 
 /** One of the app's themes, by its id (`@some-ui/styles`). */
-const ThemeIdSchema = z.custom<SessionThemeId>(
+export const ThemeIdSchema = z.custom<SessionThemeId>(
   (id) => SESSION_THEME_IDS.some((theme) => theme === id),
   { message: "names no theme of the app's" }
 )

@@ -12,6 +12,7 @@ import { z } from "zod"
 
 import { badgeProblems } from "./badges"
 import { LOOKS, VOICES } from "./plans"
+import { SPOKEN_CATEGORIES } from "./spoken-categories"
 import { stampProblems } from "./stamp"
 import {
   BackgroundSchema,
@@ -151,6 +152,39 @@ export const SayableSchema = z
   })
 
 /**
+ * A take's id as home keeps it, as the Rust essay's opening names one, and
+ * never with a dot first, which the takes folder would read as hidden.
+ */
+export const SPOKEN_TAKE_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/
+
+/**
+ * The most exchanges a spoken card plays (C813): the owner's introduction
+ * runs three to five (who I am, why synthetic voices, what AI-generated
+ * means here, why Rust Rounds, why on the phone), so six, past the
+ * opening's three. Policy, moved with the story (C771).
+ */
+export const SPOKEN_EXCHANGES_MOST = 6
+
+/**
+ * One turn of a spoken card's exchange, in one of its two voices (owner,
+ * 2026-11-20): a line home's Kokoro says, or a take of the owner's that home
+ * keeps, by its id (TAKES path A). Either may ask and either may answer:
+ * an introduction has Kokoro ask and the owner answer, and the DB essay the
+ * other way round.
+ */
+export const SpokenTurnSchema = z.discriminatedUnion("voice", [
+  z.strictObject({ voice: z.literal("kokoro"), said: SayableSchema }),
+  z.strictObject({
+    voice: z.literal("owner"),
+    take: z
+      .string()
+      .regex(SPOKEN_TAKE_ID, "it isn't a take's id, as home keeps it"),
+  }),
+])
+
+export type SpokenTurn = z.infer<typeof SpokenTurnSchema>
+
+/**
  * What a spoken cards essay says over a scene (EXPLAIN6, #3021): the essay's
  * intro, a scene's chapter line and then its narration, or the close. The
  * recorder has home's speaker say each (`cards-essay.ts`, `record:cards`).
@@ -166,6 +200,21 @@ export const SpokenSchema = z.discriminatedUnion("role", [
   }),
   /** What to do next, and where to look when it fails. */
   z.strictObject({ role: z.literal("close"), said: SayableSchema }),
+  /**
+   * A spoken card (WALK7, #3282): its category's template plays each
+   * exchange, the question in Kokoro and then the owner's own take from
+   * home, whole (`spoken-card.ts`). Nothing in it is cut or edited.
+   */
+  z.strictObject({
+    role: z.literal("spoken"),
+    category: z.enum(SPOKEN_CATEGORIES),
+    exchanges: z
+      .array(
+        z.strictObject({ ask: SpokenTurnSchema, answer: SpokenTurnSchema })
+      )
+      .min(1)
+      .max(SPOKEN_EXCHANGES_MOST),
+  }),
 ])
 
 export type Spoken = z.infer<typeof SpokenSchema>

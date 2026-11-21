@@ -34,6 +34,7 @@ import {
   problemsOf,
 } from "./cut-list"
 import type { CutList, Parsed, Shot } from "./cut-list"
+import { ThemeIdSchema } from "./format"
 import { LOOKS } from "./plans"
 import { CheckedFileSchema, ms, SOUNDS, TRANSITIONS } from "./vocabulary"
 
@@ -73,6 +74,14 @@ export const SeriesSchema = z
       height: even,
       fps: z.number().int().min(12).max(60),
     }),
+    /**
+     * The app's theme a page the series draws on a stage is drawn in, so it
+     * matches the series' own look: a cards essay's spoken card (C816),
+     * which has no format of its own. A video drawn from a format takes its
+     * shape's `theme` instead, and never reads this. Absent, the stage draws
+     * in the page's own theme.
+     */
+    theme: ThemeIdSchema.optional(),
     /** The colour behind the picture, as `#rrggbb`. */
     ground: z.string().regex(/^#[0-9a-f]{6}$/),
     /** Where the picture sits in the frame, in the frame's pixels. */

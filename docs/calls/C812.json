@@ -1,0 +1,19 @@
+{
+  "id": "C812",
+  "made": "2026-11-20",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/tests/record/cards.ts",
+    "some-ui:packages/video-render/src/spoken-card.ts",
+    "server:infra/render/render-calls.sh"
+  ],
+  "chose": "Home hands a cards essay's takes as the essays' are, in a folder beside the essay (`--takes`): for each take id its spoken cards name, `<id>.<ext>` (audio), `<id>.words.json` where home kept word times, and `<id>.transcript.json` (home's `some-ui.voice-transcript/1`, with its verdict). The recorder refuses, before drawing anything, a take or transcript missing, a file the essay doesn't play, and a take home couldn't make out or heard nothing in (HEARD2): a spoken card has no silence to play in its place. An essay with no spoken card takes no folder and renders as before.",
+  "options": [
+    "this: refuse the whole render on an unheard take",
+    "play an unheard take's exchange as a silence, as the Rust essay does",
+    "skip the exchange and render the rest"
+  ],
+  "gray": "Whether a showcase renders without one of the owner's answers, or not at all, is something the owner sees on the screen and in what home's Renders says; the essays' rule (a silence) was made for weekly work, not a showcase.",
+  "undo": "Change heardSpokenCard to return a silence for an unheard take and spokenCardScenes to say UNHEARD_SAID over it.",
+  "refs": ["#3282", "#3072"]
+}

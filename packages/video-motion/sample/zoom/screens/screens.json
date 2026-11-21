@@ -1,0 +1,76 @@
+{
+  "schema": "some-ui.screens/1",
+  "source": {
+    "kind": "sample",
+    "id": "mock-rust-card"
+  },
+  "screens": [
+    {
+      "id": "QM-311",
+      "file": "QM-311.png",
+      "width": 412,
+      "height": 915,
+      "scale": 2,
+      "viewport": {
+        "width": 412,
+        "height": 915
+      },
+      "regions": [
+        {
+          "ref": "QM-311:question",
+          "box": {
+            "x": 26,
+            "y": 51,
+            "width": 360,
+            "height": 110
+          }
+        },
+        {
+          "ref": "QM-311:point:1",
+          "box": {
+            "x": 46,
+            "y": 203,
+            "width": 340,
+            "height": 21
+          }
+        },
+        {
+          "ref": "QM-311:point:2",
+          "box": {
+            "x": 46,
+            "y": 224,
+            "width": 340,
+            "height": 21
+          }
+        },
+        {
+          "ref": "QM-311:point:3",
+          "box": {
+            "x": 46,
+            "y": 245,
+            "width": 340,
+            "height": 21
+          }
+        },
+        {
+          "ref": "QM-311:program",
+          "box": {
+            "x": 12,
+            "y": 298,
+            "width": 388,
+            "height": 332
+          }
+        },
+        {
+          "ref": "QM-311:diagnostic:1",
+          "box": {
+            "x": 26,
+            "y": 451,
+            "width": 360,
+            "height": 165
+          }
+        }
+      ]
+    }
+  ]
+}
