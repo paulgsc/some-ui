@@ -547,6 +547,11 @@ jobs:
             cp -r packages/video-motion/sample/video "$RUNNER_TEMP/video"
             nix develop .#ci-playwright --command \
               pnpm --filter @some-ui/video-motion motion video "$RUNNER_TEMP/video" --prove
+            # RR31 (#3288): a mock phone card zoomed to its parts
+            # (screen-zoom), drawn twice from nothing.
+            cp -r packages/video-motion/sample/zoom "$RUNNER_TEMP/zoom"
+            nix develop .#ci-playwright --command \
+              pnpm --filter @some-ui/video-motion motion video "$RUNNER_TEMP/zoom" --prove
             # HYPER3 (#2726): Suspender Ledger 0.3.1's promo, from its data in
             # paulgsc/testing at a pinned commit: the popup walked once in its
             # sandbox, then the promo rendered twice from nothing.

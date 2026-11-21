@@ -7,6 +7,7 @@
  */
 import { readdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
+import { captionSpace, LANDSCAPE } from "@some-ui/burn-ins"
 import {
   ESSAY_SCHEMA,
   ESSAY_VOICES,
@@ -34,6 +35,7 @@ import type {
   Format,
   InterviewEssay,
   Parsed,
+  Screens,
   Speaker,
   StillTake,
   TakeFiles,
@@ -97,7 +99,14 @@ type EssayKind<E extends { readonly week: { readonly id: string } }> = {
   readonly cutList: (
     essay: E,
     takes: ReadonlyArray<StillTake | null>,
-    options: { readonly bed: boolean; readonly voicing: Voicing }
+    options: {
+      readonly bed: boolean
+      readonly voicing: Voicing
+      /** The phone's cards of its week (`./screens`), for its scenes to zoom into. */
+      readonly screens?: Screens
+      /** The share of the frame's height the stage keeps for captions. */
+      readonly foot?: number
+    }
   ) => CutList
   readonly marks: (essay: E) => Array<ChapterMark>
   /** Whether the phone's cards of its week can be photographed (`./screens`). */
@@ -257,14 +266,17 @@ async function recordKind<E extends { readonly week: { readonly id: string } }>(
     if (!preview) refuseLong(scenes, policy)
     const root = here(preview ? values.out : join(values.out, essay.week.id))
     const format = kind.format(essay)
-    if (weekFile !== undefined)
-      await captureScreens({
-        browser,
-        origin: site.origin,
-        weekFile: here(weekFile),
-        week: essay.week.id,
-        root,
-      })
+    // The phone's own cards of the week, before any still (RR31).
+    const screens =
+      weekFile === undefined
+        ? undefined
+        : await captureScreens({
+            browser,
+            origin: site.origin,
+            weekFile: here(weekFile),
+            week: essay.week.id,
+            root,
+          })
     const takes = await recordStills({
       page,
       root,
@@ -296,7 +308,17 @@ async function recordKind<E extends { readonly week: { readonly id: string } }>(
     await renderCut(
       root,
       SERIES,
-      kind.cutList(essay, takes, { bed, voicing }),
+      kind.cutList(essay, takes, {
+        bed,
+        voicing,
+        ...(screens === undefined
+          ? {}
+          : {
+              screens,
+              // A zoomed card stays above the band the stage keeps for captions.
+              foot: captionSpace(LANDSCAPE) / LANDSCAPE.height,
+            }),
+      }),
       {
         preview,
         episode: "essay.mp4",
