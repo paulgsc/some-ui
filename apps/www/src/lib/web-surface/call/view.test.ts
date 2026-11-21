@@ -24,8 +24,11 @@ import type {
   Essay,
   InterviewEssay,
 } from "@some-ui/video-render"
+import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 
+import { Call, CastProvider } from "./essay-parts"
+import { EssaySceneFrame } from "./essay-stage"
 import { essayAt, essayStageOf, namedStageOf } from "./essay-view"
 import { ESSAY_WORDS as EW } from "./essay-words"
 import { interviewEssayAt } from "./interview-essay-view"
@@ -763,5 +766,65 @@ describe("the Rust Rounds screen stage (RR31)", () => {
         read: read(served),
       })
     ).toMatchObject({ kind: "none" })
+  })
+})
+
+// Template A's bubbles (PDA6, #2883; C822): with the template's cast each
+// voice is its character, every gradient named for its own drawing; with
+// none, a version from before the cast, the flat icons stay.
+describe("template A's bubbles", () => {
+  const drawn = (
+    cast: "cast-v1" | undefined,
+    other: "tutor" | "asker"
+  ): string =>
+    // The components are called as functions: no hook runs above the
+    // provider, so the tree is the same as the elements would make.
+    renderToStaticMarkup(
+      CastProvider({
+        cast,
+        children: Call({
+          speaker: "you",
+          tag: "The question",
+          other,
+          children: "Why?",
+        }),
+      })
+    )
+  const characters = (html: string): Array<string | undefined> =>
+    [...html.matchAll(/data-character="([a-z-]+)"/g)].map((m) => m[1])
+
+  it.each([
+    ["tutor", ["tin-owlet", "mochi"]],
+    ["asker", ["tin-sparrow", "mochi"]],
+  ] as const)("draw the cast with the %s", (other, cast) => {
+    const html = drawn("cast-v1", other)
+    expect(characters(html)).toEqual(cast)
+    const ids = [...html.matchAll(/ id="([^"]+)"/g)].map((m) => m[1])
+    expect(ids.length).toBeGreaterThan(0)
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+
+  it("draw the flat icons when the template names no cast", () => {
+    const html = drawn(undefined, "tutor")
+    expect(characters(html)).toEqual([])
+    expect(html.match(/viewBox="0 0 48 48"/g)).toHaveLength(2)
+  })
+
+  it("draw the cast in a Rust essay's scene from its template's version, and the flat icons before it", () => {
+    const parsed = sampleEssay()
+    if (!parsed.ok) throw new Error(parsed.problems.join("; "))
+    const scene = (version: number): string =>
+      renderToStaticMarkup(
+        EssaySceneFrame({
+          essay: {
+            ...parsed.value,
+            template: { ...parsed.value.template, version },
+          },
+          scene: "question-1",
+          record: true,
+        })
+      )
+    expect(characters(scene(6))).toEqual(["tin-owlet", "mochi"])
+    expect(characters(scene(5))).toEqual([])
   })
 })

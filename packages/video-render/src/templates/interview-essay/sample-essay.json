@@ -1,6 +1,6 @@
 {
   "schema": "some-ui.interview-essay/1",
-  "template": { "id": "interview-essay", "version": 1 },
+  "template": { "id": "interview-essay", "version": 3 },
   "week": { "id": "2026-w47", "from": "2026-11-16", "to": "2026-11-22" },
   "company": {
     "name": "Larkspur Freight",

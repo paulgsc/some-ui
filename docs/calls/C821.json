@@ -1,0 +1,20 @@
+{
+  "id": "C821",
+  "made": "2026-11-20",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/some-styles/src/brand/cast.ts",
+    "some-ui:apps/www/src/lib/web-surface/call/essay-parts.tsx",
+    "some-ui:packages/video-motion"
+  ],
+  "chose": "The reach for PDA6 (#2883), rung 1, use: the characters are hand-drawn SVG kept as data beside the mark (`@some-ui/styles`' `brand/cast`), drawn by the shared template A `Bubble` for every essay at once, and step 2's motion (a mouth per word from home's word timings, a blink and a breath on a fixed clock, the tin bird's key turning while it speaks) is SVG and CSS inside a HyperFrames composition, drawn from the same data, which `@some-ui/video-motion` already renders to the same bytes twice (`motion prove`). Inward: `Bubble`/`ICONS` is the one node every template A user draws through, and `brand-v1` already draws the mark from shared code at render time; nothing new is built beside them. What is ours, in one sentence: the owner's own characters, timed to the owner's own takes.",
+  "options": [
+    "SVG data in the shared Bubble now, SVG and CSS in a HyperFrames composition for motion (chosen)",
+    "Rive (runtime MIT, editor freemium): not tried; its WASM renderer would draw through canvas or WebGL under SwiftShader, a second rasterizer the same-bytes proof does not cover, and authoring needs an account in a hosted editor",
+    "Lottie (lottie-web, MIT): not tried; it seeks to exact frames, but authoring needs After Effects (paid) or LottieFiles' freemium editor, and a mouth per word would be our own code splicing segments anyway",
+    "a per-essay or per-speaker drawing: ruled out by C820 and C830, one node keyed by the closed Speaker union"
+  ],
+  "gray": "How the owner's alter ego is drawn and animated, and what tool owns it, is on screen in every essay; no check or earlier decision settled it. Honest limit: hand-written keyframes, no bones or mesh bending, so motion stays simple; if a later expression outgrows that on real work, that is the evidence to try Rive.",
+  "undo": "Delete `packages/some-styles/src/brand/cast.ts` and the cast branch of `Bubble`; the bubbles draw the flat icons.",
+  "refs": ["#2883", "#2877", "#3311", "#2722", "#3316"]
+}

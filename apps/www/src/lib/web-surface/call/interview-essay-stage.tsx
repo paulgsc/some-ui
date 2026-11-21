@@ -15,7 +15,7 @@ import type {
   Silence,
 } from "@some-ui/video-render"
 
-import { Call, Inline, MARK_CLASS } from "./essay-parts"
+import { Call, CastProvider, Inline, MARK_CLASS } from "./essay-parts"
 import type { EssayStageProps } from "./essay-stage"
 import { essayStageOf } from "./essay-view"
 import { ESSAY_WORDS as EW, leftOf, weekNumber } from "./essay-words"
@@ -449,7 +449,9 @@ export const InterviewEssayStagePage = ({
             }
       }
     >
-      <Screen essay={essay} at={at} />
+      <CastProvider cast={format.shape?.cast}>
+        <Screen essay={essay} at={at} />
+      </CastProvider>
     </StageFrame>
   )
 }

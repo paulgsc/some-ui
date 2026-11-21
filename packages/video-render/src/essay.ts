@@ -93,7 +93,7 @@ export const ESSAY_SCHEMA = "some-ui.rust-essay/1"
 export const ESSAY_ID = "rust-essay"
 
 /** The newest version `essayFormat` gives, pinned as `v<n>.json` under `templates/`. */
-export const ESSAY_VERSION = 5
+export const ESSAY_VERSION = 6
 
 /**
  * The first version whose chart draws the decay record's two later cells
@@ -121,6 +121,14 @@ export const ESSAY_FORK_VERSION = 4
  * version.
  */
 export const ESSAY_OPENING_VERSION = 5
+
+/**
+ * The first version whose bubbles draw the cast (PDA6, #2883; C822): the
+ * mochi for the owner, tin birds for the synthetic voices, in place of the
+ * flat icons. It draws everything version 5 does, so an essay with an
+ * opening takes it.
+ */
+export const ESSAY_CAST_VERSION = 6
 
 /**
  * The take that answers the opening's question `n` (from 1), by its id in
@@ -377,7 +385,10 @@ export function essayFormat(version: number = ESSAY_VERSION): Format {
         20_000
       ),
     ],
-    shape: ESSAY_SHAPE,
+    shape:
+      version >= ESSAY_CAST_VERSION
+        ? { ...ESSAY_SHAPE, cast: "cast-v1" }
+        : ESSAY_SHAPE,
   }
 }
 

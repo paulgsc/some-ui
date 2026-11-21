@@ -240,6 +240,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "web-only code: the Android app has no account to move sessions to or sign out of, nor a list of the account's phones to name or sign out (SIGNIN7)",
     },
     {
+      modules: ["packages/some-styles/src/brand/cast.ts"],
+      profiles: ["lan", "pages"],
+      why: "the cast the essays' speaking bubbles draw (PDA6, #2883): only the web surface's essay stages draw it, and the Android app has no essay stage",
+    },
+    {
       modules: [
         "apps/www/src/lib/passkey/**",
         "apps/www/src/lib/auth/account-keeps.ts",

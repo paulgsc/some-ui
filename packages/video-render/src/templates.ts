@@ -31,7 +31,7 @@ import legendV4 from "./templates/playoff-delta-legend/v4.json"
 import weekBoard from "./templates/playoff-delta-week/storyboard.json"
 import weekV4 from "./templates/playoff-delta-week/v4.json"
 import essayBoard from "./templates/rust-essay/storyboard.json"
-import essayV5 from "./templates/rust-essay/v5.json"
+import essayV6 from "./templates/rust-essay/v6.json"
 
 /** The folder under `templates/` each template's versions are pinned in. */
 export const TEMPLATE_IDS = [
@@ -49,7 +49,7 @@ const NEWEST: Readonly<Record<TemplateId, unknown>> = {
   "engagement-report": reportV1,
   "playoff-delta-legend": legendV4,
   "playoff-delta-week": weekV4,
-  "rust-essay": essayV5,
+  "rust-essay": essayV6,
 }
 
 /** Whether `value` names a template Studio lists. */

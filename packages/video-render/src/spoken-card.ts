@@ -25,7 +25,8 @@ import type { CutList, Parsed, Shot, SpokenTurn } from "./cut-list"
 import { problemsOf, SPOKEN_EXCHANGES_MOST, SPOKEN_TAKE_ID } from "./cut-list"
 import { ESSAY_VOICES } from "./essay"
 import type { Speaker } from "./essay"
-import { ThemeIdSchema, words } from "./format"
+import { CastIdSchema, ThemeIdSchema, words } from "./format"
+import type { CastId } from "./format"
 import { askProblems, wordCount } from "./opening"
 import type { Exchange } from "./opening"
 import { SPOKEN_CATEGORIES } from "./spoken-categories"
@@ -112,6 +113,8 @@ export const HeardSpokenCardSchema = z.strictObject({
   category: z.enum(SPOKEN_CATEGORIES),
   /** The app's theme its stage draws template A in: its series' (`Series.theme`, C816). */
   theme: ThemeIdSchema.optional(),
+  /** The cast its bubbles draw: its series' (`Series.cast`, C822). */
+  cast: CastIdSchema.optional(),
   exchanges: z
     .array(z.strictObject({ ask: HeardTurnSchema, answer: HeardTurnSchema }))
     .min(1)
@@ -304,8 +307,8 @@ export function spokenTakeFilesOf(
 }
 
 /**
- * The spoken card `card`, shot `id`, as its stage draws it, in `theme` (its
- * series', `Series.theme`): each exchange
+ * The spoken card `card`, shot `id`, as its stage draws it, in its series'
+ * look (`Series.theme` and `Series.cast`): each exchange
  * with what home heard in its take, `transcriptOf(take)` being the take's
  * `some-ui.voice-transcript/1` as home keeps it. Refuses, with every reason,
  * a take whose transcript is missing or has no text, and one home couldn't
@@ -316,8 +319,9 @@ export function heardSpokenCard(
   id: string,
   card: SpokenCard,
   transcriptOf: (take: string) => unknown,
-  theme: SessionThemeId | undefined
+  look: { readonly theme?: SessionThemeId; readonly cast?: CastId }
 ): Parsed<HeardSpokenCard> {
+  const { theme, cast } = look
   const problems: Array<string> = []
   const heard = (turn: SpokenTurn): HeardTurn => {
     if (turn.voice === "kokoro") return turn
@@ -353,6 +357,7 @@ export function heardSpokenCard(
     card: id,
     category: card.category,
     ...(theme === undefined ? {} : { theme }),
+    ...(cast === undefined ? {} : { cast }),
     exchanges,
   })
 }
@@ -363,9 +368,10 @@ export const sampleSpokenCard = (): Parsed<HeardSpokenCard> =>
     schema: SPOKEN_CARD_SCHEMA,
     card: "sample",
     category: "introduction",
-    // cheat-sheet v3's (`Series.theme`): the sample is a cards essay's, and
-    // a test holds the two equal.
+    // cheat-sheet v3's (`Series.theme`, `Series.cast`): the sample is a
+    // cards essay's, and a test holds them equal.
     theme: "dark",
+    cast: "cast-v1",
     exchanges: [
       {
         ask: { voice: "kokoro", said: "What is this, and who made it?" },

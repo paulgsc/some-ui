@@ -1,0 +1,28 @@
+{
+  "id": "C822",
+  "made": "2026-11-20",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/format.ts",
+    "some-ui:packages/video-render/src/essay.ts",
+    "some-ui:packages/video-render/src/interview-essay.ts",
+    "some-ui:packages/ui/rust-rounds/src/lib/monday/finish.ts",
+    "some-ui:packages/ui/interview-week/src/lib/essay/finish.ts",
+    "some-ui:apps/www/src/lib/web-surface/call/essay-stage.tsx",
+    "some-ui:apps/www/src/lib/web-surface/call/interview-essay-stage.tsx",
+    "some-ui:packages/video-render/src/series.ts",
+    "some-ui:packages/video-render/src/spoken-card.ts",
+    "some-ui:packages/video-render/src/sample/series/cheat-sheet/v3.json",
+    "some-ui:apps/www/src/lib/web-surface/call/spoken-card-stage.tsx"
+  ],
+  "chose": "The cast comes in through the template's shape (`cast: \"cast-v1\"`), as the brand's motion and theme do, so a version already pinned keeps the flat icons and a published essay's version never redraws. The Rust essay's version 6 and the interview essay's version 3 name it; each draws everything the version before it does. Rust Rounds writes version 6 where it wrote 5 (an essay with an opening), and the interview week writes 3 where it wrote 2. This moves C270 for an essay with an opening: it could still be drawn at the older version, but takes the cast's, so home's render image refuses it (VS1) until the owner rebuilds that image from a some-ui with this change. An essay with no opening still takes the lowest version that draws it, as C270 chose, and keeps the flat icons. A cards essay's spoken card, which has no format of its own, takes its cast from its series as it takes its theme (C816): cheat-sheet v3 names cast-v1, so a spoken card draws the same birds and mochi through the same bubble. cheat-sheet v3 is edited rather than versioned: it reached main with #3315 minutes before, and only the sample video pins it, so no published video is redrawn (series.ts: a version is never edited once a video pins it).",
+  "options": [
+    "an opt-in shape field, new versions only (chosen)",
+    "draw the cast in every version: simpler, but an essay already published would redraw differently from what was released",
+    "always write the newest version: gives every essay the cast, but moves C270 for every essay, those with no opening too, so each waits on a rebuilt render image"
+  ],
+  "gray": "Which essays show the characters, and when, is something the owner sees; no check settled it. The costs: home's render image must be rebuilt before the next essay with an opening renders, the same step every template version has asked for; and an essay with no opening keeps the flat icons until its producer writes a cast version.",
+  "undo": "Drop `cast` from the essay versions' shapes and the schema, delete `rust-essay/v6.json`, and set ESSAY_VERSION back to 5 and INTERVIEW_ESSAY_VERSION to 2; essays written at 6 or 3 are then refused (VS1).",
+  "refs": ["#2883", "#2695"],
+  "moves": "C270"
+}

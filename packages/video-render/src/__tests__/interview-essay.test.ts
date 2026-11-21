@@ -8,6 +8,7 @@
 import { parseCutList } from "@video-render/cut-list"
 import { parseFormat } from "@video-render/format"
 import {
+  INTERVIEW_ESSAY_CAST_VERSION,
   INTERVIEW_ESSAY_ID,
   INTERVIEW_ESSAY_VERSION,
   interviewEssayChapterMarks,
@@ -36,6 +37,14 @@ const problems = (raw: unknown): ReadonlyArray<string> => {
 }
 
 describe("the interview essay's format", () => {
+  it("names the cast from its cast version, and not before (C822)", () => {
+    for (let v = 1; v < INTERVIEW_ESSAY_CAST_VERSION; v++)
+      expect(interviewEssayFormat(v).shape?.cast).toBeUndefined()
+    expect(interviewEssayFormat(INTERVIEW_ESSAY_CAST_VERSION).shape?.cast).toBe(
+      "cast-v1"
+    )
+  })
+
   it("is a format, and refuses a version newer than the newest (VS1)", () => {
     expect(parseFormat(interviewEssayFormat()).ok).toBe(true)
     expect(() => interviewEssayFormat(INTERVIEW_ESSAY_VERSION + 1)).toThrow()
@@ -256,7 +265,9 @@ describe("the essay's opening in the owner's voice (IW10)", () => {
   it("plays the owner's take first after the brand, and leaves an essay without one as it was", () => {
     expect(problems(opened)).toEqual([])
     // A version-1 essay, from before the opening, holds none, and its format draws none.
-    expect(problems({ ...opened, template: essay.template })).toEqual([
+    expect(
+      problems({ ...opened, template: { ...essay.template, version: 1 } })
+    ).toEqual([
       "opening: the template draws the owner's opening from version 2",
     ])
     expect(interviewEssayFormat(1).scenes.map((s) => s.id)).not.toContain(

@@ -79,7 +79,13 @@ export const INTERVIEW_ESSAY_SCHEMA = "some-ui.interview-essay/1"
 export const INTERVIEW_ESSAY_ID = "interview-essay"
 
 /** The newest version `interviewEssayFormat` gives, pinned as `v<n>.json` under `templates/`. */
-export const INTERVIEW_ESSAY_VERSION = 2
+export const INTERVIEW_ESSAY_VERSION = 3
+
+/**
+ * The first version whose bubbles draw the cast (PDA6, #2883; C822), as the
+ * Rust essay's version 6: what an essay with an opening is written at.
+ */
+export const INTERVIEW_ESSAY_CAST_VERSION = 3
 
 /** The first version with the owner's own opening (IW10): an essay before it holds none. */
 const OPENING_SINCE = 2
@@ -240,7 +246,10 @@ export function interviewEssayFormat(
       ),
       scene("next", "Next week", "What next week comes back to", 20_000),
     ],
-    shape: SHAPE,
+    shape:
+      version >= INTERVIEW_ESSAY_CAST_VERSION
+        ? { ...SHAPE, cast: "cast-v1" }
+        : SHAPE,
   }
 }
 

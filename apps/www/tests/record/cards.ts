@@ -173,12 +173,13 @@ async function spokenTakes(
   readonly heard: ReadonlyMap<string, HeardSpokenCard>
 }> {
   const named = spokenTakesOf(essay)
-  // Template A is drawn in its series' theme, as the cards around it (C816).
+  // Template A is drawn in its series' theme, as the cards around it (C816),
+  // with its series' cast (C822).
   const { id: seriesId, version } = essay.series
   const read = await readSeries(join(SERIES, seriesId), version)
   if (!read.ok)
     fail([`${seriesId} v${String(version)} can't be read:`, ...read.problems])
-  const { theme } = read.value
+  const { theme, cast } = read.value
   if (dir === undefined) {
     if (named.length > 0)
       fail([
@@ -213,12 +214,10 @@ async function spokenTakes(
   const heard = new Map<string, HeardSpokenCard>()
   const problems: Array<string> = []
   for (const { id, card } of spokenCardsOf(essay)) {
-    const one = heardSpokenCard(
-      id,
-      card,
-      (take) => transcripts.get(take),
-      theme
-    )
+    const one = heardSpokenCard(id, card, (take) => transcripts.get(take), {
+      theme,
+      cast,
+    })
     if (one.ok) heard.set(id, one.value)
     else problems.push(...one.problems)
   }

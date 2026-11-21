@@ -60,11 +60,11 @@ import {
 import { assertNever, pacificDay } from "@some-ui/core-utils"
 import type { Essay, EssayFork, EssayPointAnswer } from "@some-ui/video-render"
 import {
+  ESSAY_CAST_VERSION,
   ESSAY_CHART_ROWS,
   ESSAY_DECAY_VERSION,
   ESSAY_FORK_VERSION,
   ESSAY_ID,
-  ESSAY_OPENING_VERSION,
   ESSAY_POINT_VERSION,
   ESSAY_SCHEMA,
   ESSAY_WEEKS_MOST,
@@ -451,10 +451,11 @@ function buildEssay(
     ended.tickets.flatMap((t) => t.concepts),
     { weeks: ESSAY_WEEKS_MOST, concepts: ESSAY_CHART_ROWS }
   )
-  // The lowest version that draws it (C270).
+  // The lowest version that draws it (C270); an opening takes the cast's,
+  // which draws everything the opening's does (C822).
   const version =
     ended.opening !== undefined
-      ? ESSAY_OPENING_VERSION
+      ? ESSAY_CAST_VERSION
       : tickets.some(needsForkVersion)
         ? ESSAY_FORK_VERSION
         : tickets.some(hasPointAnswers)
