@@ -43,6 +43,41 @@ describe("the sample digest's postings", () => {
   })
 })
 
+/**
+ * SD1: the sample digest carries no real person's contact details.
+ * - Claim: every paste kit's Email, Location, GitHub and Portfolio field in
+ *   `sample.digest.json` is the made-up person's below.
+ * - Family: every pick of the sample, every one of those fields; every build
+ *   that shows the sample (the Pages viewer's Jobs wing, the APK walks and
+ *   walkthroughs that film it).
+ * - Proof: this test, over every pick and every such field.
+ * - Tolerance: free text (cover letters, drafted answers) is read by review,
+ *   not by this test.
+ */
+describe("the sample digest's paste kits (SD1)", () => {
+  /**
+   * A made-up person, on names reserved for examples (RFC 2606): the web
+   * builds show the sample to anyone, and walkthroughs film it, so no kit may
+   * carry a real person's details.
+   */
+  const PERSON: Readonly<Record<string, string>> = {
+    Email: "sam.rivera@example.com",
+    Location: "Oakland, CA",
+    GitHub: "https://github.com/example",
+    Portfolio: "https://example.com",
+  }
+
+  it("give a made-up person's contact details, in every pick", () => {
+    const contacts = sample().picks.flatMap((pick) =>
+      pick.kit.fields.filter((field) => Object.hasOwn(PERSON, field.label))
+    )
+    expect(contacts.length).toBeGreaterThan(0)
+    for (const { label, value } of contacts) {
+      expect(value, label).toBe(PERSON[label])
+    }
+  })
+})
+
 describe("parseDigest", () => {
   it("names what is wrong, by path", () => {
     const digest = sample()
@@ -491,7 +526,7 @@ describe("digestFindings", () => {
     kit.coverLetter = "Call me at (510)-555-0134."
     kit.compensation = { ask: "$110,000", why: "I live at 12 Oak Street." }
     kit.fields.push({ label: "Telephone", value: "on request" })
-    kit.answers.push({ label: "Street address", value: "Berkeley" })
+    kit.answers.push({ label: "Street address", value: "Springfield" })
     for (const label of [
       "Phone ✱",
       "What is your phone number?",
