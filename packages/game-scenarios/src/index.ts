@@ -1,10 +1,17 @@
 export {
+  BIG_PLAY_KINDS,
+  BIG_PLAY_SIZES,
   CATALOG,
   CATALOG_VERSION,
+  HALVES,
   MOMENTS,
   PHASES,
+  type BigPlayAlgebra,
+  type BigPlayKind,
+  type BigPlaySize,
   type Catalog,
   type CatalogEntry,
+  type Half,
   type Moment,
   type Phase,
 } from "./catalog"
@@ -16,4 +23,11 @@ export {
   type Outcome,
   type Scenario,
 } from "./scenarios"
-export { OUTCOME_WORDS, PHASE_TITLES, type ScenarioId } from "./words"
+export {
+  BIG_PLAY_KIND_WORDS,
+  BIG_PLAY_SIZE_WORDS,
+  HALF_WORDS,
+  OUTCOME_WORDS,
+  PHASE_TITLES,
+  type ScenarioId,
+} from "./words"

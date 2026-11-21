@@ -12,9 +12,9 @@ import { nodePorts, readSeries } from "@video-render/node"
 import { render } from "@video-render/render"
 import {
   clipFramesOf,
-  isSnipId,
   parseSnipsGiven,
   resolveScreens,
+  SNIP_ID,
   SNIPS_GIVEN_SCHEMA,
   snipScreen,
   snipsOf,
@@ -127,22 +127,26 @@ async function withScreens(pictures: ReadonlyArray<Of>): Promise<CutList> {
 }
 
 describe("a snip's id (SNIPS1's grammar)", () => {
-  it("is surface, path, viewport, app version and the picture's hash", () => {
-    expect(isSnipId(PHONE)).toBe(true)
-    expect(isSnipId(APK)).toBe(true)
-    expect(isSnipId("web:/:desktop:0.1.69:0123456789ab")).toBe(true)
-    expect(isSnipId("web:/:desktop:0.1.69:0123")).toBe(false)
-    expect(isSnipId("tv:/:desktop:0.1.69:0123456789ab")).toBe(false)
+  it("refuses a short hash and an unknown surface", () => {
+    expect(SNIP_ID.test("web:/:desktop:0.1.69:0123")).toBe(false)
+    expect(SNIP_ID.test("tv:/:desktop:0.1.69:0123456789ab")).toBe(false)
   })
 
   it("is refused on a record whose picture it isn't", () => {
     const parsed = parseSnipsGiven({
       schema: SNIPS_GIVEN_SCHEMA,
-      snips: [
-        { ...phone(), image: { ...phone().image, sha256: "e".repeat(64) } },
+      bundles: [
+        {
+          commit: COMMIT,
+          snips: [
+            { ...phone(), image: { ...phone().image, sha256: "e".repeat(64) } },
+          ],
+        },
       ],
     })
-    expect(parsed.ok).toBe(false)
+    expect(parsed.ok ? "" : parsed.problems.join("\n")).toContain(
+      "is not the picture"
+    )
   })
 })
 
@@ -370,13 +374,15 @@ describe("an essay's screens of the app (SNIPS4)", () => {
           id: "a",
           picture: {
             kind: "screen",
-            of: { from: "snips", id: "the front page" },
+            of: { from: "snips", id: "the front page", commit: COMMIT },
           },
           durationMs: 1000,
         },
       ],
     })
-    expect(parsed.ok).toBe(false)
+    expect(parsed.ok ? "" : parsed.problems.join("\n")).toContain(
+      "it isn't a snip's id"
+    )
   })
 })
 

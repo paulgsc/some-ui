@@ -4,7 +4,11 @@
 // request it gets, and can be told to answer 429 with Retry-After.
 //
 //   node apps/mobile/compat/stub-home.mjs [--port 8787] [--control 8788]
-//     [--routes apps/mobile/compat/stub-routes.json] [--cert c.pem --key k.pem]
+//     [--routes apps/mobile/compat/stub-routes.json]... [--cert c.pem --key k.pem]
+//
+// --routes may be given more than once: each file's routes are laid over the
+// ones before, so a story sample (apps/www/tests/walk, WALK2) answers its own
+// routes and the base file answers the rest.
 //
 // With --cert and --key, home is https, as a paired phone requires: the
 // certificate is the run's own, from a CA trust-ca.sh puts in the
@@ -40,14 +44,21 @@ const { values } = parseArgs({
   options: {
     port: { type: "string", default: "8787" },
     control: { type: "string", default: "8788" },
-    routes: { type: "string", default: join(here, "stub-routes.json") },
+    routes: {
+      type: "string",
+      multiple: true,
+      default: [join(here, "stub-routes.json")],
+    },
     cert: { type: "string" },
     key: { type: "string" },
   },
 })
 
-/** `"GET /api/v1/..."` -> `{ status, body }`. */
-const routes = JSON.parse(readFileSync(values.routes, "utf8")).routes
+/** `"GET /api/v1/..."` -> `{ status, body }`, each file laid over the ones before. */
+const routes = Object.assign(
+  {},
+  ...values.routes.map((file) => JSON.parse(readFileSync(file, "utf8")).routes)
+)
 
 /** A route key's path as a pattern: each `:name` segment matches one. */
 const patterns = Object.keys(routes).map((key) => ({

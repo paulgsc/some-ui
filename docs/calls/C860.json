@@ -1,0 +1,21 @@
+{
+  "id": "C860",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-motion/src/walk",
+    "some-ui:apps/mobile/walk",
+    "some-ui:apps/mobile/compat/stub-home.mjs"
+  ],
+  "chose": "Reach for WALK (#3282): rung 2, fold in, inward first. The walkthrough is built from three things already here, each extended at its family's level instead of copied for the APK. (1) The walk runner and its walk.json (`some-ui.walk/1`, video-motion `src/walk/run.ts`, read by `motion promo`): its steps become a closed union of actions, and it runs on a stage, either the sandbox that walks a built web page today or the APK's debug WebView on an emulator (WALK1). (2) The stand-in home and its routes file (`apps/mobile/compat`, already started with `--routes <file>`): a story sample is another routes file of the same shape, and a test reads each answer with the app's own readers (WALK2). (3) Playwright's Android driver, which Snips Capture already uses on real work (SNIPS1, 101 snips) to drive the debug APK: the APK stage is that driver, with whole-screen pictures. The simulated microphone (WALK3) is something a stage can be given, a canned clip behind getUserMedia, so either stage can show a take being recorded. It builds on C820 (reach inward first) and C830 (name the family). What is ours: the walk's own timeline and tap marks over the real app's screens, on one mock persona, as `motion promo` and the cards essays already read them.",
+  "options": [
+    "inward: generalize the walk runner over stages, a story sample as a stand-in home routes file, Playwright's Android driver (chosen)",
+    "use Maestro (open source, YAML flows on the emulator, screenshots and recordings)",
+    "use Appium with a WebDriver client",
+    "record the emulator's screen (adb screenrecord or scrcpy) and cut it by hand",
+    "build an APK-only walk runner beside the web one"
+  ],
+  "gray": "Which driver walks the APK, and whether the walkthrough's sample and microphone are new mechanisms or cases of existing ones, decides what every later walkthrough (Practice, Rust Rounds, Studio) is made of. No check settles it. Maestro was ruled out untried for a stated reason: its flows are YAML whose steps are decided at run time and it writes no walk timeline or tap places, so its output would need a second parser to reach `motion promo`, and it would be a second driver on an emulator Playwright already drives in Snips Capture, with no pain point there yet. Appium is the same with more to run. A screen recording has no tap marks or step timeline and needs hand cutting, which the owner dropped on #3282 ('me editing anything … invalidates the claim'). An APK-only runner is the per-case copy C830 names. All data stays mock: the stand-in home on the runner, fixtures only, the emulator with no DNS.",
+  "undo": "Put the walk runner's steps back to `{ label, tap?, reopen?, holdMs }` with the sandbox inlined in `runWalk`, and drop `stage-apk.ts`, `apps/mobile/walk` and the routes file's story sample.",
+  "refs": ["#3282", "#3114", "#2726"]
+}

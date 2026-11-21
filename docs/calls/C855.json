@@ -1,0 +1,19 @@
+{
+  "id": "C855",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "packages/ui/soundbites/src/lib/library/kinds.ts",
+    "packages/ui/soundbites/src/lib/library/words.ts",
+    "apps/www/src/lib/take-library/model.ts"
+  ],
+  "chose": "#3039's first slice lands in Takes, not on a new Bites page: Takes already lists every bite by game and plays it (TAKES20), so a bite's line there now says the quarter and clock of the play home matched it to (Q3 4:05, OT past the fourth quarter), 'Not matched to a play' when home looked and found none, and otherwise the clock the screen showed when it was said. Never the play's own words.",
+  "options": [
+    "say the matched play in Takes' bite line, the page #3039 asks for being Takes' bite compartment filtered to a game",
+    "build a separate Bites page in Game day, as #3039 first sketched",
+    "wait for the whole page (order by the game's moments, halves, the moments with no bite) before showing anything"
+  ],
+  "gray": "#3039 describes its own page, but Takes already is that page in all but the matched play (one compartment per kind, filtered by game, playable from phone or home), so a second list of the same takes would be a second implementation. Which moment a bite's line names (the matched play's or the screen's) is a choice the owner sees on the screen.",
+  "undo": "Drop biteMoment's matched branches in kinds.ts and the atPlay and noPlay words, and stop reading about.match in model.ts; the line goes back to the screen's clock.",
+  "refs": ["#3039", "#3219", "#3040"]
+}

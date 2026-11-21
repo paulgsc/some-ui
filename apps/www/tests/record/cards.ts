@@ -94,7 +94,7 @@ import type {
 import { nodePorts, readSeries } from "@some-ui/video-render/node"
 
 import { CALL_OPTIONS, FRAME } from "./call-recording"
-import { fail, here, launchChromium, runCommand } from "./command"
+import { fail, here, jsonOr, launchChromium, runCommand } from "./command"
 import {
   placeBed,
   policyOf,
@@ -403,15 +403,6 @@ async function handedScreens(
   const resolved = resolveScreens(cut, handed)
   if (!resolved.ok) fail(resolved.problems)
   return { handed, snipsDir, clipsDir }
-}
-
-/** `text` read as JSON, or refused, naming `path`. */
-function jsonOr(text: string, path: string): unknown {
-  try {
-    return JSON.parse(text)
-  } catch {
-    return fail([`${path} is not JSON`])
-  }
 }
 
 /**

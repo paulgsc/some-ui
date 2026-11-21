@@ -109,6 +109,8 @@ describe("a screen zoomed to its parts (RR31)", () => {
     expect(() =>
       zoomPicture(screens, ["QM-311:question"], { foot: -0.1 })
     ).toThrow(/foot/)
+    // Refused before the refs are read, so even with none held.
+    expect(() => zoomPicture(screens, [], { foot: Number.NaN })).toThrow(/foot/)
   })
 
   it("is nothing when no region asked for was captured", () => {

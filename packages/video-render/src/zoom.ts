@@ -8,7 +8,7 @@
  */
 
 import type { Composition } from "./cut-list"
-import type { RegionRef, Screen, Screens } from "./screen"
+import type { Box, RegionRef, Screen, Screens } from "./screen"
 import { regionOf } from "./screen"
 
 /** The composition that zooms a screen (`@some-ui/video-motion`). */
@@ -43,6 +43,37 @@ const lookOf = (
   ...(ground === undefined ? {} : { ground }),
 })
 
+/** `foot`, refused outside 0 to `FOOT_MOST`, before anything else is read. */
+function footOf(foot: number): void {
+  if (!(foot >= 0 && foot <= FOOT_MOST))
+    throw new Error(
+      `a foot of ${String(foot)}: a screen keeps 0 to ${String(FOOT_MOST)} of the frame for captions`
+    )
+}
+
+/** The screen-zoom composition on `screen`, its stops in CSS px of the picture. */
+function screenZoom(
+  screen: Screen,
+  stops: ReadonlyArray<Box>,
+  { dir = "screens", foot = 0, theme, ground }: ZoomOptions
+): Composition {
+  footOf(foot)
+  const file = `${dir}/${screen.file}`
+  return {
+    kind: "composition",
+    ref: SCREEN_ZOOM,
+    variables: {
+      picture: file,
+      width: screen.width,
+      height: screen.height,
+      scale: screen.scale,
+      stops: JSON.stringify(stops),
+      ...lookOf(foot, theme, ground),
+    },
+    files: [file],
+  }
+}
+
 /**
  * The picture zooming into `refs` in order, on the screen they name, with
  * its file under `dir` in the video's folder: the first `ZOOM_STOPS_MOST`
@@ -53,12 +84,9 @@ const lookOf = (
 export function zoomPicture(
   screens: Screens,
   refs: ReadonlyArray<RegionRef>,
-  { dir = "screens", foot = 0, theme, ground }: ZoomOptions = {}
+  options: ZoomOptions = {}
 ): Composition | null {
-  if (!(foot >= 0 && foot <= FOOT_MOST))
-    throw new Error(
-      `a foot of ${String(foot)}: a zoom keeps 0 to ${String(FOOT_MOST)} of the frame for captions`
-    )
+  footOf(options.foot ?? 0)
   const found = refs.flatMap((ref) => {
     const region = regionOf(screens, ref)
     return region ? [region] : []
@@ -72,20 +100,11 @@ export function zoomPicture(
       `${other.region.ref} is not on ${screen.id}: a scene zooms into one screen`
     )
   const held = found.slice(0, ZOOM_STOPS_MOST)
-  const file = `${dir}/${screen.file}`
-  return {
-    kind: "composition",
-    ref: SCREEN_ZOOM,
-    variables: {
-      picture: file,
-      width: screen.width,
-      height: screen.height,
-      scale: screen.scale,
-      stops: JSON.stringify(held.map(({ region }) => region.box)),
-      ...lookOf(foot, theme, ground),
-    },
-    files: [file],
-  }
+  return screenZoom(
+    screen,
+    held.map(({ region }) => region.box),
+    options
+  )
 }
 
 /**
@@ -96,26 +115,7 @@ export function zoomPicture(
  * app's own screen. Its ground is `ground` where given, else the
  * composition's own.
  */
-export function wholePicture(
+export const wholePicture = (
   screen: Screen,
-  { dir = "screens", foot = 0, theme, ground }: ZoomOptions = {}
-): Composition {
-  if (!(foot >= 0 && foot <= FOOT_MOST))
-    throw new Error(
-      `a foot of ${String(foot)}: a screen keeps 0 to ${String(FOOT_MOST)} of the frame for captions`
-    )
-  const file = `${dir}/${screen.file}`
-  return {
-    kind: "composition",
-    ref: SCREEN_ZOOM,
-    variables: {
-      picture: file,
-      width: screen.width,
-      height: screen.height,
-      scale: screen.scale,
-      stops: "[]",
-      ...lookOf(foot, theme, ground),
-    },
-    files: [file],
-  }
-}
+  options: ZoomOptions = {}
+): Composition => screenZoom(screen, [], options)

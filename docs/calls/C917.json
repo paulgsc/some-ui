@@ -1,0 +1,20 @@
+{
+  "id": "C917",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/routes/_dashboard/_lan/home-switches.tsx",
+    "some-ui:apps/www/src/lib/home-switches/words.ts",
+    "some-ui:apps/www/src/lib/home-switches/teams.ts",
+    "some-ui:apps/www/src/components/chips.tsx"
+  ],
+  "chose": "The teams followed live are chosen on home's settings page as 32 toggle chips by ESPN abbreviation, in alphabetical order, the same toggle chips Jobs uses (moved to `components/chips.tsx` so both share one). A choice is the page's own until \"Save\" sends the whole list; it is dropped and starts again from what home follows whenever home's answer changes. Save is off until the choice differs from what home follows (compared as home keeps a list, sorted and each once), and every chip and Save are off while a save is under way. A team home holds that the 32 lack (set elsewhere, or renamed) gets a chip of its own after them, so it can be taken off. The standing line says \"Every game\" for none, else the teams joined (\"SEA, SF\"), then since when and who chose them, as the switches' lines do.",
+  "options": [
+    "chips, a choice kept until Save sends the whole list (taken)",
+    "each chip saves at once, one change per tap",
+    "a text field of abbreviations"
+  ],
+  "gray": "How the owner picks the teams is on the screen; the coordinator named chips and Save, and the order, when a choice is dropped, and when Save is off are Claude's.",
+  "undo": "Make each chip call `runtime.set` with the toggled list and drop Save; or change `NFL_TEAMS`' order.",
+  "refs": ["#3329", "#3311"]
+}

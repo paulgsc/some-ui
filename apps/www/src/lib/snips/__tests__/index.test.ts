@@ -1,15 +1,14 @@
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
-import { isSnipId, SnipRecordSchema } from "@some-ui/video-render/snip"
+import { SNIP_ID, SnipRecordSchema } from "@some-ui/video-render/snip"
 import { expect, describe as group, it } from "vitest"
 
-import type { Part, SnipRecord } from "@/lib/snips"
+import type { BarNode, Part, SnipRecord } from "@/lib/snips"
 import {
   APK_VIEWPORT,
   checksumsOf,
   describe,
   fillPattern,
-  isStage,
   manifestOf,
   moduleOf,
   parseRouteTree,
@@ -82,8 +81,6 @@ group("the recording stages, taken whole", () => {
       .filter((text) => /validateSearch:\s*stageSearch\b/.test(text))
       .map((text) => /createFileRoute\("([^"]+)"\)/.exec(text)?.[1])
     expect(new Set(stages)).toEqual(new Set(STAGE_ROUTES))
-    expect(isStage("/rust-screen")).toBe(true)
-    expect(isStage("/journal")).toBe(false)
   })
 })
 
@@ -273,7 +270,7 @@ group("every name the capture makes is one the record takes", () => {
       appVersion: "0.1.69",
       sha256,
     })
-    expect(isSnipId(id)).toBe(true)
+    expect(SNIP_ID.test(id)).toBe(true)
     const parsed = SnipRecordSchema.safeParse({
       id,
       surface: "apk",
@@ -305,13 +302,7 @@ group("the release APK's tab bar (#3137, option (b))", () => {
     label: string,
     x: number,
     over: Partial<{ y: number; bottom: number; selected: boolean }> = {}
-  ): {
-    label: string
-    x: number
-    y: number
-    bottom: number
-    selected: boolean
-  } => ({ label, x, y: 1770, bottom: 1820, selected: false, ...over })
+  ): BarNode => ({ label, x, y: 1770, bottom: 1820, selected: false, ...over })
   // The shell's pill floats ~31 px above the app's foot (mobile-shell).
   const at = {
     appBottom: 1851,

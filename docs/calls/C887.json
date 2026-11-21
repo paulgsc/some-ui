@@ -1,0 +1,15 @@
+{
+  "id": "C887",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": ["server:apps/servers/file_host/src/settings.rs"],
+  "chose": "A team is named as ESPN spells its abbreviation on the scoreboard (SF, WSH, LAR; nfl_feed::scoreboard::Side::team), the names the phone's game day already labels a game by (SF vs SEA). Reached inward: the phone has no team choice of its own (game-week's WORDS.team is a fixed SF badge), so nothing else to reuse. Held as 2 to 4 capitals, at most 32, sorted and once each; a game is chosen when either side is named; empty is every game.",
+  "options": [
+    "ESPN's scoreboard abbreviation as spelled",
+    "ESPN team ids (numeric)",
+    "a name table of our own (full names, mapped to ESPN)"
+  ],
+  "gray": "The names the owner sees and types on the settings page; ESPN renames (WAS to WSH) would follow ESPN.",
+  "undo": "Change Teams' validation in settings.rs; stored values that no longer parse would then be errors, so a migration of revisions would be owed.",
+  "refs": ["#3329"]
+}

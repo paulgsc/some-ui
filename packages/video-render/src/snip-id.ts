@@ -10,5 +10,5 @@
 export const SNIP_ID =
   /^(apk|web):(\/\S*|@[a-z0-9-]+(?:\/[a-z0-9-]+)?):([a-z][a-z0-9-]*):([0-9A-Za-z.+-]+):([0-9a-f]{12})$/
 
-/** Whether `text` is a snip's id. */
-export const isSnipId = (text: string): boolean => SNIP_ID.test(text)
+/** A commit's id, as a snip's bundle is named by it (`snips-bundle-<commit>`). */
+export const COMMIT = /^[0-9a-f]{40}$/
