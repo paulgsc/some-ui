@@ -45,9 +45,15 @@ export function rankedList(
   ranked: ReadonlyArray<RankedEntry> | null
 ): ReadonlyArray<RankedEntry> {
   if (ranked === null || ranked.length === 0) return CATALOG_ORDER
-  const named = new Set(ranked.map((entry) => entry.scenario))
+  // A scenario home names twice is kept where it first ranks it.
+  const named = new Set<string>()
+  const once = ranked.filter((entry) => {
+    if (named.has(entry.scenario)) return false
+    named.add(entry.scenario)
+    return true
+  })
   return [
-    ...ranked,
+    ...once,
     ...CATALOG_ORDER.filter((entry) => !named.has(entry.scenario)),
   ]
 }
@@ -61,11 +67,17 @@ export function unitOf(
 }
 
 /**
- * The unit one tap moves a bite to: the next of `UNITS`, keeping whose it
- * is; a bite with none starts at the first.
+ * The unit one tap moves a bite to: the next of `UNITS`, then none, then
+ * the first again, so a stray tap can always be taken back. Whose it is
+ * stays; from none it is `side`, the team the list names for the scenario,
+ * or no one team.
  */
-export function nextUnit(unit: BiteUnit | null): BiteUnit {
-  if (unit === null) return { unit: UNITS[0], side: null }
+export function nextUnit(
+  unit: BiteUnit | null,
+  side: string | null = null
+): BiteUnit | null {
+  if (unit === null) return { unit: UNITS[0], side }
   const at = UNITS.indexOf(unit.unit)
-  return { unit: UNITS[(at + 1) % UNITS.length]!, side: unit.side }
+  const next = UNITS[at + 1]
+  return next === undefined ? null : { unit: next, side: unit.side }
 }

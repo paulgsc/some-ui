@@ -106,7 +106,12 @@ function rankedOf(value: unknown): RankedEntry | null {
   if (!isRecord(unit)) return null
   const named = UNITS.find((each) => each === unit.unit)
   const side = unit.side ?? null
-  if (named === undefined || !(side === null || isString(side))) return null
+  // A side is a team's code, never an empty one.
+  if (
+    named === undefined ||
+    !(side === null || (isString(side) && side !== ""))
+  )
+    return null
   return { scenario: value.id, tier, unit: { unit: named, side } }
 }
 

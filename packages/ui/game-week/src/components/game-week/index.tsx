@@ -306,6 +306,10 @@ const Recording = ({
       ? quietFill(activity.quiet, now, MODE_RULES[activity.moment.mode].quietMs)
       : 0
   const { said } = activity
+  const unitWords =
+    said.how === "said-first" || said.unit == null
+      ? WORDS.noUnit
+      : unitLine(said.unit)
   return (
     <section
       aria-label={
@@ -334,9 +338,10 @@ const Recording = ({
           size="sm"
           className="rounded-full"
           onClick={onUnit}
-          aria-label={WORDS.unitChange}
+          // The name starts with what it shows, then says what a tap does.
+          aria-label={`${unitWords}. ${WORDS.unitChange}`}
         >
-          {said.unit == null ? WORDS.noUnit : unitLine(said.unit)}
+          {unitWords}
         </Button>
       )}
       <div
@@ -374,14 +379,12 @@ const Asking = ({
   canUndo,
   onAnswer,
   onUndo,
-  onLegend,
 }: {
   view: OfferView | null
   now: number
   canUndo: boolean
   onAnswer: (said: Said | null) => void
   onUndo: () => void
-  onLegend: () => void
 }): JSX.Element => (
   <section aria-labelledby="asking" className="space-y-4">
     <h2 id="asking" className="text-xl font-bold uppercase tracking-wide">
@@ -395,16 +398,13 @@ const Asking = ({
     >
       {WORDS.later}
     </Button>
-    <div className="flex justify-between">
-      <Button variant="ghost" size="sm" onClick={onLegend}>
-        <List className="size-4" aria-hidden /> {WORDS.everyScenario}
-      </Button>
-      {canUndo && (
+    {canUndo && (
+      <div className="flex justify-end">
         <Button variant="ghost" size="sm" onClick={onUndo}>
           {WORDS.undo}
         </Button>
-      )}
-    </div>
+      </div>
+    )}
   </section>
 )
 
@@ -596,7 +596,6 @@ export const GameWeek = ({
           canUndo={state.undo?.id === activity.bite.id}
           onAnswer={(said) => dispatch({ type: "answer", said })}
           onUndo={() => dispatch({ type: "undo" })}
-          onLegend={() => setPanel("legend")}
         />
       ) : game === null ? (
         <p className="text-muted-foreground text-sm">
@@ -673,15 +672,24 @@ export const GameWeek = ({
         WORDS.yourTakes(game !== null)
       )}
 
-      {/* The ranked list, always within reach (#3049): a bubble over the screen. */}
-      <button
-        type="button"
-        onClick={() => setPanel("legend")}
-        aria-label={WORDS.everyScenario}
-        className="bg-background text-foreground focus-visible:ring-ring fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-20 flex size-14 items-center justify-center rounded-full border shadow-lg focus-visible:ring-2 focus-visible:outline-none active:scale-95"
-      >
-        <List className="size-6" aria-hidden />
-      </button>
+      {/*
+        The ranked list, within reach whenever a pick names a bite (#3049): a
+        bubble over the screen, above the wing's tab bar (4.5rem tall, at
+        max(0.75rem, the safe area) from the bottom). Hidden while a bite is
+        said, when a pick would name nothing.
+      */}
+      {activity.kind !== "taking" && (
+        <button
+          type="button"
+          onClick={() => setPanel("legend")}
+          aria-label={WORDS.everyScenario}
+          aria-haspopup="dialog"
+          aria-expanded={panel === "legend"}
+          className="bg-background text-foreground focus-visible:ring-ring fixed right-4 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+5.25rem)] z-20 flex size-14 items-center justify-center rounded-full border shadow-lg focus-visible:ring-2 focus-visible:outline-none active:scale-95"
+        >
+          <List className="size-6" aria-hidden />
+        </button>
+      )}
 
       <Sheet
         open={panel !== "none"}

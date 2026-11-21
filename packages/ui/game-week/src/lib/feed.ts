@@ -165,6 +165,25 @@ export function fixtureFeed(now: () => number = Date.now): FeedPort {
               rank: 6,
             },
           ],
+          // Ranked as a home that ranks would: SF with the ball.
+          ranked: [
+            {
+              scenario: "in.third-long",
+              tier: "now",
+              unit: { unit: "offense", side: "SF" },
+            },
+            {
+              scenario: "in.play-call",
+              tier: "now",
+              unit: { unit: "offense", side: "SF" },
+            },
+            {
+              scenario: "in.sack",
+              tier: "now",
+              unit: { unit: "defense", side: "SEA" },
+            },
+            { scenario: "you.caught-it", tier: "always", unit: null },
+          ],
           justHappened: [
             {
               scenario: "in.big-play",

@@ -272,6 +272,33 @@ describe("GameWeek", () => {
     expect(screen.getByText(noGamesLine("away"))).toBeTruthy()
   })
 
+  it("names who a bite is about while it is said, and one tap moves it on (#3049)", async () => {
+    render(<GameWeek ports={ports()} outbox={outbox} />)
+    await sayTheCard()
+    const chip = screen.getByRole("button", { name: /^SF offense/ })
+    expect(chip).toHaveAccessibleName(`SF offense. ${WORDS.unitChange}`)
+    fireEvent.click(chip)
+    expect(screen.getByRole("button", { name: /^SF defense/ })).toBeTruthy()
+    // A pick from the list would name nothing now: the bubble is away.
+    expect(
+      screen.queryByRole("button", { name: WORDS.everyScenario })
+    ).toBeNull()
+  })
+
+  it("ranks the list most plausible first when home ranks it", () => {
+    render(<GameWeek ports={ports()} outbox={outbox} />)
+    fireEvent.click(screen.getByRole("button", { name: WORDS.everyScenario }))
+    const sheet = screen.getByRole("dialog", { name: WORDS.legendTitle })
+    const text = sheet.textContent
+    expect(text.indexOf(TIER_TITLES.now)).toBeLessThan(
+      text.indexOf(TIER_TITLES.always)
+    )
+    expect(text.indexOf(TIER_TITLES.always)).toBeLessThan(
+      text.indexOf(TIER_TITLES.rest)
+    )
+    expect(text).toContain("SEA defense")
+  })
+
   it("opens every scenario in a sheet over the screen, and closes it", () => {
     render(<GameWeek ports={ports(awayFeed)} outbox={outbox} />)
     fireEvent.click(screen.getByRole("button", { name: WORDS.everyScenario }))

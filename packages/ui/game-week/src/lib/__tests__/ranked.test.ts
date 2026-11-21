@@ -67,6 +67,16 @@ function fieldsKept(state: GameWeekState): Readonly<Record<string, string>> {
 }
 
 describe("the ranked list", () => {
+  it("keeps a scenario home names twice where it first ranks it", () => {
+    const twice = rankedList([
+      ...RANKED,
+      { scenario: "in.third-long", tier: "rest", unit: null },
+    ])
+    expect(twice.filter((e) => e.scenario === "in.third-long")).toEqual([
+      RANKED[0],
+    ])
+  })
+
   it("is home's, then every scenario it left out, so each stays pickable once", () => {
     const list = rankedList(RANKED)
     expect(list.slice(0, RANKED.length)).toEqual(RANKED)
@@ -120,22 +130,38 @@ describe("a bite's unit", () => {
     expect(fields).not.toHaveProperty("unitSide")
   })
 
-  it("moves on with one tap while the bite is said, keeping whose it is", () => {
+  it("moves on with one tap while the bite is said, through none and back", () => {
     let state = saying(THIRD)
     const seen: Array<string> = []
-    for (let i = 0; i < UNITS.length; i++) {
+    for (let i = 0; i <= UNITS.length; i++) {
       state = step(state, { type: "pickUnit" }).state
       const said = state.activity.kind === "taking" ? state.activity.said : null
-      if (said === null || said.how === "said-first" || said.unit == null)
-        throw new Error("no unit")
-      seen.push(said.unit.unit)
-      expect(said.unit.side).toBe("SEA")
+      if (said === null || said.how === "said-first")
+        throw new Error("not said")
+      seen.push(
+        said.unit == null
+          ? "none"
+          : `${said.unit.side ?? "no one"} ${said.unit.unit}`
+      )
     }
-    // From defense: every unit once, back where it started.
-    expect(seen).toEqual(["special-teams", "coaching", "offense", "defense"])
-    expect(fieldsKept(step(state, { type: "pickUnit" }).state).unit).toBe(
-      "special-teams"
-    )
+    // From SEA defense: on to none, then back from the list's team.
+    expect(seen).toEqual([
+      "SEA special-teams",
+      "SEA coaching",
+      "none",
+      "SEA offense",
+      "SEA defense",
+    ])
+    const back = step(step(state, { type: "pickUnit" }).state, {
+      type: "pickUnit",
+    }).state
+    expect(fieldsKept(back)).toMatchObject({
+      unit: "coaching",
+      unitSide: "SEA",
+    })
+    // Moved to none, nothing goes home.
+    const none = step(back, { type: "pickUnit" }).state
+    expect(fieldsKept(none)).not.toHaveProperty("unit")
   })
 
   it("can't be changed for a bite said first, or once it is kept", () => {
@@ -145,8 +171,66 @@ describe("a bite's unit", () => {
     expect(step(idle, { type: "pickUnit" }).state).toBe(idle)
   })
 
-  it("starts at the first unit, of no one team, when there was none", () => {
+  it("starts at the first unit, the list's team's or no one's, when there was none", () => {
     expect(nextUnit(null)).toEqual({ unit: UNITS[0], side: null })
+    expect(nextUnit(null, "CHI")).toEqual({ unit: UNITS[0], side: "CHI" })
+    expect(nextUnit({ unit: "coaching", side: "CHI" })).toBeNull()
+  })
+
+  it("for a bite said first, comes from the list as it stopped, not a newer one", () => {
+    const asking = run(
+      saying({ how: "said-first" }),
+      { type: "done" },
+      { type: "taken", take: take(), id: "b1", at: T0 + 5_000 }
+    ).state
+    // Home re-ranks after the stop: a turnover, SF now on defense.
+    const newer: Feed = {
+      ...RANKED_FEED,
+      offer:
+        RANKED_FEED.offer === null
+          ? null
+          : {
+              ...RANKED_FEED.offer,
+              seq: 42,
+              ranked: [
+                {
+                  scenario: "in.third-long",
+                  tier: "now",
+                  unit: { unit: "defense", side: "SF" },
+                },
+              ],
+            },
+    }
+    const answered = run(
+      asking,
+      { type: "fed", feed: newer },
+      { type: "answer", said: THIRD }
+    )
+    const amend = answered.all.find((effect) => effect.type === "amend")
+    expect(amend?.type === "amend" && amend.fields).toMatchObject({
+      how: "said-first",
+      scenario: "in.third-long",
+      seq: "41",
+      unit: "defense",
+      unitSide: "SEA",
+    })
+  })
+
+  it("is none for a bite said first and left for later", () => {
+    const later = run(
+      saying({ how: "said-first" }),
+      { type: "done" },
+      { type: "taken", take: take(), id: "b1", at: T0 + 5_000 },
+      { type: "answer", said: null }
+    ).all.find((effect) => effect.type === "amend")
+    expect(later?.type === "amend" && later.fields).not.toHaveProperty("unit")
+  })
+
+  it("comes from the list for what just happened too", () => {
+    const fields = fieldsKept(
+      saying({ how: "just-happened", scenario: "in.play-call", context: "" })
+    )
+    expect(fields).toMatchObject({ unit: "offense", unitSide: "SF" })
   })
 
   it("is named by home's fields, and none when said first", () => {
@@ -191,6 +275,7 @@ describe("home's ranked list on the live socket", () => {
           unit: { unit: "goalposts", side: null },
         },
         { id: "in.penalty", tier: "rest", unit: { unit: "coaching", side: 7 } },
+        { id: "in.injury", tier: "rest", unit: { unit: "defense", side: "" } },
         {
           id: "in.fourth-down",
           tier: "rest",

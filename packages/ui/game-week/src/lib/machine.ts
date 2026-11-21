@@ -128,6 +128,11 @@ export type Activity =
       readonly startedAt: number
       /** What the screen offered as the bite stopped. */
       readonly offer: OfferView | null
+      /**
+       * The ranked list as the bite stopped: the units a scenario picked
+       * now is about, as home ranked them for that same offer.
+       */
+      readonly ranked: ReadonlyArray<RankedEntry>
     }
 
 /** An offer as this mode shows it, at one moment. */
@@ -344,10 +349,14 @@ export function rankedNow(state: GameWeekState): ReadonlyArray<RankedEntry> {
   )
 }
 
-/** `said` with the unit the ranked list gives its scenario, unless it names one. */
-function withUnit(state: GameWeekState, said: Said): Said {
+/**
+ * `said` with the unit `list` gives its scenario, unless it names one. A
+ * bite on what just happened takes it too: the list's unit for the moment
+ * it is said, which is what the owner sees on the chip and can change.
+ */
+function withUnit(list: ReadonlyArray<RankedEntry>, said: Said): Said {
   if (said.how === "said-first" || said.unit !== undefined) return said
-  return { ...said, unit: unitOf(rankedNow(state), said.scenario) }
+  return { ...said, unit: unitOf(list, said.scenario) }
 }
 
 function withPrefs(state: GameWeekState, prefs: Prefs): Step {
@@ -470,7 +479,7 @@ function ended(state: GameWeekState, before: TakeEnded | null): Step {
 }
 
 function start(state: GameWeekState, told: Said): Step {
-  const said = withUnit(state, told)
+  const said = withUnit(rankedNow(state), told)
   const game = currentGame(state)
   if (game === null) return stay({ ...state, notice: NOTICES.pickFirst })
   const view = offerView(state)
@@ -732,6 +741,7 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
             moment: activity.moment,
             startedAt,
             offer: offerView(at),
+            ranked: rankedNow(at),
           },
         },
         effects,
@@ -807,7 +817,7 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
       return settle(
         state,
         activity.bite,
-        pickedAfter(withUnit(state, said), moment, activity.startedAt)
+        pickedAfter(withUnit(activity.ranked, said), moment, activity.startedAt)
       )
     }
 
@@ -816,10 +826,9 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
       // home is sent them once.
       if (activity.kind !== "taking" || activity.said.how === "said-first")
         return stay(state)
-      const said = {
-        ...activity.said,
-        unit: nextUnit(activity.said.unit ?? null),
-      }
+      const { said: was } = activity
+      const side = unitOf(rankedNow(state), was.scenario)?.side ?? null
+      const said = { ...was, unit: nextUnit(was.unit ?? null, side) }
       return stay({ ...state, activity: { ...activity, said } })
     }
 
