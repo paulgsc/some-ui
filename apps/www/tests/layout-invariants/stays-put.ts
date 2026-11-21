@@ -11,7 +11,8 @@
  *
  * A box is measured where it sits in its scrolled content (its viewport box
  * plus every ancestor's scroll offset), so the scroll Playwright makes to
- * reach a control is not a move.
+ * reach a control is not a move. A box fixed to the window counts only the
+ * scrolls inside it, so a page that scrolls under it does not move it.
  */
 
 import type { Locator, Page } from "@playwright/test"
@@ -55,11 +56,26 @@ async function targetsOn(page: Page): Promise<Record<string, Target>> {
         ids["staysPutNext"] = id
         element.dataset["staysPut"] = id
       }
-      let scrolledX = window.scrollX
-      let scrolledY = window.scrollY
-      for (let at = element.parentElement; at; at = at.parentElement) {
-        scrolledX += at.scrollLeft
-        scrolledY += at.scrollTop
+      // A box fixed to the window (it, or a box it sits in, such as a sheet)
+      // does not move with what scrolls outside it: only the scrolls inside
+      // it, its own included, count. A fixed box under a transformed one is
+      // laid out against that box instead, and is read here as on the window.
+      let scrolledX = 0
+      let scrolledY = 0
+      let fixed = false
+      for (let at: HTMLElement | null = element; at; at = at.parentElement) {
+        if (at !== element) {
+          scrolledX += at.scrollLeft
+          scrolledY += at.scrollTop
+        }
+        if (getComputedStyle(at).position === "fixed") {
+          fixed = true
+          break
+        }
+      }
+      if (!fixed) {
+        scrolledX += window.scrollX
+        scrolledY += window.scrollY
       }
       const box = element.getBoundingClientRect()
       const name =
