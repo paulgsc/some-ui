@@ -320,7 +320,7 @@ date is clipped. A workspace is a candidate when it is:
 "Own change" ignores tests, manifests and config, file deletions (cleanup is not work on the
 story), and sweeps across more than eight workspaces (version bumps, renames, rollouts).
 
-With `--usage <home's friction.json>` it also lists **usage candidates** (#3338): modules the
+With `--usage <friction.json>` (what `motion walkthrough --home` keeps from home's weekly read) it also lists **usage candidates** (#3338): modules the
 build offers that nobody has opened in four weeks (`packages/engagement/src/lib/silence.ts`). A
 module whose opening isn't measured is never called silent.
 

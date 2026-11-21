@@ -1,38 +1,40 @@
 /**
  * What real use shows of each module and each place in it (WALK5, #3337;
- * the owner's call C861): home's friction aggregate, read from the
- * engagement events (`@some-ui/engagement`'s places and visits) and handed
- * to a walkthrough's render as `friction.json`. A walkthrough says it for
- * each stop, said and burned in, and names the silent modules (#3338).
+ * the owner's call C861), as a walkthrough's render reads it: written by
+ * `frictionOf` from home's weekly read (`GET /app-events/weeks/:week`, its
+ * `seen` and `friction`, the same answer `reportWeeksOf` reads) and the
+ * registry, and kept as `friction.json` beside the render, which
+ * `pnpm report:vestiges --usage` reads too (#3338).
  *
  * Aggregates only, under the engagement report's public-safety rule (ask
- * #2701): every count is a `PublicCount`, "fewer than 5" below `UNDER`, and
- * nothing here names a pass reason, a chip, a company, a role or any
- * content. A module home doesn't measure the opening of is `not-measured`,
- * never silent.
+ * #2701): every count is a `PublicCount`, "fewer than 5" below `UNDER`, a
+ * median is said only over 5 values or more, and nothing here names a pass
+ * reason, a chip, a company, a role or any content. A module home can't
+ * tell the opening of is `not-measured`, never silent.
  *
- * Home builds it (paulgsc/server, WALK5's step 2); this is the contract the
- * render reads, checked against `sample/friction.json` until home serves it.
+ * What home's measures can and can't tell apart (paulgsc/server's
+ * `app_event::friction`), and so what this says: a stretch on a place ends
+ * when it is left, so the app going to the back splits a step in two;
+ * `movedOn` counts the stretches followed at once by a step on (or back, or
+ * to the next item), and at an affordance's last place finishing and
+ * leaving look the same, so there it is `no-data`.
  */
 
+import { addDays, isoWeekMonday } from "@some-ui/core-utils"
 import { z } from "zod"
 
 import type { Parsed } from "./cut-list"
-import { problemsOf } from "./cut-list"
+import { once, problemsOf } from "./cut-list"
+import { CountSchema, publicCount, UNDER } from "./engagement-report"
+import type { PublicCount } from "./engagement-report"
+import { HomeWeeksSchema } from "./engagement-report-video"
 
-export const FRICTION_SCHEMA = "some-ui.friction/1"
+export const FRICTION_SCHEMA = "some-ui.friction/2"
 
 /** The days an aggregate looks back over: four weeks (C861). */
 export const FRICTION_WINDOW_DAYS = 28
 
 const id = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
-
-/** A count as it may go public (`PublicCount`, `./engagement-report`). */
-const PublicCountSchema = z.union([
-  z.int().min(5),
-  z.literal("fewer-than-5"),
-  z.literal("no-data"),
-])
 
 export const FrictionSchema = z.strictObject({
   schema: z.literal(FRICTION_SCHEMA),
@@ -46,9 +48,11 @@ export const FrictionSchema = z.strictObject({
       opened: z.discriminatedUnion("kind", [
         z.strictObject({
           kind: z.literal("measured"),
-          /** Days of the window it was opened on. */
-          days: PublicCountSchema,
-          /** Whole weeks since it was last opened; null when home holds no open of it. */
+          /** Days of the window its root was shown on. */
+          days: CountSchema,
+          /** Days of the window home measured its root over: from its first event, at most the window. */
+          of: z.int().min(1).max(FRICTION_WINDOW_DAYS),
+          /** Whole weeks since it was last shown; null when home holds no showing of it. */
           weeksQuiet: z.int().min(0).nullable(),
         }),
         z.strictObject({ kind: z.literal("not-measured") }),
@@ -61,21 +65,19 @@ export const FrictionSchema = z.strictObject({
       pipeline: id,
       affordance: id,
       place: id,
-      /** Visits to it finished. */
-      finished: PublicCountSchema,
-      /** Visits to it left part-way. */
-      leftPartWay: PublicCountSchema,
-      /** The median time in it, in ms: shown only from 5 visits. */
-      medianMs: PublicCountSchema,
+      /** Stretches spent on it, each ended by leaving it. */
+      stretchesLeft: CountSchema,
+      /** Of those, the ones followed at once by a step on; `no-data` at the last place. */
+      movedOn: CountSchema,
+      /** A stretch's median time on it, in ms; null under 5 stretches. */
+      medianMs: z.int().min(0).nullable(),
     })
   ),
-  /** Applying's debrief: the median friction the owner gave it, 1 to 5 (C861). */
+  /** Applying's debrief: the friction the owner gave it, 1 to 5 (C861). */
   debrief: z.strictObject({
-    medianFriction: z.union([
-      z.number().min(1).max(5),
-      z.literal("fewer-than-5"),
-      z.literal("no-data"),
-    ]),
+    said: CountSchema,
+    /** Their median; null under 5. */
+    median: z.number().min(1).max(5).nullable(),
   }),
 })
 
@@ -97,8 +99,168 @@ export function parseFriction(raw: unknown): Parsed<Friction> {
     const key = `${p.pipeline}/${p.affordance}/${p.place}`
     if (places.has(key)) problems.push(`${key}: listed twice`)
     places.add(key)
+    // A median is said only over 5 stretches or more.
+    if (p.medianMs !== null && typeof p.stretchesLeft !== "number")
+      problems.push(`${key}: a median over fewer than ${String(UNDER)}`)
   }
+  const { debrief } = parsed.data
+  if (debrief.median !== null && typeof debrief.said !== "number")
+    problems.push(`debrief: a median over fewer than ${String(UNDER)}`)
   return problems.length > 0
     ? { ok: false, problems }
     : { ok: true, value: parsed.data }
+}
+
+/** The registry as `frictionOf` reads it: `@some-ui/engagement`'s `PIPELINES` fits it. */
+export type FrictionRegistry = ReadonlyArray<{
+  readonly id: string
+  readonly opened:
+    | { readonly kind: "root"; readonly affordance: string }
+    | { readonly kind: "not-measured" }
+  readonly affordances: ReadonlyArray<{
+    readonly id: string
+    readonly surface: string
+    readonly offer: string | null
+    readonly places?: ReadonlyArray<{ readonly id: string }>
+    readonly retired?: true
+  }>
+}>
+
+/** Whole days from `from` to `to`, two owner's days. */
+const daysFrom = (from: string, to: string): number =>
+  Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000)
+
+const keyOf = (...parts: ReadonlyArray<string>): string => parts.join("/")
+
+/**
+ * The aggregate a walkthrough reads, from home's weekly read `raw` over the
+ * 28 days ending with its week, and `registry`, as of the owner's day `asOf`
+ * (how long a module has been quiet is counted to it).
+ *
+ * - A module is measured by its root (`opened`) only where the root is shown
+ *   on screen: a root offered by notification counts notifications sent, so
+ *   it is `not-measured`, as is a root home holds nothing of (no `seen`: it
+ *   may not have been sending yet) or whose last showing home didn't keep (a
+ *   week kept before the read said it).
+ * - Its days are bounded by the root's first day: a root that began sending
+ *   late is measured over fewer days (`of`), never read as quiet before.
+ * - Every place of every affordance the registry offers is listed, with home's
+ *   row for it on that affordance's surface, or none: no stretch (fewer than
+ *   5) where the affordance was seen, else `no-data`. Where home read only
+ *   part of the window (`partial`), its counts would undercount, so every
+ *   place is `no-data`.
+ *
+ * Refuses a read with no friction measures (a week kept before home read
+ * them) and one whose week isn't an ISO week.
+ */
+export function frictionOf(
+  raw: unknown,
+  registry: FrictionRegistry,
+  asOf: string
+): Parsed<Friction> {
+  const parsed = HomeWeeksSchema.safeParse(raw)
+  if (!parsed.success)
+    return { ok: false, problems: problemsOf(parsed.error, "home's weeks") }
+  const home = parsed.data
+  const measures = home.friction
+  if (measures === undefined)
+    return {
+      ok: false,
+      problems: [`${home.week} was kept before home measured friction`],
+    }
+  let last: string
+  try {
+    last = addDays(isoWeekMonday(home.week), 6)
+  } catch {
+    return { ok: false, problems: [`week: ${home.week} is no ISO week`] }
+  }
+  const first = addDays(last, 1 - FRICTION_WINDOW_DAYS)
+  const seen = new Map(
+    (home.seen ?? []).map((s) => [
+      keyOf(s.pipeline, s.affordance, s.surface),
+      s,
+    ])
+  )
+  const opened = new Map(
+    measures.opened.map((o) => [
+      keyOf(o.pipeline, o.affordance, o.surface),
+      o.days,
+    ])
+  )
+  const places = new Map(
+    measures.places.map((p) => [
+      keyOf(p.pipeline, p.affordance, p.surface, p.place),
+      p,
+    ])
+  )
+  const modules = registry.map((pipeline): Friction["modules"][number] => {
+    const notMeasured = {
+      pipeline: pipeline.id,
+      opened: { kind: "not-measured" as const },
+    }
+    if (pipeline.opened.kind !== "root") return notMeasured
+    const rootId = pipeline.opened.affordance
+    const root = pipeline.affordances.find((a) => a.id === rootId)
+    if (root === undefined || root.offer === "notified") return notMeasured
+    const key = keyOf(pipeline.id, root.id, root.surface)
+    const its = seen.get(key)
+    if (its?.lastOpenedDay === undefined) return notMeasured
+    const since = its.firstDay > first ? its.firstDay : first
+    const of = Math.min(measures.measuredDays, daysFrom(since, last) + 1)
+    if (of < 1) return notMeasured
+    const lastOpened = its.lastOpenedDay
+    return {
+      pipeline: pipeline.id,
+      opened: {
+        kind: "measured",
+        days: publicCount(opened.get(key) ?? 0),
+        of,
+        weeksQuiet:
+          lastOpened === null
+            ? null
+            : Math.max(0, Math.floor(daysFrom(lastOpened, asOf) / 7)),
+      },
+    }
+  })
+  const noData: PublicCount = "no-data"
+  const placeRows = registry.flatMap((pipeline) =>
+    pipeline.affordances
+      .filter((a) => a.retired !== true)
+      .flatMap((a) => {
+        const own = a.places ?? []
+        const wasSeen =
+          measures.measuredDays > 0 &&
+          seen.has(keyOf(pipeline.id, a.id, a.surface))
+        return own.map((place, i): Friction["places"][number] => {
+          const row = places.get(keyOf(pipeline.id, a.id, a.surface, place.id))
+          const isLast = i === own.length - 1
+          const counts = (n: number): PublicCount =>
+            measures.partial || !wasSeen ? noData : publicCount(n)
+          const left = counts(row?.left ?? 0)
+          return {
+            pipeline: pipeline.id,
+            affordance: a.id,
+            place: place.id,
+            stretchesLeft: left,
+            movedOn: isLast ? noData : counts(row?.movedOn ?? 0),
+            medianMs: typeof left === "number" ? (row?.medianMs ?? null) : null,
+          }
+        })
+      })
+  )
+  const { said, median } = measures.debrief
+  const debriefSaid = measures.measuredDays > 0 ? publicCount(said) : noData
+  const friction: Friction = {
+    schema: FRICTION_SCHEMA,
+    asOf,
+    windowDays: FRICTION_WINDOW_DAYS,
+    modules,
+    places: placeRows,
+    debrief: {
+      said: debriefSaid,
+      median: typeof debriefSaid === "number" ? median : null,
+    },
+  }
+  const checked = parseFriction(friction)
+  return checked.ok ? checked : { ok: false, problems: once(checked.problems) }
 }

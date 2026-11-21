@@ -5,8 +5,9 @@
  * module is a pipeline of the registry (`./pipelines`), and how its opening
  * is known is its `opened` (`Opened`, `./registry`).
  *
- * Home reads each module's opens from its events (the friction aggregate,
- * `@some-ui/video-render`'s `friction.ts`). This names the silent ones, for
+ * Home reads each module's root from its events, and a walkthrough's render
+ * maps that onto the registry (the friction aggregate, `@some-ui/video-render`'s
+ * `friction.ts`, kept as `friction.json`). This names the silent ones, for
  * the weekly report, `pnpm report:vestiges` and the walkthroughs to say.
  * A module whose opening is not measured is never silent: it is said as
  * not measured, so no live module is called a graveyard for want of a
@@ -59,4 +60,51 @@ export function silentModules(
   return silent.sort(
     (a, b) => rank(b) - rank(a) || a.pipeline.localeCompare(b.pipeline)
   )
+}
+
+/** Whether `m` is one module's opens, as the aggregate writes it. */
+function isModuleOpens(m: unknown): m is ModuleOpens {
+  if (typeof m !== "object" || m === null) return false
+  if (!("pipeline" in m) || typeof m.pipeline !== "string") return false
+  if (!("opened" in m) || typeof m.opened !== "object" || m.opened === null)
+    return false
+  const { opened } = m
+  if (!("kind" in opened)) return false
+  if (opened.kind === "not-measured") return true
+  return (
+    opened.kind === "measured" &&
+    "weeksQuiet" in opened &&
+    (opened.weeksQuiet === null ||
+      (typeof opened.weeksQuiet === "number" &&
+        Number.isInteger(opened.weeksQuiet) &&
+        opened.weeksQuiet >= 0))
+  )
+}
+
+/** The aggregate's schema these modules are read from (`friction.ts`'s `FRICTION_SCHEMA`). */
+export const MODULE_OPENS_SCHEMA = "some-ui.friction/2"
+
+/**
+ * The modules of a `friction.json` a walkthrough's render kept, or the index
+ * of the first that isn't one module's opens (-1: no aggregate at all).
+ */
+export function readModuleOpens(
+  raw: unknown
+):
+  | { readonly ok: true; readonly modules: ReadonlyArray<ModuleOpens> }
+  | { readonly ok: false; readonly at: number } {
+  if (
+    typeof raw !== "object" ||
+    raw === null ||
+    !("schema" in raw) ||
+    raw.schema !== MODULE_OPENS_SCHEMA ||
+    !("modules" in raw) ||
+    !Array.isArray(raw.modules)
+  )
+    return { ok: false, at: -1 }
+  const modules: ReadonlyArray<unknown> = raw.modules
+  const at = modules.findIndex((m) => !isModuleOpens(m))
+  return at === -1
+    ? { ok: true, modules: modules.filter(isModuleOpens) }
+    : { ok: false, at }
 }

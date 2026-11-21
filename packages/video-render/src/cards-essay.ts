@@ -527,7 +527,7 @@ export function laidTake(
 }
 
 /** Where each of `takes` starts when each follows the one before after `gapMs`. */
-const startsAfter = (
+export const startsAfter = (
   takes: ReadonlyArray<StillTake>,
   gapMs: number
 ): Array<number> => {
