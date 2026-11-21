@@ -1,9 +1,11 @@
 import type { JSX, ReactNode } from "react"
-import { createContext, createElement, useContext, useId } from "react"
+import { createContext, useContext, useId } from "react"
 import { CAST_VIEW_BOX, castNodes } from "@some-ui/styles/brand/cast"
-import type { CastNode, Character } from "@some-ui/styles/brand/cast"
+import type { Character } from "@some-ui/styles/brand/cast"
 import { codeSpans } from "@some-ui/video-render"
 import type { Shape, Speaker } from "@some-ui/video-render"
+
+import { drawNodes } from "@/lib/brand/draw-nodes"
 
 import { ESSAY_WORDS as W } from "./essay-words"
 
@@ -81,29 +83,6 @@ export const CastProvider = ({
   children: ReactNode
 }): JSX.Element => <CastContext value={cast}>{children}</CastContext>
 
-/** An SVG attribute in React's spelling: `stop-color` is `stopColor`; `data-*` stays. */
-const reactAttr = (name: string): string =>
-  name.startsWith("data-")
-    ? name
-    : name.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase())
-
-const drawNode = (node: CastNode, key: number): ReactNode =>
-  createElement(
-    node.tag,
-    {
-      key,
-      ...Object.fromEntries(
-        Object.entries(node.attrs).map(([name, value]) => [
-          reactAttr(name),
-          value,
-        ])
-      ),
-      // The ground is the theme's.
-      ...("data-ground" in node.attrs ? { className: "fill-muted" } : {}),
-    },
-    ...(node.children ?? []).map(drawNode)
-  )
-
 /** One character, its gradients named for this drawing alone. */
 const CastIcon = ({ who }: { who: Character }): JSX.Element => {
   const prefix = useId().replace(/[^A-Za-z0-9]/g, "")
@@ -114,7 +93,11 @@ const CastIcon = ({ who }: { who: Character }): JSX.Element => {
       className="size-full"
       data-character={who}
     >
-      {castNodes(who, (name) => `${prefix}-${name}`).map(drawNode)}
+      {drawNodes(
+        castNodes(who, (name) => `${prefix}-${name}`),
+        // The ground is the theme's.
+        "fill-muted"
+      )}
     </svg>
   )
 }

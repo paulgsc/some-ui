@@ -224,6 +224,8 @@ jobs:
             record:
               - 'packages/ui/burn-ins/**'
               - 'packages/video-render/**'
+              - 'packages/video-motion/src/fonts.ts'
+              - 'packages/some-styles/src/brand/**'
               - 'apps/www/tests/record/**'
               - 'apps/www/src/lib/web-surface/burn-ins/**'
               - 'apps/www/playwright.config.ts'

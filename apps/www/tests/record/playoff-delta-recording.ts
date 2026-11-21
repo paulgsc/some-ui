@@ -283,6 +283,7 @@ export async function recordPlayoffDelta(
       {
         preview: asked.preview,
         episode: "episode.mp4",
+        genre: "playoff-delta",
         marks: () => chapterSlides(scenes.filter((s) => s.kind === "chapter")),
         policy,
         browser,

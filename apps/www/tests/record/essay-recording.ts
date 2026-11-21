@@ -8,6 +8,7 @@
 import { readdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { captionShare, LANDSCAPE } from "@some-ui/burn-ins"
+import type { Genre } from "@some-ui/styles/brand/genres"
 import {
   ESSAY_SCHEMA,
   essayChapterMarks,
@@ -87,6 +88,8 @@ type Said = {
  */
 type EssayKind<E extends { readonly week: { readonly id: string } }> = {
   readonly name: string
+  /** The genre its thumbnail is drawn in (C1026). */
+  readonly genre: Genre
   /** The stage's read of an essay of this kind, by its week (`call/feed.ts`). */
   readonly read: RegExp
   /** The stage's `kind`, when it isn't the default. */
@@ -121,6 +124,7 @@ type EssayKind<E extends { readonly week: { readonly id: string } }> = {
 
 const RUST: EssayKind<Essay> = {
   name: "a Rust Rounds essay",
+  genre: "rust-essay",
   read: /\/rust-essays\/[^/?#]+\.json$/,
   stage: null,
   parse: parseEssay,
@@ -138,6 +142,7 @@ const RUST: EssayKind<Essay> = {
 
 const INTERVIEW: EssayKind<InterviewEssay> = {
   name: "an interview essay",
+  genre: "interview-essay",
   read: /\/interview-essays\/[^/?#]+\.json$/,
   stage: "interview",
   parse: parseInterviewEssay,
@@ -329,6 +334,7 @@ async function recordKind<E extends { readonly week: { readonly id: string } }>(
       {
         preview,
         episode: "essay.mp4",
+        genre: kind.genre,
         marks: () => kind.marks(essay),
         policy,
         browser,
