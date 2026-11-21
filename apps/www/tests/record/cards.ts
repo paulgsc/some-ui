@@ -55,6 +55,7 @@ import { copyFile, mkdir, readdir, readFile, writeFile } from "node:fs/promises"
 import { basename, dirname, join, resolve } from "node:path"
 import { parseArgs } from "node:util"
 import type { Page } from "@playwright/test"
+import { captionShare } from "@some-ui/burn-ins"
 import { sha256Hex } from "@some-ui/core-utils"
 import {
   cardsChapterMarks,
@@ -103,7 +104,6 @@ import {
   sayLines,
   siteOf,
   speakerFlag,
-  zoomFoot,
 } from "./voiced"
 
 /** The series an essay may be drawn in, sampled in the renderer's workspace. */
@@ -190,7 +190,10 @@ async function sceneTakes(
   return takes
 }
 
-/** The takes `essay`'s spoken cards play, from `--takes`, each as home heard it. */
+/**
+ * The takes `essay`'s spoken cards play, from `--takes`, each as home heard
+ * it, their template A drawn in the series' theme and cast (C816, C822).
+ */
 async function spokenTakes(
   essay: CutList,
   { theme, cast }: Series,
@@ -200,8 +203,6 @@ async function spokenTakes(
   readonly heard: ReadonlyMap<string, HeardSpokenCard>
 }> {
   const named = spokenTakesOf(essay)
-  // Template A is drawn in its series' theme, as the cards around it (C816),
-  // with its series' cast (C822).
   if (dir === undefined) {
     if (named.length > 0)
       fail([
@@ -371,11 +372,20 @@ async function handedScreens(
       if (bytes === null)
         problems.push(`${snip.id}: ${snip.image.name} is missing`)
       else if (
+        bytes.length !== snip.image.bytes ||
         (await sha256Hex(new Uint8Array(bytes).buffer)) !== snip.image.sha256
       )
         problems.push(
           `${snip.id}: ${snip.image.name} is not the picture its record names`
         )
+      else {
+        // A record of another size would zoom to the wrong boxes.
+        const size = pngSize(bytes)
+        if (size?.width !== snip.width || size.height !== snip.height)
+          problems.push(
+            `${snip.id}: ${snip.image.name} isn't the size its record says`
+          )
+      }
     }
   }
   const frames = new Map<string, PictureSize>()
@@ -441,8 +451,7 @@ async function withScreens(
     await copyFile(from, to)
   }
   const resolved = resolveScreens(cut, screens.handed, {
-    // Only a spoken essay is captioned; a silent one keeps the whole frame.
-    foot: spoken ? zoomFoot(frame) : 0,
+    foot: spoken ? captionShare(frame) : 0,
     ground,
     ...(theme === undefined ? {} : { theme }),
   })

@@ -148,10 +148,7 @@ captions over it; `@some-ui/video-motion`'s `motion video` fills the port.
 essay's question scenes use it once `record:essay --week-file` has photographed the week's
 cards: the ticket's question, each speak-to point, the program and rustc's first two
 diagnostics (`essayZoomRefs`, C797). Without the cards the essay renders as before. A cards
-essay places one through a screen of the app (`src/snip.ts`, SNIPS4), zoomed or whole:
-`resolveScreens` passes one look (`ZoomOptions`) to both, and `record:cards` gives it the
-series' ground and theme and, for a spoken essay, the captions' band as `foot` (`zoomFoot`;
-C818, C869), so the screen sits among the cards and above the captions.
+essay places one through a screen of the app (`src/snip.ts`, SNIPS4; C818), zoomed or whole.
 `src/sample/videos/phone-card` is one, on a mock Rust Rounds card handed as `snips/`; like
 any essay with a screen it is drawn only by `record:cards --snips`, never by `render` on its
 folder alone.

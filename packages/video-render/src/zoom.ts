@@ -28,11 +28,7 @@ export type ZoomOptions = {
   readonly foot?: number
   /** The app's theme its ground is drawn in, as `brand-v1` takes it. */
   readonly theme?: string
-  /**
-   * The colour around the screen; the composition's own when absent. A
-   * cards essay passes its series' ground (C818); the Rust essay passes
-   * none, so its zoom keeps its theme's ground.
-   */
+  /** The colour around the screen; the composition's own when absent. */
   readonly ground?: string
 }
 

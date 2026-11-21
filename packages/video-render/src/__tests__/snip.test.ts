@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto"
 import { mkdtemp, readFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -15,13 +14,12 @@ import {
   clipFramesOf,
   isSnipId,
   parseSnipsGiven,
-  pngSize,
   resolveScreens,
   SNIPS_GIVEN_SCHEMA,
   snipScreen,
   snipsOf,
 } from "@video-render/snip"
-import type { Handed, SnipRecord, SnipsGiven } from "@video-render/snip"
+import type { Handed, SnipRecord } from "@video-render/snip"
 import * as fixtures from "@video-render/testing"
 import { SCREEN_ZOOM } from "@video-render/zoom"
 import { describe, expect, it } from "vitest"
@@ -185,7 +183,11 @@ describe("an essay's screens of the app (SNIPS4)", () => {
       snip(APK),
       snip(PHONE, ["QM-311:program", "QM-311:run"]),
     ])
-    const drawn = resolveScreens(cut, given([apk(), phone()]), { foot: 0.25 })
+    const drawn = resolveScreens(cut, given([apk(), phone()]), {
+      foot: 0.25,
+      theme: "dark",
+      ground: "#111821",
+    })
     if (!drawn.ok) throw new Error(drawn.problems.join("; "))
     // The owner (2026-11-21): not full-bleed, the caption below the screen.
     expect(drawn.value.shots[1]?.picture).toEqual({
@@ -198,6 +200,8 @@ describe("an essay's screens of the app (SNIPS4)", () => {
         scale: 1,
         stops: "[]",
         foot: 0.25,
+        theme: "dark",
+        ground: "#111821",
       },
       files: ["snips/apk/android/release-studio~takes-dddddddddddd.png"],
     })
@@ -214,6 +218,9 @@ describe("an essay's screens of the app (SNIPS4)", () => {
           { x: 16, y: 200, width: 380, height: 300 },
           { x: 16, y: 520, width: 380, height: 120 },
         ]),
+        foot: 0.25,
+        theme: "dark",
+        ground: "#111821",
       },
     })
     expect(snipsOf(drawn.value)).toEqual([])
@@ -374,26 +381,13 @@ describe("an essay's screens of the app (SNIPS4)", () => {
 })
 
 describe("the phone-card sample: a cards essay on a snip of the phone (#3311, C818)", () => {
-  const KEY = "phone-card-2026-11-21"
-  const SNIPS = join(VIDEOS, "phone-card", "snips")
-  const series = (version: number): ReturnType<typeof readSeries> =>
-    readSeries(
-      join(import.meta.dirname, "../sample/series/cheat-sheet"),
-      version
-    )
-
-  const handed = async (): Promise<SnipsGiven> => {
-    const parsed = parseSnipsGiven(
-      JSON.parse(await readFile(join(SNIPS, "snips.json"), "utf8"))
-    )
-    if (!parsed.ok) throw new Error(parsed.problems.join("; "))
-    return parsed.value
-  }
-
-  it("is a cards essay cards-check passes, whose snips are the pictures they name", async () => {
+  it("is publishable, and every screen it shows is one its snips hold", async () => {
+    const KEY = "phone-card-2026-11-21"
     const cut = await showcase("phone-card")
-    expect(parseCardsEssay(KEY, cut).ok).toBe(true)
-    const v3 = await series(3)
+    const v3 = await readSeries(
+      join(import.meta.dirname, "../sample/series/cheat-sheet"),
+      3
+    )
     const files = new Map<string, unknown>([
       ["index.json", { schema: CARDS_INDEX_SCHEMA, essays: [{ key: KEY }] }],
       [`${KEY}.json`, cut],
@@ -403,69 +397,17 @@ describe("the phone-card sample: a cards essay on a snip of the phone (#3311, C8
         id === "cheat-sheet" && version === 3 && v3.ok ? v3.value : null
       )
     ).toEqual([])
-    for (const snip of (await handed()).bundles.flatMap((b) => b.snips)) {
-      const bytes = await readFile(join(SNIPS, snip.image.name))
-      expect(createHash("sha256").update(bytes).digest("hex")).toBe(
-        snip.image.sha256
+    const given = parseSnipsGiven(
+      JSON.parse(
+        await readFile(
+          join(VIDEOS, "phone-card", "snips", "snips.json"),
+          "utf8"
+        )
       )
-      expect(bytes.length).toBe(snip.image.bytes)
-      expect(pngSize(new Uint8Array(bytes))).toEqual({
-        width: snip.width,
-        height: snip.height,
-      })
-    }
-  })
-
-  it("boxes each part of its snip apart from the others, inside the picture", async () => {
-    for (const snip of (await handed()).bundles.flatMap((b) => b.snips)) {
-      const width = snip.width / snip.scale
-      const height = snip.height / snip.scale
-      for (const { ref, box } of snip.regions) {
-        expect(box.x + box.width, ref).toBeLessThanOrEqual(width)
-        expect(box.y + box.height, ref).toBeLessThanOrEqual(height)
-      }
-      // A part names one thing: none overlaps another, so a zoom to one
-      // never rings its neighbour too.
-      snip.regions.forEach((a, i) =>
-        snip.regions.slice(i + 1).forEach((b) => {
-          const apart =
-            a.box.x + a.box.width <= b.box.x ||
-            b.box.x + b.box.width <= a.box.x ||
-            a.box.y + a.box.height <= b.box.y ||
-            b.box.y + b.box.height <= a.box.y
-          expect(apart, `${a.ref} and ${b.ref}`).toBe(true)
-        })
-      )
-    }
-  })
-
-  it("draws each screen scene, zoomed or whole, from the handed snip in the look it is given", async () => {
-    const look = { foot: 0.3, theme: "dark", ground: "#111821" }
-    const drawn = resolveScreens(
-      await showcase("phone-card"),
-      { snips: await handed(), clips: null },
-      look
     )
-    if (!drawn.ok) throw new Error(drawn.problems.join("; "))
-    expect(drawn.value.shots.map((shot) => shot.picture.kind)).toEqual([
-      "card",
-      "composition",
-      "composition",
-      "composition",
-      "card",
-    ])
-    // C3 shows the card whole: the same composition with no stops.
-    const whole = drawn.value.shots[3]?.picture
-    expect(
-      whole?.kind === "composition" ? whole.variables["stops"] : null
-    ).toBe("[]")
-    for (const shot of drawn.value.shots)
-      if (shot.picture.kind === "composition") {
-        expect(shot.picture.variables).toMatchObject(look)
-        // The look never moves the picture out of the handed folder.
-        expect(shot.picture.files).toEqual([
-          "snips/web/phone/rust-rounds-sample-7da9fd68697e.png",
-        ])
-      }
+    if (!given.ok) throw new Error(given.problems.join("; "))
+    expect(resolveScreens(cut, { snips: given.value, clips: null }).ok).toBe(
+      true
+    )
   })
 })

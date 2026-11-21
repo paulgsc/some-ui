@@ -23,7 +23,7 @@ import {
   type VoicedScene,
 } from "@playoff-delta/lib/voiced"
 import { INTRO } from "@playoff-delta/lib/words"
-import { captionSpace } from "@some-ui/burn-ins"
+import { captionShare } from "@some-ui/burn-ins"
 import { cn } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/intent-kit"
 import { useOverflows } from "@some-ui/react-hooks"
@@ -196,7 +196,7 @@ const Frame = ({
   // unit; it runs to the frame's foot.
   const style: CSSProperties | undefined = band
     ? {
-        paddingBottom: `${(100 * captionSpace(RECORDING)) / RECORDING.height}cqh`,
+        paddingBottom: `${100 * captionShare(RECORDING)}cqh`,
       }
     : undefined
   const brand = framing?.kind === "brand-in" || framing?.kind === "brand-out"
