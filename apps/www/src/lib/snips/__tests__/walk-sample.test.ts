@@ -10,6 +10,7 @@ import { resolve } from "node:path"
 import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
 import { inMemoryStorage } from "@some-ui/core-utils"
 import type { Digest } from "@some-ui/job-desk"
+import { sampleDigest } from "@some-ui/job-desk/sample"
 import sample from "@tests/walk/jobs-week.json"
 import { describe, expect, it } from "vitest"
 import { z } from "zod"
@@ -114,7 +115,7 @@ describe("the Jobs walk's story sample (WALK2)", () => {
     )
   })
 
-  it("puts only a made-up person's details in the paste kits, since a walkthrough is published", async () => {
+  it("gives the paste kits job-desk's sample holds, whose details SD1 keeps made up", async () => {
     const fetched: Array<ReadonlyArray<Digest>> = []
     await exchangeJobs(
       {
@@ -132,14 +133,8 @@ describe("the Jobs walk's story sample (WALK2)", () => {
       },
       home
     )
-    const contacts = fetched
-      .flat()
-      .flatMap((d) => d.picks)
-      .flatMap((p) => p.kit.fields)
-      .filter((f) => ["Email", "GitHub", "Portfolio"].includes(f.label))
-    expect(contacts.length).toBeGreaterThan(0)
-    for (const { value } of contacts)
-      expect(value).toMatch(/example(\.com)?$|github\.com\/example$/)
+    const kits = fetched.flat().flatMap((d) => d.picks.map((p) => p.kit))
+    expect(kits).toEqual(sampleDigest().picks.map((p) => p.kit))
   })
 
   it("gives it an interview week that reads and is open on the frozen day", async () => {
