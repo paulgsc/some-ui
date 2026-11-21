@@ -8,13 +8,14 @@
     "server:docs/shared-stages.md",
     "server:docs/home-compute.md"
   ],
-  "chose": "a fast-tracked note holds the head of the line and passes the lane's give for one try per mark (live while its attempts are unchanged since the act); failed once, it falls back among notes tried as often, still ahead of the wanted and of those nothing waits on; spent for good once any model hears it; the contention guard's excused note gives way",
+  "chose": "A note the owner marked fast and no model has tried yet is FastTrack: it is first among the least-tried, so at the head of the line, and the transcriber's pass does not give the lane its turn before it, for that one try. Once tried it is Wanted, behind every note tried fewer times, so TR1 (C895) holds literally. The contention guard's excused note still gives way. The give's exception is at most one deadline per marked note per model.",
   "options": [
-    "one try at the head per mark (TR1 whole)",
-    "fast-tracked ahead of tried outright, every retry at the head",
-    "order only within tried, never passing the give"
+    "FastTrack only while untried, one exception to the give per marked note (TR1 literal)",
+    "a mark re-arming on every re-mark, ahead of tried notes each time",
+    "order only, never passing the give"
   ],
-  "gray": "holding the head across retries would loosen TR1 (a note that keeps failing never holds the queue); that is the owner's call and the ledger's to amend. The give exception is bounded by one deadline per mark the owner sets. It rests on the owner's ruling on server#1090 (2026-11-21): a fast-tracked take skips the give; it bounds C899's give and keeps C895's TR1 whole",
-  "undo": "drop live from ORDER BY and first_try's exemption; marked still orders within tried",
-  "refs": ["server#1090", "server#1091"]
+  "gray": "It rests on the owner's ruling on server#1090 (2026-11-21): a fast-tracked take skips the give. Holding the head across retries would loosen TR1, which is the owner's call and the ledger's to amend.",
+  "undo": "Remove FastTrack's exemption in the pass; the note still sorts first among the least-tried.",
+  "refs": ["server#1090", "server#1091", "server#1100"],
+  "moves": "C899"
 }

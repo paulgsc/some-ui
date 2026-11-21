@@ -5543,7 +5543,7 @@
     {
       "store": "server:voice_note_fast_track",
       "class": "record",
-      "growth": "Per act the owner takes putting one of their voice notes at the front of home's transcriber's line, or taking that back (server#1090, server#1091): one short row (the note's id, the act's number, fast or cancel, the attempts the note had at the act, when); append-only, a later act a new row, the same act again writing nothing; it goes with its note when the owner deletes it for good, and with the account. Grows with how often the owner fast-tracks notes, a handful a week.",
+      "growth": "Per act the owner takes putting one of their voice notes at the front of home's transcriber's line, or taking that back (server#1090, server#1091): one short row (the note's id, the act's number, fast or cancel, when); append-only (UPDATE aborts), a later act a new row, a repeat of the newest act writing nothing; it goes with its note when the owner deletes it for good, and with the account. Grows with how often the owner fast-tracks notes.",
       "family": "voice-heard"
     }
   ],

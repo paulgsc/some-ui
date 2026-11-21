@@ -6,12 +6,13 @@
     "server:crates/db/voice/src/transcript.rs",
     "server:apps/servers/file_host/src/transcribe/pass.rs"
   ],
-  "chose": "each waiting note carries transcript::Urgency { None < Wanted < FastTrack }, a closed ordered enum: FastTrack while its mark is live, Wanted while marked or something waits on it, else None; the pass reads it, and only FastTrack passes the give",
+  "chose": "Urgency is one closed ordered type, transcript::Urgency { None < Wanted < FastTrack }, and one term of the queue's order: excused, then tried, then urgency, then how many wait on it, then oldest. The SQL computes urgency in one CASE whose ranks a test holds equal to the enum's, and the pass reads the same value to decide the give.",
   "options": [
-    "a closed ordered Urgency enum on Waiting",
-    "a raw score or the bare live/marked/wanted columns for the pass to interpret"
+    "one urgency term after tried, computed by a CASE the enum's test holds",
+    "separate ORDER BY terms per source (live, marked, wanted)"
   ],
-  "gray": "a new source of urgency is a new case or a new mapping, never a number tuned; urgency through more than one edge is not built yet; see C1017",
-  "undo": "drop the field; the pass gives way for every note",
-  "refs": ["server#1090", "server#1091"]
+  "gray": "The owner asked on server#1090 for the fast-track to be one source of urgency in the mechanism, not a one-off ORDER BY term. This generalises C1015's wanted term: wanted is now Wanted, and how many wait still breaks ties within it.",
+  "undo": "Replace the urgency term with wanted DESC alone; the pass then gives way for every note.",
+  "refs": ["server#1090", "server#1091", "server#1100"],
+  "moves": "C1015"
 }
