@@ -73,25 +73,33 @@ describe("what each kind's take is about, through its port", () => {
     const matched = (more: Record<string, string>): string =>
       line("game", "401772", { ...fields, ...more })
     expect(
-      matched({ matched: "next", playPeriod: "3", playClock: "4:05" })
+      matched({ matchedBy: "next", playPeriod: "3", playClock: "4:05" })
     ).toBe("49ers vs Rams · Q3 4:05 · Fourth down")
     expect(
-      matched({ matched: "nearest", playPeriod: "5", playClock: "8:00" })
+      matched({ matchedBy: "nearest", playPeriod: "5", playClock: "8:00" })
     ).toBe("49ers vs Rams · OT 8:00 · Fourth down")
-    expect(matched({ matched: "nearest", playPeriod: "2" })).toBe(
+    expect(matched({ matchedBy: "nearest", playPeriod: "2" })).toBe(
       "49ers vs Rams · Q2 · Fourth down"
     )
-    expect(matched({ matched: "unmatched" })).toBe(
+    expect(
+      matched({ matchedBy: "next", playPeriod: "6", playClock: "2:00" })
+    ).toBe("49ers vs Rams · OT 2:00 · Fourth down")
+    // A clock with no quarter is no play to name: the clock it was said at.
+    expect(matched({ matchedBy: "next", playClock: "2:00" })).toBe(
+      "49ers vs Rams · Q3 4:12 · Fourth down"
+    )
+    expect(matched({ matchedBy: "unmatched" })).toBe(
       "49ers vs Rams · Not matched to a play · Fourth down"
     )
-    // About a stretch of the game, or not matched yet: the clock it was said at.
-    for (const why of ["not-a-play", "no-scenario"]) {
-      expect(matched({ matched: why })).toBe(
+    // About a stretch of the game, nothing to match it under, or a way this
+    // phone doesn't know: the clock it was said at.
+    for (const why of ["not-a-play", "no-scenario", "a-way-not-known-yet"]) {
+      expect(matched({ matchedBy: why })).toBe(
         "49ers vs Rams · Q3 4:12 · Fourth down"
       )
     }
     // A play home names without a quarter reads as the clock said.
-    expect(matched({ matched: "nearest", playPeriod: "x" })).toBe(
+    expect(matched({ matchedBy: "nearest", playPeriod: "x" })).toBe(
       "49ers vs Rams · Q3 4:12 · Fourth down"
     )
   })

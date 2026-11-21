@@ -13,9 +13,10 @@
  * - **Studio's takes keep their own split** (`./compartments`' `aboutOfRef`):
  *   an episode note, a scene, an idea, an ask or one recorded on Takes.
  */
-import { dayOf, formatDay, weekNumber } from "@some-ui/core-utils"
+import { assertNever, dayOf, formatDay, weekNumber } from "@some-ui/core-utils"
 
-import { TAKE_OFS } from "./take-ofs"
+import type { MatchMethod } from "./take-ofs"
+import { MATCH_METHODS, TAKE_OFS } from "./take-ofs"
 
 export { TAKE_OFS }
 
@@ -149,12 +150,31 @@ function biteMoment(
   fields: Readonly<Record<string, string>>,
   words: AboutPortWords
 ): string | undefined {
-  const period = Number(fields.playPeriod)
-  const played = fields.matched === "nearest" || fields.matched === "next"
-  if (played && Number.isInteger(period) && period > 0)
-    return words.atPlay(period, fields.playClock)
-  if (fields.matched === "unmatched") return words.noPlay
-  return fields.strip?.split(" · ")[0]
+  const said = fields.strip?.split(" · ")[0]
+  // A method this phone doesn't know reads as not matched yet.
+  const method: MatchMethod | undefined = MATCH_METHODS.find(
+    (each) => each === fields.matchedBy
+  )
+  if (method === undefined) return said
+  switch (method) {
+    case "nearest":
+    case "next": {
+      const period = Number(fields.playPeriod)
+      return Number.isInteger(period) && period > 0
+        ? words.atPlay(period, fields.playClock)
+        : said
+    }
+    case "unmatched": {
+      return words.noPlay
+    }
+    case "not-a-play":
+    case "no-scenario": {
+      return said
+    }
+    default: {
+      return assertNever(method)
+    }
+  }
 }
 
 /**

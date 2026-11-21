@@ -15,7 +15,7 @@
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { readAs } from "@some-ui/core-utils"
 import type { LibraryPage, LibraryRead, PhoneTake } from "@some-ui/soundbites"
-import { TAKE_OFS } from "@some-ui/soundbites/contract"
+import { MATCH_METHODS, TAKE_OFS } from "@some-ui/soundbites/contract"
 import { z } from "zod"
 
 import type { PhoneBite } from "@/lib/game-bites"
@@ -58,11 +58,18 @@ const TakeSchema = z.object({
         .catch(undefined),
       match: z
         .object({
-          method: z.string().min(1),
+          // One this phone doesn't know reads as not matched yet.
+          method: z.enum(MATCH_METHODS).optional().catch(undefined),
           play: z
             .object({
-              period: z.number().int().positive().nullable().optional(),
-              clock: z.string().min(1).nullable().optional(),
+              period: z
+                .number()
+                .int()
+                .positive()
+                .nullable()
+                .optional()
+                .catch(undefined),
+              clock: z.string().min(1).nullable().optional().catch(undefined),
             })
             .nullable()
             .optional()
@@ -132,9 +139,12 @@ function gameFields(
   if (strip != null) fields.strip = strip
   if (started != null) fields.started = started
   const { method, play } = about.match ?? {}
-  if (method != null) fields.matched = method
-  if (play?.period != null) fields.playPeriod = String(play.period)
-  if (play?.clock != null) fields.playClock = play.clock
+  // A play only beside the way home matched it.
+  if (method != null) {
+    fields.matchedBy = method
+    if (play?.period != null) fields.playPeriod = String(play.period)
+    if (play?.clock != null) fields.playClock = play.clock
+  }
   return fields
 }
 
