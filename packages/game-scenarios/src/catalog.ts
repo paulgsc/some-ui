@@ -33,6 +33,18 @@ export type Moment = (typeof MOMENTS)[number]
 export const HALVES = ["first", "second", "overtime"] as const
 export type Half = (typeof HALVES)[number]
 
+/**
+ * Which unit a bite is about (#3049): who has the ball decides offense or
+ * defense, a kick special teams, a decision coaching first.
+ */
+export const UNITS = [
+  "offense",
+  "defense",
+  "special-teams",
+  "coaching",
+] as const
+export type Unit = (typeof UNITS)[number]
+
 /** How big a big play was, smallest first (#3048, D8). */
 export const BIG_PLAY_SIZES = ["big", "huge", "memorable"] as const
 export type BigPlaySize = (typeof BIG_PLAY_SIZES)[number]

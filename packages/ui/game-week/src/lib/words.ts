@@ -5,11 +5,13 @@
  * every phrase these functions can make to that.
  */
 import { counted, dayOf, formatDay } from "@some-ui/core-utils"
+import { UNIT_WORDS } from "@some-ui/game-scenarios"
 import { TAKE_ENDING_WORDS } from "@some-ui/voice-capture"
 
 import type { FeedLink } from "./feed"
 import type { ModeId } from "./modes"
 import type { OutboxView } from "./ports"
+import type { BiteUnit, Tier } from "./ranked"
 
 export const WORDS = {
   team: "SF",
@@ -34,7 +36,10 @@ export const WORDS = {
   undo: "Undo",
   settingsTitle: "How much to show",
   legendTitle: "Every scenario",
-  legendLede: "Tap one to talk about it.",
+  legendLede: "Most likely first. Tap one to talk about it.",
+  /** The unit chip while a bite is said: one tap moves it on. */
+  unitChange: "Tap to change who it's about",
+  noUnit: "Who it's about",
   recordingLabel: "Saying it",
   sayingFirst: "Saying it first",
 } as const
@@ -191,4 +196,17 @@ export function outboxLine(view: OutboxView): string {
     )
   }
   return lines.join(" ")
+}
+
+/** The ranked list's headings, most plausible first (#3049). */
+export const TIER_TITLES: Readonly<Record<Tier, string>> = {
+  now: "Likely now",
+  always: "Any time",
+  rest: "Everything else",
+}
+
+/** Which unit a bite is about: "CHI defense", or "Coaching" for no one team. */
+export function unitLine(unit: BiteUnit): string {
+  const word = UNIT_WORDS[unit.unit]
+  return unit.side === null ? word : `${unit.side} ${word.toLowerCase()}`
 }

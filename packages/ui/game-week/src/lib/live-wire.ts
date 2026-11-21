@@ -12,9 +12,11 @@
  * `pingText`, so a change on either side the other cannot read fails a test.
  */
 import { isRecord, jsonOf } from "@some-ui/core-utils"
-import { isScenarioId } from "@some-ui/game-scenarios"
+import { isScenarioId, UNITS } from "@some-ui/game-scenarios"
 
 import type { FeedChoice, Game, JustHappened, Offer, OfferCard } from "./feed"
+import type { RankedEntry } from "./ranked"
+import { TIERS } from "./ranked"
 import { gameLabel, wantLine } from "./words"
 
 /** The one version of the messages this build speaks. */
@@ -89,6 +91,26 @@ function lineOf(value: unknown): Line | null {
 }
 
 /**
+ * One entry of home's ranked list (#3049), or null for one this build
+ * doesn't know (a newer catalog's scenario, tier or unit): left out, and
+ * the scenario stays pickable at the end of the list (`rankedList`).
+ */
+function rankedOf(value: unknown): RankedEntry | null {
+  if (!isRecord(value) || !isString(value.id) || !isScenarioId(value.id))
+    return null
+  const tier = TIERS.find((each) => each === value.tier)
+  if (tier === undefined) return null
+  const { unit } = value
+  if (unit === null || unit === undefined)
+    return { scenario: value.id, tier, unit: null }
+  if (!isRecord(unit)) return null
+  const named = UNITS.find((each) => each === unit.unit)
+  const side = unit.side ?? null
+  if (named === undefined || !(side === null || isString(side))) return null
+  return { scenario: value.id, tier, unit: { unit: named, side } }
+}
+
+/**
  * Home's offer as the recorder shows it: the strip as one line, the cards
  * ranked as home ordered them, and only scenarios this build knows (a
  * newer catalog's are left out, never guessed at). `null` when it does not
@@ -126,12 +148,20 @@ function asOffer(seq: number, value: unknown): Offer | null {
       justHappened.push({ scenario: each.id, context: each.line, at: each.at })
     }
   }
+  // From a home that ranks (#3049); entries this build can't read are left out.
+  const ranked = Array.isArray(value.ranked)
+    ? value.ranked.flatMap((each) => {
+        const read = rankedOf(each)
+        return read === null ? [] : [read]
+      })
+    : undefined
   return {
     seq,
     gameId: value.gameId,
     strip: parts.filter((part) => isString(part) && part !== "").join(" · "),
     cards,
     justHappened,
+    ...(ranked === undefined ? {} : { ranked }),
   }
 }
 

@@ -3,7 +3,13 @@ import { fixtureFeed } from "@game-week/lib/feed"
 import type { OutboxPort } from "@game-week/lib/ports"
 import { storedPrefs } from "@game-week/lib/ports"
 import type { GameWeekPorts } from "@game-week/lib/runtime"
-import { noGamesLine, noOfferLine, NOTICES, WORDS } from "@game-week/lib/words"
+import {
+  noGamesLine,
+  noOfferLine,
+  NOTICES,
+  TIER_TITLES,
+  WORDS,
+} from "@game-week/lib/words"
 import {
   microphoneOwner,
   TAKE_ENDING_WORDS,
@@ -271,6 +277,9 @@ describe("GameWeek", () => {
     fireEvent.click(screen.getByRole("button", { name: WORDS.everyScenario }))
     const sheet = screen.getByRole("dialog", { name: WORDS.legendTitle })
     expect(sheet.textContent).toContain(WORDS.legendLede)
+    // Away, every scenario is there, in the catalog's order, all in one tier.
+    expect(sheet.textContent).toContain(TIER_TITLES.rest)
+    expect(sheet.textContent).not.toContain(TIER_TITLES.now)
     fireEvent.keyDown(sheet, { key: "Escape" })
     expect(screen.queryByRole("dialog")).toBeNull()
   })

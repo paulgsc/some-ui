@@ -1,0 +1,21 @@
+{
+  "id": "C857",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "packages/ui/game-week/src/lib/ranked.ts",
+    "packages/ui/game-week/src/lib/machine.ts",
+    "packages/ui/game-week/src/lib/words.ts",
+    "packages/ui/game-week/src/components/game-week/index.tsx",
+    "packages/game-scenarios/src/words.ts"
+  ],
+  "chose": "On Game day (#3049): the 'Every scenario' sheet becomes the ranked list (Likely now, Any time, Everything else; away from home every scenario in the catalog's order under Everything else), opened from a round bubble at the bottom right that is always there, in place of the header's list button. Each row names the unit a bite on it is about by default ('CHI defense', 'Coaching'). While a bite is said, a chip under its scenario names its unit, and one tap moves it to the next unit (Offense, Defense, Special teams, Coaching) keeping whose it is. A bite said first takes its unit from the scenario picked after it. The unit goes home once, with the bite: it can't be changed once the bite stops.",
+  "options": [
+    "the ranked list in place of the sheet, a floating bubble, and a one-tap unit chip while the bite is said",
+    "a second ranked list beside the 'Every scenario' sheet",
+    "a unit picker of four buttons shown after the bite stops, during its Undo window"
+  ],
+  "gray": "The owner asked for a bubble 'always there' and a list 'most plausible first' (#3049), but not where it sits, how the tiers are named, how a unit reads, or when it can be changed. The Undo window after a bite (5 s) is too short to pick a unit in, and a change once home holds a bite would need a record home doesn't keep, so the change is offered while the bite is said. Changing whose team it is about waits on the socket naming a game's two teams.",
+  "undo": "Put the header's list button back and render the catalog by phase in the sheet; drop the chip from Recording and the pickUnit intent; the unit then comes only from the ranked list.",
+  "refs": ["#3049", "#3048", "#3041"]
+}

@@ -8,6 +8,7 @@ import type {
   BigPlaySize,
   Half,
   Phase,
+  Unit,
 } from "@game-scenarios/catalog"
 
 export const PHASE_TITLES: Readonly<Record<Phase, string>> = {
@@ -115,4 +116,12 @@ export const BIG_PLAY_KIND_WORDS: Readonly<Record<BigPlayKind, string>> = {
   "punt-return": "Punt return",
   "interception-return": "Interception return",
   "fumble-return": "Fumble return",
+}
+
+/** Which unit a bite is about. */
+export const UNIT_WORDS: Readonly<Record<Unit, string>> = {
+  offense: "Offense",
+  defense: "Defense",
+  "special-teams": "Special teams",
+  coaching: "Coaching",
 }

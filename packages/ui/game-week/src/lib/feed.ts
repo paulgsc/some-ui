@@ -11,6 +11,7 @@
 import type { ScenarioId } from "@some-ui/game-scenarios"
 
 import type { ModeId } from "./modes"
+import type { RankedEntry } from "./ranked"
 
 /** One game of the week, read through SF. */
 export type Game = {
@@ -50,6 +51,11 @@ export type Offer = {
   readonly strip: string
   readonly cards: ReadonlyArray<OfferCard>
   readonly justHappened: ReadonlyArray<JustHappened>
+  /**
+   * Every scenario, most plausible now first, with the unit a bite on each
+   * is about (#3049); absent from a home before it ranks.
+   */
+  readonly ranked?: ReadonlyArray<RankedEntry> | undefined
 }
 
 /**

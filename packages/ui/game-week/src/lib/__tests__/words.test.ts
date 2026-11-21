@@ -14,9 +14,12 @@ import {
   noOfferLine,
   NOTICES,
   outboxLine,
+  TIER_TITLES,
+  unitLine,
   wantLine,
   WORDS,
 } from "@game-week/lib/words"
+import { UNITS } from "@some-ui/game-scenarios"
 import { describe, expect, it } from "vitest"
 
 const MACHINERY =
@@ -78,6 +81,11 @@ function everyPhrase(): Array<string> {
     ...LINKS.flatMap((link) => [noOfferLine(link), noGamesLine(link)]),
     gameLabel("SF", "SEA"),
     wantLine("SF"),
+    ...Object.values(TIER_TITLES),
+    ...UNITS.flatMap((unit) => [
+      unitLine({ unit, side: "CHI" }),
+      unitLine({ unit, side: null }),
+    ]),
     ...views,
   ]
 }

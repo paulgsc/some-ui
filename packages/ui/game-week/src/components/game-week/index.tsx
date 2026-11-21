@@ -27,11 +27,14 @@ import {
   currentGame,
   isWatching,
   offerView,
+  rankedNow,
 } from "@game-week/lib/machine"
 import type { ModeId } from "@game-week/lib/modes"
 import { MODE_RULES, MODES } from "@game-week/lib/modes"
 import type { OutboxPort } from "@game-week/lib/ports"
 import { quietFill } from "@game-week/lib/quiet"
+import type { RankedEntry } from "@game-week/lib/ranked"
+import { TIERS } from "@game-week/lib/ranked"
 import type { GameWeekPorts } from "@game-week/lib/runtime"
 import { createGameWeek } from "@game-week/lib/runtime"
 import {
@@ -41,16 +44,12 @@ import {
   noGamesLine,
   noOfferLine,
   outboxLine,
+  TIER_TITLES,
+  unitLine,
   WORDS,
 } from "@game-week/lib/words"
 import { cn } from "@some-ui/core-utils"
-import type { ScenarioId } from "@some-ui/game-scenarios"
-import {
-  PHASE_TITLES,
-  PHASES,
-  scenarioOf,
-  SCENARIOS,
-} from "@some-ui/game-scenarios"
+import { scenarioOf } from "@some-ui/game-scenarios"
 import {
   Button,
   CardLink,
@@ -225,10 +224,11 @@ const happened = (each: JustHappened): Said => ({
   context: each.context,
 })
 
-const everyScenario = (scenario: ScenarioId): Said => ({
+const everyScenario = (entry: RankedEntry): Said => ({
   how: "every-scenario",
-  scenario,
+  scenario: entry.scenario,
   context: "",
+  unit: entry.unit,
 })
 
 /** The cards and what just happened, each starting (or naming) a bite. */
@@ -290,12 +290,15 @@ const Recording = ({
   button,
   now,
   onDone,
+  onUnit,
 }: {
   activity: Extract<Activity, { kind: "taking" }>
   /** The take pattern's button for the bite: Done, the time against the cap. */
   button: TakeButtonView
   now: number
   onDone: () => void
+  /** One tap moves the bite to the next unit (#3049). */
+  onUnit: () => void
 }): JSX.Element => {
   const level = button.kind === "recording" ? button.level : 0
   const fill =
@@ -325,6 +328,17 @@ const Recording = ({
           ? WORDS.sayingFirst
           : scenarioOf(said.scenario).name}
       </p>
+      {said.how !== "said-first" && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-full"
+          onClick={onUnit}
+          aria-label={WORDS.unitChange}
+        >
+          {said.unit == null ? WORDS.noUnit : unitLine(said.unit)}
+        </Button>
+      )}
       <div
         role="meter"
         aria-label="Level"
@@ -394,45 +408,64 @@ const Asking = ({
   </section>
 )
 
-const Legend = ({
+/**
+ * Every scenario, most plausible first (#3049): the tiers of home's ranked
+ * list, or the catalog's order while home offers nothing, each with the
+ * unit a bite on it is about by default.
+ */
+const Ranked = ({
+  list,
   onPick,
 }: {
-  onPick: (scenario: ScenarioId) => void
+  list: ReadonlyArray<RankedEntry>
+  onPick: (entry: RankedEntry) => void
 }): JSX.Element => (
   <div className="space-y-4">
     <p className="text-muted-foreground text-sm">{WORDS.legendLede}</p>
-    {PHASES.map((phase) => (
-      <section
-        key={phase}
-        aria-label={PHASE_TITLES[phase]}
-        className="space-y-1"
-      >
-        <h3 className="text-muted-foreground text-xs font-bold tracking-wide uppercase">
-          {PHASE_TITLES[phase]}
-        </h3>
-        <ul>
-          {SCENARIOS.filter((s) => s.phase === phase).map((scenario) => (
-            <li key={scenario.id}>
-              <button
-                type="button"
-                onClick={() => onPick(scenario.id)}
-                className="hover:bg-accent flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left"
-              >
-                <ScenarioIcon id={scenario.id} className="text-brand" />
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold">
-                    {scenario.name}
-                  </span>
-                  <span className="text-muted-foreground block text-xs">
-                    {scenario.covers}
-                  </span>
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
-    ))}
+    {TIERS.map((tier) => {
+      const entries = list.filter((entry) => entry.tier === tier)
+      if (entries.length === 0) return null
+      return (
+        <section
+          key={tier}
+          aria-label={TIER_TITLES[tier]}
+          className="space-y-1"
+        >
+          <h3 className="text-muted-foreground text-xs font-bold tracking-wide uppercase">
+            {TIER_TITLES[tier]}
+          </h3>
+          <ul>
+            {entries.map((entry) => {
+              const scenario = scenarioOf(entry.scenario)
+              return (
+                <li key={entry.scenario}>
+                  <button
+                    type="button"
+                    onClick={() => onPick(entry)}
+                    className="hover:bg-accent flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left"
+                  >
+                    <ScenarioIcon id={entry.scenario} className="text-brand" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold">
+                        {scenario.name}
+                      </span>
+                      <span className="text-muted-foreground block text-xs">
+                        {scenario.covers}
+                      </span>
+                    </span>
+                    {entry.unit !== null && (
+                      <span className="text-muted-foreground shrink-0 text-xs">
+                        {unitLine(entry.unit)}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      )
+    })}
   </div>
 )
 
@@ -496,9 +529,9 @@ export const GameWeek = ({
   const view = offerView(state)
   const asking = activity.kind === "asking"
   const say = (said: Said): void => dispatch({ type: "say", said })
-  const pickFromLegend = (scenario: ScenarioId): void => {
+  const pickFromLegend = (entry: RankedEntry): void => {
     setPanel("none")
-    const said = everyScenario(scenario)
+    const said = everyScenario(entry)
     dispatch(asking ? { type: "answer", said } : { type: "say", said })
   }
   const outboxWords = outboxLine(waiting)
@@ -523,14 +556,6 @@ export const GameWeek = ({
           <h1 className="min-w-0 flex-1 truncate text-2xl font-black tracking-tight uppercase">
             {game?.label ?? WORDS.team}
           </h1>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setPanel("legend")}
-            aria-label={WORDS.everyScenario}
-          >
-            <List className="size-5" aria-hidden />
-          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -562,6 +587,7 @@ export const GameWeek = ({
           button={bite.button}
           now={now}
           onDone={() => dispatch({ type: "done" })}
+          onUnit={() => dispatch({ type: "pickUnit" })}
         />
       ) : asking ? (
         <Asking
@@ -647,6 +673,16 @@ export const GameWeek = ({
         WORDS.yourTakes(game !== null)
       )}
 
+      {/* The ranked list, always within reach (#3049): a bubble over the screen. */}
+      <button
+        type="button"
+        onClick={() => setPanel("legend")}
+        aria-label={WORDS.everyScenario}
+        className="bg-background text-foreground focus-visible:ring-ring fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-20 flex size-14 items-center justify-center rounded-full border shadow-lg focus-visible:ring-2 focus-visible:outline-none active:scale-95"
+      >
+        <List className="size-6" aria-hidden />
+      </button>
+
       <Sheet
         open={panel !== "none"}
         onOpenChange={(open) => {
@@ -674,7 +710,7 @@ export const GameWeek = ({
                 onPick={(mode) => dispatch({ type: "pickMode", mode })}
               />
             ) : (
-              <Legend onPick={pickFromLegend} />
+              <Ranked list={rankedNow(state)} onPick={pickFromLegend} />
             )}
           </div>
         </SheetContent>

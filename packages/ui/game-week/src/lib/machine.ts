@@ -30,7 +30,10 @@
  *   change it; the clock closes the question, leaving the bite said first
  *   and Later, and an answer that still arrives too late says so.
  * - **Every field is set at the stop** (GW4): `biteFields` from what the
- *   screen showed when talking started. A pick after a bite said first
+ *   screen showed when talking started. Its unit (#3049) is the ranked
+ *   list's for its scenario unless one is named, and one tap moves it to the
+ *   next while the bite is said (`pickUnit`); it goes home once, with the
+ *   bite. A pick after a bite said first
  *   amends it with `pickedAfter`: the card picked, `seq` the offer on screen
  *   at the stop, and `how` still `said-first` (GB1).
  * - **Nothing records while the page is gone.** Leaving, or the screen
@@ -75,6 +78,8 @@ import { BITE_LIMITS, MODE_RULES, pregameFrom } from "./modes"
 import type { Prefs } from "./ports"
 import type { Quiet } from "./quiet"
 import { hear, NOT_HEARD, quietEnough } from "./quiet"
+import type { RankedEntry } from "./ranked"
+import { nextUnit, rankedList, unitOf } from "./ranked"
 import { keptLine, NOTICES } from "./words"
 
 /** How long Undo stays offered after a bite is kept. */
@@ -184,6 +189,8 @@ export type GameWeekIntent =
   | { readonly type: "say"; readonly said: Said }
   | { readonly type: "done" }
   | { readonly type: "answer"; readonly said: Said | null }
+  /** Moves the bite being said to the next unit (#3049). */
+  | { readonly type: "pickUnit" }
   | { readonly type: "undo" }
   | { readonly type: "pickGame"; readonly gameId: string }
   | { readonly type: "toggleWatching"; readonly gameId: string }
@@ -324,6 +331,25 @@ export function offerView(state: GameWeekState): OfferView | null {
   return { seq: offer.seq, strip: offer.strip, cards, justHappened }
 }
 
+/**
+ * Every scenario the current game's bite can be about now, most plausible
+ * first (`./ranked`): home's ranked list for that game, or the catalog's
+ * order while home offers nothing for it.
+ */
+export function rankedNow(state: GameWeekState): ReadonlyArray<RankedEntry> {
+  const game = currentGame(state)
+  const { offer } = state
+  return rankedList(
+    game !== null && offer?.gameId === game.id ? (offer.ranked ?? null) : null
+  )
+}
+
+/** `said` with the unit the ranked list gives its scenario, unless it names one. */
+function withUnit(state: GameWeekState, said: Said): Said {
+  if (said.how === "said-first" || said.unit !== undefined) return said
+  return { ...said, unit: unitOf(rankedNow(state), said.scenario) }
+}
+
 function withPrefs(state: GameWeekState, prefs: Prefs): Step {
   return {
     state: { ...state, prefs },
@@ -443,7 +469,8 @@ function ended(state: GameWeekState, before: TakeEnded | null): Step {
   }
 }
 
-function start(state: GameWeekState, said: Said): Step {
+function start(state: GameWeekState, told: Said): Step {
+  const said = withUnit(state, told)
   const game = currentGame(state)
   if (game === null) return stay({ ...state, notice: NOTICES.pickFirst })
   const view = offerView(state)
@@ -780,8 +807,20 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
       return settle(
         state,
         activity.bite,
-        pickedAfter(said, moment, activity.startedAt)
+        pickedAfter(withUnit(state, said), moment, activity.startedAt)
       )
+    }
+
+    case "pickUnit": {
+      // Only while the bite is said: its fields are set at the stop, and
+      // home is sent them once.
+      if (activity.kind !== "taking" || activity.said.how === "said-first")
+        return stay(state)
+      const said = {
+        ...activity.said,
+        unit: nextUnit(activity.said.unit ?? null),
+      }
+      return stay({ ...state, activity: { ...activity, said } })
     }
 
     case "undo": {
