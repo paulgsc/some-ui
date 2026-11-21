@@ -265,12 +265,12 @@ describe("home's ranked list on the live socket", () => {
       {
         scenario: "in.third-long",
         tier: "now",
-        unit: { unit: "defense", side: "CHI" },
+        unit: { unit: "offense", side: "NE" },
       },
       {
         scenario: "in.play-call",
         tier: "now",
-        unit: { unit: "defense", side: "CHI" },
+        unit: { unit: "offense", side: "NE" },
       },
       { scenario: "pre.stakes", tier: "always", unit: null },
       {

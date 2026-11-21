@@ -50,11 +50,13 @@ describe("what home sends", () => {
             scenario: "in.sack",
             context: "NE sacked on 2nd and 5",
             at: "2026-10-23T01:52:20Z",
+            unit: { unit: "offense", side: "NE" },
           },
           {
             scenario: "in.big-play",
             context: "CHI 45-yard interception return, touchdown",
             at: "2026-10-23T01:51:02Z",
+            unit: { unit: "defense", side: "CHI" },
           },
         ],
       },
