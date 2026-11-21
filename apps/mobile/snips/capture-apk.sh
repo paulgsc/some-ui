@@ -6,7 +6,7 @@
 # installs it clean, pairs it through its own screen, and runs
 # apps/www/tests/snips/apk.spec.ts for it.
 #
-#   bash apps/mobile/snips/capture-apk.sh <release-apk> <debug-apk> <snips-dir>
+#   bash apps/mobile/snips/capture-apk.sh <release-apk> <debug-apk> <snips-dir> [<walks-dir>]
 #
 # The release APK first: the app as it ships, reached by its own taps. Then
 # the debug APK (the same JavaScript, in a WebView Playwright opens) for
@@ -17,11 +17,16 @@
 # What the run leaves for reading a failure (logcat, the stub's log, ui.mjs's
 # errors, a picture of a Pair form that could not be driven) goes in
 # <snips-dir>/logs, which the bundle job drops.
+#
+# With <walks-dir>, the APK's walks follow on the same screen
+# (apps/mobile/walk/walk-apk.sh, WALK1): each with a stand-in home of its own,
+# so this one stops first. A walk that fails is said, and the snips stand.
 set -euo pipefail
 
 release_apk=$1
 debug_apk=$2
 snips=$3
+walks=${4:-}
 # pair-ui.sh reads $here (COMPAT's directory) and $out (where logcat streams
 # and ui.mjs's errors go).
 here=$(cd "$(dirname "$0")/../compat" && pwd)
@@ -115,3 +120,10 @@ take() {
 
 take release "$release_apk"
 take debug "$debug_apk"
+
+if [ -n "$walks" ]; then
+  kill "$stub_pid" 2>/dev/null || true
+  wait "$stub_pid" 2>/dev/null || true
+  bash "$repo/apps/mobile/walk/walk-apk.sh" "$debug_apk" "$walks" "$certs" ||
+    echo "::warning title=Walks::a walk failed; the snips stand (the walks artifact has its failed.png)"
+fi

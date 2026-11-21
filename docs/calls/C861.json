@@ -1,0 +1,20 @@
+{
+  "id": "C861",
+  "made": "2026-11-21",
+  "by": "owner",
+  "paths": [
+    "some-ui:packages/engagement/src/lib/places.ts",
+    "some-ui:packages/engagement/src/lib/pipelines/jobs.ts",
+    "some-ui:packages/video-motion/src/walkthrough.ts"
+  ],
+  "chose": "The owner (2026-11-21, relayed by the coordinator on #3282): a published walkthrough says only aggregate friction measures: per module, days opened out of the last 28 (silence, #3338); per stop, the share finished vs left part-way; per stop, the median time in step; Applying's median debrief friction (1 to 5); taps per step once measured. The engagement report's public-safety rule holds (ask #2701): 28-day or all-time windows, and a count under 5 said plainly as 'fewer than 5'. No pass reasons, chips, companies, roles, content or records. The agent writes the narration script for now and Kokoro reads it, with a burn-in per stop. W14's proposal, taken as is.",
+  "options": [
+    "the measures above, under the 'fewer than 5' rule, in 28-day or all-time windows (chosen)",
+    "weekly counts, with a new ruling on counts under 5",
+    "add pass reasons and debrief chips per stop",
+    "narration without numbers until taps are measured"
+  ],
+  "gray": "What a published video may say about how the owner really uses their own apps is the owner's to decide: the measures are their behaviour, and the walkthrough is public. No check settles which aggregates are safe, or whether the report's earlier rule extends to a video.",
+  "undo": "Record a call that moves this one with the new list or rule, and change the walkthrough's burn-ins and script to match.",
+  "refs": ["#3282", "#3337", "#3338", "#2701"]
+}

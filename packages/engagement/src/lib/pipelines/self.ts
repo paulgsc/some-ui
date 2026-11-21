@@ -6,6 +6,7 @@ const aph: Pipeline = {
   name: "aph",
   wing: "self",
   domain: "aph",
+  opened: { kind: "root", affordance: "history" },
   affordances: [
     // Log: my figure for today, the screen aph opens on.
     {

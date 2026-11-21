@@ -1,0 +1,18 @@
+{
+  "id": "C916",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/home-switches",
+    "some-ui:packages/contract-harness/contracts/admin-settings.contract.ts"
+  ],
+  "chose": "Home's settings page holds one family of settings, each typed by its own value at compile time: `SettingValue` maps each key to its value (`rust-rounds` and `game-feed` a boolean, `game-teams` a list of ESPN abbreviations), and the model (`Standing<K>`, `SwitchesState<K>`, `stepSwitches`), the client's codec per key (`CODECS`), the runtime and the words (`SettingWords<V>`, a table per key) are generic over it. So the teams followed live (#3329) are the third member of the same family rather than a module beside the switches, and a fourth setting is a key in `SettingValue`, which the compiler then asks a codec and words for. The switches' own words stay as they were, read through one adapter. A value home refuses (its 422) is said as 'Home didn't take that change.' rather than as an answer it couldn't read.",
+  "options": [
+    "one family typed by a compile-time map of each setting's value (taken)",
+    "a separate teams module and page row beside the boolean switches",
+    "a runtime-shaped setting whose value is `unknown`, each row parsing its own"
+  ],
+  "gray": "How the owner's settings page grows is the shape every later setting is added in; the coordinator named the family, and its details (one adapter for the switches' words, a refusal of its own for a value home won't take) are Claude's.",
+  "undo": "Split `game-teams` out into its own model and client, and narrow `SettingValue` back to the two switches; the switches' behaviour is unchanged by this call.",
+  "refs": ["#3329", "#2357", "#3311"]
+}

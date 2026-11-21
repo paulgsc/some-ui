@@ -250,6 +250,87 @@ describe("one home for every take", () => {
               bite: null,
             },
           },
+          // Matched to its play (GWB14): its quarter and clock, never its words.
+          {
+            ...studio,
+            id: "b3",
+            kind: "game",
+            ref: "401772",
+            about: {
+              key: "game:401772",
+              game: "401772",
+              label: "NE @ CHI",
+              bite: null,
+              match: {
+                method: "next",
+                scenario: "fourth-down",
+                gapSeconds: -12,
+                play: {
+                  id: "4017721",
+                  period: 3,
+                  clock: "4:05",
+                  type: "Rush",
+                  text: "J.Smith up the middle for 2 yards",
+                },
+              },
+            },
+          },
+          // Matched to a play home no longer lists; a quarter it can't read
+          // leaves the clock.
+          {
+            ...studio,
+            id: "b6",
+            kind: "game",
+            ref: "401772",
+            about: {
+              key: "game:401772",
+              game: "401772",
+              label: null,
+              bite: null,
+              match: { method: "nearest", play: null },
+            },
+          },
+          {
+            ...studio,
+            id: "b7",
+            kind: "game",
+            ref: "401772",
+            about: {
+              key: "game:401772",
+              game: "401772",
+              label: null,
+              bite: null,
+              match: { method: "nearest", play: { period: 0, clock: "1:10" } },
+            },
+          },
+          // A method this phone doesn't know yet.
+          {
+            ...studio,
+            id: "b5",
+            kind: "game",
+            ref: "401772",
+            about: {
+              key: "game:401772",
+              game: "401772",
+              label: null,
+              bite: null,
+              match: { method: "guessed", play: { period: 2, clock: "0:30" } },
+            },
+          },
+          // Looked for and none found; a play home can't read is no play.
+          {
+            ...studio,
+            id: "b4",
+            kind: "game",
+            ref: "401772",
+            about: {
+              key: "game:401772",
+              game: "401772",
+              label: null,
+              bite: null,
+              match: { method: "unmatched", play: { period: "third" } },
+            },
+          },
           {
             ...studio,
             id: "d1",
@@ -271,6 +352,11 @@ describe("one home for every take", () => {
       "studio",
       "game",
       "game",
+      "game",
+      "game",
+      "game",
+      "game",
+      "game",
       "unknown",
     ])
     expect(page?.takes[1]?.fields).toEqual({
@@ -280,8 +366,23 @@ describe("one home for every take", () => {
       started: "2026-11-16T21:00:00Z",
     })
     expect(page?.takes[2]?.fields).toEqual({})
+    expect(page?.takes[3]?.fields).toEqual({
+      label: "NE @ CHI",
+      matchedBy: "next",
+      playPeriod: "3",
+      playClock: "4:05",
+    })
+    expect(page?.takes[4]?.fields).toEqual({ matchedBy: "nearest" })
+    expect(page?.takes[5]?.fields).toEqual({
+      matchedBy: "nearest",
+      playClock: "1:10",
+    })
+    // A method this phone doesn't know reads as not matched yet, its play
+    // with it.
+    expect(page?.takes[6]?.fields).toEqual({})
+    expect(page?.takes[7]?.fields).toEqual({ matchedBy: "unmatched" })
     // A deleted take keeps no ref; it still shows, as deleted.
-    expect(page?.takes[3]).toMatchObject({ ref: "", status: "deleted" })
+    expect(page?.takes[8]).toMatchObject({ ref: "", status: "deleted" })
   })
 
   it("says a home that lists Studio's alone, as a home before epoch 19 answers", () => {

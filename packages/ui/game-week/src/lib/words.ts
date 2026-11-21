@@ -19,6 +19,9 @@ export const WORDS = {
    */
   yourTakes: (picked: boolean): string =>
     picked ? "Your takes from this game" : "Your takes from game day",
+  teamsFollowed: "Teams home follows live",
+  teamsFollowedHow:
+    "Opens home's switches in your browser, on the home network, with your passkey.",
   pickGame: "Game",
   watching: "Watching",
   notWatching: "Not watching",

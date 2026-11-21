@@ -6,14 +6,16 @@
  * every kind: each take says its `kind`, how home keeps it (`status`), and
  * what it is about (`about`, by kind), and the answer says where the next
  * page starts (`next`). A home before it answers Studio's alone, as before.
- * A game's `about` carries home's name for the game (`label`) and the
- * bite's moment, which may be left out (`bite: null`); the rest of a kind's
- * `about` is what its ref already says, which Takes' ports read.
+ * A game's `about` carries home's name for the game (`label`), the
+ * bite's moment, which may be left out (`bite: null`), and the play home
+ * matched it to, or why none (`match`, null until home has matched it,
+ * GWB14 #3039); the rest of a kind's `about` is what its ref already says,
+ * which Takes' ports read.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { readAs } from "@some-ui/core-utils"
 import type { LibraryPage, LibraryRead, PhoneTake } from "@some-ui/soundbites"
-import { TAKE_OFS } from "@some-ui/soundbites/contract"
+import { MATCH_METHODS, TAKE_OFS } from "@some-ui/soundbites/contract"
 import { z } from "zod"
 
 import type { PhoneBite } from "@/lib/game-bites"
@@ -39,7 +41,8 @@ const TakeSchema = z.object({
     .optional()
     .catch(undefined),
   // What a game is about, as far as the phone reads it: home's name for the
-  // game and the bite's moment. Anything else, or none, reads as nothing.
+  // game, the bite's moment, and the play home matched it to. Anything else,
+  // or none, reads as nothing.
   about: z
     .object({
       label: z.string().min(1).nullable().optional().catch(undefined),
@@ -48,6 +51,27 @@ const TakeSchema = z.object({
           scenario: z.string().nullable().optional().catch(undefined),
           strip: z.string().nullable().optional().catch(undefined),
           started: z.string().nullable().optional().catch(undefined),
+        })
+        .nullable()
+        .optional()
+        .catch(undefined),
+      match: z
+        .object({
+          method: z.enum(MATCH_METHODS).optional().catch(undefined),
+          play: z
+            .object({
+              period: z
+                .number()
+                .int()
+                .positive()
+                .nullable()
+                .optional()
+                .catch(undefined),
+              clock: z.string().min(1).nullable().optional().catch(undefined),
+            })
+            .nullable()
+            .optional()
+            .catch(undefined),
         })
         .nullable()
         .optional()
@@ -112,6 +136,12 @@ function gameFields(
   if (scenario != null) fields.scenario = scenario
   if (strip != null) fields.strip = strip
   if (started != null) fields.started = started
+  const { method, play } = about.match ?? {}
+  if (method != null) {
+    fields.matchedBy = method
+    if (play?.period != null) fields.playPeriod = String(play.period)
+    if (play?.clock != null) fields.playClock = play.clock
+  }
   return fields
 }
 
