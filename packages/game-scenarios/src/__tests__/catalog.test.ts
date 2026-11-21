@@ -1,7 +1,18 @@
-import { CATALOG, parseCatalog } from "@game-scenarios/catalog"
+import {
+  BIG_PLAY_KINDS,
+  BIG_PLAY_SIZES,
+  CATALOG,
+  HALVES,
+  parseCatalog,
+} from "@game-scenarios/catalog"
 import { PRIMITIVES } from "@game-scenarios/icons"
 import { isScenarioId, scenarioOf, SCENARIOS } from "@game-scenarios/scenarios"
-import { OUTCOME_WORDS } from "@game-scenarios/words"
+import {
+  BIG_PLAY_KIND_WORDS,
+  BIG_PLAY_SIZE_WORDS,
+  HALF_WORDS,
+  OUTCOME_WORDS,
+} from "@game-scenarios/words"
 import { describe, expect, it } from "vitest"
 
 // Importing `SCENARIOS` already fails on an id or outcome in the copy with no
@@ -43,7 +54,64 @@ describe("icons", () => {
   })
 })
 
+describe("the dimensions a bite is read along (#3048)", () => {
+  it("names every half and every big play's size and kind, as the copy does", () => {
+    expect(CATALOG.halves).toEqual(HALVES)
+    expect(CATALOG.bigPlay.sizes.map((size) => size.id)).toEqual(BIG_PLAY_SIZES)
+    expect(CATALOG.bigPlay.kinds.map((kind) => kind.id)).toEqual(BIG_PLAY_KINDS)
+    for (const words of [HALF_WORDS, BIG_PLAY_SIZE_WORDS, BIG_PLAY_KIND_WORDS])
+      for (const said of Object.values(words)) expect(said).not.toBe("")
+  })
+
+  it("starts each size further out than the one before", () => {
+    const yards = CATALOG.bigPlay.sizes.map((size) => size.yards)
+    expect(yards).toEqual([...yards].sort((a, b) => a - b))
+    expect(new Set(yards).size).toBe(yards.length)
+  })
+})
+
 describe("parseCatalog", () => {
+  const dimensions = {
+    halves: [...HALVES],
+    big_play: {
+      sizes: BIG_PLAY_SIZES.map((id, i) => ({ id, yards: 20 * (i + 1) })),
+      kinds: BIG_PLAY_KINDS.map((id) => ({ id, least: "big" })),
+    },
+  }
+
+  it("refuses a half, size or kind this code does not know, or one it lacks", () => {
+    expect(() =>
+      parseCatalog({
+        version: 2,
+        scenarios: [],
+        ...dimensions,
+        halves: ["first", "second"],
+      })
+    ).toThrow("half: first, second is not first, second, overtime")
+    expect(() =>
+      parseCatalog({
+        version: 2,
+        scenarios: [],
+        ...dimensions,
+        big_play: {
+          ...dimensions.big_play,
+          kinds: [{ id: "lateral", least: "big" }],
+        },
+      })
+    ).toThrow("unknown big-play kind: lateral")
+    expect(() =>
+      parseCatalog({
+        version: 2,
+        scenarios: [],
+        ...dimensions,
+        big_play: {
+          ...dimensions.big_play,
+          kinds: BIG_PLAY_KINDS.map((id) => ({ id, least: "vast" })),
+        },
+      })
+    ).toThrow("unknown least size of pass: vast")
+  })
+
   it("refuses a phase or moment this code does not know", () => {
     const entry = {
       id: "in.x",
@@ -54,10 +122,18 @@ describe("parseCatalog", () => {
       moment: "snap",
     }
     expect(() =>
-      parseCatalog({ version: 1, scenarios: [{ ...entry, phase: "halftime" }] })
+      parseCatalog({
+        version: 1,
+        scenarios: [{ ...entry, phase: "halftime" }],
+        ...dimensions,
+      })
     ).toThrow("unknown phase in in.x: halftime")
     expect(() =>
-      parseCatalog({ version: 1, scenarios: [{ ...entry, moment: "timeout" }] })
+      parseCatalog({
+        version: 1,
+        scenarios: [{ ...entry, moment: "timeout" }],
+        ...dimensions,
+      })
     ).toThrow("unknown moment in in.x: timeout")
   })
 })

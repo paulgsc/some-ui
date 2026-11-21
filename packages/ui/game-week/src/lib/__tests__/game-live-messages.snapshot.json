@@ -23,8 +23,8 @@
   ],
   "home": [
     {
-      "catalogVersion": 1,
-      "engineVersion": 1,
+      "catalogVersion": 2,
+      "engineVersion": 3,
       "following": true,
       "games": [
         {
@@ -50,6 +50,20 @@
             "id": "in.sack",
             "line": "NE sacked on 2nd and 5",
             "playId": "4018730101234"
+          },
+          {
+            "at": "2026-10-23T01:51:02Z",
+            "bigPlay": {
+              "by": "CHI",
+              "good": false,
+              "kind": "interception-return",
+              "scored": true,
+              "size": "huge",
+              "yards": 45
+            },
+            "id": "in.big-play",
+            "line": "CHI 45-yard interception return, touchdown",
+            "playId": "4018730101210"
           }
         ],
         "scenarios": [
@@ -74,8 +88,8 @@
       "v": 1
     },
     {
-      "catalogVersion": 1,
-      "engineVersion": 1,
+      "catalogVersion": 2,
+      "engineVersion": 3,
       "following": true,
       "games": [
         {
@@ -109,8 +123,8 @@
       "v": 1
     },
     {
-      "catalogVersion": 1,
-      "engineVersion": 1,
+      "catalogVersion": 2,
+      "engineVersion": 3,
       "following": false,
       "games": [],
       "offer": null,
