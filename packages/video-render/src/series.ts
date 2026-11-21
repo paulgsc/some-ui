@@ -34,7 +34,7 @@ import {
   problemsOf,
 } from "./cut-list"
 import type { CutList, Parsed, Shot } from "./cut-list"
-import { ThemeIdSchema } from "./format"
+import { CastIdSchema, ThemeIdSchema } from "./format"
 import { LOOKS } from "./plans"
 import { CheckedFileSchema, ms, SOUNDS, TRANSITIONS } from "./vocabulary"
 
@@ -82,6 +82,11 @@ export const SeriesSchema = z
      * in the page's own theme.
      */
     theme: ThemeIdSchema.optional(),
+    /**
+     * The cast such a page's speaking bubbles draw (`CastIdSchema`, C822), as
+     * `theme` is its theme. Absent, the flat icons.
+     */
+    cast: CastIdSchema.optional(),
     /** The colour behind the picture, as `#rrggbb`. */
     ground: z.string().regex(/^#[0-9a-f]{6}$/),
     /** Where the picture sits in the frame, in the frame's pixels. */

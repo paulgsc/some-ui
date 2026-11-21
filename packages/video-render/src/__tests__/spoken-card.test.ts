@@ -143,11 +143,12 @@ describe("a spoken card in a cards essay (WALK7)", () => {
     )
   })
 
-  it("is drawn in its series' theme, which the stage's sample shares (C816)", () => {
+  it("is drawn in its series' theme and cast, which the stage's sample shares (C816, C822)", () => {
     const sample = sampleSpokenCard()
     expect(V3.ok ? V3.value.theme : null).toBe("dark")
-    expect(sample.ok ? sample.value.theme : null).toBe(
-      V3.ok ? V3.value.theme : undefined
+    expect(V3.ok ? V3.value.cast : null).toBe("cast-v1")
+    expect(sample.ok ? [sample.value.theme, sample.value.cast] : null).toEqual(
+      V3.ok ? [V3.value.theme, V3.value.cast] : undefined
     )
   })
 
@@ -403,9 +404,10 @@ describe("the takes home hands a spoken card", () => {
       "introduction",
       card,
       (take) => transcript(`What ${take} says.`, "heard"),
-      V3.ok ? V3.value.theme : undefined
+      V3.ok ? V3.value : {}
     )
     expect(heard.ok && heard.value.theme).toBe("dark")
+    expect(heard.ok && heard.value.cast).toBe("cast-v1")
     expect(
       heard.ok
         ? heard.value.exchanges.flatMap(({ ask, answer }) =>
@@ -423,18 +425,15 @@ describe("the takes home hands a spoken card", () => {
       "introduction",
       card,
       (take) => transcript("mm", kinds[take]),
-      "dark"
+      { theme: "dark" }
     )
     expect(refused.ok ? [] : refused.problems).toEqual([
       "introduction: home couldn't make out sample-take-1; a spoken card plays only a take home heard",
       "introduction: home heard nothing said in sample-take-2",
     ])
-    const missing = heardSpokenCard(
-      "introduction",
-      card,
-      () => undefined,
-      "dark"
-    )
+    const missing = heardSpokenCard("introduction", card, () => undefined, {
+      theme: "dark",
+    })
     expect(missing.ok).toBe(false)
   })
 })

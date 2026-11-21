@@ -9,9 +9,13 @@
     "some-ui:packages/ui/rust-rounds/src/lib/monday/finish.ts",
     "some-ui:packages/ui/interview-week/src/lib/essay/finish.ts",
     "some-ui:apps/www/src/lib/web-surface/call/essay-stage.tsx",
-    "some-ui:apps/www/src/lib/web-surface/call/interview-essay-stage.tsx"
+    "some-ui:apps/www/src/lib/web-surface/call/interview-essay-stage.tsx",
+    "some-ui:packages/video-render/src/series.ts",
+    "some-ui:packages/video-render/src/spoken-card.ts",
+    "some-ui:packages/video-render/src/sample/series/cheat-sheet/v3.json",
+    "some-ui:apps/www/src/lib/web-surface/call/spoken-card-stage.tsx"
   ],
-  "chose": "The cast comes in through the template's shape (`cast: \"cast-v1\"`), as the brand's motion and theme do, so a version already pinned keeps the flat icons and a published essay's version never redraws. The Rust essay's version 6 and the interview essay's version 3 name it; each draws everything the version before it does. Rust Rounds writes version 6 where it wrote 5 (an essay with an opening), and the interview week writes 3 where it wrote 2. This moves C270 for an essay with an opening: it could still be drawn at the older version, but takes the cast's, so home's render image refuses it (VS1) until the owner rebuilds that image from a some-ui with this change. An essay with no opening still takes the lowest version that draws it, as C270 chose, and keeps the flat icons.",
+  "chose": "The cast comes in through the template's shape (`cast: \"cast-v1\"`), as the brand's motion and theme do, so a version already pinned keeps the flat icons and a published essay's version never redraws. The Rust essay's version 6 and the interview essay's version 3 name it; each draws everything the version before it does. Rust Rounds writes version 6 where it wrote 5 (an essay with an opening), and the interview week writes 3 where it wrote 2. This moves C270 for an essay with an opening: it could still be drawn at the older version, but takes the cast's, so home's render image refuses it (VS1) until the owner rebuilds that image from a some-ui with this change. An essay with no opening still takes the lowest version that draws it, as C270 chose, and keeps the flat icons. A cards essay's spoken card, which has no format of its own, takes its cast from its series as it takes its theme (C816): cheat-sheet v3 names cast-v1, so a spoken card draws the same birds and mochi through the same bubble.",
   "options": [
     "an opt-in shape field, new versions only (chosen)",
     "draw the cast in every version: simpler, but an essay already published would redraw differently from what was released",

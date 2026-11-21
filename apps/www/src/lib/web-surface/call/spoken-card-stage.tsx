@@ -12,7 +12,7 @@ import {
 } from "@some-ui/video-render"
 import type { HeardSpokenCard, SpokenScene } from "@some-ui/video-render"
 
-import { Call } from "./essay-parts"
+import { Call, CastProvider } from "./essay-parts"
 import { namedStageOf } from "./essay-view"
 import { ESSAY_WORDS as W } from "./essay-words"
 import { spokenCardSource } from "./feed"
@@ -143,7 +143,9 @@ export const SpokenCardStagePage = ({
             }
       }
     >
-      <Screen card={state.essay} scene={at.scene} />
+      <CastProvider cast={state.essay.cast}>
+        <Screen card={state.essay} scene={at.scene} />
+      </CastProvider>
     </StageFrame>
   )
 }

@@ -102,6 +102,17 @@ export function itemOfRepeated(scene: string, id: string): number | undefined {
  *   parts, each at most `mostMs` by its words, broken once one reaches
  *   `aimMs`. Absent, it is one video.
  */
+/**
+ * The characters template A's speaking bubbles draw (PDA6, #2883; C822), by
+ * the cast's name: `cast-v1` is the mochi for the owner and tin birds for the
+ * synthetic voices (`@some-ui/styles`' `brand/cast`). A format's shape names
+ * one, and so does a series, for a page it draws with no format of its own
+ * (a cards essay's spoken card). Absent, the bubbles draw the flat icons.
+ */
+export const CastIdSchema = z.enum(["cast-v1"])
+
+export type CastId = z.infer<typeof CastIdSchema>
+
 export const ShapeSchema = z.strictObject({
   brand: z.strictObject({
     intro: z.boolean(),
@@ -120,13 +131,8 @@ export const ShapeSchema = z.strictObject({
   chapters: z.array(sceneId),
   subtitles: z.enum(["off", "line", "word"]),
   theme: ThemeIdSchema.optional(),
-  /**
-   * The characters the speaking bubbles draw (PDA6, #2883; C822), by the
-   * cast's name: `cast-v1` is the mochi for the owner and tin birds for the
-   * synthetic voices (`@some-ui/styles`' `brand/cast`). Absent, a version
-   * from before them, the bubbles draw the flat icons.
-   */
-  cast: z.enum(["cast-v1"]).optional(),
+  /** The cast its speaking bubbles draw (`CastIdSchema`); absent, the flat icons. */
+  cast: CastIdSchema.optional(),
   parts: z
     .strictObject({
       mostMs: z.number().int().positive(),

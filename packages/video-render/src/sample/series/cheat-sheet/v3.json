@@ -9,6 +9,7 @@
     "fps": 30
   },
   "theme": "dark",
+  "cast": "cast-v1",
   "ground": "#111821",
   "window": {
     "x": 0,
