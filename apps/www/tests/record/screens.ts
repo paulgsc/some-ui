@@ -99,6 +99,13 @@ export async function captureScreens({
       const drawn = await page.locator("[data-week]").getAttribute("data-week")
       if (drawn !== week)
         fail([`the stage drew the week of ${drawn ?? "none"}, not ${week}`])
+      // The sample is a real week's id (Tallowbrook's), so the week alone
+      // can't tell it from the one handed over: a stage built for a viewer
+      // draws the sample whatever is named.
+      if ((await page.locator("[data-sample]").count()) > 0)
+        fail([
+          `the stage drew its sample, not the week of ${week} as home handed it: is it a viewer's build?`,
+        ])
       await page.evaluate(() => document.fonts.ready)
       screens.push(await photograph(card, ticket.id, out))
     }
