@@ -370,7 +370,9 @@ function spokenCardScenes(
  * Each line's voice is its speaker's under the series' voice lanes
  * (`voices`, `Series.voices`; C840), else `CARDS_VOICES`: a scene with a
  * chapter mark opens a new chapter, so the narrator's voice moves on with
- * each card and a spoken card's Kokoro keeps one voice through the card.
+ * each card, and each of Kokoro's roles in a spoken card (asking, answering)
+ * keeps one voice through its chapter: a `questions` card, which opens none,
+ * plays in the chapter before it (C831).
  */
 export function cardsScenes(
   cut: CutList,

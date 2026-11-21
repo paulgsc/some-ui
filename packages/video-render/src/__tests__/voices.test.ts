@@ -443,6 +443,68 @@ describe("in the lanes, across spoken cards", () => {
     ])
   })
 
+  it("says questions cards, which open no chapter, in the voices of the chapter before them (C831)", async () => {
+    const cut = await showcase("spoken-intro")
+    const [introduction, intro, c1, close] = cut.shots
+    if (
+      introduction?.spoken?.role !== "spoken" ||
+      intro === undefined ||
+      c1 === undefined ||
+      close === undefined
+    )
+      throw new Error("the sample is its introduction, intro, C1 and close")
+    const spoken = introduction.spoken
+    const questions = (id: string): typeof introduction => ({
+      ...introduction,
+      id,
+      spoken: { ...spoken, category: "questions" },
+    })
+    const many = {
+      ...cut,
+      shots: [intro, c1, questions("qa"), questions("qb"), close],
+    }
+    const sample = unwrap(sampleSpokenCard())
+    // The owner asks, Kokoro answers.
+    const heard = new Map(
+      ["qa", "qb"].map((id) => [
+        id,
+        {
+          ...sample,
+          card: id,
+          category: "questions" as const,
+          exchanges: [
+            {
+              ask: {
+                voice: "owner" as const,
+                take: `${id}-t`,
+                transcript: "Why?",
+              },
+              answer: { voice: "kokoro" as const, said: "Because." },
+            },
+          ],
+        },
+      ])
+    )
+    const kokoro = (
+      scenes: ReturnType<typeof cardsScenes>
+    ): Array<KokoroVoice | undefined> =>
+      scenes
+        .filter(
+          (s) => s.spoken?.scene.take === undefined && s.spoken !== undefined
+        )
+        .map((s) => s.spoken?.voice)
+    const laned = cardsScenes(many, heard, await newestCardsVoices())
+    const [tutor] = VOICE_LANES["lanes-v1"].tutor
+    expect(kokoro(laned)).toEqual([tutor, tutor])
+    const card = laned.find((s) => s.id === c1.id)
+    for (const line of card?.lines ?? []) expect(line.voice).not.toBe(tutor)
+    // In a series before the lanes, every Kokoro turn is af_heart, as before.
+    expect(kokoro(cardsScenes(many, heard, undefined))).toEqual([
+      "af_heart",
+      "af_heart",
+    ])
+  })
+
   it("keeps the roles that meet in an exchange apart by accent or by gender", () => {
     const lanes = VOICE_LANES["lanes-v1"]
     const kind = (voice: KokoroVoice): string => voice.slice(0, 2)
