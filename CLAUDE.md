@@ -27,6 +27,10 @@ What follows from them:
   free personal hobby app. "For me" names the audience; exposure is a separate question.
   Keep every public channel and its upkeep (the APK's Play readiness in
   `apps/mobile/README.md`, say) even when only the owner uses the thing.
+- **YouTube is by hand, always** (owner, 2026-11-21, C1025). The owner uploads every video
+  and sets every thumbnail in YouTube Studio themselves. Home makes and keeps the files
+  (the video, its thumbnail, its description and chapters) for the owner to download.
+  Nothing here calls YouTube's API or asks for its OAuth, and no story should plan to.
 - **Private only where the data is personal.** What serves A and holds PII stays on the
   home network (the `lan` audience, behind the passkey) and on the owner's own devices.
   Home is the owner's own store, as private as the phone, and sending to it is to be the
