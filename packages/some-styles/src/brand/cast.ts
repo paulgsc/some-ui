@@ -439,14 +439,16 @@ export const castNodes = (who: Character, id: IdOf): ReadonlyArray<CastNode> =>
 /** The box every character is drawn in. */
 export const CAST_VIEW_BOX = "0 0 96 96"
 
-const escaped = (value: string | number): string =>
+/** `value` safe inside SVG or HTML text and a quoted attribute. */
+export const escapeText = (value: string | number): string =>
   String(value)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
 
 /** How `nodesText` draws: the backdrop's paint, and whether the key light shows. */
-export type TextOptions = { readonly ground: string; readonly glow?: boolean }
+type TextOptions = { readonly ground: string; readonly glow?: boolean }
 
 /**
  * `nodes` as SVG text, for a drawing made outside React (a thumbnail,
@@ -470,6 +472,6 @@ export const nodesText = (
           ? attrs
           : [...attrs, ["fill", ground] as const]
       const children = nodesText(node.children ?? [], { ground, glow })
-      return `<${node.tag}${painted.map(([name, value]) => ` ${name}="${escaped(value)}"`).join("")}>${children}</${node.tag}>`
+      return `<${node.tag}${painted.map(([name, value]) => ` ${name}="${escapeText(value)}"`).join("")}>${children}</${node.tag}>`
     })
     .join("")

@@ -28,7 +28,7 @@ export const GENRES = [
 export type Genre = (typeof GENRES)[number]
 
 /** A genre's hue, and the ground it sits on. */
-export type Paint = { readonly hue: string; readonly ground: string }
+type Paint = { readonly hue: string; readonly ground: string }
 
 /** Each genre's hue on its ground: honey, sand, lavender, lime, coral and rose. */
 export const GENRE_PAINT = {
@@ -44,7 +44,7 @@ export const GENRE_PAINT = {
 export const GENRE_VIEW_BOX = "0 0 320 180"
 
 /** A paint's dim: its hue at a third. */
-export const dimOf = (hue: string): string => `${hue}55`
+const dimOf = (hue: string): string => `${hue}55`
 
 const el = (
   tag: string,

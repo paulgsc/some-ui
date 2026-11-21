@@ -1,0 +1,18 @@
+{
+  "id": "C1035",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/thumbnail.ts",
+    "apps/www/tests/record/voiced.ts"
+  ],
+  "chose": "Each genre's thumbnail title is made from the facts its recorder already holds, one rule per genre: the call 'The week of Oct 30 – Nov 5' (with ', part k of n' for a series), a cards essay its own title, the interview essay its role, Playoff Delta '<season>, week n' or 'The legend: how to read a week', the report 'The week of <its Monday>', the Rust Rounds essay 'Week n: <its first ticket>'. The genre's name stands above the title, so no title repeats it.",
+  "options": [
+    "a rule per genre over the episode's own facts, the title one value the page takes",
+    "the cut list's own title ('The Rust Rounds essay, 2026-w46'), which names the genre again and no content",
+    "a title typed per episode"
+  ],
+  "gray": "The owner asked for the title to be derived and gave examples (the call's week range, the Rust week and first ticket, the interview's role, a cards essay's title); the exact words of each rule, and the two genres they named none for (Playoff Delta, the report), are choices they will see on every thumbnail.",
+  "undo": "Change a genre's rule in TITLES (thumbnail.ts); the facts each recorder passes stay as they are.",
+  "refs": ["#3030"]
+}

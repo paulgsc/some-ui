@@ -528,7 +528,7 @@ async function main(): Promise<void> {
       {
         preview: false,
         episode: "cards.mp4",
-        genre: "cards-essay",
+        thumbnail: { genre: "cards-essay", title: essay.value.title },
         marks: () => cardsChapterMarks(scenes),
         policy,
         browser,

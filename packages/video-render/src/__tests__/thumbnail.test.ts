@@ -1,9 +1,10 @@
 /**
- * An episode's thumbnail (EPISODES3, C1026): who speaks is read from the cut
+ * An episode's thumbnail (EPISODES3, C1026): its title is made from the
+ * episode's facts by its genre's rule, who speaks is read from the cut
  * list, the title is fitted at the largest size its box takes and refused
  * where only an unreadable size would fit, and the page is the same text
  * for the same inputs. The bytes a browser draws from it are held by the
- * recorder's test (apps/www/tests/record/__tests__/thumbnail.test.ts).
+ * recorder's spec (apps/www/tests/record/thumbnail.spec.ts).
  */
 import { GENRE_PAINT, GENRES } from "@some-ui/styles/brand/genres"
 import { cutList, shot } from "@video-render/testing"
@@ -12,12 +13,14 @@ import {
   chooseTitleSize,
   LEAST_READABLE_PX,
   THUMBNAIL,
+  thumbnailInput,
   thumbnailPage,
+  thumbnailTitle,
   TITLE_FIT,
   titleSizes,
   voicesOf,
 } from "@video-render/thumbnail"
-import type { ThumbnailVoices } from "@video-render/thumbnail"
+import type { ThumbnailFacts, ThumbnailVoices } from "@video-render/thumbnail"
 import { describe, expect, it } from "vitest"
 
 const FONTS = {
@@ -26,6 +29,63 @@ const FONTS = {
 }
 
 const take = { file: "01.wav", inMs: 0, outMs: 1000 }
+
+describe("thumbnailTitle", () => {
+  it.each<[ThumbnailFacts, string]>([
+    [
+      { genre: "call", from: "2026-10-30", to: "2026-11-05", part: 1, of: 1 },
+      "The week of Oct 30 – Nov 5",
+    ],
+    [
+      { genre: "call", from: "2026-11-06", to: "2026-11-12", part: 2, of: 3 },
+      "The week of Nov 6 – 12, part 2 of 3",
+    ],
+    [
+      {
+        genre: "cards-essay",
+        title: "NixOS: how this machine upgrades itself",
+      },
+      "NixOS: how this machine upgrades itself",
+    ],
+    [
+      { genre: "interview-essay", role: "Full-stack engineer, driver tools" },
+      "Full-stack engineer, driver tools",
+    ],
+    [
+      { genre: "playoff-delta", season: "2025 season", week: 12 },
+      "2025 season, week 12",
+    ],
+    [
+      { genre: "playoff-delta", season: "2025 season", week: "legend" },
+      "The legend: how to read a week",
+    ],
+    [{ genre: "report", week: "2026-W47" }, "The week of Nov 16"],
+    [
+      {
+        genre: "rust-essay",
+        week: "2026-w46",
+        firstTicket: "Parse the batch without a copy per field",
+      },
+      "Week 46: Parse the batch without a copy per field",
+    ],
+    [{ genre: "rust-essay", week: "2026-w46", firstTicket: null }, "Week 46"],
+  ])("makes %j's title", (facts, title) => {
+    expect(thumbnailTitle(facts)).toBe(title)
+  })
+
+  it("draws the title its facts make, the genre they name and who speaks", () => {
+    expect(
+      thumbnailInput(
+        { genre: "report", week: "2026-W47" },
+        cutList([shot("a", { take, speaker: "kokoro" })])
+      )
+    ).toEqual({
+      genre: "report",
+      title: "The week of Nov 16",
+      voices: "synthetic",
+    })
+  })
+})
 
 describe("voicesOf", () => {
   it.each<[string, Parameters<typeof cutList>[0], ThumbnailVoices]>([
@@ -108,6 +168,12 @@ describe("the title's fit", () => {
       expect(fit.ok).toBe(false)
       if (!fit.ok) expect(fit.problems[0]).toContain("A word too long")
     }
+  })
+
+  it("refuses a title in letters the font can't draw, at any size", () => {
+    const fits = titleSizes().map((px) => ({ px, width: 10, height: 10 }))
+    expect(chooseTitleSize("한국어 주간", fits).ok).toBe(false)
+    expect(chooseTitleSize("Café – “quoted” … €5", fits).ok).toBe(true)
   })
 
   it("refuses a fit only an unreadable size gives", () => {

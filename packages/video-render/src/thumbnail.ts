@@ -22,7 +22,8 @@
  * at 1280×720 and scale 1 to measure and capture (`record`'s thumbnail).
  */
 
-import { castNodes, nodesText } from "@some-ui/styles/brand/cast"
+import { isoWeekMonday } from "@some-ui/core-utils"
+import { castNodes, escapeText, nodesText } from "@some-ui/styles/brand/cast"
 import type { Character } from "@some-ui/styles/brand/cast"
 import {
   GENRE_PAINT,
@@ -69,12 +70,119 @@ export const TITLE_FIT = {
  */
 export type ThumbnailVoices = "synthetic" | "owner" | "both" | "silent"
 
+/**
+ * The facts of an episode its title is made from, per genre: the same facts
+ * its cut list, description and chapters already read, never a title typed
+ * for it. A genre with no entry here fails the build (`FactsByGenre[G]`).
+ */
+type FactsByGenre = {
+  /** The call's week, by its first and last day, and which part of how many. */
+  readonly call: {
+    readonly from: string
+    readonly to: string
+    readonly part: number
+    readonly of: number
+  }
+  /** A cards essay's own title, from its cut list. */
+  readonly "cards-essay": { readonly title: string }
+  /** The role the interview week was for. */
+  readonly "interview-essay": { readonly role: string }
+  /** The season's label, and the week, or the legend. */
+  readonly "playoff-delta": {
+    readonly season: string
+    readonly week: number | "legend"
+  }
+  /** The ISO week the report covers: `2026-W46`. */
+  readonly report: { readonly week: string }
+  /** The essay's week (`2026-w46`) and its first ticket's title. */
+  readonly "rust-essay": {
+    readonly week: string
+    readonly firstTicket: string | null
+  }
+}
+
+/** One episode's facts, its genre named. */
+export type ThumbnailFacts<G extends Genre = Genre> = {
+  readonly [K in G]: { readonly genre: K } & FactsByGenre[K]
+}[G]
+
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const
+
+/** A `YYYY-MM-DD` day as "Nov 5", the same on every host. */
+const dayName = (day: string): string => {
+  const [, month = 1, date = 1] = day.split("-").map(Number)
+  return `${MONTHS[month - 1] ?? ""} ${String(date)}`
+}
+
+/** A week's number from its id, `2026-w46` or `2026-W46`: 46. */
+const weekNumber = (week: string): number =>
+  Number(/-w(\d+)$/i.exec(week)?.[1] ?? Number.NaN)
+
+/**
+ * Each genre's title, from its facts: one rule per genre, all of them, so a
+ * new genre has no thumbnail until it has its rule.
+ */
+const TITLES: {
+  readonly [G in Genre]: (facts: FactsByGenre[G]) => string
+} = {
+  call: ({ from, to, part, of }) => {
+    const [first, last] = [dayName(from), dayName(to)]
+    const sameMonth = first.split(" ")[0] === last.split(" ")[0]
+    const range = `${first} – ${sameMonth ? (last.split(" ")[1] ?? "") : last}`
+    return `The week of ${range}${of > 1 ? `, part ${String(part)} of ${String(of)}` : ""}`
+  },
+  "cards-essay": ({ title }) => title,
+  "interview-essay": ({ role }) => role,
+  "playoff-delta": ({ season, week }) =>
+    week === "legend"
+      ? "The legend: how to read a week"
+      : `${season}, week ${String(week)}`,
+  report: ({ week }) => `The week of ${dayName(isoWeekMonday(week))}`,
+  "rust-essay": ({ week, firstTicket }) =>
+    `Week ${String(weekNumber(week))}${firstTicket === null ? "" : `: ${firstTicket}`}`,
+}
+
+/** `facts`' title, by its genre's rule. */
+export const thumbnailTitle = <G extends Genre>(
+  facts: ThumbnailFacts<G>
+): string => {
+  const rule: (f: FactsByGenre[G]) => string = TITLES[facts.genre]
+  return rule(facts)
+}
+
 /** What a thumbnail is drawn from. */
 export type ThumbnailInput = {
   readonly genre: Genre
   readonly title: string
   readonly voices: ThumbnailVoices
 }
+
+/**
+ * What `cut`'s thumbnail is drawn from: its genre's paint, the title its
+ * facts make, and who speaks in it. The title is the one value the page
+ * takes, so a title given another way would pass the same fit.
+ */
+export const thumbnailInput = (
+  facts: ThumbnailFacts,
+  cut: CutList
+): ThumbnailInput => ({
+  genre: facts.genre,
+  title: thumbnailTitle(facts),
+  voices: voicesOf(cut),
+})
 
 /**
  * Who speaks in `cut`: a take a speech model said (`speaker`) or a spoken
@@ -121,6 +229,14 @@ export type TitleMeasure = {
 }
 
 /**
+ * What the pinned fonts draw (their latin subset): letters, digits and
+ * punctuation of Latin-1 and Latin Extended-A, and general punctuation
+ * (dashes, quotes, the ellipsis). Anything else would be drawn in whatever
+ * font the host has, so a title holding it is refused.
+ */
+const DRAWN = /^[\u0020-\u017f\u2000-\u206f\u20ac]*$/u
+
+/**
  * The size to draw the title at: the largest of `measured` whose layout
  * stays inside the title's box. Refused when none does, since every size
  * tried is one that reads at 320×180, and a smaller one would not.
@@ -129,6 +245,13 @@ export const chooseTitleSize = (
   title: string,
   measured: ReadonlyArray<TitleMeasure>
 ): Parsed<number> => {
+  if (!DRAWN.test(title))
+    return {
+      ok: false,
+      problems: [
+        `The title "${title}" has letters the thumbnail's font can't draw: write it in English letters.`,
+      ],
+    }
   const fits = measured
     .filter(
       (m) =>
@@ -142,7 +265,7 @@ export const chooseTitleSize = (
     ? {
         ok: false,
         problems: [
-          `The title "${title}" doesn't fit the thumbnail at any size that still reads at 320×180 (${String(TITLE_FIT.minPx)}px or more): shorten it.`,
+          `The title "${title}" is too long for the thumbnail: at any size that fits, it wouldn't read in YouTube's smallest list. Shorten it.`,
         ],
       }
     : { ok: true, value: best.px }
@@ -184,13 +307,6 @@ const BAND_WORDS: Readonly<
 const BIRD: Character = "tin-owlet"
 
 const ink = "#f6efe2"
-
-const escaped = (text: string): string =>
-  text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
 
 /** A character at `size`, its ground clear and its key light left out. */
 const character = (who: Character, size: number): string =>
@@ -240,7 +356,7 @@ html,body{width:${String(width)}px;height:${String(height)}px;overflow:hidden;ba
 .me{margin-left:auto;display:flex;align-items:center;gap:10px}
 </style></head><body>
 <svg class="shape" viewBox="${GENRE_VIEW_BOX}" xmlns="http://www.w3.org/2000/svg">${shape}</svg>
-<div class="upper"><div class="genre">${escaped(GENRE_NAMES[input.genre])}</div><div class="title" data-title style="font-size:${String(titlePx)}px">${escaped(input.title)}</div></div>
-<div class="band" data-voices="${input.voices}"><div class="cast">${cast}</div><div class="voice"><div class="t big">${escaped(words.main)}</div><div class="under">${escaped(words.under)}</div></div>${plusMe}</div>
+<div class="upper"><div class="genre">${escapeText(GENRE_NAMES[input.genre])}</div><div class="title" data-title style="font-size:${String(titlePx)}px">${escapeText(input.title)}</div></div>
+<div class="band" data-voices="${input.voices}"><div class="cast">${cast}</div><div class="voice"><div class="t big">${escapeText(words.main)}</div><div class="under">${escapeText(words.under)}</div></div>${plusMe}</div>
 </body></html>`
 }
