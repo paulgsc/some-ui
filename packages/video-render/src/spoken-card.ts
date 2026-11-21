@@ -76,10 +76,29 @@ export type HeardExchange = Exchange<{ readonly answer: HeardTurn }, HeardTurn>
 /** A turn's voice: Kokoro's, or the owner's own. */
 export type TurnVoice = SpokenTurn["voice"]
 
-/** Whose bubble each voice lights on template A: Kokoro stands where the essays' asker does. */
-export const TURN_SPEAKER: Readonly<
-  Record<TurnVoice, Extract<Speaker, "asker" | "you">>
-> = { kokoro: "asker", owner: "you" }
+/** A turn's place in its exchange. */
+export type TurnRole = "ask" | "answer"
+
+/**
+ * Whose bubble a turn lights on template A, by its place and its voice: the
+ * owner is always You; Kokoro asking stands where the essays' asker does,
+ * and Kokoro answering where their tutor does, so a cast draws each as its
+ * own character (PDA6: a tin sparrow asks, a tin owlet answers).
+ */
+export const TURN_SPEAKER = {
+  ask: { kokoro: "asker", owner: "you" },
+  answer: { kokoro: "tutor", owner: "you" },
+} as const satisfies Readonly<
+  Record<TurnRole, Readonly<Record<TurnVoice, Speaker>>>
+>
+
+/** The bubble that stands opposite the owner's in an exchange: its Kokoro turn's. */
+export const kokoroSpeaker = (
+  exchange: HeardExchange
+): (typeof TURN_SPEAKER)[TurnRole]["kokoro"] =>
+  exchange.ask.voice === "kokoro"
+    ? TURN_SPEAKER.ask.kokoro
+    : TURN_SPEAKER.answer.kokoro
 
 /** What a turn says, as a caption reads it: Kokoro's line, or what home heard the owner say. */
 export const turnSaid = (turn: HeardTurn): string =>
@@ -92,7 +111,8 @@ export const SPOKEN_CATEGORY_TITLES: Readonly<Record<SpokenCategory, string>> =
 /** The longest a spoken card's id is, so each of its scenes' ids fits a cut list's (64). */
 export const SPOKEN_CARD_ID_MOST = 55
 
-export const SPOKEN_CARD_SCHEMA = "some-ui.spoken-card/1"
+/** Version 2: an exchange is two turns, each in its voice (C817). */
+export const SPOKEN_CARD_SCHEMA = "some-ui.spoken-card/2"
 
 /**
  * A spoken card as its stage draws it: the card's id, its category, and
@@ -121,9 +141,6 @@ export function parseHeardSpokenCard(raw: unknown): Parsed<HeardSpokenCard> {
     : { ok: false, problems: problemsOf(parsed.error, "spoken card") }
 }
 
-/** A turn's place in its exchange. */
-export type TurnRole = "ask" | "answer"
-
 /** One scene of a spoken card: one turn, the question or the answer, in its voice. */
 export type SpokenScene = {
   /** Its id on the card's stage: `ask-<n>` or `answer-<n>`, from 1. */
@@ -131,7 +148,7 @@ export type SpokenScene = {
   readonly exchange: number
   readonly role: TurnRole
   readonly voice: TurnVoice
-  readonly speaker: Extract<Speaker, "asker" | "you">
+  readonly speaker: Speaker
   /** What is said: Kokoro's line, or what home heard in the owner's take. */
   readonly said: string
   /** The owner's take it plays, for an owner's turn. */
@@ -144,7 +161,7 @@ const sceneOf = (turn: HeardTurn, role: TurnRole, n: number): SpokenScene => ({
   exchange: n,
   role,
   voice: turn.voice,
-  speaker: TURN_SPEAKER[turn.voice],
+  speaker: TURN_SPEAKER[role][turn.voice],
   said: turnSaid(turn),
   ...(turn.voice === "owner" ? { take: turn.take } : {}),
 })

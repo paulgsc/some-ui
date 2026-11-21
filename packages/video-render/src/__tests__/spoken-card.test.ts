@@ -16,6 +16,7 @@ import type { Series } from "@video-render/series"
 import {
   answerShown,
   heardSpokenCard,
+  kokoroSpeaker,
   sampleSpokenCard,
   SPOKEN_ANSWER_SHOWN_MOST,
   spokenCardsOf,
@@ -130,7 +131,8 @@ describe("a spoken card in a cards essay (WALK7)", () => {
       ["kokoro", "asker", undefined],
       ["owner", "you", "sample-take-1"],
       ["owner", "you", "sample-take-2"],
-      ["kokoro", "asker", undefined],
+      // Kokoro answering stands where the tutor does: a cast draws it apart.
+      ["kokoro", "tutor", undefined],
     ])
     const first = sample.value.exchanges[0]?.answer
     expect(scenes[1]?.said).toBe(
@@ -449,12 +451,15 @@ describe("a spoken card's scenes on its stage", () => {
     const sample = sampleSpokenCard()
     if (!sample.ok) throw new Error("no sample")
     const at = spokenSceneAt(sample.value, "answer-2")
-    // The second exchange is the other way round: Kokoro answers.
+    // The second exchange is the other way round: Kokoro answers, as the tutor.
     expect([at.index, at.scene.speaker, at.scenes.length]).toEqual([
       3,
-      "asker",
+      "tutor",
       4,
     ])
+    const [first, second] = sample.value.exchanges
+    expect(first && kokoroSpeaker(first)).toBe("asker")
+    expect(second && kokoroSpeaker(second)).toBe("tutor")
     expect(spokenSceneAt(sample.value, "nope").scene.id).toBe("ask-1")
   })
 })

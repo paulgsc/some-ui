@@ -1,11 +1,14 @@
 import type { JSX } from "react"
 import {
   answerShown,
+  ASK_WORDS_MOST,
+  kokoroSpeaker,
   parseHeardSpokenCard,
   sampleSpokenCard,
   SPOKEN_CATEGORY_TITLES,
   spokenSceneAt,
   turnSaid,
+  wordCount,
 } from "@some-ui/video-render"
 import type { HeardSpokenCard, SpokenScene } from "@some-ui/video-render"
 
@@ -39,15 +42,18 @@ export type SpokenCardStageProps = {
 const SAMPLE = sampleSpokenCard()
 
 /** What a scene is called: its question's place, and whose turn it is. */
-/** What a scene is called: its question's place, and whose turn it is. */
 const labelOf = (scene: SpokenScene): string =>
   `${W.question(scene.exchange)} · ${W.turn[scene.role][scene.voice]}`
 
-/** A turn's words, written out beside the bubbles while they fit, else left to the captions. */
+/**
+ * A turn's words, written out beside the bubbles while they fit, else left
+ * to the captions: a question as a title while it is a question's length
+ * (`ASK_WORDS_MOST`, as Kokoro's are held to), else as body text.
+ */
 const Said = ({ said, big }: { said: string; big: boolean }): JSX.Element =>
   !answerShown(said) ? (
     <p className="text-muted-foreground text-[0.8em]">{W.saidBelow}</p>
-  ) : big ? (
+  ) : big && wordCount(said) <= ASK_WORDS_MOST ? (
     <Title>{said}</Title>
   ) : (
     <p className="text-[1em] leading-snug">{said}</p>
@@ -64,8 +70,13 @@ const Screen = ({
   const exchange = card.exchanges.at(scene.exchange - 1)
   const asked = exchange === undefined ? "" : turnSaid(exchange.ask)
   return (
-    <Call speaker={scene.speaker} tag={tag} other="asker">
-      {scene.role === "answer" && (
+    <Call
+      speaker={scene.speaker}
+      tag={tag}
+      other={exchange === undefined ? "asker" : kokoroSpeaker(exchange)}
+    >
+      {/* The question over its answer, while it fits beside the answer. */}
+      {scene.role === "answer" && wordCount(asked) <= ASK_WORDS_MOST && (
         <p className="text-muted-foreground text-[0.8em]">{asked}</p>
       )}
       <p
