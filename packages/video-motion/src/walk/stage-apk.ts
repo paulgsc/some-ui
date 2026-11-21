@@ -159,6 +159,8 @@ export async function openApkStage(spec: ApkStageSpec): Promise<Stage> {
     })
     // Read from the accessibility tree, as Snips Capture's release pass reads
     // the screen: `device.info` needs Playwright's driver app on the device.
+    // A dump left by an earlier run is never read as this one.
+    await device.shell("rm -f /sdcard/walk-ui.xml")
     await device.shell("uiautomator dump /sdcard/walk-ui.xml")
     const bounds = webviewBounds(
       (await device.shell("cat /sdcard/walk-ui.xml")).toString("utf8"),

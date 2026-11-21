@@ -131,7 +131,7 @@ function walkOf(sample: Sample): Walk {
         holdMs: 2400,
       },
       {
-        label: "The note set aside",
+        label: "The notice closed",
         // "Kept." stays over the tab strip until it is dismissed (Notice).
         action: { kind: "tap", target: 'button[aria-label="Dismiss"]' },
         holdMs: 1600,
