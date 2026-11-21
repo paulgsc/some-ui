@@ -14,7 +14,7 @@
     "yield between every note",
     "a 10-minute turn, then a 10-minute give"
   ],
-  "gray": "It amends home-compute invariant 2 (interactive work never waits behind batch work); the owner asked that renders not be starved and the coordinator confirmed the amendment, but the minutes were a choice no check fixed. Its limits are server#1088; the owner decided a fast-tracked take skips the give (server#1090).",
+  "gray": "It amends home-compute invariant 2 (interactive work never waits behind batch work); the owner asked that renders not be starved and the coordinator confirmed the amendment, but the minutes were a choice no check fixed.",
   "undo": "Change transcribe::turn::TURN and GIVE, or pass Turn::unbounded() in transcribe::spawn and revert invariant 2's amendment.",
   "refs": ["server#1087", "server#1088", "server#1090", "server#705"]
 }
