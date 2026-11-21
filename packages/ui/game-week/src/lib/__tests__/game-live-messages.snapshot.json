@@ -24,7 +24,7 @@
   "home": [
     {
       "catalogVersion": 2,
-      "engineVersion": 3,
+      "engineVersion": 4,
       "following": true,
       "games": [
         {
@@ -89,7 +89,7 @@
     },
     {
       "catalogVersion": 2,
-      "engineVersion": 3,
+      "engineVersion": 4,
       "following": true,
       "games": [
         {
@@ -124,7 +124,7 @@
     },
     {
       "catalogVersion": 2,
-      "engineVersion": 3,
+      "engineVersion": 4,
       "following": false,
       "games": [],
       "offer": null,
