@@ -79,9 +79,8 @@ function asGame(game: HomeGame): Game {
     label: gameLabel(game.home, game.away),
     want: wantLine(game.want),
     kickoff: game.kickoff,
-    // The teams a bite can be about, when home names them as it takes them.
     ...(isTeamCode(game.home) && isTeamCode(game.away)
-      ? { home: game.home, away: game.away }
+      ? { teams: { home: game.home, away: game.away } }
       : {}),
   }
 }
@@ -107,7 +106,6 @@ function rankedOf(value: unknown): RankedEntry | null {
   if (tier === undefined) return null
   const unit = value.unit ?? null
   const side = value.unitSide ?? null
-  // A side is a team's code, in the shape home takes back on a bite.
   if (!(side === null || isTeamCode(side))) return null
   if (unit === null)
     return side === null ? { scenario: value.id, tier, unit: null } : null
@@ -154,7 +152,6 @@ function asOffer(seq: number, value: unknown): Offer | null {
       justHappened.push({ scenario: each.id, context: each.line, at: each.at })
     }
   }
-  // From a home that ranks (#3049); entries this build can't read are left out.
   const ranked = Array.isArray(value.ranked)
     ? value.ranked.flatMap((each) => {
         const read = rankedOf(each)

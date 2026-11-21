@@ -122,7 +122,7 @@ function allOf<T extends string>(
   return read
 }
 
-/** Narrows the dump's JSON, failing on a phase, moment or dimension (half, size, kind, unit) this code does not know. */
+/** Narrows the dump's JSON, failing on a phase, moment or dimension this code does not know. */
 export function parseCatalog(raw: {
   version: number
   scenarios: ReadonlyArray<{

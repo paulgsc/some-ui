@@ -9,6 +9,8 @@
 import type { ScenarioId, Unit } from "@some-ui/game-scenarios"
 import { SCENARIOS, UNITS } from "@some-ui/game-scenarios"
 
+import type { GameTeams } from "./feed"
+
 /** The ranked list's tiers, most plausible first. */
 export const TIERS = ["now", "always", "rest"] as const
 export type Tier = (typeof TIERS)[number]
@@ -74,7 +76,7 @@ export function unitOf(
  */
 export function nextUnit(
   unit: BiteUnit | null,
-  side: string | null = null
+  side: string | null
 ): BiteUnit | null {
   if (unit === null) return { unit: UNITS[0], side }
   const at = UNITS.indexOf(unit.unit)
@@ -86,10 +88,7 @@ export function nextUnit(
  * The unit moved to the other team of the game, `home` or `away`: from
  * one to the other, and from no one team to the home side.
  */
-export function otherSide(
-  unit: BiteUnit,
-  teams: { readonly home: string; readonly away: string }
-): BiteUnit {
+export function otherSide(unit: BiteUnit, teams: GameTeams): BiteUnit {
   const side = unit.side === teams.home ? teams.away : teams.home
   return { unit: unit.unit, side }
 }

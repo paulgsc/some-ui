@@ -60,7 +60,7 @@ describe("the week kept on the phone", () => {
     ]
     expect(parseWeek(JSON.stringify(week))).toEqual(week)
     // The teams come back with the week when it was kept with them (#3049).
-    const named = [{ ...week[0], home: "SF", away: "SEA" }]
+    const named = [{ ...week[0], teams: { home: "SF", away: "SEA" } }]
     expect(parseWeek(JSON.stringify(named))).toEqual(named)
     expect(parseWeek(JSON.stringify([{ id: "1" }]))).toBeNull()
     expect(parseWeek("{}")).toBeNull()

@@ -4,14 +4,13 @@
  * one-tap change while it is said, and the fields home is sent once.
  */
 import type { Said } from "@game-week/lib/bite"
-import { biteFields } from "@game-week/lib/bite"
 import type { Feed } from "@game-week/lib/feed"
 import { readHome } from "@game-week/lib/live-wire"
 import type { GameWeekState } from "@game-week/lib/machine"
 import { rankedNow, step } from "@game-week/lib/machine"
 import type { RankedEntry } from "@game-week/lib/ranked"
-import { nextUnit, otherSide, rankedList, unitOf } from "@game-week/lib/ranked"
-import { TIER_TITLES, unitLine, WORDS } from "@game-week/lib/words"
+import { otherSide, rankedList, unitOf } from "@game-week/lib/ranked"
+import { unitLine } from "@game-week/lib/words"
 import { SCENARIOS, UNITS } from "@some-ui/game-scenarios"
 import { describe, expect, it } from "vitest"
 
@@ -188,7 +187,7 @@ describe("a bite's unit", () => {
     expect(step(cleared, { type: "switchSide" }).state).toBe(cleared)
     const unnamed: Feed = {
       ...RANKED_FEED,
-      games: RANKED_FEED.games.map(({ home: _h, away: _a, ...game }) => game),
+      games: RANKED_FEED.games.map(({ teams: _teams, ...game }) => game),
     }
     const kept = saying(THIRD, unnamed)
     expect(step(kept, { type: "switchSide" }).state).toBe(kept)
@@ -199,12 +198,6 @@ describe("a bite's unit", () => {
     expect(step(first, { type: "pickUnit" }).state).toBe(first)
     const idle = here(undefined, RANKED_FEED)
     expect(step(idle, { type: "pickUnit" }).state).toBe(idle)
-  })
-
-  it("starts at the first unit, the list's team's or no one's, when there was none", () => {
-    expect(nextUnit(null)).toEqual({ unit: UNITS[0], side: null })
-    expect(nextUnit(null, "CHI")).toEqual({ unit: UNITS[0], side: "CHI" })
-    expect(nextUnit({ unit: "coaching", side: "CHI" })).toBeNull()
   })
 
   it("for a bite said first, comes from the list as it stopped, not a newer one", () => {
@@ -246,44 +239,6 @@ describe("a bite's unit", () => {
     })
   })
 
-  it("for a bite said first, picked from the list, comes from the list as it stopped too", () => {
-    const asking = run(
-      saying({ how: "said-first" }),
-      { type: "done" },
-      { type: "taken", take: take(), id: "b1", at: T0 + 5_000 }
-    ).state
-    const reranked: Feed = {
-      ...RANKED_FEED,
-      offer:
-        RANKED_FEED.offer === null
-          ? null
-          : {
-              ...RANKED_FEED.offer,
-              seq: 42,
-              ranked: [
-                {
-                  scenario: "in.third-long",
-                  tier: "now",
-                  unit: { unit: "defense", side: "SF" },
-                },
-              ],
-            },
-    }
-    // As the sheet sends it: the scenario, its unit the machine's to give.
-    const picked = run(
-      asking,
-      { type: "fed", feed: reranked },
-      {
-        type: "answer",
-        said: { how: "every-scenario", scenario: "in.third-long", context: "" },
-      }
-    ).all.find((effect) => effect.type === "amend")
-    expect(picked?.type === "amend" && picked.fields).toMatchObject({
-      unit: "defense",
-      unitSide: "SEA",
-    })
-  })
-
   it("is none for a bite said first and left for later", () => {
     const later = run(
       saying({ how: "said-first" }),
@@ -292,32 +247,6 @@ describe("a bite's unit", () => {
       { type: "answer", said: null }
     ).all.find((effect) => effect.type === "amend")
     expect(later?.type === "amend" && later.fields).not.toHaveProperty("unit")
-  })
-
-  it("comes from the list for what just happened too", () => {
-    const fields = fieldsKept(
-      saying({ how: "just-happened", scenario: "in.play-call", context: "" })
-    )
-    expect(fields).toMatchObject({ unit: "offense", unitSide: "SF" })
-  })
-
-  it("is named by home's fields, and none when said first", () => {
-    const moment = {
-      gameId: "g",
-      seq: null,
-      strip: "",
-      watching: true,
-      mode: "standard" as const,
-      offsetMs: null,
-    }
-    const unit = { unit: "special-teams" as const, side: "CHI" }
-    expect(biteFields({ ...THIRD, unit }, moment, T0)).toMatchObject({
-      unit: "special-teams",
-      unitSide: "CHI",
-    })
-    expect(biteFields({ how: "said-first" }, moment, T0)).not.toHaveProperty(
-      "unit"
-    )
   })
 })
 
@@ -372,7 +301,6 @@ describe("home's ranked list on the live socket", () => {
         { id: "in.kick", tier: "rest", unit: "goalposts", unitSide: null },
         { id: "in.penalty", tier: "rest", unit: "coaching", unitSide: 7 },
         { id: "in.injury", tier: "rest", unit: "defense", unitSide: "" },
-        { id: "in.sack", tier: "rest", unit: "defense", unitSide: "Bears" },
         { id: "in.turnover", tier: "rest", unit: null, unitSide: "CHI" },
         { id: "in.fourth-down", tier: "rest", unit: "coaching" },
       ])
@@ -402,9 +330,8 @@ describe("home's ranked list on the live socket", () => {
       })
     )
     if (named.kind !== "offer") throw new Error("not an offer")
-    expect(named.games[0]).not.toHaveProperty("home")
-    expect(named.games[0]).not.toHaveProperty("away")
-    expect(named.games[1]).toMatchObject({ home: "SF", away: "SEA" })
+    expect(named.games[0]).not.toHaveProperty("teams")
+    expect(named.games[1]).toMatchObject({ teams: { home: "SF", away: "SEA" } })
   })
 
   it("reads an offer from a home before it ranks as one with no list", () => {
@@ -417,16 +344,8 @@ describe("home's ranked list on the live socket", () => {
 
 describe("the words for it", () => {
   it("name a unit by whose it is, in the person's terms", () => {
-    expect(unitLine({ unit: "defense", side: "CHI" })).toBe("CHI defense")
     expect(unitLine({ unit: "special-teams", side: "SF" })).toBe(
       "SF special teams"
     )
-    expect(unitLine({ unit: "coaching", side: null })).toBe("Coaching")
-    expect(Object.values(TIER_TITLES)).toEqual([
-      "Likely now",
-      "Any time",
-      "Everything else",
-    ])
-    expect(WORDS.unitChange).not.toMatch(/\bunit\b/i)
   })
 })

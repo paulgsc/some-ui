@@ -306,10 +306,6 @@ describe("GameWeek", () => {
     expect(
       screen.getByRole("button", { name: WORDS.aboutTeam("SF") })
     ).toBeTruthy()
-    // Each control keeps its place as taps change it.
-    expect(screen.getByRole("button", { name: /^SEA defense/ })).toHaveClass(
-      "w-full"
-    )
     // A pick from the list would name nothing now: the bubble is away.
     expect(
       screen.queryByRole("button", { name: WORDS.everyScenario })

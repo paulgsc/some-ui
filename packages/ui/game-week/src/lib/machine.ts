@@ -338,11 +338,7 @@ export function offerView(state: GameWeekState): OfferView | null {
   return { seq: offer.seq, strip: offer.strip, cards, justHappened }
 }
 
-/**
- * Every scenario the current game's bite can be about now, most plausible
- * first (`./ranked`): home's ranked list for that game, or the catalog's
- * order while home offers nothing for it.
- */
+/** The ranked list (`./ranked`) for the current game only: another game's offer ranks nothing here. */
 export function rankedNow(state: GameWeekState): ReadonlyArray<RankedEntry> {
   const game = currentGame(state)
   const { offer } = state
@@ -824,8 +820,6 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
     }
 
     case "pickUnit": {
-      // Only while the bite is said: its fields are set at the stop, and
-      // home is sent them once.
       if (activity.kind !== "taking" || activity.said.how === "said-first")
         return stay(state)
       const { said: was } = activity
@@ -835,20 +829,15 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
     }
 
     case "switchSide": {
-      // As a unit: only while it is said, and only with a unit to be whose.
-      const game = currentGame(state)
+      const teams = currentGame(state)?.teams
       if (
         activity.kind !== "taking" ||
         activity.said.how === "said-first" ||
         activity.said.unit == null ||
-        game?.home === undefined ||
-        game.away === undefined
+        teams === undefined
       )
         return stay(state)
-      const unit = otherSide(activity.said.unit, {
-        home: game.home,
-        away: game.away,
-      })
+      const unit = otherSide(activity.said.unit, teams)
       const said = { ...activity.said, unit }
       return stay({ ...state, activity: { ...activity, said } })
     }

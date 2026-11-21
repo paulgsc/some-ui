@@ -24,12 +24,14 @@ export type Game = {
   /** Kickoff, ISO 8601. */
   readonly kickoff: string
   /**
-   * The two teams' codes ("SEA", "SF"), as home names them; absent from a
-   * week kept before the phone read them.
+   * The two teams' codes, as home names them; absent from a week kept
+   * before the phone read them.
    */
-  readonly home?: string | undefined
-  readonly away?: string | undefined
+  readonly teams?: GameTeams | undefined
 }
+
+/** A game's two teams, by their codes: "SF", "SEA". */
+export type GameTeams = { readonly home: string; readonly away: string }
 
 /** A scenario that can be happening now, as the screen offers it. */
 export type OfferCard = {
@@ -130,8 +132,7 @@ export function fixtureFeed(now: () => number = Date.now): FeedPort {
           id: "fixture-1",
           label: "SF vs SEA",
           want: "SF win",
-          home: "SF",
-          away: "SEA",
+          teams: { home: "SF", away: "SEA" },
           kickoff: iso(at - 70 * MINUTE),
         },
         {

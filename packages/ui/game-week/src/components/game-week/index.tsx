@@ -20,7 +20,12 @@
 import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import type { Said } from "@game-week/lib/bite"
-import type { Game, JustHappened, OfferCard } from "@game-week/lib/feed"
+import type {
+  Game,
+  GameTeams,
+  JustHappened,
+  OfferCard,
+} from "@game-week/lib/feed"
 import type { Activity, GameWeekState, OfferView } from "@game-week/lib/machine"
 import {
   biteView,
@@ -49,6 +54,7 @@ import {
   WORDS,
 } from "@game-week/lib/words"
 import { cn } from "@some-ui/core-utils"
+import type { ScenarioId } from "@some-ui/game-scenarios"
 import { scenarioOf } from "@some-ui/game-scenarios"
 import {
   Button,
@@ -226,10 +232,9 @@ const happened = (each: JustHappened): Said => ({
   context: each.context,
 })
 
-// Its unit is the machine's to give, from the list the bite answers to.
-const everyScenario = (entry: RankedEntry): Said => ({
+const everyScenario = (scenario: ScenarioId): Said => ({
   how: "every-scenario",
-  scenario: entry.scenario,
+  scenario,
   context: "",
 })
 
@@ -304,7 +309,7 @@ const Recording = ({
   /** One tap moves the bite to the next unit (#3049). */
   onUnit: () => void
   /** The game's two teams, when home named them. */
-  teams: { readonly home: string; readonly away: string } | null
+  teams: GameTeams | null
   /** One tap makes it about the other team. */
   onSide: () => void
 }): JSX.Element => {
@@ -349,7 +354,6 @@ const Recording = ({
             variant="outline"
             className="min-h-12 w-full rounded-full"
             onClick={onUnit}
-            // The name starts with what it shows, then says what a tap does.
             aria-label={`${unitWords}. ${WORDS.unitChange}`}
           >
             {unitWords}
@@ -432,17 +436,13 @@ const Asking = ({
   </section>
 )
 
-/**
- * Every scenario, most plausible first (#3049): the tiers of home's ranked
- * list, or the catalog's order while home offers nothing, each with the
- * unit a bite on it is about by default.
- */
+/** The ranked list (#3049, `lib/ranked`), by tier, each row with its default unit. */
 const Ranked = ({
   list,
   onPick,
 }: {
   list: ReadonlyArray<RankedEntry>
-  onPick: (entry: RankedEntry) => void
+  onPick: (scenario: ScenarioId) => void
 }): JSX.Element => (
   <div className="space-y-4">
     <p className="text-muted-foreground text-sm">
@@ -467,7 +467,7 @@ const Ranked = ({
                 <li key={entry.scenario}>
                   <button
                     type="button"
-                    onClick={() => onPick(entry)}
+                    onClick={() => onPick(entry.scenario)}
                     className="hover:bg-accent flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left"
                   >
                     <ScenarioIcon id={entry.scenario} className="text-brand" />
@@ -556,9 +556,9 @@ export const GameWeek = ({
   const view = offerView(state)
   const asking = activity.kind === "asking"
   const say = (said: Said): void => dispatch({ type: "say", said })
-  const pickFromLegend = (entry: RankedEntry): void => {
+  const pickFromLegend = (scenario: ScenarioId): void => {
     setPanel("none")
-    const said = everyScenario(entry)
+    const said = everyScenario(scenario)
     dispatch(asking ? { type: "answer", said } : { type: "say", said })
   }
   const outboxWords = outboxLine(waiting)
@@ -616,11 +616,7 @@ export const GameWeek = ({
           now={now}
           onDone={() => dispatch({ type: "done" })}
           onUnit={() => dispatch({ type: "pickUnit" })}
-          teams={
-            game?.home === undefined || game.away === undefined
-              ? null
-              : { home: game.home, away: game.away }
-          }
+          teams={game?.teams ?? null}
           onSide={() => dispatch({ type: "switchSide" })}
         />
       ) : asking ? (

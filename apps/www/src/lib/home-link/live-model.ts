@@ -89,9 +89,10 @@ export function parseWeek(raw: string): ReadonlyArray<Game> | null {
       label: each.label,
       want: each.want,
       kickoff: each.kickoff,
-      // A week kept before the phone read the teams has none (#3049).
-      ...(isString(each.home) && isString(each.away)
-        ? { home: each.home, away: each.away }
+      ...(isRecord(each.teams) &&
+      isString(each.teams.home) &&
+      isString(each.teams.away)
+        ? { teams: { home: each.teams.home, away: each.teams.away } }
         : {}),
     })
   }

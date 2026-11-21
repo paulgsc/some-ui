@@ -51,7 +51,6 @@ const TakeSchema = z.object({
           scenario: z.string().nullable().optional().catch(undefined),
           strip: z.string().nullable().optional().catch(undefined),
           started: z.string().nullable().optional().catch(undefined),
-          // Which unit it is about, and whose (#3049).
           unit: z.string().min(1).nullable().optional().catch(undefined),
           unitSide: z.string().min(1).nullable().optional().catch(undefined),
         })
