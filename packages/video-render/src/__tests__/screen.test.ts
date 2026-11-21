@@ -183,4 +183,21 @@ describe("regions from what the page measured", () => {
       ])
     ).toEqual([])
   })
+
+  it("cuts each box to the picture, and leaves out a part outside it", () => {
+    expect(
+      regionsOf(
+        [
+          { ref: "QM-311:run", box: { x: -4, y: 900, width: 420, height: 40 } },
+          {
+            ref: "QM-311:diagnostic:1",
+            box: { x: 16, y: 950, width: 380, height: 40 },
+          },
+        ],
+        { width: 412, height: 915 }
+      )
+    ).toEqual([
+      { ref: "QM-311:run", box: { x: 0, y: 900, width: 412, height: 15 } },
+    ])
+  })
 })

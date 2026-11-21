@@ -34,11 +34,19 @@ repo=$(cd "$here/../../.." && pwd)
 out="$snips/logs"
 mkdir -p "$snips" "$out"
 
-# The screen: the emulator image's own size (1080x1920), animations off, the status
+# The screen: 1080x1920 at density 420 (APK_VIEWPORT; the bundle refuses
+# another size, manifestOf), animations off, the status
 # bar in demo mode (a fixed clock, full battery and signal, no
 # notifications), and the device's clock at FROZEN_AT
 # (apps/www/src/lib/snips), which the release build reads, its page being
 # closed to the capture. A picture changes only when the app does.
+adb shell wm size 1080x1920
+adb shell wm density 420
+size=$(adb shell wm size | tr -d '\r' | grep -oE "[0-9]+x[0-9]+" | tail -1 || true)
+if [ "$size" != "1080x1920" ]; then
+  echo "the emulator draws $size, not 1080x1920" >&2
+  exit 1
+fi
 for scale in window_animation_scale transition_animation_scale animator_duration_scale; do
   adb shell settings put global "$scale" 0
 done

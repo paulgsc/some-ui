@@ -4,8 +4,18 @@
  */
 import { chromium } from "@playwright/test"
 import type { Browser, Route } from "@playwright/test"
+import { fail } from "@some-ui/video-render/node"
 
 export { fail, here, runCommand } from "@some-ui/video-render/node"
+
+/** `text` read as JSON, or refused, naming the file it came from. */
+export function jsonOr(text: string, path: string): unknown {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return fail([`${path} is not JSON`])
+  }
+}
 
 /** Answers a stage's read of `<id>.json` from the file it was handed alone. */
 export function answerFile(
