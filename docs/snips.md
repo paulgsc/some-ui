@@ -201,12 +201,14 @@ owner's one step. The workflow holds no mailbox secret.
   `page.ts`) beside one `<slug>-<hash12>.png` per page. A scene shows one
   by `{"from": "pages", "url": "…", "capturedAt": "…", "file": "…", "at": [ … ]}`:
   the address and moment it was taken, the "as of" its viewer is told, and
-  its file. Home hands the folder beside the essay as `<key>.pages/`, and
-  `record:cards --pages <dir>` checks each picture's hash and size, and
+  its file. The render takes the folder beside the essay as `<key>.pages/`,
+  and `record:cards --pages <dir>` checks each picture's hash and size, and
   refuses a scene whose page was taken at another address or moment than it
   says. Nothing on a GitHub page holds still, so the same page taken twice
-  is two pictures, each named by its own hash. Home's side (fetching
-  `cards/<key>.pages/` beside the essay from paulgsc/testing) is paulgsc/server's.
+  is two pictures, each named by its own hash. How the pictures reach home
+  is not settled: paulgsc/testing's guard refuses every picture, so they
+  can't sit beside the essay there. The snips' path, a capture run whose
+  bundle home fetches, is the likely one.
 
 - The APK's screens show what a fresh install paired with the stub shows. The
   stub answers few routes (`compat/stub-routes.json`), so many screens are

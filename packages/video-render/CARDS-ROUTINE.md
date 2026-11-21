@@ -109,8 +109,8 @@ Rules for every line, since you, months later, are the listener:
      page of docs): `{"kind": "screen", "of": {"from": "pages", …}}`. Take
      the pages with `pnpm --filter www record:pages` (`docs/snips.md`,
      "Public pages"), name each by the address, `capturedAt` and file its
-     record gives, and put the folder beside the essay as
-     `cards/<key>.pages/`. Say in the narration what the page showed as of
+     record gives. Don't put the pictures in paulgsc/testing, whose guard
+     refuses them: how they reach home is not settled yet. Say in the narration what the page showed as of
      when it was taken, since the page itself moves on.
    - **Badges:** ■ `main` for what is on a default branch at the stamp's
      commit, ◧ `pr` for an open pull request, □ `next` for what is planned

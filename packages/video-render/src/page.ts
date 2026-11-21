@@ -10,8 +10,9 @@
  *   browser with no sign-in, at one fixed size, and writes `pages.json`
  *   (`some-ui.pages/1`) beside the pictures: each page's address, the
  *   moment it was taken, its size and the parts it was asked to box.
- * - Home hands the folder beside the essay that names its pages, as
- *   `<key>.pages/`, as it hands snips.
+ * - The render takes that folder beside the essay that names its pages,
+ *   as `<key>.pages/`, as it takes snips. How it reaches home is not
+ *   settled (`docs/snips.md`, "Public pages").
  * - A scene names a page by its address, its capture time and its file.
  *   The capture time is the "as of" a viewer is told: a page on GitHub
  *   moves on, and the picture keeps the moment it showed.

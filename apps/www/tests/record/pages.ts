@@ -3,8 +3,8 @@
  * graph, a page of GitHub's docs, each photographed as anyone sees it
  * logged out, a sibling of the snips walk (`docs/snips.md`). It writes
  * `pages.json` (`@some-ui/video-render`'s `some-ui.pages/1`) beside one PNG
- * per page into `--out`, the folder home hands beside the essay as
- * `<key>.pages/`.
+ * per page into `--out`, the folder `record:cards --pages` takes beside
+ * the essay as `<key>.pages/`.
  *
  *   pnpm --filter www record:pages --pages-file <list>.json --out <dir>
  *
