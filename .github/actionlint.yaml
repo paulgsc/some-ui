@@ -13,8 +13,7 @@ paths:
     ignore:
       # SC2012 (info) on the AMO step's fallback `ls .../source-*.zip`: the
       # names are the ones the extension's own build writes, never a
-      # stranger's. Ignored rather than rewritten so this change does not
-      # touch the step that submits to AMO, which a person releases. The
-      # ignore covers the whole file: an SC2012 elsewhere in it is hidden
-      # too, until that step is rewritten with `find`.
+      # stranger's (C952). The ignore covers the whole file: an SC2012
+      # elsewhere in it is hidden too, until that step is rewritten with
+      # `find`.
       - "SC2012:"

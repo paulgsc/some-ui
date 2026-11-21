@@ -4,11 +4,7 @@
 # Every suppression below says why the finding cannot be exploited here. A
 # new one needs the same: a reason, not a count (#2116).
 rules:
-  # Tags, not commit hashes, for now. Every `uses:` names a tag
-  # (`actions/checkout@v7`) or a local action, and Dependabot's
-  # github-actions updates move the tags (.github/dependabot.yml). Pinning
-  # all of them to hashes is its own change across every workflow, so this
-  # holds the line at "a ref, never a branch" until that lands.
+  # A tag or commit, never a branch (C952).
   unpinned-uses:
     config:
       policies:

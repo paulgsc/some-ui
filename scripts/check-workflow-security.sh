@@ -4,24 +4,8 @@ set -euo pipefail
 # Workflow security (#2116): actionlint and zizmor over .github/, at pinned
 # versions. A step of pr.yml's `guards` job runs this, and CI Gate needs it.
 #
-#   WS2  No workflow or composite action under .github/ carries a
-#        high-severity zizmor finding that .github/zizmor.yml does not
-#        suppress with a reason: no attacker-controllable text (a dispatch
-#        input, an issue or PR title, body or branch name) expanded into a
-#        `run:` script, no dangerous trigger, no write permission zizmor
-#        rates as excessive at high severity, no unexplained $GITHUB_ENV
-#        write. And actionlint, with
-#        ShellCheck over every `run:` script, finds nothing that
-#        .github/actionlint.yaml does not ignore with a reason.
-#        Family: every workflow and composite action under .github/; every
-#        trigger; every source of expression text.
-#        Proof: this script (zizmor's offline audits at high severity, and
-#        all of actionlint's).
-#        Tolerance: zizmor's online audits (impostor commits, known-vulnerable
-#        action versions) do not run, so the result never depends on the
-#        network or on a new advisory; medium and lower findings are
-#        reported by a local run, not failed. A tag in `uses:` is accepted
-#        (.github/zizmor.yml says why).
+# WS2, its claim, family and tolerance: docs/ci-architecture.md, "Inputs
+# reach the shell as data".
 #
 # Pins: ACTIONLINT_VERSION below (built with `go install`, which checks the
 # module against Go's checksum database); zizmor and ShellCheck, with every

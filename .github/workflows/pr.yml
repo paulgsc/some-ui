@@ -691,10 +691,7 @@ jobs:
       - name: Check workflows
         run: nix develop .#ci --command node scripts/check-workflows.ts
 
-      # WS2 (scripts/check-workflow-security.sh, #2116): actionlint, with
-      # ShellCheck over every `run:` script, and zizmor's offline audits at
-      # high severity, over .github/ at the versions that script pins. Outside
-      # Nix: the script installs its pinned tools with the runner's python3
+      # WS2 (docs/ci-architecture.md). Outside Nix: the script installs its pinned tools with the runner's python3
       # and go into the runner's temp directory, and saves no Actions cache,
       # so no retention family is needed.
       - name: Check workflow security
