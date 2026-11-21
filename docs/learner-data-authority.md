@@ -1552,6 +1552,7 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   `apps/www/src/routes/_dashboard.tsx`,
   `apps/www/src/routes/_dashboard/_apk/aph.tsx`,
   `apps/www/src/lib/jobs/home.ts`, `apps/www/src/lib/jobs/notice.ts`,
+  `apps/www/src/lib/jobs/pull.ts`,
   `packages/ui/aph/src/lib/sync.ts`, `packages/ui/aph/src/lib/store.ts`,
   `packages/ui/topik/src/lib/topik/adapter/server/routine-files-queries/index.ts`,
   `packages/ui/topik/src/lib/topik/adapter/routine-files/index.ts`,

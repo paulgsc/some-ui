@@ -7,8 +7,10 @@
  * - Family: every drain order (lanes queued ahead of the jobs lane), every
  *   pace on the drain's side, a pull joining a run under way: none of them
  *   reach the check, which holds no lane's run.
- * - Proof: here, with no lane's run at all; `readDigests` sending only its
- *   two `GET`s is `./home.test.ts`'s.
+ * - Proof: here, that the check is answered by `keep`'s read alone, and by
+ *   LA15's falsifier (docs/learner-data-authority.md), that its refresher
+ *   waits on no lane's run; `readDigests` sending only its two `GET`s is
+ *   `./home.test.ts`'s.
  * - Tolerance: the lane's run and the pull's read can each take in home's
  *   runs, and the later to land is kept, so an older list can stand until
  *   the next read; a day's digest is never replaced either way.
@@ -96,6 +98,9 @@ describe("a pull on a Jobs screen", () => {
       kind: "done",
       value: { kind: "failed", why: "busy" },
     })
+    expect(await screenRefreshers.checkAll()).toEqual([PULL_CHECKS])
+    // No answer from home.
+    keep.mockRejectedValueOnce(new Error("no answer"))
     expect(await screenRefreshers.checkAll()).toEqual([PULL_CHECKS])
     drop()
   })
