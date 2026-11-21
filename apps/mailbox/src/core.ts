@@ -511,7 +511,7 @@ function snipFileRefusal(
     return `${what} must be the file's name, kind, size and SHA-256`
   const extra = Object.keys(file).find((key) => !SNIP_FILE_KEYS.has(key))
   if (extra !== undefined) {
-    if (PICTURE_KEY.test(extra)) return NO_PICTURE
+    if (PICTURE_KEY.test(extra) || AUDIO_KEY.test(extra)) return NO_PICTURE
     return `${extra} is not part of a snip's file: only its name, kind, size and SHA-256`
   }
   if (typeof file.name !== "string" || file.name === "")
@@ -575,7 +575,7 @@ function snipsRefusal(
     if (!isPlainObject(snip)) return "each snip must be a record"
     const extra = Object.keys(snip).find((key) => !SNIP_KEYS.has(key))
     if (extra !== undefined) {
-      if (PICTURE_KEY.test(extra)) return NO_PICTURE
+      if (PICTURE_KEY.test(extra) || AUDIO_KEY.test(extra)) return NO_PICTURE
       return `${extra} is not part of a snip's record`
     }
     if (typeof snip.id !== "string" || snip.id === "")

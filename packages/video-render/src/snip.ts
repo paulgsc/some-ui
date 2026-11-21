@@ -116,6 +116,12 @@ export const SnipRecordSchema = z
         path: ["image", "kind"],
         message: "a snip's picture is a PNG",
       })
+    if (snip.recording?.kind === "png")
+      ctx.addIssue({
+        code: "custom",
+        path: ["recording", "kind"],
+        message: "a snip's recording is an mp4 or webm",
+      })
     const hash = SNIP_ID.exec(snip.id)?.[5]
     if (hash !== undefined && !snip.image.sha256.startsWith(hash))
       ctx.addIssue({

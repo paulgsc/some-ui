@@ -457,8 +457,8 @@ Drive file: home keeps the audio`.
   `data` of `sample`, each snip once by its `id` with only its record's keys
   (`SnipRecordSchema` in `@some-ui/video-render`), and each `image` and `recording` only
   `{"name","kind","bytes","sha256"}`, the `image` a `png` and the `recording` an `mp4` or
-  `webm`, each with its size and SHA-256. A key beyond those that names a picture or its bytes,
-  at any level, a `data:` URI or a run of 256 or more base64 characters anywhere is
+  `webm`, each with its size and SHA-256. A key beyond those that names a picture, audio or bytes,
+  in the list, a snip's record or a file, a `data:` URI or a run of 256 or more base64 characters anywhere is
   refused with `a snip list carries no picture: a capture makes it again`. The owner's marks on
   a snip are not in it: they are home's, kept by the snip's id (SNIPS3).
 - **A list of the takes Drive holds** is

@@ -75,6 +75,9 @@ describe("the snips desk", () => {
     expect(readManifest({ ...MANIFEST, schema: "some-ui.snips/2" })).toBeNull()
     expect(readManifest({ ...MANIFEST, data: "home" })).toBeNull()
     expect(readManifest({ ...MANIFEST, commit: "main" })).toBeNull()
+    const first = snip("eeeeeeeeeeee", "Studio", "Clips")
+    const still = { ...first, recording: { ...first.image } }
+    expect(readManifest({ ...MANIFEST, snips: [still] })).toBeNull()
   })
 
   it("groups by module, and orders modules and snips the same each time", () => {
@@ -107,7 +110,14 @@ describe("the snips desk", () => {
       drop: 0,
       open: 1,
     })
-    expect(marks).toHaveLength(3)
+    // The newest by time wins wherever it is listed, and the last listed of equals.
+    const later = [...marks].reverse()
+    expect(latestMarks(later).get(id)?.mark).toBe("keep")
+    const tie = [
+      mark(id, "keep", "2026-11-21T10:00:00.000Z"),
+      mark(id, "drop", "2026-11-21T10:00:00.000Z"),
+    ]
+    expect(latestMarks(tie).get(id)?.mark).toBe("drop")
   })
 
   it("takes a mark of a known choice, a short note and a moment", () => {
