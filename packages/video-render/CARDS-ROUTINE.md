@@ -149,13 +149,13 @@ Rules for every line, since you, months later, are the listener:
 
 ## When it fails
 
-- **`cards-check` says ready, and the render refuses a card:** that's
-  expected. `cards-check` checks the folder and the cut list: its
-  scenes, what is said, and the series. It does not check a card's own
-  params (a badge's state, a row's fields, whether a line fits), which
-  only drawing it can: `@some-ui/burn-ins`, which draws them, already
-  depends on this package. So step 5's render is the cards' check, and an
-  essay merges only once both pass.
+- **`cards-check` says ready, and the render refuses a card:** the
+  render checks what `cards-check` can't. `cards-check` checks the folder
+  and the cut list: its scenes, what is said, and the series. A card's own
+  params (a badge's state, a row's fields, whether a line fits) are checked
+  by `@some-ui/burn-ins`, which depends on this package, so `cards-check`
+  can't ask it. Step 5's render is where those are checked, and an essay
+  merges only once both pass.
 - **`cards-check` refuses the essay:** each line names the scene and why.
   "it has no intro" means the first scene's `spoken` isn't the intro;
   "it says nothing" means a scene has no `spoken`.
