@@ -58,19 +58,19 @@
         "fields": [
           {
             "label": "Email",
-            "value": "paulgathondudev@gmail.com"
+            "value": "sam.rivera@example.com"
           },
           {
             "label": "Location",
-            "value": "Berkeley, CA"
+            "value": "Springfield, IL"
           },
           {
             "label": "GitHub",
-            "value": "https://github.com/paulgsc"
+            "value": "https://github.example/sam-rivera"
           },
           {
             "label": "Portfolio",
-            "value": "https://paulgsc.github.io/some-ui"
+            "value": "https://sam-rivera.example"
           }
         ],
         "answers": [
@@ -156,11 +156,11 @@
         "fields": [
           {
             "label": "Email",
-            "value": "paulgathondudev@gmail.com"
+            "value": "sam.rivera@example.com"
           },
           {
             "label": "GitHub",
-            "value": "https://github.com/paulgsc"
+            "value": "https://github.example/sam-rivera"
           }
         ],
         "answers": [],
@@ -228,7 +228,7 @@
         "fields": [
           {
             "label": "Email",
-            "value": "paulgathondudev@gmail.com"
+            "value": "sam.rivera@example.com"
           }
         ],
         "answers": [],
@@ -299,7 +299,7 @@
         "fields": [
           {
             "label": "Email",
-            "value": "paulgathondudev@gmail.com"
+            "value": "sam.rivera@example.com"
           }
         ],
         "answers": [],
