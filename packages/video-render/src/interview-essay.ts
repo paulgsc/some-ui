@@ -495,7 +495,6 @@ export function interviewEssayIntro(
   const answered = interviewAnsweredOf(essay)
   const of = `${answered.questions} of ${essay.questions.length} questions, ${answered.reads} of ${essay.reads.length} reads`
   const sample = voicing === "sample"
-  // As the Rust essay's intro: the lanes' voices only from their version (C840).
   const lanes =
     interviewEssayFormat(essay.template.version).shape?.voices !== undefined
   return {

@@ -178,7 +178,6 @@ export async function recordCall(
           ? join(values.out, week.week.from, `part-${String(part)}`)
           : join(values.out, week.week.from)
     )
-    // Each scene in its section's voice (C840).
     const voices = callVoices(scenes)
     const takes = await recordStills({
       page,

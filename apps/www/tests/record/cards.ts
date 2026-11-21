@@ -269,7 +269,8 @@ async function spokenStills({
   const takes = await recordStills({
     page,
     root,
-    shots: spoken.map(({ scene, spoken: { card, scene: on, voice } }) => {
+    shots: spoken.map(({ scene, spoken: { card, scene: on } }) => {
+      const voice = scene.lines.at(0)?.voice
       const own = on.take === undefined ? undefined : owned[on.take]
       // `spokenTakes` refused a missing take before anything was drawn; an
       // answer is never said by the speaker in its place.
@@ -317,7 +318,6 @@ async function main(): Promise<void> {
   const { owned, heard } = spoken
     ? await spokenTakes(essay.value, values.takes, read.value)
     : { owned: {}, heard: new Map<string, HeardSpokenCard>() }
-  // Each line in its speaker's voice for its chapter, as the series says (C840).
   const scenes = spoken
     ? cardsScenes(essay.value, heard, read.value.voices)
     : []

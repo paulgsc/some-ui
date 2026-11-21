@@ -929,9 +929,7 @@ function pagedScenes(
  *
  * It is the call's case of the voice policy (`CALL_VOICE_POLICY`), `fixed`:
  * a section is the call's chapter, and each already has a voice of its own,
- * so the voice changes where the section does and nowhere else (C840). The
- * lanes would rotate the host too, so they don't subsume it, and the call
- * keeps these voices.
+ * so the voice changes where the section does and nowhere else (C840).
  */
 export const CALL_VOICES: Readonly<Record<Section | Framing, KokoroVoice>> = {
   intro: "am_michael",

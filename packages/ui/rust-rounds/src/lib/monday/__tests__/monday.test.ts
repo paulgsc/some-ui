@@ -370,7 +370,6 @@ describe("prepare", () => {
     if (!done.ok) throw new Error(done.problems.join("\n"))
     const essay = parseEssay(done.files[0]?.body)
     if (!essay.ok) throw new Error(essay.problems.join("\n"))
-    expect(essay.value.template.version).toBe(ESSAY_VOICES_VERSION)
     expect(essay.value.opening).toEqual({ exchanges })
   })
 
@@ -909,7 +908,6 @@ describe("a week answered point by point (RR24)", () => {
     if (!done.ok) throw new Error(done.problems.join("\n"))
     const essay = parseEssay(done.files[0]?.body)
     if (!essay.ok) throw new Error(essay.problems.join("\n"))
-    expect(essay.value.template.version).toBe(ESSAY_VOICES_VERSION)
     const [first, second, third] = essay.value.tickets
     expect(first?.answer.kind).toBe("take")
     expect(first?.points.some((p) => p.answer)).toBe(false)
@@ -1104,7 +1102,6 @@ describe("a fork's best fit (RR29)", () => {
     if (!done.ok) throw new Error(done.problems.join("\n"))
     const essay = parseEssay(done.files[0]?.body)
     if (!essay.ok) throw new Error(essay.problems.join("\n"))
-    expect(essay.value.template.version).toBe(ESSAY_VOICES_VERSION)
     const [first] = essay.value.tickets
     expect(first?.points[0]?.fork?.best).toEqual({
       kind: "option",

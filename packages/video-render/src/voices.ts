@@ -22,12 +22,9 @@
  *
  * What a chapter is, each kind says by which of its lines opens one
  * (`chapterVoices`): a chapter slide in an essay, a chapter mark in a cards
- * essay. The lanes are disjoint, so two roles never share a voice, the
- * asker and the answerer of an exchange included. Each lane but the
- * answerer's holds at least two voices, so a role's voice changes each time
- * it speaks in a new chapter, even after chapters it sat out. The answerer
- * stands in for the owner, in a sample with no takes, and the owner's own
- * voice never changes, so its lane is one voice.
+ * essay. A role's voice changes each time it speaks in a new chapter, even
+ * after chapters it sat out (`speakerTurns`); the lanes say which voices
+ * (`VOICE_LANES`).
  *
  * Every name is one home's speaker loads (paulgsc/server
  * `infra/kokoro/say.py`, from Kokoro-FastAPI v0.9.2's `voices/v1_0`).
@@ -199,7 +196,7 @@ export function speakerTurns<S extends string>(
 }
 
 /** Each line's turn, as `speakerTurns`, for lines that already know their chapter. */
-export function turnsOf(
+function turnsOf(
   lines: ReadonlyArray<{ readonly speaker: string; readonly chapter: number }>
 ): Array<number> {
   const last = new Map<
@@ -228,6 +225,24 @@ export function chapterVoices<S extends string>(
   policy: VoicePolicy<S>,
   lines: ReadonlyArray<VoicedLine<S>>
 ): Array<KokoroVoice> {
-  const turns = speakerTurns(lines)
+  const chapters = chapterIndexes(lines.map((line) => line.opens))
+  return voicesInChapters(
+    policy,
+    lines.map((line, i) => ({
+      speaker: line.speaker,
+      chapter: chapters[i] ?? 0,
+    }))
+  )
+}
+
+/**
+ * Each line's voice, in order, for lines that already know their chapter
+ * (a cards essay's, whose chapter can open on a scene with no line).
+ */
+export function voicesInChapters<S extends string>(
+  policy: VoicePolicy<S>,
+  lines: ReadonlyArray<{ readonly speaker: S; readonly chapter: number }>
+): Array<KokoroVoice> {
+  const turns = turnsOf(lines)
   return lines.map((line, i) => voiceOf(policy, line.speaker, turns[i] ?? 0))
 }

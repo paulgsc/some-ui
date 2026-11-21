@@ -283,8 +283,6 @@ async function recordKind<E extends { readonly week: { readonly id: string } }>(
             week: essay.week.id,
             root,
           })
-    // Each scene in its speaker's voice for its chapter, as the essay's
-    // version says (C840).
     const voices = essaySceneVoices(format.shape, scenes)
     const takes = await recordStills({
       page,

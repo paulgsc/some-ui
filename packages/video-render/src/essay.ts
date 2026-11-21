@@ -102,7 +102,7 @@ export const ESSAY_VERSION = 7
  * The first version whose chart draws the decay record's two later cells
  * (RR19, #2695): a concept that may have faded, and an answer that came back
  * lower than an earlier week's. Each later version draws everything an
- * earlier one does; an essay is written at the newest (C841, moving C270).
+ * earlier one does; an essay is written at the newest (C841).
  */
 export const ESSAY_DECAY_VERSION = 2
 
@@ -135,8 +135,8 @@ export const ESSAY_CAST_VERSION = 6
  * tutor's voice changes at each chapter slide, through its lane
  * (`VOICE_LANES`); the one asking keeps its voice through the opening; and
  * the sample's answers, the owner's stand-in, keep one voice throughout, as
- * the owner's own takes do. Its locked intro says the tutor's voice changes. It draws everything version 6 does, so every essay
- * Rust Rounds writes takes it (C841).
+ * the owner's own takes do. It draws everything version 6 does, so every
+ * essay Rust Rounds writes takes it (C841).
  */
 export const ESSAY_VOICES_VERSION = 7
 

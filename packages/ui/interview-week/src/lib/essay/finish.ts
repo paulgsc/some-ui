@@ -363,9 +363,7 @@ function build(
   return {
     schema: INTERVIEW_ESSAY_SCHEMA,
     // Every essay takes the voices' version, which draws everything the
-    // versions before it do (C841, moving C270's version 1 for an essay with
-    // no opening, which C822 kept): a listener hears the tutor's voice move
-    // on at each chapter.
+    // versions before it do (C841).
     template: {
       id: INTERVIEW_ESSAY_ID,
       version: INTERVIEW_ESSAY_VOICES_VERSION,

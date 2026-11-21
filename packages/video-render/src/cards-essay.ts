@@ -37,7 +37,7 @@ import {
 } from "./spoken-categories"
 import { estimatedMs, heldFor, stillFile } from "./stills"
 import type { StillScene, StillTake } from "./stills"
-import { chapterIndexes, turnsOf, voiceOf, voicePolicyOf } from "./voices"
+import { chapterIndexes, voicePolicyOf, voicesInChapters } from "./voices"
 import type { KokoroVoice, VoiceRole, VoicesId } from "./voices"
 
 export const CARDS_INDEX_SCHEMA = "some-ui.cards-index/1"
@@ -71,8 +71,7 @@ export type CardsSpeaker = "host" | "narrator" | "asker" | "tutor"
 /**
  * Each speaker's Kokoro voice in a series with no voice lanes, the cards
  * essay's `fixed` case of the voice policy (C840): the host, the weekly
- * call's (C372), and the narrator, one for every card, which the owner heard
- * as monotone (#3321); and Kokoro in a spoken card, asking or answering, the
+ * call's (C372), and the narrator, one for every card; and Kokoro in a spoken card, asking or answering, the
  * essays' asker's. The voice changing is how a listener hears a new chapter
  * begin.
  */
@@ -286,18 +285,12 @@ export type CardsScene = StillScene & {
   readonly shot: Shot
   readonly lines: ReadonlyArray<CardsLine>
   readonly mark?: string
-  readonly spoken?: {
-    readonly card: string
-    readonly scene: SpokenScene
-    /** Kokoro's voice for this turn, when Kokoro says it; an owner's turn is their take. */
-    readonly voice?: KokoroVoice
-  }
+  readonly spoken?: { readonly card: string; readonly scene: SpokenScene }
 }
 
 /** A scene before its lines' voices are chosen. */
-type UnvoicedScene = Omit<CardsScene, "lines" | "spoken"> & {
+type UnvoicedScene = Omit<CardsScene, "lines"> & {
   readonly lines: ReadonlyArray<SpokenLine>
-  readonly spoken?: { readonly card: string; readonly scene: SpokenScene }
 }
 
 /** The title of the close's chapter mark. */
@@ -404,45 +397,29 @@ function voiced(
   voices: VoicesId | undefined
 ): Array<CardsScene> {
   const policy = voicePolicyOf(voices, CARDS_VOICES, CARDS_VOICE_ROLES)
-  // A scene with a mark opens a chapter. A spoken card's owner turn says no
-  // line, so it is no speaker's turn: a role moves on only in the chapters
-  // Kokoro speaks in it.
+  // A spoken card's owner turn says no line, so it is no speaker's turn: a
+  // role moves on only in the chapters Kokoro speaks in it.
   const chapters = chapterIndexes(
     scenes.map((scene) => scene.mark !== undefined)
   )
-  const said = scenes.flatMap((scene, i) =>
-    scene.lines.map((line) => ({
-      speaker: line.speaker,
-      chapter: chapters[i] ?? 0,
-    }))
-  )
-  const turns = turnsOf(said)
-  const sayIn = said.map((line, k) =>
-    voiceOf(policy, line.speaker, turns[k] ?? 0)
+  const sayIn = voicesInChapters(
+    policy,
+    scenes.flatMap((scene, i) =>
+      scene.lines.map((line) => ({
+        speaker: line.speaker,
+        chapter: chapters[i] ?? 0,
+      }))
+    )
   )
   let at = 0
-  return scenes.map((scene) => {
-    const { spoken, lines, ...rest } = scene
-    const voiced = lines.map(({ speaker: _speaker, ...line }) => {
+  return scenes.map(({ lines, ...rest }) => ({
+    ...rest,
+    lines: lines.map(({ speaker: _speaker, ...line }) => {
       const voice = sayIn[at++]
-      if (voice === undefined) throw new Error(`${scene.id}: no voice`)
+      if (voice === undefined) throw new Error(`${rest.id}: no voice`)
       return { ...line, voice }
-    })
-    const kokoro = voiced[0]?.voice
-    return {
-      ...rest,
-      lines: voiced,
-      ...(spoken === undefined
-        ? {}
-        : {
-            spoken: {
-              card: spoken.card,
-              scene: spoken.scene,
-              ...(kokoro === undefined ? {} : { voice: kokoro }),
-            },
-          }),
-    }
-  })
+    }),
+  }))
 }
 
 /** A card's scene, the `i`th of the essay's: what it says, in whose voice. */

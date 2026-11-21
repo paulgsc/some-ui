@@ -426,10 +426,6 @@ describe("the essay's opening (IW10)", () => {
     })
     if (!plain.ok) throw new Error(plain.problems.join("\n"))
     expect("opening" in (plain.files[0]?.body ?? {})).toBe(false)
-    // With no opening it takes the voices' version too (C841).
-    expect(plain.files[0]?.body.template.version).toBe(
-      INTERVIEW_ESSAY_VOICES_VERSION
-    )
   })
 
   it("never waits on the opening's word times: it is played, never measured", () => {

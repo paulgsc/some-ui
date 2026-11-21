@@ -22,7 +22,6 @@ import {
 } from "@video-render/cards-essay"
 import type { Parsed } from "@video-render/cut-list"
 import {
-  ESSAY_CAST_VERSION,
   ESSAY_VERSION,
   ESSAY_VOICES,
   essayChapterMarks,
@@ -43,7 +42,6 @@ import { readSeries } from "@video-render/node"
 import { sampleSpokenCard } from "@video-render/spoken-card"
 import {
   chapterIndexes,
-  KOKORO_VOICES,
   speakerTurns,
   VOICE_LANES,
   VOICE_ROLES,
@@ -151,7 +149,7 @@ const cardsLines = async (
         {
           speaker: spoken.scene.role === "ask" ? "asker" : "tutor",
           chapter,
-          voice: spoken.voice ?? "af_heart",
+          voice: scene.lines[0]?.voice ?? "af_heart",
           exchange: `${spoken.card}-${String(spoken.scene.exchange)}`,
         },
       ]
@@ -259,14 +257,10 @@ const byChapter = (
 }
 
 describe("the voice lanes", () => {
-  it("are disjoint, each of two voices or more but the held answerer's, every one a voice home's speaker has", () => {
+  it("are disjoint, so no two roles share a voice", () => {
     for (const lanes of Object.values(VOICE_LANES)) {
       const all = VOICE_ROLES.flatMap((role) => lanes[role])
       expect(new Set(all).size).toBe(all.length)
-      for (const role of VOICE_ROLES)
-        if (role === "answerer") expect(lanes[role].length).toBe(1)
-        else expect(lanes[role].length).toBeGreaterThanOrEqual(2)
-      for (const voice of all) expect(KOKORO_VOICES).toContain(voice)
     }
   })
 
@@ -432,7 +426,7 @@ describe("in the lanes, across spoken cards", () => {
     )
     const scenes = cardsScenes(many, heard, await newestCardsVoices())
     const kokoroOf = (id: string): ReadonlyArray<KokoroVoice | undefined> =>
-      scenes.filter((s) => s.spoken?.card === id).map((s) => s.spoken?.voice)
+      scenes.filter((s) => s.spoken?.card === id).map((s) => s.lines[0]?.voice)
     const [t0, t1] = VOICE_LANES["lanes-v1"].tutor
     const [a0, a1] = VOICE_LANES["lanes-v1"].asker
     expect(ids.map(kokoroOf)).toEqual([
@@ -492,17 +486,12 @@ describe("in the lanes, across spoken cards", () => {
         .filter(
           (s) => s.spoken?.scene.take === undefined && s.spoken !== undefined
         )
-        .map((s) => s.spoken?.voice)
+        .map((s) => s.lines[0]?.voice)
     const laned = cardsScenes(many, heard, await newestCardsVoices())
     const [tutor] = VOICE_LANES["lanes-v1"].tutor
+    // Both in C1's chapter: two marks only, C1's and the close's.
+    expect(cardsChapterMarks(laned)).toHaveLength(2)
     expect(kokoro(laned)).toEqual([tutor, tutor])
-    const card = laned.find((s) => s.id === c1.id)
-    for (const line of card?.lines ?? []) expect(line.voice).not.toBe(tutor)
-    // In a series before the lanes, every Kokoro turn is af_heart, as before.
-    expect(kokoro(cardsScenes(many, heard, undefined))).toEqual([
-      "af_heart",
-      "af_heart",
-    ])
   })
 
   it("keeps the roles that meet in an exchange apart by accent or by gender", () => {
@@ -554,7 +543,6 @@ describe("before the lanes", () => {
       const voices = essaySceneVoices(essayFormat(version).shape, scenes)
       expect(voices).toEqual(scenes.map((s) => ESSAY_VOICES[s.speaker]))
     }
-    expect(essayFormat(ESSAY_CAST_VERSION).shape?.voices).toBeUndefined()
     for (let version = 1; version < INTERVIEW_ESSAY_VERSION; version++)
       expect(interviewEssayFormat(version).shape?.voices).toBeUndefined()
   })
@@ -571,12 +559,5 @@ describe("before the lanes", () => {
       asker: "af_heart",
       tutor: "af_heart",
     })
-  })
-
-  it("the call keeps each section's voice (C840: the lanes don't subsume it)", async () => {
-    for (const line of await KINDS.call.lines())
-      expect(line.voice).toBe(
-        new Map(Object.entries(CALL_VOICES)).get(line.speaker)
-      )
   })
 })

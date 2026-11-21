@@ -446,8 +446,7 @@ function buildEssay(
     { weeks: ESSAY_WEEKS_MOST, concepts: ESSAY_CHART_ROWS }
   )
   // Every essay takes the voices' version, which draws everything the
-  // versions before it do (C841, moving C270 and C822): a listener hears the
-  // tutor's voice move on at each chapter.
+  // versions before it do (C841).
   const version = ESSAY_VOICES_VERSION
   const topics = [
     ...new Set(following.tickets.flatMap((t) => t.concepts.map((c) => c.name))),
