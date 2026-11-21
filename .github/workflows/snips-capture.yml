@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/node-ci-setup
         with:
           build: none
@@ -50,7 +50,7 @@ jobs:
       # Retention: read by this run's bundle job only. "Re-run failed jobs"
       # more than a day later finds no half; dispatch the workflow again.
       - name: Upload the web half
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: snips-web-${{ github.run_id }}
           path: snips-web
@@ -62,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/node-ci-setup
         with:
           build: none
@@ -70,7 +70,7 @@ jobs:
         run: nix develop .#ci --command pnpm --filter @some-ui/mobile bundle
         env:
           NODE_ENV: production
-      - uses: actions/setup-java@v6
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: "21"
@@ -107,7 +107,7 @@ jobs:
       # WebView loads blank (COMPAT, #3104) and the debug pass would show
       # nothing.
       - name: Photograph every screen
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: 34
           target: google_apis
@@ -123,7 +123,7 @@ jobs:
       # failed capture right after the run; a later look is a dispatch away.
       - name: Upload the APK half
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: snips-apk-${{ github.run_id }}
           path: snips-apk
@@ -135,7 +135,7 @@ jobs:
       # render a day on, is a dispatch away, the walk being on sample data.
       - name: Upload the walks
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: walks-${{ github.run_id }}
           path: walks
@@ -148,12 +148,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/node-ci-setup
         with:
           build: none
           resume-assets: "false"
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: snips-*-${{ github.run_id }}
           path: snips-bundle
@@ -189,7 +189,7 @@ jobs:
       # home missed is a re-run away: the workflow is deterministic, so the
       # same commit gives the same snips and ids.
       - name: Upload the bundle
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: snips-bundle-${{ github.sha }}
           path: snips-bundle

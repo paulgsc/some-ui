@@ -51,7 +51,7 @@ jobs:
       sha: ${{ steps.sha.outputs.sha }}
       levels: ${{ steps.levels.outputs.levels }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: sha
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - id: levels
@@ -73,7 +73,7 @@ jobs:
         env:
           NODE_ENV: production
 
-      - uses: actions/setup-java@v6
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: "21"
@@ -106,7 +106,7 @@ jobs:
       # Retention: read by this run's level jobs only. "Re-run failed jobs"
       # more than a day later finds no APK; dispatch the workflow again.
       - name: Upload the APKs
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: android-compat-apk-${{ github.run_id }}
           path: compat-apk
@@ -124,12 +124,12 @@ jobs:
         api: ${{ fromJSON(needs.apk.outputs.levels) }}
     steps:
       # The harness, from the commit the APKs were built from.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: |
             apps/mobile/launch
             apps/mobile/compat
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: android-compat-apk-${{ github.run_id }}
           path: compat-apk
@@ -146,7 +146,7 @@ jobs:
       # Slowed: one core, little memory, and a 3G link (netdelay umts,
       # netspeed hsdpa); run-level.sh caps the core's CPU.
       - name: Run the level
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         # Inputs reach the script as environment, never interpolated into it.
         env:
           API: ${{ matrix.api }}
@@ -174,7 +174,7 @@ jobs:
       # red level right after the run; a later look is a dispatch away.
       - name: Upload what the level showed
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: android-compat-out-${{ matrix.api }}-${{ github.run_id }}
           path: compat-out
@@ -188,7 +188,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: android-compat-out-*-${{ github.run_id }}
           path: rows
