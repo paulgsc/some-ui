@@ -148,8 +148,10 @@ captions over it; `@some-ui/video-motion`'s `motion video` fills the port.
 essay's question scenes use it once `record:essay --week-file` has photographed the week's
 cards: the ticket's question, each speak-to point, the program and rustc's first two
 diagnostics (`essayZoomRefs`, C797). Without the cards the essay renders as before. A cards
-essay may not place one yet: home keeps no screens for one (`parseCardsEssay` takes only
-cards).
+essay places one through a screen of the app (`src/snip.ts`, SNIPS4; C818), zoomed or whole.
+`src/sample/videos/phone-card` is one, on a mock Rust Rounds card handed as `snips/`; like
+any essay with a screen it is drawn only by `record:cards --snips`, never by `render` on its
+folder alone.
 
 ## Captions, a scene at a time
 

@@ -1,6 +1,6 @@
 /**
  * Records and renders one cards essay (CARDS7 #2979, EXPLAIN6 #3021): its
- * cut list, every scene a card, drawn by the built app's burn-ins page
+ * cut list, each scene a card or a screen of the app, drawn by the built app's burn-ins page
  * (`./burn-ins`) and laid together by the renderer
  * (`@some-ui/video-render`).
  *
@@ -55,7 +55,7 @@ import { copyFile, mkdir, readdir, readFile, writeFile } from "node:fs/promises"
 import { basename, dirname, join, resolve } from "node:path"
 import { parseArgs } from "node:util"
 import type { Page } from "@playwright/test"
-import { captionSpace, LANDSCAPE } from "@some-ui/burn-ins"
+import { captionShare } from "@some-ui/burn-ins"
 import { sha256Hex } from "@some-ui/core-utils"
 import {
   cardsChapterMarks,
@@ -335,7 +335,7 @@ type HandedScreens = {
 
 /**
  * What home handed for `cut`'s screens of the app, checked before anything
- * is drawn: each snip's picture by its record's hash, each clip frame a PNG,
+ * is drawn: each snip's picture by its record's hash, bytes and size, each clip frame a PNG,
  * and every screen the essay names among them (`resolveScreens`). Null when
  * it names none.
  */
@@ -374,11 +374,20 @@ async function handedScreens(
       if (bytes === null)
         problems.push(`${snip.id}: ${snip.image.name} is missing`)
       else if (
+        bytes.length !== snip.image.bytes ||
         (await sha256Hex(new Uint8Array(bytes).buffer)) !== snip.image.sha256
       )
         problems.push(
           `${snip.id}: ${snip.image.name} is not the picture its record names`
         )
+      else {
+        // A record of another size would zoom to the wrong boxes.
+        const size = pngSize(bytes)
+        if (size?.width !== snip.width || size.height !== snip.height)
+          problems.push(
+            `${snip.id}: ${snip.image.name} isn't the size its record says`
+          )
+      }
     }
   }
   const frames = new Map<string, PictureSize>()
@@ -402,12 +411,14 @@ async function handedScreens(
  * `cut` with its screens of the app drawn from what home handed, the
  * snips' pictures copied into `root/snips/` and the frames into `root/clips/`:
  * in a `spoken` essay, each held above the band the captions draw in, so a
- * caption is never over the app's own screen (C869). A silent essay has no
- * captions and keeps the whole frame.
+ * caption is never over the app's own screen (C869), and each drawn in
+ * `series`' own ground and theme, among its cards (C818). A silent essay
+ * has no captions and keeps the whole frame.
  */
 async function withScreens(
   cut: CutList,
   screens: HandedScreens | null,
+  { frame, theme, ground }: Series,
   spoken: boolean,
   root: string
 ): Promise<CutList> {
@@ -433,7 +444,9 @@ async function withScreens(
     await copyFile(from, to)
   }
   const resolved = resolveScreens(cut, screens.handed, {
-    foot: spoken ? captionSpace(LANDSCAPE) / LANDSCAPE.height : 0,
+    foot: spoken ? captionShare(frame) : 0,
+    ground,
+    ...(theme === undefined ? {} : { theme }),
   })
   if (!resolved.ok) return fail(resolved.problems)
   return resolved.value
@@ -466,8 +479,8 @@ async function main(): Promise<void> {
   await writeFile(join(root, "essay.json"), written)
 
   // The brand files the series names, from home's brand folder (`--brand`).
-  const series = join(SERIES, essay.value.series.id)
-  await placeBed(series, essay.value.series.version, values.brand, root)
+  const series = join(SERIES, seriesId)
+  await placeBed(series, version, values.brand, root)
   const site = await siteOf(values)
   const browser = await launchChromium()
   try {
@@ -508,6 +521,7 @@ async function main(): Promise<void> {
       await withScreens(
         spoken ? voicedCardsCutList(essay.value, scenes, takes) : essay.value,
         screens,
+        read.value,
         spoken,
         root
       ),
