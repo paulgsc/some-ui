@@ -8,9 +8,9 @@
     "server:docs/shared-stages.md",
     "server:docs/home-compute.md"
   ],
-  "chose": "A note the owner marked fast and no model has tried yet is FastTrack: it is first among the least-tried, so at the head of the line, and the transcriber's pass does not give the lane its turn before it, for that one try. Once tried it is Wanted, behind every note tried fewer times, so TR1 (C895) holds literally. The contention guard's excused note still gives way. The give's exception is at most one deadline per marked note per model.",
+  "chose": "A note the owner marked fast that the queue's model has not tried yet is FastTrack: it is first among the least-tried, so at the head of the line, and the transcriber's pass does not give the lane its turn before it, for that one try. Once tried it is Wanted, behind every note tried fewer times, so TR1 (C895) holds literally; after a model bump, a marked note no model has heard is FastTrack again under the new model. The contention guard's excused note still gives way. The give's exception is one deadline per marked note per model within one run of file_host: the guard's streak is kept in memory, so a restart during an excused FastTrack try can grant it one more.",
   "options": [
-    "FastTrack only while untried, one exception to the give per marked note (TR1 literal)",
+    "FastTrack only while the queue's model has not tried it, one exception to the give per marked note per model (TR1 literal)",
     "a mark re-arming on every re-mark, ahead of tried notes each time",
     "order only, never passing the give"
   ],
