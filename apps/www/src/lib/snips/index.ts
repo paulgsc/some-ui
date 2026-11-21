@@ -10,7 +10,11 @@
  * imports this: it describes the app from outside, and only on sample data (the Pages viewer build, or the APK paired with the
  * stand-in home).
  */
-import { SnipRecordSchema, SurfaceSchema } from "@some-ui/video-render/snip"
+import {
+  SnipRecordSchema,
+  SNIPS_MANIFEST_SCHEMA,
+  SurfaceSchema,
+} from "@some-ui/video-render/snip"
 import type {
   Build,
   SnipFile,
@@ -36,7 +40,7 @@ export type RouteEntry = {
 export const FROZEN_AT = "2026-11-02T09:30:00.000Z"
 
 /** The schema the manifest carries; home refuses another (`docs/snips.md`). */
-const MANIFEST_SCHEMA = "some-ui.snips/1"
+const MANIFEST_SCHEMA = SNIPS_MANIFEST_SCHEMA
 
 /** At most this many concrete addresses for one `$param` route. */
 export const PER_PATTERN = 3
