@@ -166,6 +166,16 @@ export type Band = {
 const wordsIn = (line: string): number =>
   line.split(/\s+/u).filter((word) => word !== "").length
 
+/**
+ * `text` as the band shows it, one phrase a line: split at each line break
+ * and after each mark that ends a phrase.
+ */
+export const phrasesOf = (text: string): ReadonlyArray<string> =>
+  text
+    .split(/\n|(?<=[.,;:?!])\s+/u)
+    .map((phrase) => phrase.trim())
+    .filter((phrase) => phrase !== "")
+
 /** Every word of `lines`. */
 export const totalOf = (lines: ReadonlyArray<string>): number =>
   lines.reduce((sum, line) => sum + wordsIn(line), 0)

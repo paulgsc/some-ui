@@ -24,6 +24,7 @@ import {
   PACE_RANGE,
   PACE_STEP_WPM,
   paceOf,
+  phrasesOf,
   stepPace,
   stepPrompter,
   totalOf,
@@ -63,6 +64,19 @@ const reads = (from: number, to: number, level: number): Array<PrompterEvent> =>
   Array.from({ length: (to - from) / 200 + 1 }, (_, i) =>
     heard(from + i * 200, level)
   )
+
+describe("phrasesOf", () => {
+  it("shows one phrase a line: at each line break, and after each mark that ends a phrase", () => {
+    expect(
+      phrasesOf("Monday a ticket, by Sunday an answer. Then more\nand more")
+    ).toEqual([
+      "Monday a ticket,",
+      "by Sunday an answer.",
+      "Then more",
+      "and more",
+    ])
+  })
+})
 
 describe("the teleprompter band's step", () => {
   it("moves at the pace the reader set while you speak", () => {

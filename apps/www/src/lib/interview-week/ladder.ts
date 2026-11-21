@@ -16,6 +16,7 @@
  *   question's: a read's takes wait for Send as before.
  */
 import type { InterviewWeek, Question, Ready } from "@some-ui/interview-week"
+import { phrasesOf } from "@some-ui/shared"
 import type { PatternTake } from "@some-ui/voice-capture"
 
 import type { InterviewSent } from "./spec"
@@ -38,13 +39,6 @@ export const stepsOf = (
 
 /** The rungs said without the answer on screen: the take page's. */
 export type SayRung = Exclude<Rung, "aloud">
-
-/** `text` a phrase a line, broken after each clause's punctuation. */
-const phrasesOf = (text: string): ReadonlyArray<string> =>
-  text
-    .split(/(?<=[.,;:?!])\s+/u)
-    .map((phrase) => phrase.trim())
-    .filter((phrase) => phrase !== "")
 
 /** The ready answer as read aloud: its parts' texts in order, a phrase a line. */
 export const scriptOf = (ready: Pick<Ready, "answer">): ReadonlyArray<string> =>
