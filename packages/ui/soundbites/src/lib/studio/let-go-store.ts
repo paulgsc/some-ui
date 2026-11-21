@@ -8,6 +8,7 @@
 import type { KeyedStorage } from "@some-ui/core-utils"
 import {
   localStorageOrNull,
+  onJson,
   openKept,
   salvageList,
   writeKept,
@@ -29,7 +30,7 @@ const LetGoMadeSchema: z.ZodType<LetGoMade> = z.object({
 const isMade = (value: unknown): value is LetGoMade =>
   LetGoMadeSchema.safeParse(value).success
 
-const readChoices = salvageList(isMade)
+const readChoices = onJson(salvageList(isMade))
 
 export type LetGoStore = {
   /** The choice in force: the last one kept, or null before any is. */

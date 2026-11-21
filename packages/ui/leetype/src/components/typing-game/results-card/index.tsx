@@ -1,6 +1,6 @@
 import type { FC } from "react"
 import type { CompletedSessionStats } from "@leetype/types/leetype"
-import { cn } from "@some-ui/core-utils"
+import { cn, formatTimecode } from "@some-ui/core-utils"
 import { Button, Card } from "@some-ui/shared"
 import { CheckCircle2, RotateCcw } from "lucide-react"
 
@@ -36,12 +36,6 @@ const StatCell: FC<StatCellProps> = ({ label, value, hint, highlight }) => (
     )}
   </Card>
 )
-
-function formatTime(seconds: number): string {
-  const minutes = Math.floor(seconds / 60)
-  const rest = Math.floor(seconds % 60)
-  return `${minutes}:${rest.toString().padStart(2, "0")}`
-}
 
 /**
  * What a finished sequence reports.
@@ -92,7 +86,7 @@ export const ResultsCard: FC<ResultsCardProps> = ({
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       <StatCell label="WPM" value={String(stats.wpm)} highlight />
       <StatCell label="Accuracy" value={`${stats.accuracy.toFixed(1)}%`} />
-      <StatCell label="Time" value={formatTime(stats.elapsedTime)} />
+      <StatCell label="Time" value={formatTimecode(stats.elapsedTime * 1000)} />
       <StatCell
         label="Steps"
         value={String(stats.stepsCompleted)}
