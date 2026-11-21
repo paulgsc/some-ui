@@ -28,7 +28,7 @@ const ASSESSING =
   /\b(?:scor(?:e|es|ed|ing)|ratings?|rated|grad(?:e|es|ed|ing)|self-assess\w*|assessments?|readiness|how ready|ready for (?:it|the|an?)\b|pass or fail|finish(?:ed)? line|graduat\w*|levell?ed up|level up)\b/giu
 
 /** The words of `text`, as a reader counts them: a dash alone is none. */
-const wordCount = (text: string): number =>
+export const wordCount = (text: string): number =>
   text.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length
 
 /** Whether `script`'s first line says the moniker. */
@@ -69,8 +69,31 @@ export const CONVERSATION_WORDS = { min: 340, max: 510 } as const
 /** The most words in one question: an observer asks it in a breath. */
 export const ASK_WORDS_MOST = 20
 
-/** One exchange of a conversation opening: what the observer asks, and the answer the owner reads. */
-export type Exchange = { readonly ask: string; readonly script: string }
+/**
+ * One exchange of a conversation: what is asked (`Q`), and how it is
+ * answered (`A`). In an opening, the observer asks in words and the owner
+ * answers with the script they read; in a spoken card (`spoken-card.ts`),
+ * each is a turn in one of two voices, Kokoro's line or the owner's take.
+ * Each use keeps its own count of exchanges as policy: an opening's
+ * `CONVERSATION_MOST`, a spoken card's `SPOKEN_EXCHANGES_MOST`.
+ */
+export type Exchange<
+  A extends object = { readonly script: string },
+  Q = string,
+> = {
+  readonly ask: Q
+} & Readonly<A>
+
+/** Every reason `ask`, at `at`, isn't a question an observer asks: 1 to `ASK_WORDS_MOST` words, never assessing. */
+export function askProblems(ask: string, at: string): Array<string> {
+  const asked = wordCount(ask)
+  return [
+    ...(asked < 1 || asked > ASK_WORDS_MOST
+      ? [`${at}: ${asked} words; ask in 1 to ${ASK_WORDS_MOST}`]
+      : []),
+    ...assessing(ask, at),
+  ]
+}
 
 /**
  * Every reason `exchanges`, at `at`, isn't a conversation opening (C737), as
@@ -98,15 +121,10 @@ export function conversationProblems(
       `${at}[0].script: the first answer says "${MONIKER}" in its first line`
     )
   for (const [i, { ask, script }] of exchanges.entries()) {
-    const asked = wordCount(ask)
-    if (asked < 1 || asked > ASK_WORDS_MOST)
-      problems.push(
-        `${at}[${i}].ask: ${asked} words; ask in 1 to ${ASK_WORDS_MOST}`
-      )
     if (wordCount(script) < 1)
       problems.push(`${at}[${i}].script: an answer says something`)
     problems.push(
-      ...assessing(ask, `${at}[${i}].ask`),
+      ...askProblems(ask, `${at}[${i}].ask`),
       ...assessing(script, `${at}[${i}].script`)
     )
   }

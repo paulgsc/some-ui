@@ -1,0 +1,19 @@
+{
+  "id": "C815",
+  "made": "2026-11-20",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/spoken-card.ts",
+    "some-ui:apps/www/src/lib/web-surface/call/spoken-card-stage.tsx"
+  ],
+  "chose": "A spoken card's answer screen writes the owner's transcript out beside the bubbles up to 170 words (SPOKEN_ANSWER_SHOWN_MOST, about a minute at the teleprompter's pace, which was rendered and fits the frame); a longer answer shows the question and \"In the captions below, as it was said\", its words in the burned-in captions alone, so a long take never stops a render for a frame too full.",
+  "options": [
+    "write it out up to 170 words, captions alone past that",
+    "always write it out, and refuse a render whose answer overflows",
+    "never write it out: the captions alone",
+    "shrink the text to fit"
+  ],
+  "gray": "Whether the owner's own words fill the screen or only run in the captions is seen on every spoken card; no check or earlier decision sets the bound.",
+  "undo": "Change SPOKEN_ANSWER_SHOWN_MOST, or drop answerShown from the stage so every answer is written out.",
+  "refs": ["#3282", "#3315"]
+}

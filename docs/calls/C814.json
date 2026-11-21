@@ -1,0 +1,15 @@
+{
+  "id": "C814",
+  "made": "2026-11-20",
+  "by": "claude",
+  "paths": ["some-ui:packages/video-render/src/cards-essay.ts"],
+  "chose": "A spoken card of category introduction opens the essay: it is the first scene, and the Kokoro intro (what the essay is for and what it is as of) follows it as the second; an introduction anywhere else is refused, and an essay with no spoken introduction keeps the intro first, as before.",
+  "options": [
+    "the owner's introduction first, then the Kokoro intro",
+    "the Kokoro intro first, then the owner's introduction",
+    "an introduction anywhere after the intro"
+  ],
+  "gray": "Who speaks first in a published essay, the owner or the narrator, is seen and heard by every viewer; the coordinator relayed that the owner introduces themselves before the narrator.",
+  "undo": "Drop opensIntroduced in cards-essay.ts's spokenProblems, so the intro is first again, and move the sample's introduction after it.",
+  "refs": ["#3282", "#3312"]
+}

@@ -7,6 +7,7 @@ import {
   essayIntro,
   fitsAllowance,
   parseEssay,
+  parseHeardSpokenCard,
   reportPages,
   reportProblems,
   reportWeek,
@@ -14,6 +15,7 @@ import {
   sampleEssay,
   sampleInterviewEssay,
   sampleReport,
+  sampleSpokenCard,
 } from "@some-ui/video-render"
 import type {
   CallIndex,
@@ -24,7 +26,8 @@ import type {
 } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
-import { essayAt, essayStageOf } from "./essay-view"
+import { essayAt, essayStageOf, namedStageOf } from "./essay-view"
+import { ESSAY_WORDS as EW } from "./essay-words"
 import { interviewEssayAt } from "./interview-essay-view"
 import { reportAt, reportStageOf } from "./report-view"
 import { screenStageOf } from "./rust-screen-view"
@@ -449,6 +452,62 @@ describe("the essay the stage draws (RR16)", () => {
       parse,
     })
     expect(broken.kind === "none" && broken.problems.length).toBeGreaterThan(0)
+  })
+})
+
+describe("a spoken card's stage (WALK7)", () => {
+  const read = (
+    data: unknown
+  ): { data: unknown; pending: boolean; failed: boolean } => ({
+    data,
+    pending: false,
+    failed: false,
+  })
+  const sample = sampleSpokenCard()
+  const of = (week: string | undefined, data: unknown): unknown =>
+    namedStageOf({
+      week,
+      read: read(data),
+      sample,
+      parse: parseHeardSpokenCard,
+      idOf: (heard) => heard.card,
+      words: { unread: EW.cardUnread, other: EW.otherCard },
+    })
+
+  it("is the sample with no card named, and the named card as read", () => {
+    if (!sample.ok) throw new Error("no sample")
+    expect(of(undefined, undefined)).toEqual({
+      kind: "show",
+      essay: sample.value,
+      voicing: "sample",
+    })
+    const card = { ...sample.value, card: "introduction" }
+    expect(of("introduction", card)).toEqual({
+      kind: "show",
+      essay: card,
+      voicing: "owner",
+    })
+  })
+
+  it("is never the sample in place of a card it read as another", () => {
+    if (!sample.ok) throw new Error("no sample")
+    expect(
+      namedStageOf({
+        week: "introduction",
+        read: { data: undefined, pending: false, failed: true },
+        sample,
+        parse: parseHeardSpokenCard,
+        idOf: (heard) => heard.card,
+        words: { unread: EW.cardUnread, other: EW.otherCard },
+      })
+    ).toEqual({
+      kind: "none",
+      problems: ["The spoken card introduction wasn't read"],
+    })
+    expect(of("introduction", sample.value)).toEqual({
+      kind: "none",
+      problems: ["The spoken card read is sample, not introduction"],
+    })
   })
 })
 

@@ -1,8 +1,18 @@
 import { ESSAY_STAGE_WORDS } from "@some-ui/video-render"
-import type { ForkPlacement, ForkVerdict, Mark } from "@some-ui/video-render"
+import type {
+  ForkPlacement,
+  ForkVerdict,
+  Mark,
+  TurnRole,
+  TurnVoice,
+} from "@some-ui/video-render"
 
 /** A week's number within its year, from its id: "46" from "2026-w46". */
 export const weekNumber = (id: string): string => id.slice(id.indexOf("w") + 1)
+
+/** Words the essays' opening and a spoken card share, so the two stages say them alike. */
+const THEY_ASK = "They ask"
+const YOUR_ANSWER = "Your answer"
 
 /**
  * Every word the essay's stage shows besides the essay's own data, the
@@ -23,9 +33,27 @@ export const ESSAY_WORDS = {
   youSaid: "You said",
   /** The opening conversation (#3269): a question, by its place, from 1. */
   question: (n: number): string => `Question ${n}`,
-  theyAsk: "They ask",
+  theyAsk: THEY_ASK,
+  /** A spoken card's stage (WALK7): its header, and its sample's. */
+  spokenCard: "Spoken card",
+  sampleCard: "Sample card, made-up takes",
+  /**
+   * A spoken card's turn, by its place in the exchange and its voice
+   * (WALK7): Kokoro asks and the owner answers in an introduction, and the
+   * other way round in the DB essay.
+   */
+  turn: {
+    ask: { kokoro: THEY_ASK, owner: "You ask" },
+    answer: { kokoro: "Their answer", owner: YOUR_ANSWER },
+  } satisfies Record<TurnRole, Record<TurnVoice, string>>,
+  /** Why a spoken card's stage draws none of the card it was asked for. */
+  cardUnread: (card: string): string => `The spoken card ${card} wasn't read`,
+  otherCard: (asked: string, got: string): string =>
+    `The spoken card read is ${got}, not ${asked}`,
+  /** A spoken card's answer too long to write out: its words are the captions'. */
+  saidBelow: "In the captions below, as it was said",
   /** The owner's answer to it: their own take, or in the sample a synthetic voice reading one. */
-  yourAnswer: "Your answer",
+  yourAnswer: YOUR_ANSWER,
   noAnswer: "Nothing came for this one",
   /** A take that was sent and couldn't be made out (HEARD2): read as if unanswered. */
   unheard: ESSAY_STAGE_WORDS.unheard,
