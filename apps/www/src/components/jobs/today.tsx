@@ -24,6 +24,7 @@ import { Check } from "lucide-react"
 
 import { hasAudience } from "@/lib/build-profile"
 import { useMinuteClock } from "@/lib/clock"
+import { usePlace } from "@/lib/engagement-places"
 import { phoneJobs } from "@/lib/jobs"
 import type { JobsState } from "@/lib/jobs/model"
 import {
@@ -38,7 +39,7 @@ import {
   standingOf,
 } from "@/lib/jobs/model"
 import { morningOf, offersDrive } from "@/lib/jobs/morning"
-import { pickOffer } from "@/lib/jobs/offers"
+import { pickOffer, TODAY_PLACES } from "@/lib/jobs/offers"
 import type { PickAffordance } from "@/lib/jobs/offers"
 import { doneOn, nextPick } from "@/lib/jobs/today"
 import {
@@ -125,6 +126,7 @@ const ToPick = ({
     <Link
       to="/jobs/pick/$day/$pickId"
       params={{ day, pickId: pick.id }}
+      search={{ from: "other-pick" }}
       className={card ? undefined : className}
       onClick={() => visit?.take(offer)}
     >
@@ -186,6 +188,7 @@ const NextPick = ({
   const link = {
     to: "/jobs/pick/$day/$pickId",
     params: { day, pickId: pick.id },
+    search: { from: "todays-pick" },
     onClick: (): void => visit?.take(offer),
   } as const
   return (
@@ -561,6 +564,8 @@ export const JobsToday = (): JSX.Element => {
   // opened is taken (WALK5, C861).
   const [visit] = useState(() => pageVisit(document))
   useEffect(() => watchVisit(visit, document), [visit])
+  // Today itself on screen: the day Jobs was opened, picks or none (#3338).
+  usePlace(TODAY_PLACES, "today")
   return (
     <ScreenVisitContext.Provider value={visit}>
       <Today />

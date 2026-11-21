@@ -34,7 +34,20 @@ const jobs: Pipeline = {
   name: "Jobs",
   wing: "jobs",
   domain: "jobs",
+  opened: { kind: "root", affordance: "today" },
   affordances: [
+    // Today itself, on screen: the wing's root, so a day it is opened counts
+    // though it lists no pick (silence, #3338; C861).
+    {
+      id: "today",
+      surface: "apk",
+      name: "Today",
+      routes: ["/jobs"],
+      offer: null,
+      emits: ["taken", "left"],
+      touches: true,
+      places: [{ id: "today", name: "Today" }],
+    },
     // Today: the one pick it opens on.
     {
       id: "todays-pick",

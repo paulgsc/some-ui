@@ -73,12 +73,24 @@ export type Affordance = {
   readonly retired?: true
 }
 
+/**
+ * How a read knows a module was opened on a day (silence, #3338; C861): by
+ * an affordance its root sends an event for on every show (`offered` or
+ * `taken`), or not at all. A module whose root sends nothing reads "not
+ * measured", never "silent", so no live module is called a graveyard.
+ */
+export type Opened =
+  | { readonly kind: "root"; readonly affordance: string }
+  | { readonly kind: "not-measured"; readonly why: string }
+
 export type Pipeline = {
   /** Stable for good: lowercase words joined by hyphens. */
   readonly id: string
   readonly name: string
   readonly wing: WingId
   readonly domain: DomainId
+  /** How its opening is known (`Opened`). */
+  readonly opened: Opened
   readonly affordances: ReadonlyArray<Affordance>
 }
 
@@ -98,8 +110,39 @@ const ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
  *   only with `offered`;
  * - `left` is emitted exactly when there are places, and only with `taken`;
  * - `said` is emitted exactly when there are answers;
- * - every pipeline has an affordance that is not retired.
+ * - every pipeline has an affordance that is not retired;
+ * - a pipeline opened at its root names one of its own affordances, not
+ *   retired, that sends `offered` or `taken`; one not measured says why.
  */
+/** Every way `pipeline.opened` fails to say truly how its opening is known. */
+function openedProblems(pipeline: Pipeline): ReadonlyArray<string> {
+  const { opened } = pipeline
+  switch (opened.kind) {
+    case "root": {
+      const root = pipeline.affordances.find(
+        (a) => a.id === opened.affordance && a.retired !== true
+      )
+      if (root === undefined) {
+        return [
+          `${pipeline.id}: opened at ${opened.affordance}, which it doesn't offer`,
+        ]
+      }
+      return root.emits.includes("offered") || root.emits.includes("taken")
+        ? []
+        : [`${pipeline.id}: its root ${root.id} sends nothing when shown`]
+    }
+    case "not-measured": {
+      return opened.why.trim() === ""
+        ? [`${pipeline.id}: says why its opening is not measured`]
+        : []
+    }
+    default: {
+      const none: never = opened
+      throw new Error(`no such opening: ${JSON.stringify(none)}`)
+    }
+  }
+}
+
 export function findRegistryProblems(
   pipelines: ReadonlyArray<Pipeline>,
   unmeasured: ReadonlyArray<Unmeasured>
@@ -114,6 +157,7 @@ export function findRegistryProblems(
     pipelineIds.add(pipeline.id)
     if (pipeline.affordances.every((a) => a.retired === true))
       problems.push(`${at}: offers nothing that is not retired`)
+    problems.push(...openedProblems(pipeline))
 
     const keys = new Set<string>()
     for (const a of pipeline.affordances) {

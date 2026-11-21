@@ -10,6 +10,10 @@ const studio: Pipeline = {
   name: "Studio",
   wing: "studio",
   domain: "video",
+  opened: {
+    kind: "not-measured",
+    why: "Nothing on its screens is counted when shown.",
+  },
   affordances: [
     // The videos made in sittings, under Studio's Episodes (SFEED1): the
     // video kept on this phone, opened for a sitting.
@@ -115,6 +119,10 @@ const gameDay: Pipeline = {
   name: "Game day",
   wing: "studio",
   domain: "video",
+  opened: {
+    kind: "not-measured",
+    why: "Nothing on its screens is counted when shown.",
+  },
   affordances: [
     // A scenario card home offers for the game being watched; a newer offer
     // takes it back ("offer-changed").
@@ -136,6 +144,7 @@ const playoffDelta: Pipeline = {
   name: "Playoff Delta",
   wing: "studio",
   domain: "video",
+  opened: { kind: "not-measured", why: "Nothing of it is counted yet." },
   affordances: [
     // Studio's web Home is the stage itself: nothing offers it, the owner
     // goes to it to record a week.

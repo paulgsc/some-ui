@@ -40,6 +40,7 @@ import {
   timedMinutes,
 } from "@/lib/jobs/model"
 import { pickAffordanceOf, pickPlaceAt, pickPlaces } from "@/lib/jobs/offers"
+import type { PickAffordance } from "@/lib/jobs/offers"
 import {
   addHowItWent,
   archivedIt,
@@ -707,14 +708,17 @@ const Ending = ({
 
 /**
  * Where on the pick's steps the owner is, for ENGAGE (WALK5, C861): the step
- * shown is the place, of the offer the pick was when this visit opened it.
+ * shown is the place, of the offer Today's link was (`from`), or, come in
+ * another way, of the offer the pick was when this visit opened it.
  */
 const StepPlace = ({
+  from,
   initialState,
   initialDay,
   initialPickId,
   shown,
 }: {
+  from: PickAffordance | undefined
   initialState: JobsState
   initialDay: string
   initialPickId: string
@@ -723,19 +727,22 @@ const StepPlace = ({
   const today = pacificDay(useMinuteClock())
   // Read once per mount (keyed by the pick): a visit's steps stay the
   // affordance it opened as, though deciding moves Today on to another pick.
-  const [affordance] = useState(() =>
+  const [opened] = useState(() =>
     pickAffordanceOf(initialState, today, initialDay, initialPickId)
   )
-  usePlace(pickPlaces(affordance), pickPlaceAt(shown))
+  usePlace(pickPlaces(from ?? opened), pickPlaceAt(shown))
   return null
 }
 
 export const PickFlow = ({
   day,
   pickId,
+  from,
 }: {
   day: string
   pickId: string
+  /** Which of Today's offers opened it, if one did. */
+  from?: PickAffordance
 }): JSX.Element => {
   const { state } = useJobs()
   const [viewed, setViewed] = useState<number | null>(null)
@@ -764,6 +771,7 @@ export const PickFlow = ({
     <div className="flex flex-col gap-4">
       <StepPlace
         key={`${day}/${pickId}`}
+        from={from}
         initialState={state}
         initialDay={day}
         initialPickId={pickId}

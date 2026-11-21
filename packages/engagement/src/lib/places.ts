@@ -15,6 +15,10 @@
  *   events and what is open after.
  * - **Runtime.** `createPlaces` holds what is open, and `watchPlaces` closes
  *   it while the page is hidden and opens it again when it is shown.
+ * - **A place's `taken` is the place coming on screen.** On an affordance a
+ *   visit also takes (a pick opened from Jobs' Today), the visit's take and
+ *   each place's are both `taken`: a read of takes per offer counts the
+ *   visit's, and a place's is the one a `left` naming a place follows.
  */
 import type { EngagementEvent, Surface } from "@engagement/lib/events"
 import { engage } from "@engagement/lib/sink"

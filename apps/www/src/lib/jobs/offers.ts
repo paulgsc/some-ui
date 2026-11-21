@@ -66,6 +66,9 @@ export const pickPlaces = (affordance: PickAffordance): PlaceOf =>
 export const pickPlaceAt = (index: number): PickPlace | null =>
   PICK_PLACES[index] ?? null
 
+/** Today itself, the wing's root: opening Jobs on a day (silence, #3338). */
+export const TODAY_PLACES = placeOf("today")
+
 /** The Record tab, as a place. */
 export const RECORD_PLACES = placeOf("record")
 

@@ -14,6 +14,7 @@ import {
   pickPlaceAt,
   pickPlaces,
   RECORD_PLACES,
+  TODAY_PLACES,
 } from "@/lib/jobs/offers"
 import { steps } from "@/lib/jobs/words"
 
@@ -43,6 +44,13 @@ describe("the Jobs wing in the vocabulary of use (WALK5, C861)", () => {
       for (const event of [...first.events, ...left.events]) {
         expect(checkEvent(event, PIPELINES).ok).toBe(true)
       }
+    }
+    const today = stepPlace(TODAY_PLACES, null, "today", at)
+    for (const event of [
+      ...today.events,
+      ...stepPlace(TODAY_PLACES, today.open, null, at).events,
+    ]) {
+      expect(checkEvent(event, PIPELINES).ok).toBe(true)
     }
     const record = stepPlace(RECORD_PLACES, null, "record", at)
     for (const event of stepPlace(RECORD_PLACES, record.open, null, at)

@@ -17,6 +17,7 @@ export type {
   DomainId,
   OfferHow,
   Pipeline,
+  Opened,
   Unmeasured,
   WingId,
 } from "./lib/registry"

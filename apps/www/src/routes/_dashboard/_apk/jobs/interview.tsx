@@ -28,10 +28,14 @@ import {
  * each opening. The Jobs lane brings the weeks and takes the sends
  * (`lib/home-link/interview`).
  */
-const PhoneInterview = (): JSX.Element => {
-  // Which of the week's pages is up, for ENGAGE (WALK5, C861).
+/** Which of the week's pages is up, for ENGAGE (WALK5, C861), while a week is. */
+const WeekPlace = (): null => {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   usePlace(INTERVIEW_PLACES, interviewPlaceOf(pathname))
+  return null
+}
+
+const PhoneInterview = (): JSX.Element => {
   // Made once per mount: the week is read once.
   const [ports] = useState(() =>
     phoneInterviewPorts({
@@ -45,6 +49,7 @@ const PhoneInterview = (): JSX.Element => {
     <NoInterviewWeek />
   ) : (
     <InterviewWeekRuntime ports={ports}>
+      <WeekPlace />
       <Outlet />
     </InterviewWeekRuntime>
   )
