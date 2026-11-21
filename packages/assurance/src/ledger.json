@@ -1125,9 +1125,9 @@
           "kind": "RE3",
           "property": "work",
           "claim": "Home fetches a game only while there is something to learn about it.",
-          "requirement": "A wake with nothing due fetches nothing; a game's summary is fetched every live cadence (15 s) from kickoff until a summary of it says final, then never again, a restart included; a completed game first seen late is still fetched until its final summary is kept; a game still called pre or postponed is fetched only within its grace (4 h after kickoff, and 8 h once over without completing).",
+          "requirement": "A wake with nothing due fetches nothing; the scoreboard is read every scoreboard cadence (600 s) only while a chosen game is live, past kickoff and not final (within its grace: 4 h while still pre, 8 h once over without completing, and without bound once completed), or within the margin (1 h) of its kickoff, and while any game was still live at its end read (kickoff plus 4 h), to at most 8 h after kickoff; and otherwise at the soonest of the next chosen kickoff less the margin, any listed game's end read, and a day after its last read; a failed read is retried on its backoff (to at most 900 s) whatever the games, and a start reads it at once; a chosen game's summary (a game is chosen when either side is a team the game-teams setting names, or always when it names none) is fetched every live cadence (15 s) from kickoff until a summary of it says final, then never again, a restart included; a game no team chose gets no live summaries, but once the scoreboard calls it completed its summary is fetched until one says final; a completed game first seen late is still fetched until its final summary is kept; a game still called pre or postponed is fetched only within its grace (4 h after kickoff, and 8 h once over without completing).",
           "verdict": "unproven",
-          "conclusion": "The pass tests follow a game from kickoff to its final fetch and then see no fetch, see a restart skip a game it holds final, and see a late-seen completed game and a postponed one handled. Not bounded: a game the scoreboard calls completed whose own summary never reads final is fetched for as long as that lasts (every 15 s while answers parse, every 900 s while they fail), and a response's bytes are read without a limit.",
+          "conclusion": "The pass tests follow a game from kickoff to its final fetch and then see no fetch, see a restart skip a game it holds final, and see a late-seen completed game and a postponed one handled. Not bounded: a game the scoreboard calls completed whose own summary never reads final is fetched for as long as that lasts (every 15 s while answers parse, every 900 s while they fail), and a response's bytes are read without a limit. A day with no game near or ending costs one scoreboard read; with teams named, each kickoff time of an unchosen game adds one read at its end (kickoff plus 4 h). A game added, or moved sooner, to within a day of the last read is learnt only at the next scoreboard read (at the latest the daily one), so in the worst case it is missed live, and fetched as over only if the scoreboard still lists it then. With teams named, a game no team chose is fetched once a scoreboard read sees it completed (the one at its end, kickoff plus 4 h, or the reads every 600 s after it to kickoff plus 8 h while it is still live); one still live at kickoff plus 8 h, or still pre at its end read, can leave the week unseen. A completed game whose summary never reads final is still fetched without a bound (server#534), and a chosen one also keeps the scoreboard awake, every 600 s.",
           "tracked": "server#534",
           "evidence": [
             {
@@ -1144,20 +1144,50 @@
               "class": "measured",
               "says": "A postponed game is left after the post grace, and one still called pre past its grace waits for the scoreboard.",
               "ref": "server:apps/servers/file_host/src/game_feed/pass.rs"
+            },
+            {
+              "class": "measured",
+              "says": "A week of wakes every 5 minutes with no game reads the scoreboard 7 times; a game tomorrow wakes it an hour before kickoff; a flexed kickoff is learnt at the read before the old one or the daily read; a postponed game sleeps it until the daily read learns its new kickoff; a read that fails while asleep backs off as before.",
+              "ref": "server:apps/servers/file_host/src/game_feed/pass.rs"
+            },
+            {
+              "class": "measured",
+              "says": "With teams named, only a named team's game gets live summaries or wakes the scoreboard, a game no team chose is fetched once completed until final (the scoreboard reading at every listed game's end to see it), and a change of teams takes effect at the next pass.",
+              "ref": "server:apps/servers/file_host/src/game_feed/pass.rs"
             }
           ],
           "watch": {
             "by": "dashboard",
             "ref": "server:infra/grafana/dashboards/game-feed.jsonnet"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-21",
+              "change": "The scoreboard is read every 600 s only while a chosen game is near (or any game is still live at its end read), and otherwise sleeps until an hour before the next chosen kickoff, a listed game's end read, or a day after its last read; live summaries are fetched only for games of the teams the game-teams setting names (every game when it names none), and any other game's summary only once the scoreboard calls it completed, until one reads final. The sleep is the owner's ask on #3329; the final fetch for unchosen games is the owner's decision in the linked comment.",
+              "why": "The owner (on #3329): there is no reason to ask ESPN all day, every day, when games happen on a few days in a few windows. Home fetched the scoreboard 144 times a day with no game near, and every game's summary on a full slate.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3329#issuecomment-7058452957"
+            }
+          ],
+          "proof": [
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_week_with_no_game_reads_the_scoreboard_once_a_day_and_nothing_else",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_game_tomorrow_wakes_the_scoreboard_an_hour_before_its_kickoff",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_flexed_kickoff_is_learnt_at_the_read_before_the_old_one_or_the_daily_read",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_postponed_game_sleeps_the_scoreboard_until_the_daily_read_learns_its_new_kickoff",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#only_a_chosen_teams_games_are_fetched_or_wake_the_scoreboard",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_failing_read_backs_off_as_before_while_asleep",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_game_called_off_before_its_kickoff_does_not_keep_the_feed_awake",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_completed_game_no_team_chose_is_fetched_until_its_summary_is_final",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_live_game_no_team_chose_is_not_fetched_and_dropped_once_it_leaves_the_scoreboard",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#the_scoreboard_reads_at_an_unchosen_games_end_so_its_final_summary_is_kept",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_game_live_past_its_end_read_keeps_the_scoreboard_awake_only_to_the_post_grace"
+          ]
         },
         {
           "id": "GA4",
           "kind": "OA6",
           "property": "outcome",
           "claim": "A game feed that has stopped reads as stopped, not as a quiet week.",
-          "requirement": "Every wake stamps game_feed_last_attempt_timestamp_seconds, whether or not anything is due, so a dashboard tells 'nothing to fetch' (a recent stamp) from 'not running' (an old one), and game_feed_enabled, the owner's switch as the last wake read it (1 following, 0 paused), tells 'switched off' from both; an alert tells the owner when the stamp goes stale.",
+          "requirement": "Every wake stamps game_feed_last_attempt_timestamp_seconds, whether or not anything is due and whether or not the scoreboard is asleep, so a dashboard tells 'nothing to fetch' (a recent stamp) from 'not running' (an old one), and game_feed_enabled, the owner's switch as the last wake read it (1 following, 0 paused), tells 'switched off' from both; game_feed_asleep and game_feed_next_fetch_timestamp_seconds say, as the last pass that ran set them, whether the scoreboard sleeps between games and until when; an alert tells the owner when the stamp goes stale.",
           "verdict": "holds",
           "conclusion": "The dashboard tells a quiet week from a stopped feed, and Slack tells you within about three minutes of its last wake once it stops, or through the server-down alert if home's server stops; a feed worker that has never woken since home started has no stamp and so no alert, and Grafana itself is not yet watched.",
           "evidence": [
@@ -1185,6 +1215,16 @@
               "class": "unknown",
               "says": "Nothing watches Grafana itself, the one thing that delivers home's alerts.",
               "ref": "some-ui#2289"
+            },
+            {
+              "class": "structural",
+              "says": "A feed asleep for 30 minutes whose wakes keep stamping does not fire GameFeedStale or GameFeedFailing; one asleep whose stamp stops does fire GameFeedStale; promtool tests both in CI.",
+              "ref": "server:infra/prometheus/rules/home.test.yml"
+            },
+            {
+              "class": "structural",
+              "says": "The GAME FEED dashboard's SCOREBOARD (AWAKE/ASLEEP), NEXT READ and TEAMS CHOSEN panels read game_feed_asleep, game_feed_next_fetch_timestamp_seconds and game_feed_teams_chosen.",
+              "ref": "server:infra/grafana/dashboards/lib/game-feed-panels.libsonnet"
             }
           ],
           "proof": [
@@ -1201,6 +1241,12 @@
               "change": "game_feed_enabled is the owner's switch on Home's switches (the game-feed setting, on by default), as each wake reads it before any fetch, in place of GAME_FEED_ENABLED read once at start.",
               "why": "The owner does not keep policy as an environment variable: whether home follows games is a switch set from the web app, as Rust Rounds recording is. The gauge still tells 'switched off' from a quiet week and from a stopped feed, so the claim holds as before.",
               "decision": "https://github.com/paulgsc/server/issues/617#issuecomment-6861136019"
+            },
+            {
+              "on": "2026-11-21",
+              "change": "The scoreboard may sleep between games (game_feed_asleep, game_feed_next_fetch_timestamp_seconds); the worker still wakes and stamps every 5 s while it does.",
+              "why": "Sleeping between games (#3329) must not read as a stopped feed: GameFeedStale still means the worker stopped, and the new gauges say when it next reads.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3329"
             }
           ]
         },
@@ -3730,7 +3776,7 @@
         "server:apps/servers/file_host/src/cards_essays",
         "server:apps/servers/file_host/src/routes/cards_essays.rs",
         "server:apps/servers/file_host/src/handlers/cards_essays.rs",
-        "server:apps/servers/file_host/src/take_files.rs",
+        "server:apps/servers/file_host/src/essay_media",
         "some-ui:apps/www/tests/record/voiced.ts"
       ],
       "modules": ["cards_essays"],
@@ -3739,16 +3785,21 @@
           "id": "CE1",
           "kind": "OA2",
           "property": "outcome",
-          "claim": "Every essay paulgsc/testing's cards index lists becomes one video on home, drawn from its cut list alone, or is refused and said; one that failed is tried again.",
-          "requirement": "Home reads paulgsc/testing's cards/index.json hourly and keeps each essay it lacks, as first served, then writes it as <key>.json for the render worker, and, for a spoken card, the takes it names with their transcripts, in <key>.takes/, waiting while a take is not heard yet and refusing one home didn't hear or that is missing (take-unheard, take-missing; server#1054), takes the essay back within a minute when a take it was given is no longer on home (deleted from My data, let go, or the account gone), lets an essay wait rather than refuse it while no one's takes are on home, and drops those copies once the video is made; the render worker's cards-essay job runs record:cards on it, which refuses a file that isn't a cards essay (parseCardsEssay: its key not its stamp's day, another series, a scene that isn't a card, plays a take outside a spoken card's owner turn, or a cue or stands on an image, and captions; in a spoken version, no intro, a scene with no chapter line or narration, a line the speaker can't say, or words past ten minutes; a spoken card, one to six exchanges each of one Kokoro turn and one owner turn, refused before cheat-sheet v3, with burn-ins, with two turns in one voice, with a Kokoro question that assesses, with a bad or overlong id or a clashing scene id, or with an introduction anywhere but first) before anything is drawn or said, has home's speaker say each line of a spoken essay, and keeps cards.mp4, cut-list.json, essay.json and shot-times.json in the essay's folder; a failed essay keeps its finished steps and takes and is tried again, or, refused by the render policy (too long or too large), once what it is made with changes (its input, its caps, the render image, the speaker's image, the worker script or the brand files; RF1, server#937).",
+          "claim": "Every essay paulgsc/testing's cards index lists becomes one video on home, drawn from its cut list alone, or is refused and said, or is withdrawn for good once a take it plays is deleted; one that failed is tried again.",
+          "requirement": "Home reads paulgsc/testing's cards/index.json hourly and keeps each essay it lacks, as first served, then writes it as <key>.json for the render worker, and, for a spoken card, the takes it names with their transcripts, in <key>.takes/, waiting while a take is not heard yet and refusing one home didn't hear or that is missing (take-unheard, take-missing; server#1054), withdraws the essay for good when a take its spoken cards play is deleted from My data or its recording let go, whether it was never given, its render has not started, is under way or is done (both receipts in cards_essay_video_deletion, cause take-deleted, naming the note, then its input, takes, video and work folders go within a minute, and a video a render under way finishes later goes the next minute; it is never given again, no list shows it and its video routes answer 404; server#1055), takes it back before its video is made when a take it was given is otherwise no longer on home (the account gone), lets an essay wait rather than refuse it while no one's takes are on home, and drops those copies once the video is made; the render worker's cards-essay job runs record:cards on it, which refuses a file that isn't a cards essay (parseCardsEssay: its key not its stamp's day, another series, a scene that isn't a card or a screen of the app (a snip or a Clips Library frame), a screen on a spoken card, plays a take outside a spoken card's owner turn, or a cue or stands on an image, and captions; in a spoken version, no intro, a scene with no chapter line or narration, a line the speaker can't say, or words past ten minutes; a spoken card, one to six exchanges each of one Kokoro turn and one owner turn, refused before cheat-sheet v3, with burn-ins, with two turns in one voice, with a Kokoro question that assesses, with a bad or overlong id or a clashing scene id, or with an introduction anywhere but first), and an essay showing a screen home didn't hand beside it in <key>.snips/ or <key>.clips/ (as every snip is until home hands snips, SNIPS2 some-ui#3116), a snip of another commit than its bundle, a snip picture not its record's, a frame that isn't a PNG, or a part its snip doesn't name, before anything is drawn or said, has home's speaker say each line of a spoken essay, and keeps cards.mp4, cut-list.json, essay.json and shot-times.json in the essay's folder; a failed essay keeps its finished steps and takes and is tried again, or, refused by the render policy (too long or too large), once what it is made with changes (its input, its caps, the render image, the speaker's image, the worker script or the brand files; RF1, server#937).",
           "verdict": "unproven",
           "conclusion": "Structural on the some-ui side: cards-check and the recorder are tested, and both showcase essays were recorded locally from the stage build, the same bytes twice. Home's side (the keeper that reads the index and the render worker's cards-essay job) comes with server#854, and nothing has rendered on home yet.",
           "tracked": "some-ui#2979",
           "evidence": [
             {
               "class": "structural",
-              "says": "parseCardsEssay refuses a key that isn't its stamp's day, a series that isn't a cards series, a scene that isn't a card, plays a take outside a spoken card's owner turn, or a cue or stands on an image, and captions, and in a spoken version (cheat-sheet v2, #3021) an essay with no intro, a scene that says nothing, an intro or close out of place, a line the speaker can't say, and words past ten minutes; a spoken card, one to six exchanges each of one Kokoro turn and one owner turn, refused before cheat-sheet v3, with burn-ins, with two turns in one voice, with a Kokoro question that assesses, with a bad or overlong id or a clashing scene id, and with an introduction anywhere but first (spoken-card.test.ts); cardsFolderProblems refuses an index out of order, a newest essay that is silent, an essay it lists that is missing, pins a version of its series the checkout lacks or asks that series for what it lacks (resolve), and one it forgets; each tested.",
+              "says": "parseCardsEssay refuses a key that isn't its stamp's day, a series that isn't a cards series, a scene that isn't a card or a screen of the app, a screen on a spoken card, plays a take outside a spoken card's owner turn, or a cue or stands on an image, and captions, and in a spoken version (cheat-sheet v2, #3021) an essay with no intro, a scene that says nothing, an intro or close out of place, a line the speaker can't say, and words past ten minutes; a spoken card, one to six exchanges each of one Kokoro turn and one owner turn, refused before cheat-sheet v3, with burn-ins, with two turns in one voice, with a Kokoro question that assesses, with a bad or overlong id or a clashing scene id, and with an introduction anywhere but first (spoken-card.test.ts); cardsFolderProblems refuses an index out of order, a newest essay that is silent, an essay it lists that is missing, pins a version of its series the checkout lacks or asks that series for what it lacks (resolve), and one it forgets; each tested.",
               "ref": "some-ui:packages/video-render/src/cards-essay.ts"
+            },
+            {
+              "class": "structural",
+              "says": "resolveScreens refuses a screen home didn't hand, a snip of another commit than its bundle and a part its snip doesn't name; parseSnipsGiven refuses a record whose picture isn't its id's and a bundle given twice; render refuses a cut list that still names a screen, while cards-check passes it; each tested (snip.test.ts). record:cards checks each picture's hash and each frame's PNG header before anything is drawn.",
+              "ref": "some-ui:packages/video-render/src/snip.ts"
             },
             {
               "class": "measured",
@@ -3782,6 +3833,18 @@
               "change": "A spoken card's owner turn plays one of the owner's takes: home gives the render the takes a spoken card names with their transcripts, waits while one is not heard yet, refuses one it didn't hear or that is missing, takes an essay back from the render worker within a minute when a take it was given is no longer on home, and drops the copies once the video is made; parseCardsEssay accepts a take only in a spoken card's owner turn. A take deleted after its render has started stays in the video it makes; that gap is open in server#1055.",
               "why": "WALK7 (some-ui#3315, server#1054): the owner wants their own voice in a cards essay, captioned from home's transcript and never cut by hand, and ruled that the copies join the named exception for their recordings on home.",
               "decision": "https://github.com/paulgsc/some-ui/issues/3311#issuecomment-7055970179"
+            },
+            {
+              "on": "2026-11-21",
+              "change": "A take a spoken card plays, deleted from My data or its recording let go, withdraws its essay for good at any stage, never given, before, during or after its render, rather than taking it back only before the video is made.",
+              "why": "docs/identity.md's essay-render exception, rule (c), held for cards essays only until the render started (server#1054), so a video made kept the owner's voice after the take was deleted.",
+              "decision": "https://github.com/paulgsc/server/issues/1055"
+            },
+            {
+              "on": "2026-11-21",
+              "change": "A cards essay may show a screen of the app home keeps, a snip or a Clips Library frame, in place of a card (SNIPS4, C865, C866). record:cards draws it only from what home hands beside the essay, as takes are handed (<key>.snips/, <key>.clips/), checked by hash or as a PNG, held whole above the captions or zoomed to the parts it names. Before anything is drawn it refuses a screen it wasn't handed, a snip of another commit than its bundle, or a part the snip doesn't name, and the render refuses a cut list that still names one. Until home hands snips (SNIPS2, some-ui#3116), every essay showing a snip is refused and said. The outcome claim is unchanged.",
+              "why": "The owner wants to see what an essay talks about: the app's own screens, on sample data (#3114, 2026-11-17).",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3114"
             }
           ]
         },
@@ -3789,8 +3852,8 @@
           "id": "CE2",
           "kind": "RE9",
           "property": "work",
-          "claim": "What home keeps for cards essays grows by one row per essay home takes and one folder per essay it renders or tries; no essay's video or folder is let go until its YouTube link is confirmed, and its row never is.",
-          "requirement": "server:cards_essay gains one append-only row per essay home takes (its key, the cut list as served, at most 1 MiB, with its SHA-256, and when), and the render worker's renders folder one folder per essay (cards.mp4, cut-list.json, shot-times.json); a failed essay keeps only its finished steps until it renders. Nothing deletes either today (C338): an essay's video and folder are kept until it can be let go after a confirmed YouTube link, as other episodes are, which comes with some-ui#2999 (the owner, on some-ui#2996); its row and the routine's repository keep every essay regardless (CARDS-ROUTINE: never deleted).",
+          "claim": "What home keeps for cards essays grows by one row per essay home takes and one folder per essay it renders or tries; no essay's video or folder is let go until its YouTube link is confirmed, but one whose spoken cards play a take later deleted is withdrawn, its video and folder removed, with two receipts; its row never is.",
+          "requirement": "server:cards_essay gains one append-only row per essay home takes (its key, the cut list as served, at most 1 MiB, with its SHA-256, and when), and the render worker's renders folder one folder per essay (cards.mp4, cut-list.json, shot-times.json); a failed essay keeps only its finished steps until it renders. Only a withdrawal for a deleted take deletes a video or folder today (server#1055); otherwise (C338) an essay's video and folder are kept until it can be let go after a confirmed YouTube link, as other episodes are, which comes with some-ui#2999 (the owner, on some-ui#2996); its row and the routine's repository keep every essay regardless (CARDS-ROUTINE: never deleted); server:cards_essay_video_deletion gains at most two append-only receipt rows per essay withdrawn for a deleted take, and they leave with the account.",
           "verdict": "unproven",
           "conclusion": "Structural on home's table: the row's bound (MAX_BODY) and its append-only triggers come with server#854; how large an essay's video is, and so the growth per essay, is unknown until essays render on home.",
           "tracked": "some-ui#2979",
@@ -3804,7 +3867,14 @@
           "watch": {
             "by": "none"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-21",
+              "change": "An essay whose spoken cards play a take later deleted from My data, or whose recording is let go, is withdrawn: its video and folder are removed before any YouTube link is confirmed, with two receipts in a new store, server:cards_essay_video_deletion.",
+              "why": "docs/identity.md's essay-render exception, rule (c), held for cards essays only until the render started (server#1054); a video made kept the owner's voice. The owner accepted the gap be closed (\"add it\", 2026-11-20, relayed in run some-ui#3311); server#1055 closes it as the Rust Rounds essay's withdrawal does.",
+              "decision": "https://github.com/paulgsc/server/issues/1055"
+            }
+          ]
         }
       ]
     },
@@ -4129,7 +4199,7 @@
     },
     {
       "module": "admin_settings",
-      "why": "The operator's levers (Rust Rounds recording, and whether home follows NFL games): each read answers with what home follows now, and each write with what it kept."
+      "why": "The operator's levers (Rust Rounds recording, whether home follows NFL games, and which teams' games it follows live): each read answers with what home follows now, and each write with what it kept."
     },
     {
       "module": "aph",
@@ -5324,13 +5394,19 @@
     {
       "store": "server:cards_essay",
       "class": "record",
-      "growth": "One row per cards essay home takes from paulgsc/testing's cards/: its key (<slug>-<YYYY-MM-DD>), the cut list as served (a few KB, at most 1 MiB) with its SHA-256, and when taken; append-only, triggers abort UPDATE and DELETE. No subject: a session's claims about public repositories, nobody's record, so deleting an account removes none. The repository keeps every essay too (CARDS-ROUTINE), and home's copy of each, its video included (renders/cards-essay/<key>/), is kept until it can be let go after a confirmed YouTube link, as other episodes are, which comes with #2999 (the owner, on #2996).",
+      "growth": "One row per cards essay home takes from paulgsc/testing's cards/: its key (<slug>-<YYYY-MM-DD>), the cut list as served (a few KB, at most 1 MiB) with its SHA-256, and when taken; append-only, triggers abort UPDATE and DELETE. No subject: a session's claims about public repositories, nobody's record, so deleting an account removes none. The repository keeps every essay too (CARDS-ROUTINE), and home's copy of each, its video included (renders/cards-essay/<key>/), is kept until it can be let go after a confirmed YouTube link, as other episodes are, which comes with #2999 (the owner, on #2996); an essay whose spoken cards play a take later deleted is withdrawn sooner, its video and folder removed with receipts in cards_essay_video_deletion (server#1055).",
       "family": "cards-essay-rendered"
     },
     {
       "store": "server:cards_essay_link",
       "class": "record",
       "growth": "Per YouTube video the owner records for a cards essay: one tiny row (the essay's key, the video's id, when), the newest standing; about one per essay; append-only, triggers abort UPDATE and DELETE. No subject: a public video of an essay about public repositories, nobody's record, so deleting an account removes none.",
+      "family": "cards-essay-rendered"
+    },
+    {
+      "store": "server:cards_essay_video_deletion",
+      "class": "record",
+      "growth": "Per step of a cards essay's video going (the video, then the rest), one receipt row (the essay's key, step, cause take-deleted or let-go, the subject and the deleted take's voice-note id for take-deleted, the YouTube id when there was one, bytes, when): at most two per essay; append-only. A take-deleted row names the subject's note and leaves with the account; a let-go row (some-ui#2999, nothing writes one yet) names no one and is kept for good.",
       "family": "cards-essay-rendered"
     },
     {
@@ -6568,7 +6644,7 @@
     {
       "id": "cards-essays",
       "name": "Making each cards essay into a video on home",
-      "why": "A session writes a cards essay to paulgsc/testing's cards folder, checked by cards-check before it merges; home reads the folder's index hourly and keeps each essay it lacks; the render worker records the stage's burn-ins page and keeps the video until it can be let go after a confirmed YouTube link, as other episodes are (#2979, C327, C338; the let-go comes with #2999).",
+      "why": "A session writes a cards essay to paulgsc/testing's cards folder, checked by cards-check before it merges; home reads the folder's index hourly and keeps each essay it lacks; the render worker records the stage's burn-ins page and keeps the video until it can be let go after a confirmed YouTube link, as other episodes are, except that a take deleted withdraws the essay and removes its video (server#1055) (#2979, C327, C338; the let-go comes with #2999).",
       "serves": ["cards-essay-rendered"],
       "witnesses": ["CE1"],
       "segments": [
@@ -6603,7 +6679,7 @@
           "on": "home",
           "paths": [
             "server:apps/servers/file_host/src/cards_essays",
-            "server:apps/servers/file_host/src/take_files.rs"
+            "server:apps/servers/file_host/src/essay_media"
           ]
         },
         {
@@ -6622,7 +6698,7 @@
         },
         {
           "id": "renders",
-          "name": "Studio's Renders shows the essay's video with the owner's other renders, played on the phone from file_host's cards_essays route, and Studio's Episodes lists every essay as the cards-essay feed's episode and plays a done one from file_host's feed_videos routes (C379), each keeping its own copy on the phone. The owner saves each essay's YouTube link on its episode page, as other episodes take one (C389), and home keeps each essay until it can be let go after that link, as other episodes are; until some-ui#2999 builds the let-go, there is none (C338). Ours, on home and the phone.",
+          "name": "Studio's Renders shows the essay's video with the owner's other renders, played on the phone from file_host's cards_essays route, and Studio's Episodes lists every essay as the cards-essay feed's episode and plays a done one from file_host's feed_videos routes (C379), each keeping its own copy on the phone. The owner saves each essay's YouTube link on its episode page, as other episodes take one (C389), and home keeps each essay until it can be let go after that link, as other episodes are; until some-ui#2999 builds the let-go, there is none (C338), except that a take deleted withdraws the essay and removes its video (server#1055). Ours, on home and the phone.",
           "owner": "ours",
           "on": "home",
           "paths": [

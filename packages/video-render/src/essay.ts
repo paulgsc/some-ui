@@ -68,6 +68,7 @@ import {
   words,
 } from "./format"
 import type { Format, Shape } from "./format"
+import type { InterviewEssayScene } from "./interview-essay"
 import { CONVERSATION_MOST } from "./opening"
 import type { RegionRef, Screens } from "./screen"
 import { regionRef, TICKET_KEY_PATTERN } from "./screen"
@@ -85,6 +86,8 @@ import {
   SILENCE_SHAPE,
   silenceSaid,
 } from "./verdict"
+import { chapterVoices, voicePolicyOf } from "./voices"
+import type { KokoroVoice, VoiceRole } from "./voices"
 import { zoomPicture } from "./zoom"
 
 export const ESSAY_SCHEMA = "some-ui.rust-essay/1"
@@ -93,21 +96,20 @@ export const ESSAY_SCHEMA = "some-ui.rust-essay/1"
 export const ESSAY_ID = "rust-essay"
 
 /** The newest version `essayFormat` gives, pinned as `v<n>.json` under `templates/`. */
-export const ESSAY_VERSION = 6
+export const ESSAY_VERSION = 7
 
 /**
  * The first version whose chart draws the decay record's two later cells
  * (RR19, #2695): a concept that may have faded, and an answer that came back
- * lower than an earlier week's. An essay with neither stays at version 1, so
- * a stage built before them still draws it (C270).
+ * lower than an earlier week's. Each later version draws everything an
+ * earlier one does; an essay is written at the newest (C841).
  */
 export const ESSAY_DECAY_VERSION = 2
 
 /**
  * The first version that draws a speak-to point answered by a take of its
  * own (RR24, #3248): `points[j].answer`, played in an answer scene of its
- * own. An essay with none stays at its version, so a stage built before
- * them still draws it.
+ * own.
  */
 export const ESSAY_POINT_VERSION = 3
 
@@ -117,18 +119,26 @@ export const ESSAY_FORK_VERSION = 4
 /**
  * The first version that opens on a conversation (#3269, C738): first after
  * the brand, a second voice asks each of the opening's questions, and the
- * owner's own take of their answer plays. An essay with none stays at its
- * version.
+ * owner's own take of their answer plays.
  */
 export const ESSAY_OPENING_VERSION = 5
 
 /**
  * The first version whose bubbles draw the cast (PDA6, #2883; C822): the
  * mochi for the owner, tin birds for the synthetic voices, in place of the
- * flat icons. It draws everything version 5 does, so an essay with an
- * opening takes it.
+ * flat icons. It draws everything version 5 does.
  */
 export const ESSAY_CAST_VERSION = 6
+
+/**
+ * The first version whose voices move on at each chapter (#3321, C840): the
+ * tutor's voice changes at each chapter slide, through its lane
+ * (`VOICE_LANES`); the one asking keeps its voice through the opening; and
+ * the sample's answers, the owner's stand-in, keep one voice throughout, as
+ * the owner's own takes do. It draws everything version 6 does, so every
+ * essay Rust Rounds writes takes it (C841).
+ */
+export const ESSAY_VOICES_VERSION = 7
 
 /**
  * The take that answers the opening's question `n` (from 1), by its id in
@@ -386,9 +396,11 @@ export function essayFormat(version: number = ESSAY_VERSION): Format {
       ),
     ],
     shape:
-      version >= ESSAY_CAST_VERSION
-        ? { ...ESSAY_SHAPE, cast: "cast-v1" }
-        : ESSAY_SHAPE,
+      version >= ESSAY_VOICES_VERSION
+        ? { ...ESSAY_SHAPE, cast: "cast-v1", voices: "lanes-v1" }
+        : version >= ESSAY_CAST_VERSION
+          ? { ...ESSAY_SHAPE, cast: "cast-v1" }
+          : ESSAY_SHAPE,
   }
 }
 
@@ -772,7 +784,7 @@ export function markOf(
 }
 
 /** Whether `cell` is one only version 2 of the template draws (`ESSAY_DECAY_VERSION`). */
-export const needsDecayVersion = (cell: EssayCell): boolean =>
+const needsDecayVersion = (cell: EssayCell): boolean =>
   cell === "faded" || typeof cell === "object"
 
 /**
@@ -914,7 +926,7 @@ export function forkProblems(
 }
 
 /** Whether `ticket` is drawn only from version 4: a fork, or a point count outside 2 to 3. */
-export const needsForkVersion = (ticket: EssayTicket): boolean =>
+const needsForkVersion = (ticket: EssayTicket): boolean =>
   ticket.points.some((point) => point.fork !== undefined) ||
   ticket.points.length < POINTS_LEAST ||
   ticket.points.length > POINTS_MOST
@@ -1061,16 +1073,48 @@ export type Speaker = "tutor" | "you" | "asker"
 export type Voicing = "owner" | "sample"
 
 /**
- * Each speaker's Kokoro voice, as the call's `CALL_VOICES`; `you` only in
- * the sample (`Voicing`). The asker's is neither the tutor's nor the
- * sample's, so a listener hears the opening's questions come from someone
- * else (owner, 2026-11-19).
+ * Each speaker's Kokoro voice in a version before the voice lanes, the
+ * essay's `fixed` case of the voice policy (C840): one for the whole essay,
+ * as the call's `CALL_VOICES`; `you` only in the sample (`Voicing`). The
+ * asker's is neither the tutor's nor the sample's, so a listener hears the
+ * opening's questions come from someone else (owner, 2026-11-19).
  */
-export const ESSAY_VOICES: Readonly<Record<Speaker, string>> = {
+export const ESSAY_VOICES: Readonly<Record<Speaker, KokoroVoice>> = {
   tutor: "am_michael",
   you: "bm_george",
   asker: "af_heart",
 }
+
+/**
+ * The role each speaker plays in the voice lanes (C840): the tutor teaches,
+ * the opening's asker asks, and `you`, said by Kokoro only in the sample,
+ * answers. The interview essay's speakers are the same.
+ */
+export const ESSAY_VOICE_ROLES: Readonly<Record<Speaker, VoiceRole>> = {
+  tutor: "tutor",
+  you: "answerer",
+  asker: "asker",
+}
+
+/**
+ * Each scene's Kokoro voice, in order, for an essay drawn in `shape`, the
+ * Rust essay's or the interview essay's: its speaker's under the shape's
+ * voice policy, a chapter slide opening each new chapter. The owner's own
+ * takes play in place of `you`'s voice outside the sample.
+ */
+export const essaySceneVoices = (
+  shape: Shape | undefined,
+  scenes: ReadonlyArray<
+    Pick<EssayScene | InterviewEssayScene, "section" | "speaker">
+  >
+): Array<KokoroVoice> =>
+  chapterVoices(
+    voicePolicyOf(shape?.voices, ESSAY_VOICES, ESSAY_VOICE_ROLES),
+    scenes.map((scene) => ({
+      speaker: scene.speaker,
+      opens: scene.section === "chapter",
+    }))
+  )
 
 /** One scene of an essay: its section, its id in the video, who says it and what. */
 export type EssayScene =
@@ -1134,6 +1178,9 @@ export function essayIntro(
   const answered = answeredOf(essay)
   const of = `${answered} of ${essay.tickets.length} tickets`
   const sample = voicing === "sample"
+  // A version in the voice lanes says the tutor's voice changes (C840); one
+  // before them says what it always said, so its intro's take is unchanged.
+  const lanes = essayFormat(essay.template.version).shape?.voices !== undefined
   return {
     rows: [
       {
@@ -1148,7 +1195,9 @@ export function essayIntro(
       },
       {
         label: "Voices",
-        says: essayVoices(sample, essay.opening !== undefined),
+        says: lanes
+          ? lanedVoicesRow(sample, essay.opening !== undefined)
+          : essayVoices(sample, essay.opening !== undefined),
       },
       { label: "Judged by", says: SOLO_SOURCE },
       { label: "Checked against", says: essay.references.join(" · ") },
@@ -1157,22 +1206,48 @@ export function essayIntro(
     said: [
       `This is the Rust Rounds essay for ${essay.week.id}, ${sayDay(essay.week.from)} to ${sayDay(essay.week.to)}.`,
       "Claude wrote the tutor's words, and code drew every frame.",
-      sample
-        ? essay.opening === undefined
-          ? "This is a sample: both voices are synthetic, and the second reads made-up answers."
-          : "This is a sample: every voice is synthetic, the one asking the opening's questions too, and one reads made-up answers."
-        : essay.opening === undefined
-          ? "The tutor's voice is synthetic; the other voice is the owner's own."
-          : "The tutor's voice and the one asking the opening's questions are synthetic; the answers are the owner's own.",
+      lanes
+        ? lanedVoicesSaid(sample, essay.opening !== undefined)
+        : sample
+          ? essay.opening === undefined
+            ? "This is a sample: both voices are synthetic, and the second reads made-up answers."
+            : "This is a sample: every voice is synthetic, the one asking the opening's questions too, and one reads made-up answers."
+          : essay.opening === undefined
+            ? "The tutor's voice is synthetic; the other voice is the owner's own."
+            : "The tutor's voice and the one asking the opening's questions are synthetic; the answers are the owner's own.",
       sample ? `Its answers cover ${of}.` : `The owner answered ${of}.`,
     ].join(" "),
   }
 }
 
 /**
- * The intro's "Voices" row: who says what, for the sample (every voice
- * synthetic) or an essay home renders, with the opening's asker when it
- * opens on the conversation (#3269).
+ * The intro's "Voices" row in a version with the voice lanes (C840), the
+ * Rust essay's or the interview essay's: the tutor's voice changes with each
+ * chapter, so a listener is told every voice but the answers' is Kokoro's.
+ */
+export function lanedVoicesRow(sample: boolean, opened: boolean): string {
+  const asker = opened
+    ? ", and so is the one asking the opening's questions, in voices of its own"
+    : ""
+  return `The tutor is Kokoro, a synthetic speaker, in a voice that changes with each chapter${asker}. ${
+    sample
+      ? "In a sample, one more synthetic voice reads the made-up answers, the same throughout"
+      : "The answers are the owner's own voice, from their takes"
+  }`
+}
+
+/** What the locked intro says of the voices in a version with the voice lanes (C840). */
+export function lanedVoicesSaid(sample: boolean, opened: boolean): string {
+  const asker = opened ? ", the one asking the opening's questions too" : ""
+  return sample
+    ? `This is a sample: every voice is synthetic${asker}. The tutor's changes with each chapter, and one voice reads made-up answers throughout.`
+    : `Every voice but the answers is synthetic${asker}, and the tutor's changes with each chapter; the answers are the owner's own.`
+}
+
+/**
+ * The intro's "Voices" row before the voice lanes: who says what, for the
+ * sample (every voice synthetic) or an essay home renders, with the
+ * opening's asker when it opens on the conversation (#3269).
  */
 function essayVoices(sample: boolean, opened: boolean): string {
   if (!opened)

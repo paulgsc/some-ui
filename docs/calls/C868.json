@@ -1,0 +1,20 @@
+{
+  "id": "C868",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/cut-list.ts",
+    "some-ui:packages/video-render/src/snip.ts",
+    "some-ui:apps/www/tests/record/cards.ts",
+    "some-ui:docs/snips.md"
+  ],
+  "chose": "A scene names a snip by the commit its bundle was captured at as well as its id: {from: snips, id, commit, at}, the commit required, 40 hex digits. Home fetches snips-bundle-<commit> for each commit an essay names and keeps no index of its own. It hands them as some-ui.snips-given/1 {bundles: [{commit, snips}]}, so an essay may show the app at two commits, a before and an after. resolveScreens refuses a snip whose commit is not the bundle home handed it from, naming both.",
+  "options": [
+    "the commit on each snip scene, given as bundles by commit",
+    "one commit per essay, given as one {commit, snips}",
+    "no commit on the scene: home keeps an index from snip id to bundle"
+  ],
+  "gray": "The coordinator decided the commit for W17's pickup (2026-11-21), so that home keeps no copy of what CI can make again (the owner's ruling that day) and the cut list keeps {commit, snipId} as SNIPS5 (#3149) asks. Whether to give one bundle or several is a design choice no check settles. Several cost one list, and they let an essay show a before and an after.",
+  "undo": "Drop commit from the snips source and give snips-given/1 as {snips} again.",
+  "refs": ["#3114", "#3116", "#3149"]
+}

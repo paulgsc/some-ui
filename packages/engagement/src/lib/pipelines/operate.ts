@@ -15,6 +15,10 @@ const lessons: Pipeline = {
   name: "Lessons",
   wing: "operate",
   domain: "lessons",
+  opened: {
+    kind: "not-measured",
+    why: "Nothing on its screens is counted when shown.",
+  },
   affordances: [
     // A lesson on the list, opened to edit.
     {
@@ -47,6 +51,10 @@ const resume: Pipeline = {
   name: "Résumé",
   wing: "operate",
   domain: "resume",
+  opened: {
+    kind: "not-measured",
+    why: "Nothing on its screens is counted when shown.",
+  },
   affordances: [
     {
       id: "build",

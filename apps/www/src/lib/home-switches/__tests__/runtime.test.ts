@@ -10,13 +10,13 @@ import type { FileHostTransport } from "@/lib/file-host-config/client"
 import { FileHostResponseError } from "@/lib/file-host-config/client"
 import type { SwitchesClient } from "@/lib/home-switches/client"
 import { createSwitchesClient, refusalOf } from "@/lib/home-switches/client"
-import type { Standing, SwitchKey } from "@/lib/home-switches/model"
+import type { Standing } from "@/lib/home-switches/model"
 import { SWITCH_KEYS } from "@/lib/home-switches/model"
 import { createHomeSwitches } from "@/lib/home-switches/runtime"
 
-const ON: Standing = { on: true, set: null }
-const PAUSED: Standing = {
-  on: false,
+const ON: Standing<"rust-rounds"> = { value: true, set: null }
+const PAUSED: Standing<"rust-rounds"> = {
+  value: false,
   set: { by: "owner", at: "2026-11-08T14:05:00.000Z" },
 }
 
@@ -36,25 +36,27 @@ function pending<T>(): Pending<T> {
   return { promise, resolve, reject }
 }
 
+type Switch = Standing<"rust-rounds">
+
 /** A home whose every answer the test gives by hand, in order. */
 function fakeHome(): {
-  client: SwitchesClient
-  reads: Array<Pending<Standing>>
-  sets: Array<[boolean, Pending<Standing>]>
+  client: SwitchesClient<"rust-rounds">
+  reads: Array<Pending<Switch>>
+  sets: Array<[boolean, Pending<Switch>]>
 } {
-  const reads: Array<Pending<Standing>> = []
-  const sets: Array<[boolean, Pending<Standing>]> = []
+  const reads: Array<Pending<Switch>> = []
+  const sets: Array<[boolean, Pending<Switch>]> = []
   return {
     reads,
     sets,
     client: {
-      read: (): Promise<Standing> => {
-        const answer = pending<Standing>()
+      read: (): Promise<Switch> => {
+        const answer = pending<Switch>()
         reads.push(answer)
         return answer.promise
       },
-      set: (on): Promise<Standing> => {
-        const answer = pending<Standing>()
+      set: (on): Promise<Switch> => {
+        const answer = pending<Switch>()
         sets.push([on, answer])
         return answer.promise
       },
@@ -81,8 +83,8 @@ describe("createHomeSwitches", () => {
       setting: null,
     })
 
-    switches.turn(false)
-    switches.turn(true)
+    switches.set(false)
+    switches.set(true)
     expect(home.sets.map(([on]) => on)).toEqual([false])
     home.sets[0]?.[1].resolve(PAUSED)
     await settled()
@@ -104,7 +106,7 @@ describe("createHomeSwitches", () => {
     switches.read()
     home.reads[0]?.resolve(ON)
     await settled()
-    switches.turn(false)
+    switches.set(false)
     switches.read()
     expect(home.reads).toHaveLength(1)
     home.sets[0]?.[1].resolve(PAUSED)
@@ -119,7 +121,7 @@ describe("createHomeSwitches", () => {
     switches.read()
     home.reads[0]?.resolve(ON)
     await settled()
-    switches.turn(false)
+    switches.set(false)
     home.sets[0]?.[1].reject(
       new FileHostResponseError(403, "/admin/settings/rust-rounds", "forbidden")
     )
@@ -178,10 +180,10 @@ describe("createSwitchesClient", () => {
       setAt: "2026-11-08T14:05:00.000Z",
     },
   } as const
-  const bodies: Record<SwitchKey, string> = {
+  const bodies = {
     "rust-rounds": '{"recording":false}',
     "game-feed": '{"following":false}',
-  }
+  } as const
 
   it.each(SWITCH_KEYS)(
     "reads and sets %s, and keeps only what the page says",
@@ -204,6 +206,43 @@ describe("createSwitchesClient", () => {
       ])
     }
   )
+
+  it("reads and sets the teams followed live, as home keeps them", async () => {
+    const calls: Array<[string, string | undefined]> = []
+    const teams = (value: ReadonlyArray<string>, set: boolean): unknown => ({
+      namespace: "game-teams",
+      value: { teams: value },
+      isDefault: !set,
+      default: { teams: [] },
+      revision: set ? 2 : null,
+      setBy: set ? "owner" : null,
+      setAt: set ? "2026-11-08T14:05:00.000Z" : null,
+    })
+    let answer = teams([], false)
+    const transport: FileHostTransport = (_route, init) => {
+      calls.push([
+        init?.method ?? "GET",
+        typeof init?.body === "string" ? init.body : undefined,
+      ])
+      return Promise.resolve(Response.json(answer))
+    }
+    const client = createSwitchesClient("game-teams", transport)
+    await expect(client.read()).resolves.toEqual({ value: [], set: null })
+    answer = teams(["SEA", "SF"], true)
+    await expect(client.set(["SEA", "SF"])).resolves.toEqual({
+      value: ["SEA", "SF"],
+      set: { by: "owner", at: "2026-11-08T14:05:00.000Z" },
+    })
+    expect(calls).toEqual([
+      ["GET", undefined],
+      ["PUT", '{"teams":["SEA","SF"]}'],
+    ])
+    // A team home wouldn't hold is not read as one.
+    answer = teams(["sf"], true)
+    await expect(client.read()).rejects.toSatisfy(
+      (error: unknown) => refusalOf(error) === "failed"
+    )
+  })
 
   it("reads an untouched switch as nobody's change", async () => {
     const transport: FileHostTransport = () =>
@@ -242,6 +281,9 @@ describe("createSwitchesClient", () => {
     const route = "/admin/settings/game-feed"
     expect(refusalOf(new FileHostResponseError(404, route, null))).toBe(
       "not-on-home"
+    )
+    expect(refusalOf(new FileHostResponseError(422, route, null))).toBe(
+      "refused"
     )
     expect(refusalOf(new FileHostResponseError(500, route, null))).toBe(
       "failed"

@@ -11,7 +11,7 @@
  * `--week` names the week by its first day (the newest `paulgsc/testing`
  * keeps by default, `sample` for the template's); the build must be one that
  * reads content, as the home network's does. `--voices kokoro` says each
- * scene in its section's voice (`CALL_VOICES`) through home's Kokoro speaker
+ * scene in its section's voice (`callVoices`) through home's Kokoro speaker
  * at `--speaker` (paulgsc/server `infra/compose/kokoro.yml`), which gives the
  * same audio for the same words (ST36, #2635); `none` leaves the call
  * silent, each scene held for its words' reading time, which the frame shows

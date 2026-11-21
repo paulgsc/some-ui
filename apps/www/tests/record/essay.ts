@@ -3,7 +3,8 @@
  * interview essay (IW6, #2937), whichever the file's `schema` names
  * (`some-ui.rust-essay/1` or `some-ui.interview-essay/1`): a still of each
  * scene from the built app's `/essay?record`, the tutor's words said by
- * home's Kokoro speaker in `ESSAY_VOICES`' voice, each answer the owner's
+ * home's Kokoro speaker in the voice its version gives each chapter
+ * (`essaySceneVoices`, C840), each answer the owner's
  * own take, played whole, and the renderer (`@some-ui/video-render`) laying
  * them together.
  *

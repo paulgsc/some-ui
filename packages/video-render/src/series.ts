@@ -37,6 +37,7 @@ import type { CutList, Parsed, Shot } from "./cut-list"
 import { CastIdSchema, ThemeIdSchema } from "./format"
 import { LOOKS } from "./plans"
 import { CheckedFileSchema, ms, SOUNDS, TRANSITIONS } from "./vocabulary"
+import { VoicesIdSchema } from "./voices"
 
 export const SERIES_SCHEMA = "some-ui.video-series/1"
 
@@ -87,6 +88,12 @@ export const SeriesSchema = z
      * `theme` is its theme. Absent, the flat icons.
      */
     cast: CastIdSchema.optional(),
+    /**
+     * The voice lanes a video drawn with no format of its own (a cards
+     * essay) is said in (`VoicesIdSchema`, C840), as `cast` is its cast.
+     * Absent, each speaker keeps one voice for the whole video.
+     */
+    voices: VoicesIdSchema.optional(),
     /** The colour behind the picture, as `#rrggbb`. */
     ground: z.string().regex(/^#[0-9a-f]{6}$/),
     /** Where the picture sits in the frame, in the frame's pixels. */

@@ -2,14 +2,14 @@ import type { JSX } from "react"
 import { AphHistory } from "@some-ui/aph"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
-import { useAphVisit } from "@/lib/aph-visit"
 import { useMinuteClock } from "@/lib/clock"
+import { useScreenVisit } from "@/lib/screen-visit"
 
 const HistoryRoute = (): JSX.Element => {
   const navigate = useNavigate()
   // The host's clock: "today" in the list turns over at midnight.
   const now = useMinuteClock()
-  const visit = useAphVisit()
+  const visit = useScreenVisit()
   return (
     <AphHistory
       now={now}

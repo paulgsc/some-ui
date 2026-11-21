@@ -1,0 +1,14 @@
+/**
+ * A snip's id, as the capture names it (SNIPS1, `docs/snips.md`):
+ * `<surface>:<path>:<viewport>:<appVersion>:<hash12>`, the path a route's
+ * address (`/settings/appearance`) or where the release APK's taps reached
+ * it (`@studio/takes`). The path may hold a `:`; the three parts after it
+ * never do, so the id still reads one way. Its own module, with no imports, so the cut list can
+ * name a snip without reading the snip library's schema (`./snip`).
+ */
+
+export const SNIP_ID =
+  /^(apk|web):(\/\S*|@[a-z0-9-]+(?:\/[a-z0-9-]+)?):([a-z][a-z0-9-]*):([0-9A-Za-z.+-]+):([0-9a-f]{12})$/
+
+/** A commit's id, as a snip's bundle is named by it (`snips-bundle-<commit>`). */
+export const COMMIT = /^[0-9a-f]{40}$/
