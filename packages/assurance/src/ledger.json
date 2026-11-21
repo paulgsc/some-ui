@@ -3999,7 +3999,7 @@
     {
       "id": "home-outbound",
       "name": "What home asks of the outside is counted and heard",
-      "why": "Every request file_host and its crates send to the outside goes through one constructor, crates/outbound, which counts it by the worker that sent it, the host it went to and how it ended; the OUTBOUND dashboard shows them and two alerts tell the owner when a host stops answering or the game feed is refused (some-ui#3330, server#1070).",
+      "why": "Every HTTP request file_host and its crates send through reqwest goes through one constructor, crates/outbound, which counts it by the worker that sent it, the host it went to and how it ended; the OUTBOUND dashboard shows them, and two alerts tell the owner when a host stops answering a worker that asks it often, or the game feed is refused while it asks often (#3330, server#1070). The mailbox bell's WebSocket is outside it, counted by its own series.",
       "paths": [
         "server:crates/outbound",
         "server:infra/grafana/dashboards/outbound.jsonnet"
@@ -4010,10 +4010,10 @@
           "id": "OB1",
           "kind": "RE1",
           "property": "work",
-          "claim": "Every request file_host and its crates send to the outside is counted once, by the worker that sent it and the host it went to, and no client is built any other way.",
-          "requirement": "Each request sent through outbound::Client adds 1 to outbound_requests_total{caller, host, outcome}, by closed sets, never a URL; clippy.toml and a test refuse a reqwest client built outside crates/outbound.",
+          "claim": "Every HTTP request file_host and its crates send through reqwest is counted once, by the worker that sent it and the host it went to, and no reqwest client is built any other way.",
+          "requirement": "Each request sent through outbound::Client adds 1 to outbound_requests_total{caller, host, outcome}, by closed sets, never a URL; a test refuses a reqwest client named outside crates/outbound, and clippy's ratchet flags its constructors.",
           "verdict": "holds",
-          "conclusion": "Every request is counted once by caller, host and outcome, and no other client builds, in crates/outbound's tests and clippy. Measuring ends at the answer's headers, and bytes received are the declared length (C892): a body that stalls after its headers counts as its status.",
+          "conclusion": "Every reqwest request is counted once by caller, host and outcome, in crates/outbound's tests. Measuring ends at the answer's headers, and bytes received are the declared length (C892): a body that stalls after its headers counts as its status. Not counted here: the mailbox bell's WebSocket (MBP2), which connects through tokio-tungstenite and is counted by its own mailbox_bell series. The guard has two gaps: a `use reqwest as r` alias passes the test, and clippy runs as a ratchet over a baseline, so a file under its count could trade one finding for a new constructor. No provider's own counts are read (ESPN gives none, and FCM's quota is not read).",
           "evidence": [
             {
               "class": "measured",
@@ -4022,8 +4022,13 @@
             },
             {
               "class": "structural",
-              "says": "No file outside crates/outbound names a reqwest client, and clippy refuses its constructors.",
+              "says": "No file outside crates/outbound names a reqwest client (a hard test); clippy's ratchet flags its constructors.",
               "ref": "server:crates/outbound/tests/only_here.rs"
+            },
+            {
+              "class": "structural",
+              "says": "The mailbox bell's WebSocket (MBP2) connects through tokio-tungstenite, outside crates/outbound; it is counted by its own mailbox_bell_connected and mailbox_bell_failures_total{why}, not here.",
+              "ref": "server:apps/servers/file_host/src/mailbox/bell.rs"
             }
           ],
           "proof": [
@@ -4040,15 +4045,30 @@
           "id": "OB2",
           "kind": "OA6",
           "property": "outcome",
-          "claim": "A host that stops answering one of home's workers is heard within 30 minutes of asking.",
+          "claim": "A host that stops answering a worker that asks it at least three times in 30 minutes is heard about 30 minutes after its last answer.",
           "requirement": "Three requests or more by one caller to its host in 30 minutes, none answered (timeout or no connection), fires OutboundNoAnswer, naming the worker and the host.",
           "verdict": "holds",
-          "conclusion": "Tested in CI with promtool. A worker asking fewer than three times in 30 minutes is not judged, and a refusal is an answer, so it does not fire this.",
+          "conclusion": "Tested in CI with promtool. It fires once the last answer leaves the 30-minute window, and Prometheus and Grafana add about 80 s more. A worker asking fewer than three times in 30 minutes is not judged: call_weeks and cards_essays retry at 10 and 20 minutes then hourly, the game feed between games backs off to 15 minutes, and the nudge is rare, so for them this alert fires briefly or not at all, and their own failing alerts are what tell. A refusal is an answer, so it does not fire this. Grafana itself is not yet watched.",
           "evidence": [
             {
               "class": "measured",
               "says": "A caller whose host goes dark fires within the window and resolves when answers return; a caller answered between timeouts, a refusing host and a rare caller stay quiet.",
               "ref": "server:infra/prometheus/rules/home.test.yml"
+            },
+            {
+              "class": "structural",
+              "says": "Grafana reads what Prometheus has firing from ALERTS and sends each alert to the Slack contact point, one message per alert.",
+              "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+            },
+            {
+              "class": "measured",
+              "says": "On home on 2026-10-30, the contact point's test, a Grafana-evaluated error alert and a live FileHostDown from Prometheus (03:46 UTC, through home-alerts.yml's home_watchers route) all reached the owner's Slack.",
+              "ref": "server#525"
+            },
+            {
+              "class": "unknown",
+              "says": "Nothing watches Grafana itself, the one thing that delivers home's alerts.",
+              "ref": "some-ui#2289"
             }
           ],
           "proof": [
@@ -4056,7 +4076,7 @@
           ],
           "watch": {
             "by": "alert",
-            "ref": "server:infra/prometheus/rules/home.yml"
+            "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
           },
           "amendments": []
         },
@@ -4064,15 +4084,30 @@
           "id": "OB3",
           "kind": "OA6",
           "property": "outcome",
-          "claim": "If ESPN keeps refusing the game feed, the owner is told within 30 minutes.",
+          "claim": "If ESPN keeps refusing the game feed while it asks at least three times in 30 minutes (a live game), the owner is told within about 30 minutes.",
           "requirement": "Three refusals (4xx or 5xx) or more by the game feed in 30 minutes, with no ok answer, fires OutboundRefused; a timeout among them does not clear it.",
           "verdict": "holds",
-          "conclusion": "Tested in CI with promtool. Other workers' refusals are not alerted: the nudge's 410s are browsers that left, and the pollers' own failing alerts read theirs.",
+          "conclusion": "Tested in CI with promtool, with a refusal every minute. Between games the feed backs off to its 15-minute cap and asks about twice per 30 minutes, so a refusal there is not judged; during a game the live tracks reach the threshold in the first 30 minutes, but as they back off to the cap it can resolve while ESPN still refuses. Judging refusals at the backoff's own spacing is #3352. Other workers' refusals are not alerted. Grafana itself is not yet watched.",
           "evidence": [
             {
               "class": "measured",
               "says": "ESPN refusing every request fires it, refusals mixed with timeouts fire it, one ok answer clears it, and the nudge's 410s never fire it.",
               "ref": "server:infra/prometheus/rules/home.test.yml"
+            },
+            {
+              "class": "structural",
+              "says": "Grafana reads what Prometheus has firing from ALERTS and sends each alert to the Slack contact point, one message per alert.",
+              "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+            },
+            {
+              "class": "measured",
+              "says": "On home on 2026-10-30, the contact point's test, a Grafana-evaluated error alert and a live FileHostDown from Prometheus (03:46 UTC, through home-alerts.yml's home_watchers route) all reached the owner's Slack.",
+              "ref": "server#525"
+            },
+            {
+              "class": "unknown",
+              "says": "Nothing watches Grafana itself, the one thing that delivers home's alerts.",
+              "ref": "some-ui#2289"
             }
           ],
           "proof": [
@@ -4080,7 +4115,7 @@
           ],
           "watch": {
             "by": "alert",
-            "ref": "server:infra/prometheus/rules/home.yml"
+            "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
           },
           "amendments": []
         }
