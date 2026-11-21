@@ -99,21 +99,6 @@ export type Unmeasured = { readonly route: string; readonly why: string }
 
 const ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
-/**
- * Every way the registry breaks its own shape, as `pipeline/affordance`
- * plus what is wrong; empty when it holds:
- *
- * - ids are lowercase words joined by hyphens, a pipeline's once, an
- *   affordance's once per pipeline and surface, a place's or an answer's
- *   once per affordance;
- * - `offered` is emitted exactly when there is an offer, and `passed-over`
- *   only with `offered`;
- * - `left` is emitted exactly when there are places, and only with `taken`;
- * - `said` is emitted exactly when there are answers;
- * - every pipeline has an affordance that is not retired;
- * - a pipeline opened at its root names one of its own affordances, not
- *   retired, that sends `offered` or `taken`; one not measured says why.
- */
 /** Every way `pipeline.opened` fails to say truly how its opening is known. */
 function openedProblems(pipeline: Pipeline): ReadonlyArray<string> {
   const { opened } = pipeline
@@ -143,6 +128,21 @@ function openedProblems(pipeline: Pipeline): ReadonlyArray<string> {
   }
 }
 
+/**
+ * Every way the registry breaks its own shape, as `pipeline/affordance`
+ * plus what is wrong; empty when it holds:
+ *
+ * - ids are lowercase words joined by hyphens, a pipeline's once, an
+ *   affordance's once per pipeline and surface, a place's or an answer's
+ *   once per affordance;
+ * - `offered` is emitted exactly when there is an offer, and `passed-over`
+ *   only with `offered`;
+ * - `left` is emitted exactly when there are places, and only with `taken`;
+ * - `said` is emitted exactly when there are answers;
+ * - every pipeline has an affordance that is not retired;
+ * - a pipeline opened at its root names one of its own affordances, not
+ *   retired, that sends `offered` or `taken`; one not measured says why.
+ */
 export function findRegistryProblems(
   pipelines: ReadonlyArray<Pipeline>,
   unmeasured: ReadonlyArray<Unmeasured>

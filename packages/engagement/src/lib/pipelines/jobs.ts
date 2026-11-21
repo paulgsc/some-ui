@@ -45,7 +45,8 @@ const jobs: Pipeline = {
       routes: ["/jobs"],
       offer: null,
       emits: ["taken", "left"],
-      touches: true,
+      // Opening Today is not doing anything in Jobs (#3338): opened, not touched.
+      touches: false,
       places: [{ id: "today", name: "Today" }],
     },
     // Today: the one pick it opens on.
