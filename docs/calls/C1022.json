@@ -4,9 +4,10 @@
   "by": "claude",
   "paths": [
     "packages/ui/soundbites/src/components/take-library/index.tsx",
-    "packages/ui/soundbites/src/lib/library/compartments.ts"
+    "packages/ui/soundbites/src/lib/library/compartments.ts",
+    "apps/www/src/routes/_dashboard/_apk/journal/takes/$kind.tsx"
   ],
-  "chose": "Takes gains one generic prop for what a topic holds with no take, `gaps(topicKey, takes)`, placed among the takes by when each was (`withGaps`). A game's big moments with no bite are its first case; a week's unanswered questions can be the next, with no change to Takes. It is asked only while the topic is the one chip picked and nothing is searched, and while home has older takes still to show, a gap past the last take listed is left out.",
+  "chose": "Takes gains one generic prop for what a topic holds with no take, `gaps(topicKey, takes)`, placed among the takes by when each was (`withGaps`). A game's big moments with no bite are its first case; a week's unanswered questions can be the next, with no change to Takes. It is asked only while the topic is the one chip picked and nothing is searched, and while home has older takes still to show, newest first leaves out a gap past the last take listed, and oldest first shows none, since a bite said after its moment may be on a page not read yet.",
   "options": [
     "A generic topic-gaps prop on TakeLibrary (chosen): the family is 'a topic's own record that takes are about', so the second case is a new caller, not a new list.",
     "A game-only prop (`moments`) on TakeLibrary: soundbites would learn what a game is, and the week's questions would need another prop beside it (C830).",

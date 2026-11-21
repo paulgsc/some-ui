@@ -307,15 +307,22 @@ describe("what home is asked for, by compartment", () => {
 })
 
 describe("what a topic holds with no take, among its takes", () => {
-  const at = (row: string): string => row
-  const gap = (when: string): { at: string } => ({ at: when })
+  // A short label stands for an hour of one day; a full time for itself.
+  const iso = (when: string): string =>
+    when.length === 1 ? `2026-11-16T0${when}:00:00Z` : when
+  const at = (row: string): string => iso(row)
+  const gap = (when: string): { at: string; label: string } => ({
+    at: iso(when),
+    label: when,
+  })
   const shape = (
     listed: ReadonlyArray<
-      { kind: "take"; row: string } | { kind: "gap"; gap: { at: string } }
+      | { kind: "take"; row: string }
+      | { kind: "gap"; gap: { at: string; label: string } }
     >
   ): ReadonlyArray<string> =>
     listed.map((each) =>
-      each.kind === "take" ? `take ${each.row}` : `gap ${each.gap.at}`
+      each.kind === "take" ? `take ${each.row}` : `gap ${each.gap.label}`
     )
 
   it("places each gap by when it was, newest or oldest first as the takes are", () => {
@@ -345,6 +352,24 @@ describe("what a topic holds with no take, among its takes", () => {
       shape(withGaps(["4", "1"], [gap("5"), gap("0")], "newest", at, false))
     ).toEqual(["gap 5", "take 4", "take 1"])
     expect(shape(withGaps([], [gap("5")], "newest", at, false))).toEqual([])
+    // Oldest first, a gap's take may come after the last take shown.
+    expect(
+      shape(withGaps(["1", "4"], [gap("0"), gap("2")], "oldest", at, false))
+    ).toEqual(["take 1", "take 4"])
+  })
+
+  it("places by the instant, whatever fraction each time is written with", () => {
+    expect(
+      shape(
+        withGaps(
+          ["2026-10-23T01:10:00.500Z"],
+          [gap("2026-10-23T01:10:00Z")],
+          "newest",
+          at,
+          true
+        )
+      )
+    ).toEqual(["take 2026-10-23T01:10:00.500Z", "gap 2026-10-23T01:10:00Z"])
   })
 
   it("lists every gap when there is no take, and a gap after a take of its moment", () => {

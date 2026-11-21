@@ -461,10 +461,12 @@ export type WithGap<R, G> =
  * what a topic holds that no take is about (a game's moments with no bite,
  * a week's questions not answered), placed newest or oldest first as the
  * rows are. By a topic, the rows share one, so it is newest first.
- * `complete` says whether the rows are every take there is to list: while
- * home has older ones to show, a gap past the last row is left out, since
- * its take may be among those not shown yet. A gap at the same moment as a
- * row comes after it.
+ * `complete` says whether the rows are every take there is to list. A take
+ * is said after what it is about, so while home has older takes to show,
+ * newest first, a gap past the last row is left out (its take may be among
+ * those not shown yet); oldest first, a gap's take may be past the last row
+ * whenever the gap is, so none shows until every take is listed. A gap at
+ * the same moment as a row comes after it.
  */
 export function withGaps<R, G extends { readonly at: string }>(
   rows: ReadonlyArray<R>,
@@ -473,11 +475,17 @@ export function withGaps<R, G extends { readonly at: string }>(
   at: (row: R) => string,
   complete: boolean
 ): ReadonlyArray<WithGap<R, G>> {
-  // Whether `a` comes before `b` in the list's order.
+  if (!complete && order === "oldest") {
+    return rows.map((row) => ({ kind: "take", row }))
+  }
+  // Whether `a` comes before `b` in the list's order, by the instant each
+  // names (home's and the phone's times differ in their fractions).
   const before = (a: string, b: string): boolean =>
-    order === "oldest" ? a < b : a > b
+    order === "oldest"
+      ? Date.parse(a) < Date.parse(b)
+      : Date.parse(a) > Date.parse(b)
   const sorted = [...gaps].sort((a, b) =>
-    a.at === b.at ? 0 : before(a.at, b.at) ? -1 : 1
+    before(a.at, b.at) ? -1 : before(b.at, a.at) ? 1 : 0
   )
   const listed: Array<WithGap<R, G>> = []
   let next = 0

@@ -128,7 +128,9 @@ const KindPage = (): JSX.Element => {
     if (PORTS !== null) keepSoundbites(phoneSoundbiteKeeping())
   }, [])
   // Opened on one game: its moment log, for the big moments with no bite.
-  const game = PORTS === null ? null : gameOf(about)
+  // Only where bites are listed: elsewhere every moment would read as missed.
+  const game =
+    PORTS === null || (kind !== "bite" && kind !== "all") ? null : gameOf(about)
   const moments = useQuery({
     ...gameMomentsQuery(game ?? "", readMoments),
     enabled: game !== null,
