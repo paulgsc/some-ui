@@ -25,7 +25,7 @@ import {
 } from "@some-ui/video-render"
 import { z } from "zod"
 
-import { answerFile, fail } from "./command"
+import { answerFile, fail, jsonOr } from "./command"
 import { shownFrame } from "./voiced"
 
 /** The phone the cards are drawn for: the snips' phone (`lib/snips`' `WEB_VIEWPORTS`). */
@@ -66,7 +66,9 @@ export async function captureScreens({
   readonly root: string
 }): Promise<Screens> {
   const bytes = await readFile(weekFile)
-  const served = ServedSchema.safeParse(parsedOr(bytes, weekFile))
+  const served = ServedSchema.safeParse(
+    jsonOr(bytes.toString("utf8"), weekFile)
+  )
   if (!served.success)
     fail([`${weekFile} is no week as home serves one (GET /rust-weeks/<id>)`])
   if (served.data.id !== week)
@@ -151,30 +153,7 @@ async function photograph(
     height,
     scale: SCALE,
     viewport: { ...PHONE },
-    regions: regionsOf(measured.map((part) => within(part, width, height))),
-  }
-}
-
-/** A part's box kept inside the picture, as sub-pixel layout can spill past it. */
-function within(part: Measured, width: number, height: number): Measured {
-  const x = Math.max(0, part.box.x)
-  const y = Math.max(0, part.box.y)
-  return {
-    ref: part.ref,
-    box: {
-      x,
-      y,
-      width: Math.min(part.box.x + part.box.width, width) - x,
-      height: Math.min(part.box.y + part.box.height, height) - y,
-    },
-  }
-}
-
-function parsedOr(bytes: Buffer, path: string): unknown {
-  try {
-    return JSON.parse(bytes.toString("utf8"))
-  } catch {
-    return fail([`${path} is not JSON`])
+    regions: regionsOf(measured, { width, height }),
   }
 }
 

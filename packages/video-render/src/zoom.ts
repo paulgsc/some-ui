@@ -8,7 +8,7 @@
  */
 
 import type { Composition } from "./cut-list"
-import type { RegionRef, Screen, Screens } from "./screen"
+import type { Box, RegionRef, Screen, Screens } from "./screen"
 import { regionOf } from "./screen"
 
 /** The composition that zooms a screen (`@some-ui/video-motion`). */
@@ -43,62 +43,11 @@ const lookOf = (
   ...(ground === undefined ? {} : { ground }),
 })
 
-/**
- * The picture zooming into `refs` in order, on the screen they name, with
- * its file under `dir` in the video's folder: the first `ZOOM_STOPS_MOST`
- * that a screen in `screens` holds, the rest left out. Null when none is
- * held. Every ref held, kept or not, must be of one screen: a scene shows
- * one picture.
- */
-export function zoomPicture(
-  screens: Screens,
-  refs: ReadonlyArray<RegionRef>,
-  { dir = "screens", foot = 0, theme, ground }: ZoomOptions = {}
-): Composition | null {
-  if (!(foot >= 0 && foot <= FOOT_MOST))
-    throw new Error(
-      `a foot of ${String(foot)}: a zoom keeps 0 to ${String(FOOT_MOST)} of the frame for captions`
-    )
-  const found = refs.flatMap((ref) => {
-    const region = regionOf(screens, ref)
-    return region ? [region] : []
-  })
-  const [first] = found
-  if (first === undefined) return null
-  const { screen } = first
-  const other = found.find((each) => each.screen.id !== screen.id)
-  if (other !== undefined)
-    throw new Error(
-      `${other.region.ref} is not on ${screen.id}: a scene zooms into one screen`
-    )
-  const held = found.slice(0, ZOOM_STOPS_MOST)
-  const file = `${dir}/${screen.file}`
-  return {
-    kind: "composition",
-    ref: SCREEN_ZOOM,
-    variables: {
-      picture: file,
-      width: screen.width,
-      height: screen.height,
-      scale: screen.scale,
-      stops: JSON.stringify(held.map(({ region }) => region.box)),
-      ...lookOf(foot, theme, ground),
-    },
-    files: [file],
-  }
-}
-
-/**
- * The whole of `screen` as a scene's picture (SNIPS4; the owner,
- * 2026-11-21): the screen-zoom composition with no stops, so the phone is
- * held whole in the room above the frame's foot, where the captions draw,
- * as large as fits there: never full-bleed, and the caption never over the
- * app's own screen. Its ground is `ground` where given, else the
- * composition's own.
- */
-export function wholePicture(
+/** The screen-zoom composition on `screen`, its stops in CSS px of the picture. */
+function screenZoom(
   screen: Screen,
-  { dir = "screens", foot = 0, theme, ground }: ZoomOptions = {}
+  stops: ReadonlyArray<Box>,
+  { dir = "screens", foot = 0, theme, ground }: ZoomOptions
 ): Composition {
   if (!(foot >= 0 && foot <= FOOT_MOST))
     throw new Error(
@@ -113,9 +62,54 @@ export function wholePicture(
       width: screen.width,
       height: screen.height,
       scale: screen.scale,
-      stops: "[]",
+      stops: JSON.stringify(stops),
       ...lookOf(foot, theme, ground),
     },
     files: [file],
   }
 }
+
+/**
+ * The picture zooming into `refs` in order, on the screen they name, with
+ * its file under `dir` in the video's folder: the first `ZOOM_STOPS_MOST`
+ * that a screen in `screens` holds, the rest left out. Null when none is
+ * held. Every ref held, kept or not, must be of one screen: a scene shows
+ * one picture.
+ */
+export function zoomPicture(
+  screens: Screens,
+  refs: ReadonlyArray<RegionRef>,
+  options: ZoomOptions = {}
+): Composition | null {
+  const found = refs.flatMap((ref) => {
+    const region = regionOf(screens, ref)
+    return region ? [region] : []
+  })
+  const [first] = found
+  if (first === undefined) return null
+  const { screen } = first
+  const other = found.find((each) => each.screen.id !== screen.id)
+  if (other !== undefined)
+    throw new Error(
+      `${other.region.ref} is not on ${screen.id}: a scene zooms into one screen`
+    )
+  const held = found.slice(0, ZOOM_STOPS_MOST)
+  return screenZoom(
+    screen,
+    held.map(({ region }) => region.box),
+    options
+  )
+}
+
+/**
+ * The whole of `screen` as a scene's picture (SNIPS4; the owner,
+ * 2026-11-21): the screen-zoom composition with no stops, so the phone is
+ * held whole in the room above the frame's foot, where the captions draw,
+ * as large as fits there: never full-bleed, and the caption never over the
+ * app's own screen. Its ground is `ground` where given, else the
+ * composition's own.
+ */
+export const wholePicture = (
+  screen: Screen,
+  options: ZoomOptions = {}
+): Composition => screenZoom(screen, [], options)

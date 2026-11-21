@@ -121,7 +121,6 @@ export async function releaseWalk(w: ReleaseWalk): Promise<Part> {
       viewport: w.viewport.name,
       ...pngSize(png),
       scale: w.viewport.scale,
-      // The device's whole screen: no page's layout maps onto it.
       regions: [],
       appVersion: w.appVersion,
       module,

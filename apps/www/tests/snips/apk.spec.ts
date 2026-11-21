@@ -129,9 +129,7 @@ test.describe("snips: apk", () => {
         await page.goto(`${APP}${path}`)
       },
       camera: {
-        // The device's screen, a stage or not: the APK draws no stage.
         shoot: () => device.screenshot(),
-        // The device's whole screen: no page's layout maps onto it.
         regions: () => Promise.resolve([]),
         record: () => recordScreen(device),
       },

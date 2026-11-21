@@ -231,18 +231,38 @@ export type Measured = { readonly ref: string; readonly box: Box }
 /**
  * The regions of one screen from what the page measured: each ref once,
  * boxed around every element that carries it, in the order the page first
- * showed it. A ref that names no region, or an element with no size, is
- * left out.
+ * showed it, each box cut to the picture, `within`, when given. A ref that
+ * names no region, or an element with no size in the picture, is left out.
  */
-export function regionsOf(measured: ReadonlyArray<Measured>): Array<Region> {
+export function regionsOf(
+  measured: ReadonlyArray<Measured>,
+  within?: { readonly width: number; readonly height: number }
+): Array<Region> {
   const boxes = new Map<string, Box>()
-  for (const { ref, box } of measured) {
+  for (const part of measured) {
+    const { ref } = part
+    const box = within ? cut(part.box, within) : part.box
     if (screenOfRef(ref) === null) continue
     if (box.width <= 0 || box.height <= 0) continue
     const had = boxes.get(ref)
     boxes.set(ref, had ? around(had, box) : box)
   }
   return [...boxes].map(([ref, box]) => ({ ref, box }))
+}
+
+/** `box` cut to a picture of `size`, from its top-left. */
+function cut(
+  box: Box,
+  size: { readonly width: number; readonly height: number }
+): Box {
+  const x = Math.max(0, box.x)
+  const y = Math.max(0, box.y)
+  return {
+    x,
+    y,
+    width: Math.min(box.x + box.width, size.width) - x,
+    height: Math.min(box.y + box.height, size.height) - y,
+  }
 }
 
 function around(a: Box, b: Box): Box {

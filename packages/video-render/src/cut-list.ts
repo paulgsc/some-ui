@@ -12,7 +12,7 @@ import { z } from "zod"
 
 import { badgeProblems } from "./badges"
 import { LOOKS, VOICES } from "./plans"
-import { SNIP_ID } from "./snip-id"
+import { COMMIT, SNIP_ID } from "./snip-id"
 import { SPOKEN_CATEGORIES } from "./spoken-categories"
 import { stampProblems } from "./stamp"
 import {
@@ -81,7 +81,7 @@ const PictureSchema = z.discriminatedUnion("kind", [
          * which bundle home fetches, and how the snip is made again
          * (SNIPS5, #3149; C868).
          */
-        commit: z.string().regex(/^[0-9a-f]{40}$/, "a commit's 40 hex digits"),
+        commit: z.string().regex(COMMIT, "a commit's 40 hex digits"),
         /** The parts to zoom to, in order, as the page names them (`data-region`). */
         at: z.array(z.string().min(1).max(200)).max(10).default([]),
       }),

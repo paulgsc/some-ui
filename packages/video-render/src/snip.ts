@@ -26,15 +26,16 @@
 
 import { z } from "zod"
 
+import { clipPath } from "./clip"
 import type { Composition, CutList, Parsed, Picture } from "./cut-list"
 import { problemsOf } from "./cut-list"
 import type { Screen } from "./screen"
 import { parseScreens, RegionSchema, SCREENS_SCHEMA } from "./screen"
-import { SNIP_ID } from "./snip-id"
+import { COMMIT, SNIP_ID } from "./snip-id"
 import type { ZoomOptions } from "./zoom"
 import { wholePicture, zoomPicture } from "./zoom"
 
-export { isSnipId, SNIP_ID } from "./snip-id"
+export { SNIP_ID } from "./snip-id"
 
 /** What home hands beside an essay that names snips. */
 export const SNIPS_GIVEN_SCHEMA = "some-ui.snips-given/1"
@@ -122,7 +123,7 @@ export const SnipRecordSchema = z
   })
 export type SnipRecord = z.infer<typeof SnipRecordSchema>
 
-const commit = z.string().regex(/^[0-9a-f]{40}$/, "a commit's 40 hex digits")
+const commit = z.string().regex(COMMIT, "a commit's 40 hex digits")
 
 /**
  * What home handed: for each bundle it fetched, its commit and the records
@@ -215,9 +216,9 @@ export function snipsOf(cut: CutList): Array<SnipRef> {
   return [...named.values()]
 }
 
-/** A Clips Library frame's place in the folder home hands: `<clip>/<side>/<file>`. */
+/** A Clips Library frame's place in the folder home hands, as `clips/` keeps it (`clipPath`). */
 export const clipFramePath = (of: Omit<ClipOf, "from">): string =>
-  `${of.clip}/${of.side}/${of.file}`
+  clipPath(of.clip, `${of.side}/${of.file}`)
 
 /** Every Clips Library frame a cut list's scenes name, each once, as `clipFramePath`s. */
 export function clipFramesOf(cut: CutList): Array<string> {

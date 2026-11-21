@@ -29,9 +29,8 @@ repo=$(cd "$here/../../.." && pwd)
 out="$snips/logs"
 mkdir -p "$snips" "$out"
 
-# The screen: 1080x1920 at density 420, set here, since the runner's default
-# emulator device draws 320x640 (run 44868141138's APK pictures were); the
-# bundle refuses an APK picture of another size (manifestOf). Animations off, the status
+# The screen: 1080x1920 at density 420 (APK_VIEWPORT; the bundle refuses
+# another size, manifestOf), animations off, the status
 # bar in demo mode (a fixed clock, full battery and signal, no
 # notifications), and the device's clock at FROZEN_AT
 # (apps/www/src/lib/snips), which the release build reads, its page being

@@ -13,7 +13,7 @@ import { mkdirSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import type { AndroidDevice, Page } from "@playwright/test"
 import { sha256Hex } from "@some-ui/core-utils"
-import type { Measured, Region } from "@some-ui/video-render"
+import type { Region } from "@some-ui/video-render"
 import { pngSize as readPngSize, regionsOf } from "@some-ui/video-render"
 
 import {
@@ -245,22 +245,7 @@ export async function pageRegions(
       height: whole ? root.scrollHeight : window.innerHeight,
     }
   }, whole)
-  return regionsOf(measured.flatMap((part) => inWindow(part, width, height)))
-}
-
-/** A part's box cut to the window, or nothing when it lies outside it. */
-function inWindow(
-  part: Measured,
-  width: number,
-  height: number
-): Array<Measured> {
-  const x = Math.max(0, part.box.x)
-  const y = Math.max(0, part.box.y)
-  const right = Math.min(part.box.x + part.box.width, width)
-  const bottom = Math.min(part.box.y + part.box.height, height)
-  return right > x && bottom > y
-    ? [{ ref: part.ref, box: { x, y, width: right - x, height: bottom - y } }]
-    : []
+  return regionsOf(measured, { width, height })
 }
 
 /** Waits for the network to go quiet and fonts to load, then a beat for late paints. */
