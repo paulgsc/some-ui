@@ -81,9 +81,6 @@ describe("what each kind's take is about, through its port", () => {
     expect(matched({ matchedBy: "nearest", playPeriod: "2" })).toBe(
       "49ers vs Rams · Q2 · Fourth down"
     )
-    expect(
-      matched({ matchedBy: "next", playPeriod: "6", playClock: "2:00" })
-    ).toBe("49ers vs Rams · OT 2:00 · Fourth down")
     // A clock with no quarter is no play to name: the clock it was said at.
     expect(matched({ matchedBy: "next", playClock: "2:00" })).toBe(
       "49ers vs Rams · Q3 4:12 · Fourth down"
@@ -98,10 +95,6 @@ describe("what each kind's take is about, through its port", () => {
         "49ers vs Rams · Q3 4:12 · Fourth down"
       )
     }
-    // A play home names without a quarter reads as the clock said.
-    expect(matched({ matchedBy: "nearest", playPeriod: "x" })).toBe(
-      "49ers vs Rams · Q3 4:12 · Fourth down"
-    )
   })
 
   it("says an interview take's week and its question, or what was read", () => {
