@@ -186,6 +186,18 @@ export const SAMPLES: Readonly<
     title: "Reading the badges",
     stamp: SAMPLE_STAMP,
   },
+  bars: {
+    kicker: "CHART · A SAMPLE",
+    title: "Where a week's runner-minutes went",
+    stamp: SAMPLE_STAMP,
+    series: ["could fail", "couldn't fail"],
+    unit: "min",
+    rows: [
+      { label: "Unit tests", values: [180, 4], note: "4 of 184" },
+      { label: "Rust audits", values: [12, 140], note: "140 of 152" },
+      { label: "End to end", values: [210, 30], note: "30 of 240" },
+    ],
+  },
   rule: {
     kicker: "RULE · A SAMPLE",
     title: "How stale is this card?",

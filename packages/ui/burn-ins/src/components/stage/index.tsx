@@ -1,6 +1,7 @@
 import type { CSSProperties, JSX } from "react"
 import { AuthorshipLayer } from "@burn-ins/components/stage/authorship"
 import { StatusBadgeLayer } from "@burn-ins/components/stage/badge"
+import { BarsLayer } from "@burn-ins/components/stage/bars"
 import { Caption } from "@burn-ins/components/stage/captions"
 import { CheatSheetLayer } from "@burn-ins/components/stage/cheat-sheet"
 import { FlowLayer } from "@burn-ins/components/stage/flow"
@@ -57,6 +58,9 @@ const Layer = ({
     }
     case "flow": {
       return <FlowLayer frame={frame.frame} units={units} />
+    }
+    case "bars": {
+      return <BarsLayer frame={frame.frame} units={units} />
     }
     default: {
       return assertNever(frame)
