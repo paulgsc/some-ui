@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url"
 import { parseArgs } from "node:util"
 import { addDays, isoWeekMonday } from "@some-ui/core-utils"
 import { PIPELINES } from "@some-ui/engagement"
-import { frictionOf, QUIET } from "@some-ui/video-render"
+import { DEFAULT_POLICY, frictionOf, QUIET } from "@some-ui/video-render"
 import type { Friction, StillTake, TimedWord } from "@some-ui/video-render"
 import {
   here,
@@ -16,6 +16,7 @@ import {
   Refused,
   renderFolder,
   runCommand,
+  sayLines,
 } from "@some-ui/video-render/node"
 import { z } from "zod"
 
@@ -43,7 +44,7 @@ const USAGE = [
   "       motion video <video folder> [--series <folder>] [--brand <folder>] [--prove]",
   "       motion walk <app> --sample <file> --out <folder>",
   "       motion promo <release folder> --out <folder> [--brand <folder>] [--prove]",
-  "       motion walkthrough <words.json> --walk <walk folder> --out <folder> [--home <weekly.json>] [--takes <folder>] [--brand <folder>] [--prove]",
+  "       motion walkthrough <words.json> --walk <walk folder> --out <folder> [--home <weekly.json>] [--takes <folder> | --speaker <url>] [--brand <folder>] [--prove]",
 ].join("\n")
 
 /** A walk of one app: its sample's schema and the steps it makes of one. */
@@ -94,6 +95,7 @@ const { positionals, values } = parseArgs({
     walk: { type: "string" },
     home: { type: "string" },
     takes: { type: "string" },
+    speaker: { type: "string" },
   },
 })
 
@@ -477,7 +479,9 @@ async function layTakes(
  * of it, the last names the modules nobody opens, and a card shows them.
  * `--takes` is the folder home's speaker said `lines.json` into,
  * `<file>.wav` and `<file>.json` (`{ms, words}`) per line: each stop is then
- * voiced, its screens held for its lines (`voicedWalkthrough`).
+ * voiced, its screens held for its lines (`voicedWalkthrough`). Or
+ * `--speaker` is home's Kokoro speaker (as `http://kokoro:8880`), which says
+ * `lines.json` itself into `<out>/takes`, each line kept in its step cache.
  */
 async function walkthrough(file: string): Promise<void> {
   const read = WalkthroughSchema.safeParse(await readJson(here(file)))
@@ -518,20 +522,42 @@ async function walkthrough(file: string): Promise<void> {
     join(out, "lines.json"),
     `${JSON.stringify(lines, null, 1)}\n`
   )
-  const takes =
-    values.takes === undefined
-      ? new Map<string, StillTake>()
-      : await takesIn(
-          here(values.takes),
-          lines.map((l) => l.file)
-        )
+  if (values.takes !== undefined && values.speaker !== undefined)
+    throw new Refused(
+      "--takes and --speaker: give the takes, or a speaker to say them"
+    )
+  const saidInto =
+    values.speaker === undefined ? values.takes : join(out, "takes")
+  let takes = new Map<string, StillTake>()
+  if (values.speaker !== undefined) {
+    const said = await sayLines({
+      root: join(out, "takes"),
+      ports: nodePorts(join(out, "takes")),
+      lines,
+      speaker: values.speaker,
+      policy: DEFAULT_POLICY,
+    })
+    takes = new Map(
+      lines.flatMap((l, i) => {
+        const take = said[i]
+        return take ? [[l.file, take] as const] : []
+      })
+    )
+  } else if (values.takes !== undefined) {
+    takes = new Map(
+      await takesIn(
+        here(values.takes),
+        lines.map((l) => l.file)
+      )
+    )
+  }
   const { cut, laid } = voicedWalkthrough(
     read.data,
     walked.data,
     friction,
     takes
   )
-  if (values.takes !== undefined) await layTakes(out, here(values.takes), laid)
+  if (saidInto !== undefined) await layTakes(out, here(saidInto), laid)
   await writeFile(
     join(out, "cut-list.json"),
     `${JSON.stringify(cut, null, 1)}\n`

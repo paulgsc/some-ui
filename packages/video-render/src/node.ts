@@ -25,6 +25,7 @@ import type { Format } from "./format"
 import type { Mailbox } from "./mailbox"
 import type { SourceFacts } from "./plan"
 import { DEFAULT_POLICY } from "./policy"
+import { fail, Refused } from "./refused"
 import { render } from "./render"
 import type { Ports, Rendered, RenderOptions } from "./render"
 import { parseSeries, versionFile, versionOfFile } from "./series"
@@ -453,12 +454,7 @@ export const TEMPLATES_DIR = join(import.meta.dirname, "templates")
 export const here = (p: string): string =>
   resolvePath(process.env["INIT_CWD"] ?? process.cwd(), p)
 
-/** Stops a command, saying why; `runCommand` prints it and sets the exit code. */
-export class Refused extends Error {}
-
-export function fail(lines: ReadonlyArray<string>): never {
-  throw new Refused(lines.join("\n"))
-}
+export { fail, Refused } from "./refused"
 
 /** Runs `main`, printing a refusal's reasons rather than a stack. */
 export async function runCommand(main: () => Promise<void>): Promise<void> {
@@ -472,6 +468,7 @@ export async function runCommand(main: () => Promise<void>): Promise<void> {
 }
 
 export * from "./mailbox"
+export * from "./speaking"
 
 /** `value` as a routine writes a JSON file: two-space indent, one trailing newline. */
 export const jsonText = (value: unknown): string =>

@@ -90,7 +90,7 @@ import type {
   SpokenTakeFiles,
   StillTake,
 } from "@some-ui/video-render"
-import { nodePorts, readSeries } from "@some-ui/video-render/node"
+import { nodePorts, readSeries, sayLines } from "@some-ui/video-render/node"
 
 import { CALL_OPTIONS, FRAME } from "./call-recording"
 import { fail, here, jsonOr, launchChromium, runCommand } from "./command"
@@ -100,7 +100,6 @@ import {
   recordStills,
   refuseLong,
   renderCut,
-  sayLines,
   siteOf,
   speakerFlag,
 } from "./voiced"
@@ -491,7 +490,14 @@ async function main(): Promise<void> {
     const spokenCount = scenes.length - cards.length
     if (spoken) console.log(`scenes ${String(lines.length + spokenCount)}`)
     const said = spoken
-      ? await sayLines({ root, lines, speaker, policy, announce: false })
+      ? await sayLines({
+          root,
+          ports: nodePorts(root),
+          lines,
+          speaker,
+          policy,
+          announce: false,
+        })
       : []
     let recorded: ReadonlyMap<string, StillTake | null> = new Map()
     if (spokenCount > 0) {

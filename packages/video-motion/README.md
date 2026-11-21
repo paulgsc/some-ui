@@ -55,7 +55,7 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
   9:16 screen at 1320 px tall, about seven tenths of the frame's width, its caption just
   below it (the owner, 2026-11-21: the phone at three-quarter size, the caption below).
 
-- `walkthrough <words.json> --walk <walk folder> --out <folder> [--home <weekly.json>] [--takes <folder>] [--brand <folder>] [--prove]`
+- `walkthrough <words.json> --walk <walk folder> --out <folder> [--home <weekly.json>] [--takes <folder> | --speaker <url>] [--brand <folder>] [--prove]`
   makes an app's walkthrough (WALK4, #3282): the promo with chapters. The words
   (`some-ui.walkthrough/1`, `src/walkthrough.ts`) give a caption per screen and the stops,
   each from a screen of the walk; the cut list is the promo's opening, then per stop a
@@ -73,6 +73,9 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
   before the close (#3338). With `--takes` (the folder the lines were said into: `<file>.wav`
   and `<file>.json`, `{ms, words}`), each stop's lines are laid back to back a breath apart
   into `<shot>.wav`, and its screens are stretched by one factor until they hold them (C1000).
+  With `--speaker <url>` instead (home's Kokoro, as `http://kokoro:8880`), it says `lines.json`
+  itself into `<out>/takes`, each take kept in that folder's step cache, as the recorders do
+  (`@some-ui/video-render/node`'s `sayLines`).
 
 - `promo <release folder> --out <folder> [--brand <folder>] [--prove]` makes a release's promo (HYPER3,
   #2726): the folder's `release.json` (`some-ui.promo/1`, the words a session writes) and
