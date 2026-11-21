@@ -50,10 +50,7 @@ describe("asking home to hear a take again (#3339)", () => {
   })
 
   it("lays home's answer over the take asked of", () => {
-    const asked = hearAgainAnswered(asking(), 1, {
-      kind: "asked",
-      askAgainAt: null,
-    })
+    const asked = hearAgainAnswered(asking(), 1, { kind: "asked" })
     expect(hearAgainOf(asked, take)).toEqual({
       open: false,
       hearing: true,
@@ -91,10 +88,7 @@ describe("asking home to hear a take again (#3339)", () => {
   })
 
   it("takes a fresh read's word over what was laid on it, and closes what was said", () => {
-    const asked = hearAgainAnswered(asking(), 1, {
-      kind: "asked",
-      askAgainAt: null,
-    })
+    const asked = hearAgainAnswered(asking(), 1, { kind: "asked" })
     expect(hearAgainOf(hearAgainRead(asked), take)).toEqual(OPEN)
     expect(hearAgainDismissed(asked).hearAgain.said).toBeNull()
     expect(hearAgainRead(QUIET_HEAR_AGAIN)).toBe(QUIET_HEAR_AGAIN)

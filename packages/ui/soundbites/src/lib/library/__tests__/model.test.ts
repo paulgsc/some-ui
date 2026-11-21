@@ -519,7 +519,7 @@ describe("asking home to hear a take again, from Takes (#3339)", () => {
       {
         type: "hearAgainAnswered",
         seq: 1,
-        answer: { kind: "asked", askAgainAt: null },
+        answer: { kind: "asked" },
       },
     ])
     expect(asked.effects).toEqual([])

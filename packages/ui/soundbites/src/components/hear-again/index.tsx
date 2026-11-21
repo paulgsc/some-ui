@@ -77,7 +77,9 @@ export const HearAgainLines = ({
       {mine !== null && (
         <Notice
           tone={
-            mine.kind === "asked" || mine.kind === "settled"
+            mine.kind === "asked" ||
+            mine.kind === "settled" ||
+            mine.kind === "waiting"
               ? undefined
               : "danger"
           }

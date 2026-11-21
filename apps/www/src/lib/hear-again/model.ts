@@ -27,6 +27,9 @@ export const HearAgainSchema: z.ZodType<HearAgain | null> = z
     askedAt: AtSchema.nullable(),
     nextAt: AtSchema.nullable(),
   })
+  // What the contract rules out (open while hearing, or while snoozed)
+  // reads as none, never as a take free to ask.
+  .refine(({ open, hearing, nextAt }) => !open || (!hearing && nextAt === null))
   .transform(({ open, hearing, nextAt }) => ({
     open,
     hearing,
@@ -37,9 +40,22 @@ export const HearAgainSchema: z.ZodType<HearAgain | null> = z
   .catch(null)
   .transform((said) => said ?? null)
 
-/** Home's refusal while its snooze runs: when it can next be asked. */
+/**
+ * Home's refusal while its snooze runs, by its naming `nextAt`: when it can
+ * next be asked, or none where this phone can't read the time.
+ */
 const SnoozedSchema = z.object({
-  error: z.object({ details: z.object({ nextAt: z.array(AtSchema).min(1) }) }),
+  error: z.object({
+    details: z.object({
+      nextAt: z
+        .array(z.unknown())
+        .min(1)
+        .transform(([at]) => {
+          const read = AtSchema.safeParse(at)
+          return read.success ? read.data : null
+        }),
+    }),
+  }),
 })
 
 /**
@@ -49,17 +65,12 @@ const SnoozedSchema = z.object({
  * doesn't hold. Anything else changed nothing.
  */
 export function readHearAgain(answer: HomeAnswer): HearAgainAnswer {
-  if (answer.status === 200 || answer.status === 201) {
-    return { kind: "asked", askAgainAt: null }
-  }
+  if (answer.status === 200 || answer.status === 201) return { kind: "asked" }
   if (answer.status === 409) {
     const snoozed = readAs(SnoozedSchema, answer.body)
     return snoozed === null
       ? { kind: "waiting" }
-      : {
-          kind: "snoozed",
-          askAgainAt: snoozed.error.details.nextAt[0] ?? null,
-        }
+      : { kind: "snoozed", askAgainAt: snoozed.error.details.nextAt }
   }
   if (answer.status === 404) return { kind: "settled" }
   return { kind: "notTaken" }

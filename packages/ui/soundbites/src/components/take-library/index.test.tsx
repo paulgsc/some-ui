@@ -95,7 +95,6 @@ describe("Takes on home (ST32)", () => {
   })
 
   it("offers to ask home to try again on a take it heard, where home will, and says what came of it (#3339)", async () => {
-    const LATER = "2026-11-21T15:00:00.000Z"
     const asked: Array<string> = []
     render(
       <TakeLibrary
@@ -123,7 +122,7 @@ describe("Takes on home (ST32)", () => {
               }),
             hearAgain: (id) => {
               asked.push(id)
-              return Promise.resolve({ kind: "asked", askAgainAt: LATER })
+              return Promise.resolve({ kind: "asked" })
             },
           }),
           player: quietPlayer,

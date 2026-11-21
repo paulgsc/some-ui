@@ -34,8 +34,10 @@ export type HearAgain = {
 
 /** What came of an ask. */
 export type HearAgainAnswer =
-  /** Home will hear it again (`asked`), or was asked too recently (`snoozed`): when it can next be asked. */
-  | { readonly kind: "asked" | "snoozed"; readonly askAgainAt: string | null }
+  /** Home will hear it again. */
+  | { readonly kind: "asked" }
+  /** Home was asked too recently: when it can next be asked, if it said. */
+  | { readonly kind: "snoozed"; readonly askAgainAt: string | null }
   /** Home doesn't hold the take. */
   | { readonly kind: "settled" }
   /** Home hasn't heard the take a first time yet: nothing changed. */

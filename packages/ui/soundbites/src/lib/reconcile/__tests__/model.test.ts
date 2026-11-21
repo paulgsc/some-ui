@@ -52,7 +52,6 @@ const ids = (state: ReconcileState): Array<string> =>
   state.read.kind === "read" ? state.read.page.takes.map(({ id }) => id) : []
 
 const FREE = { open: true, hearing: false, askAgainAt: null } as const
-const LATER = "2026-11-21T15:00:00.000Z"
 
 /** The page with take `a` as home says it hears it again. */
 const pageWith = (hearAgain: AttentionTake["hearAgain"]): AttentionPage => ({
@@ -81,7 +80,7 @@ describe("asking home to hear a take again, from the takes needing attention (#3
       {
         type: "hearAgainAnswered",
         seq: 1,
-        answer: { kind: "asked", askAgainAt: LATER },
+        answer: { kind: "asked" },
       },
     ])
     expect(effects).toContain("sendHearAgain")
@@ -121,7 +120,7 @@ describe("asking home to hear a take again, from the takes needing attention (#3
       {
         type: "hearAgainAnswered",
         seq: 1,
-        answer: { kind: "asked", askAgainAt: LATER },
+        answer: { kind: "asked" },
       },
       { type: "readAgain" },
       { type: "takesRead", seq: 2, read: { kind: "read", page: PAGE } },

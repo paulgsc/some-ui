@@ -40,7 +40,7 @@ describe("asking home to hear a take again (#3339)", () => {
         readHearAgain(
           reply(status, { change: "recorded", act: "hear-again", verdict: {} })
         )
-      ).toEqual({ kind: "asked", askAgainAt: null })
+      ).toEqual({ kind: "asked" })
     }
   })
 
@@ -56,6 +56,12 @@ describe("asking home to hear a take again (#3339)", () => {
       kind: "waiting",
     })
     expect(readHearAgain(reply(409, "{"))).toEqual({ kind: "waiting" })
+    // A snooze whose time this phone can't read is still a snooze.
+    expect(
+      readHearAgain(
+        reply(409, { error: { details: { nextAt: ["2026-11-21T15:00:00"] } } })
+      )
+    ).toEqual({ kind: "snoozed", askAgainAt: null })
   })
 
   it("reads a take home doesn't hold as settled, and anything else as nothing changed", () => {
@@ -83,6 +89,9 @@ describe("asking home to hear a take again (#3339)", () => {
       { open: true },
       { ...READ, open: false, nextAt: "tomorrow" },
       { ...READ, open: false, nextAt: "2026-11-21T15:00:00" },
+      // What the contract rules out: open while snoozed, or while hearing.
+      { ...READ, nextAt: AT },
+      { ...READ, hearing: true },
     ]) {
       expect(HearAgainSchema.parse(said)).toBeNull()
     }
@@ -145,9 +154,6 @@ describe("asking home to hear a take again (#3339)", () => {
     asked.next = [{ kind: "unpaired" }]
     expect(await hearAgainHome("t1")).toEqual({ kind: "notTaken" })
     asked.next = [{ kind: "answered", answer: reply(201) }]
-    expect(await hearAgainHome("t1")).toEqual({
-      kind: "asked",
-      askAgainAt: null,
-    })
+    expect(await hearAgainHome("t1")).toEqual({ kind: "asked" })
   })
 })
