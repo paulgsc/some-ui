@@ -348,9 +348,9 @@ export function rankedNow(state: GameWeekState): ReadonlyArray<RankedEntry> {
 }
 
 /**
- * `said` with the unit `list` gives its scenario, unless it names one. A
- * bite on what just happened takes it too: the list's unit for the moment
- * it is said, which is what the owner sees on the chip and can change.
+ * `said` with the unit `list` gives its scenario, unless it names one (a
+ * play that just happened names its own, when home read one off it). The
+ * owner sees it on the chip and can change it.
  */
 function withUnit(list: ReadonlyArray<RankedEntry>, said: Said): Said {
   if (said.how === "said-first" || said.unit !== undefined) return said

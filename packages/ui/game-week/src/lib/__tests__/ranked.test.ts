@@ -339,6 +339,40 @@ describe("home's ranked list on the live socket", () => {
     expect(named.games[1]).toMatchObject({ teams: { home: "SF", away: "SEA" } })
   })
 
+  it("reads the unit home names on a play that just happened, or leaves it to the list", () => {
+    const happened = (units: ReadonlyArray<Record<string, unknown>>): string =>
+      JSON.stringify({
+        ...live,
+        offer: {
+          ...live.offer,
+          justHappened: units.map((unit, i) => ({
+            id: "in.sack",
+            line: `play ${String(i)}`,
+            at: "2026-10-23T01:52:20Z",
+            ...unit,
+          })),
+        },
+      })
+    const read = readHome(
+      happened([
+        { unit: "offense", unitSide: "NE" },
+        { unit: null, unitSide: null },
+        {},
+        { unit: "goalposts", unitSide: null },
+        { unit: "defense", unitSide: "Pats" },
+      ])
+    )
+    expect(
+      read.kind === "offer" && read.offer?.justHappened.map((each) => each.unit)
+    ).toEqual([
+      { unit: "offense", side: "NE" },
+      null,
+      undefined,
+      undefined,
+      undefined,
+    ])
+  })
+
   it("reads an offer from a home before it ranks as one with no list", () => {
     const older: Record<string, unknown> = { ...live.offer }
     delete older.ranked

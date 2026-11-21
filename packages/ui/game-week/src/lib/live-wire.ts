@@ -15,7 +15,7 @@ import { isRecord, jsonOf } from "@some-ui/core-utils"
 import { isScenarioId, UNITS } from "@some-ui/game-scenarios"
 
 import type { FeedChoice, Game, JustHappened, Offer, OfferCard } from "./feed"
-import type { RankedEntry } from "./ranked"
+import type { BiteUnit, RankedEntry } from "./ranked"
 import { isTeamCode, TIERS } from "./ranked"
 import { gameLabel, wantLine } from "./words"
 
@@ -94,24 +94,33 @@ function lineOf(value: unknown): Line | null {
 }
 
 /**
- * One entry of home's ranked list (#3049), `{id, tier, unit, unitSide}`,
- * or null for one this build doesn't know (a newer catalog's scenario, tier
- * or unit): left out, and the scenario stays pickable at the end of the
- * list (`rankedList`). A unit's side is a team's code, or null for none.
+ * The unit home names on a ranked entry or a play that just happened,
+ * `{unit, unitSide}` (#3049): null for none, `undefined` for a pair this
+ * build doesn't read (a newer catalog's unit, a side that is not a team's
+ * code, or a side with no unit). A unit's side is a team's code, or null.
+ */
+function unitFrom(value: Record<string, unknown>): BiteUnit | null | undefined {
+  const unit = value.unit ?? null
+  const side = value.unitSide ?? null
+  if (!(side === null || isTeamCode(side))) return undefined
+  if (unit === null) return side === null ? null : undefined
+  const named = UNITS.find((each) => each === unit)
+  return named === undefined ? undefined : { unit: named, side }
+}
+
+/**
+ * One entry of home's ranked list, `{id, tier, unit, unitSide}`, or null
+ * for one this build doesn't know (a newer catalog's scenario, tier or
+ * unit): left out, and the scenario stays pickable at the end of the list
+ * (`rankedList`).
  */
 function rankedOf(value: unknown): RankedEntry | null {
   if (!isRecord(value) || !isString(value.id) || !isScenarioId(value.id))
     return null
   const tier = TIERS.find((each) => each === value.tier)
-  if (tier === undefined) return null
-  const unit = value.unit ?? null
-  const side = value.unitSide ?? null
-  if (!(side === null || isTeamCode(side))) return null
-  if (unit === null)
-    return side === null ? { scenario: value.id, tier, unit: null } : null
-  const named = UNITS.find((each) => each === unit)
-  if (named === undefined) return null
-  return { scenario: value.id, tier, unit: { unit: named, side } }
+  const unit = unitFrom(value)
+  if (tier === undefined || unit === undefined) return null
+  return { scenario: value.id, tier, unit }
 }
 
 /**
@@ -132,7 +141,12 @@ function asOffer(seq: number, value: unknown): Offer | null {
   const happened = value.justHappened.map((each) => {
     const read = lineOf(each)
     return read !== null && isRecord(each) && isString(each.at)
-      ? { ...read, at: each.at }
+      ? {
+          ...read,
+          at: each.at,
+          // A home before #3049's play units sends none: the list's is used.
+          unit: "unit" in each ? unitFrom(each) : undefined,
+        }
       : null
   })
   if (scenarios.includes(null) || happened.includes(null)) return null
@@ -149,7 +163,12 @@ function asOffer(seq: number, value: unknown): Offer | null {
   const justHappened: Array<JustHappened> = []
   for (const each of happened) {
     if (each !== null && isScenarioId(each.id)) {
-      justHappened.push({ scenario: each.id, context: each.line, at: each.at })
+      justHappened.push({
+        scenario: each.id,
+        context: each.line,
+        at: each.at,
+        ...(each.unit === undefined ? {} : { unit: each.unit }),
+      })
     }
   }
   const ranked = Array.isArray(value.ranked)

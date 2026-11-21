@@ -316,6 +316,15 @@ describe("GameWeek", () => {
     ).toBeNull()
   })
 
+  it("names a play that just happened by its own unit, not the list's", async () => {
+    render(<GameWeek ports={ports()} outbox={outbox} />)
+    fireEvent.click(screen.getByText("SEA corner down, now off"))
+    await screen.findByRole("button", {
+      name: TAKE_WORDS.buttonLabel.recording,
+    })
+    expect(screen.getByRole("button", { name: /^SEA defense/ })).toBeTruthy()
+  })
+
   it("ranks the list most plausible first when home ranks it", () => {
     render(<GameWeek ports={ports()} outbox={outbox} />)
     fireEvent.click(screen.getByRole("button", { name: WORDS.everyScenario }))

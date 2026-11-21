@@ -226,10 +226,12 @@ const offered = (card: OfferCard): Said => ({
   context: card.context,
 })
 
+// The play's own unit where home named one, the list's otherwise.
 const happened = (each: JustHappened): Said => ({
   how: "just-happened",
   scenario: each.scenario,
   context: each.context,
+  ...(each.unit === undefined ? {} : { unit: each.unit }),
 })
 
 const everyScenario = (scenario: ScenarioId): Said => ({

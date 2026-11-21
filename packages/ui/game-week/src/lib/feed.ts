@@ -11,7 +11,7 @@
 import type { ScenarioId } from "@some-ui/game-scenarios"
 
 import type { ModeId } from "./modes"
-import type { RankedEntry } from "./ranked"
+import type { BiteUnit, RankedEntry } from "./ranked"
 
 /** One game of the week, read through SF. */
 export type Game = {
@@ -48,6 +48,11 @@ export type JustHappened = {
   readonly context: string
   /** When it happened, ISO 8601. */
   readonly at: string
+  /**
+   * The unit that play was about, read off it by home (null for no one
+   * team); absent from a home before it named one, when the list's is used.
+   */
+  readonly unit?: BiteUnit | null | undefined
 }
 
 /** One offer from home: what the screen shows for one game at one moment. */
@@ -199,16 +204,19 @@ export function fixtureFeed(now: () => number = Date.now): FeedPort {
               scenario: "in.big-play",
               context: "31-yard catch over the middle",
               at: iso(at - 0.5 * MINUTE),
+              unit: { unit: "offense", side: "SF" },
             },
             {
               scenario: "in.injury",
               context: "SEA corner down, now off",
               at: iso(at - 1.25 * MINUTE),
+              unit: { unit: "defense", side: "SEA" },
             },
             {
               scenario: "in.kick",
               context: "SEA 44-yard field goal",
               at: iso(at - 2.5 * MINUTE),
+              unit: { unit: "special-teams", side: "SEA" },
             },
           ],
         },
