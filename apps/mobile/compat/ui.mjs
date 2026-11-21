@@ -13,7 +13,8 @@
 // case, with a node's text, content-desc, hint and resource-id: equal, or
 // starting with it when it ends in `*` ("Pair with*"). Literal text, never
 // a pattern, so no argument is compiled into a regular expression. Retries for up to 30 s,
-// since a slowed emulator renders late; `find` accepts a match scrolled out
+// since a slowed emulator renders late (a dump the device kills is tried
+// again in that time too); `find` accepts a match scrolled out
 // of view, while `tap` and `type` scroll the page down until it is on
 // screen. Exits non-zero when nothing
 // matches, and leaves the last dump at ui-last.xml in the working directory
@@ -90,7 +91,14 @@ let xml = ""
 // UI_WAIT_SECONDS shortens the wait, to ask whether something is on screen.
 const waitMs = Number(process.env.UI_WAIT_SECONDS || 30) * 1000
 for (const end = Date.now() + waitMs; Date.now() < end; await sleep(1_000)) {
-  adb("shell", "uiautomator", "dump", "/sdcard/ui.xml")
+  try {
+    adb("shell", "uiautomator", "dump", "/sdcard/ui.xml")
+  } catch {
+    // Ignored: a dump the device kills (a busy screen, status 137) is tried
+    // again within the wait, like a screen that hasn't drawn yet; the last
+    // dump that did come is what is read.
+    continue
+  }
   xml = adb("exec-out", "cat", "/sdcard/ui.xml")
   found = find(xml)
   if (found && (found.visible || action === "find")) break

@@ -118,7 +118,7 @@ jobs:
           # public data the app reads (GitHub's asks, the clips index)
           # cannot load into a picture on either build.
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -dns-server 192.0.2.1
-          script: nix develop .#ci --command bash apps/mobile/snips/capture-apk.sh apps/mobile/android/app/build/outputs/apk/release/app-release.apk apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/snips-apk"
+          script: nix develop .#ci --command bash apps/mobile/snips/capture-apk.sh apps/mobile/android/app/build/outputs/apk/release/app-release.apk apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/snips-apk" "$GITHUB_WORKSPACE/walks"
       # Retention: read by this run's bundle job, and by a person reading a
       # failed capture right after the run; a later look is a dispatch away.
       - name: Upload the APK half
@@ -127,6 +127,18 @@ jobs:
         with:
           name: snips-apk-${{ github.run_id }}
           path: snips-apk
+          if-no-files-found: ignore
+          retention-days: 1
+      # Retention: the walks (WALK1, apps/mobile/walk), each app's snips and
+      # walk.json for `motion promo` and the walkthrough, and a failed walk's
+      # failed.png. Read by a person right after the run; a later look, or a
+      # render a day on, is a dispatch away, the walk being on sample data.
+      - name: Upload the walks
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: walks-${{ github.run_id }}
+          path: walks
           if-no-files-found: ignore
           retention-days: 1
 
