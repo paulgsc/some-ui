@@ -1,0 +1,18 @@
+{
+  "id": "C892",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:crates/outbound/src/lib.rs#Request::send",
+    "server:infra/grafana/README.md"
+  ],
+  "chose": "Measuring ends at the answer's headers: outcome (ok, refused_4xx, refused_5xx, timeout, no_answer) and duration are taken when send returns, and bytes received are the declared Content-Length, read or not. A body that stalls after the headers counts as its status. Wrapping the response to count bytes actually read would change the Response type every caller reads its body from. game_feed_fetches_total{kind} is kept as the narrower view: its kinds say what an answer meant, and its no-answer kinds cover the body. The README says so. Each caller's counters are set to zero when its client is built.",
+  "options": [
+    "measure to the answer's headers and count declared Content-Length, saying so where the numbers are read",
+    "return a counting wrapper around reqwest::Response so body failures and bytes actually read are recorded",
+    "fold game_feed_fetches_total into the generic series"
+  ],
+  "gray": "Nothing said where a request ends. The wrapper is more exact, but it changes the Response type every caller reads its body from (the game feed's capped chunk reads, the kits' bytes and text) for a difference only a body that stalls after its headers shows; and the issue leaves the game feed's own series to keep or fold.",
+  "undo": "Return a counting wrapper around reqwest::Response from Request::send and record on drop.",
+  "refs": ["#3330"]
+}

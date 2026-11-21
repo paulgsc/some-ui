@@ -1,0 +1,19 @@
+{
+  "id": "C910",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:infra/prometheus/rules/home.yml#OutboundNoAnswer",
+    "server:infra/prometheus/rules/home.test.yml"
+  ],
+  "chose": "OutboundNoAnswer (objective OB2) fires for a caller and host when at least three requests in 30 minutes got no answer (timeout or no_answer) and not one got any answer, from outbound_requests_total. A refusal of any status is an answer and clears it; a caller asking fewer than three times in the window is not judged. It names the worker and the host in says, never a URL. The owner asked for it on 2026-11-21.",
+  "options": [
+    "no answer at all, at least 3 requests in 30 minutes, by caller and host",
+    "any non-ok outcome (refusals included) with no ok, by caller and host",
+    "the share of no-answers over a threshold",
+    "no alert, the dashboard only"
+  ],
+  "gray": "The owner chose to alert on a host gone dark, but nothing fixed the window, the minimum count or whether a refusal counts. A refusal is the worker's to judge (GA2's backoff, a push service's 410), and a minimum of three trades the rarest callers' silence for no page on one stray timeout. The objective is new: no ledger family covers outbound requests yet.",
+  "undo": "Delete the home-outbound group from home.yml and its tests; or change the matcher to outcome!=\"ok\" to count refusals.",
+  "refs": ["#3330"]
+}
