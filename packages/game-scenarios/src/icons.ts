@@ -110,4 +110,13 @@ export const ICONS: Readonly<Record<ScenarioId, ReadonlyArray<string>>> = {
     circle(17.5, 17, 4.5),
     "M17.5 14.5V17l1.8 1.2",
   ],
+  // The field cut at midfield: one half behind, one to come.
+  "in.halftime": ["M3 6h18v12H3z", "M12 6v12", "M6 10l2 2-2 2"],
+  // A short kick that bounces once, still loose.
+  "in.onside-kick": [
+    "M3 20h18",
+    "M4 20a3.5 3.5 0 0 1 7 0",
+    "M11 20a2.5 2.5 0 0 1 5 0",
+    circle(18.5, 16, 2),
+  ],
 }

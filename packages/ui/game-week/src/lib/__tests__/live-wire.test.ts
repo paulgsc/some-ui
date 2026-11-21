@@ -47,6 +47,13 @@ describe("what home sends", () => {
             context: "NE sacked on 2nd and 5",
             at: "2026-10-23T01:52:20Z",
           },
+          // A big play's line says its size and kind (#3048); the recorder
+          // keeps the line, as for every other moment.
+          {
+            scenario: "in.big-play",
+            context: "CHI 45-yard interception return, touchdown",
+            at: "2026-10-23T01:51:02Z",
+          },
         ],
       },
     })
