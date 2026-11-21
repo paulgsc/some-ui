@@ -3730,7 +3730,7 @@
         "server:apps/servers/file_host/src/cards_essays",
         "server:apps/servers/file_host/src/routes/cards_essays.rs",
         "server:apps/servers/file_host/src/handlers/cards_essays.rs",
-        "server:apps/servers/file_host/src/take_files.rs",
+        "server:apps/servers/file_host/src/essay_media",
         "some-ui:apps/www/tests/record/voiced.ts"
       ],
       "modules": ["cards_essays"],
@@ -6489,7 +6489,7 @@
           "on": "home",
           "paths": [
             "server:apps/servers/file_host/src/cards_essays",
-            "server:apps/servers/file_host/src/take_files.rs"
+            "server:apps/servers/file_host/src/essay_media"
           ]
         },
         {
