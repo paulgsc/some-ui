@@ -39,15 +39,9 @@ jobs:
       - name: Filter paths
         id: filter
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
-        # CD1: a flag is true only when a changed file matches one of its
-        # patterns (packages/eslint/tests/detect-changes.test.ts, run by
-        # pr.yml's Repo guards on every PR). Under the
-        # default `predicate-quantifier: some`, a file counts if any pattern
-        # matches it, so a leading-`!` pattern adds every file it does not
-        # name instead of taking any away: `!**/*.md` set `rust` and `node`
-        # on almost every PR. To leave files out, write the positive
-        # extglob (`crates/**/!(*.md)`); `pnpm check:workflows` fails a
-        # leading `!` under `some`.
+        # CD1 (docs/ci-architecture.md): a flag is true only for a file it
+        # names. No leading `!` under the default `some`, where it adds every
+        # file it doesn't name; write `x/**/!(*.md)` instead.
         with:
           filters: |
             rust:
@@ -95,7 +89,6 @@ jobs:
               - 'pnpm-lock.yaml'
               - '.nvmrc'
               - 'tsconfig*.json'
-              # The repo-level scripts, typechecked by the root tsconfig.json.
               # The repo-level scripts the Node jobs run (the catalog guardrail,
               # the license audit, the release tests) or the root
               # tsconfig.json typechecks.

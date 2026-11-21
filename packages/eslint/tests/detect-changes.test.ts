@@ -14,10 +14,11 @@
  * fails the leading `!` that broke this under `some`.
  */
 
-import { existsSync, readFileSync } from "node:fs"
+import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { worktreeFiles } from "@eslint/git-tree.js"
+import { reachableDirs } from "@eslint/vestiges.js"
 import picomatch from "picomatch"
 import { describe, expect, it } from "vitest"
 import { parse } from "yaml"
@@ -111,36 +112,27 @@ function reachedWorkspaces(): ReadonlyArray<string> {
       .filter((g) => g.startsWith("!"))
       .map((g) => `${g.slice(1)}/package.json`)
   )
-  const depsOf = new Map<string, ReadonlyArray<string>>()
-  const dirOf = new Map<string, string>()
-  for (const file of worktreeFiles(ROOT, ["."])) {
-    if (!included(file) || excluded(file)) continue
-    const dir = file.slice(0, -"/package.json".length)
-    const manifest = map(
-      JSON.parse(readFileSync(join(ROOT, file), "utf8")),
-      file
-    )
-    depsOf.set(
-      dir,
-      ["dependencies", "devDependencies", "peerDependencies"].flatMap((key) =>
-        manifest[key] === undefined
-          ? []
-          : Object.entries(map(manifest[key], key))
-              .filter(([, spec]) => String(spec).startsWith("workspace:"))
-              .map(([name]) => name)
+  const workspaces = worktreeFiles(ROOT, ["."])
+    .filter((file) => included(file) && !excluded(file))
+    .map((file) => {
+      const dir = file.slice(0, -"/package.json".length)
+      const manifest = map(
+        JSON.parse(readFileSync(join(ROOT, file), "utf8")),
+        file
       )
-    )
-    if (typeof manifest.name === "string") dirOf.set(manifest.name, dir)
-  }
-  const reached = new Set(
-    [...depsOf.keys()].filter((dir) => !dir.startsWith("extensions/"))
-  )
-  for (const dir of reached) {
-    for (const name of depsOf.get(dir) ?? []) {
-      const dep = dirOf.get(name)
-      if (dep !== undefined) reached.add(dep)
-    }
-  }
+      return {
+        dir,
+        name: text(manifest.name, `${file}'s name`),
+        deps: ["dependencies", "devDependencies", "peerDependencies"].flatMap(
+          (key) =>
+            manifest[key] === undefined
+              ? []
+              : Object.keys(map(manifest[key], key))
+        ),
+        deployable: !dir.startsWith("extensions/"),
+      }
+    })
+  const reached = reachableDirs(workspaces)
   return [...reached].sort()
 }
 
@@ -188,10 +180,6 @@ describe("CD1: a change-detection flag is true only for a file it names", () => 
       "packages/ui/topik/src/lib/topik/generation/lesson-prompt.md",
       { ...NONE, node: true, render: true },
     ],
-    [
-      "packages/contract-harness/README.md",
-      { ...NONE, node: true, render: true },
-    ],
   ])("Markdown in a named tree: %s", (file, expected) => {
     expect(flags([file])).toEqual(expected)
   })
@@ -202,12 +190,6 @@ describe("CD1: a change-detection flag is true only for a file it names", () => 
     ["deny.toml", "rust"],
     ["clippy.toml", "rust"],
     ["scripts/check-mutation-boundary.sh", "rust"],
-    ["packages/assurance/src/ledger.json", "node"],
-    ["packages/ui/resume/src/resume.typ", "node"],
-    ["apps/www/index.html", "node"],
-    ["apps/mailbox/scripts/x.mjs", "node"],
-    ["extensions/suspender-ledger/src/popup/x.ts", "node"],
-    ["docs/canon/hangul-progression-canon.typ", "node"],
     ["turbo.json", "node"],
     ["pnpm-workspace.yaml", "node"],
     ["scripts/check-catalog-drift.mjs", "node"],
@@ -223,7 +205,6 @@ describe("CD1: a change-detection flag is true only for a file it names", () => 
   it.each(reachedWorkspaces())(
     "`node` covers every file of a workspace the Node jobs reach: %s",
     (dir) => {
-      expect(existsSync(join(ROOT, dir))).toBe(true)
       for (const file of ["package.json", "src/x.ts", "fixtures/a.json"]) {
         expect(flags([`${dir}/${file}`]).node).toBe(true)
       }

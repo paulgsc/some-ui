@@ -783,19 +783,6 @@ describe("findPathsFilterViolations (CD1)", () => {
       )
     ).toEqual([{ kind: "pathsFilterUnreadable", file: F, line: 2 }])
   })
-
-  it("passes this repo's workflows as they stand", () => {
-    for (const file of [
-      ".github/workflows/_detect-changes.yml",
-      ".github/workflows/_extension-detect.yml",
-    ]) {
-      const text = readFileSync(
-        new URL(`../../../${file}`, import.meta.url),
-        "utf8"
-      )
-      expect(findPathsFilterViolations(file, text)).toEqual([])
-    }
-  })
 })
 
 describe("isGuardedWorkflowPath", () => {

@@ -719,10 +719,9 @@ export function checkRetentionTriggers(
   return violations
 }
 
-// CD1: under `some` (the action's default), no leading-`!` pattern. The
-// filters are read only as a block scalar (`filters: |`) in the step's block
-// `with:` map; a flow-style step or `with:`, or filters given another way (a
-// file path, a flow string), is unreadable and fails, like an upload step.
+// CD1. The filters are read only as a block scalar (`filters: |`) in the
+// step's block `with:` map; any other shape, or a quantifier that is not a
+// known literal, is unreadable and fails, like an upload step.
 export function findPathsFilterViolations(
   file: string,
   text: string
@@ -747,18 +746,10 @@ export function findPathsFilterViolations(
     const filters = withValue(step.body, step.keyColumn, "filters")
     if (
       quantifier.shape === "flow" ||
+      (quantifier.shape === "value" && !QUANTIFIERS.has(quantifier.value)) ||
       filters.shape !== "value" ||
       !/^[|>][-+]?$/.test(filters.value)
     ) {
-      violations.push({
-        kind: "pathsFilterUnreadable",
-        file,
-        line: step.start + 1,
-      })
-      continue
-    }
-    if (quantifier.shape === "value" && !QUANTIFIERS.has(quantifier.value)) {
-      // An expression or an unknown word: which rule applies can't be read.
       violations.push({
         kind: "pathsFilterUnreadable",
         file,
