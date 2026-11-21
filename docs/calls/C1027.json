@@ -2,6 +2,7 @@
   "id": "C1027",
   "made": "2026-11-21",
   "by": "claude",
+  "agreed": "2026-11-21",
   "paths": [
     "packages/video-render/src/cards-essay.ts",
     "packages/video-render/src/spoken-card.ts"
