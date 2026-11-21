@@ -792,6 +792,12 @@ jobs:
       # workflow alone.
       - name: Check the manual sign workflow's input
         run: nix develop .#ci --command pnpm --filter @some-ui/eslint-kit exec vitest run tests/extension-sign-inputs.test.ts
+      # CD1 (_detect-changes.yml): each change-detection flag is true only
+      # for a file it names, and `node` covers every workspace the Node jobs
+      # reach. Here for the same reason: a change to the workflow alone
+      # selects no package.
+      - name: Check the change-detection filters
+        run: nix develop .#ci --command pnpm --filter @some-ui/eslint-kit exec vitest run tests/detect-changes.test.ts
 
   # ── CI Gate ────────────────────────────────────────────────────────────
   # A job whose `needs` fails is skipped, not failed, so the gate judges each
