@@ -377,10 +377,15 @@ export const weekId = z
   .string()
   .regex(/^\d{4}-w(?:0[1-9]|[1-4]\d|5[0-3])$/, "a week's id is like 2026-w46")
 
-/** A ticket's key, as `some-ui.rust-week/1` and `/2` write it (`TICKET_KEY`). */
+/** A ticket's key, as `some-ui.rust-week/1` and `/2` write it (`TICKET_KEY`), unanchored. */
+export const TICKET_KEY_PATTERN = "[A-Z][A-Z0-9]{0,5}-\\d{1,6}"
+
 const ticketKey = z
   .string()
-  .regex(/^[A-Z][A-Z0-9]{0,5}-\d{1,6}$/, "a ticket's id is a key like QM-311")
+  .regex(
+    new RegExp(`^${TICKET_KEY_PATTERN}$`),
+    "a ticket's id is a key like QM-311"
+  )
 
 /** A program or snippet, shown as written: never only spaces. */
 const code = z.string().refine((s) => s.trim().length > 0, "it is empty")

@@ -175,6 +175,8 @@ export const ROOMS: ReadonlyArray<Room> = [
   { id: "burn-ins", wing: "studio", roots: ["/burn-ins", "/captions"] },
   { id: "call", wing: "studio", roots: ["/call"] },
   { id: "essay", wing: "studio", roots: ["/essay"] },
+  // The phone's Rust Rounds card, photographed for the essay (RR31).
+  { id: "rust-screen", wing: "studio", roots: ["/rust-screen"] },
   { id: "report", wing: "studio", roots: ["/report"] },
   { id: "jobs", wing: "jobs", roots: ["/jobs"] },
   { id: "job-run", wing: "jobs", roots: ["/job-run"], nav: "Morning run" },

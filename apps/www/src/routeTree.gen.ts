@@ -22,6 +22,7 @@ import { Route as ExtensionsRouteImport } from './routes/extensions'
 import { Route as MissionRouteImport } from './routes/mission'
 import { Route as PlayoffDeltaRouteImport } from './routes/playoff-delta'
 import { Route as ReportRouteImport } from './routes/report'
+import { Route as RustScreenRouteImport } from './routes/rust-screen'
 import { Route as DashboardApkRouteImport } from './routes/_dashboard/_apk'
 import { Route as DashboardLanRouteImport } from './routes/_dashboard/_lan'
 import { Route as DashboardAppRouteImport } from './routes/_dashboard/app'
@@ -165,6 +166,11 @@ const PlayoffDeltaRoute = PlayoffDeltaRouteImport.update({
 const ReportRoute = ReportRouteImport.update({
   id: '/report',
   path: '/report',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RustScreenRoute = RustScreenRouteImport.update({
+  id: '/rust-screen',
+  path: '/rust-screen',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardApkRoute = DashboardApkRouteImport.update({
@@ -633,6 +639,7 @@ export interface FileRoutesByFullPath {
   '/mission': typeof MissionRoute
   '/playoff-delta': typeof PlayoffDeltaRoute
   '/report': typeof ReportRoute
+  '/rust-screen': typeof RustScreenRoute
   '/app': typeof DashboardAppRoute
   '/job-run': typeof DashboardJobRunRoute
   '/profile': typeof DashboardProfileRoute
@@ -725,6 +732,7 @@ export interface FileRoutesByTo {
   '/mission': typeof MissionRoute
   '/playoff-delta': typeof PlayoffDeltaRoute
   '/report': typeof ReportRoute
+  '/rust-screen': typeof RustScreenRoute
   '/app': typeof DashboardAppRoute
   '/job-run': typeof DashboardJobRunRoute
   '/profile': typeof DashboardProfileRoute
@@ -815,6 +823,7 @@ export interface FileRoutesById {
   '/mission': typeof MissionRoute
   '/playoff-delta': typeof PlayoffDeltaRoute
   '/report': typeof ReportRoute
+  '/rust-screen': typeof RustScreenRoute
   '/_dashboard/_apk': typeof DashboardApkRouteWithChildren
   '/_dashboard/_lan': typeof DashboardLanRouteWithChildren
   '/_dashboard/app': typeof DashboardAppRoute
@@ -911,6 +920,7 @@ export interface FileRouteTypes {
     | '/mission'
     | '/playoff-delta'
     | '/report'
+    | '/rust-screen'
     | '/app'
     | '/job-run'
     | '/profile'
@@ -1003,6 +1013,7 @@ export interface FileRouteTypes {
     | '/mission'
     | '/playoff-delta'
     | '/report'
+    | '/rust-screen'
     | '/app'
     | '/job-run'
     | '/profile'
@@ -1092,6 +1103,7 @@ export interface FileRouteTypes {
     | '/mission'
     | '/playoff-delta'
     | '/report'
+    | '/rust-screen'
     | '/_dashboard/_apk'
     | '/_dashboard/_lan'
     | '/_dashboard/app'
@@ -1188,6 +1200,7 @@ export interface RootRouteChildren {
   MissionRoute: typeof MissionRoute
   PlayoffDeltaRoute: typeof PlayoffDeltaRoute
   ReportRoute: typeof ReportRoute
+  RustScreenRoute: typeof RustScreenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1281,6 +1294,13 @@ declare module '@tanstack/react-router' {
       path: '/report'
       fullPath: '/report'
       preLoaderRoute: typeof ReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rust-screen': {
+      id: '/rust-screen'
+      path: '/rust-screen'
+      fullPath: '/rust-screen'
+      preLoaderRoute: typeof RustScreenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_dashboard/_apk': {
@@ -2105,6 +2125,7 @@ const rootRouteChildren: RootRouteChildren = {
   MissionRoute: MissionRoute,
   PlayoffDeltaRoute: PlayoffDeltaRoute,
   ReportRoute: ReportRoute,
+  RustScreenRoute: RustScreenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

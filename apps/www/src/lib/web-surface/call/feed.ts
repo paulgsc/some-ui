@@ -57,6 +57,9 @@ export const essaySource = besideStage("rust-essays")
  */
 export const interviewEssaySource = besideStage("interview-essays")
 
+/** A Rust Rounds week with its runs (`GET /rust-weeks/<id>`), answered by `record:essay --week-file`. */
+export const rustScreenSource = besideStage("rust-screens")
+
 /**
  * An engagement report, by its ISO week (ENG12; `reportStageOf` parses it):
  * the recorder answers it with the report it writes from

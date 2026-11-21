@@ -94,6 +94,10 @@ export const UNMEASURED: ReadonlyArray<Unmeasured> = [
     why: "The Rust Rounds essay's stage: one scene at a time, for its video and to look over, on a week's essay as home's render worker hands it over, or the template's sample essay.",
   },
   {
+    route: "/rust-screen",
+    why: "A Rust Rounds ticket's card as the phone draws it, for the essay's recorder to photograph (RR31): nothing on it to tap, on a week as home's render worker hands it over, or the sample week.",
+  },
+  {
     route: "/report",
     why: "The weekly engagement report's stage: one scene at a time, for its video and to look over, on a week's report as home's render worker hands it over, or the template's sample report.",
   },

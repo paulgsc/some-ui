@@ -195,6 +195,18 @@ function takeFromHome(held: WeeksHeld, from: WeekFromHome): WeeksHeld {
       }
 }
 
+/**
+ * A week as home serves it (`GET /rust-weeks/<id>`, parsed), read as the
+ * phone would hold it fresh: through the same door, `readWeek`, with each
+ * ticket's recorded run. Null when the phone couldn't read it. Home's essay
+ * recorder draws the week's cards from this (RR31, #3288).
+ */
+export function heldFromHome(value: unknown): HeldWeek | null {
+  const from = WeekWithRunsSchema.safeParse(value)
+  if (!from.success) return null
+  return takeFromHome(NO_WEEKS, from.data).weeks[0] ?? null
+}
+
 const FORGOTTEN: HomeExchanged = { kind: "forgotten" }
 
 /** The phone could not keep what it was sent: its own fault, said as such. */
