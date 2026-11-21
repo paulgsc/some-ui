@@ -57,12 +57,12 @@ walk() {
     return 1
   fi
   local ok=yes
-  if ! install "$debug_apk"; then
-    echo "::error title=Walks::the debug APK's database never opened for $app (logs/logcat.txt)"
-    ok=no
-  elif ! pair_by_ui; then
+  # paired: a clean install paired through its own screen, tried twice, since
+  # one pairing can land on a form scrolled past its first field.
+  paired() { install "$debug_apk" && pair_by_ui; }
+  if ! paired && ! paired; then
     adb exec-out screencap -p > "$out/pair-failed-$app.png" || true
-    echo "::error title=Walks::the Pair form could not be driven for $app (logs/pair-failed-$app.png)"
+    echo "::error title=Walks::the $app walk's app could not be installed and paired (logs/logcat.txt, logs/pair-failed-$app.png)"
     ok=no
   else
     # The walk's microphone is the page's own (WALK3); granted so Android
