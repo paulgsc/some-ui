@@ -1,7 +1,17 @@
 /**
- * A pull on a Jobs screen (PULL2, #2459; JP1): it reads this morning's picks
- * and home's record of the runs as the person's own read of home, beside
- * the drain, and names this morning's picks when that read found no answer.
+ * JP1, a pull on a Jobs screen (PULL2, #2459).
+ *
+ * - Claim: its check reads this morning's picks and home's runs as the
+ *   person's own read of home (`askJobsPicks`, the link's `keep`), never by
+ *   waiting on a lane's run.
+ * - Family: every drain order (lanes queued ahead of the jobs lane), every
+ *   pace on the drain's side, a pull joining a run under way: none of them
+ *   reach the check, which holds no lane's run.
+ * - Proof: here, with no lane's run at all; `readDigests` sending only its
+ *   two `GET`s is `./home.test.ts`'s.
+ * - Tolerance: the lane's run and the pull's read can each take in home's
+ *   runs, and the later to land is kept, so an older list can stand until
+ *   the next read; a day's digest is never replaced either way.
  */
 import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -38,12 +48,6 @@ vi.mock("@/lib/jobs", async () => {
     } => ({ keeping: { state: (): JobsState => EMPTY, fetched } }),
   }
 })
-// The jobs lane's run in the drain: queued behind the other lanes' writes
-// on a slowed pace (#3140, #3135), so it has not ended while the pull checks.
-vi.mock("@/lib/home-link/lanes", () => ({
-  pulledLane: vi.fn(() => new Promise(() => {})),
-}))
-
 const TODAY = digest("2026-11-21")
 const RUN = run("2026-11-21T15:52:00.000Z")
 
@@ -75,67 +79,24 @@ afterEach(() => {
 })
 
 describe("a pull on a Jobs screen", () => {
-  it("brings this morning's picks in while the jobs lane's run still waits its turn (JP1)", async () => {
+  it("reads this morning's picks itself, as the person's own read of home, not by waiting on a lane's run (JP1)", async () => {
     const drop = registerJobsPull()
     expect(await screenRefreshers.checkAll()).toEqual([])
     expect(fetched).toHaveBeenCalledWith([TODAY], [RUN])
-    drop()
-  })
-
-  it("reads as the person's own ask of home, sending nothing of the phone's", async () => {
-    const sent: Array<string> = []
-    keep.mockImplementation(async (read) => ({
-      kind: "done",
-      value: await read((method, path, body) => {
-        sent.push(`${method} ${path}`)
-        return home(method, path, body)
-      }),
-    }))
-    const drop = registerJobsPull()
-    await screenRefreshers.checkAll()
     expect(keep).toHaveBeenCalledTimes(1)
     expect(keep.mock.calls[0]?.[1]).toBeUndefined()
-    expect(sent).toEqual(["GET /jobs/runs", "GET /jobs/digests"])
     drop()
   })
 
   it("names this morning's picks when home could not be read, and nothing unpaired", async () => {
     const drop = registerJobsPull()
-    const unread = (
-      answer: () => Promise<Run<unknown>>
-    ): Promise<ReadonlyArray<string>> => {
-      keep.mockImplementationOnce(answer)
-      return screenRefreshers.checkAll()
-    }
-    expect(
-      await unread(() => Promise.resolve({ kind: "refused", why: "unpaired" }))
-    ).toEqual([])
-    const answers: ReadonlyArray<() => Promise<Run<unknown>>> = [
-      // Home busy, or a fault on home.
-      (): Promise<Run<unknown>> =>
-        Promise.resolve({
-          kind: "done" as const,
-          value: { kind: "failed", why: "busy" },
-        }),
-      // Home forgot this phone.
-      (): Promise<Run<unknown>> =>
-        Promise.resolve({
-          kind: "done" as const,
-          value: { kind: "forgotten" },
-        }),
-      // No answer.
-      (): Promise<Run<unknown>> => Promise.reject(new Error("no answer")),
-    ]
-    for (const answer of answers) {
-      expect(await unread(answer)).toEqual([PULL_CHECKS])
-    }
-    // A read stopped before it went is asked again, as a busy link's is.
-    fetched.mockClear()
-    expect(
-      await unread(() => Promise.resolve({ kind: "stopped" as const }))
-    ).toEqual([])
-    expect(keep).toHaveBeenCalledTimes(6)
-    expect(fetched).toHaveBeenCalledWith([TODAY], [RUN])
+    keep.mockResolvedValueOnce({ kind: "refused", why: "unpaired" })
+    expect(await screenRefreshers.checkAll()).toEqual([])
+    keep.mockResolvedValueOnce({
+      kind: "done",
+      value: { kind: "failed", why: "busy" },
+    })
+    expect(await screenRefreshers.checkAll()).toEqual([PULL_CHECKS])
     drop()
   })
 

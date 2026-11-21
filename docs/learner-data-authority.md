@@ -1259,8 +1259,8 @@ that the shell's drain sends nothing unpaired and sends once paired on the
 moments below, a pull among them, asking each watched lane once and saying
 the pull fell short when one lane's run did, while a mark sends nothing of
 its own (`components/__tests__/device-home-glyph.test.tsx`), and that a
-screen hears its lane's end in the pull under way, one run a lane between
-them (`lib/home-link/__tests__/pull.test.ts`). What no test
+pull on a Jobs screen reads the morning's picks as the person's own read,
+not by waiting on a lane's run (`lib/jobs/__tests__/pull.test.ts`, JP1). What no test
 can say is when a run is asked for. Rust Rounds' lane
 (`rust-rounds.ts`) is held by `packages/ui/rust-rounds/src/lib/home/index.test.ts`,
 `packages/ui/rust-rounds/src/lib/weeks/index.test.ts`,
@@ -1395,9 +1395,13 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   home and -1 on the phone; a hunk to `lib/home-link/jobs.ts` that makes
   the lane's `revision` anything but twice the log's length, plus one while
   `noticeFiling` owes home a request, or its `exchange` anything but
-  `exchangeJobs` over the runtime's `keeping`; a hunk to `lib/jobs` that
-  reads home's digests, files a decisions or scouts file or the notice
-  token anywhere but in `exchangeJobs`, or that deletes, renames or moves
+  `exchangeJobs` over the runtime's `keeping`, or its `askJobsPicks`
+  anything but `readDigests` over that `keeping` through the link's `keep`;
+  a hunk that makes `lib/jobs/pull.ts`'s refresher wait on a lane's run or
+  read home other than through `askJobsPicks`; a hunk to `lib/jobs` that
+  reads home's digests anywhere but in `exchangeJobs` and `readDigests`
+  (which `askJobsPicks` calls), files a decisions or scouts file or the
+  notice token anywhere but in `exchangeJobs`, or that deletes, renames or moves
   `readDigests`, `fileOutgoing` or `fileNotice` (`lib/jobs/home.ts`) so
   `exchangeJobs` no longer makes it in every run that gets that far; a hunk
   to `lib/home-link/practice.ts` that makes the lane's `revision` or

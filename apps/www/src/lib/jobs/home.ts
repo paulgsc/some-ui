@@ -224,12 +224,7 @@ async function readRuns(
   return { runs }
 }
 
-/**
- * Steps 3 and 4: home's records of the runs and the digests the phone does
- * not hold, taken in. Null when the exchange goes on to its end. Read alone
- * too, as a pull on a Jobs screen reads them (`./pull`, JP1): it sends
- * nothing of the phone's.
- */
+/** Steps 3 and 4. Null when the exchange goes on to its end. */
 export async function readDigests(
   keeping: JobsRecordPort,
   send: HomeCall

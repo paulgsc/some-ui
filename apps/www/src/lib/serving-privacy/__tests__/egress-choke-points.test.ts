@@ -255,8 +255,7 @@ const KEEPERS = new Set([
   "lib/home-link/week-record.ts",
   // AR1: aph's read of home's record as its screens open.
   "lib/home-link/aph.ts",
-  // JP1: a pull on a Jobs screen's read of the morning's picks and runs
-  // (`askJobsPicks`), two `GET`s of `lib/jobs/home.ts`'s `readDigests`.
+  // JP1: a pull on a Jobs screen's read of the morning's picks.
   "lib/home-link/jobs.ts",
 ])
 

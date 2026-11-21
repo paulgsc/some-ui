@@ -72,21 +72,17 @@ export const jobsLane: Lane = {
 }
 
 /**
- * This morning's picks and home's record of the runs, read as the person's
- * own read of home (`keep`), beside the drain and ahead of its turns on the
- * pace: a pull on a Jobs screen (`lib/jobs/pull`, JP1). Two `GET`s,
- * `/jobs/runs` and `/jobs/digests` (`readDigests`), sending nothing of the
- * phone's; asked again while the link is busy (`./while-busy`). `short` is
- * how the read fell short, null once both were taken in.
+ * A pull on a Jobs screen's read of this morning's picks and home's record
+ * of the runs (`lib/jobs/pull`, JP1): `readDigests`' two `GET`s, as the
+ * person's own read of home, ahead of the drain's turns on the pace.
  */
-export function askJobsPicks(): Promise<
-  | { readonly kind: "answered"; readonly short: HomeExchanged | null }
+export const askJobsPicks = (): Promise<
+  | { readonly kind: "answered"; readonly value: HomeExchanged | null }
   | NotAnswered
-> {
-  return askWhileBusy(() =>
+> =>
+  askWhileBusy(() =>
     answered(
       () => homeLink().keep((send) => readDigests(phoneJobs().keeping, send)),
-      (short) => ({ kind: "answered", short }) as const
+      (value) => ({ kind: "answered" as const, value })
     )
   )
-}
