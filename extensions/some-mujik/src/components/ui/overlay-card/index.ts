@@ -1,5 +1,7 @@
+import { formatTimecode } from "@some-extension/common/utils/timecode"
+
 // ─── Overlay Card UI ──────────────────────────────────────────────────────────
-// Pure DOM construction module. No imports.
+// Pure DOM construction module. Its one import is the shared m:ss clock.
 // Returns { root, update(song), destroy() }
 
 // ── Inlined color helpers (no shared import) ──────────────────────────────────
@@ -66,12 +68,6 @@ function emotionLabel(valence: number, arousal: number): string {
   if (valence >= 0.6 && arousal < 0.7) return "uplifting"
   if (valence >= 0.7 && arousal >= 0.7) return "euphoric"
   return "atmospheric"
-}
-
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = Math.floor(seconds % 60)
-  return `${m}:${s.toString().padStart(2, "0")}`
 }
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -210,8 +206,10 @@ export function createOverlayCard(): OverlayCard {
       const t = Math.min(1, (songBaseTime + elapsed) / totalDuration)
 
       progressFill.style.width = `${t * 100}%`
-      currentTimeEl.textContent = formatTime(songBaseTime + elapsed)
-      durationEl.textContent = formatTime(totalDuration)
+      currentTimeEl.textContent = formatTimecode(
+        (songBaseTime + elapsed) * 1000
+      )
+      durationEl.textContent = formatTimecode(totalDuration * 1000)
 
       progressAnimId = requestAnimationFrame(tick)
     }
