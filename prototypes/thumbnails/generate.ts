@@ -144,6 +144,56 @@ html,body{width:1280px;height:720px;overflow:hidden}
 .mono{font-family:"JetBrains Mono";font-weight:600}
 `
 
+/**
+ * C2's constant band: the tin birds' own steel, a colour no genre takes
+ * (and neither sky nor leaf, which mean status, C410), so the band itself
+ * says "synthetic voice" on every video.
+ */
+const TIN_BAND = { band: "#c3ccd6", ink: "#1c232b" } as const
+
+/**
+ * C2 (the owner's pick, Nov 21): C's upper area (the genre shape behind the
+ * title) over a D-style footer band, a solid field with a hard edge, 20% of
+ * the height, holding the cast and the voice words. `paint` picks the band.
+ */
+const c2 = (
+  id: string,
+  name: string,
+  paint: (g: Genre) => { band: string; ink: string }
+): Direction => ({
+  id,
+  name,
+  css: `
+.shape{position:absolute;right:-30px;top:6px;width:600px;height:338px}
+.text{position:absolute;left:64px;width:660px;top:44px;bottom:184px;display:flex;flex-direction:column;justify-content:flex-end;gap:16px}
+.fit{max-height:420px}
+.genre{font-size:38px}
+.band{position:absolute;left:0;right:0;bottom:0;height:144px;display:flex;align-items:center;padding:0 48px 0 40px;gap:18px}
+.band .who{display:flex;align-items:center;gap:0}
+.voice{display:flex;flex-direction:column;gap:4px}
+.voice .big{font-size:60px;line-height:.95}
+.voice .small{font-size:28px}
+.owner{margin-left:auto;display:flex;align-items:center;gap:10px}
+.owner .big{font-size:60px;line-height:.95}
+`,
+  body: ({ genre, title, cast }) => {
+    const { hue, ground } = GENRES[genre]
+    const { band, ink } = paint(genre)
+    const bird = birds(cast)
+    return `<div class="t" style="background:${ground}">
+<div class="shape">${shape(genre, { opacity: 0.55 })}</div>
+<div class="text">
+<div class="label genre" style="color:${hue}">${esc(GENRES[genre].name)}</div>
+<div class="title fit" data-max="124" data-min="62" style="color:#f6efe2;text-shadow:0 4px 0 ${ground}">${esc(title)}</div>
+</div>
+<div class="band" style="background:${band};color:${ink}">
+<div class="who">${bird.map((c, i) => character(c, `${id}${i}`, { size: 132 })).join("")}</div>
+<div class="voice"><div class="title big">SYNTHETIC VOICE</div><div class="mono small">voiced by ${bird.length > 1 ? "tin birds" : "a tin bird"}</div></div>
+${hasOwner(cast) ? `<div class="owner">${character("mochi", `${id}m`, { size: 132 })}<div class="title big">+ ME</div></div>` : ""}
+</div></div>`
+  },
+})
+
 const DIRECTIONS: ReadonlyArray<Direction> = [
   {
     id: "a-stage-left",
@@ -257,6 +307,19 @@ ${hasOwner(cast) ? `<div class="owner">${character("mochi", "cm", { size: 150 })
 </div></div>`
     },
   },
+  c2(
+    "c2a-hue-band",
+    "C2a · C's upper area, a band in the genre's hue",
+    (g) => ({
+      band: GENRES[g].hue,
+      ink: GENRES[g].ground,
+    })
+  ),
+  c2(
+    "c2b-tin-band",
+    "C2b · C's upper area, one tin-steel band on every video",
+    () => TIN_BAND
+  ),
 ]
 
 // ── the page and its title fit ─────────────────────────────────────────────

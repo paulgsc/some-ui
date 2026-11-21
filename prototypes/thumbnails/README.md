@@ -74,3 +74,22 @@ The genre reads at a glance from the banner's colour, and the title is the most 
 320×180. Limit: the banner is a large block of colour, louder than the other three, and the
 voice words in it are small; the cast overlaps the banner's top edge, which reads as a choice
 at full size and as clutter at 320×180.
+
+## C2 · the owner's pick: C's upper area over D's footer band
+
+The owner (Nov 21, close paraphrase): keep C's balance, where the genre shape and the picture
+lead, and give it D's footer, a clear band with a hard colour edge, so the eye wanders down to
+it and reads plainly that the episode is voiced synthetically. The upper area is C's. The band
+is 144px, 20% of the height, across the full width, and holds the birds, "SYNTHETIC VOICE" in
+the title face with "voiced by a tin bird" (or "tin birds") under it, and, where the owner's
+voice is in the episode, the mochi and "+ ME" at the right (tightened from C's "and me" so it
+reads at 320×180). No genre name in the band, since the upper area already carries it. Two
+band colours, each with a sheet of the four cases (`out/four-c2a-hue-band.png`,
+`out/four-c2b-tin-band.png`):
+
+- **C2a, the genre's hue**, as D does, with the ground's colour as its ink. The band ties to
+  the genre, so the band changes colour from video to video and the signal is in its words.
+- **C2b, one tin-steel band on every video** (`#c3ccd6`, ink `#1c232b`), the birds' own
+  metal, a colour no genre takes and neither sky nor leaf (C410). The band itself becomes the
+  synthetic-voice mark across a feed. Limit: on the sand-coloured cards essay ground it is
+  the lowest-contrast edge of the set, though still a hard one.
