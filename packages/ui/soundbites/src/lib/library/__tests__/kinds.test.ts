@@ -65,6 +65,37 @@ describe("what each kind's take is about, through its port", () => {
     expect(line("game", "999", {})).toBe("A game")
   })
 
+  it("says the play home matched a bite to, or that it found none (GWB14)", () => {
+    const fields = {
+      strip: "Q3 4:12 · SF 17, LAR 13 · 4th & 2 at the LAR 38",
+      scenario: "fourth-down",
+    }
+    const matched = (more: Record<string, string>): string =>
+      line("game", "401772", { ...fields, ...more })
+    expect(
+      matched({ matched: "next", playPeriod: "3", playClock: "4:05" })
+    ).toBe("49ers vs Rams · Q3 4:05 · Fourth down")
+    expect(
+      matched({ matched: "nearest", playPeriod: "5", playClock: "8:00" })
+    ).toBe("49ers vs Rams · OT 8:00 · Fourth down")
+    expect(matched({ matched: "nearest", playPeriod: "2" })).toBe(
+      "49ers vs Rams · Q2 · Fourth down"
+    )
+    expect(matched({ matched: "unmatched" })).toBe(
+      "49ers vs Rams · Not matched to a play · Fourth down"
+    )
+    // About a stretch of the game, or not matched yet: the clock it was said at.
+    for (const why of ["not-a-play", "no-scenario"]) {
+      expect(matched({ matched: why })).toBe(
+        "49ers vs Rams · Q3 4:12 · Fourth down"
+      )
+    }
+    // A play home names without a quarter reads as the clock said.
+    expect(matched({ matched: "nearest", playPeriod: "x" })).toBe(
+      "49ers vs Rams · Q3 4:12 · Fourth down"
+    )
+  })
+
   it("says an interview take's week and its question, or what was read", () => {
     expect(line("interview", "2026-w47:time")).toBe(
       "Week 47 · Tell me about a time"

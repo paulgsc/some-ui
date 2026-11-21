@@ -96,6 +96,10 @@ export type AboutPortWords = {
   readonly read: string
   readonly gameOn: (day: string) => string
   readonly aGame: string
+  /** The play a bite was matched to: its quarter (5 and on are overtime) and clock. */
+  readonly atPlay: (period: number, clock: string | undefined) => string
+  /** A bite home looked for a play for and found none. */
+  readonly noPlay: string
   readonly soundbiteFrom: (source: string) => string
 }
 
@@ -136,8 +140,26 @@ function dayAtOrNull(iso: string | undefined): string | null {
 const spoken = (ref: string): string => ref.replace(/[-_]+/g, " ").trim()
 
 /**
+ * A bite's moment: the quarter and clock of the play home matched it to;
+ * that no play was found, when home looked and found none; else the clock
+ * the screen showed when it was said (a bite home hasn't matched yet, one
+ * still on this phone, or one about a stretch of the game).
+ */
+function biteMoment(
+  fields: Readonly<Record<string, string>>,
+  words: AboutPortWords
+): string | undefined {
+  const period = Number(fields.playPeriod)
+  const played = fields.matched === "nearest" || fields.matched === "next"
+  if (played && Number.isInteger(period) && period > 0)
+    return words.atPlay(period, fields.playClock)
+  if (fields.matched === "unmatched") return words.noPlay
+  return fields.strip?.split(" · ")[0]
+}
+
+/**
  * Each kind's port. A bite: its game (by name, else the day it started),
- * the clock and situation shown then, and the scenario it was said on. A
+ * its moment (`biteMoment`), and the scenario it was said on. A
  * week's take: its week and what it answers. The rest: what their ref says.
  */
 export const ABOUT_PORTS: Readonly<Record<OtherOf, AboutPort>> = {
@@ -160,13 +182,12 @@ export const ABOUT_PORTS: Readonly<Record<OtherOf, AboutPort>> = {
       fields.label ??
       names.game(ref) ??
       (day === null ? words.aGame : words.gameOn(day))
-    const clock = fields.strip?.split(" · ")[0]
     const scenario =
       fields.scenario === undefined ? null : names.scenario(fields.scenario)
     return {
       kind: "bite",
       topic: ref === "" ? null : topicOf(`game:${ref}`, label),
-      parts: present([clock, scenario]),
+      parts: present([biteMoment(fields, words), scenario]),
     }
   },
   soundbite: ({ ref }, _names, words) => ({
