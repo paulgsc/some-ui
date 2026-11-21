@@ -141,6 +141,9 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/studio-clips/home.ts",
   "apps/www/src/lib/studio-clips/frames-read.ts",
   "apps/www/src/lib/studio-keeping/**",
+  "apps/www/src/lib/studio-spoken/**",
+  // A runtime's one-value store, used by the phone's runtimes alone today.
+  "apps/www/src/lib/cell/**",
   "apps/www/src/lib/take-about/**",
   "apps/www/src/lib/take-conveyor/**",
   "apps/www/src/lib/take-library/**",
@@ -167,6 +170,7 @@ const DEVICE_MODULES = [
   "apps/www/src/components/studio/episode-feedback.tsx",
   "apps/www/src/components/studio/template-preview.tsx",
   "apps/www/src/components/studio/cards-essay.tsx",
+  "apps/www/src/components/studio/spoken.tsx",
   "apps/www/src/components/copy-button.tsx",
   "apps/www/src/components/device-home-glyph.tsx",
   "apps/www/src/components/device-sign-in-mark.tsx",
@@ -278,6 +282,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       modules: ["packages/video-render/src/pending.ts"],
       profiles: [MOBILE_PROFILE],
       why: "the ref a spoken answer to an ask is kept under on home (`answerRef`, SFEED5): only the Android app's Studio records one (src/lib/ask-answer). The reflections routine reads the same module from the repo, outside any build",
+    },
+    {
+      modules: ["packages/video-render/src/spoken-categories.ts"],
+      profiles: [MOBILE_PROFILE],
+      why: "the categories of spoken card (C830): today only the Android app's Studio reads them (src/lib/studio-spoken). Once the cards essay's spoken scene (WALK7, #3315) reads them on the web's stage too, this entry widens to every profile or goes",
     },
     {
       modules: ["packages/video-render/src/feedback.ts"],

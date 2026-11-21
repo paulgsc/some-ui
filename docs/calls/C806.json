@@ -1,0 +1,12 @@
+{
+  "id": "C806",
+  "made": "2026-11-20",
+  "by": "owner",
+  "paths": [
+    "apps/www/src/lib/studio-spoken/store.ts",
+    "apps/www/src/lib/studio-spoken/model.ts"
+  ],
+  "chose": "A spoken card reaches Studio only by pasting it, and is kept on the phone with its category. The owner, verbatim: \"as far as where it comes from, again, we don't want to overcomplicate, so let's just keep only paste. So you generate the script as a clipboard and then I paste it.\" And, close paraphrase the same day: \"Let's not call it script, let's call it spoken. It's a spoken card, which we map to a template. Spoken cards have categories, and in this case the category is introduction.\" A session writes the card (a CATEGORY line, then its parts) for the owner to copy; no mailbox brief carries one. Today the only category is introduction.",
+  "undo": "A new call that moves this one, adding another way a spoken card arrives (the mailbox's brief, say) and where home keeps it.",
+  "refs": ["#3312", "#3311"]
+}

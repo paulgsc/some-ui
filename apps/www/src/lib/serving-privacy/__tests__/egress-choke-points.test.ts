@@ -37,7 +37,9 @@
  *   (`lib/home-link/deleted-read`, MD3, whose read sends one
  *   `GET /voice-notes/deleted` per open or drag down of its Deleted page),
  *   and, per Play of a recording whose audio isn't on this phone, for its
- *   audio (`lib/home-link/voice-audio`, MD8).
+ *   audio (`lib/home-link/voice-audio`, MD8). Studio's Spoken
+ *   (`lib/studio-spoken`, W5) reads a take's audio the same way per Play,
+ *   and a take's words once a page (`lib/home-link/heard`).
  *   Studio's Takes on home (`lib/take-library`, ST32) asks home for the
  *   takes it keeps (`lib/home-link/takes-read`, whose read sends one
  *   `GET /voice-notes/takes` per open, Try again, search or Show the
@@ -115,6 +117,11 @@ const NATIVE_HTTP = "lib/device-backend/native-http/index.ts"
 const NATIVE_HTTP_CALLERS = new Set(["lib/home-link/index.ts"])
 const HOME_LINK_CALLERS = new Set([
   "components/settings/device-section.tsx",
+  // LA8 (W5): Studio's Spoken, which per Play of a take whose audio isn't on
+  // this phone asks home for it, and once a page asks home for the words of
+  // each take of a part, through the same reads Takes on home and Studio's
+  // idea answers use.
+  "lib/studio-spoken/index.ts",
   // LA8 (SIGNIN2): the pairing form, Settings' Home server block's and the
   // welcome's, whose Pair sends the code (and a typed name, where home
   // takes one); and the welcome the foyer draws on a phone not paired,
@@ -1055,7 +1062,7 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(callers).toEqual(["lib/idea-home/index.ts"])
   })
 
-  it("sends nothing from the read of a note's audio but one GET of /voice-notes/:id/audio, and only the voice lane, Takes on home, Needs your attention, My data and Rust Rounds' opening read it (RR6, ST32, MD8, HEARD3, #3269)", () => {
+  it("sends nothing from the read of a note's audio but one GET of /voice-notes/:id/audio, and only the voice lane, Takes on home, Needs your attention, My data, Rust Rounds' opening and Studio's Spoken read it (RR6, ST32, MD8, HEARD3, #3269, W5)", () => {
     expect(sendCalls(AUDIO_READ, read(AUDIO_READ))).toEqual(AUDIO_SENDS)
     const readers = sourceFiles()
       .filter((f) => !isTestFile(f))
@@ -1067,13 +1074,14 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(readers).toEqual([
       "lib/home-link/voice-copy.ts",
       "lib/my-data/index.ts",
+      "lib/studio-spoken/index.ts",
       "lib/take-library/index.ts",
       "lib/take-reconcile/index.ts",
       "routes/_dashboard/_apk/rust-rounds.tsx",
     ])
   })
 
-  it("sends nothing from the read of a take's words but one GET of /voice-notes/:id/heard, and only Studio's idea answers and Rust Rounds' week read it (IH1, RR13)", () => {
+  it("sends nothing from the read of a take's words but one GET of /voice-notes/:id/heard, and only Studio's idea answers, Rust Rounds' week and Studio's Spoken read it (IH1, RR13, W5)", () => {
     expect(sendCalls(HEARD_READ, read(HEARD_READ))).toEqual(HEARD_SENDS)
     expect(read(HEARD_READ)).toContain("/heard`")
     const readers = sourceFiles()
@@ -1083,6 +1091,7 @@ describe("LA8: the phone reaches home through one module", () => {
       )
     expect(readers).toEqual([
       "lib/idea-hearing/index.ts",
+      "lib/studio-spoken/index.ts",
       "routes/_dashboard/_apk/rust-rounds.tsx",
     ])
   })

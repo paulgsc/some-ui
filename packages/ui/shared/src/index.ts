@@ -17,6 +17,7 @@ export {
   NO_PROMPTER,
   PACE_STEP_WPM,
   paceOf,
+  phrasesOf,
   stepPace,
   stepPrompter,
   totalOf,
