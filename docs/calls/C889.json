@@ -1,0 +1,15 @@
+{
+  "id": "C889",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": ["server:apps/servers/file_host/src/game_feed/pass.rs"],
+  "chose": "Reach inward (C820): the sleep is new states of the existing pass::Schedule (a compile-time Watch enum, C830), not a new mechanism and no outward tool (ESPN pushes nothing; no scheduler would know kickoffs). The owner's 4-hour lease is not built; if asked for, it is a third state of the game-feed switch (following: always | leased-until | paused), read by the same pass, not a second mechanism.",
+  "options": [
+    "new Watch states in pass::Schedule",
+    "a calendar of game windows",
+    "the owner's 4-hour lease"
+  ],
+  "gray": "The coordinator's recommendation on #3329 over the owner's own proposal; the owner may still ask for the lease.",
+  "undo": "Revert the Watch states; the scoreboard returns to every 600 s.",
+  "refs": ["#3329"]
+}
