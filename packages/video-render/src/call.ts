@@ -947,7 +947,10 @@ export const CALL_VOICES: Readonly<Record<Section | Framing, KokoroVoice>> = {
 }
 
 /** The call's voice policy: each section in its own voice (`CALL_VOICES`). */
-export const CALL_VOICE_POLICY: VoicePolicy<Section | Framing> = {
+export const CALL_VOICE_POLICY: Extract<
+  VoicePolicy<Section | Framing>,
+  { readonly kind: "fixed" }
+> = {
   kind: "fixed",
   voices: CALL_VOICES,
 }
