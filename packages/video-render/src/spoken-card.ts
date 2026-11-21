@@ -3,8 +3,9 @@
  * plays the owner's own voice from home, mapped to its category's template.
  * An `introduction` is template A, the essays' call (`essay.ts`): the one
  * asking and the owner, the one speaking lit. For each exchange the question
- * is said in Kokoro, in the asker's voice (`ESSAY_VOICES.asker`), and then
- * the owner's take plays whole, captioned from what home heard in it. Code
+ * is said in Kokoro, in the voice the voice policy gives its place
+ * (`voices.ts`, C840), and then the owner's take plays whole, captioned from
+ * what home heard in it. Code
  * lays every frame from the take's metadata; nothing is cut or edited (the
  * owner, 2026-11-20: "me editing anything defeats the thing").
  *
@@ -23,7 +24,6 @@ import { z } from "zod"
 
 import type { CutList, Parsed, Shot, SpokenTurn } from "./cut-list"
 import { problemsOf, SPOKEN_EXCHANGES_MOST, SPOKEN_TAKE_ID } from "./cut-list"
-import { ESSAY_VOICES } from "./essay"
 import type { Speaker } from "./essay"
 import { CastIdSchema, ThemeIdSchema, words } from "./format"
 import type { CastId } from "./format"
@@ -175,13 +175,6 @@ export const SPOKEN_ANSWER_SHOWN_MOST = 170
 /** Whether a spoken card's stage writes `said` out beside the bubbles. */
 export const answerShown = (said: string): boolean =>
   wordCount(said) <= SPOKEN_ANSWER_SHOWN_MOST
-
-/**
- * Kokoro's voice in a spoken card, asking or answering: the essays' asker's.
- * Its bubble differs by its place (`TURN_SPEAKER`), so a cast draws it as a
- * different character; the voice heard stays this one.
- */
-export const SPOKEN_ASKER_VOICE = ESSAY_VOICES.asker
 
 /**
  * A spoken card's id: a letter first, and none of JSON's words, so the

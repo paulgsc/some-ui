@@ -29,8 +29,8 @@
  * kept them, and its transcript `<id>.transcript.json`
  * (`some-ui.voice-transcript/1`, its verdict with it). A take missing, or
  * one home couldn't make out or heard nothing in, is refused before
- * anything is drawn (HEARD2). Each question is said in the asker's voice and
- * each take played whole, under a still of the card's scene from the built
+ * anything is drawn (HEARD2). Each Kokoro turn is said in the voice the
+ * policy gives its place (C840) and each take played whole, under a still of the card's scene from the built
  * app's `/essay?kind=spoken` (template A). With no spoken card it takes no
  * `--takes`, and records as it always has.
  *
@@ -74,7 +74,6 @@ import {
   resolveScreens,
   SNIPS_DIR,
   snipsOf,
-  SPOKEN_ASKER_VOICE,
   spokenCardsOf,
   spokenTakeFilesOf,
   spokenTakesOf,
@@ -190,19 +189,19 @@ async function sceneTakes(
   return takes
 }
 
-/**
- * The takes `essay`'s spoken cards play, from `--takes`, each as home heard
- * it, their template A drawn in the series' theme and cast (C816, C822).
- */
+/** The takes `essay`'s spoken cards play, from `--takes`, each as home heard it. */
 async function spokenTakes(
   essay: CutList,
-  { theme, cast }: Series,
-  dir: string | undefined
+  dir: string | undefined,
+  look: Pick<Series, "theme" | "cast">
 ): Promise<{
   readonly owned: Readonly<Record<string, SpokenTakeFiles>>
   readonly heard: ReadonlyMap<string, HeardSpokenCard>
 }> {
   const named = spokenTakesOf(essay)
+  // Template A is drawn in its series' theme, as the cards around it (C816),
+  // with its series' cast (C822).
+  const { theme, cast } = look
   if (dir === undefined) {
     if (named.length > 0)
       fail([
@@ -252,8 +251,8 @@ async function spokenTakes(
 /**
  * A still of each spoken card's scene into `root` (`<file>.png`) from the
  * built app's `/essay?kind=spoken`, its read of each card answered from
- * `heard` alone, and its take: a question said in the asker's voice, an
- * answer the owner's own take from `owned`, played whole. Recorded as every
+ * `heard` alone, and its take: a Kokoro turn said in its place's voice, an
+ * owner's turn their own take from `owned`, played whole. Recorded as every
  * voiced stage's are (`recordStills`), by each scene's id.
  */
 async function spokenStills({
@@ -296,6 +295,7 @@ async function spokenStills({
     page,
     root,
     shots: spoken.map(({ scene, spoken: { card, scene: on } }) => {
+      const voice = scene.lines.at(0)?.voice
       const own = on.take === undefined ? undefined : owned[on.take]
       // `spokenTakes` refused a missing take before anything was drawn; an
       // answer is never said by the speaker in its place.
@@ -311,7 +311,9 @@ async function spokenStills({
           record: "true",
         }).toString()}`,
         said: scene.said,
-        voice: SPOKEN_ASKER_VOICE,
+        // A Kokoro turn's voice; an owner's turn plays their take, said in none.
+        voice:
+          voice ?? (own === undefined ? fail([`${scene.id}: no voice`]) : ""),
         ...(own === undefined ? {} : { own }),
       }
     }),
@@ -465,9 +467,11 @@ async function main(): Promise<void> {
   if (!read.ok)
     fail([`${seriesId} v${String(version)} can't be read:`, ...read.problems])
   const { owned, heard } = spoken
-    ? await spokenTakes(essay.value, read.value, values.takes)
+    ? await spokenTakes(essay.value, values.takes, read.value)
     : { owned: {}, heard: new Map<string, HeardSpokenCard>() }
-  const scenes = spoken ? cardsScenes(essay.value, heard) : []
+  const scenes = spoken
+    ? cardsScenes(essay.value, heard, read.value.voices)
+    : []
   refuseLong(scenes, policy)
   const screens = await handedScreens(essay.value, values.snips, values.clips)
   const root = join(here(values.out), key)

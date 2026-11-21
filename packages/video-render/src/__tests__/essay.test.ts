@@ -244,17 +244,30 @@ describe("the sample essay", () => {
   it("opens on the locked intro, filled by code from the essay alone", () => {
     const intro = essayIntro(sample())
     expect(intro.rows.at(-1)?.says).toBe("2 of 3 tickets")
-    expect(intro.said).toContain("the other voice is the owner's own")
+    // In the voice lanes the tutor's voice changes, and the intro says so (C840).
+    expect(intro.said).toContain("the tutor's changes with each chapter")
+    expect(intro.said).toContain("the answers are the owner's own")
+    // A version before them says what it always said: its take is unchanged.
+    const v6 = essayIntro({
+      ...sample(),
+      template: { ...sample().template, version: 6 },
+    })
+    expect(v6.said).toContain("the other voice is the owner's own")
   })
 
   it("says, as the sample, that no owner said its answers (C76)", () => {
     const intro = essayIntro(sample(), "sample")
-    expect(intro.said).toContain("both voices are synthetic")
+    expect(intro.said).toContain("every voice is synthetic")
     expect(intro.said).not.toContain("the owner's own")
     expect(intro.rows.find((r) => r.label === "Voices")?.says).toContain(
-      "a second synthetic voice reads the answers"
+      "one more synthetic voice reads the made-up answers"
     )
     expect(essayScenes(sample(), "sample")[0]?.said).toBe(intro.said)
+    const v6 = essayIntro(
+      { ...sample(), template: { ...sample().template, version: 6 } },
+      "sample"
+    )
+    expect(v6.said).toContain("both voices are synthetic")
   })
 })
 

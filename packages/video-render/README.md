@@ -59,7 +59,7 @@ Each module's header says why it is the way it is.
   essay; `essayScenes` gives the scenes in order, a group per ticket. www's
   `/essay` stage draws it in template A, the call's two bubbles.
   `essayCutList` lays a recording on a timeline (RR16, #2691): the tutor in
-  `ESSAY_VOICES`' voice, each answer the owner's own take, played whole and
+  the voice its version gives each chapter (`essaySceneVoices`, C840), each answer the owner's own take, played whole and
   named as theirs, not the speaker's; www's `record:essay` records it.
 - `src/clip.ts`: clips (SFEED7), what a user-facing change built, kept in
   `paulgsc/testing`'s `clips/` and listed for Studio's Library. A walked side

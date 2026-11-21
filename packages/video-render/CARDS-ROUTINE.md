@@ -47,8 +47,11 @@ rendered once, and published it where home picks it up.
 
 The essay is a cut list: one JSON file, a list of scenes, each a card or a
 screen of the app (step 3). A
-spoken essay pins version 2 of the cheat-sheet series (version 1 essays are
-silent, from before this routine; they still play, and are never rewritten).
+spoken essay pins version 4 of the cheat-sheet series, the newest. Version 3
+plays spoken cards, and version 4 also moves each voice on at each chapter, so
+the narrator of one card is not the narrator of the next (C840). Versions 2
+and 3 keep one narrator for every card, and version 1 essays are silent, from
+before this routine; each still plays as it did, and is never rewritten.
 Each scene says something, in a `spoken` field:
 
 1. **The intro**, the first scene, `{"role": "intro", "said": "…"}`. It
@@ -90,7 +93,7 @@ Rules for every line, since you, months later, are the listener:
    install some-ui: `pnpm install --frozen-lockfile`.
 2. **Read the subject** at the commits the essay will be stamped with. Clone
    each repository it explains read-only, and note each one's short commit.
-3. **Write the cut list** in the cheat-sheet series, version 2, as
+3. **Write the cut list** in the cheat-sheet series, version 4, as
    `packages/video-render/src/sample/videos/*/cut-list.json` are. Read both,
    cards and words, before writing.
    - A scene shows a card picture (`{"kind": "card"}`) with its card as a
