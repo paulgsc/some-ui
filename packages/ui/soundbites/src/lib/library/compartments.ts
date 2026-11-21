@@ -451,6 +451,53 @@ export function ordered<
   }
 }
 
+/** One row of a list with what its topic holds with no take among it. */
+export type WithGap<R, G> =
+  | { readonly kind: "take"; readonly row: R }
+  | { readonly kind: "gap"; readonly gap: G }
+
+/**
+ * `rows`, already in `order`, with `gaps` among them by when each was:
+ * what a topic holds that no take is about (a game's moments with no bite,
+ * a week's questions not answered), placed newest or oldest first as the
+ * rows are. By a topic, the rows share one, so it is newest first.
+ * `complete` says whether the rows are every take there is to list: while
+ * home has older ones to show, a gap past the last row is left out, since
+ * its take may be among those not shown yet. A gap at the same moment as a
+ * row comes after it.
+ */
+export function withGaps<R, G extends { readonly at: string }>(
+  rows: ReadonlyArray<R>,
+  gaps: ReadonlyArray<G>,
+  order: Order,
+  at: (row: R) => string,
+  complete: boolean
+): ReadonlyArray<WithGap<R, G>> {
+  // Whether `a` comes before `b` in the list's order.
+  const before = (a: string, b: string): boolean =>
+    order === "oldest" ? a < b : a > b
+  const sorted = [...gaps].sort((a, b) =>
+    a.at === b.at ? 0 : before(a.at, b.at) ? -1 : 1
+  )
+  const listed: Array<WithGap<R, G>> = []
+  let next = 0
+  for (const row of rows) {
+    for (
+      let gap = sorted.at(next);
+      gap !== undefined && before(gap.at, at(row));
+      gap = sorted.at(next)
+    ) {
+      listed.push({ kind: "gap", gap })
+      next += 1
+    }
+    listed.push({ kind: "take", row })
+  }
+  if (complete) {
+    for (const gap of sorted.slice(next)) listed.push({ kind: "gap", gap })
+  }
+  return listed
+}
+
 /**
  * Whether a take's words hold every word of `q`, in lowercase: what home
  * heard and what it is about. Blank `q` holds for every take.

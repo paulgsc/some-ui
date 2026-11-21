@@ -7,6 +7,8 @@
  * the tiles' links, since the page has no router.
  */
 import type { JSX, ReactNode } from "react"
+import type { GameMoment } from "@some-ui/game-week"
+import { MissedMoment } from "@some-ui/game-week"
 import type {
   Compartment,
   LibraryAbout,
@@ -184,9 +186,48 @@ const tile = (compartment: Compartment, body: ReactNode): JSX.Element => (
   <CardAnchor href={`#${compartment}`}>{body}</CardAnchor>
 )
 
+const GAME = "401873010"
+
+/** A game's bites, one matched to a play, for its big moments with no bite. */
+const GAME_TAKES: ReadonlyArray<LibraryTake> = [
+  take("b1", GAME, "That pick changes the whole half.", {
+    of: "game",
+    recordedAt: "2026-10-23T01:11:00.000Z",
+    fields: {
+      scenario: "in.turnover",
+      matchedBy: "said",
+      playPeriod: "3",
+      playClock: "4:12",
+      playId: "p2",
+    },
+  }),
+]
+
+/** The game's big moments with no bite, the widest line home words. */
+const MISSED: ReadonlyArray<GameMoment> = [
+  {
+    scenario: "in.big-play",
+    context:
+      "D.Swift pass short right to R.Odunze to the NE 12 for 54 yards, pushed out of bounds by C.Gonzalez",
+    at: "2026-10-23T01:30:00Z",
+    playId: "p3",
+    period: 4,
+    clock: "12:58",
+  },
+  {
+    scenario: "in.two-point",
+    context: "NE two-point try is good",
+    at: "2026-10-23T00:40:00Z",
+    playId: "p1",
+    period: null,
+    clock: null,
+  },
+]
+
 const shown = (
   compartment: Compartment | null,
-  answer: LibraryRead = LISTED
+  answer: LibraryRead = LISTED,
+  game = false
 ): (() => JSX.Element) => {
   const ports = { home: read(answer), player, phone, stations, about }
   const Shown = (): JSX.Element => (
@@ -197,6 +238,19 @@ const shown = (
         pair={<a href="/settings">Pair with home</a>}
         compartment={compartment}
         tile={tile}
+        {...(game
+          ? {
+              initialChips: {
+                topic: { key: `game:${GAME}`, label: "NE at CHI", asks: true },
+              },
+              gaps: () =>
+                MISSED.map((moment) => ({
+                  key: moment.playId,
+                  at: moment.at,
+                  body: <MissedMoment moment={moment} />,
+                })),
+            }
+          : {})}
       />
     </div>
   )
@@ -208,6 +262,15 @@ export const TAKES_FIXTURES = {
   "takes-all": shown("all"),
   "takes-note": shown("note"),
   "takes-unpaired": shown("here", { kind: "unpaired" }),
+  // A game's bites with its big moments no bite was said about (GWB14 D15).
+  "takes-game": shown(
+    "bite",
+    {
+      kind: "read",
+      page: { takes: GAME_TAKES, total: 1, matched: null, by: "newest" },
+    },
+    true
+  ),
 } satisfies Record<string, () => JSX.Element>
 
 export type TakesId = keyof typeof TAKES_FIXTURES

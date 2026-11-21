@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest"
 
 const LOG = {
   gameId: "401873010",
-  engineVersion: 4,
+  engineVersion: 7,
   catalogVersion: 2,
   final: true,
   moments: [

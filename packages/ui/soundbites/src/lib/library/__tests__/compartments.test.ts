@@ -13,6 +13,7 @@ import {
   toggled,
   topicOf,
   underChips,
+  withGaps,
 } from "@soundbites/lib/library/compartments"
 import { describe, expect, it } from "vitest"
 
@@ -302,5 +303,61 @@ describe("what home is asked for, by compartment", () => {
       toggled({ ...NO_CHIPS, topic: picked }, { group: "topic", value: picked })
         .topic
     ).toBeNull()
+  })
+})
+
+describe("what a topic holds with no take, among its takes", () => {
+  const at = (row: string): string => row
+  const gap = (when: string): { at: string } => ({ at: when })
+  const shape = (
+    listed: ReadonlyArray<
+      { kind: "take"; row: string } | { kind: "gap"; gap: { at: string } }
+    >
+  ): ReadonlyArray<string> =>
+    listed.map((each) =>
+      each.kind === "take" ? `take ${each.row}` : `gap ${each.gap.at}`
+    )
+
+  it("places each gap by when it was, newest or oldest first as the takes are", () => {
+    const gaps = [gap("2"), gap("5"), gap("0")]
+    expect(shape(withGaps(["4", "1"], gaps, "newest", at, true))).toEqual([
+      "gap 5",
+      "take 4",
+      "gap 2",
+      "take 1",
+      "gap 0",
+    ])
+    expect(shape(withGaps(["1", "4"], gaps, "oldest", at, true))).toEqual([
+      "gap 0",
+      "take 1",
+      "gap 2",
+      "take 4",
+      "gap 5",
+    ])
+    // By topic, the takes share one: newest first.
+    expect(shape(withGaps(["4", "1"], gaps, "topic", at, true))).toEqual(
+      shape(withGaps(["4", "1"], gaps, "newest", at, true))
+    )
+  })
+
+  it("leaves out a gap past the last take while older takes aren't shown yet", () => {
+    expect(
+      shape(withGaps(["4", "1"], [gap("5"), gap("0")], "newest", at, false))
+    ).toEqual(["gap 5", "take 4", "take 1"])
+    expect(shape(withGaps([], [gap("5")], "newest", at, false))).toEqual([])
+  })
+
+  it("lists every gap when there is no take, and a gap after a take of its moment", () => {
+    expect(
+      shape(withGaps([], [gap("1"), gap("3")], "newest", at, true))
+    ).toEqual(["gap 3", "gap 1"])
+    expect(shape(withGaps(["3"], [gap("3")], "oldest", at, true))).toEqual([
+      "take 3",
+      "gap 3",
+    ])
+    expect(withGaps(["2", "1"], [], "newest", at, true)).toEqual([
+      { kind: "take", row: "2" },
+      { kind: "take", row: "1" },
+    ])
   })
 })

@@ -1,5 +1,6 @@
 export { GameWeek } from "./components/game-week"
 export type { GameWeekProps } from "./components/game-week"
+export { MissedMoment } from "./components/missed-moment"
 export type { BiteHow, KeptBite } from "./lib/bite"
 export { halfName, scenarioName, unitName } from "./lib/bite"
 export type {
@@ -24,3 +25,5 @@ export type {
 } from "./lib/ports"
 export { storedPrefs } from "./lib/ports"
 export type { GameWeekPorts } from "./lib/runtime"
+export type { GameMoment, GameMoments } from "./lib/moments"
+export { momentsWithNoBite, readMoments } from "./lib/moments"
