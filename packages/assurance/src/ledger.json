@@ -3751,6 +3751,11 @@
               "ref": "some-ui:packages/video-render/src/cards-essay.ts"
             },
             {
+              "class": "structural",
+              "says": "resolveScreens refuses a screen home didn't hand, a snip of another commit than its bundle and a part its snip doesn't name; parseSnipsGiven refuses a record whose picture isn't its id's and a bundle given twice; render refuses a cut list that still names a screen, while cards-check passes it; each tested (snip.test.ts). record:cards checks each picture's hash and each frame's PNG header before anything is drawn.",
+              "ref": "some-ui:packages/video-render/src/snip.ts"
+            },
+            {
               "class": "measured",
               "says": "Recorded locally on 2026-11-14 with record:cards from the stage build: both showcase essays rendered to the same bytes as record:short gives them, and the NixOS one twice from fresh folders to the same bytes.",
               "ref": "some-ui#2979"

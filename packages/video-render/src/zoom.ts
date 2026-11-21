@@ -43,16 +43,21 @@ const lookOf = (
   ...(ground === undefined ? {} : { ground }),
 })
 
+/** `foot`, refused outside 0 to `FOOT_MOST`, before anything else is read. */
+function footOf(foot: number): void {
+  if (!(foot >= 0 && foot <= FOOT_MOST))
+    throw new Error(
+      `a foot of ${String(foot)}: a screen keeps 0 to ${String(FOOT_MOST)} of the frame for captions`
+    )
+}
+
 /** The screen-zoom composition on `screen`, its stops in CSS px of the picture. */
 function screenZoom(
   screen: Screen,
   stops: ReadonlyArray<Box>,
   { dir = "screens", foot = 0, theme, ground }: ZoomOptions
 ): Composition {
-  if (!(foot >= 0 && foot <= FOOT_MOST))
-    throw new Error(
-      `a foot of ${String(foot)}: a screen keeps 0 to ${String(FOOT_MOST)} of the frame for captions`
-    )
+  footOf(foot)
   const file = `${dir}/${screen.file}`
   return {
     kind: "composition",
@@ -81,6 +86,7 @@ export function zoomPicture(
   refs: ReadonlyArray<RegionRef>,
   options: ZoomOptions = {}
 ): Composition | null {
+  footOf(options.foot ?? 0)
   const found = refs.flatMap((ref) => {
     const region = regionOf(screens, ref)
     return region ? [region] : []
