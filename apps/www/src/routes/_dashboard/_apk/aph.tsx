@@ -11,8 +11,8 @@ import { pageVisit, watchVisit } from "@some-ui/engagement"
 import { useShelf } from "@some-ui/react-hooks"
 import { createFileRoute, Outlet } from "@tanstack/react-router"
 
-import { AphVisitContext } from "@/lib/aph-visit"
 import type { AphKeeping } from "@/lib/home-link/aph"
+import { ScreenVisitContext } from "@/lib/screen-visit"
 import { DeviceAphLane } from "@/components/aph/device-aph-lane"
 import type { View } from "@/components/view-strip"
 import { ViewStrip } from "@/components/view-strip"
@@ -47,7 +47,7 @@ const AphLayout = (): JSX.Element => {
   useShelf(visit, "views", STRIP)
 
   return (
-    <AphVisitContext.Provider value={visit}>
+    <ScreenVisitContext.Provider value={visit}>
       <div className="mx-auto flex w-full max-w-md flex-col gap-4">
         {import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
           <DeviceAphLane aph={APH} />
@@ -62,7 +62,7 @@ const AphLayout = (): JSX.Element => {
         />
         <Outlet />
       </div>
-    </AphVisitContext.Provider>
+    </ScreenVisitContext.Provider>
   )
 }
 

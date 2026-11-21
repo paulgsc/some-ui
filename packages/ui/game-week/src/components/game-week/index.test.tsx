@@ -261,6 +261,26 @@ describe("GameWeek", () => {
     expect(screen.getByRole("button", { name: WORDS.sayItFirst })).toBeTruthy()
   })
 
+  it("links to choosing the teams home follows live, only when the app gives the way", () => {
+    const { unmount } = render(
+      <GameWeek ports={ports(awayFeed)} outbox={outbox} />
+    )
+    expect(screen.queryByText(WORDS.teamsFollowed)).toBeNull()
+    expect(screen.queryByText(WORDS.teamsFollowedHow)).toBeNull()
+    unmount()
+    render(
+      <GameWeek
+        ports={ports(awayFeed)}
+        outbox={outbox}
+        teamsLink={(label) => <a href="#teams">{label}</a>}
+      />
+    )
+    expect(
+      screen.getByRole("link", { name: WORDS.teamsFollowed })
+    ).toHaveAttribute("href", "#teams")
+    expect(screen.getByText(WORDS.teamsFollowedHow)).toBeInTheDocument()
+  })
+
   it("with no games yet, says why", () => {
     render(<GameWeek ports={ports(awayFeed)} outbox={outbox} />)
     expect(screen.getByText(noGamesLine("away"))).toBeTruthy()
