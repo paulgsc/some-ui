@@ -140,12 +140,12 @@ export function parseCatalog(raw: {
   }
   units: ReadonlyArray<string>
 }): Catalog {
-  const sizes = allOf(
+  allOf(
     BIG_PLAY_SIZES,
     raw.big_play.sizes.map((size) => size.id),
     "big-play size"
   )
-  const kinds = allOf(
+  allOf(
     BIG_PLAY_KINDS,
     raw.big_play.kinds.map((kind) => kind.id),
     "big-play kind"
@@ -160,12 +160,12 @@ export function parseCatalog(raw: {
     halves: allOf(HALVES, raw.halves, "half"),
     units: allOf(UNITS, raw.units, "unit"),
     bigPlay: {
-      sizes: raw.big_play.sizes.map((size, i) => ({
-        id: sizes[i]!,
+      sizes: raw.big_play.sizes.map((size) => ({
+        id: oneOf(BIG_PLAY_SIZES, size.id, "big-play size"),
         yards: size.yards,
       })),
-      kinds: raw.big_play.kinds.map((kind, i) => ({
-        id: kinds[i]!,
+      kinds: raw.big_play.kinds.map((kind) => ({
+        id: oneOf(BIG_PLAY_KINDS, kind.id, "big-play kind"),
         least: oneOf(BIG_PLAY_SIZES, kind.least, `least size of ${kind.id}`),
       })),
     },

@@ -34,8 +34,10 @@ import {
   spokenCardProblems,
   spokenScenes,
 } from "./spoken-card"
-import { SPOKEN_CATEGORY_TITLES } from "./spoken-categories"
-import type { SpokenCategory } from "./spoken-categories"
+import {
+  SPOKEN_CATEGORY_OPENS,
+  SPOKEN_CATEGORY_TITLES,
+} from "./spoken-categories"
 import { estimatedMs, heldFor, stillFile } from "./stills"
 import type { StillScene, StillTake } from "./stills"
 
@@ -171,14 +173,9 @@ export function parseCardsEssay(key: string, raw: unknown): Parsed<CutList> {
   return problems.length > 0 ? { ok: false, problems } : cut
 }
 
-/** The spoken cards that open their essay, before its intro (C814). */
-const OPENING_CATEGORIES: ReadonlySet<SpokenCategory> = new Set([
-  "introduction",
-])
-
 /** Whether `spoken` is a spoken card that opens its essay (C814). */
 const opens = (spoken: Shot["spoken"]): boolean =>
-  spoken?.role === "spoken" && OPENING_CATEGORIES.has(spoken.category)
+  spoken?.role === "spoken" && SPOKEN_CATEGORY_OPENS[spoken.category]
 
 /** Whether `cut` opens on the owner's spoken introduction (C814). */
 const opensIntroduced = (cut: CutList): boolean => opens(cut.shots[0]?.spoken)
@@ -316,7 +313,9 @@ function spokenCardScenes(
           ? [{ file, said: scene.said, voice: SPOKEN_ASKER_VOICE }]
           : [],
       spoken: { card: shot.id, scene },
-      ...(j === 0 ? { mark: SPOKEN_CATEGORY_TITLES[card.category] } : {}),
+      ...(j === 0 && opens(shot.spoken)
+        ? { mark: SPOKEN_CATEGORY_TITLES[card.category] }
+        : {}),
     }
   })
 }

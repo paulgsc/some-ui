@@ -6,7 +6,7 @@
  *
  * `__tests__/game-live-messages.snapshot.json` is a copy of what the
  * server's `dump-game-live-messages` writes (its `check_client_fixtures.py`
- * compares the two, the "game live messages" pair, since #3048), and
+ * compares the two), and
  * `__tests__/live-wire.test.ts` reads every message
  * in it with `readHome` and writes every phone message with `helloText` and
  * `pingText`, so a change on either side the other cannot read fails a test.

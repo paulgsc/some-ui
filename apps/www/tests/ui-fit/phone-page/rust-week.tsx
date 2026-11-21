@@ -10,48 +10,19 @@ import type { JSX } from "react"
 import { useState } from "react"
 import { inMemoryStorage } from "@some-ui/core-utils"
 import type { RustWeekPorts } from "@some-ui/rust-rounds"
-import { readWeek, RustWeek, TALLOWBROOK_WEEK_FILE } from "@some-ui/rust-rounds"
+import { RustWeek, TALLOWBROOK_HELD } from "@some-ui/rust-rounds"
 import { ONE_TAKE } from "@some-ui/voice-capture"
 import { simulatedPattern } from "@some-ui/voice-capture/testing"
 
 /** Midweek, while the sample week is open. */
 const NOW = Date.parse("2026-11-19T18:00:00Z")
 
-/** rustc 1.97.0 on TB-101's program, as the prototype printed it. */
-const E0507 = [
-  "error[E0507]: cannot move out of index of `Vec<Label>`",
-  "  --> main.rs:16:18",
-  "   |",
-  "16 |         let to = queue[i].address;",
-  "   |                  ^^^^^^^^^^^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait",
-  "",
-  "error: aborting due to 1 previous error",
-  "",
-  "For more information about this error, try `rustc --explain E0507`.",
-  "",
-].join("\n")
-
 function fixturePorts(): RustWeekPorts {
-  const read = readWeek(TALLOWBROOK_WEEK_FILE)
-  if (!read.ok) throw new Error("The /2 sample week doesn't read.")
   const { pattern, store } = simulatedPattern({
     options: { ...ONE_TAKE, send: "on-confirm" },
   })
   return {
-    week: {
-      week: read.week,
-      sha256: "f".repeat(64),
-      runs: {
-        "TB-101": {
-          outcome: "compile-error",
-          toolchain: "1.97.0",
-          code: "E0507",
-          stderr: E0507,
-          span: { lineStart: 16, columnStart: 18, lineEnd: 16, columnEnd: 34 },
-        },
-      },
-      ended: [],
-    },
+    week: TALLOWBROOK_HELD,
     takes: {
       pattern,
       takes: { getSnapshot: store.getSnapshot, subscribe: store.subscribe },

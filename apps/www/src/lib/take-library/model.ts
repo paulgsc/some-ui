@@ -41,9 +41,8 @@ const TakeSchema = z.object({
     .optional()
     .catch(undefined),
   // What a game is about, as far as the phone reads it: home's name for the
-  // game, the bite's moment, and the play home matched it to (its quarter
-  // and clock, never its words) or why none. Anything else, or none, reads
-  // as nothing.
+  // game, the bite's moment, and the play home matched it to. Anything else,
+  // or none, reads as nothing.
   about: z
     .object({
       label: z.string().min(1).nullable().optional().catch(undefined),
@@ -63,7 +62,6 @@ const TakeSchema = z.object({
       half: z.string().min(1).nullable().optional().catch(undefined),
       match: z
         .object({
-          // One this phone doesn't know reads as not matched yet.
           method: z.enum(MATCH_METHODS).optional().catch(undefined),
           play: z
             .object({
@@ -150,7 +148,6 @@ function gameFields(
   }
   if (about.half != null) fields.half = about.half
   const { method, play } = about.match ?? {}
-  // A play only beside the way home matched it.
   if (method != null) {
     fields.matchedBy = method
     if (play?.period != null) fields.playPeriod = String(play.period)
