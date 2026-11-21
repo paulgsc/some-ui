@@ -14,6 +14,12 @@ export type ScreenState =
       readonly kind: "screen"
       readonly held: HeldWeek
       readonly ticket: Ticket
+      /**
+       * Whether it is the sample rather than the week home handed over. The
+       * sample is the Tallowbrook week, so its id is a real week's: the
+       * stage marks it, and the recorder refuses a capture of it.
+       */
+      readonly sample: boolean
     }
 
 /**
@@ -57,7 +63,7 @@ export function screenStageOf({
       : held.week.tickets.find((each) => each.id === ticket)
   if (found === undefined)
     return none(`the week of ${held.week.id} has no ticket ${ticket ?? ""}`)
-  return { kind: "screen", held, ticket: found }
+  return { kind: "screen", held, ticket: found, sample }
 }
 
 const none = (problem: string): ScreenState => ({

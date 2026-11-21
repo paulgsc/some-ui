@@ -723,6 +723,7 @@ describe("the Rust Rounds screen stage (RR31)", () => {
       read: read(served),
     })
     expect(state.kind === "screen" && state.ticket.id).toBe(second)
+    expect(state.kind === "screen" && state.sample).toBe(false)
   })
 
   it("draws the sample for a viewer, or with no week, whatever was read", () => {
@@ -738,6 +739,7 @@ describe("the Rust Rounds screen stage (RR31)", () => {
         read: read(undefined, { failed: true }),
       })
       expect(state.kind === "screen" && state.ticket.id).toBe(first)
+      expect(state.kind === "screen" && state.sample).toBe(true)
       // The sample holds rustc's run, so the card names its result.
       expect(state.kind === "screen" && state.held.runs[first]?.outcome).toBe(
         "compile-error"
