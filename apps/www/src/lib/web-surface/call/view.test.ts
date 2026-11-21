@@ -26,6 +26,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 
 import { Call, CastProvider } from "./essay-parts"
+import { EssaySceneFrame } from "./essay-stage"
 import { essayAt, essayStageOf } from "./essay-view"
 import { interviewEssayAt } from "./interview-essay-view"
 import { reportAt, reportStageOf } from "./report-view"
@@ -748,5 +749,23 @@ describe("template A's bubbles", () => {
     const html = drawn(undefined, "tutor")
     expect(characters(html)).toEqual([])
     expect(html.match(/viewBox="0 0 48 48"/g)).toHaveLength(2)
+  })
+
+  it("draw the cast in a Rust essay's scene from its template's version, and the flat icons before it", () => {
+    const parsed = sampleEssay()
+    if (!parsed.ok) throw new Error(parsed.problems.join("; "))
+    const scene = (version: number): string =>
+      renderToStaticMarkup(
+        EssaySceneFrame({
+          essay: {
+            ...parsed.value,
+            template: { ...parsed.value.template, version },
+          },
+          scene: "question-1",
+          record: true,
+        })
+      )
+    expect(characters(scene(6))).toEqual(["tin-owlet", "mochi"])
+    expect(characters(scene(4))).toEqual([])
   })
 })

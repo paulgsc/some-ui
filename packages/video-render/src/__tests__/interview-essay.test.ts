@@ -8,6 +8,7 @@
 import { parseCutList } from "@video-render/cut-list"
 import { parseFormat } from "@video-render/format"
 import {
+  INTERVIEW_ESSAY_CAST_VERSION,
   INTERVIEW_ESSAY_ID,
   INTERVIEW_ESSAY_VERSION,
   interviewEssayChapterMarks,
@@ -36,6 +37,14 @@ const problems = (raw: unknown): ReadonlyArray<string> => {
 }
 
 describe("the interview essay's format", () => {
+  it("names the cast from its cast version, and not before (C822)", () => {
+    for (let v = 1; v < INTERVIEW_ESSAY_CAST_VERSION; v++)
+      expect(interviewEssayFormat(v).shape?.cast).toBeUndefined()
+    expect(interviewEssayFormat(INTERVIEW_ESSAY_CAST_VERSION).shape?.cast).toBe(
+      "cast-v1"
+    )
+  })
+
   it("is a format, and refuses a version newer than the newest (VS1)", () => {
     expect(parseFormat(interviewEssayFormat()).ok).toBe(true)
     expect(() => interviewEssayFormat(INTERVIEW_ESSAY_VERSION + 1)).toThrow()
