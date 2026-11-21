@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs"
+import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { isSnipId, SnipRecordSchema } from "@some-ui/video-render/snip"
 import { expect, describe as group, it } from "vitest"
@@ -9,6 +9,7 @@ import {
   checksumsOf,
   describe,
   fillPattern,
+  isStage,
   manifestOf,
   moduleOf,
   parseRouteTree,
@@ -17,6 +18,7 @@ import {
   routesFor,
   slugOf,
   snipId,
+  STAGE_ROUTES,
   WEB_VIEWPORTS,
   wingPath,
 } from "@/lib/snips"
@@ -66,6 +68,21 @@ group("the routes a capture visits", () => {
 
   it("refuses a tree it cannot read", () => {
     expect(() => parseRouteTree("export const nothing = 1")).toThrow()
+  })
+})
+
+group("the recording stages, taken whole", () => {
+  it("are every route whose search is a stage's, and no other", () => {
+    const dir = join(import.meta.dirname, "../../../routes")
+    const stages = readdirSync(dir, { recursive: true })
+      .map(String)
+      .filter((file) => file.endsWith(".tsx"))
+      .map((file) => readFileSync(join(dir, file), "utf8"))
+      .filter((text) => /validateSearch:\s*stageSearch\b/.test(text))
+      .map((text) => /createFileRoute\("([^"]+)"\)/.exec(text)?.[1])
+    expect(new Set(stages)).toEqual(new Set(STAGE_ROUTES))
+    expect(isStage("/rust-screen")).toBe(true)
+    expect(isStage("/journal")).toBe(false)
   })
 })
 

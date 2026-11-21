@@ -104,7 +104,12 @@ A snip record:
 | `image`, `recording?` | `{name, kind, bytes, sha256}`                                                                                             |
 
 `regions` are measured on the web walk, where the picture is the page's own
-window, and cut to it. The APK's pictures are the device's whole screen,
+window, and cut to it. A recording stage (`STAGE_ROUTES`: `/call`, `/essay`,
+`/report`, `/rust-screen`, the routes whose search is `stageSearch`) is taken
+as the whole page instead, with its parts measured from the page's top-left
+(C867). A stage is drawn whole for a recorder, not scrolled by a person, and
+a card's foot falls below a phone's fold, so a window would cut off parts
+an essay zooms to. The APK's pictures are the device's whole screen,
 which no page's layout maps onto, so its records name none.
 
 The record's schema is `@some-ui/video-render`'s `SnipRecordSchema`

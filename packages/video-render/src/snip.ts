@@ -139,6 +139,8 @@ export function parseSnipsGiven(value: unknown): Parsed<SnipsGiven> {
  * A snip read as a screen of `some-ui.screens/1`, named `id`: its picture
  * at `dir/<image>` in the video's folder, its size in CSS pixels, and its
  * parts renamed into `id`'s, as a screen's regions all start with its id.
+ * The record keeps no window apart from its picture, so the screen's
+ * viewport is the picture: a stage's whole page, or the window it showed.
  */
 export function snipScreen(snip: SnipRecord, id: string): Screen {
   const width = snip.width / snip.scale

@@ -20,6 +20,7 @@ import {
   describe,
   fillPattern,
   isPattern,
+  isStage,
   moduleOf,
   slugOf,
   snipId,
@@ -36,14 +37,17 @@ import type {
 } from "@/lib/snips"
 
 type Camera = {
-  /** The picture, as PNG bytes. */
-  readonly shoot: () => Promise<Buffer>
+  /**
+   * The picture, as PNG bytes: the whole page for a recording stage
+   * (`isStage`), else what the screen shows.
+   */
+  readonly shoot: (whole: boolean) => Promise<Buffer>
   /**
    * Each part the screen names (`data-region`), boxed in the picture's CSS
    * pixels, where the picture is the page's own; none where it is the
    * device's whole screen, which no page's layout maps onto.
    */
-  readonly regions: () => Promise<ReadonlyArray<Region>>
+  readonly regions: (whole: boolean) => Promise<ReadonlyArray<Region>>
   /** A short recording of the screen, as its bytes and kind, or null where none is made. */
   readonly record: () => Promise<{
     readonly bytes: Buffer
@@ -100,8 +104,9 @@ export async function walk(w: Walk): Promise<Part> {
       })
       return
     }
-    const png = await w.camera.shoot()
-    const regions = await w.camera.regions()
+    const whole = isStage(route.path)
+    const png = await w.camera.shoot(whole)
+    const regions = await w.camera.regions(whole)
     const sha256 = await hashOf(png)
     const same = seen.get(sha256)
     if (same !== undefined) {
@@ -126,7 +131,7 @@ export async function walk(w: Walk): Promise<Part> {
     // A second picture a moment later: where the screen moved, a recording
     // shows what the still cannot.
     await w.page.waitForTimeout(1_000)
-    const again = await w.camera.shoot()
+    const again = await w.camera.shoot(whole)
     const moving = (await hashOf(again)) !== sha256
     const clip = moving ? await w.camera.record() : null
     const recording = clip
@@ -213,22 +218,31 @@ export async function save(
 
 /**
  * The parts the page names (`data-region`), each boxed around every element
- * that carries it, within the window the page's picture shows (`regionsOf`).
+ * that carries it, within what the page's picture shows (`regionsOf`): the
+ * window, or the `whole` page from its top-left.
  */
-export async function pageRegions(page: Page): Promise<ReadonlyArray<Region>> {
-  const { measured, width, height } = await page.evaluate(() => ({
-    measured: [...document.querySelectorAll<HTMLElement>("[data-region]")].map(
-      (part) => {
+export async function pageRegions(
+  page: Page,
+  whole: boolean
+): Promise<ReadonlyArray<Region>> {
+  const { measured, width, height } = await page.evaluate((whole) => {
+    const dx = whole ? window.scrollX : 0
+    const dy = whole ? window.scrollY : 0
+    const root = document.documentElement
+    return {
+      measured: [
+        ...document.querySelectorAll<HTMLElement>("[data-region]"),
+      ].map((part) => {
         const r = part.getBoundingClientRect()
         return {
           ref: part.dataset.region ?? "",
-          box: { x: r.x, y: r.y, width: r.width, height: r.height },
+          box: { x: r.x + dx, y: r.y + dy, width: r.width, height: r.height },
         }
-      }
-    ),
-    width: window.innerWidth,
-    height: window.innerHeight,
-  }))
+      }),
+      width: whole ? root.scrollWidth : window.innerWidth,
+      height: whole ? root.scrollHeight : window.innerHeight,
+    }
+  }, whole)
   return regionsOf(measured.flatMap((part) => inWindow(part, width, height)))
 }
 

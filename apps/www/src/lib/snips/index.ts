@@ -129,6 +129,23 @@ export function routesFor(
   )
 }
 
+/**
+ * The recording stages (`validateSearch: stageSearch`): pages drawn whole
+ * for a recorder, as `tests/record` photographs them, not screens a person
+ * scrolls. A snip of one is the whole page, so its named parts
+ * (`data-region`) are all in it: a card's foot falls below a phone's fold.
+ * The test holds this list to the route files.
+ */
+export const STAGE_ROUTES: ReadonlySet<string> = new Set([
+  "/call",
+  "/essay",
+  "/report",
+  "/rust-screen",
+])
+
+/** Whether a snip of `path` is the whole page: a recording stage's. */
+export const isStage = (path: string): boolean => STAGE_ROUTES.has(path)
+
 /** Whether an address has a `$param` to fill from the screens. */
 export function isPattern(path: string): boolean {
   return path.split("/").some((s) => s.startsWith("$"))
