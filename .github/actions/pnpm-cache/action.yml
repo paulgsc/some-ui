@@ -24,9 +24,13 @@ description: "Restore/save the pnpm content-addressable store."
 runs:
   using: composite
   steps:
+    # zizmor's github-env (#2116): the one value written is `runner.temp`,
+    # a path the runner chooses, so nothing a pull request controls reaches
+    # $GITHUB_ENV here. The suppression is the trailing comment, outside the
+    # command (a ` #` ends a plain YAML scalar).
     - name: Point pnpm at a fixed store path
       shell: bash
-      run: echo "npm_config_store_dir=${{ runner.temp }}/pnpm-store" >> "$GITHUB_ENV"
+      run: echo "npm_config_store_dir=${{ runner.temp }}/pnpm-store" >> "$GITHUB_ENV" # zizmor: ignore[github-env]
     - name: Restore pnpm store cache
       uses: actions/cache@v6
       with:

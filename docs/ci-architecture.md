@@ -154,8 +154,21 @@ string a dispatcher can type, over each step that reads the input or the
 matrix built from it. `packages/eslint/tests/extension-sign-inputs.test.ts`
 is its proof, and the `guards` job in `pr.yml` runs it on every pull request.
 
-The other workflows' expansions of trusted values, and running a workflow
-security check in CI, are #2116's later steps.
+Promise WS2 holds the rest of `.github/`: no workflow or composite action
+carries a high-severity zizmor finding that `.github/zizmor.yml` does not
+suppress with its reason (an attacker's text expanded into a `run:` script, a
+dangerous trigger, a write permission zizmor rates as excessive at high
+severity, an unexplained `$GITHUB_ENV` write), and actionlint, with
+ShellCheck over every `run:` script, finds nothing `.github/actionlint.yaml`
+does not ignore with its reason. Its Family is every workflow and composite
+action under `.github/`, every trigger and every source of expression text.
+Its proof is `pnpm check:workflow-security`
+(`scripts/check-workflow-security.sh`), which runs actionlint, ShellCheck and
+zizmor at the versions it pins, offline; the `guards` job runs it on every
+pull request. Its Tolerance: zizmor's online audits (impostor commits, known
+vulnerable action versions) do not run, medium and lower findings are only
+reported by a local `--all` run, and a tag in `uses:` is accepted until the
+owner decides on hash pins (#2116).
 
 ## Decisions
 
