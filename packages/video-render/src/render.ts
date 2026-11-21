@@ -447,6 +447,13 @@ async function checkInputs(
   for (const s of shots) {
     const shot = s.shot
     const p = shot.picture
+    // C866: a screen of the app is drawn only once home has handed it
+    // (`resolveScreens`); the render refuses one still named, never a blank frame.
+    if (p.kind === "screen") {
+      problems.push(
+        `${shot.id}: it shows a screen of the app home has not handed yet`
+      )
+    }
     if (p.kind === "capture" || p.kind === "still") {
       const f = await read(p.source)
       if (!f) problems.push(`${shot.id}: ${p.source} is missing`)

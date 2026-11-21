@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
+import { isSnipId, SnipRecordSchema } from "@some-ui/video-render/snip"
 import { expect, describe as group, it } from "vitest"
 
 import type { Part, SnipRecord } from "@/lib/snips"
@@ -211,5 +212,53 @@ group("the bundle", () => {
         { name: "manifest.json", sha256: "11" },
       ])
     ).toBe("11  manifest.json\n22  web/b.png\n")
+  })
+})
+
+group("every name the capture makes is one the record takes", () => {
+  const sha256 = "0123456789ab".padEnd(64, "f")
+  const paths = [
+    "/",
+    "/journal/takes/voice%20note",
+    "/journal/episodes/feed/key+1",
+    "/a/b@c",
+    "/jobs/a:b",
+    wingPath("app"),
+    wingPath("Studio", "Takes"),
+    wingPath("Topik", "단어"),
+  ]
+
+  it.each(paths)("%s", (path) => {
+    const id = snipId({
+      surface: "apk",
+      path,
+      viewport: APK_VIEWPORT.name,
+      appVersion: "0.1.69",
+      sha256,
+    })
+    expect(isSnipId(id)).toBe(true)
+    const parsed = SnipRecordSchema.safeParse({
+      id,
+      surface: "apk",
+      build: "release",
+      route: path,
+      path,
+      viewport: APK_VIEWPORT.name,
+      width: 1080,
+      height: 1920,
+      scale: 1,
+      regions: [],
+      appVersion: "0.1.69",
+      module: moduleOf(path),
+      shows: "",
+      description: "",
+      image: {
+        name: `apk/android/${slugOf(path)}-${sha256.slice(0, 12)}.png`,
+        kind: "png",
+        bytes: 1,
+        sha256,
+      },
+    })
+    expect(parsed.error?.issues ?? []).toEqual([])
   })
 })

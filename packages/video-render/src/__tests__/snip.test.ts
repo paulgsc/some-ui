@@ -1,18 +1,26 @@
+import { mkdtemp } from "node:fs/promises"
+import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { parseCardsEssay } from "@video-render/cards-essay"
+import {
+  CARDS_INDEX_SCHEMA,
+  cardsFolderProblems,
+  parseCardsEssay,
+} from "@video-render/cards-essay"
 import type { CutList } from "@video-render/cut-list"
 import { parseCutList } from "@video-render/cut-list"
-import { readSeries } from "@video-render/node"
-import { resolve } from "@video-render/resolve"
+import { nodePorts, readSeries } from "@video-render/node"
+import { render } from "@video-render/render"
 import {
+  clipFramesOf,
   isSnipId,
   parseSnipsGiven,
-  resolveSnips,
+  resolveScreens,
   snipIdsOf,
   SNIPS_GIVEN_SCHEMA,
   snipScreen,
 } from "@video-render/snip"
-import type { SnipRecord, SnipsGiven } from "@video-render/snip"
+import type { Handed, SnipRecord } from "@video-render/snip"
+import * as fixtures from "@video-render/testing"
 import { SCREEN_ZOOM } from "@video-render/zoom"
 import { describe, expect, it } from "vitest"
 
@@ -69,24 +77,35 @@ const apk = (): SnipRecord => ({
   },
 })
 
-const given = (snips: Array<SnipRecord>): SnipsGiven => {
+const given = (
+  snips: Array<SnipRecord>,
+  clips: Array<string> | null = null
+): Handed => {
   const parsed = parseSnipsGiven({ schema: SNIPS_GIVEN_SCHEMA, snips })
   if (!parsed.ok) throw new Error(parsed.problems.join("; "))
-  return parsed.value
+  return { snips: parsed.value, clips: clips && new Set(clips) }
 }
 
-/** The Rust Scratchpad essay with its second and third scenes showing snips. */
-async function withSnips(
-  pictures: ReadonlyArray<{ id: string; at?: Array<string> }>
-): Promise<CutList> {
+type Of =
+  | { from: "snips"; id: string; at?: Array<string> }
+  | { from: "clips"; clip: string; side: "before" | "after"; file: string }
+
+const snip = (id: string, at?: Array<string>): Of => ({
+  from: "snips",
+  id,
+  ...(at ? { at } : {}),
+})
+
+/** The Rust Scratchpad essay, its second scene on showing the screens given. */
+async function withScreens(pictures: ReadonlyArray<Of>): Promise<CutList> {
   const cut = await showcase("rust-scratchpad")
   const raw = {
     ...cut,
     shots: cut.shots.map((shot, i) => {
-      const snip = pictures[i - 1]
-      return snip === undefined
+      const of = pictures[i - 1]
+      return of === undefined
         ? shot
-        : { ...shot, picture: { kind: "snip", ...snip } }
+        : { ...shot, picture: { kind: "screen", of } }
     }),
   }
   const parsed = parseCardsEssay("rust-scratchpad-2026-11-14", raw)
@@ -137,18 +156,18 @@ describe("a snip is a photographed screen (C865)", () => {
   })
 })
 
-describe("an essay's snip scenes (SNIPS4)", () => {
+describe("an essay's screens of the app (SNIPS4)", () => {
   it("is a cards essay's scene, and names its snips once each", async () => {
-    const cut = await withSnips([{ id: APK }, { id: PHONE }, { id: APK }])
+    const cut = await withScreens([snip(APK), snip(PHONE), snip(APK)])
     expect(snipIdsOf(cut)).toEqual([APK, PHONE])
   })
 
   it("is drawn as a still of the whole screen, or zoomed to the parts it names", async () => {
-    const cut = await withSnips([
-      { id: APK },
-      { id: PHONE, at: ["QM-311:program", "QM-311:run"] },
+    const cut = await withScreens([
+      snip(APK),
+      snip(PHONE, ["QM-311:program", "QM-311:run"]),
     ])
-    const drawn = resolveSnips(cut, given([apk(), phone()]))
+    const drawn = resolveScreens(cut, given([apk(), phone()]))
     if (!drawn.ok) throw new Error(drawn.problems.join("; "))
     expect(drawn.value.shots[1]?.picture).toEqual({
       kind: "still",
@@ -175,11 +194,8 @@ describe("an essay's snip scenes (SNIPS4)", () => {
   })
 
   it("is refused when home didn't hand the snip, or it names no such part, never a blank frame", async () => {
-    const cut = await withSnips([
-      { id: APK },
-      { id: PHONE, at: ["QM-311:question"] },
-    ])
-    const drawn = resolveSnips(cut, given([phone()]))
+    const cut = await withScreens([snip(APK), snip(PHONE, ["QM-311:question"])])
+    const drawn = resolveScreens(cut, given([phone()]))
     expect(drawn.ok).toBe(false)
     const problems = drawn.ok ? "" : drawn.problems.join("\n")
     expect(problems).toContain(
@@ -188,16 +204,87 @@ describe("an essay's snip scenes (SNIPS4)", () => {
     expect(problems).toContain(`the snip ${PHONE} names no QM-311:question`)
   })
 
-  it("is refused by the render until home hands it", async () => {
-    const cut = await withSnips([{ id: APK }])
+  it("shows a Clips Library frame home handed as a still, and refuses one it didn't", async () => {
+    const frame: Of = {
+      from: "clips",
+      clip: "studio-release-promo",
+      side: "after",
+      file: "02-release-promo.png",
+    }
+    const cut = await withScreens([frame, snip(APK)])
+    expect(clipFramesOf(cut)).toEqual([
+      "studio-release-promo/after/02-release-promo.png",
+    ])
+    const drawn = resolveScreens(
+      cut,
+      given([apk()], ["studio-release-promo/after/02-release-promo.png"])
+    )
+    if (!drawn.ok) throw new Error(drawn.problems.join("; "))
+    expect(drawn.value.shots[1]?.picture).toEqual({
+      kind: "still",
+      source: "clips/studio-release-promo/after/02-release-promo.png",
+    })
+    const refused = resolveScreens(cut, given([apk()]))
+    expect(refused.ok ? "" : refused.problems.join("\n")).toContain(
+      "C1: it shows the clip frame studio-release-promo/after/02-release-promo.png, which home did not hand"
+    )
+  })
+
+  it("is refused by the render until home hands it, never drawn blank", async () => {
+    const root = await mkdtemp(join(tmpdir(), "snip-"))
+    const cut = fixtures.cutList([
+      fixtures.shot("a", {
+        picture: { kind: "screen", of: { from: "snips", id: APK, at: [] } },
+      }),
+    ])
+    const drawn = await render(cut, fixtures.series(), nodePorts(root), {
+      workDir: "work",
+      out: "out/video.mp4",
+    })
+    expect(drawn.ok ? "" : drawn.problems.join("\n")).toContain(
+      "a: it shows a screen of the app home has not handed yet"
+    )
+  })
+
+  it("passes the cards check, which hands it nothing: home hands it at render", async () => {
+    const cut = await withScreens([snip(APK)])
     const series = await readSeries(
       join(import.meta.dirname, "../sample/series/cheat-sheet"),
       cut.series.version
     )
     if (!series.ok) throw new Error(series.problems.join("; "))
-    const resolved = resolve(cut, series.value)
-    expect(resolved.ok ? "" : resolved.problems.join("\n")).toContain(
-      `it shows the snip ${APK}, which home has not handed yet`
+    const files = new Map<string, unknown>([
+      [
+        "index.json",
+        {
+          schema: CARDS_INDEX_SCHEMA,
+          essays: [{ key: "rust-scratchpad-2026-11-14" }],
+        },
+      ],
+      ["rust-scratchpad-2026-11-14.json", cut],
+    ])
+    expect(
+      cardsFolderProblems(files, (id, version) =>
+        id === series.value.id && version === series.value.version
+          ? series.value
+          : null
+      )
+    ).toEqual([])
+  })
+
+  it("is refused on a spoken card, which its stage draws", async () => {
+    const cut = await showcase("spoken-intro")
+    const at = cut.shots.findIndex((s) => s.spoken?.role === "spoken")
+    expect(at).toBeGreaterThanOrEqual(0)
+    const raw = {
+      ...cut,
+      shots: cut.shots.map((s, i) =>
+        i === at ? { ...s, picture: { kind: "screen", of: snip(APK) } } : s
+      ),
+    }
+    const parsed = parseCardsEssay("spoken-intro-2026-11-14", raw)
+    expect(parsed.ok ? "" : parsed.problems.join("\n")).toContain(
+      "a spoken card is drawn by its stage, so it shows no screen of the app"
     )
   })
 
@@ -210,7 +297,10 @@ describe("an essay's snip scenes (SNIPS4)", () => {
       shots: [
         {
           id: "a",
-          picture: { kind: "snip", id: "the front page" },
+          picture: {
+            kind: "screen",
+            of: { from: "snips", id: "the front page" },
+          },
           durationMs: 1000,
         },
       ],

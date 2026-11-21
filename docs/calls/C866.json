@@ -8,13 +8,13 @@
     "some-ui:packages/video-render/src/cards-essay.ts",
     "some-ui:apps/www/tests/record/cards.ts"
   ],
-  "chose": "A snip is drawn only from what home hands beside the essay: record:cards takes --snips <dir> (snips.json, some-ui.snips-given/1, and the pictures), checks each picture's hash, and refuses before anything is drawn when a snip is missing or a named part isn't on it. A cut list that still names a snip is refused by resolve(), which every render passes through, so no frame is ever blank. A cards essay may show a snip in place of a card, and its card burn-ins still draw over it as the author wrote them. The whole screen is drawn as the renderer draws any still, fitted into the frame; the device frame or full-bleed 9:16 for phone shots stays the owner's choice (SNIPS4).",
+  "chose": "A screen of the app is drawn only from what home hands beside the essay, as it hands takes, each kind in its own folder: <key>.snips/ (snips.json, some-ui.snips-given/1, and the pictures) and <key>.clips/ (each frame at <clip>/<side>/<file>). record:cards takes --snips and --clips, checks each snip picture's hash and that each frame is a PNG, and refuses before anything is drawn a screen it wasn't handed or a part its snip doesn't name. A cut list still naming one is refused by resolve(), which every render passes through, so no frame is ever blank. A cards essay may show one in place of a card, and its card burn-ins still draw over it as the author wrote them. The whole screen is drawn as the renderer draws any still, fitted into the frame. The device frame or full-bleed 9:16 for phone shots stays the owner's choice (SNIPS4).",
   "options": [
-    "refuse in resolve() and before recording; a snip in place of a card; the still drawn as any still is",
-    "a separate resolved cut-list type the renderer reads, so the compiler refuses an unresolved snip",
-    "draw a placeholder for a missing snip"
+    "refuse in resolve() and before recording; folders per kind, as takes are handed; the still drawn as any still is",
+    "a separate resolved cut-list type the renderer reads, so the compiler refuses an unresolved screen",
+    "draw a placeholder for a missing screen"
   ],
   "gray": "Where an unresolved snip is caught is a design choice no check settles. A second cut-list type would make it a compile error, but it splits the one file the phone, home and the renderer share, and every reader would carry both. The owner decided that a missing snip refuses the render (#3114), not where that happens.",
-  "undo": "Drop the snip refusal from resolve() and --snips from record:cards, and refuse snip pictures in parseCardsEssay again.",
+  "undo": "Drop the screen refusal from resolve() and --snips and --clips from record:cards, and refuse screen pictures in parseCardsEssay again.",
   "refs": ["#3114"]
 }

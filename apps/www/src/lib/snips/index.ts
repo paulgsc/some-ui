@@ -10,7 +10,7 @@
  * imports this: it describes the app from outside, and only on sample data (the Pages viewer build, or the APK paired with the
  * stand-in home).
  */
-import { SnipRecordSchema } from "@some-ui/video-render/snip"
+import { SnipRecordSchema, SurfaceSchema } from "@some-ui/video-render/snip"
 import type {
   Build,
   SnipFile,
@@ -227,18 +227,29 @@ export function snipId(parts: {
  * tapped there. `@practice`, `@studio/takes`.
  */
 export function wingPath(wing: string, tab?: string): string {
-  const slug = (text: string): string =>
-    text
+  const slug = (text: string): string => {
+    const ascii = text
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "")
+    // A label with no ASCII letter or digit (Korean, say) is named by its
+    // code points, so the id still names it.
+    return ascii !== ""
+      ? ascii
+      : `u${[...text].map((c) => (c.codePointAt(0) ?? 0).toString(16)).join("-")}`
+  }
   return tab === undefined ? `@${slug(wing)}` : `@${slug(wing)}/${slug(tab)}`
 }
 
 /** A file name for an address: /settings/appearance -> settings~appearance. */
 export function slugOf(path: string): string {
   if (path === "/") return "front"
-  return path.replace(/^[/@]/, "").replace(/\//g, "~")
+  // A filled `$param` comes from a link's href, percent-encoded and all:
+  // anything a file name may not hold becomes a `-`.
+  return path
+    .replace(/^[/@]/, "")
+    .replace(/\//g, "~")
+    .replace(/[^A-Za-z0-9._~-]/g, "-")
 }
 
 /** A route a capture offered and could not show, with why, in plain words. */
@@ -248,13 +259,12 @@ export type Unreached = {
   readonly why: string
 }
 
-const surfaceSchema = z.enum(["apk", "web"])
 const partSchema = z.object({
-  surface: surfaceSchema,
+  surface: SurfaceSchema,
   appVersion: z.string(),
   snips: z.array(SnipRecordSchema),
   unreached: z.array(
-    z.object({ surface: surfaceSchema, route: z.string(), why: z.string() })
+    z.object({ surface: SurfaceSchema, route: z.string(), why: z.string() })
   ),
 })
 

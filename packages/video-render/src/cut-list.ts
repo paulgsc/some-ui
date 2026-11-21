@@ -62,16 +62,30 @@ const PictureSchema = z.discriminatedUnion("kind", [
   }),
   z.object({ kind: z.literal("still"), source: path }),
   /**
-   * A screen of the app from the snip library (SNIPS4, #3114), by its id.
-   * Home hands the snips an essay names, and `resolveSnips` (`./snip`)
-   * draws each as a still of the whole screen or, with `at`, as the screen
-   * zoomed to those named parts in turn. Unresolved, it refuses the render.
+   * A screen of the app that home keeps (SNIPS4, #3114; C865): a snip of
+   * the snip library by its id, or a frame of the Clips Library by its
+   * clip, side and file. Home hands the ones an essay names, and
+   * `resolveScreens` (`./snip`) draws each as a still of the whole screen
+   * or, for a snip given `at`, zoomed to those named parts in turn.
+   * Unresolved, it refuses the render.
    */
   z.object({
-    kind: z.literal("snip"),
-    id: z.string().regex(SNIP_ID, "it isn't a snip's id"),
-    /** The parts to zoom to, in order, as the page names them (`data-region`). */
-    at: z.array(z.string().min(1).max(200)).max(10).default([]),
+    kind: z.literal("screen"),
+    of: z.discriminatedUnion("from", [
+      z.object({
+        from: z.literal("snips"),
+        id: z.string().regex(SNIP_ID, "it isn't a snip's id"),
+        /** The parts to zoom to, in order, as the page names them (`data-region`). */
+        at: z.array(z.string().min(1).max(200)).max(10).default([]),
+      }),
+      z.object({
+        from: z.literal("clips"),
+        clip: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/, "a clip's id"),
+        side: z.enum(["before", "after"]),
+        /** The frame's name, as home keeps a side's frames (`frameName`). */
+        file: z.string().regex(/^[a-z0-9][a-z0-9._-]*\.png$/, "a PNG frame"),
+      }),
+    ]),
   }),
   /** The series' ground alone, for a card burn-in to draw on. */
   z.object({ kind: z.literal("card") }),

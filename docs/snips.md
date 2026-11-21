@@ -93,7 +93,7 @@ A snip record:
 | `id`                  | `<surface>:<path>:<viewport>:<appVersion>:<hash12>`; `path` may be `@wing/tab`                                        |
 | `surface`, `viewport` | Where, and at which named size                                                                                        |
 | `width`, `height`     | The picture's own size, read from the PNG                                                                             |
-| `scale`               | Its pixels per CSS pixel: 2 for the web phone, 1 elsewhere                                                            |
+| `scale`               | Its pixels per CSS pixel: 2 for the web phone, 1 on the desktop; 1 by convention on the APK, whose device pixels it keeps |
 | `regions`             | Each part the page names (`data-region`), `{ref, box}`, the box in CSS pixels; none on the APK (below)                |
 | `build`               | `release` (the APK as it ships, or the Pages site) or `debug` (the APK's debug build, for a screen taps do not reach) |
 | `route`               | The route, `$param`s and all, or a release screen's `@wing/tab`                                                       |
@@ -139,27 +139,31 @@ owner's one step. The workflow holds no mailbox secret.
 - **SNIPS3, the editorial desk**, groups by `module` and shows `image`
   (`recording` where present). The keep mark and note are home's own, keyed by
   `id`. They are not in this bundle.
-- **SNIPS4, the snip scene** (C865, C866). A snip and a `some-ui.screens/1`
-  screen (RR31's phone cards) are one family: a photographed screen with
-  its named parts boxed. A scene shows one by the cut list's picture
-  `{"kind": "snip", "id": "<id>", "at": ["<part>", …]}`, in a cards essay
-  in place of a card. Beside an essay that names snips, home hands their
-  records as `snips/snips.json`:
+- **SNIPS4, the snip scene** (C865, C866). A snip, a Clips Library frame
+  and a `some-ui.screens/1` screen (RR31's phone cards) are one family: a
+  picture of a screen of the app, its named parts boxed. A scene shows one
+  by the cut list's picture `{"kind": "screen", "of": …}`, in a cards essay
+  in place of a card, where `of` is
+  `{"from": "snips", "id": "<id>", "at": ["<part>", …]}` or
+  `{"from": "clips", "clip": "<clip>", "side": "after", "file": "<frame>.png"}`.
+  Home hands what an essay names as it hands takes, each kind in its own
+  folder beside `<key>.json`:
 
-  ```json
-  { "schema": "some-ui.snips-given/1", "snips": [<record>, …] }
-  ```
+  - `<key>.snips/`: `snips.json`, which is
+    `{ "schema": "some-ui.snips-given/1", "snips": [<record>, …] }`, and
+    each picture under its bundle name;
+  - `<key>.clips/`: each frame at `<clip>/<side>/<file>`.
 
-  Each picture comes with it under its bundle name. `record:cards --snips
-  <dir>` checks each picture's hash, and `resolveSnips` draws each scene. With
-  no `at`, it shows the whole screen as a still. With `at`, it zooms to those
-  parts in turn, as the Rust essay's cards do (`screen-zoom`). A scene naming
-  a snip home didn't hand, or a part its snip doesn't name, is refused before
-  anything is drawn. A cut list still naming a snip is refused by the render.
-  Never a blank frame. Phone shots are 1080×1920 (APK) or 824×1830 (web
-  phone, drawn at 2×), both portrait, and drawn today as any still is,
-  fitted into the frame. The owner chooses between a device frame and a
-  full-bleed 9:16 once they see them.
+  `record:cards --snips <dir> --clips <dir>` checks each snip picture's hash
+  and that each frame is a PNG. `resolveScreens` then draws each scene. With
+  no `at`, it shows the whole screen as a still. With `at`, a snip zooms to
+  those parts in turn, as the Rust essay's cards do (`screen-zoom`). A scene
+  naming a screen home didn't hand, or a part its snip doesn't name, is
+  refused before anything is drawn, and a cut list still naming one is
+  refused by the render: never a blank frame. Phone shots are 1080×1920
+  (APK) or 824×1830 (web phone, drawn at 2×), both portrait, and today they
+  are drawn as any still is, fitted into the frame. The owner chooses
+  between a device frame and a full-bleed 9:16 once they see them.
 
 - The APK's screens show what a fresh install paired with the stub shows. The
   stub answers few routes (`compat/stub-routes.json`), so many screens are

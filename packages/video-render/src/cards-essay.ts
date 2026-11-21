@@ -10,8 +10,8 @@
  * is. Its key is a slug and its stamp's day (`nixos-upgrade-2026-11-14`),
  * so the same subject checked again on a later day is a new essay. Home has
  * no captures or takes for one: every scene is a card picture, or a screen
- * of the app from the snip library (SNIPS4, `./snip`), which home hands
- * beside the essay.
+ * of the app home keeps, a snip or a clip frame (SNIPS4, `./snip`), which
+ * home hands beside the essay.
  *
  * From the cheat-sheet series' version 2 an essay is spoken (EXPLAIN6,
  * #3021, C370, C371: `Spoken`); one in version 1 is silent. A spoken essay
@@ -159,10 +159,16 @@ export function parseCardsEssay(key: string, raw: unknown): Parsed<CutList> {
         ]
       : []),
     ...shots
-      .filter((s) => s.picture.kind !== "card" && s.picture.kind !== "snip")
+      .filter((s) => s.picture.kind === "screen" && s.spoken?.role === "spoken")
       .map(
         (s) =>
-          `${s.id}: its picture is a ${s.picture.kind}, not a card or a snip`
+          `${s.id}: a spoken card is drawn by its stage, so it shows no screen of the app`
+      ),
+    ...shots
+      .filter((s) => s.picture.kind !== "card" && s.picture.kind !== "screen")
+      .map(
+        (s) =>
+          `${s.id}: its picture is a ${s.picture.kind}, not a card or a screen of the app`
       ),
     ...(isSpokenEssay(cut.value)
       ? spokenProblems(cut.value)
