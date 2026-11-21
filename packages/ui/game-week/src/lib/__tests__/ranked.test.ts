@@ -9,7 +9,7 @@ import { readHome } from "@game-week/lib/live-wire"
 import type { GameWeekState } from "@game-week/lib/machine"
 import { rankedNow, step } from "@game-week/lib/machine"
 import type { RankedEntry } from "@game-week/lib/ranked"
-import { otherSide, rankedList, unitOf } from "@game-week/lib/ranked"
+import { nextUnit, otherSide, rankedList, unitOf } from "@game-week/lib/ranked"
 import { unitLine } from "@game-week/lib/words"
 import { SCENARIOS, UNITS } from "@some-ui/game-scenarios"
 import { describe, expect, it } from "vitest"
@@ -200,6 +200,10 @@ describe("a bite's unit", () => {
     expect(step(idle, { type: "pickUnit" }).state).toBe(idle)
   })
 
+  it("starts at the first unit, and no team when the list names none", () => {
+    expect(nextUnit(null, null)).toEqual({ unit: UNITS[0], side: null })
+  })
+
   it("for a bite said first, comes from the list as it stopped, not a newer one", () => {
     const asking = run(
       saying({ how: "said-first" }),
@@ -301,6 +305,7 @@ describe("home's ranked list on the live socket", () => {
         { id: "in.kick", tier: "rest", unit: "goalposts", unitSide: null },
         { id: "in.penalty", tier: "rest", unit: "coaching", unitSide: 7 },
         { id: "in.injury", tier: "rest", unit: "defense", unitSide: "" },
+        { id: "in.red-zone", tier: "rest", unit: "defense", unitSide: "Pats" },
         { id: "in.turnover", tier: "rest", unit: null, unitSide: "CHI" },
         { id: "in.fourth-down", tier: "rest", unit: "coaching" },
       ])
