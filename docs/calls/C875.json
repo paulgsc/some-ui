@@ -8,7 +8,7 @@
     "server:apps/servers/file_host/src/essay_media.rs",
     "docs/snips.md"
   ],
-  "chose": "When home can't get a snips bundle (a commit with no successful run, a run whose one-day artifact has expired, or a bundle that doesn't check out), it marks the commit gone, naming the run, and refuses the essay `snip-gone`. Studio's failed log asks the owner to run Snips Capture again at that commit. Home never dispatches a run itself. A newer run, or a newer attempt of the same run, clears the mark. A failure that may clear on its own (a timeout, the drive) is only retried next pass.",
+  "chose": "When home can't get a snips bundle (a commit with no successful run, a run whose one-day artifact has expired, or a bundle that doesn't check out), it marks the commit gone, naming the run, and refuses the essay `snip-gone`. Studio's failed log asks the owner to capture that version again. Snips Capture is dispatched by branch or tag, so once main has moved past the commit, the owner needs a branch at it first. Home never dispatches a run itself. A newer run, or a newer attempt of the same run, clears the mark. A failure that may clear on its own (a timeout, the drive) is only retried next pass.",
   "options": [
     "Refuse and ask the owner to re-run Snips Capture (chosen): home's token stays Actions: read only.",
     "Home dispatches Snips Capture itself: no step for the owner, but the token needs Actions: write, which is the owner's call.",

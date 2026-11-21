@@ -70,8 +70,9 @@ every Residual Ledger `first_step` in those three parts, in that order (#2814, N
   taken from `docs/calls/` alone collided twice on Nov 21 (#3361).
 - Be the only writer of the ledger and of every epic body (#2823, #2833). A large body
   (#2074's is about 30 KB) is rewritten by a script that replaces whole sections, then
-  diffed to show nothing else moved and read back to confirm it matches; a worker leaves its
-  "Where we are" as a comment for the coordinator to fold in (#3197, #3361, Nov 21).
+  diffed to show nothing else moved and read back to confirm it matches. A worker sends its
+  "Where we are" lines to the coordinator (below, "Choir"), or, when it can reach the epic, leaves
+  them as a comment for the coordinator to fold in (#3197, #3361, Nov 21).
 - Copy session ids from the roster; never retype them (#2814, Nov 8).
 - Put the choir's protocol (below) in every brief.
 - Before briefing a story, check whether a reach is owed (`CLAUDE.md`, "When a reach is
@@ -219,6 +220,8 @@ default (owner, #2814 Nov 10; measurements on #2833).
   only on events (#2823).
 - Send a red check that isn't yours to the coordinator before any re-run (#2823).
 - Never merge. Send the coordinator `ready-to-merge <repo>#<n> <40-char sha>` (#2885).
+- Never arm auto-merge, and update your branch only when the coordinator says "your turn"
+  (#3197, Nov 21).
 - Never push to testing. Once the coordinator says merged, confirm, then send it your ledger
   lines, your "Where we are" lines and your session note's JSON (#2885, Nov 12).
 - Archive only once the coordinator confirms your note is in (SFEED9).

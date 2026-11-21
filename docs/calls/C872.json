@@ -2,11 +2,8 @@
   "id": "C872",
   "made": "2026-11-21",
   "by": "claude",
-  "paths": [
-    "server:crates/scenario_engine/src/rules.rs",
-    "server:apps/servers/file_host/src/reconcile.rs"
-  ],
-  "chose": "A game take's half is not stored. It is worked out when the take is read: from its matched play's quarter, or, with no match, from the latest quarter home had seen when the bite was said. That is the latest quarter by then, not the newest row's, which can be a revision of an older play.",
+  "paths": ["server:crates/db/voice/src/about.rs"],
+  "chose": "A game take's half is not stored. It is worked out when the take is read (period_seen_by in crates/db/voice/src/about.rs): from its matched play's quarter, or, with no match, from the latest quarter home had seen when the bite was said. That is the latest quarter by then, not the newest row's, which can be a revision of an older play.",
   "options": [
     "Work out the half when the take is read (chosen): nothing is stored, and a later match or a better reading of the log moves it.",
     "Store the half with the bite when it is taken: fixed once kept, and wrong whenever the match moves or the log is revised."

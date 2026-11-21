@@ -549,7 +549,7 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
     const snipMissing = failedLine(row("snip-missing"))
     const snipGone = failedLine(row("snip-gone"))
     const clipMissing = failedLine(row("clip-missing"))
-    expect(snipMissing).toMatch(/picture of the app that home couldn't get/)
+    expect(snipMissing).toMatch(/names a picture its capture holds/)
     // C875: the owner runs the capture again; home never does.
     expect(snipGone).toMatch(/Run Snips Capture again/)
     expect(clipMissing).toMatch(/a clip home doesn't have/)

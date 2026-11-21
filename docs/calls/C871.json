@@ -3,7 +3,7 @@
   "made": "2026-11-21",
   "by": "claude",
   "paths": [
-    "server:crates/scenario_engine/src/rules.rs",
+    "server:crates/game_scenarios/src/lib.rs",
     "server:crates/scenario_engine/tests/moments.rs"
   ],
   "chose": "In catalog v2's big-play algebra, a kick return counts as big from 40 yards, where every other kind (pass, run, punt, interception or fumble return) is big from 20 yards. A return is the returner's play, read off ESPN's text however it types the kickoff.",
@@ -13,6 +13,6 @@
     "Leave kick returns out of big plays: a long kick return is a real moment the owner would bite on."
   ],
   "gray": "The owner's D8 and D9 set the sizes (20, 40 and 60 yards) and kinds, but not whether a kick return's starting size differs. No check or earlier call settles what is ordinary for a kickoff.",
-  "undo": "Give kick returns the 20-yard size in the scenario engine's big-play reading and bump ENGINE_VERSION; bites already matched keep their stored match.",
+  "undo": "Lower Kind::least for kick returns to 20 yards in game_scenarios. The catalog dump publishes kinds[].least, so this is a catalog change: a new CATALOG_VERSION if the released one would change, an ENGINE_VERSION bump, and some-ui's packages/game-scenarios copy moving with it. Bites already matched keep their stored match.",
   "refs": ["#3048", "#2074", "server#1072"]
 }

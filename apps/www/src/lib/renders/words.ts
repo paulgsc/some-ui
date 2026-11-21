@@ -330,10 +330,10 @@ const ESSAY_REFUSAL_WORDS = {
   "take-unheard":
     "Home couldn't make out a recording a spoken card in it plays. It isn't made until the essay names one home heard.",
   "snip-missing":
-    "It shows a picture of the app that home couldn't get. It isn't made until home can fetch that picture.",
+    "It shows a picture of the app that home couldn't get. It isn't made until the essay names a picture its capture holds, and home can fetch it.",
   // C875: home never captures pictures itself; the owner runs it again.
   "snip-gone":
-    "It shows a picture of the app that GitHub no longer keeps. Run Snips Capture again at the same version, and home makes it then.",
+    "It shows pictures of the app from a capture home can't get, gone or never made. Run Snips Capture again on a branch at the essay's version, and home makes it then.",
   "clip-missing":
     "It shows a clip home doesn't have. It isn't made until the essay names a clip home keeps.",
 } as const satisfies Record<EssayRefusal, string>
