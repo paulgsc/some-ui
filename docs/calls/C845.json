@@ -1,0 +1,18 @@
+{
+  "id": "C845",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "testing:cards/rust-rounds-how-it-works-2026-11-20.json",
+    "some-ui:apps/www/src/lib/studio-spoken/model.ts"
+  ],
+  "chose": "The showcase's spoken introduction (#3312) has three parts, each a question Kokoro asks and the owner's take answering it. The owner reads the first two from the script: who they are and why the video sounds synthetic, and what AI-generated means here. The third, why Rust Rounds, they say in their own words (an OWN WORDS part in Studio › Spoken's paste format). The first two make claims the record can check: that Kokoro runs on home, and what the authorship mark (ST16) records. The third is the owner's own story, so its prompt lines are the earlier worker's draft from run #3311, written as whole sentences so that flipping the part to Read in Studio still reads. That includes its stand-in phrase for LeetCode, \"an exam, the same for everyone\", for the owner to replace. The block was read into Studio › Spoken as card scmwpwxeg6nnym. The cut list that plays its takes reaches paulgsc/testing only once the coordinator pushes it.",
+  "options": [
+    "two parts read, the third in the owner's own words (taken)",
+    "all three read, as the earlier draft had it",
+    "all three in the owner's own words"
+  ],
+  "gray": "Which answers the owner reads and which they say freehand is how the owner sounds on the showcase. #3312 says some scenes are read and some are in the owner's own words, without saying which.",
+  "undo": "In Studio › Spoken, flip card scmwpwxeg6nnym's part intro-why to Read and record a new take of it; then name that take in the cut list's third exchange, under a new key (C327).",
+  "refs": ["#3312", "#3311"]
+}
