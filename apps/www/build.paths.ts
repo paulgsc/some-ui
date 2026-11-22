@@ -326,6 +326,7 @@ const PAGES_MODULES: ReadonlyArray<string> = [
   "apps/www/src/lib/orchestrator/use-mock-orchestrator.ts",
   "apps/www/src/lib/purpose/index.ts",
   "apps/www/src/lib/resume-options.ts",
+  "apps/www/src/lib/resume-templates.ts",
   "apps/www/src/lib/route-bounds/index.ts",
   "apps/www/src/lib/site-map/index.ts",
   "apps/www/src/lib/study-nudge/index.ts",
