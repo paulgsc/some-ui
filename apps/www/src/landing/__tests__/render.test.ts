@@ -60,7 +60,7 @@ describe("renderLanding", () => {
     const media = new Set([PHOTO, clip.clip, still.visual])
     const shown = renderLanding(resume, mochiSvg(), LANDING_WORDS, media)
     expect(shown).toContain(
-      `<video class="media" src="${SITE_BASE}media/${clip.clip}" autoplay muted loop playsinline`
+      `<video class="media" src="${SITE_BASE}media/${clip.clip}" autoplay muted loop playsinline controls`
     )
     expect(shown).toContain(
       `<img class="media" src="${SITE_BASE}media/${still.visual}"`

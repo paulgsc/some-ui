@@ -42,7 +42,7 @@ const projectCard = (p: ProjectWords, media: ReadonlySet<string>): string => `
           <figure class="clip" data-slot="clip" data-asset="${e(p.clip)}">
             ${
               media.has(p.clip)
-                ? `<video class="media" src="${mediaSrc(p.clip)}" autoplay muted loop playsinline preload="metadata" aria-label="${e(p.title)}"></video>`
+                ? `<video class="media" src="${mediaSrc(p.clip)}" autoplay muted loop playsinline controls preload="metadata" aria-label="${e(p.title)}"></video>`
                 : `<div class="title-card title-card--${e(p.id)}" aria-hidden="true">${e(p.title)}</div>`
             }
           </figure>

@@ -81,7 +81,7 @@ export const WINGS: ReadonlyArray<Wing> = [
       job: "Study, reflect, and pick up where you left off",
       purpose: "study",
     },
-    // Nothing published: the public site carries no study screen (C1055).
+    // Nothing published: the public site carries no study screen (C1055, C1060).
     exposure: {
       private: "your sessions and reflections, which stay yours",
     },
@@ -118,8 +118,8 @@ export const WINGS: ReadonlyArray<Wing> = [
       // A run read on a sample digest: how the routine works, shown.
       purpose: "presentation",
     },
+    // Nothing published: the sample run left the public site (C1055, C1060).
     exposure: {
-      published: "how the run works, on a sample digest",
       private: "the real digests and how each application went",
     },
   },
