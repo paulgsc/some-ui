@@ -39,6 +39,10 @@ export const UNMEASURED: ReadonlyArray<Unmeasured> = [
     why: "What waits on the owner (docs/asks.md): a desk to decide and tick off steps at, and copy a receipt from, not an offer.",
   },
   {
+    route: "/asks/$view",
+    why: "One kind of ask, or every ask counted by call and by who waits, at the same desk: not an offer.",
+  },
+  {
     route: "/burn-ins",
     why: "A preview of what every video carries, on sample data, and the recorder's page.",
   },

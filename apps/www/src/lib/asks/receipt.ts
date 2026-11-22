@@ -15,7 +15,7 @@ import type { AskFile, ChecklistAsk, DecisionAsk } from "@some-ui/video-render"
 import { z } from "zod"
 
 import { blankSecrets } from "./blank"
-import type { OpenAsk } from "./model"
+import type { AskIssue } from "./model"
 
 export const RECEIPT_SCHEMA = "some-ui.ask-receipt/1"
 
@@ -169,7 +169,7 @@ export function left(ask: AskFile, receipt: Receipt): ReadonlyArray<string> {
 
 /** The text one button copies: the ask, what was done, and what is left. */
 export function receiptText(
-  open: OpenAsk & { readonly ask: AskFile },
+  open: AskIssue & { readonly ask: AskFile },
   receipt: Receipt
 ): string {
   return JSON.stringify(

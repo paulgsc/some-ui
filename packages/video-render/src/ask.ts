@@ -7,10 +7,13 @@
  *
  * ```json ask
  * {
- *   "schema": "some-ui.ask/2",
+ *   "schema": "some-ui.ask/3",
  *   "kind": "decision",
  *   "question": "Who answers between turns of a conversation?",
  *   "whyYours": "It decides what the conversation is: a product call.",
+ *   "waits": "claude",
+ *   "call": "story",
+ *   "unblocks": "the conversation's next stories (TALK3, TALK6, TALK9)",
  *   "options": [
  *     { "says": "A live model", "unblocks": "TALK3, TALK6 and TALK9" },
  *     { "says": "A scripted reply", "unblocks": "TALK3 only" }
@@ -20,9 +23,13 @@
  * }
  * ```
  *
- * A `checklist` ask carries `steps` (each with what to do, where, and what
- * to paste back) and what finishing them `unblocks`, in place of options.
- * The desktop web's Asks page (`apps/www`, `lib/asks`) lists both kinds.
+ * Every ask says, whatever its kind, who `waits` on it, which kind of
+ * `call` it is, and what answering it `unblocks` (C1200). Its kind's own
+ * part is the only one that differs: a decision's `options`, a
+ * `checklist`'s `steps` (each with what to do, where, and what to paste
+ * back). A block filed before `/3` still reads, with what it never said
+ * (`waits`, `call`, a decision's `unblocks`) as `null`: unclassified.
+ * The desktop web's Asks page (`apps/www`, `lib/asks`) lists every kind.
  *
  * The weekly run's facts (`render call-facts`) carry every open ask, read
  * or refused with why, under its id in the call (`askId`); the agent that
@@ -38,11 +45,32 @@ import { words } from "./format"
 import { OptionSchema, RefSchema, WORK_REPOS } from "./refs"
 import type { Repo, WorkRepo } from "./refs"
 
-/** The schema an ask is filed in: a decision or a checklist, by `kind`. */
-export const ASK_SCHEMA = "some-ui.ask/2"
+/** The schema an ask is filed in: its shared part, and its kind's. */
+export const ASK_SCHEMA = "some-ui.ask/3"
 
-/** The first schema, a decision alone, still read (open asks carry it). */
+/** The second schema, kinds without the shared part, still read. */
+export const ASK_SCHEMA_V2 = "some-ui.ask/2"
+
+/** The first schema, a decision alone, still read. */
 export const ASK_SCHEMA_V1 = "some-ui.ask/1"
+
+/** Who is held up until the ask is answered. */
+export const ASK_WAITS = ["claude", "pipeline", "home"] as const
+
+export type AskWaits = (typeof ASK_WAITS)[number]
+
+/** The kinds of call an ask is, in the owner's own list (#3425). */
+export const ASK_CALLS = [
+  "architecture",
+  "mechanical",
+  "hardware",
+  "software",
+  "environment",
+  "story",
+  "idiom",
+] as const
+
+export type AskCall = (typeof ASK_CALLS)[number]
 
 /** The label every ask issue carries. */
 export const ASK_LABEL = "ask"
@@ -55,6 +83,17 @@ const asked = {
   /** The epic, stories and pull requests it is about. */
   refs: z.array(RefSchema).default([]),
 }
+
+/** What `/3` adds to every kind: who waits, the kind of call, what it frees. */
+const shared = {
+  waits: z.enum(ASK_WAITS),
+  call: z.enum(ASK_CALLS),
+  /** What answering it lets go ahead, in the owner's words. */
+  unblocks: words,
+}
+
+/** What a block filed before `/3` never said: unclassified. */
+const UNSAID = { waits: null, call: null } as const
 
 /** A decision: the options the owner chooses between. */
 const decision = {
@@ -90,8 +129,6 @@ const STEPS_MOST = 12
 const checklist = {
   ...asked,
   steps: z.array(StepSchema).min(1).max(STEPS_MOST),
-  /** What finishing every step lets go ahead. */
-  unblocks: words,
 }
 
 const recommendsListed = (ask: {
@@ -111,6 +148,12 @@ const RECOMMENDS = {
 }
 const SAME = { message: "two options say the same", path: ["options"] }
 
+const stepsDiffer = (ask: {
+  readonly steps: ReadonlyArray<{ readonly says: string }>
+}): boolean => new Set(ask.steps.map((s) => s.says)).size === ask.steps.length
+
+const SAME_STEPS = { message: "two steps say the same", path: ["steps"] }
+
 /** A `some-ui.ask/1` block: a decision before kinds, read as one. */
 const AskV1Schema = z
   .strictObject({ schema: z.literal(ASK_SCHEMA_V1), ...decision })
@@ -120,14 +163,49 @@ const AskV1Schema = z
     schema: ASK_SCHEMA,
     kind: "decision" as const,
     ...ask,
+    ...UNSAID,
+    unblocks: null,
   }))
 
+/** A `some-ui.ask/2` block: kinds, before the shared part. */
 const AskV2Schema = z.discriminatedUnion("kind", [
+  z
+    .strictObject({
+      schema: z.literal(ASK_SCHEMA_V2),
+      kind: z.literal("decision"),
+      ...decision,
+    })
+    .refine(recommendsListed, RECOMMENDS)
+    .refine(optionsDiffer, SAME)
+    .transform(({ schema: _schema, ...ask }) => ({
+      schema: ASK_SCHEMA,
+      ...ask,
+      ...UNSAID,
+      unblocks: null,
+    })),
+  z
+    .strictObject({
+      schema: z.literal(ASK_SCHEMA_V2),
+      kind: z.literal("checklist"),
+      ...checklist,
+      unblocks: words,
+    })
+    .refine(stepsDiffer, SAME_STEPS)
+    .transform(({ schema: _schema, ...ask }) => ({
+      schema: ASK_SCHEMA,
+      ...ask,
+      ...UNSAID,
+    })),
+])
+
+/** A `some-ui.ask/3` block: the shared part, and its kind's. */
+const AskV3Schema = z.discriminatedUnion("kind", [
   z
     .strictObject({
       schema: z.literal(ASK_SCHEMA),
       kind: z.literal("decision"),
       ...decision,
+      ...shared,
     })
     .refine(recommendsListed, RECOMMENDS)
     .refine(optionsDiffer, SAME),
@@ -136,25 +214,29 @@ const AskV2Schema = z.discriminatedUnion("kind", [
       schema: z.literal(ASK_SCHEMA),
       kind: z.literal("checklist"),
       ...checklist,
+      ...shared,
     })
-    .refine(
-      (ask) => new Set(ask.steps.map((s) => s.says)).size === ask.steps.length,
-      { message: "two steps say the same", path: ["steps"] }
-    ),
+    .refine(stepsDiffer, SAME_STEPS),
 ])
 
-/**
- * An ask, of either kind; a `/1` block reads as a decision, so every ask
- * filed before kinds still reads. The kinds are one family (C1095): a new
- * kind is a member here, and every reader's `switch` on `kind` (the call's
- * `callOptionsOf`, the Asks page's receipt) fails to compile until it says
- * the new one. A block is checked against its own `schema` alone, so a
- * refusal says why.
- */
-const askSchemaOf = (raw: unknown): typeof AskV1Schema | typeof AskV2Schema =>
-  isRecord(raw) && raw.schema === ASK_SCHEMA_V1 ? AskV1Schema : AskV2Schema
+type AskSchema = typeof AskV1Schema | typeof AskV2Schema | typeof AskV3Schema
 
-export type AskFile = z.output<typeof AskV1Schema | typeof AskV2Schema>
+/**
+ * An ask, of any kind and schema; an earlier block reads as `/3` with what
+ * it never said as `null`, so every ask filed before still reads. The kinds
+ * are one family (C1095): a new kind is a member here, and every reader's
+ * `switch` on `kind` (the call's `callOptionsOf`, the Asks page's receipt)
+ * fails to compile until it says the new one. A block is checked against
+ * its own `schema` alone, so a refusal says why.
+ */
+function askSchemaOf(raw: unknown): AskSchema {
+  const schema = isRecord(raw) ? raw.schema : undefined
+  if (schema === ASK_SCHEMA_V1) return AskV1Schema
+  if (schema === ASK_SCHEMA_V2) return AskV2Schema
+  return AskV3Schema
+}
+
+export type AskFile = z.output<AskSchema>
 export type DecisionAsk = Extract<AskFile, { kind: "decision" }>
 export type ChecklistAsk = Extract<AskFile, { kind: "checklist" }>
 
