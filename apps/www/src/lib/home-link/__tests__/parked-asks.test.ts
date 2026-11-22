@@ -30,8 +30,8 @@
  *   (`laneReading`, `laneExchange`, a run turned away); the Jobs cards'
  *   journeys and the morning row, on Jobs and on the status board;
  *   Settings › Home's layout; the lane mark's sheet; the game outbox; idea
- *   hearing's reach and listener; the voice record's pairing port;
- *   ask-answer; the link's watchers (`kept-watch`, `practice-reads`,
+ *   hearing's reach and listener; the voice record's pairing port; the
+ *   link's watchers (`kept-watch`, `practice-reads`,
  *   `serves`, `standing`, `live`, the voice copy's gates); where a take is
  *   kept (`voiceKept`, every screen's take row through it, and My data's
  *   count, which says `unknown` places as not known yet and reads this
@@ -55,8 +55,7 @@
  *   Feedback (`lib/episode-feedback`), the journey and morning
  *   (`lib/jobs`), the Jobs screen, the status board, Settings › Home and the
  *   lane mark's sheet (each with the read held, then ending both ways), a
- *   run turned away and `laneExchange` (`./kept.test.ts`), ask-answer, idea
- *   hearing, the voice record, the game outbox's words, where a take is
+ *   run turned away and `laneExchange` (`./kept.test.ts`), idea hearing, the voice record, the game outbox's words, where a take is
  *   kept and `whenPlacesKnown` (`./voice-send.test.ts`), My data's re-read
  *   (`lib/my-data`'s runtime test), `pairedOf` and the unknown place's words
  *   (voice-capture's `not-known.test.ts`), and soundbites' Studio and

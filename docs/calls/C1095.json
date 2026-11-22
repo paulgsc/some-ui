@@ -1,0 +1,23 @@
+{
+  "id": "C1095",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/ask.ts",
+    "packages/video-render/CALL-ROUTINE.md",
+    "apps/www/src/lib/asks",
+    "apps/www/src/components/asks",
+    "apps/www/src/routes/_dashboard/_lan/asks.tsx",
+    "docs/asks.md"
+  ],
+  "chose": "Reach for the owner's checklists of steps only they can take (a key, a secret, a setting), ticked off with a result pasted per step into a receipt they copy to a session. Inward first: the ask family already holds what waits on the owner (an issue labelled `ask` with one ```json ask block, read by `parseAskBody`, the weekly call and, until now, the phone's Studio), so a checklist is a second kind of that family, not a new store: `some-ui.ask/2` is a union on `kind` (decision, checklist), and a `/1` block reads as a decision. Rung 1, GitHub's own task lists (`- [ ]` in the issue body), was tried in spirit by #3423 and falls short on what is ours: a tick on GitHub publishes it on a public issue, there is nowhere to paste a log without publishing it (and a log can carry a secret), and nothing hands a session one receipt of what was done. Rung 2, a self-hosted checklist tool on home (Vikunja, Planka, Wekan, Nextcloud Deck), would hold a second copy of each ask beside its issue with a sync to keep them in step, and asks the owner to run and sign in to another service on home, with no evidence of a pain point that the issue alone doesn't cover. Rung 3, built as the gap only: a page on the home network's desktop web that reads the open ask issues it already read on the phone, draws each kind, and keeps a receipt in the tab. The part that is ours: the receipt stays out of every third party and out of the public record, and lands in the coordinator session by one copy.",
+  "options": [
+    "use: GitHub issue task lists, ticked on the issue",
+    "fold in: a self-hosted checklist or kanban tool on home, synced with the ask issues",
+    "build the gap: a checklist kind of the ask family, and a private page over it with a receipt kept in the tab (taken)",
+    "build a new store: checklists as their own records on home, apart from asks"
+  ],
+  "gray": "No check or earlier call settles where the owner's one-time setup steps live or how what they did reaches a session; the owner named the pattern (a checklist, a JSON receipt to paste) and left the mechanism open.",
+  "undo": "Drop the checklist member from AskFileSchema (keeping /2 decisions), delete lib/asks' receipt, kept and blank modules, components/asks and the _lan/asks route, and the site-map entry; file checklists as decisions or prose again.",
+  "refs": ["#3423", "#2731", "#2746"]
+}

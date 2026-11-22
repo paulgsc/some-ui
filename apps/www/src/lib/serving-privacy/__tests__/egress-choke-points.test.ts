@@ -160,8 +160,7 @@ const HOME_LINK_CALLERS = new Set([
   // home for a take's words while the screen shows it being heard; and a new
   // idea's screen (ST26, `ideaHome`), which reads whether the phone is paired
   // and how the voice lane's last run ended, and listens for either
-  // changing, asking home nothing; and an ask's spoken answer (SFEED5), which
-  // reads the pairing and hears its take through the same listener.
+  // changing, asking home nothing.
   "lib/idea-hearing/index.ts",
   // LA8 (RR13): Rust Rounds' week, which reads whether the phone is paired
   // (`ideaHome`) and asks home once per opening for the words of each take

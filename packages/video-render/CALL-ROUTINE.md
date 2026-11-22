@@ -58,6 +58,11 @@ up to 14 days.
    - **asks:** every open ask that parses: first those filed this week,
      newest first, then the rest by how much each unblocks. An ask that
      doesn't parse is named in the PR body, never guessed.
+     An ask is a decision or a checklist (its `kind`). A decision is said
+     with its own options. A checklist is said with how many steps it has
+     and what they are for, in `said`, and two options: "Done", unblocking
+     its `unblocks`, and "Not yet", unblocking nothing; "Done" is
+     recommended.
    - **later:** every owner item from the ledger's `first_step` "Yours:"
      lines that has no ask yet.
    - Each `said` is plain, spoken English, a few sentences, in the owner's

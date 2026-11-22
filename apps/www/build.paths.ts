@@ -146,7 +146,6 @@ const SPEECH_ENTRY = "packages/speech/dist/@some-ui/speech"
 const DEVICE_MODULES = [
   `${SPEECH_ENTRY}/native.es.js`,
   "apps/www/src/lib/agent-export/**",
-  "apps/www/src/lib/ask-answer/**",
   "apps/www/src/lib/drive-filing/**",
   "apps/www/src/lib/engagement-places/**",
   "apps/www/src/lib/episode-feedback/**",
@@ -204,7 +203,6 @@ const DEVICE_MODULES = [
   "apps/www/src/components/studio/episodes-by-week.tsx",
   "apps/www/src/components/studio/genre-thumbs.tsx",
   "apps/www/src/components/video-fetch.tsx",
-  "apps/www/src/components/studio/ask-answer.tsx",
   "apps/www/src/components/studio/clip-frames.tsx",
   "apps/www/src/components/studio/renders.tsx",
   "apps/www/src/components/studio/take-conveyor.tsx",
@@ -359,7 +357,7 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
     {
       modules: ["packages/video-render/src/pending.ts"],
       profiles: [MOBILE_PROFILE],
-      why: "the ref a spoken answer to an ask is kept under on home (`answerRef`, SFEED5): only the Android app's Studio records one (src/lib/ask-answer). The reflections routine reads the same module from the repo, outside any build",
+      why: "what the reflections routine files from Studio's takes (`toFile`, SFEED5): no build imports it since asks left the phone (C1097), and none should. The routine reads the same module from the repo, outside any build",
     },
     {
       modules: ["packages/video-render/src/feedback.ts"],

@@ -186,6 +186,7 @@ export const ROOMS: ReadonlyArray<Room> = [
   // front page (`lib/site-map`), not a sidebar, since Operate's web side is
   // making and the `lan` build offers administration.
   { id: "home-switches", wing: "operate", roots: ["/home-switches"] },
+  { id: "asks", wing: "operate", roots: ["/asks"] },
   {
     id: "resume-build",
     wing: "operate",

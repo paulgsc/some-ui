@@ -66,6 +66,7 @@ describe("the site launcher", () => {
     expect(openTiles()).toEqual([
       "/assurance",
       "/home-switches",
+      "/asks",
       "/extensions",
       "/mission",
     ])
@@ -73,11 +74,11 @@ describe("the site launcher", () => {
   })
 
   it("marks a LAN tool as needing a passkey until the account is the authority", async () => {
-    // Home's switches, the one LAN page the home network offers.
+    // Home's switches and Asks, the LAN pages the home network offers.
     const signedOut = await load({ audiences: ["public", "lan", "web"] })
     render(<signedOut.SiteLauncher />)
     openTiles()
-    expect(screen.getAllByText("Passkey")).toHaveLength(1)
+    expect(screen.getAllByText("Passkey")).toHaveLength(2)
     cleanup()
 
     const signedIn = await load({

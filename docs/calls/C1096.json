@@ -1,0 +1,21 @@
+{
+  "id": "C1096",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/asks/kept.ts",
+    "apps/www/src/lib/asks/blank.ts",
+    "apps/www/src/lib/asks/receipt.ts",
+    "docs/learner-data-authority.md"
+  ],
+  "chose": "What the owner ticks, chooses and pastes on Asks is kept in that browser tab's sessionStorage only: a reload keeps the place, closing the tab lets it go, and nothing is sent to GitHub, home or anywhere else; it leaves only when the owner copies the receipt. A pasted result is blanked before it is kept (known token shapes, a value set to a name that says token, secret, password or key, a private key, and long runs of mixed-case letters with digits, or hex of 32 characters or more other than a commit's 40 or a digest's 64). The receipt only grows: a step done twice is two entries, and the last choice stands.",
+  "options": [
+    "the tab's sessionStorage, blanked before it is kept (taken)",
+    "localStorage, so a half-done checklist survives closing the browser, pruned once the ask closes",
+    "kept on home, beside the owner's other records",
+    "memory only: a reload starts over"
+  ],
+  "gray": "A pasted log can carry a secret, and the owner said what they paste must reach a session; how long the browser keeps it and what is blanked is a trade between losing a half-done checklist and keeping a secret on disk, which no check settles.",
+  "undo": "Point tabReceipts at window.localStorage (and prune receipts of asks no longer open after a read), or drop the blanking patterns that get in the way.",
+  "refs": ["#3423"]
+}
