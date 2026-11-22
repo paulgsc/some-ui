@@ -41,6 +41,12 @@ const SHELVES: ReadonlyArray<Shelf> = [
   "purpose",
 ]
 
+/** The by-class endings' forms after 았, 었 and 겠: 좋았는데, 갔다면. */
+const BY_CLASS_AFTER_TENSE = new Map<string, string>([
+  ["conn.neunde.contrast", "는데"],
+  ["conn.damyeon.condition", "다면"],
+])
+
 const entries = CONSTRUCTION_IDS.map((id) => [id, CONSTRUCTIONS[id]] as const)
 
 describe("the construction catalogue", () => {
@@ -78,14 +84,17 @@ describe("the construction catalogue", () => {
     }
   })
 
-  it("after -았/었- and -겠-, takes the form a consonant takes", () => {
-    // After 았, 었 and 겠 an ending meets a consonant, and harmony goes dark.
+  it("after -았/었- and -겠-, takes the 어 form or the after-consonant form", () => {
+    // 았, 었 and 겠 end in a consonant, and are always followed by the 어 form.
     for (const [id, { attach, constraints }] of entries) {
       if (constraints.before === null) continue
-      if (attach.kind === "harmony")
-        expect(constraints.before.ending, id).toBe(attach.dark)
-      if (attach.kind === "batchim")
-        expect(constraints.before.ending, id).toBe(attach.afterConsonant)
+      const expected = {
+        harmony: attach.kind === "harmony" ? attach.dark : undefined,
+        batchim: attach.kind === "batchim" ? attach.afterConsonant : undefined,
+        plain: attach.kind === "plain" ? attach.ending : undefined,
+        "by-class": BY_CLASS_AFTER_TENSE.get(id),
+      }[attach.kind]
+      expect(constraints.before.ending, id).toBe(expected)
     }
   })
 

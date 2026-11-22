@@ -12,8 +12,9 @@
  *
  * Every field is required, so an entry that forgets a constraint does not
  * compile. The constraints are the ones conjugation (KP2) applies to a split:
- * which stems an ending takes, whether the past and -겠- may come before it
- * and its form after them, and what the clause after it must or must not be. A rule no code can apply yet (that
+ * which stems an ending takes, whether the past and -겠- may come before
+ * it and its form after them, and what the clause after it must or must
+ * not be. A rule no code can apply yet (that
  * -느라고's outcome is usually unwanted) is written in `neighbours`, as what
  * tells it from another ending, not as a constraint.
  *
