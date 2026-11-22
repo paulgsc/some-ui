@@ -81,6 +81,21 @@ describe("renderLanding", () => {
     expect(page).toContain(`d="${MOCHI_BODY}"`)
   })
 
+  it("moves only the mochi's own named parts (C1186)", () => {
+    const template = readFileSync(
+      join(import.meta.dirname, "../../../landing/index.html"),
+      "utf8"
+    )
+    const moved = [
+      ...new Set(
+        [...template.matchAll(/\[data-part="([a-z-]+)"\]/g)].map((m) => m[1])
+      ),
+    ]
+    expect(moved.length).toBeGreaterThan(0)
+    for (const part of moved)
+      expect(mochiSvg()).toContain(`data-part="${part}"`)
+  })
+
   it("shows the show, then each gap under its own title, with a slot each", () => {
     const projects = page.indexOf(escapeHtml(LANDING_WORDS.projectsTitle))
     const gaps = page.indexOf(escapeHtml(LANDING_WORDS.gapsTitle))
@@ -302,12 +317,13 @@ describe("renderLanding", () => {
     // The block ends where the next top-level rule starts.
     const end = css.indexOf("\n      }\n", start)
     const outside = css.slice(0, start) + css.slice(end)
-    // Outside the wide block nothing is set moving: the only transform is
-    // the breathing keyframe's, which only the wide block runs.
-    expect(outside).not.toMatch(/\banimation(-name)?:/)
-    expect(
-      outside.match(/(^|\s)transform:[^;]*/gm)?.map((t) => t.trim())
-    ).toEqual(["transform: scale(1.015)"])
+    // Outside the wide block nothing is set moving or turned: transforms
+    // live only in keyframes, which only the wide block runs.
+    const keyframes = /@keyframes [a-z-]+ \{(?:[^{}]*\{[^{}]*\})*\s*\}/g
+    const rules = outside.replace(keyframes, "")
+    expect(outside.match(keyframes)?.length).toBeGreaterThan(0)
+    expect(rules).not.toMatch(/\banimation(-name)?:/)
+    expect(rules).not.toMatch(/(^|\s)transform:/m)
     // A slot's clip or still is never cropped and never something to click.
     expect(css).toMatch(
       /\.media\s*\{[^}]*object-fit:\s*contain;[^}]*pointer-events:\s*none;/

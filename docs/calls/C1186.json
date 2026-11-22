@@ -1,0 +1,18 @@
+{
+  "id": "C1186",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "packages/some-styles/src/brand/cast.ts",
+    "apps/www/landing/index.html"
+  ],
+  "chose": "The mochi in the landing's photo slot comes alive, as the owner asked after previewing the show (\"how complex is it to give it like some lifelike effect, like maybe a blink, a subtle blink, or smile, or like vibration of like the antennas? Not often, like in a cycle, but very subtle ... and also makes it feel like it's in a 3D world. Only if it's cheap to do.\"). It was cheap: the cast now groups and names the mochi's eyes and each antenna (data-part), which draws nothing (its raster is pixel for pixel the same, so the videos' thumbnails don't change), and the landing's CSS moves them: a blink every 9 s, the antennas swaying for a second or so every 11 s, and a slow lean about Y over 16 s. Like the show, it moves only on a wide screen with motion allowed, so the phone stays as it was, and it runs no script. No smile: the mouth is one path, and moving it would mean a second mouth drawn into the cast.",
+  "options": [
+    "blink, antenna sway and a slow lean, on a wide screen with motion allowed",
+    "the same on every screen that allows motion",
+    "a blink alone"
+  ],
+  "gray": "How often and how much the mochi moves, and on which screens, are on the screen; no check or earlier call settles them.",
+  "undo": "Drop the .photo rules and the mochi-* keyframes from landing/index.html; the data-part groups in cast.ts can stay, as they draw nothing.",
+  "refs": ["#3401", "#3436"]
+}
