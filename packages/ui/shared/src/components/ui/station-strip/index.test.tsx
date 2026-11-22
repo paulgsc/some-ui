@@ -55,3 +55,34 @@ describe("StationStrip", () => {
     )
   })
 })
+
+describe("StationStrip, picked from", () => {
+  it("makes each station a button that picks it, the picked one pressed", () => {
+    const picks: Array<string> = []
+    render(
+      <StationStrip
+        label="Where it is"
+        stations={STATIONS}
+        at="oven"
+        picked="ready"
+        onPick={(id) => picks.push(id)}
+        small
+      />
+    )
+    const buttons = screen.getAllByRole("button")
+    expect(buttons.map((b) => b.getAttribute("aria-label"))).toEqual([
+      "In line",
+      "In the oven",
+      "Ready for pickup",
+    ])
+    expect(buttons[2]?.getAttribute("aria-pressed")).toBe("true")
+    buttons[0]?.click()
+    expect(picks).toEqual(["line"])
+    // Small: the names are the buttons' labels, not text on the line.
+    expect(screen.getAllByRole("listitem").map((i) => i.textContent)).toEqual([
+      "",
+      "",
+      "",
+    ])
+  })
+})

@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   Sparkles,
   ToggleRight,
+  TrainFront,
   Trophy,
 } from "lucide-react"
 
@@ -38,6 +39,7 @@ export type Destination = {
     | "/resume-build"
     | "/home-switches"
     | "/asks"
+    | "/cooking"
   readonly title: string
   readonly blurb: string
   readonly icon: LucideIcon
@@ -112,6 +114,17 @@ const DESTINATIONS: ReadonlyArray<Destination> = [
     purpose: "administration",
     launcher: "running",
   },
+  {
+    to: "/cooking",
+    title: "Cooking",
+    blurb:
+      "What Claude is working on, as trains on their way to what I want, each stop saying who it waits on.",
+    icon: TrainFront,
+    audience: "lan",
+    purpose: "administration",
+    launcher: "running",
+  },
+
   {
     to: "/lessons",
     title: "Lessons",
