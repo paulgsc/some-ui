@@ -372,6 +372,9 @@ jobs:
         if: contains(fromJSON(needs.changes.outputs.e2e), 'local_mode')
         run: |
           nix develop .#ci --command pnpm turbo build --filter=www... --concurrency=100%
+          # The landing the Pages build reads (vite.config.ts, `landingPage`),
+          # rendered here: a turbo cache hit above would not leave it behind.
+          nix develop .#ci --command pnpm --filter www exec node render-landing.ts
           nix develop .#ci --command env \
             SOME_UI_PROFILE=pages VITE_STATIC_DATA=true VITE_BASE_PATH=/some-ui/ \
             pnpm --filter www exec vite build --outDir dist-pages --emptyOutDir

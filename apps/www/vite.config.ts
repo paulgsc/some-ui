@@ -1,7 +1,6 @@
 import { execFileSync } from "node:child_process"
 import fs from "node:fs"
 import { resolve } from "node:path"
-import { resumeData } from "@some-ui/resume"
 import { createStylePlugins } from "@some-ui/styles/styles-build/dev-config"
 import { tanstackRouter } from "@tanstack/router-plugin/vite"
 import viteReact from "@vitejs/plugin-react"
@@ -22,8 +21,8 @@ import {
   isBlockedProxyPath,
   resolveFileHostTarget,
 } from "./file-host.dev.ts"
-import { mochiSvg } from "./src/landing/mochi.ts"
-import { renderLanding, renderLandingHead } from "./src/landing/render.ts"
+import type { RenderedLanding } from "./src/landing/output.ts"
+import { LANDING_FILE } from "./src/landing/output.ts"
 import {
   OLD_WEBVIEW_PAGE,
   oldWebViewPage,
@@ -230,13 +229,41 @@ function pagesConnectPolicy(): Plugin {
 }
 
 // The public site's front page (PAGES, #3401; C1055): under the Pages profile
-// only, landing/index.html is a second HTML entry, filled at build time from
-// the résumé's data (src/landing/render.ts) and written as the output's
+// only, landing/index.html is a second HTML entry, filled with what
+// render-landing.ts rendered from the résumé's data (`LANDING_FILE`), and
+// written as the output's
 // index.html. The app's shell moves to 404.html, the fallback GitHub Pages
 // serves for every other path, so the app's routes open as they did. Every
 // other profile keeps the app at index.html and builds no landing.
 function isPagesBuild(): boolean {
   return process.env.SOME_UI_PROFILE === "pages"
+}
+
+/**
+ * The landing render-landing.ts rendered (the www build runs it
+ * before vite). Read from a file rather than rendered here, so this config,
+ * which every build loads, imports nothing of the résumé's: the recording
+ * stage's walk (scripts/stage-packages.ts, RI3) reads its imports.
+ */
+function readRenderedLanding(): RenderedLanding {
+  const file = resolve(import.meta.dirname, LANDING_FILE)
+  if (!fs.existsSync(file)) {
+    throw new Error(
+      `The Pages build needs the rendered landing (${LANDING_FILE}): node render-landing.ts, which the www build runs first.`
+    )
+  }
+  const parsed: unknown = JSON.parse(fs.readFileSync(file, "utf8"))
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    !("head" in parsed) ||
+    !("body" in parsed) ||
+    typeof parsed.head !== "string" ||
+    typeof parsed.body !== "string"
+  ) {
+    throw new Error(`${LANDING_FILE} is not a rendered landing`)
+  }
+  return { head: parsed.head, body: parsed.body }
 }
 
 function landingPage(): Plugin {
@@ -248,12 +275,10 @@ function landingPage(): Plugin {
     enforce: "post",
     transformIndexHtml(html, ctx): string {
       if (!ctx.filename.endsWith("landing/index.html")) return html
+      const { head, body } = readRenderedLanding()
       return html
-        .replace("<!--landing:head-->", renderLandingHead())
-        .replace(
-          "<!--landing:body-->",
-          renderLanding(resumeData.fullstack, mochiSvg())
-        )
+        .replace("<!--landing:head-->", head)
+        .replace("<!--landing:body-->", body)
     },
     generateBundle(_options, bundle): void {
       const app = bundle["index.html"]
