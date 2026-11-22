@@ -1,0 +1,18 @@
+{
+  "id": "C958",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/lifecycle.rs",
+    "server:docs/schema.md"
+  ],
+  "chose": "The reference rule is that no REFERENCES points at a subject-scoped table, not the Oct 31 branch's 'touches no subject'. cards_essay_video_deletion (subject-scoped, WALK7) names cards_essay, which a trigger keeps forever, so its rows still leave with their account and nothing waits on them. A reference that does not cascade must have an append-only parent carrying a trigger that aborts every DELETE; all 18 references do today.",
+  "options": [
+    "parent never subject-scoped, never-deleted parent required (taken)",
+    "neither end subject-scoped, which fails on main today",
+    "raise it as drift and stop"
+  ],
+  "gray": "Which shape of reference blocks no account deletion; the invariant was being written, not changed.",
+  "undo": "Tighten the check in every_declared_reference_is_listed_and_blocks_no_subjects_deletion to reject a scoped child too, and drop cards_essay_video_deletion's REFERENCES in a table rebuild.",
+  "refs": ["server#511", "server#1055"]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "C963",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/lifecycle.rs",
+    "server:docs/schema.md"
+  ],
+  "chose": "Main's two new tables are classified by what their code does. stage_want is State: each waiter's pass replaces its rows whole, and they also go with a take or the account; its migration calls it derived, but its source is this database, so not Corpus. voice_note_fast_track is AppendOnly, held by its own update-abort trigger. The fast-track delete in My data's delete is listed, not raised, because it is the same owner-ruled site.",
+  "options": [
+    "State and AppendOnly as the code does (taken)",
+    "stage_want as Ephemeral or Corpus",
+    "raise the fast-track delete as drift"
+  ],
+  "gray": "Which lifecycle a derived wait table has, and whether a new table joining an existing discard site needs a new ruling.",
+  "undo": "Change the two TABLE_LIFECYCLE rows, or drop the fast-track entry and let the test fail.",
+  "refs": ["server#511", "server#1090", "server#1091"]
+}
