@@ -71,7 +71,9 @@ const card = (
   size: MediaSize
 ): string => `
         <article class="card" data-slot="${slot}" data-asset="${e(key)}" style="${shape(size)}">
-          ${placeholder}${picture}
+          <div class="pic">
+            ${placeholder}${picture}
+          </div>
           <div class="overlay${slot === "still" ? " overlay--side" : ""} rise">${words}
           </div>
         </article>`

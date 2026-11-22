@@ -88,10 +88,15 @@ function tracks(
 export function mp4Size(bytes: Uint8Array): MediaSize | null {
   const video = tracks(bytes).find((t) => t.handler === "vide")
   if (video?.tkhd === undefined) return null
-  // tkhd ends with width and height, each a 16.16 fixed-point number.
-  const width = Math.round(u32(bytes, video.tkhd.end - 8) / 65536)
-  const height = Math.round(u32(bytes, video.tkhd.end - 4) / 65536)
-  return width > 0 && height > 0 ? { width, height } : null
+  // tkhd ends with its display matrix (nine 32-bit values) and then width
+  // and height, each 16.16 fixed point. A matrix whose first value is 0
+  // turns the picture a quarter, so it shows with its sides swapped.
+  const { end } = video.tkhd
+  const width = Math.round(u32(bytes, end - 8) / 65536)
+  const height = Math.round(u32(bytes, end - 4) / 65536)
+  if (width <= 0 || height <= 0) return null
+  const turned = u32(bytes, end - 44) === 0 && u32(bytes, end - 40) !== 0
+  return turned ? { width: height, height: width } : { width, height }
 }
 
 /** Whether an MP4 carries a sound track: the landing refuses one that does. */

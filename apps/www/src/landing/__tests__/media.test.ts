@@ -21,13 +21,23 @@ const box = (type: string, ...body: Array<Array<number>>): Array<number> => {
   return [...u32(8 + flat.length), ...text(type), ...flat]
 }
 
+/** A tkhd's matrix: the identity, or a quarter turn. */
+const IDENTITY = [0x10000, 0, 0, 0, 0x10000, 0, 0, 0, 0x40000000]
+const QUARTER = [0, 0x10000, 0, -0x10000 >>> 0, 0, 0, 0, 0, 0x40000000]
+
 /** A track of `handler`, its header ending in `width` x `height` (16.16 fixed). */
-const trak = (handler: string, width: number, height: number): Array<number> =>
+const trak = (
+  handler: string,
+  width: number,
+  height: number,
+  matrix: Array<number> = IDENTITY
+): Array<number> =>
   box(
     "trak",
     box(
       "tkhd",
-      new Array<number>(76).fill(0),
+      new Array<number>(40).fill(0),
+      matrix.flatMap(u32),
       u32(width * 65536),
       u32(height * 65536)
     ),
@@ -49,6 +59,11 @@ describe("mp4Size and mp4HasSound", () => {
     const vertical = mp4(trak("soun", 0, 0), trak("vide", 1080, 1920))
     expect(mp4Size(vertical)).toEqual({ width: 1080, height: 1920 })
     expect(mp4HasSound(vertical)).toBe(true)
+  })
+
+  it("read a clip turned a quarter by the shape it shows at", () => {
+    const turned = mp4(trak("vide", 1080, 1920, QUARTER))
+    expect(mp4Size(turned)).toEqual({ width: 1920, height: 1080 })
   })
 
   it("find no sound in a clip with only a picture", () => {
