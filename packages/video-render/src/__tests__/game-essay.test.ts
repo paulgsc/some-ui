@@ -379,7 +379,7 @@ describe("home's week file, as the essay files it (C1241, C1242)", () => {
     ).toEqual(["week: 2025-w53 is not a week of its year"])
   })
 
-  it("refuses a matched bite filed before or after the game, against its play's quarter", () => {
+  it("refuses a matched bite filed before the game, against its play's quarter", () => {
     const essay = sample()
     const [game] = essay.games
     const [first, ...rest] = game?.halves ?? []

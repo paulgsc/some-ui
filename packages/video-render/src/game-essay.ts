@@ -11,7 +11,7 @@
  * 1. `open`: the week, and the games it holds.
  * 2. For each game, the team it is read for's first (D3):
  *    - `game`: the game, its two teams and how it ended for the team;
- *    - `bite`, for each bite of the game in the order it was said: the one
+ *    - `bite`, for each bite of the game in each placement, in the order they were said: the one
  *      still of the game at the bite's moment, the host's setup, the bite in
  *      the owner's voice or read aloud (D5–D7), then the host's answer in
  *      the way its stance calls for (D21);
