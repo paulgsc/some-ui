@@ -5,6 +5,8 @@
  * Pure, so every answer's reading is tested without a link.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
+import { assertNever } from "@some-ui/core-utils"
+import type { ClipSide } from "@some-ui/video-render"
 
 /**
  * A frame comes as base64 (the phone's native request carries bytes so), and
@@ -32,3 +34,53 @@ export type FrameShown =
   | { readonly kind: "away" }
   /** This phone stayed busy with home, so it wasn't asked (#3155). */
   | { readonly kind: "busy" }
+
+/**
+ * Whether asking again could change what home answered for a frame of a
+ * side `made` so (#2895): a frame is home's for good, and so is one a
+ * session took and home didn't keep, since a session's frames are taken
+ * once; a walk's frame home may make later, and home away, busy or sending
+ * bytes that don't read may answer otherwise next time.
+ */
+export function settled(shown: FrameShown, made: ClipSide["made"]): boolean {
+  switch (shown.kind) {
+    case "frame": {
+      return true
+    }
+    case "not-taken": {
+      return made === "session"
+    }
+    case "unreadable":
+    case "unpaired":
+    case "away":
+    case "busy": {
+      return false
+    }
+    default: {
+      return assertNever(shown)
+    }
+  }
+}
+
+/** Whether home itself gave this answer, rather than not being reached. */
+const fromHome = (shown: FrameShown): boolean =>
+  shown.kind === "frame" ||
+  shown.kind === "not-taken" ||
+  shown.kind === "unreadable"
+
+/**
+ * `shown` with frame `at` as this read found it, the others as they were.
+ * Home not reached this time (away, busy, this phone unpaired) leaves what
+ * home last answered in place, so a frame that showed stays (HS1).
+ */
+export function placeFrame(
+  shown: ReadonlyArray<FrameShown>,
+  at: number,
+  frame: FrameShown
+): ReadonlyArray<FrameShown> {
+  const held = shown.at(at)
+  if (held !== undefined && fromHome(held) && !fromHome(frame)) return shown
+  const next = [...shown]
+  next[at] = frame
+  return next
+}
