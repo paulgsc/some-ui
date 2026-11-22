@@ -108,6 +108,36 @@ default (owner, #2814 Nov 10; measurements on #2833).
 - Merge the image or release bot PR last, so one publish carries every content PR (#2833,
   #2885).
 
+### Buckets: n reviewed branches, k pull requests (C1021)
+
+CI rarely finds what review missed: on Nov 21 every red check was a flake (#3374) or a pair's
+planned red, while review found every real fault. Under strict up-to-date, though, each merge puts
+every open PR behind, and each update is a full 15–35 minute round; at least six of Nov 21's
+rounds were merges of `main` with no content change. So a PR is opened for settled work, and
+several branches share one (owner, Nov 21, agreeing to C1021).
+
+- **Settle on the branch.** A branch has its fresh-context review, every fix, and its local
+  checks (CLAUDE.md "Pre-commit verification"; server's fmt, clippy ratchet, tests, `sqlx
+prepare`) before it reaches a PR. Review after a PR opens is for the merge delta only.
+- **One bucket per repo, lane and kind.** The coordinator merges settled worker branches into
+  `claude/bucket-<repo>-<n>` with merge commits (never squash or rebase there), so each
+  worker's commits and `Change-Kind`, `Promise`, `Relates` and `Call` trailers reach `main`
+  through the PR's squash (COMMIT_MESSAGES). Where two branches touch the same file, the
+  merge's resolution is reviewed as a delta before the bucket is pushed.
+- **Local checks on the bucket**, then one PR. Its body has one section per branch (what, its
+  review record, its Superseded) and "Calls I made" lists every branch's calls.
+- **A defect is never bucketed.** It carries its own proof, and "a change that is both a story
+  and a defect is two PRs" (CLAUDE.md).
+- **Small and timed.** Three to five branches; close a bucket when its last branch settles or
+  on the next timer, whichever comes first, so one slow branch never holds the rest. A branch
+  that misses the bucket waits for the next.
+- **Pairs ride as buckets.** One some-ui bucket carries every ledger entry, call and fixture
+  copy its server bucket needs, so the pair order (some-ui half first, then the server re-run)
+  is paid once per bucket.
+- **A red bucket** is fixed on the branch that broke it, merged into the bucket again; if that
+  branch can't be fixed this round, rebuild the bucket without it.
+- Fast-lane work that can't wait for a bucket may still go alone, by the coordinator's call.
+
 ### While running
 
 - While any PR is in CI, set a `send_later` timer about every 20 minutes and check every open
