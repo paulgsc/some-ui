@@ -1,0 +1,21 @@
+{
+  "id": "C1017",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:crates/db/voice/src/transcript.rs",
+    "server:apps/servers/file_host/src/transcribe/pass.rs",
+    "server:docs/shared-stages.md",
+    "server:docs/home-compute.md"
+  ],
+  "chose": "A note the owner marked fast that the queue's model has not tried yet is FastTrack: it is first among the least-tried, so at the head of the line, and the transcriber's pass does not give the lane its turn before it, for that one try. Once tried it is Wanted, behind every note tried fewer times, so TR1 (C895) holds literally; after a model bump, a marked note no model has heard is FastTrack again under the new model. The contention guard's excused note still gives way. The give's exception is one deadline per marked note per model within one run of file_host: the guard's streak is kept in memory, so a restart during an excused FastTrack try can grant it one more.",
+  "options": [
+    "FastTrack only while the queue's model has not tried it, one exception to the give per marked note per model (TR1 literal)",
+    "a mark re-arming on every re-mark, ahead of tried notes each time",
+    "order only, never passing the give"
+  ],
+  "gray": "It rests on the owner's ruling on server#1090 (2026-11-21): a fast-tracked take skips the give. Holding the head across retries would loosen TR1, which is the owner's call and the ledger's to amend.",
+  "undo": "Remove FastTrack's exemption in the pass; the note still sorts first among the least-tried.",
+  "refs": ["server#1090", "server#1091", "server#1100"],
+  "moves": "C899"
+}

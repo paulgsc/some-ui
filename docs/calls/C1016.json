@@ -1,0 +1,17 @@
+{
+  "id": "C1016",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:migrations/20261121000500_create_voice_note_fast_track.up.sql",
+    "server:crates/db/voice/src/fast_track.rs"
+  ],
+  "chose": "The owner's fast-track is an append-only record, voice_note_fast_track (subject_id, note_id, n, act fast|cancel, acted_at): one row per act, the newest act deciding, a repeat of the newest act writing nothing; an update aborts, and rows go with the note and with the account.",
+  "options": [
+    "append-only acts, the newest deciding",
+    "a mutable flag on the note"
+  ],
+  "gray": "Nothing is ever edited, so how often the owner marks and takes back stays visible; reads pick the newest act.",
+  "undo": "Stop reading it: drop the urgency CASE's marked term and the route. Keep the table and its rows, which are the owner's record.",
+  "refs": ["server#1090", "server#1091", "server#1100"]
+}
