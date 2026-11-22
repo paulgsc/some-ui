@@ -16,6 +16,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 
 /**
  * Home asked over each network the phone has, Wi-Fi first (#3411, NA2):
@@ -124,11 +126,17 @@ final class HomeRoutes {
                 break;
             }
             try {
-                routed.answer = send(network, request);
+                routed.answer = send(network, request, endsAt);
                 routed.over = network;
                 return routed;
+            } catch (NotConnected failed) {
+                // Nothing reached home over this one: the next may be asked.
+                routed.tried.add(kind + ": " + failed.getCause().getClass().getSimpleName() + " " + failed.getCause().getMessage());
             } catch (Exception failed) {
-                routed.tried.add(kind + ": " + failed.getClass().getSimpleName() + " " + failed.getMessage());
+                // The connection opened, so home may have the request: asking
+                // again could send it twice (a pairing's single-use code).
+                routed.tried.add(kind + ": " + failed.getClass().getSimpleName() + " " + failed.getMessage() + " (after connecting; not asked again)");
+                break;
             }
         }
         return routed;
@@ -154,9 +162,29 @@ final class HomeRoutes {
         String data;
     }
 
-    /** `request` over `network`, following no redirect; throws what the connection throws. */
-    static Answer send(Network network, Request request) throws IOException {
+    /** A connection that never opened: nothing of the request reached home. */
+    static final class NotConnected extends IOException {
+        NotConnected(IOException cause) {
+            super(cause);
+        }
+    }
+
+    /**
+     * `request` over `network`, following no redirect, and cut off at
+     * `endsAt` (SystemClock.uptimeMillis) however the answer trickles in.
+     * Throws NotConnected when the connection never opened, else what the
+     * connection throws.
+     */
+    static Answer send(Network network, Request request, long endsAt) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) network.openConnection(new URL(request.url));
+        // A read timeout bounds each stall, not the whole answer: this ends it.
+        Timer watchdog = new Timer("home-route-deadline", true);
+        watchdog.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                connection.disconnect();
+            }
+        }, Math.max(0, endsAt - SystemClock.uptimeMillis()));
         try {
             connection.setInstanceFollowRedirects(false);
             connection.setConnectTimeout(request.timeoutMs);
@@ -164,6 +192,11 @@ final class HomeRoutes {
             connection.setRequestMethod(request.method);
             for (Map.Entry<String, String> header : request.headers.entrySet()) {
                 connection.setRequestProperty(header.getKey(), header.getValue());
+            }
+            try {
+                connection.connect();
+            } catch (IOException never) {
+                throw new NotConnected(never);
             }
             if (request.body != null) {
                 connection.setDoOutput(true);
@@ -186,6 +219,7 @@ final class HomeRoutes {
                 : new String(read, StandardCharsets.UTF_8);
             return answer;
         } finally {
+            watchdog.cancel();
             connection.disconnect();
         }
     }
