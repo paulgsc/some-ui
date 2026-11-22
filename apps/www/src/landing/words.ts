@@ -18,10 +18,6 @@ export type ProjectWords = {
   readonly line: string
   /** The clip the slot will hold, by asset key. */
   readonly clip: string
-  readonly links: ReadonlyArray<{
-    readonly label: string
-    readonly href: string
-  }>
 }
 
 /** One gap card: one visual and one line on why. */
@@ -50,13 +46,9 @@ export type LandingWords = {
   readonly independentNote: string
   readonly skills: string
   readonly footerKeeps: string
-  readonly footerSource: string
-  readonly sourceHref: string
   readonly projects: ReadonlyArray<ProjectWords>
   readonly gaps: ReadonlyArray<GapWords>
 }
-
-const SOURCE = "https://github.com/paulgsc"
 
 export const LANDING_WORDS: LandingWords = {
   title: "Paul Gathondu, software engineer",
@@ -76,8 +68,6 @@ export const LANDING_WORDS: LandingWords = {
   skills:
     "Rust, TypeScript, React, Node.js, SQL, Python, Axum, Tokio, Redis, NATS, Docker, GitHub Actions, Grafana, Prometheus, Vitest, Playwright",
   footerKeeps: "This page keeps nothing about you.",
-  footerSource: "Source",
-  sourceHref: `${SOURCE}/some-ui`,
   projects: [
     {
       id: "extensions",
@@ -85,16 +75,6 @@ export const LANDING_WORDS: LandingWords = {
       stack: "TypeScript · Firefox and Chromium MV3",
       line: "Suspender Ledger keeps a site awake, then suspends a tab. Signed and reviewed by Mozilla (unlisted).",
       clip: "clips/extensions.mp4",
-      links: [
-        {
-          label: "Suspender Ledger's source",
-          href: `${SOURCE}/some-ui/tree/main/extensions/suspender-ledger`,
-        },
-        {
-          label: "All my extensions",
-          href: `${SOURCE}/some-ui/tree/main/extensions`,
-        },
-      ],
     },
     {
       id: "android",
@@ -102,9 +82,6 @@ export const LANDING_WORDS: LandingWords = {
       stack: "TypeScript · React · Capacitor · Rust → WebAssembly",
       line: "Study sessions, Rust practice rounds, a job search desk and a video studio, in one app.",
       clip: "clips/apk.mp4",
-      links: [
-        { label: "Source", href: `${SOURCE}/some-ui/tree/main/apps/mobile` },
-      ],
     },
     {
       id: "server",
@@ -112,7 +89,6 @@ export const LANDING_WORDS: LandingWords = {
       stack: "Rust · Axum · Tokio · SQLite · Redis · NATS · Grafana",
       line: "It runs on my home server, under its own dashboard: whether it's answering, how long it has been up, and what the rate limiter turns away.",
       clip: "clips/server.mp4",
-      links: [{ label: "Source", href: `${SOURCE}/server` }],
     },
   ],
   gaps: [

@@ -97,8 +97,14 @@ jobs:
             pnpm --filter @some-ui/video-render render sounds --out "$RUNNER_TEMP/brand/sounds"
           nix develop .#ci-playwright --command \
             pnpm --filter @some-ui/video-motion motion promo "$data" --out "$RUNNER_TEMP/promo" --brand "$RUNNER_TEMP/brand"
+          # The landing plays no sound (C1064): the picture alone, its sound
+          # track dropped, and refused if one is still there.
           mkdir -p "$RUNNER_TEMP/site-assets/clips"
-          cp "$RUNNER_TEMP/promo/video.mp4" "$RUNNER_TEMP/site-assets/clips/extensions.mp4"
+          clip="$RUNNER_TEMP/site-assets/clips/extensions.mp4"
+          nix develop .#ci-playwright --command \
+            ffmpeg -loglevel error -i "$RUNNER_TEMP/promo/video.mp4" -an -c:v copy -movflags +faststart "$clip"
+          sound="$(nix develop .#ci-playwright --command ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "$clip")"
+          if [ -n "$sound" ]; then echo "::error::$clip still has a sound track"; exit 1; fi
       # Retention: pages.yml reads the newest of this family at the next
       # deploy, which waits on an approval and can come weeks after this
       # push. 30 days outlives that gap; its family keeps one. Once it is

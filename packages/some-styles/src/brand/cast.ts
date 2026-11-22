@@ -447,6 +447,18 @@ export const escapeText = (value: string | number): string =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
 
+/**
+ * Character `who` as one standalone `<svg>` at `size`, its ground clear and
+ * its key light left out: how a drawing made outside React shows a
+ * character on its own ground (the thumbnails' "+ me", the public site's
+ * photo slot). Its gradients are named for `who`, so one per page.
+ */
+export const characterSvg = (who: Character, size: number): string =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${CAST_VIEW_BOX}" width="${String(size)}" height="${String(size)}">${nodesText(
+    castNodes(who, (name) => `${who}-${name}`),
+    { ground: "none", glow: false }
+  )}</svg>`
+
 /** How `nodesText` draws: the backdrop's paint, and whether the key light shows. */
 type TextOptions = { readonly ground: string; readonly glow?: boolean }
 
