@@ -18,8 +18,13 @@
  * `app_event::friction`), and so what this says: a stretch on a place ends
  * when it is left, so the app going to the back splits a step in two;
  * `movedOn` counts the stretches followed at once by a step on (or back, or
- * to the next item), and at an affordance's last place finishing and
- * leaving look the same, so there it is `no-data`.
+ * to the next item), and at an affordance's last place it is `no-data`.
+ * Since #3367 (the owner's answer: yes) a `left` may say the screen it went
+ * to (`next`), so a stretch that went to a screen outside its affordance is
+ * `finished` at the last place and `leftPartWay` at any other. Those count
+ * only the stretches that said where they went: where none in the window
+ * did (every row from a build before the field), both are `no-data`, and
+ * the walkthrough keeps saying moved on, never guessing.
  */
 
 import { addDays, isoWeekMonday } from "@some-ui/core-utils"
@@ -31,7 +36,7 @@ import { CountSchema, publicCount, UNDER } from "./engagement-report"
 import type { PublicCount } from "./engagement-report"
 import { HomeWeeksSchema } from "./engagement-report-video"
 
-export const FRICTION_SCHEMA = "some-ui.friction/2"
+export const FRICTION_SCHEMA = "some-ui.friction/3"
 
 /**
  * The days an aggregate looks back over: four weeks (C861, which allows
@@ -76,6 +81,10 @@ export const FrictionSchema = z.strictObject({
       stretchesLeft: CountSchema,
       /** Of those, the ones followed at once by a step on; `no-data` at the last place. */
       movedOn: CountSchema,
+      /** At the last place, the stretches that went on to another screen: the flow finished; `no-data` elsewhere, or where no stretch said where it went. */
+      finished: CountSchema,
+      /** At any other place, the stretches that went to a screen outside the affordance; `no-data` at the last place, or where no stretch said where it went. */
+      leftPartWay: CountSchema,
       /** A stretch's median time on it, in ms; null under 5 stretches. */
       medianMs: z.int().min(0).nullable(),
     })
@@ -251,19 +260,31 @@ export function frictionOf(
           const counts = (n: number): PublicCount =>
             measures.partial || !wasSeen ? noData : publicCount(n)
           const left = counts(row?.left ?? 0)
-          const moved = isLast ? noData : counts(row?.movedOn ?? 0)
-          // Said beside the stretches, a moved-on count would give away
-          // the stretches not moved on from, under 5 (ask #2701).
-          const hides =
+          // Said beside the stretches, a count of some of them would give
+          // away the rest, under 5 (ask #2701).
+          const beside = (n: PublicCount): PublicCount =>
             typeof left === "number" &&
-            typeof moved === "number" &&
-            left - moved < UNDER
+            typeof n === "number" &&
+            left - n < UNDER
+              ? noData
+              : n
+          const moved = isLast ? noData : counts(row?.movedOn ?? 0)
+          const nexts = row?.nexts ?? []
+          // Only the stretches that said where they went (#3367): a screen
+          // outside the affordance is never one of its own places.
+          const inside = new Set(own.map((p) => p.id))
+          const out = nexts
+            .filter((n) => !inside.has(n.next))
+            .reduce((sum, n) => sum + n.left, 0)
+          const went = nexts.length === 0 ? noData : counts(out)
           return {
             pipeline: pipeline.id,
             affordance: a.id,
             place: place.id,
             stretchesLeft: left,
-            movedOn: hides ? noData : moved,
+            movedOn: beside(moved),
+            finished: isLast ? beside(went) : noData,
+            leftPartWay: isLast ? noData : beside(went),
             medianMs: typeof left === "number" ? (row?.medianMs ?? null) : null,
           }
         })

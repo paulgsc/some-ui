@@ -15,6 +15,14 @@
  *   events and what is open after.
  * - **Runtime.** `createPlaces` holds what is open, and `watchPlaces` closes
  *   it while the page is hidden and opens it again when it is shown.
+ * - **Where it went (`next`, the owner's answer to #3367).** A move to
+ *   another of the affordance's places names it (`decide`). A screen closing
+ *   names the place that comes on screen next, in the same turn of the event
+ *   loop, with its affordance (`today.today`; the `Handoff` every runtime
+ *   shares): the next screen mounts as the last unmounts. A registry id has
+ *   no dot, so a `next` with one is always another screen's. Nothing comes on in that turn (a screen that
+ *   names no place, or one still loading), or the app went to the back: the
+ *   `left` carries no `next`, and home never guesses one.
  * - **A place's `taken` is the place coming on screen.** On an affordance a
  *   visit also takes (a pick opened from Jobs' Today), the visit's take and
  *   each place's are both `taken`: a read of takes per offer counts the
@@ -56,6 +64,7 @@ export function stepPlace<P extends string>(
       kind: "left",
       startedAt: open.since,
       place: open.place,
+      ...(now === null ? {} : { next: now }),
     })
   }
   if (now === null) return { open: null, events }
@@ -71,18 +80,79 @@ export type Places<P extends string> = {
   readonly hidden: (hidden: boolean) => void
 }
 
+type LeftEvent = Extract<EngagementEvent, { kind: "left" }>
+
+/**
+ * Where a closed screen's `left` waits for the screen that comes on next:
+ * `hold` keeps it until `enter` names the affordance whose place came on
+ * screen, or until the turn ends (`defer`), when it is sent as it is.
+ */
+export type Handoff = {
+  readonly hold: (
+    left: LeftEvent,
+    send: (event: EngagementEvent) => void
+  ) => void
+  readonly enter: (of: PlaceOf, place: string) => void
+}
+
+type Entered = { readonly of: PlaceOf; readonly place: string }
+
+/** The `left` held, gone to `to` (or nowhere known): `next` only within its pipeline and surface. */
+function wentTo(left: LeftEvent, to: Entered | null): LeftEvent {
+  return to !== null &&
+    to.of.pipeline === left.pipeline &&
+    to.of.surface === left.surface
+    ? { ...left, next: `${to.of.affordance}.${to.place}` }
+    : left
+}
+
+export function createHandoff(
+  defer: (run: () => void) => void = queueMicrotask
+): Handoff {
+  let held: Array<{
+    left: LeftEvent
+    send: (event: EngagementEvent) => void
+  }> = []
+  const flush = (to: Entered | null): void => {
+    const now = held
+    held = []
+    for (const { left, send } of now) send(wentTo(left, to))
+  }
+  return {
+    hold: (left, send): void => {
+      held.push({ left, send })
+      if (held.length === 1) defer(() => flush(null))
+    },
+    enter: (of, place): void => flush({ of, place }),
+  }
+}
+
+/** The one hand-off every screen's places share, as one screen follows another. */
+const SHARED_HANDOFF = createHandoff()
+
 export function createPlaces<P extends string>(
   of: PlaceOf,
   clock: () => Date = () => new Date(),
-  send: (event: EngagementEvent) => void = engage
+  send: (event: EngagementEvent) => void = engage,
+  handoff: Handoff = SHARED_HANDOFF
 ): Places<P> {
   let open: OpenPlace<P> = null
   let shown: P | null = null
   let away = false
   const move = (): void => {
-    const next = stepPlace(of, open, away ? null : shown, clock().toISOString())
+    const now = away ? null : shown
+    const next = stepPlace(of, open, now, clock().toISOString())
     open = next.open
-    for (const event of next.events) send(event)
+    for (const event of next.events) {
+      // The screen closed (not the app put away): where it went is the
+      // next place to come on, if one does this turn.
+      if (event.kind === "left" && now === null && !away)
+        handoff.hold(event, send)
+      else {
+        if (event.kind === "taken" && now !== null) handoff.enter(of, now)
+        send(event)
+      }
+    }
   }
   return {
     at: (place): void => {

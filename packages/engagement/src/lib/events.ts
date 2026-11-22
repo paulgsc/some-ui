@@ -12,7 +12,11 @@
  *   it. How the visit ended is one of `VISIT_ENDINGS`, so no pipeline has to
  *   guess.
  * - `left`: it was started and stopped: where (one of the affordance's own
- *   places) and after how long (`at` less `startedAt`).
+ *   places), after how long (`at` less `startedAt`), and, when the app
+ *   knows it, the screen it went to (`next`, the owner's answer to #3367).
+ *   That is another of the affordance's places, or `<affordance>.<place>`
+ *   of its pipeline when the screen closed into one; it is left out when the
+ *   app went to the back or the screen it went to names no place.
  * - `said`: a friction answer the owner gave, one of the affordance's own
  *   answers.
  *
@@ -110,6 +114,13 @@ export type EngagementEvent =
       readonly startedAt: string
       /** One of the affordance's places: where it stopped. */
       readonly place: string
+      /**
+       * The screen it went to, when known: one of the affordance's places
+       * (`decide`), or a place of an affordance of its pipeline, written
+       * `<affordance>.<place>` (`today.today`; the next item of the same
+       * affordance too). A registry id has no dot, so which is plain.
+       */
+      readonly next?: string
     })
   | (Stamp & {
       readonly kind: "said"
@@ -117,7 +128,10 @@ export type EngagementEvent =
       readonly answer: string
     })
 
-/** Every field each kind may carry, and no other (the payload limit). */
+/**
+ * The fields each kind always carries (the payload limit); with
+ * `EVENT_EXTRAS`, every field it may carry, and no other.
+ */
 export const EVENT_FIELDS: {
   readonly [K in EventKind]: ReadonlyArray<
     keyof Extract<EngagementEvent, { kind: K }>
@@ -144,4 +158,20 @@ export const EVENT_FIELDS: {
     "place",
   ],
   said: ["kind", "pipeline", "affordance", "surface", "at", "answer"],
+}
+
+/**
+ * The fields a kind carries only when the app knows them: a `left`'s `next`.
+ * An event from a build before one is whole without it.
+ */
+export const EVENT_EXTRAS: {
+  readonly [K in EventKind]: ReadonlyArray<
+    keyof Extract<EngagementEvent, { kind: K }>
+  >
+} = {
+  offered: [],
+  taken: [],
+  "passed-over": [],
+  left: ["next"],
+  said: [],
 }

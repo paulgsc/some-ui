@@ -1,6 +1,6 @@
 /**
  * The payload limit, held (CK's C3): an event is one of the five kinds, with
- * exactly its kind's fields, naming an affordance the registry lists on
+ * exactly its kind's fields (and any extra it may carry: a `left`'s `next`), naming an affordance the registry lists on
  * that surface, of a kind that affordance emits, and any place, answer or
  * ending one of the declared ids. A field outside its kind's own is
  * refused, so words, audio and item content have nowhere to ride.
@@ -14,12 +14,13 @@ import type {
   Surface,
 } from "@engagement/lib/events"
 import {
+  EVENT_EXTRAS,
   EVENT_FIELDS,
   EVENT_KINDS,
   SURFACES,
   VISIT_ENDINGS,
 } from "@engagement/lib/events"
-import type { Pipeline } from "@engagement/lib/registry"
+import type { Affordance, Pipeline } from "@engagement/lib/registry"
 import { findAffordance } from "@engagement/lib/registry"
 
 export type EventCheck =
@@ -56,8 +57,9 @@ export function checkEvent(
 
   const problems: Array<string> = []
   const fields: ReadonlyArray<string> = EVENT_FIELDS[kind]
+  const extras: ReadonlyArray<string> = EVENT_EXTRAS[kind]
   for (const key of Object.keys(record))
-    if (!fields.includes(key))
+    if (!fields.includes(key) && !extras.includes(key))
       problems.push(`${key}: ${kind} carries no such field`)
   for (const key of fields)
     if (!(key in record)) problems.push(`${key}: ${kind} carries it`)
@@ -97,6 +99,15 @@ export function checkEvent(
     before("startedAt")
     if (found && !(found.places ?? []).some((p) => p.id === record["place"]))
       problems.push(`place: one of ${found.id}'s places`)
+    if (
+      "next" in record &&
+      found &&
+      typeof pipeline === "string" &&
+      !nextsOf(pipelines, pipeline, found).has(String(record["next"]))
+    )
+      problems.push(
+        `next: one of ${found.id}'s places, or an affordance.place of ${pipeline}`
+      )
   }
   if (kind === "said" && found) {
     if (!(found.answers ?? []).some((a) => a.id === record["answer"]))
@@ -147,6 +158,7 @@ function rebuilt(
         kind,
         startedAt: String(record["startedAt"]),
         place: String(record["place"]),
+        ...("next" in record ? { next: String(record["next"]) } : {}),
       }
     }
     case "said": {
@@ -157,6 +169,25 @@ function rebuilt(
       throw new Error(`no such kind of event: ${String(none)}`)
     }
   }
+}
+
+/**
+ * The screens a `left` of `affordance` can say it went to: its own places,
+ * and each place of its pipeline's affordances on its surface, as
+ * `<affordance>.<place>` (itself included: the next item of it).
+ */
+function nextsOf(
+  pipelines: ReadonlyArray<Pipeline>,
+  pipeline: string,
+  affordance: Affordance
+): ReadonlySet<string> {
+  const its = pipelines.find((p) => p.id === pipeline)?.affordances ?? []
+  return new Set([
+    ...(affordance.places ?? []).map((p) => p.id),
+    ...its
+      .filter((a) => a.surface === affordance.surface)
+      .flatMap((a) => (a.places ?? []).map((p) => `${a.id}.${p.id}`)),
+  ])
 }
 
 /** A name from the app's code, as home holds every id (lowercase, digits, `-`, `.`). */
@@ -177,8 +208,12 @@ export function isEventShape(value: unknown): value is EngagementEvent {
   const kind = record["kind"]
   if (!isKind(kind)) return false
   const fields: ReadonlyArray<string> = EVENT_FIELDS[kind]
+  const extras: ReadonlyArray<string> = EVENT_EXTRAS[kind]
   const keys = Object.keys(record)
-  if (keys.length !== fields.length || !keys.every((k) => fields.includes(k)))
+  if (
+    !fields.every((k) => keys.includes(k)) ||
+    !keys.every((k) => fields.includes(k) || extras.includes(k))
+  )
     return false
   return keys.every((key) => {
     const field = record[key]

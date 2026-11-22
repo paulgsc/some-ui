@@ -1,0 +1,21 @@
+{
+  "id": "C1069",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-render/src/friction.ts",
+    "some-ui:packages/video-motion/src/walkthrough-words.ts",
+    "some-ui:packages/engagement/src/lib/silence.ts",
+    "server:crates/db/app_event/src/friction.rs"
+  ],
+  "chose": "Home's friction read gains, per place, `nexts`: the lefts that said where they went, counted per screen, with no registry on home. The writer, holding the registry, makes some-ui.friction/3: per place `finished` (at an affordance's last place, the stretches that went to a screen outside it) and `leftPartWay` (at any other place, the same), `no-data` where no stretch in the window said where it went, under the same fewer-than-5 and complement rules as moved on. A stretch with no `next` counts in neither, so an older build's rows keep saying only \"moved on\" and the counts said are those known, never a guess. The narration lists them as one sentence (\"I spent time on this step 20 times, moved on from it 14 times and left it part-way 6 times\") and the chapter card draws each on its own line. `readModuleOpens` reads a kept /2 aggregate too, since the modules didn't change. This brings back C944's finished and left part-way, which C1002 replaced with proxies home could stand behind.",
+  "options": [
+    "home counts per next screen; the writer classifies against the registry; friction/3 (chosen)",
+    "home classifies, holding a copy of the registry's place order",
+    "replace movedOn with the next-based counts"
+  ],
+  "gray": "What a published walkthrough says about the owner's own use, and how it words a count that covers only the stretches from builds that say where they went.",
+  "undo": "Record a call that moves this one, drop finished and leftPartWay from the aggregate and the words, and go back to friction/2.",
+  "refs": ["#3367", "#3337", "#3282"],
+  "moves": "C1002"
+}

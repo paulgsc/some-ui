@@ -55,6 +55,11 @@ describe("reading a kept aggregate's modules (#3338)", () => {
         ],
       })
     ).toEqual({ ok: false, at: 2 })
+    // /3 only added places' finished and left part-way: a /2 render's modules read.
+    expect(readModuleOpens({ schema: "some-ui.friction/2", modules })).toEqual({
+      ok: true,
+      modules,
+    })
     expect(readModuleOpens({ schema: "some-ui.friction/1", modules })).toEqual({
       ok: false,
       at: -1,

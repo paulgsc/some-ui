@@ -14,7 +14,12 @@ const registry: FrictionRegistry = [
         id: "todays-pick",
         surface: "apk",
         offer: "listed",
-        places: [{ id: "read" }, { id: "apply" }, { id: "ending" }],
+        places: [
+          { id: "read" },
+          { id: "decide" },
+          { id: "apply" },
+          { id: "ending" },
+        ],
       },
       {
         id: "record",
@@ -133,7 +138,7 @@ describe("the friction aggregate (WALK5, C861)", () => {
     expect(openedOn(23)).toBe(23)
   })
 
-  it("lists every place, moved on unknown at the last, nothing where nothing was seen", () => {
+  it("lists every place, moved on unknown at the last, finished or left part-way only where a stretch said where it went, nothing where nothing was seen", () => {
     const { places, debrief } = read()
     const at = (
       affordance: string,
@@ -146,21 +151,35 @@ describe("the friction aggregate (WALK5, C861)", () => {
       place: "read",
       stretchesLeft: 20,
       movedOn: 14,
+      finished: "no-data",
+      // 6 of the 18 that said where they went left for Today (#3367).
+      leftPartWay: 6,
       medianMs: 41000,
     })
     expect(at("todays-pick", "apply")).toMatchObject({
       stretchesLeft: 7,
       movedOn: "fewer-than-5",
+      // No stretch here said where it went: an older build's rows.
+      leftPartWay: "no-data",
     })
     // 9 stretches, 5 moved on from: saying both would give away the 4 not.
     expect(at("interview-week", "say")).toMatchObject({
       stretchesLeft: 9,
       movedOn: "no-data",
     })
+    // At the last place, going on to Today is finishing; back to apply is not.
     expect(at("todays-pick", "ending")).toMatchObject({
-      stretchesLeft: "fewer-than-5",
+      stretchesLeft: 11,
       movedOn: "no-data",
-      medianMs: null,
+      finished: 5,
+      leftPartWay: "no-data",
+      medianMs: 30000,
+    })
+    // A last place with no row: nothing to say finished from.
+    expect(at("interview-week", "past")).toMatchObject({
+      stretchesLeft: "fewer-than-5",
+      finished: "no-data",
+      leftPartWay: "no-data",
     })
     expect(at("record", "record")).toMatchObject({
       stretchesLeft: "no-data",
@@ -175,7 +194,12 @@ describe("the friction aggregate (WALK5, C861)", () => {
       friction: { ...sampleHome.friction, partial: true },
     }
     for (const p of read(partial).places)
-      expect([p.stretchesLeft, p.movedOn]).toEqual(["no-data", "no-data"])
+      expect([p.stretchesLeft, p.movedOn, p.finished, p.leftPartWay]).toEqual([
+        "no-data",
+        "no-data",
+        "no-data",
+        "no-data",
+      ])
   })
 
   it("refuses a week kept before home measured friction", () => {

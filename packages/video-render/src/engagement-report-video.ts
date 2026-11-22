@@ -216,6 +216,10 @@ export const HomeWeeksSchema = z.object({
           left: count,
           movedOn: count,
           medianMs: count.nullable(),
+          /** The lefts that said the screen they went to, per screen (#3367); absent from a read before it. */
+          nexts: z
+            .array(z.object({ next: z.string(), left: count }))
+            .optional(),
         })
       ),
       partial: z.boolean(),
