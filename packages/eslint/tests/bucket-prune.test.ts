@@ -43,7 +43,13 @@ function plan(head: string, env: Record<string, string> = {}): Array<Line> {
   const out = execFileSync(
     "bash",
     [SCRIPT, "plan", head, "refs/remotes/origin/main"],
-    { cwd: dir, encoding: "utf8", env: { ...process.env, ...env } }
+    // Only what the plan reads from its caller: a variable in the shell
+    // running the tests must not change the result.
+    {
+      cwd: dir,
+      encoding: "utf8",
+      env: { PATH: process.env["PATH"] ?? "", HOME: dir, ...env },
+    }
   )
   return out
     .split("\n")
@@ -156,9 +162,49 @@ describe("bucket-prune plan", () => {
       {
         action: "delete",
         branch: "claude/c-wip",
-        reason: "the bucket merged a commit built on its tip",
+        reason: "the bucket holds its tip",
       },
     ])
+  })
+
+  it("deletes a branch the bucket was started from", () => {
+    git("checkout", "-q", "-b", "main")
+    commit("m1")
+    git("checkout", "-q", "-b", "claude/a")
+    const a1 = commit("a1")
+    git("checkout", "-q", "-b", "claude/b", "main")
+    const b1 = commit("b1")
+    // The bucket's first parent line runs through claude/a.
+    git("checkout", "-q", "-b", "claude/bucket-some-ui-1", a1)
+    git("merge", "-q", "--no-ff", "-m", "merge b", b1)
+    const head = git("rev-parse", "HEAD")
+    git("checkout", "-q", "main")
+    git("merge", "-q", "--squash", head)
+    git("commit", "-q", "-m", "bucket 1")
+    remote("main", git("rev-parse", "HEAD"))
+    remote("claude/a", a1)
+    remote("claude/b", b1)
+    expect(plan(head)).toEqual([
+      {
+        action: "delete",
+        branch: "claude/a",
+        reason: "the bucket holds its tip",
+      },
+      {
+        action: "delete",
+        branch: "claude/b",
+        reason: "its tip is a commit the bucket merged",
+      },
+    ])
+  })
+
+  it("keeps a branch an open pull request uses", () => {
+    const { head } = bucket()
+    expect(plan(head, { OPEN_PR_BRANCHES: "claude/a\nmain" })).toContainEqual({
+      action: "keep",
+      branch: "claude/a",
+      reason: "an open pull request uses it",
+    })
   })
 
   it("keeps a protected name, whatever its history", () => {

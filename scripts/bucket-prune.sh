@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+shopt -s inherit_errexit
 
 # Bucket prune (.claude/skills/coordinate/SKILL.md, "Buckets"): once a bucket
 # PR (head `claude/bucket-<repo>-<n>`) has squash-merged, delete the branches
@@ -19,8 +20,11 @@ set -euo pipefail
 #
 # Never deleted, whatever the history says: the default branch, a protected
 # branch (PROTECTED_BRANCHES, one name a line, from the API), `bot/*`,
-# `changeset-release/*` and `claude/bucket-*` (another bucket, or this one,
-# whose branch GitHub deletes itself).
+# `changeset-release/*`, `claude/bucket-*` (another bucket, or this one,
+# whose branch GitHub deletes itself), and the head or base of an open pull
+# request (OPEN_PR_BRANCHES), since deleting it would close that PR.
+# A branch a ruleset protects is not listed; its delete is refused and the
+# run goes red, naming it.
 #
 # Usage:
 #   scripts/bucket-prune.sh plan <head-sha> <main-rev>
@@ -51,47 +55,54 @@ never_deleted() {
 
 plan() {
   local head=$1 main=$2 refs=${BRANCH_REFS:-refs/remotes/origin}
-  local base
+  local base merges branches
   base=$(git merge-base "$main" "$head")
+  [ -n "$base" ] || { echo "no merge base of $main and $head" >&2; return 1; }
+  # Read before looping, so a failing git fails the plan rather than reading
+  # as an empty history.
+  merges=$(git log --merges --format=%P "$base..$head")
+  branches=$(git for-each-ref --format='%(refname) %(objectname)' "$refs")
 
   local -a carried=()
   local parents first rest p
   while read -r parents; do
+    [ -n "$parents" ] || continue
     read -r first rest <<<"$parents"
     : "$first"
     for p in $rest; do
       is_ancestor "$p" "$base" || carried+=("$p")
     done
-  done < <(git log --merges --format=%P "$base..$head")
-  [ "${#carried[@]}" -gt 0 ] || return 0
+  done <<<"$merges"
 
-  local ref name tip why related reason
+  local ref name tip why reason
   while read -r ref tip; do
+    [ -n "$ref" ] || continue
     name=${ref#"$refs"/}
     [ "$name" = HEAD ] && continue
     is_ancestor "$tip" "$base" && continue
-    related=""
-    for p in "${carried[@]}"; do
-      if [ "$tip" = "$p" ]; then
-        related="its tip is a commit the bucket merged"
-      elif is_ancestor "$tip" "$p"; then
-        related="the bucket merged a commit built on its tip"
-      elif is_ancestor "$p" "$tip"; then
-        related="its tip builds on a commit the bucket merged"
+    if is_ancestor "$tip" "$head"; then
+      # Its whole history is in the bucket, so in main's squash.
+      why="the bucket holds its tip"
+      for p in "${carried[@]}"; do
+        [ "$tip" = "$p" ] && why="its tip is a commit the bucket merged"
+      done
+      if reason=$(never_deleted "$name"); then
+        printf 'keep\t%s\t%s\t%s\n' "$name" "$tip" "$reason"
+      elif [ -n "${OPEN_PR_BRANCHES:-}" ] && grep -qxF -- "$name" <<<"$OPEN_PR_BRANCHES"; then
+        printf 'keep\t%s\t%s\t%s\n' "$name" "$tip" "an open pull request uses it"
       else
-        continue
+        printf 'delete\t%s\t%s\t%s\n' "$name" "$tip" "$why"
       fi
-      break
-    done
-    [ -n "$related" ] || continue
-    if reason=$(never_deleted "$name"); then
-      printf 'keep\t%s\t%s\t%s\n' "$name" "$tip" "$reason"
-    elif ! is_ancestor "$tip" "$head"; then
-      printf 'keep\t%s\t%s\t%s\n' "$name" "$tip" "it has moved on since the bucket took it"
-    else
-      printf 'delete\t%s\t%s\t%s\n' "$name" "$tip" "$related"
+      continue
     fi
-  done < <(git for-each-ref --format='%(refname) %(objectname)' "$refs")
+    # Not in the bucket: named only if it builds on what the bucket took.
+    for p in "${carried[@]}"; do
+      if is_ancestor "$p" "$tip"; then
+        printf 'keep\t%s\t%s\t%s\n' "$name" "$tip" "it has moved on since the bucket took it"
+        break
+      fi
+    done
+  done <<<"$branches"
 }
 
 run() {
@@ -107,10 +118,13 @@ run() {
     exit 1
   fi
 
-  local auth
-  auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
-  echo "::add-mask::$auth"
-  git -c "http.https://github.com/.extraheader=$auth" fetch --quiet origin \
+  local basic
+  basic=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+  echo "::add-mask::$basic"
+  # Through the environment, not git's argv, where other processes see it.
+  export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.https://github.com/.extraheader
+  export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $basic"
+  git fetch --quiet origin \
     "+refs/pull/$PR/head:refs/bucket-prune/head" \
     "+refs/heads/*:refs/remotes/origin/*" --prune
   if [ "$(git rev-parse refs/bucket-prune/head)" != "$head_sha" ]; then
@@ -119,7 +133,9 @@ run() {
   fi
 
   PROTECTED_BRANCHES=$(gh api --paginate "repos/$GITHUB_REPOSITORY/branches?protected=true" --jq '.[].name')
-  export PROTECTED_BRANCHES
+  OPEN_PR_BRANCHES=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls?state=open&per_page=100" \
+    --jq '.[] | (.head.ref, .base.ref)' | sort -u)
+  export PROTECTED_BRANCHES OPEN_PR_BRANCHES
 
   local planned
   planned=$(plan "$head_sha" "refs/remotes/origin/$DEFAULT_BRANCH")
@@ -135,7 +151,7 @@ run() {
   while IFS=$'\t' read -r action name tip why; do
     [ -n "$action" ] || continue
     if [ "$action" = delete ]; then
-      if git -c "http.https://github.com/.extraheader=$auth" push --quiet \
+      if git push --quiet \
         "--force-with-lease=refs/heads/$name:$tip" origin ":refs/heads/$name"; then
         echo "- deleted \`$name\` (${tip:0:7}): $why" >>"$summary"
       else

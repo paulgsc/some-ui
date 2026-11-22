@@ -27,10 +27,6 @@ on:
 
 permissions: {}
 
-concurrency:
-  group: bucket-prune
-  cancel-in-progress: false
-
 jobs:
   prune:
     name: Delete the branches the bucket carried
@@ -40,11 +36,17 @@ jobs:
         startsWith(github.event.pull_request.head.ref, 'claude/bucket-') &&
         github.event.pull_request.head.repo.full_name == github.repository
       )
+    # On the job, not the workflow: every PR close starts this workflow, and
+    # a skipped job never joins the group, so an unrelated close cannot
+    # cancel a pending prune.
+    concurrency:
+      group: bucket-prune
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: write # delete the carried branches
-      pull-requests: read # read the bucket PR, for a dispatch
+      pull-requests: read # the bucket PR, and the open PRs whose branches stay
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
