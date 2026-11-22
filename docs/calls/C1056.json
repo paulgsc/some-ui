@@ -1,0 +1,22 @@
+{
+  "id": "C1056",
+  "made": "2026-11-22",
+  "by": "claude",
+  "agreed": "2026-11-22",
+  "paths": [
+    "apps/www/landing/index.html",
+    "apps/www/src/landing",
+    "apps/www/vite.config.ts",
+    ".github/workflows/pages.yml"
+  ],
+  "chose": "The public site's front page is one static page in the standard portfolio shape (prototype D): a photo slot, name, role, résumé and contact first; \"What I built and use every day\" with a clip per project; \"Gaps I'm working through\" with one visual and one line each; then experience, skills and education. It is drawn at build time from the résumé's own data and one words table, as a second HTML entry of the Pages build beside resume/index.html, with no script. Reach rung 3, the gap only: the résumé's data is ours, so a template would be a second toolchain and a copy of the résumé that drifts.",
+  "options": [
+    "a GitHub profile README or a hosted résumé site alone",
+    "an open-source portfolio template (Astro devportfolio, Jekyll al-folio, Hugo themes) folded into pages.yml",
+    "a static page in the existing Vite build, filled from the résumé's data",
+    "Codex's showcase (#3034)"
+  ],
+  "gray": "The owner had no opinion on what a good portfolio page is (\"look at what's recommended, plain and standard, and just do that\"), so the layout and the build route were the session's to choose.",
+  "undo": "Remove the landing entry and its plugin from vite.config.ts and restore pages.yml's copy of index.html to 404.html; the Pages build's index.html is then the app again.",
+  "refs": ["#3401", "#3034"]
+}

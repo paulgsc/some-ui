@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process"
 import fs from "node:fs"
 import { resolve } from "node:path"
+import { resumeData } from "@some-ui/resume"
 import { createStylePlugins } from "@some-ui/styles/styles-build/dev-config"
 import { tanstackRouter } from "@tanstack/router-plugin/vite"
 import viteReact from "@vitejs/plugin-react"
@@ -21,6 +22,8 @@ import {
   isBlockedProxyPath,
   resolveFileHostTarget,
 } from "./file-host.dev.ts"
+import { mochiSvg } from "./src/landing/mochi.ts"
+import { renderLanding, renderLandingHead } from "./src/landing/render.ts"
 import {
   OLD_WEBVIEW_PAGE,
   oldWebViewPage,
@@ -127,6 +130,8 @@ function fitPageEntry(): Record<string, string> {
 // `pnpm build:stage`: the recording stage alone (stage/main.tsx), into
 // out/stage, with its page at the output's root.
 const isStageBuild = process.env.WWW_STAGE === "1"
+// Only the Pages deployable gets the landing (landingPage, below).
+const isLandingBuild = isPagesBuild() && !isFitHarnessBuild && !isStageBuild
 
 function stageEntry(): Record<string, string> {
   const profile = process.env.SOME_UI_PROFILE
@@ -220,6 +225,52 @@ function pagesConnectPolicy(): Plugin {
           injectTo: "head-prepend",
         },
       ]
+    },
+  }
+}
+
+// The public site's front page (PAGES, #3401; C1055): under the Pages profile
+// only, landing/index.html is a second HTML entry, filled at build time from
+// the résumé's data (src/landing/render.ts) and written as the output's
+// index.html. The app's shell moves to 404.html, the fallback GitHub Pages
+// serves for every other path, so the app's routes open as they did. Every
+// other profile keeps the app at index.html and builds no landing.
+function isPagesBuild(): boolean {
+  return process.env.SOME_UI_PROFILE === "pages"
+}
+
+function landingPage(): Plugin {
+  return {
+    name: "landing-page",
+    apply: "build",
+    // After Vite's own HTML plugin has emitted both pages, so the names below
+    // are the ones Rollup writes: nothing is moved on disk afterwards.
+    enforce: "post",
+    transformIndexHtml(html, ctx): string {
+      if (!ctx.filename.endsWith("landing/index.html")) return html
+      return html
+        .replace("<!--landing:head-->", renderLandingHead())
+        .replace(
+          "<!--landing:body-->",
+          renderLanding(resumeData.fullstack, mochiSvg())
+        )
+    },
+    generateBundle(_options, bundle): void {
+      const app = bundle["index.html"]
+      const landing = bundle["landing/index.html"]
+      if (app?.type !== "asset" || landing?.type !== "asset") {
+        this.error(
+          "the Pages build needs both index.html and landing/index.html"
+        )
+      }
+      delete bundle["index.html"]
+      delete bundle["landing/index.html"]
+      this.emitFile({ type: "asset", fileName: "404.html", source: app.source })
+      this.emitFile({
+        type: "asset",
+        fileName: "index.html",
+        source: landing.source,
+      })
     },
   }
 }
@@ -342,6 +393,7 @@ export default defineConfig(
       pagesConnectPolicy(),
       ...(isMobileBuild ? [oldWebViewPageAsset()] : []),
       ...(isStageBuild ? [stagePageAtRoot()] : []),
+      ...(isLandingBuild ? [landingPage()] : []),
     ],
     // An http:// page skips the proxy and asks :3000 directly
     // (src/lib/file-host-config) - the container. While the proxy points
@@ -400,6 +452,14 @@ export default defineConfig(
                   : {
                       resume: resolve(import.meta.dirname, "resume/index.html"),
                     }),
+                ...(isLandingBuild
+                  ? {
+                      landing: resolve(
+                        import.meta.dirname,
+                        "landing/index.html"
+                      ),
+                    }
+                  : {}),
               },
         // No `output.manualChunks`. The hand-rolled version here matched with
         // `id.includes(pkg)` — a substring test against the full module path —

@@ -307,8 +307,12 @@ test.describe("the Pages build", () => {
     })
     const seen = watch(context)
 
+    // The landing at the root is static: it loads, and asks nothing of
+    // another origin either (`seen`, below).
+    await page.goto(`${app().origin}${BASE}`)
+    await expect(page.locator("h1")).toBeVisible()
+
     for (const route of [
-      "",
       "app",
       "extensions",
       "sessions",

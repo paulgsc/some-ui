@@ -1,0 +1,317 @@
+<!doctype html>
+<!--
+  The public site's front page (PAGES, #3401; C1055): a CV. Built only under
+  the Pages profile (vite.config.ts, `landingPage`), which fills the two
+  markers below from src/landing/render.ts at build time and moves this page
+  to the output's index.html. No script: everything here is drawn from the
+  résumé's data and the landing's words when the site is built.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!--landing:head-->
+    <style>
+      :root {
+        --fg: #2a2118;
+        --muted: #6e604f;
+        --line: #eadfcd;
+        --accent: #a35a0b;
+        --bg: #fdf8f0;
+        --card: #fff;
+        --stage: #f3e4cc;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font:
+          16px/1.6 system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+        color: var(--fg);
+        background: var(--bg);
+      }
+      a {
+        color: var(--accent);
+      }
+      .top {
+        border-bottom: 1px solid var(--line);
+        background: var(--card);
+      }
+      .top .in {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 36px 28px 30px;
+        display: flex;
+        align-items: center;
+        gap: 28px;
+        flex-wrap: wrap;
+      }
+      .photo {
+        width: 132px;
+        height: 132px;
+        border-radius: 50%;
+        overflow: hidden;
+        flex: none;
+        background: var(--stage);
+        border: 1px solid var(--line);
+        margin: 0;
+      }
+      .photo svg,
+      .photo img {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: cover;
+      }
+      .who {
+        flex: 1;
+        min-width: 240px;
+      }
+      h1 {
+        font-size: 2.3rem;
+        line-height: 1.1;
+        margin: 0;
+      }
+      .role {
+        font-size: 1.15rem;
+        color: var(--muted);
+        margin: 0.35rem 0 0.9rem;
+      }
+      .contact {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem 1.1rem;
+        align-items: center;
+        font-weight: 500;
+      }
+      .btn {
+        background: var(--accent);
+        color: #fff;
+        padding: 0.45rem 1rem;
+        border-radius: 6px;
+        text-decoration: none;
+      }
+      main {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 28px 28px 72px;
+      }
+      .lede {
+        font-size: 1.08rem;
+        max-width: 64ch;
+        margin: 0 0 26px;
+      }
+      .section-title {
+        font-size: 1.25rem;
+        margin: 2.4rem 0 0.9rem;
+      }
+      .lede + .section-title {
+        margin-top: 0;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+      }
+      .grid.gaps {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .card .body {
+        padding: 14px 18px 18px;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+      }
+      .card h3 {
+        margin: 0;
+        font-size: 1.08rem;
+      }
+      .stack {
+        color: var(--muted);
+        font-size: 0.85rem;
+        margin: 0.15rem 0 0.4rem;
+      }
+      .card p {
+        margin: 0.2rem 0;
+      }
+      .links {
+        margin-top: auto;
+        padding-top: 0.7rem;
+        font-size: 0.92rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem 1rem;
+        font-weight: 500;
+      }
+      .clip {
+        position: relative;
+        aspect-ratio: 4 / 3;
+        background: var(--stage);
+        border-bottom: 1px solid var(--line);
+        overflow: hidden;
+        margin: 0;
+      }
+      .title-card {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        text-align: center;
+        font-size: 1.5rem;
+        font-weight: 700;
+        line-height: 1.2;
+        color: var(--fg);
+      }
+      .title-card--server {
+        background: #111217;
+        color: #d8d9da;
+      }
+      .note {
+        position: absolute;
+        left: 8px;
+        bottom: 8px;
+        font-size: 0.7rem;
+        background: rgba(42, 33, 24, 0.82);
+        color: #fff;
+        padding: 2px 8px;
+        border-radius: 999px;
+      }
+      .drawing {
+        position: absolute;
+        inset: 0;
+      }
+      .drawing--filter {
+        display: grid;
+        grid-template-rows: 1fr 1fr;
+      }
+      .drawing--filter .page {
+        position: relative;
+      }
+      .drawing--filter .light {
+        background: #fafafa;
+      }
+      .drawing--filter .dark {
+        background: #1b1d22;
+      }
+      .drawing--filter .part {
+        position: absolute;
+        left: 45%;
+        top: 22%;
+        width: 40%;
+        height: 56%;
+        border-radius: 6px;
+        background: #fff;
+        border: 1px solid #ddd;
+      }
+      .drawing--filter .part.white {
+        border: 3px solid #f2a33a;
+      }
+      .drawing--cores {
+        background: #111217;
+        padding: 18px 16px 36px;
+      }
+      .drawing--cores svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .cores-line {
+        stroke: #888;
+        stroke-dasharray: 5 5;
+        fill: none;
+      }
+      .busy {
+        fill: rgba(50, 116, 217, 0.4);
+        stroke: #5794f2;
+        stroke-width: 2;
+      }
+      .waiting {
+        fill: rgba(224, 117, 45, 0.6);
+      }
+      h2 {
+        font-size: 0.85rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 3rem 0 1rem;
+      }
+      h2.section-title {
+        letter-spacing: 0;
+        text-transform: none;
+        color: var(--fg);
+      }
+      .two {
+        display: grid;
+        grid-template-columns: 3fr 2fr;
+        gap: 40px;
+      }
+      .job {
+        margin-bottom: 1.1rem;
+      }
+      .job h3 {
+        margin: 0;
+        font-size: 1rem;
+      }
+      .when {
+        color: var(--muted);
+        font-size: 0.88rem;
+      }
+      .job p,
+      .job ul {
+        margin: 0.2rem 0;
+      }
+      .job ul {
+        padding-left: 1.1rem;
+      }
+      footer {
+        margin-top: 3rem;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+      @media (max-width: 900px) {
+        .grid,
+        .grid.gaps,
+        .two {
+          grid-template-columns: 1fr;
+        }
+        .two {
+          gap: 0;
+        }
+        h1 {
+          font-size: 2rem;
+        }
+        .top .in {
+          padding: 28px 20px 24px;
+          gap: 18px;
+        }
+        .photo {
+          width: 96px;
+          height: 96px;
+        }
+        main {
+          padding: 22px 20px 56px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!--landing:body-->
+  </body>
+</html>
