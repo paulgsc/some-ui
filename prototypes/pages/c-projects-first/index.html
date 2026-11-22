@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Paul Gathondu, software engineer</title>
+    <meta
+      name="description"
+      content="Paul Gathondu, software engineer in Rust and TypeScript. Projects, experience, résumé and contact."
+    />
+    <style>
+      :root {
+        --fg: #2a2118;
+        --muted: #6e604f;
+        --line: #eadfcd;
+        --accent: #a35a0b;
+        --bg: #fdf8f0;
+        --card: #fff;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font:
+          16px/1.6 system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+        color: var(--fg);
+        background: var(--bg);
+      }
+      a {
+        color: var(--accent);
+      }
+      .top {
+        border-bottom: 1px solid var(--line);
+        background: var(--card);
+      }
+      .top .in {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 40px 28px 32px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 24px;
+        flex-wrap: wrap;
+      }
+      h1 {
+        font-size: 2.3rem;
+        line-height: 1.1;
+        margin: 0;
+      }
+      .role {
+        font-size: 1.15rem;
+        color: var(--muted);
+        margin: 0.35rem 0 0;
+      }
+      .contact {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem 1rem;
+        align-items: center;
+        font-weight: 500;
+      }
+      .btn {
+        background: var(--accent);
+        color: #fff;
+        padding: 0.45rem 1rem;
+        border-radius: 6px;
+        text-decoration: none;
+      }
+      main {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 32px 28px 72px;
+      }
+      .lede {
+        font-size: 1.08rem;
+        max-width: 62ch;
+        margin: 0 0 28px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .card img,
+      .card .code {
+        width: 100%;
+        aspect-ratio: 640/305;
+        object-fit: contain;
+        background: #fbf3e6;
+        display: block;
+        border-bottom: 1px solid var(--line);
+      }
+      .card .code {
+        margin: 0;
+        background: #1d1a16;
+        color: #f3e7d3;
+        font:
+          12.5px/1.45 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
+        padding: 14px 18px;
+        overflow: hidden;
+        white-space: pre;
+      }
+      .card .body {
+        padding: 16px 18px 18px;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+      }
+      .card h3 {
+        margin: 0;
+        font-size: 1.08rem;
+      }
+      .stack {
+        color: var(--muted);
+        font-size: 0.85rem;
+        margin: 0.15rem 0 0.5rem;
+      }
+      .card p {
+        margin: 0.2rem 0;
+      }
+      .links {
+        margin-top: auto;
+        padding-top: 0.7rem;
+        font-size: 0.92rem;
+        display: flex;
+        gap: 1rem;
+        font-weight: 500;
+      }
+      h2 {
+        font-size: 0.85rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 3rem 0 1rem;
+      }
+      .two {
+        display: grid;
+        grid-template-columns: 3fr 2fr;
+        gap: 40px;
+      }
+      .job {
+        margin-bottom: 1.1rem;
+      }
+      .job h3 {
+        margin: 0;
+        font-size: 1rem;
+      }
+      .when {
+        color: var(--muted);
+        font-size: 0.88rem;
+      }
+      .job p {
+        margin: 0.2rem 0;
+      }
+      footer {
+        margin-top: 3rem;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+      @media (max-width: 900px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        .two {
+          grid-template-columns: 1fr;
+          gap: 0;
+        }
+        h1 {
+          font-size: 2rem;
+        }
+        .top .in {
+          padding: 32px 20px 24px;
+        }
+        main {
+          padding: 24px 20px 56px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="top">
+      <div class="in">
+        <div>
+          <h1>Paul Gathondu</h1>
+          <p class="role">
+            Software engineer · Rust and TypeScript · Berkeley, CA
+          </p>
+        </div>
+        <div class="contact">
+          <a class="btn" href="https://paulgsc.github.io/some-ui/resume.pdf"
+            >Résumé (PDF)</a
+          >
+          <a href="mailto:paulgathondudev@gmail.com">Email</a>
+          <a href="https://github.com/paulgsc">GitHub</a>
+        </div>
+      </div>
+    </header>
+    <main>
+      <p class="lede">
+        I build web services in Rust and web apps in TypeScript and React. These
+        three are my own work, public, and in daily use. Two of them open in
+        your browser with sample data.
+      </p>
+      <div class="grid">
+        <article class="card">
+          <img
+            src="img/learning.jpg"
+            alt="The learning apps' home screen: TOPIK Study, Hangul Honeycomb and LeetType"
+            width="640"
+            height="305"
+          />
+          <div class="body">
+            <h3>Adaptive learning apps</h3>
+            <p class="stack">Rust → WebAssembly · React · TypeScript</p>
+            <p>
+              One Rust engine drives three React apps: Korean exam prep, a
+              Hangul game and a typing drill.
+            </p>
+            <p class="links">
+              <a href="https://paulgsc.github.io/some-ui/app">Try it</a
+              ><a href="https://github.com/paulgsc/some-ui">Source</a>
+            </p>
+          </div>
+        </article>
+        <article class="card">
+          <pre class="code" aria-label="What the service is made of">
+file_host (Rust)
+ HTTP + WebSocket: 40+ ops
+ storage:  SQLx / SQLite
+ jobs:     NATS JetStream
+ cache:    Redis
+ overload: 429 · 413 · 503
+ ships as: Docker image</pre
+          >
+          <div class="body">
+            <h3>file_host: a backend service</h3>
+            <p class="stack">Rust · Axum · Tokio · Redis · NATS</p>
+            <p>
+              Sessions, push notifications and background jobs, with defined
+              answers under overload and retried jobs.
+            </p>
+            <p class="links">
+              <a href="https://github.com/paulgsc/server">Source</a>
+            </p>
+          </div>
+        </article>
+        <article class="card">
+          <img
+            src="img/extensions.jpg"
+            alt="The extensions comb: five browser extensions as honeycomb cells, filled by how far along each is"
+            width="640"
+            height="305"
+          />
+          <div class="body">
+            <h3>Browser extensions</h3>
+            <p class="stack">TypeScript · Firefox and Chromium MV3</p>
+            <p>
+              Suspender Ledger, a tab suspender, passed Mozilla Add-ons review.
+              Four more are at earlier stages.
+            </p>
+            <p class="links">
+              <a href="https://paulgsc.github.io/some-ui/extensions"
+                >See all five</a
+              ><a href="https://github.com/paulgsc/some-ui/tree/main/extensions"
+                >Source</a
+              >
+            </p>
+          </div>
+        </article>
+      </div>
+
+      <div class="two">
+        <section aria-labelledby="h-exp">
+          <h2 id="h-exp">Experience</h2>
+          <div class="job">
+            <h3>Software engineer, independent</h3>
+            <span class="when">2024 to now</span>
+            <p>
+              The projects above, plus the CI that runs only what a change
+              touches and a contract check that fails a server PR which would
+              break the client.
+            </p>
+          </div>
+          <div class="job">
+            <h3>Data Administrator, CABA Design</h3>
+            <span class="when">2020 to 2023</span>
+            <p>
+              Tableau dashboards on PostgreSQL; reporting automated through the
+              Google Workspace API (10+ hours a week saved); Python fixes
+              against Odoo's XML-RPC API.
+            </p>
+          </div>
+          <div class="job">
+            <h3>Also</h3>
+            <p>
+              Inventory Specialist, WIS (2024 to now) · Clinical Data Operator,
+              Natera (2019 to 2020)
+            </p>
+          </div>
+        </section>
+        <section aria-labelledby="h-skills">
+          <h2 id="h-skills">Skills</h2>
+          <p>
+            Rust, TypeScript, React, Node.js, SQL, Python, Axum, Tokio, Redis,
+            NATS, Docker, GitHub Actions, Vitest, Playwright
+          </p>
+          <h2>Education</h2>
+          <p>B.S. Mechanical Engineering, UC Merced, 2015</p>
+        </section>
+      </div>
+      <footer>
+        paulgathondudev@gmail.com · Authorized to work in the US for any
+        employer · Source of this page:
+        <a href="https://github.com/paulgsc/some-ui">paulgsc/some-ui</a>
+      </footer>
+    </main>
+  </body>
+</html>
