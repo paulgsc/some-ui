@@ -1,10 +1,11 @@
 /** @vitest-environment node */
-import { prepare, runtimeMs, type Prepared } from "@burn-ins/lib/burn-in"
+import { KINDS, prepare, runtimeMs, type Prepared } from "@burn-ins/lib/burn-in"
 import { SAMPLE } from "@burn-ins/lib/captions/sample"
 import { THEMES } from "@burn-ins/lib/captions/theme"
 import { captionsFor, runtimeOf } from "@burn-ins/lib/captions/timing"
 import { frameName, geometryOf, PORTRAIT } from "@burn-ins/lib/geometry"
-import { SAMPLES } from "@burn-ins/lib/samples"
+import { SAMPLES, samplesOf } from "@burn-ins/lib/samples"
+import { CARD_KINDS } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
 const ready = (kind: string, design: string, params: unknown): Prepared => {
@@ -160,5 +161,19 @@ describe("a burn-in", () => {
     )
     expect(head?.rows).toHaveLength(1)
     expect(head?.style.sizePx).toBeLessThan(60)
+  })
+})
+
+describe("a card's stamp", () => {
+  it("is given by the renderer to exactly the kinds whose params take one", () => {
+    // A card a renderer doesn't stamp is refused at its first frame, so a
+    // new card kind joins video-render's CARD_KINDS in the same change.
+    const stamped = KINDS.filter((kind) =>
+      samplesOf(kind).some(
+        (params) =>
+          typeof params === "object" && params !== null && "stamp" in params
+      )
+    )
+    expect([...CARD_KINDS].sort()).toEqual([...stamped].sort())
   })
 })

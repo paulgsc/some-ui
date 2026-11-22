@@ -100,6 +100,11 @@ export const WORDS = {
       about:
         "A card saying how far to trust a card as it ages, and what wins when it disagrees with the repo, as a small algebra, a line at a time.",
     },
+    bars: {
+      name: "Bars",
+      about:
+        "A chart card: a row per thing measured, each a bar stacked from up to four parts, a row at a time, with a legend and an axis.",
+    },
   } satisfies Record<Kind, { name: string; about: string }>,
   lookHeading: "Look",
   looks: {
@@ -161,6 +166,11 @@ export const WORDS = {
       about:
         "Three lines in a monospace; the signs for 'and' and 'so' drawn as shapes, the sources in blue.",
     },
+    "bars-v1": {
+      name: "Stacked bars",
+      about:
+        "Horizontal bars in the chart palette's fixed order, parted by a thin gap of ground, over a faint grid; every word in the card's ink.",
+    },
     "badge-v1": {
       name: "Badge",
       about:
@@ -177,7 +187,8 @@ export const WORDS = {
     | "sheet-v1"
     | "legend-v1"
     | "rule-v1"
-    | "flow-v1",
+    | "flow-v1"
+    | "bars-v1",
     { name: string; about: string }
   >,
   templateHeading: "Which card",
