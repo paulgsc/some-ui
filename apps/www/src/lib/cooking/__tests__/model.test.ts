@@ -123,7 +123,15 @@ describe("a train", () => {
       prs: new Map([
         [
           prKey({ repo: "some-ui", number: 3432 }),
-          pr({ checks: { waiting: 0, running: 0, passed: 9, failed: 1 } }),
+          pr({
+            checks: {
+              waiting: 0,
+              running: 0,
+              passed: 9,
+              failed: 1,
+              approval: 0,
+            },
+          }),
         ],
       ]),
     })
@@ -142,6 +150,53 @@ describe("a train", () => {
       holder: "checks",
       now: W.now.waitingForRunner,
     })
+  })
+
+  it("hands a check that waits on an approval to the owner", () => {
+    const approval = factsWith({
+      prs: new Map([
+        [
+          prKey({ repo: "some-ui", number: 3432 }),
+          pr({
+            checks: {
+              waiting: 0,
+              running: 1,
+              passed: 3,
+              failed: 0,
+              approval: 1,
+            },
+          }),
+        ],
+      ]),
+    })
+    expect(hereOf(train("G5", approval))).toMatchObject({
+      holder: "you",
+      now: W.now.approve,
+    })
+  })
+
+  it("names a decision ask by its question", () => {
+    const decision = {
+      ...RUN,
+      goals: RUN.goals.map((g) =>
+        g.id === "G7"
+          ? {
+              ...g,
+              legs: [
+                {
+                  leg: "yours" as const,
+                  ask: {
+                    repo: "some-ui" as const,
+                    kind: "issue" as const,
+                    number: 3433,
+                  },
+                },
+              ],
+            }
+          : g
+      ),
+    }
+    expect(hereOf(train("G7", FACTS, decision)).label).toBe(ask.question)
   })
 
   it("keeps a leg it couldn't read where it is, and says so", () => {

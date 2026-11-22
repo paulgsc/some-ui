@@ -108,10 +108,19 @@ const AlertBar = ({
       </div>
     )
   const waiting = waitingOn(top.train, trains).map((t) => t.title)
+  const others = W.barOthers(
+    W.holder[top.holder],
+    top.stop.label,
+    top.train.title
+  )
+  // The yours wording only over a stop of the owner's; a more urgent stop
+  // of someone else's is said as theirs, with the count still on the left.
   const message =
-    mine > 0
+    top.holder === "you"
       ? W.barYours(W.urgency[top.urgency], top.stop.label, waiting)
-      : W.barOthers(W.holder[top.holder], top.stop.label, top.train.title)
+      : mine > 0
+        ? others
+        : `${W.nothingOnYou} ${others}`
   return (
     <button
       type="button"
@@ -316,9 +325,9 @@ const StopCard = ({
         )}
         {stop.log.length > 0 && (
           <ol aria-label={W.logTitle} className="flex flex-col gap-0.5 text-sm">
-            {stop.log.map((line) => (
+            {stop.log.map((line, place) => (
               <li
-                key={`${line.at ?? ""}-${line.says}`}
+                key={`${String(place)}-${line.says}`}
                 className="grid grid-cols-[3.5rem_1fr] gap-2"
               >
                 <time className="text-muted-foreground text-right tabular-nums">
@@ -387,7 +396,8 @@ const Menu = ({
   dispatch: Dispatch
 }): JSX.Element => {
   const count = (f: (typeof FILTERS)[number]): number =>
-    trains.slice(0, TRAINS_MAX).filter((t) => matches(f, t)).length
+    ordered({ ...board, filter: "all" }, trains).filter((t) => matches(f, t))
+      .length
   const filterWords = (f: (typeof FILTERS)[number]): string =>
     f === "all" || f === "you" || f === "moving" ? W.filters[f] : W.lands[f]
   const chip = (pressed: boolean): string =>
@@ -491,38 +501,38 @@ const Rail = ({
         selected && "border-foreground"
       )}
     >
-      <div className="grid grid-cols-[1.5rem_1fr] items-center gap-3 p-3 md:grid-cols-[1.5rem_1.2fr_1fr_1.6fr]">
+      <div className="grid grid-cols-1 items-center gap-3 p-3 md:grid-cols-[1.4fr_1fr_1.6fr]">
         <button
           type="button"
           aria-expanded={open}
-          aria-label={open ? W.close : W.open}
           onClick={() => dispatch({ kind: "toggled", train: train.id })}
-          className="text-muted-foreground"
+          className="flex items-start gap-2 text-left"
         >
           {open ? (
-            <ChevronDown className="size-4" />
+            <ChevronDown
+              aria-hidden
+              className="text-muted-foreground mt-1 size-4 shrink-0"
+            />
           ) : (
-            <ChevronRight className="size-4" />
+            <ChevronRight
+              aria-hidden
+              className="text-muted-foreground mt-1 size-4 shrink-0"
+            />
           )}
-        </button>
-        <button
-          type="button"
-          className="text-left"
-          onClick={() => dispatch({ kind: "toggled", train: train.id })}
-        >
-          <span className="block font-semibold">{train.title}</span>
-          <span className="text-muted-foreground block text-sm">
-            {train.dest}
+          <span>
+            <span className="block font-semibold">{train.title}</span>
+            <span className="text-muted-foreground block text-sm">
+              {train.dest}
+            </span>
           </span>
         </button>
-        <div className="col-start-2 flex items-center gap-2 text-sm md:col-start-auto">
+        <div className="flex items-center gap-2 text-sm">
           <HolderPill stop={here} urgency={urgency} />
           <span className="min-w-0 truncate">{here.label}</span>
         </div>
         <StationStrip
           small
           label={train.title}
-          className="col-start-2 md:col-start-auto"
           stations={train.stops.map((s, i) => ({
             id: String(i),
             name: s.label,
@@ -540,7 +550,7 @@ const Rail = ({
         />
       </div>
       {open && (
-        <div className="flex flex-col gap-1 px-3 pb-3 md:pl-12">
+        <div className="flex flex-col gap-1 px-3 pb-3 md:pl-9">
           <p className="text-sm">{train.motive}</p>
           <span className="text-muted-foreground text-xs">
             {W.landsOn(W.lands[train.lands])}
@@ -555,8 +565,13 @@ const Rail = ({
 const CookingBoard = ({
   trains,
   heading = null,
+  unread,
+  onReadAgain,
 }: {
   trains: ReadonlyArray<Train>
+  /** How many of GitHub's answers couldn't be read this time. */
+  unread: number
+  onReadAgain: () => void
   /** What sits under the bar: the page's title. */
   heading?: ReactNode
 }): JSX.Element => {
@@ -575,6 +590,7 @@ const CookingBoard = ({
     <div className="flex flex-col gap-4">
       <AlertBar trains={trains} top={ranked[0]} dispatch={dispatch} />
       {heading}
+      {unread > 0 && <Notice tone="warning">{W.someUnread(unread)}</Notice>}
       {selected !== null && (
         <StopCard
           board={board}
@@ -583,7 +599,12 @@ const CookingBoard = ({
           dispatch={dispatch}
         />
       )}
-      <Menu board={board} trains={trains} dispatch={dispatch} />
+      <div className="flex items-center justify-between gap-3">
+        <Button size="sm" variant="ghost" onClick={onReadAgain}>
+          {W.readAgain}
+        </Button>
+        <Menu board={board} trains={trains} dispatch={dispatch} />
+      </div>
       {slice.length === 0 ? (
         <p className="text-muted-foreground text-sm">{W.none}</p>
       ) : (
@@ -643,6 +664,10 @@ export const CookingPage = ({
   heading?: ReactNode
 }): JSX.Element => {
   const query = useQuery(cookingQuery)
+  // A read the owner asks for: the page never reads on a timer (`lib/cooking`).
+  const readAgain = (): void => {
+    void query.refetch()
+  }
   return matchQueryOutcome(queryOutcome(query), {
     pending: () => (
       <>
@@ -692,9 +717,20 @@ export const CookingPage = ({
             </a>
           </p>
         )}
-        {cooking.kind === "run" && (
-          <CookingBoard trains={cooking.trains} heading={heading} />
-        )}
+        {cooking.kind === "run" &&
+          (cooking.trains.length === 0 ? (
+            <>
+              {heading}
+              <p className="text-muted-foreground text-sm">{W.noGoals}</p>
+            </>
+          ) : (
+            <CookingBoard
+              trains={cooking.trains}
+              heading={heading}
+              unread={cooking.unread}
+              onReadAgain={readAgain}
+            />
+          ))}
       </>
     ),
   })

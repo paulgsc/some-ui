@@ -72,6 +72,7 @@ const run = {
 
 const orch = (body: string): object => ({
   number: 3440,
+  title: "[ORCH] Nov 22 run",
   html_url: "https://github.com/paulgsc/some-ui/issues/3440",
   state: "open",
   created_at: "2026-11-22T22:00:00Z",
@@ -104,6 +105,7 @@ const ANSWERS: Record<string, unknown> = {
   },
   "some-ui/issues/3433": {
     number: 3433,
+    title: "[ASK] Will you deploy home and install the APK?",
     html_url: "https://github.com/paulgsc/some-ui/issues/3433",
     state: "open",
     created_at: "2026-11-22T20:39:20Z",
@@ -153,6 +155,7 @@ describe("the Cooking page", () => {
       name: W.stopOf("Install the latest APK", 1, 3),
     })
     within(card).getByText(W.now.yours)
+    screen.getByRole("button", { name: W.readAgain })
     // One list, one pull request and its checks, one run, one ask.
     expect(fetch).toHaveBeenCalledTimes(5)
   })
@@ -171,6 +174,13 @@ describe("the Cooking page", () => {
     within(card).getByText(W.now.checksRunning(1, 2))
     // Its accordion opened to its motive.
     screen.getByText("Home runs the newest release.")
+  })
+
+  it("says when a stop couldn't be read", async () => {
+    const { "server/pulls/1129": _pull, ...rest } = ANSWERS
+    github(rest)
+    render(withQueryClient(<CookingPage />))
+    await screen.findByText(W.someUnread(1))
   })
 
   it("says so when no run is open", async () => {

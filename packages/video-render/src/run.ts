@@ -95,8 +95,9 @@ export const LegSchema = z.discriminatedUnion("leg", [
     says: words,
   }),
   /**
-   * Something only the owner does: a step of an ask (by its place in the
-   * ask's `steps`), or, with no ask, what `says` says. `canWait` marks one
+   * Something only the owner does: a step of a checklist ask (by its place
+   * in the ask's `steps`), a decision ask (an ask with no step), or, with no
+   * ask, what `says` says. `canWait` marks one
    * the owner may take whenever they like.
    */
   z.strictObject({
@@ -219,12 +220,10 @@ function runProblems(run: {
         })
       if (
         leg.leg === "yours" &&
-        (leg.ask === undefined) !== (leg.step === undefined)
+        leg.ask === undefined &&
+        leg.step !== undefined
       )
-        problems.push({
-          message: "a step needs its ask, and an ask its step",
-          path: at,
-        })
+        problems.push({ message: "a step needs its ask", path: at })
       if (
         leg.leg === "yours" &&
         leg.ask === undefined &&

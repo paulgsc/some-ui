@@ -113,10 +113,20 @@ describe("a run issue's body", () => {
       legs: [{ leg: "yours", step: 2 }, { leg: "yours" }],
     }
     expect(problems({ ...run, goals: [g], cleared: [] })).toEqual([
-      "goals.0.legs.0: a step needs its ask, and an ask its step",
+      "goals.0.legs.0: a step needs its ask",
       "goals.0.legs.0: a step of yours with no ask says what it is",
       "goals.0.legs.1: a step of yours with no ask says what it is",
     ])
+  })
+
+  it("reads a decision ask as a step of the owner's with no step number", () => {
+    const g = {
+      ...run.goals[0],
+      legs: [
+        { leg: "yours", ask: { repo: "some-ui", kind: "issue", number: 2860 } },
+      ],
+    }
+    expect(problems({ ...run, goals: [g], cleared: [] })).toEqual([])
   })
 
   it("clears only a leg of the owner's or home's", () => {

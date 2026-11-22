@@ -23,6 +23,7 @@ const GITHUB = "https://api.github.com/repos/paulgsc"
 
 const IssueSchema = z.object({
   number: z.number().int().positive(),
+  title: z.string(),
   html_url: z.url(),
   state: z.enum(["open", "closed"]),
   created_at: z.string(),
@@ -58,6 +59,8 @@ export type Cooking =
   | {
       readonly kind: "run"
       readonly url: string
+      /** How many of GitHub's answers it couldn't read this time. */
+      readonly unread: number
       readonly day: string
       readonly trains: ReadonlyArray<Train>
     }
@@ -72,19 +75,64 @@ const get = <T>(path: string, schema: z.ZodType<T>): Promise<T> =>
 /** A finished check that didn't fail: passed, skipped or neutral. */
 const PASSING = new Set(["success", "skipped", "neutral"])
 
+type Checks = PrFacts["checks"]
+
+/** Where one check stands: approval waits on a person, the rest on the checks or Claude. */
+function countCheck(
+  checks: Checks,
+  status: string,
+  conclusion: string | null
+): Checks {
+  const bump = (k: keyof Checks): Checks => ({ ...checks, [k]: checks[k] + 1 })
+  if (status === "completed") {
+    if (conclusion === "action_required") return bump("approval")
+    if (conclusion === "stale") return bump("waiting")
+    return bump(PASSING.has(conclusion ?? "") ? "passed" : "failed")
+  }
+  if (status === "waiting") return bump("approval")
+  return bump(status === "in_progress" ? "running" : "waiting")
+}
+
+/**
+ * Facts that can no longer change (a merged or closed pull request, a run
+ * that ended), kept for the tab's life so a second read doesn't spend
+ * GitHub's 60 answers an hour on them again. Nothing is stored.
+ */
+const endedPrs = new Map<string, PrFacts>()
+const endedRuns = new Map<string, RunFacts>()
+
+/** `read`, unless `key` already ended; kept once it has. */
+const once =
+  <T>(
+    kept: Map<string, T>,
+    key: string,
+    read: () => Promise<T>,
+    over: (fact: T) => boolean
+  ): (() => Promise<T>) =>
+  async () => {
+    const known = kept.get(key)
+    if (known !== undefined) return known
+    const fact = await read()
+    if (over(fact)) kept.set(key, fact)
+    return fact
+  }
+
 async function readPr(repo: string, number: number): Promise<PrFacts> {
   const pull = await get(`${repo}/pulls/${String(number)}`, PullSchema)
-  const checks = { waiting: 0, running: 0, passed: 0, failed: 0 }
+  let checks: Checks = {
+    waiting: 0,
+    running: 0,
+    passed: 0,
+    failed: 0,
+    approval: 0,
+  }
   if (pull.state === "open") {
     const runs = await get(
       `${repo}/commits/${pull.head.sha}/check-runs?per_page=100`,
       ChecksSchema
     )
-    for (const run of runs.check_runs) {
-      if (run.status === "completed")
-        checks[PASSING.has(run.conclusion ?? "") ? "passed" : "failed"] += 1
-      else checks[run.status === "in_progress" ? "running" : "waiting"] += 1
-    }
+    for (const run of runs.check_runs)
+      checks = countCheck(checks, run.status, run.conclusion)
   }
   return {
     url: pull.html_url,
@@ -125,6 +173,9 @@ async function readAsk(repo: string, number: number): Promise<AskFacts> {
     url: issue.html_url,
     open: issue.state === "open",
     filedAt: issue.created_at,
+    question: ask.ok
+      ? ask.value.question
+      : issue.title.replace(/^\s*\[ASK\]\s*/i, ""),
     steps:
       ask.ok && ask.value.kind === "checklist"
         ? ask.value.steps.map((s) => s.says)
@@ -154,9 +205,25 @@ async function readFacts(run: RunFile): Promise<Facts> {
   const asks = new Map<string, () => Promise<AskFacts>>()
   for (const leg of legs) {
     if (leg.leg === "merge")
-      prs.set(prKey(leg.pr), () => readPr(leg.pr.repo, leg.pr.number))
+      prs.set(
+        prKey(leg.pr),
+        once(
+          endedPrs,
+          prKey(leg.pr),
+          () => readPr(leg.pr.repo, leg.pr.number),
+          (f) => f.state !== "open"
+        )
+      )
     if (leg.leg === "run")
-      runs.set(runKey(leg.repo, leg.run), () => readRun(leg.repo, leg.run))
+      runs.set(
+        runKey(leg.repo, leg.run),
+        once(
+          endedRuns,
+          runKey(leg.repo, leg.run),
+          () => readRun(leg.repo, leg.run),
+          (f) => f.endedAt !== null
+        )
+      )
     if (leg.leg === "yours" && leg.ask !== undefined) {
       const ask = leg.ask
       asks.set(askKey(ask), () => readAsk(ask.repo, ask.number))
@@ -181,9 +248,15 @@ export async function readCooking(): Promise<Cooking> {
   const run = parseRunBody(newest.body ?? "")
   if (!run.ok) return { kind: "unread", url: newest.html_url }
   const facts = await readFacts(run.value)
+  const missing = [
+    ...facts.prs.values(),
+    ...facts.runs.values(),
+    ...facts.asks.values(),
+  ]
   return {
     kind: "run",
     url: newest.html_url,
+    unread: missing.filter((f) => f === null).length,
     day: run.value.day,
     trains: trainsOf(run.value, facts),
   }

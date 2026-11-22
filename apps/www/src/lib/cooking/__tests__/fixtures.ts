@@ -107,7 +107,7 @@ const pr = (more: Partial<PrFacts>): PrFacts => ({
   state: "open",
   openedAt: "2026-11-22T18:05:00Z",
   mergedAt: null,
-  checks: { waiting: 0, running: 0, passed: 4, failed: 0 },
+  checks: { waiting: 0, running: 0, passed: 4, failed: 0, approval: 0 },
   ...more,
 })
 
@@ -123,6 +123,7 @@ const ask: AskFacts = {
   url: "https://github.com/paulgsc/some-ui/issues/3433",
   open: true,
   filedAt: "2026-11-22T20:39:20Z",
+  question: "Will you deploy home and install the new APK?",
   steps: [
     "Remove the retired speech containers",
     "Deploy home",
@@ -140,13 +141,15 @@ export const FACTS: Facts = {
     ],
     [
       prKey({ repo: "server", number: 1129 }),
-      pr({ checks: { waiting: 0, running: 2, passed: 3, failed: 0 } }),
+      pr({
+        checks: { waiting: 0, running: 2, passed: 3, failed: 0, approval: 0 },
+      }),
     ],
     [
       prKey({ repo: "some-ui", number: 3432 }),
       pr({
         openedAt: "2026-11-22T19:39:24Z",
-        checks: { waiting: 1, running: 0, passed: 13, failed: 0 },
+        checks: { waiting: 1, running: 0, passed: 13, failed: 0, approval: 0 },
       }),
     ],
   ]),

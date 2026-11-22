@@ -18,11 +18,16 @@ export const COOKING_WORDS = {
   stale:
     "Where things stand couldn't be read again, so this is what was read before.",
   noRun: "Nothing is cooking today: no run is open.",
+  noGoals: "Today's run has no goals yet.",
+  someUnread: (n: number): string =>
+    n === 1
+      ? "One stop couldn't be read just now, so it shows where it last could be placed. Read again in a few minutes."
+      : `${String(n)} stops couldn't be read just now, so they show where they last could be placed. Read again in a few minutes.`,
+  readAgain: "Read again",
   unreadRun:
     "Today's run can't be read here. Its page on GitHub says what it holds.",
   runPage: "Today's run on GitHub",
   tryAgain: "Try again",
-  refresh: "Read again",
   unread: "Not read just now",
   holder: {
     you: "You",
@@ -60,7 +65,7 @@ export const COOKING_WORDS = {
         ? "A check failed, and Claude is on it"
         : `${String(n)} checks failed, and Claude is on them`,
     checksNotStarted: "Its checks haven't started",
-    waitingForRunner: "Waiting for a free runner",
+    waitingForRunner: "Waiting its turn to start",
     checksRunning: (done: number, of: number): string =>
       `Checks running: ${String(done)} of ${String(of)} done`,
     readyToMerge: "Checks passed; waiting to be merged",
@@ -83,6 +88,7 @@ export const COOKING_WORDS = {
     homeDone: "Home did it",
   },
   stepOf: (step: number): string => `Step ${String(step + 1)} of the ask`,
+  yourCall: "Your decision",
   waitsOn: (title: string): string => `${title} arrives`,
   // the bar
   waitOnYou: (n: number): string =>
@@ -99,7 +105,8 @@ export const COOKING_WORDS = {
         : ` ${waiting.join(" and ")} ${waiting.length === 1 ? "waits" : "wait"} on it.`
     }`,
   barOthers: (holder: string, what: string, title: string): string =>
-    `Nothing waits on you. Most urgent: ${holder}, ${what}, for ${title}.`,
+    `Most urgent: ${holder}, ${what}, for ${title}.`,
+  nothingOnYou: "Nothing waits on you.",
   allArrived: "Every train has arrived.",
   show: "Show",
   // the card
@@ -130,8 +137,6 @@ export const COOKING_WORDS = {
     waiting: "Waiting longest",
     near: "Nearest arrival",
   },
-  open: "Open",
-  close: "Close",
   landsOn: (lands: string): string =>
     `Lands on ${lands.toLowerCase()} · pick any stop to see it above`,
   none: "No train here right now.",

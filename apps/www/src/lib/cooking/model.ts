@@ -84,6 +84,8 @@ export type PrFacts = {
     readonly running: number
     readonly passed: number
     readonly failed: number
+    /** Checks that wait on someone's approval. */
+    readonly approval: number
   }
 }
 
@@ -100,6 +102,8 @@ export type AskFacts = {
   readonly url: string
   readonly open: boolean
   readonly filedAt: string
+  /** What it asks, for a leg that names the ask and no step (a decision). */
+  readonly question: string
   /** What each of its steps says, in order (none for a decision). */
   readonly steps: ReadonlyArray<string>
 }
@@ -176,7 +180,8 @@ function prReading(says: string, pr: PrFacts | null | undefined): Reading {
     }
     case "open": {
       const c = pr.checks
-      const total = c.waiting + c.running + c.passed + c.failed
+      const total = c.waiting + c.running + c.passed + c.failed + c.approval
+      if (c.approval > 0) return plain(says, "you", W.now.approve, more)
       if (c.failed > 0)
         return plain(says, "claude", W.now.checkFailed(c.failed), more)
       if (total === 0)
@@ -260,8 +265,8 @@ export function trainsOf(run: RunFile, facts: Facts): Array<Train> {
           leg.ask === undefined ? undefined : facts.asks.get(askKey(leg.ask))
         const label =
           leg.says ??
-          (leg.step === undefined ? undefined : ask?.steps[leg.step]) ??
-          W.stepOf(leg.step ?? 0)
+          (leg.step === undefined ? ask?.question : ask?.steps[leg.step]) ??
+          (leg.step === undefined ? W.yourCall : W.stepOf(leg.step))
         const done = clearedAt !== null || ask?.open === false
         return plain(label, "you", ask === null ? W.unread : W.now.yours, {
           done,

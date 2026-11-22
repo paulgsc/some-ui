@@ -92,7 +92,11 @@ export const StationStrip = ({
                     "ring-foreground ring-offset-background ring-2 ring-offset-2"
                 )}
               />
-              {!small && station.name}
+              {small
+                ? onPick === undefined && (
+                    <span className="sr-only">{station.name}</span>
+                  )
+                : station.name}
               {onPick !== undefined && (
                 <button
                   type="button"
