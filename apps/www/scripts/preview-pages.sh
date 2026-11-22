@@ -13,9 +13,9 @@
 # Needs pnpm, dependencies installed (`pnpm install`), and gh signed in to
 # an account that can read this repository's Actions (`gh auth status`).
 # Without gh the media step says so and the site shows every slot's drawn
-# placeholder, as a deploy with no media would. Pages builds inside the
-# repo's nix shell (`nix develop .#ci`); the same command runs inside or
-# outside it.
+# placeholder, as a deploy with no media would. Run it inside the shell
+# Pages builds in, `nix develop .#ci --command pnpm --filter www
+# preview:pages`, whose pnpm is the one `packageManager` pins.
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

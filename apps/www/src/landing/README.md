@@ -18,9 +18,15 @@ Pages run (C1111):
 
 ```sh
 git fetch origin && git checkout <branch>
-pnpm install
-pnpm --filter www preview:pages
+nix develop .#ci --command pnpm install
+nix develop .#ci --command pnpm --filter www preview:pages
 ```
+
+Run it in the repo's `.#ci` shell, the one Pages builds in. That shell carries the Node and
+pnpm `nix/node` pins (`packageManager` is a copy of them), plus `pdftotext` for the
+résumé's checks. The `default` shell has no Node or pnpm. A pnpm from outside the flake
+(a global or home-manager install) that differs from `packageManager` tries to fetch and
+switch to the pinned one, and can fail before it runs anything.
 
 It fetches the newest media from main's runs, builds www with the Pages build's settings
 (the `pages` profile, static data, the `/some-ui/` base), and serves the result at
@@ -28,7 +34,8 @@ http://localhost:4173/some-ui/ until you press Ctrl-C.
 
 It needs:
 
-- pnpm, with dependencies installed;
+- Nix, for the `.#ci` shell (or pnpm and Node at the versions `packageManager` and
+  `.nvmrc` name);
 - `gh`, signed in to an account that can read this repository's Actions (`gh auth status`).
 
 Without `gh`, the command says so, and the page shows each slot's placeholder, as a
