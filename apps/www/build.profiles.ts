@@ -5,8 +5,8 @@ import { defineProfiles } from "@some-ui/vite-config/audience"
 import type { Plugin } from "vite"
 
 /**
- * The deployables this app builds into, selected by `SOME_UI_PROFILE`. A
- * profile lists the audiences whose `packages/ui/*` workspaces it bundles;
+ * The builds this app makes, selected by `SOME_UI_PROFILE`: three deployables
+ * and one capture-only build (`snips`). A profile lists the audiences whose `packages/ui/*` workspaces it bundles;
  * the rest are stubbed (they still typecheck and route, but ship no code).
  * About bundle size, not access.
  *

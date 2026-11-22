@@ -39,6 +39,7 @@ jobs:
       # The viewer's build, made here only (the `snips` profile): pages.yml's
       # environment, with every viewer route kept, so the routes an essay names
       # still resolve once the public site is pruned to a CV (C1055, #3401).
+      # The variables are pages.yml's own; keep the two in step by hand.
       - name: Build the viewer's app
         run: |
           nix develop .#ci --command pnpm turbo build --filter='www^...' --concurrency=100%

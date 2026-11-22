@@ -32,9 +32,15 @@ function isProfile(name: string): name is Profile {
  * (`CAPTURE_PROFILE`) is left out: Snips Capture photographs it and nothing
  * deploys it, so no visit to a deployable can load what it carries.
  */
-export const PROFILES: ReadonlyArray<Profile> = Object.keys(profiles)
+type Deployable = Exclude<Profile, typeof CAPTURE_PROFILE>
+
+function isDeployable(profile: Profile): profile is Deployable {
+  return profile !== CAPTURE_PROFILE
+}
+
+export const PROFILES: ReadonlyArray<Deployable> = Object.keys(profiles)
   .filter(isProfile)
-  .filter((profile) => profile !== CAPTURE_PROFILE)
+  .filter(isDeployable)
 
 /**
  * The environment each deployable builds with, beside `SOME_UI_PROFILE`, so
@@ -45,17 +51,10 @@ export const PROFILES: ReadonlyArray<Profile> = Object.keys(profiles)
  * (Vite prefers it to any .env file) can change which modules are checked.
  */
 export const profileBuildEnv: Readonly<
-  Record<Profile, Readonly<Record<string, string>>>
+  Record<Deployable, Readonly<Record<string, string>>>
 > = {
   lan: { VITE_DEVICE_BACKEND: "", VITE_STATIC_DATA: "", VITE_BASE_PATH: "/" },
   pages: {
-    VITE_DEVICE_BACKEND: "",
-    VITE_STATIC_DATA: "true",
-    VITE_BASE_PATH: "/some-ui/",
-  },
-  // .github/workflows/snips-capture.yml: the Pages build's environment, so a
-  // snip of a route shows what the public site served of it.
-  [CAPTURE_PROFILE]: {
     VITE_DEVICE_BACKEND: "",
     VITE_STATIC_DATA: "true",
     VITE_BASE_PATH: "/some-ui/",
