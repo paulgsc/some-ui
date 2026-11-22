@@ -108,7 +108,10 @@ export const cubeRing = (faces: number): Ring => ({
   turnS: 1.2,
 })
 
-/** How many cubes the showcase shows side by side. */
+/**
+ * How many cubes the showcase shows side by side: two, as the owner asked
+ * (C1110). landing/index.html lays out a row of the copy block and two.
+ */
 export const CUBES = 2
 
 /** Seconds a face's title takes to type in, once its face has come round. */
@@ -118,12 +121,13 @@ const slotOf = (ring: Ring): number => ring.restS + ring.turnS
 const cycleOf = (ring: Ring): number => slotOf(ring) * ring.faces
 
 /**
- * A start `seconds` into a ring's schedule, as an animation delay: never
- * positive, so the animation is already running when the page opens, at
- * the point it would have reached, rather than waiting and then jumping.
+ * An animation delay that keeps a ring's animation `lagS` seconds behind
+ * its own schedule: never positive, so the animation is already running when
+ * the page opens, where it would have been, rather than waiting and then
+ * jumping. A ring and its titles given the same lag stay in step.
  */
-const startAt = (ring: Ring, seconds: number): number =>
-  (seconds % cycleOf(ring)) - cycleOf(ring)
+const lagBy = (ring: Ring, lagS: number): number =>
+  (lagS % cycleOf(ring)) - cycleOf(ring)
 
 /** A number for CSS, rounded to three places with no trailing zeros. */
 const num = (n: number): string => String(Number(n.toFixed(3)))
@@ -171,22 +175,23 @@ export function typeCss(ring: Ring): string {
 
 /**
  * One project on a cube's face, `position` faces round from the front, in a
- * ring that starts turning `delayS` late. Its screen holds the project's
+ * ring running `lagS` behind its schedule. Its screen holds the project's
  * title card under its clip or still when the build carries one; its band,
  * on a wide screen, holds its title, typed in as the face comes round, and
  * its short line; its caption, on a phone or for a reader who prefers less
  * motion, holds its title, stack and line. Every word is below the picture.
- * Laid flat, the screen takes its picture's own shape (`--ar`, C1064), so
- * the picture fills it; on a cube's square face it sits whole inside it.
+ * Laid flat, the card takes its picture's own shape (`--ar`, `--r`; C1064)
+ * in rows as the phone has always had them, so the picture fills it; on a
+ * cube's square face it sits whole inside it.
  */
 const projectFace = (
   p: ProjectWords,
   ring: Ring,
   position: number,
-  delayS: number,
+  lagS: number,
   media: LandingMedia
 ): string => `
-            <article class="face" data-slot="${p.media.endsWith(".mp4") ? "clip" : "still"}" data-asset="${e(p.media)}" style="--i: ${String(position)}; --ar: ${aspect(media.get(p.media) ?? PLACEHOLDER)}">
+            <article class="face" data-slot="${p.media.endsWith(".mp4") ? "clip" : "still"}" data-asset="${e(p.media)}" style="--i: ${String(position)}; ${shape(media.get(p.media) ?? PLACEHOLDER)}">
               <div class="screen">
                 <div class="title-card" aria-hidden="true"><span>${e(p.title)}</span></div>${
                   media.has(p.media)
@@ -196,7 +201,7 @@ const projectFace = (
                 }
               </div>
               <div class="band" aria-hidden="true">
-                <p class="band-title"><span class="typed" style="animation-delay: ${num(startAt(ring, delayS + position * slotOf(ring)))}s; animation-timing-function: steps(${String([...p.title].length)}, end)">${e(p.title)}</span></p>
+                <p class="band-title"><span class="typed" style="animation-delay: ${num(lagBy(ring, lagS + position * slotOf(ring)))}s; animation-timing-function: steps(${String([...p.title].length)}, end)">${e(p.title)}</span></p>
                 <p class="band-line">${e(p.short)}</p>
               </div>
               <div class="caption">
@@ -208,12 +213,14 @@ const projectFace = (
 
 /**
  * The showcase (C1113): on a wide screen, one row of the copy block and
- * `CUBES` cubes, each block breathing a little and each holding still while
- * the pointer is on it. Every cube carries every project, the cube `j`
- * starting `j / CUBES` of the way round, so no two show the same project at
- * once, and turning half a face's time after the one before it, so they
- * never turn together. Only the first cube is read out, and only it shows,
- * laid flat, on a phone or for a reader who prefers less motion.
+ * `CUBES` cubes, each block breathing a little, and the whole row holding
+ * still while the pointer is on it, so the cubes keep their places. Every
+ * cube carries every project, the cube `j` starting `j / CUBES` of the way
+ * round and running half a face's time ahead of the one before it, so they
+ * never show the same project at once and never turn together. Only the
+ * first cube is read out (its captions, hidden from sight on a wide
+ * screen), and only it shows, laid flat, on a phone or for a reader who
+ * prefers less motion.
  */
 function showcase(words: LandingWords, media: LandingMedia): string {
   const cube = cubeRing(words.projects.length)
@@ -229,18 +236,23 @@ function showcase(words: LandingWords, media: LandingMedia): string {
     )
     .join("")
   const cubes = Array.from({ length: CUBES }, (_, j) => {
-    const delayS = (j * slotOf(cube)) / CUBES
+    // Cube j runs j / CUBES of a face ahead (a lag of a whole cycle less
+    // that), and starts j / CUBES of the way round the projects: whenever it
+    // shows a face, or two mid-turn, they are always one to two faces past
+    // the first cube's, which with three projects or more is never the
+    // same project.
+    const lagS = cycleOf(cube) - (j * slotOf(cube)) / CUBES
     const offset = Math.floor((j * n) / CUBES)
     const faces = [
       ...words.projects.slice(offset),
       ...words.projects.slice(0, offset),
     ]
-      .map((p, position) => projectFace(p, cube, position, delayS, media))
+      .map((p, position) => projectFace(p, cube, position, lagS, media))
       .join("")
     return `
         <div class="block block--cube" data-cube="${String(j)}"${j === 0 ? "" : ' aria-hidden="true"'}>
           <div class="ring ring--cube" data-axis="x">
-            <div class="ring-turn" style="animation-delay: ${num(startAt(cube, delayS))}s">${faces}
+            <div class="ring-turn" style="animation-delay: ${num(lagBy(cube, lagS))}s">${faces}
             </div>
           </div>
         </div>`

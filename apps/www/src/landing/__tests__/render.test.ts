@@ -91,30 +91,54 @@ describe("renderLanding", () => {
     expect(page).not.toMatch(/<video|<img/)
   })
 
-  /** The showcase's cubes, in order, each its faces' assets in order. */
-  const cubes = (html: string): Array<Array<string>> =>
-    [
+  /**
+   * What each cube shows at time `t`, read from the page as a browser would
+   * run it: a cube's turn runs `t - delay` into its cycle, rests on face k,
+   * then shows k and k + 1 while it turns.
+   */
+  const fronts = (
+    html: string,
+    faces: number,
+    t: number
+  ): Array<Set<string>> => {
+    const ring = cubeRing(faces)
+    const slot = ring.restS + ring.turnS
+    const cycle = slot * faces
+    return [
       ...html.matchAll(
-        /<div class="block block--cube" data-cube="\d+"[^>]*>([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/g
+        /<div class="ring-turn" style="animation-delay: (-?[\d.]+)s">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/g
       ),
-    ].map((m) =>
-      [...m[1].matchAll(/<article class="face"[^>]*data-asset="([^"]+)"/g)].map(
-        (f) => f[1]
-      )
-    )
+    ].map((m) => {
+      const assets = [
+        ...m[2].matchAll(/<article class="face"[^>]*data-asset="([^"]+)"/g),
+      ].map((f) => f[1])
+      const u = (((t - Number(m[1])) % cycle) + cycle) % cycle
+      const k = Math.floor(u / slot) % faces
+      const shown = new Set([assets[k]])
+      if (u % slot > ring.restS) shown.add(assets[(k + 1) % faces])
+      return shown
+    })
+  }
 
-  it("shows the projects on two cubes that never show the same one at once (C1113)", () => {
-    const shown = cubes(page)
-    expect(shown).toHaveLength(CUBES)
-    const all = LANDING_WORDS.projects.map((p) => p.media)
-    for (const faces of shown)
-      expect([...faces].sort()).toEqual([...all].sort())
-    // The front faces of every cube differ at every turn of the schedule.
-    for (let turn = 0; turn < all.length; turn++) {
-      const front = shown.map((faces) => faces[turn])
-      expect(new Set(front).size).toBe(CUBES)
+  it("never shows one project on both cubes at once, resting or turning (C1112)", () => {
+    for (const n of [3, 4, 5]) {
+      const projects = Array.from({ length: n }, (_, i) => ({
+        ...LANDING_WORDS.projects[i % LANDING_WORDS.projects.length],
+        media: `clips/p${String(i)}.mp4` as const,
+      }))
+      const html = renderLanding(resume, mochiSvg(), {
+        ...LANDING_WORDS,
+        projects,
+      })
+      const cycle = (cubeRing(n).restS + cubeRing(n).turnS) * n
+      for (let t = 0; t < 2 * cycle; t += 0.05) {
+        const shown = fronts(html, n, t)
+        expect(shown).toHaveLength(CUBES)
+        const [a, b] = shown
+        expect([...a].filter((x) => b.has(x))).toEqual([])
+      }
     }
-    // Only the first cube is read out.
+    // Every cube carries every project; only the first is read out.
     expect(page).toContain('<div class="block block--cube" data-cube="0">')
     expect(page).toContain(
       '<div class="block block--cube" data-cube="1" aria-hidden="true">'
@@ -166,18 +190,33 @@ describe("renderLanding", () => {
 
   it("types each title as its face comes round, a step a character", () => {
     const cube = cubeRing(LANDING_WORDS.projects.length)
-    const cycle = (cube.restS + cube.turnS) * cube.faces
-    const typed = [
+    const slot = cube.restS + cube.turnS
+    const cycle = slot * cube.faces
+    const cubesHtml = [
       ...page.matchAll(
-        /<span class="typed" style="animation-delay: (-?[\d.]+)s; animation-timing-function: steps\((\d+), end\)">([^<]+)<\/span>/g
+        /<div class="ring-turn" style="animation-delay: (-?[\d.]+)s">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/g
       ),
     ]
-    expect(typed).toHaveLength(LANDING_WORDS.projects.length * CUBES)
-    for (const [, delay, steps, title] of typed) {
-      const d = Number(delay)
-      expect(d).toBeLessThanOrEqual(0)
-      expect(d).toBeGreaterThanOrEqual(-cycle)
-      expect(Number(steps)).toBe([...title].length)
+    expect(cubesHtml).toHaveLength(CUBES)
+    for (const [, ringDelay, faces] of cubesHtml) {
+      const typed = [
+        ...faces.matchAll(
+          /style="--i: (\d+);[^"]*"[\s\S]*?<span class="typed" style="animation-delay: (-?[\d.]+)s; animation-timing-function: steps\((\d+), end\)">([^<]+)<\/span>/g
+        ),
+      ]
+      expect(typed).toHaveLength(LANDING_WORDS.projects.length)
+      for (const [, position, delay, steps, title] of typed) {
+        // A title starts typing when its face arrives: its ring's delay
+        // plus its position's slots, in the same cycle.
+        const off =
+          (((Number(delay) - Number(ringDelay) - Number(position) * slot) %
+            cycle) +
+            cycle) %
+          cycle
+        expect(Math.min(off, cycle - off)).toBeLessThan(0.01)
+        expect(Number(delay)).toBeLessThanOrEqual(0)
+        expect(Number(steps)).toBe([...title].length)
+      }
     }
   })
 
@@ -252,8 +291,8 @@ describe("renderLanding", () => {
       new RegExp(
         `class="face"[^>]*data-asset="${key}" style="--i: \\d+; ([^"]+)"`
       ).exec(shown)?.[1] ?? ""
-    expect(style(clip.media)).toBe("--ar: 1080 / 1920")
-    expect(style(other.media)).toBe("--ar: 4 / 3")
+    expect(style(clip.media)).toBe("--ar: 1080 / 1920; --r: 0.5625")
+    expect(style(other.media)).toBe("--ar: 4 / 3; --r: 1.3333")
   })
 
   it("puts no link or control on a card: the page's header leads to the code", () => {
@@ -270,7 +309,7 @@ describe("renderLanding", () => {
     )
     const css = template.slice(template.indexOf("<style>"))
     const wide =
-      "@media (min-width: 900px) and (prefers-reduced-motion: no-preference) {"
+      "@media (width >= 900px) and (prefers-reduced-motion: no-preference) {"
     const start = css.indexOf(wide)
     expect(start).toBeGreaterThan(-1)
     // The block ends where the next top-level rule starts.

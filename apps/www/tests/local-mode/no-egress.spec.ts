@@ -373,6 +373,20 @@ test.describe("the Pages build", () => {
           )
       )
     ).toBe(true)
+    // On a wide screen the showcase turns, and each project is still read
+    // out once, by the first cube's caption (C1112): the second cube and
+    // every band are hidden from a screen reader.
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await expect(
+      page.getByRole("heading", { level: 3, name: "Suspender Ledger" })
+    ).toHaveCount(1)
+    expect(
+      await page.evaluate(() => document.getAnimations().length)
+    ).toBeGreaterThan(0)
+    // For a reader who prefers less motion nothing turns, types or breathes.
+    await page.emulateMedia({ reducedMotion: "reduce" })
+    expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)
+    await page.emulateMedia({ reducedMotion: null })
     await collect()
 
     // The résumé is static too (C1055): every version's page is there whole,

@@ -18,7 +18,11 @@
 #
 # Needs: gh, signed in with read access to the repository's Actions
 # (GH_TOKEN in Actions), unzip and zipinfo.
-set -euo pipefail
+#
+# No pipefail, as Actions' own shell for the step had none: a listing that
+# fails at the head of a `| while` is passed over and the next run or
+# producer still tried, so one failed listing costs one kind, not the rest.
+set -eu
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 media="$here/../node_modules/.cache/www/site-media"
