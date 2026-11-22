@@ -2,8 +2,11 @@
   "id": "C1116",
   "made": "2026-11-22",
   "by": "owner",
-  "paths": ["apps/www/src/lib/cooking", "apps/www/src/routes/_dashboard/_lan"],
-  "chose": "The Cooking page shows the owner's goals, not work items: a small closed set of things the owner wants (deploy home, install the APK, approve the Pages release, an essay on the phone, a merge), each drawn as a train with a destination whose stops are the recursive graph of tasks underneath flattened to only what gates the goal, each stop saying who holds it, and the page answering first whether anything waits on the owner. The first round's three layouts (a column board, rows by request, a needs-you list) are rejected. Owner, 2026-11-22: \"we are trying to communicate this in as ergonomic and as less noisy … way … without engaging any kind of load-bearing task … this isn't the checklist … this is a kind of transformation of the checklist … what is this serialized blocker? And where are they stuck?\"",
+  "paths": [
+    "apps/www/src/lib/cooking",
+    "apps/www/src/routes/_dashboard/_lan/cooking.tsx"
+  ],
+  "chose": "The Cooking page shows the owner's goals, not work items. The owner, 2026-11-22: \"Immediately we disregard A and we cannot accept A … the whole concept of a conveyor is that what we look at, we are saying you have a node and where it is currently, but also immediately where it has been … and also immediately where it's going to be … we are not bucketing things … I don't like any of them, but at least B kind of tries what I'm talking about\"; \"So centered on a goal, of which they're kind of compile time now, install an APK, approve the page release, approve the APK release, approve the change sets, home, deploy home, get the latest whatever … a small finite set\"; \"this train is trying to get to this destination\"; \"this isn't the checklist … this is a kind of transformation of the checklist … what is this serialized blocker? And where are they stuck? Or … are they all stuck on none of my decisions? Like, they're just stuck on like CI run is taking forever\". Claude's reading of the owner's words: each goal is a member of a closed union, drawn as a train whose stops are the graph of tasks under it flattened to the ones that gate the goal, each stop saying who holds it, and the page answering first whether anything waits on the owner. All three layouts of the first round are set aside.",
   "undo": "Record a call that moves this one.",
   "refs": ["#3425"]
 }
