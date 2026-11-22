@@ -5,7 +5,8 @@
  * on (`./model`). The read is `./read`, over `lib/home-link/game-moments`.
  * What it shows is the big moments no bite was said about, among the bites
  * (`@some-ui/game-week`'s `momentsWithNoBite`). Phone-only
- * (`build.paths.ts`).
+ * (`build.paths.ts`): a route reaches it only behind the inline
+ * `VITE_DEVICE_BACKEND` flag, so other builds drop it with the home link.
  */
 import { queryOptions } from "@tanstack/react-query"
 
@@ -13,7 +14,7 @@ import type { MomentsOutcome, MomentsReader } from "./model"
 import { momentsAgainIn } from "./model"
 import { readMomentsOf } from "./read"
 
-type MomentsQueryOptions = ReturnType<
+export type MomentsQueryOptions = ReturnType<
   typeof queryOptions<
     MomentsOutcome,
     Error,

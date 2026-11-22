@@ -24,9 +24,10 @@ import {
   STUDIO_WORDS,
   TakeLibrary,
 } from "@some-ui/soundbites"
-import { useQuery } from "@tanstack/react-query"
+import { queryOptions, skipToken, useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link, notFound } from "@tanstack/react-router"
 
+import type { MomentsQueryOptions } from "@/lib/game-moments"
 import { gameMomentsQuery } from "@/lib/game-moments"
 import { keepSoundbites } from "@/lib/soundbite-keeping"
 import { noteOfTake } from "@/lib/take-about"
@@ -59,6 +60,27 @@ const PORTS =
   import.meta.env.VITE_DEVICE_BACKEND === "true"
     ? { ...takePorts(STORES), names: NAMES }
     : null
+
+/**
+ * A game's moment log, read through the home link: the Android app's alone,
+ * behind the same inline flag as the ports, so other builds drop the link.
+ */
+const MOMENTS: ((gameId: string) => MomentsQueryOptions) | null =
+  import.meta.env.VITE_DEVICE_BACKEND === "true"
+    ? (gameId): MomentsQueryOptions => gameMomentsQuery(gameId, readMoments)
+    : null
+
+const NO_GAME: readonly ["home", "game-moments", string] = [
+  "home",
+  "game-moments",
+  "",
+]
+
+/** No game's log: what the page asks while none is read. */
+const NO_MOMENTS: MomentsQueryOptions = queryOptions({
+  queryKey: NO_GAME,
+  queryFn: skipToken,
+})
 
 /**
  * Under a note's take, the way to its episode at the moment the note was
@@ -130,11 +152,12 @@ const KindPage = (): JSX.Element => {
   // Opened on one game: its moment log, for the big moments with no bite.
   // Only where bites are listed: elsewhere every moment would read as missed.
   const game =
-    PORTS === null || (kind !== "bite" && kind !== "all") ? null : gameOf(about)
-  const moments = useQuery({
-    ...gameMomentsQuery(game ?? "", readMoments),
-    enabled: game !== null,
-  })
+    MOMENTS === null || (kind !== "bite" && kind !== "all")
+      ? null
+      : gameOf(about)
+  const moments = useQuery(
+    MOMENTS === null || game === null ? NO_MOMENTS : MOMENTS(game)
+  )
   const log = moments.data?.kind === "read" ? moments.data.log : null
   return (
     <StudioPage heading={LIBRARY_WORDS.compartmentHeading(kind)} back="takes">
