@@ -1926,7 +1926,7 @@ const PICTURE_SIDE_MAX = 4096
  * bytes may not fit Workers Free's 10 ms of CPU (README, "Limits"). Home
  * encodes the clip to fit (C1072).
  */
-export const PICTURE_MAX_BYTES = 786_432
+const PICTURE_MAX_BYTES = 786_432
 
 function u32(bytes: Uint8Array, at: number): number {
   return new DataView(bytes.buffer, bytes.byteOffset).getUint32(at)
