@@ -13,8 +13,7 @@
  *   keeps the first failure.
  * - Family: the app's traffic on Wi-Fi or on mobile data (Android's
  *   default, or a per-app setting) × home answering on Wi-Fi only × mobile
- *   data there or gone × Data Saver on or off with the Wi-Fi metered or not
- *   × the first failure's kind (no answer, a name, a certificate, a fault)
+ *   data there or gone × the first failure's kind (no answer, a name, a certificate, a fault)
  *   × the second try's end (answered, held, none).
  * - Proof: these tests, over the second try's three ends and which
  *   failures ask it; and android-compat.yml's route scenario
@@ -29,7 +28,9 @@
  *   and the first failure where it doesn't. Such a setting is emulated
  *   only as an iptables rule on the app, which Android doesn't know of. A
  *   request the default network fails slowly waits that failure out before
- *   the second try.
+ *   the second try. Data Saver with a metered Wi-Fi is unproven: its
+ *   emulator set-up did not apply (`cmd netpolicy set metered-network`
+ *   failed in Android Compat run 44990500461), so NA2 claims nothing of it.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
