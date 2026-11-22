@@ -34,6 +34,16 @@ on:
         description: "Cap each emulator's one core at this share of a host core (0 for no cap)."
         required: false
         default: "60"
+      route_only:
+        description: "Run only the route scenario (#3411, NA2): home asked with Wi-Fi the default, with this app's traffic on mobile data while home answers only on Wi-Fi, and with the app kept off Wi-Fi; each as the app is and with its fix."
+        required: false
+        type: boolean
+        default: false
+      name_only:
+        description: "Run only the name scenario (#3411): a name that fails its first lookup, then answers, asked again on Wi-Fi with mobile data off. Points each emulator's resolver at apps/mobile/compat/staged-dns.py."
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -99,10 +109,11 @@ jobs:
           SOME_UI_VERSION_NAME: 0.0.${{ github.run_number }}+compat.${{ steps.sha.outputs.sha }}
           SOME_UI_EXTRA_ABI: x86_64
         run: |
-          ./gradlew :app:assembleRelease :app:assembleDebug --no-daemon --stacktrace
+          ./gradlew :app:assembleRelease :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
           mkdir ../../../compat-apk
           cp app/build/outputs/apk/release/app-release.apk ../../../compat-apk/launch.apk
           cp app/build/outputs/apk/debug/app-debug.apk ../../../compat-apk/debug.apk
+          cp app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk ../../../compat-apk/tests.apk
       # Retention: read by this run's level jobs only. "Re-run failed jobs"
       # more than a day later finds no APK; dispatch the workflow again.
       - name: Upload the APKs
@@ -143,6 +154,27 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      # Home's stand-in for the name and route scenarios: a plain page, the
+      # emulator's 10.0.2.2:8080.
+      - name: Stand in a home
+        if: inputs.name_only || inputs.route_only
+        run: |
+          mkdir -p "$RUNNER_TEMP/page" && echo ok > "$RUNNER_TEMP/page/index.html"
+          nohup python3 -I -m http.server 8080 --directory "$RUNNER_TEMP/page" > "$RUNNER_TEMP/page.log" 2>&1 &
+      # The name scenario's network (#3411): a resolver on the runner that
+      # fails each staged name's first lookup and answers it after with the
+      # stand-in's address. The emulator's `-dns-server` below points at it.
+      - name: Stage a resolver that fails a name once
+        if: inputs.name_only
+        run: |
+          # Port 53 without running the resolver as root, on the runner's own
+          # address: systemd-resolved holds 127.0.0.53:53.
+          host=$(hostname -I | awk '{print $1}')
+          sudo sysctl -q -w net.ipv4.ip_unprivileged_port_start=53
+          nohup python3 -I apps/mobile/compat/staged-dns.py file-host.home.test,fresh.home.test 10.0.2.2 53 8.8.8.8 "$host" > "$RUNNER_TEMP/dns.log" 2>&1 &
+          sleep 1
+          cat "$RUNNER_TEMP/dns.log"
+          echo "STAGED_DNS=-dns-server $host" >> "$GITHUB_ENV"
       # Slowed: one core, little memory, and a 3G link (netdelay umts,
       # netspeed hsdpa); run-level.sh caps the core's CPU.
       - name: Run the level
@@ -151,6 +183,8 @@ jobs:
         env:
           API: ${{ matrix.api }}
           CPU_PERCENT: ${{ inputs.cpu_percent }}
+          NAME_ONLY: ${{ inputs.name_only }}
+          ROUTE_ONLY: ${{ inputs.route_only }}
         with:
           api-level: ${{ matrix.api }}
           target: google_apis
@@ -158,7 +192,7 @@ jobs:
           cores: 1
           ram-size: 1536M
           emulator-boot-timeout: 900
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -netdelay umts -netspeed hsdpa
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -netdelay umts -netspeed hsdpa ${{ env.STAGED_DNS }}
           script: bash apps/mobile/compat/run-level.sh "$API" compat-apk compat-out "$CPU_PERCENT"
       # The level's row of the stamp, written even when the emulator never
       # booted, so the table shows it.
@@ -169,7 +203,8 @@ jobs:
         run: |
           mkdir -p compat-out
           [ -f compat-out/row.json ] || jq -nc --arg api "$API" \
-            '{api: ($api | tonumber? // $api), webview: "unknown", launch: "not run", paired: "not run", storm: "not run", refresh: "not run"}' > compat-out/row.json
+            '{api: ($api | tonumber? // $api), webview: "unknown", launch: "not run", paired: "not run", storm: "not run", refresh: "not run", name: "not run"}' > compat-out/row.json
+          [ ! -f "$RUNNER_TEMP/dns.log" ] || cp "$RUNNER_TEMP/dns.log" compat-out/staged-dns.log
       # Retention: read by this run's stamp job, and by a person reading a
       # red level right after the run; a later look is a dispatch away.
       - name: Upload what the level showed
@@ -203,11 +238,11 @@ jobs:
           {
             echo "## Android compatibility: \`${SHA::7}\` ($REF)"
             echo
-            echo "| API | Image's WebView | Launch | Paired (https) | Storm | Refresh |"
-            echo "| --- | --- | --- | --- | --- | --- |"
-            jq -r '.[] | [.api, (.webview // "unknown"), .launch, .paired, .storm, .refresh] | @tsv' stamp-rows.json |
-              while IFS=$'\t' read -r api webview launch paired storm refresh; do
-                echo "| $api | $webview | $(mark "$launch") | $(mark "$paired") | $(mark "$storm") | $(mark "$refresh") |"
+            echo "| API | Image's WebView | Launch | Paired (https) | Storm | Refresh | Name or route scenario |"
+            echo "| --- | --- | --- | --- | --- | --- | --- |"
+            jq -r '.[] | [.api, (.webview // "unknown"), .launch, .paired, .storm, .refresh, (.name // "not run")] | @tsv' stamp-rows.json |
+              while IFS=$'\t' read -r api webview launch paired storm refresh name; do
+                echo "| $api | $webview | $(mark "$launch") | $(mark "$paired") | $(mark "$storm") | $(mark "$refresh") | $name |"
               done
             echo
             passed=$(jq -r '[.[] | select(.launch == "pass" and .paired == "pass" and .storm == "pass" and .refresh == "pass") | .api] | join(", ")' stamp-rows.json)

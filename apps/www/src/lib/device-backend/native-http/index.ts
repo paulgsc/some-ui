@@ -17,12 +17,20 @@
  *   timeout is `HomeNoAnswerError`, which the link reads as away (AW1); a
  *   name this phone can't find or a certificate it doesn't trust is
  *   `HomeBlockedError`, said as itself.
+ * - **Home's local networks are asked before home is said unreachable**
+ *   (NA2, #3411): a request that never reached home (its connection never
+ *   opened, or home's name wasn't found: `neverSent`) goes once more over
+ *   the phone's Wi-Fi and Ethernet (`./route`), since Android can put this
+ *   app's traffic on mobile data while the phone is on home's Wi-Fi. Their
+ *   answer is home's; Android keeping the app off the network is
+ *   `HomeBlockedError` `held`.
  *
  * The plugin parses any `application/json` answer regardless of
  * `responseType`, so `body` is re-serialised here.
  */
+import type { HttpResponse } from "@capacitor/core"
 import { CapacitorHttp } from "@capacitor/core"
-import type { HomeAnswer, HomeRange } from "@some-ui/core-utils"
+import type { HomeAnswer, HomeBytes, HomeRange } from "@some-ui/core-utils"
 import { isHomeBytes } from "@some-ui/core-utils"
 import type { ForeignPort, ForeignVerdict } from "@some-ui/intent-kit"
 import {
@@ -44,6 +52,7 @@ import {
   HomeNoAnswerError,
   phoneOnline,
 } from "./no-answer"
+import { ROUTE_BUDGET_MS, routeElsewhere } from "./route"
 
 /** Long enough for a slow LAN; short enough to say "unreachable" promptly. */
 const TIMEOUT_MS = 10_000
@@ -86,6 +95,7 @@ const BLOCKED: Readonly<Record<HomeBlockedReason, string>> = {
   name: "This phone couldn't look up home's name on this network.",
   trust: "This phone doesn't trust home's certificate.",
   door: "Home's address answered, but home's server didn't.",
+  held: "This phone keeps the app off the network.",
 }
 
 function classify(error: unknown): ForeignVerdict {
@@ -143,6 +153,12 @@ export async function homeRequest(call: HomeRequest): Promise<HomeAnswer> {
   if (range !== undefined && range !== "whole") {
     headers.Range = `bytes=${String(range.start)}-${String(range.end)}`
   }
+  const options = {
+    method,
+    url,
+    headers,
+    responseType: range === undefined ? ("text" as const) : ("blob" as const),
+  }
   const answer = await foreignValue(
     callForeign({
       port: PORT,
@@ -150,15 +166,12 @@ export async function homeRequest(call: HomeRequest): Promise<HomeAnswer> {
       deadlineMs: 2 * TIMEOUT_MS + 1_000,
       start: () =>
         CapacitorHttp.request({
-          method,
-          url,
-          headers,
+          ...options,
           ...(bytes !== null
             ? { data: bytes.base64, dataType: "file" as const }
             : body === undefined
               ? {}
               : { data: body }),
-          responseType: range === undefined ? "text" : "blob",
           disableRedirects: true,
           connectTimeout: TIMEOUT_MS,
           readTimeout: TIMEOUT_MS,
@@ -172,7 +185,7 @@ export async function homeRequest(call: HomeRequest): Promise<HomeAnswer> {
         ? new ForeignCallError(error)
         : new HomeBlockedError(error, blocked)
     }
-  )
+  ).catch((error: unknown) => elsewhere(error, options, bytes, body))
   const { data } = answer
   const header = (wanted: string): string | undefined =>
     Object.entries(answer.headers).find(
@@ -186,4 +199,78 @@ export async function homeRequest(call: HomeRequest): Promise<HomeAnswer> {
     ...(etag === undefined ? {} : { etag }),
     ...(retryAfter === undefined ? {} : { retryAfter }),
   }
+}
+
+/**
+ * Whether `failed` is a request that never reached home, so asking again
+ * can't send it twice (NA2): home's name not found, or the connection never
+ * opened ("failed to connect", a refusal, a connect timeout). Not this
+ * page's own deadline, nor a read that timed out, where home may already
+ * have the request (a pairing's single-use code, say).
+ */
+function neverSent(failed: unknown): boolean {
+  if (failed instanceof HomeBlockedError) return failed.reason === "name"
+  if (!(failed instanceof HomeNoAnswerError)) return false
+  const words: Array<string> = []
+  for (
+    let at: unknown = failed.cause, depth = 0;
+    at != null && depth < 4;
+    depth++
+  ) {
+    if (at instanceof ForeignDeadlineError) return false
+    words.push(String(at))
+    if (typeof at === "object") {
+      if ("message" in at) words.push(String(at.message))
+      if ("code" in at) words.push(String(at.code))
+    }
+    at = typeof at === "object" && "cause" in at ? at.cause : null
+  }
+  return /failed to connect|ConnectException|NoRouteToHost|ECONNREFUSED|connection refused/i.test(
+    words.join(" ")
+  )
+}
+
+/**
+ * `failed`'s request asked once more over the phone's other networks (NA2),
+ * when it found no answer or no name: their answer, as the plugin's own
+ * would be; `held` when Android keeps the app off them all; else `failed`.
+ */
+async function elsewhere(
+  failed: unknown,
+  options: {
+    method: string
+    url: string
+    headers: Record<string, string>
+    responseType: "text" | "blob"
+  },
+  bytes: HomeBytes | null,
+  body: unknown
+): Promise<HttpResponse> {
+  if (!neverSent(failed)) throw failed
+  const routed = await routeElsewhere({
+    ...options,
+    timeout: TIMEOUT_MS,
+    budget: ROUTE_BUDGET_MS,
+    ...(bytes !== null
+      ? { data: bytes.base64, dataType: "file" as const }
+      : body === undefined
+        ? {}
+        : { data: typeof body === "string" ? body : JSON.stringify(body) }),
+  })
+  if (routed.kind === "answered") {
+    const { status, headers, data } = routed.answer
+    return { status, headers, data, url: options.url }
+  }
+  if (routed.kind === "held") {
+    throw new HomeBlockedError(
+      {
+        kind: "rejected",
+        retryable: true,
+        summary: BLOCKED.held,
+        cause: failed,
+      },
+      "held"
+    )
+  }
+  throw failed
 }

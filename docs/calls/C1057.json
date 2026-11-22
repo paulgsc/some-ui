@@ -1,0 +1,17 @@
+{
+  "id": "C1057",
+  "made": "2026-11-22",
+  "by": "owner",
+  "paths": [
+    "some-ui:apps/mobile/android/app/src/androidTest/java/dev/paulgsc/someui/NameLookupTest.java",
+    "some-ui:apps/mobile/compat/name-lookup.sh"
+  ],
+  "chose": "The owner (2026-11-22, relayed by the coordinator), for #3411's S21 Ultra fix: nothing merges to main unless it can be recreated. The fix needs a check that, without it, fails as the S21 Ultra fails and passes as the S26 passes, and with it passes on both; a unit test that only models the state is not enough on its own, since the difference is the device. The reproduction runs on a GitHub KVM runner, on two emulators set up like each phone (its Android API level, Wi-Fi only, cellular off). #3414, which fixes its own gap with its own failing-then-passing test and claims nothing about the S21's lookups, merges on its own terms.",
+  "options": [
+    "a device reproduction gates the S21 fix (chosen)",
+    "a state-model test alone"
+  ],
+  "gray": "Whether a defect that only one phone shows may be fixed on a model test's evidence, or must first be recreated on a device like it, is the owner's bar for proof; no check or earlier decision set it.",
+  "undo": "Record a call that moves this one; the S21 fix may then land on a state-model test alone.",
+  "refs": ["#3411", "#3414", "#3100"]
+}

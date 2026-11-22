@@ -222,6 +222,7 @@ const BLOCKED_SUMMARY: Readonly<Record<HomeBlockedReason, string>> = {
   name: "This phone couldn't look up home's name on this network.",
   trust: "This phone doesn't trust home's certificate.",
   door: "Home's address answered, but home's server didn't.",
+  held: "This phone keeps the app off the network.",
 }
 
 /**

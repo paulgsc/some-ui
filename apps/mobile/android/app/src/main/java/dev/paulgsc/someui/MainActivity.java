@@ -92,6 +92,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NativeLogPlugin.class);
         registerPlugin(HomeCredentialPlugin.class);
         registerPlugin(ListenPlugin.class);
+        registerPlugin(HomeRoutePlugin.class);
         // Before the bridge is built, so no page can finish loading unseen.
         bridgeBuilder.addWebViewListener(new WebViewListener() {
             @Override
