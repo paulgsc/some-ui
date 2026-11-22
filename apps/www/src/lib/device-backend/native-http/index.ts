@@ -208,7 +208,7 @@ export async function homeRequest(call: HomeRequest): Promise<HomeAnswer> {
  * page's own deadline, nor a read that timed out, where home may already
  * have the request (a pairing's single-use code, say).
  */
-export function neverSent(failed: unknown): boolean {
+function neverSent(failed: unknown): boolean {
   if (failed instanceof HomeBlockedError) return failed.reason === "name"
   if (!(failed instanceof HomeNoAnswerError)) return false
   const words: Array<string> = []
