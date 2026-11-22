@@ -73,6 +73,13 @@ describe("a run issue's body", () => {
     ])
   })
 
+  it("says when it has no run block", () => {
+    expect(parseRunBody("Only prose.")).toEqual({
+      ok: false,
+      problems: ["it has no ```json run block"],
+    })
+  })
+
   it("refuses a leg that waits on a goal the run doesn't list", () => {
     const g = { ...run.goals[0], legs: [{ leg: "goal", goal: "G9" }] }
     expect(problems({ ...run, goals: [g], cleared: [] })).toEqual([

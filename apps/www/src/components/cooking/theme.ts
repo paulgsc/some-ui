@@ -3,7 +3,8 @@
  * in every theme. The holder's name is always written beside it, so colour
  * is never the only sign. Total by its type: a new holder or urgency fails to
  * compile here until it says how it draws.
- */ import type { Urgency } from "@/lib/cooking/algebra"
+ */
+import type { Urgency } from "@/lib/cooking/algebra"
 import type { Holder } from "@/lib/cooking/model"
 
 type Look = {

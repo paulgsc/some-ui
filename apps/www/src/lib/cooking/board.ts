@@ -69,14 +69,28 @@ export type BoardEvent =
   | { readonly kind: "picked"; readonly train: string; readonly stop: number }
   | { readonly kind: "slid"; readonly by: -1 | 1 }
 
-export const matches = (filter: Filter, train: Train): boolean =>
-  filter === "all"
-    ? true
-    : filter === "you"
-      ? onYou(train)
-      : filter === "moving"
-        ? !onYou(train)
-        : train.lands === filter
+export const matches = (filter: Filter, train: Train): boolean => {
+  switch (filter) {
+    case "all": {
+      return true
+    }
+    case "you": {
+      return onYou(train)
+    }
+    case "moving": {
+      return !onYou(train)
+    }
+    case "home":
+    case "phone":
+    case "site":
+    case "code": {
+      return train.lands === filter
+    }
+    default: {
+      return assertNever(filter)
+    }
+  }
+}
 
 const stopsLeft = (t: Train): number =>
   t.stops.filter((s) => s.state !== "passed").length

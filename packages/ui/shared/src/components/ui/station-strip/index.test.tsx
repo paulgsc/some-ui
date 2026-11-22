@@ -105,6 +105,7 @@ describe("StationStrip, a station done ahead", () => {
     const stations = STATIONS.map((s) => ({ ...s, done: s.id === "ready" }))
     render(<StationStrip label="Where it is" stations={stations} at="line" />)
     const items = screen.getAllByRole("listitem")
+    expect(items[0]?.hasAttribute("data-passed")).toBe(false)
     expect(items[2]?.hasAttribute("data-passed")).toBe(true)
     // The connector into "Ready for pickup" is its station's first child.
     expect(items[2]?.firstElementChild?.className).toContain("bg-border")

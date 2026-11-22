@@ -3,7 +3,8 @@
  * the most urgent blocker, the card with one stop and every train in
  * miniature, and the trains below. State is `lib/cooking/board`'s pure step;
  * this draws it and forwards taps.
- */ import type { JSX, ReactNode } from "react"
+ */
+import type { JSX, ReactNode } from "react"
 import { useReducer } from "react"
 import { cn } from "@some-ui/core-utils"
 import {
