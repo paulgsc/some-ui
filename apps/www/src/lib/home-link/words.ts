@@ -438,6 +438,9 @@ export const BLOCKED_LINE: Readonly<Record<HomeBlockedReason, string>> = {
   name: "This phone couldn't look up home's name on this network, though home may be fine. It tries again on its own.",
   trust: "This phone doesn't trust home's certificate.",
   door: "Home's address answers, but home itself isn't answering just now. It may be restarting, as it does to update. This phone tries again on its own.",
+  // NA2 (#3411): Android says it keeps this app off the network; the
+  // phone's own settings for the app decide that, so they are named.
+  held: "This phone isn't letting this app go online just now. The phone's settings for this app (mobile data, Wi-Fi, battery) decide that.",
 }
 
 export type LaneView = {

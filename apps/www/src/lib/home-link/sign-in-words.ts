@@ -105,6 +105,7 @@ const BLOCKED: Readonly<Record<HomeBlockedReason, string>> = {
   name: `${BLOCKED_LINE.name} What you do waits on this phone.`,
   trust: `${BLOCKED_LINE.trust} What you do waits on this phone.`,
   door: `${BLOCKED_LINE.door} What you do waits on this phone.`,
+  held: `${BLOCKED_LINE.held} What you do waits on this phone.`,
 }
 
 /** The day the phone paired, as a clause, or nothing for a pairing kept before it was kept. */
