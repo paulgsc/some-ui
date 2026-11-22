@@ -38,6 +38,7 @@ import { Route as DashboardApkJournalRouteImport } from './routes/_dashboard/_ap
 import { Route as DashboardApkRustRoundsRouteImport } from './routes/_dashboard/_apk/rust-rounds'
 import { Route as DashboardApkSoundbitesRouteImport } from './routes/_dashboard/_apk/soundbites'
 import { Route as DashboardLanAsksRouteImport } from './routes/_dashboard/_lan/asks'
+import { Route as DashboardLanCookingRouteImport } from './routes/_dashboard/_lan/cooking'
 import { Route as DashboardLanHomeSwitchesRouteImport } from './routes/_dashboard/_lan/home-switches'
 import { Route as DashboardLanLessonsRouteImport } from './routes/_dashboard/_lan/lessons'
 import { Route as DashboardLanResumeBuildRouteImport } from './routes/_dashboard/_lan/resume-build'
@@ -244,6 +245,11 @@ const DashboardApkSoundbitesRoute = DashboardApkSoundbitesRouteImport.update({
 const DashboardLanAsksRoute = DashboardLanAsksRouteImport.update({
   id: '/asks',
   path: '/asks',
+  getParentRoute: () => DashboardLanRoute,
+} as any)
+const DashboardLanCookingRoute = DashboardLanCookingRouteImport.update({
+  id: '/cooking',
+  path: '/cooking',
   getParentRoute: () => DashboardLanRoute,
 } as any)
 const DashboardLanHomeSwitchesRoute =
@@ -645,6 +651,7 @@ export interface FileRoutesByFullPath {
   '/rust-rounds': typeof DashboardApkRustRoundsRoute
   '/soundbites': typeof DashboardApkSoundbitesRoute
   '/asks': typeof DashboardLanAsksRoute
+  '/cooking': typeof DashboardLanCookingRoute
   '/home-switches': typeof DashboardLanHomeSwitchesRoute
   '/lessons': typeof DashboardLanLessonsRoute
   '/resume-build': typeof DashboardLanResumeBuildRoute
@@ -734,6 +741,7 @@ export interface FileRoutesByTo {
   '/rust-rounds': typeof DashboardApkRustRoundsRoute
   '/soundbites': typeof DashboardApkSoundbitesRoute
   '/asks': typeof DashboardLanAsksRoute
+  '/cooking': typeof DashboardLanCookingRoute
   '/home-switches': typeof DashboardLanHomeSwitchesRoute
   '/lessons': typeof DashboardLanLessonsRoute
   '/resume-build': typeof DashboardLanResumeBuildRoute
@@ -829,6 +837,7 @@ export interface FileRoutesById {
   '/_dashboard/_apk/rust-rounds': typeof DashboardApkRustRoundsRoute
   '/_dashboard/_apk/soundbites': typeof DashboardApkSoundbitesRoute
   '/_dashboard/_lan/asks': typeof DashboardLanAsksRoute
+  '/_dashboard/_lan/cooking': typeof DashboardLanCookingRoute
   '/_dashboard/_lan/home-switches': typeof DashboardLanHomeSwitchesRoute
   '/_dashboard/_lan/lessons': typeof DashboardLanLessonsRoute
   '/_dashboard/_lan/resume-build': typeof DashboardLanResumeBuildRoute
@@ -923,6 +932,7 @@ export interface FileRouteTypes {
     | '/rust-rounds'
     | '/soundbites'
     | '/asks'
+    | '/cooking'
     | '/home-switches'
     | '/lessons'
     | '/resume-build'
@@ -1012,6 +1022,7 @@ export interface FileRouteTypes {
     | '/rust-rounds'
     | '/soundbites'
     | '/asks'
+    | '/cooking'
     | '/home-switches'
     | '/lessons'
     | '/resume-build'
@@ -1106,6 +1117,7 @@ export interface FileRouteTypes {
     | '/_dashboard/_apk/rust-rounds'
     | '/_dashboard/_apk/soundbites'
     | '/_dashboard/_lan/asks'
+    | '/_dashboard/_lan/cooking'
     | '/_dashboard/_lan/home-switches'
     | '/_dashboard/_lan/lessons'
     | '/_dashboard/_lan/resume-build'
@@ -1392,6 +1404,13 @@ declare module '@tanstack/react-router' {
       path: '/asks'
       fullPath: '/asks'
       preLoaderRoute: typeof DashboardLanAsksRouteImport
+      parentRoute: typeof DashboardLanRoute
+    }
+    '/_dashboard/_lan/cooking': {
+      id: '/_dashboard/_lan/cooking'
+      path: '/cooking'
+      fullPath: '/cooking'
+      preLoaderRoute: typeof DashboardLanCookingRouteImport
       parentRoute: typeof DashboardLanRoute
     }
     '/_dashboard/_lan/home-switches': {
@@ -2034,6 +2053,7 @@ const DashboardApkRouteWithChildren = DashboardApkRoute._addFileChildren(
 
 interface DashboardLanRouteChildren {
   DashboardLanAsksRoute: typeof DashboardLanAsksRoute
+  DashboardLanCookingRoute: typeof DashboardLanCookingRoute
   DashboardLanHomeSwitchesRoute: typeof DashboardLanHomeSwitchesRoute
   DashboardLanLessonsRoute: typeof DashboardLanLessonsRoute
   DashboardLanResumeBuildRoute: typeof DashboardLanResumeBuildRoute
@@ -2041,6 +2061,7 @@ interface DashboardLanRouteChildren {
 
 const DashboardLanRouteChildren: DashboardLanRouteChildren = {
   DashboardLanAsksRoute: DashboardLanAsksRoute,
+  DashboardLanCookingRoute: DashboardLanCookingRoute,
   DashboardLanHomeSwitchesRoute: DashboardLanHomeSwitchesRoute,
   DashboardLanLessonsRoute: DashboardLanLessonsRoute,
   DashboardLanResumeBuildRoute: DashboardLanResumeBuildRoute,

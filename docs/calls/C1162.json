@@ -1,0 +1,19 @@
+{
+  "id": "C1162",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/run.ts",
+    "packages/video-render/src/fence.ts",
+    "apps/www/src/lib/cooking"
+  ],
+  "chose": "The run record names each live goal by a kind known at compile time (GOAL_KINDS: deploy-home, install-apk, watch-on-phone, publish-site, land-change, each with where it lands) and lists the legs before it in order, each leg a member of a compile-time union (work, merge, run, yours, goal, home) that every reader switches on exhaustively. The order of legs is the record's, per goal, not a fixed route per kind: the same kind of goal waits on different things from one day to the next (deploy home today waits on two merges, tomorrow on one), so a route fixed per kind would either be wrong or grow a flag per case. This is the one runtime-decided shape on the page, and the defence C830 asks for: the members are typed, only their sequence is data, and the schema refuses a leg naming a goal or worker the run doesn't list and goals that wait on each other. The json run block is read by the ask reader's fence parsing, made generic over its tag (fence.ts), and the page finds it on the newest open issue labelled orch. A step of the owner's that can wait is marked by the record (canWait), which is where C1119's \"the route marks it\" lands under this shape.",
+  "options": [
+    "the goal kind is typed, its legs an ordered list of typed members in the record (taken)",
+    "a fixed route of stops per goal kind, in code",
+    "free-form stops written as text by the coordinator"
+  ],
+  "gray": "C1116 asks for goals known at compile time and CLAUDE.md calls a runtime-decided pipeline a smell; how much of a train's line is fixed in code and how much the record says is a design choice no check settles.",
+  "undo": "Record a call that moves this one, and give each goal kind a fixed route in model.ts in place of the record's legs.",
+  "refs": ["#3425"]
+}

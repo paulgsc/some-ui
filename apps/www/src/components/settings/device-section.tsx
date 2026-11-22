@@ -18,7 +18,7 @@ import { toast } from "sonner"
 import { homeApiBase } from "@/lib/device-backend/home-sync"
 import type { HomeLinkState } from "@/lib/home-link"
 import { homeLink, hostOf, useHomeLink } from "@/lib/home-link"
-import { addressOf } from "@/lib/home-link/address"
+import { addressOf, homeWebPage } from "@/lib/home-link/address"
 import type { ClearEnd } from "@/lib/home-link/clear"
 import { clearHeld, finishedOnPhone } from "@/lib/home-link/clear"
 import { rememberSeen } from "@/lib/home-link/first-run"
@@ -35,7 +35,7 @@ import {
 } from "@/lib/home-link/sign-in-words"
 import type { SyncResult } from "@/lib/home-link/sync"
 import { lastSync, syncLessonsFrom } from "@/lib/home-link/sync"
-import { CLEAR, HOME_BLOCK } from "@/lib/home-link/words"
+import { CLEAR, HOME_BLOCK, HOME_WEB } from "@/lib/home-link/words"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { KeptOnHome } from "@/components/settings/device-kept-on-home"
@@ -49,6 +49,24 @@ function typedHost(address: string): string | null {
   } catch {
     return null
   }
+}
+
+/** The way to the Cooking page on home's web app, when the phone can know it. */
+const CookingLink = ({ base }: { base: string }): JSX.Element | null => {
+  const page = homeWebPage(base, "/cooking")
+  return page === null ? null : (
+    <div className="space-y-0.5">
+      <a
+        className="text-sm font-medium underline"
+        href={page}
+        target="_blank"
+        rel="noreferrer"
+      >
+        {HOME_WEB.cooking}
+      </a>
+      <p className="text-muted-foreground text-xs">{HOME_WEB.cookingNote}</p>
+    </div>
+  )
 }
 
 /** A sync's or send's end, said once. */
@@ -289,6 +307,7 @@ export const DeviceSection = (): JSX.Element => {
               </Notice>
             ) : null}
             <p className="text-muted-foreground text-xs">{HOME_BLOCK.lead}</p>
+            <CookingLink base={paired.base} />
             <KeptOnHome />
             <DeviceRoutineReads />
             <ClearHeld

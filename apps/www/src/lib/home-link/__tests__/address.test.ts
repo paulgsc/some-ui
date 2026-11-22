@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest"
 
-import { addressOf, pairingAddress, typedCode } from "@/lib/home-link/address"
+import {
+  addressOf,
+  homeWebPage,
+  pairingAddress,
+  typedCode,
+} from "@/lib/home-link/address"
 
 describe("pairingAddress", () => {
   it("reads a bare host, a proxy path or a full base as an https API base", () => {
@@ -52,5 +57,22 @@ describe("a stored base as an address to type again (SIGNIN3)", () => {
       expect(typed).not.toMatch(/\/api\/v1$/)
       expect(pairingAddress(typed)).toMatchObject({ base })
     }
+  })
+})
+
+describe("homeWebPage", () => {
+  it("finds home's web app at the origin the phone paired through", () => {
+    expect(
+      homeWebPage("https://www.home.example/api/file-host/api/v1", "/cooking")
+    ).toBe("https://www.home.example/cooking")
+  })
+
+  it("knows no web app for a base paired straight to home, or over http", () => {
+    expect(
+      homeWebPage("https://file-host.home.example/api/v1", "/cooking")
+    ).toBeNull()
+    expect(
+      homeWebPage("http://www.home.example/api/file-host/api/v1", "/cooking")
+    ).toBeNull()
   })
 })
