@@ -139,14 +139,12 @@ run() {
     --jq '.[] | (.head.ref, .base.ref)' | sort -u)
   export PROTECTED_BRANCHES OPEN_PR_BRANCHES
 
-  # The plan runs as its own process, as the tests run it, so a git error
-  # in it fails this step under errexit instead of reading as an empty plan.
-  local planned plan_file
-  plan_file=$(mktemp)
-  bash "$0" plan "$head_sha" "refs/remotes/origin/$DEFAULT_BRANCH" >"$plan_file"
-  planned=$(<"$plan_file")
+  # A git error in the plan fails this step (errexit, inherited into the
+  # substitution), as it fails `plan` run on its own.
+  local planned
+  planned=$(plan "$head_sha" "refs/remotes/origin/$DEFAULT_BRANCH")
 
-  local failed=0 action name tip why
+  local failed=0 action name tip why gone
   {
     echo "## Bucket prune: #$PR ($head_ref, ${head_sha:0:7})"
     echo
@@ -160,8 +158,9 @@ run() {
       if git push --quiet \
         "--force-with-lease=refs/heads/$name:$tip" origin ":refs/heads/$name"; then
         echo "- deleted \`$name\` (${tip:0:7}): $why" >>"$summary"
-      elif [ -z "$(git ls-remote --heads origin "refs/heads/$name")" ]; then
+      elif gone=0 && { git ls-remote --exit-code --heads origin "refs/heads/$name" >/dev/null || gone=$?; } && [ "$gone" -eq 2 ]; then
         # Another prune (a bucket merged close behind this one) got it first.
+        # Exit 2 is "no such ref"; any other failure of ls-remote is an error.
         echo "- \`$name\` (${tip:0:7}) was already gone" >>"$summary"
       else
         echo "- **not deleted** \`$name\` (${tip:0:7}): the push failed; see the log" >>"$summary"

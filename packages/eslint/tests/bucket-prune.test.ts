@@ -234,13 +234,17 @@ describe("bucket-prune plan", () => {
 
   it("fails, printing no plan, when git cannot read the bucket", () => {
     bucket()
+    // A head that shares no history with main: there is no bucket to read.
+    git("checkout", "-q", "--orphan", "unrelated")
+    const orphan = commit("unrelated")
     const result = spawnSync(
       "bash",
-      [SCRIPT, "plan", "0".repeat(40), "refs/remotes/origin/main"],
+      [SCRIPT, "plan", orphan, "refs/remotes/origin/main"],
       { cwd: dir, encoding: "utf8", env: cleanEnv() }
     )
     expect(result.status).not.toBe(0)
     expect(result.stdout).toBe("")
+    expect(result.stderr).toContain("no merge base")
   })
 
   it("keeps a branch an open pull request uses", () => {
