@@ -10,7 +10,7 @@ import {
 import {
   DEFAULT_RESUME_TEMPLATE,
   RESUME_TEMPLATES,
-} from "./src/lib/resume-options.ts"
+} from "./src/lib/resume-templates.ts"
 
 /**
  * What each profile's output may carry, checked against a real build of it

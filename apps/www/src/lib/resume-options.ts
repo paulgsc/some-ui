@@ -25,20 +25,10 @@ export const RESUME_COMPOSITIONS: ReadonlyArray<{
   label: string
 }> = RESUME_ORDER.map((id) => ({ id, label: resumeData[id].label }))
 
-/** The layout axis (packages/ui/resume/README.md, Templates). */
-export const RESUME_TEMPLATES = [
-  { id: "rail", label: "Rail (portfolio)" },
-  { id: "classic", label: "Classic (single column)" },
-  { id: "compact", label: "Compact" },
-  { id: "vanilla", label: "Vanilla (plain ATS)" },
-  { id: "safe", label: "Safe (ATS)" },
-  { id: "conventional", label: "Conventional (traditional)" },
-] as const
-
-/**
- * The print layout whose PDF keeps the plain `resume-<version>.pdf` name
- * (packages/ui/resume/scripts/typst.mjs, `stemFor`); every other layout's
- * PDF is `resume-<version>-<layout>.pdf`.
- */
-export const DEFAULT_RESUME_TEMPLATE =
-  "rail" satisfies (typeof RESUME_TEMPLATES)[number]["id"]
+// The layout axis lives in ./resume-templates.ts, which imports nothing, so
+// build.paths.ts can read it without reaching the résumé's package (the
+// recording stage's walk reads build.paths.ts through vite.config.ts, RI3).
+export {
+  DEFAULT_RESUME_TEMPLATE,
+  RESUME_TEMPLATES,
+} from "@/lib/resume-templates"
