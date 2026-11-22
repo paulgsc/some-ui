@@ -1,29 +1,18 @@
 /**
  * Conjugation both ways, and the rebuild check (KPLAY's KP2, #2851).
  *
- * Forward: a listed verb or adjective, a construction from the catalogue
- * (`constructions`) and a tense give the surface word: 오다 + -아서/어서 →
- * 와서, 살다 + -는 동안 → 사는 동안. Backward: a surface word gives every
- * reading that rebuilds it, character for character, or, when none does, the
- * rule a near miss breaks: a tense or a kind of stem the ending refuses
- * (왔어서, 크느라고), an irregular word conjugated as regular (춥어요, 듣어서,
- * 모라요, 살으니까) or with its 으 or 르 stem kept whole (크어요, 모르어서),
- * or a regular word ending in ㅂ or ㄷ conjugated
- * as irregular (이워서, 발아서). Every listed word is built once, on the
- * first analysis, into an index from surface to readings.
- *
- * The stem's own changes (the irregular classes, 으 dropping, contraction,
- * the 아/어 choice, the past) are `@dongsa/conjugation`'s, given the
- * vocabulary list's flag (call C1086). This module adds only what is ours:
- * how each catalogue ending meets the stem it gets back, the constraints the
- * catalogue states, and the check that a claimed split rebuilds. Pure; the
- * index `analyse` reads is built once and kept.
+ * Forward: a listed word, a catalogue ending and a tense give the surface
+ * word (오다 + -아서/어서 → 와서). Backward: a surface word gives every reading
+ * that rebuilds it, or the rule a near miss breaks (`Breach`). The stem's own
+ * changes are `@dongsa/conjugation`'s (call C1086); how an ending meets the
+ * stem, the constraints and the check are ours.
  */
 
 import {
   base,
   base3,
   declarativePresentInformalLow,
+  dropL,
   merge,
   pastBase,
 } from "@dongsa/conjugation"
@@ -51,10 +40,14 @@ type Ending = ConstructionId | "polite"
 
 type Tense = "none" | "past" | "future"
 
-export type Reading = { dictionary: Dictionary; ending: Ending; tense: Tense }
+export type Reading = Readonly<{
+  dictionary: Dictionary
+  ending: Ending
+  tense: Tense
+}>
 
 /** A rule a near miss breaks, named. */
-export type Breach =
+export type Breach = Readonly<
   /** A tense the ending does not take before it: 왔어서. */
   | { rule: "tense"; ending: ConstructionId; tense: "past" | "future" }
   /** A kind of stem the ending does not take: 크느라고. */
@@ -63,9 +56,10 @@ export type Breach =
   | { rule: "irregular"; irregular: IrregularClass; mistake?: MistakeId }
   /** A regular word conjugated as irregular: 이워서. */
   | { rule: "regular"; as: "ㅂ" | "ㄷ" }
+>
 
 export type Analysis =
-  | { kind: "split"; readings: Array<Reading> }
+  | { kind: "split"; readings: ReadonlyArray<Reading> }
   | {
       kind: "refused"
       reading: Reading
@@ -113,8 +107,7 @@ const FINAL_SS = 20
 const FINAL_B = 17
 const FINAL_D = 7
 const INITIAL_N = 2
-const MEDIAL_A = 0
-const MEDIAL_O = 8
+const INITIAL_NG = 11
 
 type Syllable = { initial: number; medial: number; final: number }
 
@@ -141,16 +134,9 @@ const isRegular = (dictionary: Dictionary, rule: StemRule): boolean =>
 const isLiquid = (dictionary: Dictionary, rule: StemRule): boolean =>
   rule === "listed" && VOCABULARY[dictionary].irregular === "ㄹ"
 
-/** A 으 or 르 stem mistakenly kept whole before 어: 크어요, 모르어서. */
 const keptWhole = (dictionary: Dictionary, rule: StemRule): boolean => {
   const { irregular } = VOCABULARY[dictionary]
   return rule === "whole" && (irregular === "으" || irregular === "르")
-}
-
-/** The vowel a stem's last syllable takes: 아 after ㅏ or ㅗ, else 어. */
-const harmonyOf = (stem: string): string => {
-  const medial = syllableOf(lastOf(stem))?.medial
-  return medial === MEDIAL_A || medial === MEDIAL_O ? "아" : "어"
 }
 
 const lastOf = (text: string): string => text.charAt(text.length - 1)
@@ -164,7 +150,6 @@ const withFinal = (text: string, final: number): string => {
 
 const finalOf = (text: string): number => syllableOf(lastOf(text))?.final ?? 0
 
-/** The stem as listed, or with ㅂ or ㄷ mistakenly changed. */
 const mistaken = (stem: string, as: "ㅂ" | "ㄷ"): string =>
   as === "ㅂ" ? `${withFinal(stem, 0)}우` : withFinal(stem, FINAL_L)
 
@@ -194,7 +179,6 @@ const euStem = (dictionary: Dictionary, rule: StemRule): Stem => {
   return stemOf(base3(dictionary, isRegular(dictionary, rule)), liquid)
 }
 
-/** The stem before consonant endings: the dictionary form without 다. */
 const plainStem = (dictionary: Dictionary, rule: StemRule): Stem =>
   stemOf(base(dictionary), isLiquid(dictionary, rule))
 
@@ -202,7 +186,11 @@ const plainStem = (dictionary: Dictionary, rule: StemRule): Stem =>
 const vowelForm = (dictionary: Dictionary, rule: StemRule): string => {
   const stem = String(base(dictionary))
   if (rule === "ㅂ") return merge(mistaken(stem, rule), "어")
-  if (rule === "ㄷ") return mistaken(stem, rule) + harmonyOf(stem)
+  if (rule === "ㄷ") {
+    // The library's own 아/어 choice, on the stem as written: 받 → 아.
+    const regular = declarativePresentInformalLow(dictionary, true, true)
+    return mistaken(stem, rule) + regular.slice(stem.length)
+  }
   if (keptWhole(dictionary, rule)) return `${stem}어`
   return declarativePresentInformalLow(
     dictionary,
@@ -219,12 +207,10 @@ const attach = (stem: Stem, ending: string): string => {
     // A lone ㄴ or ㄹ becomes the stem's final consonant: 갈 때, 산 후에.
     return withFinal(stem.text, final) + ending.slice(1)
   }
-  // ㄹ also drops before ㅂ and ㅅ, which no catalogue ending starts with
-  // (held by the test).
-  if (stem.liquid && syllableOf(first)?.initial === INITIAL_N) {
-    // ㄹ drops before ㄴ: 사니까, 노느라고, 사는 동안.
-    return withFinal(stem.text, 0) + ending
-  }
+  // ㄹ drops before ㄴ (사니까, 노느라고), and before ㅂ and ㅅ, which no
+  // catalogue ending starts with (held by the test).
+  if (stem.liquid && syllableOf(first)?.initial === INITIAL_N)
+    return dropL(stem.text, ending) ?? stem.text + ending
   return stem.text + ending
 }
 
@@ -238,6 +224,15 @@ const attachSimple = (
       return attach(plainStem(dictionary, rule), how.ending)
     }
     case "batchim": {
+      // A consonant stem meets a 으-form (먹으니까), where the irregular
+      // classes change it (들으니까), or a consonant-initial one (먹는다면),
+      // where they don't (듣는다면).
+      const plain = plainStem(dictionary, rule)
+      if (
+        plain.consonant &&
+        syllableOf(how.afterConsonant)?.initial !== INITIAL_NG
+      )
+        return attach(plain, how.afterConsonant)
       const stem = euStem(dictionary, rule)
       return attach(stem, stem.consonant ? how.afterConsonant : how.afterVowel)
     }
@@ -280,7 +275,6 @@ const build = (reading: Reading, rule: StemRule): string => {
   }
   const { attach: how, constraints } = CONSTRUCTIONS[ending]
   if (tense !== "none") {
-    // After 았, 었 and 겠 the form no longer depends on the stem.
     const after = constraints.before?.ending ?? stemlessForm(how)
     return tensed(dictionary, rule, tense) + after
   }
@@ -350,7 +344,6 @@ const ruleBreach = (
 ): Breach | null => {
   const { irregular } = VOCABULARY[dictionary]
   if (rule === "whole") {
-    // 크어요 is the mistake catalogue's eu-kept; 모르어요 its reu-irregular.
     if (irregular === "으")
       return { rule: "irregular", irregular, mistake: "eu-kept" }
     if (irregular === "르")
@@ -375,10 +368,9 @@ const ruleBreach = (
 
 type Refusal = Extract<Analysis, { kind: "refused" }>
 
-/** Every listed word's surfaces, built once: what each reads as. */
 type Index = {
   /** Each surface the list builds, and every reading that builds it. */
-  listed: Map<string, Array<Reading>>
+  listed: Map<string, ReadonlyArray<Reading>>
   /** Each surface a mistaken rule builds, and the first such refusal. */
   mistaken: Map<string, Refusal>
 }
@@ -427,22 +419,14 @@ const refusalOf = (reading: Reading, breach: Breach): Refusal =>
  */
 export const analyse = (surface: string): Analysis => {
   built ??= buildIndex()
-  // Copies, so a caller cannot change what the index holds.
-  const candidates = (built.listed.get(surface) ?? []).map((r) => ({ ...r }))
+  const candidates = built.listed.get(surface) ?? []
   const readings = candidates.filter((reading) => breachOf(reading) === null)
   if (readings.length > 0) return { kind: "split", readings }
   for (const reading of candidates) {
     const breach = breachOf(reading)
     if (breach !== null) return refusalOf(reading, breach)
   }
-  const refusal = built.mistaken.get(surface)
-  return refusal === undefined
-    ? { kind: "unknown" }
-    : {
-        ...refusal,
-        reading: { ...refusal.reading },
-        breach: { ...refusal.breach },
-      }
+  return built.mistaken.get(surface) ?? { kind: "unknown" }
 }
 
 /**

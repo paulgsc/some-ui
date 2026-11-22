@@ -4,12 +4,11 @@
  * kind of stem it is, and which irregular class it falls in (춥다 is
  * ㅂ-irregular, 입다 is not; 듣다 is ㄷ-irregular, 받다 is not).
  *
- * Owned data: conjugation follows the flag here, and `@dongsa/conjugation`'s
- * own judgment is held to agree with it by this module's test, so a word the
- * library classes differently is found rather than conjugated two ways.
- * The copula 이다 is not listed: a noun with 이다 is outside the library's
+ * Owned data: conjugation follows the flag here. The copula 이다 is not listed: a noun with 이다 is outside the library's
  * scope, and outside this slice.
  */
+
+import type { StemClass } from "@topik/lib/topik/constructions"
 
 /**
  * The classes whose stem changes before some endings. 으 and ㄹ change by
@@ -18,7 +17,7 @@
 export type IrregularClass = "ㅂ" | "ㄷ" | "르" | "으" | "ㅅ" | "ㅎ" | "ㄹ"
 
 export type Predicate = {
-  class: "verb" | "adjective" | "existence"
+  class: Exclude<StemClass, "copula">
   irregular: IrregularClass | null
   /** A verb of going or coming, which -(으)러 must be followed by. */
   movement?: true

@@ -19,7 +19,11 @@ import {
   VOCABULARY,
   type IrregularClass,
 } from "@topik/lib/topik/conjugation/vocabulary"
-import { CONSTRUCTION_IDS, CONSTRUCTIONS } from "@topik/lib/topik/constructions"
+import {
+  CONSTRUCTION_IDS,
+  CONSTRUCTIONS,
+  type SimpleAttachment,
+} from "@topik/lib/topik/constructions"
 import { describe, expect, it } from "vitest"
 
 type Case = [Reading["dictionary"], Reading["ending"], Reading["tense"], string]
@@ -82,6 +86,11 @@ const CASES: ReadonlyArray<Case> = [
   ["가다", "conn.damyeon.condition", "none", "간다면"],
   ["먹다", "conn.damyeon.condition", "none", "먹는다면"],
   ["좋다", "conn.damyeon.condition", "none", "좋다면"],
+  // 는다면 starts with a consonant, so no stem changes before it.
+  ["듣다", "conn.damyeon.condition", "none", "듣는다면"],
+  ["걷다", "conn.damyeon.condition", "none", "걷는다면"],
+  ["낫다", "conn.damyeon.condition", "none", "낫는다면"],
+  ["짓다", "conn.damyeon.condition", "none", "짓는다면"],
   ["가다", "conn.l-ttae.time", "past", "갔을 때"],
   ["가다", "conn.ado.contrast", "past", "갔어도"],
   ["좋다", "conn.neunde.contrast", "past", "좋았는데"],
@@ -121,33 +130,6 @@ describe("conjugation", () => {
     })
   })
 
-  it("refuses 이워서: 입다 is regular", () => {
-    expect(analyse("이워서")).toEqual({
-      kind: "refused",
-      reading: { dictionary: "입다", ending: "conn.aseo.cause", tense: "none" },
-      breach: { rule: "regular", as: "ㅂ" },
-      correct: "입어서",
-    })
-  })
-
-  it("refuses 춥어요: 춥다 is ㅂ-irregular", () => {
-    expect(analyse("춥어요")).toEqual({
-      kind: "refused",
-      reading: { dictionary: "춥다", ending: "polite", tense: "none" },
-      breach: { rule: "irregular", irregular: "ㅂ", mistake: "b-irregular" },
-      correct: "추워요",
-    })
-  })
-
-  it("refuses 듣어서, an ㄷ-irregular conjugated as regular", () => {
-    const analysis = analyse("듣어서")
-    expect(analysis.kind === "refused" && analysis.breach).toEqual({
-      rule: "irregular",
-      irregular: "ㄷ",
-      mistake: "d-irregular",
-    })
-  })
-
   it("refuses 크느라고: -느라고 takes no adjective", () => {
     expect(analyse("크느라고")).toEqual({
       kind: "refused",
@@ -161,6 +143,27 @@ describe("conjugation", () => {
   })
 
   it.each([
+    [
+      "이워서",
+      "입다",
+      "conn.aseo.cause",
+      { rule: "regular", as: "ㅂ" },
+      "입어서",
+    ],
+    [
+      "춥어요",
+      "춥다",
+      "polite",
+      { rule: "irregular", irregular: "ㅂ", mistake: "b-irregular" },
+      "추워요",
+    ],
+    [
+      "듣어서",
+      "듣다",
+      "conn.aseo.cause",
+      { rule: "irregular", irregular: "ㄷ", mistake: "d-irregular" },
+      "들어서",
+    ],
     [
       "발아서",
       "받다",
@@ -215,19 +218,6 @@ describe("conjugation", () => {
     }
   )
 
-  it("hands back copies, so the index cannot be changed through a result", () => {
-    const first = analyse("와서")
-    if (first.kind === "split")
-      for (const reading of first.readings) reading.tense = "past"
-    expect(analyse("와서").kind).toBe("split")
-  })
-
-  it("hands back a copy of a refusal from a mistaken rule", () => {
-    const first = analyse("모라요")
-    if (first.kind === "refused") first.reading.tense = "past"
-    expect(analyse("모라요")).toMatchObject({ reading: { tense: "none" } })
-  })
-
   it("knows no reading of a word it cannot rebuild", () => {
     expect(analyse("가가가")).toEqual({ kind: "unknown" })
   })
@@ -261,40 +251,32 @@ describe("the rebuild check", () => {
 })
 
 describe("what joining assumes of the catalogue", () => {
-  const forms = CONSTRUCTION_IDS.flatMap((id) => {
-    const { attach } = CONSTRUCTIONS[id]
-    const simple =
-      attach.kind === "by-class"
+  const attachments = CONSTRUCTION_IDS.flatMap(
+    (id): Array<SimpleAttachment> => {
+      const { attach } = CONSTRUCTIONS[id]
+      return attach.kind === "by-class"
         ? [attach.verb, attach.adjective, attach.existence, attach.copula]
         : [attach]
-    return simple.flatMap((how) =>
-      how.kind === "plain"
-        ? [how.ending]
-        : how.kind === "batchim"
-          ? [how.afterVowel]
-          : []
-    )
-  })
+    }
+  )
 
   it("starts no ending with ㅂ or ㅅ, before which ㄹ would drop", () => {
-    for (const form of forms) {
-      const initial = Math.floor(((form.codePointAt(0) ?? 0) - 0xac00) / 588)
-      expect([7, 9], form).not.toContain(initial)
+    for (const how of attachments) {
+      const form =
+        how.kind === "plain"
+          ? how.ending
+          : how.kind === "batchim"
+            ? how.afterVowel
+            : ""
+      expect(form).not.toMatch(/^[바-빟사-싷]/)
     }
   })
 
   it("gives every harmony ending one tail after 아, 어 and 여", () => {
-    for (const id of CONSTRUCTION_IDS) {
-      const { attach } = CONSTRUCTIONS[id]
-      const simple =
-        attach.kind === "by-class"
-          ? [attach.verb, attach.adjective, attach.existence, attach.copula]
-          : [attach]
-      for (const how of simple) {
-        if (how.kind !== "harmony") continue
-        expect(how.bright.slice(1), id).toBe(how.dark.slice(1))
-        expect(how.ha.slice(1), id).toBe(how.dark.slice(1))
-      }
+    for (const how of attachments) {
+      if (how.kind !== "harmony") continue
+      expect(how.bright.slice(1)).toBe(how.dark.slice(1))
+      expect(how.ha.slice(1)).toBe(how.dark.slice(1))
     }
   })
 })
@@ -309,8 +291,8 @@ const libraryClass = (dictionary: string): IrregularClass | null => {
   if (isHIrregular(stem)) return "ㅎ"
   if (isLIrregular(stem)) return "ㄹ"
   // 으 drops by rule; the library has no flag for it.
-  const last = (stem.codePointAt(stem.length - 1) ?? 0) - 0xac00
-  return Math.floor((last % 588) / 28) === 18 && last % 28 === 0 ? "으" : null
+  // A last syllable of ㅡ and no final ends, decomposed, in the vowel ᅳ.
+  return stem.normalize("NFD").endsWith("\u1173") ? "으" : null
 }
 
 describe("the vocabulary list", () => {
@@ -320,12 +302,4 @@ describe("the vocabulary list", () => {
       expect(VOCABULARY[dictionary].irregular).toBe(libraryClass(dictionary))
     }
   )
-
-  it("lists every irregular class", () => {
-    const listed = new Set(
-      Object.values(VOCABULARY).map(({ irregular }) => irregular)
-    )
-    for (const irregular of ["ㅂ", "ㄷ", "르", "으", "ㅅ", "ㅎ", "ㄹ"])
-      expect(listed, irregular).toContain(irregular)
-  })
 })

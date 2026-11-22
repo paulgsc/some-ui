@@ -12,7 +12,7 @@
     "build the conjugator ourselves: every irregular class and contraction, already written and tested in the library",
     "es-hangul (MIT) for jamo arithmetic only: no conjugation, so the irregular classes would still be ours"
   ],
-  "gray": "Adds a third-party package to the topik workspace, published two months ago by one maintainer, where building would keep every rule in our hands; the issue named the work as code we write, and the reach found it already written. Admitted by the coordinator before it was added.",
+  "gray": "Adds a third-party package to the topik workspace, whose 1.0.0 was published on 2026-09-20 by one maintainer, where building would keep every rule in our hands; the issue named the work as code we write, and the reach found it already written.",
   "undo": "Remove @dongsa/conjugation from topik's package.json and lockfile, and write the stem changes (base, base3, the 아/어 form, the past) in lib/topik/conjugation, keeping its tests as they are.",
   "refs": ["#2851", "#2849", "#2850"]
 }
