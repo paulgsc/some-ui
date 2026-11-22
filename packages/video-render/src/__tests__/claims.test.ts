@@ -86,6 +86,19 @@ describe("a line's sources", () => {
     ])
   })
 
+  it("are never read on a walk's lines, which say what the walkthrough shows (WALK5)", async () => {
+    const cut = await showcase("nixos-upgrade")
+    const walked: CutList = {
+      ...cut,
+      shots: cut.shots.map((s) =>
+        s.id === "C2"
+          ? { ...s, spoken: { role: "walk", lines: ["Jobs opens on Today."] } }
+          : s
+      ),
+    }
+    expect(claimsOf(walked).map((c) => c.scene)).not.toContain("C2")
+  })
+
   it("name lines, a quote or both, and are refused naming neither or lines backwards", async () => {
     await expect(cited([{ ...AUTO, lines: [3, 4] }])).resolves.toBeDefined()
     await expect(

@@ -21,6 +21,7 @@
  * as `render cards-check` and `render cards-stale` do from clones.
  */
 
+import { assertNever } from "@some-ui/core-utils"
 import { z } from "zod"
 
 import type { CutList, Spoken } from "./cut-list"
@@ -93,11 +94,28 @@ export type Claim = {
 
 /** The line a spoken field says that may carry sources, if it is one. */
 function claimOf(spoken: Spoken): Omit<Claim, "scene"> | null {
-  // A spoken card's turns are an exchange with the owner, not claims.
-  if (spoken.role === "spoken") return null
-  if (spoken.role === "scene")
-    return { said: spoken.narration, sources: spoken.sources ?? [], owed: true }
-  return { said: spoken.said, sources: spoken.sources ?? [], owed: false }
+  switch (spoken.role) {
+    // A spoken card's turns are an exchange with the owner, not claims; a walk's lines say
+    // what the walkthrough shows on screen and measured, and carry no sources (WALK5).
+    case "spoken":
+    case "walk": {
+      return null
+    }
+    case "scene": {
+      return {
+        said: spoken.narration,
+        sources: spoken.sources ?? [],
+        owed: true,
+      }
+    }
+    case "intro":
+    case "close": {
+      return { said: spoken.said, sources: spoken.sources ?? [], owed: false }
+    }
+    default: {
+      return assertNever(spoken)
+    }
+  }
 }
 
 /** Every line of `cut` that may carry sources, in order. */
