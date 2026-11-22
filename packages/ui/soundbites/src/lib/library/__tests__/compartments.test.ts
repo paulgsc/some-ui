@@ -347,15 +347,15 @@ describe("what a topic holds with no take, among its takes", () => {
     )
   })
 
-  it("leaves out a gap past the last take while older takes aren't shown yet", () => {
+  it("shows no gap while older takes aren't shown yet, since its take may be among them", () => {
+    // A bite can be said before its play, so neither order is safe.
     expect(
-      shape(withGaps(["4", "1"], [gap("5"), gap("0")], "newest", at, false))
-    ).toEqual(["gap 5", "take 4", "take 1"])
-    expect(shape(withGaps([], [gap("5")], "newest", at, false))).toEqual([])
-    // Oldest first, a gap's take may come after the last take shown.
+      shape(withGaps(["4", "1"], [gap("5"), gap("2")], "newest", at, false))
+    ).toEqual(["take 4", "take 1"])
     expect(
       shape(withGaps(["1", "4"], [gap("0"), gap("2")], "oldest", at, false))
     ).toEqual(["take 1", "take 4"])
+    expect(shape(withGaps([], [gap("5")], "newest", at, false))).toEqual([])
   })
 
   it("places by the instant, whatever fraction each time is written with", () => {
