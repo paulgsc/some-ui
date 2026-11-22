@@ -39,7 +39,7 @@ type Meaning =
 export type Shelf = Exclude<Meaning, "background">
 
 /** The kinds of stem an ending can attach to. */
-type StemClass =
+export type StemClass =
   /** An action or process: 가다, 먹다, 공부하다. */
   | "verb"
   /** A description: 크다, 좋다, 바쁘다. */
@@ -79,7 +79,7 @@ type Attachment =
       copula: SimpleAttachment
     }
 
-type SimpleAttachment = Exclude<Attachment, { kind: "by-class" }>
+export type SimpleAttachment = Exclude<Attachment, { kind: "by-class" }>
 
 /** A clause type the clause after the ending may be refused. */
 type Mood =
