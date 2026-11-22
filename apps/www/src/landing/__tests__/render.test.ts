@@ -185,7 +185,8 @@ describe("renderLanding", () => {
       )
       // A glyph each, and no words to take for content.
       expect(block.match(/<svg /g)).toHaveLength(2)
-      expect(block.replace(/<[^>]*>/g, "").trim()).toBe("")
+      const text = [...block.matchAll(/>([^<]*)</g)].map((m) => m[1].trim())
+      expect(text.filter((t) => t !== "")).toEqual([])
     }
   })
 
