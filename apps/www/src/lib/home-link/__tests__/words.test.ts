@@ -516,7 +516,7 @@ describe("away from home (AW1)", () => {
 
 describe("a request that couldn't reach home, though home may be there (NA1)", () => {
   it("is never said as away, even within the hold, and says which it was in the person's terms", () => {
-    const blocked = (reason: "name" | "trust" | "door"): LaneFacts =>
+    const blocked = (reason: "name" | "trust" | "door" | "held"): LaneFacts =>
       facts({
         paired: true,
         waiting: 2,
@@ -525,7 +525,7 @@ describe("a request that couldn't reach home, though home may be there (NA1)", (
         blocked: reason,
         away: { since: 1, now: 2 },
       })
-    const views = (["name", "trust", "door"] as const).map((reason) =>
+    const views = (["name", "trust", "door", "held"] as const).map((reason) =>
       laneView(WORDS.aph, blocked(reason))
     )
     for (const view of views) {
@@ -541,6 +541,11 @@ describe("a request that couldn't reach home, though home may be there (NA1)", (
     expect(views[0]?.line).not.toMatch(/router|blocking/i)
     expect(views[1]?.line).toMatch(/doesn't trust home's certificate/)
     expect(views[2]?.line).toMatch(/home itself isn't answering/)
+    // NA2 (#3411): the phone's own settings for the app, named as the
+    // person finds them, with no word of how the phone routes it.
+    expect(views[3]?.line).toMatch(/isn't letting this app go online/)
+    expect(views[3]?.line).toMatch(/mobile data, Wi-Fi, battery/)
+    expect(views[3]?.line).not.toMatch(/network|route|uid|blocked/i)
     // Once nothing is blocked, the same run is away again.
     expect(
       laneView(WORDS.aph, {

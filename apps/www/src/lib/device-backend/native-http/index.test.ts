@@ -2,21 +2,69 @@
  * The phone's request to home as Capacitor's native HTTP carries it: the
  * tag a revalidated read sends, and the tag an answer brings back, however
  * the platform spells its header.
+ *
+ * Promise NA2 (#3411): the phone says it can't reach home only once every
+ * network it has was asked.
+ * - Claim: a request to home that never reached it over the network
+ *   Android gave this app (`neverSent`: its connection never opened, or
+ *   home's name wasn't found) is asked once more over each local network
+ *   the phone has, Wi-Fi and Ethernet (`./route`, HomeRoutePlugin), none
+ *   started that could not end before this page stops waiting; an answer
+ *   there is home's; Android keeping the app off the network is said as
+ *   that (`held`), in the phone's own settings' words; anything else, a
+ *   read that timed out and this page's own deadline among them, keeps the
+ *   first failure and is never sent again.
+ * - Family: the app's traffic on Wi-Fi or on mobile data (Android's
+ *   default, or a per-app setting) × home answering on Wi-Fi only × mobile
+ *   data there or gone × the first failure's kind (no answer, a name, a certificate, a fault)
+ *   × the second try's end (answered, held, none).
+ * - Proof: these tests, over the second try's three ends and which
+ *   failures ask it; and android-compat.yml's route scenario
+ *   (apps/mobile/compat/route.sh, HomeRouteTest) on emulators set up as the
+ *   S26 (Wi-Fi the default) and as the S21 Ultra (its traffic on mobile data
+ *   while home answers only on Wi-Fi), each as the app was and with the fix.
+ * - Tolerance: a per-app setting that keeps the app off Wi-Fi (One UI's
+ *   "Mobile data only apps" and "Allowed networks for apps") is reported,
+ *   not repaired: no network the app may not use can be asked. Every
+ *   failure writes HomeRoute's diagnostic line, which names each network's
+ *   own failure; the screen says held where Android says it holds the app,
+ *   and the first failure where it doesn't. Such a setting is emulated
+ *   only as an iptables rule on the app, which Android doesn't know of. A
+ *   request the default network fails slowly waits that failure out
+ *   before the second try, which waits its own connect and read on each
+ *   local network (10 s each) before the phone says it can't reach home. Data Saver with a metered Wi-Fi is unproven: its
+ *   emulator set-up did not apply (`cmd netpolicy set metered-network`
+ *   failed in Android Compat run 44990500461), so NA2 claims nothing of it.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { homeRequest } from "@/lib/device-backend/native-http"
-import { HomeNoAnswerError } from "@/lib/device-backend/native-http/no-answer"
+import {
+  HomeBlockedError,
+  HomeNoAnswerError,
+} from "@/lib/device-backend/native-http/no-answer"
 import { ForeignCallError } from "@/lib/intent/foreign"
 
 const plugin = vi.hoisted(() => ({
   request: vi.fn<(options: unknown) => Promise<unknown>>(),
 }))
+/** HomeRoute (NA2): asked only after Capacitor's request found no way to home. */
+const route = vi.hoisted(() => ({
+  request: vi.fn<(options: unknown) => Promise<unknown>>(),
+}))
 
-vi.mock("@capacitor/core", () => ({ CapacitorHttp: plugin }))
+vi.mock("@capacitor/core", () => ({
+  CapacitorHttp: plugin,
+  registerPlugin: (): typeof route => route,
+}))
 
 beforeEach(() => {
   plugin.request.mockReset()
+  route.request.mockReset()
+  route.request.mockRejectedValue({
+    code: "NO_ROUTE",
+    message: "tried nothing else",
+  })
 })
 
 describe("homeRequest", () => {
@@ -161,5 +209,113 @@ describe("homeRequest", () => {
       data: '{"id":"e1"}',
     })
     expect(options).not.toHaveProperty("dataType")
+  })
+
+  /**
+   * NA2 (#3411): Android can put this app's traffic on mobile data while the
+   * phone sits on home's Wi-Fi, so a request that found no answer or no name
+   * is asked once over the phone's other networks.
+   */
+  describe("NA2: every network is asked before home is said unreachable", () => {
+    const url = "https://home.local/api/v1/sessions"
+    const NAME = {
+      message:
+        'Unable to resolve host "home.local": No address associated with hostname',
+      code: "UnknownHostException",
+    }
+
+    it("takes home's answer over another network as home's own, the body sent as the plugin would", async () => {
+      plugin.request.mockRejectedValue(
+        new Error("failed to connect from /100.88.1.2")
+      )
+      route.request.mockResolvedValue({
+        status: 200,
+        headers: { ETag: '"v2"' },
+        data: '{"ok":true}',
+        over: "wifi",
+      })
+      const answer = await homeRequest({
+        method: "PUT",
+        url,
+        token: "t",
+        body: { a: 1 },
+      })
+      expect(answer).toEqual({ status: 200, body: '{"ok":true}', etag: '"v2"' })
+      expect(route.request).toHaveBeenCalledWith({
+        method: "PUT",
+        url,
+        headers: {
+          Authorization: "Bearer t",
+          "Content-Type": "application/json",
+        },
+        responseType: "text",
+        timeout: 10_000,
+        budget: 40_000,
+        data: '{"a":1}',
+      })
+    })
+
+    it("asks again after a name not found too, and says a phone keeping the app off every network as held", async () => {
+      plugin.request.mockRejectedValue(NAME)
+      route.request.mockRejectedValue({ code: "HELD", message: "kept off" })
+      const failed = await homeRequest({ method: "GET", url }).catch(
+        (error: unknown) => error
+      )
+      expect(failed).toBeInstanceOf(HomeBlockedError)
+      expect(failed).toMatchObject({ reason: "held" })
+    })
+
+    it("keeps the first failure when no other network reached home", async () => {
+      plugin.request.mockRejectedValue(NAME)
+      const failed = await homeRequest({ method: "GET", url }).catch(
+        (error: unknown) => error
+      )
+      expect(failed).toMatchObject({ reason: "name" })
+      plugin.request.mockRejectedValue({
+        message: "Failed to connect to /10.0.0.202:443",
+        code: "ConnectException",
+      })
+      await expect(homeRequest({ method: "GET", url })).rejects.toBeInstanceOf(
+        HomeNoAnswerError
+      )
+      expect(route.request).toHaveBeenCalledTimes(2)
+    })
+
+    it("never asks again after a timeout, where home may already have the request", async () => {
+      // A read that timed out: the write may have reached home.
+      plugin.request.mockRejectedValue({
+        message: "Read timed out",
+        code: "SocketTimeoutException",
+      })
+      await expect(
+        homeRequest({ method: "POST", url, body: { code: "K7QF2M9X" } })
+      ).rejects.toBeInstanceOf(HomeNoAnswerError)
+      // This page's own deadline passing, the plugin's request still out.
+      vi.useFakeTimers()
+      try {
+        plugin.request.mockReturnValue(new Promise(() => undefined))
+        const late = homeRequest({ method: "POST", url }).catch(
+          (error: unknown) => error
+        )
+        await vi.advanceTimersByTimeAsync(60_000)
+        expect(await late).toBeInstanceOf(HomeNoAnswerError)
+      } finally {
+        vi.useRealTimers()
+      }
+      expect(route.request).not.toHaveBeenCalled()
+    })
+
+    it("asks no other network after an answer, an untrusted certificate or a fault on the phone", async () => {
+      plugin.request.mockResolvedValue({ status: 200, data: "{}", headers: {} })
+      await homeRequest({ method: "GET", url })
+      plugin.request.mockRejectedValue({
+        message: "Trust anchor for certification path not found.",
+        code: "SSLHandshakeException",
+      })
+      await homeRequest({ method: "GET", url }).catch(() => undefined)
+      plugin.request.mockRejectedValue({ code: "UNIMPLEMENTED" })
+      await homeRequest({ method: "GET", url }).catch(() => undefined)
+      expect(route.request).not.toHaveBeenCalled()
+    })
   })
 })

@@ -41,8 +41,10 @@ export class HomeAwayError extends HomeNoAnswerError {
  * in front of home's server, as while it restarts to update). None is
  * home's silence, so none is away (AW1). Only `name` and `trust` come from
  * a request failing (`blockedReason`); the link reads `door` off an answer.
+ * `held` (NA2, #3411): Android keeps this app off the network, so no
+ * network the phone has reaches home; `./route` says it.
  */
-export type HomeBlockedReason = "name" | "trust" | "door"
+export type HomeBlockedReason = "name" | "trust" | "door" | "held"
 
 /**
  * Which `HomeBlockedReason` an Android failure is, read from the
