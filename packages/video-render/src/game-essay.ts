@@ -301,12 +301,24 @@ export const GameEssaySchema = z.strictObject({
 export type GameEssay = z.infer<typeof GameEssaySchema>
 type GameEssayGame = GameEssay["games"][number]
 
+const isWordChar = (c: string): boolean =>
+  (c >= "a" && c <= "z") || (c >= "0" && c <= "9")
+
+/** `word` without the punctuation at either end, in one linear pass (no backtracking regex). */
+function trimToWord(word: string): string {
+  let start = 0
+  let end = word.length
+  while (start < end && !isWordChar(word.charAt(start))) start++
+  while (end > start && !isWordChar(word.charAt(end - 1))) end--
+  return word.slice(start, end)
+}
+
 /** The words of `text`, lowercased, without the punctuation around them. */
 const wordsOf = (text: string): Array<string> =>
   text
     .toLowerCase()
     .split(/\s+/)
-    .map((word) => word.replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, ""))
+    .map(trimToWord)
     .filter((word) => word !== "")
 
 /** Every run of `QUOTE_RUN` words in a row of `text`, joined. */
