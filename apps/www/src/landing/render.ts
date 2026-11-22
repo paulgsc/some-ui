@@ -6,15 +6,16 @@
  * `landing/index.html`, the Pages build's `index.html`.
  *
  * The page carries no script. Every card is a picture with its words below
- * it, never over it (C1110). "What I built and use every day" is one pane, a
- * cube whose faces are the projects, turned face to face by CSS alone
- * (`cubeTurn`, in the page's head): each face fits its clip or still inside
- * its screen, whole, on the screen's dark, and a face whose asset the build
- * lacks shows the project's title card. The gaps keep their row of cards,
+ * it, never over it (C1110). "What I built and use every day" is the
+ * showcase (C1113): on a wide screen, a block of copy turning about Y beside
+ * two cubes turning about X, each a `Ring` turned by CSS alone (`ringCss`,
+ * in the page's head), each cube face fitting its clip or still whole inside
+ * its screen, its title typed in as it comes round. A face whose asset the
+ * build lacks shows the project's title card. On a phone, and for a reader
+ * who prefers less motion, the projects lie flat as cards and nothing turns,
+ * types or breathes (landing/index.html). The gaps keep their row of cards,
  * each taking its still's own shape (C1064). A slot's asset is shown only
- * when the build carries it (`media`; output.ts, `SITE_MEDIA_DIR`). A reader
- * who prefers less motion sees the cube's faces laid flat in a row, with
- * each clip's title card in place of the clip (landing/index.html). The
+ * when the build carries it (`media`; output.ts, `SITE_MEDIA_DIR`). The
  * photo slot holds the mochi, the brand cast's own drawing (`mochiSvg`),
  * until the owner's photo is bundled.
  */
@@ -50,13 +51,17 @@ export type LandingMedia = ReadonlyMap<string, MediaSize | null>
 /** A card's shape when it has no picture of its own: its placeholder's. */
 const PLACEHOLDER: MediaSize = { width: 4, height: 3 }
 
+/** A picture's shape as a CSS aspect ratio. */
+const aspect = ({ width, height }: MediaSize): string =>
+  `${String(width)} / ${String(height)}`
+
 /**
  * A gap's card takes its picture's own shape (C1064): `--ar` for its aspect
  * ratio, `--r` for the width it asks of its row, so a row of cards of
  * different shapes shares one height and no picture is cropped or padded.
  */
-const shape = ({ width, height }: MediaSize): string =>
-  `--ar: ${String(width)} / ${String(height)}; --r: ${(width / height).toFixed(4)}`
+const shape = (size: MediaSize): string =>
+  `--ar: ${aspect(size)}; --r: ${(size.width / size.height).toFixed(4)}`
 
 /**
  * A slot's asset, as the background of its picture: a clip plays muted on a
@@ -67,57 +72,189 @@ const mediaTag = (key: string): string =>
     ? `<video class="media" src="${mediaSrc(key)}" autoplay muted loop playsinline disablepictureinpicture disableremoteplayback preload="metadata" aria-hidden="true"></video>`
     : `<img class="media" src="${mediaSrc(key)}" alt="" aria-hidden="true" />`
 
-/** Seconds each face of the cube rests facing the reader, then turning. */
-export const CUBE_REST_S = 6
-export const CUBE_TURN_S = 1.2
+/**
+ * A ring (C1113): faces stood around an axis, turned face to face on a
+ * schedule by CSS alone, since the page runs no script. The showcase's copy
+ * block is one about Y (a rectangle, so its faces stand around a vertical
+ * axis), and each of its cubes one about X (a square). One type for all
+ * three, so a ring of another count, axis or pace is a new value, never new
+ * CSS. It rests on each face `restS` seconds, turns in `turnS`, and ends
+ * where it began, so the loop never jumps. A ring has three faces or more
+ * (`ringCss`).
+ */
+export type Ring = {
+  readonly name: "copy" | "cube"
+  readonly faces: number
+  readonly axis: "x" | "y"
+  readonly restS: number
+  readonly turnS: number
+}
+
+/** The copy block's ring, over `faces` faces of copy. */
+export const copyRing = (faces: number): Ring => ({
+  name: "copy",
+  faces,
+  axis: "y",
+  restS: 9,
+  turnS: 1.4,
+})
+
+/** A cube's ring, over every project. */
+export const cubeRing = (faces: number): Ring => ({
+  name: "cube",
+  faces,
+  axis: "x",
+  restS: 6,
+  turnS: 1.2,
+})
+
+/** How many cubes the showcase shows side by side. */
+export const CUBES = 2
+
+/** Seconds a face's title takes to type in, once its face has come round. */
+export const TYPE_S = 1.1
+
+const slotOf = (ring: Ring): number => ring.restS + ring.turnS
+const cycleOf = (ring: Ring): number => slotOf(ring) * ring.faces
 
 /**
- * The cube's turn (C1110) for `faces` faces, as one CSS keyframes rule: it
- * rests on each face for `CUBE_REST_S`, turns a face's angle in
- * `CUBE_TURN_S`, and ends where it began, so the loop never jumps. The
- * angles depend on how many faces there are, so the rule is drawn here with
- * the page rather than written once in the template.
+ * A start `seconds` into a ring's schedule, as an animation delay: never
+ * positive, so the animation is already running when the page opens, at
+ * the point it would have reached, rather than waiting and then jumping.
  */
-export function cubeTurn(faces: number): string {
-  const slot = CUBE_REST_S + CUBE_TURN_S
-  const pct = (seconds: number): string =>
-    `${String(Number(((seconds / (slot * faces)) * 100).toFixed(3)))}%`
+const startAt = (ring: Ring, seconds: number): number =>
+  (seconds % cycleOf(ring)) - cycleOf(ring)
+
+/** A number for CSS, rounded to three places with no trailing zeros. */
+const num = (n: number): string => String(Number(n.toFixed(3)))
+
+/**
+ * A ring's CSS: its turn as one keyframes rule, and its face count and
+ * cycle, which landing/index.html's ring rules read. A face stands at its
+ * index's angle (rotateY forward, rotateX back, so the next face rises from
+ * below), and the turn brings each to the front in order.
+ */
+export function ringCss(ring: Ring): string {
+  // Two faces stand back to back at no depth, and one at none: below three
+  // a ring is no shape, so the build fails rather than drawing nonsense.
+  if (!Number.isInteger(ring.faces) || ring.faces < 3) {
+    throw new Error(
+      `the ${ring.name} ring needs three faces or more, not ${String(ring.faces)}`
+    )
+  }
+  const slot = slotOf(ring)
+  const cycle = cycleOf(ring)
+  const pct = (seconds: number): string => `${num((seconds / cycle) * 100)}%`
+  const rotate = ring.axis === "y" ? "rotateY" : "rotateX"
+  const sign = ring.axis === "y" ? -1 : 1
   const at = (face: number): string =>
-    `transform: translateZ(var(--apothem)) rotateY(${String(Number(((-360 * face) / faces).toFixed(3)))}deg);`
+    `transform: translateZ(calc(-1 * var(--depth))) ${rotate}(${num((sign * 360 * face) / ring.faces)}deg);`
   const steps = Array.from(
-    { length: faces },
+    { length: ring.faces },
     (_, face) =>
-      `${pct(face * slot)}, ${pct(face * slot + CUBE_REST_S)} { ${at(face)} }`
+      `${pct(face * slot)}, ${pct(face * slot + ring.restS)} { ${at(face)} }`
   )
-  return `@keyframes cube-turn { ${steps.join(" ")} 100% { ${at(faces)} } }
-      .cube { --faces: ${String(faces)}; --cycle: ${String(slot * faces)}s; }`
+  return `@keyframes turn-${ring.name} { ${steps.join(" ")} 100% { ${at(ring.faces)} } }
+      .ring--${ring.name} { --faces: ${String(ring.faces)}; --cycle: ${num(cycle)}s; }
+      .ring--${ring.name} .ring-turn { animation-name: turn-${ring.name}; }`
 }
 
 /**
- * One face of the cube: its screen, holding the project's title card under
- * the face's clip or still when the build carries one, and its words below
- * the screen.
+ * The typing of a ring's face titles: hidden when the face comes round,
+ * revealed across `TYPE_S` (a step a character, set on each title), then
+ * held until the face comes round again.
+ */
+export function typeCss(ring: Ring): string {
+  return `@keyframes type-${ring.name} { 0% { clip-path: inset(0 100% 0 0); } ${num((TYPE_S / cycleOf(ring)) * 100)}%, 100% { clip-path: inset(0 0 0 0); } }
+      .ring--${ring.name} .typed { animation-name: type-${ring.name}; }`
+}
+
+/**
+ * One project on a cube's face, `position` faces round from the front, in a
+ * ring that starts turning `delayS` late. Its screen holds the project's
+ * title card under its clip or still when the build carries one; its band,
+ * on a wide screen, holds its title, typed in as the face comes round, and
+ * its short line; its caption, on a phone or for a reader who prefers less
+ * motion, holds its title, stack and line. Every word is below the picture.
+ * Laid flat, the screen takes its picture's own shape (`--ar`, C1064), so
+ * the picture fills it; on a cube's square face it sits whole inside it.
  */
 const projectFace = (
   p: ProjectWords,
-  index: number,
+  ring: Ring,
+  position: number,
+  delayS: number,
   media: LandingMedia
 ): string => `
-          <article class="face" data-slot="${p.media.endsWith(".mp4") ? "clip" : "still"}" data-asset="${e(p.media)}" style="--i: ${String(index)}">
-            <div class="screen">
-              <div class="title-card" aria-hidden="true"><span>${e(p.title)}</span></div>${
-                media.has(p.media)
-                  ? `
-              ${mediaTag(p.media)}`
-                  : ""
-              }
+            <article class="face" data-slot="${p.media.endsWith(".mp4") ? "clip" : "still"}" data-asset="${e(p.media)}" style="--i: ${String(position)}; --ar: ${aspect(media.get(p.media) ?? PLACEHOLDER)}">
+              <div class="screen">
+                <div class="title-card" aria-hidden="true"><span>${e(p.title)}</span></div>${
+                  media.has(p.media)
+                    ? `
+                ${mediaTag(p.media)}`
+                    : ""
+                }
+              </div>
+              <div class="band" aria-hidden="true">
+                <p class="band-title"><span class="typed" style="animation-delay: ${num(startAt(ring, delayS + position * slotOf(ring)))}s; animation-timing-function: steps(${String([...p.title].length)}, end)">${e(p.title)}</span></p>
+                <p class="band-line">${e(p.short)}</p>
+              </div>
+              <div class="caption">
+                <h3>${e(p.title)}</h3>
+                <p class="stack">${e(p.stack)}</p>
+                <p>${e(p.line)}</p>
+              </div>
+            </article>`
+
+/**
+ * The showcase (C1113): on a wide screen, one row of the copy block and
+ * `CUBES` cubes, each block breathing a little and each holding still while
+ * the pointer is on it. Every cube carries every project, the cube `j`
+ * starting `j / CUBES` of the way round, so no two show the same project at
+ * once, and turning half a face's time after the one before it, so they
+ * never turn together. Only the first cube is read out, and only it shows,
+ * laid flat, on a phone or for a reader who prefers less motion.
+ */
+function showcase(words: LandingWords, media: LandingMedia): string {
+  const cube = cubeRing(words.projects.length)
+  const n = words.projects.length
+  const copyFaces = words.copy
+    .map(
+      (c, i) => `
+            <div class="face copy" style="--i: ${String(i)}">
+              <p class="kicker">${e(c.kicker)}</p>
+              <p class="headline">${e(c.headline)}</p>
+              <p>${e(c.line)}</p>
+            </div>`
+    )
+    .join("")
+  const cubes = Array.from({ length: CUBES }, (_, j) => {
+    const delayS = (j * slotOf(cube)) / CUBES
+    const offset = Math.floor((j * n) / CUBES)
+    const faces = [
+      ...words.projects.slice(offset),
+      ...words.projects.slice(0, offset),
+    ]
+      .map((p, position) => projectFace(p, cube, position, delayS, media))
+      .join("")
+    return `
+        <div class="block block--cube" data-cube="${String(j)}"${j === 0 ? "" : ' aria-hidden="true"'}>
+          <div class="ring ring--cube" data-axis="x">
+            <div class="ring-turn" style="animation-delay: ${num(startAt(cube, delayS))}s">${faces}
             </div>
-            <div class="caption">
-              <h3>${e(p.title)}</h3>
-              <p class="stack">${e(p.stack)}</p>
-              <p>${e(p.line)}</p>
+          </div>
+        </div>`
+  }).join("")
+  return `
+      <div class="showcase">
+        <div class="block block--copy">
+          <div class="ring ring--copy" data-axis="y">
+            <div class="ring-turn">${copyFaces}
             </div>
-          </article>`
+          </div>
+        </div>${cubes}
+      </div>`
+}
 
 /** The gap's drawn visual, by gap: what the still will show, drawn. */
 const GAP_DRAWING: Readonly<Record<GapWords["id"], string>> = {
@@ -176,14 +313,15 @@ const role = (title: string, when: string, body: string): string => `
 
 /**
  * The page's `<head>`: its title, description and canonical address, and
- * the cube's turn for as many faces as there are projects.
+ * the showcase's rings, drawn for their face counts.
  */
 export function renderLandingHead(words: LandingWords = LANDING_WORDS): string {
   return `<title>${e(words.title)}</title>
     <meta name="description" content="${e(words.description)}" />
     <link rel="canonical" href="${SITE_URL}" />
     <style>
-      ${cubeTurn(words.projects.length)}
+      ${[copyRing(words.copy.length), cubeRing(words.projects.length)].map(ringCss).join("\n      ")}
+      ${typeCss(cubeRing(words.projects.length))}
     </style>`
 }
 
@@ -241,10 +379,7 @@ export function renderLanding(
     <main>
       <p class="lede">${e(words.lede)}</p>
       <h2 class="section-title">${e(words.projectsTitle)}</h2>
-      <div class="cube">
-        <div class="cube-turn">${words.projects.map((p, i) => projectFace(p, i, media)).join("")}
-        </div>
-      </div>
+${showcase(words, media)}
       <h2 class="section-title">${e(words.gapsTitle)}</h2>
       <div class="grid gaps">${words.gaps.map((g) => gapCard(g, media)).join("")}
       </div>

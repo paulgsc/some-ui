@@ -116,58 +116,56 @@
       .lede + .section-title {
         margin-top: 0;
       }
-      /* The projects' cube (C1110): one pane whose faces are the projects,
-         turned face to face by the keyframes render.ts draws for their
-         number (cubeTurn, in the head). A face is a square: its screen,
-         where the clip or still sits whole on the dark, then its words
-         below, never over it. The faces stand on a regular prism of
-         --faces sides (a cube at four), its apothem from the pane's own
-         width, so the front face is exactly the pane. Hovering holds the
-         turn, so a reader can stop on a face. */
-      .cube {
-        container-type: inline-size;
-        width: min(100%, 34rem);
-        margin: 0 auto;
-        perspective: 1800px;
+      /* The showcase (C1113). On a phone, and for a reader who prefers less
+         motion, the projects lie flat as cards, each its picture and then
+         its words (C1110), and nothing turns, types or breathes; the copy
+         block shows only on a wide screen. Only the first cube's faces are
+         shown flat: every cube carries every project. */
+      .showcase {
+        display: grid;
+        gap: 20px;
       }
-      .cube-turn {
-        --apothem: calc(-50cqi / tan(180deg / var(--faces)));
-        position: relative;
-        aspect-ratio: 1;
-        transform-style: preserve-3d;
-        transform: translateZ(var(--apothem));
-        animation: cube-turn var(--cycle) ease-in-out infinite;
+      .block--cube:not([data-cube="0"]) {
+        display: none;
       }
-      /* On a narrow pane the words take more lines: the faces stand taller
-         so their screens keep room. */
-      @container (max-width: 30rem) {
-        .cube-turn {
-          aspect-ratio: 4 / 5;
+      .block--cube .ring-turn {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+        gap: 20px;
+      }
+      .block--copy .ring-turn {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+        gap: 20px;
+      }
+      @media (max-width: 899.98px) {
+        .block--copy {
+          display: none;
+        }
+        .block--cube .ring-turn {
+          grid-template-columns: 1fr;
         }
       }
-      .cube:hover .cube-turn {
-        animation-play-state: paused;
-      }
       .face {
-        position: absolute;
-        inset: 0;
         display: flex;
         flex-direction: column;
         border-radius: 12px;
         overflow: hidden;
         background: var(--card);
         box-shadow: 0 0 0 1px var(--line);
-        backface-visibility: hidden;
-        transform: rotateY(calc(var(--i) * 360deg / var(--faces)))
-          translateZ(calc(50cqi / tan(180deg / var(--faces))));
       }
+      /* Laid flat, a face's screen takes its picture's own shape (--ar,
+         from the file, render.ts; C1064), so the picture fills it, nothing
+         cropped or padded, as the phone's cards always have. */
       .screen {
         position: relative;
-        flex: 1;
-        min-height: 0;
+        aspect-ratio: var(--ar);
         background: #111217;
       }
-      /* A face's title card: what the face shows when the build has no
+      .band {
+        display: none;
+      }
+      /* A face's title card: what its screen shows when the build has no
          clip or still for it, and under a clip a reader who prefers less
          motion doesn't see. */
       .title-card {
@@ -178,14 +176,14 @@
         padding: 18px;
         text-align: center;
         color: #f3e4cc;
-        font-size: clamp(1.2rem, 7cqi, 2rem);
+        font-size: 1.5rem;
         font-weight: 600;
         line-height: 1.2;
       }
-      /* A slot's clip or still, whole inside its screen (the face) or
-         filling its card exactly (a gap's, which takes the still's shape):
-         never cropped, never something to click. Its own box is the
-         screen's dark, so the title card under it never shows through. */
+      /* A slot's clip or still, whole inside its screen or filling its
+         card exactly (a gap's, which takes the still's shape): never
+         cropped, never something to click. Its own box is the screen's
+         dark, so the title card under it never shows through. */
       .media {
         position: absolute;
         inset: 0;
@@ -204,7 +202,8 @@
         margin: 0;
         font-size: 1.08rem;
       }
-      .caption p {
+      .caption p,
+      .copy p {
         margin: 0.2rem 0;
         font-size: 0.95rem;
       }
@@ -213,55 +212,156 @@
         font-size: 0.85rem;
         margin: 0.1rem 0 0.3rem;
       }
-      /* A short, wide window (a phone held sideways) can't hold a square
-         face: each face is twice as wide as it is tall, its words beside
-         its screen. */
-      @media (orientation: landscape) and (max-height: 500px) and (prefers-reduced-motion: no-preference) {
-        .cube {
-          width: min(100%, 44rem);
-        }
-        .cube-turn {
-          aspect-ratio: 2 / 1;
-        }
-        .face {
-          flex-direction: row;
-        }
-        .screen,
-        .caption {
-          flex: 1 1 50%;
-        }
-        .caption {
-          align-self: center;
-        }
+      .copy {
+        padding: 18px 22px;
       }
-      /* A reader who prefers less motion sees no turn: the faces lie flat,
-         side by side, each with its words, and every clip gives way to its
-         title card. The clip still loads and plays out of sight (autoplay
-         outranks preload, and a video takes no media-chosen source):
-         stopping it would take a script, which this page has none of. */
+      .copy .kicker {
+        margin: 0 0 0.4rem;
+        font-size: 0.78rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+      .copy .headline {
+        margin: 0 0 0.5rem;
+        font-size: 1.3rem;
+        font-weight: 700;
+        line-height: 1.2;
+      }
+      /* The clip still loads and plays out of sight (autoplay outranks
+         preload, and a video takes no media-chosen source): stopping it
+         would take a script, which this page has none of. */
       @media (prefers-reduced-motion: reduce) {
-        .cube {
-          width: 100%;
-          perspective: none;
-        }
-        .cube-turn {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-          gap: 20px;
-          aspect-ratio: auto;
-          transform: none;
-          animation: none;
-        }
-        .face {
-          position: relative;
-          transform: none;
-        }
-        .screen {
-          flex: none;
-          aspect-ratio: 4 / 3;
-        }
         video.media {
           display: none;
+        }
+      }
+      /* On a wide screen, one row: the copy block, a rectangle turning
+         about Y, beside the cubes, squares turning about X (C1113). Each is
+         a ring whose turn render.ts draws in the head (ringCss): its faces
+         stand at their index's angle, at the depth that makes the front
+         face exactly the block. Each block breathes a little, and holds
+         still, titles and all, while the pointer is on it. */
+      @media (min-width: 900px) and (prefers-reduced-motion: no-preference) {
+        .showcase {
+          grid-template-columns: minmax(0, 1.15fr) repeat(2, minmax(0, 1fr));
+        }
+        .block--cube:not([data-cube="0"]) {
+          display: block;
+        }
+        .block {
+          animation: breathe 11s ease-in-out infinite;
+        }
+        .block:nth-child(2) {
+          animation-delay: -3.7s;
+        }
+        .block:nth-child(3) {
+          animation-delay: -7.3s;
+        }
+        .block:hover,
+        .block:hover * {
+          animation-play-state: paused;
+        }
+        .ring {
+          container-type: inline-size;
+          height: 100%;
+          perspective: 1400px;
+        }
+        .ring--cube {
+          aspect-ratio: 1;
+        }
+        .block--cube .ring-turn,
+        .block--copy .ring-turn {
+          --depth: calc(50cqi / tan(180deg / var(--faces)));
+          display: block;
+          position: relative;
+          height: 100%;
+          transform-style: preserve-3d;
+          transform: translateZ(calc(-1 * var(--depth)));
+          animation-duration: var(--cycle);
+          animation-timing-function: ease-in-out;
+          animation-iteration-count: infinite;
+        }
+        .ring .face {
+          position: absolute;
+          inset: 0;
+          backface-visibility: hidden;
+        }
+        .ring[data-axis="y"] .face {
+          transform: rotateY(calc(var(--i) * 360deg / var(--faces)))
+            translateZ(var(--depth));
+        }
+        .ring[data-axis="x"] .face {
+          transform: rotateX(calc(var(--i) * -360deg / var(--faces)))
+            translateZ(var(--depth));
+        }
+        .ring--cube .screen {
+          flex: 1;
+          min-height: 0;
+          aspect-ratio: auto;
+        }
+        .ring--cube .caption {
+          display: none;
+        }
+        .ring--cube .title-card {
+          font-size: clamp(1.1rem, 8cqi, 1.6rem);
+        }
+        .band {
+          display: block;
+          padding: 8px 12px 10px;
+        }
+        .band p {
+          margin: 0;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .band-title {
+          font-size: 0.95rem;
+          font-weight: 600;
+        }
+        .band-line {
+          font-size: 0.82rem;
+          color: var(--muted);
+        }
+        .typed {
+          display: inline-block;
+          animation-duration: var(--cycle);
+          animation-iteration-count: infinite;
+          animation-fill-mode: both;
+        }
+        .copy {
+          justify-content: center;
+          padding: 24px 28px;
+        }
+        .copy .headline {
+          font-size: clamp(1.3rem, 6.5cqi, 1.9rem);
+          background: linear-gradient(
+            90deg,
+            var(--fg) 0%,
+            var(--fg) 35%,
+            var(--accent) 50%,
+            var(--fg) 65%,
+            var(--fg) 100%
+          );
+          background-size: 300% 100%;
+          background-clip: text;
+          color: transparent;
+          animation: sheen 14s linear infinite;
+        }
+      }
+      @keyframes breathe {
+        50% {
+          transform: scale(1.015);
+        }
+      }
+      @keyframes sheen {
+        from {
+          background-position: 100% 0;
+        }
+        to {
+          background-position: 0% 0;
         }
       }
       /* The gaps' cards in justified rows (C1064): each takes its still's

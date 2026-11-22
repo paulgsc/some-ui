@@ -29,11 +29,26 @@ if [ -n "${RUNNER_TEMP:-}" ]; then
   mkdir -p "$work"
 else
   work="$(mktemp -d)"
-  trap 'rm -rf "$work"' EXIT
 fi
 
-# What an earlier fetch left (a local preview's) goes first, so the build
-# shows only what this fetch found, as a deploy would.
+# Fetched beside the media folder and swapped in on the way out, so the
+# build shows only what this fetch found, as a deploy would. A fetch that
+# stops partway still gives the build what it had found, as the step always
+# did; one that found nothing at all (gh signed out, no network) leaves an
+# earlier local preview's media as they were.
+final="$media"
+media="$media.next"
+swap() {
+  if [ -n "$(find "$media" -type f -print -quit 2>/dev/null)" ]; then
+    rm -rf "$final"
+    mv "$media" "$final"
+  else
+    rm -rf "$media"
+    mkdir -p "$final"
+  fi
+  if [ -z "${RUNNER_TEMP:-}" ]; then rm -rf "$work"; fi
+}
+trap swap EXIT
 rm -rf "$media"
 mkdir -p "$media"
 : > "$work/seen"

@@ -32,5 +32,7 @@ It needs:
 - `gh`, signed in to an account that can read this repository's Actions (`gh auth status`).
 
 Without `gh`, the command says so, and the page shows each slot's placeholder, as a
-deploy with no media would. The first build takes a few minutes. A later one rebuilds
-only what changed.
+deploy with no media would. If a fetch finds nothing, the media from your last preview
+stay. The first build takes a few minutes. A later one rebuilds only what changed. One
+difference from Pages: a path the site doesn't have shows the landing here, where Pages
+shows its 404 page.

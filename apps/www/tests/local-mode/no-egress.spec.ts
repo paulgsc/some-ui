@@ -323,8 +323,10 @@ test.describe("the Pages build", () => {
     // Built with none of its media (C1059): every slot draws its
     // placeholder, and the build did not fail for want of one.
     await expect(page.locator("article[data-slot] .media")).toHaveCount(0)
-    // Each project's face of the cube (C1110) shows its title card.
-    await expect(page.locator(".cube .face .title-card")).toHaveCount(4)
+    // Each project's face on the first cube (C1113) shows its title card.
+    await expect(
+      page.locator('.block--cube[data-cube="0"] .face .title-card')
+    ).toHaveCount(4)
     await expect(
       page.locator('article[data-slot="still"] .drawing')
     ).toHaveCount(2)
@@ -334,31 +336,41 @@ test.describe("the Pages build", () => {
     ).toHaveCount(0)
     // A clip is the face's background, never a player (C1064): none has
     // controls or speaks to a screen reader, and a reader who prefers less
-    // motion sees the cube still and each face's title card instead (C1112).
+    // motion sees each face's title card instead, and nothing turns (C1113).
     await expect(
       page.locator("video[controls], video:not([aria-hidden=true])")
     ).toHaveCount(0)
     expect(
-      await page.evaluate(() =>
-        [...document.styleSheets].some((sheet) =>
-          [...sheet.cssRules].some(
-            (rule) =>
-              rule instanceof CSSMediaRule &&
-              rule.conditionText.includes("prefers-reduced-motion: reduce") &&
-              [...rule.cssRules].some(
-                (inner) =>
-                  inner instanceof CSSStyleRule &&
-                  inner.selectorText === "video.media" &&
-                  inner.style.display === "none"
-              ) &&
-              [...rule.cssRules].some(
-                (inner) =>
-                  inner instanceof CSSStyleRule &&
-                  inner.selectorText === ".cube-turn" &&
-                  inner.style.animationName === "none"
-              )
+      await page.evaluate(
+        () =>
+          [...document.styleSheets].some((sheet) =>
+            [...sheet.cssRules].some(
+              (rule) =>
+                rule instanceof CSSMediaRule &&
+                rule.conditionText.includes("prefers-reduced-motion: reduce") &&
+                [...rule.cssRules].some(
+                  (inner) =>
+                    inner instanceof CSSStyleRule &&
+                    inner.selectorText === "video.media" &&
+                    inner.style.display === "none"
+                )
+            )
+          ) &&
+          [...document.styleSheets].some((sheet) =>
+            [...sheet.cssRules].some(
+              (rule) =>
+                rule instanceof CSSMediaRule &&
+                rule.conditionText.includes(
+                  "prefers-reduced-motion: no-preference"
+                ) &&
+                [...rule.cssRules].some(
+                  (inner) =>
+                    inner instanceof CSSStyleRule &&
+                    inner.selectorText === ".block" &&
+                    inner.style.animationName === "breathe"
+                )
+            )
           )
-        )
       )
     ).toBe(true)
     await collect()

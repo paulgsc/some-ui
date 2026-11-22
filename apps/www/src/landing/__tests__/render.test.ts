@@ -9,14 +9,17 @@ import { mochiSvg } from "@/landing/mochi"
 import { SITE_BASE } from "@/landing/output"
 import type { LandingMedia } from "@/landing/render"
 import {
-  CUBE_REST_S,
-  CUBE_TURN_S,
-  cubeTurn,
+  copyRing,
+  cubeRing,
+  CUBES,
   escapeHtml,
   landingMediaKeys,
   PHOTO,
   renderLanding,
   renderLandingHead,
+  ringCss,
+  TYPE_S,
+  typeCss,
 } from "@/landing/render"
 import { LANDING_WORDS } from "@/landing/words"
 import { resumeData } from "@some-ui/resume"
@@ -68,52 +71,114 @@ describe("renderLanding", () => {
   })
 
   it("shows each slot's asset when the build carries it, and only then", () => {
-    const [clip, ...rest] = LANDING_WORDS.projects
+    const [clip] = LANDING_WORDS.projects
     const [still] = LANDING_WORDS.gaps
     const shown = renderLanding(resume, mochiSvg(), LANDING_WORDS, MEDIA)
     expect(shown).toContain(
       `<video class="media" src="${SITE_BASE}media/${clip.media}"`
     )
-    expect(shown).toContain(
-      `<img class="media" src="${SITE_BASE}media/${still.visual}"`
-    )
     expect(shown).toContain(`<img src="${SITE_BASE}media/${PHOTO}"`)
     expect(shown).not.toContain(`d="${MOCHI_BODY}"`)
     expect(shown).not.toContain(escapeHtml(still.visualNote))
-    for (const p of rest)
-      if (p.media !== still.visual)
-        expect(shown).not.toContain(`media/${p.media}`)
+    // A face shows its asset by its key, a still as an image: Page Filter's
+    // face and its gap's card both show the one still the build carries.
+    const stillTag = `<img class="media" src="${SITE_BASE}media/${still.visual}"`
+    const faces = LANDING_WORDS.projects.filter((p) => p.media === still.visual)
+    expect(faces.length).toBeGreaterThan(0)
+    expect(shown.split(stillTag).length - 1).toBe(faces.length * CUBES + 1)
+    for (const p of LANDING_WORDS.projects)
+      if (!MEDIA.has(p.media)) expect(shown).not.toContain(`media/${p.media}`)
     expect(page).not.toMatch(/<video|<img/)
   })
 
-  it("makes the projects one cube, a face each, turned by CSS alone (C1110)", () => {
-    const cube = page.slice(
-      page.indexOf('<div class="cube">'),
-      page.indexOf(escapeHtml(LANDING_WORDS.gapsTitle))
-    )
-    const faces = [...cube.matchAll(/<article class="face"[^>]*>/g)]
-    expect(faces.map((m) => m[0])).toEqual(
-      LANDING_WORDS.projects.map(
-        (p, i) =>
-          `<article class="face" data-slot="${p.media.endsWith(".mp4") ? "clip" : "still"}" data-asset="${p.media}" style="--i: ${String(i)}">`
+  /** The showcase's cubes, in order, each its faces' assets in order. */
+  const cubes = (html: string): Array<Array<string>> =>
+    [
+      ...html.matchAll(
+        /<div class="block block--cube" data-cube="\d+"[^>]*>([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/g
+      ),
+    ].map((m) =>
+      [...m[1].matchAll(/<article class="face"[^>]*data-asset="([^"]+)"/g)].map(
+        (f) => f[1]
       )
     )
+
+  it("shows the projects on two cubes that never show the same one at once (C1113)", () => {
+    const shown = cubes(page)
+    expect(shown).toHaveLength(CUBES)
+    const all = LANDING_WORDS.projects.map((p) => p.media)
+    for (const faces of shown)
+      expect([...faces].sort()).toEqual([...all].sort())
+    // The front faces of every cube differ at every turn of the schedule.
+    for (let turn = 0; turn < all.length; turn++) {
+      const front = shown.map((faces) => faces[turn])
+      expect(new Set(front).size).toBe(CUBES)
+    }
+    // Only the first cube is read out.
+    expect(page).toContain('<div class="block block--cube" data-cube="0">')
+    expect(page).toContain(
+      '<div class="block block--cube" data-cube="1" aria-hidden="true">'
+    )
+  })
+
+  it("draws every ring's turn and its titles' typing in the head, CSS alone", () => {
     const head = renderLandingHead()
-    expect(head).toContain(cubeTurn(LANDING_WORDS.projects.length))
-    expect(head).toContain(`--faces: ${String(LANDING_WORDS.projects.length)}`)
+    const copy = copyRing(LANDING_WORDS.copy.length)
+    const cube = cubeRing(LANDING_WORDS.projects.length)
+    expect(copy.axis).toBe("y")
+    expect(cube.axis).toBe("x")
+    expect(head).toContain(ringCss(copy))
+    expect(head).toContain(ringCss(cube))
+    expect(head).toContain(typeCss(cube))
+    expect(page).toContain('class="ring ring--copy" data-axis="y"')
+    expect(page).toContain('class="ring ring--cube" data-axis="x"')
+    for (const c of LANDING_WORDS.copy)
+      expect(page).toContain(escapeHtml(c.headline))
   })
 
   it("rests on each face, turns a face's angle, and ends where it began", () => {
-    const slot = CUBE_REST_S + CUBE_TURN_S
-    expect(cubeTurn(4)).toContain(
-      `@keyframes cube-turn { 0%, ${String(Number(((CUBE_REST_S / (4 * slot)) * 100).toFixed(3)))}% { transform: translateZ(var(--apothem)) rotateY(0deg); }`
+    const ring = {
+      name: "cube",
+      faces: 4,
+      axis: "x",
+      restS: 6,
+      turnS: 2,
+    } as const
+    const css = ringCss(ring)
+    expect(css).toContain(
+      "@keyframes turn-cube { 0%, 18.75% { transform: translateZ(calc(-1 * var(--depth))) rotateX(0deg); }"
     )
-    expect(cubeTurn(4)).toContain(
-      "100% { transform: translateZ(var(--apothem)) rotateY(-360deg); } }"
+    expect(css).toContain(
+      "25%, 43.75% { transform: translateZ(calc(-1 * var(--depth))) rotateX(90deg); }"
     )
-    expect(cubeTurn(4)).toContain(`--cycle: ${String(4 * slot)}s;`)
-    expect(cubeTurn(3)).toContain("rotateY(-120deg)")
-    expect(cubeTurn(3)).toContain("rotateY(-240deg)")
+    expect(css).toContain(
+      "100% { transform: translateZ(calc(-1 * var(--depth))) rotateX(360deg); } }"
+    )
+    expect(css).toContain(".ring--cube { --faces: 4; --cycle: 32s; }")
+    expect(ringCss({ ...ring, axis: "y", faces: 3 })).toContain(
+      "rotateY(-240deg)"
+    )
+    expect(() => ringCss({ ...ring, faces: 2 })).toThrow(/three faces/)
+    expect(typeCss(ring)).toContain(
+      `${String(Number(((TYPE_S / 32) * 100).toFixed(3)))}%, 100% { clip-path: inset(0 0 0 0); }`
+    )
+  })
+
+  it("types each title as its face comes round, a step a character", () => {
+    const cube = cubeRing(LANDING_WORDS.projects.length)
+    const cycle = (cube.restS + cube.turnS) * cube.faces
+    const typed = [
+      ...page.matchAll(
+        /<span class="typed" style="animation-delay: (-?[\d.]+)s; animation-timing-function: steps\((\d+), end\)">([^<]+)<\/span>/g
+      ),
+    ]
+    expect(typed).toHaveLength(LANDING_WORDS.projects.length * CUBES)
+    for (const [, delay, steps, title] of typed) {
+      const d = Number(delay)
+      expect(d).toBeLessThanOrEqual(0)
+      expect(d).toBeGreaterThanOrEqual(-cycle)
+      expect(Number(steps)).toBe([...title].length)
+    }
   })
 
   it("puts every card's words below its picture, never over it (C1110)", () => {
@@ -122,17 +187,20 @@ describe("renderLanding", () => {
       (m) => m[0]
     )
     expect(cards).toHaveLength(
-      LANDING_WORDS.projects.length + LANDING_WORDS.gaps.length
+      LANDING_WORDS.projects.length * CUBES + LANDING_WORDS.gaps.length
     )
     for (const card of cards) {
       const picture = Math.max(
         card.indexOf('<div class="screen">'),
         card.indexOf('<div class="pic">')
       )
-      const words = card.indexOf('<div class="caption">')
+      const words = Math.min(
+        ...['<div class="band"', '<div class="caption">']
+          .map((w) => card.indexOf(w))
+          .filter((at) => at > -1)
+      )
       expect(picture).toBeGreaterThan(-1)
       expect(words).toBeGreaterThan(picture)
-      expect(card.indexOf("<h3>")).toBeGreaterThan(words)
       expect(card).not.toContain("overlay")
     }
   })
@@ -151,7 +219,7 @@ describe("renderLanding", () => {
   it("lays a clip in its face as a background, never a player (C1064)", () => {
     const shown = renderLanding(resume, mochiSvg(), LANDING_WORDS, MEDIA)
     const videos = [...shown.matchAll(/<video\b[^>]*>/g)].map((m) => m[0])
-    expect(videos).toHaveLength(1)
+    expect(videos).toHaveLength(CUBES)
     for (const video of videos) {
       for (const attribute of [
         "autoplay",
@@ -164,9 +232,6 @@ describe("renderLanding", () => {
         expect(video).toContain(attribute)
       expect(video).not.toMatch(/\bcontrols\b|tabindex|aria-label/)
     }
-    expect(shown).toMatch(
-      /<img class="media" src="[^"]+" alt="" aria-hidden="true" \/>/
-    )
   })
 
   it("gives each gap's card its picture's own shape, and its placeholder's without one", () => {
@@ -180,6 +245,17 @@ describe("renderLanding", () => {
     expect(style(other.visual)).toBe("--ar: 4 / 3; --r: 1.3333")
   })
 
+  it("gives each face, laid flat, its picture's own shape, and its placeholder's without one", () => {
+    const [clip, , other] = LANDING_WORDS.projects
+    const shown = renderLanding(resume, mochiSvg(), LANDING_WORDS, MEDIA)
+    const style = (key: string): string =>
+      new RegExp(
+        `class="face"[^>]*data-asset="${key}" style="--i: \\d+; ([^"]+)"`
+      ).exec(shown)?.[1] ?? ""
+    expect(style(clip.media)).toBe("--ar: 1080 / 1920")
+    expect(style(other.media)).toBe("--ar: 4 / 3")
+  })
+
   it("puts no link or control on a card: the page's header leads to the code", () => {
     const shown = renderLanding(resume, mochiSvg(), LANDING_WORDS, MEDIA)
     const cards = [...shown.matchAll(/<article\b[\s\S]*?<\/article>/g)]
@@ -187,27 +263,38 @@ describe("renderLanding", () => {
       expect(card).not.toMatch(/<a\b|<button|controls/)
   })
 
-  it("stills the cube and hides every moving clip from a reader who prefers less motion", () => {
+  it("turns, types and breathes only on a wide screen with motion allowed", () => {
     const template = readFileSync(
       join(import.meta.dirname, "../../../landing/index.html"),
       "utf8"
     )
-    const reduced =
-      /@media \(prefers-reduced-motion: reduce\)\s*\{([^@]*)\}\s*\/\*/.exec(
-        template
-      )?.[1]
-    expect(reduced).toBeDefined()
-    expect(reduced).toMatch(/\.cube-turn\s*\{[^}]*animation:\s*none;[^}]*\}/)
-    expect(reduced).toMatch(/\.cube-turn\s*\{[^}]*transform:\s*none;/)
-    expect(reduced).toMatch(/\.face\s*\{[^}]*transform:\s*none;/)
-    expect(reduced).toMatch(/video\.media\s*\{\s*display:\s*none;/)
-    expect(template).toMatch(/\.media\s*\{[^}]*pointer-events:\s*none;/)
-    expect(template).toMatch(/\.media\s*\{[^}]*object-fit:\s*contain;/)
+    const css = template.slice(template.indexOf("<style>"))
+    const wide =
+      "@media (min-width: 900px) and (prefers-reduced-motion: no-preference) {"
+    const start = css.indexOf(wide)
+    expect(start).toBeGreaterThan(-1)
+    // The block ends where the next top-level rule starts.
+    const end = css.indexOf("\n      }\n", start)
+    const outside = css.slice(0, start) + css.slice(end)
+    // Outside the wide block nothing is set moving: the only transform is
+    // the breathing keyframe's, which only the wide block runs.
+    expect(outside).not.toMatch(/\banimation(-name)?:/)
+    expect(
+      outside.match(/(^|\s)transform:[^;]*/gm)?.map((t) => t.trim())
+    ).toEqual(["transform: scale(1.015)"])
+    expect(css).toMatch(
+      /@media \(prefers-reduced-motion: reduce\)\s*\{\s*video\.media\s*\{\s*display:\s*none;/
+    )
+    expect(css).toMatch(/\.media\s*\{[^}]*pointer-events:\s*none;/)
+    expect(css).toMatch(/\.media\s*\{[^}]*object-fit:\s*contain;/)
   })
 
-  it("names every slot's asset among the keys the build looks for", () => {
+  it("names every slot's asset once among the keys the build looks for", () => {
     const keys = landingMediaKeys()
-    expect(new Set(keys).size).toBe(keys.length)
+    // A still on a face and on a gap's card is one key: the build carries it once.
+    expect(keys.filter((k) => k === LANDING_WORDS.gaps[0].visual)).toHaveLength(
+      1
+    )
     for (const key of keys) expect(page).toContain(`data-asset="${key}"`)
   })
 

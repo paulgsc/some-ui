@@ -11,9 +11,9 @@
  */
 
 /**
- * One face of the projects' cube (C1110): what it is, its stack, one line,
- * and the asset it shows, a clip or a still, by key. A face is a case of the
- * landing's one card (a picture, then its words below it), so a project
+ * One project: a face of the showcase's cubes on a wide screen, a card on a
+ * phone (C1113). Its title, its stack, one line, a shorter line for the
+ * cube's band, and the asset it shows, a clip or a still, by key. A project
  * whose picture is a still is a member of the same type, not a new card.
  */
 export type ProjectWords = {
@@ -21,6 +21,8 @@ export type ProjectWords = {
   readonly title: string
   readonly stack: string
   readonly line: string
+  /** The line under the title in a cube's band, where room is short. */
+  readonly short: string
   /** The asset the face shows, by key: a clip or a still. */
   readonly media: `clips/${string}.mp4` | `stills/${string}.png`
 }
@@ -33,6 +35,13 @@ export type GapWords = {
   readonly visual: string
   /** What the drawn visual is, said on it. */
   readonly visualNote: string
+}
+
+/** One face of the showcase's copy block (C1113): a label, a headline, a line. */
+export type CopyWords = {
+  readonly kicker: string
+  readonly headline: string
+  readonly line: string
 }
 
 /** Everything the landing says that is not a fact from the résumé. */
@@ -51,6 +60,7 @@ export type LandingWords = {
   readonly independentNote: string
   readonly skills: string
   readonly footerKeeps: string
+  readonly copy: ReadonlyArray<CopyWords>
   readonly projects: ReadonlyArray<ProjectWords>
   readonly gaps: ReadonlyArray<GapWords>
 }
@@ -73,12 +83,30 @@ export const LANDING_WORDS: LandingWords = {
   skills:
     "Rust, TypeScript, React, Node.js, SQL, Python, Axum, Tokio, Redis, NATS, Docker, GitHub Actions, Grafana, Prometheus, Vitest, Playwright",
   footerKeeps: "This page keeps nothing about you.",
+  copy: [
+    {
+      kicker: "In my browser",
+      headline: "Two extensions I wrote for myself.",
+      line: "Suspender Ledger is signed by Mozilla. Page Filter is the one I use most.",
+    },
+    {
+      kicker: "On my phone",
+      headline: "One Android app for study, practice and the job search.",
+      line: "TypeScript and React in Capacitor, with Rust compiled to WebAssembly.",
+    },
+    {
+      kicker: "At home",
+      headline: "file_host, the Rust server behind them.",
+      line: "Its own Grafana dashboard tells me whether it's answering and what it turns away.",
+    },
+  ],
   projects: [
     {
       id: "extensions",
       title: "Suspender Ledger",
       stack: "TypeScript · Firefox and Chromium MV3",
       line: "It keeps a site awake, then suspends a tab. Signed and reviewed by Mozilla (unlisted).",
+      short: "Keeps a site awake, then suspends a tab.",
       media: "clips/extensions.mp4",
     },
     {
@@ -86,6 +114,7 @@ export const LANDING_WORDS: LandingWords = {
       title: "Page Filter",
       stack: "TypeScript · Firefox and Chromium MV3",
       line: "The extension I use most: it darkens the pages I read at night.",
+      short: "Darkens the pages I read at night.",
       media: "stills/page-filter.png",
     },
     {
@@ -93,6 +122,7 @@ export const LANDING_WORDS: LandingWords = {
       title: "The Android app",
       stack: "TypeScript · React · Capacitor · Rust → WebAssembly",
       line: "Study sessions, Rust practice rounds, a job search desk and a video studio, in one app.",
+      short: "Study, practice, jobs and a video studio.",
       media: "clips/apk.mp4",
     },
     {
@@ -100,6 +130,7 @@ export const LANDING_WORDS: LandingWords = {
       title: "file_host: the server behind them",
       stack: "Rust · Axum · Tokio · SQLite · Redis · NATS · Grafana",
       line: "It runs on my home server, under its own dashboard: whether it's answering, how long it has been up, and what the rate limiter turns away.",
+      short: "My home server, under its own dashboard.",
       media: "clips/server.mp4",
     },
   ],
