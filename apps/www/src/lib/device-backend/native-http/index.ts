@@ -17,11 +17,12 @@
  *   timeout is `HomeNoAnswerError`, which the link reads as away (AW1); a
  *   name this phone can't find or a certificate it doesn't trust is
  *   `HomeBlockedError`, said as itself.
- * - **Every network is asked before home is said unreachable** (NA2,
- *   #3411): a request that found no answer or no name goes once more over
- *   the phone's other networks, Wi-Fi first (`./route`), since Android can
- *   put this app's traffic on mobile data while the phone is on home's
- *   Wi-Fi. Their answer is home's; Android keeping the app off every one is
+ * - **Home's local networks are asked before home is said unreachable**
+ *   (NA2, #3411): a request that never reached home (its connection never
+ *   opened, or home's name wasn't found: `neverSent`) goes once more over
+ *   the phone's Wi-Fi and Ethernet (`./route`), since Android can put this
+ *   app's traffic on mobile data while the phone is on home's Wi-Fi. Their
+ *   answer is home's; Android keeping the app off the network is
  *   `HomeBlockedError` `held`.
  *
  * The plugin parses any `application/json` answer regardless of
@@ -51,7 +52,7 @@ import {
   HomeNoAnswerError,
   phoneOnline,
 } from "./no-answer"
-import { routeElsewhere } from "./route"
+import { ROUTE_BUDGET_MS, routeElsewhere } from "./route"
 
 /** Long enough for a slow LAN; short enough to say "unreachable" promptly. */
 const TIMEOUT_MS = 10_000
@@ -201,6 +202,35 @@ export async function homeRequest(call: HomeRequest): Promise<HomeAnswer> {
 }
 
 /**
+ * Whether `failed` is a request that never reached home, so asking again
+ * can't send it twice (NA2): home's name not found, or the connection never
+ * opened ("failed to connect", a refusal, a connect timeout). Not this
+ * page's own deadline, nor a read that timed out, where home may already
+ * have the request (a pairing's single-use code, say).
+ */
+export function neverSent(failed: unknown): boolean {
+  if (failed instanceof HomeBlockedError) return failed.reason === "name"
+  if (!(failed instanceof HomeNoAnswerError)) return false
+  const words: Array<string> = []
+  for (
+    let at: unknown = failed.cause, depth = 0;
+    at != null && depth < 4;
+    depth++
+  ) {
+    if (at instanceof ForeignDeadlineError) return false
+    words.push(String(at))
+    if (typeof at === "object") {
+      if ("message" in at) words.push(String(at.message))
+      if ("code" in at) words.push(String(at.code))
+    }
+    at = typeof at === "object" && "cause" in at ? at.cause : null
+  }
+  return /failed to connect|ConnectException|NoRouteToHost|ECONNREFUSED|connection refused/i.test(
+    words.join(" ")
+  )
+}
+
+/**
  * `failed`'s request asked once more over the phone's other networks (NA2),
  * when it found no answer or no name: their answer, as the plugin's own
  * would be; `held` when Android keeps the app off them all; else `failed`.
@@ -216,13 +246,11 @@ async function elsewhere(
   bytes: HomeBytes | null,
   body: unknown
 ): Promise<HttpResponse> {
-  const asked =
-    failed instanceof HomeNoAnswerError ||
-    (failed instanceof HomeBlockedError && failed.reason === "name")
-  if (!asked) throw failed
+  if (!neverSent(failed)) throw failed
   const routed = await routeElsewhere({
     ...options,
     timeout: TIMEOUT_MS,
+    budget: ROUTE_BUDGET_MS,
     ...(bytes !== null
       ? { data: bytes.base64, dataType: "file" as const }
       : body === undefined

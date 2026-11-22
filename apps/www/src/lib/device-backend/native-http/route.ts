@@ -1,8 +1,9 @@
 /**
- * Home asked over the phone's other networks, Wi-Fi first (#3411, NA2):
- * the app's own HomeRoute plugin (apps/mobile HomeRoutePlugin.java), asked
- * only once a request over the network Android gave this app found no
- * answer or no name. Android can put this app's traffic on mobile data
+ * Home asked over the phone's other local networks, Wi-Fi and Ethernet
+ * (#3411, NA2): the app's own HomeRoute plugin (apps/mobile
+ * HomeRoutePlugin.java), asked only once a request over the network
+ * Android gave this app could not be sent at all: its connection never
+ * opened, or home's name wasn't found (`./index`'s `neverSent`). Android can put this app's traffic on mobile data
  * while the phone sits on home's Wi-Fi (the S21 Ultra's log: home's address
  * tried "from /100.x", a carrier's address); a request opened on the Wi-Fi
  * network itself still reaches home.
@@ -31,6 +32,12 @@ export type RouteRequest = {
   readonly dataType?: "file"
   readonly responseType: "text" | "blob"
   readonly timeout: number
+  /**
+   * How long from the call the plugin may still start a network's try
+   * (HomeRoutePlugin): less than `DEADLINE_MS`, so nothing is sent after
+   * this page stopped waiting for it.
+   */
+  readonly budget: number
 }
 
 type RouteAnswer = {
@@ -57,6 +64,8 @@ const codeOf = (error: unknown): string | null =>
 
 /** Each network the plugin tries waits its own connect and read. */
 const DEADLINE_MS = 45_000
+/** The plugin's budget: room before the deadline for its answer to arrive. */
+export const ROUTE_BUDGET_MS = DEADLINE_MS - 5_000
 
 const PORT: ForeignPort = {
   name: "home server (other networks)",

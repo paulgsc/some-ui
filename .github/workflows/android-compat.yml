@@ -238,7 +238,7 @@ jobs:
           {
             echo "## Android compatibility: \`${SHA::7}\` ($REF)"
             echo
-            echo "| API | Image's WebView | Launch | Paired (https) | Storm | Refresh | Name (asked / past the cache) |"
+            echo "| API | Image's WebView | Launch | Paired (https) | Storm | Refresh | Name or route scenario |"
             echo "| --- | --- | --- | --- | --- | --- | --- |"
             jq -r '.[] | [.api, (.webview // "unknown"), .launch, .paired, .storm, .refresh, (.name // "not run")] | @tsv' stamp-rows.json |
               while IFS=$'\t' read -r api webview launch paired storm refresh name; do

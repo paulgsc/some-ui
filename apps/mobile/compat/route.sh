@@ -42,7 +42,9 @@ adb root > /dev/null 2>&1 || true
 adb wait-for-device
 adb install -r "$apks/debug.apk" > /dev/null
 adb install -r "$apks/tests.apk" > /dev/null
-uid=$(adb shell pm list packages -U "$pkg" | tr -d '\r' | grep -oE 'uid:[0-9]+' | cut -d: -f2 | head -1)
+# The app's own user id: `pm list packages` matches by substring, and the
+# test package (dev.paulgsc.someui.test) is installed too.
+uid=$(adb shell pm list packages -U "$pkg" | tr -d '\r' | grep -E "^package:$pkg uid:" | grep -oE 'uid:[0-9]+' | cut -d: -f2 | head -1)
 
 sh_() { adb shell "$@" | tr -d '\r'; }
 # The default network's kind, as Android names it: WIFI, CELLULAR or none.
@@ -56,8 +58,9 @@ default_kind() {
   printf '%s\n' "$dump" | grep -m1 "NetworkAgentInfo{network{$id}" | grep -oE 'WIFI|CELLULAR' | head -1 || true
 }
 # Whether the phone has a mobile data network up beside Wi-Fi.
+# Counted, not grep -q: under pipefail an early exit there fails the pipe.
 has_cellular() {
-  sh_ dumpsys connectivity | grep 'NetworkAgentInfo{network{' | grep -q CELLULAR
+  [ "$(sh_ dumpsys connectivity | grep 'NetworkAgentInfo{network{' | grep -c CELLULAR)" -gt 0 ]
 }
 # Mobile data stays up beside a working Wi-Fi, as on a phone whose traffic
 # Android may send over either (developer option "Mobile data always active").

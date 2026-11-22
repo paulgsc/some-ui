@@ -5,12 +5,15 @@
  *
  * Promise NA2 (#3411): the phone says it can't reach home only once every
  * network it has was asked.
- * - Claim: a request to home that found no answer or no name over the
- *   network Android gave this app is asked once more over each other
- *   network the phone has, Wi-Fi first (`./route`, HomeRoutePlugin); an
- *   answer there is home's; Android keeping the app off the network is said
- *   as that (`held`), in the phone's own settings' words; anything else
- *   keeps the first failure.
+ * - Claim: a request to home that never reached it over the network
+ *   Android gave this app (`neverSent`: its connection never opened, or
+ *   home's name wasn't found) is asked once more over each local network
+ *   the phone has, Wi-Fi and Ethernet (`./route`, HomeRoutePlugin), none
+ *   started that could not end before this page stops waiting; an answer
+ *   there is home's; Android keeping the app off the network is said as
+ *   that (`held`), in the phone's own settings' words; anything else, a
+ *   read that timed out and this page's own deadline among them, keeps the
+ *   first failure and is never sent again.
  * - Family: the app's traffic on Wi-Fi or on mobile data (Android's
  *   default, or a per-app setting) × home answering on Wi-Fi only × mobile
  *   data there or gone × the first failure's kind (no answer, a name, a certificate, a fault)
@@ -27,8 +30,9 @@
  *   own failure; the screen says held where Android says it holds the app,
  *   and the first failure where it doesn't. Such a setting is emulated
  *   only as an iptables rule on the app, which Android doesn't know of. A
- *   request the default network fails slowly waits that failure out before
- *   the second try. Data Saver with a metered Wi-Fi is unproven: its
+ *   request the default network fails slowly waits that failure out
+ *   before the second try, which waits its own connect and read on each
+ *   local network (10 s each) before the phone says it can't reach home. Data Saver with a metered Wi-Fi is unproven: its
  *   emulator set-up did not apply (`cmd netpolicy set metered-network`
  *   failed in Android Compat run 44990500461), so NA2 claims nothing of it.
  */
@@ -246,6 +250,7 @@ describe("homeRequest", () => {
         },
         responseType: "text",
         timeout: 10_000,
+        budget: 40_000,
         data: '{"a":1}',
       })
     })
@@ -266,11 +271,38 @@ describe("homeRequest", () => {
         (error: unknown) => error
       )
       expect(failed).toMatchObject({ reason: "name" })
-      plugin.request.mockRejectedValue(new Error("timeout"))
+      plugin.request.mockRejectedValue({
+        message: "Failed to connect to /10.0.0.202:443",
+        code: "ConnectException",
+      })
       await expect(homeRequest({ method: "GET", url })).rejects.toBeInstanceOf(
         HomeNoAnswerError
       )
       expect(route.request).toHaveBeenCalledTimes(2)
+    })
+
+    it("never asks again after a timeout, where home may already have the request", async () => {
+      // A read that timed out: the write may have reached home.
+      plugin.request.mockRejectedValue({
+        message: "Read timed out",
+        code: "SocketTimeoutException",
+      })
+      await expect(
+        homeRequest({ method: "POST", url, body: { code: "K7QF2M9X" } })
+      ).rejects.toBeInstanceOf(HomeNoAnswerError)
+      // This page's own deadline passing, the plugin's request still out.
+      vi.useFakeTimers()
+      try {
+        plugin.request.mockReturnValue(new Promise(() => undefined))
+        const late = homeRequest({ method: "POST", url }).catch(
+          (error: unknown) => error
+        )
+        await vi.advanceTimersByTimeAsync(60_000)
+        expect(await late).toBeInstanceOf(HomeNoAnswerError)
+      } finally {
+        vi.useRealTimers()
+      }
+      expect(route.request).not.toHaveBeenCalled()
     })
 
     it("asks no other network after an answer, an untrusted certificate or a fault on the phone", async () => {

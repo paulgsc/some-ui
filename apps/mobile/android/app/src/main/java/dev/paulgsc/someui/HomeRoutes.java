@@ -3,6 +3,7 @@ package dev.paulgsc.someui;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
+import android.os.SystemClock;
 import android.util.Base64;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -27,7 +28,8 @@ import java.util.Map;
  *
  * Plain Java over ConnectivityManager, with no plugin of its own, so
  * HomeRoutePlugin and the reproduction's instrumentation test
- * (HomeRouteTest, android-compat.yml's route scenario) run the same code.
+ * (HomeRouteTest, android-compat.yml's route scenario) run the same code:
+ * `route`.
  */
 final class HomeRoutes {
 
@@ -84,21 +86,52 @@ final class HomeRoutes {
     }
 
     /**
-     * The networks to ask home over: Wi-Fi and Ethernet first, as home is on
-     * the local network, then the rest; never a VPN's, which is the default
-     * network's own way. `skip` (the network already tried) is left out.
+     * The networks to ask home over: Wi-Fi and Ethernet only, as home is on
+     * the local network, which a carrier's network can't reach (asking over
+     * it could only wait out its timeout). `skip`, the network already
+     * tried, is left out.
      */
     static List<Network> candidates(ConnectivityManager connectivity, Network skip) {
         List<Network> local = new ArrayList<>();
-        List<Network> rest = new ArrayList<>();
         for (Network network : connectivity.getAllNetworks()) {
             if (network.equals(skip)) continue;
             String kind = kindOf(connectivity, network);
             if ("wifi".equals(kind) || "ethernet".equals(kind)) local.add(network);
-            else if ("cellular".equals(kind) || "other".equals(kind)) rest.add(network);
         }
-        local.addAll(rest);
         return local;
+    }
+
+    /** How one route ended: home's answer and the network it came over, or what each network found. */
+    static final class Routed {
+        Answer answer;
+        Network over;
+        final List<String> tried = new ArrayList<>();
+    }
+
+    /**
+     * `request` over each candidate network, Wi-Fi and Ethernet, but the one
+     * Android gives the app (already tried), until one answers; none is
+     * started that could not end, connect and read, by `endsAt`
+     * (SystemClock.uptimeMillis), so nothing is sent after the caller has
+     * stopped waiting for it.
+     */
+    static Routed route(ConnectivityManager connectivity, Request request, long endsAt) {
+        Routed routed = new Routed();
+        for (Network network : candidates(connectivity, connectivity.getActiveNetwork())) {
+            String kind = describe(connectivity, network);
+            if (SystemClock.uptimeMillis() + 2L * request.timeoutMs > endsAt) {
+                routed.tried.add(kind + ": not asked, no time left");
+                break;
+            }
+            try {
+                routed.answer = send(network, request);
+                routed.over = network;
+                return routed;
+            } catch (Exception failed) {
+                routed.tried.add(kind + ": " + failed.getClass().getSimpleName() + " " + failed.getMessage());
+            }
+        }
+        return routed;
     }
 
     /** One request, as homeRequest sends it. */

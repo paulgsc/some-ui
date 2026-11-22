@@ -5,14 +5,13 @@ import static org.junit.Assert.fail;
 
 import android.content.Context;
 import android.net.ConnectivityManager;
-import android.net.Network;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.util.Log;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.List;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -25,8 +24,8 @@ import org.junit.runner.RunWith;
  *
  * - theDefaultWayReachesHome: a request as Capacitor's HTTP plugin sends
  *   it, over the network Android gives the app. The S21's symptom fails it.
- * - someWayReachesHome: the same, then, if that finds nothing, HomeRoutes
- *   over each other network, Wi-Fi first: the fix's way.
+ * - someWayReachesHome: the same, then, if that finds nothing,
+ *   HomeRoutes.route, which HomeRoutePlugin runs: the fix's way.
  *
  * Instrumentation argument: url, home's stand-in address.
  */
@@ -54,18 +53,15 @@ public class HomeRouteTest {
         }
         HomeRoutes.Request request = new HomeRoutes.Request();
         request.url = url();
-        List<String> tried = new ArrayList<>();
-        for (Network network : HomeRoutes.candidates(connectivity, connectivity.getActiveNetwork())) {
-            String kind = HomeRoutes.describe(connectivity, network);
-            try {
-                HomeRoutes.Answer answer = HomeRoutes.send(network, request);
-                Log.i(TAG, "home route test: answered " + answer.status + " over " + kind);
-                assertEquals(200, answer.status);
-                return;
-            } catch (Exception failed) {
-                tried.add(kind + ": " + failed);
-            }
+        // The plugin's own route (HomeRoutePlugin calls the same), with its budget.
+        HomeRoutes.Routed routed = HomeRoutes.route(connectivity, request, SystemClock.uptimeMillis() + 40_000);
+        if (routed.answer != null) {
+            Log.i(TAG, "home route test: answered " + routed.answer.status + " over "
+                + HomeRoutes.describe(connectivity, routed.over));
+            assertEquals(200, routed.answer.status);
+            return;
         }
+        List<String> tried = routed.tried;
         fail("no way reached home; tried " + tried);
     }
 

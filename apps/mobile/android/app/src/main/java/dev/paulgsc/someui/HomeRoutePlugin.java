@@ -4,6 +4,7 @@ import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.os.Build;
+import android.os.SystemClock;
 import android.util.Base64;
 import android.util.Log;
 import com.getcapacitor.JSArray;
@@ -13,9 +14,7 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -26,7 +25,9 @@ import java.util.concurrent.Executors;
  * after Capacitor's HTTP plugin failed with no answer or a name not found,
  * through callForeign.
  *
- * - request: the same request over each other network until one answers.
+ * - request: the same request over home's other local networks (Wi-Fi,
+ *   Ethernet) until one answers, none started that could not end within
+ *   `budget` ms of the call.
  *   Resolves home's answer and `over`, the network's kind; rejects
  *   "HELD" when Android says it keeps this app off the network
  *   (onBlockedStatusChanged), else "NO_ROUTE", each with what it tried.
@@ -82,38 +83,39 @@ public class HomeRoutePlugin extends Plugin {
             call.reject(bad.getMessage(), "BAD_REQUEST");
             return;
         }
+        // Counted from now, not from when the worker takes it: a request
+        // still queued when www stopped waiting (route.ts's deadline) is
+        // dropped, never sent late.
+        long endsAt = SystemClock.uptimeMillis() + call.getInt("budget", 40_000);
         worker.execute(() -> {
             // Said on every failure that reaches here, so a phone's log says
             // what kept it from home whichever way this ends.
             Log.i(NativeLogPlugin.TAG, "home route: " + HomeRoutes.diagnosis(connectivity, held));
             Network active = connectivity.getActiveNetwork();
-            List<String> tried = new ArrayList<>();
-            for (Network network : HomeRoutes.candidates(connectivity, active)) {
-                String kind = HomeRoutes.describe(connectivity, network);
-                try {
-                    HomeRoutes.Answer answer = HomeRoutes.send(network, request);
-                    Log.i(NativeLogPlugin.TAG, "home route: answered over " + kind + ", not "
-                        + (active == null ? "no network" : HomeRoutes.describe(connectivity, active)));
-                    JSObject headers = new JSObject();
-                    for (java.util.Map.Entry<String, String> h : answer.headers.entrySet()) headers.put(h.getKey(), h.getValue());
-                    JSObject result = new JSObject();
-                    result.put("status", answer.status);
-                    result.put("headers", headers);
-                    result.put("data", answer.data);
-                    result.put("over", HomeRoutes.kindOf(connectivity, network));
-                    call.resolve(result);
-                    return;
-                } catch (Exception failed) {
-                    tried.add(kind + ": " + failed.getClass().getSimpleName() + " " + failed.getMessage());
+            String on = active == null ? "no network" : HomeRoutes.describe(connectivity, active);
+            HomeRoutes.Routed routed = HomeRoutes.route(connectivity, request, endsAt);
+            if (routed.answer != null) {
+                Log.i(NativeLogPlugin.TAG, "home route: answered over "
+                    + HomeRoutes.describe(connectivity, routed.over) + ", not " + on);
+                JSObject headers = new JSObject();
+                for (java.util.Map.Entry<String, String> h : routed.answer.headers.entrySet()) {
+                    headers.put(h.getKey(), h.getValue());
                 }
+                JSObject result = new JSObject();
+                result.put("status", routed.answer.status);
+                result.put("headers", headers);
+                result.put("data", routed.answer.data);
+                result.put("over", HomeRoutes.kindOf(connectivity, routed.over));
+                call.resolve(result);
+                return;
             }
             boolean keptOff = Boolean.TRUE.equals(held);
             String said = (keptOff ? "kept off the network" : "no other network reached home")
-                + "; on " + (active == null ? "no network" : HomeRoutes.describe(connectivity, active))
-                + "; tried " + (tried.isEmpty() ? "nothing else" : String.join(" | ", tried));
+                + "; on " + on
+                + "; tried " + (routed.tried.isEmpty() ? "nothing else" : String.join(" | ", routed.tried));
             Log.i(NativeLogPlugin.TAG, "home route: " + said);
             JSObject data = new JSObject();
-            data.put("tried", tried.size());
+            data.put("tried", routed.tried.size());
             call.reject(said, keptOff ? "HELD" : "NO_ROUTE", data);
         });
     }
