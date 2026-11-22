@@ -123,10 +123,12 @@ jobs:
 
       # scripts/ belongs to no workspace, so no turbo typecheck reaches the
       # guard scripts CI runs; the root tsconfig.json covers them.
-      # RSC1: its core-utils prerequisite must build even when no workspace is affected.
+      # RSC1: the workspace dists the root scripts reach must build even when no
+      # workspace is affected. Today those are core-utils, and game-scenarios via
+      # dump-rust-week-sample.ts -> rust-rounds' week format -> video-render's index.
       - name: Typecheck root scripts
         run: |
-          nix develop .#ci --command pnpm turbo run build --filter=@some-ui/core-utils
+          nix develop .#ci --command pnpm turbo run build --filter=@some-ui/core-utils --filter='@some-ui/video-render^...'
           nix develop .#ci --command pnpm typecheck:scripts
 
       # Repo-wide invariant like the catalog check above: every packages/ui/*
