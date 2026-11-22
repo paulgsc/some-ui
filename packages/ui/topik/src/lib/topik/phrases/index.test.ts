@@ -1,6 +1,7 @@
 // Runs conjugation itself: nothing here is mocked.
 import type { Reading } from "@topik/lib/topik/conjugation"
 import { checkPhrase, type Phrase } from "@topik/lib/topik/phrases"
+import { checkProposal } from "@topik/lib/topik/phrases/proposal"
 import { PHRASE_IDS, PHRASES } from "@topik/lib/topik/phrases/shelf"
 import { describe, expect, it } from "vitest"
 
@@ -383,5 +384,114 @@ describe("the phrase check, over whole sentences", () => {
         })
       )
     ).toEqual([{ kind: "mood-tense" }])
+  })
+})
+
+describe("a proposed phrase (KP5)", () => {
+  const proposal = {
+    id: "ph.i-missed-the-bus",
+    korean: "버스를 놓쳤어요.",
+    intents: ["I missed the bus"],
+    register: "해요",
+    toWhom: "anyone",
+    setting: "everyday · running late",
+    mood: "statement",
+    parts: [
+      { kind: "word", written: "버스를", lemma: "버스", gloss: "bus" },
+      {
+        kind: "built",
+        reading: {
+          dictionary: "놓치다",
+          ending: "close.ayo.plain",
+          tense: "past",
+        },
+        gloss: "miss",
+      },
+    ],
+  }
+
+  it("is put forward when it holds, proposed and in the AI voice", () => {
+    expect(checkProposal(proposal)).toMatchObject({
+      ok: true,
+      id: "ph.i-missed-the-bus",
+      phrase: { status: "proposed", hear: "ai-voice" },
+      faults: [],
+    })
+  })
+
+  it("is refused with a word that isn't on the vocabulary list", () => {
+    const unlisted = {
+      ...proposal,
+      parts: [
+        proposal.parts[0],
+        {
+          kind: "built",
+          reading: {
+            dictionary: "타다",
+            ending: "close.ayo.plain",
+            tense: "past",
+          },
+          gloss: "ride",
+        },
+      ],
+    }
+    const checked = checkProposal(unlisted)
+    expect(checked.ok).toBe(false)
+    if (!checked.ok) expect(checked.error).toContain("vocabulary list")
+  })
+
+  it("is refused with an ending that isn't in the catalogue", () => {
+    const unknown = {
+      ...proposal,
+      parts: [
+        proposal.parts[0],
+        {
+          kind: "built",
+          reading: {
+            dictionary: "놓치다",
+            ending: "close.da.plain",
+            tense: "past",
+          },
+          gloss: "miss",
+        },
+      ],
+    }
+    expect(checkProposal(unknown).ok).toBe(false)
+  })
+
+  it("is refused when it claims what only the owner gives: acceptance, audio", () => {
+    for (const claim of [
+      { status: { accepted: "2026-11-01" } },
+      { hear: "native-scene" },
+    ]) {
+      const checked = checkProposal({ ...proposal, ...claim })
+      expect(checked.ok).toBe(false)
+      if (!checked.ok) expect(checked.error).toContain("Unrecognized key")
+    }
+  })
+
+  it("is refused with a lemma that isn't Hangul", () => {
+    const checked = checkProposal({
+      ...proposal,
+      parts: [{ ...proposal.parts[0], lemma: "bus!" }, proposal.parts[1]],
+    })
+    expect(checked.ok).toBe(false)
+    if (!checked.ok) expect(checked.error).toContain("Hangul")
+  })
+
+  it("is refused under an id the shelf already holds", () => {
+    expect(checkProposal({ ...proposal, id: "ph.its-okay" })).toMatchObject({
+      ok: true,
+      faults: [{ kind: "id-taken" }],
+    })
+  })
+
+  it("is refused when its parts don't rebuild it, with the reason", () => {
+    expect(
+      checkProposal({ ...proposal, korean: "버스를 놓처요." })
+    ).toMatchObject({
+      ok: true,
+      faults: [{ kind: "rebuild" }],
+    })
   })
 })

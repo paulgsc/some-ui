@@ -38,7 +38,9 @@ drama amends it in v1.13: Rem. 4.12, 4.13).
 answers what the owner shares from the phone into Drive. Its checkers are
 `pnpm --filter @some-ui/topik check:deck <file>` and `check:drama <file>`,
 after topik's dependencies are built; each prints `[]` when the phone would
-take the file.
+take the file. `check:phrase <file>` checks a proposed phrase for the phrase
+shelf (KPLAY's KP5, #2854) the same way, and prints `[]` when it may be put to
+the owner.
 
 > [!IMPORTANT] > **Canon-governed workspace — read the canon before editing this package.**
 >
