@@ -19,6 +19,7 @@ import {
   VOCABULARY,
   type IrregularClass,
 } from "@topik/lib/topik/conjugation/vocabulary"
+import { CONSTRUCTION_IDS, CONSTRUCTIONS } from "@topik/lib/topik/constructions"
 import { describe, expect, it } from "vitest"
 
 type Case = [Reading["dictionary"], Reading["ending"], Reading["tense"], string]
@@ -148,12 +149,64 @@ describe("conjugation", () => {
   })
 
   it("refuses 크느라고: -느라고 takes no adjective", () => {
-    const analysis = analyse("크느라고")
-    expect(analysis.kind === "refused" && analysis.breach).toEqual({
-      rule: "stem",
-      ending: "conn.neurago.cause",
+    expect(analyse("크느라고")).toEqual({
+      kind: "refused",
+      reading: {
+        dictionary: "크다",
+        ending: "conn.neurago.cause",
+        tense: "none",
+      },
+      breach: { rule: "stem", ending: "conn.neurago.cause" },
     })
   })
+
+  it.each([
+    [
+      "발아서",
+      "받다",
+      "conn.aseo.cause",
+      { rule: "regular", as: "ㄷ" },
+      "받아서",
+    ],
+    [
+      "크어요",
+      "크다",
+      "polite",
+      { rule: "irregular", irregular: "으", mistake: "eu-kept" },
+      "커요",
+    ],
+    [
+      "모르어서",
+      "모르다",
+      "conn.aseo.cause",
+      { rule: "irregular", irregular: "르", mistake: "reu-irregular" },
+      "몰라서",
+    ],
+    [
+      "살으니까",
+      "살다",
+      "conn.nikka.cause",
+      { rule: "irregular", irregular: "ㄹ" },
+      "사니까",
+    ],
+    [
+      "살는 동안",
+      "살다",
+      "conn.neun-dongan.time",
+      { rule: "irregular", irregular: "ㄹ" },
+      "사는 동안",
+    ],
+  ] as const)(
+    "refuses %s, a mistaken %s",
+    (surface, dictionary, ending, breach, correct) => {
+      expect(analyse(surface)).toEqual({
+        kind: "refused",
+        reading: { dictionary, ending, tense: "none" },
+        breach,
+        correct,
+      })
+    }
+  )
 
   it("knows no reading of a word it cannot rebuild", () => {
     expect(analyse("가가가")).toEqual({ kind: "unknown" })
@@ -184,6 +237,39 @@ describe("the rebuild check", () => {
       kind: "refused",
       breach: { rule: "tense", ending: "conn.aseo.cause", tense: "past" },
     })
+  })
+})
+
+describe("what joining assumes of the catalogue", () => {
+  const forms = CONSTRUCTION_IDS.flatMap((id) => {
+    const { attach } = CONSTRUCTIONS[id]
+    const simple =
+      attach.kind === "by-class"
+        ? [attach.verb, attach.adjective, attach.existence, attach.copula]
+        : [attach]
+    return simple.flatMap((how) =>
+      how.kind === "plain"
+        ? [how.ending]
+        : how.kind === "batchim"
+          ? [how.afterVowel]
+          : []
+    )
+  })
+
+  it("starts no ending with ㅂ or ㅅ, before which ㄹ would drop", () => {
+    for (const form of forms) {
+      const initial = Math.floor(((form.codePointAt(0) ?? 0) - 0xac00) / 588)
+      expect([7, 9], form).not.toContain(initial)
+    }
+  })
+
+  it("gives every harmony ending one tail after 아, 어 and 여", () => {
+    for (const id of CONSTRUCTION_IDS) {
+      const { attach } = CONSTRUCTIONS[id]
+      if (attach.kind !== "harmony") continue
+      expect(attach.bright.slice(1), id).toBe(attach.dark.slice(1))
+      expect(attach.ha.slice(1), id).toBe(attach.dark.slice(1))
+    }
   })
 })
 

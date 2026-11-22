@@ -5,8 +5,11 @@
  * (`constructions`) and a tense give the surface word: 오다 + -아서/어서 →
  * 와서, 살다 + -는 동안 → 사는 동안. Backward: a surface word gives every
  * reading that rebuilds it, character for character, or, when none does, the
- * rule a near miss breaks: 왔어서 puts the past before -아서/어서, 이워서 takes
- * 입다 for ㅂ-irregular, 춥어요 takes 춥다 for regular.
+ * rule a near miss breaks: a tense or a kind of stem the ending refuses
+ * (왔어서, 크느라고), an irregular word conjugated as regular (춥어요, 듣어서,
+ * 모르어서, 크어요, 살으니까), or a regular word ending in ㅂ or ㄷ conjugated
+ * as irregular (이워서, 발아서). Every listed word is built once, on the
+ * first analysis, into an index from surface to readings.
  *
  * The stem's own changes (the irregular classes, 으 dropping, contraction,
  * the 아/어 choice, the past) are `@dongsa/conjugation`'s, given the
@@ -61,7 +64,13 @@ export type Breach =
 
 export type Analysis =
   | { kind: "split"; readings: Array<Reading> }
-  | { kind: "refused"; reading: Reading; breach: Breach; correct: string }
+  | {
+      kind: "refused"
+      reading: Reading
+      breach: Breach
+      /** The word as it should be, where the reading has one: 와서, 추워요. */
+      correct?: string
+    }
   | { kind: "unknown" }
 
 /** How the stem is conjugated: as listed, or as a learner might mistake it. */
@@ -95,6 +104,8 @@ const FINAL_SS = 20
 const FINAL_B = 17
 const FINAL_D = 7
 const INITIAL_N = 2
+const MEDIAL_A = 0
+const MEDIAL_O = 8
 
 type Syllable = { initial: number; medial: number; final: number }
 
@@ -115,6 +126,22 @@ const isRegular = (dictionary: Dictionary, rule: StemRule): boolean =>
   rule === "regular" ||
   VOCABULARY[dictionary].irregular === null ||
   VOCABULARY[dictionary].irregular === "으"
+
+/** Whether the stem's ㄹ drops and takes no 으, as listed: not when mistaken. */
+const isLiquid = (dictionary: Dictionary, rule: StemRule): boolean =>
+  rule === "listed" && VOCABULARY[dictionary].irregular === "ㄹ"
+
+/** A 으 or 르 stem mistakenly kept whole before 어: 크어요, 모르어서. */
+const keptWhole = (dictionary: Dictionary, rule: StemRule): boolean => {
+  const { irregular } = VOCABULARY[dictionary]
+  return rule === "regular" && (irregular === "으" || irregular === "르")
+}
+
+/** The vowel a stem's last syllable takes: 아 after ㅏ or ㅗ, else 어. */
+const harmonyOf = (stem: string): string => {
+  const medial = syllableOf(lastOf(stem))?.medial
+  return medial === MEDIAL_A || medial === MEDIAL_O ? "아" : "어"
+}
 
 const lastOf = (text: string): string => text.charAt(text.length - 1)
 
@@ -149,7 +176,7 @@ const stemOf = (text: ReturnType<typeof base3>, liquid: boolean): Stem => {
 
 /** The stem before -(으) endings: 추우 (춥다), 들 (듣다), 그러 (그렇다). */
 const euStem = (dictionary: Dictionary, rule: StemRule): Stem => {
-  const liquid = VOCABULARY[dictionary].irregular === "ㄹ"
+  const liquid = isLiquid(dictionary, rule)
   if (rule === "ㅂ" || rule === "ㄷ") {
     const text = mistaken(String(base(dictionary)), rule)
     return { text, consonant: rule === "ㄷ", liquid: false }
@@ -158,13 +185,15 @@ const euStem = (dictionary: Dictionary, rule: StemRule): Stem => {
 }
 
 /** The stem before consonant endings: the dictionary form without 다. */
-const plainStem = (dictionary: Dictionary): Stem =>
-  stemOf(base(dictionary), VOCABULARY[dictionary].irregular === "ㄹ")
+const plainStem = (dictionary: Dictionary, rule: StemRule): Stem =>
+  stemOf(base(dictionary), isLiquid(dictionary, rule))
 
 /** The 아/어 form: 와 (오다), 추워 (춥다), 해 (하다), 몰라 (모르다). */
 const vowelForm = (dictionary: Dictionary, rule: StemRule): string => {
-  if (rule === "ㅂ" || rule === "ㄷ")
-    return merge(mistaken(String(base(dictionary)), rule), "어")
+  const stem = String(base(dictionary))
+  if (rule === "ㅂ") return merge(mistaken(stem, rule), "어")
+  if (rule === "ㄷ") return mistaken(stem, rule) + harmonyOf(stem)
+  if (keptWhole(dictionary, rule)) return `${stem}어`
   return declarativePresentInformalLow(
     dictionary,
     isRegular(dictionary, rule),
@@ -180,6 +209,8 @@ const attach = (stem: Stem, ending: string): string => {
     // A lone ㄴ or ㄹ becomes the stem's final consonant: 갈 때, 산 후에.
     return withFinal(stem.text, final) + ending.slice(1)
   }
+  // ㄹ also drops before ㅂ and ㅅ, which no catalogue ending starts with
+  // (held by the test).
   if (stem.liquid && syllableOf(first)?.initial === INITIAL_N) {
     // ㄹ drops before ㄴ: 사니까, 노느라고, 사는 동안.
     return withFinal(stem.text, 0) + ending
@@ -194,14 +225,15 @@ const attachSimple = (
 ): string => {
   switch (how.kind) {
     case "plain": {
-      return attach(plainStem(dictionary), how.ending)
+      return attach(plainStem(dictionary, rule), how.ending)
     }
     case "batchim": {
       const stem = euStem(dictionary, rule)
       return attach(stem, stem.consonant ? how.afterConsonant : how.afterVowel)
     }
     case "harmony": {
-      // The 아/어 form carries the vowel; the ending's tail follows it.
+      // The 아/어 form carries the vowel; the ending's tail, the same after
+      // 아, 어 and 여 in every harmony ending (held by the test), follows it.
       return vowelForm(dictionary, rule) + how.dark.slice(1)
     }
     default: {
@@ -217,7 +249,7 @@ const tensed = (
   tense: Exclude<Tense, "none">
 ): string =>
   tense === "past"
-    ? rule === "ㅂ" || rule === "ㄷ"
+    ? rule === "ㅂ" || rule === "ㄷ" || keptWhole(dictionary, rule)
       ? withFinal(vowelForm(dictionary, rule), FINAL_SS)
       : pastBase(dictionary, isRegular(dictionary, rule))
     : `${String(base(dictionary))}겠`
@@ -295,57 +327,94 @@ const readingsOf = function* (): Generator<Reading> {
 }
 
 /** The ways a word may be mistaken, in the order they are tried. */
-const MISTAKEN_RULES: ReadonlyArray<StemRule> = ["regular", "ㅂ", "ㄷ"]
+const MISTAKEN_RULES: ReadonlyArray<Exclude<StemRule, "listed">> = [
+  "regular",
+  "ㅂ",
+  "ㄷ",
+]
 
-const ruleBreach = (dictionary: Dictionary, rule: StemRule): Breach | null => {
-  const irregular = VOCABULARY[dictionary].irregular
-  if (rule === "regular" && irregular !== null && irregular !== "으") {
+const ruleBreach = (
+  dictionary: Dictionary,
+  rule: Exclude<StemRule, "listed">
+): Breach | null => {
+  const { irregular } = VOCABULARY[dictionary]
+  if (rule === "regular") {
+    if (irregular === null) return null
     const mistake = IRREGULAR_MISTAKE[irregular]
     return mistake
       ? { rule: "irregular", irregular, mistake }
       : { rule: "irregular", irregular }
   }
-  // Only a stem that ends in ㅂ or ㄷ can be mistaken for that class.
+  // Only a regular stem that ends in ㅂ or ㄷ can be mistaken for that class.
+  if (irregular !== null) return null
   const final = finalOf(String(base(dictionary)))
-  if (rule === "ㅂ" && irregular === null && final === FINAL_B)
-    return { rule: "regular", as: rule }
-  if (rule === "ㄷ" && irregular === null && final === FINAL_D)
-    return { rule: "regular", as: rule }
-  return null
+  return final === (rule === "ㅂ" ? FINAL_B : FINAL_D)
+    ? { rule: "regular", as: rule }
+    : null
 }
 
-/**
- * Every reading of a surface word that rebuilds it and keeps the catalogue's
- * constraints; or, when there is none, the first near miss and the rule it
- * breaks; or unknown.
- */
-export const analyse = (surface: string): Analysis => {
-  const readings: Array<Reading> = []
-  let refused: Analysis | null = null
+type Refusal = Extract<Analysis, { kind: "refused" }>
+
+/** Every listed word's surfaces, built once: what each reads as. */
+type Index = {
+  /** Each surface the list builds, and every reading that builds it. */
+  listed: Map<string, Array<Reading>>
+  /** Each surface a mistaken rule builds, and the first such refusal. */
+  mistaken: Map<string, Refusal>
+}
+
+let built: Index | null = null
+
+const buildIndex = (): Index => {
+  const listed = new Map<string, Array<Reading>>()
+  const mistaken = new Map<string, Refusal>()
   for (const reading of readingsOf()) {
-    if (conjugate(reading) === surface) {
-      const breach = breachOf(reading)
-      if (breach === null) readings.push(reading)
-      else
-        refused ??= {
-          kind: "refused",
-          reading,
-          breach,
-          correct: conjugate({ ...reading, tense: "none" }),
-        }
-    }
+    const surface = conjugate(reading)
+    listed.set(surface, [...(listed.get(surface) ?? []), reading])
   }
-  if (readings.length > 0) return { kind: "split", readings }
-  if (refused !== null) return refused
   for (const rule of MISTAKEN_RULES) {
     for (const reading of readingsOf()) {
       const breach = ruleBreach(reading.dictionary, rule)
       if (breach === null || breachOf(reading) !== null) continue
-      if (build(reading, rule) === surface)
-        return { kind: "refused", reading, breach, correct: conjugate(reading) }
+      const surface = build(reading, rule)
+      if (!mistaken.has(surface))
+        mistaken.set(surface, {
+          kind: "refused",
+          reading,
+          breach,
+          correct: conjugate(reading),
+        })
     }
   }
-  return { kind: "unknown" }
+  return { listed, mistaken }
+}
+
+const refusalOf = (reading: Reading, breach: Breach): Refusal =>
+  breach.rule === "tense"
+    ? {
+        kind: "refused",
+        reading,
+        breach,
+        correct: conjugate({ ...reading, tense: "none" }),
+      }
+    : { kind: "refused", reading, breach }
+
+/**
+ * Every reading of a surface word that rebuilds it and keeps the catalogue's
+ * constraints; or, when there is none, the first near miss and the rule it
+ * breaks; or unknown. Only listed words are read: an unlisted one is unknown,
+ * or read as the listed word it is spelled like.
+ */
+export const analyse = (surface: string): Analysis => {
+  built ??= buildIndex()
+  const candidates = built.listed.get(surface) ?? []
+  const readings = candidates.filter((reading) => breachOf(reading) === null)
+  if (readings.length > 0) return { kind: "split", readings }
+  for (const reading of candidates) {
+    const breach = breachOf(reading)
+    if (breach !== null) return refusalOf(reading, breach)
+  }
+  return built.mistaken.get(surface) ?? { kind: "unknown" }
 }
 
 /**
