@@ -20,6 +20,12 @@ on:
       render:
         description: "True if anything the render image builds may have changed"
         value: ${{ jobs.detect.outputs.render }}
+      lockfile:
+        description: "True if the dependency set the license audit reads may have changed"
+        value: ${{ jobs.detect.outputs.lockfile }}
+      e2e:
+        description: "JSON list of the node-e2e steps whose files changed"
+        value: ${{ jobs.detect.outputs.e2e }}
 jobs:
   detect:
     name: Detect Changed Paths
@@ -34,48 +40,69 @@ jobs:
       wasm: ${{ steps.filter.outputs.wasm }}
       ci: ${{ steps.filter.outputs.ci }}
       render: ${{ steps.filter.outputs.render }}
+      lockfile: ${{ steps.filter.outputs.lockfile }}
+      e2e: ${{ steps.e2e.outputs.changes }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Filter paths
         id: filter
-        uses: dorny/paths-filter@v4
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        # CD1 (docs/ci-architecture.md): a flag is true only for a file it
+        # names. No leading `!` under the default `some`, where it adds every
+        # file it doesn't name; write `x/**/!(*.md)` instead.
         with:
           filters: |
             rust:
-              - 'crates/**'
+              - 'crates/**/!(*.md)'
               - 'Cargo.toml'
               - 'Cargo.lock'
               - '.cargo/**'
+              # What clippy, rustfmt and cargo-deny read.
+              - 'clippy.toml'
+              - '.rustfmt.toml'
+              - 'deny.toml'
+              # The two boundary checks _rust-ci.yml runs, each with its list.
+              - 'scripts/check-wasm-bindgen-boundary.sh'
+              - 'scripts/check-mutation-boundary.sh'
               - 'flake.nix'
               - 'flake.lock'
-              - 'nix/**'
-              - '!**/*.md'
+              - 'nix/**/!(*.md)'
+            # Every file of every workspace the Node jobs reach: turbo's
+            # `...[HEAD^1]` selects a package for any file in it (a test
+            # fixture, an .mjs check, a .typ template, a prompt imported
+            # `?raw` from Markdown), so a narrower list would skip jobs turbo
+            # would have run. Extensions have their own CI and are left out,
+            # except those a workspace here depends on (video-motion renders
+            # Suspender Ledger's promo). detect-changes.test.ts derives the
+            # set from the workspace graph and fails a workspace left out.
             node:
-              - 'packages/**/*.{ts,tsx,js,jsx,css,json}'
-              - 'apps/**/*.{ts,tsx,js,jsx,css,json}'
+              - 'packages/**'
+              - 'apps/**'
+              - 'docs/canon/**'
+              - 'crates/**/!(*.md)'
+              - 'extensions/suspender-ledger/**'
+              - 'extensions/common/**'
+              # Root files turbo hashes for every task, or that the Node jobs'
+              # tools read: a change to one reaches every package.
               - 'package.json'
-              # A transitive bump can break any build, and a Tailwind, Vite or
-              # React bump changes what the panel-fit gate measures.
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - 'eslint.config.js'
+              - 'prettier.config.cjs'
+              - '.prettierignore'
+              - '.stylelintrc.mjs'
+              - 'knip.json'
+              # A transitive bump can break any build.
               - 'pnpm-lock.yaml'
               - '.nvmrc'
               - 'tsconfig*.json'
-              # The repo-level scripts, typechecked by the root tsconfig.json.
-              - 'scripts/**/*.ts'
+              # The repo-level scripts the Node jobs run (the catalog guardrail,
+              # the release tests) or the root tsconfig.json typechecks.
+              - 'scripts/**/*.{ts,mjs}'
               - 'scripts/release/**'
-              # The panel-fit page's HTML entry, which the globs above miss.
-              - 'apps/www/tests/ui-fit/panel-page/**'
-              # Read by @some-ui/resume's check-claims.mjs, which fails on a
-              # stale route figure; without these a README-only edit would
-              # skip the build that runs it.
-              - 'packages/ui/resume/**'
-              - 'packages/contract-harness/README.md'
-              # The real-microphone suite's clips and page (MIC9), which the
-              # globs above miss: a clip changes what the real recorder hears.
-              - 'packages/voice-capture/tests/**'
               # The image the weekly call's frame is measured in (CF1): a
               # re-pinned base can change the face it draws.
               - 'infra/render/Dockerfile'
-              - '!**/*.md'
             extensions:
               - 'extensions/**'
               - 'crates/**'
@@ -98,11 +125,128 @@ jobs:
               - 'pnpm-workspace.yaml'
               - 'turbo.json'
               - '.github/workflows/render-docker-release.yml'
+            # What the Node License Audit (_deny-checks.yml) reads: the
+            # resolved dependency set and the script that judges it.
+            lockfile:
+              - 'pnpm-lock.yaml'
+              - '**/package.json'
+              - 'pnpm-workspace.yaml'
+              - 'scripts/audit-node-licenses.mjs'
             ci:
               - '.github/workflows/**'
               - '.github/actions/**'
               - 'flake.nix'
-              # Pins the Chromium (ci-playwright) every e2e step drives, so a
-              # lock-only bump (bot/flake-update) reaches node-e2e.
+              # Pins the toolchains every job runs in.
               - 'flake.lock'
               - 'nix/**'
+
+      # One filter per node-e2e step in pr.yml, each the files that step's
+      # suite builds from or measures. `some-with-excludes`, unlike the step
+      # above, so a `!` pattern takes files away: a unit test (`*.test.*`) is
+      # never bundled into a page ui-fit measures. A `__tests__/` helper can
+      # be (the phone page imports interview-week's and the interview's
+      # fixtures), so those stay in.
+      - name: Filter node-e2e paths
+        id: e2e
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          predicate-quantifier: some-with-excludes
+          filters: |
+            sw:
+              - 'apps/www/public/sw.js'
+              - 'apps/www/tests/study-nudge/**'
+              - 'apps/www/src/lib/study-nudge/**'
+            # The registry is in the set on purpose: binding a new key
+            # delegates size authority to a component the panel sweep has
+            # never measured. So are www's build config and the manifests and
+            # lockfile: the fixture pages (tests/ui-fit/panel-page, and
+            # phone-page for every phone screen the sweeps and the stays-put
+            # walks open) are built with www's own Vite config and
+            # stylesheets, so a Tailwind, Vite or React bump changes what they
+            # measure.
+            ui_fit:
+              - 'packages/ui/**'
+              - 'packages/some-content-registry/**'
+              - 'packages/some-styles/**'
+              - 'packages/video-render/src/call*.ts'
+              - 'packages/video-render/src/essay*.ts'
+              - 'packages/video-render/src/frame-text.ts'
+              - 'infra/render/Dockerfile'
+              - 'apps/www/src/**'
+              - 'apps/www/tests/ui-fit/**'
+              - 'apps/www/vite.config.ts'
+              - 'apps/www/style.context.ts'
+              - 'apps/www/build.profiles.ts'
+              - 'apps/www/index.html'
+              - 'apps/www/package.json'
+              - 'apps/www/playwright.config.ts'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - '!**/*.test.*'
+            csp:
+              - 'apps/www/Dockerfile'
+              - 'apps/www/nginx*.conf'
+              - 'apps/www/tests/csp/**'
+              - 'apps/www/playwright.config.ts'
+            local_mode:
+              - 'apps/www/src/**'
+              - 'apps/www/tests/local-mode/**'
+              - 'apps/www/vite.config.ts'
+              - 'apps/www/index.html'
+              - 'apps/www/resume/index.html'
+              - 'apps/www/build.profiles.ts'
+              - 'apps/www/build.treeshake.ts'
+              - 'apps/www/playwright.config.ts'
+              - 'apps/www/package.json'
+              - 'pnpm-lock.yaml'
+              - 'packages/core-utils/**'
+              - 'packages/fetch-kit/**'
+              - 'packages/server-routes/**'
+            session_viewport:
+              - 'apps/www/tests/session-viewport/**'
+              - 'apps/www/tests/layout-invariants/**'
+              - 'apps/www/src/routes/_dashboard.tsx'
+              - 'apps/www/src/routes/_dashboard/sessions/**'
+              - 'apps/www/src/components/player/**'
+              - 'apps/www/src/test-support/catalog-worst-case.ts'
+              - 'packages/activity-catalog/**'
+              - 'packages/ui/shared/src/components/ui/badge.tsx'
+              - 'packages/ui/shared/src/components/ui/button.tsx'
+              - 'apps/www/tsconfig.json'
+              - 'apps/www/playwright.config.ts'
+            composer:
+              - 'apps/www/src/components/composer/**'
+              - 'apps/www/src/routes/_dashboard.tsx'
+              - 'apps/www/src/routes/_dashboard/sessions/new.tsx'
+              - 'packages/react-hooks/src/lib/use-fitted-page/**'
+              - 'apps/www/tests/composer/**'
+              - 'apps/www/playwright.config.ts'
+            record:
+              - 'packages/ui/burn-ins/**'
+              - 'packages/video-render/**'
+              - 'packages/video-motion/src/fonts.ts'
+              - 'packages/some-styles/src/brand/**'
+              - 'apps/www/tests/record/**'
+              - 'apps/www/src/lib/web-surface/burn-ins/**'
+              - 'apps/www/playwright.config.ts'
+              - 'flake.nix'
+              - 'flake.lock'
+              - 'nix/video/**'
+            # The workspace, the renderer it imports, and the lockfile and
+            # flake, which pin HyperFrames, Chromium and ffmpeg.
+            motion:
+              - 'packages/video-motion/**'
+              - 'packages/video-render/**'
+              - 'extensions/suspender-ledger/**'
+              - 'pnpm-lock.yaml'
+              - 'flake.nix'
+              - 'flake.lock'
+              - 'nix/video/**'
+            # The package, intent-kit (the recorder's opening waits through
+            # its callForeign), and the lockfile and flake, which pin
+            # Playwright and the Chromium it drives.
+            mic:
+              - 'packages/voice-capture/**'
+              - 'packages/intent-kit/**'
+              - 'pnpm-lock.yaml'
+              - 'flake.lock'

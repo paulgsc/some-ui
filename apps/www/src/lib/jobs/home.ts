@@ -225,7 +225,7 @@ async function readRuns(
 }
 
 /** Steps 3 and 4. Null when the exchange goes on to its end. */
-async function readDigests(
+export async function readDigests(
   keeping: JobsRecordPort,
   send: HomeCall
 ): Promise<HomeExchanged | null> {

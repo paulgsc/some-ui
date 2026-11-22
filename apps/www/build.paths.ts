@@ -247,6 +247,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "web-only code: the Android app has no account to move sessions to or sign out of, nor a list of the account's phones to name or sign out (SIGNIN7)",
     },
     {
+      modules: ["packages/some-styles/src/brand/genres.ts"],
+      profiles: [MOBILE_PROFILE],
+      why: "each genre's paint and shape (EPISODES3, C1026): Studio's episode rows draw them, and only the Android app has Studio; the thumbnails home renders draw the same data in the render stage, not in a page",
+    },
+    {
       modules: ["packages/some-styles/src/brand/cast.ts"],
       profiles: ["lan", "pages"],
       why: "the cast the essays' speaking bubbles draw (PDA6, #2883): only the web surface's essay stages draw it, and the Android app has no essay stage",

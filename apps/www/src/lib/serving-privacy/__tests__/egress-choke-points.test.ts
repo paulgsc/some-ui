@@ -168,9 +168,8 @@ const HOME_LINK_CALLERS = new Set([
   // (`ideaHome`) and whether home holds a send from what the link last
   // heard, asking home nothing of its own.
   "routes/_dashboard/_apk/jobs/interview.tsx",
-  // LA15, PULL2: a pull on a Jobs screen or the status page hears how the
-  // jobs lane's run in the pull of home ended (`pulledLane`), asking nothing
-  // of its own.
+  // LA15, PULL2, JP1: a pull on a Jobs screen or the status page reads the
+  // morning's picks and runs through `askJobsPicks` (`lib/home-link/jobs`).
   "lib/jobs/pull.ts",
   // LA8 (MY-DATA MD2): My data, which reads the recordings the voice lane
   // lists and where each is kept, and asks home what it keeps.
@@ -261,6 +260,8 @@ const KEEPERS = new Set([
   "lib/home-link/week-record.ts",
   // AR1: aph's read of home's record as its screens open.
   "lib/home-link/aph.ts",
+  // JP1: a pull on a Jobs screen's read of the morning's picks.
+  "lib/home-link/jobs.ts",
 ])
 
 /** LA8, #2843: whether home works with this build, its one ask through `look`. */

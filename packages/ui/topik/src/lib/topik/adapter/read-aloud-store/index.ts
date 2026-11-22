@@ -23,8 +23,8 @@
 
 import type { KeyedStorage, Salvaged } from "@some-ui/core-utils"
 import {
-  jsonOf,
   localStorageOrNull,
+  onJson,
   openKept,
   writeKept,
 } from "@some-ui/core-utils"
@@ -178,14 +178,6 @@ function readProgress(raw: unknown): Salvaged<ProgressDocument | null> | null {
 
 /** A reader of a stored document, on its text. */
 type Reader<T> = (raw: string) => Salvaged<T> | null
-
-/** `read` over the text's JSON; text that is not JSON is not readable. */
-function onJson<T>(read: (value: unknown) => Salvaged<T> | null): Reader<T> {
-  return (raw) => {
-    const value = jsonOf(raw)
-    return value === undefined ? null : read(value)
-  }
-}
 
 const READERS = {
   paces: onJson(readPaceBook),

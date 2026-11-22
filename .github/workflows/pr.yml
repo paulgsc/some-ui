@@ -43,7 +43,7 @@ concurrency:
 jobs:
   # ── Path detection ──────────────────────────────────────────────────────
   # Coarse-grained: did Rust files change? Node files? CI config?
-  # Decides which of the Rust, Node and Deny jobs run. Node filtering within
+  # Decides which jobs run, and which node-e2e steps. Node filtering within
   # a run is handled by turbo, not by this step.
   changes:
     if: github.event.pull_request.draft != true
@@ -79,7 +79,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # turbo --filter=[HEAD^1] needs the parent commit to diff against.
           fetch-depth: 2
@@ -174,7 +174,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # turbo --filter=[HEAD^1] needs the parent commit to diff against.
           fetch-depth: 2
@@ -196,9 +196,9 @@ jobs:
       # other steps in this job.
       - name: Lint styles (changed files)
         run: |
-          files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- '*.css' | grep -v '^extensions/' || true)
-          if [ -n "$files" ]; then
-            nix develop .#ci --command pnpm exec stylelint --allow-empty-input --ignore-path .prettierignore $files
+          mapfile -t files < <(git diff --name-only --diff-filter=ACMR HEAD^1 -- '*.css' | grep -v '^extensions/' || true)
+          if [ "${#files[@]}" -gt 0 ]; then
+            nix develop .#ci --command pnpm exec stylelint --allow-empty-input --ignore-path .prettierignore "${files[@]}"
           else
             echo "No package/app CSS files changed."
           fi
@@ -218,7 +218,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # turbo --filter=[HEAD^1] needs the parent commit to diff against.
           fetch-depth: 2
@@ -261,15 +261,18 @@ jobs:
       - name: Test release track boundaries (RT1)
         run: nix develop .#ci --command node --test scripts/release/release.test.mjs
 
+  # Each step runs when its name is in `e2e` (_detect-changes.yml holds every
+  # step's paths), and the job only when one is: a run with no step to
+  # execute would still pay for the setup and affected build.
   node-e2e:
     name: Node CI / e2e
     needs: changes
-    if: needs.changes.outputs.node == 'true' || needs.changes.outputs.ci == 'true'
+    if: needs.changes.outputs.e2e != '[]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # turbo --filter=[HEAD^1] needs the parent commit to diff against.
           fetch-depth: 2
@@ -280,127 +283,78 @@ jobs:
       # plain public/ asset, never bundled, never imported, never type-checked,
       # and unreachable from vitest. This drives it in a real Chromium with a
       # real push, so a typo in it fails here instead of shipping as a study
-      # reminder that silently never arrives. Scoped like the CSP step below,
-      # because it is a behavioural invariant of specific files rather than a
-      # per-package test turbo's dep graph would select.
+      # reminder that silently never arrives.
       - name: E2E — study-nudge service worker (www)
+        if: contains(fromJSON(needs.changes.outputs.e2e), 'sw')
         run: |
-          files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
-            'apps/www/public/sw.js' \
-            'apps/www/tests/study-nudge/**' \
-            'apps/www/src/lib/study-nudge/**' || true)
-          if [ -n "$files" ]; then
-            nix develop .#ci-playwright --command pnpm --filter www test:sw
-          else
-            echo "No service-worker files changed."
-          fi
+          nix develop .#ci-playwright --command pnpm --filter www test:sw
 
       # docs/ui-fit calls its Playwright layer "the actual gate", and until #899
       # nothing ran it: it lived behind `pnpm test:ui-fit`, which no workflow
       # invoked, so a panel could paint outside its rect for months with every
-      # check green. This runs its specs.
-      #
-      # Scoped to PRs that touch UI or what www builds it with. The registry
-      # is in the trigger set on purpose - binding a new key delegates size
-      # authority to a component the panel sweep has never measured. So are
-      # www's build config and the manifests and lockfile: the fixture pages
-      # (tests/ui-fit/panel-page, and phone-page for every phone screen the
-      # sweeps and the stays-put walks open) are built with www's own Vite
-      # config and stylesheets, so a Tailwind, Vite or React bump changes
-      # what they measure.
+      # check green. This runs its specs, on PRs that touch UI or what www
+      # builds it with (`ui_fit` in _detect-changes.yml says which, and why).
       - name: E2E — content fits its box, and stays put (panels, launcher, exercise shell, incident session, Jobs cards, Studio's phone screens, code card, the weekly call's and the essay's frames, drag-down indicator, My data, Rust Rounds, take pattern, and every walked phone screen)
+        if: contains(fromJSON(needs.changes.outputs.e2e), 'ui_fit')
         run: |
-          files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
-            'packages/ui/**' \
-            'packages/some-content-registry/**' \
-            'packages/some-styles/**' \
-            'packages/video-render/src/call*.ts' \
-            'packages/video-render/src/essay*.ts' \
-            'packages/video-render/src/frame-text.ts' \
-            'infra/render/Dockerfile' \
-            'apps/www/src/**' \
-            'apps/www/tests/ui-fit/**' \
-            'apps/www/vite.config.ts' \
-            'apps/www/style.context.ts' \
-            'apps/www/build.profiles.ts' \
-            'apps/www/index.html' \
-            'apps/www/package.json' \
-            'apps/www/playwright.config.ts' \
-            'package.json' \
-            'pnpm-lock.yaml' || true)
-          if [ -n "$files" ]; then
-            # www's dependencies only: the fixture pages are their own builds
-            # (build:fit, build:fit-phone), not www's, so building www itself
-            # here is waste.
-            nix develop .#ci --command pnpm turbo run build \
-              --filter='www^...' \
-              --concurrency=100%
+          # www's dependencies only: the fixture pages are their own builds
+          # (build:fit, build:fit-phone), not www's, so building www itself
+          # here is waste.
+          nix develop .#ci --command pnpm turbo run build \
+            --filter='www^...' \
+            --concurrency=100%
 
-            nix develop .#ci --command pnpm --filter www build:fit
-            nix develop .#ci --command pnpm --filter www build:fit-phone
-            # Run both, then fail on either: a nix failure must not hide
-            # whether the call's frame held.
-            status=0
-            nix develop .#ci-playwright --command \
-              pnpm --filter www test:e2e \
-                tests/ui-fit/panel-fit.spec.ts \
-                tests/ui-fit/launcher-fit.spec.ts \
-                tests/ui-fit/exercise-shell-fit.spec.ts \
-                tests/ui-fit/incident-fit.spec.ts \
-                tests/ui-fit/jobs-status-fit.spec.ts \
-                tests/ui-fit/code-card-fit.spec.ts \
-                tests/ui-fit/studio-fit.spec.ts \
-                tests/ui-fit/card-link-fit.spec.ts \
-                tests/ui-fit/pull-fit.spec.ts \
-                tests/ui-fit/settings-bar-fit.spec.ts \
-                tests/ui-fit/my-data-fit.spec.ts \
-                tests/ui-fit/intent-failure-fit.spec.ts \
-                tests/ui-fit/rust-rounds-fit.spec.ts \
-                tests/ui-fit/take-pattern-fit.spec.ts \
-                tests/ui-fit/stays-put.spec.ts \
-                tests/ui-fit/stays-put-rounds.spec.ts \
-                tests/ui-fit/stays-put-soundbites.spec.ts \
-                tests/ui-fit/stays-put-topik.spec.ts \
-                tests/ui-fit/stays-put-www.spec.ts || status=$?
+          nix develop .#ci --command pnpm --filter www build:fit
+          nix develop .#ci --command pnpm --filter www build:fit-phone
+          # Run both, then fail on either: a nix failure must not hide
+          # whether the call's frame held.
+          status=0
+          nix develop .#ci-playwright --command \
+            pnpm --filter www test:e2e \
+              tests/ui-fit/panel-fit.spec.ts \
+              tests/ui-fit/launcher-fit.spec.ts \
+              tests/ui-fit/exercise-shell-fit.spec.ts \
+              tests/ui-fit/incident-fit.spec.ts \
+              tests/ui-fit/jobs-status-fit.spec.ts \
+              tests/ui-fit/code-card-fit.spec.ts \
+              tests/ui-fit/studio-fit.spec.ts \
+              tests/ui-fit/card-link-fit.spec.ts \
+              tests/ui-fit/pull-fit.spec.ts \
+              tests/ui-fit/settings-bar-fit.spec.ts \
+              tests/ui-fit/my-data-fit.spec.ts \
+              tests/ui-fit/intent-failure-fit.spec.ts \
+              tests/ui-fit/rust-rounds-fit.spec.ts \
+              tests/ui-fit/take-pattern-fit.spec.ts \
+              tests/ui-fit/stays-put.spec.ts \
+              tests/ui-fit/stays-put-rounds.spec.ts \
+              tests/ui-fit/stays-put-soundbites.spec.ts \
+              tests/ui-fit/stays-put-topik.spec.ts \
+              tests/ui-fit/stays-put-www.spec.ts || status=$?
 
-            # The weekly call's frame (CF1) and the essay's (EF1) are measured in the face home
-            # draws it in: inside the Playwright image home's render image is
-            # built FROM (infra/render/Dockerfile, read here so the two never
-            # differ), whose sans is WenQuanYi Zen Hei. Under nix the frame
-            # draws another, wider face the model isn't calibrated on.
-            image=$(sed -n 's/^FROM \(mcr\.microsoft\.com\/playwright[^ ]*\).*/\1/p' infra/render/Dockerfile)
-            docker run --rm -e CI=true -e HOME=/tmp \
-              --user "$(id -u):$(id -g)" \
-              -v "$PWD:$PWD" -w "$PWD/apps/www" "$image" \
-              node_modules/.bin/playwright test --config playwright.config.ts \
-                --trace off tests/ui-fit/call-fit.spec.ts \
-                tests/ui-fit/essay-fit.spec.ts || status=$?
-            exit "$status"
-          else
-            echo "No UI files changed."
-          fi
+          # The weekly call's frame (CF1) and the essay's (EF1) are measured in the face home
+          # draws it in: inside the Playwright image home's render image is
+          # built FROM (infra/render/Dockerfile, read here so the two never
+          # differ), whose sans is WenQuanYi Zen Hei. Under nix the frame
+          # draws another, wider face the model isn't calibrated on.
+          image=$(sed -n 's/^FROM \(mcr\.microsoft\.com\/playwright[^ ]*\).*/\1/p' infra/render/Dockerfile)
+          docker run --rm -e CI=true -e HOME=/tmp \
+            --user "$(id -u):$(id -g)" \
+            -v "$PWD:$PWD" -w "$PWD/apps/www" "$image" \
+            node_modules/.bin/playwright test --config playwright.config.ts \
+              --trace off tests/ui-fit/call-fit.spec.ts \
+              tests/ui-fit/essay-fit.spec.ts || status=$?
+          exit "$status"
 
-      # Scoped to the CSP/nginx config surface actually touched by this PR -
-      # this is a config invariant (apps/www/nginx.security-headers.conf),
-      # not a per-package build/test, so turbo's dep-graph filter doesn't
-      # apply the way it does to the steps above. Regression coverage for
-      # #660 (www's CSP header blocked WebAssembly instantiation).
+      # A config invariant (apps/www/nginx.security-headers.conf). Regression
+      # coverage for #660 (www's CSP header blocked WebAssembly instantiation).
       #
       # The spec argument is load-bearing: see "scoped test:e2e invocations"
       # at the top of this file.
       - name: E2E — CSP regression (www)
+        if: contains(fromJSON(needs.changes.outputs.e2e), 'csp')
         run: |
-          files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
-            'apps/www/Dockerfile' \
-            'apps/www/nginx*.conf' \
-            'apps/www/tests/csp/**' \
-            'apps/www/playwright.config.ts' || true)
-          if [ -n "$files" ]; then
-            nix develop .#ci-playwright --command pnpm --filter www test:e2e \
-              tests/csp/csp.spec.ts
-          else
-            echo "No CSP-relevant www files changed."
-          fi
+          nix develop .#ci-playwright --command pnpm --filter www test:e2e \
+            tests/csp/csp.spec.ts
 
       # What the BUILT app sends when a learner has chosen the device (LA1/LA4,
       # docs/learner-data-authority.md). The unit tests prove each module asks
@@ -413,65 +367,30 @@ jobs:
       #
       # The spec fails, not skips, when a build is missing under CI, so a
       # broken build step cannot turn this into a green run that measured
-      # nothing. Scoped to the source that can change what leaves the page.
+      # nothing.
       - name: E2E — local mode sends nothing operator-bound (www)
+        if: contains(fromJSON(needs.changes.outputs.e2e), 'local_mode')
         run: |
-          files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
-            'apps/www/src/**' \
-            'apps/www/tests/local-mode/**' \
-            'apps/www/vite.config.ts' \
-            'apps/www/index.html' \
-            'apps/www/resume/index.html' \
-            'apps/www/build.profiles.ts' \
-            'apps/www/build.treeshake.ts' \
-            'apps/www/playwright.config.ts' \
-            'apps/www/package.json' \
-            'pnpm-lock.yaml' \
-            'packages/core-utils/**' \
-            'packages/fetch-kit/**' \
-            'packages/server-routes/**' || true)
-          if [ -n "$files" ]; then
-            nix develop .#ci --command pnpm turbo build --filter=www... --concurrency=100%
-            nix develop .#ci --command env \
-              SOME_UI_PROFILE=pages VITE_STATIC_DATA=true VITE_BASE_PATH=/some-ui/ \
-              pnpm --filter www exec vite build --outDir dist-pages --emptyOutDir
-            nix develop .#ci-playwright --command env \
-              WWW_DIST_LAN=apps/www/dist WWW_DIST_PAGES=apps/www/dist-pages \
-              pnpm --filter www test:e2e tests/local-mode/no-egress.spec.ts \
-              tests/local-mode/viewer-storage.spec.ts
-          else
-            echo "No files that decide what the built app sends changed."
-          fi
+          nix develop .#ci --command pnpm turbo build --filter=www... --concurrency=100%
+          nix develop .#ci --command env \
+            SOME_UI_PROFILE=pages VITE_STATIC_DATA=true VITE_BASE_PATH=/some-ui/ \
+            pnpm --filter www exec vite build --outDir dist-pages --emptyOutDir
+          nix develop .#ci-playwright --command env \
+            WWW_DIST_LAN=apps/www/dist WWW_DIST_PAGES=apps/www/dist-pages \
+            pnpm --filter www test:e2e tests/local-mode/no-egress.spec.ts \
+            tests/local-mode/viewer-storage.spec.ts
 
       # #1193's own review flagged that this directory - both the sessions
       # badge/completion-summary regression and the session-viewport overflow
       # spec that predates it - ran nowhere in CI: no workflow named either
-      # spec, so both could fail indefinitely without blocking a PR. Same
-      # shape as the CSP step above (a static-fixture Playwright spec, no
-      # build needed), scoped to the source these two specs mirror
-      # rather than turbo's dep graph, since neither is a per-package
-      # build/test.
+      # spec, so both could fail indefinitely without blocking a PR. A
+      # static-fixture Playwright spec, so no build is needed.
       - name: E2E — session-viewport regression (www)
+        if: contains(fromJSON(needs.changes.outputs.e2e), 'session_viewport')
         run: |
-          files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
-            'apps/www/tests/session-viewport/**' \
-            'apps/www/tests/layout-invariants/**' \
-            'apps/www/src/routes/_dashboard.tsx' \
-            'apps/www/src/routes/_dashboard/sessions/**' \
-            'apps/www/src/components/player/**' \
-            'apps/www/src/test-support/catalog-worst-case.ts' \
-            'packages/activity-catalog/**' \
-            'packages/ui/shared/src/components/ui/badge.tsx' \
-            'packages/ui/shared/src/components/ui/button.tsx' \
-            'apps/www/tsconfig.json' \
-            'apps/www/playwright.config.ts' || true)
-          if [ -n "$files" ]; then
-            nix develop .#ci-playwright --command pnpm --filter www test:e2e \
-              tests/session-viewport/no-overflow-scroll.spec.ts \
-              tests/session-viewport/sessions-badge-containment.spec.ts
-          else
-            echo "No session-viewport-relevant www files changed."
-          fi
+          nix develop .#ci-playwright --command pnpm --filter www test:e2e \
+            tests/session-viewport/no-overflow-scroll.spec.ts \
+            tests/session-viewport/sessions-badge-containment.spec.ts
 
       # A Codex review on #1294 found this suite ran nowhere in CI - every
       # e2e step in this job scopes `test:e2e` to explicit spec paths (see
@@ -481,125 +400,80 @@ jobs:
       # other step here, this spec drives the actual running app rather
       # than the panel page or a static fixture - `tests/composer/
       # harness.ts` spawns `vite` itself and waits for it, so no separate
-      # server-start step is needed. Scoped to the composer, dashboard shell,
-      # and fitted-page surfaces the spec actually exercises.
+      # server-start step is needed.
       - name: E2E — composer regression (www)
+        if: contains(fromJSON(needs.changes.outputs.e2e), 'composer')
         run: |
-          files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
-            'apps/www/src/components/composer/**' \
-            'apps/www/src/routes/_dashboard.tsx' \
-            'apps/www/src/routes/_dashboard/sessions/new.tsx' \
-            'packages/react-hooks/src/lib/use-fitted-page/**' \
-            'apps/www/tests/composer/**' \
-            'apps/www/playwright.config.ts' || true)
-          if [ -n "$files" ]; then
-            nix develop .#ci-playwright --command pnpm --filter www test:e2e \
-              tests/composer/pager.spec.ts
-          else
-            echo "No composer-relevant www files changed."
-          fi
+          nix develop .#ci-playwright --command pnpm --filter www test:e2e \
+            tests/composer/pager.spec.ts
 
       # The burn-in recorder (STUDIO ST15, #2273): nothing else drives the page
-      # the renderer records from. What it checks is in the spec's header.
+      # the renderer records from. What it checks is in the spec's header. The
+      # thumbnail beside each episode's video (EPISODES3, C1026) is drawn by the
+      # same recorders, and its spec says the same bytes come out twice.
       - name: E2E — burn-in recorder (www)
+        if: contains(fromJSON(needs.changes.outputs.e2e), 'record')
         run: |
-          files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
-            'packages/ui/burn-ins/**' \
-            'packages/video-render/**' \
-            'apps/www/tests/record/**' \
-            'apps/www/src/lib/web-surface/burn-ins/**' \
-            'apps/www/playwright.config.ts' \
-            'flake.nix' \
-            'flake.lock' \
-            'nix/video/**' || true)
-          if [ -n "$files" ]; then
-            nix develop .#ci --command pnpm turbo build --filter=www... --concurrency=100%
-            nix develop .#ci-playwright --command pnpm --filter www test:e2e \
-              tests/record/short.spec.ts
-          else
-            echo "No burn-in or renderer files changed."
-          fi
+          nix develop .#ci --command pnpm turbo build --filter=www... --concurrency=100%
+          nix develop .#ci-playwright --command pnpm --filter www test:e2e \
+            tests/record/short.spec.ts tests/record/thumbnail.spec.ts
 
       # HYPER1 (#2724): HyperFrames draws a composition to the same bytes
       # twice with the pins in packages/video-motion/src/pin.ts, on the nix
-      # shell's Chromium and ffmpeg. Scoped to the workspace, the renderer it
-      # imports, and the lockfile and flake, which pin HyperFrames, Chromium and
-      # ffmpeg. Uploads nothing. Five runs; one that differs prints where, per
-      # frame (#2739).
+      # shell's Chromium and ffmpeg. Uploads nothing. Five runs; one that
+      # differs prints where, per frame (#2739).
       - name: E2E — HyperFrames renders the same bytes twice (video-motion)
+        if: contains(fromJSON(needs.changes.outputs.e2e), 'motion')
         run: |
-          files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
-            'packages/video-motion/**' \
-            'packages/video-render/**' \
-            'extensions/suspender-ledger/**' \
-            'pnpm-lock.yaml' \
-            'flake.nix' \
-            'flake.lock' \
-            'nix/video/**' || true)
-          if [ -n "$files" ]; then
-            nix develop .#ci --command pnpm turbo run build \
-              --filter='@some-ui/video-motion^...' \
-              --concurrency=100%
-            nix develop .#ci-playwright --command \
-              pnpm --filter @some-ui/video-motion motion prove sample --runs 5
-            # HYPER2 (#2725): a composition scene beside a card, through the
-            # renderer, drawn twice from nothing. In a copy: it writes there.
-            cp -r packages/video-motion/sample/video "$RUNNER_TEMP/video"
-            nix develop .#ci-playwright --command \
-              pnpm --filter @some-ui/video-motion motion video "$RUNNER_TEMP/video" --prove
-            # RR31 (#3288): a mock phone card zoomed to its parts
-            # (screen-zoom), drawn twice from nothing.
-            cp -r packages/video-motion/sample/zoom "$RUNNER_TEMP/zoom"
-            nix develop .#ci-playwright --command \
-              pnpm --filter @some-ui/video-motion motion video "$RUNNER_TEMP/zoom" --prove
-            # HYPER3 (#2726): Suspender Ledger 0.3.1's promo, from its data in
-            # paulgsc/testing at a pinned commit: the popup walked once in its
-            # sandbox, then the promo rendered twice from nothing.
-            data="$RUNNER_TEMP/promo-data"
-            mkdir -p "$data"
-            for file in release sample; do
-              curl -fsSL -o "$data/$file.json" \
-                "https://raw.githubusercontent.com/paulgsc/testing/853627e77d31499e81d16b3f48d9ae77b3237f46/promo/suspender-ledger/0.3.1/$file.json"
-            done
-            # HYPER4 (#2727): its series pins the sound kit, made here as
-            # home makes it, so a changed cue fails the render.
-            nix develop .#ci-playwright --command \
-              pnpm --filter @some-ui/video-render render sounds --out "$RUNNER_TEMP/brand/sounds"
-            nix develop .#ci-playwright --command \
-              pnpm --filter @some-ui/video-motion motion promo "$data" --out "$RUNNER_TEMP/promo" --brand "$RUNNER_TEMP/brand" --prove
-          else
-            echo "No files a composition's render reads changed."
-          fi
+          nix develop .#ci --command pnpm turbo run build \
+            --filter='@some-ui/video-motion^...' \
+            --concurrency=100%
+          nix develop .#ci-playwright --command \
+            pnpm --filter @some-ui/video-motion motion prove sample --runs 5
+          # HYPER2 (#2725): a composition scene beside a card, through the
+          # renderer, drawn twice from nothing. In a copy: it writes there.
+          cp -r packages/video-motion/sample/video "$RUNNER_TEMP/video"
+          nix develop .#ci-playwright --command \
+            pnpm --filter @some-ui/video-motion motion video "$RUNNER_TEMP/video" --prove
+          # RR31 (#3288): a mock phone card zoomed to its parts
+          # (screen-zoom), drawn twice from nothing.
+          cp -r packages/video-motion/sample/zoom "$RUNNER_TEMP/zoom"
+          nix develop .#ci-playwright --command \
+            pnpm --filter @some-ui/video-motion motion video "$RUNNER_TEMP/zoom" --prove
+          # HYPER3 (#2726): Suspender Ledger 0.3.1's promo, from its data in
+          # paulgsc/testing at a pinned commit: the popup walked once in its
+          # sandbox, then the promo rendered twice from nothing.
+          data="$RUNNER_TEMP/promo-data"
+          mkdir -p "$data"
+          for file in release sample; do
+            curl -fsSL -o "$data/$file.json" \
+              "https://raw.githubusercontent.com/paulgsc/testing/853627e77d31499e81d16b3f48d9ae77b3237f46/promo/suspender-ledger/0.3.1/$file.json"
+          done
+          # HYPER4 (#2727): its series pins the sound kit, made here as
+          # home makes it, so a changed cue fails the render.
+          nix develop .#ci-playwright --command \
+            pnpm --filter @some-ui/video-render render sounds --out "$RUNNER_TEMP/brand/sounds"
+          nix develop .#ci-playwright --command \
+            pnpm --filter @some-ui/video-motion motion promo "$data" --out "$RUNNER_TEMP/promo" --brand "$RUNNER_TEMP/brand" --prove
 
       # MIC9 (#2379): the real recorder (packages/voice-capture's recorder.ts:
       # getUserMedia, MediaRecorder, the level meter), which every other test
       # replaces. Chromium plays a committed clip as its microphone, the page
       # plays each case on the real take kit and then on the simulated
-      # microphone, and a case fails when the two end differently. Scoped to
-      # the package, intent-kit (the recorder's opening waits through its
-      # callForeign), and the lockfile and flake, which pin Playwright and the
-      # Chromium it drives (_detect-changes.yml lists the clips under `node`
-      # and flake.lock under `ci`, so this job runs for both). Its page is its
-      # own Vite build, so only voice-capture's dependencies are built here.
+      # microphone, and a case fails when the two end differently. Its page
+      # is its own Vite build, so only voice-capture's dependencies are built
+      # here.
       # The spec path is passed, per "scoped test:e2e invocations" above.
       # Uploads nothing.
       - name: E2E — the real recorder agrees with the simulated microphone (voice-capture)
+        if: contains(fromJSON(needs.changes.outputs.e2e), 'mic')
         run: |
-          files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
-            'packages/voice-capture/**' \
-            'packages/intent-kit/**' \
-            'pnpm-lock.yaml' \
-            'flake.lock' || true)
-          if [ -n "$files" ]; then
-            nix develop .#ci --command pnpm turbo run build \
-              --filter='@some-ui/voice-capture^...' \
-              --concurrency=100%
-            nix develop .#ci-playwright --command \
-              pnpm --filter @some-ui/voice-capture test:e2e \
-                tests/real-microphone/real-microphone.spec.ts
-          else
-            echo "No files the real recorder's suite runs on changed."
-          fi
+          nix develop .#ci --command pnpm turbo run build \
+            --filter='@some-ui/voice-capture^...' \
+            --concurrency=100%
+          nix develop .#ci-playwright --command \
+            pnpm --filter @some-ui/voice-capture test:e2e \
+              tests/real-microphone/real-microphone.spec.ts
 
   # ── The render image's build (RI3) ───────────────────────────────────
   # infra/render/build.sh, the Dockerfile's whole build, from the Dockerfile's
@@ -619,7 +493,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build the image's packages and its stage
         run: |
           set -euo pipefail
@@ -639,12 +513,12 @@ jobs:
     needs: changes
     if: >
       needs.changes.outputs.rust == 'true' ||
-      needs.changes.outputs.node == 'true' ||
+      needs.changes.outputs.lockfile == 'true' ||
       needs.changes.outputs.ci == 'true'
     uses: ./.github/workflows/_deny-checks.yml
     with:
       rust: ${{ needs.changes.outputs.rust == 'true' || needs.changes.outputs.ci == 'true' }}
-      node: ${{ needs.changes.outputs.node == 'true' || needs.changes.outputs.ci == 'true' }}
+      node: ${{ needs.changes.outputs.lockfile == 'true' || needs.changes.outputs.ci == 'true' }}
 
   # ── Repo guards (repo-wide) ────────────────────────────────────────────
   # Every repo-wide guard, one named step each (docs/ci-architecture.md). No
@@ -666,7 +540,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -690,6 +564,15 @@ jobs:
       # fingerprint and RS2 branch-name checks (CLAUDE.md "Cross-repo coupling").
       - name: Check workflows
         run: nix develop .#ci --command node scripts/check-workflows.ts
+
+      # WS2 (docs/ci-architecture.md). Outside Nix: the script installs its
+      # pinned tools with the runner's python3 and go into the runner's temp
+      # directory, and saves no Actions cache, so no retention family is
+      # needed.
+      - name: Check workflow security
+        env:
+          WORKFLOW_SECURITY_TOOLS: ${{ runner.temp }}/workflow-security
+        run: bash scripts/check-workflow-security.sh
 
       # CLAUDE.md, "Gray-area invariants": every declaration has its parts, no
       # ID is reused or dropped, debt labels name their issue and do not grow,
@@ -783,6 +666,10 @@ jobs:
       # workflow alone.
       - name: Check the manual sign workflow's input
         run: nix develop .#ci --command pnpm --filter @some-ui/eslint-kit exec vitest run tests/extension-sign-inputs.test.ts
+      # CD1 (_detect-changes.yml). Here for the same reason: a change to the
+      # workflow alone selects no package.
+      - name: Check the change-detection filters
+        run: nix develop .#ci --command pnpm --filter @some-ui/eslint-kit exec vitest run tests/detect-changes.test.ts
 
   # ── CI Gate ────────────────────────────────────────────────────────────
   # A job whose `needs` fails is skipped, not failed, so the gate judges each
@@ -817,7 +704,7 @@ jobs:
         run: |
           echo "::error::Draft pull request: CI runs once it is marked ready for review."
           exit 1
-      - uses: re-actors/alls-green@v1.3.0
+      - uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # v1.3.0
         with:
           jobs: ${{ toJSON(needs) }}
           allowed-skips: rust, node-checks, node-lint, node-test, node-e2e, render-stage, deny

@@ -207,6 +207,13 @@ export async function recordCall(
     await renderCut(root, SERIES, callCutList(week, takes, { bed, part }), {
       preview,
       episode: "call.mp4",
+      thumbnail: {
+        genre: "call",
+        from: week.week.from,
+        to: week.week.to,
+        part,
+        of,
+      },
       marks: () => callChapterMarks(week, part),
       policy,
       browser,
