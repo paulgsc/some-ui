@@ -24,7 +24,7 @@
  * are drawn.
  */
 
-import type { Page } from "playwright-core"
+import type { Page, Request } from "playwright-core"
 import { chromium } from "playwright-core"
 
 import type { Stage } from "./run"
@@ -104,6 +104,15 @@ export async function openGrafanaStage(
     // may fail as it is cancelled, which is no problem of the page shown.
     let documents = 0
     page.on("pageerror", (e) => problems.push(e.message))
+    // A popup's first navigation has no frame yet, and `frame()` throws
+    // for it: such a request is not the page's own.
+    const isMainFrame = (request: Request): boolean => {
+      try {
+        return request.frame() === page.mainFrame()
+      } catch {
+        return false
+      }
+    }
     await context.routeWebSocket("**", (socket) => socket.close())
     await context.route("**/*", async (route) => {
       const request = route.request()
@@ -114,10 +123,7 @@ export async function openGrafanaStage(
       }
       // A new document (never a same-page URL change): its panels are
       // drawn once one more query has answered.
-      if (
-        request.isNavigationRequest() &&
-        request.frame() === page.mainFrame()
-      ) {
+      if (request.isNavigationRequest() && isMainFrame(request)) {
         atNavigation = queries
         documents += 1
       }
@@ -133,7 +139,9 @@ export async function openGrafanaStage(
           await route.abort("failed")
           return
         }
-        if (url.pathname === QUERY) queries += 1
+        // Only the page shown: a query of the page just left that answers
+        // late is no sign the new one is drawn.
+        if (url.pathname === QUERY && document === documents) queries += 1
         await route.fulfill({ response: answer })
       } catch (e) {
         // A dropped connection or a timeout is said; a request of a page

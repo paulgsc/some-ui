@@ -308,7 +308,11 @@ export async function runWalk(
         atMs += step.holdMs
       } catch (e) {
         await leftAt(stage, out, step.label)
-        throw e
+        // Every failure names its step, whichever part of it failed.
+        const said = e instanceof Error ? e.message : String(e)
+        throw said.startsWith(`${step.label}: `)
+          ? e
+          : new Error(`${step.label}: ${said}`, { cause: e })
       }
     }
     const made: WalkFile = {
