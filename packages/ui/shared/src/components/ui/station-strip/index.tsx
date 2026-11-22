@@ -58,9 +58,11 @@ export const StationStrip = ({
     <div className={cn("flex flex-col gap-2", className)}>
       <ol aria-label={label} className="flex items-start">
         {stations.map((station, index) => {
+          const reached = here !== -1 && index < here
+          // Done ahead of where the thing is: its mark is filled, but the
+          // line up to it isn't, since the thing hasn't travelled it.
           const passed =
-            (here !== -1 && index < here) ||
-            (index > here && station.done === true)
+            reached || (here !== -1 && index > here && station.done === true)
           const current = index === here
           return (
             <li
@@ -80,7 +82,7 @@ export const StationStrip = ({
                   className={cn(
                     "absolute right-1/2 left-[-50%] h-0.5",
                     small ? "top-[5px]" : "top-[7px]",
-                    passed || current ? "bg-primary" : "bg-border"
+                    reached || current ? "bg-primary" : "bg-border"
                   )}
                 />
               )}

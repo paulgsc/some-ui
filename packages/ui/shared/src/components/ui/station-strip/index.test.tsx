@@ -107,3 +107,15 @@ describe("StationStrip, drawn small", () => {
     ).toEqual([false, false, true])
   })
 })
+
+describe("StationStrip, a station done ahead", () => {
+  it("fills its mark but not the line up to it", () => {
+    const stations = STATIONS.map((s) => ({ ...s, done: s.id === "ready" }))
+    const { container } = render(
+      <StationStrip label="Where it is" stations={stations} at="line" />
+    )
+    const lines = container.querySelectorAll("li > span:first-child")
+    // The line into "Ready for pickup" isn't drawn as travelled.
+    expect(lines[1]?.className).toContain("bg-border")
+  })
+})

@@ -95,13 +95,12 @@ function countCheck(
 }
 
 /**
- * Facts that can no longer change (a merged pull request, a run that
- * passed), kept for the tab's life so a second read doesn't spend GitHub's
- * 60 answers an hour on them again. A closed one can be reopened and a
- * failed run run again, so those are read each time. Nothing is stored.
+ * Merged pull requests, the one fact that can no longer change, kept for
+ * the tab's life so a second read doesn't spend GitHub's 60 answers an hour
+ * on them again. A closed one can be reopened and any run run again, so
+ * those are read each time. Nothing is stored.
  */
 const endedPrs = new Map<string, PrFacts>()
-const endedRuns = new Map<string, RunFacts>()
 
 /** `read`, unless `key` already ended; kept once it has. */
 const once =
@@ -122,7 +121,6 @@ const once =
 /** For tests: forget what was kept, so each starts from GitHub. */
 export function forgetEnded(): void {
   endedPrs.clear()
-  endedRuns.clear()
 }
 
 async function readPr(repo: string, number: number): Promise<PrFacts> {
@@ -225,15 +223,7 @@ async function readFacts(run: RunFile): Promise<Facts> {
         )
       )
     if (leg.leg === "run")
-      runs.set(
-        runKey(leg.repo, leg.run),
-        once(
-          endedRuns,
-          runKey(leg.repo, leg.run),
-          () => readRun(leg.repo, leg.run),
-          (f) => f.state === "passed"
-        )
-      )
+      runs.set(runKey(leg.repo, leg.run), () => readRun(leg.repo, leg.run))
     if (leg.leg === "yours" && leg.ask !== undefined) {
       const ask = leg.ask
       asks.set(askKey(ask), () => readAsk(ask.repo, ask.number))

@@ -17,12 +17,15 @@ export const Chip = ({
   count,
   dot = null,
   onTap,
+  className,
   children,
 }: {
   picked: boolean
   count?: number
   dot?: DotMeaning | null
   onTap: () => void
+  /** Classes beside its own: an edge, on a surface the same as its fill. */
+  className?: string
   children: ReactNode
 }): JSX.Element => (
   <button
@@ -31,7 +34,8 @@ export const Chip = ({
     onClick={onTap}
     className={cn(
       "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm",
-      picked ? "bg-foreground text-background" : "bg-card"
+      picked ? "bg-foreground text-background" : "bg-card",
+      className
     )}
   >
     {dot !== null && <Dot meaning={dot} className="size-2" />}

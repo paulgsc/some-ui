@@ -222,27 +222,56 @@ describe("the Cooking page", () => {
     ).getByText(W.now.approve)
   })
 
+  it("hands a run waiting on an approval to the owner", async () => {
+    github({
+      ...ANSWERS,
+      "actions/runs/45065710340": {
+        html_url: "https://github.com/paulgsc/some-ui/actions/runs/45065710340",
+        status: "completed",
+        conclusion: "action_required",
+        created_at: "2026-11-22T20:18:41Z",
+        updated_at: "2026-11-22T20:30:00Z",
+      },
+    })
+    render(withQueryClient(<CookingPage />))
+    const card = await screen.findByRole("region", {
+      name: W.stopOf("Install the latest APK", 0, 3),
+    })
+    within(card).getByText(W.now.approve)
+  })
+
   it("reads again when asked, without asking again for what has ended", async () => {
-    const fetch = github(ANSWERS)
+    const fetch = github({
+      ...ANSWERS,
+      "server/pulls/1129": {
+        html_url: "https://github.com/paulgsc/server/pull/1129",
+        state: "closed",
+        created_at: "2026-11-22T21:07:01Z",
+        merged_at: "2026-11-22T21:45:51Z",
+        head: { sha: "abc" },
+      },
+    })
     render(withQueryClient(<CookingPage />))
     const again = await screen.findByRole("button", { name: W.readAgain })
-    expect(fetch).toHaveBeenCalledTimes(5)
+    // The list, the merged pull request, the run and the ask.
+    expect(fetch).toHaveBeenCalledTimes(4)
     fireEvent.click(again)
-    await screen.findByRole("button", { name: W.readAgain })
     await vi.waitFor(() => {
-      expect(fetch).toHaveBeenCalledTimes(9)
+      expect(fetch).toHaveBeenCalledTimes(7)
     })
-    // The run that passed is kept; the list, the open pull request and its checks, and the ask are read again.
-    const runs = fetch.mock.calls.filter(([input]) =>
-      String(input).includes("actions/runs")
+    // The merged pull request isn't asked for again; the list, the run and
+    // the ask are.
+    const pulls = fetch.mock.calls.filter(([input]) =>
+      String(input).includes("pulls/1129")
     )
-    expect(runs).toHaveLength(1)
+    expect(pulls).toHaveLength(1)
   })
 
   it("says so when no run is open", async () => {
     github({ "issues?labels=orch": [] })
     render(withQueryClient(<CookingPage />))
     await screen.findByText(W.noRun)
+    screen.getByRole("button", { name: W.readAgain })
   })
 
   it("links the run's page when its record can't be read", async () => {

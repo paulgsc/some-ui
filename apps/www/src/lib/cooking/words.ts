@@ -20,7 +20,7 @@ export const COOKING_WORDS = {
   noRun: "Nothing is cooking today: no run is open.",
   noGoals: "Today's run has no goals yet.",
   someUnread: (n: number): string =>
-    `${n === 1 ? "One thing" : `${String(n)} things`} on GitHub couldn't be read just now, so the stops that needed ${n === 1 ? "it" : "them"} show as not reached yet. Read again in a few minutes.`,
+    `${n === 1 ? "One thing" : `${String(n)} things`} on GitHub couldn't be read just now, so the stops that needed ${n === 1 ? "it" : "them"} show as not done yet. Read again in a few minutes.`,
   readingAgain: "Reading…",
   readAgain: "Read again",
   unreadRun:

@@ -195,7 +195,7 @@ const Overview = ({
                 className="fill-background stroke-foreground stroke-[0.8]"
               />
             )}
-            {train.stops.slice(1).map((stop, i) => (
+            {train.stops.slice(1).map((_leg, i) => (
               <line
                 key={`${train.id}-leg-${String(i)}`}
                 x1={x(i)}
@@ -204,7 +204,7 @@ const Overview = ({
                 y2={y}
                 className={cn(
                   "stroke-[1.5]",
-                  stop.state === "passed" ? "stroke-success" : "stroke-border"
+                  i + 1 <= train.current ? "stroke-success" : "stroke-border"
                 )}
               />
             ))}
@@ -440,6 +440,7 @@ const Menu = ({
               <Chip
                 key={f}
                 picked={board.filter === f}
+                className="border"
                 count={count(f)}
                 onTap={() => dispatch({ kind: "filtered", filter: f })}
               >
@@ -455,6 +456,7 @@ const Menu = ({
               <Chip
                 key={s}
                 picked={board.sort === s}
+                className="border"
                 onTap={() => dispatch({ kind: "sorted", sort: s })}
               >
                 {W.sorts[s]}
@@ -701,44 +703,41 @@ export const CookingPage = ({
         </Button>
       </div>
     ),
-    ready: (cooking, refreshError) => (
-      <>
-        {cooking.kind !== "run" && heading}
-        {refreshError !== undefined && (
-          <Notice
-            tone="warning"
-            dismissible
-            action={{ label: W.tryAgain, onClick: refreshError.retry }}
-          >
-            {W.stale}
-          </Notice>
-        )}
-        {cooking.kind === "none" && (
-          <p className="text-muted-foreground text-sm">{W.noRun}</p>
-        )}
-        {(cooking.kind !== "run" || cooking.trains.length === 0) && (
-          <ReadAgain reading={query.isFetching} onRead={readAgain} />
-        )}
-        {cooking.kind === "unread" && (
-          <p className="text-sm">
-            {W.unreadRun}{" "}
-            <a
-              className="underline"
-              href={cooking.url}
-              target="_blank"
-              rel="noreferrer"
+    ready: (cooking, refreshError) => {
+      const bare = cooking.kind !== "run" || cooking.trains.length === 0
+      return (
+        <>
+          {bare && heading}
+          {refreshError !== undefined && (
+            <Notice
+              tone="warning"
+              dismissible
+              action={{ label: W.tryAgain, onClick: refreshError.retry }}
             >
-              {W.runPage}
-            </a>
-          </p>
-        )}
-        {cooking.kind === "run" &&
-          (cooking.trains.length === 0 ? (
-            <>
-              {heading}
-              <p className="text-muted-foreground text-sm">{W.noGoals}</p>
-            </>
-          ) : (
+              {W.stale}
+            </Notice>
+          )}
+          {cooking.kind === "none" && (
+            <p className="text-muted-foreground text-sm">{W.noRun}</p>
+          )}
+          {cooking.kind === "unread" && (
+            <p className="text-sm">
+              {W.unreadRun}{" "}
+              <a
+                className="underline"
+                href={cooking.url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {W.runPage}
+              </a>
+            </p>
+          )}
+          {cooking.kind === "run" && cooking.trains.length === 0 && (
+            <p className="text-muted-foreground text-sm">{W.noGoals}</p>
+          )}
+          {bare && <ReadAgain reading={query.isFetching} onRead={readAgain} />}
+          {cooking.kind === "run" && cooking.trains.length > 0 && (
             <CookingBoard
               trains={cooking.trains}
               heading={heading}
@@ -746,8 +745,9 @@ export const CookingPage = ({
               reading={query.isFetching}
               onReadAgain={readAgain}
             />
-          ))}
-      </>
-    ),
+          )}
+        </>
+      )
+    },
   })
 }
