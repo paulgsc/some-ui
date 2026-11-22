@@ -11,10 +11,14 @@ import {
   GAME_ESSAY_ID,
   GAME_ESSAY_VERSION,
   gameEssayFormat,
+  gamePlaceOf,
+  gameVoiceOf,
   parseGameEssay,
   QUOTE_RUN,
+  READ_ALOUD_BELOW,
   sampleGameEssay,
   STANCES,
+  weekDaysOf,
 } from "@video-render/game-essay"
 import type { GameEssay } from "@video-render/game-essay"
 import { describe, expect, it } from "vitest"
@@ -266,6 +270,7 @@ describe("an essay that contradicts itself", () => {
           id: "2",
           away: "LV",
           home: "KC",
+          kickoff: game.kickoff,
           game: { said: "Another game." },
           halves: [first],
         },
@@ -279,7 +284,7 @@ describe("an essay that contradicts itself", () => {
     })
     expect(found).toEqual(
       expect.arrayContaining([
-        "week: it ends before it starts",
+        "week: 2026-w43 runs from 2026-10-20 to 2026-10-26, Tuesday to Monday (C1241)",
         "bites: one take is in the essay twice",
         "401873010: a team plays itself",
         "401873010: its halves are out of the game's order, or one is there twice",
@@ -349,5 +354,79 @@ describe("an essay that contradicts itself", () => {
         games: [{ ...game, halves: [first, { ...second, half: "overtime" }] }],
       })
     ).toContain("401873010: halftime is said only between bites of both halves")
+  })
+})
+
+describe("home's week file, as the essay files it (C1241, C1242)", () => {
+  it("runs a week from the Tuesday of its ISO week to the Monday after", () => {
+    expect(weekDaysOf("2026-w43")).toEqual({
+      from: "2026-10-20",
+      to: "2026-10-26",
+    })
+    expect(weekDaysOf("2026-w53")).toEqual({
+      from: "2026-12-29",
+      to: "2027-01-04",
+    })
+    expect(
+      problems({
+        ...sample(),
+        week: { id: "2026-w43", from: "2026-10-19", to: "2026-10-25" },
+      })
+    ).toEqual([
+      "week: 2026-w43 runs from 2026-10-20 to 2026-10-26, Tuesday to Monday (C1241)",
+    ])
+  })
+
+  it("files a bite with no half before the game or after it, by kickoff", () => {
+    const kickoff = "2026-10-23T00:15:00Z"
+    expect(gamePlaceOf(null, "2026-10-22T23:00:00Z", kickoff)).toBe("before")
+    expect(gamePlaceOf(null, "2026-10-23T03:30:00Z", kickoff)).toBe("after")
+    expect(gamePlaceOf("second", "2026-10-23T02:00:00Z", kickoff)).toBe(
+      "second"
+    )
+  })
+
+  it("holds a bite before the game to before kickoff, and every other after it", () => {
+    const essay = sample()
+    const [game] = essay.games
+    if (game === undefined) throw new Error("the sample has a game")
+    expect(
+      problems({
+        ...essay,
+        games: [{ ...game, kickoff: "2026-10-23T01:00:00Z" }],
+      })
+    ).toEqual([
+      "sample-bite-1: it was said before kickoff, so it is filed before the game",
+    ])
+    const [first] = game.halves
+    if (first === undefined) throw new Error("the sample has a first half")
+    expect(
+      problems({
+        ...essay,
+        games: [
+          {
+            ...game,
+            halves: [{ ...first, half: "before" }, ...game.halves.slice(1)],
+            halftime: undefined,
+          },
+        ],
+      })
+    ).toEqual(
+      expect.arrayContaining([
+        "sample-bite-1: it is filed before the game, and was said after kickoff",
+      ])
+    )
+  })
+
+  it("keeps a bite said first and never mapped, with no scenario", () => {
+    expect(problems(withFirstBite({ scenario: null }))).toEqual([])
+  })
+
+  it(`reads a bite aloud below ${READ_ALOUD_BELOW} confidence, unless the owner chose`, () => {
+    expect(gameVoiceOf(0.58, null)).toBe("read-aloud")
+    expect(gameVoiceOf(READ_ALOUD_BELOW, null)).toBe("owner")
+    expect(gameVoiceOf(null, null)).toBe("owner")
+    expect(gameVoiceOf(0.58, "owner")).toBe("owner")
+    expect(gameVoiceOf(0.95, "read-aloud")).toBe("read-aloud")
   })
 })

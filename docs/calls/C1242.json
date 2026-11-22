@@ -1,0 +1,18 @@
+{
+  "id": "C1242",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/game-essay.ts",
+    "packages/video-render/src/templates/game-essay/sample-essay.json"
+  ],
+  "chose": "The game essay's template takes home's week file as agreed with the server worker: a bite home gives no half (a pre-game or after-final one) is filed `before` or `after` its game by kickoff (`gamePlaceOf`), a game carries its kickoff, a bite said first and never mapped keeps a null scenario (the stage says \"Said first\"), and whose voice says a bite is code's (`gameVoiceOf`): the owner's choice when they made one, else read aloud below an average word confidence of 0.70 (READ_ALOUD_BELOW, the prototype's bar), else the owner's voice. Version 1 is amended in place, since no essay has been written at it.",
+  "options": [
+    "Before and after as placements beside the halves, by kickoff (chosen): one ordered list per game, and the writer and the check use the same rule.",
+    "Home names a half for every bite: puts the template's filing rule on the server, and a pre-game bite has no half to name.",
+    "Leave pre-game and after-final bites out of the essay: loses bites the owner said, against every scene standing on a bite."
+  ],
+  "gray": "Where a bite with no half appears, what an unmapped bite shows, and the confidence below which the second voice reads a bite are what the owner sees and hears in every essay; D5 and D10 set the direction, not these lines.",
+  "undo": "Drop `before` and `after` from GAME_PLACEMENTS and the game's kickoff, make scenario required again, or move READ_ALOUD_BELOW, in packages/video-render/src/game-essay.ts.",
+  "refs": ["#2074"]
+}

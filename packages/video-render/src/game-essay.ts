@@ -16,6 +16,10 @@
  *      the owner's voice or read aloud (D5–D7), then the host's answer in
  *      the way its stance calls for (D21);
  *    - `halftime`, between a game's first half and its second (D10).
+ *
+ *    A game's bites are filed by half, and before or after the game for a
+ *    pre-game or after-final bite (`gamePlaceOf`, C1242). Whose voice says
+ *    each is code's (`gameVoiceOf`, D5), never the writer's.
  * 3. `close`: the week, closed.
  *
  * **What the essay never is (section 0, D20; the owner, 2026-11-15):** a
@@ -41,6 +45,7 @@
  * speaking lit, in the call's series.
  */
 
+import { addDays, isoWeekMonday } from "@some-ui/core-utils"
 import {
   HALVES,
   isScenarioId,
@@ -71,6 +76,58 @@ export const GAME_ESSAY_VERSION = 1
  * ESPN's sentence is its sentence. Policy (C771, C1081).
  */
 export const QUOTE_RUN = 5
+
+/**
+ * The average confidence, over the words home heard, below which a bite is
+ * read aloud by the second voice (D5, the prototype's 0.70). Policy (C771,
+ * C1242).
+ */
+export const READ_ALOUD_BELOW = 0.7
+
+/**
+ * Whose voice says a bite (D5–D7): the owner's own choice when they made
+ * one, for any reason; otherwise code, from home's confidence in the words
+ * it heard: read aloud below `READ_ALOUD_BELOW`, and in the owner's voice
+ * when home kept no confidence (words heard before Oct 31). The writer never
+ * decides it.
+ */
+export const gameVoiceOf = (
+  confidence: number | null,
+  chosen: "owner" | "read-aloud" | null
+): "owner" | "read-aloud" =>
+  chosen ??
+  (confidence !== null && confidence < READ_ALOUD_BELOW
+    ? "read-aloud"
+    : "owner")
+
+/**
+ * Where a game's bites are filed (D10, C1242): a half, or before the game
+ * or after it for a bite home gives no half (a pre-game or after-final one).
+ */
+export const GAME_PLACEMENTS = ["before", ...HALVES, "after"] as const
+export type GamePlacement = (typeof GAME_PLACEMENTS)[number]
+
+/**
+ * Where a bite is filed: its half as home gave it, or, with none, before
+ * the game when it was said before kickoff and after it otherwise. Used by
+ * the writer to file a bite and by the check to hold it there.
+ */
+export const gamePlaceOf = (
+  half: Half | null,
+  saidAt: string,
+  kickoff: string
+): GamePlacement =>
+  half ?? (Date.parse(saidAt) < Date.parse(kickoff) ? "before" : "after")
+
+/**
+ * The days a week's essay covers (C1241): an NFL week, from the Tuesday of
+ * ISO week `id` to the Monday after it, so its Sunday is in week `id` and a
+ * Monday night game is with its Sunday.
+ */
+export function weekDaysOf(id: string): { from: string; to: string } {
+  const from = addDays(isoWeekMonday(id.toUpperCase()), 1)
+  return { from, to: addDays(from, 6) }
+}
 
 /** The most games and bites one essay holds, so a week's data stays a week's. Policy (C1081). */
 const GAMES_MOST = 16
@@ -241,7 +298,8 @@ const BiteSchema = z.strictObject({
   take: takeId,
   /** When the owner started saying it. */
   saidAt: z.iso.datetime({ offset: true }),
-  scenario: scenarioId,
+  /** The scenario it was said about, or null for one said first and never mapped: the stage says "Said first". */
+  scenario: scenarioId.nullable(),
   stance: z.enum(STANCES),
   /**
    * Whose voice says it (D5–D7): the owner's own take, or the second Kokoro
@@ -261,7 +319,7 @@ const BiteSchema = z.strictObject({
 })
 
 const HalfSchema = z.strictObject({
-  half: z.enum(HALVES),
+  half: z.enum(GAME_PLACEMENTS),
   bites: z.array(BiteSchema).min(1),
 })
 
@@ -270,9 +328,11 @@ const GameSchema = z.strictObject({
   id: z.string().regex(/^[A-Za-z0-9_-]{1,32}$/, "a game's id is ESPN's"),
   away: team,
   home: team,
+  /** When it kicked off: a bite with no half is filed before it or after it (`gamePlaceOf`). */
+  kickoff: z.iso.datetime({ offset: true }),
   /** The game's card. */
   game: said,
-  /** Its halves with bites, in the game's order; a half with none is left out. */
+  /** Its halves with bites, and before and after it, in the game's order; one with none is left out. */
   halves: z.array(HalfSchema).min(1),
   /** Said between the first half and the second, when the essay has bites in both (D10). */
   halftime: said.optional(),
@@ -376,10 +436,12 @@ function quoteProblems(essay: GameEssay): Array<string> {
   return problems
 }
 
-const HALF_ORDER: Readonly<Record<Half, number>> = {
-  first: 0,
-  second: 1,
-  overtime: 2,
+const PLACEMENT_ORDER: Readonly<Record<GamePlacement, number>> = {
+  before: 0,
+  first: 1,
+  second: 2,
+  overtime: 3,
+  after: 4,
 }
 
 /** The half a quarter is in (C872): 1 and 2 the first, 3 and 4 the second, 5 and on overtime. */
@@ -387,14 +449,20 @@ const halfOfPeriod = (period: number): Half =>
   period <= 2 ? "first" : period <= 4 ? "second" : "overtime"
 
 /** A half as a refusal says it: "the first half", "overtime". */
-const halfSaid = (half: Half): string =>
-  half === "overtime" ? "overtime" : `the ${half} half`
+const HALF_SAID: Readonly<Record<GamePlacement, string>> = {
+  before: "before the game",
+  first: "the first half",
+  second: "the second half",
+  overtime: "overtime",
+  after: "after the game",
+}
+const halfSaid = (half: GamePlacement): string => HALF_SAID[half]
 
 /** Every reason a game's data contradicts itself. */
 function gameProblems(game: GameEssayGame): Array<string> {
   const problems: Array<string> = []
   if (game.away === game.home) problems.push(`${game.id}: a team plays itself`)
-  const order = game.halves.map((half) => HALF_ORDER[half.half])
+  const order = game.halves.map((half) => PLACEMENT_ORDER[half.half])
   if (order.some((n, i) => i > 0 && n <= (order[i - 1] ?? -1)))
     problems.push(
       `${game.id}: its halves are out of the game's order, or one is there twice`
@@ -416,8 +484,18 @@ function gameProblems(game: GameEssayGame): Array<string> {
   if (said.some((at, i) => i > 0 && at < (said[i - 1] ?? at)))
     problems.push(`${game.id}: its bites are not in the order they were said`)
   const plays = new Set([game.away, game.home])
+  const kickoff = Date.parse(game.kickoff)
   for (const half of game.halves)
     for (const bite of half.bites) {
+      const said = Date.parse(bite.saidAt)
+      if (half.half === "before" && said >= kickoff)
+        problems.push(
+          `${bite.take}: it is filed before the game, and was said after kickoff`
+        )
+      if (half.half !== "before" && said < kickoff)
+        problems.push(
+          `${bite.take}: it was said before kickoff, so it is filed before the game`
+        )
       if (bite.play === null) continue
       const { period, spot, possession } = bite.play.still
       if (halfOfPeriod(period) !== half.half)
@@ -439,8 +517,11 @@ function gameProblems(game: GameEssayGame): Array<string> {
 /** Every reason the essay's parsed data contradicts itself. */
 function problemsOfEssay(essay: GameEssay): Array<string> {
   const problems: Array<string> = []
-  if (essay.week.to < essay.week.from)
-    problems.push("week: it ends before it starts")
+  const days = weekDaysOf(essay.week.id)
+  if (essay.week.from !== days.from || essay.week.to !== days.to)
+    problems.push(
+      `week: ${essay.week.id} runs from ${days.from} to ${days.to}, Tuesday to Monday (C1241)`
+    )
   const games = essay.games.map((game) => game.id)
   if (new Set(games).size !== games.length)
     problems.push("games: two share an id")

@@ -1,7 +1,14 @@
 {
   "schema": "some-ui.game-essay/1",
-  "template": { "id": "game-essay", "version": 1 },
-  "week": { "id": "2026-w43", "from": "2026-10-19", "to": "2026-10-25" },
+  "template": {
+    "id": "game-essay",
+    "version": 1
+  },
+  "week": {
+    "id": "2026-w43",
+    "from": "2026-10-20",
+    "to": "2026-10-26"
+  },
   "for": "SF",
   "open": {
     "said": "One game this week with something said about it: New England at Chicago, read for what San Francisco wanted from it, a Chicago win."
@@ -11,6 +18,7 @@
       "id": "401873010",
       "away": "NE",
       "home": "CHI",
+      "kickoff": "2026-10-23T00:15:00Z",
       "game": {
         "said": "New England at Chicago. Chicago won, which is the result San Francisco wanted."
       },
@@ -34,8 +42,14 @@
                   "possession": "NE",
                   "down": 4,
                   "distance": 5,
-                  "spot": { "side": "CHI", "yard": 45 },
-                  "score": { "away": 0, "home": 0 }
+                  "spot": {
+                    "side": "CHI",
+                    "yard": 45
+                  },
+                  "score": {
+                    "away": 0,
+                    "home": 0
+                  }
                 }
               },
               "setup": {
@@ -69,8 +83,14 @@
                   "possession": "NE",
                   "down": 2,
                   "distance": 8,
-                  "spot": { "side": "CHI", "yard": 35 },
-                  "score": { "away": 17, "home": 20 }
+                  "spot": {
+                    "side": "CHI",
+                    "yard": 35
+                  },
+                  "score": {
+                    "away": 17,
+                    "home": 20
+                  }
                 }
               },
               "setup": {
@@ -79,7 +99,12 @@
               "answer": {
                 "said": "A pick returned the length of the field late in a one-score game is rare: home has seen only a handful this season."
               }
-            },
+            }
+          ]
+        },
+        {
+          "half": "after",
+          "bites": [
             {
               "take": "sample-bite-3",
               "saidAt": "2026-10-23T02:40:05Z",
