@@ -533,7 +533,7 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
     expect(failedLine(refusedRow)).toMatch(/^Too long to make/)
   })
 
-  it("says why a cards essay was set aside over a spoken card's recording (WALK7)", () => {
+  it("says why a cards essay was set aside over a recording, a picture or a clip (WALK7, SNIPS2)", () => {
     const row = (reason: string): RenderFailed => ({
       feed: "cards-essay",
       key: "rust-rounds-2026-11-20",
@@ -544,10 +544,20 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
     })
     const missing = failedLine(row("take-missing"))
     const unheard = failedLine(row("take-unheard"))
-    expect(missing).toMatch(/doesn't have, or one you deleted/)
+    expect(missing).toMatch(/plays a recording home doesn't have\./)
+    // A take you deleted withdraws the essay, which leaves the list
+    // (paulgsc/server#1055): no row says it.
+    expect(missing).not.toMatch(/deleted/)
     expect(unheard).toMatch(/^Home couldn't make out a recording/)
-    for (const line of [missing, unheard])
-      expect(line, line).not.toMatch(MACHINERY)
+    const snipMissing = failedLine(row("snip-missing"))
+    const snipGone = failedLine(row("snip-gone"))
+    const clipMissing = failedLine(row("clip-missing"))
+    expect(snipMissing).toMatch(/names a picture its capture holds/)
+    expect(snipGone).toMatch(/Re-run that Snips Capture/)
+    expect(clipMissing).toMatch(/a clip home doesn't have/)
+    const lines = [missing, unheard, snipMissing, snipGone, clipMissing]
+    expect(new Set(lines).size).toBe(lines.length)
+    for (const line of lines) expect(line, line).not.toMatch(MACHINERY)
     // Only a cards essay's: another feed's unknown reason reads as before.
     expect(failedLine({ ...row("take-missing"), feed: "call" })).toMatch(
       /Home couldn't keep its files/

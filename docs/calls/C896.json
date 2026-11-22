@@ -1,0 +1,19 @@
+{
+  "id": "C896",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:crates/db/voice/src/transcript.rs",
+    "server:apps/servers/file_host/src/contention.rs",
+    "server:apps/servers/file_host/src/transcribe/pass.rs"
+  ],
+  "chose": "The note the contention guard is excusing is ordered first in the queue's own query, so it stays in the batch however many fresher notes wait, and its streak ends as soon as the note is kept.",
+  "options": [
+    "order it first in the query, and end its streak once kept",
+    "reorder only the fetched batch, and keep the streak until judged anyway",
+    "let a fresher note's streak replace it"
+  ],
+  "gray": "It trades a fresh take's turn against keeping a note's excuses bounded on a busy box (#822); no check or earlier decision set which wins once the queue stopped being oldest first.",
+  "undo": "Call voice_repo::transcript::waiting instead of waiting_first in transcribe::pass, and drop Streak::end's call there.",
+  "refs": ["server#1087", "server#822"]
+}

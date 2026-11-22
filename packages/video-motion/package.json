@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./fonts": "./src/fonts.ts",
     "./node": "./src/node.ts"
   },
   "description": "HyperFrames compositions, pinned: the motion a video's scene is drawn in, rendered to the same bytes every time.",

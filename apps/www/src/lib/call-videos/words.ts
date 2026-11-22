@@ -199,13 +199,13 @@ export const FEED_WORDS = {
   "cards-essay": {
     heading: FEED_FACTS["cards-essay"].name,
     intro:
-      "Home makes each cards essay's video once the essay reaches it. Watch it here, share it to YouTube, then save its link. Home keeps every one: nothing lets an essay go yet.",
+      "Home makes each cards essay's video once the essay reaches it. Watch it here, share it to YouTube, then save its link. Home keeps every one until a recording it plays is deleted or let go: then its video goes from home, and home won't list or make it again.",
     voice: null,
     unpaired: "Pair this phone with home to see the cards essays.",
     older:
       "Home doesn't list the cards essays here yet. Update home, then try again. Studio › Renders plays them meanwhile.",
     none: "Home hasn't made a cards essay yet.",
-    gone: "This essay isn't among home's cards essays.",
+    gone: "This essay isn't among home's cards essays. Home stops listing an essay once a recording it plays is deleted or let go.",
     week: cardsEssay,
     label: (key: string): string => cardsEssay(key) ?? "This essay",
     waiting: "Home is still making this essay's video.",

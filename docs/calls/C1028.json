@@ -1,0 +1,15 @@
+{
+  "id": "C1028",
+  "made": "2026-11-21",
+  "by": "owner",
+  "paths": ["CLAUDE.md", "packages/video-render/src/templates"],
+  "chose": "Thumbnails stay on one axis: a deterministic, generic template that code fills from each episode's facts. The style may change in later versions (a pencil look, glass, a 3D pop), but only as code that draws the same bytes for the same inputs; the owner does no editorial work on a thumbnail, as on a video.",
+  "options": [
+    "a deterministic generic template, its style iterated as code",
+    "a generator whose output can't be predicted, edited by the owner",
+    "a hand-made thumbnail per video"
+  ],
+  "gray": "The owner, on the first template (C1026): the style can be iterated, but every iteration stays deterministic, because these toolkits share one aim, that the owner does no editorial tasks. Editing a derived title is left out for now.",
+  "undo": "Only the owner can move this call.",
+  "refs": ["#3030", "#3361"]
+}

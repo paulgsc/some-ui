@@ -881,6 +881,58 @@
             "by": "none"
           },
           "amendments": []
+        },
+        {
+          "id": "VH7",
+          "kind": "OA2",
+          "property": "outcome",
+          "claim": "A voice note is heard within 25 minutes of reaching home; if one waits longer, or the transcriber keeps trying and almost nothing gets heard, I am told, with what is waiting on it.",
+          "requirement": "The transcriber is a shared stage (server crate::stage::Stage::Transcriber). At the start of each pass and after each attempt it keeps, it reads every note still waiting (voice_repo::transcript::backlog, the queue's own predicate over the whole queue, never the batch) and exports when the oldest reached home (stage_oldest_waiting_since_timestamp_seconds, aged by Prometheus) and how many wait; it counts how each attempt ended (stage_attempts_total: done for heard or silent, refused for unreadable or too long, failed for a deadline or a failure). StageDegraded fires when the oldest note waiting is older than HEARD_WITHIN (1,500 s, a policy constant exported as stage_promise_seconds, compile-time asserted above a turn given to the renders, an interval and one deadline-long note) for 5 minutes; StageBroken fires when the last hour holds more attempts than one note gets (stage_attempts_per_item, 3) and under a tenth of them done or refused, for 5 minutes. Both reach the owner through home-alerts.yml. The file_host dashboard's SHARED STAGES row shows the stage as OK, SLOW or STUCK, its oldest waiting, and who waits on it: notes waiting, cards essays held for a take, and the share of the last hour the batch lane was held for notes and for Rust Rounds programs.",
+          "bound": {
+            "value": 1500,
+            "unit": "seconds",
+            "tighter": "lower"
+          },
+          "verdict": "holds",
+          "conclusion": "Tested in server CI (promtool and file_host's stage tests): a note waiting past 25 minutes, or an hour of attempts that almost never end, raises an alert, and one bad note failing its three attempts does not; whether 25 minutes is the right bound for the owner's notes is only shown by real use, and a pass that fails on storage leaves the last reading, which TranscriberFailing reports.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "StageDegraded fires once the oldest note has waited past its promise for 5 minutes and stays quiet while notes are picked up or nothing waits; StageBroken fires on an hour of deadlines and stays quiet while attempts end, for one bad note, and for refusals.",
+              "ref": "server:infra/prometheus/rules/home.test.yml"
+            },
+            {
+              "class": "structural",
+              "says": "Stage is a closed enum: each case names its promise, how its attempts end and who waits on it, and a test fails while a case has no alert test or no tile on the overview.",
+              "ref": "server:apps/servers/file_host/src/stage.rs"
+            },
+            {
+              "class": "measured",
+              "says": "The backlog is every note the queue would hear, past any batch and in any order: the oldest's arrival and the count, and nothing once all are heard or out of attempts.",
+              "ref": "server:crates/db/voice/src/transcript.rs"
+            },
+            {
+              "class": "structural",
+              "says": "The pass reads the backlog before anything else it can fail on and again after each attempt it keeps.",
+              "ref": "server:apps/servers/file_host/src/transcribe/pass.rs"
+            },
+            {
+              "class": "structural",
+              "says": "Grafana reads what Prometheus has firing from ALERTS and sends each alert to the Slack contact point.",
+              "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+            }
+          ],
+          "proof": [
+            "server:infra/prometheus/rules/home.test.yml#StageDegraded",
+            "server:infra/prometheus/rules/home.test.yml#StageBroken",
+            "server:apps/servers/file_host/src/stage.rs#every_stage_has_its_alerts_their_tests_and_its_tile",
+            "server:crates/db/voice/src/transcript.rs#the_backlog_is_every_note_waiting_and_its_oldest"
+          ],
+          "watch": {
+            "by": "alert",
+            "ref": "server:infra/prometheus/rules/home.yml"
+          },
+          "amendments": []
         }
       ]
     },
@@ -1389,9 +1441,9 @@
           "kind": "RE9",
           "property": "work",
           "claim": "What the reconciler keeps grows by bites, not by passes.",
-          "requirement": "A pass appends a bite_match row only for a bite whose match changed, and a bite_mapping row only for an accepted proposal, so the rows grow by about one small row per bite (more only when a later pass finds a nearer play) and never by the 10-minute tick; neither is updated or deleted but with the account.",
+          "requirement": "A pass appends a bite_match row only for a bite whose match changed, and a bite_mapping row only for an accepted proposal, so the rows grow by about one small row per bite (more only when a later pass finds a nearer play, and one more per bite each time the matching rule changes, as ENGINE_VERSION is part of the match, BM3) and never by the 10-minute tick; neither is updated or deleted but with the account.",
           "verdict": "holds",
-          "conclusion": "Both tables refuse UPDATE and leave only with the account, and the worker's test writes nothing on a tick that changes no match; at a few hundred bites a season, the rows stay in the tens of kilobytes. Since server#1069, each ENGINE_VERSION bump also adds one small row per bite of a final game, matched or not, since the engine version is part of the match (BM3), which the bound above does not yet name; loosening it waits on the owner (#3356).",
+          "conclusion": "Both tables refuse UPDATE and leave only with the account, and the worker's test writes nothing on a tick that changes no match; at a few hundred bites a season and a handful of rule changes, the rows stay in the tens of kilobytes.",
           "evidence": [
             {
               "class": "structural",
@@ -1417,7 +1469,14 @@
             "by": "dashboard",
             "ref": "server:infra/grafana/dashboards/storage.jsonnet"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-21",
+              "change": "The bound also counts one more small bite_match row per bite each time the matching rule changes (an ENGINE_VERSION bump re-matches every bite home holds, once, since server#1069).",
+              "why": "Earlier bites get the new rule rather than keeping a match made under an older one; each row is tens of bytes and kept for good like every match, and bumps that land together in one release re-match once.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/3356#issuecomment-7068142712"
+            }
+          ]
         },
         {
           "id": "BM5",
@@ -5474,6 +5533,18 @@
       "class": "record",
       "growth": "Per step of a report week let go (the video, then the rest), one receipt row (subject, week, step, YouTube id, bytes, when): at most two per week; append-only, subject-scoped, it leaves with the account.",
       "family": "engagement-report-rendered"
+    },
+    {
+      "store": "server:stage_want",
+      "class": "derived",
+      "growth": "bounded: one row per item a waiter is waiting on right now (server crate::stage::Waiter, server#1091): which waiter (a closed set, cards_essays first), its key (an essay's key), which stage (transcriber), and the item (the subject's note id); no time is kept. Each waiter's pass rewrites its own rows in one transaction, under account deletion's hold, so its rows are whatever that waiter's last pass recorded, never more than it waits on at once; they also go when the note is deleted, and with the account. Derived: every row is recomputed from the waiter's own record (the essay's body) on its next pass, so losing the table loses no one's data.",
+      "family": "voice-heard"
+    },
+    {
+      "store": "server:voice_note_fast_track",
+      "class": "record",
+      "growth": "Per act the owner takes putting one of their voice notes at the front of home's transcriber's line, or taking that back (server#1090, server#1091): one short row (the note's id, the act's number, fast or cancel, when); append-only (UPDATE aborts), a later act a new row, a repeat of the newest act writing nothing; it goes with its note when the owner deletes it for good, and with the account. Grows with how often the owner fast-tracks notes.",
+      "family": "voice-heard"
     }
   ],
   "processes": [

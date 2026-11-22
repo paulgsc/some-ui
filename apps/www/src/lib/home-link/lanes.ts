@@ -14,17 +14,17 @@
 import { useEffect, useSyncExternalStore } from "react"
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 
+import type { Refresher } from "@/lib/pull-refresh/refreshers"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 
 import { homeLink, LINK_CLOCK, pairing, useHomeLink } from "./index"
-import type { KeptRun, KeptState } from "./kept-model"
+import type { KeptState } from "./kept-model"
 import type { Kept, KeptPorts } from "./kept-runtime"
 import { createKept, laneExchange } from "./kept-runtime"
 import type { KeptRecord } from "./kept-watch"
 import { askKept, watchKept } from "./kept-watch"
 import type { HomeLinkState, Pairing } from "./model"
 import { drainStopping, homeBusy } from "./model"
-import type { HomeRefresher } from "./pull"
 import { homeRefresher } from "./pull"
 import { servesRefresher, watchServes } from "./serves"
 import type { Serves } from "./serves-model"
@@ -145,10 +145,10 @@ export function useLaneHome(lane: Lane): KeptState {
   return useLaneRun(lane)
 }
 
-let homePull: HomeRefresher | null = null
+let homePull: Refresher | null = null
 
 /** The one pull of home, made on first use (`document` is read then). */
-function homePullOf(): HomeRefresher {
+function homePullOf(): Refresher {
   homePull ??= homeRefresher({ watched: () => watched, doc: document })
   return homePull
 }
@@ -159,14 +159,6 @@ function homePullOf(): HomeRefresher {
  */
 export function useHomePull(): void {
   useEffect(() => screenRefreshers.register(homePullOf()), [])
-}
-
-/**
- * How `lane`'s run in the pull under way ended (`./pull`'s `ended`), for a
- * screen that names that lane in its own words (Jobs, PULL2).
- */
-export function pulledLane(lane: Lane): Promise<KeptRun | null> {
-  return homePullOf().ended(wire(lane).sending)
 }
 
 /**

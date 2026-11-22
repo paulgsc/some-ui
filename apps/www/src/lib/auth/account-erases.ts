@@ -78,6 +78,18 @@ export const ACCOUNT_ERASES = {
       text: "Each round sent home, as the tutor wrote it: its cards, which of your voice notes a card answered, and the tutor's nudges; and the time your phone tracked you working on a week: when it started and stopped, the ticket, step and points, the name your phone gave itself, and how much of it you said was work.",
     },
     {
+      label: "Rust Rounds' essay videos",
+      text: "Each week's essay video home made from your takes, the YouTube links you saved for it, and the note of each one that went from home: when, why and how big.",
+    },
+    {
+      label: "Interview weeks' essay videos",
+      text: "The same for each week of mock interview's essay: its video home made from your takes, its YouTube links, and the note of each one that went.",
+    },
+    {
+      label: "Cards essays withdrawn for your takes",
+      text: "Which cards essays' videos went from home for good because a recording one of their spoken cards played was deleted or let go, and which recording it was.",
+    },
+    {
       label: "How each recording ended",
       text: "For each recording your phone sent home a note of: which screen it was on, whether it was kept, stopped or failed, how long the microphone took to open, how long it ran and how loud it got. Never the sound or what you said.",
     },
@@ -112,6 +124,10 @@ export const ACCOUNT_ERASES = {
     {
       label: "Rust Rounds' programs",
       text: "Home's copy of each Rust Rounds program, what rustc printed for it, and when the first round holding it reached home. They are kept by their code alone, linked to no one once your rounds are gone.",
+    },
+    {
+      label: "Cards essays",
+      text: "Each cards essay's cards, and the YouTube link saved for it. A video home already made from one stays as it is, your takes' voices included.",
     },
     {
       label: "Logs and backups",

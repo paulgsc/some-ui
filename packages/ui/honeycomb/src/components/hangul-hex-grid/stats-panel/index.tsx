@@ -6,6 +6,7 @@ import type {
   GameStats,
   TimingParams,
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
+import { formatTimecode } from "@some-ui/core-utils"
 
 type StatsPanelProps = {
   stats: GameStats & { accuracy: number }
@@ -39,13 +40,6 @@ export const StatsPanel = ({
     if (stats.accuracy >= 80) return "text-green-400"
     if (stats.accuracy >= 60) return "text-yellow-400"
     return "text-red-400"
-  }
-
-  const formatTime = (ms: number): string => {
-    const seconds = Math.floor(ms / 1000)
-    const minutes = Math.floor(seconds / 60)
-    const remainingSeconds = seconds % 60
-    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`
   }
 
   return (
@@ -111,7 +105,7 @@ export const StatsPanel = ({
               Time:
             </span>
             <span className="font-mono text-base sm:text-xl lg:text-2xl font-bold text-yellow-400">
-              {formatTime(timeRemaining)}
+              {formatTimecode(timeRemaining)}
             </span>
           </div>
         )}

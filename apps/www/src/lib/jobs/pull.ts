@@ -1,13 +1,11 @@
 /**
  * What a pull on a Jobs screen reads again (PULL2, #2459): the morning
- * run's picks and its record, which reach this phone only by the jobs
- * lane's run (`./home`, steps 3 and 4). The pull of home asks that run
- * (`lib/home-link/pull`, PULL3); this names it, in Jobs' words, when it
- * didn't get in step.
+ * run's picks and home's record of its runs.
+ *
+ * JP1: it reads them through `askJobsPicks` alone, as Studio's screens read
+ * theirs, never by waiting on a lane's run, which queues behind the drain.
  */
-import { jobsLane } from "@/lib/home-link/jobs"
-import { resynced } from "@/lib/home-link/kept-model"
-import { pulledLane } from "@/lib/home-link/lanes"
+import { askJobsPicks } from "@/lib/home-link/jobs"
 import type { Refresher } from "@/lib/pull-refresh/refreshers"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 
@@ -16,9 +14,11 @@ import { PULL_CHECKS } from "./words"
 const jobsRefresher: Refresher = {
   what: PULL_CHECKS,
   checkAgain: async () => {
-    const ended = await pulledLane(jobsLane)
-    if (ended !== null && !resynced(ended)) {
-      throw new Error("the jobs lane's run didn't get in step")
+    const read = await askJobsPicks()
+    // Not paired: there is nothing on home to check.
+    if (read.kind === "unpaired") return
+    if (read.kind !== "answered" || read.value !== null) {
+      throw new Error("this morning's picks couldn't be read from home")
     }
   },
 }

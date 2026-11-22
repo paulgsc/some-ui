@@ -1,0 +1,19 @@
+{
+  "id": "C895",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:crates/db/voice/src/transcript.rs",
+    "server:apps/servers/file_host/src/transcribe/pass.rs",
+    "server:docs/identity.md"
+  ],
+  "chose": "The transcriber's queue takes the notes tried fewest times first, then the oldest, so a note that keeps running to its deadline is tried again only after every fresher take has had its first hearing.",
+  "options": [
+    "fewest attempts first, then oldest",
+    "oldest first, as before",
+    "newest first"
+  ],
+  "gray": "The order decides which of the owner's takes is heard first when several wait, which the owner sees in how soon a take is heard; invariant 23 had said oldest first and no check fixed the order.",
+  "undo": "Order voice_repo::transcript::waiting_first by stored_at alone, after the excused note, and restore identity.md's 'oldest first'.",
+  "refs": ["server#1087"]
+}

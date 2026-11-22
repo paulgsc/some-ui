@@ -12,18 +12,22 @@
  * home. A week sent moves the record; it goes at the lane's next run.
  */
 import { useSyncExternalStore } from "react"
+import type { HomeExchanged } from "@some-ui/core-utils"
 import { fnv1a } from "@some-ui/core-utils"
 
 import { interviewGoing } from "@/lib/interview-week/home"
 import { phoneJobs } from "@/lib/jobs"
+import { readDigests } from "@/lib/jobs/home"
 import { homeOutbox } from "@/lib/jobs/model"
 import { noticeFiling } from "@/lib/jobs/notice"
 import { browserLocalStorage } from "@/lib/tenant/storage"
 
-import { usePairing } from "./index"
+import { homeLink, usePairing } from "./index"
 import { exchangeJobsLane, interviewCounts } from "./interview"
 import type { Lane, LaneCounts } from "./lanes"
 import { fingerprintOf, sentUnder } from "./sent"
+import type { NotAnswered } from "./while-busy"
+import { answered, askWhileBusy } from "./while-busy"
 
 export const jobsLane: Lane = {
   id: "jobs",
@@ -66,3 +70,19 @@ export const jobsLane: Lane = {
     }
   },
 }
+
+/**
+ * A pull on a Jobs screen's read of this morning's picks and home's record
+ * of the runs (`lib/jobs/pull`, JP1): `readDigests`' two `GET`s, as the
+ * person's own read of home, ahead of the drain's turns on the pace.
+ */
+export const askJobsPicks = (): Promise<
+  | { readonly kind: "answered"; readonly value: HomeExchanged | null }
+  | NotAnswered
+> =>
+  askWhileBusy(() =>
+    answered(
+      () => homeLink().keep((send) => readDigests(phoneJobs().keeping, send)),
+      (value) => ({ kind: "answered" as const, value })
+    )
+  )

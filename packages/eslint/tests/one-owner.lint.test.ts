@@ -1,6 +1,7 @@
 /**
  * Lint-time tests for one-owner/no-local-primitive (#2112), over the shapes
- * the repo's copies of `assertNever` and `isRecord` take.
+ * the repo's copies of `assertNever`, `isRecord` and the `m:ss` clock
+ * (`formatTimecode`, `formatTime`) take.
  */
 
 import {
@@ -44,6 +45,14 @@ describe("lint: one-owner/no-local-primitive", () => {
     [
       "an exported const function expression",
       "export const isRecord = function (value: unknown): boolean { return typeof value === 'object' }",
+    ],
+    [
+      "a component's local clock",
+      "const formatTime = (ms: number): string => `${Math.floor(ms / 60_000)}`",
+    ],
+    [
+      "a second formatTimecode",
+      "export function formatTimecode(ms: number): string { return String(ms) }",
     ],
   ])("fires on %s", async (shape, code) => {
     const msgs = await lintSnippet(makeConfig(), code, "src/lib/guards.ts")
