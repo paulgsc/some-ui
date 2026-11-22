@@ -277,6 +277,43 @@ describe("a spoken essay (EXPLAIN6)", () => {
     expect(marks.at(-1)).toEqual({ scene: "close", title: CLOSE_MARK })
   })
 
+  it("says a chapter of several scenes once, and marks it once (C1027)", async () => {
+    const cut = await showcase("rust-scratchpad")
+    const [intro, first, second, ...rest] = cut.shots
+    if (first?.spoken?.role !== "scene" || second?.spoken?.role !== "scene")
+      throw new Error("the showcase opens with two scenes")
+    const { chapter: _dropped, ...goesOn } = second.spoken
+    const shots = [intro, first, { ...second, spoken: goesOn }, ...rest]
+    const together = { ...cut, shots }
+    expect(refusal(together)).toBe("")
+    const parsed = parseCardsEssay(RUST, together)
+    if (!parsed.ok) throw new Error(parsed.problems.join("\n"))
+    const scenes = cardsScenes(parsed.value)
+    const said = cardsLines(scenes).map((l) => [l.file, l.voice])
+    expect(said).toContainEqual([
+      `03-${second.id}-narration`,
+      CARDS_VOICES.narrator,
+    ])
+    expect(said).not.toContainEqual([
+      `03-${second.id}-chapter`,
+      CARDS_VOICES.host,
+    ])
+    const marks = cardsChapterMarks(scenes)
+    expect(marks.map((m) => m.scene)).toContain(first.id)
+    expect(marks.map((m) => m.scene)).not.toContain(second.id)
+    expect(marks).toHaveLength(cardsChapterMarks(cardsScenes(cut)).length - 1)
+    // With no chapter opened before it, a scene can't go on in one.
+    const { chapter: _first, ...unopened } = first.spoken
+    expect(
+      refusal({
+        ...cut,
+        shots: [intro, { ...first, spoken: unopened }, ...cut.shots.slice(2)],
+      })
+    ).toContain(
+      `${first.id}: it has no chapter line, and no scene before it opened a chapter`
+    )
+  })
+
   it("joins a scene's takes with a pause, each word moved to its place", () => {
     const chapter = {
       ms: 1_000,
