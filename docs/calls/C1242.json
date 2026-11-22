@@ -6,13 +6,13 @@
     "packages/video-render/src/game-essay.ts",
     "packages/video-render/src/templates/game-essay/sample-essay.json"
   ],
-  "chose": "The game essay's template takes home's week file as agreed with the server worker. A game carries its scheduled kickoff. A bite is filed by the half home gives it; one home gives none is filed by its scenario's phase (before the game for a pre-game scenario, the first half for an in-game one said before home saw a play, after the game for an after-final one), and with no phase to go by (said first and never mapped, or about the owner's watching) before the game when said before kickoff and after it otherwise (`gamePlaceOf`). The essay keeps no record of which bites home gave a half, so the check holds a matched bite to its play's quarter and bites to their order within each placement, not across the game's. A bite said first and never mapped keeps a null scenario, which the stage is to say as \"Said first\". Whose voice says a bite is code's (`gameVoiceOf`), for the writer to set: the owner's choice when they made one, else read aloud below an average word confidence of 0.70 (READ_ALOUD_BELOW, the prototype's bar), else the owner's voice. Version 1 is amended in place, since no essay has been written at it.",
+  "chose": "The game essay's template takes home's week file as agreed with the server worker. Each bite is filed where home's week file puts it (`placement`: before the game, a half, or after it), since only home knows whether a bite with no half of its own came before the first play or after the final; the check holds a matched bite to its play's quarter and bites to their order within each placement. A bite said first and never mapped keeps a null scenario, which the stage is to say as \"Said first\". Whose voice says a bite is code's (`gameVoiceOf`), for the writer to set: the owner's choice when they made one, else read aloud below an average word confidence of 0.70 (READ_ALOUD_BELOW, the prototype's bar), else the owner's voice. Version 1 is amended in place, since no essay has been written at it.",
   "options": [
-    "Before and after as placements beside the halves, filed by phase and then kickoff (chosen): one ordered list per game, and home's missing half has a rule the writer applies.",
-    "Home names a half for every bite: puts the template's filing rule on the server, and a pre-game bite has no half to name.",
+    "Home says each bite's placement (chosen): home alone can tell a bite said before the first play from one said after the final, so the essay files where home put it.",
+    "The template guesses a missing half from the scenario's phase and kickoff: files an in-game remark said after the final in the first half, as a review found.",
     "Leave pre-game and after-final bites out of the essay: loses bites the owner said, against every scene standing on a bite."
   ],
   "gray": "Where a bite with no half appears, what an unmapped bite shows, and the confidence below which the second voice reads a bite are what the owner sees and hears in every essay; D5 and D10 set the direction, not these lines.",
-  "undo": "Drop `before` and `after` from GAME_PLACEMENTS and the game's kickoff, make scenario required again, or move READ_ALOUD_BELOW, in packages/video-render/src/game-essay.ts.",
+  "undo": "Drop `before` and `after` from GAME_PLACEMENTS, make scenario required again, or move READ_ALOUD_BELOW, in packages/video-render/src/game-essay.ts; tell home's week file.",
   "refs": ["#2074"]
 }

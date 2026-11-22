@@ -17,8 +17,8 @@
  *      the way its stance calls for (D21);
  *    - `halftime`, between a game's first half and its second (D10).
  *
- *    A game's bites are filed by half, and before or after the game for one
- *    home gives no half (`gamePlaceOf`, C1242). Whose voice says each is
+ *    A game's bites are filed where home's week file puts them: a half,
+ *    or before or after the game (`GAME_PLACEMENTS`, C1242). Whose voice says each is
  *    code's (`gameVoiceOf`, D5), for the writer to set `voice` by.
  * 3. `close`: the week, closed.
  *
@@ -49,7 +49,6 @@ import { addDays, isoWeekMonday } from "@some-ui/core-utils"
 import {
   HALVES,
   isScenarioId,
-  scenarioOf,
   type Half,
   type ScenarioId,
 } from "@some-ui/game-scenarios"
@@ -104,37 +103,13 @@ export const gameVoiceOf = (
 
 /**
  * Where a game's bites are filed (D10, C1242): a half, or before the game
- * or after it for a bite home gives no half (a pre-game or after-final one).
+ * or after it. Home's week file says where each bite goes (`placement`),
+ * since only home knows whether a bite with no half of its own came before
+ * the first play or after the final; the writer files each where home put
+ * it, and the check holds a matched bite to its play's quarter.
  */
 export const GAME_PLACEMENTS = ["before", ...HALVES, "after"] as const
 export type GamePlacement = (typeof GAME_PLACEMENTS)[number]
-
-/**
- * Where a bite is filed: its half as home gave it (the half of the quarter
- * home last saw by then, C872, or its matched play's). Home gives none to a
- * bite about no moment of play, or one said before home saw a play. Then
- * its scenario's phase decides: before the game for a pre-game scenario,
- * the first half for an in-game one (no play seen yet), after the game for
- * an after-final one; and with none to go by (said first, never mapped, or
- * about the owner's watching), before kickoff is before the game and any
- * later is after it. The writer files by this; the essay keeps no record of
- * which bites home gave a half, so the check holds a matched bite to its
- * play's quarter and bites to their order within each placement, not to
- * this rule.
- */
-export function gamePlaceOf(
-  half: Half | null,
-  scenario: ScenarioId | null,
-  saidAt: string,
-  kickoff: string
-): GamePlacement {
-  if (half !== null) return half
-  const phase = scenario === null ? null : scenarioOf(scenario).phase
-  if (phase === "pre") return "before"
-  if (phase === "in") return "first"
-  if (phase === "post") return "after"
-  return Date.parse(saidAt) < Date.parse(kickoff) ? "before" : "after"
-}
 
 /**
  * The days a week's essay covers (C1241): an NFL week, from the Tuesday of
@@ -350,8 +325,6 @@ const GameSchema = z.strictObject({
   id: z.string().regex(/^[A-Za-z0-9_-]{1,32}$/, "a game's id is ESPN's"),
   away: team,
   home: team,
-  /** When it is scheduled to kick off: what files a bite home gives no half and no phase to go by (`gamePlaceOf`). */
-  kickoff: z.iso.datetime({ offset: true }),
   /** The game's card. */
   game: said,
   /** Its halves with bites, and before and after it, in the game's order; one with none is left out. */

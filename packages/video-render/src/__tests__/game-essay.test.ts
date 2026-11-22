@@ -11,7 +11,6 @@ import {
   GAME_ESSAY_ID,
   GAME_ESSAY_VERSION,
   gameEssayFormat,
-  gamePlaceOf,
   gameVoiceOf,
   parseGameEssay,
   QUOTE_RUN,
@@ -265,7 +264,6 @@ describe("an essay that contradicts itself", () => {
           id: "2",
           away: "LV",
           home: "KC",
-          kickoff: game.kickoff,
           game: { said: "Another game." },
           halves: [first],
         },
@@ -381,24 +379,26 @@ describe("home's week file, as the essay files it (C1241, C1242)", () => {
     ).toEqual(["week: 2025-w53 is not a week of its year"])
   })
 
-  it("files a bite home gives no half by its scenario's phase, else by kickoff", () => {
-    const kickoff = "2026-10-23T00:15:00Z"
-    const mid = "2026-10-23T01:30:00Z"
-    expect(gamePlaceOf("second", "in.turnover", mid, kickoff)).toBe("second")
-    // A pre-game scenario said mid-game is still about before the game.
-    expect(gamePlaceOf(null, "pre.weather", mid, kickoff)).toBe("before")
-    // An in-game one said before home saw a play is the first half's.
-    expect(gamePlaceOf(null, "in.first-drive", mid, kickoff)).toBe("first")
-    expect(gamePlaceOf(null, "post.result", mid, kickoff)).toBe("after")
-    // With no phase to go by, kickoff decides, as instants.
-    expect(gamePlaceOf(null, null, "2026-10-22T23:00:00Z", kickoff)).toBe(
-      "before"
-    )
-    expect(gamePlaceOf(null, "you.caught-it", kickoff, kickoff)).toBe("after")
-    // Sorts before kickoff as text, and is after it as an instant.
-    expect(gamePlaceOf(null, null, "2026-10-22T17:15:01-07:00", kickoff)).toBe(
-      "after"
-    )
+  it("refuses a matched bite filed before or after the game, against its play's quarter", () => {
+    const essay = sample()
+    const [game] = essay.games
+    const [first, ...rest] = game?.halves ?? []
+    if (game === undefined || first === undefined)
+      throw new Error("the sample has a first half")
+    expect(
+      problems({
+        ...essay,
+        games: [
+          {
+            ...game,
+            halves: [{ ...first, half: "before" }, ...rest],
+            halftime: undefined,
+          },
+        ],
+      })
+    ).toEqual([
+      "sample-bite-1: its play is in the first half, and it is filed under before the game",
+    ])
   })
 
   it("orders bites within each placement, not across the game's", () => {
