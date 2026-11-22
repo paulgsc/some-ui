@@ -311,7 +311,7 @@ function refusalLine(feed: string, refusal: Refusal): string {
  * to is no refusal: the essay waits, unseen here, as a Rust Rounds essay
  * waits for its takes. A take the owner deleted is no refusal either: home
  * withdraws the essay for good, its video included, and it leaves every list
- * (paulgsc/server#1071), so `take-missing` is only a take home never had.
+ * (paulgsc/server#1055, #1071), so `take-missing` is only a take home never had.
  */
 const ESSAY_REFUSAL_WORDS = {
   "take-missing":
