@@ -167,7 +167,7 @@ describe("renderLanding", () => {
     const head = renderLandingHead()
     const outside = head.replace(
       new RegExp(
-        `@media ${WIDE_MOTION.replace(/[()]/g, "\\$&")} \\{(?: [^{}]*\\{[^{}]*\\})* \\}`,
+        `@media ${WIDE_MOTION.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} \\{(?: [^{}]*\\{[^{}]*\\})* \\}`,
         "g"
       ),
       ""
