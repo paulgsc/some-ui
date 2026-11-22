@@ -30,7 +30,6 @@ import {
   spreadWords,
   stillFile,
   thumbnailInput,
-  TimedWordSchema,
   UploadCopySchema,
 } from "@some-ui/video-render"
 import type {

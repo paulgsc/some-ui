@@ -38,7 +38,7 @@ const id = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
 
 export const FrictionSchema = z.strictObject({
   schema: z.literal(FRICTION_SCHEMA),
-  /** The owner's day it was read on. */
+  /** The last day of the read's week (its Sunday): every figure is of the records before its end. */
   asOf: z.iso.date(),
   windowDays: z.literal(FRICTION_WINDOW_DAYS),
   /** Each module the build offers, by its pipeline in the registry, once. */
@@ -136,8 +136,9 @@ const keyOf = (...parts: ReadonlyArray<string>): string => parts.join("/")
 
 /**
  * The aggregate a walkthrough reads, from home's weekly read `raw` over the
- * 28 days ending with its week, and `registry`, as of the owner's day `asOf`
- * (how long a module has been quiet is counted to it).
+ * 28 days ending with its week, and `registry`, as of that week's last day
+ * (`asOf`): home reads only the records before the week's end, so how long a
+ * module has been quiet is counted to that day, never a later one.
  *
  * - A module is measured by its root (`opened`) only where the root is shown
  *   on screen: a root offered by notification counts notifications sent, so
@@ -157,8 +158,7 @@ const keyOf = (...parts: ReadonlyArray<string>): string => parts.join("/")
  */
 export function frictionOf(
   raw: unknown,
-  registry: FrictionRegistry,
-  asOf: string
+  registry: FrictionRegistry
 ): Parsed<Friction> {
   const parsed = HomeWeeksSchema.safeParse(raw)
   if (!parsed.success)
@@ -176,6 +176,7 @@ export function frictionOf(
   } catch {
     return { ok: false, problems: [`week: ${home.week} is no ISO week`] }
   }
+  const asOf = last
   const first = addDays(last, 1 - FRICTION_WINDOW_DAYS)
   const seen = new Map(
     (home.seen ?? []).map((s) => [

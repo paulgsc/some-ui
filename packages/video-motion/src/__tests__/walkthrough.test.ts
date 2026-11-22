@@ -49,7 +49,7 @@ const sampleHome: unknown = JSON.parse(
     "utf8"
   )
 )
-const read = frictionOf(sampleHome, PIPELINES, "2026-11-15")
+const read = frictionOf(sampleHome, PIPELINES)
 if (!read.ok) throw new Error(read.problems.join("\n"))
 const friction = read.value
 
@@ -236,7 +236,7 @@ describe("the walkthrough (WALK4)", () => {
     ])
     expect(extra(4)).toEqual([
       WALKTHROUGH_WORDS.nothingKept.said,
-      "Some of what I built, I haven't opened lately: aph, for 6 weeks. How I use 11 other modules isn't measured yet.",
+      "Some of what I built, I haven't opened in the last four weeks: aph. How I use 11 other modules isn't measured yet.",
     ])
     const card = (id: string): unknown => {
       const picture = cut.shots.find((s) => s.id === id)?.picture
@@ -254,7 +254,7 @@ describe("the walkthrough (WALK4)", () => {
     })
   })
 
-  it("says a step home couldn't count whole as too much, never as nothing kept", () => {
+  it("says a step home couldn't count whole as not counted, never as nothing kept or as used a lot", () => {
     const counts = {
       pipeline: "jobs",
       affordance: "todays-pick",
@@ -266,6 +266,11 @@ describe("the walkthrough (WALK4)", () => {
     expect(measureSaid([{ kind: "place", counts }], true)).toEqual([
       WALKTHROUGH_WORDS.tooMuch.said,
     ])
+    // A partial read is a fact about the whole read: it says nothing of how
+    // much this step was used.
+    expect(WALKTHROUGH_WORDS.tooMuch.said).not.toMatch(
+      /more than|a lot|often$/u
+    )
     expect(measureSaid([{ kind: "place", counts }])).toEqual([
       WALKTHROUGH_WORDS.nothingKept.said,
     ])
@@ -311,16 +316,12 @@ describe("the walkthrough (WALK4)", () => {
       WALKTHROUGH_WORDS.silence.nothingMeasured.said
     )
     const long = {
-      silent: [
-        { pipeline: "x", name: "Playoff delta by the week", weeksQuiet: 5 },
-      ],
+      silent: [{ pipeline: "x", name: "Playoff delta by the week" }],
       measured: 1,
       notMeasured: 0,
     }
-    expect(silenceNotes(long)).toBe("Playoff delta b…: 5 weeks")
-    expect(silenceSaid(long)).toContain(
-      "Playoff delta by the week, for 5 weeks"
-    )
+    expect(silenceNotes(long)).toBe("Playoff delta b…")
+    expect(silenceSaid(long)).toContain("Playoff delta by the week")
   })
 
   it("says it in the viewer's terms, never the machinery's", () => {

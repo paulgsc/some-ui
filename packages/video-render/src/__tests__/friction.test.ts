@@ -44,7 +44,7 @@ const registry: FrictionRegistry = [
 ]
 
 const read = (raw: unknown = sampleHome): Friction => {
-  const got = frictionOf(raw, registry, "2026-11-15")
+  const got = frictionOf(raw, registry)
   if (!got.ok) throw new Error(got.problems.join("\n"))
   return got.value
 }
@@ -137,7 +137,7 @@ describe("the friction aggregate (WALK5, C861)", () => {
 
   it("refuses a week kept before home measured friction", () => {
     const { friction: _, ...before } = sampleHome
-    const got = frictionOf(before, registry, "2026-11-15")
+    const got = frictionOf(before, registry)
     expect(got.ok ? [] : got.problems).toEqual([
       "2026-W46 was kept before home measured friction",
     ])

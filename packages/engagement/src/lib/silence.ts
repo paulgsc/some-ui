@@ -58,7 +58,9 @@ export function silentModules(
   }
   const rank = (s: Silent): number => s.weeksQuiet ?? Number.POSITIVE_INFINITY
   return silent.sort(
-    (a, b) => rank(b) - rank(a) || a.pipeline.localeCompare(b.pipeline)
+    (a, b) =>
+      rank(b) - rank(a) ||
+      (a.pipeline < b.pipeline ? -1 : a.pipeline > b.pipeline ? 1 : 0)
   )
 }
 

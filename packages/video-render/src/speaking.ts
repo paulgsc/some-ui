@@ -11,6 +11,7 @@ import { join } from "node:path"
 import { z } from "zod"
 
 import { TimedWordSchema } from "./cut-list"
+import { BITEXACT, QUIET } from "./plan"
 import type { RenderPolicy } from "./policy"
 import { fail } from "./refused"
 import type { Ports } from "./render"
@@ -242,4 +243,47 @@ export async function sayLines({
     process.stdout.write(`recorded ${line.file}\n`)
   }
   return takes
+}
+
+/**
+ * How a laid line's silence after it is given: `after` its take ends, for
+ * `ms`; or `until` `ms` from its own start, where the next line starts; or
+ * none, the last.
+ */
+export type LaidPad =
+  | { readonly kind: "after"; readonly ms: number }
+  | { readonly kind: "until"; readonly ms: number }
+  | null
+
+/**
+ * Lays `lines`' takes end to end into `out`, each followed by its pad, in
+ * one ffmpeg call, bit-exact (VR1): the one join of per-line takes, the
+ * cards essays' (`after`, a chapter's gap) and the walkthrough's (`until`,
+ * a stop's lines at their places) alike. Answers the laid file's own length
+ * in whole ms, which bounds a take whose lines' lengths were each rounded,
+ * so a take never runs past its audio; refuses one ffmpeg can't lay or
+ * ffprobe can't read.
+ */
+export async function layAudio(
+  ports: Ports,
+  lines: ReadonlyArray<{ readonly file: string; readonly pad: LaidPad }>,
+  out: string
+): Promise<number> {
+  const inputs = lines.flatMap((line) => ["-i", line.file])
+  const pads = lines.map((line, k) => {
+    const into = `[p${String(k)}];`
+    if (line.pad === null) return `[${String(k)}:a]anull${into}`
+    const seconds = String(line.pad.ms / 1000)
+    return line.pad.kind === "after"
+      ? `[${String(k)}:a]apad=pad_dur=${seconds}${into}`
+      : `[${String(k)}:a]apad=whole_dur=${seconds}${into}`
+  })
+  const filter = `${pads.join("")}${lines.map((_, k) => `[p${String(k)}]`).join("")}concat=n=${String(lines.length)}:v=0:a=1`
+  const laid = await ports.ffmpeg({
+    args: [...QUIET, ...inputs, "-filter_complex", filter, ...BITEXACT, out],
+  })
+  if (!laid.ok) fail([`${out} can't be laid:`, laid.stderr])
+  const facts = await ports.probe(out)
+  if (!facts) fail([`${out} can't be read`])
+  return Math.floor(facts.durationMs)
 }

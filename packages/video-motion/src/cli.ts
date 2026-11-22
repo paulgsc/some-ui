@@ -5,12 +5,17 @@ import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { parseArgs } from "node:util"
-import { addDays, isoWeekMonday } from "@some-ui/core-utils"
 import { PIPELINES } from "@some-ui/engagement"
-import { DEFAULT_POLICY, frictionOf, QUIET } from "@some-ui/video-render"
-import type { Friction, StillTake, TimedWord } from "@some-ui/video-render"
+import { DEFAULT_POLICY, frictionOf } from "@some-ui/video-render"
+import type {
+  CutList,
+  Friction,
+  StillTake,
+  TimedWord,
+} from "@some-ui/video-render"
 import {
   here,
+  layAudio,
   nodePorts,
   readJson,
   Refused,
@@ -407,7 +412,7 @@ async function promo(folder: string): Promise<void> {
 const TakeFileSchema = z.strictObject({
   ms: z.int().positive(),
   /** What the take says: refused where it isn't the line asked for, as a week's numbers move. */
-  said: z.string().optional(),
+  said: z.string(),
   words: z
     .array(
       z.strictObject({
@@ -431,7 +436,7 @@ async function takesIn(
     )
     if (!read.success)
       throw new Refused(`the take ${file}: ${read.error.message}`)
-    if (read.data.said !== undefined && read.data.said !== said)
+    if (read.data.said !== said)
       throw new Refused(
         `the take ${file} says "${read.data.said}", not "${said}": say lines.json again`
       )
@@ -444,30 +449,49 @@ async function takesIn(
 /**
  * Each voiced shot's lines laid into its take, `<out>/<shot>.wav`: each line
  * from `<takes>/<line>.wav`, padded with silence to where the next starts
- * (`laid`), as `laidTake` placed their words.
+ * (`laid`), as `laidTake` placed their words, by the one join of per-line
+ * takes (`layAudio`). Answers each laid file's own length, which bounds its
+ * shot's take.
  */
 async function layTakes(
   out: string,
   takes: string,
   laid: ReadonlyArray<LaidTake>
-): Promise<void> {
+): Promise<ReadonlyMap<string, number>> {
   const ports = nodePorts(out)
+  const lengths = new Map<string, number>()
   for (const shot of laid) {
-    const n = shot.lines.length
-    const inputs = shot.lines.flatMap((line) => ["-i", join(takes, line.file)])
-    const pads = shot.lines.map((line, k) => {
+    const lines = shot.lines.map((line, k) => {
       const next = shot.lines[k + 1]
-      return next === undefined
-        ? `[${String(k)}:a]anull[p${String(k)}];`
-        : `[${String(k)}:a]apad=whole_dur=${String((next.atMs - line.atMs) / 1000)}[p${String(k)}];`
+      return {
+        file: join(takes, line.file),
+        pad:
+          next === undefined
+            ? null
+            : { kind: "until" as const, ms: next.atMs - line.atMs },
+      }
     })
-    const lead = shot.lines[0]?.atMs ?? 0
-    const filter = `${pads.join("")}${shot.lines.map((_, k) => `[p${String(k)}]`).join("")}concat=n=${String(n)}:v=0:a=1,adelay=${String(lead)}:all=1`
-    const made = await ports.ffmpeg({
-      args: [...QUIET, ...inputs, "-filter_complex", filter, shot.file],
-    })
-    if (!made.ok)
-      throw new Refused(`${shot.file} can't be laid:\n${made.stderr}`)
+    lengths.set(shot.file, await layAudio(ports, lines, shot.file))
+  }
+  return lengths
+}
+
+/** `cut` with each laid take ending no later than its laid file does. */
+function boundedByLaid(
+  cut: CutList,
+  lengths: ReadonlyMap<string, number>
+): CutList {
+  return {
+    ...cut,
+    shots: cut.shots.map((shot) => {
+      const laidMs = shot.take ? lengths.get(shot.take.file) : undefined
+      return shot.take === undefined || laidMs === undefined
+        ? shot
+        : {
+            ...shot,
+            take: { ...shot.take, outMs: Math.min(shot.take.outMs, laidMs) },
+          }
+    }),
   }
 }
 
@@ -500,18 +524,7 @@ async function walkthrough(file: string): Promise<void> {
   let friction: Friction | null = null
   if (values.home !== undefined) {
     const home: unknown = await readJson(here(values.home))
-    const week =
-      typeof home === "object" && home !== null && "week" in home
-        ? String(home.week)
-        : ""
-    const asOf = ((): string => {
-      try {
-        return addDays(isoWeekMonday(week), 6)
-      } catch {
-        throw new Refused(`home's read is of ${week || "no week"}, no ISO week`)
-      }
-    })()
-    const parsed = frictionOf(home, PIPELINES, asOf)
+    const parsed = frictionOf(home, PIPELINES)
     if (!parsed.ok) throw new Refused(parsed.problems.join("\n"))
     friction = parsed.value
   }
@@ -556,13 +569,14 @@ async function walkthrough(file: string): Promise<void> {
   } else if (values.takes !== undefined) {
     takes = new Map(await takesIn(here(values.takes), lines))
   }
-  const { cut, laid } = voicedWalkthrough(
-    read.data,
-    walked.data,
-    friction,
-    takes
-  )
-  if (saidInto !== undefined) await layTakes(out, here(saidInto), laid)
+  const voiced = voicedWalkthrough(read.data, walked.data, friction, takes)
+  const cut =
+    saidInto === undefined
+      ? voiced.cut
+      : boundedByLaid(
+          voiced.cut,
+          await layTakes(out, here(saidInto), voiced.laid)
+        )
   await writeFile(
     join(out, "cut-list.json"),
     `${JSON.stringify(cut, null, 1)}\n`

@@ -235,10 +235,11 @@ export const SpokenSchema = z.discriminatedUnion("role", [
   /** What to do next, and where to look when it fails. */
   z.strictObject({ role: z.literal("close"), said: SayableSchema }),
   /**
-   * A walkthrough's stop (WALK5, #3337): one line per screen of the stop,
-   * its caption as said, in order. Each is said on its own, so its screen
-   * can be held for as long as it takes (`laidTake`); a cards essay has no
-   * screens to hold, so it refuses one (`parseCardsEssay`).
+   * A walkthrough's stop (WALK5, #3337): its narration, the authored lines
+   * that add what its screens can't show (C945, C1000), in order, tied to
+   * no one screen. Each is said on its own and laid at its place in the
+   * stop's take (`laidTake`), and the stop is held for as long as they take;
+   * a cards essay plays no walk, so it refuses one (`parseCardsEssay`).
    */
   z.strictObject({
     role: z.literal("walk"),

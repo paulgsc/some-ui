@@ -31,9 +31,12 @@ export const WALKTHROUGH_WORDS = {
     drawn: "Nothing kept yet",
     said: "Nothing of this step is kept yet.",
   },
+  // Home read only part of the window (`partial`): a fact about the whole
+  // read, not this step, so it says the count is unknown, never that the
+  // step was used a lot.
   tooMuch: {
-    drawn: "Too much to count",
-    said: "I used this step more than one read of it can count.",
+    drawn: "Not counted this time",
+    said: "How often I used this step isn't counted this time.",
   },
   count: (n: Shown): string =>
     n === "fewer-than-5" ? "fewer than 5" : String(n),
@@ -66,7 +69,7 @@ export const WALKTHROUGH_WORDS = {
         : `When I rate how hard an application felt, it comes to about ${String(median)} out of 5.`,
   },
   silence: {
-    title: "Not opened|lately",
+    title: "Not opened|in four weeks",
     none: {
       drawn: "Every module|measured was opened",
       said: "Every module I measure was opened in the last four weeks.",
@@ -75,18 +78,12 @@ export const WALKTHROUGH_WORDS = {
       drawn: "No module's opening|is measured yet",
       said: "Which modules I open isn't measured yet.",
     },
-    quiet: (
-      name: string,
-      weeks: number | null
-    ): { drawn: string; said: string } =>
-      weeks === null
-        ? { drawn: `${clipped(name)}: never`, said: `${name}, never` }
-        : {
-            drawn: `${clipped(name)}: ${weeksOf(weeks)}`,
-            said: `${name}, for ${weeksOf(weeks)}`,
-          },
+    quiet: (name: string): { drawn: string; said: string } => ({
+      drawn: clipped(name),
+      said: name,
+    }),
     more: (n: number): string => `and ${String(n)} more`,
-    lead: "Some of what I built, I haven't opened lately:",
+    lead: "Some of what I built, I haven't opened in the last four weeks:",
     notMeasured: {
       drawn: (n: number): string => `${String(n)} more not measured`,
       said: (n: number): string =>
@@ -96,9 +93,6 @@ export const WALKTHROUGH_WORDS = {
 } as const
 
 const W = WALKTHROUGH_WORDS
-
-const weeksOf = (n: number): string =>
-  `${String(n)} ${n === 1 ? "week" : "weeks"}`
 
 /** `name` cut to fit a card's line. */
 function clipped(name: string): string {
@@ -182,7 +176,7 @@ export function measureSaid(
   })
 }
 
-type Named = Silent & { readonly name: string }
+type Named = Pick<Silent, "pipeline"> & { readonly name: string }
 
 /** What `modules` shows of silence: the quiet ones by name, and how many can't be told. */
 export type Quiet = {
@@ -199,7 +193,7 @@ export function silenceNotes(q: Quiet): string {
   return [
     ...(q.silent.length === 0
       ? [W.silence.none.drawn]
-      : named.map((s) => W.silence.quiet(s.name, s.weeksQuiet).drawn)),
+      : named.map((s) => W.silence.quiet(s.name).drawn)),
     ...(rest > 0 ? [W.silence.more(rest)] : []),
     ...(q.notMeasured > 0 ? [W.silence.notMeasured.drawn(q.notMeasured)] : []),
   ].join("|")
@@ -211,7 +205,7 @@ export function silenceSaid(q: Quiet): string {
   const lead =
     q.silent.length === 0
       ? W.silence.none.said
-      : `${W.silence.lead} ${q.silent.map((s) => W.silence.quiet(s.name, s.weeksQuiet).said).join("; ")}.`
+      : `${W.silence.lead} ${q.silent.map((s) => W.silence.quiet(s.name).said).join("; ")}.`
   return q.notMeasured > 0
     ? `${lead} ${W.silence.notMeasured.said(q.notMeasured)}`
     : lead
