@@ -9,7 +9,11 @@ import { defineConfig, loadEnv } from "vite"
 
 import { RELEASE_MINIFY } from "./build.minify.ts"
 import { offPathPublicFiles } from "./build.paths.ts"
-import { buildAudiencePlugin, MOBILE_PROFILE } from "./build.profiles.ts"
+import {
+  buildAudiencePlugin,
+  MOBILE_PROFILE,
+  VIEWER_PROFILES,
+} from "./build.profiles.ts"
 import { moduleSideEffects } from "./build.treeshake.ts"
 import {
   describeTarget,
@@ -17,6 +21,8 @@ import {
   isBlockedProxyPath,
   resolveFileHostTarget,
 } from "./file-host.dev.ts"
+import type { RenderedLanding } from "./src/landing/output.ts"
+import { LANDING_FILE } from "./src/landing/output.ts"
 import {
   OLD_WEBVIEW_PAGE,
   oldWebViewPage,
@@ -123,6 +129,8 @@ function fitPageEntry(): Record<string, string> {
 // `pnpm build:stage`: the recording stage alone (stage/main.tsx), into
 // out/stage, with its page at the output's root.
 const isStageBuild = process.env.WWW_STAGE === "1"
+// Only the Pages deployable gets the landing (landingPage, below).
+const isLandingBuild = isPagesBuild() && !isFitHarnessBuild && !isStageBuild
 
 function stageEntry(): Record<string, string> {
   const profile = process.env.SOME_UI_PROFILE
@@ -204,7 +212,8 @@ function pagesConnectPolicy(): Plugin {
     name: "pages-connect-policy",
     apply: "build",
     transformIndexHtml(): Array<HtmlTagDescriptor> {
-      if (process.env.SOME_UI_PROFILE !== "pages") return []
+      if (!VIEWER_PROFILES.includes(process.env.SOME_UI_PROFILE ?? ""))
+        return []
       return [
         {
           tag: "meta",
@@ -215,6 +224,78 @@ function pagesConnectPolicy(): Plugin {
           injectTo: "head-prepend",
         },
       ]
+    },
+  }
+}
+
+// The public site's front page (PAGES, #3401; C1055): under the Pages profile
+// only, landing/index.html is a second HTML entry, filled with what
+// render-landing.ts rendered from the résumé's data (`LANDING_FILE`), and
+// written as the output's
+// index.html. The app's shell moves to 404.html, the fallback GitHub Pages
+// serves for every other path, so the app's routes open as they did. Every
+// other profile keeps the app at index.html and builds no landing.
+function isPagesBuild(): boolean {
+  return process.env.SOME_UI_PROFILE === "pages"
+}
+
+/**
+ * The landing render-landing.ts rendered (the www build runs it
+ * before vite). Read from a file rather than rendered here, so this config,
+ * which every build loads, imports nothing of the résumé's: the recording
+ * stage's walk (scripts/stage-packages.ts, RI3) reads its imports.
+ */
+function readRenderedLanding(): RenderedLanding {
+  const file = resolve(import.meta.dirname, LANDING_FILE)
+  if (!fs.existsSync(file)) {
+    throw new Error(
+      `The Pages build needs the rendered landing (${LANDING_FILE}): node render-landing.ts, which the www build runs first.`
+    )
+  }
+  const parsed: unknown = JSON.parse(fs.readFileSync(file, "utf8"))
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    !("head" in parsed) ||
+    !("body" in parsed) ||
+    typeof parsed.head !== "string" ||
+    typeof parsed.body !== "string"
+  ) {
+    throw new Error(`${LANDING_FILE} is not a rendered landing`)
+  }
+  return { head: parsed.head, body: parsed.body }
+}
+
+function landingPage(): Plugin {
+  return {
+    name: "landing-page",
+    apply: "build",
+    // After Vite's own HTML plugin has emitted both pages, so the names below
+    // are the ones Rollup writes: nothing is moved on disk afterwards.
+    enforce: "post",
+    transformIndexHtml(html, ctx): string {
+      if (!ctx.filename.endsWith("landing/index.html")) return html
+      const { head, body } = readRenderedLanding()
+      return html
+        .replace("<!--landing:head-->", head)
+        .replace("<!--landing:body-->", body)
+    },
+    generateBundle(_options, bundle): void {
+      const app = bundle["index.html"]
+      const landing = bundle["landing/index.html"]
+      if (app?.type !== "asset" || landing?.type !== "asset") {
+        this.error(
+          "the Pages build needs both index.html and landing/index.html"
+        )
+      }
+      delete bundle["index.html"]
+      delete bundle["landing/index.html"]
+      this.emitFile({ type: "asset", fileName: "404.html", source: app.source })
+      this.emitFile({
+        type: "asset",
+        fileName: "index.html",
+        source: landing.source,
+      })
     },
   }
 }
@@ -337,6 +418,7 @@ export default defineConfig(
       pagesConnectPolicy(),
       ...(isMobileBuild ? [oldWebViewPageAsset()] : []),
       ...(isStageBuild ? [stagePageAtRoot()] : []),
+      ...(isLandingBuild ? [landingPage()] : []),
     ],
     // An http:// page skips the proxy and asks :3000 directly
     // (src/lib/file-host-config) - the container. While the proxy points
@@ -395,6 +477,14 @@ export default defineConfig(
                   : {
                       resume: resolve(import.meta.dirname, "resume/index.html"),
                     }),
+                ...(isLandingBuild
+                  ? {
+                      landing: resolve(
+                        import.meta.dirname,
+                        "landing/index.html"
+                      ),
+                    }
+                  : {}),
               },
         // No `output.manualChunks`. The hand-rolled version here matched with
         // `id.includes(pkg)` — a substring test against the full module path —

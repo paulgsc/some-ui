@@ -204,6 +204,10 @@ const HOME_LINK_CALLERS = new Set([
   // half minute while home has something under way. It sends nothing of its
   // own.
   "lib/renders/read.ts",
+  // LA8 (GWB14 D15): Takes opened on a game, which asks home for that
+  // game's moment log as it opens and each minute while the game is on. It
+  // sends nothing of its own but the game's id.
+  "lib/game-moments/read.ts",
   // LA8 (SFEED12): a template's preview, which asks home to make one, reads
   // the newest, and asks for its video a part at a time on Watch.
   "lib/template-preview/index.ts",
@@ -253,6 +257,7 @@ const KEEPERS = new Set([
   "lib/home-link/attention.ts",
   "lib/home-link/call-videos.ts",
   "lib/home-link/renders.ts",
+  "lib/home-link/game-moments.ts",
   "lib/home-link/previews.ts",
   "lib/home-link/cards-essays.ts",
   "lib/home-link/clips.ts",
@@ -271,6 +276,10 @@ const COMPAT_READ = "lib/home-link/compat-read.ts"
 /** SFEED13: Studio › Renders' read, and the one request it may send. */
 const RENDERS_READ = "lib/home-link/renders.ts"
 const RENDERS_SENDS = [['"GET"', '"/renders"']]
+
+/** GWB14 D15: a game's moment log, and the one request it may send. */
+const MOMENTS_READ = "lib/home-link/game-moments.ts"
+const MOMENTS_SENDS = [['"GET"', "gameMomentsPath(gameId)"]]
 
 /** SFEED6: the Feedback page's read, and the one request it may send. */
 const NOTES_READ = "lib/home-link/episode-notes-read.ts"
@@ -1016,6 +1025,18 @@ describe("LA8: the phone reaches home through one module", () => {
         /from "\.\/renders"|from "@\/lib\/home-link\/renders"/.test(read(f))
       )
     expect(readers).toEqual(["lib/renders/read.ts"])
+  })
+
+  it("sends nothing from a game's moments but one GET of its log, and only Takes' read of it asks it (GWB14 D15)", () => {
+    expect(sendCalls(MOMENTS_READ, read(MOMENTS_READ))).toEqual(MOMENTS_SENDS)
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/game-moments"|from "@\/lib\/home-link\/game-moments"/.test(
+          read(f)
+        )
+      )
+    expect(readers).toEqual(["lib/game-moments/read.ts"])
   })
 
   it("sends nothing from a clip's frame but its one GET, and only the clips' read asks it (server#801)", () => {

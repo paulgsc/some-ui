@@ -4,8 +4,8 @@
  */
 import { describe, expect, it } from "vitest"
 
-import { castNodes, CHARACTERS } from "./cast"
-import type { CastNode } from "./cast"
+import { castNodes, CHARACTERS } from "../cast"
+import type { CastNode } from "../cast"
 
 const walk = (nodes: ReadonlyArray<CastNode>): Array<CastNode> =>
   nodes.flatMap((node) => [node, ...walk(node.children ?? [])])

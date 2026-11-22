@@ -1,0 +1,15 @@
+{
+  "id": "C935",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": ["server:crates/db/app_event/src/friction.rs"],
+  "chose": "Under ask #2701's 'fewer than 5' rule, a median of fewer than 5 values is not said at the source (null). Counts leave raw, banded by the report writer as every count in the weekly read is.",
+  "options": [
+    "medians unsaid under 5 at home, counts banded by the writer (chosen)",
+    "band everything on home",
+    "leave everything raw for the writer"
+  ],
+  "gray": "A median of 1 to 4 values is close to a single visit's own time, so withholding it at the source is the safer reading of C861. Banding counts stays where #2701 put it.",
+  "undo": "Return medians always and let the writer withhold them.",
+  "refs": ["#2701", "#3337"]
+}

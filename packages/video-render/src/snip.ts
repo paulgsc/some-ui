@@ -4,8 +4,8 @@
  * calls C865, C866).
  *
  * A snip, a Clips Library frame (`./clip`, whose sides call their frames
- * snips too) and a `some-ui.screens/1` screen (`./screen`, RR31) are one
- * family: a picture of a screen of the app, with any parts it names boxed.
+ * snips too), a public page photographed logged out (`./page`) and a
+ * `some-ui.screens/1` screen (`./screen`, RR31) are one family: a picture of a screen of the app, with any parts it names boxed.
  * A snip adds where it was taken (surface, build, route, app version) and
  * the hashes home checks its files by. So each is drawn as a screen is: a
  * scene's `{kind: "screen", of}` picture is drawn by the screen-zoom
@@ -18,8 +18,9 @@
  *   (CL1). Beside an essay that
  *   names some it hands them as it hands takes, each kind in its own
  *   folder: `<key>.snips/` with `snips.json` (`some-ui.snips-given/1`) and
- *   the pictures under their bundle names, and `<key>.clips/` with each
- *   frame at `<clip>/<side>/<file>`.
+ *   the pictures under their bundle names, `<key>.clips/` with each
+ *   frame at `<clip>/<side>/<file>`, and `<key>.pages/` with `pages.json`
+ *   (`some-ui.pages/1`) beside the pictures.
  * - `resolveScreens` turns the essay's screen scenes into the pictures the
  *   renderer draws, and refuses one home did not hand: never a blank frame.
  */
@@ -29,6 +30,8 @@ import { z } from "zod"
 import { clipPath } from "./clip"
 import type { Composition, CutList, Parsed, Picture } from "./cut-list"
 import { problemsOf } from "./cut-list"
+import type { PageOf, Pages } from "./page"
+import { PAGES_DIR, pageScreen, pagesOf } from "./page"
 import type { Screen } from "./screen"
 import { parseScreens, RegionSchema, SCREENS_SCHEMA } from "./screen"
 import { COMMIT, SNIP_ID } from "./snip-id"
@@ -36,6 +39,9 @@ import type { ZoomOptions } from "./zoom"
 import { wholePicture, zoomPicture } from "./zoom"
 
 export { SNIP_ID } from "./snip-id"
+
+/** A capture's `manifest.json` (`docs/snips.md`, "The bundle"); home refuses another. */
+export const SNIPS_MANIFEST_SCHEMA = "some-ui.snips/1"
 
 /** What home hands beside an essay that names snips. */
 export const SNIPS_GIVEN_SCHEMA = "some-ui.snips-given/1"
@@ -113,6 +119,12 @@ export const SnipRecordSchema = z
         path: ["image", "kind"],
         message: "a snip's picture is a PNG",
       })
+    if (snip.recording?.kind === "png")
+      ctx.addIssue({
+        code: "custom",
+        path: ["recording", "kind"],
+        message: "a snip's recording is an mp4 or webm",
+      })
     const hash = SNIP_ID.exec(snip.id)?.[5]
     if (hash !== undefined && !snip.image.sha256.startsWith(hash))
       ctx.addIssue({
@@ -124,6 +136,26 @@ export const SnipRecordSchema = z
 export type SnipRecord = z.infer<typeof SnipRecordSchema>
 
 const commit = z.string().regex(COMMIT, "a commit's 40 hex digits")
+
+/**
+ * A capture's manifest as a reader takes it: the snips of one commit and the
+ * routes it couldn't reach (`docs/snips.md`). The capture writes it
+ * (`apps/www/src/lib/snips`), the mailbox carries it as a snip list, and
+ * the desk reads it (SNIPS3, #3364).
+ */
+export const SnipsManifestSchema = z.object({
+  schema: z.literal(SNIPS_MANIFEST_SCHEMA),
+  appVersion: z.string(),
+  commit,
+  run: z.string(),
+  frozenAt: z.string(),
+  data: z.literal("sample"),
+  snips: z.array(SnipRecordSchema),
+  unreached: z.array(
+    z.object({ surface: SurfaceSchema, route: z.string(), why: z.string() })
+  ),
+})
+export type SnipsManifest = z.infer<typeof SnipsManifestSchema>
 
 /**
  * What home handed: for each bundle it fetched, its commit and the records
@@ -252,23 +284,25 @@ export function pngSize(bytes: Uint8Array): PictureSize | null {
 
 /**
  * What home handed beside an essay, each in its own folder as its takes
- * are (`<key>.snips/`, `<key>.clips/`): the snips' records, and the clip
- * frames it holds, by `clipFramePath`, with each frame's size. Null where
- * it handed none.
+ * are (`<key>.snips/`, `<key>.clips/`, `<key>.pages/`): the snips' records,
+ * the clip frames it holds, by `clipFramePath`, with each frame's size,
+ * and the pages' records. Null where it handed none.
  */
 export type Handed = {
   readonly snips: SnipsGiven | null
   readonly clips: ReadonlyMap<string, PictureSize> | null
+  readonly pages?: Pages | null
 }
 
 /**
  * The cut list with each screen scene drawn from what home handed, the
- * snips' pictures under `snips/` and the clip frames under `clips/` in the
- * video's folder, by the screen-zoom composition in `look` (`./zoom`): a scene with no parts named holds the whole screen above the
+ * snips' pictures under `snips/`, the clip frames under `clips/` and the
+ * pages under `pages/` in the video's folder, by the screen-zoom composition in `look` (`./zoom`): a scene with no parts named holds the whole screen above the
  * frame's foot, where the captions draw (`wholePicture`); a snip given parts
- * zooms to them in turn. Refused, with each reason, when a scene names a
- * screen home did not hand, a snip from another commit than home's bundle,
- * or a part its snip doesn't name.
+ * zooms to them in turn, as does a page. Refused, with each reason, when a
+ * scene names a screen home did not hand, a snip from another commit than
+ * home's bundle, a page whose record is of another address or moment, or a
+ * part its snip or page doesn't name.
  */
 export function resolveScreens(
   cut: CutList,
@@ -306,6 +340,12 @@ export function resolveScreens(
   const clipIds = new Map(
     clipFramesOf(cut).map((frame, n) => [frame, `clip-${String(n + 1)}`])
   )
+  const pageRecords = new Map(
+    (handed.pages?.pages ?? []).map((page) => [page.image.name, page])
+  )
+  const pageIds = new Map(
+    pagesOf(cut).map((of, n) => [of.file, `page-${String(n + 1)}`])
+  )
   const record = parseScreens({
     schema: SCREENS_SCHEMA,
     screens: [
@@ -314,6 +354,10 @@ export function resolveScreens(
         const size = handed.clips?.get(frame)
         return size ? [frameScreen(frame, size, id)] : []
       }),
+      ...[...pageIds].flatMap(([file, id]) => {
+        const page = pageRecords.get(file)
+        return page ? [pageScreen(page, id)] : []
+      }),
     ],
   })
   if (!record.ok) return record
@@ -321,6 +365,30 @@ export function resolveScreens(
   const screenOf = (id: string | undefined): Screen | undefined =>
     screens.screens.find((each) => each.id === id)
   const problems: Array<string> = []
+  // A screen held whole, or zoomed to the parts `at` names in turn.
+  const partsOf = (
+    shotId: string,
+    what: string,
+    screen: Screen,
+    at: ReadonlyArray<string>,
+    dir: string
+  ): Picture | null => {
+    if (at.length === 0) return wholePicture(screen, { dir, ...look })
+    const named = new Set(screen.regions.map((r) => r.ref))
+    const missing = at.filter((part) => !named.has(`${screen.id}:${part}`))
+    if (missing.length > 0) {
+      problems.push(`${shotId}: ${what} names no ${missing.join(", ")}`)
+      return null
+    }
+    const zoom: Composition | null = zoomPicture(
+      screens,
+      at.map((part) => `${screen.id}:${part}`),
+      { dir, ...look }
+    )
+    if (zoom === null)
+      problems.push(`${shotId}: ${what} has no part to zoom to`)
+    return zoom
+  }
   const fromSnips = (shotId: string, of: SnipOf): Picture | null => {
     const screen = screenOf(snipIds.get(refKey(of)))
     if (screen === undefined) {
@@ -332,24 +400,7 @@ export function resolveScreens(
       )
       return null
     }
-    if (of.at.length === 0)
-      return wholePicture(screen, { dir: SNIPS_DIR, ...look })
-    const named = new Set(screen.regions.map((r) => r.ref))
-    const missing = of.at.filter((part) => !named.has(`${screen.id}:${part}`))
-    if (missing.length > 0) {
-      problems.push(
-        `${shotId}: the snip ${of.id} names no ${missing.join(", ")}`
-      )
-      return null
-    }
-    const zoom: Composition | null = zoomPicture(
-      screens,
-      of.at.map((part) => `${screen.id}:${part}`),
-      { dir: SNIPS_DIR, ...look }
-    )
-    if (zoom === null)
-      problems.push(`${shotId}: the snip ${of.id} has no part to zoom to`)
-    return zoom
+    return partsOf(shotId, `the snip ${of.id}`, screen, of.at, SNIPS_DIR)
   }
   const fromClips = (shotId: string, of: ClipOf): Picture | null => {
     const frame = clipFramePath(of)
@@ -362,13 +413,37 @@ export function resolveScreens(
     }
     return wholePicture(screen, { dir: CLIPS_DIR, ...look })
   }
+  const fromPages = (shotId: string, of: PageOf): Picture | null => {
+    const page = pageRecords.get(of.file)
+    const screen = screenOf(pageIds.get(of.file))
+    if (page === undefined || screen === undefined) {
+      problems.push(
+        `${shotId}: it shows the page ${of.file}, which home did not hand`
+      )
+      return null
+    }
+    // The scene says what it shows and as of when; the picture must be that.
+    if (
+      page.url !== of.url ||
+      Date.parse(page.capturedAt) !== Date.parse(of.capturedAt)
+    ) {
+      problems.push(
+        `${shotId}: it shows ${of.url} as of ${of.capturedAt}, and ${of.file} is ${page.url} as of ${page.capturedAt}`
+      )
+      return null
+    }
+    return partsOf(shotId, `the page ${of.file}`, screen, of.at, PAGES_DIR)
+  }
   const shots = cut.shots.map((shot) => {
     const { picture } = shot
     if (picture.kind !== "screen") return shot
+    const { of } = picture
     const drawn =
-      picture.of.from === "snips"
-        ? fromSnips(shot.id, picture.of)
-        : fromClips(shot.id, picture.of)
+      of.from === "snips"
+        ? fromSnips(shot.id, of)
+        : of.from === "clips"
+          ? fromClips(shot.id, of)
+          : fromPages(shot.id, of)
     return drawn === null ? shot : { ...shot, picture: drawn }
   })
   return problems.length > 0

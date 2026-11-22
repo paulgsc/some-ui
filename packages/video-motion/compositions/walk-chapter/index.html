@@ -2,13 +2,16 @@
 <!--
   A walkthrough's chapter card (WALK4, #3282): the stop's number and name,
   between the walk's screens, so a viewer knows where on the journey they
-  are. Drawn like the promo's opening and close (lib/promo.css).
+  are. Drawn like the promo's opening and close (lib/promo.css). Its notes
+  (WALK5, #3337) say what real use shows of the stop; the same card with no
+  number names the modules nobody opens (#3338).
 -->
 <html
   lang="en"
   data-composition-variables='[
     {"id":"number","type":"string","label":"The stop’s number","default":"1"},
     {"id":"title","type":"string","label":"The stop (| splits lines)","default":"This morning’s|picks"},
+    {"id":"notes","type":"string","label":"What real use shows (| splits lines)","default":""},
     {"id":"ground","type":"color","label":"Ground","default":"#111821"},
     {"id":"ink","type":"color","label":"Ink","default":"#f4efe6"},
     {"id":"accent","type":"color","label":"Accent","default":"#f5b75b"},
@@ -39,6 +42,17 @@
         padding: 0 72px;
         font-size: 140px;
       }
+      #notes {
+        position: absolute;
+        left: 0;
+        width: 1080px;
+        top: 1360px;
+        padding: 0 96px;
+        font-size: 64px;
+        line-height: 1.15;
+        text-align: center;
+        opacity: 0.85;
+      }
     </style>
   </head>
   <body>
@@ -55,6 +69,7 @@
       <div id="glow" class="glow"></div>
       <div id="number" class="display"></div>
       <h2 id="title" class="display"></h2>
+      <div id="notes"></div>
     </div>
     <script src="lib/motion.js"></script>
     <script>
@@ -78,6 +93,15 @@
           [L, { yPct: -110 }],
         ])
       )
+      if (vars.notes)
+        lines($("notes"), vars.notes).forEach((line, i) =>
+          track(line, [
+            [0.6 + i * 0.1, { yPct: 110 }],
+            [1.1 + i * 0.1, {}],
+            [L - 0.3 + i * 0.03, {}, "in"],
+            [L, { yPct: -110 }],
+          ])
+        )
     </script>
   </body>
 </html>

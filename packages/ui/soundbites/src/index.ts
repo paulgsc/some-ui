@@ -27,6 +27,7 @@ export type {
 } from "./lib/idea/hearing"
 export { homeHearing } from "./lib/idea/hearing"
 export { TakeLibrary } from "./components/take-library"
+export type { TopicGap } from "./components/take-library"
 export type {
   LibraryPage,
   LibraryQuery,
@@ -50,7 +51,7 @@ export type {
   TakeKind,
 } from "./lib/library/compartments"
 export { isCompartment, TAKE_KINDS } from "./lib/library/compartments"
-export { LIBRARY_WORDS } from "./lib/library/words"
+export { ABOUT_WORDS, LIBRARY_WORDS } from "./lib/library/words"
 export { AttentionWayIn, TakeReconcile } from "./components/take-reconcile"
 export type {
   ActAnswer,

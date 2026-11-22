@@ -1,0 +1,19 @@
+{
+  "id": "C934",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:crates/db/app_event/src/friction.rs",
+    "server:crates/db/app_event/src/weeks.rs",
+    "server:crates/db/jobs/src/lib.rs"
+  ],
+  "chose": "Home serves WALK5's friction measures (C861) as raw per-affordance rows in the weekly engagement read it already keeps per week in report_week. Over the 28 owner days ending with the week: days opened per affordance; lefts per place, how many had a same-instant take of the same affordance, and the median time; Applying's debrief count and median. seen gains lastOpenedDay for silence (#3338). What only the registry knows stays in some-ui, whose frictionOf derives some-ui.friction/1 beside reportWeeksOf: each module's root, which modules are not-measured, a flow's last place, which modules the build offers, and the silence constant.",
+  "options": [
+    "raw rows on home, derived in some-ui (chosen)",
+    "home emits some-ui.friction/1, with a contract carrying the registry's opened table to home",
+    "a parallel friction pipeline and endpoint"
+  ],
+  "gray": "Which module a row belongs to, and whether a quiet module is silent or not measured, is a fact only the registry holds. A copy on home, even under a contract, would be a second list that can drift from the build, and a drift there calls a live module a graveyard. That is the reading #3338 forbids. No check can settle which side should own that interpretation; it is a design call.",
+  "undo": "Move the derivation to home behind a registry contract, and keep the raw rows as its input.",
+  "refs": ["#3337", "#3338"]
+}

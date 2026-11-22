@@ -1,0 +1,15 @@
+{
+  "id": "C959",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": ["server:apps/servers/file_host/src/lifecycle.rs"],
+  "chose": "voice_repo::delete's seven deletes on append-only tables (My data's delete MD3, with its fast-track marks since #1100, and the interview retake let-go IW8) are listed in APPEND_ONLY_REWRITES, each with a count per file. Each names the ruling some-ui's docs/discard-sites.md records, and says plainly where that list does not yet name the table (voice_note_fast_track). The test then fails on any new one. Classification follows today's code; nothing is ruled on.",
+  "options": [
+    "list them, naming the existing rulings (taken)",
+    "reclassify voice_note etc. as State",
+    "raise as drift and leave the test red"
+  ],
+  "gray": "Whether a ruled discard site is an exemption or a contradiction of append-only.",
+  "undo": "Empty APPEND_ONLY_REWRITES; the test then fails on the seven sites.",
+  "refs": ["server#511", "server#1090", "#2265", "#2474", "#3175"]
+}

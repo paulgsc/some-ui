@@ -1,7 +1,20 @@
 import type { JSX } from "react"
 import { useEffect } from "react"
-import { halfName, scenarioName, unitName } from "@some-ui/game-week"
-import type { Compartment, LibraryTake, TakeNames } from "@some-ui/soundbites"
+import {
+  halfName,
+  MissedMoment,
+  momentsWithNoBite,
+  readMoments,
+  scenarioName,
+  unitName,
+} from "@some-ui/game-week"
+import type { GameMoment } from "@some-ui/game-week"
+import type {
+  Compartment,
+  LibraryTake,
+  TakeNames,
+  TopicGap,
+} from "@some-ui/soundbites"
 import {
   isCompartment,
   keptIdeaStore,
@@ -11,8 +24,11 @@ import {
   STUDIO_WORDS,
   TakeLibrary,
 } from "@some-ui/soundbites"
+import { queryOptions, skipToken, useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link, notFound } from "@tanstack/react-router"
 
+import type { MomentsQueryOptions } from "@/lib/game-moments"
+import { gameMomentsQuery } from "@/lib/game-moments"
 import { keepSoundbites } from "@/lib/soundbite-keeping"
 import { noteOfTake } from "@/lib/take-about"
 import type { AboutStores } from "@/lib/take-about"
@@ -46,6 +62,27 @@ const PORTS =
     : null
 
 /**
+ * A game's moment log, read through the home link: the Android app's alone,
+ * behind the same inline flag as the ports, so other builds drop the link.
+ */
+const MOMENTS: ((gameId: string) => MomentsQueryOptions) | null =
+  import.meta.env.VITE_DEVICE_BACKEND === "true"
+    ? (gameId): MomentsQueryOptions => gameMomentsQuery(gameId, readMoments)
+    : null
+
+const NO_GAME: readonly ["home", "game-moments", string] = [
+  "home",
+  "game-moments",
+  "",
+]
+
+/** No game's log: what the page asks while none is read. */
+const NO_MOMENTS: MomentsQueryOptions = queryOptions({
+  queryKey: NO_GAME,
+  queryFn: skipToken,
+})
+
+/**
  * Under a note's take, the way to its episode at the moment the note was
  * left (TAKES2).
  */
@@ -64,6 +101,34 @@ const toEpisode = (take: LibraryTake): JSX.Element | null => {
   )
 }
 
+const GAME_TOPIC = "game:"
+
+/** The game a topic is, as home keys it (`game:<id>`); null for another topic. */
+const gameOf = (about: string | undefined): string | null =>
+  about?.startsWith(GAME_TOPIC) === true && about.length > GAME_TOPIC.length
+    ? about.slice(GAME_TOPIC.length)
+    : null
+
+/**
+ * The game's big moments no bite was said about, as rows among its bites
+ * (GWB14 D15): a bite home matched to a play covers every moment of it.
+ */
+function missedOf(
+  moments: ReadonlyArray<GameMoment>,
+  takes: ReadonlyArray<LibraryTake>
+): ReadonlyArray<TopicGap> {
+  const saidOn = new Set(
+    takes.flatMap(({ fields }) =>
+      fields?.playId === undefined ? [] : [fields.playId]
+    )
+  )
+  return momentsWithNoBite(moments, saidOn).map((moment) => ({
+    key: `${moment.playId}:${moment.scenario}`,
+    at: moment.at,
+    body: <MissedMoment moment={moment} />,
+  }))
+}
+
 /**
  * One compartment of Studio's Takes (TAKES3, #3069): its takes as cards,
  * each saying what it was said for (TAKES2, #3068), under chips for where
@@ -71,7 +136,9 @@ const toEpisode = (take: LibraryTake): JSX.Element | null => {
  * count, in the order picked (#3219). `?about=` (as home keys it,
  * `game:<id>`, with `?name=` for its chip) opens it filtered to one topic (a
  * game, a week): a wing's own view of its takes is this
- * page, as Game day's way to a game's takes is. Phone-only
+ * page, as Game day's way to a game's takes is. Opened on a game, its big
+ * moments no bite was said about show dimmed among its bites (GWB14 D15),
+ * while it is on and once it is over. Phone-only
  * (`build.paths.ts`).
  */
 const KindPage = (): JSX.Element => {
@@ -82,6 +149,16 @@ const KindPage = (): JSX.Element => {
   useEffect(() => {
     if (PORTS !== null) keepSoundbites(phoneSoundbiteKeeping())
   }, [])
+  // Opened on one game: its moment log, for the big moments with no bite.
+  // Only where bites are listed: elsewhere every moment would read as missed.
+  const game =
+    MOMENTS === null || (kind !== "bite" && kind !== "all")
+      ? null
+      : gameOf(about)
+  const moments = useQuery(
+    MOMENTS === null || game === null ? NO_MOMENTS : MOMENTS(game)
+  )
+  const log = moments.data?.kind === "read" ? moments.data.log : null
   return (
     <StudioPage heading={LIBRARY_WORDS.compartmentHeading(kind)} back="takes">
       {PORTS !== null && (
@@ -91,6 +168,13 @@ const KindPage = (): JSX.Element => {
           pair={<PairHomeLink>{STUDIO_WORDS.pair.pair}</PairHomeLink>}
           compartment={kind}
           row={toEpisode}
+          gaps={
+            log === null
+              ? undefined
+              : (topic, takes): ReadonlyArray<TopicGap> =>
+                  // Only the game the page opened on has its log read.
+                  topic === about ? missedOf(log.moments, takes) : []
+          }
           initialChips={
             about === undefined
               ? undefined

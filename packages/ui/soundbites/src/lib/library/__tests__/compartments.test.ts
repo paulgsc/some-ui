@@ -13,6 +13,7 @@ import {
   toggled,
   topicOf,
   underChips,
+  withGaps,
 } from "@soundbites/lib/library/compartments"
 import type { TakeTopic } from "@soundbites/lib/library/kinds"
 import { LIBRARY_WORDS } from "@soundbites/lib/library/words"
@@ -336,5 +337,86 @@ describe("what home is asked for, by compartment", () => {
       toggled({ ...NO_CHIPS, topic: picked }, { group: "topic", value: picked })
         .topic
     ).toBeNull()
+  })
+})
+
+describe("what a topic holds with no take, among its takes", () => {
+  // A short label stands for an hour of one day; a full time for itself.
+  const iso = (when: string): string =>
+    when.length === 1 ? `2026-11-16T0${when}:00:00Z` : when
+  const at = (row: string): string => iso(row)
+  const gap = (when: string): { at: string; label: string } => ({
+    at: iso(when),
+    label: when,
+  })
+  const shape = (
+    listed: ReadonlyArray<
+      | { kind: "take"; row: string }
+      | { kind: "gap"; gap: { at: string; label: string } }
+    >
+  ): ReadonlyArray<string> =>
+    listed.map((each) =>
+      each.kind === "take" ? `take ${each.row}` : `gap ${each.gap.label}`
+    )
+
+  it("places each gap by when it was, newest or oldest first as the takes are", () => {
+    const gaps = [gap("2"), gap("5"), gap("0")]
+    expect(shape(withGaps(["4", "1"], gaps, "newest", at, true))).toEqual([
+      "gap 5",
+      "take 4",
+      "gap 2",
+      "take 1",
+      "gap 0",
+    ])
+    expect(shape(withGaps(["1", "4"], gaps, "oldest", at, true))).toEqual([
+      "gap 0",
+      "take 1",
+      "gap 2",
+      "take 4",
+      "gap 5",
+    ])
+    // By topic, the takes share one: newest first.
+    expect(shape(withGaps(["4", "1"], gaps, "topic", at, true))).toEqual(
+      shape(withGaps(["4", "1"], gaps, "newest", at, true))
+    )
+  })
+
+  it("shows no gap while older takes aren't shown yet, since its take may be among them", () => {
+    // A bite can be said before its play, so neither order is safe.
+    expect(
+      shape(withGaps(["4", "1"], [gap("5"), gap("2")], "newest", at, false))
+    ).toEqual(["take 4", "take 1"])
+    expect(
+      shape(withGaps(["1", "4"], [gap("0"), gap("2")], "oldest", at, false))
+    ).toEqual(["take 1", "take 4"])
+    expect(shape(withGaps([], [gap("5")], "newest", at, false))).toEqual([])
+  })
+
+  it("places by the instant, whatever fraction each time is written with", () => {
+    expect(
+      shape(
+        withGaps(
+          ["2026-10-23T01:10:00.500Z"],
+          [gap("2026-10-23T01:10:00Z")],
+          "newest",
+          at,
+          true
+        )
+      )
+    ).toEqual(["take 2026-10-23T01:10:00.500Z", "gap 2026-10-23T01:10:00Z"])
+  })
+
+  it("lists every gap when there is no take, and a gap after a take of its moment", () => {
+    expect(
+      shape(withGaps([], [gap("1"), gap("3")], "newest", at, true))
+    ).toEqual(["gap 3", "gap 1"])
+    expect(shape(withGaps(["3"], [gap("3")], "oldest", at, true))).toEqual([
+      "take 3",
+      "gap 3",
+    ])
+    expect(withGaps(["2", "1"], [], "newest", at, true)).toEqual([
+      { kind: "take", row: "2" },
+      { kind: "take", row: "1" },
+    ])
   })
 })

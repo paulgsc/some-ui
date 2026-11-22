@@ -1866,6 +1866,9 @@ importers:
       '@some-ui/core-utils':
         specifier: workspace:*
         version: link:../core-utils
+      '@some-ui/engagement':
+        specifier: workspace:*
+        version: link:../engagement
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../some-styles
