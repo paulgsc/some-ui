@@ -34,18 +34,23 @@ What follows from them:
   (`docs/learner-data-authority.md`, "The owner's deployment").
 - **A comes first, and B shows A as it is.** Legibility effort goes to what really drives
   the workflow, and every surface does what it appears to do.
-- **A way in for every reader.** Something anyone can take in (a short demo video), the
-  live screens for the curious, the source for the technical, each disclosed by
-  interaction rather than all at once. The extensions comb is the model
-  (`packages/ui/honeycomb/src/components/extensions-comb/extensions.data.ts`).
+- **A way in for every reader.** Something anyone can take in (a short clip of the thing
+  working), the source for the technical, each disclosed by interaction rather than all at
+  once. The owner has decided (C1055) that the public Pages site becomes a curriculum
+  vitae: who the owner is, what they do, the résumé and how to reach them, with each project
+  shown by its clip and a link to its source. Until the prune lands, Pages still serves the
+  extensions comb and the apps on sample data; the prune takes those routes off the Pages
+  build, and nothing changes on `lan` or the APK.
 - **One screen, two readings.** Where the owner and a viewer can reach the same screen, it
   says which of them is looking: `components/provenance-strip.tsx` under the web header
   tells the owner what a wing publishes and keeps, and tells a viewer it is sample data.
 - **A viewer tries, and nothing is kept.** The Pages build is the viewer's (`VIEWER_BUILD`,
-  `apps/www/src/lib/data-mode`). There the page's `localStorage` and `sessionStorage` are
-  in-memory copies (`apps/www/src/lib/demo/viewer-storage.ts`, imported first by
-  `main.tsx`), which `apps/www/src/lib/demo` seeds with sample drafts: a mock demo, where
-  every store, the activity packages' included, works as usual and a reload starts over.
+  `apps/www/src/lib/data-mode`). Under C1055 this rule shrinks as the prune takes each
+  screen off Pages, and it holds for every screen Pages still serves: there the page's
+  `localStorage` and `sessionStorage` are in-memory copies
+  (`apps/www/src/lib/demo/viewer-storage.ts`, imported first by `main.tsx`), which
+  `apps/www/src/lib/demo` seeds with sample drafts: a mock demo, where every store, the
+  activity packages' included, works as usual and a reload starts over.
   A person's records may not bypass them (no IndexedDB, Cache Storage or cookie holding
   them on the Pages build); a convenience, such as the sidebar's open/closed cookie, may.
 - **Say what it is.** In copy anyone reads (pages, READMEs, store listings, release
@@ -81,7 +86,9 @@ What follows from them:
   "yes, My data should offer the unheard delete too"). "Let go" still sets a recording
   aside and keeps it.
 
-`/mission` (`apps/www/src/routes/mission.tsx`) says the same to the viewer.
+`/mission` (`apps/www/src/routes/mission.tsx`) says the same to the viewer while Pages
+still serves it. It leaves Pages with the prune (C1055); the CV landing does not restate
+the mandates.
 
 ## Pre-commit verification (Claude Code Remote)
 
