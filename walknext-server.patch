@@ -1,0 +1,365 @@
+From 034084ba28634a31e07461fca07f4ee2892aeacb Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 22 Nov 2026 14:50:04 +0000
+Subject: [PATCH] feat(app_event): a left may name the screen it went to,
+ counted per place
+
+paulgsc/some-ui#3367, the owner's answer: yes. The engagement event's `left` may carry
+`next`, the id of the screen it went to: another of its places, `<affordance>.<place>`
+of its pipeline, or `elsewhere`; absent only when the app went to the back. Home
+accepts it on `left` only, as a name from the app's code (identity invariant 34), and
+stores it as sent; no migration, since the table keeps the body whole and has no
+column per field.
+
+The friction read counts, per place, the lefts that went to each screen (`nexts`),
+and names the surfaces on which a left with a `next` was made by the window's start
+(`nextsBefore`, one indexed read back per surface), so the report writer, which holds
+the registry, says where a step was left from only over windows every build of that
+surface could say it in (some-ui.friction/3, calls C1067-C1069).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LDpdUGw5QSYVRLeZJsw8D8
+---
+ crates/db/app_event/src/friction.rs | 74 +++++++++++++++++++++++++++--
+ crates/db/app_event/src/lib.rs      | 34 ++++++++++---
+ crates/db/app_event/src/model.rs    | 41 +++++++++++++---
+ docs/identity.md                    |  5 +-
+ 4 files changed, 136 insertions(+), 18 deletions(-)
+
+diff --git a/crates/db/app_event/src/friction.rs b/crates/db/app_event/src/friction.rs
+index 3513623..84d21d0 100644
+--- a/crates/db/app_event/src/friction.rs
++++ b/crates/db/app_event/src/friction.rs
+@@ -28,8 +28,17 @@
+ //!   leaving. The app going to the back writes a `left` with no `taken`, and
+ //!   coming back a new `taken`, so a step spent across that is two stretches:
+ //!   `left` counts stretches on screen, and the median is a stretch's.
+-//!   Finer reads need the event to say more (a place on `taken`), which is
+-//!   the owner's call, as taps per step are.
++//!   Since paulgsc/some-ui#3367 (the owner's answer: yes) a `left` may say
++//!   the screen it went to (`next`), so `nexts` counts, per place, the
++//!   `left`s that went to each screen; the report writer, holding the
++//!   registry, reads finishing and leaving part-way off them. A `left` with
++//!   no `next` (the app put away, or an older build's) is counted in `left`
++//!   and never guessed into one. `nextsBefore` names the surfaces on which a
++//!   `left` with a `next` was made by the window's start: there, a `left`
++//!   with none is the app put away (the phone says `elsewhere` for a screen
++//!   closing to anywhere it can't name), unless a device still runs an older
++//!   build.
++//!   Taps per step stay the owner's for later.
+ //! - **Debrief** is Applying's friction, 1 to 5, as the Jobs record holds
+ //!   it (`jobs_repo::debrief_frictions`): how many said it and their median.
+ //! - **"Fewer than 5" (ask #2701).** Counts leave raw: banding them is the
+@@ -43,12 +52,16 @@
+ //! - **Bounded.** Opened is one read joined against the 28 day edges on
+ //!   `app_event_by_family`; places one range read of the window, at most
+ //!   [`WINDOW_READ`](crate::WINDOW_READ) `left`s (`partial` past it);
++//!   `nextsBefore` one indexed read per surface back from the window's start
++//!   to the newest `left` with a `next` there (the whole earlier record until
++//!   a build sends one, then a few rows);
+ //!   debrief one range read of `jobs_event_order`.
+ 
+ use crate::{EventError, IsoWeek};
+ use chrono::Duration;
+ use serde::Serialize;
+ use sqlx::SqliteConnection;
++use std::collections::BTreeMap;
+ 
+ /// The days the measures run over, ending with the asked week: C861's
+ /// 28-day window.
+@@ -83,6 +96,21 @@ pub struct PlaceTime {
+ 	pub moved_on: i64,
+ 	/// The median time in it, in milliseconds; `null` under [`UNDER`].
+ 	pub median_ms: Option<i64>,
++	/// Of those `left`s, the ones that said the screen they went to, counted
++	/// per screen, in id order. A `left` with no `next` (the app went to the
++	/// back, or a build before the field) is in none of them.
++	pub nexts: Vec<NextCount>,
++}
++
++/// How many `left`s of one place went to one screen (paulgsc/some-ui#3367).
++#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
++#[serde(rename_all = "camelCase")]
++pub struct NextCount {
++	/// The screen, by the app's id: one of the affordance's places,
++	/// `<affordance>.<place>` of its pipeline, or `elsewhere`. Which is the
++	/// affordance's own is the registry's, and so the report writer's to tell.
++	pub next: String,
++	pub left: i64,
+ }
+ 
+ /// Applying's debrief friction over the window.
+@@ -113,6 +141,13 @@ pub struct Friction {
+ 	pub opened: Vec<Opened>,
+ 	/// Every place left in the window, in the same order, then by place.
+ 	pub places: Vec<PlaceTime>,
++	/// The surfaces (`apk`, `web`) on which the subject made a `left` that
++	/// said where it went at or before the window's first instant, in that
++	/// order: on them every build that ran in the window could say it, so the
++	/// writer may read their `nexts` as whole (a device kept on an older build
++	/// after another of the same surface moved on is the tolerance it
++	/// accepts). Per surface, since the web build ships before the phone's.
++	pub nexts_before: Vec<String>,
+ 	/// More `left`s than [`WINDOW_READ`](crate::WINDOW_READ) fell in the
+ 	/// window, and only the newest were read.
+ 	pub partial: bool,
+@@ -176,6 +211,26 @@ pub async fn friction(conn: &mut SqliteConnection, subject: &str, week: IsoWeek,
+ 	.await?;
+ 
+ 	let (places, partial) = places(conn, subject, &from, &to).await?;
++	// Per surface, newest first from the window's start: once builds send
++	// `next`, the first few rows back hold one, and the read stops there.
++	let mut nexts_before = Vec::new();
++	for surface in ["apk", "web"] {
++		let held = sqlx::query_scalar!(
++			r#"SELECT at AS "at!: String" FROM app_event
++			WHERE subject_id = ?1 AND family = 'engagement' AND at <= ?2
++				AND json_extract(body, '$.kind') = 'left' AND json_extract(body, '$.surface') = ?3
++				AND json_extract(body, '$.next') IS NOT NULL
++			ORDER BY at DESC LIMIT 1"#,
++			subject,
++			from,
++			surface
++		)
++		.fetch_optional(&mut *conn)
++		.await?;
++		if held.is_some() {
++			nexts_before.push(surface.to_owned());
++		}
++	}
+ 
+ 	let frictions = jobs_repo::debrief_frictions(conn, subject, &from, &to).await?;
+ 	#[allow(clippy::cast_precision_loss)] // 1 to 5
+@@ -191,6 +246,7 @@ pub async fn friction(conn: &mut SqliteConnection, subject: &str, week: IsoWeek,
+ 		measured_days: i64::try_from(measured_days).unwrap_or(i64::MAX),
+ 		opened,
+ 		places,
++		nexts_before,
+ 		partial,
+ 		debrief,
+ 	})
+@@ -201,9 +257,10 @@ async fn places(conn: &mut SqliteConnection, subject: &str, from: &str, to: &str
+ 	let limit = crate::WINDOW_READ + 1;
+ 	let rows = sqlx::query!(
+ 		r#"SELECT pipeline AS "pipeline!: String", affordance AS "affordance!: String", surface AS "surface!: String",
+-			place AS "place!: String", ms AS "ms!: i64", moved AS "moved!: bool", at AS "at!: String"
++			place AS "place!: String", ms AS "ms!: i64", moved AS "moved!: bool", at AS "at!: String", next AS "next: String"
+ 		FROM (SELECT l.at AS at, json_extract(l.body, '$.pipeline') AS pipeline, json_extract(l.body, '$.affordance') AS affordance,
+ 				json_extract(l.body, '$.surface') AS surface, json_extract(l.body, '$.place') AS place,
++				json_extract(l.body, '$.next') AS next,
+ 				CAST(ROUND((julianday(l.at) - julianday(json_extract(l.body, '$.startedAt'))) * 86400000) AS INTEGER) AS ms,
+ 				EXISTS (SELECT 1 FROM app_event AS t
+ 					WHERE t.subject_id = l.subject_id AND t.family = 'engagement' AND t.at = l.at
+@@ -237,6 +294,7 @@ async fn places(conn: &mut SqliteConnection, subject: &str, from: &str, to: &str
+ 
+ 	let mut places: Vec<PlaceTime> = Vec::new();
+ 	let mut times: Vec<Vec<i64>> = Vec::new();
++	let mut onward: Vec<BTreeMap<String, i64>> = Vec::new();
+ 	for row in rows {
+ 		let same = places
+ 			.last()
+@@ -250,17 +308,23 @@ async fn places(conn: &mut SqliteConnection, subject: &str, from: &str, to: &str
+ 				left: 0,
+ 				moved_on: 0,
+ 				median_ms: None,
++				nexts: Vec::new(),
+ 			});
+ 			times.push(Vec::new());
++			onward.push(BTreeMap::new());
+ 		}
+-		if let (Some(place), Some(time)) = (places.last_mut(), times.last_mut()) {
++		if let (Some(place), Some(time), Some(went)) = (places.last_mut(), times.last_mut(), onward.last_mut()) {
+ 			place.left += 1;
+ 			place.moved_on += i64::from(row.moved);
+ 			time.push(row.ms);
++			if let Some(next) = row.next {
++				*went.entry(next).or_insert(0) += 1;
++			}
+ 		}
+ 	}
+-	for (place, time) in places.iter_mut().zip(&times) {
++	for ((place, time), went) in places.iter_mut().zip(&times).zip(onward) {
+ 		place.median_ms = median(time, i64::midpoint);
++		place.nexts = went.into_iter().map(|(next, left)| NextCount { next, left }).collect();
+ 	}
+ 	Ok((places, partial))
+ }
+diff --git a/crates/db/app_event/src/lib.rs b/crates/db/app_event/src/lib.rs
+index 58745be..2957fc5 100644
+--- a/crates/db/app_event/src/lib.rs
++++ b/crates/db/app_event/src/lib.rs
+@@ -724,8 +724,9 @@ mod tests {
+ 						{ "pipeline": "topik", "affordance": "routine-read-aloud", "surface": "apk", "days": 1 }
+ 					],
+ 					"places": [
+-						{ "pipeline": "topik", "affordance": "routine-read-aloud", "surface": "apk", "place": "quiz", "left": 1, "movedOn": 0, "medianMs": null }
++						{ "pipeline": "topik", "affordance": "routine-read-aloud", "surface": "apk", "place": "quiz", "left": 1, "movedOn": 0, "medianMs": null, "nexts": [] }
+ 					],
++					"nextsBefore": [],
+ 					"partial": false, "debrief": { "said": 0, "median": null }
+ 				}
+ 			}),
+@@ -774,10 +775,17 @@ mod tests {
+ 			("4", "2026-11-07T09:00:00.000Z", "2026-11-07T09:00:50.000Z"),
+ 		] {
+ 			events.push(step(&(String::from("t") + n), start, "taken", None));
+-			events.push(step(&(String::from("r") + n), at, "left", Some((start, "read"))));
++			let mut left = step(&(String::from("r") + n), at, "left", Some((start, "read")));
++			// Four say where they went (#3367); the fifth is an older build's.
++			if n != "4" {
++				left["next"] = json!("decide");
++			}
++			events.push(left);
+ 			events.push(step(&(String::from("d") + n), at, "taken", None));
+ 		}
+-		events.push(step("x1", "2026-11-03T09:02:00.000Z", "left", Some(("2026-11-03T09:00:10.000Z", "decide"))));
++		let mut out = step("x1", "2026-11-03T09:02:00.000Z", "left", Some(("2026-11-03T09:00:10.000Z", "decide")));
++		out["next"] = json!("today.today");
++		events.push(out);
+ 		// A take of another affordance at the same instant is not a move.
+ 		events.push(step("x2", "2026-11-08T09:01:00.000Z", "left", Some(("2026-11-08T09:00:00.000Z", "decide"))));
+ 		let mut other = engaged("x3", "2026-11-08T09:01:00.000Z", "routine-lens", "taken");
+@@ -816,13 +824,27 @@ mod tests {
+ 					{ "pipeline": "jobs", "affordance": "todays-pick", "surface": "apk", "days": 6 }
+ 				],
+ 				"places": [
+-					{ "pipeline": "jobs", "affordance": "todays-pick", "surface": "apk", "place": "decide", "left": 2, "movedOn": 0, "medianMs": null },
+-					{ "pipeline": "jobs", "affordance": "todays-pick", "surface": "apk", "place": "read", "left": 5, "movedOn": 5, "medianMs": 30_000 }
++					{ "pipeline": "jobs", "affordance": "todays-pick", "surface": "apk", "place": "decide", "left": 2, "movedOn": 0, "medianMs": null,
++						"nexts": [{ "next": "today.today", "left": 1 }] },
++					{ "pipeline": "jobs", "affordance": "todays-pick", "surface": "apk", "place": "read", "left": 5, "movedOn": 5, "medianMs": 30_000,
++						"nexts": [{ "next": "decide", "left": 4 }] }
+ 				],
++				"nextsBefore": [],
+ 				"partial": false,
+ 				"debrief": { "said": 5, "median": 4.0 }
+ 			}),
+-			"five taken days and one Sunday of two offers; B's and next week's are not counted; another affordance's take is no move; the unsaid and the earlier debrief are not said"
++			"five taken days and one Sunday of two offers; B's and next week's are not counted; another affordance's take is no move; a left with no next is in no next's count; the unsaid and the earlier debrief are not said"
++		);
++
++		// A left that said where it went, before the window: the window's nexts are whole.
++		let mut early = step("n0", "2026-10-18T09:00:00.000Z", "left", Some(("2026-10-18T08:59:00.000Z", "read")));
++		early["next"] = json!("decide");
++		put(&pool, A, &early).await.unwrap();
++		let read = super::weekly(&mut pool.acquire().await.unwrap(), A, week, "2026-12-01T00:00:00.000Z").await.unwrap();
++		assert_eq!(
++			read.friction.nexts_before,
++			["apk"],
++			"a next on the phone on the 18th is before the window of the 19th on; none on the web"
+ 		);
+ 
+ 		let fresh = pool_with(&[step("f1", "2026-11-14T09:00:00.000Z", "taken", None)]).await;
+diff --git a/crates/db/app_event/src/model.rs b/crates/db/app_event/src/model.rs
+index ab07254..4259bbc 100644
+--- a/crates/db/app_event/src/model.rs
++++ b/crates/db/app_event/src/model.rs
+@@ -121,8 +121,9 @@ pub enum Surface {
+ /// affordance by the registry's ids, the surface, and when.
+ ///
+ /// Which optional fields an event carries is its kind's: `offeredAt` and
+-/// `ending` for `passed-over`, `startedAt` and `place` for `left`, `answer`
+-/// for `said`, none for `offered` and `taken`. They are left out of the body
++/// `ending` for `passed-over`, `startedAt` and `place` for `left` (and
++/// `next` when the phone knows it), `answer` for `said`, none for `offered`
++/// and `taken`. They are left out of the body
+ /// when absent, so each kind is stored as exactly its own fields. Which ids
+ /// the registry lists is the phone's to check (`checkEvent`); home holds
+ /// that each is a name from the app's code.
+@@ -157,6 +158,12 @@ pub struct Engagement {
+ 	/// A `said`'s answer: one of the affordance's answers.
+ 	#[serde(default, skip_serializing_if = "Option::is_none")]
+ 	pub answer: Option<String>,
++	/// The screen a `left` went to (paulgsc/some-ui#3367, the owner's
++	/// answer): another of the affordance's places, `<affordance>.<place>` of
++	/// its pipeline, or `elsewhere` for a screen the phone can't name. Left
++	/// out only when the app went to the back, or by a build before the field.
++	#[serde(default, skip_serializing_if = "Option::is_none")]
++	pub next: Option<String>,
+ }
+ 
+ /// An app event: its family, and the shape that family has.
+@@ -272,16 +279,23 @@ fn engagement_problems(event: &Engagement, problems: &mut Vec<Problem>) {
+ 		Kind::Left => &["startedAt", "place"],
+ 		Kind::Said => &["answer"],
+ 	};
++	// What a kind may carry besides its own: a `left`'s `next`, which a build
++	// before it, or a move it can't see the end of, leaves out.
++	let may: &[&str] = match event.kind {
++		Kind::Left => &["next"],
++		Kind::Offered | Kind::Taken | Kind::PassedOver | Kind::Said => &[],
++	};
+ 	for (field, present) in [
+ 		("offeredAt", event.offered_at.is_some()),
+ 		("ending", event.ending.is_some()),
+ 		("startedAt", event.started_at.is_some()),
+ 		("place", event.place.is_some()),
+ 		("answer", event.answer.is_some()),
++		("next", event.next.is_some()),
+ 	] {
+-		match (own.contains(&field), present) {
+-			(true, false) => problems.push((field, "is what this kind of event carries")),
+-			(false, true) => problems.push((field, "is not a field this kind of event carries")),
++		match (own.contains(&field), may.contains(&field), present) {
++			(true, _, false) => problems.push((field, "is what this kind of event carries")),
++			(false, false, true) => problems.push((field, "is not a field this kind of event carries")),
+ 			_ => {}
+ 		}
+ 	}
+@@ -290,7 +304,7 @@ fn engagement_problems(event: &Engagement, problems: &mut Vec<Problem>) {
+ 			earlier_problems(field, earlier, &event.at, problems);
+ 		}
+ 	}
+-	for (field, name) in [("place", &event.place), ("answer", &event.answer)] {
++	for (field, name) in [("place", &event.place), ("answer", &event.answer), ("next", &event.next)] {
+ 		if name.as_deref().is_some_and(|name| !is_name(name)) {
+ 			problems.push((field, NAME));
+ 		}
+@@ -441,6 +455,21 @@ mod tests {
+ 		}
+ 	}
+ 
++	/// paulgsc/some-ui#3367: a `left` may say the screen it went to, by id,
++	/// and stores it as sent; no other kind carries it, and a sentence is no id.
++	#[test]
++	fn a_left_may_name_the_screen_it_went_to() {
++		let mut onward = engagement("left");
++		onward["next"] = json!("decide");
++		let parsed = parse_event("g1", onward.to_string().as_bytes()).unwrap_or_else(|problems| panic!("{problems:?}"));
++		assert_eq!(serde_json::to_value(&parsed).unwrap(), onward, "stored as sent");
++		let mut taken = engagement("taken");
++		taken["next"] = json!("decide");
++		assert_eq!(fields("g1", &taken), ["next"]);
++		onward["next"] = json!("went back to Today");
++		assert_eq!(fields("g1", &onward), ["next"]);
++	}
++
+ 	#[test]
+ 	fn an_engagement_carries_its_kinds_fields_and_no_others() {
+ 		let mut missing = engagement("passed-over");
+diff --git a/docs/identity.md b/docs/identity.md
+index f7a4485..d73c55b 100644
+--- a/docs/identity.md
++++ b/docs/identity.md
+@@ -2540,7 +2540,9 @@ nowhere is marked as such and belongs to review.
+     affordance by the registry's ids, the surface (`apk` or `web`), when, and
+     only its kind's own extras, each a name from the code or an earlier
+     instant (when a passed-over offer was made and how the visit ended, when
+-    a left one was taken and where it stopped, a said one's answer id).
++    a left one was taken, where it stopped and, when the phone knows it, the
++    id of the screen it went to (paulgsc/some-ui#3367, the owner's answer),
++    a said one's answer id).
+     Neither family holds audio, words or anything of what was recorded or read
+     (the owner's C3, paulgsc/some-ui#2369), nor a field outside its family's
+     own: an unknown field or family is refused whole. A further family is a
+@@ -2557,6 +2559,7 @@ nowhere is marked as such and belongs to review.
+     `an_event_is_stored_once_and_never_replaced` (an `UPDATE` is refused),
+     `an_unknown_field_or_family_is_off_shape`, `every_rule_names_its_field`,
+     `an_engagement_carries_its_kinds_fields_and_no_others`,
++    `a_left_may_name_the_screen_it_went_to`,
+     `the_migration_round_trips_and_refuses_to_drop_a_record` and
+     `the_record_leaves_with_the_account`, and `handlers::app_events`'s
+     `a_paired_phone_sends_its_outcomes_and_the_summary_counts_them` and
+-- 
+2.43.0
+
