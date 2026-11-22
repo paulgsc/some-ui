@@ -1482,6 +1482,11 @@ describe("home's indexes", () => {
     expect(await refused(JOBS, "index-topik-20261031T144502118Z.json")).toEqual(
       { error: "the name must carry the body's routine" }
     )
+    // A routine's name followed by more is another kind of index in the
+    // store, so it never stands for the routine's own.
+    expect(
+      await refused(JOBS, "index-jobs-x-20261031T144502118Z.json")
+    ).toEqual({ error: "the name must carry the body's routine" })
     expect(await refused({ ...JOBS, drafts: [] })).toEqual({
       error: "drafts is not part of a jobs index",
     })
@@ -1999,7 +2004,7 @@ describe("home's interview week index (IW4)", () => {
 describe("the Game Week index", () => {
   const BITE = {
     take: "note-512",
-    saidAt: "2026-11-23T21:40:12.000Z",
+    saidAt: "2026-11-29T21:40:12.000Z",
     half: "first",
     scenario: "in.fourth-down",
     how: "offered",
@@ -2015,7 +2020,7 @@ describe("the Game Week index", () => {
     id: "401873010",
     away: "NE",
     home: "CHI",
-    kickoff: "2026-11-23T21:25:00Z",
+    kickoff: "2026-11-29T21:25:00Z",
     final: { away: 17, home: 20 },
     wants: "CHI",
     half: { away: 7, home: 10 },
@@ -2074,6 +2079,20 @@ describe("the Game Week index", () => {
     expect(
       await error({ ...INDEX, weeks: [{ ...W48, id: "2026-48" }] })
     ).toEqual({ error: "each week's id must be its id, like 2026-w46" })
+    expect(
+      await error({ ...INDEX, weeks: [{ ...W48, id: "2026-w49" }] })
+    ).toEqual({ error: "each week's id must be the ISO week of its Sunday" })
+    expect(
+      await error({
+        ...INDEX,
+        weeks: [{ ...W48, from: "2026-02-31", to: "2026-03-09" }],
+      })
+    ).toEqual({ error: "each week's from must be the Tuesday it opens" })
+    const turn = { id: "2026-w53", from: "2026-12-29", to: "2027-01-04" }
+    expect(await error({ ...INDEX, weeks: [{ ...W48, ...turn }] })).toEqual({
+      change: "added",
+      seq: 1,
+    })
   })
 
   it("takes a game only with its bites, and what was said only once heard", async () => {
@@ -2084,7 +2103,27 @@ describe("the Game Week index", () => {
       })
     ).toEqual({ error: "each game must list its bites, at least one" })
     expect(await error(withBite({ heard: "garbled" }))).toEqual({
-      error: "a bite carries what was said only when home heard it",
+      error: "a bite carries what was said exactly when home heard it",
+    })
+    for (const transcript of [null, "  "])
+      expect(await error(withBite({ transcript }))).toEqual({
+        error: "a bite carries what was said exactly when home heard it",
+      })
+    const games = (list: unknown): unknown => ({
+      ...INDEX,
+      weeks: [{ ...W48, games: list }],
+    })
+    expect(await error(games({}))).toEqual({
+      error: "each week's games must be a list",
+    })
+    expect(await error(games(["a game"]))).toEqual({
+      error: "each game must be an object",
+    })
+    expect(await error(games([{ ...GAME, kickoff: "Sunday" }]))).toEqual({
+      error: "each game's kickoff must be an instant",
+    })
+    expect(await error(games([{ ...GAME, bites: ["a bite"] }]))).toEqual({
+      error: "each bite must be an object",
     })
     expect(
       await error(withBite({ heard: "garbled", transcript: null }))
@@ -2106,6 +2145,26 @@ describe("the Game Week index", () => {
         withBite({ transcript: "see https://drive.google.com/file/d/abc" })
       )
     ).toEqual({ error: "an index names no Drive file" })
+    for (const transcript of [
+      "data:audio/ogg;base64,T2dnUwACAAAAAAAAAAA=",
+      "A".repeat(300),
+    ])
+      expect(await error(withBite({ transcript }))).toEqual({
+        error: "an index carries no audio: home keeps the audio",
+      })
+    const named = async (name: string): Promise<unknown> =>
+      json(
+        await put(deps(), "index", name, {
+          token: HOME,
+          body: JSON.stringify(INDEX),
+        })
+      )
+    expect(await named("index-game-week-x-20261202T080000000Z.json")).toEqual({
+      error: "the name does not fit this folder",
+    })
+    expect(await named("index-game-20261202T080000000Z.json")).toEqual({
+      error: "the name must carry the body's routine",
+    })
     expect(await error({ ...INDEX, bites: [] })).toEqual({
       error: "bites is not part of a game-week index",
     })

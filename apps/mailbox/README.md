@@ -413,9 +413,9 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   each bite with what home heard of it. The essay's writer reads it and nothing else (GW18). The
   Worker holds it to an `asOf` that is an instant or `null`, and a `weeks` list whose every week
   is an object with an `id` like `2026-w48` no other week has, a `from` that is a Tuesday and a
-  `to` six days after it, and a `games` list whose every game has an instant `kickoff` and at
+  `to` six days after it, and an `id` that is the ISO week of the Sunday between them, and a `games` list whose every game has an instant `kickoff` and at
   least one bite; each bite has an instant `saidAt`, a `heard` of `heard`, `garbled`,
-  `nothing_said` or `failed`, a `transcript` that is text exactly when `heard` is `heard`, and a
+  `nothing_said` or `failed`, a `transcript` that is text, not blank, exactly when `heard` is `heard` (and `null` otherwise), and a
   `confidence` from 0 to 1 or `null`. What was said is the owner's own words, so the whole body
   is scanned for encoded bytes and Drive links.
 - **A written reflection** is `{"schema":"some-ui.reflection/1","reflection","session","at","text"}`:

@@ -1040,6 +1040,22 @@ const daysOn = (day: string, n: number): string =>
     .toISOString()
     .slice(0, 10)
 
+/**
+ * The ISO week calendar day `day` falls in, as `2026-w48`: the Monday-to-
+ * Sunday week that holds its Thursday, numbered in that Thursday's year.
+ */
+function isoWeekIdOf(day: string): string {
+  const thursday = daysOn(day, 3 - ((weekdayOf(day) + 6) % 7))
+  const year = thursday.slice(0, 4)
+  const n = Math.floor(
+    (Date.parse(`${thursday}T00:00:00Z`) -
+      Date.parse(`${year}-01-01T00:00:00Z`)) /
+      86_400_000 /
+      7
+  )
+  return `${year}-w${String(n + 1).padStart(2, "0")}`
+}
+
 /** How home heard a bite's take (paulgsc/server's voice notes): only `heard` carries what was said. */
 const HEARD_STATES: ReadonlySet<unknown> = new Set([
   "heard",
@@ -1061,8 +1077,10 @@ function gameWeekGameRefusal(game: unknown): string | null {
     if (!HEARD_STATES.has(bite.heard)) {
       return "each bite's heard must be heard, garbled, nothing_said or failed"
     }
-    if ((bite.heard === "heard") !== (typeof bite.transcript === "string")) {
-      return "a bite carries what was said only when home heard it"
+    const said =
+      typeof bite.transcript === "string" && bite.transcript.trim() !== ""
+    if (bite.heard === "heard" ? !said : bite.transcript !== null) {
+      return "a bite carries what was said exactly when home heard it"
     }
     const { confidence } = bite
     if (
@@ -1099,6 +1117,9 @@ const gameWeekShape: IndexShape = (body) => {
     seen.add(week.id)
     if (!isCalendarDay(week.from) || weekdayOf(week.from) !== 2) {
       return "each week's from must be the Tuesday it opens"
+    }
+    if (week.id !== isoWeekIdOf(daysOn(week.from, 5))) {
+      return "each week's id must be the ISO week of its Sunday"
     }
     if (week.to !== daysOn(week.from, 6)) {
       return "each week's to must be the Monday six days after its from"
@@ -1156,7 +1177,11 @@ function indexRefusal(
     what
   )
   if (shape !== null) return shape
-  if (!name.startsWith(`index-${String(body.routine)}-`)) {
+  const prefix = `index-${String(body.routine)}-`
+  if (
+    !name.startsWith(prefix) ||
+    !/^\d{8}T\d{9}Z\.json$/.test(name.slice(prefix.length))
+  ) {
     return "the name must carry the body's routine"
   }
   const missing = [...routine.keys].find((key) => !(key in body))
@@ -1487,7 +1512,7 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
     // a pass, named for the routine and when home filed it: a new name each
     // time it changes, so the newest is the greatest name.
     folder: "index",
-    name: /^index-[a-z]+(?:-[a-z]+)?-\d{8}T\d{9}Z\.json$/,
+    name: /^index-[a-z]{1,20}(?:-[a-z]{1,20})?-\d{8}T\d{9}Z\.json$/,
     schema: "some-ui.routine-index/1",
     refuses: indexRefusal,
   },
