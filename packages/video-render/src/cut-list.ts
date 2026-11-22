@@ -11,6 +11,7 @@
 import { z } from "zod"
 
 import { badgeProblems } from "./badges"
+import { ClaimSourcesSchema } from "./claims"
 import { LOOKS, VOICES } from "./plans"
 import { COMMIT, isPublicAddress, PAGE_FILE, SNIP_ID } from "./snip-id"
 import { SPOKEN_CATEGORIES } from "./spoken-categories"
@@ -244,12 +245,19 @@ export type SpokenTurn = z.infer<typeof SpokenTurnSchema>
  * intro, a scene's chapter line (its chapter's first scene only, C1027)
  * and then its narration, or the close. The
  * recorder has home's speaker say each (`cards-essay.ts`, `record:cards`).
+ * Each but a spoken card may name the code it describes (`sources`, #3036),
+ * which `render cards-check` holds to the stamp's commits (`claims.ts`).
  */
 export const SpokenSchema = z.discriminatedUnion("role", [
   /** What the essay is for, what you'll be able to do, and what it is as of. */
-  z.strictObject({ role: z.literal("intro"), said: SayableSchema }),
+  z.strictObject({
+    role: z.literal("intro"),
+    said: SayableSchema,
+    sources: ClaimSourcesSchema.optional(),
+  }),
   /**
-   * Where this step sits and why it matters, then what the card teaches.
+   * Where this step sits and why it matters, then what the card teaches,
+   * and the code its narration describes (#3036, `claims.ts`).
    * Only a chapter's first scene says its chapter line and marks it; a
    * scene without one goes on in the chapter before it (C1027).
    */
@@ -257,9 +265,14 @@ export const SpokenSchema = z.discriminatedUnion("role", [
     role: z.literal("scene"),
     chapter: SayableSchema.optional(),
     narration: SayableSchema,
+    sources: ClaimSourcesSchema.optional(),
   }),
   /** What to do next, and where to look when it fails. */
-  z.strictObject({ role: z.literal("close"), said: SayableSchema }),
+  z.strictObject({
+    role: z.literal("close"),
+    said: SayableSchema,
+    sources: ClaimSourcesSchema.optional(),
+  }),
   /**
    * A spoken card (WALK7, #3282): its category's template plays each
    * exchange, the question in Kokoro and then the owner's own take from

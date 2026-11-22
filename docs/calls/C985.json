@@ -1,0 +1,15 @@
+{
+  "id": "C985",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": ["some-ui:packages/video-render/src/claims.ts"],
+  "chose": "A source's quote holds at least 8 characters (QUOTE_LEAST), matched as a substring of the cited lines or file, whitespace aside. A shorter quote is refused when the essay is read.",
+  "options": [
+    "at least 8 characters (this)",
+    "at least one whole word, matched on word boundaries",
+    "any non-empty quote"
+  ],
+  "gray": "How short a quote may be decides how much a passing source proves; a one-letter quote is found in every file, and too long a minimum makes a citation fragile. No check or earlier decision sets it.",
+  "undo": "Change QUOTE_LEAST in packages/video-render/src/claims.ts; no essay with sources is published yet.",
+  "refs": ["#3036"]
+}
