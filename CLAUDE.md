@@ -891,10 +891,12 @@ never "sounds like good practice."
   `apps/mobile` (it generates the gitignored `capacitor-cordova-android-plugins/`, without
   which Gradle fails to configure) and `ANDROID_HOME=<dir> ./gradlew :app:lintRelease
 :app:assembleRelease`. Maven Central can answer 429 mid-download; that is rate limiting,
-  so retry. Separately, vitest and every www Playwright suite run the `lan` or `pages`
-  build profile, never `mobile`: `MOBILE_APP` and `hasAudience("apk")` are false there, so
-  an APK-only branch (the wing bar, the header's way out, the foyer) is rendered by no test
-  unless that test mocks `@/lib/build-profile` itself. `main`'s launch test does start the
+  so retry. Separately, vitest and every www Playwright suite but one run the `lan`, `pages`
+  or `snips` build profile; the one is the ui-fit phone page (`build:fit-phone`), built under
+  `mobile`, which mounts chosen screens as fixtures (`tests/ui-fit/phone-page/fixtures.tsx`),
+  some of them `_apk` route components (the foyer, Practice Home), never the app's route tree.
+  So an APK-only branch outside those fixtures (the wing bar, the header's way out) is rendered
+  by no test unless that test mocks `@/lib/build-profile` itself. `main`'s launch test does start the
   APK, each wing's launcher icon, and a monkey (`apps/mobile/launch/launch-test.sh`), but the
   monkey runs with `--pct-syskeys 0`: back is pressed exactly once, at a wing entered by its
   icon, so the rest of `MainActivity`'s back handling (the app has no `@capacitor/app`) is
