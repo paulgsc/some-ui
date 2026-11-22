@@ -52,6 +52,8 @@ function run(
 
 // The résumé PDFs the build copies from public/ (`build` runs this first too).
 run("node", ["scripts/sync-resume.mjs"], process.env)
+// The Pages build reads the rendered landing (vite.config.ts, `landingPage`).
+run("node", ["scripts/render-landing.ts"], process.env)
 const publicFiles = readdirSync(join(appRoot, "public"))
 
 // What a profile copies from public/ and never loads: not chunks, so this is
