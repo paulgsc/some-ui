@@ -265,8 +265,8 @@ describe("slotOf", () => {
     for (const face of show.episodes.flatMap((e) =>
       e.scenes.flatMap((scene) => scene.faces)
     ))
-      expect(face.slot, face.key).toBe(
-        face.key.endsWith(".mp4") ? "clip" : "still"
+      expect(face.key, face.slot).toMatch(
+        face.slot === "clip" ? /\.mp4$/ : /\.png$/
       )
   })
 })

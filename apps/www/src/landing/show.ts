@@ -87,14 +87,15 @@ export type SlotKind = "clip" | "still"
 
 /**
  * Each kind of face's slot. A new kind can't be a face until it names one
- * here, and it can name one only if it carries its own name as a field (any
- * other's entry must be `never`, which no slot is). That no kind also
- * carries another's name, which `slotOf` relies on, no type holds: review
- * does.
+ * here, and it can name one only if it carries its own name as a field and
+ * no other kind's (`slotOf` tells kinds apart by that one field); any other
+ * kind's entry must be `never`, which no slot is.
  */
 const SLOTS: {
   readonly [K in keyof FaceKinds]: K extends keyof FaceKinds[K]
-    ? SlotKind
+    ? [Exclude<keyof FaceKinds, K> & keyof FaceKinds[K]] extends [never]
+      ? SlotKind
+      : never
     : never
 } = {
   snip: "still",
