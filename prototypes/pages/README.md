@@ -390,3 +390,86 @@ can't reliably see in, and pages keep changing after they load."
 
 Screens: `shots/contact-sheet-stuck.png` (both, desktop and phone, full page) and
 `shots/d-stuck-{inline,strip}-{desktop,phone}[-full].png`.
+
+## Round 3: the prune narrowed, and the server's "stuck on"
+
+**The server's line and panel.** The owner, as the coordinator paraphrased it: "Home is
+constrained by its 4 CPU cores, and we don't yet know whether our code isn't using them or
+we're truly at the hardware limit." That is the CORES review, #3348, under HWSIM #3309.
+
+- **Card line.** The server card in all three D files now ends: "Home has four CPU cores,
+  and I'm measuring whether the limit is my code or the machine."
+- **Panel.** The mock's fourth panel is now **CPU: busy vs waiting, of 4 cores**. It is
+  WHO DUNNIT's "CPU — busy vs waiting" (`lib/sympathy-panels.libsonnet`), which separates
+  work that is running from work that is waiting for a core. That is the code-or-machine
+  question.
+- **Panels that could stand in for it** (same file):
+  - "CORES · RAM";
+  - "Throttled — share of CPU periods each container was held back";
+  - the file_host dashboard's "CPU — % of each service's limit" (`lib/overview-panels.libsonnet`).
+- **Dropped:** Request Rate by Outcome is no longer among the four.
+- **Personal data:** none of these carries any. Process and container names are service
+  names.
+
+**The prune, narrowed** (the owner: "Pages is a curriculum vitae, nothing else … I only exist
+in the APK"). The Pages build keeps:
+
+- the landing (D);
+- `/resume` and 7 PDFs (one per version, plus `resume.pdf`);
+- `/authorship`.
+
+Everything else leaves: the comb as a route, `/app` and the learning apps, `/sessions`,
+`/practice`, `/profile`, `/settings`, `/auth`, `/rust-rounds-sample`, `/job-run`,
+`/assurance`, `/mission`, `/playoff-delta`, the video stages, honeycomb and LeetType.
+
+**Size.** Measured on today's Pages build by loading `/resume` and `/authorship` at both
+viewports and keeping every file they request:
+
+|          | Today              | After the prune                                      |
+| -------- | ------------------ | ---------------------------------------------------- |
+| Artifact | 5.3 MB, 272 assets | about 1.9 MB (1.51 MB of app files, 0.34 MB of PDFs) |
+| Plus     |                    | the landing's HTML, photo and clips                  |
+
+That saves about **3.5 MB, two thirds of the artifact**. The first visit to `/` goes from 97
+script files (~400 KB gzip) to one static HTML file. `/resume` and `/authorship` still load
+the SPA shell, about 1.3 MB raw. A later, optional story makes each a static page too.
+
+**The order of stories:**
+
+1. **Mandate wording.** Branch `claude/pages-mandate`, C1055 (the owner's call). Wording
+   only. It lands first and is true while the code still serves the viewer.
+2. **Snips gets its own viewer build.** A capture-only profile in `build.profiles.ts` (today's
+   `pages` audiences and `VIEWER_BUILD`, sample data), built only by Snips Capture and never
+   deployed. Snips' `web` surface walks it instead of the Pages build, so every route an essay
+   names (`/rust-rounds-sample`, `/captions`, `/`) still resolves. It is a member of the
+   profile family, beside `lan`, `pages` and `mobile`. `lib/demo` and `viewer-storage` stay,
+   for this build.
+3. **The landing at `/`.** A Vite HTML entry, like `resume/index.html`, filled from the résumé's
+   generated data.
+   - It has the photo slot (the mochi until the photo exists) and clip slots that show stills
+     until the clips exist.
+   - The SPA's shell then needs an address of its own for `/authorship`, as `/resume` has
+     (`authorship/index.html`).
+4. **The prune.**
+   - The `pages` profile offers only `/resume` and `/authorship`: a route gate or a
+     Pages-allowed list in `build.paths.ts`, checked by `check:bundle-paths`.
+   - The 30 layout PDFs come off through `OFF_PATH_PUBLIC_FILES.pages`.
+   - `Root`'s comb branch and `ExtensionsPage`'s `chrome="front"` become dead code and go.
+   - `lan` is untouched.
+   - CLAUDE.md's "A viewer tries" bullet then names the capture build, not Pages.
+5. **Clips, bundled at build time** (never committed). This is `series/card` for the walks
+   (Suspender Ledger on the sandbox stage, which CI can render; Jobs on the APK, which needs
+   the emulator) and the Grafana capture on home through `screen-zoom`.
+   - Open question: where `pages.yml` fetches a clip from when it can't render it itself.
+   - The APK walk runs in the owner-dispatched Snips Capture, whose artifact lives one day.
+   - The Grafana capture happens on home, which CI can't reach.
+   - So these two clips need a public place to wait: a release asset, or paulgsc/testing.
+     That is the owner's call.
+6. **Page Filter's "stuck on" still,** recaptured on a fixture page of ours (a shadow-root
+   widget), not MDN's.
+7. **Optional:** `/resume` and `/authorship` as static pages, which takes the SPA off Pages
+   entirely.
+
+**`/mission`:** it leaves Pages in step 4. On `lan` the only reader is the owner, who has the
+mandates in CLAUDE.md, so I'd remove it there too. That is a call for the owner or the
+coordinator, not part of C1055, which covers Pages only.

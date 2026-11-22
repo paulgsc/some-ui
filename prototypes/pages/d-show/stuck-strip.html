@@ -713,15 +713,16 @@
                 </svg>
               </div>
               <div class="panel area" style="grid-column: 1 / -1">
-                <b>Request rate by outcome</b>
+                <b>CPU: busy vs waiting, of 4 cores</b>
                 <svg viewBox="0 0 400 60" preserveAspectRatio="none">
+                  <path d="M0 14 H400" stroke="#888" stroke-dasharray="4 4" />
                   <path
-                    d="M0 50 C60 40 90 30 140 34 S240 20 290 28 S360 18 400 22 V60 H0Z"
-                    fill="#1a7f3766"
-                    stroke="#3fb950"
+                    d="M0 40 C50 30 80 18 120 20 S200 16 240 26 S330 15 400 19 V60 H0Z"
+                    fill="#3274d966"
+                    stroke="#5794f2"
                   />
                   <path
-                    d="M0 58 C80 57 160 55 220 56 S330 54 400 56 V60 H0Z"
+                    d="M0 58 C60 56 100 50 140 52 S230 44 280 50 S360 46 400 48 V60 H0Z"
                     fill="#e0752d88"
                   />
                 </svg>
@@ -736,7 +737,8 @@
             </p>
             <p>
               It runs at home, under its own dashboards: what is up, what
-              failed, which stage of each job is stuck.
+              failed, which stage of each job is stuck. Home has four CPU cores,
+              and I'm measuring whether the limit is my code or the machine.
             </p>
             <p class="links">
               <a href="https://github.com/paulgsc/server">Source</a>
