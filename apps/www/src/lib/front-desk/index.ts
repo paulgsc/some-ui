@@ -82,7 +82,7 @@ const CONCERNS: Readonly<Record<ConcernId, Concern>> = {
 export type DeskBuild = {
   /** The Android app: this phone and its home. */
   readonly phone: boolean
-  /** The Pages build: a viewer's, with sample data and no account. */
+  /** The viewer build: a viewer's, with sample data and no account. */
   readonly viewer: boolean
 }
 

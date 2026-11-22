@@ -21,11 +21,13 @@ import {
   isBlockedProxyPath,
   resolveFileHostTarget,
 } from "./file-host.dev.ts"
-import type { SitePage } from "./src/landing/output.ts"
+import type { RenderedSite, SitePage } from "./src/landing/output.ts"
 import {
   isSiteTemplate,
+  MEDIA_PATH,
   SITE_BASE,
   SITE_FILE,
+  SITE_MEDIA_DIR,
   SITE_TEMPLATES,
 } from "./src/landing/output.ts"
 import {
@@ -267,7 +269,7 @@ function isSitePage(value: unknown): value is SitePage {
  * every build loads, imports nothing of the résumé's: the recording stage's
  * walk (scripts/stage-packages.ts, RI3) reads its imports.
  */
-function readSitePages(): ReadonlyArray<SitePage> {
+function readSite(): RenderedSite {
   const file = resolve(import.meta.dirname, SITE_FILE)
   if (!fs.existsSync(file)) {
     throw new Error(
@@ -275,10 +277,19 @@ function readSitePages(): ReadonlyArray<SitePage> {
     )
   }
   const parsed: unknown = JSON.parse(fs.readFileSync(file, "utf8"))
-  if (!Array.isArray(parsed) || !parsed.every(isSitePage)) {
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    !("pages" in parsed) ||
+    !Array.isArray(parsed.pages) ||
+    !parsed.pages.every(isSitePage) ||
+    !("media" in parsed) ||
+    !Array.isArray(parsed.media) ||
+    !parsed.media.every((key): key is string => typeof key === "string")
+  ) {
     throw new Error(`${SITE_FILE} is not the rendered site`)
   }
-  return parsed
+  return { pages: parsed.pages, media: parsed.media }
 }
 
 const HEAD_MARKER = "<!--site:head-->"
@@ -296,7 +307,18 @@ function publicSite(): Plugin {
       base = config.base
     },
     generateBundle(_options, bundle): void {
-      const pages = readSitePages()
+      const { pages, media } = readSite()
+      // The media the pages show, from where render-public-site.ts found
+      // them, under media/ (never committed, C1029).
+      for (const key of media) {
+        this.emitFile({
+          type: "asset",
+          fileName: `${MEDIA_PATH}${key}`,
+          source: fs.readFileSync(
+            resolve(import.meta.dirname, SITE_MEDIA_DIR, key)
+          ),
+        })
+      }
       for (const [kind, source] of Object.entries(SITE_TEMPLATES)) {
         const template = bundle[source]
         if (template?.type !== "asset" || typeof template.source !== "string") {

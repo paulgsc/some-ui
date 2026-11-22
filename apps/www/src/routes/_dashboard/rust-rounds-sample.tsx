@@ -19,7 +19,8 @@ const ViewerRustRounds = (): JSX.Element => {
 }
 
 /**
- * Only the Pages build is a viewer's. The flag is read inline as well, so
+ * Only the viewer's builds (Pages and the capture build) set it, and only the
+ * capture build runs the app. The flag is read inline as well, so
  * the owner's builds drop the sample (`build.paths.ts`, `lib/demo`).
  */
 const SampleRoute = (): JSX.Element | null =>

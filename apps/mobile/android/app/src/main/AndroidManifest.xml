@@ -5,6 +5,11 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- HomeRoutePlugin (#3411): which networks the phone has, to ask home
+         over Wi-Fi when Android gives the app another, and whether Android
+         keeps the app off the network. Declared here, not left to a
+         dependency's merged manifest. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- The soundbites page (www routes/_dashboard/_apk/soundbites.tsx,
          @some-ui/soundbites): saying out loud why a session did not happen.

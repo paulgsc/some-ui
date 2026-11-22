@@ -48,11 +48,12 @@ export type Wing = {
    */
   web: { home: Path; job: string; purpose: Purpose; lanOnly?: true } | null
   /**
-   * What the wing publishes and what it keeps, as the strip under the web
+   * What the wing keeps, as the strip under the web
    * header says it to the owner (CLAUDE.md, "two mandates"). Absent where the
-   * web shows no strip.
+   * web shows no strip. No wing publishes anything since the public site
+   * became a CV (C1055), so the strip names only what each keeps (C1060).
    */
-  exposure?: { published: string; private: string }
+  exposure?: { private: string }
 }
 
 export type Room = {
@@ -80,8 +81,8 @@ export const WINGS: ReadonlyArray<Wing> = [
       job: "Study, reflect, and pick up where you left off",
       purpose: "study",
     },
+    // Nothing published: the public site carries no study screen (C1055, C1060).
     exposure: {
-      published: "these study screens, on Pages",
       private: "your sessions and reflections, which stay yours",
     },
   },
@@ -117,8 +118,8 @@ export const WINGS: ReadonlyArray<Wing> = [
       // A run read on a sample digest: how the routine works, shown.
       purpose: "presentation",
     },
+    // Nothing published: the sample run left the public site (C1055, C1060).
     exposure: {
-      published: "how the run works, on a sample digest",
       private: "the real digests and how each application went",
     },
   },
