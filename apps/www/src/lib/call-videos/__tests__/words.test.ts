@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest"
 import type { Feed } from "@/lib/call-videos/model"
 import { FEEDS } from "@/lib/call-videos/model"
 import {
+  ASSET_WORDS,
   episodeName,
   FEED_WORDS,
   share,
@@ -62,6 +63,7 @@ describe("VIDEOS_WORDS and FEED_WORDS", () => {
   it("name no machinery, in any line they can say", () => {
     const said = [
       ...strings(VIDEOS_WORDS),
+      ...strings(ASSET_WORDS),
       ...strings(FEED_WORDS),
       ...FEEDS.flatMap((feed) =>
         [...KEYS[feed], ...UNREAD[feed]].flatMap((key) => named(feed, key))

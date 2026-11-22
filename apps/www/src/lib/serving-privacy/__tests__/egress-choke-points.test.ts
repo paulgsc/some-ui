@@ -333,22 +333,25 @@ const ATTENTION_SENDS = [
 
 /**
  * LA8, ST38, FEED4: Studio's feed videos' reads of a feed's episodes, of an
- * episode's video, a part at a time, and of its chapters (SFEED4), and its
- * one send of an episode's link.
+ * episode's video, a part at a time, and of each file beside it (its
+ * thumbnail whole, its chapters; SFEED4, ASSETS-R), and its sends of an
+ * episode's link and of the name of a file to make.
  */
 const CALLS_READ = "lib/home-link/call-videos.ts"
 const CALLS_SENDS = [
   ['"GET"', "episodesPath(feed)"],
-  ['"GET"', "videoPath(feed, key)", "undefined", "{ start, end }"],
+  ['"GET"', 'assetPath(feed, key, "video")', "undefined", "{ start, end }"],
   ['"PUT"', "linkPath(feed, key)", "JSON.stringify({ link })"],
-  ['"GET"', "descriptionPath(feed, key)"],
+  ['"GET"', "assetPath(feed, key, asset)", "undefined", '"whole"'],
+  ['"GET"', "assetPath(feed, key, asset)"],
+  ['"POST"', "producePath(feed, key)", "JSON.stringify({ asset })"],
 ]
-/** The four paths those requests reach, as the read writes them. */
+/** The paths those requests reach, as the read writes them. */
 const CALLS_PATHS = [
   "return `/feeds/${feed}/videos`",
-  "return `/feeds/${feed}/videos/${encodeURIComponent(key)}/video`",
+  "return `/feeds/${feed}/videos/${encodeURIComponent(key)}/${asset}`",
   "return `/feeds/${feed}/videos/${encodeURIComponent(key)}/link`",
-  "return `/feeds/${feed}/videos/${encodeURIComponent(key)}/description`",
+  "return `/feeds/${feed}/videos/${encodeURIComponent(key)}/produce`",
 ]
 
 /** LA8, SFEED12: a template's preview, and the three requests it may send. */
@@ -991,7 +994,7 @@ describe("LA8: the phone reaches home through one module", () => {
     ])
   })
 
-  it("sends nothing from Studio's feed videos but a feed's list, its video's parts and an episode's link, and only Studio's feed videos asks them (ST38, FEED4)", () => {
+  it("sends nothing from Studio's feed videos but a feed's list, its video's parts, an episode's link, its files beside the video and the name of one to make, and only Studio's feed videos asks them (ST38, FEED4, ASSETS-R)", () => {
     expect(sendCalls(CALLS_READ, read(CALLS_READ))).toEqual(CALLS_SENDS)
     for (const path of CALLS_PATHS) expect(read(CALLS_READ)).toContain(path)
     const readers = sourceFiles()

@@ -10,6 +10,7 @@ import { WEEK_ID, weekNumber } from "@some-ui/rust-rounds/entry"
 import { essayName, isEssayKey } from "@/lib/cards-essay-key"
 import { FEED_FACTS } from "@/lib/studio-index/words"
 
+import type { Produced, ShownAsset } from "./assets"
 import type { Episode, Feed, FetchFailure } from "./model"
 
 /** A share of `done` of `total`, below a hundred until it is whole. */
@@ -266,9 +267,52 @@ export const VIDEOS_WORDS = {
   linkAway: "Home didn't answer, so the link isn't saved. Try again.",
   linkOlder: "Home didn't keep the link. Update home, then try again.",
   onYouTube: "Watch on YouTube",
-  /** Its chapters, for the upload's YouTube description (SFEED4). */
-  chapters: "Its chapters",
-  chaptersLine:
-    "Paste them into the YouTube description when you upload it, and YouTube shows each as a chapter.",
-  chaptersWhat: "the chapters",
 } as const
+
+/**
+ * What an episode's page says of each file its render left beside the video
+ * (ASSETS-R, C1300; its chapters, SFEED4), by `AssetView`'s kinds: the file
+ * and what to do with it; not made, and whether home can make it now; asked
+ * for; tried and not made.
+ */
+export const ASSET_WORDS = {
+  thumbnail: {
+    heading: "Its thumbnail",
+    there: "Save it, then set it as the video's thumbnail in YouTube Studio.",
+    alt: "The episode's thumbnail",
+    missing:
+      "Home made none with this episode. It can make one now from the episode, and the video stays as it is.",
+    asked:
+      "Home will make it when it's free, after what it's making now, and keep it with the episode.",
+    failed:
+      "Home tried and couldn't make one from this episode, and trying again would come out the same.",
+  },
+  description: {
+    heading: "Its chapters",
+    there:
+      "Paste them into the YouTube description when you upload it, and YouTube shows each as a chapter.",
+    what: "the chapters",
+    missing:
+      "This episode has none: they're made with the video, and it has too few scenes or came before chapters did.",
+    asked: "Home will make them with the video, and keep them with it.",
+    failed: "Home tried and couldn't make chapters for this episode.",
+  },
+  generate: "Generate",
+  asking: "Asking home…",
+  save: "Save",
+  saveFailed: "The share sheet didn't open. Try again.",
+  produced: {
+    asked: "Asked. Home will make it when it's free.",
+    older:
+      "Home can't make this file for this episode. Update home, then try again.",
+    unreadable: "Home didn't answer, so nothing was asked. Try again.",
+  } satisfies Record<Produced["kind"], string>,
+} as const satisfies {
+  readonly [A in ShownAsset]: {
+    readonly heading: string
+    readonly there: string
+    readonly missing: string
+    readonly asked: string
+    readonly failed: string
+  } & Readonly<Record<string, string>>
+} & Readonly<Record<string, unknown>>

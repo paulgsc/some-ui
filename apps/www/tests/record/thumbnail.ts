@@ -13,6 +13,7 @@ import { join } from "node:path"
 import type { Browser } from "@playwright/test"
 import { fontFiles } from "@some-ui/video-motion/fonts"
 import type { Parsed } from "@some-ui/video-render"
+import { ASSET_FILE } from "@some-ui/video-render/assets"
 import {
   chooseTitleSize,
   THUMBNAIL,
@@ -26,7 +27,7 @@ import type {
 } from "@some-ui/video-render/thumbnail"
 
 /** The thumbnail's file in an episode's folder, beside its video. */
-const THUMBNAIL_FILE = "thumbnail.png"
+const THUMBNAIL_FILE = ASSET_FILE.thumbnail
 
 /** video-motion's pinned Barlow Condensed, each as a `data:` URL. */
 async function thumbnailFonts(): Promise<ThumbnailFonts> {
@@ -100,21 +101,22 @@ export async function clearThumbnail(root: string): Promise<void> {
 
 /**
  * `input`'s thumbnail into `root`'s `thumbnail.png`, replacing any earlier
- * one; with a title that can't be drawn, none, and a line on stderr saying
- * why.
+ * one, and the file it wrote; with a title that can't be drawn, none, a line
+ * on stderr saying why, and the why.
  */
 export async function writeThumbnail(
   browser: Browser,
   root: string,
   input: ThumbnailInput
-): Promise<void> {
+): Promise<Parsed<string>> {
   const file = join(root, THUMBNAIL_FILE)
   await clearThumbnail(root)
   const drawn = await drawThumbnail(browser, input)
   if (!drawn.ok) {
     process.stderr.write(`no thumbnail: ${drawn.problems.join("; ")}\n`)
-    return
+    return drawn
   }
   await writeFile(file, drawn.value)
   console.log(`wrote ${file}`)
+  return { ok: true, value: file }
 }

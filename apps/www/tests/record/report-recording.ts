@@ -26,6 +26,7 @@ import type { EngagementReport } from "@some-ui/video-render"
 import type { CallValues } from "./call-recording"
 import { FRAME, SERIES } from "./call-recording"
 import { fail, here, launchChromium } from "./command"
+import { reportFacts } from "./thumbnail-facts"
 import {
   placeBed,
   policyOf,
@@ -142,7 +143,7 @@ export async function recordReport(
     await renderCut(root, SERIES, reportCutList(report, takes, { bed }), {
       preview,
       episode: "report.mp4",
-      thumbnail: { genre: "report", week: report.week },
+      thumbnail: reportFacts(report),
       marks: () => reportChapterMarks(report),
       policy,
       browser,

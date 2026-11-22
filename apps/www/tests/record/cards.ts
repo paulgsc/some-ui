@@ -104,6 +104,7 @@ import {
 
 import { CALL_OPTIONS, FRAME } from "./call-recording"
 import { fail, here, jsonOr, launchChromium, runCommand } from "./command"
+import { cardsEssayFacts } from "./thumbnail-facts"
 import {
   placeBed,
   policyOf,
@@ -575,7 +576,7 @@ async function main(): Promise<void> {
       {
         preview: false,
         episode: "cards.mp4",
-        thumbnail: { genre: "cards-essay", title: essay.value.title },
+        thumbnail: cardsEssayFacts(essay.value),
         marks: () => cardsChapterMarks(scenes),
         policy,
         browser,

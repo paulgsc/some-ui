@@ -10,14 +10,21 @@
  *   (`lib/call-videos/parts`), while Watch fetches it into the phone's cache;
  * - the episode's `YouTube` link, one `PUT /feeds/:feed/videos/:key/link` per
  *   Save, which a tap starts;
- * - the episode's chapters for its `YouTube` description (SFEED4, #2763), one
- *   `GET /feeds/:feed/videos/:key/description` each time its page opens.
+ * - each file its render left beside the video for `YouTube` (ASSETS-R,
+ *   C1300): its chapters (SFEED4, #2763) and its thumbnail, one
+ *   `GET /feeds/:feed/videos/:key/<file>` each time its page opens;
+ * - one `POST /feeds/:feed/videos/:key/produce` of `{ asset }` per Generate,
+ *   which asks home to make a file the episode lacks, a tap each.
  *
- * All four go through the link's `keep`, as Ideas on home's writes do.
+ * All go through the link's `keep`, as Ideas on home's writes do.
  *
- * Nothing of the phone's is sent but the link the owner pasted. What the
+ * Nothing of the phone's is sent but the link the owner pasted and the name
+ * of the file asked for. What the
  * screen makes of each answer is `lib/call-videos`'s, its one caller.
  */
+import type { AloneAsset, EpisodeAsset } from "@some-ui/video-render/assets"
+
+import type { ShownAsset } from "@/lib/call-videos/assets"
 import type { Feed } from "@/lib/call-videos/model"
 
 import { homeLink } from "./index"
@@ -29,19 +36,19 @@ function episodesPath(feed: Feed): string {
   return `/feeds/${feed}/videos`
 }
 
-/** An episode's video. */
-function videoPath(feed: Feed, key: string): string {
-  return `/feeds/${feed}/videos/${encodeURIComponent(key)}/video`
+/** An episode's file: its video, or one beside it. */
+function assetPath(feed: Feed, key: string, asset: EpisodeAsset): string {
+  return `/feeds/${feed}/videos/${encodeURIComponent(key)}/${asset}`
+}
+
+/** An episode's ask that home make one of its files. */
+function producePath(feed: Feed, key: string): string {
+  return `/feeds/${feed}/videos/${encodeURIComponent(key)}/produce`
 }
 
 /** An episode's `YouTube` link. */
 function linkPath(feed: Feed, key: string): string {
   return `/feeds/${feed}/videos/${encodeURIComponent(key)}/link`
-}
-
-/** An episode's chapters, as its YouTube description's lines. */
-function descriptionPath(feed: Feed, key: string): string {
-  return `/feeds/${feed}/videos/${encodeURIComponent(key)}/description`
 }
 
 /** Asks home once for the episodes of `feed` it holds; never rejects. */
@@ -61,7 +68,7 @@ export function askVideoPart(
 ): Promise<Asked> {
   return asked(() =>
     homeLink().keep((send) =>
-      send("GET", videoPath(feed, key), undefined, { start, end })
+      send("GET", assetPath(feed, key, "video"), undefined, { start, end })
     )
   )
 }
@@ -79,9 +86,33 @@ export function sendLink(
   )
 }
 
-/** Asks home once for an episode's chapters; never rejects. */
-export function askDescription(feed: Feed, key: string): Promise<Asked> {
+/**
+ * Asks home once for one of an episode's files beside its video, whole: its
+ * chapters as text, its thumbnail's bytes as base64. Never rejects.
+ */
+export function askAsset(
+  feed: Feed,
+  key: string,
+  asset: ShownAsset
+): Promise<Asked> {
   return asked(() =>
-    homeLink().keep((send) => send("GET", descriptionPath(feed, key)))
+    homeLink().keep((send) =>
+      asset === "thumbnail"
+        ? send("GET", assetPath(feed, key, asset), undefined, "whole")
+        : send("GET", assetPath(feed, key, asset))
+    )
+  )
+}
+
+/** Asks home once to make one of an episode's files; never rejects. */
+export function sendProduce(
+  feed: Feed,
+  key: string,
+  asset: AloneAsset
+): Promise<Asked> {
+  return asked(() =>
+    homeLink().keep((send) =>
+      send("POST", producePath(feed, key), JSON.stringify({ asset }))
+    )
   )
 }

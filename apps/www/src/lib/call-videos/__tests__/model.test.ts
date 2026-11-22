@@ -13,7 +13,6 @@ import {
   isFeed,
   listedEpisode,
   partOf,
-  readChapters,
   readEpisodes,
   readLinkSaved,
   readPart,
@@ -107,19 +106,6 @@ describe("isFeed", () => {
       false,
       false,
     ])
-  })
-})
-
-describe("readChapters (SFEED4)", () => {
-  it("reads home's lines, none when it has none, and refuses anything else", () => {
-    expect(
-      readChapters({ status: 200, body: "0:00 Opening\n0:20 The board\n" })
-    ).toEqual({ kind: "lines", text: "0:00 Opening\n0:20 The board\n" })
-    expect(readChapters({ status: 404, body: "" })).toEqual({ kind: "none" })
-    expect(readChapters({ status: 200, body: "  " })).toEqual({ kind: "none" })
-    expect(readChapters({ status: 500, body: "" })).toEqual({
-      kind: "unreadable",
-    })
   })
 })
 
