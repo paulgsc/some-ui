@@ -13,19 +13,23 @@
  *   keeps the first failure.
  * - Family: the app's traffic on Wi-Fi or on mobile data (Android's
  *   default, or a per-app setting) × home answering on Wi-Fi only × mobile
- *   data there or gone × the first failure's kind (no answer, a name, a
- *   certificate, a fault) × the second try's end (answered, held, none).
+ *   data there or gone × Data Saver on or off with the Wi-Fi metered or not
+ *   × the first failure's kind (no answer, a name, a certificate, a fault)
+ *   × the second try's end (answered, held, none).
  * - Proof: these tests, over the second try's three ends and which
  *   failures ask it; and android-compat.yml's route scenario
  *   (apps/mobile/compat/route.sh, HomeRouteTest) on emulators set up as the
  *   S26 (Wi-Fi the default) and as the S21 Ultra (its traffic on mobile data
  *   while home answers only on Wi-Fi), each as the app was and with the fix.
- * - Tolerance: a per-app setting that keeps the app off Wi-Fi without
- *   Android saying so (One UI's "Mobile data only apps" may be one) is
- *   emulated only as an iptables rule on the app, which Android doesn't
- *   know of: the fix can't get past it, and it is said as the first failure,
- *   not as held. A request the default network fails slowly waits that
- *   failure out before the second try.
+ * - Tolerance: a per-app setting that keeps the app off Wi-Fi (One UI's
+ *   "Mobile data only apps" and "Allowed networks for apps") is reported,
+ *   not repaired: no network the app may not use can be asked. Every
+ *   failure writes HomeRoute's diagnostic line, which names each network's
+ *   own failure; the screen says held where Android says it holds the app,
+ *   and the first failure where it doesn't. Such a setting is emulated
+ *   only as an iptables rule on the app, which Android doesn't know of. A
+ *   request the default network fails slowly waits that failure out before
+ *   the second try.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
