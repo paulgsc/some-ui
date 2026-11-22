@@ -1,11 +1,13 @@
 /**
- * The web surface's snips (SNIPS1, `docs/snips.md`): every route the Pages
- * build offers, at each of `WEB_VIEWPORTS`, on the viewer's sample data, the
+ * The web surface's snips (SNIPS1, `docs/snips.md`): every route the
+ * capture build (`snips`, build.profiles.ts) offers, at each of `WEB_VIEWPORTS`, on the viewer's sample data, the
  * clock frozen at `FROZEN_AT` and motion reduced.
  *
  * Run by `.github/workflows/snips-capture.yml` only: it skips unless
- * `SNIPS_OUT` names where the bundle's web half goes, and needs the Pages
- * build in `WWW_DIST_PAGES` (as `tests/local-mode` does).
+ * `SNIPS_OUT` names where the bundle's web half goes, and needs the capture
+ * build in `WWW_DIST_SNIPS` (as `tests/local-mode` does). The capture build
+ * is the viewer's build kept whole: the public site is pruned to a CV
+ * (C1055, #3401), and an essay still names its snips by these routes.
  *
  * No owner data can reach a picture: the build is the viewer's
  * (`VITE_STATIC_DATA`, so it reads only its bundled samples), each size
@@ -32,7 +34,7 @@ import type { Viewport } from "@/lib/snips"
 import { pageRegions, walk, writePart } from "./capture"
 
 const OUT = process.env["SNIPS_OUT"]
-/** The Pages build's base path, as pages.yml and pr.yml build it. */
+/** The viewer's base path, as pages.yml and snips-capture.yml build it. */
 const BASE = "/some-ui/"
 const WWW = join(import.meta.dirname, "../..")
 
@@ -42,7 +44,7 @@ test.describe("snips: web", () => {
 
   let site: Listening | null = null
   test.beforeAll(async () => {
-    const built = builtApp("pages")
+    const built = builtApp("snips")
     if ("why" in built) throw new Error(built.why)
     site = await serveBuild(built.dir, BASE)
   })
@@ -50,7 +52,7 @@ test.describe("snips: web", () => {
     await site?.close()
   })
 
-  test("every route the Pages build offers, at each size", async ({
+  test("every route the capture build offers, at each size", async ({
     browser,
   }) => {
     const appVersion = appVersionOf(
