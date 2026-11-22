@@ -12,7 +12,7 @@
 # each one found; the script fails if any did.
 #
 # The row, <out-dir>/row.json: {api, webview, launch, paired, storm,
-# refresh}, webview the image's WebView version and the rest each
+# refresh, name}, webview the image's WebView version and the rest each
 # "pass", "fail" or "not run" (paired also "via debug build", where the
 # release APK's Pair form could not be driven, and "no system CA", where the
 # storm ran unpaired), which the stamp job tabulates.
@@ -34,12 +34,13 @@ if [ "$cpu" -gt 0 ]; then
   fi
 fi
 
-# The level's row of the stamp: write_row <launch> <paired> <storm> <refresh>.
+# The level's row of the stamp: write_row <launch> <paired> <storm> <refresh>
+# [<name>], name "<asked>/<past cache>" from the name scenario, or not run.
 write_row() {
   node -e '
-const [api, webview, launch, paired, storm, refresh, file] = process.argv.slice(1)
-require("fs").writeFileSync(file, JSON.stringify({ api: Number(api), webview, launch, paired, storm, refresh }))
-' "$api" "$webview" "$1" "$2" "$3" "$4" "$out/row.json"
+const [api, webview, launch, paired, storm, refresh, name, file] = process.argv.slice(1)
+require("fs").writeFileSync(file, JSON.stringify({ api: Number(api), webview, launch, paired, storm, refresh, name }))
+' "$api" "$webview" "$1" "$2" "$3" "$4" "${5:-not run}" "$out/row.json"
   cat "$out/row.json"
 }
 
@@ -58,6 +59,15 @@ if [ -z "$webview" ]; then
   done
 fi
 webview=${webview:-unknown}
+
+# The name scenario alone (#3411), which needs no WebView: the stamp's
+# other columns say so.
+if [ "${NAME_ONLY:-false}" = true ]; then
+  bash "$here/name-lookup.sh" "$apks" "$out/name"
+  name=$(node -e 'const r = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); console.log(r.asked + "/" + r.past_cache)' "$out/name/name.json" 2> /dev/null || echo "fail/fail")
+  write_row "not run" "not run" "not run" "not run" "$name"
+  exit 0
+fi
 
 # The bundle's floor: Vite's default target (baseline-widely-available),
 # about Chrome 111, and the app's android.minWebViewVersion
