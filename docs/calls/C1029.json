@@ -1,0 +1,18 @@
+{
+  "id": "C1029",
+  "made": "2026-11-22",
+  "by": "owner",
+  "paths": [
+    "some-ui:packages/eslint/src/assets.ts",
+    "some-ui:packages/eslint/tests/assets.test.ts",
+    "some-ui:scripts/check-assets.ts"
+  ],
+  "chose": "Generated assets for home's LAN build and the phone live only on home and are served by a file server on home's LAN, by a URL the code computes from the asset's key; never the repo, the lan or phone bundle, or the phone's disk. The Pages build, the public static site, may bundle generated assets into its own artifact at build time, never committed to the repo. The code that generates them lives in the repo. The rule is held by check:assets, not prose. Videos stream from home and are never saved on the phone.",
+  "options": [
+    "generated assets live on home, served by URL, with only the Pages build bundling them at build time, held by check:assets",
+    "assets committed or bundled as today"
+  ],
+  "gray": "The owner, on #3399 (2026-11-22, close paraphrase): \"We don't ship the PNGs, and not just the PNGs: every asset falls under the same quasi-CDN pattern. This is home, LAN only, so it's a Caddy file server and we serve by URL. If an application were public, it would be a storage bucket. So there is never a pattern where we persist files in the repo or have the phone store them on disk. Even for the brand: the code that generates it is in the repo, but the generated asset lives only on home, served by URL. This one shouldn't be in CLAUDE.md. It's deterministic enough to be a lint, part of CI.\" Then, on the Pages build (2026-11-22, relayed by the coordinator of run #3361): \"Pages is a static web app, so we can bundle whatever static assets at build time.\"",
+  "undo": "Only the owner can move this call.",
+  "refs": ["#3399", "#3361"]
+}
