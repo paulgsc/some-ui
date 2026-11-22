@@ -85,7 +85,7 @@ export type Ring = {
 }
 
 /** The copy block's ring, over `faces` faces of copy. */
-export const copyRing = (faces: number): Ring => ({
+const copyRing = (faces: number): Ring => ({
   name: "copy",
   faces,
   axis: "y",

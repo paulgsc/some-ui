@@ -38,7 +38,7 @@ export type GapWords = {
 }
 
 /** One face of the showcase's copy block (C1113): a label, a headline, a line. */
-export type CopyWords = {
+type CopyWords = {
   readonly kicker: string
   readonly headline: string
   readonly line: string
