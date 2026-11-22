@@ -174,7 +174,12 @@ describe("renderLanding", () => {
     )
     for (const name of ["turn-copy", "turn-cube", "type-cube"])
       expect(head).toContain(`animation-name: ${name};`)
+    // The copy turns about Y, the cubes about X, and a face stands at its
+    // angle only where the showcase moves: laid flat it stays put.
+    expect(head).toContain(".ring--copy .face { transform: rotateY(")
+    expect(head).toContain(".ring--cube .face { transform: rotateX(")
     expect(outside).not.toMatch(/animation(-name)?\s*:/)
+    expect(outside).not.toMatch(/\.face \{ transform/)
   })
 
   it("rests on each face, turns a face's angle, and ends where it began", () => {
@@ -210,18 +215,18 @@ describe("renderLanding", () => {
     )
   })
 
-  it("types each title as its face comes round", () => {
+  it("types each title as its face comes round, a step a character", () => {
     const { slot, cycle } = schedule(LANDING_WORDS.projects.length)
     const cubes = cubesIn(page)
     expect(cubes).toHaveLength(CUBES)
     for (const { delay: ringDelay, faces } of cubes) {
       const typed = [
         ...faces.matchAll(
-          /style="--i: (\d+);[^"]*"[\s\S]*?<span class="typed" style="animation-delay: (-?[\d.]+)s;/g
+          /style="--i: (\d+);[^"]*"[\s\S]*?<span class="typed" style="animation-delay: (-?[\d.]+)s; animation-timing-function: steps\((\d+), end\)">([^<]+)<\/span>/g
         ),
       ]
       expect(typed).toHaveLength(LANDING_WORDS.projects.length)
-      for (const [, position, delay] of typed) {
+      for (const [, position, delay, steps, title] of typed) {
         // A title starts typing when its face arrives: its ring's delay
         // plus its position's slots, in the same cycle.
         const off =
@@ -229,6 +234,9 @@ describe("renderLanding", () => {
             cycle) %
           cycle
         expect(Math.min(off, cycle - off)).toBeLessThan(0.01)
+        // Already running at load, never waiting with the title hidden.
+        expect(Number(delay)).toBeLessThanOrEqual(0)
+        expect(Number(steps)).toBe([...title].length)
       }
     }
   })
@@ -324,6 +332,10 @@ describe("renderLanding", () => {
     expect(
       outside.match(/(^|\s)transform:[^;]*/gm)?.map((t) => t.trim())
     ).toEqual(["transform: scale(1.015)"])
+    // A slot's clip or still is never cropped and never something to click.
+    expect(css).toMatch(
+      /\.media\s*\{[^}]*object-fit:\s*contain;[^}]*pointer-events:\s*none;/
+    )
   })
 
   it("names every slot's asset among the keys the build looks for", () => {
