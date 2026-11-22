@@ -1,22 +1,7 @@
 #!/usr/bin/env bash
-# `pnpm --filter www preview:pages` (C1111): the public site as GitHub Pages
-# would serve it from the checked-out branch, built and served on this
-# machine, so the owner sees a change to it before it merges and without a
-# Pages run. It does what pages.yml's build-www job does, in its order:
-#
-#   1. fetches the newest site media from main's own producer runs, with the
-#      very script that job runs (fetch-site-media.sh);
-#   2. builds www and its workspace dependencies with the Pages build's
-#      environment (the `pages` profile, static data, the /some-ui/ base);
-#   3. serves apps/www/dist at http://localhost:4173/some-ui/ until Ctrl-C.
-#
-# Needs the repo's .#ci shell with dependencies installed (`nix develop
-# .#ci --command pnpm install`), and gh signed in to an account that can
-# read this repository's Actions (`gh auth status`).
-# Without gh the media step says so and the site shows every slot's drawn
-# placeholder, as a deploy with no media would. Run it inside the shell
-# Pages builds in, `nix develop .#ci --command pnpm --filter www
-# preview:pages`, whose pnpm is the one `packageManager` pins.
+# `pnpm --filter www preview:pages` (C1111): fetch main's site media, build
+# as pages.yml's build-www does, and serve at http://localhost:4173/some-ui/.
+# How to run it, and what it needs: apps/www/src/landing/README.md.
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -45,4 +30,4 @@ done
 
 echo "[preview:pages] serving the site at http://localhost:4173${base} (Ctrl-C stops it)"
 cd "$root/apps/www"
-VITE_BASE_PATH="$base" SOME_UI_PROFILE=pages exec pnpm exec vite preview --port 4173 --strictPort
+VITE_BASE_PATH="$base" SOME_UI_PROFILE=pages exec pnpm run serve --port 4173 --strictPort

@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 # The landing's media (PAGES #3401, C1059), fetched where
 # render-public-site.ts looks for them (apps/www/src/landing/output.ts,
-# SITE_MEDIA_DIR). One copy, run by pages.yml's "Fetch the site's media" step
-# and by `pnpm --filter www preview:pages` on the owner's machine (C1111), so
-# a preview shows exactly the media a deploy would.
+# SITE_MEDIA_DIR). Run by pages.yml and by preview-pages.sh (C1111).
 #
 # Only from this repository's own successful runs of the two producers on
 # main (Site Assets on a push, a dispatch or its schedule; Snips Capture on a
@@ -19,9 +17,8 @@
 # Needs: gh, signed in with read access to the repository's Actions
 # (GH_TOKEN in Actions), unzip and zipinfo.
 #
-# No pipefail, as Actions' own shell for the step had none: a listing that
-# fails at the head of a `| while` is passed over and the next run or
-# producer still tried, so one failed listing costs one kind, not the rest.
+# No pipefail: a listing that fails at the head of a `| while` is passed
+# over, so one failed listing costs one kind, not the rest.
 set -eu
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -37,9 +34,9 @@ fi
 
 # Fetched beside the media folder and swapped in on the way out, so the
 # build shows only what this fetch found, as a deploy would. A fetch that
-# stops partway still gives the build what it had found, as the step always
-# did; one that found nothing at all (gh signed out, no network) leaves an
-# earlier local preview's media as they were.
+# stops partway still gives the build what it had found; one that found
+# nothing at all (gh signed out, no network) leaves an earlier local
+# preview's media as they were.
 final="$media"
 media="$media.next"
 swap() {

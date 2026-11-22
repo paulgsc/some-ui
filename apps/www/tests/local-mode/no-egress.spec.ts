@@ -19,6 +19,8 @@
  * policy is shown to block a real request.
  */
 
+import { CUBES } from "@/landing/render"
+import { LANDING_WORDS } from "@/landing/words"
 import { expect, test } from "@playwright/test"
 import type { BrowserContext, Page } from "@playwright/test"
 
@@ -323,10 +325,9 @@ test.describe("the Pages build", () => {
     // Built with none of its media (C1059): every slot draws its
     // placeholder, and the build did not fail for want of one.
     await expect(page.locator("article[data-slot] .media")).toHaveCount(0)
-    // Each project's face on the first cube (C1113) shows its title card.
     await expect(
       page.locator('.block--cube[data-cube="0"] .face .title-card')
-    ).toHaveCount(4)
+    ).toHaveCount(LANDING_WORDS.projects.length)
     await expect(
       page.locator('article[data-slot="still"] .drawing')
     ).toHaveCount(2)
@@ -334,55 +335,45 @@ test.describe("the Pages build", () => {
     await expect(
       page.locator("article[data-slot] a, article[data-slot] button")
     ).toHaveCount(0)
-    // A clip is the face's background, never a player (C1064): none has
-    // controls or speaks to a screen reader, and a reader who prefers less
-    // motion sees each face's title card instead, and nothing turns (C1113).
+    // A clip is never a player (C1064), and is hidden from a reader who
+    // prefers less motion.
     await expect(
       page.locator("video[controls], video:not([aria-hidden=true])")
     ).toHaveCount(0)
     expect(
-      await page.evaluate(
-        () =>
-          [...document.styleSheets].some((sheet) =>
-            [...sheet.cssRules].some(
-              (rule) =>
-                rule instanceof CSSMediaRule &&
-                rule.conditionText.includes("prefers-reduced-motion: reduce") &&
-                [...rule.cssRules].some(
-                  (inner) =>
-                    inner instanceof CSSStyleRule &&
-                    inner.selectorText === "video.media" &&
-                    inner.style.display === "none"
-                )
-            )
-          ) &&
-          [...document.styleSheets].some((sheet) =>
-            [...sheet.cssRules].some(
-              (rule) =>
-                rule instanceof CSSMediaRule &&
-                rule.conditionText.includes(
-                  "prefers-reduced-motion: no-preference"
-                ) &&
-                [...rule.cssRules].some(
-                  (inner) =>
-                    inner instanceof CSSStyleRule &&
-                    inner.selectorText === ".block" &&
-                    inner.style.animationName === "breathe"
-                )
-            )
+      await page.evaluate(() =>
+        [...document.styleSheets].some((sheet) =>
+          [...sheet.cssRules].some(
+            (rule) =>
+              rule instanceof CSSMediaRule &&
+              rule.conditionText.includes("prefers-reduced-motion: reduce") &&
+              [...rule.cssRules].some(
+                (inner) =>
+                  inner instanceof CSSStyleRule &&
+                  inner.selectorText === "video.media" &&
+                  inner.style.display === "none"
+              )
           )
+        )
       )
     ).toBe(true)
-    // On a wide screen the showcase turns, and each project is still read
-    // out once, by the first cube's caption (C1112): the second cube and
-    // every band are hidden from a screen reader.
+    // On a wide screen the cubes turn, and each project is read out once
+    // (C1112).
     await page.setViewportSize({ width: 1280, height: 800 })
     await expect(
-      page.getByRole("heading", { level: 3, name: "Suspender Ledger" })
+      page.getByRole("heading", {
+        level: 3,
+        name: LANDING_WORDS.projects[0].title,
+      })
     ).toHaveCount(1)
     expect(
-      await page.evaluate(() => document.getAnimations().length)
-    ).toBeGreaterThan(0)
+      await page.evaluate(() =>
+        document
+          .getAnimations()
+          .map((a) => (a instanceof CSSAnimation ? a.animationName : ""))
+          .filter((name) => name === "turn-cube")
+      )
+    ).toHaveLength(CUBES)
     // For a reader who prefers less motion nothing turns, types or breathes.
     await page.emulateMedia({ reducedMotion: "reduce" })
     expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)

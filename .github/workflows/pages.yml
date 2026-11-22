@@ -181,10 +181,7 @@ jobs:
       # from this repository's own successful producer runs on main, by
       # apps/www/scripts/fetch-site-media.sh, which says what it takes and
       # refuses. The owner's local preview runs the same script (C1111).
-      # Best effort: a kind with none keeps its slot's drawn placeholder, the
-      # summary says which kinds were found, and the deploy goes on. A
-      # rollback to a commit older than the script has none to run, so its
-      # slots all draw their placeholders.
+      # Best effort: the deploy goes on without any it can't fetch.
       - name: Fetch the site's media
         continue-on-error: true
         env:

@@ -87,17 +87,17 @@ export const LANDING_WORDS: LandingWords = {
     {
       kicker: "In my browser",
       headline: "Two extensions I wrote for myself.",
-      line: "Suspender Ledger is signed by Mozilla. Page Filter is the one I use most.",
+      line: "Firefox first, Chromium too, from one TypeScript codebase.",
     },
     {
       kicker: "On my phone",
       headline: "One Android app for study, practice and the job search.",
-      line: "TypeScript and React in Capacitor, with Rust compiled to WebAssembly.",
+      line: "I use it every day. The clips here show it on sample data.",
     },
     {
       kicker: "At home",
       headline: "file_host, the Rust server behind them.",
-      line: "Its own Grafana dashboard tells me whether it's answering and what it turns away.",
+      line: "It runs on a four-core machine in my home.",
     },
   ],
   projects: [

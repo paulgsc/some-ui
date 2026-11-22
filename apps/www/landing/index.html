@@ -116,29 +116,15 @@
       .lede + .section-title {
         margin-top: 0;
       }
-      /* The showcase (C1113). On a phone, and for a reader who prefers less
-         motion, the projects lie flat as cards, each its picture and then
-         its words (C1110), and nothing turns, types or breathes; the copy
-         block shows only on a wide screen. Only the first cube's faces are
-         shown flat: every cube carries every project. */
+      /* The showcase (C1112, C1113): flat cards unless WIDE_MOTION (below);
+         laid flat, only the first cube shows, since every cube carries every
+         project. */
       .showcase {
         display: grid;
         gap: 20px;
       }
       .block--cube:not([data-cube="0"]) {
         display: none;
-      }
-      /* Laid flat, the cards sit in justified rows (C1064), each taking
-         its picture's own shape (--ar) and asking its row for a width in
-         proportion (--r), as the phone's cards always have. */
-      .block--cube .ring-turn {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
-        align-items: flex-start;
-      }
-      .block--cube .face {
-        flex: calc(var(--r) * 100) 1 calc(var(--r) * 300px);
       }
       .block--copy .ring-turn {
         display: grid;
@@ -153,17 +139,8 @@
       .face {
         display: flex;
         flex-direction: column;
-        border-radius: 12px;
-        overflow: hidden;
-        background: var(--card);
-        box-shadow: 0 0 0 1px var(--line);
       }
-      /* Laid flat, a face's screen takes its picture's own shape (--ar,
-         from the file, render.ts; C1064), so the picture fills it, nothing
-         cropped or padded, as the phone's cards always have. */
       .screen {
-        position: relative;
-        aspect-ratio: var(--ar);
         background: #111217;
       }
       .band {
@@ -241,14 +218,11 @@
           display: none;
         }
       }
-      /* On a wide screen, one row: the copy block, a rectangle turning
-         about Y, beside the cubes, squares turning about X (C1113). Each is
-         a ring whose turn render.ts draws in the head (ringCss): its faces
-         stand at their index's angle, at the depth that makes the front
-         face exactly the block. Each block breathes a little, and the whole
-         row holds still, titles and all, while the pointer is on it. The
-         turns and the typing are named under this same query, in the head
-         (render.ts, WIDE_MOTION), so they all start together. */
+      /* WIDE_MOTION (render.ts): one row of the copy block and the cubes,
+         each a ring whose turn and face angles ringCss draws in the head;
+         --depth puts the front face exactly on the block. Each block
+         breathes a little, and the whole row holds still under the pointer,
+         so the cubes keep their places against each other. */
       @media (width >= 900px) and (prefers-reduced-motion: no-preference) {
         .showcase {
           grid-template-columns: minmax(0, 1.15fr) repeat(2, minmax(0, 1fr));
@@ -265,8 +239,6 @@
         .block:nth-child(3) {
           animation-delay: -7.3s;
         }
-        /* The whole row holds still under the pointer, so the cubes keep
-           their places against each other. */
         .showcase:hover .block,
         .showcase:hover .block * {
           animation-play-state: paused;
@@ -295,14 +267,6 @@
           position: absolute;
           inset: 0;
           backface-visibility: hidden;
-        }
-        .ring[data-axis="y"] .face {
-          transform: rotateY(calc(var(--i) * 360deg / var(--faces)))
-            translateZ(var(--depth));
-        }
-        .ring[data-axis="x"] .face {
-          transform: rotateX(calc(var(--i) * -360deg / var(--faces)))
-            translateZ(var(--depth));
         }
         .ring--cube .screen {
           flex: 1;
@@ -383,28 +347,37 @@
           background-position: 0% 0;
         }
       }
-      /* The gaps' cards in justified rows (C1064): each takes its still's
-         own shape (--ar, from the file, render.ts), asks its row for a
-         width in proportion (--r), and so every card in a row shares one
-         picture height and no picture is cropped or padded. A narrow window
-         gives each card a row of its own. A card's words sit below its
-         picture (C1110), so a row's cards keep their own height. */
-      .grid {
+      /* Cards laid flat, the gaps' and the projects', sit in justified rows
+         (C1064): each takes its picture's own shape (--ar, from the file,
+         render.ts), asks its row for a width in proportion (--r), and so
+         every card in a row shares one picture height and no picture is
+         cropped or padded. A narrow window gives each card a row of its
+         own. Words sit below the picture, so a row's cards keep their own
+         height. */
+      .grid,
+      .block--cube .ring-turn {
         display: flex;
         flex-wrap: wrap;
         gap: 20px;
         align-items: flex-start;
       }
-      .card {
-        flex: calc(var(--r) * 100) 1 calc(var(--r) * 300px);
+      .card,
+      .face {
         border-radius: 12px;
         overflow: hidden;
         background: var(--card);
         box-shadow: 0 0 0 1px var(--line);
       }
-      .pic {
+      .card,
+      .block--cube .face {
+        flex: calc(var(--r) * 100) 1 calc(var(--r) * 300px);
+      }
+      .pic,
+      .screen {
         position: relative;
         aspect-ratio: var(--ar);
+      }
+      .pic {
         background: var(--stage);
       }
       .drawing {

@@ -6,18 +6,8 @@
  * `landing/index.html`, the Pages build's `index.html`.
  *
  * The page carries no script. Every card is a picture with its words below
- * it, never over it (C1110). "What I built and use every day" is the
- * showcase (C1113): on a wide screen, a block of copy turning about Y beside
- * two cubes turning about X, each a `Ring` turned by CSS alone (`ringCss`,
- * in the page's head), each cube face fitting its clip or still whole inside
- * its screen, its title typed in as it comes round. A face whose asset the
- * build lacks shows the project's title card. On a phone, and for a reader
- * who prefers less motion, the projects lie flat as cards and nothing turns,
- * types or breathes (landing/index.html). The gaps keep their row of cards,
- * each taking its still's own shape (C1064). A slot's asset is shown only
- * when the build carries it (`media`; output.ts, `SITE_MEDIA_DIR`). The
- * photo slot holds the mochi, the brand cast's own drawing (`mochiSvg`),
- * until the owner's photo is bundled.
+ * it, never over it (C1113). The photo slot holds the mochi, the brand
+ * cast's own drawing (`mochiSvg`), until the owner's photo is bundled.
  */
 import type { ResumeData } from "@some-ui/resume"
 
@@ -51,24 +41,28 @@ export type LandingMedia = ReadonlyMap<string, MediaSize | null>
 /** A card's shape when it has no picture of its own: its placeholder's. */
 const PLACEHOLDER: MediaSize = { width: 4, height: 3 }
 
-/** A picture's shape as a CSS aspect ratio. */
-const aspect = ({ width, height }: MediaSize): string =>
-  `${String(width)} / ${String(height)}`
-
 /**
- * A gap's card takes its picture's own shape (C1064): `--ar` for its aspect
- * ratio, `--r` for the width it asks of its row, so a row of cards of
+ * A card laid flat takes its picture's own shape (C1064): `--ar` for its
+ * aspect ratio, `--r` for the width it asks of its row, so a row of cards of
  * different shapes shares one height and no picture is cropped or padded.
  */
-const shape = (size: MediaSize): string =>
-  `--ar: ${aspect(size)}; --r: ${(size.width / size.height).toFixed(4)}`
+const shape = ({ width, height }: MediaSize): string =>
+  `--ar: ${String(width)} / ${String(height)}; --r: ${(width / height).toFixed(4)}`
+
+/** The size of a slot's asset when the build carries it to show. */
+const shown = (media: LandingMedia, key: string): MediaSize | undefined =>
+  media.get(key) ?? undefined
+
+/** Whether a slot's asset is a clip or a still, by its key. */
+const slotKind = (key: string): "clip" | "still" =>
+  key.endsWith(".mp4") ? "clip" : "still"
 
 /**
  * A slot's asset, as the background of its picture: a clip plays muted on a
  * loop, a still just sits there; neither is a control (C1064) nor read out.
  */
 const mediaTag = (key: string): string =>
-  key.endsWith(".mp4")
+  slotKind(key) === "clip"
     ? `<video class="media" src="${mediaSrc(key)}" autoplay muted loop playsinline disablepictureinpicture disableremoteplayback preload="metadata" aria-hidden="true"></video>`
     : `<img class="media" src="${mediaSrc(key)}" alt="" aria-hidden="true" />`
 
@@ -130,11 +124,10 @@ const lagBy = (ring: Ring, lagS: number): number =>
   (lagS % cycleOf(ring)) - cycleOf(ring)
 
 /**
- * Where the showcase moves: a wide screen whose reader allows motion. Every
- * ring's turn and every title's typing is named only under it, as
- * landing/index.html gives their durations, so all of them begin in the one
- * style change that brings it into force (a page opened narrow and then
- * widened included) and keep the schedule's offsets between them.
+ * Where the showcase moves: a wide screen whose reader allows motion.
+ * Every turn and typing is named only under it, so all of them begin in the
+ * one style change that brings it in (a page opened narrow and then widened
+ * included) and keep the schedule's offsets.
  */
 export const WIDE_MOTION =
   "(width >= 900px) and (prefers-reduced-motion: no-preference)"
@@ -143,14 +136,12 @@ export const WIDE_MOTION =
 const num = (n: number): string => String(Number(n.toFixed(3)))
 
 /**
- * A ring's CSS: its turn as one keyframes rule, and its face count and
- * cycle, which landing/index.html's ring rules read. A face stands at its
- * index's angle (rotateY forward, rotateX back, so the next face rises from
- * below), and the turn brings each to the front in order.
+ * A ring's CSS: its turn as one keyframes rule, its face count and cycle,
+ * and, where the showcase moves, its turn and where each face stands: at
+ * its index's angle (rotateY forward, rotateX back, so the next face rises
+ * from below), at the depth landing/index.html gives `--depth`.
  */
 export function ringCss(ring: Ring): string {
-  // Two faces stand back to back at no depth, and one at none: below three
-  // a ring is no shape, so the build fails rather than drawing nonsense.
   if (!Number.isInteger(ring.faces) || ring.faces < 3) {
     throw new Error(
       `the ${ring.name} ring needs three faces or more, not ${String(ring.faces)}`
@@ -163,6 +154,7 @@ export function ringCss(ring: Ring): string {
   const sign = ring.axis === "y" ? -1 : 1
   const at = (face: number): string =>
     `transform: translateZ(calc(-1 * var(--depth))) ${rotate}(${num((sign * 360 * face) / ring.faces)}deg);`
+  const stand = `${rotate}(calc(var(--i) * ${num((-sign * 360) / ring.faces)}deg)) translateZ(var(--depth))`
   const steps = Array.from(
     { length: ring.faces },
     (_, face) =>
@@ -170,7 +162,7 @@ export function ringCss(ring: Ring): string {
   )
   return `@keyframes turn-${ring.name} { ${steps.join(" ")} 100% { ${at(ring.faces)} } }
       .ring--${ring.name} { --faces: ${String(ring.faces)}; --cycle: ${num(cycle)}s; }
-      @media ${WIDE_MOTION} { .ring--${ring.name} .ring-turn { animation-name: turn-${ring.name}; } }`
+      @media ${WIDE_MOTION} { .ring--${ring.name} .ring-turn { animation-name: turn-${ring.name}; } .ring--${ring.name} .face { transform: ${stand}; } }`
 }
 
 /**
@@ -185,14 +177,8 @@ export function typeCss(ring: Ring): string {
 
 /**
  * One project on a cube's face, `position` faces round from the front, in a
- * ring running `lagS` behind its schedule. Its screen holds the project's
- * title card under its clip or still when the build carries one; its band,
- * on a wide screen, holds its title, typed in as the face comes round, and
- * its short line; its caption, on a phone or for a reader who prefers less
- * motion, holds its title, stack and line. Every word is below the picture.
- * Laid flat, the card takes its picture's own shape (`--ar`, `--r`; C1064)
- * in rows as the phone has always had them, so the picture fills it; on a
- * cube's square face it sits whole inside it.
+ * ring running `lagS` behind its schedule: its band (a wide screen) and its
+ * caption (laid flat) are its words, both below its picture.
  */
 const projectFace = (
   p: ProjectWords,
@@ -201,10 +187,10 @@ const projectFace = (
   lagS: number,
   media: LandingMedia
 ): string => `
-            <article class="face" data-slot="${p.media.endsWith(".mp4") ? "clip" : "still"}" data-asset="${e(p.media)}" style="--i: ${String(position)}; ${shape(media.get(p.media) ?? PLACEHOLDER)}">
+            <article class="face" data-slot="${slotKind(p.media)}" data-asset="${e(p.media)}" style="--i: ${String(position)}; ${shape(shown(media, p.media) ?? PLACEHOLDER)}">
               <div class="screen">
                 <div class="title-card" aria-hidden="true"><span>${e(p.title)}</span></div>${
-                  media.has(p.media)
+                  shown(media, p.media) !== undefined
                     ? `
                 ${mediaTag(p.media)}`
                     : ""
@@ -222,19 +208,14 @@ const projectFace = (
             </article>`
 
 /**
- * The showcase (C1113): on a wide screen, one row of the copy block and
- * `CUBES` cubes, each block breathing a little, and the whole row holding
- * still while the pointer is on it, so the cubes keep their places. Every
- * cube carries every project, the cube `j` starting `j / CUBES` of the way
- * round and running half a face's time ahead of the one before it, so they
- * never show the same project at once and never turn together. Only the
- * first cube is read out (its captions, hidden from sight on a wide
- * screen), and only it shows, laid flat, on a phone or for a reader who
- * prefers less motion.
+ * The showcase (C1110, C1112): on a wide screen, one row of the copy block
+ * and `CUBES` cubes. Every cube carries every project; only the first is
+ * read out (its captions, hidden from sight on a wide screen), and only it
+ * shows, laid flat, on a phone or for a reader who prefers less motion.
  */
 function showcase(words: LandingWords, media: LandingMedia): string {
   const cube = cubeRing(words.projects.length)
-  const n = words.projects.length
+  const n = cube.faces
   const copyFaces = words.copy
     .map(
       (c, i) => `
@@ -261,7 +242,7 @@ function showcase(words: LandingWords, media: LandingMedia): string {
       .join("")
     return `
         <div class="block block--cube" data-cube="${String(j)}"${j === 0 ? "" : ' aria-hidden="true"'}>
-          <div class="ring ring--cube" data-axis="x">
+          <div class="ring ring--cube">
             <div class="ring-turn" style="animation-delay: ${num(lagBy(cube, lagS))}s">${faces}
             </div>
           </div>
@@ -270,7 +251,7 @@ function showcase(words: LandingWords, media: LandingMedia): string {
   return `
       <div class="showcase">
         <div class="block block--copy">
-          <div class="ring ring--copy" data-axis="y">
+          <div class="ring ring--copy">
             <div class="ring-turn">${copyFaces}
             </div>
           </div>
@@ -289,13 +270,12 @@ const GAP_DRAWING: Readonly<Record<GapWords["id"], string>> = {
  * carries one) in its own shape, and its words below it.
  */
 const gapCard = (g: GapWords, media: LandingMedia): string => {
-  const size = media.get(g.visual)
-  const shown = size !== undefined && size !== null
+  const size = shown(media, g.visual)
   return `
         <article class="card" data-slot="still" data-asset="${e(g.visual)}" style="${shape(size ?? PLACEHOLDER)}">
           <div class="pic">
             ${
-              shown
+              size !== undefined
                 ? mediaTag(g.visual)
                 : `${GAP_DRAWING[g.id]}
             <p class="note">${e(g.visualNote)}</p>`
@@ -315,8 +295,6 @@ export const PHOTO = "photo/portrait.webp"
 export function landingMediaKeys(
   words: LandingWords = LANDING_WORDS
 ): ReadonlyArray<string> {
-  // A still may show on a face and on a gap's card both; the build
-  // carries it once.
   return [
     ...new Set([
       PHOTO,
@@ -338,12 +316,14 @@ const role = (title: string, when: string, body: string): string => `
  * the showcase's rings, drawn for their face counts.
  */
 export function renderLandingHead(words: LandingWords = LANDING_WORDS): string {
+  const cube = cubeRing(words.projects.length)
   return `<title>${e(words.title)}</title>
     <meta name="description" content="${e(words.description)}" />
     <link rel="canonical" href="${SITE_URL}" />
     <style>
-      ${[copyRing(words.copy.length), cubeRing(words.projects.length)].map(ringCss).join("\n      ")}
-      ${typeCss(cubeRing(words.projects.length))}
+      ${ringCss(copyRing(words.copy.length))}
+      ${ringCss(cube)}
+      ${typeCss(cube)}
     </style>`
 }
 
