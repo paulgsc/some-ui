@@ -14,7 +14,6 @@ import {
   parseGameEssay,
   QUOTE_RUN,
   sampleGameEssay,
-  STANCE_ANSWERS,
   STANCES,
 } from "@video-render/game-essay"
 import type { GameEssay } from "@video-render/game-essay"
@@ -100,15 +99,16 @@ describe("section 0: what the essay never is (D20)", () => {
     const essay = sample()
     const [game] = essay.games
     if (game === undefined) throw new Error("the sample has a game")
+    const noHalftime = { ...game, halftime: undefined }
     expect(
       problems({
         ...essay,
-        games: [{ ...game, halves: [{ half: "first", bites: [] }] }],
+        games: [{ ...noHalftime, halves: [{ half: "first", bites: [] }] }],
       })
-    ).not.toEqual([])
+    ).toEqual([expect.stringMatching(/^games\.0\.halves\.0\.bites: Too small/)])
     expect(
-      problems({ ...essay, games: [{ ...game, halves: [] }] })
-    ).not.toEqual([])
+      problems({ ...essay, games: [{ ...noHalftime, halves: [] }] })
+    ).toEqual([expect.stringMatching(/^games\.0\.halves: Too small/)])
   })
 
   it("refuses a second still on a bite, or a sequence of plays (one still per bite)", () => {
@@ -127,10 +127,12 @@ describe("section 0: what the essay never is (D20)", () => {
     ).not.toEqual([])
   })
 
-  it("holds the host to one stance of the fixed set, each answered its own way (a fixed editorial shape)", () => {
-    expect(STANCES[0]).toBe("decision")
-    for (const stance of STANCES) expect(STANCE_ANSWERS[stance]).not.toBe("")
-    expect(problems(withFirstBite({ stance: "hot-take" }))).not.toEqual([])
+  it("holds a bite to one stance of the fixed set (a fixed editorial shape)", () => {
+    for (const stance of STANCES)
+      expect(problems(withFirstBite({ stance }))).toEqual([])
+    expect(problems(withFirstBite({ stance: "hot-take" }))).toEqual([
+      expect.stringMatching(/stance/),
+    ])
   })
 
   it(`refuses a host line that repeats ${QUOTE_RUN} words of a play's text in a row (our words, never theirs)`, () => {
@@ -151,20 +153,104 @@ describe("section 0: what the essay never is (D20)", () => {
     expect(problems(quoting).join("\n")).toMatch(/its setup/)
   })
 
-  it(`lets a host line share ${QUOTE_RUN - 1} words in a row with a play, and the owner say anything`, () => {
+  it(`lets a host line share ${QUOTE_RUN - 1} words in a row with a play, and the owner say anything in their own voice`, () => {
     expect(
       problems(
         withFirstBite({
-          answer: { said: "A pass short middle, and the stop held." },
+          answer: {
+            said: "It was pass short middle intended, and the stop held.",
+          },
           transcript:
             "Pass short middle intended for the tight end, why would you do that.",
         })
       )
     ).toEqual([])
   })
+
+  it("holds a bite read aloud by the second voice to it, since Kokoro says it", () => {
+    const found = problems(
+      withFirstBite({
+        voice: "read-aloud",
+        transcript:
+          "Pass short middle intended for the tight end, why would you do that.",
+      })
+    )
+    expect(found).toEqual([
+      expect.stringMatching(/^sample-bite-1: read aloud: /),
+    ])
+  })
 })
 
 describe("an essay that contradicts itself", () => {
+  it("orders bites by when they were said as times, whatever the offset or fraction", () => {
+    const essay = sample()
+    const [game] = essay.games
+    const [first, second] = game?.halves ?? []
+    if (game === undefined || first === undefined || second === undefined)
+      throw new Error("the sample has two halves")
+    const at = (half: typeof first, ...times: Array<string>): typeof first => ({
+      ...half,
+      bites: half.bites.map((bite, i) => ({
+        ...bite,
+        saidAt: times[i] ?? bite.saidAt,
+      })),
+    })
+    const order = "401873010: its bites are not in the order they were said"
+    expect(
+      problems({
+        ...essay,
+        games: [
+          {
+            ...game,
+            halves: [
+              at(first, "2026-10-23T02:00:00-05:00"),
+              at(second, "2026-10-23T03:00:00Z"),
+            ],
+          },
+        ],
+      })
+    ).toContain(order)
+    expect(
+      problems({
+        ...essay,
+        games: [
+          {
+            ...game,
+            halves: [
+              at(first, "2026-10-23T00:52:10Z"),
+              at(second, "2026-10-23T00:52:10.500Z", "2026-10-23T00:53:00Z"),
+            ],
+          },
+        ],
+      })
+    ).not.toContain(order)
+  })
+
+  it("holds a matched bite's half to its play's quarter (C872), and its still to the two teams", () => {
+    const [bite] = sample().games[0]?.halves[0]?.bites ?? []
+    if (bite?.play == null)
+      throw new Error("the sample's first bite is matched")
+    expect(
+      problems(
+        withFirstBite({
+          play: { ...bite.play, still: { ...bite.play.still, period: 4 } },
+        })
+      )
+    ).toEqual([
+      "sample-bite-1: its play is in quarter 4, which is not the first half",
+    ])
+    expect(
+      problems(
+        withFirstBite({
+          play: {
+            ...bite.play,
+            still: { ...bite.play.still, possession: "LV" },
+          },
+        })
+      )
+    ).toEqual(["sample-bite-1: its still gives the ball to a team not playing"])
+  })
+
   it("is refused with every reason", () => {
     const essay = sample()
     const [game] = essay.games
@@ -247,6 +333,20 @@ describe("an essay that contradicts itself", () => {
       problems({
         ...essay,
         games: [{ ...game, halves: game.halves.slice(0, 1) }],
+      })
+    ).toContain("401873010: halftime is said only between bites of both halves")
+  })
+
+  it("says no halftime between the first half and overtime alone", () => {
+    const essay = sample()
+    const [game] = essay.games
+    const [first, second] = game?.halves ?? []
+    if (game === undefined || first === undefined || second === undefined)
+      throw new Error("the sample has two halves")
+    expect(
+      problems({
+        ...essay,
+        games: [{ ...game, halves: [first, { ...second, half: "overtime" }] }],
       })
     ).toContain("401873010: halftime is said only between bites of both halves")
   })

@@ -28,14 +28,14 @@
  *   carries at most one `still`, the moment of the play home matched it to;
  *   a bite home matched to none carries none (D12). Nothing holds a
  *   sequence of plays.
- * - _Our words, never theirs._ Checked: no line the host says repeats
- *   `QUOTE_RUN` words in a row of any matched play's text (`quoteProblems`).
- *   The play's text is in the data only for this check, and is never drawn
- *   or said. The owner's own words are theirs, so a transcript is not held
- *   to it.
+ * - _Our words, never theirs._ Checked: no line Kokoro says repeats
+ *   `QUOTE_RUN` words in a row of any matched play's text (`quoteProblems`):
+ *   the host's lines, and a bite read aloud by the second voice. The play's
+ *   text is in the data only for this check, and is never drawn or said. A
+ *   bite in the owner's own voice is theirs, so it is not held to it.
  * - _The editorial has a fixed shape._ Held by the type: a bite's `stance`
- *   is one of `STANCES`, and how the host answers each is the total record
- *   `STANCE_ANSWERS`.
+ *   is one of `STANCES`. How the host answers each (`STANCE_ANSWERS`, a
+ *   total record) is what the writer is held to; no check reads the answer.
  *
  * The look is the Rust essay's, template A: the host and the owner, the one
  * speaking lit, in the call's series.
@@ -57,7 +57,7 @@ import { FORMAT_SCHEMA, versionRefusal, words } from "./format"
 import type { Format, Shape } from "./format"
 import sample from "./templates/game-essay/sample-essay.json" with { type: "json" }
 
-const GAME_ESSAY_SCHEMA = "some-ui.game-essay/1"
+export const GAME_ESSAY_SCHEMA = "some-ui.game-essay/1"
 
 export const GAME_ESSAY_ID = "game-essay"
 
@@ -68,7 +68,7 @@ export const GAME_ESSAY_VERSION = 1
  * The fewest words in a row a host's line may share with a play's text
  * before it is refused as quoting it (section 0's third rule). Four words
  * ("at the CHI 45") are how anyone says where a ball is; five in a row of
- * ESPN's sentence is its sentence. Policy (C771), moved with the story (C1081).
+ * ESPN's sentence is its sentence. Policy (C771, C1081).
  */
 export const QUOTE_RUN = 5
 
@@ -142,7 +142,7 @@ const SHAPE: Shape = nightInMotion({
 })
 
 /** Why `version` of the game essay's template can't be drawn here, or null (VS1). */
-const gameEssayVersionRefusal = (version: number): string | null =>
+export const gameEssayVersionRefusal = (version: number): string | null =>
   versionRefusal("the game essay's template", GAME_ESSAY_VERSION, version)
 
 /** The game essay's format at `version`; throws for one this build doesn't know. */
@@ -278,7 +278,7 @@ const GameSchema = z.strictObject({
   halftime: said.optional(),
 })
 
-const GameEssaySchema = z.strictObject({
+export const GameEssaySchema = z.strictObject({
   schema: z.literal(GAME_ESSAY_SCHEMA),
   template: z.strictObject({
     id: z.literal(GAME_ESSAY_ID),
@@ -318,8 +318,8 @@ const runsOf = (text: string): Array<string> => {
   return runs
 }
 
-/** Every line the host says, by where it is in the essay. */
-function hostLines(essay: GameEssay): Array<readonly [string, string]> {
+/** Every line Kokoro says, the host's and a bite read aloud, by where it is in the essay. */
+function kokoroLines(essay: GameEssay): Array<readonly [string, string]> {
   const lines: Array<readonly [string, string]> = [
     ["open", essay.open.said],
     ["close", essay.close.said],
@@ -331,6 +331,8 @@ function hostLines(essay: GameEssay): Array<readonly [string, string]> {
     for (const half of game.halves)
       for (const bite of half.bites) {
         lines.push([`${bite.take}: its setup`, bite.setup.said])
+        if (bite.voice === "read-aloud")
+          lines.push([`${bite.take}: read aloud`, bite.transcript])
         if (bite.happened !== undefined)
           lines.push([`${bite.take}: what happened`, bite.happened.said])
         lines.push([`${bite.take}: the host's answer`, bite.answer.said])
@@ -340,8 +342,8 @@ function hostLines(essay: GameEssay): Array<readonly [string, string]> {
 }
 
 /**
- * Section 0's third rule: every host line that repeats `QUOTE_RUN` words in
- * a row of any matched play's text, as a problem. Any play's, not only its
+ * Section 0's third rule: every line Kokoro says that repeats `QUOTE_RUN`
+ * words in a row of any matched play's text, as a problem. Any play's, not only its
  * own bite's, since a line can quote another moment of the week.
  */
 function quoteProblems(essay: GameEssay): Array<string> {
@@ -352,11 +354,11 @@ function quoteProblems(essay: GameEssay): Array<string> {
         if (bite.play !== null)
           for (const run of runsOf(bite.play.text)) quoted.add(run)
   const problems: Array<string> = []
-  for (const [where, line] of hostLines(essay)) {
+  for (const [where, line] of kokoroLines(essay)) {
     const run = runsOf(line).find((each) => quoted.has(each))
     if (run !== undefined)
       problems.push(
-        `${where}: it says "${run}", the play's text: the host describes a moment from its numbers, in our words (section 0)`
+        `${where}: it says "${run}", the play's text: Kokoro describes a moment from its numbers, in our words (section 0)`
       )
   }
   return problems
@@ -367,6 +369,10 @@ const HALF_ORDER: Readonly<Record<Half, number>> = {
   second: 1,
   overtime: 2,
 }
+
+/** The half a quarter is in (C872): 1 and 2 the first, 3 and 4 the second, 5 and on overtime. */
+const halfOfPeriod = (period: number): Half =>
+  period <= 2 ? "first" : period <= 4 ? "second" : "overtime"
 
 /** Every reason a game's data contradicts itself. */
 function gameProblems(game: GameEssayGame): Array<string> {
@@ -379,7 +385,7 @@ function gameProblems(game: GameEssayGame): Array<string> {
     )
   const both =
     game.halves.some((half) => half.half === "first") &&
-    game.halves.some((half) => half.half !== "first")
+    game.halves.some((half) => half.half === "second")
   if (both && game.halftime === undefined)
     problems.push(
       `${game.id}: it has bites in both halves, so halftime is said between them (D10)`
@@ -388,20 +394,29 @@ function gameProblems(game: GameEssayGame): Array<string> {
     problems.push(
       `${game.id}: halftime is said only between bites of both halves`
     )
-  const bites = game.halves.flatMap((half) => half.bites)
-  if (
-    bites.some((bite, i) => i > 0 && bite.saidAt < (bites[i - 1]?.saidAt ?? ""))
+  const said = game.halves.flatMap((half) =>
+    half.bites.map((bite) => Date.parse(bite.saidAt))
   )
+  if (said.some((at, i) => i > 0 && at < (said[i - 1] ?? at)))
     problems.push(`${game.id}: its bites are not in the order they were said`)
-  for (const bite of bites) {
-    const spot = bite.play?.still.spot
-    if (
-      spot !== undefined &&
-      spot.side !== game.away &&
-      spot.side !== game.home
-    )
-      problems.push(`${bite.take}: its still's spot is on neither team's side`)
-  }
+  const plays = new Set([game.away, game.home])
+  for (const half of game.halves)
+    for (const bite of half.bites) {
+      if (bite.play === null) continue
+      const { period, spot, possession } = bite.play.still
+      if (halfOfPeriod(period) !== half.half)
+        problems.push(
+          `${bite.take}: its play is in quarter ${String(period)}, which is not the ${half.half} half`
+        )
+      if (spot !== undefined && !plays.has(spot.side))
+        problems.push(
+          `${bite.take}: its still's spot is on neither team's side`
+        )
+      if (possession !== undefined && !plays.has(possession))
+        problems.push(
+          `${bite.take}: its still gives the ball to a team not playing`
+        )
+    }
   return problems
 }
 
