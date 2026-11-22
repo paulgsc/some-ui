@@ -12,8 +12,8 @@
  *
  * Every field is required, so an entry that forgets a constraint does not
  * compile. The constraints are the ones conjugation (KP2) applies to a split:
- * which stems an ending takes, which pre-final endings may come before it, and
- * what the clause after it may not be. A rule no code can apply yet (that
+ * which stems an ending takes, whether the past and -겠- may come before it
+ * and its form after them, and what the clause after it must or must not be. A rule no code can apply yet (that
  * -느라고's outcome is usually unwanted) is written in `neighbours`, as what
  * tells it from another ending, not as a constraint.
  *
@@ -45,15 +45,18 @@ type StemClass =
   | "adjective"
   /** 있다 and 없다, and words built on them (맛있다, 재미없다). */
   | "existence"
-  /** 이다, the copula: 학생이다. */
+  /** 이다, the copula: 학생이다, whose stem is 이. */
   | "copula"
 
 /**
- * How an ending meets the stem. Only regular stems are described here; the
- * irregular classes and contraction are conjugation's (KP2).
+ * The ending's own shape, chosen by the stem it meets. What the stem does in
+ * turn is conjugation's (KP2): an ㄹ-final stem dropping its ㄹ before ㄴ, ㅂ
+ * or ㅅ and taking no 으 (살면, 사는 동안, 산 후에), the irregular classes,
+ * contraction (와서), and the honorific -(으)시- before the ending (가시니까).
+ * The copula's stem is 이 (학생 + 이 + ㄴ데 → 학생인데).
  */
 type Attachment =
-  /** The same after any stem: 가지만, 먹지만. */
+  /** The same whatever the stem ends in: 가지만, 먹지만. */
   | { kind: "plain"; ending: string }
   /**
    * One form after a stem ending in a consonant, another after a vowel:
@@ -88,20 +91,23 @@ type Constraints = {
   /** The stems it attaches to. */
   takes: ReadonlyArray<StemClass>
   /**
-   * The pre-final endings that may come before it: the past -았/었- (갔으니까)
-   * and -겠- (가겠지만). False means the ending itself takes no tense; the
-   * clause after it carries the time (왔어서 is refused).
+   * Whether the past -았/었- may come before it (갔으니까), and with it -겠-
+   * (가겠지만), and the ending's form after them. After 았, 었 or 겠 the form
+   * no longer depends on the stem: 갔어도, 좋았는데, 갔다면. `null` means the
+   * ending takes no tense, and the clause after it carries the time (왔어서
+   * is refused).
    */
-  before: { past: boolean; future: boolean }
+  before: null | { future: boolean; ending: string }
   /** What the clause after it may not be. */
   refuses: ReadonlyArray<Mood>
   /** Whether the two clauses must share their subject. */
   subjects: "same" | "any"
   /**
-   * What the clause after it must end in: any predicate, or a verb of going
-   * and coming (가다, 오다, 다니다), which the vocabulary list (KP2) flags.
+   * What the clause after it must be: its predicate any, or a verb of going
+   * and coming (가다, 오다, 다니다), which the vocabulary list (KP2) flags;
+   * and its tense any, or the past.
    */
-  then: "any" | "movement"
+  then: { verb: "any" | "movement"; tense: "any" | "past" }
 }
 
 /**
@@ -165,9 +171,9 @@ const ANY_STEM: ReadonlyArray<StemClass> = [
 /** Action and process verbs only. */
 const VERBS: ReadonlyArray<StemClass> = ["verb"]
 
-const NO_TENSE = { past: false, future: false } as const
-const PAST = { past: true, future: false } as const
-const PAST_AND_FUTURE = { past: true, future: true } as const
+const NO_TENSE = null
+
+const ANY_THEN = { verb: "any", tense: "any" } as const
 
 const NO_COMMAND_OR_SUGGESTION: ReadonlyArray<Mood> = ["command", "suggestion"]
 
@@ -181,7 +187,7 @@ export const CONSTRUCTIONS = {
       before: NO_TENSE,
       refuses: NO_COMMAND_OR_SUGGESTION,
       subjects: "any",
-      then: "any",
+      then: ANY_THEN,
     },
     neighbours: [
       {
@@ -208,10 +214,10 @@ export const CONSTRUCTIONS = {
     meanings: ["cause"],
     constraints: {
       takes: ANY_STEM,
-      before: PAST_AND_FUTURE,
+      before: { future: true, ending: "으니까" },
       refuses: [],
       subjects: "any",
-      then: "any",
+      then: ANY_THEN,
     },
     neighbours: [
       {
@@ -233,10 +239,10 @@ export const CONSTRUCTIONS = {
     meanings: ["cause"],
     constraints: {
       takes: ANY_STEM,
-      before: PAST,
+      before: { future: false, ending: "기 때문에" },
       refuses: NO_COMMAND_OR_SUGGESTION,
       subjects: "any",
-      then: "any",
+      then: ANY_THEN,
     },
     neighbours: [
       {
@@ -257,17 +263,17 @@ export const CONSTRUCTIONS = {
     attach: { kind: "plain", ending: "느라고" },
     meanings: ["cause"],
     constraints: {
-      takes: VERBS,
+      takes: ["verb", "existence"],
       before: NO_TENSE,
       refuses: NO_COMMAND_OR_SUGGESTION,
       subjects: "same",
-      then: "any",
+      then: ANY_THEN,
     },
     neighbours: [
       {
         id: "conn.aseo.cause",
         differs:
-          "-느라고 says you were busy doing one thing, so something else didn't happen; the outcome is usually unwanted, and both clauses are about the same person.",
+          "-아서/어서 gives any reason; -느라고 says you were busy doing one thing, so something else didn't happen, usually something wanted.",
       },
       {
         id: "conn.neun-barame.cause",
@@ -291,7 +297,7 @@ export const CONSTRUCTIONS = {
       before: NO_TENSE,
       refuses: NO_COMMAND_OR_SUGGESTION,
       subjects: "any",
-      then: "any",
+      then: { verb: "any", tense: "past" },
     },
     neighbours: [
       {
@@ -313,10 +319,10 @@ export const CONSTRUCTIONS = {
     meanings: ["condition"],
     constraints: {
       takes: ANY_STEM,
-      before: PAST,
+      before: { future: false, ending: "으면" },
       refuses: [],
       subjects: "any",
-      then: "any",
+      then: ANY_THEN,
     },
     neighbours: [
       {
@@ -348,10 +354,10 @@ export const CONSTRUCTIONS = {
     meanings: ["condition"],
     constraints: {
       takes: ANY_STEM,
-      before: PAST,
+      before: { future: false, ending: "다면" },
       refuses: [],
       subjects: "any",
-      then: "any",
+      then: ANY_THEN,
     },
     neighbours: [
       {
@@ -372,10 +378,10 @@ export const CONSTRUCTIONS = {
     meanings: ["time"],
     constraints: {
       takes: ANY_STEM,
-      before: PAST,
+      before: { future: false, ending: "을 때" },
       refuses: [],
       subjects: "any",
-      then: "any",
+      then: ANY_THEN,
     },
     neighbours: [
       {
@@ -400,7 +406,7 @@ export const CONSTRUCTIONS = {
       before: NO_TENSE,
       refuses: [],
       subjects: "any",
-      then: "any",
+      then: ANY_THEN,
     },
     neighbours: [
       {
@@ -408,7 +414,7 @@ export const CONSTRUCTIONS = {
         differs: "-(으)ㄴ 후에 is after; -기 전에 is before.",
       },
     ],
-    twins: ["그 전에"],
+    twins: ["그전에"],
     grade: "unchecked",
     example: {
       ko: "자기 전에 이를 닦아요.",
@@ -428,7 +434,7 @@ export const CONSTRUCTIONS = {
       before: NO_TENSE,
       refuses: [],
       subjects: "any",
-      then: "any",
+      then: ANY_THEN,
     },
     neighbours: [
       {
@@ -457,7 +463,7 @@ export const CONSTRUCTIONS = {
       before: NO_TENSE,
       refuses: [],
       subjects: "same",
-      then: "any",
+      then: ANY_THEN,
     },
     neighbours: [
       {
@@ -486,7 +492,7 @@ export const CONSTRUCTIONS = {
       before: NO_TENSE,
       refuses: [],
       subjects: "any",
-      then: "any",
+      then: ANY_THEN,
     },
     neighbours: [
       {
@@ -510,7 +516,7 @@ export const CONSTRUCTIONS = {
       before: NO_TENSE,
       refuses: [],
       subjects: "any",
-      then: "any",
+      then: ANY_THEN,
     },
     neighbours: [
       {
@@ -534,13 +540,13 @@ export const CONSTRUCTIONS = {
   "conn.myeonseo.time": {
     form: "-(으)면서",
     attach: { kind: "batchim", afterConsonant: "으면서", afterVowel: "면서" },
-    meanings: ["time", "contrast"],
+    meanings: ["time"],
     constraints: {
       takes: ANY_STEM,
       before: NO_TENSE,
       refuses: [],
       subjects: "same",
-      then: "any",
+      then: ANY_THEN,
     },
     neighbours: [
       {
@@ -562,10 +568,10 @@ export const CONSTRUCTIONS = {
     meanings: ["contrast"],
     constraints: {
       takes: ANY_STEM,
-      before: PAST_AND_FUTURE,
+      before: { future: true, ending: "지만" },
       refuses: [],
       subjects: "any",
-      then: "any",
+      then: ANY_THEN,
     },
     neighbours: [
       {
@@ -597,15 +603,15 @@ export const CONSTRUCTIONS = {
         afterVowel: "ㄴ데",
       },
       existence: { kind: "plain", ending: "는데" },
-      copula: { kind: "batchim", afterConsonant: "은데", afterVowel: "ㄴ데" },
+      copula: { kind: "plain", ending: "ㄴ데" },
     },
     meanings: ["contrast", "background"],
     constraints: {
       takes: ANY_STEM,
-      before: PAST_AND_FUTURE,
+      before: { future: true, ending: "는데" },
       refuses: [],
       subjects: "any",
-      then: "any",
+      then: ANY_THEN,
     },
     neighbours: [
       {
@@ -626,10 +632,10 @@ export const CONSTRUCTIONS = {
     meanings: ["contrast"],
     constraints: {
       takes: ANY_STEM,
-      before: PAST,
+      before: { future: false, ending: "어도" },
       refuses: [],
       subjects: "any",
-      then: "any",
+      then: ANY_THEN,
     },
     neighbours: [
       {
@@ -654,7 +660,7 @@ export const CONSTRUCTIONS = {
       before: NO_TENSE,
       refuses: [],
       subjects: "same",
-      then: "movement",
+      then: { verb: "movement", tense: "any" },
     },
     neighbours: [
       {
@@ -679,7 +685,7 @@ export const CONSTRUCTIONS = {
       before: NO_TENSE,
       refuses: NO_COMMAND_OR_SUGGESTION,
       subjects: "same",
-      then: "any",
+      then: ANY_THEN,
     },
     neighbours: [
       {
@@ -708,7 +714,7 @@ export const CONSTRUCTIONS = {
       before: NO_TENSE,
       refuses: [],
       subjects: "same",
-      then: "any",
+      then: ANY_THEN,
     },
     neighbours: [
       {

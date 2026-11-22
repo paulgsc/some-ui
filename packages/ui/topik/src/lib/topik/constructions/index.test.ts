@@ -78,10 +78,14 @@ describe("the construction catalogue", () => {
     }
   })
 
-  it("allows -겠- before an ending only where it allows the past", () => {
-    for (const [id, { constraints }] of entries) {
-      if (constraints.before.future)
-        expect(constraints.before.past, id).toBe(true)
+  it("after -았/었- and -겠-, takes the form a consonant takes", () => {
+    // After 았, 었 and 겠 an ending meets a consonant, and harmony goes dark.
+    for (const [id, { attach, constraints }] of entries) {
+      if (constraints.before === null) continue
+      if (attach.kind === "harmony")
+        expect(constraints.before.ending, id).toBe(attach.dark)
+      if (attach.kind === "batchim")
+        expect(constraints.before.ending, id).toBe(attach.afterConsonant)
     }
   })
 
