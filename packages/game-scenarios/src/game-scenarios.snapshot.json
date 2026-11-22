@@ -316,11 +316,6 @@
         "better": "higher"
       },
       {
-        "id": "challenges-won",
-        "unit": "coaching",
-        "better": "higher"
-      },
-      {
         "id": "timeouts-at-half",
         "unit": "coaching",
         "better": "higher"
@@ -339,19 +334,19 @@
     "shapes": [
       {
         "id": "rank",
-        "sides": ["best", "worst"]
+        "sides": ["highest", "lowest"]
       },
       {
         "id": "vs-league",
-        "sides": ["better", "worse"]
+        "sides": ["above", "below"]
       },
       {
         "id": "vs-team",
-        "sides": ["better", "worse"]
+        "sides": ["above", "below"]
       },
       {
         "id": "trend",
-        "sides": ["improving", "declining"]
+        "sides": ["rising", "falling"]
       }
     ],
     "deadlines": ["after-games", "by-week", "season-end"],

@@ -131,7 +131,6 @@ export const MEASURE_WORDS: Readonly<Record<Measure, string>> = {
   "red-zone": "Red-zone touchdowns per trip",
   "fourth-down-go": "Going for it on fourth down",
   "two-minute": "Points per two-minute drive",
-  "challenges-won": "Challenges won",
   "timeouts-at-half": "Timeouts left at the half",
   takeaways: "Turnovers forced",
   "explosives-allowed": "Explosive plays allowed",

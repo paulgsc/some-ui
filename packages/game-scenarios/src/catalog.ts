@@ -76,8 +76,9 @@ export type BigPlayAlgebra = {
 }
 
 /**
- * What a claim measures (#3041, D26: the nine to start): each computed by
- * home from the plays it keeps, about one unit of a team.
+ * What a claim measures (#3041, D26): each computed by home from the plays
+ * it keeps, about one unit of a team. Eight of the nine to start: challenges
+ * won waits for a reader of ESPN's challenge text tested on real games.
  */
 export const MEASURES = [
   "pass-rush",
@@ -85,22 +86,26 @@ export const MEASURES = [
   "red-zone",
   "fourth-down-go",
   "two-minute",
-  "challenges-won",
   "timeouts-at-half",
   "takeaways",
   "explosives-allowed",
 ] as const
 export type Measure = (typeof MEASURES)[number]
 
-/** What a claim says of its measure, and the two sides each shape has (#3041). */
+/**
+ * What a claim says of its measure, and the two sides each shape has
+ * (#3041): the direction of the measure's value, never good or bad, so a
+ * style with no better side (going for it on fourth down) takes every
+ * shape. Whether a side is good is the measure's `better`.
+ */
 export const CLAIM_SHAPES = ["rank", "vs-league", "vs-team", "trend"] as const
 export type ClaimShape = (typeof CLAIM_SHAPES)[number]
 
 export const CLAIM_SIDES = {
-  rank: ["best", "worst"],
-  "vs-league": ["better", "worse"],
-  "vs-team": ["better", "worse"],
-  trend: ["improving", "declining"],
+  rank: ["highest", "lowest"],
+  "vs-league": ["above", "below"],
+  "vs-team": ["above", "below"],
+  trend: ["rising", "falling"],
 } as const satisfies Readonly<Record<ClaimShape, readonly [string, string]>>
 export type ClaimSide<S extends ClaimShape = ClaimShape> =
   (typeof CLAIM_SIDES)[S][number]
