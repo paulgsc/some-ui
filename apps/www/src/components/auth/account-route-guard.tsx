@@ -5,7 +5,7 @@ import { isAccountRouteId } from "@/lib/auth/guards"
 import { useAuthority } from "@/lib/authority"
 
 /**
- * Sends the person to `/auth` (the passkey screen; a viewer's page on Pages)
+ * Sends the person to `/auth` (the passkey screen; a viewer's page in the viewer build)
  * if they are on a page that is the
  * account's own and the account stops being their data authority there.
  *

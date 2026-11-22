@@ -35,6 +35,7 @@
   "scripts": {
     "build": "vite build --configLoader runner",
     "build:chromium": "vite build --mode chromium --configLoader runner",
+    "still:gap": "node tests/stills/page-filter/run.ts",
     "build:firefox": "vite build --mode firefox --configLoader runner",
     "clean": "rm -rf .turbo node_modules .eslintcache && pnpm clean:build",
     "clean:build": "rm -rf ./dist ./tsconfig.tsbuildinfo",

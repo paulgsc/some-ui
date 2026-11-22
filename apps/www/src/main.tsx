@@ -1,4 +1,4 @@
-// First: on the Pages build, the page's storage becomes an in-memory copy
+// First: in the viewer build, the page's storage becomes an in-memory copy
 // before any module reads it (lib/demo/viewer-storage). The release build
 // keeps it only because build.treeshake.ts lists it (VS1, #3121).
 import "@/lib/demo/viewer-storage"
@@ -64,7 +64,7 @@ if (import.meta.env.VITE_DEVICE_BACKEND === "true") {
   installShareSidecar(driveFiling())
 }
 
-// A viewer of the Pages build starts from sample drafts (lib/demo).
+// A viewer starts from sample drafts (lib/demo).
 seedDemo()
 
 // A browser subscribed to push while signed in must not stay subscribed once

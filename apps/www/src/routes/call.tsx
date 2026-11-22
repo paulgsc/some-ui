@@ -12,7 +12,7 @@ import { ViewerStrip } from "@/components/provenance-strip"
  * `?week` names the week by its first day ("sample" for the template's),
  * `?part` which video of its series (the first by default), `?scene` the
  * scene, and `?record` leaves out everything but the frame.
- * A viewer of the Pages build gets the viewer strip above it. Web only: the
+ * A viewer gets the viewer strip above it. Web only: the
  * stage comes through the web surface's door.
  */
 

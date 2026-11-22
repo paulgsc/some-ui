@@ -4,7 +4,7 @@
 // eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- merging into Vite's own ImportMetaEnv requires `interface`; a `type` alias cannot declaration-merge, and silently leaves every key `any` via Vite's index signature
 interface ImportMetaEnv {
   /**
-   * `"true"` only for the GitHub Pages build, which ships no companion data
+   * `"true"` only for the viewer's builds (Pages and the capture build), which ship no companion data
    * (set in .github/workflows/pages.yml). See src/lib/data-mode. A string:
    * Vite inlines env vars verbatim.
    */

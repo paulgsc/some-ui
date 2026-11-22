@@ -133,6 +133,30 @@ export const ARTIFACT_FAMILIES: ReadonlyArray<ArtifactFamily> = [
     keep: 1,
     ttlDays: 1,
   },
+  // The public site's media (PAGES #3401, C1059): pages.yml fetches the
+  // newest of each kind at its next deploy, which waits on an approval, so
+  // one is kept for 30 days; a kind with none shows its drawn placeholder.
+  {
+    kind: "artifact",
+    name: "site-assets-page-filter-${{ github.sha }}",
+    workflows: ["Site Assets"],
+    keep: 1,
+    ttlDays: 30,
+  },
+  {
+    kind: "artifact",
+    name: "site-assets-extensions-${{ github.sha }}",
+    workflows: ["Site Assets"],
+    keep: 1,
+    ttlDays: 30,
+  },
+  {
+    kind: "artifact",
+    name: "site-assets-apk-${{ github.sha }}",
+    workflows: ["Snips Capture"],
+    keep: 1,
+    ttlDays: 30,
+  },
   {
     kind: "artifact",
     name: "github-pages",

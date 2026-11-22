@@ -628,6 +628,7 @@ describe("findChangesetsPairingViolations", () => {
 
 describe("checkRetentionTriggers", () => {
   const names = new Set([
+    "Site Assets",
     "Mobile APK",
     "Pages",
     "Extension CI",
@@ -646,6 +647,7 @@ describe("checkRetentionTriggers", () => {
       "      - Mobile APK",
       '      - "Extension Release"',
       "      - Snips Capture",
+      "      - Site Assets",
       "    types: [completed]",
       "  pull_request:",
       "    paths:",

@@ -6,14 +6,15 @@
  * `landing/index.html`, the Pages build's `index.html`.
  *
  * The page carries no script. Its pictures are slots, each named by the
- * build-time asset it will hold (`data-asset`). Until that asset exists, the
- * slot draws a placeholder in CSS: a title card for a clip, a labelled drawing
- * for a gap. The photo slot holds the mochi, drawn from the brand cast
- * (`mochiSvg`), until the owner's photo is bundled.
+ * build-time asset it holds (`data-asset`). A slot whose asset is in the
+ * build (`media`; output.ts, `SITE_MEDIA_DIR`) shows it: a clip plays muted
+ * on a loop, a still is an image. Otherwise it draws a placeholder in CSS: a
+ * title card for a clip, a labelled drawing for a gap, and the mochi, drawn
+ * from the brand cast (`mochiSvg`), for the photo.
  */
 import type { ResumeData } from "@some-ui/resume"
 
-import { SITE_URL } from "./output.ts"
+import { MEDIA_PATH, SITE_BASE, SITE_URL } from "./output.ts"
 import type { GapWords, LandingWords, ProjectWords } from "./words.ts"
 import { LANDING_WORDS } from "./words.ts"
 
@@ -33,10 +34,17 @@ const e = escapeHtml
 const link = (label: string, href: string): string =>
   `<a href="${e(href)}">${e(label)}</a>`
 
-const projectCard = (p: ProjectWords): string => `
+/** Where the build serves a slot's asset (vite.config.ts, `publicSite`). */
+const mediaSrc = (key: string): string => `${SITE_BASE}${MEDIA_PATH}${e(key)}`
+
+const projectCard = (p: ProjectWords, media: ReadonlySet<string>): string => `
         <article class="card">
           <figure class="clip" data-slot="clip" data-asset="${e(p.clip)}">
-            <div class="title-card title-card--${e(p.id)}" aria-hidden="true">${e(p.title)}</div>
+            ${
+              media.has(p.clip)
+                ? `<video class="media" src="${mediaSrc(p.clip)}" autoplay muted loop playsinline controls preload="metadata" aria-label="${e(p.title)}"></video>`
+                : `<div class="title-card title-card--${e(p.id)}" aria-hidden="true">${e(p.title)}</div>`
+            }
           </figure>
           <div class="body">
             <h3>${e(p.title)}</h3>
@@ -52,17 +60,35 @@ const GAP_DRAWING: Readonly<Record<GapWords["id"], string>> = {
   cores: `<div class="drawing drawing--cores" aria-hidden="true"><svg viewBox="0 0 400 150" preserveAspectRatio="none"><path d="M0 22 H400" class="cores-line"/><path d="M0 110 C40 90 70 50 110 46 S180 30 220 60 S300 28 340 38 S380 30 400 34 V150 H0Z" class="busy"/><path d="M0 146 C50 142 90 128 120 130 S200 112 240 126 S320 108 360 118 S390 112 400 114 V150 H0Z" class="waiting"/></svg></div>`,
 }
 
-const gapCard = (g: GapWords): string => `
+const gapCard = (g: GapWords, media: ReadonlySet<string>): string => `
         <article class="card">
           <figure class="clip" data-slot="still" data-asset="${e(g.visual)}">
-            ${GAP_DRAWING[g.id]}
-            <figcaption class="note">${e(g.visualNote)}</figcaption>
+            ${
+              media.has(g.visual)
+                ? `<img class="media" src="${mediaSrc(g.visual)}" alt="${e(g.title)}" />`
+                : `${GAP_DRAWING[g.id]}
+            <figcaption class="note">${e(g.visualNote)}</figcaption>`
+            }
           </figure>
           <div class="body">
             <h3>${e(g.title)}</h3>
             <p>${e(g.line)}</p>
           </div>
         </article>`
+
+/** The photo slot's asset: the owner's portrait, once one is bundled. */
+export const PHOTO = "photo/portrait.webp"
+
+/** Every asset key the landing's slots name: the photo, each clip, each still. */
+export function landingMediaKeys(
+  words: LandingWords = LANDING_WORDS
+): ReadonlyArray<string> {
+  return [
+    PHOTO,
+    ...words.projects.map((p) => p.clip),
+    ...words.gaps.map((g) => g.visual),
+  ]
+}
 
 const role = (title: string, when: string, body: string): string => `
           <div class="job">
@@ -80,12 +106,14 @@ export function renderLandingHead(words: LandingWords = LANDING_WORDS): string {
 
 /**
  * The page's `<body>` content, from one résumé version (its profile, roles,
- * dates and education) and the landing's words.
+ * dates and education), the landing's words, and the keys of the media the
+ * build carries.
  */
 export function renderLanding(
   resume: ResumeData,
   mochiSvg: string,
-  words: LandingWords = LANDING_WORDS
+  words: LandingWords = LANDING_WORDS,
+  media: ReadonlySet<string> = new Set()
 ): string {
   const { profile } = resume
   const where = profile.location === null ? "" : ` · ${profile.location}`
@@ -115,7 +143,7 @@ export function renderLanding(
   return `
     <header class="top">
       <div class="in">
-        <figure class="photo" data-slot="photo" data-asset="photo/portrait.webp" role="img" aria-label="${e(words.photoAlt)}">${mochiSvg}</figure>
+        <figure class="photo" data-slot="photo" data-asset="${PHOTO}" role="img" aria-label="${e(words.photoAlt)}">${media.has(PHOTO) ? `<img src="${mediaSrc(PHOTO)}" alt="" />` : mochiSvg}</figure>
         <div class="who">
           <h1>${e(profile.name)}</h1>
           <p class="role">${e(words.role + where)}</p>
@@ -130,10 +158,10 @@ export function renderLanding(
     <main>
       <p class="lede">${e(words.lede)}</p>
       <h2 class="section-title">${e(words.projectsTitle)}</h2>
-      <div class="grid">${words.projects.map(projectCard).join("")}
+      <div class="grid">${words.projects.map((p) => projectCard(p, media)).join("")}
       </div>
       <h2 class="section-title">${e(words.gapsTitle)}</h2>
-      <div class="grid gaps">${words.gaps.map(gapCard).join("")}
+      <div class="grid gaps">${words.gaps.map((g) => gapCard(g, media)).join("")}
       </div>
       <div class="two">
         <section aria-labelledby="h-exp">

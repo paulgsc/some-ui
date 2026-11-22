@@ -33,7 +33,7 @@ export async function reportPresence(
   contextKey: string,
   deps: PresenceDeps = {}
 ): Promise<boolean> {
-  // The Pages build has no backend and no presence ledger to write to.
+  // The viewer build has no backend and no presence ledger to write to.
   if ((deps.mode ?? DATA_MODE) === "static") return false
   if (!contextKey) return false
 
