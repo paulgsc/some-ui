@@ -33,7 +33,7 @@ export const MOBILE_APP = profile === "mobile"
 /**
  * True in the public site's build (the `pages` profile, pages.yml), which is
  * a CV: a static landing, the résumé and the videos' authorship record
- * (C1055, #3401; `lib/app-surface`, `PAGES_SURFACE`). False in the capture
+ * (C1055, #3401; `lib/pages-surface`, `PAGES_SURFACE`). False in the capture
  * build Snips Capture photographs, which keeps every viewer route.
  */
 export const PAGES_SITE = import.meta.env.VITE_PAGES_SITE === "true"

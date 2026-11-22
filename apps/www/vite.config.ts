@@ -234,8 +234,10 @@ function pagesConnectPolicy(): Plugin {
 // only, landing/index.html is a second HTML entry, filled at build time from
 // the résumé's data (src/landing/render.ts) and written as the output's
 // index.html. The app's shell moves to 404.html, the fallback GitHub Pages
-// serves for every other path, so the app's routes open as they did. Every
-// other profile keeps the app at index.html and builds no landing.
+// serves for every other path, where the app boots for /resume and
+// /authorship and sends anything else to the landing (lib/pages-surface).
+// Every other profile keeps the app at index.html and builds no landing.
+
 // The Pages build's own route tree (C1055, #3401; build.paths.ts,
 // PAGES_ROUTE_FILES): generated into node_modules' cache, never into src/ and
 // never committed. Every other profile, the capture build Snips photographs
@@ -281,6 +283,33 @@ function landingPage(): Plugin {
         fileName: "index.html",
         source: landing.source,
       })
+    },
+  }
+}
+
+// A WebAssembly file a package names by `new URL(…, import.meta.url)` is
+// emitted whenever that package is in the graph, even where every line that
+// loads it is shaken out: the Pages build kept LeetType's 67 KB engine that
+// nothing on the public site runs. Under the Pages profile, a .wasm file no
+// chunk or page names is dropped from the output.
+function dropUnloadedWasm(): Plugin {
+  return {
+    name: "drop-unloaded-wasm",
+    apply: "build",
+    enforce: "post",
+    generateBundle(_options, bundle): void {
+      const texts = Object.values(bundle).map((file) =>
+        file.type === "chunk"
+          ? file.code
+          : typeof file.source === "string"
+            ? file.source
+            : ""
+      )
+      for (const [name, file] of Object.entries(bundle)) {
+        if (file.type !== "asset" || !name.endsWith(".wasm")) continue
+        const base = name.slice(name.lastIndexOf("/") + 1)
+        if (!texts.some((text) => text.includes(base))) delete bundle[name]
+      }
     },
   }
 }
@@ -409,7 +438,7 @@ export default defineConfig(
       pagesConnectPolicy(),
       ...(isMobileBuild ? [oldWebViewPageAsset()] : []),
       ...(isStageBuild ? [stagePageAtRoot()] : []),
-      ...(isPagesSiteBuild ? [landingPage()] : []),
+      ...(isPagesSiteBuild ? [landingPage(), dropUnloadedWasm()] : []),
     ],
     // An http:// page skips the proxy and asks :3000 directly
     // (src/lib/file-host-config) - the container. While the proxy points

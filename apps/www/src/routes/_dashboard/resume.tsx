@@ -17,6 +17,7 @@ import { Download, Layers3, LayoutTemplate } from "lucide-react"
 import { PAGES_SITE } from "@/lib/build-profile"
 import type { ResumeComposition } from "@/lib/resume-options"
 import {
+  DEFAULT_RESUME_TEMPLATE,
   isResumeComposition,
   RESUME_COMPOSITIONS,
   RESUME_TEMPLATES,
@@ -25,7 +26,7 @@ import {
 const RESUME_COMPOSITION_KEY = "some-ui:resume-composition"
 
 type ResumeTemplate = (typeof RESUME_TEMPLATES)[number]["id"]
-const DEFAULT_TEMPLATE: ResumeTemplate = "rail"
+const DEFAULT_TEMPLATE: ResumeTemplate = DEFAULT_RESUME_TEMPLATE
 const RESUME_TEMPLATE_KEY = "some-ui:resume-template"
 
 /**
@@ -280,24 +281,22 @@ const ResumeRoute = (): JSX.Element => {
                   <p className="text-muted-foreground px-2 py-1 text-xs font-medium">
                     Print layout
                   </p>
+                  {TEMPLATES_HERE.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={option.id === template}
+                      className="hover:bg-accent hover:text-accent-foreground flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm"
+                      onClick={() => selectTemplate(option.id)}
+                    >
+                      <span className="mr-2 w-3">
+                        {option.id === template ? "✓" : ""}
+                      </span>
+                      {option.label}
+                    </button>
+                  ))}
                 </>
-              )}
-              {(TEMPLATES_HERE.length > 1 ? TEMPLATES_HERE : []).map(
-                (option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    role="menuitemradio"
-                    aria-checked={option.id === template}
-                    className="hover:bg-accent hover:text-accent-foreground flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm"
-                    onClick={() => selectTemplate(option.id)}
-                  >
-                    <span className="mr-2 w-3">
-                      {option.id === template ? "✓" : ""}
-                    </span>
-                    {option.label}
-                  </button>
-                )
               )}
             </div>
           </>

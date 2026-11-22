@@ -2,7 +2,7 @@
  * The public site is a CV (C1055, #3401): its build routes to the résumé and
  * the authorship record alone, from a route tree of its own
  * (build.paths.ts, `PAGES_ROUTE_FILES`), and any other path loads the static
- * landing (`lib/app-surface`, `keepToPagesSurface`). Read against the real
+ * landing (`lib/pages-surface`, `keepToPagesSurface`). Read against the real
  * route files, so a route renamed or moved shows here.
  */
 import { readdirSync, statSync } from "node:fs"
@@ -11,7 +11,7 @@ import { PAGES_ROUTE_FILES, pagesRouteIgnorePattern } from "@/build.paths"
 import { isRedirect } from "@tanstack/react-router"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import type * as AppSurface from "@/lib/app-surface"
+import type * as PagesSurface from "@/lib/pages-surface"
 
 const ROUTES = resolve(import.meta.dirname, "..")
 
@@ -58,12 +58,12 @@ describe("keepToPagesSurface", () => {
     vi.doUnmock("@/lib/build-profile")
   })
 
-  async function surface(pagesSite: boolean): Promise<typeof AppSurface> {
+  async function surface(pagesSite: boolean): Promise<typeof PagesSurface> {
     vi.doMock("@/lib/build-profile", async (importOriginal) => ({
       ...(await importOriginal<object>()),
       PAGES_SITE: pagesSite,
     }))
-    return await import("@/lib/app-surface")
+    return await import("@/lib/pages-surface")
   }
 
   it("on the public site, lets the résumé and the authorship record through", async () => {

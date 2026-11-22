@@ -326,6 +326,12 @@ test.describe("the Pages build", () => {
       )
     }
 
+    // A page the public site no longer has (C1055) loads the landing whole.
+    await page.goto(`${app().origin}${BASE}app`)
+    await page.waitForURL(`${app().origin}${BASE}`)
+    await expect(page.locator("h1")).toHaveText(/\S/)
+    await expect(page.locator("#app")).toHaveCount(0)
+
     expect(seen.filter((line) => !line.includes(app().origin))).toEqual([])
     expect(violations).toEqual([])
     expect(host().received).toEqual([])

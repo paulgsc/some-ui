@@ -34,3 +34,11 @@ export const RESUME_TEMPLATES = [
   { id: "safe", label: "Safe (ATS)" },
   { id: "conventional", label: "Conventional (traditional)" },
 ] as const
+
+/**
+ * The print layout whose PDF keeps the plain `resume-<version>.pdf` name
+ * (packages/ui/resume/scripts/typst.mjs, `stemFor`); every other layout's
+ * PDF is `resume-<version>-<layout>.pdf`.
+ */
+export const DEFAULT_RESUME_TEMPLATE =
+  "rail" satisfies (typeof RESUME_TEMPLATES)[number]["id"]

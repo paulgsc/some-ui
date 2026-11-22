@@ -174,7 +174,9 @@ checked against every existing link. What is left is inside such a file.
 - _Claim:_ in a door's `index.ts`, every `import()` of a gated workspace or of a module inside
   the door sits in the true branch of a conditional whose condition is written inline as
   `import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("<audience>")` (for `web`),
-  whose false branch loads nothing (an empty record, a component that renders `null`), and the
+  with `import.meta.env.VITE_PAGES_SITE !== "true" &&` written inline between the two for
+  every export but the authorship record (the public site is a CV, C1055), whose false branch
+  loads nothing (an empty record, a component that renders `null`), and the
   index has no static value import of a gated workspace; and no module outside the door
   imports one inside it except through its `index.ts`.
 - _Falsified by_ a hunk in a door's `index.ts` that adds such an `import()` or a static value
@@ -272,14 +274,14 @@ What it cannot see, by construction:
 - **A module every profile ships**, but one of them never runs: the comparison has nothing to
   compare. It is caught only once `exclusive` names it.
 
-**Debt today** (`build.paths.ts`, `debt`): every profile builds the one route tree, so the
-routes off a profile's path ship there as stubs in the startup chunk and as page chunks
-(about 67 KiB in the APK; the `apk` gate's pages in `lan` and `pages`, and the `lan` gate's
-in `pages`). The gates and `keepToMobileSurface` keep them from rendering; the bytes are still
-paid. Each entry goes with the change that gives that deployable its own route tree. And
-`lan` and `pages` carry about 3.5 KiB of `@some-ui/voice-capture`, the take pattern's view and
-words, which LeetType's record screen draws only with a microphone the web builds do not give
-it (#2433).
+**Debt today** (`build.paths.ts`, `debt`): `lan` and the Android app build the one shared
+route tree, so the routes off their path ship there as stubs in the startup chunk and as page
+chunks (about 67 KiB in the APK; the `apk` gate's pages in `lan`). The gates and
+`keepToMobileSurface` keep them from rendering; the bytes are still paid. Each entry goes with
+the change that gives that deployable its own route tree, as the public site has
+(`PAGES_ROUTE_FILES`, C1055; it is held whole by an allowlist instead). And `lan` carries about
+3.5 KiB of `@some-ui/voice-capture`, the take pattern's view and words, which LeetType's record
+screen draws only with a microphone the web builds do not give it (#2433).
 
 ## Known gaps
 

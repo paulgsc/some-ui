@@ -43,7 +43,7 @@ request, and CI Gate does not need it. It photographs two surfaces:
   (412×915 at 2×). `apps/www/tests/snips/web.spec.ts` walks it. It is the
   `snips` profile (`apps/www/build.profiles.ts`), built by this capture only
   and never deployed: the Pages build's environment and sample data, with
-  every viewer route kept. The public site is being pruned to a CV (C1055,
+  every viewer route kept. The public site is pruned to a CV (C1055,
   #3401), and an essay names its web snips by these routes, so they stay here.
 
 Every route the surface's build offers is visited, as the generated route

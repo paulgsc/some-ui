@@ -34,7 +34,7 @@ interface ImportMetaEnv {
    * branch, as `VITE_DEVICE_BACKEND` is; `PAGES_SITE` (`@/lib/build-profile`)
    * elsewhere.
    */
-  readonly VITE_PAGES_SITE?: string
+  readonly VITE_PAGES_SITE?: "true" | ""
 
   /**
    * The commit this build is made from (`buildCommit` in vite.config.ts),

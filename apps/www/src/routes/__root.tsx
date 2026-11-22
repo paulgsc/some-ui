@@ -3,8 +3,9 @@ import type { QueryClient } from "@tanstack/react-query"
 import { createRootRouteWithContext, Outlet } from "@tanstack/react-router"
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 
-import { keepToMobileSurface, keepToPagesSurface } from "@/lib/app-surface"
+import { keepToMobileSurface } from "@/lib/app-surface"
 import { resolveSessionIfChosen } from "@/lib/auth"
+import { keepToPagesSurface } from "@/lib/pages-surface"
 import { AccountRouteGuard } from "@/components/auth/account-route-guard"
 
 /**
