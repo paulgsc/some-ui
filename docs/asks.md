@@ -101,8 +101,9 @@ what to paste.
 
 `parseAskBody` in `packages/video-render/src/ask.ts` is the schema. An ask it
 can't read is left out of the call, and the weekly run says which one and why.
-The kinds are one family: a new kind is a member of `AskFileSchema`'s union,
-and every reader that switches on `kind` fails to compile until it says what
+The kinds are one family: a new kind is a member of `/2`'s union on `kind`
+(`AskV2Schema`), and every reader that switches on `kind` (`callOptionsOf`
+for the call, the Asks page's receipt) fails to compile until it says what
 the new one is (C1095).
 
 ## Where the owner sees them

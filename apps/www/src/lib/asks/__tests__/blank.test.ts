@@ -44,13 +44,36 @@ describe("blanking a pasted result", () => {
       `SITE_SHOTS_GRAFANA_TOKEN=${BLANKED}`
     )
     expect(blankSecrets('password: "correct horse"')).toBe(
-      `password: ${BLANKED}`
+      `password: "${BLANKED}"`
     )
     expect(blankSecrets("api-key = abc")).toBe(`api-key = ${BLANKED}`)
     expect(blankSecrets("JWT_SIGNING_KEY: abc")).toBe(
       `JWT_SIGNING_KEY: ${BLANKED}`
     )
     expect(blankSecrets("keyboard: us")).toBe("keyboard: us")
+  })
+
+  it("blanks a credential however its header or scheme is written", () => {
+    for (const line of [
+      "authorization: bearer abcdef123456",
+      "Authorization: token abcdef123456",
+    ])
+      expect(blankSecrets(line)).toBe(`${line.split(":")[0]}: ${BLANKED}`)
+  })
+
+  it("blanks a secret in a query, a list, JSON or a flag", () => {
+    expect(blankSecrets("curl https://x.example/cb?token=abc123def")).toBe(
+      `curl https://x.example/cb?token=${BLANKED}`
+    )
+    expect(blankSecrets("user=admin,password=hunter2")).toBe(
+      `user=admin,password=${BLANKED}`
+    )
+    expect(blankSecrets('{"password": "hunter2", "user": "me"}')).toBe(
+      `{"password": "${BLANKED}", "user": "me"}`
+    )
+    expect(blankSecrets("login --password hunter2 --user me")).toBe(
+      `login --password ${BLANKED} --user me`
+    )
   })
 
   it("blanks a password in an address", () => {
@@ -78,6 +101,10 @@ describe("blanking a pasted result", () => {
       "Deployed 85ef265 to home",
       "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "GIT_BRANCH=main",
+      "Author: Claude <noreply@anthropic.com>",
+      "author=me, Authorized: yes, authentication: ok, oauth_callback: done",
+      "Basic information about the run. Token validation passed.",
+      "Cache key: setup-node-linux",
       "https://github.com/paulgsc/some-ui/actions/runs/123456789",
       "Uploaded secret PAGES_TOKEN",
       "some-ui-mailbox-production-deployment-finished",

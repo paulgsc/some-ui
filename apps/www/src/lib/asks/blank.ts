@@ -19,21 +19,43 @@ const KNOWN = [
   /\b(?:gh[pousr]_[A-Za-z0-9]{16,}|github_pat_\w{16,}|glsa_\w{16,}|sk-[\w-]{16,}|xox[abprs]-[\w-]{10,}|AKIA[0-9A-Z]{16})/g,
   // A JSON web token: three dot-separated base64url parts, the first `{"`.
   /\beyJ[\w-]{6,}\.[\w-]{6,}\.[\w-]{6,}/g,
-  // A credential sent in a header: `Basic …`, `Bearer …`.
-  /\b(?:Basic|Bearer|Token)\s+[A-Za-z0-9+/=._~-]{8,}/g,
+  // A credential after its scheme, in any case: one with a digit in it, so
+  // "Token validation passed" stays.
+  /\b(?:basic|bearer|token)[ \t]+(?=[\w+/=.~-]*\d)[\w+/=.~-]{8,}/gi,
   // A private key, whole, or to the end when it is cut off.
   /-----BEGIN [A-Z ]*PRIVATE KEY-----(?:(?!-----END)[\s\S])*(?:-----END [A-Z ]*PRIVATE KEY-----)?/g,
 ]
 
-/** A password in an address: `scheme://user:password@host`. */
-const IN_ADDRESS = /(:\/\/[^\s:/@]+:)[^\s@/]+@/g
+/** A header that carries a credential: its whole value goes. */
+const HEADER = /\b((?:proxy-)?authorization[ \t]*:[ \t]*)[^\n]+/gi
 
-/** `name=value` or `name: value`; the value goes when the name is secret. */
+/** A password in an address: `scheme://user:password@host`, user or not. */
+const IN_ADDRESS = /(:\/\/[^\s:/@]*:)[^\s/]*@/g
+
+/** A command's flag that takes a secret: `--password hunter2`. */
+const FLAG =
+  /(--(?:password|passwd|token|secret|api-key)(?:=|[ \t]+))[^\s"']+/gi
+
+/**
+ * `name=value`, `name: value` or `"name": "value"`, in a line, a query or a
+ * list; the value goes when the name is secret. A value ends at a space, a
+ * quote, or the next `?`, `&`, `,` or `;`, so the pairs after it are read
+ * too.
+ */
 const SETTING =
-  /(?<![\w.-])([\w.-]+)([ \t]*[=:][ \t]*)("[^"\n]*"|'[^'\n]*'|[^\s"']+)/g
+  /(?<![\w.-])([\w.-]+)("?[ \t]*[=:][ \t]*)("[^"\n]*"|'[^'\n]*'|[^\s"'?&,;]+)/g
 
-const SECRET_NAME =
-  /token|secret|passw(?:or)?d|credential|auth|(?:^|[_.-])(?:api|private|signing|access|session)?[_.-]?key$/i
+/** A name's parts that say it holds a secret. */
+const SECRET_PART =
+  /^(?:token|secret|password|passwd|pwd|pass|credentials?|apikey|authorization)$/i
+
+/** A key whose kind says it is secret: `api_key`, `SIGNING_KEY`. */
+const SECRET_KEY =
+  /(?:^|[_.-])(?:api|private|signing|access|session|secret)[_.-]?key$/i
+
+const secretName = (name: string): boolean =>
+  SECRET_KEY.test(name) ||
+  name.split(/[_.-]/).some((part) => SECRET_PART.test(part))
 
 /** A long run of characters a key is written in; `=` only as padding. */
 const RUN = /[A-Za-z0-9+/_-]{24,}={0,2}/g
@@ -49,14 +71,17 @@ function keyShaped(run: string, before: string): boolean {
 export function blankSecrets(text: string): string {
   let out = text
   for (const known of KNOWN) out = out.replace(known, BLANKED)
-  out = out.replace(IN_ADDRESS, `$1${BLANKED}@`)
-  out = out.replace(
-    SETTING,
-    (all: string, name: string, sep: string, value: string) =>
-      SECRET_NAME.test(name) && value !== BLANKED
-        ? `${name}${sep}${BLANKED}`
-        : all
-  )
+  out = out
+    .replace(HEADER, `$1${BLANKED}`)
+    .replace(IN_ADDRESS, `$1${BLANKED}@`)
+    .replace(FLAG, `$1${BLANKED}`)
+    .replace(
+      SETTING,
+      (all: string, name: string, sep: string, value: string) =>
+        secretName(name) && value !== BLANKED && value !== `"${BLANKED}"`
+          ? `${name}${sep}${value.startsWith('"') ? `"${BLANKED}"` : BLANKED}`
+          : all
+    )
   return out.replace(RUN, (run: string, at: number, whole: string) =>
     keyShaped(run, whole.slice(Math.max(0, at - 7), at)) ? BLANKED : run
   )
