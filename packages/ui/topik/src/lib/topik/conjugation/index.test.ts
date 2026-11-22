@@ -37,7 +37,7 @@ const CASES: ReadonlyArray<Case> = [
   ["하다", "conn.aseo.cause", "none", "해서"],
   ["공부하다", "conn.aseo.cause", "none", "공부해서"],
   ["마시다", "conn.aseo.cause", "none", "마셔서"],
-  ["놓치다", "polite", "past", "놓쳤어요"],
+  ["놓치다", "close.ayo.plain", "past", "놓쳤어요"],
   ["받다", "conn.aseo.cause", "none", "받아서"],
   ["입다", "conn.aseo.cause", "none", "입어서"],
   // ㅂ
@@ -52,11 +52,11 @@ const CASES: ReadonlyArray<Case> = [
   ["걷다", "conn.l-ttae.time", "none", "걸을 때"],
   // 르
   ["모르다", "conn.aseo.cause", "none", "몰라서"],
-  ["부르다", "polite", "none", "불러요"],
+  ["부르다", "close.ayo.plain", "none", "불러요"],
   ["빠르다", "conn.aseo.cause", "none", "빨라서"],
   // 으
   ["바쁘다", "conn.aseo.cause", "none", "바빠서"],
-  ["크다", "polite", "none", "커요"],
+  ["크다", "close.ayo.plain", "none", "커요"],
   ["쓰다", "conn.aseo.cause", "none", "써서"],
   ["아프다", "conn.nikka.cause", "none", "아프니까"],
   // ㅅ
@@ -102,6 +102,25 @@ const CASES: ReadonlyArray<Case> = [
   ["도착하다", "conn.jamaja.time", "none", "도착하자마자"],
   ["배우다", "conn.ryeogo.purpose", "none", "배우려고"],
   ["지키다", "conn.gi-wihaeseo.purpose", "none", "지키기 위해서"],
+  // Closing endings, and ㄹ dropping before ㅅ
+  ["가다", "close.ayo.plain", "none", "가요"],
+  ["하다", "close.a.plain", "none", "해"],
+  ["먹다", "close.a.plain", "past", "먹었어"],
+  ["가다", "close.ayo.plain", "future", "가겠어요"],
+  ["있다", "close.ji.checking", "none", "있지"],
+  ["맛있다", "close.jiyo.checking", "none", "맛있지요"],
+  ["먹다", "close.ne.noticing", "past", "먹었네"],
+  ["살다", "close.neyo.noticing", "none", "사네요"],
+  ["마시다", "close.lkkayo.proposing", "none", "마실까요"],
+  ["듣다", "close.lkka.proposing", "none", "들을까"],
+  ["살다", "close.lkka.proposing", "none", "살까"],
+  ["오다", "close.lkka.proposing", "past", "왔을까"],
+  ["앉다", "close.seyo.asking", "none", "앉으세요"],
+  ["살다", "close.seyo.asking", "none", "사세요"],
+  ["만들다", "close.seyo.asking", "none", "만드세요"],
+  ["듣다", "close.seyo.asking", "none", "들으세요"],
+  ["바쁘다", "close.seyo.asking", "none", "바쁘세요"],
+  ["있다", "close.seyo.asking", "none", "있으세요"],
 ]
 
 const reading = ([dictionary, ending, tense]: Case): Reading => ({
@@ -154,7 +173,7 @@ describe("conjugation", () => {
     [
       "춥어요",
       "춥다",
-      "polite",
+      "close.ayo.plain",
       { rule: "irregular", irregular: "ㅂ", mistake: "b-irregular" },
       "추워요",
     ],
@@ -175,7 +194,7 @@ describe("conjugation", () => {
     [
       "크어요",
       "크다",
-      "polite",
+      "close.ayo.plain",
       { rule: "irregular", irregular: "으", mistake: "eu-kept" },
       "커요",
     ],
@@ -230,6 +249,14 @@ describe("conjugation", () => {
     expect(change).toBeTypeOf("function")
   })
 
+  it("refuses 갔으세요: -(으)세요 takes no past before it", () => {
+    expect(analyse("갔으세요")).toMatchObject({
+      kind: "refused",
+      breach: { rule: "tense", ending: "close.seyo.asking", tense: "past" },
+      correct: "가세요",
+    })
+  })
+
   it("knows no reading of a word it cannot rebuild", () => {
     expect(analyse("가가가")).toEqual({ kind: "unknown" })
   })
@@ -272,15 +299,15 @@ describe("what joining assumes of the catalogue", () => {
     }
   )
 
-  it("starts no ending with ㅂ or ㅅ, before which ㄹ would drop", () => {
+  it("writes no lone ㅂ, before which ㄹ would drop", () => {
     for (const how of attachments) {
-      const form =
+      const forms =
         how.kind === "plain"
-          ? how.ending
+          ? [how.ending]
           : how.kind === "batchim"
-            ? how.afterVowel
-            : ""
-      expect(form).not.toMatch(/^[바-빟사-싷]/)
+            ? [how.afterConsonant, how.afterVowel]
+            : [how.bright, how.dark, how.ha]
+      for (const form of forms) expect(form).not.toMatch(/^ㅂ/)
     }
   })
 

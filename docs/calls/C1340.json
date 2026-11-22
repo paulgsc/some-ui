@@ -1,0 +1,18 @@
+{
+  "id": "C1340",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/ui/topik/src/lib/topik/constructions",
+    "some-ui:packages/ui/topik/src/lib/topik/conjugation"
+  ],
+  "chose": "The endings that close a sentence (-아요/어요, -아/어, -지요, -지, -네요, -네, -(으)ㄹ까요?, -(으)ㄹ까?, -(으)세요) join the construction catalogue as a second kind of entry, `closing`, beside the twenty `joining` ones, with stable ids under `close.`. Each names its register (해요 or 반말) and the sentence moods it can end, so a phrase that joins two clauses can be checked end to end: a joining ending's refused moods against the closing ending's. Conjugation's ad-hoc \"polite\" ending is retired into `close.ayo.plain`, and the catalogue is now the only list of endings. The phrase shelf (KP3, #2852) needs these to rebuild a whole expression; the grades stay \"unchecked\" as C1085 has them.",
+  "options": [
+    "closing endings as a second kind in the one construction catalogue, typed by `kind` (taken)",
+    "a separate list of sentence endings beside the catalogue",
+    "keep conjugation's single \"polite\" ending and add more such special cases"
+  ],
+  "gray": "#2850 scoped the catalogue to how clauses join; the phrase shelf needs how a sentence closes, and the shape it lands in (one family or two lists) is not settled by any earlier decision.",
+  "undo": "Remove the `close.` entries and their kind, and restore conjugation's \"polite\" ending; the ids stay retired, never reused.",
+  "refs": ["#2852", "#2850", "#2849"]
+}

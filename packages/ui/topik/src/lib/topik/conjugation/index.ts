@@ -32,11 +32,10 @@ import {
 import type { MistakeId } from "@topik/lib/topik/read-aloud/mistakes"
 
 /**
- * What ends the word: a construction from the catalogue, or the polite
- * present -아요/어요 (the form the mistake catalogue's irregular entries are
- * about).
+ * What ends the word: a construction from the catalogue, joining (와서) or
+ * closing (와요, the form the mistake catalogue's irregular entries are about).
  */
-type Ending = ConstructionId | "polite"
+type Ending = ConstructionId
 
 type Tense = "none" | "past" | "future"
 
@@ -108,6 +107,7 @@ const FINAL_SS = 20
 const FINAL_B = 17
 const FINAL_D = 7
 const INITIAL_N = 2
+const INITIAL_S = 9
 const INITIAL_NG = 11
 
 type Syllable = { initial: number; medial: number; final: number }
@@ -208,9 +208,11 @@ const attach = (stem: Stem, ending: string): string => {
     // A lone ㄴ or ㄹ becomes the stem's final consonant: 갈 때, 산 후에.
     return withFinal(stem.text, final) + ending.slice(1)
   }
-  // ㄹ drops before ㄴ (사니까, 노느라고), and before ㅂ and ㅅ, which no
-  // catalogue ending starts with (held by the test).
-  if (stem.liquid && syllableOf(first)?.initial === INITIAL_N)
+  // ㄹ drops before a syllable starting with ㄴ or ㅅ: 사니까, 노느라고,
+  // 사네요, 사세요. It also drops before a final ㅂ (삽니다), which no
+  // catalogue ending writes (held by the test).
+  const initial = syllableOf(first)?.initial
+  if (stem.liquid && (initial === INITIAL_N || initial === INITIAL_S))
     return dropL(stem.text, ending) ?? stem.text + ending
   return stem.text + ending
 }
@@ -267,13 +269,6 @@ const tensed = (
  */
 const build = (reading: Reading, rule: StemRule): string => {
   const { dictionary, ending, tense } = reading
-  if (ending === "polite") {
-    const form =
-      tense === "none"
-        ? vowelForm(dictionary, rule)
-        : merge(tensed(dictionary, rule, tense), "어")
-    return `${form}요`
-  }
   const { attach: how, constraints } = CONSTRUCTIONS[ending]
   if (tense !== "none") {
     const after = constraints.before?.ending ?? stemlessForm(how)
@@ -310,7 +305,6 @@ export const conjugate = (reading: Reading): string => build(reading, "listed")
 /** Which of the catalogue's word-level constraints a reading breaks, if any. */
 const breachOf = (reading: Reading): Breach | null => {
   const { dictionary, ending, tense } = reading
-  if (ending === "polite") return null
   const { constraints } = CONSTRUCTIONS[ending]
   const { class: stemClass } = VOCABULARY[dictionary]
   if (!constraints.takes.some((taken) => taken === stemClass))
@@ -322,7 +316,7 @@ const breachOf = (reading: Reading): Breach | null => {
   return null
 }
 
-const ENDINGS: ReadonlyArray<Ending> = [...CONSTRUCTION_IDS, "polite"]
+const ENDINGS: ReadonlyArray<Ending> = CONSTRUCTION_IDS
 const TENSES: ReadonlyArray<Tense> = ["none", "past", "future"]
 
 const readingsOf = function* (): Generator<Reading> {

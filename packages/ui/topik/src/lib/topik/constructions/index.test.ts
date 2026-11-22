@@ -31,6 +31,15 @@ const LANDED = [
   "conn.reo.purpose",
   "conn.ryeogo.purpose",
   "conn.gi-wihaeseo.purpose",
+  "close.ayo.plain",
+  "close.a.plain",
+  "close.jiyo.checking",
+  "close.ji.checking",
+  "close.neyo.noticing",
+  "close.ne.noticing",
+  "close.lkkayo.proposing",
+  "close.lkka.proposing",
+  "close.seyo.asking",
 ]
 
 const SHELVES: ReadonlyArray<Shelf> = [
@@ -61,8 +70,10 @@ describe("the construction catalogue", () => {
     )
   })
 
-  it("names its shelf in each identifier", () => {
-    for (const [id, { meanings }] of entries) {
+  it("names its kind and first meaning in each identifier", () => {
+    const prefix = { joining: "conn", closing: "close" } as const
+    for (const [id, { kind, meanings }] of entries) {
+      expect(id.split(".")[0], id).toBe(prefix[kind])
       expect(id.split(".").at(-1), id).toBe(meanings[0])
     }
   })
@@ -107,10 +118,38 @@ describe("the construction catalogue", () => {
 
   it("writes its twins and examples in Hangul", () => {
     const hangul = /^[가-힣 ]+$/
-    for (const [id, { twins, example }] of entries) {
-      for (const twin of twins) expect(twin, id).toMatch(hangul)
-      expect(example.ko, id).toMatch(/^[가-힣 ]+\.$/)
-      expect(example.en.length, id).toBeGreaterThan(0)
+    for (const [id, entry] of entries) {
+      if (entry.kind === "joining")
+        for (const twin of entry.twins) expect(twin, id).toMatch(hangul)
+      expect(entry.example.ko, id).toMatch(/^[가-힣 ]+[.?]$/)
+      expect(entry.example.en.length, id).toBeGreaterThan(0)
+    }
+  })
+
+  it("closes in 반말 and in 해요 alike, each the other's neighbour", () => {
+    // Every closing job but asking (-(으)세요, polite by its 시) has both.
+    const closings = entries.flatMap(([id, entry]) =>
+      entry.kind === "closing" ? [[id, entry] as const] : []
+    )
+    for (const [id, { meanings, register, neighbours }] of closings) {
+      if (meanings[0] === "asking") continue
+      const other = closings.find(
+        ([, entry]) =>
+          entry.meanings[0] === meanings[0] && entry.register !== register
+      )
+      expect(other, id).toBeDefined()
+      expect(
+        neighbours.map((n) => n.id),
+        id
+      ).toContain(other?.[0])
+    }
+  })
+
+  it("ends each sentence in moods named once each", () => {
+    for (const [id, entry] of entries) {
+      if (entry.kind !== "closing") continue
+      const { ends } = entry.constraints
+      expect(new Set(ends).size, id).toBe(ends.length)
     }
   })
 })
