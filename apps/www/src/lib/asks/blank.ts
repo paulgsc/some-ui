@@ -29,7 +29,7 @@ const KNOWN = [
 ]
 
 /** A header that carries a credential: its value goes, to a quote or the line's end. */
-const HEADER = /\b((?:proxy-)?authorization[ \t]*:[ \t]*)[^\n'"]+/gi
+const HEADER = /\b((?:proxy-)?authorization[ \t]*[:=][ \t]*)[^\n'"]+/gi
 
 /**
  * A password in an address: `scheme://user:password@host`, user or not, to
@@ -65,6 +65,7 @@ const partsOf = (name: string): string =>
   name.replace(/([a-z0-9])([A-Z])/g, "$1_$2")
 
 const secretName = (name: string): boolean =>
+  /passw(?:or)?d|passphrase/i.test(name) ||
   SECRET_KEY.test(partsOf(name)) ||
   partsOf(name)
     .split(/[_.-]/)
@@ -104,6 +105,21 @@ function quoted(value: string): string {
   return `${quote}${BLANKED}${quote}`
 }
 
+/**
+ * A setting, its value blanked when its name is secret; otherwise a setting
+ * inside its value (`env: PASSWORD=…`) is read, `depth` levels down, so the
+ * work stays linear.
+ */
+const setting =
+  (depth: number) =>
+  (all: string, name: string, sep: string, value: string): string => {
+    if (value.includes(BLANKED)) return all
+    if (secretName(name)) return `${name}${sep}${quoted(value)}`
+    return depth > 0
+      ? `${name}${sep}${value.replace(SETTING, setting(depth - 1))}`
+      : all
+  }
+
 /** `text` with everything shaped like a secret replaced by `BLANKED`. */
 export function blankSecrets(text: string): string {
   let out = text
@@ -115,13 +131,7 @@ export function blankSecrets(text: string): string {
       FLAG,
       (_all: string, flag: string, value: string) => `${flag}${quoted(value)}`
     )
-    .replace(
-      SETTING,
-      (all: string, name: string, sep: string, value: string) =>
-        secretName(name) && !value.includes(BLANKED)
-          ? `${name}${sep}${quoted(value)}`
-          : all
-    )
+    .replace(SETTING, setting(1))
   return out.replace(RUN, (run: string, at: number, whole: string) =>
     blankRun(run, whole.slice(Math.max(0, at - 7), at))
   )

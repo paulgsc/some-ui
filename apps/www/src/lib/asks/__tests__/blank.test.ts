@@ -95,6 +95,21 @@ describe("blanking a pasted result", () => {
     ).toBe(BLANKED)
   })
 
+  it("blanks passWord names, a setting inside a setting, and Authorization=", () => {
+    expect(blankSecrets("passWord=abc PassPhrase: def")).toBe(
+      `passWord=${BLANKED} PassPhrase: ${BLANKED}`
+    )
+    expect(blankSecrets("env: PASSWORD=hunter2")).toBe(
+      `env: PASSWORD=${BLANKED}`
+    )
+    expect(blankSecrets('"cmd": "DB_PASSWORD=hunter2 ./x"')).toBe(
+      `"cmd": "DB_PASSWORD=${BLANKED} ./x"`
+    )
+    expect(blankSecrets("Authorization=Bearer abcdefghijklmnop")).toBe(
+      `Authorization=${BLANKED}`
+    )
+  })
+
   it("blanks a header's value only, so the rest of a command stays", () => {
     expect(
       blankSecrets(
@@ -111,7 +126,16 @@ describe("blanking a pasted result", () => {
 
   it("takes as long as the paste is long, whatever its shape", () => {
     const started = performance.now()
-    for (const unit of ["token-", "a-", "x=", "aB1", "eyJabcdef-", '"a": "'])
+    for (const unit of [
+      "token-",
+      "a-",
+      "x=",
+      "aB1",
+      "eyJabcdef-",
+      '"a": "',
+      "x=",
+      "a: b=",
+    ])
       blankSecrets(unit.repeat(20_000))
     expect(performance.now() - started).toBeLessThan(2_000)
   })
