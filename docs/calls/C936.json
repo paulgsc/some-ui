@@ -1,0 +1,17 @@
+{
+  "id": "C936",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:infra/render/render-calls.sh",
+    "server:apps/servers/file_host/src/cards_essays/pass.rs"
+  ],
+  "chose": "WALK5 step 3 (home's walkthrough render) is deferred to a later session. A walkthrough can't ride the cards-essay job, because parseCardsEssay refuses a spoken shot that shows a screen and any series that isn't a cards series. Draft:\n- a 'walkthrough' render job that calls S2's `motion walkthrough --takes` (option a: some-ui owns the retiming and the join), with --speaker http://kokoro:8880, then `motion prove` for twice-equal;\n- a walkthrough shelf on Studio > Renders (feeds::renders);\n- home writes friction.json from the weekly read through S2's frictionOf;\n- the words come from paulgsc/testing, in a folder beside cards/;\n- the walk is named by commit and fetched as a case of the snips bundle (snips.rs, C875's gone and retry rules); home keeps no copy past the render.",
+  "options": [
+    "a new render job that calls video-motion (draft)",
+    "widen parseCardsEssay and record:cards to take walkthroughs"
+  ],
+  "gray": "Whether a walkthrough is a new job, or the cards-essay job widened, is a design call between two renderers (video-motion and record:cards) in another repo. No check here settles it, and widening the essay's refusals would loosen rules the cards essays rely on.",
+  "undo": "Build it as the other option.",
+  "refs": ["#3337", "server#1076"]
+}

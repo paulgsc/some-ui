@@ -1537,7 +1537,7 @@
             {
               "class": "measured",
               "says": "A pass that reaches its deadline leaves the subjects it never reached untouched and still due; subjects beyond a batch are finished by later passes.",
-              "ref": "server:apps/servers/file_host/src/nudge/waker.rs"
+              "ref": "server:apps/servers/file_host/src/nudge/waker/tests.rs"
             },
             {
               "class": "structural",
@@ -1546,8 +1546,8 @@
             }
           ],
           "proof": [
-            "server:apps/servers/file_host/src/nudge/waker.rs#a_pass_that_reaches_its_deadline_leaves_the_subjects_it_never_reached_untouched_and_still_due",
-            "server:apps/servers/file_host/src/nudge/waker.rs#behind_subjects_beyond_a_batch_are_finished_by_later_passes"
+            "server:apps/servers/file_host/src/nudge/waker/tests.rs#a_pass_that_reaches_its_deadline_leaves_the_subjects_it_never_reached_untouched_and_still_due",
+            "server:apps/servers/file_host/src/nudge/waker/tests.rs#behind_subjects_beyond_a_batch_are_finished_by_later_passes"
           ],
           "watch": {
             "by": "dashboard",
@@ -1604,7 +1604,7 @@
           "requirement": "While the nudge is on, each pass sweeps intervention_log past 90 days and activity_outcome past a year (owner, 2026-10-28), at most RETENTION_SWEEP_LIMIT = 500 rows per table per pass, so a backlog (the nudge turned on again after a long while off) is gone once the passes catch up; with it off, both keep every row. Presence leases are at most 16 per person, and the charge and gate one row per person and class, either way.",
           "verdict": "holds",
           "proof": [
-            "server:apps/servers/file_host/src/nudge/waker.rs#a_pass_deletes_exactly_the_intervention_history_past_the_retention_horizon",
+            "server:apps/servers/file_host/src/nudge/waker/tests.rs#a_pass_deletes_exactly_the_intervention_history_past_the_retention_horizon",
             "server:apps/servers/file_host/src/main.rs#config.nudge_enabled",
             "some-ui:apps/www/src/lib/device-backend/__tests__/storage-bounds.test.ts#keeps the latest 16 contexts"
           ],
@@ -4954,7 +4954,7 @@
       "store": "server:activity_outcome",
       "class": "record",
       "growth": "Per activity block played (one row per block, idempotent on (session_id, block_index)); \"a daily learner writes a few thousand rows a year\" (outcome_repo constant doc); steady state is rate x 1 year.",
-      "horizon": "365 days from ended_at, pruned by OutcomeRepository::prune (crates/db/outcome/src/repository.rs) from the waker's sweep_history (apps/servers/file_host/src/nudge/waker.rs), at most RETENTION_SWEEP_LIMIT=500 rows per pass; only while NUDGE_ENABLED is on",
+      "horizon": "365 days from ended_at, pruned by OutcomeRepository::prune (crates/db/outcome/src/repository.rs) from the waker's sweep_history (apps/servers/file_host/src/nudge/sweep.rs), at most RETENTION_SWEEP_LIMIT=500 rows per pass; only while NUDGE_ENABLED is on",
       "family": "study-nudge"
     },
     {
@@ -5106,7 +5106,7 @@
       "store": "server:intervention_log",
       "class": "telemetry",
       "growth": "Per nudge the waker decides to send: one small row (JSON StudyAction), at most one per subject per REFRACTORY (20 h); steady state is rate x 90 days.",
-      "horizon": "90 days from decided_at, pruned by EngagementRepository::prune_intervention_log (crates/db/engagement/src/repository.rs) from waker sweep_history, <=500 rows per pass, only while NUDGE_ENABLED; release() also deletes a claimed row nothing was delivered for",
+      "horizon": "90 days from decided_at, pruned by EngagementRepository::prune_intervention_log (crates/db/engagement/src/repository.rs) from the waker's sweep_history (nudge/sweep.rs), <=500 rows per pass, only while NUDGE_ENABLED; release() also deletes a claimed row nothing was delivered for",
       "family": "study-nudge"
     },
     {

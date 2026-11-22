@@ -1,0 +1,20 @@
+{
+  "id": "C960",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:Cargo.toml",
+    "server:scripts/check_manifests.py",
+    "server:.github/workflows/lint.yml",
+    "server:apps/servers/file_host/src/lib.rs"
+  ],
+  "chose": "The 36 manifests naming a missing README inherit the root README (readme.workspace = true), because clippy's cargo_common_metadata needs the key and a stub per crate says nothing. A Manifests job fails a manifest path naming no file. Of file_host's pub modules, only the 7 small unowned ones were narrowed to pub(crate). handlers (361 items), transcribe (the transcriber lane's) and reconcile (game-week's) were left and listed on #491. docs/WARNING.md was kept as the owner's linked caveat.",
+  "options": [
+    "inherit the root README (taken)",
+    "write a README per crate",
+    "drop readme and allow cargo_common_metadata"
+  ],
+  "gray": "How much of the narrowing one session should take, and whose dead code is whose.",
+  "undo": "Restore `readme = \"README.md\"` lines, or write per-crate READMEs; the check passes either way once the files exist.",
+  "refs": ["server#491"]
+}
