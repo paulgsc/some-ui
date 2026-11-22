@@ -107,6 +107,7 @@ export async function openSandboxStage(
       page,
       version: spec.version,
       viewport: { ...spec.viewport, scale: SCALE },
+      origin: SANDBOX,
       place: (x, y) => ({ x, y }),
       open: async (init): Promise<void> => {
         for (const content of init) await page.addInitScript({ content })
