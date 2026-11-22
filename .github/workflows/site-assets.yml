@@ -16,6 +16,10 @@ on:
       - "packages/video-render/**"
       - ".github/workflows/site-assets.yml"
   workflow_dispatch:
+  # Twice a month, so the newest of each kind never outlives its 30 days
+  # while nothing it is made from changes.
+  schedule:
+    - cron: "41 5 3,17 * *"
 
 permissions:
   contents: read

@@ -4,15 +4,17 @@ import type { RuntimeMode } from "@some-ui/fetch-kit"
  * Where this build's companion data comes from, decided once at build time:
  * *fetch, or fall back to the bundled demo seed*.
  *
- * - **`"static"`** - the viewer build (the capture build Snips photographs). No companion data is deployed
- *   (pages.yml copies only `sfx`), so no request is issued.
+ * - **`"static"`** - the viewer's builds: the public site's (pages.yml, which
+ *   copies only `sfx`) and the capture build Snips photographs
+ *   (snips-capture.yml). No companion data is deployed, so no request is
+ *   issued.
  * - **`"server"`** - `vite dev`, `vite preview`, and the Docker/nginx image,
  *   which serve `public/` and proxy `file_host`.
  *
  * Not `resolveRuntimeMode`'s hostname heuristic (it guessed wrong for the LAN
  * mDNS host and a localhost preview), and not `import.meta.env.PROD` (true for
- * both Docker and Pages). `VITE_STATIC_DATA` is set only by the Pages
- * workflow, so "unset" means "this build serves public/".
+ * both Docker and Pages). `VITE_STATIC_DATA` is set only by those two
+ * workflows, so "unset" means "this build serves public/".
  */
 export const DATA_MODE: RuntimeMode =
   import.meta.env.VITE_STATIC_DATA === "true" ? "static" : "server"

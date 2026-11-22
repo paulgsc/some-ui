@@ -14,7 +14,7 @@
 // It sits beside vite.config.ts and check-bundle-paths.ts, so it reaches the
 // site's modules by a same-directory path, as they do.
 
-import { existsSync, mkdirSync, writeFileSync } from "node:fs"
+import { lstatSync, mkdirSync, writeFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { createElement } from "react"
 import { resumeData, ResumeDocument } from "@some-ui/resume"
@@ -51,9 +51,13 @@ const versions: ReadonlyArray<ResumeVersion> = RESUME_VERSIONS.map((id) => ({
 }))
 
 // The media the build was given (SITE_MEDIA_DIR): a slot shows its asset
-// when the file is there, and its placeholder when it isn't.
-const media = landingMediaKeys().filter((key) =>
-  existsSync(resolve(import.meta.dirname, join(SITE_MEDIA_DIR, key)))
+// when a regular file is there (never a link, which could name a file
+// elsewhere on the machine), and its placeholder when it isn't.
+const media = landingMediaKeys().filter(
+  (key) =>
+    lstatSync(resolve(import.meta.dirname, join(SITE_MEDIA_DIR, key)), {
+      throwIfNoEntry: false,
+    })?.isFile() === true
 )
 
 const pages: ReadonlyArray<SitePage> = [

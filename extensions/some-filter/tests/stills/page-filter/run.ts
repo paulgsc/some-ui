@@ -29,36 +29,42 @@ const executablePath = process.env["PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"]
 /** One photograph of the page, with Page Filter loaded or not. */
 async function shoot(filtered: boolean): Promise<Buffer> {
   const profile = mkdtempSync(join(tmpdir(), "gap-still-"))
-  const context: BrowserContext = await chromium.launchPersistentContext(
-    profile,
-    {
-      ...(executablePath === undefined ? {} : { executablePath }),
-      headless: false,
-      viewport: SIZE,
-      args: [
-        "--headless=new",
-        "--allow-file-access-from-files",
-        ...(filtered
-          ? [`--disable-extensions-except=${DIST}`, `--load-extension=${DIST}`]
-          : []),
-      ],
-    }
-  )
   try {
-    const page = context.pages()[0] ?? (await context.newPage())
-    await page.goto(PAGE)
-    if (filtered) {
-      // The content script marks the page once it has themed it.
-      await page.waitForFunction(
-        () => document.body.dataset["swThemeApplied"] === "dark",
-        undefined,
-        { timeout: 10_000, polling: 100 }
-      )
+    const context: BrowserContext = await chromium.launchPersistentContext(
+      profile,
+      {
+        ...(executablePath === undefined ? {} : { executablePath }),
+        headless: false,
+        viewport: SIZE,
+        args: [
+          "--headless=new",
+          "--allow-file-access-from-files",
+          ...(filtered
+            ? [
+                `--disable-extensions-except=${DIST}`,
+                `--load-extension=${DIST}`,
+              ]
+            : []),
+        ],
+      }
+    )
+    try {
+      const page = context.pages()[0] ?? (await context.newPage())
+      await page.goto(PAGE)
+      if (filtered) {
+        // The content script marks the page once it has themed it.
+        await page.waitForFunction(
+          () => document.body.dataset["swThemeApplied"] === "dark",
+          undefined,
+          { timeout: 10_000, polling: 100 }
+        )
+      }
+      await page.waitForTimeout(500)
+      return await page.screenshot({ type: "png" })
+    } finally {
+      await context.close()
     }
-    await page.waitForTimeout(500)
-    return await page.screenshot({ type: "png" })
   } finally {
-    await context.close()
     rmSync(profile, { recursive: true, force: true })
   }
 }
