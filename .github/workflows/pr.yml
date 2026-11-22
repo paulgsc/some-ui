@@ -408,13 +408,15 @@ jobs:
             tests/composer/pager.spec.ts
 
       # The burn-in recorder (STUDIO ST15, #2273): nothing else drives the page
-      # the renderer records from. What it checks is in the spec's header.
+      # the renderer records from. What it checks is in the spec's header. The
+      # thumbnail beside each episode's video (EPISODES3, C1026) is drawn by the
+      # same recorders, and its spec says the same bytes come out twice.
       - name: E2E — burn-in recorder (www)
         if: contains(fromJSON(needs.changes.outputs.e2e), 'record')
         run: |
           nix develop .#ci --command pnpm turbo build --filter=www... --concurrency=100%
           nix develop .#ci-playwright --command pnpm --filter www test:e2e \
-            tests/record/short.spec.ts
+            tests/record/short.spec.ts tests/record/thumbnail.spec.ts
 
       # HYPER1 (#2724): HyperFrames draws a composition to the same bytes
       # twice with the pins in packages/video-motion/src/pin.ts, on the nix
