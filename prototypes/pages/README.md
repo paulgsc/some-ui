@@ -494,3 +494,33 @@ coordinator, not part of C1055, which covers Pages only.
 
 Still waiting on the owner: which process the PIPELINES panel shows, and Suspender Ledger's
 AMO listing URL.
+
+## Round 5: Suspender Ledger's channel, and file_host's own dashboard
+
+- **Suspender Ledger has no public listing.** It is signed on AMO's unlisted channel (its
+  README, "Signing for Firefox (private unlisted)"), and unlisted builds are still reviewed. Its
+  card says "Signed and reviewed by Mozilla (unlisted)" and links to its source and to all five
+  extensions' source. No GitHub release carries the signed `.xpi`: `extension-release.yml`
+  submits it to AMO only. So there is no download link. The card's link to the `/extensions`
+  route and the Android card's "Try the study apps" (`/app`) are gone, since both routes leave
+  Pages in the prune.
+- **The server clip uses file_host's own dashboard** (`🩺 file_host`,
+  `infra/grafana/dashboards/dashboard.jsonnet` in paulgsc/server at `3d3739d`). These panels
+  need no explanation:
+
+  1. **AVAILABILITY** (golden signals, `lib/overview-panels.libsonnet`): the share of requests
+     answered, which is the SLA.
+  2. **UP FOR** (same row): time since the running file_host started. Beside it, **RESTARTS**,
+     if a fifth tile is wanted.
+  3. **SERVICES — up, and when they weren't** (`lib/overview-panels.libsonnet`): each
+     service's uptime as a state timeline.
+  4. **Refusals/sec by Reason** (the "Rate limiting & refusals" row,
+     `lib/abuse-panels.libsonnet`): what the limiter, load shedding and timeouts turn away.
+  5. **Limiter: Tokens Available & Tracked Clients** (same row): the rate limiter at work.
+
+  The mock's top row shows AVAILABILITY, UP FOR and RATE LIMITED (the row's stat tile). The
+  pipelines no longer lead. The cores gap card keeps WHO DUNNIT's "CPU — busy vs waiting, of 4
+  cores". None of these panels carries personal data: the reasons and stages are code labels,
+  and tracked clients is a count, not a list.
+
+- **Waits on the owner: nothing.**
