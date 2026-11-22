@@ -21,16 +21,26 @@ import { defineContract, pairedPhoneOnly } from "../src/contract"
 /** NE at CHI, 2026-10-22: the game GWB2 recorded, and every fixture replays. */
 const RECORDED_GAME = "401873010"
 
-/** An id of ESPN's form that names no game home has kept a play of. */
+/**
+ * An id home's `game_id` accepts (letters, digits, `-`, `_`) that names no game
+ * home has kept a play of: ESPN's are nine digits, so a one-digit id never is.
+ */
 const ABSENT_GAME = "1"
 
 /** What a bite of a play is about by default (#3049, catalog v2's `units`). */
 const Unit = z.enum(["offense", "defense", "special-teams", "coaching"])
 
-/** A big play by the algebra (#3048): its size and kind as the catalog lists them. */
+/** A big play by the algebra (#3048): its size and kind as catalog v2 lists them. */
 const BigPlay = z.object({
-  size: z.string(),
-  kind: z.string(),
+  size: z.enum(["big", "huge", "memorable"]),
+  kind: z.enum([
+    "pass",
+    "run",
+    "kick-return",
+    "punt-return",
+    "interception-return",
+    "fumble-return",
+  ]),
   by: z.string(),
   yards: z.number().int(),
   scored: z.boolean(),
