@@ -22,9 +22,9 @@ shopt -s inherit_errexit
 #
 # Never deleted, whatever the history says: the default branch, a protected
 # branch (PROTECTED_BRANCHES, one name a line, from the API), `bot/*`,
-# `changeset-release/*`, `claude/bucket-*` (another bucket, or this one,
-# whose branch GitHub deletes itself), and the head or base of an open pull
-# request (OPEN_PR_BRANCHES), since deleting it would close that PR.
+# `changeset-release/*`, a bucket, `claude/bucket-<repo>-<n>` (another, or
+# this one, whose branch GitHub deletes itself), and the head or base of an
+# open pull request (OPEN_PR_BRANCHES), since deleting it would close that PR.
 # A branch a ruleset protects is not listed; its delete is refused and the
 # run goes red, naming it.
 #
@@ -46,6 +46,21 @@ shopt -s inherit_errexit
 #       (--force-with-lease), and writes $GITHUB_STEP_SUMMARY. Needs
 #       GH_TOKEN, GITHUB_REPOSITORY, DEFAULT_BRANCH, PR.
 
+# A bucket's own name, `claude/bucket-<repo>-<n>`. A prefix alone is not
+# enough: `claude/bucket-prune`, the worker branch that built this, starts
+# the same way and was kept as a bucket after #3410. With BUCKET_REPO set
+# (run sets it from GITHUB_REPOSITORY), <repo> must be this repository's
+# name, so a worker named `claude/bucket-prune-2` is not one either.
+is_bucket() {
+  local repo=${BUCKET_REPO:-}
+  if [ -n "$repo" ]; then
+    repo=${repo//./\\.}
+    [[ $1 =~ ^claude/bucket-${repo}-[0-9]+$ ]]
+  else
+    [[ $1 =~ ^claude/bucket-.+-[0-9]+$ ]]
+  fi
+}
+
 is_ancestor() { git merge-base --is-ancestor "$1" "$2"; }
 
 never_deleted() {
@@ -53,8 +68,8 @@ never_deleted() {
   [ "$name" = "${DEFAULT_BRANCH:-main}" ] && { echo "the default branch"; return 0; }
   case $name in
     bot/* | changeset-release/*) echo "a bot's branch"; return 0 ;;
-    claude/bucket-*) echo "a bucket's branch"; return 0 ;;
   esac
+  is_bucket "$name" && { echo "a bucket's branch"; return 0; }
   if [ -n "${PROTECTED_BRANCHES:-}" ] && grep -qxF -- "$name" <<<"$PROTECTED_BRANCHES"; then
     echo "a protected branch"
     return 0
@@ -125,7 +140,14 @@ run() {
   local merged head_ref head_sha cross merge_sha
   read -r merged head_ref head_sha cross merge_sha < <(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" \
     --jq '"\(.merged) \(.head.ref) \(.head.sha) \(.head.repo.full_name != .base.repo.full_name) \(.merge_commit_sha)"')
-  if [ "$merged" != true ] || [ "$cross" != false ] || [[ $head_ref != claude/bucket-* ]]; then
+  BUCKET_REPO=${GITHUB_REPOSITORY##*/}
+  # The workflow's filter can only test the prefix: a merged PR from a
+  # branch that merely starts like a bucket's is not one, and not an error.
+  if [ "${GITHUB_EVENT_NAME:-}" = pull_request ] && [ "$merged" = true ] && ! is_bucket "$head_ref"; then
+    echo "::notice::#$PR's head $head_ref is not a bucket (claude/bucket-$BUCKET_REPO-<n>); nothing to prune."
+    exit 0
+  fi
+  if [ "$merged" != true ] || [ "$cross" != false ] || ! is_bucket "$head_ref"; then
     echo "::error::#$PR is not a merged bucket PR from this repository (merged=$merged, head=$head_ref)." >&2
     exit 1
   fi
