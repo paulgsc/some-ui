@@ -151,8 +151,9 @@ export type HomeLinkState = {
    * The last request to home failed before home could answer, for `reason`
    * (NA1, #3099): this phone couldn't find home's name on this network, or
    * doesn't trust home's certificate. Held as a silence is (AW1, C476), but
-   * said as itself, never as away; the next answer, a network change, a
-   * silence or a new pairing clears it. Null otherwise.
+   * said as itself, never as away; home's next answer by any way (a request,
+   * the live socket, a pairing's), a network change, a silence or a new
+   * pairing clears it. Null otherwise.
    */
   readonly blocked: {
     readonly reason: HomeBlockedReason
@@ -236,8 +237,6 @@ export type HomeLinkEvent =
       readonly reason: HomeBlockedReason
       readonly at: number
     }
-  /** Home answered a request, after one was blocked (NA1). */
-  | { readonly type: "unblocked" }
   /** A run asked for while the record is read waits as `ticket` (`parked`). */
   | { readonly type: "parked"; readonly ticket: number }
 
@@ -631,9 +630,11 @@ function advance(state: HomeLinkState, event: HomeLinkEvent): HomeLinkState {
     case "answered":
     case "lapsed":
     case "lookAgain": {
-      // The latest failure is home's silence, or the network changed: what
-      // blocked a request before is not what is said now (NA1).
+      // Home answered, by any way (a request, the live socket, a pairing's
+      // answer); or the latest failure is home's silence; or the network
+      // changed: what blocked a request before is not what is said now (NA1).
       const blocked =
+        event.type === "answered" ||
         event.type === "unanswered" ||
         (event.type === "lookAgain" && event.fresh)
           ? null
@@ -656,10 +657,6 @@ function advance(state: HomeLinkState, event: HomeLinkEvent): HomeLinkState {
       const { reason, at } = event
       if (state.blocked?.reason === reason) return state
       return { ...state, blocked: { reason, at } }
-    }
-    case "unblocked": {
-      if (state.blocked === null) return state
-      return { ...state, blocked: null }
     }
     case "parked": {
       if (link.kind !== "reading" || state.parked.includes(event.ticket)) {
