@@ -37,6 +37,7 @@
   "dependencies": {
     "@some-ui/core-utils": "workspace:*",
     "@some-ui/eslint-kit": "workspace:*",
+    "@some-ui/game-scenarios": "workspace:*",
     "@some-ui/styles": "workspace:*",
     "zod": "catalog:"
   },
