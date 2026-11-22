@@ -1,16 +1,9 @@
 /**
- * The colours of the Cooking page are an algebra (C1119): a blocking stop's
- * theme is Holder × Urgency. Who holds it sets the hue; how urgent it is sets
- * the weight. Only a train's current stop has an urgency: now when another
- * live train waits on this one, whenever when the record marks the step as
- * one the owner may take when they like, today otherwise. The bar at the top
- * shows the one most urgent blocker: by urgency, then the owner before
- * Claude, the checks and home, then the longest waiting. Pure; the classes
- * each theme draws with are the component's (`components/cooking/theme.ts`),
- * one per member of the product, so the table is total by its type.
+ * The Cooking page's colours are an algebra (C1119): a blocking stop's theme
+ * is Holder × Urgency, drawn by `components/cooking/theme.ts`.
  */
 import type { Holder, Stop, Train } from "./model"
-import { bySince, hereOf, HOLDERS } from "./model"
+import { byId, bySince, hereOf, HOLDERS } from "./model"
 
 const URGENCIES = ["now", "today", "whenever"] as const
 
@@ -63,6 +56,6 @@ export function blockers(trains: ReadonlyArray<Train>): Array<Blocker> {
         URGENCIES.indexOf(a.urgency) - URGENCIES.indexOf(b.urgency) ||
         HOLDERS.indexOf(a.holder) - HOLDERS.indexOf(b.holder) ||
         bySince(a.stop.since, b.stop.since) ||
-        (a.train.id < b.train.id ? -1 : 1)
+        byId(a.train, b.train)
     )
 }

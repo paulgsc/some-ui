@@ -14,9 +14,10 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { Lands } from "@some-ui/video-render"
+import { LANDS } from "@some-ui/video-render"
 
 import type { Train } from "./model"
-import { bySince, hereOf, onYou } from "./model"
+import { byId, bySince, hereOf, onYou } from "./model"
 
 export const TRAINS_MAX = 12
 export const TRAINS_PER_PAGE = 5
@@ -24,16 +25,17 @@ export const TRAINS_PER_PAGE = 5
 export type Filter = "all" | "you" | "moving" | Lands
 export type Sort = "you-first" | "waiting" | "near"
 
-export const FILTERS: ReadonlyArray<Filter> = [
+export const FILTERS = [
   "all",
   "you",
   "moving",
-  "home",
-  "phone",
-  "site",
-  "code",
-]
-export const SORTS: ReadonlyArray<Sort> = ["you-first", "waiting", "near"]
+  ...LANDS,
+] as const satisfies ReadonlyArray<Filter>
+export const SORTS = [
+  "you-first",
+  "waiting",
+  "near",
+] as const satisfies ReadonlyArray<Sort>
 
 export type Board = {
   readonly filter: Filter
@@ -67,33 +69,19 @@ export type BoardEvent =
   | { readonly kind: "picked"; readonly train: string; readonly stop: number }
   | { readonly kind: "slid"; readonly by: -1 | 1 }
 
-export const matches = (filter: Filter, train: Train): boolean => {
-  switch (filter) {
-    case "all": {
-      return true
-    }
-    case "you": {
-      return onYou(train)
-    }
-    case "moving": {
-      return !onYou(train)
-    }
-    case "home":
-    case "phone":
-    case "site":
-    case "code": {
-      return train.lands === filter
-    }
-    default: {
-      return assertNever(filter)
-    }
-  }
-}
+export const matches = (filter: Filter, train: Train): boolean =>
+  filter === "all"
+    ? true
+    : filter === "you"
+      ? onYou(train)
+      : filter === "moving"
+        ? !onYou(train)
+        : train.lands === filter
 
 const stopsLeft = (t: Train): number =>
   t.stops.filter((s) => s.state !== "passed").length
-const sinceOf = (t: Train): string =>
-  t.arrived ? "~" : (hereOf(t).since ?? "~")
+const sinceOf = (t: Train): string | null =>
+  t.arrived ? null : hereOf(t).since
 
 const ORDER: Record<Sort, (a: Train, b: Train) => number> = {
   "you-first": (a, b) =>
@@ -108,10 +96,7 @@ export const ordered = (
   trains: ReadonlyArray<Train>
 ): Array<Train> =>
   [...trains]
-    .sort(
-      (a, b) =>
-        ORDER[board.sort](a, b) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
-    )
+    .sort((a, b) => ORDER[board.sort](a, b) || byId(a, b))
     .slice(0, TRAINS_MAX)
 
 /** The trains the list shows, filtered and ordered. */
@@ -147,11 +132,9 @@ export const activeOf = (board: Board, train: Train): number => {
     : train.current
 }
 
-const isDefault = (board: Board): boolean =>
-  board.filter === INITIAL_BOARD.filter && board.sort === INITIAL_BOARD.sort
-
 /** Whether the list is narrowed or reordered, so the menu's icon says so. */
-export const narrowed = (board: Board): boolean => !isDefault(board)
+export const narrowed = (board: Board): boolean =>
+  board.filter !== INITIAL_BOARD.filter || board.sort !== INITIAL_BOARD.sort
 
 /** The board after `event`; `fallback` is the train the card follows unpicked. */
 export function stepBoard(

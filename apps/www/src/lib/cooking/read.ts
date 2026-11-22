@@ -1,33 +1,26 @@
 /**
  * The Cooking page's read (C1115): the newest open `[ORCH]` issue's run
- * block, then what GitHub says of every pull request, workflow run and ask
- * it names, each through GitHub's public interface, carrying no account
- * (the issues and runs are public). A fact that can't be read is left
- * `null`, so one missing answer marks its stop instead of failing the page.
- * Where each train stands is `./model`'s.
- *
- * GitHub answers a reader without an account 60 times an hour. One read is
- * one list, plus one per pull request (two while it is open), workflow run
- * and ask the run names, so the page reads when it opens and when the owner
- * asks, never on a timer (`./index`).
+ * block, then what GitHub says of every pull request, workflow run and ask it
+ * names (`@/lib/public-github`). A fact that can't be read is left `null`,
+ * so one missing answer marks its stop instead of failing the page.
  */
-import { apiClient } from "@some-ui/fetch-kit"
 import type { Leg, RunFile } from "@some-ui/video-render"
-import { parseAskBody, parseRunBody, RUN_LABEL } from "@some-ui/video-render"
+import {
+  parseAskBody,
+  parseRunBody,
+  refKey,
+  RUN_LABEL,
+} from "@some-ui/video-render"
 import { z } from "zod"
 
+import { askTitle, IssueSchema, readGithub } from "@/lib/public-github"
+
 import type { AskFacts, Facts, PrFacts, RunFacts, Train } from "./model"
-import { askKey, prKey, runKey, trainsOf } from "./model"
+import { runKey, trainsOf } from "./model"
 
-const GITHUB = "https://api.github.com/repos/paulgsc"
-
-const IssueSchema = z.object({
-  number: z.number().int().positive(),
-  title: z.string(),
-  html_url: z.url(),
+const StatedIssueSchema = IssueSchema.extend({
   state: z.enum(["open", "closed"]),
   created_at: z.string(),
-  body: z.string().nullable(),
 })
 
 const PullSchema = z.object({
@@ -65,13 +58,6 @@ export type Cooking =
       readonly trains: ReadonlyArray<Train>
     }
 
-const get = <T>(path: string, schema: z.ZodType<T>): Promise<T> =>
-  apiClient.get(
-    new URL(`${GITHUB}/${path}`),
-    { credentials: "omit", headers: { Accept: "application/vnd.github+json" } },
-    schema
-  )
-
 /** A finished check that didn't fail: passed, skipped or neutral. */
 const PASSING = new Set(["success", "skipped", "neutral"])
 
@@ -94,37 +80,26 @@ function countCheck(
   return bump(status === "in_progress" ? "running" : "waiting")
 }
 
-/**
- * Merged pull requests, the one fact that can no longer change, kept for
- * the tab's life so a second read doesn't spend GitHub's 60 answers an hour
- * on them again. A closed one can be reopened and any run run again, so
- * those are read each time. Nothing is stored.
- */
-const endedPrs = new Map<string, PrFacts>()
+/** Merged pull requests, which can't change again, kept for the tab's life. */
+const mergedPrs = new Map<string, PrFacts>()
 
-/** `read`, unless `key` already ended; kept once it has. */
-const once =
-  <T>(
-    kept: Map<string, T>,
-    key: string,
-    read: () => Promise<T>,
-    over: (fact: T) => boolean
-  ): (() => Promise<T>) =>
-  async () => {
-    const known = kept.get(key)
-    if (known !== undefined) return known
-    const fact = await read()
-    if (over(fact)) kept.set(key, fact)
-    return fact
-  }
+/** `readPr`, unless the pull request was merged when last read. */
+async function readPrOnce(repo: string, number: number): Promise<PrFacts> {
+  const key = refKey({ repo, number })
+  const known = mergedPrs.get(key)
+  if (known !== undefined) return known
+  const pr = await readPr(repo, number)
+  if (pr.state === "merged") mergedPrs.set(key, pr)
+  return pr
+}
 
 /** For tests: forget what was kept, so each starts from GitHub. */
 export function forgetEnded(): void {
-  endedPrs.clear()
+  mergedPrs.clear()
 }
 
 async function readPr(repo: string, number: number): Promise<PrFacts> {
-  const pull = await get(`${repo}/pulls/${String(number)}`, PullSchema)
+  const pull = await readGithub(`${repo}/pulls/${String(number)}`, PullSchema)
   let checks: Checks = {
     waiting: 0,
     running: 0,
@@ -133,7 +108,7 @@ async function readPr(repo: string, number: number): Promise<PrFacts> {
     approval: 0,
   }
   if (pull.state === "open") {
-    const runs = await get(
+    const runs = await readGithub(
       `${repo}/commits/${pull.head.sha}/check-runs?per_page=100`,
       ChecksSchema
     )
@@ -164,7 +139,10 @@ function runStateOf(
 }
 
 async function readRun(repo: string, run: number): Promise<RunFacts> {
-  const r = await get(`${repo}/actions/runs/${String(run)}`, WorkflowRunSchema)
+  const r = await readGithub(
+    `${repo}/actions/runs/${String(run)}`,
+    WorkflowRunSchema
+  )
   const state = runStateOf(r.status, r.conclusion)
   return {
     url: r.html_url,
@@ -175,15 +153,16 @@ async function readRun(repo: string, run: number): Promise<RunFacts> {
 }
 
 async function readAsk(repo: string, number: number): Promise<AskFacts> {
-  const issue = await get(`${repo}/issues/${String(number)}`, IssueSchema)
+  const issue = await readGithub(
+    `${repo}/issues/${String(number)}`,
+    StatedIssueSchema
+  )
   const ask = parseAskBody(issue.body ?? "")
   return {
     url: issue.html_url,
     open: issue.state === "open",
     filedAt: issue.created_at,
-    question: ask.ok
-      ? ask.value.question
-      : issue.title.replace(/^\s*\[ASK\]\s*/i, ""),
+    question: ask.ok ? ask.value.question : askTitle(issue.title),
     steps:
       ask.ok && ask.value.kind === "checklist"
         ? ask.value.steps.map((s) => s.says)
@@ -213,20 +192,12 @@ async function readFacts(run: RunFile): Promise<Facts> {
   const asks = new Map<string, () => Promise<AskFacts>>()
   for (const leg of legs) {
     if (leg.leg === "merge")
-      prs.set(
-        prKey(leg.pr),
-        once(
-          endedPrs,
-          prKey(leg.pr),
-          () => readPr(leg.pr.repo, leg.pr.number),
-          (f) => f.state === "merged"
-        )
-      )
+      prs.set(refKey(leg.pr), () => readPrOnce(leg.pr.repo, leg.pr.number))
     if (leg.leg === "run")
       runs.set(runKey(leg.repo, leg.run), () => readRun(leg.repo, leg.run))
     if (leg.leg === "yours" && leg.ask !== undefined) {
       const ask = leg.ask
-      asks.set(askKey(ask), () => readAsk(ask.repo, ask.number))
+      asks.set(refKey(ask), () => readAsk(ask.repo, ask.number))
     }
   }
   const [p, r, a] = await Promise.all([
@@ -239,9 +210,9 @@ async function readFacts(run: RunFile): Promise<Facts> {
 
 /** Today's cooking: the newest open run's trains, or why there are none. */
 export async function readCooking(): Promise<Cooking> {
-  const issues = await get(
+  const issues = await readGithub(
     `some-ui/issues?labels=${RUN_LABEL}&state=open&sort=created&direction=desc&per_page=5`,
-    z.array(IssueSchema)
+    z.array(StatedIssueSchema)
   )
   const newest = issues.at(0)
   if (newest === undefined) return { kind: "none" }

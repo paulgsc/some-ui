@@ -9,8 +9,7 @@ import { Dot } from "../../patterns/dot"
  * (none for an order), whether it is picked, and an optional dot for what
  * the items mean. Takes on home
  * (TAKES3, TAKES20), its reconciling page and a Rust Rounds ticket's points
- * (RR24) draw their filters with it, in a `CHIP_BAR`; the Cooking page its
- * Show and Order menu.
+ * (RR24) draw their filters with it, in a `CHIP_BAR`.
  */
 export const Chip = ({
   picked,

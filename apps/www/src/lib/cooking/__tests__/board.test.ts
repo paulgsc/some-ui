@@ -20,10 +20,9 @@ import {
   TRAINS_MAX,
   TRAINS_PER_PAGE,
 } from "@/lib/cooking/board"
-import type { Train } from "@/lib/cooking/model"
 import { trainsOf } from "@/lib/cooking/model"
 
-import { FACTS, RUN } from "./fixtures"
+import { copies, FACTS, RUN, trainOf } from "./fixtures"
 
 const trains = trainsOf(RUN, FACTS)
 const step = (b: Board, e: Parameters<typeof stepBoard>[1]): Board =>
@@ -49,10 +48,7 @@ describe("the board", () => {
   })
 
   it("follows a picked stop to its train's page, and never changes the filter", () => {
-    const many: Array<Train> = Array.from({ length: 8 }, (_, i) => ({
-      ...trains[3],
-      id: `G${String(10 + i)}`,
-    }))
+    const many = copies(trainOf("G5"), 8)
     const picked = stepBoard(
       INITIAL_BOARD,
       { kind: "picked", train: "G17", stop: 0 },
@@ -71,7 +67,7 @@ describe("the board", () => {
   })
 
   it("slides the card along the selected train, never off its line", () => {
-    const g2 = trains.find((t) => t.id === "G2")!
+    const g2 = trainOf("G2")
     expect(activeOf(INITIAL_BOARD, g2)).toBe(g2.current)
     let b = step(INITIAL_BOARD, { kind: "slid", by: 1 })
     b = step(b, { kind: "slid", by: 1 })
@@ -81,13 +77,7 @@ describe("the board", () => {
   })
 
   it("holds at most the cap, a page at a time", () => {
-    const many: Array<Train> = Array.from(
-      { length: TRAINS_MAX + 3 },
-      (_, i) => ({
-        ...trains[3],
-        id: `G${String(10 + i)}`,
-      })
-    )
+    const many = copies(trainOf("G5"), TRAINS_MAX + 3)
     expect(ordered(INITIAL_BOARD, many)).toHaveLength(TRAINS_MAX)
     expect(pagesOf(INITIAL_BOARD, many)).toBe(
       Math.ceil(TRAINS_MAX / TRAINS_PER_PAGE)

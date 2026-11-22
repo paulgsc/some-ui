@@ -4,8 +4,7 @@
  * under it is flattened into one line of the stops that gate it, each held
  * by someone. Pure: the run record (`some-ui.run/1`, `@some-ui/video-render`)
  * names the goals and their legs, and what GitHub said of each pull request,
- * workflow run and ask (`Facts`) decides where each train stands. The read
- * is `./read`'s; the colours and the order of blockers are `./algebra`'s.
+ * workflow run and ask (`Facts`) decides where each train stands.
  *
  * Rules that hold by structure:
  *
@@ -22,7 +21,7 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { Lands, Leg, Phase, RunFile, RunGoal } from "@some-ui/video-render"
-import { GOAL_KINDS } from "@some-ui/video-render"
+import { LANDS_OF, refKey } from "@some-ui/video-render"
 
 import { COOKING_WORDS as W } from "./words"
 
@@ -108,19 +107,15 @@ export type AskFacts = {
   readonly steps: ReadonlyArray<string>
 }
 
-/** What GitHub said, by `prKey`, `runKey` and `askKey`; `null` when it couldn't be read. */
+/** What GitHub said, by `refKey` (pull requests, asks) and `runKey`; `null` when it couldn't be read. */
 export type Facts = {
   readonly prs: ReadonlyMap<string, PrFacts | null>
   readonly runs: ReadonlyMap<string, RunFacts | null>
   readonly asks: ReadonlyMap<string, AskFacts | null>
 }
 
-export const prKey = (pr: { repo: string; number: number }): string =>
-  `${pr.repo}#${String(pr.number)}`
 export const runKey = (repo: string, run: number): string =>
   `${repo}/runs/${String(run)}`
-export const askKey = (ask: { repo: string; number: number }): string =>
-  `${ask.repo}#${String(ask.number)}`
 
 /** What a leg says of itself before it is placed on the line. */
 type Reading = {
@@ -255,14 +250,14 @@ export function trainsOf(run: RunFile, facts: Facts): Array<Train> {
     const clearedAt = cleared.get(`${goal.id}/${String(at)}`) ?? null
     switch (leg.leg) {
       case "merge": {
-        return prReading(leg.says, facts.prs.get(prKey(leg.pr)))
+        return prReading(leg.says, facts.prs.get(refKey(leg.pr)))
       }
       case "run": {
         return runReading(leg.says, facts.runs.get(runKey(leg.repo, leg.run)))
       }
       case "yours": {
         const ask =
-          leg.ask === undefined ? undefined : facts.asks.get(askKey(leg.ask))
+          leg.ask === undefined ? undefined : facts.asks.get(refKey(leg.ask))
         const label =
           leg.says ??
           (leg.step === undefined ? ask?.question : ask?.steps[leg.step]) ??
@@ -372,7 +367,7 @@ export function trainsOf(run: RunFile, facts: Facts): Array<Train> {
     const train: Train = {
       id: goal.id,
       kind: goal.kind,
-      lands: GOAL_KINDS[goal.kind],
+      lands: LANDS_OF[goal.kind],
       title: goal.title,
       dest: goal.dest,
       motive: goal.motive,
@@ -393,6 +388,9 @@ export const hereOf = (train: Train): Stop => {
   if (stop === undefined) throw new Error(`${train.id} stands nowhere`)
   return stop
 }
+
+/** Trains in a fixed order by id, to break a tie. */
+export const byId = (a: Train, b: Train): number => a.id.localeCompare(b.id)
 
 /** Two times in order, the unknown last; ISO times sort as text. */
 export const bySince = (a: string | null, b: string | null): number =>

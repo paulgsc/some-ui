@@ -4,9 +4,7 @@
  * the line for a while, a side track named beside it. Display only: each
  * conveyor (Studio's renders, its takes, the Cooking page's trains) keeps
  * its own stations and words and says which one a thing is at; this only
- * lays them out. A conveyor may also colour the station it is at (`tone`),
- * mark one the reader is looking at (`picked`), let each be picked
- * (`onPick`), and draw small, names left to each button's label (`small`).
+ * lays them out.
  */
 import type { JSX } from "react"
 
@@ -59,8 +57,7 @@ export const StationStrip = ({
       <ol aria-label={label} className="flex items-start">
         {stations.map((station, index) => {
           const reached = here !== -1 && index < here
-          // Done ahead of where the thing is: its mark is filled, but the
-          // line up to it isn't, since the thing hasn't travelled it.
+          // Only the line the thing has travelled is coloured.
           const passed =
             reached || (here !== -1 && index > here && station.done === true)
           const current = index === here

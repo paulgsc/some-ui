@@ -237,10 +237,7 @@ export const HOME_BLOCK = {
   lead: "Everything this phone keeps goes to home on its own while the app is open: finished sessions, kept items, LeetType sessions and spoken answers, Studio sittings, soundbites, written reflections, asks for the next scene, the Jobs record, voice notes, the Studio ideas you send, the notes you leave on episodes, rounds you paste in Rust Rounds, a note of how each recording ended, and aph while it is open. Rust Rounds also brings home's rounds and their runs here. Nothing leaves this phone until home has read it back. Dragging a page down from its top sends what waits and checks home again.",
 } as const
 
-/**
- * The way from Settings to the Cooking page on home's web app (C1163): the
- * page lives on the desktop web only, and the phone opens it in the browser.
- */
+/** The way from Settings to the Cooking page on home's web app (C1163). */
 export const HOME_WEB = {
   cooking: "What Claude is working on",
   cookingNote: "Opens the Cooking page of home's web app in your browser.",

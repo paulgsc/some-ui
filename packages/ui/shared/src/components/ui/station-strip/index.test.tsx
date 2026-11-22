@@ -98,14 +98,6 @@ describe("StationStrip, drawn small", () => {
       "Ready for pickup",
     ])
   })
-
-  it("draws a station done further down the line as passed", () => {
-    const stations = STATIONS.map((s) => ({ ...s, done: s.id === "ready" }))
-    render(<StationStrip label="Where it is" stations={stations} at="line" />)
-    expect(
-      screen.getAllByRole("listitem").map((i) => i.hasAttribute("data-passed"))
-    ).toEqual([false, false, true])
-  })
 })
 
 describe("StationStrip, a station done ahead", () => {

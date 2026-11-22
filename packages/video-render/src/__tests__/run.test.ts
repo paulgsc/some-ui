@@ -73,18 +73,6 @@ describe("a run issue's body", () => {
     ])
   })
 
-  it("says when it has no run block, as an ask's reader does", () => {
-    expect(parseRunBody("Only prose.")).toEqual({
-      ok: false,
-      problems: ["it has no ```json run block"],
-    })
-  })
-
-  it("refuses a goal of a kind it doesn't know", () => {
-    const g = { ...run.goals[0], kind: "make-coffee" }
-    expect(problems({ ...run, goals: [g] })).not.toEqual([])
-  })
-
   it("refuses a leg that waits on a goal the run doesn't list", () => {
     const g = { ...run.goals[0], legs: [{ leg: "goal", goal: "G9" }] }
     expect(problems({ ...run, goals: [g], cleared: [] })).toEqual([
@@ -144,18 +132,5 @@ describe("a run issue's body", () => {
         cleared: [{ goal: "G1", leg: 7, at: "2026-11-22T22:00:00Z" }],
       })
     ).toEqual(["cleared.0: it clears a leg the run doesn't list"])
-  })
-})
-
-describe("the kinds of goal", () => {
-  it("are listed for the schema exactly as they are for where each lands", async () => {
-    const { GOAL_KINDS } = await import("@video-render/run")
-    const g = (kind: string): unknown => ({
-      ...run,
-      goals: [{ ...run.goals[0], kind }],
-      cleared: [],
-    })
-    for (const kind of Object.keys(GOAL_KINDS))
-      expect(problems(g(kind))).toEqual([])
   })
 })

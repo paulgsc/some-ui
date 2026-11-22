@@ -124,7 +124,6 @@ export const COOKING_WORDS = {
   overview: (n: number): string => `All ${String(n)} trains at a glance`,
   // the list
   showAndOrder: "Show and order the trains",
-  showLabel: "Show",
   orderLabel: "Order",
   filters: {
     all: "All",

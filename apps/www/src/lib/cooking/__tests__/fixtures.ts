@@ -4,10 +4,16 @@
  * on the owner, the essay waiting on both, and the bumps in their checks.
  */
 import type { RunFile } from "@some-ui/video-render"
-import { RUN_SCHEMA } from "@some-ui/video-render"
+import { refKey, RUN_SCHEMA } from "@some-ui/video-render"
 
-import type { AskFacts, Facts, PrFacts, RunFacts } from "@/lib/cooking/model"
-import { askKey, prKey, runKey } from "@/lib/cooking/model"
+import type {
+  AskFacts,
+  Facts,
+  PrFacts,
+  RunFacts,
+  Train,
+} from "@/lib/cooking/model"
+import { runKey, trainsOf } from "@/lib/cooking/model"
 
 const ask3433 = { repo: "some-ui", kind: "issue", number: 3433 } as const
 
@@ -136,17 +142,17 @@ const ask: AskFacts = {
 export const FACTS: Facts = {
   prs: new Map([
     [
-      prKey({ repo: "server", number: 1125 }),
+      refKey({ repo: "server", number: 1125 }),
       pr({ state: "merged", mergedAt: "2026-11-22T21:00:00Z" }),
     ],
     [
-      prKey({ repo: "server", number: 1129 }),
+      refKey({ repo: "server", number: 1129 }),
       pr({
         checks: { waiting: 0, running: 2, passed: 3, failed: 0, approval: 0 },
       }),
     ],
     [
-      prKey({ repo: "some-ui", number: 3432 }),
+      refKey({ repo: "some-ui", number: 3432 }),
       pr({
         openedAt: "2026-11-22T19:39:24Z",
         checks: { waiting: 1, running: 0, passed: 13, failed: 0, approval: 0 },
@@ -154,7 +160,7 @@ export const FACTS: Facts = {
     ],
   ]),
   runs: new Map([[runKey("some-ui", 45065710340), run({})]]),
-  asks: new Map([[askKey(ask3433), ask]]),
+  asks: new Map([[refKey(ask3433), ask]]),
 }
 
 export const factsWith = (more: Partial<Facts>): Facts => ({
@@ -162,3 +168,14 @@ export const factsWith = (more: Partial<Facts>): Facts => ({
   ...more,
 })
 export { pr, run, ask }
+
+/** The run's train `id`, placed by `facts`. */
+export function trainOf(id: string, facts = FACTS, record = RUN): Train {
+  const t = trainsOf(record, facts).find((x) => x.id === id)
+  if (t === undefined) throw new Error(id)
+  return t
+}
+
+/** `n` copies of `train`, ids G10 onward. */
+export const copies = (train: Train, n: number): Array<Train> =>
+  Array.from({ length: n }, (_, i) => ({ ...train, id: `G${String(10 + i)}` }))

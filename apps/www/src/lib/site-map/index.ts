@@ -124,7 +124,6 @@ const DESTINATIONS: ReadonlyArray<Destination> = [
     purpose: "administration",
     launcher: "running",
   },
-
   {
     to: "/lessons",
     title: "Lessons",

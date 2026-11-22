@@ -8,11 +8,9 @@
  * The record names the owner's live goals, each of a kind known here
  * (`GOAL_KINDS`), and the legs that stand between each goal and its arrival,
  * in order: a worker's work, a pull request to merge, a workflow run, a step
- * of an ask that is the owner's, another goal, or something home does. Each
- * leg's kind is a member of `LegSchema`'s union, so a reader that switches
- * on it fails to compile until it says what a new one is. The order of legs
- * is the record's, per goal, because the same kind of goal waits on
- * different things from one day to the next (C1162).
+ * of an ask that is the owner's, another goal, or something home does. The
+ * order of legs is the record's, per goal, because the same kind of goal
+ * waits on different things from one day to the next (C1162).
  *
  * ```json run
  * {
@@ -42,7 +40,7 @@ import { z } from "zod"
 import type { Parsed } from "./cut-list"
 import { parseFenced } from "./fence"
 import { words } from "./format"
-import { IssueSchema, PrSchema, WORK_REPOS } from "./refs"
+import { epicTag, IssueSchema, PrSchema, WORK_REPOS } from "./refs"
 
 /** The schema a run block is filed in. */
 export const RUN_SCHEMA = "some-ui.run/1"
@@ -50,41 +48,38 @@ export const RUN_SCHEMA = "some-ui.run/1"
 /** The label every `[ORCH]` issue carries, so the page finds the run's. */
 export const RUN_LABEL = "orch"
 
-/**
- * The kinds of goal, each with where it lands (the page's chips). A goal of
- * a new kind is a new member here, and the page's words for where it lands
- * must say what it is.
- */
-export const GOAL_KINDS = {
-  "deploy-home": "home",
-  "install-apk": "phone",
-  "watch-on-phone": "phone",
-  "publish-site": "site",
-  "land-change": "code",
-} as const satisfies Record<string, "home" | "phone" | "site" | "code">
-
-export type GoalKind = keyof typeof GOAL_KINDS
-export type Lands = (typeof GOAL_KINDS)[GoalKind]
-
-/** The kinds, listed once for the schema: a new kind is added to both. */
-const goalKinds = [
+/** The kinds of goal. A goal of a new kind is a new member here. */
+export const GOAL_KINDS = [
   "deploy-home",
   "install-apk",
   "watch-on-phone",
   "publish-site",
   "land-change",
-] as const satisfies ReadonlyArray<GoalKind>
+] as const
+
+export type GoalKind = (typeof GOAL_KINDS)[number]
+
+/** Where a goal lands: the Cooking page's chips. */
+export const LANDS = ["home", "phone", "site", "code"] as const
+
+export type Lands = (typeof LANDS)[number]
+
+/** Where each kind of goal lands; a kind missing here doesn't compile. */
+export const LANDS_OF = {
+  "deploy-home": "home",
+  "install-apk": "phone",
+  "watch-on-phone": "phone",
+  "publish-site": "site",
+  "land-change": "code",
+} as const satisfies Record<GoalKind, Lands>
 
 /** A goal's id in the run: "G1". */
 const goalId = z.string().regex(/^G[1-9]\d{0,2}$/)
 
-/** A worker's tag, as the run's roster names it: "COOKING". */
-const workerTag = z.string().regex(/^[A-Z][A-Z0-9-]{0,23}$/)
-
 /** One leg between a goal and its arrival. */
 export const LegSchema = z.discriminatedUnion("leg", [
   /** A worker's work, until it is ready to be checked (`phase`). */
-  z.strictObject({ leg: z.literal("work"), worker: workerTag, says: words }),
+  z.strictObject({ leg: z.literal("work"), worker: epicTag, says: words }),
   /** A pull request, until it merges. */
   z.strictObject({ leg: z.literal("merge"), pr: PrSchema, says: words }),
   /** A workflow run, until it succeeds: a build, a deploy. */
@@ -97,8 +92,8 @@ export const LegSchema = z.discriminatedUnion("leg", [
   /**
    * Something only the owner does: a step of a checklist ask (by its place
    * in the ask's `steps`), a decision ask (an ask with no step), or, with no
-   * ask, what `says` says. `canWait` marks one
-   * the owner may take whenever they like.
+   * ask, what `says` says. `canWait` marks one the owner may take whenever
+   * they like.
    */
   z.strictObject({
     leg: z.literal("yours"),
@@ -117,7 +112,7 @@ export type Leg = z.infer<typeof LegSchema>
 
 const GoalSchema = z.strictObject({
   id: goalId,
-  kind: z.enum(goalKinds),
+  kind: z.enum(GOAL_KINDS),
   /** What the owner wants, in a few words: "Deploy home". */
   title: words,
   /** Where it arrives: "Home runs today's release". */
@@ -147,7 +142,7 @@ export type Phase = (typeof PHASES)[number]
 const LineSchema = z.strictObject({ at: z.iso.datetime(), says: words })
 
 const WorkerSchema = z.strictObject({
-  tag: workerTag,
+  tag: epicTag,
   session: z.string().regex(/^session_[A-Za-z0-9]+$/),
   repo: z.enum(WORK_REPOS),
   branches: z.array(z.string().min(1)).max(8),

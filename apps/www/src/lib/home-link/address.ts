@@ -5,10 +5,8 @@
  * it (Crockford base32: case, spaces and dashes ignored, `I`/`L` as `1`,
  * `O` as `0`).
  */
-import { API_V1_PREFIX } from "@some-ui/fetch-kit"
-
 import { homeApiBase } from "@/lib/device-backend/home-sync"
-import { FILE_HOST_PROXY_PATH } from "@/lib/file-host-config"
+import { FILE_HOST_API_PATH } from "@/lib/file-host-config"
 
 /** Where the phone is paired to: the API base, and the host to show. */
 export type HomeAddress = { base: string; host: string }
@@ -49,10 +47,10 @@ export function addressOf(base: string): string {
  * address the web app's Settings shows, its own origin plus the path its
  * proxy serves home under, so the web app is that origin. `null` for a base
  * paired another way (straight to home's port), whose web app the phone
- * can't know, and for any but https; the control is then withdrawn.
+ * can't know, and for any but https.
  */
 export function homeWebPage(base: string, path: `/${string}`): string | null {
-  const served = `${FILE_HOST_PROXY_PATH}${API_V1_PREFIX}`
+  const served = FILE_HOST_API_PATH
   const trimmed = base.replace(/\/+$/, "")
   if (!trimmed.startsWith("https://") || !trimmed.endsWith(served)) return null
   return `${trimmed.slice(0, -served.length)}${path}`

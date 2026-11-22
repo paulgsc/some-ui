@@ -7,14 +7,7 @@
 import { describe, expect, it } from "vitest"
 
 import { COOKING_WORDS as W } from "@/lib/cooking/words"
-import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
-
-function strings(value: unknown): Array<string> {
-  if (typeof value === "string") return [value]
-  if (typeof value === "object" && value !== null)
-    return Object.values(value).flatMap(strings)
-  return []
-}
+import { MACHINERY, strings } from "@/lib/home-link/__tests__/machinery"
 
 const all = [
   ...strings(W),

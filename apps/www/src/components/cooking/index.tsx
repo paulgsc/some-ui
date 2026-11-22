@@ -1,14 +1,9 @@
 /**
- * The Cooking page's parts (`routes/_dashboard/_lan/cooking.tsx`; C1116,
- * C1117, C1119, C1160, C1161): the bar pinned at the top with the one most
- * urgent blocker, the card that shows one stop with every train in
- * miniature beside it, and the trains below, each an accordion, behind a
- * Show and Order menu and paged. The read is the query's (`cookingQuery`);
- * where each train stands is `lib/cooking/model`'s, the colours and the
- * bar's pick `lib/cooking/algebra`'s, and the list, the card and every tap
- * `lib/cooking/board`'s pure step. This draws them and forwards taps.
- */
-import type { JSX, ReactNode } from "react"
+ * The Cooking page's parts (C1116, C1117, C1119, C1160, C1161): the bar with
+ * the most urgent blocker, the card with one stop and every train in
+ * miniature, and the trains below. State is `lib/cooking/board`'s pure step;
+ * this draws it and forwards taps.
+ */ import type { JSX, ReactNode } from "react"
 import { useReducer } from "react"
 import { cn } from "@some-ui/core-utils"
 import {
@@ -20,13 +15,14 @@ import {
   PopoverTrigger,
   StationStrip,
 } from "@some-ui/shared"
+import type { Station } from "@some-ui/shared"
 import { useQuery } from "@tanstack/react-query"
 import { ChevronDown, ChevronRight, SlidersHorizontal } from "lucide-react"
 
 import { cookingQuery } from "@/lib/cooking"
 import type { Blocker, Urgency } from "@/lib/cooking/algebra"
 import { blockers, urgencyOf, waitingOn } from "@/lib/cooking/algebra"
-import type { Board, BoardEvent } from "@/lib/cooking/board"
+import type { Board, BoardEvent, Filter } from "@/lib/cooking/board"
 import {
   activeOf,
   FILTERS,
@@ -48,7 +44,7 @@ import { hereOf, onYou } from "@/lib/cooking/model"
 import { COOKING_WORDS as W } from "@/lib/cooking/words"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 
-import { LOOKS, QUIET_PILL } from "./theme"
+import { EDGE, LOOKS, QUIET_PILL } from "./theme"
 
 type Dispatch = (event: BoardEvent) => void
 
@@ -84,12 +80,13 @@ const HolderPill = ({
   </span>
 )
 
-/** The urgency of `stop` on `train`: only where it stands. */
-const urgencyAt = (
-  train: Train,
-  at: number,
-  trains: ReadonlyArray<Train>
-): Urgency | null => (at === train.current ? urgencyOf(train, trains) : null)
+/** A train's stops as its line's stations, the ones already done marked. */
+const stationsOf = (train: Train): Array<Station> =>
+  train.stops.map((s, i) => ({
+    id: String(i),
+    name: s.label,
+    done: s.state === "passed",
+  }))
 
 /** The bar at the top: how many wait on the owner, and the most urgent blocker. */
 const AlertBar = ({
@@ -150,15 +147,17 @@ const AlertBar = ({
 const Overview = ({
   board,
   trains,
+  all,
   selected,
   dispatch,
 }: {
   board: Board
   trains: ReadonlyArray<Train>
+  /** Every train, in the list's order, across every page. */
+  all: ReadonlyArray<Train>
   selected: Train
   dispatch: Dispatch
 }): JSX.Element => {
-  const all = ordered({ ...board, filter: "all" }, trains)
   const width = 168
   const row = 12
   const pad = 8
@@ -252,33 +251,36 @@ const Overview = ({
 const StopCard = ({
   board,
   trains,
+  all,
   train,
   dispatch,
 }: {
   board: Board
   trains: ReadonlyArray<Train>
+  all: ReadonlyArray<Train>
   train: Train
   dispatch: Dispatch
 }): JSX.Element => {
   const at = activeOf(board, train)
   const stop = train.stops[at] ?? hereOf(train)
-  const urgency = urgencyAt(train, at, trains)
+  const urgency = at === train.current ? urgencyOf(train, trains) : null
   const since = clock(stop.since)
+  const title = W.stopOf(train.title, at, train.stops.length)
+  const goal = stop.link?.kind === "goal" ? stop.link.goal : null
+  const other = trains.find((t) => t.id === goal)
   return (
     <section
       aria-roledescription="slideshow"
-      aria-label={W.stopOf(train.title, at, train.stops.length)}
+      aria-label={title}
       className={cn(
         "bg-card grid gap-4 rounded-xl border border-t-4 p-4 sm:grid-cols-[1fr_auto]",
         stop.holder !== null && urgency !== null
-          ? LOOKS[stop.holder][urgency].edge
+          ? EDGE[stop.holder]
           : "border-t-border"
       )}
     >
       <div className="flex min-w-0 flex-col gap-2">
-        <span className="text-muted-foreground text-xs">
-          {W.stopOf(train.title, at, train.stops.length)}
-        </span>
+        <span className="text-muted-foreground text-xs">{title}</span>
         <div className="flex flex-wrap items-center gap-2">
           <HolderPill stop={stop} urgency={urgency} />
           <h2 className="text-lg font-semibold">{stop.label}</h2>
@@ -301,26 +303,15 @@ const StopCard = ({
             {W.page}
           </a>
         )}
-        {stop.link?.kind === "goal" && (
+        {other !== undefined && (
           <button
             type="button"
             className="self-start text-sm underline"
-            onClick={() => {
-              const goal = stop.link?.kind === "goal" ? stop.link.goal : ""
-              const other = trains.find((t) => t.id === goal)
-              if (other !== undefined)
-                dispatch({
-                  kind: "picked",
-                  train: other.id,
-                  stop: other.current,
-                })
-            }}
+            onClick={() =>
+              dispatch({ kind: "picked", train: other.id, stop: other.current })
+            }
           >
-            {W.goTo(
-              trains.find(
-                (t) => stop.link?.kind === "goal" && t.id === stop.link.goal
-              )?.title ?? ""
-            )}
+            {W.goTo(other.title)}
           </button>
         )}
         {stop.log.length > 0 && (
@@ -352,12 +343,8 @@ const StopCard = ({
           </Button>
           <StationStrip
             small
-            label={W.stopOf(train.title, at, train.stops.length)}
-            stations={train.stops.map((s, i) => ({
-              id: String(i),
-              name: s.label,
-              done: s.state === "passed",
-            }))}
+            label={title}
+            stations={stationsOf(train)}
             at={String(train.current)}
             picked={String(at)}
             onPick={(id) =>
@@ -378,6 +365,7 @@ const StopCard = ({
         <Overview
           board={board}
           trains={trains}
+          all={all}
           selected={train}
           dispatch={dispatch}
         />
@@ -389,17 +377,16 @@ const StopCard = ({
 /** The Show and Order chips, behind one icon (C1160, C1161). */
 const Menu = ({
   board,
-  trains,
+  all,
   dispatch,
 }: {
   board: Board
-  trains: ReadonlyArray<Train>
+  /** Every train, in the list's order, across every page. */
+  all: ReadonlyArray<Train>
   dispatch: Dispatch
 }): JSX.Element => {
-  const count = (f: (typeof FILTERS)[number]): number =>
-    ordered({ ...board, filter: "all" }, trains).filter((t) => matches(f, t))
-      .length
-  const filterWords = (f: (typeof FILTERS)[number]): string =>
+  const count = (f: Filter): number => all.filter((t) => matches(f, t)).length
+  const filterWords = (f: Filter): string =>
     f === "all" || f === "you" || f === "moving" ? W.filters[f] : W.lands[f]
   return (
     <div className="flex min-h-8 items-center justify-end gap-3">
@@ -433,9 +420,7 @@ const Menu = ({
           className="flex w-[min(34rem,86vw)] flex-col gap-3"
         >
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-muted-foreground mr-1 text-xs">
-              {W.showLabel}
-            </span>
+            <span className="text-muted-foreground mr-1 text-xs">{W.show}</span>
             {FILTERS.map((f) => (
               <Chip
                 key={f}
@@ -525,11 +510,7 @@ const Rail = ({
         <StationStrip
           small
           label={train.title}
-          stations={train.stops.map((s, i) => ({
-            id: String(i),
-            name: s.label,
-            done: s.state === "passed",
-          }))}
+          stations={stationsOf(train)}
           at={String(train.current)}
           tone={
             here.holder !== null && urgency !== null
@@ -597,6 +578,7 @@ const CookingBoard = ({
     INITIAL_BOARD
   )
   const selected = selectedOf(board, trains, fallback)
+  const all = ordered({ ...board, filter: "all" }, trains)
   const list = shown(board, trains)
   const page = pageOf(board, trains)
   const pages = pagesOf(board, trains)
@@ -610,13 +592,14 @@ const CookingBoard = ({
         <StopCard
           board={board}
           trains={trains}
+          all={all}
           train={selected}
           dispatch={dispatch}
         />
       )}
       <div className="flex items-center justify-between gap-3">
         <ReadAgain reading={reading} onRead={onReadAgain} />
-        <Menu board={board} trains={trains} dispatch={dispatch} />
+        <Menu board={board} all={all} dispatch={dispatch} />
       </div>
       {slice.length === 0 ? (
         <p className="text-muted-foreground text-sm">{W.none}</p>
@@ -677,7 +660,6 @@ export const CookingPage = ({
   heading?: ReactNode
 }): JSX.Element => {
   const query = useQuery(cookingQuery)
-  // A read the owner asks for: the page never reads on a timer (`lib/cooking`).
   // A second tap while one is on its way joins it, never doubles it.
   const readAgain = (): void => {
     void query.refetch({ cancelRefetch: false })
