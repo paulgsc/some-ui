@@ -360,6 +360,22 @@ describe("bucket-prune plan", () => {
     })
   })
 
+  it("reads a dot in the repository's name as a dot", () => {
+    const { head, a1 } = bucket()
+    remote("claude/bucket-aXb-1", a1)
+    remote("claude/bucket-a.b-1", a1)
+    const lines = plan(head, { BUCKET_REPO: "a.b" })
+    expect(lines).toContainEqual(
+      expect.objectContaining({
+        action: "delete",
+        branch: "claude/bucket-aXb-1",
+      })
+    )
+    expect(lines).toContainEqual(
+      expect.objectContaining({ action: "keep", branch: "claude/bucket-a.b-1" })
+    )
+  })
+
   it("carries nothing through a merge of main into the bucket", () => {
     git("checkout", "-q", "-b", "main")
     const m1 = commit("m1")
@@ -432,7 +448,17 @@ describe("bucket-prune run", () => {
     const merge = git("rev-parse", "HEAD")
     git("init", "-q", "--bare", join(dir, "origin.git"))
     git("remote", "add", "origin", join(dir, "origin.git"))
-    git("push", "-q", "origin", "main", "claude/a", "claude/b")
+    // A worker whose name only starts like this repo's buckets.
+    git("branch", "claude/bucket-prune-2", a1)
+    git(
+      "push",
+      "-q",
+      "origin",
+      "main",
+      "claude/a",
+      "claude/b",
+      "claude/bucket-prune-2"
+    )
     git("push", "-q", "origin", `${head}:refs/pull/7/head`)
     return { head, a1, merge }
   }
@@ -515,7 +541,7 @@ describe("bucket-prune run", () => {
     payload(head, null)
     const result = run()
     expect(result.status).not.toBe(0)
-    expect(result.left).toBe("claude/a claude/b main")
+    expect(result.left).toBe("claude/a claude/b claude/bucket-prune-2 main")
     expect(result.summary).toBe("")
   })
 
@@ -524,7 +550,7 @@ describe("bucket-prune run", () => {
     payload(head, a1)
     const result = run()
     expect(result.status).not.toBe(0)
-    expect(result.left).toBe("claude/a claude/b main")
+    expect(result.left).toBe("claude/a claude/b claude/bucket-prune-2 main")
     expect(result.summary).toBe("")
   })
 
@@ -533,7 +559,7 @@ describe("bucket-prune run", () => {
     payload(head, merge, "claude/bucket-prune")
     const result = run({ GITHUB_EVENT_NAME: "pull_request" })
     expect(result.status).toBe(0)
-    expect(result.left).toBe("claude/a claude/b main")
+    expect(result.left).toBe("claude/a claude/b claude/bucket-prune-2 main")
     expect(result.summary).toBe("")
   })
 
@@ -542,7 +568,16 @@ describe("bucket-prune run", () => {
     payload(head, merge, "claude/bucket-prune")
     const result = run({ GITHUB_EVENT_NAME: "workflow_dispatch" })
     expect(result.status).not.toBe(0)
-    expect(result.left).toBe("claude/a claude/b main")
+    expect(result.left).toBe("claude/a claude/b claude/bucket-prune-2 main")
+    expect(result.summary).toBe("")
+  })
+
+  it("passes over a head named like a worker, even one ending in a number", () => {
+    const { head, merge } = merged("squash")
+    payload(head, merge, "claude/bucket-prune-2")
+    const result = run({ GITHUB_EVENT_NAME: "pull_request" })
+    expect(result.status).toBe(0)
+    expect(result.left).toBe("claude/a claude/b claude/bucket-prune-2 main")
     expect(result.summary).toBe("")
   })
 })

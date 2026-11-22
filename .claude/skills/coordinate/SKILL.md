@@ -130,6 +130,8 @@ prepare`) before it reaches a PR. Review after a PR opens is for the merge delta
   merge's resolution is reviewed as a delta before the bucket is pushed.
 - **Carried branches prune themselves.** Once a bucket PR merges, `bucket-prune.yml` deletes
   each branch whose tip it holds, and keeps (and names) one that moved on or an open PR uses.
+  It knows a bucket only by the exact name `claude/bucket-<repo>-<n>`, the repository's own
+  name and a number; a bucket named any other way is neither pruned nor kept.
 - **Local checks on the bucket**, then one PR. Its body has one section per branch (what, its
   review record, its Superseded) and "Calls I made" lists every branch's calls. The review
   record is the findings and what became of each, not "reviewed": a branch's review that lives

@@ -141,7 +141,6 @@ run() {
   read -r merged head_ref head_sha cross merge_sha < <(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" \
     --jq '"\(.merged) \(.head.ref) \(.head.sha) \(.head.repo.full_name != .base.repo.full_name) \(.merge_commit_sha)"')
   BUCKET_REPO=${GITHUB_REPOSITORY##*/}
-  export BUCKET_REPO
   # The workflow's filter can only test the prefix: a merged PR from a
   # branch that merely starts like a bucket's is not one, and not an error.
   if [ "${GITHUB_EVENT_NAME:-}" = pull_request ] && [ "$merged" = true ] && ! is_bucket "$head_ref"; then
