@@ -135,7 +135,7 @@ describe("section 0: what the essay never is (D20)", () => {
     ])
   })
 
-  it(`refuses a line the host says that repeats ${QUOTE_RUN} words of a play's text in a row (our words, never theirs)`, () => {
+  it(`refuses a line Kokoro says that repeats ${QUOTE_RUN} words of a play's text in a row (our words, never theirs)`, () => {
     const quoting = withFirstBite({
       answer: {
         said: "As they had it: pass short middle intended for the tight end.",
@@ -153,7 +153,7 @@ describe("section 0: what the essay never is (D20)", () => {
     expect(problems(quoting).join("\n")).toMatch(/its setup/)
   })
 
-  it(`lets a host line share ${QUOTE_RUN - 1} words in a row with a play, and the owner say anything in their own voice`, () => {
+  it(`lets a line Kokoro says share ${QUOTE_RUN - 1} words in a row with a play, and the owner say anything in their own voice`, () => {
     expect(
       problems(
         withFirstBite({
