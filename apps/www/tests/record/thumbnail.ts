@@ -26,7 +26,7 @@ import type {
 } from "@some-ui/video-render/thumbnail"
 
 /** The thumbnail's file in an episode's folder, beside its video. */
-export const THUMBNAIL_FILE = "thumbnail.png"
+const THUMBNAIL_FILE = "thumbnail.png"
 
 /** video-motion's pinned Barlow Condensed, each as a `data:` URL. */
 async function thumbnailFonts(): Promise<ThumbnailFonts> {
