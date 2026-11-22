@@ -1912,6 +1912,9 @@ importers:
       '@some-ui/eslint-kit':
         specifier: workspace:*
         version: link:../eslint
+      '@some-ui/game-scenarios':
+        specifier: workspace:*
+        version: link:../game-scenarios
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../some-styles

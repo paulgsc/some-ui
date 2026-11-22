@@ -1,0 +1,478 @@
+/**
+ * The Game Week essay (GWB, #2074; D1–D32 of 2026-11-16), the third data
+ * essay beside the Rust Rounds essay (`essay.ts`) and the interview essay
+ * (`interview-essay.ts`): once a week, the owner's bites on the week's NFL
+ * games, each answered by the host, set on slides. Its data
+ * (`GameEssaySchema`, `some-ui.game-essay/1`) is its DNA with the template:
+ * every word said and everything shown come from it.
+ *
+ * Its scenes, in the same order every time (`gameEssayFormat`):
+ *
+ * 1. `open`: the week, and the games it holds.
+ * 2. For each game, the team it is read for's first (D3):
+ *    - `game`: the game, its two teams and how it ended for the team;
+ *    - `bite`, for each bite of the game in the order it was said: the one
+ *      still of the game at the bite's moment, the host's setup, the bite in
+ *      the owner's voice or read aloud (D5–D7), then the host's answer in
+ *      the way its stance calls for (D21);
+ *    - `halftime`, between a game's first half and its second (D10).
+ * 3. `close`: the week, closed.
+ *
+ * **What the essay never is (section 0, D20; the owner, 2026-11-15):** a
+ * recreation of the game, play by play. Its four rules, each held here:
+ *
+ * - _Every scene stands on a bite._ Held by the type: a scene apart from the
+ *   open, a game's card, halftime and the close is made only from a bite,
+ *   and a half or a game with no bite is refused.
+ * - _The game is context, one still per bite._ Held by the type: a bite
+ *   carries at most one `still`, the moment of the play home matched it to;
+ *   a bite home matched to none carries none (D12). Nothing holds a
+ *   sequence of plays.
+ * - _Our words, never theirs._ Checked: no line Kokoro says repeats
+ *   `QUOTE_RUN` words in a row of any matched play's text (`quoteProblems`):
+ *   the host's lines, and a bite read aloud by the second voice. The play's
+ *   text is in the data only for this check, and is never drawn or said. A
+ *   bite in the owner's own voice is theirs, so it is not held to it.
+ * - _The editorial has a fixed shape._ Held by the type: a bite's `stance`
+ *   is one of `STANCES`. How the host answers each (`STANCE_ANSWERS`, a
+ *   total record) is what the writer is held to; no check reads the answer.
+ *
+ * The look is the Rust essay's, template A: the host and the owner, the one
+ * speaking lit, in the call's series.
+ */
+
+import {
+  HALVES,
+  isScenarioId,
+  type Half,
+  type ScenarioId,
+} from "@some-ui/game-scenarios"
+import { z } from "zod"
+
+import { CALL_ID, CALL_STAGE_WIDTH, day, nightInMotion } from "./call"
+import { once, problemsOf } from "./cut-list"
+import type { Parsed } from "./cut-list"
+import { weekId } from "./essay"
+import { FORMAT_SCHEMA, versionRefusal, words } from "./format"
+import type { Format, Shape } from "./format"
+import sample from "./templates/game-essay/sample-essay.json" with { type: "json" }
+
+export const GAME_ESSAY_SCHEMA = "some-ui.game-essay/1"
+
+export const GAME_ESSAY_ID = "game-essay"
+
+/** The newest version `gameEssayFormat` gives. */
+export const GAME_ESSAY_VERSION = 1
+
+/**
+ * The fewest words in a row a line Kokoro says may share with a play's text
+ * before it is refused as quoting it (section 0's third rule). Four words
+ * ("at the CHI 45") are how anyone says where a ball is; five in a row of
+ * ESPN's sentence is its sentence. Policy (C771, C1081).
+ */
+export const QUOTE_RUN = 5
+
+/** The most games and bites one essay holds, so a week's data stays a week's. Policy (C1081). */
+const GAMES_MOST = 16
+const BITES_MOST = 120
+
+/**
+ * The editorial's fixed shape (D21, as agreed 2026-11-16): the stance a
+ * bite takes, the decision first. Versioned with the template: a new stance
+ * is a new version.
+ */
+export const STANCES = [
+  "decision",
+  "umbrage",
+  "nerves",
+  "celebration",
+  "injury",
+] as const
+export type Stance = (typeof STANCES)[number]
+
+/**
+ * How the host answers each stance (D21, the prototype's section 2b): what
+ * the writer is held to when it words the host's answer.
+ */
+export const STANCE_ANSWERS: Readonly<Record<Stance, string>> = {
+  decision:
+    "Its own call, from home's numbers with the sample size said; it does not insist the owner's was irrational",
+  umbrage: "Steelmans the call, then weighs it",
+  nerves: "Says what was actually at stake",
+  celebration: "Says why the moment was rare",
+  injury: "What it changes for the game, never speculation",
+}
+
+type Section = "open" | "game" | "bite" | "halftime" | "close"
+
+const MOST: Readonly<Record<Section, number | null>> = {
+  open: null,
+  game: GAMES_MOST,
+  bite: BITES_MOST,
+  halftime: GAMES_MOST,
+  close: null,
+}
+
+const scene = (
+  id: Section,
+  name: string,
+  point: string,
+  holdMs: number
+): Format["scenes"][number] => {
+  const most = MOST[id]
+  return {
+    id,
+    name,
+    point,
+    picture: {
+      kind: "capture",
+      from: `the game essay's ${id} view`,
+      cssWidth: CALL_STAGE_WIDTH,
+    },
+    holdMs,
+    ...(most === null ? {} : { repeat: { max: most } }),
+  }
+}
+
+/** Mochi Night with the moving brand, as its siblings; a chapter slide opens each game. */
+const SHAPE: Shape = nightInMotion({
+  brand: { intro: true, outro: true },
+  chapters: ["game"],
+  subtitles: "word",
+})
+
+/** Why `version` of the game essay's template can't be drawn here, or null (VS1). */
+export const gameEssayVersionRefusal = (version: number): string | null =>
+  versionRefusal("the game essay's template", GAME_ESSAY_VERSION, version)
+
+/** The game essay's format at `version`; throws for one this build doesn't know. */
+export function gameEssayFormat(version: number = GAME_ESSAY_VERSION): Format {
+  const refused = gameEssayVersionRefusal(version)
+  if (refused !== null) throw new Error(refused)
+  return {
+    schema: FORMAT_SCHEMA,
+    id: GAME_ESSAY_ID,
+    version,
+    title: "The Game Week essay",
+    series: { id: CALL_ID, version: 2 },
+    look: "calm",
+    scenes: [
+      scene(
+        "open",
+        "The week",
+        "The week's games, and what is said of them",
+        20_000
+      ),
+      scene(
+        "game",
+        "The game",
+        "Its two teams, and how it ended for the team it is read for",
+        15_000
+      ),
+      scene(
+        "bite",
+        "A bite",
+        "The game at that moment as one still, the host's setup, your bite, and the host's answer in its stance's way",
+        60_000
+      ),
+      scene(
+        "halftime",
+        "Halftime",
+        "Where the game stood at the half, between its halves",
+        20_000
+      ),
+      scene("close", "The week, closed", "What the week came to", 20_000),
+    ],
+    shape: { ...SHAPE, cast: "cast-v1", voices: "lanes-v1" },
+  }
+}
+
+/** A team as ESPN's code names it: "SF", "CHI". */
+const team = z.string().regex(/^[A-Z]{2,4}$/, "a team is its code, like SF")
+
+/** A take's id on home, as a bite's voice note has it. */
+const takeId = z
+  .string()
+  .regex(/^[A-Za-z0-9._:-]{1,64}$/, "a take's id is home's note id")
+
+const scenarioId = z
+  .string()
+  .refine((id): id is ScenarioId => isScenarioId(id), {
+    message: "it isn't a scenario of the catalog",
+  })
+
+const said = z.strictObject({ said: words })
+
+/**
+ * The one still of a bite (section 0's second rule; D13): the field, the
+ * down and distance, the score and the clock at the snap of the play home
+ * matched the bite to. Numbers only, never the play's words.
+ */
+const StillSchema = z.strictObject({
+  /** The quarter of the snap: 1 to 4, 5 and on for overtime. */
+  period: z.number().int().positive(),
+  /** The game clock at the snap, as ESPN words it ("4:05"). */
+  clock: z.string().regex(/^\d{1,2}:\d{2}$/, "a clock is like 4:05"),
+  /** The team with the ball, absent between plays (a kickoff's, say). */
+  possession: team.optional(),
+  /** The down and the yards to go, absent on a kick or a try. */
+  down: z.number().int().min(1).max(4).optional(),
+  distance: z.number().int().min(0).max(99).optional(),
+  /** The line of scrimmage: the yard line and whose side of the field it is on. */
+  spot: z
+    .strictObject({ side: team, yard: z.number().int().min(1).max(50) })
+    .optional(),
+  score: z.strictObject({
+    away: z.number().int().nonnegative(),
+    home: z.number().int().nonnegative(),
+  }),
+})
+
+/** The play home matched a bite to (GWB7): its id, its text for the quote check, and the still. */
+const PlaySchema = z.strictObject({
+  /** ESPN's id for the play. */
+  id: z.string().min(1),
+  /** ESPN's text for the play: checked against, never drawn or said (section 0). */
+  text: words,
+  still: StillSchema,
+})
+
+const BiteSchema = z.strictObject({
+  take: takeId,
+  /** When the owner started saying it. */
+  saidAt: z.iso.datetime({ offset: true }),
+  scenario: scenarioId,
+  stance: z.enum(STANCES),
+  /**
+   * Whose voice says it (D5–D7): the owner's own take, or the second Kokoro
+   * voice reading what home heard, labelled "Your words · read aloud".
+   */
+  voice: z.enum(["owner", "read-aloud"]),
+  /** What the owner said, as home heard it: the caption, and what is read aloud. */
+  transcript: words,
+  /** The play home matched it to, or null for none (D12: its stamp and scenario, no field). */
+  play: PlaySchema.nullable(),
+  /** The host's setup, said before the bite (D11: always). */
+  setup: said,
+  /** What happened, said after it, only when the still doesn't already show it (D11). */
+  happened: said.optional(),
+  /** The host's answer, in the way its stance calls for (`STANCE_ANSWERS`). */
+  answer: said,
+})
+
+const HalfSchema = z.strictObject({
+  half: z.enum(HALVES),
+  bites: z.array(BiteSchema).min(1),
+})
+
+const GameSchema = z.strictObject({
+  /** ESPN's event id. */
+  id: z.string().regex(/^[A-Za-z0-9_-]{1,32}$/, "a game's id is ESPN's"),
+  away: team,
+  home: team,
+  /** The game's card. */
+  game: said,
+  /** Its halves with bites, in the game's order; a half with none is left out. */
+  halves: z.array(HalfSchema).min(1),
+  /** Said between the first half and the second, when the essay has bites in both (D10). */
+  halftime: said.optional(),
+})
+
+export const GameEssaySchema = z.strictObject({
+  schema: z.literal(GAME_ESSAY_SCHEMA),
+  template: z.strictObject({
+    id: z.literal(GAME_ESSAY_ID),
+    version: z
+      .number()
+      .int()
+      .min(1)
+      .max(GAME_ESSAY_VERSION, {
+        message: `newer than this build knows: it draws up to version ${GAME_ESSAY_VERSION}, so publish a newer stage first`,
+      }),
+  }),
+  week: z.strictObject({ id: weekId, from: day, to: day }),
+  /** The team every game is read through (the epic's "Why": SF). */
+  for: team,
+  open: said,
+  games: z.array(GameSchema).min(1).max(GAMES_MOST),
+  close: said,
+})
+
+export type GameEssay = z.infer<typeof GameEssaySchema>
+type GameEssayGame = GameEssay["games"][number]
+
+const isWordChar = (c: string): boolean =>
+  (c >= "a" && c <= "z") || (c >= "0" && c <= "9")
+
+/** `word` without the punctuation at either end, in one linear pass (no backtracking regex). */
+function trimToWord(word: string): string {
+  let start = 0
+  let end = word.length
+  while (start < end && !isWordChar(word.charAt(start))) start++
+  while (end > start && !isWordChar(word.charAt(end - 1))) end--
+  return word.slice(start, end)
+}
+
+/** The words of `text`, lowercased, without the punctuation around them. */
+const wordsOf = (text: string): Array<string> =>
+  text
+    .toLowerCase()
+    .split(/\s+/)
+    .map(trimToWord)
+    .filter((word) => word !== "")
+
+/** Every run of `QUOTE_RUN` words in a row of `text`, joined. */
+const runsOf = (text: string): Array<string> => {
+  const all = wordsOf(text)
+  const runs: Array<string> = []
+  for (let i = 0; i + QUOTE_RUN <= all.length; i++)
+    runs.push(all.slice(i, i + QUOTE_RUN).join(" "))
+  return runs
+}
+
+/** Every line Kokoro says, the host's and a bite read aloud, by where it is in the essay. */
+function kokoroLines(essay: GameEssay): Array<readonly [string, string]> {
+  const lines: Array<readonly [string, string]> = [
+    ["open", essay.open.said],
+    ["close", essay.close.said],
+  ]
+  for (const game of essay.games) {
+    lines.push([`${game.id}: its card`, game.game.said])
+    if (game.halftime !== undefined)
+      lines.push([`${game.id}: halftime`, game.halftime.said])
+    for (const half of game.halves)
+      for (const bite of half.bites) {
+        lines.push([`${bite.take}: its setup`, bite.setup.said])
+        if (bite.voice === "read-aloud")
+          lines.push([`${bite.take}: read aloud`, bite.transcript])
+        if (bite.happened !== undefined)
+          lines.push([`${bite.take}: what happened`, bite.happened.said])
+        lines.push([`${bite.take}: the host's answer`, bite.answer.said])
+      }
+  }
+  return lines
+}
+
+/**
+ * Section 0's third rule: every line Kokoro says that repeats `QUOTE_RUN`
+ * words in a row of any matched play's text, as a problem. Any play's, not only its
+ * own bite's, since a line can quote another moment of the week.
+ */
+function quoteProblems(essay: GameEssay): Array<string> {
+  const quoted = new Set<string>()
+  for (const game of essay.games)
+    for (const half of game.halves)
+      for (const bite of half.bites)
+        if (bite.play !== null)
+          for (const run of runsOf(bite.play.text)) quoted.add(run)
+  const problems: Array<string> = []
+  for (const [where, line] of kokoroLines(essay)) {
+    const run = runsOf(line).find((each) => quoted.has(each))
+    if (run !== undefined)
+      problems.push(
+        `${where}: it says "${run}", the play's text: Kokoro describes a moment from its numbers, in our words (section 0)`
+      )
+  }
+  return problems
+}
+
+const HALF_ORDER: Readonly<Record<Half, number>> = {
+  first: 0,
+  second: 1,
+  overtime: 2,
+}
+
+/** The half a quarter is in (C872): 1 and 2 the first, 3 and 4 the second, 5 and on overtime. */
+const halfOfPeriod = (period: number): Half =>
+  period <= 2 ? "first" : period <= 4 ? "second" : "overtime"
+
+/** A half as a refusal says it: "the first half", "overtime". */
+const halfSaid = (half: Half): string =>
+  half === "overtime" ? "overtime" : `the ${half} half`
+
+/** Every reason a game's data contradicts itself. */
+function gameProblems(game: GameEssayGame): Array<string> {
+  const problems: Array<string> = []
+  if (game.away === game.home) problems.push(`${game.id}: a team plays itself`)
+  const order = game.halves.map((half) => HALF_ORDER[half.half])
+  if (order.some((n, i) => i > 0 && n <= (order[i - 1] ?? -1)))
+    problems.push(
+      `${game.id}: its halves are out of the game's order, or one is there twice`
+    )
+  const both =
+    game.halves.some((half) => half.half === "first") &&
+    game.halves.some((half) => half.half === "second")
+  if (both && game.halftime === undefined)
+    problems.push(
+      `${game.id}: it has bites in both halves, so halftime is said between them (D10)`
+    )
+  if (!both && game.halftime !== undefined)
+    problems.push(
+      `${game.id}: halftime is said only between bites of both halves`
+    )
+  const said = game.halves.flatMap((half) =>
+    half.bites.map((bite) => Date.parse(bite.saidAt))
+  )
+  if (said.some((at, i) => i > 0 && at < (said[i - 1] ?? at)))
+    problems.push(`${game.id}: its bites are not in the order they were said`)
+  const plays = new Set([game.away, game.home])
+  for (const half of game.halves)
+    for (const bite of half.bites) {
+      if (bite.play === null) continue
+      const { period, spot, possession } = bite.play.still
+      if (halfOfPeriod(period) !== half.half)
+        problems.push(
+          `${bite.take}: its play is in ${halfSaid(halfOfPeriod(period))}, and it is filed under ${halfSaid(half.half)}`
+        )
+      if (spot !== undefined && !plays.has(spot.side))
+        problems.push(
+          `${bite.take}: its still's spot is on neither team's side`
+        )
+      if (possession !== undefined && !plays.has(possession))
+        problems.push(
+          `${bite.take}: its still gives the ball to a team not playing`
+        )
+    }
+  return problems
+}
+
+/** Every reason the essay's parsed data contradicts itself. */
+function problemsOfEssay(essay: GameEssay): Array<string> {
+  const problems: Array<string> = []
+  if (essay.week.to < essay.week.from)
+    problems.push("week: it ends before it starts")
+  const games = essay.games.map((game) => game.id)
+  if (new Set(games).size !== games.length)
+    problems.push("games: two share an id")
+  const takes = essay.games.flatMap((game) =>
+    game.halves.flatMap((half) => half.bites.map((bite) => bite.take))
+  )
+  if (new Set(takes).size !== takes.length)
+    problems.push("bites: one take is in the essay twice")
+  if (takes.length > BITES_MOST)
+    problems.push(
+      `bites: ${takes.length}, and an essay holds at most ${BITES_MOST}`
+    )
+  const ours = essay.games.map(
+    (game) => game.away === essay.for || game.home === essay.for
+  )
+  if (ours.some((mine, i) => mine && ours.slice(0, i).some((one) => !one)))
+    problems.push(`games: ${essay.for}'s come first (D3)`)
+  for (const game of essay.games) problems.push(...gameProblems(game))
+  problems.push(...quoteProblems(essay))
+  return once(problems)
+}
+
+/** The game essay's data, or every reason it can't make an essay. */
+export function parseGameEssay(raw: unknown): Parsed<GameEssay> {
+  const parsed = GameEssaySchema.safeParse(raw)
+  if (!parsed.success)
+    return { ok: false, problems: problemsOf(parsed.error, "essay") }
+  const problems = problemsOfEssay(parsed.data)
+  return problems.length > 0
+    ? { ok: false, problems }
+    : { ok: true, value: parsed.data }
+}
+
+/** The template's sample essay: NE at CHI, with a bite in each half and one unmatched. */
+export const sampleGameEssay = (): Parsed<GameEssay> => parseGameEssay(sample)
