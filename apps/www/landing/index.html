@@ -128,20 +128,33 @@
       }
       /* flex-grow is the shape scaled up, so a row's cards always fill it
          and keep their shared height. The outline is a shadow, not a
-         border, so the card's box is the picture's exact shape. */
+         border, so the card's box is the picture's exact shape. The picture
+         and its words share one grid cell: the picture sets the card's
+         height, and words taller than it grow the card past it rather than
+         being cut off, so no shape of asset and no width can clip them. A
+         row's cards keep their own height (flex-start), so one card's words
+         never pad another. */
+      .grid {
+        align-items: flex-start;
+      }
       .card {
         position: relative;
+        display: grid;
         flex: calc(var(--r) * 100) 1 calc(var(--r) * 300px);
-        aspect-ratio: var(--ar);
         border-radius: 12px;
         overflow: hidden;
         background: var(--stage);
         box-shadow: 0 0 0 1px var(--line);
         isolation: isolate;
       }
+      .pic,
+      .overlay {
+        grid-area: 1 / 1;
+      }
       .pic {
-        position: absolute;
-        inset: 0;
+        position: relative;
+        align-self: start;
+        aspect-ratio: var(--ar);
       }
       /* The card's placeholder and its picture, under its words. */
       .ground,
@@ -175,10 +188,8 @@
       /* The card's words over its picture, on a scrim dark enough that white
          text reads on any frame. */
       .overlay {
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: 0;
+        position: relative;
+        align-self: end;
         z-index: 1;
         padding: 48px 18px 16px;
         color: #fff;
@@ -194,8 +205,8 @@
       /* A gap's words sit at its left, so what its picture shows, at the
          right (the widget that stays white), is never under them. */
       .overlay--side {
-        top: 0;
-        right: auto;
+        align-self: stretch;
+        justify-self: start;
         width: 58%;
         display: flex;
         flex-direction: column;
@@ -214,17 +225,8 @@
          beside what it shows: the words go under it, in the same card, and
          the picture keeps its own shape. */
       @media (max-width: 600px) {
-        .card[data-slot="still"] {
-          aspect-ratio: auto;
-          display: flex;
-          flex-direction: column;
-        }
-        .card[data-slot="still"] .pic {
-          position: relative;
-          aspect-ratio: var(--ar);
-        }
         .card[data-slot="still"] .overlay {
-          position: static;
+          grid-area: 2 / 1;
           width: auto;
           background: #111217;
         }
