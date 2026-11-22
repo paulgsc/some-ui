@@ -123,6 +123,11 @@ describe("blanking a pasted result", () => {
     expect(blankSecrets("https://h/cb?authorization=abc&state=xyz")).toBe(
       `https://h/cb?authorization=${BLANKED}&state=xyz`
     )
+    expect(
+      blankSecrets(
+        '{"cmd":"TOKEN=ghp_abcdefghijklmnopqrstuvwxyz0123456789 PASSWORD=hunter2"}'
+      )
+    ).toBe(`{"cmd":"TOKEN=${BLANKED} PASSWORD=${BLANKED}"}`)
     expect(blankSecrets("Authorization=Bearer abcdefghijklmnop")).toBe(
       `Authorization=${BLANKED}`
     )

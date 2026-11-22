@@ -116,8 +116,8 @@ function quoted(value: string): string {
 const setting =
   (depth: number) =>
   (all: string, name: string, sep: string, value: string): string => {
-    if (value.includes(BLANKED)) return all
-    if (secretName(name)) return `${name}${sep}${quoted(value)}`
+    if (secretName(name))
+      return value === quoted(value) ? all : `${name}${sep}${quoted(value)}`
     return depth > 0
       ? `${name}${sep}${value.replace(SETTING, setting(depth - 1))}`
       : all
