@@ -23,7 +23,7 @@
  */
 
 import { isoWeekMonday } from "@some-ui/core-utils"
-import { castNodes, escapeText, nodesText } from "@some-ui/styles/brand/cast"
+import { characterSvg, escapeText, nodesText } from "@some-ui/styles/brand/cast"
 import type { Character } from "@some-ui/styles/brand/cast"
 import {
   GENRE_PAINT,
@@ -311,11 +311,7 @@ const BIRD: Character = "tin-owlet"
 const ink = "#f6efe2"
 
 /** A character at `size`, its ground clear and its key light left out. */
-const character = (who: Character, size: number): string =>
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="${String(size)}" height="${String(size)}">${nodesText(
-    castNodes(who, (name) => `${who}-${name}`),
-    { ground: "none", glow: false }
-  )}</svg>`
+const character = characterSvg
 
 /**
  * `input`'s thumbnail as a whole HTML page, its title at `titlePx` (the
