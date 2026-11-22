@@ -7,7 +7,8 @@
  * reading that rebuilds it, character for character, or, when none does, the
  * rule a near miss breaks: a tense or a kind of stem the ending refuses
  * (왔어서, 크느라고), an irregular word conjugated as regular (춥어요, 듣어서,
- * 모라요, 모르어서, 크어요, 살으니까), or a regular word ending in ㅂ or ㄷ conjugated
+ * 모라요, 살으니까) or with its 으 or 르 stem kept whole (크어요, 모르어서),
+ * or a regular word ending in ㅂ or ㄷ conjugated
  * as irregular (이워서, 발아서). Every listed word is built once, on the
  * first analysis, into an index from surface to readings.
  *
@@ -58,7 +59,7 @@ export type Breach =
   | { rule: "tense"; ending: ConstructionId; tense: "past" | "future" }
   /** A kind of stem the ending does not take: 크느라고. */
   | { rule: "stem"; ending: ConstructionId }
-  /** An irregular word conjugated as regular: 춥어요. */
+  /** An irregular word conjugated as regular (춥어요), or kept whole (크어요). */
   | { rule: "irregular"; irregular: IrregularClass; mistake?: MistakeId }
   /** A regular word conjugated as irregular: 이워서. */
   | { rule: "regular"; as: "ㅂ" | "ㄷ" }
@@ -98,7 +99,6 @@ const IRREGULAR_MISTAKE: Partial<Record<IrregularClass, MistakeId>> = {
   ㅂ: "b-irregular",
   ㄷ: "d-irregular",
   르: "reu-irregular",
-  으: "eu-kept",
 }
 
 /*
@@ -350,12 +350,16 @@ const ruleBreach = (
 ): Breach | null => {
   const { irregular } = VOCABULARY[dictionary]
   if (rule === "whole") {
-    return irregular === "으" || irregular === "르"
-      ? { rule: "irregular", irregular, mistake: "eu-kept" }
-      : null
+    // 크어요 is the mistake catalogue's eu-kept; 모르어요 its reu-irregular.
+    if (irregular === "으")
+      return { rule: "irregular", irregular, mistake: "eu-kept" }
+    if (irregular === "르")
+      return { rule: "irregular", irregular, mistake: "reu-irregular" }
+    return null
   }
   if (rule === "regular") {
-    if (irregular === null) return null
+    // A 으 stem is already conjugated by the regular rules: only "whole" errs.
+    if (irregular === null || irregular === "으") return null
     const mistake = IRREGULAR_MISTAKE[irregular]
     return mistake
       ? { rule: "irregular", irregular, mistake }

@@ -179,7 +179,7 @@ describe("conjugation", () => {
       "모르어서",
       "모르다",
       "conn.aseo.cause",
-      { rule: "irregular", irregular: "르", mistake: "eu-kept" },
+      { rule: "irregular", irregular: "르", mistake: "reu-irregular" },
       "몰라서",
     ],
     [
@@ -220,6 +220,12 @@ describe("conjugation", () => {
     if (first.kind === "split")
       for (const reading of first.readings) reading.tense = "past"
     expect(analyse("와서").kind).toBe("split")
+  })
+
+  it("hands back a copy of a refusal from a mistaken rule", () => {
+    const first = analyse("모라요")
+    if (first.kind === "refused") first.reading.tense = "past"
+    expect(analyse("모라요")).toMatchObject({ reading: { tense: "none" } })
   })
 
   it("knows no reading of a word it cannot rebuild", () => {
