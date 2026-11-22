@@ -46,16 +46,29 @@ uid=$(adb shell pm list packages -U "$pkg" | tr -d '\r' | grep -oE 'uid:[0-9]+' 
 
 sh_() { adb shell "$@" | tr -d '\r'; }
 # The default network's kind, as Android names it: WIFI, CELLULAR or none.
+# dumpsys names the default by its number; its NetworkAgentInfo line says
+# its transport.
 default_kind() {
-  sh_ dumpsys connectivity | grep -m1 -A3 'Active default network' | grep -oE 'WIFI|CELLULAR' | head -1 || true
+  local dump id
+  dump=$(sh_ dumpsys connectivity)
+  id=$(printf '%s\n' "$dump" | grep -m1 'Active default network' | grep -oE '[0-9]+' | head -1)
+  [ -n "$id" ] || return 0
+  printf '%s\n' "$dump" | grep -m1 "NetworkAgentInfo{network{$id}" | grep -oE 'WIFI|CELLULAR' | head -1 || true
 }
+# Whether the phone has a mobile data network up beside Wi-Fi.
+has_cellular() {
+  sh_ dumpsys connectivity | grep 'NetworkAgentInfo{network{' | grep -q CELLULAR
+}
+# Mobile data stays up beside a working Wi-Fi, as on a phone whose traffic
+# Android may send over either (developer option "Mobile data always active").
+sh_ settings put global mobile_data_always_on 1
 reset() {
   sh_ iptables -F OUTPUT > /dev/null 2>&1 || true
   sh_ cmd netpolicy set restrict-background false > /dev/null 2>&1 || true
   sh_ cmd netpolicy set metered-network AndroidWifi false > /dev/null 2>&1 || true
   sh_ svc data enable
   sh_ svc wifi enable
-  for _ in $(seq 1 30); do [ "$(default_kind)" = WIFI ] && break; sleep 2; done
+  for _ in $(seq 1 30); do [ "$(default_kind)" = WIFI ] && has_cellular && break; sleep 2; done
 }
 # The interface mobile data goes out on: any with an address but lo and wlan0.
 cell_if() {
@@ -74,6 +87,7 @@ setup_failed='{"as_is":"setup failed","fixed":"setup failed"}'
 
 adb logcat -c
 sh_ ip -o -4 addr > "$out/interfaces.txt"
+sh_ dumpsys connectivity | grep -E 'Active default network|NetworkAgentInfo\{network' > "$out/networks-at-start.txt" || true
 
 # s26: Wi-Fi the default.
 reset
@@ -90,9 +104,9 @@ if [ -n "$cell" ]; then
   sh_ svc wifi disable
   sleep 3
   sh_ svc wifi enable
-  for _ in $(seq 1 45); do [ "$(default_kind)" = CELLULAR ] && sh_ dumpsys connectivity | grep -q 'WIFI.*' && break; sleep 2; done
+  for _ in $(seq 1 60); do [ "$(default_kind)" = CELLULAR ] && break; sleep 2; done
   sleep 10
-  sh_ dumpsys connectivity | grep -A3 'Active default network' >> "$out/s21-setup.txt" || true
+  echo "default network now: $(default_kind)" >> "$out/s21-setup.txt"
 fi
 if [ -n "$cell" ] && [ "$(default_kind)" = CELLULAR ]; then s21=$(both s21); else s21=$setup_failed; fi
 
@@ -123,4 +137,5 @@ adb logcat -d -s SomeUI | tr -d '\r' > "$out/native-log.txt" || true
 printf '{"s26":%s,"s21":%s,"keptoff":%s,"saver":%s}\n' "$s26" "$s21" "$keptoff" "$saver" > "$out/route.json"
 cat "$out/route.json"
 cat "$out/s21-setup.txt"
+cat "$out/networks-at-start.txt"
 grep -h 'home route' "$out/native-log.txt" || true
