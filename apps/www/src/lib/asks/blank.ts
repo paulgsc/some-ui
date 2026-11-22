@@ -29,7 +29,7 @@ const KNOWN = [
 ]
 
 /** A header that carries a credential: its value goes, to a quote or the line's end. */
-const HEADER = /\b((?:proxy-)?authorization[ \t]*[:=][ \t]*)[^\n'"]+/gi
+const HEADER = /\b((?:proxy-)?authorization[ \t]*[:=][ \t]*)[^\n'"&]+/gi
 
 /**
  * A password in an address: `scheme://user:password@host`, user or not, to
@@ -50,7 +50,7 @@ const FLAG =
  * too.
  */
 const SETTING =
-  /(?<![\w.-])([\w.-]+)(\\?"?[ \t]*[=:][ \t]*)(\\"(?:(?!\\")[^\n])*\\"|"(?:[^"\\\n]|\\.)*"?|'[^'\n]*'?|[^\s"'?&,;]+)/g
+  /(?<![\w.-])([\w.-]+)(\\?"?[ \t]*[=:][ \t]*)(\\"(?:(?!\\")[^\n])*\\"|"(?:[^"\\\n]|\\.)*"?|'[^'\n]*'?|[^\s"'?&,;]*=(?:"[^"\n]*"|'[^'\n]*')|[^\s"'?&,;]+)/g
 
 /** A name's parts that say it holds a secret. */
 const SECRET_PART =

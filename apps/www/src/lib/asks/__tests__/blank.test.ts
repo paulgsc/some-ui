@@ -105,6 +105,12 @@ describe("blanking a pasted result", () => {
     expect(blankSecrets('"cmd": "DB_PASSWORD=hunter2 ./x"')).toBe(
       `"cmd": "DB_PASSWORD=${BLANKED} ./x"`
     )
+    expect(blankSecrets(`env: PASSWORD="hunter2" TOKEN='abc' x`)).toBe(
+      `env: PASSWORD="${BLANKED}" TOKEN='${BLANKED}' x`
+    )
+    expect(blankSecrets("https://h/cb?authorization=abc&state=xyz")).toBe(
+      `https://h/cb?authorization=${BLANKED}&state=xyz`
+    )
     expect(blankSecrets("Authorization=Bearer abcdefghijklmnop")).toBe(
       `Authorization=${BLANKED}`
     )
