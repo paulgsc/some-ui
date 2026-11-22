@@ -57,7 +57,7 @@ import { hasCaptions, stillFile, stillsCutList } from "./stills"
 import type { StillTake } from "./stills"
 import { boardSceneOf, storyboardOf } from "./storyboard"
 import type { Storyboard } from "./storyboard"
-import sampleHome from "./templates/engagement-report/sample-weeks.json"
+import sampleHome from "./templates/engagement-report/sample-weeks.json" with { type: "json" }
 
 /** The newest version `reportFormat` gives, pinned as `v<n>.json` under `templates/`. */
 export const REPORT_VERSION = 1
