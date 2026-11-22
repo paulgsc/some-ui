@@ -195,20 +195,19 @@ const Overview = ({
                 className="fill-background stroke-foreground stroke-[0.8]"
               />
             )}
-            <line
-              x1={x(0)}
-              y1={y}
-              x2={x(train.current)}
-              y2={y}
-              className="stroke-success stroke-[1.5]"
-            />
-            <line
-              x1={x(train.current)}
-              y1={y}
-              x2={x(train.stops.length - 1)}
-              y2={y}
-              className="stroke-border stroke-[1.5]"
-            />
+            {train.stops.slice(1).map((stop, i) => (
+              <line
+                key={`${train.id}-leg-${String(i)}`}
+                x1={x(i)}
+                y1={y}
+                x2={x(i + 1)}
+                y2={y}
+                className={cn(
+                  "stroke-[1.5]",
+                  stop.state === "passed" ? "stroke-success" : "stroke-border"
+                )}
+              />
+            ))}
             {train.stops.map((stop, i) => (
               <circle
                 key={`${train.id}-${String(i)}`}
@@ -357,6 +356,7 @@ const StopCard = ({
             stations={train.stops.map((s, i) => ({
               id: String(i),
               name: s.label,
+              done: s.state === "passed",
             }))}
             at={String(train.current)}
             picked={String(at)}
@@ -526,6 +526,7 @@ const Rail = ({
           stations={train.stops.map((s, i) => ({
             id: String(i),
             name: s.label,
+            done: s.state === "passed",
           }))}
           at={String(train.current)}
           tone={
@@ -551,16 +552,38 @@ const Rail = ({
   )
 }
 
+/** A read the owner asks for, held while one is on its way. */
+const ReadAgain = ({
+  reading,
+  onRead,
+}: {
+  reading: boolean
+  onRead: () => void
+}): JSX.Element => (
+  <Button
+    size="sm"
+    variant="ghost"
+    disabled={reading}
+    onClick={onRead}
+    className="self-start"
+  >
+    {reading ? W.readingAgain : W.readAgain}
+  </Button>
+)
+
 /** The bar, the card and the trains, over the run's trains. */
 const CookingBoard = ({
   trains,
   heading = null,
   unread,
+  reading,
   onReadAgain,
 }: {
   trains: ReadonlyArray<Train>
   /** How many of GitHub's answers couldn't be read this time. */
   unread: number
+  /** Whether a read is on its way. */
+  reading: boolean
   onReadAgain: () => void
   /** What sits under the bar: the page's title. */
   heading?: ReactNode
@@ -590,9 +613,7 @@ const CookingBoard = ({
         />
       )}
       <div className="flex items-center justify-between gap-3">
-        <Button size="sm" variant="ghost" onClick={onReadAgain}>
-          {W.readAgain}
-        </Button>
+        <ReadAgain reading={reading} onRead={onReadAgain} />
         <Menu board={board} trains={trains} dispatch={dispatch} />
       </div>
       {slice.length === 0 ? (
@@ -655,8 +676,9 @@ export const CookingPage = ({
 }): JSX.Element => {
   const query = useQuery(cookingQuery)
   // A read the owner asks for: the page never reads on a timer (`lib/cooking`).
+  // A second tap while one is on its way joins it, never doubles it.
   const readAgain = (): void => {
-    void query.refetch()
+    void query.refetch({ cancelRefetch: false })
   }
   return matchQueryOutcome(queryOutcome(query), {
     pending: () => (
@@ -694,6 +716,9 @@ export const CookingPage = ({
         {cooking.kind === "none" && (
           <p className="text-muted-foreground text-sm">{W.noRun}</p>
         )}
+        {(cooking.kind !== "run" || cooking.trains.length === 0) && (
+          <ReadAgain reading={query.isFetching} onRead={readAgain} />
+        )}
         {cooking.kind === "unread" && (
           <p className="text-sm">
             {W.unreadRun}{" "}
@@ -718,6 +743,7 @@ export const CookingPage = ({
               trains={cooking.trains}
               heading={heading}
               unread={cooking.unread}
+              reading={query.isFetching}
               onReadAgain={readAgain}
             />
           ))}

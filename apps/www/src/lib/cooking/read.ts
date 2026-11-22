@@ -86,7 +86,8 @@ function countCheck(
   const bump = (k: keyof Checks): Checks => ({ ...checks, [k]: checks[k] + 1 })
   if (status === "completed") {
     if (conclusion === "action_required") return bump("approval")
-    if (conclusion === "stale") return bump("waiting")
+    // A stale check never starts again by itself: it needs re-running.
+    if (conclusion === "stale") return bump("failed")
     return bump(PASSING.has(conclusion ?? "") ? "passed" : "failed")
   }
   if (status === "waiting") return bump("approval")
@@ -94,9 +95,10 @@ function countCheck(
 }
 
 /**
- * Facts that can no longer change (a merged or closed pull request, a run
- * that ended), kept for the tab's life so a second read doesn't spend
- * GitHub's 60 answers an hour on them again. Nothing is stored.
+ * Facts that can no longer change (a merged pull request, a run that
+ * passed), kept for the tab's life so a second read doesn't spend GitHub's
+ * 60 answers an hour on them again. A closed one can be reopened and a
+ * failed run run again, so those are read each time. Nothing is stored.
  */
 const endedPrs = new Map<string, PrFacts>()
 const endedRuns = new Map<string, RunFacts>()
@@ -116,6 +118,12 @@ const once =
     if (over(fact)) kept.set(key, fact)
     return fact
   }
+
+/** For tests: forget what was kept, so each starts from GitHub. */
+export function forgetEnded(): void {
+  endedPrs.clear()
+  endedRuns.clear()
+}
 
 async function readPr(repo: string, number: number): Promise<PrFacts> {
   const pull = await get(`${repo}/pulls/${String(number)}`, PullSchema)
@@ -148,9 +156,11 @@ function runStateOf(
   status: string | null,
   conclusion: string | null
 ): RunFacts["state"] {
-  if (status === "completed")
+  if (status === "completed") {
+    if (conclusion === "action_required") return "approval"
     return conclusion === "success" ? "passed" : "failed"
-  if (status === "waiting") return "approval"
+  }
+  if (status === "waiting" || status === "action_required") return "approval"
   if (status === "in_progress") return "running"
   return "waiting"
 }
@@ -211,7 +221,7 @@ async function readFacts(run: RunFile): Promise<Facts> {
           endedPrs,
           prKey(leg.pr),
           () => readPr(leg.pr.repo, leg.pr.number),
-          (f) => f.state !== "open"
+          (f) => f.state === "merged"
         )
       )
     if (leg.leg === "run")
@@ -221,7 +231,7 @@ async function readFacts(run: RunFile): Promise<Facts> {
           endedRuns,
           runKey(leg.repo, leg.run),
           () => readRun(leg.repo, leg.run),
-          (f) => f.endedAt !== null
+          (f) => f.state === "passed"
         )
       )
     if (leg.leg === "yours" && leg.ask !== undefined) {

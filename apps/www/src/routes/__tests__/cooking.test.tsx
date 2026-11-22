@@ -18,10 +18,12 @@ import {
 import type { MockInstance } from "vitest"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+import { forgetEnded } from "@/lib/cooking/read"
 import { COOKING_WORDS as W } from "@/lib/cooking/words"
 import { CookingPage } from "@/components/cooking"
 
 afterEach(() => {
+  forgetEnded()
   cleanup()
   vi.restoreAllMocks()
 })
@@ -181,6 +183,60 @@ describe("the Cooking page", () => {
     github(rest)
     render(withQueryClient(<CookingPage />))
     await screen.findByText(W.someUnread(1))
+  })
+
+  it("says a blocker that isn't the owner's as someone else's", async () => {
+    github({
+      ...ANSWERS,
+      "actions/runs/45065710340": {
+        html_url: "https://github.com/paulgsc/some-ui/actions/runs/45065710340",
+        status: "in_progress",
+        conclusion: null,
+        created_at: "2026-11-22T20:18:41Z",
+        updated_at: "2026-11-22T20:30:00Z",
+      },
+    })
+    render(withQueryClient(<CookingPage />))
+    const bar = await screen.findByRole("button", {
+      name: new RegExp(W.allMoving),
+    })
+    expect(bar.textContent).toContain(W.nothingOnYou)
+    expect(bar.textContent).not.toContain("wait on you")
+  })
+
+  it("hands a check waiting on an approval to the owner", async () => {
+    github({
+      ...ANSWERS,
+      "server/commits/abc/check-runs": {
+        check_runs: [{ status: "completed", conclusion: "action_required" }],
+      },
+    })
+    render(withQueryClient(<CookingPage />))
+    const rail = (await screen.findByText("Deploy home")).closest("li")
+    if (rail === null) throw new Error("each train is a list item")
+    fireEvent.click(
+      within(rail).getByRole("button", { name: "Home's release" })
+    )
+    within(
+      screen.getByRole("region", { name: W.stopOf("Deploy home", 0, 3) })
+    ).getByText(W.now.approve)
+  })
+
+  it("reads again when asked, without asking again for what has ended", async () => {
+    const fetch = github(ANSWERS)
+    render(withQueryClient(<CookingPage />))
+    const again = await screen.findByRole("button", { name: W.readAgain })
+    expect(fetch).toHaveBeenCalledTimes(5)
+    fireEvent.click(again)
+    await screen.findByRole("button", { name: W.readAgain })
+    await vi.waitFor(() => {
+      expect(fetch).toHaveBeenCalledTimes(9)
+    })
+    // The run that passed is kept; the list, the open pull request and its checks, and the ask are read again.
+    const runs = fetch.mock.calls.filter(([input]) =>
+      String(input).includes("actions/runs")
+    )
+    expect(runs).toHaveLength(1)
   })
 
   it("says so when no run is open", async () => {

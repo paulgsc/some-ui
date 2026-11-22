@@ -35,6 +35,8 @@ const all = [
   W.landsOn("Home"),
   W.trainsOf(1, 5, 7),
   W.overCap(12, 13),
+  W.someUnread(1),
+  W.someUnread(2),
 ]
 
 describe("the Cooking page's words", () => {

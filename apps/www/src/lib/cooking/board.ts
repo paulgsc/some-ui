@@ -90,7 +90,8 @@ export const matches = (filter: Filter, train: Train): boolean => {
   }
 }
 
-const stopsLeft = (t: Train): number => t.stops.length - 1 - t.current
+const stopsLeft = (t: Train): number =>
+  t.stops.filter((s) => s.state !== "passed").length
 const sinceOf = (t: Train): string =>
   t.arrived ? "~" : (hereOf(t).since ?? "~")
 

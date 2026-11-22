@@ -86,3 +86,24 @@ describe("StationStrip, picked from", () => {
     ])
   })
 })
+
+describe("StationStrip, drawn small", () => {
+  it("names each station for a reader when nothing picks", () => {
+    render(
+      <StationStrip label="Where it is" stations={STATIONS} at="oven" small />
+    )
+    expect(screen.getAllByRole("listitem").map((i) => i.textContent)).toEqual([
+      "In line",
+      "In the oven",
+      "Ready for pickup",
+    ])
+  })
+
+  it("draws a station done further down the line as passed", () => {
+    const stations = STATIONS.map((s) => ({ ...s, done: s.id === "ready" }))
+    render(<StationStrip label="Where it is" stations={stations} at="line" />)
+    expect(
+      screen.getAllByRole("listitem").map((i) => i.hasAttribute("data-passed"))
+    ).toEqual([false, false, true])
+  })
+})

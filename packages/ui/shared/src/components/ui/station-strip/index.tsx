@@ -16,6 +16,8 @@ import { cn } from "../../../lib/utils"
 export type Station = {
   readonly id: string
   readonly name: string
+  /** Done already, though further down the line than where the thing is. */
+  readonly done?: boolean
 }
 
 /** A side track the thing sits on for now, and what that means. */
@@ -56,7 +58,9 @@ export const StationStrip = ({
     <div className={cn("flex flex-col gap-2", className)}>
       <ol aria-label={label} className="flex items-start">
         {stations.map((station, index) => {
-          const passed = here !== -1 && index < here
+          const passed =
+            (here !== -1 && index < here) ||
+            (index > here && station.done === true)
           const current = index === here
           return (
             <li
