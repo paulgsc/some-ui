@@ -9,6 +9,13 @@
  * in for GitHub's remote, and a stub `gh` serves the PR's JSON through jq,
  * as `gh api --jq` does. That covers each way GitHub merges (squash, merge
  * commit, rebase) and each payload `run` must refuse.
+ *
+ * BP1. Claim: the plan deletes every branch whose tip is off main and in the
+ * bucket's head, unless a rule names it to keep (the default branch, a
+ * protected branch, `bot/*`, `changeset-release/*`, a bucket
+ * `claude/bucket-<repo>-<n>`, an open PR's branch). Family: branch names,
+ * including those that only start like a bucket's; how GitHub merged the
+ * bucket (squash, merge commit, rebase). Proof: these cases.
  */
 
 import { execFileSync, spawnSync } from "node:child_process"
@@ -296,6 +303,8 @@ describe("bucket-prune plan", () => {
     remote("bot/flake-update", a1)
     remote("changeset-release/main", a1)
     remote("claude/bucket-some-ui-2", b1)
+    // Starts like a bucket but is a worker's branch: not kept by name.
+    remote("claude/bucket-prune", a1)
     remote("release", b1)
     const lines = plan(head, { PROTECTED_BRANCHES: "release\nother" })
     expect(lines).toContainEqual({
@@ -312,6 +321,11 @@ describe("bucket-prune plan", () => {
       action: "keep",
       branch: "claude/bucket-some-ui-2",
       reason: "a bucket's branch",
+    })
+    expect(lines).toContainEqual({
+      action: "delete",
+      branch: "claude/bucket-prune",
+      reason: "its tip is a commit the bucket merged",
     })
     expect(lines).toContainEqual({
       action: "keep",
