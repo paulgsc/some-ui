@@ -295,6 +295,26 @@ describe("the walkthrough (WALK4)", () => {
     expect(said).toContain("How I use 12 other modules isn't measured yet.")
   })
 
+  it("says how long each silent module has gone unopened, never first, then the longest quiet (C937)", () => {
+    const quiet: typeof friction = {
+      ...friction,
+      modules: friction.modules.map((m) =>
+        m.pipeline === "jobs"
+          ? {
+              ...m,
+              opened: { kind: "measured", days: 0, of: 28, weeksQuiet: null },
+            }
+          : m
+      ),
+    }
+    const { cut } = voicedWalkthrough(jobs, walkOf(15), quiet, new Map())
+    const spoken = cut.shots.find((s) => s.id === "stop-4")?.spoken
+    const said = (spoken?.role === "walk" ? spoken.lines : []).join(" ")
+    expect(said).toContain(
+      "I haven't opened lately: Jobs, never; aph, for 6 weeks."
+    )
+  })
+
   it("keeps an aggregate report:vestiges reads", () => {
     expect(MODULE_OPENS_SCHEMA).toBe(FRICTION_SCHEMA)
   })

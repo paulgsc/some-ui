@@ -90,6 +90,27 @@ describe("the friction aggregate (WALK5, C861)", () => {
     expect(read(before).modules[1]?.opened).toEqual({ kind: "not-measured" })
   })
 
+  it("hides opened days against the days measured, not the window", () => {
+    const late = {
+      ...sampleHome,
+      seen: sampleHome.seen.map((s) =>
+        s.affordance === "today" ? { ...s, firstDay: "2026-11-06" } : s
+      ),
+      friction: {
+        ...sampleHome.friction,
+        opened: sampleHome.friction.opened.map((o) =>
+          o.pipeline === "jobs" && o.affordance === "today"
+            ? { ...o, days: 6 }
+            : o
+        ),
+      },
+    }
+    expect(read(late).modules[0]?.opened).toMatchObject({
+      of: 10,
+      days: "no-data",
+    })
+  })
+
   it("leaves a root's opened days unsaid where the days it wasn't opened would be under 5 (C938)", () => {
     const openedOn = (days: number): unknown => {
       const home = {
@@ -108,6 +129,7 @@ describe("the friction aggregate (WALK5, C861)", () => {
     }
     expect(openedOn(26)).toBe("no-data")
     expect(openedOn(28)).toBe("no-data")
+    expect(openedOn(24)).toBe("no-data")
     expect(openedOn(23)).toBe(23)
   })
 

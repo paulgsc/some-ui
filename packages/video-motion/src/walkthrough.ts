@@ -261,9 +261,9 @@ export function walkthroughLines(cut: CutList): Array<WalkthroughLine> {
 function quietOf(friction: Friction): Quiet {
   const names = new Map(PIPELINES.map((p) => [p.id, p.name]))
   // A module with no open home holds, measured over fewer than the 28 days
-  // (its root began sending inside the window), can't be said to be "not
-  // opened in the last four weeks": what came before its first day is
-  // unknown, so it is said as not measured, never as silent.
+  // (its root began sending inside the window), can't be said to be silent
+  // or "never" opened: what came before its first day is unknown, so it is
+  // said as not measured.
   const unknown = new Set(
     friction.modules.flatMap((m) =>
       m.opened.kind === "measured" &&
