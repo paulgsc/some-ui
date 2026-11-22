@@ -20,6 +20,7 @@ import {
   ringCss,
   TYPE_S,
   typeCss,
+  WIDE_MOTION,
 } from "@/landing/render"
 import { LANDING_WORDS } from "@/landing/words"
 import { resumeData } from "@some-ui/resume"
@@ -139,6 +140,17 @@ describe("renderLanding", () => {
       }
     }
     // Every cube carries every project; only the first is read out.
+    const all = LANDING_WORDS.projects.map((p) => p.media).sort()
+    const carried = [
+      ...page.matchAll(
+        /<div class="ring-turn" style="animation-delay: -?[\d.]+s">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/g
+      ),
+    ].map((m) =>
+      [...m[1].matchAll(/<article class="face"[^>]*data-asset="([^"]+)"/g)]
+        .map((f) => f[1])
+        .sort()
+    )
+    expect(carried).toEqual(Array.from({ length: CUBES }, () => all))
     expect(page).toContain('<div class="block block--cube" data-cube="0">')
     expect(page).toContain(
       '<div class="block block--cube" data-cube="1" aria-hidden="true">'
@@ -158,6 +170,19 @@ describe("renderLanding", () => {
     expect(page).toContain('class="ring ring--cube" data-axis="x"')
     for (const c of LANDING_WORDS.copy)
       expect(page).toContain(escapeHtml(c.headline))
+  })
+
+  it("names every turn and every typing only where the showcase moves", () => {
+    const head = renderLandingHead()
+    const outside = head.replace(
+      new RegExp(
+        `@media ${WIDE_MOTION.replace(/[()]/g, "\\$&")} \\{[^{}]*\\{[^{}]*\\} \\}`,
+        "g"
+      ),
+      ""
+    )
+    expect(head).toContain("animation-name: turn-cube")
+    expect(outside).not.toContain("animation-name")
   })
 
   it("rests on each face, turns a face's angle, and ends where it began", () => {
@@ -308,8 +333,7 @@ describe("renderLanding", () => {
       "utf8"
     )
     const css = template.slice(template.indexOf("<style>"))
-    const wide =
-      "@media (width >= 900px) and (prefers-reduced-motion: no-preference) {"
+    const wide = `@media ${WIDE_MOTION} {`
     const start = css.indexOf(wide)
     expect(start).toBeGreaterThan(-1)
     // The block ends where the next top-level rule starts.

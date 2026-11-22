@@ -129,6 +129,16 @@ const cycleOf = (ring: Ring): number => slotOf(ring) * ring.faces
 const lagBy = (ring: Ring, lagS: number): number =>
   (lagS % cycleOf(ring)) - cycleOf(ring)
 
+/**
+ * Where the showcase moves: a wide screen whose reader allows motion. Every
+ * ring's turn and every title's typing is named only under it, as
+ * landing/index.html gives their durations, so all of them begin in the one
+ * style change that brings it into force (a page opened narrow and then
+ * widened included) and keep the schedule's offsets between them.
+ */
+export const WIDE_MOTION =
+  "(width >= 900px) and (prefers-reduced-motion: no-preference)"
+
 /** A number for CSS, rounded to three places with no trailing zeros. */
 const num = (n: number): string => String(Number(n.toFixed(3)))
 
@@ -160,7 +170,7 @@ export function ringCss(ring: Ring): string {
   )
   return `@keyframes turn-${ring.name} { ${steps.join(" ")} 100% { ${at(ring.faces)} } }
       .ring--${ring.name} { --faces: ${String(ring.faces)}; --cycle: ${num(cycle)}s; }
-      .ring--${ring.name} .ring-turn { animation-name: turn-${ring.name}; }`
+      @media ${WIDE_MOTION} { .ring--${ring.name} .ring-turn { animation-name: turn-${ring.name}; } }`
 }
 
 /**
@@ -170,7 +180,7 @@ export function ringCss(ring: Ring): string {
  */
 export function typeCss(ring: Ring): string {
   return `@keyframes type-${ring.name} { 0% { clip-path: inset(0 100% 0 0); } ${num((TYPE_S / cycleOf(ring)) * 100)}%, 100% { clip-path: inset(0 0 0 0); } }
-      .ring--${ring.name} .typed { animation-name: type-${ring.name}; }`
+      @media ${WIDE_MOTION} { .ring--${ring.name} .typed { animation-name: type-${ring.name}; } }`
 }
 
 /**
@@ -237,10 +247,10 @@ function showcase(words: LandingWords, media: LandingMedia): string {
     .join("")
   const cubes = Array.from({ length: CUBES }, (_, j) => {
     // Cube j runs j / CUBES of a face ahead (a lag of a whole cycle less
-    // that), and starts j / CUBES of the way round the projects: whenever it
-    // shows a face, or two mid-turn, they are always one to two faces past
-    // the first cube's, which with three projects or more is never the
-    // same project.
+    // that), and starts j / CUBES of the way round the projects. With the
+    // two cubes there are, whenever the second shows a face, or two
+    // mid-turn, they are one to two faces past the first cube's, which with
+    // three projects or more is never the same project.
     const lagS = cycleOf(cube) - (j * slotOf(cube)) / CUBES
     const offset = Math.floor((j * n) / CUBES)
     const faces = [
