@@ -100,10 +100,10 @@ export async function openGrafanaStage(
     // navigated: a new page is drawn once one more has answered.
     let queries = 0
     let atNavigation = 0
+    // Which document a request belongs to: one from a page the walk has left
+    // may fail as it is cancelled, which is no problem of the page shown.
+    let documents = 0
     page.on("pageerror", (e) => problems.push(e.message))
-    page.on("framenavigated", (frame) => {
-      if (frame === page.mainFrame()) atNavigation = queries
-    })
     await context.routeWebSocket("**", (socket) => socket.close())
     await context.route("**/*", async (route) => {
       const request = route.request()
@@ -112,18 +112,41 @@ export async function openGrafanaStage(
         await route.abort("blockedbyclient")
         return
       }
-      const answer = await route.fetch({
-        headers: { ...request.headers(), authorization: `Bearer ${token}` },
-        maxRedirects: 0,
-      })
-      const status = answer.status()
-      if (status >= 300) {
-        problems.push(`${url.pathname} answered ${String(status)}`)
-        await route.abort("failed")
-        return
+      // A new document (never a same-page URL change): its panels are
+      // drawn once one more query has answered.
+      if (
+        request.isNavigationRequest() &&
+        request.frame() === page.mainFrame()
+      ) {
+        atNavigation = queries
+        documents += 1
       }
-      if (url.pathname === QUERY) queries += 1
-      await route.fulfill({ response: answer })
+      const document = documents
+      try {
+        const answer = await route.fetch({
+          headers: { ...request.headers(), authorization: `Bearer ${token}` },
+          maxRedirects: 0,
+        })
+        const status = answer.status()
+        if (status >= 300) {
+          problems.push(`${url.pathname} answered ${String(status)}`)
+          await route.abort("failed")
+          return
+        }
+        if (url.pathname === QUERY) queries += 1
+        await route.fulfill({ response: answer })
+      } catch (e) {
+        // A dropped connection or a timeout is said; a request of a page
+        // already left is only answered. None is left hanging.
+        if (document === documents) {
+          problems.push(
+            `${url.pathname}: ${e instanceof Error ? e.message : "failed"}`
+          )
+        }
+        // Ignored: a route already answered or cancelled cannot be aborted,
+        // and the failure is already said above when it is the page's.
+        await route.abort("failed").catch(() => undefined)
+      }
     })
     await reached(page, origin)
 
@@ -131,6 +154,8 @@ export async function openGrafanaStage(
     const drawn = async (): Promise<void> => {
       const by = Date.now() + DRAWN_MS
       while (queries <= atNavigation) {
+        // A query that failed is the reason, not the wait.
+        if (problems.length > 0) throw new Error(problems.join("; "))
         if (Date.now() > by) {
           throw new Error(`no panel's query answered in ${String(DRAWN_MS)} ms`)
         }
