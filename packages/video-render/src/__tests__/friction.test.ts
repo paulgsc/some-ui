@@ -195,7 +195,9 @@ describe("the friction aggregate (WALK5, C861)", () => {
   })
 
   it("says finished or left part-way only over a window that starts after a left said where it went", () => {
-    const ending = (nextsBefore?: boolean): Friction["places"][number] => {
+    const ending = (
+      nextsBefore?: ReadonlyArray<string>
+    ): Friction["places"][number] => {
       const got = read({
         ...sampleHome,
         friction: { ...sampleHome.friction, nextsBefore },
@@ -203,8 +205,10 @@ describe("the friction aggregate (WALK5, C861)", () => {
       if (got === undefined) throw new Error("the ending")
       return got
     }
-    expect(ending(true).finished).toBe(5)
-    expect(ending(false).finished).toBe("no-data")
+    expect(ending(["apk"]).finished).toBe(5)
+    // Only the web build sent next by then: the phone's stretches may not have.
+    expect(ending(["web"]).finished).toBe("no-data")
+    expect(ending([]).finished).toBe("no-data")
     // A read from a home before the field.
     expect(ending(undefined).finished).toBe("no-data")
   })

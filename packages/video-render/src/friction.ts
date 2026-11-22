@@ -9,7 +9,8 @@
  * Aggregates only, under the engagement report's public-safety rule (ask
  * #2701): every count is a `PublicCount`, "fewer than 5" below `UNDER`, a
  * count whose complement beside an exact figure would be under 5 is unsaid
- * (opened days beside `of`, C938; moved on beside the stretches), a median
+ * (opened days beside `of`, C938; moved on, left at the end and left from
+ * a step beside the stretches, together, a "fewer than 5" taken as 4), a median
  * is said only over 5 values or more, and nothing here names a pass
  * reason, a chip, a company, a role or any content. A module home can't
  * tell the opening of is `not-measured`, never silent.
@@ -24,7 +25,8 @@
  * that went to a screen outside it is `finished` at a place the flow
  * finishes at and `leftPartWay` at one it is left part-way at; any other
  * place says neither. They are said only over a window that starts after a
- * `left` with a `next` (home's `nextsBefore`), so an older build's
+ * `left` with a `next` on the affordance's surface (home's `nextsBefore`),
+ * so an older build's
  * stretches are never missed from a count that reads as whole (a phone kept
  * on an older build after another moved on is the tolerance); until then
  * they are `no-data` and the walkthrough keeps saying moved on.
@@ -154,7 +156,8 @@ export type FrictionRegistry = ReadonlyArray<{
 /**
  * `parts`, counts of some of `whole`'s stretches, as said beside it: each
  * kept in order while what the kept ones leave of `whole` is 5 or more, and
- * `no-data` from the first that would leave less (ask #2701). A part said as
+ * `no-data` for each that would leave less (ask #2701): a later, smaller one
+ * may still be said. A part said as
  * "fewer than 5" may be as many as 4, so it is taken as 4. The parts may
  * overlap, so what they leave may be more than this assumes: never less.
  * A `whole` that is not a number leaves each part as it is: none can be
@@ -294,7 +297,8 @@ export function frictionOf(
           // Only over a window that starts after a `left` said where it went
           // (#3367): before that, a build sent none, so a count of where
           // stretches went would miss some and still read as whole.
-          const whole = measures.nextsBefore === true
+          // Per surface: the web build ships before the phone's.
+          const whole = measures.nextsBefore?.includes(a.surface) === true
           // A screen outside the affordance is never one of its own places
           // (`elsewhere` included: no place has that id).
           const inside = new Set(own.map((p) => p.id))

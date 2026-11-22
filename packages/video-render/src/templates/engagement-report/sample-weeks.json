@@ -337,7 +337,7 @@
         ]
       }
     ],
-    "nextsBefore": true,
+    "nextsBefore": ["apk"],
     "partial": false,
     "debrief": {
       "said": 3,

@@ -222,8 +222,8 @@ export const HomeWeeksSchema = z.object({
             .optional(),
         })
       ),
-      /** Whether a `left` that said where it went was made by the window's start (#3367). */
-      nextsBefore: z.boolean().optional(),
+      /** The surfaces on which a `left` that said where it went was made by the window's start (#3367). */
+      nextsBefore: z.array(z.string()).optional(),
       partial: z.boolean(),
       debrief: z.object({
         said: count,
