@@ -1,5 +1,5 @@
 /**
- * The LeetType session a viewer can play on the Pages build (CLAUDE.md, "A
+ * The LeetType session a viewer can play in a viewer build (CLAUDE.md, "A
  * viewer tries, and nothing is kept"): Thread 1's first session, the file
  * the owner's phone picks from Drive, as its text. The store takes no
  * picks (the picker's `samples`), and the session log the viewer writes is

@@ -3,13 +3,12 @@
  * from `renderLanding` on the résumé's real data, so a change to either shows
  * here.
  */
+import { mochiSvg } from "@/landing/mochi"
+import { escapeHtml, renderLanding, renderLandingHead } from "@/landing/render"
+import { LANDING_WORDS } from "@/landing/words"
 import { resumeData } from "@some-ui/resume"
 import { MOCHI_BODY } from "@some-ui/styles/brand/mark"
 import { describe, expect, it } from "vitest"
-
-import { mochiSvg } from "./mochi.ts"
-import { escapeHtml, renderLanding, renderLandingHead } from "./render.ts"
-import { LANDING_WORDS } from "./words.ts"
 
 const resume = resumeData.fullstack
 const page = renderLanding(resume, mochiSvg())

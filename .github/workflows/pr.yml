@@ -359,11 +359,13 @@ jobs:
       # What the BUILT app sends when a learner has chosen the device (LA1/LA4,
       # docs/learner-data-authority.md). The unit tests prove each module asks
       # the authority first; only a browser running the output can show that
-      # nothing else in the bundle sends. Two builds, because the two claims
+      # nothing else in the bundle sends. Three builds, because the claims
       # are about different ones: the lan build with a stand-in file_host
       # (corpus reads only, no cookie, sessions survive a reload with it down),
-      # and the Pages build (its connect-src policy is present and enforced,
-      # and a viewer's storage is the in-memory copy: VS1, #3121).
+      # the Pages build (its static pages reach no other origin, and its
+      # connect-src policy is present and enforced), and the capture build,
+      # the one viewer build that runs the app (a viewer's storage is the
+      # in-memory copy: VS1, #3121).
       #
       # The spec fails, not skips, when a build is missing under CI, so a
       # broken build step cannot turn this into a green run that measured
@@ -372,14 +374,18 @@ jobs:
         if: contains(fromJSON(needs.changes.outputs.e2e), 'local_mode')
         run: |
           nix develop .#ci --command pnpm turbo build --filter=www... --concurrency=100%
-          # The landing the Pages build reads (vite.config.ts, `landingPage`),
-          # rendered here: a turbo cache hit above would not leave it behind.
-          nix develop .#ci --command pnpm --filter www exec node render-landing.ts
+          # The pages the Pages build reads (vite.config.ts, `publicSite`),
+          # rendered here: a turbo cache hit above would not leave them behind.
+          nix develop .#ci --command pnpm --filter www exec node render-public-site.ts
           nix develop .#ci --command env \
             SOME_UI_PROFILE=pages VITE_STATIC_DATA=true VITE_BASE_PATH=/some-ui/ \
             pnpm --filter www exec vite build --outDir dist-pages --emptyOutDir
+          nix develop .#ci --command env \
+            SOME_UI_PROFILE=snips VITE_STATIC_DATA=true VITE_BASE_PATH=/some-ui/ \
+            pnpm --filter www exec vite build --outDir dist-snips --emptyOutDir
           nix develop .#ci-playwright --command env \
             WWW_DIST_LAN=apps/www/dist WWW_DIST_PAGES=apps/www/dist-pages \
+            WWW_DIST_SNIPS=apps/www/dist-snips \
             pnpm --filter www test:e2e tests/local-mode/no-egress.spec.ts \
             tests/local-mode/viewer-storage.spec.ts
 

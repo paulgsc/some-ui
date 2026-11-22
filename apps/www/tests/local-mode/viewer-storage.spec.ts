@@ -1,10 +1,11 @@
 /**
- * VS1 (#3121, `build.treeshake.ts`): on the built Pages app, a viewer's
+ * VS1 (#3121, `build.treeshake.ts`): in the built viewer app, a viewer's
  * storage is the in-memory copy `lib/demo/viewer-storage` puts in place, so
  * what a viewer writes is gone after a reload (CLAUDE.md, "A viewer tries,
  * and nothing is kept"). Observed on the bundle, not the source: the release
  * build's tree shaking dropped the module once, and no unit test could see
- * that.
+ * that. The app runs in the capture build Snips Capture photographs
+ * (`snips`); the public site carries none (C1055, #3401).
  *
  * The control: the same write on a page that is not the app does survive a
  * reload in this browser, so "gone" means the copy, not the harness.
@@ -18,10 +19,10 @@ import type { Listening } from "./harness"
 const BASE = "/some-ui/"
 const KEY = "vs1-probe"
 
-test.describe("the Pages app keeps nothing a viewer writes", () => {
+test.describe("the viewer app keeps nothing a viewer writes", () => {
   let site: Listening | null = null
   test.beforeAll(async () => {
-    const built = builtApp("pages")
+    const built = builtApp("snips")
     if ("why" in built) {
       // CI must not pass by measuring nothing; a laptop may lack the build.
       if (process.env["CI"]) throw new Error(built.why)
@@ -50,8 +51,6 @@ test.describe("the Pages app keeps nothing a viewer writes", () => {
       "kept"
     )
 
-    // The app, not the landing at the site's root: the landing is static
-    // and keeps nothing (vite.config.ts, `landingPage`).
     await page.goto(`${app}app`)
     await expect(page.locator("main").first()).toBeAttached()
     const storage = await page.evaluate(
