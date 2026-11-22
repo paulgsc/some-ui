@@ -117,18 +117,16 @@ export function createGameWeek(ports: GameWeekPorts): GameWeekRuntime {
   )
 
   /**
-   * Tells `step` of each bite the store held and has since kept, and since
-   * when home holds the bite on its row.
+   * Tells `step` of each bite the store held and has since kept, and what
+   * the store keeps now, when that changed.
    */
   function reconcile(): void {
     const kept = state.keeping
       .filter(({ id, held }) => held && ports.store.isKept(id))
       .map(({ id }) => id)
     for (const id of kept) dispatch({ type: "kept", id })
-    const row = state.lastBite
-    if (row === null || row.take.kept?.place === "home") return
-    const since = ports.store.homeSince(row.take.id)
-    if (since !== null) dispatch({ type: "homeHolds", id: row.take.id, since })
+    const bites = ports.store.getSnapshot()
+    if (bites !== state.shelf) dispatch({ type: "stored", bites })
   }
 
   function run(effect: GameWeekEffect): void {
@@ -174,7 +172,7 @@ export function createGameWeek(ports: GameWeekPorts): GameWeekRuntime {
       case "undo": {
         ports.store
           .undo(effect.id)
-          .catch(() => dispatch({ type: "undoFailed" }))
+          .catch(() => dispatch({ type: "undoFailed", id: effect.id }))
         return
       }
       case "savePrefs": {

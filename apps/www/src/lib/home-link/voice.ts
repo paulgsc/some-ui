@@ -13,10 +13,9 @@
  */
 import { useEffect, useSyncExternalStore } from "react"
 import { localStorageOrNull } from "@some-ui/core-utils"
-import type { OutboxPort, OutboxView } from "@some-ui/game-week"
+import type { OutboxPort, OutboxView, StoredBite } from "@some-ui/game-week"
 
 import { episodeFeedback } from "@/lib/episode-feedback"
-import type { PhoneBite } from "@/lib/game-bites"
 import { phoneGameBites } from "@/lib/game-bites"
 import { ideasMoved } from "@/lib/idea-keeping"
 import { ideaBundleDesk, ideaRedoDesk, ideaTakesDesk } from "@/lib/idea-takes"
@@ -201,7 +200,7 @@ export function useVoiceHome(): KeptState {
  */
 export function outboxView(
   notKept: number,
-  bites: ReadonlyArray<PhoneBite>,
+  bites: ReadonlyArray<StoredBite>,
   home: VoiceHomeState,
   sending: boolean | null
 ): OutboxView {

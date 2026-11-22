@@ -16,6 +16,7 @@ const FIXTURES: ReadonlyArray<TakesId> = [
   "takes-all",
   "takes-note",
   "takes-unpaired",
+  "takes-game",
 ]
 
 fitsEachPhone("Studio's Takes fits the phone", FIXTURES)

@@ -729,6 +729,44 @@ describe("one home for every take", () => {
     expect(screen.getByText(/^Q1 9:00/)).toBeTruthy()
   })
 
+  it("places what the game holds with no bite among its bites, only while the game is the one chip picked", async () => {
+    const asked: Array<[string, ReadonlyArray<string>]> = []
+    render(
+      <TakeLibrary
+        ports={ports()}
+        pair={null}
+        compartment="bite"
+        initialChips={{
+          topic: { key: "game:401772", label: "49ers vs Rams", asks: true },
+        }}
+        gaps={(key, takes) => {
+          asked.push([key, takes.map(({ id }) => id)])
+          return [
+            { key: "m1", at: "2026-11-16T22:00:00.000Z", body: "Later moment" },
+            {
+              key: "m0",
+              at: "2026-11-16T20:00:00.000Z",
+              body: "Earlier moment",
+            },
+          ]
+        }}
+      />
+    )
+    await settle()
+    expect(asked.at(-1)).toEqual(["game:401772", ["b1"]])
+    const rows = screen
+      .getAllByRole("listitem")
+      .map((each) => each.textContent)
+      .filter((text) => text.length > 0)
+    expect(rows[0]).toBe("Later moment")
+    expect(rows[1]).toMatch(/^.*Q3 4:12/)
+    expect(rows[2]).toBe("Earlier moment")
+    // Every game's bites: no one game's moments among them.
+    fireEvent.click(screen.getByRole("button", { name: /^49ers vs Rams/ }))
+    await settle()
+    expect(screen.queryByText("Later moment")).toBeNull()
+  })
+
   it("orders newest, oldest, or by what each is about", async () => {
     render(<TakeLibrary ports={ports()} pair={null} compartment="bite" />)
     await settle()
