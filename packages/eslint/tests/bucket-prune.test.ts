@@ -346,8 +346,15 @@ describe("bucket-prune plan", () => {
   it("knows this repository's buckets by name once told the repository", () => {
     const { head, a1, b1 } = bucket()
     remote("claude/bucket-prune-2", a1)
+    remote("claude/bucket-some-ui-1-wip", a1)
     remote("claude/bucket-some-ui-2", b1)
     const lines = plan(head, { BUCKET_REPO: "some-ui" })
+    expect(lines).toContainEqual(
+      expect.objectContaining({
+        action: "delete",
+        branch: "claude/bucket-some-ui-1-wip",
+      })
+    )
     expect(lines).toContainEqual({
       action: "delete",
       branch: "claude/bucket-prune-2",
