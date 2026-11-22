@@ -50,10 +50,10 @@ export type Wing = {
   /**
    * What the wing publishes and what it keeps, as the strip under the web
    * header says it to the owner (CLAUDE.md, "two mandates"). Absent where the
-   * web shows no strip; `published` absent where nothing of the wing is
-   * published, so the strip claims no publication it doesn't have (C1060).
+   * web shows no strip. No wing publishes anything since the public site
+   * became a CV (C1055), so the strip names only what each keeps (C1060).
    */
-  exposure?: { published?: string; private: string }
+  exposure?: { private: string }
 }
 
 export type Room = {

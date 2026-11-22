@@ -13,8 +13,9 @@ import type { RuntimeMode } from "@some-ui/fetch-kit"
  *
  * Not `resolveRuntimeMode`'s hostname heuristic (it guessed wrong for the LAN
  * mDNS host and a localhost preview), and not `import.meta.env.PROD` (true for
- * both Docker and Pages). `VITE_STATIC_DATA` is set only by those two
- * workflows, so "unset" means "this build serves public/".
+ * both Docker and Pages). `VITE_STATIC_DATA` is set only for the viewer's
+ * builds: by those two workflows, and by pr.yml's local-mode test builds of
+ * them. So "unset" means "this build serves public/".
  */
 export const DATA_MODE: RuntimeMode =
   import.meta.env.VITE_STATIC_DATA === "true" ? "static" : "server"

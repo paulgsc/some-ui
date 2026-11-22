@@ -3,16 +3,17 @@
   "made": "2026-11-22",
   "by": "claude",
   "paths": [
-    "apps/www/src/lib/wings/index.ts",
-    "apps/www/src/components/provenance-strip.tsx"
+    "apps/www/src/components/__tests__/provenance-strip.test.tsx",
+    "apps/www/src/components/provenance-strip.tsx",
+    "apps/www/src/lib/wings/index.ts"
   ],
-  "chose": "The Practice and Jobs wings' strips under the web header name only what each keeps private. They no longer say the study screens are published on Pages, or that how the Jobs run works is published on a sample digest: since #3412 the public site carries neither, so each line claimed a publication the wing doesn't have. A wing whose `exposure` has no `published` shows no Published line. The run's coordinator agreed to this option on 2026-11-22.",
+  "chose": "The Practice and Jobs wings' strips under the web header name only what each keeps private. They no longer say the study screens are published on Pages, or that how the Jobs run works is published on a sample digest: since #3412 the public site carries neither, so each line claimed a publication the wing doesn't have. With no wing publishing anything, `exposure` loses its `published` field and the strip its Published line. The run's coordinator agreed to this option on 2026-11-22.",
   "options": [
     "drop both wings' published lines",
     "name where each wing's screens go public now (the essays' snips)",
     "leave the lines until the owner says"
   ],
   "gray": "The strip's words are the owner's to read, and what counts as publishing a wing is a judgment: Snips Capture photographs study screens and the sample run for the essays, but no check says a published video shows one.",
-  "undo": "Give the Practice or Jobs wing's `exposure` a `published` line again in apps/www/src/lib/wings/index.ts.",
+  "undo": "Bring back `published` on `exposure` in apps/www/src/lib/wings/index.ts and the strip's Published line in apps/www/src/components/provenance-strip.tsx, with its test (from git history), then give the Practice or Jobs wing a `published` line again.",
   "refs": ["#3401"]
 }

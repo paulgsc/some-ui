@@ -53,7 +53,7 @@ What follows from them:
   Snips photographs.
 - **One screen, two readings.** Where the owner and a viewer can reach the same screen, it
   says which of them is looking: `components/provenance-strip.tsx` under the web header
-  tells the owner what a wing publishes and keeps, and tells a viewer it is sample data.
+  tells the owner what a wing keeps, and tells a viewer it is sample data.
 - **A viewer tries, and nothing is kept.** The viewer's app runs in the capture build Snips
   photographs (`VIEWER_BUILD`, `apps/www/src/lib/data-mode`); Pages carries no app under
   C1055, and its pages keep nothing. In the capture build the page's `localStorage` and

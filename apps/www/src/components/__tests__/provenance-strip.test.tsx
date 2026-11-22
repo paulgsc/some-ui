@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  *
  * One screen, two readings (CLAUDE.md): the owner reads what the wing
- * publishes and keeps; a viewer in the viewer build reads that this is sample
+ * keeps; a viewer in the viewer build reads that this is sample
  * data and nothing is kept.
  */
 
@@ -19,7 +19,7 @@ vi.mock("@/lib/data-mode", () => ({
 
 const { ProvenanceStrip } = await import("@/components/provenance-strip")
 
-const EXPOSURE = { published: "the screens", private: "my sessions" }
+const EXPOSURE = { private: "my sessions" }
 
 afterEach(() => {
   cleanup()
@@ -27,16 +27,10 @@ afterEach(() => {
 })
 
 describe("ProvenanceStrip", () => {
-  it("tells the owner what is published and what is kept", () => {
+  it("tells the owner what is kept, and claims nothing published", () => {
     render(<ProvenanceStrip exposure={EXPOSURE} />)
-    expect(screen.getByText("Published: the screens")).toBeTruthy()
     expect(screen.getByText("Private: my sessions")).toBeTruthy()
-  })
-
-  it("claims nothing published where the wing publishes nothing", () => {
-    render(<ProvenanceStrip exposure={{ private: "my sessions" }} />)
     expect(screen.queryByText(/^Published:/)).toBeNull()
-    expect(screen.getByText("Private: my sessions")).toBeTruthy()
   })
 
   it("tells a viewer this is sample data that nothing keeps", () => {

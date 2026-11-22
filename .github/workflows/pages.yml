@@ -184,8 +184,9 @@ jobs:
       # schedule; Snips Capture on a dispatch), never a pull request's or a
       # fork's: their artifacts list beside main's, and a fork's branch can be
       # named main. Of each kind, the newest such run's. Each archive is
-      # tested and unpacked apart, and only its regular files move in, so a
-      # broken download or a link to a file on this runner ships nothing.
+      # tested, refused whole if it holds a link, and unpacked apart, and
+      # only its regular files move in, so a broken download or a link to a
+      # file on this runner ships nothing.
       # Best effort: a kind with none keeps its slot's drawn placeholder, the
       # summary says which kinds were found, and the deploy goes on.
       - name: Fetch the site's media
@@ -217,8 +218,13 @@ jobs:
                 grep -qxF "$kind" "$work/seen" && continue
                 zip="$work/$id.zip"
                 out="$work/$id"
+                # An archive holding any link is refused whole, before it is
+                # unpacked: unzip makes links, and one to a folder could write
+                # outside $out. Listed to a file, not piped to grep, so a
+                # listing cut short cannot read as "no link".
                 if gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > "$zip" &&
-                  unzip -tq "$zip" && unzip -q "$zip" -d "$out"; then
+                  unzip -tq "$zip" && zipinfo "$zip" > "$zip.list" &&
+                  ! grep -q '^l' "$zip.list" && unzip -q "$zip" -d "$out"; then
                   (cd "$out" && find . -type f) | while read -r file; do
                     mkdir -p "$media/$(dirname "$file")"
                     mv "$out/$file" "$media/$file"
