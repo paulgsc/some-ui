@@ -376,7 +376,7 @@ jobs:
           nix develop .#ci --command pnpm turbo build --filter=www... --concurrency=100%
           # The pages the Pages build reads (vite.config.ts, `publicSite`),
           # rendered here: a turbo cache hit above would not leave them behind.
-          nix develop .#ci --command pnpm --filter www exec node render-public-site.ts
+          nix develop .#ci --command pnpm --filter www exec tsx render-public-site.ts
           nix develop .#ci --command env \
             SOME_UI_PROFILE=pages VITE_STATIC_DATA=true VITE_BASE_PATH=/some-ui/ \
             pnpm --filter www exec vite build --outDir dist-pages --emptyOutDir

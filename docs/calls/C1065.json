@@ -1,0 +1,14 @@
+{
+  "id": "C1065",
+  "made": "2026-11-22",
+  "by": "owner",
+  "paths": [
+    "apps/www/src/landing/words.ts",
+    "apps/www/src/landing/render.ts",
+    "CLAUDE.md"
+  ],
+  "chose": "No card on the landing links to source, and the footer's Source link goes too: the page header's GitHub link is the one way to the code. The owner (2026-11-22): \"get rid of the section that shows this source hyperlink. We have no need for that … there's like a GitHub link at the top … a recruiter is not going to be going through the source link. The promo is good enough on itself … the source code is very involved … so it's not even an honest thing.\"",
+  "undo": "Give ProjectWords its links again in apps/www/src/landing/words.ts and draw them on the cards in render.ts.",
+  "refs": ["#3401"],
+  "moves": "C1056"
+}

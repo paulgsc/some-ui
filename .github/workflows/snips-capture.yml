@@ -237,8 +237,14 @@ jobs:
             "$GITHUB_WORKSPACE/apps/www/tests/walk/jobs-walkthrough.json" \
             --walk "$GITHUB_WORKSPACE/walks/jobs" --out "$RUNNER_TEMP/walkthrough" \
             --brand "$RUNNER_TEMP/brand"
+          # The landing plays no sound (C1064): the picture alone, its sound
+          # track dropped, and refused if one is still there.
           mkdir -p "$RUNNER_TEMP/site-assets/clips"
-          cp "$RUNNER_TEMP/walkthrough/video.mp4" "$RUNNER_TEMP/site-assets/clips/apk.mp4"
+          clip="$RUNNER_TEMP/site-assets/clips/apk.mp4"
+          nix develop .#ci-playwright --command \
+            ffmpeg -loglevel error -i "$RUNNER_TEMP/walkthrough/video.mp4" -an -c:v copy -movflags +faststart "$clip"
+          sound="$(nix develop .#ci-playwright --command ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "$clip")"
+          if [ -n "$sound" ]; then echo "::error::$clip still has a sound track"; exit 1; fi
           echo "made=true" >> "$GITHUB_OUTPUT"
       # Retention: pages.yml reads the newest of this family at the next
       # deploy, and this workflow runs only when dispatched, so the gap can be

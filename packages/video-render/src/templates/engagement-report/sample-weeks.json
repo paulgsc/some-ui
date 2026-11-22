@@ -314,12 +314,30 @@
         "pipeline": "jobs",
         "affordance": "todays-pick",
         "surface": "apk",
+        "place": "ending",
+        "left": 11,
+        "movedOn": 0,
+        "medianMs": 30000,
+        "nexts": [
+          { "next": "apply", "left": 1 },
+          { "next": "today.today", "left": 5 }
+        ]
+      },
+      {
+        "pipeline": "jobs",
+        "affordance": "todays-pick",
+        "surface": "apk",
         "place": "read",
         "left": 20,
-        "movedOn": 14,
-        "medianMs": 41000
+        "movedOn": 9,
+        "medianMs": 41000,
+        "nexts": [
+          { "next": "decide", "left": 9 },
+          { "next": "today.today", "left": 5 }
+        ]
       }
     ],
+    "nextsBefore": ["apk"],
     "partial": false,
     "debrief": {
       "said": 3,

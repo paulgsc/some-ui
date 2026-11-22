@@ -228,10 +228,10 @@ describe("the walkthrough (WALK4)", () => {
       return lines.slice(jobs.fill.chapters[i - 1]?.narration.length)
     }
     expect(extra(1)).toEqual([
-      "In the last four weeks, I spent time on this step 20 times and moved on from it 14 times; a stretch here runs about 41 seconds.",
+      "In the last four weeks, I spent time on this step 20 times, moved on from it 9 times and left it from this step 5 times; a stretch here runs about 41 seconds.",
     ])
     expect(extra(2)).toEqual([
-      "In the last four weeks, I spent time on this step 7 times and moved on from it fewer than 5 times; a stretch here runs about 2 minutes.",
+      "In the last four weeks, I spent time on this step 7 times; a stretch here runs about 2 minutes.",
       "I rated how hard applying felt fewer than 5 times in these four weeks.",
     ])
     expect(extra(4)).toEqual([
@@ -243,7 +243,7 @@ describe("the walkthrough (WALK4)", () => {
       return picture?.kind === "composition" ? picture.variables.notes : null
     }
     expect(card("chapter-1")).toBe(
-      "Last 4 weeks|Here 20 times|Moved on 14 times|About 41 s a stretch"
+      "Last 4 weeks|Here 20 times|Moved on 9 times|Left from here 5 times|About 41 s a stretch"
     )
     // Without home's aggregate, nothing is measured and there's no silence card.
     const bare = walkthroughCutList(jobs, walkOf(15))
@@ -254,6 +254,22 @@ describe("the walkthrough (WALK4)", () => {
     })
   })
 
+  it("says a step was left at its last step where home counted it", () => {
+    const counts = {
+      pipeline: "jobs",
+      affordance: "todays-pick",
+      place: "ending",
+      stretchesLeft: 11 as const,
+      movedOn: "no-data" as const,
+      finished: 5 as const,
+      leftPartWay: "no-data" as const,
+      medianMs: null,
+    }
+    expect(measureSaid([{ kind: "place", counts }])).toEqual([
+      "In the last four weeks, I spent time on this step 11 times and left it at its last step 5 times.",
+    ])
+  })
+
   it("says a step home couldn't count whole as not counted, never as nothing kept or as used a lot", () => {
     const counts = {
       pipeline: "jobs",
@@ -261,6 +277,8 @@ describe("the walkthrough (WALK4)", () => {
       place: "read",
       stretchesLeft: "no-data" as const,
       movedOn: "no-data" as const,
+      finished: "no-data" as const,
+      leftPartWay: "no-data" as const,
       medianMs: null,
     }
     expect(measureSaid([{ kind: "place", counts }], true)).toEqual([

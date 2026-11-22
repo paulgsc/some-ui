@@ -273,7 +273,7 @@ function readSite(): RenderedSite {
   const file = resolve(import.meta.dirname, SITE_FILE)
   if (!fs.existsSync(file)) {
     throw new Error(
-      `The Pages build needs the rendered site (${SITE_FILE}): node render-public-site.ts, which the www build runs first.`
+      `The Pages build needs the rendered site (${SITE_FILE}): tsx render-public-site.ts, which the www build runs first.`
     )
   }
   const parsed: unknown = JSON.parse(fs.readFileSync(file, "utf8"))

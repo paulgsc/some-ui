@@ -1,0 +1,20 @@
+{
+  "id": "C1067",
+  "made": "2026-11-22",
+  "by": "owner",
+  "paths": [
+    "some-ui:packages/engagement/src/lib/events.ts",
+    "some-ui:packages/engagement/src/lib/places.ts",
+    "server:crates/db/app_event/src/model.rs",
+    "server:crates/db/app_event/src/friction.rs"
+  ],
+  "chose": "The owner answered ask #3367 on 2026-11-22: \"the answer is yes.\" That is its recommended option: the app's own engagement event gains the id of the screen it opens next, ids only, kept on the phone and on home like the rest of the record, so a walkthrough can say whether a step was finished or left part-way. Taps per step stay for later, until a walkthrough shows they're needed.",
+  "options": [
+    "yes, note the screen it opens; leave taps per step for later (chosen)",
+    "yes, both the screen and taps per step",
+    "no, keep it as it is"
+  ],
+  "gray": "It records more about how the owner uses the app, which is the owner's call under C861, even though it stays on the phone and home.",
+  "undo": "Record a call that moves this one, stop the phone sending `next`, and drop finished and left part-way from the friction aggregate; the events already kept stay (append-only).",
+  "refs": ["#3367", "#3337", "#3282"]
+}

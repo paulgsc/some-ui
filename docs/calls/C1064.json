@@ -1,0 +1,16 @@
+{
+  "id": "C1064",
+  "made": "2026-11-22",
+  "by": "owner",
+  "paths": [
+    "apps/www/src/landing",
+    "apps/www/landing/index.html",
+    "apps/www/render-public-site.ts",
+    ".github/workflows/site-assets.yml",
+    ".github/workflows/snips-capture.yml"
+  ],
+  "chose": "Each project card on the landing is its clip playing silently behind the card's own words: the clip has no sound track (the producers drop it, and a clip that still carries one is not shown), plays itself muted on a loop with no controls, takes no pointer and no screen reader, and fills its card wholly, the card taking the clip's own shape from its file so nothing is cropped or padded at any width. The card's title and lines sit over it on a scrim, with a light entrance that one class removes; a reader who prefers less motion sees the card's placeholder and no entrance. The stills are laid out the same way. The owner (2026-11-22): \"right now you make it so that it's actually a video, you should change that. Effectively, it is a video format, but the layout is supposed to basically be in the background, meaning it's not interactive … it's just in the background, meaning it's part of the CSS.\" Then: \"there shouldn't be any audio. This should be purely a video player that just automatically plays in the background. There should also be a HTML overlay over it. So it's not an interactive video at all.\" And: \"it should be responsive for the layout and completely cover the viewpoint … if it's a vertical, there shouldn't be a situation where … within the container it only covers like some k% of the height or the width. It should be the perfect aspect ratio. Effectively, it is part of the CSS HTML layout, and maybe there should also be like a copy on top of it that has some CSS effect and animation, but I'm not sure.\"",
+  "undo": "Give the clip's <video> its controls again and move the card's words back under the picture in apps/www/src/landing/render.ts and landing/index.html; drop the producers' -an step.",
+  "refs": ["#3401"],
+  "moves": "C1061"
+}

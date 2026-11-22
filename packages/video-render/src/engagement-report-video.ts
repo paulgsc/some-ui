@@ -216,8 +216,14 @@ export const HomeWeeksSchema = z.object({
           left: count,
           movedOn: count,
           medianMs: count.nullable(),
+          /** The lefts that said the screen they went to, per screen (#3367); absent from a read before it. */
+          nexts: z
+            .array(z.object({ next: z.string(), left: count }))
+            .optional(),
         })
       ),
+      /** The surfaces on which a `left` that said where it went was made by the window's start (#3367). */
+      nextsBefore: z.array(z.string()).optional(),
       partial: z.boolean(),
       debrief: z.object({
         said: count,

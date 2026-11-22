@@ -1,0 +1,13 @@
+{
+  "id": "C1066",
+  "made": "2026-11-22",
+  "by": "owner",
+  "paths": [
+    "apps/www/src/landing/mochi.ts",
+    "packages/some-styles/src/brand/cast.ts",
+    "packages/video-render/src/thumbnail.ts"
+  ],
+  "chose": "The landing's photo slot holds the cast's mochi, the very drawing the videos' thumbnails show for \"+ me\", from its one home in @some-ui/styles (characterSvg), which the thumbnails now draw through too, byte for byte as before. The owner (2026-11-22): \"the SVG icon that stands in for my face, remember, was supposed to be the mochi\", and \"the same code drawing as the one that's used in the thumbnails and throughout else, so part of the branding. So it's not something new. It's the same thing.\"",
+  "undo": "Draw the photo slot with markSvg from @some-ui/styles/brand/mark again in apps/www/src/landing/mochi.ts.",
+  "refs": ["#3401"]
+}

@@ -5,15 +5,20 @@
  * exactly what Pages serves. vite.config.ts writes it into
  * `landing/index.html`, the Pages build's `index.html`.
  *
- * The page carries no script. Its pictures are slots, each named by the
- * build-time asset it holds (`data-asset`). A slot whose asset is in the
- * build (`media`; output.ts, `SITE_MEDIA_DIR`) shows it: a clip plays muted
- * on a loop, a still is an image. Otherwise it draws a placeholder in CSS: a
- * title card for a clip, a labelled drawing for a gap, and the mochi, drawn
- * from the brand cast (`mochiSvg`), for the photo.
+ * The page carries no script. Its project and gap cards are each a picture
+ * with the card's own words laid over it (C1064): the picture is the card's
+ * background, not something to watch or work, and takes the card's shape
+ * from its own size, so it fills the card with nothing cropped or padded.
+ * Every card draws a placeholder in CSS under its picture, a ground for a
+ * clip and a labelled drawing for a gap; a slot whose asset is in the build
+ * (`media`; output.ts, `SITE_MEDIA_DIR`) lays its clip, playing muted on a
+ * loop, or its still over it. A reader who prefers less motion sees the
+ * placeholder (landing/index.html). The photo slot holds the mochi, the
+ * brand cast's own drawing (`mochiSvg`), until the owner's photo is bundled.
  */
 import type { ResumeData } from "@some-ui/resume"
 
+import type { MediaSize } from "./media.ts"
 import { MEDIA_PATH, SITE_BASE, SITE_URL } from "./output.ts"
 import type { GapWords, LandingWords, ProjectWords } from "./words.ts"
 import { LANDING_WORDS } from "./words.ts"
@@ -37,22 +42,59 @@ const link = (label: string, href: string): string =>
 /** Where the build serves a slot's asset (vite.config.ts, `publicSite`). */
 const mediaSrc = (key: string): string => `${SITE_BASE}${MEDIA_PATH}${e(key)}`
 
-const projectCard = (p: ProjectWords, media: ReadonlySet<string>): string => `
-        <article class="card">
-          <figure class="clip" data-slot="clip" data-asset="${e(p.clip)}">
-            ${
-              media.has(p.clip)
-                ? `<video class="media" src="${mediaSrc(p.clip)}" autoplay muted loop playsinline controls preload="metadata" aria-label="${e(p.title)}"></video>`
-                : `<div class="title-card title-card--${e(p.id)}" aria-hidden="true">${e(p.title)}</div>`
-            }
-          </figure>
-          <div class="body">
-            <h3>${e(p.title)}</h3>
-            <p class="stack">${e(p.stack)}</p>
-            <p>${e(p.line)}</p>
-            <p class="links">${p.links.map((l) => link(l.label, l.href)).join("")}</p>
+/** The media the build carries, by key, each with its picture's size when it has one. */
+export type LandingMedia = ReadonlyMap<string, MediaSize | null>
+
+/** A card's shape when it has no picture of its own: its placeholder's. */
+const PLACEHOLDER: MediaSize = { width: 4, height: 3 }
+
+/**
+ * A card takes its picture's own shape (C1064): `--ar` for its aspect ratio,
+ * `--r` for the width it asks of its row, so a row of cards of different
+ * shapes shares one height and no picture is cropped or padded.
+ */
+const shape = ({ width, height }: MediaSize): string =>
+  `--ar: ${String(width)} / ${String(height)}; --r: ${(width / height).toFixed(4)}`
+
+/**
+ * A card: its picture as its background, laid over its drawn placeholder,
+ * and its own words over both, the only thing on it a reader takes in. Nothing
+ * on a card is a link or a control (C1064, C1065); the page's header links to
+ * the code.
+ */
+const card = (
+  slot: "clip" | "still",
+  key: string,
+  placeholder: string,
+  picture: string,
+  words: string,
+  size: MediaSize
+): string => `
+        <article class="card" data-slot="${slot}" data-asset="${e(key)}" style="${shape(size)}">
+          <div class="pic">
+            ${placeholder}${picture}
+          </div>
+          <div class="overlay${slot === "still" ? " overlay--side" : ""} rise">${words}
           </div>
         </article>`
+
+const projectCard = (p: ProjectWords, media: LandingMedia): string => {
+  const size = media.get(p.clip)
+  return card(
+    "clip",
+    p.clip,
+    `<div class="ground ground--${e(p.id)}" aria-hidden="true"></div>`,
+    size === undefined || size === null
+      ? ""
+      : `
+          <video class="media" src="${mediaSrc(p.clip)}" autoplay muted loop playsinline disablepictureinpicture disableremoteplayback preload="metadata" aria-hidden="true"></video>`,
+    `
+            <h3>${e(p.title)}</h3>
+            <p class="stack">${e(p.stack)}</p>
+            <p>${e(p.line)}</p>`,
+    size ?? PLACEHOLDER
+  )
+}
 
 /** The gap's drawn visual, by gap: what the still will show, drawn. */
 const GAP_DRAWING: Readonly<Record<GapWords["id"], string>> = {
@@ -60,21 +102,25 @@ const GAP_DRAWING: Readonly<Record<GapWords["id"], string>> = {
   cores: `<div class="drawing drawing--cores" aria-hidden="true"><svg viewBox="0 0 400 150" preserveAspectRatio="none"><path d="M0 22 H400" class="cores-line"/><path d="M0 110 C40 90 70 50 110 46 S180 30 220 60 S300 28 340 38 S380 30 400 34 V150 H0Z" class="busy"/><path d="M0 146 C50 142 90 128 120 130 S200 112 240 126 S320 108 360 118 S390 112 400 114 V150 H0Z" class="waiting"/></svg></div>`,
 }
 
-const gapCard = (g: GapWords, media: ReadonlySet<string>): string => `
-        <article class="card">
-          <figure class="clip" data-slot="still" data-asset="${e(g.visual)}">
-            ${
-              media.has(g.visual)
-                ? `<img class="media" src="${mediaSrc(g.visual)}" alt="${e(g.title)}" />`
-                : `${GAP_DRAWING[g.id]}
-            <figcaption class="note">${e(g.visualNote)}</figcaption>`
-            }
-          </figure>
-          <div class="body">
+const gapCard = (g: GapWords, media: LandingMedia): string => {
+  const size = media.get(g.visual)
+  const shown = size !== undefined && size !== null
+  return card(
+    "still",
+    g.visual,
+    shown
+      ? ""
+      : `${GAP_DRAWING[g.id]}
+          <p class="note">${e(g.visualNote)}</p>`,
+    shown
+      ? `<img class="media" src="${mediaSrc(g.visual)}" alt="" aria-hidden="true" />`
+      : "",
+    `
             <h3>${e(g.title)}</h3>
-            <p>${e(g.line)}</p>
-          </div>
-        </article>`
+            <p>${e(g.line)}</p>`,
+    size ?? PLACEHOLDER
+  )
+}
 
 /** The photo slot's asset: the owner's portrait, once one is bundled. */
 export const PHOTO = "photo/portrait.webp"
@@ -113,7 +159,7 @@ export function renderLanding(
   resume: ResumeData,
   mochiSvg: string,
   words: LandingWords = LANDING_WORDS,
-  media: ReadonlySet<string> = new Set()
+  media: LandingMedia = new Map()
 ): string {
   const { profile } = resume
   const where = profile.location === null ? "" : ` · ${profile.location}`
@@ -174,6 +220,6 @@ export function renderLanding(
           ${education}
         </section>
       </div>
-      <footer>${e(words.footerKeeps)} ${link(words.footerSource, words.sourceHref)}</footer>
+      <footer>${e(words.footerKeeps)}</footer>
     </main>`
 }

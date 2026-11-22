@@ -9,7 +9,8 @@
  * Aggregates only, under the engagement report's public-safety rule (ask
  * #2701): every count is a `PublicCount`, "fewer than 5" below `UNDER`, a
  * count whose complement beside an exact figure would be under 5 is unsaid
- * (opened days beside `of`, C938; moved on beside the stretches), a median
+ * (opened days beside `of`, C938; moved on, left at the end and left from
+ * a step beside the stretches, together, a "fewer than 5" taken as 4), a median
  * is said only over 5 values or more, and nothing here names a pass
  * reason, a chip, a company, a role or any content. A module home can't
  * tell the opening of is `not-measured`, never silent.
@@ -18,8 +19,11 @@
  * `app_event::friction`), and so what this says: a stretch on a place ends
  * when it is left, so the app going to the back splits a step in two;
  * `movedOn` counts the stretches followed at once by a step on (or back, or
- * to the next item), and at an affordance's last place finishing and
- * leaving look the same, so there it is `no-data`.
+ * to the next item), and at an affordance's last place it is `no-data`.
+ * `finished` and `leftPartWay`, at a flow's places, are the stretches that
+ * went to a screen outside the affordance; `no-data` unless home's
+ * `nextsBefore` names the affordance's surface, so a build before `next`
+ * never leaves a count short that reads as whole (C1069).
  */
 
 import { addDays, isoWeekMonday } from "@some-ui/core-utils"
@@ -31,7 +35,7 @@ import { CountSchema, publicCount, UNDER } from "./engagement-report"
 import type { PublicCount } from "./engagement-report"
 import { HomeWeeksSchema } from "./engagement-report-video"
 
-export const FRICTION_SCHEMA = "some-ui.friction/2"
+export const FRICTION_SCHEMA = "some-ui.friction/3"
 
 /**
  * The days an aggregate looks back over: four weeks (C861, which allows
@@ -76,6 +80,10 @@ export const FrictionSchema = z.strictObject({
       stretchesLeft: CountSchema,
       /** Of those, the ones followed at once by a step on; `no-data` at the last place. */
       movedOn: CountSchema,
+      /** At a place its flow ends at, the stretches on it that went to a screen outside the affordance (a done pick opened again and closed counts too); `no-data` at any other place, or before every build said where it went. */
+      finished: CountSchema,
+      /** The same, at a place its flow is left part-way at. */
+      leftPartWay: CountSchema,
       /** A stretch's median time on it, in ms; null under 5 stretches. */
       medianMs: z.int().min(0).nullable(),
     })
@@ -131,9 +139,40 @@ export type FrictionRegistry = ReadonlyArray<{
     readonly surface: string
     readonly offer: string | null
     readonly places?: ReadonlyArray<{ readonly id: string }>
+    readonly flow?: {
+      readonly finishedAt: ReadonlyArray<string>
+      readonly partWayAt: ReadonlyArray<string>
+    }
     readonly retired?: true
   }>
 }>
+
+type Three = readonly [PublicCount, PublicCount, PublicCount]
+
+/**
+ * Three counts of some of `whole`'s stretches, as said beside it: each
+ * kept in order while what the kept ones leave of `whole` is 5 or more, and
+ * `no-data` for each that would leave less (ask #2701): a later, smaller one
+ * may still be said. A part said as
+ * "fewer than 5" may be as many as 4, so it is taken as 4. They may
+ * overlap, so what they leave may be more than this assumes: never less.
+ * A `whole` that is not a number leaves each part as it is: none can be
+ * more than it.
+ */
+function beside(whole: PublicCount, [a, b, c]: Three): Three {
+  let left = typeof whole === "number" ? whole : null
+  const said = (part: PublicCount): PublicCount => {
+    if (left === null || part === "no-data") return part
+    const most = typeof part === "number" ? part : UNDER - 1
+    if (left - most < UNDER) return "no-data"
+    left -= most
+    return part
+  }
+  // In order: each call keeps what the one before it left.
+  const first = said(a)
+  const second = said(b)
+  return [first, second, said(c)]
+}
 
 /** Whole days from `from` to `to`, two owner's days. */
 const daysFrom = (from: string, to: string): number =>
@@ -245,6 +284,7 @@ export function frictionOf(
         const wasSeen =
           measures.measuredDays > 0 &&
           seen.has(keyOf(pipeline.id, a.id, a.surface))
+        const inside = new Set(own.map((p) => p.id))
         return own.map((place, i): Friction["places"][number] => {
           const row = places.get(keyOf(pipeline.id, a.id, a.surface, place.id))
           const isLast = i === own.length - 1
@@ -252,18 +292,26 @@ export function frictionOf(
             measures.partial || !wasSeen ? noData : publicCount(n)
           const left = counts(row?.left ?? 0)
           const moved = isLast ? noData : counts(row?.movedOn ?? 0)
-          // Said beside the stretches, a moved-on count would give away
-          // the stretches not moved on from, under 5 (ask #2701).
-          const hides =
-            typeof left === "number" &&
-            typeof moved === "number" &&
-            left - moved < UNDER
+          const whole = measures.nextsBefore?.includes(a.surface) === true
+          const out = (row?.nexts ?? [])
+            .filter((n) => !inside.has(n.next))
+            .reduce((sum, n) => sum + n.left, 0)
+          const went = whole ? counts(out) : noData
+          const finished = a.flow?.finishedAt.includes(place.id) ? went : noData
+          const partWay = a.flow?.partWayAt.includes(place.id) ? went : noData
+          const [shownMoved, shownFinished, shownPartWay] = beside(left, [
+            moved,
+            finished,
+            partWay,
+          ])
           return {
             pipeline: pipeline.id,
             affordance: a.id,
             place: place.id,
             stretchesLeft: left,
-            movedOn: hides ? noData : moved,
+            movedOn: shownMoved,
+            finished: shownFinished,
+            leftPartWay: shownPartWay,
             medianMs: typeof left === "number" ? (row?.medianMs ?? null) : null,
           }
         })
