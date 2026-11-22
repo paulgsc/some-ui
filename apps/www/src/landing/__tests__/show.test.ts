@@ -9,26 +9,19 @@ import type { Show, WalkthroughCopy } from "@/landing/show"
 import {
   faceKey,
   facesToMake,
-  isWalkthroughCopy,
-  publicEpisodes,
   resolveShow,
   SHOW,
   SHOW_SCHEMA,
+  showFor,
+  WALKTHROUGH_FILES,
 } from "@/landing/show"
 import { describe, expect, it } from "vitest"
 
-/** A walkthrough's copy from its file in the repo. */
-function walkthroughAt(path: string): WalkthroughCopy {
-  const read: unknown = JSON.parse(
+/** A file in the repo, parsed, as the build reads a walkthrough. */
+const repoRead = (path: string): unknown =>
+  JSON.parse(
     readFileSync(join(import.meta.dirname, "../../../../..", path), "utf8")
   )
-  const fill =
-    typeof read === "object" && read !== null && "fill" in read
-      ? read.fill
-      : undefined
-  if (!isWalkthroughCopy(fill)) throw new Error(`${path} is not a walkthrough`)
-  return fill
-}
 
 const WALK: WalkthroughCopy = {
   captions: ["One|two", "Three", "Four", "Five"],
@@ -151,24 +144,92 @@ describe("resolveShow", () => {
 })
 
 describe("the landing's own show", () => {
-  const resolved = resolveShow(SHOW, {
-    jobs: walkthroughAt("apps/www/tests/walk/jobs-walkthrough.json"),
-    "home-server": walkthroughAt(
-      "packages/video-motion/walks/home-server.json"
-    ),
-  })
-
-  it("resolves against the walkthroughs in the repo", () => {
-    expect(resolved.ok ? [] : resolved.problems).toEqual([])
+  it("resolves against the walkthroughs the build reads", () => {
+    const show = showFor(SHOW, repoRead, true)
+    expect(show.ok ? [] : show.problems).toEqual([])
   })
 
   it("leaves the owner's unread scenes off the public site, and shows them in a preview", () => {
-    if (!resolved.ok) throw new Error("unresolved")
-    const shown = publicEpisodes(resolved.episodes, false)
-    expect(shown.flatMap((e) => e.scenes).some((s) => s.draft)).toBe(false)
+    const pages = showFor(SHOW, repoRead, false)
+    const preview = showFor(SHOW, repoRead, true)
+    if (!pages.ok || !preview.ok) throw new Error("unresolved")
+    expect(pages.episodes.flatMap((e) => e.scenes).some((s) => s.draft)).toBe(
+      false
+    )
     // The extensions' scenes are all drafts, so the episode waits whole.
-    expect(shown.map((e) => e.id)).toEqual(["android", "server"])
-    expect(publicEpisodes(resolved.episodes, true)).toBe(resolved.episodes)
+    expect(pages.episodes.map((e) => e.id)).toEqual(["android", "server"])
+    expect(preview.episodes.map((e) => e.id)).toEqual([
+      "extensions",
+      "android",
+      "server",
+    ])
+    expect(pages.drafts).toBe(3)
+  })
+})
+
+describe("showFor", () => {
+  const reads =
+    (fill: unknown) =>
+    (path: string): unknown =>
+      path === WALKTHROUGH_FILES.jobs ? { fill } : { fill: WALK }
+
+  it("refuses a walkthrough that doesn't give the landing its words", () => {
+    for (const fill of [
+      { chapters: [], captions: [1] },
+      { chapters: [{ title: "x", from: 0 }], captions: [] },
+      null,
+    ]) {
+      const show = showFor(
+        showOf([{ copy: { chapter: 0 }, faces: [{ snip: 1 }, { snip: 2 }] }]),
+        reads(fill),
+        false
+      )
+      expect(show.ok ? [] : show.problems).toEqual([
+        `${WALKTHROUGH_FILES.jobs} is not a walkthrough's words`,
+      ])
+    }
+  })
+
+  it("refuses a public site left with one episode once drafts are out", () => {
+    const own = {
+      copy: { title: "Mine", narration: ["Words."], draft: true },
+      faces: [
+        { media: "stills/a.png", label: "A" },
+        { media: "stills/b.png", label: "B" },
+      ],
+    } as const
+    const show: Show = {
+      schema: SHOW_SCHEMA,
+      episodes: [
+        {
+          id: "extensions",
+          kicker: "K",
+          title: "T",
+          walkthrough: null,
+          scenes: [own],
+        },
+        ...showOf([
+          { copy: { chapter: 0 }, faces: [{ snip: 1 }, { snip: 2 }] },
+        ]).episodes.slice(0, 1),
+      ],
+    }
+    expect(showFor(show, reads(WALK), true).ok).toBe(true)
+    const pages = showFor(show, reads(WALK), false)
+    expect(pages.ok ? [] : pages.problems).toEqual([
+      "fewer than two episodes are left to show once drafts are",
+    ])
+    // Agreed, it shows.
+    const agreed: Show = {
+      ...show,
+      episodes: [
+        {
+          ...show.episodes[0],
+          scenes: [{ ...own, copy: { ...own.copy, draft: false } }],
+        },
+        ...show.episodes.slice(1),
+      ],
+    }
+    expect(showFor(agreed, reads(WALK), false).ok).toBe(true)
   })
 })
 
@@ -200,16 +261,5 @@ describe("faceKey and facesToMake", () => {
     ])
     // The server's stills come from home (the mailbox), not a producer here.
     expect(facesToMake(SHOW, "server").cuts).toEqual([])
-  })
-})
-
-describe("isWalkthroughCopy", () => {
-  it("takes a walkthrough's fill and refuses anything else", () => {
-    expect(isWalkthroughCopy(WALK)).toBe(true)
-    expect(isWalkthroughCopy({ chapters: [], captions: [1] })).toBe(false)
-    expect(
-      isWalkthroughCopy({ chapters: [{ title: "x", from: 0 }], captions: [] })
-    ).toBe(false)
-    expect(isWalkthroughCopy(null)).toBe(false)
   })
 })

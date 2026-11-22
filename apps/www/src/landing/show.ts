@@ -32,7 +32,7 @@ export type WalkthroughCopy = {
 }
 
 /** Whether `value` holds a walkthrough's chapters and captions, as the landing reads them. */
-export function isWalkthroughCopy(value: unknown): value is WalkthroughCopy {
+function isWalkthroughCopy(value: unknown): value is WalkthroughCopy {
   if (typeof value !== "object" || value === null) return false
   if (!("chapters" in value) || !("captions" in value)) return false
   const { chapters, captions } = value
@@ -72,8 +72,11 @@ type SceneCopy =
   | {
       readonly title: string
       readonly narration: ReadonlyArray<string>
-      /** Drafted for the owner to read; not yet agreed. */
-      readonly draft: true
+      /**
+       * Drafted for the owner to read: shown only in a preview on their
+       * machine until they agree it, when this turns false (C1181).
+       */
+      readonly draft: boolean
     }
 
 type Scene = {
@@ -296,7 +299,7 @@ export function resolveShow(
       return {
         title: oneLine(title),
         narration,
-        draft: !("chapter" in scene.copy),
+        draft: "chapter" in scene.copy ? false : scene.copy.draft,
         faces: [face(scene.faces[0]), face(scene.faces[1])],
       }
     })
@@ -317,7 +320,7 @@ export function resolveShow(
  * A preview on the owner's machine shows them (`preview:pages`), so the
  * owner reads them where they will appear; a draft never reaches Pages.
  */
-export function publicEpisodes(
+function publicEpisodes(
   episodes: ReadonlyArray<ResolvedEpisode>,
   withDrafts: boolean
 ): ReadonlyArray<ResolvedEpisode> {
@@ -326,6 +329,65 @@ export function publicEpisodes(
     const scenes = episode.scenes.filter((scene) => !scene.draft)
     return scenes.length === 0 ? [] : [{ ...episode, scenes }]
   })
+}
+
+/** Each walkthrough the show reads, by app, as a path from the repository's root. */
+export const WALKTHROUGH_FILES = {
+  jobs: "apps/www/tests/walk/jobs-walkthrough.json",
+  "home-server": "packages/video-motion/walks/home-server.json",
+} as const satisfies Readonly<Record<"jobs" | "home-server", string>>
+
+/**
+ * The show as a build gives it: each walkthrough read through `read` (a
+ * path from `WALKTHROUGH_FILES` to its parsed JSON) and checked for the
+ * fields the landing reads (its `fill`; the walkthrough's own schema,
+ * `@some-ui/video-motion`, holds the rest where the video is made), the
+ * show resolved against them, and its drafts left out unless `withDrafts`.
+ * Refused when a walkthrough isn't one, the show doesn't resolve, or fewer
+ * than two episodes are left to show.
+ */
+export function showFor(
+  show: Show,
+  read: (path: string) => unknown,
+  withDrafts: boolean
+):
+  | {
+      readonly ok: true
+      readonly episodes: ReadonlyArray<ResolvedEpisode>
+      /** The draft scenes the show has, shown or not. */
+      readonly drafts: number
+    }
+  | { readonly ok: false; readonly problems: ReadonlyArray<string> } {
+  const words = (path: string): WalkthroughCopy | string => {
+    const json = read(path)
+    const fill =
+      typeof json === "object" && json !== null && "fill" in json
+        ? json.fill
+        : undefined
+    return isWalkthroughCopy(fill)
+      ? fill
+      : `${path} is not a walkthrough's words`
+  }
+  const jobs = words(WALKTHROUGH_FILES.jobs)
+  const home = words(WALKTHROUGH_FILES["home-server"])
+  if (typeof jobs === "string" || typeof home === "string")
+    return {
+      ok: false,
+      problems: [jobs, home].filter((w) => typeof w === "string"),
+    }
+  const resolved = resolveShow(show, { jobs, "home-server": home })
+  if (!resolved.ok) return resolved
+  const episodes = publicEpisodes(resolved.episodes, withDrafts)
+  if (episodes.length < 2)
+    return {
+      ok: false,
+      problems: ["fewer than two episodes are left to show once drafts are"],
+    }
+  const drafts = resolved.episodes.reduce(
+    (n, e) => n + e.scenes.filter((scene) => scene.draft).length,
+    0
+  )
+  return { ok: true, episodes, drafts }
 }
 
 /** Every asset key the show names, once each. */

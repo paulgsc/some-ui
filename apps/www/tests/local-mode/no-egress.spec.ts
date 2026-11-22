@@ -19,12 +19,32 @@
  * policy is shown to block a real request.
  */
 
-import { SHOW } from "@/landing/show"
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
+import type { ResolvedEpisode } from "@/landing/show"
+import { SHOW, showFor } from "@/landing/show"
 import { expect, test } from "@playwright/test"
 import type { BrowserContext, Page } from "@playwright/test"
 
-import { builtApp, FILE_HOST_PORT, serveBuild, startFileHost } from "./harness"
+import {
+  builtApp,
+  FILE_HOST_PORT,
+  REPO_ROOT,
+  serveBuild,
+  startFileHost,
+} from "./harness"
 import type { BuildName, Listening, Received } from "./harness"
+
+/** The episodes Pages shows, as its build works them out (`showFor`). */
+function shownEpisodes(): ReadonlyArray<ResolvedEpisode> {
+  const show = showFor(
+    SHOW,
+    (path): unknown => JSON.parse(readFileSync(join(REPO_ROOT, path), "utf8")),
+    false
+  )
+  if (!show.ok) throw new Error(show.problems.join("; "))
+  return show.episodes
+}
 
 /** Every route a learner on the device can open without an account. */
 const LOCAL_ROUTES = [
@@ -324,12 +344,9 @@ test.describe("the Pages build", () => {
     // Built with none of its media (C1059): every slot draws its
     // placeholder, and the build did not fail for want of one.
     await expect(page.locator("article[data-slot] .media")).toHaveCount(0)
-    // Every face of the show draws its title card (C1113). Pages shows no
-    // scene the owner hasn't read (C1181): only those with a chapter.
-    const shown = SHOW.episodes
-      .map((e) => e.scenes.filter((s) => "chapter" in s.copy).length)
-      .filter((n) => n > 0)
-    const faces = shown.reduce((n, scenes) => n + scenes * 2, 0)
+    // Every face of the show draws its title card (C1113), and only the
+    // scenes Pages shows: none the owner hasn't read (C1181).
+    const faces = shownEpisodes().reduce((n, e) => n + e.scenes.length * 2, 0)
     await expect(
       page.locator(".stage .face[data-asset] .title-card")
     ).toHaveCount(faces)
@@ -366,9 +383,7 @@ test.describe("the Pages build", () => {
     // episode is read out once, by the copy block, and every track runs
     // over the same cycle.
     await page.setViewportSize({ width: 1280, height: 800 })
-    for (const episode of SHOW.episodes.filter((e) =>
-      e.scenes.some((s) => "chapter" in s.copy)
-    ))
+    for (const episode of shownEpisodes())
       await expect(
         page.getByRole("heading", { level: 3, name: episode.title })
       ).toHaveCount(1)
@@ -380,7 +395,7 @@ test.describe("the Pages build", () => {
         )
         .map((a) => a.effect?.getTiming().duration)
     )
-    expect(durations.length).toBeGreaterThan(shown.length * 3)
+    expect(durations.length).toBeGreaterThan(shownEpisodes().length * 3)
     expect(new Set(durations).size).toBe(1)
     // For a reader who prefers less motion nothing turns, types or breathes.
     await page.emulateMedia({ reducedMotion: "reduce" })

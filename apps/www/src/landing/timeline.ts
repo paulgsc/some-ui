@@ -222,12 +222,14 @@ export function showTimeline(
     }
     const cubes: readonly [Track, Track] = [cube(), cube()]
     const scenes = e.scenes.map((s, i): SceneTracks => {
-      // The last scene's copy stays until the copy block has turned it
-      // edge-on to the reader, so the turning face is never blank: the last
-      // episode's, into the turn that begins the cycle again.
+      // The last scene's copy stays through the copy block's whole turn,
+      // which leaves its face turned away (120 degrees or more), so its
+      // hidden back takes it out of sight however many faces the ring has:
+      // the turning face is never blank. The last episode's, through the
+      // turn that begins the cycle again.
       const isLastScene = i === e.scenes.length - 1
       const wraps = isLast && isLastScene
-      const following = e.scenes.at(i + 1)?.start ?? e.end + gone
+      const following = e.scenes.at(i + 1)?.start ?? e.end + EPISODE_TURN_S
       const blockName = name()
       const titleName = name()
       const scene = episodes.at(k)?.scenes.at(i)
@@ -257,7 +259,7 @@ export function showTimeline(
             ...(wraps
               ? [
                   { at: 0, css: SHOWN },
-                  { at: gone, css: HIDDEN },
+                  { at: EPISODE_TURN_S, css: HIDDEN },
                 ]
               : [{ at: 0, css: HIDDEN }]),
             { at: s.start, css: SHOWN },

@@ -36,13 +36,7 @@ import {
   renderLanding,
   renderLandingHead,
 } from "./src/landing/render.ts"
-import type { WalkthroughCopy } from "./src/landing/show.ts"
-import {
-  isWalkthroughCopy,
-  publicEpisodes,
-  resolveShow,
-  SHOW,
-} from "./src/landing/show.ts"
+import { SHOW, showFor } from "./src/landing/show.ts"
 import type { ResumeComposition } from "./src/lib/resume-files.ts"
 import {
   DEFAULT_RESUME_COMPOSITION,
@@ -88,46 +82,21 @@ function mediaFor(key: string): MediaSize | null | undefined {
   return undefined
 }
 
-/**
- * A walkthrough's chapters and captions (`some-ui.walkthrough/1`), read from
- * its file for the show's copy (C1181). Only the fields the landing reads are
- * checked here; the walkthrough's own schema (`@some-ui/video-motion`) holds
- * the rest where the video is made.
- */
-function walkthroughCopy(path: string): WalkthroughCopy {
-  const read: unknown = JSON.parse(
-    readFileSync(resolve(import.meta.dirname, path), "utf8")
-  )
-  const fill =
-    typeof read === "object" && read !== null && "fill" in read
-      ? read.fill
-      : undefined
-  if (!isWalkthroughCopy(fill)) {
-    throw new Error(`${path} is not a walkthrough's words`)
-  }
-  return fill
-}
-
-const resolved = resolveShow(SHOW, {
-  jobs: walkthroughCopy("tests/walk/jobs-walkthrough.json"),
-  "home-server": walkthroughCopy(
-    "../../packages/video-motion/walks/home-server.json"
-  ),
-})
-if (!resolved.ok) {
-  throw new Error(`the landing's show: ${resolved.problems.join("; ")}`)
-}
 // Scenes the owner hasn't read yet show only in a preview on their machine
-// (preview-pages.sh sets SITE_SHOW_DRAFTS); Pages never shows them.
+// (preview-pages.sh sets SITE_SHOW_DRAFTS); Pages never shows them (C1181).
 const withDrafts = process.env["SITE_SHOW_DRAFTS"] === "1"
-const episodes = publicEpisodes(resolved.episodes, withDrafts)
-if (episodes.length < 2) {
-  throw new Error("the landing's show has fewer than two episodes to show")
-}
-const drafts = resolved.episodes.reduce(
-  (n, e) => n + e.scenes.filter((s) => s.draft).length,
-  0
+const show = showFor(
+  SHOW,
+  (path): unknown =>
+    JSON.parse(
+      readFileSync(resolve(import.meta.dirname, "../..", path), "utf8")
+    ),
+  withDrafts
 )
+if (!show.ok) {
+  throw new Error(`the landing's show: ${show.problems.join("; ")}`)
+}
+const { episodes, drafts } = show
 if (drafts > 0) {
   process.stdout.write(
     withDrafts

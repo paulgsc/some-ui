@@ -117,16 +117,39 @@ describe("showTimeline", () => {
         expect(f.css).toMatch(/animation-timing-function: [^;]+;$/)
   })
 
-  it("fades the last episode's pair as the cycle wraps, its copy still shown into the turn", () => {
+  it("keeps each episode's last copy shown through the copy block's whole turn", () => {
+    // A ring of three or more faces turns a face edge-on only near its
+    // turn's end, so the copy holds until the turn is done, and the face's
+    // hidden back takes it away.
+    for (const [k, e] of timeline.episodes.entries()) {
+      const block = frames(e.scenes[1].block.keyframes)
+      const shownAt = pct(EPISODE_TURN_S + scene + k * episode)
+      const shown = block.find((f) => f.at === shownAt)
+      expect(shown?.css, `episode ${String(k)}`).toContain("opacity: 1")
+      if (k < 2) {
+        // Hidden only as the next episode's first scene shows.
+        const hidden = block.at(-2)
+        expect(hidden?.at).toBe(pct((k + 1) * episode + EPISODE_TURN_S))
+        expect(hidden?.css).toContain("opacity: 0")
+      } else {
+        // The last: shown to the cycle's end, and on through the turn
+        // that begins the next.
+        expect(block.at(-1)).toMatchObject({ at: 100 })
+        expect(block.at(-1)?.css).toContain("opacity: 1")
+        expect(block[0].css).toContain("opacity: 1")
+        expect(block[1]).toMatchObject({ at: pct(EPISODE_TURN_S) })
+        expect(block[1].css).toContain("opacity: 0")
+      }
+    }
+  })
+
+  it("fades the last episode's pair as the cycle wraps", () => {
     const last = timeline.episodes[2]
     const pair = frames(last.pair.keyframes)
     expect(pair[0]).toMatchObject({ at: 0 })
     expect(pair[0].css).toContain("opacity: 1")
     expect(pair[1].css).toContain("opacity: 0")
     expect(pair[1].at).toBe(pct(EPISODE_TURN_S / 2))
-    const lastBlock = frames(last.scenes[1].block.keyframes)
-    expect(lastBlock[0].css).toContain("opacity: 1")
-    expect(lastBlock[1].at).toBe(pct(EPISODE_TURN_S / 2))
     // Its cubes go back to their first face once out of view.
     for (const cube of last.cubes) {
       const back = frames(cube.keyframes).find(
@@ -146,7 +169,9 @@ describe("showTimeline over any shape", () => {
       title: "t",
       scenes: Array.from({ length: n }, (_, i) => ({
         title: `s${String(i)}`,
-        narration: ["a line", "another line"],
+        // No narration, one long line, or two short ones.
+        narration:
+          [[], ["z".repeat(400)], ["a line", "another line"]][i % 3] ?? [],
         draft: false,
         faces: [face("a"), face("b")] as const,
       })),

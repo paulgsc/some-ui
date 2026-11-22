@@ -17,7 +17,7 @@ import {
   WIDE_MOTION,
 } from "@/landing/render"
 import type { ResolvedEpisode } from "@/landing/show"
-import { isWalkthroughCopy, resolveShow, SHOW } from "@/landing/show"
+import { SHOW, showFor } from "@/landing/show"
 import { LANDING_WORDS } from "@/landing/words"
 import { resumeData } from "@some-ui/resume"
 import { MOCHI_BODY } from "@some-ui/styles/brand/mark"
@@ -25,22 +25,12 @@ import { describe, expect, it } from "vitest"
 
 const ROOT = join(import.meta.dirname, "../../../../..")
 
-/** A walkthrough's copy, read from its file in the repo. */
-const walkthrough = (path: string): ReturnType<typeof copyOf> =>
-  copyOf(JSON.parse(readFileSync(join(ROOT, path), "utf8")))
-const copyOf = (read: unknown): Parameters<typeof resolveShow>[1]["jobs"] => {
-  const fill =
-    typeof read === "object" && read !== null && "fill" in read
-      ? read.fill
-      : undefined
-  if (!isWalkthroughCopy(fill)) throw new Error("not a walkthrough")
-  return fill
-}
-
-const resolved = resolveShow(SHOW, {
-  jobs: walkthrough("apps/www/tests/walk/jobs-walkthrough.json"),
-  "home-server": walkthrough("packages/video-motion/walks/home-server.json"),
-})
+// The whole show, drafts included, as the owner's preview draws it.
+const resolved = showFor(
+  SHOW,
+  (path): unknown => JSON.parse(readFileSync(join(ROOT, path), "utf8")),
+  true
+)
 if (!resolved.ok) throw new Error(resolved.problems.join("; "))
 const EPISODES: ReadonlyArray<ResolvedEpisode> = resolved.episodes
 
