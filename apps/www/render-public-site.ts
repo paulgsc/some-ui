@@ -36,6 +36,8 @@ import {
   renderLanding,
   renderLandingHead,
 } from "./src/landing/render.ts"
+import type { WalkthroughCopy } from "./src/landing/show.ts"
+import { isWalkthroughCopy, resolveShow, SHOW } from "./src/landing/show.ts"
 import type { ResumeComposition } from "./src/lib/resume-files.ts"
 import {
   DEFAULT_RESUME_COMPOSITION,
@@ -81,8 +83,39 @@ function mediaFor(key: string): MediaSize | null | undefined {
   return undefined
 }
 
+/**
+ * A walkthrough's chapters and captions (`some-ui.walkthrough/1`), read from
+ * its file for the show's copy (C1181). Only the fields the landing reads are
+ * checked here; the walkthrough's own schema (`@some-ui/video-motion`) holds
+ * the rest where the video is made.
+ */
+function walkthroughCopy(path: string): WalkthroughCopy {
+  const read: unknown = JSON.parse(
+    readFileSync(resolve(import.meta.dirname, path), "utf8")
+  )
+  const fill =
+    typeof read === "object" && read !== null && "fill" in read
+      ? read.fill
+      : undefined
+  if (!isWalkthroughCopy(fill)) {
+    throw new Error(`${path} is not a walkthrough's words`)
+  }
+  return fill
+}
+
+const resolved = resolveShow(SHOW, {
+  jobs: walkthroughCopy("tests/walk/jobs-walkthrough.json"),
+  "home-server": walkthroughCopy(
+    "../../packages/video-motion/walks/home-server.json"
+  ),
+})
+if (!resolved.ok) {
+  throw new Error(`the landing's show: ${resolved.problems.join("; ")}`)
+}
+const episodes = resolved.episodes
+
 const media: LandingMedia = new Map(
-  landingMediaKeys().flatMap((key) => {
+  landingMediaKeys(undefined, episodes).flatMap((key) => {
     const found = mediaFor(key)
     return found === undefined ? [] : [[key, found] as const]
   })
@@ -92,8 +125,14 @@ const pages: ReadonlyArray<SitePage> = [
   {
     file: "index.html",
     template: "landing",
-    head: renderLandingHead(),
-    body: renderLanding(resumeData.fullstack, mochiSvg(), undefined, media),
+    head: renderLandingHead(undefined, episodes),
+    body: renderLanding(
+      resumeData.fullstack,
+      mochiSvg(),
+      undefined,
+      media,
+      episodes
+    ),
   },
   ...renderResumePages(versions),
   { file: "authorship/index.html", template: "authorship", head: "", body: "" },
@@ -107,5 +146,5 @@ writeFileSync(
   JSON.stringify({ pages, media: [...media.keys()] } satisfies RenderedSite)
 )
 process.stdout.write(
-  `[www] rendered the public site's ${pages.length} pages, with ${media.size} of its ${landingMediaKeys().length} media, into ${SITE_FILE}\n`
+  `[www] rendered the public site's ${pages.length} pages, with ${media.size} of its ${landingMediaKeys(undefined, episodes).length} media, into ${SITE_FILE}\n`
 )

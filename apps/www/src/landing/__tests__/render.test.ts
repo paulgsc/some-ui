@@ -1,7 +1,7 @@
 /**
  * The landing (PAGES, #3401): what the public site's front page says, read
- * from `renderLanding` on the résumé's real data, so a change to either shows
- * here.
+ * from `renderLanding` on the résumé's real data and the show resolved
+ * against its real walkthroughs, so a change to any of them shows here.
  */
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
@@ -9,32 +9,65 @@ import { mochiSvg } from "@/landing/mochi"
 import { SITE_BASE } from "@/landing/output"
 import type { LandingMedia } from "@/landing/render"
 import {
-  cubeRing,
-  CUBES,
   escapeHtml,
   landingMediaKeys,
   PHOTO,
   renderLanding,
   renderLandingHead,
-  ringCss,
-  TYPE_S,
-  typeCss,
   WIDE_MOTION,
 } from "@/landing/render"
+import type { ResolvedEpisode } from "@/landing/show"
+import { isWalkthroughCopy, resolveShow, SHOW } from "@/landing/show"
 import { LANDING_WORDS } from "@/landing/words"
 import { resumeData } from "@some-ui/resume"
 import { MOCHI_BODY } from "@some-ui/styles/brand/mark"
 import { describe, expect, it } from "vitest"
 
-const resume = resumeData.fullstack
-const page = renderLanding(resume, mochiSvg())
+const ROOT = join(import.meta.dirname, "../../../../..")
 
-/** A build given a vertical clip for the first project, the first gap's still and the photo. */
+/** A walkthrough's copy, read from its file in the repo. */
+const walkthrough = (path: string): ReturnType<typeof copyOf> =>
+  copyOf(JSON.parse(readFileSync(join(ROOT, path), "utf8")))
+const copyOf = (read: unknown): Parameters<typeof resolveShow>[1]["jobs"] => {
+  const fill =
+    typeof read === "object" && read !== null && "fill" in read
+      ? read.fill
+      : undefined
+  if (!isWalkthroughCopy(fill)) throw new Error("not a walkthrough")
+  return fill
+}
+
+const resolved = resolveShow(SHOW, {
+  jobs: walkthrough("apps/www/tests/walk/jobs-walkthrough.json"),
+  "home-server": walkthrough("packages/video-motion/walks/home-server.json"),
+})
+if (!resolved.ok) throw new Error(resolved.problems.join("; "))
+const EPISODES: ReadonlyArray<ResolvedEpisode> = resolved.episodes
+
+const resume = resumeData.fullstack
+const page = renderLanding(
+  resume,
+  mochiSvg(),
+  LANDING_WORDS,
+  new Map(),
+  EPISODES
+)
+
+const firstFaces = EPISODES[0].scenes[0].faces
+/** A build given the first scene's two faces (a clip and a still), the first gap's still and the photo. */
 const MEDIA: LandingMedia = new Map([
-  [LANDING_WORDS.projects[0].media, { width: 1080, height: 1920 }],
+  [firstFaces[0].key, { width: 1080, height: 1920 }],
+  [firstFaces[1].key, { width: 800, height: 600 }],
   [LANDING_WORDS.gaps[0].visual, { width: 800, height: 600 }],
   [PHOTO, null],
 ])
+const withMedia = renderLanding(
+  resume,
+  mochiSvg(),
+  LANDING_WORDS,
+  MEDIA,
+  EPISODES
+)
 
 describe("renderLanding", () => {
   it("says who, what, and how to reach them before anything else", () => {
@@ -52,16 +85,18 @@ describe("renderLanding", () => {
     expect(page).toContain(`d="${MOCHI_BODY}"`)
   })
 
-  it("shows each project and each gap under its own title, with a slot each", () => {
+  it("shows the show, then each gap under its own title, with a slot each", () => {
     const projects = page.indexOf(escapeHtml(LANDING_WORDS.projectsTitle))
     const gaps = page.indexOf(escapeHtml(LANDING_WORDS.gapsTitle))
     expect(projects).toBeGreaterThan(-1)
     expect(gaps).toBeGreaterThan(projects)
-    for (const p of LANDING_WORDS.projects) {
-      const at = page.indexOf(escapeHtml(p.title))
+    for (const episode of EPISODES) {
+      const at = page.indexOf(escapeHtml(episode.title))
       expect(at).toBeGreaterThan(projects)
       expect(at).toBeLessThan(gaps)
-      expect(page).toContain(`data-asset="${p.media}"`)
+      for (const scene of episode.scenes)
+        for (const face of scene.faces)
+          expect(page).toContain(`data-asset="${face.key}"`)
     }
     for (const g of LANDING_WORDS.gaps) {
       expect(page.indexOf(escapeHtml(g.title))).toBeGreaterThan(gaps)
@@ -70,215 +105,113 @@ describe("renderLanding", () => {
     }
   })
 
-  it("shows each slot's asset when the build carries it, and only then", () => {
-    const [clip] = LANDING_WORDS.projects
-    const [still] = LANDING_WORDS.gaps
-    const shown = renderLanding(resume, mochiSvg(), LANDING_WORDS, MEDIA)
-    expect(shown).toContain(
-      `<video class="media" src="${SITE_BASE}media/${clip.media}"`
+  /** The stage: everything from its opening to the flat show. */
+  const stageOf = (html: string): string =>
+    html.slice(
+      html.indexOf('<div class="stage">'),
+      html.indexOf('<div class="flat">')
     )
-    expect(shown).toContain(`<img src="${SITE_BASE}media/${PHOTO}"`)
-    expect(shown).not.toContain(`d="${MOCHI_BODY}"`)
-    expect(shown).not.toContain(escapeHtml(still.visualNote))
-    // A face shows its asset by its key, a still as an image: Page Filter's
-    // face and its gap's card both show the one still the build carries.
-    const stillTag = `<img class="media" src="${SITE_BASE}media/${still.visual}"`
-    const faces = LANDING_WORDS.projects.filter((p) => p.media === still.visual)
-    expect(faces.length).toBeGreaterThan(0)
-    expect(shown.split(stillTag).length - 1).toBe(faces.length * CUBES + 1)
-    for (const p of LANDING_WORDS.projects)
-      if (!MEDIA.has(p.media)) expect(shown).not.toContain(`media/${p.media}`)
+
+  it("stages every episode as a copy face, and a pair of four-faced cubes (C1180)", () => {
+    const stage = stageOf(page)
+    const copyFaces = stage.match(/<section class="face copy"/g) ?? []
+    expect(copyFaces).toHaveLength(EPISODES.length)
+    const pairs = [
+      ...stage.matchAll(
+        /<div class="pair tk [^"]+" data-episode="([^"]+)" aria-hidden="true">/g
+      ),
+    ]
+    expect(pairs.map((m) => m[1])).toEqual(EPISODES.map((e) => e.id))
+    // Each pair is two cubes of four faces, the episode's scenes first.
+    expect(stage.match(/<div class="block block--cube">/g)).toHaveLength(
+      EPISODES.length * 2
+    )
+    for (const episode of EPISODES) {
+      const pair = stage.slice(stage.indexOf(`data-episode="${episode.id}"`))
+      const cube = pair.slice(
+        0,
+        pair.indexOf(
+          '<div class="block block--cube">',
+          pair.indexOf('<div class="block block--cube">') + 1
+        )
+      )
+      expect(cube.match(/<div class="face"/g)).toHaveLength(4)
+      episode.scenes.forEach((scene, s) =>
+        expect(cube).toContain(
+          `data-asset="${scene.faces[0].key}" style="--i: ${String(s)}"`
+        )
+      )
+    }
+  })
+
+  it("streams each scene's copy in the copy block, a line at a time", () => {
+    const stage = stageOf(page)
+    for (const episode of EPISODES)
+      for (const scene of episode.scenes) {
+        expect(stage).toContain(`${escapeHtml(scene.title)}</span></p>`)
+        for (const line of scene.narration)
+          expect(stage).toMatch(
+            new RegExp(
+              `<p class="line tk s-\\d+">${escapeHtml(line).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}</p>`
+            )
+          )
+      }
+  })
+
+  it("lays every scene flat for a phone and less motion: its copy, then its two faces", () => {
+    const flat = page.slice(page.indexOf('<div class="flat">'))
+    for (const episode of EPISODES)
+      for (const scene of episode.scenes) {
+        const at = flat.indexOf(`<h4>${escapeHtml(scene.title)}</h4>`)
+        expect(at).toBeGreaterThan(-1)
+        const block = flat.slice(
+          at,
+          flat.indexOf("</div>\n          </div>", at)
+        )
+        for (const face of scene.faces) {
+          expect(block).toContain(`data-asset="${face.key}"`)
+          expect(block).toContain(
+            `<div class="caption"><p>${escapeHtml(face.label)}</p></div>`
+          )
+        }
+      }
+  })
+
+  it("shows each slot's asset when the build carries it, and only then", () => {
+    const [clip, still] = firstFaces
+    expect(withMedia).toContain(
+      `<video class="media" src="${SITE_BASE}media/${clip.key}"`
+    )
+    expect(withMedia).toContain(
+      `<img class="media" src="${SITE_BASE}media/${still.key}"`
+    )
+    expect(withMedia).toContain(`<img src="${SITE_BASE}media/${PHOTO}"`)
+    expect(withMedia).not.toContain(`d="${MOCHI_BODY}"`)
+    expect(withMedia).not.toContain(
+      escapeHtml(LANDING_WORDS.gaps[0].visualNote)
+    )
     expect(page).not.toMatch(/<video|<img/)
   })
 
-  /** A cube ring's schedule over `faces` projects. */
-  const schedule = (
-    faces: number
-  ): { ring: ReturnType<typeof cubeRing>; slot: number; cycle: number } => {
-    const ring = cubeRing(faces)
-    const slot = ring.restS + ring.turnS
-    return { ring, slot, cycle: slot * faces }
-  }
-
-  /** Each cube on a page: its turn's delay, its faces' markup and assets. */
-  const cubesIn = (
-    html: string
-  ): Array<{ delay: number; faces: string; assets: Array<string> }> =>
-    [
-      ...html.matchAll(
-        /<div class="ring-turn" style="animation-delay: (-?[\d.]+)s">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/g
-      ),
-    ].map((m) => ({
-      delay: Number(m[1]),
-      faces: m[2],
-      assets: [
-        ...m[2].matchAll(/<article class="face"[^>]*data-asset="([^"]+)"/g),
-      ].map((f) => f[1]),
-    }))
-
-  /**
-   * What each cube shows at time `t`, read from the page as a browser would
-   * run it: a cube's turn runs `t - delay` into its cycle, rests on face k,
-   * then shows k and k + 1 while it turns.
-   */
-  const fronts = (
-    html: string,
-    faces: number,
-    t: number
-  ): Array<Set<string>> => {
-    const { ring, slot, cycle } = schedule(faces)
-    return cubesIn(html).map(({ delay, assets }) => {
-      const u = (((t - delay) % cycle) + cycle) % cycle
-      const k = Math.floor(u / slot) % faces
-      const shown = new Set([assets[k]])
-      if (u % slot > ring.restS) shown.add(assets[(k + 1) % faces])
-      return shown
-    })
-  }
-
-  it("never shows one project on both cubes at once, resting or turning (C1112)", () => {
-    for (const n of [3, 4, 5]) {
-      const projects = Array.from({ length: n }, (_, i) => ({
-        ...LANDING_WORDS.projects[i % LANDING_WORDS.projects.length],
-        media: `clips/p${String(i)}.mp4` as const,
-      }))
-      const html = renderLanding(resume, mochiSvg(), {
-        ...LANDING_WORDS,
-        projects,
-      })
-      const { cycle } = schedule(n)
-      for (let t = 0; t < 2 * cycle; t += 0.05) {
-        const shown = fronts(html, n, t)
-        expect(shown).toHaveLength(CUBES)
-        const [a, b] = shown
-        expect([...a].filter((x) => b.has(x))).toEqual([])
-      }
-    }
-    for (const c of LANDING_WORDS.copy)
-      expect(page).toContain(escapeHtml(c.headline))
-    // Every cube carries every project.
-    const all = LANDING_WORDS.projects.map((p) => p.media).sort()
-    expect(cubesIn(page).map((c) => [...c.assets].sort())).toEqual(
-      Array.from({ length: CUBES }, () => all)
-    )
-  })
-
-  it("names every turn and every typing only where the showcase moves", () => {
-    const head = renderLandingHead()
-    const outside = head.replace(
-      new RegExp(
-        `@media ${WIDE_MOTION.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} \\{(?: [^{}]*\\{[^{}]*\\})* \\}`,
-        "g"
-      ),
-      ""
-    )
-    for (const name of ["turn-copy", "turn-cube", "type-cube"])
-      expect(head).toContain(`animation-name: ${name};`)
-    // The copy turns about Y, the cubes about X, and a face stands at its
-    // angle only where the showcase moves: laid flat it stays put.
-    expect(head).toContain(".ring--copy .face { transform: rotateY(")
-    expect(head).toContain(".ring--cube .face { transform: rotateX(")
-    expect(outside).not.toMatch(/animation(-name)?\s*:/)
-    expect(outside).not.toMatch(/\.face \{ transform/)
-  })
-
-  it("rests on each face, turns a face's angle, and ends where it began", () => {
-    const ring = {
-      name: "cube",
-      faces: 4,
-      axis: "x",
-      restS: 6,
-      turnS: 2,
-    } as const
-    const css = ringCss(ring)
-    expect(css).toContain(
-      "@keyframes turn-cube { 0%, 18.75% { transform: translateZ(calc(-1 * var(--depth))) rotateX(0deg); }"
-    )
-    expect(css).toContain(
-      "25%, 43.75% { transform: translateZ(calc(-1 * var(--depth))) rotateX(90deg); }"
-    )
-    expect(css).toContain(
-      "100% { transform: translateZ(calc(-1 * var(--depth))) rotateX(360deg); } }"
-    )
-    expect(css).toContain(".ring--cube { --faces: 4; --cycle: 32s; }")
-    // Face i stands at i quarter-turns back, so the turn brings it front.
-    expect(css).toContain(
-      ".ring--cube .face { transform: rotateX(calc(var(--i) * -90deg)) translateZ(var(--depth)); }"
-    )
-    expect(ringCss({ ...ring, axis: "y", faces: 3 })).toContain(
-      "rotateY(-240deg)"
-    )
-    expect(() => ringCss({ ...ring, faces: 2 })).toThrow(/three faces/)
-    expect(TYPE_S).toBe(1.1)
-    expect(typeCss(ring)).toContain(
-      "3.438%, 100% { clip-path: inset(0 0 0 0); }"
-    )
-  })
-
-  it("types each title as its face comes round, a step a character", () => {
-    const { slot, cycle } = schedule(LANDING_WORDS.projects.length)
-    const cubes = cubesIn(page)
-    expect(cubes).toHaveLength(CUBES)
-    for (const { delay: ringDelay, faces } of cubes) {
-      const typed = [
-        ...faces.matchAll(
-          /style="--i: (\d+);[^"]*"[\s\S]*?<span class="typed" style="animation-delay: (-?[\d.]+)s; animation-timing-function: steps\((\d+), end\)">([^<]+)<\/span>/g
-        ),
-      ]
-      expect(typed).toHaveLength(LANDING_WORDS.projects.length)
-      for (const [, position, delay, steps, title] of typed) {
-        // A title starts typing when its face arrives: its ring's delay
-        // plus its position's slots, in the same cycle.
-        const off =
-          (((Number(delay) - ringDelay - Number(position) * slot) % cycle) +
-            cycle) %
-          cycle
-        expect(Math.min(off, cycle - off)).toBeLessThan(0.01)
-        // Already running at load, never waiting with the title hidden.
-        expect(Number(delay)).toBeLessThanOrEqual(0)
-        expect(Number(steps)).toBe([...title].length)
-      }
-    }
-  })
-
-  it("puts every card's words below its picture, never over it (C1110)", () => {
-    const shown = renderLanding(resume, mochiSvg(), LANDING_WORDS, MEDIA)
-    const cards = [...shown.matchAll(/<article\b[\s\S]*?<\/article>/g)].map(
-      (m) => m[0]
-    )
-    expect(cards).toHaveLength(
-      LANDING_WORDS.projects.length * CUBES + LANDING_WORDS.gaps.length
-    )
-    for (const card of cards) {
-      const picture = Math.max(
-        card.indexOf('<div class="screen">'),
-        card.indexOf('<div class="pic">')
-      )
-      const words = Math.min(
-        ...['<div class="band"', '<div class="caption">']
-          .map((w) => card.indexOf(w))
-          .filter((at) => at > -1)
-      )
-      expect(picture).toBeGreaterThan(-1)
-      expect(words).toBeGreaterThan(picture)
-    }
-  })
-
-  it("gives a face whose asset the build lacks the project's title card", () => {
-    for (const p of LANDING_WORDS.projects) {
-      const at = page.indexOf(`data-asset="${p.media}"`)
-      const face = page.slice(at, page.indexOf("</article>", at))
-      expect(face).toContain(
-        `<div class="title-card" aria-hidden="true"><span>${escapeHtml(p.title)}</span></div>`
-      )
-      expect(face).not.toContain('class="media"')
-    }
+  it("gives a face whose asset the build lacks its title card, its label on it", () => {
+    for (const episode of EPISODES)
+      for (const scene of episode.scenes)
+        for (const face of scene.faces) {
+          const at = page.indexOf(`data-asset="${face.key}"`)
+          const card = page.slice(
+            at,
+            page.indexOf("</div>", page.indexOf("title-card", at))
+          )
+          expect(card).toContain(
+            `<div class="title-card" aria-hidden="true"><span>${escapeHtml(face.label)}</span>`
+          )
+        }
   })
 
   it("lays a clip in its face as a background, never a player (C1064)", () => {
-    const shown = renderLanding(resume, mochiSvg(), LANDING_WORDS, MEDIA)
-    const videos = [...shown.matchAll(/<video\b[^>]*>/g)].map((m) => m[0])
-    expect(videos).toHaveLength(CUBES)
+    const videos = [...withMedia.matchAll(/<video\b[^>]*>/g)].map((m) => m[0])
+    // The stage's face and the flat card's.
+    expect(videos).toHaveLength(2)
     for (const video of videos) {
       for (const attribute of [
         "autoplay",
@@ -294,34 +227,50 @@ describe("renderLanding", () => {
   })
 
   it("gives each card laid flat its picture's own shape, and its placeholder's without one", () => {
-    const [clip, , other] = LANDING_WORDS.projects
-    const [still, drawn] = LANDING_WORDS.gaps
-    const shown = renderLanding(resume, mochiSvg(), LANDING_WORDS, MEDIA)
     const style = (key: string): string =>
-      new RegExp(`data-asset="${key}" style="(?:--i: \\d+; )?([^"]+)"`).exec(
-        shown
-      )?.[1] ?? ""
-    expect(style(clip.media)).toBe("--ar: 1080 / 1920; --r: 0.5625")
-    expect(style(other.media)).toBe("--ar: 4 / 3; --r: 1.3333")
-    expect(style(still.visual)).toBe("--ar: 800 / 600; --r: 1.3333")
-    expect(style(drawn.visual)).toBe("--ar: 4 / 3; --r: 1.3333")
+      new RegExp(
+        `class="card" data-slot="[a-z]+" data-asset="${key}" style="([^"]+)"`
+      ).exec(withMedia)?.[1] ?? ""
+    expect(style(firstFaces[0].key)).toBe("--ar: 1080 / 1920; --r: 0.5625")
+    expect(style(firstFaces[1].key)).toBe("--ar: 800 / 600; --r: 1.3333")
+    expect(style(LANDING_WORDS.gaps[1].visual)).toBe("--ar: 4 / 3; --r: 1.3333")
   })
 
   it("puts no link or control on a card: the page's header leads to the code", () => {
-    const shown = renderLanding(resume, mochiSvg(), LANDING_WORDS, MEDIA)
-    const cards = [...shown.matchAll(/<article\b[\s\S]*?<\/article>/g)]
+    const cards = [...withMedia.matchAll(/<article\b[\s\S]*?<\/article>/g)]
+    expect(cards.length).toBeGreaterThan(0)
     for (const [card] of cards)
       expect(card).not.toMatch(/<a\b|<button|controls/)
   })
 
-  it("turns, types and breathes only on a wide screen with motion allowed", () => {
+  it("names every track only where the show moves, on the show's one clock", () => {
+    const head = renderLandingHead(LANDING_WORDS, EPISODES)
+    const names = [...head.matchAll(/@keyframes (s-\d+) /g)].map((m) => m[1])
+    expect(names.length).toBeGreaterThan(EPISODES.length * 3)
+    expect(new Set(names).size).toBe(names.length)
+    const wide = head.slice(head.indexOf(`@media ${WIDE_MOTION} {`))
+    for (const name of names) {
+      expect(wide).toContain(`.${name} { animation-name: ${name}; }`)
+      // Every element a track moves names it, beside the one clock's class.
+      expect(page).toMatch(new RegExp(`class="[^"]*\\btk ${name}\\b`))
+    }
+    const outside = head.slice(0, head.indexOf(`@media ${WIDE_MOTION} {`))
+    expect(outside).not.toMatch(/animation-name\s*:/)
+    expect(outside).toMatch(/\.show \{ --show: [\d.]+s; \}/)
+    const template = readFileSync(
+      join(import.meta.dirname, "../../../landing/index.html"),
+      "utf8"
+    )
+    expect(template).toMatch(/\.tk \{\s*animation-duration: var\(--show\);/)
+  })
+
+  it("moves only on a wide screen with motion allowed", () => {
     const template = readFileSync(
       join(import.meta.dirname, "../../../landing/index.html"),
       "utf8"
     )
     const css = template.slice(template.indexOf("<style>"))
-    const wide = `@media ${WIDE_MOTION} {`
-    const start = css.indexOf(wide)
+    const start = css.indexOf(`@media ${WIDE_MOTION} {`)
     expect(start).toBeGreaterThan(-1)
     // The block ends where the next top-level rule starts.
     const end = css.indexOf("\n      }\n", start)
@@ -339,8 +288,9 @@ describe("renderLanding", () => {
   })
 
   it("names every slot's asset among the keys the build looks for", () => {
-    const keys = landingMediaKeys()
+    const keys = landingMediaKeys(LANDING_WORDS, EPISODES)
     for (const key of keys) expect(page).toContain(`data-asset="${key}"`)
+    expect(keys).toContain(PHOTO)
   })
 
   it("lists every role the résumé holds, with its dates", () => {

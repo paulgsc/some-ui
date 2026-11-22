@@ -71,7 +71,7 @@ jobs:
           retention-days: 30
 
   extensions:
-    name: The extensions clip
+    name: The extensions faces
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -97,20 +97,20 @@ jobs:
             pnpm --filter @some-ui/video-render render sounds --out "$RUNNER_TEMP/brand/sounds"
           nix develop .#ci-playwright --command \
             pnpm --filter @some-ui/video-motion motion promo "$data" --out "$RUNNER_TEMP/promo" --brand "$RUNNER_TEMP/brand"
-          # The landing plays no sound (C1064): the picture alone, its sound
-          # track dropped, and refused if one is still there.
-          mkdir -p "$RUNNER_TEMP/site-assets/clips"
-          clip="$RUNNER_TEMP/site-assets/clips/extensions.mp4"
+          # The landing show's Extensions faces (C1183): the promo's shots
+          # as silent cuts and its walk's stills, as the show names them
+          # (apps/www/scripts/show-faces.ts). The landing plays no sound
+          # (C1064): each cut drops its sound track, and the script refuses
+          # one that still has one.
           nix develop .#ci-playwright --command \
-            ffmpeg -loglevel error -i "$RUNNER_TEMP/promo/video.mp4" -an -c:v copy -movflags +faststart "$clip"
-          sound="$(nix develop .#ci-playwright --command ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "$clip")"
-          if [ -n "$sound" ]; then echo "::error::$clip still has a sound track"; exit 1; fi
+            pnpm --filter www exec tsx scripts/show-faces.ts extensions \
+            "$RUNNER_TEMP/promo" "$RUNNER_TEMP/site-assets"
       # Retention: pages.yml reads the newest of this family at the next
       # deploy, which waits on an approval and can come weeks after this
       # push. 30 days outlives that gap; its family keeps one. Once it is
       # gone the landing draws the clip's title card until a push or a
       # dispatch renders it again.
-      - name: Upload the clip
+      - name: Upload the show's Extensions faces
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: site-assets-extensions-${{ github.sha }}

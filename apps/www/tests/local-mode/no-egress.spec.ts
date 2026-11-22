@@ -19,8 +19,7 @@
  * policy is shown to block a real request.
  */
 
-import { CUBES } from "@/landing/render"
-import { LANDING_WORDS } from "@/landing/words"
+import { SHOW } from "@/landing/show"
 import { expect, test } from "@playwright/test"
 import type { BrowserContext, Page } from "@playwright/test"
 
@@ -325,9 +324,11 @@ test.describe("the Pages build", () => {
     // Built with none of its media (C1059): every slot draws its
     // placeholder, and the build did not fail for want of one.
     await expect(page.locator("article[data-slot] .media")).toHaveCount(0)
+    // Every face of the show draws its title card (C1113).
+    const faces = SHOW.episodes.reduce((n, e) => n + e.scenes.length * 2, 0)
     await expect(
-      page.locator('.block--cube[data-cube="0"] .face .title-card')
-    ).toHaveCount(LANDING_WORDS.projects.length)
+      page.locator(".stage .face[data-asset] .title-card")
+    ).toHaveCount(faces)
     await expect(
       page.locator('article[data-slot="still"] .drawing')
     ).toHaveCount(2)
@@ -357,23 +358,24 @@ test.describe("the Pages build", () => {
         )
       )
     ).toBe(true)
-    // On a wide screen the cubes turn, and each project is read out once
-    // (C1112).
+    // On a wide screen the show plays on its one clock (C1182): each
+    // episode is read out once, by the copy block, and every track runs
+    // over the same cycle.
     await page.setViewportSize({ width: 1280, height: 800 })
-    await expect(
-      page.getByRole("heading", {
-        level: 3,
-        name: LANDING_WORDS.projects[0].title,
-      })
-    ).toHaveCount(1)
-    expect(
-      await page.evaluate(() =>
-        document
-          .getAnimations()
-          .map((a) => (a instanceof CSSAnimation ? a.animationName : ""))
-          .filter((name) => name === "turn-cube")
-      )
-    ).toHaveLength(CUBES)
+    for (const episode of SHOW.episodes)
+      await expect(
+        page.getByRole("heading", { level: 3, name: episode.title })
+      ).toHaveCount(1)
+    const durations = await page.evaluate(() =>
+      document
+        .getAnimations()
+        .filter(
+          (a) => a instanceof CSSAnimation && a.animationName.startsWith("s-")
+        )
+        .map((a) => a.effect?.getTiming().duration)
+    )
+    expect(durations.length).toBeGreaterThan(SHOW.episodes.length * 3)
+    expect(new Set(durations).size).toBe(1)
     // For a reader who prefers less motion nothing turns, types or breathes.
     await page.emulateMedia({ reducedMotion: "reduce" })
     expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)

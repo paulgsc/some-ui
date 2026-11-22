@@ -1,0 +1,15 @@
+{
+  "id": "C1180",
+  "made": "2026-11-22",
+  "by": "owner",
+  "paths": [
+    "apps/www/src/landing/show.ts",
+    "apps/www/src/landing/timeline.ts",
+    "apps/www/src/landing/render.ts",
+    "apps/www/landing/index.html"
+  ],
+  "chose": "The cubes turn on a script, not a timer: \"What I built and use every day\" plays episodes (a project each) of scenes, each scene's copy streaming into the left block and then the right cubes turning to the faces that copy motivated, holding, then the next scene. Each episode has its own pair of cubes. The faces of the projects whose infrastructure is the owner's own (the Android app, the extensions) are silent cuts of their videos, and the server's are stills of its Grafana panels. The owner (2026-11-22), after previewing #3436: \"the motivation of the rotating cubes is that we are actualy syncronizing them with some scripted 'dialogue/scene'. so for instance, we have some text on the left container, stream in, introducing and motivating the apk, and the immersion is as if, on some new text copy C, the containers on the rigth rotate, showing a face that is germaine to what the streamed text motivated. pausing for a few, then the text container begins streaming a new 'topic/scene', and the other container rotate accordingly. and most importantly what this buys us. is that for instance on the extension we can motivate multiple extensions we have to faces on the right, and effectively 4 possible faces to cycle through to showcase different things about the extension, and same logic for the apk and the file host, we can literally make a rotation cycle based on an 'episode - ergo this is the server repo episode' or scene- ergo these are different dashboard for the server. that's what this all buys us. so the rotations aren't just for the sake of rotations.\" Then: \"yes per-episode pairs, both silent cuts and stills, I recommend we make the silent videos for infra we own which is apk and extensions, and stills for grafana. , rework 33436 itself\".",
+  "undo": "Draw the showcase from C1110's timed rings again (render.ts and landing/index.html as at 9b85193).",
+  "refs": ["#3401", "#3436"],
+  "moves": "C1110"
+}

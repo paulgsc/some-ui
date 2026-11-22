@@ -116,35 +116,43 @@
       .lede + .section-title {
         margin-top: 0;
       }
-      /* The showcase (C1112, C1113): flat cards unless WIDE_MOTION (below);
-         laid flat, only the first cube shows, since every cube carries every
-         project. */
-      .showcase {
-        display: grid;
-        gap: 20px;
-      }
-      .block--cube:not([data-cube="0"]) {
+      /* The show (C1180-C1183). Laid flat unless WIDE_MOTION (render.ts):
+         each episode, its scenes' copy, and each scene's two faces as cards.
+         Where it moves, the stage instead (below). */
+      .stage {
         display: none;
       }
-      .block--copy .ring-turn {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-        gap: 20px;
+      .episode {
+        margin: 0 0 28px;
       }
-      @media (width < 900px) {
-        .block--copy {
-          display: none;
-        }
+      .episode h3 {
+        margin: 0 0 10px;
+        font-size: 1.2rem;
       }
-      .face {
-        display: flex;
-        flex-direction: column;
+      .scene-flat {
+        margin: 0 0 22px;
       }
-      .screen {
-        background: #111217;
+      .scene-flat h4 {
+        margin: 0 0 4px;
+        font-size: 1.02rem;
       }
-      .band {
-        display: none;
+      .scene-flat > p {
+        margin: 0.2rem 0;
+        max-width: 64ch;
+      }
+      /* A scene's two faces are a pair, not a gallery: a tall clip stays
+         a size a reader takes in at once. */
+      .scene-flat .grid {
+        margin-top: 12px;
+        max-width: 36rem;
+      }
+      .kicker {
+        margin: 0 0 0.3rem;
+        font-size: 0.78rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--accent);
       }
       /* A face's title card: what its screen shows when the build has no
          clip or still for it, and under a clip a reader who prefers less
@@ -157,14 +165,14 @@
         padding: 18px;
         text-align: center;
         color: #f3e4cc;
-        font-size: 1.5rem;
+        font-size: 1.3rem;
         font-weight: 600;
         line-height: 1.2;
       }
       /* A slot's clip or still, whole inside its screen or filling its
-         card exactly (a gap's, which takes the still's shape): never
-         cropped, never something to click. Its own box is the screen's
-         dark, so the title card under it never shows through. */
+         card exactly: never cropped, never something to click. Its own box
+         is the screen's dark, so the title card under it never shows
+         through. */
       .media {
         position: absolute;
         inset: 0;
@@ -183,32 +191,9 @@
         margin: 0;
         font-size: 1.08rem;
       }
-      .caption p,
-      .copy p {
+      .caption p {
         margin: 0.2rem 0;
         font-size: 0.95rem;
-      }
-      .caption .stack {
-        color: var(--muted);
-        font-size: 0.85rem;
-        margin: 0.1rem 0 0.3rem;
-      }
-      .copy {
-        padding: 18px 22px;
-      }
-      .copy .kicker {
-        margin: 0 0 0.4rem;
-        font-size: 0.78rem;
-        font-weight: 600;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--accent);
-      }
-      .copy .headline {
-        margin: 0 0 0.5rem;
-        font-size: 1.3rem;
-        font-weight: 700;
-        line-height: 1.2;
       }
       /* The clip still loads and plays out of sight (autoplay outranks
          preload, and a video takes no media-chosen source): stopping it
@@ -218,29 +203,85 @@
           display: none;
         }
       }
-      /* WIDE_MOTION (render.ts): one row of the copy block and the cubes,
-         each a ring whose turn and face angles ringCss draws in the head;
-         --depth puts the front face exactly on the block. Each block
-         breathes a little, and the whole row holds still under the pointer,
-         so the cubes keep their places against each other. */
+      /* Cards laid flat sit in justified rows (C1064): each takes its
+         picture's own shape (--ar, from the file, render.ts), asks its row
+         for a width in proportion (--r), and so every card in a row shares
+         one picture height and no picture is cropped or padded. A narrow
+         window gives each card a row of its own. Words sit below the
+         picture, so a row's cards keep their own height. */
+      .grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        align-items: flex-start;
+      }
+      .card,
+      .face {
+        border-radius: 12px;
+        overflow: hidden;
+        background: var(--card);
+        box-shadow: 0 0 0 1px var(--line);
+      }
+      .card {
+        flex: calc(var(--r) * 100) 1 calc(var(--r) * 300px);
+      }
+      .pic,
+      .screen {
+        position: relative;
+        aspect-ratio: var(--ar);
+      }
+      .pic {
+        background: var(--stage);
+      }
+      .screen {
+        background: #111217;
+      }
+      /* WIDE_MOTION: the stage. The copy block (an episode a face, about Y)
+         beside the episode's pair of cubes (a scene a face, about X), the
+         pairs stacked in one place, each in view for its episode. Every
+         move is a track on the show's one clock (timeline.ts), named in the
+         head; here each track's element gets that clock's duration. Each
+         block breathes a little, and the whole show holds still under the
+         pointer. */
       @media (width >= 900px) and (prefers-reduced-motion: no-preference) {
-        .showcase {
-          grid-template-columns: minmax(0, 1.15fr) repeat(2, minmax(0, 1fr));
+        .flat {
+          display: none;
         }
-        .block--cube:not([data-cube="0"]) {
-          display: block;
+        .stage {
+          display: grid;
+          grid-template-columns: minmax(0, 1.35fr) repeat(2, minmax(0, 1fr));
+          gap: 20px;
+          align-items: start;
+        }
+        /* The copy is as tall as its longest scene needs; the cubes stay
+           square beside it. */
+        .block--copy {
+          grid-area: 1 / 1;
+          align-self: stretch;
+          min-height: 19rem;
+        }
+        .pair {
+          grid-area: 1 / 2 / 2 / 4;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 20px;
+        }
+        .tk {
+          animation-duration: var(--show);
+          animation-iteration-count: infinite;
+          animation-fill-mode: both;
         }
         .block {
           animation: breathe 11s ease-in-out infinite;
         }
-        .block:nth-child(2) {
+        .pair .block:nth-child(2) {
           animation-delay: -3.7s;
         }
-        .block:nth-child(3) {
+        .block--copy {
           animation-delay: -7.3s;
         }
-        .showcase:hover .block,
-        .showcase:hover .block * {
+        .show:hover .tk,
+        .show:hover .block {
           animation-play-state: paused;
         }
         .ring {
@@ -249,76 +290,64 @@
           perspective: 1400px;
         }
         .ring--cube {
+          --faces: 4;
           aspect-ratio: 1;
         }
         .block .ring .ring-turn {
           --depth: calc(50cqi / tan(180deg / var(--faces)));
-          display: block;
           position: relative;
           height: 100%;
           transform-style: preserve-3d;
           transform: translateZ(calc(-1 * var(--depth)));
-          animation-duration: var(--cycle);
-          animation-timing-function: ease-in-out;
-          animation-iteration-count: infinite;
         }
         .ring .face {
           position: absolute;
           inset: 0;
+          display: flex;
+          flex-direction: column;
           backface-visibility: hidden;
+        }
+        .ring--copy .face {
+          transform: rotateY(calc(var(--i) * 360deg / var(--faces)))
+            translateZ(var(--depth));
+        }
+        .ring--cube .face {
+          transform: rotateX(calc(var(--i) * -90deg)) translateZ(var(--depth));
         }
         .ring--cube .screen {
           flex: 1;
           min-height: 0;
           aspect-ratio: auto;
         }
-        /* The band says it in short for the eye; the first cube's captions
-           still say it in full to a screen reader, out of sight. */
-        .ring--cube .caption {
-          position: absolute;
-          width: 1px;
-          height: 1px;
-          overflow: hidden;
-          clip-path: inset(50%);
-          white-space: nowrap;
-        }
         .ring--cube .title-card {
-          font-size: clamp(1.1rem, 8cqi, 1.6rem);
+          font-size: clamp(1rem, 7cqi, 1.4rem);
         }
         .band {
-          display: block;
           padding: 8px 12px 10px;
         }
-        .band p {
+        .band-title {
           margin: 0;
+          font-size: min(0.95rem, 5cqi);
+          font-weight: 600;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
-        .band-title {
-          font-size: min(0.95rem, 5cqi);
-          font-weight: 600;
-        }
-        .band-line {
-          font-size: min(0.82rem, 4.4cqi);
-          color: var(--muted);
-        }
-        .typed {
+        .band-title span {
           display: inline-block;
           max-width: 100%;
           overflow: hidden;
           text-overflow: ellipsis;
           vertical-align: bottom;
-          animation-duration: var(--cycle);
-          animation-iteration-count: infinite;
-          animation-fill-mode: both;
         }
         .copy {
-          justify-content: center;
-          padding: 24px 28px;
+          padding: 20px 24px;
         }
         .copy .headline {
-          font-size: clamp(1.3rem, 6.5cqi, 1.9rem);
+          margin: 0 0 0.6rem;
+          font-size: clamp(1.05rem, 5cqi, 1.5rem);
+          font-weight: 700;
+          line-height: 1.2;
           background: linear-gradient(
             90deg,
             var(--fg) 0%,
@@ -331,6 +360,27 @@
           background-clip: text;
           color: transparent;
           animation: sheen 14s linear infinite;
+        }
+        /* A scene's copy, one over another, each shown in its own time. */
+        .scenes {
+          position: relative;
+          flex: 1;
+        }
+        .scene {
+          position: absolute;
+          inset: 0;
+        }
+        .scene-title {
+          margin: 0 0 0.35rem;
+          font-weight: 600;
+        }
+        .scene-title span {
+          display: inline-block;
+        }
+        .line {
+          margin: 0 0 0.3rem;
+          font-size: min(0.95rem, 4.2cqi);
+          line-height: 1.45;
         }
       }
       @keyframes breathe {
@@ -345,39 +395,6 @@
         to {
           background-position: 0% 0;
         }
-      }
-      /* Cards laid flat, the gaps' and the projects', sit in justified rows
-         (C1064): each takes its picture's own shape (--ar, from the file,
-         render.ts), asks its row for a width in proportion (--r), and so
-         every card in a row shares one picture height and no picture is
-         cropped or padded. A narrow window gives each card a row of its
-         own. Words sit below the picture, so a row's cards keep their own
-         height. */
-      .grid,
-      .block--cube .ring-turn {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
-        align-items: flex-start;
-      }
-      .card,
-      .face {
-        border-radius: 12px;
-        overflow: hidden;
-        background: var(--card);
-        box-shadow: 0 0 0 1px var(--line);
-      }
-      .card,
-      .block--cube .face {
-        flex: calc(var(--r) * 100) 1 calc(var(--r) * 300px);
-      }
-      .pic,
-      .screen {
-        position: relative;
-        aspect-ratio: var(--ar);
-      }
-      .pic {
-        background: var(--stage);
       }
       .drawing {
         position: absolute;

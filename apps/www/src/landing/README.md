@@ -11,6 +11,21 @@ The landing's clips and stills are never committed (C1059). Their producer workf
 `apps/www/scripts/fetch-site-media.sh` puts the newest of each kind where the build looks.
 A slot with no media draws its placeholder.
 
+## The show
+
+"What I built and use every day" is a script (C1180): `show.ts` lists the episodes, a
+project each. Each episode is one to four scenes, and each scene is some copy and two faces.
+
+- **Copy.** A scene's copy is a chapter of the episode's walkthrough
+  (`apps/www/tests/walk/jobs-walkthrough.json`,
+  `packages/video-motion/walks/home-server.json`), or its own words where there is none,
+  marked `draft` until the owner has read them.
+- **Timing.** `timeline.ts` lays the whole show on one clock: copy streams in, then the
+  cubes turn.
+- **Faces.** The faces are made by `apps/www/scripts/show-faces.ts` in the two producer
+  jobs: each still copied from a walk's screens, each cut taken silent from a rendered
+  video by shot. A face the build doesn't have shows its title card.
+
 ## Previewing a branch on your machine
 
 To see a branch's site exactly as Pages would serve it, before it merges and without a

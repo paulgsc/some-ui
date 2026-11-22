@@ -1,0 +1,15 @@
+{
+  "id": "C1181",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": ["apps/www/src/landing/show.ts", "apps/www/render-public-site.ts"],
+  "chose": "An episode's scenes take their copy from its walkthrough (`some-ui.walkthrough/1`, @some-ui/video-motion), the family that already holds an app's chapters, each a title and narration written as part promo and part mission (C945), over the walk's screens: the Android episode reads the Jobs walkthrough's four chapters, the server episode the home-server walkthrough's two. An episode or a scene with no chapter writes its own words in show.ts, marked draft until the owner has read them (the extensions' three scenes and the server's \"Four cores\"). A still face names its walk's screen by number and must lie within its chapter's own screens, so a face always shows what its copy names; its band's label is that screen's caption. The show is a versioned, compile-time type (`some-ui.landing-show/1`); the build refuses a show that names a missing chapter or a still outside its chapter.",
+  "options": [
+    "walkthrough chapters as the scenes' copy, the landing's own words only where no walkthrough exists",
+    "a new copy table for the landing alone",
+    "video-render's scene and series shapes"
+  ],
+  "gray": "Where the show's copy comes from decides whether the landing says what the videos say or drifts from them, and no earlier call settles it; video-render's scenes are timing shapes for a render, not narrative.",
+  "undo": "Write every scene's copy inline in show.ts and drop the walkthrough reads from render-public-site.ts.",
+  "refs": ["#3401", "#3436"]
+}

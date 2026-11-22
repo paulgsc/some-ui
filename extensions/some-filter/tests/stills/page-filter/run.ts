@@ -2,15 +2,18 @@
 // story 6): page.html, a light page of ours with one widget inside a closed
 // shadow root, first as it is and then under Page Filter, stacked into one
 // 4:3 picture, light above and dark below. The widget stays white in both,
-// which is the gap the card names.
+// which is the gap the card names. Each half is also kept on its own, as
+// <out>/before.png and <out>/after.png beside <out>.png: the landing show's
+// Page Filter scene shows them as its two faces (C1183).
 //
 // Usage, from extensions/some-filter after `pnpm build:chromium`:
 //   node tests/stills/page-filter/run.ts <out.png>
+// writes <out.png>, and <out>/before.png and <out>/after.png.
 // PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH names the browser where Playwright's
-// own is not installed. Writes only <out.png>; nothing here is committed
+// own is not installed. Writes only those three; nothing here is committed
 // (C1029).
 
-import { mkdtempSync, rmSync } from "node:fs"
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
@@ -70,6 +73,10 @@ async function shoot(filtered: boolean): Promise<Buffer> {
 }
 
 const [light, dark] = [await shoot(false), await shoot(true)]
+const halves = resolve(out.replace(/\.png$/, ""))
+mkdirSync(halves, { recursive: true })
+writeFileSync(join(halves, "before.png"), light)
+writeFileSync(join(halves, "after.png"), dark)
 const browser = await chromium.launch(
   executablePath === undefined ? {} : { executablePath }
 )
@@ -86,4 +93,4 @@ try {
 } finally {
   await browser.close()
 }
-process.stdout.write(`[gap-still] wrote ${resolve(out)}\n`)
+process.stdout.write(`[gap-still] wrote ${resolve(out)} and ${halves}/\n`)
