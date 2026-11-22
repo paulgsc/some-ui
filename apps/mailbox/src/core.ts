@@ -1924,7 +1924,7 @@ const PICTURE_SIDE_MAX = 4096
  * Most bytes one picture may hold, below the folder-wide cap: D1 hands a
  * body back as an array of byte values, and turning one near 1 MiB back into
  * bytes may not fit Workers Free's 10 ms of CPU (README, "Limits"). Home
- * encodes the clip to fit (C1071).
+ * encodes the clip to fit (C1072).
  */
 export const PICTURE_MAX_BYTES = 786_432
 

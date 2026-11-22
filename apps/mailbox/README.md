@@ -265,7 +265,7 @@ role, and it is the owner's call, so it is not built.
   and `IHDR`, at most 4096 pixels a side; an MP4's `ftyp` box). A picture has no schema. It is
   held to 768 KiB (`PICTURE_MAX_BYTES`, `413` past it), below every other file's 1 MiB, so
   reading one back stays well inside a request's CPU (below, "Limits"); home encodes the clip
-  to fit (C1071).
+  to fit (C1072).
 - **Schema**: the top-level `schema` must be `some-ui.job-digest/1`, `some-ui.job-decisions/1`,
   `some-ui.job-scouts/1`, `some-ui.routine-scene/1`, `some-ui.routine-drama/1`, `some-ui.routine-run/1`,
   `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1`, `some-ui.reflection/1`, `some-ui.drama-prompt/1`, `some-ui.episode-note/1`, `some-ui.take-pickup/1`, `some-ui.take-picked/1` or `some-ui.snips/1` to match the folder (and `some-ui.drive-takes/1` for a list of Drive's takes in `brief`, `some-ui.rust-week/2` (or the earlier `/1`) for a week of Rust Rounds, `some-ui.rust-essay/1` for an essay's script, `some-ui.interview-week/2` (or the earlier `/1`) for a week of mock interview, `some-ui.interview-essay/1` for an interview essay's script). The Worker checks that and nothing deeper, except for a transcript, an index, a reflection, a prompt, a note on an episode, a take ready for pickup, an answer to one, a snip list, a list of Drive's takes, a week's `id`, which must be the name's (below), and an interview week's question and card ids; the readers validate the full shape.
@@ -535,7 +535,7 @@ operation; it does not bill (see MB4).
   CPU. I have not measured whether it fits in 10 ms; files are far below it in practice
   (the sizes are under "What a put must satisfy"), except the site's clip, which is why a
   picture is held to 768 KiB. The deploy that adds `site-assets` measures one read of a clip
-  near that bound before the site relies on it (C1071).
+  near that bound before the site relies on it (C1072).
 
 - The bell (above) is a SQLite-backed Durable Object, the only kind Workers Free takes, and
   it stores nothing. Durable Objects Free: 100,000 requests and 13,000 GB-s of duration a
@@ -998,7 +998,7 @@ fails with `503` until it is. Likewise `0005_site_assets_view.sql` (the site's p
 only the newest of each kind) goes in before the Worker that takes a picture. After that
 deploy, and before `MAILBOX_PAGES_TOKEN` is set in GitHub, put a clip of about 760 KiB with
 `HOME_TOKEN` and read it back with `PAGES_TOKEN`, watching its CPU time in `wrangler tail`: a
-read over Workers Free's 10 ms means the cap comes down before the site relies on it (C1071).
+read over Workers Free's 10 ms means the cap comes down before the site relies on it (C1072).
 For archiving (`0002_archive.sql`), also put `ARCHIVE_TOKEN` (step 4) and give the
 same value to home as `MAILBOX_ARCHIVE_TOKEN`.
 

@@ -3769,7 +3769,9 @@ describe("the site's pictures (C1071, #3415)", () => {
       at
     )
     expect((await undeclared.response).status).toBe(413)
-    expect(undeclared.pulls()).toBeLessThan(4)
+    // 500,000 + 300,000 passes 786,432 at the second chunk; the third is
+    // never pulled.
+    expect(undeclared.pulls()).toBe(2)
     // At the bound exactly, a picture is taken.
     expect(
       (
