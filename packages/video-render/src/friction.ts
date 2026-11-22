@@ -147,18 +147,18 @@ export type FrictionRegistry = ReadonlyArray<{
   }>
 }>
 
+type Three = readonly [PublicCount, PublicCount, PublicCount]
+
 /**
- * `parts`, counts of some of `whole`'s stretches, as said beside it: each
+ * Three counts of some of `whole`'s stretches, as said beside it: each
  * kept in order while what the kept ones leave of `whole` is 5 or more, and
  * `no-data` for each that would leave less (ask #2701): a later, smaller one
  * may still be said. A part said as
- * "fewer than 5" may be as many as 4, so it is taken as 4. The parts may
+ * "fewer than 5" may be as many as 4, so it is taken as 4. They may
  * overlap, so what they leave may be more than this assumes: never less.
  * A `whole` that is not a number leaves each part as it is: none can be
  * more than it.
  */
-type Three = readonly [PublicCount, PublicCount, PublicCount]
-
 function beside(whole: PublicCount, [a, b, c]: Three): Three {
   let left = typeof whole === "number" ? whole : null
   const said = (part: PublicCount): PublicCount => {

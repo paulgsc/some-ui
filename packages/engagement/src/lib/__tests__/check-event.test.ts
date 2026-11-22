@@ -138,6 +138,10 @@ describe("checkEvent: what an event may carry", () => {
       expect(checked).toEqual({ ok: true, event: { ...left, next } })
     }
     expect(checkEvent(left, PIPELINES)).toEqual({ ok: true, event: left })
+    // Another kind's extra is no field of this one.
+    expect(
+      checkEvent({ ...base, kind: "taken", next: "decide" }, PIPELINES).ok
+    ).toBe(false)
     for (const next of [
       "today",
       "topik.routine-lens",
