@@ -19,7 +19,8 @@
  *
  *    A game's bites are filed by half, and before or after the game for a
  *    pre-game or after-final bite (`gamePlaceOf`, C1242). Whose voice says
- *    each is code's (`gameVoiceOf`, D5), never the writer's.
+ *    each is code's (`gameVoiceOf`, D5): the writer sets `voice` by it, from
+ *    home's confidence and the owner's choice, and does not choose it.
  * 3. `close`: the week, closed.
  *
  * **What the essay never is (section 0, D20; the owner, 2026-11-15):** a
@@ -88,8 +89,9 @@ export const READ_ALOUD_BELOW = 0.7
  * Whose voice says a bite (D5–D7): the owner's own choice when they made
  * one, for any reason; otherwise code, from home's confidence in the words
  * it heard: read aloud below `READ_ALOUD_BELOW`, and in the owner's voice
- * when home kept no confidence (words heard before Oct 31). The writer never
- * decides it.
+ * when home kept no confidence (words heard before Oct 31). The writer sets a
+ * bite's `voice` by it rather than choosing one; the essay's data carries
+ * the voice, not the confidence, so no check reads it back.
  */
 export const gameVoiceOf = (
   confidence: number | null,
@@ -109,8 +111,13 @@ export type GamePlacement = (typeof GAME_PLACEMENTS)[number]
 
 /**
  * Where a bite is filed: its half as home gave it, or, with none, before
- * the game when it was said before kickoff and after it otherwise. Used by
- * the writer to file a bite and by the check to hold it there.
+ * the game when it was said before kickoff and after it otherwise. Home
+ * gives every in-game bite a half, matched or not (the half of the quarter
+ * it was said in, C872), so only a pre-game or after-final bite has none.
+ * The writer files by it; the check holds a bite filed before the game to
+ * before kickoff and one filed after it to after, and leaves a half as home
+ * gave it, since `kickoff` is the scheduled start and a bite can be said
+ * in its first minutes before the snap.
  */
 export const gamePlaceOf = (
   half: Half | null,
@@ -124,9 +131,14 @@ export const gamePlaceOf = (
  * ISO week `id` to the Monday after it, so its Sunday is in week `id` and a
  * Monday night game is with its Sunday.
  */
-export function weekDaysOf(id: string): { from: string; to: string } {
-  const from = addDays(isoWeekMonday(id.toUpperCase()), 1)
-  return { from, to: addDays(from, 6) }
+export function weekDaysOf(id: string): { from: string; to: string } | null {
+  try {
+    const from = addDays(isoWeekMonday(id.toUpperCase()), 1)
+    return { from, to: addDays(from, 6) }
+  } catch {
+    // A 53rd week in a year of 52: `isoWeekMonday` refuses it.
+    return null
+  }
 }
 
 /** The most games and bites one essay holds, so a week's data stays a week's. Policy (C1081). */
@@ -298,7 +310,7 @@ const BiteSchema = z.strictObject({
   take: takeId,
   /** When the owner started saying it. */
   saidAt: z.iso.datetime({ offset: true }),
-  /** The scenario it was said about, or null for one said first and never mapped: the stage says "Said first". */
+  /** The scenario it was said about, or null for one said first and never mapped, which the stage is to say as "Said first". */
   scenario: scenarioId.nullable(),
   stance: z.enum(STANCES),
   /**
@@ -487,14 +499,14 @@ function gameProblems(game: GameEssayGame): Array<string> {
   const kickoff = Date.parse(game.kickoff)
   for (const half of game.halves)
     for (const bite of half.bites) {
-      const said = Date.parse(bite.saidAt)
-      if (half.half === "before" && said >= kickoff)
+      const saidAt = Date.parse(bite.saidAt)
+      if (half.half === "before" && saidAt >= kickoff)
         problems.push(
           `${bite.take}: it is filed before the game, and was said after kickoff`
         )
-      if (half.half !== "before" && said < kickoff)
+      if (half.half === "after" && saidAt < kickoff)
         problems.push(
-          `${bite.take}: it was said before kickoff, so it is filed before the game`
+          `${bite.take}: it is filed after the game, and was said before kickoff`
         )
       if (bite.play === null) continue
       const { period, spot, possession } = bite.play.still
@@ -518,7 +530,9 @@ function gameProblems(game: GameEssayGame): Array<string> {
 function problemsOfEssay(essay: GameEssay): Array<string> {
   const problems: Array<string> = []
   const days = weekDaysOf(essay.week.id)
-  if (essay.week.from !== days.from || essay.week.to !== days.to)
+  if (days === null)
+    problems.push(`week: ${essay.week.id} is not a week of its year`)
+  else if (essay.week.from !== days.from || essay.week.to !== days.to)
     problems.push(
       `week: ${essay.week.id} runs from ${days.from} to ${days.to}, Tuesday to Monday (C1241)`
     )

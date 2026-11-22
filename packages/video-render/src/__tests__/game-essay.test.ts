@@ -377,26 +377,42 @@ describe("home's week file, as the essay files it (C1241, C1242)", () => {
     ])
   })
 
+  it("refuses a 53rd week in a year of 52, rather than throw", () => {
+    expect(weekDaysOf("2025-w53")).toBeNull()
+    expect(
+      problems({
+        ...sample(),
+        week: { id: "2025-w53", from: "2025-12-30", to: "2026-01-05" },
+      })
+    ).toEqual(["week: 2025-w53 is not a week of its year"])
+  })
+
   it("files a bite with no half before the game or after it, by kickoff", () => {
     const kickoff = "2026-10-23T00:15:00Z"
     expect(gamePlaceOf(null, "2026-10-22T23:00:00Z", kickoff)).toBe("before")
+    expect(gamePlaceOf(null, kickoff, kickoff)).toBe("after")
+    expect(gamePlaceOf(null, "2026-10-22T17:14:59-07:00", kickoff)).toBe(
+      "before"
+    )
     expect(gamePlaceOf(null, "2026-10-23T03:30:00Z", kickoff)).toBe("after")
     expect(gamePlaceOf("second", "2026-10-23T02:00:00Z", kickoff)).toBe(
       "second"
     )
   })
 
-  it("holds a bite before the game to before kickoff, and every other after it", () => {
+  it("holds a bite filed before the game to before kickoff, one after it to after, and a half as home gave it", () => {
     const essay = sample()
     const [game] = essay.games
     if (game === undefined) throw new Error("the sample has a game")
+    // A late kickoff: the first-half bite is said before it, and stays
+    // where home filed it; the after-final bite, said before it, does not.
     expect(
       problems({
         ...essay,
-        games: [{ ...game, kickoff: "2026-10-23T01:00:00Z" }],
+        games: [{ ...game, kickoff: "2026-10-23T03:00:00Z" }],
       })
     ).toEqual([
-      "sample-bite-1: it was said before kickoff, so it is filed before the game",
+      "sample-bite-3: it is filed after the game, and was said before kickoff",
     ])
     const [first] = game.halves
     if (first === undefined) throw new Error("the sample has a first half")
@@ -411,11 +427,10 @@ describe("home's week file, as the essay files it (C1241, C1242)", () => {
           },
         ],
       })
-    ).toEqual(
-      expect.arrayContaining([
-        "sample-bite-1: it is filed before the game, and was said after kickoff",
-      ])
-    )
+    ).toEqual([
+      "sample-bite-1: it is filed before the game, and was said after kickoff",
+      "sample-bite-1: its play is in the first half, and it is filed under before the game",
+    ])
   })
 
   it("keeps a bite said first and never mapped, with no scenario", () => {
