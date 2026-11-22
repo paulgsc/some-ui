@@ -1,0 +1,19 @@
+{
+  "id": "C1031",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/sample/series/cheat-sheet/v5.json",
+    "packages/video-render/CARDS-ROUTINE.md",
+    "packages/ui/burn-ins/src/lib/bars.ts"
+  ],
+  "chose": "The chart card comes in as cheat-sheet version 5, version 4 with the bars design, and the cards routine keeps pinning version 4, pinning 5 only for an essay that shows a chart, so every other essay doesn't wait on home's render image being rebuilt.",
+  "options": [
+    "routine pins v5 for every essay",
+    "routine pins v4, and v5 only for an essay with a chart",
+    "edit v4 to add the bars design"
+  ],
+  "gray": "A published version is never edited, so the card needs a new version, but whether the routine moves to it for every essay is a choice: C841 moved the routine to v4 and made the next essay wait on a rebuilt image. No check settles it.",
+  "undo": "Point CARDS-ROUTINE.md's pin at version 5 for every essay.",
+  "refs": ["#3387", "#2980"]
+}
