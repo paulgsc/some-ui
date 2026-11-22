@@ -150,6 +150,22 @@ export const ARTIFACT_FAMILIES: ReadonlyArray<ArtifactFamily> = [
     keep: 1,
     ttlDays: 30,
   },
+  // Home's dashboards (#3415, C1071): the newest picture of each kind that
+  // home put in the mailbox, fetched by Site Assets' `home` job.
+  {
+    kind: "artifact",
+    name: "site-assets-server-${{ github.sha }}",
+    workflows: ["Site Assets"],
+    keep: 1,
+    ttlDays: 30,
+  },
+  {
+    kind: "artifact",
+    name: "site-assets-cores-${{ github.sha }}",
+    workflows: ["Site Assets"],
+    keep: 1,
+    ttlDays: 30,
+  },
   {
     kind: "artifact",
     name: "site-assets-apk-${{ github.sha }}",

@@ -1221,8 +1221,33 @@ function sharedDay(name: string): string | null {
   return null
 }
 
-/** What a name in a folder must carry: its schema, and any deeper check. */
-type FolderRules = {
+/**
+ * What a name in a folder must carry: a JSON file's schema and any deeper
+ * check (`JsonRules`), or a picture's type (`PictureRules`). The two are the
+ * family a folder is a case of; nothing else reaches `bodyOf`.
+ */
+type FolderRules = JsonRules | PictureRules
+
+/**
+ * A picture of one of home's screens for the public site (C1071): a PNG
+ * still or a silent MP4 clip, checked by its type and its first bytes. The
+ * folder holds no record, so a picture carries no schema (README, "The site's
+ * pictures").
+ */
+type PictureRules = {
+  readonly folder: Folder
+  /** Its kind and stamp; the extension fixes its type. */
+  readonly name: RegExp
+  readonly picture: PictureType
+  readonly also?: ReadonlyArray<FolderRules>
+  readonly backfill?: undefined
+}
+
+type PictureType = "image/png" | "video/mp4"
+
+/** A JSON file, under its schema. */
+type JsonRules = {
+  readonly picture?: undefined
   readonly folder: Folder
   /** Audio files match none, on purpose: the mailbox carries text. */
   readonly name: RegExp
@@ -1437,6 +1462,22 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
     schema: "some-ui.snips/1",
     refuses: snipsRefusal,
   },
+  {
+    // The server card's clip: file_host's own dashboard, as home photographs
+    // it, named for the kind and when home put it (C1071, #3415). Only the
+    // newest of each kind stays (MB5, `VIEWS` in store.ts).
+    folder: "site-assets",
+    name: /^server-\d{8}T\d{9}Z\.mp4$/,
+    picture: "video/mp4",
+    also: [
+      // The cores card's still: the CPU panel's busy against waiting.
+      {
+        folder: "site-assets",
+        name: /^cores-\d{8}T\d{9}Z\.png$/,
+        picture: "image/png",
+      },
+    ],
+  },
 ]
 
 /** The Worker secrets. An unset or empty one never authenticates anyone. */
@@ -1444,6 +1485,7 @@ type Tokens = {
   readonly routine: string | undefined
   readonly home: string | undefined
   readonly archive: string | undefined
+  readonly pages: string | undefined
 }
 
 type Grant = {
@@ -1543,6 +1585,7 @@ const ROLES: ReadonlyArray<Grant> = [
       "feedback",
       "pickup",
       "snips",
+      "site-assets",
     ],
     ask: [],
     move: [],
@@ -1555,6 +1598,17 @@ const ROLES: ReadonlyArray<Grant> = [
     put: [],
     ask: [],
     move: RECORDS,
+    listen: false,
+  },
+  {
+    // The Pages build's Site Assets run (C1071): it reads the site's
+    // pictures and nothing else, and its token lives in GitHub's secrets.
+    role: "pages",
+    token: (tokens) => tokens.pages,
+    get: ["site-assets"],
+    put: [],
+    ask: [],
+    move: [],
     listen: false,
   },
 ]
@@ -1794,8 +1848,7 @@ async function read(
 }
 
 function isJsonType(contentType: string | null): boolean {
-  const mediaType = contentType?.split(";").at(0)?.trim().toLowerCase()
-  return mediaType === "application/json"
+  return mediaTypeOf(contentType) === "application/json"
 }
 
 /** The body's bytes, or `null` as soon as it is past `cap`. */
@@ -1849,7 +1902,96 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
-type Body = { readonly bytes: Uint8Array; readonly sha256: string }
+type Body = {
+  readonly bytes: Uint8Array
+  readonly sha256: string
+  readonly contentType: string
+}
+
+/**
+ * The PNG signature, then the first chunk's length (13) and type (`IHDR`).
+ * `pngSize` in `@some-ui/video-render`'s `snip.ts` reads the same header;
+ * the Worker depends on no workspace package (#2112), so it is read here.
+ */
+const PNG_HEAD = [
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44,
+  0x52,
+] as const
+/** The widest or tallest picture a card shows, far above any real one. */
+const PICTURE_SIDE_MAX = 4096
+
+/**
+ * Most bytes one picture may hold, below the folder-wide cap: D1 hands a
+ * body back as an array of byte values, and turning one near 1 MiB back into
+ * bytes may not fit Workers Free's 10 ms of CPU (README, "Limits"). Home
+ * encodes the clip to fit (C1072).
+ */
+const PICTURE_MAX_BYTES = 786_432
+
+function u32(bytes: Uint8Array, at: number): number {
+  return new DataView(bytes.buffer, bytes.byteOffset).getUint32(at)
+}
+
+/** Why a picture's bytes are not the type its name says, or `null`. */
+function pictureRefusal(type: PictureType, bytes: Uint8Array): string | null {
+  switch (type) {
+    case "image/png": {
+      if (
+        bytes.byteLength < 24 ||
+        PNG_HEAD.some((byte, at) => bytes[at] !== byte)
+      ) {
+        return "the body is not a PNG"
+      }
+      const width = u32(bytes, 16)
+      const height = u32(bytes, 20)
+      if (
+        width < 1 ||
+        height < 1 ||
+        width > PICTURE_SIDE_MAX ||
+        height > PICTURE_SIDE_MAX
+      ) {
+        return `a picture is at most ${PICTURE_SIDE_MAX} pixels a side`
+      }
+      return null
+    }
+    case "video/mp4": {
+      // An MP4 opens with its `ftyp` box: a size, then the type.
+      const box = new TextDecoder().decode(bytes.subarray(4, 8))
+      if (bytes.byteLength < 16 || box !== "ftyp") {
+        return "the body is not an MP4"
+      }
+      return null
+    }
+    default: {
+      return unreachable(type)
+    }
+  }
+}
+
+/** The bytes of a put, read up to `cap`, or the refusal. */
+async function cappedBody(
+  request: Request,
+  cap: number
+): Promise<Uint8Array | Response> {
+  // The declared length refuses before a byte is read; the capped read below
+  // covers a body that declares nothing or lies.
+  const declared = request.headers.get("content-length")
+  if (declared !== null && Number(declared) > cap) {
+    return refuse(413, "too_big")
+  }
+  let bytes: Uint8Array | null
+  try {
+    bytes = await readCapped(request.body, cap)
+  } catch {
+    return refuse(422, "the body could not be read")
+  }
+  if (bytes === null) return refuse(413, "too_big")
+  return bytes
+}
+
+function mediaTypeOf(contentType: string | null): string | undefined {
+  return contentType?.split(";").at(0)?.trim().toLowerCase()
+}
 
 /** The body of a put, checked as every put is, or the refusal. */
 async function bodyOf(
@@ -1861,22 +2003,25 @@ async function bodyOf(
   if (kind === null) {
     return refuse(422, "the name does not fit this folder")
   }
+  if (kind.picture !== undefined) {
+    if (mediaTypeOf(request.headers.get("content-type")) !== kind.picture) {
+      return refuse(422, `the content type must be ${kind.picture}`)
+    }
+    const bytes = await cappedBody(request, PICTURE_MAX_BYTES)
+    if (bytes instanceof Response) return bytes
+    const refusal = pictureRefusal(kind.picture, bytes)
+    if (refusal !== null) return refuse(422, refusal)
+    return {
+      bytes,
+      sha256: hex(await sha256(bytes)),
+      contentType: kind.picture,
+    }
+  }
   if (!isJsonType(request.headers.get("content-type"))) {
     return refuse(422, "the content type must be application/json")
   }
-  // The declared length refuses before a byte is read; the capped read below
-  // covers a body that declares nothing or lies.
-  const declared = request.headers.get("content-length")
-  if (declared !== null && Number(declared) > MAX_BODY_BYTES) {
-    return refuse(413, "too_big")
-  }
-  let bytes: Uint8Array | null
-  try {
-    bytes = await readCapped(request.body, MAX_BODY_BYTES)
-  } catch {
-    return refuse(422, "the body could not be read")
-  }
-  if (bytes === null) return refuse(413, "too_big")
+  const bytes = await cappedBody(request, MAX_BODY_BYTES)
+  if (bytes instanceof Response) return bytes
 
   const parsed = parseJson(bytes)
   if (!parsed.ok) return refuse(422, "the body is not JSON")
@@ -1891,7 +2036,11 @@ async function bodyOf(
   }
   const refusal = kind.refuses?.(parsed.value, parsed.text, name) ?? null
   if (refusal !== null) return refuse(422, refusal)
-  return { bytes, sha256: hex(await sha256(bytes)) }
+  return {
+    bytes,
+    sha256: hex(await sha256(bytes)),
+    contentType: "application/json",
+  }
 }
 
 async function write(
@@ -1901,19 +2050,24 @@ async function write(
   role: Role,
   deps: Deps
 ): Promise<Response> {
-  // The archive role puts nothing new (ROLES); `serve` routes its puts to `restore`.
-  if (role === "archive") return refuse(403, "forbidden")
+  // The archive role puts nothing new (ROLES); `serve` routes its puts to
+  // `restore`. The pages role puts nothing at all.
+  if (role === "archive" || role === "pages") return refuse(403, "forbidden")
   const body = await bodyOf(request, rules, name)
   if (body instanceof Response) return body
   const result = await deps.store.put(rules.folder, name, {
     ...body,
-    contentType: "application/json",
     putBy: role,
     putAt: deps.now().toISOString(),
   })
   if (result.change === "conflict") return refuse(409, "conflict")
   if (result.change === "superseded") {
-    return refuse(409, "a newer index of this routine is held")
+    return refuse(
+      409,
+      rules.folder === "index"
+        ? "a newer index of this routine is held"
+        : "a newer one of this kind is held"
+    )
   }
   if (result.change === "added" && RINGS.includes(rules.folder)) {
     ring(rules.folder, deps)

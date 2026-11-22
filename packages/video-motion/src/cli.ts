@@ -31,6 +31,7 @@ import { compositionPort } from "./node"
 import { HYPERFRAMES_VERSION } from "./pin"
 import { promoCutList, releaseProblems, ReleaseSchema } from "./promo"
 import { renderComposition } from "./render"
+import { homeCores, homeServer } from "./walk/home-dashboards"
 import { jobs } from "./walk/jobs"
 import { runWalk, WalkFileSchema } from "./walk/run"
 import type { Walk, WalkFile } from "./walk/run"
@@ -68,12 +69,15 @@ const entry =
   }
 
 /**
- * The apps a walk can show. Suspender Ledger walks in the sandbox; Jobs on
+ * The apps a walk can show. Home's dashboards walk on its own Grafana
+ * (`home-server`, `home-cores`, C1073). Suspender Ledger walks in the sandbox; Jobs on
  * the APK, inside a booted emulator (`apps/mobile/walk/walk-apk.sh`).
  */
 const WALKS: ReadonlyMap<string, (sample: unknown) => Walk> = new Map([
   ["suspender-ledger", entry(suspenderLedger)],
   ["jobs", entry(jobs)],
+  ["home-server", entry(homeServer)],
+  ["home-cores", entry(homeCores)],
 ])
 
 /** The series of a vertical whose scenes are compositions, the default. */
