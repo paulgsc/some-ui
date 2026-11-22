@@ -1,6 +1,7 @@
 export * from "./ask"
 export * from "./authorship"
 export { BADGE_TIMING, revealEnds } from "./badges"
+export { CARD_KINDS } from "./stamp"
 export * from "./call"
 export * from "./call-fit"
 export * from "./call-facts"
