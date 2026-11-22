@@ -22,6 +22,7 @@ import { contracts as curriculumContracts } from "../contracts/curriculum.contra
 import { contracts as episodeNoteContracts } from "../contracts/episode-notes.contract"
 import { contracts as feedVideoContracts } from "../contracts/feed-videos.contract"
 import { contracts as gameWeekLiveContracts } from "../contracts/game-week-live.contract"
+import { contracts as gameContracts } from "../contracts/games.contract"
 import { contracts as healthContracts } from "../contracts/health.contract"
 import { contracts as ideaContracts } from "../contracts/ideas.contract"
 import { contracts as interviewWeekContracts } from "../contracts/interview-weeks.contract"
@@ -56,6 +57,7 @@ export const allContracts: ReadonlyArray<Contract> = [
   ...curriculumOperatorContracts,
   ...episodeNoteContracts,
   ...feedVideoContracts,
+  ...gameContracts,
   ...gameWeekLiveContracts,
   ...healthContracts,
   ...ideaContracts,
