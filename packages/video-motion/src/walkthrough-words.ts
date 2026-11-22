@@ -69,7 +69,7 @@ export const WALKTHROUGH_WORDS = {
         : `When I rate how hard an application felt, it comes to about ${String(median)} out of 5.`,
   },
   silence: {
-    title: "Not opened|in four weeks",
+    title: "Not opened|lately",
     none: {
       drawn: "Every module|measured was opened",
       said: "Every module I measure was opened in the last four weeks.",
@@ -78,12 +78,18 @@ export const WALKTHROUGH_WORDS = {
       drawn: "No module's opening|is measured yet",
       said: "Which modules I open isn't measured yet.",
     },
-    quiet: (name: string): { drawn: string; said: string } => ({
-      drawn: clipped(name),
-      said: name,
-    }),
+    quiet: (
+      name: string,
+      weeks: number | null
+    ): { drawn: string; said: string } =>
+      weeks === null
+        ? { drawn: `${clipped(name)}: never`, said: `${name}, never` }
+        : {
+            drawn: `${clipped(name)}: ${weeksOf(weeks)}`,
+            said: `${name}, for ${weeksOf(weeks)}`,
+          },
     more: (n: number): string => `and ${String(n)} more`,
-    lead: "Some of what I built, I haven't opened in the last four weeks:",
+    lead: "Some of what I built, I haven't opened lately:",
     notMeasured: {
       drawn: (n: number): string => `${String(n)} more not measured`,
       said: (n: number): string =>
@@ -93,6 +99,9 @@ export const WALKTHROUGH_WORDS = {
 } as const
 
 const W = WALKTHROUGH_WORDS
+
+const weeksOf = (n: number): string =>
+  `${String(n)} ${n === 1 ? "week" : "weeks"}`
 
 /** `name` cut to fit a card's line. */
 function clipped(name: string): string {
@@ -176,7 +185,7 @@ export function measureSaid(
   })
 }
 
-type Named = Pick<Silent, "pipeline"> & { readonly name: string }
+type Named = Silent & { readonly name: string }
 
 /** What `modules` shows of silence: the quiet ones by name, and how many can't be told. */
 export type Quiet = {
@@ -193,7 +202,7 @@ export function silenceNotes(q: Quiet): string {
   return [
     ...(q.silent.length === 0
       ? [W.silence.none.drawn]
-      : named.map((s) => W.silence.quiet(s.name).drawn)),
+      : named.map((s) => W.silence.quiet(s.name, s.weeksQuiet).drawn)),
     ...(rest > 0 ? [W.silence.more(rest)] : []),
     ...(q.notMeasured > 0 ? [W.silence.notMeasured.drawn(q.notMeasured)] : []),
   ].join("|")
@@ -205,7 +214,7 @@ export function silenceSaid(q: Quiet): string {
   const lead =
     q.silent.length === 0
       ? W.silence.none.said
-      : `${W.silence.lead} ${q.silent.map((s) => W.silence.quiet(s.name).said).join("; ")}.`
+      : `${W.silence.lead} ${q.silent.map((s) => W.silence.quiet(s.name, s.weeksQuiet).said).join("; ")}.`
   return q.notMeasured > 0
     ? `${lead} ${W.silence.notMeasured.said(q.notMeasured)}`
     : lead

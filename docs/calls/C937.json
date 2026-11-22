@@ -1,0 +1,20 @@
+{
+  "id": "C937",
+  "made": "2026-11-22",
+  "by": "owner",
+  "paths": [
+    "some-ui:packages/video-motion/src/walkthrough.ts",
+    "some-ui:packages/video-motion/src/walkthrough-words.ts",
+    "some-ui:packages/video-render/src/friction.ts"
+  ],
+  "chose": "The owner (2026-11-22, answering ask #3408, relayed by the coordinator), verbatim: \"yes for 1\". A published walkthrough may say how long each silent module has gone unopened, from the aggregate's weeksQuiet: \"aph, for 6 weeks\", and \"never\" where home holds no opening over the whole window, longest quiet first. This reaches past C861's 28-day or all-time windows for this one figure, and moves C1002's holding it back. A module home began measuring inside the window with no opening is still said as not measured, never as silent or 'never'.",
+  "options": [
+    "No: name the silent modules only, as 'not opened in the last four weeks'",
+    "Yes: say how many weeks each has gone unopened, and 'never' where home holds no opening (chosen)",
+    "Only as a band, such as 'over two months'"
+  ],
+  "gray": "How long the owner has left a module unopened is a public statement about their own use; whether to publish it is theirs, and no check settles it.",
+  "undo": "Record a call that moves this one, and take the weeks out of walkthrough-words.ts's silence lines.",
+  "refs": ["#3408", "#3282", "#3337", "#3338"],
+  "moves": "C1002"
+}

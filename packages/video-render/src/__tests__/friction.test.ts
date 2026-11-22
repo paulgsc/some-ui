@@ -90,6 +90,27 @@ describe("the friction aggregate (WALK5, C861)", () => {
     expect(read(before).modules[1]?.opened).toEqual({ kind: "not-measured" })
   })
 
+  it("leaves a root's opened days unsaid where the days it wasn't opened would be under 5 (C938)", () => {
+    const openedOn = (days: number): unknown => {
+      const home = {
+        ...sampleHome,
+        friction: {
+          ...sampleHome.friction,
+          opened: sampleHome.friction.opened.map((o) =>
+            o.pipeline === "jobs" && o.affordance === "today"
+              ? { ...o, days }
+              : o
+          ),
+        },
+      }
+      const opened = read(home).modules[0]?.opened
+      return opened?.kind === "measured" ? opened.days : opened?.kind
+    }
+    expect(openedOn(26)).toBe("no-data")
+    expect(openedOn(28)).toBe("no-data")
+    expect(openedOn(23)).toBe(23)
+  })
+
   it("lists every place, moved on unknown at the last, nothing where nothing was seen", () => {
     const { places, debrief } = read()
     const at = (

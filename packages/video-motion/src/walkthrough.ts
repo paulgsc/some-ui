@@ -277,19 +277,12 @@ function quietOf(friction: Friction): Quiet {
     friction.modules.filter((m) => m.opened.kind === "not-measured").length +
     unknown.size
   return {
-    // Silent is "opened on no day of the last 28" (C942), which C861's
-    // window covers. How long past that each has been quiet, and which
-    // longest, is not said until the owner rules on it (#3338): the names
-    // only, in id order.
+    // Silent is "opened on no day of the last 28" (C942). The owner allows
+    // a walkthrough to say how long each has gone unopened, longest first
+    // (C937, #3408).
     silent: silentModules(friction.modules)
       .filter((s) => !unknown.has(s.pipeline))
-      .map((s) => ({
-        pipeline: s.pipeline,
-        name: names.get(s.pipeline) ?? s.pipeline,
-      }))
-      .sort((a, b) =>
-        a.pipeline < b.pipeline ? -1 : a.pipeline > b.pipeline ? 1 : 0
-      ),
+      .map((s) => ({ ...s, name: names.get(s.pipeline) ?? s.pipeline })),
     measured: friction.modules.length - notMeasured,
     notMeasured,
   }

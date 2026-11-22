@@ -1,0 +1,14 @@
+{
+  "id": "C938",
+  "made": "2026-11-22",
+  "by": "owner",
+  "paths": ["some-ui:packages/video-render/src/friction.ts"],
+  "chose": "The owner (2026-11-22, answering ask #3409, relayed by the coordinator), verbatim: \"hide the days for 2\". In the friction aggregate (friction.json), a measured module's opened-days count is left unsaid (no-data) whenever the days it wasn't opened would be under 5 (of - days < 5), as a moved-on count already is beside its stretches. One banding rule for every complement in the aggregate, under ask #2701's 'fewer than 5'.",
+  "options": [
+    "Hide the opened-days count whenever the days it wasn't opened would be under 5, as is done for 'moved on' (chosen)",
+    "Keep both figures as they are: the file stays on home"
+  ],
+  "gray": "How strictly the owner's own 'fewer than 5' rule applies to a figure no video shows today is a call about their data, not a code fact.",
+  "undo": "Record a call that moves this one, and say the opened days again in frictionOf.",
+  "refs": ["#3409", "#2701", "#3282", "#3337"]
+}

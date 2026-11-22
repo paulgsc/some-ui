@@ -8,7 +8,9 @@
  *
  * Aggregates only, under the engagement report's public-safety rule (ask
  * #2701): every count is a `PublicCount`, "fewer than 5" below `UNDER`, a
- * median is said only over 5 values or more, and nothing here names a pass
+ * count whose complement beside an exact figure would be under 5 is unsaid
+ * (opened days beside `of`, C938; moved on beside the stretches), a median
+ * is said only over 5 values or more, and nothing here names a pass
  * reason, a chip, a company, a role or any content. A module home can't
  * tell the opening of is `not-measured`, never silent.
  *
@@ -31,7 +33,12 @@ import { HomeWeeksSchema } from "./engagement-report-video"
 
 export const FRICTION_SCHEMA = "some-ui.friction/2"
 
-/** The days an aggregate looks back over: four weeks (C861). */
+/**
+ * The days an aggregate looks back over: four weeks (C861, which allows
+ * 28-day or all-time windows). How many whole weeks a silent module has
+ * gone unopened (`weeksQuiet`) may be said too, past that window (the
+ * owner's C937, #3408).
+ */
 export const FRICTION_WINDOW_DAYS = 28
 
 const id = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
@@ -48,7 +55,7 @@ export const FrictionSchema = z.strictObject({
       opened: z.discriminatedUnion("kind", [
         z.strictObject({
           kind: z.literal("measured"),
-          /** Days of the window its root was shown on. */
+          /** Days of the window its root was shown on; `no-data` where the days not shown on would be under 5 (C938). */
           days: CountSchema,
           /** Days of the window home measured its root over: from its first event, at most the window. */
           of: z.int().min(1).max(FRICTION_WINDOW_DAYS),
@@ -196,6 +203,7 @@ export function frictionOf(
       p,
     ])
   )
+  const noData: PublicCount = "no-data"
   const modules = registry.map((pipeline): Friction["modules"][number] => {
     const notMeasured = {
       pipeline: pipeline.id,
@@ -212,11 +220,15 @@ export function frictionOf(
     const of = Math.min(measures.measuredDays, daysFrom(since, last) + 1)
     if (of < 1) return notMeasured
     const lastOpened = its.lastOpenedDay
+    const openedDays = opened.get(key) ?? 0
     return {
       pipeline: pipeline.id,
       opened: {
         kind: "measured",
-        days: publicCount(opened.get(key) ?? 0),
+        // Said beside the exact days measured, an opened-days count would
+        // give away the days not opened, under 5: it is left unsaid then,
+        // as a moved-on count is (the owner's C938, #3409).
+        days: of - openedDays < UNDER ? noData : publicCount(openedDays),
         of,
         weeksQuiet:
           lastOpened === null
@@ -225,7 +237,6 @@ export function frictionOf(
       },
     }
   })
-  const noData: PublicCount = "no-data"
   const placeRows = registry.flatMap((pipeline) =>
     pipeline.affordances
       .filter((a) => a.retired !== true)
