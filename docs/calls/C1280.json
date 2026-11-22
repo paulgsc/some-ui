@@ -1,0 +1,21 @@
+{
+  "id": "C1280",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "packages/ui/leetype/src/lib/leetype/home-files/index.ts",
+    "packages/ui/leetype/src/lib/leetype/home-files/model.ts",
+    "packages/ui/leetype/src/components/session-file-picker/home-files.tsx",
+    "apps/www/src/lib/home-link/leetype-files.ts"
+  ],
+  "chose": "The picker's \"From home\" list keeps a whole thread on the phone at one tap (each of its files home holds that the phone doesn't), so the thread plays offline, rather than one file per tap. The current thread is the thread of the file the phone kept last, shown first, standing in for #1916's \"the thread of the newest started session\", since the picker holds the kept files and not the session log. A name the phone already holds is never fetched, so no If-None-Match is sent: a held name never takes other bytes, so a conditional fetch could only ever say what the phone already knows.",
+  "options": [
+    "keep a whole thread per tap; current thread = the thread of the file kept last; no conditional fetch (taken)",
+    "keep one file per tap, as a pick from storage does",
+    "keep the current thread on its own as the list arrives, with no tap",
+    "read the session log for the newest started session's thread, and send If-None-Match on every fetch"
+  ],
+  "gray": "#1916 asks that the current thread play offline and that a pick fetch with ETag / If-None-Match, but not how many files a tap keeps or how the picker learns the current thread; the owner would notice either on the screen.",
+  "undo": "Make the list's button keep one file (keepThread with one name), rank threads by number only in threadsOf, and add an If-None-Match header to the home link's request port for the fetch.",
+  "refs": ["#1916", "#2025"]
+}

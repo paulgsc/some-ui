@@ -37,6 +37,10 @@ const WALK: ReadonlyArray<Stop> = [
     go: (page) =>
       page.getByRole("button", { name: /^Play / }).waitFor({ timeout: 10_000 }),
   },
+  {
+    screen: "the card, after keeping a thread from home",
+    go: (page) => tap(page, "Keep the other 1 on this phone"),
+  },
   { screen: "first screen", go: (page) => tap(page, /^Play /) },
   { screen: "info screen", go: (page) => tap(page, /the whole session/) },
   {

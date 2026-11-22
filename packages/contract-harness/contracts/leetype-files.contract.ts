@@ -3,9 +3,10 @@
  * `routes/leetype_files.rs` and `handlers/leetype_files.rs`, its
  * `docs/identity.md` invariant 27): the files the routine left in the Jobs
  * mailbox's `leetype` folder, which the `mailbox` poller keeps in
- * `mailbox_item` (#2026). The phone's picker will call these through the
- * app's home link (#1916); today `apps/www/src/lib/leetype-files` holds only
- * the files picked on the device.
+ * `mailbox_item` (#2026). The phone's picker calls these through the app's
+ * home link (#1916, `apps/www/src/lib/home-link/leetype-files.ts`) and keeps
+ * a file it fetches beside the ones picked on the device
+ * (`apps/www/src/lib/leetype-files`).
  *
  * Hand-written: `SessionFilesSchema` is the server's `SessionFiles` (`files`
  * of `Listed`: name, the session file's own `title` and `oneLine`, its

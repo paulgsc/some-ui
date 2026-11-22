@@ -9,6 +9,7 @@ import {
   nextExercise,
   SESSION_EXERCISE_IDS,
 } from "@leetype/lib/leetype/exercises"
+import type { HomeSessionFiles } from "@leetype/lib/leetype/home-files"
 import type {
   OpenedSessionFile,
   SessionFileStore,
@@ -69,7 +70,13 @@ type LeetypeProps = {
    * surface only; absent, the phone surface says where its sessions come
    * from.
    */
-  sessionFiles?: { store: SessionFileStore; hint?: string; samples?: boolean }
+  sessionFiles?: {
+    store: SessionFileStore
+    hint?: string
+    samples?: boolean
+    /** The paired home's session files, while paired (`SessionFilePicker`'s `home`). */
+    home?: HomeSessionFiles
+  }
   /**
    * The microphone a session file's spoken answers are taken on
    * (`lib/leetype/spoken-take`). Absent, an answer can only be typed.
@@ -227,6 +234,9 @@ export const Leetype: FC<LeetypeProps> = ({
               ? {}
               : { hint: sessionFiles.hint })}
             samples={sessionFiles.samples ?? false}
+            {...(sessionFiles.home === undefined
+              ? {}
+              : { home: sessionFiles.home })}
             className="min-h-0 flex-1"
           />
         )}

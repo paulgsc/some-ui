@@ -39,7 +39,8 @@
  *   Studio's takes and what Studio keeps, through voice-capture's
  *   `pairedOf` and its `unknown` place. Outside it, as they say nothing of
  *   no pairing (a control that is absent until paired): `routine.ts`'s
- *   pairing port, `device-routine-files` and Studio's clip frames.
+ *   and `leetype-files.ts`'s pairing ports, `device-routine-files`,
+ *   `device-leetype-home-files` and Studio's clip frames.
  * - _Proof:_ the type. `pairing()` and `usePairing()` are the only reads of
  *   the pairing `lib/home-link` exports for a screen, and a switch over the
  *   union fails to compile without `reading`. A run's end is `../model`'s

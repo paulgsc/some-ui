@@ -31,6 +31,13 @@ export type {
   KeepOutcome,
   SessionFileStore,
 } from "./lib/leetype/session-file-pick"
+// The session files the paired home holds (#1916): the port a host provides.
+export type {
+  HomeFileAnswer,
+  HomeListing,
+  HomeSessionFiles,
+  ListingEnded,
+} from "./lib/leetype/home-files"
 // A spoken answer's take (Def. 9.5): the microphone a host provides.
 export type {
   SpokenTakeNote,

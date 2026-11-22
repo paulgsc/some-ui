@@ -1236,7 +1236,10 @@ the phone on home's word are LA8's clear, the study list's "Let it
 go" and the phone-full offer's "Remove it" (what goes on its own once home holds it, as
 aph's changes and the written reflections past the offline set do, is each
 record's own invariant: LA16 for reflections, LA18 for asks). Korean's look at the routine's files
-(`routine.ts`) is read the same way, by the lesson's own query.
+(`routine.ts`) is read the same way, by the lesson's own query, and so is
+LeetType's look at the session files home holds (`leetype-files.ts`,
+#1916), by its picker opening; both are members of one look at a list home
+holds (`listing.ts`).
 
 What each lane sends, and what the phone may let go of, is enforced by
 test: who reaches the link and its `keep` lane (`egress-choke-points`), the
@@ -1338,7 +1341,15 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   lesson's `useRoutineFiles` query (on the lesson mounting and the app
   coming back to the front, while Korean is open; never on an interval, a
   reconnect or a retry), and tells home which lessons it opened only from
-  that open (`tellOpened`).
+  that open (`tellOpened`). LeetType's look (`leetypeFileReads().list()`)
+  and its fetch of one file (`fetch`) are called only through the port
+  `useHomeLeetypeFiles` (`components/player/device-leetype-home-files.ts`)
+  returns, which exists only while the phone is paired, keyed by the
+  pairing; `session-viewport.tsx` hands that port to leetype's
+  `sessionFiles.home` alone, in the device build alone, and leetype reads
+  its `list` only in `HomeFilesRuntime`'s `start` (the "From home" list
+  mounting, and after a keep that put a file on the phone) and its `fetch`
+  only in `keepThread`, from the list's keep button.
 - _Falsified by:_ a hunk to `lib/home-link/kept-watch.ts` that reaches
   `askKept` from anything but `watchKept`'s record subscription, its link
   subscription, its `visibilitychange` and `online` listeners and its first
@@ -1530,16 +1541,31 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   the phone is not paired, or keys it on anything but the pairing; a hunk
   to `session-viewport.tsx` that reaches `useHomeRoutineFiles` other than
   through `useRoutineFromHome`'s `VITE_DEVICE_BACKEND` branch, or hands its
-  port anywhere but topik's `routineFiles`; a hunk to `routine.ts` that
+  port anywhere but topik's `routineFiles`; a hunk to `listing.ts` that
   lets `list` start a read without `mayRead`'s checks or while one under
   the same pairing is on its way, lets it reject, retries a read, starts
-  one from a timer or from the `onLink` listener (which only settles),
-  sends anything but one `GET /routine/files` and, from `tellOpened` alone,
-  one `PUT /routine/opened` of `{ opened }` names, lets `tellOpened` send
+  one from a timer or from the `onLink` listener (which only settles), or
+  sends anything but one `GET` of its listing's `path`; a hunk to
+  `routine.ts` that names a path but `/routine/files` for its look or sends
+  anything but, from `tellOpened` alone, one `PUT /routine/opened` of
+  `{ opened }` names, lets `tellOpened` send
   unpaired, with the app in the background, or while one is on its way,
-  retries one or lets it reject, keeps an answer whose pairing is not the
-  phone's when it lands, removes or weakens `settle`'s clearing, or keeps
-  home's files anywhere but memory; a hunk to topik's
+  retries one or lets it reject; a hunk to `listing.ts` that keeps an
+  answer whose pairing is not the phone's when it lands, removes or weakens
+  `settle`'s clearing, or keeps home's files anywhere but memory; a hunk to
+  `leetype-files.ts` that names a path but `/leetype/session-files` for its
+  look, sends anything but that look and one `GET` of a file under it, lets
+  `fetch` send unpaired or with the app in the background, or reject; a
+  hunk to `device-leetype-home-files.ts` that returns a port while the
+  phone is not paired, or keys it on anything but the pairing; a hunk to
+  `session-viewport.tsx` that reaches `useHomeLeetypeFiles` other than
+  through `useLeetypeFromHome`'s `VITE_DEVICE_BACKEND` branch, or hands its
+  port anywhere but leetype's `sessionFiles.home`; a hunk in leetype that
+  calls the port's `list` anywhere but `HomeFilesRuntime`'s `start`, calls
+  that `start` from a timer, a retry or a listener other than the list's
+  mounting effect and a keep that put a file on the phone, or calls `fetch`
+  anywhere but `keepThread`, or `keepThread` anywhere but the list's keep
+  button; a hunk to topik's
   `adapter/server/routine-files-queries` that keys its query on anything
   but the feed's `key` (or, with none, whether there is a feed), or changes
   or removes its `enabled`, `staleTime`, `refetchOnMount`,
@@ -1555,7 +1581,10 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   `drain.ts`, `going.ts`, `voice-copy.ts`'s `holdNotes`, `leetype-log.ts`,
   `notes.ts`, `lens-record.ts`,
   `sent.ts`, `model.ts`, `runtime.ts`, `routine.ts`,
-  `routine-model.ts`, `apps/www/src/components/device-home-glyph.tsx`,
+  `routine-model.ts`, `listing.ts`, `leetype-files.ts`,
+  `apps/www/src/components/player/device-leetype-home-files.ts`,
+  `packages/ui/leetype/src/lib/leetype/home-files/index.ts`,
+  `packages/ui/leetype/src/components/session-file-picker/home-files.tsx`, `apps/www/src/components/device-home-glyph.tsx`,
   `apps/www/src/components/settings/device-kept-on-home.tsx`,
   `apps/www/src/components/aph/device-aph-lane.tsx`,
   `apps/www/src/components/player/device-routine-files.ts`,
@@ -1628,6 +1657,17 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   and a run's `going`; and the lane's revision and count reading
   `videosWaiting`, which `videosMoved` (a video handed over or read, or
   home's answer remembered or list read) tells.
+  Amended for #1916 by reading the lift and LeetType's look: `routine.ts`'s
+  look moved, unchanged, into `listing.ts`, which `routine.ts` and
+  `leetype-files.ts` each run over their own path, and `tellOpened` waits on
+  its `looking` and `onSettled` as it waited on the look in flight;
+  `leetypeFileReads()`'s `list` and `fetch` only in
+  `device-leetype-home-files.ts`'s port, that port only in
+  `session-viewport.tsx` under `VITE_DEVICE_BACKEND`, as leetype's
+  `sessionFiles.home`; leetype's `list` only in `HomeFilesRuntime`'s
+  `start`, called from `HomeFiles`' mounting effect and after a keep that
+  kept a file, and `fetch` only in `keepThread`, from its keep button's
+  `onClick`.
 - _Tolerance:_ Studio's time log tells no one of a write, so a screen
   entered or left in Studio asks for no run, and Practice's waiting count
   shows it from the count's next redraw (#2425). Rust Rounds: a round home

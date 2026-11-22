@@ -31,6 +31,7 @@ import {
 } from "@/lib/topik-content"
 import { WEB_PANEL_KEYS } from "@/lib/web-surface"
 
+import { useHomeLeetypeFiles } from "./device-leetype-home-files"
 import { useHomeRoutineFiles } from "./device-routine-files"
 import { defineSceneProps, withSceneProps } from "./scene-props"
 import { useLiveLayoutEditor } from "./use-live-layout-editor"
@@ -63,6 +64,16 @@ const VIEWER_SESSION_FILES =
 const useRoutineFromHome =
   import.meta.env.VITE_DEVICE_BACKEND === "true"
     ? useHomeRoutineFiles
+    : (): undefined => undefined
+
+/**
+ * The session files the paired home holds for LeetType, as the Android app
+ * reads them: through its paired home (LA15, #1916). Folded as the
+ * routine's files are.
+ */
+const useLeetypeFromHome =
+  import.meta.env.VITE_DEVICE_BACKEND === "true"
+    ? useHomeLeetypeFiles
     : (): undefined => undefined
 
 /** What the player renders: the bound panels, and a note for a web one. */
@@ -136,6 +147,7 @@ export const SessionViewport = ({
   )
   const routineFromHome = useRoutineFromHome()
   const routineFiles = shelves?.routineFiles ?? routineFromHome
+  const leetypeFromHome = useLeetypeFromHome()
 
   const paused = useIsPaused()
 
@@ -180,6 +192,10 @@ export const SessionViewport = ({
               ? {
                   store: PHONE_SESSION_FILES,
                   hint: lookIn("leetype-session"),
+                  // What home holds, only while paired (#1916).
+                  ...(leetypeFromHome === undefined
+                    ? {}
+                    : { home: leetypeFromHome }),
                 }
               : VIEWER_SESSION_FILES && {
                   store: VIEWER_SESSION_FILES,
@@ -187,7 +203,7 @@ export const SessionViewport = ({
                 },
         },
       }),
-    [shelves, routineFiles, paused, opening]
+    [shelves, routineFiles, leetypeFromHome, paused, opening]
   )
 
   const renderedLifetimes = useMemo(

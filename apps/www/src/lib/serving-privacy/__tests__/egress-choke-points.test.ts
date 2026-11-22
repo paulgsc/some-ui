@@ -146,6 +146,9 @@ const HOME_LINK_CALLERS = new Set([
   // Korean reads them through.
   "components/settings/device-routine-reads.tsx",
   "components/player/device-routine-files.ts",
+  // LA15 (#1916): the port LeetType's picker reads home's session files
+  // through, and fetches one through on a tap.
+  "components/player/device-leetype-home-files.ts",
   // LA13: game day's line of what of its bites waits on the phone for home
   // (`gameOutbox`), which reads and sends nothing; and LA21: the game day's
   // live feed (`gameDayFeed`), open while the recorder watches it.
@@ -247,6 +250,10 @@ const KEEPERS = new Set([
   "lib/home-link/lanes.ts",
   "lib/home-link/kept-runtime.ts",
   "lib/home-link/routine.ts",
+  // #1916: the one look at a list home holds (Korean's routine files and
+  // LeetType's session files), and LeetType's look and file fetch over it.
+  "lib/home-link/listing.ts",
+  "lib/home-link/leetype-files.ts",
   "lib/home-link/heard.ts",
   "lib/home-link/voice-audio.ts",
   "lib/home-link/kept-read.ts",
@@ -287,9 +294,16 @@ const NOTES_SENDS = [['"GET"', "`/feeds/${feed}/notes`"]]
 /** The routine's read, and the two requests it may send. */
 const ROUTINE_READ = "lib/home-link/routine.ts"
 const ROUTINE_SENDS = [
-  ['"GET"', '"/routine/files"'],
   ['"PUT"', '"/routine/opened"', "JSON.stringify({ opened: keys })"],
 ]
+
+/** #1916: the one look at a list home holds, and the one request it sends. */
+const LISTING_READ = "lib/home-link/listing.ts"
+const LISTING_SENDS = [['"GET"', "listing.path"]]
+
+/** #1916: LeetType's fetch of one of home's session files, its one request. */
+const LEETYPE_FILES_READ = "lib/home-link/leetype-files.ts"
+const LEETYPE_FILES_SENDS = [['"GET"', "`${PATH}/${encodeURIComponent(name)}`"]]
 
 /**
  * LA8, LA15 (HF11): the voice lane's read of which Studio takes home knows
@@ -1129,6 +1143,20 @@ describe("LA8: the phone reaches home through one module", () => {
 
   it("sends nothing from the routine's read but one GET /routine/files and one PUT /routine/opened", () => {
     expect(sendCalls(ROUTINE_READ, read(ROUTINE_READ))).toEqual(ROUTINE_SENDS)
+    expect(sendCalls(LISTING_READ, read(LISTING_READ))).toEqual(LISTING_SENDS)
+    expect(read(ROUTINE_READ)).toContain(
+      '{ path: "/routine/files", port: PORT }'
+    )
+  })
+
+  it("sends nothing from LeetType's look and fetch but one GET of /leetype/session-files and one GET of a file under it (#1916)", () => {
+    expect(sendCalls(LEETYPE_FILES_READ, read(LEETYPE_FILES_READ))).toEqual(
+      LEETYPE_FILES_SENDS
+    )
+    expect(read(LEETYPE_FILES_READ)).toContain(
+      'const PATH = "/leetype/session-files"'
+    )
+    expect(read(LEETYPE_FILES_READ)).toContain("{ path: PATH, port: PORT }")
   })
 
   it("sends nothing from the read of which takes Drive has but its GETs of /voice-notes/on-drive, one per 100 waiting takes, and only the voice lane's run reads it (HF11)", () => {
@@ -1302,7 +1330,10 @@ describe("the checks themselves", () => {
         "x.ts",
         'void send("GET", "/routine/files"); void link.send("PUT", path, body); void sender("GET", "/x")'
       )
-    ).toEqual([ROUTINE_SENDS[0], ['"PUT"', "path", "body"]])
+    ).toEqual([
+      ['"GET"', '"/routine/files"'],
+      ['"PUT"', "path", "body"],
+    ])
   })
 
   it("flags an eslint-disable of the rule and nothing else", () => {

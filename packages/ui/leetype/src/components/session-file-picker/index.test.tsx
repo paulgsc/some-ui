@@ -1,4 +1,6 @@
 import { SessionFilePicker } from "@leetype/components/session-file-picker"
+import type { HomeSessionFiles } from "@leetype/lib/leetype/home-files"
+import { HOME_FILES_WORDS } from "@leetype/lib/leetype/home-files"
 import type { SessionFileStore } from "@leetype/lib/leetype/session-file-pick"
 import { AB_FIXTURES } from "@leetype/lib/leetype/session-file/__tests__/fixtures"
 import { SessionFileSchema } from "@leetype/types/session-file"
@@ -111,6 +113,65 @@ describe("SessionFilePicker", () => {
     expect(screen.getByText(/lasts until you reload this page/)).toBeTruthy()
     expect(
       await screen.findByRole("list", { name: "Sample sessions" })
+    ).toBeTruthy()
+  })
+
+  it("lists home's files by thread and keeps a thread on the phone at a tap", async () => {
+    const keep = vi.fn<SessionFileStore["keep"]>(() => Promise.resolve("kept"))
+    const list = vi
+      .fn<SessionFileStore["list"]>()
+      .mockResolvedValueOnce([])
+      .mockResolvedValue([
+        {
+          name: "t1-01-power-cut",
+          title: RAW.title,
+          oneLine: RAW.oneLine,
+          pickedAt: "2026-10-18T21:00:00.000Z",
+        },
+      ])
+    const fetch = vi.fn<HomeSessionFiles["fetch"]>(() =>
+      Promise.resolve({ kind: "file", body: VALID })
+    )
+    const home: HomeSessionFiles = {
+      key: "pairing-1",
+      list: () =>
+        Promise.resolve({
+          files: {
+            files: [
+              {
+                name: "t1-01-power-cut.json",
+                title: "Power cut",
+                oneLine: "The lights go out.",
+              },
+            ],
+          },
+          ended: null,
+        }),
+      fetch,
+    }
+    render(
+      <SessionFilePicker
+        store={{ list, keep, read: () => Promise.resolve(VALID) }}
+        home={home}
+        onPlay={vi.fn()}
+      />
+    )
+    expect(
+      await screen.findByRole("group", { name: HOME_FILES_WORDS.thread(1) })
+    ).toBeTruthy()
+    fireEvent.click(
+      screen.getByRole("button", { name: HOME_FILES_WORDS.keep(1, 1) })
+    )
+    expect(await screen.findByText(HOME_FILES_WORDS.allOnPhone)).toBeTruthy()
+    expect(fetch).toHaveBeenCalledWith("t1-01-power-cut.json")
+    expect(keep).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "t1-01-power-cut", body: VALID }),
+      expect.any(Date)
+    )
+    expect(
+      await screen.findByRole("button", {
+        name: new RegExp(`Play ${RAW.title}`),
+      })
     ).toBeTruthy()
   })
 })

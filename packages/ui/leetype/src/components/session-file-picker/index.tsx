@@ -1,5 +1,6 @@
 import type { ChangeEvent, FC } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
+import type { HomeSessionFiles } from "@leetype/lib/leetype/home-files"
 import type {
   OpenedSessionFile,
   PickState,
@@ -9,6 +10,8 @@ import { SessionFilePickRuntime } from "@leetype/lib/leetype/session-file-pick"
 import { assertNever, cn } from "@some-ui/core-utils"
 import { Button, Notice } from "@some-ui/shared"
 import { FolderOpen } from "lucide-react"
+
+import { HomeFiles } from "./home-files"
 
 type SessionFilePickerProps = {
   /** Fixed for the card's life: the runtime is made once per mount. */
@@ -20,6 +23,11 @@ type SessionFilePickerProps = {
    * and the list says what it is.
    */
   samples?: boolean
+  /**
+   * The session files the paired home holds, while the phone is paired:
+   * listed under "From home", each thread kept on the phone at a tap.
+   */
+  home?: HomeSessionFiles
   /** A held file the learner chose to play. */
   onPlay: (opened: OpenedSessionFile) => void
   className?: string
@@ -63,6 +71,7 @@ export const SessionFilePicker: FC<SessionFilePickerProps> = ({
   store,
   hint,
   samples = false,
+  home,
   onPlay,
   className,
 }) => {
@@ -144,6 +153,15 @@ export const SessionFilePicker: FC<SessionFilePickerProps> = ({
             </li>
           ))}
         </ul>
+      )}
+      {home !== undefined && !samples && held.kind === "ready" && (
+        <HomeFiles
+          key={home.key}
+          home={home}
+          store={store}
+          held={held.files}
+          onKept={runtime.start}
+        />
       )}
       {status !== null && (
         <Notice
