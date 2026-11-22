@@ -1,0 +1,59 @@
+name: Bucket prune
+# Deletes the branches a merged bucket PR carried (.claude/skills/coordinate/
+# SKILL.md, "Buckets"). A bucket (`claude/bucket-<repo>-<n>`) merges several
+# worker branches with merge commits, then squash-merges to main, and
+# delete-on-merge removes only the bucket's own branch. A cloud session
+# cannot delete a branch, so this does it. The rules for what goes and what
+# stays are in scripts/bucket-prune.sh, and its tests in
+# packages/eslint/tests/bucket-prune.test.ts.
+#
+#   a bucket PR from this repository merges   prune its carried branches
+#   workflow_dispatch with a merged bucket    the same, for a bucket merged
+#   PR's number                               before this ran, or a re-try
+#
+# Nothing it deletes is lost: each deleted tip is an ancestor of the bucket's
+# head, which main holds as its squash, and refs/pull/<n>/head keeps the
+# commits. A branch whose tip is not (it moved on after the bucket took it)
+# is kept, and the run's summary names it. No artifacts.
+on:
+  pull_request:
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Number of a merged bucket PR
+        required: true
+        type: number
+
+permissions: {}
+
+concurrency:
+  group: bucket-prune
+  cancel-in-progress: false
+
+jobs:
+  prune:
+    name: Delete the branches the bucket carried
+    if: >-
+      github.event_name == 'workflow_dispatch' || (
+        github.event.pull_request.merged &&
+        startsWith(github.event.pull_request.head.ref, 'claude/bucket-') &&
+        github.event.pull_request.head.repo.full_name == github.repository
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # delete the carried branches
+      pull-requests: read # read the bucket PR, for a dispatch
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Prune
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          PR: ${{ github.event_name == 'workflow_dispatch' && inputs.pr || github.event.pull_request.number }}
+        run: bash scripts/bucket-prune.sh run

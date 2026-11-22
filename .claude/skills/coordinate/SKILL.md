@@ -124,6 +124,8 @@ prepare`) before it reaches a PR. Review after a PR opens is for the merge delta
   worker's commits and `Change-Kind`, `Promise`, `Relates` and `Call` trailers reach `main`
   through the PR's squash (COMMIT_MESSAGES). Where two branches touch the same file, the
   merge's resolution is reviewed as a delta before the bucket is pushed.
+- **Carried branches prune themselves.** Once a bucket PR merges, `bucket-prune.yml` deletes
+  each branch it carried whose tip main now holds, and keeps (and names) one that moved on.
 - **Local checks on the bucket**, then one PR. Its body has one section per branch (what, its
   review record, its Superseded) and "Calls I made" lists every branch's calls.
 - **A defect is never bucketed.** It carries its own proof, and "a change that is both a story
