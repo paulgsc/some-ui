@@ -131,8 +131,8 @@ The weekly call reads every open ask into "Waiting on you"
 
 **Asks**, on the home network's desktop web (`/asks`, account-only), lists
 every ask, read from GitHub's public list each time it opens: the open ones,
-which wait, and the hundred closed most lately in each repository, which were
-answered. Filing the issue puts it there and closing it answers it, so nothing
+which wait, and the hundred closed ones updated most lately in each
+repository, which were answered. Filing the issue puts it there and closing it answers it, so nothing
 else needs telling (C1200, C1201). Each kind has its own page
 (`/asks/decisions`, `/asks/checklists`), never mixed, under a nav that counts
 what waits of each. Every row has the same shape whatever its kind: what it

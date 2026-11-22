@@ -4,9 +4,10 @@
  * ahead, and where what they do is kept (this tab, until they copy it).
  * `./__tests__/words.test.ts` holds that none names the machinery.
  */
+import { dayOf, formatDay } from "@some-ui/core-utils"
 import type { AskCall, AskWaits } from "@some-ui/video-render"
 
-import type { AskView, Order, Show } from "./list"
+import type { AskView, Order, PivotShow, Show } from "./list"
 
 export const ASKS_WORDS = {
   title: "Asks",
@@ -27,6 +28,8 @@ export const ASKS_WORDS = {
     decision: "No decision is here yet.",
     checklist: "No checklist is here yet.",
   } satisfies Record<Exclude<AskView, "pivot">, string>,
+  answeredHere:
+    "This was answered when its issue was closed. Its page on GitHub says how.",
   noneShown: "No ask here matches what you picked.",
   unreadHere: (n: number): string =>
     n === 1
@@ -67,17 +70,13 @@ export const ASKS_WORDS = {
   sinceColumn: "Since",
   /** When an ask was filed, or answered, as a day of the year. */
   since: (filed: string, answered: string | null): string => {
-    const day = (iso: string): string =>
-      new Date(iso).toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "short",
-      })
+    const day = (iso: string): string => formatDay(dayOf(new Date(iso)))
     return answered === null ? day(filed) : `Answered ${day(answered)}`
   },
   pivotCounts: {
     waiting: "Waiting only",
     all: "Answered too",
-  } satisfies Record<Extract<Show, "waiting" | "all">, string>,
+  } satisfies Record<PivotShow, string>,
   pivotCorner: "Call, by who waits",
   inCell: {
     decision: (n: number): string =>

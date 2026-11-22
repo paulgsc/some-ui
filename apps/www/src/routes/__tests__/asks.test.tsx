@@ -1,15 +1,9 @@
 /**
  * @vitest-environment jsdom
  *
- * The desktop web's Asks pages (C1200), routed as the app routes them, by
- * the route's own address reading (`viewParams`, `listSearch`): a nav of
- * the views, Asks on to the first kind with an ask waiting, each kind's
- * list in one row shape (an ask filed before the shared part says so), the
- * chips that narrow it, answered asks last, and the pivot whose cells open
- * a list already picked. A row opens to a decision's options or a
- * checklist's steps; choosing and ticking off grow the ask's receipt,
- * blanked, which the page shows and copies. And what a page says when the
- * asks can't be read, or can't be read again.
+ * The Asks pages (C1200) as the app routes them: the real frame and view,
+ * under the route's own address reading. What a list or the pivot holds is
+ * `lib/asks/__tests__/list.test.ts`'s; this holds that each is wired.
  */
 import { MemoryRouted } from "@/test-support/memory-routed"
 import {
@@ -19,18 +13,14 @@ import {
 import type { KeyedStorage } from "@some-ui/core-utils"
 import type { QueryClient } from "@tanstack/react-query"
 import type { AnyRoute } from "@tanstack/react-router"
-import {
-  createRootRoute,
-  createRoute,
-  Outlet,
-  useNavigate,
-} from "@tanstack/react-router"
+import { createRootRoute, createRoute, Outlet } from "@tanstack/react-router"
 import {
   act,
   cleanup,
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -39,9 +29,9 @@ import { BLANKED } from "@/lib/asks/blank"
 import type { KeptReceipts } from "@/lib/asks/kept"
 import { keptReceipts } from "@/lib/asks/kept"
 import type { AskView, ListState } from "@/lib/asks/list"
-import { listSearch, pivotShowOf, viewParams } from "@/lib/asks/list"
+import { listSearch, viewParams } from "@/lib/asks/list"
 import { ASKS_WORDS as W } from "@/lib/asks/words"
-import { AskList, AsksLanding, AsksNav, AsksPivot } from "@/components/asks"
+import { AsksFrame, AsksLanding, AsksView } from "@/components/asks"
 
 afterEach(() => {
   cleanup()
@@ -178,10 +168,9 @@ const routed = (
       getParentRoute: () => root,
       path: "/asks",
       component: () => (
-        <>
-          <AsksNav />
+        <AsksFrame>
           <Outlet />
-        </>
+        </AsksFrame>
       ),
     })
     const landing = createRoute({
@@ -189,7 +178,6 @@ const routed = (
       path: "/",
       component: AsksLanding,
     })
-    // As `routes/_dashboard/_lan/asks/$view.tsx` draws it.
     const view = createRoute({
       getParentRoute: () => layout,
       path: "/$view",
@@ -198,18 +186,7 @@ const routed = (
       component: function View() {
         const { view: at }: { view: AskView } = view.useParams()
         const state: ListState = view.useSearch()
-        const navigate = useNavigate()
-        const onStep = (next: ListState): void => {
-          void navigate({ to: ".", search: next, replace: true })
-        }
-        return at === "pivot" ? (
-          <AsksPivot
-            show={pivotShowOf(state)}
-            onShow={(show) => onStep({ ...state, show })}
-          />
-        ) : (
-          <AskList kind={at} kept={kept} state={state} onStep={onStep} />
-        )
+        return <AsksView view={at} state={state} kept={kept} />
       },
     })
     return root.addChildren([layout.addChildren([landing, view])])
@@ -223,7 +200,7 @@ const routed = (
 /** The questions the list's rows ask, top to bottom. */
 const rows = (): Array<string | null> =>
   screen
-    .getAllByRole("button", { expanded: false })
+    .queryAllByRole("button", { expanded: false })
     .concat(screen.queryAllByRole("button", { expanded: true }))
     .map((b) => b.textContent)
 
@@ -301,23 +278,17 @@ describe("an Asks list", () => {
     expect(screen.queryByText("Will you set up the keys?")).toBeNull()
   })
 
-  it("narrows by who waits, and lists the answered last when shown", async () => {
+  it("narrows when a chip is picked", async () => {
     serve({
       ui: [
-        decision(1, "B: first filed?"),
-        decision(2, "A: then this?", { waits: "home" }),
+        decision(1, "Which voice?"),
+        decision(2, "Which key?", { waits: "home" }),
       ],
-      closed: [decision(3, "C: answered?", {}, "2026-11-21T09:00:00Z")],
     })
     render(routed("/asks/decisions"))
-    await screen.findByRole("button", { name: "B: first filed?" })
-    expect(rows()).toEqual(["B: first filed?", "A: then this?"])
-    fireEvent.click(screen.getByRole("button", { name: `${W.shows.all} 3` }))
-    await screen.findByText("Answered 21 Nov")
-    expect(rows()).toEqual(["B: first filed?", "A: then this?", "C: answered?"])
+    await screen.findByRole("button", { name: "Which voice?" })
     fireEvent.click(screen.getByRole("button", { name: `${W.waits.home} 1` }))
-    await screen.findByRole("button", { name: "A: then this?" })
-    expect(rows()).toEqual(["A: then this?"])
+    await waitFor(() => expect(rows()).toEqual(["Which key?"]))
   })
 
   it("opens a checklist's row to its steps, and puts each step ticked off on the receipt, blanked", async () => {
@@ -362,6 +333,18 @@ describe("an Asks list", () => {
     ])
   })
 
+  it("lists an ask closed between its reads once, answered, to be read only", async () => {
+    const answered = decision(9, "Redeploy home?", {}, "2026-11-21T09:00:00Z")
+    serve({ ui: [decision(9, "Redeploy home?")], closed: [answered] })
+    render(routed("/asks/decisions?show=all"))
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Redeploy home?" })
+    )
+    await screen.findByText(W.answeredHere)
+    expect(rows()).toEqual(["Redeploy home?"])
+    expect(screen.queryByRole("button", { name: W.choose })).toBeNull()
+  })
+
   it("keeps what was read when a refresh fails, and says so", async () => {
     vi.spyOn(globalThis, "fetch")
       .mockImplementationOnce(() =>
@@ -390,25 +373,18 @@ describe("an Asks list", () => {
 })
 
 describe("the Asks pivot", () => {
-  it("counts the waiting asks by call and who waits, and a cell opens its kind's list, picked", async () => {
+  it("opens a cell's kind's list, picked as the cell is", async () => {
     serve({
       ui: [
-        checklist,
         decision(1, "Which voice?"),
         decision(2, "Which key?", { call: "environment", waits: "home" }),
       ],
-      closed: [decision(3, "Answered?", {}, "2026-11-21T09:00:00Z")],
     })
     render(routed("/asks/pivot"))
     const story = (await screen.findByText(W.calls.story)).closest("tr")
     if (story === null) throw new Error("each call is a row")
-    expect(within(story).getByRole("link").textContent).toBe(
-      W.inCell.decision(1)
-    )
-    fireEvent.click(screen.getByRole("button", { name: W.pivotCounts.all }))
-    await within(story).findByText(W.inCell.decision(2))
     fireEvent.click(within(story).getByRole("link"))
     await screen.findByRole("button", { name: "Which voice?" })
-    expect(rows()).toEqual(["Which voice?", "Answered?"])
+    expect(rows()).toEqual(["Which voice?"])
   })
 })

@@ -14,6 +14,7 @@ import {
   listSearch,
   ofKind,
   pivot,
+  searchOf,
   step,
   unreadOf,
   VIEW_PATHS,
@@ -110,6 +111,13 @@ describe("a list's step", () => {
     expect(opened.open).toBe("a")
     expect(step(opened, { kind: "toggled", id: "b" }).open).toBe("b")
     expect(step(opened, { kind: "toggled", id: "a" }).open).toBeNull()
+  })
+
+  it("writes to the address only what differs from how it starts", () => {
+    expect(searchOf(INITIAL_LIST)).toEqual({})
+    const moved = { ...INITIAL_LIST, waits: "home" as const, open: "a" }
+    expect(searchOf(moved)).toEqual({ waits: "home", open: "a" })
+    expect(listSearch(searchOf(moved))).toEqual(moved)
   })
 
   it("is read from the address, anything unknown as it starts", () => {

@@ -38,10 +38,10 @@ describe("the Asks pages' words", () => {
   })
 
   it("say since when an ask waits, or when it was answered", () => {
-    expect(ASKS_WORDS.since("2026-11-20T09:00:00Z", null)).toBe("20 Nov")
+    expect(ASKS_WORDS.since("2026-11-20T09:00:00Z", null)).toBe("Nov 20")
     expect(
       ASKS_WORDS.since("2026-11-20T09:00:00Z", "2026-11-22T09:00:00Z")
-    ).toBe("Answered 22 Nov")
+    ).toBe("Answered Nov 22")
   })
 
   it("count steps from one", () => {

@@ -1,7 +1,7 @@
 /**
  * The asks, read: two `GET`s of GitHub's public list of issues labelled
  * `ask` per repository, the open ones (every one, up to 100) and the 100
- * closed most lately (C1201), through the shared fetch client
+ * closed ones updated most lately (C1201), through the shared fetch client
  * (`@some-ui/fetch-kit`, FK1's deadline). Nothing of the owner's is sent: the
  * issues are public, and the read carries no account. What each answer
  * reads as is `./model`'s; when it is read is the query's (`./index`).
@@ -36,13 +36,19 @@ async function readRepo(
   return asksOf(repo, issues)
 }
 
-/** The asks, waiting and answered, A to Z; rejects when any read fails. */
-export const readAsks = async (): Promise<Array<AskIssue>> =>
-  aToZ(
-    await Promise.all(
-      WORK_REPOS.flatMap((repo) => [
-        readRepo(repo, "open"),
-        readRepo(repo, "closed"),
-      ])
-    )
+/**
+ * The asks, waiting and answered, A to Z, each once (one closed between
+ * the two reads is in both: its closing wins); rejects when any read fails.
+ */
+export const readAsks = async (): Promise<Array<AskIssue>> => {
+  const read = await Promise.all(
+    WORK_REPOS.flatMap((repo) => [
+      readRepo(repo, "closed"),
+      readRepo(repo, "open"),
+    ])
   )
+  const once = new Map<string, AskIssue>()
+  for (const issue of read.flat())
+    if (!once.has(issue.id)) once.set(issue.id, issue)
+  return aToZ([[...once.values()]])
+}

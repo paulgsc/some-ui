@@ -1,11 +1,5 @@
 /**
- * The Asks pages (C1200): one page per kind of ask, never mixed, and the
- * pivot, every ask counted by its call and by who waits on it. Pure: the
- * views and their addresses, which asks a kind's page lists, the state of
- * its chips with the `step` that moves it (kept in the page's address, so
- * a pivot cell can open a list already picked), and the pivot's counts.
- *
- * Every ask has the same shared part whatever its kind (`AskFile`'s waits,
+ * The Asks pages (C1200, C1201), pure. Every ask has the same shared part whatever its kind (`AskFile`'s waits,
  * call and unblocks), so a list's rows and chips are one shape for every
  * kind; only the opened row is the kind's own. The views are the kinds and
  * the pivot, and `VIEW_PATHS` must name each: a new kind of ask fails to
@@ -24,7 +18,6 @@ export type AskKind = AskFile["kind"]
 /** A page under Asks: a kind's list, or the pivot of every kind. */
 export type AskView = AskKind | "pivot"
 
-/** Each view's address under Asks. */
 export const VIEW_PATHS = {
   decision: "decisions",
   checklist: "checklists",
@@ -37,7 +30,6 @@ const isView = (key: string): key is AskView => key in VIEW_PATHS
 export const ASK_VIEWS: ReadonlyArray<AskView> =
   Object.keys(VIEW_PATHS).filter(isView)
 
-/** The kinds of ask, each a view with a list. */
 export const ASK_KINDS: ReadonlyArray<AskKind> = ASK_VIEWS.filter(
   (view): view is AskKind => view !== "pivot"
 )
@@ -79,7 +71,6 @@ const isWaiting = (issue: AskIssue): boolean => issue.answered === null
 export const unreadOf = (asks: ReadonlyArray<AskIssue>): Array<AskIssue> =>
   asks.filter((issue) => issue.ask === null && isWaiting(issue))
 
-/** How many asks of `kind` wait. */
 export const waitingOf = (
   asks: ReadonlyArray<AskIssue>,
   kind: AskKind
@@ -103,15 +94,18 @@ export type Show = (typeof SHOWS)[number]
 export const ORDERS = ["longest", "newest", "aToZ"] as const
 export type Order = (typeof ORDERS)[number]
 
+/** Each shared field's values, then what was not said: the pivot's axes. */
+const WAITS_SAID: ReadonlyArray<AskWaits | Unsaid> = [...ASK_WAITS, "unsaid"]
+const CALLS_SAID: ReadonlyArray<AskCall | Unsaid> = [...ASK_CALLS, "unsaid"]
+
+/** A list's chips on each shared field: any, then each value or not said. */
 export const WAITS_PICKS: ReadonlyArray<FieldPick<AskWaits>> = [
   "all",
-  ...ASK_WAITS,
-  "unsaid",
+  ...WAITS_SAID,
 ]
 export const CALL_PICKS: ReadonlyArray<FieldPick<AskCall>> = [
   "all",
-  ...ASK_CALLS,
-  "unsaid",
+  ...CALLS_SAID,
 ]
 
 /** A list's chips, and which of its rows is open. */
@@ -147,12 +141,20 @@ export const listSearch = (search: Record<string, unknown>): ListState => ({
   open: typeof search.open === "string" ? search.open : null,
 })
 
+/** The address for `state`: only what differs from how a list starts. */
+export const searchOf = (state: ListState): Partial<ListState> => ({
+  ...(state.waits === INITIAL_LIST.waits ? {} : { waits: state.waits }),
+  ...(state.call === INITIAL_LIST.call ? {} : { call: state.call }),
+  ...(state.show === INITIAL_LIST.show ? {} : { show: state.show }),
+  ...(state.order === INITIAL_LIST.order ? {} : { order: state.order }),
+  ...(state.open === null ? {} : { open: state.open }),
+})
+
 export type ListEvent =
   | { readonly kind: "waits"; readonly waits: FieldPick<AskWaits> }
   | { readonly kind: "call"; readonly call: FieldPick<AskCall> }
   | { readonly kind: "show"; readonly show: Show }
   | { readonly kind: "order"; readonly order: Order }
-  /** A row tapped: it opens, or shuts when it was the one open. */
   | { readonly kind: "toggled"; readonly id: string }
 
 export function step(state: ListState, event: ListEvent): ListState {
@@ -263,14 +265,15 @@ export function chipCounts(
 }
 
 /** What the pivot counts: the waiting asks, or every one read. */
-export type PivotShow = Extract<Show, "waiting" | "all">
+export const PIVOT_SHOWS = [
+  "waiting",
+  "all",
+] as const satisfies ReadonlyArray<Show>
+export type PivotShow = (typeof PIVOT_SHOWS)[number]
 
 /** What the pivot counts, as its address's Show says: waiting unless all. */
 export const pivotShowOf = (state: ListState): PivotShow =>
   state.show === "all" ? "all" : "waiting"
-
-const PIVOT_CALLS: ReadonlyArray<AskCall | Unsaid> = [...ASK_CALLS, "unsaid"]
-const PIVOT_WAITS: ReadonlyArray<AskWaits | Unsaid> = [...ASK_WAITS, "unsaid"]
 
 /**
  * The asks `show` counts, by call and by who waits, each cell split by
@@ -306,11 +309,11 @@ export function pivot(
   const any = (counts: Record<AskKind, number>): boolean =>
     ASK_KINDS.some((kind) => counts[kind] > 0)
   return {
-    calls: PIVOT_CALLS.filter((call) =>
-      PIVOT_WAITS.some((waits) => any(cell(call, waits)))
+    calls: CALLS_SAID.filter((call) =>
+      WAITS_SAID.some((waits) => any(cell(call, waits)))
     ),
-    waits: PIVOT_WAITS.filter((waits) =>
-      PIVOT_CALLS.some((call) => any(cell(call, waits)))
+    waits: WAITS_SAID.filter((waits) =>
+      CALLS_SAID.some((call) => any(cell(call, waits)))
     ),
     cell,
   }

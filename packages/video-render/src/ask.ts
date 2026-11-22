@@ -23,12 +23,8 @@
  * }
  * ```
  *
- * Every ask says, whatever its kind, who `waits` on it, which kind of
- * `call` it is, and what answering it `unblocks` (C1200). Its kind's own
- * part is the only one that differs: a decision's `options`, a
- * `checklist`'s `steps` (each with what to do, where, and what to paste
- * back). A block filed before `/3` still reads, with what it never said
- * (`waits`, `call`, a decision's `unblocks`) as `null`: unclassified.
+ * Every kind shares `waits`, `call` and `unblocks`; only its own part
+ * differs, and a block filed before `/3` still reads (`docs/asks.md`, C1200).
  * The desktop web's Asks page (`apps/www`, `lib/asks`) lists every kind.
  *
  * The weekly run's facts (`render call-facts`) carry every open ask, read
@@ -46,7 +42,7 @@ import { OptionSchema, RefSchema, WORK_REPOS } from "./refs"
 import type { Repo, WorkRepo } from "./refs"
 
 /** The schema an ask is filed in: its shared part, and its kind's. */
-export const ASK_SCHEMA = "some-ui.ask/3"
+export const ASK_SCHEMA: "some-ui.ask/3" = "some-ui.ask/3"
 
 /** The second schema, kinds without the shared part, still read. */
 export const ASK_SCHEMA_V2 = "some-ui.ask/2"
