@@ -21,7 +21,8 @@
     "./cues": "./src/cues.ts",
     "./node": "./src/node.ts",
     "./snip": "./src/snip.ts",
-    "./testing": "./src/testing.ts"
+    "./testing": "./src/testing.ts",
+    "./thumbnail": "./src/thumbnail.ts"
   },
   "scripts": {
     "render": "tsx src/cli.ts",

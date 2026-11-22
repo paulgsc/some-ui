@@ -112,7 +112,7 @@ describe("the frames burn-ins are drawn for", () => {
 })
 
 describe("the regions each kind draws in", () => {
-  it("shares a region only between a scene's headline and its card, one or the other, the authorship mark's bare cards, a game card or a status badge in the body, and a full card (terminal, cheat sheet, legend, rule, flow) in both", () => {
+  it("shares a region only between a scene's headline and its card, one or the other, the authorship mark's bare cards, a game card or a status badge in the body, and a full card (terminal, cheat sheet, legend, rule, flow, bars) in both", () => {
     const sharing = KINDS.flatMap((a, i) =>
       KINDS.slice(i + 1).flatMap((b) =>
         shared(a, b).length > 0 ? [[a, b]] : []
@@ -126,6 +126,7 @@ describe("the regions each kind draws in", () => {
       ["headline", "legend"],
       ["headline", "rule"],
       ["headline", "flow"],
+      ["headline", "bars"],
       ["card", "authorship"],
       ["card", "game-card"],
       ["card", "status-badge"],
@@ -134,6 +135,7 @@ describe("the regions each kind draws in", () => {
       ["card", "legend"],
       ["card", "rule"],
       ["card", "flow"],
+      ["card", "bars"],
       ["authorship", "game-card"],
       ["authorship", "status-badge"],
       ["authorship", "terminal"],
@@ -141,27 +143,35 @@ describe("the regions each kind draws in", () => {
       ["authorship", "legend"],
       ["authorship", "rule"],
       ["authorship", "flow"],
+      ["authorship", "bars"],
       ["game-card", "status-badge"],
       ["game-card", "terminal"],
       ["game-card", "cheat-sheet"],
       ["game-card", "legend"],
       ["game-card", "rule"],
       ["game-card", "flow"],
+      ["game-card", "bars"],
       ["status-badge", "terminal"],
       ["status-badge", "cheat-sheet"],
       ["status-badge", "legend"],
       ["status-badge", "rule"],
       ["status-badge", "flow"],
+      ["status-badge", "bars"],
       ["terminal", "cheat-sheet"],
       ["terminal", "legend"],
       ["terminal", "rule"],
       ["terminal", "flow"],
+      ["terminal", "bars"],
       ["cheat-sheet", "legend"],
       ["cheat-sheet", "rule"],
       ["cheat-sheet", "flow"],
+      ["cheat-sheet", "bars"],
       ["legend", "rule"],
       ["legend", "flow"],
+      ["legend", "bars"],
       ["rule", "flow"],
+      ["rule", "bars"],
+      ["flow", "bars"],
     ])
   })
 })

@@ -29,6 +29,7 @@
     "record:call": "tsx tests/record/call.ts",
     "record:cards": "tsx tests/record/cards.ts",
     "record:essay": "tsx tests/record/essay.ts",
+    "record:pages": "tsx tests/record/pages.ts",
     "record:playoff-delta": "tsx tests/record/playoff-delta.ts",
     "record:preview": "tsx tests/record/preview.ts",
     "record:report": "tsx tests/record/report.ts",

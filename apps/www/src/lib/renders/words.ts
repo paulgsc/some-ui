@@ -309,11 +309,14 @@ function refusalLine(feed: string, refusal: Refusal): string {
  * paulgsc/server#1052; SNIPS2, server#1076), by home's word for each: its
  * `essay_media` refusals, a closed set. A take home hasn't finished listening
  * to is no refusal: the essay waits, unseen here, as a Rust Rounds essay
- * waits for its takes.
+ * waits for its takes. A take the owner deleted is no refusal either: home
+ * withdraws the essay for good, its video included, and it leaves every list
+ * (paulgsc/server#1055, #1071), so `take-missing` is a take home never had, or
+ * one deleted while no account is linked to resolve it (paulgsc/server#1064).
  */
 const ESSAY_REFUSAL_WORDS = {
   "take-missing":
-    "A spoken card in it plays a recording home doesn't have, or one you deleted. It isn't made until the essay names one home keeps.",
+    "A spoken card in it plays a recording home doesn't have. It isn't made until the essay names one home keeps.",
   "take-unheard":
     "Home couldn't make out a recording a spoken card in it plays. It isn't made until the essay names one home heard.",
   "snip-missing":
