@@ -1908,13 +1908,25 @@ type Body = {
   readonly contentType: string
 }
 
-/** The PNG signature, then the first chunk's length (13) and type (`IHDR`). */
+/**
+ * The PNG signature, then the first chunk's length (13) and type (`IHDR`).
+ * `pngSize` in `@some-ui/video-render`'s `snip.ts` reads the same header;
+ * the Worker depends on no workspace package (#2112), so it is read here.
+ */
 const PNG_HEAD = [
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44,
   0x52,
 ] as const
 /** The widest or tallest picture a card shows, far above any real one. */
 const PICTURE_SIDE_MAX = 4096
+
+/**
+ * Most bytes one picture may hold, below the folder-wide cap: D1 hands a
+ * body back as an array of byte values, and turning one near 1 MiB back into
+ * bytes may not fit Workers Free's 10 ms of CPU (README, "Limits"). Home
+ * encodes the clip to fit (C1071).
+ */
+export const PICTURE_MAX_BYTES = 786_432
 
 function u32(bytes: Uint8Array, at: number): number {
   return new DataView(bytes.buffer, bytes.byteOffset).getUint32(at)
@@ -1994,6 +2006,7 @@ async function bodyOf(
     }
     const bytes = await cappedBody(request)
     if (bytes instanceof Response) return bytes
+    if (bytes.byteLength > PICTURE_MAX_BYTES) return refuse(413, "too_big")
     const refusal = pictureRefusal(kind.picture, bytes)
     if (refusal !== null) return refuse(422, refusal)
     return {

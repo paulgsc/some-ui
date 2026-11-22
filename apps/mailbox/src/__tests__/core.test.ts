@@ -3724,6 +3724,15 @@ describe("the site's pictures (C1071, #3415)", () => {
         413,
         "too_big",
       ],
+      [
+        SERVER,
+        {
+          ...clip,
+          body: Uint8Array.from({ length: 786_433 }, (_, i) => mp4()[i] ?? 0),
+        },
+        413,
+        "too_big",
+      ],
     ]
     for (const [name, init, status, why] of refused) {
       const response = await put(d, "site-assets", name, init)
@@ -3746,9 +3755,48 @@ describe("the site's pictures (C1071, #3415)", () => {
     expect(
       (await put(d, "site-assets", CORES, { ...still, token: PAGES })).status
     ).toBe(403)
-    expect(
-      (await send(d, "GET", "/v1/bell", { token: PAGES })).status
-    ).not.toBe(101)
+    expect((await send(d, "GET", "/v1/bell", { token: PAGES })).status).toBe(
+      403
+    )
+  })
+
+  it("home puts a picture and reads none back", async () => {
+    const d = deps()
+    expect((await put(d, "site-assets", CORES, still)).status).toBe(201)
+    for (const path of [
+      "/v1/site-assets/items",
+      `/v1/site-assets/items/${CORES}`,
+    ]) {
+      expect((await send(d, "GET", path, { token: HOME })).status).toBe(403)
+    }
+  })
+
+  it("nothing archives a picture or asks one back: home takes it again", async () => {
+    let now = NOW
+    const d: Deps = { ...deps(), now: () => now }
+    expect((await put(d, "site-assets", CORES, still)).status).toBe(201)
+    now = new Date(NOW.getTime() + ARCHIVE_MIN_AGE_DAYS * 10 * 86_400_000)
+    const sha = createHash("sha256").update(png()).digest("hex")
+    for (const token of [ROUTINE, HOME, ARCHIVE, PAGES]) {
+      expect(
+        (
+          await send(d, "DELETE", `/v1/site-assets/items/${CORES}`, {
+            token,
+            headers: { "if-match": `"${sha}"` },
+          })
+        ).status
+      ).toBe(403)
+      for (const collection of ["archived", "wanted"]) {
+        expect(
+          (await send(d, "GET", `/v1/site-assets/${collection}`, { token }))
+            .status
+        ).toBe(403)
+      }
+      expect(
+        (await send(d, "PUT", `/v1/site-assets/wanted/${CORES}`, { token }))
+          .status
+      ).toBe(403)
+    }
   })
 
   it("the routine and the archive role neither read nor put a picture", async () => {

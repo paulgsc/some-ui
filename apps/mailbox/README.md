@@ -175,8 +175,8 @@ WebSocket open on `GET /v1/bell`, and the mailbox rings it there (MBP1,
 | `ARCHIVE_TOKEN` | `archive` | read every folder but `site-assets`; archive a file, put an archived one back and list the open asks, in every folder but `index`, `snips` and `site-assets`                                                                         |
 | `PAGES_TOKEN`   | `pages`   | read `site-assets`, and nothing else                                                                                                                                                                                                 |
 
-The pages role is the Pages build's: its token lives in GitHub's Actions secrets
-(`MAILBOX_PAGES_TOKEN`), where only Site Assets' `home` job reads it (C1071). Until the owner
+The pages role is the Pages build's: its token is to live in GitHub's Actions secrets
+(`MAILBOX_PAGES_TOKEN`), read only by Site Assets' `home` job once that job lands (C1071). Until the owner
 sets `PAGES_TOKEN`, the role authenticates no one and the site keeps its drawings.
 
 The routine role is every scheduled routine's: the Jobs digest, the study reflections and,
@@ -263,7 +263,9 @@ role, and it is the owner's call, so it is not built.
   must be UTF-8 JSON with no byte-order mark. A picture is the one exception: `image/png` for a
   `.png`, `video/mp4` for an `.mp4`, and its first bytes must say the same (a PNG's signature
   and `IHDR`, at most 4096 pixels a side; an MP4's `ftyp` box). A picture has no schema. It is
-  held to the same 1 MiB as every file, so home encodes the clip to fit (C1071).
+  held to 768 KiB (`PICTURE_MAX_BYTES`, `413` past it), below every other file's 1 MiB, so
+  reading one back stays well inside a request's CPU (below, "Limits"); home encodes the clip
+  to fit (C1071).
 - **Schema**: the top-level `schema` must be `some-ui.job-digest/1`, `some-ui.job-decisions/1`,
   `some-ui.job-scouts/1`, `some-ui.routine-scene/1`, `some-ui.routine-drama/1`, `some-ui.routine-run/1`,
   `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1`, `some-ui.reflection/1`, `some-ui.drama-prompt/1`, `some-ui.episode-note/1`, `some-ui.take-pickup/1`, `some-ui.take-picked/1` or `some-ui.snips/1` to match the folder (and `some-ui.drive-takes/1` for a list of Drive's takes in `brief`, `some-ui.rust-week/2` (or the earlier `/1`) for a week of Rust Rounds, `some-ui.rust-essay/1` for an essay's script, `some-ui.interview-week/2` (or the earlier `/1`) for a week of mock interview, `some-ui.interview-essay/1` for an interview essay's script). The Worker checks that and nothing deeper, except for a transcript, an index, a reflection, a prompt, a note on an episode, a take ready for pickup, an answer to one, a snip list, a list of Drive's takes, a week's `id`, which must be the name's (below), and an interview week's question and card ids; the readers validate the full shape.
@@ -526,12 +528,14 @@ operation; it does not bill (see MB4).
   would take decades to fill without it.
 - Past a D1 daily limit its queries fail until 00:00 UTC; the Worker answers `503` for
   that time. The 07:52 Pacific run is far from that reset.
-- The site's pictures are the largest files here: home encodes the clip to fit the 1 MiB cap,
-  and only the newest of each kind is kept, so they hold at most 2 MiB of the database. The
-  Site Assets run reads each once per run, a few times a month.
+- The site's pictures are the largest files here: each is held to 768 KiB, home encodes the
+  clip to fit, and only the newest of each kind is kept, so they hold at most 1.5 MiB of the
+  database. The Site Assets run reads each once per run, a few times a month.
 - D1 hands a BLOB back as an array of byte values, so reading a body near the 1 MiB cap costs
   CPU. I have not measured whether it fits in 10 ms; files are far below it in practice
-  (the sizes are under "What a put must satisfy").
+  (the sizes are under "What a put must satisfy"), except the site's clip, which is why a
+  picture is held to 768 KiB. The deploy that adds `site-assets` measures one read of a clip
+  near that bound before the site relies on it (C1071).
 
 - The bell (above) is a SQLite-backed Durable Object, the only kind Workers Free takes, and
   it stores nothing. Durable Objects Free: 100,000 requests and 13,000 GB-s of duration a
