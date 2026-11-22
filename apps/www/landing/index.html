@@ -167,6 +167,8 @@
         overflow: hidden;
         margin: 0;
       }
+      /* A slot's clip or still is the card's background (C1064): laid over
+         the placeholder, filling the slot, never something to click. */
       .media {
         position: absolute;
         inset: 0;
@@ -174,11 +176,16 @@
         height: 100%;
         object-fit: cover;
         display: block;
+        pointer-events: none;
       }
-      /* A clip is the walk's own vertical video (packages/video-motion's
-         vertical series), shown whole on the stage's colour. */
-      video.media {
-        object-fit: contain;
+      /* A reader who prefers less motion sees the placeholder under it. The
+         clip still loads and plays out of sight (autoplay outranks preload,
+         and a video takes no media-chosen source): stopping it would take a
+         script, which this page has none of. */
+      @media (prefers-reduced-motion: reduce) {
+        video.media {
+          display: none;
+        }
       }
       .title-card {
         position: absolute;

@@ -1,0 +1,10 @@
+{
+  "id": "C1064",
+  "made": "2026-11-22",
+  "by": "owner",
+  "paths": ["apps/www/src/landing/render.ts", "apps/www/landing/index.html"],
+  "chose": "The landing's clips are the cards' backgrounds, not videos to watch: each plays muted on a loop with no controls, hidden from screen readers and from the pointer, laid over the card's drawn placeholder, and a reader who prefers less motion sees the placeholder instead; the card's own words say what it is. The stills get the same treatment. The owner (2026-11-22): \"right now you make it so that it's actually a video, you should change that. Effectively, it is a video format, but the layout is supposed to basically be in the background, meaning it's not interactive … it's just in the background, meaning it's part of the CSS.\"",
+  "undo": "Give the clip's <video> its controls and a label again in apps/www/src/landing/render.ts, and drop the reduced-motion rule and pointer-events in apps/www/landing/index.html.",
+  "refs": ["#3401"],
+  "moves": "C1061"
+}

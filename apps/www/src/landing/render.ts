@@ -6,11 +6,15 @@
  * `landing/index.html`, the Pages build's `index.html`.
  *
  * The page carries no script. Its pictures are slots, each named by the
- * build-time asset it holds (`data-asset`). A slot whose asset is in the
- * build (`media`; output.ts, `SITE_MEDIA_DIR`) shows it: a clip plays muted
- * on a loop, a still is an image. Otherwise it draws a placeholder in CSS: a
- * title card for a clip, a labelled drawing for a gap, and the mochi, drawn
- * from the brand cast (`mochiSvg`), for the photo.
+ * build-time asset it holds (`data-asset`), and each is the card's
+ * background, not something to watch or work (the owner, C1064): the card's
+ * words carry what it says. Every slot draws its placeholder in CSS, a title
+ * card for a clip and a labelled drawing for a gap, and the mochi, drawn
+ * from the brand cast (`mochiSvg`), for the photo. A slot whose asset is in
+ * the build (`media`; output.ts, `SITE_MEDIA_DIR`) lays it over that
+ * placeholder: a clip plays muted on a loop with no controls, hidden and
+ * pointer-free, and gives way to the placeholder for a reader who prefers
+ * less motion (landing/index.html); a still is a hidden image.
  */
 import type { ResumeData } from "@some-ui/resume"
 
@@ -40,10 +44,11 @@ const mediaSrc = (key: string): string => `${SITE_BASE}${MEDIA_PATH}${e(key)}`
 const projectCard = (p: ProjectWords, media: ReadonlySet<string>): string => `
         <article class="card">
           <figure class="clip" data-slot="clip" data-asset="${e(p.clip)}">
-            ${
+            <div class="title-card title-card--${e(p.id)}" aria-hidden="true">${e(p.title)}</div>${
               media.has(p.clip)
-                ? `<video class="media" src="${mediaSrc(p.clip)}" autoplay muted loop playsinline controls preload="metadata" aria-label="${e(p.title)}"></video>`
-                : `<div class="title-card title-card--${e(p.id)}" aria-hidden="true">${e(p.title)}</div>`
+                ? `
+            <video class="media" src="${mediaSrc(p.clip)}" autoplay muted loop playsinline disablepictureinpicture disableremoteplayback preload="metadata" aria-hidden="true"></video>`
+                : ""
             }
           </figure>
           <div class="body">
@@ -65,7 +70,7 @@ const gapCard = (g: GapWords, media: ReadonlySet<string>): string => `
           <figure class="clip" data-slot="still" data-asset="${e(g.visual)}">
             ${
               media.has(g.visual)
-                ? `<img class="media" src="${mediaSrc(g.visual)}" alt="${e(g.title)}" />`
+                ? `<img class="media" src="${mediaSrc(g.visual)}" alt="" aria-hidden="true" />`
                 : `${GAP_DRAWING[g.id]}
             <figcaption class="note">${e(g.visualNote)}</figcaption>`
             }

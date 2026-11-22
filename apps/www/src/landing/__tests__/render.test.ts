@@ -3,6 +3,8 @@
  * from `renderLanding` on the résumé's real data, so a change to either shows
  * here.
  */
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
 import { mochiSvg } from "@/landing/mochi"
 import { SITE_BASE } from "@/landing/output"
 import {
@@ -59,9 +61,7 @@ describe("renderLanding", () => {
     const [still] = LANDING_WORDS.gaps
     const media = new Set([PHOTO, clip.clip, still.visual])
     const shown = renderLanding(resume, mochiSvg(), LANDING_WORDS, media)
-    expect(shown).toContain(
-      `<video class="media" src="${SITE_BASE}media/${clip.clip}" autoplay muted loop playsinline controls`
-    )
+    expect(shown).toContain(`src="${SITE_BASE}media/${clip.clip}"`)
     expect(shown).toContain(
       `<img class="media" src="${SITE_BASE}media/${still.visual}"`
     )
@@ -70,6 +70,52 @@ describe("renderLanding", () => {
     expect(shown).not.toContain(escapeHtml(still.visualNote))
     for (const p of rest) expect(shown).toContain(`title-card--${p.id}`)
     expect(page).not.toMatch(/<video|<img/)
+  })
+
+  it("lays a clip behind the card as its background, never a player (C1064)", () => {
+    const [clip] = LANDING_WORDS.projects
+    const [still] = LANDING_WORDS.gaps
+    const shown = renderLanding(
+      resume,
+      mochiSvg(),
+      LANDING_WORDS,
+      new Set([clip.clip, still.visual])
+    )
+    const videos = [...shown.matchAll(/<video\b[^>]*>/g)].map((m) => m[0])
+    expect(videos).toHaveLength(1)
+    for (const video of videos) {
+      for (const attribute of [
+        "autoplay",
+        "muted",
+        "loop",
+        "playsinline",
+        "disablepictureinpicture",
+        'aria-hidden="true"',
+      ])
+        expect(video).toContain(attribute)
+      expect(video).not.toMatch(/\bcontrols\b|tabindex|aria-label/)
+    }
+    // The placeholder stays under the clip, for a reader who prefers less
+    // motion, and the card's own words carry its title.
+    const card = shown.slice(shown.indexOf(`data-asset="${clip.clip}"`))
+    expect(card.indexOf(`title-card--${clip.id}`)).toBeLessThan(
+      card.indexOf("<video")
+    )
+    expect(card).toContain(`<h3>${escapeHtml(clip.title)}</h3>`)
+    expect(shown).toMatch(
+      /<img class="media" src="[^"]+" alt="" aria-hidden="true" \/>/
+    )
+  })
+
+  it("hides every moving clip from a reader who prefers less motion", () => {
+    const template = readFileSync(
+      join(import.meta.dirname, "../../../landing/index.html"),
+      "utf8"
+    )
+    expect(template).toMatch(
+      /@media \(prefers-reduced-motion: reduce\)\s*\{\s*video\.media\s*\{\s*display:\s*none;/
+    )
+    expect(template).toMatch(/\.media\s*\{[^}]*pointer-events:\s*none;/)
   })
 
   it("names every slot's asset among the keys the build looks for", () => {

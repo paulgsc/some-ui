@@ -329,6 +329,29 @@ test.describe("the Pages build", () => {
     await expect(
       page.locator('figure[data-slot="still"] .drawing')
     ).toHaveCount(2)
+    // A clip is the card's background, never a player (C1064): none has
+    // controls or speaks to a screen reader, and a reader who prefers less
+    // motion sees the placeholder instead.
+    await expect(
+      page.locator("video[controls], video:not([aria-hidden=true])")
+    ).toHaveCount(0)
+    expect(
+      await page.evaluate(() =>
+        [...document.styleSheets].some((sheet) =>
+          [...sheet.cssRules].some(
+            (rule) =>
+              rule instanceof CSSMediaRule &&
+              rule.conditionText.includes("prefers-reduced-motion: reduce") &&
+              [...rule.cssRules].some(
+                (inner) =>
+                  inner instanceof CSSStyleRule &&
+                  inner.selectorText === "video.media" &&
+                  inner.style.display === "none"
+              )
+          )
+        )
+      )
+    ).toBe(true)
     await collect()
 
     // The résumé is static too (C1055): every version's page is there whole,
