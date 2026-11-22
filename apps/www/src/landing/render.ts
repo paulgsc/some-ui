@@ -13,8 +13,8 @@
  */
 import type { ResumeData } from "@some-ui/resume"
 
-import type { GapWords, LandingWords, ProjectWords } from "./words"
-import { LANDING_WORDS } from "./words"
+import type { GapWords, LandingWords, ProjectWords } from "./words.ts"
+import { LANDING_WORDS } from "./words.ts"
 
 /** Text into HTML, as text: the five characters that could open markup. */
 export function escapeHtml(text: string): string {
@@ -98,9 +98,11 @@ export function renderLanding(
       role(
         `${r.role}, ${r.org}`,
         r.detail === null ? r.dates : `${r.dates} · ${r.detail}`,
-        r.bullets.length === 1
-          ? `<p>${e(r.bullets[0] ?? "")}</p>`
-          : `<ul>${r.bullets.map((b) => `<li>${e(b)}</li>`).join("")}</ul>`
+        r.bullets.length === 0
+          ? ""
+          : r.bullets.length === 1
+            ? `<p>${e(r.bullets[0] ?? "")}</p>`
+            : `<ul>${r.bullets.map((b) => `<li>${e(b)}</li>`).join("")}</ul>`
       )
     ),
   ].join("")

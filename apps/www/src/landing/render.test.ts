@@ -7,9 +7,9 @@ import { resumeData } from "@some-ui/resume"
 import { MOCHI_BODY } from "@some-ui/styles/brand/mark"
 import { describe, expect, it } from "vitest"
 
-import { mochiSvg } from "./mochi"
-import { escapeHtml, renderLanding, renderLandingHead } from "./render"
-import { LANDING_WORDS } from "./words"
+import { mochiSvg } from "./mochi.ts"
+import { escapeHtml, renderLanding, renderLandingHead } from "./render.ts"
+import { LANDING_WORDS } from "./words.ts"
 
 const resume = resumeData.fullstack
 const page = renderLanding(resume, mochiSvg())

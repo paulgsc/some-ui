@@ -130,7 +130,7 @@ function fitPageEntry(): Record<string, string> {
 // `pnpm build:stage`: the recording stage alone (stage/main.tsx), into
 // out/stage, with its page at the output's root.
 const isStageBuild = process.env.WWW_STAGE === "1"
-// Only the Pages deployable gets the landing (landingPage, above).
+// Only the Pages deployable gets the landing (landingPage, below).
 const isLandingBuild = isPagesBuild() && !isFitHarnessBuild && !isStageBuild
 
 function stageEntry(): Record<string, string> {
@@ -240,13 +240,12 @@ function isPagesBuild(): boolean {
 }
 
 function landingPage(): Plugin {
-  let outDir = ""
   return {
     name: "landing-page",
     apply: "build",
-    configResolved(config): void {
-      outDir = resolve(config.root, config.build.outDir)
-    },
+    // After Vite's own HTML plugin has emitted both pages, so the names below
+    // are the ones Rollup writes: nothing is moved on disk afterwards.
+    enforce: "post",
     transformIndexHtml(html, ctx): string {
       if (!ctx.filename.endsWith("landing/index.html")) return html
       return html
@@ -256,13 +255,22 @@ function landingPage(): Plugin {
           renderLanding(resumeData.fullstack, mochiSvg())
         )
     },
-    closeBundle(): void {
-      fs.renameSync(resolve(outDir, "index.html"), resolve(outDir, "404.html"))
-      fs.renameSync(
-        resolve(outDir, "landing/index.html"),
-        resolve(outDir, "index.html")
-      )
-      fs.rmdirSync(resolve(outDir, "landing"))
+    generateBundle(_options, bundle): void {
+      const app = bundle["index.html"]
+      const landing = bundle["landing/index.html"]
+      if (app?.type !== "asset" || landing?.type !== "asset") {
+        this.error(
+          "the Pages build needs both index.html and landing/index.html"
+        )
+      }
+      delete bundle["index.html"]
+      delete bundle["landing/index.html"]
+      this.emitFile({ type: "asset", fileName: "404.html", source: app.source })
+      this.emitFile({
+        type: "asset",
+        fileName: "index.html",
+        source: landing.source,
+      })
     },
   }
 }

@@ -91,7 +91,7 @@ export const LANDING_WORDS: LandingWords = {
           href: `${SOURCE}/some-ui/tree/main/extensions/suspender-ledger`,
         },
         {
-          label: "All five extensions",
+          label: "All my extensions",
           href: `${SOURCE}/some-ui/tree/main/extensions`,
         },
       ],
@@ -110,7 +110,7 @@ export const LANDING_WORDS: LandingWords = {
       id: "server",
       title: "file_host: the server behind them",
       stack: "Rust · Axum · Tokio · SQLite · Redis · NATS · Grafana",
-      line: "It runs at home, under its own dashboard: whether it's answering, how long it has been up, and what the rate limiter turns away.",
+      line: "It runs on my home server, under its own dashboard: whether it's answering, how long it has been up, and what the rate limiter turns away.",
       clip: "clips/server.mp4",
       links: [{ label: "Source", href: `${SOURCE}/server` }],
     },
@@ -125,10 +125,11 @@ export const LANDING_WORDS: LandingWords = {
     },
     {
       id: "cores",
-      title: "Home has four CPU cores",
+      title: "My home server has four CPU cores",
       line: "When work slows down, I'm measuring whether it's my code or the machine.",
       visual: "stills/cores.png",
-      visualNote: "Drawing of home's CPU panel: busy and waiting, of 4 cores",
+      visualNote:
+        "Drawing of my home server's CPU panel: busy and waiting, of 4 cores",
     },
   ],
 }
