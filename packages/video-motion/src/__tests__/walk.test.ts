@@ -1,4 +1,9 @@
 import { readFileSync } from "node:fs"
+import {
+  homeCores,
+  homeServer,
+  panelPath,
+} from "@video-motion/walk/home-dashboards"
 import { jobs } from "@video-motion/walk/jobs"
 import {
   clipOf,
@@ -12,6 +17,10 @@ import {
   versionOf,
   webviewBounds,
 } from "@video-motion/walk/stage-apk"
+import {
+  walkthroughProblems,
+  WalkthroughSchema,
+} from "@video-motion/walkthrough"
 import { describe, expect, it } from "vitest"
 
 /** Jobs' story sample (WALK2), which the stand-in home answers and the walk reads. */
@@ -143,5 +152,111 @@ describe("the walk's microphone (WALK3)", () => {
     expect(script).toContain(
       "if (!constraints || !constraints.audio || constraints.video) return own(constraints)"
     )
+  })
+})
+
+/** What home writes for its render worker (`site_shots` in paulgsc/server). */
+const HOME_SAMPLE = {
+  schema: "some-ui.walk-sample/home-dashboards/1",
+  version: "0.42.1",
+  origin: "http://grafana:3000",
+  to: "2026-11-16T00:00:00Z",
+  days: 7,
+}
+
+describe("home's dashboards (C1073, #3415)", () => {
+  it("reads home's sample, and refuses a window that does not end at a UTC midnight", () => {
+    expect(homeServer.sample.safeParse(HOME_SAMPLE).success).toBe(true)
+    for (const bad of [
+      { ...HOME_SAMPLE, to: "2026-11-23T05:00:00Z" },
+      { ...HOME_SAMPLE, days: 1 },
+      { ...HOME_SAMPLE, to: "2999-01-01T00:00:00Z" },
+      { ...HOME_SAMPLE, origin: "file:///etc" },
+      { ...HOME_SAMPLE, version: "" },
+      { ...HOME_SAMPLE, token: "x" },
+    ]) {
+      expect(homeServer.sample.safeParse(bad).success).toBe(false)
+    }
+  })
+
+  it("opens each panel alone, over the sample's window, dark and in UTC", () => {
+    const sample = homeServer.sample.parse(HOME_SAMPLE)
+    const path = panelPath(
+      { dashboard: "file-host-dashboard", id: 943, label: "Availability" },
+      sample
+    )
+    const url = new URL(path, sample.origin)
+    expect(url.pathname).toBe("/d-solo/file-host-dashboard/")
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      orgId: "1",
+      panelId: "943",
+      from: String(Date.parse("2026-11-09T00:00:00Z")),
+      to: String(Date.parse("2026-11-16T00:00:00Z")),
+      theme: "dark",
+      timezone: "utc",
+    })
+  })
+
+  it("walks the server's six panels and the cores' one, each a step the runner takes", () => {
+    const sample = homeServer.sample.parse(HOME_SAMPLE)
+    const server = homeServer.walk(sample)
+    const cores = homeCores.walk(sample)
+    expect(server.stage).toMatchObject({ kind: "grafana", version: "0.42.1" })
+    expect(server.steps).toHaveLength(6)
+    expect(stepProblems(server.steps)).toEqual([])
+    expect(server.steps.slice(1).map((step) => step.action.kind)).toEqual(
+      Array.from({ length: 5 }, () => "visit")
+    )
+    expect(cores.steps).toHaveLength(1)
+    expect(cores.stage.kind === "grafana" ? cores.stage.page : "").toMatch(
+      /^\/d-solo\/who-dunnit-forensic\/\?.*panelId=32/
+    )
+  })
+
+  it("a visit stays on the stage: a path from /, never another origin", () => {
+    const visit = (path: string): Step => ({
+      label: "Visits",
+      action: { kind: "visit", path },
+      holdMs: 1000,
+    })
+    expect(stepProblems([open, visit("/d-solo/x/?panelId=1")])).toEqual([])
+    for (const path of [
+      "https://example.com/",
+      "//example.com/x",
+      "/\\example.com/x",
+      "/\t/example.com/x",
+      "x",
+    ]) {
+      expect(stepProblems([open, visit(path)])).toEqual([
+        "Visits: it visits a path of the stage, from /",
+      ])
+    }
+  })
+
+  it("the server clip's words fit its walk of six screens", () => {
+    const words = WalkthroughSchema.parse(
+      JSON.parse(
+        readFileSync(
+          new URL("../../walks/home-server.json", import.meta.url),
+          "utf8"
+        )
+      )
+    )
+    const snips = Array.from({ length: 6 }, (_, i) => ({
+      file: `snips/0${String(i + 1)}.png`,
+      label: `panel ${String(i + 1)}`,
+      atMs: i * 2400,
+    }))
+    expect(
+      walkthroughProblems(words, {
+        schema: "some-ui.walk/1",
+        app: "home-server",
+        version: "0.42.1",
+        viewport: { width: 1000, height: 640, scale: 1 },
+        snips,
+        taps: [],
+        lengthMs: 6 * 2400,
+      })
+    ).toEqual([])
   })
 })

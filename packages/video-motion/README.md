@@ -46,6 +46,15 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
     (`src/walk/jobs.ts`), against the stand-in home answering its story sample
     (`apps/www/tests/walk/jobs-week.json`), run by `apps/mobile/walk/walk-apk.sh` inside
     Snips Capture's emulator.
+  - **grafana** (`src/walk/stage-grafana.ts`, C1073): home's own Grafana, each panel opened
+    alone (`/d-solo/`) at one size, dark, in UTC, over the week home's sample names (ending at
+    a UTC midnight that has passed), with a Viewer token read from `GRAFANA_TOKEN`. Every
+    request is fetched by the stage: another origin is refused, a redirect fails the walk
+    (it would carry the token), and service workers and sockets are blocked. Home's
+    render worker walks `home-server` (six panels of file_host's dashboard) and `home-cores`
+    (the CPU panel) here (`src/walk/home-dashboards.ts`, #3415); the server clip is
+    `home-server`'s walkthrough, from `walks/home-server.json`. A step may `visit` another
+    page of the stage's own origin.
 
   A walk can also be given a microphone (`src/walk/microphone.ts`, WALK3): the page's
   audio `getUserMedia` answers a canned clip, so the app's own recorder records it.

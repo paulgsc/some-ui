@@ -176,6 +176,7 @@ export async function openApkStage(spec: ApkStageSpec): Promise<Stage> {
       page,
       version,
       viewport,
+      origin: APP,
       place,
       open: async (init): Promise<void> => {
         for (const content of init) await page.addInitScript({ content })

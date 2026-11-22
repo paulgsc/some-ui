@@ -1,13 +1,15 @@
 /**
  * Everything a walkthrough says and burns in about real use (WALK5, #3337;
  * #3338), in one table, in the viewer's terms and the owner's first person:
- * how often a step was reached and moved on from, how long a stretch on it
+ * how often a step was reached and moved on from, and left from it or from
+ * its last step for another screen, how long a stretch on it
  * runs, how hard applying felt, and which modules nobody opens. No count
  * under 5 is said (the engagement report's rule, ask #2701): it is "fewer
  * than 5". Drawn notes split their lines on "|", as every walkthrough
  * scene's words do.
  */
 
+import { listed } from "@some-ui/core-utils"
 import type { Silent } from "@some-ui/engagement"
 import type { PublicCount } from "@some-ui/video-render"
 
@@ -46,7 +48,16 @@ export const WALKTHROUGH_WORDS = {
   },
   movedOn: {
     drawn: (n: string): string => `Moved on ${n} times`,
-    said: (n: string): string => `and moved on from it ${n} times`,
+    said: (n: string): string => `moved on from it ${n} times`,
+  },
+  // Where a step was left from, never that a pick was finished (C1069).
+  finished: {
+    drawn: (n: string): string => `Left at the end ${n} times`,
+    said: (n: string): string => `left it at its last step ${n} times`,
+  },
+  leftPartWay: {
+    drawn: (n: string): string => `Left from here ${n} times`,
+    said: (n: string): string => `left it from this step ${n} times`,
   },
   time: {
     drawn: (s: number): string =>
@@ -129,19 +140,25 @@ function wordsOf(
           ? { drawn: [W.tooMuch.drawn], said: W.tooMuch.said }
           : { drawn: [W.nothingKept.drawn], said: W.nothingKept.said }
       const moved = shown(m.counts.movedOn)
+      const finished = shown(m.counts.finished)
+      const partWay = shown(m.counts.leftPartWay)
       const { medianMs } = m.counts
       const seconds =
         medianMs === null || medianMs < 1000
           ? null
           : Math.round(medianMs / 1000)
-      const said = [
+      const said = listed([
         W.stretches.said(stretches),
         ...(moved === null ? [] : [W.movedOn.said(moved)]),
-      ].join(" ")
+        ...(finished === null ? [] : [W.finished.said(finished)]),
+        ...(partWay === null ? [] : [W.leftPartWay.said(partWay)]),
+      ])
       return {
         drawn: [
           W.stretches.drawn(stretches),
           ...(moved === null ? [] : [W.movedOn.drawn(moved)]),
+          ...(finished === null ? [] : [W.finished.drawn(finished)]),
+          ...(partWay === null ? [] : [W.leftPartWay.drawn(partWay)]),
           ...(seconds === null ? [] : [W.time.drawn(seconds)]),
         ],
         said: `${W.window.said}, ${said}${seconds === null ? "" : `; ${W.time.said(seconds)}`}.`,

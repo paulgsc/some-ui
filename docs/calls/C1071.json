@@ -1,0 +1,29 @@
+{
+  "id": "C1071",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "apps/mailbox/src/core.ts",
+    "apps/mailbox/src/store.ts",
+    "apps/mailbox/migrations/0005_site_assets_view.sql",
+    ".github/workflows/site-assets.yml",
+    "packages/eslint/src/retention.ts",
+    "server:infra/compose/call-render.yml",
+    "server:infra/render/render-calls.sh",
+    "server:apps/servers/file_host/src/mailbox.rs"
+  ],
+  "chose": "The reach for #3415, inward first, rung 2 (fold in): home's own render worker photographs Grafana's own single-panel pages (`/d-solo/`), and the Jobs mailbox carries the pictures to GitHub. Home's render worker is the one batch worker (paulgsc/server docs/home-compute.md, invariant 1) and already holds Chromium, ffmpeg and the motion in a folder-driven job loop, so photographing is a new job kind there, not a new service. The mailbox gains a `site-assets` folder holding a PNG still (`cores`) and an MP4 clip (`server`), checked by type, name and first bytes, at most 1 MiB each (the mailbox's cap, never raised for this: home encodes the silent clip to fit and checks the size before it puts), keeping only the newest of each kind as home's index does (MB5's view exception, migration 0005), never archived or asked back. A fourth mailbox role, `pages`, reads that folder and nothing else; its token is a GitHub Actions secret that only Site Assets' `home` job reads, which uploads `site-assets-server-<sha>` and `site-assets-cores-<sha>` artifacts that pages.yml already fetches (C1059). Home holds no GitHub token at all. Ours to build is only the wiring; the part that is ours is which of home's panels go public and that they carry no personal data. The run's coordinator agreed on 2026-11-22.",
+  "options": [
+    "the Jobs mailbox carries the pictures; a `pages` role reads them from a Site Assets job (taken)",
+    "home dispatches a workflow with an Actions: write token; the runner still cannot reach home, so it pulls through the mailbox anyway",
+    "home uploads a release asset or commits the pictures: needs Contents: write on some-ui, which can push code, and C1029 forbids committed media",
+    "home pushes an OCI artifact to GHCR: needs a classic token with write:packages across the account",
+    "a self-hosted runner on home: a public repository's pull requests would run on home, against its compute invariants",
+    "the pictures base64-encoded in workflow_dispatch inputs: about 64 KB in all, too small for a clip",
+    "grafana-image-renderer as the photographer: a second Chromium service on home, against home-compute invariant 1, with idle memory of its own",
+    "Grafana's anonymous viewer access for the photographer: opens the LAN dashboards to anyone on the network"
+  ],
+  "gray": "The owner's yes on #3415 settled that home's dashboards may go public and that home needs a token; nothing settled how pictures made on home reach a workflow artifact, which can be uploaded only from inside a run, or which token, where, carries them. Each option places a credential and home's exposure differently.",
+  "undo": "Remove the `site-assets` folder and the `pages` role from apps/mailbox (MB2, MB5), apply a migration that restores 0004's trigger, unset PAGES_TOKEN and MAILBOX_PAGES_TOKEN, and remove Site Assets' `home` job, its two retention families and home's photographing job; both slots then draw their placeholders.",
+  "refs": ["#3415", "#3401"]
+}

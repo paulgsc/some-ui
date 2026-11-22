@@ -1,0 +1,22 @@
+{
+  "id": "C1068",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/engagement/src/lib/events.ts",
+    "some-ui:packages/engagement/src/lib/places.ts",
+    "some-ui:packages/engagement/src/lib/check-event.ts",
+    "server:crates/db/app_event/src/model.rs"
+  ],
+  "chose": "The screen a `left` opens next is an optional `next` on the existing `left` case of the engagement event, not a new event or pipeline. A move within an affordance names the place (`decide`). A screen closing names the place that comes on screen next in the same turn of the event loop, with its affordance, as `<affordance>.<place>` (`today.today`), through one hand-off www's screens share (`SCREEN_HANDOFF`); registry ids never hold a dot, so the two forms can't be confused. A bare affordance id was tried first and refused by the registry's own data: places `reading`, `finish` and `lesson` share ids with sibling affordances, and place ids are stable for good. A screen closing to anywhere it can't name (another pipeline, a screen with no place, one still loading, or a runtime with no shared hand-off, as Rust Rounds' tickets) says `elsewhere`, which no place may be named. Only the app going to the back leaves `next` out, so home can tell a stretch split by putting the app away from a screen left. Home accepts the field on `left` only, as a name from the app's code; the phone checks it against the registry.",
+  "options": [
+    "`next` on `left`: own place, `<affordance>.<place>` of the pipeline via a same-turn hand-off, or `elsewhere`; absent only when the app went to the back (chosen)",
+    "`next` as a bare id: own place or sibling affordance id (refused: ids collide in the registry)",
+    "leave `next` out for any destination the phone can't name (refused in review: exits then read like the app put away, and counts said as whole miss them)",
+    "the route path entered, read from the router as the screen unmounts",
+    "a new `went` event kind"
+  ],
+  "gray": "How the app names where the owner went is a shape a later story builds on (taps per step, other flows); the same-turn hand-off can miss a screen that mounts after a load, which reads as unknown rather than wrong.",
+  "undo": "Record a call that moves this one, and change `stepPlace`, the hand-off and `checkEvent`'s `next` rule with their tests; kept events keep the field as sent.",
+  "refs": ["#3367", "#3337"]
+}

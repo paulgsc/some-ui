@@ -15,7 +15,7 @@
 //   pnpm report:vestiges --all      every non-deployable workspace, scored
 //   pnpm report:vestiges --usage <friction.json>
 //                                   also the usage candidates (#3338): each
-//                                   module the aggregate (some-ui.friction/2,
+//                                   module the aggregate (some-ui.friction/3,
 //                                   which `motion walkthrough --home` keeps
 //                                   beside its render) shows nobody opening, by
 //                                   the silence rule in

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "api_base_path": "/api/v1",
   "server_version": "0.0.0",
-  "contract_epoch": 25,
+  "contract_epoch": 27,
   "oldest_supported": 1,
   "routes": [
     {
@@ -312,6 +312,13 @@
       "full_path": "/api/v1/feeds/:feed/videos/:key/video",
       "versioned": true,
       "module": "feed_videos"
+    },
+    {
+      "method": "GET",
+      "path": "/games/:id/moments",
+      "full_path": "/api/v1/games/:id/moments",
+      "versioned": true,
+      "module": "games"
     },
     {
       "method": "GET",
@@ -1080,6 +1087,13 @@
       "method": "GET",
       "path": "/voice-notes/:id/audio",
       "full_path": "/api/v1/voice-notes/:id/audio",
+      "versioned": true,
+      "module": "voice"
+    },
+    {
+      "method": "POST",
+      "path": "/voice-notes/:id/fast-track",
+      "full_path": "/api/v1/voice-notes/:id/fast-track",
       "versioned": true,
       "module": "voice"
     },
