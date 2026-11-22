@@ -10,7 +10,8 @@
  * another), and only once the copy has landed do the episode's two cubes
  * turn about X to the scene's faces (the first scene's cubes come into view
  * instead), each band's label typing in as its face arrives, and hold. The
- * episode's cubes leave as the next episode's copy turns in.
+ * episode's cubes leave as the next episode's copy turns in. Until they first
+ * arrive, their places stand as skeletons of what is coming (C1185).
  */
 import type { ResolvedEpisode } from "./show.ts"
 
@@ -40,6 +41,11 @@ type SceneTracks = {
 }
 
 type EpisodeTracks = {
+  /**
+   * Where the episode's pair will be, as skeletons (C1185): standing from
+   * the episode's start, giving way as the pair turns in.
+   */
+  readonly skeleton: Track
   /** The episode's pair of cubes: in view for its episode only. */
   readonly pair: Track
   readonly cubes: readonly [Track, Track]
@@ -193,6 +199,19 @@ export function showTimeline(
             ]),
       ]),
     }
+    // The skeletons come in as the copy block turns to the episode, and
+    // stand until the pair comes into view over them.
+    const skeletonName = name()
+    const skeleton: Track = {
+      name: skeletonName,
+      keyframes: keyframes(skeletonName, cycleS, [
+        ...(e.start === 0 ? [] : [{ at: 0, css: HIDDEN }]),
+        { at: e.start, css: HIDDEN, ease: "ease-out" },
+        { at: e.start + EPISODE_TURN_S, css: SHOWN },
+        { at: enters, css: SHOWN, ease: "ease-in" },
+        { at: enters + TURN_S, css: HIDDEN },
+      ]),
+    }
     const cube = (): Track => {
       const cubeName = name()
       return {
@@ -294,7 +313,7 @@ export function showTimeline(
         labels: [label(0), label(1)],
       }
     })
-    return { pair, cubes, scenes }
+    return { skeleton, pair, cubes, scenes }
   })
   return { cycleS, copy, episodes: episodeTracks }
 }
@@ -304,6 +323,7 @@ export function tracksOf(timeline: Timeline): ReadonlyArray<Track> {
   return [
     timeline.copy,
     ...timeline.episodes.flatMap((e) => [
+      e.skeleton,
       e.pair,
       ...e.cubes,
       ...e.scenes.flatMap((s) => [s.block, s.title, ...s.lines, ...s.labels]),

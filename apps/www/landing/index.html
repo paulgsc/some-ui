@@ -258,11 +258,59 @@
           align-self: stretch;
           min-height: 19rem;
         }
-        .pair {
+        .pair,
+        .skeletons {
           grid-area: 1 / 2 / 2 / 4;
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 20px;
+        }
+        /* Where an episode's pair will turn in, while its copy streams
+           (C1185): a calm frame in the face's own shape, its glyph telling
+           a clip from a still. One slow sweep of light passes over it, low
+           in contrast and seconds long, never a flash or a flicker. */
+        .skeleton {
+          position: relative;
+          aspect-ratio: 1;
+          display: flex;
+          flex-direction: column;
+          border-radius: 12px;
+          overflow: hidden;
+          background: var(--card);
+          box-shadow: 0 0 0 1px var(--line);
+        }
+        .skeleton-screen {
+          flex: 1;
+          display: grid;
+          place-items: center;
+          background: var(--stage);
+          color: color-mix(in oklab, var(--muted) 55%, var(--stage));
+        }
+        .skeleton-screen svg {
+          width: 26%;
+        }
+        .skeleton-band {
+          padding: 12px;
+        }
+        .skeleton-band span {
+          display: block;
+          width: 55%;
+          height: 0.7rem;
+          border-radius: 999px;
+          background: color-mix(in oklab, var(--muted) 22%, var(--card));
+        }
+        .skeleton::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(
+            100deg,
+            transparent 35%,
+            color-mix(in oklab, var(--card) 40%, transparent) 50%,
+            transparent 65%
+          );
+          background-size: 300% 100%;
+          animation: shimmer 3.2s ease-in-out infinite;
         }
         /* Every track on the one clock, started just past the copy block's
            first turn (--show-start, render.ts), so the show opens on its
@@ -283,7 +331,8 @@
           animation-delay: -7.3s;
         }
         .show:hover .tk,
-        .show:hover .block {
+        .show:hover .block,
+        .show:hover .skeleton::after {
           animation-play-state: paused;
         }
         .ring {
@@ -388,6 +437,14 @@
       @keyframes breathe {
         50% {
           transform: scale(1.015);
+        }
+      }
+      @keyframes shimmer {
+        from {
+          background-position: 100% 0;
+        }
+        to {
+          background-position: 0% 0;
         }
       }
       @keyframes sheen {

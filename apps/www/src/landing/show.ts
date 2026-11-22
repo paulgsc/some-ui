@@ -61,10 +61,37 @@ function isWalkthroughCopy(value: unknown): value is WalkthroughCopy {
  * (`shot-times.json`), or an asset by key. Its band names it by `label`; a
  * still's label defaults to its walkthrough caption.
  */
-export type Face =
-  | { readonly snip: number; readonly label?: string }
-  | { readonly cut: string; readonly label: string }
-  | { readonly media: `stills/${string}.png`; readonly label: string }
+export type Face = FaceKinds[keyof FaceKinds]
+
+/** The kinds of face, each named by the one field that sets it apart. */
+type FaceKinds = {
+  readonly snip: { readonly snip: number; readonly label?: string }
+  readonly cut: { readonly cut: string; readonly label: string }
+  readonly media: {
+    readonly media: `stills/${string}.png`
+    readonly label: string
+  }
+}
+
+/**
+ * What a face's slot stands as while it is on its way (C1185): the frame of
+ * a clip, or of a still, so the reader is told honestly what is coming.
+ */
+export type FaceSkeleton = "clip" | "still"
+
+/** Each kind of face's skeleton: a new kind can't be a face until it names one. */
+const SKELETONS: { readonly [K in keyof FaceKinds]: FaceSkeleton } = {
+  snip: "still",
+  cut: "clip",
+  media: "still",
+}
+
+/** The skeleton `face` stands as before it arrives, by its kind. */
+export function faceSkeleton(face: Face): FaceSkeleton {
+  for (const [kind, skeleton] of Object.entries(SKELETONS))
+    if (kind in face) return skeleton
+  throw new Error("a face of no kind")
+}
 
 /** A scene's copy: a chapter of the episode's walkthrough, or its own words. */
 type SceneCopy =
@@ -216,8 +243,12 @@ export function faceKey(episode: EpisodeId, face: Face): string {
   return face.media
 }
 
-/** A face as the landing draws it: its asset's key and its band's label. */
-export type ResolvedFace = { readonly key: string; readonly label: string }
+/** A face as the landing draws it: its asset's key, its band's label, and its skeleton. */
+export type ResolvedFace = {
+  readonly key: string
+  readonly label: string
+  readonly skeleton: FaceSkeleton
+}
 
 /** A scene as the landing draws it: its copy, resolved, and its two faces. */
 type ResolvedScene = {
@@ -292,7 +323,11 @@ export function resolveShow(
               `${where} shows still ${String(f.snip)} with no label`
             )
         }
-        return { key: faceKey(episode.id, f), label: oneLine(label) }
+        return {
+          key: faceKey(episode.id, f),
+          label: oneLine(label),
+          skeleton: faceSkeleton(f),
+        }
       }
       if (narration.some((line) => line.trim() === ""))
         problems.push(`${where} has an empty line of copy`)

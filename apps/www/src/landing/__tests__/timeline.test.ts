@@ -3,7 +3,7 @@
  * turn, each pair is in view for its own episode only, and every track
  * shares one cycle.
  */
-import type { ResolvedEpisode } from "@/landing/show"
+import type { ResolvedEpisode, ResolvedFace } from "@/landing/show"
 import {
   EPISODE_TURN_S,
   HOLD_S,
@@ -15,9 +15,10 @@ import {
 } from "@/landing/timeline"
 import { describe, expect, it } from "vitest"
 
-const face = (key: string): { key: string; label: string } => ({
+const face = (key: string): ResolvedFace => ({
   key,
   label: key,
+  skeleton: "still",
 })
 const EPISODES: ReadonlyArray<ResolvedEpisode> = (
   ["extensions", "android", "server"] as const
@@ -140,6 +141,30 @@ describe("showTimeline", () => {
         expect(block[1]).toMatchObject({ at: pct(EPISODE_TURN_S) })
         expect(block[1].css).toContain("opacity: 0")
       }
+    }
+  })
+
+  it("stands each episode's skeletons from its start until its pair turns in over them", () => {
+    for (const [k, e] of timeline.episodes.entries()) {
+      const start = k * episode
+      const enters = start + EPISODE_TURN_S + TITLE_S + 114 / STREAM_CPS
+      const skeleton = frames(e.skeleton.keyframes)
+      const at = (s: number): string =>
+        skeleton.find((f) => f.at === pct(s))?.css ?? ""
+      expect(at(start), `episode ${String(k)}`).toContain("opacity: 0")
+      expect(at(start + EPISODE_TURN_S)).toContain("opacity: 1")
+      expect(at(enters)).toContain("opacity: 1")
+      expect(at(enters + TURN_S)).toContain("opacity: 0")
+      // The pair comes into view over them in that same second.
+      const pair = frames(e.pair.keyframes)
+      expect(pair.find((f) => f.at === pct(enters))?.css).toContain(
+        "opacity: 0"
+      )
+      expect(pair.find((f) => f.at === pct(enters + TURN_S))?.css).toContain(
+        "opacity: 1"
+      )
+      // Gone for the rest of the cycle.
+      expect(skeleton.at(-1)?.css).toContain("opacity: 0")
     }
   })
 

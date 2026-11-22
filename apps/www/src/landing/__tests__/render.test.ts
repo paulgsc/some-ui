@@ -153,6 +153,27 @@ describe("renderLanding", () => {
       }
   })
 
+  it("stands a skeleton where each episode's first faces will come, telling a clip from a still", () => {
+    const blocks = [
+      ...stageOf(page).matchAll(
+        /<div class="skeletons tk s-\d+" data-episode="([a-z]+)" aria-hidden="true">([\s\S]*?)<div class="pair /g
+      ),
+    ]
+    expect(blocks.map((b) => b[1])).toEqual(EPISODES.map((e) => e.id))
+    for (const [k, episode] of EPISODES.entries()) {
+      const block = blocks[k]?.[2] ?? ""
+      const kinds = [...block.matchAll(/data-skeleton="([a-z]+)"/g)].map(
+        (m) => m[1]
+      )
+      expect(kinds, episode.id).toEqual(
+        episode.scenes[0]?.faces.map((f) => f.skeleton)
+      )
+      // A glyph each, and no words to take for content.
+      expect(block.match(/<svg /g)).toHaveLength(2)
+      expect(block.replace(/<[^>]*>/g, "").trim()).toBe("")
+    }
+  })
+
   it("lays every scene flat for a phone and less motion: its copy, then its two faces", () => {
     const flat = page.slice(page.indexOf('<div class="flat">'))
     for (const episode of EPISODES)

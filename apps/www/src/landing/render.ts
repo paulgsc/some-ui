@@ -13,7 +13,7 @@ import type { ResumeData } from "@some-ui/resume"
 
 import type { MediaSize } from "./media.ts"
 import { MEDIA_PATH, SITE_BASE, SITE_URL } from "./output.ts"
-import type { ResolvedEpisode, ResolvedFace } from "./show.ts"
+import type { FaceSkeleton, ResolvedEpisode, ResolvedFace } from "./show.ts"
 import { showMediaKeys } from "./show.ts"
 import type { LandingTheme } from "./themes.ts"
 import { themeCss, themePicker } from "./themes.ts"
@@ -122,6 +122,27 @@ const cubeFace = (
               </div>`
 
 /**
+ * Each skeleton's glyph (C1185): a frame with a play mark for a clip, a frame
+ * with a sun over hills for a still. Drawn in the theme's ink by the page's
+ * CSS (`currentColor`).
+ */
+const SKELETON_GLYPH: Readonly<Record<FaceSkeleton, string>> = {
+  clip: `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"><rect x="5" y="9" width="38" height="30" rx="5"/><path d="M20 17.5v13l11-6.5z" fill="currentColor"/></svg>`,
+  still: `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"><rect x="5" y="9" width="38" height="30" rx="5"/><circle cx="17" cy="19" r="3.5"/><path d="M8 35l11-11 8 8 5-5 9 9"/></svg>`,
+}
+
+/**
+ * A face's place before it arrives: a skeleton in the face's own shape (a
+ * screen above a band), telling what is coming by its glyph, with no words a
+ * reader could take for content.
+ */
+const skeletonSlot = (kind: FaceSkeleton): string => `
+          <div class="skeleton" data-skeleton="${kind}">
+            <div class="skeleton-screen">${SKELETON_GLYPH[kind]}</div>
+            <div class="skeleton-band"><span></span></div>
+          </div>`
+
+/**
  * The stage (C1180, C1182): the copy block, an episode a face about Y, each
  * holding its scenes' copy as it streams in; and an episode's pair of cubes,
  * a scene a face about X, in view while its episode plays. The copy is what
@@ -183,7 +204,12 @@ function stage(
           </div>`
         )
         .join("")
+      const coming = episode.scenes[0]?.faces ?? []
       return `
+        <div class="skeletons tk ${tracks.skeleton.name}" data-episode="${episode.id}" aria-hidden="true">${coming
+          .map((face) => skeletonSlot(face.skeleton))
+          .join("")}
+        </div>
         <div class="pair tk ${tracks.pair.name}" data-episode="${episode.id}" aria-hidden="true">${cubes}
         </div>`
     })

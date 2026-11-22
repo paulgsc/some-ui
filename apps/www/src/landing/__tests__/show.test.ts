@@ -8,6 +8,7 @@ import { join } from "node:path"
 import type { Show, WalkthroughCopy } from "@/landing/show"
 import {
   faceKey,
+  faceSkeleton,
   facesToMake,
   resolveShow,
   SHOW,
@@ -71,8 +72,16 @@ describe("resolveShow", () => {
           narration: ["Line three."],
           draft: false,
           faces: [
-            { key: "stills/android/03.png", label: "Four" },
-            { key: "clips/android/stop-2.mp4", label: "Moving" },
+            {
+              key: "stills/android/03.png",
+              label: "Four",
+              skeleton: "still",
+            },
+            {
+              key: "clips/android/stop-2.mp4",
+              label: "Moving",
+              skeleton: "clip",
+            },
           ],
         },
       ],
@@ -230,6 +239,25 @@ describe("showFor", () => {
       ],
     }
     expect(showFor(agreed, reads(WALK), false).ok).toBe(true)
+  })
+})
+
+describe("faceSkeleton", () => {
+  it("stands a cut as a clip's frame, and a still or an asset as a still's", () => {
+    expect(faceSkeleton({ cut: "hook", label: "x" })).toBe("clip")
+    expect(faceSkeleton({ snip: 1 })).toBe("still")
+    expect(faceSkeleton({ media: "stills/a.png", label: "x" })).toBe("still")
+  })
+
+  it("tells the truth about every face of the show: a clip's frame for a clip", () => {
+    const show = showFor(SHOW, repoRead, true)
+    if (!show.ok) throw new Error("unresolved")
+    for (const face of show.episodes.flatMap((e) =>
+      e.scenes.flatMap((scene) => scene.faces)
+    ))
+      expect(face.skeleton, face.key).toBe(
+        face.key.endsWith(".mp4") ? "clip" : "still"
+      )
   })
 })
 
