@@ -288,6 +288,18 @@ export const CACHE_FAMILIES: ReadonlyArray<CacheFamily> = [
     scope: "shared",
     keep: 1,
   },
+  // nix-installer-action and magic-nix-cache-action keep their own binaries
+  // under `determinatesystem-<tool>-<platform>-<etag>`, one lineage per tool
+  // and platform, read by every ref, so main's copy is the one kept. A PR that
+  // fetches a newer release first loses its copy to main's older one until
+  // main's next nix job saves it: a download, never a failure.
+  {
+    kind: "cache",
+    label: "Determinate Systems binaries",
+    prefix: "determinatesystem-",
+    scope: "shared",
+    keep: 1,
+  },
   {
     kind: "cache",
     label: "Docker layers",
