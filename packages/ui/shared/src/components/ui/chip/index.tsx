@@ -5,10 +5,12 @@ import { cn } from "../../../lib/utils"
 import { Dot } from "../../patterns/dot"
 
 /**
- * A chip that filters a list: what it shows, how many it shows, whether it
- * is picked, and an optional dot for what the items mean. Takes on home
+ * A chip that filters or orders a list: what it shows, how many it shows
+ * (none for an order), whether it is picked, and an optional dot for what
+ * the items mean. Takes on home
  * (TAKES3, TAKES20), its reconciling page and a Rust Rounds ticket's points
- * (RR24) draw their filters with it, in a `CHIP_BAR`.
+ * (RR24) draw their filters with it, in a `CHIP_BAR`; the Cooking page its
+ * Show and Order menu.
  */
 export const Chip = ({
   picked,
@@ -18,7 +20,7 @@ export const Chip = ({
   children,
 }: {
   picked: boolean
-  count: number
+  count?: number
   dot?: DotMeaning | null
   onTap: () => void
   children: ReactNode
@@ -34,7 +36,9 @@ export const Chip = ({
   >
     {dot !== null && <Dot meaning={dot} className="size-2" />}
     {children}
-    <span className="tabular-nums opacity-75">{count}</span>
+    {count !== undefined && (
+      <span className="tabular-nums opacity-75">{count}</span>
+    )}
   </button>
 )
 

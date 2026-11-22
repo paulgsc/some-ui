@@ -13,6 +13,7 @@ import { useReducer } from "react"
 import { cn } from "@some-ui/core-utils"
 import {
   Button,
+  Chip,
   Notice,
   Popover,
   PopoverContent,
@@ -400,13 +401,6 @@ const Menu = ({
       .length
   const filterWords = (f: (typeof FILTERS)[number]): string =>
     f === "all" || f === "you" || f === "moving" ? W.filters[f] : W.lands[f]
-  const chip = (pressed: boolean): string =>
-    cn(
-      "rounded-full border px-3 py-1 text-sm",
-      pressed
-        ? "bg-foreground text-background border-foreground"
-        : "bg-background"
-    )
   return (
     <div className="flex min-h-8 items-center justify-end gap-3">
       {narrowed(board) && (
@@ -443,16 +437,14 @@ const Menu = ({
               {W.showLabel}
             </span>
             {FILTERS.map((f) => (
-              <button
+              <Chip
                 key={f}
-                type="button"
-                aria-pressed={board.filter === f}
-                className={chip(board.filter === f)}
-                onClick={() => dispatch({ kind: "filtered", filter: f })}
+                picked={board.filter === f}
+                count={count(f)}
+                onTap={() => dispatch({ kind: "filtered", filter: f })}
               >
-                {filterWords(f)}{" "}
-                <span className="tabular-nums opacity-70">{count(f)}</span>
-              </button>
+                {filterWords(f)}
+              </Chip>
             ))}
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -460,15 +452,13 @@ const Menu = ({
               {W.orderLabel}
             </span>
             {SORTS.map((s) => (
-              <button
+              <Chip
                 key={s}
-                type="button"
-                aria-pressed={board.sort === s}
-                className={chip(board.sort === s)}
-                onClick={() => dispatch({ kind: "sorted", sort: s })}
+                picked={board.sort === s}
+                onTap={() => dispatch({ kind: "sorted", sort: s })}
               >
                 {W.sorts[s]}
-              </button>
+              </Chip>
             ))}
           </div>
         </PopoverContent>
