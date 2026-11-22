@@ -47,21 +47,21 @@ What follows from them:
   working), the source for the technical, each disclosed by interaction rather than all at
   once. The public Pages site is a curriculum vitae (owner, C1055): who the owner is, what
   they do, the résumé and how to reach them, with each project shown by its clip and a link
-  to its source. It serves a static landing, `/resume` and `/authorship`, the record every
-  published video's end card links (#3401); the extensions comb and the apps on sample data
-  stay on `lan` and in the capture build Snips photographs.
+  to its source. It is static pages with no app (#3401): a landing, the résumé, and
+  `/authorship`, the record every published video's end card links, whose one script draws
+  it. The extensions comb and the apps on sample data stay on `lan` and in the capture build
+  Snips photographs.
 - **One screen, two readings.** Where the owner and a viewer can reach the same screen, it
   says which of them is looking: `components/provenance-strip.tsx` under the web header
   tells the owner what a wing publishes and keeps, and tells a viewer it is sample data.
-- **A viewer tries, and nothing is kept.** The viewer's builds are Pages and the capture
-  build Snips photographs (`VIEWER_BUILD`, `apps/www/src/lib/data-mode`). Under C1055 Pages
-  serves only the résumé and the authorship record, and the capture build keeps every
-  viewer screen. On both, the page's `localStorage` and `sessionStorage` are in-memory copies
-  (`apps/www/src/lib/demo/viewer-storage.ts`, imported first by `main.tsx`), and in the
-  capture build `apps/www/src/lib/demo` seeds them with sample drafts: a mock demo, where
-  every store, the activity packages' included, works as usual and a reload starts over.
-  A person's records may not bypass them (no IndexedDB, Cache Storage or cookie holding
-  them on either build); a convenience, such as the sidebar's open/closed cookie, may.
+- **A viewer tries, and nothing is kept.** The viewer's app runs in the capture build Snips
+  photographs (`VIEWER_BUILD`, `apps/www/src/lib/data-mode`); Pages carries no app under
+  C1055, and its pages keep nothing. In the capture build the page's `localStorage` and
+  `sessionStorage` are in-memory copies (`apps/www/src/lib/demo/viewer-storage.ts`, imported
+  first by `main.tsx`), which `apps/www/src/lib/demo` seeds with sample drafts: a mock demo,
+  where every store, the activity packages' included, works as usual and a reload starts
+  over. A person's records may not bypass them (no IndexedDB, Cache Storage or cookie holding
+  them in a viewer build); a convenience, such as the sidebar's open/closed cookie, may.
 - **Say what it is.** In copy anyone reads (pages, READMEs, store listings, release
   notes), describe each thing by what it is and does, plus its honest limits. Skip foils
   and put-downs ("not another X", "not just a Y"): an affirmative definition says it all.

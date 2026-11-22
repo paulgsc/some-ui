@@ -8,7 +8,7 @@ import type { HtmlTagDescriptor, Plugin, UserConfig } from "vite"
 import { defineConfig, loadEnv } from "vite"
 
 import { RELEASE_MINIFY } from "./build.minify.ts"
-import { offPathPublicFiles, pagesRouteIgnorePattern } from "./build.paths.ts"
+import { offPathPublicFiles } from "./build.paths.ts"
 import {
   buildAudiencePlugin,
   MOBILE_PROFILE,
@@ -21,8 +21,13 @@ import {
   isBlockedProxyPath,
   resolveFileHostTarget,
 } from "./file-host.dev.ts"
-import type { RenderedLanding } from "./src/landing/output.ts"
-import { LANDING_FILE } from "./src/landing/output.ts"
+import type { SitePage } from "./src/landing/output.ts"
+import {
+  isSiteTemplate,
+  SITE_BASE,
+  SITE_FILE,
+  SITE_TEMPLATES,
+} from "./src/landing/output.ts"
 import {
   OLD_WEBVIEW_PAGE,
   oldWebViewPage,
@@ -129,8 +134,8 @@ function fitPageEntry(): Record<string, string> {
 // `pnpm build:stage`: the recording stage alone (stage/main.tsx), into
 // out/stage, with its page at the output's root.
 const isStageBuild = process.env.WWW_STAGE === "1"
-// The Pages deployable: the landing (landingPage, below) and its own route
-// tree (build.paths.ts, PAGES_ROUTE_FILES).
+// The Pages deployable: the public site's static pages (publicSite, below),
+// and no app.
 const isPagesSiteBuild = isPagesBuild() && !isFitHarnessBuild && !isStageBuild
 
 function stageEntry(): Record<string, string> {
@@ -229,111 +234,82 @@ function pagesConnectPolicy(): Plugin {
   }
 }
 
-// The public site's front page (PAGES, #3401; C1055): under the Pages profile
-// only, landing/index.html is a second HTML entry, filled with what
-// render-landing.ts rendered from the résumé's data (`LANDING_FILE`), and
-// written as the output's
-// index.html. The app's shell moves to 404.html, the fallback GitHub Pages
-// serves for every other path, where the app boots for /resume and
-// /authorship and sends anything else to the landing (lib/pages-surface).
-// Every other profile keeps the app at index.html and builds no landing.
-
-// The Pages build's own route tree (C1055, #3401; build.paths.ts,
-// PAGES_ROUTE_FILES): generated into node_modules' cache, never into src/ and
-// never committed. Every other profile, the capture build Snips photographs
-// included, keeps the shared src/routeTree.gen.ts.
-const PAGES_ROUTE_TREE = resolve(
-  import.meta.dirname,
-  "node_modules/.cache/www/routeTree.pages.gen.ts"
-)
+// The public site (PAGES, #3401; C1055): under the Pages profile the build's
+// entries are the site's templates (`SITE_TEMPLATES`) and nothing of the
+// app. Each template is written once for each page render-public-site.ts
+// rendered from the résumé's data (`SITE_FILE`): the landing as index.html,
+// the résumé's pages, the authorship record, and 404.html, which GitHub Pages
+// serves for every other path. No template is written under its own name.
+// Every other profile keeps the app at index.html and builds none of these.
 
 function isPagesBuild(): boolean {
   return process.env.SOME_UI_PROFILE === "pages"
 }
 
+function isSitePage(value: unknown): value is SitePage {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "file" in value &&
+    typeof value.file === "string" &&
+    "template" in value &&
+    isSiteTemplate(value.template) &&
+    "head" in value &&
+    typeof value.head === "string" &&
+    "body" in value &&
+    typeof value.body === "string"
+  )
+}
+
 /**
- * The landing render-landing.ts rendered (the www build runs it
- * before vite). Read from a file rather than rendered here, so this config,
- * which every build loads, imports nothing of the résumé's: the recording
- * stage's walk (scripts/stage-packages.ts, RI3) reads its imports.
+ * The pages render-public-site.ts rendered (the www build runs it before
+ * vite). Read from a file rather than rendered here, so this config, which
+ * every build loads, imports nothing of the résumé's: the recording stage's
+ * walk (scripts/stage-packages.ts, RI3) reads its imports.
  */
-function readRenderedLanding(): RenderedLanding {
-  const file = resolve(import.meta.dirname, LANDING_FILE)
+function readSitePages(): ReadonlyArray<SitePage> {
+  const file = resolve(import.meta.dirname, SITE_FILE)
   if (!fs.existsSync(file)) {
     throw new Error(
-      `The Pages build needs the rendered landing (${LANDING_FILE}): node render-landing.ts, which the www build runs first.`
+      `The Pages build needs the rendered site (${SITE_FILE}): node render-public-site.ts, which the www build runs first.`
     )
   }
   const parsed: unknown = JSON.parse(fs.readFileSync(file, "utf8"))
-  if (
-    typeof parsed !== "object" ||
-    parsed === null ||
-    !("head" in parsed) ||
-    !("body" in parsed) ||
-    typeof parsed.head !== "string" ||
-    typeof parsed.body !== "string"
-  ) {
-    throw new Error(`${LANDING_FILE} is not a rendered landing`)
+  if (!Array.isArray(parsed) || !parsed.every(isSitePage)) {
+    throw new Error(`${SITE_FILE} is not the rendered site`)
   }
-  return { head: parsed.head, body: parsed.body }
+  return parsed
 }
 
-function landingPage(): Plugin {
+function publicSite(): Plugin {
+  let base = "/"
   return {
-    name: "landing-page",
+    name: "public-site",
     apply: "build",
-    // After Vite's own HTML plugin has emitted both pages, so the names below
-    // are the ones Rollup writes: nothing is moved on disk afterwards.
+    // After Vite's own HTML plugin has emitted every template, so their
+    // stylesheet and script are already the hashed files Rollup writes.
     enforce: "post",
-    transformIndexHtml(html, ctx): string {
-      if (!ctx.filename.endsWith("landing/index.html")) return html
-      const { head, body } = readRenderedLanding()
-      return html
-        .replace("<!--landing:head-->", head)
-        .replace("<!--landing:body-->", body)
+    configResolved(config): void {
+      base = config.base
     },
     generateBundle(_options, bundle): void {
-      const app = bundle["index.html"]
-      const landing = bundle["landing/index.html"]
-      if (app?.type !== "asset" || landing?.type !== "asset") {
-        this.error(
-          "the Pages build needs both index.html and landing/index.html"
-        )
-      }
-      delete bundle["index.html"]
-      delete bundle["landing/index.html"]
-      this.emitFile({ type: "asset", fileName: "404.html", source: app.source })
-      this.emitFile({
-        type: "asset",
-        fileName: "index.html",
-        source: landing.source,
-      })
-    },
-  }
-}
-
-// A WebAssembly file a package names by `new URL(…, import.meta.url)` is
-// emitted whenever that package is in the graph, even where every line that
-// loads it is shaken out: the Pages build kept LeetType's 67 KB engine that
-// nothing on the public site runs. Under the Pages profile, a .wasm file no
-// chunk or page names is dropped from the output.
-function dropUnloadedWasm(): Plugin {
-  return {
-    name: "drop-unloaded-wasm",
-    apply: "build",
-    enforce: "post",
-    generateBundle(_options, bundle): void {
-      const texts = Object.values(bundle).map((file) =>
-        file.type === "chunk"
-          ? file.code
-          : typeof file.source === "string"
-            ? file.source
-            : ""
-      )
-      for (const [name, file] of Object.entries(bundle)) {
-        if (file.type !== "asset" || !name.endsWith(".wasm")) continue
-        const base = name.slice(name.lastIndexOf("/") + 1)
-        if (!texts.some((text) => text.includes(base))) delete bundle[name]
+      const pages = readSitePages()
+      for (const [kind, source] of Object.entries(SITE_TEMPLATES)) {
+        const template = bundle[source]
+        if (template?.type !== "asset" || typeof template.source !== "string") {
+          this.error(`the Pages build has no ${source}`)
+        }
+        delete bundle[source]
+        for (const page of pages.filter((p) => p.template === kind)) {
+          this.emitFile({
+            type: "asset",
+            fileName: page.file,
+            source: template.source
+              .replace("<!--site:head-->", page.head)
+              .replace("<!--site:body-->", page.body)
+              .replaceAll(SITE_BASE, base),
+          })
+        }
       }
     },
   }
@@ -433,7 +409,10 @@ export default defineConfig(
       // Single Tailwind pass over www's declared graph (style.context.ts):
       // utilities + the shared design layer are generated exactly once, from an
       // explicit @source set, instead of once per package. See #636.
-      ...createStylePlugins(styleContext),
+      ...createStylePlugins(
+        styleContext,
+        isPagesSiteBuild ? "pages" : "default"
+      ),
       tanstackRouter({
         autoCodeSplitting: true,
         // src/routes/ is the routing tree: every filename in it is a route
@@ -448,12 +427,6 @@ export default defineConfig(
         // shows up as a phantom route instead of disappearing - loud, which is
         // the point.
         routeFileIgnorePattern: String.raw`(^|/)__tests__(/|$)`,
-        ...(isPagesSiteBuild
-          ? {
-              generatedRouteTree: PAGES_ROUTE_TREE,
-              routeFileIgnorePattern: pagesRouteIgnorePattern(),
-            }
-          : {}),
       }),
       viteReact(),
       ...(command === "serve"
@@ -463,7 +436,7 @@ export default defineConfig(
       pagesConnectPolicy(),
       ...(isMobileBuild ? [oldWebViewPageAsset()] : []),
       ...(isStageBuild ? [stagePageAtRoot()] : []),
-      ...(isPagesSiteBuild ? [landingPage(), dropUnloadedWasm()] : []),
+      ...(isPagesSiteBuild ? [publicSite()] : []),
     ],
     // An http:// page skips the proxy and asks :3000 directly
     // (src/lib/file-host-config) - the container. While the proxy points
@@ -474,9 +447,9 @@ export default defineConfig(
     // loaded here to see one.
     define: {
       "import.meta.env.VITE_BUILD_COMMIT": JSON.stringify(buildCommit()),
-      // The public site's build (C1055, #3401): read inline where a branch
-      // must fold away at build time, as the web door reads
-      // VITE_DEVICE_BACKEND, so the Pages bundle drops what only the apps use.
+      // The public site's build (C1055, #3401): read inline by the web door
+      // (src/lib/web-surface), as it reads VITE_DEVICE_BACKEND, so the Pages
+      // bundle carries the authorship record and nothing else behind it.
       "import.meta.env.VITE_PAGES_SITE": JSON.stringify(
         isPagesSiteBuild ? "true" : ""
       ),
@@ -492,10 +465,6 @@ export default defineConfig(
     },
     resolve: {
       alias: [
-        // The Pages build boots its own route tree (PAGES_ROUTE_TREE, above).
-        ...(isPagesSiteBuild
-          ? [{ find: /^\.\/routeTree\.gen$/, replacement: PAGES_ROUTE_TREE }]
-          : []),
         { find: "@", replacement: resolve(import.meta.dirname, "./src") },
       ],
       tsconfigPaths: true,
@@ -515,32 +484,21 @@ export default defineConfig(
     build: {
       // Enable rollup bundle analysis
       rolldownOptions: {
-        // The fit and stage builds aside (above), two HTML entries, one JS app: both
-        // boot the same src/main.tsx/router, so the /resume shell isn't a
-        // second copy of the app - it's the same SPA under a route-specific document (see
-        // resume/index.html's header comment) that GitHub Pages can serve
-        // as a real 200 at /resume/ instead of the generic app-shell
-        // 404.html fallback every other unmatched path relies on.
+        // The fit and stage builds aside (above), one HTML entry, the app's.
+        // The Pages build's entries are the public site's templates alone
+        // (publicSite, above), and carry no app.
         input: isFitHarnessBuild
           ? fitPageEntry()
           : isStageBuild
             ? stageEntry()
-            : {
-                main: resolve(import.meta.dirname, "index.html"),
-                ...(isMobileBuild
-                  ? {}
-                  : {
-                      resume: resolve(import.meta.dirname, "resume/index.html"),
-                    }),
-                ...(isPagesSiteBuild
-                  ? {
-                      landing: resolve(
-                        import.meta.dirname,
-                        "landing/index.html"
-                      ),
-                    }
-                  : {}),
-              },
+            : isPagesSiteBuild
+              ? Object.fromEntries(
+                  Object.entries(SITE_TEMPLATES).map(([kind, source]) => [
+                    kind,
+                    resolve(import.meta.dirname, source),
+                  ])
+                )
+              : { main: resolve(import.meta.dirname, "index.html") },
         // No `output.manualChunks`. The hand-rolled version here matched with
         // `id.includes(pkg)` — a substring test against the full module path —
         // which under pnpm matches far more than the package named. pnpm

@@ -11,8 +11,7 @@ import {
   Trophy,
 } from "lucide-react"
 
-import { hasAudience, MOBILE_APP, PAGES_SITE } from "@/lib/build-profile"
-import { isOnPagesSurface } from "@/lib/pages-surface"
+import { hasAudience, MOBILE_APP } from "@/lib/build-profile"
 import type { Purpose } from "@/lib/purpose"
 import { offeredHere } from "@/lib/purpose"
 
@@ -174,15 +173,11 @@ const DESTINATIONS: ReadonlyArray<Destination> = [
 /**
  * The destinations this build serves and its navigation offers, in display
  * order. None in the Android app, which keeps to its own surface
- * (`lib/app-surface`); on the public site, only those on its surface.
+ * (`lib/app-surface`).
  */
 export function destinationsHere(): ReadonlyArray<Destination> {
   if (MOBILE_APP) return []
   return DESTINATIONS.filter(
-    (d) =>
-      hasAudience(d.audience) &&
-      offeredHere(d.purpose) &&
-      // The public site offers only the pages it routes to (C1055).
-      (!PAGES_SITE || isOnPagesSurface(d.to))
+    (d) => hasAudience(d.audience) && offeredHere(d.purpose)
   )
 }

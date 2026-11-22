@@ -1,11 +1,11 @@
 <!doctype html>
 <!--
-  The public site's front page (PAGES, #3401; C1055): a CV. Built only under
-  the Pages profile (vite.config.ts, `landingPage`), which fills the two
-  markers below with what render-landing.ts rendered from src/landing
-  (`LANDING_FILE`) before the build, and moves this page to the output's
-  index.html. No script: everything here is drawn from the
-  résumé's data and the landing's words when the site is built.
+  The public site's front page (PAGES, #3401; C1055): a CV. A template of the
+  Pages build only (vite.config.ts, `publicSite`), which fills the two markers
+  below with what render-public-site.ts rendered from src/landing
+  (`SITE_FILE`) before the build, and writes it as the output's index.html.
+  No script: everything here is drawn from the résumé's data and the
+  landing's words when the site is built.
 -->
 <html lang="en">
   <head>
@@ -13,7 +13,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <!--landing:head-->
+    <!--site:head-->
     <style>
       :root {
         --fg: #2a2118;
@@ -313,6 +313,6 @@
     </style>
   </head>
   <body>
-    <!--landing:body-->
+    <!--site:body-->
   </body>
 </html>

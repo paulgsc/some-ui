@@ -4,9 +4,8 @@
  * The launcher offers each build exactly the pages it serves and its
  * navigation offers: no LAN tool where "lan" is not bundled (A3,
  * packages/some-vite-config/AUDIENCES.md), administration first and no study
- * or making on the home network (ADM1, `lib/purpose`), Playoff Delta in the
- * viewer's capture build, only what the public site routes to there (C1055),
- * and nothing in the Android app.
+ * or making on the home network (ADM1, `lib/purpose`), Playoff Delta on the
+ * public site, and nothing in the Android app.
  */
 
 import type { JSX, ReactNode } from "react"
@@ -28,18 +27,15 @@ vi.mock("@tanstack/react-router", () => ({
 async function load({
   audiences,
   mobile = false,
-  pagesSite = false,
   kind = "local",
 }: {
   audiences: ReadonlyArray<string>
   mobile?: boolean
-  pagesSite?: boolean
   kind?: "local" | "account" | "pending"
 }): Promise<typeof Launcher> {
   vi.resetModules()
   vi.doMock("@/lib/build-profile", () => ({
     MOBILE_APP: mobile,
-    PAGES_SITE: pagesSite,
     hasAudience: (audience: string): boolean => audiences.includes(audience),
   }))
   vi.doMock("@/lib/authority", () => ({
@@ -93,20 +89,11 @@ describe("the site launcher", () => {
     expect(screen.queryByText("Passkey")).toBeNull()
   })
 
-  it("offers the viewer's capture build Playoff Delta, no LAN tool and no administration", async () => {
+  it("offers the public site Playoff Delta, no LAN tool and no administration", async () => {
     const { SiteLauncher } = await load({ audiences: ["public", "web"] })
     render(<SiteLauncher />)
     expect(openTiles()).toEqual(["/playoff-delta", "/extensions", "/mission"])
     expect(screen.queryByText("Home network")).toBeNull()
-  })
-
-  it("renders nothing on the public site, which routes to none of its pages (C1055)", async () => {
-    const { SiteLauncher } = await load({
-      audiences: ["public", "web"],
-      pagesSite: true,
-    })
-    const { container } = render(<SiteLauncher />)
-    expect(container.innerHTML).toBe("")
   })
 
   it("renders nothing in the Android app", async () => {

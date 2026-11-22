@@ -175,7 +175,8 @@ checked against every existing link. What is left is inside such a file.
   the door sits in the true branch of a conditional whose condition is written inline as
   `import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("<audience>")` (for `web`),
   with `import.meta.env.VITE_PAGES_SITE !== "true" &&` written inline between the two for
-  every export but the authorship record (the public site is a CV, C1055), whose false branch
+  every export but the authorship record (the public site is a CV, C1055, whose one script
+  draws that record), whose false branch
   loads nothing (an empty record, a component that renders `null`), and the
   index has no static value import of a gated workspace; and no module outside the door
   imports one inside it except through its `index.ts`.
@@ -278,8 +279,8 @@ What it cannot see, by construction:
 route tree, so the routes off their path ship there as stubs in the startup chunk and as page
 chunks (about 67 KiB in the APK; the `apk` gate's pages in `lan`). The gates and
 `keepToMobileSurface` keep them from rendering; the bytes are still paid. Each entry goes with
-the change that gives that deployable its own route tree, as the public site has
-(`PAGES_ROUTE_FILES`, C1055; it is held whole by an allowlist instead). And `lan` carries about
+the change that gives that deployable its own route tree. The public site carries no route
+tree (C1055: static pages, held whole by an allowlist instead). And `lan` carries about
 3.5 KiB of `@some-ui/voice-capture`, the take pattern's view and words, which LeetType's record
 screen draws only with a microphone the web builds do not give it (#2433).
 

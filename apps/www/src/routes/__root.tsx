@@ -5,7 +5,6 @@ import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 
 import { keepToMobileSurface } from "@/lib/app-surface"
 import { resolveSessionIfChosen } from "@/lib/auth"
-import { keepToPagesSurface } from "@/lib/pages-surface"
 import { AccountRouteGuard } from "@/components/auth/account-route-guard"
 
 /**
@@ -22,8 +21,6 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     // The Android app is sessions only; first, so no other page's own guard
     // (sign-in, an audience gate) runs for a path the phone never shows.
     keepToMobileSurface(location.pathname)
-    // The public site is a CV: off its surface, the static landing.
-    keepToPagesSurface(location.pathname)
     // No route waits for a session: a returning account user's is checked
     // in the background (once per load), and account-only pages check it
     // themselves (`requireAccount`, `routes/_dashboard/_lan.tsx`).

@@ -5,9 +5,9 @@
  * wraps this in a thin React context, but a plain script (or a pre-paint inline
  * snippet) can drive it just as well.
  *
- * The pre-paint no-flash scripts in `apps/www/index.html` and
- * `apps/www/resume/index.html` mirror the small subset here (storage key,
- * class mapping, retired ids); www's theme contract test keeps them in sync.
+ * The pre-paint no-flash script in `apps/www/index.html` mirrors the small
+ * subset here (storage key, class mapping, retired ids); www's theme contract
+ * test keeps them in sync.
  */
 
 import type { SessionTheme, SessionThemeId } from "./registry"

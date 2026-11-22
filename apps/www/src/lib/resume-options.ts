@@ -1,34 +1,29 @@
 import { resumeData } from "@some-ui/resume"
 
+import type { ResumeComposition } from "@/lib/resume-files"
+import { RESUME_VERSIONS } from "@/lib/resume-files"
+
 /**
  * The résumé's two axes as `/resume` and the LAN résumé builder offer them.
- * Order and the layout labels are presentation, so they belong here; the
- * composition labels are résumé content and come from resumeData.
+ * The order and the layouts live in `@/lib/resume-files`, which imports
+ * nothing; the composition labels are résumé content and come from
+ * resumeData.
  */
-const RESUME_ORDER = [
-  "backend",
-  "platform",
-  "fullstack",
-  "data",
-  "qa",
-  "solutions",
-] as const
-export type ResumeComposition = (typeof RESUME_ORDER)[number]
+export type { ResumeComposition, ResumeTemplate } from "@/lib/resume-files"
 
 export function isResumeComposition(
   value: unknown
 ): value is ResumeComposition {
-  return RESUME_ORDER.some((id) => id === value)
+  return RESUME_VERSIONS.some((id) => id === value)
 }
 export const RESUME_COMPOSITIONS: ReadonlyArray<{
   id: ResumeComposition
   label: string
-}> = RESUME_ORDER.map((id) => ({ id, label: resumeData[id].label }))
+}> = RESUME_VERSIONS.map((id) => ({ id, label: resumeData[id].label }))
 
-// The layout axis lives in ./resume-templates.ts, which imports nothing, so
-// build.paths.ts can read it without reaching the résumé's package (the
-// recording stage's walk reads build.paths.ts through vite.config.ts, RI3).
 export {
+  DEFAULT_RESUME_COMPOSITION,
   DEFAULT_RESUME_TEMPLATE,
   RESUME_TEMPLATES,
-} from "@/lib/resume-templates"
+  resumeStem,
+} from "@/lib/resume-files"

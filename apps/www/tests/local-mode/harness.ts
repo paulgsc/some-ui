@@ -49,7 +49,7 @@ const ENV: Record<BuildName, string> = {
 const HOW: Record<BuildName, string> = {
   lan: "pnpm --filter www exec vite build --outDir dist",
   pages:
-    "pnpm --filter www exec node render-landing.ts && SOME_UI_PROFILE=pages VITE_STATIC_DATA=true VITE_BASE_PATH=/some-ui/ pnpm --filter www exec vite build --outDir dist-pages",
+    "pnpm --filter www exec node render-public-site.ts && SOME_UI_PROFILE=pages VITE_STATIC_DATA=true VITE_BASE_PATH=/some-ui/ pnpm --filter www exec vite build --outDir dist-pages",
   snips:
     "SOME_UI_PROFILE=snips VITE_STATIC_DATA=true VITE_BASE_PATH=/some-ui/ pnpm --filter www exec vite build --outDir dist-snips",
 }
@@ -109,11 +109,11 @@ function listen(server: Server, port: number): Promise<Listening> {
 }
 
 /**
- * The app's files under `base` (`/` for lan, `/some-ui/` for Pages), with the
- * single-page fallback each real host gives: an unknown path answers the
- * app's shell. GitHub Pages answers `404.html`, which the Pages build writes
- * (its `index.html` is the landing, vite.config.ts `landingPage`); the lan
- * build has no `404.html`, and nginx answers `index.html`.
+ * A build's files under `base` (`/` for lan, `/some-ui/` for Pages), with the
+ * fallback each real host gives an unknown path. GitHub Pages answers
+ * `404.html`, which the Pages build writes as a static page
+ * (vite.config.ts, `publicSite`); every other build has none, and nginx
+ * answers the app's `index.html`.
  */
 export function serveBuild(dir: string, base: string): Promise<Listening> {
   const server = createServer((req, res) => {

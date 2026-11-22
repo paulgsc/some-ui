@@ -62,10 +62,7 @@ function watch(context: BrowserContext): Array<string> {
   const urls: Array<string> = []
   context.on("request", (request) => {
     const url = request.url()
-    // The browser's own pages (its PDF viewer, which the résumé's embed
-    // opens, loads chrome:// and chrome-extension:// files) never leave
-    // the machine.
-    if (/^(data|blob|about|chrome|chrome-extension):/.test(url)) return
+    if (/^(data|blob|about):/.test(url)) return
     urls.push(`${request.method()} ${url}`)
   })
   return urls
@@ -315,22 +312,27 @@ test.describe("the Pages build", () => {
     await page.goto(`${app().origin}${BASE}`)
     await expect(page.locator("h1")).toBeVisible()
 
-    // The two pages the public site boots the app for (C1055); any other
-    // path loads the landing above.
-    for (const route of ["resume", "authorship"]) {
-      await page.goto(`${app().origin}${BASE}${route}`)
-      await page.waitForLoadState("networkidle")
-      await expect(page.locator("#app")).not.toBeEmpty()
-      violations.push(
-        ...((await page.evaluate(() => window.__policyViolations)) ?? [])
-      )
+    // The résumé is static too (C1055): every version's page is there whole,
+    // with no script.
+    for (const version of ["", "qa/"]) {
+      await page.goto(`${app().origin}${BASE}resume/${version}`)
+      await expect(page.locator("main h1, main h2").first()).toBeVisible()
+      await expect(page.locator("script:not([type])")).toHaveCount(0)
     }
 
-    // A page the public site no longer has (C1055) loads the landing whole.
+    // The authorship record is the site's one script: it draws the record its
+    // link carries.
+    await page.goto(`${app().origin}${BASE}authorship?r=AB`)
+    await page.waitForLoadState("networkidle")
+    await expect(page.locator("#record")).not.toBeEmpty()
+    violations.push(
+      ...((await page.evaluate(() => window.__policyViolations)) ?? [])
+    )
+
+    // A page the public site doesn't have answers its static 404.html.
     await page.goto(`${app().origin}${BASE}app`)
-    await page.waitForURL(`${app().origin}${BASE}`)
     await expect(page.locator("h1")).toHaveText(/\S/)
-    await expect(page.locator("#app")).toHaveCount(0)
+    await expect(page.locator("script")).toHaveCount(0)
 
     expect(seen.filter((line) => !line.includes(app().origin))).toEqual([])
     expect(violations).toEqual([])

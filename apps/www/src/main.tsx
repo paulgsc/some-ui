@@ -64,10 +64,8 @@ if (import.meta.env.VITE_DEVICE_BACKEND === "true") {
   installShareSidecar(driveFiling())
 }
 
-// A viewer starts from sample drafts (lib/demo). The public site carries no
-// app to draft in (C1055), so it seeds nothing, and the check is inline so
-// its bundle drops the activities with it.
-if (import.meta.env.VITE_PAGES_SITE !== "true") seedDemo()
+// A viewer of the Pages build starts from sample drafts (lib/demo).
+seedDemo()
 
 // A browser subscribed to push while signed in must not stay subscribed once
 // the learner's data is no longer the account's. No request is made to do it.

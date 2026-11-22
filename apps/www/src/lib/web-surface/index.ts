@@ -28,8 +28,9 @@ import type { LiveStageProps } from "./playoff-delta/stage"
  * writing a chunk nothing loads (AUDIENCES.md, "Paths"); `hasAudience` keeps
  * a profile without "web" (a `mobile` dev server without the flag) from
  * reaching the stubs. The public site (`VITE_PAGES_SITE`; C1055, #3401) is a
- * CV: of the web surface it routes to only `AuthorshipRecord`, so every
- * other export also reads that flag inline and is inert there.
+ * CV of static pages whose one script draws `AuthorshipRecord`
+ * (src/landing/authorship.tsx), so every other export also reads that flag
+ * inline and is inert there.
  */
 
 /** The panels only the web surface binds, beside the shared registry's. */
