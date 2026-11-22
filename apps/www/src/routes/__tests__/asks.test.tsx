@@ -11,6 +11,7 @@ import {
   withQueryClient,
 } from "@/test-support/query-client"
 import type { KeyedStorage } from "@some-ui/core-utils"
+import { readAskIssue } from "@some-ui/video-render"
 import type { QueryClient } from "@tanstack/react-query"
 import type { AnyRoute } from "@tanstack/react-router"
 import { createRootRoute, createRoute, Outlet } from "@tanstack/react-router"
@@ -38,12 +39,15 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+/** An issue as GitHub lists it. */
+type Issue = Record<string, unknown> & { readonly body: string }
+
 const issue = (
   number: number,
   question: string,
   ask: object,
   closed: string | null = null
-): object => ({
+): Issue => ({
   number,
   title: `[ASK] ${question}`,
   html_url: `https://github.com/paulgsc/some-ui/issues/${String(number)}`,
@@ -69,7 +73,7 @@ const decision = (
   question: string,
   shared: object = {},
   closed: string | null = null
-): object =>
+): Issue =>
   issue(
     number,
     question,
@@ -343,6 +347,33 @@ describe("an Asks list", () => {
     await screen.findByText(W.answeredHere)
     expect(rows()).toEqual(["Redeploy home?"])
     expect(screen.queryByRole("button", { name: W.choose })).toBeNull()
+  })
+
+  it("keeps an answered ask's receipt to copy", async () => {
+    const answered = {
+      ...decision(9, "Redeploy home?"),
+      closed_at: "2026-11-21T09:00:00Z",
+    }
+    serve({ closed: [answered] })
+    const { ask } = readAskIssue("some-ui", {
+      number: 9,
+      body: answered.body,
+    })
+    if (ask === null) throw new Error("the fixture reads")
+    const kept = keptReceipts(memory())
+    kept.append("some-ui-9", ask, {
+      kind: "chose",
+      option: 0,
+      note: "",
+      at: new Date(),
+    })
+    render(routed("/asks/decisions?show=all", kept))
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Redeploy home?" })
+    )
+    await screen.findByText(W.answeredHere)
+    screen.getByText(W.receiptHolds(1))
+    screen.getByRole("button", { name: /Copy/ })
   })
 
   it("keeps what was read when a refresh fails, and says so", async () => {
