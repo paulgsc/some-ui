@@ -6,9 +6,9 @@
  */
 export const ESSAY_WORDS = {
   intro:
-    "Home made this video from the essay's cards. Home keeps it, and nothing here lets it go.",
+    "Home made this video from the essay's cards. Home keeps it until you delete a recording it plays, and nothing here lets it go.",
   notDone:
-    "Home hasn't finished this essay yet. Studio › Renders says how far it has got.",
+    "Home hasn't finished this essay yet, or let it go for good because a recording it plays was deleted. Studio › Renders says how far each one home is making has got.",
   failed: "Home couldn't make this essay's video. Studio › Renders says why.",
   noSize:
     "Home hasn't said how big this video is, so the phone can't bring it yet. Update home, then come back.",
