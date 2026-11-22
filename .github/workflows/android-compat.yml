@@ -34,6 +34,11 @@ on:
         description: "Cap each emulator's one core at this share of a host core (0 for no cap)."
         required: false
         default: "60"
+      route_only:
+        description: "Run only the route scenario (#3411, NA2): home asked with Wi-Fi the default, with this app's traffic on mobile data while home answers only on Wi-Fi, and with the app kept off Wi-Fi; each as the app is and with its fix."
+        required: false
+        type: boolean
+        default: false
       name_only:
         description: "Run only the name scenario (#3411): a name that fails its first lookup, then answers, asked again on Wi-Fi with mobile data off. Points each emulator's resolver at apps/mobile/compat/staged-dns.py."
         required: false
@@ -149,15 +154,19 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      # The name scenario's network (#3411): a resolver on the runner that
-      # fails each staged name's first lookup and answers it after, and a
-      # plain page at the address it gives (the emulator's 10.0.2.2:8080).
-      # The emulator's `-dns-server` below points at the resolver.
-      - name: Stage a resolver that fails a name once
-        if: inputs.name_only
+      # Home's stand-in for the name and route scenarios: a plain page, the
+      # emulator's 10.0.2.2:8080.
+      - name: Stand in a home
+        if: inputs.name_only || inputs.route_only
         run: |
           mkdir -p "$RUNNER_TEMP/page" && echo ok > "$RUNNER_TEMP/page/index.html"
           nohup python3 -I -m http.server 8080 --directory "$RUNNER_TEMP/page" > "$RUNNER_TEMP/page.log" 2>&1 &
+      # The name scenario's network (#3411): a resolver on the runner that
+      # fails each staged name's first lookup and answers it after with the
+      # stand-in's address. The emulator's `-dns-server` below points at it.
+      - name: Stage a resolver that fails a name once
+        if: inputs.name_only
+        run: |
           # Port 53 without running the resolver as root, on the runner's own
           # address: systemd-resolved holds 127.0.0.53:53.
           host=$(hostname -I | awk '{print $1}')
@@ -175,6 +184,7 @@ jobs:
           API: ${{ matrix.api }}
           CPU_PERCENT: ${{ inputs.cpu_percent }}
           NAME_ONLY: ${{ inputs.name_only }}
+          ROUTE_ONLY: ${{ inputs.route_only }}
         with:
           api-level: ${{ matrix.api }}
           target: google_apis

@@ -60,6 +60,15 @@ if [ -z "$webview" ]; then
 fi
 webview=${webview:-unknown}
 
+# The route scenario alone (#3411, NA2), which needs no WebView: its result
+# is the name column's, "s26 / s21 / kept-off", each "<as is>,<fixed>".
+if [ "${ROUTE_ONLY:-false}" = true ]; then
+  bash "$here/route.sh" "$apks" "$out/route"
+  name=$(node -e 'const r = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); console.log(["s26", "s21", "keptoff"].map((k) => k + " " + r[k].as_is + "," + r[k].fixed).join(" / "))' "$out/route/route.json" 2> /dev/null || echo "route: no result")
+  write_row "not run" "not run" "not run" "not run" "$name"
+  exit 0
+fi
+
 # The name scenario alone (#3411), which needs no WebView: the stamp's
 # other columns say so.
 if [ "${NAME_ONLY:-false}" = true ]; then
