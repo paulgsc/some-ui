@@ -76,6 +76,33 @@ describe("blanking a pasted result", () => {
     )
   })
 
+  it("blanks quoted flags, camelCase names, escaped JSON and PGP keys", () => {
+    expect(blankSecrets(`--password 'hunter 2' --user me`)).toBe(
+      `--password '${BLANKED}' --user me`
+    )
+    for (const name of ["accessToken", "dbPassword", "clientSecret"])
+      expect(blankSecrets(`${name}=abc`)).toBe(`${name}=${BLANKED}`)
+    expect(blankSecrets('{\\"password\\":\\"hunter2\\"}')).toBe(
+      `{\\"password\\":\\"${BLANKED}\\"}`
+    )
+    expect(blankSecrets('{"password": "a\\"b c"}')).toBe(
+      `{"password": "${BLANKED}"}`
+    )
+    expect(
+      blankSecrets(
+        "-----BEGIN PGP PRIVATE KEY BLOCK-----\nlQOY\n-----END PGP PRIVATE KEY BLOCK-----"
+      )
+    ).toBe(BLANKED)
+  })
+
+  it("blanks a header's value only, so the rest of a command stays", () => {
+    expect(
+      blankSecrets(
+        "curl -H 'Authorization: Bearer abc123def' https://example.com/x -o out"
+      )
+    ).toBe(`curl -H 'Authorization: ${BLANKED}' https://example.com/x -o out`)
+  })
+
   it("blanks a password in an address", () => {
     expect(blankSecrets("DATABASE_URL=postgres://admin:Hunter2pw@db/app")).toBe(
       `DATABASE_URL=postgres://admin:${BLANKED}@db/app`
@@ -84,7 +111,7 @@ describe("blanking a pasted result", () => {
 
   it("takes as long as the paste is long, whatever its shape", () => {
     const started = performance.now()
-    for (const unit of ["token-", "a-", "x=", "aB1"])
+    for (const unit of ["token-", "a-", "x=", "aB1", "eyJabcdef-", '"a": "'])
       blankSecrets(unit.repeat(20_000))
     expect(performance.now() - started).toBeLessThan(2_000)
   })
@@ -104,7 +131,12 @@ describe("blanking a pasted result", () => {
       "Author: Claude <noreply@anthropic.com>",
       "author=me, Authorized: yes, authentication: ok, oauth_callback: done",
       "Basic information about the run. Token validation passed.",
-      "Cache key: setup-node-linux",
+      "Cache key: setup-node-Linux-x64-pnpm-abc",
+      "Found in cache @ /opt/hostedtoolcache/Python/3.11.4/x64",
+      "https://github.com/AnthropicLabs/SomeRepository/pull/1234",
+      "/home/runner/work/MyOrgRepo/MyOrgRepo2/node_modules",
+      "Run uses: docker://alpine:3.19@sha256:abc",
+      "pass: 12  fail: 0",
       "https://github.com/paulgsc/some-ui/actions/runs/123456789",
       "Uploaded secret PAGES_TOKEN",
       "some-ui-mailbox-production-deployment-finished",
