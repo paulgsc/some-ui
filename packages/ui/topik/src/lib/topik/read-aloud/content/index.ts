@@ -523,8 +523,11 @@ type LineAudit = {
   next: number
 }
 
-/** A line's words as written: its maximal runs of Hangul syllables. */
-const hangulRuns = (korean: string): Array<string> =>
+/**
+ * A line's words as written: its maximal runs of Hangul syllables. The phrase
+ * shelf (`phrases`) accounts for a phrase's words by the same rule.
+ */
+export const hangulRuns = (korean: string): Array<string> =>
   Array.from(korean.matchAll(/[가-힣]+/g), (match) => match[0])
 
 function auditOccurrence(

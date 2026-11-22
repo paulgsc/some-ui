@@ -98,7 +98,7 @@ type Mood =
   | "suggestion"
 
 /** What a whole sentence does: the moods a closing ending can end it in. */
-type ClauseMood =
+export type ClauseMood =
   /** Saying that something is so: 비가 와요. */
   | "statement"
   /** Asking: 비가 와요? */
@@ -109,7 +109,7 @@ type ClauseMood =
  * How the speaker stands to the listener: 해요 (polite, everyday) or 반말
  * (to a friend, a younger person, or to yourself).
  */
-type Register = "해요" | "반말"
+export type Register = "해요" | "반말"
 
 /** What a closing ending does, in plain terms. */
 type Closes =
