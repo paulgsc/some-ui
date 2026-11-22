@@ -139,7 +139,7 @@ toolchain, because the one thing that is ours is the content source: the résum�
 this repo, and a template would make a second hand-kept copy. The page is that data rendered
 once more, beside the résumé shell that already does this. Add the GitHub profile README
 (rung 1) as a cheap second door with the same links. The call is drafted below; when the PR
-lands, record it as `docs/calls/C1055.json`.
+lands, record it as `docs/calls/C1056.json`.
 
 Pages' assets, the résumé PDFs included, are bundled at build time (round 2, the owner's
 correction), so the landing links them by path inside the artifact.
@@ -188,7 +188,7 @@ which still routes to every one of them. `Root` keeps `Landing` for `lan`. On Pa
 served by the static file, so `Root`'s comb branch and `ExtensionsPage`'s `chrome="front"`
 become dead and are removed in the same PR.
 
-## Call draft (C1055, recorded when the PR lands)
+## Call draft (C1056, recorded when the PR lands)
 
 - **chose:** Pages' front door is one static page in the standard portfolio shape, generated from
   the résumé's data, beside `resume/index.html`. Rung 3, the gap only. Plus a GitHub profile
