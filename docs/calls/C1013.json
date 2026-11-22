@@ -1,0 +1,20 @@
+{
+  "id": "C1013",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:migrations/20261121000400_create_stage_want.up.sql",
+    "server:crates/db/stage/src/lib.rs",
+    "server:apps/servers/file_host/src/cards_essays/pass.rs"
+  ],
+  "chose": "One table, stage_want (waiter, waiter_key, stage, subject_id, item_key), keyed (stage, subject_id, item_key, waiter, waiter_key) with a subject index, its waiter and stage checked against the closed Waiter and Stage names (a Rust test holds them equal). Each waiter's pass replaces all its own rows in one transaction under account deletion's hold (stage_repo::replace); a row is written only for a note its subject still holds, checked in the same statement, and rows leave with the note and with the account. No time is kept. The cards essays pass writes one row per take not heard yet of each essay it holds back; a failed write is counted on the pass, never fails what it gave.",
+  "options": [
+    "one stage_want table, rewritten whole by each waiter per pass",
+    "a column on voice_note (wanted_by), one per stage",
+    "JSON1 over cards_essay.body inside the queue query",
+    "an in-memory map in AppState"
+  ],
+  "gray": "Rewriting a waiter's rows each pass costs what it waits on per pass, a few essays times a few takes today; a waiter with thousands of waits would want a diff. The table is derived, never record.",
+  "undo": "Drop the table and the cards pass's write; the queue's term then reads nothing.",
+  "refs": ["server#1091", "server#1066"]
+}

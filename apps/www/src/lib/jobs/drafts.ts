@@ -9,6 +9,7 @@
 import type { KeyedStorage } from "@some-ui/core-utils"
 import {
   assertNever,
+  onJson,
   openKept,
   salvageEntries,
   writeKept,
@@ -124,10 +125,12 @@ export function draftRecordedBy(event: Draft): string | null {
 }
 
 /** The drafts, entry by entry: a draft it can't read is left out. */
-const readEntries = salvageEntries((value): FormDraft | null => {
-  const draft = FormDraftSchema.safeParse(value)
-  return draft.success ? draft.data : null
-})
+const readEntries = onJson(
+  salvageEntries((value): FormDraft | null => {
+    const draft = FormDraftSchema.safeParse(value)
+    return draft.success ? draft.data : null
+  })
+)
 
 /**
  * The drafts kept on this phone, each entry read on its own, and whether

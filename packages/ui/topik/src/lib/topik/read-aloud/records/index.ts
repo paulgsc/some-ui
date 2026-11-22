@@ -18,7 +18,7 @@
  * patched together from parts would show counts that never happened.
  */
 
-import { dayOf, type Salvaged } from "@some-ui/core-utils"
+import { dayOf, salvageEntries, type Salvaged } from "@some-ui/core-utils"
 import { PACE_MAX, PACE_MIN } from "@topik/lib/topik/read-aloud/timing"
 import { z } from "zod"
 
@@ -52,19 +52,11 @@ const PaceEntrySchema = z.object({
  * The stored pace book, entry by entry (`whole` when every entry parsed), or
  * null for a value that is not one.
  */
-export function readPaceBook(raw: unknown): Salvaged<PaceBook> | null {
-  const parsed = z.record(z.string(), z.unknown()).safeParse(raw)
-  if (!parsed.success) return null
-  const entries = Object.entries(parsed.data)
-  // Built from entries, never by assignment, so no id can reach a prototype.
-  const book = Object.fromEntries(
-    entries.flatMap(([wordId, entry]) => {
-      const checked = PaceEntrySchema.safeParse(entry)
-      return checked.success ? [[wordId, checked.data] as const] : []
-    })
-  )
-  return { value: book, whole: Object.keys(book).length === entries.length }
-}
+export const readPaceBook: (raw: unknown) => Salvaged<PaceBook> | null =
+  salvageEntries((entry) => {
+    const checked = PaceEntrySchema.safeParse(entry)
+    return checked.success ? checked.data : null
+  })
 
 /** The pace book limited to words the vocabulary still names (Rem. 7.5). */
 export function prunePaceBook(

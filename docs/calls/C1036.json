@@ -1,0 +1,18 @@
+{
+  "id": "C1036",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "packages/video-render/src/thumbnail.ts",
+    "apps/www/tests/record/thumbnail.ts"
+  ],
+  "chose": "A title that fits only at a size unreadable at 320×180 (under 56px at full size, 14px in the small list), or that holds letters the pinned fonts can't draw, gets no thumbnail: the video is still made, any earlier thumbnail is removed, and the recorder writes 'no thumbnail: <why>' for the render's state to show.",
+  "options": [
+    "skip the thumbnail, keep the video, say why",
+    "fail the whole render",
+    "draw it smaller or in a fallback font"
+  ],
+  "gray": "The owner said a title that doesn't fit is refused, never drawn badly; whether a refused thumbnail also stops the episode's video, and where readable ends, are the owner's to notice.",
+  "undo": "Make writeThumbnail fail the render instead of returning; or move LEAST_READABLE_PX.",
+  "refs": ["#3030"]
+}
