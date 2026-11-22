@@ -179,6 +179,13 @@ describe("conjugation", () => {
       "모르어서",
       "모르다",
       "conn.aseo.cause",
+      { rule: "irregular", irregular: "르", mistake: "eu-kept" },
+      "몰라서",
+    ],
+    [
+      "모라서",
+      "모르다",
+      "conn.aseo.cause",
       { rule: "irregular", irregular: "르", mistake: "reu-irregular" },
       "몰라서",
     ],
@@ -207,6 +214,13 @@ describe("conjugation", () => {
       })
     }
   )
+
+  it("hands back copies, so the index cannot be changed through a result", () => {
+    const first = analyse("와서")
+    if (first.kind === "split")
+      for (const reading of first.readings) reading.tense = "past"
+    expect(analyse("와서").kind).toBe("split")
+  })
 
   it("knows no reading of a word it cannot rebuild", () => {
     expect(analyse("가가가")).toEqual({ kind: "unknown" })
@@ -266,9 +280,15 @@ describe("what joining assumes of the catalogue", () => {
   it("gives every harmony ending one tail after 아, 어 and 여", () => {
     for (const id of CONSTRUCTION_IDS) {
       const { attach } = CONSTRUCTIONS[id]
-      if (attach.kind !== "harmony") continue
-      expect(attach.bright.slice(1), id).toBe(attach.dark.slice(1))
-      expect(attach.ha.slice(1), id).toBe(attach.dark.slice(1))
+      const simple =
+        attach.kind === "by-class"
+          ? [attach.verb, attach.adjective, attach.existence, attach.copula]
+          : [attach]
+      for (const how of simple) {
+        if (how.kind !== "harmony") continue
+        expect(how.bright.slice(1), id).toBe(how.dark.slice(1))
+        expect(how.ha.slice(1), id).toBe(how.dark.slice(1))
+      }
     }
   })
 })

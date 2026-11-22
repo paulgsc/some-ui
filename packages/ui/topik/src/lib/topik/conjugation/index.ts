@@ -7,7 +7,7 @@
  * reading that rebuilds it, character for character, or, when none does, the
  * rule a near miss breaks: a tense or a kind of stem the ending refuses
  * (왔어서, 크느라고), an irregular word conjugated as regular (춥어요, 듣어서,
- * 모르어서, 크어요, 살으니까), or a regular word ending in ㅂ or ㄷ conjugated
+ * 모라요, 모르어서, 크어요, 살으니까), or a regular word ending in ㅂ or ㄷ conjugated
  * as irregular (이워서, 발아서). Every listed word is built once, on the
  * first analysis, into an index from surface to readings.
  *
@@ -15,7 +15,8 @@
  * the 아/어 choice, the past) are `@dongsa/conjugation`'s, given the
  * vocabulary list's flag (call C1086). This module adds only what is ours:
  * how each catalogue ending meets the stem it gets back, the constraints the
- * catalogue states, and the check that a claimed split rebuilds. Pure.
+ * catalogue states, and the check that a claimed split rebuilds. Pure; the
+ * index `analyse` reads is built once and kept.
  */
 
 import {
@@ -74,7 +75,15 @@ export type Analysis =
   | { kind: "unknown" }
 
 /** How the stem is conjugated: as listed, or as a learner might mistake it. */
-type StemRule = "listed" | "regular" | "ㅂ" | "ㄷ"
+type StemRule =
+  | "listed"
+  /** As if regular, by the library's regular rules: 춥어요, 모라요. */
+  | "regular"
+  /** A 으 or 르 stem kept whole before 어: 크어요, 모르어서. */
+  | "whole"
+  /** A regular stem as if ㅂ- or ㄷ-irregular: 이워서, 발아서. */
+  | "ㅂ"
+  | "ㄷ"
 
 /** A stem as an ending meets it. */
 type Stem = {
@@ -124,6 +133,7 @@ const FINAL: Record<string, number> = { ㄴ: FINAL_N, ㄹ: FINAL_L }
 
 const isRegular = (dictionary: Dictionary, rule: StemRule): boolean =>
   rule === "regular" ||
+  rule === "whole" ||
   VOCABULARY[dictionary].irregular === null ||
   VOCABULARY[dictionary].irregular === "으"
 
@@ -134,7 +144,7 @@ const isLiquid = (dictionary: Dictionary, rule: StemRule): boolean =>
 /** A 으 or 르 stem mistakenly kept whole before 어: 크어요, 모르어서. */
 const keptWhole = (dictionary: Dictionary, rule: StemRule): boolean => {
   const { irregular } = VOCABULARY[dictionary]
-  return rule === "regular" && (irregular === "으" || irregular === "르")
+  return rule === "whole" && (irregular === "으" || irregular === "르")
 }
 
 /** The vowel a stem's last syllable takes: 아 after ㅏ or ㅗ, else 어. */
@@ -329,6 +339,7 @@ const readingsOf = function* (): Generator<Reading> {
 /** The ways a word may be mistaken, in the order they are tried. */
 const MISTAKEN_RULES: ReadonlyArray<Exclude<StemRule, "listed">> = [
   "regular",
+  "whole",
   "ㅂ",
   "ㄷ",
 ]
@@ -338,6 +349,11 @@ const ruleBreach = (
   rule: Exclude<StemRule, "listed">
 ): Breach | null => {
   const { irregular } = VOCABULARY[dictionary]
+  if (rule === "whole") {
+    return irregular === "으" || irregular === "르"
+      ? { rule: "irregular", irregular, mistake: "eu-kept" }
+      : null
+  }
   if (rule === "regular") {
     if (irregular === null) return null
     const mistake = IRREGULAR_MISTAKE[irregular]
@@ -407,14 +423,22 @@ const refusalOf = (reading: Reading, breach: Breach): Refusal =>
  */
 export const analyse = (surface: string): Analysis => {
   built ??= buildIndex()
-  const candidates = built.listed.get(surface) ?? []
+  // Copies, so a caller cannot change what the index holds.
+  const candidates = (built.listed.get(surface) ?? []).map((r) => ({ ...r }))
   const readings = candidates.filter((reading) => breachOf(reading) === null)
   if (readings.length > 0) return { kind: "split", readings }
   for (const reading of candidates) {
     const breach = breachOf(reading)
     if (breach !== null) return refusalOf(reading, breach)
   }
-  return built.mistaken.get(surface) ?? { kind: "unknown" }
+  const refusal = built.mistaken.get(surface)
+  return refusal === undefined
+    ? { kind: "unknown" }
+    : {
+        ...refusal,
+        reading: { ...refusal.reading },
+        breach: { ...refusal.breach },
+      }
 }
 
 /**
