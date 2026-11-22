@@ -58,7 +58,7 @@ export type Breach = Readonly<
   | { rule: "regular"; as: "ㅂ" | "ㄷ" }
 >
 
-export type Analysis =
+export type Analysis = Readonly<
   | { kind: "split"; readings: ReadonlyArray<Reading> }
   | {
       kind: "refused"
@@ -68,6 +68,7 @@ export type Analysis =
       correct?: string
     }
   | { kind: "unknown" }
+>
 
 /** How the stem is conjugated: as listed, or as a learner might mistake it. */
 type StemRule =

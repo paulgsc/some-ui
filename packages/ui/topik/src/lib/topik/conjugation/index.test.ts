@@ -12,6 +12,7 @@ import {
   analyse,
   check,
   conjugate,
+  type Analysis,
   type Reading,
 } from "@topik/lib/topik/conjugation"
 import {
@@ -218,6 +219,17 @@ describe("conjugation", () => {
     }
   )
 
+  it("hands back results no caller can change", () => {
+    // Checked by the type checker and never run, so the index is left as built.
+    const change = (refused: Extract<Analysis, { kind: "refused" }>): void => {
+      // @ts-expect-error -- a refusal is read-only, so the index stays as built
+      refused.correct = "모라요"
+      // @ts-expect-error -- and so is the reading it names
+      refused.reading.tense = "past"
+    }
+    expect(change).toBeTypeOf("function")
+  })
+
   it("knows no reading of a word it cannot rebuild", () => {
     expect(analyse("가가가")).toEqual({ kind: "unknown" })
   })
@@ -302,4 +314,12 @@ describe("the vocabulary list", () => {
       expect(VOCABULARY[dictionary].irregular).toBe(libraryClass(dictionary))
     }
   )
+
+  it("lists a word of every irregular class", () => {
+    const listed = new Set(
+      Object.values(VOCABULARY).map(({ irregular }) => irregular)
+    )
+    for (const irregular of ["ㅂ", "ㄷ", "르", "으", "ㅅ", "ㅎ", "ㄹ"])
+      expect(listed, irregular).toContain(irregular)
+  })
 })

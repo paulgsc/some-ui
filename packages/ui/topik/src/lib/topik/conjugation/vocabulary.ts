@@ -4,8 +4,9 @@
  * kind of stem it is, and which irregular class it falls in (춥다 is
  * ㅂ-irregular, 입다 is not; 듣다 is ㄷ-irregular, 받다 is not).
  *
- * Owned data: conjugation follows the flag here. The copula 이다 is not listed: a noun with 이다 is outside the library's
- * scope, and outside this slice.
+ * Owned data: conjugation follows the flag here. The copula 이다 is not
+ * listed: a noun with 이다 is outside the library's scope, and outside this
+ * slice.
  */
 
 import type { StemClass } from "@topik/lib/topik/constructions"
