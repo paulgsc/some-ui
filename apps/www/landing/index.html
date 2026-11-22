@@ -204,6 +204,12 @@
       }
       /* A gap's words sit at its left, so what its picture shows, at the
          right (the widget that stays white), is never under them. */
+      /* A gap's card is the words' dark: if its words ever outgrow a very
+         wide still, the card continues below the picture as their panel,
+         as it does under 600px, never as a bare strip. */
+      .card[data-slot="still"] {
+        background: #111217;
+      }
       .overlay--side {
         align-self: stretch;
         justify-self: start;
@@ -227,6 +233,7 @@
       @media (max-width: 600px) {
         .card[data-slot="still"] .overlay {
           grid-area: 2 / 1;
+          justify-self: stretch;
           width: auto;
           background: #111217;
         }
