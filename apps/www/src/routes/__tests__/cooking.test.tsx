@@ -274,6 +274,22 @@ describe("the Cooking page", () => {
     screen.getByRole("button", { name: W.readAgain })
   })
 
+  it("says a run with no goals under the title, then offers to read again", async () => {
+    const empty = `\`\`\`json run\n${JSON.stringify({ ...run, goals: [] })}\n\`\`\``
+    github({ "issues?labels=orch": [orch(empty)] })
+    render(withQueryClient(<CookingPage heading={<h1>Cooking</h1>} />))
+    const words = await screen.findByText(W.noGoals)
+    const title = screen.getByRole("heading", { name: "Cooking" })
+    const again = screen.getByRole("button", { name: W.readAgain })
+    // Title, then the words, then the button.
+    expect(
+      title.compareDocumentPosition(words) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+    expect(
+      words.compareDocumentPosition(again) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+  })
+
   it("links the run's page when its record can't be read", async () => {
     github({ "issues?labels=orch": [orch("No block here.")] })
     render(withQueryClient(<CookingPage />))

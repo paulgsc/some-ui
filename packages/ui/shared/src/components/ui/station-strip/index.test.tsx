@@ -111,11 +111,17 @@ describe("StationStrip, drawn small", () => {
 describe("StationStrip, a station done ahead", () => {
   it("fills its mark but not the line up to it", () => {
     const stations = STATIONS.map((s) => ({ ...s, done: s.id === "ready" }))
-    const { container } = render(
-      <StationStrip label="Where it is" stations={stations} at="line" />
-    )
-    const lines = container.querySelectorAll("li > span:first-child")
-    // The line into "Ready for pickup" isn't drawn as travelled.
-    expect(lines[1]?.className).toContain("bg-border")
+    render(<StationStrip label="Where it is" stations={stations} at="line" />)
+    const items = screen.getAllByRole("listitem")
+    expect(items[2]?.hasAttribute("data-passed")).toBe(true)
+    // The connector into "Ready for pickup" is its station's first child.
+    expect(items[2]?.firstElementChild?.className).toContain("bg-border")
+  })
+
+  it("marks none, done or not, for a station not on the line", () => {
+    const stations = STATIONS.map((s) => ({ ...s, done: true }))
+    render(<StationStrip label="Where it is" stations={stations} at="gone" />)
+    for (const item of screen.getAllByRole("listitem"))
+      expect(item.hasAttribute("data-passed")).toBe(false)
   })
 })
