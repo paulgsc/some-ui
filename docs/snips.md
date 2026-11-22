@@ -145,8 +145,13 @@ invariant 6). Each pass:
    mailbox's `snips` folder as `snips-<commit>-<run>.json`, without its
    whitespace (`apps/mailbox/README.md`, C946), so the routine can name a
    snip by its id and commit. The same run fetched again adds nothing, and a
-   second capture of a commit has a list of its own. The mailbox
-   never archives a list: the commit's capture makes it again.
+   second capture of a commit has a list of its own. A run attempted again
+   keeps its id, so if its list differs the mailbox keeps the first. The
+   mailbox never archives a list: the commit's capture makes it again. Not
+   yet: home's half is paulgsc/server#1082. As step 1 stands, home fetches
+   only a commit an essay already names, so a capture no essay names leaves
+   no list for the routine to choose from; which capture's list home also
+   fetches (the newest, say) is #1082's to settle.
 
 **When a bundle can't be had** (C875). A bundle lives one day. When a
 commit has no successful run, its newest run's artifact has expired, or its

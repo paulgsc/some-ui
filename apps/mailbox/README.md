@@ -446,7 +446,9 @@ Drive file: home keeps the audio`.
   without its whitespace, which home leaves out (the bundle writes it indented) (`docs/snips.md` at the repo's root, "The bundle"):
   `{"schema":"some-ui.snips/1","appVersion","commit","run","frozenAt","data":"sample","snips":[…],"unreached":[…]}`.
   Home puts one for each bundle it fetches, so the routine can name a snip by its `id` and
-  `commit` in an essay (SNIPS2's fourth step, #3116; paulgsc/server#1082). The same run's
+  `commit` in an essay (SNIPS2's fourth step, #3116). Home does not put any yet: its half is
+  paulgsc/server#1082, which also settles which captures home fetches a list for, since today
+  it fetches only a commit an essay already names. The same run's
   bundle fetched again is the same list, so it adds nothing. A run attempted again keeps its id;
   if its second attempt's list differs, the put is `409` and home keeps the first. A list is
   about 1 to 2 KB a snip without whitespace (a web snip names its parts' boxes), so the 1 MiB
