@@ -36,11 +36,14 @@ jobs:
         startsWith(github.event.pull_request.head.ref, 'claude/bucket-') &&
         github.event.pull_request.head.repo.full_name == github.repository
       )
-    # On the job, not the workflow: every PR close starts this workflow, and
-    # a skipped job never joins the group, so an unrelated close cannot
-    # cancel a pending prune.
+    # One group per bucket PR, on the job: every PR close starts this
+    # workflow, and a skipped job never joins a group, so neither an
+    # unrelated close nor a bucket merged close behind can cancel a prune
+    # (a group keeps one pending run and cancels the older). Two prunes of
+    # different buckets may run at once: a branch the other deleted first
+    # reads as already gone. A re-dispatch for the same PR waits its turn.
     concurrency:
-      group: bucket-prune
+      group: bucket-prune-${{ github.event.pull_request.number || inputs.pr }}
       cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 10

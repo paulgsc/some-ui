@@ -6,7 +6,7 @@
  * by a squash) and reads the plan, so the rules are git's own ancestry.
  */
 
-import { execFileSync } from "node:child_process"
+import { execFileSync, spawnSync } from "node:child_process"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -20,8 +20,18 @@ const SCRIPT = fileURLToPath(
 let dir = ""
 let count = 0
 
+// The caller's environment without git's own variables: run from a hook,
+// GIT_DIR or GIT_INDEX_FILE would point the fixtures at the outer repo.
+function cleanEnv(): Record<string, string> {
+  return { PATH: process.env["PATH"] ?? "", HOME: dir }
+}
+
 function git(...args: Array<string>): string {
-  return execFileSync("git", args, { cwd: dir, encoding: "utf8" }).trim()
+  return execFileSync("git", args, {
+    cwd: dir,
+    encoding: "utf8",
+    env: cleanEnv(),
+  }).trim()
 }
 
 function commit(message: string): string {
@@ -48,7 +58,7 @@ function plan(head: string, env: Record<string, string> = {}): Array<Line> {
     {
       cwd: dir,
       encoding: "utf8",
-      env: { PATH: process.env["PATH"] ?? "", HOME: dir, ...env },
+      env: { ...cleanEnv(), ...env },
     }
   )
   return out
@@ -196,6 +206,41 @@ describe("bucket-prune plan", () => {
         reason: "its tip is a commit the bucket merged",
       },
     ])
+  })
+
+  it("names a branch that moved on from the line the bucket started on", () => {
+    git("checkout", "-q", "-b", "main")
+    commit("m1")
+    git("checkout", "-q", "-b", "claude/a")
+    const a1 = commit("a1")
+    git("checkout", "-q", "-b", "claude/b", "main")
+    const b1 = commit("b1")
+    git("checkout", "-q", "-b", "claude/bucket-some-ui-1", a1)
+    git("merge", "-q", "--no-ff", "-m", "merge b", b1)
+    const head = git("rev-parse", "HEAD")
+    git("checkout", "-q", "main")
+    git("merge", "-q", "--squash", head)
+    git("commit", "-q", "-m", "bucket 1")
+    remote("main", git("rev-parse", "HEAD"))
+    git("checkout", "-q", "claude/a")
+    remote("claude/a", commit("a2"))
+    remote("claude/b", b1)
+    expect(plan(head)).toContainEqual({
+      action: "keep",
+      branch: "claude/a",
+      reason: "it has moved on since the bucket took it",
+    })
+  })
+
+  it("fails, printing no plan, when git cannot read the bucket", () => {
+    bucket()
+    const result = spawnSync(
+      "bash",
+      [SCRIPT, "plan", "0".repeat(40), "refs/remotes/origin/main"],
+      { cwd: dir, encoding: "utf8", env: cleanEnv() }
+    )
+    expect(result.status).not.toBe(0)
+    expect(result.stdout).toBe("")
   })
 
   it("keeps a branch an open pull request uses", () => {

@@ -11,12 +11,14 @@ shopt -s inherit_errexit
 #
 # What goes. A carried commit is a non-first parent of a merge commit in the
 # bucket (`git log --merges <main>..<head>`) that main did not already hold
-# (a merge of main into the bucket carries nothing). A remote branch is the
-# bucket's when its tip is not on main and it is a carried commit, an
-# ancestor of one, or a descendant of one. Of those, a branch is deleted only
-# if its tip is an ancestor of the bucket's head, so all its work reached
-# main through the squash. One whose tip is not has moved on since the
-# bucket took it: it is kept, and the summary says so.
+# (a merge of main into the bucket carries nothing); it only names why a
+# branch goes. A remote branch whose tip is not on main and is an ancestor of
+# the bucket's head is deleted: all its work reached main through the
+# squash. That covers a branch the bucket merged, one it was started from,
+# an older point of either, and a branch made at a bucket commit with no
+# work of its own yet. A branch that shares bucket work with the head but
+# whose tip is not in it has moved on since the bucket took it: it is kept,
+# and the summary says so.
 #
 # Never deleted, whatever the history says: the default branch, a protected
 # branch (PROTECTED_BRANCHES, one name a line, from the API), `bot/*`,
@@ -56,8 +58,10 @@ never_deleted() {
 plan() {
   local head=$1 main=$2 refs=${BRANCH_REFS:-refs/remotes/origin}
   local base merges branches
-  base=$(git merge-base "$main" "$head")
-  [ -n "$base" ] || { echo "no merge base of $main and $head" >&2; return 1; }
+  base=$(git merge-base "$main" "$head") || {
+    echo "no merge base of $main and $head" >&2
+    return 1
+  }
   # Read before looping, so a failing git fails the plan rather than reading
   # as an empty history.
   merges=$(git log --merges --format=%P "$base..$head")
@@ -74,7 +78,7 @@ plan() {
     done
   done <<<"$merges"
 
-  local ref name tip why reason
+  local ref name tip why reason shared
   while read -r ref tip; do
     [ -n "$ref" ] || continue
     name=${ref#"$refs"/}
@@ -95,13 +99,11 @@ plan() {
       fi
       continue
     fi
-    # Not in the bucket: named only if it builds on what the bucket took.
-    for p in "${carried[@]}"; do
-      if is_ancestor "$p" "$tip"; then
-        printf 'keep\t%s\t%s\t%s\n' "$name" "$tip" "it has moved on since the bucket took it"
-        break
-      fi
-    done
+    # Not in the bucket: named only if it shares work the bucket took.
+    shared=$(git merge-base "$tip" "$head") || continue
+    if ! is_ancestor "$shared" "$base"; then
+      printf 'keep\t%s\t%s\t%s\n' "$name" "$tip" "it has moved on since the bucket took it"
+    fi
   done <<<"$branches"
 }
 
@@ -137,8 +139,12 @@ run() {
     --jq '.[] | (.head.ref, .base.ref)' | sort -u)
   export PROTECTED_BRANCHES OPEN_PR_BRANCHES
 
-  local planned
-  planned=$(plan "$head_sha" "refs/remotes/origin/$DEFAULT_BRANCH")
+  # The plan runs as its own process, as the tests run it, so a git error
+  # in it fails this step under errexit instead of reading as an empty plan.
+  local planned plan_file
+  plan_file=$(mktemp)
+  bash "$0" plan "$head_sha" "refs/remotes/origin/$DEFAULT_BRANCH" >"$plan_file"
+  planned=$(<"$plan_file")
 
   local failed=0 action name tip why
   {
@@ -154,6 +160,9 @@ run() {
       if git push --quiet \
         "--force-with-lease=refs/heads/$name:$tip" origin ":refs/heads/$name"; then
         echo "- deleted \`$name\` (${tip:0:7}): $why" >>"$summary"
+      elif [ -z "$(git ls-remote --heads origin "refs/heads/$name")" ]; then
+        # Another prune (a bucket merged close behind this one) got it first.
+        echo "- \`$name\` (${tip:0:7}) was already gone" >>"$summary"
       else
         echo "- **not deleted** \`$name\` (${tip:0:7}): the push failed; see the log" >>"$summary"
         echo "::error::Could not delete $name" >&2
