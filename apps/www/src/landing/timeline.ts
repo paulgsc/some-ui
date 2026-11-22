@@ -43,7 +43,8 @@ type SceneTracks = {
 type EpisodeTracks = {
   /**
    * Where the episode's pair will be, as skeletons (C1185): standing from
-   * the episode's start, giving way as the pair turns in.
+   * halfway through the copy block's turn to the episode (once the last
+   * pair has gone), giving way as the pair turns in.
    */
   readonly skeleton: Track
   /** The episode's pair of cubes: in view for its episode only. */
@@ -247,8 +248,8 @@ export function showTimeline(
       // which leaves its face turned away (120 degrees or more: a show is
       // two or three episodes, one a project, which resolveShow holds), so
       // its hidden back takes it out of sight: the turning face is never
-      // blank. The last episode's, through the
-      // turn that begins the cycle again.
+      // blank. The last episode's stays through the turn that begins the
+      // cycle again.
       const isLastScene = i === e.scenes.length - 1
       const wraps = isLast && isLastScene
       const following = e.scenes.at(i + 1)?.start ?? e.end + EPISODE_TURN_S

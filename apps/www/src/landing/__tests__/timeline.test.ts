@@ -144,7 +144,7 @@ describe("showTimeline", () => {
     }
   })
 
-  it("stands each episode's skeletons from its start until its pair turns in over them", () => {
+  it("stands each episode's skeletons from when the last pair has gone until its own turns in over them", () => {
     for (const [k, e] of timeline.episodes.entries()) {
       const start = k * episode
       const enters = start + EPISODE_TURN_S + TITLE_S + 114 / STREAM_CPS

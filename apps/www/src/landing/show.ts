@@ -78,15 +78,19 @@ type FaceKinds = {
 
 /**
  * What a slot of the landing holds (C1185): a clip, which plays, or a
- * still. A face's slot says how its asset is drawn and what its skeleton
- * promises before it arrives, so the two cannot disagree.
+ * still. A face's slot says both how its asset is drawn and what its
+ * skeleton promises before it arrives, so those two cannot disagree; that it
+ * matches its key's extension, which the build reads files by, is a test's
+ * (show.test).
  */
 export type SlotKind = "clip" | "still"
 
 /**
  * Each kind of face's slot. A new kind can't be a face until it names one
  * here, and it can name one only if it carries its own name as a field (any
- * other's entry must be `never`, which no slot is).
+ * other's entry must be `never`, which no slot is). That no kind also
+ * carries another's name, which `slotOf` relies on, no type holds: review
+ * does.
  */
 const SLOTS: {
   readonly [K in keyof FaceKinds]: K extends keyof FaceKinds[K]

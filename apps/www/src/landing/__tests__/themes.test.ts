@@ -55,7 +55,7 @@ describe("landingThemes", () => {
 })
 
 describe("the landing's text in every theme", () => {
-  it("reads at 4.5:1 or more wherever the page sets words", () => {
+  it("reads at 4.5:1 or more in every pairing of roles the page sets words in", () => {
     for (const t of THEMES) {
       const c = t.colours
       const light = t.mode === "light"
@@ -69,6 +69,7 @@ describe("the landing's text in every theme", () => {
         ["a link on the page", c["--primary"], c["--background"]],
         ["a link on a card", c["--primary"], c["--card"]],
         ["the résumé button", c["--primary-foreground"], c["--primary"]],
+        // A screen's title card: the theme's ground on its ink, or the reverse.
         ["a title card", screenInk, screen],
       ]
       for (const [what, ink, ground] of pairs)

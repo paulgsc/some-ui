@@ -255,6 +255,20 @@ describe("slotOf", () => {
     expect(slotOf({ snip: 1 })).toBe("still")
     expect(slotOf({ media: "stills/a.png", label: "x" })).toBe("still")
   })
+
+  it("agrees with the key every face of the show is found by: a clip's an .mp4, a still's a .png", () => {
+    // The build reads each file by its key's extension (render-public-site's
+    // mediaFor, and its sound refusal for a clip), so a slot and its key
+    // must name the same thing.
+    const show = showFor(SHOW, repoRead, true)
+    if (!show.ok) throw new Error("unresolved")
+    for (const face of show.episodes.flatMap((e) =>
+      e.scenes.flatMap((scene) => scene.faces)
+    ))
+      expect(face.slot, face.key).toBe(
+        face.key.endsWith(".mp4") ? "clip" : "still"
+      )
+  })
 })
 
 describe("faceKey and facesToMake", () => {
