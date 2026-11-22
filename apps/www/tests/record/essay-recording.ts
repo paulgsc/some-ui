@@ -41,6 +41,7 @@ import type {
   Speaker,
   StillTake,
   TakeFiles,
+  ThumbnailFacts,
   Voicing,
 } from "@some-ui/video-render"
 
@@ -87,6 +88,8 @@ type Said = {
  */
 type EssayKind<E extends { readonly week: { readonly id: string } }> = {
   readonly name: string
+  /** The facts its thumbnail's genre and title come from (C1026). */
+  readonly thumbnail: (essay: E) => ThumbnailFacts
   /** The stage's read of an essay of this kind, by its week (`call/feed.ts`). */
   readonly read: RegExp
   /** The stage's `kind`, when it isn't the default. */
@@ -121,6 +124,11 @@ type EssayKind<E extends { readonly week: { readonly id: string } }> = {
 
 const RUST: EssayKind<Essay> = {
   name: "a Rust Rounds essay",
+  thumbnail: (essay) => ({
+    genre: "rust-essay",
+    week: essay.week.id,
+    firstTicket: essay.tickets.at(0)?.title ?? null,
+  }),
   read: /\/rust-essays\/[^/?#]+\.json$/,
   stage: null,
   parse: parseEssay,
@@ -138,6 +146,7 @@ const RUST: EssayKind<Essay> = {
 
 const INTERVIEW: EssayKind<InterviewEssay> = {
   name: "an interview essay",
+  thumbnail: (essay) => ({ genre: "interview-essay", role: essay.role.title }),
   read: /\/interview-essays\/[^/?#]+\.json$/,
   stage: "interview",
   parse: parseInterviewEssay,
@@ -329,6 +338,7 @@ async function recordKind<E extends { readonly week: { readonly id: string } }>(
       {
         preview,
         episode: "essay.mp4",
+        thumbnail: kind.thumbnail(essay),
         marks: () => kind.marks(essay),
         policy,
         browser,

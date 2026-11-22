@@ -21,6 +21,7 @@
     "./theme/video-palette": "./src/theme/video-palette.ts",
     "./theme/sources": "./src/theme/sources.ts",
     "./brand/cast": "./src/brand/cast.ts",
+    "./brand/genres": "./src/brand/genres.ts",
     "./brand/mark": "./src/brand/mark.ts",
     "./preset": "./src/preset/index.ts",
     "./config": "./src/config.ts",
