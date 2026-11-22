@@ -2109,6 +2109,10 @@ describe("the Game Week index", () => {
       expect(await error(withBite({ transcript }))).toEqual({
         error: "a bite carries what was said exactly when home heard it",
       })
+    for (const transcript of ["", undefined])
+      expect(await error(withBite({ heard: "failed", transcript }))).toEqual({
+        error: "a bite carries what was said exactly when home heard it",
+      })
     const games = (list: unknown): unknown => ({
       ...INDEX,
       weeks: [{ ...W48, games: list }],
@@ -2162,6 +2166,9 @@ describe("the Game Week index", () => {
     expect(await named("index-game-week-x-20261202T080000000Z.json")).toEqual({
       error: "the name does not fit this folder",
     })
+    expect(
+      await named(`index-${"a".repeat(21)}-20261202T080000000Z.json`)
+    ).toEqual({ error: "the name does not fit this folder" })
     expect(await named("index-game-20261202T080000000Z.json")).toEqual({
       error: "the name must carry the body's routine",
     })

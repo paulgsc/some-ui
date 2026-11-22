@@ -225,7 +225,7 @@ role, and it is the owner's call, so it is not built.
   note's next, when it files the transcript; never its `attempt`, which starts again at 1 for
   each model), so a better model's transcript goes under a new name rather than meeting a `409`,
   and the highest `<n>` is the newest; and `index` takes `index-<routine>-YYYYMMDDTHHMMSSmmmZ.json`,
-  named for the routine (lower-case letters, one hyphen at most, as `game-week`) and when home computed it, in UTC to the
+  named for the routine (1 to 20 lower-case letters, or two such parts joined by one hyphen, as `game-week`) and when home computed it, in UTC to the
   millisecond, so each change goes under a new name, the greatest name is the newest, and the
   folder holds one per routine; and `reflection` takes `reflection-<id>.json`, named for the
   phone's id for the written reflection (1 to 64 letters, digits, `-` or `_`, as home's
@@ -316,7 +316,7 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   copy. Home puts a new one only when something it counts arrives or a moment the index
   carries passes (for the Jobs index, an open pick lapsing): a new day alone moves nothing
   else, so a day with neither puts none. Its `routine` names the routine, as the file's
-  name does: `jobs`, `reflections`, `call` or `rust`. The Worker holds every index to its routine's keys and
+  name does: `jobs`, `reflections`, `call`, `rust`, `interview` or `game-week`. The Worker holds every index to its routine's keys and
   no other, a name that carries the body's `routine`, and no audio or Drive link, by the same
   tests as a transcript, each refusal with its reason (`an index carries no audio` or
   `an index names no Drive file`). The Jobs index is
