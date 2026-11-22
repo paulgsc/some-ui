@@ -122,7 +122,7 @@ export class SessionNotFoundError extends Error {
 }
 
 /**
- * The `localStorage` backend: the Pages build's only store, and what the
+ * The `localStorage` backend: the viewer build's only store, and what the
  * repository tests run against via an in-memory adapter.
  */
 export class SessionsRepository implements SessionsStore {

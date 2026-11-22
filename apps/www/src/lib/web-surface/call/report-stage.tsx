@@ -42,7 +42,7 @@ import { REPORT_WORDS as W } from "./report-words"
  *
  * It plays the report of the week `week` names, as home's render worker
  * hands it over (`./feed`'s `reportSource`), or with no week, or `sample`, the template's
- * sample. A viewer of the Pages build is always shown the sample.
+ * sample. A viewer is always shown the sample.
  */
 
 export type ReportStageProps = {

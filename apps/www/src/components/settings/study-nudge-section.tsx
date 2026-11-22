@@ -3,7 +3,7 @@
  * window, how reminders can reach this person, and a status line naming why
  * it is currently silent (`decideNudge`'s named reason).
  *
- * The mode is stated: on the Pages build reminders arrive only while a tab is
+ * The mode is stated: on the viewer build reminders arrive only while a tab is
  * open; elsewhere `file_host` delivers with the browser closed.
  *
  * Consent is asked for, not assumed: the topics are fetched from the

@@ -15,7 +15,7 @@
  *   read-only: moving it aside would hide every session it lists;
  * - when the storage throws on reading, the log opens read-only.
  *
- * On the Pages build `localStorage` is the viewer's in-memory copy
+ * On the viewer build `localStorage` is the viewer's in-memory copy
  * (`apps/www/src/lib/demo/viewer-storage.ts`), so nothing is kept there.
  */
 import type { KeyedStorage } from "@some-ui/core-utils"

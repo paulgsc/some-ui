@@ -8,6 +8,24 @@
 export const SITE_FILE = "node_modules/.cache/www/public-site.json"
 
 /**
+ * Where the Pages build finds its media, relative to apps/www: the clips,
+ * stills and photo the landing's slots name by key (`clips/apk.mp4`),
+ * put there by whatever renders or fetches them before the build. Never
+ * committed (C1029); a slot whose file is absent draws its placeholder.
+ */
+export const SITE_MEDIA_DIR = "node_modules/.cache/www/site-media"
+
+/** Where the build writes a slot's media, under the site's root. */
+export const MEDIA_PATH = "media/"
+
+/** What render-public-site.ts leaves: the pages, and the media they show. */
+export type RenderedSite = {
+  readonly pages: ReadonlyArray<SitePage>
+  /** The keys of the media files the pages show, each under `SITE_MEDIA_DIR`. */
+  readonly media: ReadonlyArray<string>
+}
+
+/**
  * The HTML templates the Pages build carries, by kind, relative to apps/www.
  * Each is an entry of that build; none is written under its own name.
  *

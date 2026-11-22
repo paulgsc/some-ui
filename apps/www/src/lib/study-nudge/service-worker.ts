@@ -76,7 +76,7 @@ let registration: Promise<ServiceWorkerRegistration | null> | null = null
 
 /**
  * Memoised so callers await one registration. The scope is `BASE_URL`, not
- * `/`: the Pages build serves from a subpath (vite.config.ts's `base`), and a
+ * `/`: the viewer build serves from a subpath (vite.config.ts's `base`), and a
  * worker's default scope is the directory it was served from.
  */
 export async function registerNudgeWorker(): Promise<ServiceWorkerRegistration | null> {

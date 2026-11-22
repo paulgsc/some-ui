@@ -1,0 +1,72 @@
+<!doctype html>
+<!--
+  The page the public site's Page Filter gap card is photographed on
+  (run.ts beside it; PAGES #3401, story 6). An ordinary light article
+  with one widget the page draws inside a closed shadow root, as a vendor's
+  component does: Page Filter darkens the article and cannot reach inside
+  that root, so the widget stays white. Ours, so the still shows nobody
+  else's site.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Field notes</title>
+    <style>
+      body {
+        margin: 0;
+        font:
+          16px/1.5 system-ui,
+          sans-serif;
+        background: #fff;
+        color: #1d2433;
+      }
+      header {
+        padding: 18px 32px;
+        border-bottom: 1px solid #e4e7ec;
+        font-weight: 700;
+      }
+      main {
+        display: grid;
+        grid-template-columns: 1fr 260px;
+        gap: 28px;
+        padding: 24px 32px;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 26px;
+      }
+      p {
+        margin: 0 0 12px;
+        color: #475467;
+      }
+    </style>
+  </head>
+  <body>
+    <header>Field notes</header>
+    <main>
+      <article>
+        <h1>Reading at night</h1>
+        <p>
+          A long page of plain text, the kind Page Filter darkens well: its
+          background, its text and its borders are the page's own.
+        </p>
+        <p>
+          Beside it, a widget the page draws inside a component of its own,
+          which no extension can open.
+        </p>
+      </article>
+      <aside id="widget"></aside>
+    </main>
+    <script>
+      const root = document
+        .getElementById("widget")
+        .attachShadow({ mode: "closed" })
+      root.innerHTML = `
+        <div style="background:#fff;border:1px solid #e4e7ec;border-radius:10px;padding:16px;color:#1d2433;font:15px/1.4 system-ui,sans-serif">
+          <strong>Newsletter</strong>
+          <p style="margin:8px 0 12px;color:#475467">One email a week.</p>
+          <div style="background:#f2f4f7;border-radius:6px;padding:8px;color:#667085">you@example.com</div>
+        </div>`
+    </script>
+  </body>
+</html>

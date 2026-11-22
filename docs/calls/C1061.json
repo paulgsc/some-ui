@@ -1,0 +1,16 @@
+{
+  "id": "C1061",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": ["apps/www/src/landing/render.ts"],
+  "chose": "The landing's clips carry the browser's own controls beside autoplay, muted, loop and playsinline, so anyone can pause one, a reader who prefers less motion included, with no script on the page. A poster still, or the first frame under reduced motion, is left for a later story. The run's coordinator agreed to this option on 2026-11-22.",
+  "options": [
+    "the browser's own controls on each clip",
+    "a poster still, played on a tap",
+    "the first frame under prefers-reduced-motion, by a script",
+    "no controls"
+  ],
+  "gray": "A looping clip with no way to pause it is hard on a reader who prefers less motion, and the page has no script; how a clip is stopped is the owner's to see on the page.",
+  "undo": "Drop `controls` from the clip's <video> in apps/www/src/landing/render.ts.",
+  "refs": ["#3401"]
+}

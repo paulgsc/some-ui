@@ -11,7 +11,7 @@ import { ViewerStrip } from "@/components/provenance-strip"
  * report at a time, as `/essay` plays the essay's. Standalone, so no shell
  * sits in the frame; `?week` names the report by its ISO week ("2026-W46";
  * "sample" for the template's, as with none), `?scene` the scene, and
- * `?record` leaves out everything but the frame. A viewer of the Pages build
+ * `?record` leaves out everything but the frame. A viewer
  * gets the viewer strip above it, and the sample whatever week is named.
  * Web only: the stage comes through the web surface's door.
  */

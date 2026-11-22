@@ -1,5 +1,5 @@
 /**
- * Copying text: the WebView's clipboard (the browser's, on Pages), waited on
+ * Copying text: the WebView's clipboard (the browser's, on the web), waited on
  * through `callForeign` (F1, `@some-ui/intent-kit`). Jobs' paste kit and the
  * failure log copy through it, by `components/copy-button`, and so does Rust
  * Rounds' "Copy for a tutor".

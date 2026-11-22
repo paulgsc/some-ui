@@ -15,7 +15,7 @@ type HangulVocabParams = { topic: string }
 /**
  * Same relative path in both modes (`/hangul/words/<topic>.json`, from
  * whatever is mounted at `public/hangul/words`; infra/compose/www.yml,
- * scripts/link-content-assets.js). The Pages build ships no companion data,
+ * scripts/link-content-assets.js). The viewer build ships no companion data,
  * so `useHangulVocab`'s mode gate is what keeps it from fetching.
  */
 function locateVocabFile({ topic }: HangulVocabParams): URL {
@@ -29,7 +29,7 @@ const hangulVocabSource = createDataSource<HangulVocabParams, Array<WordEntry>>(
 )
 
 /**
- * The apps/www half of "real vocab locally, demo vocab on Pages":
+ * The apps/www half of "real vocab locally, demo vocab in the viewer build":
  * `@some-ui/honeycomb` stays fetch-free with its bundled demo `WordEntry[]`
  * (see hangul-words.ts), and this hook is where a host opts into more.
  *

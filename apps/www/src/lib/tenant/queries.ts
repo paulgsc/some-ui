@@ -19,7 +19,7 @@ import type { SessionRecord, UserProfile, UserSettings } from "./types"
 export const profileRepository = createProfileRepository()
 export const settingsRepository = createSettingsRepository()
 /**
- * `localStorage` on the Pages build (there an in-memory copy,
+ * `localStorage` on the viewer build (there an in-memory copy,
  * `lib/demo/viewer-storage`), `file_host` everywhere else; see
  * `sessions-backend.ts`.
  */
