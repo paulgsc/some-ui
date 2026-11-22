@@ -36,6 +36,13 @@
 // runs, and a `docker/build-push-action` step turns off its build-record
 // upload, which no family declares.
 //
+// Paths filters (CD1, `_detect-changes.yml`): a `dorny/paths-filter` step
+// whose `predicate-quantifier` is `some` (its default) writes no leading-`!`
+// pattern. Under `some` a file counts when any pattern matches it, and a
+// negated pattern matches every file it does not name, so `!**/*.md` turns a
+// filter on for every non-Markdown change. The positive extglob
+// (`crates/**/!(*.md)`) says what such a line meant.
+//
 // Deliberately lexical, like test-layout.ts: a YAML parser would need an
 // install for a check that otherwise runs on bare Node. So each rule accepts a
 // closed shape and fails the rest, rather than listing shapes it rejects.
@@ -119,6 +126,17 @@ export type WorkflowViolation =
       readonly workflow: string
     }
   | {
+      readonly kind: "pathsFilterNegation"
+      readonly file: string
+      readonly line: number
+      readonly pattern: string
+    }
+  | {
+      readonly kind: "pathsFilterUnreadable"
+      readonly file: string
+      readonly line: number
+    }
+  | {
       readonly kind: "inlineInstall"
       readonly file: string
       readonly line: number
@@ -161,6 +179,20 @@ const CHANGESETS_ANYWHERE =
 const CHANGESETS_STEP = new RegExp(
   `^\\s*(?:-\\s+)?${CHANGESETS_ANYWHERE.source}`
 )
+const PATHS_FILTER_STEP = /^(\s*)(-\s+)?uses:\s*["']?dorny\/paths-filter@/
+const PATHS_FILTER_ANYWHERE = /uses:\s*["']?dorny\/paths-filter@/
+// A pattern item in a filter's list (`- '!x'`) or a change-status item
+// (`added|modified: '!x'`) whose pattern starts with `!`.
+const NEGATED_PATTERN =
+  /^\s*(?:-\s+)?(?:[a-z|]+:\s+)?(["']?)(!.*?)\1\s*(?:#.*)?$/
+// A flow list in a filter (`rust: ['a', '!b']`) holding a negated pattern.
+const FLOW_NEGATED =
+  /^\s*(?:-\s+)?[\w|-]+:\s*\[(?:[^\]]*?[\s,])?["']?(![^"',\]]*)/
+const QUANTIFIERS: ReadonlySet<string> = new Set([
+  "some",
+  "every",
+  "some-with-excludes",
+])
 const WITH_KEY = /^\s*with:(.*)$/
 const ENV_KEY = /^\s*env:(.*)$/
 const RETENTION_TAG = /^#+\s*Retention:\s*\S/
@@ -687,6 +719,74 @@ export function checkRetentionTriggers(
   return violations
 }
 
+// CD1. The filters are read only as a block scalar (`filters: |`) in the
+// step's block `with:` map; any other shape, or a quantifier that is not a
+// known literal, is unreadable and fails, like an upload step.
+export function findPathsFilterViolations(
+  file: string,
+  text: string
+): Array<WorkflowViolation> {
+  const lines = text.split(/\r?\n/)
+  const violations: Array<WorkflowViolation> = []
+  lines.forEach((line, index) => {
+    if (
+      !PATHS_FILTER_STEP.test(line) &&
+      !line.trim().startsWith("#") &&
+      PATHS_FILTER_ANYWHERE.test(line)
+    ) {
+      violations.push({ kind: "pathsFilterUnreadable", file, line: index + 1 })
+    }
+  })
+  for (const step of stepsUsing(lines, PATHS_FILTER_STEP)) {
+    const quantifier = withValue(
+      step.body,
+      step.keyColumn,
+      "predicate-quantifier"
+    )
+    const filters = withValue(step.body, step.keyColumn, "filters")
+    if (
+      quantifier.shape === "flow" ||
+      (quantifier.shape === "value" && !QUANTIFIERS.has(quantifier.value)) ||
+      filters.shape !== "value" ||
+      !/^[|>][-+]?$/.test(filters.value)
+    ) {
+      violations.push({
+        kind: "pathsFilterUnreadable",
+        file,
+        line: step.start + 1,
+      })
+      continue
+    }
+    if (quantifier.shape === "value" && quantifier.value !== "some") continue
+    const at = step.body.findIndex((l) => /^\s*filters:/.test(l))
+    const column = indentOf(step.body[at] ?? "")
+    for (const [offset, item] of step.body.slice(at + 1).entries()) {
+      if (isBlankOrComment(item)) continue
+      if (indentOf(item) <= column) break
+      const flow = FLOW_NEGATED.exec(item)
+      if (flow) {
+        violations.push({
+          kind: "pathsFilterNegation",
+          file,
+          line: step.start + at + offset + 2,
+          pattern: flow[1] ?? "",
+        })
+        continue
+      }
+      const negated = NEGATED_PATTERN.exec(item)
+      if (negated) {
+        violations.push({
+          kind: "pathsFilterNegation",
+          file,
+          line: step.start + at + offset + 2,
+          pattern: negated[2] ?? "",
+        })
+      }
+    }
+  }
+  return violations
+}
+
 export function rs1Fingerprint(text: string): string {
   return createHash("sha256").update(text).digest("hex")
 }
@@ -763,6 +863,12 @@ export function describeWorkflowViolation(v: WorkflowViolation): string {
     }
     case "familyWorkflowUnknown": {
       return `packages/eslint/src/retention.ts: a family names the workflow "${v.workflow}", but no workflow has that \`name:\`. Rename it to match, or the sweep never runs after that workflow.`
+    }
+    case "pathsFilterNegation": {
+      return `${v.file}:${v.line}: paths-filter pattern "${v.pattern}" under \`predicate-quantifier: some\` (the default) matches every file it does not name, so it turns its filter on for almost any change (CD1). Write the files to include positively, e.g. \`crates/**/!(*.md)\` for "crates/ except Markdown".`
+    }
+    case "pathsFilterUnreadable": {
+      return `${v.file}:${v.line}: dorny/paths-filter step is written in a form this check cannot read. Write it as a block mapping with \`filters: |\` in its \`with:\` map (CD1).`
     }
     case "inlineInstall": {
       return `${v.file}:${v.line}: installs inline. Use \`./.github/actions/node-ci-setup\` (with \`build: none\` if the job builds its own), or put a \`# Why not node-ci-setup: <reason>\` line directly above the step.`

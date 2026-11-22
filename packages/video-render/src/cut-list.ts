@@ -11,8 +11,9 @@
 import { z } from "zod"
 
 import { badgeProblems } from "./badges"
+import { ClaimSourcesSchema } from "./claims"
 import { LOOKS, VOICES } from "./plans"
-import { COMMIT, SNIP_ID } from "./snip-id"
+import { COMMIT, isPublicAddress, PAGE_FILE, SNIP_ID } from "./snip-id"
 import { SPOKEN_CATEGORIES } from "./spoken-categories"
 import { stampProblems } from "./stamp"
 import {
@@ -62,9 +63,9 @@ const PictureSchema = z.discriminatedUnion("kind", [
   }),
   z.object({ kind: z.literal("still"), source: path }),
   /**
-   * A screen of the app that home keeps (SNIPS4, #3114; C865): a snip of
-   * the snip library by its id, or a frame of the Clips Library by its
-   * clip, side and file. Home hands the ones an essay names, and
+   * A screen that home keeps or is handed (SNIPS4, #3114; C865): a snip of
+   * the snip library by its id, a frame of the Clips Library by its
+   * clip, side and file, or a public page by its address and capture. Home hands the ones an essay names, and
    * `resolveScreens` (`./snip`) draws each by the screen-zoom composition:
    * the whole screen held above the captions or, for a snip given `at`,
    * zoomed to those named parts in turn.
@@ -83,6 +84,27 @@ const PictureSchema = z.discriminatedUnion("kind", [
          */
         commit: z.string().regex(COMMIT, "a commit's 40 hex digits"),
         /** The parts to zoom to, in order, as the page names them (`data-region`). */
+        at: z.array(z.string().min(1).max(200)).max(10).default([]),
+      }),
+      /**
+       * A public page, photographed logged out (`./page`): a pull request's
+       * checks, a run's jobs, a page of docs. Named by the address and the
+       * moment its picture was taken, the "as of" a viewer is told, and its
+       * file, which home hands beside the essay in `<key>.pages/`.
+       */
+      z.object({
+        from: z.literal("pages"),
+        url: z
+          .string()
+          .refine(
+            isPublicAddress,
+            "a public https address, with no user or password"
+          ),
+        capturedAt: z.iso.datetime(),
+        file: z
+          .string()
+          .regex(PAGE_FILE, "a page's picture, <slug>-<hash12>.png"),
+        /** The parts to zoom to, in order, as the capture named them. */
         at: z.array(z.string().min(1).max(200)).max(10).default([]),
       }),
       z.object({
@@ -220,20 +242,48 @@ export type SpokenTurn = z.infer<typeof SpokenTurnSchema>
 
 /**
  * What a spoken cards essay says over a scene (EXPLAIN6, #3021): the essay's
- * intro, a scene's chapter line and then its narration, or the close. The
+ * intro, a scene's chapter line (its chapter's first scene only, C1027)
+ * and then its narration, or the close. The
  * recorder has home's speaker say each (`cards-essay.ts`, `record:cards`).
+ * Each but a spoken card may name the code it describes (`sources`, #3036),
+ * which `render cards-check` holds to the stamp's commits (`claims.ts`).
  */
 export const SpokenSchema = z.discriminatedUnion("role", [
   /** What the essay is for, what you'll be able to do, and what it is as of. */
-  z.strictObject({ role: z.literal("intro"), said: SayableSchema }),
-  /** Where this step sits and why it matters, then what the card teaches. */
+  z.strictObject({
+    role: z.literal("intro"),
+    said: SayableSchema,
+    sources: ClaimSourcesSchema.optional(),
+  }),
+  /**
+   * Where this step sits and why it matters, then what the card teaches,
+   * and the code its narration describes (#3036, `claims.ts`).
+   * Only a chapter's first scene says its chapter line and marks it; a
+   * scene without one goes on in the chapter before it (C1027).
+   */
   z.strictObject({
     role: z.literal("scene"),
-    chapter: SayableSchema,
+    chapter: SayableSchema.optional(),
     narration: SayableSchema,
+    sources: ClaimSourcesSchema.optional(),
   }),
   /** What to do next, and where to look when it fails. */
-  z.strictObject({ role: z.literal("close"), said: SayableSchema }),
+  z.strictObject({
+    role: z.literal("close"),
+    said: SayableSchema,
+    sources: ClaimSourcesSchema.optional(),
+  }),
+  /**
+   * A walkthrough's stop (WALK5, #3337): its narration, the authored lines
+   * that add what its screens can't show (C945, C1000), in order, tied to
+   * no one screen. Each is said on its own and laid at its place in the
+   * stop's take (`laidTake`), and the stop is held for as long as they take;
+   * a cards essay plays no walk, so it refuses one (`parseCardsEssay`).
+   */
+  z.strictObject({
+    role: z.literal("walk"),
+    lines: z.array(SayableSchema).min(1),
+  }),
   /**
    * A spoken card (WALK7, #3282): its category's template plays each
    * exchange, the question in Kokoro and then the owner's own take from

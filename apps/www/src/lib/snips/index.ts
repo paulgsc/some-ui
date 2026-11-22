@@ -7,10 +7,15 @@
  *
  * A snip's record is `@some-ui/video-render`'s (`snip.ts`), which reads one
  * as a photographed screen for an essay (SNIPS4). Nothing in the app
- * imports this: it describes the app from outside, and only on sample data (the Pages viewer build, or the APK paired with the
- * stand-in home).
+ * imports this: it describes the app from outside, and only on sample data
+ * (the viewer's web build, `snips` in build.profiles.ts, or the APK paired
+ * with the stand-in home).
  */
-import { SnipRecordSchema, SurfaceSchema } from "@some-ui/video-render/snip"
+import {
+  SnipRecordSchema,
+  SNIPS_MANIFEST_SCHEMA,
+  SurfaceSchema,
+} from "@some-ui/video-render/snip"
 import type {
   Build,
   SnipFile,
@@ -36,7 +41,7 @@ export type RouteEntry = {
 export const FROZEN_AT = "2026-11-02T09:30:00.000Z"
 
 /** The schema the manifest carries; home refuses another (`docs/snips.md`). */
-const MANIFEST_SCHEMA = "some-ui.snips/1"
+const MANIFEST_SCHEMA = SNIPS_MANIFEST_SCHEMA
 
 /** At most this many concrete addresses for one `$param` route. */
 export const PER_PATTERN = 3
@@ -51,7 +56,7 @@ export type Viewport = {
   readonly words: string
 }
 
-/** The web surface's sizes: the Pages build on a desktop and on a phone. */
+/** The web surface's sizes: the viewer's web build on a desktop and on a phone. */
 export const WEB_VIEWPORTS: ReadonlyArray<Viewport> = [
   {
     name: "desktop",
@@ -115,7 +120,7 @@ function audienceOf(id: string): RouteAudience {
 }
 
 /**
- * The routes a surface's build offers. The Pages build carries `public`
+ * The routes a surface's build offers. The viewer's web build carries `public`
  * and `web` (no layout gates `web`); the APK `public` and `apk`. `lan` is
  * home's own build, behind the passkey, and holds the owner's data: never
  * captured.

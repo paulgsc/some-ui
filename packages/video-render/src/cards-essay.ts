@@ -25,6 +25,8 @@ import { z } from "zod"
 import { CALL_VOICES } from "./call"
 import type { ChapterMark } from "./chapters"
 import { withoutStop } from "./chapters"
+import type { ReadFile, SourceCheck } from "./claims"
+import { sourceProblems, unpinnedSources } from "./claims"
 import type { CutList, Parsed, Shot, SpokenTurn, TimedWord } from "./cut-list"
 import { isCaptions, parseCutList, problemsOf } from "./cut-list"
 import { ESSAY_VOICES } from "./essay"
@@ -133,7 +135,8 @@ export function parseCardsIndex(raw: unknown): Parsed<CardsIndex> {
 /**
  * The cut list `raw` as the essay `key`, or every reason home can't render
  * it: what any cut list is refused for (`parseCutList`), a key that isn't
- * its stamp's day, a series that isn't a cards series, a scene that is
+ * its stamp's day, a line citing a repository its stamp doesn't pin
+ * (`claims.ts`), a series that isn't a cards series, a scene that is
  * neither a card nor a screen of the app (`./snip`), a spoken card that
  * shows a screen, a scene that plays a take or a cue or stands on an image,
  * and captions; in a
@@ -154,6 +157,7 @@ export function parseCardsEssay(key: string, raw: unknown): Parsed<CutList> {
       : stamp.date === dayOf(key)
         ? []
         : [`its stamp is dated ${stamp.date}, and its key ${dayOf(key)}`]),
+    ...unpinnedSources(cut.value),
     ...(CARDS_SERIES.has(series.id)
       ? []
       : [
@@ -185,6 +189,12 @@ export function parseCardsEssay(key: string, raw: unknown): Parsed<CutList> {
       .map(
         (s) =>
           `${s.id}: a spoken card is drawn by its stage, so it shows no screen of the app`
+      ),
+    ...shots
+      .filter((s) => s.spoken?.role === "walk")
+      .map(
+        (s) =>
+          `${s.id}: it narrates a walk's stop, which only a walkthrough plays`
       ),
     ...shots
       .filter((s) => s.picture.kind !== "card" && s.picture.kind !== "screen")
@@ -233,8 +243,23 @@ function spokenProblems(cut: CutList): Array<string> {
         : "it has no intro: its first scene's role is intro, saying why you'd reach for this and what you'll be able to do"
     )
   if (!shots.some((s) => s.spoken?.role === "scene"))
-    problems.push("it has no scene with a chapter line and narration")
+    problems.push(
+      "it has no scene that teaches a card: a chapter line, then its narration"
+    )
+  // C1027: a scene without a chapter line goes on in the chapter before it,
+  // so one must have opened.
+  const opened = shots.findIndex(
+    (s) => s.spoken?.role === "scene" && s.spoken.chapter !== undefined
+  )
   shots.forEach((s, i) => {
+    if (
+      s.spoken?.role === "scene" &&
+      s.spoken.chapter === undefined &&
+      (opened === -1 || i < opened)
+    )
+      problems.push(
+        `${s.id}: it has no chapter line, and no scene before it opened a chapter: a chapter's first scene says its chapter line`
+      )
     if (s.spoken?.role === "spoken")
       problems.push(
         ...(cut.series.version < CARDS_SPOKEN_CARD_VERSION
@@ -247,7 +272,7 @@ function spokenProblems(cut: CutList): Array<string> {
     const role = s.spoken?.role
     if (role === undefined)
       problems.push(
-        `${s.id}: it says nothing, and every scene of a spoken essay has a chapter line and narration`
+        `${s.id}: it says nothing, and every scene of a spoken essay has its narration, and a chapter's first scene its chapter line`
       )
     if (role === "intro" && i !== intro)
       problems.push(
@@ -367,8 +392,10 @@ function spokenCardScenes(
 /**
  * What a spoken essay says, scene by scene: the intro, each scene's chapter
  * line in the host's voice then its narration in the narrator's, and the
- * close. A scene's two lines are two takes (C371), joined into one
- * (`joinedTake`), so the card is drawn once, under both. A spoken card is a
+ * close. A chapter of several scenes says its line and takes its mark at
+ * its first scene only; the rest say their narration alone (C1027). A
+ * scene's two lines are two takes (C371), joined into one (`joinedTake`),
+ * so the card is drawn once, under both. A spoken card is a
  * scene for each question and each answer (`spokenCardScenes`), with the
  * card as home heard it from `heard`, by its shot's id. A scene with
  * nothing to say (which `parseCardsEssay` refuses) is left out.
@@ -439,26 +466,28 @@ function voiced(
 function cardScene(shot: Shot, i: number): UnvoicedScene {
   const file = stillFile(i, shot.id)
   const spoken = shot.spoken
-  if (spoken?.role === "scene")
+  if (spoken?.role === "scene") {
+    const { chapter, narration } = spoken
+    const told = {
+      file: `${file}-narration`,
+      said: narration,
+      speaker: "narrator",
+    } as const
+    // C1027: a scene that goes on in its chapter says its narration alone.
+    if (chapter === undefined)
+      return { id: shot.id, file, shot, said: narration, lines: [told] }
     return {
       id: shot.id,
       file,
       shot,
-      said: `${spoken.chapter} ${spoken.narration}`,
+      said: `${chapter} ${narration}`,
       lines: [
-        {
-          file: `${file}-chapter`,
-          said: spoken.chapter,
-          speaker: "host",
-        },
-        {
-          file: `${file}-narration`,
-          said: spoken.narration,
-          speaker: "narrator",
-        },
+        { file: `${file}-chapter`, said: chapter, speaker: "host" },
+        told,
       ],
-      mark: chapterTitle(spoken.chapter),
+      mark: chapterTitle(chapter),
     }
+  }
   const said =
     spoken?.role === "intro" || spoken?.role === "close" ? spoken.said : ""
   return {
@@ -492,25 +521,55 @@ export const cardsChapterMarks = (
   )
 
 /**
- * Takes said one after another, `CHAPTER_GAP_MS` apart, as one: how long it
- * runs, and each word's place in it. The recorder joins their audio the
- * same way.
+ * Takes laid on one timeline, each from its start in `startsMs` (in order,
+ * none before the end of the take before it): how long it runs, and each
+ * word's place in it. The recorder lays their audio the same way, silence
+ * filling each gap.
  */
-export function joinedTake(takes: ReadonlyArray<StillTake>): StillTake {
-  let at = 0
+export function laidTake(
+  takes: ReadonlyArray<StillTake>,
+  startsMs: ReadonlyArray<number>
+): StillTake {
+  let end = 0
   const words: Array<TimedWord> = []
   for (const [i, take] of takes.entries()) {
-    if (i > 0) at += CHAPTER_GAP_MS
+    const at = startsMs[i] ?? end
+    if (at < end)
+      throw new RangeError(
+        `take ${String(i)} starts before the one before it ends`
+      )
     for (const word of take.words ?? [])
       words.push({
         ...word,
         startMs: word.startMs + at,
         endMs: word.endMs + at,
       })
-    at += take.ms
+    end = at + take.ms
   }
-  return { ms: at, ...(takes.some((t) => t.words) ? { words } : {}) }
+  return { ms: end, ...(takes.some((t) => t.words) ? { words } : {}) }
 }
+
+/** Where each of `takes` starts when each follows the one before after `gapMs`. */
+export const startsAfter = (
+  takes: ReadonlyArray<StillTake>,
+  gapMs: number
+): Array<number> => {
+  let at = 0
+  return takes.map((take, i) => {
+    if (i > 0) at += gapMs
+    const start = at
+    at += take.ms
+    return start
+  })
+}
+
+/**
+ * Takes said one after another, `CHAPTER_GAP_MS` apart, as one: how long it
+ * runs, and each word's place in it. The recorder joins their audio the
+ * same way.
+ */
+export const joinedTake = (takes: ReadonlyArray<StillTake>): StillTake =>
+  laidTake(takes, startsAfter(takes, CHAPTER_GAP_MS))
 
 /**
  * The spoken essay as the cut list the renderer draws: a scene per card
@@ -579,7 +638,7 @@ export function cardsFolderProblems(
       // C374.
       if (i === 0 && !isSpokenEssay(essay.value))
         return [
-          `${name}: it's silent, and the newest essay is spoken: it pins version ${CARDS_SPOKEN_VERSION} or later of its series, with an intro and a chapter line and narration for every scene`,
+          `${name}: it's silent, and the newest essay is spoken: it pins version ${CARDS_SPOKEN_VERSION} or later of its series, with an intro and narration for every scene`,
         ]
       const { id, version } = essay.value.series
       const series = seriesOf(id, version)
@@ -592,4 +651,33 @@ export function cardsFolderProblems(
       .filter((name) => name !== "index.json" && !listed.has(name))
       .map((name) => `${name}: the index doesn't list it`),
   ]
+}
+
+/**
+ * Every listed essay's sources held to its stamp's commits through `read`
+ * (#3036, `sourceProblems`), each line naming its file. The newest day's
+ * essays, those being published, are held strictly: a commit their
+ * sources can't be read at refuses them. An essay the folder check refuses is that check's to
+ * report, so it is passed over here.
+ */
+export function cardsFolderSources(
+  files: ReadonlyMap<string, unknown>,
+  read: ReadFile
+): SourceCheck {
+  const index = parseCardsIndex(files.get("index.json"))
+  const problems: Array<string> = []
+  const notes: Array<string> = []
+  const essays = index.ok ? index.value.essays : []
+  // Every essay of the newest day is held strictly: one publish may add
+  // several, and the index orders them by day alone.
+  const newest = dayOf(essays[0]?.key)
+  for (const { key } of essays) {
+    const name = `${key}.json`
+    const essay = parseCardsEssay(key, files.get(name))
+    if (!essay.ok) continue
+    const check = sourceProblems(essay.value, read, dayOf(key) === newest)
+    problems.push(...check.problems.map((p) => `${name}: ${p}`))
+    notes.push(...check.notes.map((n) => `${name}: ${n}`))
+  }
+  return { problems, notes }
 }

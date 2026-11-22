@@ -1,0 +1,18 @@
+{
+  "id": "C961",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/nudge.rs",
+    "server:apps/servers/file_host/src/nudge/"
+  ],
+  "chose": "waker.rs is split into the stages the issue named (sweep, propose, actuate, observe), plus deadline.rs for PassClock and Deadline; consider stays with the pass in waker.rs, and the tests move to waker/tests.rs. The guard is a 700-line ceiling per nudge/ module before its tests, rather than a file_host-wide 500, which other churning files already exceed. The assurance ledger's three NW1/NW3 proofs move with the tests, re-pointed in some-ui at admission.",
+  "options": [
+    "per-nudge-module ceiling 700 (taken)",
+    "file_host-wide ceiling",
+    "no guard (move only)"
+  ],
+  "gray": "What guard a file split gets, and at what scope.",
+  "undo": "Raise or delete STAGE_MODULE_CEILING in nudge.rs.",
+  "refs": ["server#489"]
+}

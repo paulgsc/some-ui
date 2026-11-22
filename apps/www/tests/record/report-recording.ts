@@ -142,6 +142,7 @@ export async function recordReport(
     await renderCut(root, SERIES, reportCutList(report, takes, { bed }), {
       preview,
       episode: "report.mp4",
+      thumbnail: { genre: "report", week: report.week },
       marks: () => reportChapterMarks(report),
       policy,
       browser,

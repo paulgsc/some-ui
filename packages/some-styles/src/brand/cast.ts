@@ -77,7 +77,12 @@ const stage = (
     ]),
   ]),
   el("rect", { width: 96, height: 96, "data-ground": "true" }),
-  el("rect", { width: 96, height: 96, fill: url(id("glow")) }),
+  el("rect", {
+    width: 96,
+    height: 96,
+    fill: url(id("glow")),
+    "data-glow": "true",
+  }),
   el("ellipse", {
     cx: 48,
     cy: shadow.cy,
@@ -433,3 +438,40 @@ export const castNodes = (who: Character, id: IdOf): ReadonlyArray<CastNode> =>
 
 /** The box every character is drawn in. */
 export const CAST_VIEW_BOX = "0 0 96 96"
+
+/** `value` safe inside SVG or HTML text and a quoted attribute. */
+export const escapeText = (value: string | number): string =>
+  String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+
+/** How `nodesText` draws: the backdrop's paint, and whether the key light shows. */
+type TextOptions = { readonly ground: string; readonly glow?: boolean }
+
+/**
+ * `nodes` as SVG text, for a drawing made outside React (a thumbnail,
+ * `@some-ui/video-render`'s `thumbnail`). `ground` paints the backdrop's
+ * rect (`data-ground`), which a page leaves to its theme; `glow: false`
+ * leaves out the stage's square key light (`data-glow`), which reads as a
+ * box on a ground other than a bubble's.
+ */
+export const nodesText = (
+  nodes: ReadonlyArray<CastNode>,
+  { ground, glow = true }: TextOptions
+): string =>
+  nodes
+    .filter((node) => glow || node.attrs["data-glow"] === undefined)
+    .map((node) => {
+      const attrs = Object.entries(node.attrs).filter(
+        ([name]) => name !== "data-ground" && name !== "data-glow"
+      )
+      const painted =
+        node.attrs["data-ground"] === undefined
+          ? attrs
+          : [...attrs, ["fill", ground] as const]
+      const children = nodesText(node.children ?? [], { ground, glow })
+      return `<${node.tag}${painted.map(([name, value]) => ` ${name}="${escapeText(value)}"`).join("")}>${children}</${node.tag}>`
+    })
+    .join("")

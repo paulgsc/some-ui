@@ -191,11 +191,12 @@ jobs:
           # Nobody reaches this site from the home network, so it leaves out
           # the LAN-only workspaces entirely - see apps/www/build.profiles.ts.
           SOME_UI_PROFILE: pages
-      - name: Add SPA fallback for client-side routing
-        # GitHub Pages has no server-side rewrite; a hard refresh or deep
-        # link on a client-side route 404s without this. Serving the same
-        # shell from 404.html lets the router take over from the URL.
-        run: cp apps/www/dist/index.html apps/www/dist/404.html
+      # No copy step for the SPA fallback: GitHub Pages has no server-side
+      # rewrite, so a deep link on a client-side route is served 404.html, and
+      # the Pages build writes the app's shell there itself. Its index.html
+      # is the landing (apps/www/vite.config.ts, `landingPage`; PAGES #3401).
+      - name: Check the build has the landing and the SPA fallback
+        run: test -f apps/www/dist/index.html && test -f apps/www/dist/404.html
       # Uploaded here, inside this job's concurrency group, so a run's
       # deploy queues as soon as its own build ends while the next approved
       # run's build is only starting: concurrency does not order jobs, so a

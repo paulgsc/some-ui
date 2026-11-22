@@ -16,6 +16,7 @@ import {
   findCacheViolations,
   findChangesetsPairingViolations,
   findInlineInstallViolations,
+  findPathsFilterViolations,
   findPrCommitHookViolations,
   findRetentionViolations,
   findRs2Violations,
@@ -669,6 +670,121 @@ describe("checkRetentionTriggers", () => {
   })
 })
 
+describe("findPathsFilterViolations (CD1)", () => {
+  const step = (withLines: string): string =>
+    [
+      "jobs:",
+      "  detect:",
+      "    steps:",
+      "      - name: Filter paths",
+      "        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3",
+      "        with:",
+      withLines,
+    ].join("\n")
+
+  it("fails a leading `!` under the default quantifier", () => {
+    const text = step(
+      [
+        "          filters: |",
+        "            rust:",
+        "              - 'crates/**'",
+        "              - '!**/*.md'",
+        "            node:",
+        '              - added|modified: "!docs/**"',
+      ].join("\n")
+    )
+    expect(findPathsFilterViolations(F, text)).toEqual([
+      { kind: "pathsFilterNegation", file: F, line: 10, pattern: "!**/*.md" },
+      { kind: "pathsFilterNegation", file: F, line: 12, pattern: "!docs/**" },
+    ])
+  })
+
+  it("fails it under an explicit `some` too", () => {
+    const text = step(
+      [
+        "          predicate-quantifier: 'some'",
+        "          filters: |",
+        "            rust:",
+        "              - '!**/*.md'",
+      ].join("\n")
+    )
+    expect(findPathsFilterViolations(F, text)).toHaveLength(1)
+  })
+
+  it("passes a positive extglob, and a `!` under another quantifier", () => {
+    expect(
+      findPathsFilterViolations(
+        F,
+        step(
+          [
+            "          filters: |",
+            "            rust:",
+            "              - 'crates/**/!(*.md)'",
+          ].join("\n")
+        )
+      )
+    ).toEqual([])
+    expect(
+      findPathsFilterViolations(
+        F,
+        step(
+          [
+            "          predicate-quantifier: some-with-excludes",
+            "          filters: |",
+            "            rust:",
+            "              - 'crates/**'",
+            "              - '!**/*.md'",
+          ].join("\n")
+        )
+      )
+    ).toEqual([])
+  })
+
+  it("fails a negation in a flow list, and a quantifier it cannot read", () => {
+    expect(
+      findPathsFilterViolations(
+        F,
+        step(
+          [
+            "          filters: |",
+            "            rust: ['crates/**', '!**/*.md']",
+          ].join("\n")
+        )
+      )
+    ).toEqual([
+      { kind: "pathsFilterNegation", file: F, line: 8, pattern: "!**/*.md" },
+    ])
+    expect(
+      findPathsFilterViolations(
+        F,
+        step(
+          [
+            "          predicate-quantifier: ${{ inputs.q }}",
+            "          filters: |",
+            "            rust:",
+            "              - '!**/*.md'",
+          ].join("\n")
+        )
+      )
+    ).toEqual([{ kind: "pathsFilterUnreadable", file: F, line: 4 }])
+  })
+
+  it("fails a step it cannot read", () => {
+    expect(
+      findPathsFilterViolations(
+        F,
+        step("          filters: .github/filters.yml")
+      )
+    ).toEqual([{ kind: "pathsFilterUnreadable", file: F, line: 4 }])
+    expect(
+      findPathsFilterViolations(
+        F,
+        "    steps:\n      - {uses: dorny/paths-filter@abc, with: {filters: x}}"
+      )
+    ).toEqual([{ kind: "pathsFilterUnreadable", file: F, line: 2 }])
+  })
+})
+
 describe("isGuardedWorkflowPath", () => {
   it("covers workflows and composite actions only", () => {
     expect(isGuardedWorkflowPath(".github/workflows/a.yml")).toBe(true)
@@ -696,6 +812,11 @@ describe("describeWorkflowViolation", () => {
       [{ kind: "rs1Changed", file: RS1_FILE, actual: "abc" }, "abc"],
       [{ kind: "rs1Changed", file: RS1_FILE, actual: null }, "missing"],
       [{ kind: "rs2Named", file: F, line: 5 }, "RS2"],
+      [
+        { kind: "pathsFilterNegation", file: F, line: 9, pattern: "!**/*.md" },
+        "!(*.md)",
+      ],
+      [{ kind: "pathsFilterUnreadable", file: F, line: 8 }, "filters: |"],
       [
         { kind: "artifactUndeclared", file: F, line: 2, name: "x" },
         "ARTIFACT_FAMILIES",

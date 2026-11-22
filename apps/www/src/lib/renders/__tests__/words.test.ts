@@ -544,7 +544,10 @@ describe("RNR1: a refusal says why, and an older home's row reads as before", ()
     })
     const missing = failedLine(row("take-missing"))
     const unheard = failedLine(row("take-unheard"))
-    expect(missing).toMatch(/doesn't have, or one you deleted/)
+    expect(missing).toMatch(/plays a recording home doesn't have\./)
+    // A take you deleted withdraws the essay, which leaves the list
+    // (paulgsc/server#1055): no row says it.
+    expect(missing).not.toMatch(/deleted/)
     expect(unheard).toMatch(/^Home couldn't make out a recording/)
     const snipMissing = failedLine(row("snip-missing"))
     const snipGone = failedLine(row("snip-gone"))

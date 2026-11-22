@@ -39,8 +39,12 @@ request, and CI Gate does not need it. It photographs two surfaces:
   so the live public data the app reads by design (Studio's asks from
   GitHub, the clips index) never loads into a picture, on either build.
 
-- **`web`:** the Pages build, the viewer's, at `desktop` (1440×900) and `phone`
-  (412×915 at 2×). `apps/www/tests/snips/web.spec.ts` walks it.
+- **`web`:** the viewer's build, at `desktop` (1440×900) and `phone`
+  (412×915 at 2×). `apps/www/tests/snips/web.spec.ts` walks it. It is the
+  `snips` profile (`apps/www/build.profiles.ts`), built by this capture only
+  and never deployed: the Pages build's environment and sample data, with
+  every viewer route kept. The public site is being pruned to a CV (C1055,
+  #3401), and an essay names its web snips by these routes, so they stay here.
 
 Every route the surface's build offers is visited, as the generated route
 tree lists them (`routesFor`). Home's own pages (`_lan`) are never visited.
@@ -92,20 +96,20 @@ picture whose screen a release picture shows is dropped with its record.
 
 A snip record:
 
-| Field                 | What it is                                                                                                                |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `id`                  | `<surface>:<path>:<viewport>:<appVersion>:<hash12>`; `path` may be `@wing/tab`                                            |
-| `surface`, `viewport` | Where, and at which named size                                                                                            |
-| `width`, `height`     | The picture's own size, read from the PNG                                                                                 |
-| `scale`               | Its pixels per CSS pixel: 2 for the web phone, 1 on the desktop; 1 by convention on the APK, whose device pixels it keeps |
-| `regions`             | Each part the page names (`data-region`), `{ref, box}`, the box in CSS pixels; none on the APK (below)                    |
-| `build`               | `release` (the APK as it ships, or the Pages site) or `debug` (the APK's debug build, for a screen taps do not reach)     |
-| `route`               | The route, `$param`s and all, or a release screen's `@wing/tab`                                                           |
-| `path`                | The address taken                                                                                                         |
-| `module`              | The part of the app (`moduleOf`), for grouping on the desk                                                                |
-| `shows`               | The screen's own heading, or else its module                                                                              |
-| `description`         | One plain line: "Studio: Takes, on the Android app, with sample data."                                                    |
-| `image`, `recording?` | `{name, kind, bytes, sha256}`                                                                                             |
+| Field                 | What it is                                                                                                                    |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `id`                  | `<surface>:<path>:<viewport>:<appVersion>:<hash12>`; `path` may be `@wing/tab`                                                |
+| `surface`, `viewport` | Where, and at which named size                                                                                                |
+| `width`, `height`     | The picture's own size, read from the PNG                                                                                     |
+| `scale`               | Its pixels per CSS pixel: 2 for the web phone, 1 on the desktop; 1 by convention on the APK, whose device pixels it keeps     |
+| `regions`             | Each part the page names (`data-region`), `{ref, box}`, the box in CSS pixels; none on the APK (below)                        |
+| `build`               | `release` (the APK as it ships, or the viewer's web build) or `debug` (the APK's debug build, for a screen taps do not reach) |
+| `route`               | The route, `$param`s and all, or a release screen's `@wing/tab`                                                               |
+| `path`                | The address taken                                                                                                             |
+| `module`              | The part of the app (`moduleOf`), for grouping on the desk                                                                    |
+| `shows`               | The screen's own heading, or else its module                                                                                  |
+| `description`         | One plain line: "Studio: Takes, on the Android app, with sample data."                                                        |
+| `image`, `recording?` | `{name, kind, bytes, sha256}`                                                                                                 |
 
 `regions` are measured on the web walk, where the picture is the page's own
 window, and cut to it. A recording stage (`STAGE_ROUTES`: `/call`, `/essay`,
@@ -141,8 +145,17 @@ invariant 6). Each pass:
    owner's own marks and which snip each essay used. Nothing CI can make
    again is kept twice: home keeps no picture library, and drops its copies
    once the video is made (owner, 2026-11-21).
-4. puts each record, never an image, in the mailbox. Not yet: it waits on
-   `apps/mailbox` gaining a folder for it.
+4. puts the bundle's `manifest.json`, its records and never an image, in the
+   mailbox's `snips` folder as `snips-<commit>-<run>.json`, without its
+   whitespace (`apps/mailbox/README.md`, C946), so the routine can name a
+   snip by its id and commit. The same run fetched again adds nothing, and a
+   second capture of a commit has a list of its own. A run attempted again
+   keeps its id, so if its list differs the mailbox keeps the first. The
+   mailbox never archives a list: the commit's capture makes it again. Not
+   yet: home's half is paulgsc/server#1082. As step 1 stands, home fetches
+   only a commit an essay already names, so a capture no essay names leaves
+   no list for the routine to choose from; which capture's list home also
+   fetches (the newest, say) is #1082's to settle.
 
 **When a bundle can't be had** (C875). A bundle lives one day. When a
 commit has no successful run, its newest run's artifact has expired, or its
@@ -189,6 +202,26 @@ owner's one step. The workflow holds no mailbox secret.
   bundle, or a part its snip doesn't name is refused before anything is
   drawn, and a cut list still naming one is refused by the render: never a
   blank frame.
+
+- **Public pages** (#3387). The third member of the family: a public page
+  photographed logged out, such as a pull request's checks, a run's job
+  graph or a page of GitHub's docs, for an essay whose subject lives outside
+  the app. `pnpm --filter www record:pages --pages-file <list> --out <dir>`
+  (`apps/www/tests/record/pages.ts`) opens each address in a browser with
+  no sign-in, cookie or token, at one size (1440×900 at 2×, UTC, light,
+  motion reduced), boxes the parts the list names by CSS selector, and
+  writes `pages.json` (`some-ui.pages/1`, `@some-ui/video-render`'s
+  `page.ts`) beside one `<slug>-<hash12>.png` per page. A scene shows one
+  by `{"from": "pages", "url": "…", "capturedAt": "…", "file": "…", "at": [ … ]}`:
+  the address and moment it was taken, the "as of" its viewer is told, and
+  its file. The render takes the folder beside the essay as `<key>.pages/`,
+  and `record:cards --pages <dir>` checks each picture's hash and size, and
+  refuses a scene whose page was taken at another address or moment than it
+  says. Nothing on a GitHub page holds still, so the same page taken twice
+  is two pictures, each named by its own hash. How the pictures reach home
+  is not settled: paulgsc/testing's guard refuses every picture, so they
+  can't sit beside the essay there. The snips' path, a capture run whose
+  bundle home fetches, is the likely one.
 
 - The APK's screens show what a fresh install paired with the stub shows. The
   stub answers few routes (`compat/stub-routes.json`), so many screens are

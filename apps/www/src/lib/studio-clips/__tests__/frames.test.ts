@@ -7,7 +7,8 @@
 import { describe, expect, it } from "vitest"
 
 import { clipFramePath } from "@/lib/home-link/clips"
-import { readFrame } from "@/lib/studio-clips/frames"
+import type { FrameShown } from "@/lib/studio-clips/frames"
+import { placeFrame, readFrame, settled } from "@/lib/studio-clips/frames"
 
 describe("a clip's frame", () => {
   it("is asked for by its name alone within its side", () => {
@@ -37,5 +38,30 @@ describe("a clip's frame", () => {
 
   it.each(["", "<html>"])("doesn't read a body of %j", (body) => {
     expect(readFrame({ status: 200, body })).toEqual({ kind: "unreadable" })
+  })
+})
+
+describe("what asking again can't change (#2895)", () => {
+  const frame: FrameShown = { kind: "frame", src: "data:image/png;base64,AA==" }
+
+  it("is a frame, or a session's frame home doesn't keep", () => {
+    expect(settled(frame, "walk")).toBe(true)
+    expect(settled({ kind: "not-taken" }, "session")).toBe(true)
+    expect(settled({ kind: "not-taken" }, "walk")).toBe(false)
+    for (const kind of ["unreadable", "unpaired", "away", "busy"] as const) {
+      expect(settled({ kind }, "session")).toBe(false)
+    }
+  })
+
+  it("places each answer, and home not reached never takes one home gave", () => {
+    expect(placeFrame([], 0, frame)).toEqual([frame])
+    expect(placeFrame([frame], 0, { kind: "away" })).toEqual([frame])
+    expect(placeFrame([{ kind: "not-taken" }], 0, { kind: "busy" })).toEqual([
+      { kind: "not-taken" },
+    ])
+    expect(placeFrame([{ kind: "away" }], 0, { kind: "busy" })).toEqual([
+      { kind: "busy" },
+    ])
+    expect(placeFrame([{ kind: "not-taken" }], 0, frame)).toEqual([frame])
   })
 })

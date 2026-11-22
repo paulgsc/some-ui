@@ -212,15 +212,16 @@ describe("the render image (RI1)", () => {
   })
 
   it("fails a build.sh whose filter for such a package is dropped", () => {
-    // The stage's filters dropped too: today they reach engagement through
-    // a devDependency, which is no promise the recorders can lean on.
+    // The stage's filters dropped too. Playoff Delta is reached by its own
+    // filter alone; engagement no longer is, since video-motion depends on it
+    // (WALK5), so dropping engagement's filter alone proves nothing.
     const build = withoutStage(read(BUILD))
     const dropped = build.replace(
-      /\s*'--filter=@some-ui\/engagement\.\.\.' \\/,
+      /\s*'--filter=@some-ui\/playoff-delta\.\.\.' \\/,
       ""
     )
     expect(dropped).not.toBe(build)
-    expect(unbuilt(dropped)).toContain("@some-ui/engagement")
+    expect(unbuilt(dropped)).toContain("@some-ui/playoff-delta")
   })
 
   it("fails a build.sh that builds only what the recorders import directly", () => {

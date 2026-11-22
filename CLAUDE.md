@@ -27,6 +27,15 @@ What follows from them:
   free personal hobby app. "For me" names the audience; exposure is a separate question.
   Keep every public channel and its upkeep (the APK's Play readiness in
   `apps/mobile/README.md`, say) even when only the owner uses the thing.
+- **YouTube is by hand, always** (owner, 2026-11-21, C1025). The owner uploads every video
+  and sets every thumbnail in YouTube Studio themselves. Home makes and keeps the files
+  (the video, its thumbnail, its description and chapters) for the owner to download.
+  Nothing here calls YouTube's API or asks for its OAuth, and no story should plan to.
+- **No editorial work for the owner** (owner, 2026-11-21, C1028). The owner doesn't edit
+  videos or design thumbnails. Every thumbnail comes from one deterministic, generic template
+  that code fills from the episode's own facts, and a change of style (a pencil look, glass,
+  depth) is a new version of that template, drawn by code, the same bytes for the same
+  inputs. A thumbnail never comes from a generator whose output can't be predicted.
 - **Private only where the data is personal.** What serves A and holds PII stays on the
   home network (the `lan` audience, behind the passkey) and on the owner's own devices.
   Home is the owner's own store, as private as the phone, and sending to it is to be the
@@ -34,18 +43,23 @@ What follows from them:
   (`docs/learner-data-authority.md`, "The owner's deployment").
 - **A comes first, and B shows A as it is.** Legibility effort goes to what really drives
   the workflow, and every surface does what it appears to do.
-- **A way in for every reader.** Something anyone can take in (a short demo video), the
-  live screens for the curious, the source for the technical, each disclosed by
-  interaction rather than all at once. The extensions comb is the model
-  (`packages/ui/honeycomb/src/components/extensions-comb/extensions.data.ts`).
+- **A way in for every reader.** Something anyone can take in (a short clip of the thing
+  working), the source for the technical, each disclosed by interaction rather than all at
+  once. The owner has decided (C1055) that the public Pages site becomes a curriculum
+  vitae: who the owner is, what they do, the résumé and how to reach them, with each project
+  shown by its clip and a link to its source. Until the prune lands, Pages still serves the
+  extensions comb and the apps on sample data; the prune (#3401) takes those routes off the
+  Pages build, and nothing changes on `lan` or the APK.
 - **One screen, two readings.** Where the owner and a viewer can reach the same screen, it
   says which of them is looking: `components/provenance-strip.tsx` under the web header
   tells the owner what a wing publishes and keeps, and tells a viewer it is sample data.
 - **A viewer tries, and nothing is kept.** The Pages build is the viewer's (`VIEWER_BUILD`,
-  `apps/www/src/lib/data-mode`). There the page's `localStorage` and `sessionStorage` are
-  in-memory copies (`apps/www/src/lib/demo/viewer-storage.ts`, imported first by
-  `main.tsx`), which `apps/www/src/lib/demo` seeds with sample drafts: a mock demo, where
-  every store, the activity packages' included, works as usual and a reload starts over.
+  `apps/www/src/lib/data-mode`). Under C1055 this rule shrinks as the prune takes each
+  screen off Pages, and it holds for every screen Pages still serves: there the page's
+  `localStorage` and `sessionStorage` are in-memory copies
+  (`apps/www/src/lib/demo/viewer-storage.ts`, imported first by `main.tsx`), which
+  `apps/www/src/lib/demo` seeds with sample drafts: a mock demo, where every store, the
+  activity packages' included, works as usual and a reload starts over.
   A person's records may not bypass them (no IndexedDB, Cache Storage or cookie holding
   them on the Pages build); a convenience, such as the sidebar's open/closed cookie, may.
 - **Say what it is.** In copy anyone reads (pages, READMEs, store listings, release
@@ -81,7 +95,9 @@ What follows from them:
   "yes, My data should offer the unheard delete too"). "Let go" still sets a recording
   aside and keeps it.
 
-`/mission` (`apps/www/src/routes/mission.tsx`) says the same to the viewer.
+`/mission` (`apps/www/src/routes/mission.tsx`) says the same to the viewer while Pages
+still serves it. It leaves Pages with the prune (C1055); the CV landing does not restate
+the mandates.
 
 ## Pre-commit verification (Claude Code Remote)
 
@@ -319,6 +335,10 @@ date is clipped. A workspace is a candidate when it is:
 
 "Own change" ignores tests, manifests and config, file deletions (cleanup is not work on the
 story), and sweeps across more than eight workspaces (version bumps, renames, rollouts).
+
+With `--usage <friction.json>` (what `motion walkthrough --home` keeps from home's weekly read) it also lists **usage candidates** (#3338): modules the
+build offers that nobody has opened in four weeks (`packages/engagement/src/lib/silence.ts`). A
+module whose opening isn't measured is never called silent.
 
 It is a report, never a gate: whether a story is dead is the owner's call, so put the
 candidates to them instead of deleting on the score alone. Known false positives come from

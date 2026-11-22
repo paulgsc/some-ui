@@ -108,6 +108,51 @@ default (owner, #2814 Nov 10; measurements on #2833).
 - Merge the image or release bot PR last, so one publish carries every content PR (#2833,
   #2885).
 
+### Buckets: n reviewed branches, k pull requests (C1021)
+
+CI rarely finds what review missed: on Nov 21 every red check was a flake (#3374) or a pair's
+planned red, while review found every real fault. Under strict up-to-date, though, each merge puts
+every open PR behind, and each update is a full 15–35 minute round; at least six of Nov 21's
+rounds were merges of `main` with no content change. So a PR is opened for settled work, and
+several branches share one (owner, Nov 21, agreeing to C1021).
+
+- **Settle on the branch.** A branch has its fresh-context review, every fix, and its local
+  checks (CLAUDE.md "Pre-commit verification"; server's fmt, clippy ratchet, tests, `sqlx
+prepare`) before it reaches a PR. Review after a PR opens is for the merge delta only.
+- **Every commit is reviewed before it is bucketed** (owner, Nov 22: "it has to pass the
+  reviews"). A commit added after a branch's review (a fix, a hand-resolved merge of `main`, the
+  coordinator's own fix on the bucket) gets its own fresh-context review of that delta first. The
+  coordinator reading it is not that review: it is not a fresh reader.
+- **One bucket per repo, lane and kind.** The coordinator merges settled worker branches into
+  `claude/bucket-<repo>-<n>` with merge commits (never squash or rebase there), so each
+  worker's commits and `Change-Kind`, `Promise`, `Relates` and `Call` trailers reach `main`
+  through the PR's squash (COMMIT_MESSAGES). Where two branches touch the same file, the
+  merge's resolution is reviewed as a delta before the bucket is pushed.
+- **Carried branches prune themselves.** Once a bucket PR merges, `bucket-prune.yml` deletes
+  each branch whose tip it holds, and keeps (and names) one that moved on or an open PR uses.
+- **Local checks on the bucket**, then one PR. Its body has one section per branch (what, its
+  review record, its Superseded) and "Calls I made" lists every branch's calls. The review
+  record is the findings and what became of each, not "reviewed": a branch's review that lives
+  only in a worker's message to the coordinator is not on the record until the PR carries it.
+- **The bucket gets its own review.** Before it merges, a fresh-context agent reads the whole
+  bucket diff for what no branch review could see: two branches that each hold alone but break
+  together (a shared file, schema, ledger entry, route or call ID), and every hand-resolved
+  hunk. Its findings and outcomes go on the PR, as a branch's do.
+- **A defect is never bucketed.** It carries its own proof, and "a change that is both a story
+  and a defect is two PRs" (CLAUDE.md).
+- **Small and timed.** Three to five branches; close a bucket when its last branch settles or
+  on the next timer, whichever comes first, so one slow branch never holds the rest. A branch
+  that misses the bucket waits for the next.
+- **Pairs ride as buckets.** One some-ui bucket carries every ledger entry, call and fixture
+  copy its server bucket needs, so the pair order (some-ui half first, then the server re-run)
+  is paid once per bucket.
+- **A red bucket** is fixed on the branch that broke it, merged into the bucket again; if that
+  branch can't be fixed this round, rebuild the bucket without it.
+- Fast-lane work that can't wait for a bucket may still go alone, by the coordinator's call.
+- **When Codex has no credits** (Nov 21, every PR of the run): a fresh-context agent reviews each
+  head and the PR carries a coverage comment naming the range it read and each finding's
+  outcome. A rebase or a merge of `main` gets its own range-diff check, recorded the same way.
+
 ### While running
 
 - While any PR is in CI, set a `send_later` timer about every 20 minutes and check every open

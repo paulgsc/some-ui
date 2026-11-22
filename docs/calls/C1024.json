@@ -1,0 +1,19 @@
+{
+  "id": "C1024",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/routes/_dashboard/_apk/journal/takes/$kind.tsx",
+    "packages/ui/game-week/src/components/missed-moment/index.tsx",
+    "packages/ui/game-week/src/lib/words.ts"
+  ],
+  "chose": "Takes opened on a game (`?about=game:<id>`) reads that game's log and shows its big moments with no bite dimmed among its bites, while it is on and once it is final: a dashed, faded row saying \"No bite\", the quarter and clock as a matched bite's are said (\"Q3 4:12\", \"OT\" past the 4th), the scenario's name and the play as home words it. A moment with no quarter shows no clock. Picking another game's chip on that page shows its bites with no moments, since only the game the page opened on has its log read.",
+  "options": [
+    "Dimmed rows, while live and final, for the opened game alone (chosen).",
+    "Only once the game is final: a live game's missing bites are the ones the owner may still say, and S7 and the coordinator chose both.",
+    "Read the log of whichever game chip is picked: a query per chip, for a path (switching games on a page opened on one) Game day doesn't lead to."
+  ],
+  "gray": "What a missed moment row says and looks like is what the owner sees; no check settles it.",
+  "undo": "Remove the `gaps` prop in $kind.tsx; the words are MISSED_WORDS and missedHead in packages/ui/game-week/src/lib/words.ts.",
+  "refs": ["#3039", "#2074"]
+}

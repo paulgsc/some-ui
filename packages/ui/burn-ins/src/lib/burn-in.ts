@@ -36,6 +36,15 @@ import {
   type StatusBadgeDrawing,
   type StatusBadgeFrame,
 } from "./badge"
+import {
+  BARS_DESIGNS,
+  barsAt,
+  barsBoxes,
+  BarsParamsSchema,
+  drawBars,
+  type BarsDrawing,
+  type BarsFrame,
+} from "./bars"
 import { frameAt as captionFrameAt, type CaptionFrame } from "./captions/frame"
 import {
   isThemeId,
@@ -135,6 +144,7 @@ export const KINDS = [
   "legend",
   "rule",
   "flow",
+  "bars",
 ] as const
 export type Kind = (typeof KINDS)[number]
 
@@ -154,6 +164,7 @@ export const DESIGNS = {
   legend: LEGEND_DESIGNS,
   rule: RULE_DESIGNS,
   flow: FLOW_DESIGNS,
+  bars: BARS_DESIGNS,
 } as const satisfies Record<Kind, ReadonlyArray<string>>
 
 /** Where each kind draws. */
@@ -176,6 +187,7 @@ export const REGIONS_OF = {
   legend: ["header", "body"],
   rule: ["header", "body"],
   flow: ["header", "body"],
+  bars: ["header", "body"],
 } as const satisfies Record<Kind, ReadonlyArray<Region>>
 
 const TimedWordSchema = z
@@ -260,6 +272,11 @@ export type Prepared =
       readonly design: (typeof FLOW_DESIGNS)[number]
       readonly drawing: FlowDrawing
     }
+  | {
+      readonly kind: "bars"
+      readonly design: (typeof BARS_DESIGNS)[number]
+      readonly drawing: BarsDrawing
+    }
 
 /** What is on screen at a moment. */
 export type BurnInFrame =
@@ -319,6 +336,11 @@ export type BurnInFrame =
       readonly kind: "flow"
       readonly design: (typeof FLOW_DESIGNS)[number]
       readonly frame: FlowFrame
+    }
+  | {
+      readonly kind: "bars"
+      readonly design: (typeof BARS_DESIGNS)[number]
+      readonly frame: BarsFrame
     }
 
 const issues = (name: string, error: z.ZodError): ReadonlyArray<string> =>
@@ -536,6 +558,15 @@ export function prepare(b: BurnInData, frame: FrameSize): Parsed<Prepared> {
           }
         : c
     }
+    case "bars": {
+      const c = checked(name, BARS_DESIGNS, b, BarsParamsSchema, drawBars, g)
+      return c.ok
+        ? {
+            ok: true,
+            value: { kind, design: c.value.design, drawing: c.value.value },
+          }
+        : c
+    }
     default: {
       return assertNever(kind)
     }
@@ -596,6 +627,9 @@ export function frameAt(p: Prepared, t: number): BurnInFrame {
     case "flow": {
       return { kind: p.kind, design: p.design, frame: flowAt(p.drawing, t) }
     }
+    case "bars": {
+      return { kind: p.kind, design: p.design, frame: barsAt(p.drawing, t) }
+    }
     default: {
       return assertNever(p)
     }
@@ -641,6 +675,9 @@ export function boxesOf(f: BurnInFrame): ReadonlyArray<Box> {
     }
     case "flow": {
       return flowBoxes(f.frame)
+    }
+    case "bars": {
+      return barsBoxes(f.frame)
     }
     default: {
       return assertNever(f)

@@ -1,7 +1,12 @@
 import type { PathRules } from "@some-ui/vite-config/bundle-paths"
 import { definePaths } from "@some-ui/vite-config/bundle-paths"
 
-import { MOBILE_PROFILE, profiles, routeGates } from "./build.profiles.ts"
+import {
+  CAPTURE_PROFILE,
+  MOBILE_PROFILE,
+  profiles,
+  routeGates,
+} from "./build.profiles.ts"
 
 /**
  * What each profile's output may carry, checked against a real build of it
@@ -21,9 +26,21 @@ function isProfile(name: string): name is Profile {
   return name in profiles
 }
 
-/** Every profile build.profiles.ts defines, in its order. */
-export const PROFILES: ReadonlyArray<Profile> =
-  Object.keys(profiles).filter(isProfile)
+/**
+ * Every profile build.profiles.ts defines that ships somewhere, in its order:
+ * the ones these rules and check-bundle-paths.ts hold. The capture profile
+ * (`CAPTURE_PROFILE`) is left out: Snips Capture photographs it and nothing
+ * deploys it, so no visit to a deployable can load what it carries.
+ */
+type Deployable = Exclude<Profile, typeof CAPTURE_PROFILE>
+
+function isDeployable(profile: Profile): profile is Deployable {
+  return profile !== CAPTURE_PROFILE
+}
+
+export const PROFILES: ReadonlyArray<Deployable> = Object.keys(profiles)
+  .filter(isProfile)
+  .filter(isDeployable)
 
 /**
  * The environment each deployable builds with, beside `SOME_UI_PROFILE`, so
@@ -34,7 +51,7 @@ export const PROFILES: ReadonlyArray<Profile> =
  * (Vite prefers it to any .env file) can change which modules are checked.
  */
 export const profileBuildEnv: Readonly<
-  Record<Profile, Readonly<Record<string, string>>>
+  Record<Deployable, Readonly<Record<string, string>>>
 > = {
   lan: { VITE_DEVICE_BACKEND: "", VITE_STATIC_DATA: "", VITE_BASE_PATH: "/" },
   pages: {
@@ -60,6 +77,7 @@ const OFF_PATH_PUBLIC_FILES: Readonly<Record<Profile, ReadonlyArray<RegExp>>> =
   {
     lan: [],
     pages: [],
+    [CAPTURE_PROFILE]: [],
     [MOBILE_PROFILE]: [
       // What scripts/sync-resume.mjs copies in for /resume, which is not on
       // the Android app's surface (src/lib/app-surface).
@@ -113,6 +131,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/engagement-places/**",
   "apps/www/src/lib/episode-feedback/**",
   "apps/www/src/lib/game-bites/**",
+  "apps/www/src/lib/game-moments/**",
   "apps/www/src/lib/handed-in/**",
   "apps/www/src/lib/home-link/**",
   "apps/www/src/lib/idea-hearing/**",
@@ -244,6 +263,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       ],
       profiles: ["lan", "pages"],
       why: "web-only code: the Android app has no account to move sessions to or sign out of, nor a list of the account's phones to name or sign out (SIGNIN7)",
+    },
+    {
+      modules: ["packages/some-styles/src/brand/genres.ts"],
+      profiles: [MOBILE_PROFILE],
+      why: "each genre's paint and shape (EPISODES3, C1026): Studio's episode rows draw them, and only the Android app has Studio; the thumbnails home renders draw the same data in the render stage, not in a page",
     },
     {
       modules: ["packages/some-styles/src/brand/cast.ts"],

@@ -1,0 +1,20 @@
+{
+  "id": "C947",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "apps/www/src/lib/studio-clips/home.ts",
+    "apps/www/src/lib/studio-clips/frames-read.ts",
+    "apps/www/src/lib/studio-clips/frames.ts"
+  ],
+  "chose": "A clip's frames show one by one through TanStack Query's own experimental_streamedQuery over the reader as an async generator. A later visit asks only for frames not settled, and puts each answer in its frame's place over the last visit's (refetchMode append with a reducer by index), where home not reached (away, busy, unpaired) never replaces an answer home gave, so what showed stays. A clip is kept for the page load once every frame is settled: a frame, or a session side's frame home doesn't hold; a walk's missing frame, home away, busy or unreadable is asked again on the next visit. Two limits are taken: bytes that read as base64 but don't decode as a picture count as a frame, so the page shows the label and why, and they are asked again only once the page load ends; and an answer home gave earlier (a walk's frame not taken, bytes that don't read) stays shown on a visit home isn't reached.",
+  "options": [
+    "streamedQuery, answers placed by index over the last visit's",
+    "streamedQuery with refetchMode reset, which blanks the frames on each visit",
+    "streamedQuery with refetchMode replace, which shows nothing new until the whole clip is read",
+    "a runtime of our own over ports, as lib/call-videos has"
+  ],
+  "gray": "#2895 suggested a runtime over ports like lib/call-videos. TanStack's streamedQuery already streams an async iterable into the query's data, so no runtime of ours holds anything the query doesn't, but it is exported as experimental. Reset would make a visit's frames vanish and come back, against a screen holding still while it is used (HS1); replace would undo the item on every visit after the first.",
+  "undo": "Make readClipFrames collect clipFrames again and drop streamedQuery from home.ts; settled stays.",
+  "refs": ["#2895", "#3364"]
+}
