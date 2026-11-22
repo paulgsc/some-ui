@@ -42,6 +42,9 @@ describe("what deleting the account says", () => {
       "Voice notes, recordings from a game included",
       "What the phone noted beside a soundbite or a LeetType answer",
       "Rust Rounds' rounds",
+      "Rust Rounds' essay videos",
+      "Interview weeks' essay videos",
+      "Cards essays withdrawn for your takes",
       "How each recording ended",
       "Each week's engagement report",
       "Studio's time log",
@@ -53,8 +56,18 @@ describe("what deleting the account says", () => {
       "In Drive",
       "In the mailbox",
       "Rust Rounds' programs",
+      "Cards essays",
       "Logs and backups",
     ])
+  })
+
+  it("says the note of each cards essay withdrawn for a deleted or let-go take goes, and the cards and a made video stay (server#1055, #1064)", () => {
+    expect(textOf(goes, "Cards essays withdrawn for your takes")).toMatch(
+      /was deleted or let go/
+    )
+    expect(textOf(stays, "Cards essays")).toMatch(
+      /already made from one stays as it is/
+    )
   })
 
   it("says the mailbox's files go, archived ones too, and what stays in the mailbox", () => {

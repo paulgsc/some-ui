@@ -1,0 +1,14 @@
+{
+  "id": "C1025",
+  "made": "2026-11-21",
+  "by": "owner",
+  "paths": ["CLAUDE.md"],
+  "chose": "YouTube stays by hand: the owner uploads every video and sets every thumbnail in YouTube Studio; home makes and keeps the files for download, and nothing calls YouTube's API.",
+  "options": [
+    "every upload and thumbnail by hand, from files home keeps",
+    "upload or set thumbnails through YouTube's Data API"
+  ],
+  "gray": "Deterministic thumbnails (EPISODES3) made an API upload look like the next step; the owner ruled it out for good: \"we are never really going to seek automated YouTube video, like uploading YouTube, uploading thumbnails. That will always be in manual.\"",
+  "undo": "Only the owner can move this call.",
+  "refs": ["#3361"]
+}

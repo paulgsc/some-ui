@@ -171,7 +171,7 @@ export function openRecord<T>(
 }
 
 /** A whole reading of what `parse` reads, for `openSalvaged`. */
-export function readWhole<T>(
+function readWhole<T>(
   parse: (raw: string) => T | null
 ): (raw: string) => Salvaged<T> | null {
   return (raw) => {
@@ -180,7 +180,24 @@ export function readWhole<T>(
   }
 }
 
-/** `readWhole` over `jsonOf`: `parse` gets the stored value as JSON (`undefined` when it is not JSON). */
+/**
+ * `read` over the text's JSON, for a reader that salvages part of a value
+ * (`salvageList`, `salvageEntries`, or its own): text that is not JSON is
+ * not readable, so `read` never sees `undefined`.
+ */
+export function onJson<T>(
+  read: (value: unknown) => Salvaged<T> | null
+): (raw: string) => Salvaged<T> | null {
+  return (raw) => {
+    const value = jsonOf(raw)
+    return value === undefined ? null : read(value)
+  }
+}
+
+/**
+ * `readWhole` over `jsonOf`: `parse` gets the stored value as JSON
+ * (`undefined` when it is not JSON, unlike `onJson`, which refuses it).
+ */
 export function readJson<T>(
   parse: (value: unknown) => T | null
 ): (raw: string) => Salvaged<T> | null {
@@ -188,14 +205,14 @@ export function readJson<T>(
 }
 
 /**
- * Reads a JSON array entry by entry: the entries `isItem` accepts, `whole`
- * when it accepted all of them; null for a value that is not a JSON array.
+ * Reads an array entry by entry: the entries `isItem` accepts, `whole` when
+ * it accepted all of them; null for a value that is not an array. Over text,
+ * `onJson(salvageList(isItem))`.
  */
 export function salvageList<T>(
   isItem: (value: unknown) => value is T
-): (raw: string) => Salvaged<Array<T>> | null {
-  return (raw) => {
-    const value = jsonOf(raw)
+): (value: unknown) => Salvaged<Array<T>> | null {
+  return (value) => {
     if (!Array.isArray(value)) return null
     const items = value.filter(isItem)
     return { value: items, whole: items.length === value.length }
@@ -203,15 +220,14 @@ export function salvageList<T>(
 }
 
 /**
- * Reads a JSON object entry by entry: the entries `read` accepts (null
- * rejects one), `whole` when it accepted all of them; null for a value that
- * is not a JSON object.
+ * Reads an object entry by entry: the entries `read` accepts (null rejects
+ * one), `whole` when it accepted all of them; null for a value that is not
+ * an object. Over text, `onJson(salvageEntries(read))`.
  */
 export function salvageEntries<T>(
   read: (value: unknown) => T | null
-): (raw: string) => Salvaged<Record<string, T>> | null {
-  return (raw) => {
-    const value = jsonOf(raw)
+): (value: unknown) => Salvaged<Record<string, T>> | null {
+  return (value) => {
     if (!isRecord(value)) return null
     const entries = Object.entries(value)
     // Built from entries, never by assignment, so no key reaches a prototype.

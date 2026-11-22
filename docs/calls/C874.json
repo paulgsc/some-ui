@@ -1,0 +1,18 @@
+{
+  "id": "C874",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:crates/scenario_engine/src/rules.rs",
+    "server:crates/scenario_engine/README.md"
+  ],
+  "chose": "Each scenario's default unit: a decision (4th down, the try, the two-minute drill) is the coaching of the team deciding; halftime is the coaching of the side wanted, or no one team's; a kick is the kicking team's special teams, and a return the returners'; a score is the scorer's; anything else is the side wanted's offense when it had the ball and its defense when the other team did. A play that just happened names its own unit, which wins over the list's. The always-offered tier holds two scenarios: the stakes and the pattern. This is W16's reading of the owner's outline, for the owner to confirm (#3362).",
+  "options": [
+    "The rules above, with the stakes and the pattern always offered (chosen).",
+    "A default by the ball alone (offense with the ball, defense without), with no coaching or special-teams defaults: simpler, but a 4th-down call is the coaches' decision.",
+    "No always tier: only what is on offer now, then the rest."
+  ],
+  "gray": "The owner's outline for #3049 names the units and an always tier, but not each moment's default or the tier's members. Both are how the owner watches a game.",
+  "undo": "Change default_unit or ALWAYS in the scenario engine's rules and bump ENGINE_VERSION; bites already kept keep the unit the phone sent.",
+  "refs": ["#3049", "#2074", "#3362", "server#1083"]
+}

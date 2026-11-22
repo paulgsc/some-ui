@@ -10,6 +10,7 @@
 import type { Kept } from "@some-ui/core-utils"
 import {
   localStorageOrNull,
+  onJson,
   openKept,
   salvageList,
   writeKept,
@@ -35,7 +36,7 @@ export function boundedList<T>(
   /** Rewrites each item in place, keeping the order. Says whether it stored. */
   update: (change: (item: T) => T) => boolean
 } {
-  const items = salvageList(isItem)
+  const items = onJson(salvageList(isItem))
   // Looked up on each call: the viewer's in-memory copy
   // (`lib/demo/viewer-storage`) or a test's may replace it.
   const open = (): Kept<Array<T>> =>
@@ -70,7 +71,7 @@ export function appendList<T>(
   read: () => Array<T>
   append: (item: T) => Appended
 } {
-  const items = salvageList(isItem)
+  const items = onJson(salvageList(isItem))
   const open = (): Kept<Array<T>> =>
     openKept(localStorageOrNull(), key, items, [])
   return {

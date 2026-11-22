@@ -130,21 +130,32 @@ As the coordinator ruled for the owner (2026-11-17), the pickup rides
 home's mailbox pass rather than a schedule of its own (home-compute
 invariant 6). Each pass:
 
-1. asks GitHub for successful `Snips Capture` runs newer than a cursor. This
-   is one cheap list call, and the number of bundles taken per pass is
-   bounded.
-2. downloads the `snips-bundle-<commit>` artifact, then checks the schema and
-   `SHA256SUMS`. A mismatch refuses the whole bundle.
-3. fetches the bundle an essay names, hands its pictures to the render, and
-   keeps only the owner's own marks and which snip each essay used. Nothing
-   CI can make again is kept twice: home keeps no picture library, and
-   drops its copies once the video is made (owner, 2026-11-21).
+1. looks up, per commit, the newest successful `Snips Capture` run of each
+   commit an essay waiting on home names. It looks up at most five commits a
+   pass (commits never looked at first, commits marked gone last) and
+   downloads at most one bundle. A run of a commit no essay names is never
+   fetched.
+2. downloads that run's `snips-bundle-<commit>` artifact, then checks the
+   schema and `SHA256SUMS`. A mismatch refuses the whole bundle.
+3. hands the pictures the essay names to the render, and keeps only the
+   owner's own marks and which snip each essay used. Nothing CI can make
+   again is kept twice: home keeps no picture library, and drops its copies
+   once the video is made (owner, 2026-11-21).
 4. puts the bundle's `manifest.json`, its records and never an image, in the
    mailbox's `snips` folder as `snips-<commit>-<run>.json`, without its
    whitespace (`apps/mailbox/README.md`, C946), so the routine can name a
    snip by its id and commit. The same run fetched again adds nothing, and a
    second capture of a commit has a list of its own. The mailbox
    never archives a list: the commit's capture makes it again.
+
+**When a bundle can't be had** (C875). A bundle lives one day. When a
+commit has no successful run, its newest run's artifact has expired, or its
+bundle was refused, home marks the commit gone and refuses the essay
+(`snip-gone`). Studio › Renders then asks the owner to re-run that capture
+(a newer attempt of the same run clears the mark) or to run one for the
+commit the essay names, which Snips Capture takes by branch or tag. Home never starts a run itself: its token can only read. A
+failure that may clear on its own (a timeout, home's drive) is only asked
+again next pass. Home's side of this is paulgsc/server's `docs/snips.md`.
 
 The token is `SNIPS_GITHUB_TOKEN`, a fine-grained token with Actions: read
 on paulgsc/some-ui only, in home's encrypted settings. Making it is the

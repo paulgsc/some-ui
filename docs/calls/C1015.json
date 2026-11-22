@@ -1,0 +1,17 @@
+{
+  "id": "C1015",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:crates/db/voice/src/transcript.rs",
+    "server:docs/shared-stages.md"
+  ],
+  "chose": "In waiting_first the wanted term comes after tried: the excused note, then fewest attempts, then notes something waits on with the most waited-on first, then oldest. Among notes tried as often, the most-wanted is the serialized blocker and goes first.",
+  "options": [
+    "wanted after tried, so TR1 holds whole",
+    "wanted before tried, so a wanted note that keeps failing goes first on every retry"
+  ],
+  "gray": "TR1 (C895) says a note that keeps failing never holds the queue; wanted ahead of tried would break it for every wanted note, so an essay's take that keeps running to its deadline waits behind fresher notes on its retries.",
+  "undo": "Move the wanted term ahead of tried in waiting_first, which first needs TR1 amended.",
+  "refs": ["server#1091", "server#1087"]
+}

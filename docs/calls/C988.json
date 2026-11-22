@@ -1,0 +1,18 @@
+{
+  "id": "C988",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "some-ui:apps/www/src/lib/jobs/pull.ts",
+    "some-ui:apps/www/src/lib/home-link/jobs.ts"
+  ],
+  "chose": "A pull on a Jobs screen reads this morning's picks and home's record of the runs itself, as the person's own read of home (two GETs at the person's turn on the pace, beside the drain), as Studio's screens read theirs, instead of waiting on the jobs lane's run in the drain; the lane's run still goes on the pull, for what waits to be sent, and reads the same two again.",
+  "options": [
+    "the Jobs pull reads the picks itself, as Studio's screens do",
+    "keep waiting on the jobs lane's run, and only change the words (#3140's first option)",
+    "move the jobs lane ahead of the other lanes in the pull"
+  ],
+  "gray": "It costs two more requests to home on every pull while a Jobs screen shows, which HERD weighs against home's limit, and it changes what the Jobs pull's 'Couldn't check' means: the picks could not be read, rather than the whole Jobs record not getting in step.",
+  "undo": "Restore lib/jobs/pull.ts to wait on the jobs lane's end in the pull of home (pulledLane and HomeRefresher.ended, removed in the same change) and drop askJobsPicks.",
+  "refs": ["#3100", "#3140", "#3135"]
+}

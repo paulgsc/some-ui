@@ -1,0 +1,29 @@
+# zizmor's configuration for `pnpm check:workflow-security`
+# (scripts/check-workflow-security.sh, promise WS2). CI fails on any finding
+# of high severity; medium and below are reported by a local run only.
+# Every suppression below says why the finding cannot be exploited here. A
+# new one needs the same: a reason, not a count (#2116).
+rules:
+  # Every `uses:` names a commit, with its release as a trailing comment
+  # (`actions/checkout@<sha> # v7.0.1`); a tag or branch fails (C953).
+  # Dependabot moves the hash and the comment together.
+  unpinned-uses:
+    config:
+      policies:
+        "*": hash-pin
+  dangerous-triggers:
+    ignore:
+      # workflow_run: it runs the default branch's own workflow and
+      # scripts (a sparse checkout of scripts/retention.ts, its rules and
+      # .nvmrc), downloads nothing the triggering run made, and reads only
+      # `github.event.workflow_run.conclusion`. Its `pull_request` trigger
+      # does run a pull request's own scripts/retention.ts under
+      # `actions: write`, but only for a branch of this repository, whose
+      # author can already push workflows: a fork's token is read-only.
+      - retention.yml
+      # issue_comment: RS1 (CLAUDE.md, "Cross-repo coupling") holds what this
+      # workflow may do: no checkout and no `uses:`, it reads the comment's
+      # PR, reacts, and dispatches paulgsc/server's routes.yml, under
+      # `issues: write` and `pull-requests: read` only. Suppressed here, not
+      # in the file, because any non-comment edit there needs an RS1 re-check.
+      - server-route-snapshot.yml

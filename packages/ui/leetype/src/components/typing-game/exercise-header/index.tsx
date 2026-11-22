@@ -1,5 +1,5 @@
 import type { FC } from "react"
-import { cn } from "@some-ui/core-utils"
+import { cn, formatTimecode } from "@some-ui/core-utils"
 
 type ExerciseHeaderProps = {
   title: string
@@ -9,12 +9,6 @@ type ExerciseHeaderProps = {
   wpm: number
   accuracy: number
   className?: string
-}
-
-function formatTime(seconds: number): string {
-  const minutes = Math.floor(seconds / 60)
-  const rest = Math.floor(seconds % 60)
-  return `${minutes}:${rest.toString().padStart(2, "0")}`
 }
 
 /**
@@ -51,7 +45,7 @@ export const ExerciseHeader: FC<ExerciseHeaderProps> = ({
       <span>
         <span className="text-card-foreground">{accuracy.toFixed(0)}</span>%
       </span>
-      <span>{formatTime(elapsedTime)}</span>
+      <span>{formatTimecode(elapsedTime * 1000)}</span>
     </div>
   </div>
 )

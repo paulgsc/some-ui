@@ -1,6 +1,7 @@
 import { readAs } from "@core-utils/lib/home-exchange"
 import type { KeyedStorage } from "@core-utils/lib/storage"
 import {
+  onJson,
   openKept,
   openRecord,
   readJson,
@@ -85,7 +86,7 @@ describe("writeRecord", () => {
 })
 
 const isNumber = (value: unknown): value is number => typeof value === "number"
-const numbers = salvageList(isNumber)
+const numbers = onJson(salvageList(isNumber))
 
 describe("openKept", () => {
   it("keeps the entries it can read, once the whole value is copied aside", () => {
@@ -135,11 +136,21 @@ describe("writeKept", () => {
 
 describe("salvageEntries", () => {
   it("reads a map entry by entry, and nothing else", () => {
-    const read = salvageEntries((value) => (isNumber(value) ? value : null))
+    const read = onJson(
+      salvageEntries((value) => (isNumber(value) ? value : null))
+    )
     expect(read('{"a":1,"b":"x"}')).toEqual({ value: { a: 1 }, whole: false })
     expect(read('{"a":1}')).toEqual({ value: { a: 1 }, whole: true })
     expect(read("[1]")).toBeNull()
     expect(read("{torn")).toBeNull()
+  })
+})
+
+describe("onJson", () => {
+  it("never hands a reader the undefined that text that is not JSON parses to", () => {
+    const read = onJson(() => ({ value: 1, whole: true }))
+    expect(read("not json")).toBeNull()
+    expect(read("null")).toEqual({ value: 1, whole: true })
   })
 })
 

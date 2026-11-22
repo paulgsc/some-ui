@@ -30,6 +30,7 @@ import {
   fnv1a,
   isRecord,
   jsonOf,
+  onJson,
   openKept,
   sha256Hex,
   writeKept,
@@ -114,8 +115,7 @@ function stringsOf(value: unknown): Salvaged<Record<string, string>> {
  * aside, and so is one with a map or entry it could not read, before
  * anything is written over it.
  */
-function readSentRecord(raw: string): Salvaged<Sent> | null {
-  const parsed = jsonOf(raw)
+const readSentRecord = onJson((parsed): Salvaged<Sent> | null => {
   if (!isRecord(parsed) || typeof parsed.pairing !== "string") return null
   const sessions = stringsOf(parsed.sessions)
   const shelf = stringsOf(parsed.shelf)
@@ -184,7 +184,7 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
       events,
     ].every((kind) => kind.whole),
   }
-}
+})
 
 /**
  * What this phone knows home holds under `pairing` (#3152): its record for
