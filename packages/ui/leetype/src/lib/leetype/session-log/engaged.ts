@@ -128,7 +128,7 @@ export function engagedOf(
           kind: "left",
           startedAt: started.at,
           place: inReading ? "reading" : "round",
-          // The session's screen was left for one this log can't name (#3367).
+          // The session's screen was left for one this log can't name.
           next: ELSEWHERE,
         },
       ]

@@ -87,8 +87,8 @@ function isModuleOpens(m: unknown): m is ModuleOpens {
 export const MODULE_OPENS_SCHEMA = "some-ui.friction/3"
 
 /**
- * Every version whose modules read alike: /3 added only places' finished and
- * left part-way (#3367), so a render's `friction.json` kept under /2 reads.
+ * The versions whose `modules` read alike, so a render's `friction.json`
+ * kept under /2 reads.
  */
 const MODULE_OPENS_READS: ReadonlyArray<unknown> = [
   "some-ui.friction/2",

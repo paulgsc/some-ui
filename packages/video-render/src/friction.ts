@@ -20,16 +20,10 @@
  * when it is left, so the app going to the back splits a step in two;
  * `movedOn` counts the stretches followed at once by a step on (or back, or
  * to the next item), and at an affordance's last place it is `no-data`.
- * Since #3367 (the owner's answer: yes) a `left` says the screen it went
- * to (`next`), so for an affordance the registry calls a flow, a stretch
- * that went to a screen outside it is `finished` at a place the flow
- * finishes at and `leftPartWay` at one it is left part-way at; any other
- * place says neither. They are said only over a window that starts after a
- * `left` with a `next` on the affordance's surface (home's `nextsBefore`),
- * so an older build's
- * stretches are never missed from a count that reads as whole (a phone kept
- * on an older build after another moved on is the tolerance); until then
- * they are `no-data` and the walkthrough keeps saying moved on.
+ * `finished` and `leftPartWay`, at a flow's places, are the stretches that
+ * went to a screen outside the affordance; `no-data` unless home's
+ * `nextsBefore` names the affordance's surface, so a build before `next`
+ * never leaves a count short that reads as whole (C1069).
  */
 
 import { addDays, isoWeekMonday } from "@some-ui/core-utils"
@@ -86,9 +80,9 @@ export const FrictionSchema = z.strictObject({
       stretchesLeft: CountSchema,
       /** Of those, the ones followed at once by a step on; `no-data` at the last place. */
       movedOn: CountSchema,
-      /** At a place its flow finishes at, the stretches on it that ended by going to a screen outside the affordance (a pick's ending: a done pick, opened again and closed, counts too); `no-data` at any other place, or before every build said where it went. */
+      /** At a place its flow ends at, the stretches on it that went to a screen outside the affordance (a done pick opened again and closed counts too); `no-data` at any other place, or before every build said where it went. */
       finished: CountSchema,
-      /** At a place its flow is left part-way at, the same: stretches that left the affordance from this step (one looked at again on a done pick counts too); `no-data` at any other place, or before every build said where it went. */
+      /** The same, at a place its flow is left part-way at. */
       leftPartWay: CountSchema,
       /** A stretch's median time on it, in ms; null under 5 stretches. */
       medianMs: z.int().min(0).nullable(),
@@ -163,18 +157,21 @@ export type FrictionRegistry = ReadonlyArray<{
  * A `whole` that is not a number leaves each part as it is: none can be
  * more than it.
  */
-function beside(
-  whole: PublicCount,
-  parts: ReadonlyArray<PublicCount>
-): ReadonlyArray<PublicCount> {
+type Three = readonly [PublicCount, PublicCount, PublicCount]
+
+function beside(whole: PublicCount, [a, b, c]: Three): Three {
   let left = typeof whole === "number" ? whole : null
-  return parts.map((part) => {
+  const said = (part: PublicCount): PublicCount => {
     if (left === null || part === "no-data") return part
     const most = typeof part === "number" ? part : UNDER - 1
     if (left - most < UNDER) return "no-data"
     left -= most
     return part
-  })
+  }
+  // In order: each call keeps what the one before it left.
+  const first = said(a)
+  const second = said(b)
+  return [first, second, said(c)]
 }
 
 /** Whole days from `from` to `to`, two owner's days. */
@@ -287,6 +284,7 @@ export function frictionOf(
         const wasSeen =
           measures.measuredDays > 0 &&
           seen.has(keyOf(pipeline.id, a.id, a.surface))
+        const inside = new Set(own.map((p) => p.id))
         return own.map((place, i): Friction["places"][number] => {
           const row = places.get(keyOf(pipeline.id, a.id, a.surface, place.id))
           const isLast = i === own.length - 1
@@ -294,23 +292,13 @@ export function frictionOf(
             measures.partial || !wasSeen ? noData : publicCount(n)
           const left = counts(row?.left ?? 0)
           const moved = isLast ? noData : counts(row?.movedOn ?? 0)
-          // Only over a window that starts after a `left` said where it went
-          // (#3367): before that, a build sent none, so a count of where
-          // stretches went would miss some and still read as whole.
-          // Per surface: the web build ships before the phone's.
           const whole = measures.nextsBefore?.includes(a.surface) === true
-          // A screen outside the affordance is never one of its own places
-          // (`elsewhere` included: no place has that id).
-          const inside = new Set(own.map((p) => p.id))
           const out = (row?.nexts ?? [])
             .filter((n) => !inside.has(n.next))
             .reduce((sum, n) => sum + n.left, 0)
           const went = whole ? counts(out) : noData
           const finished = a.flow?.finishedAt.includes(place.id) ? went : noData
           const partWay = a.flow?.partWayAt.includes(place.id) ? went : noData
-          // Said beside the stretches, counts of some of them would give
-          // away the rest, under 5 (ask #2701): what all the said counts
-          // leave over must be 5 or more, so the newer ones go first.
           const [shownMoved, shownFinished, shownPartWay] = beside(left, [
             moved,
             finished,
@@ -321,9 +309,9 @@ export function frictionOf(
             affordance: a.id,
             place: place.id,
             stretchesLeft: left,
-            movedOn: shownMoved ?? noData,
-            finished: shownFinished ?? noData,
-            leftPartWay: shownPartWay ?? noData,
+            movedOn: shownMoved,
+            finished: shownFinished,
+            leftPartWay: shownPartWay,
             medianMs: typeof left === "number" ? (row?.medianMs ?? null) : null,
           }
         })

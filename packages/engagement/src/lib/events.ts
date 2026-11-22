@@ -12,12 +12,8 @@
  *   it. How the visit ended is one of `VISIT_ENDINGS`, so no pipeline has to
  *   guess.
  * - `left`: it was started and stopped: where (one of the affordance's own
- *   places), after how long (`at` less `startedAt`), and, when the app
- *   knows it, the screen it went to (`next`, the owner's answer to #3367).
- *   That is another of the affordance's places, `<affordance>.<place>` of
- *   its pipeline when the screen closed into one, or `elsewhere` when it
- *   closed into anything else; it is left out only when the app went to the
- *   back (and by builds before it).
+ *   places), after how long (`at` less `startedAt`), and the screen it went
+ *   to (`next`).
  * - `said`: a friction answer the owner gave, one of the affordance's own
  *   answers.
  *

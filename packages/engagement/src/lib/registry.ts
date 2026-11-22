@@ -26,6 +26,7 @@
  * engagement.test.ts`'s, since only www has the route tree.
  */
 import type { EventKind, Surface } from "@engagement/lib/events"
+import { ELSEWHERE } from "@engagement/lib/events"
 
 /** The wings of `apps/www/src/lib/wings` that hold a pipeline. */
 export type WingId = "practice" | "self" | "studio" | "jobs" | "operate"
@@ -68,11 +69,9 @@ export type Affordance = {
   /** Where a `left` can say it stopped. */
   readonly places?: ReadonlyArray<Choice>
   /**
-   * For an affordance that is a flow (a pick's steps), what leaving one of
-   * its places for another screen means (#3367): it finished there
-   * (`finishedAt`), or it was left part-way (`partWayAt`). A place in
-   * neither says neither (a pick's `decide`, where passing on it ends the
-   * flow and leaving it doesn't): a walkthrough says only what these name.
+   * For an affordance that is a flow, what leaving one of its places for
+   * another screen means: it ended there (`finishedAt`), or was left
+   * part-way (`partWayAt`). A place in neither says neither.
    */
   readonly flow?: {
     readonly finishedAt: ReadonlyArray<string>
@@ -227,8 +226,10 @@ function affordanceProblems(here: string, a: Affordance): Array<string> {
       ids.add(choice.id)
     }
   }
-  if (places.some((p) => p.id === "elsewhere"))
-    problems.push(`${here}: no place is elsewhere, which a left's next keeps`)
+  if (places.some((p) => p.id === ELSEWHERE))
+    problems.push(
+      `${here}: no place is ${ELSEWHERE}, which a left's next keeps`
+    )
   if (a.flow !== undefined) {
     const named = [...a.flow.finishedAt, ...a.flow.partWayAt]
     if (named.length === 0) problems.push(`${here}: a flow names a place`)

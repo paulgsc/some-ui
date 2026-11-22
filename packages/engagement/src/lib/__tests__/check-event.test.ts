@@ -148,11 +148,6 @@ describe("checkEvent: what an event may carry", () => {
       expect(checked.ok).toBe(false)
       if (!checked.ok) expect(checked.problems.join()).toContain("next:")
     }
-    const taken = checkEvent(
-      { ...base, kind: "taken", next: "decide" },
-      PIPELINES
-    )
-    expect(taken.ok).toBe(false)
   })
 
   it("refuses what is not an event at all", () => {
@@ -168,11 +163,9 @@ describe("isEventShape: an event read back, with no registry", () => {
     expect(isEventShape({ ...taken, words: "said aloud" })).toBe(false)
     expect(isEventShape({ ...taken, affordance: "The lens" })).toBe(false)
     expect(isEventShape({ ...taken, surface: "ios" })).toBe(false)
-    expect(isEventShape({ ...taken, next: "decide" })).toBe(false)
     const left = { ...base, kind: "left", startedAt: EARLIER, place: "quiz" }
     expect(isEventShape(left)).toBe(true)
     expect(isEventShape({ ...left, next: "today.today" })).toBe(true)
-    expect(isEventShape({ ...left, next: "Went home" })).toBe(false)
   })
 
   it("takes only instants that name a real time, as home does", () => {

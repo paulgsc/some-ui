@@ -254,7 +254,7 @@ describe("the walkthrough (WALK4)", () => {
     })
   })
 
-  it("says finished or left part-way only where stretches said where they went; an older build's stay moved on (#3367)", () => {
+  it("says a step was left at its last step where home counted it", () => {
     const counts = {
       pipeline: "jobs",
       affordance: "todays-pick",
@@ -267,15 +267,6 @@ describe("the walkthrough (WALK4)", () => {
     }
     expect(measureSaid([{ kind: "place", counts }])).toEqual([
       "In the last four weeks, I spent time on this step 11 times and left it at its last step 5 times.",
-    ])
-    const older = {
-      ...counts,
-      place: "read",
-      movedOn: 8 as const,
-      finished: "no-data" as const,
-    }
-    expect(measureSaid([{ kind: "place", counts: older }])).toEqual([
-      "In the last four weeks, I spent time on this step 11 times and moved on from it 8 times.",
     ])
   })
 

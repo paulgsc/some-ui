@@ -15,17 +15,9 @@
  *   events and what is open after.
  * - **Runtime.** `createPlaces` holds what is open, and `watchPlaces` closes
  *   it while the page is hidden and opens it again when it is shown.
- * - **Where it went (`next`, the owner's answer to #3367).** A move to
- *   another of the affordance's places names it (`decide`). A screen closing
- *   names the place that comes on screen next, in the same turn of the event
- *   loop, with its affordance (`today.today`), when the screen holds the
- *   shared `SCREEN_HANDOFF` (www's screens do): the next screen mounts as the
- *   last unmounts. A registry id has no dot, so a `next` with one is always
- *   another screen's. A screen closing to anything else (another pipeline, a
- *   screen that names no place, one still loading, or a runtime with no
- *   shared hand-off) says `elsewhere`. Only the app going to the back leaves
- *   `next` out, so a `left` without one is a stretch split by putting the
- *   app away, or an older build's.
+ * - **Where it went (`next`).** A move to another place names it; a screen
+ *   closing hands its `left` to the shared `SCREEN_HANDOFF`, which names the
+ *   place that comes on in the same turn, or sends `elsewhere`.
  * - **A place's `taken` is the place coming on screen.** On an affordance a
  *   visit also takes (a pick opened from Jobs' Today), the visit's take and
  *   each place's are both `taken`: a read of takes per offer counts the
@@ -172,8 +164,6 @@ export function createPlaces<P extends string>(
     const next = stepPlace(of, open, now, clock().toISOString())
     open = next.open
     for (const event of next.events) {
-      // The screen closed (not the app put away): where it went is the
-      // next place to come on, if one does this turn.
       if (event.kind === "left" && now === null && !away)
         handoff.hold(event, send)
       else {

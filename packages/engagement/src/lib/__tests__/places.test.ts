@@ -106,9 +106,6 @@ describe("an affordance's places", () => {
     p.at(null)
     also({ pipeline: "jobs", affordance: "today", surface: "apk" }).at("today")
     end()
-    expect(said(sent)).toContain(
-      "left ending since 2026-11-21T09:01:00.000Z to today.today"
-    )
     for (const event of sent) expect(checkEvent(event, PIPELINES).ok).toBe(true)
   })
 

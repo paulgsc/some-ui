@@ -11,7 +11,7 @@ const PICK_STEPS: ReadonlyArray<Choice> = [
 ]
 
 /**
- * A pick's steps as a flow (#3367): leaving its ending for another screen
+ * A pick's steps as a flow: leaving its ending for another screen
  * is finishing it; leaving read, résumé or apply is leaving it part-way.
  * Decide is neither: passing on a pick ends it there, and the record, not
  * the event, says which happened.

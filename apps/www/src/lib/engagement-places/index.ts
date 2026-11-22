@@ -14,7 +14,6 @@ export function usePlace(of: PlaceOf, place: string | null): void {
   const { pipeline, affordance, surface } = of
   // A new runtime per affordance: what is open is the affordance's own.
   const places = useMemo(
-    // The shared hand-off: a screen closing names the place that comes on next.
     () =>
       createPlaces(
         { pipeline, affordance, surface },

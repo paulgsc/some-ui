@@ -40,6 +40,12 @@ function isStamp(value: unknown): value is string {
   )
 }
 
+/** Every field `kind` may carry: its own and its extras. */
+const allowedOf = (kind: EventKind): ReadonlyArray<string> => [
+  ...EVENT_FIELDS[kind],
+  ...EVENT_EXTRAS[kind],
+]
+
 function isKind(value: unknown): value is EventKind {
   return EVENT_KINDS.some((kind) => kind === value)
 }
@@ -58,9 +64,9 @@ export function checkEvent(
 
   const problems: Array<string> = []
   const fields: ReadonlyArray<string> = EVENT_FIELDS[kind]
-  const extras: ReadonlyArray<string> = EVENT_EXTRAS[kind]
+  const allowed = allowedOf(kind)
   for (const key of Object.keys(record))
-    if (!fields.includes(key) && !extras.includes(key))
+    if (!allowed.includes(key))
       problems.push(`${key}: ${kind} carries no such field`)
   for (const key of fields)
     if (!(key in record)) problems.push(`${key}: ${kind} carries it`)
@@ -213,11 +219,11 @@ export function isEventShape(value: unknown): value is EngagementEvent {
   const kind = record["kind"]
   if (!isKind(kind)) return false
   const fields: ReadonlyArray<string> = EVENT_FIELDS[kind]
-  const extras: ReadonlyArray<string> = EVENT_EXTRAS[kind]
+  const allowed = allowedOf(kind)
   const keys = Object.keys(record)
   if (
     !fields.every((k) => keys.includes(k)) ||
-    !keys.every((k) => fields.includes(k) || extras.includes(k))
+    !keys.every((k) => allowed.includes(k))
   )
     return false
   return keys.every((key) => {
