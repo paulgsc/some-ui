@@ -27,13 +27,9 @@ import {
   overLength,
   previewOf,
   QUIET,
-  SPEAKER_DEADLINE_MS,
-  speakerChunks,
-  speakScene,
   spreadWords,
   stillFile,
   thumbnailInput,
-  TimedWordSchema,
   UploadCopySchema,
 } from "@some-ui/video-render"
 import type {
@@ -41,21 +37,21 @@ import type {
   CutList,
   Ports,
   RenderPolicy,
-  SpeakerTake,
   StillTake,
   TakeFiles,
   ThumbnailFacts,
 } from "@some-ui/video-render"
 import {
-  keyOf,
+  hit,
   nodePorts,
   placeBrandFiles,
   readSeries,
-  stepCache,
+  speakerOf,
+  STEPS,
+  TimedSchema,
+  warn,
 } from "@some-ui/video-render/node"
-import type { StepCache } from "@some-ui/video-render/node"
 import { serve } from "@tests/ui-fit/harness"
-import { z } from "zod"
 
 import { openRecorder, renderWithBurnIns } from "./burn-ins"
 import { fail, here } from "./command"
@@ -94,144 +90,6 @@ async function ownTake({
           JSON.parse(await readFile(own.words, "utf8"))
         )
   return { ms, words, owner: true }
-}
-
-/** A take and each word said in it, as the speaker's `/timed` gives them. */
-const TimedSchema = z.object({
-  audio: z.string().min(1),
-  words: z.array(TimedWordSchema),
-})
-
-/**
- * One part of a scene said in `voice` by home's Kokoro speaker at `speaker`,
- * as a WAV: the same bytes for the same words and voice. With `timed`, each
- * word's place in it too (`/timed`), for the captions. Gives up when
- * `signal` aborts (`speakScene`'s deadline).
- */
-async function said(
-  speaker: string,
-  text: string,
-  voice: string,
-  timed: boolean,
-  signal: AbortSignal
-): Promise<SpeakerTake> {
-  const response = await fetch(new URL(timed ? "/timed" : "/say", speaker), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, voice }),
-    signal,
-  })
-  if (!response.ok)
-    throw new Error(
-      `it answered ${String(response.status)}: ${await response.text()}`
-    )
-  if (!timed)
-    return { wav: new Uint8Array(await response.arrayBuffer()), words: null }
-  const parsed = TimedSchema.safeParse(await response.json())
-  if (!parsed.success) throw new Error("it gave no words with its take")
-  return {
-    wav: new Uint8Array(Buffer.from(parsed.data.audio, "base64")),
-    words: parsed.data.words,
-  }
-}
-
-/** The speaker's model, by its SHA-256: part of every take's key. */
-async function speakerModel(speaker: string): Promise<string> {
-  const response = await fetch(new URL("/health", speaker), {
-    signal: AbortSignal.timeout(SPEAKER_DEADLINE_MS),
-  }).catch((e: unknown) =>
-    fail([
-      `The speaker at ${speaker} couldn't be reached: ${e instanceof Error ? e.message : String(e)}`,
-    ])
-  )
-  if (!response.ok)
-    fail([`The speaker at ${speaker} answered ${String(response.status)}`])
-  const health: unknown = await response.json()
-  if (
-    typeof health !== "object" ||
-    health === null ||
-    !("model" in health) ||
-    typeof health.model !== "string"
-  )
-    fail([`The speaker at ${speaker} named no model`])
-  return health.model
-}
-
-/** A cache warning, on its own line so the render worker can find it. */
-const warn = (line: string): void => {
-  process.stderr.write(`cache warning: ${line}\n`)
-}
-
-/**
- * A step answered from the step cache, by the file it wrote: a resumed
- * render's log shows each step it did not redo (paulgsc/server#739). Home's
- * render worker keeps it in the log and counts only `scenes`, `recorded` and
- * `assembling`, so it moves no progress.
- */
-const hit = (what: string): void => {
-  console.log(`cache hit: ${what}`)
-}
-
-/**
- * Scene `file`'s take in `root`: `<file>.wav`, and with `timed`
- * `<file>.words.json`, asked of the speaker unless `cache` holds them for
- * these words, this voice and this model.
- */
-async function takeOf({
-  speaker,
-  model,
-  voice,
-  text,
-  timed,
-  root,
-  file,
-  cache,
-  ports,
-}: {
-  readonly speaker: string
-  readonly model: string
-  readonly voice: string
-  readonly text: string
-  readonly timed: boolean
-  readonly root: string
-  readonly file: string
-  readonly cache: StepCache
-  readonly ports: Ports
-}): Promise<StillTake> {
-  const wav = join(root, `${file}.wav`)
-  const kept = join(root, `${file}.words.json`)
-  // A scene said in several parts (SPK1) is a different take from one said
-  // whole, so its parts are in its key; a scene of one part keeps its key.
-  const parts = speakerChunks(text)
-  const chunks = parts.length === 1 ? {} : { parts }
-  const key = keyOf({ take: 1, model, voice, text, ...chunks })
-  const wordsKey = keyOf({ words: 1, model, voice, text, ...chunks })
-  const cached =
-    (await cache.get(key, ".wav", wav)) &&
-    (!timed || (await cache.get(wordsKey, ".json", kept)))
-  if (cached) {
-    cache.hit(`${file}.wav`)
-  } else {
-    const spoken = await speakScene({
-      scene: file,
-      text,
-      ask: (part, signal) => said(speaker, part, voice, timed, signal),
-    })
-    if (!spoken.ok) fail([`The speaker at ${speaker}: ${spoken.problem}`])
-    const take = spoken.take
-    await writeFile(wav, take.wav)
-    await cache.put(key, ".wav", wav, `${file}.wav`)
-    if (take.words) {
-      await writeFile(kept, `${JSON.stringify(take.words)}\n`)
-      await cache.put(wordsKey, ".json", kept, `${file}.words.json`)
-    }
-  }
-  const facts = await ports.probe(`${file}.wav`)
-  if (!facts) fail([`${file}.wav can't be read`])
-  const words = timed
-    ? TimedSchema.shape.words.parse(JSON.parse(await readFile(kept, "utf8")))
-    : undefined
-  return { ms: Math.round(facts.durationMs), ...(words ? { words } : {}) }
 }
 
 /** A whole number from a flag, or `fallback` when the flag is unset. */
@@ -329,9 +187,6 @@ export function refuseLong(
   if (tooLong) fail([`${tooLong}, by its words; nothing was recorded`])
 }
 
-/** Where the cache of takes and ffmpeg steps is kept in a video's folder. */
-const STEPS = "cache/steps"
-
 /**
  * How a recorder keeps a video's steps: in its folder's `cache/steps`,
  * saying each step not kept and each answered from the cache.
@@ -405,7 +260,10 @@ export async function recordStills({
 }): Promise<ReadonlyArray<StillTake | null>> {
   await mkdir(root, { recursive: true })
   const ports = nodePorts(root)
-  const say = speaker === null ? null : await speakerOf(root, speaker, policy)
+  const say =
+    speaker === null
+      ? null
+      : await speakerOf(root, speaker, policy, nodePorts(root))
   const takes: Array<StillTake | null> = []
   const overflowing: Array<string> = []
   // Home's board says "scene k of n" (#2899): `scenes <n>` once, before the
@@ -445,84 +303,6 @@ export async function recordStills({
       "These scenes don't fit the frame, so the video would cut them off:",
       ...overflowing,
     ])
-  return takes
-}
-
-/** A line for home's speaker to say into `<file>.wav`, with its words when `timed`. */
-type Line = {
-  readonly file: string
-  readonly text: string
-  readonly voice: string
-  readonly timed: boolean
-}
-
-/**
- * Home's Kokoro speaker at `speaker`, saying lines into `root`: each take
- * asked of it once, then kept in `root`'s step cache by its model, voice and
- * words (`takeOf`), within `policy`'s cache budget.
- */
-async function speakerOf(
-  root: string,
-  speaker: string,
-  policy: RenderPolicy
-): Promise<(line: Line) => Promise<StillTake>> {
-  await mkdir(root, { recursive: true })
-  const ports = nodePorts(root)
-  const cache = { ...stepCache(join(root, STEPS), policy, warn), hit }
-  const model = await speakerModel(speaker)
-  return (line) =>
-    takeOf({
-      speaker,
-      model,
-      voice: line.voice,
-      text: line.text,
-      timed: line.timed,
-      root,
-      file: line.file,
-      cache,
-      ports,
-    })
-}
-
-/**
- * Each of `lines` said in order by home's speaker at `speaker` into `root`,
- * or none with no speaker, saying the progress home's board reads (#2899):
- * `scenes <n>` once, then `recorded <file>` per line, as `recordStills` does.
- */
-export async function sayLines({
-  root,
-  lines,
-  speaker,
-  policy,
-  announce = true,
-}: {
-  readonly root: string
-  readonly lines: ReadonlyArray<{
-    readonly file: string
-    readonly said: string
-    readonly voice: string
-  }>
-  readonly speaker: string | null
-  readonly policy: RenderPolicy
-  /** Whether it says `scenes <n>` itself, as `recordStills`' `announce`. */
-  readonly announce?: boolean
-}): Promise<Array<StillTake | null>> {
-  const say = speaker === null ? null : await speakerOf(root, speaker, policy)
-  const takes: Array<StillTake | null> = []
-  if (announce) console.log(`scenes ${String(lines.length)}`)
-  for (const line of lines) {
-    takes.push(
-      say === null
-        ? null
-        : await say({
-            file: line.file,
-            text: line.said,
-            voice: line.voice,
-            timed: true,
-          })
-    )
-    console.log(`recorded ${line.file}`)
-  }
   return takes
 }
 

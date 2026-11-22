@@ -1,0 +1,20 @@
+{
+  "id": "C1001",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/video-motion/src/walkthrough.ts",
+    "some-ui:packages/video-motion/src/walkthrough-words.ts",
+    "some-ui:apps/www/tests/walk/jobs-walkthrough.json"
+  ],
+  "chose": "What real use shows of a stop is a list of its measures, a discriminated union (a place of the registry, or Applying's debrief; more kinds join it as cases). Each is burned in on the stop's silent card and said after the stop's narration, in the owner's first person ('I spent time on this step 20 times and moved on from it 14 times; a stretch here runs about 41 seconds'). Applying's stop now says its debrief: the median of 1 to 5 from 5 ratings, else how many there are. The silent modules are said at the end of the last stop and still shown on their own card before the close; when no module's opening is measured, the card says so instead of 'every module was opened'.",
+  "options": [
+    "measures said after the stop's narration, burned in on its silent card (chosen)",
+    "measures only burned in, never said",
+    "measures said over the stop's last screen only"
+  ],
+  "gray": "The owner ruled the cards silent (C945) and the narration additive; where the honest numbers are said, and in whose voice, is taste no check settles.",
+  "undo": "Record a call that moves this one, and change measureSaid's place in voicedWalkthrough's lines.",
+  "refs": ["#3282", "#3337", "#3338"],
+  "moves": "C943"
+}

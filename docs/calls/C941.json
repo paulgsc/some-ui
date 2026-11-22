@@ -1,0 +1,14 @@
+{
+  "id": "C941",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": ["some-ui:packages/video-motion/src/walkthrough.ts"],
+  "chose": "When a screen is held longer for its line, a tap on it keeps its distance from the end of that screen, not from its start. The tap that leads into the next screen still lands 0.4 s before it, after the line has been said.",
+  "options": [
+    "keep each tap's distance from the end of its screen (chosen)",
+    "keep each tap's distance from the start of its screen, so a leading tap lands while the line is still being said and the screen changes later"
+  ],
+  "gray": "#3337 says the tap ring and click land 'at the same offsets into each screen', which reads either way. On screen, a click followed a beat later by the screen it opens reads as cause and effect. A click followed by a long pause doesn't. That's a call about what a viewer sees.",
+  "undo": "Record a call that moves this one, and in retimed() place each tap at its new screen start plus its old offset from that screen's start.",
+  "refs": ["#3282", "#3337", "#3338"]
+}

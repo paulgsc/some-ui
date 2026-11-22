@@ -1,0 +1,19 @@
+{
+  "id": "C945",
+  "made": "2026-11-21",
+  "by": "owner",
+  "paths": [
+    "some-ui:packages/video-motion/src/walkthrough.ts",
+    "some-ui:packages/video-motion/src/walkthrough-words.ts",
+    "some-ui:apps/www/tests/walk/jobs-walkthrough.json"
+  ],
+  "chose": "The owner (2026-11-21, relayed by the coordinator): a walkthrough's chapter cards stay silent, and its narration adds what the picture can't show. Verbatim: \"Yeah, I think they should be silent because we are both communicating visually, and the narration needs to basically add context that you cannot infer visually, and to just obviously make it not just a silent movie.\" And: \"Yeah, basically the narration is quasi promo, quasi mission motivation. It's not redundancy on like here's a blue screen. Like I can see it's a blue screen.\" So each stop's narration is written for that stop, part promo and part mission, plus what real use shows (friction, silence). It never reads the captions or describes the screen. This supersedes #3337's 'Kokoro reads each stop's captions' and C943's friction said over the chapter card.",
+  "options": [
+    "chapter cards silent; narration per stop, promo and mission, never the screen (chosen)",
+    "chapter cards say the chapter's name",
+    "Kokoro reads each screen's caption"
+  ],
+  "gray": "What the walkthrough says aloud is the owner's voice in a public video, and how much it repeats what's on screen is taste. No check settles it.",
+  "undo": "Record a call that moves this one, and change where each stop's spoken lines come from in walkthrough.ts and the words file.",
+  "refs": ["#3282", "#3337", "#3338"]
+}

@@ -191,6 +191,12 @@ export function parseCardsEssay(key: string, raw: unknown): Parsed<CutList> {
           `${s.id}: a spoken card is drawn by its stage, so it shows no screen of the app`
       ),
     ...shots
+      .filter((s) => s.spoken?.role === "walk")
+      .map(
+        (s) =>
+          `${s.id}: it narrates a walk's stop, which only a walkthrough plays`
+      ),
+    ...shots
       .filter((s) => s.picture.kind !== "card" && s.picture.kind !== "screen")
       .map(
         (s) =>
@@ -515,25 +521,55 @@ export const cardsChapterMarks = (
   )
 
 /**
- * Takes said one after another, `CHAPTER_GAP_MS` apart, as one: how long it
- * runs, and each word's place in it. The recorder joins their audio the
- * same way.
+ * Takes laid on one timeline, each from its start in `startsMs` (in order,
+ * none before the end of the take before it): how long it runs, and each
+ * word's place in it. The recorder lays their audio the same way, silence
+ * filling each gap.
  */
-export function joinedTake(takes: ReadonlyArray<StillTake>): StillTake {
-  let at = 0
+export function laidTake(
+  takes: ReadonlyArray<StillTake>,
+  startsMs: ReadonlyArray<number>
+): StillTake {
+  let end = 0
   const words: Array<TimedWord> = []
   for (const [i, take] of takes.entries()) {
-    if (i > 0) at += CHAPTER_GAP_MS
+    const at = startsMs[i] ?? end
+    if (at < end)
+      throw new RangeError(
+        `take ${String(i)} starts before the one before it ends`
+      )
     for (const word of take.words ?? [])
       words.push({
         ...word,
         startMs: word.startMs + at,
         endMs: word.endMs + at,
       })
-    at += take.ms
+    end = at + take.ms
   }
-  return { ms: at, ...(takes.some((t) => t.words) ? { words } : {}) }
+  return { ms: end, ...(takes.some((t) => t.words) ? { words } : {}) }
 }
+
+/** Where each of `takes` starts when each follows the one before after `gapMs`. */
+export const startsAfter = (
+  takes: ReadonlyArray<StillTake>,
+  gapMs: number
+): Array<number> => {
+  let at = 0
+  return takes.map((take, i) => {
+    if (i > 0) at += gapMs
+    const start = at
+    at += take.ms
+    return start
+  })
+}
+
+/**
+ * Takes said one after another, `CHAPTER_GAP_MS` apart, as one: how long it
+ * runs, and each word's place in it. The recorder joins their audio the
+ * same way.
+ */
+export const joinedTake = (takes: ReadonlyArray<StillTake>): StillTake =>
+  laidTake(takes, startsAfter(takes, CHAPTER_GAP_MS))
 
 /**
  * The spoken essay as the cut list the renderer draws: a scene per card

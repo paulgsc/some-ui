@@ -9,6 +9,7 @@ import {
   CHAPTER_GAP_MS,
   CLOSE_MARK,
   joinedTake,
+  laidTake,
   parseCardsEssay,
   voicedCardsCutList,
 } from "@video-render/cards-essay"
@@ -76,9 +77,9 @@ describe("a cards essay", () => {
     expect(parseCardsEssay("NixOS 2026-11-14", cut).ok).toBe(false)
   })
 
-  it("is refused for what home can't draw: another series, a picture that isn't a card, a take, a cue, an image, captions", async () => {
+  it("is refused for what home can't draw: another series, a picture that isn't a card, a take, a cue, an image, captions, a walk's lines", async () => {
     const cut = await showcase("nixos-upgrade")
-    const [first, second, third, fourth, ...rest] = cut.shots
+    const [first, second, third, fourth, fifth, ...rest] = cut.shots
     const changed = {
       ...cut,
       series: { id: "conference-call", version: 1 },
@@ -96,6 +97,7 @@ describe("a cards essay", () => {
             },
           },
         },
+        { ...fifth, spoken: { role: "walk", lines: ["A screen"] } },
         ...rest,
       ],
     }
@@ -109,6 +111,7 @@ describe("a cards essay", () => {
       "plays cues",
       "background is an image",
       "captions",
+      "only a walkthrough plays",
     ])
       expect(problems).toContain(reason)
   })
@@ -331,6 +334,15 @@ describe("a spoken essay (EXPLAIN6)", () => {
         { text: "Here", startMs: at, endMs: at + 400 },
       ],
     })
+    // The same family, laid where it's told (a walkthrough's screens, WALK5).
+    expect(laidTake([chapter, narration], [0, 5_000])).toEqual({
+      ms: 7_000,
+      words: [
+        { text: "One.", startMs: 100, endMs: 900 },
+        { text: "Here", startMs: 5_000, endMs: 5_400 },
+      ],
+    })
+    expect(() => laidTake([chapter, narration], [0, 500])).toThrow(RangeError)
   })
 
   it("draws each card once, held for its scene's take and captioned", async () => {
