@@ -152,15 +152,14 @@ describe("renderLanding", () => {
 
   it("streams each scene's copy in the copy block, a line at a time", () => {
     const stage = stageOf(page)
+    const streamed = [
+      ...stage.matchAll(/<p class="line tk s-\d+">([^<]*)<\/p>/g),
+    ].map((m) => m[1])
     for (const episode of EPISODES)
       for (const scene of episode.scenes) {
         expect(stage).toContain(`${escapeHtml(scene.title)}</span></p>`)
         for (const line of scene.narration)
-          expect(stage).toMatch(
-            new RegExp(
-              `<p class="line tk s-\\d+">${escapeHtml(line).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}</p>`
-            )
-          )
+          expect(streamed).toContain(escapeHtml(line))
       }
   })
 
@@ -233,10 +232,14 @@ describe("renderLanding", () => {
   })
 
   it("gives each card laid flat its picture's own shape, and its placeholder's without one", () => {
-    const style = (key: string): string =>
-      new RegExp(
-        `class="card" data-slot="[a-z]+" data-asset="${key}" style="([^"]+)"`
-      ).exec(withMedia)?.[1] ?? ""
+    const styles = new Map(
+      [
+        ...withMedia.matchAll(
+          /class="card" data-slot="[a-z]+" data-asset="([^"]+)" style="([^"]+)"/g
+        ),
+      ].map((m) => [m[1], m[2]])
+    )
+    const style = (key: string): string => styles.get(key) ?? ""
     expect(style(firstFaces[0].key)).toBe("--ar: 1080 / 1920; --r: 0.5625")
     expect(style(firstFaces[1].key)).toBe("--ar: 800 / 600; --r: 1.3333")
     expect(style(LANDING_WORDS.gaps[1].visual)).toBe("--ar: 4 / 3; --r: 1.3333")
@@ -255,10 +258,13 @@ describe("renderLanding", () => {
     expect(names.length).toBeGreaterThan(EPISODES.length * 3)
     expect(new Set(names).size).toBe(names.length)
     const wide = head.slice(head.indexOf(`@media ${WIDE_MOTION} {`))
+    const classLists = [...page.matchAll(/class="([^"]*)"/g)].map((m) =>
+      m[1].split(" ")
+    )
     for (const name of names) {
       expect(wide).toContain(`.${name} { animation-name: ${name}; }`)
       // Every element a track moves names it, beside the one clock's class.
-      expect(page).toMatch(new RegExp(`class="[^"]*\\btk ${name}\\b`))
+      expect(classLists).toContainEqual(expect.arrayContaining(["tk", name]))
     }
     const outside = head.slice(0, head.indexOf(`@media ${WIDE_MOTION} {`))
     expect(outside).not.toMatch(/animation-name\s*:/)
