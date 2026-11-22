@@ -1476,7 +1476,8 @@ describe("home's indexes", () => {
       return json(response)
     }
     expect(await refused({ ...JOBS, routine: "topik" })).toEqual({
-      error: "routine must be jobs or reflections or call or rust or interview",
+      error:
+        "routine must be jobs or reflections or call or rust or interview or game-week",
     })
     expect(await refused(JOBS, "index-topik-20261031T144502118Z.json")).toEqual(
       { error: "the name must carry the body's routine" }
@@ -1992,6 +1993,122 @@ describe("home's interview week index (IW4)", () => {
         })
       ).status
     ).toBe(422)
+  })
+})
+
+describe("the Game Week index", () => {
+  const BITE = {
+    take: "note-512",
+    saidAt: "2026-11-23T21:40:12.000Z",
+    half: "first",
+    scenario: "in.fourth-down",
+    how: "offered",
+    unit: "offense",
+    unitSide: "NE",
+    watching: true,
+    heard: "heard",
+    transcript: "They have to go for it here.",
+    confidence: 0.82,
+    play: null,
+  }
+  const GAME = {
+    id: "401873010",
+    away: "NE",
+    home: "CHI",
+    kickoff: "2026-11-23T21:25:00Z",
+    final: { away: 17, home: 20 },
+    wants: "CHI",
+    half: { away: 7, home: 10 },
+    bites: [BITE],
+  }
+  const W48 = {
+    id: "2026-w48",
+    from: "2026-11-24",
+    to: "2026-11-30",
+    for: "SF",
+    games: [GAME],
+  }
+  const INDEX = {
+    schema: "some-ui.routine-index/1",
+    routine: "game-week",
+    asOf: "2026-12-02T08:00:00.000Z",
+    weeks: [W48],
+  }
+  const NAME = "index-game-week-20261202T080000000Z.json"
+  const error = async (body: unknown): Promise<unknown> =>
+    json(
+      await put(deps(), "index", NAME, {
+        token: HOME,
+        body: JSON.stringify(body),
+      })
+    )
+  const withBite = (change: Readonly<Record<string, unknown>>): unknown => ({
+    ...INDEX,
+    weeks: [{ ...W48, games: [{ ...GAME, bites: [{ ...BITE, ...change }] }] }],
+  })
+
+  it("home puts it, with no week too", async () => {
+    for (const body of [INDEX, { ...INDEX, asOf: null, weeks: [] }])
+      expect(
+        (
+          await put(deps(), "index", NAME, {
+            token: HOME,
+            body: JSON.stringify(body),
+          })
+        ).status
+      ).toBe(201)
+  })
+
+  it("takes a week only from a Tuesday to the Monday after, named once (C1241)", async () => {
+    expect(
+      await error({ ...INDEX, weeks: [{ ...W48, from: "2026-11-23" }] })
+    ).toEqual({ error: "each week's from must be the Tuesday it opens" })
+    expect(
+      await error({ ...INDEX, weeks: [{ ...W48, to: "2026-11-29" }] })
+    ).toEqual({
+      error: "each week's to must be the Monday six days after its from",
+    })
+    expect(await error({ ...INDEX, weeks: [W48, W48] })).toEqual({
+      error: "each week is named once",
+    })
+    expect(
+      await error({ ...INDEX, weeks: [{ ...W48, id: "2026-48" }] })
+    ).toEqual({ error: "each week's id must be its id, like 2026-w46" })
+  })
+
+  it("takes a game only with its bites, and what was said only once heard", async () => {
+    expect(
+      await error({
+        ...INDEX,
+        weeks: [{ ...W48, games: [{ ...GAME, bites: [] }] }],
+      })
+    ).toEqual({ error: "each game must list its bites, at least one" })
+    expect(await error(withBite({ heard: "garbled" }))).toEqual({
+      error: "a bite carries what was said only when home heard it",
+    })
+    expect(
+      await error(withBite({ heard: "garbled", transcript: null }))
+    ).toEqual({ change: "added", seq: 1 })
+    expect(await error(withBite({ heard: "maybe" }))).toEqual({
+      error: "each bite's heard must be heard, garbled, nothing_said or failed",
+    })
+    expect(await error(withBite({ confidence: 1.5 }))).toEqual({
+      error: "each bite's confidence must be from 0 to 1, or null",
+    })
+    expect(await error(withBite({ saidAt: "yesterday" }))).toEqual({
+      error: "each bite's saidAt must be an instant",
+    })
+  })
+
+  it("carries no audio and no Drive link, in what was said too", async () => {
+    expect(
+      await error(
+        withBite({ transcript: "see https://drive.google.com/file/d/abc" })
+      )
+    ).toEqual({ error: "an index names no Drive file" })
+    expect(await error({ ...INDEX, bites: [] })).toEqual({
+      error: "bites is not part of a game-week index",
+    })
   })
 })
 

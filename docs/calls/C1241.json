@@ -1,0 +1,19 @@
+{
+  "id": "C1241",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "apps/mailbox/src/core.ts",
+    "packages/video-render/src/game-essay.ts",
+    "server:apps/servers/file_host"
+  ],
+  "chose": "A Game Week essay's week is an NFL week: from a Tuesday to the Monday after it, in America/Los_Angeles, named by the ISO week (`2026-w48`) that holds its Sunday, so a Monday night game is in the essay with its Sunday. Home's week file goes to the mailbox's `index` folder as the `game-week` routine (replacing GWB8's planned `bites` folder under D1), and the Worker holds each week to a Tuesday `from` and a `to` six days later.",
+  "options": [
+    "Tuesday to Monday, named by its Sunday's ISO week (chosen): one NFL week is one essay, and the id stays the weekId every essay uses.",
+    "Monday to Sunday, as the other essays' weeks: a Monday night game opens the next week's essay, apart from the Sunday it belongs with.",
+    "The NFL's own week number: one more numbering for the same weeks, and the preseason and playoffs number differently."
+  ],
+  "gray": "Which days an essay covers is something the owner sees in every essay; the other essays' weeks are Monday to Sunday, and no decision fixes the game week's.",
+  "undo": "Move the week to Monday to Sunday in apps/mailbox's gameWeekShape and the game essay's week check, and tell home's week file.",
+  "refs": ["#2074", "#2082"]
+}

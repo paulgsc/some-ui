@@ -225,7 +225,7 @@ role, and it is the owner's call, so it is not built.
   note's next, when it files the transcript; never its `attempt`, which starts again at 1 for
   each model), so a better model's transcript goes under a new name rather than meeting a `409`,
   and the highest `<n>` is the newest; and `index` takes `index-<routine>-YYYYMMDDTHHMMSSmmmZ.json`,
-  named for the routine (lower-case letters) and when home computed it, in UTC to the
+  named for the routine (lower-case letters, one hyphen at most, as `game-week`) and when home computed it, in UTC to the
   millisecond, so each change goes under a new name, the greatest name is the newest, and the
   folder holds one per routine; and `reflection` takes `reflection-<id>.json`, named for the
   phone's id for the written reflection (1 to 64 letters, digits, `-` or `_`, as home's
@@ -405,6 +405,19 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   Worker holds it as it holds the Rust Rounds index, with `questions`, `cards`, `unanswered`
   and `unread` lists in place of `tickets` and `pastes`. It carries no text the owner typed, so
   the whole body is scanned for encoded bytes.
+  The Game Week index is
+  `{"schema":"some-ui.routine-index/1","routine":"game-week","asOf","weeks":[<week>…]}`
+  (GWB, paulgsc/some-ui#2074): the newest weeks whose essay can be written, newest first, each
+  an NFL week from a Tuesday to the Monday after it, named by the ISO week of its Sunday
+  (`{"id","from","to","for","games"}`, C1241), and each of its games with at least one bite,
+  each bite with what home heard of it. The essay's writer reads it and nothing else (GW18). The
+  Worker holds it to an `asOf` that is an instant or `null`, and a `weeks` list whose every week
+  is an object with an `id` like `2026-w48` no other week has, a `from` that is a Tuesday and a
+  `to` six days after it, and a `games` list whose every game has an instant `kickoff` and at
+  least one bite; each bite has an instant `saidAt`, a `heard` of `heard`, `garbled`,
+  `nothing_said` or `failed`, a `transcript` that is text exactly when `heard` is `heard`, and a
+  `confidence` from 0 to 1 or `null`. What was said is the owner's own words, so the whole body
+  is scanned for encoded bytes and Drive links.
 - **A written reflection** is `{"schema":"some-ui.reflection/1","reflection","session","at","text"}`:
   the phone's id for it (which the name carries), the session it is about (the phone's id for
   it, as a reflection transcript's `ref` names it), when it was written, and the typed line.

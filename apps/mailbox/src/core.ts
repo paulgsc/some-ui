@@ -1030,6 +1030,88 @@ const rustScanned = (
     text
   )
 
+/** The UTC day of the week of calendar day `day`: 0 Sunday to 6 Saturday. */
+const weekdayOf = (day: string): number =>
+  new Date(`${day}T00:00:00Z`).getUTCDay()
+
+/** Calendar day `day` and `n` days on. */
+const daysOn = (day: string, n: number): string =>
+  new Date(Date.parse(`${day}T00:00:00Z`) + n * 86_400_000)
+    .toISOString()
+    .slice(0, 10)
+
+/** How home heard a bite's take (paulgsc/server's voice notes): only `heard` carries what was said. */
+const HEARD_STATES: ReadonlySet<unknown> = new Set([
+  "heard",
+  "garbled",
+  "nothing_said",
+  "failed",
+])
+
+/** One game of a Game Week index's week, with its bites: why not, or `null`. */
+function gameWeekGameRefusal(game: unknown): string | null {
+  if (!isRecord(game)) return "each game must be an object"
+  if (!isInstant(game.kickoff)) return "each game's kickoff must be an instant"
+  if (!Array.isArray(game.bites) || game.bites.length === 0) {
+    return "each game must list its bites, at least one"
+  }
+  for (const bite of game.bites.values()) {
+    if (!isRecord(bite)) return "each bite must be an object"
+    if (!isInstant(bite.saidAt)) return "each bite's saidAt must be an instant"
+    if (!HEARD_STATES.has(bite.heard)) {
+      return "each bite's heard must be heard, garbled, nothing_said or failed"
+    }
+    if ((bite.heard === "heard") !== (typeof bite.transcript === "string")) {
+      return "a bite carries what was said only when home heard it"
+    }
+    const { confidence } = bite
+    if (
+      confidence !== null &&
+      !(typeof confidence === "number" && confidence >= 0 && confidence <= 1)
+    ) {
+      return "each bite's confidence must be from 0 to 1, or null"
+    }
+  }
+  return null
+}
+
+/**
+ * The Game Week index (GWB, paulgsc/some-ui#2074; C1241): the newest weeks
+ * whose essay can be written, each an NFL week from Tuesday to the Monday
+ * after it, named by the ISO week of its Sunday, and its games with at least
+ * one bite, each bite with what home heard of it. The essay's writer reads
+ * it, and nothing else (GW18). What was said is the owner's own text, so it
+ * is scanned with the rest for audio and Drive links.
+ */
+const gameWeekShape: IndexShape = (body) => {
+  const asOf = asOfRefusal(body)
+  if (asOf !== null) return asOf
+  const list = shapeOf([], ["weeks"], body)
+  if (list !== null) return list
+  const weeks: unknown = body.weeks
+  const seen = new Set<string>()
+  for (const week of Array.isArray(weeks) ? weeks.values() : []) {
+    if (!isRecord(week)) return "each week must be an object"
+    if (typeof week.id !== "string" || !WEEK_ID.test(week.id)) {
+      return "each week's id must be its id, like 2026-w46"
+    }
+    if (seen.has(week.id)) return "each week is named once"
+    seen.add(week.id)
+    if (!isCalendarDay(week.from) || weekdayOf(week.from) !== 2) {
+      return "each week's from must be the Tuesday it opens"
+    }
+    if (week.to !== daysOn(week.from, 6)) {
+      return "each week's to must be the Monday six days after its from"
+    }
+    if (!Array.isArray(week.games)) return "each week's games must be a list"
+    for (const game of week.games.values()) {
+      const refused = gameWeekGameRefusal(game)
+      if (refused !== null) return refused
+    }
+  }
+  return null
+}
+
 /** The routines home computes an index for (README, "What a put must satisfy"), each with its keys and shape. */
 const INDEX_ROUTINES: ReadonlyMap<
   unknown,
@@ -1048,6 +1130,7 @@ const INDEX_ROUTINES: ReadonlyMap<
   ["call", { keys: CALL_INDEX_KEYS, shape: callShape }],
   ["rust", { keys: WEEKLY_INDEX_KEYS, shape: rustShape, scanned: rustScanned }],
   ["interview", { keys: WEEKLY_INDEX_KEYS, shape: interviewShape }],
+  ["game-week", { keys: WEEKLY_INDEX_KEYS, shape: gameWeekShape }],
 ])
 
 /**
@@ -1404,7 +1487,7 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
     // a pass, named for the routine and when home filed it: a new name each
     // time it changes, so the newest is the greatest name.
     folder: "index",
-    name: /^index-[a-z]{1,20}-\d{8}T\d{9}Z\.json$/,
+    name: /^index-[a-z]+(?:-[a-z]+)?-\d{8}T\d{9}Z\.json$/,
     schema: "some-ui.routine-index/1",
     refuses: indexRefusal,
   },
