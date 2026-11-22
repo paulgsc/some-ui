@@ -61,11 +61,13 @@ describe("what deleting the account says", () => {
     ])
   })
 
-  it("says the note of each cards essay withdrawn for a deleted take goes, and the essays stay (server#1055)", () => {
+  it("says the note of each cards essay withdrawn for a deleted or let-go take goes, and the cards and a made video stay (server#1055, #1064)", () => {
     expect(textOf(goes, "Cards essays withdrawn for your takes")).toMatch(
-      /because you deleted a recording/
+      /was deleted or let go/
     )
-    expect(textOf(stays, "Cards essays")).toMatch(/no one's record/)
+    expect(textOf(stays, "Cards essays")).toMatch(
+      /already made from one stays as it is/
+    )
   })
 
   it("says the mailbox's files go, archived ones too, and what stays in the mailbox", () => {

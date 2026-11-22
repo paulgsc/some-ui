@@ -87,7 +87,7 @@ export const ACCOUNT_ERASES = {
     },
     {
       label: "Cards essays withdrawn for your takes",
-      text: "Which cards essays home let go of for good because you deleted a recording one of their spoken cards played, and which recording it was.",
+      text: "Which cards essays' videos went from home for good because a recording one of their spoken cards played was deleted or let go, and which recording it was.",
     },
     {
       label: "How each recording ended",
@@ -127,7 +127,7 @@ export const ACCOUNT_ERASES = {
     },
     {
       label: "Cards essays",
-      text: "Each cards essay home holds, and the YouTube link saved for it. They hold no one's record.",
+      text: "Each cards essay's cards, and the YouTube link saved for it. A video home already made from one stays as it is, your takes' voices included.",
     },
     {
       label: "Logs and backups",
