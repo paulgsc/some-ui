@@ -30,8 +30,8 @@ rendered once, and published it where home picks it up.
   every claim against the repositories at a commit, and writes every word
   that is said. That judgement can't be written as code.
 - **Code** refuses what can't be drawn or said. `render cards-check` (below)
-  refuses an essay with no intro, a scene with no chapter line or
-  narration, a line the speech model can't say (empty, punctuation alone,
+  refuses an essay with no intro, a scene with no narration, a scene
+  with no chapter line before any chapter has opened, a line the speech model can't say (empty, punctuation alone,
   or over 4,000 characters), and an essay whose words run past ten minutes.
   It also refuses a malformed cut list, a card with no stamp, a series
   version home doesn't hold, and anything that version lacks. Drawing
@@ -65,7 +65,9 @@ Each scene says something, in a `spoken` field:
    - The **chapter line** orients: "Chapter two. By hand, for when you can't
      wait for the night." It says where we are in the workflow and why this
      step matters. The host says it, and it becomes a chapter in the
-     video's description.
+     video's description. A chapter may span several cards: give the line
+     to its first scene only, and the rest go on in it, said by the
+     narrator alone and marked once (C1027).
    - The **narration** teaches what the card shows, and more: why, the
      order of things, the mistake you're likely to make, and how you'd know
      it worked. A command is said with when to run it and what you should
