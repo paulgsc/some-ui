@@ -4,7 +4,7 @@ import type { RuntimeMode } from "@some-ui/fetch-kit"
  * Where this build's companion data comes from, decided once at build time:
  * *fetch, or fall back to the bundled demo seed*.
  *
- * - **`"static"`** - the GitHub Pages build. No companion data is deployed
+ * - **`"static"`** - the viewer build (the capture build Snips photographs). No companion data is deployed
  *   (pages.yml copies only `sfx`), so no request is issued.
  * - **`"server"`** - `vite dev`, `vite preview`, and the Docker/nginx image,
  *   which serve `public/` and proxy `file_host`.
@@ -23,7 +23,7 @@ export const FETCHES_CONTENT = DATA_MODE === "server"
 /**
  * Whoever opens this build is a viewer, not the owner (CLAUDE.md, "two
  * mandates"): only the owner signs in, on the home network or the phone, and
- * the Pages build has neither. A viewer sees the owner's tools read-only, on
+ * the viewer build has neither. A viewer sees the owner's tools read-only, on
  * sample data that nothing keeps (`lib/demo`).
  */
 export const VIEWER_BUILD = DATA_MODE === "static"

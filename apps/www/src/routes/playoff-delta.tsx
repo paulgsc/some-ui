@@ -11,7 +11,7 @@ import { ViewerStrip } from "@/components/provenance-strip"
  * so no shell sits in the frame; `?week` (0: the legend episode), `?slide`
  * and `?record` reach the stage as they are, and `?scene` and `?v` name a
  * scene of a format version's shape for the voiced recorder (FEED3). A
- * viewer of the Pages build, who reaches it from the foyer, gets the viewer
+ * viewer, who reaches it from the foyer, gets the viewer
  * strip above it; the owner records elsewhere. Web only: the stage comes through the web surface's
  * door, and the Android app's surface guard keeps the phone off this path.
  */

@@ -108,6 +108,10 @@ jobs:
     concurrency:
       group: pages-build-${{ github.ref }}
       cancel-in-progress: false
+    # actions: read for the site's media below, and nothing broader.
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -172,6 +176,37 @@ jobs:
               cp -r "$src"/. "apps/www/public/$dir"/
             fi
           done
+
+      # The landing's media (PAGES #3401, C1059): the newest artifact of each
+      # `site-assets-<kind>` family, made on main by Site Assets and Snips
+      # Capture, unpacked where render-public-site.ts looks for them
+      # (apps/www/src/landing/output.ts, SITE_MEDIA_DIR). Best effort: a kind
+      # with none, expired, or a download that fails leaves its slot's drawn
+      # placeholder, and the deploy goes on.
+      - name: Fetch the site's media
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          media=apps/www/node_modules/.cache/www/site-media
+          mkdir -p "$media" "$RUNNER_TEMP/site-media"
+          gh api --paginate "repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100" \
+            --jq '.artifacts[]
+                  | select(.name | startswith("site-assets-"))
+                  | select(.expired | not)
+                  | select(.workflow_run.head_branch == "main")
+                  | [(.name | sub("-[0-9a-f]{40}$"; "")), .created_at, .id]
+                  | @tsv' |
+          sort -t "$(printf '\t')" -k1,1 -k2,2r |
+          awk -F '\t' '!seen[$1]++ { print $1 "\t" $3 }' |
+          while IFS="$(printf '\t')" read -r kind id; do
+            if gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > "$RUNNER_TEMP/site-media/$id.zip"; then
+              unzip -q -o "$RUNNER_TEMP/site-media/$id.zip" -d "$media" && echo "$kind: artifact $id"
+            else
+              echo "$kind: artifact $id did not download; its slot keeps its placeholder"
+            fi
+          done
+          find "$media" -type f
 
       - name: Build www and its workspace dependencies
         run: nix develop .#ci --command pnpm turbo build --filter=www... --concurrency=100%

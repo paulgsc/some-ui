@@ -28,7 +28,7 @@ export function screenStageOf({
   readonly week: string | undefined
   /** The ticket by its key; the week's first when absent. */
   readonly ticket: string | undefined
-  /** A viewer of the Pages build is always shown the sample. */
+  /** A viewer is always shown the sample. */
   readonly viewer: boolean
   readonly read: {
     readonly data: unknown

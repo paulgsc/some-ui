@@ -320,6 +320,15 @@ test.describe("the Pages build", () => {
     await page.goto(`${app().origin}${BASE}`)
     await expect(page.locator("h1")).toBeVisible()
     await expect(scripts).toHaveCount(0)
+    // Built with none of its media (C1059): every slot draws its
+    // placeholder, and the build did not fail for want of one.
+    await expect(page.locator("figure[data-slot] .media")).toHaveCount(0)
+    await expect(
+      page.locator('figure[data-slot="clip"] .title-card')
+    ).toHaveCount(3)
+    await expect(
+      page.locator('figure[data-slot="still"] .drawing')
+    ).toHaveCount(2)
     await collect()
 
     // The résumé is static too (C1055): every version's page is there whole,

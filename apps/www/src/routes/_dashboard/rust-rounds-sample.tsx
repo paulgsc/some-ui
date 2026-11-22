@@ -19,7 +19,7 @@ const ViewerRustRounds = (): JSX.Element => {
 }
 
 /**
- * Only the Pages build is a viewer's. The flag is read inline as well, so
+ * Only the capture build Snips photographs is a viewer's. The flag is read inline as well, so
  * the owner's builds drop the sample (`build.paths.ts`, `lib/demo`).
  */
 const SampleRoute = (): JSX.Element | null =>

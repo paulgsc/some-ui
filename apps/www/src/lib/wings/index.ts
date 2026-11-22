@@ -50,9 +50,10 @@ export type Wing = {
   /**
    * What the wing publishes and what it keeps, as the strip under the web
    * header says it to the owner (CLAUDE.md, "two mandates"). Absent where the
-   * web shows no strip.
+   * web shows no strip; `published` absent where nothing of the wing is
+   * published, so the strip claims no publication it doesn't have (C1060).
    */
-  exposure?: { published: string; private: string }
+  exposure?: { published?: string; private: string }
 }
 
 export type Room = {
@@ -80,8 +81,8 @@ export const WINGS: ReadonlyArray<Wing> = [
       job: "Study, reflect, and pick up where you left off",
       purpose: "study",
     },
+    // Nothing published: the public site carries no study screen (C1055).
     exposure: {
-      published: "these study screens, on Pages",
       private: "your sessions and reflections, which stay yours",
     },
   },

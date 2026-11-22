@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  *
  * One screen, two readings (CLAUDE.md): the owner reads what the wing
- * publishes and keeps; a viewer on the Pages build reads that this is sample
+ * publishes and keeps; a viewer in the viewer build reads that this is sample
  * data and nothing is kept.
  */
 
@@ -30,6 +30,12 @@ describe("ProvenanceStrip", () => {
   it("tells the owner what is published and what is kept", () => {
     render(<ProvenanceStrip exposure={EXPOSURE} />)
     expect(screen.getByText("Published: the screens")).toBeTruthy()
+    expect(screen.getByText("Private: my sessions")).toBeTruthy()
+  })
+
+  it("claims nothing published where the wing publishes nothing", () => {
+    render(<ProvenanceStrip exposure={{ private: "my sessions" }} />)
+    expect(screen.queryByText(/^Published:/)).toBeNull()
     expect(screen.getByText("Private: my sessions")).toBeTruthy()
   })
 

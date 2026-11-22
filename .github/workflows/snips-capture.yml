@@ -199,3 +199,47 @@ jobs:
           path: snips-bundle
           if-no-files-found: error
           retention-days: 1
+
+  apk-clip:
+    name: The APK clip for the public site
+    needs: apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/node-ci-setup
+        with:
+          build: none
+          resume-assets: "false"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: walks-${{ github.run_id }}
+          path: walks
+      # The Jobs walk this run made on the emulator, on its seeded sample
+      # (apps/www/tests/walk/jobs-week.json), rendered as its walkthrough
+      # with no voice: the landing plays it muted (PAGES #3401, C1059).
+      - name: Render the Jobs walkthrough
+        run: |
+          nix develop .#ci --command pnpm turbo run build \
+            --filter='@some-ui/video-motion^...' --concurrency=100%
+          nix develop .#ci-playwright --command \
+            pnpm --filter @some-ui/video-render render sounds --out "$RUNNER_TEMP/brand/sounds"
+          nix develop .#ci-playwright --command \
+            pnpm --filter @some-ui/video-motion motion walkthrough \
+            "$GITHUB_WORKSPACE/apps/www/tests/walk/jobs-walkthrough.json" \
+            --walk "$GITHUB_WORKSPACE/walks/jobs" --out "$RUNNER_TEMP/walkthrough" \
+            --brand "$RUNNER_TEMP/brand"
+          mkdir -p "$RUNNER_TEMP/site-assets/clips"
+          cp "$RUNNER_TEMP/walkthrough/video.mp4" "$RUNNER_TEMP/site-assets/clips/apk.mp4"
+      # Retention: pages.yml reads the newest of this family at the next
+      # deploy, and this workflow runs only when dispatched, so the gap can be
+      # weeks. 30 days outlives a usual one; its family keeps one
+      # (packages/eslint/src/retention.ts). Once it is gone the landing draws
+      # the clip's title card until the next capture.
+      - name: Upload the clip
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: site-assets-apk-${{ github.sha }}
+          path: ${{ runner.temp }}/site-assets
+          if-no-files-found: error
+          retention-days: 30

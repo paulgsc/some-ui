@@ -20,6 +20,7 @@ on:
       - Extension Release
       - Sign Firefox Extension (Manual)
       - Snips Capture
+      - Site Assets
     types: [completed]
   schedule:
     - cron: "17 * * * *"

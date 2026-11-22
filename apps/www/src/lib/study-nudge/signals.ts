@@ -110,7 +110,7 @@ export async function reportSignal(
   signal: StudySignal,
   deps: ReportDeps = {}
 ): Promise<boolean> {
-  // The Pages build has no backend and no engagement ledger; its policy is
+  // The viewer build has no backend and no engagement ledger; its policy is
   // the client one, which reads sessions directly.
   if ((deps.mode ?? DATA_MODE) === "static") return false
 
