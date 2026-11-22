@@ -6,13 +6,15 @@
     "apps/www/src/lib/cooking",
     "apps/www/src/routes/_dashboard/_lan/cooking.tsx"
   ],
-  "chose": "How the filter icon and the overview of C1160 behave. The icon's popover closes on a pick, an outside click or Escape, and while the list is narrowed or reordered the icon carries a dot and a short line beside it says what is set, so a narrowed list is never hidden. The overview colours each train's current stop by C1119's holder × urgency, and marks the selected train's row and its active stop with a solid ring in the ink colour, never dashed, so the mark is not read as C1119's whenever. A tap on a stop in the overview makes it the card's, and moves the list to that train's page when the owner's filter shows it; it never changes the owner's filter or order.",
+  "chose": "How the filter icon and the overview of C1160 behave. The icon's popover closes on a pick, an outside click or Escape, and while the list is narrowed or reordered the icon carries a dot and a short line beside it says what is set, so a narrowed list is never hidden. The overview draws every stop of every train: passed stops in the done colour, stops ahead neutral (the owner's ahead dashed), and each train's current stop by C1119's holder × urgency; and marks the selected train's row and its active stop with a solid ring in the ink colour, never dashed, so the mark is not read as C1119's whenever. A tap on a stop in the overview makes it the card's, and moves the list to that train's page when the owner's filter shows it; it never changes the owner's filter or order, so when the filter hides that train the card shows it while the list stays as the owner set it.",
   "options": [
-    "the overview taps to select, keeping the filter (taken)",
+    "the overview taps to select keeping the filter, the icon marked while narrowed, the popover closing on a pick, an outside click or Escape (taken)",
     "a read-only overview",
-    "the overview taps to select, widening the filter to show the train"
+    "the overview taps to select, widening the filter to show the train",
+    "the icon carries no mark while the list is narrowed",
+    "the popover stays open until its icon is pressed again"
   ],
-  "gray": "The owner asked for the overview to show every track at once and for the filters to go away when not in use; whether the overview can be tapped, and what a narrowed list shows on the icon, is a preference their words don't settle.",
+  "gray": "The owner asked for the overview to show every track at once and for the filters to go away when not in use. Whether the overview can be tapped, what a narrowed list shows on the icon, when the popover closes and how the card's place is marked are preferences their words don't settle.",
   "undo": "Record a call that moves this one, and change the picked step or the overview's taps.",
   "refs": ["#3425"]
 }
