@@ -29,7 +29,10 @@ const KNOWN = [
 ]
 
 /** A header that carries a credential: its value goes, to a quote or the line's end. */
-const HEADER = /\b((?:proxy-)?authorization[ \t]*[:=][ \t]*)[^\n'"&]+/gi
+const HEADER = /\b((?:proxy-)?authorization[ \t]*:[ \t]*)[^\n'"]+/gi
+
+/** The same in a query or a setting: its value ends at `&` too. */
+const HEADER_SET = /\b((?:proxy-)?authorization[ \t]*=[ \t]*)[^\n'"&]+/gi
 
 /**
  * A password in an address: `scheme://user:password@host`, user or not, to
@@ -107,8 +110,8 @@ function quoted(value: string): string {
 
 /**
  * A setting, its value blanked when its name is secret; otherwise a setting
- * inside its value (`env: PASSWORD=…`) is read, `depth` levels down, so the
- * work stays linear.
+ * inside its value is read, `depth` levels down (`env: PASSWORD=…`, and
+ * `env: OPTS="-Dpassword=…"`), so the work stays linear.
  */
 const setting =
   (depth: number) =>
@@ -126,12 +129,13 @@ export function blankSecrets(text: string): string {
   for (const known of KNOWN) out = out.replace(known, BLANKED)
   out = out
     .replace(HEADER, `$1${BLANKED}`)
+    .replace(HEADER_SET, `$1${BLANKED}`)
     .replace(IN_ADDRESS, `$1${BLANKED}@`)
     .replace(
       FLAG,
       (_all: string, flag: string, value: string) => `${flag}${quoted(value)}`
     )
-    .replace(SETTING, setting(1))
+    .replace(SETTING, setting(2))
   return out.replace(RUN, (run: string, at: number, whole: string) =>
     blankRun(run, whole.slice(Math.max(0, at - 7), at))
   )

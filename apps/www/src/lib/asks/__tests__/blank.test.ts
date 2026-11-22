@@ -108,6 +108,18 @@ describe("blanking a pasted result", () => {
     expect(blankSecrets(`env: PASSWORD="hunter2" TOKEN='abc' x`)).toBe(
       `env: PASSWORD="${BLANKED}" TOKEN='${BLANKED}' x`
     )
+    expect(blankSecrets('env: JAVA_OPTS="-Dpassword=hunter2 -Xmx1g"')).toBe(
+      `env: JAVA_OPTS="-Dpassword=${BLANKED} -Xmx1g"`
+    )
+    expect(blankSecrets('env: FOO="a PASSWORD=b"')).toBe(
+      `env: FOO="a PASSWORD=${BLANKED}"`
+    )
+    expect(blankSecrets('opts=--msg="run with PASSWORD=hunter2"')).toBe(
+      `opts=--msg="run with PASSWORD=${BLANKED}"`
+    )
+    expect(blankSecrets("Authorization: Bearer a&b")).toBe(
+      `Authorization: ${BLANKED}`
+    )
     expect(blankSecrets("https://h/cb?authorization=abc&state=xyz")).toBe(
       `https://h/cb?authorization=${BLANKED}&state=xyz`
     )
