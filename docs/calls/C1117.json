@@ -1,0 +1,10 @@
+{
+  "id": "C1117",
+  "made": "2026-11-22",
+  "by": "owner",
+  "paths": ["apps/www/src/lib/cooking", "apps/www/src/routes/_dashboard/_lan"],
+  "chose": "Of the second round, the departures take, reshaped with the one-train-at-a-time idea folded in: one stop card at the top, a slideshow of the selected train's stops; every train always has an active stop (its current one until changed), and tapping a stop on any train, or sliding the card, changes it; the trains below are accordions that open to the train's motive; chips sort and filter by kind; the list is paginated. Owner, 2026-11-22: \"the trains are accordions … only one card shows … that card is shown at the top. And that card is actually a slideshow … if I have n stops, then it will be n slides\", and \"we generally shouldn't have like more than 10 or 12 railroads, and otherwise it becomes like … a railroad we just fold\".",
+  "undo": "Record a call that moves this one.",
+  "refs": ["#3425"],
+  "moves": "C1116"
+}

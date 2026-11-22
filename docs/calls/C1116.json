@@ -1,0 +1,9 @@
+{
+  "id": "C1116",
+  "made": "2026-11-22",
+  "by": "owner",
+  "paths": ["apps/www/src/lib/cooking", "apps/www/src/routes/_dashboard/_lan"],
+  "chose": "The Cooking page shows the owner's goals, not work items: a small closed set of things the owner wants (deploy home, install the APK, approve the Pages release, an essay on the phone, a merge), each drawn as a train with a destination whose stops are the recursive graph of tasks underneath flattened to only what gates the goal, each stop saying who holds it, and the page answering first whether anything waits on the owner. The first round's three layouts (a column board, rows by request, a needs-you list) are rejected. Owner, 2026-11-22: \"we are trying to communicate this in as ergonomic and as less noisy … way … without engaging any kind of load-bearing task … this isn't the checklist … this is a kind of transformation of the checklist … what is this serialized blocker? And where are they stuck?\"",
+  "undo": "Record a call that moves this one.",
+  "refs": ["#3425"]
+}
