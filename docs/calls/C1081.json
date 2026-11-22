@@ -1,0 +1,15 @@
+{
+  "id": "C1081",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": ["packages/video-render/src/game-essay.ts"],
+  "chose": "A host line quotes a play when it repeats five words in a row of any matched play's text, counted case and punctuation aside (QUOTE_RUN = 5). An essay holds at most 16 games and 120 bites (GAMES_MOST, BITES_MOST).",
+  "options": [
+    "Five words in a row (chosen): four ('at the CHI 45') are how anyone says where a ball is; five in a row of ESPN's sentence is its sentence.",
+    "Four words: refuses ordinary football words the host needs ('fourth and five at').",
+    "Any shared phrase over a similarity score: a number nobody can read off a refusal."
+  ],
+  "gray": "Where saying a moment ends and quoting ESPN's play text begins is a judgement no check settles; the owner hears it in the host's lines.",
+  "undo": "Move QUOTE_RUN, GAMES_MOST or BITES_MOST in packages/video-render/src/game-essay.ts, with a call that moves this one.",
+  "refs": ["#2074"]
+}

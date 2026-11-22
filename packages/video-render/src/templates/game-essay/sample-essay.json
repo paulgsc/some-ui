@@ -1,0 +1,109 @@
+{
+  "schema": "some-ui.game-essay/1",
+  "template": { "id": "game-essay", "version": 1 },
+  "week": { "id": "2026-w43", "from": "2026-10-19", "to": "2026-10-25" },
+  "for": "SF",
+  "open": {
+    "said": "One game this week with something said about it: New England at Chicago, read for what San Francisco wanted from it, a Chicago win."
+  },
+  "games": [
+    {
+      "id": "401873010",
+      "away": "NE",
+      "home": "CHI",
+      "game": {
+        "said": "New England at Chicago. Chicago won, which is the result San Francisco wanted."
+      },
+      "halves": [
+        {
+          "half": "first",
+          "bites": [
+            {
+              "take": "sample-bite-1",
+              "saidAt": "2026-10-23T00:52:10Z",
+              "scenario": "in.fourth-down",
+              "stance": "decision",
+              "voice": "owner",
+              "transcript": "They have to go for it here, there's no world where you punt from the forty-five.",
+              "play": {
+                "id": "sample-play-1",
+                "text": "(11:35) (Shotgun) pass short middle intended for the tight end INCOMPLETE, broken up at the line.",
+                "still": {
+                  "period": 1,
+                  "clock": "11:35",
+                  "possession": "NE",
+                  "down": 4,
+                  "distance": 5,
+                  "spot": { "side": "CHI", "yard": 45 },
+                  "score": { "away": 0, "home": 0 }
+                }
+              },
+              "setup": {
+                "said": "Eleven thirty-five in the first, New England facing fourth and five at the Chicago forty-five, nothing on the board yet."
+              },
+              "happened": {
+                "said": "They went for it and were stopped. Chicago takes over on downs."
+              },
+              "answer": {
+                "said": "You said there's no world where you punt. Home has seen a few hundred fourth-and-fives, and a bit under half were converted. Tied, first quarter, midfield: I'd have punted, but it's close."
+              }
+            }
+          ]
+        },
+        {
+          "half": "second",
+          "bites": [
+            {
+              "take": "sample-bite-2",
+              "saidAt": "2026-10-23T02:31:40Z",
+              "scenario": "in.turnover",
+              "stance": "celebration",
+              "voice": "read-aloud",
+              "transcript": "Picked off, and he's gone the other way, that's the game right there.",
+              "play": {
+                "id": "sample-play-2",
+                "text": "(6:12) (Shotgun) pass deep left INTERCEPTED at the CHI 20, returned 80 yards for a TOUCHDOWN.",
+                "still": {
+                  "period": 4,
+                  "clock": "6:12",
+                  "possession": "NE",
+                  "down": 2,
+                  "distance": 8,
+                  "spot": { "side": "CHI", "yard": 35 },
+                  "score": { "away": 17, "home": 20 }
+                }
+              },
+              "setup": {
+                "said": "Six twelve left, New England down three, second and eight at the Chicago thirty-five."
+              },
+              "answer": {
+                "said": "A pick returned the length of the field late in a one-score game is rare: home has seen only a handful this season."
+              }
+            },
+            {
+              "take": "sample-bite-3",
+              "saidAt": "2026-10-23T02:40:05Z",
+              "scenario": "post.result",
+              "stance": "nerves",
+              "voice": "owner",
+              "transcript": "I couldn't watch the last two minutes, honestly.",
+              "play": null,
+              "setup": {
+                "said": "After the final, a bite home matched to no play."
+              },
+              "answer": {
+                "said": "What was at stake was a game and a half in the standings for San Francisco, so the nerves were earned."
+              }
+            }
+          ]
+        }
+      ],
+      "halftime": {
+        "said": "At the half, Chicago led. Here is what came after the break."
+      }
+    }
+  ],
+  "close": {
+    "said": "That was the week: three bites on one game, a decision, a celebration and the nerves at the end."
+  }
+}
