@@ -478,7 +478,12 @@ declared (checked by reading every call site and by the tests named).
   per Play, one `GET /voice-notes/:id/audio`; and per act tapped, one
   `POST /voice-notes/:id/attention` naming the act, asked again while the
   link is busy, sending nothing of the phone's but the take's id and the
-  act's name; HEARD3, #3075), Studio's feed videos,
+  act's name; HEARD3, #3075), the ask to hear a take again that Takes on home
+  and Needs your attention both offer (`lib/hear-again`, through
+  `lib/home-link/attention`'s `keep`: per tap, one
+  `POST /voice-notes/:id/attention` of the act `hear-again`, asked again
+  while the link is busy, sending nothing of the phone's but the take's id
+  and the act's name; #3339), Studio's feed videos,
   the weekly call's and Playoff Delta's (`lib/call-videos`, through
   `lib/home-link/call-videos`' `keep`: one `GET /feeds/:feed/videos` each
   time a feed's screen opens, on a drag down, on Try again and once after a
@@ -689,11 +694,12 @@ declared (checked by reading every call site and by the tests named).
   but on a Play, or `lib/take-library` ask again but while the link is busy
   and the read is still wanted, more than ten times in all; one that has
   `attention.ts` send anything but one `GET` of `ATTENTION_PATH` per read
-  and one `POST` of `actPath(id)` per act, lets anything but
-  `lib/take-reconcile` call it, or has `@some-ui/soundbites`'
-  `stepReconcile` read but on the page or Takes' first page opening or Try
-  again, or send an act
-  but on a tap, one at a time (HEARD3); one that has `idea-reads.ts` send anything
+  and one `POST` of `actPath(id)` per act or ask to hear again, lets anything
+  but `lib/take-reconcile` and `lib/hear-again` call it, or has
+  `@some-ui/soundbites`' `stepReconcile` read but on the page or Takes'
+  first page opening or Try again, or send an act
+  but on a tap, one at a time (HEARD3), or its hear-again slice
+  (`lib/hear-again`) ask but on a tap, one at a time (#3339); one that has `idea-reads.ts` send anything
   but the one request `ideasPath` names per ask, lets anything but
   `lib/idea-home` call it, or has `@some-ui/soundbites`' `stepOnHome` read
   but on the screen opening or Try again, or write but on a tap (setting an

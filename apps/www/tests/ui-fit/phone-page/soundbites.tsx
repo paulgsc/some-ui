@@ -116,6 +116,7 @@ const TAKES_HOME: TakesHome = {
   takes: () => Promise.resolve({ kind: "read", page: LIBRARY }),
   audio: (id) =>
     id === "take-one" ? new Promise(() => undefined) : Promise.resolve(null),
+  hearAgain: () => Promise.resolve({ kind: "notTaken" }),
 }
 
 const Library = (): JSX.Element => {

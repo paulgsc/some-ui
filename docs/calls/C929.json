@@ -1,0 +1,19 @@
+{
+  "id": "C929",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/ui/soundbites/src/lib/reconcile/source.ts",
+    "some-ui:packages/ui/soundbites/src/lib/reconcile/words.ts",
+    "some-ui:apps/www/src/routes/_dashboard/_apk/journal/takes/attention.tsx"
+  ],
+  "chose": "A take in Needs your attention links back to the page it can be said again from, read from what home was told of it (`of`, `ref`): a spoken card's part, an interview week's question, or the card it reads aloud. Every other take (a game's bite, a reflection, a Rust Rounds take, a Studio scene's take, one recorded on Takes) has none, so no redo is offered for a random bite. The interview links open the question or card by its id: one no longer in this week's set says so on its own page, as that page already does, rather than the link hiding on a guess about the week.",
+  "options": [
+    "spoken parts and interview questions and reads, by what the ref names (chosen)",
+    "also Studio scenes' takes: their video has no page of its own on the phone to go back to",
+    "interview links only for this week's questions: needs the week's state on a page that doesn't hold it"
+  ],
+  "gray": "Which takes lead back, and where, is on the screen; no check settles it.",
+  "undo": "Drop `source` from TakeReconcile and the route's `toSource`, and delete `lib/reconcile/source.ts` and its words.",
+  "refs": ["#3339"]
+}

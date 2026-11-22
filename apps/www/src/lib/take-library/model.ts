@@ -10,7 +10,8 @@
  * bite's moment, which may be left out (`bite: null`), and the play home
  * matched it to, or why none (`match`, null until home has matched it,
  * GWB14 #3039); the rest of a kind's `about` is what its ref already says,
- * which Takes' ports read.
+ * which Takes' ports read. Each take may say whether home hears it again on
+ * the owner's ask (`hearAgain`, `lib/hear-again`, #3339).
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { readAs } from "@some-ui/core-utils"
@@ -19,6 +20,7 @@ import type { LibraryPage, LibraryRead, PhoneTake } from "@some-ui/soundbites"
 import { MATCH_METHODS, TAKE_OFS } from "@some-ui/soundbites/contract"
 import { z } from "zod"
 
+import { HearAgainSchema } from "@/lib/hear-again/model"
 import type { OnPhone } from "@/lib/home-link/voice-copy"
 import { isTakeStation } from "@/lib/take-conveyor/model"
 
@@ -117,6 +119,7 @@ const TakeSchema = z.object({
     .nullable()
     .optional()
     .catch(undefined),
+  hearAgain: HearAgainSchema,
 })
 
 const TakesSchema = z.object({

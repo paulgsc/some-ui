@@ -3,6 +3,7 @@ import {
   AttentionWayIn,
   TakeReconcile,
 } from "@soundbites/components/take-reconcile"
+import { HEAR_AGAIN_WORDS } from "@soundbites/lib/hear-again/words"
 import type {
   ActAnswer,
   AttentionRead,
@@ -14,6 +15,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 
 const W = RECONCILE_WORDS
+const H = HEAR_AGAIN_WORDS
 const AT = "2026-11-10T09:00:00.000Z"
 
 const GARBLED: AttentionTake = {
@@ -28,6 +30,7 @@ const GARBLED: AttentionTake = {
     rule: "heard-1",
     language: { heard: "pt", expected: "en" },
   },
+  hearAgain: null,
 }
 
 const FAILED: AttentionTake = {
@@ -42,6 +45,7 @@ const FAILED: AttentionTake = {
     rule: "heard-1",
     language: null,
   },
+  hearAgain: { open: true, hearing: false, askAgainAt: null },
 }
 
 const listed = (takes: ReadonlyArray<AttentionTake>): AttentionRead => ({
@@ -55,12 +59,15 @@ const quietPlayer: Player = {
 
 function home(
   read: AttentionRead,
-  act: ReconcileHome["act"] = () => Promise.resolve("kept")
+  act: ReconcileHome["act"] = () => Promise.resolve("kept"),
+  hearAgain: ReconcileHome["hearAgain"] = () =>
+    Promise.resolve({ kind: "notTaken" })
 ): ReconcileHome {
   return {
     takes: () => Promise.resolve(read),
     audio: () => Promise.resolve(null),
     act,
+    hearAgain,
   }
 }
 
@@ -145,6 +152,60 @@ describe("Takes › Needs your attention (HEARD3)", () => {
     expect(screen.queryByText("“the bar oh checker”")).toBeNull()
     expect(screen.getByText(W.done.keep)).toBeTruthy()
     expect(screen.getByText(W.none)).toBeTruthy()
+  })
+
+  it("asks home to try a take again where home will, keeps it listed, and says when it can be asked again (#3339)", async () => {
+    const LATER = "2026-11-21T15:00:00.000Z"
+    const sent: Array<string> = []
+    render(
+      <TakeReconcile
+        ports={{
+          home: home(listed([FAILED, GARBLED]), undefined, (id) => {
+            sent.push(id)
+            return Promise.resolve({ kind: "snoozed", askAgainAt: LATER })
+          }),
+          player: quietPlayer,
+        }}
+        pair={null}
+        source={(take) =>
+          take.id === "s1" ? <a href="#back">Back to it</a> : null
+        }
+      />
+    )
+    await settle()
+    // Only the take home will hear again offers it, and carries its link back.
+    const asks = screen.getAllByRole("button", { name: H.ask })
+    expect(asks).toHaveLength(1)
+    expect(screen.getAllByRole("link", { name: "Back to it" })).toHaveLength(1)
+    fireEvent.click(asks[0]!)
+    await settle()
+    expect(sent).toEqual(["s1"])
+    expect(screen.getByText(H.said.snoozed)).toBeTruthy()
+    expect(screen.getByText(H.askAgainAt(LATER))).toBeTruthy()
+    expect(screen.getByRole("button", { name: H.ask })).toHaveProperty(
+      "disabled",
+      true
+    )
+    expect(screen.getByText(W.neverHeard)).toBeTruthy()
+  })
+
+  it("says why a take home no longer holds left the list when it was asked of again (#3339)", async () => {
+    render(
+      <TakeReconcile
+        ports={{
+          home: home(listed([FAILED, GARBLED]), undefined, () =>
+            Promise.resolve({ kind: "settled" })
+          ),
+          player: quietPlayer,
+        }}
+        pair={null}
+      />
+    )
+    await settle()
+    fireEvent.click(screen.getByRole("button", { name: H.ask }))
+    await settle()
+    expect(screen.queryByText(W.neverHeard)).toBeNull()
+    expect(screen.getByText(H.said.settled)).toBeTruthy()
   })
 
   it("drops a take the build's delete path deleted", async () => {

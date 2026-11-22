@@ -90,6 +90,46 @@ import { z } from "zod"
 import { defineContract } from "../src/contract"
 
 /**
+ * The takes home couldn't hear well, for Studio's Takes › Needs your
+ * attention (`GET /voice-notes/attention`, HEARD3 some-ui#3075, server#912),
+ * and the owner's act on one (`POST /voice-notes/:id/attention`):
+ * `apps/www/src/lib/home-link/attention.ts`, read by
+ * `apps/www/src/lib/take-reconcile/model.ts`. A paired phone's route, as the
+ * takes read is. The contract run's phone holds no notes, so the read is the
+ * empty page, probed for its shape. Each take says whether home will hear it
+ * again on the owner's ask (`hearAgain`, some-ui#3339), as each take of the
+ * takes read does: optional until the server serves it. The act is probed on a take the caller doesn't hold,
+ * which is a `404` and writes nothing, the hear-again act among them.
+ */
+const AttentionSchema = z.object({
+  takes: z.array(
+    z.object({
+      id: z.string(),
+      of: z.string(),
+      ref: z.string(),
+      recordedAt: z.string(),
+      heard: z.unknown(),
+      verdict: z.object({
+        kind: z.string(),
+        reasons: z.array(z.string()),
+        rule: z.string(),
+        signals: z.unknown(),
+      }),
+      hearAgain: z
+        .object({
+          open: z.boolean(),
+          hearing: z.boolean(),
+          askedAt: z.string().nullable(),
+          nextAt: z.string().nullable(),
+        })
+        .nullable()
+        .optional(),
+    })
+  ),
+  total: z.number().int(),
+})
+
+/**
  * The phone's read of home's answer (`heard.ts`'s `Heard`): `heard` is null
  * while home holds the note and hasn't heard it, else its words and when.
  * Home also sends `language` and `model`, which the phone doesn't read.
@@ -209,6 +249,17 @@ const TakesSchema = z.object({
       station: StationSchema.nullable().optional(),
       stationAt: z.string().nullable().optional(),
       stationSeq: z.number().int().nullable().optional(),
+      // Whether home hears it again on the owner's ask (some-ui#3339):
+      // optional until the server serves it.
+      hearAgain: z
+        .object({
+          open: z.boolean(),
+          hearing: z.boolean(),
+          askedAt: z.string().nullable(),
+          nextAt: z.string().nullable(),
+        })
+        .nullable()
+        .optional(),
     })
   ),
   total: z.number().int(),
@@ -440,6 +491,42 @@ export const contracts = [
     summary: "a q over 200 characters is a 422, and nothing is read",
     request: { query: { q: "a".repeat(201) } },
     expect: { status: 422 },
+  }),
+  defineContract({
+    id: "voice.attention_signed_out",
+    module: "voice",
+    method: "GET",
+    path: "/voice-notes/attention",
+    summary:
+      "the takes home couldn't hear well are a paired phone's: without a session it is a 401",
+    request: {},
+    expect: { status: 401 },
+  }),
+  defineContract({
+    id: "voice.attention",
+    module: "voice",
+    paired: true,
+    method: "GET",
+    path: "/voice-notes/attention",
+    summary:
+      "every take home couldn't hear well that no act answers yet, each with its verdict and whether home will hear it again, and how many wait",
+    request: {},
+    expect: { status: 200, schema: AttentionSchema },
+  }),
+  defineContract({
+    id: "voice.hear_again_unknown",
+    module: "voice",
+    paired: true,
+    method: "POST",
+    path: "/voice-notes/:id/attention",
+    summary:
+      "asking home to hear again a take the caller doesn't hold is a 404, which the phone reads as settled, and nothing is written",
+    mutates: true,
+    request: {
+      path: { id: "contract-harness-does-not-exist" },
+      body: { act: "hear-again" },
+    },
+    expect: { status: 404 },
   }),
   defineContract({
     id: "voice.station_signed_out",

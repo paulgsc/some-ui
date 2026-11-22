@@ -6,6 +6,7 @@ import {
   simulatedPlayer,
 } from "@some-ui/voice-capture/testing"
 import { TakeLibrary } from "@soundbites/components/take-library"
+import { HEAR_AGAIN_WORDS } from "@soundbites/lib/hear-again/words"
 import type { LibraryRead, LibraryTake } from "@soundbites/lib/library/model"
 import type {
   LibraryAbout,
@@ -64,6 +65,7 @@ const quietPlayer: Player = {
 
 function home(more: Partial<TakesHome> = {}): TakesHome {
   return {
+    hearAgain: () => Promise.resolve({ kind: "notTaken" }),
     takes: (q) =>
       Promise.resolve(
         q === null
@@ -90,6 +92,56 @@ describe("Takes on home (ST32)", () => {
     expect(screen.getByText(W.notHeard)).toBeTruthy()
     expect(screen.getByText(W.shown("newest", null, 2, 2, null))).toBeTruthy()
     expect(screen.getByText(W.setAside(UNHEARD.setAsideAt!))).toBeTruthy()
+  })
+
+  it("offers to ask home to try again on a take it heard, where home will, and says what came of it (#3339)", async () => {
+    const asked: Array<string> = []
+    render(
+      <TakeLibrary
+        ports={{
+          home: home({
+            takes: () =>
+              Promise.resolve({
+                kind: "read",
+                page: {
+                  takes: [
+                    {
+                      ...TAKE,
+                      hearAgain: {
+                        open: true,
+                        hearing: false,
+                        askAgainAt: null,
+                      },
+                    },
+                    UNHEARD,
+                  ],
+                  total: 2,
+                  matched: null,
+                  by: "newest",
+                },
+              }),
+            hearAgain: (id) => {
+              asked.push(id)
+              return Promise.resolve({ kind: "asked" })
+            },
+          }),
+          player: quietPlayer,
+        }}
+        pair={null}
+      />
+    )
+    await settle()
+    // Only the take home says it will hear again offers it.
+    const asks = screen.getAllByRole("button", { name: HEAR_AGAIN_WORDS.ask })
+    expect(asks).toHaveLength(1)
+    fireEvent.click(asks[0]!)
+    await settle()
+    expect(asked).toEqual(["t1"])
+    expect(screen.getByText(HEAR_AGAIN_WORDS.said.asked)).toBeTruthy()
+    expect(screen.getByText(HEAR_AGAIN_WORDS.hearing)).toBeTruthy()
+    expect(
+      screen.getByRole("button", { name: HEAR_AGAIN_WORDS.ask })
+    ).toHaveProperty("disabled", true)
   })
 
   it("says where each take is on the conveyor, in the build's words, again on each change (CONVEYOR1)", async () => {

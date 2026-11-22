@@ -501,3 +501,50 @@ describe("older takes, a page at a time", () => {
     })
   })
 })
+
+describe("asking home to hear a take again, from Takes (#3339)", () => {
+  const OPEN = { open: true, hearing: false, askAgainAt: null } as const
+  const take = PAGE.takes[0]
+  const page: LibraryPage = {
+    ...PAGE,
+    takes: take === undefined ? [] : [{ ...take, hearAgain: OPEN }],
+    next: "c",
+  }
+
+  it("keeps home's answer over a page of older takes, and takes a fresh read's word over it", () => {
+    const asked = run([
+      { type: "entered" },
+      { type: "takesRead", seq: 1, read: { kind: "read", page } },
+      { type: "hearAgain", id: "t1" },
+      {
+        type: "hearAgainAnswered",
+        seq: 1,
+        answer: { kind: "asked" },
+      },
+    ])
+    expect(asked.effects).toEqual([])
+    expect(asked.state.hearAgain.changed.get("t1")?.hearing).toBe(true)
+    // A page of older takes joins those shown: what home said stays.
+    const older = run(
+      [
+        { type: "older" },
+        {
+          type: "takesRead",
+          seq: 2,
+          read: { kind: "read", page: { ...PAGE, takes: [], next: null } },
+        },
+      ],
+      asked.state
+    )
+    expect(older.state.hearAgain.changed.get("t1")?.hearing).toBe(true)
+    // A fresh read is home's own word on every take.
+    const fresh = run(
+      [
+        { type: "readAgain" },
+        { type: "takesRead", seq: 3, read: { kind: "read", page } },
+      ],
+      older.state
+    )
+    expect(fresh.state.hearAgain.changed.size).toBe(0)
+  })
+})

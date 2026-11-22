@@ -43,6 +43,7 @@ function everyWord(): Array<string> {
     of,
     acts,
     done,
+    source,
     ...fixed
   } = RECONCILE_WORDS
   return [
@@ -58,6 +59,7 @@ function everyWord(): Array<string> {
     ...OFS.map(of),
     ...Object.values(acts),
     ...Object.values(done),
+    ...Object.values(source),
   ]
 }
 

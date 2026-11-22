@@ -188,6 +188,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/take-conveyor/**",
   "apps/www/src/lib/take-library/**",
   "apps/www/src/lib/take-reconcile/**",
+  "apps/www/src/lib/hear-again/**",
   "apps/www/src/lib/takes-desk/**",
   "apps/www/src/lib/template-preview/**",
   "apps/www/src/lib/cards-essay-video/**",
@@ -349,6 +350,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       ],
       profiles: [MOBILE_PROFILE],
       why: "a cut list's timing, which fits a scene to its take as Record keeps it, an episode file, which Studio opens as an episode, a review render's review.json, which Watch reads, a video's DNA, which Finish keeps for home to make, the status badges a cut list's scenes show, which its check refuses written by hand, and its cards' stamp, which its check refuses on a card (@some-ui/soundbites, lib/project and lib/studio): the web builds render no video and keep no project. The cut list's and a format's schemas are on every path: the phone's Studio checks a project and a primer against them, and the web's call stage draws a call's format",
+    },
+    {
+      modules: ["packages/video-render/src/spoken-line.ts"],
+      profiles: [MOBILE_PROFILE],
+      why: "how a take's ref names a spoken card's part (#3339): Takes groups a spoken card's takes by card, and a take home couldn't hear links back to its part, both in the Android app's Studio (@some-ui/soundbites, lib/library and lib/reconcile); the web builds keep no takes",
     },
     {
       modules: ["packages/video-render/src/pending.ts"],

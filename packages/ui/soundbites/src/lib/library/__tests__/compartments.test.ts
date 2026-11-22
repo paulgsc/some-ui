@@ -15,6 +15,8 @@ import {
   underChips,
   withGaps,
 } from "@soundbites/lib/library/compartments"
+import type { TakeTopic } from "@soundbites/lib/library/kinds"
+import { LIBRARY_WORDS } from "@soundbites/lib/library/words"
 import { describe, expect, it } from "vitest"
 
 const STATIONS = ["In the oven", "Cooking", "Ready for pickup", "Canned"]
@@ -44,6 +46,13 @@ describe("what a take's ref alone says it was for (TAKES2)", () => {
       number: 2876,
     })
     expect(aboutOfRef("week-8:intro:1").kind).toBe("scene")
+    // A spoken card's part, by its card and part (#3339).
+    expect(aboutOfRef("spoken:scabc12.2")).toEqual({
+      kind: "spoken",
+      card: "scabc12",
+      title: null,
+      part: 2,
+    })
     // A take recorded on Takes, and a note's spoken part, go home alike.
     expect(aboutOfRef("take:abc").kind).toBe("here")
     expect(aboutOfRef("something else").kind).toBe("here")
@@ -64,6 +73,30 @@ describe("what the build knows over what the ref says (TAKES2)", () => {
       question: "What's the video?",
     })
     expect(aboutBoth(aboutOfRef("take:n1"), null)).toEqual({ kind: "here" })
+    expect(
+      aboutBoth(aboutOfRef("spoken:scabc12.0"), {
+        kind: "spoken",
+        card: "scabc12",
+        title: "How I built Rust Rounds",
+        part: 0,
+      })
+    ).toEqual({
+      kind: "spoken",
+      card: "scabc12",
+      title: "How I built Rust Rounds",
+      part: 0,
+    })
+  })
+
+  it("groups a spoken card's takes by their card, named by its title or by what it is (#3339)", () => {
+    const of = (card: string, title: string | null): TakeTopic | null =>
+      topicOf({ kind: "spoken", card, title, part: 0 })
+    expect(of("sca", "Intro")).toEqual({ key: "spoken:sca", label: "Intro" })
+    expect(of("sca", null)?.key).toBe(of("sca", "Intro")?.key)
+    expect(of("scb", null)).toEqual({
+      key: "spoken:scb",
+      label: LIBRARY_WORDS.aSpokenCard,
+    })
   })
 
   it("takes the build's kind where the ref can't tell it: a note's take", () => {
@@ -85,6 +118,7 @@ describe("the compartments and their chips (TAKES3)", () => {
       scene: 1,
       idea: 1,
       ask: 0,
+      spoken: 0,
       here: 2,
       bite: 0,
       round: 0,

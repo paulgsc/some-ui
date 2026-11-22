@@ -9,9 +9,10 @@
  * (`Exchange { ask, script }` in `@some-ui/video-render`'s `opening.ts`).
  *
  * Each take of a part is an ordinary Studio take on home (C807), named by
- * its line `spoken:<card>.<part>`: two parts split on `:`, so home keeps it
- * as a take with no scene (paulgsc/server `voice/src/about.rs`, `studio`), and
- * never reads it as a scene's (three parts) or an idea's answer (`idea:`).
+ * its line `spoken:<card>.<part>` (`@some-ui/video-render`'s
+ * `spokenLineOf`): two parts split on `:`, so home keeps it as a take with
+ * no scene (paulgsc/server `voice/src/about.rs`, `studio`), and never reads
+ * it as a scene's (three parts) or an idea's answer (`idea:`).
  * The card keeps the id of every take each part has had, append-only: a
  * take said again is one more, and none is ever dropped (C783). Which take a
  * part uses is the owner's pick, and only a pick. An essay reads the takes on
@@ -23,7 +24,7 @@
  *   nothing in (`use`, `unuse`).
  */
 import type { SpokenCategory } from "@some-ui/video-render"
-import { isSpokenCategory } from "@some-ui/video-render"
+import { isSpokenCategory, spokenLineOf } from "@some-ui/video-render"
 
 /** How a part is said: read on the band, or in your own words. */
 export type PartKind = "read" | "own"
@@ -194,18 +195,6 @@ export const cardId = (at: number, random: () => number): string =>
     .toString(36)
     .padStart(4, "0")}`
 
-/** The line a take of part `n` (from 0) of script `id` answers. */
-export const lineOf = (id: string, n: number): string => `spoken:${id}.${n}`
-
-/** The script and part a take's line names; null for any other line. */
-export function partOfLine(
-  line: string
-): { readonly script: string; readonly part: number } | null {
-  const named = /^spoken:([a-z0-9-]{1,64})\.(\d{1,3})$/u.exec(line)
-  if (named === null) return null
-  return { script: named[1], part: Number(named[2]) }
-}
-
 /**
  * `script` having seen `takes` on this phone, each with the line it answers:
  * every take of one of its parts that the part doesn't list yet is added,
@@ -216,7 +205,7 @@ export function withSeen(
   takes: ReadonlyArray<{ readonly id: string; readonly line: string }>
 ): SpokenCard {
   const parts = script.parts.map((part, n) => {
-    const line = lineOf(script.id, n)
+    const line = spokenLineOf(script.id, n)
     const added = takes
       .filter((take) => take.line === line && !part.takes.includes(take.id))
       .map((take) => take.id)

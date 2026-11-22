@@ -12,6 +12,7 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { Playback, Player } from "@some-ui/voice-capture"
+import type { HearAgainAnswer } from "@soundbites/lib/hear-again/model"
 import type { Refresh } from "@soundbites/lib/refresh"
 import { checkAgainOf } from "@soundbites/lib/refresh"
 
@@ -38,6 +39,8 @@ export type ReconcileHome = {
   readonly audio: (id: string) => Promise<Blob | null>
   /** Tells home the owner's act on take `id`, kept for good there. */
   readonly act: (id: string, act: ReconcileAct) => Promise<ActAnswer>
+  /** Asks home to hear take `id` again (#3339). */
+  readonly hearAgain: (id: string) => Promise<HearAgainAnswer>
 }
 
 export type ReconcilePorts = {
@@ -121,6 +124,15 @@ export function createReconcile(ports: ReconcilePorts): ReconcileRuntime {
       case "stopPlayback": {
         playback?.stop()
         playback = null
+        return
+      }
+      case "sendHearAgain": {
+        const { seq } = effect
+        later(ports.home.hearAgain(effect.id), (answer) => ({
+          type: "hearAgainAnswered",
+          seq,
+          answer,
+        }))
         return
       }
       case "sendAct": {

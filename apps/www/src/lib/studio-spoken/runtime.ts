@@ -25,6 +25,7 @@ import {
   stepPrompter,
   totalOf,
 } from "@some-ui/shared"
+import { spokenLineOf } from "@some-ui/video-render"
 import type {
   HeardAnswer,
   Playback,
@@ -46,7 +47,7 @@ import { cell } from "@/lib/cell"
 import type { PaceStore } from "@/lib/interview-week/store"
 
 import type { PastedCard, SpokenCard } from "./model"
-import { cardId, flip, keptCard, lineOf, unuse, use, withSeen } from "./model"
+import { cardId, flip, keptCard, unuse, use, withSeen } from "./model"
 import type { SpokenStore } from "./store"
 
 /** What home heard in each take asked about, by id. */
@@ -139,7 +140,7 @@ export function createSpokenRuntime(ports: SpokenPorts): SpokenRuntime {
       for (const card of now) {
         for (const [n, part] of card.parts.entries()) {
           if (part.kind === "read") {
-            by.set(lineOf(card.id, n), totalOf(phrasesOf(part.text)))
+            by.set(spokenLineOf(card.id, n), totalOf(phrasesOf(part.text)))
           }
         }
       }

@@ -5,6 +5,9 @@
  * /voice-notes/:id/attention`), read as the page means them. Pure, so every
  * answer can be held by a test.
  *
+ * Each take says whether home hears it again on the owner's ask
+ * (`lib/hear-again`, #3339).
+ *
  * A verdict is read as HEARD1 serves it (paulgsc/server#908: `{kind,
  * reasons, rule, signals}`, signals in camelCase); of the signals the page
  * keeps only the languages it can say a take was heard in.
@@ -18,6 +21,8 @@ import type {
   TakeVerdict,
 } from "@some-ui/soundbites"
 import { z } from "zod"
+
+import { HearAgainSchema } from "@/lib/hear-again/model"
 
 /** A verdict as home serves it, read as the page says it. */
 const VerdictSchema: z.ZodType<TakeVerdict> = z
@@ -66,6 +71,7 @@ const TakeSchema = z.object({
   recordedAt: z.string().min(1),
   heard: HeardSchema,
   verdict: VerdictSchema,
+  hearAgain: HearAgainSchema,
 })
 
 /**

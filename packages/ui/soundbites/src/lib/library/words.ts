@@ -138,6 +138,11 @@ export const LIBRARY_WORDS = {
       many: "Asks",
       line: "What you say on an ask's page, deciding it.",
     },
+    spoken: {
+      one: "For a spoken card",
+      many: "Spoken cards",
+      line: "Takes of a spoken card's parts, each card on its own.",
+    },
     here: {
       one: "Recorded here",
       many: "Recorded here",
@@ -212,6 +217,8 @@ export const LIBRARY_WORDS = {
     compartment === "all"
       ? "No takes yet. Each kind fills its own place as you say things for it."
       : `None yet. ${LIBRARY_WORDS.kinds[compartment].line}`,
+  /** A spoken card this phone doesn't keep, named by nothing more. */
+  aSpokenCard: "A spoken card",
   /** The chips picked show no take. */
   noneUnder: "No take here is where you picked. Tap a chip again to show all.",
   /** What a take's card says first: what it was said for. */
@@ -234,6 +241,9 @@ export const LIBRARY_WORDS = {
             ? "An ask"
             : `The ask #${String(about.number)}`)
         )
+      }
+      case "spoken": {
+        return about.title ?? LIBRARY_WORDS.aSpokenCard
       }
       case "here": {
         return null
@@ -262,6 +272,9 @@ export const LIBRARY_WORDS = {
         return about.ask === null || about.number === null
           ? null
           : `#${String(about.number)}`
+      }
+      case "spoken": {
+        return `Part ${String(about.part + 1)}`
       }
       case "here": {
         return null

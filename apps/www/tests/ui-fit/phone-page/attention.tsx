@@ -33,7 +33,19 @@ const take = (
   ref: string,
   heard: string | null,
   judged: TakeVerdict
-): AttentionTake => ({ id, of, ref, recordedAt: AT, heard, verdict: judged })
+): AttentionTake => ({
+  id,
+  of,
+  ref,
+  recordedAt: AT,
+  heard,
+  verdict: judged,
+  // Home hears again a take it never heard (#3339).
+  hearAgain:
+    judged.kind === "failed"
+      ? { open: true, hearing: false, askAgainAt: null }
+      : null,
+})
 
 const TAKES: ReadonlyArray<AttentionTake> = [
   take(
@@ -70,6 +82,7 @@ const read = (answer: AttentionRead): ReconcileHome => ({
   takes: (): Promise<AttentionRead> => Promise.resolve(answer),
   audio: (): Promise<Blob | null> => Promise.resolve(null),
   act: () => Promise.resolve("kept"),
+  hearAgain: () => Promise.resolve({ kind: "notTaken" }),
 })
 
 const LISTED: AttentionRead = {

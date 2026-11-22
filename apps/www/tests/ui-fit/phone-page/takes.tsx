@@ -44,6 +44,16 @@ const take = (
     heard === null
       ? null
       : { text: heard, language: "en", model: "base", heardAt: AT },
+  // Home hears any take again on the owner's ask (#3339): the ask shows,
+  // and a take asked of lately says when it can be asked again.
+  hearAgain:
+    id === "n2"
+      ? {
+          open: false,
+          hearing: false,
+          askAgainAt: "2026-11-21T15:00:00.000Z",
+        }
+      : { open: true, hearing: false, askAgainAt: null },
   ...over,
 })
 
@@ -142,6 +152,7 @@ const stations: LibraryStations = {
 const read = (answer: LibraryRead): TakesHome => ({
   takes: (): Promise<LibraryRead> => Promise.resolve(answer),
   audio: (): Promise<Blob | null> => Promise.resolve(null),
+  hearAgain: () => Promise.resolve({ kind: "notTaken" }),
 })
 
 const LISTED: LibraryRead = {

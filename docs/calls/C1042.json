@@ -1,0 +1,17 @@
+{
+  "id": "C1042",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "server:crates/db/mailbox/src/lib.rs",
+    "server:apps/servers/file_host/src/essay_media/takes.rs"
+  ],
+  "chose": "While home hears a take again, the mailbox files its old words as every reader reads them, and never what the fresh key superseded once it has ended the take; an essay that plays the take waits for its fresh words rather than refuse it for its old verdict (`take-unheard`), so the two Rust Rounds takes that ran out of tries make their essay once heard again.",
+  "options": [
+    "essays wait, the mailbox files what stands (chosen)",
+    "hold the mailbox back too: a filer would need home's keys to tell a standing request from a moot one"
+  ],
+  "gray": "Held by `a_take_heard_again_files_its_fresh_key_and_never_what_it_superseded` and `a_take_home_hears_again_holds_its_essay_back_rather_than_refusing_it`.",
+  "undo": "Drop the wait in `essay_media::takes::hand_off`.",
+  "refs": ["#3339"]
+}

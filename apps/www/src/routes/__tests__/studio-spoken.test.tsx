@@ -5,6 +5,7 @@
  * parts, a part read under Kokoro's question, every take of it kept with Use
  * this one, and the essay's copy on the card's page.
  */
+import { spokenLineOf } from "@some-ui/video-render"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import {
   act,
@@ -17,7 +18,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { spokenPhone } from "@/lib/studio-spoken/__tests__/fixture"
-import { lineOf, parseCard } from "@/lib/studio-spoken/model"
+import { parseCard } from "@/lib/studio-spoken/model"
 import { essayBlock, SPOKEN_WORDS } from "@/lib/studio-spoken/words"
 import {
   PasteSpoken,
@@ -64,9 +65,9 @@ async function say(
   id: string,
   n: number
 ): Promise<void> {
-  act(() => sim.pattern.tap(lineOf(id, n), null))
+  act(() => sim.pattern.tap(spokenLineOf(id, n), null))
   await pass(2_000)
-  act(() => sim.pattern.tap(lineOf(id, n), null))
+  act(() => sim.pattern.tap(spokenLineOf(id, n), null))
   await pass()
 }
 
@@ -132,7 +133,7 @@ describe("Studio's Spoken", () => {
     expect(screen.getByText(W.theyAsk)).toBeTruthy()
     expect(screen.getByText("What is Rust Rounds?")).toBeTruthy()
     expect(
-      document.querySelector(`[data-script="${lineOf(id, 0)}"]`)
+      document.querySelector(`[data-script="${spokenLineOf(id, 0)}"]`)
     ).not.toBeNull()
     await say(sim, id, 0)
     await say(sim, id, 0)

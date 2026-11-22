@@ -19,6 +19,7 @@
 import type { LibraryOnPhone, PhoneTake, TakesHome } from "@some-ui/soundbites"
 
 import { phoneGameBites } from "@/lib/game-bites"
+import { hearAgainHome } from "@/lib/hear-again"
 import { askTakes } from "@/lib/home-link/takes-read"
 import { askAudio } from "@/lib/home-link/voice-audio"
 import {
@@ -40,6 +41,7 @@ export const takesHome: TakesHome = {
     return asked.kind === "unreachable" ? { kind: "away" } : asked
   },
   audio: (id) => askAudio(id),
+  hearAgain: hearAgainHome,
 }
 
 const NONE: ReadonlyArray<PhoneTake> = []

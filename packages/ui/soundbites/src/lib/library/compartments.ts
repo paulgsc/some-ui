@@ -15,14 +15,22 @@
  */
 
 import { assertNever } from "@some-ui/core-utils"
-import { parseAskId } from "@some-ui/video-render"
+import { parseAskId, spokenPartOfLine } from "@some-ui/video-render"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 
 import type { PortAbout, PortKind, TakeOf, TakeTopic } from "./kinds"
 import { KIND_OF, TAKE_OFS } from "./kinds"
+import { LIBRARY_WORDS } from "./words"
 
 /** Studio's own kinds of take, split by what each was said for. */
-export const STUDIO_KINDS = ["note", "scene", "idea", "ask", "here"] as const
+export const STUDIO_KINDS = [
+  "note",
+  "scene",
+  "idea",
+  "ask",
+  "spoken",
+  "here",
+] as const
 
 /**
  * What a take was said for, in the order Takes shows the kinds: Studio's
@@ -89,6 +97,14 @@ export type TakeAbout =
       /** Its issue's number. */
       readonly number: number | null
     }
+  | {
+      readonly kind: "spoken"
+      /** The spoken card, by its id, and its title where the phone keeps it. */
+      readonly card: string
+      readonly title: string | null
+      /** The part it is a take of, from 0. */
+      readonly part: number
+    }
   | { readonly kind: "here" }
   /** Every other kind, through its port (`./kinds`). */
   | PortAbout
@@ -116,6 +132,12 @@ export function topicOf(about: TakeAbout): TakeTopic | null {
     case "ask": {
       return about.ask === null ? null : { key: about.ask, label: about.ask }
     }
+    case "spoken": {
+      return {
+        key: `spoken:${about.card}`,
+        label: about.title ?? LIBRARY_WORDS.aSpokenCard,
+      }
+    }
     case "here": {
       return null
     }
@@ -127,10 +149,15 @@ export function topicOf(about: TakeAbout): TakeTopic | null {
 
 /**
  * What a take's ref alone says it was for: an idea's answer
- * (`idea:<idea>:<question>`), an ask's (`ask:<repo>-<number>`), a video's
- * scene (`<video>:<scene>:<take>`), else a take recorded on Takes.
+ * (`idea:<idea>:<question>`), an ask's (`ask:<repo>-<number>`), a spoken
+ * card's part (`spoken:<card>.<part>`, #3339), a video's scene
+ * (`<video>:<scene>:<take>`), else a take recorded on Takes.
  */
 export function aboutOfRef(ref: string): TakeAbout {
+  const spoken = spokenPartOfLine(ref)
+  if (spoken !== null) {
+    return { kind: "spoken", card: spoken.card, title: null, part: spoken.part }
+  }
   if (ref.startsWith("idea:")) {
     const question = ref.split(":")[2] ?? ""
     const questions: Readonly<Record<string, { readonly ask: string }>> =
@@ -173,6 +200,9 @@ export function aboutBoth(base: TakeAbout, known: TakeAbout | null): TakeAbout {
       idea: known.idea ?? base.idea,
       question: known.question ?? base.question,
     }
+  }
+  if (known.kind === "spoken" && base.kind === "spoken") {
+    return { ...base, title: known.title ?? base.title }
   }
   if (known.kind === "ask" && base.kind === "ask") {
     return {
@@ -268,6 +298,7 @@ export function compartmentCounts(
     scene: 0,
     idea: 0,
     ask: 0,
+    spoken: 0,
     here: 0,
     bite: 0,
     round: 0,
@@ -392,7 +423,7 @@ export function toggled(chips: Chips, chip: ChipPick): Chips {
 
 /**
  * The kinds home is asked for, for a compartment and the kind picked in
- * All: Studio's five are all home's `studio`; each other is its
+ * All: Studio's six are all home's `studio`; each other is its
  * own; All, and a kind this phone doesn't know, ask for every kind.
  */
 export function kindsAsked(

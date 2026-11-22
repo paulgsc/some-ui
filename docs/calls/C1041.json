@@ -1,0 +1,17 @@
+{
+  "id": "C1041",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "server:crates/db/voice/src/transcript.rs",
+    "server:crates/db/voice/src/fast_track.rs"
+  ],
+  "chose": "A fresh key is a new key to a fast-track mark, as a new model's key already is: a marked take no model has heard is FastTrack again under the fresh key, one try at the head of the line, since it has never been tried under it. TR1 holds literally, the urgency CASE is unchanged, and the owner's ask is capped by the snooze, so it is at most one head-of-line try per request. `fast_track::act` reads a take being heard again by its newest request's fresh key, so a take being heard again may be put first.",
+  "options": [
+    "FastTrack again under a fresh key (chosen)",
+    "count tries under every key, so a mark is spent for good once tried: breaks TR1's per-key reading and the queue's one urgency term"
+  ],
+  "gray": "Held by `a_request_supersedes_only_the_keys_it_found`.",
+  "undo": "Make `marked` also require no try under any key.",
+  "refs": ["#3339"]
+}

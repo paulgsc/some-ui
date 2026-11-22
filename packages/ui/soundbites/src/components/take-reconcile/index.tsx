@@ -1,8 +1,10 @@
 /**
  * The takes needing attention (HEARD3, #3075): every take home couldn't
  * hear well, grouped by code (`lib/reconcile/codes`). Each plays, shows
- * what home heard, and offers keep it, record it again, or delete it, where
- * the build deletes that kind. Renders `lib/reconcile/model.ts`'s state and
+ * what home heard, and offers keep it, record it again, ask home to try it
+ * again where home will (`components/hear-again`, #3339), or delete it,
+ * where the build deletes that kind; and, where the build can open it, the
+ * way back to what it was said for (`source`). Renders `lib/reconcile/model.ts`'s state and
  * forwards taps; its words are `lib/reconcile/words.ts`'s.
  *
  * Delete is the build's: `onDelete` opens its delete path (My data's, LA19),
@@ -12,8 +14,13 @@ import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
 import { Button, Chip, CHIP_BAR, Dot, Notice } from "@some-ui/shared"
+import {
+  HearAgainButton,
+  HearAgainLines,
+} from "@soundbites/components/hear-again"
 import { PlayButton } from "@soundbites/components/take-library/parts"
 import { Unpaired } from "@soundbites/components/unpaired"
+import { HEAR_AGAIN_WORDS } from "@soundbites/lib/hear-again/words"
 import { aboutOfRef } from "@soundbites/lib/library/compartments"
 import { LIBRARY_WORDS } from "@soundbites/lib/library/words"
 import type { ProblemCode } from "@soundbites/lib/reconcile/codes"
@@ -44,6 +51,11 @@ export type TakeReconcileProps = {
   deletable?: ((take: AttentionTake) => boolean) | undefined
   /** "Delete…": opens the build's delete path on the take. */
   onDelete?: ((take: AttentionTake) => void) | undefined
+  /**
+   * The way back to what the take was said for, to say it again, as the
+   * build links it; null or absent for none.
+   */
+  source?: ((take: AttentionTake) => ReactNode) | undefined
 }
 
 const codesOfTake = (take: AttentionTake): ReadonlyArray<ProblemCode> =>
@@ -68,12 +80,14 @@ const TakeCard = ({
   state,
   deletable,
   onDelete,
+  source,
   dispatch,
 }: {
   take: AttentionTake
   state: ReconcileState
   deletable: boolean
   onDelete: TakeReconcileProps["onDelete"]
+  source: ReactNode
   dispatch: Dispatch
 }): JSX.Element => {
   const { playback, acting } = state
@@ -81,7 +95,7 @@ const TakeCard = ({
   const codes = codesOfTake(take)
   const { language } = take.verdict
   const heard = take.heard ?? ""
-  const busy = acting !== null
+  const busy = acting !== null || state.hearAgain.asking !== null
   return (
     <li className="bg-card border-border/50 flex flex-col gap-2 rounded-2xl border p-3">
       <div className="flex min-w-0 items-start gap-3">
@@ -145,6 +159,12 @@ const TakeCard = ({
         >
           {WORDS.acts.again}
         </Button>
+        <HearAgainButton
+          take={take}
+          state={state}
+          busy={busy}
+          onAsk={() => dispatch({ type: "hearAgain", id: take.id })}
+        />
         {deletable && onDelete !== undefined && (
           <Button
             type="button"
@@ -157,6 +177,12 @@ const TakeCard = ({
           </Button>
         )}
       </div>
+      <HearAgainLines
+        take={take}
+        state={state}
+        onDismiss={() => dispatch({ type: "hearAgainDismissed" })}
+      />
+      {source}
       {!deletable && (
         <p className="text-muted-foreground text-xs">{WORDS.keptForGood}</p>
       )}
@@ -265,6 +291,7 @@ export const TakeReconcile = ({
   pair,
   deletable,
   onDelete,
+  source,
 }: TakeReconcileProps): JSX.Element => {
   /* eslint-disable-next-line owner-guard/no-mount-snapshot -- the runtime is made once per mount, as Studio's screens' are */
   const [runtime] = useState(() => createReconcile(ports))
@@ -284,6 +311,7 @@ export const TakeReconcile = ({
       state={state}
       deletable={deletable?.(take) ?? false}
       onDelete={onDelete}
+      source={source?.(take) ?? null}
       dispatch={dispatch}
     />
   )
@@ -359,6 +387,12 @@ export const TakeReconcile = ({
           {WORDS.done[state.said.act]}
         </Notice>
       )}
+      {state.hearAgain.said?.kind === "settled" &&
+        !takes.some(({ id }) => id === state.hearAgain.said?.id) && (
+          <Notice onDismiss={() => dispatch({ type: "hearAgainDismissed" })}>
+            {HEAR_AGAIN_WORDS.said.settled}
+          </Notice>
+        )}
       {state.said?.kind === "settled" && (
         <Notice onDismiss={() => dispatch({ type: "noticeDismissed" })}>
           {WORDS.settled}

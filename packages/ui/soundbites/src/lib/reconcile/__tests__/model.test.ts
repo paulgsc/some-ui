@@ -23,6 +23,7 @@ const take = (id: string): AttentionTake => ({
     rule: "heard-1",
     language: { heard: "en", expected: "en" },
   },
+  hearAgain: null,
 })
 
 const PAGE: AttentionPage = { takes: [take("a"), take("b")], total: 2 }
@@ -49,6 +50,84 @@ const listed: ReadonlyArray<ReconcileEvent> = [
 
 const ids = (state: ReconcileState): Array<string> =>
   state.read.kind === "read" ? state.read.page.takes.map(({ id }) => id) : []
+
+const FREE = { open: true, hearing: false, askAgainAt: null } as const
+
+/** The page with take `a` as home says it hears it again. */
+const pageWith = (hearAgain: AttentionTake["hearAgain"]): AttentionPage => ({
+  takes: [{ ...take("a"), hearAgain }, take("b")],
+  total: 2,
+})
+
+const listedWith = (
+  hearAgain: AttentionTake["hearAgain"]
+): ReadonlyArray<ReconcileEvent> => [
+  { type: "entered" },
+  {
+    type: "takesRead",
+    seq: 1,
+    read: { kind: "read", page: pageWith(hearAgain) },
+  },
+]
+
+describe("asking home to hear a take again, from the takes needing attention (#3339)", () => {
+  it("asks only of a take home will hear again, and keeps it listed once home will", () => {
+    const quiet = run([...listed, { type: "hearAgain", id: "b" }])
+    expect(quiet.effects).not.toContain("sendHearAgain")
+    const { state, effects } = run([
+      ...listedWith(FREE),
+      { type: "hearAgain", id: "a" },
+      {
+        type: "hearAgainAnswered",
+        seq: 1,
+        answer: { kind: "asked" },
+      },
+    ])
+    expect(effects).toContain("sendHearAgain")
+    expect(ids(state)).toEqual(["a", "b"])
+    expect(state.hearAgain.changed.get("a")).toEqual({
+      open: false,
+      hearing: true,
+      askAgainAt: null,
+    })
+  })
+
+  it("sends no act while an ask is under way, and no ask while an act is", () => {
+    const asking = run([
+      ...listedWith(FREE),
+      { type: "hearAgain", id: "a" },
+      { type: "act", id: "a", act: "again" },
+    ])
+    expect(asking.effects).not.toContain("sendAct")
+    const acting = run([
+      ...listedWith(FREE),
+      { type: "act", id: "b", act: "keep" },
+      { type: "hearAgain", id: "a" },
+    ])
+    expect(acting.effects).not.toContain("sendHearAgain")
+  })
+
+  it("drops a take home holds nothing more to hear in, and a fresh read takes home's word over what was laid on it", () => {
+    const settled = run([
+      ...listedWith(FREE),
+      { type: "hearAgain", id: "a" },
+      { type: "hearAgainAnswered", seq: 1, answer: { kind: "settled" } },
+    ])
+    expect(ids(settled.state)).toEqual(["b"])
+    const asked = run([
+      ...listedWith(FREE),
+      { type: "hearAgain", id: "a" },
+      {
+        type: "hearAgainAnswered",
+        seq: 1,
+        answer: { kind: "asked" },
+      },
+      { type: "readAgain" },
+      { type: "takesRead", seq: 2, read: { kind: "read", page: PAGE } },
+    ])
+    expect(asked.state.hearAgain.changed.size).toBe(0)
+  })
+})
 
 describe("the takes needing attention's machine (HEARD3)", () => {
   it("reads on entering, and an answer to an earlier read changes nothing", () => {
