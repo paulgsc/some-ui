@@ -75,7 +75,6 @@ import {
   parsePages,
   parseSnipsGiven,
   pngSize,
-  QUIET,
   resolveScreens,
   SNIPS_DIR,
   snipsOf,
@@ -96,7 +95,12 @@ import type {
   SpokenTakeFiles,
   StillTake,
 } from "@some-ui/video-render"
-import { nodePorts, readSeries } from "@some-ui/video-render/node"
+import {
+  layAudio,
+  nodePorts,
+  readSeries,
+  sayLines,
+} from "@some-ui/video-render/node"
 
 import { CALL_OPTIONS, FRAME } from "./call-recording"
 import { fail, here, jsonOr, launchChromium, runCommand } from "./command"
@@ -106,7 +110,6 @@ import {
   recordStills,
   refuseLong,
   renderCut,
-  sayLines,
   siteOf,
   speakerFlag,
 } from "./voiced"
@@ -162,36 +165,22 @@ async function sceneTakes(
       takes.push(heard[0] ?? null)
       continue
     }
-    const pad = `apad=pad_dur=${String(CHAPTER_GAP_MS / 1000)}`
-    const inputs = scene.lines.flatMap((line) => ["-i", `${line.file}.wav`])
-    const filter = `${scene.lines
-      .map((_, i) =>
-        i < scene.lines.length - 1
-          ? `[${String(i)}:a]${pad}[p${String(i)}];`
-          : ""
-      )
-      .join("")}${scene.lines
-      .map((_, i) =>
-        i < scene.lines.length - 1 ? `[p${String(i)}]` : `[${String(i)}:a]`
-      )
-      .join("")}concat=n=${String(scene.lines.length)}:v=0:a=1`
-    const joined = await ports.ffmpeg({
-      args: [
-        ...QUIET,
-        ...inputs,
-        "-filter_complex",
-        filter,
-        `${scene.file}.wav`,
-      ],
-    })
-    if (!joined.ok)
-      fail([`${scene.file}'s takes can't be joined:`, joined.stderr])
-    // Each take's length was rounded to a whole ms: the joined file's own
-    // bounds the take, so it never runs past the audio.
-    const facts = await ports.probe(`${scene.file}.wav`)
-    if (!facts) fail([`${scene.file}.wav can't be read`])
+    // One join of per-line takes (`layAudio`), a chapter's gap after each
+    // but the last. The laid file's own length bounds the take: each line's
+    // was rounded to a whole ms, so it never runs past the audio.
+    const laidMs = await layAudio(
+      ports,
+      scene.lines.map((line, i) => ({
+        file: `${line.file}.wav`,
+        pad:
+          i < scene.lines.length - 1
+            ? { kind: "after" as const, ms: CHAPTER_GAP_MS }
+            : null,
+      })),
+      `${scene.file}.wav`
+    )
     const take = joinedTake(heard)
-    takes.push({ ...take, ms: Math.min(take.ms, Math.floor(facts.durationMs)) })
+    takes.push({ ...take, ms: Math.min(take.ms, laidMs) })
   }
   return takes
 }
@@ -542,7 +531,14 @@ async function main(): Promise<void> {
     const spokenCount = scenes.length - cards.length
     if (spoken) console.log(`scenes ${String(lines.length + spokenCount)}`)
     const said = spoken
-      ? await sayLines({ root, lines, speaker, policy, announce: false })
+      ? await sayLines({
+          root,
+          ports: nodePorts(root),
+          lines,
+          speaker,
+          policy,
+          announce: false,
+        })
       : []
     let recorded: ReadonlyMap<string, StillTake | null> = new Map()
     if (spokenCount > 0) {

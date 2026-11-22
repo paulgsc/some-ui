@@ -25,19 +25,72 @@
     "chapters": [
       {
         "title": "This morning’s|picks",
-        "from": 0
+        "from": 0,
+        "narration": [
+          "I'm looking for work, and this is where my mornings start.",
+          "A few postings wait each day, weighed against my own résumé, so the search fits before the day does.",
+          "When I pass on one, I say why, and the reason stays with it."
+        ],
+        "measures": [
+          {
+            "kind": "place",
+            "pipeline": "jobs",
+            "affordance": "todays-pick",
+            "place": "read"
+          }
+        ]
       },
       {
         "title": "Applying",
-        "from": 3
+        "from": 3,
+        "narration": [
+          "Applying is where a search usually stalls, so I made it small.",
+          "Each application gets a résumé made for that posting, from one copy I keep up to date."
+        ],
+        "measures": [
+          {
+            "kind": "place",
+            "pipeline": "jobs",
+            "affordance": "todays-pick",
+            "place": "apply"
+          },
+          {
+            "kind": "debrief"
+          }
+        ]
       },
       {
         "title": "The interview|week",
-        "from": 5
+        "from": 5,
+        "narration": [
+          "Interviewing is a skill, so I practise it like one.",
+          "Each week, a made-up company sends a week of questions, and I answer them out loud, wherever I am.",
+          "Hearing myself back is the part that teaches."
+        ],
+        "measures": [
+          {
+            "kind": "place",
+            "pipeline": "jobs",
+            "affordance": "interview-week",
+            "place": "say"
+          }
+        ]
       },
       {
         "title": "The record",
-        "from": 14
+        "from": 14,
+        "narration": [
+          "Every application lands here, so I can look back on how my search went.",
+          "I built this for my own search, and it's published as it is, for anyone to see how it works."
+        ],
+        "measures": [
+          {
+            "kind": "place",
+            "pipeline": "jobs",
+            "affordance": "record",
+            "place": "record"
+          }
+        ]
       }
     ],
     "cta": "Some UI|for Android",

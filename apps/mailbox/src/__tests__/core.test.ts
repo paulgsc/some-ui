@@ -3382,3 +3382,247 @@ describe("the backfill's last day", () => {
     )
   })
 })
+
+const COMMIT = "a6e171f0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6"
+const SHA = `${"0".repeat(63)}1`
+const SNIP = {
+  id: "apk:@studio/takes:android:2.4.0:0123456789ab",
+  surface: "apk",
+  build: "release",
+  route: "@studio/takes",
+  path: "@studio/takes",
+  viewport: "android",
+  width: 1080,
+  height: 1920,
+  scale: 1,
+  regions: [],
+  appVersion: "2.4.0",
+  module: "Studio",
+  shows: "Takes",
+  description: "Studio: Takes, on the Android app, with sample data.",
+  image: {
+    name: "apk/android/release-studio~takes-0123456789ab.png",
+    kind: "png",
+    bytes: 48213,
+    sha256: SHA,
+  },
+}
+const MANIFEST = {
+  schema: "some-ui.snips/1",
+  appVersion: "2.4.0",
+  commit: COMMIT,
+  run: "https://github.com/paulgsc/some-ui/actions/runs/44072396351",
+  frozenAt: "2026-01-15T17:00:00.000Z",
+  data: "sample",
+  snips: [SNIP],
+  unreached: [{ surface: "web", route: "/auth", why: "it sends a visitor on" }],
+}
+
+describe("a capture's snip list (SNIPS2, #3116)", () => {
+  const RUN = "44072396351"
+  const NAME = `snips-${COMMIT}-${RUN}.json`
+  const LIST = JSON.stringify(MANIFEST)
+  const asHome = (
+    d: Deps,
+    name: string = NAME,
+    body: string = LIST
+  ): Promise<Response> => put(d, "snips", name, { token: HOME, body })
+
+  it("home puts a commit's list once, a bundle fetched again adds nothing, and the routine reads it", async () => {
+    const rings: Array<Folder> = []
+    const d = deps(memoryStore(), [], rings)
+    expect((await asHome(d)).status).toBe(201)
+    expect((await asHome(d)).status).toBe(200)
+    expect(
+      (await asHome(d, NAME, JSON.stringify({ ...MANIFEST, snips: [] }))).status
+    ).toBe(409)
+    expect(rings).toEqual([])
+    const path = `/v1/snips/items/${NAME}`
+    const read = await send(d, "GET", path)
+    expect(read.status).toBe(200)
+    expect(await read.text()).toBe(LIST)
+    expect((await send(d, "GET", path, { token: ARCHIVE })).status).toBe(200)
+    expect((await send(d, "GET", path, { token: HOME })).status).toBe(403)
+    expect((await put(d, "snips", NAME, { body: LIST })).status).toBe(403)
+  })
+
+  it("nothing archives a list or asks one back: a capture makes it again", async () => {
+    let now = NOW
+    const d: Deps = { ...deps(), now: () => now }
+    expect((await asHome(d)).status).toBe(201)
+    now = new Date(NOW.getTime() + ARCHIVE_MIN_AGE_DAYS * 10 * 86_400_000)
+    const sha = createHash("sha256").update(LIST).digest("hex")
+    for (const token of [ROUTINE, HOME, ARCHIVE]) {
+      expect(
+        (
+          await send(d, "DELETE", `/v1/snips/items/${NAME}`, {
+            token,
+            headers: { "if-match": `"${sha}"` },
+          })
+        ).status
+      ).toBe(403)
+      expect(
+        (await send(d, "GET", "/v1/snips/archived", { token })).status
+      ).toBe(403)
+      expect(
+        (await send(d, "PUT", `/v1/snips/wanted/${NAME}`, { token })).status
+      ).toBe(403)
+    }
+  })
+
+  it("is named for its commit and run, so a second capture of a commit has its own list", async () => {
+    const d = deps()
+    for (const name of [
+      `snips-${COMMIT}.json`,
+      `snips-${COMMIT.slice(0, 12)}-${RUN}.json`,
+      `snips-${COMMIT.toUpperCase()}-${RUN}.json`,
+      `snips-${COMMIT}-${RUN}.png`,
+      `snips-${COMMIT}-0${RUN}.json`,
+    ]) {
+      expect((await asHome(d, name)).status).toBe(422)
+    }
+    for (const name of [
+      `snips-${"b".repeat(40)}-${RUN}.json`,
+      `snips-${COMMIT}-1.json`,
+    ]) {
+      const answer = await asHome(d, name)
+      expect(answer.status).toBe(422)
+      expect(await json(answer)).toEqual({
+        error: "the name must carry the commit and the run",
+      })
+    }
+    const again = JSON.stringify({
+      ...MANIFEST,
+      run: "https://github.com/paulgsc/some-ui/actions/runs/44072399999",
+    })
+    expect((await asHome(d)).status).toBe(201)
+    expect(
+      (await asHome(d, `snips-${COMMIT}-44072399999.json`, again)).status
+    ).toBe(201)
+    for (const run of ["https://example.com/runs/1", "44072396351", 7]) {
+      const answer = await asHome(d, NAME, JSON.stringify({ ...MANIFEST, run }))
+      expect(await json(answer)).toEqual({
+        error: "run must be the capture's run on GitHub",
+      })
+    }
+  })
+
+  it("takes a capture's manifest as the bundle writes it: pretty-printed, web parts boxed, a recording", async () => {
+    const d = deps()
+    const hash = "0123456789ab"
+    const web = {
+      ...SNIP,
+      id: `web:/rust/$week:phone:2.4.0:${hash}`,
+      surface: "web",
+      route: "/rust/$week",
+      path: "/rust/2026-w47?tab=cards",
+      viewport: "phone",
+      width: 824,
+      height: 1830,
+      scale: 2,
+      regions: Array.from({ length: 12 }, (_, i) => ({
+        ref: `card-${String(i)}`,
+        box: { x: 16, y: 120 * i, width: 380, height: 112 },
+      })),
+      shows: "Rust Rounds: the week's cards",
+      image: { ...SNIP.image, name: `web/phone/rust~$week-${hash}.png` },
+      recording: {
+        name: `web/phone/rust~$week-${hash}.webm`,
+        kind: "webm",
+        bytes: 913_201,
+        sha256: SHA,
+      },
+    }
+    const body = JSON.stringify({ ...MANIFEST, snips: [SNIP, web] }, null, 2)
+    expect((await asHome(d, NAME, body)).status).toBe(201)
+  })
+
+  it("carries records, never a picture", async () => {
+    const d = deps()
+    const withSnip = (snip: Record<string, unknown>): unknown => ({
+      ...MANIFEST,
+      snips: [snip],
+    })
+    const shapes: Array<[unknown, string]> = [
+      [{ ...MANIFEST, owner: "x" }, "owner is not part of a snip list"],
+      [
+        { ...MANIFEST, png: "x" },
+        "a snip list carries no picture: a capture makes it again",
+      ],
+      [
+        { ...MANIFEST, imageBytes: "x" },
+        "a snip list carries no picture: a capture makes it again",
+      ],
+      [
+        { ...MANIFEST, note: `data:image/png;base64,iVBORw0KGgo=` },
+        "a snip list carries no picture: a capture makes it again",
+      ],
+      [
+        withSnip({ ...SNIP, shows: "A".repeat(300) }),
+        "a snip list carries no picture: a capture makes it again",
+      ],
+      [
+        withSnip({ ...SNIP, pixels: "x" }),
+        "a snip list carries no picture: a capture makes it again",
+      ],
+      [
+        withSnip({ ...SNIP, mark: "keep" }),
+        "mark is not part of a snip's record",
+      ],
+      [
+        withSnip({ ...SNIP, image: { ...SNIP.image, data: "x" } }),
+        "data is not part of a snip's file: only its name, kind, size and SHA-256",
+      ],
+      [
+        withSnip({ ...SNIP, image: { ...SNIP.image, pixels: "x" } }),
+        "a snip list carries no picture: a capture makes it again",
+      ],
+      [
+        withSnip({ ...SNIP, image: { ...SNIP.image, kind: "mp4" } }),
+        "image must be a png",
+      ],
+      [
+        withSnip({ ...SNIP, image: { ...SNIP.image, kind: "jpeg" } }),
+        "image must be a png",
+      ],
+      [
+        withSnip({ ...SNIP, image: { ...SNIP.image, sha256: "ABC" } }),
+        "image must carry its SHA-256, in lower-case hex",
+      ],
+      [
+        withSnip({
+          ...SNIP,
+          recording: { ...SNIP.image, kind: "mp4", bytes: 0 },
+        }),
+        "recording must say its size in bytes",
+      ],
+      [{ ...MANIFEST, snips: [SNIP, SNIP] }, "each snip is listed once"],
+      [
+        { ...MANIFEST, data: "home" },
+        "data must be sample: a capture shows sample data only",
+      ],
+      [{ ...MANIFEST, snips: {} }, "snips must be a list"],
+      [
+        { ...MANIFEST, commit: "main" },
+        "commit must be the captured commit's 40 hex digits",
+      ],
+    ]
+    for (const [body, why] of shapes) {
+      const answer = await asHome(d, NAME, JSON.stringify(body))
+      expect(answer.status).toBe(422)
+      expect(await json(answer)).toEqual({ error: why })
+    }
+    const moved = withSnip({
+      ...SNIP,
+      recording: { ...SNIP.image, name: "x.mp4", kind: "mp4" },
+    })
+    expect((await asHome(d, NAME, JSON.stringify(moved))).status).toBe(201)
+    const stillPicture = withSnip({
+      ...SNIP,
+      recording: { ...SNIP.image, name: "x.png", kind: "png" },
+    })
+    expect(
+      await json(await asHome(d, NAME, JSON.stringify(stillPicture)))
+    ).toEqual({ error: "recording must be an mp4 or webm" })
+  })
+})

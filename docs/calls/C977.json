@@ -1,0 +1,18 @@
+{
+  "id": "C977",
+  "made": "2026-11-21",
+  "by": "claude",
+  "paths": [
+    "server:apps/servers/file_host/src/transcribe/verdict.rs",
+    "server:crates/db/mailbox/src/lib.rs"
+  ],
+  "chose": "An ending heard as white space alone (Unicode White_Space, the mailbox's BLANK set) is judged `nothing_said`, as silence is, and a Rust Rounds or interview take whose ending is silent or blank and judged `nothing_said` is filed shaped as a silence (no text, no language). A blank ending judged otherwise before this change stays unfiled rather than be filed as heard.",
+  "options": [
+    "judge blank words nothing_said, and file a silent-or-blank ending judged nothing_said (taken)",
+    "keep judging blank words on their signals and only widen the filer",
+    "store a blank hearing as silent at the engine, rewriting the outcome"
+  ],
+  "gray": "What the owner sees for such a take (nothing said rather than heard or garbled) is a choice no check settles; the engine already trims each segment, so in practice it needs text that is only white space.",
+  "undo": "Drop the blank-text arm from `judge` and narrow the filer's silent branch back to `outcome = 'silent'`. The rule keeps its name, heard-1: no threshold moved.",
+  "refs": ["server#913"]
+}

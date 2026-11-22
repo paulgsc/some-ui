@@ -145,8 +145,17 @@ invariant 6). Each pass:
    owner's own marks and which snip each essay used. Nothing CI can make
    again is kept twice: home keeps no picture library, and drops its copies
    once the video is made (owner, 2026-11-21).
-4. puts each record, never an image, in the mailbox. Not yet: it waits on
-   `apps/mailbox` gaining a folder for it.
+4. puts the bundle's `manifest.json`, its records and never an image, in the
+   mailbox's `snips` folder as `snips-<commit>-<run>.json`, without its
+   whitespace (`apps/mailbox/README.md`, C946), so the routine can name a
+   snip by its id and commit. The same run fetched again adds nothing, and a
+   second capture of a commit has a list of its own. A run attempted again
+   keeps its id, so if its list differs the mailbox keeps the first. The
+   mailbox never archives a list: the commit's capture makes it again. Not
+   yet: home's half is paulgsc/server#1082. As step 1 stands, home fetches
+   only a commit an essay already names, so a capture no essay names leaves
+   no list for the routine to choose from; which capture's list home also
+   fetches (the newest, say) is #1082's to settle.
 
 **When a bundle can't be had** (C875). A bundle lives one day. When a
 commit has no successful run, its newest run's artifact has expired, or its

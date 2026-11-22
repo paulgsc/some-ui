@@ -1104,7 +1104,7 @@
     {
       "id": "game-feed",
       "name": "Home follows the games of the week",
-      "why": "Home polls ESPN's public NFL feed in the background, keeping every answer and appending each game's plays to a log, so the phone's recordings from a game can later be matched to the play they are about. No route serves the log; the paired phone's game day socket (in the `websocket` module, placed in `synchronous`) reads it to offer what can be happening now, only while the socket is open.",
+      "why": "Home polls ESPN's public NFL feed in the background, keeping every answer and appending each game's plays to a log, so the phone's recordings from a game can later be matched to the play they are about. The paired phone's game day socket (in the `websocket` module, placed in `synchronous`) reads the log to offer what can be happening now, only while the socket is open, and the `games` module (placed in `synchronous`) serves a paired phone a game's moments read off it.",
       "paths": [
         "server:apps/servers/file_host/src/game_feed",
         "server:crates/nfl_feed",
@@ -1537,7 +1537,7 @@
             {
               "class": "measured",
               "says": "A pass that reaches its deadline leaves the subjects it never reached untouched and still due; subjects beyond a batch are finished by later passes.",
-              "ref": "server:apps/servers/file_host/src/nudge/waker.rs"
+              "ref": "server:apps/servers/file_host/src/nudge/waker/tests.rs"
             },
             {
               "class": "structural",
@@ -1546,8 +1546,8 @@
             }
           ],
           "proof": [
-            "server:apps/servers/file_host/src/nudge/waker.rs#a_pass_that_reaches_its_deadline_leaves_the_subjects_it_never_reached_untouched_and_still_due",
-            "server:apps/servers/file_host/src/nudge/waker.rs#behind_subjects_beyond_a_batch_are_finished_by_later_passes"
+            "server:apps/servers/file_host/src/nudge/waker/tests.rs#a_pass_that_reaches_its_deadline_leaves_the_subjects_it_never_reached_untouched_and_still_due",
+            "server:apps/servers/file_host/src/nudge/waker/tests.rs#behind_subjects_beyond_a_batch_are_finished_by_later_passes"
           ],
           "watch": {
             "by": "dashboard",
@@ -1604,7 +1604,7 @@
           "requirement": "While the nudge is on, each pass sweeps intervention_log past 90 days and activity_outcome past a year (owner, 2026-10-28), at most RETENTION_SWEEP_LIMIT = 500 rows per table per pass, so a backlog (the nudge turned on again after a long while off) is gone once the passes catch up; with it off, both keep every row. Presence leases are at most 16 per person, and the charge and gate one row per person and class, either way.",
           "verdict": "holds",
           "proof": [
-            "server:apps/servers/file_host/src/nudge/waker.rs#a_pass_deletes_exactly_the_intervention_history_past_the_retention_horizon",
+            "server:apps/servers/file_host/src/nudge/waker/tests.rs#a_pass_deletes_exactly_the_intervention_history_past_the_retention_horizon",
             "server:apps/servers/file_host/src/main.rs#config.nudge_enabled",
             "some-ui:apps/www/src/lib/device-backend/__tests__/storage-bounds.test.ts#keeps the latest 16 contexts"
           ],
@@ -4331,6 +4331,10 @@
       "why": "The owner's lesson edits; each answers with what it kept."
     },
     {
+      "module": "games",
+      "why": "A paired phone reads a game's moment log: every play home kept of it, read through the scenario engine at the time asked. The answer is the outcome, and nothing is written."
+    },
+    {
       "module": "health",
       "why": "Answers whether the process is up; nothing is owed after."
     },
@@ -4405,8 +4409,8 @@
     {
       "store": "mailbox:item",
       "class": "cache",
-      "growth": "Per file the routine or home puts (folders brief, decisions, scout, scene, drama, run, opened, leetype, leetype-log, transcript, index, reflection, prompt, pickup, picked), body <= MAX_BODY_BYTES = 1,048,576; a few KB a day per README (a written reflection is its typed line, its session and when, paulgsc/some-ui#2178; a drama prompt about 40 KB per ask, its text at most 256 KiB, paulgsc/some-ui#2179; a list of the takes Drive holds about 78 B a take, at most 10,000 takes, one per build-journal session that lists Drive's takes folder, in brief, paulgsc/some-ui#2401); bytes leave once archived. Home's index (index) is one per routine (jobs, reflections, call, rust, interview), the latest only: putting a new one drops the one before of its routine in the same write, and it is never archived (owner, paulgsc/server#509). The reflections index grows by about 1 KB a day (the bases answered and the distinct word ids its decks use); the rest of it is bounded by what still waits. The call index grows by about 100 B a week (one week's days and hash). The rust index holds at most the newest 4 final weeks' records, a few KB each plus their pastes (each at most 20,000 characters), under the 1 MiB cap. The interview index likewise holds at most the newest 4 final interview weeks' records (some-ui#2935, paulgsc/server#847).",
-      "horizon": "a file's bytes are deleted once it has been live >= 30 days (ARCHIVE_MIN_AGE_DAYS) and home has archived them (home waits MAILBOX_ARCHIVE_DAYS, >= 30); metadata moves to `archived`, except files in pickup and picked, which are not archived and stay live until server#850 decides (C303). An index's row and bytes go when home puts a newer one of its routine, with no `archived` row",
+      "growth": "Per file the routine or home puts (folders brief, decisions, scout, scene, drama, run, opened, leetype, leetype-log, transcript, index, reflection, prompt, pickup, picked, snips), body <= MAX_BODY_BYTES = 1,048,576; a few KB a day per README (a snip list is one per capture run home fetches, its manifest without whitespace, about 1 to 2 KB a snip, about 200 KB for the 101 snips of the first capture, and a capture runs only when the owner dispatches one, paulgsc/some-ui#3116; a written reflection is its typed line, its session and when, paulgsc/some-ui#2178; a drama prompt about 40 KB per ask, its text at most 256 KiB, paulgsc/some-ui#2179; a list of the takes Drive holds about 78 B a take, at most 10,000 takes, one per build-journal session that lists Drive's takes folder, in brief, paulgsc/some-ui#2401); bytes leave once archived. Home's index (index) is one per routine (jobs, reflections, call, rust, interview), the latest only: putting a new one drops the one before of its routine in the same write, and it is never archived (owner, paulgsc/server#509). The reflections index grows by about 1 KB a day (the bases answered and the distinct word ids its decks use); the rest of it is bounded by what still waits. The call index grows by about 100 B a week (one week's days and hash). The rust index holds at most the newest 4 final weeks' records, a few KB each plus their pastes (each at most 20,000 characters), under the 1 MiB cap. The interview index likewise holds at most the newest 4 final interview weeks' records (some-ui#2935, paulgsc/server#847).",
+      "horizon": "a file's bytes are deleted once it has been live >= 30 days (ARCHIVE_MIN_AGE_DAYS) and home has archived them (home waits MAILBOX_ARCHIVE_DAYS, >= 30); metadata moves to `archived`, except files in pickup and picked, which are not archived and stay live until server#850 decides (C303). Files in snips are never archived and stay live: home keeps no copy of what a capture can make again (C946). An index's row and bytes go when home puts a newer one of its routine, with no `archived` row",
       "family": "routine-to-home"
     },
     {
@@ -4954,7 +4958,7 @@
       "store": "server:activity_outcome",
       "class": "record",
       "growth": "Per activity block played (one row per block, idempotent on (session_id, block_index)); \"a daily learner writes a few thousand rows a year\" (outcome_repo constant doc); steady state is rate x 1 year.",
-      "horizon": "365 days from ended_at, pruned by OutcomeRepository::prune (crates/db/outcome/src/repository.rs) from the waker's sweep_history (apps/servers/file_host/src/nudge/waker.rs), at most RETENTION_SWEEP_LIMIT=500 rows per pass; only while NUDGE_ENABLED is on",
+      "horizon": "365 days from ended_at, pruned by OutcomeRepository::prune (crates/db/outcome/src/repository.rs) from the waker's sweep_history (apps/servers/file_host/src/nudge/sweep.rs), at most RETENTION_SWEEP_LIMIT=500 rows per pass; only while NUDGE_ENABLED is on",
       "family": "study-nudge"
     },
     {
@@ -5106,7 +5110,7 @@
       "store": "server:intervention_log",
       "class": "telemetry",
       "growth": "Per nudge the waker decides to send: one small row (JSON StudyAction), at most one per subject per REFRACTORY (20 h); steady state is rate x 90 days.",
-      "horizon": "90 days from decided_at, pruned by EngagementRepository::prune_intervention_log (crates/db/engagement/src/repository.rs) from waker sweep_history, <=500 rows per pass, only while NUDGE_ENABLED; release() also deletes a claimed row nothing was delivered for",
+      "horizon": "90 days from decided_at, pruned by EngagementRepository::prune_intervention_log (crates/db/engagement/src/repository.rs) from the waker's sweep_history (nudge/sweep.rs), <=500 rows per pass, only while NUDGE_ENABLED; release() also deletes a claimed row nothing was delivered for",
       "family": "study-nudge"
     },
     {

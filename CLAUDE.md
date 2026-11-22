@@ -336,6 +336,10 @@ date is clipped. A workspace is a candidate when it is:
 "Own change" ignores tests, manifests and config, file deletions (cleanup is not work on the
 story), and sweeps across more than eight workspaces (version bumps, renames, rollouts).
 
+With `--usage <friction.json>` (what `motion walkthrough --home` keeps from home's weekly read) it also lists **usage candidates** (#3338): modules the
+build offers that nobody has opened in four weeks (`packages/engagement/src/lib/silence.ts`). A
+module whose opening isn't measured is never called silent.
+
 It is a report, never a gate: whether a story is dead is the owner's call, so put the
 candidates to them instead of deleting on the score alone. Known false positives come from
 what `package.json` cannot show. `packages/some-content` is consumed by file path (its

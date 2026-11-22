@@ -32,6 +32,7 @@
     "@fontsource/barlow-condensed": "5.3.0",
     "@some-extension/suspender-ledger": "workspace:*",
     "@some-ui/core-utils": "workspace:*",
+    "@some-ui/engagement": "workspace:*",
     "@some-ui/styles": "workspace:*",
     "@some-ui/video-render": "workspace:*",
     "hyperframes": "0.9.22",
