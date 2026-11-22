@@ -198,3 +198,140 @@ become dead and are removed in the same PR.
 - **why gray:** the owner has no opinion on the design ("just do what's recommended").
 - **undo:** remove the Vite input; `/` falls back to the SPA's `Root`.
 - **by:** claude.
+
+## Round 2: the owner's answers (2026-11-22, via the coordinator)
+
+The owner's answers, as the coordinator paraphrased them:
+
+1. List WIS and Natera.
+2. No preference between A, B and C; my call.
+3. Add a photo slot ("it's important people see you"). The mochi stands in until a photo exists.
+4. Show, don't describe. Each project gets a short motion clip in the walkthrough and promo
+   style. The three projects are the extensions, the APK, and the server as seen through
+   home's Grafana.
+
+**Prototype D** (`d-show/index.html`, one self-contained file with relative images and no
+scripts). Screens:
+
+- `shots/contact-sheet-round2.png`: desktop, phone, and phone full page;
+- `shots/d-show-motion.png`: the clips at three moments, and the server clip zoomed to each
+  panel;
+- `shots/d-show-{desktop,phone}[-full].png`.
+
+**Why C's shape.** C is the only one of the three whose layout already has a media frame per
+project, so a clip replaces a picture and nothing moves. Its header band has room for a
+photo beside the name. B's sidebar could hold the photo, but its narrow cards make a clip
+small. A has no place for media.
+
+**What D is.**
+
+- The header: photo, name, role, résumé, email and GitHub.
+- Three cards (extensions, the Android app, the server), each opening on its clip.
+- Experience, now listing WIS (2024 to now) and Natera (2019 to 2020) beside CABA Design.
+- Skills and education.
+
+Both kinds of slot are named in the markup and take one asset key:
+
+- `<figure data-slot="photo" data-asset="photo/portrait.webp">` holds the mochi, drawn from
+  `castNodes("mochi")` (`packages/some-styles/src/brand/cast.ts`), until the photo exists.
+- `<figure data-slot="clip" data-asset="clips/<project>.mp4">`, one per card.
+
+Until the clips are rendered, CSS plays placeholder frames in each slot:
+
+- **Extensions:** Suspender Ledger's real walk. I ran `motion walk suspender-ledger` here on
+  paulgsc/testing's `promo/suspender-ledger/0.3.1/sample.json`, and the tap rings sit
+  where and when `walk.json` puts them.
+- **The Android app:** APK screens from paulgsc/testing's clips and video-render's
+  phone-card snip.
+- **The server:** a mock-up of the four panels, labelled as one. It is drawn in CSS and is
+  not a capture.
+
+Reduced motion shows the first frame.
+
+### Grafana: the panels, and what is in them
+
+An outsider asks: is it OK, what runs, where work flows, and how much. The four panels that
+answer that, from paulgsc/server `infra/grafana/dashboards` at `3d3739d`:
+
+1. **HEALTH verdicts**, the file_host dashboard's top row (`lib/health-panels.libsonnet`):
+   DEPS, ERRORS, REFUSALS, LOOPS, SIGNAL. Verdict tiles that are never "green by default"
+   (`docs/dashboard-honesty.md`).
+2. **SERVICES: up, and when they weren't** (`lib/overview-panels.libsonnet`): each service's
+   uptime as a state timeline.
+3. **PIPELINES**, one process as a node graph (`pipelines.jsonnet`,
+   `lib/pipeline-panels.libsonnet`). Each node is a stage, coloured by the alerts firing on
+   it. The weekly call is a good one to show.
+4. **Request Rate by Outcome** (`lib/health-panels.libsonnet`): traffic, with refused work
+   kept apart from successes.
+   - Optional fifth: **HTTP Latency by Route (P95)**.
+
+**Personal data.** None should be in these panels, since they are aggregates. What could
+leak, and how the capture prevents it:
+
+- **Legends with an `instance` (a LAN IP and port, or a hostname):** hide the legend or
+  relabel it.
+- **Grafana's own chrome (user avatar, org name, URL):** `?kiosk`, with a viewer service
+  account.
+- **The time axis, which shows when the owner uses home:** a fixed, dated window, read as
+  "a week of home".
+- **A node's `detail__*` fields:** these show only on click, so a still capture never
+  includes them.
+
+HTTP route labels are path templates with bounded cardinality, so they carry no ids. As a
+guard, the capture can refuse a region whose text matches an IP or a hostname.
+
+**How the capture is made.** It runs on home, since Grafana is home-only. The render
+service's Playwright headless shell opens the dashboard in kiosk mode over the fixed
+window. It measures each chosen panel's box and writes a `some-ui.screens/1` record: the
+picture, plus regions named by panel title. That record is exactly what `screen-zoom`
+(RR31) takes. `zoomPicture` then turns it and the four region names into the composition,
+in the card series below.
+
+### The build, as members of families that already exist
+
+None of this is a new pipeline:
+
+1. **Web clips: a new `series` case for the walks' cut lists (WALK, #3282; HYPER).**
+   - Walks already exist: Suspender Ledger walks on the `sandbox` stage, and Jobs walks on
+     the `apk` stage inside Snips Capture's emulator. `walkthrough` and `promo` make cut
+     lists of `promo-feature` scenes.
+   - The web card needs a different frame. Today the only series is `series/vertical`
+     (1080×1920 with sound). The card needs, say, `series/card`: 1200×900, no sound, a short
+     loop. The cut list is `promo-feature` scenes only, with no hook or close.
+   - `motion video` already writes `video.mp4`.
+   - The other four extensions have no walk yet. Their clips wait on walks of their own,
+     which are new cases of `Walk`, not new stages.
+2. **The Grafana clip: a new capture source for `screen-zoom`'s `some-ui.screens/1`.** It is
+   the capture above, run on home. `screen-zoom` and `zoomPicture` stay as they are. In
+   `series/card`, the clip is the four panels, zoomed in turn.
+3. **The photo slot: the brand cast's drawing as its default.** `cast.ts` already says "a
+   page draws it with React and a composition can draw the same tree as a file". The
+   landing draws it as a file until `photo/portrait.webp` exists.
+4. **Assets from R2 (ASSETS6, epic #3399, C1029).** The photo, the three clips and the
+   résumé PDFs are resolved by the one asset resolver ASSETS6 brings, keyed as above.
+   - The clips are MP4: `motion video` already writes it, and Chrome on Android and desktop
+     plays it with no second format.
+
+### Correction to the round-1 prune list
+
+**Snips Capture photographs the Pages build itself.** Its `web` surface walks every route the
+Pages build offers (`docs/snips.md`; `apps/www/tests/snips/web.spec.ts`), and the essays name
+snips by route. For example, video-render's phone-card sample uses
+`web/phone/rust-rounds-sample-*.png`, and `/captions` and `/` are named too. So gating a route
+off the Pages build also takes it out of what snips can photograph.
+
+Before the prune lands, one of these has to happen:
+
+- point Snips' web walk at a build that keeps every viewer route (a separate profile for the
+  viewer's full set, beside a trimmed public one); or
+- keep the routes on Pages but unlink and `noindex` them.
+
+`/rust-rounds-sample` moves from "drop" to "keep until then". The size savings in the table
+above hold only once Snips has its own build.
+
+### Still to confirm with the owner
+
+- "2024 to now" for independent work: it comes from the repo's first commit (2024-06-22),
+  and the résumé gives no date. It is unanswered, so D keeps it.
+- Whether the PIPELINES panel should show the weekly call or another process.
+- The public AMO listing link for Suspender Ledger, if it has one. The repo names none.
