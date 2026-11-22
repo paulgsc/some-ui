@@ -276,6 +276,25 @@ describe("the walkthrough (WALK4)", () => {
     ])
   })
 
+  it("never calls a module silent that home began measuring inside the window and holds no open of", () => {
+    const late: typeof friction = {
+      ...friction,
+      modules: friction.modules.map((m) =>
+        m.pipeline === "aph"
+          ? {
+              ...m,
+              opened: { kind: "measured", days: 0, of: 10, weeksQuiet: null },
+            }
+          : m
+      ),
+    }
+    const { cut } = voicedWalkthrough(jobs, walkOf(15), late, new Map())
+    const spoken = cut.shots.find((s) => s.id === "stop-4")?.spoken
+    const said = (spoken?.role === "walk" ? spoken.lines : []).join(" ")
+    expect(said).not.toContain("haven't opened")
+    expect(said).toContain("How I use 12 other modules isn't measured yet.")
+  })
+
   it("keeps an aggregate report:vestiges reads", () => {
     expect(MODULE_OPENS_SCHEMA).toBe(FRICTION_SCHEMA)
   })

@@ -28,6 +28,7 @@ import {
   CARDS_VOICES,
   CHAPTER_GAP_MS,
   FEED_SPEAKER,
+  FRICTION_WINDOW_DAYS,
   laidTake,
   PROMO_SHAPE,
   startsAfter,
@@ -259,15 +260,29 @@ export function walkthroughLines(cut: CutList): Array<WalkthroughLine> {
 /** The silent modules' names and how long each has been quiet, and how many can't be told. */
 function quietOf(friction: Friction): Quiet {
   const names = new Map(PIPELINES.map((p) => [p.id, p.name]))
-  const notMeasured = friction.modules.filter(
-    (m) => m.opened.kind === "not-measured"
-  ).length
+  // A module with no open home holds, measured over fewer than the 28 days
+  // (its root began sending inside the window), can't be said to be "not
+  // opened in the last four weeks": what came before its first day is
+  // unknown, so it is said as not measured, never as silent.
+  const unknown = new Set(
+    friction.modules.flatMap((m) =>
+      m.opened.kind === "measured" &&
+      m.opened.weeksQuiet === null &&
+      m.opened.of < FRICTION_WINDOW_DAYS
+        ? [m.pipeline]
+        : []
+    )
+  )
+  const notMeasured =
+    friction.modules.filter((m) => m.opened.kind === "not-measured").length +
+    unknown.size
   return {
     // Silent is "opened on no day of the last 28" (C942), which C861's
     // window covers. How long past that each has been quiet, and which
     // longest, is not said until the owner rules on it (#3338): the names
     // only, in id order.
     silent: silentModules(friction.modules)
+      .filter((s) => !unknown.has(s.pipeline))
       .map((s) => ({
         pipeline: s.pipeline,
         name: names.get(s.pipeline) ?? s.pipeline,
