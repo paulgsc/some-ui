@@ -37,14 +37,14 @@ public class HomeRouteTest {
     @Test
     public void theDefaultWayReachesHome() throws Exception {
         ConnectivityManager connectivity = connectivity();
-        Log.i(TAG, "home route test: networks " + networks(connectivity));
+        Log.i(TAG, "home route test: " + HomeRoutes.diagnosis(connectivity, null));
         assertEquals(200, viaDefault(url()));
     }
 
     @Test
     public void someWayReachesHome() throws Exception {
         ConnectivityManager connectivity = connectivity();
-        Log.i(TAG, "home route test: networks " + networks(connectivity));
+        Log.i(TAG, "home route test: " + HomeRoutes.diagnosis(connectivity, null));
         try {
             assertEquals(200, viaDefault(url()));
             Log.i(TAG, "home route test: the default way answered");
@@ -77,13 +77,6 @@ public class HomeRouteTest {
     private static ConnectivityManager connectivity() {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         return context.getSystemService(ConnectivityManager.class);
-    }
-
-    private static String networks(ConnectivityManager connectivity) {
-        Network active = connectivity.getActiveNetwork();
-        List<String> all = new ArrayList<>();
-        for (Network network : connectivity.getAllNetworks()) all.add(HomeRoutes.describe(connectivity, network));
-        return "active " + (active == null ? "none" : HomeRoutes.describe(connectivity, active)) + ", all " + all;
     }
 
     private static int viaDefault(String url) throws Exception {

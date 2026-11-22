@@ -20,8 +20,14 @@
 #   iptables rule on the app's user id: Android itself does not know of it,
 #   so it can't say the app is held. That is the nearest an emulator comes.
 #
+# - saver: Data Saver on with the Wi-Fi marked metered and mobile data on,
+#   as the S21 had it (cmd netpolicy). Data Saver holds back an app's
+#   traffic only while it is in the background, and an instrumentation run
+#   may count as background, so this set-up says how the run was judged as
+#   much as how the phone is.
+#
 # Needs root (google_apis images give it). Writes <out-dir>/route.json:
-# {s26, s21, keptoff}, each {as_is, fixed} "pass"/"fail", or "setup failed"
+# {s26, s21, keptoff, saver}, each {as_is, fixed} "pass"/"fail", or "setup failed"
 # when the emulator could not be put in that state; plus each run's output
 # and the native log.
 set -uo pipefail
@@ -45,6 +51,8 @@ default_kind() {
 }
 reset() {
   sh_ iptables -F OUTPUT > /dev/null 2>&1 || true
+  sh_ cmd netpolicy set restrict-background false > /dev/null 2>&1 || true
+  sh_ cmd netpolicy set metered-network AndroidWifi false > /dev/null 2>&1 || true
   sh_ svc data enable
   sh_ svc wifi enable
   for _ in $(seq 1 30); do [ "$(default_kind)" = WIFI ] && break; sleep 2; done
@@ -98,10 +106,21 @@ if [ -n "$uid" ]; then
 else
   keptoff=$setup_failed
 fi
+
+# saver: Data Saver on, the Wi-Fi metered.
+reset
+if sh_ cmd netpolicy set metered-network AndroidWifi true > "$out/saver-setup.txt" 2>&1 &&
+  sh_ cmd netpolicy set restrict-background true >> "$out/saver-setup.txt" 2>&1; then
+  sleep 5
+  sh_ cmd netpolicy get restrict-background >> "$out/saver-setup.txt" 2>&1 || true
+  saver=$(both saver)
+else
+  saver=$setup_failed
+fi
 reset
 
 adb logcat -d -s SomeUI | tr -d '\r' > "$out/native-log.txt" || true
-printf '{"s26":%s,"s21":%s,"keptoff":%s}\n' "$s26" "$s21" "$keptoff" > "$out/route.json"
+printf '{"s26":%s,"s21":%s,"keptoff":%s,"saver":%s}\n' "$s26" "$s21" "$keptoff" "$saver" > "$out/route.json"
 cat "$out/route.json"
 cat "$out/s21-setup.txt"
 grep -h 'home route' "$out/native-log.txt" || true

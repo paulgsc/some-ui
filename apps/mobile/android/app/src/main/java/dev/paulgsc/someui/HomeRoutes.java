@@ -44,11 +44,43 @@ final class HomeRoutes {
         return "other";
     }
 
-    /** "wifi validated", "cellular": a network as the native log says it. */
+    /** "wifi validated metered", "cellular": a network as the native log says it. */
     static String describe(ConnectivityManager connectivity, Network network) {
         NetworkCapabilities caps = connectivity.getNetworkCapabilities(network);
         boolean validated = caps != null && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
-        return kindOf(connectivity, network) + (validated ? " validated" : "");
+        boolean metered = caps != null && !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+        return kindOf(connectivity, network) + (validated ? " validated" : "") + (metered ? " metered" : "");
+    }
+
+    /**
+     * What decides where this app's traffic goes, in one native log line
+     * (#3411): the network Android gives the app, every network the phone
+     * has, Data Saver as it stands for this app (getRestrictBackgroundStatus:
+     * off, allowed for this app, or on for it), and whether Android last said
+     * it keeps the app off the network (`held`, null when it hasn't said). A
+     * per-app setting Android doesn't report (One UI's per-app network
+     * choices) shows only as each network's own failure, which the request
+     * logs beside this.
+     */
+    static String diagnosis(ConnectivityManager connectivity, Boolean held) {
+        Network active = connectivity.getActiveNetwork();
+        List<String> all = new ArrayList<>();
+        for (Network network : connectivity.getAllNetworks()) all.add(describe(connectivity, network));
+        String saver;
+        switch (connectivity.getRestrictBackgroundStatus()) {
+            case ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED:
+                saver = "on for this app";
+                break;
+            case ConnectivityManager.RESTRICT_BACKGROUND_STATUS_WHITELISTED:
+                saver = "on, this app allowed";
+                break;
+            default:
+                saver = "off";
+        }
+        return "app on " + (active == null ? "no network" : describe(connectivity, active))
+            + "; networks " + all
+            + "; data saver " + saver
+            + "; held " + (held == null ? "not said" : held);
     }
 
     /**

@@ -33,9 +33,11 @@ import java.util.concurrent.Executors;
  * - networks: what the native log says of the phone's networks on a
  *   failure: the one this app is on, every one, and whether it is kept off.
  *
- * Each answer and each "NO_ROUTE" writes one line under the "SomeUI" tag, so
- * the next log of a phone that can't reach home says which network was
- * tried and which answered.
+ * Each request writes HomeRoutes.diagnosis under the "SomeUI" tag first
+ * (the app's network, every network with its metered and validated state,
+ * Data Saver for this app, and whether Android says it holds the app), then
+ * one line saying which network answered, or what each one found, so the
+ * next log of a phone that can't reach home says why.
  */
 @CapacitorPlugin(name = "HomeRoute")
 public class HomeRoutePlugin extends Plugin {
@@ -81,6 +83,9 @@ public class HomeRoutePlugin extends Plugin {
             return;
         }
         worker.execute(() -> {
+            // Said on every failure that reaches here, so a phone's log says
+            // what kept it from home whichever way this ends.
+            Log.i(NativeLogPlugin.TAG, "home route: " + HomeRoutes.diagnosis(connectivity, held));
             Network active = connectivity.getActiveNetwork();
             List<String> tried = new ArrayList<>();
             for (Network network : HomeRoutes.candidates(connectivity, active)) {
@@ -122,6 +127,7 @@ public class HomeRoutePlugin extends Plugin {
         result.put("active", active == null ? null : HomeRoutes.describe(connectivity, active));
         result.put("all", all);
         result.put("held", held);
+        result.put("said", HomeRoutes.diagnosis(connectivity, held));
         call.resolve(result);
     }
 
