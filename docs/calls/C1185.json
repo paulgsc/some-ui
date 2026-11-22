@@ -8,13 +8,13 @@
     "apps/www/src/landing/render.ts",
     "apps/www/landing/index.html"
   ],
-  "chose": "While an episode's copy streams, its pair's two places stand as skeletons, as the owner asked after previewing the show (\"we need some ergonomic of like a standing skeleton, standing loading thing, but it must also be honest, meaning you have two containers that potentially could be video or just stills\"; and of a television's static: \"that might actually cause an epileptic seizure, or like, just general discomfort\"). Each is a calm frame in a cube face's shape (a screen above a band), its glyph telling what is coming: a play mark for a clip, a sun over hills for a still. faceSkeleton maps each kind of face to its skeleton through a mapped type, so a new kind of face cannot compile without naming one. The skeletons come in as the copy block turns to the episode and give way as the pair turns in over them, on the show's one clock. One slow sweep of light, 3.2 s and low in contrast, passes over them: no flash, flicker or noise. Where the show lies flat (a phone, less motion) nothing is loading, so there is no skeleton.",
+  "chose": "While an episode's copy streams, its pair's two places stand as skeletons, as the owner asked after previewing the show (\"we need some ergonomic of like a standing skeleton, standing loading thing, but it must also be honest, meaning you have two containers that potentially could be video or just stills\"; and of a television's static: \"that might actually cause an epileptic seizure, or like, just general discomfort\"). Each is a calm frame in a cube face's shape (a screen above a band), its glyph telling what is coming: a play mark for a clip, a sun over hills for a still. slotOf maps each kind of face to its slot, clip or still, through a mapped type, so a new kind of face cannot compile without naming one; the same slot draws the face's asset (a video or an image) and its skeleton, so the two cannot disagree. The skeletons come in over the second half of the copy block's turn to the episode, once the last episode's pair has gone, and give way as the pair turns in over them, on the show's one clock. One slow sweep of light, 3.2 s and low in contrast, passes over them: no flash, flicker or noise. Where the show lies flat (a phone, less motion) nothing is loading, so there is no skeleton.",
   "options": [
     "a calm frame with a clip or still glyph, a slow low-contrast sweep, on the one clock",
     "a frame with no motion at all",
     "a television's static or a spinner"
   ],
   "gray": "How the waiting places look, and when they show, are on the screen; no check or earlier call settles them.",
-  "undo": "Drop faceSkeleton and ResolvedFace's skeleton, the timeline's skeleton track, skeletonSlot and the .skeleton rules.",
+  "undo": "Drop the timeline's skeleton track, skeletonSlot and the .skeleton rules; slotOf can stay, as it also draws each face's asset.",
   "refs": ["#3401", "#3436"]
 }

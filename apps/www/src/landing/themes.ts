@@ -145,23 +145,35 @@ export function themePicker(
   words: { readonly theme: string; readonly themeDevice: string },
   e: Escape
 ): string {
+  const swatch = (from: string, to: string): string =>
+    `<span class="swatch" aria-hidden="true" style="--sw-bg: ${from}; --sw-fg: ${to}"></span>`
   const option = (
     id: SessionThemeId | "device",
     label: string,
-    swatch: string
+    mark: string
   ): string =>
-    `<label><input type="radio" name="theme" id="${pickId(id)}"${id === "device" ? " checked" : ""} />${swatch}<span>${e(label)}</span></label>`
+    // autocomplete off: a browser restoring the last pick on reload would
+    // keep something about the reader.
+    `<label><input type="radio" name="theme" id="${pickId(id)}" autocomplete="off"${id === "device" ? " checked" : ""} />${mark}<span>${e(label)}</span></label>`
+  const device = (mode: "light" | "dark"): string =>
+    themes.find((t) => t.id === DEVICE_THEMES[mode])?.colours["--background"] ??
+    ""
   return `<details class="themes">
           <summary>${e(words.theme)}</summary>
           <fieldset>
             <legend>${e(words.theme)}</legend>
             ${[
-              option("device", words.themeDevice, ""),
+              // The device's: its light theme's ground beside its dark one's.
+              option(
+                "device",
+                words.themeDevice,
+                swatch(device("light"), device("dark"))
+              ),
               ...themes.map((t) =>
                 option(
                   t.id,
                   t.label,
-                  `<span class="swatch" aria-hidden="true" style="--sw-bg: ${t.colours["--background"]}; --sw-fg: ${t.colours["--primary"]}"></span>`
+                  swatch(t.colours["--background"], t.colours["--primary"])
                 )
               ),
             ].join("\n            ")}

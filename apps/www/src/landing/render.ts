@@ -13,7 +13,7 @@ import type { ResumeData } from "@some-ui/resume"
 
 import type { MediaSize } from "./media.ts"
 import { MEDIA_PATH, SITE_BASE, SITE_URL } from "./output.ts"
-import type { FaceSkeleton, ResolvedEpisode, ResolvedFace } from "./show.ts"
+import type { ResolvedEpisode, ResolvedFace, SlotKind } from "./show.ts"
 import { showMediaKeys } from "./show.ts"
 import type { LandingTheme } from "./themes.ts"
 import { themeCss, themePicker } from "./themes.ts"
@@ -59,16 +59,12 @@ const shape = ({ width, height }: MediaSize): string =>
 const shown = (media: LandingMedia, key: string): MediaSize | undefined =>
   media.get(key) ?? undefined
 
-/** Whether a slot's asset is a clip or a still, by its key. */
-const slotKind = (key: string): "clip" | "still" =>
-  key.endsWith(".mp4") ? "clip" : "still"
-
 /**
  * A slot's asset, as the background of its picture: a clip plays muted on a
  * loop, a still just sits there; neither is a control (C1064) nor read out.
  */
-const mediaTag = (key: string): string =>
-  slotKind(key) === "clip"
+const mediaTag = (key: string, slot: SlotKind): string =>
+  slot === "clip"
     ? `<video class="media" src="${mediaSrc(key)}" autoplay muted loop playsinline disablepictureinpicture disableremoteplayback preload="metadata" aria-hidden="true"></video>`
     : `<img class="media" src="${mediaSrc(key)}" alt="" aria-hidden="true" />`
 
@@ -98,7 +94,7 @@ const screen = (face: ResolvedFace, media: LandingMedia): string => `
                 <div class="title-card" aria-hidden="true"><span>${e(face.label)}</span></div>${
                   shown(media, face.key) !== undefined
                     ? `
-                ${mediaTag(face.key)}`
+                ${mediaTag(face.key, face.slot)}`
                     : ""
                 }`
 
@@ -113,7 +109,7 @@ const cubeFace = (
     ? `
               <div class="face" style="--i: ${String(at)}"></div>`
     : `
-              <div class="face" data-slot="${slotKind(face.key)}" data-asset="${e(face.key)}" style="--i: ${String(at)}">
+              <div class="face" data-slot="${face.slot}" data-asset="${e(face.key)}" style="--i: ${String(at)}">
                 <div class="screen">${screen(face, media)}
                 </div>
                 <div class="band">
@@ -126,7 +122,7 @@ const cubeFace = (
  * with a sun over hills for a still. Drawn in the theme's ink by the page's
  * CSS (`currentColor`).
  */
-const SKELETON_GLYPH: Readonly<Record<FaceSkeleton, string>> = {
+const SKELETON_GLYPH: Readonly<Record<SlotKind, string>> = {
   clip: `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"><rect x="5" y="9" width="38" height="30" rx="5"/><path d="M20 17.5v13l11-6.5z" fill="currentColor"/></svg>`,
   still: `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"><rect x="5" y="9" width="38" height="30" rx="5"/><circle cx="17" cy="19" r="3.5"/><path d="M8 35l11-11 8 8 5-5 9 9"/></svg>`,
 }
@@ -136,7 +132,7 @@ const SKELETON_GLYPH: Readonly<Record<FaceSkeleton, string>> = {
  * screen above a band), telling what is coming by its glyph, with no words a
  * reader could take for content.
  */
-const skeletonSlot = (kind: FaceSkeleton): string => `
+const skeletonSlot = (kind: SlotKind): string => `
           <div class="skeleton" data-skeleton="${kind}">
             <div class="skeleton-screen">${SKELETON_GLYPH[kind]}</div>
             <div class="skeleton-band"><span></span></div>
@@ -207,7 +203,7 @@ function stage(
       const coming = episode.scenes[0]?.faces ?? []
       return `
         <div class="skeletons tk ${tracks.skeleton.name}" data-episode="${episode.id}" aria-hidden="true">${coming
-          .map((face) => skeletonSlot(face.skeleton))
+          .map((face) => skeletonSlot(face.slot))
           .join("")}
         </div>
         <div class="pair tk ${tracks.pair.name}" data-episode="${episode.id}" aria-hidden="true">${cubes}
@@ -255,7 +251,7 @@ function flat(
             <div class="grid">${scene.faces
               .map(
                 (face) => `
-              <article class="card" data-slot="${slotKind(face.key)}" data-asset="${e(face.key)}" style="${shape(shown(media, face.key) ?? PLACEHOLDER)}">
+              <article class="card" data-slot="${face.slot}" data-asset="${e(face.key)}" style="${shape(shown(media, face.key) ?? PLACEHOLDER)}">
                 <div class="screen">${screen(face, media)}
                 </div>
                 <div class="caption"><p>${e(face.label)}</p></div>
@@ -301,7 +297,7 @@ const gapCard = (g: GapWords, media: LandingMedia): string => {
           <div class="pic">
             ${
               size !== undefined
-                ? mediaTag(g.visual)
+                ? mediaTag(g.visual, "still")
                 : `${GAP_DRAWING[g.id]}
             <p class="note">${e(g.visualNote)}</p>`
             }

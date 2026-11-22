@@ -18,7 +18,7 @@ import { describe, expect, it } from "vitest"
 const face = (key: string): ResolvedFace => ({
   key,
   label: key,
-  skeleton: "still",
+  slot: "still",
 })
 const EPISODES: ReadonlyArray<ResolvedEpisode> = (
   ["extensions", "android", "server"] as const
@@ -151,7 +151,18 @@ describe("showTimeline", () => {
       const skeleton = frames(e.skeleton.keyframes)
       const at = (s: number): string =>
         skeleton.find((f) => f.at === pct(s))?.css ?? ""
-      expect(at(start), `episode ${String(k)}`).toContain("opacity: 0")
+      // Hidden until the last episode's pair has gone, halfway through
+      // the copy block's turn, then in by the turn's end.
+      const lastGone = start + EPISODE_TURN_S / 2
+      for (const f of skeleton.filter((f) => f.at < pct(lastGone)))
+        expect(f.css, `episode ${String(k)}`).toContain("opacity: 0")
+      expect(at(lastGone)).toContain("opacity: 0")
+      const previous = timeline.episodes.at(k - 1)
+      expect(
+        frames(previous?.pair.keyframes ?? "").find(
+          (f) => f.at === pct(lastGone)
+        )?.css
+      ).toContain("opacity: 0")
       expect(at(start + EPISODE_TURN_S)).toContain("opacity: 1")
       expect(at(enters)).toContain("opacity: 1")
       expect(at(enters + TURN_S)).toContain("opacity: 0")

@@ -17,6 +17,7 @@ import { LANDING_WORDS } from "@/landing/words"
 import { resumeData } from "@some-ui/resume"
 import { SESSION_THEMES } from "@some-ui/styles/theme/registry"
 import { sessionColours } from "@some-ui/styles/theme/sources"
+import { contrast } from "@some-ui/styles/theme/video-palette"
 import { describe, expect, it } from "vitest"
 
 const THEMES = landingThemes(SESSION_THEMES, sessionColours)
@@ -50,6 +51,32 @@ describe("landingThemes", () => {
     expect(() => landingThemes(SESSION_THEMES.slice(0, 1), () => ({}))).toThrow(
       "no --background resolved"
     )
+  })
+})
+
+describe("the landing's text in every theme", () => {
+  it("reads at 4.5:1 or more wherever the page sets words", () => {
+    for (const t of THEMES) {
+      const c = t.colours
+      const light = t.mode === "light"
+      const screen = light ? c["--foreground"] : c["--background"]
+      const screenInk = light ? c["--background"] : c["--foreground"]
+      const pairs: ReadonlyArray<readonly [string, string, string]> = [
+        ["ink on the page", c["--foreground"], c["--background"]],
+        ["ink on a card", c["--foreground"], c["--card"]],
+        ["muted on the page", c["--muted-foreground"], c["--background"]],
+        ["muted on a card", c["--muted-foreground"], c["--card"]],
+        ["a link on the page", c["--primary"], c["--background"]],
+        ["a link on a card", c["--primary"], c["--card"]],
+        ["the résumé button", c["--primary-foreground"], c["--primary"]],
+        ["a title card", screenInk, screen],
+      ]
+      for (const [what, ink, ground] of pairs)
+        expect(
+          contrast(ink, ground),
+          `${t.id}: ${what}`
+        ).toBeGreaterThanOrEqual(4.5)
+    }
   })
 })
 
@@ -126,7 +153,7 @@ describe("the landing's colours", () => {
     const header = page.slice(0, page.indexOf("</header>"))
     const radios = [
       ...header.matchAll(
-        /<input type="radio" name="theme" id="theme-([a-z-]+)"( checked)?/g
+        /<input type="radio" name="theme" id="theme-([a-z-]+)" autocomplete="off"( checked)?/g
       ),
     ]
     expect(radios.map((r) => r[1])).toEqual([

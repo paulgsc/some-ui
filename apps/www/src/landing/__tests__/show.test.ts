@@ -8,12 +8,12 @@ import { join } from "node:path"
 import type { Show, WalkthroughCopy } from "@/landing/show"
 import {
   faceKey,
-  faceSkeleton,
   facesToMake,
   resolveShow,
   SHOW,
   SHOW_SCHEMA,
   showFor,
+  slotOf,
   WALKTHROUGH_FILES,
 } from "@/landing/show"
 import { describe, expect, it } from "vitest"
@@ -75,12 +75,12 @@ describe("resolveShow", () => {
             {
               key: "stills/android/03.png",
               label: "Four",
-              skeleton: "still",
+              slot: "still",
             },
             {
               key: "clips/android/stop-2.mp4",
               label: "Moving",
-              skeleton: "clip",
+              slot: "clip",
             },
           ],
         },
@@ -104,7 +104,7 @@ describe("resolveShow", () => {
     ])
   })
 
-  it("refuses an empty line of copy, and a show of one episode", () => {
+  it("refuses an empty line of copy, a show of one episode, and an episode named twice", () => {
     const empty = resolveShow(
       showOf([
         {
@@ -126,6 +126,13 @@ describe("resolveShow", () => {
     )
     expect(one.ok ? [] : one.problems).toEqual([
       "the show needs two episodes or more",
+    ])
+    const twice = resolveShow(
+      { ...both, episodes: [...both.episodes, ...both.episodes.slice(1)] },
+      walks
+    )
+    expect(twice.ok ? [] : twice.problems).toEqual([
+      "the show names an episode twice",
     ])
   })
 
@@ -225,7 +232,7 @@ describe("showFor", () => {
     expect(showFor(show, reads(WALK), true).ok).toBe(true)
     const pages = showFor(show, reads(WALK), false)
     expect(pages.ok ? [] : pages.problems).toEqual([
-      "fewer than two episodes are left to show once drafts are",
+      "fewer than two episodes are left to show once drafts are left out",
     ])
     // Agreed, it shows.
     const agreed: Show = {
@@ -242,22 +249,11 @@ describe("showFor", () => {
   })
 })
 
-describe("faceSkeleton", () => {
-  it("stands a cut as a clip's frame, and a still or an asset as a still's", () => {
-    expect(faceSkeleton({ cut: "hook", label: "x" })).toBe("clip")
-    expect(faceSkeleton({ snip: 1 })).toBe("still")
-    expect(faceSkeleton({ media: "stills/a.png", label: "x" })).toBe("still")
-  })
-
-  it("tells the truth about every face of the show: a clip's frame for a clip", () => {
-    const show = showFor(SHOW, repoRead, true)
-    if (!show.ok) throw new Error("unresolved")
-    for (const face of show.episodes.flatMap((e) =>
-      e.scenes.flatMap((scene) => scene.faces)
-    ))
-      expect(face.skeleton, face.key).toBe(
-        face.key.endsWith(".mp4") ? "clip" : "still"
-      )
+describe("slotOf", () => {
+  it("fills a clip's slot for a cut, and a still's for a still or an asset", () => {
+    expect(slotOf({ cut: "hook", label: "x" })).toBe("clip")
+    expect(slotOf({ snip: 1 })).toBe("still")
+    expect(slotOf({ media: "stills/a.png", label: "x" })).toBe("still")
   })
 })
 

@@ -16,7 +16,8 @@ export type GapWords = {
   readonly id: "page-filter" | "cores"
   readonly title: string
   readonly line: string
-  readonly visual: string
+  /** A still, always: a gap shows a picture, not a clip. */
+  readonly visual: `stills/${string}.png`
   /** What the drawn visual is, said on it. */
   readonly visualNote: string
 }

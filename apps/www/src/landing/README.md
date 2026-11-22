@@ -27,7 +27,7 @@ project each. Each episode is one to four scenes, and each scene is some copy an
   jobs: each still copied from a walk's screens, each cut taken silent from a rendered
   video by shot. A face the build doesn't have shows its title card.
 - **Skeletons.** Until an episode's pair turns in, each of its places stands as a skeleton
-  of what is coming, a clip's frame or a still's (`faceSkeleton`, C1185).
+  of what is coming, a clip's frame or a still's, by the face's slot (`slotOf`, C1185).
 
 ## Themes
 

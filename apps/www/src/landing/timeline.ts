@@ -199,14 +199,16 @@ export function showTimeline(
             ]),
       ]),
     }
-    // The skeletons come in as the copy block turns to the episode, and
-    // stand until the pair comes into view over them.
+    // The skeletons come in over the second half of the copy block's turn
+    // to the episode, once the last episode's pair has gone (so neither
+    // shows through the other), and stand until the pair comes into view
+    // over them.
     const skeletonName = name()
     const skeleton: Track = {
       name: skeletonName,
       keyframes: keyframes(skeletonName, cycleS, [
-        ...(e.start === 0 ? [] : [{ at: 0, css: HIDDEN }]),
-        { at: e.start, css: HIDDEN, ease: "ease-out" },
+        { at: 0, css: HIDDEN },
+        { at: e.start + gone, css: HIDDEN, ease: "ease-out" },
         { at: e.start + EPISODE_TURN_S, css: SHOWN },
         { at: enters, css: SHOWN, ease: "ease-in" },
         { at: enters + TURN_S, css: HIDDEN },
@@ -242,9 +244,10 @@ export function showTimeline(
     const cubes: readonly [Track, Track] = [cube(), cube()]
     const scenes = e.scenes.map((s, i): SceneTracks => {
       // The last scene's copy stays through the copy block's whole turn,
-      // which leaves its face turned away (120 degrees or more), so its
-      // hidden back takes it out of sight however many faces the ring has:
-      // the turning face is never blank. The last episode's, through the
+      // which leaves its face turned away (120 degrees or more: a show is
+      // two or three episodes, one a project, which resolveShow holds), so
+      // its hidden back takes it out of sight: the turning face is never
+      // blank. The last episode's, through the
       // turn that begins the cycle again.
       const isLastScene = i === e.scenes.length - 1
       const wraps = isLast && isLastScene

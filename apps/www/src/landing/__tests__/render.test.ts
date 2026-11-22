@@ -181,7 +181,7 @@ describe("renderLanding", () => {
         (m) => m[1]
       )
       expect(kinds, episode.id).toEqual(
-        episode.scenes[0]?.faces.map((f) => f.skeleton)
+        episode.scenes[0]?.faces.map((f) => f.slot)
       )
       // A glyph each, and no words to take for content.
       expect(block.match(/<svg /g)).toHaveLength(2)

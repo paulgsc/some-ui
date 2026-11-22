@@ -63,7 +63,10 @@ function isWalkthroughCopy(value: unknown): value is WalkthroughCopy {
  */
 export type Face = FaceKinds[keyof FaceKinds]
 
-/** The kinds of face, each named by the one field that sets it apart. */
+/**
+ * The kinds of face, each named by the one field that sets it apart, which
+ * is how `slotOf` tells them apart.
+ */
 type FaceKinds = {
   readonly snip: { readonly snip: number; readonly label?: string }
   readonly cut: { readonly cut: string; readonly label: string }
@@ -74,22 +77,31 @@ type FaceKinds = {
 }
 
 /**
- * What a face's slot stands as while it is on its way (C1185): the frame of
- * a clip, or of a still, so the reader is told honestly what is coming.
+ * What a slot of the landing holds (C1185): a clip, which plays, or a
+ * still. A face's slot says how its asset is drawn and what its skeleton
+ * promises before it arrives, so the two cannot disagree.
  */
-export type FaceSkeleton = "clip" | "still"
+export type SlotKind = "clip" | "still"
 
-/** Each kind of face's skeleton: a new kind can't be a face until it names one. */
-const SKELETONS: { readonly [K in keyof FaceKinds]: FaceSkeleton } = {
+/**
+ * Each kind of face's slot. A new kind can't be a face until it names one
+ * here, and it can name one only if it carries its own name as a field (any
+ * other's entry must be `never`, which no slot is).
+ */
+const SLOTS: {
+  readonly [K in keyof FaceKinds]: K extends keyof FaceKinds[K]
+    ? SlotKind
+    : never
+} = {
   snip: "still",
   cut: "clip",
   media: "still",
 }
 
-/** The skeleton `face` stands as before it arrives, by its kind. */
-export function faceSkeleton(face: Face): FaceSkeleton {
-  for (const [kind, skeleton] of Object.entries(SKELETONS))
-    if (kind in face) return skeleton
+/** The slot `face` fills, by its kind. */
+export function slotOf(face: Face): SlotKind {
+  for (const [kind, slot] of Object.entries(SLOTS))
+    if (kind in face) return slot
   throw new Error("a face of no kind")
 }
 
@@ -243,11 +255,11 @@ export function faceKey(episode: EpisodeId, face: Face): string {
   return face.media
 }
 
-/** A face as the landing draws it: its asset's key, its band's label, and its skeleton. */
+/** A face as the landing draws it: its asset's key, its band's label, and its slot. */
 export type ResolvedFace = {
   readonly key: string
   readonly label: string
-  readonly skeleton: FaceSkeleton
+  readonly slot: SlotKind
 }
 
 /** A scene as the landing draws it: its copy, resolved, and its two faces. */
@@ -277,8 +289,8 @@ const oneLine = (caption: string): string =>
  * episodes' walkthroughs, or every problem that stops it: a chapter the
  * walkthrough lacks, a still outside its chapter's own screens (so a face
  * always shows what its copy names), a still with no caption and no label,
- * an empty line of copy, or a show of fewer than two episodes (the copy
- * block turns between them).
+ * an empty line of copy, a show of fewer than two episodes (the copy
+ * block turns between them), or an episode named twice.
  */
 export function resolveShow(
   show: Show,
@@ -326,7 +338,7 @@ export function resolveShow(
         return {
           key: faceKey(episode.id, f),
           label: oneLine(label),
-          skeleton: faceSkeleton(f),
+          slot: slotOf(f),
         }
       }
       if (narration.some((line) => line.trim() === ""))
@@ -346,6 +358,12 @@ export function resolveShow(
     }
   })
   if (episodes.length < 2) problems.push("the show needs two episodes or more")
+  // An episode a project, once each: the copy block's turn between them is
+  // then at least 120 degrees, which the timeline relies on to take an
+  // episode's copy out of sight (timeline.ts).
+  const ids = show.episodes.map((episode) => episode.id)
+  if (new Set(ids).size < ids.length)
+    problems.push("the show names an episode twice")
   return problems.length > 0 ? { ok: false, problems } : { ok: true, episodes }
 }
 
@@ -416,7 +434,9 @@ export function showFor(
   if (episodes.length < 2)
     return {
       ok: false,
-      problems: ["fewer than two episodes are left to show once drafts are"],
+      problems: [
+        "fewer than two episodes are left to show once drafts are left out",
+      ],
     }
   const drafts = resolved.episodes.reduce(
     (n, e) => n + e.scenes.filter((scene) => scene.draft).length,
