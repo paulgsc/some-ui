@@ -6,6 +6,7 @@ import {
   ASK_SCHEMA,
   ASK_SCHEMA_V1,
   askId,
+  callOptionsOf,
   parseAskBody,
 } from "@video-render/ask"
 import { describe, expect, it } from "vitest"
@@ -119,6 +120,30 @@ describe("an ask of each kind (C1095)", () => {
     expect(parseAskBody(body({ ...checklist, options: ask.options })).ok).toBe(
       false
     )
+  })
+
+  it("says why a /1 block is refused, as before kinds", () => {
+    const { kind: _kind, ...v1 } = { ...ask, schema: ASK_SCHEMA_V1 }
+    expect(parseAskBody(body({ ...v1, recommended: 5 }))).toEqual({
+      ok: false,
+      problems: ["recommended: it recommends an option it doesn't list"],
+    })
+  })
+
+  it("gives the call each kind's options: a checklist's are Done and Not yet", () => {
+    const read = parseAskBody(body(checklist))
+    expect(read.ok && callOptionsOf(read.value)).toEqual({
+      options: [
+        { says: "Done", unblocks: checklist.unblocks },
+        { says: "Not yet", unblocks: "nothing yet" },
+      ],
+      recommended: 0,
+    })
+    const decided = parseAskBody(body(ask))
+    expect(decided.ok && callOptionsOf(decided.value)).toEqual({
+      options: ask.options,
+      recommended: 0,
+    })
   })
 
   it("refuses a decision with steps, or with no kind", () => {

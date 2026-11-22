@@ -11,7 +11,7 @@
  * compile here until it says what its entries are.
  */
 import { assertNever } from "@some-ui/core-utils"
-import type { AskFile } from "@some-ui/video-render"
+import type { AskFile, ChecklistAsk, DecisionAsk } from "@some-ui/video-render"
 import { z } from "zod"
 
 import { blankSecrets } from "./blank"
@@ -123,27 +123,42 @@ export function appended(
   }
 }
 
-/** The steps done, by place. */
-export const stepsDone = (receipt: Receipt): ReadonlySet<number> =>
-  new Set(
-    receipt.flatMap((entry) => (entry.kind === "step" ? [entry.step] : []))
+/**
+ * The steps of `ask` done, by place. A step is known by what it says, which
+ * no two steps share, so an ask whose steps were edited after some were
+ * done still counts only the ones done as they read now.
+ */
+export function stepsDone(
+  ask: ChecklistAsk,
+  receipt: Receipt
+): ReadonlySet<number> {
+  const said = new Set(
+    receipt.flatMap((entry) => (entry.kind === "step" ? [entry.says] : []))
   )
+  return new Set(
+    ask.steps.flatMap((step, place) => (said.has(step.says) ? [place] : []))
+  )
+}
 
-/** The option chosen last, by place, or null when none is. */
-export function lastChosen(receipt: Receipt): number | null {
-  let chosen: number | null = null
-  for (const entry of receipt) if (entry.kind === "chose") chosen = entry.option
-  return chosen
+/**
+ * The option of `ask` chosen last, by place, or null when none is or it no
+ * longer reads as it did: known by what it says, as a step is.
+ */
+export function lastChosen(ask: DecisionAsk, receipt: Receipt): number | null {
+  let says: string | null = null
+  for (const entry of receipt) if (entry.kind === "chose") says = entry.says
+  const place = ask.options.findIndex((option) => option.says === says)
+  return place === -1 ? null : place
 }
 
 /** What is left of `ask` after `receipt`: the steps not done, by what each says. */
 export function left(ask: AskFile, receipt: Receipt): ReadonlyArray<string> {
   switch (ask.kind) {
     case "decision": {
-      return lastChosen(receipt) === null ? [ask.question] : []
+      return lastChosen(ask, receipt) === null ? [ask.question] : []
     }
     case "checklist": {
-      const done = stepsDone(receipt)
+      const done = stepsDone(ask, receipt)
       return ask.steps.filter((_, place) => !done.has(place)).map((s) => s.says)
     }
     default: {

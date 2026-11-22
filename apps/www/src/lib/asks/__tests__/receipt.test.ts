@@ -6,7 +6,7 @@
  * and the tab's store keeps it across a reload of the same tab.
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
-import type { AskFile } from "@some-ui/video-render"
+import type { AskFile, ChecklistAsk, DecisionAsk } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
 import { BLANKED } from "@/lib/asks/blank"
@@ -24,7 +24,7 @@ import {
 
 const AT = new Date("2026-11-22T16:00:00Z")
 
-const checklist: AskFile = {
+const checklist: ChecklistAsk = {
   schema: "some-ui.ask/2",
   kind: "checklist",
   question: "Will you set up the keys?",
@@ -37,7 +37,7 @@ const checklist: AskFile = {
   refs: [],
 }
 
-const decision: AskFile = {
+const decision: DecisionAsk = {
   schema: "some-ui.ask/2",
   kind: "decision",
   question: "Which voice?",
@@ -75,7 +75,7 @@ describe("a checklist's receipt", () => {
         pasted: `done, TOKEN=${BLANKED}`,
       },
     ])
-    expect([...stepsDone(one)]).toEqual([1])
+    expect([...stepsDone(checklist, one)]).toEqual([1])
     expect(left(checklist, one)).toEqual(["A Grafana key"])
     const text: unknown = JSON.parse(receiptText(open(checklist), one))
     expect(text).toMatchObject({
@@ -103,6 +103,21 @@ describe("a checklist's receipt", () => {
     expect(left(checklist, receipt)).toEqual(["Redeploy home"])
   })
 
+  it("knows a step by what it says, so steps edited since count as they read now", () => {
+    const one = appended([], checklist, {
+      kind: "step",
+      step: 0,
+      pasted: "",
+      at: AT,
+    })
+    const moved: ChecklistAsk = {
+      ...checklist,
+      steps: [{ says: "A new first step", do: ["Do it"] }, ...checklist.steps],
+    }
+    expect([...stepsDone(moved, one)]).toEqual([1])
+    expect(left(moved, one)).toEqual(["A new first step", "Redeploy home"])
+  })
+
   it("ignores a step it hasn't, and a choice, which a checklist has none of", () => {
     const none: Receipt = []
     expect(
@@ -124,7 +139,7 @@ describe("a decision's receipt", () => {
         note: option === 1 ? "softer" : "",
         at: AT,
       })
-    expect(lastChosen(receipt)).toBe(1)
+    expect(lastChosen(decision, receipt)).toBe(1)
     expect(receipt.at(-1)).toMatchObject({ says: "Adam", note: "softer" })
     expect(left(decision, receipt)).toEqual([])
     expect(left(decision, [])).toEqual(["Which voice?"])

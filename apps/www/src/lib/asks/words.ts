@@ -40,6 +40,8 @@ export const ASKS_WORDS = {
   isDone: "Done",
   receipt: "Receipt",
   copyWhat: "the receipt",
+  receiptHolds: (n: number): string =>
+    `It holds ${n === 1 ? "one thing" : `${String(n)} things`} you did here, ready to copy.`,
   stepsDone: (done: number, of: number): string =>
     `${String(done)} of ${String(of)} steps done`,
 } as const

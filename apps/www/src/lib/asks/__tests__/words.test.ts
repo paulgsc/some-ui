@@ -23,6 +23,7 @@ const all = [
   ASKS_WORDS.step(0, 3),
   ASKS_WORDS.where("Grafana on home"),
   ASKS_WORDS.stepsDone(1, 3),
+  ...[1, 2].map(ASKS_WORDS.receiptHolds),
 ]
 
 describe("the Asks page's words", () => {

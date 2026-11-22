@@ -114,13 +114,14 @@ describe("the Asks page", () => {
     expect(screen.queryByText(W.receipt)).toBeNull()
   })
 
-  it("puts each step ticked off on the receipt, blanked, and says what is left", async () => {
+  it("puts each step ticked off on the receipt, blanked, and says what it holds", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) =>
       Promise.resolve(
         answer(String(input).includes("/server/") ? [] : [checklist])
       )
     )
-    render(withQueryClient(<AsksPage kept={keptReceipts(memory())} />))
+    const kept = keptReceipts(memory())
+    render(withQueryClient(<AsksPage kept={kept} />))
     await screen.findByText("Redeploy home")
     fireEvent.change(screen.getByLabelText(/The log's last lines/), {
       target: { value: "deployed; TOKEN=hunter2" },
@@ -129,13 +130,11 @@ describe("the Asks page", () => {
     if (second === undefined) throw new Error("two steps, each with Done")
     fireEvent.click(second)
     screen.getByText(W.stepsDone(1, 2))
-    const receipt = screen.getByText(/some-ui\.ask-receipt\/1/)
-    const text: unknown = JSON.parse(receipt.textContent)
-    expect(text).toMatchObject({
-      done: [{ says: "Redeploy home", pasted: `deployed; TOKEN=${BLANKED}` }],
-      left: ["A Grafana key"],
-    })
-    expect(receipt.textContent).not.toContain("hunter2")
+    screen.getByText(W.receiptHolds(1))
+    expect(kept.getSnapshot().get("some-ui-3423")).toMatchObject([
+      { says: "Redeploy home", pasted: `deployed; TOKEN=${BLANKED}` },
+    ])
+    expect(document.body.textContent).not.toContain("ask-receipt")
     screen.getByRole("button", { name: /Copy/ })
   })
 
@@ -149,16 +148,17 @@ describe("the Asks page", () => {
         )
       )
     )
-    render(withQueryClient(<AsksPage kept={keptReceipts(memory())} />))
+    const kept = keptReceipts(memory())
+    render(withQueryClient(<AsksPage kept={kept} />))
     const card = (await screen.findByText("Redeploy home?")).closest("article")
     if (card === null) throw new Error("each ask is an article")
     const notYet = within(card).getAllByRole("button", { name: W.choose }).at(1)
     if (notYet === undefined) throw new Error("two options, each a choice")
     fireEvent.click(notYet)
     screen.getByText(W.chosen)
-    expect(screen.getByText(/some-ui\.ask-receipt\/1/).textContent).toContain(
-      '"says": "Not yet"'
-    )
+    expect(kept.getSnapshot().get("server-9")).toMatchObject([
+      { kind: "chose", says: "Not yet" },
+    ])
   })
 
   it("keeps what was read when a refresh fails, and says so", async () => {

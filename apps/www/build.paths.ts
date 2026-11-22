@@ -357,7 +357,7 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
     {
       modules: ["packages/video-render/src/pending.ts"],
       profiles: [MOBILE_PROFILE],
-      why: "what the reflections routine files from Studio's takes (`toFile`, SFEED5): no build imports it since asks left the phone (C1097), and none should. The routine reads the same module from the repo, outside any build",
+      why: "what the reflections routine files from Studio's takes (`toFile`, SFEED5): no build imports it since asks left the phone (C1097), and this keeps it off the web builds should one start to. The routine reads the same module from the repo, outside any build",
     },
     {
       modules: ["packages/video-render/src/feedback.ts"],

@@ -52,10 +52,7 @@ const WWW = join(import.meta.dirname, "../..")
  * unreachable on both builds (snips-capture.yml gives the emulator no
  * DNS), so no live data reaches a picture and the two builds draw alike.
  */
-const OFFLINE_BY_DESIGN = [
-  "https://api.github.com/",
-  "https://raw.githubusercontent.com/",
-]
+const OFFLINE_BY_DESIGN = ["https://raw.githubusercontent.com/"]
 
 test.describe("snips: apk", () => {
   test.skip(
@@ -109,7 +106,7 @@ test.describe("snips: apk", () => {
       }
       // Refused as the release pass's emulator refuses it (no DNS), and
       // not counted: public reads the app makes by design, of live data
-      // that is not a sample (Studio's asks, the clips index).
+      // that is not a sample (the clips index).
       if (!OFFLINE_BY_DESIGN.some((host) => url.startsWith(host))) {
         leaked.push(url)
       }

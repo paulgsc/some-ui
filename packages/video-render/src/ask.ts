@@ -29,6 +29,7 @@
  * writes the week says each one in its "waiting on you" section.
  */
 
+import { assertNever, isRecord } from "@some-ui/core-utils"
 import { z } from "zod"
 
 import { problemsOf } from "./cut-list"
@@ -145,14 +146,53 @@ const AskV2Schema = z.discriminatedUnion("kind", [
 /**
  * An ask, of either kind; a `/1` block reads as a decision, so every ask
  * filed before kinds still reads. The kinds are one family (C1095): a new
- * kind is a member here, and every reader's `switch` on `kind` fails to
- * compile until it says the new one.
+ * kind is a member here, and every reader's `switch` on `kind` (the call's
+ * `callOptionsOf`, the Asks page's receipt) fails to compile until it says
+ * the new one. A block is checked against its own `schema` alone, so a
+ * refusal says why.
  */
-export const AskFileSchema = z.union([AskV1Schema, AskV2Schema])
+const askSchemaOf = (raw: unknown): typeof AskV1Schema | typeof AskV2Schema =>
+  isRecord(raw) && raw.schema === ASK_SCHEMA_V1 ? AskV1Schema : AskV2Schema
 
-export type AskFile = z.output<typeof AskFileSchema>
+export type AskFile = z.output<typeof AskV1Schema | typeof AskV2Schema>
 export type DecisionAsk = Extract<AskFile, { kind: "decision" }>
 export type ChecklistAsk = Extract<AskFile, { kind: "checklist" }>
+
+/** What an ask offers the owner to choose, as the weekly call says it. */
+export type CallOptions = {
+  readonly options: ReadonlyArray<{
+    readonly says: string
+    readonly unblocks: string
+  }>
+  readonly recommended?: number
+}
+
+/**
+ * What the weekly call offers for `ask`: a decision's own options; for a
+ * checklist, "Done", unblocking what finishing it does, and "Not yet",
+ * with "Done" recommended.
+ */
+export function callOptionsOf(ask: AskFile): CallOptions {
+  switch (ask.kind) {
+    case "decision": {
+      return ask.recommended === undefined
+        ? { options: ask.options }
+        : { options: ask.options, recommended: ask.recommended }
+    }
+    case "checklist": {
+      return {
+        options: [
+          { says: "Done", unblocks: ask.unblocks },
+          { says: "Not yet", unblocks: "nothing yet" },
+        ],
+        recommended: 0,
+      }
+    }
+    default: {
+      return assertNever(ask)
+    }
+  }
+}
 
 /** The block, indented or not (under a list item, say), empty or not. */
 const FENCE =
@@ -181,7 +221,7 @@ export function parseAskBody(body: string): Parsed<AskFile> {
       problems: [`its ask block isn't JSON: ${String(error)}`],
     }
   }
-  const parsed = AskFileSchema.safeParse(raw)
+  const parsed = askSchemaOf(raw).safeParse(raw)
   return parsed.success
     ? { ok: true, value: parsed.data }
     : { ok: false, problems: problemsOf(parsed.error, "ask") }

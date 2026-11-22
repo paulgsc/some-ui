@@ -8,7 +8,7 @@
  * the query's (`openAsksQuery`); this draws its outcome and forwards taps.
  */
 import type { JSX } from "react"
-import { useState, useSyncExternalStore } from "react"
+import { useId, useState, useSyncExternalStore } from "react"
 import { Badge, Button, Label, Notice, Textarea } from "@some-ui/shared"
 import type { AskStep, ChecklistAsk, DecisionAsk } from "@some-ui/video-render"
 import { useQuery } from "@tanstack/react-query"
@@ -50,7 +50,8 @@ const Options = ({
   onChoose: (option: number, note: string) => void
 }): JSX.Element => {
   const [note, setNote] = useState("")
-  const chosen = lastChosen(receipt)
+  const noteId = useId()
+  const chosen = lastChosen(ask, receipt)
   return (
     <Part label={W.options}>
       <ol className="flex flex-col gap-2">
@@ -89,9 +90,9 @@ const Options = ({
           </li>
         ))}
       </ol>
-      <Label htmlFor={`note-${ask.question}`}>{W.note}</Label>
+      <Label htmlFor={noteId}>{W.note}</Label>
       <Textarea
-        id={`note-${ask.question}`}
+        id={noteId}
         value={note}
         rows={2}
         onChange={(event) => setNote(event.target.value)}
@@ -115,7 +116,7 @@ const Step = ({
   onDone: (pasted: string) => void
 }): JSX.Element => {
   const [pasted, setPasted] = useState("")
-  const id = `step-${String(place)}-${step.says}`
+  const id = useId()
   return (
     <li className="flex flex-col gap-2 rounded-lg border p-3">
       <div className="flex items-baseline justify-between gap-4">
@@ -131,8 +132,10 @@ const Step = ({
         <p className="text-muted-foreground text-sm">{W.where(step.where)}</p>
       )}
       <ol className="list-decimal space-y-1 pl-5 text-sm">
-        {step.do.map((line) => (
-          <li key={line}>{line}</li>
+        {step.do.map((line, at) => (
+          // A step's lines are fixed while it shows, and may repeat.
+          // eslint-disable-next-line react/no-array-index-key
+          <li key={at}>{line}</li>
         ))}
       </ol>
       {step.paste !== undefined && (
@@ -173,7 +176,7 @@ const Steps = ({
   receipt: Receipt
   onDone: (step: number, pasted: string) => void
 }): JSX.Element => {
-  const done = stepsDone(receipt)
+  const done = stepsDone(ask, receipt)
   return (
     <Part label={W.stepsDone(done.size, ask.steps.length)}>
       <ol className="flex flex-col gap-2">
@@ -210,7 +213,9 @@ const AskCard = ({
     <article className="flex flex-col gap-3 rounded-xl border p-4">
       <header className="flex flex-col gap-1">
         <span className="text-muted-foreground text-xs">
-          {ask === null ? null : W.kind[ask.kind]} · {W.from[open.repo]}
+          {ask === null
+            ? W.from[open.repo]
+            : `${W.kind[ask.kind]} · ${W.from[open.repo]}`}
         </span>
         <h2 className="text-lg font-semibold">{questionOf(open)}</h2>
         <a
@@ -258,9 +263,7 @@ const AskCard = ({
           )}
           {receipt.length > 0 && (
             <Part label={W.receipt}>
-              <pre className="bg-muted rounded-md p-3 text-xs break-all whitespace-pre-wrap">
-                {receiptText({ ...open, ask }, receipt)}
-              </pre>
+              <p className="text-sm">{W.receiptHolds(receipt.length)}</p>
               <CopyButton
                 text={receiptText({ ...open, ask }, receipt)}
                 what={W.copyWhat}
