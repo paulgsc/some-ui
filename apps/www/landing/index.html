@@ -167,6 +167,19 @@
         overflow: hidden;
         margin: 0;
       }
+      .media {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      /* A clip is the walk's own vertical video (packages/video-motion's
+         vertical series), shown whole on the stage's colour. */
+      video.media {
+        object-fit: contain;
+      }
       .title-card {
         position: absolute;
         inset: 0;

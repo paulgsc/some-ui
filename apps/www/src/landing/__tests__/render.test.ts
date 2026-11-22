@@ -4,7 +4,14 @@
  * here.
  */
 import { mochiSvg } from "@/landing/mochi"
-import { escapeHtml, renderLanding, renderLandingHead } from "@/landing/render"
+import { SITE_BASE } from "@/landing/output"
+import {
+  escapeHtml,
+  landingMediaKeys,
+  PHOTO,
+  renderLanding,
+  renderLandingHead,
+} from "@/landing/render"
 import { LANDING_WORDS } from "@/landing/words"
 import { resumeData } from "@some-ui/resume"
 import { MOCHI_BODY } from "@some-ui/styles/brand/mark"
@@ -25,7 +32,7 @@ describe("renderLanding", () => {
 
   it("has the photo slot, holding the mochi until a photo is bundled", () => {
     expect(page).toContain('data-slot="photo"')
-    expect(page).toContain('data-asset="photo/portrait.webp"')
+    expect(page).toContain(`data-asset="${PHOTO}"`)
     expect(page).toContain(`d="${MOCHI_BODY}"`)
   })
 
@@ -45,6 +52,30 @@ describe("renderLanding", () => {
       expect(page).toContain(`data-asset="${g.visual}"`)
       expect(page).toContain(escapeHtml(g.visualNote))
     }
+  })
+
+  it("shows each slot's asset when the build carries it, and only then", () => {
+    const [clip, ...rest] = LANDING_WORDS.projects
+    const [still] = LANDING_WORDS.gaps
+    const media = new Set([PHOTO, clip.clip, still.visual])
+    const shown = renderLanding(resume, mochiSvg(), LANDING_WORDS, media)
+    expect(shown).toContain(
+      `<video class="media" src="${SITE_BASE}media/${clip.clip}" autoplay muted loop playsinline`
+    )
+    expect(shown).toContain(
+      `<img class="media" src="${SITE_BASE}media/${still.visual}"`
+    )
+    expect(shown).toContain(`<img src="${SITE_BASE}media/${PHOTO}"`)
+    expect(shown).not.toContain(`d="${MOCHI_BODY}"`)
+    expect(shown).not.toContain(escapeHtml(still.visualNote))
+    for (const p of rest) expect(shown).toContain(`title-card--${p.id}`)
+    expect(page).not.toMatch(/<video|<img/)
+  })
+
+  it("names every slot's asset among the keys the build looks for", () => {
+    const keys = landingMediaKeys()
+    expect(new Set(keys).size).toBe(keys.length)
+    for (const key of keys) expect(page).toContain(`data-asset="${key}"`)
   })
 
   it("lists every role the résumé holds, with its dates", () => {
