@@ -11,6 +11,7 @@ import type {
   StoredItem,
   WantedMeta,
 } from "@mailbox/store"
+import { isView, VIEWS } from "@mailbox/store"
 
 type Live = StoredItem & { readonly folder: Folder; readonly putBy: Putter }
 type Gone = ArchivedMeta & { readonly folder: Folder; readonly putBy: Putter }
@@ -81,21 +82,19 @@ export function memoryStore(): Store {
         putBy: item.putBy,
         bytes: item.bytes,
       })
-      if (folder === "index") {
-        // Every index of the routine but the newest goes (the adapter's
-        // `DROP_OLDER_INDEXES_SQL`); the routine is the name less its stamp.
-        const routine = (other: string): string => other.slice(0, -24)
+      if (isView(folder)) {
+        // Every item of its kind but the newest goes (the adapter's
+        // `DROP_OLDER_OF_KIND_SQL`); the kind is the name less its stamp.
+        const kind = (other: string): string => other.slice(0, -VIEWS[folder])
         const newest = live
-          .filter(
-            (i) => i.folder === "index" && routine(i.name) === routine(name)
-          )
+          .filter((i) => i.folder === folder && kind(i.name) === kind(name))
           .map((i) => i.name)
           .sort()
           .at(-1)
         live = live.filter(
           (i) =>
-            i.folder !== "index" ||
-            routine(i.name) !== routine(name) ||
+            i.folder !== folder ||
+            kind(i.name) !== kind(name) ||
             i.name === newest
         )
         if (newest !== name) return Promise.resolve({ change: "superseded" })

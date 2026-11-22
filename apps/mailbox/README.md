@@ -28,7 +28,11 @@ records as the take's pickup (CONVEYOR3, #2875). For the video essays: each **sn
 (`snips`), the manifest of a capture of the app's screens that home fetched (SNIPS2, #3116),
 so the routine can name a snip in an essay without ever seeing a picture. For the Build Journal:
 the build-journal session's **list of the Studio takes Drive holds** (`drive-takes-…` in
-`brief`), SHA-256s only, so home can tell the phone which takes Drive has too. Each side
+`brief`), SHA-256s only, so home can tell the phone which takes Drive has too. For the public
+site: **two pictures of home's own dashboards** (`site-assets`), the server card's clip and the
+cores card's still, which home photographs and the Pages build's Site Assets run reads (C1071,
+#3415). They are the only files here that are not JSON, and they carry no personal data (counts,
+rates and uptime only). Each side
 reaches it with its own token, so the files move between them without a hand-carried step.
 
 ## Why it exists
@@ -50,6 +54,7 @@ cloud routine ◀──GET prompt── [ mailbox ] ◀──PUT prompt── ho
 cloud routine ◀──GET pickup── [ mailbox ] ◀──PUT pickup── home ◀── phone (a take moved to ready for pickup)
 cloud routine ──PUT picked──▶ [ mailbox ] ◀──GET picked── home ──▶ phone (picked up, with its issue)
 cloud routine ◀──GET snips── [ mailbox ] ◀──PUT snips── home ◀── GitHub (a capture's bundle it fetched)
+GitHub (Site Assets) ◀──GET site-assets── [ mailbox ] ◀──PUT site-assets── home (its dashboards, photographed)
 build journal ──PUT brief (drive-takes)──▶ [ mailbox ] ◀──GET brief── home ──▶ phone (Drive has it)
                                            [ mailbox ] ──ring──▶ home (a socket home holds open)
 ```
@@ -100,6 +105,12 @@ manifest, which the same commit's capture makes again, and home keeps no copy of
 can make (owner, 2026-11-21, #3114; `docs/calls/C946.json`). Each list stays live, and no role
 lists it as archived or asks it back.
 
+The site's pictures (`site-assets`) are a view too, as the index is: home photographs its
+dashboards again whenever they are wanted, so they are not a record of the owner's (C1071). The
+mailbox keeps only the newest of each kind (`server`, `cores`): when home puts a new one, the
+one before it goes in the same transaction, and one older than the live one is not taken
+(`409`). Nothing archives a picture or asks one back.
+
 ## API
 
 Every request needs `Authorization: Bearer <token>`. Every answer is JSON, or the stored bytes.
@@ -118,7 +129,7 @@ Every request needs `Authorization: Bearer <token>`. Every answer is JSON, or th
 | anything else                                            | `404`; a method the path does not take is `405` with `Allow`. A missing or wrong token is `401`, a token that may not do this is `403`, and storage failing is `503`.                                                                                                                                                                                   |
 
 The folders are `brief`, `decisions`, `scout`, `scene`, `drama`, `run`, `opened`, `leetype`,
-`leetype-log`, `transcript`, `index`, `reflection`, `prompt`, `feedback`, `pickup`, `picked` and `snips`. `brief` also holds the
+`leetype-log`, `transcript`, `index`, `reflection`, `prompt`, `feedback`, `pickup`, `picked`, `snips` and `site-assets`. `brief` also holds the
 build-journal session's lists of the takes Drive holds (`drive-takes-…`) and the Monday
 routine's weeks of Rust Rounds (`rust-week-…`) and the essays that answer them
 (`rust-essay-…`), and the interview week's routine's weeks (`interview-week-…`), which home finds in the listing it makes of
@@ -157,11 +168,16 @@ WebSocket open on `GET /v1/bell`, and the mailbox rings it there (MBP1,
 
 ### Who may do what
 
-| Secret          | Role      | May                                                                                                                                                                                                                   |
-| --------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ROUTINE_TOKEN` | `routine` | read every folder; put `brief`, `scene`, `drama`, `run`, `leetype` and `picked`; list what is archived and ask for it back, in every folder but `index`, `reflection`, `prompt`, `feedback`, `pickup` and `snips`     |
-| `HOME_TOKEN`    | `home`    | read `brief`, `scene`, `drama`, `run`, `leetype` and `picked`; put `decisions`, `scout`, `opened`, `leetype-log`, `transcript`, `index`, `reflection`, `prompt`, `feedback`, `pickup` and `snips`; listen on the bell |
-| `ARCHIVE_TOKEN` | `archive` | read every folder; archive a file, put an archived one back and list the open asks, in every folder but `index` and `snips`                                                                                           |
+| Secret          | Role      | May                                                                                                                                                                                                                                  |
+| --------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ROUTINE_TOKEN` | `routine` | read every folder but `site-assets`; put `brief`, `scene`, `drama`, `run`, `leetype` and `picked`; list what is archived and ask for it back, in every folder but `index`, `reflection`, `prompt`, `feedback`, `pickup` and `snips`  |
+| `HOME_TOKEN`    | `home`    | read `brief`, `scene`, `drama`, `run`, `leetype` and `picked`; put `decisions`, `scout`, `opened`, `leetype-log`, `transcript`, `index`, `reflection`, `prompt`, `feedback`, `pickup`, `snips` and `site-assets`; listen on the bell |
+| `ARCHIVE_TOKEN` | `archive` | read every folder but `site-assets`; archive a file, put an archived one back and list the open asks, in every folder but `index`, `snips` and `site-assets`                                                                         |
+| `PAGES_TOKEN`   | `pages`   | read `site-assets`, and nothing else                                                                                                                                                                                                 |
+
+The pages role is the Pages build's: its token lives in GitHub's Actions secrets
+(`MAILBOX_PAGES_TOKEN`), where only Site Assets' `home` job reads it (C1071). Until the owner
+sets `PAGES_TOKEN`, the role authenticates no one and the site keeps its drawings.
 
 The routine role is every scheduled routine's: the Jobs digest, the study reflections and,
 once it is scheduled, the LeetType review each put to their own folders.
@@ -239,9 +255,15 @@ role, and it is the owner's call, so it is not built.
   named `read`. `brief` also takes `interview-essay-YYYY-wNN.json` (MB2, IW6
   paulgsc/some-ui#2937), the script of the essay that answers a week of mock interview, named
   as the Rust essay's is, with `-rN` for a correction.
+  `site-assets` takes `server-YYYYMMDDTHHMMSSmmmZ.mp4` and `cores-YYYYMMDDTHHMMSSmmmZ.png`,
+  named for the kind and when home put it, in UTC to the millisecond, so the greatest name of a
+  kind is the newest.
   Anything else, an audio file's name included, is `422`.
 - **Content type** `application/json` (parameters such as `charset` are ignored), and the body
-  must be UTF-8 JSON with no byte-order mark.
+  must be UTF-8 JSON with no byte-order mark. A picture is the one exception: `image/png` for a
+  `.png`, `video/mp4` for an `.mp4`, and its first bytes must say the same (a PNG's signature
+  and `IHDR`, at most 4096 pixels a side; an MP4's `ftyp` box). A picture has no schema. It is
+  held to the same 1 MiB as every file, so home encodes the clip to fit (C1071).
 - **Schema**: the top-level `schema` must be `some-ui.job-digest/1`, `some-ui.job-decisions/1`,
   `some-ui.job-scouts/1`, `some-ui.routine-scene/1`, `some-ui.routine-drama/1`, `some-ui.routine-run/1`,
   `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1`, `some-ui.reflection/1`, `some-ui.drama-prompt/1`, `some-ui.episode-note/1`, `some-ui.take-pickup/1`, `some-ui.take-picked/1` or `some-ui.snips/1` to match the folder (and `some-ui.drive-takes/1` for a list of Drive's takes in `brief`, `some-ui.rust-week/2` (or the earlier `/1`) for a week of Rust Rounds, `some-ui.rust-essay/1` for an essay's script, `some-ui.interview-week/2` (or the earlier `/1`) for a week of mock interview, `some-ui.interview-essay/1` for an interview essay's script). The Worker checks that and nothing deeper, except for a transcript, an index, a reflection, a prompt, a note on an episode, a take ready for pickup, an answer to one, a snip list, a list of Drive's takes, a week's `id`, which must be the name's (below), and an interview week's question and card ids; the readers validate the full shape.
@@ -504,6 +526,9 @@ operation; it does not bill (see MB4).
   would take decades to fill without it.
 - Past a D1 daily limit its queries fail until 00:00 UTC; the Worker answers `503` for
   that time. The 07:52 Pacific run is far from that reset.
+- The site's pictures are the largest files here: home encodes the clip to fit the 1 MiB cap,
+  and only the newest of each kind is kept, so they hold at most 2 MiB of the database. The
+  Site Assets run reads each once per run, a few times a month.
 - D1 hands a BLOB back as an array of byte values, so reading a body near the 1 MiB cap costs
   CPU. I have not measured whether it fits in 10 ms; files are far below it in practice
   (the sizes are under "What a put must satisfy").
@@ -586,30 +611,35 @@ how each was checked when this workspace landed.
   so "only into `archived`" no longer holds. MB5 (below) carries the claim with that
   exception; everything MB1's checks found above still holds outside the `index` folder.
 
-**MB5: An item never changes, and leaves `item` only into `archived`, or, for home's index, once a newer one of its routine is live.**
+**MB5: An item never changes, and leaves `item` only into `archived`, or, in a view folder (home's index, the site's pictures), once a newer one of its kind is live.**
 
 - _Claim:_ in `apps/mailbox`, no source file or migration updates or replaces an `item` row;
   the only statements that delete one are the archive's, which names only items whose row
-  `archived` already holds with the SHA-256 the request named in `If-Match`, and an index
-  put's, which drops only the `index` items of the put's routine older than the newest
-  (`DROP_OLDER_INDEXES_SQL`, in the same batch as the put); and an archived name never takes
+  `archived` already holds with the SHA-256 the request named in `If-Match`, and a view
+  put's, which drops only the items of the put's folder and kind older than the newest
+  (`DROP_OLDER_OF_KIND_SQL`, in the same batch as the put, for a folder in `VIEWS` only: `index`,
+  whose kind is its routine, and `site-assets`); and an archived name never takes
   other bytes. The adapter writes `item` with an `INSERT … ON CONFLICT
 (folder, name) DO NOTHING` (a put adds nothing under an archived name, in the same
   statement) and those `DELETE`s. `item` carries three triggers: `BEFORE UPDATE` aborts;
   `item_leaves_only_into_archived` aborts a `DELETE` unless `archived` holds a row with the
   item's `seq`, folder, name and SHA-256, or the item is in `index` and a greater-named
-  `index` item of the same routine (the name less its last 24 characters) is live;
+  `index` item of the same routine (the name less its last 24 characters) is live, or it is
+  in `site-assets` and a greater-named `site-assets` item of the same kind (the name less its
+  last 23 characters) is live;
   `item_keeps_an_archived_name` aborts an `INSERT`
   of other bytes under an archived name. `archived` and `restored` carry triggers that abort
   every `UPDATE` and `DELETE`. The only other delete is of an answered ask in `wanted`, and
   the only insert into `archived` is the archive's.
 - _Falsified by_ a hunk that drops, renames or weakens any of those triggers (a later
   migration that drops a trigger or one of the tables included, other than `0003_folders.sql`'s
-  rebuild, which recreates them, and `0004_index_view.sql`, which recreates
-  `item_leaves_only_into_archived` with the index's exception alone); that widens that
-  exception past the `index` folder or past items a newer index of the same routine
-  outranks, or changes `DROP_OLDER_INDEXES_SQL` likewise, runs it outside the put's batch, or
-  runs it for another folder; that deletes or moves the
+  rebuild, which recreates them, `0004_index_view.sql`, which recreates
+  `item_leaves_only_into_archived` with the index's exception alone, and
+  `0005_site_assets_view.sql`, which recreates it with the index's and the site's pictures'
+  exceptions alone); that widens either exception past its folder or past items a newer one of
+  the same kind outranks, or changes `DROP_OLDER_OF_KIND_SQL` likewise, runs it outside the
+  put's batch, adds a folder to `VIEWS` or changes a stamp length there so it no longer matches
+  the trigger's; that deletes or moves the
   migrations that create them, or changes `migrations_dir` in `wrangler.jsonc` so they no
   longer apply; that adds an `UPDATE`, `INSERT OR REPLACE`, `REPLACE INTO` or
   `ON CONFLICT … DO UPDATE` against `item`, `archived` or `restored`, a `DELETE` other than
@@ -644,18 +674,27 @@ how each was checked when this workspace landed.
   every migration `item` has the same three triggers; `store.test.ts` has a trigger case that
   lets an index go only while a newer one of its routine is live, and runs the index put
   against the in-memory store and the adapter alike. The rest is as MB1's last check found it.
+  _Checked at the site's pictures amendment (`0005_site_assets_view.sql`, C1071, the owner's
+  "yes" on [#3415](https://github.com/paulgsc/some-ui/issues/3415) that home sends pictures of
+  its dashboards to GitHub for the public site):_ `store.ts` still has three `DELETE`s, the
+  index's now `DROP_OLDER_OF_KIND_SQL`, bound to the folder and its stamp length from `VIEWS`
+  (`index` 24, `site-assets` 23), and run only when `isView(folder)`; the new trigger keeps the
+  index's clause word for word and adds the pictures' with 23; `store.test.ts` has a trigger
+  case that lets a picture go only while a newer one of its kind is live in `site-assets`
+  (the same name in `brief` does not count), and runs the picture put against both stores.
 
 **MB2: Roles.**
 
 - _Claim:_ the `ROLES` table in `src/core.ts` is the only place a token is mapped to what it
   may do, `listen` is `true` for `home` and only `home` (the bell, MBP1,
   [#2142](https://github.com/paulgsc/some-ui/issues/2142): "the bell is `home`'s only"), and
-  it holds exactly three roles: `routine` (get every folder, put `brief`, `scene`,
+  it holds exactly four roles: `routine` (get every folder but `site-assets`, put `brief`, `scene`,
   `drama`, `run`, `leetype` and `picked`, ask every folder but `index`, `reflection`, `prompt`,
   `feedback`, `pickup` and `snips`), `home`
   (get `brief`, `scene`, `drama`, `run`, `leetype` and `picked`, put `decisions`, `scout`, `opened`,
-  `leetype-log`, `transcript`, `index`, `reflection`, `prompt`, `feedback`, `pickup` and `snips`) and `archive` (get every folder, move
-  every folder but `index` and `snips`; owner, 2026-10-23, and `scene` and `drama` the same day; `run` and
+  `leetype-log`, `transcript`, `index`, `reflection`, `prompt`, `feedback`, `pickup`, `snips` and `site-assets`), `archive` (get every folder
+  but `site-assets`, move every folder but `index`, `snips` and `site-assets`) and `pages` (get
+  `site-assets` only). The owner's decisions: the roles and their first folders, 2026-10-23, and `scene` and `drama` the same day; `run` and
   `opened` 2026-10-24; `leetype` and `leetype-log` 2026-10-24 too; `transcript` 2026-10-25;
   `index` 2026-10-31, paulgsc/server#509, and kept out of `ask` and `move` the same day, since
   it is a view and not a record; `reflection` 2026-10-26, paulgsc/some-ui#2174 decision D2, and
@@ -666,7 +705,9 @@ how each was checked when this workspace landed.
   same reason; `pickup` and `picked` 2026-11-13, CONVEYOR3 #2875, the owner's decision that a take ready for pickup goes to the mailbox with its labels and its comment stays home (`C296`), `pickup` kept out of `ask` for the same reason; `snips` 2026-11-21, SNIPS2 #3116, the owner's
   decision of 2026-11-17 on #3114 that home publishes each snip's metadata, never an image, to the
   mailbox for the routine, kept out of `ask` and `move` by the owner's ruling of 2026-11-21 that
-  home keeps no copy of what a capture can make again, `C946`).
+  home keeps no copy of what a capture can make again, `C946`; `site-assets` and the `pages` role
+  2026-11-22, the owner's "yes" on #3415 that home sends pictures of its dashboards to GitHub for
+  the public site, kept out of `ALL`, `ask` and `move` because the pictures are a view, C1071).
   The routine's `brief` also takes its one-time backfill: a Jobs decisions or
   scouts file under its Drive name, only as the phone names one (`sharedDay`: a real calendar
   day, a decisions share number from 2 to 99, a scouts stamp at a real time) and only for a
@@ -829,6 +870,16 @@ how each was checked when this workspace landed.
   lists it as archived or asks it back, that the name carries the commit and the run, that a
   manifest as the bundle writes it is taken, and that a body with
   a picture, a key beyond a record's or a file's own, or `data` other than `sample` is refused.
+  _Checked at the site's pictures amendment (C1071; the owner's answer "yes" on
+  [#3415](https://github.com/paulgsc/some-ui/issues/3415), 2026-11-22, that home photographs its
+  dashboards and sends them to GitHub for the public site):_ `ROLES` has four entries, the
+  fourth `pages`, reading `PAGES_TOKEN`, with `get` `["site-assets"]` and nothing else, and
+  `listen` `false`; `site-assets` is in home's `put` and in none of `ALL`, `RECORDS`, `ASKED`
+  or `HOME_READS`, so only `pages` reads it and nothing archives it, asks it back or rings for
+  it; `write` refuses `pages` as it refuses `archive`; `core.test.ts` pins that home puts a
+  picture and `pages` reads it back byte for byte, that `pages` reads no other folder and puts
+  nothing, that the routine and the archive role neither read nor put one, and that a picture
+  whose name, content type or first bytes disagree, or that is over the cap, is refused.
 
 **MB3: No token reaches the repo or a log.**
 
@@ -915,7 +966,9 @@ asks.
 4. Make three long random tokens, for example `openssl rand -base64 32` three times, and run
    `pnpm --filter @some-ui/mailbox exec wrangler secret put ROUTINE_TOKEN` and the same with
    `HOME_TOKEN` and `ARCHIVE_TOKEN`. An `ARCHIVE_TOKEN` left unset only means nothing is
-   archived.
+   archived. A fourth, `PAGES_TOKEN`, is for the public site's pictures (C1071): put the same
+   value in GitHub (Settings → Secrets and variables → Actions → `MAILBOX_PAGES_TOKEN`). Left
+   unset, the site keeps its drawings.
 5. `pnpm --filter @some-ui/mailbox exec wrangler deploy`, and note the URL,
    `https://some-ui-mailbox.<subdomain>.workers.dev`.
 6. Smoke test with the routine's token:
@@ -934,7 +987,8 @@ Run step 3 again, then step 5, from `origin/main`: `migrations apply` runs only 
 migrations it has not applied, and a migration that fails is rolled back whole. Apply a new
 migration before deploying the code that needs it: `0004_index_view.sql` (the index keeps only
 the latest) must be in before the Worker whose index put drops the one before, or that put
-fails with `503` until it is. For archiving (`0002_archive.sql`), also put `ARCHIVE_TOKEN` (step 4) and give the
+fails with `503` until it is. Likewise `0005_site_assets_view.sql` (the site's pictures keep
+only the newest of each kind) goes in before the Worker that takes a picture. For archiving (`0002_archive.sql`), also put `ARCHIVE_TOKEN` (step 4) and give the
 same value to home as `MAILBOX_ARCHIVE_TOKEN`.
 
 The bell's Durable Object (`Bell`) is not a D1 migration: `wrangler deploy` creates its class

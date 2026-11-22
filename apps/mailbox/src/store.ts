@@ -1,10 +1,10 @@
 /**
  * What the mailbox keeps, and the one adapter that keeps it in D1.
  *
- * MB5: an item never changes, and leaves `item` only into `archived`, or, for
- * home's index (a view, not a record), once a newer index of its routine is
- * live; no code may issue `INSERT OR REPLACE`, which the triggers do not
- * stop. Full text: README.md, "Gray-area invariants".
+ * MB5: an item never changes, and leaves `item` only into `archived`, or, in
+ * a view folder (`VIEWS`: home's index, the site's pictures), once a newer
+ * item of its kind is live; no code may issue `INSERT OR REPLACE`, which the
+ * triggers do not stop. Full text: README.md, "Gray-area invariants".
  */
 
 export type Folder =
@@ -25,12 +25,34 @@ export type Folder =
   | "pickup"
   | "picked"
   | "snips"
+  | "site-assets"
+
+/**
+ * The folders that are views, not records: each keeps only the newest item
+ * of a kind, and a put drops the ones before it (MB5). A kind is the name
+ * less its stamp and extension, whose length is given here: the stamp
+ * `YYYYMMDDTHHMMSSmmmZ` is 19 characters, `.json` 5, `.png` and `.mp4` 4. Home's index is recomputed from what home keeps
+ * (owner, 2026-10-31, paulgsc/server#509); the site's pictures are taken
+ * again from home's dashboards whenever they are wanted (#3415, C1071).
+ */
+export const VIEWS = {
+  // `20261031T150000000Z.json`
+  index: 24,
+  // `20261122T000000000Z.png`, `.mp4`
+  "site-assets": 23,
+} as const satisfies Partial<Record<Folder, number>>
+
+export type View = keyof typeof VIEWS
+
+export function isView(folder: Folder): folder is View {
+  return Object.hasOwn(VIEWS, folder)
+}
 
 /** Who put an item. A restored item keeps its first putter. */
 export type Putter = "routine" | "home"
 
 /** The name of each token, and what it may do (`ROLES` in `core.ts`). */
-export type Role = Putter | "archive"
+export type Role = Putter | "archive" | "pages"
 
 export type ItemMeta = {
   readonly seq: number
@@ -74,8 +96,9 @@ export type NewItem = {
 export type PutResult =
   | { readonly change: "added" | "unchanged"; readonly seq: number }
   /**
-   * `superseded`: an index older than the one live for its routine, dropped
-   * in the write that took it (README, "What it keeps").
+   * `superseded`: a view's item older than the one live of its kind (an
+   * index older than its routine's), dropped in the write that took it
+   * (README, "What it keeps").
    */
   | { readonly change: "superseded" }
   | { readonly change: "conflict" }
@@ -115,10 +138,10 @@ export type Store = {
   get: (folder: Folder, name: string) => Promise<StoredItem | null>
   /**
    * One name holds one body, forever, archived or not: the same bytes again
-   * are `unchanged`, other bytes are a `conflict` and change nothing. The
-   * `index` folder keeps only the newest index of each routine: a new one
-   * drops the ones before it in the same transaction, and one older than the
-   * live one is `superseded`.
+   * are `unchanged`, other bytes are a `conflict` and change nothing. A view
+   * folder (`VIEWS`) keeps only the newest item of each kind (the `index`
+   * folder, of each routine): a new one drops the ones before it in the same
+   * transaction, and one older than the live one is `superseded`.
    */
   put: (folder: Folder, name: string, item: NewItem) => Promise<PutResult>
   /** The name's latest archived row, or `null`. */
@@ -188,20 +211,21 @@ RETURNING seq`
 const HELD_SQL = "SELECT seq, sha256 FROM item WHERE folder = ?1 AND name = ?2"
 
 /**
- * ?1 an index's name: every index of its routine but the newest goes, in the
- * batch of the put that took it. An index's routine is its name less the
- * stamp and `.json` (24 characters), and the greater name is the newer; the
- * trigger lets an index go only while a newer one of its routine is live.
- * It returns the names it dropped, so a put whose own name is among them
- * learns it was superseded from the same transaction.
+ * ?1 a view's folder, ?2 the item's name, ?3 its stamp's length (`VIEWS`):
+ * every item of its kind but the newest goes, in the batch of the put that
+ * took it. An item's kind is its name less the stamp (for an index, its
+ * routine), and the greater name is the newer; the trigger lets one go only
+ * while a newer one of its kind is live. It returns the names it dropped, so
+ * a put whose own name is among them learns it was superseded from the same
+ * transaction.
  */
-const DROP_OLDER_INDEXES_SQL = `DELETE FROM item
-WHERE folder = 'index'
-  AND substr(name, 1, length(name) - 24) = substr(?1, 1, length(?1) - 24)
+const DROP_OLDER_OF_KIND_SQL = `DELETE FROM item
+WHERE folder = ?1
+  AND substr(name, 1, length(name) - ?3) = substr(?2, 1, length(?2) - ?3)
   AND name < (
     SELECT MAX(newer.name) FROM item AS newer
-    WHERE newer.folder = 'index'
-      AND substr(newer.name, 1, length(newer.name) - 24) = substr(?1, 1, length(?1) - 24)
+    WHERE newer.folder = ?1
+      AND substr(newer.name, 1, length(newer.name) - ?3) = substr(?2, 1, length(?2) - ?3)
   )
 RETURNING name`
 
@@ -385,14 +409,14 @@ export function d1Store(db: Db): Store {
         item.putBy,
         item.putAt,
       ] as const
-      if (folder === "index") {
-        // The newest index of the routine stays, and every one before goes,
-        // in one transaction with the put (MB5).
+      if (isView(folder)) {
+        // The newest item of its kind stays, and every one before goes, in
+        // one transaction with the put (MB5).
         const [put, dropped] = await db.batch([
           db.prepare(INSERT_SQL).bind(...values),
-          db.prepare(DROP_OLDER_INDEXES_SQL).bind(name),
+          db.prepare(DROP_OLDER_OF_KIND_SQL).bind(folder, name, VIEWS[folder]),
         ])
-        // Dropped in the write that took it: a newer index of its routine is live.
+        // Dropped in the write that took it: a newer one of its kind is live.
         if ((dropped?.results ?? []).some((row) => row.name === name)) {
           return { change: "superseded" }
         }
@@ -409,8 +433,8 @@ export function d1Store(db: Db): Store {
         (await one(HELD_SQL, folder, name)) ??
         (await one(ARCHIVED_OF_SQL, folder, name))
       if (held === null) {
-        // Only an index can go without an archived row: one replaced since.
-        if (folder === "index") return { change: "superseded" }
+        // Only a view's item can go without an archived row: one replaced since.
+        if (isView(folder)) return { change: "superseded" }
         throw new Error("a held item is not there")
       }
       return held.sha256 === item.sha256

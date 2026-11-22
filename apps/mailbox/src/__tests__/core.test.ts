@@ -18,6 +18,7 @@ import { failing, memoryStore, untouchable } from "./stores"
 const ROUTINE = "test-routine-token"
 const HOME = "test-home-token"
 const ARCHIVE = "test-archive-token"
+const PAGES = "test-pages-token"
 const NOW = new Date("2026-10-21T14:52:00.000Z")
 
 const DIGEST = JSON.stringify({ schema: "some-ui.job-digest/1", picks: [] })
@@ -48,7 +49,7 @@ function deps(
   rings: Array<Folder> = []
 ): Deps {
   return {
-    tokens: { routine: ROUTINE, home: HOME, archive: ARCHIVE },
+    tokens: { routine: ROUTINE, home: HOME, archive: ARCHIVE, pages: PAGES },
     store,
     now: () => NOW,
     report: (error): void => {
@@ -60,7 +61,7 @@ function deps(
 
 type Init = {
   readonly token?: string | null
-  readonly body?: string
+  readonly body?: string | Uint8Array
   readonly type?: string | null
   readonly headers?: Record<string, string>
 }
@@ -190,7 +191,12 @@ describe("authentication", () => {
     const { store, touched } = untouchable()
     const d: Deps = {
       ...deps(store),
-      tokens: { routine: undefined, home: "", archive: undefined },
+      tokens: {
+        routine: undefined,
+        home: "",
+        archive: undefined,
+        pages: undefined,
+      },
     }
     for (const token of ["", "undefined", "null", "empty"]) {
       const response = await send(d, "GET", "/v1/brief/items", { token })
@@ -203,12 +209,13 @@ describe("authentication", () => {
     const { store, touched } = untouchable()
     const shared = "test-shared-token"
     for (const tokens of [
-      { routine: shared, home: shared, archive: ARCHIVE },
-      { routine: ROUTINE, home: shared, archive: shared },
-      { routine: shared, home: HOME, archive: shared },
+      { routine: shared, home: shared, archive: ARCHIVE, pages: PAGES },
+      { routine: ROUTINE, home: shared, archive: shared, pages: PAGES },
+      { routine: shared, home: HOME, archive: shared, pages: PAGES },
+      { routine: ROUTINE, home: shared, archive: ARCHIVE, pages: shared },
     ]) {
       const d: Deps = { ...deps(store), tokens }
-      for (const token of [shared, ROUTINE, HOME, ARCHIVE]) {
+      for (const token of [shared, ROUTINE, HOME, ARCHIVE, PAGES]) {
         const response = await send(d, "GET", "/v1/brief/items", { token })
         expect(response.status).toBe(401)
       }
@@ -3624,5 +3631,136 @@ describe("a capture's snip list (SNIPS2, #3116)", () => {
     expect(
       await json(await asHome(d, NAME, JSON.stringify(stillPicture)))
     ).toEqual({ error: "recording must be an mp4 or webm" })
+  })
+})
+
+/** A PNG's head: the signature and an `IHDR` of `width` by `height`. */
+function png(width = 1280, height = 720): Uint8Array {
+  const bytes = new Uint8Array(64)
+  bytes.set([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48,
+    0x44, 0x52,
+  ])
+  const view = new DataView(bytes.buffer)
+  view.setUint32(16, width)
+  view.setUint32(20, height)
+  return bytes
+}
+
+/** An MP4's head: its `ftyp` box. */
+function mp4(): Uint8Array {
+  const bytes = new Uint8Array(64)
+  bytes.set([0, 0, 0, 32, ...new TextEncoder().encode("ftypisom")])
+  return bytes
+}
+
+describe("the site's pictures (C1071, #3415)", () => {
+  const CORES = "cores-20261123T000000000Z.png"
+  const SERVER = "server-20261123T000000000Z.mp4"
+  const still = { token: HOME, body: png(), type: "image/png" }
+  const clip = { token: HOME, body: mp4(), type: "video/mp4" }
+
+  it("home puts a still and a clip, and the pages role reads them back as they were", async () => {
+    const d = deps()
+    expect((await put(d, "site-assets", CORES, still)).status).toBe(201)
+    expect((await put(d, "site-assets", SERVER, clip)).status).toBe(201)
+    expect((await put(d, "site-assets", CORES, still)).status).toBe(200)
+
+    const listing = await send(d, "GET", "/v1/site-assets/items", {
+      token: PAGES,
+    })
+    expect(listing.status).toBe(200)
+    const read = await send(d, "GET", `/v1/site-assets/items/${CORES}`, {
+      token: PAGES,
+    })
+    expect(read.status).toBe(200)
+    expect(read.headers.get("content-type")).toBe("image/png")
+    expect(new Uint8Array(await read.arrayBuffer())).toEqual(png())
+    const video = await send(d, "GET", `/v1/site-assets/items/${SERVER}`, {
+      token: PAGES,
+    })
+    expect(video.headers.get("content-type")).toBe("video/mp4")
+  })
+
+  it("only the newest of each kind stays, and an older one is superseded", async () => {
+    const d = deps()
+    const older = "cores-20261116T000000000Z.png"
+    expect((await put(d, "site-assets", older, still)).status).toBe(201)
+    expect((await put(d, "site-assets", SERVER, clip)).status).toBe(201)
+    expect(
+      (await put(d, "site-assets", CORES, { ...still, body: png(640, 360) }))
+        .status
+    ).toBe(201)
+    const listing = await send(d, "GET", "/v1/site-assets/items", {
+      token: PAGES,
+    })
+    expect(await json(listing)).toMatchObject({
+      items: [{ name: SERVER }, { name: CORES }],
+    })
+    const late = await put(d, "site-assets", older, still)
+    expect(late.status).toBe(409)
+    expect(await json(late)).toEqual({
+      error: "a newer one of this kind is held",
+    })
+  })
+
+  it("a picture is refused unless its type, name and first bytes agree", async () => {
+    const d = deps()
+    const refused: ReadonlyArray<
+      readonly [string, Init, number, string | null]
+    > = [
+      [CORES, { ...still, type: "video/mp4" }, 422, "image/png"],
+      [CORES, { ...still, type: "application/json" }, 422, "image/png"],
+      [CORES, { ...still, body: mp4() }, 422, "not a PNG"],
+      [SERVER, { ...clip, body: png() }, 422, "not an MP4"],
+      [CORES, { ...still, body: png(4097, 10) }, 422, "4096 pixels"],
+      [CORES, { ...still, body: png(0, 10) }, 422, "4096 pixels"],
+      ["cores-20261123T000000000Z.mp4", clip, 422, "name"],
+      ["server-20261123T000000000Z.png", still, 422, "name"],
+      ["disk-20261123T000000000Z.png", still, 422, "name"],
+      [
+        CORES,
+        { ...still, body: new Uint8Array(1_048_577).fill(1) },
+        413,
+        "too_big",
+      ],
+    ]
+    for (const [name, init, status, why] of refused) {
+      const response = await put(d, "site-assets", name, init)
+      expect(response.status).toBe(status)
+      expect(JSON.stringify(await json(response))).toContain(why)
+    }
+    expect(
+      (await send(d, "GET", "/v1/site-assets/items", { token: PAGES })).status
+    ).toBe(200)
+  })
+
+  it("the pages role reads the pictures and nothing else, and puts nothing", async () => {
+    const d = deps()
+    expect((await put(d, "brief", DIGEST_NAME, { body: DIGEST })).status).toBe(
+      201
+    )
+    for (const path of ["/v1/brief/items", `/v1/brief/items/${DIGEST_NAME}`]) {
+      expect((await send(d, "GET", path, { token: PAGES })).status).toBe(403)
+    }
+    expect(
+      (await put(d, "site-assets", CORES, { ...still, token: PAGES })).status
+    ).toBe(403)
+    expect(
+      (await send(d, "GET", "/v1/bell", { token: PAGES })).status
+    ).not.toBe(101)
+  })
+
+  it("the routine and the archive role neither read nor put a picture", async () => {
+    const d = deps()
+    expect((await put(d, "site-assets", CORES, still)).status).toBe(201)
+    for (const token of [ROUTINE, ARCHIVE]) {
+      expect(
+        (await send(d, "GET", "/v1/site-assets/items", { token })).status
+      ).toBe(403)
+      expect(
+        (await put(d, "site-assets", SERVER, { ...clip, token })).status
+      ).toBe(403)
+    }
   })
 })
