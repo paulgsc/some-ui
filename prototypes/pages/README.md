@@ -141,8 +141,8 @@ once more, beside the résumé shell that already does this. Add the GitHub prof
 (rung 1) as a cheap second door with the same links. The call is drafted below; when the PR
 lands, record it as `docs/calls/C1055.json`.
 
-Later (epic #3399, ASSETS6): Pages' assets, the résumé PDFs included, come from an R2 bucket.
-The landing should link PDFs by one resolver, so moving them is a one-line change.
+Pages' assets, the résumé PDFs included, are bundled at build time (round 2, the owner's
+correction), so the landing links them by path inside the artifact.
 
 ## 4. Prototypes
 
@@ -307,10 +307,12 @@ None of this is a new pipeline:
 3. **The photo slot: the brand cast's drawing as its default.** `cast.ts` already says "a
    page draws it with React and a composition can draw the same tree as a file". The
    landing draws it as a file until `photo/portrait.webp` exists.
-4. **Assets from R2 (ASSETS6, epic #3399, C1029).** The photo, the three clips and the
-   résumé PDFs are resolved by the one asset resolver ASSETS6 brings, keyed as above.
-   - The clips are MP4: `motion video` already writes it, and Chrome on Android and desktop
-     plays it with no second format.
+4. **Assets bundled at build time** (the owner, 2026-11-22): "this is a Pages static web app,
+   so we can bundle whatever static assets at build time." The photo, the three clips and the
+   résumé PDFs are generated or fetched into the Pages artifact when `pages.yml` builds it, and
+   are never committed to the repo. Pages needs no R2. (This replaces the earlier "served from
+   R2" story; ASSETS6 is no longer part of the Pages story.) The clips are MP4: `motion video`
+   already writes it, and Chrome on Android and desktop plays it with no second format.
 
 ### Correction to the round-1 prune list
 
@@ -335,3 +337,56 @@ above hold only once Snips has its own build.
   and the résumé gives no date. It is unanswered, so D keeps it.
 - Whether the PIPELINES panel should show the weekly call or another process.
 - The public AMO listing link for Suspender Ledger, if it has one. The repo names none.
+
+## Round 2b: what I'm stuck on (Page Filter)
+
+This is the owner's inclination, given as "not a directive": show the thing that is hard
+beside the thing that ships, briefly and mostly visually.
+
+**Recon.** Page Filter (`extensions/some-filter`) is meant to turn any bright site the same soft
+dark, without ever leaving text unreadable and without a white flash while the page loads. What
+blocks it is that a page is never finished or fully visible:
+
+- it keeps changing after load;
+- it draws parts inside components and frames the extension can't reliably see into.
+
+So the filter can never be sure it caught everything. Its own canon proves that no algorithm
+can certify a page has settled (`docs/canon/dom-state-estimation-canon.typ`).
+`docs/legibility-paint-grammar.md` shows each gap arriving as a new counterexample (six review
+rounds for one audit). Its last feature commit was 2026-09-23. Since then, about fifteen issues
+are open:
+
+- the budgeted rounds, SF-BUD1–6;
+- the flash oracle and the e2e specs not yet running in CI: SF-CUT4/5, #1354;
+- an "off" tab themed again: #3164;
+- AMO review fixes waiting on a branch: #1787.
+
+**The visual.** I loaded the extension's built `dist/` in Chromium, with and without it, on
+public pages. The before/after is MDN's CSS `filter` page. With the filter, the page goes dark,
+but the live example stays bright white. It is drawn inside the page's own `interactive-example`
+component (a shadow root), which is the paint grammar's PG-SCOPE gap. It is a real capture, not
+a mock-up.
+
+- The fixture that the #741 failure used to show (dark text on a darkened card) is now
+  repaired, so it no longer shows a failure.
+- Limit: the screen shows MDN's page and the Firefox logo. For the published page, the
+  same failure should be recaptured on a page we own: a fixture with a shadow-root widget.
+
+**Two placements**, each a copy of D. Both are under `d-show/` and share `img/`:
+
+- **Placement 1** (`d-show/stuck-inline.html`): inside the extensions card, as two halves.
+  "Released: Suspender Ledger" (its walk) sits beside "Stuck on: Page Filter" (the before/after,
+  with one line). The card spans the page, and the Android app and the server sit below it.
+- **Placement 2** (`d-show/stuck-strip.html`): the three cards as in D, with "Released" on the
+  extensions card. A strip under them holds the before/after, "Stuck on · Page Filter" and the
+  same line.
+
+Both link "What I'm working through" to #3387, the first open-question essay, until it is
+rendered.
+
+The line, the same in both: "Page Filter, the one I use most, turns bright sites dark. Parts a
+page draws inside its own components or frames, like this live example, stay white: the filter
+can't reliably see in, and pages keep changing after they load."
+
+Screens: `shots/contact-sheet-stuck.png` (both, desktop and phone, full page) and
+`shots/d-stuck-{inline,strip}-{desktop,phone}[-full].png`.

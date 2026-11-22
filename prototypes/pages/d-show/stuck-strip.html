@@ -1,0 +1,841 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Paul Gathondu, software engineer</title>
+    <meta
+      name="description"
+      content="Paul Gathondu, software engineer in Rust and TypeScript. Projects shown in motion, experience, résumé and contact."
+    />
+    <!--
+      Prototype D (round 2, PAGES #3361). One self-contained file: no scripts,
+      images relative. Two kinds of named slot, each filled from one asset key
+      that the Pages build resolves at build time: generated or fetched into
+      the Pages artifact, never committed to the repo.
+
+      - data-slot="photo"  data-asset="photo/portrait.webp"
+        The mochi stands in until the owner's photo is uploaded.
+      - data-slot="clip"   data-asset="clips/<project>.mp4"
+        A short muted loop per project. Until a clip is rendered, the slot
+        plays placeholder frames with CSS (real walk snips where they exist).
+    -->
+    <style>
+      :root {
+        --fg: #2a2118;
+        --muted: #6e604f;
+        --line: #eadfcd;
+        --accent: #a35a0b;
+        --bg: #fdf8f0;
+        --card: #fff;
+        --stage: #f3e4cc;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font:
+          16px/1.6 system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+        color: var(--fg);
+        background: var(--bg);
+      }
+      a {
+        color: var(--accent);
+      }
+      .top {
+        border-bottom: 1px solid var(--line);
+        background: var(--card);
+      }
+      .top .in {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 36px 28px 30px;
+        display: flex;
+        align-items: center;
+        gap: 28px;
+        flex-wrap: wrap;
+      }
+      .photo {
+        width: 132px;
+        height: 132px;
+        border-radius: 50%;
+        overflow: hidden;
+        flex: none;
+        background: var(--stage);
+        border: 1px solid var(--line);
+        margin: 0;
+      }
+      .photo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .who {
+        flex: 1;
+        min-width: 240px;
+      }
+      h1 {
+        font-size: 2.3rem;
+        line-height: 1.1;
+        margin: 0;
+      }
+      .role {
+        font-size: 1.15rem;
+        color: var(--muted);
+        margin: 0.35rem 0 0.9rem;
+      }
+      .contact {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem 1.1rem;
+        align-items: center;
+        font-weight: 500;
+      }
+      .btn {
+        background: var(--accent);
+        color: #fff;
+        padding: 0.45rem 1rem;
+        border-radius: 6px;
+        text-decoration: none;
+      }
+      main {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 28px 28px 72px;
+      }
+      .lede {
+        font-size: 1.08rem;
+        max-width: 64ch;
+        margin: 0 0 26px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .card .body {
+        padding: 14px 18px 18px;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+      }
+      .card h3 {
+        margin: 0;
+        font-size: 1.08rem;
+      }
+      .stack {
+        color: var(--muted);
+        font-size: 0.85rem;
+        margin: 0.15rem 0 0.4rem;
+      }
+      .card p {
+        margin: 0.2rem 0;
+      }
+      .links {
+        margin-top: auto;
+        padding-top: 0.7rem;
+        font-size: 0.92rem;
+        display: flex;
+        gap: 1rem;
+        font-weight: 500;
+      }
+
+      /* ── A clip slot: a 4:3 stage, the loop inside it ───────────────── */
+      .clip {
+        position: relative;
+        aspect-ratio: 4 / 3;
+        background: var(--stage);
+        border-bottom: 1px solid var(--line);
+        overflow: hidden;
+        margin: 0;
+      }
+      .clip .tag {
+        position: absolute;
+        left: 8px;
+        bottom: 8px;
+        z-index: 5;
+        font-size: 0.7rem;
+        background: rgba(42, 33, 24, 0.78);
+        color: #fff;
+        padding: 2px 8px;
+        border-radius: 999px;
+      }
+      /* Portrait screens (a popup, the phone) stand centred on the stage,
+         as promo-feature draws them. */
+      .screen {
+        position: absolute;
+        top: 7%;
+        bottom: 7%;
+        left: 50%;
+        transform: translateX(-50%);
+        aspect-ratio: 9 / 16.9;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 6px 20px rgba(42, 33, 24, 0.22);
+        background: #222;
+      }
+      .screen.phone {
+        aspect-ratio: 1 / 2;
+        border-radius: 16px;
+        border: 4px solid #2a2118;
+      }
+      .screen img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: top;
+        opacity: 0;
+        animation-duration: 7.2s;
+        animation-iteration-count: infinite;
+        animation-timing-function: step-end;
+      }
+      .screen img:nth-child(1) {
+        animation-name: f1;
+      }
+      .screen img:nth-child(2) {
+        animation-name: f2;
+      }
+      .screen img:nth-child(3) {
+        animation-name: f3;
+      }
+      @keyframes f1 {
+        0% {
+          opacity: 1;
+        }
+        33.33% {
+          opacity: 0;
+        }
+      }
+      @keyframes f2 {
+        0% {
+          opacity: 0;
+        }
+        33.33% {
+          opacity: 1;
+        }
+        66.66% {
+          opacity: 0;
+        }
+      }
+      @keyframes f3 {
+        0% {
+          opacity: 0;
+        }
+        66.66% {
+          opacity: 1;
+        }
+      }
+      /* A tap, where and when the walk made it (walk.json's taps). */
+      .tap {
+        position: absolute;
+        width: 26px;
+        height: 26px;
+        margin: -13px 0 0 -13px;
+        border-radius: 50%;
+        border: 3px solid #f2a33a;
+        opacity: 0;
+        animation: tap 7.2s infinite;
+      }
+      @keyframes tap {
+        0%,
+        100% {
+          opacity: 0;
+          transform: scale(0.4);
+        }
+      }
+      .tap.t1 {
+        left: 87.8%;
+        top: 33.3%;
+        animation-name: tap1;
+      }
+      .tap.t2 {
+        left: 18.4%;
+        top: 17.7%;
+        animation-name: tap2;
+      }
+      @keyframes tap1 {
+        0%,
+        26% {
+          opacity: 0;
+          transform: scale(0.4);
+        }
+        28% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        33% {
+          opacity: 0;
+          transform: scale(1.5);
+        }
+      }
+      @keyframes tap2 {
+        0%,
+        59% {
+          opacity: 0;
+          transform: scale(0.4);
+        }
+        61% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        66% {
+          opacity: 0;
+          transform: scale(1.5);
+        }
+      }
+
+      /* The server's clip: a dashboard, zoomed to one panel at a time, as
+         screen-zoom eases to each region. Drawn here as a mock-up. */
+      .dash {
+        position: absolute;
+        inset: 0;
+        padding: 10px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto 1fr 1fr;
+        gap: 8px;
+        background: #111217;
+        color: #ccccdc;
+        font:
+          11px/1.3 system-ui,
+          sans-serif;
+        transform-origin: 0 0;
+        animation: zoom 12s infinite ease-in-out;
+      }
+      .panel {
+        background: #181b1f;
+        border: 1px solid #2a2d34;
+        border-radius: 4px;
+        padding: 6px 8px;
+        position: relative;
+        overflow: hidden;
+      }
+      .panel b {
+        display: block;
+        font-size: 10px;
+        font-weight: 600;
+        margin-bottom: 4px;
+        color: #d8d9da;
+      }
+      .verdicts {
+        grid-column: 1 / -1;
+        display: flex;
+        gap: 6px;
+      }
+      .verdicts span {
+        flex: 1;
+        background: #1a7f37;
+        color: #fff;
+        border-radius: 3px;
+        text-align: center;
+        padding: 6px 0;
+        font-weight: 700;
+        font-size: 10px;
+      }
+      .rows i {
+        display: block;
+        height: 9px;
+        margin: 4px 0;
+        border-radius: 2px;
+        background: linear-gradient(
+          90deg,
+          #1a7f37 0 62%,
+          #c4162a 62% 64%,
+          #1a7f37 64%
+        );
+      }
+      .rows i:nth-child(3) {
+        background: #1a7f37;
+      }
+      .rows i:nth-child(4) {
+        background: linear-gradient(
+          90deg,
+          #1a7f37 0 20%,
+          #6b6b6b 20% 26%,
+          #1a7f37 26%
+        );
+      }
+      .graph svg,
+      .area svg {
+        width: 100%;
+        height: calc(100% - 16px);
+      }
+      @keyframes zoom {
+        0%,
+        12% {
+          transform: scale(1);
+          transform-origin: 50% 50%;
+        }
+        20%,
+        32% {
+          transform: scale(2);
+          transform-origin: 50% 4%;
+        } /* HEALTH */
+        40%,
+        52% {
+          transform: scale(2);
+          transform-origin: 2% 40%;
+        } /* SERVICES */
+        60%,
+        72% {
+          transform: scale(2);
+          transform-origin: 98% 40%;
+        } /* PIPELINES */
+        80%,
+        92% {
+          transform: scale(2);
+          transform-origin: 50% 98%;
+        } /* REQUESTS */
+        100% {
+          transform: scale(1);
+          transform-origin: 50% 50%;
+        }
+      }
+
+      /* What I'm stuck on: a before/after pair, one line */
+      .pair {
+        position: relative;
+        margin: 0;
+        background: #1b1d22;
+        display: grid;
+        grid-template-rows: 1fr 1fr;
+        aspect-ratio: 4 / 3;
+        border-bottom: 1px solid var(--line);
+      }
+      .pair img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: left top;
+        display: block;
+        min-height: 0;
+      }
+      .pair .lbl {
+        position: absolute;
+        left: 8px;
+        z-index: 2;
+        font-size: 0.7rem;
+        font-weight: 600;
+        background: rgba(42, 33, 24, 0.82);
+        color: #fff;
+        padding: 2px 8px;
+        border-radius: 999px;
+      }
+      .pair .lbl.b {
+        top: 8px;
+      }
+      .pair .lbl.a {
+        top: calc(50% + 8px);
+      }
+      .ring {
+        position: absolute;
+        left: 41.5%;
+        top: 75%;
+        width: 42.5%;
+        height: 24.5%;
+        border: 3px solid #f2a33a;
+        border-radius: 10px;
+        pointer-events: none;
+      }
+      .status {
+        align-self: flex-start;
+        width: fit-content;
+        display: inline-block;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        padding: 1px 8px;
+        border-radius: 999px;
+        margin-bottom: 0.3rem;
+      }
+      .status.ships {
+        background: #e3f3e6;
+        color: #1a6b33;
+      }
+      .status.stuck {
+        background: #fdebd3;
+        color: #8a4a06;
+      }
+      .stuck-strip {
+        margin-top: 24px;
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 24px;
+        align-items: center;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      .stuck-strip > div {
+        padding: 16px 20px 16px 0;
+      }
+      .stuck-strip h2 {
+        margin: 0.4rem 0 0.3rem;
+      }
+      .stuck-strip p {
+        margin: 0.3rem 0;
+        max-width: 60ch;
+      }
+      .stuck-strip .links {
+        display: flex;
+        gap: 1rem;
+        font-weight: 500;
+        font-size: 0.92rem;
+      }
+      .stuck-strip .pair {
+        border-bottom: 0;
+        border-right: 1px solid var(--line);
+      }
+      @media (max-width: 900px) {
+        .stuck-strip {
+          grid-template-columns: 1fr;
+          gap: 0;
+        }
+        .stuck-strip > div {
+          padding: 14px 18px 18px;
+        }
+        .stuck-strip .pair {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .screen img,
+        .tap,
+        .dash {
+          animation: none;
+        }
+        .screen img:first-child {
+          opacity: 1;
+        }
+      }
+
+      h2 {
+        font-size: 0.85rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 3rem 0 1rem;
+      }
+      .two {
+        display: grid;
+        grid-template-columns: 3fr 2fr;
+        gap: 40px;
+      }
+      .job {
+        margin-bottom: 1.1rem;
+      }
+      .job h3 {
+        margin: 0;
+        font-size: 1rem;
+      }
+      .when {
+        color: var(--muted);
+        font-size: 0.88rem;
+      }
+      .job p,
+      .job ul {
+        margin: 0.2rem 0;
+      }
+      .job ul {
+        padding-left: 1.1rem;
+      }
+      footer {
+        margin-top: 3rem;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+      @media (max-width: 900px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        .two {
+          grid-template-columns: 1fr;
+          gap: 0;
+        }
+        h1 {
+          font-size: 2rem;
+        }
+        .top .in {
+          padding: 28px 20px 24px;
+          gap: 18px;
+        }
+        .photo {
+          width: 96px;
+          height: 96px;
+        }
+        main {
+          padding: 22px 20px 56px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="top">
+      <div class="in">
+        <figure
+          class="photo"
+          data-slot="photo"
+          data-asset="photo/portrait.webp"
+        >
+          <img
+            src="img/mochi.svg"
+            alt="Paul Gathondu"
+            width="132"
+            height="132"
+          />
+        </figure>
+        <div class="who">
+          <h1>Paul Gathondu</h1>
+          <p class="role">
+            Software engineer · Rust and TypeScript · Berkeley, CA
+          </p>
+          <div class="contact">
+            <a class="btn" href="https://paulgsc.github.io/some-ui/resume.pdf"
+              >Résumé (PDF)</a
+            >
+            <a href="mailto:paulgathondudev@gmail.com"
+              >paulgathondudev@gmail.com</a
+            >
+            <a href="https://github.com/paulgsc">github.com/paulgsc</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <p class="lede">
+        I build web services in Rust and apps in TypeScript and React. These
+        three are my own work, public, and I use them every day. Each clip shows
+        the thing itself working.
+      </p>
+
+      <div class="grid">
+        <article class="card">
+          <figure
+            class="clip"
+            data-slot="clip"
+            data-asset="clips/extensions.mp4"
+          >
+            <div class="screen" aria-hidden="true">
+              <img src="img/ext-01.jpg" alt="" />
+              <img src="img/ext-02.jpg" alt="" />
+              <img src="img/ext-03.jpg" alt="" />
+              <span class="tap t1"></span><span class="tap t2"></span>
+            </div>
+            <span class="tag">Placeholder: the walk's own frames</span>
+          </figure>
+          <div class="body">
+            <span class="status ships">Released</span>
+            <h3>Browser extensions</h3>
+            <p class="stack">TypeScript · Firefox and Chromium MV3</p>
+            <p>
+              Suspender Ledger keeps a site awake, then suspends a tab. It
+              passed Mozilla Add-ons review.
+            </p>
+            <p class="links">
+              <a href="https://paulgsc.github.io/some-ui/extensions"
+                >All five</a
+              >
+              <a href="https://github.com/paulgsc/some-ui/tree/main/extensions"
+                >Source</a
+              >
+            </p>
+          </div>
+        </article>
+
+        <article class="card">
+          <figure class="clip" data-slot="clip" data-asset="clips/apk.mp4">
+            <div class="screen phone" aria-hidden="true">
+              <img src="img/apk-01.jpg" alt="" />
+              <img src="img/apk-02.jpg" alt="" />
+              <img src="img/apk-03.jpg" alt="" />
+            </div>
+            <span class="tag">Placeholder: phone screens from snips</span>
+          </figure>
+          <div class="body">
+            <h3>The Android app</h3>
+            <p class="stack">
+              TypeScript · React · Capacitor · Rust → WebAssembly
+            </p>
+            <p>
+              Study sessions, Rust practice rounds, a job search desk and a
+              video studio, in one app.
+            </p>
+            <p class="links">
+              <a href="https://paulgsc.github.io/some-ui/app"
+                >Try the study apps</a
+              >
+              <a href="https://github.com/paulgsc/some-ui/tree/main/apps/mobile"
+                >Source</a
+              >
+            </p>
+          </div>
+        </article>
+
+        <article class="card">
+          <figure class="clip" data-slot="clip" data-asset="clips/server.mp4">
+            <div class="dash" aria-hidden="true">
+              <div class="panel verdicts">
+                <span>DEPS</span><span>ERRORS</span><span>REFUSALS</span
+                ><span>LOOPS</span><span>SIGNAL</span>
+              </div>
+              <div class="panel rows">
+                <b>SERVICES: up, and when they weren't</b><i></i><i></i><i></i
+                ><i></i>
+              </div>
+              <div class="panel graph">
+                <b>PIPELINES: the weekly call</b>
+                <svg viewBox="0 0 200 60">
+                  <path d="M20 30 H180" stroke="#555" stroke-width="2" />
+                  <circle cx="20" cy="30" r="11" fill="#1a7f37" />
+                  <circle cx="73" cy="30" r="11" fill="#1a7f37" />
+                  <circle cx="126" cy="30" r="11" fill="#e0752d" />
+                  <circle cx="180" cy="30" r="11" fill="#6b6b6b" />
+                </svg>
+              </div>
+              <div class="panel area" style="grid-column: 1 / -1">
+                <b>Request rate by outcome</b>
+                <svg viewBox="0 0 400 60" preserveAspectRatio="none">
+                  <path
+                    d="M0 50 C60 40 90 30 140 34 S240 20 290 28 S360 18 400 22 V60 H0Z"
+                    fill="#1a7f3766"
+                    stroke="#3fb950"
+                  />
+                  <path
+                    d="M0 58 C80 57 160 55 220 56 S330 54 400 56 V60 H0Z"
+                    fill="#e0752d88"
+                  />
+                </svg>
+              </div>
+            </div>
+            <span class="tag">Mock-up: four panels of home's Grafana</span>
+          </figure>
+          <div class="body">
+            <h3>file_host: the server behind them</h3>
+            <p class="stack">
+              Rust · Axum · Tokio · SQLite · Redis · NATS · Grafana
+            </p>
+            <p>
+              It runs at home, under its own dashboards: what is up, what
+              failed, which stage of each job is stuck.
+            </p>
+            <p class="links">
+              <a href="https://github.com/paulgsc/server">Source</a>
+            </p>
+          </div>
+        </article>
+      </div>
+
+      <section class="stuck-strip" aria-label="What I'm stuck on">
+        <figure
+          class="pair"
+          aria-label="MDN's CSS filter page without the filter, then with it: the page goes dark, the live example stays white"
+        >
+          <img src="img/filter-before.jpg" alt="" />
+          <img src="img/filter-after.jpg" alt="" />
+          <span class="lbl b">Without the filter</span
+          ><span class="lbl a">With it</span>
+          <span class="ring"></span>
+        </figure>
+        <div>
+          <span class="status stuck">Stuck on</span>
+          <h3 id="h-stuck">Page Filter</h3>
+          <p>
+            Page Filter, the one I use most, turns bright sites dark. Parts a
+            page draws inside its own components or frames, like this live
+            example, stay white: the filter can't reliably see in, and pages
+            keep changing after they load.
+          </p>
+          <p class="links">
+            <a
+              href="https://github.com/paulgsc/some-ui/tree/main/extensions/some-filter"
+              >Page Filter's source</a
+            >
+            <a href="https://github.com/paulgsc/some-ui/issues/3387"
+              >What I'm working through</a
+            >
+          </p>
+        </div>
+      </section>
+      <div class="two">
+        <section aria-labelledby="h-exp">
+          <h2 id="h-exp">Experience</h2>
+          <div class="job">
+            <h3>Software engineer, independent</h3>
+            <span class="when">2024 to now</span>
+            <p>
+              The projects above, with CI that runs only what a change touches
+              and a contract check that fails a server pull request which would
+              break the app.
+            </p>
+          </div>
+          <div class="job">
+            <h3>Inventory Specialist, WIS</h3>
+            <span class="when">2024 to now · Sacramento, CA</span>
+            <p>
+              Cycle counts and data entry at 99.9%+ accuracy, reconciled against
+              system records daily.
+            </p>
+          </div>
+          <div class="job">
+            <h3>Data Administrator, CABA Design</h3>
+            <span class="when">2020 to 2023 · Rancho Cordova, CA</span>
+            <ul>
+              <li>Tableau dashboards on PostgreSQL for daily operations.</li>
+              <li>
+                Executive reporting automated through the Google Workspace API,
+                saving 10+ hours a week.
+              </li>
+              <li>
+                Python scripts against Odoo's XML-RPC API to create records and
+                fix data.
+              </li>
+            </ul>
+          </div>
+          <div class="job">
+            <h3>Clinical Data Operator, Natera</h3>
+            <span class="when">2019 to 2020 · San Carlos, CA</span>
+            <p>
+              HIPAA-compliant sample accessioning at 99.99% accuracy, 30+ kits
+              an hour.
+            </p>
+          </div>
+        </section>
+        <section aria-labelledby="h-skills">
+          <h2 id="h-skills">Skills</h2>
+          <p>
+            Rust, TypeScript, React, Node.js, SQL, Python, Axum, Tokio, Redis,
+            NATS, Docker, GitHub Actions, Grafana, Prometheus, Vitest,
+            Playwright
+          </p>
+          <h2>Education</h2>
+          <p>B.S. Mechanical Engineering, UC Merced, 2015</p>
+        </section>
+      </div>
+      <footer>
+        Authorized to work in the US for any employer · This page keeps nothing
+        about you · Source:
+        <a href="https://github.com/paulgsc/some-ui">paulgsc/some-ui</a>
+      </footer>
+    </main>
+  </body>
+</html>
