@@ -26,6 +26,7 @@
     "react-dom": "^19.2.0"
   },
   "dependencies": {
+    "@dongsa/conjugation": "1.0.0",
     "@some-ui/core-utils": "workspace:*",
     "@some-ui/engagement": "workspace:*",
     "@some-ui/intent-kit": "workspace:*",

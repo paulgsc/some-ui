@@ -1,0 +1,18 @@
+{
+  "id": "C1086",
+  "made": "2026-11-22",
+  "by": "claude",
+  "paths": [
+    "some-ui:packages/ui/topik/src/lib/topik/conjugation",
+    "some-ui:packages/ui/topik/package.json"
+  ],
+  "chose": "Reach for KP2 (#2851), rung 1: use @dongsa/conjugation 1.0.0, pinned exactly (MIT; Dan Bravender's Korean conjugator, a port of his long-running korean_conjugation; its one dependency is @dongsa/hangeul (MIT), declared ^1.0.0 and held at 1.0.0 by the lockfile; its source makes no network call and no eval), for the stem's own changes: the 아/어 choice, contraction, 으 dropping, the ㅂ, ㄷ, 르, ㅅ, ㅎ and ㄹ classes, and the past. Ours, and only ours: how each construction-catalogue ending meets the stem the library returns (the ending's -(으) form, a lone ㄴ or ㄹ as the final, ㄹ dropping before ㄴ, the form after 았/었/겠), the vocabulary list with each word's irregular flag, which conjugation follows (the library is passed `regular` from it) and which a test holds to agree with the library's own judgment, the catalogue's word-level constraints, the rebuild check, and the refusals that name the rule broken (왔어서, 이워서, 춥어요), linking the mistake catalogue's entry where one exists. Hangul syllables are composed by arithmetic in our module, so @dongsa/hangeul is not a direct dependency. Inward first: topik had no Hangul composition and no conjugator; honeycomb's hangul-game-core is a web-only game engine a public package cannot import; core/morph-diff measures how much of an utterance a probe candidate keeps and is not replaced by conjugation. KP1's #2850 stays open for its one remaining step (C1085): a session that can reach kcenter.korean.go.kr and krdict.korean.go.kr cites a source for each catalogue rule and fills in each grade.",
+  "options": [
+    "use @dongsa/conjugation and build only the catalogue's gap (taken)",
+    "build the conjugator ourselves: every irregular class and contraction, already written and tested in the library",
+    "es-hangul (MIT) for jamo arithmetic only: no conjugation, so the irregular classes would still be ours"
+  ],
+  "gray": "Adds a third-party package to the topik workspace, whose 1.0.0 was published on 2026-09-20 by one maintainer, where building would keep every rule in our hands; the issue named the work as code we write, and the reach found it already written.",
+  "undo": "Remove @dongsa/conjugation from topik's package.json and lockfile, and write the stem changes (base, base3, the 아/어 form, the past) in lib/topik/conjugation, keeping its tests as they are.",
+  "refs": ["#2851", "#2849", "#2850"]
+}
